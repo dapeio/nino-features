@@ -1,0 +1,9 @@
+# A Nino checkout beside the features, for running their tests locally - see
+# bin/check.sh. Never versioned here
+/nino/
+
+.DS_Store
+Thumbs.db
+
+# Patches are handed around, never versioned - the change itself is
+*.patch

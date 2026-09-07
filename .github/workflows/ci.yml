@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Every feature against a Nino checkout: its manifest has to validate, its
+  # own tests have to pass, and static analysis has to stay clean. main is
+  # what the kernel is about to become, the latest tag what a project runs
+  # today - a feature has to hold on both
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        nino: [ main, latest ]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: phpstan:2.2.13
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Lint all PHP files
+        run: find features bin -name "*.php" -print0 | xargs -0 -n1 php -l
+
+      - name: Lint all JS files
+        run: find features -name "*.js" -print0 | xargs -0 -r -n1 node --check
+
+      - name: Fetch Nino (${{ matrix.nino }})
+        run: |
+          git clone --depth 1 https://github.com/dapeio/nino.git nino
+          if [ "${{ matrix.nino }}" = "latest" ]; then
+            cd nino && git fetch --tags --depth 1 && tag=$(git tag --sort=-v:refname | head -n1) && [ -n "$tag" ] && git checkout -q "$tag" && echo "Nino $tag"
+          fi
+
+      # The same layout a project has: every feature below the checkout's
+      # features/, where the autoloader and the tests find it
+      - name: Install every feature into the checkout
+        run: cp -R features/. nino/features/
+
+      - name: Validate every manifest
+        run: php bin/catalogue.php nino > catalogue.json && cat catalogue.json
+
+      - name: Run every feature's own smoke tests
+        run: for test in nino/features/*/tests/*-smoke.php; do php "$test" || exit 1; done
+
+      # Nino's own suite still passes with the features in place - a feature
+      # that breaks the kernel's tests is not compatible either
+      - name: Run Nino's features contract test
+        run: cd nino && php tests/features-smoke.php
+
+      - name: Analyse the features with PHPStan
+        run: cd nino && phpstan analyse --no-progress --memory-limit=1G
+
+      - name: Analyse the panel scripts with ESLint
+        run: cd nino && npx --yes eslint@9.39.0 features
+
+      - name: Keep the catalogue as an artifact
+        if: matrix.nino == 'main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: catalogue
+          path: catalogue.json
