@@ -16,6 +16,11 @@ if [ ! -f "$root/_nino/Nino.php" ]; then
 	exit 2
 fi
 
+if [ ! -f "$root/_nino/Nino/Features/Features.php" ] || [ ! -f "$root/tests/harness.php" ]; then
+	echo "The Nino checkout at $root predates the feature contract (no \\Nino\\Features, no tests/harness.php) - the catalogue needs a Nino that carries it" >&2
+	exit 2
+fi
+
 installed=""
 for dir in "$here"/features/*/; do
 	name=$(basename "$dir")

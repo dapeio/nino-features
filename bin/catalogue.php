@@ -32,6 +32,14 @@ set_error_handler( static function( int $level, string $message ) use ( &$warnin
 
 require $root. '/_nino/Nino.php';
 
+// A checkout that predates the feature contract has no \Nino\Features: say
+// so instead of dying with a class-not-found - Nino 1.0.0-beta is such a
+// checkout, and so is any main that has not taken the contract in yet
+if( class_exists( '\Nino\Features' ) === false ) {
+	fwrite( STDERR, "The Nino checkout at ". $root. " (". \Nino\VERSION. ") has no \\Nino\\Features - the catalogue needs a Nino that carries the feature contract (docs/features.md)\n" );
+	exit( 2 );
+}
+
 $appData	= [];
 $catalogue	= [];
 
