@@ -29,7 +29,7 @@ declare(strict_types=1);
  *								would stamp the clock in, and a rebuild a second later would
  *								differ. The signature is openssl_sign(). Nothing is shelled out.
  *
- *	Usage: php bin/build.php <nino-checkout> <out-dir> [--base-url https://getnino.dev/features] [--key private.pem] [--only <key>]
+ *	Usage: php bin/build.php <nino-checkout> <out-dir> [--base-url https://catalogue.getnino.dev] [--key private.pem] [--only <key>]
  *
  *	  --base-url   where the archives will be served from: the archive url of
  *	               an entry is <base-url>/<key>-<version>.tar.gz
@@ -42,7 +42,7 @@ declare(strict_types=1);
  *	a usage error.
  */
 
-const BUILD_DEFAULT_BASE_URL		= 'https://getnino.dev/features';
+const BUILD_DEFAULT_BASE_URL		= 'https://catalogue.getnino.dev';
 const BUILD_FORMAT							= 1;
 
 // What \Nino\Catalogue refuses - refused here first, where it can be fixed
@@ -575,6 +575,15 @@ foreach( $selected as $key => $manifest ) {
 
 	$entries[$id] = $entry;
 }
+
+
+// Where an archive is served from is this build's --base-url, for every
+// entry, kept or built: the url is derived from the place, not part of the
+// version - a catalogue that moves to another host keeps its archives and
+// their digests and names them where they are now
+foreach( $entries as &$entry )
+	$entry['archive'] = $baseUrl. '/'. $entry['key']. '-'. $entry['version']. '.tar.gz';
+unset( $entry );
 
 
 // --- Write and sign ----------------------------------------------------------

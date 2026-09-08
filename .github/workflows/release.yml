@@ -1,14 +1,15 @@
 name: Release
 
-# Publishes one feature version to getnino.dev. The tag <key>-<version>
-# (newsletter-1.0.0, say) builds that feature's archive with bin/build.php,
-# merges its entry into the published catalogue, signs the catalogue and
-# uploads all of it with rsync over ssh. workflow_dispatch re-runs a release
-# from its tag, which has to exist. See README.md, Publishing.
+# Publishes one feature version to catalogue.getnino.dev. The tag
+# <key>-<version> (newsletter-1.0.0, say) builds that feature's archive with
+# bin/build.php, merges its entry into the published catalogue, signs the
+# catalogue and posts all of it to server/publish.php over https - no ssh.
+# workflow_dispatch re-runs a release from its tag, which has to exist. See
+# README.md, Publishing.
 #
-# A published version is immutable: an archive that is already on the
-# server is never overwritten (rsync --ignore-existing), and bin/build.php
-# keeps the entry of an archive it did not build.
+# A published version is immutable: server/publish.php never overwrites an
+# archive that is already there, and bin/build.php keeps the entry of an
+# archive it did not build.
 
 on:
   push:
@@ -34,8 +35,10 @@ concurrency:
   group: release
   cancel-in-progress: false
 
+# Where the catalogue is served from - the repository variable CATALOGUE_URL
+# replaces the default, for a fork with a catalogue of its own
 env:
-  CATALOGUE_URL: https://getnino.dev/features
+  CATALOGUE_URL: ${{ vars.CATALOGUE_URL || 'https://catalogue.getnino.dev' }}
 
 jobs:
   publish:
@@ -179,39 +182,28 @@ jobs:
           name: ${{ steps.release.outputs.tag }}
           path: dist
 
-      # The host's key comes from a secret, never from the first connection
-      - name: Set up ssh
+      # One https POST: the signed catalogue, its signature and this version's
+      # archive. server/publish.php verifies the signature with the public
+      # key it holds, checks the archive against the catalogue and never
+      # overwrites a published one - see README.md, Publishing
+      - name: Publish
         env:
-          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
-          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          PUBLISH_URL: ${{ secrets.PUBLISH_URL }}
+          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+          ARCHIVE: ${{ steps.release.outputs.key }}-${{ steps.release.outputs.version }}.tar.gz
         run: |
-          if [ -z "$DEPLOY_KEY" ] || [ -z "$DEPLOY_KNOWN_HOSTS" ]; then
-            echo "::error::The secrets DEPLOY_KEY and DEPLOY_KNOWN_HOSTS have to be set - see README.md, Publishing" >&2
+          if [ -z "$PUBLISH_URL" ] || [ -z "$PUBLISH_TOKEN" ]; then
+            echo "::error::The secrets PUBLISH_URL and PUBLISH_TOKEN have to be set - see README.md, Publishing" >&2
             exit 1
           fi
-          umask 077
-          mkdir -p "$RUNNER_TEMP/ssh"
-          printf '%s\n' "$DEPLOY_KEY" > "$RUNNER_TEMP/ssh/key"
-          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$RUNNER_TEMP/ssh/known_hosts"
-          chmod 600 "$RUNNER_TEMP/ssh/key" "$RUNNER_TEMP/ssh/known_hosts"
-
-      # The archives first, and never over one that is already there; then
-      # the catalogue and its signature, which name them
-      - name: Upload
-        env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-        run: |
-          if [ -z "$DEPLOY_HOST" ] || [ -z "$DEPLOY_USER" ] || [ -z "$DEPLOY_PATH" ]; then
-            echo "::error::The secrets DEPLOY_HOST, DEPLOY_USER and DEPLOY_PATH have to be set - see README.md, Publishing" >&2
+          code=$(curl -sS -o response.json -w '%{http_code}' \
+            -H "X-Publish-Token: $PUBLISH_TOKEN" \
+            -F "catalogue=@dist/catalogue.json;type=application/json" \
+            -F "signature=@dist/catalogue.json.sig;type=text/plain" \
+            -F "archives[]=@dist/$ARCHIVE;type=application/gzip" \
+            "$PUBLISH_URL") || code=000
+          cat response.json 2>/dev/null; echo
+          if [ "$code" != 200 ]; then
+            echo "::error::$PUBLISH_URL answered $code" >&2
             exit 1
           fi
-          ssh="ssh -i $RUNNER_TEMP/ssh/key -o UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts -o StrictHostKeyChecking=yes -o IdentitiesOnly=yes -o BatchMode=yes"
-          target="$DEPLOY_USER@$DEPLOY_HOST:${DEPLOY_PATH%/}/"
-          rsync -v -p --chmod=F644 --ignore-existing -e "$ssh" dist/*.tar.gz "$target"
-          rsync -v -p --chmod=F644 -e "$ssh" dist/catalogue.json dist/catalogue.json.sig "$target"
-
-      - name: Remove the ssh key
-        if: always()
-        run: rm -rf "$RUNNER_TEMP/ssh"

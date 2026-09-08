@@ -4,7 +4,8 @@
 # into the checkout's features/ for the run, the same layout a project has,
 # and removed again afterwards. Then the publishing tool's own test,
 # tests/build-smoke.php, builds a signed catalogue into a directory of its
-# own against the same checkout.
+# own against the same checkout, and tests/publish-smoke.php drives the
+# endpoint a release is posted to.
 #
 # Usage: bin/check.sh            (../nino)
 #        NINO_ROOT=/path/to/nino bin/check.sh
@@ -41,10 +42,11 @@ cleanup() {
 }
 trap cleanup EXIT
 
-php84 "$here/bin/catalogue.php" "$root" > /dev/null
+php "$here/bin/catalogue.php" "$root" > /dev/null
 for test in "$root"/features/*/tests/*-smoke.php; do
 	[ -e "$test" ] || continue
-	php84 "$test"
+	php "$test"
 done
 
-NINO_ROOT="$root" php84 "$here/tests/build-smoke.php"
+NINO_ROOT="$root" php "$here/tests/build-smoke.php"
+NINO_ROOT="$root" php "$here/tests/publish-smoke.php"

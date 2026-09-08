@@ -90,13 +90,13 @@ Every feature carries its own `version` in `feature.php` - `major.minor.patch` -
 
 ## Publishing
 
-getnino.dev publishes this catalogue as signed archives, and a Nino that carries `\Nino\Catalogue` reads it from there: the Features panel loads the catalogue when asked - never on its own - offers what fits the running kernel, and installs an archive straight into `features/` after checking its digest against the signed catalogue. Everything published is a static file over https:
+catalogue.getnino.dev publishes this catalogue as signed archives, and a Nino that carries `\Nino\Catalogue` reads it from there: the Features panel loads the catalogue when asked - never on its own - offers what fits the running kernel, and installs an archive straight into `features/` after checking its digest against the signed catalogue. Everything published is a static file over https:
 
 | Path | What it is |
 | --- | --- |
-| `https://getnino.dev/features/catalogue.json` | the catalogue, format 1 - see [The catalogue, format 1](#the-catalogue-format-1) |
-| `https://getnino.dev/features/catalogue.json.sig` | its detached signature: ECDSA over SHA-256 of the exact bytes of `catalogue.json`, DER, base64 on one line |
-| `https://getnino.dev/features/<key>-<version>.tar.gz` | one archive per feature version, holding exactly one directory `<Name>/` - what lands below a project's `features/`, without `tests/`; at most 20 MB packed, 50 MB unpacked, 5000 entries |
+| `https://catalogue.getnino.dev/catalogue.json` | the catalogue, format 1 - see [The catalogue, format 1](#the-catalogue-format-1) |
+| `https://catalogue.getnino.dev/catalogue.json.sig` | its detached signature: ECDSA over SHA-256 of the exact bytes of `catalogue.json`, DER, base64 on one line |
+| `https://catalogue.getnino.dev/<key>-<version>.tar.gz` | one archive per feature version, holding exactly one directory `<Name>/` - what lands below a project's `features/`, without `tests/`; at most 20 MB packed, 50 MB unpacked, 5000 entries |
 
 A published version is immutable: an archive that is on the server is never rebuilt or overwritten, and its entry keeps its digest, its size and its release date. What has to change is released as the next version.
 
@@ -119,7 +119,7 @@ The tag starts `.github/workflows/release.yml`, which
 - fetches the published `catalogue.json` - and, for a re-run, the published archive of this version - into `dist/`; a 404 is the first release;
 - writes the signing key from the secret to a temporary file, runs `php bin/build.php ../nino dist --only <key> --key <file>` and removes the key file again, whatever happened;
 - keeps `dist/` as a workflow artifact;
-- uploads with rsync over ssh: the archives first and never over one that exists (`--ignore-existing`), then `catalogue.json` and `catalogue.json.sig`.
+- posts `catalogue.json`, `catalogue.json.sig` and this version's archive to `server/publish.php` over https, one `curl` (`PUBLISH_URL`, `PUBLISH_TOKEN`); the endpoint verifies the signature itself and never overwrites a published archive. No ssh.
 
 A release that stopped half way - a failing test, a failing upload - is run again from **Actions → Release → Run workflow** with the key and the version: the workflow checks out the tag again, and an archive already on the server stays what it is. A release that went out with a mistake is followed by the next patch version, never replaced.
 
@@ -130,11 +130,10 @@ The repository needs these secrets (**Settings → Secrets and variables → Act
 | Secret | What it holds |
 | --- | --- |
 | `CATALOGUE_SIGNING_KEY` | the PEM private key `catalogue.json` is signed with - the whole file, `-----BEGIN EC PRIVATE KEY-----` included |
-| `DEPLOY_HOST` | the host the files are uploaded to over ssh |
-| `DEPLOY_USER` | the ssh user on that host, restricted to the directory below |
-| `DEPLOY_PATH` | the absolute directory on the host that is served as `https://getnino.dev/features/` |
-| `DEPLOY_KEY` | that user's ssh private key, the whole file |
-| `DEPLOY_KNOWN_HOSTS` | the host's key line, as `ssh-keyscan getnino.dev` prints it - the workflow verifies the host against it and accepts no other |
+| `PUBLISH_URL` | the endpoint's url, `https://catalogue.getnino.dev/publish.php` |
+| `PUBLISH_TOKEN` | the token `server/publish.php` is configured with (`NINO_CATALOGUE_TOKEN`) |
+
+A fork that publishes a catalogue of its own sets the repository *variable* `CATALOGUE_URL` (same page, **Variables**) to where the files are served from; without it the workflow names `https://catalogue.getnino.dev`.
 
 ### The signing key
 
@@ -149,7 +148,21 @@ openssl ec -in catalogue-key.pem -pubout -out catalogue-key.pub.pem
 
 ### The server
 
-getnino.dev serves the directory as plain static files over https - no PHP, no directory listing; the kernel reads the bytes, whatever content type the web server names for `.json`, `.sig` and `.tar.gz`. The deploy user is an ssh user of its own with the workflow's public key in its `authorized_keys`, allowed to write into that directory and nowhere else - `rrsync <directory>` as its forced command, or an SFTP chroot with rsync over it. The workflow's `--ignore-existing` protects the published archives from the client side; the server adds to that by keeping published archives read-only for the deploy user.
+catalogue.getnino.dev serves one directory as plain static files over https - `catalogue.json`, `catalogue.json.sig` and the archives, no directory listing; the kernel reads the bytes, whatever content type the web server names for them - and, in the same directory, `server/publish.php`: the endpoint the release workflow posts to. No ssh. The workflow sends one https POST with the signed catalogue, its signature and the new archive, and the endpoint takes it only when everything holds: the token matches, the signature verifies with the public key the endpoint holds, every uploaded archive is one the catalogue lists with the digest and the size it names, every archive the catalogue lists is published already or in this upload, and no published archive would change - other bytes under a published name are a 409. A leaked token alone publishes nothing: without the private key there is no catalogue the endpoint accepts.
+
+Deploying it is copying `server/publish.php` into that directory and configuring three things, as environment variables (a container) or as `publish.config.php` beside the script, returning an array with the same keys (a plain web server; `.gitignore` keeps the file out of the repository):
+
+| Setting | What it holds |
+| --- | --- |
+| `NINO_CATALOGUE_TOKEN` | the token the workflow sends, at least 32 characters - `openssl rand -hex 32`; the same string is the secret `PUBLISH_TOKEN` |
+| `NINO_CATALOGUE_PUBLIC_KEY` | the PEM public key, `catalogue-key.pub.pem` - or `NINO_CATALOGUE_PUBLIC_KEY_FILE`, the path of a file holding it |
+| `NINO_CATALOGUE_DIR` | the directory the files are written to; the script's own directory when unset |
+
+php has to allow the upload - `upload_max_filesize` and `post_max_size` above the largest archive, `32M` and `64M` leave room - and a proxy in front of php needs its own body limit (`client_max_body_size 64m` for nginx). The directory is writable for the php user; a published archive may be made read-only afterwards, the endpoint never writes one twice. `tests/publish-smoke.php` is the endpoint's test. A release by hand is the same request the workflow makes:
+
+```bash
+curl -sS -H "X-Publish-Token: $TOKEN" -F catalogue=@dist/catalogue.json -F signature=@dist/catalogue.json.sig -F "archives[]=@dist/newsletter-1.0.0.tar.gz" https://catalogue.getnino.dev/publish.php
+```
 
 ### A catalogue of your own
 
@@ -160,7 +173,7 @@ php bin/build.php ../nino dist --base-url https://example.org/features
 openssl dgst -sha256 -sign catalogue-key.pem dist/catalogue.json | base64 -w0 > dist/catalogue.json.sig
 ```
 
-Without `--key` it writes no signature and prints that one-liner; with `--key catalogue-key.pem` it signs itself and verifies the signature with the public half before it exits. `--only <key>` builds one feature and keeps every other entry of a `catalogue.json` already in `dist/`; an archive already in `dist/` is kept, never rebuilt. Upload `dist/` to `https://example.org/features/` and point a project there: `/nino/catalogue/url` names the catalogue's url, `/nino/catalogue/key` its public key, both in `config.php`. `tests/build-smoke.php` is the tool's own test.
+Without `--key` it writes no signature and prints that one-liner; with `--key catalogue-key.pem` it signs itself and verifies the signature with the public half before it exits. `--only <key>` builds one feature and keeps every other entry of a `catalogue.json` already in `dist/`; an archive already in `dist/` is kept, never rebuilt. Upload `dist/` to `https://example.org/features/` - by hand, or through `server/publish.php` deployed there with the public half of your key - and point a project there: `/nino/catalogue/url` names the catalogue's url, `/nino/catalogue/key` its public key, both in `config.php`. `tests/build-smoke.php` is the tool's own test.
 
 ### The catalogue, format 1
 

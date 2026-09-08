@@ -12,3 +12,6 @@ Thumbs.db
 # never versioned - and a signing key, which never enters a repository
 /dist/
 *.pem
+
+# The endpoint's configuration on a server - a token and a key, never here
+/server/publish.config.php
