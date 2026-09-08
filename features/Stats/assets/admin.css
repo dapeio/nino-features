@@ -1,0 +1,98 @@
+@layer nino.system, nino.tool, nino.local;
+
+/**
+ *	Nino										A compact filesystembased php framework
+ *	Modules\Stats						What the module's /_admin panel needs beyond the design
+ *													system in _admin/assets/style.css - the month selector,
+ *													the plain-css bar row and the two top-50 tables. Joins
+ *													the editor's own style bundle while the feature is
+ *													active (see the panel's assets()), so the same layer
+ *													rules apply: scoped to what this panel renders, nothing
+ *													shared restated.
+ *
+ *	@package								Dape/Nino
+ *	@author									David Perchermeier <mail@dape.io>
+ *	@link										https://github.com/dapeio/nino
+ */
+
+@layer nino.tool {
+
+#stats-list > label {
+	display: block;
+	margin-bottom: .3rem;
+	color: var(--editor-text-secondary);
+	font-size: .76rem;
+}
+#stats-month {
+	margin-bottom: 1rem;
+}
+#stats-summary {
+	margin: 0 0 .8rem;
+	font-weight: 650;
+}
+
+/*	A day per column, no chart library: each bar's own height is set inline
+	as a percentage of the month's busiest day (see admin.js's _renderBars()) */
+#stats-bars {
+	display: flex;
+	align-items: flex-end;
+	gap: 2px;
+	height: 10rem;
+	margin: 0 0 1.5rem;
+	padding: 0 0 1.4rem;
+	border-bottom: 1px solid var(--editor-border);
+	overflow-x: auto;
+}
+.stats-bar-col {
+	position: relative;
+	display: flex;
+	flex: 1 0 6px;
+	min-width: 6px;
+	align-items: flex-end;
+	height: 100%;
+}
+.stats-bar {
+	position: relative;
+	width: 100%;
+	min-height: 2px;
+	border-radius: 2px 2px 0 0;
+	background: var(--editor-accent, #4a7dfc);
+}
+.stats-bar-value {
+	position: absolute;
+	bottom: 100%;
+	left: 50%;
+	transform: translateX(-50%);
+	margin-bottom: 2px;
+	font-size: .62rem;
+	color: var(--editor-text-secondary);
+	white-space: nowrap;
+	opacity: 0;
+	pointer-events: none;
+}
+.stats-bar-col:hover .stats-bar-value {
+	opacity: 1;
+}
+.stats-bar-label {
+	position: absolute;
+	top: 100%;
+	left: 50%;
+	transform: translateX(-50%) rotate(-45deg);
+	transform-origin: top left;
+	margin-top: .3rem;
+	font-size: .6rem;
+	color: var(--editor-text-secondary);
+	white-space: nowrap;
+}
+
+#stats-tables {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+	gap: 1rem;
+}
+.stats-table h3 {
+	margin: 0 0 .6rem;
+	font-size: .9rem;
+}
+
+}
