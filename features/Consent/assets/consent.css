@@ -1,0 +1,155 @@
+/**
+ *	Nino - Consent
+ *	consent.css		The [consent] banner and the [consent-settings] reopen
+ *								button. Bundled into the project's own /.cache/style.css
+ *								the same way the kernel bundles Nino.css (see Consent::
+ *								init() and docs/development.md, "Assets Are Not
+ *								Templates") - never rendered through the fill/shortcode
+ *								engine, so nothing in here is a textfill.
+ *
+ *								Every colour, spacing and radius reads the site's own
+ *								design-system custom properties (the same names
+ *								_nino/Nino.css and every theme under
+ *								_admin/install/library/themes define: --color-*,
+ *								--space-*, --radius, --fontsize-small) with a plain
+ *								fallback value, so the banner looks at home whether or
+ *								not the project ever picked a theme.
+ */
+
+.nino-consent {
+	position: fixed;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 9998;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-2, 1rem);
+	padding: var(--space-2, 1rem);
+	background: var(--color-background, #fff);
+	color: var(--color-text, #222);
+	border-top: 1px solid var(--color-border, #ddd);
+	box-shadow: 0 -2px 12px rgba(0, 0, 0, .15);
+	font-size: var(--fontsize-small, .875rem);
+	line-height: 1.5;
+}
+
+/* [hidden]/hidden already stops rendering everywhere - this is only here so
+   a project stylesheet loaded after this one, or one that resets [hidden],
+   cannot leave a "hidden" banner visible by accident */
+.nino-consent[hidden] {
+	display: none;
+}
+
+.nino-consent-content {
+	flex: 1 1 20rem;
+	min-width: 0;
+}
+
+.nino-consent-title {
+	margin: 0 0 var(--space-1, .5rem);
+	font-weight: 700;
+}
+
+.nino-consent-text {
+	margin: 0 0 var(--space-1, .5rem);
+}
+
+.nino-consent-link {
+	color: inherit;
+	text-decoration: underline;
+}
+
+.nino-consent-categories {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2, 1rem);
+	margin-top: var(--space-1, .5rem);
+}
+
+.nino-consent-category {
+	display: flex;
+	align-items: flex-start;
+	gap: .4rem;
+	max-width: 18rem;
+	cursor: pointer;
+}
+
+.nino-consent-category input {
+	margin-top: .2rem;
+	flex-shrink: 0;
+}
+
+.nino-consent-category-name {
+	display: block;
+	font-weight: 600;
+}
+
+.nino-consent-category-hint {
+	display: block;
+	font-size: .85em;
+	opacity: .8;
+}
+
+.nino-consent-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-1, .5rem);
+	flex-shrink: 0;
+}
+
+.nino-consent-btn {
+	appearance: none;
+	border: 1px solid var(--color-border, #ccc);
+	border-radius: var(--radius, .2rem);
+	padding: .6em 1.2em;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	cursor: pointer;
+	white-space: nowrap;
+}
+
+.nino-consent-btn:hover,
+.nino-consent-btn:focus-visible {
+	border-color: var(--color-primary, #1a73e8);
+}
+
+.nino-consent-btn--primary {
+	background: var(--color-primary, #1a73e8);
+	border-color: var(--color-primary, #1a73e8);
+	color: var(--color-primary-text, #fff);
+}
+
+/* [consent-settings] - a plain text link/button for the footer, not a
+   full nino-consent-btn: it is meant to sit quietly among other footer
+   links until someone wants to change their mind */
+.nino-consent-open {
+	appearance: none;
+	border: 0;
+	background: none;
+	padding: 0;
+	color: inherit;
+	text-decoration: underline;
+	cursor: pointer;
+	font: inherit;
+}
+
+@media (max-width: 640px) {
+
+	.nino-consent {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.nino-consent-actions {
+		justify-content: stretch;
+	}
+
+	.nino-consent-btn {
+		flex: 1 1 auto;
+		text-align: center;
+	}
+}

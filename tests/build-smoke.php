@@ -440,7 +440,15 @@ writeCatalogue( $merge, [ 'format' => 1, 'generated' => '2020-01-01T00:00:00Z', 
 $document = readCatalogue( $merge );
 check( 'a build into a catalogue with other keys and versions succeeds', $status === 0 && $stderr === '' );
 check( 'every foreign entry survives as it was', entryOf( $document, 'other', '1.0.0' ) === $foreign( 'other', '1.0.0' ) && entryOf( $document, 'other', '2.0.0' ) === $foreign( 'other', '2.0.0' ) && entryOf( $document, 'search', '0.9.0' ) === $foreign( 'search', '0.9.0' ) );
-check( 'sorted by key, then version descending', array_map( static fn( array $entry ): string => $entry['key']. '@'. $entry['version'], $document['features'] ) === [ 'newsletter@'. $manifests['newsletter']['version'], 'other@2.0.0', 'other@1.0.0', 'search@'. $manifests['search']['version'], 'search@0.9.0' ] );
+// The expected order, derived from whatever features the repository holds
+// today plus the three foreign entries - a new feature must not break this
+$expected = [];
+foreach( $manifests as $key => $manifest )
+	$expected[] = [ 'key' => $key, 'version' => $manifest['version'] ];
+foreach( [ [ 'other', '1.0.0' ], [ 'search', '0.9.0' ], [ 'other', '2.0.0' ] ] as [ $key, $version ] )
+	$expected[] = [ 'key' => $key, 'version' => $version ];
+usort( $expected, static fn( array $a, array $b ): int => strcmp( $a['key'], $b['key'] ) ?: version_compare( $b['version'], $a['version'] ) );
+check( 'sorted by key, then version descending', array_map( static fn( array $entry ): string => $entry['key']. '@'. $entry['version'], $document['features'] ) === array_map( static fn( array $e ): string => $e['key']. '@'. $e['version'], $expected ) );
 
 if( class_exists( '\Nino\Catalogue' ) === true )
 	check( 'the kernel parses the merged catalogue', is_array( \Nino\Catalogue::parse( (string) file_get_contents( $merge. '/catalogue.json' ) ) ) === true );
