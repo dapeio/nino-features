@@ -39,7 +39,7 @@ jobs:
           node-version: '22'
 
       - name: Lint all PHP files
-        run: find features bin -name "*.php" -print0 | xargs -0 -n1 php -l
+        run: find features bin tests -name "*.php" -print0 | xargs -0 -n1 php -l
 
       - name: Lint all JS files
         run: find features -name "*.js" -print0 | xargs -0 -r -n1 node --check
@@ -61,6 +61,12 @@ jobs:
 
       - name: Run every feature's own smoke tests
         run: for test in nino/features/*/tests/*-smoke.php; do php "$test" || exit 1; done
+
+      # The publishing tool builds a signed catalogue of this repository's
+      # features into a directory of its own, and the kernel has to accept
+      # what came out (see .github/workflows/release.yml for the real thing)
+      - name: Run the publishing tool's smoke test
+        run: NINO_ROOT=nino php tests/build-smoke.php
 
       # Nino's own suite still passes with the features in place - a feature
       # that breaks the kernel's tests is not compatible either

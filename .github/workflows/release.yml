@@ -1,0 +1,217 @@
+name: Release
+
+# Publishes one feature version to getnino.dev. The tag <key>-<version>
+# (newsletter-1.0.0, say) builds that feature's archive with bin/build.php,
+# merges its entry into the published catalogue, signs the catalogue and
+# uploads all of it with rsync over ssh. workflow_dispatch re-runs a release
+# from its tag, which has to exist. See README.md, Publishing.
+#
+# A published version is immutable: an archive that is already on the
+# server is never overwritten (rsync --ignore-existing), and bin/build.php
+# keeps the entry of an archive it did not build.
+
+on:
+  push:
+    tags:
+      - '*-[0-9]*.[0-9]*.[0-9]*'
+  workflow_dispatch:
+    inputs:
+      key:
+        description: The feature key, as its feature.php names it (newsletter)
+        required: true
+        type: string
+      version:
+        description: The version to publish (1.0.0) - the tag <key>-<version> has to exist
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+# One release at a time: every run fetches the published catalogue, merges
+# one entry into it and uploads it again
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  CATALOGUE_URL: https://getnino.dev/features
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Name the release from the tag
+        id: release
+        env:
+          EVENT: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_KEY: ${{ inputs.key }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            tag="$INPUT_KEY-$INPUT_VERSION"
+          else
+            tag="$REF_NAME"
+          fi
+          if ! printf '%s\n' "$tag" | grep -Eq '^[a-z][a-z0-9-]*-[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'; then
+            echo "::error::\"$tag\" is not a release tag - <key>-<major>.<minor>.<patch>, such as newsletter-1.0.0" >&2
+            exit 1
+          fi
+          version=$(printf '%s\n' "$tag" | sed -E 's/^[a-z][a-z0-9-]*-([0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?)$/\1/')
+          key=${tag%-"$version"}
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "key=$key" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Releasing $key $version from the tag $tag"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ steps.release.outputs.tag }}
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+
+      # The kernel the manifests are validated with and the tests run
+      # against, beside this repository - where bin/check.sh expects it
+      - name: Fetch Nino (main)
+        run: git clone --depth 1 https://github.com/dapeio/nino.git ../nino
+
+      # The tag names a key and a version; the feature with that key has to
+      # declare exactly that version, and its changelog has to know it
+      - name: Check that the tag names what the manifest declares
+        id: feature
+        env:
+          KEY: ${{ steps.release.outputs.key }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          php bin/catalogue.php ../nino > preview.json
+          directory=$(jq -r --arg key "$KEY" '.features[] | select(.key == $key) | .directory' preview.json)
+          declared=$(jq -r --arg key "$KEY" '.features[] | select(.key == $key) | .version' preview.json)
+          rm -f preview.json
+          if [ -z "$directory" ]; then
+            echo "::error::No feature below features/ has the key \"$KEY\"" >&2
+            exit 1
+          fi
+          if [ "$declared" != "$VERSION" ]; then
+            echo "::error::features/$directory/feature.php declares version $declared, the tag says $VERSION - bump the version, then tag" >&2
+            exit 1
+          fi
+          escaped=$(printf '%s' "$VERSION" | sed 's/[.]/\\./g')
+          if ! grep -Eq "^## $escaped( |$)" "features/$directory/CHANGELOG.md"; then
+            echo "::error::features/$directory/CHANGELOG.md has no entry \"## $VERSION\" - a release carries its changelog entry" >&2
+            exit 1
+          fi
+          echo "directory=$directory" >> "$GITHUB_OUTPUT"
+          echo "features/$directory declares $KEY $VERSION"
+
+      - name: Run the feature's own tests against Nino
+        env:
+          DIRECTORY: ${{ steps.feature.outputs.directory }}
+        run: |
+          found=0
+          for test in "features/$DIRECTORY"/tests/*-smoke.php; do
+            [ -e "$test" ] || continue
+            found=1
+            NINO_ROOT=../nino php "$test"
+          done
+          if [ "$found" = 0 ]; then
+            echo "::error::features/$DIRECTORY carries no tests/*-smoke.php - a feature is published with its test" >&2
+            exit 1
+          fi
+
+      # The published catalogue is what this release merges into, and the
+      # published archive of this version - a re-run - is what it keeps.
+      # A 404 is the first release; anything else is a problem
+      - name: Fetch what is published
+        env:
+          ARCHIVE: ${{ steps.release.outputs.key }}-${{ steps.release.outputs.version }}.tar.gz
+        run: |
+          mkdir -p dist
+          for file in catalogue.json "$ARCHIVE"; do
+            code=$(curl -sS -o "dist/$file" -w '%{http_code}' "$CATALOGUE_URL/$file") || code=000
+            case "$code" in
+              200) echo "$file is published - fetched" ;;
+              404) echo "$file is not published yet"; rm -f "dist/$file" ;;
+              *) echo "::error::$CATALOGUE_URL/$file answered $code" >&2; exit 1 ;;
+            esac
+          done
+
+      - name: Write the signing key
+        env:
+          CATALOGUE_SIGNING_KEY: ${{ secrets.CATALOGUE_SIGNING_KEY }}
+        run: |
+          if [ -z "$CATALOGUE_SIGNING_KEY" ]; then
+            echo "::error::The secret CATALOGUE_SIGNING_KEY is not set - see README.md, Publishing" >&2
+            exit 1
+          fi
+          umask 077
+          printf '%s\n' "$CATALOGUE_SIGNING_KEY" > "$RUNNER_TEMP/catalogue-key.pem"
+          chmod 600 "$RUNNER_TEMP/catalogue-key.pem"
+
+      - name: Build the archive and the signed catalogue
+        env:
+          KEY: ${{ steps.release.outputs.key }}
+        run: php bin/build.php ../nino dist --base-url "$CATALOGUE_URL" --only "$KEY" --key "$RUNNER_TEMP/catalogue-key.pem"
+
+      - name: Remove the signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/catalogue-key.pem"
+
+      - name: Check what is about to be uploaded
+        env:
+          KEY: ${{ steps.release.outputs.key }}
+          VERSION: ${{ steps.release.outputs.version }}
+          ARCHIVE: ${{ steps.release.outputs.key }}-${{ steps.release.outputs.version }}.tar.gz
+        run: |
+          ls -l dist
+          test -s "dist/$ARCHIVE"
+          test -s dist/catalogue.json
+          test -s dist/catalogue.json.sig
+          jq -e --arg key "$KEY" --arg version "$VERSION" '.features[] | select(.key == $key and .version == $version)' dist/catalogue.json > /dev/null
+
+      - name: Keep the release as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.release.outputs.tag }}
+          path: dist
+
+      # The host's key comes from a secret, never from the first connection
+      - name: Set up ssh
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          if [ -z "$DEPLOY_KEY" ] || [ -z "$DEPLOY_KNOWN_HOSTS" ]; then
+            echo "::error::The secrets DEPLOY_KEY and DEPLOY_KNOWN_HOSTS have to be set - see README.md, Publishing" >&2
+            exit 1
+          fi
+          umask 077
+          mkdir -p "$RUNNER_TEMP/ssh"
+          printf '%s\n' "$DEPLOY_KEY" > "$RUNNER_TEMP/ssh/key"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$RUNNER_TEMP/ssh/known_hosts"
+          chmod 600 "$RUNNER_TEMP/ssh/key" "$RUNNER_TEMP/ssh/known_hosts"
+
+      # The archives first, and never over one that is already there; then
+      # the catalogue and its signature, which name them
+      - name: Upload
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          if [ -z "$DEPLOY_HOST" ] || [ -z "$DEPLOY_USER" ] || [ -z "$DEPLOY_PATH" ]; then
+            echo "::error::The secrets DEPLOY_HOST, DEPLOY_USER and DEPLOY_PATH have to be set - see README.md, Publishing" >&2
+            exit 1
+          fi
+          ssh="ssh -i $RUNNER_TEMP/ssh/key -o UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts -o StrictHostKeyChecking=yes -o IdentitiesOnly=yes -o BatchMode=yes"
+          target="$DEPLOY_USER@$DEPLOY_HOST:${DEPLOY_PATH%/}/"
+          rsync -v -p --chmod=F644 --ignore-existing -e "$ssh" dist/*.tar.gz "$target"
+          rsync -v -p --chmod=F644 -e "$ssh" dist/catalogue.json dist/catalogue.json.sig "$target"
+
+      - name: Remove the ssh key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/ssh"

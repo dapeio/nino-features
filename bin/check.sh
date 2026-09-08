@@ -2,7 +2,9 @@
 # Run every feature's own tests against a Nino checkout - the one beside this
 # repository (../nino), or the one NINO_ROOT names. The features are copied
 # into the checkout's features/ for the run, the same layout a project has,
-# and removed again afterwards.
+# and removed again afterwards. Then the publishing tool's own test,
+# tests/build-smoke.php, builds a signed catalogue into a directory of its
+# own against the same checkout.
 #
 # Usage: bin/check.sh            (../nino)
 #        NINO_ROOT=/path/to/nino bin/check.sh
@@ -39,8 +41,10 @@ cleanup() {
 }
 trap cleanup EXIT
 
-php "$here/bin/catalogue.php" "$root" > /dev/null
+php84 "$here/bin/catalogue.php" "$root" > /dev/null
 for test in "$root"/features/*/tests/*-smoke.php; do
 	[ -e "$test" ] || continue
-	php "$test"
+	php84 "$test"
 done
+
+NINO_ROOT="$root" php84 "$here/tests/build-smoke.php"

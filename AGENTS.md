@@ -80,8 +80,9 @@ After editing:
 2. Run `php -l` over every changed PHP file and `node --check` over every
    changed JavaScript file.
 3. Run `bin/check.sh` (or `NINO_ROOT=/path/to/nino bin/check.sh`). It
-   validates every manifest through the checkout's kernel and runs every
-   feature's own test against it. It MUST pass before you report.
+   validates every manifest through the checkout's kernel, runs every
+   feature's own test against it and then `tests/build-smoke.php`, the
+   publishing tool's own test. It MUST pass before you report.
 4. With the features copied into the checkout, run `phpstan analyse` and
    `npx eslint features` there - what CI does.
 5. Report changed files, behaviour, tests, and any remaining limitation.
@@ -91,15 +92,20 @@ After editing:
 | Path | Ownership |
 | --- | --- |
 | `features/<Name>/` | One feature, exactly what lands in a project's `features/`. `Newsletter` and `Search` today. The directory name is the class name `\Nino\Modules\<Name>` and MUST match `/^[A-Z][A-Za-z0-9]*$/` |
-| `bin/catalogue.php` | Reads every manifest through a Nino checkout and prints `catalogue.json`: key, name, description, version, `nino`, `php`, `requires`, directory. A manifest Nino would skip fails the run. Defines `NINO_FEATURES_DIR` as this repository's `features/`, so the checkout's own directory is never what it reads |
-| `bin/check.sh` | Copies every feature into the checkout (`../nino` or `NINO_ROOT`), runs `bin/catalogue.php` and every feature's tests, removes the copies again. A directory the checkout already carries is left alone |
-| `.github/workflows/ci.yml` | The matrix: Nino `main` and Nino's latest tag. Lint, copy, validate, every feature's tests, Nino's `tests/features-smoke.php`, PHPStan, ESLint; `catalogue.json` kept as an artifact of the `main` run |
-| `README.md`, `README.de.md` | The catalogue for humans: what it is, the features table, install, develop, write, versions, outlook. English is the primary version, German the author's; both are published together with identical commands and paths |
-| `.gitignore` | Ignores `/nino/` (a checkout placed inside rather than beside) and `*.patch` |
+| `bin/catalogue.php` | The preview: reads every manifest through a Nino checkout and prints what the catalogue would list as JSON - key, name, description, version, `nino`, `php`, `requires`, directory - without an archive or a signature. A manifest Nino would skip fails the run. Defines `NINO_FEATURES_DIR` as this repository's `features/`, so the checkout's own directory is never what it reads. `bin/check.sh`, CI and the release workflow use it as the manifest check |
+| `bin/build.php` | The publishing tool: `php bin/build.php <nino-checkout> <out-dir> [--base-url …] [--key private.pem] [--only <key>]`. Validates every manifest the same way, builds `<out-dir>/<key>-<version>.tar.gz` per feature as a plain ustar tar written by the script itself, every entry stamped with one fixed time - exactly one directory `<Name>/`, without `tests/`, `.git*`, `.DS_Store` and editor leftovers, sorted so a build is reproducible - and merges the entries into `<out-dir>/catalogue.json` in format 1 (see `\Nino\Catalogue` in Nino), signing it with `--key`. An archive that already exists is never rebuilt or overwritten and its entry is kept: a published version is immutable |
+| `bin/check.sh` | Copies every feature into the checkout (`../nino` or `NINO_ROOT`), runs `bin/catalogue.php`, every feature's tests and `tests/build-smoke.php`, removes the copies again. A directory the checkout already carries is left alone |
+| `tests/build-smoke.php` | The publishing tool's own test over Nino's harness: a keypair per run, a signed build into a temporary directory, the archives' contents, the catalogue's fields, the signature, a second run that rebuilds nothing, `--only`, the merge, the refusals - and, where the checkout has `\Nino\Catalogue`, an installation of the archives through it |
+| `.github/workflows/ci.yml` | The matrix: Nino `main` and Nino's latest tag. Lint, copy, validate, every feature's tests, `tests/build-smoke.php`, Nino's `tests/features-smoke.php`, PHPStan, ESLint; `catalogue.json` kept as an artifact of the `main` run |
+| `.github/workflows/release.yml` | Publishes one feature version to getnino.dev when the tag `<key>-<version>` is pushed (or on `workflow_dispatch` with `key` and `version`): checks the tag against the manifest and the changelog, runs the feature's tests, fetches the published catalogue, runs `bin/build.php --only <key> --key …` with the key from the secret `CATALOGUE_SIGNING_KEY`, uploads with rsync over ssh (`DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_PATH`, `DEPLOY_KEY`, `DEPLOY_KNOWN_HOSTS`), archives with `--ignore-existing`. README.md, Publishing, is the manual |
+| `README.md`, `README.de.md` | The catalogue for humans: what it is, the features table, install, develop, write, versions, publishing, outlook. English is the primary version, German the author's; both are published together with identical commands and paths |
+| `.gitignore` | Ignores `/nino/` (a checkout placed inside rather than beside), `*.patch`, `/dist/` (what `bin/build.php` writes) and `*.pem` (a key never enters the repository) |
 | `LICENSE`, `.editorconfig` | MIT; tabs, LF, UTF-8, the same defaults Nino uses |
 
-There is no `catalogue.json` in the repository: it is generated, by
-`bin/catalogue.php` and by CI. Do not commit one.
+There is no `catalogue.json`, no archive and no `dist/` in the repository:
+they are generated, by `bin/catalogue.php`, `bin/build.php` and CI, and
+published by the release workflow. Do not commit one. A signing key or a
+deploy key is never written anywhere but the workflow's secrets.
 
 ## 4. What a feature MUST carry
 
@@ -173,9 +179,11 @@ answer. A request to "implement", "finish", "release" or "apply" is not
 permission to commit or to tag. `.gitignore` ignores `*.patch`, so a patch
 written into the repository is never picked up by mistake.
 
-A release - the tag `<key>-<version>` - is the owner's action. Prepare it:
-bump `version`, write the changelog entry, run `bin/check.sh`; then name the
-tag in the report and stop.
+A release - the tag `<key>-<version>` - is the owner's action: pushing the
+tag starts `.github/workflows/release.yml`, which publishes that version to
+getnino.dev, and a published version is immutable. Prepare it: bump
+`version`, write the changelog entry, run `bin/check.sh`; then name the tag
+in the report and stop. Never create or push a tag.
 
 ## 7. What belongs in Nino instead
 
@@ -192,9 +200,13 @@ rather than working around them here:
 - a workbench screen every project has regardless of its features (that is
   a module under `_admin/Nino/Modules/`), a kernel module, a section preset,
   an installer unit for the wizard;
-- the download, the signature check and the catalogue endpoint of the
-  planned getnino.dev integration - none of it exists, and nothing here
-  makes a network request.
+- the download, the signature check and what a catalogue entry has to
+  say: that is `\Nino\Catalogue` in Nino, and its `parse()` is the contract
+  `bin/build.php` writes to. A new field or a new format goes to Nino first;
+  the builder and `tests/build-smoke.php` follow. What lives here is the
+  publishing side - `bin/build.php`, `tests/build-smoke.php`,
+  `.github/workflows/release.yml` - and nothing here makes a network
+  request except the release workflow, on the runner.
 
 A feature that needs a kernel capability it does not have is blocked, not
 patched: report the gap, do not copy kernel code into the feature.
@@ -202,7 +214,8 @@ patched: report the gap, do not copy kernel code into the feature.
 ## 8. Completion report format
 
 Report changed files, the behaviour before and after, every command run
-with its result (`bin/check.sh` at least, and against which checkout), the
+with its result (`bin/check.sh` at least - which includes
+`tests/build-smoke.php` - and against which checkout), the
 changelog entry, and any remaining limitation - a Nino version the feature
 no longer runs on, a template a project has to copy by hand, a test that
 does not exist yet. Name the patch file.

@@ -7,3 +7,8 @@ Thumbs.db
 
 # Patches are handed around, never versioned - the change itself is
 *.patch
+
+# What bin/build.php writes - the archives and the catalogue are published,
+# never versioned - and a signing key, which never enters a repository
+/dist/
+*.pem

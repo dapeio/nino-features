@@ -8,7 +8,7 @@ Der Feature-Katalog von [Nino](https://github.com/dapeio/nino): die Features, di
 
 Ein Nino-Checkout liefert kein Feature aus. Was ein Projekt über den Kernel hinaus braucht – einen Newsletter, eine Suche –, kommt als **Feature**: ein Verzeichnis mit einer Laufzeitklasse, bei Bedarf einem Panel der Workbench, einer Install-Einheit mit Templates und Texten und einem Manifest `feature.php`, das sagt, was es ist, für welche Nino-Version es geschrieben wurde und welche Einstellungen es anbietet. Was ein Feature liefern muss, steht im Vertrag [Features](https://github.com/dapeio/nino/blob/main/docs/features.md) in Nino; jedes Feature hier folgt ihm.
 
-Dieses Repository ist der Ort, von dem aus Ninos Features veröffentlicht werden. `features/<Name>/` ist genau das, was in einem Projekt landet – ein Projekt kopiert das Verzeichnis in sein eigenes `features/` und schaltet das Feature im Panel **Features** der Workbench ein. Der Katalog macht nichts über das Netz: Er ist ein Dateibestand, den man klont oder kopiert.
+Dieses Repository ist der Ort, von dem aus Ninos Features veröffentlicht werden. `features/<Name>/` ist genau das, was in einem Projekt landet – ein Projekt kopiert das Verzeichnis in sein eigenes `features/` und schaltet das Feature im Panel **Features** der Workbench ein. Das Repository selbst macht nichts über das Netz: Es ist ein Dateibestand, den man klont oder kopiert – und die Quelle dessen, was getnino.dev als signierte Archive ausliefert, siehe [Veröffentlichen](#veröffentlichen).
 
 `Newsletter` und `Search` haben bis Nino 1.0.0-beta im Nino-Repository selbst gelegen, unter `app/Nino/Modules/`. Hier liegen sie unverändert und tragen von jetzt an ihre eigene Version.
 
@@ -19,7 +19,7 @@ Dieses Repository ist der Ort, von dem aus Ninos Features veröffentlicht werden
 | `newsletter` | [Newsletter](features/Newsletter/README.md) | 1.0.0 | `^1.0` | Double-Opt-in-Anmeldung mit Bestätigungs- und Abmeldelink, und die Abonnentenliste als Panel der Workbench |
 | `search` | [Elemente-Suche](features/Search/README.md) | 1.0.0 | `^1.0` | Ein sprachbewusster unscharfer Suchindex über konfigurierte Elementfelder, neu gebaut bei jedem Speichern und aus dem Panel Suche |
 
-Die README eines Features beschreibt seine Routen, sein Panel, seine Install-Einheit, seine Daten und seine Tests; sein `CHANGELOG.md` die Änderungen zwischen den Versionen. `bin/catalogue.php` liest dieselben Manifeste und gibt diese Tabelle als `catalogue.json` aus, siehe [Entwickeln und testen](#entwickeln-und-testen).
+Die README eines Features beschreibt seine Routen, sein Panel, seine Install-Einheit, seine Daten und seine Tests; sein `CHANGELOG.md` die Änderungen zwischen den Versionen. `bin/catalogue.php` liest dieselben Manifeste und gibt diese Tabelle als JSON aus, `bin/build.php` baut die Archive und das signierte `catalogue.json`, das getnino.dev veröffentlicht – siehe [Entwickeln und testen](#entwickeln-und-testen) und [Veröffentlichen](#veröffentlichen).
 
 ## Ein Feature installieren
 
@@ -47,7 +47,7 @@ bin/check.sh
 NINO_ROOT=/path/to/nino bin/check.sh
 ```
 
-`bin/check.sh` kopiert jedes Feature in das `features/` des Checkouts – dieselbe Anordnung, die ein Projekt hat –, prüft jedes Manifest über `bin/catalogue.php`, führt die Tests jedes Features aus und entfernt die Kopien danach wieder. Ein Verzeichnis, das im Checkout schon liegt, rührt es nicht an und sagt das.
+`bin/check.sh` kopiert jedes Feature in das `features/` des Checkouts – dieselbe Anordnung, die ein Projekt hat –, prüft jedes Manifest über `bin/catalogue.php`, führt die Tests jedes Features aus und entfernt die Kopien danach wieder; dann führt es `tests/build-smoke.php` aus, den eigenen Test des Veröffentlichungswerkzeugs, der einen signierten Katalog in ein eigenes Verzeichnis baut. Ein Verzeichnis, das im Checkout schon liegt, rührt es nicht an und sagt das.
 
 Ein einzelner Test läuft auch direkt. Er lädt `tests/harness.php` aus dem Checkout drei Ebenen über sich – so liegt er in einem Projekt – oder aus dem, den `NINO_ROOT` nennt, und definiert `NINO_FEATURES_DIR` auf sein eigenes Elternverzeichnis, sodass der Kernel die Klasse von dort bedient, wo das Feature gerade liegt:
 
@@ -55,13 +55,13 @@ Ein einzelner Test läuft auch direkt. Er lädt `tests/harness.php` aus dem Chec
 NINO_ROOT=../nino php features/Search/tests/search-smoke.php
 ```
 
-`bin/catalogue.php` prüft jedes Manifest durch den Kernel des Checkouts und gibt den Katalog als JSON aus – Key, Name, Beschreibung, Version, die Nino-Bedingung, PHP-Erweiterungen, benötigte Features und das Verzeichnis. Ein Manifest, das Nino überspringen würde, lässt den Lauf fehlschlagen: Der Katalog listet nie weniger, als im Verzeichnis liegt.
+`bin/catalogue.php` ist die Vorschau: Es prüft jedes Manifest durch den Kernel des Checkouts und gibt aus, was der Katalog listen würde, als JSON – Key, Name, Beschreibung, Version, die Nino-Bedingung, PHP-Erweiterungen, benötigte Features und das Verzeichnis –, ohne Archiv und ohne Signatur. Ein Manifest, das Nino überspringen würde, lässt den Lauf fehlschlagen: Der Katalog listet nie weniger, als im Verzeichnis liegt. `bin/build.php` baut das Eigentliche, siehe [Veröffentlichen](#veröffentlichen).
 
 ```bash
 php bin/catalogue.php ../nino > catalogue.json
 ```
 
-CI (`.github/workflows/ci.yml`) tut dasselbe gegen Ninos `main` und gegen sein jüngstes Tag: Syntaxprüfung aller PHP- und JavaScript-Dateien, Kopie der Features in den Checkout, Validierung der Manifeste, die Tests jedes Features, Ninos eigener Vertragstest `tests/features-smoke.php` mit den Features an Ort und Stelle, PHPStan und ESLint über `features/` aus dem Checkout heraus. Das `catalogue.json` des `main`-Laufs bleibt als Artefakt erhalten. Lokal laufen PHPStan und ESLint genauso: Features in den Checkout kopieren, dort `phpstan analyse` und `npx eslint features` ausführen.
+CI (`.github/workflows/ci.yml`) tut dasselbe gegen Ninos `main` und gegen sein jüngstes Tag: Syntaxprüfung aller PHP- und JavaScript-Dateien, Kopie der Features in den Checkout, Validierung der Manifeste, die Tests jedes Features, `tests/build-smoke.php`, Ninos eigener Vertragstest `tests/features-smoke.php` mit den Features an Ort und Stelle, PHPStan und ESLint über `features/` aus dem Checkout heraus. Das `catalogue.json` des `main`-Laufs bleibt als Artefakt erhalten. Lokal laufen PHPStan und ESLint genauso: Features in den Checkout kopieren, dort `phpstan analyse` und `npx eslint features` ausführen.
 
 ## Ein Feature schreiben
 
@@ -84,13 +84,109 @@ Nur `feature.php` und `<Name>.php` verlangt der Kernel. Alles Weitere ist da, we
 
 ## Versionen und Releases
 
-Jedes Feature trägt seine eigene `version` in `feature.php` – `major.minor.patch` – und sein eigenes `CHANGELOG.md`. Ein Release ist ein Git-Tag `<key>-<version>`, etwa `newsletter-1.0.0`; die Features eines Repositories werden unabhängig voneinander versioniert, und ein Tag benennt genau eines. Ein Projekt sieht die Version im Panel Features und bekommt ein Update angeboten, sobald das Verzeichnis eine neuere trägt.
+Jedes Feature trägt seine eigene `version` in `feature.php` – `major.minor.patch` – und sein eigenes `CHANGELOG.md`. Ein Release ist ein Git-Tag `<key>-<version>`, etwa `newsletter-1.0.0`; die Features eines Repositories werden unabhängig voneinander versioniert, und ein Tag benennt genau eines. Das Pushen des Tags veröffentlicht diese Version auf getnino.dev, siehe [Veröffentlichen](#veröffentlichen). Ein Projekt sieht die Version im Panel Features und bekommt ein Update angeboten, sobald das Verzeichnis eine neuere trägt.
 
 `nino` im Manifest nennt die Nino-Versionen, für die das Feature geschrieben ist – heute `^1.0` für beide, was jede 1.x einschließt; ein Vorab-Kernel wie `1.0.0-beta` zählt als das Release, dem er vorausgeht. Die Bedingung ist eine Absicht, keine Garantie: Verträglichkeit wird getestet, nicht erklärt. Die CI dieses Repositories führt jedes Feature gegen Ninos `main` und gegen sein jüngstes Tag aus, und Ninos eigene CI klont diesen Katalog, kopiert die Features in ihren Checkout und führt deren Tests dort aus – eine Kernel-Änderung, die ein Feature bricht, schlägt auf beiden Seiten fehl.
 
+## Veröffentlichen
+
+getnino.dev veröffentlicht diesen Katalog als signierte Archive, und ein Nino, das `\Nino\Catalogue` trägt, liest ihn von dort: Das Panel Features lädt den Katalog auf Anfrage – nie von selbst –, bietet an, was zum laufenden Kernel passt, und installiert ein Archiv direkt nach `features/`, nachdem es dessen Prüfsumme gegen den signierten Katalog geprüft hat. Alles Veröffentlichte ist eine statische Datei über https:
+
+| Pfad | Was es ist |
+| --- | --- |
+| `https://getnino.dev/features/catalogue.json` | der Katalog, Format 1 – siehe [Der Katalog, Format 1](#der-katalog-format-1) |
+| `https://getnino.dev/features/catalogue.json.sig` | seine abgetrennte Signatur: ECDSA über SHA-256 der exakten Bytes von `catalogue.json`, DER, base64 in einer Zeile |
+| `https://getnino.dev/features/<key>-<version>.tar.gz` | ein Archiv je Feature-Version, mit genau einem Verzeichnis `<Name>/` – was unter dem `features/` eines Projekts landet, ohne `tests/`; höchstens 20 MB gepackt, 50 MB entpackt, 5000 Einträge |
+
+Eine veröffentlichte Version ist unveränderlich: Ein Archiv, das auf dem Server liegt, wird nie neu gebaut oder überschrieben, und sein Eintrag behält Prüfsumme, Größe und Veröffentlichungsdatum. Was sich ändern muss, erscheint als nächste Version.
+
+### Ein Release
+
+1. Erhöhe `version` in `features/<Name>/feature.php` und schreibe den Eintrag `## <version> — <datum>` in sein `CHANGELOG.md`; bringe sein `README.md` auf den Stand, wo sich Verhalten geändert hat.
+2. Führe `bin/check.sh` aus – jedes Manifest, die Tests jedes Features, der eigene Test des Veröffentlichungswerkzeugs.
+3. Mit der Änderung auf `main`: Tagge den Commit `<key>-<version>` und pushe das Tag:
+
+```bash
+git tag newsletter-1.0.1
+git push origin newsletter-1.0.1
+```
+
+Das Tag startet `.github/workflows/release.yml`, das
+
+- das Tag auscheckt und Ninos `main` daneben klont, als `../nino`;
+- Key und Version aus dem Tag liest und bei einem fehlschlägt, das nicht `<key>-<major>.<minor>.<patch>` ist;
+- das Feature findet, dessen Manifest diesen Key trägt, prüft, dass sein `feature.php` genau diese Version nennt und sein `CHANGELOG.md` den Eintrag hat, und die eigenen Tests des Features gegen den Checkout ausführt;
+- das veröffentlichte `catalogue.json` – und, bei einem erneuten Lauf, das veröffentlichte Archiv dieser Version – nach `dist/` holt; ein 404 ist das erste Release;
+- den Signaturschlüssel aus dem Secret in eine temporäre Datei schreibt, `php bin/build.php ../nino dist --only <key> --key <datei>` ausführt und die Schlüsseldatei wieder entfernt, was auch immer geschehen ist;
+- `dist/` als Workflow-Artefakt behält;
+- mit rsync über ssh hochlädt: zuerst die Archive und nie über eines, das schon da ist (`--ignore-existing`), dann `catalogue.json` und `catalogue.json.sig`.
+
+Ein Release, das auf halbem Weg stehen geblieben ist – ein fehlgeschlagener Test, ein fehlgeschlagener Upload –, wird unter **Actions → Release → Run workflow** mit Key und Version erneut gestartet: Der Workflow checkt das Tag erneut aus, und ein Archiv, das schon auf dem Server liegt, bleibt, was es ist. Auf ein Release, das mit einem Fehler hinausging, folgt die nächste Patch-Version; ersetzt wird es nie.
+
+### Die Secrets
+
+Das Repository braucht diese Secrets (**Settings → Secrets and variables → Actions**):
+
+| Secret | Was es enthält |
+| --- | --- |
+| `CATALOGUE_SIGNING_KEY` | der private PEM-Schlüssel, mit dem `catalogue.json` signiert wird – die ganze Datei, `-----BEGIN EC PRIVATE KEY-----` eingeschlossen |
+| `DEPLOY_HOST` | der Host, auf den die Dateien über ssh hochgeladen werden |
+| `DEPLOY_USER` | der ssh-Nutzer auf diesem Host, beschränkt auf das Verzeichnis darunter |
+| `DEPLOY_PATH` | das absolute Verzeichnis auf dem Host, das als `https://getnino.dev/features/` ausgeliefert wird |
+| `DEPLOY_KEY` | der private ssh-Schlüssel dieses Nutzers, die ganze Datei |
+| `DEPLOY_KNOWN_HOSTS` | die Schlüsselzeile des Hosts, wie `ssh-keyscan getnino.dev` sie ausgibt – der Workflow prüft den Host dagegen und akzeptiert keinen anderen |
+
+### Der Signaturschlüssel
+
+Das Schlüsselpaar entsteht einmal, offline, und die private Hälfte gelangt nie in ein Repository (`.gitignore` weist `*.pem` ab):
+
+```bash
+openssl ecparam -name prime256v1 -genkey -noout -out catalogue-key.pem
+openssl ec -in catalogue-key.pem -pubout -out catalogue-key.pub.pem
+```
+
+`catalogue-key.pem` kommt in das Secret `CATALOGUE_SIGNING_KEY` und an einen sicheren Ort. `catalogue-key.pub.pem` ist öffentlich: Es ist, was Nino als `\Nino\Catalogue::PUBLIC_KEY` ausliefert, und was ein Projekt, das einen eigenen Katalog liest, unter `/nino/catalogue/key` in `config.php` einträgt. Ein leerer Schlüssel akzeptiert gar keinen Katalog. Ein neues Schlüsselpaar heißt ein neuer öffentlicher Schlüssel in Nino – einen mit dem neuen Schlüssel signierten Katalog weist jeder Kernel ab, der noch den alten trägt.
+
+### Der Server
+
+getnino.dev liefert das Verzeichnis als schlichte statische Dateien über https aus – kein PHP, keine Verzeichnisliste; der Kernel liest die Bytes, welchen Content-Type der Webserver für `.json`, `.sig` und `.tar.gz` auch nennt. Der Deploy-Nutzer ist ein eigener ssh-Nutzer mit dem öffentlichen Schlüssel des Workflows in seiner `authorized_keys`, der in dieses Verzeichnis schreiben darf und nirgendwo sonst – `rrsync <verzeichnis>` als erzwungenes Kommando, oder ein SFTP-Chroot mit rsync darüber. Das `--ignore-existing` des Workflows schützt die veröffentlichten Archive von der Client-Seite; der Server ergänzt das, indem er veröffentlichte Archive für den Deploy-Nutzer nur lesbar hält.
+
+### Ein eigener Katalog
+
+`bin/build.php` baut dieselben Dateien für jeden Satz Features – dieses Repository, einen Fork davon – gegen einen Nino-Checkout:
+
+```bash
+php bin/build.php ../nino dist --base-url https://example.org/features
+openssl dgst -sha256 -sign catalogue-key.pem dist/catalogue.json | base64 -w0 > dist/catalogue.json.sig
+```
+
+Ohne `--key` schreibt es keine Signatur und gibt diesen Einzeiler aus; mit `--key catalogue-key.pem` signiert es selbst und prüft die Signatur mit der öffentlichen Hälfte, bevor es endet. `--only <key>` baut ein Feature und behält jeden anderen Eintrag eines `catalogue.json`, das schon in `dist/` liegt; ein Archiv, das schon in `dist/` liegt, bleibt und wird nie neu gebaut. Lade `dist/` nach `https://example.org/features/` hoch und zeige ein Projekt dorthin: `/nino/catalogue/url` nennt die URL des Katalogs, `/nino/catalogue/key` seinen öffentlichen Schlüssel, beides in `config.php`. `tests/build-smoke.php` ist der eigene Test des Werkzeugs.
+
+### Der Katalog, Format 1
+
+```json
+{ "format": 1, "generated": "2026-09-07T12:00:00Z", "features": [ { "key": "newsletter", "...": "..." } ] }
+```
+
+| Feld | Was es sagt |
+| --- | --- |
+| `key` | der Feature-Key, ein Slug – `newsletter` |
+| `name`, `description` | wie das Manifest sie hat: ein String oder eine Abbildung `locale => string` |
+| `version` | `major.minor.patch`, die des Manifests |
+| `nino` | die Nino-Versionsbedingung, `^1.0` |
+| `php` | `{ "ext": [ ... ] }` – die PHP-Erweiterungen, die das Feature braucht |
+| `requires` | die Keys der Features, die es benötigt |
+| `directory` | das eine Verzeichnis, das das Archiv enthält – `Newsletter`, der Klassenname |
+| `archive` | die https-URL des Archivs |
+| `sha256` | die Hex-Prüfsumme des Archivs – wogegen der Kernel einen Download prüft |
+| `size` | seine Größe in Bytes, höchstens 20 MB |
+| `released` | der Tag der Veröffentlichung, `YYYY-MM-DD` |
+
+`generated` ist die Zeit des letzten Builds, ISO 8601 UTC. Die Einträge sind nach Key sortiert, dann absteigend nach Version; ein Kernel nimmt die höchste Version, die er ausführen kann. Was `\Nino\Catalogue::parse()` in Nino abweist – ein fehlendes Feld, eine URL, die nicht https ist, ein Archiv über 20 MB –, weist den ganzen Katalog ab; darum prüft `bin/build.php`, was es geschrieben hat, gegen `parse()`, wo der Checkout es hat.
+
 ## Ausblick
 
-Geplant ist, dass getnino.dev diesen Katalog als signierte Archive veröffentlicht und das Panel Features die Features listet, die zur laufenden Nino-Version passen, und ein Archiv direkt nach `features/` installiert. `bin/catalogue.php` ist der Anfang davon – `catalogue.json` ist, was ein Katalog braucht. Nichts davon existiert heute: kein Download, keine Signaturprüfung, kein Netzzugriff, weder hier noch in Nino. Bis dahin kommt ein Feature als Checkout oder Kopie in das Verzeichnis.
+Die Veröffentlichungsseite ist hier: `bin/build.php`, der Release-Workflow, der signierte Katalog auf getnino.dev. Die andere Seite – `\Nino\Catalogue`, das Panel Features, das den Katalog auf Anfrage lädt und ein Archiv installiert – nimmt dapeio/nino gerade auf; ein Kernel, der sie trägt, und den öffentlichen Schlüssel mit ihr, bietet diesen Katalog im Panel an. Ein Kernel, der das nicht tut, nimmt ein Feature weiterhin so, wie diese README es beschreibt: als Kopie von `features/<Name>/`. Eine Netzanfrage macht hier so oder so nichts.
 
 ## Lizenz
 
