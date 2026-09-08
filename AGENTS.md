@@ -39,23 +39,26 @@ Before editing:
 3. Make sure a Nino checkout is available: `../nino`, or set `NINO_ROOT`.
    Read Nino's `AGENTS.md` and `docs/recipes/feature.md` there before
    touching a feature.
-4. Read the feature's `README.md`, `CHANGELOG.md`, `feature.php`, its class,
-   its panel and its test in full. A feature is small; read all of it.
+4. Read the feature's `feature.php`, its class, its panel and - where it
+   has them - its `README.md`, `CHANGELOG.md` and test in full. A feature
+   is small; read all of it.
 5. Identify authentication, CSRF, validation, persistence, escaping,
    concurrency, locale, and backward-compatibility consequences - the
    [security review](https://github.com/dapeio/nino/blob/main/AGENTS.md#8-security-review-required-for-every-extension)
    of Nino's guide applies to every feature.
-6. Define a test that fails for the old behaviour and passes for the new one,
-   in the feature's own `tests/`.
+6. Where the feature has a test, extend it so it fails for the old behaviour
+   and passes for the new one. A feature without tests may stay without;
+   a test is welcome, not required.
 
-While editing, every change to a feature MUST keep these four in step:
+While editing, every change to a feature MUST keep `feature.php` in step,
+and the other three where the feature carries them:
 
 | File | What changes with it |
 | --- | --- |
 | `feature.php` | `version` is bumped with every release a project should be able to tell apart - the Features panel can only offer an update it can see. `nino` names the Nino versions the feature is written for; change it only when the feature really stops running on a version it named |
-| `CHANGELOG.md` | one entry per version, `## <version> — <date>`, newest first, with what changed for a project that installs it |
-| `README.md` | every route, key, fill, method, file and permission it names exists in the code; a behaviour that changed is described as it is now |
-| `tests/<key>-smoke.php` | the feature's own test covers the change; it loads the harness as described in section 5 |
+| `CHANGELOG.md` | when present: one entry per version, `## <version> — <date>`, newest first, with what changed for a project that installs it |
+| `README.md` | when present: every route, key, fill, method, file and permission it names exists in the code; a behaviour that changed is described as it is now |
+| `tests/<key>-smoke.php` | when present: the feature's own test covers the change; it loads the harness as described in section 5 |
 
 Further rules:
 
@@ -94,11 +97,12 @@ After editing:
 | `features/<Name>/` | One feature, exactly what lands in a project's `features/`. `Newsletter` and `Search` today. The directory name is the class name `\Nino\Modules\<Name>` and MUST match `/^[A-Z][A-Za-z0-9]*$/` |
 | `bin/catalogue.php` | The preview: reads every manifest through a Nino checkout and prints what the catalogue would list as JSON - key, name, description, version, `nino`, `php`, `requires`, directory - without an archive or a signature. A manifest Nino would skip fails the run. Defines `NINO_FEATURES_DIR` as this repository's `features/`, so the checkout's own directory is never what it reads. `bin/check.sh`, CI and the release workflow use it as the manifest check |
 | `bin/build.php` | The publishing tool: `php bin/build.php <nino-checkout> <out-dir> [--base-url …] [--key private.pem] [--only <key>]`. Validates every manifest the same way, builds `<out-dir>/<key>-<version>.tar.gz` per feature as a plain ustar tar written by the script itself, every entry stamped with one fixed time - exactly one directory `<Name>/`, without `tests/`, `.git*`, `.DS_Store` and editor leftovers, sorted so a build is reproducible - and merges the entries into `<out-dir>/catalogue.json` in format 1 (see `\Nino\Catalogue` in Nino), signing it with `--key`. An archive that already exists is never rebuilt or overwritten and its entry is kept: a published version is immutable |
-| `bin/check.sh` | Copies every feature into the checkout (`../nino` or `NINO_ROOT`), runs `bin/catalogue.php`, every feature's tests, `tests/build-smoke.php` and `tests/publish-smoke.php`, removes the copies again. A directory the checkout already carries is left alone |
+| `bin/check.sh` | Copies every feature into the checkout (`../nino` or `NINO_ROOT`), runs `bin/catalogue.php`, every feature's tests, `tests/build-smoke.php`, `tests/publish-smoke.php` and `tests/release-smoke.php`, removes the copies again. A directory the checkout already carries is left alone |
 | `tests/build-smoke.php` | The publishing tool's own test over Nino's harness: a keypair per run, a signed build into a temporary directory, the archives' contents, the catalogue's fields, the signature, a second run that rebuilds nothing, `--only`, the merge, the refusals - and, where the checkout has `\Nino\Catalogue`, an installation of the archives through it |
+| `bin/release.sh` | A release without GitHub: the workflow's steps on your own machine - the feature's version (and changelog entry where there is one), its tests where it has some against `NINO_ROOT`, the published catalogue fetched into `dist/` (`--offline` skips that), `bin/build.php` with `CATALOGUE_KEY`, one POST to `PUBLISH_URL` with `PUBLISH_TOKEN` (`--dry-run` stops before it). `--strict` (or `RELEASE_STRICT=1`) requires the changelog entry, README and test. `tests/release-smoke.php` drives it against `server/publish.php` on php's built-in server |
 | `tests/publish-smoke.php` | The endpoint's own test: every refusal without a file written, a release, the next release keeping what is published, other bytes under a published name refused, the configuration from environment and file, and one real request through php's built-in server |
 | `.github/workflows/ci.yml` | The matrix: Nino `main` and Nino's latest tag. Lint, copy, validate, every feature's tests, `tests/build-smoke.php`, `tests/publish-smoke.php`, Nino's `tests/features-smoke.php`, PHPStan, ESLint; `catalogue.json` kept as an artifact of the `main` run |
-| `.github/workflows/release.yml` | Publishes one feature version to catalogue.getnino.dev when the tag `<key>-<version>` is pushed (or on `workflow_dispatch` with `key` and `version`): checks the tag against the manifest and the changelog, runs the feature's tests, fetches the published catalogue, runs `bin/build.php --only <key> --key …` with the key from the secret `CATALOGUE_SIGNING_KEY`, and posts catalogue, signature and the new archive to `server/publish.php` with `curl` (`PUBLISH_URL`, `PUBLISH_TOKEN`; the variable `CATALOGUE_URL` names another base url). No ssh. README.md, Publishing, is the manual |
+| `.github/workflows/release.yml` | Publishes one feature version to catalogue.getnino.dev when the tag `<key>-<version>` is pushed (or on `workflow_dispatch` with `key` and `version`): checks the tag against the manifest (and the changelog where there is one), runs the feature's tests where it has some (`RELEASE_STRICT=1` as a repository variable makes changelog, README and test required), fetches the published catalogue, runs `bin/build.php --only <key> --key …` with the key from the secret `CATALOGUE_SIGNING_KEY`, and posts catalogue, signature and the new archive to `server/publish.php` with `curl` (`PUBLISH_URL`, `PUBLISH_TOKEN`; the variable `CATALOGUE_URL` names another base url). No ssh. README.md, Publishing, is the manual |
 | `server/publish.php` | The endpoint the workflow posts to, deployed into the directory the catalogue is served from (a container with php): checks the token (`NINO_CATALOGUE_TOKEN`), verifies the catalogue's signature with the public key (`NINO_CATALOGUE_PUBLIC_KEY` or `_FILE`), holds every uploaded archive against the catalogue's digest and size, refuses a catalogue naming an archive that is neither published nor uploaded, never overwrites a published archive (409), then writes archives, catalogue and signature through temporary files. Pure functions under the cli, so `tests/publish-smoke.php` drives it as a library and once through `php -S` |
 | `README.md`, `README.de.md` | The catalogue for humans: what it is, the features table, install, develop, write, versions, publishing, outlook. English is the primary version, German the author's; both are published together with identical commands and paths |
 | `.gitignore` | Ignores `/nino/` (a checkout placed inside rather than beside), `*.patch`, `/dist/` (what `bin/build.php` writes) and `*.pem` (a key never enters the repository) |
@@ -121,9 +125,15 @@ because a feature here is published on its own:
 | `Admin/Admin.php` | the panel, when there is one: `actions()`, `nav()`, `perm()`, `text()`, every action guarded with `\Nino\Admin\Admin::guardPerm()`; `assets()` named through `\Nino\Admin\Panels::relative()` so they move with the directory |
 | `text/<locale>.php` | the panel's fills for every interface language Nino ships, `en_US` and `de_DE` |
 | `install/` | the unit, when the feature ships templates, texts, routes or config defaults for the website; `install/manifest.php` in the wizard's library format |
-| `tests/<key>-smoke.php` | the feature's own test over Nino's harness, section 5. `Newsletter` does not carry one yet; a change to it SHOULD add one |
-| `README.md` | English, in the shape of the two existing ones: what it does, routes, panel and permission, install unit, settings, data and restore, configuration, tests. Every name in it exists in the code |
-| `CHANGELOG.md` | `## <version> — <date>` per release, newest first |
+| `tests/<key>-smoke.php` | optional; when present: the feature's own test over Nino's harness, section 5 |
+| `README.md` | optional; when present: English, in the shape of the two existing ones: what it does, routes, panel and permission, install unit, settings, data and restore, configuration, tests. Every name in it exists in the code |
+| `CHANGELOG.md` | optional; when present: `## <version> — <date>` per release, newest first |
+
+A feature with only `feature.php` and `<Name>.php` is complete. README,
+changelog and test become required only in strict mode
+(`bin/release.sh --strict`, repository variable `RELEASE_STRICT=1`), which
+the catalogue may switch on later; an agent MUST NOT add the three files to
+a feature that has none unless asked.
 
 A feature MUST NOT carry a `.htaccess`, a `composer.json`, a `package.json`,
 a build output or a copy of anything from `_nino/`.
@@ -184,8 +194,9 @@ written into the repository is never picked up by mistake.
 A release - the tag `<key>-<version>` - is the owner's action: pushing the
 tag starts `.github/workflows/release.yml`, which publishes that version to
 getnino.dev, and a published version is immutable. Prepare it: bump
-`version`, write the changelog entry, run `bin/check.sh`; then name the tag
-in the report and stop. Never create or push a tag.
+`version`, write the changelog entry where there is a changelog, run
+`bin/check.sh`; then name the tag in the report and stop. Never create or
+push a tag.
 
 ## 7. What belongs in Nino instead
 

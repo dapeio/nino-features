@@ -84,12 +84,15 @@ jobs:
         run: git clone --depth 1 https://github.com/dapeio/nino.git ../nino
 
       # The tag names a key and a version; the feature with that key has to
-      # declare exactly that version, and its changelog has to know it
+      # declare exactly that version - and, where it carries a changelog,
+      # that has to know it; RELEASE_STRICT=1 as a repository variable makes
+      # changelog, README and test required again
       - name: Check that the tag names what the manifest declares
         id: feature
         env:
           KEY: ${{ steps.release.outputs.key }}
           VERSION: ${{ steps.release.outputs.version }}
+          STRICT: ${{ vars.RELEASE_STRICT }}
         run: |
           php bin/catalogue.php ../nino > preview.json
           directory=$(jq -r --arg key "$KEY" '.features[] | select(.key == $key) | .directory' preview.json)
@@ -104,8 +107,16 @@ jobs:
             exit 1
           fi
           escaped=$(printf '%s' "$VERSION" | sed 's/[.]/\\./g')
-          if ! grep -Eq "^## $escaped( |$)" "features/$directory/CHANGELOG.md"; then
-            echo "::error::features/$directory/CHANGELOG.md has no entry \"## $VERSION\" - a release carries its changelog entry" >&2
+          if [ -f "features/$directory/CHANGELOG.md" ] && grep -Eq "^## $escaped( |$)" "features/$directory/CHANGELOG.md"; then
+            : # the entry is there
+          elif [ "$STRICT" = "1" ]; then
+            echo "::error::features/$directory/CHANGELOG.md has no entry \"## $VERSION\" - a release carries its changelog entry (strict)" >&2
+            exit 1
+          else
+            echo "::notice::features/$directory has no CHANGELOG.md entry \"## $VERSION\" - fine, the catalogue does not require one"
+          fi
+          if [ "$STRICT" = "1" ] && [ ! -f "features/$directory/README.md" ]; then
+            echo "::error::features/$directory has no README.md - a feature is published with one (strict)" >&2
             exit 1
           fi
           echo "directory=$directory" >> "$GITHUB_OUTPUT"
@@ -114,6 +125,7 @@ jobs:
       - name: Run the feature's own tests against Nino
         env:
           DIRECTORY: ${{ steps.feature.outputs.directory }}
+          STRICT: ${{ vars.RELEASE_STRICT }}
         run: |
           found=0
           for test in "features/$DIRECTORY"/tests/*-smoke.php; do
@@ -122,8 +134,12 @@ jobs:
             NINO_ROOT=../nino php "$test"
           done
           if [ "$found" = 0 ]; then
-            echo "::error::features/$DIRECTORY carries no tests/*-smoke.php - a feature is published with its test" >&2
-            exit 1
+            if [ "$STRICT" = "1" ]; then
+              echo "::error::features/$DIRECTORY carries no tests/*-smoke.php - a feature is published with its test (strict)" >&2
+              exit 1
+            else
+              echo "::notice::features/$DIRECTORY carries no tests/*-smoke.php - fine, the catalogue does not require one"
+            fi
           fi
 
       # The published catalogue is what this release merges into, and the

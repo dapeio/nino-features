@@ -60,7 +60,7 @@ jobs:
         run: php bin/catalogue.php nino > catalogue.json && cat catalogue.json
 
       - name: Run every feature's own smoke tests
-        run: for test in nino/features/*/tests/*-smoke.php; do php "$test" || exit 1; done
+        run: for test in nino/features/*/tests/*-smoke.php; do [ -e "$test" ] || continue; php "$test" || exit 1; done
 
       # The publishing tool builds a signed catalogue of this repository's
       # features into a directory of its own, and the kernel has to accept
@@ -72,6 +72,9 @@ jobs:
       # once through php's built-in server
       - name: Run the publishing endpoint's smoke test
         run: NINO_ROOT=nino php tests/publish-smoke.php
+
+      - name: Run the local release script's smoke test
+        run: NINO_ROOT=nino php tests/release-smoke.php
 
       # Nino's own suite still passes with the features in place - a feature
       # that breaks the kernel's tests is not compatible either

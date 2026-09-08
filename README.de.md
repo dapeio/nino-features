@@ -2,7 +2,7 @@
 
 **Sprache:** [English](README.md) · Deutsch
 
-Der Feature-Katalog von [Nino](https://github.com/dapeio/nino): die Features, die ein Nino-Projekt installieren kann, je eines pro Verzeichnis unter `features/`, mit eigener Version, eigenem Changelog und eigenen Tests.
+Der Feature-Katalog von [Nino](https://github.com/dapeio/nino): die Features, die ein Nino-Projekt installieren kann, je eines pro Verzeichnis unter `features/`, mit eigener Version.
 
 ## Was dieser Katalog ist
 
@@ -19,7 +19,7 @@ Dieses Repository ist der Ort, von dem aus Ninos Features veröffentlicht werden
 | `newsletter` | [Newsletter](features/Newsletter/README.md) | 1.0.0 | `^1.0` | Double-Opt-in-Anmeldung mit Bestätigungs- und Abmeldelink, und die Abonnentenliste als Panel der Workbench |
 | `search` | [Elemente-Suche](features/Search/README.md) | 1.0.0 | `^1.0` | Ein sprachbewusster unscharfer Suchindex über konfigurierte Elementfelder, neu gebaut bei jedem Speichern und aus dem Panel Suche |
 
-Die README eines Features beschreibt seine Routen, sein Panel, seine Install-Einheit, seine Daten und seine Tests; sein `CHANGELOG.md` die Änderungen zwischen den Versionen. `bin/catalogue.php` liest dieselben Manifeste und gibt diese Tabelle als JSON aus, `bin/build.php` baut die Archive und das signierte `catalogue.json`, das getnino.dev veröffentlicht – siehe [Entwickeln und testen](#entwickeln-und-testen) und [Veröffentlichen](#veröffentlichen).
+Die README eines Features, wenn es eine hat, beschreibt seine Routen, sein Panel, seine Install-Einheit, seine Daten und seine Tests; sein `CHANGELOG.md`, wenn es eines hat, die Änderungen zwischen den Versionen. `bin/catalogue.php` liest dieselben Manifeste und gibt diese Tabelle als JSON aus, `bin/build.php` baut die Archive und das signierte `catalogue.json`, das getnino.dev veröffentlicht – siehe [Entwickeln und testen](#entwickeln-und-testen) und [Veröffentlichen](#veröffentlichen).
 
 ## Ein Feature installieren
 
@@ -75,16 +75,16 @@ features/<Name>/
 ├── assets/                  Skript und Stylesheet des Panels
 ├── install/                 die Einheit, die das Aktivieren add-only anwendet: manifest.php, templates/, text/
 ├── text/<locale>.php        die Fills des Panels, solange das Feature aktiv ist
-├── tests/<key>-smoke.php    der eigene Test des Features
-├── README.md                was es tut, seine Routen, sein Panel, seine Einheit, seine Daten, seine Tests
-└── CHANGELOG.md             die Änderungen je Version
+├── tests/<key>-smoke.php    der eigene Test des Features – wenn es einen gibt
+├── README.md                was es tut, seine Routen, sein Panel, seine Einheit, seine Daten – wenn es eine gibt
+└── CHANGELOG.md             die Änderungen je Version – wenn es eines gibt
 ```
 
-Nur `feature.php` und `<Name>.php` verlangt der Kernel. Alles Weitere ist da, wenn das Feature es braucht – `Search` etwa hat keine Install-Einheit. `README.md`, `CHANGELOG.md` und einen Test unter `tests/` verlangt dieser Katalog: Ein Feature, das hier liegt, erklärt sich selbst und trägt seine Geschichte mit. Die Regeln für Agenten, die hier arbeiten, stehen in [AGENTS.md](AGENTS.md).
+Nur `feature.php` und `<Name>.php` verlangt der Kernel. Alles Weitere ist da, wenn das Feature es braucht – `Search` etwa hat keine Install-Einheit. Ein `README.md`, ein `CHANGELOG.md` und ein Test unter `tests/` sind willkommen, nicht verlangt: Bei ihrer heutigen Größe liest man die Features in einer Minute, und ein Beitrag soll nicht mit drei Dateien Papierkram beginnen. Das Release-Werkzeug verlangt sie nur im Strict-Modus – `bin/release.sh --strict`, oder die Repository-Variable `RELEASE_STRICT` auf `1` für den Workflow – den dieser Katalog später einschalten kann. Die Regeln für Agenten, die hier arbeiten, stehen in [AGENTS.md](AGENTS.md).
 
 ## Versionen und Releases
 
-Jedes Feature trägt seine eigene `version` in `feature.php` – `major.minor.patch` – und sein eigenes `CHANGELOG.md`. Ein Release ist ein Git-Tag `<key>-<version>`, etwa `newsletter-1.0.0`; die Features eines Repositories werden unabhängig voneinander versioniert, und ein Tag benennt genau eines. Das Pushen des Tags veröffentlicht diese Version auf getnino.dev, siehe [Veröffentlichen](#veröffentlichen). Ein Projekt sieht die Version im Panel Features und bekommt ein Update angeboten, sobald das Verzeichnis eine neuere trägt.
+Jedes Feature trägt seine eigene `version` in `feature.php` – `major.minor.patch`. Ein Release ist ein Git-Tag `<key>-<version>`, etwa `newsletter-1.0.0`; die Features eines Repositories werden unabhängig voneinander versioniert, und ein Tag benennt genau eines. Das Pushen des Tags veröffentlicht diese Version auf getnino.dev, siehe [Veröffentlichen](#veröffentlichen). Ein Projekt sieht die Version im Panel Features und bekommt ein Update angeboten, sobald das Verzeichnis eine neuere trägt.
 
 `nino` im Manifest nennt die Nino-Versionen, für die das Feature geschrieben ist – heute `^1.0` für beide, was jede 1.x einschließt; ein Vorab-Kernel wie `1.0.0-beta` zählt als das Release, dem er vorausgeht. Die Bedingung ist eine Absicht, keine Garantie: Verträglichkeit wird getestet, nicht erklärt. Die CI dieses Repositories führt jedes Feature gegen Ninos `main` und gegen sein jüngstes Tag aus, und Ninos eigene CI klont diesen Katalog, kopiert die Features in ihren Checkout und führt deren Tests dort aus – eine Kernel-Änderung, die ein Feature bricht, schlägt auf beiden Seiten fehl.
 
@@ -102,7 +102,7 @@ Eine veröffentlichte Version ist unveränderlich: Ein Archiv, das auf dem Serve
 
 ### Ein Release
 
-1. Erhöhe `version` in `features/<Name>/feature.php` und schreibe den Eintrag `## <version> — <datum>` in sein `CHANGELOG.md`; bringe sein `README.md` auf den Stand, wo sich Verhalten geändert hat.
+1. Erhöhe `version` in `features/<Name>/feature.php`; wo das Feature ein `CHANGELOG.md` hat, schreibe den Eintrag `## <version> — <datum>`, und bringe sein `README.md` auf den Stand, wo sich Verhalten geändert hat.
 2. Führe `bin/check.sh` aus – jedes Manifest, die Tests jedes Features, der eigene Test des Veröffentlichungswerkzeugs.
 3. Mit der Änderung auf `main`: Tagge den Commit `<key>-<version>` und pushe das Tag:
 
@@ -115,13 +115,23 @@ Das Tag startet `.github/workflows/release.yml`, das
 
 - das Tag auscheckt und Ninos `main` daneben klont, als `../nino`;
 - Key und Version aus dem Tag liest und bei einem fehlschlägt, das nicht `<key>-<major>.<minor>.<patch>` ist;
-- das Feature findet, dessen Manifest diesen Key trägt, prüft, dass sein `feature.php` genau diese Version nennt und sein `CHANGELOG.md` den Eintrag hat, und die eigenen Tests des Features gegen den Checkout ausführt;
+- das Feature findet, dessen Manifest diesen Key trägt, prüft, dass sein `feature.php` genau diese Version nennt – und, wo es ein `CHANGELOG.md` hat, dass es den Eintrag trägt –, und die eigenen Tests des Features gegen den Checkout ausführt, wo es welche trägt (die Repository-Variable `RELEASE_STRICT` auf `1` macht Changelog-Eintrag, README und Test verpflichtend);
 - das veröffentlichte `catalogue.json` – und, bei einem erneuten Lauf, das veröffentlichte Archiv dieser Version – nach `dist/` holt; ein 404 ist das erste Release;
 - den Signaturschlüssel aus dem Secret in eine temporäre Datei schreibt, `php bin/build.php ../nino dist --only <key> --key <datei>` ausführt und die Schlüsseldatei wieder entfernt, was auch immer geschehen ist;
 - `dist/` als Workflow-Artefakt behält;
 - `catalogue.json`, `catalogue.json.sig` und das Archiv dieser Version über https an `server/publish.php` postet, ein `curl` (`PUBLISH_URL`, `PUBLISH_TOKEN`); der Endpunkt prüft die Signatur selbst und überschreibt nie ein veröffentlichtes Archiv. Kein ssh.
 
 Ein Release, das auf halbem Weg stehen geblieben ist – ein fehlgeschlagener Test, ein fehlgeschlagener Upload –, wird unter **Actions → Release → Run workflow** mit Key und Version erneut gestartet: Der Workflow checkt das Tag erneut aus, und ein Archiv, das schon auf dem Server liegt, bleibt, was es ist. Auf ein Release, das mit einem Fehler hinausging, folgt die nächste Patch-Version; ersetzt wird es nie.
+
+### Ein Release ohne GitHub
+
+`bin/release.sh` geht dieselben Schritte auf deinem eigenen Rechner – GitHub hat immer nur die Automatik hinter dem Tag geliefert. Mit dem Nino-Checkout neben dem Repository, dem privaten Schlüssel und dem Token des Endpunkts zur Hand:
+
+```bash
+CATALOGUE_KEY=/sicherer/ort/catalogue-key.pem PUBLISH_TOKEN=... bin/release.sh newsletter
+```
+
+Es findet das Feature über seinen Key, prüft die Version in `feature.php` (und den Eintrag im `CHANGELOG.md`, wo es eines gibt), führt die Tests des Features, wo es welche hat, gegen `NINO_ROOT` aus (Standard `../nino`), holt das veröffentlichte `catalogue.json` und das Archiv dieser Version nach `dist/` (ein 404 ist das erste Release, ein leeres 200 gilt als nicht veröffentlicht), baut und signiert mit `bin/build.php --only <key>` und postet die drei Dateien an `PUBLISH_URL` (Standard `$CATALOGUE_URL/publish.php`, `CATALOGUE_URL` standardmäßig `https://catalogue.getnino.dev`). `--dry-run` hält vor dem Posten an und lässt `dist/` zum Ansehen liegen; `--offline` überspringt das Holen und führt in das zusammen, was `dist/` schon enthält. `--strict` (oder `RELEASE_STRICT=1`) verlangt Changelog-Eintrag, README und Test so, wie es der Workflow mit gesetzter Variable tut. Tagge den Commit danach trotzdem, damit das Repository festhält, was hinausging – ein erneuter Lauf des Workflows findet das Archiv veröffentlicht und behält es. `tests/release-smoke.php` treibt das Skript gegen `server/publish.php` auf phps eingebautem Server.
 
 ### Die Secrets
 

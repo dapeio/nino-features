@@ -11,6 +11,7 @@ Thumbs.db
 # What bin/build.php writes - the archives and the catalogue are published,
 # never versioned - and a signing key, which never enters a repository
 /dist/
+/public/
 *.pem
 
 # The endpoint's configuration on a server - a token and a key, never here

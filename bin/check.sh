@@ -50,3 +50,4 @@ done
 
 NINO_ROOT="$root" php "$here/tests/build-smoke.php"
 NINO_ROOT="$root" php "$here/tests/publish-smoke.php"
+NINO_ROOT="$root" php "$here/tests/release-smoke.php"

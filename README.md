@@ -2,7 +2,7 @@
 
 **Language:** English · [Deutsch](README.de.md)
 
-The feature catalogue of [Nino](https://github.com/dapeio/nino): the features a Nino project can install, one per directory below `features/`, each with its own version, its own changelog and its own tests.
+The feature catalogue of [Nino](https://github.com/dapeio/nino): the features a Nino project can install, one per directory below `features/`, each with its own version.
 
 ## What this catalogue is
 
@@ -19,7 +19,7 @@ This repository is the place Nino's features are published from. `features/<Name
 | `newsletter` | [Newsletter](features/Newsletter/README.md) | 1.0.0 | `^1.0` | Double opt-in signup with confirmation and unsubscribe links, and the subscriber list as a workbench panel |
 | `search` | [Elements search](features/Search/README.md) | 1.0.0 | `^1.0` | A locale-aware fuzzy search index over configured Element fields, rebuilt on every save and from the Search panel |
 
-A feature's README describes its routes, its panel, its install unit, its data and its tests; its `CHANGELOG.md` the changes between versions. `bin/catalogue.php` reads the same manifests and prints this table as JSON, `bin/build.php` builds the archives and the signed `catalogue.json` getnino.dev publishes - see [Develop and test](#develop-and-test) and [Publishing](#publishing).
+A feature's README, where it has one, describes its routes, its panel, its install unit, its data and its tests; its `CHANGELOG.md`, where it has one, the changes between versions. `bin/catalogue.php` reads the same manifests and prints this table as JSON, `bin/build.php` builds the archives and the signed `catalogue.json` getnino.dev publishes - see [Develop and test](#develop-and-test) and [Publishing](#publishing).
 
 ## Install a feature
 
@@ -75,16 +75,16 @@ features/<Name>/
 ├── assets/                  the panel's script and stylesheet
 ├── install/                 the unit activation applies add-only: manifest.php, templates/, text/
 ├── text/<locale>.php        the panel's fills, while the feature is active
-├── tests/<key>-smoke.php    the feature's own test
-├── README.md                what it does, its routes, its panel, its unit, its data, its tests
-└── CHANGELOG.md             the changes per version
+├── tests/<key>-smoke.php    the feature's own test - when there is one
+├── README.md                what it does, its routes, its panel, its unit, its data - when there is one
+└── CHANGELOG.md             the changes per version - when there is one
 ```
 
-Only `feature.php` and `<Name>.php` are required by the kernel. Everything else is there when the feature needs it - `Search`, for one, has no install unit. `README.md`, `CHANGELOG.md` and a test under `tests/` are required by this catalogue: a feature that sits here explains itself and carries its history along. The rules for agents working here are in [AGENTS.md](AGENTS.md).
+Only `feature.php` and `<Name>.php` are required by the kernel. Everything else is there when the feature needs it - `Search`, for one, has no install unit. A `README.md`, a `CHANGELOG.md` and a test under `tests/` are welcome, not required: at their current size the features are read in a minute, and a contribution should not start with three files of paperwork. The release tooling asks for them only in strict mode - `bin/release.sh --strict`, or the repository variable `RELEASE_STRICT` set to `1` for the workflow - which this catalogue may switch on later. The rules for agents working here are in [AGENTS.md](AGENTS.md).
 
 ## Versions and releases
 
-Every feature carries its own `version` in `feature.php` - `major.minor.patch` - and its own `CHANGELOG.md`. A release is a git tag `<key>-<version>`, such as `newsletter-1.0.0`; the features of one repository are versioned independently, and a tag names exactly one of them. Pushing the tag publishes that version to getnino.dev, see [Publishing](#publishing). A project sees the version in the Features panel and is offered an update as soon as the directory carries a newer one.
+Every feature carries its own `version` in `feature.php` - `major.minor.patch`. A release is a git tag `<key>-<version>`, such as `newsletter-1.0.0`; the features of one repository are versioned independently, and a tag names exactly one of them. Pushing the tag publishes that version to getnino.dev, see [Publishing](#publishing). A project sees the version in the Features panel and is offered an update as soon as the directory carries a newer one.
 
 `nino` in the manifest names the Nino versions the feature is written for - `^1.0` for both today, which covers every 1.x; a pre-release kernel such as `1.0.0-beta` counts as the release it precedes. The constraint is an intention, not a guarantee: compatibility is tested, not declared. This repository's CI runs every feature against Nino's `main` and against its latest tag, and Nino's own CI clones this catalogue, copies the features into its checkout and runs their tests there - a kernel change that breaks a feature fails on both sides.
 
@@ -102,7 +102,7 @@ A published version is immutable: an archive that is on the server is never rebu
 
 ### A release
 
-1. Bump `version` in `features/<Name>/feature.php` and write the entry `## <version> — <date>` in its `CHANGELOG.md`; bring its `README.md` up to date where behaviour changed.
+1. Bump `version` in `features/<Name>/feature.php`; where the feature has a `CHANGELOG.md`, write the entry `## <version> — <date>`, and bring its `README.md` up to date where behaviour changed.
 2. Run `bin/check.sh` - every manifest, every feature's tests, the publishing tool's own test.
 3. With the change on `main`, tag the commit `<key>-<version>` and push the tag:
 
@@ -115,13 +115,23 @@ The tag starts `.github/workflows/release.yml`, which
 
 - checks out the tag and clones Nino's `main` beside it, as `../nino`;
 - reads key and version from the tag and fails on one that is not `<key>-<major>.<minor>.<patch>`;
-- finds the feature whose manifest carries that key, checks that its `feature.php` declares exactly that version and its `CHANGELOG.md` has the entry, and runs the feature's own tests against the checkout;
+- finds the feature whose manifest carries that key, checks that its `feature.php` declares exactly that version - and, where it has a `CHANGELOG.md`, that it has the entry - and runs the feature's own tests against the checkout where it carries some (the repository variable `RELEASE_STRICT` set to `1` makes changelog entry, README and test required);
 - fetches the published `catalogue.json` - and, for a re-run, the published archive of this version - into `dist/`; a 404 is the first release;
 - writes the signing key from the secret to a temporary file, runs `php bin/build.php ../nino dist --only <key> --key <file>` and removes the key file again, whatever happened;
 - keeps `dist/` as a workflow artifact;
 - posts `catalogue.json`, `catalogue.json.sig` and this version's archive to `server/publish.php` over https, one `curl` (`PUBLISH_URL`, `PUBLISH_TOKEN`); the endpoint verifies the signature itself and never overwrites a published archive. No ssh.
 
 A release that stopped half way - a failing test, a failing upload - is run again from **Actions → Release → Run workflow** with the key and the version: the workflow checks out the tag again, and an archive already on the server stays what it is. A release that went out with a mistake is followed by the next patch version, never replaced.
+
+### A release without GitHub
+
+`bin/release.sh` takes the same steps from your own machine - GitHub only ever supplied the automation behind the tag. With the Nino checkout beside the repository, the private key and the endpoint's token at hand:
+
+```bash
+CATALOGUE_KEY=/safe/place/catalogue-key.pem PUBLISH_TOKEN=... bin/release.sh newsletter
+```
+
+It finds the feature by its key, checks `feature.php`'s version (and the `CHANGELOG.md` entry where there is a changelog), runs the feature's tests where it has some against `NINO_ROOT` (default `../nino`), fetches the published `catalogue.json` and this version's archive into `dist/` (a 404 is the first release, an empty 200 counts as not published), builds and signs with `bin/build.php --only <key>`, and posts the three files to `PUBLISH_URL` (default `$CATALOGUE_URL/publish.php`, `CATALOGUE_URL` defaulting to `https://catalogue.getnino.dev`). `--dry-run` stops before the post and leaves `dist/` to look at; `--offline` skips the fetch and merges into whatever `dist/` already holds. `--strict` (or `RELEASE_STRICT=1`) requires changelog entry, README and test the way the workflow does with the variable set. Tag the commit afterwards all the same, so the repository records what went out - the workflow's re-run finds the archive published and keeps it. `tests/release-smoke.php` drives the script against `server/publish.php` on php's built-in server.
 
 ### The secrets
 
