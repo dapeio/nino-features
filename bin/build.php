@@ -519,6 +519,15 @@ foreach( $selected as $key => $manifest ) {
 	$label			= str_pad( $key. ' '. $version, 24 );
 	$existing		= $entries[$id] ?? null;
 
+	// A file of zero bytes is not an archive that was ever published -
+	// publish.php takes nothing the catalogue does not name with a size -
+	// but what a web server that answers 200 with an empty body for a
+	// missing file leaves behind in dist/. Removed and built afresh
+	if( is_file( $path ) === true && (int) filesize( $path ) === 0 ) {
+		say( 'removed  '. $label. $name. ' - an empty file is not an archive (does the server answer 404 for a missing file?)' );
+		@unlink( $path );
+	}
+
 	if( is_file( $path ) === true ) {
 
 		$sha256	= (string) hash_file( 'sha256', $path );

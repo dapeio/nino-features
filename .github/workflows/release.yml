@@ -137,7 +137,13 @@ jobs:
           for file in catalogue.json "$ARCHIVE"; do
             code=$(curl -sS -o "dist/$file" -w '%{http_code}' "$CATALOGUE_URL/$file") || code=000
             case "$code" in
-              200) echo "$file is published - fetched" ;;
+              200)
+                if [ -s "dist/$file" ]; then
+                  echo "$file is published - fetched"
+                else
+                  echo "::warning::$CATALOGUE_URL/$file answered 200 with an empty body - treated as not published; a missing file should be a 404, check the server"
+                  rm -f "dist/$file"
+                fi ;;
               404) echo "$file is not published yet"; rm -f "dist/$file" ;;
               *) echo "::error::$CATALOGUE_URL/$file answered $code" >&2; exit 1 ;;
             esac

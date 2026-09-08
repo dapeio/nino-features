@@ -514,4 +514,22 @@ if( class_exists( '\Nino\Catalogue' ) === true && class_exists( '\Nino\Fetch' ) 
 else
 	echo "note - this Nino has no \\Nino\\Catalogue yet: the installation through the kernel is not exercised\n\n";
 
+// --- an empty file where an archive should be ----------------------------
+
+echo "bin/build.php - a zero-byte file is not a published archive\n";
+
+$empty = $work. '/empty';
+mkdir( $empty );
+$firstKey = array_key_first( $manifests );
+$emptyName = $firstKey. '-'. $manifests[$firstKey]['version']. '.tar.gz';
+file_put_contents( $empty. '/'. $emptyName, '' );
+
+[ $status, $stdout, $stderr ] = runScript( $build, [ $root, $empty ] );
+check( 'a build over an empty archive file succeeds', $status === 0 && $stderr === '' );
+check( 'it says the file was removed and builds the archive afresh', str_contains( $stdout, 'removed  ' ) === true && str_contains( $stdout, 'an empty file is not an archive' ) === true && filesize( $empty. '/'. $emptyName ) > 0 );
+$emptyDocument = readCatalogue( $empty );
+check( 'the entry names the real size', ( entryOf( $emptyDocument, $firstKey, $manifests[$firstKey]['version'] )['size'] ?? 0 ) === filesize( $empty. '/'. $emptyName ) );
+
+echo "\n";
+
 ninoDone( $appData );
