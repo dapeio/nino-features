@@ -16,7 +16,7 @@
 #      server/publish.php - which verifies the signature itself and never
 #      overwrites a published archive
 #
-# Usage: CATALOGUE_KEY=catalogue-key.pem PUBLISH_TOKEN=... bin/release.sh <key> [--dry-run] [--offline] [--strict]
+# Usage: NINO_CATALOGUE_KEY=catalogue-key.pem NINO_CATALOGUE_TOKEN=... bin/release.sh <key> [--dry-run] [--offline] [--strict]
 #
 #   --dry-run    steps 1 to 4, then stop: nothing is posted, dist/ shows what would be
 #   --offline    skip step 3: use what dist/ already holds (a copy of the
@@ -24,30 +24,30 @@
 #                release on a server this machine cannot reach)
 #   --strict     require a CHANGELOG.md entry, a README.md and a test, the
 #                way the catalogue may later insist on them (also
-#                RELEASE_STRICT=1)
+#                NINO_RELEASE_STRICT=1)
 #
 # Environment:
-#   FEAT_ROOT        the Features checkout
-#   NINO_ROOT        the Nino checkout to test against (default ../nino)
-#   CATALOGUE_URL    where the catalogue is served from (default https://catalogue.getnino.dev)
-#   PUBLISH_URL      the endpoint (default $CATALOGUE_URL/publish.php)
-#   CATALOGUE_KEY    the private PEM key that signs catalogue.json (required)
-#   PUBLISH_TOKEN    the token server/publish.php is configured with (required unless --dry-run)
-#   DIST             the working directory (default ./dist)
-#   RELEASE_STRICT   set to 1 for the same effect as --strict
+#   NINO_FEAT_ROOT  			the Features checkout
+#   NINO_ROOT       			the Nino checkout to test against (default ../nino)
+#   NINO_CATALOGUE_URL    where the catalogue is served from (default https://catalogue.getnino.dev)
+#   NINO_PUBLISH_URL      the endpoint (default $NINO_CATALOGUE_URL/publish.php)
+#   NINO_CATALOGUE_KEY    the private PEM key that signs catalogue.json (required)
+#   NINO_CATALOGUE_TOKEN  the token server/publish.php is configured with (required unless --dry-run)
+#   NINO_CATALOGUE_DIR    the working directory (default ./dist)
+#   NINO_RELEASE_STRICT   set to 1 for the same effect as --strict
 set -e
 
-here="${FEAT_ROOT:-$(cd -- "$(dirname -- "$0")/.." && pwd)}"
+here="${NINO_FEAT_ROOT:-$(cd -- "$(dirname -- "$0")/.." && pwd)}"
 root=${NINO_ROOT:-$here/../nino}
-base=${CATALOGUE_URL:-https://catalogue.getnino.dev}
+base=${NINO_CATALOGUE_URL:-https://catalogue.getnino.dev}
 base=${base%/}
-endpoint=${PUBLISH_URL:-$base/publish.php}
-dist=${DIST:-$here/dist}
+endpoint=${NINO_PUBLISH_URL:-$base/publish.php}
+dist=${NINO_CATALOGUE_DIR:-$here/dist}
 
 key=""
 dry=0
 offline=0
-strict=${RELEASE_STRICT:-0}
+strict=${NINO_RELEASE_STRICT:-0}
 for arg in "$@"; do
 	case "$arg" in
 		--dry-run) dry=1 ;;
@@ -60,7 +60,7 @@ done
 [ "$strict" = 1 ] || strict=0
 
 if [ -z "$key" ]; then
-	echo "Usage: CATALOGUE_KEY=catalogue-key.pem PUBLISH_TOKEN=... bin/release.sh <key> [--dry-run] [--offline] [--strict]" >&2
+	echo "Usage: NINO_CATALOGUE_KEY=catalogue-key.pem NINO_CATALOGUE_TOKEN=... bin/release.sh <key> [--dry-run] [--offline] [--strict]" >&2
 	exit 2
 fi
 
@@ -74,13 +74,13 @@ if [ ! -f "$root/_nino/Nino.php" ]; then
 	exit 2
 fi
 
-if [ -z "$CATALOGUE_KEY" ] || [ ! -f "$CATALOGUE_KEY" ]; then
-	echo "CATALOGUE_KEY has to name the private PEM key that signs catalogue.json" >&2
+if [ -z "$NINO_CATALOGUE_KEY" ] || [ ! -f "$NINO_CATALOGUE_KEY" ]; then
+	echo "NINO_CATALOGUE_KEY has to name the private PEM key that signs catalogue.json" >&2
 	exit 2
 fi
 
-if [ "$dry" = 0 ] && [ -z "$PUBLISH_TOKEN" ]; then
-	echo "PUBLISH_TOKEN has to hold the token server/publish.php is configured with (or pass --dry-run)" >&2
+if [ "$dry" = 0 ] && [ -z "$NINO_CATALOGUE_TOKEN" ]; then
+	echo "NINO_CATALOGUE_TOKEN has to hold the token server/publish.php is configured with (or pass --dry-run)" >&2
 	exit 2
 fi
 
@@ -164,7 +164,7 @@ fi
 
 # --- 4. build, merge, sign
 
-php "$here/bin/build.php" "$root" "$dist" --base-url "$base" --only "$key" --key "$CATALOGUE_KEY"
+php "$here/bin/build.php" "$root" "$dist" --base-url "$base" --only "$key" --key "$NINO_CATALOGUE_KEY"
 
 test -s "$dist/$archive"
 test -s "$dist/catalogue.json"
@@ -179,7 +179,7 @@ fi
 
 response=$(mktemp)
 code=$(curl -sS -o "$response" -w '%{http_code}' \
-	-H "X-Publish-Token: $PUBLISH_TOKEN" \
+	-H "X-Publish-Token: $NINO_CATALOGUE_TOKEN" \
 	-F "catalogue=@$dist/catalogue.json;type=application/json" \
 	-F "signature=@$dist/catalogue.json.sig;type=text/plain" \
 	-F "archives[]=@$dist/$archive;type=application/gzip" \

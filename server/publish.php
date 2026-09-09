@@ -30,10 +30,9 @@ declare(strict_types=1);
  *	file returning an array with the same keys (a container sets the
  *	environment, a plain web server writes the file):
  *
- *	  NINO_CATALOGUE_TOKEN              the token the workflow sends, at least 32 characters
- *	                                    (`openssl rand -hex 32`), the secret PUBLISH_TOKEN there
- *	  NINO_CATALOGUE_PUBLIC_KEY         the PEM public key the catalogue is signed with, or
- *	  NINO_CATALOGUE_PUBLIC_KEY_FILE    a file holding it - the one Nino ships as
+ *	  NINO_CATALOGUE_TOKEN             				the token the workflow sends, at least 32 characters
+ *	                                    (`openssl rand -hex 32`), the secret NINO_CATALOGUE_TOKEN there
+ *	  NINO_CATALOGUE_PUBKEY         		the PEM public key file the catalogue is signed with
  *	                                    \Nino\Catalogue::PUBLIC_KEY
  *	  NINO_CATALOGUE_DIR                where the files are written and served from;
  *	                                    this file's directory when unset
@@ -75,9 +74,9 @@ function publishConfig(): array {
 		return is_string( $file[$name] ?? null ) === true ? $file[$name] : '';
 	};
 
-	$publicKey = $read( 'NINO_CATALOGUE_PUBLIC_KEY' );
-	if( $publicKey === '' && $read( 'NINO_CATALOGUE_PUBLIC_KEY_FILE' ) !== '' && is_file( $read( 'NINO_CATALOGUE_PUBLIC_KEY_FILE' ) ) === true )
-		$publicKey = (string) file_get_contents( $read( 'NINO_CATALOGUE_PUBLIC_KEY_FILE' ) );
+	$publicKey = '';
+	if( $read( 'NINO_CATALOGUE_PUBKEY' ) !== '' && is_file( $read( 'NINO_CATALOGUE_PUBKEY' ) ) === true )
+		$publicKey = (string) file_get_contents( $read( 'NINO_CATALOGUE_PUBKEY' ) );
 
 	$dir = $read( 'NINO_CATALOGUE_DIR' );
 
@@ -109,12 +108,13 @@ function publishHandle( array $config, string $method, string $token, array $upl
 
 	$publicKey = (string) $config['publicKey'] !== '' ? openssl_pkey_get_public( (string) $config['publicKey'] ) : false;
 	if( $publicKey === false )
-		return [ 500, [ 'error' => 'the endpoint is not configured: NINO_CATALOGUE_PUBLIC_KEY holds no public key' ] ];
+		return [ 500, [ 'error' => 'the endpoint is not configured: NINO_CATALOGUE_PUBKEY holds no public key' ] ];
 
 	$dir = (string) $config['dir'];
-	if( is_dir( $dir ) === false || is_writable( $dir ) === false )
-		return [ 500, [ 'error' => 'the endpoint is not configured: NINO_CATALOGUE_DIR is not a writable directory' ] ];
+	if( is_dir( $dir ) === false || is_writable( $dir ) === false )  {
 
+		return [ 500, [ 'error' => 'the endpoint is not configured: '.$dir.' is not a writable directory' ] ];
+	}
 	if( $token === '' || hash_equals( (string) $config['token'], $token ) === false ) {
 		usleep( 250000 );
 		return [ 401, [ 'error' => 'the token does not match' ] ];
@@ -315,7 +315,7 @@ function publishUpload( array $files ): array {
 // test includes
 if( PHP_SAPI !== 'cli' ) {
 
-	$token = (string) ( $_SERVER['HTTP_X_PUBLISH_TOKEN'] ?? '' );
+	$token = (string) ( $_SERVER['HTTP_X_NINO_CATALOGUE_TOKEN'] ?? '' );
 	if( $token === '' && preg_match( '/^Bearer\s+(\S+)$/', (string) ( $_SERVER['HTTP_AUTHORIZATION'] ?? '' ), $m ) === 1 )
 		$token = $m[1];
 
