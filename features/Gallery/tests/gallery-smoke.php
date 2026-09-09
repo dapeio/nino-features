@@ -39,6 +39,16 @@ if( extension_loaded( 'gd' ) === false ) {
 $appData = ninoSandbox( 'gallery' );
 $appData['/nino/dir'] = '';
 
+// The overlay is the Lightbox feature's, so the Lightbox has to sit in the
+// same features directory. Without it this feature cannot be activated, its
+// panel is never registered, and every gallery/* action below would answer
+// 404 - a page of failures for one missing directory, which is worth saying
+// rather than demonstrating
+if( \Nino\Features::get( $appData, 'lightbox' ) === null ) {
+	fwrite( STDERR, 'No Lightbox feature in '. NINO_FEATURES_DIR. ' - Gallery requires it (its manifest says so), so there is nothing to activate'. "\n" );
+	exit( 2 );
+}
+
 /** Raw jpeg bytes for a solid-colour test image */
 function galleryImage( int $width, int $height ): string {
 	$img = imagecreatetruecolor( $width, $height );
@@ -48,6 +58,20 @@ function galleryImage( int $width, int $height ): string {
 	$bytes = ob_get_clean();
 	imagedestroy( $img );
 	return (string) $bytes;
+}
+
+/**
+ *	The albums, and the first album's images, out of a panel answer - [] where
+ *	the answer does not carry them. A step that failed leaves the ones after it
+ *	failing too, which is the point; what it must not do is fatal on a shape it
+ *	never got, because that hides every check below it
+ */
+function galleryAlbums( ?array $body ): array {
+	return $body['albums'] ?? [];
+}
+
+function galleryImages( ?array $body ): array {
+	return $body['albums'][0]['images'] ?? [];
 }
 
 function callGalleryAdmin( array &$appData, string $action, array $data = [] ): array {
@@ -174,42 +198,42 @@ echo "Gallery\\Admin - albums, captions, order\n";
 \Nino\Admin\Admin::init( $appData );
 
 [ $status, $body ] = callGalleryAdmin( $appData, 'gallery/list' );
-check( 'gallery/list answers no album yet, and what an upload will be made into', $status === 200 && $body['albums'] === []
-	&& $body['thumb'] === [ 200, 200 ] && $body['large'] === [ 600, 600 ] && $body['keepRatio'] === true );
+check( 'gallery/list answers no album yet, and what an upload will be made into', $status === 200 && galleryAlbums( $body ) === []
+	&& ( $body['thumb'] ?? null ) === [ 200, 200 ] && ( $body['large'] ?? null ) === [ 600, 600 ] && ( $body['keepRatio'] ?? null ) === true );
 
 [ $status ] = callGalleryAdmin( $appData, 'gallery/album-save', [ 'album' => 'Not A Key', 'name' => 'x' ] );
 check( 'an album key that is not a slug is refused', $status === 400 );
 
 [ $status, $body ] = callGalleryAdmin( $appData, 'gallery/album-save', [ 'album' => 'trip', 'name' => 'The trip' ] );
-check( 'an album is created', $status === 200 && array_column( $body['albums'], 'key' ) === [ 'trip' ] && $body['albums'][0]['name'] === 'The trip' );
+check( 'an album is created', $status === 200 && array_column( galleryAlbums( $body ), 'key' ) === [ 'trip' ] && ( galleryAlbums( $body )[0]['name'] ?? null ) === 'The trip' );
 
 [ $status, $body ] = callGalleryAdmin( $appData, 'gallery/album-save', [ 'album' => 'trip', 'name' => 'Renamed' ] );
-check( 'saving it again renames rather than duplicates', $status === 200 && count( $body['albums'] ) === 1 && $body['albums'][0]['name'] === 'Renamed' );
+check( 'saving it again renames rather than duplicates', $status === 200 && count( galleryAlbums( $body ) ) === 1 && ( galleryAlbums( $body )[0]['name'] ?? null ) === 'Renamed' );
 
 $uploaded = [];
 foreach( [ 'a', 'b', 'c' ] as $ignored ) {
 	[ $status, $body ] = withUpload( $wide, static fn(): array => callGalleryAdmin( $appData, 'gallery/upload', [ 'album' => 'trip' ] ) );
 	$uploaded[] = $status;
 }
-check( 'three uploads land in the album, in the order they arrived', $uploaded === [ 200, 200, 200 ] && count( $body['albums'][0]['images'] ) === 3 );
-check( 'each image comes back with the urls the panel shows it at', str_contains( $body['albums'][0]['images'][0]['thumbUrl'], '/images/gallery/trip/' ) === true
-	&& str_contains( $body['albums'][0]['images'][0]['largeUrl'], '/images/gallery/trip/' ) === true );
+check( 'three uploads land in the album, in the order they arrived', $uploaded === [ 200, 200, 200 ] && count( galleryImages( $body ) ) === 3 );
+check( 'each image comes back with the urls the panel shows it at', str_contains( (string) ( galleryImages( $body )[0]['thumbUrl'] ?? '' ), '/images/gallery/trip/' ) === true
+	&& str_contains( (string) ( galleryImages( $body )[0]['largeUrl'] ?? '' ), '/images/gallery/trip/' ) === true );
 
-$ids = array_column( $body['albums'][0]['images'], 'id' );
+$ids = array_pad( array_column( galleryImages( $body ), 'id' ), 3, '' );
 
 [ $status, $body ] = callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'caption' => 'Above the pass' ] );
-check( 'a caption is saved on the image it names', $status === 200 && $body['albums'][0]['images'][1]['caption'] === 'Above the pass' );
+check( 'a caption is saved on the image it names', $status === 200 && ( galleryImages( $body )[1]['caption'] ?? null ) === 'Above the pass' );
 
 [ $status, $body ] = callGalleryAdmin( $appData, 'gallery/reorder', [ 'album' => 'trip', 'order' => [ $ids[2], $ids[0], $ids[1] ] ] );
-check( 'the order is the whole list, posted and stored', $status === 200 && array_column( $body['albums'][0]['images'], 'id' ) === [ $ids[2], $ids[0], $ids[1] ] );
+check( 'the order is the whole list, posted and stored', $status === 200 && array_column( galleryImages( $body ), 'id' ) === [ $ids[2], $ids[0], $ids[1] ] );
 
 [ $status ] = callGalleryAdmin( $appData, 'gallery/reorder', [ 'album' => 'trip', 'order' => [ $ids[0], $ids[1] ] ] );
 check( 'an order that leaves an image out is refused whole - a partial order would drop it silently', $status === 400
-	&& count( \Nino\Modules\Gallery::album( $appData, 'trip' )['images'] ) === 3 );
+	&& count( \Nino\Modules\Gallery::album( $appData, 'trip' )['images'] ?? [] ) === 3 );
 
-$goneFiles = array_map( static fn( string $key ): string => \Nino\Filesystem::path( $appData, '/images/'. \Nino\Modules\Gallery::album( $appData, 'trip' )['images'][0][$key] ), [ 'thumb', 'large' ] );
+$goneFiles = array_map( static fn( string $key ): string => \Nino\Filesystem::path( $appData, '/images/'. \Nino\Modules\Gallery::album( $appData, 'trip' )['images'][0][$key] ?? '' ), [ 'thumb', 'large' ] );
 [ $status, $body ] = callGalleryAdmin( $appData, 'gallery/image-delete', [ 'album' => 'trip', 'id' => $ids[2] ] );
-check( 'deleting an image takes both of its files with it', $status === 200 && count( $body['albums'][0]['images'] ) === 2
+check( 'deleting an image takes both of its files with it', $status === 200 && count( galleryImages( $body ) ) === 2
 	&& is_file( $goneFiles[0] ) === false && is_file( $goneFiles[1] ) === false );
 
 [ $status ] = callGalleryAdmin( $appData, 'gallery/image-delete', [ 'album' => 'trip', 'id' => $ids[2] ] );
@@ -259,7 +283,7 @@ $after = count( glob( \Nino\Filesystem::path( $appData, '/images/gallery/trip' )
 
 // Unlike a form's submissions, an album's images are the album: nothing else
 // points at them, and leaving them would leave files nobody can reach again
-check( 'the album goes, and every picture in it', $status === 200 && $body['albums'] === [] && $before > 0 && $after === 0 );
+check( 'the album goes, and every picture in it', $status === 200 && galleryAlbums( $body ) === [] && $before > 0 && $after === 0 );
 
 [ $status ] = callGalleryAdmin( $appData, 'gallery/album-delete', [ 'album' => 'trip' ] );
 check( 'deleting it twice is a refusal', $status === 400 );
