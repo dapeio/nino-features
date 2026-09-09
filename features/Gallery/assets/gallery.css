@@ -1,0 +1,78 @@
+/**
+ *	Nino - Gallery
+ *	gallery.css	The grid [gallery] renders, and nothing else. Bundled into the
+ *						project's own /.cache/style.css the same way the kernel bundles
+ *						Nino.css (see Gallery::init() and docs/development.md, "Assets
+ *						Are Not Templates") - never rendered through the fill/shortcode
+ *						engine, so nothing in here is a textfill.
+ *
+ *						The overlay a thumbnail opens into is the Lightbox feature's,
+ *						and its stylesheet is its own. Nothing here paints anything a
+ *						visitor sees after the click.
+ *
+ *						The column count comes in as --nino-gallery-columns, written
+ *						onto the list by the shortcode - the setting, or what
+ *						[gallery columns="3"] said. Everything else is a custom
+ *						property with a default, so a project restyles a gallery
+ *						without overriding a single rule.
+ */
+
+.nino-gallery {
+	--nino-gallery-columns: 4;
+	--nino-gallery-gap: .75rem;
+	--nino-gallery-radius: 3px;
+
+	display: grid;
+	/* auto-fit with a floor rather than a hard column count: the configured
+	   number is what a wide screen gets, and a narrow one falls to as many as
+	   fit without a media query per breakpoint */
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, max(8rem, calc((100% - (var(--nino-gallery-columns) - 1) * var(--nino-gallery-gap)) / var(--nino-gallery-columns)))), 1fr));
+	gap: var(--nino-gallery-gap);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.nino-gallery-item {
+	margin: 0;
+	padding: 0;
+}
+
+/*	The link is what holds the shape: the thumbnail is already cropped to the
+	configured size, so the ratio here only matters while it loads. */
+.nino-gallery-link {
+	position: relative;
+	display: block;
+	overflow: hidden;
+	border-radius: var(--nino-gallery-radius);
+	background: rgba(0, 0, 0, .04);
+	line-height: 0;
+}
+
+.nino-gallery-thumb {
+	display: block;
+	width: 100%;
+	height: auto;
+	transition: transform .3s ease, opacity .2s ease;
+}
+
+.nino-gallery-link:hover .nino-gallery-thumb,
+.nino-gallery-link:focus-visible .nino-gallery-thumb {
+	transform: scale(1.04);
+	opacity: .92;
+}
+
+.nino-gallery-link:focus-visible {
+	outline: 2px solid currentColor;
+	outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.nino-gallery-thumb {
+		transition: none;
+	}
+	.nino-gallery-link:hover .nino-gallery-thumb,
+	.nino-gallery-link:focus-visible .nino-gallery-thumb {
+		transform: none;
+	}
+}

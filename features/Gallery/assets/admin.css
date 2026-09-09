@@ -1,0 +1,99 @@
+@layer nino.system, nino.tool, nino.local;
+
+/**
+ *	Nino										A compact filesystembased php framework
+ *	Modules\Gallery					The albums, and one album's images
+ *	admin.css								What the feature's /_admin panel needs beyond the
+ *													design system in _admin/assets/style.css: the grid
+ *													of thumbnails on an album's screen, and the row of
+ *													controls one of them carries. Bundled while the
+ *													feature is active (see the panel's assets()), so
+ *													the same layer rules apply - the shell's stylesheet
+ *													fixes the layer order, this one only ever adds to
+ *													nino.tool, scoped to the panel's own panes.
+ *
+ *	@package								Dape/Nino
+ *	@author									David Perchermeier <mail@dape.io>
+ *	@link										https://github.com/dapeio/nino
+ */
+
+@layer nino.tool {
+
+/*	One album on the list: the name, how many images it holds, and what can be
+	done with it. */
+#gallery-list .gallery-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: .5rem;
+}
+
+/*	The images of one album. Wider tiles than the site's own grid: this is a
+	working screen, and a caption field lives under each one. */
+#gallery-album .gallery-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+	gap: 1rem;
+	margin: 1rem 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+#gallery-album .gallery-tile {
+	display: flex;
+	flex-direction: column;
+	gap: .4rem;
+	padding: .5rem;
+	border: 1px solid var(--editor-border);
+	border-radius: var(--editor-radius);
+	background: var(--editor-bg-grouped);
+}
+
+/*	A fixed frame, because the thumbnails are: a tile that changed height with
+	its picture would make the grid jump on every upload. */
+#gallery-album .gallery-tile img {
+	display: block;
+	width: 100%;
+	aspect-ratio: 1;
+	border-radius: 2px;
+	object-fit: cover;
+	background: var(--editor-bg);
+}
+
+#gallery-album .gallery-tile input {
+	width: 100%;
+}
+
+/*	Move left, move right, delete - small enough to sit under a tile, far
+	enough apart to be hit on a touch screen. */
+#gallery-album .gallery-tile-actions {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: .35rem;
+}
+
+#gallery-album .gallery-tile-actions button {
+	padding: .25rem .5rem;
+	font-size: .78rem;
+	line-height: 1.2;
+}
+
+/*	The line a tile reports into - a save, or a refusal. Empty, it takes no
+	room at all. */
+#gallery-album .gallery-tile-msg {
+	margin: 0;
+	font-size: .76rem;
+}
+
+#gallery-album .gallery-tile-msg:empty {
+	display: none;
+}
+
+/*	What a new upload will be made into, said before somebody uploads twenty
+	files and finds out afterwards. */
+#gallery-album .gallery-sizes {
+	margin: 0 0 .75rem;
+}
+
+}
