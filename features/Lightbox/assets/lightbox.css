@@ -1,0 +1,230 @@
+/**
+ *	Nino - Lightbox
+ *	lightbox.css	The overlay lightbox.js opens, and nothing else. Bundled into
+ *							the project's own /.cache/style.css the same way the kernel
+ *							bundles Nino.css (see Lightbox::init() and
+ *							docs/development.md, "Assets Are Not Templates") - never
+ *							rendered through the fill/shortcode engine, so nothing in
+ *							here is a textfill.
+ *
+ *							Two custom properties and no more: the backdrop and the
+ *							colour the controls are drawn in. A lightbox is a black
+ *							room with a picture in it - there is no site design to
+ *							match, because the site is behind the backdrop.
+ *
+ *							Every rule is bound to .nino-lightbox, which only exists
+ *							once the script has opened one. Without JavaScript nothing
+ *							here matches and a thumbnail is what the markup says it is:
+ *							a link to a larger image, which works.
+ */
+
+:root {
+	--nino-lightbox-backdrop: rgba(12, 14, 18, .94);
+	--nino-lightbox-ink: rgba(255, 255, 255, .92);
+}
+
+.nino-lightbox {
+	position: fixed;
+	inset: 0;
+	z-index: 9000;
+	display: flex;
+	flex-direction: column;
+	background: var(--nino-lightbox-backdrop);
+	color: var(--nino-lightbox-ink);
+	/* Opened invisible and faded in on the next frame, so the transition has
+	   a state to come from */
+	opacity: 0;
+	transition: opacity .22s ease;
+	-webkit-backdrop-filter: blur(6px);
+	backdrop-filter: blur(6px);
+}
+
+.nino-lightbox.is-open {
+	opacity: 1;
+}
+
+/*	The picture, and the room left around it. min-height: 0 is what lets the
+	figure shrink inside the flex column at all - without it a tall image
+	pushes the caption off the bottom of the screen. */
+.nino-lightbox-stage {
+	position: relative;
+	display: flex;
+	flex: 1 1 auto;
+	align-items: center;
+	justify-content: center;
+	min-height: 0;
+	padding: 3.5rem 1rem 1rem;
+}
+
+.nino-lightbox-figure {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: .75rem;
+	max-width: 100%;
+	max-height: 100%;
+	margin: 0;
+}
+
+.nino-lightbox-image {
+	max-width: 100%;
+	/* Room for the caption under it, which is why this is not 100% */
+	max-height: calc(100vh - 9rem);
+	object-fit: contain;
+	border-radius: 3px;
+	box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, .45);
+	/* Only the picture moves between two images of a set - the room stays */
+	opacity: 1;
+	transition: opacity .16s ease;
+}
+
+.nino-lightbox.is-swapping .nino-lightbox-image {
+	opacity: 0;
+}
+
+.nino-lightbox-caption {
+	max-width: 46rem;
+	margin: 0;
+	font-size: .88rem;
+	line-height: 1.5;
+	text-align: center;
+	text-wrap: pretty;
+}
+
+.nino-lightbox-caption:empty {
+	display: none;
+}
+
+/*	Close, previous, next and the counter. All four are one button style: a
+	round target big enough for a thumb, transparent until it is reached for. */
+.nino-lightbox-btn {
+	position: absolute;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 2.75rem;
+	height: 2.75rem;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, .08);
+	color: inherit;
+	font: inherit;
+	font-size: 1.5rem;
+	line-height: 1;
+	cursor: pointer;
+	transition: background .15s ease, transform .15s ease;
+}
+
+.nino-lightbox-btn:hover,
+.nino-lightbox-btn:focus-visible {
+	background: rgba(255, 255, 255, .18);
+}
+
+.nino-lightbox-btn:active {
+	transform: scale(.94);
+}
+
+.nino-lightbox-btn:focus-visible {
+	outline: 2px solid var(--nino-lightbox-ink);
+	outline-offset: 2px;
+}
+
+.nino-lightbox-close {
+	top: 1rem;
+	right: 1rem;
+}
+
+.nino-lightbox-prev {
+	top: 50%;
+	left: 1rem;
+	transform: translateY(-50%);
+}
+
+.nino-lightbox-next {
+	top: 50%;
+	right: 1rem;
+	transform: translateY(-50%);
+}
+
+.nino-lightbox-prev:active,
+.nino-lightbox-next:active {
+	transform: translateY(-50%) scale(.94);
+}
+
+/*	Which of how many. Hidden for a set of one, where it would only ever
+	say "1 / 1". */
+.nino-lightbox-count {
+	position: absolute;
+	top: 1.55rem;
+	left: 1.25rem;
+	font-size: .8rem;
+	letter-spacing: .04em;
+	opacity: .7;
+}
+
+/*	The spinner while a full-size image is still on its way. It sits behind
+	the picture, so it disappears the moment there is something to see. */
+.nino-lightbox-stage::before {
+	content: "";
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 2rem;
+	height: 2rem;
+	margin: -1rem 0 0 -1rem;
+	border: 2px solid rgba(255, 255, 255, .25);
+	border-top-color: var(--nino-lightbox-ink);
+	border-radius: 50%;
+	opacity: 0;
+	animation: nino-lightbox-spin .7s linear infinite;
+}
+
+.nino-lightbox.is-loading .nino-lightbox-stage::before {
+	opacity: 1;
+}
+
+@keyframes nino-lightbox-spin {
+	to { transform: rotate(360deg) }
+}
+
+/*	The page behind it does not scroll while a lightbox is open - the class
+	goes on <html>, so it holds whether or not the body is the scroller. */
+.nino-lightbox-lock {
+	overflow: hidden;
+}
+
+/*	A phone: the side buttons would sit on top of the picture, so they move
+	to the bottom edge where a thumb is anyway. Swiping works regardless. */
+@media (max-width: 40rem) {
+	.nino-lightbox-stage {
+		padding: 3.5rem .5rem 4.5rem;
+	}
+	.nino-lightbox-image {
+		max-height: calc(100vh - 12rem);
+	}
+	.nino-lightbox-prev,
+	.nino-lightbox-next {
+		top: auto;
+		bottom: 1rem;
+		transform: none;
+	}
+	.nino-lightbox-prev { left: 25%; }
+	.nino-lightbox-next { right: 25%; }
+	.nino-lightbox-prev:active,
+	.nino-lightbox-next:active { transform: scale(.94); }
+}
+
+/*	Asked for less motion: the lightbox still opens, still swaps, still
+	closes - it just stops animating while it does. The spinner keeps
+	turning, because a spinner that does not turn is a dot. */
+@media (prefers-reduced-motion: reduce) {
+	.nino-lightbox,
+	.nino-lightbox-image,
+	.nino-lightbox-btn {
+		transition: none;
+	}
+	.nino-lightbox.is-swapping .nino-lightbox-image {
+		opacity: 1;
+	}
+}
