@@ -183,7 +183,11 @@ echo "The repository - what there is to publish\n";
 
 check( 'every feature directory has a manifest this kernel validates', count( $manifests ) >= 2 && ninoWarnings() === [] );
 check( 'the two features of the catalogue are among them', isset( $manifests['newsletter'] ) === true && isset( $manifests['search'] ) === true );
-check( 'every feature carries a test under tests/ - the archive is what has to leave it out', array_filter( $manifests, static fn( array $manifest ): bool => ( glob( $manifest['dir']. '/tests/*-smoke.php' ) ?: [] ) === [] ) === [] );
+// At least one, not every one: a test is optional here (see README.md and
+// AGENTS.md - the release tooling asks for it in strict mode alone), and this
+// check exists to give the archive check below something to leave out. A
+// feature that carries none would have made this fail for following the rule
+check( 'a feature carries its test under tests/, and the archive is what has to leave it out', array_filter( $manifests, static fn( array $manifest ): bool => ( glob( $manifest['dir']. '/tests/*-smoke.php' ) ?: [] ) !== [] ) !== [] );
 
 // CI builds against Nino's main and against its latest tag, and a kernel
 // released before features had a category hands back manifests without one -

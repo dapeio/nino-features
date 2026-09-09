@@ -24,6 +24,7 @@ This repository is the place Nino's features are published from. `features/<Name
 | `search` | [Elements search](features/Search/README.md) | `content` | 1.0.0 | `^1.0` | A locale-aware fuzzy search index over configured Element fields, rebuilt on every save and from the Search panel |
 | `seo` | [Seo](features/Seo/README.md) | `marketing` | 1.0.0 | `^1.1` | Sitemap, robots.txt and llms.txt generated from the routes, locales and texts Nino already has |
 | `stats` | [Stats](features/Stats/README.md) | `marketing` | 1.0.0 | `^1.1` | Page-view counts for the workbench, without cookies, ip addresses or anything stored per visitor |
+| `typewriter` | [Typewriter](features/Typewriter/README.md) | `ui` | 1.0.0 | `^1.1` | Types the lines of a container one after the other, with a cursor at the writing head, timed per element |
 
 **Category** is what the Features panel groups and filters by, one per feature: `content`, `ui`, `communication`, `marketing`, `security` or `system` - the vocabulary Nino publishes as `\Nino\Features::CATEGORIES` and [Features](https://github.com/dapeio/nino/blob/main/docs/features.md#categories) explains, with the rule for deciding between two of them. Nino itself takes any slug, so an older kernel can read a catalogue that files a feature under a category it predates; `bin/build.php` is what holds a published feature to the six, so a typo is caught here rather than shown as a heading of its own in someone's panel.
 

@@ -1,0 +1,85 @@
+/**
+ *	Nino - Typewriter
+ *	typewriter.css	What typewriter.js needs to be able to do its work, and
+ *								nothing else: the lines laid on top of each other, the part
+ *								still to be typed holding its place, and the cursor. Bundled
+ *								into the project's own /.cache/style.css the same way the
+ *								kernel bundles Nino.css (see Typewriter::init() and
+ *								docs/development.md, "Assets Are Not Templates") - never
+ *								rendered through the fill/shortcode engine, so nothing in
+ *								here is a textfill.
+ *
+ *								Nothing here paints: a typewriter is the text a project's
+ *								own template put in it, in whatever type, colour and size
+ *								the surrounding classes give it. There is nothing to theme,
+ *								so there is no custom property to read either - unlike
+ *								consent.css, which draws a banner of its own.
+ *
+ *								Every rule below is bound to .nino-typewriter-line, the
+ *								class typewriter.js writes onto the lines when it takes
+ *								over. That is deliberate: wherever the script does not run -
+ *								no JavaScript, and a visitor who asked for reduced motion -
+ *								not one of these rules matches, and the container is what it
+ *								reads like in the markup, paragraphs below one another.
+ */
+
+/* The lines share one grid cell, so the container is always as tall as its
+   longest line instead of as tall as whichever line is showing */
+.nino-typewriter:has(> .nino-typewriter-line) {
+	display: grid;
+}
+.nino-typewriter > .nino-typewriter-line {
+	grid-area: 1 / 1;
+	opacity: 0;
+	transition-property: opacity;
+	/* replaced per element with data-typewriter-fade, in milliseconds */
+	transition-duration: 400ms;
+	transition-timing-function: ease;
+}
+.nino-typewriter > .nino-typewriter-line.nino-is-active {
+	opacity: 1;
+}
+
+/* What is not typed yet keeps its place in the line: the line stays the size
+   it will have, breaks where it will break, and the text below a typewriter
+   is never pushed down a row while one runs */
+.nino-typewriter-rest {
+	visibility: hidden;
+}
+
+/* Zero width, drawn over the character it stands in front of: a cursor that
+   took up room of its own would move the rest of the line by its own width
+   with every character typed, and rewrap the line as it goes */
+.nino-typewriter-cursor {
+	display: inline-block;
+	width: 0;
+	font-weight: normal;
+	animation: nino-typewriter-blink 1s step-end infinite;
+}
+@keyframes nino-typewriter-blink {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0; }
+}
+
+/* The line's own text, once, for a screen reader - the same clipping every
+   "visually hidden" utility uses. Its own class rather than the framework's
+   .nino-sr-only: a feature carries what it needs itself */
+.nino-typewriter-reader {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+/* typewriter.js asks for the preference once, when it starts, and does not
+   run at all while it is set. This is here for the visitor who sets it
+   afterwards, with a typewriter already running on the page */
+@media (prefers-reduced-motion: reduce) {
+	.nino-typewriter > .nino-typewriter-line { transition: none; }
+	.nino-typewriter-cursor { animation: none; }
+}
