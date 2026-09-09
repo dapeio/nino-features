@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to the Seo feature are documented in this file.
+All notable changes to the SEO feature are documented in this file.
 A release is the tag `seo-<version>` of dapeio/nino-features.
 
 ## 1.0.0 — 2026-09-08

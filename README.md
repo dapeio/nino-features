@@ -22,13 +22,15 @@ This repository is the place Nino's features are published from. `features/<Name
 | `lightbox` | [Lightbox](features/Lightbox/README.md) | `ui` | 1.0.0 | `^1.1` | Opens any link to an image full screen, with its group as a set - arrows, swipe, captions and a focus trap, and no library |
 | `mailer` | [Mailer](features/Mailer/README.md) | `system` | 1.0.0 | `^1.1` | Delivers every mail Nino sends over SMTP instead of the server’s `mail()` |
 | `newsletter` | [Newsletter](features/Newsletter/README.md) | `communication` | 1.0.0 | `^1.0` | Double opt-in signup with confirmation and unsubscribe links, and the subscriber list as a workbench panel |
-| `protected` | [Protected](features/ProtectedArea/README.md) | `security` | 1.0.0 | `^1.1` | Puts one or more pages behind one shared password, without accounts |
+| `protected` | [Protected area](features/ProtectedArea/README.md) | `security` | 1.0.0 | `^1.1` | Puts one or more pages behind one shared password, without accounts |
 | `search` | [Elements search](features/Search/README.md) | `content` | 1.0.0 | `^1.0` | A locale-aware fuzzy search index over configured Element fields, rebuilt on every save and from the Search panel |
-| `seo` | [Seo](features/Seo/README.md) | `marketing` | 1.0.0 | `^1.1` | Sitemap, robots.txt and llms.txt generated from the routes, locales and texts Nino already has |
+| `seo` | [SEO](features/Seo/README.md) | `marketing` | 1.0.0 | `^1.1` | Sitemap, robots.txt and llms.txt generated from the routes, locales and texts Nino already has |
 | `stats` | [Stats](features/Stats/README.md) | `marketing` | 1.0.0 | `^1.1` | Page-view counts for the workbench, without cookies, ip addresses or anything stored per visitor |
 | `typewriter` | [Typewriter](features/Typewriter/README.md) | `ui` | 1.0.0 | `^1.1` | Types the lines of a container one after the other, with a cursor at the writing head, timed per element |
 
 **Category** is what the Features panel groups and filters by, one per feature: `content`, `ui`, `communication`, `marketing`, `security` or `system` - the vocabulary Nino publishes as `\Nino\Features::CATEGORIES` and [Features](https://github.com/dapeio/nino/blob/main/docs/features.md#categories) explains, with the rule for deciding between two of them. Nino itself takes any slug, so an older kernel can read a catalogue that files a feature under a category it predates; `bin/build.php` is what holds a published feature to the six, so a typo is caught here rather than shown as a heading of its own in someone's panel.
+
+**Name** is what a row in the Features panel says - the key is never on screen there, and neither is the directory - so no two features may carry one name, in any locale, and `bin/build.php` refuses a pair that does. Case is ignored, since "Seo" and "SEO" are as hard to tell apart as two rows reading the same; a name given as a plain string is that name in every locale and collides accordingly.
 
 A feature's README, where it has one, describes its routes, its panel, its install unit, its data and its tests; its `CHANGELOG.md`, where it has one, the changes between versions. `bin/catalogue.php` reads the same manifests and prints this table as JSON, `bin/build.php` builds the archives and the signed `catalogue.json` getnino.dev publishes - see [Develop and test](#develop-and-test) and [Publishing](#publishing).
 

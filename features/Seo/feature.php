@@ -3,7 +3,7 @@
 // not declared here: features/Seo/ can only ever serve \Nino\Modules\Seo.
 return [
 	'key'					=> 'seo',
-	'name'				=> [ 'en_US' => 'Seo', 'de_DE' => 'Seo' ],
+	'name'				=> [ 'en_US' => 'SEO', 'de_DE' => 'SEO' ],
 	'description'	=> [
 		'en_US' => 'Sitemap, robots.txt and llms.txt generated from the routes, locales and texts Nino already has - nothing to maintain by hand.',
 		'de_DE' => 'Sitemap, robots.txt und llms.txt, erzeugt aus den Routen, Sprachen und Texten, die Nino bereits kennt - nichts, das von Hand gepflegt werden muss.',

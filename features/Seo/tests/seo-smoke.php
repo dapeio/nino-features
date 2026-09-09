@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  *	Nino
- *	seo-smoke.php		Contract test for the Seo feature (\Nino\Modules\Seo): the
+ *	seo-smoke.php		Contract test for the SEO feature (\Nino\Modules\Seo): the
  *									manifest and activation through \Nino\Features, a small
  *									fixture of persisted routes (a de_DE/en_US pair, a plain
  *									page whose uri carries a "&", an excluded page, a

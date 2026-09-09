@@ -1,4 +1,4 @@
-# Seo
+# SEO
 
 **Key:** `seo` · **Class:** `\Nino\Modules\Seo` · **Version:** 1.0.0 · **Nino:** `^1.1`
 

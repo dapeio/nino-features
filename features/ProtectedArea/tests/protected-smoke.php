@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  *	Nino
- *	protected-smoke.php	Contract test for the Protected feature
+ *	protected-smoke.php	Contract test for the Protected area feature
  *												(\Nino\Modules\ProtectedArea): the manifest and the
  *												activation through \Nino\Features, protects() against
  *												configured prefixes, the gate that replaces a locked

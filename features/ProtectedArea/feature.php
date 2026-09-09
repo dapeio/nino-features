@@ -4,7 +4,7 @@
 // "Protected" because that is a reserved php word; the key is "protected"
 return [
 	'key'					=> 'protected',
-	'name'				=> [ 'en_US' => 'Protected', 'de_DE' => 'Geschützt' ],
+	'name'				=> [ 'en_US' => 'Protected area', 'de_DE' => 'Geschützter Bereich' ],
 	'description'	=> [
 		'en_US' => 'Puts one or more pages behind one shared password - a members\' area, a client preview, an internal page - without accounts.',
 		'de_DE' => 'Stellt eine oder mehrere Seiten hinter ein gemeinsames Passwort - einen Mitgliederbereich, eine Kundenvorschau, eine interne Seite - ganz ohne Benutzerkonten.',

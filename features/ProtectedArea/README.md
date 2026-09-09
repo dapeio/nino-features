@@ -1,4 +1,4 @@
-# Protected
+# Protected area
 
 **Key:** `protected` · **Class:** `\Nino\Modules\ProtectedArea` · **Version:** 1.0.0 · **Nino:** `^1.1`
 

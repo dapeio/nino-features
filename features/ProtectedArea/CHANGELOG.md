@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to the Protected feature are documented in this file.
+All notable changes to the Protected area feature are documented in this file.
 A release is the tag `protected-<version>` of dapeio/nino-features.
 
 ## 1.0.0 — 2026-09-08

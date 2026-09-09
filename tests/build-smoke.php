@@ -254,6 +254,33 @@ check( 'and nothing was built', ( glob( $out. '/*.tar.gz' ) ?: [] ) === [] );
 
 \Nino\Filesystem::removeDir( $broken. '/features/Broken' );
 
+// The Features panel shows a feature by its name and never by its key, so two
+// features carrying one name are two rows nobody can tell apart. Written into
+// the copy rather than asserted over the real manifests: what is checked is
+// the refusal, not that today's eleven happen not to collide
+$seo			= $broken. '/features/Seo/feature.php';
+$original	= (string) file_get_contents( $seo );
+
+$collide = static function( string $name ) use ( $seo, $original ): void {
+	file_put_contents( $seo, str_replace( "'en_US' => 'SEO', 'de_DE' => 'SEO'", $name, $original ) );
+};
+
+$collide( "'en_US' => 'SEO', 'de_DE' => 'Formulare'" );
+[ $status, , $stderr ] = runScript( $broken. '/bin/build.php', [ $root, $out ] );
+check( 'two features named the same in one locale fail the run, naming both directories', $status === 1 && str_contains( $stderr, 'features/Forms' ) === true && str_contains( $stderr, 'features/Seo' ) === true && str_contains( $stderr, 'are both named' ) === true );
+
+$collide( "'en_US' => 'fORMS', 'de_DE' => 'SEO'" );
+[ $status, , $stderr ] = runScript( $broken. '/bin/build.php', [ $root, $out ] );
+check( 'and a name that differs only in case is the same name', $status === 1 && str_contains( $stderr, 'are both named' ) === true );
+
+// A plain string is the name in every locale, so it meets a map's German one
+file_put_contents( $seo, str_replace( "[ 'en_US' => 'SEO', 'de_DE' => 'SEO' ]", "'Galerie'", $original ) );
+[ $status, , $stderr ] = runScript( $broken. '/bin/build.php', [ $root, $out ] );
+check( 'a name given as a plain string is that name in every locale', $status === 1 && str_contains( $stderr, 'features/Gallery' ) === true && str_contains( $stderr, 'are both named' ) === true );
+
+file_put_contents( $seo, $original );
+
+
 if( @symlink( $broken. '/features/Search/feature.php', $broken. '/features/Search/link.php' ) === true ) {
 	[ $status, , $stderr ] = runScript( $broken. '/bin/build.php', [ $root, $out ] );
 	check( 'a symlink inside a feature fails the build - the kernel refuses it on the other end', $status === 1 && str_contains( $stderr, 'Search/link.php' ) === true && str_contains( $stderr, 'neither a file nor a directory' ) === true );

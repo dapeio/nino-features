@@ -364,6 +364,34 @@ function buildArchive( string $source, string $directory, string $target ): arra
 }
 
 
+// --- Manifests ---------------------------------------------------------------
+
+/**
+ *	The name two features share, '' where they share none. A name is compared
+ *	per locale, and one given as a plain string is that name in every locale,
+ *	so a string collides with any string a map holds. Case is ignored: two
+ *	rows reading "Seo" and "SEO" are as hard to tell apart as two reading the
+ *	same, and the panel sorts by name rather than by spelling.
+ *
+ *	@param		array|string	$one				A manifest's 'name'
+ *	@param		array|string	$other			Another manifest's 'name'
+ *
+ *	@return 	string											The shared name, '' where there is none
+ */
+function sharedName( array|string $one, array|string $other ): string {
+
+	$perLocale = static fn( array|string $name ): array => is_array( $name ) === true ? $name : [ '*' => $name ];
+
+	foreach( $perLocale( $one ) as $locale => $name )
+		foreach( $perLocale( $other ) as $otherLocale => $otherName )
+			if( ( $locale === $otherLocale || $locale === '*' || $otherLocale === '*' )
+				&& mb_strtolower( trim( $name ) ) === mb_strtolower( trim( $otherName ) ) )
+				return trim( $name );
+
+	return '';
+}
+
+
 // --- Arguments ---------------------------------------------------------------
 
 $positional	= [];
@@ -485,6 +513,24 @@ if( $features === [] )
 	fail( 'No feature below '. NINO_FEATURES_DIR );
 
 ksort( $features );
+
+// The name is what a row in the Features panel says - the key is never on
+// screen there, and neither is the directory - so two features carrying one
+// name are two rows a person cannot tell apart, in a list they are choosing
+// from. Refused here, where it is one line to fix and nothing is published
+// yet; the kernel cannot refuse it, since the two would arrive from two
+// catalogues it has no say over
+foreach( $features as $key => $manifest )
+	foreach( $features as $otherKey => $other ) {
+
+		if( strcmp( $key, $otherKey ) >= 0 )
+			continue;
+
+		$shared = sharedName( $manifest['name'], $other['name'] );
+
+		if( $shared !== '' )
+			fail( 'features/'. basename( $manifest['dir'] ). ' and features/'. basename( $other['dir'] ). ' are both named "'. $shared. '" - a feature is shown by its name, so no two may carry one' );
+	}
 
 if( $only !== '' && isset( $features[$only] ) === false )
 	fail( 'No feature has the key "'. $only. '" - there are: '. implode( ', ', array_keys( $features ) ) );
