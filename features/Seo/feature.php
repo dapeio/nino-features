@@ -8,6 +8,27 @@ return [
 		'en_US' => 'Sitemap, robots.txt and llms.txt generated from the routes, locales and texts Nino already has - nothing to maintain by hand.',
 		'de_DE' => 'Sitemap, robots.txt und llms.txt, erzeugt aus den Routen, Sprachen und Texten, die Nino bereits kennt - nichts, das von Hand gepflegt werden muss.',
 	],
+	'manual'			=> [
+		'en_US' => <<<'TXT'
+			Nothing to place: `/sitemap.xml`, `/robots.txt` and `/llms.txt` answer
+			as soon as this is on, built fresh on every request from the routes,
+			locales and page texts Nino already has. A page added or renamed is in
+			them the next time they are fetched.
+
+			Two shortcodes are there if you want them: `[seo-alternates]` writes the
+			hreflang links into a page's head, `[seo-jsonld]` its structured data.
+			TXT,
+		'de_DE' => <<<'TXT'
+			Zu setzen gibt es nichts: `/sitemap.xml`, `/robots.txt` und `/llms.txt`
+			antworten, sobald das hier an ist, und werden bei jeder Anfrage frisch
+			aus den Routen, Sprachen und Seitentexten gebaut, die Nino ohnehin
+			kennt. Eine neue oder umbenannte Seite steht beim nächsten Abruf darin.
+
+			Zwei Shortcodes gibt es dazu, wenn Du sie willst: `[seo-alternates]`
+			schreibt die hreflang-Links in den Kopf einer Seite, `[seo-jsonld]` ihre
+			strukturierten Daten.
+			TXT,
+	],
 	'category'		=> 'marketing',
 	'version'			=> '1.0.0',
 	'nino'				=> '^1.1',

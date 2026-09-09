@@ -8,6 +8,26 @@ return [
 		'en_US' => 'Page-view counts for the workbench - no cookies, no ip addresses, no fingerprints, nothing stored per visitor.',
 		'de_DE' => 'Seitenaufruf-Zählung für die Workbench - keine Cookies, keine IP-Adressen, keine Fingerprints, nichts wird pro Besucher gespeichert.',
 	],
+	'manual'			=> [
+		'en_US' => <<<'TXT'
+			Nothing to place and nothing to set: counting begins when the feature is
+			switched on, and the numbers are in the Stats panel and on the
+			dashboard.
+
+			No cookie is set, no ip address is read and nothing is stored per
+			visitor - so no consent banner has to mention it, and there is nothing
+			anybody could ask to have deleted.
+			TXT,
+		'de_DE' => <<<'TXT'
+			Zu setzen gibt es nichts und einzustellen auch nichts: Gezählt wird,
+			sobald das Feature an ist, und die Zahlen stehen im Panel Statistik und
+			auf dem Dashboard.
+
+			Es wird kein Cookie gesetzt, keine IP-Adresse gelesen und nichts pro
+			Besucher gespeichert – ein Einwilligungsbanner muss das also nicht
+			erwähnen, und es gibt nichts, dessen Löschung jemand verlangen könnte.
+			TXT,
+	],
 	'category'		=> 'marketing',
 	'version'			=> '1.0.0',
 	'nino'				=> '^1.1',

@@ -9,6 +9,28 @@ return [
 		'en_US' => 'Puts one or more pages behind one shared password - a members\' area, a client preview, an internal page - without accounts.',
 		'de_DE' => 'Stellt eine oder mehrere Seiten hinter ein gemeinsames Passwort - einen Mitgliederbereich, eine Kundenvorschau, eine interne Seite - ganz ohne Benutzerkonten.',
 	],
+	'manual'			=> [
+		'en_US' => <<<'TXT'
+			Set the one password below and list what it protects, one uri per line:
+			`/intern` protects that page and everything under it. An empty password
+			protects nothing, whatever the list says.
+
+			A visitor opening such a page gets a password form instead, and sees the
+			protected pages until the session ends. `[protected-logout]` puts a
+			lock-again link on them; there are no accounts and nothing is stored per
+			visitor.
+			TXT,
+		'de_DE' => <<<'TXT'
+			Setze unten das eine Passwort und trage darunter ein, was es schützt,
+			eine URI je Zeile: `/intern` schützt diese Seite und alles darunter. Ein
+			leeres Passwort schützt nichts, was auch immer in der Liste steht.
+
+			Wer so eine Seite öffnet, bekommt stattdessen ein Passwortformular und
+			sieht die geschützten Seiten bis zum Ende der Sitzung.
+			`[protected-logout]` setzt einen Link zum Wiederabschließen darauf;
+			Benutzerkonten gibt es keine, und pro Besucher wird nichts gespeichert.
+			TXT,
+	],
 	'category'		=> 'security',
 	'version'			=> '1.0.0',
 	'nino'				=> '^1.1',

@@ -82,7 +82,7 @@ Das [Feature-Rezept](https://github.com/dapeio/nino/blob/main/docs/recipes/featu
 
 ```text
 features/<Name>/
-├── feature.php              das Manifest: key, name, description, category, version, nino, requires, settings, data
+├── feature.php              das Manifest: key, name, description, manual, category, version, nino, requires, settings, data
 ├── <Name>.php               die Laufzeitklasse \Nino\Modules\<Name>
 ├── Admin/Admin.php          das Panel \Nino\Modules\<Name>\Admin, wenn es eines gibt
 ├── assets/                  Skript und Stylesheet des Panels
@@ -93,7 +93,7 @@ features/<Name>/
 └── CHANGELOG.md             die Änderungen je Version – wenn es eines gibt
 ```
 
-Nur `feature.php` und `<Name>.php` verlangt der Kernel. Alles Weitere ist da, wenn das Feature es braucht – `Search` etwa hat keine Install-Einheit. Ein `README.md`, ein `CHANGELOG.md` und ein Test unter `tests/` sind willkommen, nicht verlangt: Bei ihrer heutigen Größe liest man die Features in einer Minute, und ein Beitrag soll nicht mit drei Dateien Papierkram beginnen. Das Release-Werkzeug verlangt sie nur im Strict-Modus – `bin/release.sh --strict`, oder die Repository-Variable `RELEASE_STRICT` auf `1` für den Workflow – den dieser Katalog später einschalten kann. Die Regeln für Agenten, die hier arbeiten, stehen in [AGENTS.md](AGENTS.md).
+`manual` ist die kurze Anleitung, mit der das Features-Panel den Bildschirm eines Features aufmacht – wo der Shortcode hingehört, was ein Attribut tut, in höchstens zwei Absätzen; schreib sie als Nowdoc, dann liest sie sich im Manifest wie im Panel, und alles Weitere gehört ins `README.md`, das für jemanden geschrieben ist, der den Quelltext liest. Nur `feature.php` und `<Name>.php` verlangt der Kernel. Alles Weitere ist da, wenn das Feature es braucht – `Search` etwa hat keine Install-Einheit. Ein `README.md`, ein `CHANGELOG.md` und ein Test unter `tests/` sind willkommen, nicht verlangt: Bei ihrer heutigen Größe liest man die Features in einer Minute, und ein Beitrag soll nicht mit drei Dateien Papierkram beginnen. Das Release-Werkzeug verlangt sie nur im Strict-Modus – `bin/release.sh --strict`, oder die Repository-Variable `RELEASE_STRICT` auf `1` für den Workflow – den dieser Katalog später einschalten kann. Die Regeln für Agenten, die hier arbeiten, stehen in [AGENTS.md](AGENTS.md).
 
 ## Versionen und Releases
 

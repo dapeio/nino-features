@@ -8,6 +8,27 @@ return [
 		'en_US' => 'Delivers every mail Nino sends over SMTP instead of the server\'s mail() - reliable on hosts where mail() is missing or unreliable.',
 		'de_DE' => 'Versendet jede von Nino verschickte Mail über SMTP statt über das mail() des Servers - zuverlässig auch dort, wo mail() fehlt oder unzuverlässig ist.',
 	],
+	'manual'			=> [
+		'en_US' => <<<'TXT'
+			Fill in the server, the login and the sender below and save. From then
+			on every mail Nino sends goes over SMTP - the contact form, the
+			newsletter, anything else - and nothing else in the project changes.
+
+			The Mailer panel has the test mail: send yourself one before you rely on
+			it. Which port goes with which encryption is what a host's mail page
+			tells you, usually 587 with `starttls`.
+			TXT,
+		'de_DE' => <<<'TXT'
+			Trage unten den Server, die Anmeldung und den Absender ein und
+			speichere. Von da an geht jede Mail, die Nino verschickt, über SMTP –
+			das Kontaktformular, der Newsletter, alles andere –, und sonst ändert
+			sich im Projekt nichts.
+
+			Im Panel Mailer liegt die Testmail: Schick Dir eine, bevor Du Dich
+			darauf verlässt. Welcher Port zu welcher Verschlüsselung gehört, sagt
+			die Mail-Seite des Hosters, meist 587 mit `starttls`.
+			TXT,
+	],
 	'category'		=> 'system',
 	'version'			=> '1.0.0',
 	'nino'				=> '^1.1',

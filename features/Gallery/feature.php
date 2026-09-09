@@ -9,6 +9,28 @@ return [
 		'en_US' => 'Any number of image galleries, each a grid of thumbnails that open full screen - two sizes made on upload, nothing kept that a visitor never sees.',
 		'de_DE' => 'Beliebig viele Bildergalerien, je ein Raster aus Vorschaubildern, die sich bildschirmfüllend öffnen - zwei Größen beim Hochladen, nichts gespeichert, was ein Besucher nie zu sehen bekommt.',
 	],
+	'manual'			=> [
+		'en_US' => <<<'TXT'
+			Create an album in the Gallery panel and upload its pictures - two sizes
+			are made from each one and the upload itself is never kept. Then put
+			`[gallery album="trip"]` where the grid belongs.
+
+			`[gallery album="trip" columns="3"]` overrides the column count for one
+			gallery, and `[gallery]` alone renders the first album. A thumbnail
+			opens full screen through the Lightbox feature, which this one brings
+			along.
+			TXT,
+		'de_DE' => <<<'TXT'
+			Lege im Panel Galerie ein Album an und lade seine Bilder hoch – aus
+			jedem entstehen zwei Größen, der Upload selbst wird nie aufbewahrt.
+			Setze dann `[gallery album="trip"]` dorthin, wo das Raster hingehört.
+
+			`[gallery album="trip" columns="3"]` überschreibt die Spaltenzahl für
+			eine einzelne Galerie, `[gallery]` allein zeigt das erste Album. Ein
+			Vorschaubild öffnet sich bildschirmfüllend über das Feature Lightbox,
+			das dieses mitbringt.
+			TXT,
+	],
 	// It brings content an editor maintains, which is what puts it here
 	// rather than with the effects that only change how a page behaves
 	'category'		=> 'content',

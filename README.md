@@ -82,7 +82,7 @@ The [feature recipe](https://github.com/dapeio/nino/blob/main/docs/recipes/featu
 
 ```text
 features/<Name>/
-├── feature.php              the manifest: key, name, description, category, version, nino, requires, settings, data
+├── feature.php              the manifest: key, name, description, manual, category, version, nino, requires, settings, data
 ├── <Name>.php               the runtime class \Nino\Modules\<Name>
 ├── Admin/Admin.php          the panel \Nino\Modules\<Name>\Admin, when there is one
 ├── assets/                  the panel's script and stylesheet
@@ -93,7 +93,7 @@ features/<Name>/
 └── CHANGELOG.md             the changes per version - when there is one
 ```
 
-Only `feature.php` and `<Name>.php` are required by the kernel. Everything else is there when the feature needs it - `Search`, for one, has no install unit. A `README.md`, a `CHANGELOG.md` and a test under `tests/` are welcome, not required: at their current size the features are read in a minute, and a contribution should not start with three files of paperwork. The release tooling asks for them only in strict mode - `bin/release.sh --strict`, or the repository variable `RELEASE_STRICT` set to `1` for the workflow - which this catalogue may switch on later. The rules for agents working here are in [AGENTS.md](AGENTS.md).
+`manual` is the short manual the Features panel opens a feature's screen with - where the shortcode goes, what an attribute does, in two paragraphs at most; write it as a nowdoc so it reads in the manifest the way it reads in the panel, and leave the rest to the `README.md`, which is written for somebody reading the source. Only `feature.php` and `<Name>.php` are required by the kernel. Everything else is there when the feature needs it - `Search`, for one, has no install unit. A `README.md`, a `CHANGELOG.md` and a test under `tests/` are welcome, not required: at their current size the features are read in a minute, and a contribution should not start with three files of paperwork. The release tooling asks for them only in strict mode - `bin/release.sh --strict`, or the repository variable `RELEASE_STRICT` set to `1` for the workflow - which this catalogue may switch on later. The rules for agents working here are in [AGENTS.md](AGENTS.md).
 
 ## Versions and releases
 

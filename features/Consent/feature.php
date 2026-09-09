@@ -10,6 +10,24 @@ return [
 		'en_US' => 'A cookie/consent banner with categories (statistics, marketing, external media) and consent-gated scripts - no third party involved.',
 		'de_DE' => 'Ein Cookie-/Consent-Banner mit Kategorien (Statistik, Marketing, externe Medien) und einwilligungsabhängigen Skripten - ohne Drittanbieter.',
 	],
+	'manual'			=> [
+		'en_US' => <<<'TXT'
+			Put `[consent]` into the footer template - the banner appears on the
+			first visit and never again once a choice is stored. A script that needs
+			consent is written as `<script type="text/plain"
+			data-consent="statistics" data-src="...">` and starts the moment that
+			category is allowed. `[consent-settings]` opens the choice again, for a
+			privacy page.
+			TXT,
+		'de_DE' => <<<'TXT'
+			Setze `[consent]` in das Footer-Template – das Banner erscheint beim
+			ersten Besuch und nie wieder, sobald eine Wahl gespeichert ist. Ein
+			Skript, das Einwilligung braucht, wird als `<script type="text/plain"
+			data-consent="statistics" data-src="...">` geschrieben und startet,
+			sobald diese Kategorie erlaubt ist. `[consent-settings]` öffnet die Wahl
+			erneut, etwa auf einer Datenschutzseite.
+			TXT,
+	],
 	'category'		=> 'security',
 	'version'			=> '1.0.0',
 	'nino'				=> '^1.1',
