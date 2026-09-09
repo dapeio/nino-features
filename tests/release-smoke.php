@@ -123,6 +123,45 @@ check( 'the checkout is as it was: no copy left behind, a copy that was there le
 echo "\n";
 
 
+// --- a feature that requires another -----------------------------------------
+
+echo "bin/release.sh - a feature that requires another\n";
+
+// A requirement has to be in the same features/ directory or the feature
+// cannot be activated - and a test that cannot activate its feature cannot
+// run. release.sh places what a manifest requires beside it, and takes it
+// away again with the feature's own copy
+$dependent = null;
+
+foreach( $manifests as $manifest )
+	if( ( $manifest['requires'] ?? [] ) !== [] ) {
+		$dependent = $manifest;
+		break;
+	}
+
+if( $dependent === null )
+	echo "  note - no feature here requires another, the placement is not exercised\n";
+else {
+
+	$needed = [];
+
+	foreach( $manifests as $manifest )
+		if( in_array( (string) $manifest['key'], (array) $dependent['requires'], true ) === true )
+			$needed[] = (string) $manifest['directory'];
+
+	$there = static fn(): array => array_values( array_filter( $needed, static fn( string $dir ): bool => is_dir( $root. '/features/'. $dir ) ) );
+	$before = $there();
+
+	[ $status, $stdout ] = runRelease( $release, array_merge( $env, [ 'PUBLISH_TOKEN' => '', 'DIST' => $work. '/dist-requires' ] ), [ (string) $dependent['key'], '--dry-run', '--offline' ] );
+
+	check( 'the release of '. $dependent['key']. ' runs, and its own test passes', $status === 0 && str_contains( $stdout, 'checks, 0 failed' ) === true );
+	check( 'it says which directory it placed beside it, and why', $before !== [] || str_contains( $stdout, 'requires it' ) === true );
+	check( 'and the checkout is as it was: what it placed, it removed', $there() === $before );
+}
+
+echo "\n";
+
+
 // --- lenient by default, strict on request ------------------------------------
 
 echo "bin/release.sh - a feature without changelog, readme and tests\n";
