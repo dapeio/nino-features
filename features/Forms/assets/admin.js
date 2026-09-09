@@ -1,16 +1,16 @@
 /**
  *	Nino										A compact filesystembased php framework
- *	Modules\Forms						The panel of the Forms feature: the forms, one
- *													form's fields, and one form's submissions - three
- *													levels in three panes, stepped through with the
- *													workbench's own back link.
+ *	Modules\Forms						The panel of the Forms feature: the forms a project has
+ *													defined, and one form's fields on a screen of its
+ *													own - two levels in two panes, stepped through with
+ *													the workbench's own back link. The submissions are
+ *													the kernel's own Submissions panel, which reads the
+ *													same definitions and needs nothing from here.
  *
  *													Admin/Admin.php beside it does the reading and
  *													writing and hands every word over already in the
  *													session language, so this file only lays out what
- *													it gets. A submission's values arrive html-escaped
- *													the way they are stored (see Forms::_record()) and
- *													are decoded into textContent, never into markup.
+ *													it gets.
  *
  *	@package								Dape/Nino
  *	@author									David Perchermeier <mail@dape.io>
@@ -28,18 +28,22 @@
 		// The field types Forms::TYPES declares - the panel offers exactly
 		// what the endpoint accepts, so the two cannot drift apart
 		_types		: [],
-		// True while no definitions file exists yet: the list is showing the
-		// built-in default rather than something someone saved
+		// The field names a form may not take (\Nino\Form::RESERVED), so the
+		// editor can say so before a save is refused for it
+		_reserved	: [],
+		// True while the project has defined no forms of its own: the list is
+		// showing the contact form the kernel falls back to
 		_default	: false,
-		// True while Nino's own contact form is still switched on, which is
-		// the one state in which none of this does anything
-		_blocked	: false,
+		// False while the kernel module that owns POST /.form is switched
+		// off - the one state in which a form drawn here posts into nothing
+		_endpoint	: true,
+		// How long submissions are kept and whether they are kept at all -
+		// the kernel's own two keys, edited on the list screen
+		_retention: 3,
+		_store		: true,
 		// The form being edited - a working copy, so leaving the screen
-		// without saving changes nothing - and the key whose submissions are
-		// on screen. Both '' / null while the list is
+		// without saving changes nothing. null while the list is on screen
 		_editing	: null,
-		_entriesOf: '',
-		_entries	: null,
 
 		/**
 		 *	Load the forms and draw whichever level is current
@@ -58,10 +62,13 @@
 				if( status !== 200 || response === null )
 					return Nino.admin.forms._showError( wrap, status, response );
 
-				Nino.admin.forms._forms		= response.forms || [];
-				Nino.admin.forms._types		= response.types || [];
-				Nino.admin.forms._default	= response.default === true;
-				Nino.admin.forms._blocked	= response.blocked === true;
+				Nino.admin.forms._forms			= response.forms || [];
+				Nino.admin.forms._types			= response.types || [];
+				Nino.admin.forms._reserved	= response.reserved || [];
+				Nino.admin.forms._default		= response.default === true;
+				Nino.admin.forms._endpoint	= response.endpoint !== false;
+				Nino.admin.forms._retention	= response.retention || 3;
+				Nino.admin.forms._store			= response.store !== false;
 				Nino.admin.forms._renderList();
 				Nino.admin.forms._ready = true;
 
@@ -80,9 +87,6 @@
 
 			if( Nino.admin.forms._ready === false )
 				return Nino.admin.forms.init();
-
-			if( Nino.admin.forms._entriesOf !== '' )
-				return Nino.admin.forms._showEntries( Nino.admin.forms._entriesOf );
 
 			if( Nino.admin.forms._editing !== null )
 				return Nino.admin.forms._showForm( Nino.admin.forms._editing );
@@ -123,14 +127,14 @@
 		},
 
 		/**
-		 *	Which of the three panes is on screen
+		 *	Which of the two panes is on screen
 		 *
-		 *	@param		{string}	level				'list', 'form' or 'entries'
+		 *	@param		{string}	level				'list' or 'form'
 		 *
 		 *	@return		void
 		 */
 		_level : function( level ) {
-			[ 'list', 'form', 'entries' ].forEach( function( name ) {
+			[ 'list', 'form' ].forEach( function( name ) {
 				dc.getElementById('forms-'+ name ).classList.toggle( 'admin-hidden', name !== level );
 			} );
 		},
@@ -146,14 +150,15 @@
 			const wrap = dc.getElementById('forms-list');
 			wrap.innerHTML = '';
 
-			Nino.admin.forms._editing		= null;
-			Nino.admin.forms._entriesOf	= '';
+			Nino.admin.forms._editing = null;
 
-			if( Nino.admin.forms._blocked === true ) {
-				const blocked = dc.createElement('p');
-				blocked.className = 'nino-admin-error';
-				blocked.textContent = Nino.content.getText('/_admin/forms/hint/blocked');
-				wrap.appendChild( blocked );
+			// A form that draws fine and posts to a 404 is the one failure this
+			// feature could produce silently, so it is said here and in red
+			if( Nino.admin.forms._endpoint === false ) {
+				const off = dc.createElement('p');
+				off.className = 'nino-admin-error';
+				off.textContent = Nino.content.getText('/_admin/forms/hint/endpoint');
+				wrap.appendChild( off );
 			}
 
 			if( Nino.admin.forms._default === true ) {
@@ -175,8 +180,89 @@
 			add.addEventListener( 'click', function() { Nino.admin.forms._showForm( Nino.admin.forms._blank() ) } );
 
 			wrap.appendChild( Nino.adminUi.listActions( [ add ] ) );
+			wrap.appendChild( Nino.admin.forms._renderSettings() );
 
 			Nino.admin.forms._level('list');
+		},
+
+		/**
+		 *	The two things about the submissions a project decides, under the
+		 *	list: how long they are kept, and whether they are kept at all.
+		 *	Both are the kernel's own config keys - it is the kernel that
+		 *	writes the records - so a project that switches this feature off
+		 *	keeps whatever was chosen here
+		 *
+		 *	@return		{Element}							<form>
+		 */
+		_renderSettings : function() {
+
+			const el = dc.createElement('form');
+			el.className = 'forms-settings';
+
+			const legend = dc.createElement('h3');
+			legend.textContent = Nino.content.getText('/_admin/forms/label/submissions-settings');
+			el.appendChild( legend );
+
+			// The label carries the unit itself: the shared one only knows the
+			// units the workbench declares, and months is this panel's word
+			el.appendChild( Nino.adminUi.numberField( {
+				key : 'retention',
+				label : Nino.content.getText('/_admin/forms/label/retention'),
+				hint : Nino.content.getText('/_admin/forms/hint/retention'),
+				value : Nino.admin.forms._retention,
+				min : 1,
+				max : 60,
+			} ) );
+
+			el.appendChild( Nino.adminUi.switchField( {
+				key : 'store',
+				label : Nino.content.getText('/_admin/forms/label/store'),
+				hint : Nino.content.getText('/_admin/forms/hint/store'),
+				checked : Nino.admin.forms._store,
+			} ) );
+
+			const actions = dc.createElement('div');
+			actions.className = 'nino-admin-actionbar';
+
+			const save = dc.createElement('button');
+			save.type = 'submit';
+			save.className = 'nino-admin-btn-primary';
+			save.textContent = Nino.content.getText('/_admin/common/label/save');
+			actions.appendChild( save );
+
+			const msg = dc.createElement('p');
+			msg.id = 'forms-settings-msg';
+			actions.appendChild( msg );
+
+			el.appendChild( actions );
+
+			// The shared fields carry their name as data-key and are read back
+			// through it, the way every generated field in the workbench is -
+			// they hand back the label, not the control
+			el.addEventListener( 'submit', function( ev ) {
+				ev.preventDefault();
+				msg.textContent = Nino.content.getText('/_admin/common/msg/saving');
+
+				const values = {};
+				Array.prototype.slice.call( el.querySelectorAll('[data-key]') ).forEach( function( field ) {
+					values[ field.dataset.key ] = field.type === 'checkbox' ? field.checked : field.value;
+				} );
+
+				Nino.admin.forms._apiCall( 'settings', {
+					retention : parseInt( values.retention, 10 ),
+					store : values.store === true,
+				}, function( status, response ) {
+					if( status !== 200 || response === null ) {
+						msg.textContent = '('+ status+ ') '+ ( ( response && response.error ) ? response.error : Nino.content.getText('/_admin/common/error/save') );
+						return;
+					}
+					msg.textContent = Nino.content.getText('/_admin/common/msg/saved');
+					Nino.admin.forms._retention	= response.retention;
+					Nino.admin.forms._store			= response.store;
+				} );
+			} );
+
+			return el;
 		},
 
 		/**
@@ -204,7 +290,13 @@
 
 			const fields = dc.createElement('p');
 			fields.className = 'nino-admin-hint';
-			fields.textContent = form.fields.map( function( field ) { return field.name } ).join( ', ' );
+			// What it collects, and what has come in through it. The
+			// submissions themselves are the Submissions panel's - this is the
+			// number that says which form is actually being used
+			fields.textContent = [
+				form.fields.map( function( field ) { return field.name } ).join( ', ' ),
+				Nino.content.getText('/_admin/forms/label/entries').replace( '%s', form.entries ),
+			].filter( Boolean ).join( ' \u00b7 ' );
 			card.appendChild( fields );
 
 			const actions = dc.createElement('div');
@@ -216,13 +308,6 @@
 			edit.textContent = Nino.content.getText('/_admin/forms/label/edit');
 			edit.addEventListener( 'click', function() { Nino.admin.forms._showForm( form ) } );
 			actions.appendChild( edit );
-
-			const entries = dc.createElement('button');
-			entries.type = 'button';
-			entries.className = 'nino-admin-btn-secondary';
-			entries.textContent = Nino.content.getText('/_admin/forms/label/entries').replace( '%s', form.entries );
-			entries.addEventListener( 'click', function() { Nino.admin.forms._showEntries( form.key ) } );
-			actions.appendChild( entries );
 
 			const remove = dc.createElement('button');
 			remove.type = 'button';
@@ -258,8 +343,8 @@
 		_blank : function() {
 			return {
 				key : '', name : '', to : '', subject : '', confirm : false,
-				ownerTemplate : '/templates/mail-form-owner',
-				userTemplate : '/templates/mail-form-user',
+				ownerTemplate : '/templates/mail-owner',
+				userTemplate : '/templates/mail-user',
 				fields : [ { name : 'name', label : '', type : 'text', required : true, options : [] } ],
 				entries : 0,
 			};
@@ -296,8 +381,7 @@
 		 */
 		_showForm : function( form ) {
 
-			Nino.admin.forms._editing		= JSON.parse( JSON.stringify( form ) );
-			Nino.admin.forms._entriesOf	= '';
+			Nino.admin.forms._editing = JSON.parse( JSON.stringify( form ) );
 			Nino.admin.forms._renderForm();
 		},
 
@@ -362,7 +446,9 @@
 
 			const hint = dc.createElement('p');
 			hint.className = 'nino-admin-hint';
-			hint.textContent = Nino.content.getText('/_admin/forms/hint/fields');
+			// The names something else already owns (\Nino\Form::RESERVED), said
+			// here rather than only in the refusal a save would come back with
+			hint.textContent = Nino.content.getText('/_admin/forms/hint/fields').replace( '%s', Nino.admin.forms._reserved.join( ', ' ) );
 			fields.appendChild( hint );
 
 			const rows = dc.createElement('div');
@@ -618,170 +704,6 @@
 			} );
 		},
 
-		/**
-		 *	Open one form's submissions - always read fresh: this is the one
-		 *	screen whose content arrives without anybody in the workbench
-		 *	doing anything
-		 *
-		 *	@param		{string}	key
-		 *
-		 *	@return		void
-		 */
-		_showEntries : function( key ) {
-
-			Nino.admin.forms._editing		= null;
-			Nino.admin.forms._entriesOf	= key;
-
-			Nino.admin.forms._apiCall( 'entries', { key : key }, function( status, response ) {
-				// Into whichever pane is on screen: this is also the reload path
-				// after a delete, and by then the list is the hidden one
-				if( status !== 200 || response === null )
-					return Nino.admin.forms._showError( dc.getElementById( Nino.admin.forms._entries === null ? 'forms-list' : 'forms-entries' ), status, response );
-
-				Nino.admin.forms._entries = response;
-				Nino.admin.forms._renderEntries();
-			} );
-		},
-
-		/**
-		 *	One form's submissions: how many there are, the shared table
-		 *	over them, an export of exactly the rows it holds, and a delete
-		 *	per row
-		 *
-		 *	@return		void
-		 */
-		_renderEntries : function() {
-
-			const wrap = dc.getElementById('forms-entries');
-			const data = Nino.admin.forms._entries;
-			wrap.innerHTML = '';
-
-			const backLink = dc.createElement('a');
-			backLink.href = '#';
-			backLink.className = 'nino-admin-back-link';
-			backLink.textContent = Nino.content.getText('/_admin/common/label/back');
-			// init(), not _renderList(): a submission deleted on this screen
-			// changes the count the list draws beside its form
-			backLink.addEventListener( 'click', function( ev ) { ev.preventDefault(); Nino.admin.forms.init() } );
-			wrap.appendChild( Nino.admin.formToolbar( backLink ) );
-
-			const title = dc.createElement('h3');
-			title.textContent = data.name;
-			wrap.appendChild( title );
-
-			const rows = Nino.admin.forms._rows( data, true );
-
-			if( rows.length === 0 ) {
-				wrap.appendChild( Nino.adminUi.emptyState( Nino.content.getText('/_admin/forms/hint/entries-empty') ) );
-				Nino.admin.forms._level('entries');
-				return;
-			}
-
-			const count = dc.createElement('p');
-			count.className = 'nino-admin-hint';
-			count.textContent = rows.length === 1
-				? Nino.content.getText('/_admin/forms/label/count-one')
-				: Nino.content.getText('/_admin/forms/label/count').replace( '%s', rows.length );
-			wrap.appendChild( count );
-
-			const mount = dc.createElement('div');
-			wrap.appendChild( mount );
-
-			const columns = [ { key : 'date', label : Nino.content.getText('/_admin/forms/label/date'), type : 'datetime' } ];
-
-			Object.keys( data.columns ).forEach( function( name ) {
-				columns.push( { key : name, label : data.columns[name], type : 'string' } );
-			} );
-
-			columns.push( { key : 'id', label : '', type : 'string',
-				render : function( value ) {
-					const btn = dc.createElement('button');
-					btn.type = 'button';
-					btn.className = 'nino-admin-btn-danger';
-					btn.textContent = Nino.content.getText('/_admin/forms/label/delete');
-					btn.addEventListener( 'click', function() { Nino.admin.forms._deleteEntry( value ) } );
-					return btn;
-				} } );
-
-			Nino.adminUi.table( {
-				mount 	: mount,
-				rows 		: rows,
-				rowKey 	: 'id',
-				columns : columns,
-				labels 	: {
-					search 	: Nino.content.getText('/_admin/forms/label/search'),
-					empty 	: Nino.content.getText('/_admin/forms/hint/entries-empty'),
-					noMatch : Nino.content.getText('/_admin/forms/hint/nomatch'),
-				},
-			} );
-
-			const exportBtn = dc.createElement('button');
-			exportBtn.type = 'button';
-			exportBtn.className = 'nino-admin-btn-secondary';
-			exportBtn.textContent = Nino.content.getText('/_admin/forms/label/export');
-			exportBtn.addEventListener( 'click', function() {
-				// Undecoded: Nino.admin.csvCell() decodes every cell itself, and
-				// decoding twice would turn a visitor's literal "AT&amp;T" into
-				// "AT&T". Without the row identity, too - that is this panel's
-				// handle on an entry, not part of what somebody submitted
-				Nino.admin.exportCsv( Nino.content.getText('/_admin/forms/label/filename'), Nino.admin.forms._rows( data, false ).map( function( row ) {
-					const copy = Object.assign( {}, row );
-					delete copy.id;
-					return copy;
-				} ) );
-			} );
-
-			wrap.appendChild( Nino.adminUi.listActions( [ exportBtn ] ) );
-
-			Nino.admin.forms._level('entries');
-		},
-
-		/**
-		 *	The submissions as flat rows the shared table and the export can
-		 *	both read: one column per field the answer set knows, decoded
-		 *	once here so searching and sorting work on what is displayed
-		 *	rather than on the escaped form it is stored in
-		 *
-		 *	@param		{Object}	data				The forms/entries answer
-		 *	@param		{boolean}	decode			Whether to decode the stored escaping
-		 *
-		 *	@return		{Array}
-		 */
-		_rows : function( data, decode ) {
-
-			return ( data.entries || [] ).map( function( entry ) {
-
-				const row = { id : entry.id || '', date : entry.date || '' };
-
-				Object.keys( data.columns ).forEach( function( name ) {
-					const value = String( ( entry.fields || {} )[name] ?? '' );
-					row[name] = decode === true ? Nino.admin.decodeEntities( value ) : value;
-				} );
-
-				return row;
-			} );
-		},
-
-		/**
-		 *	Delete one submission, after a confirm prompt, then read the
-		 *	screen again - the count and the table come from the same answer
-		 *
-		 *	@param		{string}	id
-		 *
-		 *	@return		void
-		 */
-		_deleteEntry : function( id ) {
-
-			if( wn.confirm( Nino.content.getText('/_admin/forms/confirm/entry') ) === false )
-				return;
-
-			Nino.admin.forms._apiCall( 'entry-delete', { key : Nino.admin.forms._entriesOf, id : id }, function( status, response ) {
-				if( status !== 200 )
-					return Nino.admin.forms._showError( dc.getElementById('forms-entries'), status, response );
-
-				Nino.admin.forms._showEntries( Nino.admin.forms._entriesOf );
-			} );
-		},
 	};
 
 	Nino.events.bindCallback( 'ready', Nino.admin.forms.init );

@@ -2,214 +2,146 @@
 
 **Key:** `forms` · **Class:** `\Nino\Modules\Forms` · **Version:** 1.0.0 · **Nino:** `^1.1`
 
-Any number of forms, each with fields of its own, all behind the one endpoint
-`POST /.form` that Nino's contact form has always used. A form is defined in
-the workbench, rendered on any page with `[form key="…"]`, mailed to whoever
-the form names, and recorded so the **Forms** panel can show, search, export
-and delete what came in. The mail goes out through `\Nino\Mail::send()`, so a
-project running the Mailer feature sends it over SMTP without this feature
-knowing.
+A builder for Nino's own form endpoint. Nino has always had one form: a
+contact form, defined in the kernel, posted to `POST /.form`. Since 1.1 it can
+have any number, defined under `/nino/form/forms` in `config.php` - and this
+feature is what edits them, draws them and keeps the spam out.
 
-It **replaces** the kernel's own contact form (`\Nino\Modules\Form`) rather
-than sitting beside it - see [Replacing the kernel's contact form](#replacing-the-kernels-contact-form).
+It **replaces nothing.** `\Nino\Form` stays the engine - which forms there
+are, what a submission has to look like, the mail pair it sends, the record it
+leaves - and `\Nino\Modules\Form` keeps the route. Switching this feature on
+adds three things and changes nothing else; switching it off leaves every form
+a project defined working, because the definitions were never this feature's
+to begin with.
+
+| What it adds | Where it sits |
+| --- | --- |
+| `[form key="…"]` | a shortcode that draws a form from its definition |
+| the **Forms** panel | the builder for `/nino/form/forms`, plus how long submissions are kept |
+| three spam guards | on the kernel's own route callback, ahead of the engine |
+
+The submissions themselves are **not** here: they are the kernel's, and the
+workbench's own **Submissions** panel shows, filters, exports and deletes
+them - for every form, whether this feature is installed or not.
 
 One directory, the shape the [feature recipe](https://github.com/dapeio/nino/blob/main/docs/recipes/feature.md)
-describes: `feature.php`, `Forms.php`, `Admin/Admin.php`, `assets/`,
-`install/`, `text/`, `tests/`. The changes per version are in
+describes: `feature.php`, `Forms.php`, `Admin/Admin.php`, `assets/`, `text/`,
+`tests/`. No `install/` unit: a form points at the mail templates the kernel's
+contact form already installed. The changes per version are in
 [CHANGELOG.md](CHANGELOG.md).
 
-## Replacing the kernel's contact form
+## What a form is
 
-Nino ships a contact form of its own as the kernel module `\Nino\Modules\Form`,
-and the wizard's contact page posts to `/.form`. This feature answers that same
-endpoint on purpose: a page written against the kernel's form keeps working
-unchanged, and the form it posts to is simply the first one defined here.
+A definition, in `config.php`, exactly as the [Forms section](https://github.com/dapeio/nino/blob/main/docs/development.md#forms)
+of the developer manual describes it:
 
-Both answering it would mean two mails and two records for one visitor, so
-**this feature stands down entirely while the kernel module is still listed in
-`/nino/modules`**: `init()` registers no route, no shortcode and no callback,
-and the panel says why in one line at the top of its list. Remove
-`'\\Nino\\Modules\\Form'` from `/nino/modules` in `config.php` and the feature
-takes over.
-
-Nothing is migrated: this is a first version, and the kernel form's own
-`/data/forms.<Y-m>.php` files are left where they are until their retention
-window removes them.
-
-## The endpoint
-
-`init()` registers the route itself, so a project that switches the feature on
-has a working endpoint without adding anything to `config.php`:
-
-```
-POST /.form
+```php
+'/nino/form/forms' => [
+	[
+		'key'						=> 'quote',
+		'name'					=> 'Quote request',
+		'to'						=> 'sales@example.com',	// '' sends to '[[/form/email/owner]]'
+		'subject'				=> '',									// '' uses '[[/form/subject/owner]]'
+		'confirm'				=> true,								// a confirmation to the first address given
+		'ownerTemplate'	=> '/templates/mail-owner',
+		'userTemplate'	=> '/templates/mail-user',
+		'fields'				=> [
+			[ 'name' => 'email',	'label' => '[[/form/label/email]]', 'type' => 'email', 'required' => true ],
+			[ 'name' => 'budget',	'label' => 'Budget',								'type' => 'number' ],
+		],
+	],
+],
 ```
 
-Every form posts here. Which form a submission belongs to is the hidden `form`
-field that `[form]` renders; **a submission carrying none belongs to the first
-form defined**, which is what a hand-written contact page posts.
+The panel writes this file and nothing else. A definition written by hand
+shows up in the panel; one saved in the panel is read by the engine on the
+next request. There is no second copy anywhere, which is why switching the
+feature off costs a project nothing.
 
-The answers are the ones the shared `.nino-form` script already knows (see
-`_nino/Nino.ui.js` in Nino):
+Validation is `\Nino\Form::normalize()` - the engine's own, not a copy of it.
+What the panel accepts is exactly what the endpoint accepts.
 
-| Status | When |
-| --- | --- |
-| 200 | accepted - the body is `{ "status": "ok" }` |
-| 400 | a required field is empty, or a value is not of the shape its field declares - the one refusal a visitor can act on |
-| 404 | the posted `form` key belongs to no form, ie. a page pointing at a form that was renamed |
-| 418 | the honeypot was filled, a blocked word was carried, or the form came back faster than a person could fill it |
-| 429 | this ip has spent its hour's allowance |
-| 403 | the csrf token was missing or wrong - the kernel's own `Csrf` callback, before this feature runs |
-
-Every spam refusal answers 418, and the script shows one generic message for
-anything that is not 200 or 400: a bot must not learn which check it tripped.
-
-## `[form]`
+## The shortcode
 
 ```
-[form]                 the first form defined
-[form key="quote"]     the form with that key
+[form]                  the first form defined - what a page posting no key belongs to
+[form key="quote"]      a particular one
 ```
 
-Renders the markup the shared `.nino-form` script drives: the csrf token, the
-hidden key, the moment the form was drawn, one control per declared field, the
-honeypot, the live region a message is written into, and the submit button. A
-key no form has renders nothing at all.
+It renders the markup the shared `.nino-form` script drives: the csrf token,
+one control per field with its label resolved (a label written as a textfill
+is resolved before it is shown, so one label serves every language), the
+honeypot, the live region the script writes its answer into, and the submit
+button. Plus two hidden fields - the form's key, and the moment the form was
+drawn, which is what the "fastest accepted submission" guard reads.
 
-A field's **label** is rendered through `\Nino\Html::renderHtml()`, so a text
-fill such as `[[/form/label/name]]` written into the label field of the panel
-resolves per locale - one definition serves every language the site speaks.
+A key no form has renders nothing at all: an empty page beats a form that
+posts nowhere.
+
+The markup a project already has keeps working. `page-contact.tpl` from the
+wizard is hand-written and carries no key, so it posts to the first form
+defined - which is the contact form until somebody reorders the list.
 
 ## The panel
 
-**Forms**, permission `/_admin/forms/manage`. It sits in the rail's own
-**Features** group: a panel a feature brings always does, whatever its `nav()`
-names. Three levels:
+**Forms**, in the Features group, behind `/_admin/forms/manage`.
 
-1. **The forms** - one row each, with how many submissions it holds and the
-   shortcode that renders it.
-2. **One form** - its name, key, recipient and subject, whether the visitor
-   gets a confirmation mail, the two mail templates it renders, and its fields:
-   name, label, type, required, and the options of a `select`.
-3. **Its submissions** - the shared sortable, searchable, paged table, a CSV
-   export of exactly the rows it holds, and a delete per row.
+The list is one card per form: its name, the shortcode that draws it, its
+field names and how many submissions it has on file. A card leads to that
+form's own screen - what it is called, where its mail goes, which templates it
+renders, and its fields as one row each.
 
-Actions: `forms/list`, `forms/save`, `forms/delete`, `forms/entries`,
-`forms/entry-delete`. Every one is guarded with
-`\Nino\Admin\Admin::guardPerm()`.
+Under the list sit the two things about the submissions a project decides,
+because the kernel is what writes them and a project keeps them when this
+feature goes:
 
-A form's **name** is what the panel shows; its **key** is what the markup posts
-and what its submissions are filed under. Renaming a key keeps one definition
-rather than making a second, and its submissions stay filed under the old key -
-they are what someone sent, not part of the definition.
-
-Deleting a form leaves its submissions on disk too; the retention window
-removes them on its own schedule.
-
-### The field types
-
-`text`, `email`, `tel`, `url`, `number`, `textarea`, `select`.
-
-**No checkbox yet.** The shared `.nino-form` script every Nino form is driven by
-posts each field's `.value` unconditionally (see `_nino/Nino.ui.js`), and an
-unticked checkbox's value is still the string `"on"` - a box nobody ticked would
-be mailed and recorded as ticked. That is a gap in the kernel's own script, and
-a feature may not paper over it with a script of its own; the type is added here
-as soon as Nino sends a checkbox's checked state.
-
-A field's **name** is what it is posted and exported as, so it is an identifier
-(`^[a-zA-Z][a-zA-Z0-9_-]*$`), never `form`, `location`, `_csrf` or `_t` - the
-four names the endpoint owns. A duplicate name, an unusable one, or a type the
-feature does not know is dropped when the definition is saved; a form left with
-no usable field at all is refused.
-
-## Spam protection
-
-Four guards, none of them a third party and none of them a captcha:
-
-| Guard | What it does |
+| Control | Config key |
 | --- | --- |
-| Honeypot | `[form]` renders a `location` field no person sees. Filled → 418. |
-| Speed trap | `[form]` stamps the moment it was drawn into `_t`. A submission that comes back faster than **Fastest accepted submission** seconds → 418. Only a form carrying the stamp is judged by it, so a hand-written form is never refused for it - and a bot that omits the field simply faces the other three. |
-| Blocked words | **Blocked words**, one per line, matched case-insensitively as a substring against every submitted value → 418. |
-| Rate limit | **Submissions per hour and address**: how often one ip may submit before it is turned away → 429. The ip is stored as a sha256, not as itself; the counter is `data/forms/rate.php`. |
+| **Keep for (months)** | `/nino/form/retention`, 1 to 60 |
+| **Record submissions** | `/nino/form/store` - off means the mail goes out and nothing is written |
 
-The kernel's own per-ip mail cap applies underneath all of this
-(`\Nino\Mail::send()`), and a submission whose mail that cap refused is not
-recorded - one entry per request regardless would turn a throttled flood into
-unthrottled disk growth from an unauthenticated endpoint.
+Deleting a form leaves its submissions alone: they are what a person asked
+for, not a property of the definition, and the Submissions panel goes on
+showing them under the key they were recorded with. The last form cannot be
+deleted - a project with none falls back to the built-in contact form, and
+having no form at all is done by switching the `Form` module off.
 
-## The mail
+## The guards
 
-Two mails per accepted submission:
+All three sit on `/nino/http/response/POST://.form` at priority 1 - the
+kernel's own route callback, ahead of the engine. A guard that refuses leaves
+a status behind and `\Nino\Form::handle()` returns without sending or writing
+anything. This is the seam `\Nino\Csrf::init()` already uses; it needs no
+callback name of its own.
 
-- the **owner notification**, to the form's recipient - or, where the form
-  names none, to the address in the text fill `/form/email/owner`. Its
-  `Reply-To` is the first email field the submission carried, so a reply
-  reaches the visitor. Always rendered in the site's **native** locale.
-- the **confirmation**, to that same address, where the form asks for one.
-  Rendered in the locale the visitor filled the form in.
-
-Both are templates, `/templates/mail-form-owner` and `/templates/mail-form-user`
-by default, and a form may name others. The template is rendered first and the
-placeholders replaced in the result, so a submitted value can never be read as a
-fill, a shortcode or a template include:
-
-| Placeholder | What it becomes |
+| Setting | What it does |
 | --- | --- |
-| `[[fields]]` | the whole submission as a `<table>` of label/value rows - what a form with fields nobody knew in advance needs |
-| `[[form]]` | the form's name |
-| `[[date]]` | when it arrived |
-| `[[name]]`, `[[email]]`, `[[message]]`, `[[subject]]` | filled where the form has a field of that name, so a project's own mail template from before this feature keeps rendering |
+| **Fastest accepted submission** | a submission that comes back sooner than this after the form was drawn is a script. Only forms drawn by `[form]` carry the stamp - a hand-written one is never checked. `0` off |
+| **Blocked words** | one per line, case ignored, matched as a substring anywhere in any value |
+| **Submissions per hour and address** | how many *accepted* submissions one ip may make before the next is turned away. `0` off |
 
-## The install unit
+The first two answer **418**, the same as a filled honeypot: the shared script
+shows one generic message for anything that is not 200 or 400, so a bot never
+learns which check it tripped. The rate limit answers **429** - it is the only
+refusal a person can meet by using the site normally, and the only one they
+can do something about.
 
-Applied when the feature is activated, add-only - anything the project already
-has is left as it is:
+The rate limit is counted at priority 8, after the engine answered 200, so
+only a submission that was actually sent costs a slot: a visitor who mistypes
+their address four times has not submitted four times. The counter lives in
+`/data/forms-rate.php`, keyed by a sha256 of the client address - a spam
+counter, not a visitor log - and every entry whose hour has passed is dropped
+on the next write.
 
-- `templates/mail-form-owner.tpl` and `templates/mail-form-user.tpl`, the two
-  mail bodies. Names of their own, so they can never displace the
-  `mail-owner.tpl`/`mail-user.tpl` a project wrote against the kernel's contact
-  form - a form may point at those instead.
-- `templates/mail-header.tpl` and `templates/mail-footer.tpl`, the frame both
-  include, where the project has none.
-- the `/form/...` and `/mail/...` fills both mails and the built-in form read,
-  per available locale, and `/form/email/owner` in `text/global.php`.
+Nino's own per-ip mail cap (`\Nino\Mail`, 5 per hour) applies on top of all of
+this and is the hard stop against the endpoint being used as a relay.
 
-## Settings
+## Data
 
-In the Features panel, stored under `/nino/features/forms/settings` in
-`config.php`:
-
-| Setting | Default | What it does |
-| --- | --- | --- |
-| Keep submissions for | 3 months | How many months stay on disk. An older month is deleted the next time a submission comes in. |
-| Submissions per hour and address | 10 | The rate limit above. 0 switches it off. |
-| Fastest accepted submission | 3 s | The speed trap above. 0 switches it off. |
-| Blocked words | – | One per line. |
-| Record submissions | on | Off means the mail goes out and nothing is written; the panel then stays empty by design. |
-
-## Data and restore
-
-Everything the feature owns is `data/forms/`, which is what the manifest
-declares and what a backup carries:
-
-| File | What it holds |
-| --- | --- |
-| `definitions.php` | the forms. Absent until the panel saves once - until then the built-in contact form is what is offered, and nothing has been written. |
-| `<key>.<Y-m>.php` | one form's submissions for one month: `id`, `date`, `form`, `ip`, `fields`. Pruned to the retention window. |
-| `rate.php` | the rate counter, hashed ips and their reset times. |
-
-Values are stored html-escaped, the way the kernel's contact form stored them,
-and the panel decodes them again on render (`Nino.admin.decodeEntities()` into
-`textContent`, never into markup).
-
-A restore **merges** rather than overwrites: the restored month and the live one
-are joined and deduplicated, so a submission that arrived after the backup was
-taken is not lost - it is an inquiry nobody else has a copy of. The definitions
-are the backup's, which is what restoring them means. Registered as a
-`'/nino/admin/restore'` callback in `init()`, so a project without this feature
-has no callback and nothing is autoloaded on its behalf.
+None. The definitions are configuration, the submissions are the kernel's, and
+`/data/forms-rate.php` is a counter that rebuilds itself - which is why the
+manifest declares `'data' => []` and a backup carries nothing of this
+feature's.
 
 ## Tests
 
@@ -217,8 +149,9 @@ has no callback and nothing is autoloaded on its behalf.
 NINO_ROOT=../nino php features/Forms/tests/forms-smoke.php
 ```
 
-`tests/forms-smoke.php` covers the manifest and the activation, the stand-down
-while the kernel's contact form is on, what `normalize()` makes of a definition,
-the `[form]` markup, every refusal and every guard of the endpoint, the two
-mails handed to the transport, what is recorded and pruned, all five panel
-actions with their permission, and the restore merge.
+The manifest and the activation, the shortcode over a definition the kernel
+reads, the builder writing `config.php`, each guard refusing and each one
+letting a good submission through - and the two that matter most for a feature
+shaped like this one: that with nothing configured a submission goes through
+the engine exactly as it did before, and that after deactivation the forms are
+still there and still work.

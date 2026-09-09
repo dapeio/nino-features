@@ -17,7 +17,7 @@ Dieses Repository ist der Ort, von dem aus Ninos Features veröffentlicht werden
 | Key | Name | Kategorie | Version | Nino | Was es tut |
 | --- | --- | --- | --- | --- | --- |
 | `consent` | [Consent](features/Consent/README.md) | `security` | 1.0.0 | `^1.1` | Ein Cookie-/Consent-Banner mit Kategorien und einwilligungsabhängigen Skripten, ohne Drittanbieter |
-| `forms` | [Forms](features/Forms/README.md) | `communication` | 1.0.0 | `^1.1` | Beliebig viele Formulare mit eigenen Feldern, ihre Einsendungen als Panel der Workbench mit Export, und Spam-Schutz ohne Captcha |
+| `forms` | [Forms](features/Forms/README.md) | `communication` | 1.0.0 | `^1.1` | Ein Baukasten für Ninos eigenen Formular-Endpunkt: beliebig viele Formulare, ein Shortcode `[form]`, der sie zeichnet, und Spam-Schutz ohne Captcha |
 | `mailer` | [Mailer](features/Mailer/README.md) | `system` | 1.0.0 | `^1.1` | Versendet jede von Nino verschickte Mail über SMTP statt über das `mail()` des Servers |
 | `newsletter` | [Newsletter](features/Newsletter/README.md) | `communication` | 1.0.0 | `^1.0` | Double-Opt-in-Anmeldung mit Bestätigungs- und Abmeldelink, und die Abonnentenliste als Panel der Workbench |
 | `protected` | [Protected](features/ProtectedArea/README.md) | `security` | 1.0.0 | `^1.1` | Legt eine oder mehrere Seiten hinter ein gemeinsames Passwort, ohne Konten |

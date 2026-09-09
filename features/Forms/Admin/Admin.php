@@ -12,19 +12,25 @@ namespace Nino\Modules\Forms {
 
 	/**
 	 *	Nino							A compact filesystembased php framework
-	 *	Forms\Admin				The panel of the Forms feature, three levels deep: the
-	 *										forms, one form's fields, and one form's submissions.
-	 *										\Nino\Modules\Forms (Forms.php beside this) owns the
-	 *										shape of both files; this reads and writes them
-	 *										through that class' own normalize(), so a definition
-	 *										the panel saves is exactly one the endpoint accepts.
+	 *	Forms\Admin				The builder: the forms a project has defined, and one
+	 *										form's fields on a screen of its own. Two levels, no
+	 *										third - the submissions are the kernel's own
+	 *										Submissions panel, which reads the same forms this one
+	 *										writes and needs nothing from here.
 	 *
-	 *										Every word a person reads is resolved here, in the
-	 *										session language, so the script renders what it gets -
-	 *										the same split the Features panel makes. A submission's
-	 *										values travel as they are stored, html-escaped (see
-	 *										Forms::_record()); the script decodes them into
-	 *										textContent, never into markup.
+	 *										What it edits is '/nino/form/forms' in config.php, the
+	 *										key \Nino\Form reads. Nothing is stored anywhere else
+	 *										and nothing is duplicated: a definition saved here is
+	 *										read by the engine on the next request, a definition
+	 *										written by hand shows up here, and switching the
+	 *										feature off leaves every form working.
+	 *
+	 *										Validation is \Nino\Form::normalize(), not a copy of
+	 *										it - so what the panel accepts is exactly what the
+	 *										endpoint accepts, and a rule that changes changes in
+	 *										one place. Every word a person reads is resolved here,
+	 *										in the session language, so the script renders what it
+	 *										gets: the same split the Features panel makes.
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -34,19 +40,16 @@ namespace Nino\Modules\Forms {
 
 		public const string MANAGE_PERM = '/_admin/forms/manage';
 
-		// A form key and a submission id as the runtime class writes them -
-		// checked here before anything is read, so a stray value never
-		// reaches a path or an error message
-		private const string KEY_PATTERN	= '/^[a-z][a-z0-9-]*$/';
-		private const string ID_PATTERN		= '/^[0-9a-f]{16}$/';
+		// A form key as the engine writes one - checked here before anything
+		// is read, so a stray value never reaches an error message
+		private const string KEY_PATTERN = '/^[a-z][a-z0-9-]*$/';
 
 		public static function actions(): array {
 			return [
-				'forms/list'					=> [ self::class, 'apiList' ],
-				'forms/save'					=> [ self::class, 'apiSave' ],
-				'forms/delete'				=> [ self::class, 'apiDelete' ],
-				'forms/entries'				=> [ self::class, 'apiEntries' ],
-				'forms/entry-delete'	=> [ self::class, 'apiEntryDelete' ],
+				'forms/list'			=> [ self::class, 'apiList' ],
+				'forms/save'			=> [ self::class, 'apiSave' ],
+				'forms/delete'		=> [ self::class, 'apiDelete' ],
+				'forms/settings'	=> [ self::class, 'apiSettings' ],
 			];
 		}
 
@@ -67,7 +70,7 @@ namespace Nino\Modules\Forms {
 		}
 
 		public static function panes(): array {
-			return [ 'forms-list', 'forms-form', 'forms-entries' ];
+			return [ 'forms-list', 'forms-form' ];
 		}
 
 		public static function assets(): array {
@@ -81,8 +84,11 @@ namespace Nino\Modules\Forms {
 			return \Nino\Admin\Panels::relative( dirname( __DIR__ ). '/text' );
 		}
 
+		// How many forms there are, not how many submissions: the kernel's
+		// Submissions panel already carries that number, and two tiles
+		// answering the same question is one tile too many
 		public static function summary( array &$appData ): array {
-			return [ 'value' => self::count( $appData ), 'label' => '/_admin/forms/label/submissions' ];
+			return [ 'value' => count( \Nino\Form::forms( $appData ) ), 'label' => '/_admin/forms/label/forms' ];
 		}
 
 		public static function log( string $action, array $data ): string {
@@ -95,17 +101,18 @@ namespace Nino\Modules\Forms {
 				$key = is_string( $data['key'] ?? null ) === true ? $data['key'] : '';
 
 			return match( $action ) {
-				'forms/save'					=> 'Save form "'. $key. '"',
-				'forms/delete'				=> 'Delete form "'. $key. '"',
-				'forms/entry-delete'	=> 'Delete a submission of form "'. $key. '"',
-				default								=> '',
+				'forms/save'			=> 'Save form "'. $key. '"',
+				'forms/delete'		=> 'Delete form "'. $key. '"',
+				'forms/settings'	=> 'Edit form settings',
+				default						=> '',
 			};
 		}
 
 		/**
-		 *	Every form with what the list needs: how many submissions it has
-		 *	on file, and - the one state in which none of this does anything -
-		 *	whether the kernel's own contact form is still switched on
+		 *	Every form as the engine reads it, what a field may be, and the
+		 *	two things about the submissions a project decides. Plus the one
+		 *	state in which a form drawn by [form] would post into nothing:
+		 *	the kernel module that owns the endpoint switched off
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
@@ -117,18 +124,28 @@ namespace Nino\Modules\Forms {
 			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::MANAGE_PERM ) === false )
 				return;
 
-			$forms = [];
+			$counts = [];
+			foreach( \Nino\Form::entries( $appData ) as $entry )
+				$counts[ (string) ( $entry['form'] ?? '' ) ] = ( $counts[ (string) ( $entry['form'] ?? '' ) ] ?? 0 ) + 1;
 
-			foreach( \Nino\Modules\Forms::forms( $appData ) as $form )
-				$forms[] = $form + [ 'entries' => count( self::entries( $appData, $form['key'] ) ) ];
+			$forms = [];
+			foreach( \Nino\Form::forms( $appData ) as $form )
+				$forms[] = $form + [ 'entries' => $counts[ $form['key'] ] ?? 0 ];
 
 			\Nino\Http::ok( $request, [
 				'forms'			=> $forms,
-				'types'			=> \Nino\Modules\Forms::TYPES,
-				// True while nothing has ever been saved: the list is showing
-				// the built-in default, not a definition on disk
-				'default'		=> \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Forms::DEFINITIONS, [] ) === [],
-				'blocked'		=> \Nino\Modules\Forms::kernelFormActive( $appData ),
+				'types'			=> \Nino\Form::TYPES,
+				'reserved'	=> \Nino\Form::RESERVED,
+				// True while the project has defined none: the list is showing
+				// the contact form the kernel falls back to, not a definition of
+				// its own - and saving anything is what first writes the key
+				'default'		=> is_array( $appData[ \Nino\Form::FORMS ] ?? null ) === false || $appData[ \Nino\Form::FORMS ] === [],
+				'retention'	=> \Nino\Form::retention( $appData ),
+				'store'			=> \Nino\Form::stores( $appData ),
+				// The endpoint every form posts to is \Nino\Modules\Form's. A
+				// project that switched it off has no form endpoint on purpose,
+				// and the panel is the only place that would ever say so
+				'endpoint'	=> \Nino\Modules\Forms::endpointActive( $appData ),
 			] );
 		}
 
@@ -150,21 +167,20 @@ namespace Nino\Modules\Forms {
 			$data		= \Nino\Admin\Admin::postData();
 			$posted	= is_array( $data['form'] ?? null ) === true ? $data['form'] : [];
 			$was		= is_string( $data['key'] ?? null ) === true ? $data['key'] : '';
-			$form		= \Nino\Modules\Forms::normalize( $posted );
+			$form		= \Nino\Form::normalize( $posted );
 
 			if( $form === null ) {
 				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/forms/error/invalid' ) );
 				return;
 			}
 
-			// The definitions file is written whole rather than mutated in
-			// place: it is one short list, and the panel always posts the
-			// form as it should be afterwards
-			$forms 	= \Nino\Modules\Forms::forms( $appData );
+			// The list is written whole rather than mutated in place: it is one
+			// short array, and the panel always posts the form as it should be
+			// afterwards
 			$out		= [];
 			$found	= false;
 
-			foreach( $forms as $existing ) {
+			foreach( \Nino\Form::forms( $appData ) as $existing ) {
 
 				// The one being replaced, found by the key it had before this
 				// edit - so a rename stays one entry rather than becoming two.
@@ -188,7 +204,7 @@ namespace Nino\Modules\Forms {
 			if( $found === false )
 				$out[] = $form;
 
-			if( \Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Forms::DEFINITIONS, $out ) === false ) {
+			if( self::_write( $appData, $out ) === false ) {
 				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/forms/error/save' ) );
 				return;
 			}
@@ -197,9 +213,10 @@ namespace Nino\Modules\Forms {
 		}
 
 		/**
-		 *	Delete one form. Its submissions stay on disk: they are what a
-		 *	person asked for, not a property of the definition, and the
-		 *	retention window removes them on its own schedule
+		 *	Delete one form. Its submissions stay: they are what a person
+		 *	asked for, not a property of the definition, and the retention
+		 *	window removes them on its own schedule. The Submissions panel
+		 *	goes on showing them under the key they were recorded with
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
@@ -219,11 +236,21 @@ namespace Nino\Modules\Forms {
 			}
 
 			$out = [];
-			foreach( \Nino\Modules\Forms::forms( $appData ) as $form )
+			foreach( \Nino\Form::forms( $appData ) as $form )
 				if( $form['key'] !== $key )
 					$out[] = $form;
 
-			if( \Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Forms::DEFINITIONS, $out ) === false ) {
+			// Deleting the last one would leave the key empty, which is what
+			// "this project has defined no forms" means - and the engine would
+			// answer with its built-in contact form again. Refused rather than
+			// done quietly: a project with no form at all is a decision, and
+			// removing the module is how it is made
+			if( $out === [] ) {
+				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/forms/error/last' ) );
+				return;
+			}
+
+			if( self::_write( $appData, $out ) === false ) {
 				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/forms/error/save' ) );
 				return;
 			}
@@ -232,196 +259,83 @@ namespace Nino\Modules\Forms {
 		}
 
 		/**
-		 *	One form's submissions, most recent first, with the field names
-		 *	the panel builds its columns from - the union of what the
-		 *	definition declares now and what the stored entries actually
-		 *	carry, so a field that was renamed or removed still shows its
-		 *	answers instead of dropping them silently
+		 *	The two things about the submissions a project decides: how many
+		 *	months they stay, and whether they are written at all. Both are
+		 *	the kernel's own config keys rather than this feature's settings -
+		 *	it is the kernel that writes the records, and a project that
+		 *	switches the feature off keeps whatever it chose here
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
 		 *
 		 *	@return 	void
 		 */
-		public static function apiEntries( array &$appData, array &$request ): void {
+		public static function apiSettings( array &$appData, array &$request ): void {
 
 			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::MANAGE_PERM ) === false )
 				return;
 
-			$key = self::_key();
+			$data				= \Nino\Admin\Admin::postData();
+			$retention	= $data['retention'] ?? null;
 
-			if( $key === '' ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/forms/error/key' ) );
+			if( is_int( $retention ) === false || $retention < 1 || $retention > 60 ) {
+				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/forms/error/retention' ) );
 				return;
 			}
 
-			$entries	= self::entries( $appData, $key );
-			$form			= \Nino\Modules\Forms::form( $appData, $key );
-			$columns	= [];
+			$appData[ \Nino\Form::RETENTION ]	= $retention;
+			$appData[ \Nino\Form::STORE ]			= ( $data['store'] ?? true ) === true;
 
-			foreach( $form['fields'] ?? [] as $field )
-				$columns[$field['name']] = \Nino\Html::renderHtml( $appData, $field['label'] );
-
-			foreach( $entries as $entry )
-				foreach( array_keys( (array) ( $entry['fields'] ?? [] ) ) as $name )
-					if( isset( $columns[$name] ) === false )
-						$columns[$name] = $name;
-
-			\Nino\Http::ok( $request, [
-				'key'			=> $key,
-				'name'		=> $form['name'] ?? $key,
-				'columns'	=> $columns,
-				'entries'	=> array_reverse( $entries ),
-			] );
-		}
-
-		/**
-		 *	Delete one submission, found by the id it was recorded with
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array 		&$request			(reference) Current server request
-		 *
-		 *	@return 	void
-		 */
-		public static function apiEntryDelete( array &$appData, array &$request ): void {
-
-			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::MANAGE_PERM ) === false )
-				return;
-
-			$data	= \Nino\Admin\Admin::postData();
-			$key	= self::_key();
-			$id		= is_string( $data['id'] ?? null ) === true ? $data['id'] : '';
-
-			if( $key === '' || preg_match( self::ID_PATTERN, $id ) !== 1 ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/forms/error/key' ) );
+			if( \Nino\AppData::writeContentData( $appData, [ \Nino\Form::RETENTION, \Nino\Form::STORE ] ) === false ) {
+				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/forms/error/save' ) );
 				return;
 			}
 
-			$removed = false;
-
-			foreach( self::_files( $appData, $key ) as $file ) {
-
-				\Nino\Filesystem::mutate( $appData, \Nino\Modules\Forms::DIR. '/'. $file, function( array $entries ) use ( $id, &$removed ): ?array {
-
-					foreach( $entries as $entryKey => $entry )
-						if( (string) ( $entry['id'] ?? '' ) === $id ) {
-							unset( $entries[$entryKey] );
-							$removed = true;
-							return array_values( $entries );
-						}
-
-					return null;
-				} );
-
-				if( $removed === true )
-					break;
-			}
-
-			if( $removed === false ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/forms/error/entry' ) );
-				return;
-			}
-
-			\Nino\Http::ok( $request, [ 'deleted' => $id ] );
+			\Nino\Http::ok( $request, [ 'retention' => $retention, 'store' => $appData[ \Nino\Form::STORE ] ] );
 		}
 
 		/**
-		 *	How many submissions are on file across every form - shared by
-		 *	summary() and the Dashboard tile behind it
+		 *	Write the whole list of forms into config.php, and into the
+		 *	running request with it - so anything reading \Nino\Form::forms()
+		 *	after this call sees what was just saved
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		$forms				Normalized forms
 		 *
-		 *	@return 	int
+		 *	@return 	bool
 		 */
-		public static function count( array &$appData ): int {
+		private static function _write( array &$appData, array $forms ): bool {
 
-			$total = 0;
+			$appData[ \Nino\Form::FORMS ] = $forms;
 
-			foreach( \Nino\Modules\Forms::forms( $appData ) as $form )
-				$total += count( self::entries( $appData, $form['key'] ) );
-
-			return $total;
+			return \Nino\AppData::writeContentData( $appData, [ \Nino\Form::FORMS ] );
 		}
 
 		/**
-		 *	One form's submissions within the retention window, oldest first
-		 *	(as stored). Public because the list needs the count and the
-		 *	entries screen the rows, and reading them twice is one glob
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$key					A form key
-		 *
-		 *	@return 	array
-		 */
-		public static function entries( array &$appData, string $key ): array {
-
-			$entries = [];
-
-			foreach( self::_files( $appData, $key ) as $file )
-				foreach( \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Forms::DIR. '/'. $file, [] ) as $entry )
-					if( is_array( $entry ) === true )
-						$entries[] = $entry;
-
-			return $entries;
-		}
-
-		/**
-		 *	The month files of one form, oldest first - "<key>.<Y-m>.php"
-		 *	and nothing else, so definitions.php and rate.php beside them
-		 *	are never read as submissions
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$key					A form key, already checked
-		 *
-		 *	@return 	array										Basenames
-		 */
-		private static function _files( array &$appData, string $key ): array {
-
-			if( preg_match( self::KEY_PATTERN, $key ) !== 1 )
-				return [];
-
-			$dir 	 = \Nino\Filesystem::path( $appData, \Nino\Modules\Forms::DIR );
-			$files = [];
-
-			foreach( glob( $dir. '/'. $key. '.*.php' ) ?: [] as $file ) {
-
-				$month = substr( basename( $file, '.php' ), strlen( $key ) + 1 );
-
-				if( preg_match( '/^\d{4}-\d{2}$/', $month ) === 1 )
-					$files[] = basename( $file );
-			}
-
-			sort( $files );
-
-			return $files;
-		}
-
-		/**
-		 *	The posted form key, '' for anything that is not one
+		 *	The posted form key, '' when it is not one
 		 *
 		 *	@return 	string
 		 */
 		private static function _key(): string {
 
-			$data	= \Nino\Admin\Admin::postData();
-			$key 	= is_string( $data['key'] ?? null ) === true ? $data['key'] : '';
+			$key = \Nino\Admin\Admin::postData()['key'] ?? null;
 
-			return preg_match( self::KEY_PATTERN, $key ) === 1 ? $key : '';
+			return is_string( $key ) === true && preg_match( self::KEY_PATTERN, $key ) === 1 ? $key : '';
 		}
 
 		/**
-		 *	One of the panel's own messages in the session language - the
-		 *	same shape the Features panel's _say() has: a fill resolved
-		 *	here, so the script only ever renders what it is handed
+		 *	One of this panel's own fills, in the language of whoever is
+		 *	looking - the panel phrases its refusals, the script only shows
+		 *	them
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$key					Fill key
+		 *	@param		string		$key					A fill key
 		 *
 		 *	@return 	string
 		 */
 		private static function _say( array &$appData, string $key ): string {
+
 			return \Nino\Html::renderHtml( $appData, '[['. $key. ']]' );
 		}
 	}
-
 }

@@ -17,7 +17,7 @@ This repository is the place Nino's features are published from. `features/<Name
 | Key | Name | Category | Version | Nino | What it does |
 | --- | --- | --- | --- | --- | --- |
 | `consent` | [Consent](features/Consent/README.md) | `security` | 1.0.0 | `^1.1` | A cookie/consent banner with categories and consent-gated scripts, no third party involved |
-| `forms` | [Forms](features/Forms/README.md) | `communication` | 1.0.0 | `^1.1` | Any number of forms with fields of their own, their submissions as a workbench panel with export, and spam protection without a captcha |
+| `forms` | [Forms](features/Forms/README.md) | `communication` | 1.0.0 | `^1.1` | A builder for Nino's own form endpoint: any number of forms, a `[form]` shortcode that draws them, and spam protection without a captcha |
 | `mailer` | [Mailer](features/Mailer/README.md) | `system` | 1.0.0 | `^1.1` | Delivers every mail Nino sends over SMTP instead of the server’s `mail()` |
 | `newsletter` | [Newsletter](features/Newsletter/README.md) | `communication` | 1.0.0 | `^1.0` | Double opt-in signup with confirmation and unsubscribe links, and the subscriber list as a workbench panel |
 | `protected` | [Protected](features/ProtectedArea/README.md) | `security` | 1.0.0 | `^1.1` | Puts one or more pages behind one shared password, without accounts |

@@ -2,12 +2,13 @@
 
 /**
  *	Nino										A compact filesystembased php framework
- *	Modules\Forms						The forms, their fields and their submissions
+ *	Modules\Forms						The forms a project has defined, and their fields
  *	admin.css								What the feature's /_admin panel needs beyond the
  *													design system in _admin/assets/style.css: the row of
- *													buttons a form's card carries, and one field of the
- *													form editor as a row rather than a column of five
- *													controls. Bundled while the feature is active (see
+ *													buttons a form's card carries, one field of the form
+ *													editor as a row rather than a column of five
+ *													controls, and the two submission settings under the
+ *													list. Bundled while the feature is active (see
  *													the panel's assets()), so the same layer rules apply -
  *													the shell's stylesheet fixes the layer order, this one
  *													only ever adds to nino.tool, scoped to the panel's own
@@ -20,9 +21,8 @@
 
 @layer nino.tool {
 
-/*	Edit, Submissions and Delete on one card. The script builds them as
-	siblings with no whitespace between them, so the row carries its gap
-	itself. */
+/*	Edit and Delete on one card. The script builds them as siblings with no
+	whitespace between them, so the row carries its gap itself. */
 #forms-list .forms-actions {
 	display: flex;
 	flex-wrap: wrap;
@@ -67,6 +67,20 @@
 #forms-form .forms-field > button {
 	flex: 0 0 auto;
 	margin-bottom: .35rem;
+}
+
+/*	How long submissions are kept and whether they are kept - two controls
+	that belong to the list as a whole rather than to any one form, so they
+	sit under it, set apart by a rule rather than by a card. A card would
+	read as a form among the forms. */
+#forms-list .forms-settings {
+	margin-top: 1.5rem;
+	padding-top: 1.25rem;
+	border-top: 1px solid var(--editor-separator);
+}
+
+#forms-list .forms-settings > h3 {
+	margin: 0 0 .75rem;
 }
 
 }
