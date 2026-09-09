@@ -54,6 +54,9 @@ foreach( \Nino\Features::all( $appData ) as $feature )
 		'key'					=> $feature['key'],
 		'name'				=> $feature['name'],
 		'description'	=> $feature['description'],
+		// ?? '': the preview runs against whatever checkout NINO_ROOT names,
+		// including one released before features had a category
+		'category'		=> $feature['category'] ?? '',
 		'version'			=> $feature['version'],
 		'nino'				=> $feature['nino'],
 		'php'					=> $feature['php'],

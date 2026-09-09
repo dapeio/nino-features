@@ -10,6 +10,7 @@ return [
 		'en_US' => 'A cookie/consent banner with categories (statistics, marketing, external media) and consent-gated scripts - no third party involved.',
 		'de_DE' => 'Ein Cookie-/Consent-Banner mit Kategorien (Statistik, Marketing, externe Medien) und einwilligungsabhängigen Skripten - ohne Drittanbieter.',
 	],
+	'category'		=> 'security',
 	'version'			=> '1.0.0',
 	'nino'				=> '^1.1',
 	'requires'		=> [],

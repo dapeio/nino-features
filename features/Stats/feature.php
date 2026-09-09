@@ -8,6 +8,7 @@ return [
 		'en_US' => 'Page-view counts for the workbench - no cookies, no ip addresses, no fingerprints, nothing stored per visitor.',
 		'de_DE' => 'Seitenaufruf-Zählung für die Workbench - keine Cookies, keine IP-Adressen, keine Fingerprints, nichts wird pro Besucher gespeichert.',
 	],
+	'category'		=> 'marketing',
 	'version'			=> '1.0.0',
 	'nino'				=> '^1.1',
 	'requires'		=> [],

@@ -9,6 +9,7 @@ return [
 		'en_US' => 'Puts one or more pages behind one shared password - a members\' area, a client preview, an internal page - without accounts.',
 		'de_DE' => 'Stellt eine oder mehrere Seiten hinter ein gemeinsames Passwort - einen Mitgliederbereich, eine Kundenvorschau, eine interne Seite - ganz ohne Benutzerkonten.',
 	],
+	'category'		=> 'security',
 	'version'			=> '1.0.0',
 	'nino'				=> '^1.1',
 	'requires'		=> [],

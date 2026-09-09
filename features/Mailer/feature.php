@@ -8,6 +8,7 @@ return [
 		'en_US' => 'Delivers every mail Nino sends over SMTP instead of the server\'s mail() - reliable on hosts where mail() is missing or unreliable.',
 		'de_DE' => 'Versendet jede von Nino verschickte Mail über SMTP statt über das mail() des Servers - zuverlässig auch dort, wo mail() fehlt oder unzuverlässig ist.',
 	],
+	'category'		=> 'system',
 	'version'			=> '1.0.0',
 	'nino'				=> '^1.1',
 	'requires'		=> [],

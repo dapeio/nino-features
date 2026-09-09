@@ -10,6 +10,7 @@ return [
 		'en_US' => 'A locale-aware fuzzy search index over configured Element fields, rebuilt on every save and from the Search panel. Configure the indexed types under /nino/elements/index in config.php.',
 		'de_DE' => 'Ein sprachbewusster unscharfer Suchindex über konfigurierte Elementfelder, neu gebaut bei jedem Speichern und aus dem Panel Suche. Die indizierten Typen stehen unter /nino/elements/index in config.php.',
 	],
+	'category'		=> 'content',
 	'version'			=> '1.0.0',
 	'nino'				=> '^1.0',
 	'requires'		=> [],

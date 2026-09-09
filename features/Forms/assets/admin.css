@@ -1,0 +1,72 @@
+@layer nino.system, nino.tool, nino.local;
+
+/**
+ *	Nino										A compact filesystembased php framework
+ *	Modules\Forms						The forms, their fields and their submissions
+ *	admin.css								What the feature's /_admin panel needs beyond the
+ *													design system in _admin/assets/style.css: the row of
+ *													buttons a form's card carries, and one field of the
+ *													form editor as a row rather than a column of five
+ *													controls. Bundled while the feature is active (see
+ *													the panel's assets()), so the same layer rules apply -
+ *													the shell's stylesheet fixes the layer order, this one
+ *													only ever adds to nino.tool, scoped to the panel's own
+ *													panes.
+ *
+ *	@package								Dape/Nino
+ *	@author									David Perchermeier <mail@dape.io>
+ *	@link										https://github.com/dapeio/nino
+ */
+
+@layer nino.tool {
+
+/*	Edit, Submissions and Delete on one card. The script builds them as
+	siblings with no whitespace between them, so the row carries its gap
+	itself. */
+#forms-list .forms-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: .5rem;
+}
+
+/*	One field of the form being edited. Five controls stacked would make a
+	form of six fields a page nobody can see the end of, so they sit in a
+	row on a wide screen and fall back to a column on a phone - the widths
+	are the shape of the content: a name and a label are words, a type is a
+	short list, the switch and the button are as wide as they are. */
+#forms-form .forms-field {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	gap: .65rem;
+	margin-bottom: .65rem;
+	padding-bottom: .65rem;
+	border-bottom: 1px solid var(--editor-separator);
+}
+
+#forms-form .forms-field:last-of-type {
+	border-bottom: 0;
+}
+
+#forms-form .forms-field > .nino-admin-field {
+	flex: 1 1 9rem;
+	min-width: 0;
+	margin: 0;
+}
+
+#forms-form .forms-field > .nino-admin-field-wide {
+	flex: 1 1 100%;
+}
+
+#forms-form .forms-field > .nino-admin-switch {
+	flex: 0 0 auto;
+	margin: 0 0 .35rem;
+}
+
+#forms-form .forms-field > button {
+	flex: 0 0 auto;
+	margin-bottom: .35rem;
+}
+
+}

@@ -55,7 +55,7 @@ and the other three where the feature carries them:
 
 | File | What changes with it |
 | --- | --- |
-| `feature.php` | `version` is bumped with every release a project should be able to tell apart - the Features panel can only offer an update it can see. `nino` names the Nino versions the feature is written for; change it only when the feature really stops running on a version it named |
+| `feature.php` | `version` is bumped with every release a project should be able to tell apart - the Features panel can only offer an update it can see. `nino` names the Nino versions the feature is written for; change it only when the feature really stops running on a version it named. `category` says what the feature is for, and is decided top-down by what a site owner wants rather than by how the feature is built - the rule is in Nino's [Features](https://github.com/dapeio/nino/blob/main/docs/features.md#categories) manual |
 | `CHANGELOG.md` | when present: one entry per version, `## <version> — <date>`, newest first, with what changed for a project that installs it |
 | `README.md` | when present: every route, key, fill, method, file and permission it names exists in the code; a behaviour that changed is described as it is now |
 | `tests/<key>-smoke.php` | when present: the feature's own test covers the change; it loads the harness as described in section 5 |
@@ -94,7 +94,7 @@ After editing:
 
 | Path | Ownership |
 | --- | --- |
-| `features/<Name>/` | One feature, exactly what lands in a project's `features/`. `Newsletter` and `Search` today. The directory name is the class name `\Nino\Modules\<Name>` and MUST match `/^[A-Z][A-Za-z0-9]*$/` |
+| `features/<Name>/` | One feature, exactly what lands in a project's `features/`. Eight today: `Consent`, `Forms`, `Mailer`, `Newsletter`, `ProtectedArea`, `Search`, `Seo`, `Stats`. The directory name is the class name `\Nino\Modules\<Name>` and MUST match `/^[A-Z][A-Za-z0-9]*$/` |
 | `bin/catalogue.php` | The preview: reads every manifest through a Nino checkout and prints what the catalogue would list as JSON - key, name, description, version, `nino`, `php`, `requires`, directory - without an archive or a signature. A manifest Nino would skip fails the run. Defines `NINO_FEATURES_DIR` as this repository's `features/`, so the checkout's own directory is never what it reads. `bin/check.sh`, CI and the release workflow use it as the manifest check |
 | `bin/build.php` | The publishing tool: `php bin/build.php <nino-checkout> <out-dir> [--base-url …] [--key private.pem] [--only <key>]`. Validates every manifest the same way, builds `<out-dir>/<key>-<version>.tar.gz` per feature as a plain ustar tar written by the script itself, every entry stamped with one fixed time - exactly one directory `<Name>/`, without `tests/`, `.git*`, `.DS_Store` and editor leftovers, sorted so a build is reproducible - and merges the entries into `<out-dir>/catalogue.json` in format 1 (see `\Nino\Catalogue` in Nino), signing it with `--key`. An archive that already exists is never rebuilt or overwritten and its entry is kept: a published version is immutable |
 | `bin/check.sh` | Copies every feature into the checkout (`../nino` or `NINO_ROOT`), runs `bin/catalogue.php`, every feature's tests, `tests/build-smoke.php`, `tests/publish-smoke.php` and `tests/release-smoke.php`, removes the copies again. A directory the checkout already carries is left alone |
@@ -120,7 +120,7 @@ because a feature here is published on its own:
 
 | File | Requirement |
 | --- | --- |
-| `feature.php` | `key` (a slug), `name`, `description` (a string or a `locale => string` map, `en_US` and `de_DE` at least), `version` (`major.minor.patch`), `nino` (a version constraint, `^1.0` today), `requires`, `settings`, `data` - every key spelled out, even when empty, so a reader sees what the feature does not do |
+| `feature.php` | `key` (a slug), `name`, `description` (a string or a `locale => string` map, `en_US` and `de_DE` at least), `category` (one of `content`, `ui`, `communication`, `marketing`, `security`, `system` - `bin/build.php` refuses anything else, and refuses a feature without one), `version` (`major.minor.patch`), `nino` (a version constraint, `^1.0` today), `requires`, `settings`, `data` - every key spelled out, even when empty, so a reader sees what the feature does not do |
 | `<Name>.php` | the runtime class `\Nino\Modules\<Name>`; `init()` registers and outputs nothing; `adminPanels()` when there is a panel; `upgrade()` when a version changes the shape of its data; a `'/nino/admin/restore'` callback when its `data/` files must merge on restore |
 | `Admin/Admin.php` | the panel, when there is one: `actions()`, `nav()`, `perm()`, `text()`, every action guarded with `\Nino\Admin\Admin::guardPerm()`; `assets()` named through `\Nino\Admin\Panels::relative()` so they move with the directory |
 | `text/<locale>.php` | the panel's fills for every interface language Nino ships, `en_US` and `de_DE` |

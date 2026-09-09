@@ -185,6 +185,22 @@ check( 'every feature directory has a manifest this kernel validates', count( $m
 check( 'the two features of the catalogue are among them', isset( $manifests['newsletter'] ) === true && isset( $manifests['search'] ) === true );
 check( 'every feature carries a test under tests/ - the archive is what has to leave it out', array_filter( $manifests, static fn( array $manifest ): bool => ( glob( $manifest['dir']. '/tests/*-smoke.php' ) ?: [] ) === [] ) === [] );
 
+// CI builds against Nino's main and against its latest tag, and a kernel
+// released before features had a category hands back manifests without one -
+// so the entries built from them carry none either, and there is nothing to
+// hold to a vocabulary
+$categorised = defined( '\Nino\Features::CATEGORIES' );
+
+// The vocabulary read from the tool rather than repeated here: what this pins
+// is that the two lists are one list, not which six words they hold today
+preg_match( '/const BUILD_CATEGORIES\s*=\s*\[([^\]]*)\]/', (string) file_get_contents( $build ), $categoryMatch );
+$categories = array_values( array_filter( array_map( static fn( string $part ): string => trim( $part, " \t\n\r'" ), explode( ',', $categoryMatch[1] ?? '' ) ) ) );
+
+check( 'the tool publishes a vocabulary of categories, and it is the kernel\'s wherever the kernel has one', count( $categories ) === 6
+	&& ( $categorised === false || $categories === \Nino\Features::CATEGORIES ) );
+check( 'and every feature of this repository is filed under one of them', $categorised === false
+	|| array_filter( $manifests, static fn( array $manifest ): bool => in_array( $manifest['category'], $categories, true ) === false ) === [] );
+
 echo "\n";
 
 
@@ -285,8 +301,14 @@ foreach( $manifests as $key => $manifest ) {
 	$name		= $key. '-'. $manifest['version']. '.tar.gz';
 	$entry	= entryOf( $document, $key );
 
-	check( $key. ': the entry carries exactly the fields of format 1, in order', is_array( $entry ) === true && array_keys( $entry ) === [ 'key', 'name', 'description', 'version', 'nino', 'php', 'requires', 'directory', 'archive', 'sha256', 'size', 'released' ] );
+	$fields = $categorised === true
+		? [ 'key', 'name', 'description', 'category', 'version', 'nino', 'php', 'requires', 'directory', 'archive', 'sha256', 'size', 'released' ]
+		: [ 'key', 'name', 'description', 'version', 'nino', 'php', 'requires', 'directory', 'archive', 'sha256', 'size', 'released' ];
+
+	check( $key. ': the entry carries exactly the fields of format 1, in order', is_array( $entry ) === true && array_keys( $entry ) === $fields );
 	check( $key. ': name, description, version, nino, php and requires are the manifest\'s', is_array( $entry ) === true && $entry['name'] === $manifest['name'] && $entry['description'] === $manifest['description'] && $entry['version'] === $manifest['version'] && $entry['nino'] === $manifest['nino'] && $entry['php'] === [ 'ext' => $manifest['php']['ext'] ] && $entry['requires'] === $manifest['requires'] );
+	check( $key. ': the category is the manifest\'s, and one the catalogue publishes', $categorised === false
+		|| ( is_array( $entry ) === true && $entry['category'] === $manifest['category'] && in_array( $entry['category'], $categories, true ) === true ) );
 	check( $key. ': directory and archive url name the archive under the base url', is_array( $entry ) === true && $entry['directory'] === basename( $manifest['dir'] ) && $entry['archive'] === $baseUrl. '/'. $name );
 	check( $key. ': sha256 and size are the archive\'s as written', is_array( $entry ) === true && $entry['sha256'] === hash_file( 'sha256', $out. '/'. $name ) && $entry['size'] === filesize( $out. '/'. $name ) );
 	check( $key. ': released is the build day', is_array( $entry ) === true && $entry['released'] === $today );

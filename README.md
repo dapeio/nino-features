@@ -14,10 +14,18 @@ This repository is the place Nino's features are published from. `features/<Name
 
 ## The features
 
-| Key | Name | Version | Nino | What it does |
-| --- | --- | --- | --- | --- |
-| `newsletter` | [Newsletter](features/Newsletter/README.md) | 1.0.0 | `^1.0` | Double opt-in signup with confirmation and unsubscribe links, and the subscriber list as a workbench panel |
-| `search` | [Elements search](features/Search/README.md) | 1.0.0 | `^1.0` | A locale-aware fuzzy search index over configured Element fields, rebuilt on every save and from the Search panel |
+| Key | Name | Category | Version | Nino | What it does |
+| --- | --- | --- | --- | --- | --- |
+| `consent` | [Consent](features/Consent/README.md) | `security` | 1.0.0 | `^1.1` | A cookie/consent banner with categories and consent-gated scripts, no third party involved |
+| `forms` | [Forms](features/Forms/README.md) | `communication` | 1.0.0 | `^1.1` | Any number of forms with fields of their own, their submissions as a workbench panel with export, and spam protection without a captcha |
+| `mailer` | [Mailer](features/Mailer/README.md) | `system` | 1.0.0 | `^1.1` | Delivers every mail Nino sends over SMTP instead of the server’s `mail()` |
+| `newsletter` | [Newsletter](features/Newsletter/README.md) | `communication` | 1.0.0 | `^1.0` | Double opt-in signup with confirmation and unsubscribe links, and the subscriber list as a workbench panel |
+| `protected` | [Protected](features/ProtectedArea/README.md) | `security` | 1.0.0 | `^1.1` | Puts one or more pages behind one shared password, without accounts |
+| `search` | [Elements search](features/Search/README.md) | `content` | 1.0.0 | `^1.0` | A locale-aware fuzzy search index over configured Element fields, rebuilt on every save and from the Search panel |
+| `seo` | [Seo](features/Seo/README.md) | `marketing` | 1.0.0 | `^1.1` | Sitemap, robots.txt and llms.txt generated from the routes, locales and texts Nino already has |
+| `stats` | [Stats](features/Stats/README.md) | `marketing` | 1.0.0 | `^1.1` | Page-view counts for the workbench, without cookies, ip addresses or anything stored per visitor |
+
+**Category** is what the Features panel groups and filters by, one per feature: `content`, `ui`, `communication`, `marketing`, `security` or `system` - the vocabulary Nino publishes as `\Nino\Features::CATEGORIES` and [Features](https://github.com/dapeio/nino/blob/main/docs/features.md#categories) explains, with the rule for deciding between two of them. Nino itself takes any slug, so an older kernel can read a catalogue that files a feature under a category it predates; `bin/build.php` is what holds a published feature to the six, so a typo is caught here rather than shown as a heading of its own in someone's panel.
 
 A feature's README, where it has one, describes its routes, its panel, its install unit, its data and its tests; its `CHANGELOG.md`, where it has one, the changes between versions. `bin/catalogue.php` reads the same manifests and prints this table as JSON, `bin/build.php` builds the archives and the signed `catalogue.json` getnino.dev publishes - see [Develop and test](#develop-and-test) and [Publishing](#publishing).
 
@@ -69,7 +77,7 @@ The [feature recipe](https://github.com/dapeio/nino/blob/main/docs/recipes/featu
 
 ```text
 features/<Name>/
-├── feature.php              the manifest: key, name, description, version, nino, requires, settings, data
+├── feature.php              the manifest: key, name, description, category, version, nino, requires, settings, data
 ├── <Name>.php               the runtime class \Nino\Modules\<Name>
 ├── Admin/Admin.php          the panel \Nino\Modules\<Name>\Admin, when there is one
 ├── assets/                  the panel's script and stylesheet
@@ -195,6 +203,7 @@ Without `--key` it writes no signature and prints that one-liner; with `--key ca
 | --- | --- |
 | `key` | the feature key, a slug - `newsletter` |
 | `name`, `description` | as the manifest has them: a string, or a `locale => string` map |
+| `category` | what the feature is for, one slug - the manifest's; left out where it names none |
 | `version` | `major.minor.patch`, the manifest's |
 | `nino` | the Nino version constraint, `^1.0` |
 | `php` | `{ "ext": [ ... ] }` - the PHP extensions the feature needs |
@@ -205,7 +214,7 @@ Without `--key` it writes no signature and prints that one-liner; with `--key ca
 | `size` | its size in bytes, at most 20 MB |
 | `released` | the day it was published, `YYYY-MM-DD` |
 
-`generated` is the time of the last build, ISO 8601 UTC. The entries are sorted by key, then by version descending; a kernel picks the highest version it can run. What `\Nino\Catalogue::parse()` in Nino refuses - a missing field, a url that is not https, an archive above 20 MB - refuses the whole catalogue, so `bin/build.php` checks what it wrote against `parse()` where the checkout has it.
+`generated` is the time of the last build, ISO 8601 UTC. The entries are sorted by key, then by version descending; a kernel picks the highest version it can run. What `\Nino\Catalogue::parse()` in Nino refuses - a missing field, a url that is not https, an archive above 20 MB - refuses the whole catalogue, so `bin/build.php` checks what it wrote against `parse()` where the checkout has it. `category` is the one field that is dropped rather than refused: it is a heading in a list, and a kernel that turned down a signed catalogue over a category it had never heard of would stop reading the catalogue the day a newer one publishes one. That is also why it did not raise the format number - `parse()` takes only the keys it knows.
 
 ## Outlook
 

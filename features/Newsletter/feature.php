@@ -10,6 +10,7 @@ return [
 		'en_US' => 'Double opt-in signup with confirmation and unsubscribe links, and the subscriber list as a workbench panel.',
 		'de_DE' => 'Double-Opt-in-Anmeldung mit Bestätigungs- und Abmeldelink, und die Abonnentenliste als Panel der Workbench.',
 	],
+	'category'		=> 'communication',
 	'version'			=> '1.0.0',
 	'nino'				=> '^1.0',
 	'requires'		=> [],

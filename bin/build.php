@@ -55,7 +55,17 @@ const BUILD_MAX_ENTRIES					= 5000;
 // path segment; 'tests' only against the first
 const BUILD_EXCLUDED						= [ '.git*', '.DS_Store', 'Thumbs.db', '.idea', '.vscode', '*~', '*.swp', '*.swo', '*.swx', '.#*', '#*#', '*.orig', '*.rej', '*.bak' ];
 
-const BUILD_ENTRY_FIELDS				= [ 'key', 'name', 'description', 'version', 'nino', 'php', 'requires', 'directory', 'archive', 'sha256', 'size', 'released' ];
+const BUILD_ENTRY_FIELDS				= [ 'key', 'name', 'description', 'category', 'version', 'nino', 'php', 'requires', 'directory', 'archive', 'sha256', 'size', 'released' ];
+
+// The categories a published feature may name - the same six the kernel
+// publishes as \Nino\Features::CATEGORIES, kept here rather than read from
+// there because this is the side that decides them: the kernel takes any
+// slug so that an older Nino can still read a catalogue filing a feature
+// under a category it predates, which means a typo would travel all the way
+// to a project's Features panel as a heading of its own. This is where it is
+// caught, while it is still one line to fix - and a new category is a change
+// here and a catalogue release, not a Nino release
+const BUILD_CATEGORIES					= [ 'content', 'ui', 'communication', 'marketing', 'security', 'system' ];
 
 // The modification time every archive entry carries - one fixed instant,
 // 2026-01-01T00:00:00Z, never the clock: what makes a rebuild the same bytes
@@ -455,6 +465,14 @@ foreach( scandir( NINO_FEATURES_DIR ) ?: [] as $entry ) {
 	if( isset( $features[ $manifest['key'] ] ) === true )
 		fail( 'features/'. $entry. ' claims the key "'. $manifest['key']. '" that features/'. basename( $features[ $manifest['key'] ]['dir'] ). ' already holds' );
 
+	// Only where the checkout being built against understands the field at
+	// all: CI runs this against Nino's main and against its latest tag, and a
+	// kernel released before categories existed hands back a manifest without
+	// one. Nothing to enforce there - and nothing lost either, since the
+	// entry it builds carries no category to get wrong
+	if( array_key_exists( 'category', $manifest ) === true && in_array( $manifest['category'], BUILD_CATEGORIES, true ) === false )
+		fail( 'features/'. $entry. ' is filed under '. ( $manifest['category'] === '' ? 'no category' : '"'. $manifest['category']. '"' ). ' - a published feature names one of: '. implode( ', ', BUILD_CATEGORIES ) );
+
 	$features[ $manifest['key'] ] = $manifest;
 }
 
@@ -567,6 +585,7 @@ foreach( $selected as $key => $manifest ) {
 		'key'					=> $key,
 		'name'				=> $manifest['name'],
 		'description'	=> $manifest['description'],
+		'category'		=> $manifest['category'] ?? '',
 		'version'			=> $version,
 		'nino'				=> $manifest['nino'],
 		'php'					=> [ 'ext' => array_values( $manifest['php']['ext'] ) ],
@@ -581,6 +600,12 @@ foreach( $selected as $key => $manifest ) {
 	// The kernel refuses an empty description where it accepts a missing one
 	if( is_string( $entry['description'] ) === true && trim( $entry['description'] ) === '' )
 		unset( $entry['description'] );
+
+	// Same rule, and the only way an entry gets here without one: a checkout
+	// older than the field itself. A published catalogue says nothing rather
+	// than says nothing meaningful
+	if( $entry['category'] === '' )
+		unset( $entry['category'] );
 
 	$entries[$id] = $entry;
 }
