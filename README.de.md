@@ -17,6 +17,7 @@ Dieses Repository ist der Ort, von dem aus Ninos Features veröffentlicht werden
 | Key | Name | Kategorie | Version | Nino | Was es tut |
 | --- | --- | --- | --- | --- | --- |
 | `consent` | [Consent](features/Consent/README.md) | `security` | 1.0.0 | `^1.1` | Ein Cookie-/Consent-Banner mit Kategorien und einwilligungsabhängigen Skripten, ohne Drittanbieter |
+| `design` | [Design](features/Design/README.md) | `ui` | 0.1.0 | `^1.2` | Das Aussehen einer Seite, pro Bauteil gewählt statt pro Seite – je ein Set für Hero, Sections, Artikel, Buttons, Formulare, Listen und Bausteine, dazu Header und Footer, in `assets/theme.css` kompiliert |
 | `forms` | [Forms](features/Forms/README.md) | `communication` | 1.0.0 | `^1.1` | Ein Baukasten für Ninos eigenen Formular-Endpunkt: beliebig viele Formulare, ein Shortcode `[form]`, der sie zeichnet, und Spam-Schutz ohne Captcha |
 | `gallery` | [Gallery](features/Gallery/README.md) | `content` | 1.0.0 | `^1.1` | Beliebig viele Bildergalerien, je ein Raster aus Vorschaubildern, die sich bildschirmfüllend öffnen – zwei abgeleitete Größen je Upload, das Original wird nie gespeichert |
 | `lightbox` | [Lightbox](features/Lightbox/README.md) | `ui` | 1.0.0 | `^1.1` | Öffnet jeden Link auf ein Bild bildschirmfüllend, mit seiner Gruppe als Serie – Pfeile, Wischen, Bildunterschriften und ein Fokusrahmen, ohne Bibliothek |
@@ -37,7 +38,7 @@ Die README eines Features, wenn es eine hat, beschreibt seine Routen, sein Panel
 
 ## Die Design-Bibliothek
 
-Neben `features/` liegt [`design-library/`](design-library/README.de.md) – **kein** Feature und nie veröffentlicht. Dort liegen die zehn Themes, sechs Header und sieben Footer, die Ninos Setup-Assistent bis 1.1 angeboten hat, geparkt für das Feature **Design**, das noch nicht geschrieben ist. `bin/build.php` und `bin/check.sh` lesen ausschließlich `features/`, dort wird also nichts in ein Archiv gepackt, in `catalogue.json` gelistet oder als Test ausgeführt.
+Neben `features/` liegt [`design-library/`](design-library/README.de.md) – **kein** Feature und nie veröffentlicht. Dort liegen die zehn Themes für ganze Seiten, die Ninos Setup-Assistent bis 1.1 angeboten hat, das archivierte Handbuch des Panels, das sie kompiliert hat, und `preview.php`, das Werkzeug, in dem die Part-Sets des Features **Design** entworfen werden – nur für die Entwicklung. Die sechs Header und sieben Footer, die dort geparkt waren, sind nach [`features/Design/library/`](features/Design/library) gezogen, als dieses Feature geschrieben wurde: Ein Projekt wählt daraus, also reisen sie mit dem Feature. `bin/build.php` und `bin/check.sh` lesen ausschließlich `features/`, in `design-library/` wird also nichts in ein Archiv gepackt, in `catalogue.json` gelistet oder als Test ausgeführt.
 
 ## Ein Feature installieren
 

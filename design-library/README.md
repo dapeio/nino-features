@@ -2,7 +2,7 @@
 
 **Language:** English · [Deutsch](README.de.md)
 
-Ten themes, six headers and seven footers - parked here for the **Design** feature, which is not written yet.
+Ten whole-page themes from the Nino 1.1 wizard, the archived manual of the panel that compiled them, and the harness the **Design** feature's part sets are designed in.
 
 ## Why this is not in Nino
 
@@ -10,9 +10,9 @@ Up to Nino 1.1 the setup wizard asked four questions about the look of a site: a
 
 Nino 1.2 does not ask. The wizard installs a site and stops there: the base unit delivers one fixed look - `assets/theme.css`, plus the `theme.header.tpl` and `theme.footer.tpl` it is drawn against - and every project starts from the same page. That is a smaller kernel and a shorter wizard, and it puts the look where every other optional thing in Nino lives: in a feature you install when you want it.
 
-The **Design** feature is that feature. It will compile its own stylesheet and replace the base one, and it will offer a catalogue per part of a page - header, footer, sections, typography, articles - rather than one whole-page theme. So this material is not deleted, it is waiting: the ten themes are ten finished sets of decisions, and the thirteen frames are markup and CSS that already work against Nino's grid and its scroll behaviour.
+The **Design** feature is that feature, and it exists now: [`features/Design/`](../features/Design) compiles its own `assets/theme.css` over the base one, out of a set per part of a page rather than one whole-page theme. The six headers and seven footers moved into its library when it was written - they are what a project chooses from, so they ship with it. What stayed here is what the feature does not ship: the ten themes, which are ten finished sets of decisions to read a part set out of rather than to install, and the archived manual of the panel that compiled them.
 
-**Nothing here is a feature.** `bin/build.php` and `bin/check.sh` only ever look below `features/`; this directory is never packed into an archive and never listed in `catalogue.json`. It is source material for a feature that will be written next.
+**Nothing here is a feature.** `bin/build.php` and `bin/check.sh` only ever look below `features/`; this directory is never packed into an archive and never listed in `catalogue.json`. It is source material for a feature that lives one directory over.
 
 ## What is here
 
@@ -48,31 +48,17 @@ Every unit is self-contained: the stylesheet its manifest names, every webfont t
 | `poster` | Poster | v4 | v4 | Headlines that take the whole width, heavy black bands and an overlay menu - the largest root size of the ten, set tight. One loud colour and no second. For studios, agencies, campaigns and anything meant to be read across a room. |
 | `practice` | Practice | v3 | v5 | Rounded, warm and unhurried: the largest root size, gentle contrast, a brand-tinted footer panel and a second colour one step from the first. For practices, studios, local services and anyone whose visitors are looking for reassurance rather than novelty. |
 
-`basis` is the one Nino 1.2 kept: its `design` block and its stylesheet are two of the four sections concatenated into the base unit's `assets/theme.css`, together with `header/v1/style.css` and `footer/v1/style.css`. The site a fresh Nino installs is `basis` - byte for byte what the old wizard produced when you pressed Next four times.
-
-### `header/v<n>/` and `footer/v<n>/`
-
-One page frame each: `template.tpl` and `style.css`, nothing else. The template is what the project's `theme.header.tpl` / `theme.footer.tpl` becomes, included by `html-header.tpl` through `[template /templates/theme.header]`; the stylesheet is what goes into the bundle with it.
-
-| | Variants | What varies |
-| --- | --- | --- |
-| `header/` | v1 - v6 | A plain bar, a bar with a line, a floating bar, an overlay menu behind one mark, a brand strip, a rail down the side |
-| `footer/` | v1 - v7 | From one legal row up to a full column layout with social links, contact block and locale picker |
-
-Two things a header preset has to keep, whichever it is:
-
-- The bar carries `nino-scroll-header`. `_nino/Nino.css` hides it under `body.nino-scroll-down` by taking back `max-height`, `min-height`, both vertical paddings and both horizontal border widths - so a preset must not give the bar a plain `height`, which none of that can take back. A preset that is *not* a bar opts out where it says so: the rail hands `max-height: none` back above its own breakpoint.
-- `footer/v2` includes `[template /templates/html-socialmedia]`. That template is in the base unit, so the include resolves in any project - a frame that needs it does not have to bring it.
+`basis` is the one Nino 1.2 kept: its `design` block and its stylesheet are two of the four sections concatenated into the base unit's `assets/theme.css`, together with the `v1` header and footer - now [`features/Design/library/header/v1`](../features/Design/library/header/v1) and [`footer/v1`](../features/Design/library/footer/v1). The site a fresh Nino installs is `basis` - byte for byte what the old wizard produced when you pressed Next four times.
 
 ### `docs/`
 
 [`docs/appearance.md`](docs/appearance.md) ([Deutsch](docs/appearance.de.md)) is the manual of the **Design** panel as Nino 1.1 shipped it - archived here for the same reason the units are: the settings it documents, the `--nino-*` token names they compile into and the surfaces those tokens paint are the contract the Design feature has to answer to.
 
-[`docs/design-feature.md`](docs/design-feature.md) is the concept the Design feature will be built from - what it catalogues, how a set is authored, what it compiles and what it needs from Nino first. German only for now; it is a working document, not a manual.
+[`docs/design-feature.md`](docs/design-feature.md) is the concept the Design feature was built from - what it catalogues, how a set is authored, what it compiles and what it needed from Nino first. German only; it is the working document the discussion ended in, not a manual. The manual is [`features/Design/README.md`](../features/Design/README.md).
 
 ## The preview
 
-`preview.php` is a design harness for the part sets - dev only, never deployed. It boots a real Nino against a throwaway project, applies the base unit into it, swaps in the header and footer you name, concatenates the sets over the theme layer, and renders one specimen page that touches every class a set can reach.
+`preview.php` is a design harness for the part sets - dev only, never deployed, and not part of the feature archive. It boots a real Nino against a throwaway project, applies the base unit into it, compiles the sets and frames you name through the feature's own `\Nino\Modules\Design\Setup` and `Compiler`, and renders one specimen page that touches every class a set can reach. What it shows is therefore what a project gets, not an approximation of it.
 
 ```bash
 git clone https://github.com/dapeio/nino.git ../nino     # or set NINO_ROOT
@@ -83,9 +69,9 @@ Then open <http://127.0.0.1:8080/>. What to look at is the array at the top of t
 
 ```php
 const PARTS = [
-	'header' 	=> 'v1',   // design-library/header/v1
-	'footer' 	=> 'v3',   // design-library/footer/v3
-	'section' => 'v4',   // design-library/sets/section/v4.css
+	'header' 	=> 'v1',   // features/Design/library/header/v1
+	'footer' 	=> 'v3',   // features/Design/library/footer/v3
+	'section' => 'v4',   // features/Design/library/sets/section/v4.css
 	'article' => [ 'v2', 'less' ],   // set v2, shown at its "less" step
 	…
 ];
@@ -93,8 +79,10 @@ const PARTS = [
 
 The throwaway project is rebuilt on every request, so editing a set or a frame is a reload away. What you see is what a real page renders: the frames go through `\Nino\Html::renderHtml()`, so their textfills, their `[template]` includes and the `[navigation]` shortcode resolve the way they do in a project - the specimen even carries a five-item menu so a header set has something to lay out. A set that does not exist, a frame without a `style.css`, a fill that did not resolve: all of it is named in the bar along the bottom rather than passed over in silence.
 
-`sets/<part>/v1.css` is the starting point for each of the seven parts: it declares nothing, so a fresh preview shows Nino as it is, and lists every rule the framework sets for that part - commented out, with today's values - as the handles that set has. Copy it to `v2.css` and start there.
+The sets and frames themselves are the feature's, in [`features/Design/library/`](../features/Design/library) - its [README](../features/Design/README.md) is where the two rules for writing one are. `sets/<part>/v1.css` there is the starting point for each of the seven parts: it declares nothing, so a fresh preview shows Nino as it is, and lists every rule the framework sets for that part - commented out, with today's values - as the handles that set has. Copy it to `v2.css` and start there.
 
-## Using one today
+## Using a theme today
 
-They are plain files, so a project that wants one takes it by hand: copy the theme's `assets/` and `fonts/` into the project, copy the frame's `template.tpl` over `private/templates/theme.header.tpl` (or `theme.footer.tpl`), append the frame's `style.css` and the theme's stylesheet to `private/assets/theme.css` - or add them to `/nino/html/assets`' bundle as their own entries - and reload. There is no tooling for it, and that is the point: the tooling is the Design feature.
+The themes are plain files and no tooling installs them, so a project that wants one takes it by hand: copy the theme's `assets/` and `fonts/` into the project, append its stylesheet to `private/assets/theme.css` - or add it to `/nino/html/assets`' bundle as its own entry - and reload. The header and footer its manifest names are in the feature's library now, and a frame is a `template.tpl` copied over `private/templates/theme.header.tpl` (or `theme.footer.tpl`) with its `style.css` appended the same way.
+
+Appending anything by hand to a `theme.css` the Design feature compiled is a change the next compile removes, and `Compiler::write()` will refuse the file once it no longer matches its own header. Take the file over deliberately - delete the digest line - or put the theme in the project's own `assets/style.css`, which comes after `theme.css` in the bundle and is nobody else's to write.

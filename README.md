@@ -17,6 +17,7 @@ This repository is the place Nino's features are published from. `features/<Name
 | Key | Name | Category | Version | Nino | What it does |
 | --- | --- | --- | --- | --- | --- |
 | `consent` | [Consent](features/Consent/README.md) | `security` | 1.0.0 | `^1.1` | A cookie/consent banner with categories and consent-gated scripts, no third party involved |
+| `design` | [Design](features/Design/README.md) | `ui` | 0.1.0 | `^1.2` | The look of a site, chosen per part of a page rather than per page - a set for the hero, sections, articles, buttons, forms, lists and blocks, plus a header and a footer, compiled into `assets/theme.css` |
 | `forms` | [Forms](features/Forms/README.md) | `communication` | 1.0.0 | `^1.1` | A builder for Nino's own form endpoint: any number of forms, a `[form]` shortcode that draws them, and spam protection without a captcha |
 | `gallery` | [Gallery](features/Gallery/README.md) | `content` | 1.0.0 | `^1.1` | Any number of image galleries, each a grid of thumbnails that open full screen - two derived sizes per upload, the original never stored |
 | `lightbox` | [Lightbox](features/Lightbox/README.md) | `ui` | 1.0.0 | `^1.1` | Opens any link to an image full screen, with its group as a set - arrows, swipe, captions and a focus trap, and no library |
@@ -37,7 +38,7 @@ A feature's README, where it has one, describes its routes, its panel, its insta
 
 ## The design library
 
-Beside `features/` sits [`design-library/`](design-library/README.md) - **not** a feature and never published. It holds the ten themes, six headers and seven footers Nino's setup wizard offered up to 1.1, parked for the **Design** feature, which is not written yet. `bin/build.php` and `bin/check.sh` only ever read `features/`, so nothing there is packed into an archive, listed in `catalogue.json` or run as a test.
+Beside `features/` sits [`design-library/`](design-library/README.md) - **not** a feature and never published. It holds the ten whole-page themes Nino's setup wizard offered up to 1.1, the archived manual of the panel that compiled them, and `preview.php`, the dev-only harness the **Design** feature's part sets are designed in. The six headers and seven footers that were parked there moved into [`features/Design/library/`](features/Design/library) when that feature was written - a project chooses from them, so they ship with it. `bin/build.php` and `bin/check.sh` only ever read `features/`, so nothing in `design-library/` is packed into an archive, listed in `catalogue.json` or run as a test.
 
 ## Install a feature
 

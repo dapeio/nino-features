@@ -7,7 +7,7 @@
  *	values it uses today - the handles this set has, in one place. Uncomment
  *	one, change it, reload.
  *
- *	Two rules for a set (see docs/design-feature.md):
+ *	Two rules for a set (see the feature's README.md):
  *
  *	  - Only the classes of this part. A button set does not touch a section
  *	    title, however tempting.

@@ -6,12 +6,14 @@ declare(strict_types=1);
  *
  *										It boots a real Nino against a throwaway project, applies the
  *										base unit into it, swaps in the header and footer named below,
- *										concatenates the part sets over the theme layer and renders one
- *										specimen page that uses every class a set can reach. What you
- *										see is what a real page renders, not an approximation: the
- *										frames go through \Nino\Html::renderHtml(), so their textfills,
- *										their [template] includes and the [navigation] shortcode all
- *										resolve the way they do in a project.
+ *										and renders one specimen page that uses every class a set can
+ *										reach. What you see is what a real page renders, not an
+ *										approximation: the stylesheet comes out of the Design
+ *										feature's own \Nino\Modules\Design\Compiler, against a setup
+ *										its own Setup::normalize() checked, and the frames go through
+ *										\Nino\Html::renderHtml(), so their textfills, their
+ *										[template] includes and the [navigation] shortcode all resolve
+ *										the way they do in a project.
  *
  *										Nothing is written into a checkout. The throwaway project lives
  *										in the system temp directory and is rebuilt on every request, so
@@ -32,12 +34,14 @@ declare(strict_types=1);
 /*	========================================================================
 	What to look at.
 
-	header/footer name a directory in design-library/; every other key names
-	design-library/sets/<part>/<value>.css. A part may carry its step as
-	well - 'article' => [ 'v2', 'less' ] - which picks that step out of every
-	--name--less / --name--default / --name--more triple the set declares.
-	A set that does not exist is reported in the bar at the top rather than
-	passed over, so a typo does not read as "the design does nothing".
+	Everything is named out of the Design feature's library: header/footer
+	name a directory in features/Design/library/<part>/, every other key a
+	file features/Design/library/sets/<part>/<value>.css. A part may carry
+	its step as well - 'article' => [ 'v2', 'less' ] - which picks that step
+	out of every --name--less / --name--default / --name--more triple the set
+	declares. A set that does not exist is reported in the bar along the
+	bottom rather than passed over, so a typo does not read as "the design
+	does nothing".
 	======================================================================== */
 
 const PARTS = [
@@ -51,6 +55,9 @@ const PARTS = [
 	'lists' 	=> 'v1',
 	'blocks' 	=> 'v1',
 ];
+
+// The root size the compiler writes: s, m or l (see Setup::SIZES)
+const PREVIEW_SIZE = 'm';
 
 // The interface language of the specimen - the frames' own labels come from
 // the base unit's text files, so this is a real locale, not a label
@@ -68,13 +75,21 @@ if( in_array( $remote, [ '127.0.0.1', '::1', '' ], true ) === false ) {
 	exit( "preview.php answers the loopback interface only.\n" );
 }
 
-$here = __DIR__;
-$root = rtrim( (string) ( getenv( 'NINO_ROOT' ) ?: dirname( $here, 2 ). '/nino' ), '/' );
+$here 		= __DIR__;
+$root 		= rtrim( (string) ( getenv( 'NINO_ROOT' ) ?: dirname( $here, 2 ). '/nino' ), '/' );
+// The sets and frames live with the feature that ships them; this file is only
+// the harness that looks at them
+$library 	= dirname( $here ). '/features/Design/library';
 
 if( is_file( $root. '/_nino/Nino.php' ) === false ) {
 	http_response_code( 500 );
 	exit( "No Nino checkout at $root - clone it beside this repository or set NINO_ROOT.\n" );
 }
+
+/*	The autoloader resolves Nino\Modules\* over the checkout's own features/,
+	and the feature this previews lives in *this* repository - the same define
+	every feature's test makes, and for the same reason */
+defined( 'NINO_FEATURES_DIR' ) === true || define( 'NINO_FEATURES_DIR', dirname( $here ). '/features' );
 
 require $root. '/_nino/Nino.php';
 
@@ -104,12 +119,12 @@ function previewPart( string $part ): array {
  *	worth more here than fast
  *
  *	@param		string		$root					The Nino checkout
- *	@param		string		$here					This directory
+ *	@param		string		$library			The feature's library
  *	@param		array 		&$notes				(reference) Anything worth saying in the bar
  *
  *	@return 	array									App data for the render
  */
-function previewProject( string $root, string $here, array &$notes ): array {
+function previewProject( string $root, string $library, array &$notes ): array {
 
 	$dir = sys_get_temp_dir(). '/nino-design-preview';
 	\Nino\Filesystem::removeDir( $dir );
@@ -176,9 +191,9 @@ function previewProject( string $root, string $here, array &$notes ): array {
 	foreach( [ 'header', 'footer' ] as $kind ) {
 
 		[ $name ] = previewPart( $kind );
-		$template = $here. '/'. $kind. '/'. $name. '/template.tpl';
+		$template = \Nino\Modules\Design\Setup::file( $library, $kind, $name, 'template' );
 
-		if( is_file( $template ) === false ) {
+		if( $template === '' ) {
 			$notes[] = $kind. '/'. $name. ' has no template.tpl - showing the one the base unit delivers';
 			continue;
 		}
@@ -211,82 +226,44 @@ function previewProject( string $root, string $here, array &$notes ): array {
 
 
 /**
- *	The stylesheet the specimen is shown under, in the order the concept fixes:
- *	the framework, the theme layer (tokens and the roles they are assigned to),
- *	the chosen frames, then the part sets. The theme layer's own frame sections
- *	are cut out - the frames are a choice here, and shipping both would mean
- *	the delivered v1 styling the chosen one
+ *	The stylesheet the specimen is shown under - the feature's own compiler, not
+ *	a second assembly beside it. What is previewed here is byte for byte what a
+ *	project would get, and the compiler is exercised every time somebody looks
+ *	at a design rather than only when its test runs
  *
- *	@param		string		$root					The Nino checkout
- *	@param		string		$here					This directory
+ *	@param		string		$library			The feature's library
  *	@param		array 		&$notes				(reference) Anything worth saying in the bar
  *
- *	@return 	string								The concatenated css
+ *	@return 	string								The compiled css
  */
-function previewCss( string $root, string $here, array &$notes ): string {
+function previewCss( string $library, array &$notes ): string {
 
-	$out = [];
-	$out[] = "/* ---------- the framework ---------- */\n". (string) file_get_contents( $root. '/_nino/Nino.css' );
+	$setup = \Nino\Modules\Design\Setup::normalize( previewSetup(), $library, $notes );
+	$css 	 = \Nino\Modules\Design\Compiler::compile( $setup, $library, $notes );
 
-	$theme = (string) file_get_contents( $root. '/_admin/install/library/base/assets/theme.css' );
+	// The harness serves from its own root, so the public prefix is nothing -
+	// base.css's @font-face urls become /fonts/… and land on the route below
+	return str_replace( '[[/nino/public]]', '', $css );
+}
 
-	// The section markers the base file carries (see its own head): 1 tokens,
-	// 2 roles, 3 the header frame, 4 the footer frame. Everything from 3 on is
-	// the delivered pair and is replaced below
-	$cut = strpos( $theme, '/* ---- 3.' );
-	if( $cut === false )
-		$notes[] = 'theme.css carries no "3." section marker - its frame rules are in the bundle twice';
-	else
-		$theme = substr( $theme, 0, $cut );
 
-	$out[] = "/* ---------- the theme layer: tokens and roles ---------- */\n". $theme;
+/**
+ *	PARTS, in the shape Setup::normalize() reads. The array at the head of this
+ *	file is the short form a person types; this is the long one the feature
+ *	stores
+ *
+ *	@return 	array
+ */
+function previewSetup(): array {
 
-	foreach( [ 'header', 'footer' ] as $kind ) {
-		[ $name ] = previewPart( $kind );
-		$file = $here. '/'. $kind. '/'. $name. '/style.css';
-		if( is_file( $file ) === false ) {
-			$notes[] = $kind. '/'. $name. '/style.css is missing';
-			continue;
-		}
-		$out[] = "/* ---------- the ". $kind. " frame: ". $name. " ---------- */\n". (string) file_get_contents( $file );
-	}
+	$parts = [];
 
-	// The sets, and the step each one is shown at
-	$selection = [];
-
-	foreach( [ 'atf', 'section', 'article', 'buttons', 'forms', 'lists', 'blocks' ] as $part ) {
-
+	foreach( PARTS as $part => $value ) {
 		[ $name, $step ] = previewPart( $part );
-
-		if( $name === '' )
-			continue;
-
-		$file = $here. '/sets/'. $part. '/'. $name. '.css';
-
-		if( is_file( $file ) === false ) {
-			$notes[] = 'sets/'. $part. '/'. $name. '.css does not exist - '. $part. ' is showing the framework default';
-			continue;
-		}
-
-		$css = (string) file_get_contents( $file );
-		$out[] = "/* ---------- ". $part. ": ". $name. " (". $step. ") ---------- */\n". $css;
-
-		/*	A set does not modify a value, it declares what its three steps are
-			(see the concept paper). Resolving which one is live is the
-			compiler's job later; here it is one selection line per triple,
-			gathered into a single block so the whole knob state is readable in
-			one place - and so a set author sees a step do something today */
-		if( preg_match_all( '/--([A-Za-z0-9-]+)--(?:less|default|more)\s*:/', $css, $found ) > 0 )
-			foreach( array_unique( $found[1] ) as $token )
-				$selection[$token] = '	--'. $token. ': var(--'. $token. '--'. $step. ');';
+		$parts[$part] = [ 'set' => $name, 'step' => $step === 'default' ? null : $step ];
 	}
 
-	if( $selection !== [] )
-		$out[] = "/* ---------- the knob positions ---------- */\n:root {\n". implode( "\n", $selection ). "\n}";
-
-	// This harness serves from its own root, so the public prefix is nothing -
-	// theme.css's @font-face urls become /fonts/… and land on the route below
-	return str_replace( '[[/nino/public]]', '', implode( "\n\n", $out ) );
+	return [ 'format' => 1, 'parts' => $parts, 'step' => 'default', 'size' => PREVIEW_SIZE ];
 }
 
 
@@ -650,10 +627,21 @@ if( $path === '/favicon.ico' ) {
 	exit;
 }
 
+/*	The framework, as its own bundle entry - the compiler does not emit it and
+	must not: /_nino/Nino.css is the first entry of the css bundle and
+	assets/theme.css the second, and the preview links them in that order for
+	the same reason a project loads them in it */
+if( $path === '/nino.css' ) {
+	header( 'Content-Type: text/css; charset=utf-8' );
+	header( 'Cache-Control: no-store' );
+	readfile( $root. '/_nino/Nino.css' );
+	exit;
+}
+
 if( $path === '/preview.css' ) {
 	header( 'Content-Type: text/css; charset=utf-8' );
 	header( 'Cache-Control: no-store' );
-	exit( previewCss( $root, $here, $notes ) );
+	exit( previewCss( $library, $notes ) );
 }
 
 if( $path !== '/' && $path !== '/index.php' ) {
@@ -664,11 +652,11 @@ if( $path !== '/' && $path !== '/index.php' ) {
 
 // ---- the page -----------------------------------------------------------
 
-$appData = previewProject( $root, $here, $notes );
+$appData = previewProject( $root, $library, $notes );
 $body 	= \Nino\Html::renderHtml( $appData, previewSpecimen() );
 
 // previewCss() finds the rest of the notes, and the bar is printed after it
-previewCss( $root, $here, $notes );
+previewCss( $library, $notes );
 
 $unresolved = [];
 if( preg_match_all( '/\[\[[^\]]{1,60}\]\]/', $body, $left ) > 0 )
@@ -687,6 +675,7 @@ echo '<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>Design preview</title>
+<link rel="stylesheet" href="/nino.css">
 <link rel="stylesheet" href="/preview.css">
 </head>
 <body>
