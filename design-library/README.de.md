@@ -68,6 +68,8 @@ Zwei Dinge muss ein Header-Preset einhalten, welches auch immer es ist:
 
 [`docs/appearance.de.md`](docs/appearance.de.md) ([English](docs/appearance.md)) ist das Handbuch des Panels **Design**, wie Nino 1.1 es ausgeliefert hat – hier archiviert aus demselben Grund wie die Einheiten: Die Einstellungen, die es beschreibt, die `--nino-*`-Token, zu denen sie kompilieren, und die Flächen, die diese Token einfärben, sind der Vertrag, an dem sich das Design-Feature messen lassen muss.
 
+[`docs/design-feature.md`](docs/design-feature.md) ist das Konzept, aus dem das Design-Feature gebaut wird — was es katalogisiert, wie ein Set geschrieben ist, was es kompiliert und was es vorher von Nino braucht.
+
 ## Eines davon heute verwenden
 
 Es sind schlichte Dateien, ein Projekt nimmt sich also von Hand, was es will: das `assets/` und `fonts/` des Themes ins Projekt kopieren, das `template.tpl` des Rahmens über `private/templates/theme.header.tpl` (bzw. `theme.footer.tpl`) legen, das `style.css` des Rahmens und das Stylesheet des Themes an `private/assets/theme.css` anhängen – oder als eigene Einträge in das Bundle unter `/nino/html/assets` aufnehmen – und neu laden. Werkzeug gibt es dafür nicht, und genau das ist der Punkt: Das Werkzeug ist das Design-Feature.

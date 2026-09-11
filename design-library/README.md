@@ -68,6 +68,8 @@ Two things a header preset has to keep, whichever it is:
 
 [`docs/appearance.md`](docs/appearance.md) ([Deutsch](docs/appearance.de.md)) is the manual of the **Design** panel as Nino 1.1 shipped it - archived here for the same reason the units are: the settings it documents, the `--nino-*` token names they compile into and the surfaces those tokens paint are the contract the Design feature has to answer to.
 
+[`docs/design-feature.md`](docs/design-feature.md) is the concept the Design feature will be built from - what it catalogues, how a set is authored, what it compiles and what it needs from Nino first. German only for now; it is a working document, not a manual.
+
 ## Using one today
 
 They are plain files, so a project that wants one takes it by hand: copy the theme's `assets/` and `fonts/` into the project, copy the frame's `template.tpl` over `private/templates/theme.header.tpl` (or `theme.footer.tpl`), append the frame's `style.css` and the theme's stylesheet to `private/assets/theme.css` - or add them to `/nino/html/assets`' bundle as their own entries - and reload. There is no tooling for it, and that is the point: the tooling is the Design feature.
