@@ -65,7 +65,7 @@ git clone https://github.com/dapeio/nino.git ../nino     # or set NINO_ROOT
 php -S 127.0.0.1:8080 design-library/preview.php
 ```
 
-Then open <http://127.0.0.1:8080/>. What to look at is the array at the top of the file:
+Then open <http://127.0.0.1:8080/>. The bar along the bottom switches every part, the finetune knob and the root size, and the url says what is on screen - `?section=v4&article=v2:less&step=more&size=l` - so a view is a link you can send somebody. The array at the top of the file is what a plain `/` starts from:
 
 ```php
 const PARTS = [
@@ -77,9 +77,32 @@ const PARTS = [
 ];
 ```
 
-The throwaway project is rebuilt on every request, so editing a set or a frame is a reload away. What you see is what a real page renders: the frames go through `\Nino\Html::renderHtml()`, so their textfills, their `[template]` includes and the `[navigation]` shortcode resolve the way they do in a project - the specimen even carries a five-item menu so a header set has something to lay out. A set that does not exist, a frame without a `style.css`, a fill that did not resolve: all of it is named in the bar along the bottom rather than passed over in silence.
+The throwaway project is rebuilt on every request, so editing a set or a frame is a reload away. It belongs to the request that asked for it and is removed when that request ends, so several php-fpm workers can serve the harness at once. What you see is what a real page renders: the frames go through `\Nino\Html::renderHtml()`, so their textfills, their `[template]` includes and the `[navigation]` shortcode resolve the way they do in a project - the specimen even carries a five-item menu so a header set has something to lay out. A set that does not exist, a frame without a `style.css`, a fill that did not resolve: all of it is named in the bar along the bottom rather than passed over in silence.
 
 The sets and frames themselves are the feature's, in [`features/Design/library/`](../features/Design/library) - its [README](../features/Design/README.md) is where the two rules for writing one are. `sets/<part>/v1.css` there is the starting point for each of the seven parts: it declares nothing, so a fresh preview shows Nino as it is, and lists every rule the framework sets for that part - commented out, with today's values - as the handles that set has. Copy it to `v2.css` and start there.
+
+### Behind nginx
+
+It is a front controller, and that is the whole security model: nginx hands it every request and it answers all of them, so nothing else under the root is ever served - not a template, not a `.php` file, not `.git`.
+
+```nginx
+server {
+	server_name features.getnino.dev;
+	root        /design-preview;              # the checkout
+
+	location / {
+		include      fastcgi_params;
+		fastcgi_pass unix:/run/php/php8.4-fpm.sock;
+		fastcgi_param SCRIPT_FILENAME $document_root/design-library/preview.php;
+	}
+}
+```
+
+There is deliberately no `location ~ \.php$` and no `try_files`: one rule, one script, nothing else reachable. If you put `preview.php` there on its own rather than the whole checkout, point `SCRIPT_FILENAME` at it and set `LIBRARY_DIR` at the head of the file.
+
+**Set `PREVIEW_KEY` before any of that is reachable.** Without one the harness answers the loopback and refuses everybody else, because it boots a kernel and renders unauthenticated. With one, open `https://…/?key=<it>` once: the answer puts the key in an `HttpOnly` cookie and redirects it out of the address bar, so the stylesheet, the fonts and the scripts that follow do not carry it and neither does the browser history. https and an `auth_basic` in front are worth having on top.
+
+The Nino checkout is looked for beside the repository, in `env/`, and under the document root; `NINO_DIR` at the head of the file or the `NINO_ROOT` environment variable name it outright, and a run that finds none says which paths it tried.
 
 ## Using a theme today
 

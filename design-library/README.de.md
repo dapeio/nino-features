@@ -65,7 +65,7 @@ git clone https://github.com/dapeio/nino.git ../nino     # oder NINO_ROOT setzen
 php -S 127.0.0.1:8080 design-library/preview.php
 ```
 
-Dann <http://127.0.0.1:8080/> öffnen. Was zu sehen ist, steht im Array am Kopf der Datei:
+Dann <http://127.0.0.1:8080/> öffnen. Die Leiste am unteren Rand schaltet jedes Bauteil, den Feinregler und die Grundgröße um, und die URL sagt, was auf dem Schirm ist – `?section=v4&article=v2:less&step=more&size=l` –, eine Ansicht ist also ein Link, den man verschicken kann. Das Array am Kopf der Datei ist das, womit ein schlichtes `/` anfängt:
 
 ```php
 const PARTS = [
@@ -77,9 +77,32 @@ const PARTS = [
 ];
 ```
 
-Das Wegwerf-Projekt wird bei jedem Aufruf neu gebaut – ein geändertes Set oder ein geänderter Rahmen ist also einen Reload entfernt. Und es ist das, was eine echte Seite rendert: Die Rahmen laufen durch `\Nino\Html::renderHtml()`, ihre Textfills, ihre `[template]`-Includes und der Shortcode `[navigation]` lösen also auf wie in einem Projekt – die Musterseite bringt sogar ein fünfteiliges Menü mit, damit ein Header-Set etwas zu setzen hat. Ein Set, das es nicht gibt, ein Rahmen ohne `style.css`, ein Fill, der nicht aufgelöst hat: All das benennt die Leiste am unteren Rand, statt es stillschweigend zu übergehen.
+Das Wegwerf-Projekt wird bei jedem Aufruf neu gebaut – ein geändertes Set oder ein geänderter Rahmen ist also einen Reload entfernt. Es gehört der Anfrage, die es angelegt hat, und wird mit ihr gelöscht, mehrere php-fpm-Worker können das Werkzeug also gleichzeitig bedienen. Und es ist das, was eine echte Seite rendert: Die Rahmen laufen durch `\Nino\Html::renderHtml()`, ihre Textfills, ihre `[template]`-Includes und der Shortcode `[navigation]` lösen also auf wie in einem Projekt – die Musterseite bringt sogar ein fünfteiliges Menü mit, damit ein Header-Set etwas zu setzen hat. Ein Set, das es nicht gibt, ein Rahmen ohne `style.css`, ein Fill, der nicht aufgelöst hat: All das benennt die Leiste am unteren Rand, statt es stillschweigend zu übergehen.
 
 Die Sets und Rahmen selbst gehören dem Feature und liegen in [`features/Design/library/`](../features/Design/library) – in seinem [README](../features/Design/README.md) stehen die zwei Regeln, nach denen eines geschrieben wird. `sets/<part>/v1.css` ist dort der Ausgangspunkt für jedes der sieben Teile: Es erklärt nichts, eine frische Vorschau zeigt also Nino, wie es ist – und listet jede Regel, die das Framework für dieses Teil setzt, auskommentiert und mit den heutigen Werten, als die Griffe, die dieses Set hat. Kopiere es nach `v2.css` und fang dort an.
+
+### Hinter nginx
+
+Es ist ein Front-Controller, und genau das ist das Sicherheitsmodell: nginx reicht ihm jede Anfrage und es beantwortet alle, unter dem Root wird also nie etwas anderes ausgeliefert – kein Template, keine `.php`, kein `.git`.
+
+```nginx
+server {
+	server_name features.getnino.dev;
+	root        /design-preview;              # der Checkout
+
+	location / {
+		include      fastcgi_params;
+		fastcgi_pass unix:/run/php/php8.4-fpm.sock;
+		fastcgi_param SCRIPT_FILENAME $document_root/design-library/preview.php;
+	}
+}
+```
+
+Absichtlich kein `location ~ \.php$` und kein `try_files`: eine Regel, ein Skript, sonst ist nichts erreichbar. Wer statt des ganzen Checkouts nur `preview.php` dorthin legt, zeigt mit `SCRIPT_FILENAME` darauf und setzt `LIBRARY_DIR` am Kopf der Datei.
+
+**`PREVIEW_KEY` setzen, bevor das erreichbar ist.** Ohne Schlüssel beantwortet das Werkzeug die Loopback-Schnittstelle und weist alle anderen ab – es startet einen Kernel und rendert ohne Anmeldung. Mit Schlüssel einmal `https://…/?key=<er>` öffnen: Die Antwort legt ihn in ein `HttpOnly`-Cookie und leitet ihn aus der Adresszeile heraus, das Stylesheet, die Fonts und die Skripte danach tragen ihn also nicht mit sich herum und der Browserverlauf auch nicht. https und ein `auth_basic` davor sind trotzdem eine gute Idee.
+
+Der Nino-Checkout wird neben dem Repository gesucht, in `env/` und unter dem Document-Root; `NINO_DIR` am Kopf der Datei oder die Umgebungsvariable `NINO_ROOT` benennen ihn direkt, und ein Lauf, der keinen findet, sagt, welche Pfade er probiert hat.
 
 ## Ein Theme heute verwenden
 
