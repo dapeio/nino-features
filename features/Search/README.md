@@ -1,6 +1,6 @@
 # Elements search
 
-**Key:** `search` · **Class:** `\Nino\Modules\Search` · **Version:** 1.0.0 · **Nino:** `^1.0`
+**Key:** `search` · **Class:** `\Nino\Modules\Search` · **Version:** 1.1.0 · **Nino:** `^1.0`
 
 A small weighted fuzzy index over the fields of configured Element types,
 grouped by locale. Project code searches through
@@ -24,9 +24,14 @@ callback:
 
 | | |
 | --- | --- |
-| `getElements( array &$appData, string $elementType, string $searchString ): array` | search the current locale's index of one type; the canonical Elements, best score first |
-| `createIndexes( array &$appData ): array` | recreate every valid configured index; answers `{ created, elements, failed }` - the number of index files written, the number of distinct Elements in them, and the type uris whose file could not be written. What the panel's button calls |
+| `getHits( &$appData, string\|array $type, string $query, int $limit = 0, int $offset = 0 ): array` | the cheap half: `{ uri, type, score, coverage, matched, fields }` per hit, best first, without reading a single Element. A page that shows ten of two hundred hits has no business reading two hundred files to find that out |
+| `getElements( &$appData, string\|array $type, string $query, int $limit = 0, int $offset = 0 ): array` | the same search with the Elements read - canonical Elements, best score first, each carrying `.score` and `.type` beside its `.uri` and `.locale` |
+| `configuration( &$appData ): array` | everything `/nino/elements/index` names, as `/type => { fields, issues }` - **including what cannot be used, and why** |
+| `indexState( &$appData ): array` | one row per Element type the project has, plus any the configuration names and it does not: title, model, element count, configured fields, issues, and whether the index is missing or stale. What the panel draws |
+| `createIndexes( &$appData, string $only = '' ): array` | recreate every valid configured index, or just the one type named; answers `{ created, elements, failed, skipped, issues }` |
 | `callbackElementsCommitted()` | registered in `init()` under `'/nino/elements/committed'`: after an insert, update or delete of a configured type has committed, that one type's index is recreated. A failed write is reported with `trigger_error()` and never rolls back the Element commit it follows |
+
+`skipped` names a configured type that produced no index and why (`the model of "/products" has no field "titel"`); `issues` names a type that *is* indexed but whose configuration holds a name that does not resolve. Both used to be dropped silently - a configuration naming two types reported "1 index created", and a wholly invalid one came back as "no search indexes are configured".
 
 `init()` does nothing but register the callback: activation creates no file.
 
@@ -89,7 +94,15 @@ Afterwards, every successful insert, update or delete of a configured type
 recreates that one type after the Element file has committed. A type
 `articles` is stored as the single derived file `/data/index-articles.php`
 (normally `private/data/index-articles.php`), one plain PHP array grouped by
-locale, then by Element uri, then by priority.
+locale, then by Element uri, then by priority - behind a `.meta` entry holding
+the format, the build time, the element count and the fields it was built
+from. A dot-prefixed key can never be a locale, so an index written by 1.0.0
+still reads and every locale lookup walks straight past it.
+
+`indexState()` calls an index **stale** on two stat calls: the type file was
+written since the index was (an element edited while the feature was off, a
+restored backup, a hand edit), or the configuration names other fields than
+the ones `.meta` records.
 
 The index deliberately has no signature, revision or sidecar lock and is
 rewritten directly and non-atomically as a complete PHP array. Reads are
@@ -106,22 +119,42 @@ canonical Elements in score order:
 ```php
 $hits = \Nino\Modules\Search::getElements(
 	$appData,
-	'articles',
-	(string) ( $_GET['q'] ?? '' )
+	[ 'articles', 'projects' ],          // one type or several
+	(string) ( $_GET['q'] ?? '' ),
+	20                                    // and say a number
 );
 ```
 
 The search is case-insensitive, strips markup, decodes entities, flattens
 text and number values from arrays, and rewrites `ä`, `ö`, `ü` and `ß` as
-`ae`, `oe`, `ue` and `ss` - so typing "Strasse" also finds "Straße". Each
-query word must match. Exact, prefix and substring matches are preferred;
-other words use a length-dependent Unicode-bigram similarity. Field
-priorities affect ranking, not whether a word counts as a hit: a match in
-priority `0` weighs `1.00`, in `1` `0.70`, in `2` `0.45`, in `3` `0.25`. An
-exact phrase found in a field receives an additional bonus, and equal
-scores are ordered by Element uri. Work is bounded to 256 query characters
-and the first 12 unique tokens. Empty queries, unknown or unconfigured
-types, missing locale data and unreadable indexes return `[]`.
+`ae`, `oe`, `ue` and `ss` - so typing "Strasse" also finds "Straße". Exact,
+prefix and substring matches are preferred; other words use a
+length-dependent Unicode-bigram similarity. Field priorities affect ranking,
+not whether a word counts as a hit: a match in priority `0` weighs `1.00`,
+in `1` `0.70`, in `2` `0.45`, in `3` `0.25`. An exact phrase found in a
+field receives an additional bonus, and equal scores are ordered by Element
+uri. Work is bounded to 256 query characters and the first 12 unique tokens.
+Empty queries, unknown or unconfigured types, missing locale data and
+unreadable indexes return `[]`.
+
+### Coverage, and why not every word has to match
+
+Up to 1.0.0 every query word had to reach its threshold or the document was
+discarded. That reads as reasonable until somebody types a sentence: an
+article titled *"AI im Jahr 2026"* was not found by **"AI in 2026"**, and
+**"Ausblick der Modelle"** found nothing in a summary reading *"Ein Ausblick
+auf Modelle und Werkzeuge"*. One filler word the text happens not to use, and
+the result is empty. Visitors type sentences.
+
+A word that finds nothing now lowers the **coverage** - the share of the
+query that was found - and the coverage multiplies the score. Three words of
+three always outranks two of three, so a partial match lands below a full one
+rather than nowhere. At least one word still has to be found, or the document
+is not a hit at all.
+
+The other half of that bargain: a filler word now matches whatever happens to
+carry it, so a query of several words returns more rows than it used to, with
+the weak ones at the bottom. Give `$limit` a number on a result page.
 
 ## Data
 
@@ -145,15 +178,18 @@ NINO_ROOT=../nino php features/Search/tests/search-smoke.php
 ```
 
 It covers the configuration boundary (both slash forms, invalid priorities,
-fields and types ignored), that activation registers the callback and
-creates no file, the first committed write creating the index, the shape
-and normalization of the derived file, the explicit rebuild reporting only
-valid types, unconfigured types staying unindexed, the fuzzy ranking
-(priority order, spelling errors, umlauts, html and entities, array fields,
-every token required), locale selection, refresh after update and delete,
-read-only handling of a deleted or malformed index, the panel action
-refusing an unauthenticated request and rebuilding every configured index
-for an authenticated one, an empty configuration as a successful no-op, an
-index write failure that cannot roll back the Element commit, and the `500`
-the action answers when a file cannot be written. `bin/check.sh` runs it
-against the checkout beside this repository.
+fields and types named with their reasons), that activation registers the
+callback and creates no file, the first committed write creating the index,
+the shape and normalization of the derived file and its `.meta` block, the
+explicit rebuild reporting what it skipped and why, a rebuild of one type
+alone, unconfigured types staying unindexed, the fuzzy ranking (priority
+order, spelling errors, umlauts, html and entities, array fields), coverage
+scoring on the three sentences that used to come back empty, `limit` and
+`offset`, several types as one ranked list, the rows `indexState()` draws
+including both ways of being stale, locale selection, refresh after update
+and delete, read-only handling of a deleted or malformed index, the panel
+action refusing an unauthenticated request and rebuilding every configured
+index for an authenticated one, an empty configuration as a successful
+no-op, an index write failure that cannot roll back the Element commit, and
+the `500` the action answers when a file cannot be written. `bin/check.sh`
+runs it against the checkout beside this repository.

@@ -24,7 +24,7 @@ Dieses Repository ist der Ort, von dem aus Ninos Features veröffentlicht werden
 | `mailer` | [Mailer](features/Mailer/README.md) | `system` | 1.0.0 | `^1.1` | Versendet jede von Nino verschickte Mail über SMTP statt über das `mail()` des Servers |
 | `newsletter` | [Newsletter](features/Newsletter/README.md) | `communication` | 1.0.0 | `^1.0` | Double-Opt-in-Anmeldung mit Bestätigungs- und Abmeldelink, und die Abonnentenliste als Panel der Workbench |
 | `protected` | [Protected area](features/ProtectedArea/README.md) | `security` | 1.0.0 | `^1.1` | Legt eine oder mehrere Seiten hinter ein gemeinsames Passwort, ohne Konten |
-| `search` | [Elements search](features/Search/README.md) | `content` | 1.0.0 | `^1.0` | Ein sprachbewusster unscharfer Suchindex über konfigurierte Element-Felder, neu gebaut bei jedem Speichern und aus dem Such-Panel |
+| `search` | [Elements search](features/Search/README.md) | `content` | 1.1.0 | `^1.0` | Ein sprachbewusster unscharfer Suchindex über konfigurierte Element-Felder, neu gebaut bei jedem Speichern und aus dem Such-Panel |
 | `seo` | [SEO](features/Seo/README.md) | `marketing` | 1.0.0 | `^1.1` | Sitemap, robots.txt und llms.txt, erzeugt aus Routen, Sprachen und Texten, die Nino ohnehin hat |
 | `stats` | [Stats](features/Stats/README.md) | `marketing` | 1.0.0 | `^1.1` | Seitenaufruf-Zählung für die Workbench, ohne Cookies, IP-Adressen oder irgendetwas pro Besucher |
 | `templates` | [Template Builder](features/Templates/README.md) | `content` | 1.0.0 | `^1.2` | Baut die Seitentemplates des Projekts aus ganzen Abschnitten – eine Bibliothek aus siebzehn, eine Live-Vorschau, und dazwischen bleibt der Quelltext der Seite Deiner |

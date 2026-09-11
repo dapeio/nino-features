@@ -3,6 +3,53 @@
 All notable changes to the Search feature are documented in this file.
 A release is the tag `search-<version>` of dapeio/nino-features.
 
+## 1.1.0 — 2026-09-11
+
+### The ranking
+
+- **A query word that finds nothing no longer discards the document.** Every
+  token used to have to reach its threshold or the document was dropped, which
+  reads as reasonable until somebody types a sentence: an article titled "AI im
+  Jahr 2026" was not found by "AI in 2026", and "Ausblick der Modelle" found
+  nothing in a summary reading "Ein Ausblick auf Modelle und Werkzeuge". One
+  filler word the text happens not to use, and the result was empty. A missed
+  word now lowers the *coverage* instead, and the coverage multiplies the
+  score - three words of three always outranks two of three, so a partial match
+  lands below a full one rather than nowhere. At least one word still has to be
+  found.
+
+### The API
+
+- `getHits()`: the cheap half of a search - uri, type, score, coverage and the
+  priorities that carried a match, without reading a single Element. A page
+  showing ten of two hundred hits has no business reading two hundred files to
+  find that out.
+- `getElements()` takes `$limit` and `$offset`, and both it and `getHits()`
+  take **several types at once**. The scores are on one scale, so hits from two
+  types interleave by score exactly as they do within one.
+- Every Element `getElements()` returns now carries `.score` and `.type` beside
+  the `.uri` and `.locale` it always had.
+- `configuration()`: everything `/nino/elements/index` names, **with the reason
+  where it cannot be used**. The silent version of this was the feature's worst
+  habit - a field name with a typo was dropped without a word, a configuration
+  naming two types reported "1 index created", and a wholly invalid one came
+  back as "nothing is configured".
+- `createIndexes()` reports that too, as `skipped` (no index written, and why)
+  and `issues` (indexed, but a name in the configuration does not resolve), and
+  takes one type name to rebuild just that one.
+- `indexState()`: one row per Element type the project has - plus any the
+  configuration names and it does not - with the fields, the issues, the
+  element counts and whether the index is stale.
+
+### The index file
+
+- Each index carries a `.meta` block: format, build time, element count and the
+  fields it was built from. A dot-prefixed key can never be a locale, so an
+  index written by 1.0.0 still reads and every locale lookup walks past it.
+- Stale is two stat calls: the type file written since the index was (an
+  element edited while the feature was off, a restored backup, a hand edit), or
+  a configuration naming other fields than the ones it was built from.
+
 ## 1.0.0 — 2026-09-07
 
 - Moved unchanged from dapeio/nino 1.0.0-beta, where it lived under

@@ -33,7 +33,7 @@ return [
 			TXT,
 	],
 	'category'		=> 'content',
-	'version'			=> '1.0.0',
+	'version'			=> '1.1.0',
 	'nino'				=> '^1.0',
 	'requires'		=> [],
 	'settings'		=> [],

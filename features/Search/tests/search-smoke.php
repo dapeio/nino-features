@@ -111,7 +111,12 @@ check( 'the first committed write after activation creates the configured type i
 ], 'de_DE' );
 
 $index = @include $articleIndexPath;
-check( 'the index is one plain PHP array grouped by locale', is_array( $index ) === true && array_keys( $index ) === [ 'de_DE', 'en_US' ] );
+check( 'the index is one plain PHP array grouped by locale, behind its own meta block', is_array( $index ) === true && array_keys( $index ) === [ '.meta', 'de_DE', 'en_US' ] );
+check( 'the meta block says when it was built and out of which fields',
+	( $index['.meta']['format'] ?? null ) === 1
+	&& ( $index['.meta']['elements'] ?? null ) === 3
+	&& ( $index['.meta']['fields'] ?? null ) === [ 0 => 'title', 1 => 'summary', 2 => 'keywords', 3 => 'author' ]
+	&& preg_match( '/^\d{4}-\d{2}-\d{2}T/', (string) ( $index['.meta']['built'] ?? '' ) ) === 1 );
 check( 'indexed text is normalized before it reaches disk', ( $index['de_DE']['/articles/alpha'][0] ?? null ) === 'mueller katalog' );
 check( 'HTML, entities and nested scalar arrays are flattened safely',
 	( $index['de_DE']['/articles/alpha'][1] ?? null ) === 'leuchttuerme klare wege in berlin'
@@ -119,7 +124,17 @@ check( 'HTML, entities and nested scalar arrays are flattened safely',
 check( 'all four priorities are stored while invalid priorities are omitted', array_keys( $index['de_DE']['/articles/alpha'] ?? [] ) === [ 0, 1, 2, 3 ] );
 
 $created = \Nino\Modules\Search::createIndexes( $appData );
-check( 'an explicit rebuild reports only valid configured types', $created === [ 'created' => 1, 'elements' => 3, 'failed' => [] ] );
+check( 'an explicit rebuild reports only valid configured types', ( $created['created'] ?? null ) === 1
+	&& ( $created['elements'] ?? null ) === 3 && ( $created['failed'] ?? null ) === [] );
+check( 'and names every configured type it had to skip, with the reason',
+	array_keys( $created['skipped'] ?? [] ) === [ '/ignored-fields', '/missing-type', '?not/a/type' ]
+	&& ( $created['skipped']['/ignored-fields'][0] ?? '' ) === 'the model of "/ignored-fields" has no field "missing-field"'
+	&& ( $created['skipped']['/missing-type'][0] ?? '' ) === 'there is no element type "/missing-type"'
+	&& ( $created['skipped']['?not/a/type'][0] ?? '' ) === 'not an element type name' );
+check( 'a type that does index, but carries a name that does not resolve, is reported apart from those',
+	array_keys( $created['issues'] ?? [] ) === [ '/articles' ]
+	&& ( $created['issues']['/articles'][0] ?? '' ) === 'priority "4" is not 0, 1, 2 or 3' );
+check( 'a rebuild can be asked for one type alone', ( \Nino\Modules\Search::createIndexes( $appData, 'articles' )['created'] ?? null ) === 1 );
 $ignoredIndexPath = \Nino\Filesystem::path( $appData, '/data/index-ignored-fields.php' );
 check( 'a type with no valid configured model field gets no index file', is_file( $ignoredIndexPath ) === false );
 
@@ -139,7 +154,23 @@ check( 'German umlauts use their readable ae/oe/ue form', searchUris( $appData, 
 check( 'HTML text and decoded entities remain searchable as words', searchUris( $appData, 'articles', 'klare wege' ) === [ '/articles/alpha' ] );
 check( 'array fields participate at their configured weight', searchUris( $appData, 'articles', 'cms' ) === [ '/articles/alpha' ] );
 check( 'priority 3 remains searchable at its lower weight', searchUris( $appData, 'articles', 'dape' ) === [ '/articles/alpha' ] );
-check( 'every query token must match', searchUris( $appData, 'articles', 'orbit nowhere' ) === [] );
+/*	A word the document does not carry no longer throws the document away: it
+	lowers the coverage, and the coverage multiplies the score. Every one of
+	these used to be an empty result */
+check( 'a word that finds nothing no longer discards the document', searchUris( $appData, 'articles', 'orbit nowhere' ) === [ '/articles/orbit-title', '/articles/orbit-summary' ] );
+check( 'a query that finds nothing at all is still empty', searchUris( $appData, 'articles', 'nowhere' ) === [] );
+check( 'the full phrase outranks the partial one',
+	searchUris( $appData, 'articles', 'orbit remote' ) === [ '/articles/orbit-summary', '/articles/orbit-title' ] );
+$covered = \Nino\Modules\Search::getHits( $appData, 'articles', 'orbit nowhere' );
+check( 'a hit says how much of the query it covered, and where it matched',
+	( $covered[0]['coverage'] ?? null ) === 0.5 && ( $covered[0]['matched'] ?? null ) === 1
+	&& ( $covered[0]['fields'] ?? null ) === [ 0 ] && ( $covered[0]['type'] ?? null ) === '/articles' );
+check( 'limit and offset cut the ranked list, not the search',
+	array_column( \Nino\Modules\Search::getHits( $appData, 'articles', 'orbit', 1 ), 'uri' ) === [ '/articles/orbit-title' ]
+	&& array_column( \Nino\Modules\Search::getHits( $appData, 'articles', 'orbit', 1, 1 ), 'uri' ) === [ '/articles/orbit-summary' ] );
+check( 'an element comes back carrying its score and its type',
+	( \Nino\Modules\Search::getElements( $appData, 'articles', 'orbit', 1 )[0]['.type'] ?? null ) === '/articles'
+	&& is_float( \Nino\Modules\Search::getElements( $appData, 'articles', 'orbit', 1 )[0]['.score'] ?? null ) === true );
 check( 'empty and invalid searches return no result',
 	\Nino\Modules\Search::getElements( $appData, 'articles', " \n " ) === []
 	&& \Nino\Modules\Search::getElements( $appData, '../articles', 'orbit' ) === [] );
@@ -155,6 +186,86 @@ check( 'the previous indexed value disappears after that refresh', searchUris( $
 
 \Nino\Elements::deleteElement( $appData, '/articles/orbit-title', '*' );
 check( 'a committed delete removes the Element from search', searchUris( $appData, 'articles', 'orbit' ) === [ '/articles/orbit-summary' ] );
+
+echo "\nSentences, several types at once, and what the panel reads\n";
+
+/*	The behaviour this whole change is about, on the shape a visitor actually
+	types. Every one of these was an empty result while _score() discarded a
+	document over one word it did not carry */
+\Nino\Elements::insertElement( $appData, '/articles/ai', [
+	'title' => 'AI im Jahr 2026', 'summary' => 'Ein Ausblick auf Modelle und Werkzeuge', 'keywords' => [], 'author' => '',
+], 'de_DE' );
+check( 'a sentence finds the article whose title is worded differently', ( searchUris( $appData, 'articles', 'AI in 2026' )[0] ?? '' ) === '/articles/ai' );
+check( 'a filler word the text does not use no longer empties the result', ( searchUris( $appData, 'articles', 'Ausblick der Modelle' )[0] ?? '' ) === '/articles/ai' );
+check( 'a query of mostly unknown words still finds its one known one', searchUris( $appData, 'articles', 'Artikel ueber Modelle' ) === [ '/articles/ai' ] );
+/*	The other half of that bargain: the filler word now matches whatever
+	happens to carry it, so it has to rank below the real answer rather than
+	beside it */
+check( 'a document carrying only the filler word ranks below the real answer',
+	in_array( '/articles/alpha', searchUris( $appData, 'articles', 'AI in 2026' ), true ) === true
+	&& array_search( '/articles/alpha', searchUris( $appData, 'articles', 'AI in 2026' ), true ) > 0 );
+
+$appData['/nino/elements/index']['notes'] = [ 0 => 'title' ];
+\Nino\Modules\Search::createIndexes( $appData );
+\Nino\Elements::insertElement( $appData, '/notes/orbit', [ 'title' => 'Orbit Merkzettel' ], 'de_DE' );
+$across = \Nino\Modules\Search::getHits( $appData, [ 'articles', 'notes' ], 'orbit' );
+/*	One ranked list, not one list per type: the note carries "orbit" in its
+	priority 0 and the article in its priority 1, so the note comes first -
+	which is the whole point of the scores being on one scale */
+check( 'two types search as one ranked list', array_column( $across, 'type' ) === [ '/notes', '/articles' ]
+	&& array_column( $across, 'uri' ) === [ '/notes/orbit', '/articles/orbit-summary' ]
+	&& $across[0]['score'] > $across[1]['score'] );
+check( 'coverage is a float whether or not it divides evenly', $across[0]['coverage'] === 1.0 );
+check( 'a type that is not configured contributes nothing to that list',
+	\Nino\Modules\Search::getHits( $appData, [ 'articles', 'ignored-fields' ], 'orbit' ) !== []
+	&& array_column( \Nino\Modules\Search::getHits( $appData, [ 'ignored-fields' ], 'orbit' ), 'type' ) === [] );
+
+$state = [];
+foreach( \Nino\Modules\Search::indexState( $appData ) as $row )
+	$state[$row['type']] = $row;
+
+check( 'the state lists every type the project has, not only the configured ones',
+	array_keys( $state ) === [ '/articles', '/ignored-fields', '/missing-type', '/notes', '?not/a/type' ] );
+check( 'a working type says what it indexes, how many it holds and when it was built',
+	( $state['/articles']['configured'] ?? null ) === true
+	&& ( $state['/articles']['fields'] ?? null ) === [ 0 => 'title', 1 => 'summary', 2 => 'keywords', 3 => 'author' ]
+	&& ( $state['/articles']['indexed'] ?? null ) === true
+	&& ( $state['/articles']['elements'] ?? null ) === 3
+	&& ( $state['/articles']['indexedElements'] ?? null ) === 3
+	&& ( $state['/articles']['stale'] ?? null ) === false );
+check( 'a broken configuration says why, rather than looking unconfigured',
+	( $state['/ignored-fields']['configured'] ?? null ) === true
+	&& ( $state['/ignored-fields']['fields'] ?? null ) === []
+	&& ( $state['/ignored-fields']['issues'][0] ?? '' ) === 'the model of "/ignored-fields" has no field "missing-field"'
+	&& ( $state['/ignored-fields']['indexed'] ?? null ) === false );
+check( 'the field picker is offered the model minus what carries no searchable text',
+	in_array( 'title', $state['/articles']['model'] ?? [], true ) === true
+	&& in_array( 'keywords', $state['/articles']['model'] ?? [], true ) === true );
+check( 'a type nobody configured is listed as what it is', ( $state['/notes']['configured'] ?? null ) === true
+	&& ( $state['/missing-type']['exists'] ?? null ) === false );
+
+// Written after the index was: the one stat call that catches an element
+// edited while the feature was off, and a restored backup
+touch( \Nino\Filesystem::path( $appData, '/elements/articles.php' ), time() + 5 );
+clearstatcache();
+$stale = [];
+foreach( \Nino\Modules\Search::indexState( $appData ) as $row )
+	$stale[$row['type']] = $row;
+check( 'a type file written since the index was is stale', ( $stale['/articles']['stale'] ?? null ) === true );
+
+$appData['/nino/elements/index']['articles'] = [ 0 => 'summary' ];
+$changed = [];
+foreach( \Nino\Modules\Search::indexState( $appData ) as $row )
+	$changed[$row['type']] = $row;
+check( 'so is an index built out of other fields than the ones configured now', ( $changed['/articles']['stale'] ?? null ) === true );
+$appData['/nino/elements/index']['articles'] = [ 0 => 'title', 1 => 'summary', 2 => 'keywords', 3 => 'author', 4 => 'title' ];
+
+// This section's own fixtures go again, so the counts the rest of the file
+// asserts on stay the counts the rest of the file set up
+\Nino\Elements::deleteElement( $appData, '/articles/ai', '*' );
+\Nino\Elements::deleteElement( $appData, '/notes/orbit', '*' );
+unset( $appData['/nino/elements/index']['notes'] );
+\Nino\Modules\Search::createIndexes( $appData );
 
 echo "\nRead-only failures and the guarded Admin rebuild action\n";
 
@@ -182,7 +293,8 @@ $appData['/nino/elements/index']['notes'] = [ 0 => 'title' ];
 \Nino\Auth::loginUser( $appData, 'dev@example.com', 'correct horse battery staple' );
 [ $status, $body ] = callSearchIndexAction( $appData );
 check( 'the authenticated Admin rebuild succeeds', $status === 200 );
-check( 'one button press rebuilds every configured index', $body === [ 'created' => 2, 'elements' => 3, 'failed' => [] ] );
+check( 'one button press rebuilds every configured index', ( $body['created'] ?? null ) === 2
+	&& ( $body['elements'] ?? null ) === 3 && ( $body['failed'] ?? null ) === [] );
 $rebuiltArticles = @include $articleIndexPath;
 $rebuiltNotes = @include $notesIndexPath;
 check( 'both derived files were recreated', is_array( $rebuiltArticles ) === true && is_array( $rebuiltNotes ) === true );
@@ -200,7 +312,8 @@ check( 'a full rebuild replaces existing index content',
 $configuredIndexes = $appData['/nino/elements/index'];
 $appData['/nino/elements/index'] = [];
 [ $status, $body ] = callSearchIndexAction( $appData );
-check( 'an empty configuration is a successful no-op', $status === 200 && $body === [ 'created' => 0, 'elements' => 0, 'failed' => [] ] );
+check( 'an empty configuration is a successful no-op', $status === 200
+	&& $body === [ 'created' => 0, 'elements' => 0, 'failed' => [], 'skipped' => [], 'issues' => [] ] );
 $appData['/nino/elements/index'] = $configuredIndexes;
 
 // Turn both target filenames into directories. /data and its lock directory
@@ -223,11 +336,8 @@ check( 'an index failure cannot roll back the Element commit it follows',
 	&& ( $committedDespiteIndexFailure['title'] ?? null ) === 'Persisted despite index failure' );
 
 $failed = \Nino\Modules\Search::createIndexes( $appData );
-check( 'write failures are reported per configured type', $failed === [
-	'created' => 0,
-	'elements' => 0,
-	'failed' => [ '/articles', '/notes' ],
-] );
+check( 'write failures are reported per configured type', ( $failed['created'] ?? null ) === 0
+	&& ( $failed['elements'] ?? null ) === 0 && ( $failed['failed'] ?? null ) === [ '/articles', '/notes' ] );
 [ $status, $body ] = callSearchIndexAction( $appData );
 check( 'the Admin action turns any index write failure into a 500',
 	$status === 500
