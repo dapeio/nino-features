@@ -1,0 +1,176 @@
+/*	Nino Design - article
+ *	Article - Bild, Titel, Untertitel, Beschreibung, Preis, Rahmen, Schatten
+ *
+ *	v1 is the starting point, not a design: it declares nothing and lets the
+ *	framework's own rules stand, so a fresh preview shows Nino as it is. Every
+ *	rule Nino.css sets for this part is listed below, commented out, with the
+ *	values it uses today - the handles this set has, in one place. Uncomment
+ *	one, change it, reload.
+ *
+ *	Two rules for a set (see docs/design-feature.md):
+ *
+ *	  - Only the classes of this part. A button set does not touch a section
+ *	    title, however tempting.
+ *	  - Colours through the roles, never as literals: var(--color-title),
+ *	    var(--color-primary), var(--color-section-tint-bg). Sizes are absolute
+ *	    (2rem), because the root size scales the whole page anyway.
+ *
+ *	A value the finetune knob should reach declares its three steps instead of
+ *	one value, and the preview picks whichever the part is set to:
+ *
+ *	  :root {
+ *	    --article-title-fontsize--less:    1.6rem;
+ *	    --article-title-fontsize--default: 2rem;
+ *	    --article-title-fontsize--more:    2.6rem;
+ *	  }
+ *	  .nino-article-title { font-size: var(--article-title-fontsize); }
+ *
+ *	Copy this file to v2.css and start there.
+ */
+
+/* ---- what the framework sets today, for reference ---- */
+
+/* .nino-article {
+		margin: 0 0 var(--space-1);
+		padding: 0 0 var(--space-1);
+		border-radius: var(--radius-small);
+   } */
+/* .nino-article--fullwidth, .nino-article--fullwidth.nino-article--alt {
+		padding-left: 0;
+		padding-right: 0;
+		padding-top: 0;
+   } */
+/* .nino-article--alt {
+		background-color: var(--color-section-alt-bg);
+		color: var(--color-section-alt-text);
+		border: 1px solid var(--color-border);
+		padding: var(--space-1);
+   } */
+/* .nino-article--borderless {
+		border: 0;
+   } */
+/* .nino-section--alt .nino-article--alt, .nino-section--tint .nino-article--alt {
+		background-color: var(--color-section-default-bg);
+		color: var(--color-section-default-text);
+   } */
+/* .nino-section--dark .nino-article--alt, .nino-section--dark.nino-article--alt {
+		background-color: var(--color-section-black-bg);
+		color: var(--color-section-black-text);
+   } */
+/* .nino-article-content {
+		padding: var(--space-1) var(--space-2);
+		padding-top: var(--space-1);
+   } */
+/* .nino-article-title {
+		color: var(--color-title);
+		font-size: var(--text-3);
+		margin-bottom: var(--space-2);
+   } */
+/* .nino-article-subtitle {
+		font-size: var(--text-2);
+		margin-bottom: var(--space-2);
+   } */
+/* .nino-article-descr {
+		font-size: var(--text-1);
+		line-height: var(--line-height);
+		margin-bottom: var(--space-2);
+   } */
+/* .nino-article-img {
+		height: auto;
+		width: 100%;
+		margin-bottom: var(--space-1);
+		border-radius: calc( var(--radius-small) *.7);
+   } */
+/* .nino-article-title--quiet {
+		font-size: var(--text-2);
+		opacity: .8;
+   } */
+/* .nino-article-title--loud {
+		font-size: var(--text-4);
+		line-height: calc( var(--text-4) *1.3 );
+   } */
+/* .nino-article-descr--quiet {
+		font-size: calc( var(--text-1) *.9 );
+		opacity: .8;
+   } */
+/* .nino-article-descr--loud {
+		font-size: var(--text-2);
+		line-height: calc( var(--text-2) *1.4 );
+   } */
+/* .nino-article--fullwidth .nino-article-img {
+		border-radius:var(--radius-small) var(--radius-small) 0 0;
+   } */
+/* .nino-section--fullheight .nino-article-content {
+		padding: var(--space-4) var(--space-2) var(--space-3);
+   } */
+/* .nino-article-price {
+		text-align:center;
+		font-size: 2rem;
+		font-weight: bold;
+		color: var(--color-accent);
+   } */
+/* .nino-article-cols {
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+   } */
+/* .nino-article-cols > .nino-article-img {
+		max-width: var(--article-img-max-width);
+   } */
+/* .nino-article-cols-s {
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+   } */
+/* .nino-article-cols-s > .nino-article-img {
+		max-width: var(--article-img-max-width);
+   } */
+/* .nino-article {
+		margin: var(--space-1);
+		padding: var(--space-1);
+   } */
+/* .nino-article--grid.nino-grid-m-25 {
+		width: calc(25% - var(--space-1) - var(--space-1));
+   } */
+/* .nino-article--grid.nino-grid-m-33 {
+		width: calc((100% / 3) - var(--space-1) - var(--space-1));
+   } */
+/* .nino-article--grid.nino-grid-m-50 {
+		width: calc(50% - var(--space-1) - var(--space-1));
+   } */
+/* .nino-article-cols-m {
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+   } */
+/* .nino-article-cols-m > .nino-article-img {
+		max-width: var(--article-img-max-width);
+   } */
+/* .nino-article-cols-l {
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+   } */
+/* .nino-article-cols-l > .nino-article-img {
+		max-width: var(--article-img-max-width);
+   } */
+/* .nino-article {
+		padding: var(--space-2);
+   } */
+/* .nino-article--wide {
+		padding: var(--space-1);
+   } */
+/* .nino-article--fullwidth {
+		padding:0;
+   } */
+/* .nino-article--fullwidth .nino-article-content {
+		padding: var(--space-1) var(--space-2);
+   } */
+/* .nino-article-cols-xl {
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+   } */
+/* .nino-article-cols-xl > .nino-article-img {
+		max-width: var(--article-img-max-width);
+   } */

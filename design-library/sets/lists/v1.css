@@ -1,0 +1,134 @@
+/*	Nino Design - lists
+ *	Listen, Tabellen und Badges
+ *
+ *	v1 is the starting point, not a design: it declares nothing and lets the
+ *	framework's own rules stand, so a fresh preview shows Nino as it is. Every
+ *	rule Nino.css sets for this part is listed below, commented out, with the
+ *	values it uses today - the handles this set has, in one place. Uncomment
+ *	one, change it, reload.
+ *
+ *	Two rules for a set (see docs/design-feature.md):
+ *
+ *	  - Only the classes of this part. A button set does not touch a section
+ *	    title, however tempting.
+ *	  - Colours through the roles, never as literals: var(--color-title),
+ *	    var(--color-primary), var(--color-section-tint-bg). Sizes are absolute
+ *	    (2rem), because the root size scales the whole page anyway.
+ *
+ *	A value the finetune knob should reach declares its three steps instead of
+ *	one value, and the preview picks whichever the part is set to:
+ *
+ *	  :root {
+ *	    --lists-title-fontsize--less:    1.6rem;
+ *	    --lists-title-fontsize--default: 2rem;
+ *	    --lists-title-fontsize--more:    2.6rem;
+ *	  }
+ *	  .nino-list-title { font-size: var(--lists-title-fontsize); }
+ *
+ *	Copy this file to v2.css and start there.
+ */
+
+/* ---- what the framework sets today, for reference ---- */
+
+/* .nino-badge {
+		display: inline-block;
+		padding: .2em .6em;
+		border-radius: var(--radius);
+		font-size: var(--fontsize-small);
+		font-weight: bold;
+		line-height: 1.4;
+		background-color: var(--color-border);
+		color: var(--color-text);
+   } */
+/* .nino-badge--pill {
+		border-radius: 999px;
+   } */
+/* .nino-badge--primary {
+		background-color: var(--color-primary);
+		color: var(--color-primary-text);
+   } */
+/* .nino-badge--success {
+		background-color: var(--color-success);
+		color: var(--color-success-text);
+   } */
+/* .nino-badge--error {
+		background-color: var(--color-error);
+		color: var(--color-error-text);
+   } */
+/* .nino-badge-cloud {
+		display: flex;
+		justify-content: center;
+		gap: var(--space-1);
+   } */
+/* .nino-badge-cloud--left {
+		justify-content: flex-start;
+   } */
+/* .nino-badge-cloud--right {
+		justify-content: flex-end;
+   } */
+/* .nino-list {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-1);
+   } */
+/* .nino-list li > a:only-child {
+		display: inline-block;
+		padding-top: .15rem;
+		padding-bottom: .15rem;
+   } */
+/* .nino-list--check li {
+		padding-left: var(--space-3);
+   } */
+/* .nino-list--check li::before {
+		color: var(--color-success);
+		font-weight: bold;
+   } */
+/* .nino-list--numbered li {
+		min-height: var(--space-3);
+		padding-left: var(--space-4);
+		display: flex;
+		align-items: center;
+   } */
+/* .nino-list--numbered li::before {
+		width: var(--space-3);
+		height: var(--space-3);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 50%;
+		background-color: var(--color-primary);
+		color: var(--color-primary-text);
+		font-size: var(--fontsize-small);
+		font-weight: bold;
+   } */
+/* .nino-list--content {
+		width: min(100%, 64rem);
+		margin-inline: auto;
+   } */
+/* .nino-list--columns {
+		display: grid;
+   } */
+/* .nino-table-wrap {
+		width: 100%;
+   } */
+/* .nino-table {
+		width: 100%;
+		border-collapse: collapse;
+		text-align: left;
+   } */
+/* .nino-table th, .nino-table td {
+		padding: var(--space-1) var(--space-2);
+		border-bottom: 1px solid var(--color-border);
+   } */
+/* .nino-table th {
+		font-size: var(--fontsize-small);
+		text-transform: uppercase;
+		color: inherit;
+   } */
+/* .nino-table--striped tbody tr:nth-child(even) {
+		background-color: var(--color-section-alt-bg);
+		color: var(--color-section-alt-text);
+   } */
+/* .nino-table--bordered th, .nino-table--bordered td {
+		border: 1px solid var(--color-border);
+   } */

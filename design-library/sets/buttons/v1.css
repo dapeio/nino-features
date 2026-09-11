@@ -1,0 +1,119 @@
+/*	Nino Design - buttons
+ *	Buttons - Form, Füllung, Größenverhältnisse, Hover
+ *
+ *	v1 is the starting point, not a design: it declares nothing and lets the
+ *	framework's own rules stand, so a fresh preview shows Nino as it is. Every
+ *	rule Nino.css sets for this part is listed below, commented out, with the
+ *	values it uses today - the handles this set has, in one place. Uncomment
+ *	one, change it, reload.
+ *
+ *	Two rules for a set (see docs/design-feature.md):
+ *
+ *	  - Only the classes of this part. A button set does not touch a section
+ *	    title, however tempting.
+ *	  - Colours through the roles, never as literals: var(--color-title),
+ *	    var(--color-primary), var(--color-section-tint-bg). Sizes are absolute
+ *	    (2rem), because the root size scales the whole page anyway.
+ *
+ *	A value the finetune knob should reach declares its three steps instead of
+ *	one value, and the preview picks whichever the part is set to:
+ *
+ *	  :root {
+ *	    --buttons-title-fontsize--less:    1.6rem;
+ *	    --buttons-title-fontsize--default: 2rem;
+ *	    --buttons-title-fontsize--more:    2.6rem;
+ *	  }
+ *	  .nino-btn-title { font-size: var(--buttons-title-fontsize); }
+ *
+ *	Copy this file to v2.css and start there.
+ */
+
+/* ---- what the framework sets today, for reference ---- */
+
+/* .nino-section--dark .nino-section-title, .nino-section--dark .nino-section-subtitle, .nino-section--dark .nino-atf-title, .nino-section--dark .nino-atf-subtitle, .nino-section--dark .nino-atf-arrowdown, .nino-section--dark .nino-btn--outline, .nino-section--dark .nino-filter-btn {
+		color: var(--color-section-dark-text);
+   } */
+/* .nino-section--black .nino-section-title, .nino-section--black .nino-section-subtitle, .nino-section--black .nino-atf-title, .nino-section--black .nino-atf-subtitle, .nino-section--black .nino-atf-arrowdown, .nino-section--black .nino-btn--outline, .nino-section--black .nino-filter-btn {
+		color: var(--color-section-black-text);
+   } */
+/* .nino-cover--dim .nino-section-title, .nino-cover--dim .nino-section-subtitle, .nino-cover--dim .nino-atf-title, .nino-cover--dim .nino-atf-subtitle, .nino-cover--dim .nino-atf-arrowdown, .nino-cover--dim .nino-btn--outline, .nino-cover--dim .nino-filter-btn {
+		color: var(--color-section-black-text);
+   } */
+/* .nino-btn {
+		display: inline-block;
+		padding: var(--space-1) var(--space-2);
+		border-radius: var(--radius);
+		text-align: center;
+		font-size: var(--fontsize-btn);
+		font-weight:bold;
+   } */
+/* .nino-btn--light {
+		background-color: var(--color-background);
+		color: var(--color-text);
+		border: 1px solid var(--color-border);
+   } */
+/* .nino-btn--light:hover, .nino-btn--light:focus {
+		background-color: var(--color-border);
+   } */
+/* .nino-btn--dark {
+		background-color: var(--color-section-dark-bg);
+		color: var(--color-section-dark-text);
+   } */
+/* .nino-btn--dark:hover, .nino-btn--dark:focus {
+		background-color: var(--color-section-black-bg);
+		color: var(--color-section-black-text);
+   } */
+/* .nino-btn--primary {
+		background-color: var(--color-primary);
+		color: var(--color-primary-text);
+		border: 1px solid var(--color-primary);
+   } */
+/* .nino-btn--primary:hover, .nino-btn--primary:focus {
+		background-color: var(--color-primary);
+		opacity: .85;
+   } */
+/* .nino-btn--brand-alt {
+		background-color: var(--color-brand-alt);
+		color: var(--color-brand-alt-text);
+		border: 1px solid var(--color-brand-alt);
+   } */
+/* .nino-btn--brand-alt:hover, .nino-btn--brand-alt:focus {
+		background-color: var(--color-brand-alt);
+		opacity: .85;
+   } */
+/* .nino-btn--outline {
+		background-color: transparent;
+		color: var(--color-accent);
+		border: 1px solid var(--color-accent);
+   } */
+/* .nino-btn--outline:hover, .nino-btn--outline:focus {
+		background-color: var(--color-primary);
+		color: var(--color-primary-text);
+   } */
+/* .nino-btn--small {
+		padding: calc( var(--space-1) *.7) calc( var(--space-2) * .7 );
+		font-size: calc( var(--fontsize-btn) * .7);
+		border-radius: calc( var(--radius) * .7 );
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-height: 24px;
+   } */
+/* .nino-btn--big {
+		padding: calc( var(--space-1) *1.3) calc( var(--space-2) * 1.3 );
+		font-size: calc( var(--fontsize-btn) * 1.3);
+		border-radius: calc( var(--radius) * 1.3 );
+   } */
+/* .nino-btn:disabled, .nino-btn[aria-disabled="true"] {
+		background-color: var(--color-background);
+		color: var(--color-disabled);
+		border-color: var(--color-border);
+		opacity: 1;
+   } */
+/* .nino-text-center > .nino-btn {
+		margin-right: calc(var(--space-1) / 2);
+		margin-left: calc(var(--space-1) / 2);
+   } */
+/* .nino-text-right > .nino-btn {
+		margin-left: var(--space-1);
+   } */

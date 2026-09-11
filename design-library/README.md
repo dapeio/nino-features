@@ -70,6 +70,31 @@ Two things a header preset has to keep, whichever it is:
 
 [`docs/design-feature.md`](docs/design-feature.md) is the concept the Design feature will be built from - what it catalogues, how a set is authored, what it compiles and what it needs from Nino first. German only for now; it is a working document, not a manual.
 
+## The preview
+
+`preview.php` is a design harness for the part sets - dev only, never deployed. It boots a real Nino against a throwaway project, applies the base unit into it, swaps in the header and footer you name, concatenates the sets over the theme layer, and renders one specimen page that touches every class a set can reach.
+
+```bash
+git clone https://github.com/dapeio/nino.git ../nino     # or set NINO_ROOT
+php -S 127.0.0.1:8080 design-library/preview.php
+```
+
+Then open <http://127.0.0.1:8080/>. What to look at is the array at the top of the file:
+
+```php
+const PARTS = [
+	'header' 	=> 'v1',   // design-library/header/v1
+	'footer' 	=> 'v3',   // design-library/footer/v3
+	'section' => 'v4',   // design-library/sets/section/v4.css
+	'article' => [ 'v2', 'less' ],   // set v2, shown at its "less" step
+	…
+];
+```
+
+The throwaway project is rebuilt on every request, so editing a set or a frame is a reload away. What you see is what a real page renders: the frames go through `\Nino\Html::renderHtml()`, so their textfills, their `[template]` includes and the `[navigation]` shortcode resolve the way they do in a project - the specimen even carries a five-item menu so a header set has something to lay out. A set that does not exist, a frame without a `style.css`, a fill that did not resolve: all of it is named in the bar along the bottom rather than passed over in silence.
+
+`sets/<part>/v1.css` is the starting point for each of the seven parts: it declares nothing, so a fresh preview shows Nino as it is, and lists every rule the framework sets for that part - commented out, with today's values - as the handles that set has. Copy it to `v2.css` and start there.
+
 ## Using one today
 
 They are plain files, so a project that wants one takes it by hand: copy the theme's `assets/` and `fonts/` into the project, copy the frame's `template.tpl` over `private/templates/theme.header.tpl` (or `theme.footer.tpl`), append the frame's `style.css` and the theme's stylesheet to `private/assets/theme.css` - or add them to `/nino/html/assets`' bundle as their own entries - and reload. There is no tooling for it, and that is the point: the tooling is the Design feature.

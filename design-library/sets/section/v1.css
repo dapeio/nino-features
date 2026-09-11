@@ -1,0 +1,189 @@
+/*	Nino Design - section
+ *	Section - Titel, Untertitel, Text, Padding, Margin, Border
+ *
+ *	v1 is the starting point, not a design: it declares nothing and lets the
+ *	framework's own rules stand, so a fresh preview shows Nino as it is. Every
+ *	rule Nino.css sets for this part is listed below, commented out, with the
+ *	values it uses today - the handles this set has, in one place. Uncomment
+ *	one, change it, reload.
+ *
+ *	Two rules for a set (see docs/design-feature.md):
+ *
+ *	  - Only the classes of this part. A button set does not touch a section
+ *	    title, however tempting.
+ *	  - Colours through the roles, never as literals: var(--color-title),
+ *	    var(--color-primary), var(--color-section-tint-bg). Sizes are absolute
+ *	    (2rem), because the root size scales the whole page anyway.
+ *
+ *	A value the finetune knob should reach declares its three steps instead of
+ *	one value, and the preview picks whichever the part is set to:
+ *
+ *	  :root {
+ *	    --section-title-fontsize--less:    1.6rem;
+ *	    --section-title-fontsize--default: 2rem;
+ *	    --section-title-fontsize--more:    2.6rem;
+ *	  }
+ *	  .nino-section-title { font-size: var(--section-title-fontsize); }
+ *
+ *	Copy this file to v2.css and start there.
+ */
+
+/* ---- what the framework sets today, for reference ---- */
+
+/* .nino-section {
+		padding: var(--space-4) 0;
+		background-color: var(--color-section-default-bg);
+		color: var(--color-section-default-text);
+		width: 100%;
+   } */
+/* .nino-section--fullwidth {
+		padding-left: 0;
+		padding-right: 0;
+		margin: 0;
+   } */
+/* .nino-section--dark {
+		background-color: var(--color-section-dark-bg);
+		color: var(--color-section-dark-text);
+   } */
+/* .nino-section--black {
+		background-color: var(--color-section-black-bg);
+		color: var(--color-section-black-text);
+   } */
+/* .nino-section--primary {
+		background-color: var(--color-primary);
+		color: var(--color-primary-text);
+   } */
+/* .nino-section--alt {
+		background-color: var(--color-section-alt-bg);
+		color: var(--color-section-alt-text);
+   } */
+/* .nino-section--tint {
+		background-color: var(--color-section-tint-bg);
+		color: var(--color-section-tint-text);
+   } */
+/* .nino-section--brand-alt {
+		background-color: var(--color-brand-alt);
+		color: var(--color-brand-alt-text);
+   } */
+/* .nino-section-title {
+		text-align: center;
+		font-size: var(--text-4);
+		color: var(--color-title);
+		line-height: calc( var(--text-4) *1.3 );
+		margin: var(--space-1) 0;
+   } */
+/* .nino-section-subtitle {
+		text-align: center;
+		font-size: var(--text-2);
+		color: var(--color-subtitle);
+		line-height: calc( var(--text-2) *1.3 );
+		opacity: .8;
+		margin-bottom: var(--space-2);
+   } */
+/* .nino-section-text {
+		font-size: var(--text-1);
+		line-height: var(--line-height);
+		margin-bottom: var(--space-2);
+   } */
+/* .nino-section-title--quiet {
+		font-size: var(--text-3);
+		line-height: calc( var(--text-3) *1.3 );
+		opacity: .8;
+   } */
+/* .nino-section-title--loud {
+		font-size: var(--text-5);
+		line-height: calc( var(--text-5) *1.2 );
+   } */
+/* .nino-section-subtitle--quiet {
+		font-size: var(--text-1);
+		line-height: calc( var(--text-1) *1.4 );
+		opacity: .7;
+   } */
+/* .nino-section-subtitle--loud {
+		font-size: var(--text-3);
+		line-height: calc( var(--text-3) *1.3 );
+		opacity: 1;
+   } */
+/* .nino-section-text--quiet {
+		font-size: calc( var(--text-1) *.9 );
+		opacity: .8;
+   } */
+/* .nino-section-text--loud {
+		font-size: var(--text-2);
+		line-height: calc( var(--text-2) *1.4 );
+		max-width: 52rem;
+   } */
+/* .nino-text-center > .nino-section-text--loud {
+		margin-right: auto;
+		margin-left: auto;
+   } */
+/* .nino-section--alt .nino-section-title, .nino-section--alt .nino-section-subtitle, .nino-section--alt .nino-atf-title, .nino-section--alt .nino-atf-subtitle, .nino-section--alt .nino-atf-arrowdown {
+		color: var(--color-section-alt-text);
+   } */
+/* .nino-section--tint .nino-section-title, .nino-section--tint .nino-section-subtitle, .nino-section--tint .nino-atf-title, .nino-section--tint .nino-atf-subtitle, .nino-section--tint .nino-atf-arrowdown {
+		color: var(--color-section-tint-text);
+   } */
+/* .nino-section--dark .nino-section-title, .nino-section--dark .nino-section-subtitle, .nino-section--dark .nino-atf-title, .nino-section--dark .nino-atf-subtitle, .nino-section--dark .nino-atf-arrowdown, .nino-section--dark .nino-btn--outline, .nino-section--dark .nino-filter-btn {
+		color: var(--color-section-dark-text);
+   } */
+/* .nino-section--black .nino-section-title, .nino-section--black .nino-section-subtitle, .nino-section--black .nino-atf-title, .nino-section--black .nino-atf-subtitle, .nino-section--black .nino-atf-arrowdown, .nino-section--black .nino-btn--outline, .nino-section--black .nino-filter-btn {
+		color: var(--color-section-black-text);
+   } */
+/* .nino-section--primary .nino-section-title, .nino-section--primary .nino-section-subtitle, .nino-section--primary .nino-atf-title, .nino-section--primary .nino-atf-subtitle, .nino-section--primary .nino-atf-arrowdown {
+		color: var(--color-primary-text);
+   } */
+/* .nino-section--brand-alt .nino-section-title, .nino-section--brand-alt .nino-section-subtitle, .nino-section--brand-alt .nino-atf-title, .nino-section--brand-alt .nino-atf-subtitle, .nino-section--brand-alt .nino-atf-arrowdown {
+		color: var(--color-brand-alt-text);
+   } */
+/* .nino-cover--dim .nino-section-title, .nino-cover--dim .nino-section-subtitle, .nino-cover--dim .nino-atf-title, .nino-cover--dim .nino-atf-subtitle, .nino-cover--dim .nino-atf-arrowdown, .nino-cover--dim .nino-btn--outline, .nino-cover--dim .nino-filter-btn {
+		color: var(--color-section-black-text);
+   } */
+/* .nino-section--border-1 {
+		border-bottom: 1px solid rgba(0,0,0,.1);
+   } */
+/* .nino-section--border-2 {
+		border-bottom: .25rem solid rgba(0,0,0,.1);
+   } */
+/* .nino-section--border-3 {
+		border-bottom: .5rem solid rgba(0,0,0,.1);
+   } */
+/* .nino-section--dark.nino-section--border-1, .nino-section--dark.nino-section--border-2, .nino-section--dark.nino-section--border-3, .nino-section--black.nino-section--border-1, .nino-section--black.nino-section--border-2, .nino-section--black.nino-section--border-3 {
+		border-color: rgba(255,255,255,.1);
+   } */
+/* .nino-section--border-primary {
+		border-color:var(--color-primary);
+   } */
+/* .nino-section {
+		padding: var(--space-5) var(--space-3);
+   } */
+/* .nino-section--fullwidth {
+		padding-left: 0;
+		padding-right: 0;
+   } */
+/* .nino-section--fullheight {
+		padding-top: 0;
+		padding-bottom: 0;
+   } */
+/* .nino-section--alt .nino-article--alt, .nino-section--tint .nino-article--alt {
+		background-color: var(--color-section-default-bg);
+		color: var(--color-section-default-text);
+   } */
+/* .nino-section--dark .nino-article--alt, .nino-section--dark.nino-article--alt {
+		background-color: var(--color-section-black-bg);
+		color: var(--color-section-black-text);
+   } */
+/* .nino-section--fullheight .nino-article-content {
+		padding: var(--space-4) var(--space-2) var(--space-3);
+   } */
+/* .nino-section--dark .nino-icon, .nino-section--black .nino-icon {
+		color: var(--color-section-dark-text);
+   } */
+/* .nino-text-left :is(.nino-section-title, .nino-section-subtitle, .nino-atf-title, .nino-atf-subtitle) {
+		text-align: left;
+   } */
+/* .nino-text-center :is(.nino-section-title, .nino-section-subtitle, .nino-atf-title, .nino-atf-subtitle) {
+		text-align: center;
+   } */
+/* .nino-text-right :is(.nino-section-title, .nino-section-subtitle, .nino-atf-title, .nino-atf-subtitle) {
+		text-align: right;
+   } */

@@ -1,0 +1,72 @@
+/*	Nino Design - forms
+ *	Formulare - Felder, Label, Fokus, Meldezustände
+ *
+ *	v1 is the starting point, not a design: it declares nothing and lets the
+ *	framework's own rules stand, so a fresh preview shows Nino as it is. Every
+ *	rule Nino.css sets for this part is listed below, commented out, with the
+ *	values it uses today - the handles this set has, in one place. Uncomment
+ *	one, change it, reload.
+ *
+ *	Two rules for a set (see docs/design-feature.md):
+ *
+ *	  - Only the classes of this part. A button set does not touch a section
+ *	    title, however tempting.
+ *	  - Colours through the roles, never as literals: var(--color-title),
+ *	    var(--color-primary), var(--color-section-tint-bg). Sizes are absolute
+ *	    (2rem), because the root size scales the whole page anyway.
+ *
+ *	A value the finetune knob should reach declares its three steps instead of
+ *	one value, and the preview picks whichever the part is set to:
+ *
+ *	  :root {
+ *	    --forms-title-fontsize--less:    1.6rem;
+ *	    --forms-title-fontsize--default: 2rem;
+ *	    --forms-title-fontsize--more:    2.6rem;
+ *	  }
+ *	  .nino-form-title { font-size: var(--forms-title-fontsize); }
+ *
+ *	Copy this file to v2.css and start there.
+ */
+
+/* ---- what the framework sets today, for reference ---- */
+
+/* .nino-form-input, .nino-form-textarea, .nino-form-select {
+		width: 100%;
+		padding: var(--space-1);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-small);
+		font-size: 1rem;
+		margin-bottom: var(--space-1);
+   } */
+/* .nino-form-input:focus, .nino-form-textarea:focus, .nino-form-select:focus {
+		border-color: transparent;
+   } */
+/* .nino-form--inline {
+		display: flex;
+		gap: var(--space-1);
+		align-items: flex-start;
+		justify-content: center;
+   } */
+/* .nino-form-trap {
+		width: 1px;
+		height: 1px;
+   } */
+/* .nino-form-textarea {
+		min-height: 6rem;
+   } */
+/* .nino-form-select {
+		padding-right: 2.5rem;
+   } */
+/* .nino-form-message {
+		font-size: .875rem;
+		margin-top: .5rem;
+   } */
+/* .nino-form-message:empty {
+		display: none;
+   } */
+/* .nino-newsletter-form .nino-form-input {
+		max-width:45vw;
+   } */
+/* .nino-newsletter-inline .nino-form-input {
+		margin: 0;
+   } */

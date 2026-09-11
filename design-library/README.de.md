@@ -70,6 +70,31 @@ Zwei Dinge muss ein Header-Preset einhalten, welches auch immer es ist:
 
 [`docs/design-feature.md`](docs/design-feature.md) ist das Konzept, aus dem das Design-Feature gebaut wird — was es katalogisiert, wie ein Set geschrieben ist, was es kompiliert und was es vorher von Nino braucht.
 
+## Die Vorschau
+
+`preview.php` ist ein Design-Werkzeug für die Part-Sets – nur für die Entwicklung, nie ausgeliefert. Es startet ein echtes Nino gegen ein Wegwerf-Projekt, wendet die Base-Einheit darauf an, tauscht Header und Footer gegen die benannten, hängt die Sets über die Theme-Schicht und rendert eine Musterseite, die jede Klasse anfasst, die ein Set erreichen kann.
+
+```bash
+git clone https://github.com/dapeio/nino.git ../nino     # oder NINO_ROOT setzen
+php -S 127.0.0.1:8080 design-library/preview.php
+```
+
+Dann <http://127.0.0.1:8080/> öffnen. Was zu sehen ist, steht im Array am Kopf der Datei:
+
+```php
+const PARTS = [
+	'header' 	=> 'v1',   // design-library/header/v1
+	'footer' 	=> 'v3',   // design-library/footer/v3
+	'section' => 'v4',   // design-library/sets/section/v4.css
+	'article' => [ 'v2', 'less' ],   // Set v2, auf seiner Stufe „less“
+	…
+];
+```
+
+Das Wegwerf-Projekt wird bei jedem Aufruf neu gebaut – ein geändertes Set oder ein geänderter Rahmen ist also einen Reload entfernt. Und es ist das, was eine echte Seite rendert: Die Rahmen laufen durch `\Nino\Html::renderHtml()`, ihre Textfills, ihre `[template]`-Includes und der Shortcode `[navigation]` lösen also auf wie in einem Projekt – die Musterseite bringt sogar ein fünfteiliges Menü mit, damit ein Header-Set etwas zu setzen hat. Ein Set, das es nicht gibt, ein Rahmen ohne `style.css`, ein Fill, der nicht aufgelöst hat: All das benennt die Leiste am unteren Rand, statt es stillschweigend zu übergehen.
+
+`sets/<part>/v1.css` ist der Ausgangspunkt für jedes der sieben Teile: Es erklärt nichts, eine frische Vorschau zeigt also Nino, wie es ist – und listet jede Regel, die der Rahmen für dieses Teil setzt, auskommentiert und mit den heutigen Werten, als die Griffe, die dieses Set hat. Kopiere es nach `v2.css` und fang dort an.
+
 ## Eines davon heute verwenden
 
 Es sind schlichte Dateien, ein Projekt nimmt sich also von Hand, was es will: das `assets/` und `fonts/` des Themes ins Projekt kopieren, das `template.tpl` des Rahmens über `private/templates/theme.header.tpl` (bzw. `theme.footer.tpl`) legen, das `style.css` des Rahmens und das Stylesheet des Themes an `private/assets/theme.css` anhängen – oder als eigene Einträge in das Bundle unter `/nino/html/assets` aufnehmen – und neu laden. Werkzeug gibt es dafür nicht, und genau das ist der Punkt: Das Werkzeug ist das Design-Feature.
