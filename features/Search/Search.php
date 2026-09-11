@@ -12,7 +12,10 @@ namespace Nino\Modules {
 
 	class Search {
 
-		private const array WEIGHTS = [
+		// What a match in each priority is worth. Public because the panel shows
+		// these numbers beside its four slots: a second copy of them in the
+		// interface is a second copy that can drift
+		public const array WEIGHTS = [
 			0 => 1.00,
 			1 => 0.70,
 			2 => 0.45,

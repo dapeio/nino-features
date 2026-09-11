@@ -5,6 +5,41 @@ A release is the tag `search-<version>` of dapeio/nino-features.
 
 ## 1.1.0 — 2026-09-11
 
+### The panel, which was one button
+
+Up to 1.0.0 the Search panel rebuilt the indexes and reported a number.
+Everything it could not say had to be worked out of `config.php` by hand:
+which types are indexed, whether the index still answers to them, why a
+configured type produces no hits, and whether the ranking does what anybody
+wanted. Three screens now.
+
+- **Index** — one row per Element type *the project has*, not only per
+  configured one. Indexed fields as chips in priority order, both counts, and a
+  state: current, stale, not built, not indexed or broken. **A configured name
+  that does not resolve is printed in the row with its reason** rather than
+  dropped in silence. A stale or unbuilt row carries its own rebuild beside the
+  **Rebuild all**.
+- **Type** — the four priority slots, each a `<select>` over that type's own
+  model, and only over the fields that carry text. A field name cannot be
+  mistyped into a slot this way, which is the single most common way the
+  configuration used to end up quietly doing nothing. The weight beside each
+  slot is read from `Search::WEIGHTS`, so the interface cannot promise a number
+  the ranking does not use. **Save and build** writes `/nino/elements/index`
+  into `config.php` — the key had no editor at all before — and then builds
+  that one index, saying which of the two just happened. Taking every field out
+  takes the type out of the configuration and removes its derived file with it.
+- **Probe** — a query, the types, the locale, and the hits as a page would get
+  them, with score, coverage and which of the chosen fields matched. The screen
+  the panel exists for: a ranking is invisible, and moving a field from
+  priority 1 to 0 now changes the order on screen instead of on a page somebody
+  has to build first.
+- A **dashboard tile** counting the indexed Elements, which says so when any
+  index is stale, and is absent while nothing is configured.
+- Every action sits behind `/_admin/search/manage`: no session is a `401`, a
+  session without the permission a `403`.
+- The panel ships its own `assets/admin.css`, under its own class names rather
+  than in the workbench's `nino-admin-*` namespace.
+
 ### Two shortcodes, and no page
 
 - `[search]` renders a plain **GET** form, so the query rides in the url and a

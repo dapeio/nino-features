@@ -115,19 +115,76 @@ deactivating, reload the page.
 
 | | |
 | --- | --- |
-| Navigation | **Search** in the System group (uri `search`, position 30) |
-| Permission | `/_admin/search/manage` on its one action - a developer's permission |
-| Action | `search/createindex` (`apiCreateIndex()`): calls `createIndexes()`; answers `200` with `{ created, elements, failed: [] }`, or `500` naming the types whose index could not be written |
-| Pane | `search-form`, rendered by `assets/admin.js`: a heading, the hint, one button **Create searchindex**, and the outcome - "Created 2 search indexes for 41 elements.", or "No search indexes are configured." |
-| Activity log | `log()` writes `Rebuild Search Index` for every press |
+| Navigation | **Search**. A panel a feature brings always lands in the workbench's **Features** group, whatever its own `nav()` names |
+| Permission | `/_admin/search/manage` on every one of its actions. No session is a `401`, a session without the permission a `403` |
+| Panes | `search-list`, `search-type`, `search-probe`, drawn by `assets/admin.js` and styled by `assets/admin.css` |
+| Dashboard | a tile counting the indexed Elements, which says so when any index is stale. Absent while nothing is configured |
+| Activity log | `Rebuild Search Index` and `Configure Search Index (/type)` |
 | Text | `text/en_US.php` and `text/de_DE.php` - the panel's own words, merged into the workbench's fills while the feature is active |
 
-Every press recreates every valid configured index, whichever one is stale.
+### Index - the list
+
+One row per Element type **the project has**, not only per configured one -
+the difference is the point, because a type nobody indexed is exactly what
+somebody is looking for when they wonder why a search finds nothing:
+
+| Type | Indexed fields | Elements | State |
+| --- | --- | --- | --- |
+| products `/products` | `title` `description` `keywords` | 3 | current |
+| articles `/articles` | — | 2 | not indexed |
+
+The fields are chips in priority order, so the weighting is readable without
+opening anything. **A configured name that does not resolve is printed in the
+row with its reason** - `the model of "/products" has no field "beschreibung"` -
+rather than dropped in silence the way 1.0.0 dropped it. The state is one of
+*current*, *stale*, *not built*, *not indexed* or *broken*, and a row that is
+stale or unbuilt carries its own rebuild beside the **Rebuild all** in the
+action bar.
+
+### Type - the editor
+
+Four slots, strongest to weakest, each a `<select>` **over that type's own
+model** - and only over the fields that carry text, so `image`, `element` and
+`boolean` are not on the list at all. A field name cannot be mistyped into a
+slot this way, which is the single most common way the configuration used to
+end up quietly doing nothing.
+
+The weight sits beside each slot, read from `Search::WEIGHTS` rather than
+written into the interface, so the panel cannot promise a number the ranking
+does not use.
+
+**Save and build** writes `/nino/elements/index` into `config.php` and then
+builds that one index, and says which of the two just happened. Taking every
+field out takes the type out of the configuration and **removes its derived
+file with it**: an index nobody searches is a copy of the content with nothing
+reading it.
+
+That key had no editor at all before, which is the one case where a panel
+owning a `config.php` key is uncontroversial - there is no second writer to
+disagree with (see the Config panel's own docblock on why keys with editors
+leave it).
+
+### Probe - try it
+
+A query, the types to ask, the locale, and the hits as the page would get
+them: place, label, score, coverage and which of the chosen fields carried the
+match.
+
+This is the screen the panel exists for. Search is a *ranking* feature and a
+ranking is invisible: move a field from priority 1 to 0 and the order changes
+here, in the same panel, without a page to test it on. It runs the real
+`getHits()` against the index that is on disk right now, so it is the same
+answer a visitor would get, not a simulation of one.
+
+The reasons a configured name did not resolve are English, like every other
+`\Nino\Http::fail()` message the workbench surfaces; the panel's own words are
+translated.
 
 ## Configuration
 
 Switch the feature on in the workbench's Features panel - or, by hand, list
-its class in `/nino/modules` - and configure the index in `config.php`:
+its class in `/nino/modules` - and then use the **Search** panel, which writes
+the configuration for you. By hand it is one `config.php` key:
 
 ```php
 return [
@@ -156,12 +213,14 @@ and field names are ignored - a type whose file does not exist under
 type that keeps no valid field is not indexed at all.
 
 `/nino/elements/index` is a plain `config.php` key, not a feature setting:
-the manifest declares no settings (`'settings' => []`), and the Features
-panel shows no form for this feature.
+the manifest declares no settings (`'settings' => []`), and the Features panel
+shows no form for this feature. The **Search** panel is its editor, and the
+only one - a second, unvalidated way to write the same data is a way to
+corrupt it.
 
-Activation registers the post-commit Elements callback but creates no file
-on its own. Use **Create searchindex** in the **Search** panel for the
-initial build. Every press recreates every valid configured index.
+Activation registers the post-commit Elements callback and the two shortcodes,
+but creates no file on its own. Use **Rebuild all** in the **Search** panel for
+the initial build. Every press recreates every valid configured index.
 Afterwards, every successful insert, update or delete of a configured type
 recreates that one type after the Element file has committed. A type
 `articles` is stored as the single derived file `/data/index-articles.php`
@@ -249,7 +308,12 @@ php features/Search/tests/search-smoke.php
 NINO_ROOT=../nino php features/Search/tests/search-smoke.php
 ```
 
-It covers the two shortcodes rendered the way a template renders them -
+It covers the panel's four actions - the rows the list draws, the editor
+writing `config.php` and refusing a field the model does not have, an empty
+field map taking the type out with its derived file, the probe's scores and
+its locale, the dashboard tile, and both refusals (`401` without a session,
+`403` without the permission) - the two shortcodes rendered the way a template
+renders them -
 through `\Nino\Html::renderHtml()`, so the fills in the attributes resolve
 before the shortcode sees them and the `[[field]]` placeholders in the body
 survive to it - the configuration boundary (both slash forms, invalid priorities,

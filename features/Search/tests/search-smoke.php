@@ -27,8 +27,14 @@ function searchUris( array &$appData, string $type, string $query ): array {
 }
 
 function callSearchIndexAction( array &$appData ): array {
+	return callSearchAction( $appData, 'apiCreateIndex' );
+}
+
+function callSearchAction( array &$appData, string $method, array $post = [] ): array {
+	$_POST['data'] = json_encode( $post );
 	$request = [ '/nino/http/response' => [ 'statusCode' => 200 ] ];
-	\Nino\Modules\Search\Admin::apiCreateIndex( $appData, $request );
+	\Nino\Modules\Search\Admin::$method( $appData, $request );
+	$_POST = [];
 	return [
 		$request['/nino/http/response']['statusCode'],
 		$request['/nino/http/response']['body'],
@@ -387,6 +393,99 @@ $rebuiltArticles = @include $articleIndexPath;
 $rebuiltNotes = @include $notesIndexPath;
 check( 'both derived files were recreated', is_array( $rebuiltArticles ) === true && is_array( $rebuiltNotes ) === true );
 check( 'the second type can be searched immediately', searchUris( $appData, 'notes', 'merkzettel' ) === [ '/notes/one' ] );
+
+echo "\nThe panel: the list it draws, the editor that writes config.php, the probe\n";
+
+[ $status, $listed ] = callSearchAction( $appData, 'apiList' );
+check( 'the list action answers the rows, the weights and what a slot may be given',
+	$status === 200
+	&& is_array( $listed['types'] ?? null ) === true
+	&& ( $listed['weights'] ?? null ) === \Nino\Modules\Search::WEIGHTS
+	&& ( $listed['indexable'] ?? null ) === \Nino\Modules\Search::INDEXABLE
+	&& in_array( 'de_DE', (array) ( $listed['locales'] ?? [] ), true ) === true );
+
+// The editor writes the one config key nobody had an editor for
+[ $status, $saved ] = callSearchAction( $appData, 'apiSave', [ 'type' => 'notes', 'fields' => [ 0 => 'title' ] ] );
+check( 'the editor writes one type into /nino/elements/index', $status === 200
+	&& ( $saved['type'] ?? null ) === '/notes' && ( $saved['fields'] ?? null ) === [ 0 => 'title' ] );
+check( '...into config.php, not only into the running request',
+	( \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/elements/index']['/notes'] ?? null ) === [ 0 => 'title' ] );
+check( '...and the type is searchable straight after a build',
+	callSearchAction( $appData, 'apiCreateIndex', [ 'type' => '/notes' ] )[0] === 200
+	&& searchUris( $appData, 'notes', 'merkzettel' ) === [ '/notes/one' ] );
+
+check( 'a field the model does not have is refused with the reason, not written',
+	callSearchAction( $appData, 'apiSave', [ 'type' => 'notes', 'fields' => [ 0 => 'titel' ] ] ) === [ 400, [ 'error' => 'the model of "/notes" has no field "titel"' ] ] );
+check( 'so is a priority outside the four slots',
+	callSearchAction( $appData, 'apiSave', [ 'type' => 'notes', 'fields' => [ 7 => 'title' ] ] )[0] === 400 );
+check( 'so is a type that is not one, and one that does not exist',
+	callSearchAction( $appData, 'apiSave', [ 'type' => '../etc/passwd', 'fields' => [] ] )[0] === 400
+	&& callSearchAction( $appData, 'apiSave', [ 'type' => 'nothing-here', 'fields' => [] ] )[0] === 404 );
+
+$notesIndex = \Nino\Filesystem::path( $appData, '/data/index-notes.php' );
+check( 'the refusals left the configuration as it was',
+	( $appData['/nino/elements/index']['/notes'] ?? null ) === [ 0 => 'title' ] && is_file( $notesIndex ) === true );
+
+/*	Taking every field out is how a type stops being searchable, and the index
+	goes with it: a derived file nobody searches is a copy of the content with
+	nothing reading it */
+[ $status, $removed ] = callSearchAction( $appData, 'apiSave', [ 'type' => '/notes', 'fields' => [] ] );
+check( 'an empty field map takes the type out of the configuration', $status === 200 && ( $removed['removed'] ?? null ) === true
+	&& isset( $appData['/nino/elements/index']['/notes'] ) === false );
+check( '...and removes the derived file with it', is_file( $notesIndex ) === false );
+check( '...and it is gone from config.php too',
+	isset( \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/elements/index']['/notes'] ) === false );
+
+// The screen the panel exists for
+[ $status, $probe ] = callSearchAction( $appData, 'apiProbe', [ 'types' => [ 'articles' ], 'query' => 'orbit' ] );
+check( 'the probe answers the hits a page would get, in the same order', $status === 200
+	&& array_column( (array) ( $probe['hits'] ?? [] ), 'uri' ) === [ '/articles/orbit-summary' ] );
+check( 'a hit is labelled by its strongest configured field rather than by its uri',
+	( $probe['hits'][0]['label'] ?? null ) === 'Remote station' );
+check( 'and says what it scored, how much of the query it covered and where it matched',
+	( $probe['hits'][0]['score'] ?? null ) === 1.75
+	&& ( $probe['hits'][0]['coverage'] ?? null ) === 1.0
+	&& ( $probe['hits'][0]['matched'] ?? null ) === [ 'summary' ] );
+check( 'the probe answers for the locale it is asked about',
+	array_column( (array) ( callSearchAction( $appData, 'apiProbe', [ 'types' => [ 'articles' ], 'query' => 'lighthouses', 'locale' => 'en_US' ] )[1]['hits'] ?? [] ), 'uri' ) === [ '/articles/alpha' ] );
+$appData['./nino/locales/current'] = 'de_DE';
+
+check( 'a dashboard tile counts what is really indexed', is_array( $tile = \Nino\Modules\Search\Admin::summary( $appData ) ) === true
+	&& (int) $tile['value'] > 0 && str_starts_with( (string) $tile['label'], '/_admin/search/label/tile' ) );
+
+/*	Every action sits behind the one permission, and the two ways of not having
+	it are different answers: no session at all is a 401, a session without the
+	permission a 403. The editor writes config.php, so this is the guard that
+	matters most in the panel */
+\Nino\Auth::logoutUser( $appData );
+check( 'every action of the panel refuses a request with no session',
+	callSearchAction( $appData, 'apiList' )[0] === 401
+	&& callSearchAction( $appData, 'apiSave', [ 'type' => 'articles', 'fields' => [] ] )[0] === 401
+	&& callSearchAction( $appData, 'apiProbe', [ 'types' => [ 'articles' ], 'query' => 'orbit' ] )[0] === 401 );
+
+\Nino\Auth::insertUser( $appData, 'editor@example.com', 'correct horse battery staple', [ '/_admin/elements/manage' ] );
+\Nino\Auth::loginUser( $appData, 'editor@example.com', 'correct horse battery staple' );
+check( '...and an account without /_admin/search/manage with a 403',
+	callSearchAction( $appData, 'apiList' )[0] === 403
+	&& callSearchAction( $appData, 'apiSave', [ 'type' => 'articles', 'fields' => [] ] )[0] === 403
+	&& callSearchAction( $appData, 'apiCreateIndex' )[0] === 403
+	&& callSearchAction( $appData, 'apiProbe', [ 'types' => [ 'articles' ], 'query' => 'orbit' ] )[0] === 403 );
+check( 'a refused save changed nothing', ( $appData['/nino/elements/index']['/articles'] ?? null ) !== [] );
+\Nino\Auth::logoutUser( $appData );
+\Nino\Auth::loginUser( $appData, 'dev@example.com', 'correct horse battery staple' );
+
+check( 'the panel names every action it answers', array_keys( \Nino\Modules\Search\Admin::actions() )
+	=== [ 'search/list', 'search/save', 'search/createindex', 'search/probe' ] );
+check( 'it ships the three panes its screens live in', \Nino\Modules\Search\Admin::panes() === [ 'search-list', 'search-type', 'search-probe' ] );
+check( 'and the two assets they are drawn with', count( \Nino\Modules\Search\Admin::assets() ) === 2 );
+check( 'a save is written to the activity log by name',
+	\Nino\Modules\Search\Admin::log( 'search/save', [ 'type' => '/articles' ] ) === 'Configure Search Index (/articles)' );
+
+// Put the second type back the way this section set it up: what follows turns
+// both index files into directories and expects both to be configured
+$appData['/nino/elements/index']['notes'] = [ 0 => 'title' ];
+\Nino\Modules\Search::createIndexes( $appData );
+
 
 $sentinel = '<?php return ["sentinel" => true];';
 file_put_contents( $articleIndexPath, $sentinel );

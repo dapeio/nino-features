@@ -1,0 +1,100 @@
+@layer nino.system, nino.tool, nino.local;
+
+/**
+ *	Nino										A compact filesystembased php framework
+ *	Modules\Search					What the feature's /_admin panel needs beyond the design
+ *													system in _admin/assets/style.css: the field chips on
+ *													the index list, the state badge beside them, the small
+ *													per-row action and the probe's own controls. Joins the
+ *													workbench's style bundle while the feature is active
+ *													(see the panel's assets()), so the same layer rules
+ *													apply: scoped to what this panel renders, nothing
+ *													shared restated.
+ *
+ *													The class names are the feature's own rather than
+ *													nino-admin-*: that prefix belongs to the workbench, and
+ *													a feature defining a name in it collides the day the
+ *													workbench defines the same one differently.
+ *
+ *	@package								Dape/Nino
+ *	@author									David Perchermeier <mail@dape.io>
+ *	@link										https://github.com/dapeio/nino
+ */
+
+@layer nino.tool {
+
+/* One indexed field, in priority order - the weighting made readable without
+   opening the editor */
+.nino-admin .search-chip {
+	display: inline-block;
+	padding: .05rem .35rem;
+	border: 1px solid var(--editor-border);
+	border-radius: var(--editor-radius-sm);
+	background: var(--editor-bg-grouped);
+	font-size: .76rem;
+	white-space: nowrap;
+}
+
+/* Whether the index still answers to the configuration. Colour carries the
+   level, the word carries the meaning - the badge is never colour alone */
+.nino-admin .search-state {
+	display: inline-block;
+	padding: .05rem .4rem;
+	border-radius: var(--editor-radius-sm);
+	font-size: .76rem;
+	font-weight: 600;
+	white-space: nowrap;
+}
+.nino-admin .search-state--ok 		{ background: var(--editor-green-soft); color: var(--editor-green); }
+.nino-admin .search-state--warn 	{ background: var(--editor-bg-grouped); color: var(--editor-orange); }
+.nino-admin .search-state--error 	{ background: var(--editor-red-soft); color: var(--editor-red); }
+.nino-admin .search-state--muted 	{ background: var(--editor-bg-grouped); color: var(--editor-text-secondary); }
+
+.nino-admin .search-hint-warn {
+	color: var(--editor-orange);
+}
+
+/* The per-row action, beside a full-size one in the action bar below */
+.nino-admin .search-btn-small {
+	padding: .15rem .5rem;
+	font-size: .78rem;
+}
+.nino-admin .search-btn-small + .search-btn-small {
+	margin-left: .3rem;
+}
+
+/* The four priority slots read as a column of labelled selects rather than a
+   form: each one is a choice out of the model, not a value to type */
+#search-slots {
+	max-width: 34rem;
+}
+#search-slots select {
+	width: 100%;
+}
+
+/* The probe's type filter: one checkbox per indexed type, on one row while
+   they fit */
+#search-probe-types {
+	display: flex;
+	flex-wrap: wrap;
+	gap: .2rem .9rem;
+	margin-bottom: .8rem;
+}
+#search-probe-types label {
+	display: inline-flex;
+	align-items: center;
+	gap: .3rem;
+	margin: 0;
+}
+#search-probe-query {
+	max-width: 34rem;
+}
+/* Score and coverage are numbers to compare down a column, so they line up */
+#search-probe-hits td:nth-child(1),
+#search-probe-hits td:nth-child(3),
+#search-probe-hits td:nth-child(4) {
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+}
