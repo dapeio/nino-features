@@ -35,6 +35,10 @@ This repository is the place Nino's features are published from. `features/<Name
 
 A feature's README, where it has one, describes its routes, its panel, its install unit, its data and its tests; its `CHANGELOG.md`, where it has one, the changes between versions. `bin/catalogue.php` reads the same manifests and prints this table as JSON, `bin/build.php` builds the archives and the signed `catalogue.json` getnino.dev publishes - see [Develop and test](#develop-and-test) and [Publishing](#publishing).
 
+## The design library
+
+Beside `features/` sits [`design-library/`](design-library/README.md) - **not** a feature and never published. It holds the ten themes, six headers and seven footers Nino's setup wizard offered up to 1.1, parked for the **Design** feature, which is not written yet. `bin/build.php` and `bin/check.sh` only ever read `features/`, so nothing there is packed into an archive, listed in `catalogue.json` or run as a test.
+
 ## Install a feature
 
 A feature is not installed; it is dropped in and switched on:
