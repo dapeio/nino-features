@@ -5,6 +5,28 @@ A release is the tag `search-<version>` of dapeio/nino-features.
 
 ## 1.1.0 — 2026-09-11
 
+### Two shortcodes, and no page
+
+- `[search]` renders a plain **GET** form, so the query rides in the url and a
+  result page can be linked, bookmarked and gone back to. Its labels come from
+  its own attributes, then the project's `/search/label/submit` and
+  `/search/label/placeholder` textfills, then what the feature ships in the
+  interface language - a bare `[search]` already says something.
+- `[search-results …]…[/search-results]` is an enclosing shortcode whose
+  **body is the markup of one hit**, repeated per result, with `[[name]]` for
+  anything the type's model has plus `[[.uri]]`, `[[.slug]]`, `[[.type]]`,
+  `[[.locale]]`, `[[.score]]` and `[[.n]]`. That is the whole templating story:
+  one search serves a product grid and a list of articles because neither is
+  this feature's to describe. `type` takes one Element type or several,
+  `limit` defaults to 20, `empty` says what to show when nothing was found,
+  and `tag`/`class` own the wrapper.
+- Still no route, no page template and no install unit. The feature ships the
+  two shortcodes and a project puts them in its own page.
+- A value is escaped on the way into the page unless the model marks the field
+  as `html`; an array field reads as a comma-separated list; a placeholder the
+  model does not have is left standing rather than emptied, the way an
+  unresolved fill behaves everywhere else in Nino.
+
 ### The ranking
 
 - **A query word that finds nothing no longer discards the document.** Every

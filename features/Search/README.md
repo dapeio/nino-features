@@ -3,24 +3,95 @@
 **Key:** `search` · **Class:** `\Nino\Modules\Search` · **Version:** 1.1.0 · **Nino:** `^1.0`
 
 A small weighted fuzzy index over the fields of configured Element types,
-grouped by locale. Project code searches through
-`\Nino\Modules\Search::getElements()` and receives complete canonical
-Elements in score order. The index is a derived file per type, rebuilt after
+grouped by locale. Two shortcodes put a search form and its results on any
+page; project code searches through `\Nino\Modules\Search::getElements()`
+and receives complete canonical Elements in score order. The index is a derived file per type, rebuilt after
 every committed Elements write of that type and, all at once, from the
 workbench's **Search** panel. Which types and fields are indexed is
 `config.php` work, under `/nino/elements/index`.
 
 One directory, the shape the [feature recipe](https://github.com/dapeio/nino/blob/main/docs/recipes/feature.md)
-describes: `feature.php`, `Search.php`, `Admin/Admin.php`, `assets/`,
-`text/`, `tests/`. There is no install unit - the feature ships nothing for
-the website - and no `data` entry in the manifest, because the index files
-are derived and rebuilt on demand. The changes per version are in
+describes: `feature.php`, `Search.php`, `Shortcodes/Shortcodes.php`,
+`Admin/Admin.php`, `assets/`, `text/`, `tests/`. There is no install unit -
+the feature ships no page and no template, only the two shortcodes a project
+puts in its own - and no `data` entry in the manifest, because the index
+files are derived and rebuilt on demand. The changes per version are in
 [CHANGELOG.md](CHANGELOG.md).
 
-## Routes and API
+## The two shortcodes
 
-The feature registers no route. Its public surface is one method and one
-callback:
+The feature registers no route and brings no page. What it brings is a form
+and a way to draw its answer; where they go, and what a hit looks like, is the
+project's:
+
+```
+[search submit="[[/page-products/search/submit]]" placeholder="[[/page-products/search/placeholder]]"]
+
+[search-results key="q" type="/products"]<h5>[[title]]</h5> <p>[[description]]</p>[/search-results]
+```
+
+`[search]` is a plain **GET** form, so the query rides in the url and a result
+page can be linked, bookmarked and gone back to. `[search-results]` is an
+enclosing shortcode, and **its body is the markup of one hit** - repeated once
+per result, with `[[name]]` for anything the type's model has. That is the
+whole templating story: one search can serve a product grid and a list of
+articles because neither of them is this feature's to describe.
+
+Both read the same query variable and have to agree on its name - `key` on
+both, default `q`.
+
+### `[search]`
+
+| | |
+| --- | --- |
+| `key` | the query variable, default `q` |
+| `action` | where the form submits, default the page it is on |
+| `placeholder` | the field's placeholder, and its accessible name |
+| `submit` | the button |
+| `label` | the accessible name, where it should differ from the placeholder |
+| `class` | replaces the form's classes entirely (default `nino-form nino-form--inline nino-search`) |
+
+`submit` and `placeholder` fall back to the project's own textfills
+`/search/label/submit` and `/search/label/placeholder`, and then to what the
+feature ships in the interface language - so a bare `[search]` already says
+something. A fill an attribute names but the project never defined arrives here
+as the brackets themselves; those are treated as absent rather than printed on
+a button in front of a visitor.
+
+### `[search-results]`
+
+| | |
+| --- | --- |
+| `type` | one Element type, or several separated by commas. Both `products` and `/products` |
+| `key` | the query variable, default `q` - must match the form's |
+| `limit` | how many hits to draw, default 20, at most 200 |
+| `empty` | what to say when the query found nothing. Without it, nothing is drawn |
+| `tag` / `class` | the wrapper, default `<div class="nino-search-results">`. `tag="none"` leaves the rows unwrapped |
+
+Beside the model's own fields, every row can use:
+
+| | |
+| --- | --- |
+| `[[.uri]]` | the Element uri, eg. `/products/lampe` |
+| `[[.slug]]` | its last segment, `lampe` - what a project's own route builds a link out of, since an Element uri is not a public path |
+| `[[.type]]` · `[[.locale]]` | the type it came from, the locale it was read in |
+| `[[.score]]` | its score, rounded to three places |
+| `[[.n]]` | its 1-based place in the list |
+
+Values are escaped on the way into the page, unless the model marks the field
+as `html`. An array field reads as a comma-separated list. A placeholder the
+model does not have is **left standing** rather than emptied - that is what an
+unresolved fill does everywhere else in Nino, and a typo nobody can see is a
+typo nobody fixes.
+
+Nothing searched for renders nothing at all, which is a different thing from
+having searched and found nothing. A page carrying a query is never
+page-cached (`\Nino\Modules\Cache` refuses anything with query variables), so
+a result page is always the answer to what was actually asked.
+
+## API
+
+Beside the shortcodes, the feature's public surface:
 
 | | |
 | --- | --- |
@@ -30,10 +101,11 @@ callback:
 | `indexState( &$appData ): array` | one row per Element type the project has, plus any the configuration names and it does not: title, model, element count, configured fields, issues, and whether the index is missing or stale. What the panel draws |
 | `createIndexes( &$appData, string $only = '' ): array` | recreate every valid configured index, or just the one type named; answers `{ created, elements, failed, skipped, issues }` |
 | `callbackElementsCommitted()` | registered in `init()` under `'/nino/elements/committed'`: after an insert, update or delete of a configured type has committed, that one type's index is recreated. A failed write is reported with `trigger_error()` and never rolls back the Element commit it follows |
+| `Shortcodes::query( string $key ): string` | what the visitor typed, for one query variable name |
 
 `skipped` names a configured type that produced no index and why (`the model of "/products" has no field "titel"`); `issues` names a type that *is* indexed but whose configuration holds a name that does not resolve. Both used to be dropped silently - a configuration naming two types reported "1 index created", and a wholly invalid one came back as "no search indexes are configured".
 
-`init()` does nothing but register the callback: activation creates no file.
+`init()` registers the callback and the two shortcodes, and nothing else: activation creates no file.
 
 ## The panel
 
@@ -177,7 +249,10 @@ php features/Search/tests/search-smoke.php
 NINO_ROOT=../nino php features/Search/tests/search-smoke.php
 ```
 
-It covers the configuration boundary (both slash forms, invalid priorities,
+It covers the two shortcodes rendered the way a template renders them -
+through `\Nino\Html::renderHtml()`, so the fills in the attributes resolve
+before the shortcode sees them and the `[[field]]` placeholders in the body
+survive to it - the configuration boundary (both slash forms, invalid priorities,
 fields and types named with their reasons), that activation registers the
 callback and creates no file, the first committed write creating the index,
 the shape and normalization of the derived file and its `.meta` block, the

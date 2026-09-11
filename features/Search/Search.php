@@ -65,11 +65,15 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	Register the write-time refresh. Building the initial set stays an
-		 *	explicit action in /_admin > Config; init itself performs no I/O.
+		 *	Register the write-time refresh and the two shortcodes a page puts a
+		 *	search on. Building the initial index stays an explicit action in the
+		 *	Search panel; init itself performs no I/O.
 		 */
 		public static function init( array &$appData ): void {
+
 			\Nino\Callbacks::registerCallback( $appData, '/nino/elements/committed', [ self::class, 'callbackElementsCommitted' ] );
+
+			Search\Shortcodes::init( $appData );
 		}
 
 		/**

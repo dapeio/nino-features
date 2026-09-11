@@ -267,6 +267,94 @@ $appData['/nino/elements/index']['articles'] = [ 0 => 'title', 1 => 'summary', 2
 unset( $appData['/nino/elements/index']['notes'] );
 \Nino\Modules\Search::createIndexes( $appData );
 
+echo "\nThe two shortcodes a page puts a search on\n";
+
+/*	Rendered the way a template renders: through \Nino\Html::renderHtml(), so
+	the fills in the attributes resolve before the shortcode sees them and the
+	[[field]] placeholders in the body survive to it, exactly as they do in a
+	project (see Html::renderHtml()'s order) */
+$appData['./nino/html/fills'] = [];
+\Nino\Html::addFills( $appData, [
+	'/page-products/search/submit' 			=> 'Los',
+	'/page-products/search/placeholder' => 'Was suchen Sie?',
+], '*' );
+
+$searchForm = \Nino\Html::renderHtml( $appData, '[search submit="[[/page-products/search/submit]]" placeholder="[[/page-products/search/placeholder]]"]' );
+check( 'the form is a plain GET form with a search field and a button',
+	str_contains( $searchForm, 'method="get"' ) === true
+	&& str_contains( $searchForm, 'role="search"' ) === true
+	&& str_contains( $searchForm, 'type="search" name="q"' ) === true );
+check( 'its labels come out of the fills the attributes named',
+	str_contains( $searchForm, '>Los</button>' ) === true
+	&& str_contains( $searchForm, 'placeholder="Was suchen Sie?"' ) === true
+	&& str_contains( $searchForm, 'aria-label="Was suchen Sie?"' ) === true );
+
+$plainForm = \Nino\Html::renderHtml( $appData, '[search]' );
+check( 'a bare [search] still says something, in the interface language',
+	str_contains( $plainForm, '>Suchen</button>' ) === true && str_contains( $plainForm, 'placeholder="Suchbegriff"' ) === true );
+check( 'a fill the project never defined does not reach the visitor as brackets',
+	str_contains( \Nino\Html::renderHtml( $appData, '[search submit="[[/nothing/defined/here]]"]' ), '[[' ) === false );
+
+$_GET = [ 'q' => 'orbit' ];
+check( 'the field carries back what was searched for',
+	str_contains( \Nino\Html::renderHtml( $appData, '[search]' ), 'value="orbit"' ) === true );
+
+// The shape from the feature's own README, with the type given the way a
+// person writes it
+$block = '[search-results key="q" type="/articles"]<h5>[[title]]</h5><p>[[summary]]</p>[/search-results]';
+$results = \Nino\Html::renderHtml( $appData, $block );
+check( 'the body is the row markup, once per hit',
+	substr_count( $results, '<h5>' ) === 1 && str_contains( $results, '<h5>Remote station</h5>' ) === true );
+check( 'and the rows come wrapped, so a project has something to style',
+	str_starts_with( $results, '<div class="nino-search-results">' ) === true );
+
+$_GET = [ 'q' => 'nowhere at all' ];
+check( 'a query that finds nothing renders nothing without an empty text',
+	\Nino\Html::renderHtml( $appData, $block ) === '' );
+check( '...and says so with one', str_contains(
+	\Nino\Html::renderHtml( $appData, '[search-results type="/articles" empty="Nichts gefunden."]<p>[[title]]</p>[/search-results]' ), 'Nichts gefunden.' ) === true );
+
+$_GET = [];
+check( 'nothing searched for is not the same as nothing found', \Nino\Html::renderHtml( $appData, $block ) === '' );
+
+$_GET = [ 'my_own_get_var_key' => 'orbit' ];
+check( 'both shortcodes read whichever query variable they are told to',
+	str_contains( \Nino\Html::renderHtml( $appData, '[search key="my_own_get_var_key"]' ), 'name="my_own_get_var_key"' ) === true
+	&& str_contains( \Nino\Html::renderHtml( $appData, '[search-results key="my_own_get_var_key" type="articles"]<p>[[title]]</p>[/search-results]' ), 'Remote station' ) === true );
+check( 'a result block reading another key than the form stays empty',
+	\Nino\Html::renderHtml( $appData, $block ) === '' );
+
+$_GET = [ 'q' => 'orbit' ];
+$dotKeys = \Nino\Html::renderHtml( $appData, '[search-results type="articles"]<a href="/artikel/[[.slug]]" data-uri="[[.uri]]" data-n="[[.n]]" data-type="[[.type]]">[[title]]</a>[/search-results]' );
+check( 'an element carries its uri, its last segment and its place in the list',
+	str_contains( $dotKeys, 'href="/artikel/orbit-summary"' ) === true
+	&& str_contains( $dotKeys, 'data-uri="/articles/orbit-summary"' ) === true
+	&& str_contains( $dotKeys, 'data-n="1"' ) === true
+	&& str_contains( $dotKeys, 'data-type="/articles"' ) === true );
+
+\Nino\Elements::insertElement( $appData, '/articles/markup', [
+	'title' => 'Orbit & <b>bold</b>', 'summary' => 'Ein Text mit "Zitat"', 'keywords' => [ 'a', 'b' ], 'author' => '',
+], 'de_DE' );
+$escaped = \Nino\Html::renderHtml( $appData, '[search-results type="articles" limit="1"]<p>[[title]] | [[keywords]]</p>[/search-results]' );
+check( 'a value is escaped on the way into the page, and an array field reads as a list',
+	str_contains( $escaped, 'Orbit &amp; &lt;b&gt;bold&lt;/b&gt;' ) === true && str_contains( $escaped, 'a, b' ) === true );
+
+check( 'limit cuts the list', substr_count(
+	\Nino\Html::renderHtml( $appData, '[search-results type="articles" limit="1"]<p>[[title]]</p>[/search-results]' ), '<p>' ) === 1 );
+check( 'a placeholder the model does not have is left standing rather than emptied',
+	str_contains( \Nino\Html::renderHtml( $appData, '[search-results type="articles" limit="1"]<p>[[titel]]</p>[/search-results]' ), '[[titel]]' ) === true );
+check( 'a type nobody configured draws nothing at all',
+	\Nino\Html::renderHtml( $appData, '[search-results type="notes"]<p>[[title]]</p>[/search-results]' ) === '' );
+check( 'tag="none" leaves the rows unwrapped', str_starts_with(
+	\Nino\Html::renderHtml( $appData, '[search-results type="articles" tag="none" limit="1"]<p>[[title]]</p>[/search-results]' ), '<p>' ) === true );
+check( '...and a tag that is not a tag name falls back to the wrapper rather than dropping it', str_starts_with(
+	\Nino\Html::renderHtml( $appData, '[search-results type="articles" tag="<script>" limit="1"]<p>[[title]]</p>[/search-results]' ), '<div ' ) === true );
+check( 'the wrapper takes the class it is given', str_contains(
+	\Nino\Html::renderHtml( $appData, '[search-results type="articles" tag="ul" class="produkte" limit="1"]<li>[[title]]</li>[/search-results]' ), '<ul class="produkte">' ) === true );
+
+\Nino\Elements::deleteElement( $appData, '/articles/markup', '*' );
+$_GET = [];
+
 echo "\nRead-only failures and the guarded Admin rebuild action\n";
 
 @unlink( $articleIndexPath );
