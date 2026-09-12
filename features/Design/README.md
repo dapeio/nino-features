@@ -47,10 +47,24 @@ order the cascade wants the parts concatenated in.
 ## The panel
 
 **Design**, in the workbench's **Features** group; one permission,
-`/_admin/design/manage`. One screen: the two decisions that are about the whole
-page, then a row per part with the variant it is given and - for a set - the
-step it may deviate at. Each row says what the chosen variant is, out of the
-variant's own `@name` and `@description`.
+`/_admin/design/manage`. One screen, **one part at a time**: the picker at the
+top says which one is open - the nine parts and `Global` - and everything below
+it belongs to that one.
+
+| | |
+| --- | --- |
+| **Variant** | which set the part is given, out of the variant's own `@name`, with its `@description` under the select. `Global` shows the root size instead |
+| **Finetuning** | one row per knob the chosen variant answers to, at −1 / 0 / +1, each row named and noted the way the kernel's own Design module named it. `Global` has the position every part follows |
+
+Nine rows at once is a list to read; one part is a decision to make. And the
+preview beside it is the whole page either way, so switching parts never means
+losing sight of what the last one did.
+
+A Finetuning row **follows the level above it until somebody moves it**, and
+says so by being drawn quietly: what is on screen is the value that will
+compile either way, so a row nobody has touched is not a row with no answer -
+it is one whose answer is still somebody else's. Moving it makes it its own and
+puts the way back (`↺`) beside it.
 
 Choosing and compiling are two actions on purpose. **Save the selection**
 writes `data/design.php` and nothing else; **Save and compile** writes it and
@@ -64,6 +78,10 @@ hiding it behind an autosave:
 | *saved but not compiled* | the selection is on disk, the site still shows the previous one |
 | *never compiled* | there is no `assets/theme.css` of ours yet |
 | *not one of ours* | the delivered file, or one somebody edited - see below |
+
+That table stands at the **bottom** of the controls, under *How it is used*.
+It is true and worth saying, and it is not what somebody opening this screen
+came to find out.
 
 The last of those is the normal first run: a project's `assets/theme.css` is
 the wizard's until this feature takes it over. The panel turns
@@ -80,6 +98,12 @@ it shows the selection **on screen**, not the one on disk: looking is what a
 person does while deciding, and a preview that could only show a saved decision
 would make saving the way to ask a question. Nothing about it is written
 anywhere.
+
+The frame **follows the picker**: opening *Blocks* puts the pricing row on
+screen, opening *Footer* the footer, and *Global* the top of the page - because
+hunting for the part you just opened is work the screen can do. The switch
+beside the width turns it off for a visit; a knob move never jumps, only
+changing the part does.
 
 A **width** picks phone, tablet or desktop. The frame renders at that width and
 is scaled into whatever the column has room for, so a desktop layout stays a
@@ -154,6 +178,13 @@ Two rules, and they are what keeps nine sets from turning into one:
   `var(--color-primary)`, `var(--color-section-tint-bg)`. Sizes are absolute
   (`2rem`), because the root size already scales the whole page.
 
+A third thing is not a rule but is worth doing: declare the three steps of the
+knobs the set answers to, with `--default` where the framework already stands
+(see [The finetune knob](#the-finetune-knob)). That is the whole of publishing a
+knob - the panel lists what the file declares and nothing else. A `@knob` line in
+the opening comment beside `@name` is documentation for whoever reads the file;
+the panel reads the declarations.
+
 ### Writing a frame
 
 A frame is a `template.tpl` and a `style.css` in `library/<part>/<name>/`. The
@@ -176,37 +207,71 @@ Two things a header frame has to keep, whichever shape it is:
 
 ## The finetune knob
 
-A value the knob should reach declares its three steps rather than one value:
+The knobs are **Nino's own** - the ones the kernel's Design module published as
+its raster group before the look left the core, minus the one that is the root
+size here:
+
+| | | |
+| --- | --- | --- |
+| **Headings** | how far they grow | Calm · Standard · Bold |
+| **Spacing** | gaps and line height | Tight · Standard · Airy |
+| **Corners** | how round | Sharp · Standard · Round |
+| **Width** | how wide content runs | Narrow · Standard · Wide |
+
+Fixed rather than per set, and that is the whole point: "Spacing" means the same
+thing on a section as on a form, so moving it globally means something. A set
+that invented its own vocabulary would give every part a private language and
+the global position nothing to be the position of.
+
+A set answers to a knob by declaring its three steps under the part's and the
+knob's name:
 
 ```css
 :root {
-	--section-title-fontsize--less:    1.6rem;
-	--section-title-fontsize--default: 2rem;
-	--section-title-fontsize--more:    2.6rem;
+	--section-spacing--less: 		var(--space-3);
+	--section-spacing--default: var(--space-4);
+	--section-spacing--more: 		var(--space-5);
 }
-.nino-section-title { font-size: var(--section-title-fontsize); }
+.nino-section { padding: var(--section-spacing) 0; }
+.nino-section-text { margin-bottom: calc( var(--section-spacing) /3 ); }
 ```
 
-The knob never computes. `+1rem` behaves differently on a default of `5rem`
-than on `2rem`, and plenty of scales are not linear at all - so a set declares
-what its three steps *are*, and the knob picks one. The compiler gathers those
-picks into a single block at the end of the sheet, one line per token:
+**Declaring the triple is publishing the knob.** The panel offers exactly what a
+set declares, so a handle the stylesheet does not answer to can never be
+offered - and a knob moves a family of values together, which is what makes it
+one knob. "Spacing" that moved the band but not the paragraph under it would be
+two knobs wearing one name.
+
+The knob never computes. `+1rem` behaves differently on a default of `5rem` than
+on `2rem`, and plenty of scales are not linear at all - so a set declares what
+its three steps *are*, and the knob picks one. **`--default` is the value the
+framework uses today**, in every set the library ships: a knob nobody has moved
+compiles to the page that was already there, which is what makes a set adoptable
+at all. The compiler gathers the picks into a single block at the end of the
+sheet, one line per part and knob:
 
 ```css
 /* ==== 12. the knob positions ==== */
 :root {
-	--section-title-fontsize: var(--section-title-fontsize--default);
+	--buttons-shaping: var(--buttons-shaping--less);
+	--section-spacing: var(--section-spacing--more);
+	--section-volume: var(--section-volume--more);
 }
 ```
 
-That block exists because css cannot compose a variable name. It also makes
-the whole knob state one readable thing: a project that removed the feature can
+That block exists because css cannot compose a variable name. It also makes the
+whole knob state one readable thing: a project that removed the feature can
 still move a knob by editing one line.
 
-The knob is global, and any part may deviate from it - "articles rounder",
-"buttons squarer". A part that names no step of its own follows the global one
-and keeps following it when it moves; that is what `step => null` means, and it
-is a different state from a part that happens to name today's global value.
+### Two levels
+
+A knob has a **global** position, and a part may be moved away from it - every
+part that was not keeps following, and keeps following when the global one
+moves. That is a different state from a part that happens to name today's value,
+and the reason the setup stores only the decisions that were actually made.
+
+`Global` lists the knobs *any* chosen set answers to; a part lists the ones its
+own set does. A knob nothing follows is a knob worth not offering.
 
 ## The root size
 
@@ -286,7 +351,7 @@ the bar rather than passed over in silence.
 
 ## Tests
 
-`tests/design-smoke.php` (91 checks) covers the manifest and activation through
+`tests/design-smoke.php` (106 checks) covers the manifest and activation through
 `\Nino\Features`, the library coverage per part, the traversal refusals,
 normalisation and step resolution, what the compiler emits and in which order,
 the cross-repo comparison of `base.css` against the delivered `theme.css`,
@@ -305,3 +370,13 @@ that it answers the posted selection rather than the stored one, that the
 framework is linked from a bundle that really carries it, that a stylesheet-only
 change sends no second document, and that previewing writes neither the setup
 nor the stylesheet.
+
+For the knob: that a set publishes one by declaring its triple and no other
+way, that an example in a comment is documentation rather than a declaration,
+that the global position is a position of whatever any chosen set follows, that
+a position is stored only where it is one and only for a knob the set answers
+to, that a part with none of its own follows the global one while a part that
+names one does not, that the compiled sheet asks each knob where it stands for
+that part and says so in its header, that a setup written before the knobs were
+told apart keeps its position, and that every set in the library declares all
+three steps for every knob it answers to.

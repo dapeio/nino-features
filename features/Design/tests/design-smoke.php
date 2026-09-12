@@ -79,8 +79,9 @@ $notes = [];
 $setup = \Nino\Modules\Design\Setup::normalize( [], $library, $notes );
 
 check( 'a setup out of nothing is every part on its first set, no deviations, the delivered size', $notes === []
-	&& $setup['step'] === 'default' && $setup['size'] === 'm'
-	&& $setup['parts']['section']['step'] === null
+	&& $setup['knobs'] === array_fill_keys( \Nino\Modules\Design\Setup::KNOBS, 'default' )
+	&& $setup['size'] === 'm'
+	&& $setup['parts']['section']['knobs'] === []
 	&& $setup['parts']['header']['set'] === 'v1' );
 
 $notes = [];
@@ -90,14 +91,30 @@ check( 'a part naming a set the library does not have falls back, and says which
 	&& count( $notes ) === 1 && str_contains( $notes[0], 'v99' ) === true );
 
 $notes = [];
-$setup = \Nino\Modules\Design\Setup::normalize( [ 'step' => 'sideways', 'size' => 'xxl', 'parts' => [ 'article' => [ 'step' => 'nope' ] ] ], $library, $notes );
+$setup = \Nino\Modules\Design\Setup::normalize( [
+	'knobs' => [ 'spacing' => 'sideways', 'nonsense' => 'more' ], 'size' => 'xxl',
+	'parts' => [ 'article' => [ 'knobs' => [ 'spacing' => 'nope' ] ] ],
+], $library, $notes );
 
-check( 'a knob position that is not one is the default, not an error', $setup['step'] === 'default' && $setup['size'] === 'm' && $setup['parts']['article']['step'] === null );
+check( 'a knob position that is not one is the default, not an error',
+	$setup['knobs']['spacing'] === 'default' && $setup['size'] === 'm'
+	&& $setup['parts']['article']['knobs'] === [] );
+check( '...and a knob that is not one is not a knob', isset( $setup['knobs']['nonsense'] ) === false );
 
-$setup = \Nino\Modules\Design\Setup::normalize( [ 'step' => 'more', 'parts' => [ 'article' => [ 'step' => 'less' ] ] ], $library );
+// A setup written before the knobs were told apart carries one position for
+// everything; it seeds every knob rather than being thrown away
+$seeded = \Nino\Modules\Design\Setup::normalize( [ 'step' => 'more' ], $library );
+check( 'a setup from before this knew one knob from another keeps its position',
+	$seeded['knobs'] === array_fill_keys( \Nino\Modules\Design\Setup::KNOBS, 'more' ) );
 
-check( 'a part with no step of its own follows the global knob', \Nino\Modules\Design\Setup::step( $setup, 'section' ) === 'more' );
-check( '...and a part that names one does not', \Nino\Modules\Design\Setup::step( $setup, 'article' ) === 'less' );
+$setup = \Nino\Modules\Design\Setup::normalize( [
+	'knobs' => [ 'spacing' => 'more' ],
+	'parts' => [ 'article' => [ 'knobs' => [ 'spacing' => 'less' ] ] ],
+], $library );
+
+check( 'a part with no position of its own follows the global one', \Nino\Modules\Design\Setup::step( $setup, 'section', 'spacing' ) === 'more' );
+check( '...and a part that names one does not', \Nino\Modules\Design\Setup::step( $setup, 'article', 'spacing' ) === 'less' );
+check( '...while every other knob of that part keeps following', \Nino\Modules\Design\Setup::step( $setup, 'article', 'shaping' ) === 'default' );
 
 echo "\n";
 echo "What the compiler produces\n";
@@ -120,9 +137,15 @@ if( preg_match_all( '/\/\* ==== (\d+)\. (.+?) ==== \*\//', $css, $sections, PREG
 		$order[] = trim( $section[2] );
 
 check( 'the tokens come first and the root size second', ( $order[0] ?? '' ) === 'the design tokens and their roles' && ( $order[1] ?? '' ) === 'the root size' );
-check( '...then the frames, then the sets, in the order the parts are declared in', array_slice( $order, 2, 9 ) === [
-	'header: v1', 'footer: v1', 'atf: v1 (default)', 'section: v1 (default)', 'article: v1 (default)',
-	'buttons: v1 (default)', 'forms: v1 (default)', 'lists: v1 (default)', 'blocks: v1 (default)',
+check( '...then the frames, then the sets, in the order the parts are declared in, each saying where its knobs stand', array_slice( $order, 2, 9 ) === [
+	'header: v1', 'footer: v1',
+	'atf: v1 (volume default, spacing default)',
+	'section: v1 (volume default, spacing default)',
+	'article: v1 (volume default, spacing default, shaping default)',
+	'buttons: v1 (spacing default, shaping default)',
+	'forms: v1 (spacing default, shaping default)',
+	'lists: v1 (spacing default, shaping default)',
+	'blocks: v1 (spacing default, shaping default)',
 ] );
 check( 'the token layer really is in there', str_contains( $css, '--nino-default:' ) === true && str_contains( $css, '--color-title:' ) === true );
 check( 'the root size is the relative pair, never a length', str_contains( $css, '--nino-base-size: 100%;' ) === true
@@ -140,23 +163,29 @@ $sandbox = ninoSandboxDir( $appData ). '/library';
 mkdir( $sandbox. '/sets/section', 0755, true );
 mkdir( $sandbox. '/sets/buttons', 0755, true );
 file_put_contents( $sandbox. '/base.css', ":root { --x: 1; }\n" );
-file_put_contents( $sandbox. '/sets/section/v1.css', ":root {\n\t--section-title-size--less: 1.6rem;\n\t--section-title-size--default: 2rem;\n\t--section-title-size--more: 2.6rem;\n}\n.nino-section-title { font-size: var(--section-title-size); }\n" );
-file_put_contents( $sandbox. '/sets/buttons/v1.css', ":root {\n\t--btn-radius--less: 0;\n\t--btn-radius--default: .4rem;\n\t--btn-radius--more: 2rem;\n}\n" );
+file_put_contents( $sandbox. '/sets/section/v1.css', ":root {\n\t--section-volume--less: 1.6rem;\n\t--section-volume--default: 2rem;\n\t--section-volume--more: 2.6rem;\n}\n.nino-section-title { font-size: var(--section-volume); }\n" );
+file_put_contents( $sandbox. '/sets/buttons/v1.css', ":root {\n\t--buttons-shaping--less: 0;\n\t--buttons-shaping--default: .4rem;\n\t--buttons-shaping--more: 2rem;\n}\n" );
 
-$picked = \Nino\Modules\Design\Compiler::compile( \Nino\Modules\Design\Setup::normalize( [ 'step' => 'more' ], $sandbox ), $sandbox );
+$picked = \Nino\Modules\Design\Compiler::compile( \Nino\Modules\Design\Setup::normalize( [
+	'knobs' => array_fill_keys( \Nino\Modules\Design\Setup::KNOBS, 'more' ),
+], $sandbox ), $sandbox );
 
-check( 'every triple a set declares becomes one selection line', str_contains( $picked, '--section-title-size: var(--section-title-size--more);' ) === true
-	&& str_contains( $picked, '--btn-radius: var(--btn-radius--more);' ) === true );
+check( 'every knob a set answers to becomes one selection line', str_contains( $picked, '--section-volume: var(--section-volume--more);' ) === true
+	&& str_contains( $picked, '--buttons-shaping: var(--buttons-shaping--more);' ) === true );
+check( '...and a knob no set answers to becomes nothing at all',
+	str_contains( $picked, '--section-shaping:' ) === false && str_contains( $picked, '--buttons-volume:' ) === false );
 check( '...gathered into one block at the end, not scattered beside the sets', substr_count( $picked, 'the knob positions' ) === 1
-	&& strpos( $picked, 'the knob positions' ) > strpos( $picked, '--section-title-size--more' ) );
+	&& strpos( $picked, 'the knob positions' ) > strpos( $picked, '--section-volume--more' ) );
 check( '...and the three steps themselves are still in the sheet, so a project without the feature can move the knob by hand',
-	str_contains( $picked, '--section-title-size--less: 1.6rem;' ) === true && str_contains( $picked, '--section-title-size--more: 2.6rem;' ) === true );
+	str_contains( $picked, '--section-volume--less: 1.6rem;' ) === true && str_contains( $picked, '--section-volume--more: 2.6rem;' ) === true );
 
-$deviating = \Nino\Modules\Design\Compiler::compile(
-	\Nino\Modules\Design\Setup::normalize( [ 'step' => 'more', 'parts' => [ 'buttons' => [ 'step' => 'less' ] ] ], $sandbox ), $sandbox );
+$deviating = \Nino\Modules\Design\Compiler::compile( \Nino\Modules\Design\Setup::normalize( [
+	'knobs' => array_fill_keys( \Nino\Modules\Design\Setup::KNOBS, 'more' ),
+	'parts' => [ 'buttons' => [ 'knobs' => [ 'shaping' => 'less' ] ] ],
+], $sandbox ), $sandbox );
 
-check( 'a part that deviates is compiled at its own step, the rest at the global one', str_contains( $deviating, '--btn-radius: var(--btn-radius--less);' ) === true
-	&& str_contains( $deviating, '--section-title-size: var(--section-title-size--more);' ) === true );
+check( 'a part that deviates is compiled at its own position, the rest at the global one', str_contains( $deviating, '--buttons-shaping: var(--buttons-shaping--less);' ) === true
+	&& str_contains( $deviating, '--section-volume: var(--section-volume--more);' ) === true );
 
 echo "\nWriting it, and what it will not write over\n";
 
@@ -277,20 +306,28 @@ check( 'every variant comes with the name and description its own file carries',
 	&& str_contains( (string) ( $listed['parts'][0]['catalogue']['v1']['description'] ?? '' ), 'rule under it' ) === true );
 check( 'and the knob, the size and what they can be', ( $listed['steps'] ?? null ) === \Nino\Modules\Design\Setup::STEPS
 	&& ( $listed['sizes'] ?? null ) === array_keys( \Nino\Modules\Design\Setup::SIZES ) );
+check( 'a row names the knobs its own set answers to, and the screen the ones anything answers to',
+	( $listed['parts'][3]['knobs'] ?? null ) === [ 'volume', 'spacing' ]
+	&& ( $listed['parts'][0]['knobs'] ?? null ) === []
+	&& ( $listed['global'] ?? null ) === [ 'volume', 'spacing', 'shaping' ] );
 check( 'the file on disk is ours and answers to the setup', ( $listed['exists'] ?? null ) === true
 	&& ( $listed['ours'] ?? null ) === true && ( $listed['current'] ?? null ) === true );
 
 // Saving is not compiling: the decision lands, the stylesheet does not move
 [ $status, $saved ] = callDesignAction( $appData, 'apiSave', [
-	'parts' => [ 'section' => [ 'set' => 'v1', 'step' => 'more' ] ], 'step' => 'less', 'size' => 'l',
+	'parts' => [ 'section' => [ 'set' => 'v1', 'knobs' => [ 'spacing' => 'more', 'shaping' => 'less' ] ] ],
+	'knobs' => [ 'spacing' => 'less' ], 'size' => 'l',
 ] );
-check( 'saving stores the selection', $status === 200
-	&& \Nino\Modules\Design\Setup::read( $appData, \Nino\Modules\Design::libraryDir() )['size'] === 'l' );
+$stored = \Nino\Modules\Design\Setup::read( $appData, \Nino\Modules\Design::libraryDir() );
+
+check( 'saving stores the selection', $status === 200 && $stored['size'] === 'l' );
 check( '...and says the file no longer answers to it, rather than moving it', ( $saved['current'] ?? null ) === false
 	&& ( $saved['ours'] ?? null ) === true );
-check( 'a part may deviate from the global knob, and one that names nothing follows it',
-	\Nino\Modules\Design\Setup::step( \Nino\Modules\Design\Setup::read( $appData, \Nino\Modules\Design::libraryDir() ), 'section' ) === 'more'
-	&& \Nino\Modules\Design\Setup::step( \Nino\Modules\Design\Setup::read( $appData, \Nino\Modules\Design::libraryDir() ), 'buttons' ) === 'less' );
+check( 'a part may deviate from a knob\'s global position, and one that names nothing follows it',
+	\Nino\Modules\Design\Setup::step( $stored, 'section', 'spacing' ) === 'more'
+	&& \Nino\Modules\Design\Setup::step( $stored, 'buttons', 'spacing' ) === 'less' );
+check( '...and a position for a knob the part\'s set does not answer to is not kept',
+	isset( $stored['parts']['section']['knobs']['shaping'] ) === false );
 
 [ $status, $applied ] = callDesignAction( $appData, 'apiApply' );
 check( 'applying compiles it and the file answers again', $status === 200 && ( $applied['current'] ?? null ) === true );
@@ -316,6 +353,65 @@ check( 'a variant that is not in the library falls back and is named', $status =
 check( 'a set name that could climb out of the library never becomes a path',
 	callDesignAction( $appData, 'apiSave', [ 'parts' => [ 'section' => [ 'set' => '../../../etc/passwd' ] ], 'step' => 'default', 'size' => 'm' ] )[0] === 200
 	&& \Nino\Modules\Design\Setup::read( $appData, \Nino\Modules\Design::libraryDir() )['parts']['section']['set'] === 'v1' );
+
+echo "\nThe knob: the framework's own vocabulary, and the two levels it asks\n";
+
+check( 'a set publishes a knob by declaring its triple, and no other way',
+	\Nino\Modules\Design\Setup::knobs( $library, 'section', 'v1' ) === [ 'volume', 'spacing' ]
+	&& \Nino\Modules\Design\Setup::knobs( $library, 'buttons', 'v1' ) === [ 'spacing', 'shaping' ] );
+check( 'a frame answers to none - a knob is about a set\'s own triples',
+	\Nino\Modules\Design\Setup::knobs( $library, 'header', 'v1' ) === []
+	&& \Nino\Modules\Design\Setup::knobs( $library, 'section', 'nope' ) === [] );
+check( 'an example in a comment is documentation, not a declaration',
+	in_array( 'measure', \Nino\Modules\Design\Setup::knobs( $library, 'section', 'v1' ), true ) === false );
+check( 'the global position is a position of whatever any chosen set follows',
+	\Nino\Modules\Design\Setup::knobsInUse( $library, \Nino\Modules\Design\Setup::defaults( $library ) ) === [ 'volume', 'spacing', 'shaping' ] );
+
+$knobbed = \Nino\Modules\Design\Setup::normalize( [
+	'knobs' => array_fill_keys( \Nino\Modules\Design\Setup::KNOBS, 'more' ),
+	'parts' => [ 'section' => [ 'set' => 'v1', 'knobs' => [ 'spacing' => 'less' ] ] ],
+], $library );
+
+$notes 		= [];
+$knobCss 	= \Nino\Modules\Design\Compiler::compile( $knobbed, $library, $notes );
+
+check( 'the compiled sheet asks each knob where it stands for that part',
+	str_contains( $knobCss, '--section-spacing: var(--section-spacing--less);' ) === true
+	&& str_contains( $knobCss, '--section-volume: var(--section-volume--more);' ) === true
+	&& str_contains( $knobCss, '--buttons-shaping: var(--buttons-shaping--more);' ) === true );
+
+// The selection block alone: the sets read the same names in their own rules
+$knobBlock = substr( $knobCss, (int) strpos( $knobCss, 'the knob positions' ) );
+
+check( '...one line per knob a set answers to, and none for a frame, which answers to none',
+	preg_match_all( '/^\t--section-[a-z-]+: var\(/m', $knobBlock ) === 2
+	&& str_contains( $knobBlock, '--header-' ) === false
+	&& preg_match_all( '/^\t--[a-z-]+: var\(/m', $knobBlock ) === 15 );
+check( 'and the compiled header says where every knob stands, globally and per part',
+	str_contains( $knobCss, 'section  v1  (spacing less)' ) === true
+	&& str_contains( $knobCss, 'knobs    volume more, spacing more, shaping more, measure more' ) === true
+	&& str_contains( $knobCss, 'header   v1'. "\n" ) === true );
+
+// Every triple's --default is the framework's own value, so a knob nobody
+// moved compiles to what the page already looked like
+check( 'a set declares all three steps for every knob it answers to', ( static function() use ( $library ): bool {
+	foreach( \Nino\Modules\Design\Setup::PARTS as $part => $kind ) {
+		if( $kind !== 'set' )
+			continue;
+		$css = \Nino\Modules\Design\Setup::uncomment( (string) file_get_contents( \Nino\Modules\Design\Setup::file( $library, $part, 'v1' ) ) );
+		foreach( \Nino\Modules\Design\Setup::knobs( $library, $part, 'v1' ) as $knob )
+			foreach( \Nino\Modules\Design\Setup::STEPS as $step )
+				if( str_contains( $css, sprintf( \Nino\Modules\Design\Setup::KNOB_TOKEN, $part, $knob, $step ). ':' ) === false )
+					return false;
+	}
+	return true;
+} )() === true );
+check( 'and every set in the library answers to at least one - a part with no knob has nothing to finetune',
+	count( array_filter( array_keys( \Nino\Modules\Design\Setup::PARTS ), static function( string $part ) use ( $library ): bool {
+		return \Nino\Modules\Design\Setup::PARTS[$part] !== 'set'
+			|| \Nino\Modules\Design\Setup::knobs( $library, $part, 'v1' ) !== [];
+	} ) ) === count( \Nino\Modules\Design\Setup::PARTS ) );
+
 
 echo "\nThe preview: a selection, before it is one\n";
 

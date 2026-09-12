@@ -121,19 +121,31 @@ namespace Nino\Modules\Design {
 			$setup 		= Setup::read( $appData, $library, $notes );
 			$parts 		= [];
 
-			foreach( Setup::PARTS as $part => $kind )
+			foreach( Setup::PARTS as $part => $kind ) {
+
+				$set = (string) ( $setup['parts'][$part]['set'] ?? '' );
+
 				$parts[] = [
 					'part' 				=> $part,
 					'kind' 				=> $kind,
 					'catalogue' 	=> Setup::catalogue( $library, $part ),
-					'set' 				=> (string) ( $setup['parts'][$part]['set'] ?? '' ),
-					// null is its own state - the part follows the global knob
-					'step' 				=> $setup['parts'][$part]['step'] ?? null,
+					'set' 				=> $set,
+					/*	Which knobs this part's set answers to - out of the
+						stylesheet rather than out of a list here, so declaring a
+						triple is what publishes a knob */
+					'knobs' 			=> Setup::knobs( $library, $part, $set ),
+					// ...and the ones this part was moved at on its own. A knob
+					// not named here follows the global position
+					'moved' 			=> (array) ( $setup['parts'][$part]['knobs'] ?? [] ),
 				];
+			}
 
 			\Nino\Http::ok( $request, [
 				'parts' 	=> $parts,
-				'step' 		=> (string) ( $setup['step'] ?? 'default' ),
+				// Where every knob stands for the whole design, and which of
+				// them any chosen set answers to at all
+				'knobs' 	=> (array) ( $setup['knobs'] ?? [] ),
+				'global' 	=> Setup::knobsInUse( $library, $setup ),
 				'size' 		=> (string) ( $setup['size'] ?? 'm' ),
 				'steps' 	=> Setup::STEPS,
 				'sizes' 	=> array_keys( Setup::SIZES ),
@@ -194,11 +206,24 @@ namespace Nino\Modules\Design {
 				honoured comes back in `notes` instead of being written */
 			$setup = Setup::normalize( [
 				'parts' 	=> is_array( $posted['parts'] ?? null ) === true ? $posted['parts'] : [],
-				'step' 		=> (string) ( $posted['step'] ?? '' ),
+				'knobs' 	=> is_array( $posted['knobs'] ?? null ) === true ? $posted['knobs'] : [],
 				'size' 		=> (string) ( $posted['size'] ?? '' ),
 				// Kept, so saving a choice does not lose what was last compiled
 				'compiled'=> Setup::read( $appData, $library )['compiled'] ?? [],
 			], $library, $notes );
+
+			/*	A part's own knob position belongs to the set that answers to it.
+				Dropping the ones the chosen set no longer has keeps a setup from
+				carrying the positions of a set somebody moved away from years
+				ago - normalize() cannot do this, since it holds no library file
+				open */
+			foreach( array_keys( Setup::PARTS ) as $part ) {
+
+				$known = Setup::knobs( $library, $part, (string) ( $setup['parts'][$part]['set'] ?? '' ) );
+
+				$setup['parts'][$part]['knobs'] = array_intersect_key(
+					(array) ( $setup['parts'][$part]['knobs'] ?? [] ), array_flip( $known ) );
+			}
 
 			if( Setup::write( $appData, $setup ) === false ) {
 				\Nino\Http::fail( $request, 500, 'could not write '. Setup::PATH );
@@ -274,7 +299,7 @@ namespace Nino\Modules\Design {
 			// just because somebody asked for it
 			$setup = Setup::normalize( [
 				'parts' 	=> is_array( $posted['parts'] ?? null ) === true ? $posted['parts'] : [],
-				'step' 		=> (string) ( $posted['step'] ?? '' ),
+				'knobs' 	=> is_array( $posted['knobs'] ?? null ) === true ? $posted['knobs'] : [],
 				'size' 		=> (string) ( $posted['size'] ?? '' ),
 			], $library, $notes );
 

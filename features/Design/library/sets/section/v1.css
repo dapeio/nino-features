@@ -2,12 +2,17 @@
  *	Section - Titel, Untertitel, Text, Padding, Margin, Border
  *
  *	@name				Nino
- *	@description	The framework as it is - this set declares nothing. Section title, subtitle, text, padding, margin, border.
+ *	@description	The framework as it is, with its own values on the knob. Section title, subtitle, text, padding, margin, border.
  *
- *	v1 is the starting point, not a design: it declares nothing and lets the
- *	framework's own rules stand, so a fresh preview shows Nino as it is. Every
- *	rule Nino.css sets for this part is listed below, commented out, with the
- *	values it uses today - the handles this set has, in one place. Uncomment
+ *	@knob	volume		Titel und Untertitel
+ *	@knob	spacing		Bandhöhe und Absatzabstand
+ *
+ *	v1 is the starting point, not a design. What it declares is the framework's
+ *	own values, so a fresh preview shows Nino exactly as it is - and every one
+ *	of them as a triple, so the finetune knob has something to reach without a
+ *	set having been written yet. Every other rule Nino.css sets for this part
+ *	is listed below, commented out, with the values it uses today - the handles
+ *	this set has, in one place. Uncomment
  *	one, change it, reload.
  *
  *	Two rules for a set (see the feature's README.md):
@@ -190,3 +195,45 @@
 /* .nino-text-right :is(.nino-section-title, .nino-section-subtitle, .nino-atf-title, .nino-atf-subtitle) {
 		text-align: right;
    } */
+
+/* ---- the knobs this set answers to ----
+ *
+ *	Named after the framework's own vocabulary (see Setup::KNOBS): one triple
+ *	per knob, and the rules below read it wherever that knob applies. A knob
+ *	moves a family of values together, which is what makes it one knob -
+ *	"Abstände" that moved the band but not the paragraph under it would be two.
+ *
+ *	Every --default is the value Nino.css uses today, so a knob nobody moved
+ *	compiles to the page that was already there. That is what makes a set
+ *	adoptable at all: turning it on must not move a project that has not asked
+ *	for anything.
+ */
+:root {
+	--section-volume--less: 		var(--text-3);
+	--section-volume--default: 	var(--text-4);
+	--section-volume--more: 		var(--text-5);
+
+	--section-spacing--less: 		var(--space-3);
+	--section-spacing--default: var(--space-4);
+	--section-spacing--more: 		var(--space-5);
+}
+
+.nino-section {
+	padding: var(--section-spacing) 0;
+}
+/*	The line height moves with the size rather than staying where it was: a
+	heading two steps up in a leading set for two steps down is a heading in a
+	box too small for it */
+.nino-section-title {
+	font-size: var(--section-volume);
+	line-height: calc( var(--section-volume) *1.3 );
+}
+/*	The subtitle is one step below the title on the same scale, which is what
+	keeps the pair reading as a pair when the knob moves */
+.nino-section-subtitle {
+	font-size: calc( var(--section-volume) *.75 );
+	line-height: calc( var(--section-volume) *1 );
+}
+.nino-section-text {
+	margin-bottom: calc( var(--section-spacing) /3 );
+}

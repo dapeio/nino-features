@@ -2,12 +2,17 @@
  *	Bausteine - Preispläne und Abläufe
  *
  *	@name				Nino
- *	@description	The framework as it is - this set declares nothing. Pricing rows, timelines, logo bars, callouts, quotes.
+ *	@description	The framework as it is, with its own values on the knob. Pricing rows, timelines, logo bars, callouts, quotes.
  *
- *	v1 is the starting point, not a design: it declares nothing and lets the
- *	framework's own rules stand, so a fresh preview shows Nino as it is. Every
- *	rule Nino.css sets for this part is listed below, commented out, with the
- *	values it uses today - the handles this set has, in one place. Uncomment
+ *	@knob	spacing		Innenabstand und Schrittabstand
+ *	@knob	shaping		Eckenradius eines Plans
+ *
+ *	v1 is the starting point, not a design. What it declares is the framework's
+ *	own values, so a fresh preview shows Nino exactly as it is - and every one
+ *	of them as a triple, so the finetune knob has something to reach without a
+ *	set having been written yet. Every other rule Nino.css sets for this part
+ *	is listed below, commented out, with the values it uses today - the handles
+ *	this set has, in one place. Uncomment
  *	one, change it, reload.
  *
  *	Two rules for a set (see the feature's README.md):
@@ -166,3 +171,26 @@
 /* .nino-timeline-step:first-child::before {
 		display: none;
    } */
+
+/* ---- the knobs this set answers to ----
+ *
+ *	See Setup::KNOBS for the vocabulary. Every --default is the value Nino.css
+ *	uses today, so a knob nobody moved compiles to the page that was there.
+ */
+:root {
+	--blocks-spacing--less: 		var(--space-1);
+	--blocks-spacing--default: 	var(--space-2);
+	--blocks-spacing--more: 		var(--space-3);
+
+	--blocks-shaping--less: 		0;
+	--blocks-shaping--default: 	var(--radius);
+	--blocks-shaping--more: 		var(--radius-large);
+}
+
+.nino-pricing-item {
+	padding: var(--blocks-spacing);
+	border-radius: var(--blocks-shaping);
+}
+.nino-timeline-step {
+	margin-bottom: var(--blocks-spacing);
+}

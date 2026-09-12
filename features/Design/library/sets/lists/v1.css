@@ -2,12 +2,17 @@
  *	Listen, Tabellen und Badges
  *
  *	@name				Nino
- *	@description	The framework as it is - this set declares nothing. Lists, tables, accordions, the definition rows.
+ *	@description	The framework as it is, with its own values on the knob. Lists, tables, accordions, the definition rows.
  *
- *	v1 is the starting point, not a design: it declares nothing and lets the
- *	framework's own rules stand, so a fresh preview shows Nino as it is. Every
- *	rule Nino.css sets for this part is listed below, commented out, with the
- *	values it uses today - the handles this set has, in one place. Uncomment
+ *	@knob	spacing		Lücken und Zellenraum
+ *	@knob	shaping		Eckenradius eines Badges
+ *
+ *	v1 is the starting point, not a design. What it declares is the framework's
+ *	own values, so a fresh preview shows Nino exactly as it is - and every one
+ *	of them as a triple, so the finetune knob has something to reach without a
+ *	set having been written yet. Every other rule Nino.css sets for this part
+ *	is listed below, commented out, with the values it uses today - the handles
+ *	this set has, in one place. Uncomment
  *	one, change it, reload.
  *
  *	Two rules for a set (see the feature's README.md):
@@ -135,3 +140,29 @@
 /* .nino-table--bordered th, .nino-table--bordered td {
 		border: 1px solid var(--color-border);
    } */
+
+/* ---- the knobs this set answers to ----
+ *
+ *	See Setup::KNOBS for the vocabulary. Every --default is the value Nino.css
+ *	uses today, so a knob nobody moved compiles to the page that was there.
+ */
+:root {
+	--lists-spacing--less: 			calc( var(--space-1) *.5 );
+	--lists-spacing--default: 	var(--space-1);
+	--lists-spacing--more: 			var(--space-2);
+
+	--lists-shaping--less: 			0;
+	--lists-shaping--default: 	var(--radius-small);
+	--lists-shaping--more: 			999rem;
+}
+
+.nino-list {
+	gap: var(--lists-spacing);
+}
+.nino-table th,
+.nino-table td {
+	padding: var(--lists-spacing);
+}
+.nino-badge {
+	border-radius: var(--lists-shaping);
+}

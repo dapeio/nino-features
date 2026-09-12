@@ -2,12 +2,17 @@
  *	Buttons - Form, Füllung, Größenverhältnisse, Hover
  *
  *	@name				Nino
- *	@description	The framework as it is - this set declares nothing. Every .nino-btn variant, and the link that looks like one.
+ *	@description	The framework as it is, with its own values on the knob. Every .nino-btn variant, and the link that looks like one.
  *
- *	v1 is the starting point, not a design: it declares nothing and lets the
- *	framework's own rules stand, so a fresh preview shows Nino as it is. Every
- *	rule Nino.css sets for this part is listed below, commented out, with the
- *	values it uses today - the handles this set has, in one place. Uncomment
+ *	@knob	spacing		Raum um die Beschriftung
+ *	@knob	shaping		Eckenradius
+ *
+ *	v1 is the starting point, not a design. What it declares is the framework's
+ *	own values, so a fresh preview shows Nino exactly as it is - and every one
+ *	of them as a triple, so the finetune knob has something to reach without a
+ *	set having been written yet. Every other rule Nino.css sets for this part
+ *	is listed below, commented out, with the values it uses today - the handles
+ *	this set has, in one place. Uncomment
  *	one, change it, reload.
  *
  *	Two rules for a set (see the feature's README.md):
@@ -120,3 +125,25 @@
 /* .nino-text-right > .nino-btn {
 		margin-left: var(--space-1);
    } */
+
+/* ---- the knobs this set answers to ----
+ *
+ *	See Setup::KNOBS for the vocabulary. Every --default is the value Nino.css
+ *	uses today, so a knob nobody moved compiles to the page that was there.
+ *	"Rund" is a pill rather than a large number: past half the height a radius
+ *	stops growing, so that is where the third step is.
+ */
+:root {
+	--buttons-spacing--less: 			var(--space-1);
+	--buttons-spacing--default: 	var(--space-2);
+	--buttons-spacing--more: 			var(--space-3);
+
+	--buttons-shaping--less: 			0;
+	--buttons-shaping--default: 	var(--radius);
+	--buttons-shaping--more: 			999rem;
+}
+
+.nino-btn {
+	padding: calc( var(--buttons-spacing) /2 ) var(--buttons-spacing);
+	border-radius: var(--buttons-shaping);
+}

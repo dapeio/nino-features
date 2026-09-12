@@ -41,6 +41,45 @@ for, and the version says 0 for that reason.
   inline `<script>` in that frame, and the half that never changes has no
   business travelling with every preview.
 
+### The panel, rebuilt
+
+- **One part at a time.** A picker at the top - the nine parts and `Global` -
+  and everything below it belongs to that one: the variant with its description,
+  and the knob under it. Nine rows at once was a list to read; one part is a
+  decision to make, and the preview beside it is the whole page either way.
+- **Finetuning is one row per knob**, not one step per part - and the knobs are
+  Nino's own: Headings, Spacing, Corners and Width, the raster group the kernel's
+  Design module published before the look left the core, with its labels, its
+  notes and its three step words. Fixed rather than per set, because "Spacing"
+  has to mean the same thing on a section as on a form for a global position to
+  mean anything.
+- A set answers to a knob by declaring `--<part>-<knob>--less/-default/-more`.
+  Declaring the triple is publishing the knob, so a handle the stylesheet does
+  not answer to cannot be offered; `Global` lists the knobs any chosen set
+  answers to, a part the ones its own set does.
+- Two levels: a knob's global position, and a part moved away from it. A row
+  that has not been moved follows and is drawn quietly - what is on screen is the
+  value that compiles either way - and moving it puts the way back (`↺`) beside
+  it. Only decisions that were made are stored, so a part still following keeps
+  following when the global position moves.
+- Every set in the library now declares the framework's own values as triples,
+  so the knob has something to reach before a set has been written. `--default`
+  is what Nino.css uses today: a knob nobody moved compiles to the page that was
+  already there - the same property the kernel's Design module built its scale
+  on. A setup written before the knobs were told apart seeds every one of them
+  with the single position it carried.
+- **The frame follows the picker.** Opening a part puts it on screen: the seven
+  sets have a section of their own in the specimen, a frame is the `<header>` or
+  the `<footer>` around it, and `Global` is the top of the page. A switch beside
+  the width turns it off; a knob move never jumps, only changing the part does.
+- *How it is used* moved to the bottom of the controls. What `assets/theme.css`
+  currently is, is true and worth saying, and it is not what somebody opening
+  this screen came to find out. The preview lost its explanatory paragraph for
+  the same reason - the frame under it is the explanation.
+- The panel is called **Design** in German too, and the frame is scaled by the
+  workbench's own `Nino.adminUi.scaleFrame()` rather than by a second copy of
+  that arithmetic here.
+
 ### Fixed before it shipped
 
 - **A frame is a stylesheet and the markup it was drawn against, and `apply()`
@@ -87,4 +126,4 @@ for, and the version says 0 for that reason.
   set looks the same while it is being written as it will in a project; what
   the harness adds is the throwaway project to render against, which an
   installed site already has and a library checkout never does.
-- `tests/design-smoke.php`, 91 checks.
+- `tests/design-smoke.php`, 106 checks.

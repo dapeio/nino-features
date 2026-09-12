@@ -4,14 +4,13 @@
 // workbench's own text/<locale>.php has
 return [
 	'[[/_admin/nav/design]]'								=> 'Design',
-	'[[/_admin/design/label/title]]'				=> 'The look of the site',
+	'[[/_admin/design/label/title]]'				=> 'Design',
 	'[[/_admin/design/hint/intro]]'					=> 'One set per part of a page. Nobody picks a whole theme here - loud headings from one design and round buttons from another is the point.',
 
-	'[[/_admin/design/label/parts]]'				=> 'Parts',
-	'[[/_admin/design/label/global]]'				=> 'For the whole site',
-	'[[/_admin/design/label/knob]]'					=> 'Finetune',
+	'[[/_admin/design/label/global]]'				=> 'Global',
+	'[[/_admin/design/label/knob]]'					=> 'Finetuning',
 	'[[/_admin/design/label/size]]'					=> 'Root size',
-	'[[/_admin/design/label/follow]]'				=> '— follows the knob —',
+	'[[/_admin/design/label/follow]]'				=> 'Follow again',
 	'[[/_admin/design/label/save]]'					=> 'Save the selection',
 	'[[/_admin/design/label/apply]]'				=> 'Save and compile',
 	'[[/_admin/design/label/takeover]]'			=> 'Take the file over and compile',
@@ -26,14 +25,14 @@ return [
 	'[[/_admin/design/part/lists]]'					=> 'Lists & tables',
 	'[[/_admin/design/part/blocks]]'				=> 'Blocks',
 
-	'[[/_admin/design/step/less]]'					=> 'less',
-	'[[/_admin/design/step/default]]'				=> 'default',
-	'[[/_admin/design/step/more]]'					=> 'more',
+	'[[/_admin/design/step/less]]'					=> '−1',
+	'[[/_admin/design/step/default]]'				=> '0',
+	'[[/_admin/design/step/more]]'					=> '+1',
 	'[[/_admin/design/size/s]]'							=> 'small',
 	'[[/_admin/design/size/m]]'							=> 'default',
 	'[[/_admin/design/size/l]]'							=> 'large',
 
-	'[[/_admin/design/hint/knob]]'					=> 'Every set declares three steps for each of its values. The knob picks one of them - it never computes. A single part may deviate ("articles rounder, buttons squarer"); the rest follow the global position, and keep following it when it moves.',
+	'[[/_admin/design/hint/knob]]'					=> 'Every set declares three steps for the knobs it answers to. Finetuning picks one of them - it never computes. A part follows a knob\'s global position until somebody moves it here; then it stays where it was put.',
 	'[[/_admin/design/hint/size]]'					=> 'Scales the whole page through the root font size - as a percentage of the visitor\'s own browser default, never as a fixed pixel value.',
 	'[[/_admin/design/hint/frames]]'				=> 'The header and the footer bring their own markup: compiling overwrites the project\'s two frame templates.',
 
@@ -50,13 +49,43 @@ return [
 	'[[/_admin/design/error/apply]]'				=> 'Compiling failed.',
 
 	'[[/_admin/design/label/preview]]'			=> 'Preview',
-	'[[/_admin/design/hint/preview]]'				=> 'The selection on this screen, rendered against this project - its menu, its logo, its fonts. None of it is written: what you see here reaches the site when you compile.',
 	'[[/_admin/design/label/width]]'				=> 'Width',
 	'[[/_admin/design/width/phone]]'				=> 'Phone',
 	'[[/_admin/design/width/tablet]]'				=> 'Tablet',
 	'[[/_admin/design/width/desktop]]'			=> 'Desktop',
 	'[[/_admin/design/label/reload]]'				=> 'Reload the preview',
+	'[[/_admin/design/label/jump]]'					=> 'Follow the part',
 	'[[/_admin/design/msg/previewing]]'			=> 'Building the preview …',
 	'[[/_admin/design/error/preview]]'			=> 'The preview could not be built.',
 	'[[/_admin/design/preview/page]]'				=> 'Preview',
+
+	'[[/_admin/design/label/picker]]'				=> 'Part',
+	'[[/_admin/design/label/variant]]'			=> 'Variant',
+	'[[/_admin/design/label/state]]'				=> 'How it is used',
+
+	'[[/_admin/design/knob/empty]]'					=> 'This variant answers to no knob.',
+
+	'[[/_admin/design/knob/volume/label]]'	=> 'Headings',
+	'[[/_admin/design/knob/volume/note]]'		=> 'how far they grow',
+	'[[/_admin/design/knob/volume/less]]'		=> 'Calm',
+	'[[/_admin/design/knob/volume/default]]'=> 'Standard',
+	'[[/_admin/design/knob/volume/more]]'		=> 'Bold',
+
+	'[[/_admin/design/knob/spacing/label]]'		=> 'Spacing',
+	'[[/_admin/design/knob/spacing/note]]'		=> 'gaps and line height',
+	'[[/_admin/design/knob/spacing/less]]'		=> 'Tight',
+	'[[/_admin/design/knob/spacing/default]]'	=> 'Standard',
+	'[[/_admin/design/knob/spacing/more]]'		=> 'Airy',
+
+	'[[/_admin/design/knob/shaping/label]]'		=> 'Corners',
+	'[[/_admin/design/knob/shaping/note]]'		=> 'how round',
+	'[[/_admin/design/knob/shaping/less]]'		=> 'Sharp',
+	'[[/_admin/design/knob/shaping/default]]'	=> 'Standard',
+	'[[/_admin/design/knob/shaping/more]]'		=> 'Round',
+
+	'[[/_admin/design/knob/measure/label]]'		=> 'Width',
+	'[[/_admin/design/knob/measure/note]]'		=> 'how wide content runs',
+	'[[/_admin/design/knob/measure/less]]'		=> 'Narrow',
+	'[[/_admin/design/knob/measure/default]]'	=> 'Standard',
+	'[[/_admin/design/knob/measure/more]]'		=> 'Wide',
 ];

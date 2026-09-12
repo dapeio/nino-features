@@ -2,12 +2,17 @@
  *	Formulare - Felder, Label, Fokus, Meldezustände
  *
  *	@name				Nino
- *	@description	The framework as it is - this set declares nothing. Fields, labels, help text, validation states.
+ *	@description	The framework as it is, with its own values on the knob. Fields, labels, help text, validation states.
  *
- *	v1 is the starting point, not a design: it declares nothing and lets the
- *	framework's own rules stand, so a fresh preview shows Nino as it is. Every
- *	rule Nino.css sets for this part is listed below, commented out, with the
- *	values it uses today - the handles this set has, in one place. Uncomment
+ *	@knob	spacing		Raum im Feld und zwischen Feldern
+ *	@knob	shaping		Eckenradius eines Feldes
+ *
+ *	v1 is the starting point, not a design. What it declares is the framework's
+ *	own values, so a fresh preview shows Nino exactly as it is - and every one
+ *	of them as a triple, so the finetune knob has something to reach without a
+ *	set having been written yet. Every other rule Nino.css sets for this part
+ *	is listed below, commented out, with the values it uses today - the handles
+ *	this set has, in one place. Uncomment
  *	one, change it, reload.
  *
  *	Two rules for a set (see the feature's README.md):
@@ -73,3 +78,26 @@
 /* .nino-newsletter-inline .nino-form-input {
 		margin: 0;
    } */
+
+/* ---- the knobs this set answers to ----
+ *
+ *	See Setup::KNOBS for the vocabulary. Every --default is the value Nino.css
+ *	uses today, so a knob nobody moved compiles to the page that was there.
+ */
+:root {
+	--forms-spacing--less: 			calc( var(--space-1) *.6 );
+	--forms-spacing--default: 	var(--space-1);
+	--forms-spacing--more: 			var(--space-2);
+
+	--forms-shaping--less: 			0;
+	--forms-shaping--default: 	var(--radius-small);
+	--forms-shaping--more: 			var(--radius-large);
+}
+
+.nino-form-input,
+.nino-form-textarea,
+.nino-form-select {
+	padding: var(--forms-spacing);
+	border-radius: var(--forms-shaping);
+	margin-bottom: var(--forms-spacing);
+}

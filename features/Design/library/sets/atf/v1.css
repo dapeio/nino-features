@@ -2,12 +2,17 @@
  *	ATF - der Kopfbereich: Titel, Untertitel, Inhalt, Pfeil
  *
  *	@name				Nino
- *	@description	The framework as it is - this set declares nothing. The hero above the fold: title, subtitle, the arrow down.
+ *	@description	The framework as it is, with its own values on the knob. The hero above the fold: title, subtitle, the arrow down.
  *
- *	v1 is the starting point, not a design: it declares nothing and lets the
- *	framework's own rules stand, so a fresh preview shows Nino as it is. Every
- *	rule Nino.css sets for this part is listed below, commented out, with the
- *	values it uses today - the handles this set has, in one place. Uncomment
+ *	@knob	volume		Titel und Untertitel
+ *	@knob	spacing		Abstand unter dem Titel
+ *
+ *	v1 is the starting point, not a design. What it declares is the framework's
+ *	own values, so a fresh preview shows Nino exactly as it is - and every one
+ *	of them as a triple, so the finetune knob has something to reach without a
+ *	set having been written yet. Every other rule Nino.css sets for this part
+ *	is listed below, commented out, with the values it uses today - the handles
+ *	this set has, in one place. Uncomment
  *	one, change it, reload.
  *
  *	Two rules for a set (see the feature's README.md):
@@ -121,3 +126,29 @@
 /* .nino-text-right :is(.nino-section-title, .nino-section-subtitle, .nino-atf-title, .nino-atf-subtitle) {
 		text-align: right;
    } */
+
+/* ---- the knobs this set answers to ----
+ *
+ *	See Setup::KNOBS for the vocabulary. Every --default is the value Nino.css
+ *	uses today, so a knob nobody moved compiles to the page that was there.
+ */
+:root {
+	--atf-volume--less: 			var(--text-4);
+	--atf-volume--default: 		calc( var(--text-4) *1.2 );
+	--atf-volume--more: 			calc( var(--text-6) *1.2 );
+
+	--atf-spacing--less: 			var(--space-2);
+	--atf-spacing--default: 	var(--space-3);
+	--atf-spacing--more: 			var(--space-4);
+}
+
+.nino-atf-title {
+	font-size: var(--atf-volume);
+	line-height: calc( var(--atf-volume) *1.1 );
+	margin-bottom: var(--atf-spacing);
+}
+.nino-atf-subtitle {
+	font-size: calc( var(--atf-volume) *.625 );
+	line-height: calc( var(--atf-volume) *.81 );
+	margin-bottom: var(--atf-spacing);
+}

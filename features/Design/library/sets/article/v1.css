@@ -2,12 +2,18 @@
  *	Article - Bild, Titel, Untertitel, Beschreibung, Preis, Rahmen, Schatten
  *
  *	@name				Nino
- *	@description	The framework as it is - this set declares nothing. Article cards and their grid: image, title, meta, excerpt.
+ *	@description	The framework as it is, with its own values on the knob. Article cards and their grid: image, title, meta, excerpt.
  *
- *	v1 is the starting point, not a design: it declares nothing and lets the
- *	framework's own rules stand, so a fresh preview shows Nino as it is. Every
- *	rule Nino.css sets for this part is listed below, commented out, with the
- *	values it uses today - the handles this set has, in one place. Uncomment
+ *	@knob	volume		Kartentitel
+ *	@knob	spacing		Innenabstand und Lücken
+ *	@knob	shaping		Eckenradius der Karte
+ *
+ *	v1 is the starting point, not a design. What it declares is the framework's
+ *	own values, so a fresh preview shows Nino exactly as it is - and every one
+ *	of them as a triple, so the finetune knob has something to reach without a
+ *	set having been written yet. Every other rule Nino.css sets for this part
+ *	is listed below, commented out, with the values it uses today - the handles
+ *	this set has, in one place. Uncomment
  *	one, change it, reload.
  *
  *	Two rules for a set (see the feature's README.md):
@@ -177,3 +183,36 @@
 /* .nino-article-cols-xl > .nino-article-img {
 		max-width: var(--article-img-max-width);
    } */
+
+/* ---- the knobs this set answers to ----
+ *
+ *	See Setup::KNOBS for the vocabulary. Every --default is the value Nino.css
+ *	uses today, so a knob nobody moved compiles to the page that was there.
+ */
+:root {
+	--article-volume--less: 			var(--text-2);
+	--article-volume--default: 		var(--text-3);
+	--article-volume--more: 			var(--text-4);
+
+	--article-spacing--less: 			var(--space-1);
+	--article-spacing--default: 	var(--space-2);
+	--article-spacing--more: 			var(--space-3);
+
+	--article-shaping--less: 			0;
+	--article-shaping--default: 	var(--radius-small);
+	--article-shaping--more: 			var(--radius-large);
+}
+
+.nino-article {
+	border-radius: var(--article-shaping);
+}
+.nino-article-content {
+	padding: calc( var(--article-spacing) /2 ) var(--article-spacing);
+}
+.nino-article-title {
+	font-size: var(--article-volume);
+	margin-bottom: var(--article-spacing);
+}
+.nino-article-descr {
+	margin-bottom: var(--article-spacing);
+}

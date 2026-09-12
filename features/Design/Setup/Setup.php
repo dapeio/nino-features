@@ -55,6 +55,34 @@ namespace Nino\Modules\Design {
 		// nothing of its own
 		public const array STEPS = [ 'less', 'default', 'more' ];
 
+		/*	The knobs, and nothing else. The vocabulary is Nino's own - the four
+			the kernel's Design module published as its raster group before the
+			look left the core, minus the one that is the root size here (which
+			has a select of its own under Global).
+
+			Fixed rather than per set, and that is the whole point: a knob named
+			"Abstände" means the same thing on a section as on a form, so moving
+			it globally means something. A set that invented its own vocabulary
+			would give every part a private language and the global position
+			nothing to be the position of.
+
+			What each one is called, what the terse note beside it says and what
+			its three steps are called live in the panel's text files - one knob
+			is one key there, in every locale.	*/
+		public const array KNOBS = [ 'volume', 'spacing', 'shaping', 'measure' ];
+
+		/*	How a set says which knobs it answers to: one triple per knob, named
+			after the part and the knob and nothing else.
+
+			  --section-spacing--less / --default / --more
+
+			Declaring the triple *is* publishing the knob - the panel offers
+			exactly what a set declares, so a handle the stylesheet does not
+			answer to can never be offered. The @knob line in a set's own
+			opening comment is documentation for whoever reads the file; the
+			panel reads the declarations */
+		public const string KNOB_TOKEN = '--%s-%s--%s';
+
 		// The root size, as the percentage pair Nino.css wants: below the
 		// 768px breakpoint, and from it. Relative, never a length - see
 		// --base-size in Nino.css
@@ -78,10 +106,18 @@ namespace Nino\Modules\Design {
 
 			foreach( self::PARTS as $part => $kind ) {
 				$available = self::available( $libraryDir, $part );
-				$parts[$part] = [ 'set' => (string) ( $available[0] ?? '' ), 'step' => null, 'sha' => '' ];
+				$parts[$part] = [ 'set' => (string) ( $available[0] ?? '' ), 'knobs' => [], 'sha' => '' ];
 			}
 
-			return [ 'format' => self::FORMAT, 'parts' => $parts, 'step' => 'default', 'size' => 'm', 'compiled' => [] ];
+			return [
+				'format' 	=> self::FORMAT,
+				'parts' 	=> $parts,
+				// Where every knob stands for the whole design, and where a part
+				// stands until it is moved on its own
+				'knobs' 	=> array_fill_keys( self::KNOBS, 'default' ),
+				'size' 		=> 'm',
+				'compiled'=> [],
+			];
 		}
 
 		/**
@@ -210,9 +246,18 @@ namespace Nino\Modules\Design {
 
 			$setup = self::defaults( $libraryDir );
 
-			$step = (string) ( $raw['step'] ?? '' );
-			if( in_array( $step, self::STEPS, true ) === true )
-				$setup['step'] = $step;
+			/*	The global position of every knob. One value for the whole
+				design was what the first cut had, and it could only ever say "a
+				bit more of everything" - Abstände and Ecken are not the same
+				decision. A setup written before this reaches here as `step`,
+				and seeds every knob with it rather than being thrown away */
+			$seed = in_array( $raw['step'] ?? null, self::STEPS, true ) === true ? (string) $raw['step'] : 'default';
+			$setup['knobs'] = [];
+
+			foreach( self::KNOBS as $knob ) {
+				$given = $raw['knobs'][$knob] ?? null;
+				$setup['knobs'][$knob] = in_array( $given, self::STEPS, true ) === true ? (string) $given : $seed;
+			}
 
 			$size = (string) ( $raw['size'] ?? '' );
 			if( isset( self::SIZES[$size] ) === true )
@@ -233,11 +278,18 @@ namespace Nino\Modules\Design {
 				else if( $wanted !== '' )
 					$notes[] = '"'. $part. '" names the set "'. $wanted. '", which is not in the library - using "'. $available[0]. '"';
 
-				// null is its own state: the part follows the global knob. A part
-				// set to today's global value would otherwise stop following it
-				// the moment that value moves
-				$partStep = $stored['step'] ?? null;
-				$setup['parts'][$part]['step'] = in_array( $partStep, self::STEPS, true ) === true ? (string) $partStep : null;
+				/*	A knob this part was moved at on its own. Only the knobs
+					that were actually decided are written: a knob not named here
+					follows the global position and keeps following it when that
+					moves, which is a different state from one that happens to
+					name today's value */
+				$knobs = [];
+
+				foreach( self::KNOBS as $knob )
+					if( in_array( $stored['knobs'][$knob] ?? null, self::STEPS, true ) === true )
+						$knobs[$knob] = (string) $stored['knobs'][$knob];
+
+				$setup['parts'][$part]['knobs'] = $knobs;
 
 				$setup['parts'][$part]['sha'] = (string) ( $stored['sha'] ?? '' );
 			}
@@ -248,21 +300,100 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	The step a part is compiled at: its own where it names one, the
-		 *	global knob where it does not
+		 *	The step a knob stands at, innermost decision first: the part's own
+		 *	where it names one, else the global position. A level that named
+		 *	nothing is not a level set to "default" - it is one that keeps
+		 *	following whatever the level above moves to
 		 *
 		 *	@param		array 		$setup				A normalised setup
-		 *	@param		string		$part					A key of PARTS
+		 *	@param		string		$part					A key of PARTS, '' for the global position
+		 *	@param		string		$knob					A key of KNOBS
 		 *
 		 *	@return 	string								One of STEPS
 		 */
-		public static function step( array $setup, string $part ): string {
+		public static function step( array $setup, string $part, string $knob ): string {
 
-			$own = $setup['parts'][$part]['step'] ?? null;
+			if( $part !== '' ) {
+				$own = $setup['parts'][$part]['knobs'][$knob] ?? null;
+				if( in_array( $own, self::STEPS, true ) === true )
+					return (string) $own;
+			}
 
-			return is_string( $own ) === true && in_array( $own, self::STEPS, true ) === true
-				? $own
-				: (string) ( $setup['step'] ?? 'default' );
+			$global = $setup['knobs'][$knob] ?? null;
+
+			return in_array( $global, self::STEPS, true ) === true ? (string) $global : 'default';
+		}
+
+		/**
+		 *	Which knobs a set answers to.
+		 *
+		 *	Read out of the stylesheet itself rather than out of a manifest
+		 *	beside it, the same bargain @name makes: a set is one file, and the
+		 *	person writing sets is going to write a lot of them. A set that
+		 *	declares --section-spacing--less / --default / --more answers to
+		 *	Abstände; one that does not, does not, and the panel offers it
+		 *	nothing to turn there.
+		 *
+		 *	@param		string		$libraryDir		The feature's library
+		 *	@param		string		$part					A key of PARTS
+		 *	@param		string		$set					A set name
+		 *
+		 *	@return 	array										Knob keys, in KNOBS order
+		 */
+		public static function knobs( string $libraryDir, string $part, string $set ): array {
+
+			$file = self::file( $libraryDir, $part, $set );
+
+			if( $file === '' || ( self::PARTS[$part] ?? '' ) !== 'set' )
+				return [];
+
+			// Without comments: a skeleton documents the shape of a triple, and
+			// an example in a docblock is not a declaration
+			$css 	= self::uncomment( (string) @file_get_contents( $file ) );
+			$found = [];
+
+			foreach( self::KNOBS as $knob )
+				foreach( self::STEPS as $step )
+					if( str_contains( $css, sprintf( self::KNOB_TOKEN, $part, $knob, $step ). ':' ) === true ) {
+						$found[] = $knob;
+						break;
+					}
+
+			return $found;
+		}
+
+		/**
+		 *	Every knob any of the chosen sets answers to - what the global
+		 *	position is a position of. A knob nothing follows is a knob worth
+		 *	not offering
+		 *
+		 *	@param		string		$libraryDir		The feature's library
+		 *	@param		array 		$setup				A normalised setup
+		 *
+		 *	@return 	array										Knob keys, in KNOBS order
+		 */
+		public static function knobsInUse( string $libraryDir, array $setup ): array {
+
+			$found = [];
+
+			foreach( self::PARTS as $part => $kind )
+				foreach( self::knobs( $libraryDir, $part, (string) ( $setup['parts'][$part]['set'] ?? '' ) ) as $knob )
+					$found[$knob] = true;
+
+			return array_values( array_filter( self::KNOBS, static fn( string $knob ): bool => isset( $found[$knob] ) ) );
+		}
+
+		/**
+		 *	A stylesheet without its comments - shared with the compiler, which
+		 *	scans the same triples for the same reason
+		 *
+		 *	@param		string		$css
+		 *
+		 *	@return 	string
+		 */
+		public static function uncomment( string $css ): string {
+
+			return (string) preg_replace( '~/\*.*?\*/~s', '', $css );
 		}
 
 		/**
