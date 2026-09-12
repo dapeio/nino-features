@@ -28,6 +28,18 @@ for, and the version says 0 for that reason.
   and that is what the panel lists it as. A file without a `@name` is offered
   under its own file name. `Setup::describe()` and `Setup::catalogue()` read
   them; the thirteen frames and the seven skeletons carry them.
+- **A preview beside the selects**, in a frame, following every change: the
+  specimen page rendered against this project - its menu, its logo, its fonts -
+  under the stylesheet the current selection compiles to. It shows the
+  selection on screen rather than the one on disk and writes nothing, so
+  nothing has to be saved to be looked at. Phone, tablet and desktop widths,
+  the frame rendered at that width and scaled into the column.
+- A stylesheet-only change swaps one `<style>` inside the frame that is
+  already standing; header and footer bring markup and rebuild the document.
+  The framework under it is bundled into `_admin/.cache/design-preview.{css,js}`
+  rather than inlined - the workbench's `Content-Security-Policy` refuses an
+  inline `<script>` in that frame, and the half that never changes has no
+  business travelling with every preview.
 
 ### Fixed before it shipped
 
@@ -70,4 +82,9 @@ for, and the version says 0 for that reason.
 - `upgrade()` refreshes the setup and never recompiles on its own. A new
   version of the feature may ship changed sets; moving a site nobody asked to
   move is not an upgrade.
-- `tests/design-smoke.php`, 52 checks.
+- `Preview` is the specimen, the frames around it and the compile, in one
+  place. The panel and `design-library/preview.php` both go through it, so a
+  set looks the same while it is being written as it will in a project; what
+  the harness adds is the throwaway project to render against, which an
+  installed site already has and a library checkout never does.
+- `tests/design-smoke.php`, 91 checks.

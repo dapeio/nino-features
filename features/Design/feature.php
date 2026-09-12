@@ -23,6 +23,11 @@ return [
 			A finetune knob picks among the three steps a set declares for each of
 			its values, globally or for one part on its own.
 
+			Beside the choices is a preview of them: one page that uses every
+			class a set can reach, rendered against this project and written
+			nowhere. It follows the selection on screen rather than the one on
+			disk, so nothing has to be saved to be looked at.
+
 			The setup lives in data/design.php and travels in every backup.
 			Removing the feature leaves the compiled stylesheet working; installing
 			it again finds the setup and carries on.
@@ -40,6 +45,12 @@ return [
 
 			Ein Feinregler wählt unter den drei Stufen, die ein Set für jeden seiner
 			Werte erklärt - global oder für ein Bauteil allein.
+
+			Neben der Auswahl steht eine Vorschau davon: eine Seite, die jede
+			Klasse verwendet, die ein Set erreichen kann, gerendert gegen dieses
+			Projekt und nirgendwo geschrieben. Sie folgt der Auswahl auf dem
+			Bildschirm, nicht der auf der Platte - nichts muss gespeichert
+			werden, um angesehen zu werden.
 
 			Das Setup liegt in data/design.php und reist in jedem Backup mit. Wird
 			das Feature entfernt, arbeitet das kompilierte Stylesheet weiter; wird es

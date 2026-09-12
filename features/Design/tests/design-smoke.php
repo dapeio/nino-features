@@ -23,6 +23,9 @@ defined( 'NINO_FEATURES_DIR' ) === true || define( 'NINO_FEATURES_DIR', dirname(
 require $root. '/tests/harness.php';
 
 $appData = ninoSandbox( 'design' );
+// What a request always carries and a sandbox does not - the preview's own
+// public prefix comes off it (see the other feature suites)
+$appData['/nino/dir'] = '';
 $library = dirname( __DIR__ ). '/library';
 
 echo "The manifest, and what it promises\n";
@@ -314,18 +317,104 @@ check( 'a set name that could climb out of the library never becomes a path',
 	callDesignAction( $appData, 'apiSave', [ 'parts' => [ 'section' => [ 'set' => '../../../etc/passwd' ] ], 'step' => 'default', 'size' => 'm' ] )[0] === 200
 	&& \Nino\Modules\Design\Setup::read( $appData, \Nino\Modules\Design::libraryDir() )['parts']['section']['set'] === 'v1' );
 
+echo "\nThe preview: a selection, before it is one\n";
+
+/*	The framework's own halves are read out of the checkout and bundled, and a
+	sandbox has no kernel in it at all - so it gets one, the same way a project
+	has one. Modules\Assets is what writes the bundle, Modules\Template what a
+	frame's [template] includes resolve through */
+symlink( $root. '/_nino', ninoSandboxDir( $appData ). '/_nino' );
+$appData['/nino/modules'] = [ '\\Nino\\Modules\\Assets', '\\Nino\\Modules\\Template' ];
+\Nino\Modules::callModules( $appData, 'init' );
+
+$specimen = \Nino\Modules\Design\Preview::specimen();
+
+check( 'the specimen brings no frame of its own - markup() puts the chosen ones around it',
+	str_contains( $specimen, 'theme.header' ) === false && str_contains( $specimen, 'theme.footer' ) === false );
+check( 'it has a section per part a set can reach, named after the part',
+	count( array_filter( [ 'atf', 'section', 'article', 'buttons', 'forms', 'lists', 'blocks' ],
+		static fn( string $part ): bool => str_contains( $specimen, 'id="'. $part. '"' ) ) ) === 7 );
+check( 'its one picture is a data uri, so it needs no route wherever it is shown',
+	str_starts_with( \Nino\Modules\Design\Preview::PLACEHOLDER, 'data:image/svg+xml' ) === true
+	&& str_contains( $specimen, \Nino\Modules\Design\Preview::PLACEHOLDER ) === true
+	&& str_contains( $specimen, 'src="/images/' ) === false );
+
+$notes 		= [];
+$chosen 	= \Nino\Modules\Design\Setup::normalize( [ 'parts' => [ 'header' => [ 'set' => 'v3' ], 'footer' => [ 'set' => 'v5' ] ] ], $library );
+$markup 	= \Nino\Modules\Design\Preview::markup( $library, $chosen, $notes );
+
+check( 'markup() reads the chosen frames out of the library rather than off disk', $notes === []
+	&& str_starts_with( trim( $markup ), trim( (string) file_get_contents( \Nino\Modules\Design\Setup::file( $library, 'header', 'v3', 'template' ) ) ) ) === true
+	&& str_ends_with( trim( $markup ), trim( (string) file_get_contents( \Nino\Modules\Design\Setup::file( $library, 'footer', 'v5', 'template' ) ) ) ) === true );
+
+$notes = [];
+check( 'a frame with no template is named rather than quietly left out',
+	\Nino\Modules\Design\Preview::frame( $library, [ 'parts' => [ 'header' => [ 'set' => 'nope' ] ] ], 'header', $notes ) === ''
+	&& count( $notes ) === 1 && str_contains( $notes[0], '"header"' ) === true );
+
+$notes = [];
+$shown = \Nino\Modules\Design\Preview::css( $chosen, $library, '/somewhere/public', $notes );
+check( 'the sheet a preview is shown under resolves the public prefix, or the webfaces never load',
+	str_contains( $shown, "url('/somewhere/public/fonts/" ) === true && str_contains( $shown, '[[/nino/public]]' ) === false );
+
+$document = \Nino\Modules\Design\Preview::document( 'de_DE', '<style>a{}</style>', '<main>b</main>', '<script></script>' );
+check( 'the document says which language it is in and says no to crawlers',
+	str_starts_with( $document, '<!doctype html>' ) === true
+	&& str_contains( $document, '<html lang="de">' ) === true
+	&& str_contains( $document, 'name="robots" content="noindex, nofollow"' ) === true );
+
+// What the panel answers with. The setup on disk is size 'm' here (the fallback
+// save above wrote it), and the post below asks for 's' - so the preview showing
+// 's' is the whole point: it is the selection on screen, not the one stored
+$stored 	= \Nino\Modules\Design\Setup::read( $appData, $library );
+$sheet 		= (string) \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Design\Compiler::TARGET, '' );
+
+[ $status, $preview ] = callDesignAction( $appData, 'apiPreview', [
+	'parts' => [ 'header' => [ 'set' => 'v3' ] ], 'step' => 'default', 'size' => 's', 'full' => true,
+] );
+
+check( 'the preview answers with a whole document and the id of the sheet inside it', $status === 200
+	&& str_starts_with( (string) ( $preview['document'] ?? '' ), '<!doctype html>' ) === true
+	&& ( $preview['style'] ?? '' ) === \Nino\Modules\Design\Admin::PREVIEW_STYLE
+	&& str_contains( (string) $preview['document'], 'id="'. \Nino\Modules\Design\Admin::PREVIEW_STYLE. '"' ) === true );
+check( 'it shows what was posted and not what is stored - looking is what you do while deciding',
+	str_contains( (string) ( $preview['css'] ?? '' ), '93.75%' ) === true
+	&& ( $stored['size'] ?? '' ) === 'm'
+	&& str_contains( (string) $preview['document'], 'nino-grid-row nino-grid-row--wide' ) === true );
+check( 'the framework is linked, not inlined - the workbench sends a csp that refuses an inline script',
+	str_contains( (string) $preview['document'], 'design-preview.js"></script>' ) === true
+	&& str_contains( (string) $preview['document'], 'design-preview.css"' ) === true
+	&& str_contains( (string) $preview['document'], '<script>' ) === false );
+check( '...and the bundle it points at really carries the framework',
+	str_contains( (string) \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Design\Admin::FRAMEWORK_CSS, '' ), '.nino-section' ) === true
+	&& str_contains( (string) \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Design\Admin::FRAMEWORK_JS, '' ), 'Nino.ui' ) === true );
+
+[ $status, $partial ] = callDesignAction( $appData, 'apiPreview', [
+	'parts' => [], 'step' => 'default', 'size' => 'l', 'full' => false,
+] );
+check( 'a change that is only a stylesheet sends only that - the frame on screen keeps its page', $status === 200
+	&& ( $partial['document'] ?? null ) === '' && str_contains( (string) ( $partial['css'] ?? '' ), '118.75%' ) === true );
+
+check( 'previewing writes neither the setup nor the stylesheet',
+	\Nino\Modules\Design\Setup::read( $appData, $library ) === $stored
+	&& \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Design\Compiler::TARGET, '' ) === $sheet );
+
 \Nino\Auth::logoutUser( $appData );
 check( 'every action of the panel refuses a request with no session',
 	callDesignAction( $appData, 'apiList' )[0] === 401
 	&& callDesignAction( $appData, 'apiSave', [] )[0] === 401
-	&& callDesignAction( $appData, 'apiApply' )[0] === 401 );
+	&& callDesignAction( $appData, 'apiApply' )[0] === 401
+	&& callDesignAction( $appData, 'apiPreview', [] )[0] === 401 );
 
 \Nino\Auth::insertUser( $appData, 'editor@example.com', 'correct horse battery staple', [ '/_admin/elements/manage' ] );
 \Nino\Auth::loginUser( $appData, 'editor@example.com', 'correct horse battery staple' );
 check( '...and an account without /_admin/design/manage with a 403',
-	callDesignAction( $appData, 'apiList' )[0] === 403 && callDesignAction( $appData, 'apiApply' )[0] === 403 );
+	callDesignAction( $appData, 'apiList' )[0] === 403 && callDesignAction( $appData, 'apiApply' )[0] === 403
+	&& callDesignAction( $appData, 'apiPreview', [] )[0] === 403 );
 
-check( 'the panel names every action it answers', array_keys( \Nino\Modules\Design\Admin::actions() ) === [ 'design/list', 'design/save', 'design/apply' ] );
+check( 'the panel names every action it answers', array_keys( \Nino\Modules\Design\Admin::actions() ) === [ 'design/list', 'design/save', 'design/apply', 'design/preview' ] );
+check( 'and previewing is not written to the activity log - it happens on every select and changes nothing',
+	\Nino\Modules\Design\Admin::log( 'design/preview', [] ) === '' );
 check( 'and ships the pane and the two assets it is drawn with',
 	\Nino\Modules\Design\Admin::panes() === [ 'design-form' ] && count( \Nino\Modules\Design\Admin::assets() ) === 2 );
 check( 'taking the delivered file over is written to the activity log as that',

@@ -48,4 +48,15 @@ return [
 	'[[/_admin/design/msg/takenover]]'			=> 'File taken over and compiled. Design writes it from now on.',
 	'[[/_admin/design/error/save]]'					=> 'The selection could not be saved.',
 	'[[/_admin/design/error/apply]]'				=> 'Compiling failed.',
+
+	'[[/_admin/design/label/preview]]'			=> 'Preview',
+	'[[/_admin/design/hint/preview]]'				=> 'The selection on this screen, rendered against this project - its menu, its logo, its fonts. None of it is written: what you see here reaches the site when you compile.',
+	'[[/_admin/design/label/width]]'				=> 'Width',
+	'[[/_admin/design/width/phone]]'				=> 'Phone',
+	'[[/_admin/design/width/tablet]]'				=> 'Tablet',
+	'[[/_admin/design/width/desktop]]'			=> 'Desktop',
+	'[[/_admin/design/label/reload]]'				=> 'Reload the preview',
+	'[[/_admin/design/msg/previewing]]'			=> 'Building the preview …',
+	'[[/_admin/design/error/preview]]'			=> 'The preview could not be built.',
+	'[[/_admin/design/preview/page]]'				=> 'Preview',
 ];

@@ -23,10 +23,11 @@ namespace Nino\Modules {
 	 *										Forms, Lists & tables, Blocks - plus a header and a footer,
 	 *										which are the two parts that bring markup with them.
 	 *
-	 *										Three pieces, and they are deliberately separable:
+	 *										Four pieces, and they are deliberately separable:
 	 *
 	 *										  Setup			what was chosen (/data/design.php)
 	 *										  Compiler	what that produces (assets/theme.css)
+	 *										  Preview		what that would look like, written nowhere
 	 *										  Admin			the screen that edits the first
 	 *
 	 *										Nothing here runs on a public request. The compiled

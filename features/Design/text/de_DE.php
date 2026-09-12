@@ -48,4 +48,15 @@ return [
 	'[[/_admin/design/msg/takenover]]'			=> 'Datei übernommen und kompiliert. Von jetzt an schreibt Design sie.',
 	'[[/_admin/design/error/save]]'					=> 'Die Auswahl konnte nicht gespeichert werden.',
 	'[[/_admin/design/error/apply]]'				=> 'Es konnte nicht kompiliert werden.',
+
+	'[[/_admin/design/label/preview]]'			=> 'Vorschau',
+	'[[/_admin/design/hint/preview]]'				=> 'Die Auswahl auf dieser Seite, gerendert gegen dieses Projekt – sein Menü, sein Logo, seine Schriften. Nichts davon wird geschrieben: Was hier steht, steht erst auf der Seite, wenn Du kompilierst.',
+	'[[/_admin/design/label/width]]'				=> 'Breite',
+	'[[/_admin/design/width/phone]]'				=> 'Telefon',
+	'[[/_admin/design/width/tablet]]'				=> 'Tablet',
+	'[[/_admin/design/width/desktop]]'			=> 'Desktop',
+	'[[/_admin/design/label/reload]]'				=> 'Vorschau neu laden',
+	'[[/_admin/design/msg/previewing]]'			=> 'Vorschau wird erstellt …',
+	'[[/_admin/design/error/preview]]'			=> 'Die Vorschau konnte nicht erstellt werden.',
+	'[[/_admin/design/preview/page]]'				=> 'Vorschau',
 ];

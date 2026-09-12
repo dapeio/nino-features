@@ -4,10 +4,11 @@
  *	Nino										A compact filesystembased php framework
  *	Modules\Design					What the feature's /_admin panel needs beyond the design
  *													system in _admin/assets/style.css: the row per part, the
- *													description under it, and the one line that says what
- *													assets/theme.css currently is. Joins the workbench's
- *													style bundle while the feature is active (see the
- *													panel's assets()).
+ *													description under it, the one line that says what
+ *													assets/theme.css currently is, and the two columns the
+ *													screen is - selects on one side, the preview frame on
+ *													the other. Joins the workbench's style bundle while the
+ *													feature is active (see the panel's assets()).
  *
  *													Class names are the feature's own rather than
  *													nino-admin-*: that prefix belongs to the workbench, and
@@ -68,5 +69,69 @@
 }
 .nino-admin .design-state--ok 	{ background: var(--editor-green-soft); color: var(--editor-green); }
 .nino-admin .design-state--warn { background: var(--editor-bg-grouped); color: var(--editor-orange); }
+
+/* ---- the preview ----
+
+   The selects on one side, what they mean on the other. Below the breakpoint
+   the two stack: a preview beside a select in a phone-wide pane would be
+   neither */
+#design-layout {
+	display: grid;
+	grid-template-columns: minmax(0, 28rem) minmax(0, 1fr);
+	gap: 1.5rem;
+	align-items: start;
+}
+#design-controls,
+#design-preview {
+	min-width: 0;
+}
+/* The pane is the scroller (it carries overflow-y), so the frame follows the
+   selects down the column instead of scrolling out of sight above them */
+#design-preview {
+	position: sticky;
+	top: 0;
+}
+@media (max-width: 68rem) {
+	#design-layout {
+		grid-template-columns: 1fr;
+	}
+	#design-preview {
+		position: static;
+	}
+}
+
+.nino-admin .design-preview-bar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	gap: .6rem;
+	margin: 0 0 .6rem;
+}
+.nino-admin .design-preview-bar .nino-admin-field {
+	margin: 0;
+}
+
+/*	The frame renders at the chosen width and is scaled into whatever the
+	column has - so the box has to clip, and the script gives it the height the
+	scaled frame actually occupies */
+.design-stage {
+	overflow: hidden;
+	border: 1px solid var(--editor-border);
+	border-radius: var(--editor-radius-sm);
+	background: var(--editor-bg-grouped);
+}
+#design-frame {
+	display: block;
+	border: 0;
+	/*	Centred while it fits, which is the phone width in a wide column. Wider
+		than the box - every scaled width - the auto margins collapse to zero on
+		their own and it sits where the scale anchors it */
+	margin: 0 auto;
+	/* Scaled from the corner it is anchored in, or it drifts out of the box */
+	transform-origin: top left;
+	/* A design that sets no page background must not inherit the workbench's -
+	   least of all in dark mode, where it would read as a black design */
+	background: #fff;
+}
 
 }

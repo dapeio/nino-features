@@ -5,16 +5,20 @@ declare(strict_types=1);
  *	preview.php				A design harness for the part sets - dev only, never part of a
  *										project and never packed into the feature's archive.
  *
- *										It boots a real Nino against a throwaway project, applies the
- *										base unit into it, swaps in the header and footer that are
- *										chosen, and renders one specimen page that uses every class a
- *										set can reach. What you see is what a real page renders, not an
- *										approximation: the stylesheet comes out of the Design feature's
- *										own \Nino\Modules\Design\Compiler, against a setup its own
- *										Setup::normalize() checked, and the frames go through
- *										\Nino\Html::renderHtml(), so their textfills, their [template]
- *										includes and the [navigation] shortcode all resolve the way
- *										they do in a project.
+ *										The page itself is not this file's. The specimen, the frames
+ *										around it and the compile all come from the feature's own
+ *										\Nino\Modules\Design\Preview, which is what the Design panel
+ *										shows too - one specimen, seen from two places, rather than
+ *										two that drift apart. What this adds is the half a panel gets
+ *										for free and a library checkout has to build: a project to
+ *										render against.
+ *
+ *										So it boots a real Nino against a throwaway one, applies the
+ *										base unit and the always-on modules into it, and renders
+ *										through \Nino\Html::renderHtml() - textfills, [template]
+ *										includes and the [navigation] shortcode resolving the way they
+ *										do on a site. What you see is what a real page renders, not an
+ *										approximation.
  *
  *										Nothing is written into a checkout. The throwaway project is
  *										built in the system temp directory, belongs to the one request
@@ -451,19 +455,21 @@ function previewQuery( array $setup ): string {
 
 
 /**
- *	A throwaway project with the base unit applied, the three always-on module
- *	units beside it, and the chosen frames written over the delivered ones.
- *	Rebuilt per request - it is thirty-odd small files, and always-correct is
- *	worth more here than fast
+ *	A throwaway project with the base unit applied and the three always-on
+ *	module units beside it: the render context the panel gets from the project
+ *	it runs in and this has to build, because a design-library checkout is not
+ *	an installed site. Rebuilt per request - it is thirty-odd small files, and
+ *	always-correct is worth more here than fast.
+ *
+ *	The chosen frames are not written into it. Preview::markup() inlines them,
+ *	so what is on screen is the library's current state rather than whatever a
+ *	previous request left on disk
  *
  *	@param		string		$root					The Nino checkout
- *	@param		string		$library			The feature's library
- *	@param		array 		$setup				A normalised setup - which frames to write
- *	@param		array 		&$notes				(reference) Anything worth saying in the bar
  *
  *	@return 	array									App data for the render
  */
-function previewProject( string $root, string $library, array $setup, array &$notes ): array {
+function previewProject( string $root ): array {
 
 	/*	Its own directory per request, removed when the request ends. One fixed
 		path was fine under `php -S`, which answers one request at a time; behind
@@ -534,22 +540,6 @@ function previewProject( string $root, string $library, array $setup, array &$no
 
 	$appData['/nino/http/routes'] = $routes;
 
-	// The frames the bar names, over the two the base unit just wrote. Out of
-	// the normalised setup, so a part that fell back to another set brings that
-	// set's markup rather than the one nobody has
-	foreach( [ 'header', 'footer' ] as $kind ) {
-
-		$name 		= (string) ( $setup['parts'][$kind]['set'] ?? '' );
-		$template = \Nino\Modules\Design\Setup::file( $library, $kind, $name, 'template' );
-
-		if( $template === '' ) {
-			$notes[] = $kind. '/'. $name. ' has no template.tpl - showing the one the base unit delivers';
-			continue;
-		}
-
-		\Nino\Filesystem::putFileContent( $appData, '/templates/theme.'. $kind. '.tpl', (string) file_get_contents( $template ) );
-	}
-
 	/*	The fills a request would have brought: the two path prefixes (empty,
 		because this harness serves from its own root) and one page, so the
 		frames' own title fill resolves instead of standing there in brackets */
@@ -571,286 +561,6 @@ function previewProject( string $root, string $library, array $setup, array &$no
 	\Nino\Modules::callModules( $appData, 'init' );
 
 	return $appData;
-}
-
-
-/**
- *	The stylesheet the specimen is shown under - the feature's own compiler, not
- *	a second assembly beside it. What is previewed here is byte for byte what a
- *	project would get, and the compiler is exercised every time somebody looks
- *	at a design rather than only when its test runs
- *
- *	@param		array 		$setup				A normalised setup
- *	@param		string		$library			The feature's library
- *	@param		array 		&$notes				(reference) Anything worth saying in the bar
- *
- *	@return 	string								The compiled css
- */
-function previewCss( array $setup, string $library, array &$notes ): string {
-
-	$css = \Nino\Modules\Design\Compiler::compile( $setup, $library, $notes );
-
-	// The harness serves from its own root, so the public prefix is nothing -
-	// base.css's @font-face urls become /fonts/… and land on the route below
-	return str_replace( '[[/nino/public]]', '', $css );
-}
-
-
-/**
- *	The specimen. Every class a part set can reach, once, in the markup a real
- *	page produces - the article grid is the shape the articles-grid preset
- *	emits, the form is the contact page's. Section ids are the part names, so
- *	the bar at the top can jump to one
- *
- *	@return 	string								Html+, rendered through the kernel by the caller
- */
-function previewSpecimen(): string {
-
-	$lorem 	= 'Die Entscheidung, die ein Set trifft, sieht man erst an echtem Text: wo der Titel steht, wie weit er vom Untertitel absteht, und ob die Zeile noch ruhig bleibt, wenn sie lang wird.';
-	$short 	= 'Kurz genug, um die Ausrichtung zu zeigen.';
-	$out 		= [];
-
-	$out[] = '[template /templates/theme.header]';
-
-	// --- ATF: the hero, its three loudnesses, the arrow ---
-	$out[] = '<section id="atf" class="nino-section nino-section--dark nino-cover nino-atf" data-cover-height="70" aria-labelledby="atf-title">
-		<div class="nino-cover-content">
-			<div class="nino-grid-row nino-grid-middle">
-				<div class="nino-grid-100 nino-text-center">
-					<h2 class="nino-atf-title" id="atf-title">ATF</h2>
-					<p class="nino-atf-subtitle">'. $short. '</p>
-					<p><a class="nino-btn nino-btn--primary" href="#section">Weiter</a> <a class="nino-btn nino-btn--outline" href="#article">Artikel</a></p>
-				</div>
-			</div>
-		</div>
-		<button class="nino-atf-arrowdown" data-arrow-target="#section" aria-label="Weiter"></button>
-	</section>';
-
-	$out[] = '<section class="nino-section" aria-label="ATF-Lautstärken">
-		<div class="nino-grid-row">
-			<div class="nino-grid-100 nino-grid-m-33"><h3 class="nino-atf-title nino-atf-title--quiet">quiet</h3><p class="nino-atf-subtitle nino-atf-subtitle--quiet">'. $short. '</p></div>
-			<div class="nino-grid-100 nino-grid-m-33"><h3 class="nino-atf-title">default</h3><p class="nino-atf-subtitle">'. $short. '</p></div>
-			<div class="nino-grid-100 nino-grid-m-33"><h3 class="nino-atf-title nino-atf-title--loud">loud</h3><p class="nino-atf-subtitle nino-atf-subtitle--loud">'. $short. '</p></div>
-		</div>
-	</section>';
-
-	// --- Section: every surface, every loudness, the border steps ---
-	$surfaces = [ '' => 'default', '--alt' => 'alt', '--tint' => 'tint', '--primary' => 'primary', '--brand-alt' => 'brand-alt', '--dark' => 'dark', '--black' => 'black' ];
-	$first = true;
-
-	foreach( $surfaces as $modifier => $label ) {
-		$out[] = '<section'. ( $first ? ' id="section"' : '' ). ' class="nino-section'. ( $modifier !== '' ? ' nino-section'. $modifier : '' ). '" aria-label="Section '. $label. '">
-			<div class="nino-grid-row">
-				<div class="nino-grid-100">
-					<h2 class="nino-section-title">Section &mdash; '. $label. '</h2>
-					<p class="nino-section-subtitle">'. $short. '</p>
-					<p class="nino-section-text">'. $lorem. '</p>
-					<p><a class="nino-btn nino-btn--primary" href="#">Primär</a> <a class="nino-btn nino-btn--outline" href="#">Outline</a></p>
-				</div>
-			</div>
-		</section>';
-		$first = false;
-	}
-
-	$out[] = '<section class="nino-section nino-section--border-1" aria-label="Section-Lautstärken und Rahmen">
-		<div class="nino-grid-row">
-			<div class="nino-grid-100 nino-grid-m-33"><h3 class="nino-section-title nino-section-title--quiet">quiet</h3><p class="nino-section-subtitle nino-section-subtitle--quiet">'. $short. '</p><p class="nino-section-text nino-section-text--quiet">'. $short. '</p></div>
-			<div class="nino-grid-100 nino-grid-m-33"><h3 class="nino-section-title">default</h3><p class="nino-section-subtitle">'. $short. '</p><p class="nino-section-text">'. $short. '</p></div>
-			<div class="nino-grid-100 nino-grid-m-33"><h3 class="nino-section-title nino-section-title--loud">loud</h3><p class="nino-section-subtitle nino-section-subtitle--loud">'. $short. '</p><p class="nino-section-text nino-section-text--loud">'. $short. '</p></div>
-		</div>
-	</section>';
-
-	$out[] = '<section class="nino-section nino-section--border-2" aria-label="Rahmenstufe 2"><div class="nino-grid-row"><div class="nino-grid-100"><p class="nino-section-text">border-2</p></div></div></section>';
-	$out[] = '<section class="nino-section nino-section--border-3" aria-label="Rahmenstufe 3"><div class="nino-grid-row"><div class="nino-grid-100"><p class="nino-section-text">border-3</p></div></div></section>';
-	$out[] = '<section class="nino-section nino-section--border-primary" aria-label="Rahmen in der Markenfarbe"><div class="nino-grid-row"><div class="nino-grid-100"><p class="nino-section-text">border-primary</p></div></div></section>';
-
-	return implode( "\n", $out ). previewSpecimenRest( $lorem, $short );
-}
-
-
-/**
- *	The second half of the specimen - articles, buttons, forms, lists and
- *	tables, the building blocks. Split off so neither function is a wall
- *
- *	@param		string		$lorem				A paragraph long enough to wrap
- *	@param		string		$short				A line short enough to read at a glance
- *
- *	@return 	string								Html+
- */
-function previewSpecimenRest( string $lorem, string $short ): string {
-
-	$out = [];
-
-	// --- Article: the grid an articles-grid section emits, then the variants ---
-	$card = static function( string $title, string $extra = '', string $inner = '' ): string {
-		return '<div class="nino-grid-100 nino-grid-m-33">
-			<article class="nino-article'. ( $extra !== '' ? ' '. $extra : '' ). '">
-				<img class="nino-article-img" src="/images/specimen.svg" alt="" width="640" height="420">
-				<div class="nino-article-content">
-					<h3 class="nino-article-title">'. $title. '</h3>
-					<p class="nino-article-subtitle">Untertitel</p>
-					<p class="nino-article-descr">Eine Beschreibung, lang genug, dass sie in die zweite Zeile läuft und der Abstand darunter sichtbar wird.</p>
-					'. $inner. '
-				</div>
-			</article>
-		</div>';
-	};
-
-	$out[] = '<section id="article" class="nino-section" aria-labelledby="article-title">
-		<div class="nino-grid-row"><div class="nino-grid-100"><h2 class="nino-section-title" id="article-title">Article</h2></div></div>
-		<div class="nino-grid-row">
-			'. $card( 'Mit Preis', '', '<p class="nino-article-price">49 €</p>' ). '
-			'. $card( 'Mit Badge', '', '<p><span class="nino-badge nino-badge--primary">Neu</span> <span class="nino-badge nino-badge--success">Auf Lager</span></p>' ). '
-			'. $card( 'Mit Aktion', '', '<p><a class="nino-btn nino-btn--small nino-btn--outline" href="#">Mehr</a></p>' ). '
-		</div>
-		<div class="nino-grid-row">
-			'. $card( 'alt', 'nino-article--alt' ). '
-			'. $card( 'borderless', 'nino-article--borderless' ). '
-			'. $card( 'grid', 'nino-article--grid' ). '
-		</div>
-		<div class="nino-grid-row"><div class="nino-grid-100">
-			<article class="nino-article nino-article--fullwidth nino-article-cols">
-				<img class="nino-article-img nino-article-img--maxheight" src="/images/specimen.svg" alt="" width="640" height="420">
-				<div class="nino-article-content">
-					<h3 class="nino-article-title nino-article-title--loud">fullwidth, cols, loud</h3>
-					<p class="nino-article-descr nino-article-descr--quiet">'. $lorem. '</p>
-				</div>
-			</article>
-		</div></div>
-	</section>';
-
-	// --- Buttons: all eight, on a plain and on a dark surface ---
-	$buttons = static function(): string {
-		$html = '';
-		foreach( [ '' => 'btn', '--primary' => 'primary', '--outline' => 'outline', '--brand-alt' => 'brand-alt', '--light' => 'light', '--dark' => 'dark' ] as $modifier => $label )
-			$html .= '<a class="nino-btn'. ( $modifier !== '' ? ' nino-btn'. $modifier : '' ). '" href="#">'. $label. '</a> ';
-		return $html. '<a class="nino-btn nino-btn--primary nino-btn--big" href="#">big</a> <a class="nino-btn nino-btn--primary nino-btn--small" href="#">small</a>';
-	};
-
-	$out[] = '<section id="buttons" class="nino-section" aria-labelledby="buttons-title">
-		<div class="nino-grid-row"><div class="nino-grid-100">
-			<h2 class="nino-section-title" id="buttons-title">Buttons</h2>
-			<p>'. $buttons(). '</p>
-		</div></div>
-	</section>';
-	$out[] = '<section class="nino-section nino-section--dark" aria-label="Buttons auf dunkler Fläche">
-		<div class="nino-grid-row"><div class="nino-grid-100"><p>'. $buttons(). '</p></div></div>
-	</section>';
-
-	// --- Forms: the contact page's shape, plus the states ---
-	$out[] = '<section id="forms" class="nino-section nino-section--alt" aria-labelledby="forms-title">
-		<div class="nino-grid-row">
-			<div class="nino-grid-100 nino-grid-m-50">
-				<h2 class="nino-section-title" id="forms-title">Forms</h2>
-				<form class="nino-form" action="#" method="post" onsubmit="return false">
-					<label for="p-name">Name *</label>
-					<input type="text" id="p-name" name="name" class="nino-form-input" value="Ada Lovelace" required>
-					<label for="p-mail">E-Mail *</label>
-					<input type="email" id="p-mail" name="email" class="nino-form-input" placeholder="ada@example.org" required>
-					<label for="p-topic">Thema</label>
-					<select id="p-topic" name="topic" class="nino-form-select"><option>Anfrage</option><option>Angebot</option></select>
-					<label for="p-message">Nachricht *</label>
-					<textarea id="p-message" name="message" class="nino-form-textarea" required>Zwei Zeilen, damit die Höhe und der Innenabstand sichtbar sind.</textarea>
-					<p class="nino-form-message" aria-live="polite"></p>
-					<p><small>* Pflichtfeld</small></p>
-					<button type="submit" class="nino-btn nino-btn--primary nino-form-submit">Senden</button>
-				</form>
-			</div>
-			<div class="nino-grid-100 nino-grid-m-50">
-				<h3 class="nino-section-subtitle">Zustände</h3>
-				<form class="nino-form nino-is-error" action="#" onsubmit="return false"><p class="nino-form-message">Da fehlt noch etwas.</p></form>
-				<form class="nino-form nino-is-success" action="#" onsubmit="return false"><p class="nino-form-message">Danke, ist angekommen.</p></form>
-				<form class="nino-form nino-form--inline" action="#" onsubmit="return false">
-					<input type="email" class="nino-form-input" placeholder="E-Mail" aria-label="E-Mail">
-					<button type="submit" class="nino-btn nino-btn--primary nino-form-submit">Anmelden</button>
-				</form>
-			</div>
-		</div>
-	</section>';
-
-	return implode( "\n", $out ). previewSpecimenTail( $lorem, $short );
-}
-
-
-/**
- *	The last third - lists, tables, badges, and the two building blocks that
- *	carry their own vocabulary
- *
- *	@param		string		$lorem				A paragraph long enough to wrap
- *	@param		string		$short				A line short enough to read at a glance
- *
- *	@return 	string								Html+
- */
-function previewSpecimenTail( string $lorem, string $short ): string {
-
-	$items = '<li>Erster Punkt</li><li>Ein zweiter, der lang genug ist, um umzubrechen und den Zeilenabstand zu zeigen</li><li>Dritter</li>';
-	$out 		= [];
-
-	$out[] = '<section id="lists" class="nino-section" aria-labelledby="lists-title">
-		<div class="nino-grid-row"><div class="nino-grid-100"><h2 class="nino-section-title" id="lists-title">Listen &amp; Tabellen</h2></div></div>
-		<div class="nino-grid-row">
-			<div class="nino-grid-100 nino-grid-m-33"><p class="nino-section-subtitle">list</p><ul class="nino-list">'. $items. '</ul></div>
-			<div class="nino-grid-100 nino-grid-m-33"><p class="nino-section-subtitle">check</p><ul class="nino-list nino-list--check">'. $items. '</ul></div>
-			<div class="nino-grid-100 nino-grid-m-33"><p class="nino-section-subtitle">numbered</p><ol class="nino-list nino-list--numbered">'. $items. '</ol></div>
-		</div>
-		<div class="nino-grid-row">
-			<div class="nino-grid-100 nino-grid-m-50"><p class="nino-section-subtitle">columns</p><ul class="nino-list nino-list--columns">'. $items. $items. '</ul></div>
-			<div class="nino-grid-100 nino-grid-m-50"><p class="nino-section-subtitle">content</p><ul class="nino-list nino-list--content">'. $items. '</ul></div>
-		</div>
-		<div class="nino-grid-row"><div class="nino-grid-100">
-			<p class="nino-section-subtitle">striped, bordered</p>
-			<div class="nino-table-wrap"><table class="nino-table nino-table--striped nino-table--bordered">
-				<thead><tr><th>Bauteil</th><th>Set</th><th>Stufe</th></tr></thead>
-				<tbody><tr><td>Section</td><td>v1</td><td>default</td></tr><tr><td>Article</td><td>v1</td><td>less</td></tr><tr><td>Buttons</td><td>v2</td><td>more</td></tr></tbody>
-			</table></div>
-		</div></div>
-		<div class="nino-grid-row"><div class="nino-grid-100">
-			<p class="nino-section-subtitle">badges</p>
-			<p class="nino-badge-cloud"><span class="nino-badge">plain</span> <span class="nino-badge nino-badge--primary">primary</span> <span class="nino-badge nino-badge--success">success</span> <span class="nino-badge nino-badge--error">error</span> <span class="nino-badge nino-badge--pill">pill</span></p>
-		</div></div>
-	</section>';
-
-	// --- Building blocks: pricing and timeline, the two with their own words ---
-	// A plan is a direct child of .nino-pricing-row, which is the flex container
-	// itself - no grid column around it, or the row lays out its wrappers
-	$plan = static function( string $title, string $price, bool $featured = false ): string {
-		return '<div class="nino-pricing-item'. ( $featured === true ? ' nino-pricing-item--featured' : '' ). '">
-			<h3 class="nino-pricing-title">'. $title. '</h3>
-			<p class="nino-pricing-price">'. $price. '</p>
-			<ul class="nino-list nino-list--check nino-pricing-features"><li>Ein Merkmal</li><li>Noch eines</li><li>Und ein drittes</li></ul>
-			<p><a class="nino-btn nino-btn--primary" href="#">Wählen</a></p>
-		</div>';
-	};
-
-	$out[] = '<section id="blocks" class="nino-section nino-section--tint" aria-labelledby="blocks-title">
-		<div class="nino-grid-row"><div class="nino-grid-100"><h2 class="nino-section-title" id="blocks-title">Bausteine</h2><p class="nino-section-subtitle">Preispläne und Abläufe &mdash; eigenes Vokabular, eigenes Set</p></div></div>
-		<div class="nino-grid-row"><div class="nino-grid-100">
-			<div class="nino-pricing-row">
-				'. $plan( 'Klein', '9 €' ). '
-				'. $plan( 'Mittel', '29 €', true ). '
-				'. $plan( 'Groß', '79 €' ). '
-			</div>
-		</div></div>
-		<div class="nino-grid-row"><div class="nino-grid-100">
-			<p class="nino-section-subtitle">timeline &mdash; counted (die Nummer erzeugt ein CSS-Zähler)</p>
-			<ol class="nino-timeline nino-timeline--counted">
-				<li class="nino-timeline-step"><h3 class="nino-article-title">Auswählen</h3><p class="nino-article-descr">'. $short. '</p></li>
-				<li class="nino-timeline-step"><h3 class="nino-article-title">Anpassen</h3><p class="nino-article-descr">'. $lorem. '</p></li>
-				<li class="nino-timeline-step"><h3 class="nino-article-title">Kompilieren</h3><p class="nino-article-descr">'. $short. '</p></li>
-			</ol>
-		</div></div>
-		<div class="nino-grid-row"><div class="nino-grid-100 nino-grid-m-66">
-			<p class="nino-section-subtitle">timeline &mdash; stacked, mit eigener Nummer</p>
-			<ol class="nino-timeline nino-timeline--stacked">
-				<li class="nino-timeline-step"><span class="nino-timeline-number">01</span><div><h3 class="nino-article-title">Auswählen</h3><p class="nino-article-descr">'. $short. '</p></div></li>
-				<li class="nino-timeline-step"><span class="nino-timeline-number">02</span><div><h3 class="nino-article-title">Anpassen</h3><p class="nino-article-descr">'. $short. '</p></div></li>
-			</ol>
-		</div></div>
-	</section>';
-
-	$out[] = '[template /templates/theme.footer]';
-
-	return "\n". implode( "\n", $out );
 }
 
 
@@ -990,10 +700,12 @@ if( str_starts_with( $path, '/fonts/' ) === true ) {
 	exit;
 }
 
-/*	Every image the specimen and the frames ask for, as one generated
+/*	Every image the frames ask for - a logo, in both of them - as one generated
 	placeholder. Shipping binaries for a design harness would mean choosing
 	pictures, and a picture is a design decision this page must not make for
-	whoever is looking at it */
+	whoever is looking at it. The specimen's own image needs no route: it
+	carries a data uri (see Preview::PLACEHOLDER), because the panel renders
+	the same markup where /images/… is the workbench's, not a site's */
 if( str_starts_with( $path, '/images/' ) === true ) {
 
 	header( 'Content-Type: image/svg+xml' );
@@ -1045,7 +757,9 @@ if( $path === '/preview.css' ) {
 	header( 'Content-Type: text/css; charset=utf-8' );
 	header( 'Cache-Control: no-store' );
 	$setup = previewSetup( $library, $notes );
-	exit( previewCss( $setup, $library, $notes ) );
+	// The harness serves from its own root, so the public prefix is nothing -
+	// base.css's @font-face urls become /fonts/… and land on the route above
+	exit( \Nino\Modules\Design\Preview::css( $setup, $library, '', $notes ) );
 }
 
 /*	A dev subdomain is a public name, and this page is full of headings a
@@ -1065,8 +779,8 @@ if( $path !== '/' && $path !== '/index.php' ) {
 // ---- the page -----------------------------------------------------------
 
 $setup 		= previewSetup( $library, $notes );
-$appData 	= previewProject( $root, $library, $setup, $notes );
-$body 		= \Nino\Html::renderHtml( $appData, previewSpecimen() );
+$appData 	= previewProject( $root );
+$body 		= \Nino\Html::renderHtml( $appData, \Nino\Modules\Design\Preview::markup( $library, $setup, $notes ) );
 
 // The compile's own notes - a missing stylesheet, a part with no set at all.
 // The stylesheet itself is a second request; this is only what it will say
@@ -1087,20 +801,10 @@ header( 'Cache-Control: no-store' );
 	selection is also what stops a browser showing yesterday's sheet */
 $query = previewQuery( $setup );
 
-echo '<!doctype html>
-<html lang="', substr( LOCALE, 0, 2 ), '">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex, nofollow">
-<title>Design preview</title>
-<link rel="stylesheet" href="/nino.css">
-<link rel="stylesheet" href="/preview.css?', htmlspecialchars( $query, ENT_QUOTES ), '">
-</head>
-<body>
-', previewBar( $setup, $library, $notes ), '
-<main>', $body, '</main>
-<script src="/nino.js"></script>
-<script src="/nino.ui.js"></script>
-</body>
-</html>';
+echo \Nino\Modules\Design\Preview::document(
+	LOCALE,
+	'<link rel="stylesheet" href="/nino.css">'. "\n"
+		. '<link rel="stylesheet" href="/preview.css?'. htmlspecialchars( $query, ENT_QUOTES ). '">',
+	previewBar( $setup, $library, $notes ). "\n". '<main>'. $body. '</main>',
+	'<script src="/nino.js"></script>'. "\n". '<script src="/nino.ui.js"></script>'
+);

@@ -71,6 +71,34 @@ the wizard's until this feature takes it over. The panel turns
 reads **Take the file over and compile**, once, and says so in the activity
 log. The same holds for the two frame templates.
 
+### The preview
+
+Beside the selects is what they mean: the specimen page, rendered against
+**this** project - its menu, its logo, its socialmedia block, its fonts - under
+the stylesheet the current selection compiles to. It follows every select, and
+it shows the selection **on screen**, not the one on disk: looking is what a
+person does while deciding, and a preview that could only show a saved decision
+would make saving the way to ask a question. Nothing about it is written
+anywhere.
+
+A **width** picks phone, tablet or desktop. The frame renders at that width and
+is scaled into whatever the column has room for, so a desktop layout stays a
+desktop layout in half a pane rather than becoming the phone view with the
+wrong label - and a header set's own answer to "where does the menu go when
+there is no room" is visible at all three.
+
+Two things are worth knowing about how it is delivered. Seven of the nine parts
+are a stylesheet and nothing else, so changing one swaps a single `<style>`
+inside the frame that is already standing - no reload, no jump back to the top.
+Header and footer bring markup, so those rebuild the document. And the
+framework under it (`_nino/Nino.css` plus the two scripts) is not inlined but
+bundled into `_admin/.cache/design-preview.{css,js}` beside the workbench's own
+two, because the workbench sends a `Content-Security-Policy` with
+`script-src 'self'` that an inline `<script>` in the frame would fall foul of -
+and because the half that never changes has no business travelling with every
+preview. The workbench already needs `_admin/.cache/` writable; this needs
+nothing beyond that.
+
 ## The library
 
 `library/` holds what a project can choose from, and the feature ships it:
@@ -235,28 +263,45 @@ in it. A set name out of a stored file is input, so it is held to
 ## Designing against it
 
 `design-library/preview.php` in this repository is a harness for authoring
-sets - dev only, never deployed, and not part of the feature archive. It boots
-a real Nino against a throwaway project, compiles through this feature's own
-`Setup` and `Compiler`, and renders one specimen page that touches every class
-a set can reach.
+sets - dev only, never deployed, and not part of the feature archive.
 
 ```bash
 php -S 127.0.0.1:8080 design-library/preview.php
 ```
 
-The array at the top of that file names one set per part. The throwaway
-project is rebuilt on every request, so editing a set is a reload away, and
-anything that did not resolve is named in the bar along the bottom rather than
-passed over in silence.
+The page it shows is the panel's. `Preview` is where the specimen, the frames
+around it and the compile live, and both callers go through it, so a set looks
+the same in the harness as it will in a project. What the harness adds is the
+half the panel gets for free: a project to render against. It boots a real Nino
+against a throwaway one in the system temp directory, applies the base install
+unit and the always-on modules into it, and removes it when the request ends -
+a library checkout is not an installed site, and `_admin/install/` is gone from
+one by the time the panel runs.
+
+The array at the top of that file names one set per part; the bar along the
+bottom switches any of them in the browser and puts the selection in the url,
+so a view is a link. The throwaway project is rebuilt on every request, so
+editing a set is a reload away, and anything that did not resolve is named in
+the bar rather than passed over in silence.
 
 ## Tests
 
-`tests/design-smoke.php` (77 checks) covers the manifest and activation through
+`tests/design-smoke.php` (91 checks) covers the manifest and activation through
 `\Nino\Features`, the library coverage per part, the traversal refusals,
 normalisation and step resolution, what the compiler emits and in which order,
 the cross-repo comparison of `base.css` against the delivered `theme.css`,
 `write()`'s refusal and its `$force` for the stylesheet **and** for the frame
 templates, the names and descriptions read out of the library files, and the
-panel's three actions - what it lists, that saving stores without compiling,
+panel's four actions - what it lists, that saving stores without compiling,
 that compiling is a `409` over a file that is not ours, and both refusal codes
 (`401` without a session, `403` without the permission).
+
+For the preview it covers the specimen (no frame of its own, a section per
+part, one data-uri picture and no route to fetch it from), that `markup()`
+reads the chosen frames out of the library rather than off disk, that a frame
+without a template is named instead of quietly left out, that the sheet
+resolves the public prefix so the webfaces load, and - for the panel's action -
+that it answers the posted selection rather than the stored one, that the
+framework is linked from a bundle that really carries it, that a stylesheet-only
+change sends no second document, and that previewing writes neither the setup
+nor the stylesheet.
