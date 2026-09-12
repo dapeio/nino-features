@@ -23,6 +23,7 @@ Dieses Repository ist der Ort, von dem aus Ninos Features veröffentlicht werden
 | `lightbox` | [Lightbox](features/Lightbox/README.md) | `ui` | 1.0.0 | `^1.1` | Öffnet jeden Link auf ein Bild bildschirmfüllend, mit seiner Gruppe als Serie – Pfeile, Wischen, Bildunterschriften und ein Fokusrahmen, ohne Bibliothek |
 | `mailer` | [Mailer](features/Mailer/README.md) | `system` | 1.0.0 | `^1.1` | Versendet jede von Nino verschickte Mail über SMTP statt über das `mail()` des Servers |
 | `newsletter` | [Newsletter](features/Newsletter/README.md) | `communication` | 1.0.0 | `^1.0` | Double-Opt-in-Anmeldung mit Bestätigungs- und Abmeldelink, und die Abonnentenliste als Panel der Workbench |
+| `posts` | [Beiträge](features/Posts/README.md) | `content` | 1.0.0 | `^1.1` | Eine Seite je Element und eine Liste mit Seitenzahlen: was aus einem Elementtyp einen Blog, eine News-Rubrik oder ein Journal macht - die Beiträge bleiben gewöhnliche Elemente |
 | `protected` | [Protected area](features/ProtectedArea/README.md) | `security` | 1.0.0 | `^1.1` | Legt eine oder mehrere Seiten hinter ein gemeinsames Passwort, ohne Konten |
 | `search` | [Elements search](features/Search/README.md) | `content` | 1.1.0 | `^1.0` | Ein sprachbewusster unscharfer Suchindex über konfigurierte Element-Felder, neu gebaut bei jedem Speichern, mit zwei Shortcodes für Suchformular und Trefferliste auf jeder Seite |
 | `seo` | [SEO](features/Seo/README.md) | `marketing` | 1.0.0 | `^1.1` | Sitemap, robots.txt und llms.txt, erzeugt aus Routen, Sprachen und Texten, die Nino ohnehin hat |
