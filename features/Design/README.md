@@ -53,8 +53,13 @@ it belongs to that one.
 
 | | |
 | --- | --- |
-| **Variant** | which set the part is given, out of the variant's own `@name`, with its `@description` under the select. `Global` shows the root size instead |
+| **Variant** | which set the part is given, out of the variant's own `@name`, with its `@description` between the name and the select. `Global` shows the root size instead |
 | **Finetuning** | one row per knob the chosen variant answers to, at −1 / 0 / +1, each row named and noted the way the kernel's own Design module named it. `Global` has the position every part follows |
+
+The picker carries the weight of the screen and everything that hangs off it
+stands inside a rail, because that is what the two selects mean: the first one
+decides what the second one is *about*. Two identical fields a row apart said
+the opposite.
 
 Nine rows at once is a list to read; one part is a decision to make. And the
 preview beside it is the whole page either way, so switching parts never means
@@ -79,9 +84,17 @@ hiding it behind an autosave:
 | *never compiled* | there is no `assets/theme.css` of ours yet |
 | *not one of ours* | the delivered file, or one somebody edited - see below |
 
-That table stands at the **bottom** of the controls, under *How it is used*.
+That table stands at the **bottom** of the controls, under *Compiled file*.
 It is true and worth saying, and it is not what somebody opening this screen
-came to find out.
+came to find out - and only a line that is something to act on is marked. The
+first row used to be a green panel, and a green panel is a thing the eye keeps
+checking, while that line says nothing at all about the selection on screen.
+
+What *is* about the selection on screen is **Reset**, which appears at the far
+left of the action bar the moment the screen stops being the stored selection
+and goes again when it is back. It goes back to what was saved and never
+further: what was saved is saved, and a button that quietly returned a project
+to the delivered design would be a much larger promise.
 
 The last of those is the normal first run: a project's `assets/theme.css` is
 the wizard's until this feature takes it over. The panel turns
@@ -103,7 +116,10 @@ The frame **follows the picker**: opening *Blocks* puts the pricing row on
 screen, opening *Footer* the footer, and *Global* the top of the page - because
 hunting for the part you just opened is work the screen can do. The switch
 beside the width turns it off for a visit; a knob move never jumps, only
-changing the part does.
+changing the part does. It scrolls the frame's own window and nothing else -
+`scrollIntoView()` walks every scrollable ancestor of an element, and inside a
+same-origin iframe the workbench's own pane is one of them, so the column
+beside the frame slid away under the selects that had just been used.
 
 A **width** picks phone, tablet or desktop. The frame renders at that width and
 is scaled into whatever the column has room for, so a desktop layout stays a
@@ -282,6 +298,15 @@ own set does. A knob nothing follows is a knob worth not offering.
 @media (min-width: 768px) { :root { --nino-base-size: 112.5%; } }
 ```
 
+| | below 768px | from 768px | at a 16px browser default |
+| --- | --- | --- | --- |
+| `s` | `87.5%` | `93.75%` | 14 / 15px |
+| `m` | `100%` | `112.5%` | 16 / 18px |
+| `l` | `112.5%` | `131.25%` | 18 / 21px |
+
+A full step apart rather than a hair, so the choice is one somebody can see on
+the page instead of measure. `m` is the delivered size and does not move.
+
 A percentage of the visitor's browser default, never a `px` length - `html`'s
 `font-size` is the only place `--base-size` is read, so one pair scales every
 `rem` on the page and nothing else has to know.
@@ -293,11 +318,14 @@ a part is on, the palette decides what every one of those sets is drawn in.
 
 Two colours and five knobs.
 
-- **Brand colour** and **Second colour**, both used *exactly* as picked. The
-  second one may be left alone, and then it is not missing - it is derived, and
-  **Harmony** says where on the wheel it lands.
-- **Harmony** - Monochrome, Analogous, Triadic, Complementary. Only in force
-  while no second colour of your own is set.
+- **Brand colour**, used *exactly* as picked.
+- **Second colour** - one row, because where it comes from and what it is are
+  one question. Four automatic positions (Monochrome, Analogous, Triadic,
+  Complementary) carry the brand's own lightness and chroma round the wheel;
+  the swatch at the end of the row shows the colour that came out and is drawn
+  quietly to say nobody chose it. Open it and that hex is used exactly as
+  picked - no position is lit any more, because a hex overrides the knob
+  entirely - and `↺` beside it hands the question back to the wheel.
 - **Temperature** - which hue the greys lean on. At *Brand* they carry a trace
   of the brand itself, at *Neutral* no colour at all.
 - **Saturation** - how much colour every surface carries, not only the brand.

@@ -22,17 +22,47 @@
 
 @layer nino.tool {
 
-/* The two selects, at a width a name fits in rather than the column's */
+/* The selects, at a width a name fits in rather than the column's */
 .nino-admin #design-controls .nino-admin-field {
 	max-width: 22rem;
 }
 .nino-admin #design-controls select {
 	width: 100%;
 }
-/* What the chosen variant is, under the select that chose it */
-.nino-admin .design-description {
-	margin: .25rem 0 1rem;
+
+/*	The picker is not one select among two. It says which part the whole column
+	below it is about; the second select is that part's own answer, and the knob
+	under that belongs to the same part again. Two identical fields a row apart
+	say the opposite of all of it - so the picker carries the weight, and
+	everything that hangs off it stands inside a rail. */
+.nino-admin #design-controls > .nino-admin-field > label {
+	color: var(--editor-text);
+	font-size: .9rem;
+	font-weight: 650;
+	letter-spacing: 0;
+	text-transform: none;
 }
+.nino-admin #design-controls > .nino-admin-field > select {
+	height: 2.6rem;
+	font-weight: 600;
+}
+#design-part {
+	margin: 1.1rem 0 0 .35rem;
+	padding-left: 1.15rem;
+	border-left: 2px solid var(--editor-separator);
+}
+
+/*	What a select means, between its name and itself rather than in a paragraph
+	under it: a sentence floating below a control reads as the next thing on the
+	screen instead of as something about the thing above it. */
+.nino-admin .design-field-hint {
+	display: block;
+	margin: 0 0 .35rem;
+	color: var(--editor-text-secondary);
+	font-size: .74rem;
+	line-height: 1.45;
+}
+
 #design-knob {
 	margin-top: 1.4rem;
 }
@@ -115,15 +145,34 @@
 	border-top: 1px solid var(--editor-separator);
 }
 
-/* What the file on disk is. Colour carries the level, the sentence carries the
-   meaning - never colour alone */
+/*	What the file on disk is - and only when that is something to act on. The
+	ordinary case ("the file matches this selection") is a plain line: it used
+	to be a green panel, and a green panel is a thing the eye keeps checking,
+	while this one says nothing at all about the selection on screen. What is
+	unsaved is the action bar's business now.
+
+	Colour carries the level, the sentence carries the meaning - never colour
+	alone. */
 .nino-admin .design-state {
 	padding: .4rem .6rem;
 	border-radius: var(--editor-radius-sm);
 	margin: 0 0 .3rem;
 }
-.nino-admin .design-state--ok 	{ background: var(--editor-green-soft); color: var(--editor-green); }
 .nino-admin .design-state--warn { background: var(--editor-bg-grouped); color: var(--editor-orange); }
+
+/*	The way back, pinned to the far side of the bar from the two buttons that
+	commit - the bar itself is justified to the end, so an auto margin here is
+	what puts this one at the beginning. Quiet: it is an undo, not an action. */
+.nino-admin .nino-admin-actionbar .design-reset-all {
+	order: -3;
+	margin-right: auto;
+	background: none;
+	border: 1px solid var(--editor-border);
+	color: var(--editor-text-secondary);
+}
+.nino-admin .nino-admin-actionbar .design-reset-all:hover {
+	color: var(--editor-text);
+}
 
 /* ---- the preview ----
 
@@ -239,9 +288,19 @@
 	cursor: pointer;
 }
 
-/*	A second colour nobody chose is derived from the first, and says so by
-	being quiet - the same way a knob that follows the global position does.
-	It is not disabled: clicking it is how you stop deriving it */
+/*	The second colour sits at the end of the row that decides where it comes
+	from, with its reset beside it while it has one */
+.nino-admin .design-colour-second {
+	display: flex;
+	flex: 0 0 auto;
+	align-items: center;
+	gap: .4rem;
+}
+
+/*	A second colour nobody chose is the one the wheel derived, and says so by
+	being quiet - the same way a knob that follows the global position does. It
+	is not disabled: opening it is how you stop deriving it, and what it shows
+	until then is the colour that will actually be compiled */
 .design-colour-row--derived .design-colour-input {
 	opacity: .55;
 }
@@ -254,7 +313,7 @@
 	as picked, so text on it is whatever it is. Orange rather than red - it is
 	a property of the colour somebody chose, not a mistake they made */
 .nino-admin .design-colour-warning {
-	margin: .6rem 0 0;
+	margin: .6rem 0;
 	padding: .5rem .7rem;
 	border-left: 3px solid var(--editor-orange);
 	background: var(--editor-bg-grouped);
@@ -271,4 +330,11 @@
 }
 .nino-admin #design-colours .design-knob-label {
 	flex: 1 1 9rem;
+}
+
+/*	The Harmony row carries the swatch too, so it is the widest of them: the
+	positions take what is left of the line and the colour ends it. */
+.nino-admin #design-colours .design-knob-row:has(> .design-colour-second) .design-knob-steps {
+	flex: 0 1 auto;
+	flex-wrap: wrap;
 }

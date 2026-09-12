@@ -172,11 +172,6 @@
 			heading.textContent = Nino.content.getText('/_admin/design/label/title');
 			wrap.appendChild( heading );
 
-			const hint = dc.createElement('p');
-			hint.className = 'nino-admin-hint';
-			hint.textContent = Nino.content.getText('/_admin/design/hint/intro');
-			wrap.appendChild( hint );
-
 			// Controls on one side, what they mean on the other. One column
 			// below the breakpoint, where a preview beside a select would be
 			// too narrow to be a preview
@@ -208,11 +203,27 @@
 				: '/_admin/design/label/apply' );
 			apply.addEventListener( 'click', function() { Nino.admin.design._save( true, apply, msg ) } );
 
+			/*	The way back, on the far side of the bar from the two buttons
+				that commit: it appears the moment the selection on screen stops
+				being the stored one and goes again when it is back. Which is
+				also the honest version of what the green state panel used to
+				imply - that one spoke about the last compile and was read as
+				speaking about the screen	*/
+			const reset = dc.createElement('button');
+			reset.type = 'button';
+			reset.id = 'design-reset';
+			reset.className = 'design-reset-all';
+			reset.textContent = Nino.content.getText('/_admin/design/label/reset');
+			reset.addEventListener( 'click', function() { Nino.admin.design._revert() } );
+
 			const actions = dc.createElement('div');
+			actions.appendChild( reset );
 			actions.appendChild( save );
 			actions.appendChild( apply );
 			wrap.appendChild( Nino.adminUi.actionBar( actions ) );
 			wrap.appendChild( msg );
+
+			Nino.admin.design._refreshDirty();
 
 			// Only the structure half has a part below the picker to fill
 			if( Nino.admin.design._tab !== 'colours' )
@@ -293,13 +304,9 @@
 				'design-size', Nino.content.getText('/_admin/design/label/size'),
 				( data.sizes || [] ).map( function( size ) {
 					return { value : size, label : Nino.content.getText('/_admin/design/size/'+ size ) };
-				} ), edit.size, function( value ) { edit.size = value; Nino.admin.design._preview() }
+				} ), edit.size, function( value ) { edit.size = value; Nino.admin.design._preview() },
+				Nino.content.getText('/_admin/design/hint/size')
 			) );
-
-			const hint = dc.createElement('p');
-			hint.className = 'nino-admin-hint design-description';
-			hint.textContent = Nino.content.getText('/_admin/design/hint/size');
-			box.appendChild( hint );
 
 			return box;
 		},
@@ -316,26 +323,22 @@
 			const chosen = edit.parts[row.part] || {};
 			const box = dc.createElement('div');
 
-			const desc = dc.createElement('p');
-			desc.className = 'nino-admin-hint design-description';
-
 			box.appendChild( Nino.admin.design._select(
 				'design-set', Nino.content.getText('/_admin/design/label/variant'),
 				Object.keys( row.catalogue || {} ).map( function( set ) {
 					return { value : set, label : ( row.catalogue[set] || {} ).name || set };
 				} ), chosen.set, function( value ) {
 					chosen.set = value;
-					Nino.admin.design._describe( desc, row, value );
 					/*	A variant brings its own knob rows, and the ones the last
 						one had are not this one's - so the whole part is drawn
-						again rather than only the select that changed */
+						again rather than only the select that changed. Which is
+						also what writes the new variant's own description into
+						the field above them */
 					Nino.admin.design._renderCurrentPart();
 					Nino.admin.design._preview();
-				}
+				},
+				( ( row.catalogue || {} )[chosen.set] || {} ).description || ''
 			) );
-
-			box.appendChild( desc );
-			Nino.admin.design._describe( desc, row, chosen.set );
 
 			// A frame brings markup rather than only a look, and the knob is
 			// about a set's own triples - so there is nothing under this one
@@ -383,13 +386,6 @@
 			}
 
 			rows.forEach( function( row ) { box.appendChild( Nino.admin.design._knobRow( row ) ) } );
-
-			if( Nino.admin.design._part !== 'global' ) {
-				const hint = dc.createElement('p');
-				hint.className = 'nino-admin-hint';
-				hint.textContent = Nino.content.getText('/_admin/design/hint/knob');
-				box.appendChild( hint );
-			}
 
 			return box;
 		},
@@ -636,91 +632,126 @@
 			hint.textContent = Nino.content.getText('/_admin/design/hint/colours');
 			wrap.appendChild( hint );
 
-			wrap.appendChild( Nino.admin.design._colourField('primary') );
-			wrap.appendChild( Nino.admin.design._colourField('secondary') );
+			wrap.appendChild( Nino.admin.design._primaryField() );
 
 			/*	brand and accent are the two surfaces with no contrast promise -
 				they are the hex the picker returned, byte for byte, so there is
 				no lightness left to solve with. Everything a theme writes on
 				uses the -safe roles instead, and this is the one place the
-				panel can say that the colour as picked is not one of them */
-			const brand = ( ( Nino.admin.design._data || {} ).brand || {} ).light || null;
+				panel can say that the colour as picked is not one of them.
 
-			if( brand !== null && brand.safe === false ) {
-				const warn = dc.createElement('p');
-				warn.className = 'nino-admin-hint design-colour-warning';
-				warn.textContent = Nino.admin.design._text( '/_admin/design/msg/brand-unsafe', brand.ratio, brand.target );
-				wrap.appendChild( warn );
-			}
+				Always built, shown only while it applies: every colour knob
+				moves the number in it, and the answer to a preview updates the
+				line in place rather than rebuilding a column that holds an
+				open colour picker - see _absorb()	*/
+			const warn = dc.createElement('p');
+			warn.id = 'design-brand-warning';
+			warn.className = 'nino-admin-hint design-colour-warning';
+			wrap.appendChild( warn );
 
 			// Drawn out of what design/list handed over, so a knob added in
 			// Colours appears here without this file gaining a line
 			const palette = ( Nino.admin.design._data || {} ).palette || {};
 
 			Object.keys( palette ).forEach( function( key ) {
-				wrap.appendChild( Nino.admin.design._colourKnobRow( key, palette[key] ) );
+				/*	Harmony *is* the second colour: it is where that colour comes
+					from when nobody names one. Two rows a line apart - one asking
+					for a hex, one asking where to derive it - read as two
+					independent questions, and the second answer silently beat the
+					first. One row, the four automatic positions and the swatch
+					that overrides them, says which it is	*/
+				wrap.appendChild( Nino.admin.design._colourKnobRow( key, palette[key],
+					key === 'harmony' ? Nino.admin.design._secondField() : null ) );
 			} );
+
+			// By the node, not by its id: this column is not in the document
+			// yet on the first render - _renderControls() appends it after
+			Nino.admin.design._paintBrandWarning( warn );
 
 			return wrap;
 		},
 
 		/**
-		 *	One of the two colours.
-		 *
-		 *	Secondary has a state primary does not: empty, which is the
-		 *	ordinary answer rather than a missing one - it means "let Harmony
-		 *	put the second colour on the wheel". An <input type="color"> cannot
-		 *	be empty, so the state lives beside it and the reset goes back to it
-		 *
-		 *	@param		{string}	key			'primary' or 'secondary'
+		 *	The brand colour: a row of its own, because it is the one value the
+		 *	whole palette is solved out of
 		 *
 		 *	@return		{HTMLElement}
 		 */
-		_colourField : function( key ) {
+		_primaryField : function() {
 
-			const edit 		= Nino.admin.design._edit;
-			const value 	= String( ( edit.colours || {} )[key] || '' );
-			const derived	= key === 'secondary' && value === '';
+			const edit = Nino.admin.design._edit;
 
 			const field = dc.createElement('div');
-			field.className = 'design-colour-row'+ ( derived === true ? ' design-colour-row--derived' : '' );
+			field.className = 'design-colour-row';
 
 			const label = dc.createElement('label');
 			label.className = 'design-colour-label';
-			label.setAttribute( 'for', 'design-colour-'+ key );
-			label.textContent = Nino.content.getText('/_admin/design/label/'+ key);
+			label.setAttribute( 'for', 'design-colour-primary' );
+			label.textContent = Nino.content.getText('/_admin/design/label/primary');
 
 			const note = dc.createElement('small');
-			note.textContent = derived === true
-				? Nino.content.getText('/_admin/design/hint/derived')
-				: Nino.content.getText('/_admin/design/hint/'+ key);
+			note.textContent = Nino.content.getText('/_admin/design/hint/primary');
 			label.appendChild( note );
 
 			field.appendChild( label );
 
 			const input = dc.createElement('input');
 			input.type = 'color';
-			input.id = 'design-colour-'+ key;
+			input.id = 'design-colour-primary';
 			input.className = 'design-colour-input';
-			// A derived secondary still shows something valid to open the
-			// picker on, and the primary is the honest thing for it to be
-			input.value = value !== '' ? value : String( ( edit.colours || {} ).primary || '#4faae8' );
-			input.addEventListener( 'change', function() { Nino.admin.design._setColour( key, this.value ) } );
+			input.value = String( ( edit.colours || {} ).primary || '#4faae8' );
+			input.addEventListener( 'change', function() { Nino.admin.design._setColour( 'primary', this.value ) } );
 			field.appendChild( input );
 
-			// Only the second colour has something to go back to
-			if( key === 'secondary' && derived === false ) {
+			return field;
+		},
+
+		/**
+		 *	The second colour, at the end of the Harmony row it belongs to.
+		 *
+		 *	It has a state the brand does not: empty, which is the ordinary
+		 *	answer rather than a missing one - it means "let Harmony put it on
+		 *	the wheel". An <input type="color"> cannot be empty, so while it is
+		 *	empty the swatch shows the colour the wheel actually produced, as
+		 *	the server computed it, and is drawn quietly to say that nobody
+		 *	chose it. Opening it is how you stop deriving it; the way back is
+		 *	the reset beside it, or any of the four positions to its left
+		 *
+		 *	@return		{HTMLElement}
+		 */
+		_secondField : function() {
+
+			const edit		= Nino.admin.design._edit;
+			const value		= String( ( edit.colours || {} ).secondary || '' );
+			const derived	= value === '';
+
+			const box = dc.createElement('div');
+			box.className = 'design-colour-second'+ ( derived === true ? ' design-colour-row--derived' : '' );
+
+			const input = dc.createElement('input');
+			input.type = 'color';
+			input.id = 'design-colour-secondary';
+			input.className = 'design-colour-input';
+			input.value = derived === true
+				? String( ( Nino.admin.design._data || {} ).accent || ( edit.colours || {} ).primary || '#4faae8' )
+				: value;
+			input.title = Nino.content.getText('/_admin/design/label/secondary');
+			input.setAttribute( 'aria-label', Nino.content.getText('/_admin/design/label/secondary') );
+			input.addEventListener( 'change', function() { Nino.admin.design._setColour( 'secondary', this.value ) } );
+			box.appendChild( input );
+
+			if( derived === false ) {
 				const reset = dc.createElement('button');
 				reset.type = 'button';
 				reset.className = 'design-knob-reset';
-				reset.textContent = '↺';
+				reset.textContent = '\u21ba';
 				reset.title = Nino.content.getText('/_admin/design/hint/derived');
 				reset.setAttribute( 'aria-label', Nino.content.getText('/_admin/design/hint/derived') );
-				reset.addEventListener( 'click', function() { Nino.admin.design._setColour( key, '' ) } );
-				field.appendChild( reset );
+				reset.addEventListener( 'click', function() { Nino.admin.design._setColour( 'secondary', '' ) } );
+				box.appendChild( reset );
 			}
 
-			return field;
+			return box;
 		},
 
 		/**
@@ -730,10 +761,13 @@
 		 *
 		 *	@param		{string}	key
 		 *	@param		{Object}	meta		One entry of Colours::choices()
+		 *	@param		{?Element}	[extra]	Drawn after the positions. Harmony's is the
+		 *														second colour itself, which is what those
+		 *														positions are for
 		 *
 		 *	@return		{HTMLElement}
 		 */
-		_colourKnobRow : function( key, meta ) {
+		_colourKnobRow : function( key, meta, extra ) {
 
 			const field = dc.createElement('div');
 			field.className = 'design-knob-row';
@@ -767,11 +801,22 @@
 				group.appendChild( button );
 			} );
 
-			Nino.adminUi.buttonRow( buttons, String( ( Nino.admin.design._edit.colours || {} )[key] || meta['default'] ), function( position ) {
+			/*	A hex somebody typed overrides the whole knob - Colours::palette()
+				takes the Secondary as given and never reaches for Harmony at all.
+				So no position is lit while one is set: an active button there
+				would claim a derivation that is not happening	*/
+			const active = key === 'harmony' && String( ( Nino.admin.design._edit.colours || {} ).secondary || '' ) !== ''
+				? ''
+				: String( ( Nino.admin.design._edit.colours || {} )[key] || meta['default'] );
+
+			Nino.adminUi.buttonRow( buttons, active, function( position ) {
 				Nino.admin.design._setColourKnob( key, position );
 			} );
 
 			field.appendChild( group );
+
+			if( extra )
+				field.appendChild( extra );
 
 			return field;
 		},
@@ -783,14 +828,26 @@
 		},
 
 		_setColourKnob : function( key, position ) {
+
 			Nino.admin.design._edit.colours = Nino.admin.design._edit.colours || {};
 			Nino.admin.design._edit.colours[key] = parseInt( position, 10 );
+
+			/*	Choosing where the second colour sits is choosing to let Harmony
+				put it there. A hex left over from before would override the very
+				knob that was just moved, and the knob would look moved and do
+				nothing - which is the worst of the three possible states	*/
+			if( key === 'harmony' ) {
+				Nino.admin.design._edit.colours.secondary = '';
+				return Nino.admin.design._redrawColours();
+			}
+
 			Nino.admin.design._preview();
 		},
 
-		/*	A colour change redraws its own rows - the second colour's label and
-			its reset both depend on whether it is set - where a knob only ever
-			moves the frame. Both then ask for a new stylesheet */
+		/*	A colour change redraws its own rows - whether the second colour is
+			derived decides how it is drawn and whether the reset is beside it -
+			where a knob only ever moves the frame. Both then ask for a new
+			stylesheet */
 		_redrawColours : function() {
 
 			const old = dc.getElementById('design-colours');
@@ -799,6 +856,133 @@
 				old.replaceWith( Nino.admin.design._renderColours() );
 
 			Nino.admin.design._preview();
+		},
+
+		/**
+		 *	What the brand as picked measures, under the row that picked it -
+		 *	written in place rather than redrawn, because the column it sits in
+		 *	holds a colour picker somebody may have open
+		 *
+		 *	@param		{Element}	[node]		The line itself, for a column that is
+		 *															built but not mounted yet
+		 *
+		 *	@return		void
+		 */
+		_paintBrandWarning : function( node ) {
+
+			const line = node || dc.getElementById('design-brand-warning');
+
+			if( line === null || line === undefined )
+				return;
+
+			const brand = ( ( Nino.admin.design._data || {} ).brand || {} ).light || null;
+
+			line.hidden = brand === null || brand.safe !== false;
+
+			if( line.hidden === false )
+				line.textContent = Nino.admin.design._text( '/_admin/design/msg/brand-unsafe', brand.ratio, brand.target );
+		},
+
+		/**
+		 *	Take over what a preview answered about the colours themselves: the
+		 *	second colour as the wheel derived it, and what the brand measures.
+		 *
+		 *	Written into the two elements that show them rather than redrawing
+		 *	the column - the column holds an <input type="color">, and replacing
+		 *	one whose native picker is open closes it under the hand that opened
+		 *	it. This runs after every preview
+		 *
+		 *	@param		{Object}	response		The answer of design/preview
+		 *
+		 *	@return		void
+		 */
+		_absorb : function( response ) {
+
+			const data = Nino.admin.design._data;
+
+			if( data === null )
+				return;
+
+			if( typeof response.accent === 'string' && response.accent !== '' )
+				data.accent = response.accent;
+
+			if( response.brand )
+				data.brand = response.brand;
+
+			const second = dc.getElementById('design-colour-secondary');
+
+			// Only while it stands for a colour nobody chose. One that was
+			// chosen is the value in it, and nothing here may move it
+			if( second !== null && String( ( Nino.admin.design._edit.colours || {} ).secondary || '' ) === '' )
+				second.value = String( data.accent || second.value );
+
+			Nino.admin.design._paintBrandWarning();
+		},
+
+		/**
+		 *	Whether the selection on screen is still the stored one.
+		 *
+		 *	Canonical rather than JSON.stringify() on both: a knob moved and
+		 *	then put back leaves a key behind in a different order, and a bar
+		 *	offering to undo nothing is worse than no bar
+		 *
+		 *	@param		{*}	value
+		 *
+		 *	@return		{string}
+		 */
+		_canonical : function( value ) {
+
+			if( value === null || typeof value !== 'object' )
+				return JSON.stringify( value === undefined ? null : value );
+
+			if( Array.isArray( value ) === true )
+				return '['+ value.map( Nino.admin.design._canonical ).join(',')+ ']';
+
+			return '{'+ Object.keys( value ).sort().map( function( key ) {
+				return JSON.stringify( key )+ ':'+ Nino.admin.design._canonical( value[key] );
+			} ).join(',')+ '}';
+		},
+
+		/**
+		 *	Show or hide the way back, from whether there is one
+		 *
+		 *	@return		void
+		 */
+		_refreshDirty : function() {
+
+			const button = dc.getElementById('design-reset');
+			const data 	 = Nino.admin.design._data;
+
+			if( button === null || data === null )
+				return;
+
+			button.hidden = Nino.admin.design._canonical( Nino.admin.design._edit )
+				=== Nino.admin.design._canonical( Nino.admin.design._selection( data ) );
+		},
+
+		/**
+		 *	Back to the stored selection. Never further back than that: what was
+		 *	saved is saved, and a button that quietly returned a project to the
+		 *	delivered design would be a different and much larger promise
+		 *
+		 *	@return		void
+		 */
+		_revert : function() {
+
+			const data = Nino.admin.design._data;
+
+			if( data === null )
+				return;
+
+			Nino.admin.design._edit = Nino.admin.design._selection( data );
+			Nino.admin.design._render();
+
+			const msg = dc.getElementById('design-msg');
+
+			if( msg !== null ) {
+				msg.className = '';
+				msg.textContent = Nino.content.getText('/_admin/design/msg/reverted');
+			}
 		},
 
 		_setStep : function( key, step ) {
@@ -838,14 +1022,20 @@
 			heading.textContent = Nino.content.getText('/_admin/design/label/state');
 			box.appendChild( heading );
 
-			let key = 'current', level = 'ok';
+			let key = 'current', warn = false;
 
-			if( data.exists === true && data.ours === false ) { key = 'foreign'; level = 'warn'; }
-			else if( data.exists === false || data.compiled === '' ) { key = 'missing'; level = 'warn'; }
-			else if( data.current === false ) { key = 'drifted'; level = 'warn'; }
+			if( data.exists === true && data.ours === false ) { key = 'foreign'; warn = true; }
+			else if( data.exists === false || data.compiled === '' ) { key = 'missing'; warn = true; }
+			else if( data.current === false ) { key = 'drifted'; warn = true; }
 
+			/*	Only a warning is marked. "The file matches this selection" used
+				to be a green panel, and a green panel is a thing the eye keeps
+				checking - while this one says nothing about the selection on
+				screen, only about the last compile, so it stayed green through
+				every change somebody made after it. What is unsaved is the
+				action bar's job now: see _refreshDirty()	*/
 			const line = dc.createElement('p');
-			line.className = 'design-state design-state--'+ level;
+			line.className = warn === true ? 'design-state design-state--warn' : 'nino-admin-hint';
 			line.textContent = Nino.admin.design._text( '/_admin/design/state/'+ key, data.target );
 			box.appendChild( line );
 
@@ -959,6 +1149,11 @@
 		 *	@return		void
 		 */
 		_preview : function( delay ) {
+			// Every change on the screen ends here, so this is where the bar
+			// finds out that there is something to go back from. Not in
+			// _previewNow(): that one is debounced, and a button appearing a
+			// third of a second after the click that caused it reads as a glitch
+			Nino.admin.design._refreshDirty();
 			wn.clearTimeout( Nino.admin.design._timer );
 			Nino.admin.design._timer = wn.setTimeout( Nino.admin.design._previewNow, delay === undefined ? 350 : delay );
 		},
@@ -1020,6 +1215,7 @@
 				}
 
 				Nino.admin.design._fit();
+				Nino.admin.design._absorb( response );
 
 				if( msg === null )
 					return;
@@ -1083,10 +1279,25 @@
 					? doc.body
 					: ( part === 'footer' ? doc.querySelector('footer') : doc.getElementById( part ) );
 
-				if( target === null )
+				const view = doc.defaultView;
+
+				if( target === null || view === null )
 					return;
 
-				target.scrollIntoView( { block : 'start', behavior : instant === true ? 'auto' : 'smooth' } );
+				/*	The frame's own window, scrolled by hand - not
+					scrollIntoView(). That one walks every scrollable ancestor of
+					the element, and an element inside a same-origin iframe has
+					the workbench's own pane among them: the frame jumped to the
+					part *and* the column beside it slid away under the selects
+					that had just been used. This moves one scroller, which is the
+					one the switch is about	*/
+				const top = target.getBoundingClientRect().top
+					+ ( view.scrollY || doc.documentElement.scrollTop || 0 );
+
+				view.scrollTo( {
+					top 			: Math.max( 0, Math.round( top ) ),
+					behavior	: instant === true ? 'auto' : 'smooth',
+				} );
 			}
 			catch( e ) {
 				// A frame that cannot be reached is a frame that has not been
@@ -1120,19 +1331,6 @@
 		},
 
 		/**
-		 *	Show what the chosen variant is, under its row
-		 *
-		 *	@param		{Element}	at				The row's own description node
-		 *	@param		{Object}	row				One part, as design/list answered it
-		 *	@param		{string}	set
-		 *
-		 *	@return		void
-		 */
-		_describe : function( at, row, set ) {
-			at.textContent = ( ( row.catalogue || {} )[set] || {} ).description || '';
-		},
-
-		/**
 		 *	A labelled select that reports its own changes
 		 *
 		 *	@param		{string}		id
@@ -1140,10 +1338,15 @@
 		 *	@param		{Array}			options		{ value, label }
 		 *	@param		{string}		current
 		 *	@param		{Function}	onChange
+		 *	@param		{string}		[hint]		One line between the name and the control.
+		 *															Inside the field rather than a paragraph after
+		 *															it: a sentence floating under a select reads as
+		 *															the next thing on the screen rather than as
+		 *															something about the select above it
 		 *
 		 *	@return		{Element}
 		 */
-		_select : function( id, label, options, current, onChange ) {
+		_select : function( id, label, options, current, onChange, hint ) {
 
 			const field = dc.createElement('div');
 			field.className = 'nino-admin-field';
@@ -1153,6 +1356,13 @@
 				tag.setAttribute( 'for', id );
 				tag.textContent = label;
 				field.appendChild( tag );
+			}
+
+			if( hint ) {
+				const said = dc.createElement('small');
+				said.className = 'design-field-hint';
+				said.textContent = hint;
+				field.appendChild( said );
 			}
 
 			const select = dc.createElement('select');

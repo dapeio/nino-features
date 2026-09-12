@@ -83,13 +83,19 @@ namespace Nino\Modules\Design {
 			panel reads the declarations */
 		public const string KNOB_TOKEN = '--%s-%s--%s';
 
-		// The root size, as the percentage pair Nino.css wants: below the
-		// 768px breakpoint, and from it. Relative, never a length - see
-		// --base-size in Nino.css
+		/*	The root size, as the percentage pair Nino.css wants: below the
+			768px breakpoint, and from it. Relative, never a length - see
+			--base-size in Nino.css.
+
+			A full step apart rather than a hair: at a browser default of 16px
+			this is 15/18/21 from the breakpoint and 14/16/18 below it, which
+			is a choice somebody can see on the page rather than one they have
+			to measure. The middle position is the delivered size and does not
+			move, so nothing compiled before this reads differently.	*/
 		public const array SIZES = [
-			's' => [ '93.75%', '106.25%' ],
+			's' => [ '87.5%', '93.75%' ],
 			'm' => [ '100%', '112.5%' ],
-			'l' => [ '106.25%', '118.75%' ],
+			'l' => [ '112.5%', '131.25%' ],
 		];
 
 		/**

@@ -5,13 +5,13 @@
 return [
 	'[[/_admin/nav/design]]'								=> 'Design',
 	'[[/_admin/design/label/title]]'				=> 'Design',
-	'[[/_admin/design/hint/intro]]'					=> 'Je ein Set pro Bauteil einer Seite. Ein ganzes Theme wählt hier niemand – laute Überschriften aus einem Entwurf und runde Buttons aus einem anderen ist der Sinn der Sache.',
 
 	'[[/_admin/design/label/global]]'				=> 'Global',
 	'[[/_admin/design/label/knob]]'					=> 'Finetuning',
 	'[[/_admin/design/label/size]]'					=> 'Grundgröße',
 	'[[/_admin/design/label/follow]]'				=> 'Wieder folgen lassen',
 	'[[/_admin/design/label/save]]'					=> 'Auswahl speichern',
+	'[[/_admin/design/label/reset]]'				=> 'Zurücksetzen',
 	'[[/_admin/design/label/apply]]'				=> 'Speichern und kompilieren',
 	'[[/_admin/design/label/takeover]]'			=> 'Datei übernehmen und kompilieren',
 
@@ -43,6 +43,7 @@ return [
 	'[[/_admin/design/state/compiled]]'			=> 'Zuletzt kompiliert: %s',
 
 	'[[/_admin/design/msg/saved]]'					=> 'Auswahl gespeichert.',
+	'[[/_admin/design/msg/reverted]]'			=> 'Auswahl auf den gespeicherten Stand zurückgesetzt.',
 	'[[/_admin/design/msg/applied]]'				=> 'Kompiliert. Die Seite sieht ab sofort so aus.',
 	'[[/_admin/design/msg/takenover]]'			=> 'Datei übernommen und kompiliert. Von jetzt an schreibt Design sie.',
 	'[[/_admin/design/error/save]]'					=> 'Die Auswahl konnte nicht gespeichert werden.',
@@ -61,7 +62,7 @@ return [
 
 	'[[/_admin/design/label/picker]]'				=> 'Bauteil',
 	'[[/_admin/design/label/variant]]'			=> 'Variante',
-	'[[/_admin/design/label/state]]'				=> 'So wird es verwendet',
+	'[[/_admin/design/label/state]]'				=> 'Kompilierte Datei',
 
 	'[[/_admin/design/knob/empty]]'					=> 'Diese Variante hört auf keinen Regler.',
 
@@ -96,12 +97,11 @@ return [
 	'[[/_admin/design/label/primary]]'			=> 'Markenfarbe',
 	'[[/_admin/design/hint/primary]]'				=> 'wird genau so übernommen',
 	'[[/_admin/design/label/secondary]]'		=> 'Zweite Farbe',
-	'[[/_admin/design/hint/secondary]]'			=> 'wird genau so übernommen',
-	'[[/_admin/design/hint/derived]]'				=> 'ergibt sich aus der Harmonie',
+	'[[/_admin/design/hint/derived]]'				=> 'wieder automatisch setzen',
 	'[[/_admin/design/msg/brand-unsafe]]'		=> 'Auf der Markenfarbe selbst steht Text bei %s:1, gebraucht werden %s:1. Geschrieben wird ohnehin auf der gelösten Variante – die Farbe bleibt, wie sie ist.',
 
-	'[[/_admin/design/colour/harmony/label]]'	=> 'Harmonie',
-	'[[/_admin/design/colour/harmony/note]]'	=> 'wo die zweite Farbe sitzt',
+	'[[/_admin/design/colour/harmony/label]]'	=> 'Zweite Farbe',
+	'[[/_admin/design/colour/harmony/note]]'	=> 'automatisch setzen, oder rechts selbst wählen',
 	'[[/_admin/design/colour/harmony/1]]'			=> 'Monochrom',
 	'[[/_admin/design/colour/harmony/2]]'			=> 'Analog',
 	'[[/_admin/design/colour/harmony/3]]'			=> 'Triadisch',

@@ -3,6 +3,56 @@
 All notable changes to the Design feature are documented in this file.
 A release is the tag `design-<version>` of dapeio/nino-features.
 
+## Unreleased
+
+### Changed
+
+- **The panel's two selects no longer look like two selects.** The picker says
+  which part the whole column below it is about; the variant select is that
+  part's own answer, and the knob under it belongs to the same part again. Two
+  identical fields a row apart said the opposite - so the picker carries the
+  weight now and everything that hangs off it stands inside a rail.
+- **What a select means sits between its name and the select**, not in a
+  paragraph under it: a sentence floating below a control reads as the next
+  thing on the screen rather than as something about the thing above it. That
+  is the variant's `@description` and the root size's own line; the paragraph
+  over the whole screen and the one under the Finetuning rows are gone
+  altogether.
+- **"The file answers to this selection" is a plain line rather than a green
+  panel.** A green panel is a thing the eye keeps checking, and that one said
+  nothing about the selection on screen - it spoke about the last compile and
+  stayed green through every change made after it. Only a line that is
+  something to act on is marked now, and the heading over it says *Compiled
+  file* rather than a feature manual's *How it is used*.
+- **A `Reset` at the far left of the action bar** takes the screen back to the
+  stored selection. It appears the moment the two differ and goes again when
+  they do not, which is the honest version of what the green panel was being
+  read as. Never further back than what was saved.
+- **The root size positions are a full step apart.** `s` and `l` were one
+  pixel either side of `m`; at a 16px browser default the ladder is now 14/16/18
+  below the breakpoint and 15/18/21 from it, which is a choice somebody can see
+  on the page instead of measure. `m` is the delivered size and does not move,
+  so nothing compiled before this reads differently.
+- **Harmony and the second colour are one row, called Second colour.** They
+  were two questions a line apart - one asking for a hex, one asking where to
+  derive one - and the second answer silently beat the first, because an
+  explicit Secondary overrides the whole knob. Now the four automatic positions
+  and the swatch that overrides them stand in the same row: while a position is
+  active the swatch shows the colour the wheel actually produced (`Colours::accent()`,
+  answered by `design/list` and by every `design/preview`, so it follows a knob
+  live), drawn quietly to say nobody chose it. Opening it lights no position at
+  all, and `↺` hands the question back to the wheel.
+
+### Fixed
+
+- **Following the picker scrolled the workbench, not only the preview.**
+  `scrollIntoView()` walks every scrollable ancestor of an element, and inside a
+  same-origin iframe the workbench's own pane is one of them - so the frame
+  jumped to the part *and* the column beside it slid away under the selects that
+  had just been used. The frame's own window is scrolled by hand now.
+- The brand's contrast warning is written in place rather than redrawn with its
+  column, which holds a colour picker somebody may have open.
+
 ## 0.1.0 — 2026-09-11
 
 First cut: the setup store, the compiler, the library and the panel. What is

@@ -624,6 +624,24 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
+		 *	The second colour as the palette uses it: the hex somebody named, or
+		 *	- where nobody did - the one Harmony carried round the wheel.
+		 *
+		 *	Published so the panel can show it. A Secondary nobody set is not a
+		 *	missing value, it is a derived one, and a swatch standing for it has
+		 *	to show the colour that will actually be compiled rather than the
+		 *	primary standing in for it. Light mode, because brand and accent are
+		 *	the two surfaces that are the same byte in both.
+		 *
+		 *	@param		array			$settings			Design settings
+		 *
+		 *	@return 	string								'#rrggbb'
+		 */
+		public static function accent( array $settings ): string {
+			return (string) self::palette( $settings, 'light' )['accent']['bg'];
+		}
+
+		/**
 		 *	What the picked brand actually measures, per mode.
 		 *
 		 *	brand is the one surface the generator does not get to move, so it

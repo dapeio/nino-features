@@ -227,6 +227,25 @@ check( 'a corporate hex still clears the target on every solved surface',
 		in_array( $k, [ 'brand', 'accent' ], true ) === false
 		&& \Nino\Modules\Design\Colours::contrast( $v['on'], $v['bg'] ) < 4.5, ARRAY_FILTER_USE_BOTH ) === [] );
 
+/*	...and the one value the panel needs published on its own: the second
+	colour as it will be compiled. A Secondary nobody set is not a missing
+	value but a derived one, and the swatch standing for it has to show the
+	colour the wheel produced rather than the primary standing in for it	*/
+check( 'the second colour is published, as typed where one was typed',
+	\Nino\Modules\Design\Colours::accent( $corporate ) === '#0f766e' );
+
+$wheel = [ 'primary' => '#8b1d3f' ];
+$derived = [];
+
+foreach( [ 1, 2, 3, 4 ] as $harmony )
+	$derived[$harmony] = \Nino\Modules\Design\Colours::accent( $wheel + [ 'harmony' => $harmony ] );
+
+check( '...and where none was, it is what Harmony carried round the wheel - a different colour at every position but the first',
+	$derived[1] === '#8b1d3f' && count( array_unique( $derived ) ) === 4
+	&& preg_match( '/^#[0-9a-f]{6}$/', $derived[4] ) === 1 );
+check( '...which is exactly the accent the palette itself uses, so the swatch cannot drift from the stylesheet',
+	$derived[3] === \Nino\Modules\Design\Colours::palette( $wheel + [ 'harmony' => 3 ], 'light' )['accent']['bg'] );
+
 // Status hues are fixed on purpose - no brand knob may turn a danger surface
 // into something reassuring
 $hot = \Nino\Modules\Design\Colours::palette( [ 'primary' => '#2e7d32' ], 'light' );
@@ -249,8 +268,8 @@ echo "\n";
 echo "Compiler - the sheet a setup produces\n";
 
 $large = \Nino\Modules\Design\Compiler::compile( \Nino\Modules\Design\Setup::normalize( [ 'size' => 'l' ], $library ), $library );
-check( 'the size knob moves the pair, not one half of it', str_contains( $large, '--nino-base-size: 106.25%;' ) === true
-	&& str_contains( $large, '--nino-base-size: 118.75%;' ) === true );
+check( 'the size knob moves the pair, not one half of it', str_contains( $large, '--nino-base-size: 112.5%;' ) === true
+	&& str_contains( $large, '--nino-base-size: 131.25%;' ) === true );
 
 /*	A set declares what its three steps are; the knob picks one. Written into a
 	throwaway library so the assertion does not depend on what the shipped sets
@@ -295,7 +314,7 @@ check( 'a sheet Design wrote knows itself', \Nino\Modules\Design\Compiler::stamp
 $second = \Nino\Modules\Design\Compiler::write( $appData, \Nino\Modules\Design\Compiler::compile(
 	\Nino\Modules\Design\Setup::normalize( [ 'size' => 'l' ], $library ), $library ) );
 check( 'compiling again writes over its own file without being asked twice', $second === true
-	&& str_contains( (string) file_get_contents( ninoSandboxDir( $appData ). '/private/assets/theme.css' ), '106.25%' ) === true );
+	&& str_contains( (string) file_get_contents( ninoSandboxDir( $appData ). '/private/assets/theme.css' ), '131.25%' ) === true );
 
 // The delivered theme.css is explicitly editable by hand, so the file this
 // finds on a first run may well be somebody's work
@@ -428,7 +447,7 @@ check( '...and a position for a knob the part\'s set does not answer to is not k
 [ $status, $applied ] = callDesignAction( $appData, 'apiApply' );
 check( 'applying compiles it and the file answers again', $status === 200 && ( $applied['current'] ?? null ) === true );
 check( '...and the root size the save asked for is in the stylesheet', str_contains(
-	(string) \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Design\Compiler::TARGET, '' ), '106.25%' ) === true );
+	(string) \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Design\Compiler::TARGET, '' ), '131.25%' ) === true );
 
 // A hand edit makes the file somebody else's again, and the panel says so
 \Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Design\Compiler::TARGET, "/* edited by hand */\n" );
@@ -570,7 +589,7 @@ check( 'the preview answers with a whole document and the id of the sheet inside
 	&& ( $preview['style'] ?? '' ) === \Nino\Modules\Design\Admin::PREVIEW_STYLE
 	&& str_contains( (string) $preview['document'], 'id="'. \Nino\Modules\Design\Admin::PREVIEW_STYLE. '"' ) === true );
 check( 'it shows what was posted and not what is stored - looking is what you do while deciding',
-	str_contains( (string) ( $preview['css'] ?? '' ), '93.75%' ) === true
+	str_contains( (string) ( $preview['css'] ?? '' ), '87.5%' ) === true
 	&& ( $stored['size'] ?? '' ) === 'm'
 	&& str_contains( (string) $preview['document'], 'nino-grid-row nino-grid-row--wide' ) === true );
 check( 'the framework is linked, not inlined - the workbench sends a csp that refuses an inline script',
@@ -585,7 +604,18 @@ check( '...and the bundle it points at really carries the framework',
 	'parts' => [], 'step' => 'default', 'size' => 'l', 'full' => false,
 ] );
 check( 'a change that is only a stylesheet sends only that - the frame on screen keeps its page', $status === 200
-	&& ( $partial['document'] ?? null ) === '' && str_contains( (string) ( $partial['css'] ?? '' ), '118.75%' ) === true );
+	&& ( $partial['document'] ?? null ) === '' && str_contains( (string) ( $partial['css'] ?? '' ), '131.25%' ) === true );
+
+/*	Both of these move with every colour knob and are drawn beside the controls
+	that moved them, so they ride the preview rather than a request of their own	*/
+[ $status, $wheeled ] = callDesignAction( $appData, 'apiPreview', [
+	'parts' => [], 'size' => 'm', 'full' => false,
+	'colours' => [ 'primary' => '#8b1d3f', 'harmony' => 4 ],
+] );
+check( 'a preview also answers the derived second colour and what the brand measures - the swatch follows a knob without a request of its own',
+	$status === 200 && ( $wheeled['accent'] ?? '' ) === \Nino\Modules\Design\Colours::accent( [ 'primary' => '#8b1d3f', 'harmony' => 4 ] )
+	&& ( $wheeled['accent'] ?? '' ) !== '#8b1d3f'
+	&& isset( $wheeled['brand']['light']['ratio'] ) === true );
 
 check( 'previewing writes neither the setup nor the stylesheet',
 	\Nino\Modules\Design\Setup::read( $appData, $library ) === $stored
@@ -609,6 +639,8 @@ check( '...each knob with its own positions, three for a scale and four for a ch
 	&& ( $listed['palette']['contrast']['kind'] ?? '' ) === 'scale' );
 check( '...and whether the colour that was picked is one text survives on',
 	isset( $listed['brand']['light']['safe'] ) === true && isset( $listed['brand']['dark']['ratio'] ) === true );
+check( '...and the second colour as it will be compiled, for the swatch that stands for it',
+	preg_match( '/^#[0-9a-f]{6}$/', (string) ( $listed['accent'] ?? '' ) ) === 1 );
 
 [ $status, ] = callDesignAction( $appData, 'apiSave', [
 	'parts' => [], 'knobs' => [], 'size' => 'm',

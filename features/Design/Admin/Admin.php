@@ -157,6 +157,10 @@ namespace Nino\Modules\Design {
 				'colours'	=> (array) ( $setup['colours'] ?? [] ),
 				'palette'	=> Colours::choices(),
 				'brand' 	=> Colours::brand( (array) ( $setup['colours'] ?? [] ) ),
+				// The second colour as it will be compiled - the one somebody
+				// named, or the one Harmony derived. The swatch standing for it
+				// shows this rather than the primary standing in for it
+				'accent'	=> Colours::accent( (array) ( $setup['colours'] ?? [] ) ),
 				'notes' 	=> $notes,
 				'target' 	=> Compiler::TARGET,
 			] + self::state( $appData, $setup, $library ) );
@@ -325,10 +329,19 @@ namespace Nino\Modules\Design {
 			if( ( $posted['full'] ?? false ) === true )
 				$document = self::document( $appData, $library, $setup, $css, $notes );
 
+			/*	Both of these move with every colour knob, and both are drawn
+				beside the controls that moved them: the derived second colour in
+				its swatch, the brand's measured ratio in the line under it. They
+				ride the preview rather than a request of their own - the screen
+				is asking for a new stylesheet at that moment anyway	*/
+			$colours = (array) ( $setup['colours'] ?? [] );
+
 			\Nino\Http::ok( $request, [
 				'css' 			=> $css,
 				'document' 	=> $document,
 				'style' 		=> self::PREVIEW_STYLE,
+				'accent' 		=> Colours::accent( $colours ),
+				'brand' 		=> Colours::brand( $colours ),
 				'notes' 		=> $notes,
 			] );
 		}

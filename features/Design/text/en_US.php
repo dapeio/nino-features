@@ -5,13 +5,13 @@
 return [
 	'[[/_admin/nav/design]]'								=> 'Design',
 	'[[/_admin/design/label/title]]'				=> 'Design',
-	'[[/_admin/design/hint/intro]]'					=> 'One set per part of a page. Nobody picks a whole theme here - loud headings from one design and round buttons from another is the point.',
 
 	'[[/_admin/design/label/global]]'				=> 'Global',
 	'[[/_admin/design/label/knob]]'					=> 'Finetuning',
 	'[[/_admin/design/label/size]]'					=> 'Root size',
 	'[[/_admin/design/label/follow]]'				=> 'Follow again',
 	'[[/_admin/design/label/save]]'					=> 'Save the selection',
+	'[[/_admin/design/label/reset]]'				=> 'Reset',
 	'[[/_admin/design/label/apply]]'				=> 'Save and compile',
 	'[[/_admin/design/label/takeover]]'			=> 'Take the file over and compile',
 
@@ -43,6 +43,7 @@ return [
 	'[[/_admin/design/state/compiled]]'			=> 'Last compiled %s',
 
 	'[[/_admin/design/msg/saved]]'					=> 'Selection saved.',
+	'[[/_admin/design/msg/reverted]]'			=> 'Selection back to the stored one.',
 	'[[/_admin/design/msg/applied]]'				=> 'Compiled. This is what the site looks like from now on.',
 	'[[/_admin/design/msg/takenover]]'			=> 'File taken over and compiled. Design writes it from now on.',
 	'[[/_admin/design/error/save]]'					=> 'The selection could not be saved.',
@@ -61,7 +62,7 @@ return [
 
 	'[[/_admin/design/label/picker]]'				=> 'Part',
 	'[[/_admin/design/label/variant]]'			=> 'Variant',
-	'[[/_admin/design/label/state]]'				=> 'How it is used',
+	'[[/_admin/design/label/state]]'				=> 'Compiled file',
 
 	'[[/_admin/design/knob/empty]]'					=> 'This variant answers to no knob.',
 
@@ -96,12 +97,11 @@ return [
 	'[[/_admin/design/label/primary]]'			=> 'Brand colour',
 	'[[/_admin/design/hint/primary]]'				=> 'used exactly as picked',
 	'[[/_admin/design/label/secondary]]'		=> 'Second colour',
-	'[[/_admin/design/hint/secondary]]'			=> 'used exactly as picked',
-	'[[/_admin/design/hint/derived]]'				=> 'follows the harmony',
+	'[[/_admin/design/hint/derived]]'				=> 'set it automatically again',
 	'[[/_admin/design/msg/brand-unsafe]]'		=> 'Text on the brand colour itself reads at %s:1 where %s:1 is needed. Anything written on is written on the solved one instead - the colour stays as it is.',
 
-	'[[/_admin/design/colour/harmony/label]]'	=> 'Harmony',
-	'[[/_admin/design/colour/harmony/note]]'	=> 'where the second colour sits',
+	'[[/_admin/design/colour/harmony/label]]'	=> 'Second colour',
+	'[[/_admin/design/colour/harmony/note]]'	=> 'set it automatically, or pick it on the right',
 	'[[/_admin/design/colour/harmony/1]]'			=> 'Monochrome',
 	'[[/_admin/design/colour/harmony/2]]'			=> 'Analogous',
 	'[[/_admin/design/colour/harmony/3]]'			=> 'Triadic',
