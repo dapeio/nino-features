@@ -1,0 +1,109 @@
+/**
+ *	Nino - Modeswitch
+ *	modeswitch.css	The [mode-switch] control, and the one thing besides it a
+ *								forced mode needs: color-scheme. Bundled into the project's
+ *								own /.cache/style.css the same way the kernel bundles
+ *								Nino.css (see Modeswitch::init() and docs/development.md,
+ *								"Assets Are Not Templates") - never rendered through the
+ *								fill/shortcode engine, so nothing in here is a textfill.
+ *
+ *								Every colour, spacing and radius reads the site's own
+ *								design-system custom properties (--color-*, --space-*,
+ *								--radius, --fontsize-small) with a plain fallback, so the
+ *								switch looks at home on a project that never picked a
+ *								theme - and takes the new colours the moment one is
+ *								compiled, including its own dark ones.
+ */
+
+/*	The half of a forced mode that is not a colour. :root carries
+	"color-scheme: light dark", which lets the browser paint its own
+	furniture - form controls, scrollbars, the canvas behind the page - per
+	the *system* setting. A reader who forces the other one would get a dark
+	page with light scrollbars, so the two attributes the switch writes say
+	which it is. Nothing here for "system": that is the state with no
+	attribute, and the declaration on :root is already right for it */
+:root[data-nino-mode="light"] {
+	color-scheme: light;
+}
+:root[data-nino-mode="dark"] {
+	color-scheme: dark;
+}
+
+/*	A segmented control: three buttons in one outline, the one that is on
+	filled. Inline-flex so it sits in a header row beside a navigation
+	without a wrapper of its own */
+.nino-modeswitch {
+	display: inline-flex;
+	align-items: stretch;
+	gap: 0;
+	padding: 2px;
+	border: 1px solid var(--color-border, #dddddd);
+	border-radius: var(--radius, .4rem);
+	background: var(--color-background, #ffffff);
+	line-height: 1;
+}
+
+.nino-modeswitch-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: .4em;
+	margin: 0;
+	padding: .45em .7em;
+	border: 0;
+	border-radius: calc( var(--radius, .4rem) - 2px );
+	background: none;
+	color: var(--color-text, #333333);
+	font: inherit;
+	font-size: var(--fontsize-small, .875rem);
+	line-height: 1;
+	cursor: pointer;
+	/*	Colour only, and only on the button. A transform or a size change here
+		would move the two beside it every time somebody hovers a three-way
+		switch, which is the one thing a control this small cannot afford */
+	transition: background-color .15s ease, color .15s ease;
+}
+
+.nino-modeswitch-btn:hover {
+	background: var(--color-section-alt-bg, #f0f0f0);
+}
+
+/*	The one that is on. modeswitch.js writes the class and aria-pressed
+	together, so the look and what a screen reader is told can never
+	disagree */
+.nino-modeswitch-btn.nino-is-active {
+	background: var(--color-primary, #4faae8);
+	color: var(--color-primary-text, #ffffff);
+}
+
+.nino-modeswitch-icon {
+	flex: 0 0 auto;
+	width: 1.15em;
+	height: 1.15em;
+}
+
+/*	labels=off: the word stays in the markup and leaves the layout. Not
+	display:none and not hidden - both take it out of the accessibility tree
+	as well, and then three unlabelled icons are what a screen reader is left
+	with. This is the standard visually-hidden recipe */
+.nino-modeswitch-name--hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+	border: 0;
+}
+
+/* Icons alone need no room for words beside them */
+.nino-modeswitch--icons .nino-modeswitch-btn {
+	padding: .45em .55em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.nino-modeswitch-btn {
+		transition: none;
+	}
+}

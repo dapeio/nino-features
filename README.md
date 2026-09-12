@@ -22,6 +22,7 @@ This repository is the place Nino's features are published from. `features/<Name
 | `gallery` | [Gallery](features/Gallery/README.md) | `content` | 1.0.0 | `^1.1` | Any number of image galleries, each a grid of thumbnails that open full screen - two derived sizes per upload, the original never stored |
 | `lightbox` | [Lightbox](features/Lightbox/README.md) | `ui` | 1.0.0 | `^1.1` | Opens any link to an image full screen, with its group as a set - arrows, swipe, captions and a focus trap, and no library |
 | `mailer` | [Mailer](features/Mailer/README.md) | `system` | 1.0.0 | `^1.1` | Delivers every mail Nino sends over SMTP instead of the server’s `mail()` |
+| `modeswitch` | [Light/Dark Switch](features/Modeswitch/README.md) | `ui` | 1.0.0 | `^1.2` | Lets a visitor read the site light, dark, or the way their system asks - a three-state switch put anywhere with `[mode-switch]`, over the dark palette the project already ships |
 | `newsletter` | [Newsletter](features/Newsletter/README.md) | `communication` | 1.0.0 | `^1.0` | Double opt-in signup with confirmation and unsubscribe links, and the subscriber list as a workbench panel |
 | `posts` | [Posts](features/Posts/README.md) | `content` | 1.0.0 | `^1.1` | A page per element and a list with paging: what turns an element type into a blog, a news section or a journal - the posts stay ordinary elements |
 | `protected` | [Protected area](features/ProtectedArea/README.md) | `security` | 1.0.0 | `^1.1` | Puts one or more pages behind one shared password, without accounts |
