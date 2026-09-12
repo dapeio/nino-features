@@ -196,3 +196,79 @@
 }
 
 }
+
+/*	The two halves of a design, above everything they switch between. A margin
+	below rather than a border: the picker under it already draws one, and two
+	lines a row apart read as a box nobody meant to draw */
+.nino-admin .design-tabs {
+	margin: 0 0 1rem;
+}
+
+/*	A colour is the same row as a knob - label left, control right - so the
+	two halves of the panel do not each have their own idea of a row. What it
+	does not share is the segmented control: a colour is a value, not a
+	position, and the swatch is the only honest control for one */
+.nino-admin .design-colour-row {
+	display: flex;
+	align-items: center;
+	gap: .6rem;
+	padding: .35rem 0;
+	border-bottom: 1px solid var(--editor-separator);
+}
+.nino-admin .design-colour-label {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+.nino-admin .design-colour-label small {
+	display: block;
+	color: var(--editor-text-secondary);
+	font-size: .75rem;
+}
+
+/*	The swatch. Sized rather than left to the browser, which gives it a form
+	control's default width and a row that does not line up with the knobs
+	below it */
+.nino-admin .design-colour-input {
+	flex: 0 0 auto;
+	width: 3.4rem;
+	height: 2rem;
+	padding: 0;
+	border: 1px solid var(--editor-border);
+	border-radius: var(--editor-radius-sm);
+	background: none;
+	cursor: pointer;
+}
+
+/*	A second colour nobody chose is derived from the first, and says so by
+	being quiet - the same way a knob that follows the global position does.
+	It is not disabled: clicking it is how you stop deriving it */
+.design-colour-row--derived .design-colour-input {
+	opacity: .55;
+}
+.design-colour-row--derived:focus-within .design-colour-input,
+.design-colour-row--derived:hover .design-colour-input {
+	opacity: 1;
+}
+
+/*	The one thing the palette cannot promise: the brand as picked is the brand
+	as picked, so text on it is whatever it is. Orange rather than red - it is
+	a property of the colour somebody chose, not a mistake they made */
+.nino-admin .design-colour-warning {
+	margin: .6rem 0 0;
+	padding: .5rem .7rem;
+	border-left: 3px solid var(--editor-orange);
+	background: var(--editor-bg-grouped);
+	border-radius: var(--editor-radius-sm);
+}
+
+/*	A choice has four positions where a scale has three, and "Komplementär"
+	beside "Triadisch" is wider than a column that also has to hold a label -
+	the label then breaks into three lines to make room for it. Wrapping the
+	row puts the control on its own line where it does not fit and changes
+	nothing where it does, which is also what a narrow pane wants */
+.nino-admin #design-colours .design-knob-row {
+	flex-wrap: wrap;
+}
+.nino-admin #design-colours .design-knob-label {
+	flex: 1 1 9rem;
+}

@@ -116,6 +116,11 @@ namespace Nino\Modules\Design {
 				// stands until it is moved on its own
 				'knobs' 	=> array_fill_keys( self::KNOBS, 'default' ),
 				'size' 		=> 'm',
+				// The palette half, in Colours' own vocabulary - two colours and
+				// five knobs. Its defaults are the framework's own values, so a
+				// setup that never opened the Colours tab compiles to the palette
+				// library/base.css already declares
+				'colours'	=> Colours::normalize( [] ),
 				'compiled'=> [],
 			];
 		}
@@ -293,6 +298,14 @@ namespace Nino\Modules\Design {
 
 				$setup['parts'][$part]['sha'] = (string) ( $stored['sha'] ?? '' );
 			}
+
+			/*	The palette. Normalized by Colours rather than here, because the
+				vocabulary is its own - a hex and five positions, none of them a
+				step word - and a second copy of those tables in this file is a
+				second place for them to drift. A setup written before the tab
+				existed has no 'colours' key at all and takes the defaults, which
+				are the framework's colours exactly */
+			$setup['colours'] = Colours::normalize( is_array( $raw['colours'] ?? null ) ? $raw['colours'] : [] );
 
 			$setup['compiled'] = is_array( $raw['compiled'] ?? null ) ? $raw['compiled'] : [];
 

@@ -88,4 +88,47 @@ return [
 	'[[/_admin/design/knob/measure/less]]'		=> 'Schmal',
 	'[[/_admin/design/knob/measure/default]]'	=> 'Standard',
 	'[[/_admin/design/knob/measure/more]]'		=> 'Weit',
+
+	'[[/_admin/design/tab/structure]]'			=> 'Struktur',
+	'[[/_admin/design/tab/colours]]'				=> 'Farben',
+
+	'[[/_admin/design/hint/colours]]'				=> 'Zwei Farben, und fünf Regler dafür, was daraus wird. Jede Fläche und alles, was darauf lesbar sein muss, wird gerechnet und gemessen – kein Paar unter 4,5:1.',
+	'[[/_admin/design/label/primary]]'			=> 'Markenfarbe',
+	'[[/_admin/design/hint/primary]]'				=> 'wird genau so übernommen',
+	'[[/_admin/design/label/secondary]]'		=> 'Zweite Farbe',
+	'[[/_admin/design/hint/secondary]]'			=> 'wird genau so übernommen',
+	'[[/_admin/design/hint/derived]]'				=> 'ergibt sich aus der Harmonie',
+	'[[/_admin/design/msg/brand-unsafe]]'		=> 'Auf der Markenfarbe selbst steht Text bei %s:1, gebraucht werden %s:1. Geschrieben wird ohnehin auf der gelösten Variante – die Farbe bleibt, wie sie ist.',
+
+	'[[/_admin/design/colour/harmony/label]]'	=> 'Harmonie',
+	'[[/_admin/design/colour/harmony/note]]'	=> 'wo die zweite Farbe sitzt',
+	'[[/_admin/design/colour/harmony/1]]'			=> 'Monochrom',
+	'[[/_admin/design/colour/harmony/2]]'			=> 'Analog',
+	'[[/_admin/design/colour/harmony/3]]'			=> 'Triadisch',
+	'[[/_admin/design/colour/harmony/4]]'			=> 'Komplementär',
+
+	'[[/_admin/design/colour/temperature/label]]'	=> 'Temperatur',
+	'[[/_admin/design/colour/temperature/note]]'	=> 'wohin die Grautöne kippen',
+	'[[/_admin/design/colour/temperature/1]]'			=> 'Neutral',
+	'[[/_admin/design/colour/temperature/2]]'			=> 'Kühl',
+	'[[/_admin/design/colour/temperature/3]]'			=> 'Marke',
+	'[[/_admin/design/colour/temperature/4]]'			=> 'Warm',
+
+	'[[/_admin/design/colour/saturation/label]]'	=> 'Sättigung',
+	'[[/_admin/design/colour/saturation/note]]'		=> 'wie viel Farbe',
+	'[[/_admin/design/colour/saturation/1]]'			=> 'Gedämpft',
+	'[[/_admin/design/colour/saturation/2]]'			=> 'Standard',
+	'[[/_admin/design/colour/saturation/3]]'			=> 'Satt',
+
+	'[[/_admin/design/colour/contrast/label]]'	=> 'Kontrast',
+	'[[/_admin/design/colour/contrast/note]]'		=> 'wie hart Text liest',
+	'[[/_admin/design/colour/contrast/1]]'			=> 'Weich',
+	'[[/_admin/design/colour/contrast/2]]'			=> 'Standard',
+	'[[/_admin/design/colour/contrast/3]]'			=> 'Stark',
+
+	'[[/_admin/design/colour/depth/label]]'		=> 'Tiefe',
+	'[[/_admin/design/colour/depth/note]]'		=> 'wie weit Flächen abheben',
+	'[[/_admin/design/colour/depth/1]]'				=> 'Flach',
+	'[[/_admin/design/colour/depth/2]]'				=> 'Standard',
+	'[[/_admin/design/colour/depth/3]]'				=> 'Erhaben',
 ];

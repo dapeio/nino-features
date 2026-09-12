@@ -88,4 +88,47 @@ return [
 	'[[/_admin/design/knob/measure/less]]'		=> 'Narrow',
 	'[[/_admin/design/knob/measure/default]]'	=> 'Standard',
 	'[[/_admin/design/knob/measure/more]]'		=> 'Wide',
+
+	'[[/_admin/design/tab/structure]]'			=> 'Structure',
+	'[[/_admin/design/tab/colours]]'				=> 'Colours',
+
+	'[[/_admin/design/hint/colours]]'				=> 'Two colours, and five knobs for what becomes of them. Every surface and everything that has to be readable on it is solved and then measured - no pair below 4.5:1.',
+	'[[/_admin/design/label/primary]]'			=> 'Brand colour',
+	'[[/_admin/design/hint/primary]]'				=> 'used exactly as picked',
+	'[[/_admin/design/label/secondary]]'		=> 'Second colour',
+	'[[/_admin/design/hint/secondary]]'			=> 'used exactly as picked',
+	'[[/_admin/design/hint/derived]]'				=> 'follows the harmony',
+	'[[/_admin/design/msg/brand-unsafe]]'		=> 'Text on the brand colour itself reads at %s:1 where %s:1 is needed. Anything written on is written on the solved one instead - the colour stays as it is.',
+
+	'[[/_admin/design/colour/harmony/label]]'	=> 'Harmony',
+	'[[/_admin/design/colour/harmony/note]]'	=> 'where the second colour sits',
+	'[[/_admin/design/colour/harmony/1]]'			=> 'Monochrome',
+	'[[/_admin/design/colour/harmony/2]]'			=> 'Analogous',
+	'[[/_admin/design/colour/harmony/3]]'			=> 'Triadic',
+	'[[/_admin/design/colour/harmony/4]]'			=> 'Complementary',
+
+	'[[/_admin/design/colour/temperature/label]]'	=> 'Temperature',
+	'[[/_admin/design/colour/temperature/note]]'	=> 'which way the greys lean',
+	'[[/_admin/design/colour/temperature/1]]'			=> 'Neutral',
+	'[[/_admin/design/colour/temperature/2]]'			=> 'Cool',
+	'[[/_admin/design/colour/temperature/3]]'			=> 'Brand',
+	'[[/_admin/design/colour/temperature/4]]'			=> 'Warm',
+
+	'[[/_admin/design/colour/saturation/label]]'	=> 'Saturation',
+	'[[/_admin/design/colour/saturation/note]]'		=> 'how much colour',
+	'[[/_admin/design/colour/saturation/1]]'			=> 'Muted',
+	'[[/_admin/design/colour/saturation/2]]'			=> 'Standard',
+	'[[/_admin/design/colour/saturation/3]]'			=> 'Rich',
+
+	'[[/_admin/design/colour/contrast/label]]'	=> 'Contrast',
+	'[[/_admin/design/colour/contrast/note]]'		=> 'how hard text reads',
+	'[[/_admin/design/colour/contrast/1]]'			=> 'Soft',
+	'[[/_admin/design/colour/contrast/2]]'			=> 'Standard',
+	'[[/_admin/design/colour/contrast/3]]'			=> 'Strong',
+
+	'[[/_admin/design/colour/depth/label]]'		=> 'Depth',
+	'[[/_admin/design/colour/depth/note]]'		=> 'how far surfaces lift',
+	'[[/_admin/design/colour/depth/1]]'				=> 'Flat',
+	'[[/_admin/design/colour/depth/2]]'				=> 'Standard',
+	'[[/_admin/design/colour/depth/3]]'				=> 'Raised',
 ];

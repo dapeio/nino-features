@@ -149,6 +149,14 @@ namespace Nino\Modules\Design {
 				'size' 		=> (string) ( $setup['size'] ?? 'm' ),
 				'steps' 	=> Setup::STEPS,
 				'sizes' 	=> array_keys( Setup::SIZES ),
+				/*	The palette half: where it stands, the vocabulary to draw it
+					with, and whether the picked brand colour is one text survives
+					on. The frontend carries no copy of the knob tables - it draws
+					whatever choices() hands it, so a knob added in Colours appears
+					here without this file or the script gaining a line */
+				'colours'	=> (array) ( $setup['colours'] ?? [] ),
+				'palette'	=> Colours::choices(),
+				'brand' 	=> Colours::brand( (array) ( $setup['colours'] ?? [] ) ),
 				'notes' 	=> $notes,
 				'target' 	=> Compiler::TARGET,
 			] + self::state( $appData, $setup, $library ) );
@@ -208,6 +216,7 @@ namespace Nino\Modules\Design {
 				'parts' 	=> is_array( $posted['parts'] ?? null ) === true ? $posted['parts'] : [],
 				'knobs' 	=> is_array( $posted['knobs'] ?? null ) === true ? $posted['knobs'] : [],
 				'size' 		=> (string) ( $posted['size'] ?? '' ),
+				'colours'	=> is_array( $posted['colours'] ?? null ) === true ? $posted['colours'] : [],
 				// Kept, so saving a choice does not lose what was last compiled
 				'compiled'=> Setup::read( $appData, $library )['compiled'] ?? [],
 			], $library, $notes );
@@ -301,6 +310,7 @@ namespace Nino\Modules\Design {
 				'parts' 	=> is_array( $posted['parts'] ?? null ) === true ? $posted['parts'] : [],
 				'knobs' 	=> is_array( $posted['knobs'] ?? null ) === true ? $posted['knobs'] : [],
 				'size' 		=> (string) ( $posted['size'] ?? '' ),
+				'colours'	=> is_array( $posted['colours'] ?? null ) === true ? $posted['colours'] : [],
 			], $library, $notes );
 
 			$css 			= Preview::css( $setup, $library, \Nino\Filesystem::getPublicDir( $appData ), $notes );

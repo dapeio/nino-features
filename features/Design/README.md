@@ -286,14 +286,67 @@ A percentage of the visitor's browser default, never a `px` length - `html`'s
 `font-size` is the only place `--base-size` is read, so one pair scales every
 `rem` on the page and nothing else has to know.
 
+## Colours
+
+The second tab, and the other half of a design: the structure decides which set
+a part is on, the palette decides what every one of those sets is drawn in.
+
+Two colours and five knobs.
+
+- **Brand colour** and **Second colour**, both used *exactly* as picked. The
+  second one may be left alone, and then it is not missing - it is derived, and
+  **Harmony** says where on the wheel it lands.
+- **Harmony** - Monochrome, Analogous, Triadic, Complementary. Only in force
+  while no second colour of your own is set.
+- **Temperature** - which hue the greys lean on. At *Brand* they carry a trace
+  of the brand itself, at *Neutral* no colour at all.
+- **Saturation** - how much colour every surface carries, not only the brand.
+- **Contrast** - how hard the type reads. Every position clears WCAG AA; the
+  knob decides how far above it the ink sits.
+- **Depth** - how far a panel separates from the page: the alternate surface,
+  the borders and the shadows move together.
+
+Out of that comes every surface a look bands with - `default`, `alt`, `tint`,
+`dark`, `black`, the four brand roles and the three status ones - and, for each,
+everything that has to be readable on it: the ink, the muted ink, the link, the
+border, the focus ring, hover, active, disabled and a shadow.
+
+**The promise is measured, not assumed.** Colours are solved in OKLCH, whose
+lightness is perceptual, so a hue can be moved onto a contrast target without
+changing what colour it reads as. Every emitted pair is then checked with the
+real WCAG formula; the suite holds all of them to 4.5:1 in both modes.
+
+Two surfaces are deliberately outside that promise and say so: `brand` and
+`accent` are the colours the picker returned, byte for byte, so there is no
+lightness left to solve with. That is what `brand-safe` and `accent-safe` are
+for, and it is what a look writes on. Where the brand as picked does not clear
+the target by itself, the panel says so under the swatch rather than quietly
+moving the colour.
+
+**Nothing moves until you move it.** With the knobs where they start, the solver
+lands on the framework's own palette to the byte - the same values `base.css`
+declares as a static default. A project that never opens this tab compiles to
+the colours it already had.
+
+Light and dark come out of the same settings. The generated block writes the
+light palette to `:root`, and the dark one twice: once inside
+`@media (prefers-color-scheme: dark)` for the reader who has chosen nothing, and
+once on `:root[data-nino-mode="dark"]` for the one who has.
+
+The maths is the kernel's own Design module, which shipped this until the look
+left the core in 1.2. It was measured against the framework's colours, and there
+was no reason to re-derive it - what did not come along is the size raster,
+which the library's part sets and their knobs now own.
+
 ## What it compiles
 
 `Compiler::compile()` concatenates, in this order:
 
 1. `base.css` - tokens and roles
-2. the root size pair
-3. … the chosen frames, then the chosen sets, in `PARTS` order
-4. last, the knob positions
+2. the palette
+3. the root size pair
+4. … the chosen frames, then the chosen sets, in `PARTS` order
+5. last, the knob positions
 
 and puts a header on top naming what was chosen, plus the sha256 of everything
 below it.

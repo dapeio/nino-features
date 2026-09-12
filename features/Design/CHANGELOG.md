@@ -80,6 +80,56 @@ for, and the version says 0 for that reason.
   workbench's own `Nino.adminUi.scaleFrame()` rather than by a second copy of
   that arithmetic here.
 
+### The palette
+
+- **Colours**, the second tab - and the half of a design that was missing.
+  Structure decides which set a part is on; the palette decides what every one
+  of those sets is drawn in. Two colours and five knobs: Harmony, Temperature,
+  Saturation, Contrast and Depth.
+
+  Out of them comes every surface a look bands with - `default`, `alt`, `tint`,
+  `dark`, `black`, four brand roles and three status ones - and, for each,
+  everything that has to be readable on it: ink, muted ink, link, border, focus
+  ring, hover, active, disabled, shadow. Light and dark from the same settings,
+  the dark block written twice so the reader who chose nothing and the one who
+  chose both get the right one.
+
+  The promise is measured rather than assumed. Colours are solved in OKLCH,
+  whose lightness is perceptual, so a hue can be moved onto a contrast target
+  without changing what colour it reads as; every emitted pair is then checked
+  with the real WCAG formula. `brand` and `accent` are the two deliberate
+  exceptions - the colours the picker returned, byte for byte, with no lightness
+  left to solve with - which is what `brand-safe` and `accent-safe` exist for,
+  and the panel says so under the swatch where the picked colour does not clear
+  the target by itself.
+
+  **With nothing touched the solver lands on the framework's own palette to the
+  byte** - all 121 declarations of `library/base.css`, light and dark. A project
+  that never opens this tab compiles to the colours it already had, which is the
+  property that makes the tab adoptable at all and the first thing the suite
+  checks.
+
+  The maths is the kernel's own Design module, which shipped this until the look
+  left the core in 1.2, lifted unchanged: it was measured against the
+  framework's colours and there was no reason to re-derive it. What did not come
+  along is the size raster - the library's part sets and their knobs own that
+  now.
+
+- A **tab bar** over the controls, `Struktur | Farben`. Switching redraws the
+  column and leaves the frame beside it alone: the page in it is the same page
+  under either tab, so rebuilding it would cost a request and a flash for a
+  click that changed which controls are on screen and nothing about the design.
+
+- `tests/design-smoke.php` is 129 checks. The new ones: that the untouched
+  palette reproduces `base.css` exactly in both modes, that both blocks publish
+  the full surface vocabulary, that the three reader states are all written,
+  that every solved surface clears 4.5:1 in both modes - including with a
+  corporate hex nobody chose for its contrast - that the two picked colours come
+  back untouched while their `-safe` roles are solved, that red stays red
+  whatever the brand is, that a knob that moves moves something, and that the
+  palette travels out in the list, back in on a save and through a preview
+  without being written.
+
 ### Fixed before it shipped
 
 - **A frame is a stylesheet and the markup it was drawn against, and `apply()`

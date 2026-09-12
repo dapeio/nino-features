@@ -86,15 +86,24 @@ namespace Nino\Modules\Design {
 			else
 				$parts[] = sprintf( self::SECTION, 1, 'the design tokens and their roles' ). "\n". self::_read( $base );
 
-			// 2. the root size, as the percentage pair Nino.css reads
+			/*	2. the palette, which is base.css's own surfaces with solved
+				values rather than a second vocabulary beside them. It has to
+				follow base.css and precede everything else: a part set may reach
+				for --nino-alt, and reading a value the block below is about to
+				replace is how a set ends up half in one palette and half in the
+				other */
+			$parts[] = sprintf( self::SECTION, 2, 'the palette' ). "\n"
+				. Colours::css( is_array( $setup['colours'] ?? null ) ? $setup['colours'] : [] );
+
+			// 3. the root size, as the percentage pair Nino.css reads
 			$size = Setup::SIZES[ $setup['size'] ?? 'm' ] ?? Setup::SIZES['m'];
-			$parts[] = sprintf( self::SECTION, 2, 'the root size' ). "\n"
+			$parts[] = sprintf( self::SECTION, 3, 'the root size' ). "\n"
 				. ":root { --nino-base-size: ". $size[0]. "; }\n"
 				. "@media (min-width: 768px) { :root { --nino-base-size: ". $size[1]. "; } }";
 
-			// 3. the frames, then 4. the sets - both in PARTS order, which is
+			// 4. the frames, then 5. the sets - both in PARTS order, which is
 			// the order the cascade wants them in
-			$number = 3;
+			$number = 4;
 
 			foreach( Setup::PARTS as $part => $kind ) {
 

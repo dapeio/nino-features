@@ -42,6 +42,9 @@
 		_part		: 'global',
 		// Whether the frame follows the picker to the part that was opened
 		_follow	: true,
+		// Which half of a design is open: the structure - which set a part is
+		// on and where its knobs stand - or the palette everything is drawn in
+		_tab		: 'structure',
 		// The header and footer the frame was last built with. Everything else
 		// is a stylesheet, and a stylesheet can be swapped inside it
 		_frames	: null,
@@ -108,7 +111,12 @@
 				// still following the global position keeps following it
 				parts[row.part] = { set : row.set, knobs : Object.assign( {}, row.moved || {} ) };
 			} );
-			return { parts : parts, knobs : Object.assign( {}, data.knobs || {} ), size : data.size };
+			return {
+				parts 	: parts,
+				knobs 	: Object.assign( {}, data.knobs || {} ),
+				size 		: data.size,
+				colours	: Object.assign( {}, data.colours || {} ),
+			};
 		},
 
 		/**
@@ -175,27 +183,7 @@
 			const layout = dc.createElement('div');
 			layout.id = 'design-layout';
 
-			const controls = dc.createElement('div');
-			controls.id = 'design-controls';
-
-			controls.appendChild( Nino.admin.design._renderPicker() );
-
-			const part = dc.createElement('div');
-			part.id = 'design-part';
-			controls.appendChild( part );
-
-			( data.notes || [] ).forEach( function( note ) {
-				const p = dc.createElement('p');
-				p.className = 'nino-admin-error';
-				p.textContent = note;
-				controls.appendChild( p );
-			} );
-
-			// What the file on disk is, at the bottom: true and worth saying,
-			// and not what somebody opening this screen came to find out
-			controls.appendChild( Nino.admin.design._renderState() );
-
-			layout.appendChild( controls );
+			layout.appendChild( Nino.admin.design._renderControls() );
 			layout.appendChild( Nino.admin.design._renderPreview() );
 			wrap.appendChild( layout );
 
@@ -226,7 +214,9 @@
 			wrap.appendChild( Nino.adminUi.actionBar( actions ) );
 			wrap.appendChild( msg );
 
-			Nino.admin.design._renderCurrentPart();
+			// Only the structure half has a part below the picker to fill
+			if( Nino.admin.design._tab !== 'colours' )
+				Nino.admin.design._renderCurrentPart();
 
 			/*	A rendered screen has an empty frame in it, and the frame is the
 				answer to what every select above it means - so it is filled
@@ -524,6 +514,293 @@
 		 *
 		 *	@return		void
 		 */
+		/**
+		 *	The controls column, on its own so a tab switch can redraw it
+		 *	without touching the frame beside it.
+		 *
+		 *	@return		{HTMLElement}
+		 */
+		_renderControls : function() {
+
+			const controls = dc.createElement('div');
+			controls.id = 'design-controls';
+
+			controls.appendChild( Nino.admin.design._renderTabs() );
+
+			if( Nino.admin.design._tab === 'colours' )
+				controls.appendChild( Nino.admin.design._renderColours() );
+			else {
+				controls.appendChild( Nino.admin.design._renderPicker() );
+
+				const part = dc.createElement('div');
+				part.id = 'design-part';
+				controls.appendChild( part );
+			}
+
+			( ( Nino.admin.design._data || {} ).notes || [] ).forEach( function( note ) {
+				const p = dc.createElement('p');
+				p.className = 'nino-admin-error';
+				p.textContent = note;
+				controls.appendChild( p );
+			} );
+
+			// What the file on disk is, at the bottom: true and worth saying,
+			// and not what somebody opening this screen came to find out
+			controls.appendChild( Nino.admin.design._renderState() );
+
+			return controls;
+		},
+
+		/**
+		 *	The two halves of a design. Structure is which set a part is on and
+		 *	where its knobs stand; colours is the palette every one of those
+		 *	sets draws in - one question about shape, one about colour, and
+		 *	nine parts' worth of rows between them if they share a column.
+		 *
+		 *	A tablist rather than a button group, because these really are two
+		 *	panels: aria-selected, not aria-pressed.
+		 *
+		 *	@return		{HTMLElement}
+		 */
+		_renderTabs : function() {
+
+			const bar = dc.createElement('div');
+			bar.className = 'nino-admin-tabs design-tabs';
+			bar.setAttribute( 'role', 'tablist' );
+			bar.setAttribute( 'aria-label', Nino.content.getText('/_admin/design/label/title') );
+
+			const buttons = {};
+
+			[ 'structure', 'colours' ].forEach( function( key ) {
+				const button = dc.createElement('button');
+				button.type = 'button';
+				button.className = 'nino-admin-tab';
+				button.setAttribute( 'role', 'tab' );
+				button.textContent = Nino.content.getText('/_admin/design/tab/'+ key);
+				buttons[key] = button;
+				bar.appendChild( button );
+			} );
+
+			Nino.adminUi.buttonRow( buttons, Nino.admin.design._tab, function( key ) {
+				Nino.admin.design._switchTab( key );
+			}, 'aria-selected' );
+
+			return bar;
+		},
+
+		/**
+		 *	Open the other half.
+		 *
+		 *	Only the column is redrawn, never the frame beside it: the page in
+		 *	it is the same page under either tab, so rebuilding it would cost a
+		 *	request and a flash for a click that changed which controls are on
+		 *	screen and nothing at all about the design.
+		 *
+		 *	@param		{string}	key			'structure' or 'colours'
+		 *
+		 *	@return		void
+		 */
+		_switchTab : function( key ) {
+
+			if( key === Nino.admin.design._tab )
+				return;
+
+			Nino.admin.design._tab = key;
+
+			const column = dc.getElementById('design-controls');
+
+			if( column === null )
+				return Nino.admin.design._render();
+
+			column.replaceWith( Nino.admin.design._renderControls() );
+
+			// ...and the part below the picker, which needs the new column to
+			// be in the document before it can find its own node in it
+			if( Nino.admin.design._tab !== 'colours' )
+				Nino.admin.design._renderCurrentPart();
+		},
+
+		/**
+		 *	The palette half: two colours, and the five knobs that decide what
+		 *	the solver does with them.
+		 *
+		 *	@return		{HTMLElement}
+		 */
+		_renderColours : function() {
+
+			const wrap = dc.createElement('div');
+			wrap.id = 'design-colours';
+
+			const hint = dc.createElement('p');
+			hint.className = 'nino-admin-hint';
+			hint.textContent = Nino.content.getText('/_admin/design/hint/colours');
+			wrap.appendChild( hint );
+
+			wrap.appendChild( Nino.admin.design._colourField('primary') );
+			wrap.appendChild( Nino.admin.design._colourField('secondary') );
+
+			/*	brand and accent are the two surfaces with no contrast promise -
+				they are the hex the picker returned, byte for byte, so there is
+				no lightness left to solve with. Everything a theme writes on
+				uses the -safe roles instead, and this is the one place the
+				panel can say that the colour as picked is not one of them */
+			const brand = ( ( Nino.admin.design._data || {} ).brand || {} ).light || null;
+
+			if( brand !== null && brand.safe === false ) {
+				const warn = dc.createElement('p');
+				warn.className = 'nino-admin-hint design-colour-warning';
+				warn.textContent = Nino.admin.design._text( '/_admin/design/msg/brand-unsafe', brand.ratio, brand.target );
+				wrap.appendChild( warn );
+			}
+
+			// Drawn out of what design/list handed over, so a knob added in
+			// Colours appears here without this file gaining a line
+			const palette = ( Nino.admin.design._data || {} ).palette || {};
+
+			Object.keys( palette ).forEach( function( key ) {
+				wrap.appendChild( Nino.admin.design._colourKnobRow( key, palette[key] ) );
+			} );
+
+			return wrap;
+		},
+
+		/**
+		 *	One of the two colours.
+		 *
+		 *	Secondary has a state primary does not: empty, which is the
+		 *	ordinary answer rather than a missing one - it means "let Harmony
+		 *	put the second colour on the wheel". An <input type="color"> cannot
+		 *	be empty, so the state lives beside it and the reset goes back to it
+		 *
+		 *	@param		{string}	key			'primary' or 'secondary'
+		 *
+		 *	@return		{HTMLElement}
+		 */
+		_colourField : function( key ) {
+
+			const edit 		= Nino.admin.design._edit;
+			const value 	= String( ( edit.colours || {} )[key] || '' );
+			const derived	= key === 'secondary' && value === '';
+
+			const field = dc.createElement('div');
+			field.className = 'design-colour-row'+ ( derived === true ? ' design-colour-row--derived' : '' );
+
+			const label = dc.createElement('label');
+			label.className = 'design-colour-label';
+			label.setAttribute( 'for', 'design-colour-'+ key );
+			label.textContent = Nino.content.getText('/_admin/design/label/'+ key);
+
+			const note = dc.createElement('small');
+			note.textContent = derived === true
+				? Nino.content.getText('/_admin/design/hint/derived')
+				: Nino.content.getText('/_admin/design/hint/'+ key);
+			label.appendChild( note );
+
+			field.appendChild( label );
+
+			const input = dc.createElement('input');
+			input.type = 'color';
+			input.id = 'design-colour-'+ key;
+			input.className = 'design-colour-input';
+			// A derived secondary still shows something valid to open the
+			// picker on, and the primary is the honest thing for it to be
+			input.value = value !== '' ? value : String( ( edit.colours || {} ).primary || '#4faae8' );
+			input.addEventListener( 'change', function() { Nino.admin.design._setColour( key, this.value ) } );
+			field.appendChild( input );
+
+			// Only the second colour has something to go back to
+			if( key === 'secondary' && derived === false ) {
+				const reset = dc.createElement('button');
+				reset.type = 'button';
+				reset.className = 'design-knob-reset';
+				reset.textContent = '↺';
+				reset.title = Nino.content.getText('/_admin/design/hint/derived');
+				reset.setAttribute( 'aria-label', Nino.content.getText('/_admin/design/hint/derived') );
+				reset.addEventListener( 'click', function() { Nino.admin.design._setColour( key, '' ) } );
+				field.appendChild( reset );
+			}
+
+			return field;
+		},
+
+		/**
+		 *	One colour knob. Same row as a part's knob, over as many positions
+		 *	as the knob publishes - three for a scale, four for a choice like
+		 *	Harmony, where the positions are alternatives rather than a track
+		 *
+		 *	@param		{string}	key
+		 *	@param		{Object}	meta		One entry of Colours::choices()
+		 *
+		 *	@return		{HTMLElement}
+		 */
+		_colourKnobRow : function( key, meta ) {
+
+			const field = dc.createElement('div');
+			field.className = 'design-knob-row';
+
+			const label = dc.createElement('span');
+			label.className = 'design-knob-label';
+			label.textContent = Nino.content.getText('/_admin/design/colour/'+ key+ '/label');
+
+			const note = dc.createElement('small');
+			note.textContent = Nino.content.getText('/_admin/design/colour/'+ key+ '/note');
+			label.appendChild( note );
+
+			field.appendChild( label );
+
+			const group = dc.createElement('div');
+			group.className = 'nino-admin-tabs design-knob-steps';
+			group.setAttribute( 'role', 'group' );
+			group.setAttribute( 'aria-label', Nino.content.getText('/_admin/design/colour/'+ key+ '/label') );
+
+			const buttons = {};
+
+			( meta.steps || [] ).forEach( function( name, index ) {
+				const position = String( index + 1 );
+				const button = dc.createElement('button');
+				button.type = 'button';
+				button.className = 'nino-admin-tab';
+				// The position's own name is the label here, not a step word:
+				// "Monochrom" and "Triadisch" are not less and more of anything
+				button.textContent = Nino.content.getText('/_admin/design/colour/'+ key+ '/'+ position) || name;
+				buttons[position] = button;
+				group.appendChild( button );
+			} );
+
+			Nino.adminUi.buttonRow( buttons, String( ( Nino.admin.design._edit.colours || {} )[key] || meta['default'] ), function( position ) {
+				Nino.admin.design._setColourKnob( key, position );
+			} );
+
+			field.appendChild( group );
+
+			return field;
+		},
+
+		_setColour : function( key, value ) {
+			Nino.admin.design._edit.colours = Nino.admin.design._edit.colours || {};
+			Nino.admin.design._edit.colours[key] = value;
+			Nino.admin.design._redrawColours();
+		},
+
+		_setColourKnob : function( key, position ) {
+			Nino.admin.design._edit.colours = Nino.admin.design._edit.colours || {};
+			Nino.admin.design._edit.colours[key] = parseInt( position, 10 );
+			Nino.admin.design._preview();
+		},
+
+		/*	A colour change redraws its own rows - the second colour's label and
+			its reset both depend on whether it is set - where a knob only ever
+			moves the frame. Both then ask for a new stylesheet */
+		_redrawColours : function() {
+
+			const old = dc.getElementById('design-colours');
+
+			if( old !== null )
+				old.replaceWith( Nino.admin.design._renderColours() );
+
+			Nino.admin.design._preview();
+		},
+
 		_setStep : function( key, step ) {
 
 			const edit = Nino.admin.design._edit;
@@ -714,7 +991,7 @@
 			}
 
 			Nino.admin.design._apiCall( 'preview', {
-				parts : edit.parts, knobs : edit.knobs, size : edit.size, full : full
+				parts : edit.parts, knobs : edit.knobs, size : edit.size, colours : edit.colours, full : full
 			}, function( status, response ) {
 
 				if( status !== 200 || response === null ) {

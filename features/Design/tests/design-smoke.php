@@ -136,8 +136,9 @@ if( preg_match_all( '/\/\* ==== (\d+)\. (.+?) ==== \*\//', $css, $sections, PREG
 	foreach( $sections as $section )
 		$order[] = trim( $section[2] );
 
-check( 'the tokens come first and the root size second', ( $order[0] ?? '' ) === 'the design tokens and their roles' && ( $order[1] ?? '' ) === 'the root size' );
-check( '...then the frames, then the sets, in the order the parts are declared in, each saying where its knobs stand', array_slice( $order, 2, 9 ) === [
+check( 'the tokens come first, then the palette, then the root size', ( $order[0] ?? '' ) === 'the design tokens and their roles'
+	&& ( $order[1] ?? '' ) === 'the palette' && ( $order[2] ?? '' ) === 'the root size' );
+check( '...then the frames, then the sets, in the order the parts are declared in, each saying where its knobs stand', array_slice( $order, 3, 9 ) === [
 	'header: v1', 'footer: v1',
 	'atf: v1 (volume default, spacing default)',
 	'section: v1 (volume default, spacing default)',
@@ -151,6 +152,101 @@ check( 'the token layer really is in there', str_contains( $css, '--nino-default
 check( 'the root size is the relative pair, never a length', str_contains( $css, '--nino-base-size: 100%;' ) === true
 	&& str_contains( $css, '@media (min-width: 768px) { :root { --nino-base-size: 112.5%; } }' ) === true
 	&& preg_match( '/--nino-base-size:\s*\d+px/', $css ) !== 1 );
+
+echo "\n";
+
+
+// --- The palette -----------------------------------------------------------
+
+echo "Colours - the surfaces a look bands with, solved rather than written\n";
+
+/**	Every --nino-* declaration inside a stretch of css, as key => value */
+function designDecls( string $css ): array {
+	$out = [];
+	if( preg_match_all( '/(--nino-[a-z0-9-]+)\s*:\s*([^;]+);/', $css, $m ) === 1 || $m[1] !== [] )
+		foreach( $m[1] as $i => $key )
+			$out[$key] = trim( $m[2][$i] );
+	return $out;
+}
+
+$base				= (string) file_get_contents( $library. '/base.css' );
+$baseLight	= designDecls( substr( $base, (int) strpos( $base, ':root {' ), (int) strpos( $base, '@media (min-width' ) - (int) strpos( $base, ':root {' ) ) );
+$darkAt			= (int) strpos( $base, ':root[data-nino-mode="dark"] {' );
+$baseDark		= designDecls( substr( $base, $darkAt, (int) strpos( $base, '}', (int) strpos( $base, '--nino-scrim', $darkAt ) ) - $darkAt ) );
+
+$colours		= \Nino\Modules\Design\Colours::css( [] );
+$genLight		= designDecls( substr( $colours, 0, (int) strpos( $colours, '@media' ) ) );
+$genDark		= designDecls( substr( $colours, (int) strpos( $colours, ':root[data-nino-mode="dark"]' ) ) );
+
+/*	The property that makes the tab adoptable, and the reason the maths was
+	lifted unchanged rather than rewritten: with nothing touched, the solver
+	lands on the framework's own palette to the byte. A project that never
+	opens this tab therefore compiles to the colours library/base.css already
+	declares, and one that does gets the same tokens one block further down the
+	same cascade	*/
+check( 'the untouched palette reproduces base.css exactly, light', $genLight !== [] && array_intersect_key( $baseLight, $genLight ) === $genLight );
+check( '...and dark', $genDark !== [] && array_intersect_key( $baseDark, $genDark ) === $genDark );
+check( 'both blocks publish the full surface vocabulary', count( $genLight ) === count( $genDark )
+	&& count( $genLight ) === count( \Nino\Modules\Design\Colours::SURFACES ) * 10 + 1 );
+
+/*	Three reader states, not two: an explicit choice stamps data-nino-mode, the
+	default "follow the system" setting stamps nothing at all - so the media
+	query has to carry the unstamped case while the attribute rule wins in both
+	directions once somebody has chosen	*/
+check( 'the light palette is the bare :root', str_starts_with( $colours, ":root {\n\t--nino-default:" ) === true );
+check( 'the system default is carried by the media query', str_contains( $colours, '@media (prefers-color-scheme: dark) {' ) === true
+	&& str_contains( $colours, ':root:not([data-nino-mode="light"]) {' ) === true );
+check( '...and an explicit choice wins in both directions', str_contains( $colours, ':root[data-nino-mode="dark"] {' ) === true );
+check( 'no color-scheme declaration of its own - base.css sets that, this only replaces values', preg_match( '/^\s*color-scheme\s*:/m', $colours ) !== 1 );
+
+/*	The one line in the engine that is not negotiable. 4.5:1 is WCAG 2.2
+	SC 1.4.3 for body copy, and it holds for every solved surface in both
+	modes. brand and accent are the two exceptions and say so: they are the
+	colours the picker returned, byte for byte, so there is no lightness left
+	to solve with - which is exactly why the two -safe roles exist	*/
+$unsafe = [];
+
+foreach( [ 'light', 'dark' ] as $mode )
+	foreach( \Nino\Modules\Design\Colours::palette( [], $mode ) as $surface => $values )
+		if( in_array( $surface, [ 'brand', 'accent' ], true ) === false
+			&& \Nino\Modules\Design\Colours::contrast( $values['on'], $values['bg'] ) < 4.5 )
+			$unsafe[] = $mode. '/'. $surface;
+
+check( 'every solved surface clears 4.5:1 in both modes', $unsafe === [] );
+
+$corporate = [ 'primary' => '#8b1d3f', 'secondary' => '#0f766e' ];
+$picked2 = \Nino\Modules\Design\Colours::palette( $corporate, 'light' );
+
+check( 'the brand is the hex that was typed, untouched', $picked2['brand']['bg'] === '#8b1d3f' );
+check( '...and so is the second colour', $picked2['accent']['bg'] === '#0f766e' );
+check( '...while their -safe roles are the same colours solved until text survives',
+	\Nino\Modules\Design\Colours::contrast( $picked2['brand-safe']['on'], $picked2['brand-safe']['bg'] ) >= 4.5
+	&& \Nino\Modules\Design\Colours::contrast( $picked2['accent-safe']['on'], $picked2['accent-safe']['bg'] ) >= 4.5 );
+check( 'a corporate hex still clears the target on every solved surface',
+	array_filter( \Nino\Modules\Design\Colours::palette( $corporate, 'dark' ), static fn( array $v, string $k ): bool =>
+		in_array( $k, [ 'brand', 'accent' ], true ) === false
+		&& \Nino\Modules\Design\Colours::contrast( $v['on'], $v['bg'] ) < 4.5, ARRAY_FILTER_USE_BOTH ) === [] );
+
+// Status hues are fixed on purpose - no brand knob may turn a danger surface
+// into something reassuring
+$hot = \Nino\Modules\Design\Colours::palette( [ 'primary' => '#2e7d32' ], 'light' );
+check( 'red stays red whatever the brand is', $hot['danger']['bg'] !== $hot['success']['bg']
+	&& \Nino\Modules\Design\Colours::oklch( $hot['danger']['bg'] )[2] < 1.0 );
+
+// ...and a knob that moves has to move something
+$flat = \Nino\Modules\Design\Colours::css( [ 'depth' => 1 ] );
+$neutral = \Nino\Modules\Design\Colours::css( [ 'temperature' => 1 ] );
+check( 'Depth moves the alternate ground', designDecls( $flat )['--nino-alt'] !== $genLight['--nino-alt'] );
+check( 'Temperature takes the colour out of the greys at Neutral', designDecls( $neutral )['--nino-alt'] !== $genLight['--nino-alt'] );
+check( 'an unknown knob position falls back rather than indexing a table with it',
+	\Nino\Modules\Design\Colours::normalize( [ 'contrast' => 99, 'primary' => 'nonsense' ] ) === \Nino\Modules\Design\Colours::normalize( [] ) );
+
+// The compiled sheet carries it, in the section the order test named
+check( 'the compiled sheet carries the palette', str_contains( $css, ':root[data-nino-mode="dark"] {' ) === true
+	&& substr_count( $css, '--nino-brand-safe:' ) >= 1 );
+
+echo "\n";
+echo "Compiler - the sheet a setup produces\n";
 
 $large = \Nino\Modules\Design\Compiler::compile( \Nino\Modules\Design\Setup::normalize( [ 'size' => 'l' ], $library ), $library );
 check( 'the size knob moves the pair, not one half of it', str_contains( $large, '--nino-base-size: 106.25%;' ) === true
@@ -494,6 +590,46 @@ check( 'a change that is only a stylesheet sends only that - the frame on screen
 check( 'previewing writes neither the setup nor the stylesheet',
 	\Nino\Modules\Design\Setup::read( $appData, $library ) === $stored
 	&& \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Design\Compiler::TARGET, '' ) === $sheet );
+
+/*	The palette travels the same three ways the structure does: out in the
+	list, back in on a save, and through a preview without being written. The
+	vocabulary goes with it - the panel draws whatever choices() publishes, so
+	a knob added in Colours appears on screen without the script or the panel
+	gaining a line */
+[ $status, $listed ] = callDesignAction( $appData, 'apiList' );
+
+check( 'the list hands over where the palette stands, and the words to draw it with', $status === 200
+	&& is_array( $listed['colours'] ?? null ) === true
+	&& ( $listed['colours']['primary'] ?? '' ) !== ''
+	&& array_keys( (array) ( $listed['palette'] ?? [] ) ) === [ 'harmony', 'temperature', 'saturation', 'contrast', 'depth' ] );
+check( '...each knob with its own positions, three for a scale and four for a choice',
+	count( (array) ( $listed['palette']['harmony']['steps'] ?? [] ) ) === 4
+	&& count( (array) ( $listed['palette']['contrast']['steps'] ?? [] ) ) === 3
+	&& ( $listed['palette']['harmony']['kind'] ?? '' ) === 'choice'
+	&& ( $listed['palette']['contrast']['kind'] ?? '' ) === 'scale' );
+check( '...and whether the colour that was picked is one text survives on',
+	isset( $listed['brand']['light']['safe'] ) === true && isset( $listed['brand']['dark']['ratio'] ) === true );
+
+[ $status, ] = callDesignAction( $appData, 'apiSave', [
+	'parts' => [], 'knobs' => [], 'size' => 'm',
+	'colours' => [ 'primary' => '#8b1d3f', 'secondary' => '#0f766e', 'temperature' => 1 ],
+] );
+$saved = \Nino\Modules\Design\Setup::read( $appData, $library );
+
+check( 'a save keeps the palette, normalized', $status === 200
+	&& ( $saved['colours']['primary'] ?? '' ) === '#8b1d3f'
+	&& ( $saved['colours']['secondary'] ?? '' ) === '#0f766e'
+	&& ( $saved['colours']['temperature'] ?? 0 ) === 1
+	&& ( $saved['colours']['contrast'] ?? 0 ) === 2 );
+check( '...and the compiled sheet carries that colour, exactly as it was typed',
+	str_contains( \Nino\Modules\Design\Compiler::compile( $saved, $library ), '--nino-brand: #8b1d3f;' ) === true );
+
+[ $status, $coloured ] = callDesignAction( $appData, 'apiPreview', [
+	'parts' => [], 'size' => 'm', 'colours' => [ 'primary' => '#2e7d32' ], 'full' => false,
+] );
+check( 'a preview shows the colour that was posted rather than the one on disk', $status === 200
+	&& str_contains( (string) ( $coloured['css'] ?? '' ), '--nino-brand: #2e7d32;' ) === true
+	&& ( \Nino\Modules\Design\Setup::read( $appData, $library )['colours']['primary'] ?? '' ) === '#8b1d3f' );
 
 \Nino\Auth::logoutUser( $appData );
 check( 'every action of the panel refuses a request with no session',
