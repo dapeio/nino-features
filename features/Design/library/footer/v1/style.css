@@ -1,3 +1,13 @@
+/*	Nino Design - footer v1
+ *
+ *	@name				One legal row
+ *	@description	Copyright, the footer navigation and the legal links on a single row. The smallest footer there is.
+ *
+ *	The name and the description are what the Design panel lists this
+ *	variant as. Every library file carries them; a file without a @name
+ *	is offered under its own file name instead.
+ */
+
 .nino-footer-nav .nino-footer-title {
 	display:none;
 }

@@ -1,6 +1,9 @@
 /*	Nino Design - buttons
  *	Buttons - Form, Füllung, Größenverhältnisse, Hover
  *
+ *	@name				Nino
+ *	@description	The framework as it is - this set declares nothing. Every .nino-btn variant, and the link that looks like one.
+ *
  *	v1 is the starting point, not a design: it declares nothing and lets the
  *	framework's own rules stand, so a fresh preview shows Nino as it is. Every
  *	rule Nino.css sets for this part is listed below, commented out, with the

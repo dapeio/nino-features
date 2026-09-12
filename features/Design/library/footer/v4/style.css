@@ -1,3 +1,13 @@
+/*	Nino Design - footer v4
+ *
+ *	@name				Two panels
+ *	@description	The foot split into a brand panel and an info panel that sit against each other, with the legal row below.
+ *
+ *	The name and the description are what the Design panel lists this
+ *	variant as. Every library file carries them; a file without a @name
+ *	is offered under its own file name instead.
+ */
+
 .nino-frame-footer {
 	background-color: var(--color-section-black-bg);
 	color: var(--color-section-black-text);

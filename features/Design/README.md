@@ -14,12 +14,10 @@ not offer themes. It offers a **set per part**, so that loud section titles
 from one design and round buttons from another is a thing you can have rather
 than a thing you argue yourself out of.
 
-> **0.1.0 is the core, not the whole feature.** The setup store, the compiler,
-> the library and the tests are here; the workbench panel that edits the setup
-> is not. `adminPanels()` returns an empty list on purpose, and the smoke test
-> checks that it does. Until the panel lands, a setup is edited as
-> `data/design.php` and applied by calling `\Nino\Modules\Design::apply()` -
-> or looked at in the preview harness described below.
+> **0.1.0 is the feature without its part styles.** The setup store, the
+> compiler, the library, the panel and the tests are here. What is thin is the
+> catalogue: six headers and seven footers are real, but every part set is the
+> empty `v1` that declares nothing. Writing those is the work this exists for.
 
 ## The nine parts
 
@@ -46,6 +44,33 @@ article title is inside a section, and a button is inside both. What a part
 owns is a list of classes, not a region. `Setup::PARTS` is that list, in the
 order the cascade wants the parts concatenated in.
 
+## The panel
+
+**Design**, in the workbench's **Features** group; one permission,
+`/_admin/design/manage`. One screen: the two decisions that are about the whole
+page, then a row per part with the variant it is given and - for a set - the
+step it may deviate at. Each row says what the chosen variant is, out of the
+variant's own `@name` and `@description`.
+
+Choosing and compiling are two actions on purpose. **Save the selection**
+writes `data/design.php` and nothing else; **Save and compile** writes it and
+then produces `assets/theme.css` and the two frame templates. A decision is not
+a stylesheet, and the screen says when the two have drifted apart rather than
+hiding it behind an autosave:
+
+| | |
+| --- | --- |
+| *The file answers to this selection.* | compiled, and nothing has changed since |
+| *saved but not compiled* | the selection is on disk, the site still shows the previous one |
+| *never compiled* | there is no `assets/theme.css` of ours yet |
+| *not one of ours* | the delivered file, or one somebody edited - see below |
+
+The last of those is the normal first run: a project's `assets/theme.css` is
+the wizard's until this feature takes it over. The panel turns
+`Compiler::write()`'s refusal into a question rather than an error - the button
+reads **Take the file over and compile**, once, and says so in the activity
+log. The same holds for the two frame templates.
+
 ## The library
 
 `library/` holds what a project can choose from, and the feature ships it:
@@ -66,6 +91,23 @@ done: the installer library is gone by the time anything here recompiles.
 `tests/design-smoke.php` holds the two files to each other wherever a checkout
 still has the installer, so they cannot drift into *installing Design silently
 changes how the site looks*.
+
+Every library file carries its own name and description in its opening
+comment, and that is what the panel lists it as:
+
+```css
+/*	Nino Design - header v3
+ *
+ *	@name				Floating bar
+ *	@description	A rounded, slightly translucent bar with air around it,
+ *								capped at 92rem. Reads as current rather than as a frame.
+ */
+```
+
+A file without a `@name` is offered under its own file name, which is what a
+set in progress looks like. The tags live in the file rather than in a manifest
+beside it: a set is one file, and a second file per set is a second file to
+keep in sync.
 
 Every part ships `v1`, which is deliberately empty: it declares nothing and
 lets the framework's own rules stand, so a fresh compile renders Nino exactly
@@ -209,8 +251,12 @@ passed over in silence.
 
 ## Tests
 
-`tests/design-smoke.php` (52 checks) covers the manifest and activation through
+`tests/design-smoke.php` (77 checks) covers the manifest and activation through
 `\Nino\Features`, the library coverage per part, the traversal refusals,
 normalisation and step resolution, what the compiler emits and in which order,
-the cross-repo comparison of `base.css` against the delivered `theme.css`, and
-`write()`'s refusal and its `$force`.
+the cross-repo comparison of `base.css` against the delivered `theme.css`,
+`write()`'s refusal and its `$force` for the stylesheet **and** for the frame
+templates, the names and descriptions read out of the library files, and the
+panel's three actions - what it lists, that saving stores without compiling,
+that compiling is a `409` over a file that is not ours, and both refusal codes
+(`401` without a session, `403` without the permission).

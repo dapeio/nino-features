@@ -5,10 +5,38 @@ A release is the tag `design-<version>` of dapeio/nino-features.
 
 ## 0.1.0 — 2026-09-11
 
-First cut: the setup store, the compiler and the library. No workbench panel
-yet - `adminPanels()` returns an empty list, and a setup is edited as
-`data/design.php` or through `design-library/preview.php`. The version says
-0 for that reason.
+First cut: the setup store, the compiler, the library and the panel. What is
+thin is the catalogue - six headers and seven footers are real, every part set
+is the empty `v1` that declares nothing. Writing those is the work this exists
+for, and the version says 0 for that reason.
+
+### The panel
+
+- **Design**, in the workbench's Features group, one permission
+  `/_admin/design/manage`. The two decisions about the whole page, then a row
+  per part: the variant, and - for a set - the step it may deviate at. Each row
+  says what the chosen variant is.
+- Choosing and compiling are two actions. **Save the selection** writes
+  `data/design.php` and nothing else; **Save and compile** also produces
+  `assets/theme.css` and the frame templates. The screen says when the two have
+  drifted apart instead of hiding it behind an autosave.
+- The first compile in a project meets the wizard's own `assets/theme.css`.
+  `Compiler::write()`'s refusal becomes a question rather than an error: the
+  button reads **Take the file over and compile**, and the activity log records
+  that it was taken over.
+- Every library file carries `@name` and `@description` in its opening comment,
+  and that is what the panel lists it as. A file without a `@name` is offered
+  under its own file name. `Setup::describe()` and `Setup::catalogue()` read
+  them; the thirteen frames and the seven skeletons carry them.
+
+### Fixed before it shipped
+
+- **A frame is a stylesheet and the markup it was drawn against, and `apply()`
+  only wrote the stylesheet.** Choosing a header therefore put one variant's
+  css over another variant's html - found by checking the panel's own claim
+  that compiling overwrites the two frame templates, which it did not. It does
+  now, under the same stamp and the same refusal as `theme.css`: a template
+  somebody edited is left alone and the refusal says so.
 
 - Nine parts, two kinds: `header` and `footer` are frames and bring a
   `template.tpl` with them; `atf`, `section`, `article`, `buttons`, `forms`,

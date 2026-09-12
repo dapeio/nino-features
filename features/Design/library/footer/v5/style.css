@@ -1,3 +1,13 @@
+/*	Nino Design - footer v5
+ *
+ *	@name				Brand with description
+ *	@description	Logo, a sentence about the company, contact and navigation, then a meta row. The talkative one.
+ *
+ *	The name and the description are what the Design panel lists this
+ *	variant as. Every library file carries them; a file without a @name
+ *	is offered under its own file name instead.
+ */
+
 .nino-frame-footer {
 	color: var(--color-text);
 	background-color: var(--color-background);

@@ -1,0 +1,72 @@
+@layer nino.system, nino.tool, nino.local;
+
+/**
+ *	Nino										A compact filesystembased php framework
+ *	Modules\Design					What the feature's /_admin panel needs beyond the design
+ *													system in _admin/assets/style.css: the row per part, the
+ *													description under it, and the one line that says what
+ *													assets/theme.css currently is. Joins the workbench's
+ *													style bundle while the feature is active (see the
+ *													panel's assets()).
+ *
+ *													Class names are the feature's own rather than
+ *													nino-admin-*: that prefix belongs to the workbench, and
+ *													a feature defining a name in it collides the day the
+ *													workbench defines the same one differently.
+ *
+ *	@package								Dape/Nino
+ *	@author									David Perchermeier <mail@dape.io>
+ *	@link										https://github.com/dapeio/nino
+ */
+
+@layer nino.tool {
+
+/* One part: its variant, its step and what the variant is, on one row while
+   there is room for it */
+.nino-admin .design-part {
+	display: grid;
+	grid-template-columns: minmax(12rem, 20rem) minmax(8rem, 12rem);
+	gap: 0 .8rem;
+	align-items: end;
+	padding: .5rem 0;
+	border-bottom: 1px solid var(--editor-separator);
+}
+.nino-admin .design-part:last-child {
+	border-bottom: 0;
+}
+.nino-admin .design-part .nino-admin-field {
+	margin: 0;
+	min-width: 0;
+}
+.nino-admin .design-part select {
+	width: 100%;
+}
+/* The description belongs to the whole row, under both selects */
+.nino-admin .design-description {
+	grid-column: 1 / -1;
+	margin: .25rem 0 0;
+}
+@media (max-width: 40rem) {
+	.nino-admin .design-part {
+		grid-template-columns: 1fr;
+	}
+}
+
+#design-globals {
+	max-width: 20rem;
+}
+#design-parts {
+	margin-top: 1.2rem;
+}
+
+/* What the file on disk is. Colour carries the level, the sentence carries the
+   meaning - never colour alone */
+.nino-admin .design-state {
+	padding: .4rem .6rem;
+	border-radius: var(--editor-radius-sm);
+	margin: 0 0 .3rem;
+}
+.nino-admin .design-state--ok 	{ background: var(--editor-green-soft); color: var(--editor-green); }
+.nino-admin .design-state--warn { background: var(--editor-bg-grouped); color: var(--editor-orange); }
+
+}

@@ -62,7 +62,7 @@ namespace Nino\Modules {
 		 *	@return 	array										Panel class names
 		 */
 		public static function adminPanels( array &$appData ): array {
-			return [];
+			return [ \Nino\Modules\Design\Admin::class ];
 		}
 
 		/**
@@ -86,6 +86,28 @@ namespace Nino\Modules {
 
 			if( $written !== true )
 				return $written;
+
+			/*	The other half of a frame. A header set is a stylesheet AND the
+				markup it was drawn against, so compiling one without writing the
+				other is how a page ends up with v3's css over v1's html */
+			foreach( Design\Setup::PARTS as $part => $kind ) {
+
+				if( $kind !== 'frame' )
+					continue;
+
+				$set 			= (string) ( $setup['parts'][$part]['set'] ?? '' );
+				$template = Design\Setup::file( $library, $part, $set, 'template' );
+
+				if( $template === '' ) {
+					$notes[] = 'no template for "'. $part. '" set "'. $set. '" - the project keeps the one it has';
+					continue;
+				}
+
+				$frame = Design\Compiler::writeFrame( $appData, $part, (string) file_get_contents( $template ), $set, $force );
+
+				if( $frame !== true )
+					return $frame;
+			}
 
 			// What was compiled, so the panel can say whether the file on disk
 			// still answers to the setup beside it

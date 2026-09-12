@@ -1,3 +1,13 @@
+/*	Nino Design - footer v3
+ *
+ *	@name				Brand and contact
+ *	@description	The brand on the left, a contact block and the navigation beside it, a utility row underneath.
+ *
+ *	The name and the description are what the Design panel lists this
+ *	variant as. Every library file carries them; a file without a @name
+ *	is offered under its own file name instead.
+ */
+
 .nino-frame-footer .nino-footer-main {
 	gap: var(--space-3) 0;
 	padding-top: var(--space-4);

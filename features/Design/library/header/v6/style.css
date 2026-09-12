@@ -1,3 +1,13 @@
+/*	Nino Design - header v6
+ *
+ *	@name				Side rail
+ *	@description	The navigation down the left instead of across the top, and the page beside it. For documentation and anything with many entries.
+ *
+ *	The name and the description are what the Design panel lists this
+ *	variant as. Every library file carries them; a file without a @name
+ *	is offered under its own file name instead.
+ */
+
 body {
 	--nino-frame-rail-width: clamp(15rem, 20vw, 19rem);
 }

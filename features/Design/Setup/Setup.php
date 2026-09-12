@@ -138,6 +138,63 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
+		 *	What a variant is called and what it is, for the panel to list it as.
+		 *
+		 *	Read from the stylesheet's own opening comment - `@name` and
+		 *	`@description` on their own lines - rather than from a manifest
+		 *	beside it. A set is one file, so a second file per set would be a
+		 *	second file to keep in sync, and the person writing sets is going to
+		 *	write a lot of them. A file without a @name is offered under its own
+		 *	name, which is what a set in progress looks like.
+		 *
+		 *	@param		string		$libraryDir		The feature's library
+		 *	@param		string		$part					A key of PARTS
+		 *	@param		string		$set					A set name
+		 *
+		 *	@return 	array										[ name, description ]
+		 */
+		public static function describe( string $libraryDir, string $part, string $set ): array {
+
+			$file = self::file( $libraryDir, $part, $set );
+			$read = [ 'name' => $set, 'description' => '' ];
+
+			if( $file === '' )
+				return $read;
+
+			// The first comment block only: a @name further down belongs to a
+			// rule somebody documented, not to the file
+			$head = (string) @file_get_contents( $file, false, null, 0, 4096 );
+
+			if( preg_match( '~/\*(.*?)\*/~s', $head, $block ) !== 1 )
+				return $read;
+
+			foreach( [ 'name', 'description' ] as $tag )
+				if( preg_match( '/@'. $tag. '[ \t]+(.+)$/m', $block[1], $found ) === 1 )
+					$read[$tag] = trim( (string) preg_replace( '/\s+/', ' ', $found[1] ) );
+
+			return $read;
+		}
+
+		/**
+		 *	Every variant a part can be given, described - what the panel's
+		 *	picker is built out of
+		 *
+		 *	@param		string		$libraryDir		The feature's library
+		 *	@param		string		$part					A key of PARTS
+		 *
+		 *	@return 	array										[ set => [ name, description ] ]
+		 */
+		public static function catalogue( string $libraryDir, string $part ): array {
+
+			$catalogue = [];
+
+			foreach( self::available( $libraryDir, $part ) as $set )
+				$catalogue[$set] = self::describe( $libraryDir, $part, $set );
+
+			return $catalogue;
+		}
+
+		/**
 		 *	A stored setup, held against the library that is really there. What
 		 *	cannot be honoured is replaced and named - a compile from a setup
 		 *	nobody checked is how a project ends up with a stylesheet missing a

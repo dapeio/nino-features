@@ -193,7 +193,7 @@ $result = \Nino\Features::activate( $appData, 'design' );
 
 check( 'the feature activates through \\Nino\\Features', $result === true );
 check( '...and lists its class in /nino/modules', in_array( '\\Nino\\Modules\\Design', (array) $appData['/nino/modules'], true ) === true );
-check( '...and brings no panel yet, which is the next patch, not a silent nothing', \Nino\Modules\Design::adminPanels( $appData ) === [] );
+check( '...and brings its panel along', \Nino\Modules\Design::adminPanels( $appData ) === [ \Nino\Modules\Design\Admin::class ] );
 
 // A fresh install has the delivered theme.css in place, and apply() must not
 // walk over it without being told to
@@ -216,6 +216,27 @@ check( '...recording what was compiled, so the panel can tell the file from the 
 check( '...and a fingerprint per part, so a reinstall that changed a set is visible rather than silent',
 	( $stored['parts']['section']['sha'] ?? '' ) === hash_file( 'sha256', \Nino\Modules\Design\Setup::file( $library, 'section', 'v1' ) ) );
 
+/*	A frame is a stylesheet AND the markup it was drawn against. Compiling one
+	without writing the other is how a page ends up with v3's css over v1's
+	html, which is exactly what this did before the panel went looking */
+$headerTemplate = \Nino\Filesystem::path( $appData, sprintf( \Nino\Modules\Design\Compiler::FRAME_TARGET, 'header' ) );
+check( 'applying writes the chosen frame\'s markup, not only its stylesheet',
+	is_file( $headerTemplate ) === true
+	&& str_contains( (string) file_get_contents( $headerTemplate ), 'nino-scroll-header' ) === true
+	&& \Nino\Modules\Design\Compiler::stampedFrame( (string) file_get_contents( $headerTemplate ) ) === true );
+check( '...and the markup is the variant the setup names', str_contains( (string) file_get_contents( $headerTemplate ), 'header v1' ) === true );
+
+$byHand = "<header>my own</header>\n";
+file_put_contents( $headerTemplate, $byHand );
+$notes = [];
+$refusedFrame = \Nino\Modules\Design::apply( $appData, $notes );
+check( 'a frame template somebody edited is not overwritten either', $refusedFrame !== true
+	&& str_contains( (string) $refusedFrame, 'theme.header.tpl was not written by Design' ) === true
+	&& file_get_contents( $headerTemplate ) === $byHand );
+$notes = [];
+check( 'and forcing it through takes that one over too', \Nino\Modules\Design::apply( $appData, $notes, true ) === true
+	&& \Nino\Modules\Design\Compiler::stampedFrame( (string) file_get_contents( $headerTemplate ) ) === true );
+
 check( 'applying again needs no force - the file is now one of ours', \Nino\Modules\Design::apply( $appData ) === true );
 
 check( 'the compiled sheet is what the bundle already points at', in_array( \Nino\Modules\Design\Compiler::TARGET,
@@ -227,4 +248,87 @@ check( 'deactivating leaves the compiled sheet and the setup where they are', \N
 	&& is_file( ninoSandboxDir( $appData ). '/private/data/design.php' ) === true );
 
 echo "\n";
+
+echo "\nThe panel: what it lists, what it saves, and what it refuses to overwrite\n";
+
+function callDesignAction( array &$appData, string $method, array $post = [] ): array {
+	$_POST['data'] = json_encode( $post );
+	$request = [ '/nino/http/response' => [ 'statusCode' => 200 ] ];
+	\Nino\Modules\Design\Admin::$method( $appData, $request );
+	$_POST = [];
+	return [ $request['/nino/http/response']['statusCode'], $request['/nino/http/response']['body'] ];
+}
+
+\Nino\Auth::insertUser( $appData, 'dev@example.com', 'correct horse battery staple', [ '/*' ] );
+\Nino\Auth::loginUser( $appData, 'dev@example.com', 'correct horse battery staple' );
+
+[ $status, $listed ] = callDesignAction( $appData, 'apiList' );
+check( 'the panel lists one row per part, in the order the cascade wants them', $status === 200
+	&& array_column( (array) ( $listed['parts'] ?? [] ), 'part' ) === array_keys( \Nino\Modules\Design\Setup::PARTS ) );
+check( 'a row carries the catalogue it can be given, and what is chosen',
+	isset( $listed['parts'][0]['catalogue']['v1'] ) === true
+	&& ( $listed['parts'][0]['set'] ?? null ) === 'v1'
+	&& ( $listed['parts'][0]['kind'] ?? null ) === 'frame' );
+check( 'every variant comes with the name and description its own file carries',
+	( $listed['parts'][0]['catalogue']['v1']['name'] ?? '' ) === 'Plain bar'
+	&& str_contains( (string) ( $listed['parts'][0]['catalogue']['v1']['description'] ?? '' ), 'rule under it' ) === true );
+check( 'and the knob, the size and what they can be', ( $listed['steps'] ?? null ) === \Nino\Modules\Design\Setup::STEPS
+	&& ( $listed['sizes'] ?? null ) === array_keys( \Nino\Modules\Design\Setup::SIZES ) );
+check( 'the file on disk is ours and answers to the setup', ( $listed['exists'] ?? null ) === true
+	&& ( $listed['ours'] ?? null ) === true && ( $listed['current'] ?? null ) === true );
+
+// Saving is not compiling: the decision lands, the stylesheet does not move
+[ $status, $saved ] = callDesignAction( $appData, 'apiSave', [
+	'parts' => [ 'section' => [ 'set' => 'v1', 'step' => 'more' ] ], 'step' => 'less', 'size' => 'l',
+] );
+check( 'saving stores the selection', $status === 200
+	&& \Nino\Modules\Design\Setup::read( $appData, \Nino\Modules\Design::libraryDir() )['size'] === 'l' );
+check( '...and says the file no longer answers to it, rather than moving it', ( $saved['current'] ?? null ) === false
+	&& ( $saved['ours'] ?? null ) === true );
+check( 'a part may deviate from the global knob, and one that names nothing follows it',
+	\Nino\Modules\Design\Setup::step( \Nino\Modules\Design\Setup::read( $appData, \Nino\Modules\Design::libraryDir() ), 'section' ) === 'more'
+	&& \Nino\Modules\Design\Setup::step( \Nino\Modules\Design\Setup::read( $appData, \Nino\Modules\Design::libraryDir() ), 'buttons' ) === 'less' );
+
+[ $status, $applied ] = callDesignAction( $appData, 'apiApply' );
+check( 'applying compiles it and the file answers again', $status === 200 && ( $applied['current'] ?? null ) === true );
+check( '...and the root size the save asked for is in the stylesheet', str_contains(
+	(string) \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Design\Compiler::TARGET, '' ), '106.25%' ) === true );
+
+// A hand edit makes the file somebody else's again, and the panel says so
+\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Design\Compiler::TARGET, "/* edited by hand */\n" );
+[ , $foreign ] = callDesignAction( $appData, 'apiList' );
+check( 'a file somebody edited reads as not ours', ( $foreign['ours'] ?? null ) === false && ( $foreign['exists'] ?? null ) === true );
+check( 'and applying over it is a 409 with the reason, not a silent overwrite',
+	callDesignAction( $appData, 'apiApply' ) === [ 409, [ 'error' => 'assets/theme.css was not written by Design - it is the delivered file, or somebody edited it. Nothing was overwritten.' ] ] );
+check( '...the file is still exactly what it was',
+	\Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Design\Compiler::TARGET, '' ) === "/* edited by hand */\n" );
+check( 'forcing it through takes the file over', callDesignAction( $appData, 'apiApply', [ 'force' => true ] )[0] === 200
+	&& \Nino\Modules\Design\Compiler::stamped( (string) \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Design\Compiler::TARGET, '' ) ) === true );
+
+// A set that is not in the library is not written, and the answer says why
+[ $status, $refused ] = callDesignAction( $appData, 'apiSave', [ 'parts' => [ 'section' => [ 'set' => 'nope' ] ], 'step' => 'default', 'size' => 'm' ] );
+check( 'a variant that is not in the library falls back and is named', $status === 200
+	&& count( (array) ( $refused['notes'] ?? [] ) ) === 1
+	&& str_contains( (string) ( $refused['notes'][0] ?? '' ), '"nope"' ) === true );
+check( 'a set name that could climb out of the library never becomes a path',
+	callDesignAction( $appData, 'apiSave', [ 'parts' => [ 'section' => [ 'set' => '../../../etc/passwd' ] ], 'step' => 'default', 'size' => 'm' ] )[0] === 200
+	&& \Nino\Modules\Design\Setup::read( $appData, \Nino\Modules\Design::libraryDir() )['parts']['section']['set'] === 'v1' );
+
+\Nino\Auth::logoutUser( $appData );
+check( 'every action of the panel refuses a request with no session',
+	callDesignAction( $appData, 'apiList' )[0] === 401
+	&& callDesignAction( $appData, 'apiSave', [] )[0] === 401
+	&& callDesignAction( $appData, 'apiApply' )[0] === 401 );
+
+\Nino\Auth::insertUser( $appData, 'editor@example.com', 'correct horse battery staple', [ '/_admin/elements/manage' ] );
+\Nino\Auth::loginUser( $appData, 'editor@example.com', 'correct horse battery staple' );
+check( '...and an account without /_admin/design/manage with a 403',
+	callDesignAction( $appData, 'apiList' )[0] === 403 && callDesignAction( $appData, 'apiApply' )[0] === 403 );
+
+check( 'the panel names every action it answers', array_keys( \Nino\Modules\Design\Admin::actions() ) === [ 'design/list', 'design/save', 'design/apply' ] );
+check( 'and ships the pane and the two assets it is drawn with',
+	\Nino\Modules\Design\Admin::panes() === [ 'design-form' ] && count( \Nino\Modules\Design\Admin::assets() ) === 2 );
+check( 'taking the delivered file over is written to the activity log as that',
+	str_contains( \Nino\Modules\Design\Admin::log( 'design/apply', [ 'force' => true ] ), 'took over' ) === true );
+
 ninoDone( $appData );

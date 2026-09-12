@@ -1,3 +1,13 @@
+/*	Nino Design - header v4
+ *
+ *	@name				Overlay menu
+ *	@description	One mark and nothing else; the whole menu opens over the page. For sites where the picture is the content.
+ *
+ *	The name and the description are what the Design panel lists this
+ *	variant as. Every library file carries them; a file without a @name
+ *	is offered under its own file name instead.
+ */
+
 .nino-frame-header .nino-scroll-header {
 	min-height: 4.5rem;
 	opacity: 1;

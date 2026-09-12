@@ -1,3 +1,13 @@
+/*	Nino Design - header v2
+ *
+ *	@name				Stacked bar
+ *	@description	The mark over the navigation rather than beside it, in a shell with a rule under it. For a long name, or a menu with many entries.
+ *
+ *	The name and the description are what the Design panel lists this
+ *	variant as. Every library file carries them; a file without a @name
+ *	is offered under its own file name instead.
+ */
+
 .nino-frame-header .nino-frame-header-shell {
 	padding: var(--space-1) 0;
 	opacity: 1;

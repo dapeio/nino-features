@@ -1,3 +1,13 @@
+/*	Nino Design - footer v6
+ *
+ *	@name				Logo and contact
+ *	@description	A wide content row - logo, contact, navigation - over a plain legal row.
+ *
+ *	The name and the description are what the Design panel lists this
+ *	variant as. Every library file carries them; a file without a @name
+ *	is offered under its own file name instead.
+ */
+
 .nino-frame-footer {
 	color: var(--color-text);
 	background-color: var(--color-background);

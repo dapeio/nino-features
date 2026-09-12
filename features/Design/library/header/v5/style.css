@@ -1,3 +1,13 @@
+/*	Nino Design - header v5
+ *
+ *	@name				Brand strip
+ *	@description	A full-width strip in the darkest surface with the second brand colour as a rule under it. Loud on purpose.
+ *
+ *	The name and the description are what the Design panel lists this
+ *	variant as. Every library file carries them; a file without a @name
+ *	is offered under its own file name instead.
+ */
+
 .nino-frame-header .nino-frame-header-strip {
 	opacity: 1;
 	background-color: var(--color-section-black-bg);

@@ -1,3 +1,13 @@
+/*	Nino Design - footer v7
+ *
+ *	@name				Statement
+ *	@description	A kicker and a sentence the site wants read, with contact, navigation and the legal row under it.
+ *
+ *	The name and the description are what the Design panel lists this
+ *	variant as. Every library file carries them; a file without a @name
+ *	is offered under its own file name instead.
+ */
+
 .nino-frame-footer {
 	background-color: var(--color-section-black-bg);
 	color: var(--color-section-black-text);

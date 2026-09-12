@@ -1,3 +1,13 @@
+/*	Nino Design - header v1
+ *
+ *	@name				Plain bar
+ *	@description	A bar on the page ground with a rule under it, five rem tall. The one a fresh Nino installs.
+ *
+ *	The name and the description are what the Design panel lists this
+ *	variant as. Every library file carries them; a file without a @name
+ *	is offered under its own file name instead.
+ */
+
 .nino-frame-header {
 	border-bottom: 1px solid var(--color-border);
 }

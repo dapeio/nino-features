@@ -1,3 +1,13 @@
+/*	Nino Design - header v3
+ *
+ *	@name				Floating bar
+ *	@description	A rounded, slightly translucent bar with air around it, capped at 92rem. Reads as current rather than as a frame.
+ *
+ *	The name and the description are what the Design panel lists this
+ *	variant as. Every library file carries them; a file without a @name
+ *	is offered under its own file name instead.
+ */
+
 .nino-frame-header {
 	padding: var(--space-1) var(--space-1) 0;
 }
