@@ -1,0 +1,32 @@
+/**
+ *	Nino - Hello World
+ *	hello.css			What [hello] needs on the site itself. Bundled into the
+ *							project's own /.cache/style.css the same way the kernel bundles
+ *							Nino.css (see Hello::init() and docs/development.md, "Assets Are
+ *							Not Templates") - never rendered through the fill/shortcode
+ *							engine, so nothing in here is a textfill.
+ *
+ *							Every colour and spacing reads the site's own design-system
+ *							custom properties (--color-*, --space-*, --radius) with a plain
+ *							fallback, so it looks at home on a project that never picked a
+ *							theme and takes the new colours the moment one is compiled.
+ */
+
+.nino-hello {
+	margin: 0 0 var(--space-2, 1rem);
+	padding: var(--space-2, 1rem);
+	border-left: 3px solid var(--color-primary, #4faae8);
+	border-radius: var(--radius, .4rem);
+	background: var(--color-section-alt-bg, #f0f4f8);
+	color: var(--color-text, #333333);
+}
+
+/* The line under the greeting - a fill the project owns, so it is the one
+   part of this a site is expected to rewrite */
+.nino-hello-note {
+	display: block;
+	margin-top: .3em;
+	color: var(--color-text, #333333);
+	font-size: var(--fontsize-small, .875rem);
+	opacity: .75;
+}

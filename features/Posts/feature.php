@@ -9,60 +9,56 @@ return [
 		'de_DE' => 'Eine Seite je Element und eine Liste mit Seitenzahlen: was aus einem Elementtyp einen Blog, eine News-Rubrik oder ein Journal macht - die Beiträge bleiben gewöhnliche Elemente.',
 	],
 	'manual'			=> [
-		'en_US' => <<<'TXT'
-			Nino has the content half of a blog already: an element type is
-			records of one shape, the Elements panel edits them, [elements]
-			lists them and a backup carries them. What it has no answer for is
-			the other half - every record wants a page of its own at a readable
-			url, and the list wants to be more than one page long.
-
-			A section names an element type and a path. From there this
-			registers two routes: the list under that path, and a page per
-			record under it. /blog and /blog/my-first-post, from
-			/elements/posts.php.
-
-			Four shortcodes for the templates: [posts] lists the page that is
-			on, [post] is the record the current url is for, [posts-pager] is
-			the way to the next page, and [post-nav] the way to the next post.
-			Inside all of them the fields are Elements' own [[title]], plus
-			[[.url]], which is the one value an element cannot know by itself.
-
-			A post dated in the future is not published, so a post can be
-			written today and appear on Monday without anything having to run
-			on Monday.
-
-			The posts are not this feature's. Remove it and the pages go, the
-			records stay - written where every other element is written,
-			searchable and translatable.
-			TXT,
-		'de_DE' => <<<'TXT'
-			Die inhaltliche Hälfte eines Blogs hat Nino längst: Ein Elementtyp
-			sind Datensätze einer Form, das Panel Elemente bearbeitet sie,
-			[elements] listet sie, und ein Backup nimmt sie mit. Wofür es keine
-			Antwort gibt, ist die andere Hälfte - jeder Datensatz will eine
-			eigene Seite unter einer lesbaren Adresse, und die Liste will länger
-			sein als eine Seite.
-
-			Eine Rubrik nennt einen Elementtyp und einen Pfad. Daraus entstehen
-			zwei Routen: die Liste unter diesem Pfad, und eine Seite je
-			Datensatz darunter. /blog und /blog/mein-erster-beitrag, aus
-			/elements/posts.php.
-
-			Vier Shortcodes für die Templates: [posts] listet die Seite, auf der
-			man ist, [post] ist der Datensatz zur aktuellen Adresse,
-			[posts-pager] der Weg zur nächsten Seite und [post-nav] der Weg zum
-			nächsten Beitrag. In allen vieren sind die Felder die von Elements,
-			[[title]], dazu [[.url]] - der eine Wert, den ein Element nicht von
-			sich aus kennen kann.
-
-			Ein Beitrag mit einem Datum in der Zukunft ist nicht
-			veröffentlicht. So lässt sich heute schreiben, was am Montag
-			erscheint, ohne dass am Montag etwas laufen muss.
-
-			Die Beiträge gehören nicht diesem Feature. Wird es entfernt,
-			verschwinden die Seiten und die Datensätze bleiben - dort, wo jedes
-			andere Element liegt, durchsuchbar und übersetzbar.
-			TXT,
+		'shortcodes' => [
+			'[posts]' => [
+				'en_US' => 'The page of the list that is on.',
+				'de_DE' => 'Die Seite der Liste, die gerade dran ist.',
+			],
+			'[post]' => [
+				'en_US' => 'The record the current url is for.',
+				'de_DE' => 'Der Datensatz, für den die aktuelle Adresse steht.',
+			],
+			'[posts-pager]' => [
+				'en_US' => 'The way to the next page of the list.',
+				'de_DE' => 'Der Weg zur nächsten Seite der Liste.',
+			],
+			'[post-nav]' => [
+				'en_US' => 'The way to the next and the previous post.',
+				'de_DE' => 'Der Weg zum nächsten und vorherigen Beitrag.',
+			],
+		],
+		'markup' => [
+			'[[.url]]' => [
+				'en_US' => 'Inside those four: the one value an element cannot know by itself. Every other field is Elements\' own [[title]].',
+				'de_DE' => 'In diesen vieren: der eine Wert, den ein Element nicht selbst kennen kann. Jedes andere Feld ist das [[title]] der Elemente.',
+			],
+		],
+		'routes' => [
+			'/blog' => [
+				'en_US' => 'The list, a page at a time. The path is the section\'s.',
+				'de_DE' => 'Die Liste, seitenweise. Der Pfad gehört der Section.',
+			],
+			'/blog/my-first-post' => [
+				'en_US' => 'One record, at a readable url.',
+				'de_DE' => 'Ein Datensatz, unter einer lesbaren Adresse.',
+			],
+		],
+		'panel' => [],
+		'callbacks' => [],
+		'install' => [
+			'elements/posts.php' => [
+				'en_US' => 'An element type to start from, if the project has none.',
+				'de_DE' => 'Ein Elementtyp zum Anfangen, falls das Projekt keinen hat.',
+			],
+			'templates/page-posts.tpl' => [
+				'en_US' => 'The list page.',
+				'de_DE' => 'Die Listenseite.',
+			],
+			'templates/page-post.tpl' => [
+				'en_US' => 'The page of one post.',
+				'de_DE' => 'Die Seite eines Beitrags.',
+			],
+		],
 	],
 	'category'		=> 'content',
 	'version'			=> '1.0.0',

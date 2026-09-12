@@ -1,0 +1,32 @@
+/**
+ *	Nino - Hello World
+ *	admin.css			The panel's own stylesheet, loaded exactly while the panel is
+ *							(see Admin::assets()). Keep it to what the panel adds: the
+ *							workbench already styles headings, hints, fields, buttons and
+ *							errors, and a panel that restyles those is a panel that looks
+ *							wrong after the next release.
+ *
+ *							Every value reads one of the workbench's own custom properties
+ *							(--editor-*), never a colour of its own - that is what makes a
+ *							panel follow the light/dark switch in the account menu without
+ *							knowing about it.
+ */
+
+.nino-admin .hello-field,
+.nino-admin .hello-preview {
+	max-width: 26rem;
+}
+
+/*	What the two halves of the greeting add up to. Quiet, monospaced, and
+	beside the field rather than under a heading: it is feedback, not a
+	section */
+.nino-admin .hello-preview {
+	margin: .2rem 0 0;
+	padding: .6rem .8rem;
+	border: 1px solid var(--editor-border);
+	border-radius: var(--editor-radius-sm);
+	background: var(--editor-bg-grouped);
+	color: var(--editor-text-secondary);
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: .875rem;
+}

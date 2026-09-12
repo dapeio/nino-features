@@ -10,31 +10,21 @@ return [
 		'de_DE' => 'Öffnet jeden Link auf ein Bild bildschirmfüllend, mit seiner Gruppe als Serie - Pfeile, Wischen, Bildunterschriften und ein Fokusrahmen, ohne Bibliothek.',
 	],
 	'manual'			=> [
-		'en_US' => <<<'TXT'
-			A link to an image opens full screen as soon as it carries
-			`data-lightbox`:
-
-			`<a href="/images/pass.jpg" data-lightbox="trip"><img
-			src="/images/pass.200x200.jpg" alt="Above the pass"></a>`
-
-			Links sharing one value are one set - arrows, swipe and the keyboard
-			move between them. The caption is `data-caption`, else the image's
-			`alt`, else the link's `title`. There is nothing to switch on: a link
-			without the attribute is left to the browser.
-			TXT,
-		'de_DE' => <<<'TXT'
-			Ein Link auf ein Bild öffnet sich bildschirmfüllend, sobald er
-			`data-lightbox` trägt:
-
-			`<a href="/images/pass.jpg" data-lightbox="trip"><img
-			src="/images/pass.200x200.jpg" alt="Über dem Pass"></a>`
-
-			Links mit demselben Wert sind eine Serie – Pfeile, Wischen und die
-			Tastatur gehen zwischen ihnen. Die Bildunterschrift ist `data-caption`,
-			sonst das `alt` des Bildes, sonst das `title` des Links. Einzuschalten
-			gibt es nichts: Ein Link ohne das Attribut bleibt dem Browser
-			überlassen.
-			TXT,
+		'shortcodes' => [],
+		'markup' => [
+			'data-lightbox="trip"' => [
+				'en_US' => 'On a link to an image: opens it full screen. Links sharing a value are one set - arrows, swipe and keyboard move between them.',
+				'de_DE' => 'An einem Link auf ein Bild: öffnet es bildschirmfüllend. Links mit gleichem Wert sind ein Satz – Pfeile, Wischen und Tastatur bewegen sich darin.',
+			],
+			'data-caption="Above the pass"' => [
+				'en_US' => 'The caption. Without it the image\'s alt, else the link\'s title.',
+				'de_DE' => 'Die Bildunterschrift. Ohne sie das alt des Bildes, sonst das title des Links.',
+			],
+		],
+		'routes' => [],
+		'panel' => [],
+		'callbacks' => [],
+		'install' => [],
 	],
 	// It changes how something already on the page behaves and brings
 	// nothing of its own to show

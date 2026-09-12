@@ -11,22 +11,31 @@ return [
 		'de_DE' => 'Ein Cookie-/Consent-Banner mit Kategorien (Statistik, Marketing, externe Medien) und einwilligungsabhängigen Skripten - ohne Drittanbieter.',
 	],
 	'manual'			=> [
-		'en_US' => <<<'TXT'
-			Put `[consent]` into the footer template - the banner appears on the
-			first visit and never again once a choice is stored. A script that needs
-			consent is written as `<script type="text/plain"
-			data-consent="statistics" data-src="...">` and starts the moment that
-			category is allowed. `[consent-settings]` opens the choice again, for a
-			privacy page.
-			TXT,
-		'de_DE' => <<<'TXT'
-			Setze `[consent]` in das Footer-Template – das Banner erscheint beim
-			ersten Besuch und nie wieder, sobald eine Wahl gespeichert ist. Ein
-			Skript, das Einwilligung braucht, wird als `<script type="text/plain"
-			data-consent="statistics" data-src="...">` geschrieben und startet,
-			sobald diese Kategorie erlaubt ist. `[consent-settings]` öffnet die Wahl
-			erneut, etwa auf einer Datenschutzseite.
-			TXT,
+		'shortcodes' => [
+			'[consent]' => [
+				'en_US' => 'The banner, into the page frame. Shown on the first visit and never again once a choice is stored.',
+				'de_DE' => 'Das Banner, ins Seitengerüst. Erscheint beim ersten Besuch und nie wieder, sobald eine Wahl gespeichert ist.',
+			],
+			'[consent-settings]' => [
+				'en_US' => 'A button that opens the choice again - for a privacy page.',
+				'de_DE' => 'Eine Schaltfläche, die die Wahl erneut öffnet – für eine Datenschutzseite.',
+			],
+		],
+		'markup' => [
+			'<script type="text/plain" data-consent="statistics" data-src="…">' => [
+				'en_US' => 'Starts the moment that category is allowed, and not before.',
+				'de_DE' => 'Startet in dem Moment, in dem diese Kategorie erlaubt ist – und nicht davor.',
+			],
+		],
+		'routes' => [],
+		'panel' => [],
+		'callbacks' => [],
+		'install' => [
+			'text/<locale>.php' => [
+				'en_US' => 'The banner\'s words, into the Text panel.',
+				'de_DE' => 'Die Worte des Banners, ins Panel Texte.',
+			],
+		],
 	],
 	'category'		=> 'security',
 	'version'			=> '1.0.0',

@@ -9,20 +9,26 @@ return [
 		'de_DE' => 'Ein Baukasten für Ninos eigenen Formular-Endpunkt: beliebig viele Formulare mit eigenen Feldern, ein Shortcode [form], der sie zeichnet, und Spam-Schutz ohne Captcha.',
 	],
 	'manual'			=> [
-		'en_US' => <<<'TXT'
-			Build a form in the Forms panel - its fields, where it is sent, the
-			words around it - and then put `[form key="quote"]` where it belongs on
-			the page. `[form]` alone draws the first one there is.
-
-			What visitors send is in the Submissions panel, not here.
-			TXT,
-		'de_DE' => <<<'TXT'
-			Baue ein Formular im Panel Formulare – seine Felder, wohin es geht, die
-			Worte drumherum – und setze dann `[form key="quote"]` an die Stelle der
-			Seite, wo es hingehört. `[form]` allein zeichnet das erste, das es gibt.
-
-			Was Besucher senden, steht im Panel Anfragen, nicht hier.
-			TXT,
+		'shortcodes' => [
+			'[form key="quote"]' => [
+				'en_US' => 'Draws that form.',
+				'de_DE' => 'Zeichnet dieses Formular.',
+			],
+			'[form]' => [
+				'en_US' => 'Draws the first form there is.',
+				'de_DE' => 'Zeichnet das erste Formular, das es gibt.',
+			],
+		],
+		'markup' => [],
+		'routes' => [],
+		'panel' => [
+			'Forms' => [
+				'en_US' => 'Build a form: its fields, where it is sent, the words around it. What visitors send is in the Submissions panel.',
+				'de_DE' => 'Ein Formular bauen: seine Felder, wohin es geht, die Worte drumherum. Was Besucher senden, steht im Panel Anfragen.',
+			],
+		],
+		'callbacks' => [],
+		'install' => [],
 	],
 	'category'		=> 'communication',
 	'version'			=> '1.0.0',

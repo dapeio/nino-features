@@ -11,51 +11,31 @@ return [
 		'de_DE' => 'Ein sprachbewusster unscharfer Suchindex über konfigurierte Elementfelder, neu gebaut bei jedem Speichern, mit zwei Shortcodes für Suchformular und Trefferliste auf jeder Seite.',
 	],
 	'manual'			=> [
-		'en_US' => <<<'TXT'
-			Name the Element types and the fields to index under
-			`/nino/elements/index` in `config.php`, then press Create searchindex in
-			the Search panel once. After that the index rebuilds itself with every
-			save.
-
-			Two shortcodes put a search on a page. The first is the form; the body
-			of the second is the markup of one hit, with [[field]] for anything the
-			type's model has:
-
-			  [search placeholder="Search term" submit="Go"]
-			  [search-results type="/products"]
-			    <h5>[[title]]</h5> <p>[[description]]</p>
-			  [/search-results]
-
-			They are a plain GET form and its answer, so a result page can be
-			linked and bookmarked. The feature ships no page and no template of its
-			own - what a hit looks like is the project's to write.
-
-			Project code searches with `\Nino\Modules\Search::getElements()` and
-			gets whole Elements back in score order.
-			TXT,
-		'de_DE' => <<<'TXT'
-			Trage unter `/nino/elements/index` in der `config.php` ein, welche
-			Elementtypen mit welchen Feldern indiziert werden, und drücke einmal
-			Suchindex erstellen im Panel Suche. Danach baut sich der Index bei jedem
-			Speichern selbst neu.
-
-			Zwei Shortcodes setzen eine Suche auf eine Seite. Der erste ist das
-			Formular, der Rumpf des zweiten ist das Markup eines Treffers, mit
-			[[feld]] für alles, was das Modell des Typs hat:
-
-			  [search placeholder="Suchbegriff" submit="Los"]
-			  [search-results type="/products"]
-			    <h5>[[title]]</h5> <p>[[description]]</p>
-			  [/search-results]
-
-			Es sind ein schlichtes GET-Formular und seine Antwort – eine
-			Trefferseite lässt sich also verlinken und als Lesezeichen ablegen. Eine
-			eigene Seite oder ein eigenes Template bringt das Feature nicht mit: Wie
-			ein Treffer aussieht, schreibt das Projekt.
-
-			Projektcode sucht mit `\Nino\Modules\Search::getElements()` und bekommt
-			ganze Elemente in der Reihenfolge ihrer Treffer zurück.
-			TXT,
+		'shortcodes' => [
+			'[search placeholder="Search term" submit="Go"]' => [
+				'en_US' => 'The form. A plain GET form, so a result page can be linked and bookmarked.',
+				'de_DE' => 'Das Formular. Ein einfaches GET-Formular, eine Trefferseite ist also verlinkbar.',
+			],
+			'[search-results type="/products"]…[/search-results]' => [
+				'en_US' => 'Its answer. The body is the markup of one hit, with [[field]] for anything the type has.',
+				'de_DE' => 'Seine Antwort. Der Inhalt ist das Markup eines Treffers, mit [[feld]] für alles, was der Typ hat.',
+			],
+		],
+		'markup' => [],
+		'routes' => [],
+		'panel' => [
+			'Search' => [
+				'en_US' => 'Create the index once. After that it rebuilds itself with every save.',
+				'de_DE' => 'Den Index einmal anlegen. Danach baut er sich bei jedem Speichern selbst neu.',
+			],
+		],
+		'callbacks' => [
+			'/nino/elements/committed' => [
+				'en_US' => 'Refreshes the index when an element is saved.',
+				'de_DE' => 'Frischt den Index auf, wenn ein Element gespeichert wird.',
+			],
+		],
+		'install' => [],
 	],
 	'category'		=> 'content',
 	'version'			=> '1.1.0',

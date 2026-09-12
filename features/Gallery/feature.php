@@ -10,26 +10,30 @@ return [
 		'de_DE' => 'Beliebig viele Bildergalerien, je ein Raster aus Vorschaubildern, die sich bildschirmfüllend öffnen - zwei Größen beim Hochladen, nichts gespeichert, was ein Besucher nie zu sehen bekommt.',
 	],
 	'manual'			=> [
-		'en_US' => <<<'TXT'
-			Create an album in the Gallery panel and upload its pictures - two sizes
-			are made from each one and the upload itself is never kept. Then put
-			`[gallery album="trip"]` where the grid belongs.
-
-			`[gallery album="trip" columns="3"]` overrides the column count for one
-			gallery, and `[gallery]` alone renders the first album. A thumbnail
-			opens full screen through the Lightbox feature, which this one brings
-			along.
-			TXT,
-		'de_DE' => <<<'TXT'
-			Lege im Panel Galerie ein Album an und lade seine Bilder hoch – aus
-			jedem entstehen zwei Größen, der Upload selbst wird nie aufbewahrt.
-			Setze dann `[gallery album="trip"]` dorthin, wo das Raster hingehört.
-
-			`[gallery album="trip" columns="3"]` überschreibt die Spaltenzahl für
-			eine einzelne Galerie, `[gallery]` allein zeigt das erste Album. Ein
-			Vorschaubild öffnet sich bildschirmfüllend über das Feature Lightbox,
-			das dieses mitbringt.
-			TXT,
+		'shortcodes' => [
+			'[gallery album="trip"]' => [
+				'en_US' => 'The album\'s grid of thumbnails.',
+				'de_DE' => 'Das Raster der Vorschaubilder dieses Albums.',
+			],
+			'[gallery album="trip" columns="3"]' => [
+				'en_US' => 'The same, with the column count for this one place.',
+				'de_DE' => 'Dasselbe, mit der Spaltenzahl für diese eine Stelle.',
+			],
+			'[gallery]' => [
+				'en_US' => 'The first album there is.',
+				'de_DE' => 'Das erste Album, das es gibt.',
+			],
+		],
+		'markup' => [],
+		'routes' => [],
+		'panel' => [
+			'Gallery' => [
+				'en_US' => 'Create an album and upload its pictures - two sizes per upload, the original never kept.',
+				'de_DE' => 'Ein Album anlegen und Bilder hochladen – zwei Größen je Upload, das Original wird nie behalten.',
+			],
+		],
+		'callbacks' => [],
+		'install' => [],
 	],
 	// It brings content an editor maintains, which is what puts it here
 	// rather than with the effects that only change how a page behaves

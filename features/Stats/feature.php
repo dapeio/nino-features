@@ -9,24 +9,22 @@ return [
 		'de_DE' => 'Seitenaufruf-Zählung für die Workbench - keine Cookies, keine IP-Adressen, keine Fingerprints, nichts wird pro Besucher gespeichert.',
 	],
 	'manual'			=> [
-		'en_US' => <<<'TXT'
-			Nothing to place and nothing to set: counting begins when the feature is
-			switched on, and the numbers are in the Stats panel and on the
-			dashboard.
-
-			No cookie is set, no ip address is read and nothing is stored per
-			visitor - so no consent banner has to mention it, and there is nothing
-			anybody could ask to have deleted.
-			TXT,
-		'de_DE' => <<<'TXT'
-			Zu setzen gibt es nichts und einzustellen auch nichts: Gezählt wird,
-			sobald das Feature an ist, und die Zahlen stehen im Panel Statistik und
-			auf dem Dashboard.
-
-			Es wird kein Cookie gesetzt, keine IP-Adresse gelesen und nichts pro
-			Besucher gespeichert – ein Einwilligungsbanner muss das also nicht
-			erwähnen, und es gibt nichts, dessen Löschung jemand verlangen könnte.
-			TXT,
+		'shortcodes' => [],
+		'markup' => [],
+		'routes' => [],
+		'panel' => [
+			'Stats' => [
+				'en_US' => 'The page-view counts, and a tile on the Dashboard. Counting begins when the feature is switched on.',
+				'de_DE' => 'Die Seitenaufrufe, dazu eine Kachel auf dem Dashboard. Gezählt wird ab dem Einschalten.',
+			],
+		],
+		'callbacks' => [
+			'/nino/http/response' => [
+				'en_US' => 'Counts the page view. No cookie, no ip address, nothing stored per visitor.',
+				'de_DE' => 'Zählt den Seitenaufruf. Kein Cookie, keine IP-Adresse, nichts pro Besucher gespeichert.',
+			],
+		],
+		'install' => [],
 	],
 	'category'		=> 'marketing',
 	'version'			=> '1.0.0',

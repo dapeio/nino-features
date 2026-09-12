@@ -9,53 +9,17 @@ return [
 		'de_DE' => 'Das Aussehen, pro Bauteil einer Seite statt pro Seite: je ein Set für Überschriften, Flächen, Artikel, Buttons, Formulare, Listen und Bausteine, in ein Stylesheet kompiliert.',
 	],
 	'manual'			=> [
-		'en_US' => <<<'TXT'
-			The look of a Nino site is one file, assets/theme.css. The setup wizard
-			delivers a fixed one; this feature compiles its own over it, out of a
-			set per part of a page.
-
-			Seven parts, each with a handful of sets to choose from: ATF, Section,
-			Article, Buttons, Forms, Lists & tables, Blocks. A header and a footer
-			are chosen the same way and bring their own markup with them. Nothing
-			asks you to pick a whole theme - bold headings from one design and
-			round buttons from another is the point.
-
-			A finetune knob picks among the three steps a set declares for each of
-			its values, globally or for one part on its own.
-
-			Beside the choices is a preview of them: one page that uses every
-			class a set can reach, rendered against this project and written
-			nowhere. It follows the selection on screen rather than the one on
-			disk, so nothing has to be saved to be looked at.
-
-			The setup lives in data/design.php and travels in every backup.
-			Removing the feature leaves the compiled stylesheet working; installing
-			it again finds the setup and carries on.
-			TXT,
-		'de_DE' => <<<'TXT'
-			Das Aussehen einer Nino-Seite ist eine Datei, assets/theme.css. Der
-			Einrichtungsassistent liefert eine feste aus; dieses Feature kompiliert
-			seine eigene darüber, aus je einem Set pro Bauteil einer Seite.
-
-			Sieben Bauteile mit je einer Handvoll Sets zur Auswahl: ATF, Section,
-			Article, Buttons, Formulare, Listen & Tabellen, Bausteine. Header und
-			Footer werden genauso gewählt und bringen ihr eigenes Markup mit. Ein
-			ganzes Theme wählt hier niemand - laute Überschriften aus einem Design
-			und runde Buttons aus einem anderen ist der Sinn der Sache.
-
-			Ein Feinregler wählt unter den drei Stufen, die ein Set für jeden seiner
-			Werte erklärt - global oder für ein Bauteil allein.
-
-			Neben der Auswahl steht eine Vorschau davon: eine Seite, die jede
-			Klasse verwendet, die ein Set erreichen kann, gerendert gegen dieses
-			Projekt und nirgendwo geschrieben. Sie folgt der Auswahl auf dem
-			Bildschirm, nicht der auf der Platte - nichts muss gespeichert
-			werden, um angesehen zu werden.
-
-			Das Setup liegt in data/design.php und reist in jedem Backup mit. Wird
-			das Feature entfernt, arbeitet das kompilierte Stylesheet weiter; wird es
-			erneut installiert, findet es sein Setup und macht dort weiter.
-			TXT,
+		'shortcodes' => [],
+		'markup' => [],
+		'routes' => [],
+		'panel' => [
+			'Design' => [
+				'en_US' => 'A set per part of a page, a knob per value, a preview beside them - and a compile that writes assets/theme.css.',
+				'de_DE' => 'Ein Set je Bauteil einer Seite, ein Regler je Wert, eine Vorschau daneben – und ein Kompilieren, das assets/theme.css schreibt.',
+			],
+		],
+		'callbacks' => [],
+		'install' => [],
 	],
 	'category'		=> 'ui',
 	'version'			=> '0.1.0',

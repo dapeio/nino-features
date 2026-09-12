@@ -9,25 +9,34 @@ return [
 		'de_DE' => 'Sitemap, robots.txt und llms.txt, erzeugt aus den Routen, Sprachen und Texten, die Nino bereits kennt - nichts, das von Hand gepflegt werden muss.',
 	],
 	'manual'			=> [
-		'en_US' => <<<'TXT'
-			Nothing to place: `/sitemap.xml`, `/robots.txt` and `/llms.txt` answer
-			as soon as this is on, built fresh on every request from the routes,
-			locales and page texts Nino already has. A page added or renamed is in
-			them the next time they are fetched.
-
-			Two shortcodes are there if you want them: `[seo-alternates]` writes the
-			hreflang links into a page's head, `[seo-jsonld]` its structured data.
-			TXT,
-		'de_DE' => <<<'TXT'
-			Zu setzen gibt es nichts: `/sitemap.xml`, `/robots.txt` und `/llms.txt`
-			antworten, sobald das hier an ist, und werden bei jeder Anfrage frisch
-			aus den Routen, Sprachen und Seitentexten gebaut, die Nino ohnehin
-			kennt. Eine neue oder umbenannte Seite steht beim nächsten Abruf darin.
-
-			Zwei Shortcodes gibt es dazu, wenn Du sie willst: `[seo-alternates]`
-			schreibt die hreflang-Links in den Kopf einer Seite, `[seo-jsonld]` ihre
-			strukturierten Daten.
-			TXT,
+		'shortcodes' => [
+			'[seo-alternates]' => [
+				'en_US' => 'The hreflang links, into a page\'s head.',
+				'de_DE' => 'Die hreflang-Links, in den head einer Seite.',
+			],
+			'[seo-jsonld]' => [
+				'en_US' => 'Its structured data.',
+				'de_DE' => 'Ihre strukturierten Daten.',
+			],
+		],
+		'markup' => [],
+		'routes' => [
+			'/sitemap.xml' => [
+				'en_US' => 'Built fresh on every request from the routes and locales Nino already has.',
+				'de_DE' => 'Wird bei jeder Anfrage frisch aus den Routen und Locales gebaut, die Nino schon hat.',
+			],
+			'/robots.txt' => [
+				'en_US' => 'The same, with the sitemap in it.',
+				'de_DE' => 'Dasselbe, mit der Sitemap darin.',
+			],
+			'/llms.txt' => [
+				'en_US' => 'The same, for the readers that ask for it.',
+				'de_DE' => 'Dasselbe, für die Leser, die danach fragen.',
+			],
+		],
+		'panel' => [],
+		'callbacks' => [],
+		'install' => [],
 	],
 	'category'		=> 'marketing',
 	'version'			=> '1.0.0',

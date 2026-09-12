@@ -10,26 +10,40 @@ return [
 		'de_DE' => 'Stellt eine oder mehrere Seiten hinter ein gemeinsames Passwort - einen Mitgliederbereich, eine Kundenvorschau, eine interne Seite - ganz ohne Benutzerkonten.',
 	],
 	'manual'			=> [
-		'en_US' => <<<'TXT'
-			Set the one password below and list what it protects, one uri per line:
-			`/intern` protects that page and everything under it. An empty password
-			protects nothing, whatever the list says.
-
-			A visitor opening such a page gets a password form instead, and sees the
-			protected pages until the session ends. `[protected-logout]` puts a
-			lock-again link on them; there are no accounts and nothing is stored per
-			visitor.
-			TXT,
-		'de_DE' => <<<'TXT'
-			Setze unten das eine Passwort und trage darunter ein, was es schützt,
-			eine URI je Zeile: `/intern` schützt diese Seite und alles darunter. Ein
-			leeres Passwort schützt nichts, was auch immer in der Liste steht.
-
-			Wer so eine Seite öffnet, bekommt stattdessen ein Passwortformular und
-			sieht die geschützten Seiten bis zum Ende der Sitzung.
-			`[protected-logout]` setzt einen Link zum Wiederabschließen darauf;
-			Benutzerkonten gibt es keine, und pro Besucher wird nichts gespeichert.
-			TXT,
+		'shortcodes' => [
+			'[protected-logout]' => [
+				'en_US' => 'A lock-again link, for a protected page.',
+				'de_DE' => 'Ein Wieder-sperren-Link, für eine geschützte Seite.',
+			],
+			'[protected-error]' => [
+				'en_US' => 'What the password form says when the password was wrong.',
+				'de_DE' => 'Was das Passwortformular sagt, wenn das Passwort falsch war.',
+			],
+		],
+		'markup' => [],
+		'routes' => [
+			'/.protected' => [
+				'en_US' => 'Where the password form posts to.',
+				'de_DE' => 'Wohin das Passwortformular sendet.',
+			],
+		],
+		'panel' => [],
+		'callbacks' => [
+			'/nino/http/response' => [
+				'en_US' => 'Puts the password form in front of every protected page.',
+				'de_DE' => 'Stellt das Passwortformular vor jede geschützte Seite.',
+			],
+		],
+		'install' => [
+			'templates/page-protected.tpl' => [
+				'en_US' => 'The password form.',
+				'de_DE' => 'Das Passwortformular.',
+			],
+			'text/<locale>.php' => [
+				'en_US' => 'Its words, into the Text panel.',
+				'de_DE' => 'Seine Worte, ins Panel Texte.',
+			],
+		],
 	],
 	'category'		=> 'security',
 	'version'			=> '1.0.0',
