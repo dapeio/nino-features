@@ -504,14 +504,16 @@ namespace Nino\Modules\Templates {
 			if( preg_match( $pattern, $source, $match ) !== 1 )
 				return $result;
 
-			$displayName = trim( (string) ( $match[1] ?? '' ) );
+			$displayName = trim( $match[1] );
 			if( self::_validDisplayName( $displayName ) === false )
 				return $result;
 
 			$result['source'] = substr( $source, strlen( $match[0] ) );
 			$result['displayName'] = $displayName;
 			$result['hasMetadata'] = true;
-			if( isset( $match[2] ) && $match[2] !== '' ) {
+			// The vpa line is optional, and an optional group that did not
+			// take part is simply absent - never present and empty
+			if( isset( $match[2] ) === true ) {
 				$result['pageMotion'] = $match[2];
 				$result['hasPageMotion'] = true;
 			}

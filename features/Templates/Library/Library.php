@@ -193,7 +193,7 @@ namespace Nino\Modules\Templates {
 			$result = preg_replace_callback( '~@font-face\s*\{[^{}]*\}~i', function( array $fontRule ) use ( &$appData, $publicUrl, $fontRoot, &$embeddedBytes, &$embeddedFonts ): string {
 				$unresolved = false;
 				$rule = preg_replace_callback( '~url\(\s*(?:(["\'])(.*?)\1|([^\)"\']+))\s*\)~i', function( array $urlMatch ) use ( &$appData, $publicUrl, $fontRoot, &$embeddedBytes, &$embeddedFonts, &$unresolved ): string {
-					$source = trim( ( $urlMatch[2] ?? '' ) !== '' ? $urlMatch[2] : ( $urlMatch[3] ?? '' ) );
+					$source = trim( $urlMatch[2] !== '' ? $urlMatch[2] : ( $urlMatch[3] ?? '' ) );
 
 					if( str_starts_with( strtolower( $source ), 'data:' ) === true )
 						return $urlMatch[0];

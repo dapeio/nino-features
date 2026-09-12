@@ -627,7 +627,7 @@ namespace Nino\Modules\Templates {
 				$base = strtok( $definition['class'], ' ' );
 				foreach( [ 'quiet', 'loud' ] as $modifier )
 					if( isset( $definition['styleClasses'][$modifier] ) )
-						$definition['styleClasses'][$modifier] = $base === false || $base === '' ? '' : $base. '--'. $modifier;
+						$definition['styleClasses'][$modifier] = $base === false ? '' : $base. '--'. $modifier;
 				if( $type === 'image' && isset( $override['width'] ) )
 					$definition['properties']['src']['width'] = max( 1, min( 8000, (int) $override['width'] ) );
 				if( $type === 'image' && isset( $override['height'] ) )
