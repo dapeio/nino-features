@@ -1,0 +1,39 @@
+/*	Nino Design - Redirects panel
+ *
+ *	Everything this panel is made of belongs to the workbench already - the
+ *	table, the fields, the action bar, the segmented strip. What is left here
+ *	is the three places where two of them stand next to each other, and that
+ *	is deliberately all of it: a panel with a stylesheet of its own is a panel
+ *	that stops following the workbench the next time the workbench moves.
+ *
+ *	Only added to nino.tool - the layer a feature's admin css belongs in (see
+ *	the layer order in _nino/Nino.css).
+ */
+@layer nino.tool {
+
+	/* The strip over the two screens, which are two mounts rather than two
+	   tabs of the shell's own - so the space under it is this panel's */
+	.nino-admin .redirects-tabs {
+		margin-bottom: 1rem;
+	}
+
+	/* Two buttons in a table cell. nowrap because the cell is as narrow as the
+	   table makes it, and an action that wrapped under its own row would move
+	   every row below it */
+	.nino-admin .redirects-row-actions {
+		display: flex;
+		gap: .35rem;
+		white-space: nowrap;
+	}
+
+	.nino-admin .redirects-probe {
+		margin-top: 1.5rem;
+	}
+
+	/* The probe answers into its own action bar, and an answer is a sentence
+	   rather than a word - so it gets the room a status line does not need */
+	.nino-admin .redirects-probe .nino-admin-hint {
+		flex: 1 1 18rem;
+		margin: 0;
+	}
+}
