@@ -1,0 +1,71 @@
+/*	Nino Design - buttons v4
+ *
+ *	@name			Soft keys
+ *	@description	A small radius, a light shadow and a press that actually moves. For interfaces more than for pages.
+ *
+ *	@knob	volume		Schriftgröße der Beschriftung
+ *	@knob	spacing		Raum um die Beschriftung
+ *	@knob	shaping		Eckenradius
+ *
+ *	The one set here that answers :active, because a key that does not move
+ *	under the finger is the thing people press twice. The shadow is what makes
+ *	the movement visible, so the two are one decision.
+ */
+:root {
+	--buttons-volume--less: 			var(--fontsize-small);
+	--buttons-volume--default: 		var(--fontsize-btn);
+	--buttons-volume--more: 			var(--fontsize-big);
+
+	--buttons-spacing--less: 			var(--space-1);
+	--buttons-spacing--default: 	var(--space-2);
+	--buttons-spacing--more: 			var(--space-3);
+
+	--buttons-shaping--less: 			var(--radius-small);
+	--buttons-shaping--default: 	var(--radius);
+	--buttons-shaping--more: 			var(--radius-large);
+}
+
+.nino-btn {
+	padding: calc( var(--buttons-spacing) /2 ) var(--buttons-spacing);
+	border-radius: var(--buttons-shaping);
+	font-size: var(--buttons-volume);
+	font-weight: 600;
+	box-shadow: 0 1px 2px rgb(0 0 0 / .12);
+	transition: transform .12s ease, box-shadow .12s ease;
+}
+
+.nino-btn:active {
+	transform: translateY(1px);
+	box-shadow: 0 0 0 rgb(0 0 0 / .12);
+}
+
+.nino-btn--outline {
+	box-shadow: none;
+}
+
+.nino-btn:disabled,
+.nino-btn[aria-disabled="true"] {
+	box-shadow: none;
+	transform: none;
+}
+
+.nino-btn--small {
+	padding: calc( var(--buttons-spacing) /3 ) calc( var(--buttons-spacing) *.7 );
+	font-size: calc( var(--buttons-volume) *.85 );
+	border-radius: calc( var(--buttons-shaping) *.8 );
+}
+
+.nino-btn--big {
+	padding: calc( var(--buttons-spacing) /1.6 ) calc( var(--buttons-spacing) *1.3 );
+	font-size: calc( var(--buttons-volume) *1.2 );
+	border-radius: calc( var(--buttons-shaping) *1.2 );
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.nino-btn {
+		transition: none;
+	}
+	.nino-btn:active {
+		transform: none;
+	}
+}

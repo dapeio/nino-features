@@ -52,21 +52,6 @@
 	border-left: 2px solid var(--editor-separator);
 }
 
-/*	What a select means, between its name and itself rather than in a paragraph
-	under it: a sentence floating below a control reads as the next thing on the
-	screen instead of as something about the thing above it. */
-.nino-admin .design-field-hint {
-	display: block;
-	margin: 0 0 .35rem;
-	color: var(--editor-text-secondary);
-	font-size: .74rem;
-	line-height: 1.45;
-}
-
-#design-knob {
-	margin-top: 1.4rem;
-}
-
 /* ---- the knob ----
 
    One row per value the variant declares three steps for: what it is called,

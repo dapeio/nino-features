@@ -1,0 +1,68 @@
+/*	Nino Design - blocks v2
+ *
+ *	@name			Bordered plans
+ *	@description	Plans as hairline boxes with square corners, the featured one marked by its border rather than by a lift.
+ *
+ *	@knob	volume		Preis und Plantitel
+ *	@knob	spacing		Innenabstand und Schrittabstand
+ *	@knob	shaping		Eckenradius eines Plans
+ *
+ *	A pricing row where nothing floats: three boxes of the same height, and the
+ *	one being recommended says so with a heavier line in the primary colour. The
+ *	alternative - scaling it up - makes a row of plans jump, and a visitor
+ *	comparing three things wants them on one line.
+ */
+:root {
+	--blocks-volume--less: 			var(--text-2);
+	--blocks-volume--default: 	var(--text-3);
+	--blocks-volume--more: 			var(--text-4);
+
+	--blocks-spacing--less: 		var(--space-2);
+	--blocks-spacing--default: 	var(--space-3);
+	--blocks-spacing--more: 		var(--space-4);
+
+	--blocks-shaping--less: 		0;
+	--blocks-shaping--default: 	0;
+	--blocks-shaping--more: 		var(--radius);
+}
+
+.nino-pricing-item {
+	padding: var(--blocks-spacing);
+	border: 1px solid var(--color-border);
+	border-radius: var(--blocks-shaping);
+	background-color: var(--color-background);
+	box-shadow: none;
+	transform: none;
+}
+
+.nino-pricing-item--featured {
+	border: 2px solid var(--color-primary);
+	transform: none;
+	box-shadow: none;
+}
+
+.nino-pricing-title {
+	font-size: calc( var(--blocks-volume) *.55 );
+	letter-spacing: .1em;
+	text-transform: uppercase;
+	color: var(--color-subtitle);
+	margin-bottom: calc( var(--blocks-spacing) /3 );
+}
+
+.nino-pricing-price {
+	font-size: var(--blocks-volume);
+	line-height: 1.1;
+	margin-bottom: calc( var(--blocks-spacing) /2 );
+}
+
+.nino-pricing-features {
+	margin-bottom: var(--blocks-spacing);
+}
+
+.nino-timeline-step {
+	padding-bottom: var(--blocks-spacing);
+}
+
+.nino-timeline-number {
+	border-radius: var(--blocks-shaping);
+}

@@ -1,0 +1,51 @@
+/*	Nino Design - footer v11
+ *
+ *	@name			Hairline
+ *	@description	One line on the page's own ground: copyright, the legal links, the locale. Nothing else at all.
+ *
+ *	The least a footer can be and still be legal. No navigation - a site whose
+ *	header carries every page does not need the list twice - and no surface of
+ *	its own, so the page ends on the ground it was written on. For one-pagers,
+ *	landing pages and anything where the footer is a formality.
+ */
+
+.nino-frame-footer {
+	padding: var(--space-2) 0;
+	background-color: transparent;
+	color: var(--color-text);
+	border-top: 1px solid var(--color-border);
+}
+
+.nino-frame-footer .nino-frame-footer-line {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: .35rem var(--space-2);
+	font-size: var(--fontsize-small);
+}
+
+.nino-frame-footer .nino-frame-footer-copyright {
+	margin: 0;
+	opacity: .75;
+}
+
+.nino-frame-footer .nino-frame-footer-utility {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: .35rem var(--space-2);
+	margin-left: auto;
+}
+
+.nino-frame-footer a {
+	color: inherit;
+}
+
+/*	Stacked and left on a phone rather than pushed apart: margin-left:auto on a
+	wrapped line puts the second half on its own row against the right edge,
+	which reads as a column nobody asked for */
+@media (max-width: 767px) {
+	.nino-frame-footer .nino-frame-footer-utility {
+		margin-left: 0;
+	}
+}

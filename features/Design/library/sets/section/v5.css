@@ -1,0 +1,60 @@
+/*	Nino Design - section v5
+ *
+ *	@name			Framed bands
+ *	@description	Every band inset and rounded against the page, with a hairline where two plain ones meet. For pages built out of panels.
+ *
+ *	@knob	volume		Titel und Untertitel
+ *	@knob	spacing		Innenabstand eines Bandes
+ *	@knob	shaping		Eckenradius eines Bandes
+ *
+ *	A band is a panel here rather than a stripe across the page, which is what
+ *	makes a run of them read as a stack of things instead of one long scroll.
+ *	Two plain bands in a row would have nothing between them, so they get the
+ *	one hairline this set draws.
+ */
+:root {
+	--section-volume--less: 		var(--text-3);
+	--section-volume--default: 	var(--text-4);
+	--section-volume--more: 		var(--text-5);
+
+	--section-spacing--less: 		var(--space-3);
+	--section-spacing--default: var(--space-4);
+	--section-spacing--more: 		var(--space-5);
+
+	--section-shaping--less: 		0;
+	--section-shaping--default: var(--radius);
+	--section-shaping--more: 		var(--radius-large);
+}
+
+.nino-section {
+	padding: var(--section-spacing);
+	border-radius: var(--section-shaping);
+}
+
+/*	The inset only where there is something to inset: a full-width band is
+	declared full-width on purpose */
+.nino-section:not(.nino-section--fullwidth) {
+	margin-right: auto;
+	margin-left: auto;
+	max-width: var(--grid-max-width);
+}
+
+.nino-section + .nino-section:not([class*="nino-section--"]) {
+	border-top: 1px solid var(--color-border);
+}
+
+.nino-section-title {
+	font-size: var(--section-volume);
+	line-height: calc( var(--section-volume) *1.25 );
+	margin-bottom: calc( var(--section-spacing) /4 );
+}
+
+.nino-section-subtitle {
+	font-size: calc( var(--section-volume) *.72 );
+	line-height: calc( var(--section-volume) *1.05 );
+	margin-bottom: calc( var(--section-spacing) /3 );
+}
+
+.nino-section-text {
+	margin-bottom: calc( var(--section-spacing) /3 );
+}

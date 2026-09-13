@@ -1,0 +1,65 @@
+/*	Nino Design - lists v4
+ *
+ *	@name			Dense data
+ *	@description	Small type, tight cells, numbers aligned on their digits and the header sticky. For tables with a lot of rows.
+ *
+ *	@knob	volume		Schriftgröße in Tabelle und Liste
+ *	@knob	spacing		Lücken und Zellenraum
+ *	@knob	shaping		Eckenradius eines Badges
+ *
+ *	Three things a long table needs that a short one does not: tabular figures,
+ *	so a column of numbers lines up on the decimal; a header that stays while
+ *	the body scrolls; and the striping back, because at this row height the eye
+ *	does lose the line.
+ */
+:root {
+	--lists-volume--less: 			.8125rem;
+	--lists-volume--default: 		var(--fontsize-small);
+	--lists-volume--more: 			1rem;
+
+	--lists-spacing--less: 			calc( var(--space-1) *.4 );
+	--lists-spacing--default: 	calc( var(--space-1) *.6 );
+	--lists-spacing--more: 			var(--space-1);
+
+	--lists-shaping--less: 			0;
+	--lists-shaping--default: 	var(--radius-small);
+	--lists-shaping--more: 			var(--radius);
+}
+
+.nino-table {
+	font-size: var(--lists-volume);
+	font-variant-numeric: tabular-nums;
+}
+
+.nino-table th,
+.nino-table td {
+	padding: var(--lists-spacing) calc( var(--lists-spacing) *1.6 );
+	line-height: 1.4;
+}
+
+/*	Sticky against the wrapper the framework already puts around a table, so
+	the header stays while the rows go past. It needs a ground of its own, or
+	the rows scroll through it */
+.nino-table th {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	background-color: var(--color-background);
+	border-bottom: 1px solid var(--color-border);
+	white-space: nowrap;
+}
+
+.nino-table--striped tbody tr:nth-child(odd) {
+	background-color: var(--color-background-dim);
+}
+
+.nino-list {
+	gap: var(--lists-spacing);
+	font-size: var(--lists-volume);
+}
+
+.nino-badge {
+	border-radius: var(--lists-shaping);
+	padding: calc( var(--lists-spacing) /2 ) var(--lists-spacing);
+	font-size: calc( var(--lists-volume) *.92 );
+}

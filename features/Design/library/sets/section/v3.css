@@ -1,0 +1,63 @@
+/*	Nino Design - section v3
+ *
+ *	@name			Tight editorial
+ *	@description	Short bands, a small heading with a rule under it, and a subtitle in spaced capitals. For pages with a lot to say.
+ *
+ *	@knob	volume		Titel und Untertitel
+ *	@knob	spacing		Bandhöhe und Absatzabstand
+ *	@knob	measure		Breite der Textspalte
+ *
+ *	The opposite decision to v2: many short bands rather than few tall ones, so
+ *	the heading has to mark a break the white space no longer makes. It does it
+ *	with a rule, and the subtitle sits over the title as a kicker does.
+ */
+:root {
+	--section-volume--less: 		var(--text-2);
+	--section-volume--default: 	var(--text-3);
+	--section-volume--more: 		var(--text-4);
+
+	--section-spacing--less: 		var(--space-2);
+	--section-spacing--default: var(--space-3);
+	--section-spacing--more: 		var(--space-4);
+
+	--section-measure--less: 		38rem;
+	--section-measure--default: 46rem;
+	--section-measure--more: 		58rem;
+}
+
+.nino-section {
+	padding: var(--section-spacing) 0;
+}
+
+.nino-section-title {
+	font-size: var(--section-volume);
+	line-height: calc( var(--section-volume) *1.2 );
+	padding-bottom: calc( var(--section-spacing) /4 );
+	margin-bottom: calc( var(--section-spacing) /3 );
+	border-bottom: 1px solid var(--color-border);
+}
+
+/*	Capitals and letterspacing rather than a size: the subtitle is over the
+	title here, and a second large thing above a heading reads as two headings */
+.nino-section-subtitle {
+	font-size: calc( var(--section-volume) *.42 );
+	line-height: 1.4;
+	letter-spacing: .12em;
+	text-transform: uppercase;
+	margin-bottom: calc( var(--section-spacing) /5 );
+}
+
+.nino-section-text {
+	max-width: var(--section-measure);
+	margin-bottom: calc( var(--section-spacing) /3 );
+}
+
+/*	A band that carries its own surface keeps the rule off the edge of it -
+	a hairline against a tinted ground is a seam, not a heading */
+.nino-section--tint .nino-section-title,
+.nino-section--alt .nino-section-title,
+.nino-section--dark .nino-section-title,
+.nino-section--black .nino-section-title {
+	border-bottom-color: currentColor;
+	opacity: 1;
+}

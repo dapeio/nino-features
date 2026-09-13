@@ -1,0 +1,75 @@
+/*	Nino Design - article v4
+ *
+ *	@name			Text first
+ *	@description	The title above the image and the image in a fixed frame, so a row of cards lines up whatever the pictures do.
+ *
+ *	@knob	volume		Kartentitel
+ *	@knob	spacing		Innenabstand und Lücken
+ *	@knob	shaping		Eckenradius des Bildes
+ *
+ *	The card that survives a mixed set of photographs. Every image is cropped to
+ *	the same ratio instead of keeping its own, which is what stops a row from
+ *	stepping up and down; and the words come first, because in a list of
+ *	articles the headline is what is being scanned.
+ */
+:root {
+	--article-volume--less: 			var(--text-2);
+	--article-volume--default: 		var(--text-3);
+	--article-volume--more: 			var(--text-4);
+
+	--article-spacing--less: 			var(--space-1);
+	--article-spacing--default: 	var(--space-2);
+	--article-spacing--more: 			var(--space-3);
+
+	--article-shaping--less: 			0;
+	--article-shaping--default: 	var(--radius-small);
+	--article-shaping--more: 			var(--radius-large);
+}
+
+.nino-article {
+	display: flex;
+	flex-direction: column-reverse;
+	justify-content: flex-end;
+	border: 0;
+	background-color: transparent;
+	box-shadow: none;
+}
+
+/*	A frame rather than a height: object-fit crops what does not fit the ratio,
+	which is the one way a row of photographs nobody prepared lines up */
+.nino-article-img {
+	display: block;
+	width: 100%;
+	aspect-ratio: 3 / 2;
+	max-width: 100%;
+	object-fit: cover;
+	border-radius: var(--article-shaping);
+	margin: 0 0 var(--article-spacing);
+}
+
+.nino-article-content {
+	padding: 0;
+}
+
+.nino-article-title {
+	font-size: var(--article-volume);
+	line-height: 1.2;
+	margin-bottom: calc( var(--article-spacing) /2 );
+}
+
+.nino-article-descr {
+	color: var(--color-text);
+	margin-bottom: calc( var(--article-spacing) /2 );
+}
+
+.nino-article-subtitle {
+	font-size: var(--fontsize-small);
+	letter-spacing: .1em;
+	text-transform: uppercase;
+	color: var(--color-subtitle);
+	margin-bottom: calc( var(--article-spacing) /3 );
+}
+
+.nino-article-cols {
+	gap: calc( var(--article-spacing) *2 );
+}

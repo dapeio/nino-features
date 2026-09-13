@@ -1,0 +1,56 @@
+/*	Nino Design - buttons v2
+ *
+ *	@name			Pills
+ *	@description	Fully rounded, wide, and a hair larger than the text around them. The friendliest of the four.
+ *
+ *	@knob	volume		Schriftgröße der Beschriftung
+ *	@knob	spacing		Raum um die Beschriftung
+ *	@knob	shaping		Eckenradius
+ *
+ *	volume is the knob v1 never declared, and a pill is where it is missed
+ *	first: the shape only works when the label has room on both axes, so the
+ *	size of the label and the padding around it have to move together.
+ */
+:root {
+	--buttons-volume--less: 			var(--fontsize-small);
+	--buttons-volume--default: 		var(--fontsize-btn);
+	--buttons-volume--more: 			var(--fontsize-big);
+
+	--buttons-spacing--less: 			var(--space-2);
+	--buttons-spacing--default: 	var(--space-3);
+	--buttons-spacing--more: 			var(--space-4);
+
+	--buttons-shaping--less: 			var(--radius-large);
+	--buttons-shaping--default: 	999rem;
+	--buttons-shaping--more: 			999rem;
+}
+
+.nino-btn {
+	padding: calc( var(--buttons-spacing) /2.6 ) var(--buttons-spacing);
+	border-radius: var(--buttons-shaping);
+	font-size: var(--buttons-volume);
+	font-weight: 600;
+	line-height: 1.35;
+}
+
+.nino-btn--small {
+	padding: calc( var(--buttons-spacing) /4 ) calc( var(--buttons-spacing) *.65 );
+	font-size: calc( var(--buttons-volume) *.8 );
+	border-radius: var(--buttons-shaping);
+}
+
+.nino-btn--big {
+	padding: calc( var(--buttons-spacing) /2 ) calc( var(--buttons-spacing) *1.35 );
+	font-size: calc( var(--buttons-volume) *1.2 );
+	border-radius: var(--buttons-shaping);
+}
+
+/*	A pill's outline has to be heavier than a box's, or the shape reads as a
+	shadow of a button rather than as one */
+.nino-btn--outline {
+	border-width: 2px;
+}
+
+.nino-filter-btn {
+	border-radius: var(--buttons-shaping);
+}

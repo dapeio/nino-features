@@ -1,0 +1,59 @@
+/*	Nino Design - lists v2
+ *
+ *	@name			Ruled
+ *	@description	A line between rows instead of a stripe behind them, and badges as plain squares. For tables read row by row.
+ *
+ *	@knob	volume		Schriftgröße in Tabelle und Liste
+ *	@knob	spacing		Lücken und Zellenraum
+ *	@knob	shaping		Eckenradius eines Badges
+ *
+ *	Zebra striping helps the eye cross a wide table and gets in the way of a
+ *	narrow one, where what matters is where a row ends. This is the narrow-table
+ *	answer: one hairline per row, and the header rule heavier than the rest so
+ *	the top of the table is the top of it.
+ */
+:root {
+	--lists-volume--less: 			var(--fontsize-small);
+	--lists-volume--default: 		1rem;
+	--lists-volume--more: 			var(--fontsize-big);
+
+	--lists-spacing--less: 			calc( var(--space-1) *.6 );
+	--lists-spacing--default: 	var(--space-1);
+	--lists-spacing--more: 			var(--space-2);
+
+	--lists-shaping--less: 			0;
+	--lists-shaping--default: 	var(--radius-small);
+	--lists-shaping--more: 			var(--radius);
+}
+
+.nino-table {
+	font-size: var(--lists-volume);
+}
+
+.nino-table th,
+.nino-table td {
+	padding: var(--lists-spacing) calc( var(--lists-spacing) *1.4 );
+	border-bottom: 1px solid var(--color-border);
+}
+
+.nino-table th {
+	border-bottom-width: 2px;
+	font-weight: 700;
+}
+
+.nino-table--striped tbody tr:nth-child(odd) {
+	background-color: transparent;
+}
+
+.nino-table tbody tr:last-child td {
+	border-bottom: 0;
+}
+
+.nino-list {
+	gap: var(--lists-spacing);
+	font-size: var(--lists-volume);
+}
+
+.nino-badge {
+	border-radius: var(--lists-shaping);
+}

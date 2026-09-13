@@ -1,0 +1,81 @@
+/*	Nino Design - footer v10
+ *
+ *	@name			Dark slab
+ *	@description	The whole foot on the darkest surface, the name set large, everything on it inverted. For pages that end rather than stop.
+ *
+ *	One surface for the whole footer instead of a main band and a legal band,
+ *	which is what makes it read as the end of the page rather than as two more
+ *	sections. Every colour in here is the dark surface's own pair of roles, so
+ *	the slab stays the darkest thing on the page in either mode - and the
+ *	hairline over the legal line is drawn out of the text colour rather than
+ *	out of the border role, which is mixed for the page ground, not for this.
+ */
+
+.nino-frame-footer {
+	padding: var(--space-5) 0 var(--space-2);
+	background-color: var(--color-section-black-bg);
+	color: var(--color-section-black-text);
+}
+
+.nino-frame-footer a {
+	color: inherit;
+}
+
+.nino-frame-footer .nino-frame-footer-kicker {
+	margin: 0 0 var(--space-1);
+	font-family: var(--fontfamily-title);
+	font-size: var(--text-4);
+	line-height: 1.1;
+	letter-spacing: -.01em;
+}
+
+.nino-frame-footer .nino-frame-footer-description {
+	max-width: 30rem;
+	margin: 0 0 var(--space-2);
+	line-height: 1.6;
+	opacity: .8;
+}
+
+.nino-frame-footer .nino-frame-footer-nav ul {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.nino-frame-footer .nino-frame-footer-nav li {
+	margin-bottom: .5rem;
+}
+
+.nino-frame-footer .nino-frame-footer-contact {
+	font-style: normal;
+	line-height: 1.6;
+	opacity: .8;
+}
+
+.nino-frame-footer .nino-frame-footer-contact p {
+	margin: 0 0 var(--space-1);
+}
+
+.nino-frame-footer .nino-frame-footer-legal {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--space-1) var(--space-2);
+	margin-top: var(--space-4);
+	padding-top: var(--space-1);
+	border-top: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+	font-size: var(--fontsize-small);
+	opacity: .85;
+}
+
+.nino-frame-footer .nino-frame-footer-legal p {
+	margin: 0;
+}
+
+.nino-frame-footer .nino-frame-footer-utility {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--space-1) var(--space-2);
+	margin-left: auto;
+}

@@ -1,0 +1,62 @@
+/*	Nino Design - atf v4
+ *
+ *	@name			Display opening
+ *	@description	A very large title with tight leading and negative tracking, the subtitle held to body size under it.
+ *
+ *	@knob	volume		Titel und Untertitel
+ *	@knob	spacing		Abstand unter dem Titel
+ *	@knob	measure		Breite des Titels
+ *
+ *	Three things a display line needs and a body line does not: leading below
+ *	1.1, tracking pulled in, and somewhere to break. measure is that last one -
+ *	a headline allowed to run the width of a desktop is a headline in one line
+ *	nobody planned.
+ */
+:root {
+	--atf-volume--less: 			var(--text-5);
+	--atf-volume--default: 		var(--text-6);
+	--atf-volume--more: 			calc( var(--text-6) *1.45 );
+
+	--atf-spacing--less: 			var(--space-2);
+	--atf-spacing--default: 	var(--space-3);
+	--atf-spacing--more: 			var(--space-4);
+
+	--atf-measure--less: 			14ch;
+	--atf-measure--default: 	18ch;
+	--atf-measure--more: 			26ch;
+}
+
+.nino-atf-title {
+	font-size: var(--atf-volume);
+	line-height: 1.02;
+	letter-spacing: -.03em;
+	max-width: var(--atf-measure);
+	margin-bottom: var(--atf-spacing);
+}
+
+/*	Not a proportion of the title: a quarter of a display size is still a
+	headline, and what belongs under one is a sentence */
+.nino-atf-subtitle {
+	font-size: var(--text-2);
+	line-height: 1.5;
+	letter-spacing: 0;
+	max-width: 38rem;
+	opacity: 1;
+	margin-bottom: var(--atf-spacing);
+}
+
+.nino-text-center .nino-atf-title,
+.nino-text-center .nino-atf-subtitle {
+	margin-right: auto;
+	margin-left: auto;
+}
+
+/*	ch units are the font's own zero width, so the break point follows whatever
+	face the project set - but only above the phone, where there is a width to
+	hold back. Below it the screen is the measure */
+@media (max-width: 767px) {
+	.nino-atf-title {
+		max-width: none;
+		letter-spacing: -.02em;
+	}
+}

@@ -1,0 +1,60 @@
+/*	Nino Design - section v2
+ *
+ *	@name			Wide bands
+ *	@description	Tall bands with air around the text and a narrower column to read in. For sites with few, long sections.
+ *
+ *	@knob	volume		Titel und Untertitel
+ *	@knob	spacing		Bandhöhe und Absatzabstand
+ *	@knob	measure		Breite der Textspalte
+ *
+ *	The band is the unit here: it is tall, and what stands in it is held to a
+ *	column narrower than the grid so a paragraph is read rather than scanned.
+ *	measure is the knob v1 never declared - a band this wide needs somewhere to
+ *	stop, and the grid's own width is not it.
+ */
+:root {
+	--section-volume--less: 		var(--text-3);
+	--section-volume--default: 	var(--text-4);
+	--section-volume--more: 		var(--text-5);
+
+	--section-spacing--less: 		var(--space-4);
+	--section-spacing--default: var(--space-5);
+	--section-spacing--more: 		var(--space-6);
+
+	--section-measure--less: 		42rem;
+	--section-measure--default: 52rem;
+	--section-measure--more: 		64rem;
+}
+
+.nino-section {
+	padding: var(--section-spacing) 0;
+}
+
+/*	The column, not the grid: .nino-section-text is what a paragraph lands in,
+	and a line that runs the full width of a wide screen is a line nobody
+	finishes. The title keeps the grid so a heading still spans the band. */
+.nino-section-text {
+	max-width: var(--section-measure);
+	margin-bottom: calc( var(--section-spacing) /3 );
+}
+
+.nino-section-title {
+	font-size: var(--section-volume);
+	line-height: calc( var(--section-volume) *1.25 );
+	margin-bottom: calc( var(--section-spacing) /4 );
+}
+
+.nino-section-subtitle {
+	font-size: calc( var(--section-volume) *.7 );
+	line-height: calc( var(--section-volume) *1.05 );
+	max-width: var(--section-measure);
+	margin-bottom: calc( var(--section-spacing) /3 );
+}
+
+/*	Centred text centres its column too, or a "centred" band is a centred
+	heading over a paragraph pinned to the left */
+.nino-text-center .nino-section-text,
+.nino-text-center .nino-section-subtitle {
+	margin-right: auto;
+	margin-left: auto;
+}

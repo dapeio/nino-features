@@ -1,0 +1,90 @@
+/*	Nino Design - header v7
+ *
+ *	@name			Two decks
+ *	@description	A thin utility line with phone, mail and the social links over the main bar. For shops, practices and anyone who is called.
+ *
+ *	The deck above the bar is the point: a phone number in the navigation is a
+ *	menu item, and a phone number on its own line is a way to reach somebody.
+ *	It goes away below the tablet rather than wrapping into two lines of small
+ *	print - on a phone the number is one tap away in the page itself.
+ */
+
+.nino-frame-header .nino-frame-header-utility {
+	background-color: var(--color-section-dark-bg);
+	color: var(--color-section-dark-text);
+	font-size: var(--fontsize-small);
+}
+
+.nino-frame-header .nino-frame-header-utility-inner {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	min-height: 2.25rem;
+}
+
+.nino-frame-header .nino-frame-header-contact {
+	margin: 0;
+}
+
+.nino-frame-header .nino-frame-header-contact a {
+	color: inherit;
+}
+
+.nino-frame-header .nino-frame-header-social {
+	margin-left: auto;
+}
+
+.nino-frame-header .nino-frame-header-social a {
+	color: inherit;
+}
+
+.nino-frame-header .nino-scroll-header {
+	min-height: 4.5rem;
+	opacity: 1;
+	background-color: var(--color-background);
+	display: flex;
+	border-bottom: 1px solid var(--color-border);
+}
+
+body.nino-scroll-atf .nino-frame-header .nino-scroll-header {
+	background-color: var(--color-background);
+}
+
+.nino-frame-header .nino-logo {
+	width: clamp(7rem, 9vw, 9.5rem);
+	height: auto;
+	min-width: 0;
+	min-height: 0;
+	margin: 0;
+	background-image: none;
+}
+
+.nino-frame-header .nino-frame-header-nav {
+	margin-left: auto;
+}
+
+.nino-frame-header .nino-nav-burger > label > svg {
+	fill: var(--color-title);
+}
+
+/*	Both decks, not only the bar: the header is taller here, and a main that
+	reserves the bar's height alone starts under the utility line */
+body main {
+	padding-top: clamp(6.75rem, var(--space-6), 9rem);
+}
+
+body main:has(> .nino-cover:first-child),
+body main:has(> .nino-parallex:first-child) {
+	padding-top: 0;
+}
+
+/*	The deck is the first thing to go: it is the least of what a header does,
+	and two rows of chrome over a phone screen is most of the first screen */
+@media (max-width: 767px) {
+	.nino-frame-header .nino-frame-header-utility {
+		display: none;
+	}
+	body main {
+		padding-top: clamp(4.5rem, var(--space-5), 7rem);
+	}
+}

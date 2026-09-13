@@ -52,6 +52,89 @@ check( 'a set name that is not a set name resolves to nothing', \Nino\Modules\De
 	&& \Nino\Modules\Design\Setup::file( $library, 'section', 'v1/../v1' ) === ''
 	&& \Nino\Modules\Design\Setup::file( $library, 'section', '' ) === '' );
 
+/*	The library is written by hand and grows by hand, so what is held here is
+	what a new file gets wrong - and gets wrong quietly. A variant with no
+	@name is offered under its file name, two under one name are two rows
+	nobody can tell apart, a knob outside Setup::KNOBS is a handle the panel
+	will never show, a triple missing a step is a knob position that compiles
+	to nothing, and a rule reading a token the file never declared is a
+	declaration that silently does not apply.
+
+	Written against the shipped library rather than a fixture on purpose: a
+	fixture would prove the rule and let the files drift.	*/
+foreach( \Nino\Modules\Design\Setup::PARTS as $part => $kind ) {
+
+	$catalogue	= \Nino\Modules\Design\Setup::catalogue( $library, $part );
+	$names			= array_column( $catalogue, 'name' );
+	$described	= array_filter( $catalogue, static fn( array $entry ): bool => trim( $entry['description'] ) !== '' );
+
+	check( '"'. $part. '" offers a choice rather than a single variant', count( $catalogue ) > 1 );
+	check( '...every one of them named, and no two the same', count( array_unique( $names ) ) === count( $names )
+		&& count( array_filter( $names, static fn( string $name ): bool => preg_match( '/^v[0-9]+$/', $name ) === 1 ) ) === 0 );
+	check( '...and every one of them saying what it is', count( $described ) === count( $catalogue ) );
+
+	$knobProblems	= [];
+	$fileProblems	= [];
+
+	foreach( array_keys( $catalogue ) as $set ) {
+
+		$style = \Nino\Modules\Design\Setup::file( $library, $part, $set );
+
+		if( $style === '' || ( $kind === 'frame' && \Nino\Modules\Design\Setup::file( $library, $part, $set, 'template' ) === '' ) ) {
+			$fileProblems[] = $set;
+			continue;
+		}
+
+		$css = (string) file_get_contents( $style );
+
+		// What the file publishes: one triple per knob, named after the part
+		preg_match_all( '/--'. preg_quote( $part, '/' ). '-([a-z]+)--(less|default|more)\s*:/', $css, $found );
+
+		$steps = [];
+		foreach( $found[1] as $index => $knob )
+			$steps[$knob][] = $found[2][$index];
+
+		foreach( $steps as $knob => $declared ) {
+
+			if( in_array( $knob, \Nino\Modules\Design\Setup::KNOBS, true ) === false )
+				$knobProblems[] = $set. ': "'. $knob. '" is not one of the knobs';
+
+			sort( $declared );
+			if( array_values( array_unique( $declared ) ) !== [ 'default', 'less', 'more' ] )
+				$knobProblems[] = $set. ': "'. $knob. '" is not a triple';
+		}
+
+		// ...and what it reads. A rule on a token nothing declared is a rule
+		// that does nothing, which is invisible until somebody moves the knob
+		preg_match_all( '/var\(\s*--'. preg_quote( $part, '/' ). '-([a-z]+)\s*\)/', $css, $used );
+
+		foreach( array_unique( $used[1] ) as $token )
+			if( isset( $steps[$token] ) === false )
+				$knobProblems[] = $set. ': reads --'. $part. '-'. $token. ' without declaring it';
+	}
+
+	check( '...each resolving to the files its kind is made of', $fileProblems === [] );
+	check( '...and every knob it publishes a real triple of a real knob', $knobProblems === [] );
+}
+
+/*	And the one thing reading the files cannot say: that each of them survives
+	the compiler. Every variant of every part, one at a time, because a single
+	setup naming all of them would prove only that the last one landed	*/
+$compileProblems = [];
+
+foreach( \Nino\Modules\Design\Setup::PARTS as $part => $kind )
+	foreach( \Nino\Modules\Design\Setup::available( $library, $part ) as $set ) {
+
+		$sheet = \Nino\Modules\Design\Compiler::compile( \Nino\Modules\Design\Setup::normalize( [
+			'parts' => [ $part => [ 'set' => $set ] ],
+		], $library ), $library );
+
+		if( str_contains( $sheet, $part. ': '. $set ) === false )
+			$compileProblems[] = $part. '/'. $set;
+	}
+
+check( 'every variant in the library compiles into the sheet under its own name', $compileProblems === [] );
+
 /*	The token layer is shipped twice on purpose - the wizard's base unit
 	delivers it, and this feature carries its own copy because _admin/install/
 	is gone from a project by the time anything here recompiles. Two copies

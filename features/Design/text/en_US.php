@@ -7,7 +7,6 @@ return [
 	'[[/_admin/design/label/title]]'				=> 'Design',
 
 	'[[/_admin/design/label/global]]'				=> 'Global',
-	'[[/_admin/design/label/knob]]'					=> 'Finetuning',
 	'[[/_admin/design/label/size]]'					=> 'Root size',
 	'[[/_admin/design/label/follow]]'				=> 'Follow again',
 	'[[/_admin/design/label/save]]'					=> 'Save the selection',

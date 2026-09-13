@@ -1,0 +1,76 @@
+/*	Nino Design - article v3
+ *
+ *	@name			Soft cards
+ *	@description	Rounded, lifted off the page, with room around the words and a lift on hover. For a handful of things worth looking at.
+ *
+ *	@knob	volume		Kartentitel
+ *	@knob	spacing		Innenabstand und Lücken
+ *	@knob	shaping		Eckenradius der Karte
+ *
+ *	The opposite case to v2: few cards, each of which is a destination. The
+ *	shadow is what makes it one, and the transform on hover is what makes it
+ *	clickable before it is clicked - both switched off where the visitor asked
+ *	for less motion.
+ */
+:root {
+	--article-volume--less: 			var(--text-2);
+	--article-volume--default: 		var(--text-3);
+	--article-volume--more: 			var(--text-4);
+
+	--article-spacing--less: 			var(--space-2);
+	--article-spacing--default: 	var(--space-3);
+	--article-spacing--more: 			var(--space-4);
+
+	--article-shaping--less: 			var(--radius-small);
+	--article-shaping--default: 	var(--radius-large);
+	--article-shaping--more: 			2rem;
+}
+
+.nino-article {
+	border: 0;
+	border-radius: var(--article-shaping);
+	background-color: var(--color-background);
+	box-shadow: 0 1px 2px rgb(0 0 0 / .05), 0 8px 24px rgb(0 0 0 / .08);
+	overflow: hidden;
+	transition: transform .18s ease, box-shadow .18s ease;
+}
+
+.nino-article:hover,
+.nino-article:focus-within {
+	transform: translateY(-2px);
+	box-shadow: 0 2px 4px rgb(0 0 0 / .06), 0 14px 34px rgb(0 0 0 / .12);
+}
+
+.nino-article-img {
+	display: block;
+	width: 100%;
+	margin: 0;
+}
+
+.nino-article-content {
+	padding: var(--article-spacing);
+}
+
+.nino-article-title {
+	font-size: var(--article-volume);
+	line-height: 1.25;
+	margin-bottom: calc( var(--article-spacing) /3 );
+}
+
+.nino-article-descr {
+	margin-bottom: calc( var(--article-spacing) /3 );
+}
+
+.nino-article-cols {
+	gap: var(--article-spacing);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.nino-article {
+		transition: none;
+	}
+	.nino-article:hover,
+	.nino-article:focus-within {
+		transform: none;
+	}
+}

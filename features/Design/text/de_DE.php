@@ -7,7 +7,6 @@ return [
 	'[[/_admin/design/label/title]]'				=> 'Design',
 
 	'[[/_admin/design/label/global]]'				=> 'Global',
-	'[[/_admin/design/label/knob]]'					=> 'Finetuning',
 	'[[/_admin/design/label/size]]'					=> 'Grundgröße',
 	'[[/_admin/design/label/follow]]'				=> 'Wieder folgen lassen',
 	'[[/_admin/design/label/save]]'					=> 'Auswahl speichern',

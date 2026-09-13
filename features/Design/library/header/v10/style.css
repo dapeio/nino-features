@@ -1,0 +1,72 @@
+/*	Nino Design - header v10
+ *
+ *	@name			Slim bar
+ *	@description	Three and a quarter rem tall, edge to edge, with a shadow once the page moves. For documentation and dense sites.
+ *
+ *	The smallest header that still holds a menu. It is worth having when the
+ *	page under it is long and the visitor is reading rather than arriving: five
+ *	rem of chrome on every screen of a manual is a lot of manual nobody sees.
+ *	The shadow, not a border, marks that the page has moved under it.
+ */
+
+.nino-frame-header .nino-scroll-header {
+	min-height: 3.25rem;
+	display: flex;
+	opacity: 1;
+	background-color: var(--color-background);
+	border-bottom: 1px solid var(--color-border);
+	transition: box-shadow .18s ease;
+}
+
+body.nino-scroll-atf .nino-frame-header .nino-scroll-header {
+	background-color: var(--color-background);
+	box-shadow: 0 2px 10px rgb(0 0 0 / .10);
+}
+
+.nino-frame-header .nino-logo {
+	width: clamp(5rem, 6vw, 6.5rem);
+	height: auto;
+	min-width: 0;
+	min-height: 0;
+	margin: 0;
+	background-image: none;
+}
+
+.nino-frame-header .nino-frame-header-nav {
+	margin-left: auto;
+}
+
+.nino-frame-header .nino-nav-burger > label > svg {
+	fill: var(--color-title);
+}
+
+body main {
+	padding-top: 3.25rem;
+}
+
+body main:has(> .nino-cover:first-child),
+body main:has(> .nino-parallex:first-child) {
+	padding-top: 0;
+}
+
+@media (min-width: 768px) {
+	.nino-frame-header .nino-nav-content li a {
+		padding: .35rem 0;
+		font-size: .85rem;
+	}
+
+	.nino-frame-header .nino-nav-content > li + li {
+		margin-left: var(--space-1);
+	}
+
+	.nino-frame-header .nino-nav-content li a.nino-is-active {
+		color: var(--color-primary);
+		font-weight: 600;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.nino-frame-header .nino-scroll-header {
+		transition: none;
+	}
+}

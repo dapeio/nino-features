@@ -1,0 +1,58 @@
+/*	Nino Design - atf v5
+ *
+ *	@name			Left rail
+ *	@description	Everything anchored left against a rule, the title, the subtitle and the buttons in one column. For editorial openings.
+ *
+ *	@knob	volume		Titel und Untertitel
+ *	@knob	spacing		Abstand unter dem Titel
+ *
+ *	The hero as the first article rather than a poster: text left, a rule down
+ *	its left edge, nothing centred. A centred hero and a left-aligned page under
+ *	it is the join most openings trip over, and this one has no join.
+ */
+:root {
+	--atf-volume--less: 			var(--text-4);
+	--atf-volume--default: 		var(--text-5);
+	--atf-volume--more: 			var(--text-6);
+
+	--atf-spacing--less: 			var(--space-2);
+	--atf-spacing--default: 	var(--space-3);
+	--atf-spacing--more: 			var(--space-4);
+}
+
+.nino-atf-title,
+.nino-atf-subtitle {
+	text-align: left;
+	max-width: 32rem;
+	margin-right: 0;
+	margin-left: 0;
+}
+
+.nino-atf-title {
+	font-size: var(--atf-volume);
+	line-height: 1.1;
+	padding-left: var(--space-2);
+	border-left: 3px solid var(--color-primary);
+	margin-bottom: calc( var(--atf-spacing) /2 );
+}
+
+.nino-atf-subtitle {
+	font-size: calc( var(--atf-volume) *.4 );
+	line-height: 1.5;
+	padding-left: calc( var(--space-2) + 3px );
+	opacity: 1;
+	margin-bottom: var(--atf-spacing);
+}
+
+/*	The rail is the alignment, so a hero told to centre itself keeps the text
+	left and centres the block instead - two alignments in one hero is neither */
+.nino-text-center .nino-atf-title,
+.nino-text-center .nino-atf-subtitle {
+	text-align: left;
+	margin-right: auto;
+	margin-left: auto;
+}
+
+.nino-atf-arrowdown {
+	margin-left: 0;
+}

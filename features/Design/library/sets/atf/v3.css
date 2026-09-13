@@ -1,0 +1,54 @@
+/*	Nino Design - atf v3
+ *
+ *	@name			Quiet opening
+ *	@description	A small title over a lot of space, with the subtitle first as a kicker. For sites whose content is the argument.
+ *
+ *	@knob	volume		Titel und Untertitel
+ *	@knob	spacing		Abstand unter dem Titel
+ *
+ *	The hero that does not shout. The title is barely larger than a section
+ *	heading, and what does the work is the room around it - which is why
+ *	spacing starts a step higher here than anywhere else.
+ */
+:root {
+	--atf-volume--less: 			var(--text-3);
+	--atf-volume--default: 		var(--text-4);
+	--atf-volume--more: 			var(--text-5);
+
+	--atf-spacing--less: 			var(--space-3);
+	--atf-spacing--default: 	var(--space-4);
+	--atf-spacing--more: 			var(--space-6);
+}
+
+.nino-atf {
+	padding-top: var(--atf-spacing);
+	padding-bottom: var(--atf-spacing);
+}
+
+.nino-atf-title {
+	font-size: var(--atf-volume);
+	line-height: 1.25;
+	max-width: 34rem;
+	margin-bottom: calc( var(--atf-spacing) /2 );
+}
+
+/*	Capitals over the title rather than a sentence under it: at this size a
+	subtitle set as prose would compete with the title instead of introducing it */
+.nino-atf-subtitle {
+	font-size: var(--fontsize-small);
+	line-height: 1.4;
+	letter-spacing: .14em;
+	text-transform: uppercase;
+	color: var(--color-subtitle);
+	opacity: 1;
+	margin-bottom: calc( var(--atf-spacing) /3 );
+}
+
+.nino-atf-arrowdown {
+	opacity: .55;
+}
+
+.nino-text-center .nino-atf-title {
+	margin-right: auto;
+	margin-left: auto;
+}

@@ -53,8 +53,8 @@ it belongs to that one.
 
 | | |
 | --- | --- |
-| **Variant** | which set the part is given, out of the variant's own `@name`, with its `@description` between the name and the select. `Global` shows the root size instead |
-| **Finetuning** | one row per knob the chosen variant answers to, at −1 / 0 / +1, each row named and noted the way the kernel's own Design module named it. `Global` has the position every part follows |
+| **Variant** | which set the part is given, listed as `v3 - Floating bar` out of the file's own name and `@name`. Its `@description` is the control's title rather than a line of its own, so the column stays short as the library grows. `Global` shows the root size instead |
+| **Finetuning** | no heading of its own - it is the same part again, and the rows say what they are. One row per knob the chosen variant answers to, at −1 / 0 / +1, each row named and noted the way the kernel's own Design module named it. `Global` has the position every part follows |
 
 The picker carries the weight of the screen and everything that hangs off it
 stands inside a rail, because that is what the two selects mean: the first one
@@ -145,10 +145,10 @@ nothing beyond that.
 
 ```
 library/
-  base.css            the token and role layer, always first
-  header/v1 … v6/     template.tpl + style.css
-  footer/v1 … v7/     template.tpl + style.css
-  sets/<part>/v1.css  one file per choice, per part
+  base.css              the token and role layer, always first
+  header/v1 … v10/      template.tpl + style.css
+  footer/v1 … v11/      template.tpl + style.css
+  sets/<part>/v1 … v5   one file per choice, per part
 ```
 
 `base.css` is sections 1 and 2 of the `theme.css` the wizard delivers, byte for
@@ -182,6 +182,34 @@ lets the framework's own rules stand, so a fresh compile renders Nino exactly
 as it is. What it does carry is every rule `Nino.css` sets for that part,
 commented out with today's values - the handles that part has, in one place.
 A new set starts as a copy of `v1`.
+
+Four more per part stand beside it, and they are meant to be edited rather than
+only chosen - each is one decision carried through, so changing that decision is
+a change in one place:
+
+| Part | | | | |
+| --- | --- | --- | --- | --- |
+| `header` | v7 Two decks | v8 Pill menu | v9 Quiet caps | v10 Slim bar |
+| `footer` | v8 Centred stack | v9 Sitemap | v10 Dark slab | v11 Hairline |
+| `atf` | v2 Full height | v3 Quiet opening | v4 Display opening | v5 Left rail |
+| `section` | v2 Wide bands | v3 Tight editorial | v4 Display titles | v5 Framed bands |
+| `article` | v2 Flat cards | v3 Soft cards | v4 Text first | v5 Compact rows |
+| `buttons` | v2 Pills | v3 Square caps | v4 Soft keys | v5 Compact |
+| `forms` | v2 Boxed fields | v3 Underlined fields | v4 Filled fields | v5 Dense |
+| `lists` | v2 Ruled | v3 Roomy | v4 Dense data | v5 Quiet marks |
+| `blocks` | v2 Bordered plans | v3 Elevated plans | v4 Tinted panels | v5 Compact steps |
+
+They do not carry `v1`'s commented-out reference block: that is the same in
+every variant of a part, and repeating it five times would be five copies to
+keep in step. Read `v1` for the handles, the variant for what was done with
+them.
+
+Several of them declare knobs `v1` does not, which is how a knob reaches a part
+that never had one - `measure` for the column a wide band is read in, `volume`
+for the size of a button's own label. `tests/design-smoke.php` holds every file
+in the library to the vocabulary: a knob outside `Setup::KNOBS`, a triple with
+a step missing, a rule reading a token the file never declared and a variant
+without a name or a description each fail it.
 
 ### Writing a set
 

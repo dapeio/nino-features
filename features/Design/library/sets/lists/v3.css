@@ -1,0 +1,59 @@
+/*	Nino Design - lists v3
+ *
+ *	@name			Roomy
+ *	@description	Wide cells, generous gaps and pill badges. For the short table that is part of the page rather than a report.
+ *
+ *	@knob	volume		Schriftgröße in Tabelle und Liste
+ *	@knob	spacing		Lücken und Zellenraum
+ *	@knob	shaping		Eckenradius eines Badges
+ *
+ *	Five rows of prices on a landing page is not a spreadsheet, and setting it
+ *	like one makes the page look like an export. The cells get room, the rules
+ *	go away except under the header, and the badge becomes a pill.
+ */
+:root {
+	--lists-volume--less: 			1rem;
+	--lists-volume--default: 		var(--fontsize-big);
+	--lists-volume--more: 			var(--text-2);
+
+	--lists-spacing--less: 			var(--space-1);
+	--lists-spacing--default: 	var(--space-2);
+	--lists-spacing--more: 			var(--space-3);
+
+	--lists-shaping--less: 			var(--radius);
+	--lists-shaping--default: 	999rem;
+	--lists-shaping--more: 			999rem;
+}
+
+.nino-table {
+	font-size: var(--lists-volume);
+}
+
+.nino-table th,
+.nino-table td {
+	padding: var(--lists-spacing);
+	border-bottom: 0;
+}
+
+.nino-table th {
+	border-bottom: 1px solid var(--color-border);
+	font-size: var(--fontsize-small);
+	letter-spacing: .08em;
+	text-transform: uppercase;
+	color: var(--color-subtitle);
+}
+
+.nino-list {
+	gap: var(--lists-spacing);
+	font-size: var(--lists-volume);
+	line-height: 1.6;
+}
+
+.nino-badge {
+	border-radius: var(--lists-shaping);
+	padding: calc( var(--lists-spacing) /3 ) calc( var(--lists-spacing) /1.2 );
+}
+
+.nino-badge-cloud {
+	gap: calc( var(--lists-spacing) /2 );
+}

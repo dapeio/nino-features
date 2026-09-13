@@ -1,0 +1,63 @@
+/*	Nino Design - forms v2
+ *
+ *	@name			Boxed fields
+ *	@description	A bordered field with room in it, a visible focus ring and the label above. The safest of the four.
+ *
+ *	@knob	volume		Schriftgröße im Feld
+ *	@knob	spacing		Raum im Feld und zwischen Feldern
+ *	@knob	shaping		Eckenradius eines Feldes
+ *
+ *	What a form has to do before it looks like anything: say where a field
+ *	begins, say which one is being typed in, and stay legible on a phone. The
+ *	default size is 1rem because anything under 16px makes ios zoom the page on
+ *	focus, which is the one form bug nobody reports and everybody meets.
+ */
+:root {
+	--forms-volume--less: 			.9375rem;
+	--forms-volume--default: 		1rem;
+	--forms-volume--more: 			1.125rem;
+
+	--forms-spacing--less: 			var(--space-1);
+	--forms-spacing--default: 	var(--space-2);
+	--forms-spacing--more: 			var(--space-3);
+
+	--forms-shaping--less: 			0;
+	--forms-shaping--default: 	var(--radius);
+	--forms-shaping--more: 			var(--radius-large);
+}
+
+.nino-form-input,
+.nino-form-select,
+.nino-form-textarea {
+	padding: calc( var(--forms-spacing) /1.6 ) calc( var(--forms-spacing) /1.2 );
+	border: 1px solid var(--color-border);
+	border-radius: var(--forms-shaping);
+	background-color: var(--color-background);
+	font-size: var(--forms-volume);
+	line-height: 1.45;
+	margin-bottom: var(--forms-spacing);
+}
+
+.nino-form-input:focus,
+.nino-form-select:focus,
+.nino-form-textarea:focus {
+	border-color: var(--color-primary);
+	outline: 2px solid var(--color-primary);
+	outline-offset: 1px;
+}
+
+.nino-form-title {
+	font-size: calc( var(--forms-volume) *1.5 );
+	margin-bottom: var(--forms-spacing);
+}
+
+.nino-form-message {
+	border-radius: var(--forms-shaping);
+	padding: calc( var(--forms-spacing) /1.4 );
+	margin-bottom: var(--forms-spacing);
+}
+
+.nino-form--inline .nino-form-input,
+.nino-newsletter-inline .nino-form-input {
+	margin-bottom: 0;
+}

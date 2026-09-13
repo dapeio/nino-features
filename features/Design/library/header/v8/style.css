@@ -1,0 +1,81 @@
+/*	Nino Design - header v8
+ *
+ *	@name			Pill menu
+ *	@description	A plain bar whose navigation sits in one rounded, tinted group, with the current page filled in.
+ *
+ *	The menu is a control rather than a list of links, which is what makes the
+ *	current page obvious without an underline to read: it is the filled one.
+ *	Only above the tablet - below it the navigation is the framework's own
+ *	burger panel, and a pill around a panel is a pill around the screen.
+ */
+
+.nino-frame-header .nino-scroll-header {
+	min-height: 4.75rem;
+	opacity: 1;
+	background-color: var(--color-background);
+	display: flex;
+}
+
+body.nino-scroll-atf .nino-frame-header .nino-scroll-header {
+	background-color: var(--color-background);
+}
+
+.nino-frame-header .nino-logo {
+	width: clamp(7rem, 9vw, 9.5rem);
+	height: auto;
+	min-width: 0;
+	min-height: 0;
+	margin: 0;
+	background-image: none;
+}
+
+.nino-frame-header .nino-frame-header-nav {
+	margin-left: auto;
+}
+
+.nino-frame-header .nino-nav-burger > label > svg {
+	fill: var(--color-title);
+}
+
+body main {
+	padding-top: clamp(4.75rem, var(--space-6), 8rem);
+}
+
+body main:has(> .nino-cover:first-child),
+body main:has(> .nino-parallex:first-child) {
+	padding-top: 0;
+}
+
+@media (min-width: 768px) {
+	.nino-frame-header .nino-nav-content {
+		padding: .3rem;
+		border-radius: 999rem;
+		background-color: var(--color-background-dim);
+	}
+
+	.nino-frame-header .nino-nav-content li a {
+		padding: .4rem .9rem;
+		border-radius: 999rem;
+		font-size: .9rem;
+		transition: background-color .18s ease, color .18s ease;
+	}
+
+	.nino-frame-header .nino-nav-content li a:hover,
+	.nino-frame-header .nino-nav-content li a:focus {
+		background-color: var(--color-background);
+	}
+
+	/*	The filled one is the page being looked at. Both roles together -
+		a fill with no text colour beside it is a pill that disappears
+		wherever the palette put the primary */
+	.nino-frame-header .nino-nav-content li a.nino-is-active {
+		background-color: var(--color-primary);
+		color: var(--color-primary-text);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.nino-frame-header .nino-nav-content li a {
+		transition: none;
+	}
+}

@@ -1,0 +1,58 @@
+/*	Nino Design - buttons v5
+ *
+ *	@name			Compact
+ *	@description	Small, tight and quiet, so a page can carry a lot of them without looking like a control panel.
+ *
+ *	@knob	volume		Schriftgröße der Beschriftung
+ *	@knob	spacing		Raum um die Beschriftung
+ *	@knob	shaping		Eckenradius
+ *
+ *	For pages where a button is an option rather than the point: filter rows,
+ *	tables with an action per line, a form with three ways out. Everything is a
+ *	step down from the framework's own, and the outline variant loses its border
+ *	weight so a row of them reads as a row rather than as a fence.
+ */
+:root {
+	--buttons-volume--less: 			calc( var(--fontsize-small) *.9 );
+	--buttons-volume--default: 		var(--fontsize-small);
+	--buttons-volume--more: 			var(--fontsize-btn);
+
+	--buttons-spacing--less: 			calc( var(--space-1) *.7 );
+	--buttons-spacing--default: 	var(--space-1);
+	--buttons-spacing--more: 			var(--space-2);
+
+	--buttons-shaping--less: 			0;
+	--buttons-shaping--default: 	var(--radius-small);
+	--buttons-shaping--more: 			var(--radius);
+}
+
+.nino-btn {
+	padding: calc( var(--buttons-spacing) /2 ) var(--buttons-spacing);
+	border-radius: var(--buttons-shaping);
+	font-size: var(--buttons-volume);
+	font-weight: 500;
+	line-height: 1.4;
+}
+
+.nino-btn--small {
+	padding: calc( var(--buttons-spacing) /3 ) calc( var(--buttons-spacing) *.75 );
+	font-size: calc( var(--buttons-volume) *.9 );
+	border-radius: var(--buttons-shaping);
+	min-height: 0;
+}
+
+.nino-btn--big {
+	padding: calc( var(--buttons-spacing) /1.5 ) calc( var(--buttons-spacing) *1.4 );
+	font-size: calc( var(--buttons-volume) *1.15 );
+	border-radius: var(--buttons-shaping);
+}
+
+.nino-btn--outline {
+	border-width: 1px;
+}
+
+.nino-filter-btn {
+	padding: calc( var(--buttons-spacing) /2 ) var(--buttons-spacing);
+	border-radius: var(--buttons-shaping);
+	font-size: var(--buttons-volume);
+}

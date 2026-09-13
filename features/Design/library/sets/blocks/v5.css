@@ -1,0 +1,67 @@
+/*	Nino Design - blocks v5
+ *
+ *	@name			Compact steps
+ *	@description	Plans and timeline tightened to half the room, the timeline rule thinner and its numbers small.
+ *
+ *	@knob	volume		Preis und Plantitel
+ *	@knob	spacing		Innenabstand und Schrittabstand
+ *	@knob	shaping		Eckenradius eines Plans
+ *
+ *	For the page that carries six plans, or a timeline with twelve steps: at
+ *	that count the framework's own spacing turns one block into a screen of its
+ *	own. The price keeps its size - it is the number being compared, and
+ *	shrinking it is the one saving that costs the block its job.
+ */
+:root {
+	--blocks-volume--less: 			var(--text-2);
+	--blocks-volume--default: 	var(--text-3);
+	--blocks-volume--more: 			var(--text-4);
+
+	--blocks-spacing--less: 		var(--space-1);
+	--blocks-spacing--default: 	var(--space-2);
+	--blocks-spacing--more: 		var(--space-3);
+
+	--blocks-shaping--less: 		0;
+	--blocks-shaping--default: 	var(--radius-small);
+	--blocks-shaping--more: 		var(--radius);
+}
+
+.nino-pricing-item {
+	padding: var(--blocks-spacing);
+	border: 1px solid var(--color-border);
+	border-radius: var(--blocks-shaping);
+	box-shadow: none;
+	transform: none;
+}
+
+.nino-pricing-title {
+	font-size: var(--fontsize-small);
+	letter-spacing: .08em;
+	text-transform: uppercase;
+	color: var(--color-subtitle);
+	margin-bottom: calc( var(--blocks-spacing) /4 );
+}
+
+.nino-pricing-price {
+	font-size: var(--blocks-volume);
+	line-height: 1.1;
+	margin-bottom: calc( var(--blocks-spacing) /2 );
+}
+
+.nino-pricing-features {
+	font-size: var(--fontsize-small);
+	line-height: 1.5;
+	margin-bottom: calc( var(--blocks-spacing) /1.5 );
+}
+
+.nino-timeline-step {
+	padding-bottom: calc( var(--blocks-spacing) *1.5 );
+}
+
+.nino-timeline-number {
+	width: 1.6rem;
+	height: 1.6rem;
+	font-size: var(--fontsize-small);
+	line-height: 1.6rem;
+	border-radius: 999rem;
+}

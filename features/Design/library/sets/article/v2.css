@@ -1,0 +1,69 @@
+/*	Nino Design - article v2
+ *
+ *	@name			Flat cards
+ *	@description	No radius and no shadow: a hairline box with the image flush to its edges. For catalogues and grids of many.
+ *
+ *	@knob	volume		Kartentitel
+ *	@knob	spacing		Innenabstand und Lücken
+ *	@knob	shaping		Eckenradius der Karte
+ *
+ *	Twenty of these on a screen is the case this is for, and twenty rounded,
+ *	shadowed cards is a screen of noise. What separates one from the next is a
+ *	single line, and the image runs to the edge because a margin around it would
+ *	be a second frame inside the first.
+ */
+:root {
+	--article-volume--less: 			var(--text-2);
+	--article-volume--default: 		var(--text-3);
+	--article-volume--more: 			var(--text-4);
+
+	--article-spacing--less: 			var(--space-1);
+	--article-spacing--default: 	var(--space-2);
+	--article-spacing--more: 			var(--space-3);
+
+	--article-shaping--less: 			0;
+	--article-shaping--default: 	0;
+	--article-shaping--more: 			var(--radius-small);
+}
+
+.nino-article {
+	border: 1px solid var(--color-border);
+	border-radius: var(--article-shaping);
+	background-color: var(--color-background);
+	box-shadow: none;
+	overflow: hidden;
+}
+
+.nino-article--borderless {
+	border-color: transparent;
+}
+
+.nino-article-img {
+	display: block;
+	width: 100%;
+	margin: 0;
+}
+
+.nino-article-content {
+	padding: var(--article-spacing);
+}
+
+.nino-article-title {
+	font-size: var(--article-volume);
+	line-height: 1.25;
+	margin-bottom: calc( var(--article-spacing) /2 );
+}
+
+.nino-article-descr {
+	margin-bottom: calc( var(--article-spacing) /2 );
+}
+
+.nino-article-price {
+	font-size: calc( var(--article-volume) *.9 );
+}
+
+/*	The gap between cards is the same line weight as the box, so a grid reads
+	as a table of them rather than as cards floating on a ground */
+.nino-article-cols {
+	gap: var(--article-spacing);
+}

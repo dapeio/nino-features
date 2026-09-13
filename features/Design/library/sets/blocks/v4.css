@@ -1,0 +1,75 @@
+/*	Nino Design - blocks v4
+ *
+ *	@name			Tinted panels
+ *	@description	No borders and no shadows - each plan on the page's own tinted surface, the featured one in the brand colour.
+ *
+ *	@knob	volume		Preis und Plantitel
+ *	@knob	spacing		Innenabstand und Schrittabstand
+ *	@knob	shaping		Eckenradius eines Plans
+ *
+ *	Colour instead of edges. It works because the surfaces are roles, not
+ *	values: --color-section-tint-bg and --color-primary are whatever the palette
+ *	tab made them, and the text on each is the role that was solved against it,
+ *	so a plan stays readable in both modes without this file knowing a hue.
+ */
+:root {
+	--blocks-volume--less: 			var(--text-2);
+	--blocks-volume--default: 	var(--text-3);
+	--blocks-volume--more: 			var(--text-4);
+
+	--blocks-spacing--less: 		var(--space-2);
+	--blocks-spacing--default: 	var(--space-3);
+	--blocks-spacing--more: 		var(--space-4);
+
+	--blocks-shaping--less: 		var(--radius-small);
+	--blocks-shaping--default: 	var(--radius);
+	--blocks-shaping--more: 		var(--radius-large);
+}
+
+.nino-pricing-item {
+	padding: var(--blocks-spacing);
+	border: 0;
+	border-radius: var(--blocks-shaping);
+	background-color: var(--color-section-tint-bg);
+	color: var(--color-section-tint-text);
+	box-shadow: none;
+	transform: none;
+}
+
+.nino-pricing-item--featured {
+	background-color: var(--color-primary);
+	color: var(--color-primary-text);
+	transform: none;
+}
+
+.nino-pricing-item--featured .nino-pricing-title,
+.nino-pricing-item--featured .nino-pricing-price {
+	color: inherit;
+}
+
+.nino-pricing-title {
+	font-size: calc( var(--blocks-volume) *.5 );
+	letter-spacing: .06em;
+	text-transform: uppercase;
+	margin-bottom: calc( var(--blocks-spacing) /3 );
+}
+
+.nino-pricing-price {
+	font-size: var(--blocks-volume);
+	line-height: 1.1;
+	margin-bottom: calc( var(--blocks-spacing) /2 );
+}
+
+.nino-pricing-features {
+	margin-bottom: var(--blocks-spacing);
+}
+
+.nino-timeline-step {
+	padding-bottom: var(--blocks-spacing);
+}
+
+.nino-timeline-number {
+	border-radius: var(--blocks-shaping);
+	background-color: var(--color-primary);
+	color: var(--color-primary-text);
+}

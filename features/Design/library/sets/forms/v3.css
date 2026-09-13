@@ -1,0 +1,67 @@
+/*	Nino Design - forms v3
+ *
+ *	@name			Underlined fields
+ *	@description	No box at all - a rule under each field that colours in on focus. Quiet, and for short forms only.
+ *
+ *	@knob	volume		Schriftgröße im Feld
+ *	@knob	spacing		Raum im Feld und zwischen Feldern
+ *
+ *	Worth knowing before choosing it: a field with no box has no visible target
+ *	before it is clicked, which is fine for three fields under a heading and
+ *	wrong for a checkout. No shaping knob, because there is no corner left to
+ *	round - and the focus rule is two pixels rather than one, since it is the
+ *	only thing that marks the field being typed in.
+ */
+:root {
+	--forms-volume--less: 			.9375rem;
+	--forms-volume--default: 		1rem;
+	--forms-volume--more: 			1.125rem;
+
+	--forms-spacing--less: 			var(--space-1);
+	--forms-spacing--default: 	var(--space-2);
+	--forms-spacing--more: 			var(--space-3);
+}
+
+.nino-form-input,
+.nino-form-select,
+.nino-form-textarea {
+	padding: calc( var(--forms-spacing) /2 ) 0;
+	border: 0;
+	border-bottom: 1px solid var(--color-border);
+	border-radius: 0;
+	background-color: transparent;
+	font-size: var(--forms-volume);
+	line-height: 1.5;
+	margin-bottom: var(--forms-spacing);
+}
+
+.nino-form-input:focus,
+.nino-form-select:focus,
+.nino-form-textarea:focus {
+	border-bottom: 2px solid var(--color-primary);
+	/*	Half the padding back, so the field does not jump by a pixel when the
+		rule doubles - the border is part of the box */
+	padding-bottom: calc( var(--forms-spacing) /2 - 1px );
+	outline: none;
+}
+
+/*	An outline is the accessible default and this set replaces it, so the
+	replacement has to survive keyboard navigation too: a visitor tabbing
+	through gets the same rule, and one on the page's own focus colour */
+.nino-form-input:focus-visible,
+.nino-form-select:focus-visible,
+.nino-form-textarea:focus-visible {
+	border-bottom-color: var(--color-focus-default);
+}
+
+.nino-form-title {
+	font-size: calc( var(--forms-volume) *1.5 );
+	margin-bottom: var(--forms-spacing);
+}
+
+.nino-form-message {
+	border-left: 3px solid currentColor;
+	border-radius: 0;
+	padding: calc( var(--forms-spacing) /2 ) var(--forms-spacing);
+	margin-bottom: var(--forms-spacing);
+}

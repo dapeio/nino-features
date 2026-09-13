@@ -326,14 +326,21 @@
 			box.appendChild( Nino.admin.design._select(
 				'design-set', Nino.content.getText('/_admin/design/label/variant'),
 				Object.keys( row.catalogue || {} ).map( function( set ) {
-					return { value : set, label : ( row.catalogue[set] || {} ).name || set };
+					/*	The version in front of the name: a part with five variants is a
+						list somebody scans, and "v3" is what they say and type about it.
+						A file with no @name is offered under its own name already, so
+						prefixing that one would read "v3 - v3" */
+					const named = row.catalogue[set] || {};
+					return {
+						value : set,
+						label : named.name && named.name !== set ? set + ' - ' + named.name : set,
+						title : named.description || ''
+					};
 				} ), chosen.set, function( value ) {
 					chosen.set = value;
 					/*	A variant brings its own knob rows, and the ones the last
 						one had are not this one's - so the whole part is drawn
-						again rather than only the select that changed. Which is
-						also what writes the new variant's own description into
-						the field above them */
+						again rather than only the select that changed */
 					Nino.admin.design._renderCurrentPart();
 					Nino.admin.design._preview();
 				},
@@ -368,10 +375,6 @@
 
 			const box = dc.createElement('div');
 			box.id = 'design-knob';
-
-			const heading = dc.createElement('h3');
-			heading.textContent = Nino.content.getText('/_admin/design/label/knob');
-			box.appendChild( heading );
 
 			const rows = Nino.admin.design._knobRows();
 
@@ -1338,15 +1341,15 @@
 		 *	@param		{Array}			options		{ value, label }
 		 *	@param		{string}		current
 		 *	@param		{Function}	onChange
-		 *	@param		{string}		[hint]		One line between the name and the control.
-		 *															Inside the field rather than a paragraph after
-		 *															it: a sentence floating under a select reads as
-		 *															the next thing on the screen rather than as
-		 *															something about the select above it
+		 *	@param		{string}		[note]		What the control is for. Carried as the title
+		 *															attribute rather than as a line under the name:
+		 *															the picker, the variant and the knob are read
+		 *															together, and a sentence under each of them is
+		 *															more of the screen than the three controls are
 		 *
 		 *	@return		{Element}
 		 */
-		_select : function( id, label, options, current, onChange, hint ) {
+		_select : function( id, label, options, current, onChange, note ) {
 
 			const field = dc.createElement('div');
 			field.className = 'nino-admin-field';
@@ -1358,15 +1361,11 @@
 				field.appendChild( tag );
 			}
 
-			if( hint ) {
-				const said = dc.createElement('small');
-				said.className = 'design-field-hint';
-				said.textContent = hint;
-				field.appendChild( said );
-			}
-
 			const select = dc.createElement('select');
 			select.id = id;
+
+			if( note )
+				select.title = note;
 
 			if( options.length === 0 ) {
 				const empty = dc.createElement('option');

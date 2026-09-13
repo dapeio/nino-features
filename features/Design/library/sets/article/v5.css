@@ -1,0 +1,78 @@
+/*	Nino Design - article v5
+ *
+ *	@name			Compact rows
+ *	@description	Cards as rows: a small square image beside the words, one under the next, divided by a line. For long lists.
+ *
+ *	@knob	volume		Kartentitel
+ *	@knob	spacing		Innenabstand und Lücken
+ *	@knob	shaping		Eckenradius des Bildes
+ *
+ *	A hundred entries is not a grid, it is a list - so above the phone this
+ *	turns the card on its side and lets the page scroll through them. Below it
+ *	the row stacks again, because a thumbnail beside two lines of text on a
+ *	narrow screen leaves room for neither.
+ */
+:root {
+	--article-volume--less: 			var(--text-1);
+	--article-volume--default: 		var(--text-2);
+	--article-volume--more: 			var(--text-3);
+
+	--article-spacing--less: 			calc( var(--space-1) *.75 );
+	--article-spacing--default: 	var(--space-1);
+	--article-spacing--more: 			var(--space-2);
+
+	--article-shaping--less: 			0;
+	--article-shaping--default: 	var(--radius-small);
+	--article-shaping--more: 			999rem;
+}
+
+.nino-article {
+	border: 0;
+	border-bottom: 1px solid var(--color-border);
+	border-radius: 0;
+	background-color: transparent;
+	box-shadow: none;
+	padding: var(--article-spacing) 0;
+}
+
+.nino-article-content {
+	padding: 0;
+}
+
+.nino-article-title {
+	font-size: var(--article-volume);
+	line-height: 1.3;
+	margin-bottom: calc( var(--article-spacing) /3 );
+}
+
+.nino-article-descr {
+	font-size: var(--fontsize-small);
+	margin-bottom: 0;
+}
+
+.nino-article-img {
+	border-radius: var(--article-shaping);
+	margin: 0;
+}
+
+@media (min-width: 768px) {
+	.nino-article {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+	.nino-article-img {
+		flex: 0 0 auto;
+		width: 5.5rem;
+		height: 5.5rem;
+		object-fit: cover;
+	}
+	.nino-article-content {
+		flex: 1 1 auto;
+		min-width: 0;
+	}
+	.nino-article-price {
+		flex: 0 0 auto;
+		margin-left: auto;
+	}
+}

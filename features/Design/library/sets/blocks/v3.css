@@ -1,0 +1,73 @@
+/*	Nino Design - blocks v3
+ *
+ *	@name			Elevated plans
+ *	@description	Rounded cards on a soft shadow, the featured one lifted and a step larger. The classic pricing table.
+ *
+ *	@knob	volume		Preis und Plantitel
+ *	@knob	spacing		Innenabstand und Schrittabstand
+ *	@knob	shaping		Eckenradius eines Plans
+ *
+ *	The opposite decision to v2: the recommendation is made by the layout rather
+ *	than by a border, which works when there are three plans and one of them is
+ *	meant to win. Below the tablet the lift is dropped - a card scaled up on a
+ *	phone is a card with its edges off the screen.
+ */
+:root {
+	--blocks-volume--less: 			var(--text-3);
+	--blocks-volume--default: 	var(--text-4);
+	--blocks-volume--more: 			var(--text-5);
+
+	--blocks-spacing--less: 		var(--space-3);
+	--blocks-spacing--default: 	var(--space-4);
+	--blocks-spacing--more: 		var(--space-5);
+
+	--blocks-shaping--less: 		var(--radius);
+	--blocks-shaping--default: 	var(--radius-large);
+	--blocks-shaping--more: 		2rem;
+}
+
+.nino-pricing-item {
+	padding: var(--blocks-spacing);
+	border: 0;
+	border-radius: var(--blocks-shaping);
+	background-color: var(--color-background);
+	box-shadow: 0 2px 6px rgb(0 0 0 / .06), 0 16px 40px rgb(0 0 0 / .10);
+}
+
+.nino-pricing-title {
+	font-size: calc( var(--blocks-volume) *.45 );
+	margin-bottom: calc( var(--blocks-spacing) /4 );
+}
+
+.nino-pricing-price {
+	font-size: var(--blocks-volume);
+	line-height: 1.05;
+	letter-spacing: -.02em;
+	margin-bottom: calc( var(--blocks-spacing) /3 );
+}
+
+.nino-pricing-features {
+	margin-bottom: calc( var(--blocks-spacing) /1.5 );
+}
+
+.nino-timeline-step {
+	padding-bottom: var(--blocks-spacing);
+}
+
+.nino-timeline-number {
+	border-radius: 999rem;
+}
+
+@media (min-width: 768px) {
+	.nino-pricing-item--featured {
+		transform: scale(1.04);
+		box-shadow: 0 4px 10px rgb(0 0 0 / .08), 0 24px 60px rgb(0 0 0 / .16);
+		z-index: 1;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.nino-pricing-item--featured {
+		transform: none;
+	}
+}

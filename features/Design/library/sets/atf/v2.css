@@ -1,0 +1,61 @@
+/*	Nino Design - atf v2
+ *
+ *	@name			Full height
+ *	@description	The hero fills the first screen, its text centred in it and the arrow down at the bottom edge. For one-page sites.
+ *
+ *	@knob	volume		Titel und Untertitel
+ *	@knob	spacing		Abstand unter dem Titel
+ *
+ *	The framework already has .nino-atf--fullscreen for one hero; this makes it
+ *	the rule for every one, so the first screen is always the hero and the
+ *	second is always the content. The arrow is the only thing that says there
+ *	is a second one, so it is placed where a thumb looks for it.
+ */
+:root {
+	--atf-volume--less: 			var(--text-4);
+	--atf-volume--default: 		calc( var(--text-5) *1.1 );
+	--atf-volume--more: 			calc( var(--text-6) *1.2 );
+
+	--atf-spacing--less: 			var(--space-2);
+	--atf-spacing--default: 	var(--space-3);
+	--atf-spacing--more: 			var(--space-4);
+}
+
+.nino-atf {
+	position: relative;
+	min-height: 100svh;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+}
+
+.nino-atf-title {
+	font-size: var(--atf-volume);
+	line-height: 1.08;
+	margin-bottom: var(--atf-spacing);
+}
+
+.nino-atf-subtitle {
+	font-size: calc( var(--atf-volume) *.42 );
+	line-height: 1.45;
+	margin-bottom: var(--atf-spacing);
+}
+
+/*	At the foot of the hero rather than after the text: it points at what is
+	below the fold, and a thing that points down belongs at the bottom */
+.nino-atf-arrowdown {
+	position: absolute;
+	right: 0;
+	bottom: var(--space-3);
+	left: 0;
+	margin: 0 auto;
+}
+
+/*	svh above, and a fallback for the browsers that do not have it: on a phone
+	100vh is the screen with the address bar counted in, which cuts the arrow
+	off exactly where it matters */
+@supports not (height: 100svh) {
+	.nino-atf {
+		min-height: 100vh;
+	}
+}

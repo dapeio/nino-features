@@ -1,0 +1,87 @@
+/*	Nino Design - footer v9
+ *
+ *	@name			Sitemap
+ *	@description	The brand and the address on the left, every page of the site in small columns beside it. For sites with a lot of pages.
+ *
+ *	The navigation is set in columns that fill themselves rather than in a
+ *	fixed grid, so a menu of eight and a menu of thirty both end up as a block
+ *	rather than as one long strip or an empty half. column-count is the one
+ *	property that can do that without knowing how many links there are.
+ */
+
+.nino-frame-footer {
+	padding: var(--space-4) 0 var(--space-2);
+	background-color: var(--color-footer-bg-main);
+	color: var(--color-footer-text-main);
+}
+
+.nino-frame-footer .nino-footer-logo {
+	width: clamp(6rem, 9vw, 9rem);
+	height: auto;
+	margin: 0 0 var(--space-1);
+}
+
+.nino-frame-footer .nino-frame-footer-description {
+	max-width: 26rem;
+	margin: 0 0 var(--space-2);
+	font-size: var(--fontsize-small);
+	line-height: 1.6;
+	opacity: .85;
+}
+
+.nino-frame-footer .nino-frame-footer-contact {
+	font-style: normal;
+	font-size: var(--fontsize-small);
+	line-height: 1.6;
+}
+
+.nino-frame-footer .nino-frame-footer-contact p {
+	margin: 0 0 var(--space-1);
+}
+
+.nino-frame-footer .nino-frame-footer-nav ul {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	column-gap: var(--space-3);
+}
+
+.nino-frame-footer .nino-frame-footer-nav li {
+	/*	A link may not be split down the middle by a column break */
+	break-inside: avoid;
+	margin-bottom: .45rem;
+	font-size: var(--fontsize-small);
+}
+
+.nino-frame-footer .nino-frame-footer-legal {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--space-1) var(--space-2);
+	margin-top: var(--space-3);
+	padding-top: var(--space-1);
+	border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+	font-size: var(--fontsize-small);
+}
+
+.nino-frame-footer .nino-frame-footer-legal p {
+	margin: 0;
+}
+
+.nino-frame-footer .nino-frame-footer-utility {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--space-1) var(--space-2);
+	margin-left: auto;
+}
+
+.nino-frame-footer a {
+	color: inherit;
+}
+
+@media (min-width: 768px) {
+	.nino-frame-footer .nino-frame-footer-nav ul {
+		column-count: 3;
+	}
+}

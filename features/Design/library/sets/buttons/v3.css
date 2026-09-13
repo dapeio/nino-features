@@ -1,0 +1,61 @@
+/*	Nino Design - buttons v3
+ *
+ *	@name			Square caps
+ *	@description	No radius, spaced capitals, a heavier border. For sites that want to look built rather than designed.
+ *
+ *	@knob	volume		Schriftgröße der Beschriftung
+ *	@knob	spacing		Raum um die Beschriftung
+ *
+ *	No shaping knob on purpose: the square corner is the decision this set is,
+ *	and a knob that could round it away would be a knob that turns it into
+ *	another set. What is left to move is the size and the room.
+ */
+:root {
+	--buttons-volume--less: 			calc( var(--fontsize-small) *.95 );
+	--buttons-volume--default: 		var(--fontsize-small);
+	--buttons-volume--more: 			var(--fontsize-btn);
+
+	--buttons-spacing--less: 			var(--space-1);
+	--buttons-spacing--default: 	var(--space-2);
+	--buttons-spacing--more: 			var(--space-3);
+}
+
+.nino-btn {
+	padding: calc( var(--buttons-spacing) /1.8 ) var(--buttons-spacing);
+	border-radius: 0;
+	font-size: var(--buttons-volume);
+	font-weight: 700;
+	letter-spacing: .1em;
+	text-transform: uppercase;
+	line-height: 1.3;
+}
+
+.nino-btn--light,
+.nino-btn--outline {
+	border-width: 2px;
+}
+
+.nino-btn--primary,
+.nino-btn--brand-alt,
+.nino-btn--dark {
+	border-width: 2px;
+	border-style: solid;
+}
+
+.nino-btn--small {
+	padding: calc( var(--buttons-spacing) /2.6 ) calc( var(--buttons-spacing) *.7 );
+	font-size: calc( var(--buttons-volume) *.85 );
+	border-radius: 0;
+}
+
+.nino-btn--big {
+	padding: calc( var(--buttons-spacing) /1.4 ) calc( var(--buttons-spacing) *1.4 );
+	font-size: calc( var(--buttons-volume) *1.15 );
+	border-radius: 0;
+}
+
+.nino-filter-btn {
+	border-radius: 0;
+	letter-spacing: .1em;
+	text-transform: uppercase;
+}

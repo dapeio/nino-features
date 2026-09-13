@@ -5,7 +5,40 @@ A release is the tag `design-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+### Added
+
+- **Four more variants for every part - 36 files, and the library is a choice
+  now.** `header` grows to ten and `footer` to eleven (Two decks, Pill menu,
+  Quiet caps, Slim bar; Centred stack, Sitemap, Dark slab, Hairline), and every
+  set part goes from one file to five. Each is one decision carried through
+  rather than a sampler, so the decision is in one place when somebody changes
+  it: a flat card set has no shadow anywhere, a dense form set tightens
+  everything except the typing size, which stays at a rem so a phone does not
+  zoom on focus.
+- Several of them declare knobs `v1` never did, which is how a handle reaches a
+  part that had none: `measure` for the column a wide band is read in, `volume`
+  for the size of a button's or a field's own label. `Setup::KNOBS` always had
+  the vocabulary; nothing in the library answered to all of it.
+- `tests/design-smoke.php` holds the whole shipped library to that vocabulary
+  now, rather than a fixture: a knob that is not one, a triple missing a step,
+  a rule reading a token the file never declares, a variant with no name, two
+  variants under one name, and a frame missing its template each fail. Every
+  variant is also compiled on its own, because a setup naming all of them at
+  once proves only that the last one landed.
+
 ### Changed
+
+- **The variant select says which version it is offering.** `v3 - Floating bar`
+  rather than `Floating bar`: with five variants per part the list is something
+  somebody scans, and the version is what they say and type about it. A file
+  with no `@name` keeps being offered under its file name alone, rather than as
+  `v3 - v3`.
+- **The part column is tighter by three elements.** The sentence under each
+  select and the "Finetuning" heading over the knob are gone, and the knob no
+  longer holds a margin above itself - the picker, the variant and the knob are
+  read together, and a paragraph between each of them was more of the screen
+  than the three controls were. What the sentence said is on the control as its
+  title, so hovering a variant still tells you what it is.
 
 - **The panel's two selects no longer look like two selects.** The picker says
   which part the whole column below it is about; the variant select is that

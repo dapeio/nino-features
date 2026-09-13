@@ -1,0 +1,65 @@
+/*	Nino Design - forms v4
+ *
+ *	@name			Filled fields
+ *	@description	A tinted field with no border, the label inside the rhythm above it. For forms on a plain white page.
+ *
+ *	@knob	volume		Schriftgröße im Feld
+ *	@knob	spacing		Raum im Feld und zwischen Feldern
+ *	@knob	shaping		Eckenradius eines Feldes
+ *
+ *	The fill is the field, which is why it uses the page's dim surface rather
+ *	than a colour of its own: a form is not a place for a second palette. On
+ *	focus the fill drops back to the page and the ring takes over, so the field
+ *	being typed in is the one that looks emptiest.
+ */
+:root {
+	--forms-volume--less: 			.9375rem;
+	--forms-volume--default: 		1rem;
+	--forms-volume--more: 			1.125rem;
+
+	--forms-spacing--less: 			var(--space-1);
+	--forms-spacing--default: 	var(--space-2);
+	--forms-spacing--more: 			var(--space-3);
+
+	--forms-shaping--less: 			var(--radius-small);
+	--forms-shaping--default: 	var(--radius);
+	--forms-shaping--more: 			var(--radius-large);
+}
+
+.nino-form-input,
+.nino-form-select,
+.nino-form-textarea {
+	padding: calc( var(--forms-spacing) /1.5 ) var(--forms-spacing);
+	border: 1px solid transparent;
+	border-radius: var(--forms-shaping);
+	background-color: var(--color-background-dim);
+	font-size: var(--forms-volume);
+	line-height: 1.45;
+	margin-bottom: var(--forms-spacing);
+}
+
+.nino-form-input:focus,
+.nino-form-select:focus,
+.nino-form-textarea:focus {
+	background-color: var(--color-background);
+	border-color: var(--color-border);
+	outline: 2px solid var(--color-primary);
+	outline-offset: 0;
+}
+
+.nino-form-input::placeholder,
+.nino-form-textarea::placeholder {
+	color: var(--color-subtitle);
+	opacity: 1;
+}
+
+.nino-form-title {
+	font-size: calc( var(--forms-volume) *1.5 );
+	margin-bottom: var(--forms-spacing);
+}
+
+.nino-form-message {
+	border-radius: var(--forms-shaping);
+	padding: calc( var(--forms-spacing) /1.4 );
+	margin-bottom: var(--forms-spacing);
+}

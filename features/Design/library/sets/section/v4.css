@@ -1,0 +1,50 @@
+/*	Nino Design - section v4
+ *
+ *	@name			Display titles
+ *	@description	Headings two steps up with tight leading, over a paragraph that stays small. For sites that lead with a statement.
+ *
+ *	@knob	volume		Titel und Untertitel
+ *	@knob	spacing		Bandhöhe und Absatzabstand
+ *
+ *	One decision: the heading is the page and the text is the footnote to it.
+ *	The leading tightens as the size grows, because a display line set at the
+ *	body's line height falls apart into separate lines.
+ */
+:root {
+	--section-volume--less: 		var(--text-4);
+	--section-volume--default: 	var(--text-5);
+	--section-volume--more: 		var(--text-6);
+
+	--section-spacing--less: 		var(--space-3);
+	--section-spacing--default: var(--space-4);
+	--section-spacing--more: 		var(--space-5);
+}
+
+.nino-section {
+	padding: var(--section-spacing) 0;
+}
+
+.nino-section-title {
+	font-size: var(--section-volume);
+	line-height: 1.05;
+	letter-spacing: -.02em;
+	margin-bottom: calc( var(--section-spacing) /3 );
+}
+
+/*	Not a proportion of the title: at this size a subtitle tied to it would be
+	a second headline. It stays where body copy is */
+.nino-section-subtitle {
+	font-size: var(--text-2);
+	line-height: 1.5;
+	max-width: 40rem;
+	margin-bottom: calc( var(--section-spacing) /3 );
+}
+
+.nino-section-text {
+	max-width: 40rem;
+	margin-bottom: calc( var(--section-spacing) /3 );
+}
+
+.nino-section-title--quiet {
+	letter-spacing: 0;
+}

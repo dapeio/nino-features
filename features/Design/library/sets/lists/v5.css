@@ -1,0 +1,72 @@
+/*	Nino Design - lists v5
+ *
+ *	@name			Quiet marks
+ *	@description	Lists whose markers step back: a thin rule for a check, a light number, badges with no fill. For text pages.
+ *
+ *	@knob	volume		Schriftgröße in Tabelle und Liste
+ *	@knob	spacing		Lücken und Zellenraum
+ *	@knob	shaping		Eckenradius eines Badges
+ *
+ *	A list inside an argument, not a list of features. The marker is what gets
+ *	turned down - a check list where every line starts with a filled tick reads
+ *	as a sales page, whatever the lines say - and a badge loses its fill so a
+ *	tag beside a paragraph stops being a button.
+ */
+:root {
+	--lists-volume--less: 			var(--fontsize-small);
+	--lists-volume--default: 		1rem;
+	--lists-volume--more: 			var(--fontsize-big);
+
+	--lists-spacing--less: 			calc( var(--space-1) *.75 );
+	--lists-spacing--default: 	var(--space-1);
+	--lists-spacing--more: 			var(--space-2);
+
+	--lists-shaping--less: 			0;
+	--lists-shaping--default: 	var(--radius-small);
+	--lists-shaping--more: 			999rem;
+}
+
+.nino-list {
+	gap: var(--lists-spacing);
+	font-size: var(--lists-volume);
+	line-height: 1.65;
+}
+
+.nino-list--check li::marker,
+.nino-list--numbered li::marker {
+	color: var(--color-subtitle);
+}
+
+.nino-list-title {
+	font-size: var(--lists-volume);
+	font-weight: 700;
+}
+
+/*	Outline rather than fill: the colour still says which kind of badge it is,
+	and the paragraph beside it keeps the weight */
+.nino-badge {
+	border: 1px solid currentColor;
+	border-radius: var(--lists-shaping);
+	background-color: transparent;
+	padding: calc( var(--lists-spacing) /3 ) calc( var(--lists-spacing) /1.4 );
+	font-size: var(--fontsize-small);
+	font-weight: 500;
+}
+
+.nino-badge--primary {
+	color: var(--color-primary);
+}
+
+.nino-badge--success {
+	color: var(--color-success);
+}
+
+.nino-badge--error {
+	color: var(--color-error);
+}
+
+.nino-table th,
+.nino-table td {
+	padding: var(--lists-spacing);
+	border-bottom: 1px solid var(--color-border);
+}
