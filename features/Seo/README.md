@@ -36,6 +36,42 @@ the route key after `GET:/`, ie. what a browser actually requests):
 - matches a line of the **Never list these** setting (`exclude`) - an exact
   path, or `/path/*` for that path and everything below it.
 
+## Pages no route can name
+
+A feature that answers a *wildcard* route owns addresses `config.php` has
+never heard of: the Posts feature registers one `GET://blog/*` and answers
+it for as many posts as there are records, and its section index is
+registered per request out of `/data/posts.php` rather than persisted at
+all. Nothing outside that feature can enumerate either.
+
+So this feature asks. `\Nino\Modules\Seo::PAGES` (`/seo/pages`) is fired
+with an empty list, and whoever knows appends to it:
+
+```php
+\Nino\Callbacks::registerCallback( $appData, '/seo/pages', [ self::class, 'callbackSeoPages' ] );
+
+public static function callbackSeoPages( array &$appData, array &$pages ): void {
+	$pages[] = [
+		'externalPath'	=> '/blog/my-first-post',	// required, and the only required field
+		'uri'						=> '/blog/post',					// optional: the internal identity a locale pair shares
+		'locale'				=> 'de_DE',								// optional: with a shared uri, makes an hreflang alternate
+		'lastmod'				=> '2026-01-05',					// optional: 'Y-m-d'
+		'title'					=> 'My first post',				// optional: what llms.txt has no textfill to read
+		'description'		=> 'How it began.',				// optional: the line beside it
+	];
+}
+```
+
+Register under the string, not under the constant: a feature that names
+`\Nino\Modules\Seo::PAGES` on a site where this feature is not installed is
+a fatal error, while a callback nobody ever fires costs one array entry.
+
+Nothing a contribution says is taken on trust. The **Never list these**
+setting still applies, the reserved and `/_`, `/.` paths are refused exactly
+as a persisted route's would be, an address some route already carries is
+listed once, and a `lastmod` that is not a real calendar date is dropped
+rather than written into the document.
+
 ## Locale variants
 
 Two routes are locale variants of the *same* page when they share the same

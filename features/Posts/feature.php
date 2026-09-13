@@ -44,7 +44,12 @@ return [
 			],
 		],
 		'panel' => [],
-		'callbacks' => [],
+		'callbacks' => [
+			'/seo/pages' => [
+				'en_US' => 'Answered, so the SEO feature\'s sitemap.xml and llms.txt carry the section and every post in it - no route names them.',
+				'de_DE' => 'Wird beantwortet, damit sitemap.xml und llms.txt des SEO-Features die Section und jeden Beitrag darin führen - keine Route nennt sie.',
+			],
+		],
 		'install' => [
 			'elements/posts.php' => [
 				'en_US' => 'An element type to start from, if the project has none.',
@@ -61,7 +66,7 @@ return [
 		],
 	],
 	'category'		=> 'content',
-	'version'			=> '1.0.0',
+	'version'			=> '1.1.0',
 	/*	1.1 is where \Nino\Features arrived and a feature could bring an install
 		unit and a runtime module of its own at all. Nothing here needs more
 		than that: wildcard routes, element queries with sort and the runtime

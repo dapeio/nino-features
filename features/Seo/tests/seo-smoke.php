@@ -123,7 +123,7 @@ $dir = dirname( __DIR__ );
 $manifest = \Nino\Features::manifest( $dir );
 check( 'the manifest validates without a warning', is_array( $manifest ) && ninoWarnings() === [] );
 check( 'key, class and version are what the directory says', is_array( $manifest ) && $manifest['key'] === 'seo'
-	&& $manifest['module'] === '\\Nino\\Modules\\Seo' && $manifest['version'] === '1.0.0' );
+	&& $manifest['module'] === '\\Nino\\Modules\\Seo' && $manifest['version'] === '1.1.0' );
 check( 'it is written for this kernel', is_array( $manifest ) && \Nino\Features::satisfies( $manifest['nino'] ) === true );
 check( 'it names itself in both interface languages', is_array( $manifest ) && \Nino\Features::localized( $manifest['description'], 'de_DE' ) !== \Nino\Features::localized( $manifest['description'], 'en_US' ) );
 check( 'it keeps no data of its own', is_array( $manifest ) && $manifest['data'] === [] );
@@ -140,7 +140,7 @@ check( 'activation succeeds', \Nino\Features::activate( $appData, 'seo' ) === tr
 
 $stored = \Nino\Filesystem::getFileContent( $appData, '/config.php', [] );
 check( 'the class is listed and the version recorded', in_array( '\\Nino\\Modules\\Seo', $stored['/nino/modules'], true ) === true
-	&& $stored['/nino/features']['seo']['version'] === '1.0.0' );
+	&& $stored['/nino/features']['seo']['version'] === '1.1.0' );
 
 check( 'the settings answer their defaults', \Nino\Features::settings( $appData, 'seo' ) === [
 	'exclude'			=> [],
@@ -311,6 +311,67 @@ check( 'robots.txt no longer mentions llms.txt', str_contains( (string) ( $robot
 check( '...while the sitemap line is still there', str_contains( (string) ( $robotsOffRequest['/nino/http/response']['body'] ?? '' ), 'Sitemap: https://example.com/sitemap.xml' ) === true );
 
 check( 'agents is switched back on', \Nino\Features::saveSettings( $appData, 'seo', [ 'agents' => 'true' ] ) === [] );
+
+echo "\n";
+
+
+// --- Pages a feature contributes ---------------------------------------------
+
+echo "Pages no route can name, contributed under Seo::PAGES\n";
+
+/*	A feature that answers a wildcard route owns addresses config.php has
+	never heard of - the Posts feature and its /blog/* is what this exists
+	for. The contributor is faked here rather than depended on: this suite
+	runs against a checkout that may not have that feature at all, and what is
+	under test is the contract, not the caller. */
+\Nino\Callbacks::registerCallback( $appData, \Nino\Modules\Seo::PAGES, static function( array &$appData, array &$pages ): void {
+	$pages[] = [ 'externalPath' => '/blog/first-light', 'lastmod' => '2026-01-05', 'title' => 'First light', 'description' => 'How it began.' ];
+	$pages[] = [ 'externalPath' => '/blog/no-date', 'title' => 'No date', 'lastmod' => '2026-13-45' ];
+	// The operator's own decisions have to survive a contribution: an
+	// excluded path, this feature's own endpoint, a tool uri, and a page a
+	// persisted route already carries
+	$pages[] = [ 'externalPath' => '/staging' ];
+	$pages[] = [ 'externalPath' => '/robots.txt' ];
+	$pages[] = [ 'externalPath' => '/_admin/x' ];
+	$pages[] = [ 'externalPath' => '/about' ];
+	$pages[] = [ 'externalPath' => 'blog/no-slash' ];
+	$pages[] = 'not an entry at all';
+} );
+
+$contributedSitemap = fakeRequest( $appData, '/sitemap.xml' );
+\Nino\Http::response( $appData, $contributedSitemap );
+$contributedBody = (string) ( $contributedSitemap['/nino/http/response']['body'] ?? '' );
+$contributedXml = @simplexml_load_string( $contributedBody );
+$contributedLocs = is_object( $contributedXml ) ? array_map( 'strval', $contributedXml->xpath( '//*[local-name()="url"]/*[local-name()="loc"]' ) ?: [] ) : [];
+
+check( 'the document is still well-formed', $contributedXml !== false );
+check( 'a contributed page is in the sitemap', in_array( 'https://example.com/blog/first-light', $contributedLocs, true ) === true );
+check( '...with the date it brought, which no template mtime could have given it',
+	str_contains( $contributedBody, '<loc>https://example.com/blog/first-light</loc>' ) === true
+	&& preg_match( '#<loc>https://example\.com/blog/first-light</loc>\s*<lastmod>2026-01-05</lastmod>#', $contributedBody ) === 1 );
+// Straight into the document as written, so a date nobody can read is worse
+// than no date: "2026-13-45" is a string like any other until it is checked
+check( '...and a date that is not one is left off rather than published',
+	in_array( 'https://example.com/blog/no-date', $contributedLocs, true ) === true
+	&& str_contains( $contributedBody, '2026-13-45' ) === false );
+
+check( 'an excluded path stays excluded, however it arrives', in_array( 'https://example.com/staging', $contributedLocs, true ) === false );
+check( 'this feature\'s own endpoints are refused the same way a route\'s would be', in_array( 'https://example.com/robots.txt', $contributedLocs, true ) === false );
+check( '...and a tool uri too', in_array( 'https://example.com/_admin/x', $contributedLocs, true ) === false );
+check( 'a page a persisted route already carries is listed once, not twice',
+	count( array_keys( $contributedLocs, 'https://example.com/about', true ) ) === 1 );
+check( 'an entry that is not a path, or not an entry, is nothing',
+	in_array( 'https://example.com/blog/no-slash', $contributedLocs, true ) === false
+	&& in_array( 'https://example.comblog/no-slash', $contributedLocs, true ) === false );
+
+$contributedLlms = fakeRequest( $appData, '/llms.txt' );
+\Nino\Http::response( $appData, $contributedLlms );
+$contributedLlmsBody = (string) ( $contributedLlms['/nino/http/response']['body'] ?? '' );
+
+// The same list drives llms.txt, where a page that is one record of many has
+// no textfill to be titled by - so it brings its own
+check( 'a contributed page reaches llms.txt under the title it brought',
+	str_contains( $contributedLlmsBody, '- [First light](https://example.com/blog/first-light): How it began.' ) === true );
 
 echo "\n";
 

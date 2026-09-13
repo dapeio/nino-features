@@ -79,6 +79,11 @@ namespace Nino\Modules {
 
 			Posts\Shortcodes::init( $appData );
 			self::routes( $appData );
+
+			// Here rather than in routes(), which anything that changes a section
+			// calls again: callbacks accumulate, and a second registration would
+			// put every post in the sitemap twice
+			\Nino\Callbacks::registerCallback( $appData, '/seo/pages', [ self::class, 'callbackSeoPages' ] );
 		}
 
 		/**
@@ -272,6 +277,98 @@ namespace Nino\Modules {
 
 			if( $fills !== [] )
 				\Nino\Html::addFills( $appData, $fills, '*' );
+		}
+
+		/**
+		 *	The Seo feature's page list, for the addresses it cannot find.
+		 *
+		 *	A section's routes are registered per request out of /data/posts.php,
+		 *	so config.php - which is where sitemap.xml and llms.txt read the
+		 *	site's pages from - has never heard of the index, and the posts are
+		 *	one wildcard route standing for as many pages as there are records.
+		 *	Neither was in either document; both are now.
+		 *
+		 *	Registered whether or not that feature is installed, and under the
+		 *	name as a string: a callback nobody fires costs one array entry,
+		 *	while naming \Nino\Modules\Seo::PAGES on a site without the Seo
+		 *	feature is a fatal error.
+		 *
+		 *	Titles and dates travel with the entries because the page they
+		 *	belong to has neither textfills of its own nor a template to take an
+		 *	mtime off - the record is where both live. The index is dated by the
+		 *	newest post it lists, which is when it last said anything different.
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		&$pages				(reference) The list to append entries to
+		 *
+		 *	@return 	void
+		 */
+		public static function callbackSeoPages( array &$appData, array &$pages ): void {
+
+			/*	The site's native locale, not the request's: a crawler asking for
+				sitemap.xml brings whatever locale its headers won, while the list it
+				is answered with is the site's own - and llms.txt groups a page with
+				no locale of its own under exactly that one. */
+			$locale	= \Nino\Locales::getNativeLocale( $appData );
+			$dir		= \Nino\Filesystem::getDir( $appData );
+
+			foreach( self::sections( $appData ) as $key => $section ) {
+
+				$posts	= [];
+				$newest	= null;
+
+				foreach( self::posts( $appData, $section, $locale ) as $element ) {
+
+					$elementUri = (string) ( $element['.uri'] ?? '' );
+
+					if( $elementUri === '' )
+						continue;
+
+					$date		= self::_isoDate( self::field( $section, $element, 'date' ) );
+					$newest	= $date !== null && ( $newest === null || $date > $newest ) ? $date : $newest;
+
+					/*	Sections::url() is where a post's address is decided, and the
+						project directory it puts in front is the one thing the Seo
+						feature's own paths do not carry: its base url is the bare domain
+						and the routes it lists are keyed without it. Cutting it off here
+						keeps that one decision in one place rather than rebuilding the
+						address beside it. */
+					$posts[] = [
+						'externalPath'	=> substr( Posts\Sections::url( $appData, $section, $elementUri ), strlen( $dir ) ),
+						'lastmod'				=> $date,
+						'title'					=> self::field( $section, $element, 'title' ),
+						'description'		=> self::field( $section, $element, 'summary' ),
+					];
+				}
+
+				// The index carries the uri its own route has, not its path: that is
+				// what its title and description are filed under, and a section whose
+				// path is not its key ('/news' for 'blog') has the two differ
+				if( $section['index'] !== '' )
+					$pages[] = [
+						'externalPath'	=> '/'. $section['path'],
+						'uri'						=> sprintf( self::INDEX_URI, $key ),
+						'lastmod'				=> $newest,
+					];
+
+				array_push( $pages, ...$posts );
+			}
+		}
+
+		/**
+		 *	A post's own date field as a sitemap date. Whatever a project types
+		 *	into it - published() reads the same field with the same strtotime(),
+		 *	so a value that publishes a post is a value that can date it
+		 *
+		 *	@param		string		$value				The date field's content
+		 *
+		 *	@return 	string|null					'Y-m-d', or null where there is no date to state
+		 */
+		private static function _isoDate( string $value ): ?string {
+
+			$stamp = trim( $value ) === '' ? false : strtotime( trim( $value ) );
+
+			return $stamp === false ? null : date( 'Y-m-d', $stamp );
 		}
 
 		/**

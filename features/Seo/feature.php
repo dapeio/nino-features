@@ -35,11 +35,16 @@ return [
 			],
 		],
 		'panel' => [],
-		'callbacks' => [],
+		'callbacks' => [
+			'/seo/pages' => [
+				'en_US' => 'Add a page sitemap.xml and llms.txt cannot find from a route - what a feature that answers /blog/* knows and config.php does not.',
+				'de_DE' => 'Eine Seite ergänzen, die sitemap.xml und llms.txt über keine Route finden - was ein Feature weiß, das /blog/* beantwortet, und die config.php nicht.',
+			],
+		],
 		'install' => [],
 	],
 	'category'		=> 'marketing',
-	'version'			=> '1.0.0',
+	'version'			=> '1.1.0',
 	'nino'				=> '^1.1',
 	'requires'		=> [],
 	// Nothing under data/: everything this feature answers is derived from

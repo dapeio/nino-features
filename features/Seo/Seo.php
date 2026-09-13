@@ -66,6 +66,29 @@ namespace Nino\Modules {
 		private const array RESERVED_PATHS = [ '/sitemap.xml', '/robots.txt', '/llms.txt' ];
 
 		/**
+		 *	The callback a feature adds its own pages under, for sitemap.xml
+		 *	and llms.txt. Fired with an empty list; an answer appends its own
+		 *	entries to it and returns nothing. Not the pages this feature has
+		 *	already found, so a contributor never has to look before it adds:
+		 *	an address some route already carries is dropped afterwards.
+		 *
+		 *	An entry is [ 'externalPath' => '/blog/my-first-post' ] plus, all
+		 *	optional: 'uri' (the internal page uri two locale variants of one
+		 *	page share - give it together with 'locale' to be listed as each
+		 *	other's hreflang alternate, the same rule persisted routes
+		 *	follow), 'locale', 'lastmod' ('Y-m-d'), 'title' and
+		 *	'description' (what llms.txt otherwise reads off the page's
+		 *	textfills, which a page that is one record of many has none of).
+		 *
+		 *	Named here rather than in the contributing feature because the
+		 *	contributor must not have to load this one: registering under a
+		 *	callback nobody fires costs an array entry, and a feature that
+		 *	names \Nino\Modules\Seo::PAGES on a site without this feature
+		 *	installed is a fatal error instead.
+		 */
+		public const string PAGES = '/seo/pages';
+
+		/**
 		 *	Register the three technical routes and their handlers. GET://llms.txt
 		 *	is always registered, even while the 'agents' setting is off -
 		 *	callbackLlms() answers the 404 itself, the same shape the feature
@@ -251,9 +274,12 @@ namespace Nino\Modules {
 		 *	never the live array, which also carries this request's own
 		 *	runtime routes (the workbench's, every active module's own).
 		 *
+		 *	Then whatever answers PAGES, for the pages no route can name -
+		 *	see _contributed().
+		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
-		 *	@return 	array										[ [ 'externalPath', 'uri', 'locale' (string|null), 'body' ], ... ]
+		 *	@return 	array										[ [ 'externalPath', 'uri', 'locale', 'body', 'lastmod', 'title', 'description' ], ... ]
 		 */
 		private static function _pages( array &$appData ): array {
 
@@ -275,11 +301,118 @@ namespace Nino\Modules {
 					'uri'						=> is_string( $route['uri'] ?? null ) ? $route['uri'] : $externalPath,
 					'locale'				=> is_string( $route['locale'] ?? null ) ? $route['locale'] : null,
 					'body'					=> is_string( $route['body'] ?? null ) ? $route['body'] : '',
+					'lastmod'				=> null,
+					'title'					=> null,
+					'description'		=> null,
 				];
 			}
 
-			return $pages;
+			return array_merge( $pages, self::_contributed( $appData, $exclude, $pages ) );
 		}
+
+		/**
+		 *	The pages no persisted route can name, asked for rather than read.
+		 *
+		 *	A feature that answers a wildcard route owns addresses config.php
+		 *	has never heard of - the Posts feature's /blog/* is the case this
+		 *	exists for, where one route stands for every post there is and
+		 *	nothing outside that feature can enumerate them. So this asks,
+		 *	under PAGES, and whoever knows answers.
+		 *
+		 *	Everything an answer says is checked here rather than trusted: a
+		 *	contribution is another feature's data, and the operator's own
+		 *	decisions have to survive it. A path the exclude setting covers
+		 *	stays excluded, a reserved or tool path is refused the same way a
+		 *	persisted route would be, and a page some route already lists is
+		 *	not listed a second time - a section index that the project did
+		 *	persist is exactly that case.
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$exclude			The 'exclude' setting's lines
+		 *	@param		array			$pages				What the persisted routes gave, for the duplicate check
+		 *
+		 *	@return 	array										Entries in _pages()' own shape
+		 */
+		private static function _contributed( array &$appData, array $exclude, array $pages ): array {
+
+			$contributions = [];
+			\Nino\Callbacks::doCallbacks( $appData, self::PAGES, $contributions );
+
+			if( is_array( $contributions ) === false )
+				return [];
+
+			$taken	= array_column( $pages, 'externalPath' );
+			$added	= [];
+
+			foreach( $contributions as $entry ) {
+
+				if( is_array( $entry ) === false )
+					continue;
+
+				$externalPath = is_string( $entry['externalPath'] ?? null ) ? $entry['externalPath'] : '';
+
+				if( str_starts_with( $externalPath, '/' ) === false || self::_isPage( $externalPath, $exclude ) === false )
+					continue;
+
+				if( in_array( $externalPath, $taken, true ) === true )
+					continue;
+
+				$taken[] = $externalPath;
+
+				/*	The body is the one field a contribution does not get to set: it
+					is what _lastmod() reads a template's mtime from, and a page that
+					is one record of many has no template of its own to date it by -
+					the record's own date is what 'lastmod' is for. */
+				$added[] = [
+					'externalPath'	=> $externalPath,
+					'uri'						=> is_string( $entry['uri'] ?? null ) ? $entry['uri'] : $externalPath,
+					'locale'				=> is_string( $entry['locale'] ?? null ) ? $entry['locale'] : null,
+					'body'					=> '',
+					'lastmod'				=> self::_contributedDate( $entry['lastmod'] ?? null ),
+					'title'					=> self::_contributedText( $entry['title'] ?? null ),
+					'description'		=> self::_contributedText( $entry['description'] ?? null ),
+				];
+			}
+
+			return $added;
+		}
+
+		/**
+		 *	A contributed 'lastmod', which goes into the document verbatim and
+		 *	is therefore held to the exact shape _lastmod() produces - a date
+		 *	nobody can read is worse in a sitemap than no date at all, and
+		 *	"2026-13-45" passes any test that only asks whether it is a string
+		 *
+		 *	@param		mixed			$value
+		 *
+		 *	@return 	string|null					'Y-m-d', or null
+		 */
+		private static function _contributedDate( mixed $value ): ?string {
+
+			if( is_string( $value ) === false || preg_match( '/^(\d{4})-(\d{2})-(\d{2})$/', $value, $parts ) !== 1 )
+				return null;
+
+			return checkdate( (int) $parts[2], (int) $parts[3], (int) $parts[1] ) === true ? $value : null;
+		}
+
+		/**
+		 *	A contributed title or description: one line, no control characters,
+		 *	and '' becomes null so the textfill lookup still gets its turn
+		 *
+		 *	@param		mixed			$value
+		 *
+		 *	@return 	string|null
+		 */
+		private static function _contributedText( mixed $value ): ?string {
+
+			if( is_string( $value ) === false )
+				return null;
+
+			$text = trim( preg_replace( '/\s+/u', ' ', $value ) ?? $value );
+
+			return $text === '' ? null : $text;
+		}
+
 
 		/**
 		 *	Whether $path is a site page worth listing - not this feature's
@@ -509,7 +642,9 @@ namespace Nino\Modules {
 				foreach( self::_alternatesFor( $pages, $page['uri'] ) as $alternate )
 					$xml .= "\t\t<xhtml:link rel=\"alternate\" hreflang=\"". self::_xmlEscape( self::_bcp47( (string) $alternate['locale'] ) ). "\" href=\"". self::_xmlEscape( $base. $alternate['externalPath'] ). "\" />\n";
 
-				$lastmod = self::_lastmod( $appData, $page['body'] );
+				// What the page brought with it wins: a page that is one record of
+				// many has no template of its own for _lastmod() to date it by
+				$lastmod = $page['lastmod'] ?? self::_lastmod( $appData, $page['body'] );
 				if( $lastmod !== null )
 					$xml .= "\t\t<lastmod>". $lastmod. "</lastmod>\n";
 
@@ -595,11 +730,13 @@ namespace Nino\Modules {
 
 				foreach( $localePages as $page ) {
 
-					$title = trim( (string) ( $fills['[[/webpage'. $page['uri']. '/title]]'] ?? '' ) );
+					// Same order as the sitemap's lastmod: what the page brought,
+					// then the textfills of a page that has some
+					$title = $page['title'] ?? trim( (string) ( $fills['[[/webpage'. $page['uri']. '/title]]'] ?? '' ) );
 					if( $title === '' )
 						continue;
 
-					$pageDescription = trim( (string) ( $fills['[[/webpage'. $page['uri']. '/description]]'] ?? '' ) );
+					$pageDescription = $page['description'] ?? trim( (string) ( $fills['[[/webpage'. $page['uri']. '/description]]'] ?? '' ) );
 					$link = '- ['. $title. ']('. $base. $page['externalPath']. ')';
 
 					$entries[] = $pageDescription !== '' ? $link. ': '. $pageDescription : $link;

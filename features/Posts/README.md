@@ -64,6 +64,15 @@ nothing answers. Two consequences worth knowing:
   renders becomes the section's list. Remove the feature and the page is back
   exactly as it was. A section with an empty `index` leaves even that alone:
   the project's own page carries `[posts]` itself.
+- **The SEO feature cannot find them, so this one tells it.** `sitemap.xml`
+  and `llms.txt` are built from the persisted routes of `config.php`, which
+  has never heard of either route - and the post route is one wildcard
+  standing for every record besides. This feature answers that feature's
+  `/seo/pages` callback with the index and every published post, each with
+  the title, summary and date the record carries: a post page has no
+  textfills of its own to be titled by and no template of its own to be dated
+  by. The index is dated by the newest post it lists. A post that is not
+  published yet is offered to neither document.
 
 The post route is a wildcard (`GET://blog/*`), which is how one route serves
 every post. A slug that is not one segment of `[A-Za-z0-9][A-Za-z0-9._-]*` never

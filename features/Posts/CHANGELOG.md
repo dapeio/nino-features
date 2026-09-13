@@ -3,6 +3,22 @@
 All notable changes to the Posts feature are documented in this file.
 A release is the tag `posts-<version>` of dapeio/nino-features.
 
+## 1.1.0 — 2026-09-12
+
+- **The section and its posts are in `sitemap.xml` and `llms.txt` now.** A
+  section's routes are registered per request out of `/data/posts.php`, and
+  the posts themselves are one wildcard route standing for every record -
+  so the SEO feature, which reads the site's pages out of `config.php`, could
+  find neither. This feature answers that feature's `/seo/pages` callback
+  with the index and every published post.
+- A post brings its title and summary with it, because the page it belongs to
+  has no textfills of its own, and its own date as the `<lastmod>`, because it
+  has no template to take an mtime off. The index is dated by the newest post
+  it lists. A post that is not published yet is offered to neither document,
+  the same rule the page itself follows.
+- Registered whether or not the SEO feature is installed: a callback nobody
+  fires costs one array entry.
+
 ## 1.0.0 — 2026-09-12
 
 First release: a page per element, and a list with paging.

@@ -331,5 +331,69 @@ check( 'an empty body is nothing rather than an empty paragraph',
 		return postsRender( $appData, '[post][[.body]][/post]' ) === '';
 	} )() === true );
 
+echo "\nThe pages the SEO feature cannot find on its own\n";
+
+/*	A section's routes live in /data/posts.php and are registered per request,
+	so config.php - the only place sitemap.xml and llms.txt look - carries
+	neither the index nor a single post: one wildcard route stands for all of
+	them. This is the answer to the question that feature asks, and it is
+	called here the way \Nino\Callbacks::doCallbacks() calls it, with a list
+	to append to. */
+$seoPages = [];
+\Nino\Modules\Posts::callbackSeoPages( $appData, $seoPages );
+
+$seoPaths = array_column( $seoPages, 'externalPath' );
+$seoByPath = array_column( $seoPages, null, 'externalPath' );
+
+check( 'the section index is offered under the path the section is at', in_array( '/blog', $seoPaths, true ) === true );
+check( '...and every published post, one address each, built the way a link on the page is',
+	$seoPaths === [ '/blog', '/blog/third-rail', '/blog/second-wind', '/blog/first-light' ]
+	|| $seoPaths === [ '/blog', '/blog/first-light', '/blog/second-wind', '/blog/third-rail' ] );
+// The same rule the page itself follows: a post dated next week is not a page
+// yet, and a sitemap that names it invites a crawler to a 404
+check( 'a post that is not published yet is offered to neither document', in_array( '/blog/from-monday', $seoPaths, true ) === false );
+
+check( 'a post carries the title llms.txt has no textfill to read',
+	( $seoByPath['/blog/first-light']['title'] ?? '' ) === 'First light' );
+check( '...and its summary as the description beside it',
+	( $seoByPath['/blog/first-light']['description'] ?? '' ) === 'How it began.' );
+check( '...and its own date, which is the only thing a page with no template of its own can be dated by',
+	( $seoByPath['/blog/first-light']['lastmod'] ?? '' ) === '2026-01-05' );
+check( 'a post with no summary says nothing rather than something empty',
+	( $seoByPath['/blog/third-rail']['description'] ?? null ) === '' );
+
+// Not the date of the newest post there is - the date of the newest post the
+// index actually shows, which is what a crawler would see changed
+check( 'the index is dated by the newest post it lists, not by the one written for next week',
+	( $seoByPath['/blog']['lastmod'] ?? '' ) === '2026-03-01' );
+check( 'the index keeps the uri its own route has, so the textfills of its title still resolve',
+	( $seoByPath['/blog']['uri'] ?? '' ) === '/blog' );
+
+/*	A section with no index page has no page at its path either - the wildcard
+	route answers below it and nothing answers it. Offering one would put a 404
+	in the sitemap. */
+\Nino\Modules\Posts\Sections::write( $appData, \Nino\Modules\Posts\Sections::normalize( [ 'sections' => [
+	'blog' => [ 'type' => '/posts', 'path' => 'blog', 'index' => '', 'perPage' => 2 ],
+] ] ) );
+unset( $appData['./posts/sections'] );
+
+$withoutIndex = [];
+\Nino\Modules\Posts::callbackSeoPages( $appData, $withoutIndex );
+
+check( 'a section with no index page offers its posts and no page at its own path',
+	in_array( '/blog', array_column( $withoutIndex, 'externalPath' ), true ) === false
+	&& in_array( '/blog/first-light', array_column( $withoutIndex, 'externalPath' ), true ) === true );
+
+// A subdirectory install: Sections::url() puts the project's own directory in
+// front of a post's address, and the Seo feature's paths carry none - its base
+// url is the bare domain and the routes it lists are keyed without it
+$appData['/nino/dir'] = '/shop';
+$inSubdir = [];
+\Nino\Modules\Posts::callbackSeoPages( $appData, $inSubdir );
+$appData['/nino/dir'] = '';
+
+check( 'the project directory is left off, the way every other page in those two documents leaves it off',
+	in_array( '/blog/first-light', array_column( $inSubdir, 'externalPath' ), true ) === true );
+
 $_GET = [];
 ninoDone( $appData );
