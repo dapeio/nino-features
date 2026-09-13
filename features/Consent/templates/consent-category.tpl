@@ -1,0 +1,1 @@
+<label class="nino-consent-category"><input type="checkbox" data-consent-category="[[category]]"[[state]]><span class="nino-consent-category-name">[[/consent/category/[[category]]]]</span><span class="nino-consent-category-hint">[[/consent/category/[[category]]/hint]]</span></label>

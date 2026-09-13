@@ -55,6 +55,10 @@ namespace Nino\Modules {
 
 		// The endpoint's route callback - the kernel module's own, which is
 		// what makes a guard registered here run ahead of the engine
+		// Where this feature's own templates are, as \Nino\Filesystem resolves
+		// them: /features is the installed features directory, wherever
+		// NINO_FEATURES_DIR put it
+		public const string TEMPLATES = '/features/Forms/templates';
 		public const string ROUTE = '/nino/http/response/POST://.form';
 
 		// This feature's only file: one counter per hashed client ip, for the
@@ -193,10 +197,15 @@ namespace Nino\Modules {
 
 		/**
 		 *	Render one form from its definition: [form] for the first one
-		 *	defined, [form key="quote"] for another. The markup is the one
-		 *	the shared .nino-form script drives - csrf, honeypot, one message
-		 *	line, one submit button - plus the hidden key that says which
-		 *	form this is and the moment it was drawn
+		 *	defined, [form key="quote"] for another.
+		 *
+		 *	The markup is templates/form.tpl and one template per kind of field
+		 *	beside it - see AGENTS.md, "Markup belongs in a template". What the
+		 *	form template carries besides the fields is what the shared
+		 *	.nino-form script looks for and would not work without: the honeypot
+		 *	input, the live region it writes a result into, the submit button it
+		 *	disables - plus the hidden key that says which form this is and the
+		 *	moment it was drawn
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		$args					Shortcode attributes ( key )
@@ -214,6 +223,54 @@ namespace Nino\Modules {
 			$safe = static fn( string $value ): string => htmlspecialchars( $value, ENT_QUOTES, 'UTF-8' );
 			$id 	= 'form-'. $form['key'];
 
+			$fields = '';
+
+			foreach( $form['fields'] as $field ) {
+
+				$fieldId	= $id. '-'. $field['name'];
+				$required	= $field['required'] === true ? ' required' : '';
+
+				$fields .= str_replace(
+					[ '[[id]]', '[[star]]', '[[label]]' ],
+					[ $safe( $fieldId ), ( $field['required'] === true ? ' *' : '' ), \Nino\Html::renderHtml( $appData, $field['label'] ) ],
+					self::template( $appData, 'form-label' )
+				);
+
+				if( $field['type'] === 'textarea' ) {
+					$fields .= str_replace(
+						[ '[[id]]', '[[name]]', '[[required]]' ],
+						[ $safe( $fieldId ), $safe( $field['name'] ), $required ],
+						self::template( $appData, 'form-textarea' )
+					);
+				}
+
+				else if( $field['type'] === 'select' ) {
+
+					$options = '';
+
+					foreach( $field['options'] as $option )
+						$options .= str_replace(
+							[ '[[value]]', '[[label]]' ],
+							[ $safe( $option ), $safe( \Nino\Html::renderHtml( $appData, $option ) ) ],
+							self::template( $appData, 'form-option' )
+						);
+
+					$fields .= str_replace(
+						[ '[[id]]', '[[name]]', '[[required]]', '[[options]]' ],
+						[ $safe( $fieldId ), $safe( $field['name'] ), $required, $options ],
+						self::template( $appData, 'form-select' )
+					);
+				}
+
+				else {
+					$fields .= str_replace(
+						[ '[[type]]', '[[id]]', '[[name]]', '[[required]]' ],
+						[ $safe( $field['type'] ), $safe( $fieldId ), $safe( $field['name'] ), $required ],
+						self::template( $appData, 'form-input' )
+					);
+				}
+			}
+
 			// [csrf] rendered here rather than left in the output: this string
 			// is a shortcode's result, and the render pass that produced it has
 			// already walked past the point where a shortcode of its own would
@@ -224,42 +281,24 @@ namespace Nino\Modules {
 			// reason: that fill is registered mid-request (see \Nino\request())
 			// and a shortcode's output is not rendered again, so a form drawn
 			// outside that window would carry the literal in its action
-			$html = '<form class="nino-form" id="'. $safe( $id ). '" action="'. $safe( (string) ( $appData['/nino/dir'] ?? '' ) ). '/.form" method="post">'
-				. \Nino\Html::renderHtml( $appData, '[csrf]' )
-				. '<input type="hidden" name="form" value="'. $safe( $form['key'] ). '">'
-				. '<input type="hidden" name="_t" value="'. time(). '">';
 
-			foreach( $form['fields'] as $field ) {
-
-				$fieldId	= $id. '-'. $field['name'];
-				$label		= \Nino\Html::renderHtml( $appData, $field['label'] );
-				$required	= $field['required'] === true ? ' required' : '';
-
-				$html .= '<label for="'. $safe( $fieldId ). '">'. $label. ( $field['required'] === true ? ' *' : '' ). '</label>';
-
-				if( $field['type'] === 'textarea' )
-					$html .= '<textarea id="'. $safe( $fieldId ). '" name="'. $safe( $field['name'] ). '" class="nino-form-textarea"'. $required. '></textarea>';
-
-				else if( $field['type'] === 'select' ) {
-					$html .= '<select id="'. $safe( $fieldId ). '" name="'. $safe( $field['name'] ). '" class="nino-form-input"'. $required. '>';
-					foreach( $field['options'] as $option )
-						$html .= '<option value="'. $safe( $option ). '">'. $safe( \Nino\Html::renderHtml( $appData, $option ) ). '</option>';
-					$html .= '</select>';
-				}
-
-				else
-					$html .= '<input type="'. $safe( $field['type'] ). '" id="'. $safe( $fieldId ). '" name="'. $safe( $field['name'] ). '" class="nino-form-input"'. $required. '>';
-			}
-
-			// The trap, the live region the script writes into and the button
-			// it disables - all three are what .nino-form looks for
-			$html .= '<input type="text" name="location" value="" tabindex="-1" autocomplete="off" aria-hidden="true" class="nino-form-trap">'
-				. '<p class="nino-form-message" aria-live="polite"></p>'
-				. '<p><small>* '. \Nino\Html::renderHtml( $appData, '[[/form/required]]' ). '</small></p>'
-				. '<button type="submit" class="nino-btn nino-btn--primary nino-form-submit">'. \Nino\Html::renderHtml( $appData, '[[/form/label/submit]]' ). '</button>'
-				. '</form>';
-
-			return $html;
+			/*	The three that carry markup last - [csrf] and the fields are built
+				html, and str_replace() works through its arrays in order, so a token
+				after them would be looked for in what they put in as well */
+			return str_replace(
+				[ '[[id]]', '[[action]]', '[[key]]', '[[time]]', '[[required]]', '[[submit]]', '[[csrf]]', '[[fields]]' ],
+				[
+					$safe( $id ),
+					$safe( (string) ( $appData['/nino/dir'] ?? '' ) ),
+					$safe( $form['key'] ),
+					(string) time(),
+					\Nino\Html::renderHtml( $appData, '[[/form/required]]' ),
+					\Nino\Html::renderHtml( $appData, '[[/form/label/submit]]' ),
+					\Nino\Html::renderHtml( $appData, '[csrf]' ),
+					$fields,
+				],
+				self::template( $appData, 'form' )
+			);
 		}
 
 		/**
@@ -349,6 +388,38 @@ namespace Nino\Modules {
 				return false;
 
 			return (int) ( $entry['tries'] ?? 0 ) >= $max;
+		}
+		/**
+		 *	One of this feature's own templates, read the way a project's are.
+		 *	Markup belongs in a template - see AGENTS.md, "Markup belongs in a
+		 *	template" - so what this class holds is which one and what goes in it
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$name					A file name below TEMPLATES, without .tpl
+		 *
+		 *	@return 	string								'' where the file is not there, which is logged
+		 */
+		public static function template( array &$appData, string $name ): string {
+
+			// A name from this class and nowhere else, and held to a slug anyway:
+			// the one thing this could otherwise be turned into is a read of
+			// something outside the feature
+			if( preg_match( '/^[a-z][a-z0-9-]*$/', $name ) !== 1 )
+				return '';
+
+			$template = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $name. '.tpl', '' );
+
+			$template = is_string( $template ) === true ? rtrim( $template, "\n" ) : '';
+
+			/*	A template that is not there renders as nothing, which on a page looks
+				like a shortcode nobody wrote rather than like a feature missing a file.
+				Said out loud instead: E_USER_WARNING is Nino's "record this and carry
+				on" channel (see \Nino\Runtime::NON_FATAL_LEVELS), so the request
+				finishes and the log says which file	*/
+			if( $template === '' )
+				trigger_error( 'Nino: the template '. self::TEMPLATES. '/'. $name. '.tpl is missing or empty.', E_USER_WARNING );
+
+			return $template;
 		}
 	}
 

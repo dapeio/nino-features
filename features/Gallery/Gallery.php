@@ -57,6 +57,10 @@ namespace Nino\Modules {
 		public const string IMAGE_DIR = 'gallery';
 
 		// An album key, and the id an image is filed under
+		// Where this feature's own templates are, as \Nino\Filesystem resolves
+		// them: /features is the installed features directory, wherever
+		// NINO_FEATURES_DIR put it
+		public const string TEMPLATES = '/features/Gallery/templates';
 		public const string KEY_PATTERN = '/^[a-z][a-z0-9-]*$/';
 		public const string ID_PATTERN 	= '/^[a-f0-9]{16}$/';
 
@@ -329,7 +333,7 @@ namespace Nino\Modules {
 			// registered mid-request, and a shortcode's output is not rendered
 			// again - so a gallery drawn outside that window would carry the
 			// literal in every src
-			$html = '<ul class="nino-gallery" style="--nino-gallery-columns:'. $columns. '">';
+			$items = '';
 
 			foreach( $album['images'] as $image ) {
 
@@ -337,17 +341,55 @@ namespace Nino\Modules {
 				// textfill, and what comes out of the fill engine is still text
 				$caption = $safe( \Nino\Html::renderHtml( $appData, $image['caption'] ) );
 
-				$html .= '<li class="nino-gallery-item">'
-					. '<a class="nino-gallery-link" href="'. $safe( \Nino\Images::getUrl( $appData, $image['large'] ) ). '"'
-					. ' data-lightbox="'. $safe( 'gallery-'. $album['key'] ). '"'
-					. ( $caption === '' ? '' : ' data-caption="'. $caption. '"' ). '>'
-					. '<img class="nino-gallery-thumb" src="'. $safe( \Nino\Images::getUrl( $appData, $image['thumb'] ) ). '"'
-					. ' alt="'. $caption. '" loading="lazy" decoding="async">'
-					. '</a>'
-					. '</li>';
+				$items .= str_replace(
+					[ '[[large]]', '[[group]]', '[[caption]]', '[[thumb]]', '[[alt]]' ],
+					[
+						$safe( \Nino\Images::getUrl( $appData, $image['large'] ) ),
+						$safe( 'gallery-'. $album['key'] ),
+						( $caption === '' ? '' : ' data-caption="'. $caption. '"' ),
+						$safe( \Nino\Images::getUrl( $appData, $image['thumb'] ) ),
+						$caption,
+					],
+					self::template( $appData, 'gallery-item' )
+				);
 			}
 
-			return $html. '</ul>';
+			// The items last: str_replace() works through its arrays in order, so a
+			// token after them would be looked for in the markup they put in as well
+			return str_replace( [ '[[columns]]', '[[items]]' ], [ (string) $columns, $items ], self::template( $appData, 'gallery' ) );
+		}
+
+		/**
+		 *	One of this feature's own templates, read the way a project's are.
+		 *	Markup belongs in a template - see AGENTS.md, "Markup belongs in a
+		 *	template" - so what this class holds is which one and what goes in it
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$name					A file name below TEMPLATES, without .tpl
+		 *
+		 *	@return 	string								'' where the file is not there, which is logged
+		 */
+		public static function template( array &$appData, string $name ): string {
+
+			// A name from this class and nowhere else, and held to a slug anyway:
+			// the one thing this could otherwise be turned into is a read of
+			// something outside the feature
+			if( preg_match( '/^[a-z][a-z0-9-]*$/', $name ) !== 1 )
+				return '';
+
+			$template = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $name. '.tpl', '' );
+
+			$template = is_string( $template ) === true ? rtrim( $template, "\n" ) : '';
+
+			/*	A template that is not there renders as nothing, which on a page looks
+				like a shortcode nobody wrote rather than like a feature missing a file.
+				Said out loud instead: E_USER_WARNING is Nino's "record this and carry
+				on" channel (see \Nino\Runtime::NON_FATAL_LEVELS), so the request
+				finishes and the log says which file	*/
+			if( $template === '' )
+				trigger_error( 'Nino: the template '. self::TEMPLATES. '/'. $name. '.tpl is missing or empty.', E_USER_WARNING );
+
+			return $template;
 		}
 	}
 

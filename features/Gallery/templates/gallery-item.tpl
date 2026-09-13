@@ -1,0 +1,1 @@
+<li class="nino-gallery-item"><a class="nino-gallery-link" href="[[large]]" data-lightbox="[[group]]"[[caption]]><img class="nino-gallery-thumb" src="[[thumb]]" alt="[[alt]]" loading="lazy" decoding="async"></a></li>

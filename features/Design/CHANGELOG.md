@@ -28,6 +28,19 @@ A release is the tag `design-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The preview holds no markup in php any more.** `Preview` carried the whole
+  specimen - every section, card, button and plan - as strings in three methods
+  split apart only so neither would be a wall. It is
+  `templates/preview-specimen.tpl` now, with the page around it in
+  `templates/preview-document.tpl`, read through `\Nino\Filesystem` and filled
+  with `str_replace()`; what stays in the class is which template, the
+  demonstration copy and the placeholder picture. The loops are written out,
+  because a specimen is a design: every variant in it is a deliberate
+  demonstration rather than data, and the person who edits it is designing a
+  set. See AGENTS.md, "Markup belongs in a template".
+- `Preview::specimen()`, `markup()` and `document()` take `$appData` now, since
+  reading a template goes through the filesystem like everything else.
+
 - **The variant select says which version it is offering.** `v3 - Floating bar`
   rather than `Floating bar`: with five variants per part the list is something
   somebody scans, and the version is what they say and type about it. A file

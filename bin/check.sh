@@ -2,7 +2,9 @@
 # Run every feature's own tests against a Nino checkout - the one beside this
 # repository (../nino), or the one NINO_ROOT names. The features are copied
 # into the checkout's features/ for the run, the same layout a project has,
-# and removed again afterwards. Then the publishing tool's own test,
+# and removed again afterwards. Then tests/markup-smoke.php holds the
+# catalogue to the one rule it shares with the framework - markup belongs in a
+# template, not in php. Then the publishing tool's own test,
 # tests/build-smoke.php, builds a signed catalogue into a directory of its
 # own against the same checkout, and tests/publish-smoke.php drives the
 # endpoint a release is posted to.
@@ -48,6 +50,7 @@ for test in "$root"/features/*/tests/*-smoke.php; do
 	php "$test"
 done
 
+php "$here/tests/markup-smoke.php"
 NINO_ROOT="$root" php "$here/tests/build-smoke.php"
 NINO_ROOT="$root" php "$here/tests/publish-smoke.php"
 NINO_ROOT="$root" php "$here/tests/release-smoke.php"

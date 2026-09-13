@@ -1,0 +1,1 @@
+<img src="[[src]]"[[size]] alt="[[alt]]" loading="lazy">

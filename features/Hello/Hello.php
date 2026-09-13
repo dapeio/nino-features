@@ -54,6 +54,10 @@ namespace Nino\Modules {
 			A feature that stores nothing needs none of this. A feature that
 			stores a lot should still keep it to one file or one directory:
 			what is not named in the manifest is not backed up	*/
+		// Where this feature's own templates are, as \Nino\Filesystem resolves
+		// them: /features is the installed features directory, wherever
+		// NINO_FEATURES_DIR put it
+		public const string TEMPLATES = '/features/Hello/templates';
 		public const string PATH = '/data/hello.php';
 
 		// What name the greeting falls back to before anybody has set one
@@ -180,11 +184,11 @@ namespace Nino\Modules {
 				A shortcode argument comes straight out of a template and a
 				panel's stored value straight out of a form, so both are escaped
 				here - the one rule that is never optional	*/
-			return '<p class="nino-hello">'
-				. htmlspecialchars( self::greeting( $appData ), ENT_QUOTES )
-				. ', '
-				. htmlspecialchars( $name, ENT_QUOTES )
-				. '! <span class="nino-hello-note">[[/hello/note]]</span></p>';
+			return str_replace(
+				[ '[[greeting]]', '[[name]]' ],
+				[ htmlspecialchars( self::greeting( $appData ), ENT_QUOTES ), htmlspecialchars( $name, ENT_QUOTES ) ],
+				self::template( $appData, 'hello' )
+			);
 		}
 
 		/**
@@ -247,6 +251,39 @@ namespace Nino\Modules {
 			return \Nino\Filesystem::putFileContent( $appData, self::PATH, [
 				'name' => $name === '' ? self::DEFAULT_NAME : $name,
 			] ) === true;
+		}
+
+		/**
+		 *	One of this feature's own templates, read the way a project's are.
+		 *	Markup belongs in a template - see AGENTS.md, "Markup belongs in a
+		 *	template" - so what this class holds is which one and what goes in it
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$name					A file name below TEMPLATES, without .tpl
+		 *
+		 *	@return 	string								'' where the file is not there, which is logged
+		 */
+		public static function template( array &$appData, string $name ): string {
+
+			// A name from this class and nowhere else, and held to a slug anyway:
+			// the one thing this could otherwise be turned into is a read of
+			// something outside the feature
+			if( preg_match( '/^[a-z][a-z0-9-]*$/', $name ) !== 1 )
+				return '';
+
+			$template = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $name. '.tpl', '' );
+
+			$template = is_string( $template ) === true ? rtrim( $template, "\n" ) : '';
+
+			/*	A template that is not there renders as nothing, which on a page looks
+				like a shortcode nobody wrote rather than like a feature missing a file.
+				Said out loud instead: E_USER_WARNING is Nino's "record this and carry
+				on" channel (see \Nino\Runtime::NON_FATAL_LEVELS), so the request
+				finishes and the log says which file	*/
+			if( $template === '' )
+				trigger_error( 'Nino: the template '. self::TEMPLATES. '/'. $name. '.tpl is missing or empty.', E_USER_WARNING );
+
+			return $template;
 		}
 	}
 

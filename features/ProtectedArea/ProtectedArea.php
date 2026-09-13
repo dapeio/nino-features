@@ -44,6 +44,10 @@ namespace Nino\Modules {
 	 */
 	class ProtectedArea {
 
+		// Where this feature's own templates are, as \Nino\Filesystem resolves
+		// them: /features is the installed features directory, wherever
+		// NINO_FEATURES_DIR put it
+		public const string TEMPLATES = '/features/ProtectedArea/templates';
 		private const string FEATURE_KEY 	= 'protected';
 
 		// A runtime session flag, never written to config.php - the one
@@ -246,7 +250,7 @@ namespace Nino\Modules {
 			if( in_array( $error, [ 'wrong', 'locked' ], true ) === false )
 				return '';
 
-			return '<p class="nino-protected-error">[[/protected/error/'. $error. ']]</p>';
+			return str_replace( '[[error]]', $error, self::template( $appData, 'protected-error' ) );
 		}
 
 		/**
@@ -265,7 +269,7 @@ namespace Nino\Modules {
 			if( self::unlocked( $appData ) === false )
 				return '';
 
-			return '<a href="/.protected/logout" class="nino-protected-logout">[[/protected/label/logout]]</a>';
+			return self::template( $appData, 'protected-logout' );
 		}
 
 		/**
@@ -451,6 +455,39 @@ namespace Nino\Modules {
 
 				return $state;
 			} );
+		}
+
+		/**
+		 *	One of this feature's own templates, read the way a project's are.
+		 *	Markup belongs in a template - see AGENTS.md, "Markup belongs in a
+		 *	template" - so what this class holds is which one and what goes in it
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$name					A file name below TEMPLATES, without .tpl
+		 *
+		 *	@return 	string								'' where the file is not there, which is logged
+		 */
+		public static function template( array &$appData, string $name ): string {
+
+			// A name from this class and nowhere else, and held to a slug anyway:
+			// the one thing this could otherwise be turned into is a read of
+			// something outside the feature
+			if( preg_match( '/^[a-z][a-z0-9-]*$/', $name ) !== 1 )
+				return '';
+
+			$template = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $name. '.tpl', '' );
+
+			$template = is_string( $template ) === true ? rtrim( $template, "\n" ) : '';
+
+			/*	A template that is not there renders as nothing, which on a page looks
+				like a shortcode nobody wrote rather than like a feature missing a file.
+				Said out loud instead: E_USER_WARNING is Nino's "record this and carry
+				on" channel (see \Nino\Runtime::NON_FATAL_LEVELS), so the request
+				finishes and the log says which file	*/
+			if( $template === '' )
+				trigger_error( 'Nino: the template '. self::TEMPLATES. '/'. $name. '.tpl is missing or empty.', E_USER_WARNING );
+
+			return $template;
 		}
 	}
 }

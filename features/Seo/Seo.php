@@ -59,6 +59,10 @@ namespace Nino\Modules {
 	 */
 	class Seo {
 
+		// Where this feature's own templates are, as \Nino\Filesystem resolves
+		// them: /features is the installed features directory, wherever
+		// NINO_FEATURES_DIR put it
+		public const string TEMPLATES = '/features/Seo/templates';
 		public const string KEY = 'seo';
 
 		// This feature's own three endpoints - never listed as a "page"
@@ -208,16 +212,24 @@ namespace Nino\Modules {
 			if( count( $alternates ) < 2 )
 				return '';
 
-			$base = self::_baseUrl( $appData );
-			$html = '';
+			$base			= self::_baseUrl( $appData );
+			$template	= self::template( $appData, 'alternate-link' );
+			$html			= '';
 
 			foreach( $alternates as $alternate )
-				$html .= '<link rel="alternate" hreflang="'. self::_attrEscape( self::_bcp47( (string) $alternate['locale'] ) ). '" href="'. self::_attrEscape( $base. $alternate['externalPath'] ). "\">\n";
+				$html .= str_replace(
+					[ '[[hreflang]]', '[[href]]' ],
+					[ self::_attrEscape( self::_bcp47( (string) $alternate['locale'] ) ), self::_attrEscape( $base. $alternate['externalPath'] ) ],
+					$template
+				). "\n";
 
 			$default = self::_defaultAlternate( $appData, $alternates );
-			$html .= '<link rel="alternate" hreflang="x-default" href="'. self::_attrEscape( $base. $default['externalPath'] ). "\">\n";
 
-			return $html;
+			return $html. str_replace(
+				[ '[[hreflang]]', '[[href]]' ],
+				[ 'x-default', self::_attrEscape( $base. $default['externalPath'] ) ],
+				$template
+			). "\n";
 		}
 
 		/**
@@ -263,7 +275,7 @@ namespace Nino\Modules {
 			// into an inline <script>
 			$json = json_encode( $data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG );
 
-			return '<script type="application/ld+json">'. ( is_string( $json ) ? $json : '{}' ). '</script>';
+			return str_replace( '[[json]]', is_string( $json ) === true ? $json : '{}', self::template( $appData, 'jsonld' ) );
 		}
 
 		/**
@@ -622,6 +634,15 @@ namespace Nino\Modules {
 		}
 
 		/**
+		 *	The one thing in this class that is assembled rather than filled into
+		 *	a template, and why: sitemap.xml is a document format, not a view of
+		 *	one. It has no design to keep out of here - what it has is a schema,
+		 *	an escaping rule per field and a shape that varies per page, which is
+		 *	the same reason robots.txt and llms.txt beside it are built in php
+		 *	too. The two things this feature does put on a page - the hreflang
+		 *	links and the json-ld block - are templates. See AGENTS.md, "Markup
+		 *	belongs in a template"
+		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
 		 *	@return 	string									The complete sitemap.xml document
@@ -755,6 +776,39 @@ namespace Nino\Modules {
 			}
 
 			return implode( "\n", $lines ). "\n";
+		}
+
+		/**
+		 *	One of this feature's own templates, read the way a project's are.
+		 *	Markup belongs in a template - see AGENTS.md, "Markup belongs in a
+		 *	template" - so what this class holds is which one and what goes in it
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$name					A file name below TEMPLATES, without .tpl
+		 *
+		 *	@return 	string								'' where the file is not there, which is logged
+		 */
+		public static function template( array &$appData, string $name ): string {
+
+			// A name from this class and nowhere else, and held to a slug anyway:
+			// the one thing this could otherwise be turned into is a read of
+			// something outside the feature
+			if( preg_match( '/^[a-z][a-z0-9-]*$/', $name ) !== 1 )
+				return '';
+
+			$template = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $name. '.tpl', '' );
+
+			$template = is_string( $template ) === true ? rtrim( $template, "\n" ) : '';
+
+			/*	A template that is not there renders as nothing, which on a page looks
+				like a shortcode nobody wrote rather than like a feature missing a file.
+				Said out loud instead: E_USER_WARNING is Nino's "record this and carry
+				on" channel (see \Nino\Runtime::NON_FATAL_LEVELS), so the request
+				finishes and the log says which file	*/
+			if( $template === '' )
+				trigger_error( 'Nino: the template '. self::TEMPLATES. '/'. $name. '.tpl is missing or empty.', E_USER_WARNING );
+
+			return $template;
 		}
 	}
 }

@@ -47,6 +47,17 @@ namespace Nino\Modules\Design {
 			which id it is looking for, so the two cannot drift apart */
 		public const string PREVIEW_STYLE = 'design-preview-css';
 
+		/*	The two tags this panel puts around what Preview hands it, as one-line
+			fragments with their fills - the shape \Nino\Modules\Navigation::$html
+			and Modules\Assets use, and the one AGENTS.md allows markup in php at
+			all. They are the page's, not the design's: the specimen and the
+			document around it are templates (see Preview::TEMPLATES), and a <main>
+			wrapper is not a thing anybody edits to change how a preview looks */
+		private static array $_html = [
+			'style'	=> '<style id="[[id]]">[[css]]</style>',
+			'main'		=> '<main>[[body]]</main>',
+		];
+
 		/*	The framework under the preview, as its own two bundles beside the
 			workbench's. Its own rather than the workbench's: /_admin/.cache/script.js
 			carries the panels' scripts as well, and a preview is a site, not a tool */
@@ -363,11 +374,14 @@ namespace Nino\Modules\Design {
 		 */
 		public static function document( array &$appData, string $library, array $setup, string $css, array &$notes ): string {
 
+			$style = str_replace( [ '[[id]]', '[[css]]' ], [ self::PREVIEW_STYLE, $css ], self::$_html['style'] );
+			$main	= str_replace( '[[body]]', self::_specimen( $appData, $library, $setup, $notes ), self::$_html['main'] );
+
 			return Preview::document(
+				$appData,
 				\Nino\Locales::getCurrentLocale( $appData ),
-				self::_bundle( $appData, self::FRAMEWORK_CSS, [ '/_nino/Nino.css' ] ). "\n"
-					. '<style id="'. self::PREVIEW_STYLE. '">'. $css. '</style>',
-				'<main>'. self::_specimen( $appData, $library, $setup, $notes ). '</main>',
+				self::_bundle( $appData, self::FRAMEWORK_CSS, [ '/_nino/Nino.css' ] ). "\n". $style,
+				$main,
 				self::_bundle( $appData, self::FRAMEWORK_JS, [ '/_nino/Nino.js', '/_nino/Nino.ui.js' ] )
 			);
 		}
@@ -420,7 +434,7 @@ namespace Nino\Modules\Design {
 				somebody will call twice */
 			\Nino\Html::addFills( $appData, self::_previewFills( $appData ), '*' );
 
-			return \Nino\Html::renderHtml( $appData, Preview::markup( $library, $setup, $notes ) );
+			return \Nino\Html::renderHtml( $appData, Preview::markup( $appData, $library, $setup, $notes ) );
 		}
 
 		/**

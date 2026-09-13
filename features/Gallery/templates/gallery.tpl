@@ -1,0 +1,1 @@
+<ul class="nino-gallery" style="--nino-gallery-columns:[[columns]]">[[items]]</ul>

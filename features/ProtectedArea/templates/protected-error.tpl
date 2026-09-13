@@ -1,0 +1,1 @@
+<p class="nino-protected-error">[[/protected/error/[[error]]]]</p>

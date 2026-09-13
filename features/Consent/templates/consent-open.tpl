@@ -1,0 +1,1 @@
+<button type="button" class="nino-consent-open">[[/consent/open]]</button>

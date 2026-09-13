@@ -67,9 +67,19 @@ namespace Nino\Modules {
 			the middle position removes the attribute rather than writing a third
 			value, and there is no state that has to be kept in step with the
 			system setting	*/
+		// Where this feature's own templates are, as \Nino\Filesystem resolves
+		// them: /features is the installed features directory, wherever
+		// NINO_FEATURES_DIR put it
+		public const string TEMPLATES = '/features/Modeswitch/templates';
 		public const array MODES = [ 'light', 'system', 'dark' ];
 
-		/*	Inline rather than files. Three icons of a dozen paths each are
+		/*	The one thing this class holds that looks like markup, and the reason
+			it may: an icon is geometry rather than a view, it is declared once as
+			a named property instead of built inside a method, and the switch
+			around it is templates/modeswitch-button.tpl like everything else (see
+			AGENTS.md, "Markup belongs in a template").
+
+			Inline rather than files. Three icons of a dozen paths each are
 			smaller than the request that would fetch them, and a switch that
 			paints its icons one request later than its buttons is a switch that
 			moves under the pointer. currentColor throughout, so they take the
@@ -144,7 +154,7 @@ namespace Nino\Modules {
 			$buttons = '';
 
 			foreach( self::MODES as $mode )
-				$buttons .= self::_button( $mode, $labels );
+				$buttons .= self::_button( $appData, $mode, $labels );
 
 			/*	Hidden until modeswitch.js unhides it, the way [consent] is. A
 				switch nothing wires up is three identical buttons that do nothing -
@@ -152,21 +162,25 @@ namespace Nino\Modules {
 				rather than like it has no such control. Without JavaScript the reader
 				keeps the mode their system asks for, which is what they had before
 				this feature existed	*/
-			return '<div class="nino-modeswitch'. ( $labels === true ? '' : ' nino-modeswitch--icons' ). '" hidden'
-				. ' role="group" aria-label="[[/modeswitch/label]]">'
-				. $buttons
-				. '</div>';
+			// The buttons last - they are built markup, and str_replace() works
+			// through its arrays in order
+			return str_replace(
+				[ '[[modifier]]', '[[buttons]]' ],
+				[ ( $labels === true ? '' : ' nino-modeswitch--icons' ), $buttons ],
+				self::template( $appData, 'modeswitch' )
+			);
 		}
 
 		/**
 		 *	One of the three
 		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$mode					A member of MODES
 		 *	@param		bool			$labels				Whether the word goes beside the icon
 		 *
 		 *	@return 	string
 		 */
-		private static function _button( string $mode, bool $labels ): string {
+		private static function _button( array &$appData, string $mode, bool $labels ): string {
 
 			$fill = '[[/modeswitch/'. $mode. ']]';
 
@@ -174,17 +188,44 @@ namespace Nino\Modules {
 				rather than left out: a switch whose buttons are three unlabelled
 				icons is one a screen reader cannot read at all, and
 				aria-label would then have to repeat what the fill already says	*/
-			$name = '<span class="nino-modeswitch-name'. ( $labels === true ? '' : ' nino-modeswitch-name--hidden' ). '">'. $fill. '</span>';
+			return str_replace(
+				[ '[[mode]]', '[[nameclass]]', '[[fill]]', '[[icon]]' ],
+				[ $mode, ( $labels === true ? '' : ' nino-modeswitch-name--hidden' ), $fill, self::ICONS[$mode] ],
+				self::template( $appData, 'modeswitch-button' )
+			);
+		}
 
-			return '<button type="button" class="nino-modeswitch-btn" data-mode="'. $mode. '"'
-				. ' aria-pressed="false" title="'. $fill. '">'
-				. '<svg class="nino-modeswitch-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"'
-				. ' fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"'
-				. ' stroke-linejoin="round" aria-hidden="true" focusable="false">'
-				. self::ICONS[$mode]
-				. '</svg>'
-				. $name
-				. '</button>';
+		/**
+		 *	One of this feature's own templates, read the way a project's are.
+		 *	Markup belongs in a template - see AGENTS.md, "Markup belongs in a
+		 *	template" - so what this class holds is which one and what goes in it
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$name					A file name below TEMPLATES, without .tpl
+		 *
+		 *	@return 	string								'' where the file is not there, which is logged
+		 */
+		public static function template( array &$appData, string $name ): string {
+
+			// A name from this class and nowhere else, and held to a slug anyway:
+			// the one thing this could otherwise be turned into is a read of
+			// something outside the feature
+			if( preg_match( '/^[a-z][a-z0-9-]*$/', $name ) !== 1 )
+				return '';
+
+			$template = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $name. '.tpl', '' );
+
+			$template = is_string( $template ) === true ? rtrim( $template, "\n" ) : '';
+
+			/*	A template that is not there renders as nothing, which on a page looks
+				like a shortcode nobody wrote rather than like a feature missing a file.
+				Said out loud instead: E_USER_WARNING is Nino's "record this and carry
+				on" channel (see \Nino\Runtime::NON_FATAL_LEVELS), so the request
+				finishes and the log says which file	*/
+			if( $template === '' )
+				trigger_error( 'Nino: the template '. self::TEMPLATES. '/'. $name. '.tpl is missing or empty.', E_USER_WARNING );
+
+			return $template;
 		}
 	}
 

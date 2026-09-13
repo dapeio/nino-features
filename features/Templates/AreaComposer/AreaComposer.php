@@ -12,6 +12,18 @@ namespace Nino\Modules\Templates {
 
 	final class AreaComposer {
 
+		/*	The one class of feature that writes markup in php on purpose, and
+			the reason it may: what this composes is not a view of anything - it
+			is the source of a template, which is the product the Template Builder
+			exists to make. A .tpl of its own would be a template that writes a
+			template, and every section it assembles already comes out of the
+			library's own .tpl files (see Library::template()). What is here is the
+			scaffolding between them and the indentation that makes the result
+			readable to whoever opens it afterwards.
+
+			See AGENTS.md, "Markup belongs in a template", which names this as the
+			exception it is	*/
+
 		private const string ID_PATTERN = '/^[a-z][a-z0-9-]*$/';
 		// A field of the collection this area renders. An area that makes its
 		// own Elements type names its fields in the preset's model, in

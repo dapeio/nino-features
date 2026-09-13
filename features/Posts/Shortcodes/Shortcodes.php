@@ -39,6 +39,10 @@ namespace Nino\Modules\Posts {
 			the Design feature that styles a section's text styles a post with
 			it, which is the point of using the framework's name rather than one
 			of our own */
+		// Where this feature's own templates are, as \Nino\Filesystem resolves
+		// them: /features is the installed features directory, wherever
+		// NINO_FEATURES_DIR put it
+		public const string TEMPLATES = '/features/Posts/templates';
 		public const string BODY_CLASS = 'nino-section-text';
 
 		public static function init( array &$appData ): void {
@@ -146,21 +150,36 @@ namespace Nino\Modules\Posts {
 				page that is on is a link to itself rather than a <span>. It
 				gets aria-current instead, which is what says "this one" to
 				somebody who cannot see the highlight */
-			$base = \Nino\Filesystem::getDir( $appData ). '/'. $section['path'];
-			$html = '<nav aria-label="'. self::_text( $appData, $args, 'label', 'Pages', 'Seiten' ). '"><ul class="nino-pagination">';
+			$base	= \Nino\Filesystem::getDir( $appData ). '/'. $section['path'];
+			$item	= self::template( $appData, 'pager-item' );
+			$items	= '';
 
 			if( $page > 1 )
-				$html .= '<li><a href="'. self::_href( $base, $page - 1 ). '" rel="prev">'. self::_text( $appData, $args, 'prev', 'Newer', 'Neuer' ). '</a></li>';
+				$items .= str_replace(
+					[ '[[href]]', '[[attributes]]', '[[label]]' ],
+					[ self::_href( $base, $page - 1 ), ' rel="prev"', self::_text( $appData, $args, 'prev', 'Newer', 'Neuer' ) ],
+					$item
+				);
 
 			for( $number = 1; $number <= $pages; $number++ )
-				$html .= $number === $page
-					? '<li class="nino-is-active"><a href="'. self::_href( $base, $number ). '" aria-current="page">'. $number. '</a></li>'
-					: '<li><a href="'. self::_href( $base, $number ). '">'. $number. '</a></li>';
+				$items .= $number === $page
+					? str_replace( [ '[[href]]', '[[label]]' ], [ self::_href( $base, $number ), (string) $number ], self::template( $appData, 'pager-item-current' ) )
+					: str_replace( [ '[[href]]', '[[attributes]]', '[[label]]' ], [ self::_href( $base, $number ), '', (string) $number ], $item );
 
 			if( $page < $pages )
-				$html .= '<li><a href="'. self::_href( $base, $page + 1 ). '" rel="next">'. self::_text( $appData, $args, 'next', 'Older', 'Älter' ). '</a></li>';
+				$items .= str_replace(
+					[ '[[href]]', '[[attributes]]', '[[label]]' ],
+					[ self::_href( $base, $page + 1 ), ' rel="next"', self::_text( $appData, $args, 'next', 'Older', 'Älter' ) ],
+					$item
+				);
 
-			return $html. '</ul></nav>';
+			// The items last: str_replace() works through its arrays in order, so a
+			// token after them would be looked for in the markup they put in as well
+			return str_replace(
+				[ '[[label]]', '[[items]]' ],
+				[ self::_text( $appData, $args, 'label', 'Pages', 'Seiten' ), $items ],
+				self::template( $appData, 'pager' )
+			);
 		}
 
 		/**
@@ -243,7 +262,7 @@ namespace Nino\Modules\Posts {
 				(string) $id,
 				htmlspecialchars( \Nino\Modules\Posts\Sections::url( $appData, $section, (string) ( $element['.uri'] ?? '' ) ), ENT_QUOTES, 'UTF-8' ),
 				self::_image( $appData, $section, $model, $element ),
-				self::_body( (string) ( $element[ $section['body'] ] ?? '' ) ),
+				self::_body( $appData, (string) ( $element[ $section['body'] ] ?? '' ) ),
 			];
 
 			foreach( $element as $key => $value ) {
@@ -269,17 +288,20 @@ namespace Nino\Modules\Posts {
 		 *	starts a paragraph, a single one is a break, and every paragraph
 		 *	goes through the kernel's own sanitiser exactly as it is.
 		 *
-		 *	No tag is allowed here that a field could not carry anyway - the
-		 *	<p> and the <br> are this feature's own markup, written around
-		 *	text the kernel has already cleaned. A body wanting headings,
-		 *	lists and pictures is a page rather than a field, and a page is
-		 *	what the post's template is for
+		 *	No tag is allowed here that a field could not carry anyway. The
+		 *	paragraph is templates/post-paragraph.tpl; the <br> stays in php
+		 *	because it is not markup this draws but the html a newline in stored
+		 *	text already means, which is a transformation of the text rather
+		 *	than a view of it. A body wanting headings, lists and pictures is a
+		 *	page rather than a field, and a page is what the post's template is
+		 *	for
 		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$value				The body field, as stored
 		 *
 		 *	@return 	string											Paragraphs, or ''
 		 */
-		private static function _body( string $value ): string {
+		private static function _body( array &$appData, string $value ): string {
 
 			$value 	= str_replace( [ "\r\n", "\r" ], "\n", trim( $value ) );
 			$out 		= '';
@@ -294,7 +316,11 @@ namespace Nino\Modules\Posts {
 				if( $clean === '' )
 					continue;
 
-				$out .= '<p class="'. self::BODY_CLASS. '">'. str_replace( "\n", '<br>', $clean ). '</p>';
+				$out .= str_replace(
+					[ '[[class]]', '[[text]]' ],
+					[ self::BODY_CLASS, str_replace( "\n", '<br>', $clean ) ],
+					self::template( $appData, 'post-paragraph' )
+				);
 			}
 
 			return $out;
@@ -331,8 +357,15 @@ namespace Nino\Modules\Posts {
 				if( ( $model[$field][$dimension] ?? 0 ) > 0 )
 					$size .= ' '. $dimension. '="'. (int) $model[$field][$dimension]. '"';
 
-			return '<img src="'. htmlspecialchars( \Nino\Images::getUrl( $appData, $filename ), ENT_QUOTES, 'UTF-8' ). '"'
-				. $size. ' alt="'. htmlspecialchars( $alt, ENT_QUOTES, 'UTF-8' ). '" loading="lazy">';
+			return str_replace(
+				[ '[[src]]', '[[size]]', '[[alt]]' ],
+				[
+					htmlspecialchars( \Nino\Images::getUrl( $appData, $filename ), ENT_QUOTES, 'UTF-8' ),
+					$size,
+					htmlspecialchars( $alt, ENT_QUOTES, 'UTF-8' ),
+				],
+				self::template( $appData, 'post-image' )
+			);
 		}
 
 		/**
@@ -395,6 +428,39 @@ namespace Nino\Modules\Posts {
 				return htmlspecialchars( $fill, ENT_QUOTES, 'UTF-8' );
 
 			return str_starts_with( \Nino\Locales::getCurrentLocale( $appData ), 'de' ) === true ? $german : $english;
+		}
+
+		/**
+		 *	One of this feature's own templates, read the way a project's are.
+		 *	Markup belongs in a template - see AGENTS.md, "Markup belongs in a
+		 *	template" - so what this class holds is which one and what goes in it
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$name					A file name below TEMPLATES, without .tpl
+		 *
+		 *	@return 	string								'' where the file is not there, which is logged
+		 */
+		public static function template( array &$appData, string $name ): string {
+
+			// A name from this class and nowhere else, and held to a slug anyway:
+			// the one thing this could otherwise be turned into is a read of
+			// something outside the feature
+			if( preg_match( '/^[a-z][a-z0-9-]*$/', $name ) !== 1 )
+				return '';
+
+			$template = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $name. '.tpl', '' );
+
+			$template = is_string( $template ) === true ? rtrim( $template, "\n" ) : '';
+
+			/*	A template that is not there renders as nothing, which on a page looks
+				like a shortcode nobody wrote rather than like a feature missing a file.
+				Said out loud instead: E_USER_WARNING is Nino's "record this and carry
+				on" channel (see \Nino\Runtime::NON_FATAL_LEVELS), so the request
+				finishes and the log says which file	*/
+			if( $template === '' )
+				trigger_error( 'Nino: the template '. self::TEMPLATES. '/'. $name. '.tpl is missing or empty.', E_USER_WARNING );
+
+			return $template;
 		}
 	}
 

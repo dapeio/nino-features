@@ -1,0 +1,1 @@
+<a href="/.protected/logout" class="nino-protected-logout">[[/protected/label/logout]]</a>

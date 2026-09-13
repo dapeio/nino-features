@@ -621,7 +621,7 @@ symlink( $root. '/_nino', ninoSandboxDir( $appData ). '/_nino' );
 $appData['/nino/modules'] = [ '\\Nino\\Modules\\Assets', '\\Nino\\Modules\\Template' ];
 \Nino\Modules::callModules( $appData, 'init' );
 
-$specimen = \Nino\Modules\Design\Preview::specimen();
+$specimen = \Nino\Modules\Design\Preview::specimen( $appData );
 
 check( 'the specimen brings no frame of its own - markup() puts the chosen ones around it',
 	str_contains( $specimen, 'theme.header' ) === false && str_contains( $specimen, 'theme.footer' ) === false );
@@ -635,7 +635,7 @@ check( 'its one picture is a data uri, so it needs no route wherever it is shown
 
 $notes 		= [];
 $chosen 	= \Nino\Modules\Design\Setup::normalize( [ 'parts' => [ 'header' => [ 'set' => 'v3' ], 'footer' => [ 'set' => 'v5' ] ] ], $library );
-$markup 	= \Nino\Modules\Design\Preview::markup( $library, $chosen, $notes );
+$markup 	= \Nino\Modules\Design\Preview::markup( $appData, $library, $chosen, $notes );
 
 check( 'markup() reads the chosen frames out of the library rather than off disk', $notes === []
 	&& str_starts_with( trim( $markup ), trim( (string) file_get_contents( \Nino\Modules\Design\Setup::file( $library, 'header', 'v3', 'template' ) ) ) ) === true
@@ -651,7 +651,7 @@ $shown = \Nino\Modules\Design\Preview::css( $chosen, $library, '/somewhere/publi
 check( 'the sheet a preview is shown under resolves the public prefix, or the webfaces never load',
 	str_contains( $shown, "url('/somewhere/public/fonts/" ) === true && str_contains( $shown, '[[/nino/public]]' ) === false );
 
-$document = \Nino\Modules\Design\Preview::document( 'de_DE', '<style>a{}</style>', '<main>b</main>', '<script></script>' );
+$document = \Nino\Modules\Design\Preview::document( $appData, 'de_DE', '<style>a{}</style>', '<main>b</main>', '<script></script>' );
 check( 'the document says which language it is in and says no to crawlers',
 	str_starts_with( $document, '<!doctype html>' ) === true
 	&& str_contains( $document, '<html lang="de">' ) === true

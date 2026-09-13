@@ -1,0 +1,1 @@
+<[[tag]] class="[[class]]">[[inner]]</[[tag]]>

@@ -16,6 +16,18 @@ namespace Nino\Modules\Templates {
 	 */
 	class Composer {
 
+		/*	The one class of feature that writes markup in php on purpose, and
+			the reason it may: what this composes is not a view of anything - it
+			is the source of a template, which is the product the Template Builder
+			exists to make. A .tpl of its own would be a template that writes a
+			template, and every section it assembles already comes out of the
+			library's own .tpl files (see Library::template()). What is here is the
+			scaffolding between them and the indentation that makes the result
+			readable to whoever opens it afterwards.
+
+			See AGENTS.md, "Markup belongs in a template", which names this as the
+			exception it is	*/
+
 		/**
 		 * One shortcode's argument list, for the inert preview's own matching.
 		 * Quoted values are consumed whole because a bound alt text compiles to

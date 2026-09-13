@@ -1,0 +1,1 @@
+<p class="nino-hello">[[greeting]], [[name]]! <span class="nino-hello-note">[[/hello/note]]</span></p>

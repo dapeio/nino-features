@@ -41,6 +41,10 @@ namespace Nino\Modules\Search {
 	class Shortcodes {
 
 		// The query variable both shortcodes read unless `key` says otherwise
+		// Where this feature's own templates are, as \Nino\Filesystem resolves
+		// them: /features is the installed features directory, wherever
+		// NINO_FEATURES_DIR put it
+		public const string TEMPLATES = '/features/Search/templates';
 		public const string DEFAULT_KEY = 'q';
 
 		// How many hits a result block draws when it names no limit, and the
@@ -123,14 +127,19 @@ namespace Nino\Modules\Search {
 
 			$safe = static fn( string $value ): string => htmlspecialchars( $value, ENT_QUOTES, 'UTF-8' );
 
-			return '<form class="'. $safe( $class !== '' ? $class : 'nino-form nino-form--inline nino-search' ). '"'
-				. ' role="search" method="get" action="'. $safe( $action ). '">'
-				. '<input type="search" name="'. $safe( $key ). '" value="'. $safe( self::query( $key ) ). '"'
-				. ' class="nino-form-input nino-search-input"'
-				. ( $placeholder !== '' ? ' placeholder="'. $safe( $placeholder ). '"' : '' )
-				. ' aria-label="'. $safe( $label !== '' ? $label : $placeholder ). '">'
-				. '<button type="submit" class="nino-btn nino-btn--primary nino-form-submit">'. $safe( $submit ). '</button>'
-				. '</form>';
+			return str_replace(
+				[ '[[class]]', '[[action]]', '[[name]]', '[[value]]', '[[placeholder]]', '[[label]]', '[[submit]]' ],
+				[
+					$safe( $class !== '' ? $class : 'nino-form nino-form--inline nino-search' ),
+					$safe( $action ),
+					$safe( $key ),
+					$safe( self::query( $key ) ),
+					( $placeholder !== '' ? ' placeholder="'. $safe( $placeholder ). '"' : '' ),
+					$safe( $label !== '' ? $label : $placeholder ),
+					$safe( $submit ),
+				],
+				self::template( $appData, 'search-form' )
+			);
 		}
 
 		/**
@@ -167,7 +176,7 @@ namespace Nino\Modules\Search {
 			$hits = \Nino\Modules\Search::getElements( $appData, $types, $query, $limit );
 
 			if( $hits === [] )
-				return self::_wrap( $args, self::_attribute( $args, 'empty' ) );
+				return self::_wrap( $appData, $args, self::_attribute( $args, 'empty' ) );
 
 			$rows = '';
 			$number = 0;
@@ -175,7 +184,7 @@ namespace Nino\Modules\Search {
 			foreach( $hits as $element )
 				$rows .= self::_row( $appData, $template, $element, ++$number );
 
-			return self::_wrap( $args, $rows );
+			return self::_wrap( $appData, $args, $rows );
 		}
 
 		/**
@@ -248,12 +257,13 @@ namespace Nino\Modules\Search {
 		/**
 		 *	The wrapper around the rows
 		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		$args					Shortcode arguments
 		 *	@param		string		$inner				Rows, or the empty message
 		 *
 		 *	@return 	string
 		 */
-		private static function _wrap( array $args, string $inner ): string {
+		private static function _wrap( array &$appData, array $args, string $inner ): string {
 
 			if( $inner === '' )
 				return '';
@@ -273,8 +283,13 @@ namespace Nino\Modules\Search {
 
 			$class = self::_attribute( $args, 'class' );
 
-			return '<'. $tag. ' class="'. htmlspecialchars( $class !== '' ? $class : 'nino-search-results', ENT_QUOTES, 'UTF-8' ). '">'
-				. $inner. '</'. $tag. '>';
+			// The rows last - they are built markup, and str_replace() works through
+			// its arrays in order
+			return str_replace(
+				[ '[[tag]]', '[[class]]', '[[inner]]' ],
+				[ $tag, htmlspecialchars( $class !== '' ? $class : 'nino-search-results', ENT_QUOTES, 'UTF-8' ), $inner ],
+				self::template( $appData, 'search-results' )
+			);
 		}
 
 		/**
@@ -359,5 +374,37 @@ namespace Nino\Modules\Search {
 			return self::DEFAULTS[$name][$language] ?? self::DEFAULTS[$name]['en'];
 		}
 
+		/**
+		 *	One of this feature's own templates, read the way a project's are.
+		 *	Markup belongs in a template - see AGENTS.md, "Markup belongs in a
+		 *	template" - so what this class holds is which one and what goes in it
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$name					A file name below TEMPLATES, without .tpl
+		 *
+		 *	@return 	string								'' where the file is not there, which is logged
+		 */
+		public static function template( array &$appData, string $name ): string {
+
+			// A name from this class and nowhere else, and held to a slug anyway:
+			// the one thing this could otherwise be turned into is a read of
+			// something outside the feature
+			if( preg_match( '/^[a-z][a-z0-9-]*$/', $name ) !== 1 )
+				return '';
+
+			$template = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $name. '.tpl', '' );
+
+			$template = is_string( $template ) === true ? rtrim( $template, "\n" ) : '';
+
+			/*	A template that is not there renders as nothing, which on a page looks
+				like a shortcode nobody wrote rather than like a feature missing a file.
+				Said out loud instead: E_USER_WARNING is Nino's "record this and carry
+				on" channel (see \Nino\Runtime::NON_FATAL_LEVELS), so the request
+				finishes and the log says which file	*/
+			if( $template === '' )
+				trigger_error( 'Nino: the template '. self::TEMPLATES. '/'. $name. '.tpl is missing or empty.', E_USER_WARNING );
+
+			return $template;
+		}
 	}
 }

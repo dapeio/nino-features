@@ -125,6 +125,7 @@ because a feature here is published on its own:
 | `<Name>.php` | the runtime class `\Nino\Modules\<Name>`; `init()` registers and outputs nothing; `adminPanels()` when there is a panel; `upgrade()` when a version changes the shape of its data; a `'/nino/admin/restore'` callback when its `data/` files must merge on restore |
 | `Admin/Admin.php` | the panel, when there is one: `actions()`, `nav()`, `perm()`, `text()`, every action guarded with `\Nino\Admin\Admin::guardPerm()`; `assets()` named through `\Nino\Admin\Panels::relative()` so they move with the directory |
 | `text/<locale>.php` | the panel's fills for every interface language Nino ships, `en_US` and `de_DE` |
+| `templates/*.tpl` | the feature's own markup, when it draws anything: see section 4a. Not the same thing as `install/templates/`, which are the project's files, copied once |
 | `install/` | the unit, when the feature ships templates, texts, routes or config defaults for the website; `install/manifest.php` in the wizard's library format |
 | `tests/<key>-smoke.php` | optional; when present: the feature's own test over Nino's harness, section 5 |
 | `README.md` | optional; when present: English, in the shape of the two existing ones: what it does, routes, panel and permission, install unit, settings, data and restore, configuration, tests. Every name in it exists in the code |
@@ -138,6 +139,60 @@ a feature that has none unless asked.
 
 A feature MUST NOT carry a `.htaccess`, a `composer.json`, a `package.json`,
 a build output or a copy of anything from `_nino/`.
+
+## 4a. Markup belongs in a template
+
+PHP decides **what** is shown; a template decides **what it looks like**. This is
+the framework's own rule (see `AGENTS.md` section 6 in dapeio/nino) and a feature
+keeps it the same way:
+
+```php
+public const string TEMPLATES = '/features/<Name>/templates';
+
+return str_replace(
+	[ '[[greeting]]', '[[name]]' ],
+	[ htmlspecialchars( $greeting, ENT_QUOTES ), htmlspecialchars( $name, ENT_QUOTES ) ],
+	self::template( $appData, 'hello' )
+);
+```
+
+`features/Hello/` shows the whole of it - the constant, the `template()` reader
+that goes through `\Nino\Filesystem`, and one `.tpl` with two tokens. Copy that.
+
+- Every value is escaped **before** it is filled in, exactly as it was when the
+  markup was a string in PHP. A template has no escaping of its own.
+- Fill the tokens that carry **built markup last**: `str_replace()` works through
+  its arrays in order, so a token after them is looked for in what they put in
+  as well.
+- Do not explain the file inside it. A template is output - what is in it is sent
+  to whoever asked for the page. The explanation belongs in the class that fills
+  it. A panel's own template (`templates/panel.tpl`) is the exception, since only
+  a logged-in workbench user is ever sent it.
+- A text fill (`[[/hello/note]]`) stays in the template; the kernel resolves it
+  when the result is rendered. That is the point of keeping the markup whole.
+
+Three shapes MAY carry markup in PHP, and nothing else:
+
+1. **A one-line fragment with `[[tokens]]`, declared once as a named property** at
+   the top of the class, never built inside a method -
+   `\Nino\Modules\Navigation::$html` is the shape to copy;
+   `features/Design/Admin/Admin.php` is the one in this repository.
+2. **An icon**, which is geometry rather than a view, and what the panel contract
+   asks for as a string (`Admin::icon()`).
+3. **A last-resort fallback** for when no template can be read at all.
+
+Two things that look like exceptions and are not: a **document format** built
+from data (`sitemap.xml` in `features/Seo/`) is a serialisation rather than a
+view, and a **builder whose product is markup** (`features/Templates/`, which
+composes `.tpl` source) is writing its output, not rendering itself. Both say so
+where the markup is.
+
+`tests/markup-smoke.php` holds the whole catalogue to this: it reads every
+feature class and fails on a string that opens an html tag, unless the file is
+one of the named exceptions in its own `ALLOWED` list - which carries the reason
+beside the path. An exception that stops being needed fails it too, so the list
+cannot outlive what it was for. Adding a file to that list is a decision to
+argue for in the completion report, not a way to make the check pass.
 
 ## 5. How a test is written
 

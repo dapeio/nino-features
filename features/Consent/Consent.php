@@ -50,6 +50,10 @@ namespace Nino\Modules {
 		// "necessary" is always on and never a setting; the other three are
 		// switched on per site under /nino/features/consent/settings - see
 		// feature.php
+		// Where this feature's own templates are, as \Nino\Filesystem resolves
+		// them: /features is the installed features directory, wherever
+		// NINO_FEATURES_DIR put it
+		public const string TEMPLATES = '/features/Consent/templates';
 		private const array CATEGORIES = [ 'necessary', 'statistics', 'marketing', 'external' ];
 
 		// The categories a site can turn on or off - CATEGORIES without the
@@ -113,24 +117,21 @@ namespace Nino\Modules {
 			foreach( self::CATEGORIES as $category )
 				$categories .= self::_categoryMarkup( $appData, $category );
 
-			$policyLink = ( $policyUrl === '' )
+			$policy = ( $policyUrl === '' )
 				? ''
-				: ' <a href="'. htmlspecialchars( $policyUrl, ENT_QUOTES ). '" class="nino-consent-link">[[/consent/policy-label]]</a>';
+				// The leading space is the sentence's, not the link's: a file that
+				// starts with a space is a space nobody sees in a diff, and a banner
+				// with no policy url must not leave one behind either
+				: ' '. str_replace( '[[url]]', htmlspecialchars( $policyUrl, ENT_QUOTES ), self::template( $appData, 'consent-policy-link' ) );
 
-			return '<div class="nino-consent" hidden'
-				. ' data-consent-cookie="'. htmlspecialchars( $cookieName, ENT_QUOTES ). '"'
-				. ' data-consent-days="'. $days. '">'
-				. '<div class="nino-consent-content">'
-				. '<p class="nino-consent-title">[[/consent/title]]</p>'
-				. '<p class="nino-consent-text">[[/consent/text]]'. $policyLink. '</p>'
-				. '<div class="nino-consent-categories">'. $categories. '</div>'
-				. '</div>'
-				. '<div class="nino-consent-actions">'
-				. '<button type="button" class="nino-consent-btn nino-consent-btn--primary" data-consent-action="accept-all">[[/consent/accept-all]]</button>'
-				. '<button type="button" class="nino-consent-btn" data-consent-action="necessary-only">[[/consent/necessary-only]]</button>'
-				. '<button type="button" class="nino-consent-btn" data-consent-action="save">[[/consent/save]]</button>'
-				. '</div>'
-				. '</div>';
+			/*	The two that carry markup last: str_replace() works through its arrays
+				in order, so a token after them would be looked for in what they put in
+				as well */
+			return str_replace(
+				[ '[[cookie]]', '[[days]]', '[[policy]]', '[[categories]]' ],
+				[ htmlspecialchars( $cookieName, ENT_QUOTES ), (string) $days, $policy, $categories ],
+				self::template( $appData, 'consent-banner' )
+			);
 		}
 
 		/**
@@ -144,7 +145,7 @@ namespace Nino\Modules {
 		 */
 		public static function doConsentSettingsShortcode( array &$appData, array $args ): string {
 
-			return '<button type="button" class="nino-consent-open">[[/consent/open]]</button>';
+			return self::template( $appData, 'consent-open' );
 		}
 
 		/**
@@ -205,11 +206,43 @@ namespace Nino\Modules {
 			if( $isNecessary === false && \Nino\Features::setting( $appData, 'consent', $category, false ) !== true )
 				return '';
 
-			return '<label class="nino-consent-category">'
-				. '<input type="checkbox" data-consent-category="'. $category. '"'. ( $isNecessary === true ? ' checked disabled' : '' ). '>'
-				. '<span class="nino-consent-category-name">[[/consent/category/'. $category. ']]</span>'
-				. '<span class="nino-consent-category-hint">[[/consent/category/'. $category. '/hint]]</span>'
-				. '</label>';
+			return str_replace(
+				[ '[[category]]', '[[state]]' ],
+				[ $category, ( $isNecessary === true ? ' checked disabled' : '' ) ],
+				self::template( $appData, 'consent-category' )
+			);
+		}
+		/**
+		 *	One of this feature's own templates, read the way a project's are.
+		 *	Markup belongs in a template - see AGENTS.md, "Markup belongs in a
+		 *	template" - so what this class holds is which one and what goes in it
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$name					A file name below TEMPLATES, without .tpl
+		 *
+		 *	@return 	string								'' where the file is not there, which is logged
+		 */
+		public static function template( array &$appData, string $name ): string {
+
+			// A name from this class and nowhere else, and held to a slug anyway:
+			// the one thing this could otherwise be turned into is a read of
+			// something outside the feature
+			if( preg_match( '/^[a-z][a-z0-9-]*$/', $name ) !== 1 )
+				return '';
+
+			$template = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $name. '.tpl', '' );
+
+			$template = is_string( $template ) === true ? rtrim( $template, "\n" ) : '';
+
+			/*	A template that is not there renders as nothing, which on a page looks
+				like a shortcode nobody wrote rather than like a feature missing a file.
+				Said out loud instead: E_USER_WARNING is Nino's "record this and carry
+				on" channel (see \Nino\Runtime::NON_FATAL_LEVELS), so the request
+				finishes and the log says which file	*/
+			if( $template === '' )
+				trigger_error( 'Nino: the template '. self::TEMPLATES. '/'. $name. '.tpl is missing or empty.', E_USER_WARNING );
+
+			return $template;
 		}
 	}
 
