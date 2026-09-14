@@ -1,0 +1,49 @@
+/**
+ *	Nino - Countdown
+ *	countdown.css		The counter's own layout, and nothing else: the parts in a
+ *						row, the number over its name. Bundled into the project's
+ *						own /.cache/style.css the same way the kernel bundles
+ *						Nino.css (see Countdown::init() and docs/development.md,
+ *						"Assets Are Not Templates") - never rendered through the
+ *						fill/shortcode engine, so nothing in here is a textfill.
+ *
+ *						Nothing here paints. A countdown is numbers in whatever
+ *						type, colour and size the surrounding classes give them -
+ *						a hero and a sidebar are not the same countdown, and
+ *						neither is this file's to decide.
+ */
+
+.nino-countdown-parts {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2, 1rem);
+	align-items: baseline;
+}
+
+.nino-countdown-part {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	min-width: 3.5ch;
+}
+
+/*	Tabular figures, so the row does not shift on every tick: without them a
+	1 is narrower than an 8 and the whole line breathes once a second	*/
+.nino-countdown-value {
+	font-variant-numeric: tabular-nums;
+	font-feature-settings: 'tnum';
+	line-height: 1.1;
+}
+
+.nino-countdown-name {
+	font-size: var(--fontsize-small, .875rem);
+	opacity: .8;
+}
+
+/*	Required, not defensive. The hidden attribute is display:none out of the
+	browser's own stylesheet, and the rule above gives the same element a
+	display of its own - so the counter written hidden would be on the screen
+	beside the date for a visitor whose browser never ran countdown.js	*/
+.nino-countdown-parts[hidden] {
+	display: none;
+}
