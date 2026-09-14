@@ -1,0 +1,94 @@
+/**
+ *	Nino - Table of Contents
+ *	toc.css			The list's own layout and the anchor on a heading, and nothing
+ *					else. Bundled into the project's own /.cache/style.css the same
+ *					way the kernel bundles Nino.css (see Toc::init() and
+ *					docs/development.md, "Assets Are Not Templates") - never
+ *					rendered through the fill/shortcode engine, so nothing in here
+ *					is a textfill.
+ *
+ *					The indent is here rather than in the markup: the list is one
+ *					flat <ol> with the heading's level on each item, so what an h3
+ *					is under an h2 is a padding rather than a second list inside
+ *					the first. See toc.js on why it is built flat.
+ */
+
+.nino-toc {
+	margin: var(--space-3, 2rem) 0;
+	padding: var(--space-2, 1rem) var(--space-3, 2rem);
+	border-left: 2px solid var(--color-border, #ddd);
+}
+
+.nino-toc-title {
+	margin: 0 0 var(--space-1, .5rem);
+	font-size: var(--text-1, 1rem);
+	text-align: left;
+}
+
+.nino-toc-list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	counter-reset: nino-toc;
+}
+
+.nino-toc-item {
+	margin: 0;
+	line-height: 1.4;
+}
+.nino-toc-item + .nino-toc-item {
+	margin-top: .35em;
+}
+.nino-toc-item--3 { padding-left: var(--space-2, 1rem); }
+.nino-toc-item--4 { padding-left: var(--space-3, 2rem); }
+
+.nino-toc-link {
+	text-decoration: none;
+	border-bottom: 1px solid transparent;
+}
+.nino-toc-link:hover,
+.nino-toc-link:focus-visible {
+	border-bottom-color: currentColor;
+}
+
+/*	The section being read. aria-current is what says it, so the mark and the
+	announcement are the same fact rather than a class that only one of the two
+	can see	*/
+.nino-toc-link[aria-current="true"] {
+	font-weight: bold;
+	border-bottom-color: currentColor;
+}
+
+/*	The anchor on a heading: there for anybody looking for it, out of the way
+	of everybody else. It stays reachable by keyboard - :focus-within brings it
+	back - so it is not a mouse-only affordance	*/
+.nino-toc-anchor {
+	margin-left: .4em;
+	opacity: 0;
+	text-decoration: none;
+	font-weight: normal;
+	transition: opacity .15s ease;
+}
+:is(h2, h3, h4, h5, h6):hover > .nino-toc-anchor,
+.nino-toc-anchor:focus-visible {
+	opacity: .6;
+}
+.nino-toc-anchor:hover {
+	opacity: 1;
+}
+
+/*	Required, not defensive: a nav written hidden has to stay hidden where
+	toc.js never runs, and a project stylesheet that gives nav a display would
+	otherwise put an empty list on the page	*/
+.nino-toc[hidden] {
+	display: none;
+}
+
+/* An anchor that fades in on hover is a thing that moves, and somebody asked
+   for less of that - so it is simply there for them */
+@media (prefers-reduced-motion: reduce) {
+	.nino-toc-anchor {
+		opacity: .5;
+		transition: none;
+	}
+}
