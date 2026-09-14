@@ -1,0 +1,76 @@
+/**
+ *	Nino - Copy to Clipboard
+ *	copy.css		What the button needs to sit beside its text, and the two states
+ *					it can be in for a moment. Bundled into the project's own
+ *					/.cache/style.css the same way the kernel bundles Nino.css (see
+ *					Copy::init() and docs/development.md, "Assets Are Not
+ *					Templates") - never rendered through the fill/shortcode engine,
+ *					so nothing in here is a textfill.
+ *
+ *					The text itself is not painted at all: an IBAN in a paragraph
+ *					and a block of configuration are the project's own type and
+ *					colour, and a copy button is no reason to change either. The
+ *					one exception is the block form, which is a <pre> and needs to
+ *					be allowed to scroll rather than to stretch the page.
+ */
+
+.nino-copy {
+	display: inline-flex;
+	align-items: baseline;
+	gap: var(--space-1, .5rem);
+	max-width: 100%;
+}
+
+.nino-copy-text {
+	min-width: 0;
+}
+
+.nino-copy-btn {
+	flex: 0 0 auto;
+	padding: .2em .7em;
+	border: 1px solid var(--color-border, #ccc);
+	border-radius: var(--radius-small, .15rem);
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	font-size: var(--fontsize-small, .875rem);
+	line-height: 1.4;
+	cursor: pointer;
+	white-space: nowrap;
+}
+.nino-copy-btn:hover {
+	border-color: currentColor;
+}
+
+/*	The two states, for the moment the button is in one of them. Colour alone
+	would say it only to whoever can see it - the word on the button changes
+	too, which is what a screen reader has	*/
+.nino-copy-btn.nino-is-done {
+	border-color: var(--color-success, currentColor);
+	color: var(--color-success, inherit);
+}
+.nino-copy-btn.nino-is-failed {
+	border-color: var(--color-error, currentColor);
+	color: var(--color-error, inherit);
+}
+
+/*	A block is a <pre>: its whitespace is content, so it is allowed to scroll
+	rather than to stretch the page it is on	*/
+.nino-copy--block {
+	display: flex;
+	align-items: flex-start;
+	width: 100%;
+}
+.nino-copy--block .nino-copy-text {
+	flex: 1 1 auto;
+	overflow-x: auto;
+	margin: 0;
+}
+
+/*	Required, not defensive. The hidden attribute is display:none out of the
+	browser's own stylesheet, and the rule above gives the same element a
+	display of its own - so the button written hidden would be on the screen
+	for a visitor whose browser never ran copy.js, doing nothing	*/
+.nino-copy .nino-copy-btn[hidden] {
+	display: none;
+}

@@ -18,6 +18,7 @@ This repository is the place Nino's features are published from. `features/<Name
 | --- | --- | --- | --- | --- | --- |
 | `compare` | [Before/After](features/Compare/README.md) | `ui` | 1.0.0 | `^1.1` | Two pictures of the same thing under one divider the visitor moves - with the mouse, a finger or the arrow keys, because the divider is a real range control |
 | `consent` | [Consent](features/Consent/README.md) | `security` | 1.0.0 | `^1.1` | A cookie/consent banner with categories and consent-gated scripts, no third party involved |
+| `copy` | [Copy to Clipboard](features/Copy/README.md) | `ui` | 1.0.0 | `^1.1` | A copy button on anything worth copying by hand - a code block, an IBAN, a voucher code - that says it worked, and stays selectable text where it cannot |
 | `countdown` | [Countdown](features/Countdown/README.md) | `ui` | 1.0.0 | `^1.1` | The time left until a date, counted down on the page - and, where the script never runs, the date itself, written out and machine-readable |
 | `design` | [Design](features/Design/README.md) | `ui` | 0.1.0 | `^1.2` | The look of a site, chosen per part of a page rather than per page - a set for the hero, sections, articles, buttons, forms, lists and blocks, plus a header and a footer, compiled into `assets/theme.css` |
 | `embed` | [External Embeds](features/Embed/README.md) | `ui` | 1.0.0 | `^1.1` | A video or a map as a surface the visitor presses, not as an iframe that loads itself - nothing is requested from the provider until they ask for it, or until they have allowed external media |

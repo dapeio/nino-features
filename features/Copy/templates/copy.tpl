@@ -1,0 +1,1 @@
+<span class="nino-copy[[modifier]]"><[[tag]] class="nino-copy-text">[[shown]]</[[tag]]><button type="button" class="nino-copy-btn" hidden[[value]][[named]] data-copy-do="[[/copy/do]]" data-copy-done="[[/copy/done]]" data-copy-failed="[[/copy/failed]]"><span class="nino-copy-word">[[/copy/do]]</span></button></span>
