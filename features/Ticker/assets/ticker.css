@@ -1,0 +1,71 @@
+/**
+ *	Nino - Ticker
+ *	ticker.css		The row's own layout and the movement, and nothing else.
+ *					Bundled into the project's own /.cache/style.css the same way
+ *					the kernel bundles Nino.css (see Ticker::init() and
+ *					docs/development.md, "Assets Are Not Templates") - never
+ *					rendered through the fill/shortcode engine, so nothing in here
+ *					is a textfill.
+ *
+ *					The movement is an animation rather than a script moving
+ *					something every frame: a browser runs an animation off the main
+ *					thread and stops paying for it in a background tab. What
+ *					ticker.js sets is the two custom properties below, once.
+ *
+ *					Nothing here paints. What runs past is whatever the project put
+ *					in the row, in its own type, colour and size.
+ */
+
+.nino-ticker {
+	overflow: hidden;
+	width: 100%;
+}
+
+.nino-ticker-track {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3, 2rem);
+	width: max-content;
+}
+
+/*	Only once the script has copied the row and measured it: before that the
+	track is a plain flex row, which is what it reads like in the markup and
+	what a visitor without JavaScript keeps - a row of logos, side by side	*/
+.nino-ticker.nino-is-running .nino-ticker-track {
+	animation-name: nino-ticker-run;
+	animation-duration: var(--nino-ticker-duration, 20s);
+	animation-timing-function: linear;
+	animation-iteration-count: infinite;
+}
+
+.nino-ticker[data-ticker-direction="right"].nino-is-running .nino-ticker-track {
+	animation-direction: reverse;
+}
+
+@keyframes nino-ticker-run {
+	from { transform: translateX(0); }
+	to { transform: translateX(calc(var(--nino-ticker-distance, 0px) * -1)); }
+}
+
+/*	Stopped while it is pointed at, so a logo can be looked at - and while
+	something inside it has the keyboard focus, because a row that runs away
+	under a tab stop is a row nobody can use	*/
+.nino-ticker.nino-is-running:hover .nino-ticker-track,
+.nino-ticker.nino-is-running:focus-within .nino-ticker-track {
+	animation-play-state: paused;
+}
+.nino-ticker[data-ticker-pause="off"].nino-is-running:hover .nino-ticker-track {
+	animation-play-state: running;
+}
+
+/*	Somebody asked for less movement, and a row that runs across the screen is
+	the most literal reading of that there is. It stands still - the logos are
+	all still there, side by side, and the row scrolls by hand	*/
+@media (prefers-reduced-motion: reduce) {
+	.nino-ticker {
+		overflow-x: auto;
+	}
+	.nino-ticker.nino-is-running .nino-ticker-track {
+		animation: none;
+	}
+}

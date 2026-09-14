@@ -36,6 +36,7 @@ This repository is the place Nino's features are published from. `features/<Name
 | `seo` | [SEO](features/Seo/README.md) | `marketing` | 1.1.0 | `^1.1` | Sitemap, robots.txt and llms.txt generated from the routes, locales and texts Nino already has |
 | `stats` | [Stats](features/Stats/README.md) | `marketing` | 1.0.0 | `^1.1` | Page-view counts for the workbench, without cookies, ip addresses or anything stored per visitor |
 | `templates` | [Template Builder](features/Templates/README.md) | `content` | 1.0.0 | `^1.2` | Builds the project's page templates out of whole sections - a library of seventeen, a live preview, and page source that stays yours between them |
+| `ticker` | [Ticker](features/Ticker/README.md) | `ui` | 1.0.0 | `^1.1` | A row that runs - logos, references, a line of announcements - looping without a seam, pausing when it is pointed at, and standing still for a visitor who asked for less motion |
 | `toc` | [Table of Contents](features/Toc/README.md) | `content` | 1.0.0 | `^1.1` | A list of a long page's own headings that says which section is being read, and an anchor on every heading so a passage can be linked to |
 | `typewriter` | [Typewriter](features/Typewriter/README.md) | `ui` | 1.0.0 | `^1.1` | Types the lines of a container one after the other, with a cursor at the writing head, timed per element |
 
