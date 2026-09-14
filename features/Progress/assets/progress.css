@@ -1,0 +1,49 @@
+/**
+ *	Nino - Reading Progress
+ *	progress.css	The bar itself: a strip across the top of the window and the
+ *					part of it that is filled. Bundled into the project's own
+ *					/.cache/style.css the same way the kernel bundles Nino.css (see
+ *					Progress::init() and docs/development.md, "Assets Are Not
+ *					Templates") - never rendered through the fill/shortcode engine,
+ *					so nothing in here is a textfill.
+ *
+ *					The filled part is a custom property progress.js writes, so what
+ *					happens on every frame of a scroll is a paint. The colour is the
+ *					project's own accent: a reading bar is not a thing to give a
+ *					palette of its own.
+ */
+
+.nino-progress {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	z-index: 9990;
+	height: .2rem;
+	pointer-events: none;
+}
+
+/*	Nothing at all until progress.js has measured something. A bar that cannot
+	move is a stripe across somebody's page, and an empty one is worse than an
+	honest absence	*/
+.nino-progress:not(.nino-is-ready) {
+	display: none;
+}
+
+.nino-progress::before {
+	content: '';
+	display: block;
+	width: var(--nino-progress, 0%);
+	height: 100%;
+	background-color: var(--color-accent, currentColor);
+	transform-origin: left center;
+}
+
+/*	A bar that eases towards its new width reads as smooth while it is scrolled
+	and as lagging while it is dragged. Somebody who asked for less motion gets
+	the value itself, with nothing in between	*/
+@media (prefers-reduced-motion: no-preference) {
+	.nino-progress::before {
+		transition: width .08s linear;
+	}
+}
