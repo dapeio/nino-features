@@ -1,0 +1,165 @@
+/**
+ *	Nino - Before/After
+ *	compare.css			Two layouts of one piece of markup: two captioned pictures
+ *						under one another, which is what the markup reads like and
+ *						what a visitor without JavaScript is given, and - once
+ *						compare.js has added .nino-is-ready - the two stacked under
+ *						a divider. Bundled into the project's own /.cache/style.css
+ *						the same way the kernel bundles Nino.css (see
+ *						Compare::init() and docs/development.md, "Assets Are Not
+ *						Templates") - never rendered through the fill/shortcode
+ *						engine, so nothing in here is a textfill.
+ *
+ *						The clipping is here rather than in the script: the script
+ *						reads the range control's value into
+ *						--nino-compare-position and stops there, so what a browser
+ *						does on every frame of a drag is a paint, not a call into
+ *						JavaScript.
+ */
+
+.nino-compare {
+	margin: 0;
+	width: 100%;
+}
+
+/* Without the script: both pictures, both captions, under one another */
+.nino-compare-frame {
+	display: grid;
+	gap: var(--space-2, 1rem);
+}
+.nino-compare-image {
+	display: block;
+	width: 100%;
+	height: auto;
+	border-radius: var(--radius, .2rem);
+}
+.nino-compare-side {
+	display: block;
+	font-size: var(--fontsize-small, .875rem);
+	opacity: .8;
+}
+.nino-compare-divider {
+	display: none;
+}
+.nino-compare-caption {
+	margin-top: var(--space-1, .5rem);
+	font-size: var(--fontsize-small, .875rem);
+	opacity: .8;
+}
+/* An empty caption is not a caption - alt="" leaves the element with nothing
+   in it, and an empty line under a picture reads as a mistake */
+.nino-compare-caption:empty {
+	display: none;
+}
+
+/*	With the script: one box, the two pictures on top of each other, the second
+	clipped to wherever the divider stands	*/
+.nino-compare.nino-is-ready .nino-compare-frame {
+	display: block;
+	position: relative;
+	overflow: hidden;
+	border-radius: var(--radius, .2rem);
+	aspect-ratio: 4 / 3;
+}
+.nino-compare--16-9.nino-is-ready .nino-compare-frame { aspect-ratio: 16 / 9; }
+.nino-compare--1-1.nino-is-ready .nino-compare-frame { aspect-ratio: 1 / 1; }
+.nino-compare--3-2.nino-is-ready .nino-compare-frame { aspect-ratio: 3 / 2; }
+
+.nino-compare.nino-is-ready .nino-compare-image {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	border-radius: 0;
+}
+
+/*	The whole second picture is laid over the first and this box is what is
+	cut back - clipping the box rather than the picture keeps the picture the
+	same size as the one underneath, so the two never slide against each other	*/
+.nino-compare.nino-is-ready .nino-compare-clip {
+	position: absolute;
+	inset: 0;
+	clip-path: inset(0 0 0 var(--nino-compare-position, 50%));
+}
+
+.nino-compare.nino-is-ready .nino-compare-side {
+	position: absolute;
+	top: var(--space-2, 1rem);
+	z-index: 2;
+	padding: .25em .7em;
+	border-radius: var(--radius, .2rem);
+	background-color: rgba(0, 0, 0, .55);
+	color: #fff;
+	font-size: var(--fontsize-small, .875rem);
+	opacity: 1;
+	pointer-events: none;
+}
+.nino-compare.nino-is-ready .nino-compare-side--before { left: var(--space-2, 1rem); }
+.nino-compare.nino-is-ready .nino-compare-side--after { right: var(--space-2, 1rem); }
+
+.nino-compare.nino-is-ready .nino-compare-divider {
+	display: block;
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: var(--nino-compare-position, 50%);
+	z-index: 3;
+	width: 2px;
+	margin-left: -1px;
+	background-color: #fff;
+	box-shadow: 0 0 6px rgba(0, 0, 0, .5);
+	pointer-events: none;
+}
+
+/*	The control itself, laid over the whole box and made invisible rather than
+	hidden: it is what is dragged, tabbed to and read out, so it has to stay a
+	real control in the page. Only its thumb is painted, on the divider	*/
+.nino-compare.nino-is-ready {
+	position: relative;
+}
+.nino-compare.nino-is-ready .nino-compare-range {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	margin: 0;
+	z-index: 4;
+	appearance: none;
+	background: transparent;
+	cursor: ew-resize;
+}
+.nino-compare .nino-compare-range:focus-visible {
+	outline: 2px solid var(--color-accent, currentColor);
+	outline-offset: 2px;
+}
+.nino-compare .nino-compare-range::-webkit-slider-thumb {
+	appearance: none;
+	width: 2.2rem;
+	height: 2.2rem;
+	border: 2px solid #fff;
+	border-radius: 50%;
+	background-color: rgba(0, 0, 0, .45);
+	box-shadow: 0 0 6px rgba(0, 0, 0, .5);
+	cursor: ew-resize;
+}
+.nino-compare .nino-compare-range::-moz-range-thumb {
+	width: 2.2rem;
+	height: 2.2rem;
+	border: 2px solid #fff;
+	border-radius: 50%;
+	background-color: rgba(0, 0, 0, .45);
+	box-shadow: 0 0 6px rgba(0, 0, 0, .5);
+	cursor: ew-resize;
+}
+.nino-compare .nino-compare-range::-moz-range-track {
+	background: transparent;
+}
+
+/*	Required, not defensive. The hidden attribute is display:none out of the
+	browser's own stylesheet, and the rule above gives the same element a
+	display of its own - so the control written hidden would be over the two
+	pictures for a visitor whose browser never ran compare.js	*/
+.nino-compare .nino-compare-range[hidden] {
+	display: none;
+}
