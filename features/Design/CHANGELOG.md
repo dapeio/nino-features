@@ -98,6 +98,33 @@ A release is the tag `design-<version>` of dapeio/nino-features.
   had just been used. The frame's own window is scrolled by hand now.
 - The brand's contrast warning is written in place rather than redrawn with its
   column, which holds a colour picker somebody may have open.
+- **The preview was not built the way a Nino page is built.** Three of its
+  sections - Article, Listen & Tabellen, Bausteine - stacked four and five
+  `.nino-grid-row` siblings inside one `<section>`. That row is the only thing
+  carrying the horizontal padding and the max-width, and it carries no vertical
+  margin at all, so the rows sat flush and the blocks under them touched. No
+  page this framework produces looks like that: every page the wizard installs
+  has one row per section, and `AreaComposer::render()` wraps a whole compiled
+  section body - heading, content and action together - in exactly one.
+
+  Each of the three is one row now, and the rhythm between the blocks is a
+  spacing utility on the cell, which is where the Template Builder's own presets
+  put it (`nino-grid-100 nino-mb-3` for a heading area, `nino-mt-3` for an
+  action, `nino-mb-3` on a card). The article cards carry their grid class
+  themselves rather than sitting in a wrapper `<div>`, because that is what the
+  compiler writes. Cells that stack on a narrow screen - the two volume rows,
+  the two halves of Forms - got the same utility, where before they met at
+  whatever margin their last paragraph happened to have.
+
+  What the preview shows did not change: 48 of the 51 rendered blocks this
+  repository compares before and after are identical, and the three that differ
+  are the three the specimen is in.
+- `tests/design-smoke.php` now holds the specimen to that shape: one grid row
+  per section, every child of a row a grid cell, and every cell but the last of
+  a multi-cell row carrying a spacing utility. Proven both ways - putting one
+  stacked row back fails the first, taking one `nino-mb-3` away fails the third.
+- The `logo-bar` preset named `nino-mb-3` twice on its heading area, so every
+  section a project inserted from it carried the class twice.
 
 ## 0.1.0 — 2026-09-11
 

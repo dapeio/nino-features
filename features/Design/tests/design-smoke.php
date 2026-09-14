@@ -633,6 +633,87 @@ check( 'its one picture is a data uri, so it needs no route wherever it is shown
 	&& str_contains( $specimen, \Nino\Modules\Design\Preview::PLACEHOLDER ) === true
 	&& str_contains( $specimen, 'src="/images/' ) === false );
 
+/*	The specimen is what a set is judged on, so it has to be built the way a page
+	this framework produces is built: one .nino-section, one .nino-grid-row inside
+	it, and every child of that row a grid cell. Not a rule of taste - the row is
+	the only thing carrying the horizontal padding and the max-width (Nino.css,
+	"02 Grid"), and it carries no vertical margin, so a second row stacked under
+	the first sits flush against it. Every page the wizard installs and every
+	section the Template Builder compiles (AreaComposer::render() wraps a whole
+	section body in exactly one row) is this shape	*/
+
+$document = new DOMDocument();
+$previous = libxml_use_internal_errors( true );
+$document->loadHTML( '<?xml encoding="utf-8"?><div id="specimen-root">'. $specimen. '</div>', LIBXML_NOWARNING | LIBXML_NOERROR );
+libxml_clear_errors();
+libxml_use_internal_errors( $previous );
+$xpath = new DOMXPath( $document );
+
+/** Elements below $context carrying $class, as an array */
+$byClass = static function( DOMXPath $xpath, string $class, ?DOMNode $context = null ): array {
+	$query = './/*[contains(concat(" ",normalize-space(@class)," ")," '. $class. ' ")]';
+	$found = [];
+	foreach( $xpath->query( $query, $context ) as $node )
+		$found[] = $node;
+	return $found;
+};
+
+$sections = $byClass( $xpath, 'nino-section' );
+$rowCounts = [];
+$strayCells = [];
+
+foreach( $sections as $section ) {
+
+	$rows = $byClass( $xpath, 'nino-grid-row', $section );
+	$rowCounts[] = count( $rows );
+
+	foreach( $rows as $row )
+		foreach( $row->childNodes as $child ) {
+			if( $child instanceof DOMElement === false )
+				continue;
+			if( preg_match( '/(?:^| )nino-grid-(?:s-|m-|l-|xl-)?(?:25|33|50|66|75|100)(?: |$)/', $child->getAttribute( 'class' ) ) !== 1 )
+				$strayCells[] = $child->tagName. '.'. $child->getAttribute( 'class' );
+		}
+}
+
+check( 'every section of the specimen holds exactly one grid row - stacked rows have no margin between them and would sit flush',
+	$sections !== [] && array_unique( $rowCounts ) === [ 1 ] );
+check( 'and every child of a row is a grid cell, so nothing sits in the row without a width',
+	$strayCells === [] );
+
+/*	The rhythm between the blocks inside a row is a spacing utility on the cell,
+	which is where the Template Builder's own presets put it - a heading area is
+	'nino-grid-100 nino-mb-3', an action area 'nino-grid-100 nino-mt-3', a card
+	'nino-article ... nino-mb-3'. Without it the cells of a wrapping row meet at
+	the .5rem an element brings of its own	*/
+$multi = 0;
+$spaced = 0;
+
+foreach( $sections as $section )
+	foreach( $byClass( $xpath, 'nino-grid-row', $section ) as $row ) {
+
+		$cells = [];
+		foreach( $row->childNodes as $child )
+			if( $child instanceof DOMElement )
+				$cells[] = $child;
+
+		if( count( $cells ) < 2 )
+			continue;
+
+		$multi++;
+
+		// Every cell but the last one, which is the section's own bottom padding
+		array_pop( $cells );
+		$missing = array_filter( $cells, static fn( DOMElement $cell ): bool
+			=> preg_match( '/(?:^| )nino-(?:m|mt|mb|my|p|pt|pb)-[0-6](?: |$)/', $cell->getAttribute( 'class' ) ) !== 1 );
+
+		if( $missing === [] )
+			$spaced++;
+	}
+
+check( 'a row with more than one cell spaces them - every cell but the last carries a spacing utility',
+	$multi > 0 && $spaced === $multi );
+
 $notes 		= [];
 $chosen 	= \Nino\Modules\Design\Setup::normalize( [ 'parts' => [ 'header' => [ 'set' => 'v3' ], 'footer' => [ 'set' => 'v5' ] ] ], $library );
 $markup 	= \Nino\Modules\Design\Preview::markup( $appData, $library, $chosen, $notes );

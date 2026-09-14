@@ -18,7 +18,7 @@
 			'help' => 'The short line introducing the logos, for example "Trusted by".',
 			'source' => 'single',
 			'allowed' => [ 'subtitle', 'title' ],
-			'container' => [ 'class' => 'nino-grid-100 nino-mb-3 nino-mb-3' ],
+			'container' => [ 'class' => 'nino-grid-100 nino-mb-3' ],
 			'styles' => [
 				'center' => [ 'label' => 'Centered', 'class' => 'nino-text-center' ],
 				'left' => [ 'label' => 'Left', 'class' => 'nino-text-left' ],
