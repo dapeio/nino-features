@@ -18,6 +18,7 @@ This repository is the place Nino's features are published from. `features/<Name
 | --- | --- | --- | --- | --- | --- |
 | `consent` | [Consent](features/Consent/README.md) | `security` | 1.0.0 | `^1.1` | A cookie/consent banner with categories and consent-gated scripts, no third party involved |
 | `design` | [Design](features/Design/README.md) | `ui` | 0.1.0 | `^1.2` | The look of a site, chosen per part of a page rather than per page - a set for the hero, sections, articles, buttons, forms, lists and blocks, plus a header and a footer, compiled into `assets/theme.css` |
+| `embed` | [External Embeds](features/Embed/README.md) | `ui` | 1.0.0 | `^1.1` | A video or a map as a surface the visitor presses, not as an iframe that loads itself - nothing is requested from the provider until they ask for it, or until they have allowed external media |
 | `forms` | [Forms](features/Forms/README.md) | `communication` | 1.0.0 | `^1.1` | A builder for Nino's own form endpoint: any number of forms, a `[form]` shortcode that draws them, and spam protection without a captcha |
 | `gallery` | [Gallery](features/Gallery/README.md) | `content` | 1.0.0 | `^1.1` | Any number of image galleries, each a grid of thumbnails that open full screen - two derived sizes per upload, the original never stored |
 | `hello` | [Hello World](features/Hello/README.md) | `system` | 1.0.0 | `^1.1` | A complete feature that does one small thing, written to be copied: a shortcode, a route, a panel, a setting, an install unit and a test, each exactly once |

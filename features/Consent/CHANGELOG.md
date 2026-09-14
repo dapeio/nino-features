@@ -3,6 +3,20 @@
 All notable changes to the Consent feature are documented in this file.
 A release is the tag `consent-<version>` of dapeio/nino-features.
 
+## Unreleased
+
+### Fixed
+
+- **README.md advised hiding an iframe, which does not stop it.** The example
+  for `data-consent-show` put a map iframe inside a `hidden` container, and a
+  hidden iframe is fetched exactly like a visible one - measured in Chromium for
+  the `hidden` attribute, `display:none` and `visibility:hidden` alike. The
+  visitor's address reached the provider before the banner was answered, which
+  is the one thing this feature is for. The example now toggles a notice rather
+  than a frame, and a new section says plainly that the pattern is not for an
+  iframe and names the two that work: the `<script type="text/plain">`
+  placeholder this feature already has, and the External Embeds feature.
+
 ## 1.0.0 — 2026-09-08
 
 - First release: a cookie/consent banner without a third party -

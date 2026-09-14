@@ -121,18 +121,33 @@ becoming `src`, or the placeholder's own text content when there is no
 activated at most once, on the page's initial load and again whenever the
 visitor changes their choice, without a page reload.
 
-Toggle a placeholder box instead of a script with `data-consent-show`/
-`data-consent-hide` - a "load the map" placeholder, say:
+Toggle a box instead of a script with `data-consent-show`/`data-consent-hide` -
+a notice, a button, a piece of copy that only applies once something is allowed:
 
 ```html
-<div data-consent-hide="external">Loading the map needs your consent for external media. <button class="nino-consent-open" type="button">Cookie settings</button></div>
-<div data-consent-show="external" hidden><iframe src="https://maps.example/embed">...</iframe></div>
+<div data-consent-hide="external">The map below needs your consent for external media. <button class="nino-consent-open" type="button">Cookie settings</button></div>
+<div data-consent-show="external" hidden>Thanks - the map is loading.</div>
 ```
 
 `consent.js` only ever *unhides* a `data-consent-show` element and *hides* a
 `data-consent-hide` one for an allowed category - it never reverses either
 in the other direction, so give the "not yet allowed" element its own
 visible-by-default markup the way the example above does.
+
+### Not for an iframe
+
+**A hidden iframe is still fetched.** An iframe inside a container with the
+`hidden` attribute, with `display:none` or with `visibility:hidden` loads exactly
+like a visible one - measured in Chromium, all three reach the third-party
+server. So `data-consent-show` around an iframe hides the map from the visitor
+and sends their address to the provider anyway, which is the one thing this
+feature is for.
+
+The two patterns that do work: a `<script type="text/plain" data-consent="…">`
+placeholder above, where nothing runs until the script is created, or the
+[External Embeds](../Embed/README.md) feature, which carries the address in a
+data attribute and builds the iframe when it is released - by a press, or by this
+feature's own `external` category.
 
 ## `document.documentElement.dataset.consent` and the `nino:consent` event
 
