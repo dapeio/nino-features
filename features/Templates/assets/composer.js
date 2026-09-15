@@ -332,7 +332,7 @@
 				pd.composer._textEntries = responses[2].entries || [];
 				if( pd.areaComposer )
 					pd.areaComposer.reconcileAvailableCollections();
-				if( pd.composer._context === activeContext && pd.composer._step === 'config' )
+				if( pd.composer._context === activeContext && pd.composer.configStep() === true )
 					pd.composer.renderSettings();
 			} ).catch( function() {} );
 		},
@@ -380,19 +380,84 @@
 			pd.composer.renderStep();
 		},
 
+		/*	The dialog has one library step and, after it, either one
+			configuration step or two.
+
+			Two while a named-area preset is being inserted: there, deciding how
+			the section looks and filling it with content are two jobs, and
+			doing both on one screen is the wall of controls this dialog was
+			accused of being. The edit mode keeps them as the pair of tabs it
+			already has (see area-composer.js), because somebody who opens an
+			existing section usually wants one of the two and knows which.
+
+			Everything else - a preset without areas, and every edit - keeps the
+			single 'config' screen	*/
+		STEPS : [ 'library', 'config', 'design', 'content' ],
+
+		/**
+		 *	Whether the insert flow splits configuration into design and
+		 *	content. The area composer answers for the preset in hand; without
+		 *	it (or for a preset it does not drive) there is one screen
+		 *
+		 *	@return		{boolean}
+		 */
+		splitSteps : function() {
+			return !!( pd.areaComposer && typeof pd.areaComposer.splitSteps === 'function' && pd.areaComposer.splitSteps() );
+		},
+
+		/**
+		 *	Whether the dialog is past the library, on any of the configuration
+		 *	steps - what every renderer that used to compare against 'config'
+		 *	asks now
+		 *
+		 *	@return		{boolean}
+		 */
+		configStep : function() {
+			return pd.composer._step !== 'library';
+		},
+
 		continueFromLibrary : function() {
-			pd.composer.setStep('config');
+			pd.composer.setStep( pd.composer.splitSteps() ? 'design' : 'config' );
+		},
+
+		/**
+		 *	The step the primary button leads to, '' where it is the last one
+		 *	and the button submits instead
+		 *
+		 *	@return		{string}
+		 */
+		nextStep : function() {
+			if( pd.composer._step === 'library' )
+				return pd.composer.splitSteps() ? 'design' : 'config';
+			return pd.composer._step === 'design' ? 'content' : '';
+		},
+
+		/**
+		 *	One step back: out of the content step into the design step, and
+		 *	out of either single-screen step into the library
+		 *
+		 *	@return		void
+		 */
+		back : function() {
+			pd.composer.setStep( pd.composer._step === 'content' ? 'design' : 'library' );
 		},
 
 		setStep : function( step ) {
-			if( ![ 'library', 'config' ].includes( step ) )
+			if( pd.composer.STEPS.includes( step ) === false )
 				return;
 			if( step === 'library' && pd.composer._context && pd.composer._context.mode === 'replace' )
 				return;
+			// A preset picked in the library decides how many configuration
+			// steps there are, so a step that does not exist for this one is
+			// answered with the one that does
+			if( pd.composer.splitSteps() === false && ( step === 'design' || step === 'content' ) )
+				step = 'config';
+			if( pd.composer.splitSteps() === true && step === 'config' )
+				step = 'design';
 			pd.composer.captureNativeInputs();
 			pd.composer._step = step;
 			pd.composer.renderStep();
-			if( step === 'config' ) {
+			if( step !== 'library' ) {
 				pd.composer.renderConfiguration();
 				pd.composer.loadNativeContent();
 				wn.requestAnimationFrame( fitPreviewFrames );
@@ -406,7 +471,7 @@
 			pd.composer.renderCategories();
 			pd.composer.renderLibrary();
 			pd.composer.renderStep();
-			if( pd.composer._step === 'config' ) {
+			if( pd.composer.configStep() === true ) {
 				pd.composer.renderConfiguration();
 				pd.composer.loadNativeContent();
 			}
@@ -420,22 +485,57 @@
 			const submit = dc.getElementById('pd-compose-submit');
 			const onLibrary = pd.composer._step === 'library';
 			const editing = pd.composer._context && pd.composer._context.mode === 'replace';
+			const nextStep = pd.composer.nextStep();
 			library.classList.toggle( 'pd-hidden', !onLibrary );
 			config.classList.toggle( 'pd-hidden', onLibrary );
-			back.classList.toggle( 'pd-hidden', onLibrary || editing );
-			next.classList.toggle( 'pd-hidden', !onLibrary );
-			next.textContent = selectedInclude() ? Nino.content.getText('/_admin/templates/label/next-template') : Nino.content.getText('/_admin/templates/label/next-config');
+			back.classList.toggle( 'pd-hidden', onLibrary || ( editing && pd.composer._step !== 'content' ) );
+			back.textContent = pd.composer._step === 'content'
+				? Nino.content.getText('/_admin/templates/label/back-to-design')
+				: Nino.content.getText('/_admin/templates/label/back-to-library');
+			next.classList.toggle( 'pd-hidden', nextStep === '' );
+			// Three labels for one button: what it leads to is a different
+			// thing on each step, and "Continue" three times over says none of
+			// them
+			if( nextStep !== '' )
+				next.textContent = selectedInclude()
+					? Nino.content.getText('/_admin/templates/label/next-template')
+					: Nino.content.getText( '/_admin/templates/label/next-'+ ( nextStep === 'config' ? 'config' : nextStep ) );
 			pd.composer.renderComposerHeading();
-			submit.classList.toggle( 'pd-hidden', onLibrary );
-			dc.getElementById('pd-step-library').classList.toggle( 'is-active', onLibrary );
-			dc.getElementById('pd-step-config').classList.toggle( 'is-active', !onLibrary );
-			if( onLibrary ) {
-				dc.getElementById('pd-step-library').setAttribute( 'aria-current', 'step' );
-				dc.getElementById('pd-step-config').removeAttribute('aria-current');
-			} else {
-				dc.getElementById('pd-step-library').removeAttribute('aria-current');
-				dc.getElementById('pd-step-config').setAttribute( 'aria-current', 'step' );
-			}
+			submit.classList.toggle( 'pd-hidden', nextStep !== '' );
+			pd.composer.renderStepper();
+		},
+
+		/**
+		 *	The numbered strip in the dialog's header. Its middle entry is
+		 *	drawn only where there is a design step to reach, and the numbers
+		 *	are written here rather than in the markup so that two of them read
+		 *	1-2 and three of them 1-2-3
+		 *
+		 *	@return		void
+		 */
+		renderStepper : function() {
+			const split = pd.composer.splitSteps();
+			const active = pd.composer._step === 'library' ? 'library' : ( pd.composer._step === 'design' ? 'design' : 'content' );
+			let number = 0;
+			[ [ 'pd-step-library', 'library', true ], [ 'pd-step-design', 'design', split ], [ 'pd-step-content', 'content', true ] ].forEach( function( entry ) {
+				const item = dc.getElementById( entry[0] );
+				if( !item )
+					return;
+				item.classList.toggle( 'pd-hidden', entry[2] === false );
+				if( entry[2] === false ) {
+					item.classList.remove('is-active');
+					item.removeAttribute('aria-current');
+					return;
+				}
+				const index = item.querySelector('span');
+				if( index )
+					index.textContent = String( ++number );
+				item.classList.toggle( 'is-active', entry[1] === active );
+				if( entry[1] === active )
+					item.setAttribute( 'aria-current', 'step' );
+				else
+					item.removeAttribute('aria-current');
+			} );
 		},
 
 		renderCategories : function() {
@@ -571,7 +671,7 @@
 			const preset = selectedPreset();
 			if( !eyebrow || !title )
 				return;
-			if( pd.composer._step === 'config' && preset ) {
+			if( pd.composer.configStep() === true && preset ) {
 				eyebrow.textContent = Nino.adminUi.text( preset.category )+ ' · '+ presetKind( preset );
 				title.textContent = Nino.adminUi.text( preset.name );
 				return;
@@ -841,7 +941,7 @@
 						pd.composer._contentValues[entry.key] = entry.value || '';
 				} );
 				pd.composer._contentLoadedSignature = signature;
-				if( rerender && pd.composer._step === 'config' )
+				if( rerender && pd.composer.configStep() === true )
 					pd.composer.renderSettings();
 			} ).catch( function( error ) {
 				if( token === pd.composer._contentToken && rerender ) {
@@ -854,7 +954,7 @@
 
 		requestPreview : function( immediate ) {
 			const draft = pd.composer._draft;
-			if( !draft || pd.composer._step !== 'config' )
+			if( !draft || pd.composer.configStep() === false )
 				return;
 			wn.clearTimeout( pd.composer._previewTimer );
 			const token = ++pd.composer._previewToken;
@@ -999,14 +1099,19 @@
 				return;
 			form.addEventListener( 'submit', function( event ) {
 				event.preventDefault();
-				if( pd.composer._step === 'library' )
-					pd.composer.continueFromLibrary();
+				const nextStep = pd.composer.nextStep();
+				if( nextStep !== '' )
+					pd.composer.setStep( nextStep );
 				else
 					pd.composer.submit();
 			} );
 			dc.getElementById('pd-library-search').addEventListener( 'input', pd.composer.renderLibrary );
-			dc.getElementById('pd-compose-next').addEventListener( 'click', pd.composer.continueFromLibrary );
-			dc.getElementById('pd-compose-back').addEventListener( 'click', function() { pd.composer.setStep('library') } );
+			dc.getElementById('pd-compose-next').addEventListener( 'click', function() {
+				const nextStep = pd.composer.nextStep();
+				if( nextStep !== '' )
+					pd.composer.setStep( nextStep );
+			} );
+			dc.getElementById('pd-compose-back').addEventListener( 'click', pd.composer.back );
 			dc.querySelectorAll('.pd-dialog-close').forEach( function( close ) {
 				close.addEventListener( 'click', function() { dc.getElementById('pd-composer').close() } );
 			} );

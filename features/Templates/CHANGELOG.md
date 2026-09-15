@@ -5,6 +5,28 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+### Changed
+
+- **Inserting a section is three steps now: choose, design, fill.** The dialog
+  put everything after the library on one screen - the section's frame, its
+  components and every field they bind to - and that screen is the wall of
+  controls the panel was accused of being. Deciding how a section looks and
+  deciding what it says are two jobs, so they are two steps: the primary
+  button on the design step opens the content step instead of inserting, and
+  the stepper in the header counts to three.
+
+  The split is the Design/Data switch an existing section is edited through,
+  taken apart. That is why it is the insert flow only: whoever opens a section
+  that already exists usually wants one of the two and knows which, so the
+  edit keeps its tabs and its single screen. A preset without named areas
+  keeps the single configuration screen too - there is nothing to split - and
+  the middle step is not drawn for it.
+
+  The section's own frame belongs to the design step and is not repeated on
+  the content step; the area editor is on both, showing its components on the
+  first and their bindings on the second. Three new words: the step's name,
+  the button that leads into it, and the way back out of it.
+
 ### Fixed
 
 - **A component could carry a rich text field in an attribute.** A declared

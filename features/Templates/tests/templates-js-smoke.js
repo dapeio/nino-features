@@ -238,6 +238,48 @@ check( 'binding sources are read from persisted metadata rather than inferred fr
 check( 'blacklisted textfills remain selectable in a separate technical group', areaComposerSource.includes( "label : Nino.content.getText('/_admin/templates/label/fills-technical')" )
 	&& contentPhpSource.includes( "'blacklisted' => ( $entry['blacklisted'] ?? false ) === true" ) );
 check( 'named Areas render as semantic tabs above one Design/Data workspace', [ "'pd-v3-area-workspace'", "setAttribute( 'role', 'tablist' )", "setAttribute( 'role', 'tabpanel' )" ].every( function( marker ) { return areaComposerSource.includes( marker ) } ) );
+
+/*	Inserting a named-area preset walks three steps, not one: choose it,
+	design it, fill it. Deciding how a section looks and what it says are
+	two jobs, and one screen carrying both is the wall of controls this
+	dialog was accused of being. An edit keeps the Design/Data tabs - who
+	opens an existing section usually wants one of the two and knows which	*/
+const stepComposer = Nino.admin.templates.composer;
+const stepAreas = Nino.admin.templates.areaComposer;
+const stepLibrary = Nino.admin.templates._library.presets;
+
+Nino.admin.templates._library.presets = [ { key : 'v3-hero', version : 3, category : 'Hero', name : 'Hero', allow : {} }, { key : 'v1-plain', version : 1, category : 'Hero', name : 'Plain', allow : {} } ];
+stepComposer._context = { mode : 'insert' };
+stepComposer._presetKey = 'v3-hero';
+
+stepComposer._step = 'library';
+check( 'inserting a named-area preset splits configuration in two', stepComposer.splitSteps() === true && stepComposer.nextStep() === 'design' );
+stepComposer._step = 'design';
+check( '...where the primary button opens the content step rather than inserting', stepComposer.nextStep() === 'content' && stepAreas.insertStep() === 'design' );
+stepComposer._step = 'content';
+check( '...and the content step is the one that inserts', stepComposer.nextStep() === '' && stepAreas.insertStep() === 'content' );
+
+stepComposer._presetKey = 'v1-plain';
+stepComposer._step = 'library';
+check( 'a preset without areas keeps its single configuration screen', stepComposer.splitSteps() === false
+	&& stepComposer.nextStep() === 'config' && stepAreas.insertStep() === '' );
+stepComposer._step = 'config';
+check( '...which is the one that inserts', stepComposer.nextStep() === '' );
+
+stepComposer._presetKey = 'v3-hero';
+stepComposer._context = { mode : 'replace' };
+stepComposer._step = 'config';
+check( 'an edit keeps the Design/Data tabs instead of the steps', stepComposer.splitSteps() === false
+	&& stepAreas.insertStep() === '' && stepComposer.nextStep() === '' );
+
+check( 'the section frame belongs to the design step, the area editor to both', areaComposerSource.includes( "if( insertStep() !== 'content' )" )
+	&& /if\( insertStep\(\) === 'design' \)\s*\n\s*renderDesign\(/.test( areaComposerSource ) );
+check( 'every configuration step answers the one test the renderers ask', composerSource.includes( "return pd.composer._step !== 'library';" )
+	&& composerSource.includes( "_step === 'config'" ) === false );
+
+Nino.admin.templates._library.presets = stepLibrary;
+stepComposer._context = null;
+stepComposer._step = 'library';
 check( 'the background image offers a fixed value next to the two slot choices', areaComposerSource.includes( "{ value : 'fixed', label : Nino.content.getText('/_admin/templates/label/value-fixed') }" )
 	&& /formField\( Nino\.content\.getText\('\/_admin\/templates\/label\/background-image'\), '', \[[^\]]*value : 'fixed'/.test( areaComposerSource )
 	&& areaComposerSource.includes( "'frame.backgroundImage', 'text'" )

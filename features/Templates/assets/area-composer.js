@@ -199,6 +199,32 @@
 		return !pd.composer._context || pd.composer._context.mode !== 'replace';
 	}
 
+	/**
+	 *	Whether the dialog splits its configuration into a design step and a
+	 *	content step - see composer.js's own STEPS. True while a named-area
+	 *	preset is being inserted: the Design/Data switch an existing section is
+	 *	edited through is two steps of the wizard there, so nobody meets the
+	 *	whole wall of controls at once. An edit keeps the tabs
+	 *
+	 *	@return		{boolean}
+	 */
+	function splitSteps() {
+		return active() && quickMode();
+	}
+
+	/**
+	 *	Which of the two the dialog is on: 'design' while the section's frame
+	 *	and its components are chosen, 'content' while they are filled. '' for
+	 *	the single-screen cases, which show both
+	 *
+	 *	@return		{string}
+	 */
+	function insertStep() {
+		if( splitSteps() === false )
+			return '';
+		return pd.composer._step === 'content' ? 'content' : 'design';
+	}
+
 	function bindingSource( component, property ) {
 		return component.bindingSources && component.bindingSources[property] || '';
 	}
@@ -607,7 +633,13 @@
 		// the quick view there is not even that
 		const toolbar = node( 'div', 'pd-v3-area-heading' );
 		if( quick ) {
-			renderQuickArea( editor, draft, item, areaKey, area, areaDraft );
+			// No Design/Data switch here: on the way in, those two are the
+			// dialog's own steps (see splitSteps()), and a pair of tabs
+			// offering the step somebody just left is one control too many
+			if( insertStep() === 'design' )
+				renderDesign( editor, draft, item, areaKey, area, areaDraft );
+			else
+				renderQuickArea( editor, draft, item, areaKey, area, areaDraft );
 			workspace.appendChild( editor ); section.appendChild( workspace ); wrap.appendChild( section );
 			return;
 		}
@@ -749,7 +781,11 @@
 		const item = preset();
 		if( !wrap || !draft ) return;
 		pd.composer.captureValues(); wrap.innerHTML = ''; wrap.classList.toggle( 'is-quick', quickMode() );
-		renderSectionPanel( wrap, draft, item ); renderAreaPanel( wrap, draft, item ); bindSettings( wrap );
+		// The section's own frame is the design step's business, so the
+		// content step does not carry it a second time
+		if( insertStep() !== 'content' )
+			renderSectionPanel( wrap, draft, item );
+		renderAreaPanel( wrap, draft, item ); bindSettings( wrap );
 	}
 
 	function updateDraft( input, committed ) {
@@ -783,7 +819,7 @@
 		}
 		if( committed !== false || input.tagName === 'SELECT' || input.type === 'checkbox' ) {
 			pd.composer.renderSettings();
-			pd.composer.loadTextValues().then( function() { if( pd.composer._step === 'config' ) pd.composer.renderSettings() } );
+			pd.composer.loadTextValues().then( function() { if( pd.composer.configStep() === true ) pd.composer.renderSettings() } );
 		}
 		pd.composer.renderSummary(); pd.composer.requestPreview();
 	}
@@ -894,6 +930,8 @@
 	pd.areaComposer = {
 		_areaKey : '',
 		_view : 'design',
+		splitSteps : splitSteps,
+		insertStep : insertStep,
 		nextComponentId : nextComponentId,
 		moveComponent : moveComponent,
 		linkAccepted : linkAccepted,

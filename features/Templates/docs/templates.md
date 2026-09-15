@@ -46,8 +46,8 @@ Use HTTPS, keep developer accounts few and work from a recoverable project state
 1. Select a page template in the left rail or create one with **New page template**. The dialog asks for the complete filename, display name, header, footer and VPA default.
 2. Choose **Add section**.
 3. In **Choose**, search or filter the fullscreen gallery and select a named-area preset from its real-markup preview. The library intentionally contains only the current version-3 contract. Reusable `.tpl` files do not appear as pseudo-sections; a supporting preset can expose them as a **Template** component inside one of its Areas.
-4. Continue to **Configure & fill** and give the section a meaningful ID such as `main-hero` or `services-overview`. This deliberately reduced Add view contains Structure, Background, collection choice and one combined component/data list.
-5. Add, reorder or remove components directly beside their initial bindings, then compare the live preview and insert the section. Recommended text keys, an Element Type and image-slot definitions can be created in the same operation.
+4. Continue to **Design** and give the section a meaningful ID such as `main-hero` or `services-overview`. This step holds the section's own frame - structure, background, layout - and each Area's component stack: add, reorder or remove components and choose their styles, against the live preview.
+5. Continue to **Configure & fill** for what the section says: the collection an Area reads from and every component's bindings. The section is inserted from here. Recommended text keys, an Element Type and image-slot definitions can be created in the same operation.
 6. After checking the real frontend, reopen the section with **Edit** when visual fine-tuning is needed. Edit exposes dimensions and spacing plus each Area's separate **Design** and **Data** views.
 7. Open image slots or individual Elements entries in their panels when needed - a section's Elements note links straight into the Elements panel.
 8. Reorder the HTML and template-section cards and save the page template.

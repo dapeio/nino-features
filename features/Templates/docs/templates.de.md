@@ -46,8 +46,8 @@ Verwende HTTPS, halte die Zahl der Entwicklerkonten klein und arbeite mit einem 
 1. Wähle links ein Seitentemplate oder lege es über **New page template** an. Der Dialog fragt den vollständigen Dateinamen, Anzeigenamen, Header, Footer und den VPA-Standard ab.
 2. Öffne **Add section**.
 3. Durchsuche oder filtere unter **Choose** die große Galerie und wähle ein Preset mit benannten Areas anhand seiner echten Markup-Vorschau. Die Library enthält bewusst nur noch den aktuellen Version-3-Vertrag. Wiederverwendbare `.tpl`-Dateien erscheinen nicht als Pseudo-Sections; ein passendes Preset kann sie als **Template**-Komponente in einer Area anbieten.
-4. Wechsle zu **Configure & fill** und vergib eine sprechende ID wie `main-hero` oder `services-overview`. Diese bewusst reduzierte Add-Ansicht enthält Structure, Background, Collection-Auswahl und eine gemeinsame Komponenten-/Datenliste.
-5. Ergänze, sortiere oder entferne Komponenten direkt neben ihren ersten Bindings, vergleiche die Live-Vorschau und füge die Section ein. Empfohlene Textschlüssel, ein Elementtyp und Bildplatz-Definitionen können dabei mit angelegt werden.
+4. Wechsle zu **Design** und vergib eine sprechende ID wie `main-hero` oder `services-overview`. Dieser Schritt trägt den Rahmen der Section – Structure, Background, Layout – und den Komponentenstapel jeder Area: ergänzen, sortieren, entfernen und den Stil wählen, neben der Live-Vorschau.
+5. Wechsle weiter zu **Configure & fill** für das, was die Section sagt: die Collection, aus der eine Area liest, und die Bindings jeder Komponente. Von hier wird die Section eingefügt. Empfohlene Textschlüssel, ein Elementtyp und Bildplatz-Definitionen können dabei mit angelegt werden.
 6. Öffne die Section nach der Prüfung im echten Frontend bei Bedarf über **Edit**. Dort stehen Maße und Abstände sowie die getrennten **Design**- und **Data**-Ansichten jeder Area für die grafische Feinjustierung bereit.
 7. Öffne bei Bedarf Bildplätze oder einzelne Elements-Einträge in ihren Panels – der Elements-Hinweis einer Section verlinkt direkt ins Panel Elemente.
 8. Ordne HTML- und Template-Section-Karten und speichere das Seitentemplate.
