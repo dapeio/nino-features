@@ -230,8 +230,12 @@ namespace Nino\Modules {
 
 				$existing 	= false;
 				$token 			= null;
+				// Resolved out here: the closure has no $appData, and the
+				// address a visitor counts as depends on the proxy list in it
+				// (see \Nino\Http::getClientIp())
+				$ip 				= \Nino\Http::getClientIp( $appData );
 
-				\Nino\Filesystem::mutate( $appData, self::PATH, function( array $entries ) use ( $email, &$existing, &$token ): ?array {
+				\Nino\Filesystem::mutate( $appData, self::PATH, function( array $entries ) use ( $email, $ip, &$existing, &$token ): ?array {
 
 					foreach( $entries as $entryKey => $entry ) {
 
@@ -254,7 +258,7 @@ namespace Nino\Modules {
 							'token'		=> $token,
 							'status'	=> 'pending',
 							'date'		=> date( 'Y-m-d H:i:s' ),
-							'ip'			=> \Nino\Http::getClientIp(),
+							'ip'			=> $ip,
 						];
 					}
 

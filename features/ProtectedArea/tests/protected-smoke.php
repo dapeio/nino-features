@@ -283,6 +283,39 @@ check( 'the locked error, not the wrong-password one, is what [protected-error] 
 echo "\n";
 
 
+// --- The cap behind a reverse proxy ---------------------------------------------
+
+echo "Modules\\ProtectedArea::callbackUnlock - the cap counts the visitor, not the proxy\n";
+
+/*	Behind a proxy REMOTE_ADDR is the proxy's address for every visitor alike,
+	so three wrong tries by anybody locked the area for everybody. With the
+	proxy named under '/nino/http/proxies', the forwarded address is what
+	counts (see \Nino\Http::getClientIp())	*/
+$appData['/nino/http/proxies'] 		= [ '203.0.113.9' ];
+$_SERVER['REMOTE_ADDR'] 					= '203.0.113.9';
+$_SERVER['HTTP_X_FORWARDED_FOR'] 	= '198.51.100.20';
+
+for( $i = 1; $i <= 3; $i++ )
+	protectedUnlock( $appData, [ 'password' => 'still-not-the-password', 'return' => '/intern' ] );
+
+$proxiedCounters = \Nino\Filesystem::getFileContent( $appData, '/data/protected.php', [] );
+check( 'the tries are counted for the visitor behind the proxy', ( $proxiedCounters['198.51.100.20']['tries'] ?? 0 ) === 3
+	&& isset( $proxiedCounters['203.0.113.9'] ) === false );
+
+$proxiedCapRequest = protectedUnlock( $appData, [ 'password' => 'sesam-öffne-dich', 'return' => '/intern' ] );
+check( 'that visitor is capped like any other', $proxiedCapRequest['/nino/http/response']['statusCode'] === 429 );
+
+$_SERVER['HTTP_X_FORWARDED_FOR'] = '198.51.100.21';
+$secondVisitorRequest = protectedUnlock( $appData, [ 'password' => 'still-not-the-password', 'return' => '/intern' ] );
+check( 'a second visitor through the same proxy has their own tries left', $secondVisitorRequest['/nino/http/response']['statusCode'] === 401 );
+
+$appData['/nino/http/proxies'] = [];
+unset( $_SERVER['HTTP_X_FORWARDED_FOR'] );
+$_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+
+echo "\n";
+
+
 // --- Locking again ---------------------------------------------------------------
 
 echo "Modules\\ProtectedArea::callbackLogout / [protected-logout]\n";

@@ -4,6 +4,19 @@ All notable changes to the Forms feature are documented in this file. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), the
 versions [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Fixed
+
+- **Behind a reverse proxy the rate limit counted every visitor as one.**
+  Both halves of the per-address cap - the counter written after an accepted
+  submission and the check in front of the next one - asked
+  `\Nino\Http::getClientIp()` without the app data it needs to resolve an
+  address, so behind a proxy they shared one bucket and four submissions by
+  anyone turned the form off for everybody. Both pass `$appData` now, so a
+  project that named its proxies under `/nino/http/proxies` counts the
+  visitor behind them. Needs the kernel change that added the key.
+
 ## 1.0.0 — 2026-09-08
 
 First release.

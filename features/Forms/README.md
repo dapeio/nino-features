@@ -136,6 +136,12 @@ on the next write.
 Nino's own per-ip mail cap (`\Nino\Mail`, 5 per hour) applies on top of all of
 this and is the hard stop against the endpoint being used as a relay.
 
+Both caps count the address the kernel resolved, which behind a reverse proxy
+is the proxy for every visitor alike unless it is named under
+`/nino/http/proxies` - there, without that key, one visitor's four
+submissions turn the site's form off for everybody. See the Config panel's
+**Reverse proxies in front of this site**.
+
 ## Data
 
 None. The definitions are configuration, the submissions are the kernel's, and

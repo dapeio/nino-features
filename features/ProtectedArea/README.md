@@ -102,6 +102,12 @@ brute forced past a prefix nobody has found yet, either. The window resets
 an hour after the first wrong attempt in it; a stale window is dropped the
 next time anything writes to the file, so it never grows without bound.
 
+Which address that is, is the kernel's answer: behind a reverse proxy it is
+the proxy for every visitor alike unless the proxy is named under
+`/nino/http/proxies`, and without that the cap locks the area for everybody
+as soon as anyone has tried three times. See the Config panel's **Reverse
+proxies in front of this site**.
+
 ## Locking again
 
 `GET /.protected/logout` unsets the session's `unlocked` flag and redirects

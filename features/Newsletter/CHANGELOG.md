@@ -7,6 +7,14 @@ A release is the tag `newsletter-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **A signup recorded the proxy's address as the subscriber's.** The `ip`
+  field of a pending entry came from `\Nino\Http::getClientIp()` without the
+  app data it needs to resolve one, so behind a reverse proxy every signup
+  carried the same address - the one thing that field exists to tell apart.
+  It passes `$appData` now, so a project that named its proxies under
+  `/nino/http/proxies` records the visitor behind them. Needs the kernel
+  change that added the key.
+
 - **A post or a link whose value is an array was a 500.** `email[]=x` on the
   signup, and `?confirm[]=x` or `?unsubscribe[]=x` on the confirm page,
   reached a `(string)` cast; the "Array to string conversion" warning that

@@ -175,10 +175,12 @@ namespace Nino\Modules {
 				return;
 
 			$now = time();
+			// Both resolved out here: the closure has no $appData, and which
+			// address a visitor counts as depends on the proxy list in it
+			// (see \Nino\Http::getClientIp())
+			$key = hash( 'sha256', \Nino\Http::getClientIp( $appData ) );
 
-			\Nino\Filesystem::mutate( $appData, self::RATE, function( array $state ) use ( $now ): array {
-
-				$key = hash( 'sha256', \Nino\Http::getClientIp() );
+			\Nino\Filesystem::mutate( $appData, self::RATE, function( array $state ) use ( $now, $key ): array {
 
 				// Every key whose window has passed goes on write, not just
 				// this one's - otherwise the file grows with every visitor the
@@ -381,7 +383,7 @@ namespace Nino\Modules {
 				return false;
 
 			// The ip is hashed: this file is a spam counter, not a visitor log
-			$key		= hash( 'sha256', \Nino\Http::getClientIp() );
+			$key		= hash( 'sha256', \Nino\Http::getClientIp( $appData ) );
 			$entry	= \Nino\Filesystem::getFileContent( $appData, self::RATE, [] )[$key] ?? null;
 
 			if( is_array( $entry ) === false || (int) ( $entry['reset'] ?? 0 ) <= time() )

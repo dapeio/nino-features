@@ -182,7 +182,7 @@ namespace Nino\Modules {
 			// string conversion" - a level \Nino\Runtime treats as fatal, ie.
 			// an unauthenticated 500 from a post anybody can send. Same reading
 			// as \Nino\Form::posted(), whose docblock says why
-			$ip 			= \Nino\Http::getClientIp();
+			$ip 			= \Nino\Http::getClientIp( $appData );
 			$return 	= is_string( $_POST['return'] ?? null ) === true ? $_POST['return'] : '';
 			$password	= is_string( $_POST['password'] ?? null ) === true ? $_POST['password'] : '';
 			$limit 		= (int) \Nino\Features::setting( $appData, self::FEATURE_KEY, 'attempts', self::DEFAULT_ATTEMPTS );

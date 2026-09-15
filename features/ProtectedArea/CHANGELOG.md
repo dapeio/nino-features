@@ -7,6 +7,14 @@ A release is the tag `protected-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **Behind a reverse proxy the cap locked out everybody at once.** The
+  attempt counter is keyed by the client address, and that address came from
+  `\Nino\Http::getClientIp()` without the app data it needs to resolve one:
+  behind a proxy every visitor was the proxy, so three wrong tries by anyone
+  closed the area for all of them, for the hour. The call passes `$appData`
+  now, so a project that named its proxies under `/nino/http/proxies` counts
+  the visitor behind them. Needs the kernel change that added the key.
+
 - **The posted return path was rendered, not just carried.** The
   wrong-password answer puts what was posted as `return` back into the form's
   hidden field, so the visitor keeps their destination - escaped, but the page
