@@ -563,6 +563,15 @@ check( 'a set name that could climb out of the library never becomes a path',
 	callDesignAction( $appData, 'apiSave', [ 'parts' => [ 'section' => [ 'set' => '../../../etc/passwd' ] ], 'step' => 'default', 'size' => 'm' ] )[0] === 200
 	&& \Nino\Modules\Design\Setup::read( $appData, \Nino\Modules\Design::libraryDir() )['parts']['section']['set'] === 'v1' );
 
+// ...and neither does a size that is not a string. Cast, an array raises
+// "Array to string conversion", a level the kernel treats as fatal - a 500
+// on the panel's own save where a fallback is the answer
+ninoWarnings();
+check( 'a size posted as an array falls back rather than raising',
+	callDesignAction( $appData, 'apiSave', [ 'parts' => [], 'step' => 'default', 'size' => [ 'l' ] ] )[0] === 200
+	&& ninoWarnings() === []
+	&& \Nino\Modules\Design\Setup::read( $appData, \Nino\Modules\Design::libraryDir() )['size'] === 'm' );
+
 echo "\nThe knob: the framework's own vocabulary, and the two levels it asks\n";
 
 check( 'a set publishes a knob by declaring its triple, and no other way',

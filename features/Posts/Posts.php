@@ -387,7 +387,14 @@ namespace Nino\Modules {
 			if( $section['date'] === '' )
 				return true;
 
-			$date = trim( (string) ( $element[ $section['date'] ] ?? '' ) );
+			// is_string(), not a cast: the field is whatever the element type
+			// declares and whatever an editor, a feature or a hand-edited
+			// file put there. An array cast to string raises "Array to string
+			// conversion", a level \Nino\Runtime treats as fatal - one list
+			// field named as the date field and every posts page is a 500.
+			// A value that is not a string is no date, so the post is a draft
+			$raw	= $element[ $section['date'] ] ?? '';
+			$date	= is_string( $raw ) === true ? trim( $raw ) : '';
 
 			// An empty date is a draft: the field exists, the post has not
 			// been given one, and guessing "now" would publish it

@@ -200,6 +200,18 @@ check( 'the cookie name from the settings is respected', \Nino\Features::saveSet
 $_COOKIE = [];
 withConsentCookie( $appData, 'nino_consent', 'necessary,statistics' ); // the old name - must no longer be read
 check( 'a cookie under the old name is ignored once the setting changed', \Nino\Modules\Consent::allowed( $appData, 'statistics' ) === false );
+/*	A cookie is sent by the client: 'acme_consent[]=x' parses to an array,
+	and cast to string that raises "Array to string conversion" - a level
+	the kernel treats as fatal, ie. an unauthenticated 500 on every page
+	that asks whether something is allowed	*/
+ninoWarnings();
+$_COOKIE['acme_consent'] = [ 'necessary,statistics' ];
+check( 'an array-shaped consent cookie allows nothing, and raises nothing',
+	\Nino\Modules\Consent::allowed( $appData, 'statistics' ) === false
+	&& \Nino\Modules\Consent::allowed( $appData, 'necessary' ) === true
+	&& ninoWarnings() === [] );
+unset( $_COOKIE['acme_consent'] );
+
 withConsentCookie( $appData, 'acme_consent', 'necessary,marketing' );
 check( 'a cookie under the configured name is read', \Nino\Modules\Consent::allowed( $appData, 'marketing' ) === true );
 check( 'and only lists what it actually names', \Nino\Modules\Consent::allowed( $appData, 'statistics' ) === false );

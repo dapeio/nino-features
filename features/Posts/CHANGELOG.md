@@ -7,6 +7,13 @@ A release is the tag `posts-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **One element with a list field where the date should be took every posts
+  page down.** `published()` cast the date field to a string; an array there
+  raises "Array to string conversion", a level the kernel treats as fatal, so
+  the section's list, its pages and the post itself answered 500 rather than
+  leaving one post out. A value that is not a string is no date, which makes
+  the post a draft - the same answer an empty date gets.
+
 - **A post body ran the shortcodes an editor typed.** Every other field value
   swaps its `[` for `&#91;` on the way into the page, because the block is
   rendered again afterwards - `[[.body]]`, which takes the same field through

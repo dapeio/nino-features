@@ -7,6 +7,15 @@ A release is the tag `consent-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **A cookie anybody can send was a 500 on every page.** `allowed()` cast the
+  consent cookie to a string, and a request sending `nino_consent[]=x` makes
+  that cast an "Array to string conversion" - a level the kernel treats as
+  fatal. Every page that asks whether something is allowed answered 500 for
+  as long as the cookie was sent, which is as long as the sender likes. The
+  cookie is read as a string or not at all now, and so is the cookie name
+  from the settings: a hand-edited `config.php` is no more typed than a
+  request is.
+
 - **README.md advised hiding an iframe, which does not stop it.** The example
   for `data-consent-show` put a map iframe inside a `hidden` container, and a
   hidden iframe is fetched exactly like a visible one - measured in Chromium for

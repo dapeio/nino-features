@@ -230,7 +230,10 @@ namespace Nino\Modules\Design {
 			$setup = Setup::normalize( [
 				'parts' 	=> is_array( $posted['parts'] ?? null ) === true ? $posted['parts'] : [],
 				'knobs' 	=> is_array( $posted['knobs'] ?? null ) === true ? $posted['knobs'] : [],
-				'size' 		=> (string) ( $posted['size'] ?? '' ),
+				// is_string() like its neighbours: the posted json is a
+				// request, and a cast of an array raises a warning the
+				// runtime treats as fatal
+				'size' 		=> is_string( $posted['size'] ?? null ) === true ? $posted['size'] : '',
 				'colours'	=> is_array( $posted['colours'] ?? null ) === true ? $posted['colours'] : [],
 				// Kept, so saving a choice does not lose what was last compiled
 				'compiled'=> Setup::read( $appData, $library )['compiled'] ?? [],
@@ -324,7 +327,10 @@ namespace Nino\Modules\Design {
 			$setup = Setup::normalize( [
 				'parts' 	=> is_array( $posted['parts'] ?? null ) === true ? $posted['parts'] : [],
 				'knobs' 	=> is_array( $posted['knobs'] ?? null ) === true ? $posted['knobs'] : [],
-				'size' 		=> (string) ( $posted['size'] ?? '' ),
+				// is_string() like its neighbours: the posted json is a
+				// request, and a cast of an array raises a warning the
+				// runtime treats as fatal
+				'size' 		=> is_string( $posted['size'] ?? null ) === true ? $posted['size'] : '',
 				'colours'	=> is_array( $posted['colours'] ?? null ) === true ? $posted['colours'] : [],
 			], $library, $notes );
 

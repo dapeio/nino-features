@@ -171,8 +171,16 @@ namespace Nino\Modules {
 			if( \Nino\Features::setting( $appData, 'consent', $category, false ) !== true )
 				return false;
 
-			$cookieName	= (string) \Nino\Features::setting( $appData, 'consent', 'cookieName', self::DEFAULT_COOKIE_NAME );
-			$raw				= (string) ( $_COOKIE[ $cookieName ] ?? '' );
+			// is_string() rather than a cast, on both: a cookie is sent by
+			// the client, and 'nino_consent[]=x' parses to an array. Cast,
+			// that raises "Array to string conversion" - a level
+			// \Nino\Runtime treats as fatal, ie. an unauthenticated 500 on
+			// every page of the site from a cookie anybody can set. The
+			// setting is read the same way, since a hand-edited config.php
+			// is no more typed than a request is
+			$setting		= \Nino\Features::setting( $appData, 'consent', 'cookieName', self::DEFAULT_COOKIE_NAME );
+			$cookieName	= is_string( $setting ) === true ? $setting : self::DEFAULT_COOKIE_NAME;
+			$raw				= is_string( $_COOKIE[ $cookieName ] ?? null ) === true ? $_COOKIE[ $cookieName ] : '';
 
 			if( $raw === '' )
 				return false;

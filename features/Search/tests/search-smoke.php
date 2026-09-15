@@ -448,6 +448,14 @@ check( 'so is a type that is not one, and one that does not exist',
 	callSearchAction( $appData, 'apiSave', [ 'type' => '../etc/passwd', 'fields' => [] ] )[0] === 400
 	&& callSearchAction( $appData, 'apiSave', [ 'type' => 'nothing-here', 'fields' => [] ] )[0] === 404 );
 
+// ...and so is one that is not a string at all. Cast, an array raises
+// "Array to string conversion", which the kernel treats as fatal - a 500
+// where the 400 is the answer
+ninoWarnings();
+check( 'a type posted as an array is refused like any other, not raised at',
+	callSearchAction( $appData, 'apiSave', [ 'type' => [ 'notes' ], 'fields' => [] ] )[0] === 400
+	&& ninoWarnings() === [] );
+
 $notesIndex = \Nino\Filesystem::path( $appData, '/data/index-notes.php' );
 check( 'the refusals left the configuration as it was',
 	( $appData['/nino/elements/index']['/notes'] ?? null ) === [ 0 => 'title' ] && is_file( $notesIndex ) === true );

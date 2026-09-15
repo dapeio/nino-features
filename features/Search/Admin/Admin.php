@@ -175,7 +175,10 @@ namespace Nino\Modules\Search {
 				return;
 
 			$data 		= \Nino\Admin\Admin::postData();
-			$typeUri 	= '/'. trim( (string) ( $data['type'] ?? '' ), '/' );
+			// is_string() rather than a cast: an array in the posted json
+			// raises "Array to string conversion", which the runtime treats
+			// as fatal - a 500 where the 400 below is the answer
+			$typeUri 	= '/'. trim( is_string( $data['type'] ?? null ) === true ? $data['type'] : '', '/' );
 			$posted 	= $data['fields'] ?? [];
 
 			if( preg_match( '/^\/[a-z][a-z0-9_-]*$/', $typeUri ) !== 1 ) {
@@ -292,9 +295,9 @@ namespace Nino\Modules\Search {
 				return;
 
 			$data 	= \Nino\Admin\Admin::postData();
-			$query 	= (string) ( $data['query'] ?? '' );
+			$query 	= is_string( $data['query'] ?? null ) === true ? $data['query'] : '';
 			$types 	= is_array( $data['types'] ?? null ) === true ? array_values( $data['types'] ) : [];
-			$locale = (string) ( $data['locale'] ?? '' );
+			$locale = is_string( $data['locale'] ?? null ) === true ? $data['locale'] : '';
 
 			// A probe answers for the locale it is asked about, not for whichever
 			// one the operator's own interface happens to be in

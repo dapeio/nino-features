@@ -7,6 +7,12 @@ A release is the tag `search-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **A posted value that was not a string was a 500, not a 400.** The panel
+  cast the element type, the probe query and its locale straight to string;
+  an array in the posted json raises "Array to string conversion", which the
+  kernel treats as fatal. All three are read as strings or not at all now,
+  and the refusals they already had do the answering.
+
 - **The query was rendered back into the page.** `[search]` carries what was
   searched for into the field, escaped - but what a shortcode returns is
   rendered again, which is what lets `[template]` hold other shortcodes, so

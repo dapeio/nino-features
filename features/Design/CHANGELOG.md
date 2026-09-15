@@ -7,6 +7,12 @@ A release is the tag `design-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **A size posted as an array was a 500 on the panel's own save.** Its two
+  neighbours in the same array were read with `is_array()`, `size` with a
+  `(string)` cast - and that cast raises "Array to string conversion" for an
+  array, a level the kernel treats as fatal. It is read like the others now
+  and falls back the way any unusable size does.
+
 - **"Nothing was overwritten" was not always true.** Applying wrote the
   stylesheet first and asked about the frame templates afterwards, so a
   project that had taken its header template over by hand - which the

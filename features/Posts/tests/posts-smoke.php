@@ -180,6 +180,16 @@ $section = \Nino\Modules\Posts::section( $appData, 'blog' );
 check( 'a post dated in the future is not published, and the rest are',
 	array_column( \Nino\Modules\Posts::posts( $appData, $section ), '.uri' ) === [ '/posts/third-rail', '/posts/second-wind', '/posts/first-light' ] );
 
+/*	The date field is whatever the type declares and whatever was written
+	into it - a list field named as the date field, say. Cast to string,
+	an array raises "Array to string conversion", which the kernel treats
+	as fatal (see \Nino\Runtime::NON_FATAL_LEVELS): one such element and
+	every page of the section is a 500, not one post missing	*/
+ninoWarnings();
+$arrayDated = [ '.uri' => '/posts/array-dated', 'date' => [ '2026-01-05' ] ];
+check( 'an element whose date field is an array is a draft, not a raised warning',
+	\Nino\Modules\Posts::published( $section, $arrayDated ) === false && ninoWarnings() === [] );
+
 
 echo "\nResolving a post, and the four ways of not finding one\n";
 
