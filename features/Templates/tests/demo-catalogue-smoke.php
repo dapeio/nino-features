@@ -151,7 +151,7 @@ $elsewhere = [
 	// creates itself, and the state classes it toggles
 	'nino-preloader', 'nino-back-to-top', 'nino-cookie-banner', 'nino-cookie-banner--visible', 'nino-cookie-banner-actions',
 	'nino-toast', 'nino-toast--success', 'nino-toast--error', 'nino-toast--visible', 'nino-toast-container',
-	'nino-slider-controls', 'nino-slider-button', 'nino-slider-points',
+	'nino-slider-controls', 'nino-slider-button', 'nino-slider-points', 'nino-slider-point',
 	'nino-scroll-atf', 'nino-scroll-btf', 'nino-scroll-down',
 	'nino-is-touch', 'nino-is-existing', 'nino-vpa--visible', 'nino-vpa--visible-once',
 ];
