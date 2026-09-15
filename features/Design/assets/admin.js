@@ -533,6 +533,7 @@
 
 				const part = dc.createElement('div');
 				part.id = 'design-part';
+				part.classList.add('nino-admin-card');
 				controls.appendChild( part );
 			}
 
@@ -629,11 +630,7 @@
 
 			const wrap = dc.createElement('div');
 			wrap.id = 'design-colours';
-
-			const hint = dc.createElement('p');
-			hint.className = 'nino-admin-hint';
-			hint.textContent = Nino.content.getText('/_admin/design/hint/colours');
-			wrap.appendChild( hint );
+			wrap.classList.add('nino-admin-card');
 
 			wrap.appendChild( Nino.admin.design._primaryField() );
 
