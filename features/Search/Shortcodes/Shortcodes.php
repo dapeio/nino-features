@@ -125,7 +125,14 @@ namespace Nino\Modules\Search {
 			$class 				= self::_attribute( $args, 'class' );
 			$action 			= self::_attribute( $args, 'action' );
 
-			$safe = static fn( string $value ): string => htmlspecialchars( $value, ENT_QUOTES, 'UTF-8' );
+			$safe = static fn( string $value ): string => htmlspecialchars( $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
+
+			// The query is the visitor's, and what a shortcode returns is
+			// rendered again - that is what lets [template] hold other
+			// shortcodes. So the '[' goes the way \Nino\Modules\Elements swaps
+			// it, or anybody could put any of the project's templates, and any
+			// of its texts, into the page by linking to it
+			$safeQuery = static fn( string $value ): string => str_replace( '[', '&#91;', htmlspecialchars( $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) );
 
 			return str_replace(
 				[ '[[class]]', '[[action]]', '[[name]]', '[[value]]', '[[placeholder]]', '[[label]]', '[[submit]]' ],
@@ -133,7 +140,7 @@ namespace Nino\Modules\Search {
 					$safe( $class !== '' ? $class : 'nino-form nino-form--inline nino-search' ),
 					$safe( $action ),
 					$safe( $key ),
-					$safe( self::query( $key ) ),
+					$safeQuery( self::query( $key ) ),
 					( $placeholder !== '' ? ' placeholder="'. $safe( $placeholder ). '"' : '' ),
 					$safe( $label !== '' ? $label : $placeholder ),
 					$safe( $submit ),
@@ -249,9 +256,15 @@ namespace Nino\Modules\Search {
 			if( is_scalar( $value ) === false || is_bool( $value ) === true )
 				return '';
 
-			return ( $definition['type'] ?? '' ) === 'string' && ( $definition['html'] ?? false ) === true
-				? (string) $value
-				: htmlspecialchars( (string) $value, ENT_QUOTES, 'UTF-8' );
+			// The same two steps Modules\Elements takes on a field value, and
+			// for the same reason: the value is editor content, and the row is
+			// rendered again after this - so a '[' left standing runs whatever
+			// the editor typed
+			$safe = ( $definition['type'] ?? '' ) === 'string' && ( $definition['html'] ?? false ) === true
+				? \Nino\Html::sanitizeHtml( (string) $value )
+				: htmlspecialchars( (string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
+
+			return str_replace( '[', '&#91;', $safe );
 		}
 
 		/**

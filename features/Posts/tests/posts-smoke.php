@@ -283,6 +283,18 @@ check( '...and a shortcode in it is not a shortcode', str_contains( $rendered, '
 check( 'a field the model released for html keeps the inline markup the kernel allows',
 	str_contains( $rendered, '<strong>kept</strong>' ) === true && str_contains( $rendered, 'alert(2)' ) === false );
 
+// [[.body]] takes the same field through sanitizeHtml() and its own paragraph
+// template, which used to leave the '[' the ordinary values have swapped -
+// so a body was the one place an editor's text was still run as a shortcode
+\Nino\Elements::updateElement( $appData, '/posts/second-wind', [
+	'body' => 'Ein Absatz mit [posts] und [[/nothing/defined]]',
+], 'de_DE' );
+unset( $appData['./nino/elements/cache'] );
+postsResolve( $appData, '/blog/second-wind' );
+$bodyWithBrackets = postsRender( $appData, '[post][[.body]][/post]' );
+check( 'a shortcode or a fill in the body is drawn as text there too',
+	str_contains( $bodyWithBrackets, '&#91;posts]' ) === true && str_contains( $bodyWithBrackets, '&#91;&#91;/nothing/defined]]' ) === true );
+
 
 echo "\nThe picture, as a whole tag or as nothing at all\n";
 
@@ -290,18 +302,21 @@ check( 'a post without one renders no <img>, rather than a broken picture',
 	postsRender( $appData, '[post]|[[.image]]|[/post]' ) === '||' );
 
 \Nino\Elements::updateElement( $appData, '/posts/second-wind', [ 'image' => 'post-2.jpg' ], '*' );
-\Nino\Elements::updateElement( $appData, '/posts/second-wind', [ 'imageAlt' => 'A "wide" view' ], 'de_DE' );
+\Nino\Elements::updateElement( $appData, '/posts/second-wind', [ 'imageAlt' => 'A "wide" view [posts]' ], 'de_DE' );
 unset( $appData['./nino/elements/cache'] );
 postsResolve( $appData, '/blog/second-wind' );
 
 $image = postsRender( $appData, '[post][[.image]][/post]' );
+
+check( 'the alt text is editor content as well, shortcode and all',
+	str_contains( $image, '&#91;posts]' ) === true );
 
 check( 'a post with one gets the whole tag, sized out of the model',
 	str_contains( $image, 'src="'. \Nino\Images::getUrl( $appData, 'post-2.jpg' ). '"' ) === true
 	&& str_contains( $image, 'width="1200" height="675"' ) === true
 	&& str_contains( $image, 'loading="lazy"' ) === true );
 check( '...and the alt is the field the section names, quoted for an attribute',
-	str_contains( $image, 'alt="A &quot;wide&quot; view"' ) === true );
+	str_contains( $image, 'alt="A &quot;wide&quot; view &#91;posts]"' ) === true );
 
 
 echo "\nThe body, in paragraphs\n";

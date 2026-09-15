@@ -316,9 +316,13 @@ namespace Nino\Modules\Posts {
 				if( $clean === '' )
 					continue;
 
+				// The '[' swap _value() makes belongs here too: the paragraphs
+				// are the same editor content, and the block is rendered again
+				// after this - so a body was the one place a '[shortcode]' an
+				// editor typed was still run
 				$out .= str_replace(
 					[ '[[class]]', '[[text]]' ],
-					[ self::BODY_CLASS, str_replace( "\n", '<br>', $clean ) ],
+					[ self::BODY_CLASS, str_replace( [ "\n", '[' ], [ '<br>', '&#91;' ], $clean ) ],
 					self::template( $appData, 'post-paragraph' )
 				);
 			}
@@ -360,9 +364,10 @@ namespace Nino\Modules\Posts {
 			return str_replace(
 				[ '[[src]]', '[[size]]', '[[alt]]' ],
 				[
-					htmlspecialchars( \Nino\Images::getUrl( $appData, $filename ), ENT_QUOTES, 'UTF-8' ),
+					htmlspecialchars( \Nino\Images::getUrl( $appData, $filename ), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ),
 					$size,
-					htmlspecialchars( $alt, ENT_QUOTES, 'UTF-8' ),
+					// The alt is an element field like any other - see _value()
+					self::_value( $alt, false ),
 				],
 				self::template( $appData, 'post-image' )
 			);

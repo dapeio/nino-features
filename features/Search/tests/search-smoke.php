@@ -305,6 +305,32 @@ $_GET = [ 'q' => 'orbit' ];
 check( 'the field carries back what was searched for',
 	str_contains( \Nino\Html::renderHtml( $appData, '[search]' ), 'value="orbit"' ) === true );
 
+// What a shortcode returns is rendered again (that is what lets [template]
+// hold other shortcodes), so a query carried back into the field was read by
+// the fill and shortcode pass that followed: anybody could put any of the
+// project's templates, and any of its texts, into the page by linking to it
+\Nino\Filesystem::putFileContent( $appData, '/templates/page-secret.tpl', 'THE-SECRET-TEMPLATE' );
+\Nino\Html::addFills( $appData, [ '[[/secret/fill]]' => 'THE-SECRET-TEXT' ], '*' );
+\Nino\Modules\Template::init( $appData );
+
+$_GET = [ 'q' => '[template /templates/page-secret] [[/secret/fill]]' ];
+$searchedForMarkup = \Nino\Html::renderHtml( $appData, '[search]' );
+check( 'a query that is a template or a fill is carried back as the text it is, not rendered',
+	str_contains( $searchedForMarkup, 'THE-SECRET-TEMPLATE' ) === false && str_contains( $searchedForMarkup, 'THE-SECRET-TEXT' ) === false );
+
+// Same rule for the rows: an element value is editor content, and the
+// kernel's own [element] escapes its '[' for exactly this reason
+\Nino\Elements::insertElement( $appData, '/articles/bracket', [
+	'title' => 'Orbit [template /templates/page-secret]', 'summary' => 'Und [[/secret/fill]]', 'keywords' => [], 'author' => '',
+], 'de_DE' );
+$_GET = [ 'q' => 'orbit' ];
+$bracketRow = \Nino\Html::renderHtml( $appData, '[search-results type="articles"]<p>[[title]] [[summary]]</p>[/search-results]' );
+check( 'an element value carrying a shortcode or a fill is drawn as text, not run',
+	str_contains( $bracketRow, 'THE-SECRET-TEMPLATE' ) === false && str_contains( $bracketRow, 'THE-SECRET-TEXT' ) === false );
+\Nino\Elements::deleteElement( $appData, '/articles/bracket', '*' );
+
+$_GET = [ 'q' => 'orbit' ];
+
 // The shape from the feature's own README, with the type given the way a
 // person writes it
 $block = '[search-results key="q" type="/articles"]<h5>[[title]]</h5><p>[[summary]]</p>[/search-results]';

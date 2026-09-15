@@ -177,9 +177,14 @@ namespace Nino\Modules {
 			if( ( $request['./nino/csrf/blocked'] ?? false ) === true )
 				return;
 
+			// is_string() rather than a (string) cast: nothing says a post
+			// carries strings, and 'return[]=x' used to raise an "Array to
+			// string conversion" - a level \Nino\Runtime treats as fatal, ie.
+			// an unauthenticated 500 from a post anybody can send. Same reading
+			// as \Nino\Form::posted(), whose docblock says why
 			$ip 			= \Nino\Http::getClientIp();
-			$return 	= (string) ( $_POST['return'] ?? '' );
-			$password	= (string) ( $_POST['password'] ?? '' );
+			$return 	= is_string( $_POST['return'] ?? null ) === true ? $_POST['return'] : '';
+			$password	= is_string( $_POST['password'] ?? null ) === true ? $_POST['password'] : '';
 			$limit 		= (int) \Nino\Features::setting( $appData, self::FEATURE_KEY, 'attempts', self::DEFAULT_ATTEMPTS );
 
 			// Checked, and only checked, before the password itself: once the
@@ -287,7 +292,12 @@ namespace Nino\Modules {
 		 */
 		private static function _answerForm( array &$appData, array &$request, string $return, string $error, int $statusCode ): void {
 
-			\Nino\Html::addFills( $appData, [ '[[/protected/return]]' => htmlspecialchars( $return, ENT_QUOTES, 'UTF-8' ) ], '*' );
+			// The '[' goes the way \Nino\Modules\Elements swaps it, and for the
+			// same reason: this lands in a page that is rendered afterwards, so
+			// an escaped value was still read by the fill and the shortcode
+			// pass - a locked visitor could put any of the project's templates,
+			// and any of its texts, into the 401 they were served
+			\Nino\Html::addFills( $appData, [ '[[/protected/return]]' => str_replace( '[', '&#91;', htmlspecialchars( $return, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) ) ], '*' );
 
 			// A runtime-only, per-request flag - never persisted - read back
 			// by doErrorShortcode() a few lines above

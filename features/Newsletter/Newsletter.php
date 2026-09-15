@@ -115,8 +115,19 @@ namespace Nino\Modules {
 			// escaping an address with an apostrophe first would turn it into
 			// "&#039;", either failing validation or getting stored in a form
 			// getUnsubscribeLink() can never match again
-			$email 		= mb_strtolower( substr( trim( (string) ( $_POST['email'] ?? '' ) ), 0, self::MAX_FIELD_LENGTH ) );
-			$location = substr( trim( (string) ( $_POST['location'] ?? '' ) ), 0, self::MAX_FIELD_LENGTH );
+			// is_string() rather than a (string) cast: nothing says a post
+			// carries strings, and 'email[]=x' used to raise an "Array to
+			// string conversion" - a level \Nino\Runtime treats as fatal, ie.
+			// an unauthenticated 500 from a post anybody can send. Same reading
+			// as \Nino\Form::posted(), whose docblock says why. An array in the
+			// honeypot reads as a filled honeypot, which is what it is
+			$postedEmail		= is_string( $_POST['email'] ?? null ) === true ? $_POST['email'] : '';
+			$postedLocation	= isset( $_POST['location'] ) === true && is_string( $_POST['location'] ) === false
+				? 'not a string'
+				: (string) ( $_POST['location'] ?? '' );
+
+			$email 		= mb_strtolower( mb_strcut( trim( $postedEmail ), 0, self::MAX_FIELD_LENGTH, 'UTF-8' ) );
+			$location = mb_strcut( trim( $postedLocation ), 0, self::MAX_FIELD_LENGTH, 'UTF-8' );
 
 			// Email missing/invalid
 			if( $email === '' || filter_var( $email, FILTER_VALIDATE_EMAIL ) === false )
@@ -157,10 +168,14 @@ namespace Nino\Modules {
 			$query 	= $request['/nino/http/request']['query'] ?? [];
 			$result = 'invalid';
 
+			// A query variable is whatever the address carried, arrays included
+			// ('?confirm[]=x') - so it is read as a string or not at all, the
+			// same reading callbackResponse() gives the post above. A token
+			// that is not a string is no token, which is the 'invalid' page
 			if( isset( $query['confirm'] ) === true )
-				$result = ( self::_confirm( $appData, (string) $query['confirm'] ) === true ) ? 'confirmed' : 'invalid';
+				$result = ( is_string( $query['confirm'] ) === true && self::_confirm( $appData, $query['confirm'] ) === true ) ? 'confirmed' : 'invalid';
 			else if( isset( $query['unsubscribe'] ) === true )
-				$result = ( self::_unsubscribe( $appData, (string) $query['unsubscribe'] ) === true ) ? 'unsubscribed' : 'invalid';
+				$result = ( is_string( $query['unsubscribe'] ) === true && self::_unsubscribe( $appData, $query['unsubscribe'] ) === true ) ? 'unsubscribed' : 'invalid';
 
 			if( $result === 'invalid' )
 				$request['/nino/http/response']['statusCode'] = 404;

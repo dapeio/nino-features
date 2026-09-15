@@ -132,6 +132,23 @@ $subscribers = \Nino\Filesystem::getFileContent( $appData, $subscribersPath, [] 
 check( 'without creating a duplicate entry', count( $subscribers ) === 1 );
 check( 'and without rotating the pending token', $subscribers[0]['token'] === $pendingToken );
 
+// Nothing says a post or a query carries strings. 'email[]=x' and
+// '?confirm[]=x' used to reach a (string) cast, and the warning that raises
+// is fatal to the request (see \Nino\Runtime::NON_FATAL_LEVELS) - an
+// unauthenticated 500 from an address anybody can visit
+ninoWarnings();
+$arraySignupRequest = submitNewsletter( $appData, [ 'email' => [ 'jo@example.com' ] ] );
+check( 'a signup whose email is an array is refused, not raised at', ninoWarnings() === [] && $arraySignupRequest['/nino/http/response']['statusCode'] === 400 );
+
+$arrayHoneypotRequest = submitNewsletter( $appData, [ 'email' => 'jo@example.com', 'location' => [ 'x' ] ] );
+check( 'and an array in the honeypot is a refusal like any other value in it', ninoWarnings() === [] && $arrayHoneypotRequest['/nino/http/response']['statusCode'] === 418 );
+
+$arrayConfirmRequest = visitNewsletterLink( $appData, [ 'confirm' => [ 'x' ] ] );
+check( 'a confirm link whose token is an array answers 404, not a 500', ninoWarnings() === [] && $arrayConfirmRequest['/nino/http/response']['statusCode'] === 404 );
+
+$arrayUnsubscribeRequest = visitNewsletterLink( $appData, [ 'unsubscribe' => [ 'x' ] ] );
+check( '...and so does an unsubscribe link', ninoWarnings() === [] && $arrayUnsubscribeRequest['/nino/http/response']['statusCode'] === 404 );
+
 $wrongTokenRequest = visitNewsletterLink( $appData, [ 'confirm' => 'not-the-token' ] );
 check( 'a confirm link with an unknown token answers 404', $wrongTokenRequest['/nino/http/response']['statusCode'] === 404 );
 check( 'and leaves the entry pending', \Nino\Filesystem::getFileContent( $appData, $subscribersPath, [] )[0]['status'] === 'pending' );

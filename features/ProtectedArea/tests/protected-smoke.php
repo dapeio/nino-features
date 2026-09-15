@@ -234,6 +234,32 @@ check( 'a protocol-relative return is replaced by / too', ( $protocolRelativeRet
 $injectedReturnRequest = protectedUnlock( $appData, [ 'password' => 'sesam-öffne-dich', 'return' => "/intern\r\nSet-Cookie: x=1" ] );
 check( 'a return carrying a line break or control character is replaced by /', ( $injectedReturnRequest['/nino/http/response']['header']['Location'] ?? '' ) === '/' );
 
+// The wrong-password answer carries the posted return back into the form, so
+// the visitor keeps their destination - and a value carried into a page is a
+// value that is rendered. Escaped, it was still read by the fill and the
+// shortcode pass that run over the rendered page: a locked visitor could put
+// any of the project's templates, and any of its texts, into the 401 they
+// were served
+\Nino\Filesystem::putFileContent( $appData, '/templates/page-secret.tpl', 'THE-SECRET-TEMPLATE' );
+\Nino\Html::addFills( $appData, [ '[[/secret/fill]]' => 'THE-SECRET-TEXT' ], '*' );
+\Nino\Modules\Template::init( $appData );
+
+$_SERVER['REMOTE_ADDR'] = '198.51.100.13';
+$renderingReturnRequest = protectedUnlock( $appData, [ 'password' => 'not-the-password', 'return' => '[template /templates/page-secret] [[/secret/fill]]' ] );
+$renderedForm = \Nino\Html::renderHtml( $appData, (string) $renderingReturnRequest['/nino/http/response']['body'] );
+check( 'a return that is a template or a fill is carried back as the text it is, not rendered', str_contains( $renderedForm, 'THE-SECRET-TEMPLATE' ) === false
+	&& str_contains( $renderedForm, 'THE-SECRET-TEXT' ) === false );
+
+// Nothing says a post carries strings. An array under a name the endpoint
+// reads used to reach a (string) cast, and the warning that raises is fatal
+// to the request (see \Nino\Runtime::NON_FATAL_LEVELS) - an unauthenticated
+// 500 from a post anybody can send
+$_POST = [ 'password' => [ 'x' ], 'return' => [ 'y' ] ];
+$arrayRequest = [ '/nino/http/request' => [ 'method' => 'POST', 'uri' => '/.unlock' ], '/nino/http/response' => [ 'statusCode' => 200, 'header' => [] ] ];
+ninoWarnings();
+\Nino\Modules\ProtectedArea::callbackUnlock( $appData, $arrayRequest );
+check( 'a post whose values are arrays is answered, not raised at', ninoWarnings() === [] && $arrayRequest['/nino/http/response']['statusCode'] === 401 );
+
 echo "\n";
 
 

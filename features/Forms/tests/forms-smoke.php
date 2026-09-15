@@ -84,6 +84,10 @@ $sent = [];
  *	engine, on the kernel module's own callback
  */
 function submitForm( array &$appData, array $post ): array {
+	// The kernel's own per-ip mail cap - five an hour, and a submission it
+	// refuses is a 429 - is not what is tested here: every submission
+	// starts with a fresh window, so only the feature's guards answer
+	\Nino\Filesystem::putFileContent( $appData, '/data/ratelimit.php', [] );
 	$_POST = array_merge( [ 'location' => '' ], $post );
 	$request = [ '/nino/http/response' => [ 'statusCode' => 200 ] ];
 	\Nino\Callbacks::doCallbacks( $appData, '/nino/http/response/POST://.form', $request );

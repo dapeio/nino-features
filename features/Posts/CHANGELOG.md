@@ -3,6 +3,17 @@
 All notable changes to the Posts feature are documented in this file.
 A release is the tag `posts-<version>` of dapeio/nino-features.
 
+## Unreleased
+
+### Fixed
+
+- **A post body ran the shortcodes an editor typed.** Every other field value
+  swaps its `[` for `&#91;` on the way into the page, because the block is
+  rendered again afterwards - `[[.body]]`, which takes the same field through
+  its own paragraph template, did not, and neither did the `alt` of
+  `[[.image]]`. A body containing `[template /templates/page-whatever]` ran
+  it. Both take the same two steps as every other value now.
+
 ## 1.1.0 — 2026-09-12
 
 - **The section and its posts are in `sitemap.xml` and `llms.txt` now.** A

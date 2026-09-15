@@ -3,6 +3,23 @@
 All notable changes to the Search feature are documented in this file.
 A release is the tag `search-<version>` of dapeio/nino-features.
 
+## Unreleased
+
+### Fixed
+
+- **The query was rendered back into the page.** `[search]` carries what was
+  searched for into the field, escaped - but what a shortcode returns is
+  rendered again, which is what lets `[template]` hold other shortcodes, so
+  the fill and shortcode pass read the visitor's query too. Anybody could put
+  any of the project's templates, and any of its texts, into the page by
+  linking to it with `?q=[template /templates/page-whatever]`. The `[` is
+  swapped for `&#91;` now, the way `\Nino\Modules\Elements` has always done it.
+
+- **A result row ran the shortcodes an editor typed.** The same swap was
+  missing on the field values `[search-results]` fills its rows with, and a
+  field the model releases for html was not sanitised at all. Both go through
+  the two steps the kernel's own `[element]` takes.
+
 ## 1.1.0 — 2026-09-11
 
 ### The panel, which was one button
