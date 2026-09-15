@@ -69,14 +69,21 @@
 			return;
 
 		var originals = [];
+		var content = 0;
 
-		for( var i = 0; i < track.children.length; i++ )
+		for( var i = 0; i < track.children.length; i++ ) {
 			originals.push( track.children[i] );
+			content += track.children[i].offsetWidth;
+		}
+
+		/*	Nothing to show yet - a picture that has not loaded has no width,
+			and a row of them would run across nothing. The items' own widths,
+			not the track's: a flex row with a gap is that gap wide even when
+			everything in it is empty	*/
+		if( content <= 0 )
+			return;
 
 		var one = track.scrollWidth;
-
-		if( one <= 0 )
-			return;
 
 		/*	Twice the box, not twice the row: what has to be covered is the
 			distance the track travels plus the box it travels across, or the end
@@ -90,6 +97,7 @@
 			for( var c = 0; c < originals.length; c++ ) {
 				var copy = originals[c].cloneNode( true );
 				copy.setAttribute( 'aria-hidden', 'true' );
+				disarm( copy );
 				track.appendChild( copy );
 			}
 
@@ -97,13 +105,50 @@
 			copies++;
 		}
 
-		// The distance is one original width, so the copy standing where the
-		// original stood is what the animation ends on - and starting again
-		// from zero moves nothing
-		track.style.setProperty( '--nino-ticker-distance', one + 'px' );
-		track.style.setProperty( '--nino-ticker-duration', ( one / speed( row ) ) + 's' );
+		/*	The distance is where the first copy stands, measured rather than
+			computed: the track's own width leaves out the gap between the last
+			original and the first copy, so a row with a gap - which is what
+			this track has - ended its cycle one gap short of where the copy
+			stands, and jumped by that gap every time round. The very thing the
+			copies are here to prevent	*/
+		var distance = ( track.children[ originals.length ] !== undefined )
+			? track.children[ originals.length ].offsetLeft - originals[0].offsetLeft
+			: one;
+
+		if( distance <= 0 )
+			return;
+
+		track.style.setProperty( '--nino-ticker-distance', distance + 'px' );
+		track.style.setProperty( '--nino-ticker-duration', ( distance / speed( row ) ) + 's' );
 
 		row.classList.add( 'nino-is-running' );
+	}
+
+	/**
+	 *	Take a copy out of everything but the picture: an id is the original's
+	 *	and may only exist once, and a link or a button in a copy is a stop on
+	 *	the way through the page that reads the same as the one before it.
+	 *	aria-hidden takes a copy out of the screen reader's list but leaves it
+	 *	in the tab order, which is the one thing it cannot do by itself
+	 *
+	 *	@param		{Element}		copy
+	 *
+	 *	@return		void
+	 */
+	function disarm( copy ) {
+
+		var withId = copy.querySelectorAll( '[id]' );
+
+		for( var i = 0; i < withId.length; i++ )
+			withId[i].removeAttribute( 'id' );
+
+		if( copy.id )
+			copy.removeAttribute( 'id' );
+
+		var focusable = copy.querySelectorAll( 'a[href], button, input, select, textarea, [tabindex]' );
+
+		for( var f = 0; f < focusable.length; f++ )
+			focusable[f].setAttribute( 'tabindex', '-1' );
 	}
 
 	/**

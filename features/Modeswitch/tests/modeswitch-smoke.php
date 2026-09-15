@@ -192,6 +192,13 @@ check( 'a forced mode also tells the browser which furniture to paint',
 check( '...and says nothing about the third state, which is the one with no attribute',
 	str_contains( $css, 'data-nino-mode="system"' ) === false );
 
+/*	The switch is rendered with the hidden attribute and unhidden by the
+	script, so a reader without JavaScript is not left with three buttons that
+	do nothing. hidden is display:none out of the browser's own stylesheet,
+	and this file gives the same element a display of its own - which beats it	*/
+check( 'the stylesheet keeps the hidden switch hidden, which its own display rule would otherwise undo',
+	str_contains( $css, '.nino-modeswitch[hidden]' ) === true );
+
 /*	Nothing about this reaches the server or outlives the browser it was
 	chosen in: no cookie to declare, no consent to ask for, and a cached page
 	is as switchable as a fresh one	*/

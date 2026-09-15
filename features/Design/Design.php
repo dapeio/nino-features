@@ -83,14 +83,11 @@ namespace Nino\Modules {
 			$setup 		= Design\Setup::read( $appData, $library, $notes );
 			$css 			= Design\Compiler::compile( $setup, $library, $notes );
 
-			$written = Design\Compiler::write( $appData, $css, $force );
-
-			if( $written !== true )
-				return $written;
-
 			/*	The other half of a frame. A header set is a stylesheet AND the
 				markup it was drawn against, so compiling one without writing the
 				other is how a page ends up with v3's css over v1's html */
+			$frames = [];
+
 			foreach( Design\Setup::PARTS as $part => $kind ) {
 
 				if( $kind !== 'frame' )
@@ -104,10 +101,38 @@ namespace Nino\Modules {
 					continue;
 				}
 
-				$frame = Design\Compiler::writeFrame( $appData, $part, (string) file_get_contents( $template ), $set, $force );
+				$frames[$part] = [ 'set' => $set, 'template' => $template ];
+			}
 
-				if( $frame !== true )
-					return $frame;
+			/*	Every file this would write is asked first, before any of them is
+				written. The refusal says "Nothing was overwritten", and the
+				stylesheet used to go to disk before the header was asked - so a
+				project that had taken its header over by hand was left with a new
+				stylesheet, its old header, and a message saying neither happened	*/
+			$targets = [ Design\Compiler::TARGET ];
+
+			foreach( array_keys( $frames ) as $part )
+				$targets[] = sprintf( Design\Compiler::FRAME_TARGET, $part );
+
+			foreach( $targets as $target ) {
+
+				$refusal = Design\Compiler::refusal( $appData, $target, $force );
+
+				if( $refusal !== '' )
+					return $refusal;
+			}
+
+			$written = Design\Compiler::write( $appData, $css, $force );
+
+			if( $written !== true )
+				return $written;
+
+			foreach( $frames as $part => $frame ) {
+
+				$result = Design\Compiler::writeFrame( $appData, $part, (string) file_get_contents( $frame['template'] ), $frame['set'], $force );
+
+				if( $result !== true )
+					return $result;
 			}
 
 			// What was compiled, so the panel can say whether the file on disk

@@ -168,14 +168,50 @@ namespace Nino\Modules\Design {
 		 */
 		public static function write( array &$appData, string $css, bool $force = false ): true|string {
 
-			$path = \Nino\Filesystem::path( $appData, self::TARGET );
+			$refusal = self::refusal( $appData, self::TARGET, $force );
 
-			if( $force === false && is_file( $path ) === true && self::stamped( (string) @file_get_contents( $path ) ) === false )
-				return 'assets/theme.css was not written by Design - it is the delivered file, or somebody edited it. Nothing was overwritten.';
+			if( $refusal !== '' )
+				return $refusal;
 
 			return \Nino\Filesystem::putFileContent( $appData, self::TARGET, $css ) === true
 				? true
 				: 'could not write '. self::TARGET;
+		}
+
+		/**
+		 *	Why one of the files a compile writes may not be written, or '' when
+		 *	it may. Apart from write() and writeFrame(), which ask for their own
+		 *	file, this is what lets \Nino\Modules\Design::apply() ask about all
+		 *	of them before it writes the first: the refusal says nothing was
+		 *	overwritten, and a stylesheet already on disk while the header
+		 *	refused made that untrue
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$target				A virtual path - TARGET or a FRAME_TARGET
+		 *	@param		bool			$force				Overwrite a file this never wrote
+		 *
+		 *	@return 	string									The refusal, or ''
+		 */
+		public static function refusal( array &$appData, string $target, bool $force = false ): string {
+
+			if( $force === true )
+				return '';
+
+			$path = \Nino\Filesystem::path( $appData, $target );
+
+			if( is_file( $path ) === false )
+				return '';
+
+			$content = (string) @file_get_contents( $path );
+			$ours 		= $target === self::TARGET ? self::stamped( $content ) : self::stampedFrame( $content );
+
+			if( $ours === true )
+				return '';
+
+			return ( $target === self::TARGET ? 'assets/theme.css' : $target )
+				. ' was not written by Design - it is the delivered '
+				. ( $target === self::TARGET ? 'file' : 'template' )
+				. ', or somebody edited it. Nothing was overwritten.';
 		}
 
 		/**
@@ -195,11 +231,11 @@ namespace Nino\Modules\Design {
 		 */
 		public static function writeFrame( array &$appData, string $part, string $markup, string $set, bool $force = false ): true|string {
 
-			$target = sprintf( self::FRAME_TARGET, $part );
-			$path 	= \Nino\Filesystem::path( $appData, $target );
+			$target 	= sprintf( self::FRAME_TARGET, $part );
+			$refusal	= self::refusal( $appData, $target, $force );
 
-			if( $force === false && is_file( $path ) === true && self::stampedFrame( (string) @file_get_contents( $path ) ) === false )
-				return $target. ' was not written by Design - it is the delivered template, or somebody edited it. Nothing was overwritten.';
+			if( $refusal !== '' )
+				return $refusal;
 
 			$body = rtrim( $markup, "\n" ). "\n";
 

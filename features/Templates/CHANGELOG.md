@@ -3,6 +3,18 @@
 All notable changes to the Template Builder feature are documented in this file.
 A release is the tag `templates-<version>` of dapeio/nino-features.
 
+## Unreleased
+
+### Fixed
+
+- **A component could carry a rich text field in an attribute.** A declared
+  data attribute already refuses one, because the `[elements]` pass runs a
+  field the model released for html through `sanitizeHtml()` - which keeps
+  `"` - while an attribute needs it escaped. An image's `alt` and a button's
+  `href` are attributes too and had no such rule, so binding one to a rich
+  field let editor content close the attribute. Those two properties are
+  marked as attributes now and refuse a rich field with the same message.
+
 ## 1.0.0 — 2026-09-10
 
 - First release: the Template Builder, which shipped with Nino as a kernel

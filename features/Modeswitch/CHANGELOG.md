@@ -3,6 +3,19 @@
 All notable changes to the Light/Dark Switch feature are documented in this file.
 A release is the tag `modeswitch-<version>` of dapeio/nino-features.
 
+## Unreleased
+
+### Fixed
+
+- **The switch showed before the script unhid it.** It is rendered with the
+  `hidden` attribute so a reader without JavaScript is not left with three
+  buttons that do nothing - but the stylesheet gives `.nino-modeswitch` a
+  `display` of its own, and an author rule beats the browser's own
+  `[hidden] { display: none }`. So the switch was visible on every page load
+  until the script ran, and stayed visible for a reader whose script never
+  did. The stylesheet says it twice now, the way the other features that hide
+  something do.
+
 ## 1.0.0 — 2026-09-12
 
 First release.

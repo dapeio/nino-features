@@ -180,13 +180,13 @@ namespace Nino\Modules {
 					'id'			=> $id,
 					'thumb'		=> $thumb,
 					'large'		=> $large,
-					'caption'	=> substr( trim( (string) ( $image['caption'] ?? '' ) ), 0, self::MAX_CAPTION ),
+					'caption'	=> mb_strcut( trim( (string) ( $image['caption'] ?? '' ) ), 0, self::MAX_CAPTION, 'UTF-8' ),
 				];
 			}
 
 			return [
 				'key'			=> $key,
-				'name'		=> substr( trim( (string) ( $entry['name'] ?? $key ) ), 0, 120 ),
+				'name'		=> mb_strcut( trim( (string) ( $entry['name'] ?? $key ) ), 0, 120, 'UTF-8' ),
 				'images'	=> $images,
 			];
 		}

@@ -5,6 +5,15 @@ A release is the tag `design-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+### Fixed
+
+- **"Nothing was overwritten" was not always true.** Applying wrote the
+  stylesheet first and asked about the frame templates afterwards, so a
+  project that had taken its header template over by hand - which the
+  generated file invites - got a new `assets/theme.css`, kept its old header,
+  and was told that neither had happened. Every file a compile would write is
+  asked before the first one is written.
+
 ### Added
 
 - **Four more variants for every part - 36 files, and the library is a choice

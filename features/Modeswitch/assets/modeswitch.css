@@ -43,6 +43,16 @@
 	line-height: 1;
 }
 
+/*	The switch renders with the hidden attribute and the script unhides it,
+	so a reader without JavaScript is not left with three buttons that do
+	nothing. hidden is display:none out of the browser's own stylesheet, and
+	the rule above gives this element a display of its own - which beats it,
+	so the switch showed until the script ran and stayed for a reader whose
+	script never did	*/
+.nino-modeswitch[hidden] {
+	display: none;
+}
+
 .nino-modeswitch-btn {
 	display: inline-flex;
 	align-items: center;

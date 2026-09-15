@@ -459,10 +459,21 @@ check( '...and the markup is the variant the setup names', str_contains( (string
 $byHand = "<header>my own</header>\n";
 file_put_contents( $headerTemplate, $byHand );
 $notes = [];
+$stylesheetBefore = (string) file_get_contents( \Nino\Filesystem::path( $appData, \Nino\Modules\Design\Compiler::TARGET ) );
+// A setup that would compile to something else, so "nothing was written"
+// is a statement about this run rather than about two identical files
+$sizedSetup = \Nino\Modules\Design\Setup::read( $appData, \Nino\Modules\Design::libraryDir(), $notes );
+$sizedSetup['size'] = $sizedSetup['size'] === 'l' ? 'm' : 'l';
+\Nino\Modules\Design\Setup::write( $appData, $sizedSetup );
 $refusedFrame = \Nino\Modules\Design::apply( $appData, $notes );
 check( 'a frame template somebody edited is not overwritten either', $refusedFrame !== true
 	&& str_contains( (string) $refusedFrame, 'theme.header.tpl was not written by Design' ) === true
 	&& file_get_contents( $headerTemplate ) === $byHand );
+// "Nothing was overwritten" is what the refusal says, and it has to be true:
+// the stylesheet used to be written first, so a hand-taken header left the
+// project with a new theme.css, an old header and a message saying neither
+check( '...and nothing else was written either, which is what the refusal says',
+	(string) file_get_contents( \Nino\Filesystem::path( $appData, \Nino\Modules\Design\Compiler::TARGET ) ) === $stylesheetBefore );
 $notes = [];
 check( 'and forcing it through takes that one over too', \Nino\Modules\Design::apply( $appData, $notes, true ) === true
 	&& \Nino\Modules\Design\Compiler::stampedFrame( (string) file_get_contents( $headerTemplate ) ) === true );

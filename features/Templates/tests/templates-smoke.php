@@ -318,6 +318,26 @@ $heroPreview = \Nino\Modules\Templates\Composer::preview( [
 check( 'preview strips VPA classes that would stay hidden without client scripts', $heroPreview !== null && str_contains( $heroPreview, 'nino-vpa' ) === false );
 check( 'preview-only VPA cleanup never changes composed template source', str_contains( $hero['source'], 'nino-vpa' ) && str_contains( $hero['source'], 'nino-vpa--visible' ) === false );
 
+// The same reasoning as the data attributes above, one layer in: a component
+// property that renders inside an attribute (an image's alt, a button's href)
+// takes the field value as the [elements] pass leaves it, and a field the
+// model released for html comes out of sanitizeHtml() with its '"' intact -
+// so it would close the attribute and land whatever follows on the element
+$richBindingInput = \Nino\Modules\Templates\AreaComposer::defaults( $presets['articles-grid'], 'home', 'rich-binding' );
+$richBindingImage = null;
+foreach( $richBindingInput['areas']['articles']['components'] as $position => $component )
+	if( $component['type'] === 'image' )
+		$richBindingImage = $position;
+$richAltInput = $richBindingInput;
+$richAltInput['areas']['articles']['components'][$richBindingImage]['bindings']['alt'] = 'description';
+$richAltInput['areas']['articles']['components'][$richBindingImage]['bindingSources']['alt'] = 'field';
+check( 'a component cannot carry a rich text field in an attribute either', throwsInvalidArgument( fn() => \Nino\Modules\Templates\Composer::compose( $richAltInput ) ) );
+
+$plainAltInput = $richBindingInput;
+$plainAltInput['areas']['articles']['components'][$richBindingImage]['bindings']['alt'] = 'title';
+$plainAltInput['areas']['articles']['components'][$richBindingImage]['bindingSources']['alt'] = 'field';
+check( '...while an ordinary field stays available for it', throwsInvalidArgument( fn() => \Nino\Modules\Templates\Composer::compose( $plainAltInput ) ) === false );
+
 $articleInput = \Nino\Modules\Templates\AreaComposer::defaults( $presets['articles-grid'], 'home', 'services' );
 $articleInput['areas']['articles']['style'] = 'four-columns';
 $articleInput['areas']['articles']['source'] = [

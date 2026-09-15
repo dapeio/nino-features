@@ -87,11 +87,13 @@ namespace Nino\Modules\Templates {
 				'text' => self::component( '/_admin/templates/catalog/text', [ 'text' => self::property( '/_admin/templates/catalog/text', 'textarea', 'string', 'Add useful content here.' ) ], 'div', 'nino-section-text', [ 'auto', 'quiet', 'loud' ] ),
 				'image' => self::component( '/_admin/templates/catalog/image', [
 					'src' => self::property( '/_admin/templates/catalog/image', 'image', 'image', '', 1200, 800 ),
-					'alt' => self::property( '/_admin/templates/catalog/alt', 'text', 'string', '' ),
+					// Rendered inside alt="..." - see validateBinding()
+					'alt' => self::property( '/_admin/templates/catalog/alt', 'text', 'string', '', 0, 0, true ),
 				], 'div', '', [ 'auto', 'cover' ] ),
 				'button' => self::component( '/_admin/templates/catalog/button', [
 					'label' => self::property( '/_admin/templates/catalog/label', 'text', 'string', 'Learn more' ),
-					'href' => self::property( '/_admin/templates/catalog/url', 'url', 'string', '#' ),
+					// Rendered inside href="..." - see validateBinding()
+					'href' => self::property( '/_admin/templates/catalog/url', 'url', 'string', '#', 0, 0, true ),
 				], 'a', '', [ 'link', 'default', 'primary', 'outline' ], [ 'target' => [ 'same', 'new' ] ] ),
 				'price' => self::component( '/_admin/templates/catalog/price', [
 					'value' => self::property( '/_admin/templates/catalog/price', 'text', 'string', '99' ),
@@ -677,8 +679,8 @@ namespace Nino\Modules\Templates {
 			return [ 'label' => $label, 'properties' => $properties, 'tag' => $tag, 'class' => $class, 'data' => [], 'styles' => array_values( array_unique( [ 'auto', ...$styles ] ) ), 'styleClasses' => $styleClasses, 'settings' => $settings ];
 		}
 
-		private static function property( string $label, string $control, string $fieldType, string $default, int $width = 0, int $height = 0 ): array {
-			return [ 'label' => $label, 'kind' => $control, 'control' => $control === 'image' ? 'image' : $control, 'fieldType' => $fieldType, 'default' => $default, 'width' => $width, 'height' => $height ];
+		private static function property( string $label, string $control, string $fieldType, string $default, int $width = 0, int $height = 0, bool $attribute = false ): array {
+			return [ 'label' => $label, 'kind' => $control, 'control' => $control === 'image' ? 'image' : $control, 'fieldType' => $fieldType, 'default' => $default, 'width' => $width, 'height' => $height, 'attribute' => $attribute ];
 		}
 
 		private static function element( mixed $definition, string $tag, string $class, array $htmlFields = [] ): array {
@@ -845,6 +847,14 @@ namespace Nino\Modules\Templates {
 				throw new \InvalidArgumentException( 'component '. $id. ' maps to an unknown model field' );
 			if( $strictModel && ( $definition['fieldType'] === 'image' ) !== ( $model[$value]['type'] === 'image' ) )
 				throw new \InvalidArgumentException( 'component '. $id. ' has an incompatible model mapping' );
+			// The same rule the declared data attributes follow (see
+			// dataAttributes()), one layer in: a property that renders inside an
+			// attribute takes the field value as the [elements] pass leaves it,
+			// and a field the model released for html comes out of
+			// sanitizeHtml() with its '"' intact - so it would close the
+			// attribute and land whatever the editor typed on the element
+			if( $strictModel && ( $definition['attribute'] ?? false ) === true && ( $model[$value]['html'] ?? false ) === true )
+				throw new \InvalidArgumentException( 'component '. $id. ' cannot carry the rich text field '. $value. ': its value is sanitized for content, not for an attribute' );
 		}
 
 		private static function validLiteral( string $value, array $definition ): bool {

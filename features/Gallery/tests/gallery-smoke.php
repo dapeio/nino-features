@@ -224,6 +224,18 @@ $ids = array_pad( array_column( galleryImages( $body ), 'id' ), 3, '' );
 [ $status, $body ] = callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'caption' => 'Above the pass' ] );
 check( 'a caption is saved on the image it names', $status === 200 && ( galleryImages( $body )[1]['caption'] ?? null ) === 'Above the pass' );
 
+// The cap is in bytes, and a cut through the middle of a multibyte character
+// leaves a byte sequence that is not utf-8 - which json_encode() answers with
+// false, so the panel's whole answer came back empty and every screen of it
+// stopped working until somebody found the caption by hand
+$longCaption = str_repeat( 'a', \Nino\Modules\Gallery::MAX_CAPTION - 1 ). 'ä und weiter';
+[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'caption' => $longCaption ] );
+check( 'a caption longer than the cap is cut on a character boundary, and the panel still answers', $status === 200
+	&& ( galleryImages( $body )[1]['caption'] ?? null ) === str_repeat( 'a', \Nino\Modules\Gallery::MAX_CAPTION - 1 )
+	&& json_encode( $body ) !== false );
+
+[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'caption' => 'Above the pass' ] );
+
 [ $status, $body ] = callGalleryAdmin( $appData, 'gallery/reorder', [ 'album' => 'trip', 'order' => [ $ids[2], $ids[0], $ids[1] ] ] );
 check( 'the order is the whole list, posted and stored', $status === 200 && array_column( galleryImages( $body ), 'id' ) === [ $ids[2], $ids[0], $ids[1] ] );
 

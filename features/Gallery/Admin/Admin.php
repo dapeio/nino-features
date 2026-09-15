@@ -136,7 +136,11 @@ namespace Nino\Modules\Gallery {
 
 			$data		= \Nino\Admin\Admin::postData();
 			$key		= self::_key( $data['album'] ?? null );
-			$name		= substr( trim( (string) ( is_string( $data['name'] ?? null ) ? $data['name'] : '' ) ), 0, 120 );
+			// mb_strcut, not substr: the cap is in bytes, and a cut through the
+			// middle of a multibyte character leaves a sequence that is not
+			// utf-8 - which json_encode() answers with false, so the panel's
+			// whole answer came back empty and every screen of it stopped
+			$name		= mb_strcut( trim( (string) ( is_string( $data['name'] ?? null ) ? $data['name'] : '' ) ), 0, 120, 'UTF-8' );
 			$albums	= \Nino\Modules\Gallery::albums( $appData );
 
 			if( $key === '' ) {
@@ -277,7 +281,8 @@ namespace Nino\Modules\Gallery {
 			$data			= \Nino\Admin\Admin::postData();
 			$key			= self::_key( $data['album'] ?? null );
 			$id				= self::_id( $data['id'] ?? null );
-			$caption	= substr( trim( (string) ( is_string( $data['caption'] ?? null ) ? $data['caption'] : '' ) ), 0, \Nino\Modules\Gallery::MAX_CAPTION );
+			// See apiAlbumSave() for why this is not substr()
+			$caption	= mb_strcut( trim( (string) ( is_string( $data['caption'] ?? null ) ? $data['caption'] : '' ) ), 0, \Nino\Modules\Gallery::MAX_CAPTION, 'UTF-8' );
 			$albums		= \Nino\Modules\Gallery::albums( $appData );
 			$index		= self::_indexOf( $albums, $key );
 
