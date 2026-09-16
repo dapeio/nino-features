@@ -173,13 +173,24 @@ $normalised = \Nino\Modules\Redirects\Rules::normalize( [
 
 check( 'the longest path comes first, so a rule under another is reached before it',
 	array_column( $normalised['rules'], 'from' ) === [ '/shop/archive', '/shop', '/odd' ] );
+/*	A note is a fill key and what to put in it, not a sentence: what a stored
+	file is held to is Rules' business, which language the workbench says it in
+	is the panel's (see Admin::_notes()). The panel used to print these in
+	English into a German workbench	*/
+$noteKeys = array_column( $notes, 'key' );
+check( 'every note names a fill rather than carrying an English sentence', $notes !== []
+	&& count( array_filter( $notes, static fn( mixed $n ): bool => is_array( $n ) && str_starts_with( (string) ( $n['key'] ?? '' ), '/_admin/redirects/' ) ) ) === count( $notes ) );
 check( 'a second rule for one address is dropped, and said so', count( array_filter( $normalised['rules'], static fn( array $r ): bool => $r['from'] === '/shop' ) ) === 1
-	&& count( array_filter( $notes, static fn( string $n ): bool => str_contains( $n, 'second rule' ) ) ) === 1 );
+	&& count( array_filter( $notes, static fn( array $n ): bool => $n['key'] === '/_admin/redirects/note/duplicate' && ( $n['inserts']['%s'] ?? '' ) === '/shop' ) ) === 1 );
 check( 'a target that is not one takes its rule with it', count( array_filter( $normalised['rules'], static fn( array $r ): bool => $r['from'] === '/bad' ) ) === 0 );
 check( 'a rule that loops is dropped rather than stored for the browser to find out', count( array_filter( $normalised['rules'], static fn( array $r ): bool => $r['from'] === '/loop' ) ) === 0 );
 check( 'a status that is not a redirect becomes 301, and is not silent',
 	( array_values( array_filter( $normalised['rules'], static fn( array $r ): bool => $r['from'] === '/odd' ) )[0]['status'] ?? 0 ) === 301
-	&& count( array_filter( $notes, static fn( string $n ): bool => str_contains( $n, '418' ) ) ) === 1 );
+	&& count( array_filter( $notes, static fn( array $n ): bool => $n['key'] === '/_admin/redirects/note/status' && ( $n['inserts']['%d'] ?? '' ) === '418' ) ) === 1 );
+check( '...and a dropped loop carries its reason as a fill of its own, because the reason is one too',
+	count( array_filter( $notes, static fn( array $n ): bool => $n['key'] === '/_admin/redirects/note/dropped' && ( $n['inserts']['%r'] ?? '' ) === '/_admin/redirects/reason/self' ) ) === 1 );
+check( 'loops() names the reason with a key rather than a sentence', \Nino\Modules\Redirects\Rules::loops( '/a', '/a', false ) === '/_admin/redirects/reason/self'
+	&& \Nino\Modules\Redirects\Rules::loops( '/a', '/a/b', true ) === '/_admin/redirects/reason/subtree' );
 check( 'a miss that is not one is not a miss', array_keys( $normalised['misses'] ) === [ '/gone' ] );
 check( 'every rule carries the whole shape, whatever the file said',
 	array_keys( $normalised['rules'][0] ) === [ 'from', 'to', 'status', 'subtree', 'hits', 'last' ] );
@@ -347,6 +358,43 @@ check( 'one address can be forgotten', redirectsPanel( $appData, 'apiForget', [ 
 check( '...and all of them at once', redirectsPanel( $appData, 'apiForget' )[0] === 200
 	&& ( redirectsFile( $appData )['misses'] ?? [] ) === [] );
 check( '...while the rules are untouched by that', ( redirectsFile( $appData )['rules'] ?? [] ) !== [] );
+
+/*	And the panel resolves them, in the language the operator picked - which is
+	the whole point of the keys. A rule the stored file cannot use is written
+	straight into it here, because that is the only way a note reaches apiList
+	at all: the panel refuses such a rule on the way in	*/
+$noteFileBefore = redirectsFile( $appData );
+$noteFillsDe = include __DIR__. '/../text/de_DE.php';
+$noteFillsEn = include __DIR__. '/../text/en_US.php';
+$noteRead = static function( array &$appData ): array {
+	\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Redirects\Rules::PATH, [
+		'rules'	=> [ [ 'from' => '/loop-note', 'to' => '/loop-note', 'status' => 301, 'subtree' => false, 'hits' => 0, 'last' => '' ] ],
+		'misses'=> [],
+	] );
+	unset( $appData['./redirects/rules'] );
+	return redirectsPanel( $appData, 'apiList' )[1]['notes'] ?? [];
+};
+$noteSaid = static fn( array $fills ): string => strtr(
+	(string) $fills['[[/_admin/redirects/note/dropped]]'],
+	[ '%s' => '/loop-note', '%r' => (string) $fills['[[/_admin/redirects/reason/self]]'] ]
+);
+
+$appData['/nino/locales/available'] = [ 'de_DE', 'en_US' ];
+$noteNative = $noteRead( $appData );
+check( 'the notes reach the browser as sentences rather than keys', count( $noteNative ) === 1
+	&& is_string( $noteNative[0] )
+	&& str_contains( $noteNative[0], '/_admin/redirects/' ) === false );
+check( '...put together out of the panel\'s own fills, the reason among them', $noteNative[0] === $noteSaid( $noteFillsDe ) );
+
+\Nino\Runtime::setSessionValue( $appData, './admin/locale', 'en_US' );
+$noteOther = $noteRead( $appData );
+check( '...and in the interface language the operator picked, not the project\'s', count( $noteOther ) === 1
+	&& $noteOther[0] === $noteSaid( $noteFillsEn )
+	&& $noteOther[0] !== $noteNative[0] );
+\Nino\Runtime::setSessionValue( $appData, './admin/locale', '' );
+// Exactly what stood here before, so the sections after this one still find it
+\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Redirects\Rules::PATH, $noteFileBefore );
+unset( $appData['./redirects/rules'] );
 
 echo "\n";
 

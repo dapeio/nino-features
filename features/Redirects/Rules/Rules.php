@@ -116,12 +116,12 @@ namespace Nino\Modules\Redirects {
 				$to		= self::target( (string) ( $entry['to'] ?? '' ) );
 
 				if( $from === '' || $to === '' ) {
-					$notes[] = 'a rule without a usable "from" and "to" was dropped';
+					$notes[] = [ 'key' => '/_admin/redirects/note/incomplete', 'inserts' => [] ];
 					continue;
 				}
 
 				if( isset( $seen[$from] ) === true ) {
-					$notes[] = 'a second rule for "'. $from. '" was dropped - the first one answers it';
+					$notes[] = [ 'key' => '/_admin/redirects/note/duplicate', 'inserts' => [ '%s' => $from ] ];
 					continue;
 				}
 
@@ -129,14 +129,14 @@ namespace Nino\Modules\Redirects {
 				$status		= (int) ( $entry['status'] ?? 301 );
 
 				if( in_array( $status, self::STATUSES, true ) === false ) {
-					$notes[] = 'rule "'. $from. '": '. $status. ' is not a redirect status - using 301';
+					$notes[] = [ 'key' => '/_admin/redirects/note/status', 'inserts' => [ '%s' => $from, '%d' => (string) $status ] ];
 					$status = 301;
 				}
 
 				$loop = self::loops( $from, $to, $subtree );
 
 				if( $loop !== '' ) {
-					$notes[] = 'rule "'. $from. '" was dropped: '. $loop;
+					$notes[] = [ 'key' => '/_admin/redirects/note/dropped', 'inserts' => [ '%s' => $from, '%r' => $loop ] ];
 					continue;
 				}
 
@@ -230,7 +230,7 @@ namespace Nino\Modules\Redirects {
 		 *	@param		string		$to						A path or an absolute url
 		 *	@param		bool			$subtree
 		 *
-		 *	@return 	string								The reason, or ''
+		 *	@return 	string								A fill key naming the reason, or ''
 		 */
 		public static function loops( string $from, string $to, bool $subtree ): string {
 
@@ -239,10 +239,10 @@ namespace Nino\Modules\Redirects {
 				return '';
 
 			if( $from === $to )
-				return 'it sends "'. $from. '" to itself';
+				return '/_admin/redirects/reason/self';
 
 			if( $subtree === true && ( $to === $from || str_starts_with( $to, $from. '/' ) === true ) )
-				return 'it sends everything under "'. $from. '" to an address that is under it again';
+				return '/_admin/redirects/reason/subtree';
 
 			return '';
 		}

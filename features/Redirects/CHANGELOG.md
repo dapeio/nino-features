@@ -3,6 +3,23 @@
 All notable changes to the Redirects feature are documented in this file.
 A release is the tag `redirects-<version>` of dapeio/nino-features.
 
+## Unreleased
+
+### Fixed
+
+- **The panel said what it had dropped in English, whatever language it was
+  set to.** The notes under the rules - a rule without a usable from and to, a
+  second rule for one address, a status that is not a redirect, a rule that
+  would loop - were composed as English sentences in `Rules::normalize()` and
+  printed verbatim. So was the refusal for a status that is not a redirect.
+
+  `Rules` answers with a fill key and what to put in it now, and the panel
+  resolves it in the session locale, which is where that decision already
+  lived (`Admin::_say()`). What a stored file is held to is `Rules`' business;
+  which language the workbench says it in is the panel's. `loops()` returns
+  the key of its reason rather than a sentence, because a reason is a fill
+  too - the note carries it under `%r` and the panel resolves that first.
+
 ## 1.0.0 — 2026-09-12
 
 First release: old addresses that still work, and a list of the ones that do not.

@@ -58,4 +58,11 @@ return [
 
 	'[[/_admin/redirects/confirm/delete]]'		=> 'Die Weiterleitung für "%s" löschen?',
 	'[[/_admin/redirects/confirm/forget]]'		=> 'Jede Adresse auf dieser Liste vergessen? Die nächste Anfrage danach bringt sie zurück.',
+	'[[/_admin/redirects/note/incomplete]]'	=> 'Eine Regel ohne brauchbares "von" und "nach" wurde verworfen.',
+	'[[/_admin/redirects/note/duplicate]]'	=> 'Eine zweite Regel für "%s" wurde verworfen - die erste beantwortet sie.',
+	'[[/_admin/redirects/note/status]]'			=> 'Regel "%s": %d ist kein Weiterleitungsstatus, es gilt 301.',
+	'[[/_admin/redirects/note/dropped]]'		=> 'Regel "%s" wurde verworfen: %r',
+	'[[/_admin/redirects/reason/self]]'			=> 'sie schickt die Adresse auf sich selbst',
+	'[[/_admin/redirects/reason/subtree]]'	=> 'sie schickt alles darunter auf eine Adresse, die wieder darunter liegt',
+	'[[/_admin/redirects/error/status]]'		=> 'Das ist kein Weiterleitungsstatus.',
 ];

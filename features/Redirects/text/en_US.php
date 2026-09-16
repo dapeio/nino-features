@@ -58,4 +58,11 @@ return [
 
 	'[[/_admin/redirects/confirm/delete]]'		=> 'Delete the redirect for "%s"?',
 	'[[/_admin/redirects/confirm/forget]]'		=> 'Forget every address on this list? The next request for one puts it back.',
+	'[[/_admin/redirects/note/incomplete]]'	=> 'A rule without a usable "from" and "to" was dropped.',
+	'[[/_admin/redirects/note/duplicate]]'	=> 'A second rule for "%s" was dropped - the first one answers it.',
+	'[[/_admin/redirects/note/status]]'			=> 'Rule "%s": %d is not a redirect status, so 301 applies.',
+	'[[/_admin/redirects/note/dropped]]'		=> 'Rule "%s" was dropped: %r',
+	'[[/_admin/redirects/reason/self]]'			=> 'it sends the address to itself',
+	'[[/_admin/redirects/reason/subtree]]'	=> 'it sends everything under it to an address that is under it again',
+	'[[/_admin/redirects/error/status]]'		=> 'That is not a redirect status.',
 ];

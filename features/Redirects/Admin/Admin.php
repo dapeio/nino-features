@@ -136,7 +136,7 @@ namespace Nino\Modules\Redirects {
 				// and the ceiling it fills to
 				'recording'	=> \Nino\Modules\Redirects::records( $appData ),
 				'limit'			=> Rules::MISS_LIMIT,
-				'notes'			=> $notes,
+				'notes'			=> self::_notes( $appData, $notes ),
 			] );
 		}
 
@@ -176,14 +176,14 @@ namespace Nino\Modules\Redirects {
 			}
 
 			if( in_array( $status, Rules::STATUSES, true ) === false ) {
-				\Nino\Http::fail( $request, 400, 'not a redirect status' );
+				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/redirects/error/status' ) );
 				return;
 			}
 
 			$loop = Rules::loops( $from, $to, $subtree );
 
 			if( $loop !== '' ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/redirects/error/loop', $loop ) );
+				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/redirects/error/loop', self::_say( $appData, $loop ) ) );
 				return;
 			}
 
@@ -223,7 +223,7 @@ namespace Nino\Modules\Redirects {
 				return;
 			}
 
-			\Nino\Http::ok( $request, [ 'saved' => $from, 'rules' => $next['rules'], 'notes' => $notes ] );
+			\Nino\Http::ok( $request, [ 'saved' => $from, 'rules' => $next['rules'], 'notes' => self::_notes( $appData, $notes ) ] );
 		}
 
 		/**
@@ -339,19 +339,55 @@ namespace Nino\Modules\Redirects {
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$fill					One of this panel's fill keys
-		 *	@param		string		$insert
+		 *	@param		array|string	$inserts		A token map, or one value for '%s'
 		 *
 		 *	@return 	string
 		 */
-		private static function _say( array &$appData, string $fill, string $insert = '' ): string {
+		private static function _say( array &$appData, string $fill, array|string $inserts = '' ): string {
 
-			$fills	= \Nino\Admin\Admin::textFills( $appData, self::text(), \Nino\Admin\Admin::sessionLocale( $appData ) );
-			$text		= $fills['[['. $fill. ']]'] ?? '';
+			$inserts	= is_array( $inserts ) === true ? $inserts : [ '%s' => $inserts ];
+			$fills		= \Nino\Admin\Admin::textFills( $appData, self::text(), \Nino\Admin\Admin::sessionLocale( $appData ) );
+			$text			= $fills['[['. $fill. ']]'] ?? '';
 
 			if( is_string( $text ) === false || $text === '' )
-				return $insert;
+				return implode( ' ', $inserts );
 
-			return str_replace( '%s', $insert, $text );
+			return strtr( $text, $inserts );
+		}
+
+		/**
+		 *	The notes \Nino\Modules\Redirects\Rules left, in the operator's own
+		 *	language.
+		 *
+		 *	Rules answers with a fill key and what to put in it rather than with
+		 *	a sentence: what a stored file is held to is its business, which
+		 *	language the workbench says it in is this panel's. A note about a
+		 *	dropped loop carries the reason as a key of its own under '%r',
+		 *	because the reason is a fill too
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$notes				{ key, inserts } each
+		 *
+		 *	@return 	array								Plain sentences
+		 */
+		private static function _notes( array &$appData, array $notes ): array {
+
+			$said = [];
+
+			foreach( $notes as $note ) {
+
+				if( is_array( $note ) === false )
+					continue;
+
+				$inserts = is_array( $note['inserts'] ?? null ) === true ? $note['inserts'] : [];
+
+				if( isset( $inserts['%r'] ) === true )
+					$inserts['%r'] = self::_say( $appData, (string) $inserts['%r'] );
+
+				$said[] = self::_say( $appData, (string) ( $note['key'] ?? '' ), $inserts );
+			}
+
+			return $said;
 		}
 	}
 }
