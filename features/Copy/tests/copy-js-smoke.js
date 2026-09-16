@@ -17,7 +17,7 @@
 
 'use strict';
 
-/* global require, __dirname, process */
+/* global require, __dirname, process, setImmediate */
 
 const fs = require('fs');
 const path = require('path');
