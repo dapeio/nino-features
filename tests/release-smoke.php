@@ -31,12 +31,14 @@ $keypair = openssl_pkey_new( [ 'private_key_type' => OPENSSL_KEYTYPE_EC, 'curve_
 openssl_pkey_export( $keypair, $privateKey );
 $publicKey = openssl_pkey_get_details( $keypair )['key'];
 file_put_contents( $work. '/catalogue-key.pem', $privateKey );
+// Outside the docroot: NINO_CATALOGUE_PUBKEY names a file, not the key itself
+file_put_contents( $work. '/catalogue-key.pub.pem', $publicKey );
 
 $token	 = bin2hex( random_bytes( 32 ) );
 $docroot = $work. '/docroot';
 mkdir( $docroot );
 copy( $repo. '/server/publish.php', $docroot. '/publish.php' );
-file_put_contents( $docroot. '/publish.config.php', '<?php return '. var_export( [ 'NINO_CATALOGUE_TOKEN' => $token, 'NINO_CATALOGUE_PUBLIC_KEY' => $publicKey ], true ). ';' );
+file_put_contents( $docroot. '/publish.config.php', '<?php return '. var_export( [ 'NINO_CATALOGUE_TOKEN' => $token, 'NINO_CATALOGUE_PUBKEY' => $work. '/catalogue-key.pub.pem' ], true ). ';' );
 
 $port		= 18000 + random_int( 0, 999 );
 $server	= @proc_open( [ PHP_BINARY, '-S', '127.0.0.1:'. $port, '-t', $docroot ], [ 0 => [ 'file', '/dev/null', 'r' ], 1 => [ 'file', '/dev/null', 'w' ], 2 => [ 'file', $work. '/server.log', 'w' ] ], $pipes );
@@ -79,13 +81,19 @@ $archive = $key. '-'. $version. '.tar.gz';
 $hadCopy = is_dir( $root. '/features/'. (string) ( $feature['directory'] ?? '' ) );
 
 $dist = $work. '/dist';
+/*	The names bin/release.sh actually reads - see its own usage line and the
+	block under it. This used to pass CATALOGUE_URL, PUBLISH_URL,
+	CATALOGUE_KEY, PUBLISH_TOKEN and DIST, none of which the script knows, so
+	every run here was an unconfigured one. It went unnoticed because
+	bin/check.sh runs under set -e and stopped at publish-smoke.php one line
+	earlier, so this file had not been reached in a long time	*/
 $env	= [
-	'NINO_ROOT'			=> $root,
-	'CATALOGUE_URL'	=> 'https://catalogue.example',
-	'PUBLISH_URL'		=> 'http://127.0.0.1:'. $port. '/publish.php',
-	'CATALOGUE_KEY'	=> $work. '/catalogue-key.pem',
-	'PUBLISH_TOKEN'	=> $token,
-	'DIST'					=> $dist,
+	'NINO_ROOT'							=> $root,
+	'NINO_CATALOGUE_URL'		=> 'https://catalogue.example',
+	'NINO_PUBLISH_URL'			=> 'http://127.0.0.1:'. $port. '/publish.php',
+	'NINO_CATALOGUE_KEY'		=> $work. '/catalogue-key.pem',
+	'NINO_CATALOGUE_TOKEN'	=> $token,
+	'NINO_CATALOGUE_DIR'		=> $dist,
 ];
 
 
@@ -97,10 +105,10 @@ echo "bin/release.sh - what is refused before anything runs\n";
 check( 'no key is a usage error', $status === 2 && str_contains( $stderr, 'Usage' ) === true );
 [ $status, , $stderr ] = runRelease( $release, $env, [ 'Not-A-Key' ] );
 check( 'a key that is not a slug is refused', $status === 2 && str_contains( $stderr, 'not a feature key' ) === true );
-[ $status, , $stderr ] = runRelease( $release, array_merge( $env, [ 'CATALOGUE_KEY' => $work. '/missing.pem' ] ), [ $key, '--offline' ] );
-check( 'a missing signing key is refused', $status === 2 && str_contains( $stderr, 'CATALOGUE_KEY' ) === true );
-[ $status, , $stderr ] = runRelease( $release, array_merge( $env, [ 'PUBLISH_TOKEN' => '' ] ), [ $key, '--offline' ] );
-check( 'a missing token is refused unless it is a dry run', $status === 2 && str_contains( $stderr, 'PUBLISH_TOKEN' ) === true );
+[ $status, , $stderr ] = runRelease( $release, array_merge( $env, [ 'NINO_CATALOGUE_KEY' => $work. '/missing.pem' ] ), [ $key, '--offline' ] );
+check( 'a missing signing key is refused', $status === 2 && str_contains( $stderr, 'NINO_CATALOGUE_KEY' ) === true );
+[ $status, , $stderr ] = runRelease( $release, array_merge( $env, [ 'NINO_CATALOGUE_TOKEN' => '' ] ), [ $key, '--offline' ] );
+check( 'a missing token is refused unless it is a dry run', $status === 2 && str_contains( $stderr, 'NINO_CATALOGUE_TOKEN' ) === true );
 [ $status, , $stderr ] = runRelease( $release, $env, [ 'no-such-feature', '--offline', '--dry-run' ] );
 check( 'an unknown key is refused', $status === 1 && str_contains( $stderr, 'No feature' ) === true );
 check( 'nothing was written', is_dir( $dist ) === false || ( scandir( $dist ) ?: [] ) === [ '.', '..' ] );
@@ -112,7 +120,7 @@ echo "\n";
 
 echo "bin/release.sh --dry-run --offline - test, build, sign, post nothing\n";
 
-[ $status, $stdout, $stderr ] = runRelease( $release, array_merge( $env, [ 'PUBLISH_TOKEN' => '' ] ), [ $key, '--dry-run', '--offline' ] );
+[ $status, $stdout, $stderr ] = runRelease( $release, array_merge( $env, [ 'NINO_CATALOGUE_TOKEN' => '' ] ), [ $key, '--dry-run', '--offline' ] );
 check( 'the dry run succeeds without a token', $status === 0 );
 check( 'it ran the feature\'s test and built the archive', str_contains( $stdout, 'checks, 0 failed' ) === true && str_contains( $stdout, 'built    ' ) === true && str_contains( $stdout, 'dry run: nothing posted' ) === true );
 check( 'dist holds the archive, the catalogue and its signature', is_file( $dist. '/'. $archive ) === true && filesize( $dist. '/'. $archive ) > 0 && is_file( $dist. '/catalogue.json' ) === true && is_file( $dist. '/catalogue.json.sig' ) === true );
@@ -152,7 +160,7 @@ else {
 	$there = static fn(): array => array_values( array_filter( $needed, static fn( string $dir ): bool => is_dir( $root. '/features/'. $dir ) ) );
 	$before = $there();
 
-	[ $status, $stdout ] = runRelease( $release, array_merge( $env, [ 'PUBLISH_TOKEN' => '', 'DIST' => $work. '/dist-requires' ] ), [ (string) $dependent['key'], '--dry-run', '--offline' ] );
+	[ $status, $stdout ] = runRelease( $release, array_merge( $env, [ 'NINO_CATALOGUE_TOKEN' => '', 'NINO_CATALOGUE_DIR' => $work. '/dist-requires' ] ), [ (string) $dependent['key'], '--dry-run', '--offline' ] );
 
 	check( 'the release of '. $dependent['key']. ' runs, and its own test passes', $status === 0 && str_contains( $stdout, 'checks, 0 failed' ) === true );
 	check( 'it says which directory it placed beside it, and why', $before !== [] || str_contains( $stdout, 'requires it' ) === true );
@@ -183,7 +191,7 @@ foreach( [ 'CHANGELOG.md', 'README.md' ] as $file )
 	@unlink( $bareFeature. '/'. $file );
 shell_exec( 'rm -rf '. escapeshellarg( $bareFeature. '/tests' ) );
 
-$bareEnv = array_merge( $env, [ 'DIST' => $work. '/bare-dist', 'PUBLISH_TOKEN' => '' ] );
+$bareEnv = array_merge( $env, [ 'NINO_CATALOGUE_DIR' => $work. '/bare-dist', 'NINO_CATALOGUE_TOKEN' => '' ] );
 
 if( $hadCopy === true ) {
 
@@ -199,8 +207,8 @@ if( $hadCopy === true ) {
 	[ $status, , $stderr ] = runRelease( $bare. '/bin/release.sh', $bareEnv, [ $key, '--dry-run', '--offline', '--strict' ] );
 	check( '--strict refuses the missing changelog entry', $status === 1 && str_contains( $stderr, 'CHANGELOG.md' ) === true );
 
-	[ $status, , $stderr ] = runRelease( $bare. '/bin/release.sh', array_merge( $bareEnv, [ 'RELEASE_STRICT' => '1' ] ), [ $key, '--dry-run', '--offline' ] );
-	check( 'RELEASE_STRICT=1 does the same', $status === 1 && str_contains( $stderr, 'CHANGELOG.md' ) === true );
+	[ $status, , $stderr ] = runRelease( $bare. '/bin/release.sh', array_merge( $bareEnv, [ 'NINO_RELEASE_STRICT' => '1' ] ), [ $key, '--dry-run', '--offline' ] );
+	check( 'NINO_RELEASE_STRICT=1 does the same', $status === 1 && str_contains( $stderr, 'CHANGELOG.md' ) === true );
 
 	file_put_contents( $bareFeature. '/CHANGELOG.md', "# Changelog\n\n## $version — 2026-01-01\n\n- a note.\n" );
 	[ $status, , $stderr ] = runRelease( $bare. '/bin/release.sh', $bareEnv, [ $key, '--dry-run', '--offline', '--strict' ] );
@@ -216,8 +224,8 @@ else {
 	[ $status, , $stderr ] = runRelease( $bare. '/bin/release.sh', $bareEnv, [ $key, '--dry-run', '--offline', '--strict' ] );
 	check( '--strict refuses the missing changelog entry', $status === 1 && str_contains( $stderr, 'CHANGELOG.md' ) === true );
 
-	[ $status, , $stderr ] = runRelease( $bare. '/bin/release.sh', array_merge( $bareEnv, [ 'RELEASE_STRICT' => '1' ] ), [ $key, '--dry-run', '--offline' ] );
-	check( 'RELEASE_STRICT=1 does the same', $status === 1 && str_contains( $stderr, 'CHANGELOG.md' ) === true );
+	[ $status, , $stderr ] = runRelease( $bare. '/bin/release.sh', array_merge( $bareEnv, [ 'NINO_RELEASE_STRICT' => '1' ] ), [ $key, '--dry-run', '--offline' ] );
+	check( 'NINO_RELEASE_STRICT=1 does the same', $status === 1 && str_contains( $stderr, 'CHANGELOG.md' ) === true );
 
 	file_put_contents( $bareFeature. '/CHANGELOG.md', "# Changelog\n\n## $version — 2026-01-01\n\n- a note.\n" );
 	[ $status, , $stderr ] = runRelease( $bare. '/bin/release.sh', $bareEnv, [ $key, '--dry-run', '--offline', '--strict' ] );
@@ -254,7 +262,7 @@ else {
 	[ $status, $stdout ] = runRelease( $release, $env, [ $key, '--offline' ] );
 	check( 'a second release of the same version keeps the archive on both sides', $status === 0 && str_contains( $stdout, '"kept":["'. $archive. '"]' ) === true );
 
-	[ $status, , $stderr ] = runRelease( $release, array_merge( $env, [ 'PUBLISH_TOKEN' => strrev( $token ) ] ), [ $key, '--offline' ] );
+	[ $status, , $stderr ] = runRelease( $release, array_merge( $env, [ 'NINO_CATALOGUE_TOKEN' => strrev( $token ) ] ), [ $key, '--offline' ] );
 	check( 'a wrong token is a failed release, and says so', $status === 1 && str_contains( $stderr, 'answered 401' ) === true );
 }
 

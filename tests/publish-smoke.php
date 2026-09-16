@@ -95,7 +95,7 @@ check( 'GET is a 405', $status === 405 );
 check( 'a token below 32 characters is a configuration error, not a weak endpoint', $status === 500 && str_contains( $body['error'], 'NINO_CATALOGUE_TOKEN' ) );
 
 [ $status, $body ] = publishHandle( [ 'token' => $token, 'publicKey' => '', 'dir' => $served ], 'POST', $token, arrived( $work, $release1, $signature1, [] ) );
-check( 'without a public key nothing is published', $status === 500 && str_contains( $body['error'], 'NINO_CATALOGUE_PUBLIC_KEY' ) );
+check( 'without a public key nothing is published', $status === 500 && str_contains( $body['error'], 'NINO_CATALOGUE_PUBKEY' ) );
 
 [ $status, $body ] = publishHandle( [ 'token' => $token, 'publicKey' => $publicKey, 'dir' => $work. '/no-such-dir' ], 'POST', $token, arrived( $work, $release1, $signature1, [] ) );
 check( 'a directory that is not there is a configuration error', $status === 500 && str_contains( $body['error'], 'NINO_CATALOGUE_DIR' ) );
@@ -184,17 +184,23 @@ echo "\n";
 
 echo "server/publish.php - configuration from the environment and the file\n";
 
+/*	Three variables, and NINO_CATALOGUE_PUBKEY names a file rather than
+	carrying the key itself - see the configuration block of publish.php's own
+	docblock, which is the contract. This used to set a NINO_CATALOGUE_PUBLIC_KEY
+	and a NINO_CATALOGUE_PUBLIC_KEY_FILE and expect the first to win over the
+	second: neither exists, so the endpoint went unconfigured and answered 500,
+	which is what every check in this file's last two sections was really
+	reporting	*/
 file_put_contents( $work. '/key.pub.pem', $publicKey );
 putenv( 'NINO_CATALOGUE_TOKEN='. $token );
-putenv( 'NINO_CATALOGUE_PUBLIC_KEY_FILE='. $work. '/key.pub.pem' );
+putenv( 'NINO_CATALOGUE_PUBKEY='. $work. '/key.pub.pem' );
 putenv( 'NINO_CATALOGUE_DIR='. $served. '/' );
 $read = publishConfig();
 check( 'the environment names token, key file and directory', $read['token'] === $token && $read['publicKey'] === trim( $publicKey ) && $read['dir'] === $served );
-putenv( 'NINO_CATALOGUE_PUBLIC_KEY='. $publicKey );
-check( 'a key in the environment wins over the file', publishConfig()['publicKey'] === trim( $publicKey ) );
+putenv( 'NINO_CATALOGUE_PUBKEY='. $work. '/not-a-key.pem' );
+check( 'a key file that is not there leaves the key empty rather than half-read', publishConfig()['publicKey'] === '' );
 putenv( 'NINO_CATALOGUE_TOKEN' );
-putenv( 'NINO_CATALOGUE_PUBLIC_KEY' );
-putenv( 'NINO_CATALOGUE_PUBLIC_KEY_FILE' );
+putenv( 'NINO_CATALOGUE_PUBKEY' );
 putenv( 'NINO_CATALOGUE_DIR' );
 check( 'without either the directory is the script\'s own and the rest empty', publishConfig()['dir'] === dirname( __DIR__ ). '/server' && publishConfig()['token'] === '' && publishConfig()['publicKey'] === '' );
 
@@ -208,7 +214,9 @@ echo "server/publish.php - one request through php -S\n";
 $docroot = $work. '/docroot';
 mkdir( $docroot );
 copy( dirname( __DIR__ ). '/server/publish.php', $docroot. '/publish.php' );
-file_put_contents( $docroot. '/publish.config.php', '<?php return '. var_export( [ 'NINO_CATALOGUE_TOKEN' => $token, 'NINO_CATALOGUE_PUBLIC_KEY' => $publicKey ], true ). ';' );
+// The file beside publish.php, with the same keys the environment uses - the
+// way a plain web server is configured where nothing sets an environment
+file_put_contents( $docroot. '/publish.config.php', '<?php return '. var_export( [ 'NINO_CATALOGUE_TOKEN' => $token, 'NINO_CATALOGUE_PUBKEY' => $work. '/key.pub.pem' ], true ). ';' );
 
 $port		= 18000 + random_int( 0, 999 );
 $server	= @proc_open( [ PHP_BINARY, '-S', '127.0.0.1:'. $port, '-t', $docroot ], [ 0 => [ 'file', '/dev/null', 'r' ], 1 => [ 'file', '/dev/null', 'w' ], 2 => [ 'file', $work. '/server.log', 'w' ] ], $pipes );

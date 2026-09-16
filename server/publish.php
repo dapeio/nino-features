@@ -111,10 +111,10 @@ function publishHandle( array $config, string $method, string $token, array $upl
 		return [ 500, [ 'error' => 'the endpoint is not configured: NINO_CATALOGUE_PUBKEY holds no public key' ] ];
 
 	$dir = (string) $config['dir'];
-	if( is_dir( $dir ) === false || is_writable( $dir ) === false )  {
-
-		return [ 500, [ 'error' => 'the endpoint is not configured: '.$dir.' is not a writable directory' ] ];
-	}
+	// Named like the two above it: whoever reads this 500 is configuring the
+	// endpoint, and the variable to reach for is worth as much as the path
+	if( is_dir( $dir ) === false || is_writable( $dir ) === false )
+		return [ 500, [ 'error' => 'the endpoint is not configured: NINO_CATALOGUE_DIR ('. $dir. ') is not a writable directory' ] ];
 	if( $token === '' || hash_equals( (string) $config['token'], $token ) === false ) {
 		usleep( 250000 );
 		return [ 401, [ 'error' => 'the token does not match' ] ];
@@ -315,7 +315,14 @@ function publishUpload( array $files ): array {
 // test includes
 if( PHP_SAPI !== 'cli' ) {
 
-	$token = (string) ( $_SERVER['HTTP_X_NINO_CATALOGUE_TOKEN'] ?? '' );
+	/*	X-Publish-Token, which is the header the docblock above promises and
+		the one bin/release.sh sends. This read HTTP_X_NINO_CATALOGUE_TOKEN -
+		a header nothing sends and nothing documents - so the endpoint answered
+		every real release with "the token does not match", and only the
+		Authorization fallback would have got anything through. The test said
+		so from the beginning; it was read as a known failure rather than as
+		the report it was	*/
+	$token = (string) ( $_SERVER['HTTP_X_PUBLISH_TOKEN'] ?? '' );
 	if( $token === '' && preg_match( '/^Bearer\s+(\S+)$/', (string) ( $_SERVER['HTTP_AUTHORIZATION'] ?? '' ), $m ) === 1 )
 		$token = $m[1];
 
