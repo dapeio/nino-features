@@ -216,6 +216,19 @@ check( 'a second valid signup succeeds', $annaRequest['/nino/http/response']['st
 check( 'newsletter/list succeeds', $status === 200 );
 check( 'newsletter/list finds both signups, most recent first', count( $body['entries'] ) === 2 && $body['entries'][0]['email'] === 'anna@example.com' );
 
+/*	A token is not a field, it is a credential: ?unsubscribe=<token> on the
+	public route takes that address off the list and ?confirm=<token> confirms
+	a signup, both with nothing else to show. The panel never draws it and
+	deletes by address - but Nino.admin.exportCsv() writes the union of every
+	row's keys, so it went into a file that is opened in a spreadsheet, mailed
+	around and handed to a sending provider	*/
+check( 'the list the panel gets carries no token, so neither does the csv it exports', count( array_filter( $body['entries'], static fn( array $e ): bool => isset( $e['token'] ) ) ) === 0 );
+check( '...while the record of the consent stays, which is what the panel is for', count( array_filter( $body['entries'], static fn( array $e ): bool => isset( $e['email'], $e['date'], $e['ip'] ) ) ) === 2 );
+check( '...and the token is still stored, or no link in a sent mail would work again', count( array_filter(
+	\Nino\Filesystem::getFileContent( $appData, '/data/newsletter.php', [] ),
+	static fn( array $e ): bool => ( $e['token'] ?? '' ) !== ''
+) ) === 2 );
+
 unset( $appData['./nino/auth/current'] );
 [ $status ] = callAdminPost( $appData, 'newsletter/list' );
 check( 'newsletter/list requires a signed-in account', $status === 401 );
@@ -300,5 +313,67 @@ mkdir( $mergeStaging2, 0755, true );
 
 $mergeInvoke( $mergeRoot2, $mergeStaging2 );
 check( 'a backup with no newsletter files at all is a no-op, not an error', is_file( $mergeStaging2. '/data/newsletter.php' ) === false );
+
+
+// --- What an unconfirmed signup costs ----------------------------------------
+
+echo "Modules\\Newsletter - an unconfirmed signup expires, and there is a ceiling under it\n";
+
+/*	The signup endpoint is public and unauthenticated, and mutate() rewrites
+	the whole file on every post. Without an expiry and a ceiling, 2000 posts
+	with distinct addresses stored 404 KB, none of it expiring, and took a
+	signup from 0.97 ms to 5.87 ms because each one reads and rewrites
+	everything before it	*/
+$pendingPath = \Nino\Filesystem::getPath( $appData ). '/data/newsletter.php';
+$writeList = static function( array &$appData, array $entries ): void {
+	\Nino\Filesystem::putFileContent( $appData, '/data/newsletter.php', $entries );
+};
+$readList = static function( array &$appData ): array {
+	return \Nino\Filesystem::getFileContent( $appData, '/data/newsletter.php', [] );
+};
+$entryAt = static fn( string $email, string $status, string $date ): array => [
+	'email' => $email, 'token' => bin2hex( random_bytes( 8 ) ), 'status' => $status, 'date' => $date, 'ip' => '203.0.113.7',
+];
+
+$writeList( $appData, [
+	$entryAt( 'stale@example.com', 'pending', date( 'Y-m-d H:i:s', time() - 8 * 86400 ) ),
+	$entryAt( 'fresh@example.com', 'pending', date( 'Y-m-d H:i:s', time() - 3600 ) ),
+	$entryAt( 'member@example.com', 'subscribed', date( 'Y-m-d H:i:s', time() - 400 * 86400 ) ),
+	[ 'email' => 'ancient@example.com', 'date' => date( 'Y-m-d H:i:s', time() - 900 * 86400 ) ],
+] );
+submitNewsletter( $appData, [ 'email' => 'arrival@example.com' ] );
+$afterSweep = array_column( $readList( $appData ), 'email' );
+
+check( 'an unconfirmed signup that ran out of time is dropped when the next one arrives', in_array( 'stale@example.com', $afterSweep, true ) === false );
+check( '...while one still inside the window stays', in_array( 'fresh@example.com', $afterSweep, true ) === true );
+check( 'a subscriber is never swept, however old the entry', in_array( 'member@example.com', $afterSweep, true ) === true );
+check( '...and neither is an entry from before the double opt-in flow, which counts as subscribed', in_array( 'ancient@example.com', $afterSweep, true ) === true );
+
+// The days are a project's to set - a slower audience confirms later
+$appData[ \Nino\Modules\Newsletter::PENDING_DAYS ] = 30;
+$writeList( $appData, [ $entryAt( 'week-old@example.com', 'pending', date( 'Y-m-d H:i:s', time() - 8 * 86400 ) ) ] );
+submitNewsletter( $appData, [ 'email' => 'arrival2@example.com' ] );
+check( 'a longer window keeps what the default would have dropped', in_array( 'week-old@example.com', array_column( $readList( $appData ), 'email' ), true ) === true );
+unset( $appData[ \Nino\Modules\Newsletter::PENDING_DAYS ] );
+
+/*	And the ceiling, for a burst that arrives faster than a week passes. The
+	oldest unconfirmed entry makes room; a subscriber is not counted and not
+	touched	*/
+$flood = [ $entryAt( 'keeper@example.com', 'subscribed', date( 'Y-m-d H:i:s' ) ) ];
+for( $i = 0; $i < \Nino\Modules\Newsletter::PENDING_LIMIT + 50; $i++ )
+	$flood[] = $entryAt( 'flood'. $i. '@example.com', 'pending', date( 'Y-m-d H:i:s', time() - 3600 + $i ) );
+$writeList( $appData, $flood );
+submitNewsletter( $appData, [ 'email' => 'last@example.com' ] );
+$afterFlood = $readList( $appData );
+$stillPending = array_filter( $afterFlood, static fn( array $e ): bool => ( $e['status'] ?? '' ) === 'pending' );
+
+check( 'the unconfirmed entries are held to the ceiling', count( $stillPending ) <= \Nino\Modules\Newsletter::PENDING_LIMIT );
+check( '...and what went is the oldest of them, not the newest', in_array( 'flood0@example.com', array_column( $afterFlood, 'email' ), true ) === false
+	&& in_array( 'last@example.com', array_column( $afterFlood, 'email' ), true ) === true );
+check( '...while the subscriber is still there - a ceiling on unconfirmed entries is not a ceiling on the list', in_array( 'keeper@example.com', array_column( $afterFlood, 'email' ), true ) === true );
+check( 'the stored list is a list again, with no gaps left by what was removed', array_keys( $afterFlood ) === range( 0, count( $afterFlood ) - 1 ) );
+
+echo "\n";
+
 
 ninoDone( $appData );

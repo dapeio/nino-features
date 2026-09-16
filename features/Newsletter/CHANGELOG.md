@@ -7,6 +7,44 @@ A release is the tag `newsletter-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **The subscriber list grew without an end, from requests anybody can
+  send.** The signup endpoint is public and unauthenticated, and
+  `\Nino\Filesystem::mutate()` rewrites the whole file on every post - but an
+  unconfirmed entry had neither an expiry nor a ceiling. Measured on 2000
+  posts with distinct addresses: 404 KB stored, 2000 pending, none of them
+  expiring, and the cost of one signup up from 0.97 ms to 5.87 ms because each
+  one reads and rewrites everything before it. That is quadratic, and nothing
+  in front of it counts requests - the per-ip cap in `\Nino\Mail` throttles
+  the confirmation mail, which is sent after the entry is already written.
+
+  An unconfirmed signup expires now, after seven days or whatever
+  `/nino/newsletter/pending-days` says; a confirm link that has sat unclicked
+  for a week is not going to be clicked, and `\Nino\Mail`'s own rate-limit
+  file drops its elapsed keys on write for the same reason. Under the expiry
+  there is a ceiling of 500, because a burst arrives faster than a week
+  passes: past it the oldest unconfirmed entry makes room for the newest. The
+  same 2000 posts now leave 500 entries and 101 KB, at a flat 2.8 ms.
+
+  A confirmed subscriber is never touched by either rule, and neither is an
+  entry from before the double opt-in flow. Under a flood a visitor's own
+  pending signup can be pushed out - they sign up again. Refusing new signups
+  while the list is full would be the other way round: anybody could close the
+  form for everybody.
+
+- **The export carried every subscriber's unsubscribe token.** `newsletter/
+  list` answered with the stored entries as they are, and
+  `Nino.admin.exportCsv()` writes the union of every row's keys - so the file
+  an operator opens in a spreadsheet, mails around and hands to a sending
+  provider had a `token` column. A token is not a field: presented as
+  `?unsubscribe=<token>` on the public route it takes that address off the
+  list, and as `?confirm=<token>` it confirms a signup, both with nothing else
+  to show. Whoever held that file could unsubscribe the whole list.
+
+  The panel never drew the token and deletes by address, so it is simply not
+  sent any more. It stays stored, or no link in a mail already sent would work
+  again. The `ip` stays in the list too: it is the record of a consent, which
+  is what it was stored for, and it does not let anybody act.
+
 - **A signup recorded the proxy's address as the subscriber's.** The `ip`
   field of a pending entry came from `\Nino\Http::getClientIp()` without the
   app data it needs to resolve one, so behind a reverse proxy every signup

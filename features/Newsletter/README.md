@@ -112,7 +112,7 @@ deactivating, reload the page.
 | --- | --- |
 | Navigation | **Newsletter** in the Content group (uri `newsletter`, position 65) |
 | Permission | `/_admin/newsletter/manage` on every action. A Content permission is offered on the roles tab of the Users panel; the **Editor** role does not receive it by itself - grant it there |
-| Actions | `newsletter/list` (`apiList()`): every recorded entry, pending and confirmed alike, most recent first · `newsletter/delete` (`apiDelete()`): one entry by `email`; `404` for an unknown address, `500` when the list could not be locked or written |
+| Actions | `newsletter/list` (`apiList()`): every recorded entry, pending and confirmed alike, most recent first, each one **without its token** - the panel never draws it and deletes by address, while `Nino.admin.exportCsv()` writes the union of every row's keys and would have put a live unsubscribe credential into a spreadsheet · `newsletter/delete` (`apiDelete()`): one entry by `email`; `404` for an unknown address, `500` when the list could not be locked or written |
 | Dashboard | `summary()` gives the Dashboard a tile with the count of entries, labelled `/_admin/dashboard/label/newsletter` |
 | Activity log | `log()` writes `Delete Newsletter Subscriber <email>` for every delete |
 | Assets | `assets/admin.js`, `assets/admin.css`, named through `\Nino\Admin\Panels::relative()` so they move with the directory |
@@ -159,17 +159,26 @@ activation - the wizard does not offer features.
 ## Configuration
 
 The feature declares no settings: `'settings' => []` in the manifest, and
-the Features panel shows no form for it. Two plain `config.php` keys are read
-by the class, each with a default:
+the Features panel shows no form for it. Three plain `config.php` keys are
+read by the class, each with a default:
 
 | Key | Default | Purpose |
 | --- | --- | --- |
 | `/nino/newsletter/page-template` | `/templates/page-newsletter` | the template `GET /.newsletter` renders |
 | `/nino/newsletter/confirm-template` | `/templates/mail-newsletter-confirm` | the confirmation mail's template |
+| `/nino/newsletter/pending-days` | `7` | how long an unconfirmed signup is kept |
 
-Point them at templates of your own when the copied ones are not what the
+Point the templates at ones of your own when the copied ones are not what the
 site needs; the copies themselves belong to the project after activation
 and are never replaced by an update.
+
+Raise the days for an audience that confirms slowly. Under that window sits a
+ceiling of 500 unconfirmed entries (`Newsletter::PENDING_LIMIT`), because a
+burst arrives faster than a week passes: past it the oldest unconfirmed entry
+makes room for the newest. Both rules exist because the signup endpoint is
+public and the file is rewritten whole on every post - without them 2000 posts
+with distinct addresses stored 404 KB that never expired, and took a signup
+from 0.97 ms to 5.87 ms. A confirmed subscriber is never touched by either.
 
 ## Data and restore
 

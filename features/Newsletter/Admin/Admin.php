@@ -101,7 +101,27 @@ namespace Nino\Modules\Newsletter {
 
 			$entries = \Nino\Filesystem::getFileContent( $appData, self::PATH, [] );
 
-			\Nino\Http::ok( $request, [ 'entries' => array_reverse( $entries ) ] );
+			/*	Without the token. It is not a field, it is a credential: presented
+				as ?unsubscribe=<token> on the public route it takes that address
+				off the list, and as ?confirm=<token> it confirms a signup, both
+				without anything else. The panel never draws it and deletes by
+				address, but Nino.admin.exportCsv() writes the union of every
+				row's keys - so it went into a file that gets opened in a
+				spreadsheet, mailed around and handed to a sending provider, and
+				whoever held that file could unsubscribe the whole list.
+
+				The ip stays: it is the record of a consent, which is what it was
+				stored for, and it does not let anybody act	*/
+			$listed = array_map(
+				static function( mixed $entry ): mixed {
+					if( is_array( $entry ) === true )
+						unset( $entry['token'] );
+					return $entry;
+				},
+				$entries
+			);
+
+			\Nino\Http::ok( $request, [ 'entries' => array_reverse( $listed ) ] );
 		}
 
 		/**
