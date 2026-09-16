@@ -334,6 +334,10 @@ echo "Pages no route can name, contributed under Seo::PAGES\n";
 	$pages[] = [ 'externalPath' => '/robots.txt' ];
 	$pages[] = [ 'externalPath' => '/_admin/x' ];
 	$pages[] = [ 'externalPath' => '/about' ];
+	// ...and one a contribution before it already carries: what is taken is
+	// keyed rather than scanned (see _contributed()), and a key that is a path
+	// has to behave like one - '/blog/first-light' is not the integer 0
+	$pages[] = [ 'externalPath' => '/blog/first-light', 'title' => 'Second try' ];
 	$pages[] = [ 'externalPath' => 'blog/no-slash' ];
 	$pages[] = 'not an entry at all';
 } );
@@ -360,6 +364,8 @@ check( 'this feature\'s own endpoints are refused the same way a route\'s would 
 check( '...and a tool uri too', in_array( 'https://example.com/_admin/x', $contributedLocs, true ) === false );
 check( 'a page a persisted route already carries is listed once, not twice',
 	count( array_keys( $contributedLocs, 'https://example.com/about', true ) ) === 1 );
+check( '...and so is one two contributions both name',
+	count( array_keys( $contributedLocs, 'https://example.com/blog/first-light', true ) ) === 1 );
 check( 'an entry that is not a path, or not an entry, is nothing',
 	in_array( 'https://example.com/blog/no-slash', $contributedLocs, true ) === false
 	&& in_array( 'https://example.comblog/no-slash', $contributedLocs, true ) === false );

@@ -3,6 +3,28 @@
 All notable changes to the SEO feature are documented in this file.
 A release is the tag `seo-<version>` of dapeio/nino-features.
 
+## Unreleased
+
+### Fixed
+
+- **Contributed pages were deduplicated by scanning a list.** `_contributed()`
+  kept the paths it had taken as a list and asked `in_array()` once per
+  contribution, so a site whose blog contributes n posts did on the order of
+  n²/2 string comparisons - on every page view that renders
+  `[seo-alternates]`, and on every sitemap, robots.txt and llms.txt. Measured
+  on this machine, per page view:
+
+  | posts | before | after |
+  | --- | --- | --- |
+  | 1000 | 3.5 ms | 1.8 ms |
+  | 3000 | 18.1 ms | 5.5 ms |
+  | 10000 | — | 17.8 ms |
+
+  Keyed instead of listed, so the cost grows with the posts rather than with
+  their square. What the deduplication does is unchanged: a contribution the
+  persisted routes already carry is still dropped, and so is one an earlier
+  contribution already named.
+
 ## 1.1.0 — 2026-09-12
 
 - **A feature can add the pages this one cannot find.** Both documents are
