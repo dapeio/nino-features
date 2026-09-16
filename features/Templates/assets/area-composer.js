@@ -181,6 +181,22 @@
 		return Object.keys( item && item.areas || {} );
 	}
 
+	/**
+	 *	The name of an area as the panel shows it.
+	 *
+	 *	A manifest carries both: 'label', the English name the server composes
+	 *	stored strings from, and 'labelKey', the same name as a fill key. The
+	 *	panel is the one place where the interface language wins, so it prefers
+	 *	the key and falls back to the label for a manifest without one.
+	 *
+	 *	@param		{Object}	area
+	 *
+	 *	@return		{string}
+	 */
+	function areaLabel( area ) {
+		return Nino.adminUi.text( area && area.labelKey || area && area.label || '' );
+	}
+
 	function componentDefinition( item, area, component ) {
 		return area.render && area.render[component.type] || item.componentCatalog[component.type];
 	}
@@ -201,25 +217,25 @@
 
 	/**
 	 *	Whether the dialog splits its configuration into a design step and a
-	 *	content step - see composer.js's own STEPS. True while a named-area
-	 *	preset is being inserted: the Design/Data switch an existing section is
-	 *	edited through is two steps of the wizard there, so nobody meets the
-	 *	whole wall of controls at once. An edit keeps the tabs
+	 *	content step - see composer.js's own STEPS. True for every named-area
+	 *	preset, on the way in and on the way back: deciding how a section looks
+	 *	and deciding what it says are two jobs, and one screen carrying both is
+	 *	the wall of controls this dialog was accused of being
 	 *
 	 *	@return		{boolean}
 	 */
 	function splitSteps() {
-		return active() && quickMode();
+		return active();
 	}
 
 	/**
 	 *	Which of the two the dialog is on: 'design' while the section's frame
 	 *	and its components are chosen, 'content' while they are filled. '' for
-	 *	the single-screen cases, which show both
+	 *	a preset without areas, whose one screen shows both
 	 *
 	 *	@return		{string}
 	 */
-	function insertStep() {
+	function areaStep() {
 		if( splitSteps() === false )
 			return '';
 		return pd.composer._step === 'content' ? 'content' : 'design';
@@ -310,6 +326,8 @@
 					result.push( {
 						area : areaKey, index : index, component : component.id, property : property,
 						slot : areaKey+ '.'+ component.id+ '.'+ property,
+						// The English label, not areaLabel(): this descriptor mirrors the
+						// one the server composes, and its text is stored with the slot
 						label : Nino.adminUi.text( area.label )+ ' · '+ Nino.adminUi.text( definition.label )+ ' · '+ Nino.adminUi.text( propertyDefinition.label ),
 						control : propertyDefinition.control, default : propertyDefinition.default || '',
 						width : propertyDefinition.width || 0, height : propertyDefinition.height || 0,
@@ -595,7 +613,6 @@
 
 	function renderAreaPanel( wrap, draft, item ) {
 		const keys = areaKeys( item );
-		const quick = quickMode();
 		if( !keys.includes( pd.areaComposer._areaKey ) ) pd.areaComposer._areaKey = keys[0];
 		const areaKey = pd.areaComposer._areaKey;
 		const area = item.areas[areaKey];
@@ -617,9 +634,9 @@
 			button.tabIndex = key === areaKey ? 0 : -1;
 			// The number and the name, and nothing under them: "Collection" or
 			// "Single" on every tab said what the editor below shows anyway
-			copy.append( node( 'strong', '', Nino.adminUi.text( item.areas[key].label ) ) );
+			copy.append( node( 'strong', '', areaLabel( item.areas[key] ) ) );
 			button.append( node( 'span', 'pd-v3-area-index', String( index + 1 ) ), copy );
-			button.addEventListener( 'click', function() { pd.composer.captureValues(); pd.areaComposer._areaKey = key; pd.composer.renderSettings() } );
+			button.addEventListener( 'click', function() { pd.composer.captureValues(); pd.areaComposer._areaKey = key; pd.composer.renderSettings(); pd.composer.refocusPreview() } );
 			tabs.appendChild( button );
 		} );
 		workspace.appendChild( tabs );
@@ -628,35 +645,14 @@
 		editor.setAttribute( 'role', 'tabpanel' );
 		editor.setAttribute( 'aria-labelledby', 'pd-v3-area-tab-'+ areaKey );
 
-		// The tab above it is lit and carries the same name, so the editor
-		// repeats nothing: what is left here is the Design/Data switch, and in
-		// the quick view there is not even that
-		const toolbar = node( 'div', 'pd-v3-area-heading' );
-		if( quick ) {
-			// No Design/Data switch here: on the way in, those two are the
-			// dialog's own steps (see splitSteps()), and a pair of tabs
-			// offering the step somebody just left is one control too many
-			if( insertStep() === 'design' )
-				renderDesign( editor, draft, item, areaKey, area, areaDraft );
-			else
-				renderQuickArea( editor, draft, item, areaKey, area, areaDraft );
-			workspace.appendChild( editor ); section.appendChild( workspace ); wrap.appendChild( section );
-			return;
-		}
-		const views = node( 'div', 'pd-v3-view-tabs' );
-		[ 'design', 'data' ].forEach( function( view ) {
-			const button = node( 'button', pd.areaComposer._view === view ? 'is-active' : '', view === 'data' ? Nino.content.getText('/_admin/templates/label/view-data') : Nino.content.getText('/_admin/templates/label/view-design') );
-			button.type = 'button';
-			button.setAttribute( 'role', 'tab' );
-			button.setAttribute( 'aria-selected', pd.areaComposer._view === view ? 'true' : 'false' );
-			button.addEventListener( 'click', function() { pd.composer.captureValues(); pd.areaComposer._view = view; pd.composer.renderSettings() } );
-			views.appendChild( button );
-		} );
-		views.setAttribute( 'role', 'tablist' );
-		views.setAttribute( 'aria-label', Nino.content.getText('/_admin/templates/label/area-editor').replace( '%s', Nino.adminUi.text( area.label ) ) );
-		toolbar.appendChild( views ); editor.appendChild( toolbar );
-		if( pd.areaComposer._view === 'data' ) renderData( editor, draft, item, areaKey, area, areaDraft );
-		else renderDesign( editor, draft, item, areaKey, area, areaDraft );
+		// The tab above it is lit and carries the same name, and the step the
+		// dialog is on says whether this is design or content - so the editor
+		// carries no heading of its own: a Design/Data switch here would offer
+		// the step somebody just left
+		if( areaStep() === 'design' )
+			renderDesign( editor, draft, item, areaKey, area, areaDraft );
+		else
+			renderQuickArea( editor, draft, item, areaKey, area, areaDraft );
 		workspace.appendChild( editor );
 		section.appendChild( workspace );
 		wrap.appendChild( section );
@@ -705,27 +701,6 @@
 		body.appendChild( list );
 		renderAddComponent( body, item, areaKey, area, areaDraft );
 		section.appendChild( body );
-	}
-
-	function renderData( section, draft, item, areaKey, area, areaDraft ) {
-		const body = node( 'div', 'pd-v3-area-body pd-v3-data' );
-		if( area.source === 'elements' ) renderCollectionSource( body, areaKey, areaDraft );
-
-		body.appendChild( sectionLabel( Nino.content.getText('/_admin/templates/label/data-bindings'), Nino.content.getText('/_admin/templates/hint/data-bindings') ) );
-		const bindings = node( 'div', 'pd-v3-bindings' );
-		areaDraft.components.forEach( function( component, index ) {
-			const definition = componentDefinition( item, area, component );
-			const group = node( 'article', 'pd-v3-binding-group' );
-			const heading = node( 'div', 'pd-v3-binding-heading' );
-			const headingCopy = node( 'span', 'pd-v3-binding-copy' );
-			headingCopy.append( node( 'strong', '', Nino.adminUi.text( definition.label ) ), node( 'code', '', component.id ) );
-			heading.append( node( 'span', 'pd-v3-binding-order', String( index + 1 ) ), headingCopy );
-			group.appendChild( heading );
-			renderBindingFields( group, draft, item, areaKey, area, areaDraft, component, index );
-			bindings.appendChild( group );
-		} );
-		if( areaDraft.components.length === 0 ) bindings.appendChild( node( 'p', 'nino-admin-hint', Nino.content.getText('/_admin/templates/empty/area-data') ) );
-		body.appendChild( bindings ); section.appendChild( body );
 	}
 
 	function bindSettings( wrap ) {
@@ -783,7 +758,7 @@
 		pd.composer.captureValues(); wrap.innerHTML = ''; wrap.classList.toggle( 'is-quick', quickMode() );
 		// The section's own frame is the design step's business, so the
 		// content step does not carry it a second time
-		if( insertStep() !== 'content' )
+		if( areaStep() !== 'content' )
 			renderSectionPanel( wrap, draft, item );
 		renderAreaPanel( wrap, draft, item ); bindSettings( wrap );
 	}
@@ -867,27 +842,27 @@
 			const areaDraft = draft.areas[areaKey];
 			areaDraft.components.forEach( function( component ) {
 				if( component.type === 'template' && !( component.bindings && component.bindings.path ) )
-					throw new Error( Nino.content.getText('/_admin/templates/error/choose-template').replace( '%s', Nino.adminUi.text( area.label ) ) );
+					throw new Error( Nino.content.getText('/_admin/templates/error/choose-template').replace( '%s', areaLabel( area ) ) );
 				const definition = componentDefinition( item, area, component );
 				Object.keys( definition.properties || {} ).forEach( function( property ) {
 					const source = bindingSource( component, property );
 					if( source === 'textfill' && !( pd.composer._textEntries || [] ).some( function( entry ) { return entry.key === component.bindings[property] } ) )
-						throw new Error( Nino.content.getText('/_admin/templates/error/choose-textfill').replace( '%s', Nino.adminUi.text( area.label )+ ' · '+ Nino.adminUi.text( definition.properties[property].label ) ) );
+						throw new Error( Nino.content.getText('/_admin/templates/error/choose-textfill').replace( '%s', areaLabel( area )+ ' · '+ Nino.adminUi.text( definition.properties[property].label ) ) );
 					if( source === 'image' && !( pd.sectionsUI._images || [] ).some( function( image ) { return image.uri === component.bindings[property] } ) )
-						throw new Error( Nino.content.getText('/_admin/templates/error/choose-slot').replace( '%s', Nino.adminUi.text( area.label ) ) );
+						throw new Error( Nino.content.getText('/_admin/templates/error/choose-slot').replace( '%s', areaLabel( area ) ) );
 				} );
 			} );
 			if( area.source !== 'elements' ) return;
-			if( !/^[a-z][a-z0-9_-]*$/.test( areaDraft.source.elementType ) ) throw new Error( Nino.content.getText('/_admin/templates/error/choose-type').replace( '%s', Nino.adminUi.text( area.label ) ) );
+			if( !/^[a-z][a-z0-9_-]*$/.test( areaDraft.source.elementType ) ) throw new Error( Nino.content.getText('/_admin/templates/error/choose-type').replace( '%s', areaLabel( area ) ) );
 			const existing = areaDraft.source.elementMode === 'existing' ? ( pd.sectionsUI._types || [] ).find( function( type ) { return type.type === areaDraft.source.elementType } ) : null;
-			if( areaDraft.source.elementMode === 'existing' && !existing ) throw new Error( Nino.content.getText('/_admin/templates/error/choose-existing-type').replace( '%s', Nino.adminUi.text( area.label ) ) );
+			if( areaDraft.source.elementMode === 'existing' && !existing ) throw new Error( Nino.content.getText('/_admin/templates/error/choose-existing-type').replace( '%s', areaLabel( area ) ) );
 			areaDraft.components.forEach( function( component ) {
 				const definition = componentDefinition( item, area, component );
 				Object.keys( definition.properties || {} ).forEach( function( property ) {
 					if( bindingSource( component, property ) !== 'field' ) return;
 					const model = existing ? existing.model : area.model;
 					const mapped = model && model[component.bindings[property]];
-					if( !mapped || ( mapped.type === 'image' ) !== ( definition.properties[property].fieldType === 'image' ) ) throw new Error( Nino.content.getText('/_admin/templates/error/map-fields').replace( '%s', Nino.adminUi.text( area.label ) ) );
+					if( !mapped || ( mapped.type === 'image' ) !== ( definition.properties[property].fieldType === 'image' ) ) throw new Error( Nino.content.getText('/_admin/templates/error/map-fields').replace( '%s', areaLabel( area ) ) );
 				} );
 			} );
 		} );
@@ -929,13 +904,31 @@
 
 	pd.areaComposer = {
 		_areaKey : '',
-		_view : 'design',
+
+		/**
+		 *	The area the preview frame puts in front: the one whose editor is
+		 *	open, and nothing at all for a preset that has no areas.
+		 *
+		 *	An area without components renders nothing, so there would be
+		 *	nothing left lit - a frame dimmed end to end reads as broken rather
+		 *	than as empty, and that is what the editor below already says
+		 *
+		 *	@return		{string}
+		 */
+		previewFocus : function() {
+			if( active() === false )
+				return '';
+			const areaKey = pd.areaComposer._areaKey;
+			const areaDraft = pd.composer._draft && pd.composer._draft.areas ? pd.composer._draft.areas[areaKey] : null;
+			return areaDraft && areaDraft.components && areaDraft.components.length ? areaKey : '';
+		},
 		splitSteps : splitSteps,
-		insertStep : insertStep,
+		areaStep : areaStep,
 		nextComponentId : nextComponentId,
 		moveComponent : moveComponent,
 		linkAccepted : linkAccepted,
 		areaKeys : areaKeys,
+		areaLabel : areaLabel,
 		reconcileAvailableCollections : function() {
 			const item = preset();
 			if( !item || Number( item.version ) !== 3 ) return;

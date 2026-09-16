@@ -48,7 +48,7 @@ Use HTTPS, keep developer accounts few and work from a recoverable project state
 3. In **Choose**, search or filter the fullscreen gallery and select a named-area preset from its real-markup preview. The library intentionally contains only the current version-3 contract. Reusable `.tpl` files do not appear as pseudo-sections; a supporting preset can expose them as a **Template** component inside one of its Areas.
 4. Continue to **Design** and give the section a meaningful ID such as `main-hero` or `services-overview`. This step holds the section's own frame - structure, background, layout - and each Area's component stack: add, reorder or remove components and choose their styles, against the live preview.
 5. Continue to **Configure & fill** for what the section says: the collection an Area reads from and every component's bindings. The section is inserted from here. Recommended text keys, an Element Type and image-slot definitions can be created in the same operation.
-6. After checking the real frontend, reopen the section with **Edit** when visual fine-tuning is needed. Edit exposes dimensions and spacing plus each Area's separate **Design** and **Data** views.
+6. After checking the real frontend, reopen the section with **Edit** when visual fine-tuning is needed. Edit walks the same **Design** and **Configure & fill** steps and skips the library; it additionally exposes dimensions and spacing on its design step.
 7. Open image slots or individual Elements entries in their panels when needed - a section's Elements note links straight into the Elements panel.
 8. Reorder the HTML and template-section cards and save the page template.
 9. Complete translations afterwards under Translations or Text.
@@ -245,7 +245,9 @@ recomposed.
 
 Every Area defines:
 
-- a stable semantic key and human label;
+- a stable semantic key, an English `label` and a `labelKey`: the label is what
+  the server composes stored strings from, the key is what the panel shows in
+  the interface language;
 - `source: single` or `source: elements`;
 - allowed component types and a maximum component count;
 - one or more safe Styles;
@@ -340,6 +342,7 @@ only ordinary relative URLs or the `http`, `https`, `mailto` and `tel` schemes.
     'areas' => [
         'heading' => [
             'label' => 'Title area',
+            'labelKey' => '/_admin/templates/area/title-area',
             'source' => 'single',
             'allowed' => [ 'title', 'subtitle', 'description' ],
             'container' => [ 'class' => 'nino-grid-100 nino-mb-3' ],
@@ -360,6 +363,7 @@ only ordinary relative URLs or the `http`, `https`, `mailto` and `tel` schemes.
         ],
         'articles' => [
             'label' => 'Articles',
+            'labelKey' => '/_admin/templates/area/articles',
             'source' => 'elements',
             'allowed' => [ 'image', 'title', 'description', 'button' ],
             'item' => [ 'tag' => 'article', 'class' => 'nino-article' ],

@@ -55,12 +55,12 @@ second Layout only when the source composition differs. Two-, three-, and
 four-column choices, alignment, density, and similar class-only changes belong
 in Area Styles. Do not create the Layout × Style cross-product.
 
-Add Section deliberately uses a reduced composer: Section ID, Layout,
-Background, collection choice, component order, and initial bindings share one
-flow. It omits dimensions/spacing, Area Style, and Component Style. Edit Section
-opens the complete model: frame fine tuning plus Design and Data views per Area.
-Design changes Style and ordered components. Data connects single components to
-Text/Image/template bindings or maps repeatable components to an Elements model.
+Both flows walk two configuration steps. Design carries the section's own frame
+and each Area's component stack - Area Style, ordered components, Component
+Style. Configure & fill carries what the section says: the collection an Area
+reads from, and every component's bindings to Text, Image or a template. Add
+Section deliberately reduces the first of the two to Section ID, Layout and
+Background; Edit Section additionally exposes dimensions and spacing there.
 
 The Add Section library contains version-3 named-area presets only. Add a
 focused semantic preset instead of duplicating it into several class-only
@@ -96,7 +96,11 @@ icons, nested structures, or project-specific behavior.
 	],
 	'areas' => [
 		'heading' => [
+			// label is the English name the server composes stored strings
+			// from, labelKey the same name as a fill key - the panel reads the
+			// key and shows an area in the interface language
 			'label' => 'Title area',
+			'labelKey' => '/_admin/templates/area/title-area',
 			'help' => 'The non-repeating introduction.',
 			'source' => 'single',
 			'allowed' => [ 'title', 'subtitle', 'description' ],
@@ -121,6 +125,7 @@ icons, nested structures, or project-specific behavior.
 		],
 		'services' => [
 			'label' => 'Services',
+			'labelKey' => '/_admin/templates/area/services',
 			'source' => 'elements',
 			'allowed' => [ 'image', 'title', 'description', 'button' ],
 			'item' => [ 'tag' => 'article', 'class' => 'nino-article' ],
@@ -163,6 +168,14 @@ icons, nested structures, or project-specific behavior.
 [[area:heading]]
 [[area:services]]
 ```
+
+Each area is named twice. `label` is English and MUST stay English: the server
+composes stored strings from it, and an image slot caption outlives the
+interface language that created it. `labelKey` is the same name as a fill key
+and is what the panel shows, so add it to `text/en_US.php` and `text/de_DE.php`
+beside the other `/_admin/templates/area/…` keys - the English value there and
+`label` MUST say the same thing. An area without a `labelKey` is shown under
+its English `label`.
 
 Generated elements MAY declare `data-*` attributes. `Nino.ui.js` is configured
 through them - `nino-autoheight` reads `data-autoheight-group`, `nino-slider` reads

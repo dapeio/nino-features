@@ -14,6 +14,7 @@
 	'areas' => [
 		'heading' => [
 			'label' => 'Title area',
+			'labelKey' => '/_admin/templates/area/title-area',
 			'help' => 'The non-repeating introduction above the filter and the grid.',
 			'source' => 'single',
 			'allowed' => [ 'title', 'subtitle', 'description' ],
@@ -33,6 +34,7 @@
 		],
 		'elements' => [
 			'label' => 'Elements',
+			'labelKey' => '/_admin/templates/area/elements',
 			'help' => 'Repeatable cards. Give "category" a fixed set of options in the type editor - the filter buttons above list exactly those, and a category with no entry yet is hidden. The button row follows this Area\'s collection automatically, including after it is rebound here.',
 			'source' => 'elements',
 			'allowed' => [ 'image', 'title', 'description', 'button' ],

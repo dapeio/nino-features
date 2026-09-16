@@ -48,7 +48,7 @@ Verwende HTTPS, halte die Zahl der Entwicklerkonten klein und arbeite mit einem 
 3. Durchsuche oder filtere unter **Choose** die große Galerie und wähle ein Preset mit benannten Areas anhand seiner echten Markup-Vorschau. Die Library enthält bewusst nur noch den aktuellen Version-3-Vertrag. Wiederverwendbare `.tpl`-Dateien erscheinen nicht als Pseudo-Sections; ein passendes Preset kann sie als **Template**-Komponente in einer Area anbieten.
 4. Wechsle zu **Design** und vergib eine sprechende ID wie `main-hero` oder `services-overview`. Dieser Schritt trägt den Rahmen der Section – Structure, Background, Layout – und den Komponentenstapel jeder Area: ergänzen, sortieren, entfernen und den Stil wählen, neben der Live-Vorschau.
 5. Wechsle weiter zu **Configure & fill** für das, was die Section sagt: die Collection, aus der eine Area liest, und die Bindings jeder Komponente. Von hier wird die Section eingefügt. Empfohlene Textschlüssel, ein Elementtyp und Bildplatz-Definitionen können dabei mit angelegt werden.
-6. Öffne die Section nach der Prüfung im echten Frontend bei Bedarf über **Edit**. Dort stehen Maße und Abstände sowie die getrennten **Design**- und **Data**-Ansichten jeder Area für die grafische Feinjustierung bereit.
+6. Öffne die Section nach der Prüfung im echten Frontend bei Bedarf über **Edit**. Edit durchläuft dieselben Schritte **Design** und **Configure & fill** und überspringt die Library; zusätzlich stehen im Design-Schritt Maße und Abstände für die grafische Feinjustierung bereit.
 7. Öffne bei Bedarf Bildplätze oder einzelne Elements-Einträge in ihren Panels – der Elements-Hinweis einer Section verlinkt direkt ins Panel Elemente.
 8. Ordne HTML- und Template-Section-Karten und speichere das Seitentemplate.
 9. Vervollständige Übersetzungen danach unter Übersetzungen oder Texte.
@@ -234,7 +234,9 @@ Der Benutzer kann trotzdem bei `auto` bleiben, sodass eine spätere Empfehlung
 
 Jede Area definiert:
 
-- einen stabilen semantischen Schlüssel und eine lesbare Bezeichnung;
+- einen stabilen semantischen Schlüssel, ein englisches `label` und einen
+  `labelKey`: aus dem Label setzt der Server gespeicherte Bezeichnungen
+  zusammen, den Schlüssel zeigt das Panel in der Oberflächensprache;
 - `source: single` oder `source: elements`;
 - die erlaubten Komponententypen und eine Höchstzahl an Komponenten;
 - einen oder mehrere sichere Styles;
@@ -270,7 +272,7 @@ wiederholte Elements-Area und eine optionale Action-Area:
 	],
 	'areas' => [
 		'heading' => [
-			'label' => 'Title area', 'source' => 'single',
+			'label' => 'Title area', 'labelKey' => '/_admin/templates/area/title-area', 'source' => 'single',
 			'allowed' => [ 'title', 'subtitle', 'description' ],
 			'container' => [ 'tag' => 'div', 'class' => 'nino-grid-100 nino-mb-3' ],
 			'styles' => [
@@ -284,7 +286,7 @@ wiederholte Elements-Area und eine optionale Action-Area:
 			'render' => [ 'title' => [ 'tag' => 'h2', 'class' => 'nino-section-title' ] ],
 		],
 		'articles' => [
-			'label' => 'Articles', 'source' => 'elements',
+			'label' => 'Articles', 'labelKey' => '/_admin/templates/area/articles', 'source' => 'elements',
 			'allowed' => [ 'image', 'title', 'description', 'button' ],
 			'item' => [ 'tag' => 'article', 'class' => 'nino-article nino-article--alt' ],
 			'styles' => [
@@ -308,7 +310,7 @@ wiederholte Elements-Area und eine optionale Action-Area:
 			'shortcode' => [ 'locale' => '', 'callback' => '', 'limit' => 6, 'query' => '' ],
 		],
 		'action' => [
-			'label' => 'Action area', 'source' => 'single',
+			'label' => 'Action area', 'labelKey' => '/_admin/templates/area/action-area', 'source' => 'single',
 			'allowed' => [ 'title', 'description', 'button', 'template' ],
 			'recommend' => [ 'components' => [] ],
 		],

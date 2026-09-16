@@ -14,6 +14,7 @@
 	'areas' => [
 		'heading' => [
 			'label' => 'Title area',
+			'labelKey' => '/_admin/templates/area/title-area',
 			'help' => 'The non-repeating introduction above the collection.',
 			'source' => 'single',
 			'allowed' => [ 'title', 'subtitle', 'description' ],
@@ -35,6 +36,7 @@
 		],
 		'articles' => [
 			'label' => 'Articles',
+			'labelKey' => '/_admin/templates/area/articles',
 			'help' => 'A repeatable collection. Add, reorder or remove the fields rendered for every article.',
 			'source' => 'elements',
 			'allowed' => [ 'image', 'title', 'description', 'button' ],
@@ -77,6 +79,7 @@
 		],
 		'action' => [
 			'label' => 'Action area',
+			'labelKey' => '/_admin/templates/area/action-area',
 			'help' => 'Optional non-repeating text and calls to action below the collection.',
 			'source' => 'single',
 			'allowed' => [ 'title', 'description', 'button', 'template' ],

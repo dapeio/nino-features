@@ -15,17 +15,38 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
   button on the design step opens the content step instead of inserting, and
   the stepper in the header counts to three.
 
-  The split is the Design/Data switch an existing section is edited through,
-  taken apart. That is why it is the insert flow only: whoever opens a section
-  that already exists usually wants one of the two and knows which, so the
-  edit keeps its tabs and its single screen. A preset without named areas
-  keeps the single configuration screen too - there is nothing to split - and
-  the middle step is not drawn for it.
+  Editing an existing section walks the same two configuration steps. It only
+  skips the library - the section already carries its preset - so its stepper
+  counts to two, and the Design/Data switch beside the area tabs is gone: the
+  step the dialog is on says which of the two this is, and a pair of tabs
+  offering the step somebody just left is one control too many. An edit keeps
+  its fine tuning, though: the frame controls the insert flow leaves out are
+  still on its design step. A preset without named areas keeps its single
+  configuration screen either way - there is nothing to split - and shows no
+  progress bar for one step.
 
   The section's own frame belongs to the design step and is not repeated on
   the content step; the area editor is on both, showing its components on the
   first and their bindings on the second. Three new words: the step's name,
   the button that leads into it, and the way back out of it.
+
+- **The preview dims every area but the one being edited.** The area tabs said
+  which part of the section the controls below belong to; the frame beside
+  them did not, and on a section with three areas the answer was a guess. Each
+  area of a preview carries a marker now - and only a preview: a stored
+  section is a file somebody reads and edits, and says nothing about a dialog
+  - so the panel can hold the open one at full strength and take the rest to
+  half. Switching tabs re-dims the frame from the markup it already has, with
+  no request to the server; an area with no components yet dims nothing, since
+  a frame dimmed end to end reads as broken rather than as empty.
+
+- **Areas are named in the interface language.** "Title area", "Articles",
+  "Intro" came out of the manifest in English wherever the panel showed them.
+  A manifest names its areas twice now: `label` stays the English name the
+  server composes stored strings from - an image slot caption outlives the
+  interface language that made it - and the new `labelKey` is the same name as
+  a fill key, which is what the panel reads. All 34 areas of the shipped
+  library carry both, in English and German.
 
 ### Fixed
 

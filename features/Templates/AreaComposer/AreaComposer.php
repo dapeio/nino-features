@@ -218,12 +218,12 @@ namespace Nino\Modules\Templates {
 			return $spec;
 		}
 
-		public static function compose( array $input, array $preset ): array {
+		public static function compose( array $input, array $preset, bool $preview = false ): array {
 			$spec = self::spec( $input, $preset );
 			$effective = self::effective( $spec, $preset );
 			$fields = self::fieldDescriptors( $spec, $preset );
 			$images = self::imageDescriptors( $spec, $preset, $effective );
-			$source = self::render( $spec, $preset, $effective, $fields, $images );
+			$source = self::render( $spec, $preset, $effective, $fields, $images, $preview );
 			$inspection = SectionDocument::inspectSection( $source );
 			if( $inspection['valid'] !== true )
 				throw new \InvalidArgumentException( 'composed preset is not one complete section: '. ( $inspection['error'] ?? 'invalid source' ) );
@@ -305,7 +305,12 @@ namespace Nino\Modules\Templates {
 			}
 
 			return [
+				// label is the English name the server composes stored strings
+				// from - an image slot caption outlives the panel that made it
+				// and must not depend on the interface language of the moment.
+				// labelKey is the same name as a fill key, for the panel alone.
 				'label' => trim( (string) ( $definition['label'] ?? '' ) ) ?: ucwords( str_replace( '-', ' ', $key ) ),
+				'labelKey' => self::fillKey( $definition['labelKey'] ?? '' ),
 				'help' => trim( (string) ( $definition['help'] ?? '' ) ),
 				'source' => $source,
 				'allowed' => $allowed,
@@ -490,7 +495,7 @@ namespace Nino\Modules\Templates {
 			return $result;
 		}
 
-		private static function render( array $spec, array $preset, array $effective, array $fields, array $images ): string {
+		private static function render( array $spec, array $preset, array $effective, array $fields, array $images, bool $preview = false ): string {
 			$fieldMap = array_column( $fields, 'key', 'slot' );
 			$imageMap = array_column( $images, 'key', 'slot' );
 			$replace = [ '[[section:id]]' => self::escape( $spec['id'] ) ];
@@ -505,7 +510,7 @@ namespace Nino\Modules\Templates {
 				if( $area['source'] === 'elements' )
 					$replace['[[section:collection:'. $areaKey. ']]'] = self::escape( $spec['areas'][$areaKey]['source']['elementType'] );
 			foreach( $preset['areas'] as $areaKey => $area ) {
-				$rendered = self::renderArea( $spec, $areaKey, $area, $effective['areas'][$areaKey], $fieldMap, $imageMap, $titleId );
+				$rendered = self::renderArea( $spec, $areaKey, $area, $effective['areas'][$areaKey], $fieldMap, $imageMap, $titleId, $preview );
 				// An Area nobody filled leaves its whole line rather than an empty
 				// one: a deliberately empty outro is normal, and the section source
 				// is read and edited by hand afterwards
@@ -546,7 +551,11 @@ namespace Nino\Modules\Templates {
 			return '<section'. $attributes. ">\n". self::indent( $inner, 1 ). '</section>';
 		}
 
-		private static function renderArea( array $spec, string $areaKey, array $area, array $effective, array $fields, array $images, string &$titleId ): string {
+		private static function renderArea( array $spec, string $areaKey, array $area, array $effective, array $fields, array $images, string &$titleId, bool $preview = false ): string {
+			// The panel dims every area but the one being edited, and only the
+			// preview carries the mark it needs for that - a stored section is
+			// the operator's own file and says nothing about a dialog
+			$marker = $preview === true ? ' data-pd-area="'. self::escape( $areaKey ). '"' : '';
 			$styleClass = (string) ( $area['styles'][$effective['style']]['class'] ?? '' );
 			$nodes = '';
 			foreach( $spec['areas'][$areaKey]['components'] as $node ) {
@@ -575,13 +584,13 @@ namespace Nino\Modules\Templates {
 			if( $area['source'] === 'single' ) {
 				$element = $area['container'];
 				$class = trim( $element['class']. ' '. $styleClass );
-				return '<'. $element['tag']. ( $class === '' ? '' : ' class="'. self::escape( $class ). '"' ). self::attributes( $element['data'], $spec['id'] ). '>'. $nodes. '</'. $element['tag']. '>';
+				return '<'. $element['tag']. ( $class === '' ? '' : ' class="'. self::escape( $class ). '"' ). self::attributes( $element['data'], $spec['id'] ). $marker. '>'. $nodes. '</'. $element['tag']. '>';
 			}
 			$source = $spec['areas'][$areaKey]['source'];
 			$shortcode = $source['shortcode'];
 			$element = $area['item'];
 			$class = trim( $element['class']. ' '. $styleClass );
-			$item = '<'. $element['tag']. ( $class === '' ? '' : ' class="'. self::escape( $class ). '"' ). self::attributes( $element['data'], $spec['id'] ). '>'. $nodes. '</'. $element['tag']. '>';
+			$item = '<'. $element['tag']. ( $class === '' ? '' : ' class="'. self::escape( $class ). '"' ). self::attributes( $element['data'], $spec['id'] ). $marker. '>'. $nodes. '</'. $element['tag']. '>';
 			return '[elements /'. $source['elementType']
 				. ' locale="'. self::escape( $shortcode['locale'] ). '" callback="'. self::escape( $shortcode['callback'] ). '"'
 				. ' limit="'. $shortcode['limit']. '" query="'. self::escape( $shortcode['query'] ). '"]'. $item. '[/elements]';
@@ -649,6 +658,19 @@ namespace Nino\Modules\Templates {
 				$result[$type] = $definition;
 			}
 			return $result;
+		}
+
+		/**
+		 *	A manifest's own fill key, or an empty string when it does not carry
+		 *	one - the panel then falls back to the English label
+		 *
+		 *	@param		mixed			$value
+		 *
+		 *	@return		string
+		 */
+		private static function fillKey( mixed $value ): string {
+			$key = trim( (string) $value );
+			return preg_match( '#^/[a-z0-9_][a-z0-9/_-]*$#', $key ) === 1 ? $key : '';
 		}
 
 		private static function styles( mixed $styles ): array {

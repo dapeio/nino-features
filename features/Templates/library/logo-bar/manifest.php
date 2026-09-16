@@ -15,6 +15,7 @@
 	'areas' => [
 		'heading' => [
 			'label' => 'Caption',
+			'labelKey' => '/_admin/templates/area/caption',
 			'help' => 'The short line introducing the logos, for example "Trusted by".',
 			'source' => 'single',
 			'allowed' => [ 'subtitle', 'title' ],
@@ -30,6 +31,7 @@
 		],
 		'logos' => [
 			'label' => 'Logos',
+			'labelKey' => '/_admin/templates/area/logos',
 			'help' => 'One entry per partner. Use the Image component for real logo files, or the Title component for plain names.',
 			'source' => 'elements',
 			'allowed' => [ 'image', 'title' ],

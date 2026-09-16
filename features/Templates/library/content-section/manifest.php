@@ -14,6 +14,7 @@
 	'areas' => [
 		'heading' => [
 			'label' => 'Heading',
+			'labelKey' => '/_admin/templates/area/heading',
 			'help' => 'The optional introduction above the main content.',
 			'source' => 'single',
 			'allowed' => [ 'title', 'subtitle', 'description' ],
@@ -31,6 +32,7 @@
 		],
 		'body' => [
 			'label' => 'Body',
+			'labelKey' => '/_admin/templates/area/body',
 			'help' => 'Ordered text, images or reusable templates.',
 			'source' => 'single',
 			'allowed' => [ 'title', 'subtitle', 'description', 'text', 'image', 'template' ],
@@ -41,6 +43,7 @@
 		],
 		'action' => [
 			'label' => 'Action',
+			'labelKey' => '/_admin/templates/area/action',
 			'help' => 'Optional calls to action below the content.',
 			'source' => 'single',
 			'allowed' => [ 'description', 'button', 'template' ],

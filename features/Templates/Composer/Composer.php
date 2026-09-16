@@ -253,23 +253,27 @@ namespace Nino\Modules\Templates {
 		 *	caller's vocabulary, not to the Area composer's.
 		 *
 		 *	@param		array			$input				Preset key plus the browser's own values
+		 *	@param		bool			$preview			Mark every area for the panel's preview frame
 		 *
 		 *	@return 	array								{ source, spec, fields, imageSlots, elementSchema, segment }
 		 */
-		public static function compose( array $input ): array {
+		public static function compose( array $input, bool $preview = false ): array {
 
 			$preset = Library::preset( (string) ( $input['preset'] ?? 'blank' ) );
 
 			if( $preset === null )
 				throw new \InvalidArgumentException( 'unknown section preset' );
 
-			return AreaComposer::compose( $input, $preset );
+			return AreaComposer::compose( $input, $preset, $preview );
 		}
 
 		/**
 		 * Render the real generated section with deterministic fixture content.
 		 * The preview is isolated in a sandboxed iframe by the client; no project
 		 * content is read and no Elements collection has to exist yet.
+		 *
+		 * Every area carries a data-pd-area marker here and nowhere else, so the
+		 * panel can dim the ones the operator is not editing.
 		 */
 		public static function preview( array $input ): ?string {
 
@@ -278,7 +282,7 @@ namespace Nino\Modules\Templates {
 			$input['elementType'] = (string) ( $input['elementType'] ?? 'preview-items' );
 
 			try {
-				$result = self::compose( $input );
+				$result = self::compose( $input, true );
 			} catch( \Throwable ) {
 				return null;
 			}

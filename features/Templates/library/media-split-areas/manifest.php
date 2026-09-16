@@ -15,6 +15,7 @@
 	'areas' => [
 		'media' => [
 			'label' => 'Media',
+			'labelKey' => '/_admin/templates/area/media',
 			'help' => 'The image column. Layout controls which side it occupies.',
 			'source' => 'single',
 			'allowed' => [ 'image' ],
@@ -26,6 +27,7 @@
 		],
 		'content' => [
 			'label' => 'Content',
+			'labelKey' => '/_admin/templates/area/content',
 			'help' => 'The ordered copy and actions beside the image.',
 			'source' => 'single',
 			'allowed' => [ 'title', 'subtitle', 'description', 'text', 'button', 'template' ],

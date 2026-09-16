@@ -14,6 +14,7 @@
 	'areas' => [
 		'include' => [
 			'label' => 'Template',
+			'labelKey' => '/_admin/templates/area/template',
 			'help' => 'Choose the reusable .tpl rendered at this position.',
 			'source' => 'single',
 			'allowed' => [ 'template' ],

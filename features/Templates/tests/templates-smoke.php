@@ -162,6 +162,31 @@ check( 'every preset has searchable metadata and a normalized v3 contract', arra
 	|| $preset['areas'] === []
 	|| $preset['layouts'] === []
 	|| $preset['componentCatalog'] === [] ) === [] );
+// The panel shows an area's name in the interface language, the server
+// composes stored strings from the English one - so every area carries
+// both, and the two have to say the same thing in English
+$areaLabelText = [];
+foreach( [ 'en_US', 'de_DE' ] as $areaLabelLocale )
+	$areaLabelText[$areaLabelLocale] = include __DIR__. '/../text/'. $areaLabelLocale. '.php';
+$areaLabelErrors = [];
+foreach( $presets as $areaLabelPreset => $areaLabelDefinition )
+	foreach( $areaLabelDefinition['areas'] as $areaLabelKey => $areaLabelArea ) {
+		$where = $areaLabelPreset. ':'. $areaLabelKey;
+		if( $areaLabelArea['labelKey'] === '' ) {
+			$areaLabelErrors[] = $where. ' has no labelKey';
+			continue;
+		}
+		foreach( $areaLabelText as $areaLabelLocale => $areaLabelFills )
+			if( isset( $areaLabelFills[ '[['. $areaLabelArea['labelKey']. ']]' ] ) === false )
+				$areaLabelErrors[] = $where. ' misses '. $areaLabelLocale;
+		if( ( $areaLabelText['en_US'][ '[['. $areaLabelArea['labelKey']. ']]' ] ?? null ) !== $areaLabelArea['label'] )
+			$areaLabelErrors[] = $where. ' English fill differs from its label';
+	}
+check( 'every area names itself twice - a fill key for the panel, English for what gets stored'. ( $areaLabelErrors === [] ? '' : ' - '. implode( ' | ', $areaLabelErrors ) ), $areaLabelErrors === [] );
+$areaLabelManifest = include __DIR__. '/../library/articles-grid/manifest.php';
+$areaLabelManifest['areas']['heading']['labelKey'] = 'Title area';
+check( 'an area label key that is not a fill key is dropped rather than shown as text', \Nino\Modules\Templates\AreaComposer::normalizePreset( 'bad-label-key', $areaLabelManifest, __DIR__. '/../library/articles-grid' )['areas']['heading']['labelKey'] === '' );
+
 $libraryRequest = response();
 \Nino\Modules\Templates\Library::apiList( $appData, $libraryRequest );
 $libraryBody = $libraryRequest['/nino/http/response']['body'];
@@ -429,6 +454,15 @@ $articlePreview = \Nino\Modules\Templates\Composer::preview( [
 	'areas' => [ 'articles' => [ 'style' => 'two-columns', 'source' => [ 'shortcode' => [ 'limit' => 2 ] ] ] ],
 ] );
 check( 'renders real preview HTML with deterministic text and image fixtures', $articlePreview !== null && str_contains( $articlePreview, '<section' ) && str_contains( $articlePreview, 'data:image/svg+xml' ) && str_contains( $articlePreview, 'Thoughtful item 1' ) );
+// The panel dims every area but the one being edited, and needs to be told
+// where each one begins - a stored section is a file somebody reads and
+// edits, and says nothing about a dialog
+check( 'a preview marks every area, the single one and each item of a collection', $articlePreview !== null
+	&& str_contains( $articlePreview, '<div class="nino-grid-100 nino-mb-3 nino-text-center" data-pd-area="heading">' )
+	&& substr_count( $articlePreview, 'data-pd-area="articles"' ) === 2
+	&& str_contains( $articlePreview, 'data-pd-area="action"' ) === false );
+check( '...and the section that gets stored carries none of them', str_contains( $articles['source'], 'data-pd-area' ) === false
+	&& str_contains( \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'articles-grid', 'pageId' => 'preview', 'id' => 'articles' ] )['source'], 'data-pd-area' ) === false );
 check( 'preview HTML contains no unresolved project shortcodes', $articlePreview !== null && str_contains( $articlePreview, '[[' ) === false && str_contains( $articlePreview, '[elements' ) === false && str_contains( $articlePreview, '[image' ) === false );
 $twoColumnPreview = \Nino\Modules\Templates\Composer::preview( [
 	'preset' => 'articles-grid', 'pageId' => 'preview', 'id' => 'two-columns',

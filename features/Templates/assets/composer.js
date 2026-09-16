@@ -104,15 +104,34 @@
 			.replace( /\s+(href|src|action|formaction|xlink:href)\s*=\s*javascript:[^\s>]*/gi, ' $1="#"' );
 	}
 
-	function previewDocument( markup ) {
+	/**
+	 *	The sandboxed preview page around one composed section.
+	 *
+	 *	focusArea is the area the panel is editing. The composer marks every
+	 *	area of a preview with data-pd-area, so naming one here dims the rest -
+	 *	the frame then says which part of the section the controls belong to
+	 *	without a second legend. A key that is not a slug is ignored rather
+	 *	than escaped: it could only come from a manifest, and every area key a
+	 *	manifest may declare is one.
+	 *
+	 *	@param		{string}	markup
+	 *	@param		{string}	[focusArea]
+	 *
+	 *	@return		{string}
+	 */
+	function previewDocument( markup, focusArea ) {
 		const origin = wn.location && /^https?:$/.test( wn.location.protocol ) ? wn.location.origin : '';
 		const projectSource = origin ? ' '+ origin : '';
 		const policy = "default-src 'none'; style-src 'unsafe-inline'; img-src data:"+ projectSource+ '; font-src data:'+ projectSource+ '; media-src'+ projectSource+ "; script-src 'none'; frame-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'";
 		const projectCss = escapeStyleText( pd._library && pd._library.previewCss || '' );
+		const focus = /^[a-z][a-z0-9-]*$/.test( focusArea || '' )
+			? '[data-pd-area]:not([data-pd-area="'+ focusArea+ '"]){opacity:.5}'
+			: '';
 		const previewCss = 'html,body{min-height:100%;margin:0}body{overflow:auto}a,button,input,textarea,select,form{pointer-events:none!important}'
 			+ '[data-cover-height="50"]{min-height:50vh!important}[data-cover-height="75"]{min-height:75vh!important}'
 			+ '[data-cover-height="90"]{min-height:90vh!important}[data-cover-height="100"]{min-height:100vh!important}'
-			+ '.nino-parallex>img{top:0!important;height:100%!important;transform:none!important}';
+			+ '.nino-parallex>img{top:0!important;height:100%!important;transform:none!important}'
+			+ focus;
 		return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="'+ escapeAttribute( policy )+ '">'
 			+ '<style>'+ projectCss+ '\n'+ previewCss+ '</style>'
 			+ '</head><body>'+ sanitizePreviewMarkup( markup )+ '</body></html>';
@@ -138,13 +157,14 @@
 		dc.querySelectorAll('.pd-real-preview').forEach( fitPreviewFrame );
 	}
 
-	function setPreviewFrame( frame, markup, title ) {
+	function setPreviewFrame( frame, markup, title, focusArea ) {
 		if( !frame )
 			return;
 		const iframe = frame.querySelector('iframe');
 		if( !iframe )
 			return;
-		const source = previewDocument( markup );
+		const source = previewDocument( markup, focusArea );
+		iframe._pdMarkup = markup;
 		iframe.title = title || Nino.content.getText('/_admin/templates/label/preview');
 		if( iframe._pdSource !== source ) {
 			iframe._pdSource = source;
@@ -284,7 +304,7 @@
 			pd.composer._includePath = null;
 			pd.composer._idTouched = context.spec !== null;
 			pd.composer._category = '*';
-			pd.composer._step = context.mode === 'replace' ? 'config' : 'library';
+			pd.composer._step = 'library';
 			pd.composer._contentValues = {};
 			pd.composer._contentEntries = {};
 			pd.composer._contentTouched = new Set();
@@ -295,10 +315,8 @@
 			pd.composer._textEntries = [];
 			pd.composer._textValues = {};
 			pd.composer._touched = new Set();
-			if( pd.areaComposer ) {
+			if( pd.areaComposer )
 				pd.areaComposer._areaKey = '';
-				pd.areaComposer._view = 'design';
-			}
 
 			const fallback = ( pd._library.presets.find( isAreaPreset ) || pd._library.presets[0] ).key;
 			const requested = context.spec && context.spec.preset ? context.spec.preset : fallback;
@@ -312,6 +330,11 @@
 			pd.composer._draft.id = context.spec && context.spec.id ? context.spec.id : suggestedId;
 			if( !context.spec )
 				pd.composer.resetGeneratedBindings();
+			// An edit skips the library - the section already carries its preset
+			// - and lands on the first configuration step, which is the preset's
+			// own answer: two steps for a named-area preset, one for the rest
+			if( context.mode === 'replace' )
+				pd.composer._step = pd.composer.firstConfigStep();
 			pd.composer._autoElementType = pd._current.pageId+ '-'+ pd.composer._draft.id;
 			if( !pd.composer._draft.elementType && moduleFor( pd.composer._draft.content ).source === 'elements' )
 				pd.composer._draft.elementType = pd.composer._autoElementType;
@@ -416,8 +439,46 @@
 			return pd.composer._step !== 'library';
 		},
 
+		/**
+		 *	The area the preview frame should put in front, '' for a preview
+		 *	that stays evenly lit - a preset without an area editor. Both
+		 *	configuration steps carry the area tabs, so both point the frame at
+		 *	the area whose editor is open
+		 *
+		 *	@return		{string}
+		 */
+		previewFocus : function() {
+			return pd.areaComposer && typeof pd.areaComposer.previewFocus === 'function' ? pd.areaComposer.previewFocus() : '';
+		},
+
+		/**
+		 *	Dim the preview for the area that just became the active one,
+		 *	reusing the markup the frame already has - switching tabs changes
+		 *	which area is in front, not what the section renders
+		 *
+		 *	@return		void
+		 */
+		refocusPreview : function() {
+			const frame = dc.getElementById('pd-composer-preview');
+			const iframe = frame ? frame.querySelector('iframe') : null;
+			if( !iframe || typeof iframe._pdMarkup !== 'string' )
+				return;
+			setPreviewFrame( frame, iframe._pdMarkup, iframe.title, pd.composer.previewFocus() );
+		},
+
+		/**
+		 *	The first configuration step for the preset in hand: 'design' where
+		 *	the dialog splits its controls in two, 'config' where they share
+		 *	one screen
+		 *
+		 *	@return		{string}
+		 */
+		firstConfigStep : function() {
+			return pd.composer.splitSteps() ? 'design' : 'config';
+		},
+
 		continueFromLibrary : function() {
-			pd.composer.setStep( pd.composer.splitSteps() ? 'design' : 'config' );
+			pd.composer.setStep( pd.composer.firstConfigStep() );
 		},
 
 		/**
@@ -514,10 +575,17 @@
 		 *	@return		void
 		 */
 		renderStepper : function() {
+			const editing = pd.composer._context && pd.composer._context.mode === 'replace';
 			const split = pd.composer.splitSteps();
 			const active = pd.composer._step === 'library' ? 'library' : ( pd.composer._step === 'design' ? 'design' : 'content' );
+			const steps = [ [ 'pd-step-library', 'library', !editing ], [ 'pd-step-design', 'design', split ], [ 'pd-step-content', 'content', true ] ];
+			// One step is no progress to show: an edit of a preset without areas
+			// has nothing to walk, and the bar says so by not being there
+			const stepper = dc.getElementById('pd-composer-stepper');
+			if( stepper )
+				stepper.classList.toggle( 'pd-hidden', steps.filter( function( entry ) { return entry[2] } ).length < 2 );
 			let number = 0;
-			[ [ 'pd-step-library', 'library', true ], [ 'pd-step-design', 'design', split ], [ 'pd-step-content', 'content', true ] ].forEach( function( entry ) {
+			steps.forEach( function( entry ) {
 				const item = dc.getElementById( entry[0] );
 				if( !item )
 					return;
@@ -964,7 +1032,7 @@
 				pd.api( 'library/preview', draft ).then( function( response ) {
 					if( token !== pd.composer._previewToken )
 						return;
-					setPreviewFrame( dc.getElementById('pd-composer-preview'), response.html || '', Nino.content.getText('/_admin/templates/label/live-preview').replace( '%s', Nino.adminUi.text( selectedPreset().name ) ) );
+					setPreviewFrame( dc.getElementById('pd-composer-preview'), response.html || '', Nino.content.getText('/_admin/templates/label/live-preview').replace( '%s', Nino.adminUi.text( selectedPreset().name ) ), pd.composer.previewFocus() );
 					status.textContent = Nino.content.getText('/_admin/templates/msg/current');
 				} ).catch( function( error ) {
 					if( token === pd.composer._previewToken )

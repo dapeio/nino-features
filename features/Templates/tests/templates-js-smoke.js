@@ -4,6 +4,8 @@
 
 'use strict';
 
+/* global require, __dirname, process */
+
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
@@ -33,7 +35,10 @@ const documentStub = {
 	querySelectorAll : function() { return [] },
 	createElement : function() { return {} },
 };
-const Nino = {
+// Assigned, not declared: Nino is the one global the panel scripts expect, and
+// the lint config knows it as one - a second declaration of the same name here
+// would be a redeclaration of it
+globalThis.Nino = {
 	events : { bindCallback : function( event, callback ) { if( event === 'ready' ) callbacks.push( callback ) } },
 	http : { sendRequest : function() {} },
 	// The panel says nothing in its own words any more - every string it
@@ -109,6 +114,11 @@ check( 'matches preset names and tags case-insensitively', matches( preset, 'acc
 check( 'applies category and text filters together', matches( preset, 'questions', 'Content' ) && !matches( preset, 'questions', 'Hero' ) );
 check( 'empty search keeps the selected category visible', matches( preset, '', 'Content' ) );
 check( 'the library accepts named-area presets only', Nino.admin.templates.composer.isAreaPreset( { version : 3 } ) && !Nino.admin.templates.composer.isAreaPreset( { version : 1 } ) );
+// A manifest names an area twice: labelKey for the panel, label for the
+// strings the server composes and stores (see AreaComposer::normalizeArea())
+check( 'an area is named in the interface language, and falls back to its English label', Nino.admin.templates.areaComposer.areaLabel( { label : 'Title area', labelKey : '/_admin/templates/area/title-area' } ) === '/_admin/templates/area/title-area'
+	&& Nino.admin.templates.areaComposer.areaLabel( { label : 'Title area', labelKey : '' } ) === 'Title area'
+	&& Nino.admin.templates.areaComposer.areaLabel( undefined ) === '' );
 Nino.admin.templates._library.previewCss = '/* project-preview-css */ .nino-section{display:block}';
 const previewDocument = Nino.admin.templates.composer.previewDocument( '<section id="sample"></section>' );
 check( 'preview documents inline the project bundle without another stylesheet request', previewDocument.includes( 'project-preview-css' )
@@ -118,6 +128,10 @@ check( 'preview documents inline the project bundle without another stylesheet r
 check( 'preview documents block scripts, forms and third-party network access', previewDocument.includes( 'Content-Security-Policy' ) && previewDocument.includes( "script-src 'none'" ) && previewDocument.includes( "form-action 'none'" ) );
 check( 'script-free previews reproduce configured cover heights and a stable parallax image', previewDocument.includes( '[data-cover-height="100"]{min-height:100vh!important}' )
 	&& previewDocument.includes( '.nino-parallex>img{top:0!important;height:100%!important;transform:none!important}' ) );
+const focusedPreview = Nino.admin.templates.composer.previewDocument( '<section id="sample"></section>', 'heading' );
+check( 'a preview dims every area but the one whose editor is open', focusedPreview.includes( '[data-pd-area]:not([data-pd-area="heading"]){opacity:.5}' )
+	&& previewDocument.includes( 'data-pd-area' ) === false );
+check( '...and an area name that is not a slug dims nothing rather than escaping into the stylesheet', Nino.admin.templates.composer.previewDocument( '<section></section>', 'heading"]){}*{display:none' ).includes( 'display:none' ) === false );
 const hostilePreview = Nino.admin.templates.composer.previewDocument( '<script>alert(1)</script><a href="javascript:alert(2)" onclick="alert(3)">Safe</a><a href=javascript:alert(4)>Still safe</a><img src=x onerror=alert(5)>' );
 check( 'preview documents remove executable markup before assigning srcdoc', !hostilePreview.includes( '<script' )
 	&& !hostilePreview.includes( 'javascript:' )
@@ -216,12 +230,13 @@ const movedComponents = Nino.admin.templates.areaComposer.moveComponent( compone
 check( 'ordered components move without mutating the previous state', movedComponents[1].id === 'image'
 	&& componentList[1].id === 'title-2'
 	&& Nino.admin.templates.areaComposer.moveComponent( componentList, 0, -1 ) === componentList );
-check( 'the editor keeps Area-level Design/Data views and independent collection creation', [ "[ 'design', 'data' ]", "'/_admin/templates/label/panel-areas'", 'collection.area', 'image.component' ].every( function( marker ) { return areaComposerSource.includes( marker ) } ) );
-check( 'Add Section uses a reduced combined component/data view while Edit keeps fine tuning', [
+check( 'one area editor per step, and no Design/Data switch left beside it', [ "'/_admin/templates/label/panel-areas'", 'collection.area', 'image.component' ].every( function( marker ) { return areaComposerSource.includes( marker ) } )
+	&& [ "[ 'design', 'data' ]", 'pd-v3-view-tabs', 'function renderData(' ].every( function( marker ) { return areaComposerSource.includes( marker ) === false } )
+	&& styleSource.includes( '.pd-v3-view-tabs' ) === false );
+check( 'Add Section still leaves out the fine tuning an Edit keeps', [
 	'function quickMode()', 'function renderQuickArea(', 'pd-v3-quick-components', "if( !quick ) {",
 ].every( function( marker ) { return areaComposerSource.includes( marker ) } )
-	&& composerSource.includes( "step === 'library' && pd.composer._context && pd.composer._context.mode === 'replace'" )
-	&& styleSource.includes( '.pd-composer-dialog.is-edit .pd-stepper' ) );
+	&& composerSource.includes( "step === 'library' && pd.composer._context && pd.composer._context.mode === 'replace'" ) );
 // The frame axes rather than their labels: the labels are fills now, and the
 // paths are what actually says which control the quick view leaves out
 check( 'Add Section omits visual frame and stack styles without dropping background or data controls', /if\( !quick \) \{[\s\S]*?'frame\.screen'[\s\S]*?'frame\.container'[\s\S]*?'frame\.margin'[\s\S]*?'frame\.padding'[\s\S]*?\}\s*grid\.appendChild\( formField\([\s\S]{0,120}?'frame\.background'/.test( areaComposerSource )
@@ -242,8 +257,9 @@ check( 'named Areas render as semantic tabs above one Design/Data workspace', [ 
 /*	Inserting a named-area preset walks three steps, not one: choose it,
 	design it, fill it. Deciding how a section looks and what it says are
 	two jobs, and one screen carrying both is the wall of controls this
-	dialog was accused of being. An edit keeps the Design/Data tabs - who
-	opens an existing section usually wants one of the two and knows which	*/
+	dialog was accused of being. An edit walks the same two configuration
+	steps - it only skips the library, because the section already has its
+	preset	*/
 const stepComposer = Nino.admin.templates.composer;
 const stepAreas = Nino.admin.templates.areaComposer;
 const stepLibrary = Nino.admin.templates._library.presets;
@@ -255,29 +271,49 @@ stepComposer._presetKey = 'v3-hero';
 stepComposer._step = 'library';
 check( 'inserting a named-area preset splits configuration in two', stepComposer.splitSteps() === true && stepComposer.nextStep() === 'design' );
 stepComposer._step = 'design';
-check( '...where the primary button opens the content step rather than inserting', stepComposer.nextStep() === 'content' && stepAreas.insertStep() === 'design' );
+check( '...where the primary button opens the content step rather than inserting', stepComposer.nextStep() === 'content' && stepAreas.areaStep() === 'design' );
+stepAreas._areaKey = 'heading';
+stepComposer._draft = { areas : { heading : { components : [ { id : 'title' } ] }, action : { components : [] } } };
+check( '...and the preview puts the area being designed in front', stepComposer.previewFocus() === 'heading' );
+check( '...unless that area renders nothing, where a frame dimmed end to end would only read as broken', ( function() {
+	stepAreas._areaKey = 'action';
+	const empty = stepComposer.previewFocus() === '';
+	stepAreas._areaKey = 'heading';
+	return empty;
+} )() );
 stepComposer._step = 'content';
-check( '...and the content step is the one that inserts', stepComposer.nextStep() === '' && stepAreas.insertStep() === 'content' );
+check( '...and the content step is the one that inserts', stepComposer.nextStep() === '' && stepAreas.areaStep() === 'content' );
+check( '...where the area tabs stay, and the preview keeps following them', stepComposer.previewFocus() === 'heading' );
 
 stepComposer._presetKey = 'v1-plain';
 stepComposer._step = 'library';
 check( 'a preset without areas keeps its single configuration screen', stepComposer.splitSteps() === false
-	&& stepComposer.nextStep() === 'config' && stepAreas.insertStep() === '' );
+	&& stepComposer.nextStep() === 'config' && stepAreas.areaStep() === '' );
 stepComposer._step = 'config';
 check( '...which is the one that inserts', stepComposer.nextStep() === '' );
 
 stepComposer._presetKey = 'v3-hero';
 stepComposer._context = { mode : 'replace' };
-stepComposer._step = 'config';
-check( 'an edit keeps the Design/Data tabs instead of the steps', stepComposer.splitSteps() === false
-	&& stepAreas.insertStep() === '' && stepComposer.nextStep() === '' );
+stepComposer._step = 'design';
+check( 'an edit walks the same two steps, starting at the first one', stepComposer.splitSteps() === true
+	&& stepComposer.firstConfigStep() === 'design'
+	&& stepAreas.areaStep() === 'design' && stepComposer.nextStep() === 'content' );
+stepComposer._step = 'content';
+check( '...and the content step is the one that updates', stepComposer.nextStep() === '' && stepAreas.areaStep() === 'content' );
+check( '...while an edit without areas keeps its one screen, and shows no progress for it', ( function() {
+	stepComposer._presetKey = 'v1-plain';
+	const single = stepComposer.firstConfigStep() === 'config' && stepComposer.splitSteps() === false;
+	stepComposer._presetKey = 'v3-hero';
+	return single;
+} )() && composerSource.includes( "stepper.classList.toggle( 'pd-hidden', steps.filter( function( entry ) { return entry[2] } ).length < 2 )" ) );
 
-check( 'the section frame belongs to the design step, the area editor to both', areaComposerSource.includes( "if( insertStep() !== 'content' )" )
-	&& /if\( insertStep\(\) === 'design' \)\s*\n\s*renderDesign\(/.test( areaComposerSource ) );
+check( 'the section frame belongs to the design step, the area editor to both', areaComposerSource.includes( "if( areaStep() !== 'content' )" )
+	&& /if\( areaStep\(\) === 'design' \)\s*\n\s*renderDesign\(/.test( areaComposerSource ) );
 check( 'every configuration step answers the one test the renderers ask', composerSource.includes( "return pd.composer._step !== 'library';" )
 	&& composerSource.includes( "_step === 'config'" ) === false );
 
 Nino.admin.templates._library.presets = stepLibrary;
+stepComposer._draft = null;
 stepComposer._context = null;
 stepComposer._step = 'library';
 check( 'the background image offers a fixed value next to the two slot choices', areaComposerSource.includes( "{ value : 'fixed', label : Nino.content.getText('/_admin/templates/label/value-fixed') }" )

@@ -15,6 +15,7 @@
 	'areas' => [
 		'heading' => [
 			'label' => 'Title area',
+			'labelKey' => '/_admin/templates/area/title-area',
 			'help' => 'The introduction above the steps.',
 			'source' => 'single',
 			'allowed' => [ 'title', 'subtitle', 'description' ],
@@ -31,6 +32,7 @@
 		],
 		'steps' => [
 			'label' => 'Steps',
+			'labelKey' => '/_admin/templates/area/steps',
 			'help' => 'One entry per step. The step number is drawn by the ordered list itself, so it is not part of the content.',
 			'source' => 'elements',
 			'allowed' => [ 'title', 'description', 'text' ],

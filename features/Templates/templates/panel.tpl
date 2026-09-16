@@ -80,7 +80,7 @@
 <dialog id="pd-composer" class="pd-dialog pd-composer-dialog">
 	<form method="dialog" class="pd-dialog-shell" id="pd-composer-form">
 		<header class="pd-dialog-header">
-			<div class="pd-composer-heading"><div><span class="pd-eyebrow">[[/_admin/templates/label/section-composer]]</span><h2 id="pd-composer-title">[[/_admin/templates/label/composer-add]]</h2></div><ol class="pd-stepper" aria-label="[[/_admin/templates/label/composer-progress]]"><li id="pd-step-library" class="is-active"><span>1</span>[[/_admin/templates/step/choose]]</li><li id="pd-step-design" class="pd-hidden"><span>2</span>[[/_admin/templates/step/design]]</li><li id="pd-step-content"><span>2</span>[[/_admin/templates/step/configure]]</li></ol></div>
+			<div class="pd-composer-heading"><div><span class="pd-eyebrow">[[/_admin/templates/label/section-composer]]</span><h2 id="pd-composer-title">[[/_admin/templates/label/composer-add]]</h2></div><ol id="pd-composer-stepper" class="pd-stepper" aria-label="[[/_admin/templates/label/composer-progress]]"><li id="pd-step-library" class="is-active"><span>1</span>[[/_admin/templates/step/choose]]</li><li id="pd-step-design" class="pd-hidden"><span>2</span>[[/_admin/templates/step/design]]</li><li id="pd-step-content"><span>2</span>[[/_admin/templates/step/configure]]</li></ol></div>
 			<button type="button" class="pd-icon-button pd-dialog-close" aria-label="[[/_admin/templates/label/close]]"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
 		</header>
 		<div class="pd-composer-body">

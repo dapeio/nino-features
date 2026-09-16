@@ -61,9 +61,9 @@ too.
 
 ## Tests
 
-`tests/templates-smoke.php` (157 checks) covers the panel, the document model,
+`tests/templates-smoke.php` (163 checks) covers the panel, the document model,
 the composer and the area model against a real kernel.
-`tests/templates-js-smoke.js` (79 checks) covers the client-side model helpers
+`tests/templates-js-smoke.js` (95 checks) covers the client-side model helpers
 and the panel's own conventions. `tests/demo-catalogue-smoke.php` (21 checks)
 holds the installer's hidden `.demo-catalogue` page to showing every preset
 this feature ships.

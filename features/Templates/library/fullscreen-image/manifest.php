@@ -23,6 +23,7 @@
 	'areas' => [
 		'content' => [
 			'label' => 'Title content',
+			'labelKey' => '/_admin/templates/area/title-content',
 			'help' => 'The ordered content displayed over the image.',
 			'source' => 'single',
 			'allowed' => [ 'title', 'subtitle', 'description', 'button', 'template' ],

@@ -15,6 +15,7 @@
 	'areas' => [
 		'content' => [
 			'label' => 'Message',
+			'labelKey' => '/_admin/templates/area/message',
 			'help' => 'The reason to act, in one or two lines.',
 			'source' => 'single',
 			'allowed' => [ 'title', 'subtitle', 'description' ],
@@ -31,6 +32,7 @@
 		],
 		'actions' => [
 			'label' => 'Actions',
+			'labelKey' => '/_admin/templates/area/actions',
 			'help' => 'One primary button, optionally a quieter second one.',
 			'source' => 'single',
 			'allowed' => [ 'button', 'description', 'template' ],

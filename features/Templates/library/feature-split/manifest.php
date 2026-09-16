@@ -15,6 +15,7 @@
 	'areas' => [
 		'content' => [
 			'label' => 'Content',
+			'labelKey' => '/_admin/templates/area/content',
 			'help' => 'The copy above the checked list.',
 			'source' => 'single',
 			'allowed' => [ 'title', 'subtitle', 'description' ],
@@ -30,6 +31,7 @@
 		],
 		'features' => [
 			'label' => 'Checklist',
+			'labelKey' => '/_admin/templates/area/checklist',
 			'help' => 'One entry per line. The check mark comes from the list, not from the content.',
 			'source' => 'elements',
 			'allowed' => [ 'text', 'title' ],
@@ -46,6 +48,7 @@
 		],
 		'media' => [
 			'label' => 'Image',
+			'labelKey' => '/_admin/templates/area/image',
 			'help' => 'The image column. Layout controls which side it occupies.',
 			'source' => 'single',
 			'allowed' => [ 'image' ],

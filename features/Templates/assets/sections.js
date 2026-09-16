@@ -720,6 +720,8 @@
 				if( area.source !== 'single' || !spec.areas[areaKey] ) continue;
 				for( const component of spec.areas[areaKey].components || [] ) {
 					if( component.type === 'image' && component.bindings && component.bindings.src === uri && uri === generatedPrefix+ component.id )
+						// area.label, not its fill key: this caption is stored with the
+						// image slot and outlives the interface language that made it
 						return { preset : spec.preset, slot : areaKey+ '.'+ component.id+ '.src', area : areaKey, component : component.id, property : 'src', uri : uri, label : Nino.adminUi.text( area.label )+ ' · '+ Nino.content.getText('/_admin/templates/label/image') };
 				}
 			}
