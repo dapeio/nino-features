@@ -13,7 +13,6 @@
 		shortcode and replaced with nothing - in both languages, on both paths.
 		A .js file is a static asset and is never rendered, so the token is
 		safe here and the fills carry a %s.	*/
-	const SHORTCODE = '[template]';
 
 	const pd = Nino.admin.templates;
 	// Scripts are still removed and denied by CSP. allow-scripts only prevents
@@ -246,6 +245,8 @@
 		_presetKey : null,
 		_includePath : null,
 		_category : '*',
+		_libraryCards : {},
+		_librarySignature : null,
 		_draft : null,
 		_step : 'library',
 		_autoElementType : '',
@@ -288,8 +289,6 @@
 		categoryLabel : function( category ) {
 			if( category === '*' )
 				return Nino.content.getText('/_admin/templates/label/category-all');
-			if( category === 'tpl' )
-				return Nino.content.getText('/_admin/templates/label/category-templates');
 			return category;
 		},
 
@@ -609,19 +608,14 @@
 		renderCategories : function() {
 			const wrap = dc.getElementById('pd-library-categories');
 			wrap.innerHTML = '';
-			const includes = [];
 			const scopedPresets = pd._library.presets.filter( isAreaPreset );
-			// '*' and 'tpl' are this panel's own two chips rather than a preset's
-			// category, so they are slugs: they are compared as well as shown,
-			// and a comparison against a translated word would hold in one
-			// language only. The rest come from the section library's manifests
+			// '*' is this panel's own chip rather than a preset's category, so it
+			// is a slug: it is compared as well as shown, and a comparison
+			// against a translated word would hold in one language only. The
+			// rest come from the section library's manifests
 			const categories = [ '*' ].concat( Array.from( new Set( scopedPresets.map( function( preset ) { return preset.category } ) ) ).sort() );
-			if( includes.length && categories.includes('tpl') === false )
-				categories.push('tpl');
 			categories.forEach( function( category ) {
-				const count = category === '*'
-					? scopedPresets.length + includes.length
-					: ( category === 'tpl' ? includes.length : scopedPresets.filter( function( preset ) { return preset.category === category } ).length );
+				const count = category === '*' ? scopedPresets.length : scopedPresets.filter( function( preset ) { return preset.category === category } ).length;
 				const button = element( 'button', 'pd-chip'+ ( pd.composer._category === category ? ' is-active' : '' ) );
 				button.type = 'button';
 				button.append( element( 'span', '', pd.composer.categoryLabel( category ) ), element( 'small', '', String( count ) ) );
@@ -634,24 +628,74 @@
 			} );
 		},
 
+		/**
+		 *	One card per preset, built once and afterwards only shown or hidden.
+		 *
+		 *	A card does not depend on the search text - only on whether it
+		 *	matches it - but the gallery used to be emptied and rebuilt on every
+		 *	keystroke, and every rebuilt card carried a fresh <iframe> whose
+		 *	srcdoc embeds the whole project stylesheet and its base64 fonts.
+		 *	Typing five letters over the shipped library of seventeen wrote 29
+		 *	preview documents, 2.8 MB of them, and 230 ms of main thread. Now it
+		 *	toggles a class.
+		 *
+		 *	@return		void
+		 */
 		renderLibrary : function() {
 			const wrap = dc.getElementById('pd-library-list');
 			const search = dc.getElementById('pd-library-search');
 			if( !wrap || !search )
 				return;
-			const presets = pd._library.presets.filter( function( preset ) { return isAreaPreset( preset ) && matchesPreset( preset, search.value, pd.composer._category ) } );
-			const includes = [];
-			wrap.innerHTML = '';
-			if( presets.length === 0 && includes.length === 0 ) {
-				const empty = element( 'div', 'pd-library-empty' );
-				empty.append( element( 'strong', '', Nino.content.getText('/_admin/templates/empty/library') ), element( 'p', '', Nino.content.getText('/_admin/templates/empty/library-detail') ) );
-				wrap.appendChild( empty );
-				return;
-			}
 
-			presets.forEach( function( preset ) {
+			pd.composer.buildLibrary( wrap );
+
+			let shown = 0;
+			pd._library.presets.forEach( function( preset ) {
+				const card = pd.composer._libraryCards[preset.key];
+				if( !card )
+					return;
+				const match = isAreaPreset( preset ) && matchesPreset( preset, search.value, pd.composer._category );
 				const active = pd.composer._includePath === null && preset.key === pd.composer._presetKey;
-				const card = element( 'article', 'pd-preset'+ ( active ? ' is-active' : '' ) );
+				card.classList.toggle( 'pd-hidden', match === false );
+				card.classList.toggle( 'is-active', active );
+				const choose = card.querySelector('.pd-preset-select');
+				if( choose )
+					choose.setAttribute( 'aria-pressed', active ? 'true' : 'false' );
+				if( match )
+					shown++;
+			} );
+
+			const empty = wrap.querySelector('.pd-library-empty');
+			if( empty )
+				empty.classList.toggle( 'pd-hidden', shown > 0 );
+
+			wn.requestAnimationFrame( fitPreviewFrames );
+		},
+
+		/**
+		 *	Fill the gallery, once.
+		 *
+		 *	Rebuilt when the library itself changed - a feature installed while
+		 *	the panel is open reloads the presets - and when the workbench built
+		 *	the shell again, which leaves the cached cards outside the new list
+		 *	element. Both are read off what is there rather than announced.
+		 *
+		 *	@param		{Element}	wrap
+		 *
+		 *	@return		void
+		 */
+		buildLibrary : function( wrap ) {
+			const signature = pd._library.presets.map( function( preset ) { return preset.key } ).join('|');
+			const first = pd._library.presets.length ? pd.composer._libraryCards[ pd._library.presets[0].key ] : null;
+			if( pd.composer._librarySignature === signature && first && first.parentNode === wrap )
+				return;
+
+			pd.composer._libraryCards = {};
+			pd.composer._librarySignature = signature;
+			wrap.innerHTML = '';
+
+			pd._library.presets.forEach( function( preset ) {
+				const card = element( 'article', 'pd-preset' );
 				const frame = element( 'div', 'pd-real-preview' );
 				// One viewport for every card: a gallery of tiles that are all
 				// the same size compares presets, one of tiles in six heights
@@ -679,41 +723,17 @@
 				const choose = element( 'button', 'pd-preset-select' );
 				choose.type = 'button';
 				choose.setAttribute( 'aria-label', Nino.content.getText('/_admin/templates/label/choose').replace( '%s', Nino.adminUi.text( preset.name ) ) );
-				choose.setAttribute( 'aria-pressed', active ? 'true' : 'false' );
 				choose.addEventListener( 'click', function() { pd.composer.selectPreset( preset.key ) } );
 				card.appendChild( choose );
+
 				wrap.appendChild( card );
+				pd.composer._libraryCards[preset.key] = card;
 				setPreviewFrame( frame, preset.preview || '', Nino.content.getText('/_admin/templates/label/preset-preview').replace( '%s', Nino.adminUi.text( preset.name ) ) );
 			} );
-			includes.forEach( function( include ) {
-				const active = include.path === pd.composer._includePath;
-				const card = element( 'article', 'pd-preset pd-template-preset'+ ( active ? ' is-active' : '' ) );
-				const visual = element( 'div', 'pd-template-library-preview' );
-				visual.append(
-					element( 'span', 'pd-template-library-icon', 'TPL' ),
-					element( 'code', '', '[template '+ include.path+ ']' )
-				);
-				card.appendChild( visual );
 
-				const copy = element( 'div', 'pd-preset-copy' );
-				const meta = element( 'div', 'pd-preset-meta' );
-				meta.append( element( 'span', 'pd-preset-category', Nino.content.getText('/_admin/templates/label/category-template') ), element( 'span', '', pd.includeKind( include.kind ) ) );
-				copy.append(
-					meta,
-					element( 'strong', '', include.name+ '.tpl' ),
-					element( 'p', '', Nino.content.getText('/_admin/templates/hint/include-card').replace( '%s', SHORTCODE ) )
-				);
-				card.appendChild( copy );
-
-				const choose = element( 'button', 'pd-preset-select' );
-				choose.type = 'button';
-				choose.setAttribute( 'aria-label', Nino.content.getText('/_admin/templates/label/choose').replace( '%s', include.name+ '.tpl' ) );
-				choose.setAttribute( 'aria-pressed', active ? 'true' : 'false' );
-				choose.addEventListener( 'click', function() { pd.composer.selectInclude( include.path ) } );
-				card.appendChild( choose );
-				wrap.appendChild( card );
-			} );
-			wn.requestAnimationFrame( fitPreviewFrames );
+			const empty = element( 'div', 'pd-library-empty pd-hidden' );
+			empty.append( element( 'strong', '', Nino.content.getText('/_admin/templates/empty/library') ), element( 'p', '', Nino.content.getText('/_admin/templates/empty/library-detail') ) );
+			wrap.appendChild( empty );
 		},
 
 		renderConfiguration : function() {

@@ -7,6 +7,22 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The section library is built once, not once per keystroke.** A card does
+  not depend on the search text, only on whether it matches it - but the
+  gallery was emptied and rebuilt on every `input` event, and every rebuilt
+  card carried a fresh `<iframe>` whose `srcdoc` embeds the whole project
+  stylesheet and its base64 fonts. Typing five letters over the seventeen
+  shipped presets wrote 29 preview documents, 2.8 MB of them, and 230 ms of
+  main thread. Measured again after: no document written at all, 1 ms. The
+  cards are built once and the filter toggles a class; they are rebuilt only
+  when the library itself changed or the workbench built the shell again
+  around them, both read off what is there rather than announced.
+
+  The include gallery went with it. It was a loop over `const includes = []` -
+  a literal empty array, unreachable since every preset is version 3 - and the
+  `tpl` category chip it fed was counted and never drawn. The library says
+  what it is by having no code for the other thing.
+
 - **Inserting a section is three steps now: choose, design, fill.** The dialog
   put everything after the library on one screen - the section's frame, its
   components and every field they bind to - and that screen is the wall of

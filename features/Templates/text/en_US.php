@@ -46,7 +46,6 @@ return [
 	'[[/_admin/templates/label/cardstyle]]'           	=> 'Card style',
 	'[[/_admin/templates/label/category-all]]'        	=> 'All',
 	'[[/_admin/templates/label/category-template]]'   	=> 'Template',
-	'[[/_admin/templates/label/category-templates]]'  	=> 'Templates',
 	'[[/_admin/templates/label/change-preset]]'       	=> 'Change preset',
 	'[[/_admin/templates/label/choose]]'              	=> 'Choose %s',
 	'[[/_admin/templates/label/choose-collection]]'   	=> 'Choose collection',

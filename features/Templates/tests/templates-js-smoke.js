@@ -107,9 +107,9 @@ console.log('\nSection Library filtering');
 
 const matches = Nino.admin.templates.composer.matchesPreset;
 const preset = { name : 'FAQ — Accordion', description : 'Questions and answers', category : 'Content', tags : [ 'faq', 'support' ] };
-// '*' rather than 'All': the two chips this panel adds itself are slugs, so
-// the comparison holds in every interface language (see composer.js's
-// categoryLabel(), which is what names them on screen)
+// '*' rather than 'All': the one chip this panel adds itself is a slug, so the
+// comparison holds in every interface language (see composer.js's
+// categoryLabel(), which is what names it on screen)
 check( 'matches preset names and tags case-insensitively', matches( preset, 'accordion', '*' ) && matches( preset, 'SUPPORT', '*' ) );
 check( 'applies category and text filters together', matches( preset, 'questions', 'Content' ) && !matches( preset, 'questions', 'Hero' ) );
 check( 'empty search keeps the selected category visible', matches( preset, '', 'Content' ) );
@@ -142,6 +142,18 @@ const areaComposerSource = fs.readFileSync( path.join( FEATURE, 'assets/area-com
 const sectionsSource = fs.readFileSync( path.join( FEATURE, 'assets/sections.js' ), 'utf8' );
 const scriptSource = fs.readFileSync( path.join( FEATURE, 'assets/script.js' ), 'utf8' );
 const styleSource = fs.readFileSync( path.join( FEATURE, 'assets/style.css' ), 'utf8' );
+
+/*	A card does not depend on the search text, only on whether it matches it -
+	so the gallery is built once and afterwards only shows and hides. It used
+	to be emptied and rebuilt per keystroke, and each rebuilt card carried a
+	fresh <iframe> whose srcdoc embeds the whole project stylesheet: five
+	letters over the shipped seventeen wrote 2.8 MB and 230 ms. The dom this
+	file stands up has no layout, so what it can hold is the shape; the effect
+	was measured in a browser	*/
+check( 'the gallery is filled once and filtered by class from then on', composerSource.includes( 'pd.composer.buildLibrary( wrap )' )
+	&& /renderLibrary : function\(\)[\s\S]*?card\.classList\.toggle\( 'pd-hidden'/.test( composerSource )
+	&& /renderLibrary : function\(\)[\s\S]*?\},/.exec( composerSource )[0].includes( "wrap.innerHTML = ''" ) === false );
+check( '...and rebuilds only when the library itself changed, or the shell was built again around it', composerSource.includes( 'pd.composer._librarySignature === signature && first && first.parentNode === wrap' ) );
 const ninoCssSource = fs.readFileSync( path.join( NINO, '_nino/Nino.css' ), 'utf8' );
 const ninoAdminCssSource = fs.readFileSync( path.join( NINO, '_admin/assets/style.css' ), 'utf8' );
 const ninoUiJsSource = fs.readFileSync( path.join( NINO, '_nino/Nino.ui.js' ), 'utf8' );
@@ -186,7 +198,14 @@ check( 'template VPA shares the labeled settings row and uses joined controls', 
 	&& templateMarkup.includes( 'id="pd-page-motion"' ) );
 check( 'dialog close controls use the shared stroke SVG instead of text glyphs', ( templateMarkup.match( /class="pd-icon-button pd-[^"]+-close"[^>]*><svg/g ) || [] ).length === 4
 	&& templateMarkup.includes( '<path d="M18 6 6 18"/>' ) );
-check( 'Add Section lists presets only while reusable templates remain Area data inputs', composerSource.includes( 'const includes = []' )
+/*	The library lists presets and nothing else: a reusable .tpl is not a
+	pseudo-section but a data source an Area binds to, offered as a Template
+	component inside one. It used to say so through an include gallery that
+	could never run - 'includes' was a literal empty array - and says it now by
+	having no card-building code for one at all	*/
+check( 'Add Section lists presets only while reusable templates remain Area data inputs', composerSource.includes( 'includes.forEach' ) === false
+	&& composerSource.includes( 'const includes = []' ) === false
+	&& composerSource.includes( 'pd-template-preset' ) === false
 	&& areaComposerSource.includes( "propertyDefinition.kind === 'template'" )
 	&& areaComposerSource.includes( "include.kind !== 'frame'" ) );
 check( 'the removed Classic switch cannot reappear in the library UI', !templateMarkup.includes( 'pd-library-scope' )
