@@ -3,9 +3,9 @@
  *	@name			Pills
  *	@description	Fully rounded, wide, and a hair larger than the text around them. The friendliest of the four.
  *
- *	@knob	volume		Schriftgröße der Beschriftung
- *	@knob	spacing		Raum um die Beschriftung
- *	@knob	shaping		Eckenradius
+ *	@knob	volume		Type size of the label
+ *	@knob	spacing		Space around the label
+ *	@knob	shaping		Corner radius
  *
  *	volume is the knob v1 never declared, and a pill is where it is missed
  *	first: the shape only works when the label has room on both axes, so the

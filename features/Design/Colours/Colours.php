@@ -117,57 +117,47 @@ namespace Nino\Modules\Design {
 			A choice publishes as many positions as it has names for.	*/
 		public const int STEPS = 3;
 
-		/*	The knobs, and everything a picker needs to render one: which panel
-			it belongs to, the terse note that goes beside its name, the long
-			one behind it, and what each of its three positions is called. The
-			frontend carries no copy of this - it draws whatever choices()
-			hands it, so a knob added here appears in the Design panel and in the
-			installer without either template gaining a line.
+		/*	The knobs: what kind of control each is, where it starts, and what
+			its positions are called. The panel draws whatever choices() hands
+			it, so a knob added here needs no line in either template - but it
+			does need its words, which are text keys and not strings here:
+			'/_admin/design/colour/<knob>/label', '/note', and one per position,
+			in every locale under text/. tests/design-smoke.php checks that a
+			published knob has all of them.
 
-		Each position's name is the whole label an operator gets, so the three
-			read as one sentence: less, as it is, more.	*/
+			This list used to carry a 'label', a 'note' and a long 'hint' as
+			well, none of which anything ever drew - and they had drifted from
+			what the panel shows: 'harmony' read "Harmony" here while the screen
+			said "Second colour". The position names stay, because they are the
+			count as well as the last fallback the panel has if a key is
+			missing.	*/
 		private const array KNOBS = [
 
 			'harmony' => [
-				'label'		=> 'Harmony',
-				'note'		=> 'where the second colour sits',
 				'kind'		=> 'choice',
 				'default'	=> 1,
 				'steps'		=> [ 'Monochrome', 'Analogous', 'Triadic', 'Complementary' ],
-				'hint'		=> 'Where the second brand colour sits on the wheel relative to the first - the four classical harmonies. A Secondary colour of your own overrides it.',
 			],
 
 			'temperature' => [
-				'label'		=> 'Temperature',
-				'note'		=> 'how the greys lean',
 				'kind'		=> 'choice',
 				'default'	=> 3,
 				'steps'		=> [ 'Neutral', 'Cool', 'Brand', 'Warm' ],
-				'hint'		=> 'Which way the greys lean. At Brand they carry a trace of the brand hue itself; at Neutral they carry no colour at all.',
 			],
 
 			'saturation' => [
-				'label'		=> 'Saturation',
-				'note'		=> 'how much colour',
 				'default'	=> 2,
 				'steps'		=> [ 'Muted', 'Standard', 'Rich' ],
-				'hint'		=> 'How much colour every surface carries - the page ground, the borders and the links included, not only the brand.',
 			],
 
 			'contrast' => [
-				'label'		=> 'Contrast',
-				'note'		=> 'how hard text reads',
 				'default'	=> 2,
 				'steps'		=> [ 'Soft', 'Standard', 'Strong' ],
-				'hint'		=> 'How hard the type reads. Every position clears WCAG AA - the knob decides how far above it the ink sits.',
 			],
 
 			'depth' => [
-				'label'		=> 'Depth',
-				'note'		=> 'surface separation',
 				'default'	=> 2,
 				'steps'		=> [ 'Flat', 'Standard', 'Raised' ],
-				'hint'		=> 'How far a panel separates from the page - the alternate surface, the borders and the shadows move together.',
 			],
 
 		];

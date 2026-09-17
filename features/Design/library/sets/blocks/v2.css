@@ -3,9 +3,9 @@
  *	@name			Bordered plans
  *	@description	Plans as hairline boxes with square corners, the featured one marked by its border rather than by a lift.
  *
- *	@knob	volume		Preis und Plantitel
- *	@knob	spacing		Innenabstand und Schrittabstand
- *	@knob	shaping		Eckenradius eines Plans
+ *	@knob	volume		Price and plan title
+ *	@knob	spacing		Padding and step spacing
+ *	@knob	shaping		Corner radius of a plan
  *
  *	A pricing row where nothing floats: three boxes of the same height, and the
  *	one being recommended says so with a heavier line in the primary colour. The

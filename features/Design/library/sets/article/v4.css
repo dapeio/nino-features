@@ -3,9 +3,9 @@
  *	@name			Text first
  *	@description	The title above the image and the image in a fixed frame, so a row of cards lines up whatever the pictures do.
  *
- *	@knob	volume		Kartentitel
- *	@knob	spacing		Innenabstand und Lücken
- *	@knob	shaping		Eckenradius des Bildes
+ *	@knob	volume		Card title
+ *	@knob	spacing		Padding and gaps
+ *	@knob	shaping		Corner radius of the image
  *
  *	The card that survives a mixed set of photographs. Every image is cropped to
  *	the same ratio instead of keeping its own, which is what stops a row from

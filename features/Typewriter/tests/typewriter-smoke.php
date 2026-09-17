@@ -115,11 +115,13 @@ check( 'it registers nothing else - no shortcode, no route', ( $appData['./nino/
 // feature shipped - the mechanism docs/development.md calls "Assets Are Not
 // Templates" (Modules\Assets, not the fill/shortcode engine)
 $styleTag = \Nino\Html::renderHtml( $appData, '[assets /.cache/style.css]' );
-check( 'the style bundle links to .cache/style.css', str_contains( $styleTag, '<link rel="stylesheet" href="' ) === true && str_contains( $styleTag, '.cache/style.css"' ) === true );
+// The '?v=' is the bundle's own hash, which \Nino\Modules\Assets puts on the
+// url so a regenerated bundle is not served out of a browser's cache
+check( 'the style bundle links to .cache/style.css', str_contains( $styleTag, '<link rel="stylesheet" href="' ) === true && preg_match( '#\.cache/style\.css(\?v=[a-f0-9]+)?"#', $styleTag ) === 1 );
 check( 'the generated cache file actually carries this feature\'s css', str_contains( (string) \Nino\Filesystem::getFileContent( $appData, '/.cache/style.css', '' ), '.nino-typewriter-rest {' ) === true );
 
 $scriptTag = \Nino\Html::renderHtml( $appData, '[assets /.cache/script.js]' );
-check( 'the script bundle links to .cache/script.js', str_contains( $scriptTag, '<script src="' ) === true && str_contains( $scriptTag, '.cache/script.js"' ) === true );
+check( 'the script bundle links to .cache/script.js', str_contains( $scriptTag, '<script src="' ) === true && preg_match( '#\.cache/script\.js(\?v=[a-f0-9]+)?"#', $scriptTag ) === 1 );
 check( 'the generated cache file actually carries this feature\'s js', str_contains( (string) \Nino\Filesystem::getFileContent( $appData, '/.cache/script.js', '' ), 'nino-typewriter-cursor' ) === true );
 
 echo "\n";

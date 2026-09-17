@@ -1,11 +1,11 @@
 /*	Nino Design - blocks
- *	Bausteine - Preispläne und Abläufe
+ *	Building blocks - pricing plans and processes
  *
  *	@name				Nino
  *	@description	The framework as it is, with its own values on the knob. Pricing rows, timelines, logo bars, callouts, quotes.
  *
- *	@knob	spacing		Innenabstand und Schrittabstand
- *	@knob	shaping		Eckenradius eines Plans
+ *	@knob	spacing		Padding and step spacing
+ *	@knob	shaping		Corner radius of a plan
  *
  *	v1 is the starting point, not a design. What it declares is the framework's
  *	own values, so a fresh preview shows Nino exactly as it is - and every one

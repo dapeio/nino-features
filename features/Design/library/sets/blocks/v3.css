@@ -3,9 +3,9 @@
  *	@name			Elevated plans
  *	@description	Rounded cards on a soft shadow, the featured one lifted and a step larger. The classic pricing table.
  *
- *	@knob	volume		Preis und Plantitel
- *	@knob	spacing		Innenabstand und Schrittabstand
- *	@knob	shaping		Eckenradius eines Plans
+ *	@knob	volume		Price and plan title
+ *	@knob	spacing		Padding and step spacing
+ *	@knob	shaping		Corner radius of a plan
  *
  *	The opposite decision to v2: the recommendation is made by the layout rather
  *	than by a border, which works when there are three plans and one of them is

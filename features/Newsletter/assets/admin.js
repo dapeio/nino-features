@@ -9,7 +9,7 @@
  *													mail client, or a project-specific ESP), never from Nino
  *													itself. The only write this panel does is delete - there's
  *													deliberately no self-service unsubscribe (see
- *													Modules\Newsletter's docblock), this "Löschen" button is
+ *													Modules\Newsletter's docblock), this "Delete" button is
  *													the only way an entry is ever removed.
  *
  *	@package								Dape/Nino

@@ -299,8 +299,8 @@
 	border-radius: var(--editor-radius-sm);
 }
 
-/*	A choice has four positions where a scale has three, and "Komplementär"
-	beside "Triadisch" is wider than a column that also has to hold a label -
+/*	A choice has four positions where a scale has three, and "Complementary"
+	beside "Triadic" is wider than a column that also has to hold a label -
 	the label then breaks into three lines to make room for it. Wrapping the
 	row puts the control on its own line where it does not fit and changes
 	nothing where it does, which is also what a narrow pane wants */

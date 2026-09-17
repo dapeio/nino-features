@@ -3,8 +3,8 @@
  *	@name			Square caps
  *	@description	No radius, spaced capitals, a heavier border. For sites that want to look built rather than designed.
  *
- *	@knob	volume		Schriftgröße der Beschriftung
- *	@knob	spacing		Raum um die Beschriftung
+ *	@knob	volume		Type size of the label
+ *	@knob	spacing		Space around the label
  *
  *	No shaping knob on purpose: the square corner is the decision this set is,
  *	and a knob that could round it away would be a knob that turns it into

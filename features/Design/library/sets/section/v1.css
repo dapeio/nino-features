@@ -1,11 +1,11 @@
 /*	Nino Design - section
- *	Section - Titel, Untertitel, Text, Padding, Margin, Border
+ *	Section - title, subtitle, text, padding, margin, border
  *
  *	@name				Nino
  *	@description	The framework as it is, with its own values on the knob. Section title, subtitle, text, padding, margin, border.
  *
- *	@knob	volume		Titel und Untertitel
- *	@knob	spacing		Bandhöhe und Absatzabstand
+ *	@knob	volume		Title and subtitle
+ *	@knob	spacing		Band height and paragraph spacing
  *
  *	v1 is the starting point, not a design. What it declares is the framework's
  *	own values, so a fresh preview shows Nino exactly as it is - and every one
@@ -201,7 +201,7 @@
  *	Named after the framework's own vocabulary (see Setup::KNOBS): one triple
  *	per knob, and the rules below read it wherever that knob applies. A knob
  *	moves a family of values together, which is what makes it one knob -
- *	"Abstände" that moved the band but not the paragraph under it would be two.
+ *	"Spacing" that moved the band but not the paragraph under it would be two.
  *
  *	Every --default is the value Nino.css uses today, so a knob nobody moved
  *	compiles to the page that was already there. That is what makes a set

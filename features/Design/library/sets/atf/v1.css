@@ -1,11 +1,11 @@
 /*	Nino Design - atf
- *	ATF - der Kopfbereich: Titel, Untertitel, Inhalt, Pfeil
+ *	ATF - the head of the page: title, subtitle, content, arrow
  *
  *	@name				Nino
  *	@description	The framework as it is, with its own values on the knob. The hero above the fold: title, subtitle, the arrow down.
  *
- *	@knob	volume		Titel und Untertitel
- *	@knob	spacing		Abstand unter dem Titel
+ *	@knob	volume		Title and subtitle
+ *	@knob	spacing		Space under the title
  *
  *	v1 is the starting point, not a design. What it declares is the framework's
  *	own values, so a fresh preview shows Nino exactly as it is - and every one

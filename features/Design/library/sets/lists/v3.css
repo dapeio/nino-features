@@ -3,9 +3,9 @@
  *	@name			Roomy
  *	@description	Wide cells, generous gaps and pill badges. For the short table that is part of the page rather than a report.
  *
- *	@knob	volume		Schriftgröße in Tabelle und Liste
- *	@knob	spacing		Lücken und Zellenraum
- *	@knob	shaping		Eckenradius eines Badges
+ *	@knob	volume		Type size in tables and lists
+ *	@knob	spacing		Gaps and cell space
+ *	@knob	shaping		Corner radius of a badge
  *
  *	Five rows of prices on a landing page is not a spreadsheet, and setting it
  *	like one makes the page look like an export. The cells get room, the rules

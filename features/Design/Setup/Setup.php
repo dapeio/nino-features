@@ -350,7 +350,7 @@ namespace Nino\Modules\Design {
 		 *	beside it, the same bargain @name makes: a set is one file, and the
 		 *	person writing sets is going to write a lot of them. A set that
 		 *	declares --section-spacing--less / --default / --more answers to
-		 *	Abstände; one that does not, does not, and the panel offers it
+		 *	Spacing; one that does not, does not, and the panel offers it
 		 *	nothing to turn there.
 		 *
 		 *	@param		string		$libraryDir		The feature's library

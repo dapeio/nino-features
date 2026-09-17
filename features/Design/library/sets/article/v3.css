@@ -3,9 +3,9 @@
  *	@name			Soft cards
  *	@description	Rounded, lifted off the page, with room around the words and a lift on hover. For a handful of things worth looking at.
  *
- *	@knob	volume		Kartentitel
- *	@knob	spacing		Innenabstand und Lücken
- *	@knob	shaping		Eckenradius der Karte
+ *	@knob	volume		Card title
+ *	@knob	spacing		Padding and gaps
+ *	@knob	shaping		Corner radius of the card
  *
  *	The opposite case to v2: few cards, each of which is a destination. The
  *	shadow is what makes it one, and the transform on hover is what makes it

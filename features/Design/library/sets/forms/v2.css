@@ -3,9 +3,9 @@
  *	@name			Boxed fields
  *	@description	A bordered field with room in it, a visible focus ring and the label above. The safest of the four.
  *
- *	@knob	volume		Schriftgröße im Feld
- *	@knob	spacing		Raum im Feld und zwischen Feldern
- *	@knob	shaping		Eckenradius eines Feldes
+ *	@knob	volume		Type size inside the field
+ *	@knob	spacing		Space inside a field and between fields
+ *	@knob	shaping		Corner radius of a field
  *
  *	What a form has to do before it looks like anything: say where a field
  *	begins, say which one is being typed in, and stay legible on a phone. The

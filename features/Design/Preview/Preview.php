@@ -47,7 +47,7 @@ namespace Nino\Modules\Design {
 			A uri also needs no route: the panel renders inside /_admin, where
 			/images/… is not the site's, and the harness serves from its own root */
 		public const string PLACEHOLDER = 'data:image/svg+xml;charset=utf-8,'
-			. '%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 640 420%22 role=%22img%22 aria-label=%22Platzhalter%22%3E'
+			. '%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 640 420%22 role=%22img%22 aria-label=%22Placeholder%22%3E'
 			. '%3Crect width=%22640%22 height=%22420%22 fill=%22%23d8dee6%22/%3E'
 			. '%3Cpath d=%22M0 300l170-130 130 100 110-80 230 170z%22 fill=%22%23b9c3cf%22/%3E'
 			. '%3Ccircle cx=%22480%22 cy=%22110%22 r=%2246%22 fill=%22%23c9d2dc%22/%3E%3C/svg%3E';
@@ -55,8 +55,8 @@ namespace Nino\Modules\Design {
 		/*	The demonstration copy. Text rather than markup, and here rather than
 			written into the specimen because each line stands in ten places in it
 			and is meant to be changed in one */
-		private const string LOREM = 'Die Entscheidung, die ein Set trifft, sieht man erst an echtem Text: wo der Titel steht, wie weit er vom Untertitel absteht, und ob die Zeile noch ruhig bleibt, wenn sie lang wird.';
-		private const string SHORT = 'Kurz genug, um die Ausrichtung zu zeigen.';
+		private const string LOREM = 'What a set decides only shows on real text: where the title sits, how far the subtitle stands off it, and whether the line stays calm once it gets long.';
+		private const string SHORT = 'Short enough to show the alignment.';
 
 		/**
 		 *	The specimen with the chosen frames around it, as html+ for the

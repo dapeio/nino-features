@@ -776,9 +776,11 @@ check( 'it shows what was posted and not what is stored - looking is what you do
 	str_contains( (string) ( $preview['css'] ?? '' ), '87.5%' ) === true
 	&& ( $stored['size'] ?? '' ) === 'm'
 	&& str_contains( (string) $preview['document'], 'nino-grid-row nino-grid-row--wide' ) === true );
+// The '?v=' is the bundle's own hash, which \Nino\Modules\Assets puts on the
+// url so a regenerated bundle is not served from a browser's cache
 check( 'the framework is linked, not inlined - the workbench sends a csp that refuses an inline script',
-	str_contains( (string) $preview['document'], 'design-preview.js"></script>' ) === true
-	&& str_contains( (string) $preview['document'], 'design-preview.css"' ) === true
+	preg_match( '#design-preview\.js(\?v=[a-f0-9]+)?"></script>#', (string) $preview['document'] ) === 1
+	&& preg_match( '#design-preview\.css(\?v=[a-f0-9]+)?"#', (string) $preview['document'] ) === 1
 	&& str_contains( (string) $preview['document'], '<script>' ) === false );
 check( '...and the bundle it points at really carries the framework',
 	str_contains( (string) \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Design\Admin::FRAMEWORK_CSS, '' ), '.nino-section' ) === true
@@ -807,9 +809,12 @@ check( 'previewing writes neither the setup nor the stylesheet',
 
 /*	The palette travels the same three ways the structure does: out in the
 	list, back in on a save, and through a preview without being written. The
-	vocabulary goes with it - the panel draws whatever choices() publishes, so
-	a knob added in Colours appears on screen without the script or the panel
-	gaining a line */
+	panel draws whatever choices() publishes, so a knob added in Colours
+	appears on screen without the script or the panel gaining a line - what it
+	does need is its words, and those are text keys rather than strings in the
+	table. The table used to carry a 'label', a 'note' and a 'hint' that
+	nothing ever drew, and they had drifted: 'harmony' read "Harmony" there
+	while the screen said "Second colour" */
 [ $status, $listed ] = callDesignAction( $appData, 'apiList' );
 
 check( 'the list hands over where the palette stands, and the words to draw it with', $status === 200
@@ -825,6 +830,30 @@ check( '...and whether the colour that was picked is one text survives on',
 	isset( $listed['brand']['light']['safe'] ) === true && isset( $listed['brand']['dark']['ratio'] ) === true );
 check( '...and the second colour as it will be compiled, for the swatch that stands for it',
 	preg_match( '/^#[0-9a-f]{6}$/', (string) ( $listed['accent'] ?? '' ) ) === 1 );
+
+/*	So a published knob has to have its words, in every locale this feature
+	ships - that is the half the table cannot carry, and the half nothing
+	checked. A knob added without them draws as a blank row	*/
+$knobWords = [];
+foreach( [ 'en_US', 'de_DE' ] as $knobLocale ) {
+
+	$knobText = (array) @include __DIR__. '/../text/'. $knobLocale. '.php';
+
+	foreach( (array) ( $listed['palette'] ?? [] ) as $knobKey => $knobMeta ) {
+
+		$wanted = [ 'label', 'note' ];
+		foreach( array_keys( (array) ( $knobMeta['steps'] ?? [] ) ) as $position )
+			$wanted[] = (string) ( $position + 1 );
+
+		foreach( $wanted as $suffix )
+			if( ( $knobText[ '[[/_admin/design/colour/'. $knobKey. '/'. $suffix. ']]' ] ?? '' ) === '' )
+				$knobWords[] = $knobLocale. ' '. $knobKey. '/'. $suffix;
+	}
+}
+check( 'every knob the panel is handed has its name, its note and a word per position, in both locales'. ( $knobWords === [] ? '' : ' - missing: '. implode( ', ', $knobWords ) ), $knobWords === [] );
+check( '...and the table itself carries no second copy of those words', ( $listed['palette']['harmony']['label'] ?? null ) === null
+	&& ( $listed['palette']['harmony']['note'] ?? null ) === null
+	&& ( $listed['palette']['harmony']['hint'] ?? null ) === null );
 
 [ $status, ] = callDesignAction( $appData, 'apiSave', [
 	'parts' => [], 'knobs' => [], 'size' => 'm',

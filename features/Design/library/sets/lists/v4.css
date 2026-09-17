@@ -3,9 +3,9 @@
  *	@name			Dense data
  *	@description	Small type, tight cells, numbers aligned on their digits and the header sticky. For tables with a lot of rows.
  *
- *	@knob	volume		Schriftgröße in Tabelle und Liste
- *	@knob	spacing		Lücken und Zellenraum
- *	@knob	shaping		Eckenradius eines Badges
+ *	@knob	volume		Type size in tables and lists
+ *	@knob	spacing		Gaps and cell space
+ *	@knob	shaping		Corner radius of a badge
  *
  *	Three things a long table needs that a short one does not: tabular figures,
  *	so a column of numbers lines up on the decimal; a header that stays while

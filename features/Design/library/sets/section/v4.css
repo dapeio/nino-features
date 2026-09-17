@@ -3,8 +3,8 @@
  *	@name			Display titles
  *	@description	Headings two steps up with tight leading, over a paragraph that stays small. For sites that lead with a statement.
  *
- *	@knob	volume		Titel und Untertitel
- *	@knob	spacing		Bandhöhe und Absatzabstand
+ *	@knob	volume		Title and subtitle
+ *	@knob	spacing		Band height and paragraph spacing
  *
  *	One decision: the heading is the page and the text is the footnote to it.
  *	The leading tightens as the size grows, because a display line set at the

@@ -1,11 +1,11 @@
 /*	Nino Design - forms
- *	Formulare - Felder, Label, Fokus, Meldezustände
+ *	Forms - fields, labels, focus, message states
  *
  *	@name				Nino
  *	@description	The framework as it is, with its own values on the knob. Fields, labels, help text, validation states.
  *
- *	@knob	spacing		Raum im Feld und zwischen Feldern
- *	@knob	shaping		Eckenradius eines Feldes
+ *	@knob	spacing		Space inside a field and between fields
+ *	@knob	shaping		Corner radius of a field
  *
  *	v1 is the starting point, not a design. What it declares is the framework's
  *	own values, so a fresh preview shows Nino exactly as it is - and every one

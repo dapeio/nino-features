@@ -163,8 +163,10 @@ namespace Nino\Modules\Design {
 				/*	The palette half: where it stands, the vocabulary to draw it
 					with, and whether the picked brand colour is one text survives
 					on. The frontend carries no copy of the knob tables - it draws
-					whatever choices() hands it, so a knob added in Colours appears
-					here without this file or the script gaining a line */
+					whatever choices() hands it, so a knob added in Colours
+					appears here without this file or the script gaining a line.
+					Its words are the one thing it does need: text keys under
+					'/_admin/design/colour/<knob>/', in every locale */
 				'colours'	=> (array) ( $setup['colours'] ?? [] ),
 				'palette'	=> Colours::choices(),
 				'brand' 	=> Colours::brand( (array) ( $setup['colours'] ?? [] ) ),
@@ -193,17 +195,35 @@ namespace Nino\Modules\Design {
 			$exists = is_file( $path );
 			$ours 	= $exists === true && Compiler::stamped( (string) @file_get_contents( $path ) );
 
-			// What this setup would produce right now, against what the setup
-			// says was produced last time. Equal means the file answers to the
-			// screen; different means somebody changed something since
-			$notes 	= [];
-			$fresh 	= hash( 'sha256', Compiler::compile( $setup, $library, $notes ) );
+			/*	What this setup would compile from right now, against what the
+				last apply recorded it had compiled from. Equal means the file
+				answers to the screen; different means somebody changed
+				something since.
+
+				A fingerprint rather than a compile: this used to build the
+				whole stylesheet again and hash it, which is 43 ms of colour
+				solving to answer one boolean - on every list, on every save,
+				and once more at the end of every apply, so an apply compiled
+				twice.
+
+				A setup written before that fingerprint existed carries the
+				compiled sha alone, and there the old answer is still the only
+				one there is - once, until the next apply records the new
+				one	*/
+			$recorded = (string) ( $setup['compiled']['input'] ?? '' );
+
+			if( $recorded !== '' )
+				$current = $recorded === \Nino\Modules\Design::fingerprint( $setup, $library );
+			else {
+				$notes		= [];
+				$current	= (string) ( $setup['compiled']['sha'] ?? '' ) === hash( 'sha256', Compiler::compile( $setup, $library, $notes ) );
+			}
 
 			return [
 				'exists' 		=> $exists,
 				'ours' 			=> $ours,
 				'compiled' 	=> (string) ( $setup['compiled']['at'] ?? '' ),
-				'current' 	=> $ours === true && (string) ( $setup['compiled']['sha'] ?? '' ) === $fresh,
+				'current' 	=> $ours === true && $current === true,
 			];
 		}
 

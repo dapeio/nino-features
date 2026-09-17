@@ -1,12 +1,12 @@
 /*	Nino Design - article
- *	Article - Bild, Titel, Untertitel, Beschreibung, Preis, Rahmen, Schatten
+ *	Article - image, title, subtitle, description, price, border, shadow
  *
  *	@name				Nino
  *	@description	The framework as it is, with its own values on the knob. Article cards and their grid: image, title, meta, excerpt.
  *
- *	@knob	volume		Kartentitel
- *	@knob	spacing		Innenabstand und Lücken
- *	@knob	shaping		Eckenradius der Karte
+ *	@knob	volume		Card title
+ *	@knob	spacing		Padding and gaps
+ *	@knob	shaping		Corner radius of the card
  *
  *	v1 is the starting point, not a design. What it declares is the framework's
  *	own values, so a fresh preview shows Nino exactly as it is - and every one

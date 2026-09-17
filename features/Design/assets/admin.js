@@ -445,7 +445,7 @@
 
 			/*	The knob's own name and the terse note beside it, both out of
 				the panel's text files: one knob is one key in every locale, so
-				"Abstände" reads the same on a section as on a form */
+				"Spacing" reads the same on a section as on a form */
 			const label = dc.createElement('span');
 			label.className = 'design-knob-label';
 			label.textContent = Nino.content.getText('/_admin/design/knob/'+ row.key+ '/label');
@@ -474,10 +474,10 @@
 				button.className = 'nino-admin-tab';
 				button.dataset.step = step;
 				// The short label on the button, the word behind it: three
-				// buttons reading weniger/normal/mehr is a sentence per row
+				// buttons reading less/standard/more is a sentence per row
 				button.textContent = Nino.content.getText('/_admin/design/step/'+ step );
-				// Each knob names its own three positions - "eng, Standard,
-				// luftig" is not the same sentence as "scharf, Standard, rund"
+				// Each knob names its own three positions - "tight, standard,
+				// airy" is not the same sentence as "sharp, standard, round"
 				button.title = Nino.content.getText('/_admin/design/knob/'+ row.key+ '/'+ step );
 				buttons[step] = button;
 				group.appendChild( button );

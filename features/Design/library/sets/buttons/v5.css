@@ -3,9 +3,9 @@
  *	@name			Compact
  *	@description	Small, tight and quiet, so a page can carry a lot of them without looking like a control panel.
  *
- *	@knob	volume		Schriftgröße der Beschriftung
- *	@knob	spacing		Raum um die Beschriftung
- *	@knob	shaping		Eckenradius
+ *	@knob	volume		Type size of the label
+ *	@knob	spacing		Space around the label
+ *	@knob	shaping		Corner radius
  *
  *	For pages where a button is an option rather than the point: filter rows,
  *	tables with an action per line, a form with three ways out. Everything is a

@@ -3,9 +3,9 @@
  *	@name			Ruled
  *	@description	A line between rows instead of a stripe behind them, and badges as plain squares. For tables read row by row.
  *
- *	@knob	volume		Schriftgröße in Tabelle und Liste
- *	@knob	spacing		Lücken und Zellenraum
- *	@knob	shaping		Eckenradius eines Badges
+ *	@knob	volume		Type size in tables and lists
+ *	@knob	spacing		Gaps and cell space
+ *	@knob	shaping		Corner radius of a badge
  *
  *	Zebra striping helps the eye cross a wide table and gets in the way of a
  *	narrow one, where what matters is where a row ends. This is the narrow-table

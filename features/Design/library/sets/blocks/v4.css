@@ -3,9 +3,9 @@
  *	@name			Tinted panels
  *	@description	No borders and no shadows - each plan on the page's own tinted surface, the featured one in the brand colour.
  *
- *	@knob	volume		Preis und Plantitel
- *	@knob	spacing		Innenabstand und Schrittabstand
- *	@knob	shaping		Eckenradius eines Plans
+ *	@knob	volume		Price and plan title
+ *	@knob	spacing		Padding and step spacing
+ *	@knob	shaping		Corner radius of a plan
  *
  *	Colour instead of edges. It works because the surfaces are roles, not
  *	values: --color-section-tint-bg and --color-primary are whatever the palette

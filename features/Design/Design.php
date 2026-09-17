@@ -54,6 +54,44 @@ namespace Nino\Modules {
 		}
 
 		/**
+		 *	Everything that decides what Compiler::compile() will produce, as
+		 *	one hash: the setup's own choices, and the library files those
+		 *	choices point at.
+		 *
+		 *	Written by apply() and compared by the panel's state(), which used
+		 *	to answer "does the file on disk still match the screen?" by
+		 *	compiling the whole stylesheet again and hashing the result - 43 ms
+		 *	of colour solving per list, per save, and once more at the end of
+		 *	every apply, which therefore compiled twice.
+		 *
+		 *	'compiled' is the record of a previous apply, and the per-part
+		 *	'sha' entries are written by one, so neither decides anything here
+		 *	and both are left out.
+		 *
+		 *	@param		array 		$setup				A normalized setup
+		 *	@param		string		$library			The library directory its parts are chosen from
+		 *
+		 *	@return 	string
+		 */
+		public static function fingerprint( array $setup, string $library ): string {
+
+			$files = [];
+
+			foreach( array_keys( Design\Setup::PARTS ) as $part ) {
+				$set 					= (string) ( $setup['parts'][$part]['set'] ?? '' );
+				$file 				= Design\Setup::file( $library, $part, $set );
+				$files[$part]	= [ $set, ( $file === '' || is_file( $file ) === false ) ? '' : (string) hash_file( 'sha256', $file ) ];
+			}
+
+			unset( $setup['compiled'] );
+
+			foreach( array_keys( (array) ( $setup['parts'] ?? [] ) ) as $part )
+				unset( $setup['parts'][$part]['sha'] );
+
+			return hash( 'sha256', serialize( [ $setup, $files ] ) );
+		}
+
+		/**
 		 *	The /_admin screen this feature brings along - collected by
 		 *	Admin::panels() through Modules::collect(), so it appears in the
 		 *	workbench exactly while this feature is active
@@ -135,14 +173,22 @@ namespace Nino\Modules {
 					return $result;
 			}
 
-			// What was compiled, so the panel can say whether the file on disk
-			// still answers to the setup beside it
-			$setup['compiled'] = [ 'at' => gmdate( 'c' ), 'sha' => hash( 'sha256', $css ) ];
-
 			foreach( array_keys( Design\Setup::PARTS ) as $part ) {
 				$file = Design\Setup::file( $library, $part, (string) ( $setup['parts'][$part]['set'] ?? '' ) );
 				$setup['parts'][$part]['sha'] = $file === '' ? '' : hash_file( 'sha256', $file );
 			}
+
+			/*	What was compiled, so the panel can say whether the file on disk
+				still answers to the setup beside it - and 'input', what it was
+				compiled FROM, so answering that costs a hash instead of a
+				second compile. Compiling this library takes 43 ms, and the
+				panel asked for the answer on every list, every save and again
+				at the end of every apply	*/
+			$setup['compiled'] = [
+				'at' 		=> gmdate( 'c' ),
+				'sha'		=> hash( 'sha256', $css ),
+				'input'	=> self::fingerprint( $setup, $library ),
+			];
 
 			return Design\Setup::write( $appData, $setup ) === true ? true : 'compiled, but could not write '. Design\Setup::PATH;
 		}

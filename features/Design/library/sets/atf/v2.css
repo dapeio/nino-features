@@ -3,8 +3,8 @@
  *	@name			Full height
  *	@description	The hero fills the first screen, its text centred in it and the arrow down at the bottom edge. For one-page sites.
  *
- *	@knob	volume		Titel und Untertitel
- *	@knob	spacing		Abstand unter dem Titel
+ *	@knob	volume		Title and subtitle
+ *	@knob	spacing		Space under the title
  *
  *	The framework already has .nino-atf--fullscreen for one hero; this makes it
  *	the rule for every one, so the first screen is always the hero and the

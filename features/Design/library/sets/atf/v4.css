@@ -3,9 +3,9 @@
  *	@name			Display opening
  *	@description	A very large title with tight leading and negative tracking, the subtitle held to body size under it.
  *
- *	@knob	volume		Titel und Untertitel
- *	@knob	spacing		Abstand unter dem Titel
- *	@knob	measure		Breite des Titels
+ *	@knob	volume		Title and subtitle
+ *	@knob	spacing		Space under the title
+ *	@knob	measure		Width of the title
  *
  *	Three things a display line needs and a body line does not: leading below
  *	1.1, tracking pulled in, and somewhere to break. measure is that last one -

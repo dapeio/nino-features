@@ -3,9 +3,9 @@
  *	@name			Quiet marks
  *	@description	Lists whose markers step back: a thin rule for a check, a light number, badges with no fill. For text pages.
  *
- *	@knob	volume		Schriftgröße in Tabelle und Liste
- *	@knob	spacing		Lücken und Zellenraum
- *	@knob	shaping		Eckenradius eines Badges
+ *	@knob	volume		Type size in tables and lists
+ *	@knob	spacing		Gaps and cell space
+ *	@knob	shaping		Corner radius of a badge
  *
  *	A list inside an argument, not a list of features. The marker is what gets
  *	turned down - a check list where every line starts with a filled tick reads

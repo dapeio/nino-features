@@ -3,9 +3,9 @@
  *	@name			Dense
  *	@description	Small fields close together, for the long forms - an application, an order, anything with twenty lines.
  *
- *	@knob	volume		Schriftgröße im Feld
- *	@knob	spacing		Raum im Feld und zwischen Feldern
- *	@knob	shaping		Eckenradius eines Feldes
+ *	@knob	volume		Type size inside the field
+ *	@knob	spacing		Space inside a field and between fields
+ *	@knob	shaping		Corner radius of a field
  *
  *	A twenty-field form laid out like a five-field one is three screens of
  *	scrolling, and a visitor who cannot see the end of a form is a visitor who

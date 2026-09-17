@@ -1,11 +1,11 @@
 /*	Nino Design - buttons
- *	Buttons - Form, Füllung, Größenverhältnisse, Hover
+ *	Buttons - shape, fill, proportions, hover
  *
  *	@name				Nino
  *	@description	The framework as it is, with its own values on the knob. Every .nino-btn variant, and the link that looks like one.
  *
- *	@knob	spacing		Raum um die Beschriftung
- *	@knob	shaping		Eckenradius
+ *	@knob	spacing		Space around the label
+ *	@knob	shaping		Corner radius
  *
  *	v1 is the starting point, not a design. What it declares is the framework's
  *	own values, so a fresh preview shows Nino exactly as it is - and every one

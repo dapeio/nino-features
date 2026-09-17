@@ -3,9 +3,9 @@
  *	@name			Soft keys
  *	@description	A small radius, a light shadow and a press that actually moves. For interfaces more than for pages.
  *
- *	@knob	volume		Schriftgröße der Beschriftung
- *	@knob	spacing		Raum um die Beschriftung
- *	@knob	shaping		Eckenradius
+ *	@knob	volume		Type size of the label
+ *	@knob	spacing		Space around the label
+ *	@knob	shaping		Corner radius
  *
  *	The one set here that answers :active, because a key that does not move
  *	under the finger is the thing people press twice. The shadow is what makes

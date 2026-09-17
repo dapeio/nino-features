@@ -5,7 +5,32 @@ A release is the tag `design-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+### Changed
+
+- **The preview specimen is written in English.** Its demonstration copy, its
+  control labels and the two constants behind them were German in a catalogue
+  that is English everywhere else, as were the `@knob` notes in 35 library
+  stylesheets. The `@name` and `@description` a set is listed under were
+  already English; those are what the panel shows.
+
 ### Fixed
+
+- **The panel compiled the whole stylesheet to answer one boolean.** "Does
+  the file on disk still match the screen?" was answered by building the
+  sheet again and hashing the result - 43 ms of colour solving, on every list,
+  on every save, and once more at the end of every apply, which therefore
+  compiled twice. An apply now records what it compiled *from* - the setup's
+  own choices and a hash of each library file they point at - and the answer
+  is that fingerprint against the current one: 43 ms → 0.17. A setup written
+  before this carries the compiled hash alone, and there the old answer is
+  still the only one there is, once, until the next apply.
+
+- **The knob table shipped three strings nothing drew.** `label`, `note` and
+  `hint` went to the browser with every list, while the panel draws all three
+  from text keys - and they had drifted: `harmony` read "Harmony" in the table
+  while the screen said "Second colour". Gone. What a published knob really
+  needs is its words in every locale, and the suite checks for those now
+  rather than the docblock claiming no template needs a line.
 
 - **A size posted as an array was a 500 on the panel's own save.** Its two
   neighbours in the same array were read with `is_array()`, `size` with a

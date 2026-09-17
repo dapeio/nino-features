@@ -3,9 +3,9 @@
  *	@name			Tight editorial
  *	@description	Short bands, a small heading with a rule under it, and a subtitle in spaced capitals. For pages with a lot to say.
  *
- *	@knob	volume		Titel und Untertitel
- *	@knob	spacing		Bandhöhe und Absatzabstand
- *	@knob	measure		Breite der Textspalte
+ *	@knob	volume		Title and subtitle
+ *	@knob	spacing		Band height and paragraph spacing
+ *	@knob	measure		Width of the text column
  *
  *	The opposite decision to v2: many short bands rather than few tall ones, so
  *	the heading has to mark a break the white space no longer makes. It does it

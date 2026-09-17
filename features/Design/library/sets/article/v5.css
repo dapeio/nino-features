@@ -3,9 +3,9 @@
  *	@name			Compact rows
  *	@description	Cards as rows: a small square image beside the words, one under the next, divided by a line. For long lists.
  *
- *	@knob	volume		Kartentitel
- *	@knob	spacing		Innenabstand und Lücken
- *	@knob	shaping		Eckenradius des Bildes
+ *	@knob	volume		Card title
+ *	@knob	spacing		Padding and gaps
+ *	@knob	shaping		Corner radius of the image
  *
  *	A hundred entries is not a grid, it is a list - so above the phone this
  *	turns the card on its side and lets the page scroll through them. Below it

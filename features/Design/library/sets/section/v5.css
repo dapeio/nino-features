@@ -3,9 +3,9 @@
  *	@name			Framed bands
  *	@description	Every band inset and rounded against the page, with a hairline where two plain ones meet. For pages built out of panels.
  *
- *	@knob	volume		Titel und Untertitel
- *	@knob	spacing		Innenabstand eines Bandes
- *	@knob	shaping		Eckenradius eines Bandes
+ *	@knob	volume		Title and subtitle
+ *	@knob	spacing		Padding of a band
+ *	@knob	shaping		Corner radius of a band
  *
  *	A band is a panel here rather than a stripe across the page, which is what
  *	makes a run of them read as a stack of things instead of one long scroll.

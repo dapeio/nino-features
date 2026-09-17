@@ -3,9 +3,9 @@
  *	@name			Flat cards
  *	@description	No radius and no shadow: a hairline box with the image flush to its edges. For catalogues and grids of many.
  *
- *	@knob	volume		Kartentitel
- *	@knob	spacing		Innenabstand und Lücken
- *	@knob	shaping		Eckenradius der Karte
+ *	@knob	volume		Card title
+ *	@knob	spacing		Padding and gaps
+ *	@knob	shaping		Corner radius of the card
  *
  *	Twenty of these on a screen is the case this is for, and twenty rounded,
  *	shadowed cards is a screen of noise. What separates one from the next is a

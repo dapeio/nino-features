@@ -3,8 +3,8 @@
  *	@name			Underlined fields
  *	@description	No box at all - a rule under each field that colours in on focus. Quiet, and for short forms only.
  *
- *	@knob	volume		Schriftgröße im Feld
- *	@knob	spacing		Raum im Feld und zwischen Feldern
+ *	@knob	volume		Type size inside the field
+ *	@knob	spacing		Space inside a field and between fields
  *
  *	Worth knowing before choosing it: a field with no box has no visible target
  *	before it is clicked, which is fine for three fields under a heading and

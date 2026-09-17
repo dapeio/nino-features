@@ -3,9 +3,9 @@
  *	@name			Compact steps
  *	@description	Plans and timeline tightened to half the room, the timeline rule thinner and its numbers small.
  *
- *	@knob	volume		Preis und Plantitel
- *	@knob	spacing		Innenabstand und Schrittabstand
- *	@knob	shaping		Eckenradius eines Plans
+ *	@knob	volume		Price and plan title
+ *	@knob	spacing		Padding and step spacing
+ *	@knob	shaping		Corner radius of a plan
  *
  *	For the page that carries six plans, or a timeline with twelve steps: at
  *	that count the framework's own spacing turns one block into a screen of its

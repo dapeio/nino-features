@@ -3,9 +3,9 @@
  *	@name			Filled fields
  *	@description	A tinted field with no border, the label inside the rhythm above it. For forms on a plain white page.
  *
- *	@knob	volume		Schriftgröße im Feld
- *	@knob	spacing		Raum im Feld und zwischen Feldern
- *	@knob	shaping		Eckenradius eines Feldes
+ *	@knob	volume		Type size inside the field
+ *	@knob	spacing		Space inside a field and between fields
+ *	@knob	shaping		Corner radius of a field
  *
  *	The fill is the field, which is why it uses the page's dim surface rather
  *	than a colour of its own: a form is not a place for a second palette. On

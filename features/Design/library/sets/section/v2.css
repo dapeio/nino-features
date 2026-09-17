@@ -3,9 +3,9 @@
  *	@name			Wide bands
  *	@description	Tall bands with air around the text and a narrower column to read in. For sites with few, long sections.
  *
- *	@knob	volume		Titel und Untertitel
- *	@knob	spacing		Bandhöhe und Absatzabstand
- *	@knob	measure		Breite der Textspalte
+ *	@knob	volume		Title and subtitle
+ *	@knob	spacing		Band height and paragraph spacing
+ *	@knob	measure		Width of the text column
  *
  *	The band is the unit here: it is tall, and what stands in it is held to a
  *	column narrower than the grid so a paragraph is read rather than scanned.
