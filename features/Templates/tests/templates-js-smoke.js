@@ -113,7 +113,6 @@ const preset = { name : 'FAQ — Accordion', description : 'Questions and answer
 check( 'matches preset names and tags case-insensitively', matches( preset, 'accordion', '*' ) && matches( preset, 'SUPPORT', '*' ) );
 check( 'applies category and text filters together', matches( preset, 'questions', 'Content' ) && !matches( preset, 'questions', 'Hero' ) );
 check( 'empty search keeps the selected category visible', matches( preset, '', 'Content' ) );
-check( 'the library accepts named-area presets only', Nino.admin.templates.composer.isAreaPreset( { version : 3 } ) && !Nino.admin.templates.composer.isAreaPreset( { version : 1 } ) );
 // A manifest names an area twice: labelKey for the panel, label for the
 // strings the server composes and stores (see AreaComposer::normalizeArea())
 check( 'an area is named in the interface language, and falls back to its English label', Nino.admin.templates.areaComposer.areaLabel( { label : 'Title area', labelKey : '/_admin/templates/area/title-area' } ) === '/_admin/templates/area/title-area'
@@ -138,6 +137,13 @@ check( 'preview documents remove executable markup before assigning srcdoc', !ho
 	&& !/\son[a-z]+=/i.test( hostilePreview ) );
 
 const composerSource = fs.readFileSync( path.join( FEATURE, 'assets/composer.js' ), 'utf8' );
+
+/*	Which presets are named-area ones is the server's answer, not this
+	script's: Library::presets() drops every manifest whose version is not 3
+	before the panel is handed one (templates-smoke.php asserts that). The
+	script used to ask again, per preset, in four places - a question with one
+	answer over that list	*/
+check( 'the script does not filter by preset version - the library it is handed holds only v3', /version\s*\)\s*===\s*3/.test( composerSource ) === false );
 const areaComposerSource = fs.readFileSync( path.join( FEATURE, 'assets/area-composer.js' ), 'utf8' );
 const sectionsSource = fs.readFileSync( path.join( FEATURE, 'assets/sections.js' ), 'utf8' );
 const scriptSource = fs.readFileSync( path.join( FEATURE, 'assets/script.js' ), 'utf8' );

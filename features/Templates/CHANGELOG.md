@@ -74,6 +74,24 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
   field let editor content close the attribute. Those two properties are
   marked as attributes now and refuse a rich field with the same message.
 
+- **The content editor rebuilt the whole text catalogue once per field.**
+  `\Nino\Text::entry()` builds every key of `/text/global.php` and of every
+  locale file, measures each one, and then walks the result for the one key
+  asked for - and `content/fields` and `content/save` asked per field, up to a
+  hundred of them. A page of forty fields against a catalogue of a thousand
+  keys: 79.56 ms, against 2.07 for one reading and a lookup.
+
+### Removed
+
+- **The composer's preset-version check, and the include gallery behind it.**
+  `Library::presets()` drops every manifest whose version is not 3 before the
+  panel is handed one, so the script's own `isAreaPreset()` was a tautology
+  over that list in all five places it was asked. And `selectInclude()` - the
+  entry point of a gallery of reusable includes - was called by nothing, so
+  the `_includePath` it set was `null` from the first line to the last and
+  every branch that asked about it had one answer. The includes themselves
+  stay: an area that takes one is offered them by `area-composer.js`.
+
 ## 1.0.0 — 2026-09-10
 
 - First release: the Template Builder, which shipped with Nino as a kernel

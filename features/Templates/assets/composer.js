@@ -54,20 +54,18 @@
 		return categoryMatch && ( needle === '' || haystack.includes( needle ) );
 	}
 
-	function isAreaPreset( preset ) {
-		return Number( preset && preset.version ) === 3;
-	}
+	/*	There used to be an isAreaPreset( preset ) beside this, asking whether
+		a preset's version is 3, and four places asked it. Library::presets()
+		drops every manifest whose version is not 3 before the panel ever sees
+		one, so over pd._library.presets it was a tautology - a find() for it
+		was the first entry, a filter() for it was the whole list.
 
-	function reusableIncludes() {
-		return pd._includes.filter( function( include ) { return include.kind !== 'frame' } );
-	}
-
-	function matchesInclude( include, query, category ) {
-		const categoryMatch = category === '*' || category === 'tpl';
-		const needle = String( query || '' ).trim().toLowerCase();
-		const haystack = [ include.name, include.label, include.kind, 'template tpl shortcode reusable' ].join(' ').toLowerCase();
-		return categoryMatch && ( needle === '' || haystack.includes( needle ) );
-	}
+		And a gallery of reusable includes: reusableIncludes(), matchesInclude(),
+		selectedInclude(), selectInclude() and a _includePath they turned on.
+		Nothing called selectInclude(), so _includePath was null from the first
+		line to the last, and every branch that asked about it had one answer.
+		The includes themselves are not gone - area-composer.js offers them
+		where an area takes one.	*/
 
 	function moduleFor( content ) {
 		return pd._library.modules.find( function( module ) { return module.key === content } ) || { key : 'none', source : 'none', layouts : [ 'auto' ], fields : [], images : [], model : {} };
@@ -79,10 +77,6 @@
 
 	function presetKind( preset ) {
 		return Nino.content.getText('/_admin/templates/label/preset-areas').replace( '%d', String( Object.keys( preset && preset.areas || {} ).length ) );
-	}
-
-	function selectedInclude() {
-		return reusableIncludes().find( function( include ) { return include.path === pd.composer._includePath } ) || null;
 	}
 
 	function escapeAttribute( value ) {
@@ -237,13 +231,10 @@
 	Object.assign( pd, { composer : {
 
 		matchesPreset : matchesPreset,
-		isAreaPreset : isAreaPreset,
-		matchesInclude : matchesInclude,
 		previewDocument : previewDocument,
 		fieldSuffixes : fieldSuffixes,
 		_context : null,
 		_presetKey : null,
-		_includePath : null,
 		_category : '*',
 		_libraryCards : {},
 		_librarySignature : null,
@@ -268,7 +259,7 @@
 
 		libraryReady : function() {
 			if( pd.composer._presetKey === null && pd._library.presets.length )
-				pd.composer._presetKey = ( pd._library.presets.find( isAreaPreset ) || pd._library.presets[0] ).key;
+				pd.composer._presetKey = pd._library.presets[0].key;
 			const dialog = dc.getElementById('pd-composer');
 			if( dialog && dialog.open && pd.composer._step === 'library' ) {
 				pd.composer.renderCategories();
@@ -300,7 +291,6 @@
 
 			context = Object.assign( { mode : 'insert', afterId : null, targetId : null, spec : null }, context || {} );
 			pd.composer._context = context;
-			pd.composer._includePath = null;
 			pd.composer._idTouched = context.spec !== null;
 			pd.composer._category = '*';
 			pd.composer._step = 'library';
@@ -317,7 +307,7 @@
 			if( pd.areaComposer )
 				pd.areaComposer._areaKey = '';
 
-			const fallback = ( pd._library.presets.find( isAreaPreset ) || pd._library.presets[0] ).key;
+			const fallback = pd._library.presets[0].key;
 			const requested = context.spec && context.spec.preset ? context.spec.preset : fallback;
 			pd.composer._presetKey = pd._library.presets.some( function( preset ) { return preset.key === requested } ) ? requested : fallback;
 			const preset = selectedPreset();
@@ -363,9 +353,7 @@
 			const preset = pd._library.presets.find( function( entry ) { return entry.key === key } );
 			if( !preset )
 				return;
-			const wasInclude = pd.composer._includePath !== null;
-			pd.composer._includePath = null;
-			if( key === pd.composer._presetKey && wasInclude === false ) {
+			if( key === pd.composer._presetKey ) {
 				pd.composer.renderLibrary();
 				return;
 			}
@@ -391,15 +379,6 @@
 			pd.composer._textValues = {};
 			pd.composer._touched = new Set();
 			pd.composer.renderLibrary();
-		},
-
-		selectInclude : function( path ) {
-			const include = reusableIncludes().find( function( entry ) { return entry.path === path } );
-			if( !include )
-				return;
-			pd.composer._includePath = path;
-			pd.composer.renderLibrary();
-			pd.composer.renderStep();
 		},
 
 		/*	The dialog has one library step and, after it, either one
@@ -557,9 +536,7 @@
 			// thing on each step, and "Continue" three times over says none of
 			// them
 			if( nextStep !== '' )
-				next.textContent = selectedInclude()
-					? Nino.content.getText('/_admin/templates/label/next-template')
-					: Nino.content.getText( '/_admin/templates/label/next-'+ ( nextStep === 'config' ? 'config' : nextStep ) );
+				next.textContent = Nino.content.getText( '/_admin/templates/label/next-'+ ( nextStep === 'config' ? 'config' : nextStep ) );
 			pd.composer.renderComposerHeading();
 			submit.classList.toggle( 'pd-hidden', nextStep !== '' );
 			pd.composer.renderStepper();
@@ -608,7 +585,7 @@
 		renderCategories : function() {
 			const wrap = dc.getElementById('pd-library-categories');
 			wrap.innerHTML = '';
-			const scopedPresets = pd._library.presets.filter( isAreaPreset );
+			const scopedPresets = pd._library.presets;
 			// '*' is this panel's own chip rather than a preset's category, so it
 			// is a slug: it is compared as well as shown, and a comparison
 			// against a translated word would hold in one language only. The
@@ -654,8 +631,8 @@
 				const card = pd.composer._libraryCards[preset.key];
 				if( !card )
 					return;
-				const match = isAreaPreset( preset ) && matchesPreset( preset, search.value, pd.composer._category );
-				const active = pd.composer._includePath === null && preset.key === pd.composer._presetKey;
+				const match = matchesPreset( preset, search.value, pd.composer._category );
+				const active = preset.key === pd.composer._presetKey;
 				card.classList.toggle( 'pd-hidden', match === false );
 				card.classList.toggle( 'is-active', active );
 				const choose = card.querySelector('.pd-preset-select');
@@ -998,7 +975,11 @@
 
 		loadNativeContent : function() {
 			const draft = pd.composer._draft;
-			if( Number( selectedPreset() && selectedPreset().version ) === 3 && pd.areaComposer )
+			// The version half of this used to be asked here too, and every
+			// preset is a named-area one - so what is left is the question that
+			// has two answers: whether area-composer.js is loaded beside this
+			// one, the same guard previewFocus() makes
+			if( pd.areaComposer )
 				return pd.composer.loadTextValues();
 			if( !draft || /^[a-z][a-z0-9-]*$/.test( draft.id ) === false )
 				return Promise.resolve();
