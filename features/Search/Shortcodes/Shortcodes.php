@@ -300,7 +300,7 @@ namespace Nino\Modules\Search {
 			// its arrays in order
 			return str_replace(
 				[ '[[tag]]', '[[class]]', '[[inner]]' ],
-				[ $tag, htmlspecialchars( $class !== '' ? $class : 'nino-search-results', ENT_QUOTES, 'UTF-8' ), $inner ],
+				[ $tag, htmlspecialchars( $class !== '' ? $class : 'nino-search-results', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ), $inner ],
 				self::template( $appData, 'search-results' )
 			);
 		}

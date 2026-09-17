@@ -5,46 +5,6 @@ A release is the tag `design-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
-### Changed
-
-- **The preview specimen is written in English.** Its demonstration copy, its
-  control labels and the two constants behind them were German in a catalogue
-  that is English everywhere else, as were the `@knob` notes in 35 library
-  stylesheets. The `@name` and `@description` a set is listed under were
-  already English; those are what the panel shows.
-
-### Fixed
-
-- **The panel compiled the whole stylesheet to answer one boolean.** "Does
-  the file on disk still match the screen?" was answered by building the
-  sheet again and hashing the result - 43 ms of colour solving, on every list,
-  on every save, and once more at the end of every apply, which therefore
-  compiled twice. An apply now records what it compiled *from* - the setup's
-  own choices and a hash of each library file they point at - and the answer
-  is that fingerprint against the current one: 43 ms → 0.17. A setup written
-  before this carries the compiled hash alone, and there the old answer is
-  still the only one there is, once, until the next apply.
-
-- **The knob table shipped three strings nothing drew.** `label`, `note` and
-  `hint` went to the browser with every list, while the panel draws all three
-  from text keys - and they had drifted: `harmony` read "Harmony" in the table
-  while the screen said "Second colour". Gone. What a published knob really
-  needs is its words in every locale, and the suite checks for those now
-  rather than the docblock claiming no template needs a line.
-
-- **A size posted as an array was a 500 on the panel's own save.** Its two
-  neighbours in the same array were read with `is_array()`, `size` with a
-  `(string)` cast - and that cast raises "Array to string conversion" for an
-  array, a level the kernel treats as fatal. It is read like the others now
-  and falls back the way any unusable size does.
-
-- **"Nothing was overwritten" was not always true.** Applying wrote the
-  stylesheet first and asked about the frame templates afterwards, so a
-  project that had taken its header template over by hand - which the
-  generated file invites - got a new `assets/theme.css`, kept its old header,
-  and was told that neither had happened. Every file a compile would write is
-  asked before the first one is written.
-
 ### Added
 
 - **Four more variants for every part - 36 files, and the library is a choice
@@ -67,6 +27,12 @@ A release is the tag `design-<version>` of dapeio/nino-features.
   once proves only that the last one landed.
 
 ### Changed
+
+- **The preview specimen is written in English.** Its demonstration copy, its
+  control labels and the two constants behind them were German in a catalogue
+  that is English everywhere else, as were the `@knob` notes in 35 library
+  stylesheets. The `@name` and `@description` a set is listed under were
+  already English; those are what the panel shows.
 
 - **The preview holds no markup in php any more.** `Preview` carried the whole
   specimen - every section, card, button and plan - as strings in three methods
@@ -130,6 +96,42 @@ A release is the tag `design-<version>` of dapeio/nino-features.
   all, and `↺` hands the question back to the wheel.
 
 ### Fixed
+
+- **An invalid byte in a value rendered as nothing.** `htmlspecialchars()`
+  answers input that is not valid UTF-8 with `''` unless `ENT_SUBSTITUTE` is
+  among its flags, and every call here spelled the flags out without it.
+  Every call carries it now, as the kernel's do, and
+  `tests/escaping-smoke.php` reads every feature for the next one.
+
+- **The panel compiled the whole stylesheet to answer one boolean.** "Does
+  the file on disk still match the screen?" was answered by building the
+  sheet again and hashing the result - 43 ms of colour solving, on every list,
+  on every save, and once more at the end of every apply, which therefore
+  compiled twice. An apply now records what it compiled *from* - the setup's
+  own choices and a hash of each library file they point at - and the answer
+  is that fingerprint against the current one: 43 ms → 0.17. A setup written
+  before this carries the compiled hash alone, and there the old answer is
+  still the only one there is, once, until the next apply.
+
+- **The knob table shipped three strings nothing drew.** `label`, `note` and
+  `hint` went to the browser with every list, while the panel draws all three
+  from text keys - and they had drifted: `harmony` read "Harmony" in the table
+  while the screen said "Second colour". Gone. What a published knob really
+  needs is its words in every locale, and the suite checks for those now
+  rather than the docblock claiming no template needs a line.
+
+- **A size posted as an array was a 500 on the panel's own save.** Its two
+  neighbours in the same array were read with `is_array()`, `size` with a
+  `(string)` cast - and that cast raises "Array to string conversion" for an
+  array, a level the kernel treats as fatal. It is read like the others now
+  and falls back the way any unusable size does.
+
+- **"Nothing was overwritten" was not always true.** Applying wrote the
+  stylesheet first and asked about the frame templates afterwards, so a
+  project that had taken its header template over by hand - which the
+  generated file invites - got a new `assets/theme.css`, kept its old header,
+  and was told that neither had happened. Every file a compile would write is
+  asked before the first one is written.
 
 - **Following the picker scrolled the workbench, not only the preview.**
   `scrollIntoView()` walks every scrollable ancestor of an element, and inside a

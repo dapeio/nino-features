@@ -103,7 +103,7 @@ namespace Nino\Modules {
 			if( $moment === null )
 				return '';
 
-			$safe = static fn( string $value ): string => htmlspecialchars( $value, ENT_QUOTES, 'UTF-8' );
+			$safe = static fn( string $value ): string => htmlspecialchars( $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
 
 			$format = trim( (string) ( $args['format'] ?? '' ) );
 			$format = $format === '' ? self::FORMAT_DEFAULT : $format;

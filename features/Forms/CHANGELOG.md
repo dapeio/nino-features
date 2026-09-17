@@ -8,6 +8,12 @@ versions [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **An invalid byte in a value rendered as nothing.** `htmlspecialchars()`
+  answers input that is not valid UTF-8 with `''` unless `ENT_SUBSTITUTE` is
+  among its flags, and every call here spelled the flags out without it.
+  Every call carries it now, as the kernel's do, and
+  `tests/escaping-smoke.php` reads every feature for the next one.
+
 - **A field label was drawn as markup while a select option was drawn as
   text.** Both are the same kind of value - a fill key, or a word an operator
   typed into the Forms panel - and both are rendered so a form can be

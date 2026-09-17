@@ -151,7 +151,7 @@ public const string TEMPLATES = '/features/<Name>/templates';
 
 return str_replace(
 	[ '[[greeting]]', '[[name]]' ],
-	[ htmlspecialchars( $greeting, ENT_QUOTES ), htmlspecialchars( $name, ENT_QUOTES ) ],
+	[ htmlspecialchars( $greeting, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ), htmlspecialchars( $name, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) ],
 	self::template( $appData, 'hello' )
 );
 ```
@@ -161,6 +161,10 @@ that goes through `\Nino\Filesystem`, and one `.tpl` with two tokens. Copy that.
 
 - Every value is escaped **before** it is filled in, exactly as it was when the
   markup was a string in PHP. A template has no escaping of its own.
+- `htmlspecialchars()` spells out `ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'`, every
+  time. Without `ENT_SUBSTITUTE` it answers input that is not valid UTF-8 with
+  `''`, and a value that renders as nothing is a bug nobody sees;
+  `tests/escaping-smoke.php` reads every feature for a call that dropped it.
 - Fill the tokens that carry **built markup last**: `str_replace()` works through
   its arrays in order, so a token after them is looked for in what they put in
   as well.

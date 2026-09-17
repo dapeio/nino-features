@@ -162,7 +162,7 @@ namespace Nino\Modules\Design {
 				string here this class did not write	*/
 			return str_replace(
 				[ '[[lang]]', '[[head]]', '[[tail]]', '[[body]]' ],
-				[ htmlspecialchars( substr( $locale, 0, 2 ), ENT_QUOTES ), $head, $tail, $body ],
+				[ htmlspecialchars( substr( $locale, 0, 2 ), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ), $head, $tail, $body ],
 				$template
 			);
 		}

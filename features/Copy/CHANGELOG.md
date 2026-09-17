@@ -3,6 +3,16 @@
 All notable changes to the Copy to Clipboard feature are documented in this file.
 A release is the tag `copy-<version>` of dapeio/nino-features.
 
+## Unreleased
+
+### Fixed
+
+- **An invalid byte in a value rendered as nothing.** `htmlspecialchars()`
+  answers input that is not valid UTF-8 with `''` unless `ENT_SUBSTITUTE` is
+  among its flags, and every call here spelled the flags out without it.
+  Every call carries it now, as the kernel's do, and
+  `tests/escaping-smoke.php` reads every feature for the next one.
+
 ## 1.0.0 — Unreleased
 
 First release.

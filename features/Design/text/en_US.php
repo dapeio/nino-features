@@ -92,7 +92,6 @@ return [
 	'[[/_admin/design/tab/structure]]'			=> 'Structure',
 	'[[/_admin/design/tab/colours]]'				=> 'Colours',
 
-	'[[/_admin/design/hint/colours]]'				=> 'Two colours, and five knobs for what becomes of them. Every surface and everything that has to be readable on it is solved and then measured - no pair below 4.5:1.',
 	'[[/_admin/design/label/primary]]'			=> 'Brand colour',
 	'[[/_admin/design/hint/primary]]'				=> 'used exactly as picked',
 	'[[/_admin/design/label/secondary]]'		=> 'Second colour',

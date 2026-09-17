@@ -122,14 +122,14 @@ namespace Nino\Modules {
 				// The leading space is the sentence's, not the link's: a file that
 				// starts with a space is a space nobody sees in a diff, and a banner
 				// with no policy url must not leave one behind either
-				: ' '. str_replace( '[[url]]', htmlspecialchars( $policyUrl, ENT_QUOTES ), self::template( $appData, 'consent-policy-link' ) );
+				: ' '. str_replace( '[[url]]', htmlspecialchars( $policyUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ), self::template( $appData, 'consent-policy-link' ) );
 
 			/*	The two that carry markup last: str_replace() works through its arrays
 				in order, so a token after them would be looked for in what they put in
 				as well */
 			return str_replace(
 				[ '[[cookie]]', '[[days]]', '[[policy]]', '[[categories]]' ],
-				[ htmlspecialchars( $cookieName, ENT_QUOTES ), (string) $days, $policy, $categories ],
+				[ htmlspecialchars( $cookieName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ), (string) $days, $policy, $categories ],
 				self::template( $appData, 'consent-banner' )
 			);
 		}

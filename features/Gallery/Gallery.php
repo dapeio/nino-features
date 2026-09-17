@@ -326,7 +326,7 @@ namespace Nino\Modules {
 			$columns = (int) ( $args['columns'] ?? \Nino\Features::setting( $appData, 'gallery', 'columns', 4 ) );
 			$columns = ( $columns >= 1 && $columns <= 8 ) ? $columns : 4;
 
-			$safe = static fn( string $value ): string => htmlspecialchars( $value, ENT_QUOTES, 'UTF-8' );
+			$safe = static fn( string $value ): string => htmlspecialchars( $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
 
 			// The subdirectory read from the configuration rather than through
 			// the '[[/nino/dir]]' fill a template would use: that fill is

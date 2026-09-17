@@ -222,7 +222,7 @@ namespace Nino\Modules {
 			if( $form === null )
 				return '';
 
-			$safe = static fn( string $value ): string => htmlspecialchars( $value, ENT_QUOTES, 'UTF-8' );
+			$safe = static fn( string $value ): string => htmlspecialchars( $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
 			$id 	= 'form-'. $form['key'];
 
 			$fields = '';

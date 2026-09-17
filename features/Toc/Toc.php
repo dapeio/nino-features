@@ -91,7 +91,7 @@ namespace Nino\Modules {
 		 */
 		public static function doShortcode( array &$appData, array $args ): string {
 
-			$safe = static fn( string $value ): string => htmlspecialchars( $value, ENT_QUOTES, 'UTF-8' );
+			$safe = static fn( string $value ): string => htmlspecialchars( $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
 
 			/*	The heading over the list is editor text that may be a textfill, so
 				it is rendered first and escaped after; where the shortcode says

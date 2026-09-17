@@ -260,7 +260,7 @@ namespace Nino\Modules\Posts {
 			$search = [ '[[.id]]', '[[.url]]', '[[.image]]', '[[.body]]' ];
 			$replace= [
 				(string) $id,
-				htmlspecialchars( \Nino\Modules\Posts\Sections::url( $appData, $section, (string) ( $element['.uri'] ?? '' ) ), ENT_QUOTES, 'UTF-8' ),
+				htmlspecialchars( \Nino\Modules\Posts\Sections::url( $appData, $section, (string) ( $element['.uri'] ?? '' ) ), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ),
 				self::_image( $appData, $section, $model, $element ),
 				self::_body( $appData, (string) ( $element[ $section['body'] ] ?? '' ) ),
 			];
@@ -387,7 +387,7 @@ namespace Nino\Modules\Posts {
 
 			$safe = $html === true
 				? \Nino\Html::sanitizeHtml( $value )
-				: htmlspecialchars( $value, ENT_QUOTES, 'UTF-8' );
+				: htmlspecialchars( $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
 
 			return str_replace( '[', '&#91;', $safe );
 		}
@@ -403,7 +403,7 @@ namespace Nino\Modules\Posts {
 		 */
 		private static function _href( string $base, int $page ): string {
 
-			return htmlspecialchars( $page <= 1 ? $base : $base. '?'. \Nino\Modules\Posts::PAGE_KEY. '='. $page, ENT_QUOTES, 'UTF-8' );
+			return htmlspecialchars( $page <= 1 ? $base : $base. '?'. \Nino\Modules\Posts::PAGE_KEY. '='. $page, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
 		}
 
 		/**
@@ -425,12 +425,12 @@ namespace Nino\Modules\Posts {
 			// An attribute that still carries brackets is an unresolved fill,
 			// not a label - the project has no such text key
 			if( $given !== '' && str_contains( $given, '[[' ) === false )
-				return htmlspecialchars( $given, ENT_QUOTES, 'UTF-8' );
+				return htmlspecialchars( $given, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
 
 			$fill = \Nino\Html::renderTextfill( $appData, '/posts/'. $which );
 
 			if( $fill !== '' )
-				return htmlspecialchars( $fill, ENT_QUOTES, 'UTF-8' );
+				return htmlspecialchars( $fill, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
 
 			return str_starts_with( \Nino\Locales::getCurrentLocale( $appData ), 'de' ) === true ? $german : $english;
 		}

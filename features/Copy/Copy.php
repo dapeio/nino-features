@@ -91,7 +91,7 @@ namespace Nino\Modules {
 			if( $content === '' )
 				return '';
 
-			$safe = static fn( string $value ): string => htmlspecialchars( $value, ENT_QUOTES, 'UTF-8' );
+			$safe = static fn( string $value ): string => htmlspecialchars( $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
 
 			// Rendered, then escaped: a body is editor text that may hold a
 			// textfill, and what comes out of the fill engine is still text

@@ -72,9 +72,10 @@ what is on disk would mean re-cropping something already cropped.
 
 Both sizes go through `\Nino\Images::process()` and `\Nino\Images::fit()`,
 which fire `\Nino\Images::RENDER` after the safety checks and before the
-encoding. A project or a feature that wants webp, a srcset or an imagick
-pipeline registers there and renders this feature's images too - without this
-feature knowing anything about it, and without a fork of anything. See
+encoding. A project or a feature that wants a srcset or an imagick pipeline
+registers there and renders this feature's images too - without this feature
+knowing anything about it, and without a fork of anything. Webp is the
+kernel's own output now, so both sizes are `.webp` wherever gd can write one. See
 [Callbacks](https://github.com/dapeio/nino/blob/main/docs/development.md#callback-reference)
 in the developer manual.
 

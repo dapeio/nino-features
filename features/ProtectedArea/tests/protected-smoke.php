@@ -42,7 +42,6 @@ if( ( $argv[1] ?? '' ) === 'unlock-worker' ) {
 	$worker['./nino/filesystem/path']					= $argv[2];
 	$worker['./nino/filesystem/configpath']		= $argv[2]. '/private';
 	$worker['./nino/filesystem/contentpath']	= $argv[2]. '/private';
-	$worker['./nino/filesystem/privatepath']	= $argv[2]. '/private';
 	$worker['./nino/filesystem/publicpath']		= $argv[2]. '/public';
 	\Nino\AppData::init( $worker );
 

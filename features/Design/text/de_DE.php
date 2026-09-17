@@ -92,7 +92,6 @@ return [
 	'[[/_admin/design/tab/structure]]'			=> 'Struktur',
 	'[[/_admin/design/tab/colours]]'				=> 'Farben',
 
-	'[[/_admin/design/hint/colours]]'				=> 'Zwei Farben, und fünf Regler dafür, was daraus wird. Jede Fläche und alles, was darauf lesbar sein muss, wird gerechnet und gemessen – kein Paar unter 4,5:1.',
 	'[[/_admin/design/label/primary]]'			=> 'Markenfarbe',
 	'[[/_admin/design/hint/primary]]'				=> 'wird genau so übernommen',
 	'[[/_admin/design/label/secondary]]'		=> 'Zweite Farbe',

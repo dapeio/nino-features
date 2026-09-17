@@ -5,6 +5,13 @@ A release is the tag `modeswitch-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+### Changed
+
+- **The switch's markup is a template now.** The group and a button of it were
+  strings `Modeswitch.php` built; they are `templates/modeswitch.tpl` and
+  `modeswitch-button.tpl`, filled by token - see AGENTS.md, "Markup belongs in
+  a template". The output is the same.
+
 ### Fixed
 
 - **The switch showed before the script unhid it.** It is rendered with the

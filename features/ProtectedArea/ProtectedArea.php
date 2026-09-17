@@ -146,7 +146,7 @@ namespace Nino\Modules {
 			if( self::protects( $appData, $uri ) === false || self::unlocked( $appData ) === true )
 				return;
 
-			\Nino\Html::addFills( $appData, [ '[[/protected/return]]' => htmlspecialchars( $uri, ENT_QUOTES, 'UTF-8' ) ], '*' );
+			\Nino\Html::addFills( $appData, [ '[[/protected/return]]' => htmlspecialchars( $uri, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) ], '*' );
 
 			$request['/nino/http/response']['body']										= '[template /templates/page-protected]';
 			$request['/nino/http/response']['statusCode']							= 401;

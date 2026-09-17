@@ -186,7 +186,7 @@ namespace Nino\Modules {
 				here - the one rule that is never optional	*/
 			return str_replace(
 				[ '[[greeting]]', '[[name]]' ],
-				[ htmlspecialchars( self::greeting( $appData ), ENT_QUOTES ), htmlspecialchars( $name, ENT_QUOTES ) ],
+				[ htmlspecialchars( self::greeting( $appData ), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ), htmlspecialchars( $name, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) ],
 				self::template( $appData, 'hello' )
 			);
 		}

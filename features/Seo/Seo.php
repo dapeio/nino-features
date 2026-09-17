@@ -569,7 +569,7 @@ namespace Nino\Modules {
 		 */
 		private static function _xmlEscape( string $value ): string {
 
-			return htmlspecialchars( $value, ENT_QUOTES | ENT_XML1, 'UTF-8' );
+			return htmlspecialchars( $value, ENT_QUOTES | ENT_SUBSTITUTE | ENT_XML1, 'UTF-8' );
 		}
 
 		/**
@@ -583,7 +583,7 @@ namespace Nino\Modules {
 		 */
 		private static function _attrEscape( string $value ): string {
 
-			return htmlspecialchars( $value, ENT_QUOTES, 'UTF-8' );
+			return htmlspecialchars( $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
 		}
 
 		/**

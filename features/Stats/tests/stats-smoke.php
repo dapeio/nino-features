@@ -332,7 +332,6 @@ $appData = [ "./nino/uid" => '. var_export( $sandbox, true ). ' ];
 $appData["./nino/filesystem/path"] 				= '. var_export( $sandbox, true ). ';
 $appData["./nino/filesystem/configpath"] 	= '. var_export( $sandbox. '/private', true ). ';
 $appData["./nino/filesystem/contentpath"] 	= '. var_export( $sandbox. '/private', true ). ';
-$appData["./nino/filesystem/privatepath"] 	= '. var_export( $sandbox. '/private', true ). ';
 $appData["./nino/filesystem/publicpath"]		= '. var_export( $sandbox. '/public', true ). ';
 \Nino\Filesystem::init( $appData );
 \Nino\AppData::init( $appData );

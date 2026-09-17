@@ -7,6 +7,12 @@ A release is the tag `search-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **An invalid byte in a value rendered as nothing.** `htmlspecialchars()`
+  answers input that is not valid UTF-8 with `''` unless `ENT_SUBSTITUTE` is
+  among its flags, and every call here spelled the flags out without it.
+  Every call carries it now, as the kernel's do, and
+  `tests/escaping-smoke.php` reads every feature for the next one.
+
 - **A posted value that was not a string was a 500, not a 400.** The panel
   cast the element type, the probe query and its locale straight to string;
   an array in the posted json raises "Array to string conversion", which the

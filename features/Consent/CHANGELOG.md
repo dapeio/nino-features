@@ -5,7 +5,22 @@ A release is the tag `consent-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+### Changed
+
+- **The banner's markup is a template now.** The banner, a category row, the
+  open button and the policy link were strings `Consent.php` assembled; they
+  are `templates/consent-banner.tpl`, `consent-category.tpl`,
+  `consent-open.tpl` and `consent-policy-link.tpl`, filled by token with every
+  value escaped before it goes in - see AGENTS.md, "Markup belongs in a
+  template". The output is the same.
+
 ### Fixed
+
+- **An invalid byte in a value rendered as nothing.** `htmlspecialchars()`
+  answers input that is not valid UTF-8 with `''` unless `ENT_SUBSTITUTE` is
+  among its flags, and every call here spelled the flags out without it.
+  Every call carries it now, as the kernel's do, and
+  `tests/escaping-smoke.php` reads every feature for the next one.
 
 - **A cookie anybody can send was a 500 on every page.** `allowed()` cast the
   consent cookie to a string, and a request sending `nino_consent[]=x` makes

@@ -7,6 +7,12 @@ A release is the tag `posts-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **An invalid byte in a value rendered as nothing.** `htmlspecialchars()`
+  answers input that is not valid UTF-8 with `''` unless `ENT_SUBSTITUTE` is
+  among its flags, and every call here spelled the flags out without it.
+  Every call carries it now, as the kernel's do, and
+  `tests/escaping-smoke.php` reads every feature for the next one.
+
 - **One element with a list field where the date should be took every posts
   page down.** `published()` cast the date field to a string; an array there
   raises "Array to string conversion", a level the kernel treats as fatal, so

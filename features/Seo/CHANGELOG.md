@@ -5,7 +5,22 @@ A release is the tag `seo-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+### Changed
+
+- **The head markup is a template now.** An alternate link and the JSON-LD
+  script were strings `Seo.php` built; they are `templates/alternate-link.tpl`
+  and `jsonld.tpl`, filled by token with every value escaped before it goes
+  in - see AGENTS.md, "Markup belongs in a template". The sitemap, robots.txt
+  and llms.txt are document formats rather than views and stay where they
+  are. The output is the same.
+
 ### Fixed
+
+- **An invalid byte in a value rendered as nothing.** `htmlspecialchars()`
+  answers input that is not valid UTF-8 with `''` unless `ENT_SUBSTITUTE` is
+  among its flags, and every call here spelled the flags out without it.
+  Every call carries it now, as the kernel's do, and
+  `tests/escaping-smoke.php` reads every feature for the next one.
 
 - **Contributed pages were deduplicated by scanning a list.** `_contributed()`
   kept the paths it had taken as a list and asked `in_array()` once per

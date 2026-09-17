@@ -105,7 +105,7 @@ namespace Nino\Modules {
 			if( $before === '' || $after === '' )
 				return '';
 
-			$safe = static fn( string $value ): string => htmlspecialchars( $value, ENT_QUOTES, 'UTF-8' );
+			$safe = static fn( string $value ): string => htmlspecialchars( $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
 
 			$ratio = (string) ( $args['ratio'] ?? '' );
 			$ratio = in_array( $ratio, self::RATIOS, true ) === true ? $ratio : self::RATIO_DEFAULT;
@@ -196,7 +196,7 @@ namespace Nino\Modules {
 			if( $given === '' )
 				return '[[/compare/'. $side. ']]';
 
-			return htmlspecialchars( \Nino\Html::renderHtml( $appData, $given ), ENT_QUOTES, 'UTF-8' );
+			return htmlspecialchars( \Nino\Html::renderHtml( $appData, $given ), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
 		}
 
 		/**
