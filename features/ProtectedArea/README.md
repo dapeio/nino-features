@@ -73,34 +73,40 @@ checks the kernel's CSRF state (`./nino/csrf/blocked`, set by the required
 `\Nino\Csrf` before this callback ever runs - the form has to render
 `[csrf]`), reads `password` and `return` from the posted form, and:
 
-1. refuses with `429` when the attempt cap for this client ip is already
-   spent for the current hour - see [The attempt cap](#the-attempt-cap) -
-   without even looking at the password;
+1. claims one attempt against the cap for this client ip, and refuses with
+   `429` where the cap for the current hour is spent - see
+   [The attempt cap](#the-attempt-cap) - without even looking at the
+   password;
 2. compares the posted password against the configured one with
-   `hash_equals()` and, on a match, calls
+   `hash_equals()` and, on a match, drops the ip's counter, calls
    `\Nino\Runtime::setSessionValue( $appData, './protected/unlocked', true )`
    and answers `303` to `return`, resolved to a **local path only** - one
    starting with a single `/`, no `//`, no scheme. Anything else (a full
    url, a protocol-relative one, `/javascript:...`) becomes `/` instead;
-3. otherwise records one wrong attempt for this ip and re-renders the
-   password form with `statusCode` `401` and the wrong-password error
-   shown, so the visitor sees what went wrong instead of being redirected
-   away from it.
+3. otherwise re-renders the password form with `statusCode` `401` and the
+   wrong-password error shown, so the visitor sees what went wrong instead
+   of being redirected away from it. The attempt is already counted.
 
 The password never appears in a log line or in any response, on success or
 on failure.
 
 ### The attempt cap
 
-Every wrong password is counted per client ip in a fixed one-hour window,
-in `/data/protected.php` - the same idea as `\Nino\Mail::_hit()`'s per-ip
-send cap (copied, not called: that counter is mail's own). Once `attempts`
-wrong tries have been recorded for an ip in the current window, every
-further attempt from it is answered `429` with the "too many attempts"
-error, **even a correct password** - a leaked or guessed password cannot be
-brute forced past a prefix nobody has found yet, either. The window resets
-an hour after the first wrong attempt in it; a stale window is dropped the
-next time anything writes to the file, so it never grows without bound.
+Every attempt is counted per client ip in a fixed one-hour window, in
+`/data/protected.php` - the same idea as `\Nino\Mail::_hit()`'s per-ip send
+cap (copied, not called: that counter is mail's own). Once `attempts` tries
+have been counted for an ip in the current window, every further attempt
+from it is answered `429` with the "too many attempts" error, **even a
+correct password** - a leaked or guessed password cannot be brute forced
+past a prefix nobody has found yet, either. The window resets an hour after
+the first attempt in it; a stale window is dropped the next time anything
+writes to the file, so it never grows without bound.
+
+The count is claimed before the password is compared, and inside the lock
+that writes it, so a burst of parallel posts cannot all read the same count
+and all pass the same check. That also means the correct password spends a
+try - so a successful unlock drops the ip's counter again, and `attempts`
+stays what the setting says it is: wrong passwords per visitor and hour.
 
 Which address that is, is the kernel's answer: behind a reverse proxy it is
 the proxy for every visitor alike unless the proxy is named under
@@ -176,7 +182,7 @@ workbench's daily backup carries it:
 
 | File | Content |
 | --- | --- |
-| `/data/protected.php` | the wrong-attempt cap's own counter, by client ip: `{ tries, reset }` per ip that has failed at least once in the current window |
+| `/data/protected.php` | the attempt cap's own counter, by client ip: `{ tries, reset }` per ip with an unsuccessful try in the current window |
 
 There is nothing to restore-merge here (unlike a subscriber list, an
 elapsed rate-limit window is never worth preserving across a restore), so
@@ -189,8 +195,10 @@ activation through `\Nino\Features` with the unit applied, `protects()`
 against configured prefixes and their boundaries, the gate replacing a
 locked response and extending the cache blacklist, unlocking with a wrong
 and then the right password, an unsafe `return` falling back to `/`, the
-per-ip attempt cap, locking again and `[protected-logout]`, an empty
-password leaving the feature inert, and deactivation. It loads Nino's
+per-ip attempt cap - including eight real processes posting at once, since
+what a cap has to survive is a burst - locking again and
+`[protected-logout]`, an empty password leaving the feature inert, and
+deactivation. It loads Nino's
 `tests/harness.php` from the checkout three levels up - where the feature
 sits in a project - or from the one `NINO_ROOT` names:
 

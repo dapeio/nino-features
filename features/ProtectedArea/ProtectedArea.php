@@ -156,12 +156,12 @@ namespace Nino\Modules {
 		/**
 		 *	POST /.protected: check the posted password against the
 		 *	configured one and either unlock the session and redirect to
-		 *	'return', or re-render the form with an error. Wrong attempts are
-		 *	capped per client ip and hour (_tries()/_recordAttempt()) - once
-		 *	the cap is hit the form refuses even a correct password for the
-		 *	rest of the window, so a leaked or guessed password cannot be
-		 *	brute forced past a guessed prefix either. The password itself
-		 *	never appears in a log or a response, success or failure.
+		 *	'return', or re-render the form with an error. Attempts are capped
+		 *	per client ip and hour (_claimAttempt()) - once the cap is hit the
+		 *	form refuses even a correct password for the rest of the window, so
+		 *	a leaked or guessed password cannot be brute forced past a guessed
+		 *	prefix either. The password itself never appears in a log or a
+		 *	response, success or failure.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
@@ -187,10 +187,12 @@ namespace Nino\Modules {
 			$password	= is_string( $_POST['password'] ?? null ) === true ? $_POST['password'] : '';
 			$limit 		= (int) \Nino\Features::setting( $appData, self::FEATURE_KEY, 'attempts', self::DEFAULT_ATTEMPTS );
 
-			// Checked, and only checked, before the password itself: once the
-			// cap is hit for this window the form has to refuse every further
-			// try, right password included, or the cap protects nothing
-			if( self::_tries( $appData, $ip ) >= $limit ) {
+			// Claimed before the password is compared, and inside the same lock
+			// that records it - a check made first and a failure recorded
+			// afterwards is a cap every request of a burst walks through at
+			// once. Once the cap is hit for this window the form refuses every
+			// further try, right password included, or the cap protects nothing
+			if( self::_claimAttempt( $appData, $ip, $limit ) === false ) {
 				self::_answerForm( $appData, $request, $return, 'locked', 429 );
 				return;
 			}
@@ -204,6 +206,11 @@ namespace Nino\Modules {
 			// empty posted password as a match.
 			if( $configured !== '' && hash_equals( $configured, $password ) === true ) {
 
+				// The try this request claimed, and the wrong ones before it,
+				// are spent: somebody who is through is not somebody the cap
+				// should still be counting down on
+				self::_clearAttempts( $appData, $ip );
+
 				\Nino\Runtime::setSessionValue( $appData, self::SESSION_KEY, true );
 
 				$request['/nino/http/response']['statusCode']					= 303;
@@ -212,7 +219,6 @@ namespace Nino\Modules {
 				return;
 			}
 
-			self::_recordAttempt( $appData, $ip );
 			self::_answerForm( $appData, $request, $return, 'wrong', 401 );
 		}
 
@@ -415,55 +421,86 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	Current wrong-attempt count for $ip in the still-open window, 0
-		 *	for none yet or an elapsed one. A read-only peek, unlike
-		 *	_recordAttempt() below, so a capped visitor's next try can be
-		 *	refused without also being counted as one more failure against a
-		 *	window that may already have reset by the time it lands.
+		 *	Claim one attempt for $ip against the per-hour cap, and answer
+		 *	whether this request may go on to compare a password at all.
+		 *
+		 *	Counting and comparing used to be two steps in two places: a
+		 *	lockless read of the file decided whether to go on, the password
+		 *	was compared, and only a wrong one was written back. Every
+		 *	parallel request in between read the same count and passed the
+		 *	same check, so a cap of five was a cap of five per burst - and a
+		 *	burst is the case a cap exists for. The claim is the first thing
+		 *	that happens now, inside the lock that records it, so a request
+		 *	either holds a try or it does not.
+		 *
+		 *	Every attempt is claimed, the right password included, and a
+		 *	successful unlock drops the ip's counter again (_clearAttempts()):
+		 *	otherwise a visitor who unlocks five times in an hour would have
+		 *	locked themselves out with five correct passwords.
+		 *
+		 *	A stale entry, any key's and not just this one, is dropped on the
+		 *	write - the same idea as \Nino\Mail::_hit(), so the file cannot
+		 *	grow without bound - and nothing is written where nothing changed,
+		 *	so a caller already at the cap does not rewrite the file on every
+		 *	further try. A write that does not happen refuses the attempt: one
+		 *	this counter cannot record is one it cannot cap either.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$ip
+		 *	@param		int				$limit				Wrong attempts allowed per window
 		 *
-		 *	@return 	int
+		 *	@return 	bool										False where the cap is reached or the counter unwritable
 		 */
-		private static function _tries( array &$appData, string $ip ): int {
+		private static function _claimAttempt( array &$appData, string $ip, int $limit ): bool {
 
-			$state = \Nino\Filesystem::getFileContent( $appData, self::DATA_PATH, [] );
-			$entry = is_array( $state ) ? ( $state[$ip] ?? null ) : null;
+			$claimed = false;
 
-			if( is_array( $entry ) === false || (int) ( $entry['reset'] ?? 0 ) <= time() )
-				return 0;
+			$written = \Nino\Filesystem::mutate( $appData, self::DATA_PATH, function( array $state ) use ( $ip, $limit, &$claimed ): ?array {
 
-			return (int) ( $entry['tries'] ?? 0 );
+				$before = $state;
+
+				foreach( $state as $key => $entry )
+					if( (int) ( $entry['reset'] ?? 0 ) <= time() )
+						unset( $state[$key] );
+
+				$entry = $state[$ip] ?? [ 'tries' => 0, 'reset' => time() + self::WINDOW ];
+
+				if( (int) $entry['tries'] < $limit ) {
+
+					$entry['tries']	= (int) $entry['tries'] + 1;
+					$state[$ip] 		= $entry;
+					$claimed 				= true;
+				}
+
+				return $state === $before ? null : $state;
+			} );
+
+			return $claimed === true && $written === true;
 		}
 
 		/**
-		 *	Register one wrong attempt for $ip, fixed-window per hour - the
-		 *	same idea as \Nino\Mail::_hit() (a stale, already-elapsed entry,
-		 *	any key's and not just this one, is dropped on write, so the
-		 *	file cannot grow without bound), copied rather than called:
-		 *	Mail's counter is a send cap shared by every mail the whole site
-		 *	sends, this one is this feature's own and lives in its own
-		 *	/data/protected.php - what the manifest's 'data' entry documents.
+		 *	Drop $ip's counter after a successful unlock, so the tries it took
+		 *	to get there are not still held against the visitor - see
+		 *	_claimAttempt(), which counts the successful one too
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$ip
 		 *
 		 *	@return 	void
 		 */
-		private static function _recordAttempt( array &$appData, string $ip ): void {
+		private static function _clearAttempts( array &$appData, string $ip ): void {
 
-			\Nino\Filesystem::mutate( $appData, self::DATA_PATH, function( array $state ) use ( $ip ): array {
+			\Nino\Filesystem::mutate( $appData, self::DATA_PATH, function( array $state ) use ( $ip ): ?array {
+
+				$before = $state;
+
+				unset( $state[$ip] );
 
 				foreach( $state as $key => $entry )
 					if( (int) ( $entry['reset'] ?? 0 ) <= time() )
 						unset( $state[$key] );
 
-				$entry 					= $state[$ip] ?? [ 'tries' => 0, 'reset' => time() + self::WINDOW ];
-				$entry['tries']	= (int) $entry['tries'] + 1;
-				$state[$ip] 		= $entry;
-
-				return $state;
+				return $state === $before ? null : $state;
 			} );
 		}
 

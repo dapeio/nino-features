@@ -9,8 +9,10 @@ declare(strict_types=1);
  *												configured prefixes, the gate that replaces a locked
  *												visitor's response with the password form and excludes
  *												protected prefixes from the full-page cache, unlocking
- *												with its per-ip attempt cap, an unsafe 'return' falling
- *												back to '/', locking again, the [protected-logout]
+ *												with its per-ip attempt cap - eight real processes
+ *												posting at once among them, since a burst is what a
+ *												cap has to survive - an unsafe 'return' falling back
+ *												to '/', locking again, the [protected-logout]
  *												shortcode, an empty password leaving the feature inert,
  *												and deactivation. Travels with the feature and runs
  *												against the checkout three levels up, or the one
@@ -27,6 +29,39 @@ declare(strict_types=1);
 $root = getenv( 'NINO_ROOT' ) ?: dirname( __DIR__, 3 );
 defined( 'NINO_FEATURES_DIR' ) === true || define( 'NINO_FEATURES_DIR', dirname( __DIR__, 2 ) );
 require $root. '/tests/harness.php';
+
+/*	Worker mode: this same file re-entered as its own process, pointed at a
+	sandbox somebody else built, to post one wrong password and print the
+	status it was answered with. See "the cap under real concurrency" below -
+	flock() is per open file description, so a single process can satisfy a
+	lock by accident and proves nothing about one	*/
+if( ( $argv[1] ?? '' ) === 'unlock-worker' ) {
+
+	$worker = [ './nino/uid' => $argv[2] ];
+	\Nino\AppData::prepare( $worker );
+	$worker['./nino/filesystem/path']					= $argv[2];
+	$worker['./nino/filesystem/configpath']		= $argv[2]. '/private';
+	$worker['./nino/filesystem/contentpath']	= $argv[2]. '/private';
+	$worker['./nino/filesystem/privatepath']	= $argv[2]. '/private';
+	$worker['./nino/filesystem/publicpath']		= $argv[2]. '/public';
+	\Nino\AppData::init( $worker );
+
+	$_SERVER['REMOTE_ADDR']	= $argv[3];
+	$_POST									= [ 'password' => 'still-not-the-password', 'return' => '/intern' ];
+	$workerRequest					= [ '/nino/http/response' => [ 'statusCode' => 200, 'header' => [] ] ];
+
+	// Every worker waits for the same moment before posting, booting done.
+	// Started one after the other and left to run, the first is finished
+	// before the last has begun - eight posts that never overlap, which is
+	// the one thing this section is here to arrange
+	while( microtime( true ) < (float) ( $argv[4] ?? 0 ) )
+		usleep( 200 );
+
+	\Nino\Modules\ProtectedArea::callbackUnlock( $worker, $workerRequest );
+
+	echo $workerRequest['/nino/http/response']['statusCode'];
+	exit( 0 );
+}
 
 $appData = ninoSandbox( 'protected' );
 $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
@@ -207,10 +242,18 @@ echo "Modules\\ProtectedArea::callbackUnlock - the right password\n";
 
 $_SERVER['REMOTE_ADDR'] = '198.51.100.10';
 
+// A wrong try first, so the unlock below has something to clear. Every
+// attempt is claimed against the cap now, the right one included - the claim
+// has to happen before the password is compared to be a cap at all - and
+// somebody who is through is not somebody the cap should still count down on
+protectedUnlock( $appData, [ 'password' => 'not-the-password', 'return' => '/intern/notes' ] );
+check( 'a wrong try is on file for this ip', ( \Nino\Filesystem::getFileContent( $appData, '/data/protected.php', [] )['198.51.100.10']['tries'] ?? 0 ) === 1 );
+
 $rightRequest = protectedUnlock( $appData, [ 'password' => 'sesam-öffne-dich', 'return' => '/intern/notes' ] );
 check( 'the right password unlocks and redirects (303)', $rightRequest['/nino/http/response']['statusCode'] === 303
 	&& ( $rightRequest['/nino/http/response']['header']['Location'] ?? '' ) === '/intern/notes' );
 check( 'the session now reads unlocked', \Nino\Modules\ProtectedArea::unlocked( $appData ) === true );
+check( 'and the unlock left no attempts on file for that ip', isset( \Nino\Filesystem::getFileContent( $appData, '/data/protected.php', [] )['198.51.100.10'] ) === false );
 
 $passedRequest = protectedGate( $appData, '/intern' );
 check( 'the protected GET now passes through untouched', $passedRequest['/nino/http/response']['statusCode'] === 200
@@ -281,6 +324,58 @@ check( 'the next attempt is refused (429) even with the right password', $capped
 check( 'the locked error, not the wrong-password one, is what [protected-error] now shows', \Nino\Html::renderHtml( $appData, '[protected-error]' ) === '<p class="nino-protected-error">Zu viele falsche Versuche. Bitte versuchen Sie es in einer Stunde erneut.</p>' );
 
 echo "\n";
+
+
+// --- The cap under real concurrency ---------------------------------------------
+
+echo "Modules\\ProtectedArea::callbackUnlock - the cap under real concurrency\n";
+
+/*	The count used to be read without a lock and written back only after the
+	password had been compared. Every request of a burst read the same count,
+	passed the same check and got to try a password, so a cap of three was
+	three per burst - and a burst is the one case a cap exists for. Eight real
+	processes, not eight calls: flock() is per open file description, which a
+	single process satisfies by accident.
+
+	The claim is inside the lock that records it now, so exactly three of the
+	eight get a try and the file says three, whichever order they arrive in	*/
+$burstIp 				= '198.51.100.30';
+$burstSandbox		= ninoSandboxDir( $appData );
+$burstStart			= sprintf( '%.6F', microtime( true ) + 1.5 );
+$burstProcesses	= [];
+
+for( $i = 0; $i < 8; $i++ ) {
+	$burstPipes = [];
+	$burstProcess = proc_open(
+		[ PHP_BINARY, __FILE__, 'unlock-worker', $burstSandbox, $burstIp, $burstStart ],
+		[ 1 => [ 'pipe', 'w' ], 2 => [ 'file', '/dev/null', 'w' ] ],
+		$burstPipes
+	);
+	if( is_resource( $burstProcess ) === true )
+		$burstProcesses[] = [ $burstProcess, $burstPipes[1] ];
+}
+
+$burstAnswers = [];
+
+foreach( $burstProcesses as [ $burstProcess, $burstPipe ] ) {
+	$burstAnswers[] = (int) stream_get_contents( $burstPipe );
+	fclose( $burstPipe );
+	proc_close( $burstProcess );
+}
+
+// The parent read this file before the workers wrote it - same way mutate()
+// forces its own re-read (see \Nino\Filesystem::mutate())
+$appData['./nino/filesystem/cache']['/data/protected.php']['fstat'] = [];
+$burstTries = (int) ( \Nino\Filesystem::getFileContent( $appData, '/data/protected.php', [] )[$burstIp]['tries'] ?? 0 );
+$burstTried = count( array_keys( $burstAnswers, 401, true ) );
+
+check( 'all eight parallel posts were answered', count( $burstAnswers ) === 8 );
+check( 'exactly three of them got a try, the other five were refused (429)', $burstTried === 3
+	&& count( array_keys( $burstAnswers, 429, true ) ) === 5 );
+check( 'and the counter on file says three, not eight', $burstTries === 3 );
+
+echo "\n";
+
 
 
 // --- The cap behind a reverse proxy ---------------------------------------------

@@ -7,6 +7,21 @@ A release is the tag `protected-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **A burst of parallel posts walked straight through the attempt cap.** The
+  count was read without a lock, the password was compared, and only a wrong
+  one was written back afterwards. Every request that arrived between that
+  read and that write saw the same count, passed the same check and got to
+  try a password, so `attempts` was a cap per burst rather than per hour -
+  and a burst is the one case a cap is for. Measured with eight parallel
+  posts against a cap of three: eight tries taken, eight on file. The attempt
+  is claimed first now, inside the lock that records it, so a request either
+  holds a try or is refused; the same eight posts take three.
+
+  That makes the correct password spend a try as well - it has to, or the
+  claim would be back after the comparison - so a successful unlock drops the
+  ip's counter again. `attempts` stays what the setting says: wrong passwords
+  per visitor and hour.
+
 - **Behind a reverse proxy the cap locked out everybody at once.** The
   attempt counter is keyed by the client address, and that address came from
   `\Nino\Http::getClientIp()` without the app data it needs to resolve one:
