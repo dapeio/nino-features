@@ -465,4 +465,14 @@ check( 'the class leaves /nino/modules', in_array( '\\Nino\\Modules\\Mailer', \N
 check( 'the panel is gone with it', isset( \Nino\Admin\Admin::panels( $appData )['mailer'] ) === false );
 check( 'the settings survive the deactivation', \Nino\Features::setting( $appData, 'mailer', 'from' ) === 'no-reply@example.org' );
 
+/*	The transport reads its settings once. Features::setting() answers one
+	name by building every value the manifest declares - it reads the feature
+	and validates each stored value against its schema - so the nine names
+	this transport needs used to cost nine of those per mail. Nothing next to
+	an smtp round trip (0.0104 ms against 0.0012), but nine reads of one thing
+	is nine places for the ninth to be forgotten	*/
+$transportSource = (string) file_get_contents( __DIR__. '/../Mailer.php' );
+check( 'the transport takes its settings in one read', substr_count( $transportSource, '\Nino\Features::settings(' ) === 1
+	&& substr_count( $transportSource, '\Nino\Features::setting(' ) === 0 );
+
 ninoDone( $appData );

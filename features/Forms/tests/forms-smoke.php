@@ -167,6 +167,25 @@ check( 'it carries the csrf token, rendered rather than left as a shortcode', st
 check( 'it carries the honeypot the engine checks and the stamp the guard checks', str_contains( $html, 'name="location"' ) === true
 	&& preg_match( '/name="_t" value="\d{10}"/', $html ) === 1 );
 check( 'a label written as a fill is resolved, not printed', str_contains( $html, '>Message *<' ) === true && str_contains( $html, '[[/form/label/' ) === false );
+
+/*	...and drawn as the text it is. A label and a select option are the same
+	kind of value - a fill key, or a word an operator typed - and the option
+	was rendered and then escaped while the label was only rendered. Whichever
+	of the two is wrong it is that one: the <label> is the template's markup,
+	and a form definition is not where more of it comes from	*/
+$markupLabel = $appData;
+$markupLabel[ \Nino\Form::FORMS ] = [ [
+	'key' 		=> 'markup',
+	'fields'	=> [
+		[ 'name' => 'name', 'label' => '<b onclick="alert(1)">Name</b>', 'type' => 'text', 'required' => true, 'options' => [] ],
+		[ 'name' => 'pick', 'label' => 'Pick', 'type' => 'select', 'required' => false, 'options' => [ '<i>one</i>' ] ],
+	],
+] ];
+$markupLabelHtml = \Nino\Html::renderHtml( $markupLabel, '[form key="markup"]' );
+check( 'a label carrying markup is drawn as text, not as markup', str_contains( $markupLabelHtml, '<b onclick' ) === false
+	&& str_contains( $markupLabelHtml, '&lt;b onclick=&quot;alert(1)&quot;&gt;Name&lt;/b&gt;' ) === true );
+check( '...the same way a select option already was', str_contains( $markupLabelHtml, '<i>one</i>' ) === false
+	&& str_contains( $markupLabelHtml, '&lt;i&gt;one&lt;/i&gt;' ) === true );
 check( 'the classes the shared .nino-form script drives are all there', str_contains( $html, 'class="nino-form"' ) === true
 	&& str_contains( $html, 'class="nino-form-message"' ) === true && str_contains( $html, 'class="nino-form-trap"' ) === true
 	&& str_contains( $html, 'nino-form-submit' ) === true );

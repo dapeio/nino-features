@@ -8,6 +8,14 @@ versions [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **A field label was drawn as markup while a select option was drawn as
+  text.** Both are the same kind of value - a fill key, or a word an operator
+  typed into the Forms panel - and both are rendered so a form can be
+  localised. The option escaped what came out of that, the label did not, so
+  one form treated one kind of value two ways. Whichever of the two is wrong
+  it is the label: the `<label>` is the template's markup, and a form
+  definition is not where more of it comes from.
+
 - **Behind a reverse proxy the rate limit counted every visitor as one.**
   Both halves of the per-address cap - the counter written after an accepted
   submission and the check in front of the next one - asked

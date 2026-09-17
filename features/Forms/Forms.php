@@ -232,9 +232,18 @@ namespace Nino\Modules {
 				$fieldId	= $id. '-'. $field['name'];
 				$required	= $field['required'] === true ? ' required' : '';
 
+				/*	Rendered and then escaped, the same two steps the option
+					below takes. A label is a fill key or a word an operator
+					typed, so rendering it is what makes a localised form
+					possible - and what comes out of that is text, which is why
+					the option escapes it. The label did not, so the two halves
+					of one form treated one kind of value two ways, and
+					whichever of them is wrong, it is this one: a label is
+					drawn inside a <label> the template owns, and markup in it
+					is markup the template did not put there	*/
 				$fields .= str_replace(
 					[ '[[id]]', '[[star]]', '[[label]]' ],
-					[ $safe( $fieldId ), ( $field['required'] === true ? ' *' : '' ), \Nino\Html::renderHtml( $appData, $field['label'] ) ],
+					[ $safe( $fieldId ), ( $field['required'] === true ? ' *' : '' ), $safe( \Nino\Html::renderHtml( $appData, $field['label'] ) ) ],
 					self::template( $appData, 'form-label' )
 				);
 
