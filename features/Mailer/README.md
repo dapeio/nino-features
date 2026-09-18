@@ -1,6 +1,6 @@
 # Mailer
 
-**Key:** `mailer` · **Class:** `\Nino\Modules\Mailer` · **Version:** 1.0.0 · **Nino:** `^1.1`
+**Key:** `mailer` · **Class:** `\Nino\Modules\Mailer` · **Version:** 1.0.0 · **Nino:** `^1.3`
 
 Delivers every mail Nino sends - the contact form, the Newsletter feature,
 anything that calls `\Nino\Mail::send()` - over SMTP instead of the server's

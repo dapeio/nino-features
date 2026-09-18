@@ -23,7 +23,7 @@ return [
 	],
 	'category'		=> 'system',
 	'version'			=> '1.0.0',
-	'nino'				=> '^1.1',
+	'nino'				=> '^1.3',
 	'requires'		=> [],
 	// Nothing under data/: the last failure reason lives only for the
 	// current request (./mailer/last), nothing is persisted beyond the

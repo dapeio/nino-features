@@ -39,7 +39,7 @@ return [
 	],
 	'category'		=> 'content',
 	'version'			=> '1.1.0',
-	'nino'				=> '^1.0',
+	'nino'				=> '^1.3',
 	'requires'		=> [],
 	'settings'		=> [],
 	// The index files are derived from the Elements and rebuilt on demand -

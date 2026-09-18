@@ -1,6 +1,6 @@
 # Consent
 
-**Key:** `consent` · **Class:** `\Nino\Modules\Consent` · **Version:** 1.0.0 · **Nino:** `^1.1`
+**Key:** `consent` · **Class:** `\Nino\Modules\Consent` · **Version:** 1.0.0 · **Nino:** `^1.3`
 
 A cookie/consent banner without any third party, and consent-gated scripts:
 a site embeds an analytics or map script only after the visitor allowed that

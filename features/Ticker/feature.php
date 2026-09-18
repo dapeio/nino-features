@@ -39,7 +39,7 @@ return [
 	// the lightboxes
 	'category'		=> 'ui',
 	'version'			=> '1.0.0',
-	'nino'				=> '^1.1',
+	'nino'				=> '^1.3',
 	'requires'		=> [],
 	// Nothing under data/: what runs past is the markup a project's own
 	// template already carries

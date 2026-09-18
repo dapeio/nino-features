@@ -71,7 +71,7 @@ return [
 		unit and a runtime module of its own at all. Nothing here needs more
 		than that: wildcard routes, element queries with sort and the runtime
 		fills this overrides a page title with are all 1.0 kernel. */
-	'nino'				=> '^1.1',
+	'nino'				=> '^1.3',
 	'requires'		=> [],
 	// Which element type is a section of the site, under which path, through
 	// which templates. Not the posts - those are ordinary elements and live in

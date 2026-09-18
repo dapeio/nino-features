@@ -35,7 +35,7 @@ return [
 	// the lightboxes
 	'category'		=> 'ui',
 	'version'			=> '1.0.0',
-	'nino'				=> '^1.1',
+	'nino'				=> '^1.3',
 	'requires'		=> [],
 	'data'				=> [],
 	/*	And no settings, for the reason Typewriter has none: where the bar sits

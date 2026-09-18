@@ -44,7 +44,7 @@ return [
 	// Features panel files that with the sliders and the lightboxes
 	'category'		=> 'ui',
 	'version'			=> '1.0.0',
-	'nino'				=> '^1.1',
+	'nino'				=> '^1.3',
 	'requires'		=> [],
 	// Nothing under data/: the moment is written into the page it counts down
 	// on, and what is left of it is arithmetic in the reader's own browser

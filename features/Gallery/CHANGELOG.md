@@ -6,6 +6,13 @@ versions [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+- Needs Nino `^1.3`, where the constraint said `^1.1`. The sectioned `manual`
+  map this manifest carries is only read by a kernel newer than the
+  `v1.2.0-beta` tag - `Features::manifest()` refuses it on the tagged one -
+  and `^1.1` is satisfied by that kernel, so the catalogue offered the
+  feature to an installation that could not then install it. `^1.3` names
+  only a kernel that can read the manifest.
+
 ### Changed
 
 - **The gallery's markup is a template now.** The list and an item of it were

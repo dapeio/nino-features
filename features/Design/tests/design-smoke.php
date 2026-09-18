@@ -34,9 +34,16 @@ $feature = \Nino\Features::manifest( dirname( __DIR__ ) );
 
 check( 'the manifest reads, with the key and the class the directory implies', is_array( $feature ) === true
 	&& $feature['key'] === 'design' && $feature['module'] === '\\Nino\\Modules\\Design' );
-check( 'it names ^1.2 - the release where the look became one file this compiles over', ( $feature['nino'] ?? '' ) === '^1.2' );
-check( '...and 1.1 really cannot run it', \Nino\Features::satisfies( (string) $feature['nino'], '1.1.0' ) === false
-	&& \Nino\Features::satisfies( (string) $feature['nino'], '1.2.0-beta' ) === true );
+// ^1.3 rather than the ^1.2 this needs on its own merits - the look became
+// one file to compile over in 1.2, and that is still the substantive floor.
+// What raises it is the manifest itself: the sectioned 'manual' map below is
+// only read by a kernel newer than the v1.2.0-beta tag, so a constraint that
+// admitted 1.2 offered the feature to an installation whose manifest() then
+// refused it. The stricter bound covers both
+check( 'it names ^1.3 - the kernel that can read this manifest at all', ( $feature['nino'] ?? '' ) === '^1.3' );
+check( '...and neither 1.1 nor the published 1.2.0-beta can run it', \Nino\Features::satisfies( (string) $feature['nino'], '1.1.0' ) === false
+	&& \Nino\Features::satisfies( (string) $feature['nino'], '1.2.0-beta' ) === false
+	&& \Nino\Features::satisfies( (string) $feature['nino'], '1.3.0-beta' ) === true );
 check( 'the setup file is declared under data, so a backup carries it', in_array( \Nino\Modules\Design\Setup::PATH, (array) ( $feature['data'] ?? [] ), true ) === true );
 
 echo "\nThe library it ships\n";

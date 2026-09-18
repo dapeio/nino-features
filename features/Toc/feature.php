@@ -47,7 +47,7 @@ return [
 	// thing the Features panel files under content
 	'category'		=> 'content',
 	'version'			=> '1.0.0',
-	'nino'				=> '^1.1',
+	'nino'				=> '^1.3',
 	'requires'		=> [],
 	// Nothing under data/: the list is the page, read as it stands
 	'data'				=> [],

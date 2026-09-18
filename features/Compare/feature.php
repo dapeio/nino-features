@@ -53,7 +53,7 @@ return [
 	// lightboxes
 	'category'		=> 'ui',
 	'version'			=> '1.0.0',
-	'nino'				=> '^1.1',
+	'nino'				=> '^1.3',
 	'requires'		=> [],
 	// Nothing under data/: the two pictures are the project's own images, and
 	// where the divider stands is the visitor's, for as long as they look

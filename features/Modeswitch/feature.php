@@ -40,11 +40,16 @@ return [
 	// read - the Features panel files that with the sliders and the lightboxes
 	'category'		=> 'ui',
 	'version'			=> '1.0.0',
-	// 1.2 is where the dark half of the palette became part of what a project
-	// is delivered with (assets/theme.css carries :root[data-nino-mode="dark"]
-	// and the matching prefers-color-scheme block). Before that there is
-	// nothing for this switch to switch
-	'nino'				=> '^1.2',
+	// Two floors, and the higher one wins. 1.2 is where the dark half of the
+	// palette became part of what a project is delivered with
+	// (assets/theme.css carries :root[data-nino-mode="dark"] and the matching
+	// prefers-color-scheme block), and before that there is nothing for this
+	// switch to switch. But the sectioned 'manual' map below is only read by
+	// a kernel newer than the v1.2.0-beta tag - on that one
+	// Features::manifest() refuses this file outright - so a constraint
+	// admitting 1.2 offered a feature that could not be installed. ^1.3 is
+	// the first that names only a kernel which does both
+	'nino'				=> '^1.3',
 	'requires'		=> [],
 	// Nothing under data/: the choice belongs to the reader's browser and is
 	// kept there. A site that stored it would be storing a preference about a

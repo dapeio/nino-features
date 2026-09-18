@@ -28,7 +28,7 @@ return [
 	],
 	'category'		=> 'marketing',
 	'version'			=> '1.0.0',
-	'nino'				=> '^1.1',
+	'nino'				=> '^1.3',
 	'requires'		=> [],
 	// The whole directory this feature owns under data/ - what a backup
 	// carries. There is nothing here a restore has to merge rather than

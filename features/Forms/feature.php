@@ -32,7 +32,7 @@ return [
 	],
 	'category'		=> 'communication',
 	'version'			=> '1.0.0',
-	'nino'				=> '^1.1',
+	'nino'				=> '^1.3',
 	'requires'		=> [],
 	// Nothing: the definitions live in config.php under '/nino/form/forms',
 	// where the kernel reads them and every backup already carries them, and

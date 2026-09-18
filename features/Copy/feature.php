@@ -42,7 +42,7 @@ return [
 	// files that with the sliders and the lightboxes
 	'category'		=> 'ui',
 	'version'			=> '1.0.0',
-	'nino'				=> '^1.1',
+	'nino'				=> '^1.3',
 	'requires'		=> [],
 	'data'				=> [],
 	// And no settings: what is copyable is decided where it is written, one

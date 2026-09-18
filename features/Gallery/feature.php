@@ -39,7 +39,7 @@ return [
 	// rather than with the effects that only change how a page behaves
 	'category'		=> 'content',
 	'version'			=> '1.0.0',
-	'nino'				=> '^1.1',
+	'nino'				=> '^1.3',
 	// The overlay a thumbnail opens into is the Lightbox feature's, not a
 	// second copy of one. Installing this from the catalogue brings it along
 	'requires'		=> [ 'lightbox' ],

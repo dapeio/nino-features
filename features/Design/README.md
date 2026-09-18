@@ -1,6 +1,6 @@
 # Design
 
-**Key:** `design` · **Class:** `\Nino\Modules\Design` · **Version:** 0.1.0 · **Nino:** `^1.2`
+**Key:** `design` · **Class:** `\Nino\Modules\Design` · **Version:** 0.1.0 · **Nino:** `^1.3`
 
 The look of a site, chosen per part of a page rather than per page, and
 compiled into the one stylesheet the css bundle already names:

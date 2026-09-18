@@ -1,6 +1,6 @@
 # Stats
 
-**Key:** `stats` · **Class:** `\Nino\Modules\Stats` · **Version:** 1.0.0 · **Nino:** `^1.1`
+**Key:** `stats` · **Class:** `\Nino\Modules\Stats` · **Version:** 1.0.0 · **Nino:** `^1.3`
 
 Page-view counts for the workbench - counts, and only counts. No cookie is
 set, no ip address is read, no fingerprint of any kind is derived and

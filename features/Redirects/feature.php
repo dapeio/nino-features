@@ -30,7 +30,7 @@ return [
 	],
 	'category'		=> 'system',
 	'version'			=> '1.0.0',
-	'nino'				=> '^1.2',
+	'nino'				=> '^1.3',
 	'requires'		=> [],
 	'settings'		=> [
 		'record' => [

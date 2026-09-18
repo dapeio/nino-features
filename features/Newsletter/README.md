@@ -1,6 +1,6 @@
 # Newsletter
 
-**Key:** `newsletter` · **Class:** `\Nino\Modules\Newsletter` · **Version:** 1.0.0 · **Nino:** `^1.0`
+**Key:** `newsletter` · **Class:** `\Nino\Modules\Newsletter` · **Version:** 1.0.0 · **Nino:** `^1.3`
 
 Double opt-in newsletter signup, everything under the `/.newsletter` uri: a
 visitor posts an address, receives a confirmation mail, and is on the list

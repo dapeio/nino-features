@@ -1,6 +1,6 @@
 # Typewriter
 
-**Key:** `typewriter` · **Class:** `\Nino\Modules\Typewriter` · **Version:** 1.0.0 · **Nino:** `^1.1`
+**Key:** `typewriter` · **Class:** `\Nino\Modules\Typewriter` · **Version:** 1.0.0 · **Nino:** `^1.3`
 
 A container types its lines one after the other: fade one in, write it out
 character by character with the cursor riding at the writing head, hold it,

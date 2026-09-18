@@ -30,7 +30,7 @@ return [
 	// nothing of its own to show
 	'category'		=> 'ui',
 	'version'			=> '1.0.0',
-	'nino'				=> '^1.1',
+	'nino'				=> '^1.3',
 	'requires'		=> [],
 	// Nothing: what it opens is markup the page already carries
 	'data'				=> [],

@@ -1,6 +1,6 @@
 # Lightbox
 
-**Key:** `lightbox` · **Class:** `\Nino\Modules\Lightbox` · **Version:** 1.0.0 · **Nino:** `^1.1`
+**Key:** `lightbox` · **Class:** `\Nino\Modules\Lightbox` · **Version:** 1.0.0 · **Nino:** `^1.3`
 
 A link that points at an image opens it full screen instead of navigating
 away, with every other link of its group as the rest of the set: arrows and

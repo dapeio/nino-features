@@ -32,7 +32,9 @@ $root = getenv( 'NINO_ROOT' ) ?: dirname( __DIR__, 3 );
 defined( 'NINO_FEATURES_DIR' ) === true || define( 'NINO_FEATURES_DIR', dirname( __DIR__, 2 ) );
 require $root. '/tests/harness.php';
 
-// The engine this feature extends, and the reason its manifest names ^1.1.
+// The engine this feature extends, and one of the two reasons its manifest
+// names ^1.3 (the other is that a sectioned 'manual' needs a kernel newer
+// than the v1.2.0-beta tag).
 // A checkout that predates it cannot run a line of what follows, and a stack
 // trace two screens down is a worse way to learn that than one sentence here
 // (tests/build-smoke.php in this repository does the same for \Nino\Features)

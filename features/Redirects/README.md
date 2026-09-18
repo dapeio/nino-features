@@ -13,7 +13,7 @@ nothing answered, which is where the rules worth writing come from - a redirect
 nobody knows is missing does not get written.
 
 - **Key** `redirects` · **Class** `\Nino\Modules\Redirects` · **Needs** Nino
-  `^1.2`
+  `^1.3`
 - Keeps `data/redirects.php`, declared under `data` so a backup carries it
 - Brings no template, no shortcode and no route
 

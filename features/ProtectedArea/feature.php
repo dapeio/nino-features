@@ -47,7 +47,7 @@ return [
 	],
 	'category'		=> 'security',
 	'version'			=> '1.0.0',
-	'nino'				=> '^1.1',
+	'nino'				=> '^1.3',
 	'requires'		=> [],
 	// The attempt-cap counter this feature owns - what a backup carries
 	'data'				=> [ '/data/protected.php' ],

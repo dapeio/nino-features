@@ -64,9 +64,14 @@ check( 'it names and describes itself in both interface languages', is_array( $m
 	the matching prefers-color-scheme block. On 1.1 there is nothing for this
 	switch to switch, and a switch that writes an attribute nothing answers to
 	is worse than no switch	*/
-check( 'it names ^1.2 - before that there is no dark palette to switch to', ( $manifest['nino'] ?? '' ) === '^1.2' );
-check( '...and 1.1 really cannot run it', \Nino\Features::satisfies( (string) $manifest['nino'], '1.1.0' ) === false
-	&& \Nino\Features::satisfies( (string) $manifest['nino'], '1.2.0-beta' ) === true );
+// ^1.3 rather than the ^1.2 this needs on its own merits - before 1.2 there
+// is no dark palette to switch to, and that is still the substantive floor.
+// What raises it is the manifest: its sectioned 'manual' map is only read by
+// a kernel newer than the v1.2.0-beta tag
+check( 'it names ^1.3 - the kernel that can read this manifest at all', ( $manifest['nino'] ?? '' ) === '^1.3' );
+check( '...and neither 1.1 nor the published 1.2.0-beta can run it', \Nino\Features::satisfies( (string) $manifest['nino'], '1.1.0' ) === false
+	&& \Nino\Features::satisfies( (string) $manifest['nino'], '1.2.0-beta' ) === false
+	&& \Nino\Features::satisfies( (string) $manifest['nino'], '1.3.0-beta' ) === true );
 
 $raw = include $dir. '/feature.php';
 check( 'it is filed under ui', ( $raw['category'] ?? '' ) === 'ui' );

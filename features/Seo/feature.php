@@ -45,7 +45,7 @@ return [
 	],
 	'category'		=> 'marketing',
 	'version'			=> '1.1.0',
-	'nino'				=> '^1.1',
+	'nino'				=> '^1.3',
 	'requires'		=> [],
 	// Nothing under data/: everything this feature answers is derived from
 	// config.php's routes and the project's text files on every request,

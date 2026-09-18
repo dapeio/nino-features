@@ -23,12 +23,17 @@ return [
 	],
 	'category'		=> 'ui',
 	'version'			=> '0.1.0',
-	/*	1.2 is where the wizard stopped asking about the look and the base unit
-		started delivering assets/theme.css as one file. Everything here writes
-		over that file, so a kernel that still spread the look over
-		style.design.css, style.theme.*.css and two frame stylesheets would be
-		compiled for a bundle it does not have. */
-	'nino'				=> '^1.2',
+	/*	Two floors, and the higher one wins. 1.2 is where the wizard stopped
+		asking about the look and the base unit started delivering
+		assets/theme.css as one file; everything here writes over that file, so
+		a kernel that still spread the look over style.design.css,
+		style.theme.*.css and two frame stylesheets would be compiled for a
+		bundle it does not have. And the sectioned 'manual' map below is only
+		read by a kernel newer than the v1.2.0-beta tag - on that one
+		Features::manifest() refuses this file outright - so a constraint
+		admitting 1.2 offered a feature that could not be installed. ^1.3 is
+		the first that names only a kernel which does both. */
+	'nino'				=> '^1.3',
 	'requires'		=> [],
 	// The whole setup: which set per part, the knob positions, the deviations,
 	// and the fingerprint of what was last compiled. Small, and the one thing

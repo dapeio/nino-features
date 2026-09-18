@@ -98,7 +98,7 @@ $manifest	= \Nino\Features::manifest( $dir );
 check( 'the manifest validates without a warning', is_array( $manifest ) && ninoWarnings() === [] );
 check( 'key, class and version are what the directory says', is_array( $manifest ) && $manifest['key'] === 'redirects'
 	&& $manifest['module'] === '\\Nino\\Modules\\Redirects' && $manifest['version'] === '1.0.0' );
-check( 'it is system, and names the kernel it needs', ( $manifest['category'] ?? '' ) === 'system' && ( $manifest['nino'] ?? '' ) === '^1.2' );
+check( 'it is system, and names the kernel it needs', ( $manifest['category'] ?? '' ) === 'system' && ( $manifest['nino'] ?? '' ) === '^1.3' );
 check( 'the rules file is declared under data, so a backup carries it',
 	in_array( \Nino\Modules\Redirects\Rules::PATH, (array) ( $manifest['data'] ?? [] ), true ) === true );
 check( 'it offers the one switch that decides whether anything is written down',

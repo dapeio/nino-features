@@ -26,12 +26,17 @@ return [
 	],
 	'category'		=> 'content',
 	'version'			=> '1.0.0',
-	// Not ^1.1: a kernel that still ships _nino/Nino/Modules/Templates/ serves
-	// that copy instead of this one - the autoloader resolves _nino/ first, on
-	// purpose, so a shipped module can never be shadowed. Installing this on
-	// 1.1 would look like it worked and change nothing, so the constraint is
-	// what refuses it and says why
-	'nino'				=> '^1.2',
+	// Two floors, and the higher one wins. Not 1.1, because a kernel that
+	// still ships _nino/Nino/Modules/Templates/ serves that copy instead of
+	// this one - the autoloader resolves _nino/ first, on purpose, so a
+	// shipped module can never be shadowed, and installing this there would
+	// look like it worked and change nothing. And not 1.2 either, because the
+	// sectioned 'manual' map below is only read by a kernel newer than the
+	// v1.2.0-beta tag: on that one Features::manifest() refuses this file
+	// outright, so a constraint admitting it offered a feature that could not
+	// be installed. ^1.3 is the first that names only a kernel which does
+	// both
+	'nino'				=> '^1.3',
 	'requires'		=> [],
 	// The page templates it edits are the project's own, in private/templates/,
 	// and a backup carries them as project content - none of it belongs to this

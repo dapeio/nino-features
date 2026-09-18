@@ -58,7 +58,7 @@ return [
 	'version'			=> '1.0.0',
 	// \Nino\Features::setting() and the feature contract this reads its
 	// consent category through
-	'nino'				=> '^1.1',
+	'nino'				=> '^1.3',
 	/*	Consent is not required. Without it every embed waits for a press,
 		which is the safe half of what this does and works on its own. With it,
 		a visitor who has already allowed external media does not have to press

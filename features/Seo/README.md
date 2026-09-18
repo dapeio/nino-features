@@ -1,6 +1,6 @@
 # SEO
 
-**Key:** `seo` · **Class:** `\Nino\Modules\Seo` · **Version:** 1.0.0 · **Nino:** `^1.1`
+**Key:** `seo` · **Class:** `\Nino\Modules\Seo` · **Version:** 1.1.0 · **Nino:** `^1.3`
 
 What search engines and AI agents ask a site for, generated from what Nino
 already knows - the persisted routes under `/nino/http/routes`, their

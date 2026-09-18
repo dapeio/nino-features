@@ -107,12 +107,15 @@ return [
 	// activation and what upgrade() is told when it changes (see Hello.php)
 	'version'			=> '1.0.0',
 
-	/*	Which Nino this is written for, as a composer-style constraint. ^1.1
-		is "1.1 or later, below 2" - the release that brought the feature
-		contract this uses. Be honest here: a feature that names a kernel it
-		does not run on is refused at activation, which is the good case; one
-		that names an older kernel than it needs fails later and worse	*/
-	'nino'				=> '^1.1',
+	/*	Which Nino this is written for, as a composer-style constraint. ^1.3
+		is "1.3 or later, below 2". The feature contract this uses arrived in
+		1.1, but the sectioned 'manual' map above is only read by a kernel
+		newer than the v1.2.0-beta tag - an older one refuses this whole file -
+		so the honest floor is the higher of the two. Be honest here: a feature
+		that names a kernel it does not run on is refused at activation, which
+		is the good case; one that names an older kernel than it needs fails
+		later and worse	*/
+	'nino'				=> '^1.3',
 
 	/*	Other features this one cannot run without, by key. They have to be
 		active before this can be activated, and deactivating one of them

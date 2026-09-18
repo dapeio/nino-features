@@ -1,6 +1,6 @@
 # Gallery
 
-**Key:** `gallery` · **Class:** `\Nino\Modules\Gallery` · **Version:** 1.0.0 · **Nino:** `^1.1` · **Requires:** [`lightbox`](../Lightbox/README.md)
+**Key:** `gallery` · **Class:** `\Nino\Modules\Gallery` · **Version:** 1.0.0 · **Nino:** `^1.3` · **Requires:** [`lightbox`](../Lightbox/README.md)
 
 Any number of image galleries. An album is a key, a name and a list of
 pictures; `[gallery album="trip"]` renders it as a grid of thumbnails that

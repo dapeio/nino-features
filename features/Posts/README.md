@@ -1,6 +1,6 @@
 # Posts
 
-**Key:** `posts` · **Class:** `\Nino\Modules\Posts` · **Version:** 1.0.0 · **Nino:** `^1.1`
+**Key:** `posts` · **Class:** `\Nino\Modules\Posts` · **Version:** 1.1.0 · **Nino:** `^1.3`
 
 A page per element, and a list with paging. What turns an element type into a
 section of the site - a blog, a news column, a journal.

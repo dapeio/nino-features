@@ -16,22 +16,22 @@ Dieses Repository ist der Ort, von dem aus Ninos Features veröffentlicht werden
 
 | Key | Name | Kategorie | Version | Nino | Was es tut |
 | --- | --- | --- | --- | --- | --- |
-| `consent` | [Consent](features/Consent/README.md) | `security` | 1.0.0 | `^1.1` | Ein Cookie-/Consent-Banner mit Kategorien und einwilligungsabhängigen Skripten, ohne Drittanbieter |
-| `design` | [Design](features/Design/README.md) | `ui` | 0.1.0 | `^1.2` | Das Aussehen einer Seite, pro Bauteil gewählt statt pro Seite – je ein Set für Hero, Sections, Artikel, Buttons, Formulare, Listen und Bausteine, dazu Header und Footer, in `assets/theme.css` kompiliert |
-| `forms` | [Forms](features/Forms/README.md) | `communication` | 1.0.0 | `^1.1` | Ein Baukasten für Ninos eigenen Formular-Endpunkt: beliebig viele Formulare, ein Shortcode `[form]`, der sie zeichnet, und Spam-Schutz ohne Captcha |
-| `gallery` | [Gallery](features/Gallery/README.md) | `content` | 1.0.0 | `^1.1` | Beliebig viele Bildergalerien, je ein Raster aus Vorschaubildern, die sich bildschirmfüllend öffnen – zwei abgeleitete Größen je Upload, das Original wird nie gespeichert |
-| `hello` | [Hallo Welt](features/Hello/README.md) | `system` | 1.0.0 | `^1.1` | Ein vollständiges Feature, das eine Kleinigkeit tut und zum Kopieren geschrieben ist: Shortcode, Route, Panel, Einstellung, Install-Einheit und Test, jedes genau einmal |
-| `lightbox` | [Lightbox](features/Lightbox/README.md) | `ui` | 1.0.0 | `^1.1` | Öffnet jeden Link auf ein Bild bildschirmfüllend, mit seiner Gruppe als Serie – Pfeile, Wischen, Bildunterschriften und ein Fokusrahmen, ohne Bibliothek |
-| `mailer` | [Mailer](features/Mailer/README.md) | `system` | 1.0.0 | `^1.1` | Versendet jede von Nino verschickte Mail über SMTP statt über das `mail()` des Servers |
-| `modeswitch` | [Hell/Dunkel-Schalter](features/Modeswitch/README.md) | `ui` | 1.0.0 | `^1.2` | Lässt Besucher die Seite hell, dunkel oder so lesen, wie ihr System es vorgibt - ein Schalter mit drei Zuständen, den `[mode-switch]` an eine beliebige Stelle setzt, über der dunklen Palette, die das Projekt ohnehin mitbringt |
-| `newsletter` | [Newsletter](features/Newsletter/README.md) | `communication` | 1.0.0 | `^1.0` | Double-Opt-in-Anmeldung mit Bestätigungs- und Abmeldelink, und die Abonnentenliste als Panel der Workbench |
-| `posts` | [Beiträge](features/Posts/README.md) | `content` | 1.0.0 | `^1.1` | Eine Seite je Element und eine Liste mit Seitenzahlen: was aus einem Elementtyp einen Blog, eine News-Rubrik oder ein Journal macht - die Beiträge bleiben gewöhnliche Elemente |
-| `protected` | [Protected area](features/ProtectedArea/README.md) | `security` | 1.0.0 | `^1.1` | Legt eine oder mehrere Seiten hinter ein gemeinsames Passwort, ohne Konten |
-| `search` | [Elements search](features/Search/README.md) | `content` | 1.1.0 | `^1.0` | Ein sprachbewusster unscharfer Suchindex über konfigurierte Element-Felder, neu gebaut bei jedem Speichern, mit zwei Shortcodes für Suchformular und Trefferliste auf jeder Seite |
-| `seo` | [SEO](features/Seo/README.md) | `marketing` | 1.0.0 | `^1.1` | Sitemap, robots.txt und llms.txt, erzeugt aus Routen, Sprachen und Texten, die Nino ohnehin hat |
-| `stats` | [Stats](features/Stats/README.md) | `marketing` | 1.0.0 | `^1.1` | Seitenaufruf-Zählung für die Workbench, ohne Cookies, IP-Adressen oder irgendetwas pro Besucher |
-| `templates` | [Template Builder](features/Templates/README.md) | `content` | 1.0.0 | `^1.2` | Baut die Seitentemplates des Projekts aus ganzen Abschnitten – eine Bibliothek aus siebzehn, eine Live-Vorschau, und dazwischen bleibt der Quelltext der Seite Deiner |
-| `typewriter` | [Typewriter](features/Typewriter/README.md) | `ui` | 1.0.0 | `^1.1` | Tippt die Zeilen eines Containers nacheinander, mit Cursor am Schreibkopf, je Element getaktet |
+| `consent` | [Consent](features/Consent/README.md) | `security` | 1.0.0 | `^1.3` | Ein Cookie-/Consent-Banner mit Kategorien und einwilligungsabhängigen Skripten, ohne Drittanbieter |
+| `design` | [Design](features/Design/README.md) | `ui` | 0.1.0 | `^1.3` | Das Aussehen einer Seite, pro Bauteil gewählt statt pro Seite – je ein Set für Hero, Sections, Artikel, Buttons, Formulare, Listen und Bausteine, dazu Header und Footer, in `assets/theme.css` kompiliert |
+| `forms` | [Forms](features/Forms/README.md) | `communication` | 1.0.0 | `^1.3` | Ein Baukasten für Ninos eigenen Formular-Endpunkt: beliebig viele Formulare, ein Shortcode `[form]`, der sie zeichnet, und Spam-Schutz ohne Captcha |
+| `gallery` | [Gallery](features/Gallery/README.md) | `content` | 1.0.0 | `^1.3` | Beliebig viele Bildergalerien, je ein Raster aus Vorschaubildern, die sich bildschirmfüllend öffnen – zwei abgeleitete Größen je Upload, das Original wird nie gespeichert |
+| `hello` | [Hallo Welt](features/Hello/README.md) | `system` | 1.0.0 | `^1.3` | Ein vollständiges Feature, das eine Kleinigkeit tut und zum Kopieren geschrieben ist: Shortcode, Route, Panel, Einstellung, Install-Einheit und Test, jedes genau einmal |
+| `lightbox` | [Lightbox](features/Lightbox/README.md) | `ui` | 1.0.0 | `^1.3` | Öffnet jeden Link auf ein Bild bildschirmfüllend, mit seiner Gruppe als Serie – Pfeile, Wischen, Bildunterschriften und ein Fokusrahmen, ohne Bibliothek |
+| `mailer` | [Mailer](features/Mailer/README.md) | `system` | 1.0.0 | `^1.3` | Versendet jede von Nino verschickte Mail über SMTP statt über das `mail()` des Servers |
+| `modeswitch` | [Hell/Dunkel-Schalter](features/Modeswitch/README.md) | `ui` | 1.0.0 | `^1.3` | Lässt Besucher die Seite hell, dunkel oder so lesen, wie ihr System es vorgibt - ein Schalter mit drei Zuständen, den `[mode-switch]` an eine beliebige Stelle setzt, über der dunklen Palette, die das Projekt ohnehin mitbringt |
+| `newsletter` | [Newsletter](features/Newsletter/README.md) | `communication` | 1.0.0 | `^1.3` | Double-Opt-in-Anmeldung mit Bestätigungs- und Abmeldelink, und die Abonnentenliste als Panel der Workbench |
+| `posts` | [Beiträge](features/Posts/README.md) | `content` | 1.1.0 | `^1.3` | Eine Seite je Element und eine Liste mit Seitenzahlen: was aus einem Elementtyp einen Blog, eine News-Rubrik oder ein Journal macht - die Beiträge bleiben gewöhnliche Elemente |
+| `protected` | [Protected area](features/ProtectedArea/README.md) | `security` | 1.0.0 | `^1.3` | Legt eine oder mehrere Seiten hinter ein gemeinsames Passwort, ohne Konten |
+| `search` | [Elements search](features/Search/README.md) | `content` | 1.1.0 | `^1.3` | Ein sprachbewusster unscharfer Suchindex über konfigurierte Element-Felder, neu gebaut bei jedem Speichern, mit zwei Shortcodes für Suchformular und Trefferliste auf jeder Seite |
+| `seo` | [SEO](features/Seo/README.md) | `marketing` | 1.1.0 | `^1.3` | Sitemap, robots.txt und llms.txt, erzeugt aus Routen, Sprachen und Texten, die Nino ohnehin hat |
+| `stats` | [Stats](features/Stats/README.md) | `marketing` | 1.0.0 | `^1.3` | Seitenaufruf-Zählung für die Workbench, ohne Cookies, IP-Adressen oder irgendetwas pro Besucher |
+| `templates` | [Template Builder](features/Templates/README.md) | `content` | 1.0.0 | `^1.3` | Baut die Seitentemplates des Projekts aus ganzen Abschnitten – eine Bibliothek aus siebzehn, eine Live-Vorschau, und dazwischen bleibt der Quelltext der Seite Deiner |
+| `typewriter` | [Typewriter](features/Typewriter/README.md) | `ui` | 1.0.0 | `^1.3` | Tippt die Zeilen eines Containers nacheinander, mit Cursor am Schreibkopf, je Element getaktet |
 
 **Kategorie** ist das, wonach das Features-Panel gruppiert und filtert, eine je Feature: `content`, `ui`, `communication`, `marketing`, `security` oder `system` – das Vokabular, das Nino als `\Nino\Features::CATEGORIES` veröffentlicht und das [Features](https://github.com/dapeio/nino/blob/main/docs/features.de.md#kategorien) erklärt, samt der Regel für den Fall, dass zwei davon passen. Nino selbst nimmt jeden Slug an, damit ein älterer Kernel einen Katalog lesen kann, der ein Feature unter einer Kategorie führt, die er nicht kennt; `bin/build.php` ist die Stelle, die ein veröffentlichtes Feature auf die sechs festlegt – ein Tippfehler wird also hier gefangen und nicht als eigene Überschrift in jemandes Panel angezeigt.
 
@@ -108,7 +108,7 @@ features/<Name>/
 
 Jedes Feature trägt seine eigene `version` in `feature.php` – `major.minor.patch`. Ein Release ist ein Git-Tag `<key>-<version>`, etwa `newsletter-1.0.0`; die Features eines Repositories werden unabhängig voneinander versioniert, und ein Tag benennt genau eines. Das Pushen des Tags veröffentlicht diese Version auf getnino.dev, siehe [Veröffentlichen](#veröffentlichen). Ein Projekt sieht die Version im Panel Features und bekommt ein Update angeboten, sobald das Verzeichnis eine neuere trägt.
 
-`nino` im Manifest nennt die Nino-Versionen, für die das Feature geschrieben ist – heute `^1.0` für beide, was jede 1.x einschließt; ein Vorab-Kernel wie `1.0.0-beta` zählt als das Release, dem er vorausgeht. Die Bedingung ist eine Absicht, keine Garantie: Verträglichkeit wird getestet, nicht erklärt. Die CI dieses Repositories führt jedes Feature gegen Ninos `main` und gegen sein jüngstes Tag aus, und Ninos eigene CI klont diesen Katalog, kopiert die Features in ihren Checkout und führt deren Tests dort aus – eine Kernel-Änderung, die ein Feature bricht, schlägt auf beiden Seiten fehl.
+`nino` im Manifest nennt die Nino-Versionen, für die das Feature geschrieben ist – heute `^1.3` für alle; ein Vorab-Kernel wie `1.0.0-beta` zählt als das Release, dem er vorausgeht. Die Bedingung ist eine Absicht, keine Garantie: Verträglichkeit wird getestet, nicht erklärt. Die CI dieses Repositories führt jedes Feature gegen Ninos `main` und gegen sein jüngstes Tag aus, und Ninos eigene CI klont diesen Katalog, kopiert die Features in ihren Checkout und führt deren Tests dort aus – eine Kernel-Änderung, die ein Feature bricht, schlägt auf beiden Seiten fehl.
 
 ## Veröffentlichen
 
@@ -219,7 +219,7 @@ Ohne `--key` schreibt es keine Signatur und gibt diesen Einzeiler aus; mit `--ke
 | `name`, `description` | wie das Manifest sie hat: ein String oder eine Abbildung `locale => string` |
 | `category` | wofür das Feature da ist, ein Slug – das des Manifests; fehlt, wo es keine nennt |
 | `version` | `major.minor.patch`, die des Manifests |
-| `nino` | die Nino-Versionsbedingung, `^1.0` |
+| `nino` | die Nino-Versionsbedingung, `^1.3` |
 | `php` | `{ "ext": [ ... ] }` – die PHP-Erweiterungen, die das Feature braucht |
 | `requires` | die Keys der Features, die es benötigt |
 | `directory` | das eine Verzeichnis, das das Archiv enthält – `Newsletter`, der Klassenname |

@@ -1,6 +1,6 @@
 # Protected area
 
-**Key:** `protected` · **Class:** `\Nino\Modules\ProtectedArea` · **Version:** 1.0.0 · **Nino:** `^1.1`
+**Key:** `protected` · **Class:** `\Nino\Modules\ProtectedArea` · **Version:** 1.0.0 · **Nino:** `^1.3`
 
 Puts one or more pages behind one shared password - a members' area, a
 client preview, an internal page - without accounts. A visitor who opens a

@@ -5,6 +5,13 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+- Needs Nino `^1.3`, where the constraint said `^1.2`. The sectioned `manual`
+  map this manifest carries is only read by a kernel newer than the
+  `v1.2.0-beta` tag - `Features::manifest()` refuses it on the tagged one -
+  and `^1.2` is satisfied by that kernel, so the catalogue offered the
+  feature to an installation that could not then install it. `^1.3` names
+  only a kernel that can read the manifest.
+
 ### Changed
 
 - **The section library is built once, not once per keystroke.** A card does

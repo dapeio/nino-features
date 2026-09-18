@@ -47,7 +47,7 @@ return [
 	// the sliders and the lightboxes rather than with the content
 	'category'		=> 'ui',
 	'version'			=> '1.0.0',
-	'nino'				=> '^1.1',
+	'nino'				=> '^1.3',
 	'requires'		=> [],
 	// Nothing under data/: the feature keeps no state at all - what it
 	// animates is the markup a project's own template already carries

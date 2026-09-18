@@ -16,30 +16,30 @@ This repository is the place Nino's features are published from. `features/<Name
 
 | Key | Name | Category | Version | Nino | What it does |
 | --- | --- | --- | --- | --- | --- |
-| `compare` | [Before/After](features/Compare/README.md) | `ui` | 1.0.0 | `^1.1` | Two pictures of the same thing under one divider the visitor moves - with the mouse, a finger or the arrow keys, because the divider is a real range control |
-| `consent` | [Consent](features/Consent/README.md) | `security` | 1.0.0 | `^1.1` | A cookie/consent banner with categories and consent-gated scripts, no third party involved |
-| `copy` | [Copy to Clipboard](features/Copy/README.md) | `ui` | 1.0.0 | `^1.1` | A copy button on anything worth copying by hand - a code block, an IBAN, a voucher code - that says it worked, and stays selectable text where it cannot |
-| `countdown` | [Countdown](features/Countdown/README.md) | `ui` | 1.0.0 | `^1.1` | The time left until a date, counted down on the page - and, where the script never runs, the date itself, written out and machine-readable |
-| `design` | [Design](features/Design/README.md) | `ui` | 0.1.0 | `^1.2` | The look of a site, chosen per part of a page rather than per page - a set for the hero, sections, articles, buttons, forms, lists and blocks, plus a header and a footer, compiled into `assets/theme.css` |
-| `embed` | [External Embeds](features/Embed/README.md) | `ui` | 1.0.0 | `^1.1` | A video or a map as a surface the visitor presses, not as an iframe that loads itself - nothing is requested from the provider until they ask for it, or until they have allowed external media |
-| `forms` | [Forms](features/Forms/README.md) | `communication` | 1.0.0 | `^1.1` | A builder for Nino's own form endpoint: any number of forms, a `[form]` shortcode that draws them, and spam protection without a captcha |
-| `gallery` | [Gallery](features/Gallery/README.md) | `content` | 1.0.0 | `^1.1` | Any number of image galleries, each a grid of thumbnails that open full screen - two derived sizes per upload, the original never stored |
-| `hello` | [Hello World](features/Hello/README.md) | `system` | 1.0.0 | `^1.1` | A complete feature that does one small thing, written to be copied: a shortcode, a route, a panel, a setting, an install unit and a test, each exactly once |
-| `lightbox` | [Lightbox](features/Lightbox/README.md) | `ui` | 1.0.0 | `^1.1` | Opens any link to an image full screen, with its group as a set - arrows, swipe, captions and a focus trap, and no library |
-| `mailer` | [Mailer](features/Mailer/README.md) | `system` | 1.0.0 | `^1.1` | Delivers every mail Nino sends over SMTP instead of the server’s `mail()` |
-| `modeswitch` | [Light/Dark Switch](features/Modeswitch/README.md) | `ui` | 1.0.0 | `^1.2` | Lets a visitor read the site light, dark, or the way their system asks - a three-state switch put anywhere with `[mode-switch]`, over the dark palette the project already ships |
-| `newsletter` | [Newsletter](features/Newsletter/README.md) | `communication` | 1.0.0 | `^1.0` | Double opt-in signup with confirmation and unsubscribe links, and the subscriber list as a workbench panel |
-| `posts` | [Posts](features/Posts/README.md) | `content` | 1.1.0 | `^1.1` | A page per element and a list with paging: what turns an element type into a blog, a news section or a journal - the posts stay ordinary elements |
-| `progress` | [Reading Progress](features/Progress/README.md) | `ui` | 1.0.0 | `^1.1` | A thin bar that says how far through a long text the reader is - over the whole page, or over the one element that holds the article |
-| `protected` | [Protected area](features/ProtectedArea/README.md) | `security` | 1.0.0 | `^1.1` | Puts one or more pages behind one shared password, without accounts |
-| `redirects` | [Redirects](features/Redirects/README.md) | `system` | 1.0.0 | `^1.2` | Old addresses that still work: one rule per page or per subtree, applied only where nothing else answers - and a list of the addresses nothing answered, so the rules worth writing can be read rather than guessed |
-| `search` | [Elements search](features/Search/README.md) | `content` | 1.1.0 | `^1.0` | A locale-aware fuzzy search index over configured Element fields, rebuilt on every save, with two shortcodes that put a search form and its results on any page |
-| `seo` | [SEO](features/Seo/README.md) | `marketing` | 1.1.0 | `^1.1` | Sitemap, robots.txt and llms.txt generated from the routes, locales and texts Nino already has |
-| `stats` | [Stats](features/Stats/README.md) | `marketing` | 1.0.0 | `^1.1` | Page-view counts for the workbench, without cookies, ip addresses or anything stored per visitor |
-| `templates` | [Template Builder](features/Templates/README.md) | `content` | 1.0.0 | `^1.2` | Builds the project's page templates out of whole sections - a library of seventeen, a live preview, and page source that stays yours between them |
-| `ticker` | [Ticker](features/Ticker/README.md) | `ui` | 1.0.0 | `^1.1` | A row that runs - logos, references, a line of announcements - looping without a seam, pausing when it is pointed at, and standing still for a visitor who asked for less motion |
-| `toc` | [Table of Contents](features/Toc/README.md) | `content` | 1.0.0 | `^1.1` | A list of a long page's own headings that says which section is being read, and an anchor on every heading so a passage can be linked to |
-| `typewriter` | [Typewriter](features/Typewriter/README.md) | `ui` | 1.0.0 | `^1.1` | Types the lines of a container one after the other, with a cursor at the writing head, timed per element |
+| `compare` | [Before/After](features/Compare/README.md) | `ui` | 1.0.0 | `^1.3` | Two pictures of the same thing under one divider the visitor moves - with the mouse, a finger or the arrow keys, because the divider is a real range control |
+| `consent` | [Consent](features/Consent/README.md) | `security` | 1.0.0 | `^1.3` | A cookie/consent banner with categories and consent-gated scripts, no third party involved |
+| `copy` | [Copy to Clipboard](features/Copy/README.md) | `ui` | 1.0.0 | `^1.3` | A copy button on anything worth copying by hand - a code block, an IBAN, a voucher code - that says it worked, and stays selectable text where it cannot |
+| `countdown` | [Countdown](features/Countdown/README.md) | `ui` | 1.0.0 | `^1.3` | The time left until a date, counted down on the page - and, where the script never runs, the date itself, written out and machine-readable |
+| `design` | [Design](features/Design/README.md) | `ui` | 0.1.0 | `^1.3` | The look of a site, chosen per part of a page rather than per page - a set for the hero, sections, articles, buttons, forms, lists and blocks, plus a header and a footer, compiled into `assets/theme.css` |
+| `embed` | [External Embeds](features/Embed/README.md) | `ui` | 1.0.0 | `^1.3` | A video or a map as a surface the visitor presses, not as an iframe that loads itself - nothing is requested from the provider until they ask for it, or until they have allowed external media |
+| `forms` | [Forms](features/Forms/README.md) | `communication` | 1.0.0 | `^1.3` | A builder for Nino's own form endpoint: any number of forms, a `[form]` shortcode that draws them, and spam protection without a captcha |
+| `gallery` | [Gallery](features/Gallery/README.md) | `content` | 1.0.0 | `^1.3` | Any number of image galleries, each a grid of thumbnails that open full screen - two derived sizes per upload, the original never stored |
+| `hello` | [Hello World](features/Hello/README.md) | `system` | 1.0.0 | `^1.3` | A complete feature that does one small thing, written to be copied: a shortcode, a route, a panel, a setting, an install unit and a test, each exactly once |
+| `lightbox` | [Lightbox](features/Lightbox/README.md) | `ui` | 1.0.0 | `^1.3` | Opens any link to an image full screen, with its group as a set - arrows, swipe, captions and a focus trap, and no library |
+| `mailer` | [Mailer](features/Mailer/README.md) | `system` | 1.0.0 | `^1.3` | Delivers every mail Nino sends over SMTP instead of the server’s `mail()` |
+| `modeswitch` | [Light/Dark Switch](features/Modeswitch/README.md) | `ui` | 1.0.0 | `^1.3` | Lets a visitor read the site light, dark, or the way their system asks - a three-state switch put anywhere with `[mode-switch]`, over the dark palette the project already ships |
+| `newsletter` | [Newsletter](features/Newsletter/README.md) | `communication` | 1.0.0 | `^1.3` | Double opt-in signup with confirmation and unsubscribe links, and the subscriber list as a workbench panel |
+| `posts` | [Posts](features/Posts/README.md) | `content` | 1.1.0 | `^1.3` | A page per element and a list with paging: what turns an element type into a blog, a news section or a journal - the posts stay ordinary elements |
+| `progress` | [Reading Progress](features/Progress/README.md) | `ui` | 1.0.0 | `^1.3` | A thin bar that says how far through a long text the reader is - over the whole page, or over the one element that holds the article |
+| `protected` | [Protected area](features/ProtectedArea/README.md) | `security` | 1.0.0 | `^1.3` | Puts one or more pages behind one shared password, without accounts |
+| `redirects` | [Redirects](features/Redirects/README.md) | `system` | 1.0.0 | `^1.3` | Old addresses that still work: one rule per page or per subtree, applied only where nothing else answers - and a list of the addresses nothing answered, so the rules worth writing can be read rather than guessed |
+| `search` | [Elements search](features/Search/README.md) | `content` | 1.1.0 | `^1.3` | A locale-aware fuzzy search index over configured Element fields, rebuilt on every save, with two shortcodes that put a search form and its results on any page |
+| `seo` | [SEO](features/Seo/README.md) | `marketing` | 1.1.0 | `^1.3` | Sitemap, robots.txt and llms.txt generated from the routes, locales and texts Nino already has |
+| `stats` | [Stats](features/Stats/README.md) | `marketing` | 1.0.0 | `^1.3` | Page-view counts for the workbench, without cookies, ip addresses or anything stored per visitor |
+| `templates` | [Template Builder](features/Templates/README.md) | `content` | 1.0.0 | `^1.3` | Builds the project's page templates out of whole sections - a library of seventeen, a live preview, and page source that stays yours between them |
+| `ticker` | [Ticker](features/Ticker/README.md) | `ui` | 1.0.0 | `^1.3` | A row that runs - logos, references, a line of announcements - looping without a seam, pausing when it is pointed at, and standing still for a visitor who asked for less motion |
+| `toc` | [Table of Contents](features/Toc/README.md) | `content` | 1.0.0 | `^1.3` | A list of a long page's own headings that says which section is being read, and an anchor on every heading so a passage can be linked to |
+| `typewriter` | [Typewriter](features/Typewriter/README.md) | `ui` | 1.0.0 | `^1.3` | Types the lines of a container one after the other, with a cursor at the writing head, timed per element |
 
 **Category** is what the Features panel groups and filters by, one per feature: `content`, `ui`, `communication`, `marketing`, `security` or `system` - the vocabulary Nino publishes as `\Nino\Features::CATEGORIES` and [Features](https://github.com/dapeio/nino/blob/main/docs/features.md#categories) explains, with the rule for deciding between two of them. Nino itself takes any slug, so an older kernel can read a catalogue that files a feature under a category it predates; `bin/build.php` is what holds a published feature to the six, so a typo is caught here rather than shown as a heading of its own in someone's panel.
 
@@ -116,7 +116,7 @@ features/<Name>/
 
 Every feature carries its own `version` in `feature.php` - `major.minor.patch`. A release is a git tag `<key>-<version>`, such as `newsletter-1.0.0`; the features of one repository are versioned independently, and a tag names exactly one of them. Pushing the tag publishes that version to getnino.dev, see [Publishing](#publishing). A project sees the version in the Features panel and is offered an update as soon as the directory carries a newer one.
 
-`nino` in the manifest names the Nino versions the feature is written for - `^1.0` for both today, which covers every 1.x; a pre-release kernel such as `1.0.0-beta` counts as the release it precedes. The constraint is an intention, not a guarantee: compatibility is tested, not declared. This repository's CI runs every feature against Nino's `main` and against its latest tag, and Nino's own CI clones this catalogue, copies the features into its checkout and runs their tests there - a kernel change that breaks a feature fails on both sides.
+`nino` in the manifest names the Nino versions the feature is written for - `^1.3` for all of them today; a pre-release kernel such as `1.0.0-beta` counts as the release it precedes. The constraint is an intention, not a guarantee: compatibility is tested, not declared. This repository's CI runs every feature against Nino's `main` and against its latest tag, and Nino's own CI clones this catalogue, copies the features into its checkout and runs their tests there - a kernel change that breaks a feature fails on both sides.
 
 ## Publishing
 
@@ -227,7 +227,7 @@ Without `--key` it writes no signature and prints that one-liner; with `--key ca
 | `name`, `description` | as the manifest has them: a string, or a `locale => string` map |
 | `category` | what the feature is for, one slug - the manifest's; left out where it names none |
 | `version` | `major.minor.patch`, the manifest's |
-| `nino` | the Nino version constraint, `^1.0` |
+| `nino` | the Nino version constraint, `^1.3` |
 | `php` | `{ "ext": [ ... ] }` - the PHP extensions the feature needs |
 | `requires` | the keys of the features it requires |
 | `directory` | the one directory the archive holds - `Newsletter`, the class name |

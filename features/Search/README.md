@@ -1,6 +1,6 @@
 # Elements search
 
-**Key:** `search` · **Class:** `\Nino\Modules\Search` · **Version:** 1.1.0 · **Nino:** `^1.0`
+**Key:** `search` · **Class:** `\Nino\Modules\Search` · **Version:** 1.1.0 · **Nino:** `^1.3`
 
 A small weighted fuzzy index over the fields of configured Element types,
 grouped by locale. Two shortcodes put a search form and its results on any

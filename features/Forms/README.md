@@ -1,6 +1,6 @@
 # Forms
 
-**Key:** `forms` · **Class:** `\Nino\Modules\Forms` · **Version:** 1.0.0 · **Nino:** `^1.1`
+**Key:** `forms` · **Class:** `\Nino\Modules\Forms` · **Version:** 1.0.0 · **Nino:** `^1.3`
 
 A builder for Nino's own form endpoint. Nino has always had one form: a
 contact form, defined in the kernel, posted to `POST /.form`. Since 1.1 it can
