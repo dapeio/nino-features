@@ -5,6 +5,9 @@ A release is the tag `design-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+- The README's check count matches the suite again - 187 rather than the
+  number it carried, which the suite passed some time ago.
+
 - Needs Nino `^1.3`, where the constraint said `^1.2`. The sectioned `manual`
   map this manifest carries is only read by a kernel newer than the
   `v1.2.0-beta` tag - `Features::manifest()` refuses it on the tagged one -

@@ -5,6 +5,9 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+- The README's check counts match the suites again: `templates-smoke.php`
+  has 164 rather than 163, `demo-catalogue-smoke.php` 23 rather than 21.
+
 - Needs Nino `^1.3`, where the constraint said `^1.2`. The sectioned `manual`
   map this manifest carries is only read by a kernel newer than the
   `v1.2.0-beta` tag - `Features::manifest()` refuses it on the tagged one -

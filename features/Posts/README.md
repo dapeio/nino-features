@@ -144,7 +144,7 @@ only the sections, is what this feature declares.
 
 ## Tests
 
-`tests/posts-smoke.php` (54 checks) covers the manifest, what a section is
+`tests/posts-smoke.php` (68 checks) covers the manifest, what a section is
 normalised to and what it refuses (a type, a path or a template that could climb
 out of the project; two sections under one path), the install unit, the two
 routes and the merge into a page the project already has, the slug resolution
