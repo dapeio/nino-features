@@ -1,6 +1,6 @@
 # Template Builder
 
-**Key:** `templates` · **Class:** `\Nino\Modules\Templates` · **Version:** 1.0.0 · **Nino:** `^1.3`
+**Key:** `templates` · **Class:** `\Nino\Modules\Templates` · **Version:** 1.0.0 · **Nino:** `^1.2`
 
 Builds the project's `page-*.tpl` files out of whole sections. The panel lists
 the page templates, opens one as a stack of sections, and inserts a section
@@ -61,10 +61,10 @@ too.
 
 ## Tests
 
-`tests/templates-smoke.php` (164 checks) covers the panel, the document model,
+`tests/templates-smoke.php` (163 checks) covers the panel, the document model,
 the composer and the area model against a real kernel.
 `tests/templates-js-smoke.js` (97 checks) covers the client-side model helpers
-and the panel's own conventions. `tests/demo-catalogue-smoke.php` (23 checks)
+and the panel's own conventions. `tests/demo-catalogue-smoke.php` (21 checks)
 holds the installer's hidden `.demo-catalogue` page to showing every preset
 this feature ships.
 

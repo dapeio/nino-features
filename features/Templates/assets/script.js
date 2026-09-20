@@ -824,6 +824,7 @@
 				Nino.admin.templates.loadDocuments(),
 				Nino.admin.templates.loadIncludes(),
 				Nino.admin.templates.api( 'library/list', {} ).then( function( response ) {
+					console.log(response);
 					Nino.admin.templates._library = response;
 					if( Nino.admin.templates.composer )
 						Nino.admin.templates.composer.libraryReady();

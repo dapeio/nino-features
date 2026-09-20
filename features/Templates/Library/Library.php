@@ -26,6 +26,24 @@ namespace Nino\Modules\Templates {
 			'ttf'	=> 'font/ttf',
 			'otf'	=> 'font/otf',
 		];
+		private const array LIBRARY_ITEM = [
+			'hero-fullscreen-image',
+			'hero-cta',
+			'articles-grid',
+			'articles-filterable-grid',
+			'image-content-split',
+			'image-list-split',
+			'items-timeline',
+			'items-list',
+			'items-table',
+			'items-accordion',
+			'items-pricing',
+			'items-logos',
+			'form-newsletter',
+			'form-contact',
+			'static-content',
+			'template-include'
+		];
 
 		public static function actions(): array {
 			return [
@@ -99,10 +117,7 @@ namespace Nino\Modules\Templates {
 
 			$presets = [];
 
-			foreach( scandir( self::DIRECTORY ) ?: [] as $key ) {
-
-				if( preg_match( '/^[a-z0-9][a-z0-9-]*$/', $key ) !== 1 )
-					continue;
+			foreach( self::LIBRARY_ITEM ?: [] as $key ) {
 
 				$path = self::DIRECTORY. '/'. $key. '/manifest.php';
 				if( is_file( $path ) === false )
@@ -121,7 +136,6 @@ namespace Nino\Modules\Templates {
 				}
 			}
 
-			ksort( $presets );
 			$cache = $presets;
 
 			return $cache;
