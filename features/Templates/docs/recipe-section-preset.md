@@ -30,7 +30,7 @@ _nino/Nino/Modules/Templates/library/services-grid/
 A preset with genuinely different markup can provide several Layout files:
 
 ```text
-_nino/Nino/Modules/Templates/library/fullscreen-image/
+_nino/Nino/Modules/Templates/library/hero-fullscreen-image/
 ├── manifest.php
 ├── section-cover.tpl
 └── section-parallax.tpl

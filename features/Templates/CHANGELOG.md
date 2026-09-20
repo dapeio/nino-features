@@ -7,10 +7,19 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
 
 ### Changed
 
-- **Renamed all part presets**
+- **Renamed all part presets.** The key names the group an editor looks in -
+  `hero-`, `articles-`, `image-`, `items-`, `form-`, `static-` - so the list
+  reads as the thing it is. The section markers in the page units Nino's
+  installer ships were renamed with them; a project that already composed a
+  section carries the old key in its own `page-*.tpl` and that section is not
+  recognised as a library section any more (see the note in the patch body).
 
 - **The available presets are defined with a constant and not sorted by key.**
-	The part presets in the wizard are manually sorted by casual page position.
+  The part presets in the wizard are manually sorted by casual page position.
+  `image-banner` was missing from it, which took a working preset out of the
+  panel without removing anything; it is back, and `templates-smoke.php` now
+  holds the constant and the `library/` directory to each other, so neither
+  can drift from the other unnoticed.
 
 - **The section library is built once, not once per keystroke.** A card does
   not depend on the search text, only on whether it matches it - but the

@@ -26,11 +26,18 @@ namespace Nino\Modules\Templates {
 			'ttf'	=> 'font/ttf',
 			'otf'	=> 'font/otf',
 		];
+		/*	What the panel offers, in the order it offers it - grouped by what an
+			editor is looking for rather than sorted by key, which is why this is
+			a list and not a scandir(). Every directory under library/ belongs in
+			here: one that is on disk and not named below is a preset nobody can
+			reach any more, silently, and templates-smoke.php holds the two
+			together for exactly that reason	*/
 		private const array LIBRARY_ITEM = [
 			'hero-fullscreen-image',
 			'hero-cta',
 			'articles-grid',
 			'articles-filterable-grid',
+			'image-banner',
 			'image-content-split',
 			'image-list-split',
 			'items-timeline',

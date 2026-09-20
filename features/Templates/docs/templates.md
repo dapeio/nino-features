@@ -107,7 +107,7 @@ The name drives the left-rail label and search; the second marker persists the V
 Managed sections carry a comment such as:
 
 ```html
-<!-- nino:section {"version":3,"preset":"fullscreen-image","areas":{...}} -->
+<!-- nino:section {"version":3,"preset":"hero-fullscreen-image","areas":{...}} -->
 ```
 
 This metadata lets the composer reopen its settings. It is inert HTML and does not add a runtime dependency. Choosing **HTML+** deliberately removes the metadata when the custom source is accepted. The section then becomes code-authored, so a later composer or page-default change cannot overwrite it.

@@ -121,7 +121,7 @@ Der Name speist Anzeige und Suche in der linken Liste; der zweite Marker persist
 Verwaltete Sections tragen einen Kommentar wie:
 
 ```html
-<!-- nino:section {"version":3,"preset":"fullscreen-image","areas":{...}} -->
+<!-- nino:section {"version":3,"preset":"hero-fullscreen-image","areas":{...}} -->
 ```
 
 Diese Metadaten erlauben das erneute Öffnen der Composer-Einstellungen. Sie sind inertes HTML und erzeugen keine Laufzeitabhängigkeit. Die Wahl von **HTML+** entfernt die Metadaten bewusst beim Übernehmen des eigenen Quelltexts. Die Section gilt danach als codebasiert und kann nicht durch eine spätere Composer- oder Seitenstandard-Änderung überschrieben werden.
@@ -328,7 +328,7 @@ wiederholte Elements-Area und eine optionale Action-Area:
 
 ### Layout- und Frame-Beispiel
 
-`fullscreen-image` bietet zwei echte Layout-Templates. Layout-Empfehlungen
+`hero-fullscreen-image` bietet zwei echte Layout-Templates. Layout-Empfehlungen
 können die Frame-Empfehlung des Presets ergänzen; eine explizite Auswahl des
 Benutzers gewinnt weiterhin:
 

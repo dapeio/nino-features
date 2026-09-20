@@ -109,7 +109,7 @@ check( 'no specimen claims a preset the library does not have'. ( $unknown === [
 
 // A preset whose areas or frame change its appearance is worth more than one
 // specimen; these are the ones where a second variant is the point
-foreach( [ 'articles-grid' => 4, 'pricing-plans' => 5, 'content-section' => 5 ] as $key => $least )
+foreach( [ 'articles-grid' => 4, 'items-pricing' => 5, 'static-content' => 5 ] as $key => $least )
 	check( $key. ' is shown in at least '. $least. ' variants', array_sum( $shown[$key] ?? [] ) >= $least );
 
 echo "\n";

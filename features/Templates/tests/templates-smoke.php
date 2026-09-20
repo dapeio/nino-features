@@ -137,7 +137,30 @@ echo "Library / Composer\n";
 $presets = \Nino\Modules\Templates\Library::presets();
 $modules = \Nino\Modules\Templates\Composer::modules();
 
-check( 'ships exactly the maintained named-area presets', array_keys( $presets ) === [ 'articles-grid', 'contact-form', 'content-section', 'cta-banner', 'feature-split', 'filterable-grid', 'fullscreen-image', 'image-banner', 'logo-bar', 'media-split-areas', 'newsletter-form', 'pricing-plans', 'process-timeline', 'static-accordion', 'static-list', 'static-table', 'template-include' ] );
+/*	The order is the one Library::LIBRARY_ITEM lists, not the alphabetical one
+	a scandir() plus ksort() used to produce: the constant is what the panel
+	offers and in what order, so this check reads it the way an editor sees it.
+	A preset added to the constant without a directory, or a directory added
+	without the constant, shows up here as a shorter or a different list	*/
+check( 'ships exactly the maintained named-area presets, in the order the panel offers them', array_keys( $presets ) === [
+	'hero-fullscreen-image', 'hero-cta',
+	'articles-grid', 'articles-filterable-grid',
+	'image-banner', 'image-content-split', 'image-list-split',
+	'items-timeline', 'items-list', 'items-table', 'items-accordion', 'items-pricing', 'items-logos',
+	'form-newsletter', 'form-contact',
+	'static-content', 'template-include',
+] );
+
+/*	...and the list and the directory agree. The constant decides what the
+	panel offers, so a preset added to library/ without a line in it is one
+	nobody can reach, and a line without a directory is an offer that cannot
+	be composed - Library::presets() swallows both, by design, which is what
+	makes them invisible without this	*/
+$presetDirectories = array_values( array_filter( scandir( FEATURE. '/library' ) ?: [], static fn( string $entry ): bool => is_file( FEATURE. '/library/'. $entry. '/manifest.php' ) ) );
+sort( $presetDirectories );
+$presetKeys = array_keys( $presets );
+sort( $presetKeys );
+check( 'every preset directory is offered, and every offer has a directory', $presetKeys === $presetDirectories );
 
 // Library::presets() swallows a broken manifest so one bad preset cannot take
 // the whole catalog down. That is right at runtime and wrong here: the check
@@ -316,7 +339,7 @@ check( 'every curated preset composes with its defaults', array_filter( array_ke
 	}
 } ) === [] );
 
-$heroInput = \Nino\Modules\Templates\AreaComposer::defaults( $presets['fullscreen-image'], 'home', 'main-hero' );
+$heroInput = \Nino\Modules\Templates\AreaComposer::defaults( $presets['hero-fullscreen-image'], 'home', 'main-hero' );
 $heroInput['pageMotion'] = 'on';
 $heroInput['areas']['content']['components'][3]['bindings']['href'] = '/webpage/contact/uri';
 $heroInput['areas']['content']['components'][3]['bindingSources']['href'] = 'textfill';
@@ -332,12 +355,12 @@ $contactBinding = array_values( array_filter( $hero['fields'], fn( array $field 
 check( 'single-Area actions can reuse technical textfills without creating a new field', str_contains( $hero['source'], 'href="[[/webpage/contact/uri]]"' )
 	&& ( $contactBinding['mode'] ?? '' ) === 'existing'
 	&& ( $hero['spec']['areas']['content']['components'][3]['bindingSources']['href'] ?? '' ) === 'textfill' );
-$missingHeroSources = \Nino\Modules\Templates\AreaComposer::defaults( $presets['fullscreen-image'], 'home', 'missing-sources' );
+$missingHeroSources = \Nino\Modules\Templates\AreaComposer::defaults( $presets['hero-fullscreen-image'], 'home', 'missing-sources' );
 unset( $missingHeroSources['areas']['content']['components'][0]['bindingSources'] );
 check( 'section metadata must declare every Single-Area binding source', throwsInvalidArgument( fn() => \Nino\Modules\Templates\Composer::compose( $missingHeroSources ) ) );
 
 $heroPreview = \Nino\Modules\Templates\Composer::preview( [
-	'preset' => 'fullscreen-image', 'pageId' => 'preview', 'id' => 'motion-hero', 'pageMotion' => 'on',
+	'preset' => 'hero-fullscreen-image', 'pageId' => 'preview', 'id' => 'motion-hero', 'pageMotion' => 'on',
 ] );
 check( 'preview strips VPA classes that would stay hidden without client scripts', $heroPreview !== null && str_contains( $heroPreview, 'nino-vpa' ) === false );
 check( 'preview-only VPA cleanup never changes composed template source', str_contains( $hero['source'], 'nino-vpa' ) && str_contains( $hero['source'], 'nino-vpa--visible' ) === false );
@@ -474,9 +497,9 @@ $fourColumnPreview = \Nino\Modules\Templates\Composer::preview( [
 check( 'named-area preview mirrors the selected column count', substr_count( $twoColumnPreview ?? '', '<article' ) === 2
 	&& substr_count( $fourColumnPreview ?? '', '<article' ) === 4 );
 
-// --- filterable-grid: the [elementvalues]-driven category filter --------
+// --- articles-filterable-grid: the [elementvalues]-driven category filter --------
 
-$filterInput = \Nino\Modules\Templates\AreaComposer::defaults( $presets['filterable-grid'], 'home', 'services' );
+$filterInput = \Nino\Modules\Templates\AreaComposer::defaults( $presets['articles-filterable-grid'], 'home', 'services' );
 $filterInput['areas']['elements']['source'] = [
 	'elementMode' => 'existing',
 	'elementType' => 'services',
@@ -484,7 +507,7 @@ $filterInput['areas']['elements']['source'] = [
 ];
 $filterSection = \Nino\Modules\Templates\Composer::compose( $filterInput );
 
-check( 'filterable-grid composes one ordinary section with both areas resolved', str_starts_with( $filterSection['source'], '<section' )
+check( 'articles-filterable-grid composes one ordinary section with both areas resolved', str_starts_with( $filterSection['source'], '<section' )
 	&& str_contains( $filterSection['source'], '</section>' )
 	&& str_contains( $filterSection['source'], '[[area:' ) === false );
 check( 'the grid Area binds to the chosen collection with no limit, so the filter has the whole set to work with', str_contains( $filterSection['source'], '[elements /services locale="" callback="" limit="-1" query=""]' ) );
@@ -505,7 +528,7 @@ $collectionOf = function( string $source ): array {
 	preg_match( '#\[elementvalues /([a-z0-9_-]+) #', $source, $buttons );
 	return [ $cards[1] ?? 'cards?', $buttons[1] ?? 'buttons?' ];
 };
-$defaultInsert = $collectionOf( \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'filterable-grid', 'pageId' => 'home', 'id' => 'work' ] )['source'] );
+$defaultInsert = $collectionOf( \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'articles-filterable-grid', 'pageId' => 'home', 'id' => 'work' ] )['source'] );
 $reboundInput = $filterInput;
 $reboundInput['id'] = 'services-rebound';
 $reboundInput['areas']['elements']['source']['elementType'] = 'consulting';
@@ -520,7 +543,7 @@ check( 'a collection token naming something that is not an Elements area of the 
 	\Nino\Modules\Templates\AreaComposer::normalizePreset( 'bad-collection', $manifest, $areaPresetDirectory );
 } ) );
 
-$filterPreview = \Nino\Modules\Templates\Composer::preview( [ 'preset' => 'filterable-grid', 'pageId' => 'preview', 'id' => 'grid' ] );
+$filterPreview = \Nino\Modules\Templates\Composer::preview( [ 'preset' => 'articles-filterable-grid', 'pageId' => 'preview', 'id' => 'grid' ] );
 check( 'renders a real preview with sample filter buttons, no raw shortcode text left visible', $filterPreview !== null
 	&& str_contains( $filterPreview, '[elementvalues' ) === false
 	&& str_contains( $filterPreview, '[[' ) === false
@@ -528,14 +551,14 @@ check( 'renders a real preview with sample filter buttons, no raw shortcode text
 	&& str_contains( $filterPreview, '<article' ) === true );
 
 $fullscreen = \Nino\Modules\Templates\Composer::compose( [
-	'preset' => 'fullscreen-image', 'pageId' => 'home', 'id' => 'stage', 'layout' => 'parallax',
+	'preset' => 'hero-fullscreen-image', 'pageId' => 'home', 'id' => 'stage', 'layout' => 'parallax',
 ] );
 check( 'Layout changes real markup and can recommend a matching frame', str_contains( $fullscreen['source'], 'nino-parallex' )
 	&& $fullscreen['effective']['layout'] === 'parallax'
 	&& $fullscreen['effective']['frame']['background'] === 'parallax'
 	&& ( $fullscreen['images'][0]['key'] ?? '' ) === '/page-home/stage/background' );
 
-$backgroundInput = \Nino\Modules\Templates\AreaComposer::defaults( $presets['fullscreen-image'], 'home', 'stage' );
+$backgroundInput = \Nino\Modules\Templates\AreaComposer::defaults( $presets['hero-fullscreen-image'], 'home', 'stage' );
 $backgroundInput['frame']['backgroundImageSource'] = 'image';
 $backgroundInput['frame']['backgroundImage'] = '/shared/hero-image';
 $existingBackground = \Nino\Modules\Templates\Composer::compose( $backgroundInput );
@@ -573,22 +596,22 @@ check( 'a fixed background still allows the public prefix and ordinary project p
 $templateInput = \Nino\Modules\Templates\AreaComposer::defaults( $presets['articles-grid'], 'home', 'with-form' );
 $templateInput['areas']['action']['components'][] = [
 	'id' => 'form', 'type' => 'template', 'style' => 'auto', 'settings' => [ 'target' => 'same' ],
-	'bindings' => [ 'path' => '/templates/contact-form' ],
+	'bindings' => [ 'path' => '/templates/form-contact' ],
 	'bindingSources' => [ 'path' => 'template' ],
 ];
 $templateSection = \Nino\Modules\Templates\Composer::compose( $templateInput );
-check( 'Template is an ordered Area input rather than a gallery pseudo-section', str_contains( $templateSection['source'], '[template /templates/contact-form]' ) );
+check( 'Template is an ordered Area input rather than a gallery pseudo-section', str_contains( $templateSection['source'], '[template /templates/form-contact]' ) );
 
-$includeInput = \Nino\Modules\Templates\AreaComposer::defaults( $presets['template-include'], 'home', 'contact-form' );
-$includeInput['areas']['include']['components'][0]['bindings']['path'] = '/templates/contact-form';
+$includeInput = \Nino\Modules\Templates\AreaComposer::defaults( $presets['template-include'], 'home', 'form-contact' );
+$includeInput['areas']['include']['components'][0]['bindings']['path'] = '/templates/form-contact';
 $includeSection = \Nino\Modules\Templates\Composer::compose( $includeInput );
-check( 'the focused reusable-template preset emits one normal managed section', str_contains( $includeSection['source'], '[template /templates/contact-form]' )
+check( 'the focused reusable-template preset emits one normal managed section', str_contains( $includeSection['source'], '[template /templates/form-contact]' )
 	&& substr_count( $includeSection['source'], '<section' ) === 1 );
 
-$splitInput = \Nino\Modules\Templates\AreaComposer::defaults( $presets['media-split-areas'], 'home', 'story' );
+$splitInput = \Nino\Modules\Templates\AreaComposer::defaults( $presets['image-content-split'], 'home', 'story' );
 $splitInput['layout'] = 'media-right';
 $splitSection = \Nino\Modules\Templates\Composer::compose( $splitInput );
-$splitPreview = \Nino\Modules\Templates\Composer::preview( [ 'preset' => 'media-split-areas', 'pageId' => 'preview', 'id' => 'story' ] );
+$splitPreview = \Nino\Modules\Templates\Composer::preview( [ 'preset' => 'image-content-split', 'pageId' => 'preview', 'id' => 'story' ] );
 check( 'a bound alt text does not leave its shortcode tail standing in the preview', $splitPreview !== null
 	&& str_contains( $splitPreview, ']"]' ) === false
 	&& str_contains( $splitPreview, '[image' ) === false
@@ -619,7 +642,7 @@ check( 'the Builder, the presets and the design system carry no legacy class pre
 	&& preg_match( $legacyClass, (string) file_get_contents( NINO. '/_nino/Nino.css' ) ) === 0
 	&& array_filter( $presets, fn( array $preset ): bool => preg_match( $legacyClass, (string) json_encode( $preset ) ) === 1 ) === [] );
 
-// filterable-grid's wrapper has to carry a layout rule of its own: it sits
+// articles-filterable-grid's wrapper has to carry a layout rule of its own: it sits
 // between .nino-grid-row and the cards, so without one the cards stop being
 // flex children and their .nino-grid-m-* widths render as stacked blocks. A
 // string assertion cannot see that, but it can see the rule is there at all -
@@ -627,32 +650,32 @@ check( 'the Builder, the presets and the design system carry no legacy class pre
 // Nino.ui.js drives and which correctly has no rule.
 check( 'the filter wrapper carries the layout rule its nested cards depend on', preg_match( '/\.nino-filter\s*\{[^}]*display:\s*flex/', (string) file_get_contents( NINO. '/_nino/Nino.css' ) ) === 1 );
 check( 'a component step is a modifier of whichever class the preset gave it', str_contains( \Nino\Modules\Templates\Composer::compose( array_merge(
-	\Nino\Modules\Templates\AreaComposer::defaults( $presets['fullscreen-image'], 'home', 'loud-hero' ),
+	\Nino\Modules\Templates\AreaComposer::defaults( $presets['hero-fullscreen-image'], 'home', 'loud-hero' ),
 	[ 'areas' => [ 'content' => [ 'components' => [ [ 'id' => 'title', 'type' => 'title', 'style' => 'loud', 'bindings' => [ 'text' => 'title' ], 'bindingSources' => [ 'text' => 'new' ] ] ] ] ] ]
 ) )['source'], '<h2 class="nino-atf-title nino-atf-title--loud"' )
 	&& str_contains( \Nino\Modules\Templates\Composer::compose( array_merge(
-		\Nino\Modules\Templates\AreaComposer::defaults( $presets['content-section'], 'home', 'loud-copy' ),
+		\Nino\Modules\Templates\AreaComposer::defaults( $presets['static-content'], 'home', 'loud-copy' ),
 		[ 'areas' => [ 'heading' => [ 'components' => [ [ 'id' => 'title', 'type' => 'title', 'style' => 'loud', 'bindings' => [ 'text' => 'title' ], 'bindingSources' => [ 'text' => 'new' ] ] ] ] ] ]
 	) )['source'], '<h2 class="nino-section-title nino-section-title--loud"' )
 	&& \Nino\Modules\Templates\AreaComposer::catalog()['description']['styles'] === [ 'auto', 'quiet', 'loud' ]
 	&& str_contains( json_encode( $presets ), 'nino-font-big' ) === false );
 check( 'the scrim is one choice per image layer rather than three levels of its own', \Nino\Modules\Templates\AreaComposer::choices()['overlay'] === [ 'auto', 'none', 'dim' ] );
-check( 'the shipped image presets use that current overlay vocabulary directly', ( include FEATURE. '/library/fullscreen-image/manifest.php' )['recommend']['frame']['overlay'] === 'dim'
+check( 'the shipped image presets use that current overlay vocabulary directly', ( include FEATURE. '/library/hero-fullscreen-image/manifest.php' )['recommend']['frame']['overlay'] === 'dim'
 	&& ( include FEATURE. '/library/image-banner/manifest.php' )['recommend']['frame']['overlay'] === 'dim' );
 check( 'overlay values outside the current vocabulary are rejected', throwsInvalidArgument( fn() => \Nino\Modules\Templates\Composer::compose( [
-	'preset' => 'fullscreen-image', 'pageId' => 'home', 'id' => 'invalid-overlay', 'frame' => [ 'overlay' => 'strong' ],
+	'preset' => 'hero-fullscreen-image', 'pageId' => 'home', 'id' => 'invalid-overlay', 'frame' => [ 'overlay' => 'strong' ],
 ] ) ) );
 check( 'every preset card is measured against the same preview viewport', array_filter( $presets, fn( array $preset ): bool => isset( $preset['previewHeight'] ) ) === [] );
 
-$timeline = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'process-timeline', 'pageId' => 'home', 'id' => 'process' ] );
+$timeline = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'items-timeline', 'pageId' => 'home', 'id' => 'process' ] );
 check( 'the timeline numbers its steps from the ordered list instead of storing the ordinal as content', str_contains( $timeline['source'], '<ol class="nino-timeline nino-timeline--counted">' )
 	&& str_contains( $timeline['source'], '<li class="nino-timeline-step"><h4>[[title]]</h4>' )
 	&& isset( $timeline['content']['collections'][0]['model']['step'] ) === false );
-$stacked = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'process-timeline', 'pageId' => 'home', 'id' => 'process', 'layout' => 'stacked' ] );
+$stacked = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'items-timeline', 'pageId' => 'home', 'id' => 'process', 'layout' => 'stacked' ] );
 check( 'its second Layout restacks the same steps instead of restyling the item', str_contains( $stacked['source'], 'nino-timeline--stacked' )
 	&& str_contains( $stacked['source'], '<li class="nino-timeline-step">' ) );
 
-$staticTable = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'static-table', 'pageId' => 'home', 'id' => 'hours', 'layout' => 'striped-elements' ] );
+$staticTable = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'items-table', 'pageId' => 'home', 'id' => 'hours', 'layout' => 'striped-elements' ] );
 check( 'a static block reaches the section exactly as the Layout wrote it, loop and all', str_contains( $staticTable['source'], '<table class="nino-table nino-table--striped">' )
 	&& str_contains( $staticTable['source'], '<tr><th>Service</th><th>Duration</th></tr>' )
 	&& str_contains( $staticTable['source'], '[elements /example-rows limit="10"]' )
@@ -662,7 +685,7 @@ check( 'its intro stays an ordinary textfill Area while the outro renders nothin
 	&& str_contains( $staticTable['source'], 'nino-mt-3' ) === false
 	&& preg_match( '/\n[\t ]*\n/', $staticTable['source'] ) !== 1 );
 $staticOutro = \Nino\Modules\Templates\Composer::compose( [
-	'preset' => 'static-table', 'pageId' => 'home', 'id' => 'hours',
+	'preset' => 'items-table', 'pageId' => 'home', 'id' => 'hours',
 	'areas' => [ 'outro' => [ 'components' => [ [
 		'id' => 'action', 'type' => 'button', 'style' => 'primary',
 		'bindings' => [ 'label' => '', 'href' => '' ], 'bindingSources' => [ 'label' => 'new', 'href' => 'new' ],
@@ -670,23 +693,23 @@ $staticOutro = \Nino\Modules\Templates\Composer::compose( [
 ] );
 check( 'and carries a closing action as soon as the outro gets one', str_contains( $staticOutro['source'], 'nino-mt-3' )
 	&& str_contains( $staticOutro['source'], '[[/page-home/hours/action-label]]' ) );
-$accordion = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'static-accordion', 'pageId' => 'home', 'id' => 'faq' ] );
+$accordion = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'items-accordion', 'pageId' => 'home', 'id' => 'faq' ] );
 check( 'a static block resolves [[section:id]], so two of them on one page stay independent', str_contains( $accordion['source'], 'name="faq-faq"' )
 	&& str_contains( $accordion['source'], '[[section:id]]' ) === false );
-$contact = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'contact-form', 'pageId' => 'home', 'id' => 'reach-us', 'layout' => 'split' ] );
+$contact = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'form-contact', 'pageId' => 'home', 'id' => 'reach-us', 'layout' => 'split' ] );
 check( 'the shipped forms keep their CSRF token, honeypot and per-section field ids', str_contains( $contact['source'], '[csrf]' )
 	&& str_contains( $contact['source'], 'name="location"' )
 	&& str_contains( $contact['source'], 'id="reach-us-email"' )
 	&& str_contains( $contact['source'], 'for="reach-us-email"' )
 	&& str_contains( $contact['source'], 'style="' ) === false );
 
-$pricingLayouts = array_keys( $presets['pricing-plans']['layouts'] );
+$pricingLayouts = array_keys( $presets['items-pricing']['layouts'] );
 check( 'pricing offers the three- and four-column Layouts as real compositions', $pricingLayouts === [ 'equal', 'feature-middle', 'four', 'four-feature-first', 'four-feature-last' ]
-	&& str_contains( $everyLayout['pricing-plans/four'], 'nino-pricing-row nino-pricing-row--four"' )
-	&& str_contains( $everyLayout['pricing-plans/four-feature-first'], 'nino-pricing-row--four-first' )
-	&& str_contains( $everyLayout['pricing-plans/four-feature-last'], 'nino-pricing-row--four-last' ) );
+	&& str_contains( $everyLayout['items-pricing/four'], 'nino-pricing-row nino-pricing-row--four"' )
+	&& str_contains( $everyLayout['items-pricing/four-feature-first'], 'nino-pricing-row--four-first' )
+	&& str_contains( $everyLayout['items-pricing/four-feature-last'], 'nino-pricing-row--four-last' ) );
 
-$pricing = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'pricing-plans', 'pageId' => 'home', 'id' => 'plans', 'layout' => 'feature-middle' ] );
+$pricing = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'items-pricing', 'pageId' => 'home', 'id' => 'plans', 'layout' => 'feature-middle' ] );
 check( 'pricing emphasis is a Layout, not a second collection or a hidden item class', str_contains( $pricing['source'], 'nino-pricing-row nino-pricing-row--feature-middle' )
 	&& str_contains( $pricing['source'], '<div class="nino-pricing-item">' )
 	&& str_contains( $pricing['source'], '<div class="nino-pricing-price"><strong>[[price]]</strong><span>[[suffix]]</span></div>' ) );
@@ -1009,7 +1032,7 @@ check( 'creates only the Elements model declared by the requested Area', $create
 	and the dimensions come from the manifest rather than from the shape of
 	the uri.	*/
 post( [
-	'preset' => 'fullscreen-image', 'slot' => 'background',
+	'preset' => 'hero-fullscreen-image', 'slot' => 'background',
 	'uri' => '/page-home/area-stage/background', 'label' => 'Area Stage Background',
 ] );
 $createAreaImageRequest = response();
