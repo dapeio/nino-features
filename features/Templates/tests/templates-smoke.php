@@ -717,6 +717,98 @@ check( 'pricing emphasis is a Layout, not a second collection or a hidden item c
 check( 'the banner uses the static background layer rather than the scripted cover', str_contains( $everyLayout['image-banner/plain'], 'nino-img-background' )
 	&& str_contains( $everyLayout['image-banner/plain'], 'nino-cover' ) === false
 	&& str_contains( $everyLayout['image-banner/plain'], 'data-cover-height' ) === false );
+/*	The HTML+ component: one place inside a composed section whose markup is
+	the editor's own, with the section staying composed around it. The
+	section's own escape hatch is the all-or-nothing version of this - it
+	detaches the whole section from its preset.
+
+	Its value is source, not a textfill, and it has to be: Text::sanitizeValue()
+	turns every '[' and ']' into an entity, so a fill cannot carry a shortcode
+	by construction, and strip_tags() or the inline allowlist takes the markup.
+	It lives in the spec and travels with the section	*/
+$catalog = \Nino\Modules\Templates\AreaComposer::catalog();
+check( 'the catalog offers an HTML+ component whose value is source', isset( $catalog['html'] ) === true
+	&& ( $catalog['html']['properties']['source']['kind'] ?? '' ) === 'source'
+	&& isset( $catalog['html']['properties']['text'] ) === false );
+
+$htmlSpec = \Nino\Modules\Templates\AreaComposer::defaults( $presets['static-content'], 'home', 'note' );
+$htmlArea = array_key_first( $htmlSpec['areas'] );
+$htmlWritten = '<div class="nino-grid-100"><p>Hallo <strong>Welt</strong> [[/company/name]] [image /demo]</p></div>';
+$htmlSpec['areas'][$htmlArea]['components'] = [ [ 'id' => 'note', 'type' => 'html', 'style' => 'auto', 'settings' => [ 'target' => 'same' ], 'bindings' => [ 'source' => $htmlWritten ], 'bindingSources' => [ 'source' => 'source' ] ] ];
+/*	Composed through a catch, like resolvedUri() in the kernel suite: every
+	check below used to die here instead of failing, and a suite that dies
+	reports no failed check at all - it reports nothing	*/
+$htmlComposed = [ 'source' => '' ];
+try { $htmlComposed = \Nino\Modules\Templates\Composer::compose( $htmlSpec ); } catch( \Throwable $htmlError ) {}
+
+// Verbatim, with no wrapper of its own - the markup is what somebody wrote,
+// and a div around it would be one more thing they cannot remove
+check( 'an HTML+ component is written into the section exactly as it was typed', str_contains( $htmlComposed['source'], $htmlWritten ) === true );
+
+// A fill and a shortcode survive, which is the whole difference from the
+// rich-text a textfill can hold
+check( '...with its fills and shortcodes intact, which is what HTML+ means here', str_contains( $htmlComposed['source'], '[[/company/name]]' ) === true
+	&& str_contains( $htmlComposed['source'], '[image /demo]' ) === true );
+
+// It needs no textfill created or filled, so it is no text binding either
+$htmlFields = [];
+try { $htmlFields = array_column( \Nino\Modules\Templates\AreaComposer::compose( $htmlSpec, $presets['static-content'] )['fields'] ?? [], 'slot' ); } catch( \Throwable $htmlError ) {}
+check( '...and asks for no textfill, because its value is not in one', in_array( $htmlArea. '.note.source', $htmlFields, true ) === false );
+
+/*	The spec travels in an html comment and now carries markup. '-->' inside a
+	component's source would close the marker early and spill the rest of the
+	spec onto the page as visible text, so it is refused - and every '>' in the
+	marker is written as \u003e as well, which json_decode() reads back as
+	itself. Two answers to one question, because the first depends on a list
+	being complete	*/
+check( 'the spec marker cannot be closed from inside the source it carries', str_contains( $htmlComposed['source'], '-->' ) === true
+	&& substr_count( $htmlComposed['source'], '-->' ) === 1 );
+
+// ...and it reads back, byte for byte, through the document model and a
+// second compose - a section nobody can reopen is a section nobody can edit
+$htmlRead = [ 'valid' => false, 'segment' => [] ];
+$htmlAgain = '';
+try {
+	$htmlRead = \Nino\Modules\Templates\SectionDocument::inspectSection( $htmlComposed['source'] );
+	$htmlAgain = \Nino\Modules\Templates\Composer::compose( $htmlRead['segment']['spec'] )['source'];
+} catch( \Throwable $htmlError ) {}
+$htmlBack = $htmlRead['segment']['spec']['areas'][$htmlArea]['components'][0]['bindings']['source'] ?? '';
+check( 'the source reads back out of the marker unchanged', $htmlRead['valid'] === true && $htmlBack === $htmlWritten );
+check( '...and composes to the same section again', $htmlAgain !== '' && $htmlAgain === $htmlComposed['source'] );
+
+/*	What it may not carry, each with its own reason (see HTML_FORBIDDEN):
+	a nested section is not what the document model reads back, the loading and
+	scripting tags are a promise this component does not make - the escape
+	hatch asks for the whole section and says so - and '-->' is the marker	*/
+$htmlRefuses = function( string $source ) use ( $htmlSpec, $htmlArea ): bool {
+	$try = $htmlSpec;
+	$try['areas'][$htmlArea]['components'][0]['bindings']['source'] = $source;
+	return throwsInvalidArgument( fn() => \Nino\Modules\Templates\Composer::compose( $try ) );
+};
+check( 'a nested section is refused', $htmlRefuses( '<section>x</section>' ) === true );
+check( 'so is anything that loads or scripts', $htmlRefuses( '<script>a</script>' ) === true
+	&& $htmlRefuses( '<iframe src="x"></iframe>' ) === true && $htmlRefuses( '<form></form>' ) === true
+	&& $htmlRefuses( '<style>a{}</style>' ) === true && $htmlRefuses( '<object></object>' ) === true && $htmlRefuses( '<embed>' ) === true );
+check( '...whatever case it is written in', $htmlRefuses( '<ScRiPt>a</ScRiPt>' ) === true );
+check( 'and so is the sequence that would close the spec marker', $htmlRefuses( 'a --> b' ) === true );
+check( 'a source longer than the cap is refused rather than written', $htmlRefuses( str_repeat( 'x', 9000 ) ) === true );
+
+// A collection renders its item once per element, so one written-out source
+// would be repeated verbatim for every one of them
+check( 'the HTML+ component is refused in a collection area', throwsInvalidArgument( fn() => \Nino\Modules\Templates\AreaComposer::normalizePreset( 'html-collection',
+	array_replace_recursive( $multiAreaManifest, [ 'areas' => [ 'first' => [ 'source' => 'elements', 'allowed' => [ 'title', 'html' ] ] ] ] ), $areaPresetDirectory ) ) );
+
+// Every single area that takes anything but an image offers it, so an editor
+// never has to pick a different preset to get one place of their own
+$htmlAreas = 0; $openAreas = 0;
+foreach( $presets as $preset )
+	foreach( $preset['areas'] as $area ) {
+		if( $area['source'] !== 'single' || array_keys( $area['render'] ) === [ 'image' ] ) continue;
+		$openAreas++;
+		if( isset( $area['render']['html'] ) ) $htmlAreas++;
+	}
+check( 'every single area that is not image-only offers it', $openAreas > 0 && $htmlAreas === $openAreas );
+
 check( 'list and table tags are available to Areas that need them, scripts and media are not', throwsInvalidArgument( fn() => \Nino\Modules\Templates\AreaComposer::normalizePreset( 'unsafe-tag', array_replace_recursive( $multiAreaManifest, [ 'areas' => [ 'first' => [ 'item' => [ 'tag' => 'iframe' ] ] ] ] ), $areaPresetDirectory ) )
 	&& \Nino\Modules\Templates\AreaComposer::normalizePreset( 'list-tag', array_replace_recursive( $multiAreaManifest, [ 'areas' => [ 'first' => [ 'item' => [ 'tag' => 'li' ] ] ] ] ), $areaPresetDirectory )['areas']['first']['item']['tag'] === 'li' );
 

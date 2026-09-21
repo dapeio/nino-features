@@ -258,8 +258,18 @@ Every Area defines:
 - an Element model and shortcode defaults for a repeatable Area.
 
 The fixed component catalog is `title`, `subtitle`, `description`,
-`text`, `image`, `button`, `price`, `number` and `template`. Every text
-component offers the same three styles — **Auto**, **Quiet** and **Loud** —
+`text`, `html`, `image`, `button`, `price`, `number` and `template`. `html` —
+**HTML+** in the panel — is the one whose value is template source rather than
+a textfill: after inserting it, its **Edit** button opens the same large source
+editor the section's own HTML+ escape hatch opens, and writes back into that
+one component while the section stays composed around it. Its fills and
+shortcodes survive, which is what a textfill cannot do: `sanitizeValue()` turns
+every `[` and `]` into an entity. It may not carry a nested `<section>`, nor
+`script`, `iframe`, `object`, `embed`, `form` or `style`, nor `-->`; for
+anything beyond that, the escape hatch takes the whole section and says so. It
+is offered in single Areas: a collection renders its item once per element, so
+one written-out source would be repeated for every one of them.
+Every text component offers the same three styles — **Auto**, **Quiet** and **Loud** —
 which compile to a modifier of whatever class the component carries:
 `nino-section-title--loud` in a content section, `nino-atf-title--loud` in a hero,
 `nino-article-title--loud` in a card. Each modifier states its own `rem` size, so

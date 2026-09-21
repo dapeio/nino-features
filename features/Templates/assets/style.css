@@ -1454,6 +1454,35 @@
 	text-align: right;
 	word-break: break-word;
 }
+/*	An HTML+ component's row: what is written, and the button that opens the
+	same large editor the section's escape hatch opens. The preview is one
+	line and clipped - it says which component this is, not what is in it	*/
+.pd-v3-source-field {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	grid-template-areas: "label label" "preview edit";
+	gap: .3rem .6rem;
+	align-items: center;
+}
+.pd-v3-source-field > span {
+	grid-area: label;
+}
+.pd-v3-source-preview {
+	grid-area: preview;
+	overflow: hidden;
+	padding: .45rem .6rem;
+	border: 1px solid var(--editor-border);
+	border-radius: .6rem;
+	background: #0c111b;
+	color: #dbeafe;
+	font: .7rem/1.5 var(--nino-admin-mono);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.pd-v3-source-edit {
+	grid-area: edit;
+}
+
 .pd-code-dialog {
 	width: min(94vw, 66rem);
 	height: min(88vh, 48rem);

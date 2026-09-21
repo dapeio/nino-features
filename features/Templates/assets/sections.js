@@ -416,7 +416,15 @@
 				? Nino.content.getText('/_admin/templates/hint/detach')
 				: Nino.content.getText('/_admin/templates/hint/one-section');
 			const source = context.detachManaged === true ? detachMetadata( context.source ) : context.source;
-			dc.getElementById('pd-code-source').value = source || '<section id="section-id" class="nino-section">\n\t<div class="nino-grid-row">\n\t</div>\n</section>\n';
+			/*	A component's source is a part of a section rather than one, so
+				it neither gets the <section> skeleton as a starting point nor the
+				note about detaching - nothing detaches, which is the whole reason
+				this mode exists	*/
+			if( context.mode === 'component' )
+				note.textContent = Nino.content.getText('/_admin/templates/hint/one-component');
+			dc.getElementById('pd-code-source').value = context.mode === 'component'
+				? ( source || '' )
+				: ( source || '<section id="section-id" class="nino-section">\n\t<div class="nino-grid-row">\n\t</div>\n</section>\n' );
 			dc.getElementById('pd-code-error').textContent = '';
 			dialog.showModal();
 			dc.getElementById('pd-code-source').focus();
@@ -427,6 +435,19 @@
 			const source = dc.getElementById('pd-code-source').value;
 			const message = dc.getElementById('pd-code-error');
 			message.textContent = Nino.content.getText('/_admin/templates/msg/checking-section');
+
+			/*	One component's source goes back into the draft and is checked by
+				composing it - the same composer that will write the section, so
+				what it refuses here it would have refused on save, and the reason
+				is the one the editor reads	*/
+			if( context.mode === 'component' ) {
+				pd.areaComposer.applyComponentSource( context.component, source ).then( function() {
+					dc.getElementById('pd-code-dialog').close();
+					pd.toast( Nino.content.getText('/_admin/templates/msg/source-updated'), false );
+				} ).catch( function( error ) { message.textContent = error.message } );
+				return;
+			}
+
 			pd.api( 'documents/inspect', { source : source } ).then( function( response ) {
 				const duplicate = pd.sections().find( function( section ) {
 					return section.htmlId && section.htmlId === response.segment.htmlId && section._clientId !== context.targetId;

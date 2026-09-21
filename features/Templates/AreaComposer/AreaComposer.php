@@ -61,6 +61,33 @@ namespace Nino\Modules\Templates {
 		// submit or script: no img, iframe, form, button, script, style, section.
 		private const array TAGS = [ 'div', 'header', 'footer', 'article', 'aside', 'nav', 'h2', 'h3', 'h4', 'p', 'span', 'strong', 'ul', 'ol', 'li', 'tr', 'th', 'td' ];
 
+		/*	What an HTML+ component starts as: a grid cell to write in, so it
+			sits in the Area's layout the way every other component does. Markup
+			in php, and this file is on tests/markup-smoke.php's short list for
+			exactly this reason - the builder composes template source, markup is
+			its product rather than its view	*/
+		private const string HTML_DEFAULT = '<div class="nino-grid-100">' . "\n\t" . '<p class="nino-section-text">Your own HTML+ here.</p>' . "\n" . '</div>';
+
+		/*	How much of it. The section source the escape hatch takes is bounded
+			by what a template may weigh; one component inside a section is a
+			part, not a page	*/
+		private const int HTML_MAXLENGTH = 8000;
+
+		/*	What an HTML+ component may not contain, and why each one.
+
+			'<section' because this renders inside one, and a nested section is
+			not what the document model reads back - SectionDocument splits a
+			template on them.
+			script/iframe/object/embed/form/style because a component is written
+			into the project's own template by the panel: the escape hatch asks
+			for the whole section and says so, this asks for a part and keeps the
+			preset, and the two are not the same promise. A project that needs
+			one of these writes the template itself, which it always could.
+			'-->' because the spec travels in an html comment: one of those in a
+			component's source closes the marker early and spills the rest of the
+			spec onto the page as visible markup	*/
+		private const array HTML_FORBIDDEN = [ '<section', '<script', '<iframe', '<object', '<embed', '<form', '<style', '-->' ];
+
 		public static function choices(): array {
 			return self::FRAME_CHOICES;
 		}
@@ -103,6 +130,17 @@ namespace Nino\Modules\Templates {
 					'value' => self::property( '/_admin/templates/catalog/value', 'text', 'string', '12' ),
 					'label' => self::property( '/_admin/templates/catalog/label', 'text', 'string', 'Projects' ),
 				], 'div', 'nino-section-text', [ 'auto', 'quiet', 'loud' ] ),
+				/*	HTML+ as one component: the section's own escape hatch is
+					all-or-nothing - it detaches the whole section from its preset -
+					and this is the same editing for one place inside it, with the
+					section staying composed around it. The value is template source,
+					which is why it is not a textfill like every other text
+					component: \Nino\Text::sanitizeValue() turns every '[' and ']'
+					into an entity, so a fill cannot carry a shortcode by
+					construction, and strip_tags() or the inline allowlist takes the
+					markup. It lives in the spec instead, and travels with the
+					section	*/
+				'html' => self::component( '/_admin/templates/catalog/html', [ 'source' => self::property( '/_admin/templates/catalog/source', 'source', 'source', self::HTML_DEFAULT ) ], 'div', '', [ 'auto' ] ),
 				'template' => self::component( '/_admin/templates/catalog/template', [ 'path' => self::property( '/_admin/templates/catalog/template', 'template', 'template', '' ) ], 'div', '', [ 'auto' ] ),
 			];
 		}
@@ -280,6 +318,13 @@ namespace Nino\Modules\Templates {
 				throw new \InvalidArgumentException( 'area '. $key. ' contains unsupported components' );
 			if( $source === 'elements' && in_array( 'template', $allowed, true ) )
 				throw new \InvalidArgumentException( 'template components are available only in single areas' );
+			/*	Same reason as the template component beside it: a collection
+				renders its item once per element, so one written-out source would
+				be repeated verbatim for every one of them - markup that says the
+				same thing about every element, which is what the item's own
+				template is for	*/
+			if( $source === 'elements' && in_array( 'html', $allowed, true ) )
+				throw new \InvalidArgumentException( 'html components are available only in single areas' );
 			$styles = self::styles( $definition['styles'] ?? [] );
 			$recommendedStyle = (string) ( $definition['recommend']['style'] ?? array_key_first( $styles ) );
 			if( isset( $styles[$recommendedStyle] ) === false )
@@ -348,6 +393,15 @@ namespace Nino\Modules\Templates {
 					throw new \InvalidArgumentException( 'component '. $id. ' has an invalid binding source' );
 				if( $requireSources === true && (string) ( $inputSources[$property] ?? '' ) === '' )
 					throw new \InvalidArgumentException( 'component '. $id. ' must declare every binding source' );
+				// An HTML+ component's value is its own source, not the name of
+				// somewhere the value lives - so it is checked as source and
+				// carries 'source' as its binding origin
+				if( $definition['kind'] === 'source' ) {
+					$bindings[$property] = self::htmlSource( $id, (string) ( $inputBindings[$property] ?? $definition['default'] ) );
+					$bindingSources[$property] = 'source';
+					continue;
+				}
+
 				$value = (string) ( $inputBindings[$property] ?? self::suffix( $id, $property, $type ) );
 				$bindingSource = self::bindingSource( (string) ( $inputSources[$property] ?? '' ), $source, $definition, $value );
 				self::validateBinding( $id, $value, $bindingSource, $source, $definition, $model, $strictModel );
@@ -438,7 +492,10 @@ namespace Nino\Modules\Templates {
 					continue;
 				foreach( $spec['areas'][$areaKey]['components'] as &$node ) {
 					foreach( $area['render'][$node['type']]['properties'] as $property => $definition ) {
-						if( in_array( $definition['kind'], [ 'image', 'template' ], true ) )
+						// 'source' with them: a text descriptor is a textfill this
+						// section needs created or filled, and an HTML+ component
+						// has none - its value is in the spec
+						if( in_array( $definition['kind'], [ 'image', 'template', 'source' ], true ) )
 							continue;
 						if( ( $node['bindingSources'][$property] ?? 'new' ) === 'fixed' )
 							continue;
@@ -535,7 +592,13 @@ namespace Nino\Modules\Templates {
 			if( $titleId !== '' )
 				$attributes .= ' aria-labelledby="'. self::escape( $titleId ). '"';
 			$attributes .= self::attributes( array_replace( $preset['data'], $preset['layouts'][$effective['layout']]['data'] ), $spec['id'] );
-			$meta = '<!-- nino:section '. json_encode( $spec, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ). ' -->';
+			/*	'>' as \u003e, which json_decode() reads back as itself. The spec
+				travels in an html comment and now carries markup - a '-->' inside
+				it would close the marker early and spill the rest of the spec onto
+				the page as visible text. htmlSource() refuses that sequence as
+				well; this is the half that does not depend on a list being
+				complete	*/
+			$meta = '<!-- nino:section '. str_replace( '>', '\\u003e', (string) json_encode( $spec, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ). ' -->';
 			$background = '';
 			if( isset( $imageMap['background'] ) )
 				$background = '[image '. $imageMap['background']. ' alt=""]';
@@ -571,6 +634,11 @@ namespace Nino\Modules\Templates {
 						$values[$property] = $images[$slot. $property] ?? '';
 					elseif( $definition['kind'] === 'template' )
 						$values[$property] = $node['bindings'][$property] ?? '';
+					// Verbatim: it is template source, checked by htmlSource() on
+					// the way into the spec, and escaping it would be escaping the
+					// thing the editor came here to write
+					elseif( $definition['kind'] === 'source' )
+						$values[$property] = (string) ( $node['bindings'][$property] ?? '' );
 					else
 						$values[$property] = isset( $fields[$slot. $property] ) ? '[['. $fields[$slot. $property]. ']]' : '';
 				}
@@ -611,6 +679,10 @@ namespace Nino\Modules\Templates {
 				'price' => '<div'. $attribute. '><strong>'. $values['value']. '</strong><span>'. $values['suffix']. '</span></div>',
 				'number' => '<div'. $attribute. '><strong>'. $values['value']. '</strong><span>'. $values['label']. '</span></div>',
 				'template' => $values['path'] === '' ? '' : '[template '. $values['path']. ']',
+				// No wrapper of its own: an HTML+ component is the markup somebody
+				// wrote, and a div around it would be one more thing they did not
+				// ask for and cannot remove. The Area's container still holds it
+				'html' => $values['source'],
 				default => '<'. $definition['tag']. $attribute. '>'. $values['text']. '</'. $definition['tag']. '>',
 			};
 		}
@@ -734,6 +806,15 @@ namespace Nino\Modules\Templates {
 			foreach( $area['render'][$node['type']]['properties'] as $property => $definition ) {
 				$value = (string) ( $node['bindings'][$property] ?? '' );
 				$source = (string) ( $node['bindingSources'][$property] ?? 'new' );
+				// A source property is the value, not the name of one: there is no
+				// generated key to fall back to, and reaching for one would
+				// replace what somebody wrote with the path of a textfill
+				if( $definition['kind'] === 'source' ) {
+					$bindings[$property] = $value !== '' ? $value : (string) $definition['default'];
+					$sources[$property] = 'source';
+					continue;
+				}
+
 				if( $definition['kind'] === 'template' || $source === 'fixed' || ( in_array( $source, [ 'textfill', 'image' ], true ) && str_starts_with( $value, '/' ) ) ) {
 					$bindings[$property] = $value;
 					$sources[$property] = $definition['kind'] === 'template' ? 'template' : $source;
@@ -751,6 +832,15 @@ namespace Nino\Modules\Templates {
 			foreach( $area['render'][$node['type']]['properties'] as $property => $definition ) {
 				$value = (string) ( $node['bindings'][$property] ?? '' );
 				$source = (string) ( $node['bindingSources'][$property] ?? '' );
+				// Checked as source and kept as written - the branch below turns a
+				// value that is not a key into a generated one, which for this
+				// property would replace what somebody wrote with a path
+				if( $definition['kind'] === 'source' ) {
+					$node['bindings'][$property] = self::htmlSource( $node['id'], $value !== '' ? $value : (string) $definition['default'] );
+					$node['bindingSources'][$property] = 'source';
+					continue;
+				}
+
 				if( $definition['kind'] === 'template' ) {
 					if( $value !== '' && preg_match( self::TEMPLATE_PATTERN, $value ) !== 1 )
 						throw new \InvalidArgumentException( 'invalid reusable template path' );
@@ -892,6 +982,29 @@ namespace Nino\Modules\Templates {
 			if( preg_match( '#^[A-Za-z][A-Za-z0-9+.-]*:#', $value, $match ) !== 1 )
 				return str_starts_with( $value, '//' ) === false;
 			return in_array( strtolower( rtrim( $match[0], ':' ) ), [ 'http', 'https', 'mailto', 'tel' ], true );
+		}
+
+		/**
+		 *	One HTML+ component's source, or a refusal naming what is wrong
+		 *	with it. Template source rather than content, so it is not escaped
+		 *	and not sanitised - it is checked, and what it may not carry is
+		 *	HTML_FORBIDDEN above, each entry with its reason.
+		 *
+		 *	@param		string		$id						The component, for the message
+		 *	@param		string		$source				What the editor wrote
+		 *
+		 *	@return 	string
+		 */
+		private static function htmlSource( string $id, string $source ): string {
+
+			if( strlen( $source ) > self::HTML_MAXLENGTH )
+				throw new \InvalidArgumentException( 'component '. $id. ': the source is longer than '. self::HTML_MAXLENGTH. ' characters' );
+
+			foreach( self::HTML_FORBIDDEN as $forbidden )
+				if( stripos( $source, $forbidden ) !== false )
+					throw new \InvalidArgumentException( 'component '. $id. ': \''. $forbidden. '\' cannot appear in a component\'s source' );
+
+			return $source;
 		}
 
 		private static function suffix( string $id, string $property, string $type ): string {

@@ -17,7 +17,7 @@
 			'labelKey' => '/_admin/templates/area/title-area',
 			'help' => 'The non-repeating introduction above the collection.',
 			'source' => 'single',
-			'allowed' => [ 'title', 'subtitle', 'description' ],
+			'allowed' => [ 'title', 'subtitle', 'description', 'html' ],
 			'container' => [ 'class' => 'nino-grid-100 nino-mb-3' ],
 			'styles' => [
 				'left' => [ 'label' => 'Left', 'class' => 'nino-text-left' ],
@@ -82,7 +82,7 @@
 			'labelKey' => '/_admin/templates/area/action-area',
 			'help' => 'Optional non-repeating text and calls to action below the collection.',
 			'source' => 'single',
-			'allowed' => [ 'title', 'description', 'button', 'template' ],
+			'allowed' => [ 'title', 'description', 'button', 'html', 'template' ],
 			'container' => [ 'class' => 'nino-grid-100 nino-mt-3' ],
 			'styles' => [
 				'left' => [ 'label' => 'Left', 'class' => 'nino-text-left' ],

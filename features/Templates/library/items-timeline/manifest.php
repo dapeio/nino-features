@@ -18,7 +18,7 @@
 			'labelKey' => '/_admin/templates/area/title-area',
 			'help' => 'The introduction above the steps.',
 			'source' => 'single',
-			'allowed' => [ 'title', 'subtitle', 'description' ],
+			'allowed' => [ 'title', 'subtitle', 'description', 'html' ],
 			'container' => [ 'class' => 'nino-grid-100 nino-mb-3' ],
 			'styles' => [
 				'center' => [ 'label' => 'Centered', 'class' => 'nino-text-center' ],

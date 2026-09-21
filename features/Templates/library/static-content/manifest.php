@@ -17,7 +17,7 @@
 			'labelKey' => '/_admin/templates/area/heading',
 			'help' => 'The optional introduction above the main content.',
 			'source' => 'single',
-			'allowed' => [ 'title', 'subtitle', 'description' ],
+			'allowed' => [ 'title', 'subtitle', 'description', 'html' ],
 			'container' => [ 'class' => 'nino-grid-100 nino-mb-3' ],
 			'styles' => [
 				'left' => [ 'label' => 'Left', 'class' => 'nino-text-left' ],
@@ -35,7 +35,7 @@
 			'labelKey' => '/_admin/templates/area/body',
 			'help' => 'Ordered text, images or reusable templates.',
 			'source' => 'single',
-			'allowed' => [ 'title', 'subtitle', 'description', 'text', 'image', 'template' ],
+			'allowed' => [ 'title', 'subtitle', 'description', 'text', 'image', 'html', 'template' ],
 			'container' => [ 'class' => 'nino-grid-100' ],
 			'recommend' => [ 'components' => [
 				[ 'id' => 'content', 'type' => 'text', 'style' => 'loud', 'bindings' => [ 'text' => 'content' ] ],
@@ -46,7 +46,7 @@
 			'labelKey' => '/_admin/templates/area/action',
 			'help' => 'Optional calls to action below the content.',
 			'source' => 'single',
-			'allowed' => [ 'description', 'button', 'template' ],
+			'allowed' => [ 'description', 'button', 'html', 'template' ],
 			'container' => [ 'class' => 'nino-grid-100 nino-mt-3' ],
 			'styles' => [
 				'left' => [ 'label' => 'Left', 'class' => 'nino-text-left' ],

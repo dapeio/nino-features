@@ -18,7 +18,7 @@
 			'labelKey' => '/_admin/templates/area/content',
 			'help' => 'The copy above the checked list.',
 			'source' => 'single',
-			'allowed' => [ 'title', 'subtitle', 'description' ],
+			'allowed' => [ 'title', 'subtitle', 'description', 'html' ],
 			'styles' => [
 				'left' => [ 'label' => 'Left', 'class' => 'nino-text-left' ],
 				'center' => [ 'label' => 'Centered', 'class' => 'nino-text-center' ],

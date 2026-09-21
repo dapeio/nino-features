@@ -364,8 +364,20 @@ Benutzers gewinnt weiterhin:
   wählt/erstellt einen Typ; jede Nicht-Bild-Eigenschaft kann unabhängig ein
   Modelfeld, einen vorhandenen gemeinsamen Textfill oder einen festen Wert
   verwenden. Bilder bleiben kompatible Modelfeld-Mappings.
-- Kernkomponenten sind `title`, `subtitle`, `description`, `text`, `image`,
-  `button`, `price`, `number` und `template`. Jede Textkomponente bietet
+- Kernkomponenten sind `title`, `subtitle`, `description`, `text`, `html`,
+  `image`, `button`, `price`, `number` und `template`. `html` – im Panel
+  **HTML+** – ist die, deren Wert Templatequelltext ist und kein Textfill:
+  nach dem Einfügen öffnet ihr Knopf **Bearbeiten** denselben großen
+  Quelltexteditor wie der HTML+-Escape-Hatch der Section, schreibt aber in
+  diese eine Komponente zurück, während die Section darum herum
+  zusammengesetzt bleibt. Ihre Fills und Shortcodes überleben, was ein
+  Textfill nicht kann: `sanitizeValue()` macht aus jeder `[` und `]` eine
+  Entity. Sie darf keine verschachtelte `<section>` tragen, kein `script`,
+  `iframe`, `object`, `embed`, `form` oder `style`, und kein `-->`; für alles
+  darüber nimmt der Escape-Hatch die ganze Section und sagt das auch. Nur in
+  Single-Areas: eine Collection rendert ihr Item einmal pro Element, ein
+  ausgeschriebener Quelltext käme also für jedes davon wortgleich wieder.
+  Jede Textkomponente bietet
   dieselben drei Styles – **Auto**, **Quiet**, **Loud** –, die zu einem
   Modifikator der jeweils getragenen Klasse kompilieren
   (`nino-section-title--loud`, `nino-atf-title--loud`, `nino-article-title--loud`). `allowed` ist eine strikte

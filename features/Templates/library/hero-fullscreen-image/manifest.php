@@ -26,7 +26,7 @@
 			'labelKey' => '/_admin/templates/area/title-content',
 			'help' => 'The ordered content displayed over the image.',
 			'source' => 'single',
-			'allowed' => [ 'title', 'subtitle', 'description', 'button', 'template' ],
+			'allowed' => [ 'title', 'subtitle', 'description', 'button', 'html', 'template' ],
 			'container' => [ 'class' => 'nino-grid-100' ],
 			'styles' => [
 				'left' => [ 'label' => 'Left', 'class' => 'nino-text-left' ],

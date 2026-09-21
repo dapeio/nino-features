@@ -18,7 +18,7 @@
 			'labelKey' => '/_admin/templates/area/caption',
 			'help' => 'The short line introducing the logos, for example "Trusted by".',
 			'source' => 'single',
-			'allowed' => [ 'subtitle', 'title' ],
+			'allowed' => [ 'subtitle', 'title', 'html' ],
 			'container' => [ 'class' => 'nino-grid-100 nino-mb-3' ],
 			'styles' => [
 				'center' => [ 'label' => 'Centered', 'class' => 'nino-text-center' ],

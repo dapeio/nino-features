@@ -5,6 +5,30 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+### Added
+
+- **A content type "HTML+".** Insertable beside title, subtitle and button,
+  and after inserting it carries an **Edit** button that opens the same large
+  source editor the section's own HTML+ escape hatch opens. The difference is
+  what it writes back: the escape hatch detaches the whole section from its
+  preset, this writes one component and leaves the section composed around it.
+  So a page can have one place whose markup is yours without the part around
+  it stopping being a library section.
+
+  Its value is template source and lives in the section's spec, not in a
+  textfill - it has to, because `\Nino\Text::sanitizeValue()` turns every `[`
+  and `]` into an entity, so a fill cannot carry a shortcode by construction,
+  and `strip_tags()` or the inline allowlist takes the markup. Fills and
+  shortcodes inside an HTML+ component survive, which is what HTML+ means.
+
+  What it may not carry, each for its own reason: a nested `<section>`, which
+  is not what the document model reads back; `script`, `iframe`, `object`,
+  `embed`, `form`, `style`, because the escape hatch asks for the whole
+  section and says so while this asks for a part and keeps the preset; and
+  `-->`, which would close the spec's own comment marker. Every `>` in that
+  marker is written as `\u003e` as well, so the source cannot end it whatever
+  the list says.
+
 ### Changed
 
 - **Renamed all part presets.** The key names the group an editor looks in -

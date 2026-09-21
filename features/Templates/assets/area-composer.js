@@ -548,6 +548,31 @@
 				return;
 			}
 
+			/*	HTML+ is not a value a form field can hold: it is source, and
+				coding in a one-line input is not coding. So the row carries what
+				is there and a button, and the button opens the same large editor
+				the section's own HTML+ escape hatch opens - the difference being
+				that this one writes back into one component and the section stays
+				composed around it	*/
+			if( propertyDefinition.kind === 'source' ) {
+				const row = node( 'div', 'pd-form-field pd-v3-source-field' );
+				const written = ( component.bindings[property] || propertyDefinition.default || '' ).trim();
+				const summary = node( 'code', 'pd-v3-source-preview', written.split( '\n' )[0].slice( 0, 90 ) + ( written.split( '\n' ).length > 1 || written.length > 90 ? ' …' : '' ) );
+				const edit = node( 'button', 'pd-v3-source-edit' );
+				edit.type = 'button';
+				edit.textContent = Nino.content.getText('/_admin/templates/label/edit-source-component');
+				edit.addEventListener( 'click', function() {
+					pd.sectionsUI.openCode( {
+						mode : 'component', source : written,
+						title : Nino.content.getText('/_admin/templates/label/edit-source-component'),
+						component : { areaKey : areaKey, index : index, property : property },
+					} );
+				} );
+				row.append( node( 'span', '', Nino.adminUi.text( propertyDefinition.label ) ), summary, edit );
+				group.appendChild( row );
+				return;
+			}
+
 			const mode = bindingSource( component, property );
 			if( area.source === 'elements' ) {
 				const options = [ { value : 'field', label : Nino.content.getText('/_admin/templates/label/collection-field') }, { value : 'textfill', label : Nino.content.getText('/_admin/templates/label/textfill-existing') }, { value : 'fixed', label : Nino.content.getText('/_admin/templates/label/value-fixed') } ];
@@ -966,6 +991,38 @@
 			areaDraft.components.push( component ); pd.composer.renderSettings(); pd.composer.loadTextValues(); pd.composer.renderSummary(); pd.composer.requestPreview();
 		},
 	};
+
+	/**
+	 *	Take one component's source from the code dialog into the draft. Called
+	 *	by sectionsUI.submitCode() when the dialog was opened for a component
+	 *	rather than for a whole section; the composer then validates it the way
+	 *	it validates everything else, by composing
+	 *
+	 *	@param		{Object}		target			{ areaKey, index, property }
+	 *	@param		{string}		source
+	 *
+	 *	@return		{Promise}								Resolves when the draft composes, rejects with why not
+	 */
+	function applyComponentSource( target, source ) {
+		const draft = pd.composer._draft;
+		const component = draft.areas[target.areaKey].components[target.index];
+		const previous = component.bindings[target.property];
+		component.bindings[target.property] = source;
+		component.bindingSources[target.property] = 'source';
+		return pd.api( 'library/compose', draft ).then( function() {
+			pd.composer.renderSettings();
+			pd.composer.renderSummary();
+			pd.composer.requestPreview( true );
+		} ).catch( function( error ) {
+			// Put back what was there: a draft carrying source the server
+			// refuses composes into nothing, so every later preview and the
+			// submit would fail with the same message somewhere else
+			component.bindings[target.property] = previous;
+			throw error;
+		} );
+	}
+
+	pd.areaComposer.applyComponentSource = applyComponentSource;
 
 	pd.composer.resetGeneratedBindings = resetGeneratedBindings;
 	pd.composer.renderSettings = renderSettings;

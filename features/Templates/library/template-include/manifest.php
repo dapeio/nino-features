@@ -17,7 +17,7 @@
 			'labelKey' => '/_admin/templates/area/template',
 			'help' => 'Choose the reusable .tpl rendered at this position.',
 			'source' => 'single',
-			'allowed' => [ 'template' ],
+			'allowed' => [ 'html', 'template' ],
 			'maxComponents' => 1,
 			'container' => [ 'class' => 'nino-grid-100' ],
 			'recommend' => [ 'components' => [

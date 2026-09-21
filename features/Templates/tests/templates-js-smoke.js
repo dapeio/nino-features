@@ -233,6 +233,40 @@ check( 'and its panel template is a fragment: no document, no stylesheet link, n
 
 console.log('\nNamed area composer');
 
+/*	HTML+ as a component. Coding in a one-line input is not coding, so the row
+	carries what is written and a button, and the button opens the same large
+	editor the section's own escape hatch opens - the difference being that
+	this one writes back into one component instead of detaching the section.
+	Node has no DOM, so what is measured is that both halves reach for the one
+	dialog rather than building a second	*/
+check( 'an HTML+ row is a preview and a button, not a field to type source into', areaComposerSource.includes( "propertyDefinition.kind === 'source'" )
+	&& areaComposerSource.includes( "pd-v3-source-preview" )
+	&& areaComposerSource.includes( "label/edit-source-component" ) );
+
+check( 'the button opens the section editor, scoped to the component', areaComposerSource.includes( "pd.sectionsUI.openCode( {" )
+	&& areaComposerSource.includes( "mode : 'component'" )
+	&& sectionsSource.includes( "context.mode === 'component'" ) );
+
+// ...and the dialog is the one that is already there: one #pd-code-source,
+// one place it is styled, one thing to keep working
+check( 'there is one code editor in this panel, not two', ( templateMarkup.match( /id="pd-code-source"/g ) || [] ).length === 1
+	&& styleSource.includes( '#pd-code-source' ) );
+
+/*	A component's source neither starts from the <section> skeleton nor shows
+	the detach warning - nothing detaches, which is the reason the mode exists	*/
+check( 'a component gets neither the section skeleton nor the detach warning', sectionsSource.includes( "hint/one-component" )
+	&& sectionsSource.includes( "? ( source || '' )" ) );
+
+/*	What the dialog accepts is what the composer accepts, because it asks it:
+	no second rule in the client to drift from the one on the server	*/
+check( 'the source is checked by composing it, not by a rule of its own', areaComposerSource.includes( "pd.api( 'library/compose', draft )" )
+	&& areaComposerSource.includes( 'applyComponentSource' )
+	&& /source|markup/i.test( areaComposerSource.slice( areaComposerSource.indexOf( 'applyComponentSource' ) ) ) );
+
+// A refused source is put back, or every later preview and the submit fail
+// with the same message somewhere else
+check( 'a refused source leaves the draft as it was', areaComposerSource.includes( 'component.bindings[target.property] = previous;' ) );
+
 check( 'the Area editor loads after the established composer and exposes bounded pure helpers', panelPhpSource.indexOf( "'composer.js'" ) < panelPhpSource.indexOf( "'area-composer.js'" )
 	&& typeof Nino.admin.templates.areaComposer.nextComponentId === 'function'
 	&& typeof Nino.admin.templates.areaComposer.moveComponent === 'function' );

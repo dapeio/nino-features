@@ -17,7 +17,7 @@
 			'labelKey' => '/_admin/templates/area/title-area',
 			'help' => 'The non-repeating introduction above the filter and the grid.',
 			'source' => 'single',
-			'allowed' => [ 'title', 'subtitle', 'description' ],
+			'allowed' => [ 'title', 'subtitle', 'description', 'html' ],
 			'container' => [ 'class' => 'nino-grid-100 nino-mb-3' ],
 			'styles' => [
 				'left' => [ 'label' => 'Left', 'class' => 'nino-text-left' ],

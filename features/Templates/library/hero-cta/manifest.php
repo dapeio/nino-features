@@ -18,7 +18,7 @@
 			'labelKey' => '/_admin/templates/area/message',
 			'help' => 'The reason to act, in one or two lines.',
 			'source' => 'single',
-			'allowed' => [ 'title', 'subtitle', 'description' ],
+			'allowed' => [ 'title', 'subtitle', 'description', 'html' ],
 			'container' => [ 'class' => 'nino-grid-100' ],
 			'styles' => [
 				'center' => [ 'label' => 'Centered', 'class' => 'nino-text-center' ],
@@ -35,7 +35,7 @@
 			'labelKey' => '/_admin/templates/area/actions',
 			'help' => 'One primary button, optionally a quieter second one.',
 			'source' => 'single',
-			'allowed' => [ 'button', 'description', 'template' ],
+			'allowed' => [ 'button', 'description', 'html', 'template' ],
 			'container' => [ 'class' => 'nino-grid-100 nino-mt-3' ],
 			'styles' => [
 				'center' => [ 'label' => 'Centered', 'class' => 'nino-text-center' ],

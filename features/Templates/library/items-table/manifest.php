@@ -20,7 +20,7 @@
 			'labelKey' => '/_admin/templates/area/intro',
 			'help' => 'The title and supporting line above the block. Ordinary textfills, editable without touching the source.',
 			'source' => 'single',
-			'allowed' => [ 'title', 'subtitle', 'description' ],
+			'allowed' => [ 'title', 'subtitle', 'description', 'html' ],
 			'container' => [ 'class' => 'nino-grid-100 nino-mb-3' ],
 			'styles' => [
 				'left' => [ 'label' => 'Left', 'class' => 'nino-text-left' ],
@@ -37,7 +37,7 @@
 			'labelKey' => '/_admin/templates/area/outro',
 			'help' => 'Deliberately empty. Add a button, a note or a reusable template here when the block needs a closing line.',
 			'source' => 'single',
-			'allowed' => [ 'button', 'description', 'text', 'template' ],
+			'allowed' => [ 'button', 'description', 'text', 'html', 'template' ],
 			'container' => [ 'class' => 'nino-grid-100 nino-mt-3' ],
 			'styles' => [
 				'left' => [ 'label' => 'Left', 'class' => 'nino-text-left' ],

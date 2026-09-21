@@ -30,7 +30,7 @@
 			'labelKey' => '/_admin/templates/area/content',
 			'help' => 'The ordered copy and actions beside the image.',
 			'source' => 'single',
-			'allowed' => [ 'title', 'subtitle', 'description', 'text', 'button', 'template' ],
+			'allowed' => [ 'title', 'subtitle', 'description', 'text', 'button', 'html', 'template' ],
 			'container' => [ 'class' => 'nino-grid-100 nino-grid-m-50 nino-p-2' ],
 			'styles' => [
 				'left' => [ 'label' => 'Left', 'class' => 'nino-text-left' ],
