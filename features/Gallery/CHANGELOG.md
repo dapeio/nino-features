@@ -22,6 +22,24 @@ versions [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **A caption could not be put back to what it was.** A tile is not rebuilt
+  after its caption was saved - the cursor is in the field - so the image
+  object the tile was drawn from stayed at the caption the screen was drawn
+  with. Leaving the field compares against that one, so clearing a caption
+  that was empty when the album was opened read as "nothing changed" and was
+  never sent, while the server went on holding what it had been sent in
+  between; every other blur sent the same caption again for the same reason.
+  The record says what the field last sent now.
+
+- **An upload that failed halfway hid the pictures that had arrived.** The
+  files are uploaded one after the other, and where one of them failed the
+  grid was left as it was before the batch - so pictures that are on the
+  server and in the panel's own list were nowhere on the screen until
+  something else redrew it. The album is drawn again on that path too. What
+  the panel says about an upload is written after that drawing rather than
+  before it: the drawing builds a new upload field, and the finished batch's
+  "%s added." was being written on the field it replaced.
+
 - **An invalid byte in a value rendered as nothing.** `htmlspecialchars()`
   answers input that is not valid UTF-8 with `''` unless `ENT_SUBSTITUTE` is
   among its flags, and every call here spelled the flags out without it.

@@ -9,7 +9,10 @@ declare(strict_types=1);
  *										thing that is never stored, the shortcode's markup -
  *										which is what the Lightbox reads - the panel with its
  *										albums, captions, order and deletions, and the seam a
- *										richer uploader hooks into.
+ *										richer uploader hooks into. What the panel's own script
+ *										does with all of that is the browser's, and
+ *										gallery-js-smoke.js beside this file measures it; this
+ *										test runs that one too where node is on the path.
  *
  *										Travels with the feature and runs against the checkout
  *										three levels up, or the one NINO_ROOT names (see
@@ -303,6 +306,28 @@ check( 'deleting it twice is a refusal', $status === 400 );
 $appData['./nino/auth/current'] = null;
 [ $status ] = callGalleryAdmin( $appData, 'gallery/list' );
 check( 'every action needs the panel\'s permission', $status === 401 );
+
+echo "\n";
+
+
+// --- The browser half --------------------------------------------------------
+
+echo "assets/admin.js - its own behaviour test\n";
+
+$jsTest	= __DIR__. '/gallery-js-smoke.js';
+$node		= function_exists( 'shell_exec' ) === true ? trim( (string) @shell_exec( 'command -v node 2>/dev/null' ) ) : '';
+
+if( $node === '' || function_exists( 'exec' ) === false ) {
+	// Not a failure and not a pass: say which, rather than counting a check
+	// that never ran (Nino's AGENTS.md, section 10)
+	echo "  --  - node is not available here: gallery-js-smoke.js was NOT run\n";
+} else {
+	$output	= [];
+	$status	= 1;
+	exec( escapeshellarg( $node ). ' '. escapeshellarg( $jsTest ). ' 2>&1', $output, $status );
+	$summary = trim( (string) ( $output === [] ? '' : end( $output ) ) );
+	check( 'gallery-js-smoke.js passes - '. ( $summary === '' ? 'no output' : $summary ), $status === 0 );
+}
 
 ninoWarnings();
 ninoDone( $appData );

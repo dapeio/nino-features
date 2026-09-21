@@ -426,13 +426,26 @@
 
 			let done = 0;
 
+			/*	Drawn first and said afterwards, into the field that drawing
+				made: _renderAlbum() empties the screen and builds a new upload
+				field with a message of its own, so a word written before it is
+				written on an element nobody will see again	*/
+			const say = function( text ) {
+
+				Nino.admin.gallery._renderAlbum();
+
+				const said = dc.getElementById('gallery-upload-msg');
+
+				if( said !== null )
+					said.textContent = text;
+			};
+
 			const next = function() {
 
 				if( files.length === 0 ) {
 					input.disabled = false;
 					input.value = '';
-					msg.textContent = Nino.content.getText('/_admin/gallery/msg/uploaded').replace( '%s', done );
-					Nino.admin.gallery._renderAlbum();
+					say( Nino.content.getText('/_admin/gallery/msg/uploaded').replace( '%s', done ) );
 					return;
 				}
 
@@ -444,7 +457,11 @@
 					if( status !== 200 || response === null ) {
 						input.disabled = false;
 						input.value = '';
-						msg.textContent = ( response && response.error ) ? response.error : Nino.content.getText('/_admin/gallery/error/upload');
+						/*	Drawn here as well: every file that was answered
+							before this one is on the server and in _albums
+							already, and a grid still showing the album as it
+							stood before the batch says the upload did nothing	*/
+						say( ( response && response.error ) ? response.error : Nino.content.getText('/_admin/gallery/error/upload') );
 						return;
 					}
 
@@ -542,6 +559,17 @@
 					return;
 				}
 				Nino.admin.gallery._albums = response.albums || [];
+
+				/*	What the next blur is compared against: the tile is not
+					rebuilt after a caption was saved - the cursor is in the
+					field - so the image object it was drawn from is the only
+					record this field has of what it has sent. Left at the
+					caption the screen was drawn with, it made putting a caption
+					back to that one read as "nothing changed" while the server
+					held what it was sent in between, and every other blur send
+					the same caption again	*/
+				image.caption = field.value;
+
 				msg.textContent = Nino.content.getText('/_admin/common/msg/saved');
 			} );
 		},

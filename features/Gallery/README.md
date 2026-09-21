@@ -97,9 +97,16 @@ its own.
 
 ```bash
 NINO_ROOT=../nino php features/Gallery/tests/gallery-smoke.php
+node features/Gallery/tests/gallery-js-smoke.js
 ```
 
 The manifest and its requirement, the two sizes and the one thing that is
 never stored, the render callback carrying this feature's images too, the
 panel with its albums, captions, order and deletions, and the markup the
 Lightbox reads.
+
+`gallery-js-smoke.js` is the panel's own script over a dom stand-in: the tiles
+it draws, the caption it saves when a field is left and the one it does not,
+and what an upload of several files leaves on the screen — when all of them
+arrive and when one of them does not. `gallery-smoke.php` runs it too where
+`node` is on the path.
