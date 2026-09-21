@@ -135,6 +135,19 @@ check( 'the shortcode is registered', ( $appData['./nino/html/shortcodes']['hell
 check( 'the route is registered at runtime, not written into config.php',
 	( $appData['/nino/http/routes']['GET://hello']['uri'] ?? '' ) === '/hello'
 	&& isset( \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/http/routes']['GET://hello'] ) === false );
+/*	config.php is the project's file, and a route in it is a page an editor
+	made. init() runs on every request, so a registration that does not look
+	first puts the feature's demo page back over that route every time - and
+	deactivating the feature would not give the project its page back, because
+	there would be nothing left to give back. A request of its own, so what
+	the one under test was left with is not disturbed	*/
+$projectRoute = [ 'uri' => '/hello', 'body' => 'the project\'s own hello page' ];
+$ownRoute = $appData;
+$ownRoute['/nino/http/routes']['GET://hello'] = $projectRoute;
+\Nino\Modules\Hello::init( $ownRoute );
+check( 'a route the project already has for the same address is left alone',
+	( $ownRoute['/nino/http/routes']['GET://hello'] ?? [] ) === $projectRoute );
+
 check( 'hello.css joined the project\'s own bundle', in_array( '/features/Hello/assets/hello.css', \Nino\Html::getAssets( $appData, '/.cache/style.css' ), true ) === true );
 check( 'the generated cache file really carries it', ( static function() use ( &$appData ): bool {
 	\Nino\Html::renderHtml( $appData, '[assets /.cache/style.css]' );

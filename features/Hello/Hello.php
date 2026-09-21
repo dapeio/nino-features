@@ -105,11 +105,19 @@ namespace Nino\Modules {
 				that only works while your code is there.
 
 				'uri' is the path a template resolves its fills against; 'body'
-				is what is rendered	*/
-			$appData['/nino/http/routes']['GET://hello'] = [
-				'uri' 	=> '/hello',
-				'body' 	=> '[template /templates/page-hello]',
-			];
+				is what is rendered.
+
+				Only where the address is free. config.php is the project's file
+				and a route in it is a page somebody made, so a feature that
+				registered over one would put its own demo back on top of that
+				page on every request - and deactivating the feature would not
+				give the page back, because there would be nothing left to give
+				back. A feature adds what a project does not have	*/
+			if( isset( $appData['/nino/http/routes']['GET://hello'] ) === false )
+				$appData['/nino/http/routes']['GET://hello'] = [
+					'uri' 	=> '/hello',
+					'body' 	=> '[template /templates/page-hello]',
+				];
 
 			/*	3. A stylesheet, added to the site's own bundle - the same one
 				the base install's html-header.tpl already loads on every page,

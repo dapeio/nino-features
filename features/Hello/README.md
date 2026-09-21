@@ -70,6 +70,12 @@ behind as the project's own. Which you want depends on one question: is the page
 still meant to exist when your code is gone? For a page an editor fills, yes.
 For one that only works while your code runs it, no.
 
+Either way the project wins the address. `init()` registers only where nothing
+is registered for it yet, the same add-only rule the install unit follows: a
+route in `config.php` is a page somebody made, and a feature that assigned over
+it would put its own page back on top on every request — and give nothing back
+on deactivation, because there would be nothing left to give back.
+
 ## The parts, in the order a request meets them
 
 **`feature.php`** — the manifest. Key, name, description, the manual an operator
@@ -122,7 +128,7 @@ Activate it in the Features panel, then:
 
 `tests/hello-smoke.php` runs against a real Nino checkout with a throwaway
 project in it — the manifest, the activation and what it merged, what `init()`
-registered, what the shortcode renders and escapes, the panel's guards and its
+registered and what it leaves alone, what the shortcode renders and escapes, the panel's guards and its
 two actions, what is stored and where, the upgrade hook, and what deactivation
 leaves behind. It is laid out in that order, so copy the shape and delete the
 sections your feature has no equivalent of.

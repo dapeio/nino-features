@@ -22,6 +22,15 @@ A release is the tag `hello-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **The runtime route overwrote a project's own page at the same address.**
+  `Hello::init()` assigned `GET://hello` on every request without looking, so
+  a project that had made `/hello` its own page in `config.php` got the
+  feature's demo back over it on every single request - and deactivating the
+  feature gave nothing back, because there was nothing left to give back. The
+  route is registered only where the address is free now, which is the rule
+  the install unit beside it has always followed: a feature adds what a
+  project does not have.
+
 - **An invalid byte in a value rendered as nothing.** `htmlspecialchars()`
   answers input that is not valid UTF-8 with `''` unless `ENT_SUBSTITUTE` is
   among its flags, and every call here spelled the flags out without it.
