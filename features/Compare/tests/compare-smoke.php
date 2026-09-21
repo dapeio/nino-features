@@ -196,6 +196,20 @@ check( 'the stylesheet keeps the hidden control hidden, which its own display ru
 check( 'and the control stays a real control rather than being replaced by a painted one',
 	str_contains( $css, 'focus-visible' ) === true && str_contains( $css, 'slider-thumb' ) === true );
 
+/*	The figure is the frame plus the caption under it. A control laid over all
+	of that is one whose thumb rides below the middle of the picture and whose
+	own box is over the caption - text nobody can select, and a caption a
+	pointer press drags the comparison with	*/
+preg_match( '/\.nino-compare\.nino-is-ready \.nino-compare-range \{([^}]*)\}/', $css, $laid );
+$control = $laid[1] ?? '';
+
+check( 'the control is laid over the frame rather than over the whole figure, so the caption under it stays text',
+	$control !== '' && str_contains( $control, 'aspect-ratio: var(--nino-compare-ratio' ) === true
+	&& str_contains( $control, 'inset: 0' ) === false && str_contains( $control, 'height: 100%' ) === false );
+check( '...taking its ratio from the same property the frame reads, so a pair says its ratio once',
+	substr_count( $css, 'aspect-ratio: var(--nino-compare-ratio' ) === 2
+	&& str_contains( $css, '.nino-compare--16-9 { --nino-compare-ratio: 16 / 9; }' ) === true );
+
 echo "\n";
 
 

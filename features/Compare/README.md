@@ -19,6 +19,10 @@ What `compare.js` does is read that control's value into
 `--nino-compare-position`. The clipping is `compare.css`'s, so what a browser
 does on every frame of a drag is a paint — not a call into JavaScript.
 
+The control is laid over the **pictures**, and it is exactly as tall as they
+are: its thumb rides on the middle of the picture, and the caption under the
+pair stays text to select rather than a strip that drags the comparison.
+
 ## Without JavaScript
 
 The same markup is **two captioned pictures under one another**. That is not a

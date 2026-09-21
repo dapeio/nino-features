@@ -59,11 +59,14 @@
 	position: relative;
 	overflow: hidden;
 	border-radius: var(--radius, .2rem);
-	aspect-ratio: 4 / 3;
+	aspect-ratio: var(--nino-compare-ratio, 4 / 3);
 }
-.nino-compare--16-9.nino-is-ready .nino-compare-frame { aspect-ratio: 16 / 9; }
-.nino-compare--1-1.nino-is-ready .nino-compare-frame { aspect-ratio: 1 / 1; }
-.nino-compare--3-2.nino-is-ready .nino-compare-frame { aspect-ratio: 3 / 2; }
+/*	The ratio is a property of the pair rather than of the frame alone: the
+	control below is laid over the frame and has to be exactly as tall as it,
+	so both read the ratio from the same place	*/
+.nino-compare--16-9 { --nino-compare-ratio: 16 / 9; }
+.nino-compare--1-1 { --nino-compare-ratio: 1 / 1; }
+.nino-compare--3-2 { --nino-compare-ratio: 3 / 2; }
 
 .nino-compare.nino-is-ready .nino-compare-image {
 	position: absolute;
@@ -112,17 +115,26 @@
 	pointer-events: none;
 }
 
-/*	The control itself, laid over the whole box and made invisible rather than
+/*	The control itself, laid over the frame and made invisible rather than
 	hidden: it is what is dragged, tabbed to and read out, so it has to stay a
-	real control in the page. Only its thumb is painted, on the divider	*/
+	real control in the page. Only its thumb is painted, on the divider.
+
+	Over the frame, not over the figure: the figure is the frame plus the
+	caption under it, and a control as tall as that one puts its thumb below
+	the middle of the picture and its own box over the caption - text that
+	cannot then be selected, and a caption a pointer press drags the
+	comparison with. So it takes its height from the same ratio the frame
+	does	*/
 .nino-compare.nino-is-ready {
 	position: relative;
 }
 .nino-compare.nino-is-ready .nino-compare-range {
 	position: absolute;
-	inset: 0;
+	top: 0;
+	left: 0;
 	width: 100%;
-	height: 100%;
+	height: auto;
+	aspect-ratio: var(--nino-compare-ratio, 4 / 3);
 	margin: 0;
 	z-index: 4;
 	appearance: none;
