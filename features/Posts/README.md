@@ -102,8 +102,11 @@ element cannot know by itself.
 
 `[posts]` takes `section="news"` where a project has more than one, and
 `limit="3"` turns the paging off - the three newest posts on a front page are a
-teaser, not page one of something. `[posts-pager]` renders nothing when there is
-only one page: saying "1 of 1" is telling somebody there is more. It writes the
+teaser, not page one of something. A `page` past the end is an empty list
+rather than the last page over again, and the pager under it marks no page as
+the one that is on - there is a way back to the last page that has posts on it
+and no way on. `[posts-pager]` renders nothing when there is only one page:
+saying "1 of 1" is telling somebody there is more. It writes the
 markup `.nino-pagination` in `Nino.css` is written against, and its three words
 come from the attributes `prev`, `next` and `label`, else from the textfills
 `/posts/prev`, `/posts/next` and `/posts/label`, else from its own English and
@@ -144,7 +147,7 @@ only the sections, is what this feature declares.
 
 ## Tests
 
-`tests/posts-smoke.php` (68 checks) covers the manifest, what a section is
+`tests/posts-smoke.php` (70 checks) covers the manifest, what a section is
 normalised to and what it refuses (a type, a path or a template that could climb
 out of the project; two sections under one path), the install unit, the two
 routes and the merge into a page the project already has, the slug resolution

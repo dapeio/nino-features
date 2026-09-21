@@ -229,6 +229,15 @@ check( '...and the second page is the rest', postsRender( $appData, '[posts]<a h
 
 $_GET = [ 'page' => '99' ];
 check( 'a page past the end is empty rather than the last one over again', postsRender( $appData, '[posts][[title]][/posts]' ) === '' );
+/*	...and the pager under it says the same thing. It used to clamp to the last
+	real page and mark that one as the one that is on, so an empty list stood
+	under a pager saying "you are on page 2" - the two halves of one list
+	telling somebody two different places they are	*/
+$beyond = postsRender( $appData, '[posts-pager]' );
+check( '...and the pager under it marks no page as the one that is on',
+	str_contains( $beyond, 'nino-is-active' ) === false && str_contains( $beyond, 'aria-current' ) === false );
+check( '...while the way back is the last page that has posts on it, and there is no way on',
+	str_contains( $beyond, '<li><a href="/blog?page=2" rel="prev">' ) === true && str_contains( $beyond, 'rel="next"' ) === false );
 
 $_GET = [];
 check( 'a limit of its own turns the paging off - a teaser is not page one',

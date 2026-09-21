@@ -5,7 +5,7 @@ A release is the tag `posts-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
-- The README's check count matches the suite again - 68 rather than the
+- The README's check count matches the suite again - 70 rather than the
   number it carried, which the suite passed some time ago.
 
 - Needs Nino `^1.3`, where the constraint said `^1.1`. The sectioned `manual`
@@ -16,6 +16,17 @@ A release is the tag `posts-<version>` of dapeio/nino-features.
   only a kernel that can read the manifest.
 
 ### Fixed
+
+- **The pager said somebody was on a page the list had nothing to put on.**
+  `[posts]` renders an empty list for a `page` past the end - deliberately,
+  rather than serving the last page over again at every number above it - but
+  `[posts-pager]` clamped the same number to the last real page and marked
+  that one `.nino-is-active` with `aria-current="page"`. So an empty list
+  stood under a pager saying "you are on page 2": the two halves of one list
+  telling a reader two different places they are. The pager marks nothing now
+  when the number is past the end, and its "Newer" link goes back to the last
+  page that has posts on it rather than to the page before the one that does
+  not exist.
 
 - **An invalid byte in a value rendered as nothing.** `htmlspecialchars()`
   answers input that is not valid UTF-8 with `''` unless `ENT_SUBSTITUTE` is

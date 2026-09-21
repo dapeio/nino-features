@@ -137,12 +137,22 @@ namespace Nino\Modules\Posts {
 
 			$total = count( \Nino\Modules\Posts::posts( $appData, $section ) );
 			$pages = (int) ceil( $total / max( 1, $section['perPage'] ) );
-			$page 	= min( self::page(), max( 1, $pages ) );
+			$page 	= self::page();
 
 			// One page is not a pager. Saying "1 of 1" is telling somebody
 			// there is more where there is not
 			if( $pages < 2 )
 				return '';
+
+			/*	A page number past the end is a page [posts] has nothing to put
+				on, and this used to clamp to the last real page and mark that
+				one as the one that is on - so an empty list stood under a pager
+				saying "you are on page 2", the two halves of one list telling
+				somebody two different places they are. Nothing is marked
+				instead, because nothing is where they are, and the way back is
+				the last page that has posts on it rather than the page before
+				this one, which would be nowhere again	*/
+			$beyond = $page > $pages;
 
 			/*	The markup the framework's own .nino-pagination is written
 				against: a <ul>, one <li> per page, the current one carrying
@@ -157,7 +167,7 @@ namespace Nino\Modules\Posts {
 			if( $page > 1 )
 				$items .= str_replace(
 					[ '[[href]]', '[[attributes]]', '[[label]]' ],
-					[ self::_href( $base, $page - 1 ), ' rel="prev"', self::_text( $appData, $args, 'prev', 'Newer', 'Neuer' ) ],
+					[ self::_href( $base, $beyond === true ? $pages : $page - 1 ), ' rel="prev"', self::_text( $appData, $args, 'prev', 'Newer', 'Neuer' ) ],
 					$item
 				);
 
