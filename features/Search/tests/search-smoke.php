@@ -387,6 +387,106 @@ check( 'the wrapper takes the class it is given', str_contains(
 \Nino\Elements::deleteElement( $appData, '/articles/markup', '*' );
 $_GET = [];
 
+echo "\nThe JSON endpoint, off until the setting says so\n";
+
+/**
+ *	Build a request the way \Nino\Http::request() leaves it and resolve it -
+ *	the whole pipeline, so what is under test is the route and its callback
+ *	as they really run
+ */
+function searchRequest( array &$appData, string $uri ): array {
+	$request = [ 'REQUEST_METHOD' => 'GET', 'REQUEST_URI' => $uri, 'REMOTE_ADDR' => '127.0.0.1' ];
+	\Nino\Http::request( $appData, $request );
+	\Nino\Http::response( $appData, $request );
+	return $request['/nino/http/response'];
+}
+
+/**
+ *	The same, answering the body as the array it is meant to be - or [] where
+ *	it is not, so a check reads a failure rather than ending the suite
+ */
+function searchJson( array &$appData, string $uri ): array {
+	$body = searchRequest( $appData, $uri )['body'] ?? null;
+	return is_array( $body ) === true ? $body : [];
+}
+
+// Two Elements of this section's own, so what the endpoint answers does not
+// depend on what the sections above left in the index
+\Nino\Elements::insertElement( $appData, '/articles/api-one', [ 'title' => 'Endpoint eins', 'summary' => 'Der erste Treffer', 'keywords' => [ 'api' ], 'author' => 'Dape Team', 'internalCode' => 'E-1' ], 'de_DE' );
+\Nino\Elements::insertElement( $appData, '/articles/api-two', [ 'title' => 'Zweiter Endpoint', 'summary' => 'Der zweite Treffer', 'keywords' => [], 'author' => 'Dape Team', 'internalCode' => 'E-2' ], 'de_DE' );
+\Nino\Modules\Search::createIndexes( $appData, 'articles' );
+
+// Off: a public address that hands out content is a decision, so init()
+// registers nothing and the address is a 404 like any other
+unset( $appData['/nino/http/routes']['GET://.search'] );
+\Nino\Modules\Search::init( $appData );
+check( 'without the api setting there is no /.search route, and the address is a 404', isset( $appData['/nino/http/routes']['GET://.search'] ) === false
+	&& searchRequest( $appData, '/.search?q=endpoint' )['statusCode'] === 404 );
+
+$appData['/nino/features']['search']['settings']['api'] = true;
+\Nino\Modules\Search::init( $appData );
+check( 'with it, init() registers the route', isset( $appData['/nino/http/routes']['GET://.search'] ) === true );
+
+$answer	= searchRequest( $appData, '/.search?q=endpoint&type=/articles' );
+$body		= is_array( $answer['body'] ?? null ) === true ? $answer['body'] : [];
+check( 'a query answers 200 with an array the kernel encodes as json, never cached', $answer['statusCode'] === 200
+	&& array_keys( $body ) === [ 'query', 'locale', 'types', 'total', 'offset', 'limit', 'hits' ] && ( $answer['header']['Cache-Control'] ?? '' ) === 'no-store' );
+check( '...naming what was asked and what was found', ( $body['query'] ?? null ) === 'endpoint' && ( $body['locale'] ?? null ) === 'de_DE' && ( $body['types'] ?? null ) === [ '/articles' ]
+	&& ( $body['total'] ?? -1 ) === count( $body['hits'] ?? [] ) && ( $body['total'] ?? 0 ) === 2 );
+
+$first = $body['hits'][0] ?? [];
+check( 'a hit is uri, type, score, coverage and fields, best first', array_keys( $first ) === [ 'uri', 'type', 'score', 'coverage', 'fields' ]
+	&& ( $first['type'] ?? null ) === '/articles' && ( $first['score'] ?? -1 ) >= ( $body['hits'][1]['score'] ?? 0 ) );
+
+// The fields a hit carries are the ones the project indexed - what it
+// decided to search is what it hands out - and nothing else the Element has
+$indexedFields = array_values( array_unique( array_values( $appData['/nino/elements/index']['articles'] ) ) );
+check( 'the fields are the indexed ones and nothing else - a field the type has but nobody indexed stays off the wire', isset( $first['fields']['title'] ) === true
+	&& array_key_exists( 'internalCode', $first['fields'] ?? [] ) === false && array_diff( array_keys( $first['fields'] ?? [] ), $indexedFields ) === [] );
+
+check( 'no query is a 400 saying so, not an empty answer', searchRequest( $appData, '/.search' )['statusCode'] === 400
+	&& ( searchJson( $appData, '/.search?q=' )['error'] ?? '' ) === 'q is required' );
+
+$nowhere = searchRequest( $appData, '/.search?q=endpoint&type=/nowhere' );
+check( 'a type nobody indexed answers no hits, not an error', $nowhere['statusCode'] === 200 && is_array( $nowhere['body'] ?? null ) === true
+	&& ( $nowhere['body']['total'] ?? null ) === 0 && ( $nowhere['body']['hits'] ?? null ) === [] && ( $nowhere['body']['types'] ?? null ) === [] );
+
+$configuredTypes = array_keys( array_filter( \Nino\Modules\Search::configuration( $appData ), static fn( array $entry ): bool => $entry['fields'] !== [] ) );
+$everything	= searchJson( $appData, '/.search?q=endpoint&limit=500' );
+$second			= searchJson( $appData, '/.search?q=endpoint&limit=1&offset=1' );
+check( 'without a type every configured type is searched, the limit is capped, and offset pages through the same order', ( $everything['types'] ?? null ) === $configuredTypes
+	&& ( $everything['limit'] ?? null ) === \Nino\Modules\Search::API_LIMIT_MAX && ( $second['limit'] ?? null ) === 1 && ( $second['offset'] ?? null ) === 1 && count( $second['hits'] ?? [] ) === 1
+	&& ( $second['hits'][0]['uri'] ?? '' ) === ( $everything['hits'][1]['uri'] ?? '-' ) );
+
+/*	A project shapes a hit in a callback: one for every hit, then one for
+	the type, each handed the hit with its whole Element under 'element' -
+	so a price can be formatted, a field renamed, a field the index does not
+	hold added - and the Element itself never travels	*/
+\Nino\Callbacks::registerCallback( $appData, \Nino\Modules\Search::HIT, static function( array &$appData, array &$hit ): void {
+	$hit['fields']['kind'] = 'any';
+} );
+\Nino\Callbacks::registerCallback( $appData, \Nino\Modules\Search::HIT. '/articles', static function( array &$appData, array &$hit ): array {
+	$hit['fields'] = [ 'kind' => $hit['fields']['kind'], 'title' => $hit['element']['title'], 'code' => (string) ( $hit['element']['internalCode'] ?? '' ) ];
+	return $hit;
+} );
+$hooked			= searchJson( $appData, '/.search?q=endpoint&type=/articles' )['hits'][0] ?? [];
+$hookedElement	= \Nino\Elements::getElement( $appData, (string) ( $hooked['uri'] ?? '' ), 'de_DE' );
+check( 'a callback shapes the fields - the one for every hit first, the one for the type after it, with the Element in hand', is_array( $hookedElement ) === true
+	&& ( $hooked['fields'] ?? null ) === [ 'kind' => 'any', 'title' => $hookedElement['title'], 'code' => (string) ( $hookedElement['internalCode'] ?? '' ) ] );
+check( '...and the Element itself never travels', array_key_exists( 'element', $hooked ) === false );
+
+// A callback that answers false drops the hit from the page; the total still
+// counts what the index found
+\Nino\Callbacks::registerCallback( $appData, \Nino\Modules\Search::HIT. '/articles', static fn( array &$appData, array &$hit ): bool => false );
+$dropped = searchJson( $appData, '/.search?q=endpoint&type=/articles' );
+check( 'a callback answering false drops the hit, and the total says what the index found', ( $dropped['hits'] ?? null ) === [] && ( $dropped['total'] ?? 0 ) > 0 );
+
+unset( $appData['./nino/callbacks'][ \Nino\Modules\Search::HIT ], $appData['./nino/callbacks'][ \Nino\Modules\Search::HIT. '/articles' ],
+	$appData['/nino/features']['search']['settings']['api'], $appData['/nino/http/routes']['GET://.search'], $appData['./nino/callbacks']['/nino/http/response/GET://.search'] );
+\Nino\Elements::deleteElement( $appData, '/articles/api-one', '*' );
+\Nino\Elements::deleteElement( $appData, '/articles/api-two', '*' );
+\Nino\Modules\Search::createIndexes( $appData, 'articles' );
+
 echo "\nRead-only failures and the guarded Admin rebuild action\n";
 
 @unlink( $articleIndexPath );

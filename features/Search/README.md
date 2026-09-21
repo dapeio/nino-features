@@ -102,10 +102,65 @@ Beside the shortcodes, the feature's public surface:
 | `createIndexes( &$appData, string $only = '' ): array` | recreate every valid configured index, or just the one type named; answers `{ created, elements, failed, skipped, issues }` |
 | `callbackElementsCommitted()` | registered in `init()` under `'/nino/elements/committed'`: after an insert, update or delete of a configured type has committed, that one type's index is recreated. A failed write is reported with `trigger_error()` and never rolls back the Element commit it follows |
 | `Shortcodes::query( string $key ): string` | what the visitor typed, for one query variable name |
+| `callbackApi( &$appData, &$request )` | registered in `init()` under `'/nino/http/response/GET://.search'` while the **JSON endpoint** setting is on - see [The JSON endpoint](#the-json-endpoint) |
+| `HIT` | `'/search/hit'`, the hook the endpoint fires for every hit and, with the type uri appended, for one type |
 
 `skipped` names a configured type that produced no index and why (`the model of "/products" has no field "titel"`); `issues` names a type that *is* indexed but whose configuration holds a name that does not resolve. Both used to be dropped silently - a configuration naming two types reported "1 index created", and a wholly invalid one came back as "no search indexes are configured".
 
 `init()` registers the callback and the two shortcodes, and nothing else: activation creates no file.
+
+## The JSON endpoint
+
+Off until the **JSON endpoint** setting in the Features panel is on: a public
+address that hands out content is a decision, not a side effect of activating
+a search. On, `init()` registers `GET /.search` and this answers it:
+
+```
+GET /.search?q=lighthouse&type=/products&limit=20&offset=0
+```
+
+| | |
+| --- | --- |
+| `q` | what was typed; required - without it the answer is a `400` with `{ "error": "q is required" }` |
+| `type` | one type uri, or several as `type[]=`; left out, every indexed type is searched. A type nobody indexed is left out of `types` and finds nothing |
+| `limit` | hits per answer, `20` by default and never more than `50` - every hit with its fields is one Element read |
+| `offset` | how many of the best to skip |
+
+The answer is json, sent with `Cache-Control: no-store` since the index changes
+with every save, in the locale the request runs in like any page:
+
+```json
+{
+  "query": "lighthouse", "locale": "en_US", "types": [ "/products" ],
+  "total": 12, "offset": 0, "limit": 20,
+  "hits": [
+    { "uri": "/products/beacon", "type": "/products", "score": 0.91, "coverage": 1,
+      "fields": { "title": "Beacon", "summary": "A lighthouse for the desk" } }
+  ]
+}
+```
+
+`total` is what the index found, `hits` the page of it. **A hit carries the
+indexed fields of its Element and nothing else the Element has**: the fields
+the project named for the index are the ones it decided to search, so they are
+the ones it hands out, and a field nobody indexed stays off the wire - a
+price, an internal code, an author's mail.
+
+A project that wants a hit to carry other things, or fewer, shapes it in a
+callback. `'/search/hit'` is fired for every hit, then `'/search/hit/<type>'`
+for one type, in that order; each is handed the hit with its whole Element
+under `element`, which never travels, and answers the hit - or `false` to drop
+it, in which case `total` still counts what the index found:
+
+```php
+\Nino\Callbacks::registerCallback( $appData, '/search/hit/products', function( array &$appData, array &$hit ): array {
+	$hit['fields'] = [
+		'title'	=> $hit['element']['title'],
+		'price'	=> number_format( (float) $hit['element']['price'], 2, ',', '.' ). ' €',
+	];
+	return $hit;
+} );
+```
 
 ## The panel
 

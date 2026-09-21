@@ -5,6 +5,17 @@ A release is the tag `search-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+- **A JSON endpoint, off until the setting says so.** `GET /.search?q=…`
+  answers the shortcodes' search as json - the same index, the same locale,
+  the same scores - for a page that searches while typing and for anything
+  that is not a page. A hit carries the indexed fields of its Element and
+  nothing else the Element has; a project shapes it in a `/search/hit`
+  callback, for every hit or for one type, with the whole Element in hand.
+  `type`, `limit` (at most 50) and `offset` page through it, `total` says what
+  the index found, and the answer is never cached. A new **JSON endpoint**
+  setting switches the route on; a public address that hands out content is
+  a decision, not a side effect of a search.
+
 - Needs Nino `^1.3`, where the constraint said `^1.0`. The sectioned `manual`
   map this manifest carries is only read by a kernel newer than the
   `v1.2.0-beta` tag - `Features::manifest()` refuses it on the tagged one -

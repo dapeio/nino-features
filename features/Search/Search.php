@@ -23,6 +23,23 @@ namespace Nino\Modules {
 		];
 
 		private const int MAX_QUERY_LENGTH = 256;
+
+		// The feature's key, as the manifest names it - what its settings are
+		// read under
+		public const string KEY = 'search';
+
+		/*	The json endpoint's page: what it hands out when the address names
+			no limit, and the most it hands out at once. Every hit with its
+			fields is one Element file read, and the index has already answered
+			which ones - so a page is a number, and a caller asking for
+			everything gets the first fifty and the total	*/
+		public const int API_LIMIT			= 20;
+		public const int API_LIMIT_MAX	= 50;
+
+		// The hook a project shapes an endpoint hit with: fired under this name
+		// for every hit, then under this name plus the type uri for one type -
+		// see callbackApi()
+		public const string HIT = '/search/hit';
 		private const int MAX_QUERY_TOKENS = 12;
 
 		/*	How many of the query's words have to be found for a document to
@@ -77,6 +94,116 @@ namespace Nino\Modules {
 			\Nino\Callbacks::registerCallback( $appData, '/nino/elements/committed', [ self::class, 'callbackElementsCommitted' ] );
 
 			Search\Shortcodes::init( $appData );
+
+			/*	The json endpoint, only where the project switched it on: a
+				public address that hands out content is a decision, not a side
+				effect of activating a search. One GET route and the callback
+				that answers it, registered the way the Newsletter registers
+				its own address	*/
+			if( \Nino\Features::setting( $appData, self::KEY, 'api', false ) === true ) {
+				$appData['/nino/http/routes']['GET://.search'] = [ 'uri' => '/.search' ];
+				\Nino\Callbacks::registerCallback( $appData, '/nino/http/response/GET://.search', [ self::class, 'callbackApi' ] );
+			}
+		}
+
+		/**
+		 *	GET /.search?q=…&type=…&limit=…&offset=… - the shortcodes' search as
+		 *	json, for a page that searches while typing and for anything that is
+		 *	not a page. The same index, the same locale the request runs in, the
+		 *	same scores.
+		 *
+		 *	A hit carries the indexed fields of its Element and nothing else the
+		 *	Element has: the fields the project named for the index are the ones
+		 *	it decided to search, so they are the ones it hands out, and a field
+		 *	nobody indexed stays off the wire. A project that wants a hit to
+		 *	carry other things, or fewer, or a price with its currency, shapes it
+		 *	in a callback: HIT for every hit, then HIT plus the type uri for one
+		 *	type, each handed the hit with its whole Element under 'element' -
+		 *	which never travels - and answering the hit, or false to drop it.
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		&$request			(reference) The request, answered in place
+		 *
+		 *	@return 	void
+		 */
+		public static function callbackApi( array &$appData, array &$request ): void {
+
+			$query	= $request['/nino/http/request']['query'] ?? [];
+			$q			= is_string( $query['q'] ?? null ) === true ? trim( $query['q'] ) : '';
+
+			// Never cached: the index changes with every save
+			$request['/nino/http/response']['header']['Cache-Control'] = 'no-store';
+
+			if( $q === '' ) {
+				$request['/nino/http/response']['statusCode']	= 400;
+				$request['/nino/http/response']['body']				= [ 'error' => 'q is required' ];
+				return;
+			}
+
+			// The types asked for, or every configured one - either way only
+			// what the index holds, in the spelling the index uses. 'type' is
+			// whatever the address carried: one string, or an array ('type[]=')
+			$configured	= self::_configuredTypes( $appData );
+			$types			= [];
+
+			foreach( (array) ( $query['type'] ?? array_keys( $configured ) ) as $wanted ) {
+				$typeUri = self::_typeUri( $wanted );
+				if( $typeUri !== null && isset( $configured[$typeUri] ) === true && in_array( $typeUri, $types, true ) === false )
+					$types[] = $typeUri;
+			}
+
+			$limit	= is_numeric( $query['limit'] ?? null ) === true ? (int) $query['limit'] : self::API_LIMIT;
+			$limit	= min( max( 1, $limit ), self::API_LIMIT_MAX );
+			$offset	= is_numeric( $query['offset'] ?? null ) === true ? max( 0, (int) $query['offset'] ) : 0;
+			$locale	= \Nino\Locales::getCurrentLocale( $appData );
+
+			// The whole ranking from the index, which is cheap; the Elements only
+			// for the page that is handed out
+			$all	= $types === [] ? [] : self::getHits( $appData, $types, $q );
+			$hits	= [];
+
+			foreach( array_slice( $all, $offset, $limit ) as $found ) {
+
+				$element = \Nino\Elements::getElement( $appData, $found['uri'], $locale );
+				if( is_array( $element ) === false )
+					continue;
+
+				$fields = [];
+				foreach( array_unique( array_values( $configured[ $found['type'] ] ) ) as $name )
+					if( array_key_exists( $name, $element ) === true )
+						$fields[$name] = $element[$name];
+
+				$hit = [
+					'uri'				=> $found['uri'],
+					'type'			=> $found['type'],
+					'score'			=> round( (float) $found['score'], 3 ),
+					'coverage'	=> round( (float) $found['coverage'], 3 ),
+					'fields'		=> $fields,
+					'element'		=> $element,
+				];
+
+				$hit = \Nino\Callbacks::doCallbacks( $appData, self::HIT, $hit );
+				$hit = \Nino\Callbacks::doCallbacks( $appData, self::HIT. $found['type'], $hit );
+
+				// Whatever a callback made of it: a hit is an array, and the
+				// Element stays where it is
+				if( is_array( $hit ) === false )
+					continue;
+
+				unset( $hit['element'] );
+				$hits[] = $hit;
+			}
+
+			$request['/nino/http/response']['statusCode']	= 200;
+			$request['/nino/http/response']['body']				= [
+				'query'		=> $q,
+				'locale'	=> $locale,
+				'types'		=> $types,
+				'total'		=> count( $all ),
+				'offset'	=> $offset,
+				'limit'		=> $limit,
+				'hits'		=> $hits,
+			];
 		}
 
 		/**
