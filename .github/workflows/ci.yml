@@ -48,7 +48,11 @@ jobs:
         run: |
           git clone --depth 1 https://github.com/dapeio/nino.git nino
           if [ "${{ matrix.nino }}" = "latest" ]; then
-            cd nino && git fetch --tags --depth 1 && tag=$(git tag --sort=-v:refname | head -n1) && [ -n "$tag" ] && git checkout -q "$tag" && echo "Nino $tag"
+            # versionsort.suffix: git's version sort puts a suffixed tag after its
+            # base by default (v1.3.0-beta after v1.3.0), so a release would never
+            # be "latest" while its own pre-release tag exists. With '-' as the
+            # suffix every -beta/-rc sorts below the release it precedes
+            cd nino && git fetch --tags --depth 1 && tag=$(git -c versionsort.suffix=- tag --sort=-v:refname | head -n1) && [ -n "$tag" ] && git checkout -q "$tag" && echo "Nino $tag"
           fi
 
       # The same layout a project has: every feature below the checkout's
