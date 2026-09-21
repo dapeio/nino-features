@@ -30,8 +30,11 @@ return [
 	// that copy instead of this one - the autoloader resolves _nino/ first, on
 	// purpose, so a shipped module can never be shadowed. Installing this on
 	// 1.1 would look like it worked and change nothing, so the constraint is
-	// what refuses it and says why
-	'nino'				=> '^1.2',
+	// what refuses it and says why. And not ^1.2: the sectioned 'manual' map
+	// below is read from 1.3 on - Features::manifest() on the 1.2 kernel
+	// refuses the whole manifest over it, so ^1.2 offered this to a kernel
+	// that could not then install it
+	'nino'				=> '^1.3',
 	'requires'		=> [],
 	// The page templates it edits are the project's own, in private/templates/,
 	// and a backup carries them as project content - none of it belongs to this

@@ -1,6 +1,6 @@
 # Template Builder
 
-**Key:** `templates` · **Class:** `\Nino\Modules\Templates` · **Version:** 1.0.0 · **Nino:** `^1.2`
+**Key:** `templates` · **Class:** `\Nino\Modules\Templates` · **Version:** 1.0.0 · **Nino:** `^1.3`
 
 Builds the project's `page-*.tpl` files out of whole sections. The panel lists
 the page templates, opens one as a stack of sections, and inserts a section
