@@ -138,13 +138,31 @@ function world( spec ) {
 
 	wrap.querySelectorAll = function( selector ) { return selector === ( spec.selector || 'p' ) ? lines : [] };
 
+	/*	A container the page carries in front of that one, with a lines
+		selector the browser refuses. querySelectorAll() answers a selector it
+		cannot read with a SyntaxError rather than with no elements - that is
+		what is being stood in for here, for the one shape this test uses -
+		and one of those must not cost the page the typewriters after it	*/
+	const
+		refusedLine = element(),
+		refused = spec.refuses === undefined ? null : element( { 'data-typewriter-lines' : spec.refuses } );
+
+	refusedLine.textContent = 'Xy';
+
+	if( refused !== null )
+		refused.querySelectorAll = function( selector ) {
+			if( /[:,[(]$/.test( selector ) === true )
+				throw new SyntaxError( '\''+ selector+ '\' is not a valid selector' );
+			return selector === 'p' ? [ refusedLine ] : [];
+		};
+
 	const
 		timers = [],
 		observers = [],
 		document = {
 			readyState : 'complete',
 			addEventListener : function() {},
-			querySelectorAll : function( selector ) { return selector === '.nino-typewriter' ? [ wrap ] : [] },
+			querySelectorAll : function( selector ) { return selector === '.nino-typewriter' ? ( refused === null ? [ wrap ] : [ refused, wrap ] ) : [] },
 			createElement : function() { return element() },
 		};
 
@@ -199,6 +217,7 @@ function world( spec ) {
 	return {
 		wrap : wrap,
 		lines : lines,
+		refusedLine : refusedLine,
 		observers : observers,
 		advance : advance,
 		scrollIntoView : function() {
@@ -406,6 +425,27 @@ const empty = world( { lines : [] } );
 empty.scrollIntoView();
 empty.advance( 10000 );
 check( 'a container whose selector matches nothing does nothing', empty.wrap.children.length === 0 );
+
+/*	The old file let the SyntaxError out of run() and out of the loop in
+	init(), which here would end this suite instead of failing a check - so
+	the page is driven inside a try and the error becomes the answer	*/
+const refusedSelector = ( function() {
+	try {
+		const page = world( { lines : [ 'Ab' ], refuses : 'p:' } );
+		page.scrollIntoView();
+		page.advance( 400 );
+		return {
+			after	: childByClass( page.lines[0], 'nino-typewriter-text' ).textContent,
+			own		: childByClass( page.refusedLine, 'nino-typewriter-text' ).textContent,
+		};
+	}
+	catch( error ) {
+		return { after : error.name, own : error.name };
+	}
+} )();
+
+check( 'a lines selector the browser refuses costs that one container, not every typewriter after it on the page', refusedSelector.after === 'A' );
+check( 'and that container keeps the default selector, the way every other unreadable attribute keeps its default', refusedSelector.own === 'X' );
 
 const observerless = world( { lines : [ 'Ab' ], withoutObserver : true } );
 observerless.advance( 400 );

@@ -90,6 +90,31 @@
 	}
 
 	/**
+	 *	The same as a selector. querySelectorAll() answers one it cannot read
+	 *	with a SyntaxError rather than with no elements, and that error would
+	 *	leave run(), and with it the loop that runs the page's typewriters -
+	 *	so one container's typo would cost every typewriter after it on the
+	 *	page. It is asked here instead, where a value that cannot be read
+	 *	costs that one attribute, exactly like an unreadable count of
+	 *	milliseconds
+	 *
+	 *	@param		{Element}	el						Typewriter container
+	 *	@param		{string}	name					Attribute without its data-typewriter- prefix
+	 *	@param		{string}	fallback			Default to keep when the browser refuses the value
+	 *
+	 *	@return		{string}
+	 */
+	function selector( el, name, fallback ) {
+
+		var value = text( el, name, fallback );
+
+		try { el.querySelectorAll( value ) }
+		catch( e ) { return fallback }
+
+		return value;
+	}
+
+	/**
 	 *	The same as a switch. '0', 'false', 'off' and 'no' turn it off, any
 	 *	other value on - a default that is on has to stay switchable
 	 *
@@ -120,7 +145,7 @@
 		var cursor = el.getAttribute( 'data-typewriter-cursor' );
 
 		return {
-			lines					: text( el, 'lines', DEFAULTS.lines ),
+			lines					: selector( el, 'lines', DEFAULTS.lines ),
 			start					: text( el, 'start', DEFAULTS.start ) === 'load' ? 'load' : 'view',
 			startDelay		: number( el, 'start-delay', DEFAULTS.startDelay ),
 			speed					: number( el, 'speed', DEFAULTS.speed ),

@@ -5,6 +5,15 @@ file. A release is the tag `typewriter-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+- **A selector one container could not be read with stopped every typewriter
+  after it on the page.** `data-typewriter-lines` went to `querySelectorAll()`
+  unread, and a selector the browser refuses is answered there with a
+  `SyntaxError` rather than with no elements - which left `run()`, and with it
+  the loop over the page's containers. A `data-typewriter-lines="p:"` on the
+  first one therefore left the page without a single typewriter. The selector
+  is read like every other attribute now: one that cannot be read keeps the
+  default, `p`, and costs that one attribute.
+
 - Needs Nino `^1.3`, where the constraint said `^1.1`. The sectioned `manual`
   map this manifest carries is only read by a kernel newer than the
   `v1.2.0-beta` tag - `Features::manifest()` refuses it on the tagged one -

@@ -40,7 +40,8 @@ numbers is an attribute away.
 
 All of them are optional, all of them are read off the container itself, and
 an unreadable or negative value keeps the default rather than timing the
-animation with a `NaN`.
+animation with a `NaN` - a selector the browser refuses included: it costs that
+one attribute, never the other typewriters on the page.
 
 | Attribute | Default | What it does |
 | --- | --- | --- |
