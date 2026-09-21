@@ -23,6 +23,20 @@ A release is the tag `seo-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **A title, an address or a description could end a link in llms.txt
+  halfway through itself.** An entry there is `- [title](url): description`
+  and nothing in it was held to that shape: a `]` in a title closed the link
+  text where it stood and left the rest of the title in the document as
+  prose, a `)` in an address - `/blog/pin(1)` - cut the address off
+  mid-slug, and a description textfill somebody had wrapped over two lines
+  ended the list item and put the rest of the sentence in as a paragraph of
+  its own, under a page it had nothing to do with. Titles now go in with
+  their brackets escaped the way CommonMark takes an ASCII punctuation
+  character literally, addresses with their parentheses percent-encoded -
+  which is what those are in a url anyway - and every value on one line. The
+  heading and the site description under it are held to one line for the
+  same reason.
+
 - **An invalid byte in a value rendered as nothing.** `htmlspecialchars()`
   answers input that is not valid UTF-8 with `''` unless `ENT_SUBSTITUTE` is
   among its flags, and every call here spelled the flags out without it.

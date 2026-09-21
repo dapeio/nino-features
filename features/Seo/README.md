@@ -141,7 +141,14 @@ A page's title and description come from the `/webpage<uri>/title` and
 `/webpage<uri>/description` texts - the same fills `html-header.tpl` uses -
 looked up in the page's own locale (its `locale` field, else the site's
 native locale, the same fallback a locale-agnostic route renders under). A
-page without a title is left out rather than listed empty. With only one
+page without a title is left out rather than listed empty.
+
+An entry is one line, and every part of it is held to what a Markdown link is
+made of before it goes in: a `[` or `]` in a title is escaped, the `(` and `)`
+of an address are percent-encoded, and a title or description written over
+several lines becomes one. An entry that ended halfway through somebody's
+title would leave the rest of it in the document as prose - a page with a
+title nobody wrote. With only one
 locale the `### ...` headings are left out too - `## Pages` lists every page
 flat. `Content-Type: text/plain; charset=UTF-8`.
 
@@ -248,8 +255,9 @@ exactly the site pages as absolute urls, hreflang alternates for the paired
 page, `&` escaped, a lastmod from a template's mtime and none where there is
 no template), `robots.txt` (the fixed lines, the settings, the sitemap and
 llms.txt mentions, in order), `llms.txt` (heading, description, titled pages
-grouped by locale, and a 404 - with no mention in robots.txt - once `agents`
-is off), `[seo-alternates]` and `[seo-jsonld]`, and deactivation. It loads
+grouped by locale, a title and an address carrying the characters a link is
+made of and a description written over two lines, and a 404 - with no mention
+in robots.txt - once `agents` is off), `[seo-alternates]` and `[seo-jsonld]`, and deactivation. It loads
 Nino's `tests/harness.php` from the checkout three levels up - where the
 feature sits in a project - or from the one `NINO_ROOT` names, and defines
 `NINO_FEATURES_DIR` as this feature's parent directory, so the kernel serves

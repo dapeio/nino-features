@@ -110,6 +110,11 @@ $appData['/nino/http/routes'] = [
 	// therefore live here, not in en_US.php
 	'[[/webpage/faq&more/title]]'					=> 'FAQ & Mehr',
 	'[[/webpage/faq&more/description]]'	=> 'Antworten auf häufige Fragen',
+	/*	A title is somebody's words and a description is a textfill, which is a
+		block of text: both of them carry the characters a markdown link in
+		llms.txt is made of, and one of them carries newlines	*/
+	'[[/webpage/blog/pin(1)/title]]'				=> 'Cost [per unit] (2026)',
+	'[[/webpage/blog/pin(1)/description]]'	=> "One line\nand another",
 ] );
 
 $aboutTemplatePath = \Nino\Filesystem::path( $appData, '/templates/page-about.tpl' );
@@ -327,6 +332,10 @@ echo "Pages no route can name, contributed under Seo::PAGES\n";
 \Nino\Callbacks::registerCallback( $appData, \Nino\Modules\Seo::PAGES, static function( array &$appData, array &$pages ): void {
 	$pages[] = [ 'externalPath' => '/blog/first-light', 'lastmod' => '2026-01-05', 'title' => 'First light', 'description' => 'How it began.' ];
 	$pages[] = [ 'externalPath' => '/blog/no-date', 'title' => 'No date', 'lastmod' => '2026-13-45' ];
+	// An address is somebody's slug, and a slug carries the parentheses a
+	// markdown link ends on. Its title and description are the textfills
+	// above, which is where a newline gets in
+	$pages[] = [ 'externalPath' => '/blog/pin(1)' ];
 	// The operator's own decisions have to survive a contribution: an
 	// excluded path, this feature's own endpoint, a tool uri, and a page a
 	// persisted route already carries
@@ -378,6 +387,24 @@ $contributedLlmsBody = (string) ( $contributedLlms['/nino/http/response']['body'
 // no textfill to be titled by - so it brings its own
 check( 'a contributed page reaches llms.txt under the title it brought',
 	str_contains( $contributedLlmsBody, '- [First light](https://example.com/blog/first-light): How it began.' ) === true );
+
+/*	An entry is "- [text](destination): description" and nothing in it is
+	escaped on the way in: a ']' in a title ends the link text where it stands
+	and leaves the rest of the title in the document as prose, a ')' in the
+	address cuts it off mid-slug, and a description over two lines ends the
+	item and puts the rest of the sentence in as a paragraph. What a reader of
+	this file then gets is a page with a title nobody wrote	*/
+check( 'a title carrying the brackets a link is made of stays inside the link',
+	str_contains( $contributedLlmsBody, '- [Cost \[per unit\] (2026)](https://example.com/blog/pin%281%29): One line and another' ) === true );
+check( '...and a description over two lines is one line, so what follows it is still an item',
+	str_contains( $contributedLlmsBody, "\nand another" ) === false );
+
+// Nothing under "## Pages" but the locale headings, the blank lines between
+// them and the items themselves - which is what a reader parses it as
+$llmsLines	= explode( "\n", $contributedLlmsBody );
+$pageLines	= array_slice( $llmsLines, (int) array_search( '## Pages', $llmsLines, true ) + 1 );
+check( '...and the list is still a list',
+	array_filter( $pageLines, static fn( string $line ): bool => $line !== '' && str_starts_with( $line, '### ' ) === false && str_starts_with( $line, '- [' ) === false ) === [] );
 
 echo "\n";
 

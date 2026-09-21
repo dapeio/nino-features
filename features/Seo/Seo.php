@@ -587,6 +587,61 @@ namespace Nino\Modules {
 		}
 
 		/**
+		 *	A value on one line of llms.txt, which is a markdown document.
+		 *
+		 *	A title is somebody's words and a description is a textfill, which
+		 *	is a block of text somebody may well have wrapped. An entry is one
+		 *	line - "- [title](url): description" - so a second line would end
+		 *	the list item and stand in the document as a paragraph of its own,
+		 *	under a page it has nothing to do with
+		 *
+		 *	@param		string		$value
+		 *
+		 *	@return 	string
+		 */
+		private static function _oneLine( string $value ): string {
+
+			return trim( preg_replace( '/\s+/u', ' ', $value ) ?? $value );
+		}
+
+		/**
+		 *	A title as the text of a markdown link.
+		 *
+		 *	"[" and "]" are what the text is delimited by, so a title carrying
+		 *	one ends the link where it stands and leaves the rest of the title
+		 *	in the document as prose. They go in as commonmark takes any ascii
+		 *	punctuation character literally - with a backslash in front - and
+		 *	the backslash itself goes first, or the ones added here would be
+		 *	escaped by the ones already there
+		 *
+		 *	@param		string		$value
+		 *
+		 *	@return 	string
+		 */
+		private static function _linkText( string $value ): string {
+
+			return str_replace( [ '\\', '[', ']' ], [ '\\\\', '\\[', '\\]' ], self::_oneLine( $value ) );
+		}
+
+		/**
+		 *	An address as the destination of a markdown link.
+		 *
+		 *	A destination ends at the ")" that closes it, and a slug is allowed
+		 *	to carry one - "/blog/pin(1)" would be cut off mid-address and the
+		 *	rest of it left in the document. Percent-encoded rather than
+		 *	backslash-escaped, because that is what those characters are in a
+		 *	url anyway and the url stays one wherever it is copied to
+		 *
+		 *	@param		string		$value
+		 *
+		 *	@return 	string
+		 */
+		private static function _linkUrl( string $value ): string {
+
+			return str_replace( [ '(', ')', ' ' ], [ '%28', '%29', '%20' ], self::_oneLine( $value ) );
+		}
+
+		/**
 		 *	A page's <lastmod>, from the mtime of the template file its own
 		 *	body includes - null (omitted) for anything else: a body built by
 		 *	a route callback, an inline body, an empty one. Only the plain
@@ -720,11 +775,13 @@ namespace Nino\Modules {
 			$description	= (string) \Nino\Features::setting( $appData, self::KEY, 'description', '' );
 			$free					= (string) \Nino\Features::setting( $appData, self::KEY, 'llms', '' );
 
-			$lines = [ '# '. $name ];
+			// The heading and the description under it are one line each, the
+			// same as every entry below them
+			$lines = [ '# '. self::_oneLine( $name ) ];
 
 			if( $description !== '' ) {
 				$lines[] = '';
-				$lines[] = '> '. $description;
+				$lines[] = '> '. self::_oneLine( $description );
 			}
 
 			if( $free !== '' ) {
@@ -764,9 +821,14 @@ namespace Nino\Modules {
 						continue;
 
 					$pageDescription = $page['description'] ?? trim( (string) ( $fills['[[/webpage'. $page['uri']. '/description]]'] ?? '' ) );
-					$link = '- ['. $title. ']('. $base. $page['externalPath']. ')';
+					/*	Every part of the entry is held to what a markdown link is
+						made of before it goes in. A title, an address and a
+						description are all somebody else's words, and an entry that
+						ends halfway through one of them is a page with a title
+						nobody wrote	*/
+					$link = '- ['. self::_linkText( $title ). ']('. self::_linkUrl( $base. $page['externalPath'] ). ')';
 
-					$entries[] = $pageDescription !== '' ? $link. ': '. $pageDescription : $link;
+					$entries[] = $pageDescription !== '' ? $link. ': '. self::_oneLine( $pageDescription ) : $link;
 				}
 
 				if( $entries === [] )
