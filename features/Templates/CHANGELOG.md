@@ -7,6 +7,27 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **Four small things: two links that went nowhere, an id read from the wrong
+  attribute, a rename that threw away what was typed, and a save that stripped
+  the status of its styling.** The inspector's "Upload image" and "Create in
+  Admin" links addressed `/_admin/?tab=images` and `/_admin/?tab=types`; the
+  workbench routes by url hash and reads no query at all, so the first click
+  landed on whichever panel the rail lists first and nothing else. They name
+  the screen they mean now - `#images/<group>` for an upload, `#slots` for a
+  slot that has to be defined first, `#types` for an Elements type. A section's
+  id was matched with `\bid\s*=`, and a word boundary also sits between the `-`
+  of `data-id` and the `i` after it, so any hand-written attribute ending in
+  `-id` was read as the section's own id: the panel labelled sections after
+  decorative values, and saving a page whose sections carry one was refused as
+  a duplicate id. The attribute is matched as an attribute now, preceded by
+  whitespace. Renaming a section in the composer renamed every generated
+  textfill key it owns but left the texts already typed under the old keys,
+  where the next read replaced them with the preset's placeholder - the held
+  values and their "this was typed in" marks move with the binding. And
+  `save()` assigned `className = ''` to the save status, dropping the
+  design-system class that `setDirty()`'s own comment says has to stay; it
+  takes the two state classes off instead.
+
 - **A dead `?: []` behind the preset list failed the static analysis both
   repositories run.** `LIBRARY_ITEM` is a constant and never empty, so the
   fallback could never be taken; PHPStan reports that as an error, and the CI

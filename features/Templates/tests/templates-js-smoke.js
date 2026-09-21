@@ -163,6 +163,7 @@ check( '...and rebuilds only when the library itself changed, or the shell was b
 const ninoCssSource = fs.readFileSync( path.join( NINO, '_nino/Nino.css' ), 'utf8' );
 const ninoAdminCssSource = fs.readFileSync( path.join( NINO, '_admin/assets/style.css' ), 'utf8' );
 const ninoUiJsSource = fs.readFileSync( path.join( NINO, '_nino/Nino.ui.js' ), 'utf8' );
+const ninoShellJsSource = fs.readFileSync( path.join( NINO, '_admin/assets/script.js' ), 'utf8' );
 const articlesManifestSource = fs.readFileSync( path.join( FEATURE, 'library/articles-grid/manifest.php' ), 'utf8' );
 const templateMarkup = fs.readFileSync( path.join( FEATURE, 'templates/panel.tpl' ), 'utf8' );
 const templatesPhpSource = fs.readFileSync( path.join( FEATURE, 'Library/Library.php' ), 'utf8' );
@@ -193,6 +194,20 @@ check( 'the panel loads nothing until its tab is selected, then keeps its state 
 check( 'a link into the Elements panel is a hash deep-link, the way the workbench routes', composerSource.includes("'/_admin/#elements/'")
 	&& sectionsSource.includes("'/_admin/#elements/'")
 	&& composerSource.includes('?tab=elements') === false );
+/*	And so is every other link out of the inspector. The shell reads
+	location.hash and no query at all (see its own script.js), so the two
+	'?tab=' links resolved to nothing: loaded against a stand-in of the
+	rendered shell, the real router answered '?tab=images' and '?tab=types'
+	with the first panel in the rail, while '#images', '#slots' and '#types'
+	each select their own screen. An image slot that exists is an upload on
+	the Images panel, which restores the slot group from the hash; one that
+	does not exist yet is defined on the Slots tab	*/
+check( 'the inspector\'s image and type links are hashes as well, none of them a query', sectionsSource.includes( "'/_admin/#images/'" )
+	&& sectionsSource.includes( "'/_admin/#slots'" )
+	&& sectionsSource.includes( "'/_admin/#types'" )
+	&& /assetUrl\( '\/_admin\/\?/.test( sectionsSource ) === false
+	&& ninoShellJsSource.includes( 'wn.location.hash.replace' )
+	&& /location\.search/.test( ninoShellJsSource ) === false );
 check( 'new-template UI asks for filename, name, shell slots and VPA', [ 'pd-create-filename', 'pd-create-name', 'pd-create-header', 'pd-create-footer', 'pd-create-vpa' ].every( function( id ) { return templateMarkup.includes( 'id="'+ id+ '"' ) } ) );
 check( 'the primary toolbar exposes one Add Section entry point', templateMarkup.includes( 'id="pd-add-section"' ) && templateMarkup.includes( 'id="pd-add-template"' ) === false );
 check( 'Add Section is the final workspace control instead of a template setting',
@@ -418,6 +433,75 @@ Nino.admin.templates._library.presets = stepLibrary;
 stepComposer._draft = null;
 stepComposer._context = null;
 stepComposer._step = 'library';
+
+/*	A generated textfill is named after the section, so renaming the section
+	renames every key it owns - and what was typed into the dialog is held by
+	key. loadTextValues() fills every key it was not told had been typed in
+	with the preset's default, so a value left behind under the old key was
+	replaced by that default the moment the id changed, and the operator's own
+	sentence was gone without a word. The held values move with the binding	*/
+const renameLibrary = Nino.admin.templates._library.presets;
+const renameComposer = Nino.admin.templates.composer;
+Nino.admin.templates._library.presets = [ { key : 'rename-hero', version : 3, recommend : { layout : 'stacked' }, layouts : { stacked : { label : 'Stacked' } }, componentCatalog : { title : { label : 'Title', styles : [ 'auto' ], properties : { text : { kind : 'text', default : 'A clear headline' } } } }, areas : { body : { source : 'single', label : 'Body', allowed : [ 'title' ], maxComponents : 4, styles : { plain : { label : 'Plain' } }, recommend : { style : 'plain' } } } } ];
+renameComposer._presetKey = 'rename-hero';
+renameComposer._draft = { pageId : 'home', id : 'hero', layout : 'auto', frame : {}, areas : { body : { style : 'auto', source : {}, components : [ { id : 'title', type : 'title', style : 'auto', settings : {}, bindings : { text : '/page-home/hero/title' }, bindingSources : { text : 'new' } } ] } } };
+renameComposer._textValues = { '/page-home/hero/title' : 'What the operator typed' };
+renameComposer._touched = new Set( [ '/page-home/hero/title' ] );
+renameComposer.updateDraft( { dataset : { path : 'id' }, tagName : 'INPUT', type : 'text', value : 'intro' }, false );
+check( 'renaming a section carries the texts typed for it to their new keys', renameComposer._draft.areas.body.components[0].bindings.text === '/page-home/intro/title'
+	&& renameComposer._textValues['/page-home/intro/title'] === 'What the operator typed'
+	&& Object.prototype.hasOwnProperty.call( renameComposer._textValues, '/page-home/hero/title' ) === false
+	&& renameComposer._touched.has( '/page-home/intro/title' ) === true
+	&& renameComposer._touched.has( '/page-home/hero/title' ) === false );
+Nino.admin.templates._library.presets = renameLibrary;
+renameComposer._draft = null;
+renameComposer._presetKey = '';
+renameComposer._textValues = {};
+renameComposer._touched = new Set();
+
+/*	The save status carries two unrelated things at once: the design system's
+	own class (.nino-admin-actionbar-status, from panel.tpl) and whichever
+	state the panel is in. setDirty() says so and toggles; save() wrote
+	className outright, so the very first save stripped the design-system
+	class off the element and the status stayed unstyled until the panel was
+	reloaded. The kernel makes the same point where it hands every shell a
+	setStateClass() instead of a className write	*/
+function statusStub( initial ) {
+	const classes = new Set( String( initial ).split(' ').filter( Boolean ) );
+	return {
+		textContent : '',
+		disabled : false,
+		classList : {
+			add : function( name ) { classes.add( name ) },
+			remove : function( name ) { classes.delete( name ) },
+			toggle : function( name, on ) { if( on ) classes.add( name ); else classes.delete( name ) },
+			contains : function( name ) { return classes.has( name ) },
+		},
+		get className() { return Array.from( classes ).join(' ') },
+		set className( value ) { classes.clear(); String( value ).split(' ').filter( Boolean ).forEach( function( name ) { classes.add( name ) } ) },
+	};
+}
+const saveState = statusStub( 'nino-admin-actionbar-status' );
+const saveButton = statusStub( '' );
+const plainGetElementById = documentStub.getElementById;
+documentStub.getElementById = function( id ) {
+	if( id === 'pd-save-state' ) return saveState;
+	if( id === 'pd-save' ) return saveButton;
+	return null;
+};
+Nino.admin.templates._current = { name : 'page-home', displayName : 'Home', pageMotion : 'none', revision : 1, readonly : null, segments : [] };
+Nino.admin.templates._dirty = true;
+Nino.admin.templates._saving = false;
+Nino.admin.templates.save();
+check( 'saving leaves the status its design-system class and only drops its state', saveState.classList.contains( 'nino-admin-actionbar-status' ) === true
+	&& saveState.classList.contains( 'is-dirty' ) === false
+	&& saveState.classList.contains( 'is-error' ) === false
+	&& saveState.textContent === '/_admin/templates/msg/saving' );
+documentStub.getElementById = plainGetElementById;
+Nino.admin.templates._current = null;
+Nino.admin.templates._saving = false;
+Nino.admin.templates._dirty = false;
+
 check( 'the background image offers a fixed value next to the two slot choices', areaComposerSource.includes( "{ value : 'fixed', label : Nino.content.getText('/_admin/templates/label/value-fixed') }" )
 	&& /formField\( Nino\.content\.getText\('\/_admin\/templates\/label\/background-image'\), '', \[[^\]]*value : 'fixed'/.test( areaComposerSource )
 	&& areaComposerSource.includes( "'frame.backgroundImage', 'text'" )

@@ -649,7 +649,13 @@
 						row.appendChild( element( 'code', '', uri ) );
 						if( existing ) {
 							const link = element( 'a', '', existing.hasImage ? Nino.content.getText('/_admin/templates/label/edit-image') : Nino.content.getText('/_admin/templates/label/upload-image') );
-							link.href = pd.assetUrl( '/_admin/?tab=images' );
+							// The workbench addresses a screen by hash and reads no
+							// query at all, so a '?tab=' link only ever landed on
+							// whichever panel the rail lists first. The Images panel
+							// groups its slots by the first segment of their uri and
+							// restores that group from the hash, so the row opens the
+							// group this slot is in
+							link.href = pd.assetUrl( '/_admin/#images/'+ encodeURIComponent( uri.split('/').filter( Boolean )[0] || '' ) );
 							row.appendChild( link );
 						} else {
 							const request = areaSpec ? pd.sectionsUI.areaImageRequest( section.spec, preset, uri ) : { uri : uri, label : humanize( uri.split('/').slice(-2).join(' ') ) };
@@ -661,8 +667,10 @@
 								} ).catch( function( error ) { pd.toast( error.message, true ) } );
 							} ) );
 							else {
+								// A slot that does not exist yet is defined on the
+								// Slots tab, not among the uploads
 								const link = element( 'a', '', Nino.content.getText('/_admin/templates/label/create-in-admin') );
-								link.href = pd.assetUrl( '/_admin/?tab=images' );
+								link.href = pd.assetUrl( '/_admin/#slots' );
 								row.appendChild( link );
 							}
 						}
@@ -708,7 +716,7 @@
 						} ) );
 						else {
 							const link = element( 'a', '', Nino.content.getText('/_admin/templates/label/create-in-admin') );
-							link.href = pd.assetUrl( '/_admin/?tab=types' );
+							link.href = pd.assetUrl( '/_admin/#types' );
 							row.appendChild( link );
 						}
 					} else if( section.spec && section.spec.content ) {
@@ -721,7 +729,7 @@
 						} ) );
 					} else {
 						const link = element( 'a', '', Nino.content.getText('/_admin/templates/label/create-in-admin') );
-						link.href = pd.assetUrl( '/_admin/?tab=types' );
+						link.href = pd.assetUrl( '/_admin/#types' );
 						row.appendChild( link );
 					}
 					list.appendChild( row );

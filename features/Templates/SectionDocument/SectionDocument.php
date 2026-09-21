@@ -185,7 +185,12 @@ namespace Nino\Modules\Templates {
 			$opening = substr( $source, 0, $openingEnd );
 			$htmlId = '';
 
-			if( preg_match( '/\bid\s*=\s*(["\'])(.*?)\1/is', $opening, $match ) === 1 )
+			// The attribute is matched as an attribute: a word boundary also sits
+			// between the '-' of 'data-id' and the 'i' after it, so \bid read
+			// 'data-id', 'aria-id' and every other suffixed attribute as the
+			// section's own id - and the panel then labelled the section after a
+			// decorative value and refused a save as a duplicate id
+			if( preg_match( '/\sid\s*=\s*(["\'])(.*?)\1/is', $opening, $match ) === 1 )
 				$htmlId = html_entity_decode( $match[2], ENT_QUOTES | ENT_HTML5, 'UTF-8' );
 
 			$spec = null;

@@ -788,6 +788,31 @@
 		renderAreaPanel( wrap, draft, item ); bindSettings( wrap );
 	}
 
+	/**
+	 *	Carry what is typed for a generated textfill over to the key the
+	 *	rename gave it. The dialog holds those texts by key, and
+	 *	loadTextValues() fills every key it has not been told was typed in
+	 *	with the preset's default - so a value left behind under the old key
+	 *	was silently replaced by the default the moment the section id
+	 *	changed, and the operator's own sentence was gone
+	 *
+	 *	@param		{string}	from					The key before the rename
+	 *	@param		{string}	to						The key after it
+	 *
+	 *	@return		void
+	 */
+	function carryTypedValue( from, to ) {
+		if( from === to ) return;
+		if( Object.prototype.hasOwnProperty.call( pd.composer._textValues, from ) === true ) {
+			pd.composer._textValues[to] = pd.composer._textValues[from];
+			delete pd.composer._textValues[from];
+		}
+		if( pd.composer._touched.has( from ) === true ) {
+			pd.composer._touched.delete( from );
+			pd.composer._touched.add( to );
+		}
+	}
+
 	function updateDraft( input, committed ) {
 		if( !active() ) return original.updateDraft.call( pd.composer, input, committed );
 		pd.composer.captureValues();
@@ -803,7 +828,10 @@
 					Object.keys( component.bindings || {} ).forEach( function( property ) {
 						const value = component.bindings[property];
 						const source = bindingSource( component, property );
-						if( area.source === 'single' && source === 'new' && typeof value === 'string' && value.startsWith( '/page-'+ draft.pageId+ '/'+ oldId+ '/' ) ) component.bindings[property] = value.replace( '/'+ oldId+ '/', '/'+ draft.id+ '/' );
+						if( area.source === 'single' && source === 'new' && typeof value === 'string' && value.startsWith( '/page-'+ draft.pageId+ '/'+ oldId+ '/' ) ) {
+							component.bindings[property] = value.replace( '/'+ oldId+ '/', '/'+ draft.id+ '/' );
+							carryTypedValue( value, component.bindings[property] );
+						}
 					} );
 				} );
 				const source = draft.areas[areaKey].source;

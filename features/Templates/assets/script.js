@@ -654,7 +654,12 @@
 			const changeVersion = Nino.admin.templates._changeVersion;
 			const state = dc.getElementById('pd-save-state');
 			const save = dc.getElementById('pd-save');
-			state.className = '';
+			// The rule setDirty() already follows, and for the same reason: the
+			// element carries its design-system class (.nino-admin-actionbar-status)
+			// as well as its state, and writing className dropped the first one,
+			// so the status lost its styling for the rest of the session
+			state.classList.remove('is-dirty');
+			state.classList.remove('is-error');
 			state.textContent = Nino.content.getText('/_admin/templates/msg/saving');
 			save.disabled = true;
 

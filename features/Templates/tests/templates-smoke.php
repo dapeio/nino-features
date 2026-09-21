@@ -876,6 +876,19 @@ $quotedAngle = \Nino\Modules\Templates\SectionDocument::split( '<section id="a" 
 check( 'a > inside an attribute value still does not end the tag early', $quotedAngle['sectionCount'] === 1 && $quotedAngle['error'] === null );
 $apostropheAttr = \Nino\Modules\Templates\SectionDocument::split( '<section id="a" data-note="it\'s fine" class="nino-section"><p>x</p></section>' );
 check( '...and an apostrophe inside a double-quoted one is just a character', $apostropheAttr['sectionCount'] === 1 && $apostropheAttr['error'] === null );
+
+/*	A section's id is the name the panel puts on it and the name a save is
+	checked against for duplicates, so it has to be read as the attribute it is:
+	the word boundary in \bid also sits between the '-' of 'data-id' and the 'i'
+	after it, and any hand-written attribute ending in '-id' was picked up before
+	the real one - a page whose sections carry data-id ended up as a list of
+	sections all called the same thing, and saving it was refused as a duplicate	*/
+$suffixedId = \Nino\Modules\Templates\SectionDocument::split( '<section data-id="decor" aria-labelledby="h" id="hero" class="nino-section"><p>x</p></section>' );
+$suffixedSections = array_values( array_filter( $suffixedId['segments'], fn( array $segment ): bool => $segment['type'] === 'section' ) );
+check( 'a data-id before the id is not mistaken for the section id', count( $suffixedSections ) === 1 && $suffixedSections[0]['htmlId'] === 'hero' );
+$onlySuffixedId = \Nino\Modules\Templates\SectionDocument::split( '<section data-id="decor" class="nino-section"><p>x</p></section>' );
+$onlySuffixedSections = array_values( array_filter( $onlySuffixedId['segments'], fn( array $segment ): bool => $segment['type'] === 'section' ) );
+check( '...and a section that carries only a data-id has no id at all', count( $onlySuffixedSections ) === 1 && $onlySuffixedSections[0]['htmlId'] === '' );
 check( 'rejects a self-closing section because HTML does not close it there', \Nino\Modules\Templates\SectionDocument::split( '<section />' )['error'] !== null );
 check( 'code inspection accepts exactly one complete section', \Nino\Modules\Templates\SectionDocument::inspectSection( "<section id=\"x\"></section>\n" )['valid'] === true );
 check( 'code inspection rejects source around the section', \Nino\Modules\Templates\SectionDocument::inspectSection( "<div>x</div><section></section>" )['valid'] === false );
