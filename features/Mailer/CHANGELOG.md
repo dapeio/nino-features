@@ -5,6 +5,12 @@ A release is the tag `mailer-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+- **The kernel's envelope sender is named as the textfill it is now.** Nino
+  1.3.0 reads `[[/mail/sender]]` from the Text panel where it read
+  `/nino/mail/sender` from `config.php` before; the message a send without any
+  From address fails with names the fill, and the test sets the sender both
+  ways, so it answers the same against either kernel.
+
 - Needs Nino `^1.3`, where the constraint said `^1.1`. The sectioned `manual`
   map this manifest carries is only read by a kernel newer than the
   `v1.2.0-beta` tag - `Features::manifest()` refuses it on the tagged one -
