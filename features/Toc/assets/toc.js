@@ -39,6 +39,33 @@
 	var pending = false;
 
 	/**
+	 *	A heading's own words - what it says, without the anchor this script
+	 *	may have put on it. Once a list has run with anchors switched on, the
+	 *	'#' of that link is part of every one of those headings' textContent,
+	 *	and a second list built afterwards would read it as part of the words
+	 *
+	 *	@param		{Element}		heading
+	 *
+	 *	@return		{string}
+	 */
+	function words( heading ) {
+
+		var text = '';
+
+		for( var i = 0; i < heading.childNodes.length; i++ ) {
+
+			var node = heading.childNodes[i];
+
+			if( node.nodeType === 1 && node.classList.contains( 'nino-toc-anchor' ) === true )
+				continue;
+
+			text += node.textContent || '';
+		}
+
+		return text;
+	}
+
+	/**
 	 *	A heading's own words, turned into something that can be an id
 	 *
 	 *	@param		{string}		text
@@ -73,7 +100,7 @@
 			return heading.id;
 		}
 
-		var base = slug( heading.textContent || '' ) || 'abschnitt';
+		var base = slug( words( heading ) ) || 'abschnitt';
 		var id = base;
 		var n = 2;
 
@@ -130,7 +157,7 @@
 			if( found[h].classList.contains( 'nino-toc-skip' ) === true )
 				continue;
 
-			if( ( found[h].textContent || '' ).trim() === '' )
+			if( words( found[h] ).trim() === '' )
 				continue;
 
 			out.push( found[h] );
@@ -200,7 +227,7 @@
 			var link = document.createElement( 'a' );
 			link.className = 'nino-toc-link';
 			link.href = '#' + id;
-			link.textContent = ( heading.textContent || '' ).trim();
+			link.textContent = words( heading ).trim();
 
 			item.appendChild( link );
 			list.appendChild( item );

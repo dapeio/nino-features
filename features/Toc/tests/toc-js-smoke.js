@@ -54,6 +54,7 @@ function element( tag, attributes ) {
 
 	const el = {
 		tagName			: tag.toUpperCase(),
+		nodeType		: 1,
 		attributes	: Object.assign( {}, attributes || {} ),
 		children		: [],
 		parent			: null,
@@ -95,6 +96,18 @@ function element( tag, attributes ) {
 	Object.defineProperty( el, 'textContent', {
 		get : function() { return el._text + el.children.map( function( c ) { return c.textContent } ).join('') },
 		set : function( value ) { el._text = String( value ); el.children = [] },
+	} );
+
+	/*	The dom keeps a heading's own words in a text node among its children,
+		which is what toc.js walks to read them without the anchor it appends.
+		Here they are in _text, so childNodes hands them out as one text node
+		in front of the elements - where they are, since everything the script
+		appends goes to the end	*/
+	Object.defineProperty( el, 'childNodes', {
+		get : function() {
+			const own = el._text === '' ? [] : [ { nodeType : 3, textContent : el._text } ];
+			return own.concat( el.children );
+		},
 	} );
 
 	Object.defineProperty( el, 'className', {
@@ -268,6 +281,11 @@ check( 'a second list on the same page gets its own title id, so aria-labelledby
 	twice.other !== null && twice.other.querySelector( '.nino-toc-title' ).id === 'nino-toc-title-2'
 	&& twice.other.getAttribute( 'aria-labelledby' ) === 'nino-toc-title-2' );
 check( '...and both are filled', twice.texts().length === 3 && twice.texts( twice.other ).length === 3 );
+
+/*	The first list puts an anchor on every heading it lists, and that '#' is
+	part of the heading's textContent from then on	*/
+check( '...with the headings\' own words in the second one too, not the # of the anchors the first put on them',
+	twice.texts( twice.other ).join(' | ') === 'Erstens | Genauer | Zweitens' );
 
 
 // --- Waiting for the dom -------------------------------------------------------

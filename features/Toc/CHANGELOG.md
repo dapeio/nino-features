@@ -14,6 +14,14 @@ A release is the tag `toc-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **A second table of contents on the same page listed the first one's
+  anchors.** A heading's words are read out of its `textContent`, and once a
+  list has been built with anchors switched on, the `#` of the link the script
+  appended is part of that `textContent` too. A page with two `[toc]` therefore
+  came out with `Erstens#`, `Genauer#` and `Zweitens#` in the second list. The
+  words are taken from the heading's own nodes now, with an anchor this script
+  put there left out, so both lists say the same thing.
+
 - **An invalid byte in a value rendered as nothing.** `htmlspecialchars()`
   answers input that is not valid UTF-8 with `''` unless `ENT_SUBSTITUTE` is
   among its flags, and every call here spelled the flags out without it.
