@@ -150,6 +150,39 @@
 
 	dc.addEventListener( 'click', onClick );
 
+	/*	The other half of "needs nothing to wire it up": a switch is rendered
+		hidden and pressed on nothing, and paint() - the only thing that ever
+		unhides one - has already run by the time a later one arrives. A
+		switch nobody unhid is one nobody can click, however well the listener
+		above would have caught the click. So the document is watched for one
+		being added, and painting is what answers it. A browser without
+		MutationObserver keeps the switches the page loaded with, which is
+		what every browser did before	*/
+	if( typeof wn.MutationObserver === 'function' )
+		new wn.MutationObserver( function( records ) {
+
+			for( let r = 0; r < records.length; r++ ) {
+
+				const added = records[r].addedNodes;
+
+				for( let i = 0; i < added.length; i++ ) {
+
+					// A text node has no matches(), and nothing that is not an
+					// element is a switch or carries one
+					if( added[i].nodeType !== 1 )
+						continue;
+
+					if( added[i].matches( '.nino-modeswitch' ) === false && added[i].querySelector( '.nino-modeswitch' ) === null )
+						continue;
+
+					// Every switch on the page is the same switch, so one pass
+					// over all of them answers however many arrived at once
+					paint( stored() );
+					return;
+				}
+			}
+		} ).observe( dc.documentElement, { childList : true, subtree : true } );
+
 	// ...and the buttons that are on the page now. They are rendered pressed
 	// on nothing, because only the browser knows which one is
 	if( dc.readyState === 'loading' )

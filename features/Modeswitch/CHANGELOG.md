@@ -21,6 +21,15 @@ A release is the tag `modeswitch-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **A switch that reached the page later stayed hidden.** The script's one
+  delegated click listener was written so that a switch arriving afterwards -
+  a fragment swapped in, a dialog opened - "needs nothing to wire it up", but
+  a switch renders `hidden` and pressed on nothing, and the paint that unhides
+  one had already happened. Such a switch stayed `display: none` with all
+  three buttons reading `aria-pressed="false"`: invisible, and therefore not
+  even clickable through the listener that was waiting for it. The document is
+  watched for a switch being added now, and painting answers it.
+
 - **The switch showed before the script unhid it.** It is rendered with the
   `hidden` attribute so a reader without JavaScript is not left with three
   buttons that do nothing - but the stylesheet gives `.nino-modeswitch` a

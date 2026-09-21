@@ -90,6 +90,10 @@ JavaScript there is no control at all rather than three buttons that do nothing,
 and the reader keeps the mode their system asks for — which is what they had
 before this feature existed.
 
+A switch that reaches the page later — in a fragment swapped in, a dialog, a
+menu built on demand — is unhidden and painted the same way: the document is
+watched for one being added, so nothing has to be called to wire it up.
+
 ## The words
 
 Four text fills, merged into the project's own `text/<locale>.php` at

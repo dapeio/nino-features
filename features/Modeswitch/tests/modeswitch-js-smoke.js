@@ -48,9 +48,12 @@ function element( attributes ) {
 		classes			: {},
 		hidden			: true,
 		children		: [],
+		nodeType		: 1,
 		getAttribute	: function( name ) { return Object.prototype.hasOwnProperty.call( this.attributes, name ) ? this.attributes[name] : null },
 		setAttribute	: function( name, value ) { this.attributes[name] = String( value ) },
 		removeAttribute	: function( name ) { delete this.attributes[name] },
+		matches				: function( selector ) { return ( ' '+ ( this.attributes['class'] || '' )+ ' ' ).indexOf( ' '+ selector.replace( /^\./, '' )+ ' ' ) !== -1 },
+		querySelector	: function( selector ) { return this.children.filter( function( c ) { return c.matches( selector ) } )[0] || null },
 	};
 
 	el.classList = {
@@ -69,10 +72,33 @@ function element( attributes ) {
 }
 
 /**
+ *	One switch as the shortcode renders it: three buttons, hidden, and pressed
+ *	on nothing - which one is on is a question only the browser can answer
+ */
+function switchGroup() {
+
+	const buttons = [ 'light', 'system', 'dark' ].map( function( mode ) {
+		return element( { 'class' : 'nino-modeswitch-btn', 'data-mode' : mode, 'aria-pressed' : 'false' } );
+	} );
+	const group = element( { 'class' : 'nino-modeswitch' } );
+
+	group.children = buttons;
+	buttons.forEach( function( b ) { b.parent = group } );
+
+	return { group : group, buttons : buttons };
+}
+
+/** Which of these buttons reads as the one that is on */
+function pressed( buttons ) {
+	return buttons.filter( function( b ) { return b.getAttribute('aria-pressed') === 'true' } )
+		.map( function( b ) { return b.getAttribute('data-mode') } );
+}
+
+/**
  *	A page with one switch on it, the script loaded over it, and the handful
  *	of hooks a test needs back
  *
- *	@param		{Object}	options		{ stored, storageThrows, readyState }
+ *	@param		{Object}	options		{ stored, storageThrows, readyState, withoutObserver }
  */
 function page( options ) {
 
@@ -82,20 +108,26 @@ function page( options ) {
 	if( typeof options.stored === 'string' )
 		store['nino-mode'] = options.stored;
 
-	const buttons = [ 'light', 'system', 'dark' ].map( function( mode ) { return element( { 'data-mode' : mode, 'aria-pressed' : 'false' } ) } );
-	const group = element( {} );
-	group.children = buttons;
-	buttons.forEach( function( b ) { b.parent = group } );
+	const first = switchGroup();
+	const group = first.group;
+	const buttons = first.buttons;
+
+	// Every switch the page carries, and every button on all of them: a site
+	// with one in the header and one in the footer has two, and they are the
+	// same switch
+	const switches = [ group ];
+	const every = buttons.slice();
 
 	const root = element( {} );
 	const listeners = {};
+	const observers = [];
 
 	const dc = {
 		documentElement	: root,
 		readyState			: options.readyState || 'complete',
 		querySelectorAll	: function( selector ) {
-			if( selector === '.nino-modeswitch' ) return [ group ];
-			if( selector === '.nino-modeswitch-btn' ) return buttons;
+			if( selector === '.nino-modeswitch' ) return switches;
+			if( selector === '.nino-modeswitch-btn' ) return every;
 			return [];
 		},
 		addEventListener	: function( type, fn ) { ( listeners[type] = listeners[type] || [] ).push( fn ) },
@@ -112,17 +144,33 @@ function page( options ) {
 		},
 	};
 
-	const sandbox = { console : console, document : dc, localStorage : storage };
+	const sandbox = { console : console, document : dc, localStorage : storage,
+		MutationObserver : function( callback ) {
+			const observer = this;
+			observer.observe = function() { observers.push( observer ) };
+			observer.callback = callback;
+		},
+	};
 	sandbox.window = sandbox;
+
+	if( options.withoutObserver === true )
+		delete sandbox.MutationObserver;
 
 	vm.runInContext( source, vm.createContext( sandbox ), { filename : 'modeswitch.js' } );
 
 	return {
 		root : root, group : group, buttons : buttons, store : store, listeners : listeners,
 		mode : function() { return root.getAttribute('data-nino-mode') },
-		pressed : function() {
-			return buttons.filter( function( b ) { return b.getAttribute('aria-pressed') === 'true' } )
-				.map( function( b ) { return b.getAttribute('data-mode') } );
+		pressed : function() { return pressed( buttons ) },
+		// A switch that arrives after the script ran: a fragment swapped in, a
+		// dialog opened. It is rendered the way every switch is - hidden, and
+		// pressed on nothing - and the document reports it
+		insert : function() {
+			const later = switchGroup();
+			switches.push( later.group );
+			Array.prototype.push.apply( every, later.buttons );
+			observers.forEach( function( observer ) { observer.callback( [ { addedNodes : [ later.group ] } ] ) } );
+			return later;
 		},
 		click : function( mode ) {
 			const target = buttons.filter( function( b ) { return b.getAttribute('data-mode') === mode } )[0];
@@ -199,6 +247,23 @@ const ignored = page( {} );
 
 check( 'a click that is not on a button changes nothing and throws nothing', ignored.mode() === null
 	&& ignored.pressed().join() === 'system' );
+
+// --- A switch that arrives later ---------------------------------------------
+
+/*	The listener on the document catches a click on a switch that was not
+	there when the script ran. A switch is rendered hidden and pressed on
+	nothing, though, and the paint that unhides one had already happened - so
+	a switch nobody painted is a switch nobody can click	*/
+const swapped = page( { stored : 'dark' } );
+const later = swapped.insert();
+
+check( 'a switch swapped into the page afterwards is unhidden too', later.group.hidden === false );
+check( '...and pressed on the choice the reader made, like the one that was there all along',
+	pressed( later.buttons ).join() === 'dark' && swapped.pressed().join() === 'dark' );
+
+const unwatched = page( { withoutObserver : true } );
+check( 'a browser without MutationObserver keeps the switches the page loaded with',
+	unwatched.group.hidden === false && unwatched.pressed().join() === 'system' );
 
 const early = page( { readyState : 'loading' } );
 check( 'the stored choice is applied at parse time, before the dom is ready', early.mode() === null );
