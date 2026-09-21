@@ -109,13 +109,19 @@ namespace Nino\Modules {
 			$label = trim( (string) ( $args['label'] ?? '' ) );
 			$label = $label === '' ? '' : $safe( \Nino\Html::renderHtml( $appData, $label ) );
 
-			$block = in_array( 'block', $args, true );
+			/*	Read where the shortcode syntax puts a bare flag: a positional
+				argument, under an integer key (\Nino\Html::_doShortcode() writes
+				a name with no value that way and a name="value" under its own
+				name). Asking the whole array read the named ones' values too, so
+				a body, a value= or a label= that happened to say "block" turned
+				the line into a block	*/
+			$flags = array_filter( $args, static fn( int|string $key ): bool => is_int( $key ), ARRAY_FILTER_USE_KEY );
+			$block = in_array( 'block', $flags, true );
 
 			return str_replace(
-				[ '[[modifier]]', '[[tag]]', '[[value]]', '[[named]]', '[[shown]]' ],
+				[ '[[modifier]]', '[[value]]', '[[named]]', '[[shown]]' ],
 				[
 					( $block === true ? ' nino-copy--block' : '' ),
-					( $block === true ? 'pre' : 'span' ),
 					( $value === '' ? '' : ' data-copy-value="'. $value. '"' ),
 					( $label === '' ? '' : ' data-copy-named="'. $label. '"' ),
 					$shown,

@@ -10,8 +10,11 @@
  *					The text itself is not painted at all: an IBAN in a paragraph
  *					and a block of configuration are the project's own type and
  *					colour, and a copy button is no reason to change either. The
- *					one exception is the block form, which is a <pre> and needs to
- *					be allowed to scroll rather than to stretch the page.
+ *					one exception is the block form, which keeps its whitespace,
+ *					is set in the project's code face and needs to be allowed to
+ *					scroll rather than to stretch the page - all of it here,
+ *					because the element it is written as is a <span> like every
+ *					other part of this shortcode's markup (see below).
  */
 
 .nino-copy {
@@ -54,17 +57,27 @@
 	color: var(--color-error, inherit);
 }
 
-/*	A block is a <pre>: its whitespace is content, so it is allowed to scroll
-	rather than to stretch the page it is on	*/
+/*	A block's whitespace is content, so it is kept, set in the code face and
+	allowed to scroll rather than to stretch the page it is on.
+
+	Painted here rather than written as a <pre>: a shortcode stands where an
+	editor wrote it, which is usually inside a paragraph, and a <pre> - or any
+	other block element - inside a <p> is closed out of the paragraph by the
+	html parser. The button went with it, out of the box copy.js looks in, and
+	stayed hidden. So everything this shortcode writes is phrasing content,
+	and what it looks like is this file's business	*/
 .nino-copy--block {
 	display: flex;
 	align-items: flex-start;
 	width: 100%;
 }
 .nino-copy--block .nino-copy-text {
+	display: block;
 	flex: 1 1 auto;
 	overflow-x: auto;
 	margin: 0;
+	white-space: pre;
+	font-family: var(--fontfamily-code, ui-monospace, monospace);
 }
 
 /*	Required, not defensive. The hidden attribute is display:none out of the

@@ -34,7 +34,13 @@ given, what is copied is exactly what stands there.
 | --- | --- |
 | `value=` | copy this instead of what is shown |
 | `label=` | what the button copies, for a reader who cannot see what it stands beside. The accessible name becomes `Kopieren: IBAN` — "Copy" is what it does, "IBAN" is what it copies, and one without the other is half a name |
-| `block` | a `<pre>` rather than a `<span>`, with the whitespace kept and allowed to scroll |
+| `block` | the text as a block of its own, with the whitespace kept and allowed to scroll. A bare word, written on the shortcode itself: `[copy block]…[/copy]`. A body, a `value=` or a `label=` that happens to say "block" is text, not the flag |
+
+Everything `[copy]` writes is phrasing content — two `<span>`s and a `<button>` —
+so it can stand wherever an editor wrote it, inside a paragraph included. The
+block form is **painted** as a block by `copy.css`; a `<pre>` there would be
+closed out of the paragraph by the browser's own parser, and the button would go
+with it, out of the element `copy.js` looks in.
 
 ## Two ways of copying
 

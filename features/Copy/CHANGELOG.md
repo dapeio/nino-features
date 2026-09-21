@@ -14,6 +14,23 @@ A release is the tag `copy-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **`[copy block]` inside a paragraph lost its button.** The block form wrote
+  the text as a `<pre>`, and a `<pre>` - like any block element - inside a
+  `<p>` is closed out of the paragraph by the html parser. In a browser the
+  wrapping `<span>` was left empty and the text and the button became siblings
+  of the paragraph, so `copy.js`, which looks for the button inside
+  `.nino-copy`, never found it: the button stayed `hidden` for good. The
+  markup is phrasing content throughout now - a `<span>` that `copy.css`
+  paints as a block, keeping the whitespace and the code face the `<pre>` gave
+  it. A project that styled `.nino-copy-text` as a `pre` element rather than by
+  its class has to say the class instead.
+
+- **A body, a `value=` or a `label=` that said "block" turned the line into a
+  block.** The flag was looked for among all of the shortcode's arguments,
+  which includes the values of the named ones, so `[copy]block[/copy]` came
+  out as a block. It is read where the syntax puts a bare flag now: among the
+  positional arguments.
+
 - **An invalid byte in a value rendered as nothing.** `htmlspecialchars()`
   answers input that is not valid UTF-8 with `''` unless `ENT_SUBSTITUTE` is
   among its flags, and every call here spelled the flags out without it.

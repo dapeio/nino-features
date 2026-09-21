@@ -112,11 +112,29 @@ $named = \Nino\Html::renderHtml( $appData, '[copy label="IBAN"]DE02[/copy]' );
 check( 'what the button copies is named for a reader who cannot see what it stands beside',
 	str_contains( $named, 'data-copy-named="IBAN"' ) === true );
 
+/*	A shortcode stands where an editor wrote it, which is usually inside a
+	paragraph - and a <pre>, or any other block element, inside a <p> is closed
+	out of the paragraph by the html parser, which leaves the button outside the
+	box copy.js looks in and hidden for good. So the block form is painted as a
+	block rather than written as one. What a browser makes of the two is in the
+	commit that changed it; what this test holds is that nothing block-level is
+	written at all	*/
 $block = \Nino\Html::renderHtml( $appData, '[copy block]php bin/check.sh[/copy]' );
-check( 'the block form is a <pre>, because there the whitespace is content',
-	str_contains( $block, '<pre class="nino-copy-text">php bin/check.sh</pre>' ) === true
-	&& str_contains( $block, 'nino-copy--block' ) === true );
-check( '...and the line form is not', str_contains( $html, '<pre' ) === false && str_contains( $html, 'nino-copy--block' ) === false );
+check( 'the block form keeps the whitespace it is written with, in markup that can stand in a paragraph',
+	str_contains( $block, '<span class="nino-copy-text">php bin/check.sh</span>' ) === true
+	&& str_contains( $block, 'nino-copy--block' ) === true
+	&& preg_match( '/<(pre|div|p|section|figure|ul|ol|table)[\s>]/', $block ) !== 1 );
+check( '...and the line form says nothing about a block', str_contains( $html, 'nino-copy--block' ) === false );
+
+/*	The flag is a bare word in the shortcode, which the parser puts under an
+	integer key; a body, a value= and a label= are all in the same array under
+	names of their own. Asking the array as a whole made any of the three turn
+	the line into a block	*/
+check( 'a body that says "block" is a body, not the flag',
+	str_contains( \Nino\Html::renderHtml( $appData, '[copy]block[/copy]' ), 'nino-copy--block' ) === false );
+check( '...and so is a value= or a label= that happens to say it',
+	str_contains( \Nino\Html::renderHtml( $appData, '[copy value="block"]Der Wert[/copy]' ), 'nino-copy--block' ) === false
+	&& str_contains( \Nino\Html::renderHtml( $appData, '[copy label="block"]Der Wert[/copy]' ), 'nino-copy--block' ) === false );
 
 $quoted = \Nino\Html::renderHtml( $appData, '[copy value="a\" onx=\"1" label="Ada & Co"]<b>x</b>[/copy]' );
 check( 'a body, a value and a label with html in them are escaped, not written through',
@@ -158,6 +176,8 @@ check( 'the stylesheet keeps the hidden button hidden, which its own display rul
 	str_contains( $css, '.nino-copy-btn[hidden]' ) === true );
 check( 'and a block is allowed to scroll rather than to stretch the page it is on',
 	str_contains( $css, 'overflow-x: auto' ) === true );
+check( '...and keeps the whitespace and the code face a <pre> would have given it',
+	str_contains( $css, 'white-space: pre' ) === true && str_contains( $css, 'font-family: var(--fontfamily-code' ) === true );
 
 echo "\n";
 
