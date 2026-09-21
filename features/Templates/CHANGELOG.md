@@ -7,6 +7,13 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **A dead `?: []` behind the preset list failed the static analysis both
+  repositories run.** `LIBRARY_ITEM` is a constant and never empty, so the
+  fallback could never be taken; PHPStan reports that as an error, and the CI
+  of this repository and of the kernel - which analyses every feature it
+  fetches - has been red since the constant arrived. The line reads the
+  constant as what it is now. Nothing about the panel changed.
+
 - **One apostrophe after one `<` in prose made a page open with nothing to
   edit.** The scanner looked for the end of a tag at every `<` in the file,
   including one somebody wrote in text, and the end of a tag is found by

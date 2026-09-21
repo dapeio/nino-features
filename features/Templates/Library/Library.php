@@ -124,7 +124,7 @@ namespace Nino\Modules\Templates {
 
 			$presets = [];
 
-			foreach( self::LIBRARY_ITEM ?: [] as $key ) {
+			foreach( self::LIBRARY_ITEM as $key ) {
 
 				$path = self::DIRECTORY. '/'. $key. '/manifest.php';
 				if( is_file( $path ) === false )
