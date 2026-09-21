@@ -5,6 +5,10 @@ A release is the tag `design-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+- The README no longer counts the suite's checks. The number was corrected in
+  three patches running, and a reader of the README needs the suite's name,
+  not its size.
+
 - **A digest per part that was written, carried and never read.** `apply()`
   hashed the library file behind every part into `data/design.php`,
   `Setup::normalize()` carried it through every read, and `fingerprint()` took

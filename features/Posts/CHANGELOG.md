@@ -5,6 +5,10 @@ A release is the tag `posts-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+- The README no longer counts the suite's checks. The number was corrected in
+  two patches running, and a reader of the README needs the suite's name, not
+  its size.
+
 - The README's check count matches the suite again - 70 rather than the
   number it carried, which the suite passed some time ago.
 

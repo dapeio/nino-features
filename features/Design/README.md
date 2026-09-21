@@ -460,7 +460,7 @@ the bar rather than passed over in silence.
 
 ## Tests
 
-`tests/design-smoke.php` (191 checks) covers the manifest and activation through
+`tests/design-smoke.php` covers the manifest and activation through
 `\Nino\Features`, the library coverage per part, the traversal refusals,
 normalisation and step resolution, what the compiler emits and in which order,
 the cross-repo comparison of `base.css` against the delivered `theme.css`,
