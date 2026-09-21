@@ -39,6 +39,17 @@
 	// box would otherwise be copied until the page is a thousand elements long
 	var COPIES_MAX = 40;
 
+	// How long the window has to stand still before the rows are measured
+	// again. A window dragged across the screen reports every step of the
+	// drag, and every one of them would cost a measurement of every row
+	var SETTLE = 150;
+
+	// The rows this file is running, each with the box width its copies were
+	// made for
+	var rows = [];
+
+	var settling = null;
+
 	/**
 	 *	One row's own speed, in pixels per second
 	 *
@@ -54,18 +65,40 @@
 	}
 
 	/**
-	 *	Copy the run of children until it is wider than the box twice over, and
-	 *	set the animation going over exactly one original width
+	 *	Take this file's own copies back out, so what is measured is the row
+	 *	the project wrote rather than that row plus the copies made for a box
+	 *	of some other width
 	 *
-	 *	@param		{Element}		row
+	 *	@param		{Element}		track
 	 *
 	 *	@return		void
 	 */
-	function run( row ) {
+	function strip( track ) {
 
+		for( var i = track.children.length - 1; i >= 0; i-- )
+			if( track.children[i].getAttribute( 'data-ticker-copy' ) !== null )
+				track.removeChild( track.children[i] );
+	}
+
+	/**
+	 *	Copy the run of children until it is wider than the box twice over, and
+	 *	set the animation going over exactly one original width
+	 *
+	 *	@param		{Object}		entry			One row, and the box width its copies were made for
+	 *
+	 *	@return		void
+	 */
+	function run( entry ) {
+
+		var row = entry.row;
 		var track = row.querySelector( '.nino-ticker-track' );
 
-		if( track === null || track.children.length === 0 )
+		if( track === null )
+			return;
+
+		strip( track );
+
+		if( track.children.length === 0 )
 			return;
 
 		var originals = [];
@@ -97,6 +130,7 @@
 			for( var c = 0; c < originals.length; c++ ) {
 				var copy = originals[c].cloneNode( true );
 				copy.setAttribute( 'aria-hidden', 'true' );
+				copy.setAttribute( 'data-ticker-copy', '' );
 				disarm( copy );
 				track.appendChild( copy );
 			}
@@ -121,7 +155,40 @@
 		track.style.setProperty( '--nino-ticker-distance', distance + 'px' );
 		track.style.setProperty( '--nino-ticker-duration', ( distance / speed( row ) ) + 's' );
 
+		entry.across = row.clientWidth;
+
 		row.classList.add( 'nino-is-running' );
+	}
+
+	/**
+	 *	Every row whose box is not the width its copies were made for. A
+	 *	resize says nothing about the width on its own - a phone's address bar
+	 *	sliding away is one - and copying a row again for a box that did not
+	 *	change is work with nothing to show for it
+	 *
+	 *	@return		void
+	 */
+	function remeasure() {
+
+		settling = null;
+
+		for( var i = 0; i < rows.length; i++ )
+			if( rows[i].across !== rows[i].row.clientWidth )
+				run( rows[i] );
+	}
+
+	/**
+	 *	One measurement once the window has come to rest, rather than one per
+	 *	event of a window being dragged across the screen
+	 *
+	 *	@return		void
+	 */
+	function schedule() {
+
+		if( settling !== null )
+			window.clearTimeout( settling );
+
+		settling = window.setTimeout( remeasure, SETTLE );
 	}
 
 	/**
@@ -158,10 +225,24 @@
 	 */
 	function init() {
 
-		var rows = document.querySelectorAll( SELECTOR );
+		var found = document.querySelectorAll( SELECTOR );
 
-		for( var i = 0; i < rows.length; i++ )
-			run( rows[i] );
+		for( var i = 0; i < found.length; i++ ) {
+
+			// The width it was built for, which nothing has been built for yet
+			rows.push( { row : found[i], across : -1 } );
+
+			run( rows[rows.length - 1] );
+		}
+
+		if( rows.length === 0 )
+			return;
+
+		/*	The copies cover the box as it was when they were made. A window
+			that gets wider afterwards is a box the row no longer reaches
+			across, and what the visitor sees for the rest of every cycle is
+			the stretch of nothing behind the last copy	*/
+		window.addEventListener( 'resize', schedule, { passive : true } );
 	}
 
 	if( document.readyState === 'loading' )

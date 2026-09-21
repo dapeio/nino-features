@@ -10,7 +10,9 @@
  *					The movement is an animation rather than a script moving
  *					something every frame: a browser runs an animation off the main
  *					thread and stops paying for it in a background tab. What
- *					ticker.js sets is the two custom properties below, once.
+ *					ticker.js sets is the two custom properties below - once the row
+ *					has been measured, and again after the box it runs in has
+ *					changed width.
  *
  *					Nothing here paints. What runs past is whatever the project put
  *					in the row, in its own type, colour and size.

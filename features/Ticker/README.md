@@ -28,6 +28,12 @@ and starting again from zero moves nothing.
 The copies are `aria-hidden`: to a screen reader the row is read **once**, which
 is how many times it is there.
 
+How many of them are needed follows from the box the row stands in, so the row
+is measured and copied again when that box changes width — a window resized, a
+phone turned — once the resizing has come to rest. Copies made for a narrower
+box cover a wider one only in part, and what runs past for the rest of every
+cycle is nothing at all.
+
 The movement is a CSS animation, not a script moving something every frame. A
 browser runs an animation off the main thread and stops paying for it in a
 background tab; neither is true of a timer.

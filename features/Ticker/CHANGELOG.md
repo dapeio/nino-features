@@ -14,6 +14,14 @@ A release is the tag `ticker-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **A window that got wider left a stretch of nothing in the loop.** The
+  copies are made to cover the box plus one length of the row, and they were
+  made once, for the box as it was when the page loaded. A window widened
+  afterwards was a box the row no longer reached across: in a box grown from
+  600 to 1600 pixels, 936 of them were empty for the rest of every cycle. The
+  rows are measured again once a resize has come to rest, and only where the
+  box really is a different width than the one its copies were made for.
+
 - **The loop jumped by one gap every time round** - the seam the copies are
   there to remove. The animation ran the width of the original row, which is
   the items plus the gaps *between* them; the copy that should stand where

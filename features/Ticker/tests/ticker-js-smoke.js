@@ -54,6 +54,7 @@ function element( attributes, width ) {
 		setAttribute		: function( name, value ) { this.attributes[name] = String( value ) },
 		removeAttribute	: function( name ) { delete this.attributes[name] },
 		appendChild			: function( child ) { child.parent = this; this.children.push( child ); return child },
+		removeChild			: function( child ) { this.children = this.children.filter( function( c ) { return c !== child } ); child.parent = null; return child },
 		cloneNode				: function() {
 			const copy = element( Object.assign( {}, this.attributes ), this.width );
 			for( const child of this.children )
@@ -80,7 +81,14 @@ function element( attributes, width ) {
 	};
 
 	el.classList = { add : function( name ) { el.attributes['class'] = ( ( el.attributes['class'] || '' ) + ' ' + name ).trim() } };
-	el.style = { setProperty : function( name, value ) { el.properties[name] = value } };
+	el.properties = {};
+	el.measured = 0;
+	// Every write of the distance is one measurement of this row, which is
+	// how a row that was left running is told from one that was built again
+	el.style = { setProperty : function( name, value ) {
+		el.properties[name] = value;
+		if( name === '--nino-ticker-distance' ) el.measured++;
+	} };
 
 	Object.defineProperty( el, 'id', {
 		get : function() { return el.attributes['id'] || '' },
@@ -152,7 +160,13 @@ function page( options ) {
 		addEventListener	: function( type, fn ) { ( listeners[type] = listeners[type] || [] ).push( fn ) },
 	};
 
-	const sandbox = { console : console, document : dc };
+	const timers = [];
+
+	const sandbox = { console : console, document : dc,
+		addEventListener	: function( type, fn ) { ( listeners[type] = listeners[type] || [] ).push( fn ) },
+		setTimeout				: function( fn ) { timers.push( fn ); return timers.length },
+		clearTimeout			: function( id ) { timers[id - 1] = null },
+	};
 	sandbox.window = sandbox;
 
 	vm.runInContext( source, vm.createContext( sandbox ), { filename : 'ticker.js' } );
@@ -166,6 +180,14 @@ function page( options ) {
 		duration : function() { return track.properties['--nino-ticker-duration'] },
 		copiedIds : function() { return track.children.slice( 3 ).map( function( c ) { return c.querySelectorAll( '[id]' ).length } ) },
 		copiedTabstops : function() { return track.children.slice( 3 ).map( function( c ) { return ( c.children[0] || {} ).attributes['tabindex'] } ) },
+		measurements : function() { return track.measured },
+		// A window is resized; the rows are not measured again until it has
+		// come to rest, which is what settle() is
+		resize : function( box ) {
+			if( box !== undefined ) row.width = box;
+			( listeners['resize'] || [] ).forEach( function( fn ) { fn() } );
+		},
+		settle : function() { timers.splice( 0 ).forEach( function( fn ) { if( fn !== null ) fn() } ) },
 	};
 }
 
@@ -208,6 +230,40 @@ check( 'a row with its own speed runs at it', quick.duration() === '3.48s' );
 
 const nonsense = page( { speed : -5 } );
 check( '...and a speed that is not one falls back rather than standing still or running backwards', nonsense.duration() === '17.4s' );
+
+
+// --- A box that changed width --------------------------------------------------
+
+// The copies cover the box they were made for and no more. Three items of 200
+// with a gap = 664 wide: in a box of 3000 the run has to cover 3000 + 664, so
+// five copies of it are needed where the box of 1000 took two
+const grown = page( {} );
+
+grown.resize( 3000 );
+grown.settle();
+check( 'a box that got wider is covered again, rather than running the row out into a stretch of nothing',
+	grown.items() === 18 && grown.distance() === '696px' );
+
+// 200 + 664 is covered by one copy, and the copies made for the wider box are
+// taken back out rather than copied on top of
+grown.resize( 200 );
+grown.settle();
+check( '...and one that got narrower is copied again too, from the row the project wrote', grown.items() === 6 && grown.copies() === 3 );
+
+grown.resize();
+grown.settle();
+check( 'a resize that left the box the width it was measures nothing - a phone\'s address bar sliding away is one of those',
+	grown.measurements() === 3 && grown.items() === 6 );
+
+const dragged = page( {} );
+
+dragged.resize( 1400 );
+dragged.resize( 1800 );
+dragged.resize( 2200 );
+check( 'a window being dragged across the screen measures nothing while it moves', dragged.measurements() === 1 );
+
+dragged.settle();
+check( '...and once, not once per step, when it comes to rest', dragged.measurements() === 2 && dragged.items() === 15 );
 
 
 // --- A row that is not one -----------------------------------------------------
