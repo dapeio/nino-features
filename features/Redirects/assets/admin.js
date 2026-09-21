@@ -129,23 +129,31 @@
 			if( rules === null || misses === null )
 				return;
 
+			const onRules = Nino.admin.redirects._screen !== 'missing';
+			const pane		= onRules === true ? rules : misses;
+
 			rules.innerHTML = '';
 			misses.innerHTML = '';
 
-			rules.appendChild( Nino.admin.redirects._tabs() );
+			/*	Two mounts, one screen at a time: panes() hands the shell two
+				divs in the same panel rather than two tabs of its own, so which
+				of them is on is this script's to say. Only the one that is on
+				is filled, and the strip goes into it rather than into the rules
+				mount - it is the way back, and a way back drawn into a mount
+				that is off the screen is no way back at all. The rules table
+				and the probe used to stand over the addresses for the same
+				reason: the rules mount was drawn and then never hidden	*/
+			pane.appendChild( Nino.admin.redirects._tabs() );
 
-			if( Nino.admin.redirects._editing !== null )
-				rules.appendChild( Nino.admin.redirects._renderEditor() );
+			if( onRules === false )
+				pane.appendChild( Nino.admin.redirects._renderMisses() );
+			else if( Nino.admin.redirects._editing !== null )
+				pane.appendChild( Nino.admin.redirects._renderEditor() );
 			else
-				rules.appendChild( Nino.admin.redirects._renderRules() );
+				pane.appendChild( Nino.admin.redirects._renderRules() );
 
-			misses.appendChild( Nino.admin.redirects._renderMisses() );
-
-			// Two mounts, one screen at a time: panes() hands the shell two
-			// divs in the same panel rather than two tabs of its own, so which
-			// of them is on is this script's to say
-			misses.classList.toggle( 'admin-hidden', Nino.admin.redirects._screen !== 'missing' );
-			rules.classList.toggle( 'admin-hidden', false );
+			rules.classList.toggle( 'admin-hidden', onRules === false );
+			misses.classList.toggle( 'admin-hidden', onRules );
 		},
 
 		/**
@@ -498,6 +506,16 @@
 				box.appendChild( Nino.admin.redirects._hint('/_admin/redirects/hint/off', true ) );
 			else if( Nino.admin.redirects._limit > 0 )
 				box.appendChild( Nino.admin.redirects._hint( Nino.admin.redirects._say('/_admin/redirects/hint/limit', Nino.admin.redirects._limit ) ) );
+
+			// Forgetting can fail, and _message() says so on the line with this
+			// id - which is on the other screen while this one is on, so this
+			// screen carries one of its own. Only the screen that is on is
+			// drawn at all, so there is still exactly one of them
+			const message = dc.createElement('p');
+			message.id = 'redirects-msg';
+			message.className = 'nino-admin-hint';
+			message.setAttribute( 'aria-live', 'polite' );
+			box.appendChild( message );
 
 			if( Nino.admin.redirects._misses.length === 0 ) {
 				box.appendChild( Nino.adminUi.emptyState( Nino.content.getText('/_admin/redirects/empty/missing') ) );

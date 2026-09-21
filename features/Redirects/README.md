@@ -68,8 +68,12 @@ a public site is a scanner looking for `wp-login.php` and `.env`, and a list of
 those is a list nobody reads twice.
 
 At most 50 are kept, the most asked for first. What makes the list useful is
-that the ones worth a rule are near the top, not that it is complete. **Forget
-all** empties it; the next request for one of them puts it back.
+that the ones worth a rule are near the top, not that it is complete. An
+address that has just been asked for keeps its place on a list that is already
+full, taking it from the least asked for - a new address arrives at one and
+sorts under everything ever asked for twice, so a full list would otherwise
+drop it again on every request and never learn about the page that broke today.
+**Forget all** empties it; the next request for one of them puts it back.
 
 The switch also governs the per-rule counter, because they are the same cost: a
 file write on a request that would otherwise have touched nothing. On a site
@@ -84,7 +88,9 @@ somebody look at it.
 **Redirects** is the rules, as a table: what each answers, where it sends, its
 kind, whether it covers a subtree, how often it has been followed and when it
 last was. Edit and Delete per row, **New redirect** above them, and under the
-table a probe.
+table a probe. Editing an address onto one another rule already answers is
+refused, naming it: that other rule would otherwise go away with its hits, and
+a rule that silently went away is a redirect somebody believes is in place.
 
 The probe is the half that earns its keep. A redirect is invisible until
 somebody follows one, and a rule that does not fire looks exactly like a rule
@@ -115,9 +121,10 @@ return [
 ];
 ```
 
-Editing it by hand is fine. Everything in it is held against what a rule may be
-before any of it is used, and what had to be dropped is named at the top of the
-panel rather than swallowed: a rule that silently went away is a redirect
+Editing it by hand is fine. Everything in it is held against what a rule may
+be - and what an entry under `misses` may be - before any of it is used, and
+what had to be dropped from the rules is named at the top of the panel rather
+than swallowed: a rule that silently went away is a redirect
 somebody believes is in place. A rule that would send a visitor back into itself
 - `/a` to `/a`, or `/a/*` to something under `/a` - is refused on the way in,
 because this feature only fires where nothing answers, so a target nothing
@@ -129,11 +136,18 @@ answers either comes straight back through the same rule.
 target may be, the order rules are matched in, the loop guard, a redirect on an
 address with no route, the silence on one that has a route, the subtree
 remainder, the project directory in the `Location`, `POST` left alone, the
-recording of a miss and the shapes it refuses, and every panel action including
-the probe's three answers.
+recording of a miss and the shapes it refuses, a list somebody edited by hand
+and one that is already full, and every panel action including the probe's
+three answers.
 
-Run it against a Nino checkout:
+`tests/redirects-js-smoke.js` - what the panel's script does over a dom
+stand-in: which of the two screens is on, that the strip travels with it, that
+the rules table and the probe are gone while the addresses are up, and that
+making a rule out of an address opens the editor with it already in.
+
+Run them against a Nino checkout:
 
 ```sh
 NINO_ROOT=../nino php features/Redirects/tests/redirects-smoke.php
+node features/Redirects/tests/redirects-js-smoke.js
 ```

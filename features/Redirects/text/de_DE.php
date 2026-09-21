@@ -54,6 +54,7 @@ return [
 	'[[/_admin/redirects/error/to]]'					=> 'Ein Ziel ist ein Pfad dieser Site oder eine https-Adresse einer anderen.',
 	'[[/_admin/redirects/error/loop]]'				=> 'Diese Regel würde einen Besucher in sich selbst zurückschicken: %s',
 	'[[/_admin/redirects/error/unknown]]'			=> 'Es gibt keine Regel für "%s".',
+	'[[/_admin/redirects/error/taken]]'				=> 'Für "%s" gibt es schon eine Regel. Diese zuerst löschen oder bearbeiten.',
 	'[[/_admin/redirects/error/load]]'				=> 'Die Weiterleitungen konnten nicht gelesen werden.',
 
 	'[[/_admin/redirects/confirm/delete]]'		=> 'Die Weiterleitung für "%s" löschen?',

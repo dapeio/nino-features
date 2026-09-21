@@ -14,6 +14,40 @@ A release is the tag `redirects-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **A list of unanswered addresses that somebody had edited by hand answered
+  every 404 with a 500.** `Rules::noteMiss()` sorted whatever stood under
+  `misses` straight out of the file, while a rule from the same file was held
+  to what a rule may be first. README.md invites hand-editing, and an entry
+  shaped there - a note to self where a count and a time belong - reached the
+  sort as a string and took every request nothing answered down with it; one
+  with its `count` left out was written back as it was, with a warning. The
+  stored list is now held to the same shape a read holds it to
+  (`Rules::misses()`), before anything is counted.
+
+- **A list that had once filled up could never learn about a new address.**
+  Once fifty remembered addresses had each been asked for twice, a new one
+  arrived at a count of one, sorted under all of them and was cut off again on
+  every request - so its count never reached two and it never appeared at all.
+  The address that was just asked for now keeps its place through the cut,
+  taking it from the least asked for, and the list is put back in order
+  afterwards so it is still the most asked for first.
+
+- **Renaming a rule onto an address another rule already answered deleted that
+  other rule, hits and all, and said it had saved.** `Admin::apiSave()`
+  recognises the rule being edited by its old address and by its new one, so
+  both of them counted as "the one" and the second was dropped. It is a 400
+  naming the address now, like the panel's other refusals: the rule in the way
+  can be deleted first, and nothing goes away unasked.
+
+- **The addresses screen was drawn under the rules rather than instead of
+  them.** `assets/admin.js` filled both mounts on every render and then only
+  ever hid the second one, so choosing **Addresses with no answer** left the
+  rules table and the probe standing above the list. Only the screen that is
+  on is drawn now, the strip over it goes into that screen so the way back
+  travels with it, and the addresses carry a message line of their own for
+  what a failed **Forget** has to say. `tests/redirects-js-smoke.js` is new
+  and holds the panel to it over a dom stand-in.
+
 - **The panel said what it had dropped in English, whatever language it was
   set to.** The notes under the rules - a rule without a usable from and to, a
   second rule for one address, a status that is not a redirect, a rule that

@@ -54,6 +54,7 @@ return [
 	'[[/_admin/redirects/error/to]]'					=> 'A target is a path of this site, or an https address of another one.',
 	'[[/_admin/redirects/error/loop]]'				=> 'That rule would send a visitor back into itself: %s',
 	'[[/_admin/redirects/error/unknown]]'			=> 'There is no rule for "%s".',
+	'[[/_admin/redirects/error/taken]]'				=> 'There is already a rule for "%s". Delete or edit that one first.',
 	'[[/_admin/redirects/error/load]]'				=> 'The redirects could not be read.',
 
 	'[[/_admin/redirects/confirm/delete]]'		=> 'Delete the redirect for "%s"?',

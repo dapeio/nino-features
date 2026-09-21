@@ -151,20 +151,7 @@ namespace Nino\Modules\Redirects {
 				];
 			}
 
-			$misses = [];
-
-			foreach( (array) ( $raw['misses'] ?? [] ) as $path => $miss ) {
-
-				$path = self::path( is_string( $path ) === true ? $path : '' );
-
-				if( $path === '' || is_array( $miss ) === false || isset( $misses[$path] ) === true )
-					continue;
-
-				$misses[$path] = [
-					'count'	=> max( 1, (int) ( $miss['count'] ?? 1 ) ),
-					'last'	=> self::stamp( (string) ( $miss['last'] ?? '' ) ),
-				];
-			}
+			$misses = self::misses( (array) ( $raw['misses'] ?? [] ) );
 
 			/*	Longest first, so the rule for "/shop/archive" is reached before
 				the one for "/shop" that would swallow it. A subtree rule is a
@@ -339,7 +326,9 @@ namespace Nino\Modules\Redirects {
 
 			return \Nino\Filesystem::mutate( $appData, self::PATH, static function( array $file ) use ( $path ): array {
 
-				$misses = is_array( $file['misses'] ?? null ) ? $file['misses'] : [];
+				// What is on disk is held to what a miss may be before it is
+				// counted, the same way a rule is when the file is read
+				$misses = self::misses( is_array( $file['misses'] ?? null ) ? $file['misses'] : [] );
 
 				$misses[$path] = [
 					'count'	=> max( 1, (int) ( $misses[$path]['count'] ?? 0 ) + 1 ),
@@ -348,7 +337,9 @@ namespace Nino\Modules\Redirects {
 
 				$file['format']	= self::FORMAT;
 				$file['rules']	= array_values( is_array( $file['rules'] ?? null ) ? $file['rules'] : [] );
-				$file['misses']	= self::trimMisses( $misses );
+				// The address just asked for keeps its place through the cut,
+				// or a list that is already full could never learn about it
+				$file['misses']	= self::trimMisses( $misses, $path );
 
 				return $file;
 			} );
@@ -377,19 +368,76 @@ namespace Nino\Modules\Redirects {
 		}
 
 		/**
+		 *	Whatever stood under 'misses', held to what one may be: an address,
+		 *	a count and a time.
+		 *
+		 *	The file is one a person may have edited by hand - README.md says
+		 *	so - and an entry somebody shaped there is input like any other.
+		 *	Without this the sort below is handed whatever the file held, and a
+		 *	note to self where a count belongs takes every unanswered request
+		 *	on the site with it
+		 *
+		 *	@param		array 		$raw					Whatever stood under 'misses'
+		 *
+		 *	@return 	array								path => [ 'count', 'last' ]
+		 */
+		public static function misses( array $raw ): array {
+
+			$misses = [];
+
+			foreach( $raw as $path => $miss ) {
+
+				$path = self::path( is_string( $path ) === true ? $path : '' );
+
+				if( $path === '' || is_array( $miss ) === false || isset( $misses[$path] ) === true )
+					continue;
+
+				$misses[$path] = [
+					'count'	=> max( 1, (int) ( $miss['count'] ?? 1 ) ),
+					'last'	=> self::stamp( (string) ( $miss['last'] ?? '' ) ),
+				];
+			}
+
+			return $misses;
+		}
+
+		/**
 		 *	The list, cut to MISS_LIMIT - the most asked for first, and the most
-		 *	recent of those with the same count
+		 *	recent of those with the same count.
+		 *
+		 *	$keep is the address that was just asked for, and it survives the
+		 *	cut even where it ranks last. It arrives at a count of one and sorts
+		 *	under everything that was ever asked for twice, so a list that once
+		 *	filled up would drop it again on every request and its count could
+		 *	never reach two: the list would go on answering about the pages that
+		 *	broke last year and never learn about the one that broke today. It
+		 *	takes the place of the least asked for rather than a place at the
+		 *	front - the panel draws the list in the order it is in, and the
+		 *	newest address is not the most asked for one
 		 *
 		 *	@param		array 		$misses
+		 *	@param		string		$keep					An address that stays, or ''
 		 *
 		 *	@return 	array
 		 */
-		public static function trimMisses( array $misses ): array {
+		public static function trimMisses( array $misses, string $keep = '' ): array {
 
-			uasort( $misses, static fn( array $a, array $b ): int =>
-				[ $b['count'], $b['last'] ] <=> [ $a['count'], $a['last'] ] );
+			$order = static fn( array $a, array $b ): int =>
+				[ $b['count'], $b['last'] ] <=> [ $a['count'], $a['last'] ];
 
-			return array_slice( $misses, 0, self::MISS_LIMIT, true );
+			uasort( $misses, $order );
+
+			if( $keep === '' || isset( $misses[$keep] ) === false )
+				return array_slice( $misses, 0, self::MISS_LIMIT, true );
+
+			$held = $misses[$keep];
+			unset( $misses[$keep] );
+
+			$misses = array_slice( $misses, 0, self::MISS_LIMIT - 1, true ) + [ $keep => $held ];
+
+			uasort( $misses, $order );
+
+			return $misses;
 		}
 
 		/**

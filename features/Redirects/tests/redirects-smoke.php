@@ -81,6 +81,25 @@ function redirectsFile( array &$appData ): array {
 	return is_array( $file ) ? $file : [];
 }
 
+/**
+ *	The class a call threw, or '' where it returned. A call that may throw goes
+ *	through this rather than standing in the open: an uncaught throwable here
+ *	ends the suite at the line it happened on, and what is under test is that
+ *	nothing is thrown at all
+ *
+ *	@param		callable	$callback
+ *
+ *	@return 	string								The throwable's class, or ''
+ */
+function redirectsThrew( callable $callback ): string {
+	try {
+		$callback();
+	} catch( \Throwable $error ) {
+		return $error::class;
+	}
+	return '';
+}
+
 $appData = ninoSandbox( 'redirects' );
 $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
 // What a request always carries and a sandbox does not - a Location is built
@@ -302,6 +321,86 @@ check( 'with it on, a rule counts the times it was followed',
 echo "\n";
 
 
+// --- A file somebody shaped by hand -----------------------------------------
+
+echo "A list somebody edited by hand\n";
+
+// Both sections below put a file of their own on disk, so what the rest of
+// the suite was left with is kept here and put back when they are done
+$fileBeforeEdits = redirectsFile( $appData );
+
+/*	README.md invites editing the file, and a rule out of that file is held to
+	what a rule may be before any of it is used. The list of addresses was not:
+	noteMiss() sorted whatever stood under 'misses' straight out of the file,
+	so an entry a person had shaped by hand - a note to self where a count and
+	a time belong - reached the sort as a string and took every unanswered
+	request on the site down with it	*/
+$handEdited = static function( array &$appData, mixed $entry ): void {
+	\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Redirects\Rules::PATH, [
+		'format'	=> \Nino\Modules\Redirects\Rules::FORMAT,
+		'rules'		=> [],
+		'misses'	=> [ '/hand/edited' => $entry ],
+	] );
+	unset( $appData['./redirects/rules'] );
+};
+
+$handEdited( $appData, 'a note to self' );
+check( 'an address nothing answers is still a 404 rather than a 500 when the list was edited by hand',
+	redirectsThrew( static fn(): array => redirectsRequest( $appData, '/after/a/hand/edit' ) ) === ''
+	&& isset( redirectsFile( $appData )['misses']['/after/a/hand/edit'] ) === true );
+check( '...and the entry that is not one is gone rather than written back',
+	isset( redirectsFile( $appData )['misses']['/hand/edited'] ) === false && ninoWarnings() === [] );
+
+$handEdited( $appData, [ 'last' => '2026-09-01 10:00:00' ] );
+redirectsRequest( $appData, '/after/a/half/edit' );
+check( 'an entry missing its count is counted from one rather than read as nothing',
+	( redirectsFile( $appData )['misses']['/hand/edited']['count'] ?? 0 ) === 1 && ninoWarnings() === [] );
+
+echo "\n";
+
+
+// --- A full list ------------------------------------------------------------
+
+echo "A list that is already full\n";
+
+/*	The list is the ceiling and the cut, and the cut used to happen after the
+	new address had been counted but before it had a count anybody could see: it
+	arrived at one, sorted under everything asked for twice, and was cut off
+	again on every request. A list that once filled up therefore answered about
+	the pages that broke last year and could never learn about the one that
+	broke today	*/
+$full = [];
+for( $n = 0; $n < \Nino\Modules\Redirects\Rules::MISS_LIMIT; $n++ )
+	$full['/old/'. $n] = [ 'count' => 2, 'last' => '2026-09-01 10:00:00' ];
+
+\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Redirects\Rules::PATH, [
+	'format' => \Nino\Modules\Redirects\Rules::FORMAT, 'rules' => [], 'misses' => $full,
+] );
+unset( $appData['./redirects/rules'] );
+
+redirectsRequest( $appData, '/broke-today' );
+redirectsRequest( $appData, '/broke-today' );
+redirectsRequest( $appData, '/broke-today' );
+
+$afterFull = redirectsFile( $appData )['misses'] ?? [];
+
+check( 'an address asked for now reaches a list that is already full',
+	( $afterFull['/broke-today']['count'] ?? 0 ) === 3 );
+check( '...by taking the place of the least asked for, so the ceiling still holds',
+	count( $afterFull ) === \Nino\Modules\Redirects\Rules::MISS_LIMIT );
+// The place is held open, not put at the front: the panel draws the list in
+// the order it is in, and the newest address is not the most asked for one
+$counts = array_column( $afterFull, 'count' );
+$sorted = $counts;
+rsort( $sorted );
+check( '...and the list is still the most asked for first', $counts === $sorted );
+
+\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Redirects\Rules::PATH, $fileBeforeEdits );
+unset( $appData['./redirects/rules'] );
+
+echo "\n";
+
+
 // --- The panel --------------------------------------------------------------
 
 echo "The panel\n";
@@ -326,6 +425,20 @@ check( '...and it answers straight away', ( redirectsRequest( $appData, '/press'
 check( 'a rule can be renamed in one save rather than a delete and an add', $status === 200
 	&& count( array_filter( $renamed['rules'], static fn( array $r ): bool => $r['from'] === '/press' ) ) === 0
 	&& count( array_filter( $renamed['rules'], static fn( array $r ): bool => $r['from'] === '/presse' ) ) === 1 );
+
+/*	Renaming a rule onto an address another rule already answers used to take
+	that other rule with it, hits and all, and answer 200 - apiSave() saw both
+	of them as "the one being edited" and kept the first it came to. A rule
+	that silently went away is the one kind of mistake nobody goes looking
+	for, so it is a refusal like the others	*/
+redirectsPanel( $appData, 'apiSave', [ 'from' => '/taken', 'to' => '/two', 'status' => 301, 'subtree' => false, 'was' => '' ] );
+[ $status, $collided ] = redirectsPanel( $appData, 'apiSave', [ 'from' => '/taken', 'to' => '/one', 'status' => 301, 'subtree' => false, 'was' => '/presse' ] );
+check( 'renaming a rule onto an address another rule answers is refused rather than done quietly', $status === 400
+	&& str_contains( (string) ( $collided['error'] ?? '' ), '/taken' ) === true );
+check( '...and both rules are still there, the other one with where it sent',
+	count( array_filter( redirectsFile( $appData )['rules'], static fn( array $r ): bool => $r['from'] === '/presse' ) ) === 1
+	&& ( array_values( array_filter( redirectsFile( $appData )['rules'], static fn( array $r ): bool => $r['from'] === '/taken' ) )[0]['to'] ?? '' ) === '/two' );
+redirectsPanel( $appData, 'apiDelete', [ 'from' => '/taken' ] );
 
 check( 'an address that is not one is refused, in the panel\'s own words', redirectsPanel( $appData, 'apiSave', [ 'from' => 'nope', 'to' => '/news' ] )[0] === 400 );
 check( 'so is a target that is not one', redirectsPanel( $appData, 'apiSave', [ 'from' => '/x', 'to' => 'http://example.com' ] )[0] === 400 );

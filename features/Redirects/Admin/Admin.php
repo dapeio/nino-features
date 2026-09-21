@@ -188,6 +188,21 @@ namespace Nino\Modules\Redirects {
 			}
 
 			$file 	= Rules::read( $appData );
+
+			/*	Renaming a rule onto an address another rule already answers
+				used to take that other rule with it, hits and all, and answer
+				200: the loop below recognises the one being edited by its old
+				address and by its new one, so both of them were "the one" and
+				the second was dropped. A rule that silently went away is the
+				one kind of mistake nobody goes looking for, so this is a
+				refusal like the others rather than a merge - the operator can
+				still delete the rule that is in the way and rename afterwards	*/
+			if( $was !== '' && $was !== $from
+				&& count( array_filter( $file['rules'], static fn( array $rule ): bool => $rule['from'] === $from ) ) > 0 ) {
+				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/redirects/error/taken', $from ) );
+				return;
+			}
+
 			$rules	= [];
 			$kept		= false;
 
