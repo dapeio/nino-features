@@ -39,12 +39,18 @@ UTF-8. The callback:
 
 Headers, in order: `Date` (RFC 2822), `Message-ID` (`<random@host>`, `host`
 being the configured SMTP host), `To`, `Subject` - RFC 2047 `=?UTF-8?B?...?=`
-when it is not plain ASCII, else literal - `MIME-Version: 1.0`, then the
+words when it is not plain ASCII, else literal - `MIME-Version: 1.0`, then the
 kernel's own header block verbatim (`Content-Type: text/html; charset=UTF-8`
 and, when the mail carries one, `From:`/`Reply-To:`). A `From:` of the
 feature's own is added only when that block has none, built from the `from`
-and `fromName` settings - the display name quoted, RFC 2047-encoded when it
-is not plain ASCII. A blank line, then the body: normalized to CRLF and
+and `fromName` settings - the display name quoted where it is plain ASCII, and
+as RFC 2047 words *without* the quotes where it is not, since an encoded word
+may not stand inside a quoted-string.
+
+Both go through `mb_encode_mimeheader()`, which is what `\Nino\Mail::send()`
+encodes a subject with when no transport takes the mail: a value too long for
+one encoded word becomes several, folded onto continuation lines, because an
+encoded word may be 75 characters and no more. A blank line, then the body: normalized to CRLF and
 dot-stuffed (a line starting with `.` gets a second one), ending with the
 DATA terminator, CRLF `.` CRLF. The envelope sender (`MAIL FROM`) is always
 whichever address ends up in `From:` - the kernel's own sender when the mail
@@ -146,8 +152,8 @@ the server's own reply line) but never the password.
 `tests/mailer-smoke.php` is the feature's own test: the manifest and the
 activation through `\Nino\Features`, the transport's registration, the
 "not configured" fall-through, a real SMTP session against a fake server run
-as a child process (no network) - the dialogue, the built message, From
-resolution, several recipients on one comma-separated address, `AUTH LOGIN`
+as a child process (no network) - the dialogue, the built message, a long
+non-ASCII subject as several folded encoded words, From resolution, several recipients on one comma-separated address, `AUTH LOGIN`
 as well as `AUTH PLAIN`, refusals (`RCPT` 550, `AUTH` 535), a dead port, and
 the workbench panel with its permission. It loads Nino's `tests/harness.php`
 from the checkout three levels up - or from the one `NINO_ROOT` names - and

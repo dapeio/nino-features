@@ -213,24 +213,38 @@ namespace Nino\Modules {
 		 *	@param		string		$address
 		 *	@param		string		$name					'' for none
 		 *
-		 *	@return 	string									"address", or "\"name\" <address>" with the name RFC 2047-encoded when it is not plain ASCII
+		 *	@return 	string									"address", "\"name\" <address>", or the name as RFC 2047 words before <address> when it is not plain ASCII
 		 */
 		private static function _fromHeaderValue( string $address, string $name ): string {
 
 			if( $name === '' )
 				return $address;
 
-			$quoted = mb_check_encoding( $name, 'ASCII' ) === true
-				? str_replace( [ '\\', '"' ], [ '\\\\', '\\"' ], $name )
-				: self::_encodeHeaderValue( $name );
+			/*	An encoded word is not a quoted-string and may not stand inside
+				one (RFC 2047 section 5). The quotes used to go round it anyway,
+				so a reader that takes them at their word shows the site owner
+				"=?UTF-8?B?Q2Fmw6kgTmluMg==?=" where the name should be. A name
+				that needs no encoding keeps its quotes, which is what lets it
+				carry a comma or a full stop	*/
+			if( mb_check_encoding( $name, 'ASCII' ) === false )
+				return self::_encodeHeaderValue( $name ). ' <'. $address. '>';
 
-			return '"'. $quoted. '" <'. $address. '>';
+			return '"'. str_replace( [ '\\', '"' ], [ '\\\\', '\\"' ], $name ). '" <'. $address. '>';
 		}
 
 		/**
-		 *	A header value as-is when it is plain ASCII, else RFC 2047
-		 *	B-encoded UTF-8 - the same encoding \Nino\Mail::send() uses for the
-		 *	subject when no transport takes the mail (mb_encode_mimeheader())
+		 *	A header value as RFC 2047 B-encoded UTF-8 words, through the same
+		 *	call \Nino\Mail::send() encodes a subject with when no transport
+		 *	takes the mail - so this feature really does encode the way it says
+		 *	it does.
+		 *
+		 *	It used to base64 the whole value into one word of whatever length
+		 *	came out. An encoded word may be 75 characters and no more (RFC 2047
+		 *	section 2), and a header line is meant to stay under 78 (RFC 5322
+		 *	section 2.1.1) - a subject somebody wrote in a language with umlauts
+		 *	passes both without being long. mb_encode_mimeheader() splits the
+		 *	value into words that fit and folds between them, and leaves plain
+		 *	ASCII alone as it always was
 		 *
 		 *	@param		string		$value
 		 *
@@ -238,7 +252,7 @@ namespace Nino\Modules {
 		 */
 		private static function _encodeHeaderValue( string $value ): string {
 
-			return mb_check_encoding( $value, 'ASCII' ) === true ? $value : '=?UTF-8?B?'. base64_encode( $value ). '?=';
+			return mb_encode_mimeheader( $value, 'UTF-8', 'B' );
 		}
 
 		/**

@@ -261,9 +261,56 @@ check( 'Reply-To from the mail is present', str_contains( $data, "Reply-To: repl
 check( 'MIME-Version appears exactly once - not duplicated with the kernel\'s own', substr_count( $data, 'MIME-Version:' ) === 1 );
 check( 'Date and Message-ID headers are present', preg_match( '/^Date: .+\r$/m', $data ) === 1 && preg_match( '/^Message-ID: <[0-9a-f]+@127\.0\.0\.1>\r$/m', $data ) === 1 );
 check( 'the body line starting with "." was dot-stuffed', str_contains( $data, "\r\n..Signature line\r\n" ) === true );
-check( 'the From: header uses the configured address and RFC 2047-encodes the non-ascii display name, quoted',
-	preg_match( '/^From: "(=\?UTF-8\?B\?[A-Za-z0-9+\/=]+\?=)" <no-reply@example\.org>\r$/m', $data, $m ) === 1
-	&& base64_decode( substr( $m[1], strlen( '=?UTF-8?B?' ), -2 ) ) === 'Café Nino' );
+/*	Not quoted: an encoded word is not a quoted-string and may not stand
+	inside one (RFC 2047 section 5), so a reader that takes the quotes at
+	their word shows the site owner "=?UTF-8?B?Q2Fmw6kgTmluMg==?=". A name
+	that needs no encoding keeps its quotes, which is what lets it carry a
+	comma or a full stop	*/
+check( 'the From: header uses the configured address and RFC 2047-encodes the non-ascii display name, unquoted',
+	preg_match( '/^From: (=\?UTF-8\?B\?[A-Za-z0-9+\/=]+\?=) <no-reply@example\.org>\r$/m', $data, $m ) === 1
+	&& mb_decode_mimeheader( $m[1] ) === 'Café Nino' );
+
+echo "\n";
+
+
+// --- A subject longer than one encoded word may be --------------------------
+
+echo "A long non-ascii subject - RFC 2047 words, folded the way the kernel folds\n";
+
+resetMailerRateLimit( $appData );
+resetMailerLog( $server );
+
+/*	An encoded word may be 75 characters and no more (RFC 2047 section 2), and
+	a subject this long is several of them. \Nino\Mail::send() encodes a
+	subject with mb_encode_mimeheader(), which splits and folds; this used to
+	base64 the whole value into one word of whatever length came out, so a
+	subject somebody wrote in German went onto the wire as a single header line
+	of 148 characters - past what an encoded word may be and, for a longer one,
+	past what a header line may be	*/
+$longSubject = 'Grüße aus München: der monatliche Rundbrief über Bücher, Größen und Straßenbahnen im Frühjahr';
+
+check( 'a long non-ascii subject sends', \Nino\Mail::send( $appData, 'to@example.org', $longSubject, '<p>Hello</p>', '' ) === true );
+
+$longData	= (string) ( waitForMailerLog( $server )['data'] ?? '' );
+// The Subject line and everything folded under it, which is every following
+// line that begins with whitespace
+$subjectLines = preg_match( '/^Subject: [^\r\n]*(?:\r\n[ \t][^\r\n]*)*/m', $longData, $m ) === 1
+	? preg_split( '/\r\n/', $m[0] ) ?: []
+	: [];
+
+check( 'the subject is encoded exactly the way \Nino\Mail::send() encodes one, which is what this feature claims to do',
+	str_contains( $longData, 'Subject: '. mb_encode_mimeheader( $longSubject, 'UTF-8', 'B' ). "\r\n" ) === true );
+check( '...so it stands on several lines rather than on one long one', count( $subjectLines ) > 1 );
+/*	75 is the whole of an encoded word, delimiters included. The first line is
+	81 characters all the same, because mb_encode_mimeheader() is not told that
+	"Subject: " stands in front of it - the kernel does not tell it either,
+	since mail() puts that prefix on afterwards, and being the same as the
+	kernel is what this is measured against	*/
+check( '...as several encoded words, none over the 75 characters RFC 2047 allows one',
+	preg_match_all( '/=\?[^?]+\?[BbQq]\?[^?]*\?=/', implode( '', $subjectLines ), $words ) > 1
+	&& array_filter( $words[0], static fn( string $word ): bool => strlen( $word ) > 75 ) === [] );
+check( '...and the whole of it decodes back to what was sent',
+	mb_decode_mimeheader( substr( implode( "\r\n", $subjectLines ), strlen( 'Subject: ' ) ) ) === $longSubject );
 
 echo "\n";
 

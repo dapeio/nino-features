@@ -5,6 +5,21 @@ A release is the tag `mailer-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+- **A non-ASCII subject went out as one encoded word of any length, and an
+  encoded display name went out inside quotes.** `_encodeHeaderValue()`
+  base64'd the whole value into a single `=?UTF-8?B?...?=`, where an encoded
+  word may be 75 characters and no more (RFC 2047) - an ordinary German
+  subject passes that without being long, and a longer one passes what a
+  header line is meant to keep to as well. Its own docblock said it used "the
+  same encoding `\Nino\Mail::send()` uses", and now it does: the value goes
+  through `mb_encode_mimeheader()`, the call the kernel makes, which splits it
+  into words that fit and folds between them. `_fromHeaderValue()` also put
+  the quotes of a display name around the encoded word, which an encoded word
+  may not stand inside (RFC 2047 section 5) - a reader that takes the quotes
+  at their word shows the site owner `=?UTF-8?B?...?=` where the name should
+  be. An encoded name goes in unquoted now; a plain ASCII one keeps its
+  quotes, which is what lets it carry a comma.
+
 - **The kernel's envelope sender is named as the textfill it is now.** Nino
   1.3.0 reads `[[/mail/sender]]` from the Text panel where it read
   `/nino/mail/sender` from `config.php` before; the message a send without any
