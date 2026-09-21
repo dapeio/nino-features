@@ -5,6 +5,19 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+### Fixed
+
+- **Editing a section and pressing Update could overwrite every one of its
+  texts with the preset's placeholder.** The dialog gets its values from
+  `content/fields`, which it starts when it opens and does not wait for, and
+  the save posted `field.default` for every key it was holding no value for.
+  So an editor who opened an existing section and pressed Update before that
+  answer landed - to change a layout, or by reflex - saved the catalogue's demo
+  text over what was written there. The section composed, the save succeeded,
+  and nothing said anything. A key the dialog holds no value for is left out of
+  the save now; a key that does not exist yet still starts as the preset's
+  default, which is what a new section is for.
+
 ### Added
 
 - **A content type "HTML+".** Insertable beside title, subtitle and button,

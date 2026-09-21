@@ -270,6 +270,49 @@ check( 'a refused source leaves the draft as it was', areaComposerSource.include
 check( 'the Area editor loads after the established composer and exposes bounded pure helpers', panelPhpSource.indexOf( "'composer.js'" ) < panelPhpSource.indexOf( "'area-composer.js'" )
 	&& typeof Nino.admin.templates.areaComposer.nextComponentId === 'function'
 	&& typeof Nino.admin.templates.areaComposer.moveComponent === 'function' );
+/*	What the Update button saves. The values it saves come from
+	content/fields, which the dialog starts on open and does not wait for - so
+	pressing Update before that answer lands used to save every fill of an
+	existing section as the preset's catalogue placeholder, over whatever was
+	written there. The section composed, the save succeeded, and the page read
+	as the demo text again	*/
+const editFields = [
+	{ key : '/page-home/hero/title', mode : 'new', default : 'A clear headline for this section' },
+	{ key : '/page-home/hero/subtitle', mode : 'new', default : 'A concise supporting line' },
+];
+const existing = [ { key : '/page-home/hero/title' }, { key : '/page-home/hero/subtitle' } ];
+
+/*	Through a guard rather than called directly: the builder used to be an
+	inline expression inside the submit chain, so against the code before this
+	these read as five failures instead of one thrown error that reports
+	nothing	*/
+function contentItems( fields, entries, values ) {
+	const builder = Nino.admin.templates.areaComposer.contentItems;
+	return typeof builder === 'function' ? builder( fields, entries, values ) : null;
+}
+
+check( 'an existing fill the dialog has not loaded yet is not saved at all', ( contentItems( editFields, existing, {} ) || [ 'unreachable' ] ).length === 0 );
+
+check( '...and one it has loaded is saved as what it loaded', JSON.stringify( contentItems( editFields, existing, { '/page-home/hero/title' : 'Was da stand' } ) )
+	=== JSON.stringify( [ { key : '/page-home/hero/title', value : 'Was da stand', create : false } ] ) );
+
+// A key that does not exist yet is the other case: nothing to lose, and the
+// default is what a new section is meant to start as
+check( 'a fill that does not exist yet is created with the preset default', JSON.stringify( contentItems( editFields, [], {} ) )
+	=== JSON.stringify( [
+		{ key : '/page-home/hero/title', value : 'A clear headline for this section', create : true },
+		{ key : '/page-home/hero/subtitle', value : 'A concise supporting line', create : true },
+	] ) );
+
+// An emptied field is a value like any other - held, and saved as what it is
+check( 'a field somebody emptied is saved empty, not refilled from the catalogue', JSON.stringify( contentItems( editFields, existing, { '/page-home/hero/title' : '' } ) )
+	=== JSON.stringify( [ { key : '/page-home/hero/title', value : '', create : false } ] ) );
+
+// Only what this section owns: a binding pointing at a fill somebody else
+// wrote is not this dialog's to save
+check( 'a field bound to an existing fill elsewhere is left alone', ( contentItems(
+	[ { key : '/company/name', mode : 'existing', default : 'x' } ], existing, { '/company/name' : 'Acme' } ) || [ 'unreachable' ] ).length === 0 );
+
 const componentList = [ { id : 'title' }, { id : 'title-2' }, { id : 'image' } ];
 check( 'new component IDs remain stable and unique within an Area', Nino.admin.templates.areaComposer.nextComponentId( componentList, 'title' ) === 'title-3'
 	&& Nino.admin.templates.areaComposer.nextComponentId( componentList, 'button' ) === 'button' );

@@ -824,6 +824,41 @@
 		pd.composer.renderSummary(); pd.composer.requestPreview();
 	}
 
+	/**
+	 *	The content/save items a compose result asks for: one per generated
+	 *	textfill this section owns, with the value the dialog is holding.
+	 *
+	 *	A key the dialog holds no value for is left out, and that is what this
+	 *	is a function for. The values arrive from content/fields, which
+	 *	render() starts when the dialog opens and does not wait for - so
+	 *	somebody who opened an existing section and pressed Update before that
+	 *	answer landed saved every one of its fills as field.default, the
+	 *	preset's catalogue placeholder, over whatever was written there.
+	 *	Nothing said so: the section composes, the save succeeds, and the page
+	 *	reads as the demo text again.
+	 *
+	 *	A key that does not exist yet is the other case: there is nothing to
+	 *	lose, and the default is what a new section is meant to start as -
+	 *	which is also what the dialog shows while it loads.
+	 *
+	 *	@param		{Array}			fields			result.fields from library/compose
+	 *	@param		{Array}			entries			Every textfill this project has (content/keys)
+	 *	@param		{Object}		values			What the dialog is holding, by key
+	 *
+	 *	@return		{Array}									Items for content/save
+	 */
+	function contentItems( fields, entries, values ) {
+		const known = entries || [];
+		const held = values || {};
+		return ( fields || [] ).filter( function( field ) { return field.mode === 'new' } ).map( function( field ) {
+			const exists = known.some( function( item ) { return item.key === field.key } );
+			const loaded = Object.prototype.hasOwnProperty.call( held, field.key );
+			if( exists === true && loaded === false )
+				return null;
+			return { key : field.key, value : loaded === true ? held[field.key] : field.default, create : !exists };
+		} ).filter( function( item ) { return item !== null } );
+	}
+
 	function loadTextValues() {
 		if( !active() ) return original.loadTextValues.call( pd.composer );
 		const draft = pd.composer._draft;
@@ -917,10 +952,7 @@
 				return pd.api( 'content/image-create', { preset : result.spec.preset, slot : image.slot, area : image.area, component : image.component, property : image.property, uri : image.key, label : image.label } ).then( function() { pd.sectionsUI._images.push( { uri : image.key, hasImage : false } ) } );
 			} ) );
 		} ).then( function() {
-			const items = ( result.fields || [] ).filter( function( field ) { return field.mode === 'new' } ).map( function( field ) {
-				const entry = pd.composer._textEntries.find( function( item ) { return item.key === field.key } );
-				return { key : field.key, value : Object.prototype.hasOwnProperty.call( pd.composer._textValues, field.key ) ? pd.composer._textValues[field.key] : field.default, create : !entry };
-			} );
+			const items = contentItems( result.fields || [], pd.composer._textEntries, pd.composer._textValues );
 			return items.length ? pd.api( 'content/save', { items : items } ) : null;
 		} ).then( function() {
 			pd.sectionsUI.insertResult( result, pd.composer._context ); dc.getElementById('pd-composer').close(); pd.toast( pd.composer._context.mode === 'replace' ? Nino.content.getText('/_admin/templates/msg/areas-updated') : Nino.content.getText('/_admin/templates/msg/areas-inserted'), false );
@@ -951,6 +983,7 @@
 		areaStep : areaStep,
 		nextComponentId : nextComponentId,
 		moveComponent : moveComponent,
+		contentItems : contentItems,
 		linkAccepted : linkAccepted,
 		areaKeys : areaKeys,
 		areaLabel : areaLabel,
