@@ -64,9 +64,8 @@ namespace Nino\Modules {
 		 *	of colour solving per list, per save, and once more at the end of
 		 *	every apply, which therefore compiled twice.
 		 *
-		 *	'compiled' is the record of a previous apply, and the per-part
-		 *	'sha' entries are written by one, so neither decides anything here
-		 *	and both are left out.
+		 *	'compiled' is the record of a previous apply rather than a choice,
+		 *	so it decides nothing here and is left out.
 		 *
 		 *	@param		array 		$setup				A normalized setup
 		 *	@param		string		$library			The library directory its parts are chosen from
@@ -84,9 +83,6 @@ namespace Nino\Modules {
 			}
 
 			unset( $setup['compiled'] );
-
-			foreach( array_keys( (array) ( $setup['parts'] ?? [] ) ) as $part )
-				unset( $setup['parts'][$part]['sha'] );
 
 			return hash( 'sha256', serialize( [ $setup, $files ] ) );
 		}
@@ -173,11 +169,6 @@ namespace Nino\Modules {
 					return $result;
 			}
 
-			foreach( array_keys( Design\Setup::PARTS ) as $part ) {
-				$file = Design\Setup::file( $library, $part, (string) ( $setup['parts'][$part]['set'] ?? '' ) );
-				$setup['parts'][$part]['sha'] = $file === '' ? '' : hash_file( 'sha256', $file );
-			}
-
 			/*	What was compiled, so the panel can say whether the file on disk
 				still answers to the setup beside it - and 'input', what it was
 				compiled FROM, so answering that costs a hash instead of a
@@ -197,7 +188,14 @@ namespace Nino\Modules {
 		 *	A new version of the feature may ship changed sets. Recompiling on
 		 *	its own would move a site nobody asked to move, so this only
 		 *	refreshes what the setup records - the panel is where the difference
-		 *	is then visible, and applying is a decision
+		 *	is then visible, and applying is a decision.
+		 *
+		 *	Reading and writing it back is also what brings the stored file to
+		 *	the shape this version keeps: an earlier one wrote a digest per part
+		 *	that nothing ever read, normalize() no longer carries it over, and
+		 *	the file stops holding it here. What was compiled from what is in
+		 *	'compiled'['input'] - the whole setup and the bytes of every library
+		 *	file it points at - which is what the panel compares.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$from					The version recorded before this one

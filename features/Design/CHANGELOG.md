@@ -5,7 +5,22 @@ A release is the tag `design-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
-- The README's check count matches the suite again - 187 rather than the
+- **A digest per part that was written, carried and never read.** `apply()`
+  hashed the library file behind every part into `data/design.php`,
+  `Setup::normalize()` carried it through every read, and `fingerprint()` took
+  it straight back out again before hashing - because it decides nothing. No
+  code anywhere read one. What tells a project that a set changed under it is
+  `compiled`'s `input`: the whole setup plus the bytes of every library file it
+  names, recorded by the last apply and compared by the panel. The three lines
+  are gone, so the file holds what was chosen and nothing worked out from it,
+  which is what the manual already said of it. The fingerprint is unchanged by
+  this - a setup that still carries the old digest hashes to the same value as
+  one without, so no project is told its stylesheet is out of date. A stored
+  digest is dropped by the next write of the file, and `upgrade()` - which
+  reads the setup and writes it back - is the write that does it without
+  waiting for a save.
+
+- The README's check count matches the suite again - 191 rather than the
   number it carried, which the suite passed some time ago.
 
 - Needs Nino `^1.3`, where the constraint said `^1.2`. The sectioned `manual`

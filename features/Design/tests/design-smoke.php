@@ -392,6 +392,23 @@ $deviating = \Nino\Modules\Design\Compiler::compile( \Nino\Modules\Design\Setup:
 check( 'a part that deviates is compiled at its own position, the rest at the global one', str_contains( $deviating, '--buttons-shaping: var(--buttons-shaping--less);' ) === true
 	&& str_contains( $deviating, '--section-volume: var(--section-volume--more);' ) === true );
 
+/*	What the panel compares to say whether the stylesheet still answers to the
+	screen: the setup's own choices AND the bytes of every library file they
+	point at, so a set that changed under a project - a reinstall, an edited
+	library - is visible rather than silent. This is the whole of it; the
+	digest apply() used to write beside each part was never read by anything	*/
+$sandboxSetup 	= \Nino\Modules\Design\Setup::normalize( [ 'parts' => [ 'section' => [ 'set' => 'v1' ] ] ], $sandbox );
+$beforeSetEdit 	= \Nino\Modules\Design::fingerprint( $sandboxSetup, $sandbox );
+$sectionSet 		= $sandbox. '/sets/section/v1.css';
+$sectionSource 	= (string) file_get_contents( $sectionSet );
+file_put_contents( $sectionSet, $sectionSource. "\n/* a set the project got from somewhere else */\n" );
+
+check( 'the fingerprint follows the bytes of the sets it names, not only the names', \Nino\Modules\Design::fingerprint( $sandboxSetup, $sandbox ) !== $beforeSetEdit );
+check( '...and a setup that still carries a digest per part from an older version fingerprints the same as one without', \Nino\Modules\Design::fingerprint( $sandboxSetup, $sandbox ) === \Nino\Modules\Design::fingerprint(
+	\Nino\Modules\Design\Setup::normalize( [ 'parts' => [ 'section' => [ 'set' => 'v1', 'sha' => 'written by a version before this one' ] ] ], $sandbox ), $sandbox ) );
+
+file_put_contents( $sectionSet, $sectionSource );
+
 echo "\nWriting it, and what it will not write over\n";
 
 $written = \Nino\Modules\Design\Compiler::write( $appData, $css );
@@ -450,8 +467,27 @@ $stored = \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Design\Setup
 
 check( 'the setup is written beside it, with the format it is in', is_array( $stored ) === true && ( $stored['format'] ?? 0 ) === \Nino\Modules\Design\Setup::FORMAT );
 check( '...recording what was compiled, so the panel can tell the file from the setup', ( $stored['compiled']['sha'] ?? '' ) !== '' && ( $stored['compiled']['at'] ?? '' ) !== '' );
-check( '...and a fingerprint per part, so a reinstall that changed a set is visible rather than silent',
-	( $stored['parts']['section']['sha'] ?? '' ) === hash_file( 'sha256', \Nino\Modules\Design\Setup::file( $library, 'section', 'v1' ) ) );
+/*	A part holds what was chosen and nothing worked out from it, which is what
+	the manual promises of this file. apply() also wrote a digest of the set's
+	file beside every part, normalize() carried it, fingerprint() took it back
+	out again - and nothing anywhere ever read one. What a reinstall that
+	changed a set has to be told by is 'compiled'['input'], which hashes those
+	same files itself	*/
+check( '...and a part records what was chosen and nothing derived from it', array_keys( (array) ( $stored['parts']['section'] ?? [] ) ) === [ 'set', 'knobs' ] );
+
+/*	Which makes upgrade() the place a stored digest goes away: it reads the
+	setup through normalize() and writes it back, and that is the whole of what
+	an upgrade does here - a new version may ship changed sets, and moving a
+	site nobody asked to move is not an upgrade	*/
+$legacy = $stored;
+$legacy['parts']['section']['sha'] = 'written by a version before this one';
+\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Design\Setup::PATH, $legacy );
+
+check( 'upgrading drops a digest an older version stored and leaves the choices alone', \Nino\Modules\Design::upgrade( $appData, '0.1.0' ) === true );
+$upgraded = \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Design\Setup::PATH, [] );
+check( '...so the file holds the same choices, without it', array_keys( (array) ( $upgraded['parts']['section'] ?? [] ) ) === [ 'set', 'knobs' ]
+	&& ( $upgraded['parts']['section']['set'] ?? '' ) === ( $stored['parts']['section']['set'] ?? '' )
+	&& ( $upgraded['compiled']['input'] ?? '' ) === ( $stored['compiled']['input'] ?? '' ) );
 
 /*	A frame is a stylesheet AND the markup it was drawn against. Compiling one
 	without writing the other is how a page ends up with v3's css over v1's

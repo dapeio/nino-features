@@ -112,7 +112,7 @@ namespace Nino\Modules\Design {
 
 			foreach( self::PARTS as $part => $kind ) {
 				$available = self::available( $libraryDir, $part );
-				$parts[$part] = [ 'set' => (string) ( $available[0] ?? '' ), 'knobs' => [], 'sha' => '' ];
+				$parts[$part] = [ 'set' => (string) ( $available[0] ?? '' ), 'knobs' => [] ];
 			}
 
 			return [
@@ -301,8 +301,6 @@ namespace Nino\Modules\Design {
 						$knobs[$knob] = (string) $stored['knobs'][$knob];
 
 				$setup['parts'][$part]['knobs'] = $knobs;
-
-				$setup['parts'][$part]['sha'] = (string) ( $stored['sha'] ?? '' );
 			}
 
 			/*	The palette. Normalized by Colours rather than here, because the
