@@ -50,6 +50,7 @@ function element( attributes ) {
 		children		: [],
 		textContent	: '',
 		getAttribute		: function( name ) { return Object.prototype.hasOwnProperty.call( this.attributes, name ) ? this.attributes[name] : null },
+		removeAttribute	: function( name ) { delete this.attributes[name] },
 		matchesClass		: function( name ) { return ( this.attributes['class'] || '' ).split( /\s+/ ).indexOf( name ) !== -1 },
 		querySelector		: function( selector ) { return find( this, selector.replace( /^\./, '' ) )[0] || null },
 		querySelectorAll	: function( selector ) { return find( this, selector.replace( /^\./, '' ) ) },
@@ -92,7 +93,9 @@ function page( options ) {
 		'data-countdown-done'	: options.done !== undefined ? options.done : 'Es ist so weit',
 	} );
 
-	const date = element( { 'class' : 'nino-countdown-date' } );
+	// The <time> as the shortcode writes it: the date for a reader, and the
+	// same moment beside it for everything that is not one
+	const date = element( { 'class' : 'nino-countdown-date', 'datetime' : '2026-12-24T18:00:00+01:00' } );
 	date.textContent = '2026-12-24 18:00';
 
 	const parts = element( { 'class' : 'nino-countdown-parts' } );
@@ -195,12 +198,18 @@ const over = page( { now : AT } );
 
 check( 'at the moment itself the counter goes', over.parts.hidden === true );
 check( '...and what the shortcode was given for afterwards stands in its place', over.date.textContent === 'Es ist so weit' && over.date.hidden === false );
+/*	And the moment goes with the date it belonged to: datetime="..." is the
+	machine-readable half of whatever the element says, so an element left
+	carrying it over a sentence tells a parser, a calendar or a screen reader
+	that "Es ist so weit" is that instant	*/
+check( '...and the element stops carrying a moment its text no longer names', over.date.getAttribute( 'datetime' ) === null );
 check( '...the countdown says it is done', over.countdown.classes['nino-is-done'] === true );
 check( '...and the clock is stopped, because there is nothing left to count', over.ticking() === false );
 
 const silent = page( { now : AT + 5000, done : '' } );
 check( 'a countdown given no sentence for afterwards puts its date back - what has run out is still a date',
 	silent.date.textContent === '2026-12-24 18:00' && silent.date.hidden === false );
+check( '...and keeps the moment beside it, because that is still what it says', silent.date.getAttribute( 'datetime' ) === '2026-12-24T18:00:00+01:00' );
 
 
 // --- A moment that is not one --------------------------------------------------

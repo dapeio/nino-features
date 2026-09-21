@@ -95,13 +95,46 @@ echo "[countdown] - the moment, and what stands there without a script\n";
 
 $html = \Nino\Html::renderHtml( $appData, '[countdown to="2026-12-24 18:00"]' );
 
-/*	The moment goes out once, as an ISO-8601 string with the site's own offset
-	in it, so a reader in another timezone counts down to the same instant
-	rather than to the same wall clock	*/
-check( 'the moment is written with the site\'s own offset, so it means the same instant everywhere',
+/*	The moment goes out once, as an ISO-8601 string with its offset in it, so a
+	reader in another timezone counts down to the same instant rather than to
+	the same wall clock	*/
+check( 'the moment is written with an offset, so it means the same instant everywhere',
 	preg_match( '/data-countdown-to="2026-12-24T18:00:00[+-]\d{2}:\d{2}"/', $html ) === 1 );
 check( '...and the same string is the machine-readable half of a <time>',
 	preg_match( '/<time class="nino-countdown-date" datetime="2026-12-24T18:00:00[+-]\d{2}:\d{2}">/', $html ) === 1 );
+
+/*	Which offset, is the shortcode's to say. A wall-clock time is half a
+	moment - 18:00 is a different instant in Berlin than it is in London - and
+	there is no site-wide timezone to take the other half from: Nino declares
+	none in AppData::DEFAULTS and calls no date_default_timezone_set(), so
+	what was called "the site's own timezone" was the php process's, UTC on an
+	installation whose host says nothing. 'tz' is the other half, written
+	where the moment is written	*/
+$processZone = date_default_timezone_get();
+date_default_timezone_set( 'UTC' );
+
+check( 'the timezone the shortcode names is the one the wall-clock moment is read in',
+	\Nino\Modules\Countdown::moment( '2026-12-24 18:00', 'Europe/Berlin' )?->format( \DateTimeInterface::ATOM ) === '2026-12-24T18:00:00+01:00' );
+check( '...and without it the process default is, which is what it always was',
+	\Nino\Modules\Countdown::moment( '2026-12-24 18:00' )?->format( \DateTimeInterface::ATOM ) === '2026-12-24T18:00:00+00:00' );
+check( '...so the two are a different instant, an hour apart',
+	\Nino\Modules\Countdown::moment( '2026-12-24 18:00', 'Europe/Berlin' )?->getTimestamp() === \Nino\Modules\Countdown::moment( '2026-12-24 18:00' )?->getTimestamp() - 3600 );
+check( '...and a moment that carries its own offset keeps it, whatever tz says',
+	\Nino\Modules\Countdown::moment( '2026-12-24T18:00:00+05:00', 'Europe/Berlin' )?->format( \DateTimeInterface::ATOM ) === '2026-12-24T18:00:00+05:00' );
+
+$zoned = \Nino\Html::renderHtml( $appData, '[countdown to="2026-12-24 18:00" tz="Europe/Berlin"]' );
+check( 'the shortcode writes the moment at the offset that timezone had on the day',
+	str_contains( $zoned, 'data-countdown-to="2026-12-24T18:00:00+01:00"' ) === true
+	&& str_contains( $zoned, 'datetime="2026-12-24T18:00:00+01:00"' ) === true );
+
+ninoWarnings();
+check( 'a timezone this cannot read is no countdown at all, rather than one counting to the wrong instant',
+	\Nino\Modules\Countdown::moment( '2026-12-24 18:00', 'Somewhere/Else' ) === null
+	&& \Nino\Html::renderHtml( $appData, '[countdown to="2026-12-24 18:00" tz="Somewhere/Else"]' ) === '' );
+check( '...and it is said out loud, twice for the two of them',
+	count( array_filter( ninoWarnings(), static fn( string $w ): bool => str_contains( $w, '[countdown tz="Somewhere/Else"]' ) ) ) === 2 );
+
+date_default_timezone_set( $processZone );
 
 /*	Without JavaScript what stands there is the date. That is the markup; the
 	counter is what is hidden until countdown.js takes over, the way

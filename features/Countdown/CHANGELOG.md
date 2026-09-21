@@ -14,6 +14,32 @@ A release is the tag `countdown-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **"The site's own timezone" was the server's, and there is no such thing as
+  the site's.** `moment()` read a wall-clock `to="2026-12-24 18:00"` with
+  `new \DateTimeImmutable( $to )`, which uses the php process's default
+  timezone - and Nino declares none in `\Nino\AppData::DEFAULTS` and calls no
+  `date_default_timezone_set()`, so on an ordinary installation that is `UTC`.
+  A German site counting down to 18:00 on Christmas Eve therefore wrote
+  `2026-12-24T18:00:00+00:00` and counted to 19:00 Berlin time, an hour late,
+  with nothing on the page to show it. The shortcode says which timezone now -
+  `[countdown to="2026-12-24 18:00" tz="Europe/Berlin"]` - which is where it
+  belongs, beside the moment itself: a sale ending in Berlin and a conference
+  opening in Lisbon are not the same countdown, and this feature has no
+  settings for the same reason. Without `tz` the process default is still what
+  is used, and the README and the manual say that instead of promising a site
+  timezone; a `to` that carries its own offset is unaffected, as it always was.
+  A `tz` php does not know renders nothing and says so in the log, the way an
+  unreadable date does - a counter an hour off looks right, which is worse than
+  one that is not there. And a `<time>` that had stopped being a time kept
+  saying it was one: when the moment passes and the shortcode was given a
+  `done` sentence, `finish()` wrote that sentence into the
+  `<time class="nino-countdown-date">` and left
+  `datetime="2026-12-24T18:00:00+01:00"` on it, so the element told every
+  parser, calendar and screen reader that "The time has come" IS that instant.
+  The attribute is removed with the text it belonged to; a countdown given no
+  sentence puts its date back and keeps it, because there the element still
+  says what the attribute claims.
+
 - **An invalid byte in a value rendered as nothing.** `htmlspecialchars()`
   answers input that is not valid UTF-8 with `''` unless `ENT_SUBSTITUTE` is
   among its flags, and every call here spelled the flags out without it.

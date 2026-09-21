@@ -12,8 +12,12 @@ return [
 	'manual'			=> [
 		'shortcodes' => [
 			'[countdown to="2026-12-24 18:00"]' => [
-				'en_US' => 'Counts down to that moment in the site\'s own timezone.',
-				'de_DE' => 'Zählt bis zu diesem Moment in der Zeitzone der Website herunter.',
+				'en_US' => 'Counts down to that moment. Without tz= it is read in the timezone the server runs in.',
+				'de_DE' => 'Zählt bis zu diesem Moment herunter. Ohne tz= wird er in der Zeitzone gelesen, in der der Server läuft.',
+			],
+			'[countdown ... tz="Europe/Berlin"]' => [
+				'en_US' => 'The timezone a wall-clock moment is read in. A name PHP does not know renders nothing and says so in the log.',
+				'de_DE' => 'Die Zeitzone, in der ein Moment ohne eigenen Offset gelesen wird. Ein Name, den PHP nicht kennt, zeigt nichts und sagt es im Log.',
 			],
 			'[countdown ... units="days,hours,minutes"]' => [
 				'en_US' => 'Which parts are shown, in that order. Default: days, hours, minutes, seconds.',

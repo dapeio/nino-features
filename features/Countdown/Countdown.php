@@ -16,11 +16,21 @@ namespace Nino\Modules {
 	 *	Countdown					The time left until a moment, counted down on the page.
 	 *
 	 *										What the server writes is the moment itself, once, as
-	 *										an ISO-8601 string with the site's own offset in it -
-	 *										so a reader in another timezone counts down to the
-	 *										same instant rather than to the same wall clock. The
-	 *										arithmetic is the browser's, because a page that is
-	 *										cached for an hour would otherwise be an hour wrong.
+	 *										an ISO-8601 string with its offset in it - so a reader
+	 *										in another timezone counts down to the same instant
+	 *										rather than to the same wall clock. The arithmetic is
+	 *										the browser's, because a page that is cached for an
+	 *										hour would otherwise be an hour wrong.
+	 *
+	 *										Which offset that is, is the shortcode's to say: `tz`
+	 *										names the timezone the wall-clock moment in `to` is
+	 *										read in. Nino has no timezone of its own - there is no
+	 *										such key in AppData::DEFAULTS and the kernel calls no
+	 *										date_default_timezone_set() - so without `tz` the
+	 *										moment is read in whatever the php process is
+	 *										configured with, which is UTC unless the host says
+	 *										otherwise. A moment that carries its own offset or
+	 *										zone name is read at that one, whatever `tz` says.
 	 *
 	 *										Without JavaScript what stands there is the date, in a
 	 *										<time datetime="..."> - written out for a reader and
@@ -98,7 +108,7 @@ namespace Nino\Modules {
 		 */
 		public static function doShortcode( array &$appData, array $args ): string {
 
-			$moment = self::moment( (string) ( $args['to'] ?? '' ) );
+			$moment = self::moment( (string) ( $args['to'] ?? '' ), (string) ( $args['tz'] ?? '' ) );
 
 			if( $moment === null )
 				return '';
@@ -136,25 +146,54 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	The moment a countdown counts to, in the site's own timezone, or
-		 *	null where what was written is not one
+		 *	The moment a countdown counts to, or null where what was written is
+		 *	not one.
+		 *
+		 *	A wall-clock time is only half a moment: "18:00" is a different
+		 *	instant in Berlin than it is in London. $zone is the other half, and
+		 *	it comes from the shortcode, because that is where the moment comes
+		 *	from - there is no site-wide timezone to take it from. Nino declares
+		 *	none (\Nino\AppData::DEFAULTS has no such key) and sets none, so
+		 *	without $zone this reads what was written in whatever timezone the
+		 *	php process runs in - UTC on an installation whose host says
+		 *	nothing. A $to that carries its own offset or zone name is read at
+		 *	that one and $zone does not enter into it, which is
+		 *	\DateTimeImmutable's own rule.
 		 *
 		 *	@param		string		$to						Anything \DateTimeImmutable reads
+		 *	@param		string		$zone					A timezone name for a $to without one, '' for the process default
 		 *
 		 *	@return 	\DateTimeImmutable|null
 		 */
-		public static function moment( string $to ): ?\DateTimeImmutable {
+		public static function moment( string $to, string $zone = '' ): ?\DateTimeImmutable {
 
-			$to = trim( $to );
+			$to 	= trim( $to );
+			$zone = trim( $zone );
 
 			if( $to === '' )
 				return null;
+
+			$timezone = null;
+
+			/*	A zone nobody can read is the same mistake as a date nobody can
+				read, and a worse one to pass over: the moment would still be a
+				moment, just hours away from the one that was meant, and nothing
+				on the page would look wrong	*/
+			if( $zone !== '' ) {
+				try {
+					$timezone = new \DateTimeZone( $zone );
+				}
+				catch( \Exception ) {
+					trigger_error( 'Nino: [countdown tz="'. $zone. '"] is not a timezone this can read.', E_USER_WARNING );
+					return null;
+				}
+			}
 
 			/*	Not @-suppressed and not caught silently: a date somebody typed
 				wrong is a countdown that will never count, and the one moment it
 				can be noticed is the one somebody is looking at the page	*/
 			try {
-				$moment = new \DateTimeImmutable( $to );
+				$moment = new \DateTimeImmutable( $to, $timezone );
 			}
 			catch( \Exception ) {
 				trigger_error( 'Nino: [countdown to="'. $to. '"] is not a moment this can read.', E_USER_WARNING );
