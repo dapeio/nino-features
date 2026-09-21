@@ -287,10 +287,22 @@ check( 'Tab anywhere else is the browser\'s', key('Tab') === false );
 check( 'Escape closes, unlocks the page and puts the focus back on the link that opened it', key('Escape') === true
 	&& documentElement.classList.contains('nino-lightbox-lock') === false && focused === LINKS[0] );
 
-// The overlay leaves after its fade; the timer is the fallback for a browser
-// that skipped the transition
+// The overlay leaves after its fade. transitionend bubbles, so a control that
+// is still finishing its own hover or press transition reports through the
+// overlay too - and that must not be what takes the overlay out
+fire( overlay(), 'transitionend', { target : overlay().querySelector('.nino-lightbox-close') } );
+check( 'a control\'s own transition does not cut the fade short', overlay() !== null );
+
+// Guarded, so that an overlay already gone is one failed check rather than
+// the end of the suite
+if( overlay() !== null )
+	fire( overlay(), 'transitionend', { target : overlay() } );
+check( '...and the overlay is out of the document once its own fade ended', overlay() === null );
+
+// The timer is only the fallback for a browser that skipped the transition;
+// here the fade already did it, so nothing is left for it to remove
 timers.splice( 0 ).forEach( function( fn ) { fn() } );
-check( '...and the overlay is out of the document afterwards', overlay() === null );
+check( 'the fallback timer finds nothing left to take out', overlay() === null );
 
 check( 'a key press after closing does nothing at all', key('ArrowRight') === false && overlay() === null );
 

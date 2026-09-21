@@ -13,6 +13,19 @@ versions [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   feature to an installation that could not then install it. `^1.3` names
   only a kernel that can read the manifest.
 
+### Fixed
+
+- **The lightbox vanished instead of fading out.** `close()` waited for a
+  `transitionend` on the overlay to take it out of the document, but that
+  event bubbles - and the close button is always in the middle of its own
+  press transition when it is the thing that closed the lightbox. So the
+  first report to arrive was the button's, after its `.15s` rather than the
+  overlay's `.22s`, and in a real browser the overlay left after roughly
+  120 ms with its opacity still at 0.64 - halfway through a fade nobody got
+  to see. Only the overlay's own transition ends the closing now; the fade
+  runs its full length and the timer stays the fallback for a browser that
+  skipped the transition.
+
 ## 1.0.0 — 2026-09-09
 
 First release.

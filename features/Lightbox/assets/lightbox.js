@@ -290,7 +290,18 @@
 			if( leaving.parentNode !== null )
 				leaving.parentNode.removeChild( leaving );
 		};
-		leaving.addEventListener( 'transitionend', remove );
+
+		// Only the overlay's own fade ends it. transitionend bubbles, so a
+		// control that is still finishing its own hover or press transition
+		// reports through the overlay as well - and the close button always
+		// is, because the click that closed the lightbox started one. Taking
+		// the overlay out on that would cut the fade off after the button's
+		// .15s instead of the overlay's .22s, which reads as a picture that
+		// vanishes rather than one that fades
+		leaving.addEventListener( 'transitionend', function( ev ) {
+			if( ev.target === leaving )
+				remove();
+		} );
 		wn.setTimeout( remove, 400 );
 
 		if( opener !== null ) {
