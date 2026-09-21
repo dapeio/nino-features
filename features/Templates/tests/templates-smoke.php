@@ -849,6 +849,33 @@ check( 'keeps a nested section inside its top-level parent', str_contains( $sect
 check( 'extracts ids, fills and bindings for the UI', $sections[1]['htmlId'] === 'content' && $sections[1]['fills'] === [ '/page-home/content/title' ] );
 check( 'rejoining untouched segments is byte-identical', $joined === $source );
 check( 'reports an unmatched section instead of guessing', \Nino\Modules\Templates\SectionDocument::split( '<section><p>x</p>' )['error'] !== null );
+
+/*	A '<' somebody wrote in prose is text, not the start of a tag - and until
+	the scanner asked that question it looked for the end of a tag there
+	anyway. _tagEnd() tracks quotes so an attribute value holding a '>' cannot
+	end a tag early, so the apostrophe in "doesn't" opened one that nothing
+	closed: the scan ran to the end of the file, answered null, and stopped.
+	Every section after that '<' was gone, the page opened with nothing to
+	edit, and split() reported no error - as far as it could tell there were
+	no sections. One apostrophe after one '<', in a page somebody was writing
+	by hand, which is what the escape hatch invites	*/
+$proseLess = \Nino\Modules\Templates\SectionDocument::split( '<p>5 < 6 and it doesn\'t matter</p><section id="a" class="nino-section"><p>x</p></section>' );
+check( 'a bare < in prose does not swallow the sections after it', $proseLess['sectionCount'] === 1
+	&& $proseLess['error'] === null
+	&& array_column( $proseLess['segments'], 'type' ) === [ 'raw', 'section' ] );
+
+// The same trap with one more space in it, which is why the question is asked
+// strictly: a name straight after the '<', the way html reads one
+$proseSpaced = \Nino\Modules\Templates\SectionDocument::split( '<p>a < b, that doesn\'t hold</p><section id="a" class="nino-section">1</section><section id="b" class="nino-section">2</section>' );
+check( '...nor one with a letter after it, which reads like a tag and is not', $proseSpaced['sectionCount'] === 2
+	&& array_column( $proseSpaced['segments'], 'type' ) === [ 'raw', 'section', 'section' ] );
+
+// ...and the quote tracking it is there for still works: a '>' inside an
+// attribute value does not end the tag
+$quotedAngle = \Nino\Modules\Templates\SectionDocument::split( '<section id="a" data-note="a > b" class="nino-section"><p>x</p></section>' );
+check( 'a > inside an attribute value still does not end the tag early', $quotedAngle['sectionCount'] === 1 && $quotedAngle['error'] === null );
+$apostropheAttr = \Nino\Modules\Templates\SectionDocument::split( '<section id="a" data-note="it\'s fine" class="nino-section"><p>x</p></section>' );
+check( '...and an apostrophe inside a double-quoted one is just a character', $apostropheAttr['sectionCount'] === 1 && $apostropheAttr['error'] === null );
 check( 'rejects a self-closing section because HTML does not close it there', \Nino\Modules\Templates\SectionDocument::split( '<section />' )['error'] !== null );
 check( 'code inspection accepts exactly one complete section', \Nino\Modules\Templates\SectionDocument::inspectSection( "<section id=\"x\"></section>\n" )['valid'] === true );
 check( 'code inspection rejects source around the section', \Nino\Modules\Templates\SectionDocument::inspectSection( "<div>x</div><section></section>" )['valid'] === false );

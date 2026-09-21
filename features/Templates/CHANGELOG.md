@@ -7,6 +7,16 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **One apostrophe after one `<` in prose made a page open with nothing to
+  edit.** The scanner looked for the end of a tag at every `<` in the file,
+  including one somebody wrote in text, and the end of a tag is found by
+  tracking quotes - so the apostrophe in "doesn't" opened one that nothing
+  ever closed. The scan ran to the end of the file and stopped there: every
+  section after that `<` was gone, and `split()` reported no error, because as
+  far as it could tell the page had no sections in it. Whether a `<` starts a
+  tag at all is asked first now, strictly - a name straight after it, the way
+  html reads one - so `5 < 6 and it doesn't matter` is the text it is.
+
 - **Editing a section and pressing Update could overwrite every one of its
   texts with the preset's placeholder.** The dialog gets its values from
   `content/fields`, which it starts when it opens and does not wait for, and

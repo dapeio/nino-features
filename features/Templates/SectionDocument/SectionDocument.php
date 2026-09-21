@@ -378,6 +378,30 @@ namespace Nino\Modules\Templates {
 					return [ 'start' => $start, 'end' => $end, 'name' => '', 'closing' => false, 'selfClosing' => false, 'comment' => true ];
 				}
 
+				/*	Whether this '<' starts a tag at all, asked before the end of
+					one is looked for. HTML's own rule, and strictly: a name, or a
+					'/' and a name, immediately after it. Everything else is text -
+					which is what a browser does with it too.
+
+					The order is the whole fix. _tagEnd() below tracks quotes so an
+					attribute value holding a '>' does not end the tag early, and it
+					used to run for every '<' in the file - including one somebody
+					wrote in prose. So '5 < 6 and it doesn't matter' opened a quote
+					at the apostrophe that nothing ever closed, _tagEnd() ran to the
+					end of the file and answered null, and the scan stopped there:
+					every section after that '<' was gone, the page opened with
+					nothing to edit, and split() reported no error because as far as
+					it could tell there were no sections. One apostrophe after one
+					'<'.
+
+					The whitespace the name pattern below allows is deliberately not
+					allowed here: 'a < b, that doesn't hold' is the same trap with
+					one more space in it	*/
+				if( preg_match( '/^<\/?[a-zA-Z]/', substr( $source, $start, 3 ) ) !== 1 ) {
+					$offset = $start + 1;
+					continue;
+				}
+
 				$end = self::_tagEnd( $source, $start );
 				if( $end === null )
 					return null;
