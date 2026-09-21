@@ -5,6 +5,25 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+### Changed
+
+- **Five checks that copied shipped content read its source instead, and one
+  that counted source lines is gone.** `templates-smoke.php` held the list of
+  presets, the three title styles, the three overlay choices, the five pricing
+  Layouts and two presets' recommended scrim as literal lists, so every
+  addition to the catalogue was a second edit in the suite and a red run in
+  between. They read `Library::LIBRARY_ITEM`, the component catalogue, the
+  frame choices and the pricing manifest now, and hold what the lists were
+  standing in for: every listed preset is offered in the list's order and
+  nothing else is, every style is a modifier named after it and `auto` is the
+  class alone, `none` paints no scrim and every other choice paints exactly
+  one, and every pricing Layout composes to markup of its own. The check that
+  counted `Text::entries(` calls in `Content.php` is dropped - a count of
+  source lines is a check on the shape of the code, not on what it does, and
+  the reason for the one reading stands in the code beside it. The README no
+  longer counts the checks of the three suites; a number that has to be
+  corrected after every patch says nothing a reader needs.
+
 ### Fixed
 
 - **Four small things: two links that went nowhere, an id read from the wrong

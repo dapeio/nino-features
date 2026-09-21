@@ -139,17 +139,14 @@ $modules = \Nino\Modules\Templates\Composer::modules();
 
 /*	The order is the one Library::LIBRARY_ITEM lists, not the alphabetical one
 	a scandir() plus ksort() used to produce: the constant is what the panel
-	offers and in what order, so this check reads it the way an editor sees it.
-	A preset added to the constant without a directory, or a directory added
-	without the constant, shows up here as a shorter or a different list	*/
-check( 'ships exactly the maintained named-area presets, in the order the panel offers them', array_keys( $presets ) === [
-	'hero-fullscreen-image', 'hero-cta',
-	'articles-grid', 'articles-filterable-grid',
-	'image-banner', 'image-content-split', 'image-list-split',
-	'items-timeline', 'items-list', 'items-table', 'items-accordion', 'items-pricing', 'items-logos',
-	'form-newsletter', 'form-contact',
-	'static-content', 'template-include',
-] );
+	offers and in what order. It is read here rather than copied, so a preset
+	added to it needs no line in this file. What is held is that presets()
+	offers every name the list has, in that order, and nothing the list does
+	not - a listed preset that is skipped on the way (no directory, an older
+	manifest version, a normalize that throws) shows up as a shorter list, and
+	the checks below say which	*/
+$libraryItem = (array) ( new \ReflectionClassConstant( \Nino\Modules\Templates\Library::class, 'LIBRARY_ITEM' ) )->getValue();
+check( 'offers every preset the maintained list names, in its order, and nothing it does not', $libraryItem !== [] && array_keys( $presets ) === $libraryItem );
 
 /*	...and the list and the directory agree. The constant decides what the
 	panel offers, so a preset added to library/ without a line in it is one
@@ -657,11 +654,39 @@ check( 'a component step is a modifier of whichever class the preset gave it', s
 		\Nino\Modules\Templates\AreaComposer::defaults( $presets['static-content'], 'home', 'loud-copy' ),
 		[ 'areas' => [ 'heading' => [ 'components' => [ [ 'id' => 'title', 'type' => 'title', 'style' => 'loud', 'bindings' => [ 'text' => 'title' ], 'bindingSources' => [ 'text' => 'new' ] ] ] ] ] ]
 	) )['source'], '<h2 class="nino-section-title nino-section-title--loud"' )
-	&& \Nino\Modules\Templates\AreaComposer::catalog()['description']['styles'] === [ 'auto', 'quiet', 'loud' ]
 	&& str_contains( json_encode( $presets ), 'nino-font-big' ) === false );
-check( 'the scrim is one choice per image layer rather than three levels of its own', \Nino\Modules\Templates\AreaComposer::choices()['overlay'] === [ 'auto', 'none', 'dim' ] );
-check( 'the shipped image presets use that current overlay vocabulary directly', ( include FEATURE. '/library/hero-fullscreen-image/manifest.php' )['recommend']['frame']['overlay'] === 'dim'
-	&& ( include FEATURE. '/library/image-banner/manifest.php' )['recommend']['frame']['overlay'] === 'dim' );
+
+/*	The vocabulary is read from the catalogue rather than copied here: what is
+	held is that every style it offers a title is such a modifier, named after
+	the style, and that 'auto' is the preset's class alone - so a style added
+	to the catalogue needs no line in this file, and one that renders as
+	nothing does	*/
+$titleStyles = \Nino\Modules\Templates\AreaComposer::catalog()['title']['styles'];
+$titleWith = fn( string $style ): string => \Nino\Modules\Templates\Composer::compose( array_merge(
+	\Nino\Modules\Templates\AreaComposer::defaults( $presets['static-content'], 'home', 'styled-copy' ),
+	[ 'areas' => [ 'heading' => [ 'components' => [ [ 'id' => 'title', 'type' => 'title', 'style' => $style, 'bindings' => [ 'text' => 'title' ], 'bindingSources' => [ 'text' => 'new' ] ] ] ] ] ]
+) )['source'];
+check( 'every style the catalogue offers is such a modifier, and auto is the class alone', in_array( 'auto', $titleStyles, true ) === true
+	&& str_contains( $titleWith( 'auto' ), '<h2 class="nino-section-title"' ) === true
+	&& array_filter( array_diff( $titleStyles, [ 'auto' ] ), fn( string $style ): bool => str_contains( $titleWith( $style ), '<h2 class="nino-section-title nino-section-title--'. $style. '"' ) === false ) === [] );
+
+/*	The same for the scrim: choices() is read, not copied. A scrim is one
+	choice per image layer rather than three levels of its own, and that is
+	what the composed section says - 'none' paints no scrim, every other
+	choice paints exactly one, named after it, and 'auto' resolves to one of
+	them or to none. A preset that recommends a value outside the vocabulary
+	does not normalize at all, which "every shipped manifest normalizes" above
+	already reports	*/
+$overlayChoices = \Nino\Modules\Templates\AreaComposer::choices()['overlay'];
+$scrimsOf = function( string $overlay ): array {
+	$section = strtok( \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'hero-fullscreen-image', 'pageId' => 'home', 'id' => 'scrim-'. $overlay, 'frame' => [ 'overlay' => $overlay ] ] )['source'], "\n" );
+	preg_match_all( '/\b(?:nino-cover|nino-img-background|nino-parallex)--([a-z0-9-]+)/', $section, $matches );
+	return $matches[1];
+};
+check( 'the scrim is one choice per image layer rather than three levels of its own', in_array( 'none', $overlayChoices, true ) === true
+	&& $scrimsOf( 'none' ) === []
+	&& count( $scrimsOf( 'auto' ) ) <= 1
+	&& array_filter( array_diff( $overlayChoices, [ 'auto', 'none' ] ), fn( string $overlay ): bool => $scrimsOf( $overlay ) !== [ $overlay ] ) === [] );
 check( 'overlay values outside the current vocabulary are rejected', throwsInvalidArgument( fn() => \Nino\Modules\Templates\Composer::compose( [
 	'preset' => 'hero-fullscreen-image', 'pageId' => 'home', 'id' => 'invalid-overlay', 'frame' => [ 'overlay' => 'strong' ],
 ] ) ) );
@@ -703,11 +728,16 @@ check( 'the shipped forms keep their CSRF token, honeypot and per-section field 
 	&& str_contains( $contact['source'], 'for="reach-us-email"' )
 	&& str_contains( $contact['source'], 'style="' ) === false );
 
+/*	Read from the manifest rather than listed: every Layout pricing offers is
+	a composition of its own - a pricing row each, and no two of them the same
+	markup - so a Layout added to the manifest needs no line here, and one
+	that points at another's template does. Compared without the metadata
+	comment, which names the layout and would tell any two apart	*/
 $pricingLayouts = array_keys( $presets['items-pricing']['layouts'] );
-check( 'pricing offers the three- and four-column Layouts as real compositions', $pricingLayouts === [ 'equal', 'feature-middle', 'four', 'four-feature-first', 'four-feature-last' ]
-	&& str_contains( $everyLayout['items-pricing/four'], 'nino-pricing-row nino-pricing-row--four"' )
-	&& str_contains( $everyLayout['items-pricing/four-feature-first'], 'nino-pricing-row--four-first' )
-	&& str_contains( $everyLayout['items-pricing/four-feature-last'], 'nino-pricing-row--four-last' ) );
+$pricingSections = array_map( fn( string $layout ): string => (string) preg_replace( '/<!-- nino:section .*? -->/s', '', $everyLayout['items-pricing/'. $layout] ?? '' ), $pricingLayouts );
+check( 'every pricing Layout is a real composition of its own, and no two of them are the same', count( $pricingLayouts ) >= 2
+	&& array_filter( $pricingSections, fn( string $section ): bool => str_contains( $section, 'nino-pricing-row' ) === false ) === []
+	&& count( array_unique( $pricingSections ) ) === count( $pricingSections ) );
 
 $pricing = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'items-pricing', 'pageId' => 'home', 'id' => 'plans', 'layout' => 'feature-middle' ] );
 check( 'pricing emphasis is a Layout, not a second collection or a hidden item class', str_contains( $pricing['source'], 'nino-pricing-row nino-pricing-row--feature-middle' )
@@ -1119,16 +1149,6 @@ check( 'reads existing, missing and technical native textfill values together', 
 	&& $fields['fields'][0]['value'] === 'Old title'
 	&& $fields['fields'][1]['exists'] === false
 	&& $fields['fields'][2]['value'] === '/contact' );
-
-/*	...out of one reading of the text catalogue rather than one per field.
-	\Nino\Text::entry() builds the whole of it - every key of
-	/text/global.php and of every locale file, each one measured - and then
-	walks it for the one asked for, so a page of forty fields rebuilt it
-	forty times. Against a catalogue of a thousand keys: 79.56 ms, against
-	2.07 for one reading and a lookup	*/
-$contentSource = (string) file_get_contents( __DIR__. '/../Content/Content.php' );
-check( 'the content endpoints read the text catalogue once, not once per key', substr_count( $contentSource, '\\Nino\\Text::entries(' ) === 3
-	&& substr_count( $contentSource, '\\Nino\\Text::entry( $appData' ) === 0 );
 
 post( [ 'items' => [
 	[ 'key' => '/page-home/hero/title', 'value' => 'New title' ],
