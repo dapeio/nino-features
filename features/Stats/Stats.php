@@ -369,7 +369,13 @@ namespace Nino\Modules {
 			if( $retentionMonths < 1 )
 				$retentionMonths = 1;
 
-			$cutoff = ( new \DateTime( 'first day of -'. $retentionMonths. ' months' ) )->setTime( 0, 0 );
+			/*	This month counts as one of the months that are kept, so the
+				oldest one to survive is the month $retentionMonths - 1 back and
+				the cutoff is its first day. Taken from $retentionMonths itself,
+				the cutoff left that month on disk as well and the setting kept
+				one more file than it says it keeps - "Keep for 13 months" kept
+				fourteen	*/
+			$cutoff = ( new \DateTime( 'first day of -'. ( $retentionMonths - 1 ). ' months' ) )->setTime( 0, 0 );
 
 			\Nino\RotatingLog::prune( \Nino\Filesystem::path( $appData, self::STORAGE_DIR ), '', 'Y-m', '.php', $cutoff );
 		}

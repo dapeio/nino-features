@@ -117,10 +117,12 @@ seen; only a **new** uri past the budget is folded.
 
 ### Retention
 
-**Keep for** (`retentionMonths`, default 13, 1 to 60) months. Checked once,
-on the first counted view of a new calendar day - not on every view - via
-`\Nino\RotatingLog::prune()` over `/data/stats/`, deleting any `YYYY-MM.php`
-whose month is entirely before the cutoff. A file this sweep does not
+**Keep for** (`retentionMonths`, default 13, 1 to 60) months - that many month
+files, the current one among them: at 13, this month and the twelve before it.
+Checked once, on the first counted view of a new calendar day - not on every
+view - via `\Nino\RotatingLog::prune()` over `/data/stats/`, deleting any
+`YYYY-MM.php` whose month is entirely before the cutoff, which is the first day
+of the oldest month that is kept. A file this sweep does not
 recognize as one of its own (wrong name shape) is left alone, the same rule
 every `RotatingLog::prune()` caller gets.
 
@@ -210,7 +212,8 @@ version, deliberately left out of this one for the sake of an exact count.
 activation through `\Nino\Features`, what is and is not counted (method,
 status, the tool/dot/exclude boundaries, a signed-in visitor, `countSignedIn`,
 a query string dropped, a referrer's own host dropped), the storage shape,
-the `maxUris` fold, retention on the first count of a new day, a cache hit
+the `maxUris` fold, retention on the first count of a new day and how many
+month files it leaves, a cache hit
 still counting (driven through the real `/nino/http/response` callback chain
 so the priority-8-before-9 ordering is genuine, not asserted by construction -
 the hit itself runs in a subprocess, since `Modules\Cache` answers one by

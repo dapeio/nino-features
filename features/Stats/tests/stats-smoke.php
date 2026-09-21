@@ -429,6 +429,45 @@ check( 'an account without the permission is rejected from stats/month', $status
 echo "\n";
 
 
+// --- How many months "keep for" keeps ----------------------------------------
+
+echo "Retention at the boundary - 13 months is thirteen files\n";
+
+/*	"How many monthly files to keep before the oldest is deleted" is what the
+	setting says (feature.php) and what the README's table says. The sweep kept
+	one more than that: the cutoff was the first of the month $retentionMonths
+	back, which leaves that month itself on disk beside the twelve after it and
+	this one. Counted rather than sampled, because the difference between
+	thirteen and fourteen only shows at the boundary	*/
+for( $back = 1; $back <= 20; $back++ )
+	\Nino\Filesystem::putFileContent( $appData, '/data/stats/'. date( 'Y-m', strtotime( 'first day of -'. $back. ' months' ) ). '.php', [ 'days' => [] ] );
+
+/*	The sweep runs on the first count of a new day, and this day has been
+	counted - so the day goes, the next count is a first one again, and what
+	this month's file held is put back afterwards for the checks below	*/
+$thisMonth	= \Nino\Filesystem::getFileContent( $appData, '/data/stats/'. $month. '.php', [] );
+$reopened		= $thisMonth;
+unset( $reopened['days'][$today] );
+\Nino\Filesystem::putFileContent( $appData, '/data/stats/'. $month. '.php', $reopened );
+
+// ...and nobody is signed in for it, because a signed-in visitor is not
+// counted while countSignedIn is off - and a view that is not counted never
+// reaches the sweep
+unset( $appData['./nino/auth/current'] );
+countRequest( $appData, fakeRequest( $appData, '/hello' ) );
+\Nino\Auth::loginUser( $appData, 'admin@example.com', 'correct horse battery staple' );
+
+$kept = \Nino\Modules\Stats::months( $appData );
+
+check( 'keeping 13 months leaves thirteen month files, not fourteen', count( $kept ) === 13 );
+check( '...which are this month and the twelve before it',
+	( $kept[0] ?? '' ) === $month && ( $kept[12] ?? '' ) === date( 'Y-m', strtotime( 'first day of -12 months' ) ) );
+
+\Nino\Filesystem::putFileContent( $appData, '/data/stats/'. $month. '.php', $thisMonth );
+
+echo "\n";
+
+
 // --- Deactivation --------------------------------------------------------------
 
 echo "Deactivation\n";

@@ -12,6 +12,18 @@ A release is the tag `stats-<version>` of dapeio/nino-features.
   feature to an installation that could not then install it. `^1.3` names
   only a kernel that can read the manifest.
 
+### Fixed
+
+- **"Keep for 13 months" kept fourteen month files.** The retention sweep took
+  its cutoff from the first day of the month `retentionMonths` back, which
+  leaves that whole month on disk as well as the twelve after it and the
+  current one. The setting says "how many monthly files to keep", so the
+  cutoff is the first day of the month `retentionMonths - 1` back now: at 13
+  it keeps this month and the twelve before it, and the oldest file goes one
+  month earlier than it used to. A site that has been counting for longer than
+  the retention loses one extra month file the first time a new day is counted
+  after the update.
+
 ## 1.0.0 — 2026-09-08
 
 - First release: page-view counting with no personal data whatsoever - no
