@@ -14,6 +14,17 @@ A release is the tag `newsletter-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **The README named the wrong unit for the confirmation mail's reply
+  address.** It said `[[/form/email/owner]]` is "the fill the Form module's
+  unit writes", which was true before Nino 1.3.0 and is why a project without
+  the contact form had none. The base unit ships it since, as
+  `[[/company/email]]`, so every install has one; and where a project has
+  neither, `Mail::send()` drops the header and records why rather than sending
+  a Reply-To naming a fill. The README says both now, and the suite holds the
+  feature to them - the chained fill really resolving to an address, and a
+  mail that still goes out with no Reply-To where nothing installed one. No
+  code changed.
+
 - **The subscriber list grew without an end, from requests anybody can
   send.** The signup endpoint is public and unauthenticated, and
   `\Nino\Filesystem::mutate()` rewrites the whole file on every post - but an

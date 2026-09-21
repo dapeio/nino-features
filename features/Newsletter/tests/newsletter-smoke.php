@@ -376,4 +376,62 @@ check( 'the stored list is a list again, with no gaps left by what was removed',
 echo "\n";
 
 
+// --- The confirmation mail's Reply-To ----------------------------------------
+
+echo "Modules\\Newsletter::_sendConfirmMail - who a confirmation can be replied to\n";
+
+/*	The reply address is '[[/form/email/owner]]', which the base install unit
+	ships as '[[/company/email]]' - the mailbox the project already named. It
+	is the base unit's since Nino 1.3.0, where it used to be the Form module's
+	and a project without the contact form therefore had none; the chained
+	value is resolved here rather than assumed, because a fill that resolves to
+	another fill is where "it is installed" stops meaning "it is an address".
+
+	A transport takes the mail so nothing is actually sent - the same
+	\Nino\Mail::TRANSPORT callback the Mailer feature registers	*/
+$mails = [];
+\Nino\Callbacks::registerCallback( $appData, \Nino\Mail::TRANSPORT, static function( array &$appData, array &$mail ) use ( &$mails ): void {
+	$mails[] = $mail;
+	$mail['sent'] = true;
+} );
+
+/*	\Nino\Mail::send() caps a client ip at five mails an hour, and the flood
+	above spent that budget long ago - a fresh window, or nothing below ever
+	reaches a transport at all	*/
+$freshMailWindow = static function( array &$appData ): void {
+	$state = \Nino\Filesystem::getFileContent( $appData, '/data/ratelimit.php', [] );
+	unset( $state['127.0.0.1'] );
+	\Nino\Filesystem::putFileContent( $appData, '/data/ratelimit.php', $state );
+	unset( $appData['./nino/mail/ratelimited'] );
+};
+
+\Nino\Html::addFills( $appData, [ '[[/company/email]]' => 'hallo@example.com', '[[/form/email/owner]]' => '[[/company/email]]' ], '*' );
+$writeList( $appData, [] );
+$freshMailWindow( $appData );
+submitNewsletter( $appData, [ 'email' => 'reply-to@example.org' ] );
+
+check( 'the confirmation mail carries the mailbox the project named, through the chained fill',
+	( $mails[0]['replyTo'] ?? '' ) === 'hallo@example.com'
+	&& str_contains( (string) ( $mails[0]['headers'] ?? '' ), 'Reply-To: hallo@example.com' ) === true );
+
+/*	And where the fill is not installed at all, the kernel drops it rather than
+	sending a header naming a fill: the recipient and the body were never the
+	problem, and a confirmation nobody receives is worse than one nobody can
+	reply to. Checked here because it is what this feature relies on - it hands
+	Mail::send() whatever the fill rendered to	*/
+\Nino\Html::addFills( $appData, [ '[[/company/email]]' => '', '[[/form/email/owner]]' => '' ], '*' );
+$mails = [];
+$writeList( $appData, [] );
+$freshMailWindow( $appData );
+ninoWarnings();
+$unresolved = submitNewsletter( $appData, [ 'email' => 'no-owner@example.org' ] );
+
+check( 'with no owner mailbox installed, the mail still goes out and carries no Reply-To at all',
+	( $unresolved['/nino/http/response']['statusCode'] ?? 0 ) === 200 && count( $mails ) === 1
+	&& ( $mails[0]['replyTo'] ?? 'x' ) === ''
+	&& str_contains( (string) ( $mails[0]['headers'] ?? '' ), 'Reply-To:' ) === false );
+
+echo "\n";
+
+
 ninoDone( $appData );

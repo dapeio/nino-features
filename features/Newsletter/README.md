@@ -87,9 +87,15 @@ names - `/templates/mail-newsletter-confirm` by default - with the fill
 `[[/newsletter/confirm/url]]` set to the confirm link, in the visitor's
 current locale, and sends it through `\Nino\Mail::send()` to the address,
 with `[[/mail/newsletter/subject]]` as the subject and `[[/form/email/owner]]`
-as Reply-To. `[[/form/email/owner]]` is the fill the Form module's unit
-writes; the newsletter's own unit does not. `Mail::send()` rate-limits per
-client IP. A failed mail is not shown to the visitor: the pending entry is
+as Reply-To. `[[/form/email/owner]]` is the **base** install unit's fill,
+shipped as `[[/company/email]]` - the mailbox the project already named, so
+every install has one and the newsletter's own unit writes none. (Before Nino
+1.3.0 it belonged to the Form module's unit, which the wizard offers rather
+than always installing, so a project running this feature without the contact
+form had no such fill at all.) Where it does not resolve to an address,
+`Mail::send()` drops the header and records why rather than sending a Reply-To
+naming a fill - the mail still goes out, because the recipient and the body
+were never the problem. `Mail::send()` rate-limits per client IP. A failed mail is not shown to the visitor: the pending entry is
 recorded already, and submitting again resends it.
 
 ## `getUnsubscribeLink()`
@@ -208,7 +214,9 @@ as they are, which nothing reads until the feature returns.
 activation through `\Nino\Features` with the unit applied, the signup,
 confirm and unsubscribe flow with the honeypot, the CSRF guard and the
 removal record, the panel's two actions with their permission, the panel
-leaving the registry on deactivation, and the restore merge. It loads Nino's
+leaving the registry on deactivation, the restore merge, and what the
+confirmation mail can be replied to - the chained owner fill resolved, and no
+Reply-To at all where nothing installed one. It loads Nino's
 `tests/harness.php` from the checkout three levels up - where the feature
 sits in a project - or from the one `NINO_ROOT` names, and defines
 `NINO_FEATURES_DIR` as this feature's parent directory, so the kernel serves
