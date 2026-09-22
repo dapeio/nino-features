@@ -1,6 +1,6 @@
 [[area:intro]]
 <div class="nino-grid-100 nino-grid-m-66 nino-mx-auto">
-	<form class="nino-form nino-newsletter-form nino-form--inline" action="/.newsletter">
+	<form class="nino-form nino-newsletter-form nino-form--inline" action="[[/nino/dir]]/.newsletter">
 		[csrf]
 		<input type="text" name="location" value="" tabindex="-1" autocomplete="off" aria-hidden="true" class="nino-form-trap">
 		<label for="[[section:id]]-email" class="nino-sr-only">[[/newsletter/label/email]]</label>

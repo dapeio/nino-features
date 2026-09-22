@@ -52,6 +52,14 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **The newsletter preset posted from the domain root.** Both of its
+  Layouts wrote `action="/.newsletter"`, and the address in the attribute
+  wins over the one `Nino.ui.js` would have built with the project
+  directory in front - so a site at `/shop` posted its signups beside
+  itself and none arrived. The two Layouts write `[[/nino/dir]]/.newsletter`
+  now, the address the kernel's own templates write, and the suite holds
+  that no shipped Layout writes an `action` or `href` from the domain root.
+
 - **Four small things: two links that went nowhere, an id read from the wrong
   attribute, a rename that threw away what was typed, and a save that stripped
   the status of its styling.** The inspector's "Upload image" and "Create in

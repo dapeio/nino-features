@@ -183,8 +183,11 @@ echo "Rendering\n";
 	key on a project that did not happen to pick that module - the newsletter
 	specimen's labels are the case in point: Newsletter is a feature, not a
 	wizard unit, so the page carries those two labels itself.	*/
+// Two fills no unit writes: \Nino\request() registers /nino/dir and
+// /nino/public from config.php on every request, so a page may leave them
+// and every installation resolves them
 preg_match_all( '/\[\[([^\]]+)\]\]/', $source, $fillMatches );
-$fills = array_values( array_unique( array_filter( $fillMatches[1], static fn( string $fill ): bool => $fill !== '/nino/public' ) ) );
+$fills = array_values( array_unique( array_filter( $fillMatches[1], static fn( string $fill ): bool => in_array( $fill, [ '/nino/dir', '/nino/public' ], true ) === false ) ) );
 
 $library 	= NINO. '/_admin/install/library';
 // A module's unit sits beside the module itself - Setup::units() knows where

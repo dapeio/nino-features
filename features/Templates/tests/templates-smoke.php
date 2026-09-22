@@ -644,6 +644,18 @@ check( 'no Layout nests a second grid row inside the one the compiler writes', a
 // One namespace, everywhere: the Builder, the presets and the design system itself
 // all speak nino-*. The lookbehind keeps '-ui-'/'-js-' inside identifiers out of it,
 // the lookahead the CSS system font keywords that merely look like classes.
+/*	An address a Layout writes is the project's, and a site may sit in a
+	subdirectory: a form that posts to "/.newsletter" posts beside a site at
+	/shop, and the entry never arrives. [[/nino/dir]] is what the kernel's own
+	templates put in front of every address (page-contact.tpl's action,
+	theme.header.tpl's links) and what Nino.ui.js falls back to when a form
+	names no action - so a Layout names the fill or names nothing	*/
+$rootAbsolute = [];
+foreach( glob( FEATURE. '/library/*/*.tpl' ) ?: [] as $layoutFile )
+	if( preg_match( '/\b(?:action|href)="\//', (string) file_get_contents( $layoutFile ) ) === 1 )
+		$rootAbsolute[] = basename( dirname( $layoutFile ) ). '/'. basename( $layoutFile );
+check( 'no shipped Layout writes an address from the domain root - a site in a subdirectory posts and links within itself'. ( $rootAbsolute === [] ? '' : ' - '. implode( ', ', $rootAbsolute ) ), $rootAbsolute === [] );
+
 $legacyClass = '/(?<![-\\w])(?:ui|js|sc)-(?!monospace|sans-serif|serif|rounded)[a-z0-9]/';
 check( 'the Builder, the presets and the design system carry no legacy class prefix', array_filter( $everyLayout, fn( string $source ): bool => preg_match( $legacyClass, $source ) === 1 ) === []
 	&& preg_match( $legacyClass, (string) file_get_contents( NINO. '/_nino/Nino.css' ) ) === 0
