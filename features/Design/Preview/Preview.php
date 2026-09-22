@@ -45,7 +45,7 @@ namespace Nino\Modules\Design {
 			image - and shipping one would mean choosing a photograph, which is a
 			design decision this page must not make for whoever is looking at it.
 			A uri also needs no route: the panel renders inside /_admin, where
-			/images/… is not the site's, and the harness serves from its own root */
+			/images/… is not the site's */
 		public const string PLACEHOLDER = 'data:image/svg+xml;charset=utf-8,'
 			. '%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 640 420%22 role=%22img%22 aria-label=%22Placeholder%22%3E'
 			. '%3Crect width=%22640%22 height=%22420%22 fill=%22%23d8dee6%22/%3E'
@@ -130,10 +130,9 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	The page around the render. Both callers need the same shell and a
-		 *	different head: the harness links its stylesheets, because it serves
-		 *	them itself and a reload should pick them up; the panel carries them
-		 *	inline, because an iframe's srcdoc is the whole document it has
+		 *	The page around the render: the shell, with the head the caller
+		 *	hands in - the panel carries its stylesheets inline, because an
+		 *	iframe's srcdoc is the whole document it has
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$locale				The render's locale - its first two letters

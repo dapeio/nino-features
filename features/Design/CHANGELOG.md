@@ -5,6 +5,15 @@ A release is the tag `design-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+- **The design library is gone, and the words follow it.** The README's
+  authoring chapter, two `Preview` docblocks and one `Admin` docblock still
+  described `design-library/preview.php`
+  and the ten whole-page themes parked beside it - a directory this
+  repository dropped with the part picker's preview, on purpose: a project
+  composes its look from the part sets, and a presets field that combines
+  them may come later. The catalogue's own `AGENTS.md`, both READMEs and the
+  CI lint step stop naming it too.
+
 - **The words caught up with the library and the palette.** The README still
   opened with the note that every part set is the empty `v1` - the library has
   ten headers, eleven footers and five sets per part since the variants

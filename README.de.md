@@ -39,10 +39,6 @@ Dieses Repository ist der Ort, von dem aus Ninos Features veröffentlicht werden
 
 Die README eines Features, wenn es eine hat, beschreibt seine Routen, sein Panel, seine Install-Einheit, seine Daten und seine Tests; sein `CHANGELOG.md`, wenn es eines hat, die Änderungen zwischen den Versionen. `bin/catalogue.php` liest dieselben Manifeste und gibt diese Tabelle als JSON aus, `bin/build.php` baut die Archive und das signierte `catalogue.json`, das getnino.dev veröffentlicht – siehe [Entwickeln und testen](#entwickeln-und-testen) und [Veröffentlichen](#veröffentlichen).
 
-## Die Design-Bibliothek
-
-Neben `features/` liegt [`design-library/`](design-library/README.de.md) – **kein** Feature und nie veröffentlicht. Dort liegen die zehn Themes für ganze Seiten, die Ninos Setup-Assistent bis 1.1 angeboten hat, das archivierte Handbuch des Panels, das sie kompiliert hat, und `preview.php`, das Werkzeug, in dem die Part-Sets des Features **Design** entworfen werden – nur für die Entwicklung. Die sechs Header und sieben Footer, die dort geparkt waren, sind nach [`features/Design/library/`](features/Design/library) gezogen, als dieses Feature geschrieben wurde: Ein Projekt wählt daraus, also reisen sie mit dem Feature. `bin/build.php` und `bin/check.sh` lesen ausschließlich `features/`, in `design-library/` wird also nichts in ein Archiv gepackt, in `catalogue.json` gelistet oder als Test ausgeführt.
-
 ## Ein Feature installieren
 
 Ein Feature wird nicht installiert, sondern hingelegt und eingeschaltet:

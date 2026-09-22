@@ -324,10 +324,9 @@ namespace Nino\Modules\Design {
 		 *	preview that could only show a saved decision would make saving the
 		 *	way to ask a question. Nothing here writes anything.
 		 *
-		 *	Rendered against this project, not a built one - its menu, its logo,
-		 *	its socialmedia block, its fonts. The design-library harness builds a
-		 *	throwaway project instead, because a library checkout has none; both
-		 *	assemble the same specimen through the same Preview
+		 *	Rendered against this project - its menu, its logo, its socialmedia
+		 *	block, its fonts - and assembled through Preview, which is where the
+		 *	specimen and the frames around it live
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request

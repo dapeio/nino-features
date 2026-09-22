@@ -438,30 +438,20 @@ first one that is, and says which, rather than compiling a sheet with a hole
 in it. A set name out of a stored file is input, so it is held to
 `[A-Za-z0-9][A-Za-z0-9._-]*` before it is ever joined to a path.
 
-## Designing against it
+## Authoring sets
 
-`design-library/preview.php` in this repository is a harness for authoring
-sets - dev only, never deployed, and not part of the feature archive.
-
-```bash
-php -S 127.0.0.1:8080 design-library/preview.php
-```
-
-The page it shows is the panel's. `Preview` is where the specimen, the frames
-around it and the compile live, and both callers go through it, so a set looks
-the same in the harness as it will in a project. What the harness adds is the
-half the panel gets for free: a project to render against. It boots a real Nino
-against a throwaway one in the system temp directory, applies the base install
-unit and the always-on modules into it, and removes it when the request ends -
-a library checkout is not an installed site, and `_admin/install/` is gone from
-one by the time the panel runs.
-
-The array at the top of that file names one set per part; the bar along the
-bottom switches any of them in the browser and puts the selection in the url,
-so a view is a link. The throwaway project is rebuilt on every request, so
-editing a set is a reload away, and anything that did not resolve is named in
+A set is authored in the panel's own preview. `Preview` is where the
+specimen, the frames around it and the compile live, and the panel renders
+it against this project - its menu, its logo, its socialmedia block, its
+fonts - so a set looks the same while it is being designed as it will on the
+site. Edit a set under `library/sets/<part>/`, pick it in the panel, and the
+preview follows the picker; a knob or a step that did not resolve is named in
 the bar rather than passed over in silence.
 
+The whole-page themes Nino's setup wizard offered up to 1.1 are gone from this
+repository, on purpose: a project composes its look from the part sets rather
+than starting from a theme. A presets field in the panel, combining part
+presets with modifications, may come later.
 ## Tests
 
 `tests/design-smoke.php` covers the manifest and activation through
