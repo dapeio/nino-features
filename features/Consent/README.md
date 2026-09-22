@@ -11,10 +11,10 @@ site uses at all. The choice itself is a cookie the *browser* writes
 (`consent.js`); PHP only ever reads it.
 
 One directory, the shape the [feature recipe](https://github.com/dapeio/nino/blob/main/docs/recipes/feature.md)
-describes: `feature.php`, `Consent.php`, `assets/`, `install/`, `tests/`.
-There is no panel - the Features panel's own settings form is enough - and
-no `data` entry in the manifest, because nothing is kept under `data/`: the
-consent choice lives in the visitor's browser. The changes per version are
+describes: `feature.php`, `Consent.php`, `assets/`, `install/`, `templates/`,
+`tests/`. There is no panel - the Features panel's own settings form is
+enough - and the manifest's `data` entry is empty, because nothing is kept
+under `data/`: the consent choice lives in the visitor's browser. The changes per version are
 in [CHANGELOG.md](CHANGELOG.md).
 
 ## Put it on the site
@@ -65,8 +65,8 @@ in `init()` while the feature is active.
 </div>
 ```
 
-- `hidden` by default - `consent.js` unhides it once it finds no stored
-  choice on the page's `load`.
+- `hidden` by default - `consent.js` unhides it once the document is ready
+  and it finds no stored choice.
 - One `<label class="nino-consent-category">` per category the settings
   enabled; `necessary` always renders first, checked and disabled. A
   category the settings did not switch on is neither shown nor storable -
@@ -220,11 +220,11 @@ not that particular page happens to render `[consent]` itself - the
 `document.documentElement.dataset.consent`/`nino:consent` half of the
 contract holds regardless.
 
-The asset paths are `/features/Consent/assets/...`: a kernel from the
-catalogue release on resolves `/features/...` through `\Nino\Filesystem::path()`
-against the features directory, wherever `NINO_FEATURES_DIR` put it. An
-older kernel resolves it against the project root, which is the same place
-as long as `features/` is not relocated.
+The asset paths are `/features/Consent/assets/...`: `\Nino\Filesystem::path()`
+resolves `/features/...` against the features directory, wherever
+`NINO_FEATURES_DIR` put it. There is no older kernel to allow for - the
+manifest names `^1.3`, and the kernels that resolved the path against the
+project root cannot read this manifest at all.
 
 The banner's markup is the same for every visitor - no per-visitor state is
 rendered server-side, the choice itself is read and written by the browser

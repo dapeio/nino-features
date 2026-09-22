@@ -46,14 +46,15 @@ namespace Nino\Modules {
 	 */
 	class Consent {
 
-		// The fixed category list, in the order the banner shows them.
-		// "necessary" is always on and never a setting; the other three are
-		// switched on per site under /nino/features/consent/settings - see
-		// feature.php
 		// Where this feature's own templates are, as \Nino\Filesystem resolves
 		// them: /features is the installed features directory, wherever
 		// NINO_FEATURES_DIR put it
 		public const string TEMPLATES = '/features/Consent/templates';
+
+		// The fixed category list, in the order the banner shows them.
+		// "necessary" is always on and never a setting; the other three are
+		// switched on per site under /nino/features/consent/settings - see
+		// feature.php
 		private const array CATEGORIES = [ 'necessary', 'statistics', 'marketing', 'external' ];
 
 		// The categories a site can turn on or off - CATEGORIES without the
@@ -81,13 +82,11 @@ namespace Nino\Modules {
 			\Nino\Html::addShortcode( $appData, 'consent', [ self::class, 'doConsentShortcode' ] );
 			\Nino\Html::addShortcode( $appData, 'consent-settings', [ self::class, 'doConsentSettingsShortcode' ] );
 
-			// A source outside \Nino\Filesystem::PRIVATE_DIRS/PUBLIC_DIRS
-			// resolves against the project root (\Nino\Filesystem::path()'s
-			// fallback) - exactly how '/_nino/Nino.css' already does for the
-			// kernel's own bundle, so '/features/Consent/assets/...' reaches
-			// this feature's own copy as long as features/ sits where it
-			// does by default (NINO_FEATURES_DIR unmoved); see the README's
-			// "Page cache and asset bundling" note for the relocated case
+			// A source under \Nino\Filesystem::FEATURES_DIR is resolved
+			// against \Nino\Features::dir() rather than against the project
+			// root, so '/features/Consent/assets/...' reaches this feature's
+			// own copy wherever NINO_FEATURES_DIR put the directory; see the
+			// README's "Asset bundling and the page cache" note
 			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Consent/assets/consent.css' );
 			\Nino\Html::addAsset( $appData, '/.cache/script.js', '/features/Consent/assets/consent.js' );
 		}

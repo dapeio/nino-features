@@ -14,6 +14,19 @@ A release is the tag `consent-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The words described a feature that had moved on.** The README listed the
+  directory's contents without the `templates/` the banner's markup lives in
+  now, and said the manifest carries no `data` entry where it carries an empty
+  one; it had `consent.js` unhiding the banner on the page's `load`, where the
+  script runs on `DOMContentLoaded`; and it still explained what an older
+  kernel does with a `/features/...` path, which cannot happen since the
+  manifest names `^1.3`. In the class, the comment on the category list had
+  ended up above `TEMPLATES` when that constant was added, and `init()` still
+  described the asset source resolving against the project root instead of
+  against `\Nino\Features::dir()`. Class and script both named a README
+  section that does not exist under that name. Words only - the code is
+  unchanged.
+
 - **The banner's markup is a template now.** The banner, a category row, the
   open button and the policy link were strings `Consent.php` assembled; they
   are `templates/consent-banner.tpl`, `consent-category.tpl`,
