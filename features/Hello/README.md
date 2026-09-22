@@ -3,8 +3,8 @@
 A complete feature that does one small thing, written to be copied.
 
 Everything the contract offers appears here exactly once — a shortcode, a route,
-a panel, a setting, an install unit, text fills, an asset, stored data, an
-upgrade hook and a test. So the directory is also a checklist: start from it,
+a panel, a setting, an install unit, text fills, a template, an asset, stored
+data, an upgrade hook and a test. So the directory is also a checklist: start from it,
 delete what you do not need, and what is left is still a working feature.
 
 The companion is Nino's own [feature recipe](https://github.com/dapeio/nino/blob/main/docs/recipes/feature.md),
@@ -42,6 +42,7 @@ assets/hello.css               what [hello] needs on the site itself
 install/manifest.php           what activation puts in the project
 install/templates/…            the page it installs
 install/text/<locale>.php      the words the *site* says
+templates/hello.tpl            the markup [hello] fills
 text/<locale>.php              the words the *panel* says
 tests/hello-smoke.php          the feature's own test
 ```
@@ -108,8 +109,9 @@ and `config`, plus the text files beside it. Activating twice changes nothing.
 **Escape what came from outside; do not escape a fill.** `[[…]]` goes through the
 fill engine, which is what an editor's own text is written in. A shortcode
 argument comes straight out of a template and a panel's stored value straight out
-of a form — both are escaped, always. `Hello::doShortcode()` shows both in four
-lines.
+of a form — both are escaped, always. `Hello::doShortcode()` shows both sides of
+it: the two values it escapes before they go into `templates/hello.tpl`, and the
+`[[/hello/note]]` fill that template carries beside them, which nobody escapes.
 
 **The screen validates to be kind; the server validates to be right.** Do both.
 An error that arrives before the request is a better error, and the only check

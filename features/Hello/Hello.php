@@ -47,6 +47,11 @@ namespace Nino\Modules {
 	 */
 	class Hello {
 
+		// Where this feature's own templates are, as \Nino\Filesystem resolves
+		// them: /features is the installed features directory, wherever
+		// NINO_FEATURES_DIR put it
+		public const string TEMPLATES = '/features/Hello/templates';
+
 		/*	Where this feature's own state lives. One virtual path under the
 			private half, declared under 'data' in feature.php so a backup
 			carries it and a restore brings it back.
@@ -54,10 +59,6 @@ namespace Nino\Modules {
 			A feature that stores nothing needs none of this. A feature that
 			stores a lot should still keep it to one file or one directory:
 			what is not named in the manifest is not backed up	*/
-		// Where this feature's own templates are, as \Nino\Filesystem resolves
-		// them: /features is the installed features directory, wherever
-		// NINO_FEATURES_DIR put it
-		public const string TEMPLATES = '/features/Hello/templates';
 		public const string PATH = '/data/hello.php';
 
 		// What name the greeting falls back to before anybody has set one
@@ -124,9 +125,10 @@ namespace Nino\Modules {
 				and the same way the kernel bundles its own Nino.css. A bundle of
 				your own is a second request for a file every page needs anyway.
 
-				The path resolves against the project root, which is how
-				'/_nino/Nino.css' reaches the kernel's copy. A project that moved
-				its features with NINO_FEATURES_DIR has to say so itself	*/
+				A source under '/features' is resolved against
+				\Nino\Features::dir() rather than against the project root (see
+				\Nino\Filesystem::FEATURES_DIR), so it reaches this feature's own
+				copy wherever NINO_FEATURES_DIR put the directory	*/
 			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Hello/assets/hello.css' );
 		}
 

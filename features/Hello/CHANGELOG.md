@@ -14,6 +14,19 @@ A release is the tag `hello-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The example left its own template out of the checklist.** The README's
+  directory listing and the two sentences that enumerate what a feature can
+  carry - in the README and at the top of `feature.php` - still named the nine
+  parts of the 1.0.0 release, without the `templates/hello.tpl` the greeting is
+  filled from since; and the rule about escaping pointed at four lines of
+  `doShortcode()` that are not four lines any more. In the class, the comment
+  on `PATH` had ended up above `TEMPLATES` when that constant was added, and
+  `init()` still said the stylesheet's `/features/...` path resolves against
+  the project root, where the kernel this feature names resolves it against
+  `\Nino\Features::dir()` (`\Nino\Filesystem::FEATURES_DIR`). A feature
+  written to be copied is copied with its words, so the words are what
+  changed - the code is untouched.
+
 - **The greeting's markup is a template now.** `[hello]` filled a string; it
   fills `templates/hello.tpl` through a `template()` reader that goes through
   `\Nino\Filesystem` and says so in the log (`E_USER_WARNING`) when the file

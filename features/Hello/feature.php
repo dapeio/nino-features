@@ -4,8 +4,8 @@
 	This is a complete, working feature that does one small thing, written to
 	be copied. Every part of the contract appears exactly once, so the
 	directory is also a checklist: a shortcode, a route, a panel, a setting,
-	an install unit, text fills, an asset, stored data, an upgrade hook and a
-	test. Delete what you do not need - none of it is required, and a feature
+	an install unit, text fills, a template, an asset, stored data, an upgrade
+	hook and a test. Delete what you do not need - none of it is required, and a feature
 	that only registers a shortcode is a perfectly good feature.
 
 	The companion to this directory is the recipe in Nino's own docs,
