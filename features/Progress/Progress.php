@@ -56,11 +56,11 @@ namespace Nino\Modules {
 		 */
 		public static function init( array &$appData ): void {
 
-			/*	A source outside \Nino\Filesystem::PRIVATE_DIRS/PUBLIC_DIRS
-				resolves against the project root (\Nino\Filesystem::path()'s
-				fallback) - exactly how '/_nino/Nino.css' already does for the
-				kernel's own bundle; see the README's "Asset bundling" note for a
-				project that moved features/ with NINO_FEATURES_DIR	*/
+			/*	The virtual '/features/...' prefix resolves against
+				\Nino\Features::dir() (\Nino\Filesystem::FEATURES_DIR), so
+				'/features/Progress/assets/...' reaches this feature's own copy
+				wherever NINO_FEATURES_DIR put the features directory, and a project
+				that moved it has nothing to say in '/nino/html/assets'	*/
 			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Progress/assets/progress.css' );
 			\Nino\Html::addAsset( $appData, '/.cache/script.js', '/features/Progress/assets/progress.js' );
 		}

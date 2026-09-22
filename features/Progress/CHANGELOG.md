@@ -5,6 +5,16 @@ A release is the tag `progress-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+- **The "Asset bundling" note asked a project to do something it does not
+  have to.** It said `/features/Progress/assets/...` resolves against the
+  project root, and that a project which moved its features elsewhere with
+  `NINO_FEATURES_DIR` has to name the two sources under their real path in
+  `/nino/html/assets` itself. `\Nino\Filesystem` resolves the virtual
+  `/features` prefix against `\Nino\Features::dir()` - a branch of its own,
+  older than the `^1.3` this manifest names - so the sources are found after
+  a relocation like every other file a feature addresses that way. The
+  README and `Progress::init()`'s comment say that.
+
 - Needs Nino `^1.3`, where the constraint said `^1.1`. The sectioned `manual`
   map this manifest carries is only read by a kernel newer than the
   `v1.2.0-beta` tag - `Features::manifest()` refuses it on the tagged one -
