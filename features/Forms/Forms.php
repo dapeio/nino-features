@@ -35,10 +35,11 @@ namespace Nino\Modules {
 	 *										already uses, and the reason there is no callback name
 	 *										of its own for refusing a submission. A guard leaves a
 	 *										status behind and \Nino\Form::handle() returns without
-	 *										sending or writing anything. 418 for all of them: the
-	 *										shared .nino-form script shows one generic message for
-	 *										anything that is not 200 or 400, so a bot never learns
-	 *										which check it tripped.
+	 *										sending or writing anything. 418 for the stamp and for a
+	 *										blocked word: the shared .nino-form script shows one generic
+	 *										message for anything that is not 200 or 400, so a bot never
+	 *										learns which check it tripped. The rate limit answers 429
+	 *										instead - see the paragraph below.
 	 *
 	 *										The rate limit is the one guard in two halves. It is
 	 *										checked at priority 1 and counted at priority 8, after
@@ -53,12 +54,13 @@ namespace Nino\Modules {
 	 */
 	class Forms {
 
-		// The endpoint's route callback - the kernel module's own, which is
-		// what makes a guard registered here run ahead of the engine
 		// Where this feature's own templates are, as \Nino\Filesystem resolves
 		// them: /features is the installed features directory, wherever
 		// NINO_FEATURES_DIR put it
 		public const string TEMPLATES = '/features/Forms/templates';
+
+		// The endpoint's route callback - the kernel module's own, which is
+		// what makes a guard registered here run ahead of the engine
 		public const string ROUTE = '/nino/http/response/POST://.form';
 
 		// This feature's only file: one counter per hashed client ip, for the
@@ -339,8 +341,9 @@ namespace Nino\Modules {
 		 *	Whether any posted value carries a blocked word. Compared
 		 *	case-insensitively as a substring: a list is written by hand and
 		 *	an operator writing "casino" means to catch "Casino-Bonus" too.
-		 *	The four keys the endpoint reads off the post itself are left out
-		 *	- a csrf token is not prose
+		 *	The keys the endpoint reads off the post itself are left out -
+		 *	\Nino\Form::RESERVED, whatever that list holds today; a csrf
+		 *	token is not prose
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		$posted				What \Nino\Form::posted() read

@@ -3,7 +3,7 @@
 **Key:** `forms` · **Class:** `\Nino\Modules\Forms` · **Version:** 1.0.0 · **Nino:** `^1.3`
 
 A builder for Nino's own form endpoint. Nino has always had one form: a
-contact form, defined in the kernel, posted to `POST /.form`. Since 1.1 it can
+contact form, defined in the kernel, posted to `POST /.form`. Since 1.2 it can
 have any number, defined under `/nino/form/forms` in `config.php` - and this
 feature is what edits them, draws them and keeps the spam out.
 
@@ -25,9 +25,9 @@ workbench's own **Submissions** panel shows, filters, exports and deletes
 them - for every form, whether this feature is installed or not.
 
 One directory, the shape the [feature recipe](https://github.com/dapeio/nino/blob/main/docs/recipes/feature.md)
-describes: `feature.php`, `Forms.php`, `Admin/Admin.php`, `assets/`, `text/`,
-`tests/`. No `install/` unit: a form points at the mail templates the kernel's
-contact form already installed. The changes per version are in
+describes: `feature.php`, `Forms.php`, `Admin/Admin.php`, `assets/`,
+`templates/`, `text/`, `tests/`. No `install/` unit: a form points at the mail
+templates the kernel's contact form already installed. The changes per version are in
 [CHANGELOG.md](CHANGELOG.md).
 
 ## What a form is
@@ -138,8 +138,8 @@ this and is the hard stop against the endpoint being used as a relay.
 
 Both caps count the address the kernel resolved, which behind a reverse proxy
 is the proxy for every visitor alike unless it is named under
-`/nino/http/proxies` - there, without that key, one visitor's four
-submissions turn the site's form off for everybody. See the Config panel's
+`/nino/http/proxies` - there, without that key, the first visitor to spend
+either allowance turns the site's form off for everybody. See the Config panel's
 **Reverse proxies in front of this site**.
 
 ## Data

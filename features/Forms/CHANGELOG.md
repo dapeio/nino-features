@@ -13,6 +13,22 @@ versions [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   feature to an installation that could not then install it. `^1.3` names
   only a kernel that can read the manifest.
 
+### Changed
+
+- **Four sentences named something the code does not.** The README dated the
+  form engine to Nino 1.1, where `/nino/form/forms` arrived with 1.2.0-beta,
+  and listed the directory's contents without the `templates/` the form's
+  markup lives in now. In the class, the docblock still said the guards answer
+  418 "for all of them" although the rate limit has answered 429 since the
+  feature stopped replacing the endpoint, `_blocked()` counted four reserved
+  field names where `\Nino\Form::RESERVED` holds seven, and the comment on
+  `ROUTE` had ended up above `TEMPLATES` when that constant was added. The
+  reverse-proxy note also had "one visitor's four submissions" turning the
+  form off for everybody, a number neither cap carries - this feature's
+  allowance is ten a hour by default and the kernel's mail cap is five - so it
+  names the allowance rather than a number now. Words only - the code is
+  unchanged.
+
 ### Fixed
 
 - **An invalid byte in a value rendered as nothing.** `htmlspecialchars()`
