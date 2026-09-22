@@ -1,8 +1,10 @@
 /**
  *	Nino										A compact filesystembased php framework
- *	Modules\Design					The feature's /_admin panel, "Design": one variant per
- *													part of a page, the finetune knob, the root size, and
- *													the compile that turns all of it into
+ *	Modules\Design					The feature's /_admin panel, "Design": two tabs over one
+ *													setup - Structure, with one variant per part of a page,
+ *													the finetune knob and the root size, and Colours, with
+ *													the two colours and the five knobs the palette is
+ *													solved from - and the compile that turns all of it into
  *													assets/theme.css (see Modules\Design\Admin beside
  *													this file). Ships with the feature and is loaded
  *													exactly while it is active.
@@ -102,7 +104,7 @@
 		 *
 		 *	@param		{Object}	data
 		 *
-		 *	@return		{Object}					{ parts, step, size }
+		 *	@return		{Object}					{ parts, knobs, size, colours }
 		 */
 		_selection : function( data ) {
 			const parts = {};

@@ -61,7 +61,7 @@ namespace Nino\Modules\Design {
 			has a select of its own under Global).
 
 			Fixed rather than per set, and that is the whole point: a knob named
-			"Abstände" means the same thing on a section as on a form, so moving
+			"Spacing" means the same thing on a section as on a form, so moving
 			it globally means something. A set that invented its own vocabulary
 			would give every part a private language and the global position
 			nothing to be the position of.
@@ -259,7 +259,7 @@ namespace Nino\Modules\Design {
 
 			/*	The global position of every knob. One value for the whole
 				design was what the first cut had, and it could only ever say "a
-				bit more of everything" - Abstände and Ecken are not the same
+				bit more of everything" - Spacing and Corners are not the same
 				decision. A setup written before this reaches here as `step`,
 				and seeds every knob with it rather than being thrown away */
 			$seed = in_array( $raw['step'] ?? null, self::STEPS, true ) === true ? (string) $raw['step'] : 'default';

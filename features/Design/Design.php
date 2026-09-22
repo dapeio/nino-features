@@ -23,12 +23,13 @@ namespace Nino\Modules {
 	 *										Forms, Lists & tables, Blocks - plus a header and a footer,
 	 *										which are the two parts that bring markup with them.
 	 *
-	 *										Four pieces, and they are deliberately separable:
+	 *										Five pieces, and they are deliberately separable:
 	 *
 	 *										  Setup			what was chosen (/data/design.php)
+	 *										  Colours		the palette half, solved from two colours
 	 *										  Compiler	what that produces (assets/theme.css)
 	 *										  Preview		what that would look like, written nowhere
-	 *										  Admin			the screen that edits the first
+	 *										  Admin			the screen that edits the first two
 	 *
 	 *										Nothing here runs on a public request. The compiled
 	 *										stylesheet is an ordinary file the bundle picks up, so a

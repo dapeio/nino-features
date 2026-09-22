@@ -15,9 +15,10 @@ namespace Nino\Modules\Design {
 	 *	Nino							A compact filesystembased php framework
 	 *	Compiler					Turns a setup into the one stylesheet a project's look is,
 	 *										in the order the cascade needs it: the token and role
-	 *										layer the feature ships, the chosen frames, the chosen
-	 *										part sets, and last the block that says which step of
-	 *										every triple is live.
+	 *										layer the feature ships, the solved palette over it, the
+	 *										root size, the chosen frames, the chosen part sets, and
+	 *										last the block that says which step of every triple is
+	 *										live.
 	 *
 	 *										A set declares what its three steps *are* rather than a
 	 *										value a knob then modifies - +1rem behaves differently on

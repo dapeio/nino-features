@@ -92,10 +92,17 @@ foreach( \Nino\Modules\Design\Setup::PARTS as $part => $kind ) {
 			continue;
 		}
 
-		$css = (string) file_get_contents( $style );
+		/*	Read the way the panel reads it, or the check is looser than the
+			thing it is checking: Setup::knobs() looks for the token immediately
+			followed by ':' (str_contains, KNOB_TOKEN. ':'), in a stylesheet with
+			its comments taken out. A space before the colon is valid css and
+			invisible to that, so '--section-measure--less : 42rem' declared a
+			step the panel never finds - and a knob whose three steps are all
+			written that way is one nobody can turn, with nothing saying so	*/
+		$css = \Nino\Modules\Design\Setup::uncomment( (string) file_get_contents( $style ) );
 
 		// What the file publishes: one triple per knob, named after the part
-		preg_match_all( '/--'. preg_quote( $part, '/' ). '-([a-z]+)--(less|default|more)\s*:/', $css, $found );
+		preg_match_all( '/--'. preg_quote( $part, '/' ). '-([a-z]+)--(less|default|more):/', $css, $found );
 
 		$steps = [];
 		foreach( $found[1] as $index => $knob )
@@ -120,8 +127,10 @@ foreach( \Nino\Modules\Design\Setup::PARTS as $part => $kind ) {
 				$knobProblems[] = $set. ': reads --'. $part. '-'. $token. ' without declaring it';
 	}
 
-	check( '...each resolving to the files its kind is made of', $fileProblems === [] );
-	check( '...and every knob it publishes a real triple of a real knob', $knobProblems === [] );
+	// Both lists carry the file and what is wrong with it; a failure that does
+	// not say which of five variants it means is a search rather than a report
+	check( '...each resolving to the files its kind is made of'. ( $fileProblems === [] ? '' : ' - '. implode( ', ', $fileProblems ) ), $fileProblems === [] );
+	check( '...and every knob it publishes a real triple of a real knob'. ( $knobProblems === [] ? '' : ' - '. implode( ' | ', $knobProblems ) ), $knobProblems === [] );
 }
 
 /*	And the one thing reading the files cannot say: that each of them survives

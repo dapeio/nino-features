@@ -13,9 +13,11 @@ namespace Nino\Modules\Design {
 
 	/**
 	 *	Nino							A compact filesystembased php framework
-	 *	Design\Admin			The "Design" panel: one screen that chooses a variant per
-	 *										part of a page, sets the finetune knob and the root size,
-	 *										and compiles the result into assets/theme.css.
+	 *	Design\Admin			The "Design" panel: two tabs over one setup - Structure,
+	 *										which chooses a variant per part of a page and sets the
+	 *										finetune knob and the root size, and Colours, which sets
+	 *										the two colours and the five knobs the palette is solved
+	 *										from - compiled together into assets/theme.css.
 	 *
 	 *										Choosing and compiling are two actions on purpose. A
 	 *										setup is a decision and lives in data/design.php whether

@@ -14,10 +14,12 @@ not offer themes. It offers a **set per part**, so that loud section titles
 from one design and round buttons from another is a thing you can have rather
 than a thing you argue yourself out of.
 
-> **0.1.0 is the feature without its part styles.** The setup store, the
-> compiler, the library, the panel and the tests are here. What is thin is the
-> catalogue: six headers and seven footers are real, but every part set is the
-> empty `v1` that declares nothing. Writing those is the work this exists for.
+> **0.1.0 is the first cut.** The setup store, the compiler, the library, the
+> panel and the tests are here, and the library is a choice rather than a
+> placeholder: ten headers, eleven footers and five sets for each of the seven
+> set parts. `v1` of a set part is the starting point rather than a design -
+> the framework's own values, every one of them as a triple (see
+> [The library](#the-library)) - and the four beside it are designs.
 
 ## The nine parts
 
@@ -177,11 +179,12 @@ set in progress looks like. The tags live in the file rather than in a manifest
 beside it: a set is one file, and a second file per set is a second file to
 keep in sync.
 
-Every part ships `v1`, which is deliberately empty: it declares nothing and
-lets the framework's own rules stand, so a fresh compile renders Nino exactly
-as it is. What it does carry is every rule `Nino.css` sets for that part,
-commented out with today's values - the handles that part has, in one place.
-A new set starts as a copy of `v1`.
+Every part ships `v1`, which is the starting point rather than a design: what
+it declares is the framework's own values, and every one of them as a triple,
+so a fresh compile renders Nino exactly as it is and the knob has something to
+reach before a set has been written. Beside that it carries every other rule
+`Nino.css` sets for that part, commented out with today's values - the handles
+that part has, in one place. A new set starts as a copy of `v1`.
 
 Four more per part stand beside it, and they are meant to be edited rather than
 only chosen - each is one decision carried through, so changing that decision is
@@ -419,8 +422,9 @@ decision belongs to whoever is looking at the screen.
 
 `data/design.php`, declared under `data` in `feature.php`, so
 `\Nino\Backup::manifest()` carries it. It holds what was chosen and nothing
-derived from it: the set and step per part, the global step, the root size, and
-the fingerprint of what was last compiled.
+derived from it: the set per part and the knobs that part was moved at, the
+global position of every knob, the root size, the palette's two colours and
+five knobs, and the fingerprint of what was last compiled.
 
 It is the only thing here that cannot be worked out again from what is on disk,
 and it is deliberately outlived by the stylesheet. Removing the feature leaves

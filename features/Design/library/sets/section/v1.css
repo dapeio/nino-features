@@ -24,14 +24,17 @@
  *	    (2rem), because the root size scales the whole page anyway.
  *
  *	A value the finetune knob should reach declares its three steps instead of
- *	one value, and the preview picks whichever the part is set to:
+ *	one value, named after this part and one of the four knobs the panel offers
+ *	(Setup::KNOBS: volume, spacing, shaping, measure - a name outside that list
+ *	is a handle nothing can turn), and the preview picks whichever the part is
+ *	set to:
  *
  *	  :root {
- *	    --section-title-fontsize--less:    1.6rem;
- *	    --section-title-fontsize--default: 2rem;
- *	    --section-title-fontsize--more:    2.6rem;
+ *	    --section-volume--less:    1.6rem;
+ *	    --section-volume--default: 2rem;
+ *	    --section-volume--more:    2.6rem;
  *	  }
- *	  .nino-section-title { font-size: var(--section-title-fontsize); }
+ *	  .nino-section-title { font-size: var(--section-volume); }
  *
  *	Copy this file to v2.css and start there.
  */

@@ -36,8 +36,9 @@ return [
 	'nino'				=> '^1.3',
 	'requires'		=> [],
 	// The whole setup: which set per part, the knob positions, the deviations,
-	// and the fingerprint of what was last compiled. Small, and the one thing
-	// that cannot be derived again if it is lost
+	// the palette's colours and knobs, and the fingerprint of what was last
+	// compiled. Small, and the one thing that cannot be derived again if it is
+	// lost
 	'data'				=> [ '/data/design.php' ],
 	'settings'		=> [],
 ];

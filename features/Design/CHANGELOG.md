@@ -5,6 +5,28 @@ A release is the tag `design-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+- **The words caught up with the library and the palette.** The README still
+  opened with the note that every part set is the empty `v1` - the library has
+  ten headers, eleven footers and five sets per part since the variants
+  landed, and `v1` declares the framework's own values as triples rather than
+  nothing. Its Data chapter, `feature.php`'s comment beside `data`, the
+  `Compiler` and `Design\Admin` docblocks and `admin.js`'s own header all
+  described the feature as it was before the Colours tab: the palette is in
+  `data/design.php`, in the compiled sheet's second section and in one of the
+  panel's two tabs, and `Design`'s list of the pieces named four of the five.
+  `_selection()` promised `{ parts, step, size }` and returns
+  `{ parts, knobs, size, colours }`. The knob example in every `v1` declared
+  `--<part>-title-fontsize`, which is not one of the four knobs the panel can
+  offer, so a set copied from it would publish a handle nothing turns. Two
+  comments in `Setup` still named their knobs in German. And
+  `design-smoke.php`'s library check accepted a step the panel cannot see: it
+  matched the token with optional whitespace before the colon while
+  `Setup::knobs()` matches the colon flush, in a stylesheet with its comments
+  removed - so a triple written `--section-measure--less : 42rem` passed the
+  suite while the knob quietly disappeared from the screen. It reads the file
+  the way the panel does now, and both library checks name the file they
+  failed on.
+
 - The README no longer counts the suite's checks. The number was corrected in
   three patches running, and a reader of the README needs the suite's name,
   not its size.
