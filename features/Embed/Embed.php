@@ -96,13 +96,12 @@ namespace Nino\Modules {
 
 			\Nino\Html::addShortcode( $appData, 'embed', [ self::class, 'doShortcode' ] );
 
-			/*	A source outside \Nino\Filesystem::PRIVATE_DIRS/PUBLIC_DIRS
-				resolves against the project root (\Nino\Filesystem::path()'s
-				fallback) - the same way '/_nino/Nino.css' already does for the
-				kernel's own bundle, so '/features/Embed/assets/...' reaches this
-				feature's own copy as long as features/ sits where it does by
-				default (NINO_FEATURES_DIR unmoved); see the README's "Asset
-				bundling" note for the relocated case	*/
+			/*	The virtual '/features/...' prefix resolves against
+				\Nino\Features::dir() (\Nino\Filesystem::FEATURES_DIR), the same way
+				TEMPLATES above is read - so '/features/Embed/assets/...' reaches this
+				feature's own copy wherever NINO_FEATURES_DIR put the features
+				directory, and a project that moved it has nothing to say in
+				'/nino/html/assets'	*/
 			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Embed/assets/embed.css' );
 			\Nino\Html::addAsset( $appData, '/.cache/script.js', '/features/Embed/assets/embed.js' );
 		}

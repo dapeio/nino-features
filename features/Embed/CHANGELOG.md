@@ -12,6 +12,27 @@ A release is the tag `embed-<version>` of dapeio/nino-features.
   feature to an installation that could not then install it. `^1.3` names
   only a kernel that can read the manifest.
 
+### Changed
+
+- **The manual counted two words where the unit carries four.** The Features
+  panel's entry for the install unit said "the two sentences the surface
+  carries, into the Text panel", and `install/text/<locale>.php` has four
+  fills in it: the two on the surface (`[[/embed/load]]`,
+  `[[/embed/note]]`), the `<noscript>` way out (`[[/embed/open]]`) and the
+  name the frame is given where the shortcode wrote no `title=`
+  (`[[/embed/frame]]`). The README and `embed-smoke.php` both say four; the
+  entry says four now, and which they are.
+
+- **The "Asset bundling" note asked a project to do something it does not
+  have to.** It said `/features/Embed/assets/...` resolves against the
+  project root, and that a project which moved its features elsewhere with
+  `NINO_FEATURES_DIR` has to name the two sources under their real path in
+  `/nino/html/assets` itself. `\Nino\Filesystem` resolves the virtual
+  `/features` prefix against `\Nino\Features::dir()` - a branch of its own,
+  older than the `^1.3` this manifest names - so the sources are found after
+  a relocation like every other file a feature addresses that way, the two
+  templates this feature reads through the same prefix included.
+
 ### Fixed
 
 - **An invalid byte in a value rendered as nothing.** `htmlspecialchars()`

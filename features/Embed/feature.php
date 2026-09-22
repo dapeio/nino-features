@@ -46,8 +46,8 @@ return [
 		'callbacks' => [],
 		'install' => [
 			'text/<locale>.php' => [
-				'en_US' => 'The two sentences the surface carries, into the Text panel.',
-				'de_DE' => 'Die zwei Sätze der Fläche, ins Panel Texte.',
+				'en_US' => 'The four words an unreleased embed carries - the two on the surface, the way out without JavaScript and the frame\'s own name - into the Text panel.',
+				'de_DE' => 'Die vier Wörter einer nicht freigegebenen Einbindung - die zwei auf der Fläche, der Ausweg ohne JavaScript und der Name des Rahmens - ins Panel Texte.',
 			],
 		],
 	],
