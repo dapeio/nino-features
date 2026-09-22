@@ -12,6 +12,26 @@ A release is the tag `copy-<version>` of dapeio/nino-features.
   feature to an installation that could not then install it. `^1.3` names
   only a kernel that can read the manifest.
 
+### Changed
+
+- **The manual still offered `[copy block]` as a `<pre>`.** The Features
+  panel's entry for the flag said "a block rather than a line - a `<pre>`,
+  with the whitespace kept", and there has been no `<pre>` in
+  `templates/copy.tpl` since the block form became a `<span>` that
+  `copy.css` paints as one - which is the whole reason it was changed, so
+  that a `[copy]` inside a paragraph keeps its button. The entry says what
+  is written now, and why.
+
+- **The "Asset bundling" note asked a project to do something it does not
+  have to.** It said `/features/Copy/assets/...` resolves against the project
+  root, and that a project which moved its features elsewhere with
+  `NINO_FEATURES_DIR` has to name the two sources under their real path in
+  `/nino/html/assets` itself. `\Nino\Filesystem` resolves the virtual
+  `/features` prefix against `\Nino\Features::dir()` - a branch of its own,
+  older than the `^1.3` this manifest names - so the sources are found after
+  a relocation like every other file a feature addresses that way, the
+  templates this feature reads through the same prefix included.
+
 ### Fixed
 
 - **`[copy block]` inside a paragraph lost its button.** The block form wrote

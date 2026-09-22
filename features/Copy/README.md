@@ -79,9 +79,9 @@ it has, and handed to `copy.js` on the button itself.
 `html-header.tpl`/`html-footer.tpl` already load on every page.
 
 The sources are addressed as `/features/Copy/assets/…`, which
-`\Nino\Filesystem::path()` resolves against the project root. A project that moved
-its features elsewhere with `NINO_FEATURES_DIR` has to say so in
-`/nino/html/assets` itself.
+`\Nino\Filesystem::path()` resolves against `\Nino\Features::dir()` — so they are
+found wherever `NINO_FEATURES_DIR` put the features directory, and a project that
+moved it has nothing to say in `/nino/html/assets` itself.
 
 ## Settings
 

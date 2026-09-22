@@ -19,8 +19,8 @@ return [
 				'de_DE' => 'Wofür der Knopf da ist, für Leser, die nicht sehen, woneben er steht.',
 			],
 			'[copy block]...[/copy]' => [
-				'en_US' => 'A block rather than a line - a <pre>, with the whitespace kept.',
-				'de_DE' => 'Ein Block statt einer Zeile - ein <pre>, mit erhaltenen Leerräumen.',
+				'en_US' => 'A block rather than a line, with the whitespace kept - painted as one by copy.css, because everything this writes has to be able to stand inside a paragraph.',
+				'de_DE' => 'Ein Block statt einer Zeile, mit erhaltenen Leerräumen - von copy.css als solcher gezeichnet, denn alles, was hier geschrieben wird, muss in einem Absatz stehen können.',
 			],
 			'[copy value="DE02120300000000202051"]DE02 1203 ...[/copy]' => [
 				'en_US' => 'Copy this instead of what is shown - a number grouped for reading, copied without the spaces.',
