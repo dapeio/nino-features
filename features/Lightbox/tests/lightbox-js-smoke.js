@@ -3,9 +3,10 @@
  *	lightbox-js-smoke.js	What lightbox.js does over a dom stand-in: which
  *												links it takes and which it leaves alone, the set a
  *												link belongs to, what the overlay carries, moving
- *												through a set with the arrows and with a swipe,
- *												the focus going in and coming back, and the page
- *												behind it not scrolling while one is open.
+ *												through a set with the arrows and with a swipe, the
+ *												words the controls carry, the focus going in and coming
+ *												back, and the page behind it not scrolling while one is
+ *												open.
  *
  *												No jsdom, no dependency: the same element stand-in
  *												the workbench's own panel tests build, so this runs
@@ -321,6 +322,37 @@ check( 'a click on the picture is somebody looking, not somebody leaving', overl
 fire( overlay(), 'click', { target : stage() } );
 timers.splice( 0 ).forEach( function( fn ) { fn() } );
 check( 'a click on the room around it closes', overlay() === null );
+
+
+// --- the words on the controls --------------------------------------------
+
+// This file cannot read a textfill, so a page that is not in English writes
+// the words on the link the overlay is opened from - with English as the
+// fallback, which is what the markup would have said anyway
+function labels() {
+	return overlay().querySelectorAll('button').map( function( el ) { return el.getAttribute('aria-label') } );
+}
+
+function shut() {
+	key('Escape');
+	if( overlay() !== null )
+		fire( overlay(), 'transitionend', { target : overlay() } );
+	timers.splice( 0 ).forEach( function( fn ) { fn() } );
+}
+
+click( LINKS[0].children[0] );
+check( 'every control the overlay offers is named for somebody who cannot see it',
+	labels().length === 3 && labels().every( function( word ) { return typeof word === 'string' && word !== '' } ) );
+check( '...and so is the dialog around them', ( overlay().getAttribute('aria-label') || '' ) !== '' );
+shut();
+
+LINKS[0].setAttribute( 'data-label-close', 'Schliessen' );
+LINKS[0].setAttribute( 'data-label-prev', 'Vorheriges Bild' );
+LINKS[0].setAttribute( 'data-label-next', 'Naechstes Bild' );
+click( LINKS[0].children[0] );
+check( 'and where the link carries the page\'s own words, those are the names the controls get',
+	labels().join(' | ') === 'Schliessen | Vorheriges Bild | Naechstes Bild' );
+shut();
 
 console.log( '\n'+ checks+ ' checks, '+ failures+ ' failed' );
 process.exitCode = failures === 0 ? 0 : 1;

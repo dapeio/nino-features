@@ -51,10 +51,10 @@ namespace Nino\Modules {
 		 */
 		public static function init( array &$appData ): void {
 
-			// A source outside \Nino\Filesystem::PRIVATE_DIRS/PUBLIC_DIRS
-			// resolves against the project root, so '/features/Lightbox/...'
-			// reaches this feature's own copy as long as features/ sits where
-			// it does by default (NINO_FEATURES_DIR unmoved)
+			// The virtual '/features/...' prefix resolves against
+			// \Nino\Features::dir() (\Nino\Filesystem::FEATURES_DIR), so
+			// '/features/Lightbox/...' reaches this feature's own copy wherever
+			// NINO_FEATURES_DIR put the features directory
 			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Lightbox/assets/lightbox.css' );
 			\Nino\Html::addAsset( $appData, '/.cache/script.js', '/features/Lightbox/assets/lightbox.js' );
 		}

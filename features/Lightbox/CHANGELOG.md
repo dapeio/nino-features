@@ -13,6 +13,28 @@ versions [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   feature to an installation that could not then install it. `^1.3` names
   only a kernel that can read the manifest.
 
+### Added
+
+- **The three `data-label-*` attributes had nothing holding them.** The
+  README names them as how a page that is not in English gives the controls
+  their words, since a static asset cannot read a textfill, and neither test
+  looked at a single `aria-label`. `lightbox-js-smoke.js` now holds that
+  every control an overlay offers is named, that the dialog around them is,
+  and that a link carrying its own three words is where those names come
+  from.
+
+### Changed
+
+- **The "Asset bundling" chapter asked a project to do something it does not
+  have to.** It said `/features/Lightbox/assets/...` resolves against the
+  project root, and that a project which moved its features directory with
+  `NINO_FEATURES_DIR` has to add the two files under the path they actually
+  live at instead. `\Nino\Filesystem` resolves the virtual `/features`
+  prefix against `\Nino\Features::dir()` - a branch of its own, older than
+  the `^1.3` this manifest names - so the two files are found after a
+  relocation and there is nothing to add anywhere. The chapter and
+  `Lightbox::init()`'s comment say that.
+
 ### Fixed
 
 - **The lightbox vanished instead of fading out.** `close()` waited for a

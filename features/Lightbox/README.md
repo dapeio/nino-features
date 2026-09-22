@@ -77,9 +77,9 @@ it; there is no site design to match, because the site is behind the backdrop.
 
 `init()` adds the two files to `/.cache/style.css` and `/.cache/script.js`
 under `/features/Lightbox/assets/...`, which `\Nino\Filesystem::path()`
-resolves against the project root. A project that moved its features
-directory with `NINO_FEATURES_DIR` has to add them under the path they
-actually live at instead.
+resolves against `\Nino\Features::dir()` — so they are found wherever
+`NINO_FEATURES_DIR` put the features directory, and a project that moved it
+has nothing to add anywhere.
 
 ## Tests
 
@@ -91,5 +91,5 @@ The manifest, the activation, the two files reaching the bundles, and what
 the stylesheet and the script promise. `lightbox-js-smoke.js` beside it
 measures the behaviour over a dom stand-in - which links it takes and which
 it leaves alone, the set, the captions, moving with keys and swipes, the
-focus trap, and the page lock - and the PHP test runs it where node is on the
-path.
+words the controls carry, the focus trap, and the page lock - and the PHP
+test runs it where node is on the path.
