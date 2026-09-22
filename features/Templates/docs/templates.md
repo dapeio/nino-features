@@ -2,11 +2,11 @@
 
 **Language:** English · [Deutsch](templates.de.md)
 
-**Last updated:** September 7, 2026 · **Nino version:** 1.0.0-beta
+**Last updated:** September 21, 2026 · **Feature version:** 1.0.0 · **Nino:** `^1.3`
 
 The Template Builder - the workbench's **Templates** panel - is the fast path from a `page-*.tpl` file to a filled page. It treats a template as an ordered sequence of complete HTML sections and reusable `[template]` sections instead of exposing every nested DOM node.
 
-[README](../README.md) · [Concepts](concepts.md) · [Developer Manual](development.md) · [Recipes](recipes/README.md) · [Getting Started](getting-started.md) · [Setup Wizard](setup.md) · [`/_admin` Workbench](_admin.md) · [Templates Panel](templates.md) · [Design Panel](appearance.md) · [Features](features.md) · [Deployment](deployment.md) · [Security Policy](https://github.com/dapeio/nino/blob/main/SECURITY.md) · [Changelog](https://github.com/dapeio/nino/blob/main/CHANGELOG.md)
+[README](../README.md) · [Changelog](../CHANGELOG.md) · [Section preset recipe](recipe-section-preset.md) · [Templates and pages recipe](recipe-templates-and-pages.md) · [Concepts](https://github.com/dapeio/nino/blob/main/docs/concepts.md) · [Developer Manual](https://github.com/dapeio/nino/blob/main/docs/development.md) · [Recipes](https://github.com/dapeio/nino/blob/main/docs/recipes/README.md) · [Getting Started](https://github.com/dapeio/nino/blob/main/docs/getting-started.md) · [Setup Wizard](https://github.com/dapeio/nino/blob/main/docs/setup.md) · [`/_admin` Workbench](https://github.com/dapeio/nino/blob/main/docs/_admin.md) · [Features](https://github.com/dapeio/nino/blob/main/docs/features.md) · [Deployment](https://github.com/dapeio/nino/blob/main/docs/deployment.md) · [Design](https://github.com/dapeio/nino-features/blob/main/features/Design/README.md) · [Security Policy](https://github.com/dapeio/nino/blob/main/SECURITY.md)
 
 > **Alpha:** Page files remain ordinary HTML+ and therefore do not depend on the tool at runtime. The preset library and composer workflow can still change.
 
@@ -30,7 +30,7 @@ The Template Builder does not create routes, edit the contents of included heade
 
 ## Access and security
 
-Sign in to `/_admin` and open **Templates** in the Structure group. Every action asks for `/_admin/templates/manage` - a developer's permission, never an editor's. The panel is a workspace: the workbench rail folds to its icons and the template list, the section canvas and the inspector share the whole width; unfold the rail with the chevron beside the brand whenever you need the other panels' labels. The panel is the Templates module, an optional kernel module (`_nino/Nino/Modules/Templates/`) that leaves the workbench when it is switched off in `/nino/modules`. It speaks the interface language you set in the workbench's settings gear; its own words – in the panel's markup as much as in its scripts – live in `_nino/Nino/Modules/Templates/text/<locale>.php`. The section library's presets keep the names and descriptions their manifests carry – English in the shipped library – and a manifest may use a fill key instead of a word wherever it names something.
+Sign in to `/_admin` and open **Templates** in the Features group. Every action asks for `/_admin/templates/manage` - a developer's permission, never an editor's. The panel is a workspace: the workbench rail folds to its icons and the template list, the section canvas and the inspector share the whole width; unfold the rail with the chevron beside the brand whenever you need the other panels' labels. The panel belongs to the Template Builder feature (`features/Templates/`), which a project installs from the catalogue and switches on in the Features panel; a project without it has no Templates screen. It speaks the interface language you set in the workbench's settings gear; its own words – in the panel's markup as much as in its scripts – live in `features/Templates/text/<locale>.php`. The section library's presets keep the names and descriptions their manifests carry – English in the shipped library – and a manifest may use a fill key instead of a word wherever it names something.
 
 The tool writes to:
 
@@ -39,7 +39,7 @@ The tool writes to:
 - `elements/<type>.php` when automatic Element Type creation is confirmed;
 - the project configuration when a missing image-slot definition is created automatically. Image uploads themselves remain in the Images panel.
 
-Use HTTPS, keep developer accounts few and work from a recoverable project state. Remove the module from a production delivery when it is not required there.
+Use HTTPS, keep developer accounts few and work from a recoverable project state. A delivery that does not need the builder leaves the feature out: every page it composed is ordinary template source and stays exactly as it is.
 
 ## Main workflow
 
@@ -61,16 +61,15 @@ Native quick fill creates new keys in the project’s native locale and changes 
 
 **VPA** at template level supplies the default for sections whose motion is set to **Page**. Changing it recomposes managed sections, updates their `nino-vpa` class and remains persisted even while a template is still empty. **On** or **Off** on an individual section overrides that default.
 
-Add and Edit intentionally expose different depths of the same version-3 metadata:
+Add and Edit walk the same two configuration steps and expose different depths of the same version-3 metadata:
 
-| View | Controls |
+| Step | Controls |
 |---|---|
-| Add Section | ID, Layout, Background, optional background-image settings, collection source, component order and initial data bindings |
-| Edit Section → Section | ID, Layout, height, width, spacing, Background and optional background-image settings |
-| Edit Section → Area / Design | visual Area Style plus the ordered component stack and Component Styles |
-| Edit Section → Area / Data | native Text/Image/Template bindings or an Elements collection with explicit field mappings |
+| Design → Section | ID, Layout, Background and its image settings; on Edit also height, width, content position, margin and padding |
+| Design → Area | the Area Style, the ordered component stack and each component's Style |
+| Configure & fill → Area | the collection an Elements Area reads from, and every component's native Text/Image/Template bindings or its field mappings |
 
-Add omits Section height/width/margin/padding, Area Style and Component Style. It is meant to produce a useful first version before the page is judged in its real frontend. Edit keeps the complete graphical fine-tuning model; both views compile the same metadata. Each manifest decides which Areas, components, Styles and Layouts are compatible. HTML+ remains the explicit route for arbitrary source changes.
+Add omits the Section's height, width, content position, margin and padding, and nothing else: it is meant to produce a useful first version before the page is judged in its real frontend. Edit keeps the complete graphical fine-tuning model; both flows compile the same metadata. Each manifest decides which Areas, components, Styles and Layouts are compatible. HTML+ remains the explicit route for arbitrary source changes.
 
 ## Source safety and the HTML+ escape hatch
 
@@ -117,7 +116,7 @@ This metadata lets the composer reopen its settings. It is inert HTML and does n
 System presets live under:
 
 ```text
-_nino/Nino/Modules/Templates/library/<preset-key>/
+features/Templates/library/<preset-key>/
 ├── manifest.php
 └── one or more .tpl layout files
 ```
@@ -326,8 +325,9 @@ guessed from its value. Manifests may use the same contract for recommendations:
 
 For Single Areas the valid sources are `new`, `textfill` and `fixed` (or
 `new`/`image` for images). For Elements Areas they are `field`, `textfill` and
-`fixed`, while images accept `field` only. Template properties use `template`.
-Fixed output is escaped, bracket tokens are neutralized and fixed URLs accept
+`fixed`, while images accept `field` only. Template properties use `template`,
+and an HTML+ component's own `source` - the markup itself rather than the name
+of somewhere it lives. Fixed output is escaped, bracket tokens are neutralized and fixed URLs accept
 only ordinary relative URLs or the `http`, `https`, `mailto` and `tel` schemes.
 
 ### Complete Articles example

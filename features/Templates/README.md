@@ -24,15 +24,16 @@ lands there (see [Features](https://github.com/dapeio/nino/blob/main/docs/_admin
 whatever its own `nav()` names. One permission, `/_admin/templates/manage`,
 which has to be granted on the roles tab; the Editor role does not carry it.
 
-Three of its actions reach into other panels: creating an Elements type from a
-section's model, listing and creating image slots. Those need
-`/_admin/types/manage`, `/_admin/elements/manage` and `/_admin/slots/manage`
-respectively - an operator without them can use everything else and will be
-refused there.
+Four of its actions reach into other panels: listing the Elements types,
+creating one from a section's model, and listing and creating image slots.
+Those need `/_admin/elements/manage`, `/_admin/types/manage` and - both of the
+image-slot ones - `/_admin/slots/manage`; an operator without them can use
+everything else and will be refused there.
 
 ## The section library
 
-`library/<key>/manifest.php` plus one or more `section-*.tpl`. Seventeen ship
+`library/<key>/manifest.php` plus the `.tpl` files its layouts name - one
+`section.tpl`, or one `section-<layout>.tpl` per layout. Seventeen ship
 with the feature: articles grid, contact form, content section, cta banner,
 feature split, filterable grid, fullscreen image, image banner, logo bar,
 media split areas, newsletter form, pricing plans, process timeline, static

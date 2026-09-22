@@ -2,11 +2,11 @@
 
 **Sprache:** [English](templates.md) · Deutsch
 
-**Stand:** 7. September 2026 · **Nino-Version:** 1.0.0-beta
+**Stand:** 21. September 2026 · **Feature-Version:** 1.0.0 · **Nino:** `^1.3`
 
 Der Template Builder – das Panel **Templates** der Workbench – ist der schnelle Weg vom `page-*.tpl` zur befüllten Seite. Er behandelt ein Template als geordnete Abfolge vollständiger HTML-Sections und wiederverwendbarer `[template]`-Sections, statt jeden verschachtelten DOM-Knoten zur Bearbeitung anzubieten.
 
-[README](../README.de.md) · [Grundkonzepte](concepts.de.md) · [Entwickler-Handbuch](development.de.md) · [Rezepte](recipes/README.md) · [Erste Schritte](getting-started.de.md) · [Einrichtungsassistent](setup.de.md) · [`/_admin`-Workbench](_admin.de.md) · [Templates-Panel](templates.de.md) · [Design-Panel](appearance.de.md) · [Features](features.de.md) · [Deployment](deployment.de.md) · [Security Policy](https://github.com/dapeio/nino/blob/main/SECURITY.md) · [Changelog](https://github.com/dapeio/nino/blob/main/CHANGELOG.md)
+[README](../README.md) · [Changelog](../CHANGELOG.md) · [Rezept: Section-Preset](recipe-section-preset.md) · [Rezept: Templates und Seiten](recipe-templates-and-pages.md) · [Grundkonzepte](https://github.com/dapeio/nino/blob/main/docs/concepts.de.md) · [Entwickler-Handbuch](https://github.com/dapeio/nino/blob/main/docs/development.de.md) · [Rezepte](https://github.com/dapeio/nino/blob/main/docs/recipes/README.md) · [Erste Schritte](https://github.com/dapeio/nino/blob/main/docs/getting-started.de.md) · [Einrichtungsassistent](https://github.com/dapeio/nino/blob/main/docs/setup.de.md) · [`/_admin`-Workbench](https://github.com/dapeio/nino/blob/main/docs/_admin.de.md) · [Features](https://github.com/dapeio/nino/blob/main/docs/features.de.md) · [Deployment](https://github.com/dapeio/nino/blob/main/docs/deployment.de.md) · [Design](https://github.com/dapeio/nino-features/blob/main/features/Design/README.md) · [Security Policy](https://github.com/dapeio/nino/blob/main/SECURITY.md)
 
 > **Alpha:** Seitendateien bleiben gewöhnliches HTML+ und sind zur Laufzeit nicht vom Werkzeug abhängig. Preset-Library und Composer-Ablauf können sich noch verändern.
 
@@ -30,7 +30,7 @@ Der Template Builder erzeugt keine Routen, bearbeitet nicht den Inhalt eingebund
 
 ## Zugang und Sicherheit
 
-Melde dich unter `/_admin` an und öffne **Templates** in der Gruppe Struktur. Jede Aktion verlangt `/_admin/templates/manage` – eine Entwicklerberechtigung, nie eine der Redaktion. Das Panel ist ein Workspace: Die Leiste der Workbench klappt zu ihren Symbolen zusammen, und Templateliste, Section-Canvas und Inspektor teilen sich die ganze Breite; klappe die Leiste mit dem Doppelpfeil neben der Marke wieder auf, wenn du die Beschriftungen der anderen Panels brauchst. Das Panel ist das Templates-Modul, ein optionales Kernel-Modul (`_nino/Nino/Modules/Templates/`), das die Workbench verlässt, wenn es in `/nino/modules` abgeschaltet wird. Es spricht die Oberflächensprache, die du im Zahnrad der Workbench einstellst; seine eigenen Worte – im Markup des Panels wie in seinen Skripten – liegen in `_nino/Nino/Modules/Templates/text/<locale>.php`. Die Presets der Abschnittsbibliothek behalten die Namen und Beschreibungen aus ihren Manifesten – in der mitgelieferten Bibliothek Englisch –, und ein Manifest darf überall dort, wo es etwas benennt, statt eines Wortes einen Fill-Schlüssel verwenden.
+Melde dich unter `/_admin` an und öffne **Templates** in der Gruppe Features. Jede Aktion verlangt `/_admin/templates/manage` – eine Entwicklerberechtigung, nie eine der Redaktion. Das Panel ist ein Workspace: Die Leiste der Workbench klappt zu ihren Symbolen zusammen, und Templateliste, Section-Canvas und Inspektor teilen sich die ganze Breite; klappe die Leiste mit dem Doppelpfeil neben der Marke wieder auf, wenn du die Beschriftungen der anderen Panels brauchst. Das Panel gehört zum Feature Template Builder (`features/Templates/`), das ein Projekt aus dem Katalog installiert und im Panel Features einschaltet; ein Projekt ohne dieses Feature hat keinen Templates-Bildschirm. Es spricht die Oberflächensprache, die du im Zahnrad der Workbench einstellst; seine eigenen Worte – im Markup des Panels wie in seinen Skripten – liegen in `features/Templates/text/<locale>.php`. Die Presets der Abschnittsbibliothek behalten die Namen und Beschreibungen aus ihren Manifesten – in der mitgelieferten Bibliothek Englisch –, und ein Manifest darf überall dort, wo es etwas benennt, statt eines Wortes einen Fill-Schlüssel verwenden.
 
 Geschrieben werden:
 
@@ -39,7 +39,7 @@ Geschrieben werden:
 - `elements/<typ>.php`, wenn die automatische Elementtyp-Erstellung bestätigt ist;
 - die Projektkonfiguration, wenn eine fehlende Bildplatz-Definition automatisch angelegt wird. Der eigentliche Bild-Upload bleibt im Panel Bilder.
 
-Verwende HTTPS, halte die Zahl der Entwicklerkonten klein und arbeite mit einem wiederherstellbaren Projektstand. Entferne das Modul aus der Produktivauslieferung, wenn es dort nicht benötigt wird.
+Verwende HTTPS, halte die Zahl der Entwicklerkonten klein und arbeite mit einem wiederherstellbaren Projektstand. Eine Auslieferung, die den Baukasten nicht braucht, lässt das Feature weg: Jede damit zusammengesetzte Seite ist gewöhnlicher Template-Quelltext und bleibt genau so, wie sie ist.
 
 ## Hauptablauf
 
@@ -61,14 +61,13 @@ Die schnelle native Befüllung legt neue Schlüssel in der nativen Projektsprach
 
 **VPA** auf Template-Ebene liefert den Standard für Sections mit der Einstellung **Page**. Eine Änderung setzt verwaltete Sections neu zusammen, aktualisiert deren `nino-vpa`-Klasse und bleibt auch in einem noch leeren Template erhalten. **On** oder **Off** an einer einzelnen Section überschreibt den Template-Standard.
 
-Add und Edit zeigen absichtlich unterschiedliche Tiefen derselben Version-3-Metadaten:
+Add und Edit durchlaufen dieselben zwei Konfigurationsschritte und zeigen unterschiedliche Tiefen derselben Version-3-Metadaten:
 
-| Ansicht | Steuerelemente |
+| Schritt | Steuerelemente |
 |---|---|
-| Add Section | ID, Layout, Background, optionale Hintergrundbild-Einstellungen, Collection-Quelle, Komponentenreihenfolge und erste Data-Bindings |
-| Edit Section → Section | ID, Layout, Höhe, Breite, Abstände, Background und optionale Hintergrundbild-Einstellungen |
-| Edit Section → Area / Design | visueller Area-Style, Komponentenreihenfolge und Component Styles |
-| Edit Section → Area / Data | native Text-/Bild-/Template-Bindings oder eine Elements-Collection mit explizitem Feld-Mapping |
+| Design → Section | ID, Layout, Background und dessen Bild-Einstellungen; bei Edit zusätzlich Höhe, Breite, Inhaltsposition, Margin und Padding |
+| Design → Area | der Area-Style, der geordnete Komponentenstapel und der Style jeder Komponente |
+| Configure & fill → Area | die Collection, aus der eine Elements-Area liest, und die nativen Text-/Bild-/Template-Bindings jeder Komponente oder ihr Feld-Mapping |
 
 Ein Cover- oder Parallax-Hintergrund bindet genau ein Bild, und die Quelle wird
 mitgespeichert: **New image slot** erzeugt `/page-<seite>/<section>/background`
@@ -84,7 +83,7 @@ Jedes Auswahlfeld mit **Auto** nennt den Wert, auf den Auto gerade auflöst –
 `Auto (Dim)`, `Auto (Wide)`, `Auto (100)`. Aufgelöst wird in dieser Reihenfolge:
 Layout-Empfehlung, Preset-Empfehlung, sicherer Fallback.
 
-Add blendet Section-Höhe/-Breite/-Margin/-Padding, Area Style und Component Style aus. Die Ansicht soll zuerst eine sinnvolle Section erzeugen, die man im echten Frontend beurteilen kann. Edit behält das vollständige grafische Feinjustierungsmodell; beide Ansichten kompilieren dieselben Metadaten. Das Manifest bestimmt, welche Areas, Komponenten, Styles und Layouts kompatibel sind. HTML+ bleibt der ausdrückliche Weg für freie Quelltextänderungen.
+Add blendet Höhe, Breite, Inhaltsposition, Margin und Padding der Section aus, sonst nichts: Der Schritt soll zuerst eine sinnvolle Section erzeugen, die man im echten Frontend beurteilen kann. Edit behält das vollständige grafische Feinjustierungsmodell; beide Abläufe kompilieren dieselben Metadaten. Das Manifest bestimmt, welche Areas, Komponenten, Styles und Layouts kompatibel sind. HTML+ bleibt der ausdrückliche Weg für freie Quelltextänderungen.
 
 ## Quelltext-Sicherheit und HTML+-Escape-Hatch
 
@@ -128,7 +127,7 @@ Diese Metadaten erlauben das erneute Öffnen der Composer-Einstellungen. Sie sin
 
 ## Section-Library
 
-System-Presets liegen in `_nino/Nino/Modules/Templates/library/<preset-key>/`. Der erzeugte HTML+-Quelltext wird in die Seite kopiert; die öffentliche Website liest die Library nicht zur Laufzeit.
+System-Presets liegen in `features/Templates/library/<preset-key>/`. Der erzeugte HTML+-Quelltext wird in die Seite kopiert; die öffentliche Website liest die Library nicht zur Laufzeit.
 
 Die Library liefert zwei Sorten Preset. Die erste verwaltet ihren Inhalt: alles
 Wiederholte liest eine Elements-Collection, jede Textzeile ist ein Textfill.
@@ -433,7 +432,9 @@ Vertrag kann auch als Manifest-Empfehlung angegeben werden:
 
 Für Single-Areas sind `new`, `textfill` und `fixed` gültig (bei Bildern
 `new`/`image`). Für Elements-Areas gelten `field`, `textfill` und `fixed`, bei
-Bildern nur `field`. Template-Eigenschaften verwenden `template`. Feste Werte
+Bildern nur `field`. Template-Eigenschaften verwenden `template`, eine
+HTML+-Komponente ihre eigene Quelle `source` – das Markup selbst statt des
+Namens eines Orts, an dem es liegt. Feste Werte
 werden escaped, Shortcode-Klammern neutralisiert; feste URLs erlauben nur
 gewöhnliche relative URLs oder die Schemes `http`, `https`, `mailto` und `tel`.
 

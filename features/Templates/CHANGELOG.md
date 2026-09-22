@@ -7,6 +7,24 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The manual and the two recipes left the kernel, and the README names the
+  right permissions.** `docs/templates.md` and its German twin still described
+  the panel as an optional kernel module under `_nino/Nino/Modules/Templates/`,
+  in the workbench's Structure group, with its words and its preset library at
+  kernel paths, and their link rows pointed at Nino's own `docs/` from a
+  directory that no longer sits beside it; the two recipes named the same
+  kernel paths, left `html` out of the component catalogue it has been part of
+  since HTML+ became a component, and sent a reader to `tests/` files that are
+  the feature's own now. The Add/Edit table promised a difference between the
+  two flows that the three-step dialog ended: only the frame's height, width,
+  content position, margin and padding are still left out of Add. The README
+  said three actions reach into other panels and named their permissions in
+  another order than the actions; there are four, and the two image-slot ones
+  share one permission. `templates-smoke.php` says in one line which copy of
+  the module it is measuring, because a checkout that still ships the kernel
+  module serves that one and the two panel-registry checks then fail on paths
+  with no word about why.
+
 - Needs Nino `^1.3`, where the constraint said `^1.2`. The sectioned `manual`
   map this manifest carries is only read by a kernel newer than the
   `v1.2.0-beta` tag - `Features::manifest()` refuses it on the tagged one -

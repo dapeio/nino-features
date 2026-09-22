@@ -1,9 +1,9 @@
 # Recipe: Write templates and installable page units
 
 **Additional Links:**
-[Agent guide](../../AGENTS.md) · [All recipes](README.md) · [Developer Manual](../development.md) · [Concepts](../concepts.md) · [`/_admin` Workbench](../_admin.md) · [Setup Wizard](../setup.md) · [Templates Panel](../templates.md) · [Features](../features.md)
+[Templates Panel](templates.md) · [Feature README](../README.md) · [Catalogue agent guide](https://github.com/dapeio/nino-features/blob/main/AGENTS.md) · [Nino agent guide](https://github.com/dapeio/nino/blob/main/AGENTS.md) · [All recipes](https://github.com/dapeio/nino/blob/main/docs/recipes/README.md) · [Developer Manual](https://github.com/dapeio/nino/blob/main/docs/development.md) · [Concepts](https://github.com/dapeio/nino/blob/main/docs/concepts.md) · [`/_admin` Workbench](https://github.com/dapeio/nino/blob/main/docs/_admin.md) · [Setup Wizard](https://github.com/dapeio/nino/blob/main/docs/setup.md) · [Features](https://github.com/dapeio/nino/blob/main/docs/features.md)
 
-One of the seven extension recipes of the [Nino agent guide](../../AGENTS.md). Its
+One of the seven extension recipes of the [Nino agent guide](https://github.com/dapeio/nino/blob/main/AGENTS.md). Its
 rules - the required workflow, the core runtime model, the conventions and the
 security review - apply to every step below.
 
@@ -228,11 +228,12 @@ Register and populate that slot through the existing Images APIs/tools. Do not
 construct its generated filename.
 
 Inside an Elements loop, an image field contains a filename relative to
-project `images/`:
+project `images/`, which is served under the public directory - `[[/nino/dir]]`
+is the project itself and would miss that segment:
 
 ```html
 <img
-	src="[[/nino/dir]]/images/[[image]]"
+	src="[[/nino/public]]/images/[[image]]"
 	alt="[[title]]"
 	loading="lazy"
 >
@@ -286,6 +287,11 @@ For JS-enhanced controls:
 - and keep preview inert.
 
 ## Installable page unit
+
+A page unit belongs to the setup wizard's library, which lives in Nino rather
+than in this catalogue: the files below are written in a dapeio/nino checkout,
+not in a feature (see section 7 of the catalogue's
+[agent guide](https://github.com/dapeio/nino-features/blob/main/AGENTS.md)).
 
 Create:
 
@@ -464,8 +470,9 @@ leave a broken include.
 
 ## Page/template tests
 
-Extend `tests/install-smoke.php` for a new page unit and
-`tests/templates-smoke.php` for Builder contracts. Test:
+Extend Nino's own `tests/install-smoke.php` for a new page unit and the
+feature's `features/Templates/tests/templates-smoke.php` for Builder contracts.
+Test:
 
 - unit label, suggested URI, metadata in every shipped locale;
 - exact template and Element-type copies;
@@ -489,6 +496,6 @@ php -l _admin/install/library/pages/services/manifest.php
 php -l _admin/install/library/pages/services/text/en_US.php
 php -l _admin/install/library/pages/services/text/de_DE.php
 php tests/install-smoke.php
-php tests/templates-smoke.php
-node tests/templates-js-smoke.js
+NINO_ROOT=../nino php features/Templates/tests/templates-smoke.php
+NINO_ROOT=../nino node features/Templates/tests/templates-js-smoke.js
 ```

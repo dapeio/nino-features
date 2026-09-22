@@ -1,9 +1,9 @@
 # Recipe: Add a Section Library preset
 
 **Additional Links:**
-[Agent guide](../../AGENTS.md) · [All recipes](README.md) · [Developer Manual](../development.md) · [Concepts](../concepts.md) · [`/_admin` Workbench](../_admin.md) · [Setup Wizard](../setup.md) · [Templates Panel](../templates.md) · [Features](../features.md)
+[Templates Panel](templates.md) · [Feature README](../README.md) · [Catalogue agent guide](https://github.com/dapeio/nino-features/blob/main/AGENTS.md) · [Nino agent guide](https://github.com/dapeio/nino/blob/main/AGENTS.md) · [All recipes](https://github.com/dapeio/nino/blob/main/docs/recipes/README.md) · [Developer Manual](https://github.com/dapeio/nino/blob/main/docs/development.md) · [Concepts](https://github.com/dapeio/nino/blob/main/docs/concepts.md) · [`/_admin` Workbench](https://github.com/dapeio/nino/blob/main/docs/_admin.md) · [Setup Wizard](https://github.com/dapeio/nino/blob/main/docs/setup.md) · [Features](https://github.com/dapeio/nino/blob/main/docs/features.md)
 
-One of the seven extension recipes of the [Nino agent guide](../../AGENTS.md). Its
+One of the seven extension recipes of the [Nino agent guide](https://github.com/dapeio/nino/blob/main/AGENTS.md). Its
 rules - the required workflow, the core runtime model, the conventions and the
 security review - apply to every step below.
 
@@ -22,7 +22,7 @@ source.
 ## Directory, slug, and files
 
 ```text
-_nino/Nino/Modules/Templates/library/services-grid/
+features/Templates/library/services-grid/
 ├── manifest.php
 └── section.tpl
 ```
@@ -30,7 +30,7 @@ _nino/Nino/Modules/Templates/library/services-grid/
 A preset with genuinely different markup can provide several Layout files:
 
 ```text
-_nino/Nino/Modules/Templates/library/hero-fullscreen-image/
+features/Templates/library/hero-fullscreen-image/
 ├── manifest.php
 ├── section-cover.tpl
 └── section-parallax.tpl
@@ -290,16 +290,23 @@ afterwards, so a hand-written slug is wrong immediately and stays wrong. The
 key must name a declared Elements Area of the same preset.
 
 A static preset MUST NOT ship `style=""` attributes; give the block a `nino-*`
-class and put the rule next to the other preset classes in `_nino/Nino.css`.
+class and put the rule next to the other preset classes in Nino's own
+`_nino/Nino.css` - which is a change to dapeio/nino rather than to this
+feature, and belongs in that repository (see section 7 of the catalogue's
+[agent guide](https://github.com/dapeio/nino-features/blob/main/AGENTS.md)).
 Forms MUST keep the pieces the runtime expects: `[csrf]`, the honeypot input,
 `.nino-form-message`, and the label keys the Form or Newsletter module ships.
 
 ## Component and binding contract
 
-The finite catalog is `title`, `subtitle`, `description`, `text`, `image`,
-`button`, `price`, `number`, and `template`. A manifest may restrict that
-list, override allowlisted tags/classes/styles and image dimensions, and set a
-maximum component count. It MUST NOT supply arbitrary component HTML.
+The finite catalog is `title`, `subtitle`, `description`, `text`, `html`,
+`image`, `button`, `price`, `number`, and `template`. A manifest may restrict
+that list, override allowlisted tags/classes/styles and image dimensions, and
+set a maximum component count. It MUST NOT supply arbitrary component HTML.
+`html` - **HTML+** in the panel - is the one whose value is source rather than
+a binding, and it is allowed in Single Areas only, for the same reason
+`template` is: a collection renders its item once per record, and one
+written-out source would be repeated for every one of them.
 
 A preset MUST write the design system's own classes. The frontend has exactly
 one namespace, `nino-*` - the same class carries structure, appearance and, where
@@ -322,7 +329,8 @@ or item is a manifest tag.
 
 Each property persists an explicit `bindingSources` value. Single non-image
 properties allow `new`, `textfill`, or `fixed`; Single images allow `new` or
-`image`. Generated keys use
+`image`; an `html` component's own property carries `source`, the markup
+itself. Generated keys use
 `/page-<pageId>/<sectionId>/<component-suffix>`. Elements non-image properties
 allow `field`, `textfill`, or `fixed`, while Elements images remain `field`.
 Template properties use `template`, accept only `/templates/<safe-name>`, and
@@ -388,7 +396,8 @@ callbacks. It strips VPA's hidden state, uses deterministic text and image
 fixtures, and renders the number of collection items implied by 1/2/3/4-column
 Styles where possible.
 
-Extend `tests/templates-smoke.php` and `tests/templates-js-smoke.js`. Test:
+Extend `tests/templates-smoke.php` and `tests/templates-js-smoke.js` in the
+feature's own `tests/`. Test:
 
 - every bundled manifest loads without a private Layout source leak;
 - v3 defaults compose and contain no unresolved Area token;
@@ -409,10 +418,10 @@ Extend `tests/templates-smoke.php` and `tests/templates-js-smoke.js`. Test:
 Run:
 
 ```bash
-php -l _nino/Nino/Modules/Templates/AreaComposer/AreaComposer.php
-php -l _nino/Nino/Modules/Templates/library/services-grid/manifest.php
-php tests/templates-smoke.php
-node tests/templates-js-smoke.js
+php -l features/Templates/AreaComposer/AreaComposer.php
+php -l features/Templates/library/services-grid/manifest.php
+NINO_ROOT=../nino php features/Templates/tests/templates-smoke.php
+NINO_ROOT=../nino node features/Templates/tests/templates-js-smoke.js
 ```
 
 Finally inspect the real library card and preview at small and large widths.

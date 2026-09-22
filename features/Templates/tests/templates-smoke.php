@@ -90,6 +90,16 @@ echo "Templates module / panel\n";
 
 $appData['/nino/modules'][] = '\\Nino\\Modules\\Templates';
 
+/*	Which copy of the module the rest of this file measures. A checkout that
+	still ships _nino/Nino/Modules/Templates/ - every Nino up to 1.2 - serves
+	that one instead of the feature's, because the autoloader resolves _nino/
+	before features/ on purpose, and the two checks below then fail on paths
+	while every other check in the file passes against the kernel's copy. The
+	manifest refuses such a checkout ('nino' => '^1.3'); this line says so
+	rather than leaving it to be read out of two path failures	*/
+$panelFile = (string) ( new \ReflectionClass( \Nino\Modules\Templates\Admin::class ) )->getFileName();
+check( 'the module under test is this feature\'s own, not a copy the checkout ships in _nino/', str_starts_with( (string) realpath( $panelFile ), FEATURE. DIRECTORY_SEPARATOR ) );
+
 $registry = \Nino\Admin\Admin::panels( $appData );
 check( 'the module contributes the Templates panel to the workbench, as a workspace with its own template', ( $registry['templates']['class'] ?? null ) === \Nino\Modules\Templates\Admin::class
 	&& $registry['templates']['layout'] === 'workspace'

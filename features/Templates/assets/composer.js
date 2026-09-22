@@ -6,14 +6,6 @@
 
 	'use strict';
 
-	/*	The shortcode this panel is about, spelled out here rather than inside a
-		fill. A fill value is substituted into the page before \Nino\Html's
-		shortcode pass runs, and the [jstext] payload carries the same stored
-		value, so a literal '[template]' in a locale file is executed as the
-		shortcode and replaced with nothing - in both languages, on both paths.
-		A .js file is a static asset and is never rendered, so the token is
-		safe here and the fills carry a %s.	*/
-
 	const pd = Nino.admin.templates;
 	// Scripts are still removed and denied by CSP. allow-scripts only prevents
 	// browser extensions from producing one sandbox warning per srcdoc frame;

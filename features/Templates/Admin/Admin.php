@@ -18,11 +18,12 @@ namespace Nino\Modules\Templates {
 	 *											and scripts. The actions are the three parts' - Documents
 	 *											(the page files), Library (the section presets) and Content
 	 *											(native text and Element Types for a section) - merged into
-	 *											one map. A developer surface: every action writes project
-	 *											files, so every one of them asks for MANAGE_PERM.
- *											The shell asks the class that ran an action - one of the
- *											three tabs - for its activity-log line, so each tab
- *											describes its own writes (log()); this class has none.
+	 *											one map. A developer surface: its actions write the
+	 *											project's own template, text and configuration files, so
+	 *											every one of them - the reads among them - asks for
+	 *											MANAGE_PERM. The shell asks the class that ran an action -
+	 *											one of the three tabs - for its activity-log line, so each
+	 *											tab describes its own writes (log()); this class has none.
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -84,15 +85,6 @@ namespace Nino\Modules\Templates {
 			return \Nino\Admin\Panels::relative( dirname( __DIR__ ). '/text' );
 		}
 
-		/**
-		 *	The activity-log line for a mutating action, '' for a read - see
-		 *	\Nino\Admin\Admin::_logAction()
-		 *
-		 *	@param		string		$action				The dispatched action name
-		 *	@param		array			$data					The posted data
-		 *
-		 *	@return 	string
-		 */
 		/**
 		 *	Same shape as every other panel's guard: each api method calls it
 		 *	itself rather than trusting the dispatcher, so a direct call in a
