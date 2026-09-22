@@ -49,7 +49,7 @@ namespace Nino\Modules\Redirects {
 			];
 		}
 
-		/*	The group named here is decorative: \Nino\Admin\Admin::_entry() puts
+		/*	The group named here is decorative: \Nino\Admin\Panels::_entry() puts
 			every panel a feature brought into 'features' regardless, so granting
 			that one group stays a bounded grant	*/
 		public static function nav(): array {

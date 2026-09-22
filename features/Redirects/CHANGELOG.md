@@ -12,6 +12,14 @@ A release is the tag `redirects-<version>` of dapeio/nino-features.
   feature to an installation that could not then install it. `^1.3` names
   only a kernel that can read the manifest.
 
+### Changed
+
+- **The panel's comment named the wrong class for the group override.** It
+  said `\Nino\Admin\Admin::_entry()` puts every panel a feature brought into
+  the `features` group; `_entry()` is `\Nino\Admin\Panels`' own, and
+  `\Nino\Admin\Admin` has no such method - a reader following the name finds
+  nothing. Words only - the code is unchanged.
+
 ### Fixed
 
 - **A list of unanswered addresses that somebody had edited by hand answered
