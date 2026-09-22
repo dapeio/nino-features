@@ -5,6 +5,13 @@ A release is the tag `design-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+- **`library/base.css`'s header follows the kernel's `theme.css`.** The one
+  place of the nine that still pointed at `design-library/` is the token
+  layer's header, which is the base unit's `theme.css` header byte for byte
+  and held to it by the suite; the kernel corrected its copy, this is the
+  feature's. Needs a kernel that carries that correction - the suite's
+  byte-for-byte check turns red against an older one.
+
 - **The design library is gone, and the words follow it.** The README's
   authoring chapter, two `Preview` docblocks and one `Admin` docblock still
   described `design-library/preview.php`
