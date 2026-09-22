@@ -2,7 +2,7 @@
 declare(strict_types=1);
 /**
  *	Nino								A compact filesystembased php framework
- *	Modules\\Typewriter		see _nino/Nino/Modules/Modules.php for the
+ *	Modules\Typewriter		see _nino/Nino/Modules/Modules.php for the
  *											package-level docblock
  *
  *	@package						Dape/Nino
@@ -60,13 +60,11 @@ namespace Nino\Modules {
 		 */
 		public static function init( array &$appData ): void {
 
-			// A source outside \Nino\Filesystem::PRIVATE_DIRS/PUBLIC_DIRS
-			// resolves against the project root (\Nino\Filesystem::path()'s
-			// fallback) - exactly how '/_nino/Nino.css' already does for the
-			// kernel's own bundle, so '/features/Typewriter/assets/...' reaches
-			// this feature's own copy as long as features/ sits where it does
-			// by default (NINO_FEATURES_DIR unmoved); see the README's "Asset
-			// bundling" note for the relocated case
+			// The virtual '/features/...' prefix resolves against
+			// \Nino\Features::dir() (\Nino\Filesystem::FEATURES_DIR), so
+			// '/features/Typewriter/assets/...' reaches this feature's own copy
+			// wherever NINO_FEATURES_DIR put the features directory - see the
+			// README's "Asset bundling" note
 			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Typewriter/assets/typewriter.css' );
 			\Nino\Html::addAsset( $appData, '/.cache/script.js', '/features/Typewriter/assets/typewriter.js' );
 		}

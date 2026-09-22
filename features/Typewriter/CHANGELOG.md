@@ -5,6 +5,26 @@ file. A release is the tag `typewriter-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+- **`Typewriter::init()`'s comment said the opposite of the README beside
+  it.** It read that `/features/Typewriter/assets/...` resolves against the
+  project root and reaches this feature's own copy "as long as features/
+  sits where it does by default (NINO_FEATURES_DIR unmoved)", and pointed at
+  the README's "Asset bundling" note for the relocated case - where that
+  note says, correctly, that `\Nino\Filesystem::path()` resolves
+  `/features/...` against the features directory wherever
+  `NINO_FEATURES_DIR` put it. The comment says what the kernel does.
+
+- **"Every rule hangs off `.nino-typewriter-line`" named one of four
+  classes.** The README and `typewriter.css`'s own header both said it, and
+  `.nino-typewriter-rest`, `.nino-typewriter-cursor` and
+  `.nino-typewriter-reader` carry rules of their own. They are all classes
+  the script writes, which is what the sentence was there to say and what
+  keeps the stylesheet from matching anything before it runs, so both say
+  that instead.
+
+- The class file's own docblock named `Modules\\Typewriter`, with the
+  backslash doubled, where every other feature's names `Modules\<Name>`.
+
 - **A selector one container could not be read with stopped every typewriter
   after it on the page.** `data-typewriter-lines` went to `querySelectorAll()`
   unread, and a selector the browser refuses is answered there with a

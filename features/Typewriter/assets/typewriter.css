@@ -15,12 +15,14 @@
  *								so there is no custom property to read either - unlike
  *								consent.css, which draws a banner of its own.
  *
- *								Every rule below is bound to .nino-typewriter-line, the
- *								class typewriter.js writes onto the lines when it takes
- *								over. That is deliberate: wherever the script does not run -
- *								no JavaScript, and a visitor who asked for reduced motion -
- *								not one of these rules matches, and the container is what it
- *								reads like in the markup, paragraphs below one another.
+ *								Every rule below is bound to a class typewriter.js writes
+ *								when it takes over - .nino-typewriter-line on the lines,
+ *								.nino-typewriter-rest, -cursor and -reader on the spans it
+ *								builds inside them. That is deliberate: wherever the script
+ *								does not run - no JavaScript, and a visitor who asked for
+ *								reduced motion - not one of these rules matches, and the
+ *								container is what it reads like in the markup, paragraphs
+ *								below one another.
  */
 
 /* The lines share one grid cell, so the container is always as tall as its

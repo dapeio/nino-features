@@ -97,10 +97,11 @@ its own complete text once in a clipped `.nino-typewriter-reader` span. A
 screen reader therefore reads the lines the way the markup has them - all of
 them, in order, once - instead of one character at a time.
 
-Every rule in `typewriter.css` hangs off `.nino-typewriter-line`, the class
-the script writes when it takes over. So wherever the script does not run,
-not one of them matches and the container is exactly what it reads like in
-the markup - paragraphs below one another:
+Every rule in `typewriter.css` hangs off a class the script writes when it
+takes over — `.nino-typewriter-line` on the lines, `.nino-typewriter-rest`,
+`-cursor` and `-reader` on the spans it builds inside them. So wherever the
+script does not run, not one of them matches and the container is exactly
+what it reads like in the markup - paragraphs below one another:
 
 - **without JavaScript**, and
 - **for a visitor who asked for reduced motion**: `typewriter.js` checks
