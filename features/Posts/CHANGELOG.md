@@ -19,6 +19,19 @@ A release is the tag `posts-<version>` of dapeio/nino-features.
   feature to an installation that could not then install it. `^1.3` names
   only a kernel that can read the manifest.
 
+### Changed
+
+- **Three counts of things named a smaller number than there is.** The README
+  announced "two consequences worth knowing" above three bullets - the third
+  arrived with the SEO callback in 1.1.0 - and called the values a block adds
+  to Elements' own vocabulary "the three", above a table of five. In
+  `Shortcodes.php` the class docblock still said `[[.url]]` is what is added,
+  where the block fills `[[.id]]`, `[[.url]]`, `[[.image]]` and `[[.body]]`
+  and `[post-nav]` adds `[[.rel]]`; the manifest's manual entry for `[[.url]]`
+  said the same and added that "every other field is Elements' own". The
+  comment on `BODY_CLASS` had also ended up above `TEMPLATES` when that
+  constant was added. Words only - the code is unchanged.
+
 ### Fixed
 
 - **The pager said somebody was on a page the list had nothing to put on.**

@@ -55,7 +55,7 @@ for the same reason. A section with no `date` field publishes everything it has.
 Both are registered per request out of `data/posts.php` rather than written
 into `config.php`, so they follow the section rather than a copy of it made at
 install time - and they go away with the feature instead of leaving a path
-nothing answers. Two consequences worth knowing:
+nothing answers. Three consequences worth knowing:
 
 - The **Routes panel does not list them.** They are the module's, the way the
   Seo feature's `sitemap.xml` is.
@@ -82,7 +82,7 @@ not a blank page with a header on it.
 ## The four shortcodes
 
 Inside every block the fields are Elements' own - `[[title]]`, `[[date]]`,
-escaped exactly the way `[elements]` escapes them - plus the three values an
+escaped exactly the way `[elements]` escapes them - plus the five values an
 element cannot know by itself.
 
 ```

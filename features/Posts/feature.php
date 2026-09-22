@@ -29,8 +29,8 @@ return [
 		],
 		'markup' => [
 			'[[.url]]' => [
-				'en_US' => 'Inside those four: the one value an element cannot know by itself. Every other field is Elements\' own [[title]].',
-				'de_DE' => 'In diesen vieren: der eine Wert, den ein Element nicht selbst kennen kann. Jedes andere Feld ist das [[title]] der Elemente.',
+				'en_US' => 'Inside those four, beside [[.image]], [[.body]] and [[.id]]: what an element cannot know by itself. Every other field is Elements\' own [[title]].',
+				'de_DE' => 'In diesen vieren, neben [[.image]], [[.body]] und [[.id]]: was ein Element nicht selbst wissen kann. Jedes andere Feld ist das [[title]] der Elemente.',
 			],
 		],
 		'routes' => [

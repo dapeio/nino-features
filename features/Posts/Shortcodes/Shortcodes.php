@@ -23,9 +23,9 @@ namespace Nino\Modules\Posts {
 	 *										The field vocabulary is Elements' own - [[title]] inside
 	 *										the block, escaped the same way, so a template written
 	 *										against [elements] reads here too. What is added to it
-	 *										is [[.url]], because that is the one value neither the
-	 *										element nor the type knows: it takes the section's path
-	 *										to make one.
+	 *										is what neither the element nor the type knows: [[.url]],
+	 *										which takes the section's path to make one, [[.image]],
+	 *										[[.body]], [[.id]] - and [[.rel]] inside [post-nav].
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -33,16 +33,17 @@ namespace Nino\Modules\Posts {
 	 */
 	class Shortcodes {
 
+		// Where this feature's own templates are, as \Nino\Filesystem resolves
+		// them: /features is the installed features directory, wherever
+		// NINO_FEATURES_DIR put it
+		public const string TEMPLATES = '/features/Posts/templates';
+
 		/*	The class every paragraph of a body carries: the framework's own
 			body copy, which is what a post's text is. Nino resets a bare <p> to
 			no margin, so paragraphs without it read as one block - and a set of
 			the Design feature that styles a section's text styles a post with
 			it, which is the point of using the framework's name rather than one
 			of our own */
-		// Where this feature's own templates are, as \Nino\Filesystem resolves
-		// them: /features is the installed features directory, wherever
-		// NINO_FEATURES_DIR put it
-		public const string TEMPLATES = '/features/Posts/templates';
 		public const string BODY_CLASS = 'nino-section-text';
 
 		public static function init( array &$appData ): void {
