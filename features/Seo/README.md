@@ -12,9 +12,11 @@ removed in the routes shows up the next time any of these three files is
 fetched, with no second place to remember to update.
 
 One directory, the shape the [feature recipe](https://github.com/dapeio/nino/blob/main/docs/recipes/feature.md)
-describes: `feature.php`, `Seo.php`, `tests/`. There is no panel and no
-install unit - nothing here needs a workbench screen of its own, and the
-feature owns no visitor-facing content beyond the three technical endpoints
+describes: `feature.php`, `Seo.php`, `templates/`, `tests/`. There is no panel
+and no install unit - nothing here needs a workbench screen of its own, and
+nothing of this feature's is copied into the project: the two templates
+`[seo-alternates]` and `[seo-jsonld]` fill are read out of the feature's own
+directory, and the addresses it owns are the three technical endpoints
 `init()` registers itself, the same way `Modules\Newsletter` owns
 `/.newsletter` or the feature recipe's `Catalog` owns `/api/catalog`. The
 changes per version are in [CHANGELOG.md](CHANGELOG.md).

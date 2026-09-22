@@ -14,6 +14,16 @@ A release is the tag `seo-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The directory listing had no `templates/` in it, and the class pointed at
+  a path the base install does not have.** The README still listed
+  `feature.php`, `Seo.php` and `tests/` alone and said the feature owns no
+  visitor-facing content, where the alternate link and the JSON-LD block are
+  `templates/alternate-link.tpl` and `jsonld.tpl` now. In the class docblock
+  the persisted sitemap/robots/llms routes were credited to
+  `units/base/manifest.php`; the file is
+  `_admin/install/library/base/manifest.php`, which is what the README has
+  said all along. Words only - the code is unchanged.
+
 - **The head markup is a template now.** An alternate link and the JSON-LD
   script were strings `Seo.php` built; they are `templates/alternate-link.tpl`
   and `jsonld.tpl`, filled by token with every value escaped before it goes

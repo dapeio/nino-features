@@ -26,16 +26,16 @@ namespace Nino\Modules {
 	 *										way Modules\Newsletter owns /.newsletter or the feature
 	 *										recipe's Catalog owns /api/catalog - GET://sitemap.xml,
 	 *										GET://robots.txt and GET://llms.txt. The base install's
-	 *										own units/base/manifest.php persists routes under these
-	 *										exact same keys with a static template body the wizard
-	 *										fills in once at setup and nobody updates again; the
-	 *										plain assignment below overwrites that persisted entry in
-	 *										the live array for the lifetime of this request, the same
-	 *										"a stale persisted entry cannot shadow its behavior"
-	 *										reasoning the Catalog recipe's own docblock spells out.
-	 *										Deactivating this feature simply stops overwriting it, so
-	 *										whatever a project had before (the static templates, or
-	 *										nothing) answers again.
+	 *										own _admin/install/library/base/manifest.php persists
+	 *										routes under these exact same keys with a static template
+	 *										body the wizard fills in once at setup and nobody updates
+	 *										again; the plain assignment below overwrites that persisted
+	 *										entry in the live array for the lifetime of this request,
+	 *										the same "a stale persisted entry cannot shadow its
+	 *										behavior" reasoning the Catalog recipe's own docblock
+	 *										spells out. Deactivating this feature simply stops
+	 *										overwriting it, so whatever a project had before (the
+	 *										static templates, or nothing) answers again.
 	 *
 	 *										A "page" is any persisted GET route whose external path
 	 *										(the part of its route key after "GET:/") is not one of
