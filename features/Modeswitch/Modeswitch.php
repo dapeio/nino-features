@@ -56,6 +56,11 @@ namespace Nino\Modules {
 	 */
 	class Modeswitch {
 
+		// Where this feature's own templates are, as \Nino\Filesystem resolves
+		// them: /features is the installed features directory, wherever
+		// NINO_FEATURES_DIR put it
+		public const string TEMPLATES = '/features/Modeswitch/templates';
+
 		/*	The three the switch offers, in the order it draws them. "system" in
 			the middle on purpose: it is the one between the two, both as a
 			meaning and on screen, and a reader looking for "back to normal"
@@ -67,10 +72,6 @@ namespace Nino\Modules {
 			the middle position removes the attribute rather than writing a third
 			value, and there is no state that has to be kept in step with the
 			system setting	*/
-		// Where this feature's own templates are, as \Nino\Filesystem resolves
-		// them: /features is the installed features directory, wherever
-		// NINO_FEATURES_DIR put it
-		public const string TEMPLATES = '/features/Modeswitch/templates';
 		public const array MODES = [ 'light', 'system', 'dark' ];
 
 		/*	The one thing this class holds that looks like markup, and the reason
@@ -103,13 +104,12 @@ namespace Nino\Modules {
 
 			\Nino\Html::addShortcode( $appData, 'mode-switch', [ self::class, 'doShortcode' ] );
 
-			/*	A source outside \Nino\Filesystem::PRIVATE_DIRS/PUBLIC_DIRS
-				resolves against the project root (\Nino\Filesystem::path()'s
-				fallback) - the same way '/_nino/Nino.css' already does for the
-				kernel's own bundle, so '/features/Modeswitch/assets/...' reaches
-				this feature's own copy as long as features/ sits where it does by
-				default (NINO_FEATURES_DIR unmoved); see the README's "Asset
-				bundling" note for the relocated case	*/
+			/*	The virtual '/features/...' prefix resolves against
+				\Nino\Features::dir() (\Nino\Filesystem::FEATURES_DIR), the same way
+				TEMPLATES above is read - so '/features/Modeswitch/assets/...' reaches
+				this feature's own copy wherever NINO_FEATURES_DIR put the features
+				directory, and a project that moved it has nothing to say in
+				'/nino/html/assets'	*/
 			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Modeswitch/assets/modeswitch.css' );
 			\Nino\Html::addAsset( $appData, '/.cache/script.js', '/features/Modeswitch/assets/modeswitch.js' );
 		}

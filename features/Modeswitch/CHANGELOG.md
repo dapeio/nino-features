@@ -14,6 +14,22 @@ A release is the tag `modeswitch-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The comment describing the three states stood over `TEMPLATES`.** "The
+  three the switch offers, in the order it draws them" explains `MODES`; the
+  constant the template patch added was put between it and `MODES`, with its
+  own comment, so the file read as though the templates directory were the
+  three states. Each comment stands over what it explains again.
+
+- **The "Asset bundling" note asked a project to do something it does not
+  have to.** It said `/features/Modeswitch/assets/...` resolves against the
+  project root, and that a project which moved its features elsewhere with
+  `NINO_FEATURES_DIR` has to name the two sources under their real path in
+  `/nino/html/assets` itself. `\Nino\Filesystem` resolves the virtual
+  `/features` prefix against `\Nino\Features::dir()` - a branch of its own,
+  older than the `^1.3` this manifest names - so the sources are found after
+  a relocation like every other file a feature addresses that way, the two
+  templates this feature reads through the same prefix included.
+
 - **The switch's markup is a template now.** The group and a button of it were
   strings `Modeswitch.php` built; they are `templates/modeswitch.tpl` and
   `modeswitch-button.tpl`, filled by token - see AGENTS.md, "Markup belongs in
