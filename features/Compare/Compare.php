@@ -74,13 +74,13 @@ namespace Nino\Modules {
 
 			\Nino\Html::addShortcode( $appData, 'compare', [ self::class, 'doShortcode' ] );
 
-			/*	A source outside \Nino\Filesystem::PRIVATE_DIRS/PUBLIC_DIRS
-				resolves against the project root (\Nino\Filesystem::path()'s
-				fallback) - the same way '/_nino/Nino.css' already does for the
-				kernel's own bundle, so '/features/Compare/assets/...' reaches this
-				feature's own copy as long as features/ sits where it does by
-				default (NINO_FEATURES_DIR unmoved); see the README's "Asset
-				bundling" note for the relocated case	*/
+			/*	The virtual '/features/...' prefix resolves against
+				\Nino\Features::dir() (\Nino\Filesystem::FEATURES_DIR), the same way
+				TEMPLATES above is read - so '/features/Compare/assets/...' reaches
+				this feature's own copy wherever NINO_FEATURES_DIR put the features
+				directory, and a project that moved it has nothing to say in
+				'/nino/html/assets'. The kernel's own '/_nino/Nino.css' is named the
+				same way and resolves against the project root, which is where it sits	*/
 			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Compare/assets/compare.css' );
 			\Nino\Html::addAsset( $appData, '/.cache/script.js', '/features/Compare/assets/compare.js' );
 		}

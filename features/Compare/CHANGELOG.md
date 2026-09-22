@@ -12,6 +12,19 @@ A release is the tag `compare-<version>` of dapeio/nino-features.
   feature to an installation that could not then install it. `^1.3` names
   only a kernel that can read the manifest.
 
+### Changed
+
+- **The "Asset bundling" note asked a project to do something it does not
+  have to.** It said `/features/Compare/assets/...` resolves against the
+  project root, and that a project which moved its features elsewhere with
+  `NINO_FEATURES_DIR` has to name the two sources under their real path in
+  `/nino/html/assets` itself. `\Nino\Filesystem` resolves the virtual
+  `/features` prefix against `\Nino\Features::dir()` - a branch of its own,
+  older than the `^1.3` this manifest names - so the sources are found after
+  a relocation like every other file a feature addresses that way. The
+  comment over `TEMPLATES` in `Compare.php` said as much four lines above the
+  one that said otherwise; the README and that comment say it now too.
+
 ### Fixed
 
 - **The control was laid over the caption as well as over the pictures.** It
