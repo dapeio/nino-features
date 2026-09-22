@@ -71,6 +71,14 @@ namespace Nino\Modules {
 			or to nothing. The panel's field picker offers exactly this set */
 		public const array INDEXABLE = [ 'string', 'integer', 'double', 'array', 'date', 'datetime' ];
 
+		/*	The one name a slot may be given that is not a field of the model:
+			the Element's own address, '/products/lampe-xl'. A visitor who knows
+			a product code or a slug types that, and no field of the model
+			carries it - queryElements() hands it out as '.uri' beside the
+			fields, which is where _createIndex() reads it, as text like any
+			other. The panel offers it first, and config.php may name it	*/
+		public const string URI_FIELD = '.uri';
+
 		/**
 		 *	The /_admin screen this module brings along - collected by
 		 *	Admin::panels() through Modules::collect(), so it appears in the
@@ -85,7 +93,7 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	Register the write-time refresh and the two shortcodes a page puts a
+		 *	Register the write-time refresh and the shortcode a page puts a
 		 *	search on. Building the initial index stays an explicit action in the
 		 *	Search panel; init itself performs no I/O.
 		 */
@@ -456,7 +464,7 @@ namespace Nino\Modules {
 						continue;
 					}
 
-					if( isset( $model[$field] ) === false ) {
+					if( $field !== self::URI_FIELD && isset( $model[$field] ) === false ) {
 						$entry['issues'][] = 'the model of "'. $typeUri. '" has no field "'. $field. '"';
 						continue;
 					}
@@ -540,10 +548,11 @@ namespace Nino\Modules {
 				'type' 			=> $typeUri,
 				'title' 		=> is_string( $typeData['title'] ?? null ) === true ? $typeData['title'] : ltrim( $typeUri, '/' ),
 				'exists' 		=> $model !== [] || $typeData !== [],
-				// What a priority slot may be given: every field the model has,
-				// minus the ones that carry no text to search (see _normalizeValue)
-				'model' 		=> array_values( array_filter( array_keys( $model ),
-										static fn( string $field ): bool => in_array( (string) ( $model[$field]['type'] ?? 'string' ), self::INDEXABLE, true ) === true ) ),
+				// What a priority slot may be given: the Element's address first,
+				// then every field the model has minus the ones that carry no
+				// text to search (see _normalizeValue)
+				'model' 		=> array_merge( [ self::URI_FIELD ], array_values( array_filter( array_keys( $model ),
+										static fn( string $field ): bool => in_array( (string) ( $model[$field]['type'] ?? 'string' ), self::INDEXABLE, true ) === true ) ) ),
 				'elements' 	=> count( array_diff( array_unique( $slugs ), [ '*' ] ) ),
 			];
 		}

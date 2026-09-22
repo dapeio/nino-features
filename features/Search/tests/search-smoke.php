@@ -273,53 +273,29 @@ $appData['/nino/elements/index']['articles'] = [ 0 => 'title', 1 => 'summary', 2
 unset( $appData['/nino/elements/index']['notes'] );
 \Nino\Modules\Search::createIndexes( $appData );
 
-echo "\nThe two shortcodes a page puts a search on\n";
+echo "\nThe shortcode that draws the hits under the project's own form\n";
 
 /*	Rendered the way a template renders: through \Nino\Html::renderHtml(), so
 	the fills in the attributes resolve before the shortcode sees them and the
 	[[field]] placeholders in the body survive to it, exactly as they do in a
 	project (see Html::renderHtml()'s order) */
 $appData['./nino/html/fills'] = [];
-\Nino\Html::addFills( $appData, [
-	'/page-products/search/submit' 			=> 'Los',
-	'/page-products/search/placeholder' => 'Was suchen Sie?',
-], '*' );
 
-$searchForm = \Nino\Html::renderHtml( $appData, '[search submit="[[/page-products/search/submit]]" placeholder="[[/page-products/search/placeholder]]"]' );
-check( 'the form is a plain GET form with a search field and a button',
-	str_contains( $searchForm, 'method="get"' ) === true
-	&& str_contains( $searchForm, 'role="search"' ) === true
-	&& str_contains( $searchForm, 'type="search" name="q"' ) === true );
-check( 'its labels come out of the fills the attributes named',
-	str_contains( $searchForm, '>Los</button>' ) === true
-	&& str_contains( $searchForm, 'placeholder="Was suchen Sie?"' ) === true
-	&& str_contains( $searchForm, 'aria-label="Was suchen Sie?"' ) === true );
-
-$plainForm = \Nino\Html::renderHtml( $appData, '[search]' );
-check( 'a bare [search] still says something, in the interface language',
-	str_contains( $plainForm, '>Suchen</button>' ) === true && str_contains( $plainForm, 'placeholder="Suchbegriff"' ) === true );
-check( 'a fill the project never defined does not reach the visitor as brackets',
-	str_contains( \Nino\Html::renderHtml( $appData, '[search submit="[[/nothing/defined/here]]"]' ), '[[' ) === false );
-
-$_GET = [ 'q' => 'orbit' ];
-check( 'the field carries back what was searched for',
-	str_contains( \Nino\Html::renderHtml( $appData, '[search]' ), 'value="orbit"' ) === true );
+// The form is the project's own: an input named like `key` and a button.
+// A shortcode used to draw one, and a page that still carries it gets the
+// text, not a form
+check( '[search] is no shortcode any more - the form is the project\'s own',
+	str_contains( \Nino\Html::renderHtml( $appData, '[search]' ), '<form' ) === false );
 
 // What a shortcode returns is rendered again (that is what lets [template]
-// hold other shortcodes), so a query carried back into the field was read by
-// the fill and shortcode pass that followed: anybody could put any of the
-// project's templates, and any of its texts, into the page by linking to it
+// hold other shortcodes) - so an element value, which is editor content,
+// must come back as the text it is: anybody could otherwise put any of the
+// project's templates, and any of its texts, into the page by writing one.
+// The kernel's own [element] escapes its '[' for exactly this reason
 \Nino\Filesystem::putFileContent( $appData, '/templates/page-secret.tpl', 'THE-SECRET-TEMPLATE' );
 \Nino\Html::addFills( $appData, [ '[[/secret/fill]]' => 'THE-SECRET-TEXT' ], '*' );
 \Nino\Modules\Template::init( $appData );
 
-$_GET = [ 'q' => '[template /templates/page-secret] [[/secret/fill]]' ];
-$searchedForMarkup = \Nino\Html::renderHtml( $appData, '[search]' );
-check( 'a query that is a template or a fill is carried back as the text it is, not rendered',
-	str_contains( $searchedForMarkup, 'THE-SECRET-TEMPLATE' ) === false && str_contains( $searchedForMarkup, 'THE-SECRET-TEXT' ) === false );
-
-// Same rule for the rows: an element value is editor content, and the
-// kernel's own [element] escapes its '[' for exactly this reason
 \Nino\Elements::insertElement( $appData, '/articles/bracket', [
 	'title' => 'Orbit [template /templates/page-secret]', 'summary' => 'Und [[/secret/fill]]', 'keywords' => [], 'author' => '',
 ], 'de_DE' );
@@ -343,17 +319,26 @@ check( 'and the rows come wrapped, so a project has something to style',
 $_GET = [ 'q' => 'nowhere at all' ];
 check( 'a query that finds nothing renders nothing without an empty text',
 	\Nino\Html::renderHtml( $appData, $block ) === '' );
-check( '...and says so with one', str_contains(
-	\Nino\Html::renderHtml( $appData, '[search-results type="/articles" empty="Nichts gefunden."]<p>[[title]]</p>[/search-results]' ), 'Nichts gefunden.' ) === true );
+/*	...and with empty= it draws the project's template of that name - a
+	template, not a sentence in an attribute, so it holds whatever the project
+	puts there: a fill, a picture, a form. Rendered inside the wrapper, with
+	the fill resolved, which is what says it went through the template pass */
+\Nino\Filesystem::putFileContent( $appData, '/templates/search-empty.tpl', '<p class="nothing">NOTHING-FOUND [[/secret/fill]]</p>' );
+check( '...and with empty= it draws the project\'s template of that name inside the wrapper, fills and all', str_starts_with(
+	\Nino\Html::renderHtml( $appData, '[search-results type="/articles" empty="search-empty"]<p>[[title]]</p>[/search-results]' ),
+	'<div class="nino-search-results"><p class="nothing">NOTHING-FOUND THE-SECRET-TEXT</p>' ) === true );
+ninoWarnings();
+check( 'an empty= that is not a template name draws nothing and says so in the log',
+	\Nino\Html::renderHtml( $appData, '[search-results type="/articles" empty="Nichts gefunden."]<p>[[title]]</p>[/search-results]' ) === ''
+	&& str_contains( implode( "\n", ninoWarnings() ), 'does not name a template below /templates' ) === true );
 
 $_GET = [];
 check( 'nothing searched for is not the same as nothing found', \Nino\Html::renderHtml( $appData, $block ) === '' );
 
 $_GET = [ 'my_own_get_var_key' => 'orbit' ];
-check( 'both shortcodes read whichever query variable they are told to',
-	str_contains( \Nino\Html::renderHtml( $appData, '[search key="my_own_get_var_key"]' ), 'name="my_own_get_var_key"' ) === true
-	&& str_contains( \Nino\Html::renderHtml( $appData, '[search-results key="my_own_get_var_key" type="articles"]<p>[[title]]</p>[/search-results]' ), 'Remote station' ) === true );
-check( 'a result block reading another key than the form stays empty',
+check( 'the block reads whichever query variable it is told to - the name of the input in the project\'s form',
+	str_contains( \Nino\Html::renderHtml( $appData, '[search-results key="my_own_get_var_key" type="articles"]<p>[[title]]</p>[/search-results]' ), 'Remote station' ) === true );
+check( 'a block reading another key than the one the form sent stays empty',
 	\Nino\Html::renderHtml( $appData, $block ) === '' );
 
 $_GET = [ 'q' => 'orbit' ];
@@ -569,6 +554,19 @@ check( 'an empty field map takes the type out of the configuration', $status ===
 check( '...and removes the derived file with it', is_file( $notesIndex ) === false );
 check( '...and it is gone from config.php too',
 	isset( \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/elements/index']['/notes'] ) === false );
+
+/*	The one name a slot may be given that is no field of the model: the
+	Element's own address, for a visitor who types a product code or a slug.
+	Offered first by the list, taken by the editor, indexed like a field -
+	'one' is nowhere in the note's title, only in its address */
+check( 'the editor offers the Element\'s address first, beside the model',
+	( array_column( \Nino\Modules\Search::indexState( $appData ), 'model', 'type' )['/notes'][0] ?? null ) === \Nino\Modules\Search::URI_FIELD );
+[ $status, $savedAddress ] = callSearchAction( $appData, 'apiSave', [ 'type' => 'notes', 'fields' => [ 0 => 'title', 1 => '.uri' ] ] );
+check( '...and takes it', $status === 200 && ( $savedAddress['fields'] ?? null ) === [ 0 => 'title', 1 => '.uri' ] );
+check( '...so a visitor who types the slug finds the Element by its address',
+	callSearchAction( $appData, 'apiCreateIndex', [ 'type' => '/notes' ] )[0] === 200
+	&& searchUris( $appData, 'notes', 'one' ) === [ '/notes/one' ] );
+callSearchAction( $appData, 'apiSave', [ 'type' => '/notes', 'fields' => [] ] );
 
 // The screen the panel exists for
 [ $status, $probe ] = callSearchAction( $appData, 'apiProbe', [ 'types' => [ 'articles' ], 'query' => 'orbit' ] );

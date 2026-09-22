@@ -7,18 +7,22 @@ return [
 	'key'					=> 'search',
 	'name'				=> [ 'en_US' => 'Elements search', 'de_DE' => 'Elemente-Suche' ],
 	'description'	=> [
-		'en_US' => 'A locale-aware fuzzy search index over configured Element fields, rebuilt on every save, with two shortcodes that put a search form and its results on any page.',
-		'de_DE' => 'Ein sprachbewusster unscharfer Suchindex über konfigurierte Elementfelder, neu gebaut bei jedem Speichern, mit zwei Shortcodes für Suchformular und Trefferliste auf jeder Seite.',
+		'en_US' => 'A locale-aware fuzzy search index over configured Element fields, rebuilt on every save, with a shortcode that draws the hits on any page, under a form the project writes itself.',
+		'de_DE' => 'Ein sprachbewusster unscharfer Suchindex über konfigurierte Elementfelder, neu gebaut bei jedem Speichern, mit einem Shortcode, der die Treffer auf jeder Seite zeichnet, unter einem Formular, das das Projekt selbst schreibt.',
 	],
 	'manual'			=> [
 		'shortcodes' => [
-			'[search placeholder="Search term" submit="Go"]' => [
-				'en_US' => 'The form. A plain GET form, so a result page can be linked and bookmarked.',
-				'de_DE' => 'Das Formular. Ein einfaches GET-Formular, eine Trefferseite ist also verlinkbar.',
-			],
 			'[search-results type="/products"]…[/search-results]' => [
-				'en_US' => 'Its answer. The body is the markup of one hit, with [[field]] for anything the type has.',
-				'de_DE' => 'Seine Antwort. Der Inhalt ist das Markup eines Treffers, mit [[feld]] für alles, was der Typ hat.',
+				'en_US' => 'The hits, under a GET form the project writes itself. The body is the markup of one hit, with [[field]] for anything the type has.',
+				'de_DE' => 'Die Treffer, unter einem GET-Formular, das das Projekt selbst schreibt. Der Inhalt ist das Markup eines Treffers, mit [[feld]] für alles, was der Typ hat.',
+			],
+			'[search-results ... key="q"]' => [
+				'en_US' => 'The query variable it reads: the name of the input in the form. Default q.',
+				'de_DE' => 'Die Query-Variable, die gelesen wird: der Name des Eingabefelds im Formular. Standard q.',
+			],
+			'[search-results ... empty="search-empty"]' => [
+				'en_US' => 'What is drawn when nothing was found: a template of the project, here /templates/search-empty.tpl. Without it, nothing.',
+				'de_DE' => 'Was gezeigt wird, wenn nichts gefunden wurde: ein Template des Projekts, hier /templates/search-empty.tpl. Ohne die Angabe nichts.',
 			],
 		],
 		'markup' => [],

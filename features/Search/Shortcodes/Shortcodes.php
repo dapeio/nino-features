@@ -13,26 +13,26 @@ namespace Nino\Modules\Search {
 
 	/**
 	 *	Nino							A compact filesystembased php framework
-	 *	Shortcodes				The two shortcodes that put a search on a page, and
+	 *	Shortcodes				The one shortcode that puts a search on a page, and
 	 *										nothing else: no route, no page template, no install
-	 *										unit. A project that wants a search page writes one and
-	 *										puts these in it.
+	 *										unit, no form. A project that wants a search page writes
+	 *										one, with a GET form of its own - an input and a button
+	 *										are written faster than a shortcode's attributes are
+	 *										looked up - and puts this under it:
 	 *
-	 *										  [search]                the form
 	 *										  [search-results]…[/…]   the hits, drawn by its own body
 	 *
-	 *										The body of the second is the row markup, once per hit,
-	 *										with [[field]] for anything the type's model has. So the
-	 *										feature ships no opinion about what a result looks like -
-	 *										which is the only way one search can serve a product
-	 *										grid and a list of articles without growing a template
-	 *										system of its own.
+	 *										The body is the row markup, once per hit, with [[field]]
+	 *										for anything the type's model has. So the feature ships
+	 *										no opinion about what a result looks like - which is the
+	 *										only way one search can serve a product grid and a list
+	 *										of articles without growing a template system of its
+	 *										own.
 	 *
-	 *										The form is a plain GET form: the query rides in the url,
-	 *										so a result page can be linked, bookmarked and gone back
-	 *										to. Both shortcodes read the same query variable, and
-	 *										they have to agree on its name - `key` on both, default
-	 *										"q".
+	 *										The query rides in the url, so a result page can be
+	 *										linked, bookmarked and gone back to. Which query variable
+	 *										is read is `key`, default "q" - the name of the input in
+	 *										the project's form.
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -40,7 +40,7 @@ namespace Nino\Modules\Search {
 	 */
 	class Shortcodes {
 
-		// The query variable both shortcodes read unless `key` says otherwise
+		// The query variable the shortcode reads unless `key` says otherwise
 		// Where this feature's own templates are, as \Nino\Filesystem resolves
 		// them: /features is the installed features directory, wherever
 		// NINO_FEATURES_DIR put it
@@ -55,21 +55,8 @@ namespace Nino\Modules\Search {
 		public const int DEFAULT_LIMIT = 20;
 		public const int MAX_LIMIT = 200;
 
-		// What the form says when the page does not - resolved from the
-		// project's own textfills first, so a project overrides by defining
-		// /search/label/submit rather than by passing an attribute everywhere
-		private const array DEFAULTS = [
-			'submit' 			=> [ 'de' => 'Suchen', 'en' => 'Search' ],
-			'placeholder' => [ 'de' => 'Suchbegriff', 'en' => 'Search term' ],
-		];
-
 		/**
-		 *	Register both shortcodes
-		 *
-		 *	The longer name first, deliberately: the renderer joins every
-		 *	registered name into one alternation, and while PCRE does backtrack
-		 *	out of "search" into "search-results", it only has to when the
-		 *	shorter one is offered first
+		 *	Register the shortcode
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
@@ -78,7 +65,6 @@ namespace Nino\Modules\Search {
 		public static function init( array &$appData ): void {
 
 			\Nino\Html::addShortcode( $appData, 'search-results', [ self::class, 'doResults' ] );
-			\Nino\Html::addShortcode( $appData, 'search', [ self::class, 'doForm' ] );
 		}
 
 		/**
@@ -101,62 +87,16 @@ namespace Nino\Modules\Search {
 		}
 
 		/**
-		 *	[search] - the form. A plain GET form, so the query lands in the url
-		 *	and a result page can be linked and bookmarked
-		 *
-		 *	  key           the query variable, default "q"
-		 *	  action        where it submits, default the page it is on
-		 *	  placeholder   the field's placeholder and its accessible name
-		 *	  submit        the button
-		 *	  label         the accessible name, when it should differ
-		 *	  class         replaces the form's classes entirely
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array 		$args					Shortcode arguments
-		 *
-		 *	@return 	string								Html
-		 */
-		public static function doForm( array &$appData, array $args ): string {
-
-			$key 					= self::_key( $args );
-			$placeholder 	= self::_text( $appData, $args, 'placeholder' );
-			$submit 			= self::_text( $appData, $args, 'submit' );
-			$label 				= self::_attribute( $args, 'label' );
-			$class 				= self::_attribute( $args, 'class' );
-			$action 			= self::_attribute( $args, 'action' );
-
-			$safe = static fn( string $value ): string => htmlspecialchars( $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
-
-			// The query is the visitor's, and what a shortcode returns is
-			// rendered again - that is what lets [template] hold other
-			// shortcodes. So the '[' goes the way \Nino\Modules\Elements swaps
-			// it, or anybody could put any of the project's templates, and any
-			// of its texts, into the page by linking to it
-			$safeQuery = static fn( string $value ): string => str_replace( '[', '&#91;', htmlspecialchars( $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) );
-
-			return str_replace(
-				[ '[[class]]', '[[action]]', '[[name]]', '[[value]]', '[[placeholder]]', '[[label]]', '[[submit]]' ],
-				[
-					$safe( $class !== '' ? $class : 'nino-form nino-form--inline nino-search' ),
-					$safe( $action ),
-					$safe( $key ),
-					$safeQuery( self::query( $key ) ),
-					( $placeholder !== '' ? ' placeholder="'. $safe( $placeholder ). '"' : '' ),
-					$safe( $label !== '' ? $label : $placeholder ),
-					$safe( $submit ),
-				],
-				self::template( $appData, 'search-form' )
-			);
-		}
-
-		/**
 		 *	[search-results …]<row markup>[/search-results] - the hits, each one
 		 *	drawn by the block's own body
 		 *
 		 *	  type          one element type, or several separated by commas
-		 *	  key           the query variable, default "q" - must match [search]
+		 *	  key           the query variable, default "q" - the name of the
+		 *	                input in the project's own form
 		 *	  limit         how many hits to draw, default 20, at most 200
-		 *	  empty         what to say when the query found nothing
+		 *	  empty         what to draw when the query found nothing: a
+		 *	                template of the project, "search-empty" for
+		 *	                /templates/search-empty.tpl
 		 *	  tag / class   the wrapper, default <div class="nino-search-results">;
 		 *	                tag="none" leaves the rows unwrapped
 		 *
@@ -183,7 +123,7 @@ namespace Nino\Modules\Search {
 			$hits = \Nino\Modules\Search::getElements( $appData, $types, $query, $limit );
 
 			if( $hits === [] )
-				return self::_wrap( $appData, $args, self::_attribute( $args, 'empty' ) );
+				return self::_wrap( $appData, $args, self::_empty( $args ) );
 
 			$rows = '';
 			$number = 0;
@@ -306,6 +246,38 @@ namespace Nino\Modules\Search {
 		}
 
 		/**
+		 *	What stands there when nothing was found: the project's template
+		 *	`empty` names, as the [template] the kernel resolves - what a
+		 *	shortcode returns is rendered again, which is what lets the template
+		 *	hold fills and shortcodes of its own. A sentence in an attribute
+		 *	used to stand here; a template holds a sentence as well, and a
+		 *	suggestion, a form or a picture beside it.
+		 *
+		 *	Held to a name below /templates - slugs, with a slash between them -
+		 *	because the one thing the value could otherwise do is climb out of
+		 *	that directory. A value that is not one renders nothing and says so,
+		 *	the way a missing template of this feature's own says so
+		 *
+		 *	@param		array 		$args					Shortcode arguments
+		 *
+		 *	@return 	string								'[template …]', or ''
+		 */
+		private static function _empty( array $args ): string {
+
+			$empty = self::_attribute( $args, 'empty' );
+
+			if( $empty === '' )
+				return '';
+
+			if( preg_match( '/^[a-z0-9][a-z0-9_-]*(?:\/[a-z0-9][a-z0-9_-]*)*$/i', $empty ) !== 1 ) {
+				trigger_error( 'Nino: [search-results empty="'. $empty. '"] does not name a template below /templates.', E_USER_WARNING );
+				return '';
+			}
+
+			return '[template /templates/'. $empty. ']';
+		}
+
+		/**
 		 *	The query variable name, held to what a form field may be called
 		 *
 		 *	@param		array 		$args					Shortcode arguments
@@ -343,10 +315,10 @@ namespace Nino\Modules\Search {
 		 *	One attribute, with a fill that did not resolve treated as absent
 		 *
 		 *	Attributes are rendered before shortcodes are (see
-		 *	\Nino\Html::renderHtml()), so `submit="[[/page/search/submit]]"`
+		 *	\Nino\Html::renderHtml()), so `empty="[[/page/search/empty]]"`
 		 *	arrives here as the text it resolved to. When the project never
-		 *	defined that key it arrives as the brackets themselves, and putting
-		 *	those on a button in front of a visitor is worse than the default
+		 *	defined that key it arrives as the brackets themselves, and reading
+		 *	those as a value is worse than the default
 		 *
 		 *	@param		array 		$args					Shortcode arguments
 		 *	@param		string		$name
@@ -358,33 +330,6 @@ namespace Nino\Modules\Search {
 			$value = trim( (string) ( $args[$name] ?? '' ) );
 
 			return preg_match( '/^\[\[.*\]\]$/s', $value ) === 1 ? '' : $value;
-		}
-
-		/**
-		 *	A label: the attribute, else the project's own textfill for it, else
-		 *	what this feature ships in the interface language
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array 		$args					Shortcode arguments
-		 *	@param		string		$name					'submit' or 'placeholder'
-		 *
-		 *	@return 	string
-		 */
-		private static function _text( array &$appData, array $args, string $name ): string {
-
-			$value = self::_attribute( $args, $name );
-
-			if( $value !== '' )
-				return $value;
-
-			$fill = \Nino\Html::renderTextfill( $appData, '/search/label/'. $name );
-
-			if( $fill !== '' )
-				return $fill;
-
-			$language = substr( \Nino\Locales::getCurrentLocale( $appData ), 0, 2 );
-
-			return self::DEFAULTS[$name][$language] ?? self::DEFAULTS[$name]['en'];
 		}
 
 		/**

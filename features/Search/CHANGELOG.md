@@ -5,6 +5,26 @@ A release is the tag `search-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+- **`[search]` is gone; the form is the project's own.** An input and a
+  button are written faster than a shortcode's attributes are looked up, and
+  the form was the one thing on the page this feature had an opinion about.
+  `[search-results]` reads the query variable its `key` names - the name of
+  the input in the project's form, `q` by default. A page that still carries
+  `[search]` shows it as text until the form is written out; the README shows
+  the three lines.
+
+- **The Element's address can be indexed.** The four slots of the editor offer
+  `.uri` first, beside the model's fields, so a visitor who types a product
+  code or a slug finds the Element by it. The address is indexed as text like
+  any field, `config.php` may name it the same way, and the endpoint hands it
+  out under `fields` like the rest.
+
+- **`empty=` names a template.** What stands there when nothing was found is
+  a template of the project - `empty="search-empty"` renders
+  `/templates/search-empty.tpl` inside the wrapper, with everything a template
+  can hold - rather than one sentence in an attribute. A value that is not a
+  template name draws nothing and says so in the log.
+
 - **A JSON endpoint, off until the setting says so.** `GET /.search?q=…`
   answers the shortcodes' search as json - the same index, the same locale,
   the same scores - for a page that searches while typing and for anything

@@ -1,1 +1,0 @@
-<form class="[[class]]" role="search" method="get" action="[[action]]"><input type="search" name="[[name]]" value="[[value]]" class="nino-form-input nino-search-input"[[placeholder]] aria-label="[[label]]"><button type="submit" class="nino-btn nino-btn--primary nino-form-submit">[[submit]]</button></form>

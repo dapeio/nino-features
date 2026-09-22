@@ -212,14 +212,19 @@ namespace Nino\Modules\Search {
 					return;
 				}
 
-				if( isset( $model[$field] ) === false ) {
-					\Nino\Http::fail( $request, 400, 'the model of "'. $typeUri. '" has no field "'. $field. '"' );
-					return;
-				}
+				// The Element's address is the one name that is no field of the
+				// model and is taken anyway - see Search::URI_FIELD
+				if( $field !== \Nino\Modules\Search::URI_FIELD ) {
 
-				if( in_array( (string) ( $model[$field]['type'] ?? 'string' ), \Nino\Modules\Search::INDEXABLE, true ) === false ) {
-					\Nino\Http::fail( $request, 400, 'the field "'. $field. '" carries no text to search' );
-					return;
+					if( isset( $model[$field] ) === false ) {
+						\Nino\Http::fail( $request, 400, 'the model of "'. $typeUri. '" has no field "'. $field. '"' );
+						return;
+					}
+
+					if( in_array( (string) ( $model[$field]['type'] ?? 'string' ), \Nino\Modules\Search::INDEXABLE, true ) === false ) {
+						\Nino\Http::fail( $request, 400, 'the field "'. $field. '" carries no text to search' );
+						return;
+					}
 				}
 
 				$fields[$priority] = $field;

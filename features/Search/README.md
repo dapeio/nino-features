@@ -3,8 +3,8 @@
 **Key:** `search` · **Class:** `\Nino\Modules\Search` · **Version:** 1.1.0 · **Nino:** `^1.3`
 
 A small weighted fuzzy index over the fields of configured Element types,
-grouped by locale. Two shortcodes put a search form and its results on any
-page; project code searches through `\Nino\Modules\Search::getElements()`
+grouped by locale. One shortcode draws the hits on any page, under a form the
+project writes itself; project code searches through `\Nino\Modules\Search::getElements()`
 and receives complete canonical Elements in score order. The index is a derived file per type, rebuilt after
 every committed Elements write of that type and, all at once, from the
 workbench's **Search** panel. Which types and fields are indexed is
@@ -13,59 +13,47 @@ workbench's **Search** panel. Which types and fields are indexed is
 One directory, the shape the [feature recipe](https://github.com/dapeio/nino/blob/main/docs/recipes/feature.md)
 describes: `feature.php`, `Search.php`, `Shortcodes/Shortcodes.php`,
 `Admin/Admin.php`, `assets/`, `text/`, `tests/`. There is no install unit -
-the feature ships no page and no template, only the two shortcodes a project
-puts in its own - and no `data` entry in the manifest, because the index
+the feature ships no page, no template and no form, only the one shortcode a
+project puts under its own form - and no `data` entry in the manifest, because the index
 files are derived and rebuilt on demand. The changes per version are in
 [CHANGELOG.md](CHANGELOG.md).
 
-## The two shortcodes
+## The shortcode
 
-The feature registers no route and brings no page. What it brings is a form
-and a way to draw its answer; where they go, and what a hit looks like, is the
-project's:
+The feature registers no route, brings no page and draws no form. What it
+brings is a way to draw the answer; the form, where it goes and what a hit
+looks like are the project's:
 
 ```
-[search submit="[[/page-products/search/submit]]" placeholder="[[/page-products/search/placeholder]]"]
+<form role="search" method="get" action="/suche">
+	<input type="search" name="q" value="[[/page-suche/query]]" aria-label="Suchbegriff">
+	<button type="submit">Suchen</button>
+</form>
 
-[search-results key="q" type="/products"]<h5>[[title]]</h5> <p>[[description]]</p>[/search-results]
+[search-results key="q" type="/products" empty="search-empty"]<h5>[[title]]</h5> <p>[[description]]</p>[/search-results]
 ```
 
-`[search]` is a plain **GET** form, so the query rides in the url and a result
-page can be linked, bookmarked and gone back to. `[search-results]` is an
-enclosing shortcode, and **its body is the markup of one hit** - repeated once
-per result, with `[[name]]` for anything the type's model has. That is the
-whole templating story: one search can serve a product grid and a list of
-articles because neither of them is this feature's to describe.
+The form is the project's own: an input and a button are written faster than
+a shortcode's attributes are looked up, and a project styles and words them
+the way it styles everything else. A plain **GET** form, so the query rides in
+the url and a result page can be linked, bookmarked and gone back to.
+`[search-results]` is an enclosing shortcode, and **its body is the markup of
+one hit** - repeated once per result, with `[[name]]` for anything the type's
+model has. That is the whole templating story: one search can serve a product
+grid and a list of articles because neither of them is this feature's to
+describe.
 
-Both read the same query variable and have to agree on its name - `key` on
-both, default `q`.
-
-### `[search]`
-
-| | |
-| --- | --- |
-| `key` | the query variable, default `q` |
-| `action` | where the form submits, default the page it is on |
-| `placeholder` | the field's placeholder, and its accessible name |
-| `submit` | the button |
-| `label` | the accessible name, where it should differ from the placeholder |
-| `class` | replaces the form's classes entirely (default `nino-form nino-form--inline nino-search`) |
-
-`submit` and `placeholder` fall back to the project's own textfills
-`/search/label/submit` and `/search/label/placeholder`, and then to what the
-feature ships in the interface language - so a bare `[search]` already says
-something. A fill an attribute names but the project never defined arrives here
-as the brackets themselves; those are treated as absent rather than printed on
-a button in front of a visitor.
+Which query variable is read is `key`, default `q` - the name of the input in
+the form.
 
 ### `[search-results]`
 
 | | |
 | --- | --- |
 | `type` | one Element type, or several separated by commas. Both `products` and `/products` |
-| `key` | the query variable, default `q` - must match the form's |
+| `key` | the query variable, default `q` - the name of the input in the project's form |
 | `limit` | how many hits to draw, default 20, at most 200 |
-| `empty` | what to say when the query found nothing. Without it, nothing is drawn |
+| `empty` | what to draw when the query found nothing: **a template of the project**, `empty="search-empty"` for `/templates/search-empty.tpl`, rendered inside the wrapper with everything a template can hold - a sentence, a suggestion, a picture. Without it, nothing is drawn. A value that is not a template name (slugs below `/templates`, a slash between them) draws nothing and says so in the log |
 | `tag` / `class` | the wrapper, default `<div class="nino-search-results">`. `tag="none"` leaves the rows unwrapped |
 
 Beside the model's own fields, every row can use:
@@ -107,7 +95,7 @@ Beside the shortcodes, the feature's public surface:
 
 `skipped` names a configured type that produced no index and why (`the model of "/products" has no field "titel"`); `issues` names a type that *is* indexed but whose configuration holds a name that does not resolve. Both used to be dropped silently - a configuration naming two types reported "1 index created", and a wholly invalid one came back as "no search indexes are configured".
 
-`init()` registers the callback and the two shortcodes, and nothing else: activation creates no file.
+`init()` registers the callback and the shortcode, and nothing else: activation creates no file.
 
 ## The JSON endpoint
 
@@ -202,7 +190,10 @@ Four slots, strongest to weakest, each a `<select>` **over that type's own
 model** - and only over the fields that carry text, so `image`, `element` and
 `boolean` are not on the list at all. A field name cannot be mistyped into a
 slot this way, which is the single most common way the configuration used to
-end up quietly doing nothing.
+end up quietly doing nothing. First on every list is `.uri`, the Element's own
+address: a visitor who knows a product code or a slug types that, and no field
+of the model carries it. It is indexed as text like any field, and
+`config.php` may name it the same way.
 
 The weight sits beside each slot, read from `Search::WEIGHTS` rather than
 written into the interface, so the panel cannot promise a number the ranking
@@ -273,7 +264,7 @@ shows no form for this feature. The **Search** panel is its editor, and the
 only one - a second, unvalidated way to write the same data is a way to
 corrupt it.
 
-Activation registers the post-commit Elements callback and the two shortcodes,
+Activation registers the post-commit Elements callback and the shortcode,
 but creates no file on its own. Use **Rebuild all** in the **Search** panel for
 the initial build. Every press recreates every valid configured index.
 Afterwards, every successful insert, update or delete of a configured type
@@ -367,8 +358,8 @@ It covers the panel's four actions - the rows the list draws, the editor
 writing `config.php` and refusing a field the model does not have, an empty
 field map taking the type out with its derived file, the probe's scores and
 its locale, the dashboard tile, and both refusals (`401` without a session,
-`403` without the permission) - the two shortcodes rendered the way a template
-renders them -
+`403` without the permission) - the shortcode rendered the way a template
+renders it -
 through `\Nino\Html::renderHtml()`, so the fills in the attributes resolve
 before the shortcode sees them and the `[[field]]` placeholders in the body
 survive to it - the configuration boundary (both slash forms, invalid priorities,
