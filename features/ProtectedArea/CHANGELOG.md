@@ -12,6 +12,18 @@ A release is the tag `protected-<version>` of dapeio/nino-features.
   feature to an installation that could not then install it. `^1.3` names
   only a kernel that can read the manifest.
 
+### Changed
+
+- **The README listed a `text/` this feature does not have and named a number
+  no setting does.** The directory holds `templates/` and `tests/` and no
+  `text/` at all - the words its own two templates carry are the project's,
+  written by the install unit - and the listing said the other way round. The
+  reverse-proxy note also had the area locked "as soon as anyone has tried
+  three times", where the cap is the `attempts` setting, five by default
+  (`ProtectedArea::DEFAULT_ATTEMPTS`), and the settings table three screens
+  above says so. It names the allowance rather than a number now. Words only -
+  the code is unchanged.
+
 ### Fixed
 
 - **An invalid byte in a value rendered as nothing.** `htmlspecialchars()`

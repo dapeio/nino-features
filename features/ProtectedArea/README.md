@@ -10,9 +10,10 @@ they lock the area again or the session ends. There is no account, no user
 list, and no per-visitor tracking - just one password and one session flag.
 
 One directory, the shape the [feature recipe](https://github.com/dapeio/nino/blob/main/docs/recipes/feature.md)
-describes: `feature.php`, `ProtectedArea.php`, `install/`, `text/` (none - this
-feature has no workbench panel and reads no fills of its own). The changes
-per version are in [CHANGELOG.md](CHANGELOG.md).
+describes: `feature.php`, `ProtectedArea.php`, `install/`, `templates/`,
+`tests/`. No `text/`: this feature has no workbench panel, and the words its
+own two templates carry are the project's, written by the install unit. The
+changes per version are in [CHANGELOG.md](CHANGELOG.md).
 
 ## Settings
 
@@ -110,8 +111,8 @@ stays what the setting says it is: wrong passwords per visitor and hour.
 
 Which address that is, is the kernel's answer: behind a reverse proxy it is
 the proxy for every visitor alike unless the proxy is named under
-`/nino/http/proxies`, and without that the cap locks the area for everybody
-as soon as anyone has tried three times. See the Config panel's **Reverse
+`/nino/http/proxies`, and without that the first visitor to spend the hour's
+allowance locks the area for everybody. See the Config panel's **Reverse
 proxies in front of this site**.
 
 ## Locking again
