@@ -12,17 +12,19 @@ workbench's **Search** panel. Which types and fields are indexed is
 
 One directory, the shape the [feature recipe](https://github.com/dapeio/nino/blob/main/docs/recipes/feature.md)
 describes: `feature.php`, `Search.php`, `Shortcodes/Shortcodes.php`,
-`Admin/Admin.php`, `assets/`, `text/`, `tests/`. There is no install unit -
-the feature ships no page, no template and no form, only the one shortcode a
-project puts under its own form - and no `data` entry in the manifest, because the index
-files are derived and rebuilt on demand. The changes per version are in
+`Admin/Admin.php`, `assets/`, `templates/`, `text/`, `tests/`. There is no
+install unit - nothing of this feature's is copied into the project, no page
+and no form, only the one shortcode a project puts under its own form - and
+the manifest's `data` entry is empty, because the index files are derived and
+rebuilt on demand. The changes per version are in
 [CHANGELOG.md](CHANGELOG.md).
 
 ## The shortcode
 
-The feature registers no route, brings no page and draws no form. What it
-brings is a way to draw the answer; the form, where it goes and what a hit
-looks like are the project's:
+The feature brings no page and draws no form, and registers no route unless
+the [JSON endpoint](#the-json-endpoint) is switched on. What it brings is a
+way to draw the answer; the form, where it goes and what a hit looks like are
+the project's:
 
 ```
 <form role="search" method="get" action="/suche">
@@ -95,7 +97,8 @@ Beside the shortcodes, the feature's public surface:
 
 `skipped` names a configured type that produced no index and why (`the model of "/products" has no field "titel"`); `issues` names a type that *is* indexed but whose configuration holds a name that does not resolve. Both used to be dropped silently - a configuration naming two types reported "1 index created", and a wholly invalid one came back as "no search indexes are configured".
 
-`init()` registers the callback and the shortcode, and nothing else: activation creates no file.
+`init()` registers the callback, the shortcode and - while the JSON endpoint
+setting is on - the route that answers it: activation creates no file.
 
 ## The JSON endpoint
 
@@ -259,10 +262,10 @@ and field names are ignored - a type whose file does not exist under
 type that keeps no valid field is not indexed at all.
 
 `/nino/elements/index` is a plain `config.php` key, not a feature setting:
-the manifest declares no settings (`'settings' => []`), and the Features panel
-shows no form for this feature. The **Search** panel is its editor, and the
-only one - a second, unvalidated way to write the same data is a way to
-corrupt it.
+the one setting the manifest declares is the JSON endpoint's, and the Features
+panel's form for this feature is that switch and nothing else. The **Search**
+panel is the configuration's editor, and the only one - a second, unvalidated
+way to write the same data is a way to corrupt it.
 
 Activation registers the post-commit Elements callback and the shortcode,
 but creates no file on its own. Use **Rebuild all** in the **Search** panel for

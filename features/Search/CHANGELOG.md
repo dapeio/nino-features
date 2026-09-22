@@ -43,6 +43,23 @@ A release is the tag `search-<version>` of dapeio/nino-features.
   feature to an installation that could not then install it. `^1.3` names
   only a kernel that can read the manifest.
 
+### Changed
+
+- **The README still said the feature has no settings and no route.** The
+  JSON endpoint is a setting (`api`, off by default) and the Features panel
+  draws it, where the Configuration section said the manifest "declares no
+  settings (`'settings' => []`)" and shows no form; and the shortcode section
+  opened with "the feature registers no route", two screens above the section
+  about the route it registers when that setting is on. The directory listing
+  had no `templates/` in it and said the feature ships no template, where the
+  results wrapper is `templates/search-results.tpl`, and it called the
+  manifest's `data` entry absent where the Data section calls it empty, which
+  is what it is. The panel's comment on the nav group named
+  `\Nino\Admin\Admin::_entry()`, a method `\Nino\Admin\Panels` has and
+  `\Nino\Admin\Admin` does not, and in `Shortcodes.php` the comment on
+  `DEFAULT_KEY` had ended up above `TEMPLATES` when that constant was added.
+  Words only - the code is unchanged.
+
 ### Fixed
 
 - **An invalid byte in a value rendered as nothing.** `htmlspecialchars()`

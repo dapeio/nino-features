@@ -40,11 +40,12 @@ namespace Nino\Modules\Search {
 	 */
 	class Shortcodes {
 
-		// The query variable the shortcode reads unless `key` says otherwise
 		// Where this feature's own templates are, as \Nino\Filesystem resolves
 		// them: /features is the installed features directory, wherever
 		// NINO_FEATURES_DIR put it
 		public const string TEMPLATES = '/features/Search/templates';
+
+		// The query variable the shortcode reads unless `key` says otherwise
 		public const string DEFAULT_KEY = 'q';
 
 		// How many hits a result block draws when it names no limit, and the

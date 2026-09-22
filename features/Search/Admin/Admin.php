@@ -69,7 +69,7 @@ namespace Nino\Modules\Search {
 			];
 		}
 
-		/*	The group named here is decorative: \Nino\Admin\Admin::_entry() puts
+		/*	The group named here is decorative: \Nino\Admin\Panels::_entry() puts
 			every panel a feature brought into 'features' regardless, so that
 			granting that one group is a bounded grant. Kept meaningful anyway,
 			for the day a panel like this one is not a feature's */
