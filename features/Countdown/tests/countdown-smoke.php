@@ -6,10 +6,11 @@ declare(strict_types=1);
  *	countdown-smoke.php		Contract test for the Countdown feature
  *												(Modules\Countdown): the manifest, the activation
  *												through \Nino\Features and the nine words it merges,
- *												the [countdown] shortcode over its units, its
- *												formats and every way of getting the moment wrong,
- *												the two files it puts into the site's own asset
- *												bundles (\Nino\Html::addAsset()), and deactivation.
+ *												the [countdown] shortcode over its units and its
+ *												formats, the timezone a wall-clock moment is read in,
+ *												and every way of getting the moment wrong, the two files
+ *												it puts into the site's own asset bundles
+ *												(\Nino\Html::addAsset()), and deactivation.
  *
  *												The arithmetic is the browser's, and
  *												countdown-js-smoke.js beside this file measures it;

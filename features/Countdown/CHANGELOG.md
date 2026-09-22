@@ -12,6 +12,47 @@ A release is the tag `countdown-<version>` of dapeio/nino-features.
   feature to an installation that could not then install it. `^1.3` names
   only a kernel that can read the manifest.
 
+### Changed
+
+- **The manual promised the parts in the order they are written.** The
+  Features panel's entry for `units=` said "which parts are shown, in that
+  order", and `Countdown::units()` has always answered a subset of `UNITS`
+  in `UNITS`' order - largest first, because "3 Minuten 2 Tage" is not a
+  duration anybody reads, which is what the README says and what
+  `countdown-smoke.php` holds for `units="hours,days"`. The entry says that
+  instead.
+
+- **`countdown.js` still carried "the site's own offset".** Its file header
+  described the moment the server writes as an ISO-8601 string with the
+  site's own offset in it - the phrase the `tz=` change took out of the
+  README, the manual and `Countdown.php`, because Nino declares no timezone
+  and there is no site offset to write. The header names the two offsets
+  there really are: the one `tz=` gave, or the one the php process runs in.
+
+- **The README offered `done=""` as a way back to the date.** The attribute
+  table said that where the shortcode writes `done=""` the date itself comes
+  back. `doShortcode()` trims the value and falls back to
+  `[[/countdown/done]]` for an empty one, so `done=""` renders exactly what
+  writing no `done=` at all renders - the Text panel's sentence. The way to
+  the date is to empty that fill in the Text panel, which leaves
+  `data-countdown-done=""` on the element and is the branch `finish()` puts
+  the date back on. The table says that.
+
+- **`countdown-smoke.php`'s own header did not mention the half it grew.**
+  The README names the timezone a wall-clock moment is read in among the
+  things that test holds, and it does - the file's description of itself
+  still listed only the units, the formats and the broken moments.
+
+- **The "Asset bundling" note asked a project to do something it does not
+  have to.** It said `/features/Countdown/assets/...` resolves against the
+  project root, and that a project which moved its features elsewhere with
+  `NINO_FEATURES_DIR` has to name the two sources under their real path in
+  `/nino/html/assets` itself. `\Nino\Filesystem` resolves the virtual
+  `/features` prefix against `\Nino\Features::dir()` - a branch of its own,
+  older than the `^1.3` this manifest names - so the sources are found after
+  a relocation like every other file a feature addresses that way, the two
+  templates this feature reads through the same prefix included.
+
 ### Fixed
 
 - **"The site's own timezone" was the server's, and there is no such thing as

@@ -86,10 +86,12 @@ namespace Nino\Modules {
 
 			\Nino\Html::addShortcode( $appData, 'countdown', [ self::class, 'doShortcode' ] );
 
-			/*	A source outside \Nino\Filesystem::PRIVATE_DIRS/PUBLIC_DIRS
-				resolves against the project root (\Nino\Filesystem::path()'s
-				fallback) - the same way '/_nino/Nino.css' already does for the
-				kernel's own bundle	*/
+			/*	The virtual '/features/...' prefix resolves against
+				\Nino\Features::dir() (\Nino\Filesystem::FEATURES_DIR), the same way
+				TEMPLATES above is read - so '/features/Countdown/assets/...' reaches
+				this feature's own copy wherever NINO_FEATURES_DIR put the features
+				directory, and a project that moved it has nothing to say in
+				'/nino/html/assets'	*/
 			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Countdown/assets/countdown.css' );
 			\Nino\Html::addAsset( $appData, '/.cache/script.js', '/features/Countdown/assets/countdown.js' );
 		}

@@ -20,8 +20,8 @@ return [
 				'de_DE' => 'Die Zeitzone, in der ein Moment ohne eigenen Offset gelesen wird. Ein Name, den PHP nicht kennt, zeigt nichts und sagt es im Log.',
 			],
 			'[countdown ... units="days,hours,minutes"]' => [
-				'en_US' => 'Which parts are shown, in that order. Default: days, hours, minutes, seconds.',
-				'de_DE' => 'Welche Teile gezeigt werden, in dieser Reihenfolge. Vorgabe: Tage, Stunden, Minuten, Sekunden.',
+				'en_US' => 'Which parts are shown. Always largest first, whatever order they are written in. Default: days, hours, minutes, seconds.',
+				'de_DE' => 'Welche Teile gezeigt werden. Immer die größten zuerst, in welcher Reihenfolge sie auch geschrieben sind. Vorgabe: Tage, Stunden, Minuten, Sekunden.',
 			],
 			'[countdown ... done="Es ist so weit"]' => [
 				'en_US' => 'What stands there once the moment has passed. Without it the Text panel\'s own sentence is used.',

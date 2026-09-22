@@ -60,7 +60,7 @@ what the element says, and "The time has come" is not that instant.
 | `tz=` | the timezone a wall-clock `to=` is read in, as an identifier PHP knows — `Europe/Berlin`. Without it the timezone the server runs in is used; see *Which offset* above |
 | `units=` | which parts are shown: any of `days`, `hours`, `minutes`, `seconds`. Always drawn largest first whatever order they are written in — "3 Minuten 2 Tage" is not a duration anybody reads. Default: all four |
 | `format=` | how the date under the counter is written, in PHP's `date()` letters. Default `Y-m-d H:i`, which is unambiguous in every language |
-| `done=` | what stands there once the moment has passed. Without it the Text panel's own sentence is used; given `done=""`, the date itself comes back |
+| `done=` | what stands there once the moment has passed. Without it — and with `done=""`, which is the same thing — the Text panel's own sentence is used; empty that fill in the Text panel and the date itself comes back |
 
 A countdown written with fewer parts carries its whole remainder in them: in days
 alone, four and a half days is **4**, not 5.
@@ -91,9 +91,9 @@ it has. From then on they are the project's.
 `html-header.tpl`/`html-footer.tpl` already load on every page.
 
 The sources are addressed as `/features/Countdown/assets/…`, which
-`\Nino\Filesystem::path()` resolves against the project root. A project that
-moved its features elsewhere with `NINO_FEATURES_DIR` has to say so in
-`/nino/html/assets` itself.
+`\Nino\Filesystem::path()` resolves against `\Nino\Features::dir()` — so they
+are found wherever `NINO_FEATURES_DIR` put the features directory, and a
+project that moved it has nothing to say in `/nino/html/assets` itself.
 
 One timer serves every countdown on a page — they all read the same clock — and
 it stops as soon as the last one has run out.
