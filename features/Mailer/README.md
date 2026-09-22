@@ -10,7 +10,7 @@ sending it itself, with a real login, to a real mail server.
 
 One directory, the shape the [feature recipe](https://github.com/dapeio/nino/blob/main/docs/recipes/feature.md)
 describes: `feature.php`, `Mailer.php`, `Smtp/Smtp.php`, `Admin/Admin.php`,
-`assets/`, `text/`. No install unit - the feature has no page and no
+`assets/`, `text/`, `tests/`. No install unit - the feature has no page and no
 template of its own, and the only mail it composes itself (the test mail's
 subject and body) lives in the panel's own `text/`. The changes per version
 are in [CHANGELOG.md](CHANGELOG.md).
@@ -80,7 +80,7 @@ skipped entirely when `username` is empty (a local relay that needs none).
 
 Configured in the Features panel, under `/nino/features` in `config.php`
 once saved - there is no settings screen of the feature's own, only the
-[panel](#the-panel) that proves them.
+[panel](#the-test-mail) that proves them.
 
 | Setting | Type | Rules | Default |
 | --- | --- | --- | --- |
@@ -108,7 +108,7 @@ once saved - there is no settings screen of the feature's own, only the
 ## The test mail
 
 `\Nino\Modules\Mailer\Admin` brings a **Mailer** panel to the workbench's
-System group (`/_admin/mailer/manage`). One pane: a status line naming the
+Features group (`/_admin/mailer/manage`). One pane: a status line naming the
 configured host, port and encryption - never the password, and "not
 configured yet" while `host` is empty - an address field and a **Send test
 mail** button, posting `mailer/test { to }`. The action validates the
@@ -123,7 +123,7 @@ when that is what refused it.
 
 | | |
 | --- | --- |
-| Navigation | **Mailer** in the System group (uri `mailer`, position 35) |
+| Navigation | **Mailer**, uri `mailer`, position 35. `nav()` names the System group, but a panel a feature brings lands under Features whatever it names - `\Nino\Admin\Panels` decides that, not the panel |
 | Permission | `/_admin/mailer/manage` on every action |
 | Actions | `mailer/status` (`apiStatus()`): host/port/encryption, never username or password · `mailer/test` (`apiSendTest()`): one test mail |
 | Activity log | `log()` writes `Send test mail to "<to>"` |

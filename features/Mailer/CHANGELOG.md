@@ -35,6 +35,15 @@ A release is the tag `mailer-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The README put the panel in a group it cannot be in, and pointed at a
+  section that is not there.** A panel a feature brings lands under Features
+  whatever `nav()` names - `\Nino\Admin\Panels` overrides the group so that
+  granting it stays a bounded grant - and this panel names `system`, which is
+  what the README repeated twice. The settings section also linked to
+  `#the-panel`, an anchor no heading here produces, and the directory listing
+  left out the `tests/` the README's own last section is about. Words only -
+  the code is unchanged.
+
 - **The transport reads its settings in one go.** `Features::setting()`
   answers one name by building every value the manifest declares - it reads
   the feature, then validates each stored value against its schema - and this
