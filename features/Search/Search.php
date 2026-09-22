@@ -48,9 +48,9 @@ namespace Nino\Modules {
 
 			It used to: every token had to reach its threshold or _score()
 			returned null. That reads as reasonable until somebody types a
-			sentence. An article titled "AI im Jahr 2026" was not found by "AI in
-			2026", and "Ausblick der Modelle" found nothing in a summary reading
-			"Ein Ausblick auf Modelle und Werkzeuge" - one filler word the text
+			sentence. An article titled "AI in the year 2026" was not found by
+			"AI in 2026", and "outlook on the models" found nothing in a summary
+			reading "An outlook on models and tools" - one filler word the text
 			happens not to use, and the whole result is gone. Visitors type
 			sentences.
 

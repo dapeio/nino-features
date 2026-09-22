@@ -160,8 +160,8 @@
 		if( typeof said === 'string' && said !== '' && date !== null ) {
 			/*	The sentence is not a date, and datetime="..." is the
 				machine-readable half of whatever the element says - so leaving it
-				there tells a parser, a calendar or a screen reader that "Es ist so
-				weit" IS that instant. The element keeps its class and its place
+				there tells a parser, a calendar or a screen reader that "The time
+				has come" IS that instant. The element keeps its class and its place
 				and stops claiming a moment it no longer names	*/
 			date.removeAttribute( 'datetime' );
 			date.textContent = said;

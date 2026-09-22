@@ -67,6 +67,14 @@ $walk( $root. '/features' );
 $offenders = [];
 
 foreach( $sources as $file ) {
+
+	// Inside a block comment or not. The catalogue's block comments are
+	// written as '/*	text' followed by lines that start with the text itself,
+	// not with a '*' - so a line's own first character says nothing about
+	// whether it is a comment, and the half of every block that carried no
+	// '*' used to go unread here
+	$inBlock = false;
+
 	foreach( explode( "\n", (string) file_get_contents( $file ) ) as $no => $line ) {
 
 		$opening	= ltrim( $line, " \t" );
@@ -74,8 +82,16 @@ foreach( $sources as $file ) {
 
 		// The comment half of the line, and only that: a trailing '// ...' is
 		// one (the '//' of a url is not), and everything left of it is code
-		if( $opening !== '' && ( $opening[0] === '*' || str_starts_with( $opening, '//' ) || str_starts_with( $opening, '/*' ) ) )
+		if( $inBlock === true ) {
 			$comment = $line;
+			if( str_contains( $line, '*/' ) === true )
+				$inBlock = false;
+		}
+		elseif( $opening !== '' && ( $opening[0] === '*' || str_starts_with( $opening, '//' ) || str_starts_with( $opening, '/*' ) ) ) {
+			$comment = $line;
+			if( str_starts_with( $opening, '/*' ) === true && str_contains( $line, '*/' ) === false )
+				$inBlock = true;
+		}
 		elseif( $trailing !== false && $trailing > 0 && $line[$trailing - 1] !== ':' )
 			$comment = substr( $line, $trailing );
 		else
