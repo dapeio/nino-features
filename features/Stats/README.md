@@ -160,8 +160,8 @@ writes anything beyond the settings form every feature already gets.
 
 | | |
 | --- | --- |
-| Navigation | **Stats** in the Content group (uri `stats`, position 70) |
-| Permission | `/_admin/stats/view` on every action - a content permission, offered on the Users panel's roles tab; the **Editor** role does not receive it by itself, an operator grants it there |
+| Navigation | **Stats**, uri `stats`, position 70. `nav()` names the Content group, but a panel a feature brings lands under Features whatever it names - `\Nino\Admin\Panels` decides that, not the panel |
+| Permission | `/_admin/stats/view` on every action. The Users panel's roles tab offers it under Features, the group the panel is in; the **Editor** role is built from the Content panels alone and does not receive it, so an operator grants it there |
 | Actions | `stats/months` (`apiMonths()`): every month that has a file, newest first · `stats/month` (`apiMonth()`): one month's numbers, `{ month }` validated as `YYYY-MM`, else `400` |
 | `stats/month` answers | `{ month, days: [ { day, total } ], totals: { views, days }, uris: [ { uri, views } ], referrers: [ { host, views } ] }` - `uris` and `referrers` are the month's totals across every day in it, top 50 each, most-viewed first |
 | Dashboard | `summary()` gives the Dashboard a tile: views over the last 7 days (today included), labelled `/_admin/stats/label/tile`. The panel contract's tile only ever carries `{ value, label }` (see `\Nino\Admin\Panels::collect()`), so today's count alone is not shown as a separate number there - only on the panel's own pane, as the first bar of the current month |

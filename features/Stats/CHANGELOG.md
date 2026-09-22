@@ -12,6 +12,17 @@ A release is the tag `stats-<version>` of dapeio/nino-features.
   feature to an installation that could not then install it. `^1.3` names
   only a kernel that can read the manifest.
 
+### Changed
+
+- **The README put the panel and its permission in the Content group.** A
+  panel a feature brings lands under Features whatever `nav()` names -
+  `\Nino\Admin\Panels` overrides the group, so that granting it stays a
+  bounded grant - and this panel names `content`, which the README repeated
+  for the navigation and again for the roles tab that offers the permission.
+  What follows from it was right all along: the **Editor** role is built from
+  the Content panels alone, so it does not hold this one. Words only - the
+  code is unchanged.
+
 ### Fixed
 
 - **"Keep for 13 months" kept fourteen month files.** The retention sweep took
