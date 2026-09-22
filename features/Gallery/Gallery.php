@@ -56,11 +56,12 @@ namespace Nino\Modules {
 		// take as the deterministic base of a filename
 		public const string IMAGE_DIR = 'gallery';
 
-		// An album key, and the id an image is filed under
 		// Where this feature's own templates are, as \Nino\Filesystem resolves
 		// them: /features is the installed features directory, wherever
 		// NINO_FEATURES_DIR put it
 		public const string TEMPLATES = '/features/Gallery/templates';
+
+		// An album key, and the id an image is filed under
 		public const string KEY_PATTERN = '/^[a-z][a-z0-9-]*$/';
 		public const string ID_PATTERN 	= '/^[a-f0-9]{16}$/';
 

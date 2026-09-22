@@ -88,7 +88,7 @@ backup already carries them.
 
 ## Styling
 
-The grid reads four custom properties off `.nino-gallery`:
+The grid reads three custom properties off `.nino-gallery`:
 `--nino-gallery-columns` (written by the shortcode), `--nino-gallery-gap` and
 `--nino-gallery-radius`. The overlay is the Lightbox feature's and has two of
 its own.

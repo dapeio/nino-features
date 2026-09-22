@@ -15,6 +15,17 @@ versions [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **The README's "Styling" chapter counted four custom properties and named
+  three.** `gallery.css` declares `--nino-gallery-columns`,
+  `--nino-gallery-gap` and `--nino-gallery-radius` on `.nino-gallery`, and
+  those three are the ones the chapter lists. It says three.
+
+- **The comment naming the two patterns stood over `TEMPLATES`.** "An album
+  key, and the id an image is filed under" describes `KEY_PATTERN` and
+  `ID_PATTERN`; the constant the template patch added was put between it and
+  them, with its own comment, so the file read as though `TEMPLATES` were the
+  album key. Each comment stands over what it explains again.
+
 - **The gallery's markup is a template now.** The list and an item of it were
   strings `Gallery.php` built; they are `templates/gallery.tpl` and
   `gallery-item.tpl`, filled by token with every value escaped before it goes
