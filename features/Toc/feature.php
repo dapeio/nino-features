@@ -56,8 +56,8 @@ return [
 			'type'		=> 'bool',
 			'label'		=> [ 'en_US' => 'Anchors on every heading', 'de_DE' => 'Anker an jeder Überschrift' ],
 			'hint'		=> [
-				'en_US' => 'Put a link on every heading of a page that has a list, so a passage can be linked to. Off: only the list\'s own headings get one, and only so the list can reach them.',
-				'de_DE' => 'Setzt an jede Überschrift einer Seite mit Liste einen Link, damit sich eine Stelle verlinken lässt. Aus: Nur die Überschriften der Liste bekommen einen, und nur damit die Liste sie erreicht.',
+				'en_US' => 'Put a link on every heading the list holds, so a passage can be linked to. Off: no link is drawn, and those headings keep only the ids the list needs to reach them.',
+				'de_DE' => 'Setzt an jede Überschrift der Liste einen Link, damit sich eine Stelle verlinken lässt. Aus: Es wird kein Link gezeichnet, und die Überschriften behalten nur die ids, über die die Liste sie erreicht.',
 			],
 			'default'	=> true,
 		],

@@ -230,6 +230,14 @@ check( 'two headings with the same words get two different ids',
 const umlaut = page( { headings : [ [ 'h2', 'Über uns & mehr' ] ] } );
 check( '...and a heading with umlauts and punctuation still makes a usable one', umlaut.headings[0].id === 'ueber-uns-mehr' );
 
+/*	An id is checked against the whole page rather than against the list: a
+	heading this list does not hold - marked nino-toc-skip here - is not among
+	the ones already handed out, and two elements carrying one id is a link
+	that lands on whichever of them the browser finds first	*/
+const elsewhere = page( { headings : [ [ 'h2', 'Kontakt', 'nino-toc-skip', 'kontakt' ], [ 'h2', 'Kontakt' ] ] } );
+check( '...and an id the page already carries outside the list is not handed out a second time',
+	elsewhere.headings[1].id === 'kontakt-2' && elsewhere.hrefs().join('') === '#kontakt-2' );
+
 
 // --- What is left out ----------------------------------------------------------
 

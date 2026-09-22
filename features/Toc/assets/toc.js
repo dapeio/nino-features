@@ -3,7 +3,7 @@
  *	toc.js			Fills the nav [toc] wrote from the headings the finished page
  *					actually has, gives each of them an id to be reached by, marks
  *					the one being read, and - where the setting asks for it - puts
- *					a link on every heading so a passage can be linked to. No
+ *					a link on each of them so a passage can be linked to. No
  *					dependencies, no build step - bundled into the project's own
  *					/.cache/script.js the same way the kernel bundles
  *					Nino.js/Nino.ui.js (see Toc::init()).

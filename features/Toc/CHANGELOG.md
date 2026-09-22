@@ -12,6 +12,40 @@ A release is the tag `toc-<version>` of dapeio/nino-features.
   feature to an installation that could not then install it. `^1.3` names
   only a kernel that can read the manifest.
 
+### Added
+
+- **Nothing held the half of the id rule the README states.** "An id is
+  checked against the whole page rather than just the list" is what keeps a
+  listed heading off an id some other element already carries - a heading
+  marked `nino-toc-skip`, say - and only the collision between two listed
+  headings had a check. `toc-js-smoke.js` holds both now.
+
+### Changed
+
+- **The anchors setting said the opposite of what switching it off does.**
+  The hint in the manifest read "off: only the list's own headings get one,
+  and only so the list can reach them", and off draws no anchor at all -
+  `build()` calls `anchor()` only while `data-toc-anchors` is `1`, which is
+  what `toc-js-smoke.js` holds and what the README's own settings table
+  says. What the headings keep either way is their ids. The hint says that.
+
+- **"Every heading of a page" was never every heading of a page.** The same
+  hint, the README's settings table and `toc.js`'s file header all promised
+  a link on every heading of a page that has a list; `build()` anchors the
+  headings it listed, so one marked `nino-toc-skip` gets none - which the
+  README says two chapters earlier - and neither does one of a level the
+  list was not built from. All three say "every heading the list holds".
+
+- **The "Asset bundling" note asked a project to do something it does not
+  have to.** It said `/features/Toc/assets/...` resolves against the project
+  root, and that a project which moved its features elsewhere with
+  `NINO_FEATURES_DIR` has to name the two sources under their real path in
+  `/nino/html/assets` itself. `\Nino\Filesystem` resolves the virtual
+  `/features` prefix against `\Nino\Features::dir()` - a branch of its own,
+  older than the `^1.3` this manifest names - so the sources are found after
+  a relocation like every other file a feature addresses that way, the
+  template this feature reads through the same prefix included.
+
 ### Fixed
 
 - **A second table of contents on the same page listed the first one's

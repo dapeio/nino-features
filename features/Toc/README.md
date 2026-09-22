@@ -74,15 +74,15 @@ fill engine before the page was sent — a static asset cannot read a text fill.
 `html-header.tpl`/`html-footer.tpl` already load on every page.
 
 The sources are addressed as `/features/Toc/assets/…`, which
-`\Nino\Filesystem::path()` resolves against the project root. A project that moved
-its features elsewhere with `NINO_FEATURES_DIR` has to say so in
-`/nino/html/assets` itself.
+`\Nino\Filesystem::path()` resolves against `\Nino\Features::dir()` — so they are
+found wherever `NINO_FEATURES_DIR` put the features directory, and a project that
+moved it has nothing to say in `/nino/html/assets` itself.
 
 ## Settings
 
 | Setting | Default | What it does |
 | --- | --- | --- |
-| **Anchors on every heading** | on | put a link on every heading of a page that has a list. Off: the headings still get their ids, because the list has to reach them, but no link is drawn |
+| **Anchors on every heading** | on | put a link on every heading the list holds. Off: those headings still get their ids, because the list has to reach them, but no link is drawn |
 
 ## Data
 
