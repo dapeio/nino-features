@@ -12,7 +12,31 @@ A release is the tag `newsletter-<version>` of dapeio/nino-features.
   feature to an installation that could not then install it. `^1.3` names
   only a kernel that can read the manifest.
 
+### Changed
+
+- **The panel's script still described the module this used to be.** Its
+  docblock called itself `editor.js`, pointed at a
+  `Modules\Newsletter\Editor` that has never existed here, and said there is
+  "deliberately no self-service unsubscribe" and that its Delete button "is
+  the only way an entry is ever removed" - the feature's own headline is the
+  unsubscribe link, and `Admin/Admin.php` beside it says so. `admin.css` named
+  itself `editor.css` the same way, and `Newsletter.php` twice sent a reader
+  to `_admin/Editor.php` for a panel that sits in `Admin/Admin.php`. The
+  README had the panel in the Content group and its permission offered under
+  Content, where a panel a feature brings lands under Features whatever
+  `nav()` names, and left `tests/` out of the directory listing. Words only -
+  the code is unchanged.
+
 ### Fixed
+
+- **Two checks watched a path the subscriber file is never written to.**
+  `is_file( \Nino\Filesystem::getPath( $appData ). '/data/newsletter.php' )`
+  looks under the project root, and `/data` is a private directory: the file
+  lands under the private root, which is where the check three lines further
+  down already looked. So "none of the rejected signups created the newsletter
+  file" and "a csrf-blocked signup does not create the newsletter file" were
+  true of every possible run. Both ask `\Nino\Filesystem::path()` now, and
+  the dead `$pendingPath` that carried the same mistake further down is gone.
 
 - **The README named the wrong unit for the confirmation mail's reply
   address.** It said `[[/form/email/owner]]` is "the fill the Form module's

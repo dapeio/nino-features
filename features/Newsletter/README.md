@@ -12,7 +12,8 @@ or a project's own mailing service; the panel gets the addresses there.
 
 One directory, the shape the [feature recipe](https://github.com/dapeio/nino/blob/main/docs/recipes/feature.md)
 describes: `feature.php`, `Newsletter.php`, `Admin/Admin.php`, `assets/`,
-`install/`, `text/`. The changes per version are in [CHANGELOG.md](CHANGELOG.md).
+`install/`, `text/`, `tests/`. The changes per version are in
+[CHANGELOG.md](CHANGELOG.md).
 
 ## Routes
 
@@ -116,8 +117,8 @@ deactivating, reload the page.
 
 | | |
 | --- | --- |
-| Navigation | **Newsletter** in the Content group (uri `newsletter`, position 65) |
-| Permission | `/_admin/newsletter/manage` on every action. A Content permission is offered on the roles tab of the Users panel; the **Editor** role does not receive it by itself - grant it there |
+| Navigation | **Newsletter**, uri `newsletter`, position 65. `nav()` names the Content group, but a panel a feature brings lands under Features whatever it names - `\Nino\Admin\Panels` decides that, not the panel |
+| Permission | `/_admin/newsletter/manage` on every action. The roles tab of the Users panel offers it under Features, the group the panel is in; the **Editor** role is built from the Content panels alone and does not receive it - grant it there |
 | Actions | `newsletter/list` (`apiList()`): every recorded entry, pending and confirmed alike, most recent first, each one **without its token** - the panel never draws it and deletes by address, while `Nino.admin.exportCsv()` writes the union of every row's keys and would have put a live unsubscribe credential into a spreadsheet · `newsletter/delete` (`apiDelete()`): one entry by `email`; `404` for an unknown address, `500` when the list could not be locked or written |
 | Dashboard | `summary()` gives the Dashboard a tile with the count of entries, labelled `/_admin/dashboard/label/newsletter` |
 | Activity log | `log()` writes `Delete Newsletter Subscriber <email>` for every delete |

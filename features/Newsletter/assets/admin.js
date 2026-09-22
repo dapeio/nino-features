@@ -2,15 +2,15 @@
  *	Nino										A compact filesystembased php framework
  *	Modules									Optional modules
  *	Nino										Framework
- *	editor.js								The Newsletter module's /_admin panel: view of every signup
- *													\Nino\Modules\Newsletter records - see Modules\Newsletter\Editor
- *													beside this file - plus a one-line, copyable BCC address
+ *	admin.js								The Newsletter feature's /_admin panel: view of every signup
+ *													\Nino\Modules\Newsletter records - see Newsletter\Admin in
+ *													Admin/Admin.php - plus a one-line, copyable BCC address
  *													field, since the actual send always happens elsewhere (own
  *													mail client, or a project-specific ESP), never from Nino
- *													itself. The only write this panel does is delete - there's
- *													deliberately no self-service unsubscribe (see
- *													Modules\Newsletter's docblock), this "Delete" button is
- *													the only way an entry is ever removed.
+ *													itself. Delete is the only write this panel does, but not
+ *													the only way an entry goes: a subscriber takes themselves
+ *													off the list through the unsubscribe link the feature's own
+ *													GET /.newsletter route answers (see Modules\Newsletter).
  *
  *	@package								Dape/Nino
  *	@author									David Perchermeier <mail@dape.io>

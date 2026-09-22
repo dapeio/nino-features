@@ -3,7 +3,7 @@
 /**
  *	Nino										A compact filesystembased php framework
  *	Modules\Newsletter			The newsletter signup
- *	editor.css							What the module's /_admin panel needs beyond the design
+ *	admin.css							What the feature's /_admin panel needs beyond the design
  *													system in _admin/assets/style.css. Joins the editor's own
  *													style bundle while the module is active (see the panel's
  *													assets()), so the same layer rules apply: scoped to what

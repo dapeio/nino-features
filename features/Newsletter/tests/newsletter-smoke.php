@@ -97,7 +97,7 @@ check( 'an invalid email is rejected (400)', $invalidEmailRequest['/nino/http/re
 $honeypotRequest = submitNewsletter( $appData, [ 'email' => 'jo@example.com', 'location' => 'filled-by-a-bot' ] );
 check( 'a filled honeypot is rejected (418)', $honeypotRequest['/nino/http/response']['statusCode'] === 418 );
 
-check( 'none of the rejected signups created the newsletter file', is_file( \Nino\Filesystem::getPath( $appData ). '/data/newsletter.php' ) === false );
+check( 'none of the rejected signups created the newsletter file', is_file( \Nino\Filesystem::path( $appData, '/data/newsletter.php' ) ) === false );
 
 $_POST['_csrf'] = 'wrong-token';
 $blockedNewsletterRequest = [ '/nino/http/request' => [ 'method' => 'POST' ], '/nino/http/response' => [ 'statusCode' => 200 ] ];
@@ -105,7 +105,7 @@ $blockedNewsletterRequest = [ '/nino/http/request' => [ 'method' => 'POST' ], '/
 $_POST = array_merge( $_POST, [ 'email' => 'jo@example.com', 'location' => '' ] );
 \Nino\Modules\Newsletter::callbackResponse( $appData, $blockedNewsletterRequest );
 check( 'a csrf-blocked signup is rejected too', $blockedNewsletterRequest['/nino/http/response']['statusCode'] === 403 );
-check( 'a csrf-blocked signup does not create the newsletter file', is_file( \Nino\Filesystem::getPath( $appData ). '/data/newsletter.php' ) === false );
+check( 'a csrf-blocked signup does not create the newsletter file', is_file( \Nino\Filesystem::path( $appData, '/data/newsletter.php' ) ) === false );
 unset( $_POST['_csrf'] );
 
 $okNewsletterRequest = submitNewsletter( $appData, [ 'email' => 'jo@example.com' ] );
@@ -324,7 +324,6 @@ echo "Modules\\Newsletter - an unconfirmed signup expires, and there is a ceilin
 	with distinct addresses stored 404 KB, none of it expiring, and took a
 	signup from 0.97 ms to 5.87 ms because each one reads and rewrites
 	everything before it	*/
-$pendingPath = \Nino\Filesystem::getPath( $appData ). '/data/newsletter.php';
 $writeList = static function( array &$appData, array $entries ): void {
 	\Nino\Filesystem::putFileContent( $appData, '/data/newsletter.php', $entries );
 };
