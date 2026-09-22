@@ -118,22 +118,29 @@ proxies in front of this site**.
 ## Locking again
 
 `GET /.protected/logout` unsets the session's `unlocked` flag and redirects
-to `/`. A plain `GET` link on purpose, not a form: it discloses nothing a
+to the project's front page. A plain `GET` link on purpose, not a form: it discloses nothing a
 visitor on a protected page could not already tell, so it needs no CSRF
 token to be safe. The shortcode `[protected-logout]` renders
 
 ```html
-<a href="/.protected/logout" class="nino-protected-logout">[[/protected/label/logout]]</a>
+<a href="[[/nino/dir]]/.protected/logout" class="nino-protected-logout">[[/protected/label/logout]]</a>
 ```
 
 only while the current session actually reads unlocked, and nothing at all
 otherwise - so a template's footer can carry `[protected-logout]`
 unconditionally and it only ever shows up for a visitor it applies to.
 
+Every address this feature writes carries the project directory in front -
+`[[/nino/dir]]` in the two templates, the `/nino/dir` key in both redirects -
+so a site installed in a subdirectory posts, links and redirects
+within itself. Request uris are the project's own, keyed without that
+directory, which is why the `return` a form carries gets it put back in front
+on the way out.
+
 ## The form
 
 The install unit brings `templates/page-protected.tpl`: a heading, a text,
-and `<form method="post" action="/.protected">` with the password field, a
+and `<form method="post" action="[[/nino/dir]]/.protected">` with the password field, a
 hidden `return` field carrying the uri that was actually asked for (or, on
 a failed unlock, the `return` that was posted), `[csrf]`, and a submit
 button. `[protected-error]` renders

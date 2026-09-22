@@ -71,6 +71,12 @@ $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
 // text under /text/<locale>.php would never be found
 $appData['/nino/locales/textfiles'] = '/text';
 
+// The project directory and its fill, which \Nino\request() registers from
+// the same key on every request - empty here, the way a site at the domain
+// root has it; the subdirectory section at the end sets both to /sub
+$appData['/nino/dir'] = '';
+\Nino\Html::addFills( $appData, [ '[[/nino/dir]]' => '' ], '*' );
+
 /**
  *	Drive the gate the way \Nino\Http::response() would call it, with a
  *	hand-built request already carrying a resolved route's body/status - the
@@ -428,6 +434,37 @@ check( '[protected-logout] renders nothing while locked', \Nino\Html::renderHtml
 \Nino\Runtime::setSessionValue( $appData, './protected/unlocked', true );
 check( '[protected-logout] renders the link while unlocked', \Nino\Html::renderHtml( $appData, '[protected-logout]' ) === '<a href="/.protected/logout" class="nino-protected-logout">Diesen Bereich wieder sperren</a>' );
 \Nino\Runtime::unsetSessionValue( $appData, './protected/unlocked' );
+
+echo "\n";
+
+
+// --- A site in a subdirectory --------------------------------------------------
+
+echo "A site in a subdirectory - every address carries the project directory\n";
+
+/*	Request uris are the project's own - routes are keyed without the
+	directory a site may sit in - so every address this feature writes has to
+	put that directory in front: the form's action, the logout link and both
+	redirects. Without it the form posted beside the site, the link led
+	nowhere and both redirects left the site. The fill is what the kernel
+	registers from the same key on every request */
+$appData['/nino/dir'] = '/sub';
+\Nino\Html::addFills( $appData, [ '[[/nino/dir]]' => '/sub' ], '*' );
+$_SERVER['REMOTE_ADDR'] = '198.51.100.77';
+
+$gateInSub = protectedGate( $appData, '/intern' );
+check( 'the form posts to the project\'s own endpoint', str_contains( \Nino\Html::renderHtml( $appData, (string) $gateInSub['/nino/http/response']['body'] ), 'action="/sub/.protected"' ) === true );
+
+$unlockInSub = protectedUnlock( $appData, [ 'password' => 'sesam-öffne-dich', 'return' => '/intern/notes' ] );
+check( '...the unlock sends the visitor back to the page within the project', ( $unlockInSub['/nino/http/response']['header']['Location'] ?? '' ) === '/sub/intern/notes' );
+
+\Nino\Runtime::setSessionValue( $appData, './protected/unlocked', true );
+check( '...the logout link points at the project\'s own endpoint', \Nino\Html::renderHtml( $appData, '[protected-logout]' ) === '<a href="/sub/.protected/logout" class="nino-protected-logout">Diesen Bereich wieder sperren</a>' );
+check( '...and locking again lands on the project\'s front page, not the domain\'s', ( protectedLogout( $appData )['/nino/http/response']['header']['Location'] ?? '' ) === '/sub/' );
+
+$appData['/nino/dir'] = '';
+\Nino\Html::addFills( $appData, [ '[[/nino/dir]]' => '' ], '*' );
+$_SERVER['REMOTE_ADDR'] = '127.0.0.1';
 
 echo "\n";
 

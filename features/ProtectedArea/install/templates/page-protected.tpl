@@ -5,7 +5,7 @@
 			<h2 class="nino-section-title">[[/protected/title]]</h2>
 			<p class="nino-section-subtitle">[[/protected/text]]</p>
 			[protected-error]
-			<form class="nino-form" action="/.protected" method="post">
+			<form class="nino-form" action="[[/nino/dir]]/.protected" method="post">
 				<input type="hidden" name="return" value="[[/protected/return]]">
 				[csrf]
 				<label for="protected-password">[[/protected/label/password]]</label>

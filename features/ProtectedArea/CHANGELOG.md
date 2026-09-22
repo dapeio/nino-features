@@ -26,6 +26,16 @@ A release is the tag `protected-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **The form, the logout link and both redirects left a site that sits in
+  a subdirectory.** They started at the domain root - `action="/.protected"`,
+  `href="/.protected/logout"`, a redirect to the posted `return` as it came
+  and one to `/` - so a site at `/shop` posted its password beside itself,
+  linked its logout into a 404 and was left for the domain's front page on
+  locking again. Every address carries the project directory now:
+  `[[/nino/dir]]` in the two templates, the `/nino/dir` key in front of both
+  redirects, the way the kernel's own templates and the Forms and Redirects
+  features write theirs.
+
 - **An invalid byte in a value rendered as nothing.** `htmlspecialchars()`
   answers input that is not valid UTF-8 with `''` unless `ENT_SUBSTITUTE` is
   among its flags, and every call here spelled the flags out without it.

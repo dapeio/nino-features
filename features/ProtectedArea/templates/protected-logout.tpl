@@ -1,1 +1,1 @@
-<a href="/.protected/logout" class="nino-protected-logout">[[/protected/label/logout]]</a>
+<a href="[[/nino/dir]]/.protected/logout" class="nino-protected-logout">[[/protected/label/logout]]</a>

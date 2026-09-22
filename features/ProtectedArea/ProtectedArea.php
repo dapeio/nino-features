@@ -213,8 +213,13 @@ namespace Nino\Modules {
 
 				\Nino\Runtime::setSessionValue( $appData, self::SESSION_KEY, true );
 
+				// The uri a request carries is the project's own - routes are
+				// keyed without the directory a site may sit in - so the
+				// directory goes in front of every address this feature sends a
+				// visitor to, the way the Forms feature writes its action. Without
+				// it a site at /shop unlocked into /intern, one level above itself
 				$request['/nino/http/response']['statusCode']					= 303;
-				$request['/nino/http/response']['header']['Location'] = self::_safeReturn( $return );
+				$request['/nino/http/response']['header']['Location'] = (string) ( $appData['/nino/dir'] ?? '' ). self::_safeReturn( $return );
 				$request['/nino/http/response']['body']								= '';
 				return;
 			}
@@ -224,7 +229,8 @@ namespace Nino\Modules {
 
 		/**
 		 *	GET /.protected/logout: lock the session again and send the
-		 *	visitor home. A plain link rather than a form on purpose - it
+		 *	visitor to the project's front page - the project directory in
+		 *	front, see callbackUnlock(). A plain link rather than a form on purpose - it
 		 *	discloses nothing a visitor could not already tell from being on
 		 *	the page, so it needs no csrf token to be safe.
 		 *
@@ -238,7 +244,7 @@ namespace Nino\Modules {
 			\Nino\Runtime::unsetSessionValue( $appData, self::SESSION_KEY );
 
 			$request['/nino/http/response']['statusCode']					= 303;
-			$request['/nino/http/response']['header']['Location'] = '/';
+			$request['/nino/http/response']['header']['Location'] = (string) ( $appData['/nino/dir'] ?? '' ). '/';
 			$request['/nino/http/response']['body']								= '';
 		}
 
