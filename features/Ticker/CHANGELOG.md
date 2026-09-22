@@ -12,6 +12,33 @@ A release is the tag `ticker-<version>` of dapeio/nino-features.
   feature to an installation that could not then install it. `^1.3` names
   only a kernel that can read the manifest.
 
+### Changed
+
+- **"Wider than the box twice over" was never what the copies cover.**
+  `ticker.js`'s file header, the docblock over `run()`, the comment beside
+  the measurement ("Twice the box, not twice the row") and `Ticker.php`'s
+  class docblock all said the row is copied until it is wider than the box
+  twice over. `needed` has always been `row.clientWidth + one` - the box
+  plus one length of the row, which is the distance the track travels plus
+  the box it travels across, and which is what the README, the two tests and
+  the rest of that same comment say. The four places say it too.
+
+- **A check still said the two custom properties are written once.**
+  `ticker-smoke.php`'s label read "what the script sets is the distance and
+  the duration, once", and they are written again whenever the box has come
+  to rest at a width its copies were not made for - which is the change
+  `ticker.css`'s own header was corrected for. The label says what the check
+  holds.
+
+- **The "Asset bundling" note asked a project to do something it does not
+  have to.** It said `/features/Ticker/assets/...` resolves against the
+  project root, and that a project which moved its features elsewhere with
+  `NINO_FEATURES_DIR` has to name the two sources under their real path in
+  `/nino/html/assets` itself. `\Nino\Filesystem` resolves the virtual
+  `/features` prefix against `\Nino\Features::dir()` - a branch of its own,
+  older than the `^1.3` this manifest names - so the sources are found after
+  a relocation like every other file a feature addresses that way.
+
 ### Fixed
 
 - **A window that got wider left a stretch of nothing in the loop.** The

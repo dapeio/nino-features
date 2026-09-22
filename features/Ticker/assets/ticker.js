@@ -8,10 +8,10 @@
  *					The seam is the whole problem. A row that simply scrolls runs
  *					out and jumps back, and the jump is what everybody sees. So the
  *					row's own children are copied until they are wider than the box
- *					twice over, and the whole of it is moved by exactly one
- *					original width - at which point the copy is standing where the
- *					original stood and the animation can start again with nothing
- *					moving.
+ *					plus one length of the row, and the whole of it is moved by
+ *					exactly one original width - at which point the copy is standing
+ *					where the original stood and the animation can start again with
+ *					nothing moving.
  *
  *					The copies are aria-hidden: to a screen reader the row is read
  *					once, which is how many times it is there.
@@ -81,8 +81,8 @@
 	}
 
 	/**
-	 *	Copy the run of children until it is wider than the box twice over, and
-	 *	set the animation going over exactly one original width
+	 *	Copy the run of children until it is wider than the box plus one length
+	 *	of the row, and set the animation going over exactly one original width
 	 *
 	 *	@param		{Object}		entry			One row, and the box width its copies were made for
 	 *
@@ -118,9 +118,10 @@
 
 		var one = track.scrollWidth;
 
-		/*	Twice the box, not twice the row: what has to be covered is the
-			distance the track travels plus the box it travels across, or the end
-			of the copies comes into view before the reset	*/
+		/*	The box plus one length of the row, not the row twice over: what has
+			to be covered is the distance the track travels plus the box it
+			travels across, or the end of the copies comes into view before the
+			reset	*/
 		var needed = row.clientWidth + one;
 		var width = one;
 		var copies = 0;

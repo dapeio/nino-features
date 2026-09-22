@@ -109,7 +109,7 @@ $js	 = (string) file_get_contents( dirname( __DIR__ ). '/assets/ticker.js' );
 check( 'the movement is an animation, not a script moving something every frame',
 	str_contains( $css, 'animation-name: nino-ticker-run' ) === true
 	&& str_contains( $js, 'requestAnimationFrame' ) === false && str_contains( $js, 'setInterval' ) === false );
-check( '...and what the script sets is the distance and the duration, once',
+check( '...and what the script sets is the distance and the duration',
 	str_contains( $js, '--nino-ticker-distance' ) === true && str_contains( $js, '--nino-ticker-duration' ) === true );
 
 /*	The seam is the whole problem: the animation ends on the copy standing

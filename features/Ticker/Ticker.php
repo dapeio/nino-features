@@ -20,13 +20,13 @@ namespace Nino\Modules {
 	 *										The seam is the whole problem. A row that simply
 	 *										scrolls runs out and jumps back, and the jump is what
 	 *										everybody sees. So ticker.js copies the row's own
-	 *										children until they are wider than the box twice over
-	 *										and moves the whole of it by exactly one original
-	 *										width - at which point the copy is standing where the
-	 *										original stood and the animation can start again with
-	 *										nothing moving. The copies are aria-hidden: to a
-	 *										screen reader the row is read once, which is how many
-	 *										times it is there.
+	 *										children until they are wider than the box plus one
+	 *										length of the row and moves the whole of it by exactly
+	 *										one original width - at which point the copy is
+	 *										standing where the original stood and the animation can
+	 *										start again with nothing moving. The copies are
+	 *										aria-hidden: to a screen reader the row is read once,
+	 *										which is how many times it is there.
 	 *
 	 *										There is nothing for PHP to do here: what runs past is
 	 *										markup a project's own template already carries
@@ -61,13 +61,11 @@ namespace Nino\Modules {
 		 */
 		public static function init( array &$appData ): void {
 
-			/*	A source outside \Nino\Filesystem::PRIVATE_DIRS/PUBLIC_DIRS
-				resolves against the project root (\Nino\Filesystem::path()'s
-				fallback) - exactly how '/_nino/Nino.css' already does for the
-				kernel's own bundle, so '/features/Ticker/assets/...' reaches this
-				feature's own copy as long as features/ sits where it does by
-				default (NINO_FEATURES_DIR unmoved); see the README's "Asset
-				bundling" note for the relocated case	*/
+			/*	The virtual '/features/...' prefix resolves against
+				\Nino\Features::dir() (\Nino\Filesystem::FEATURES_DIR), so
+				'/features/Ticker/assets/...' reaches this feature's own copy
+				wherever NINO_FEATURES_DIR put the features directory, and a
+				project that moved it has nothing to say in '/nino/html/assets'	*/
 			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Ticker/assets/ticker.css' );
 			\Nino\Html::addAsset( $appData, '/.cache/script.js', '/features/Ticker/assets/ticker.js' );
 		}
