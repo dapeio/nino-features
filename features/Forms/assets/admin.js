@@ -91,7 +91,7 @@
 			if( Nino.admin.forms._editing !== null )
 				return Nino.admin.forms._showForm( Nino.admin.forms._editing );
 
-			Nino.admin.forms._showList();
+			Nino.admin.forms._renderList();
 		},
 
 		/**

@@ -6,6 +6,14 @@ versions [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+- **Returning to the panel threw instead of drawing the list.** `showCurrent()`,
+  which the shell calls whenever the panel is opened again, called
+  `_showList()` - a method that has been `_renderList()` since the list and
+  the form became two levels - so every second visit to Forms ended in a
+  TypeError and an empty screen until the page was reloaded. The suite now
+  reads the script and holds every method it calls on its own namespace to
+  one it defines.
+
 - Needs Nino `^1.3`, where the constraint said `^1.1`. The sectioned `manual`
   map this manifest carries is only read by a kernel newer than the
   `v1.2.0-beta` tag - `Features::manifest()` refuses it on the tagged one -

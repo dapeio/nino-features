@@ -351,5 +351,18 @@ check( '...and a submission to one of them still goes through', ( static functio
 } )( $appData ) );
 check( 'and the recorded submissions are where they always were - the kernel\'s own files', count( \Nino\Form::entries( $appData ) ) > 0 );
 
+/*	The panel script calls itself by name - Nino.admin.forms._renderList() and
+	the rest - and a name it calls that it never defines is a TypeError the
+	first time the shell reopens the panel: showCurrent() called _showList(),
+	a method that has been _renderList() since the list and the form became
+	two levels, and every return to the Forms panel threw instead of drawing
+	the list. Every method the script calls on its own namespace is one it
+	defines, read off the script rather than listed here	*/
+$panelScript = (string) file_get_contents( __DIR__. '/../assets/admin.js' );
+preg_match_all( '/Nino\.admin\.forms\.([_a-zA-Z0-9]+)\s*\(/', $panelScript, $calledMethods );
+preg_match_all( '/^\t\t([_a-zA-Z0-9]+)\s*:\s*function/m', $panelScript, $definedMethods );
+$undefinedCalls = array_values( array_unique( array_diff( $calledMethods[1], $definedMethods[1] ) ) );
+check( 'every method the panel script calls on its own namespace is one it defines'. ( $undefinedCalls === [] ? '' : ' - '. implode( ', ', $undefinedCalls ) ), $definedMethods[1] !== [] && $undefinedCalls === [] );
+
 ninoWarnings();
 ninoDone( $appData );
