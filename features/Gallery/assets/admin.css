@@ -19,13 +19,15 @@
 
 @layer nino.tool {
 
-/*	One album on the list: the name, how many images it holds, and what can be
-	done with it. */
-#gallery-list .gallery-actions {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: .5rem;
+/*	The list is the design system's row of buttons (see admin.js's
+	_renderList()) and needs nothing of its own. The album's screen ends in
+	the one action the album itself takes, under the grid rather than pinned
+	to the screen's edge: a delete that scrolls away with the pictures it
+	would take is one a hand cannot hit while looking at something else. */
+#gallery-album .gallery-album-actions {
+	position: static;
+	margin: 1.25rem 0 0;
+	justify-content: flex-start;
 }
 
 /*	The images of one album. Wider tiles than the site's own grid: this is a

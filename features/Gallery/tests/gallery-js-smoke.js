@@ -56,6 +56,8 @@ const TEXT = {
 	'/_admin/common/msg/saving'			: 'Saving …',
 	'/_admin/common/msg/saved'			: 'Saved.',
 	'/_admin/common/error/save'			: 'Failed to save.',
+	'/_admin/gallery/hint/shortcode'	: 'Put %s into a template or a text',
+	'/_admin/gallery/label/count'		: '%s images',
 };
 
 /**
@@ -207,6 +209,7 @@ function panel( options ) {
 		gallery : gallery,
 		requests : requests,
 		pane : panes['gallery-album'],
+		list : panes['gallery-list'],
 		/** The tiles on the screen, in the order they stand in */
 		tiles : function() { return byClass( panes['gallery-album'], 'gallery-tile' ) },
 		/** One tile's caption field */
@@ -320,6 +323,31 @@ halted.answer( 500, { error : 'The file could not be read.' } );
 check( 'a batch that stopped halfway draws the pictures that did arrive, and says what went wrong',
 	halted.tiles().length === 1 && halted.said() === 'The file could not be read.' );
 check( '...and the field takes files again rather than staying disabled', halted.upload().disabled === false );
+
+// --- The list of albums --------------------------------------------------------------
+//
+// The list is the design system's row of buttons, the shape every other list
+// a screen drills into has: the whole row opens the album and a chevron says
+// so. It used to be a row with two buttons on it, a red Delete first - the one
+// thing on a list a hand hits by mistake - so Delete lives on the album's own
+// screen now, where the pictures it takes with it are in view
+
+const listed = panel( { images : [ picture( 'a', '' ) ] } );
+listed.gallery._open = '';
+listed.gallery._render();
+
+const rowLists = byClass( listed.list, 'nino-admin-list-buttons' );
+const rows = rowLists.length === 1 ? rowLists[0].children.filter( function( el ) { return el.tagName === 'BUTTON' } ) : [];
+const row = rows[0] || element('div');
+check( 'the list is a row of buttons, one per album', rowLists.length === 1 && rows.length === 1 && row.dataset.album === 'haus' );
+check( '...that names the album, its shortcode and how many pictures it holds', ( byTag( row, 'strong' )[0] || {} ).textContent === 'Haus am See'
+	&& ( byTag( row, 'small' )[0] || {} ).textContent === 'Put [gallery album="haus"] into a template or a text · 1 images' );
+check( '...with nothing on it but the way in', byClass( listed.list, 'nino-admin-btn-danger' ).length === 0 && byClass( row, 'admin-view-button-chev' ).length === 1 );
+
+row.fire( 'click' );
+check( 'the row opens the album', listed.gallery._open === 'haus' && listed.tiles().length === 1 );
+check( '...and Delete is on the album\'s screen, under its pictures', byClass( listed.pane, 'gallery-album-actions' ).length === 1
+	&& byClass( byClass( listed.pane, 'gallery-album-actions' )[0], 'nino-admin-btn-danger' ).length === 1 );
 
 console.log( '\n'+ checks+ ' checks, '+ failures+ ' failed' );
 process.exit( failures === 0 ? 0 : 1 );

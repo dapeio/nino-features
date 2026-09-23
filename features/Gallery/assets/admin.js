@@ -160,8 +160,11 @@
 			if( Nino.admin.gallery._albums.length === 0 )
 				wrap.appendChild( Nino.adminUi.emptyState( Nino.content.getText('/_admin/gallery/hint/empty') ) );
 			else {
-				const rows = dc.createElement('ul');
-				rows.className = 'nino-admin-list';
+				// The design system's row of buttons - the shape the Features,
+				// Routes and Element Types lists have: the whole row opens the
+				// album, a chevron says so, and nothing else stands on it
+				const rows = dc.createElement('div');
+				rows.className = 'nino-admin-list nino-admin-list-buttons';
 				Nino.admin.gallery._albums.forEach( function( album ) { rows.appendChild( Nino.admin.gallery._renderRow( album ) ) } );
 				wrap.appendChild( rows );
 			}
@@ -172,17 +175,25 @@
 		},
 
 		/**
-		 *	One album: its name, its shortcode and how many images it holds,
-		 *	and the two things that can be done with it
+		 *	One album: its name, its shortcode and how many images it holds -
+		 *	a button that opens it. Deleting one is done on the album's own
+		 *	screen (see _renderAlbum()), where the pictures it would take with
+		 *	it are in view; a red button on every row of a list was the one
+		 *	thing on it a hand could hit by mistake
 		 *
 		 *	@param		{Object}	album
 		 *
-		 *	@return		{Element}							<li>
+		 *	@return		{Element}							<button>
 		 */
 		_renderRow : function( album ) {
 
-			const row = dc.createElement('li');
+			const row = dc.createElement('button');
+			row.type = 'button';
 			row.dataset.album = album.key;
+			row.addEventListener( 'click', function() {
+				Nino.admin.gallery._open = album.key;
+				Nino.admin.gallery._renderAlbum();
+			} );
 
 			const copy = dc.createElement('div');
 			copy.className = 'nino-admin-list-copy';
@@ -200,34 +211,44 @@
 
 			row.appendChild( copy );
 
-			const actions = dc.createElement('div');
-			actions.className = 'gallery-actions';
+			const chevron = dc.createElement('span');
+			chevron.className = 'admin-view-button-chev';
+			chevron.setAttribute( 'aria-hidden', 'true' );
+			chevron.textContent = '›';
+			row.appendChild( chevron );
 
-			const msg = dc.createElement('p');
-			msg.className = 'nino-admin-hint';
-			msg.setAttribute( 'aria-live', 'polite' );
+			return row;
+		},
+
+		/**
+		 *	The one thing an album's screen can do to the album itself: delete
+		 *	it, with its pictures. An action bar under the grid, the way a
+		 *	feature's screen carries its Deactivate - and the line it answers
+		 *	in beside the button
+		 *
+		 *	@param		{Object}	album
+		 *
+		 *	@return		{Element}							<div class="nino-admin-actionbar">
+		 */
+		_renderAlbumActions : function( album ) {
+
+			const bar = dc.createElement('div');
+			bar.className = 'nino-admin-actionbar gallery-album-actions';
 
 			const remove = dc.createElement('button');
 			remove.type = 'button';
 			remove.className = 'nino-admin-btn-danger';
 			remove.textContent = Nino.content.getText('/_admin/gallery/label/delete');
+
+			const msg = dc.createElement('p');
+			msg.className = 'nino-admin-actionbar-status';
+			msg.setAttribute( 'aria-live', 'polite' );
+
 			remove.addEventListener( 'click', function() { Nino.admin.gallery._deleteAlbum( album, remove, msg ) } );
-			actions.appendChild( remove );
+			bar.appendChild( remove );
+			bar.appendChild( msg );
 
-			const open = dc.createElement('button');
-			open.type = 'button';
-			open.className = 'nino-admin-btn-primary';
-			open.textContent = Nino.content.getText('/_admin/gallery/label/open');
-			open.addEventListener( 'click', function() {
-				Nino.admin.gallery._open = album.key;
-				Nino.admin.gallery._renderAlbum();
-			} );
-			actions.appendChild( open );
-
-			actions.appendChild( msg );
-			row.appendChild( actions );
-
-			return row;
+			return bar;
 		},
 
 		/**
@@ -363,6 +384,7 @@
 				wrap.appendChild( grid );
 			}
 
+			wrap.appendChild( Nino.admin.gallery._renderAlbumActions( album ) );
 			Nino.admin.gallery._level('album');
 		},
 

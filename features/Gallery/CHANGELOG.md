@@ -6,6 +6,15 @@ versions [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+- **The album list is the design system's row of buttons.** A row used to
+  be a card of its own with two buttons on it, a red Delete first - the one
+  thing on a list a hand hits by mistake - and looked like nothing else in
+  the workbench. The list has the shape every other list a screen drills
+  into has now: the whole row opens the album, a chevron says so, and
+  Delete lives on the album's own screen, in an action bar under the grid,
+  where the pictures it takes with it are in view. `gallery-js-smoke.js`
+  draws the list and holds it.
+
 - Needs Nino `^1.3`, where the constraint said `^1.1`. The sectioned `manual`
   map this manifest carries is only read by a kernel newer than the
   `v1.2.0-beta` tag - `Features::manifest()` refuses it on the tagged one -
