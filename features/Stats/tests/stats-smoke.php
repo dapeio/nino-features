@@ -478,4 +478,21 @@ check( 'the panel is gone with it', isset( \Nino\Admin\Admin::panels( $appData )
 check( 'with the feature off, stats/months is an unknown action', $status === 404 );
 check( 'the counted views survive deactivation', dayTotal( $appData, $month, $today ) === $expectedTotal );
 
+// --- The panel's script, where node is on the path ------------------------------
+//
+// stats-js-smoke.js beside this file draws the bar row over a dom stand-in;
+// this suite runs it too where node is on the path, the way gallery-smoke.php
+// runs its twin, so bin/check.sh and CI cover both halves in one go
+$jsTest	= __DIR__. '/stats-js-smoke.js';
+$node		= function_exists( 'shell_exec' ) === true ? trim( (string) @shell_exec( 'command -v node 2>/dev/null' ) ) : '';
+
+if( $node === '' || function_exists( 'exec' ) === false ) {
+	echo "  --  - node is not available here: stats-js-smoke.js was NOT run\n";
+} else {
+	$output = []; $status = 1;
+	exec( escapeshellarg( $node ). ' '. escapeshellarg( $jsTest ). ' 2>&1', $output, $status );
+	$summary = (string) end( $output );
+	check( 'stats-js-smoke.js passes - '. ( $summary === '' ? 'no output' : $summary ), $status === 0 );
+}
+
 ninoDone( $appData );

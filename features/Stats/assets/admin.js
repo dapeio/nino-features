@@ -167,7 +167,7 @@
 				+ ' · '+ data.totals.days+ ' '+ Nino.content.getText('/_admin/stats/label/days');
 			body.appendChild( summary );
 
-			body.appendChild( Nino.admin.stats._renderBars( data.days ) );
+			body.appendChild( Nino.admin.stats._renderBars( data.days, String( data.month || '' ) ) );
 
 			const tables = dc.createElement('div');
 			tables.id = 'stats-tables';
@@ -177,15 +177,22 @@
 		},
 
 		/**
-		 *	The day-by-day bar row: one plain <div> per day, its height a
-		 *	percentage of the month's busiest day - no chart library, just
-		 *	css (see admin.css's #stats-bars)
+		 *	The day-by-day bar row: one plain <div> per day of the month, its
+		 *	height a percentage of the month's busiest day - no chart library,
+		 *	just css (see admin.css's #stats-bars).
+		 *
+		 *	Every day of the month, not only the days that counted something:
+		 *	the store holds a day once it has a view (see Stats::count()), so a
+		 *	month with one visit used to be one bar the width of the panel and
+		 *	no calendar around it. A day without a view is a column with a
+		 *	baseline mark and its number, so the row reads as the month it is
 		 *
 		 *	@param		{Array}		days				[ { day, total }, ... ], oldest first
+		 *	@param		{string}	month				'YYYY-MM', the month the row is of
 		 *
 		 *	@return		{Element}
 		 */
-		_renderBars : function( days ) {
+		_renderBars : function( days, month ) {
 
 			const wrap = dc.createElement('div');
 			wrap.id = 'stats-bars';
@@ -195,26 +202,38 @@
 				return wrap;
 			}
 
+			const totals = {};
+			days.forEach( function( entry ) { totals[entry.day] = entry.total } );
 			const max = days.reduce( function( m, entry ) { return Math.max( m, entry.total ) }, 1 );
 
-			days.forEach( function( entry ) {
+			// The month's length from its own calendar; a row handed days with
+			// no month name draws the days it was given
+			const parts = /^(\d{4})-(\d{2})$/.exec( month || '' );
+			const count = parts === null ? 0 : new Date( Number( parts[1] ), Number( parts[2] ), 0 ).getDate();
+			const keys = count > 0
+				? Array.from( { length : count }, function( _, i ) { return month+ '-'+ String( i + 1 ).padStart( 2, '0' ) } )
+				: days.map( function( entry ) { return entry.day } );
+
+			keys.forEach( function( day ) {
+
+				const total = totals[day] || 0;
 
 				const col = dc.createElement('div');
-				col.className = 'stats-bar-col';
-				col.title = entry.day+ ': '+ entry.total;
+				col.className = 'stats-bar-col'+ ( total === 0 ? ' is-empty' : '' );
+				col.title = day+ ': '+ total;
 
 				const bar = dc.createElement('div');
 				bar.className = 'stats-bar';
-				bar.style.height = Math.max( 2, Math.round( ( entry.total / max ) * 100 ) )+ '%';
+				bar.style.height = total === 0 ? '2px' : Math.max( 2, Math.round( ( total / max ) * 100 ) )+ '%';
 
 				const value = dc.createElement('span');
 				value.className = 'stats-bar-value';
-				value.textContent = String( entry.total );
+				value.textContent = String( total );
 				bar.appendChild( value );
 
 				const label = dc.createElement('span');
 				label.className = 'stats-bar-label';
-				label.textContent = entry.day.slice( 8 );
+				label.textContent = day.slice( 8 );
 
 				col.appendChild( bar );
 				col.appendChild( label );

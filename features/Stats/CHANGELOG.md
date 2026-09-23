@@ -5,6 +5,16 @@ A release is the tag `stats-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+- **The bar row is the month.** The store holds a day once it has a view,
+  and the panel drew exactly those days, so a month with one visit was one
+  bar the width of the panel, a day number turned on its side under it and
+  no calendar around it. The row draws every day of the month now - the
+  empty ones as a baseline mark with their number - on a card of its own,
+  the columns capped at a bar's width, the day numbers in a line under the
+  baseline. A new `stats-js-smoke.js` draws the row over a dom stand-in
+  and holds the calendar, the heights and the edges; `stats-smoke.php`
+  runs it where node is on the path.
+
 - Needs Nino `^1.3`, where the constraint said `^1.1`. The sectioned `manual`
   map this manifest carries is only read by a kernel newer than the
   `v1.2.0-beta` tag - `Features::manifest()` refuses it on the tagged one -
