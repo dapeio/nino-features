@@ -40,15 +40,15 @@ namespace Nino\Modules\Templates {
 			'image-banner',
 			'image-content-split',
 			'image-list-split',
+			'static-list',
+			'static-table',
+			'static-accordion',
+			'static-content',
 			'items-timeline',
-			'items-list',
-			'items-table',
-			'items-accordion',
 			'items-pricing',
 			'items-logos',
 			'form-newsletter',
 			'form-contact',
-			'static-content',
 			'template-include'
 		];
 
