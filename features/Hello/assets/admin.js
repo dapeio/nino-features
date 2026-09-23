@@ -119,10 +119,13 @@
 
 			wrap.innerHTML = '';
 
-			const heading = dc.createElement('h2');
-			heading.textContent = Nino.content.getText('/_admin/hello/title');
-			wrap.appendChild( heading );
-
+			/*	No heading: the workbench opens every pane with a head of its
+				own - the label nav() gave, room beside it for a strip of tabs
+				and at its end for buttons - and a panel reaches it through
+				Nino.adminUi.panelHead() when it has something to put there.
+				So a screen starts with what it is about, and a heading of its
+				own would only say the panel's name a second time. A form one
+				level down, the kind a list opens, is where a heading belongs	*/
 			const hint = dc.createElement('p');
 			hint.className = 'nino-admin-hint';
 			hint.textContent = Nino.content.getText('/_admin/hello/hint');

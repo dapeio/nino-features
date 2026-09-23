@@ -9,10 +9,11 @@ declare(strict_types=1);
 // features/Hello/install/text/.
 return [
 
-	// Der Eintrag in der Navigation, benannt von Admin::nav()
+	// Der Eintrag in der Navigation, benannt von Admin::nav() - und der Name,
+	// den der Kopf über dem Panel zeigt; deshalb zeichnet der Schirm keine
+	// eigene Überschrift
 	'[[/_admin/hello/nav]]'					=> 'Hallo Welt',
 
-	'[[/_admin/hello/title]]'				=> 'Hallo Welt',
 	/*	Kein Shortcode hier drin, und das ist die Lektion: ein Textfill wird
 		gerendert - „[hello]" in einem Fill ist also nicht das Wort „[hello]"
 		auf dem Schirm, sondern der Shortcode, expandiert, überall wo dieser

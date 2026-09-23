@@ -9,10 +9,10 @@ declare(strict_types=1);
 // features/Hello/install/text/.
 return [
 
-	// The rail entry, named by Admin::nav()
+	// The rail entry, named by Admin::nav() - and the name the head over the
+	// panel's screen shows, which is why the screen draws no heading of its own
 	'[[/_admin/hello/nav]]'					=> 'Hello World',
 
-	'[[/_admin/hello/title]]'				=> 'Hello World',
 	/*	No shortcode in here, and that is the lesson: a text fill is rendered,
 		so "[hello]" written into one is not the word "[hello]" on screen - it
 		is the shortcode, expanded, wherever that fill is shown. Name it in

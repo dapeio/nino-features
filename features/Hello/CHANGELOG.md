@@ -14,6 +14,17 @@ A release is the tag `hello-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The panel no longer names itself a second time.** The workbench opens
+  every pane with a head that names the panel with the label `nav()` gave, so
+  the screen's own "Hello World" stood one line under "Hello World". The
+  screen opens with its hint now, the first line under the head, and says in
+  `assets/admin.js` why a screen draws no heading of its own - the example is
+  what a panel is copied from. The fill `/_admin/hello/title` is gone from
+  both text files, and the test's check that the panel's words stay out of the
+  project holds all of them rather than that one. A kernel from before the
+  head draws no name over any pane, its own included, and the screen opens
+  with the hint there too.
+
 - **The example left its own template out of the checklist.** The README's
   directory listing and the two sentences that enumerate what a feature can
   carry - in the README and at the top of `feature.php` - still named the nine

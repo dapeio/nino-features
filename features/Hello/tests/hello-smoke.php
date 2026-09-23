@@ -113,9 +113,11 @@ foreach( [ 'en_US', 'de_DE' ] as $locale ) {
 }
 
 // The panel's own words are not: they are read out of features/Hello/text/
-// while the panel is drawn, and belong to the workbench rather than the site
-check( 'the panel\'s words stayed out of the project', isset(
-	\Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/_admin/hello/title]]'] ) === false );
+// while the panel is drawn, and belong to the workbench rather than the site.
+// Every one of them, so the check does not go quiet when a word is dropped
+check( 'the panel\'s words stayed out of the project', array_intersect_key(
+	(array) include dirname( __DIR__ ). '/text/en_US.php',
+	\Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] ) ) === [] );
 
 echo "\n";
 
@@ -200,6 +202,20 @@ check( 'it brings a pane, a script and a stylesheet', \Nino\Modules\Hello\Admin:
 	&& count( \Nino\Modules\Hello\Admin::assets() ) === 2 );
 check( 'a save is written to the activity log and a read is not', \Nino\Modules\Hello\Admin::log( 'hello/save', [] ) !== ''
 	&& \Nino\Modules\Hello\Admin::log( 'hello/list', [] ) === '' );
+
+/*	The workbench opens every pane with a head of its own - the label nav()
+	gave, with room for a strip of tabs and for buttons - so a screen starts
+	with what it is about, and a heading of the screen's own would say the
+	panel's name a second time, one line under the first. There is no dom in
+	here to draw the screen into, so this reads it off the script: _render(),
+	from its own line to the one that closes it	*/
+$screen = preg_match( '/^\t\t_render : function\(\) \{\n(.*?)^\t\t\},$/ms',
+	(string) file_get_contents( dirname( __DIR__ ). '/assets/admin.js' ), $method ) === 1 ? $method[1] : '';
+check( 'the screen draws no heading of its own - the head over the pane names the panel',
+	$screen !== '' && preg_match( '/createElement\(\s*\'h[1-6]\'\s*\)/', $screen ) === 0 );
+check( '...and the first line it draws under that head is its hint',
+	preg_match( '/\bappendChild\(\s*(\w+)\s*\)/', $screen, $first ) === 1
+	&& str_contains( $screen, $first[1]. '.className = \'nino-admin-hint\'' ) === true );
 
 /**
  *	Call one panel action the way the workbench does: a posted request with
