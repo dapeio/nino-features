@@ -3,9 +3,11 @@
  *	design-js-smoke.js		What the Design panel's screen is, over a dom
  *												stand-in: the form card the part and its size are
  *												chosen in, the titled block the knob rows stand in,
- *												and the summary under the preview frame - the list
+ *												the summary under the preview frame - the list
  *												that says, in words, what the frame beside it is
- *												showing and what is about to compile.
+ *												showing and what is about to compile - and the
+ *												head of the pane the screen stands in, which names
+ *												the panel and carries the Structure / Colours strip.
  *
  *												The list is the half a picture cannot give: a
  *												preview says what a design looks like and nothing
@@ -132,9 +134,49 @@ function element( tag ) {
 			parent.children[at] = node;
 			this.parent = null;
 		},
-		// The switch the preview bar is built from is asked for its own input
-		querySelector		: function( selector ) { return byTag( this, selector )[0] || null },
+		/*	The switch the preview bar is built from is asked for its own
+			input; the head's parts are asked for by class, one level down,
+			the way Nino.adminUi.panelHead() reaches them	*/
+		querySelector		: function( selector ) {
+			if( selector.indexOf( ':scope > .' ) === 0 )
+				return this.children.filter( function( child ) { return hasClass( child, selector.slice( 10 ) ) } )[0] || null;
+			return byTag( this, selector )[0] || null;
+		},
+		// The pane is what carries data-panel, which is all closest() is asked for
+		closest					: function() {
+			let at = this;
+			while( at !== null && at.dataset.panel === undefined )
+				at = at.parent;
+			return at;
+		},
+		// Enough of a live tree for a strip to be put into the head and taken out again
+		insertAdjacentElement	: function( where, node ) {
+			const siblings = this.parent.children;
+			if( node.parent !== null )
+				node.remove();
+			siblings.splice( siblings.indexOf( this ) + ( where === 'afterend' ? 1 : 0 ), 0, node );
+			node.parent = this.parent;
+			return node;
+		},
+		insertBefore		: function( node, reference ) {
+			if( node.parent !== null )
+				node.remove();
+			const at = reference ? this.children.indexOf( reference ) : -1;
+			this.children.splice( at === -1 ? this.children.length : at, 0, node );
+			node.parent = this;
+			return node;
+		},
+		remove					: function() {
+			if( this.parent === null )
+				return;
+			this.parent.children.splice( this.parent.children.indexOf( this ), 1 );
+			this.parent = null;
+		},
+		// The kernel's tab strip moves the focus along with the arrow keys
+		focus						: function() { focused = this },
 	};
+
+	Object.defineProperty( el, 'firstChild', { get : function() { return el.children[0] || null } } );
 
 	el.classList = {
 		add				: function( name ) { el.classes[name] = true },
@@ -156,6 +198,14 @@ function element( tag ) {
 	return el;
 }
 
+/** Whichever element was focused last - what document.activeElement is in a browser */
+let focused = null;
+
+/** Whether an element carries a class - in its className, or added through classList */
+function hasClass( el, className ) {
+	return ( ' '+ el.className+ ' ' ).indexOf( ' '+ className+ ' ' ) !== -1 || el.classList.contains( className );
+}
+
 /** Every element below $root, depth first */
 function descendants( root ) {
 	let all = [];
@@ -168,9 +218,7 @@ function descendants( root ) {
 
 /** Every element below $root carrying $className */
 function byClass( root, className ) {
-	return descendants( root ).filter( function( el ) {
-		return ( ' '+ el.className+ ' ' ).indexOf( ' '+ className+ ' ' ) !== -1;
-	} );
+	return descendants( root ).filter( function( el ) { return hasClass( el, className ) } );
 }
 
 /** Every element below $root of that tag */
@@ -221,19 +269,44 @@ function listing( over ) {
  *	the way the other feature tests hold it - and the preview behind it is
  *	debounced, so a stand-in timer that never fires is exactly what a test of
  *	the screen wants: what is asserted on is what the click wrote, not what an
- *	answer wrote back
+ *	answer wrote back.
+ *
+ *	The mount stands in its pane, under the head the shell renders over every
+ *	panel (see \Nino\Admin\Panels::panesHtml()): the panel's name, the slot
+ *	for actions - and whatever strip is handed to it. { head : false } draws
+ *	the screen where there is none, the way it is drawn on a kernel from
+ *	before the head
  *
  *	@param		{Object}	[over]		What this screen's listing has differently
+ *	@param		{Object}	[shell]		{ head : false } for a pane without a head
  */
-function panel( over ) {
+function panel( over, shell ) {
+
+	const pane = element('div');
+	pane.id = 'admin-content-design';
+	pane.dataset.panel = 'design';
+
+	const head = element('div');
+	head.className = 'admin-panel-head';
+	const title = element('h2');
+	title.className = 'admin-panel-title';
+	title.textContent = 'Design';
+	const actions = element('div');
+	actions.className = 'admin-panel-actions';
+	head.appendChild( title );
+	head.appendChild( actions );
+
+	if( ( shell || {} ).head !== false )
+		pane.appendChild( head );
 
 	const form = element('div');
 	form.id = 'design-form';
+	pane.appendChild( form );
 
 	function byId( id ) {
 		if( id === 'design-form' )
 			return form;
-		return descendants( form ).filter( function( el ) { return el.id === id } )[0] || null;
+		return descendants( pane ).filter( function( el ) { return el.id === id } )[0] || null;
 	}
 
 	const dc = {
@@ -250,21 +323,58 @@ function panel( over ) {
 			actionBar		: function( bar ) { bar.classList.add('nino-admin-actionbar'); return bar },
 			scaleFrame	: function() { return function() {} },
 			text				: function( value ) { return String( value ) },
-			/* The workbench's own painter: one button lit, every button flagged */
+			/* The workbench's own painter: one button lit, every button flagged -
+			   and on a tablist the arrow keys its tabKeys() adds: the focus
+			   moves to the next tab, and that tab is opened */
 			buttonRow		: function( buttons, active, onSelect, flag ) {
 				const attribute = flag || 'aria-pressed';
+				const keys = Object.keys( buttons );
 				const paint = function( key ) {
-					Object.keys( buttons ).forEach( function( candidate ) {
+					keys.forEach( function( candidate ) {
 						const on = candidate === key;
 						buttons[candidate].classList.toggle( 'is-active', on );
 						buttons[candidate].setAttribute( attribute, on === true ? 'true' : 'false' );
 					} );
 				};
-				Object.keys( buttons ).forEach( function( key ) {
+				keys.forEach( function( key, at ) {
 					buttons[key].addEventListener( 'click', function() { paint( key ); onSelect( key ) } );
+					if( attribute === 'aria-selected' )
+						buttons[key].addEventListener( 'keydown', function( ev ) {
+							const next = keys[( at + ( ev.key === 'ArrowLeft' ? keys.length - 1 : 1 ) ) % keys.length];
+							buttons[next].focus();
+							paint( next );
+							onSelect( next );
+						} );
 				} );
 				paint( active );
 				return paint;
+			},
+			/* The head of the pane an element stands in, as the kernel's
+			   Nino.admin.js answers it: null outside a pane with a head, and a
+			   strip handed to tabs() goes in after the name, in place of the
+			   strip that stood there */
+			panelHead		: function( el ) {
+				const at = el && typeof el.closest === 'function' ? el.closest('[data-panel]') : null;
+				const row = at ? at.querySelector(':scope > .admin-panel-head') : null;
+				if( !row )
+					return null;
+				return {
+					element	: row,
+					title		: row.querySelector(':scope > .admin-panel-title'),
+					actions	: row.querySelector(':scope > .admin-panel-actions'),
+					tabs		: function( strip ) {
+						const before = row.querySelector(':scope > .admin-panel-tabs');
+						if( before !== null && before !== strip )
+							before.remove();
+						strip.classList.add('admin-panel-tabs');
+						const name = row.querySelector(':scope > .admin-panel-title');
+						if( name !== null )
+							name.insertAdjacentElement( 'afterend', strip );
+						else
+							row.insertBefore( strip, row.firstChild );
+						return strip;
+					},
+				};
 			},
 			switchField	: function( options ) {
 				const label = element('label');
@@ -313,6 +423,12 @@ function panel( over ) {
 		design 	: design,
 		requests: requests,
 		form		: form,
+		pane		: pane,
+		head		: head,
+		/** The strips in the head, after the name */
+		headStrips : function() {
+			return head.children.filter( function( child ) { return hasClass( child, 'design-tabs' ) } );
+		},
 		/** The summary under the frame, as [ label, value ] pairs */
 		summary : function() {
 			const list = byId('design-summary');
@@ -338,9 +454,9 @@ function panel( over ) {
 			picker.value = name;
 			picker.fire('change');
 		},
-		/** Switch to the other half of the design */
+		/** Switch to the other half of the design, wherever its strip stands */
 		tab : function( label ) {
-			byTag( byClass( form, 'design-tabs' )[0], 'button' ).filter( function( button ) {
+			byTag( byClass( pane, 'design-tabs' )[0], 'button' ).filter( function( button ) {
 				return button.textContent === label;
 			} ).forEach( function( button ) { button.fire('click') } );
 		},
@@ -445,6 +561,86 @@ check( 'the knob rows stand in a block of their own, opened by a small heading a
 
 check( 'and the group over the card is named, the way the composer names one',
 	( byClass( column.form, 'design-eyebrow' )[0] || {} ).textContent === 'Selection' );
+
+console.log('');
+
+
+// --- The pane's head -------------------------------------------------------------
+//
+// The panel's name is the head's - the row the shell renders over every pane -
+// so the screen under it draws no heading of its own. The strip that switches
+// the two halves stands in that row beside the name, where the Features
+// panel's does: it switches the column of controls and nothing else, and the
+// frame beside the column stays on both tabs
+
+console.log( 'The head' );
+
+/** A key pressed on a tab, the way the kernel's tabKeys() hears it */
+function press( button, key ) {
+	( button.listeners.keydown || [] ).forEach( function( fn ) { fn( { key : key, preventDefault : function() {} } ) } );
+}
+
+/** The word over the card - which half of the design the column is showing */
+function eyebrow( screen ) {
+	return ( byClass( screen.form, 'design-eyebrow' )[0] || {} ).textContent;
+}
+
+const headed = panel();
+const strip = headed.headStrips()[0] || null;
+
+check( 'the screen draws no heading of its own - the head names the panel',
+	byTag( headed.form, 'h1' ).concat( byTag( headed.form, 'h2' ), byTag( headed.form, 'h3' ) ).length === 0 );
+check( 'the strip is handed to the pane\'s head and stands right after the name, not over the column',
+	strip !== null && headed.head.children[1] === strip && hasClass( headed.head.children[0], 'admin-panel-title' )
+	&& strip.classList.contains('admin-panel-tabs') && byClass( headed.form, 'design-tabs' ).length === 0 );
+
+// Opening the panel again draws the screen again (showCurrent())
+headed.design.showCurrent();
+
+check( '...and a screen drawn again puts one strip there, not a second beside the first',
+	headed.headStrips().length === 1 && headed.head.children.length === 3
+	&& hasClass( headed.head.children[1], 'design-tabs' ) && hasClass( headed.head.children[2], 'admin-panel-actions' ) );
+
+const shown = headed.headStrips()[0] || null;
+headed.tab('Colours');
+
+check( 'the other half redraws the column under the head and leaves the strip standing - the same element, its tab lit',
+	shown !== null && headed.headStrips()[0] === shown && headed.headStrips().length === 1
+	&& byTag( shown, 'button' )[1].getAttribute('aria-selected') === 'true' && eyebrow( headed ) === 'Palette'
+	&& headed.byId('design-frame') !== null );
+
+/*	The keyboard is the reason the strip is not drawn again on a switch. An
+	arrow key moves the focus to the next tab and opens it; a strip drawn anew
+	with the column took that tab out of the document, and the focus fell onto
+	the page, so the next arrow key had nowhere to start from	*/
+const keyed = panel();
+const keyTabs = byTag( keyed.headStrips()[0] || element('div'), 'button' );
+
+focused = null;
+if( keyTabs.length === 2 )
+	press( keyTabs[0], 'ArrowRight' );
+
+check( 'an arrow key on the strip opens the other half and the focus stays on the tab it moved to, in the head',
+	keyTabs.length === 2 && focused === keyTabs[1] && keyTabs[1].parent === keyed.headStrips()[0]
+	&& keyTabs[1].getAttribute('aria-selected') === 'true' && eyebrow( keyed ) === 'Palette' );
+
+if( keyTabs.length === 2 )
+	press( keyTabs[1], 'ArrowLeft' );
+
+check( '...so the next one has a tab to start from, and walks back',
+	keyTabs.length === 2 && focused === keyTabs[0] && keyTabs[0].parent === keyed.headStrips()[0]
+	&& keyTabs[0].getAttribute('aria-selected') === 'true' && eyebrow( keyed ) === 'Selection' );
+
+/*	A kernel from before the head, or the script drawn outside its pane: the
+	strip has nowhere else to go, so it opens the column the way it did - and
+	the heading stays gone there as well	*/
+const bare = panel( {}, { head : false } );
+const opened = hasClass( ( bare.byId('design-controls') || element('div') ).children[0] || element('div'), 'design-tabs' );
+bare.tab('Colours');
+
+check( 'where the pane has no head, the strip opens the column and comes back with it on a switch - with no heading over it',
+	opened === true && hasClass( bare.byId('design-controls').children[0], 'design-tabs' ) && byClass( bare.pane, 'design-tabs' ).length === 1
+	&& eyebrow( bare ) === 'Palette' && byTag( bare.form, 'h2' ).length === 0 );
 
 console.log( '\n'+ checks+ ' checks, '+ failures+ ' failed' );
 process.exit( failures === 0 ? 0 : 1 );

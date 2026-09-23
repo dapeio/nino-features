@@ -5,6 +5,16 @@ A release is the tag `design-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+- **Structure and Colours are tabs in the pane's head.** The workbench
+  draws one head over every panel now - its name, and beside it the tabs
+  where a panel has some - so the panel's own "Design" heading under that
+  row is gone, and the strip that switched the two halves moved out of the
+  column of controls into the head beside the name, the way the Features
+  panel's does. It still switches only the controls; the preview stays on
+  both tabs. A switch no longer draws the strip again, so an arrow key
+  leaves the focus on the tab it moved to - it used to drop onto the page.
+  On a kernel without the head the strip opens the column as before.
+
 - **The panel's screen follows the section composer of Templates.** The two
   halves of the Design panel were built out of whatever each of them needed:
   a lone "Part" select over a card, a second select inside that card with its

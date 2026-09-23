@@ -36,9 +36,11 @@
 
 @layer nino.tool {
 
-/*	The two halves of a design, above everything they switch between. A margin
-	below rather than a border: the card under it already draws one, and two
-	lines a row apart read as a box nobody meant to draw */
+/*	The two halves of a design. In the pane's head the strip stands beside the
+	panel's name and the head lays it out; this is the column it opens where
+	there is no head (see _head() in admin.js). A margin below rather than a
+	border: the card under it already draws one, and two lines a row apart
+	read as a box nobody meant to draw */
 .nino-admin .design-tabs {
 	margin: 0 0 1rem;
 }

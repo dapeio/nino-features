@@ -198,6 +198,23 @@
 		},
 
 		/**
+		 *	The head of the pane the screen stands in: the row the shell
+		 *	renders over every panel, with the panel's name in it (see
+		 *	Nino.adminUi.panelHead()).
+		 *
+		 *	null where there is none - a kernel from before the head, or the
+		 *	script drawn somewhere other than its pane - and the strip then
+		 *	opens the column of controls, where it stood before there was a
+		 *	head to put it in
+		 *
+		 *	@return		{Object|null}			{ element, title, actions, tabs( strip ) }
+		 */
+		_head : function() {
+			const wrap = dc.getElementById('design-form');
+			return wrap !== null && typeof Nino.adminUi.panelHead === 'function' ? Nino.adminUi.panelHead( wrap ) : null;
+		},
+
+		/**
 		 *	The whole screen: one part at a time, what it can be given, and the
 		 *	knob under it - beside a preview of the lot.
 		 *
@@ -217,9 +234,18 @@
 
 			wrap.innerHTML = '';
 
-			const heading = dc.createElement('h2');
-			heading.textContent = Nino.content.getText('/_admin/design/label/title');
-			wrap.appendChild( heading );
+			/*	No heading of its own: the pane's head names the panel. The
+				strip goes into that row beside the name, the way the Features
+				panel's does, rather than over the column - it switches the
+				controls on the left and nothing else, so it belongs with the
+				name of the screen and not above one of its two halves. Handed
+				over on every render; tabs() takes the place of the strip
+				drawn before it, so coming back to the panel does not stack a
+				second one	*/
+			const head = Nino.admin.design._head();
+
+			if( head !== null )
+				head.tabs( Nino.admin.design._renderTabs() );
 
 			// Controls on one side, what they mean on the other. One column
 			// below the breakpoint, where a preview beside a select would be
@@ -574,7 +600,9 @@
 		 */
 		/**
 		 *	The controls column, on its own so a tab switch can redraw it
-		 *	without touching the frame beside it.
+		 *	without touching the frame beside it - or the strip in the pane's
+		 *	head, which is the element the switch was made on, and keeps the
+		 *	focus an arrow key put on it.
 		 *
 		 *	@return		{HTMLElement}
 		 */
@@ -583,11 +611,14 @@
 			const controls = dc.createElement('div');
 			controls.id = 'design-controls';
 
-			controls.appendChild( Nino.admin.design._renderTabs() );
+			// Only where there is no head does the strip open the column (see
+			// _head()) - and is drawn again with it on every switch
+			if( Nino.admin.design._head() === null )
+				controls.appendChild( Nino.admin.design._renderTabs() );
 
 			/*	One eyebrow over the card, the way the section composer labels a
 				group of fields. It names what the card asks for rather than
-				repeating the tab: the strip above already says which half of a
+				repeating the tab: the strip already says which half of a
 				design is open	*/
 			controls.appendChild( Nino.admin.design._eyebrow( Nino.content.getText( Nino.admin.design._tab === 'colours'
 				? '/_admin/design/group/palette'
@@ -686,6 +717,11 @@
 		 *	it is the same page under either tab, so rebuilding it would cost a
 		 *	request and a flash for a click that changed which controls are on
 		 *	screen and nothing at all about the design.
+		 *
+		 *	Nor the strip in the pane's head. The tab the switch was made on is
+		 *	the one the keyboard is on, and the strip used to be drawn again
+		 *	with the column: an arrow key opened the other half and dropped the
+		 *	focus onto the page, so the next arrow went nowhere.
 		 *
 		 *	@param		{string}	key			'structure' or 'colours'
 		 *

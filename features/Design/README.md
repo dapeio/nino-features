@@ -53,6 +53,10 @@ order the cascade wants the parts concatenated in.
 which one is open - the nine parts and `Global` - and everything below it
 belongs to that one.
 
+Its two halves, **Structure** and **Colours** (below), are the tabs beside the
+panel's name in the head the workbench draws over every pane. They switch the
+column of controls; the preview beside it stays the same page on both.
+
 | | |
 | --- | --- |
 | **Part** and **Variant** | two fields of one card: which part is open, and which set it is given, listed as `v3 - Floating bar` out of the file's own name and `@name`. Each carries the terse line about it under the control - a variant's `@description`, the root size's sentence about percentages. `Global` shows the root size instead of a variant |
@@ -506,5 +510,10 @@ control and its line under it, that the knob rows stand in a block a small
 heading opens, and that the summary under the frame says the part, the variant,
 the size, every knob's current value, the palette on the Colours tab and what
 the compiled file is - after a knob is moved, after another part is opened and
-after the other half of the design is switched to. `design-smoke.php` runs it
+after the other half of the design is switched to. Its pane carries the head
+the workbench renders over every panel: the screen draws no heading of its own
+under it, the Structure / Colours strip stands in the head beside the name - one
+strip however often the screen is drawn - and a switch, by click or arrow key,
+redraws the column and leaves the strip and the focus on it where they are;
+without a head the strip opens the column instead. `design-smoke.php` runs it
 too wherever `node` is on the path.
