@@ -318,13 +318,15 @@ namespace Nino\Modules\Templates {
 				throw new \InvalidArgumentException( 'area '. $key. ' contains unsupported components' );
 			if( $source === 'elements' && in_array( 'template', $allowed, true ) )
 				throw new \InvalidArgumentException( 'template components are available only in single areas' );
-			/*	Same reason as the template component beside it: a collection
-				renders its item once per element, so one written-out source would
-				be repeated verbatim for every one of them - markup that says the
-				same thing about every element, which is what the item's own
-				template is for	*/
-			if( $source === 'elements' && in_array( 'html', $allowed, true ) )
-				throw new \InvalidArgumentException( 'html components are available only in single areas' );
+			/*	The HTML+ component is not held to single areas the way the
+				template component is. A collection renders its item once per
+				element, and that is the point of writing one there: the source
+				is the item's own markup, and a [[field]] in it is resolved per
+				record by the [elements] pass at request time, like the fills
+				the catalogue's components write (see renderArea() and
+				Elements::doShortcode()). What used to be refused as "the same
+				thing about every element" is a row template somebody wrote by
+				hand, which the preset's fixed components could not express	*/
 			$styles = self::styles( $definition['styles'] ?? [] );
 			$recommendedStyle = (string) ( $definition['recommend']['style'] ?? array_key_first( $styles ) );
 			if( isset( $styles[$recommendedStyle] ) === false )

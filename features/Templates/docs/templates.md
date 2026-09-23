@@ -266,8 +266,10 @@ shortcodes survive, which is what a textfill cannot do: `sanitizeValue()` turns
 every `[` and `]` into an entity. It may not carry a nested `<section>`, nor
 `script`, `iframe`, `object`, `embed`, `form` or `style`, nor `-->`; for
 anything beyond that, the escape hatch takes the whole section and says so. It
-is offered in single Areas: a collection renders its item once per element, so
-one written-out source would be repeated for every one of them.
+is offered in single Areas and in collections alike: in a collection the source
+is the item's own markup, rendered once per element, and a `[[field]]` in it is
+resolved per record the way the other components' fills are - a row written by
+hand, where the preset's fixed components would not do.
 Every text component offers the same three styles — **Auto**, **Quiet** and **Loud** —
 which compile to a modifier of whatever class the component carries:
 `nino-section-title--loud` in a content section, `nino-atf-title--loud` in a hero,

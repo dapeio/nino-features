@@ -845,10 +845,31 @@ check( '...whatever case it is written in', $htmlRefuses( '<ScRiPt>a</ScRiPt>' )
 check( 'and so is the sequence that would close the spec marker', $htmlRefuses( 'a --> b' ) === true );
 check( 'a source longer than the cap is refused rather than written', $htmlRefuses( str_repeat( 'x', 9000 ) ) === true );
 
-// A collection renders its item once per element, so one written-out source
-// would be repeated verbatim for every one of them
-check( 'the HTML+ component is refused in a collection area', throwsInvalidArgument( fn() => \Nino\Modules\Templates\AreaComposer::normalizePreset( 'html-collection',
-	array_replace_recursive( $multiAreaManifest, [ 'areas' => [ 'first' => [ 'source' => 'elements', 'allowed' => [ 'title', 'html' ] ] ] ] ), $areaPresetDirectory ) ) );
+/*	A collection renders its item once per element, and an HTML+ component
+	written there is the item's own markup: its [[field]] placeholders are
+	resolved per record by the [elements] pass, like the fills the catalogue's
+	components write. It used to be refused in a collection area as "the same
+	thing about every element"; a row template somebody writes by hand is
+	exactly what the preset's fixed components cannot express	*/
+// Normalized through a catch, like the HTML+ source above: a preset the
+// composer refuses used to end the suite here rather than fail a check
+$htmlCollectionPreset = [ 'areas' => [] ];
+try {
+	$htmlCollectionPreset = \Nino\Modules\Templates\AreaComposer::normalizePreset( 'html-collection',
+		array_replace_recursive( $multiAreaManifest, [ 'areas' => [ 'first' => [ 'source' => 'elements', 'allowed' => [ 'title', 'html' ] ] ] ] ), $areaPresetDirectory );
+} catch( \Throwable $htmlCollectionRefusal ) {}
+check( 'the HTML+ component is offered in a collection area', isset( $htmlCollectionPreset['areas']['first']['render']['html'] ) === true );
+$htmlCollection = [ 'source' => '' ];
+try {
+	$htmlCollectionSpec = \Nino\Modules\Templates\AreaComposer::defaults( $htmlCollectionPreset, 'home', 'rows' );
+	$htmlCollectionSpec['areas']['first']['components'] = [ [ 'id' => 'row', 'type' => 'html', 'style' => 'auto', 'settings' => [ 'target' => 'same' ], 'bindings' => [ 'source' => '<p class="nino-section-text">[[title]] &middot; [[/company/name]]</p>' ], 'bindingSources' => [ 'source' => 'fixed' ] ] ];
+	$htmlCollection = \Nino\Modules\Templates\AreaComposer::compose( $htmlCollectionSpec, $htmlCollectionPreset );
+} catch( \Throwable $htmlCollectionError ) {}
+check( '...and its source is the item the [elements] pass repeats, [[field]] and all',
+	preg_match( '#\[elements /[a-z0-9-]+[^\]]*\](.*?)\[/elements\]#s', $htmlCollection['source'], $htmlItem ) === 1
+	&& str_contains( $htmlItem[1], '<p class="nino-section-text">[[title]] &middot; [[/company/name]]</p>' ) === true );
+check( '...while the template component stays a single-area one', throwsInvalidArgument( fn() => \Nino\Modules\Templates\AreaComposer::normalizePreset( 'template-collection',
+	array_replace_recursive( $multiAreaManifest, [ 'areas' => [ 'first' => [ 'source' => 'elements', 'allowed' => [ 'title', 'template' ] ] ] ] ), $areaPresetDirectory ) ) );
 
 // Every single area that takes anything but an image offers it, so an editor
 // never has to pick a different preset to get one place of their own

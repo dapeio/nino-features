@@ -5,6 +5,18 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+### Added
+
+- **HTML+ inside a collection.** An HTML+ component was refused in an
+  Elements Area - "the same thing about every element" - where it is the
+  one thing the fixed components cannot express: a row written by hand. The
+  source is the item's own markup now, rendered once per element inside the
+  `[elements]` block the area composes, and a `[[field]]` in it is resolved
+  per record the way the other components' fills are. `template` stays a
+  Single Area component. The manual, its German twin and the preset recipe
+  say so, and `templates-smoke.php` composes such a row and reads it back
+  inside the block.
+
 ### Changed
 
 - **The manual and the two recipes left the kernel, and the README names the

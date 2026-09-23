@@ -304,9 +304,11 @@ The finite catalog is `title`, `subtitle`, `description`, `text`, `html`,
 that list, override allowlisted tags/classes/styles and image dimensions, and
 set a maximum component count. It MUST NOT supply arbitrary component HTML.
 `html` - **HTML+** in the panel - is the one whose value is source rather than
-a binding, and it is allowed in Single Areas only, for the same reason
-`template` is: a collection renders its item once per record, and one
-written-out source would be repeated for every one of them.
+a binding. It is allowed in Single and Elements Areas alike: in an Elements
+Area the source is the item's markup, rendered once per record, and a
+`[[field]]` in it is resolved per record like the fills the other components
+write. `template` stays a Single Area component - an include repeated for
+every record says the same thing about every one of them.
 
 A preset MUST write the design system's own classes. The frontend has exactly
 one namespace, `nino-*` - the same class carries structure, appearance and, where

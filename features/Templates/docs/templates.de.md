@@ -373,9 +373,11 @@ Benutzers gewinnt weiterhin:
   Textfill nicht kann: `sanitizeValue()` macht aus jeder `[` und `]` eine
   Entity. Sie darf keine verschachtelte `<section>` tragen, kein `script`,
   `iframe`, `object`, `embed`, `form` oder `style`, und kein `-->`; für alles
-  darüber nimmt der Escape-Hatch die ganze Section und sagt das auch. Nur in
-  Single-Areas: eine Collection rendert ihr Item einmal pro Element, ein
-  ausgeschriebener Quelltext käme also für jedes davon wortgleich wieder.
+  darüber nimmt der Escape-Hatch die ganze Section und sagt das auch. In
+  Single-Areas wie in Collections: In einer Collection ist der Quelltext das
+  Markup des Items, einmal pro Element gerendert, und ein `[[feld]]` darin wird
+  je Datensatz aufgelöst wie die Fills der anderen Komponenten – eine von Hand
+  geschriebene Zeile, wo die festen Komponenten des Presets nicht reichen.
   Jede Textkomponente bietet
   dieselben drei Styles – **Auto**, **Quiet**, **Loud** –, die zu einem
   Modifikator der jeweils getragenen Klasse kompilieren
