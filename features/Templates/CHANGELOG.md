@@ -19,6 +19,13 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The component stack is a table.** Each component of an area was a card
+  of its own with air between them, so a section with six components read
+  as six boxes rather than as one list. The stack is one bordered frame now,
+  a row per component with a rule between them and the same three columns
+  on every row - the order and the name, the style, the actions - with every
+  other row tinted, the shape the workbench's data table has.
+
 - **The manual and the two recipes left the kernel, and the README names the
   right permissions.** `docs/templates.md` and its German twin still described
   the panel as an optional kernel module under `_nino/Nino/Modules/Templates/`,

@@ -1861,15 +1861,37 @@
 .pd-v3-section-label strong { font-size: .69rem; letter-spacing: -.005em; }
 .pd-v3-section-label small { color: var(--editor-text-secondary); font-size: .59rem; line-height: 1.4; }
 .pd-v3-area-body > .pd-v3-section-label:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
-.pd-v3-components,
 .pd-v3-bindings { display: grid; gap: .5rem; margin-top: 0; }
+/*	The component stack is a table, not a stack of cards: one bordered
+	frame, a row per component with a rule between them, the same three
+	columns on every row - the order and the name, the style, the actions -
+	so a section with six components reads down like a list rather than as
+	six boxes with air between them. The card look every other .pd-v3-*
+	frame carries (see the shared rule above) is taken off the row here */
+.pd-v3-components {
+	display: grid;
+	gap: 0;
+	margin-top: 0;
+	overflow: hidden;
+	border: 1px solid var(--editor-border);
+	border-radius: var(--editor-radius-sm);
+	background: var(--editor-bg-elevated);
+}
+.pd-v3-components > .nino-admin-hint { margin: 0; padding: .6rem .62rem; }
 .pd-v3-component {
 	display: grid;
 	grid-template-columns: minmax(8rem, 1fr) minmax(9rem, 1.2fr) auto;
 	align-items: center;
 	gap: .65rem;
-	padding: .58rem .62rem;
+	padding: .5rem .62rem;
+	border: 0;
+	border-bottom: 1px solid var(--editor-separator);
+	border-radius: 0;
+	box-shadow: none;
+	background: transparent;
 }
+.pd-v3-component:last-child { border-bottom: 0; }
+.pd-v3-component:nth-child(even) { background: var(--nino-admin-surface-muted, transparent); }
 .pd-v3-component-identity { display: grid; grid-template-columns: 1.65rem minmax(0, 1fr); align-items: center; gap: .52rem; min-width: 0; }
 .pd-v3-component-copy { display: grid; min-width: 0; }
 .pd-v3-component-copy strong { overflow: hidden; font-size: .72rem; text-overflow: ellipsis; white-space: nowrap; }
