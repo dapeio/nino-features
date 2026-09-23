@@ -5,6 +5,13 @@ A release is the tag `search-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+- **`[search-count]` says how many.** The number of hits the running search
+  has over the named types, as digits and nothing around them, so a page
+  writes its own sentence - `<p>[search-count type="/products"] Treffer</p>`.
+  It reads `type` and `key` the way `[search-results]` does and counts
+  everything the query matched, not the page `limit` draws; nothing while
+  nothing was searched for, `0` when nothing was found.
+
 - **`[search]` is gone; the form is the project's own.** An input and a
   button are written faster than a shortcode's attributes are looked up, and
   the form was the one thing on the page this feature had an opinion about.

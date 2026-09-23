@@ -7,8 +7,8 @@ return [
 	'key'					=> 'search',
 	'name'				=> [ 'en_US' => 'Elements search', 'de_DE' => 'Elemente-Suche' ],
 	'description'	=> [
-		'en_US' => 'A locale-aware fuzzy search index over configured Element fields, rebuilt on every save, with a shortcode that draws the hits on any page, under a form the project writes itself.',
-		'de_DE' => 'Ein sprachbewusster unscharfer Suchindex über konfigurierte Elementfelder, neu gebaut bei jedem Speichern, mit einem Shortcode, der die Treffer auf jeder Seite zeichnet, unter einem Formular, das das Projekt selbst schreibt.',
+		'en_US' => 'A locale-aware fuzzy search index over configured Element fields, rebuilt on every save, with two shortcodes that draw the hits and their number on any page, under a form the project writes itself.',
+		'de_DE' => 'Ein sprachbewusster unscharfer Suchindex über konfigurierte Elementfelder, neu gebaut bei jedem Speichern, mit zwei Shortcodes, die Treffer und Trefferzahl auf jeder Seite zeichnen, unter einem Formular, das das Projekt selbst schreibt.',
 	],
 	'manual'			=> [
 		'shortcodes' => [
@@ -23,6 +23,10 @@ return [
 			'[search-results ... empty="search-empty"]' => [
 				'en_US' => 'What is drawn when nothing was found: a template of the project, here /templates/search-empty.tpl. Without it, nothing.',
 				'de_DE' => 'Was gezeigt wird, wenn nichts gefunden wurde: ein Template des Projekts, hier /templates/search-empty.tpl. Ohne die Angabe nichts.',
+			],
+			'[search-count type="/products" key="q"]' => [
+				'en_US' => 'How many hits the search has, as a plain number - all of them, not the page limit draws. Nothing while nothing was searched for, 0 when nothing was found.',
+				'de_DE' => 'Wie viele Treffer die Suche hat, als reine Zahl - alle, nicht die Seite, die limit zeichnet. Nichts, solange nichts gesucht wurde, 0, wenn nichts gefunden wurde.',
 			],
 		],
 		'markup' => [],

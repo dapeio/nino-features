@@ -93,7 +93,7 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	Register the write-time refresh and the shortcode a page puts a
+		 *	Register the write-time refresh and the two shortcodes a page puts a
 		 *	search on. Building the initial index stays an explicit action in the
 		 *	Search panel; init itself performs no I/O.
 		 */

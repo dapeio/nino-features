@@ -369,6 +369,35 @@ check( '...and a tag that is not a tag name falls back to the wrapper rather tha
 check( 'the wrapper takes the class it is given', str_contains(
 	\Nino\Html::renderHtml( $appData, '[search-results type="articles" tag="ul" class="produkte" limit="1"]<li>[[title]]</li>[/search-results]' ), '<ul class="produkte">' ) === true );
 
+echo "\nThe shortcode that says how many hits there are\n";
+
+// Two Elements of this section's own, found by one word nothing else in the
+// index carries, so the number is this section's to know
+\Nino\Elements::insertElement( $appData, '/articles/count-one', [ 'title' => 'Zaehlwerk eins', 'summary' => 'Der erste', 'keywords' => [], 'author' => '' ], 'de_DE' );
+\Nino\Elements::insertElement( $appData, '/articles/count-two', [ 'title' => 'Der zweite', 'summary' => 'Zaehlwerk zwei', 'keywords' => [], 'author' => '' ], 'de_DE' );
+
+$_GET = [ 'q' => 'zaehlwerk' ];
+$countHits = count( \Nino\Modules\Search::getHits( $appData, [ 'articles' ], 'zaehlwerk' ) );
+check( 'the count is the number of hits the search has', $countHits >= 2 && \Nino\Html::renderHtml( $appData, '[search-count type="articles"]' ) === (string) $countHits );
+check( '...as digits and nothing around them', preg_match( '/^\d+$/', \Nino\Html::renderHtml( $appData, '[search-count type="/articles"]' ) ) === 1 );
+check( "...so the sentence around it is the page's", \Nino\Html::renderHtml( $appData, '<p>[search-count type="articles"] Treffer</p>' ) === '<p>'. $countHits. ' Treffer</p>' );
+check( 'the count is of everything the query matched, not of the page a limit draws',
+	substr_count( \Nino\Html::renderHtml( $appData, '[search-results type="articles" limit="1"]<p>[[title]]</p>[/search-results]' ), '<p>' ) === 1
+	&& (int) \Nino\Html::renderHtml( $appData, '[search-count type="articles"]' ) === $countHits );
+$_GET = [ 'q' => 'nowhere at all' ];
+check( 'a search that found nothing is answered with a 0', \Nino\Html::renderHtml( $appData, '[search-count type="articles"]' ) === '0' );
+$_GET = [];
+check( 'nothing searched for renders nothing, like the result block', \Nino\Html::renderHtml( $appData, '[search-count type="articles"]' ) === '' );
+$_GET = [ 'my_own_get_var_key' => 'zaehlwerk' ];
+check( 'key names the query variable, the same way', \Nino\Html::renderHtml( $appData, '[search-count key="my_own_get_var_key" type="articles"]' ) === (string) $countHits
+	&& \Nino\Html::renderHtml( $appData, '[search-count type="articles"]' ) === '' );
+$_GET = [ 'q' => 'zaehlwerk' ];
+check( 'a type that is not indexed counts nothing', \Nino\Html::renderHtml( $appData, '[search-count type="notes"]' ) === '0' );
+check( '...and no type at all is nothing asked', \Nino\Html::renderHtml( $appData, '[search-count]' ) === '' );
+\Nino\Elements::deleteElement( $appData, '/articles/count-one', '*' );
+\Nino\Elements::deleteElement( $appData, '/articles/count-two', '*' );
+$_GET = [];
+
 \Nino\Elements::deleteElement( $appData, '/articles/markup', '*' );
 $_GET = [];
 

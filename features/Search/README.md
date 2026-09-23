@@ -3,8 +3,8 @@
 **Key:** `search` · **Class:** `\Nino\Modules\Search` · **Version:** 1.1.0 · **Nino:** `^1.3`
 
 A small weighted fuzzy index over the fields of configured Element types,
-grouped by locale. One shortcode draws the hits on any page, under a form the
-project writes itself; project code searches through `\Nino\Modules\Search::getElements()`
+grouped by locale. Two shortcodes draw the hits and their number on any page,
+under a form the project writes itself; project code searches through `\Nino\Modules\Search::getElements()`
 and receives complete canonical Elements in score order. The index is a derived file per type, rebuilt after
 every committed Elements write of that type and, all at once, from the
 workbench's **Search** panel. Which types and fields are indexed is
@@ -14,17 +14,17 @@ One directory, the shape the [feature recipe](https://github.com/dapeio/nino/blo
 describes: `feature.php`, `Search.php`, `Shortcodes/Shortcodes.php`,
 `Admin/Admin.php`, `assets/`, `templates/`, `text/`, `tests/`. There is no
 install unit - nothing of this feature's is copied into the project, no page
-and no form, only the one shortcode a project puts under its own form - and
+and no form, only the two shortcodes a project puts under its own form - and
 the manifest's `data` entry is empty, because the index files are derived and
 rebuilt on demand. The changes per version are in
 [CHANGELOG.md](CHANGELOG.md).
 
-## The shortcode
+## The two shortcodes
 
 The feature brings no page and draws no form, and registers no route unless
 the [JSON endpoint](#the-json-endpoint) is switched on. What it brings is a
-way to draw the answer; the form, where it goes and what a hit looks like are
-the project's:
+way to draw the answer and a way to say how big it is; the form, where it
+goes and what a hit looks like are the project's:
 
 ```
 <form role="search" method="get" action="/suche">
@@ -32,6 +32,7 @@ the project's:
 	<button type="submit">Suchen</button>
 </form>
 
+<p>[search-count key="q" type="/products"] Treffer</p>
 [search-results key="q" type="/products" empty="search-empty"]<h5>[[title]]</h5> <p>[[description]]</p>[/search-results]
 ```
 
@@ -46,7 +47,8 @@ grid and a list of articles because neither of them is this feature's to
 describe.
 
 Which query variable is read is `key`, default `q` - the name of the input in
-the form.
+the form. `[search-count]` is the number of hits and nothing around it, so the
+sentence it stands in is the page's own.
 
 ### `[search-results]`
 
@@ -79,6 +81,19 @@ having searched and found nothing. A page carrying a query is never
 page-cached (`\Nino\Modules\Cache` refuses anything with query variables), so
 a result page is always the answer to what was actually asked.
 
+### `[search-count]`
+
+| | |
+| --- | --- |
+| `type` | one Element type, or several separated by commas - the same `type` the result block names, so both count the same search |
+| `key` | the query variable, default `q` |
+
+The number of hits over the named types, as digits and nothing else: all of
+them, not the page a result block's `limit` draws. `<p>[search-count
+type="/products"] Treffer</p>` is the page's sentence. Nothing searched for
+renders nothing, like the result block; a search that found nothing renders
+`0`.
+
 ## API
 
 Beside the shortcodes, the feature's public surface:
@@ -97,8 +112,8 @@ Beside the shortcodes, the feature's public surface:
 
 `skipped` names a configured type that produced no index and why (`the model of "/products" has no field "titel"`); `issues` names a type that *is* indexed but whose configuration holds a name that does not resolve. Both used to be dropped silently - a configuration naming two types reported "1 index created", and a wholly invalid one came back as "no search indexes are configured".
 
-`init()` registers the callback, the shortcode and - while the JSON endpoint
-setting is on - the route that answers it: activation creates no file.
+`init()` registers the callback, the two shortcodes and - while the JSON
+endpoint setting is on - the route that answers it: activation creates no file.
 
 ## The JSON endpoint
 
@@ -267,7 +282,7 @@ panel's form for this feature is that switch and nothing else. The **Search**
 panel is the configuration's editor, and the only one - a second, unvalidated
 way to write the same data is a way to corrupt it.
 
-Activation registers the post-commit Elements callback and the shortcode,
+Activation registers the post-commit Elements callback and the two shortcodes,
 but creates no file on its own. Use **Rebuild all** in the **Search** panel for
 the initial build. Every press recreates every valid configured index.
 Afterwards, every successful insert, update or delete of a configured type

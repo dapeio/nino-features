@@ -13,21 +13,23 @@ namespace Nino\Modules\Search {
 
 	/**
 	 *	Nino							A compact filesystembased php framework
-	 *	Shortcodes				The one shortcode that puts a search on a page, and
+	 *	Shortcodes				The two shortcodes that put a search on a page, and
 	 *										nothing else: no route, no page template, no install
 	 *										unit, no form. A project that wants a search page writes
 	 *										one, with a GET form of its own - an input and a button
 	 *										are written faster than a shortcode's attributes are
-	 *										looked up - and puts this under it:
+	 *										looked up - and puts these under it:
 	 *
 	 *										  [search-results]…[/…]   the hits, drawn by its own body
+	 *										  [search-count]          how many there are, as a number
 	 *
-	 *										The body is the row markup, once per hit, with [[field]]
-	 *										for anything the type's model has. So the feature ships
-	 *										no opinion about what a result looks like - which is the
-	 *										only way one search can serve a product grid and a list
-	 *										of articles without growing a template system of its
-	 *										own.
+	 *										The body of the first is the row markup, once per hit,
+	 *										with [[field]] for anything the type's model has. So the
+	 *										feature ships no opinion about what a result looks like -
+	 *										which is the only way one search can serve a product
+	 *										grid and a list of articles without growing a template
+	 *										system of its own. The second is the number and nothing
+	 *										around it, so the sentence it stands in is the page's.
 	 *
 	 *										The query rides in the url, so a result page can be
 	 *										linked, bookmarked and gone back to. Which query variable
@@ -45,7 +47,7 @@ namespace Nino\Modules\Search {
 		// NINO_FEATURES_DIR put it
 		public const string TEMPLATES = '/features/Search/templates';
 
-		// The query variable the shortcode reads unless `key` says otherwise
+		// The query variable both shortcodes read unless `key` says otherwise
 		public const string DEFAULT_KEY = 'q';
 
 		// How many hits a result block draws when it names no limit, and the
@@ -57,7 +59,7 @@ namespace Nino\Modules\Search {
 		public const int MAX_LIMIT = 200;
 
 		/**
-		 *	Register the shortcode
+		 *	Register both shortcodes
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
@@ -66,6 +68,7 @@ namespace Nino\Modules\Search {
 		public static function init( array &$appData ): void {
 
 			\Nino\Html::addShortcode( $appData, 'search-results', [ self::class, 'doResults' ] );
+			\Nino\Html::addShortcode( $appData, 'search-count', [ self::class, 'doCount' ] );
 		}
 
 		/**
@@ -133,6 +136,35 @@ namespace Nino\Modules\Search {
 				$rows .= self::_row( $appData, $template, $element, ++$number );
 
 			return self::_wrap( $appData, $args, $rows );
+		}
+
+		/**
+		 *	[search-count] - how many hits the running search has, as a plain
+		 *	number: "[search-count type="/products"] Treffer" is the page's own
+		 *	sentence, so nothing is drawn around it. It counts everything the
+		 *	query matched over the named types, not the page a result block's
+		 *	`limit` draws - the number a visitor is told is the number there is.
+		 *
+		 *	  type          one Element type, or several separated by commas
+		 *	  key           the query variable, default "q" - the same name the
+		 *	                result block reads, so both answer the same search
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		$args					Shortcode arguments
+		 *
+		 *	@return 	string								Digits, '' while nothing was searched for
+		 */
+		public static function doCount( array &$appData, array $args ): string {
+
+			$types = self::_types( $args );
+			$query = self::query( self::_key( $args ) );
+
+			// The same silence as the result block's: nothing asked, nothing
+			// said. A query that found nothing is answered - with a 0
+			if( $query === '' || $types === [] )
+				return '';
+
+			return (string) count( \Nino\Modules\Search::getHits( $appData, $types, $query ) );
 		}
 
 		/**
