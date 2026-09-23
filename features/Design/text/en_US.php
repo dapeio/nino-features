@@ -41,6 +41,12 @@ return [
 	'[[/_admin/design/state/foreign]]'			=> '%s is not one of ours: either the delivered file or one somebody edited. It is not overwritten unless you say so.',
 	'[[/_admin/design/state/compiled]]'			=> 'Last compiled %s',
 
+	// The same four states in one word, for the summary under the preview
+	'[[/_admin/design/state/short/current]]'	=> 'Up to date',
+	'[[/_admin/design/state/short/drifted]]'	=> 'Saved, not compiled',
+	'[[/_admin/design/state/short/missing]]'	=> 'Never compiled',
+	'[[/_admin/design/state/short/foreign]]'	=> 'Not written by Design',
+
 	'[[/_admin/design/msg/saved]]'					=> 'Selection saved.',
 	'[[/_admin/design/msg/reverted]]'			=> 'Selection back to the stored one.',
 	'[[/_admin/design/msg/applied]]'				=> 'Compiled. This is what the site looks like from now on.',
@@ -58,10 +64,19 @@ return [
 	'[[/_admin/design/msg/previewing]]'			=> 'Building the preview …',
 	'[[/_admin/design/error/preview]]'			=> 'The preview could not be built.',
 	'[[/_admin/design/preview/page]]'				=> 'Preview',
+	'[[/_admin/design/preview/eyebrow]]'		=> 'This selection',
 
 	'[[/_admin/design/label/picker]]'				=> 'Part',
 	'[[/_admin/design/label/variant]]'			=> 'Variant',
 	'[[/_admin/design/label/state]]'				=> 'Compiled file',
+
+	// The eyebrow over a card, and the two blocks of rows under one
+	'[[/_admin/design/group/selection]]'		=> 'Selection',
+	'[[/_admin/design/group/palette]]'			=> 'Palette',
+	'[[/_admin/design/label/finetune]]'			=> 'Finetuning',
+	'[[/_admin/design/hint/finetune]]'			=> 'One step below what the chosen set declares, the set as it is, or one step above.',
+	'[[/_admin/design/label/tuning]]'				=> 'Tuning',
+	'[[/_admin/design/hint/tuning]]'				=> 'How the rest of the palette is solved out of the brand colour.',
 
 	'[[/_admin/design/knob/empty]]'					=> 'This variant answers to no knob.',
 

@@ -49,23 +49,31 @@ order the cascade wants the parts concatenated in.
 ## The panel
 
 **Design**, in the workbench's **Features** group; one permission,
-`/_admin/design/manage`. One screen, **one part at a time**: the picker at the
-top says which one is open - the nine parts and `Global` - and everything below
-it belongs to that one.
+`/_admin/design/manage`. One screen, **one part at a time**: the picker says
+which one is open - the nine parts and `Global` - and everything below it
+belongs to that one.
 
 | | |
 | --- | --- |
-| **Variant** | which set the part is given, listed as `v3 - Floating bar` out of the file's own name and `@name`. Its `@description` is the control's title rather than a line of its own, so the column stays short as the library grows. `Global` shows the root size instead |
-| **Finetuning** | no heading of its own - it is the same part again, and the rows say what they are. One row per knob the chosen variant answers to, at −1 / 0 / +1, each row named and noted the way the kernel's own Design module named it. `Global` has the position every part follows |
+| **Part** and **Variant** | two fields of one card: which part is open, and which set it is given, listed as `v3 - Floating bar` out of the file's own name and `@name`. Each carries the terse line about it under the control - a variant's `@description`, the root size's sentence about percentages. `Global` shows the root size instead of a variant |
+| **Finetuning** | a block of its own under the card, opened by a small heading and one line saying what its rows decide. One row per knob the chosen variant answers to, at −1 / 0 / +1, each row named and noted the way the kernel's own Design module named it. `Global` has the position every part follows |
 
-The picker carries the weight of the screen and everything that hangs off it
-stands inside a rail, because that is what the two selects mean: the first one
-decides what the second one is *about*. Two identical fields a row apart said
-the opposite.
+The part and the variant are two questions of the same kind - what is being
+designed, and what it is being given - so they stand side by side in one field
+grid rather than one above the other with a card between them. Everything that
+answers to the part named on the left is under that card.
 
 Nine rows at once is a list to read; one part is a decision to make. And the
 preview beside it is the whole page either way, so switching parts never means
 losing sight of what the last one did.
+
+The whole screen is built the way the **section composer** of the Templates
+feature is built - a card of labelled fields, a titled block of rows under it,
+a sticky preview pane beside them - because they ask the same kind of question
+and a workbench where two screens answer it two different ways is a workbench
+somebody has to learn twice. What the two do not share is a stylesheet: the
+composer's `pd-*` names belong to that feature, and the measures here are
+rebuilt out of the design system's own tokens under `design-*` names.
 
 A Finetuning row **follows the level above it until somebody moves it**, and
 says so by being drawn quietly: what is on screen is the value that will
@@ -122,6 +130,14 @@ changing the part does. It scrolls the frame's own window and nothing else -
 `scrollIntoView()` walks every scrollable ancestor of an element, and inside a
 same-origin iframe the workbench's own pane is one of them, so the column
 beside the frame slid away under the selects that had just been used.
+
+Under the frame the selection is written out in words: the part, its variant,
+the root size, where each knob of the open part stands, the two colours and the
+palette knobs while the Colours tab is open, and what `assets/theme.css`
+currently is. A picture says what a design looks like and nothing at all about
+which selection produced it - two sets a step apart are a comparison somebody
+has to make from memory - so the list is the other half of the answer, and it
+follows every control on the left.
 
 A **width** picks phone, tablet or desktop. The frame renders at that width and
 is scaled into whatever the column has room for, so a desktop layout stays a
@@ -483,3 +499,12 @@ names one does not, that the compiled sheet asks each knob where it stands for
 that part and says so in its header, that a setup written before the knobs were
 told apart keeps its position, and that every set in the library declares all
 three steps for every knob it answers to.
+
+`tests/design-js-smoke.js` covers the panel's own script over a dom stand-in:
+that the part and the size are two fields of one grid with a name over each
+control and its line under it, that the knob rows stand in a block a small
+heading opens, and that the summary under the frame says the part, the variant,
+the size, every knob's current value, the palette on the Colours tab and what
+the compiled file is - after a knob is moved, after another part is opened and
+after the other half of the design is switched to. `design-smoke.php` runs it
+too wherever `node` is on the path.

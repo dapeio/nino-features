@@ -41,6 +41,12 @@ return [
 	'[[/_admin/design/state/foreign]]'			=> 'Die Datei %s stammt nicht von hier: entweder die ausgelieferte oder eine von Hand bearbeitete. Sie wird nicht überschrieben, solange Du es nicht ausdrücklich sagst.',
 	'[[/_admin/design/state/compiled]]'			=> 'Zuletzt kompiliert: %s',
 
+	// Dieselben vier Zustände in einem Wort, für die Zusammenfassung unter der Vorschau
+	'[[/_admin/design/state/short/current]]'	=> 'Aktuell',
+	'[[/_admin/design/state/short/drifted]]'	=> 'Gespeichert, nicht kompiliert',
+	'[[/_admin/design/state/short/missing]]'	=> 'Nie kompiliert',
+	'[[/_admin/design/state/short/foreign]]'	=> 'Nicht von Design geschrieben',
+
 	'[[/_admin/design/msg/saved]]'					=> 'Auswahl gespeichert.',
 	'[[/_admin/design/msg/reverted]]'			=> 'Auswahl auf den gespeicherten Stand zurückgesetzt.',
 	'[[/_admin/design/msg/applied]]'				=> 'Kompiliert. Die Seite sieht ab sofort so aus.',
@@ -58,10 +64,19 @@ return [
 	'[[/_admin/design/msg/previewing]]'			=> 'Vorschau wird erstellt …',
 	'[[/_admin/design/error/preview]]'			=> 'Die Vorschau konnte nicht erstellt werden.',
 	'[[/_admin/design/preview/page]]'				=> 'Vorschau',
+	'[[/_admin/design/preview/eyebrow]]'		=> 'Diese Auswahl',
 
 	'[[/_admin/design/label/picker]]'				=> 'Bauteil',
 	'[[/_admin/design/label/variant]]'			=> 'Variante',
 	'[[/_admin/design/label/state]]'				=> 'Kompilierte Datei',
+
+	// Die Augenbraue über einer Karte und die beiden Blöcke von Zeilen darunter
+	'[[/_admin/design/group/selection]]'		=> 'Auswahl',
+	'[[/_admin/design/group/palette]]'			=> 'Palette',
+	'[[/_admin/design/label/finetune]]'			=> 'Feinabstimmung',
+	'[[/_admin/design/hint/finetune]]'			=> 'Eine Stufe unter dem, was das gewählte Set erklärt, das Set selbst, oder eine Stufe darüber.',
+	'[[/_admin/design/label/tuning]]'				=> 'Abstimmung',
+	'[[/_admin/design/hint/tuning]]'				=> 'Wie die übrige Palette aus der Markenfarbe gelöst wird.',
 
 	'[[/_admin/design/knob/empty]]'					=> 'Diese Variante hört auf keinen Regler.',
 

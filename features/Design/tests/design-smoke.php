@@ -12,7 +12,9 @@ declare(strict_types=1);
  *											token layer the feature ships still matches the one the
  *											setup wizard delivers. Travels with the feature and runs
  *											against the checkout three levels up, or the one NINO_ROOT
- *											names (see tests/harness.php there).
+ *											names (see tests/harness.php there). What the panel's own
+ *											script draws is design-js-smoke.js beside this file, which
+ *											this suite runs too where node is on the path.
  *
  *	Usage: php features/Design/tests/design-smoke.php
  *	       NINO_ROOT=../nino php features/Design/tests/design-smoke.php
@@ -948,5 +950,23 @@ check( 'and ships the pane and the two assets it is drawn with',
 	\Nino\Modules\Design\Admin::panes() === [ 'design-form' ] && count( \Nino\Modules\Design\Admin::assets() ) === 2 );
 check( 'taking the delivered file over is written to the activity log as that',
 	str_contains( \Nino\Modules\Design\Admin::log( 'design/apply', [ 'force' => true ] ), 'took over' ) === true );
+
+// --- The panel's script, where node is on the path ------------------------------
+//
+// design-js-smoke.js beside this file draws the screen over a dom stand-in and
+// reads the summary back off it; this suite runs it too where node is on the
+// path, the way gallery-smoke.php and stats-smoke.php run theirs, so
+// bin/check.sh and CI cover both halves in one go
+$jsTest	= __DIR__. '/design-js-smoke.js';
+$node		= function_exists( 'shell_exec' ) === true ? trim( (string) @shell_exec( 'command -v node 2>/dev/null' ) ) : '';
+
+if( $node === '' || function_exists( 'exec' ) === false ) {
+	echo "  --  - node is not available here: design-js-smoke.js was NOT run\n";
+} else {
+	$output = []; $status = 1;
+	exec( escapeshellarg( $node ). ' '. escapeshellarg( $jsTest ). ' 2>&1', $output, $status );
+	$summary = (string) end( $output );
+	check( 'design-js-smoke.js passes - '. ( $summary === '' ? 'no output' : $summary ), $status === 0 );
+}
 
 ninoDone( $appData );

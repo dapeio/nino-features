@@ -5,6 +5,27 @@ A release is the tag `design-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+- **The panel's screen follows the section composer of Templates.** The two
+  halves of the Design panel were built out of whatever each of them needed:
+  a lone "Part" select over a card, a second select inside that card with its
+  explanation hidden in a `title` attribute, knob rows with nothing over them
+  saying what they are, an `h3` over the file's state, and a preview column
+  that was a heading, a toolbar and a frame with a status line under it. The
+  screen next door - "Set up section" in Templates - had answered the same
+  questions long ago: a card of labelled fields in a two-column grid, each
+  with its name over the control and its terse line under it; a titled block
+  of rows under the card; and a sticky preview pane with an eyebrow over the
+  title and a two-column summary under the frame. The Design panel is built
+  that way now. What the frame shows is also written out under it - the part,
+  the variant, the root size, every knob's current value, the palette on the
+  Colours tab and what `assets/theme.css` currently is - because a preview
+  says what a design looks like and nothing about which selection produced
+  it. No `pd-*` class is shared: the structure and the measures are rebuilt
+  out of the design system's own tokens under `design-*` names, and the
+  stylesheet's tail, which had been standing outside `@layer nino.tool`, went
+  into it where the rest of it already was. Nothing about what the controls
+  do, what is saved, what is compiled or what the preview asks for changed.
+
 - **The panel's two screens switch on the underline strip every other
   panel uses.** Structure and Colours were a segmented row of boxes, the
   design system's control for a value, while the Users and Features panels

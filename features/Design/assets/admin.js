@@ -151,6 +151,53 @@
 		},
 
 		/**
+		 *	A group's eyebrow, over the card it labels.
+		 *
+		 *	The workbench owns the type - .nino-admin-eyebrow is its own - and
+		 *	this file owns where the line sits, the way the section composer
+		 *	puts one over every group of fields it asks about
+		 *
+		 *	@param		{string}	label
+		 *
+		 *	@return		{Element}
+		 */
+		_eyebrow : function( label ) {
+			const line = dc.createElement('span');
+			line.className = 'nino-admin-eyebrow design-eyebrow';
+			line.textContent = label;
+			return line;
+		},
+
+		/**
+		 *	The small heading and the hint line over a block of rows - what the
+		 *	section composer writes over its component stack, and what a block
+		 *	of knob rows needs for the same reason: the rows are a list of
+		 *	values, and a list of values needs a sentence saying what they are
+		 *
+		 *	@param		{string}	title
+		 *	@param		{string}	[note]		'' draws no second line
+		 *
+		 *	@return		{Element}
+		 */
+		_sectionLabel : function( title, note ) {
+
+			const heading = dc.createElement('div');
+			heading.className = 'design-section-label';
+
+			const strong = dc.createElement('strong');
+			strong.textContent = title;
+			heading.appendChild( strong );
+
+			if( note ) {
+				const small = dc.createElement('small');
+				small.textContent = note;
+				heading.appendChild( small );
+			}
+
+			return heading;
+		},
+
+		/**
 		 *	The whole screen: one part at a time, what it can be given, and the
 		 *	knob under it - beside a preview of the lot.
 		 *
@@ -270,37 +317,48 @@
 		},
 
 		/**
-		 *	Everything below the picker, redrawn for whichever part it names -
-		 *	the variant, what that variant is, and the knob
+		 *	Everything the picker decides, redrawn for whichever part it names -
+		 *	the field beside it in the form card, and the knob block under it
 		 *
 		 *	@return		void
 		 */
 		_renderCurrentPart : function() {
 
-			const box = dc.getElementById('design-part');
-			if( box === null )
+			const box 	= dc.getElementById('design-part');
+			const knobs	= dc.getElementById('design-knobs');
+
+			if( box === null || knobs === null )
 				return;
 
 			box.innerHTML = '';
+			knobs.innerHTML = '';
 
 			if( Nino.admin.design._part === 'global' )
-				box.appendChild( Nino.admin.design._renderGlobal() );
+				Nino.admin.design._renderGlobal( box );
 			else
-				box.appendChild( Nino.admin.design._renderVariant() );
+				Nino.admin.design._renderVariant( box );
 
-			box.appendChild( Nino.admin.design._renderKnob() );
+			knobs.appendChild( Nino.admin.design._sectionLabel(
+				Nino.content.getText('/_admin/design/label/finetune'),
+				Nino.content.getText('/_admin/design/hint/finetune') ) );
+			knobs.appendChild( Nino.admin.design._renderKnob() );
+
+			// The list under the frame reads the knob rows back, so it is drawn
+			// again wherever they are
+			Nino.admin.design._paintSummary();
 		},
 
 		/**
 		 *	The global part: the one size the whole page is measured in
 		 *
-		 *	@return		{Element}
+		 *	@param		{Element}	box		The grid cell it is written into
+		 *
+		 *	@return		void
 		 */
-		_renderGlobal : function() {
+		_renderGlobal : function( box ) {
 
 			const data = Nino.admin.design._data;
 			const edit = Nino.admin.design._edit;
-			const box = dc.createElement('div');
 
 			box.appendChild( Nino.admin.design._select(
 				'design-size', Nino.content.getText('/_admin/design/label/size'),
@@ -309,21 +367,20 @@
 				} ), edit.size, function( value ) { edit.size = value; Nino.admin.design._preview() },
 				Nino.content.getText('/_admin/design/hint/size')
 			) );
-
-			return box;
 		},
 
 		/**
 		 *	A part: which variant it is given, and what that variant is
 		 *
-		 *	@return		{Element}
+		 *	@param		{Element}	box		The grid cell it is written into
+		 *
+		 *	@return		void
 		 */
-		_renderVariant : function() {
+		_renderVariant : function( box ) {
 
 			const row = Nino.admin.design._row();
 			const edit = Nino.admin.design._edit;
 			const chosen = edit.parts[row.part] || {};
-			const box = dc.createElement('div');
 
 			box.appendChild( Nino.admin.design._select(
 				'design-set', Nino.content.getText('/_admin/design/label/variant'),
@@ -349,16 +406,16 @@
 				( ( row.catalogue || {} )[chosen.set] || {} ).description || ''
 			) );
 
-			// A frame brings markup rather than only a look, and the knob is
-			// about a set's own triples - so there is nothing under this one
+			/*	A frame brings markup rather than only a look, and the knob is
+				about a set's own triples - so there is nothing under this one.
+				Across both columns: it is a sentence about the whole card, not a
+				hint under the select beside it	*/
 			if( row.kind === 'frame' ) {
 				const note = dc.createElement('p');
-				note.className = 'nino-admin-hint';
+				note.className = 'nino-admin-hint design-note';
 				note.textContent = Nino.content.getText('/_admin/design/hint/frames');
 				box.appendChild( note );
 			}
-
-			return box;
 		},
 
 		/**
@@ -528,15 +585,44 @@
 
 			controls.appendChild( Nino.admin.design._renderTabs() );
 
+			/*	One eyebrow over the card, the way the section composer labels a
+				group of fields. It names what the card asks for rather than
+				repeating the tab: the strip above already says which half of a
+				design is open	*/
+			controls.appendChild( Nino.admin.design._eyebrow( Nino.content.getText( Nino.admin.design._tab === 'colours'
+				? '/_admin/design/group/palette'
+				: '/_admin/design/group/selection' ) ) );
+
 			if( Nino.admin.design._tab === 'colours' )
 				controls.appendChild( Nino.admin.design._renderColours() );
 			else {
-				controls.appendChild( Nino.admin.design._renderPicker() );
+				/*	The part and what that part is given are two questions of the
+					same kind, so they stand side by side in one field grid -
+					instead of a select on its own above a card holding another	*/
+				const card = dc.createElement('div');
+				card.className = 'nino-admin-card design-form-section';
 
+				const grid = dc.createElement('div');
+				grid.className = 'design-form-grid';
+				grid.appendChild( Nino.admin.design._renderPicker() );
+
+				/*	Filled by _renderCurrentPart(). It is display:contents, so the
+					field it holds is a cell of the grid above rather than a box
+					inside one - which is what lets a wide field span both columns	*/
 				const part = dc.createElement('div');
 				part.id = 'design-part';
-				part.classList.add('nino-admin-card');
-				controls.appendChild( part );
+				grid.appendChild( part );
+
+				card.appendChild( grid );
+				controls.appendChild( card );
+
+				/*	The knob rows are the composer's titled block: a panel of
+					their own under the form card, opened by the small heading and
+					the hint line that say what the rows in it decide	*/
+				const knobs = dc.createElement('div');
+				knobs.id = 'design-knobs';
+				knobs.className = 'nino-admin-card design-block';
+				controls.appendChild( knobs );
 			}
 
 			( ( Nino.admin.design._data || {} ).notes || [] ).forEach( function( note ) {
@@ -623,6 +709,11 @@
 			// be in the document before it can find its own node in it
 			if( Nino.admin.design._tab !== 'colours' )
 				Nino.admin.design._renderCurrentPart();
+
+			/*	The list under the frame reads back whichever half is open, and
+				this is the one change on the screen that reaches no preview -
+				so it is drawn here rather than left to _preview()	*/
+			Nino.admin.design._paintSummary();
 		},
 
 		/**
@@ -635,7 +726,7 @@
 
 			const wrap = dc.createElement('div');
 			wrap.id = 'design-colours';
-			wrap.classList.add('nino-admin-card');
+			wrap.className = 'nino-admin-card design-form-section';
 
 			wrap.appendChild( Nino.admin.design._primaryField() );
 
@@ -653,6 +744,13 @@
 			warn.id = 'design-brand-warning';
 			warn.className = 'nino-admin-hint design-colour-warning';
 			wrap.appendChild( warn );
+
+			/*	The knobs under the colour the palette is solved from, opened by
+				the same small heading a block of rows carries in the other half
+				of the screen	*/
+			wrap.appendChild( Nino.admin.design._sectionLabel(
+				Nino.content.getText('/_admin/design/label/tuning'),
+				Nino.content.getText('/_admin/design/hint/tuning') ) );
 
 			// Drawn out of what design/list handed over, so a knob added in
 			// Colours appears here without this file gaining a line
@@ -1022,16 +1120,16 @@
 			const data = Nino.admin.design._data;
 			const box = dc.createElement('div');
 			box.id = 'design-state';
+			box.className = 'nino-admin-card design-block';
 
-			const heading = dc.createElement('h3');
-			heading.textContent = Nino.content.getText('/_admin/design/label/state');
-			box.appendChild( heading );
+			/*	The composer's section label rather than a heading of its own:
+				the same small title a block of rows carries, with when the file
+				was last written on the line under it	*/
+			box.appendChild( Nino.admin.design._sectionLabel(
+				Nino.content.getText('/_admin/design/label/state'),
+				data.compiled === '' ? '' : Nino.admin.design._text( '/_admin/design/state/compiled', data.compiled.substring( 0, 16 ).replace( 'T', ' ' ) ) ) );
 
-			let key = 'current', warn = false;
-
-			if( data.exists === true && data.ours === false ) { key = 'foreign'; warn = true; }
-			else if( data.exists === false || data.compiled === '' ) { key = 'missing'; warn = true; }
-			else if( data.current === false ) { key = 'drifted'; warn = true; }
+			const key = Nino.admin.design._stateKey();
 
 			/*	Only a warning is marked. "The file matches this selection" used
 				to be a green panel, and a green panel is a thing the eye keeps
@@ -1040,18 +1138,36 @@
 				every change somebody made after it. What is unsaved is the
 				action bar's job now: see _refreshDirty()	*/
 			const line = dc.createElement('p');
-			line.className = warn === true ? 'design-state design-state--warn' : 'nino-admin-hint';
+			line.className = key === 'current' ? 'nino-admin-hint' : 'design-state design-state--warn';
 			line.textContent = Nino.admin.design._text( '/_admin/design/state/'+ key, data.target );
 			box.appendChild( line );
 
-			if( data.compiled !== '' ) {
-				const when = dc.createElement('p');
-				when.className = 'nino-admin-hint';
-				when.textContent = Nino.admin.design._text( '/_admin/design/state/compiled', data.compiled.substring( 0, 16 ).replace( 'T', ' ' ) );
-				box.appendChild( when );
-			}
-
 			return box;
+		},
+
+		/**
+		 *	Which of the four things assets/theme.css currently is.
+		 *
+		 *	Its own method because two places say it: the card at the foot of
+		 *	the column, in a whole sentence, and the last row of the summary
+		 *	under the frame, in one word
+		 *
+		 *	@return		{string}					'current', 'drifted', 'missing' or 'foreign'
+		 */
+		_stateKey : function() {
+
+			const data = Nino.admin.design._data;
+
+			if( data === null )
+				return 'current';
+
+			if( data.exists === true && data.ours === false )
+				return 'foreign';
+
+			if( data.exists === false || data.compiled === '' )
+				return 'missing';
+
+			return data.current === false ? 'drifted' : 'current';
 		},
 		/**
 		 *	The other half of the screen: the selection, as a page.
@@ -1068,9 +1184,37 @@
 			const box = dc.createElement('div');
 			box.id = 'design-preview';
 
-			const heading = dc.createElement('h3');
-			heading.textContent = Nino.content.getText('/_admin/design/label/preview');
-			box.appendChild( heading );
+			/*	One stack inside the pane, so the pane owns the surface and the
+				padding and this owns the rhythm between heading, toolbar, frame
+				and summary - the shape the section composer's preview pane has	*/
+			const sticky = dc.createElement('div');
+			sticky.className = 'design-preview-sticky';
+			box.appendChild( sticky );
+
+			/*	An eyebrow over the title, and the line the preview says things
+				in beside them: what is in the frame is this selection, not the
+				site, and the eyebrow is where that fits without a sentence	*/
+			const heading = dc.createElement('div');
+			heading.className = 'design-preview-heading';
+
+			const copy = dc.createElement('div');
+			copy.appendChild( Nino.admin.design._eyebrow( Nino.content.getText('/_admin/design/preview/eyebrow') ) );
+
+			const title = dc.createElement('strong');
+			title.textContent = Nino.content.getText('/_admin/design/label/preview');
+			copy.appendChild( title );
+			heading.appendChild( copy );
+
+			/*	The preview's own line, in the heading rather than under the
+				frame: it says that a preview is being built, and a sentence
+				below the picture arrives where nobody is looking	*/
+			const msg = dc.createElement('p');
+			msg.id = 'design-preview-msg';
+			msg.className = 'nino-admin-hint';
+			msg.setAttribute( 'aria-live', 'polite' );
+			heading.appendChild( msg );
+
+			sticky.appendChild( heading );
 
 			const bar = dc.createElement('div');
 			bar.className = 'design-preview-bar';
@@ -1115,7 +1259,7 @@
 			} );
 
 			bar.appendChild( follow );
-			box.appendChild( bar );
+			sticky.appendChild( bar );
 
 			const stage = dc.createElement('div');
 			stage.className = 'design-stage';
@@ -1133,15 +1277,135 @@
 				starting downloads */
 			frame.setAttribute( 'sandbox', 'allow-scripts allow-same-origin' );
 			stage.appendChild( frame );
-			box.appendChild( stage );
+			sticky.appendChild( stage );
 
-			const msg = dc.createElement('p');
-			msg.id = 'design-preview-msg';
-			msg.className = 'nino-admin-hint';
-			msg.setAttribute( 'aria-live', 'polite' );
-			box.appendChild( msg );
+			// What the frame shows, in words, under the frame itself
+			const summary = dc.createElement('div');
+			summary.id = 'design-summary';
+			summary.className = 'design-summary';
+			sticky.appendChild( summary );
 
 			return box;
+		},
+
+		/**
+		 *	The summary under the frame: label left, value right, one row per
+		 *	answer the screen currently gives.
+		 *
+		 *	A preview shows what a design looks like and says nothing about
+		 *	which selection produced it - two sets a step apart are a picture
+		 *	somebody has to compare from memory. The list is the other half of
+		 *	the answer, in the shape the section composer puts under its own
+		 *	preview, and it is what makes the frame readable: every control on
+		 *	the left is in it, in the interface language, as the value that
+		 *	will compile
+		 *
+		 *	@return		void
+		 */
+		_paintSummary : function() {
+
+			const list = dc.getElementById('design-summary');
+
+			if( list === null || Nino.admin.design._data === null || Nino.admin.design._edit === null )
+				return;
+
+			list.innerHTML = '';
+
+			Nino.admin.design._summaryRows().forEach( function( entry ) {
+
+				const row = dc.createElement('div');
+				row.className = 'design-summary-row';
+
+				const label = dc.createElement('span');
+				label.textContent = entry[0];
+				row.appendChild( label );
+
+				const value = dc.createElement('strong');
+				value.textContent = entry[1];
+				row.appendChild( value );
+
+				list.appendChild( row );
+			} );
+		},
+
+		/**
+		 *	What the summary says, as [ label, value ] pairs.
+		 *
+		 *	Whichever half of the design is open, because that is the half the
+		 *	controls beside it are about - and the file's state last, which is
+		 *	true under both
+		 *
+		 *	@return		{Array}
+		 */
+		_summaryRows : function() {
+
+			const data = Nino.admin.design._data;
+			const edit = Nino.admin.design._edit;
+			const rows = [];
+
+			if( Nino.admin.design._tab === 'colours' ) {
+
+				const palette = data.palette || {};
+				const colours = edit.colours || {};
+				const second 	= String( colours.secondary || '' );
+
+				/*	One position per knob: the one that was chosen, else the one
+					the knob publishes as its own default - which is what the row
+					on the left lights up and what the solver reads	*/
+				const position = function( key ) {
+					return String( colours[key] || ( palette[key] || {} )['default'] || '1' );
+				};
+
+				rows.push( [ Nino.content.getText('/_admin/design/label/primary'), String( colours.primary || '' ) ] );
+
+				/*	The second colour is a hex when somebody picked one and the
+					place on the wheel when nobody did - which is exactly what the
+					row it belongs to offers, and what compiles either way	*/
+				rows.push( [ Nino.content.getText('/_admin/design/label/secondary'), second !== ''
+					? second
+					: Nino.content.getText('/_admin/design/colour/harmony/'+ position('harmony') ) ] );
+
+				Object.keys( palette ).forEach( function( key ) {
+
+					if( key === 'harmony' )
+						return;
+
+					rows.push( [
+						Nino.content.getText('/_admin/design/colour/'+ key+ '/label'),
+						Nino.content.getText('/_admin/design/colour/'+ key+ '/'+ position( key ) ),
+					] );
+				} );
+			}
+			else {
+
+				const part = Nino.admin.design._part;
+
+				rows.push( [ Nino.content.getText('/_admin/design/label/picker'), part === 'global'
+					? Nino.content.getText('/_admin/design/label/global')
+					: Nino.content.getText('/_admin/design/part/'+ part ) ] );
+
+				if( part !== 'global' )
+					rows.push( [ Nino.content.getText('/_admin/design/label/variant'), String( ( edit.parts[part] || {} ).set || '' ) ] );
+
+				rows.push( [ Nino.content.getText('/_admin/design/label/size'), Nino.content.getText('/_admin/design/size/'+ edit.size ) ] );
+
+				// The value that will compile, which is what the rows on the
+				// left show too - a row that follows the global position says
+				// the position it follows, not that it is following one
+				Nino.admin.design._knobRows().forEach( function( row ) {
+					rows.push( [
+						Nino.content.getText('/_admin/design/knob/'+ row.key+ '/label'),
+						Nino.content.getText('/_admin/design/knob/'+ row.key+ '/'+ row.value ),
+					] );
+				} );
+			}
+
+			rows.push( [
+				Nino.content.getText('/_admin/design/label/state'),
+				Nino.content.getText('/_admin/design/state/short/'+ Nino.admin.design._stateKey() ),
+			] );
+
+			return rows;
 		},
 
 		/**
@@ -1159,6 +1423,7 @@
 			// _previewNow(): that one is debounced, and a button appearing a
 			// third of a second after the click that caused it reads as a glitch
 			Nino.admin.design._refreshDirty();
+			Nino.admin.design._paintSummary();
 			wn.clearTimeout( Nino.admin.design._timer );
 			Nino.admin.design._timer = wn.setTimeout( Nino.admin.design._previewNow, delay === undefined ? 350 : delay );
 		},
@@ -1343,18 +1608,25 @@
 		 *	@param		{Array}			options		{ value, label }
 		 *	@param		{string}		current
 		 *	@param		{Function}	onChange
-		 *	@param		{string}		[note]		What the control is for. Carried as the title
-		 *															attribute rather than as a line under the name:
-		 *															the picker, the variant and the knob are read
-		 *															together, and a sentence under each of them is
-		 *															more of the screen than the three controls are
+		 *	@param		{string}		[note]		What the control is for, as the line under it.
+		 *															It used to be the title attribute, because three
+		 *															controls in a column with a sentence under each
+		 *															were more of the screen than the controls were -
+		 *															in the field grid they stand side by side, and a
+		 *															hint a hand has to hover for is one nobody reads
+		 *	@param		{boolean}		[wide]		Across both columns of the grid
 		 *
 		 *	@return		{Element}
 		 */
-		_select : function( id, label, options, current, onChange, note ) {
+		_select : function( id, label, options, current, onChange, note, wide ) {
 
+			/*	A label over the control and a small under it - the shape the
+				section composer gives every field it asks about. The name is a
+				<label for>, not the composer's <span>: the control is a real one
+				with an id, and a label that names it is what a screen reader
+				reads out	*/
 			const field = dc.createElement('div');
-			field.className = 'nino-admin-field';
+			field.className = 'design-field'+ ( wide === true ? ' is-wide' : '' );
 
 			if( label !== '' ) {
 				const tag = dc.createElement('label');
@@ -1365,9 +1637,6 @@
 
 			const select = dc.createElement('select');
 			select.id = id;
-
-			if( note )
-				select.title = note;
 
 			if( options.length === 0 ) {
 				const empty = dc.createElement('option');
@@ -1388,6 +1657,12 @@
 
 			select.addEventListener( 'change', function() { onChange( select.value ) } );
 			field.appendChild( select );
+
+			if( note ) {
+				const small = dc.createElement('small');
+				small.textContent = note;
+				field.appendChild( small );
+			}
 
 			return field;
 		},

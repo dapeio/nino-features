@@ -3,12 +3,26 @@
 /**
  *	Nino										A compact filesystembased php framework
  *	Modules\Design					What the feature's /_admin panel needs beyond the design
- *													system in _admin/assets/style.css: the row per part, the
- *													description under it, the one line that says what
- *													assets/theme.css currently is, and the two columns the
- *													screen is - selects on one side, the preview frame on
- *													the other. Joins the workbench's style bundle while the
- *													feature is active (see the panel's assets()).
+ *													system in _admin/assets/style.css: the field grid the
+ *													part and its variant are chosen in, the titled blocks
+ *													the knob rows and the file's state stand in, the row
+ *													per knob and per colour, and the two columns the
+ *													screen is - the controls on one side, a sticky preview
+ *													pane with the frame and a summary of the selection on
+ *													the other. Joins the workbench's style bundle while
+ *													the feature is active (see the panel's assets()).
+ *
+ *													The measures follow the Templates feature's section
+ *													composer - card, field grid, section label, summary
+ *													list - so the two screens read as one family. What
+ *													they do not share is a stylesheet: the composer's
+ *													`pd-*` names belong to that feature, and the surfaces,
+ *													radii and hairlines here are built out of the design
+ *													system's own tokens instead. The type scale is the
+ *													workbench's rather than the composer's: that one is a
+ *													dense dialog, this is a panel, and a panel whose text
+ *													is two steps smaller than the screen beside it would
+ *													trade one kind of inconsistency for another.
  *
  *													Class names are the feature's own rather than
  *													nino-admin-*: that prefix belongs to the workbench, and
@@ -22,29 +36,110 @@
 
 @layer nino.tool {
 
-/* The selects, at a width a name fits in rather than the column's */
-.nino-admin #design-controls .nino-admin-field {
-	max-width: 22rem;
-}
-.nino-admin #design-controls select {
-	width: 100%;
+/*	The two halves of a design, above everything they switch between. A margin
+	below rather than a border: the card under it already draws one, and two
+	lines a row apart read as a box nobody meant to draw */
+.nino-admin .design-tabs {
+	margin: 0 0 1rem;
 }
 
-/*	The picker is not one select among two. It says which part the whole column
-	below it is about; the second select is that part's own answer, and the knob
-	under that belongs to the same part again. Two identical fields a row apart
-	say the opposite of all of it - so the picker carries the weight, and
-	everything that hangs off it stands inside a rail. */
-.nino-admin #design-controls > .nino-admin-field > label {
+/*	The word over a card, naming the group of controls in it. The workbench owns
+	the type (.nino-admin-eyebrow); what belongs here is where the line sits */
+.nino-admin .design-eyebrow {
+	display: block;
+	margin: 0 0 .35rem;
+	color: var(--editor-text-secondary);
+}
+
+/* ---- the card, and the field grid in it ----
+
+   One raised surface for all three blocks of the column - the form card, the
+   knob block and the file's state - because they are one column of the same
+   kind of thing. The surface itself is the design system's .nino-admin-card;
+   only the measures are here, tightened from that card's roomier default to
+   the composer's */
+.nino-admin .design-form-section,
+.nino-admin .design-block {
+	margin: 0 0 .85rem;
+	padding: .95rem;
+}
+
+/*	Two columns of fields, the way the composer asks four questions in the room
+	one would take. Below the breakpoint the column is too narrow for two */
+.design-form-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: .75rem;
+}
+/*	The box _renderCurrentPart() redraws is not a box: what it holds has to be a
+	cell of the grid above it, or a field that spans both columns cannot */
+#design-part {
+	display: contents;
+}
+
+/*	One field: the name above the control, the terse line about it below. The
+	long line used to be the control's title attribute, because three controls
+	in a column with a sentence under each was more of the screen than the
+	controls were - side by side in a grid they have the room, and a hint a hand
+	has to hover for is one nobody reads */
+.nino-admin .design-field {
+	display: grid;
+	align-content: start;
+	gap: .28rem;
+	min-width: 0;
+}
+.nino-admin .design-field > label {
 	color: var(--editor-text);
-	font-size: .9rem;
+	font-size: .74rem;
 	font-weight: 650;
 	letter-spacing: 0;
 	text-transform: none;
 }
-.nino-admin #design-controls > .nino-admin-field > select {
-	height: 2.6rem;
-	font-weight: 600;
+/*	The control sits inset on the card rather than raised off it: the card is
+	the elevated surface here, and a control the same colour as what it stands
+	on has no edge of its own */
+.nino-admin .design-field > select {
+	min-height: 2.35rem;
+	background-color: var(--editor-bg);
+	box-shadow: none;
+	font-size: .8rem;
+}
+.nino-admin .design-field > small {
+	color: var(--editor-text-secondary);
+	font-size: .72rem;
+	font-weight: 450;
+	line-height: 1.45;
+}
+/*	A field - or a sentence about the whole card - across both columns */
+.design-field.is-wide,
+.nino-admin .design-note {
+	grid-column: 1 / -1;
+	margin: 0;
+}
+
+/*	The small heading and the hint line over a block of rows. The rule above it
+	is what separates two blocks inside one card; the first in a card opens it
+	and needs none */
+.nino-admin .design-section-label {
+	display: grid;
+	gap: .15rem;
+	margin: .95rem 0 .55rem;
+	padding-top: .8rem;
+	border-top: 1px solid var(--editor-separator);
+}
+.nino-admin .design-section-label strong {
+	font-size: .82rem;
+	font-weight: 650;
+}
+.nino-admin .design-section-label small {
+	color: var(--editor-text-secondary);
+	font-size: .72rem;
+	line-height: 1.45;
+}
+.nino-admin .design-block > .design-section-label:first-child {
+	margin-top: 0;
+	padding-top: 0;
+	border-top: 0;
 }
 
 /* ---- the knob ----
@@ -118,12 +213,6 @@
 	color: var(--editor-text);
 }
 
-#design-state {
-	margin-top: 1.6rem;
-	padding-top: 1rem;
-	border-top: 1px solid var(--editor-separator);
-}
-
 /*	What the file on disk is - and only when that is something to act on. The
 	ordinary case ("the file matches this selection") is a plain line: it used
 	to be a green panel, and a green panel is a thing the eye keeps checking,
@@ -133,11 +222,14 @@
 	Colour carries the level, the sentence carries the meaning - never colour
 	alone. */
 .nino-admin .design-state {
+	margin: 0;
 	padding: .4rem .6rem;
 	border-radius: var(--editor-radius-sm);
-	margin: 0 0 .3rem;
 }
 .nino-admin .design-state--warn { background: var(--editor-bg-grouped); color: var(--editor-orange); }
+.nino-admin #design-state p {
+	margin: 0;
+}
 
 /*	The way back, pinned to the far side of the bar from the two buttons that
 	commit - the bar itself is justified to the end, so an auto margin here is
@@ -153,14 +245,14 @@
 	color: var(--editor-text);
 }
 
-/* ---- the preview ----
+/* ---- the preview pane ----
 
-   The selects on one side, what they mean on the other. Below the breakpoint
+   The controls on one side, what they mean on the other. Below the breakpoint
    the two stack: a preview beside a select in a phone-wide pane would be
    neither */
 #design-layout {
 	display: grid;
-	grid-template-columns: minmax(0, 28rem) minmax(0, 1fr);
+	grid-template-columns: minmax(0, 33rem) minmax(0, 1fr);
 	gap: 1.5rem;
 	align-items: start;
 }
@@ -168,11 +260,27 @@
 #design-preview {
 	min-width: 0;
 }
-/* The pane is the scroller (it carries overflow-y), so the frame follows the
-   selects down the column instead of scrolling out of sight above them */
+/*	A pane rather than a column: the frame, its toolbar and the list under it
+	belong together and say so by standing on one surface. The ruled ground is
+	the composer's - it reads as a canvas something is being put on, which is
+	what a preview of a design is. The pane is the sticky one (the workbench's
+	own pane carries overflow-y), so the frame follows the selects down the
+	column instead of scrolling out of sight above them */
 #design-preview {
 	position: sticky;
 	top: 0;
+	/*	And its own scroller while it does stick: a pinned box taller than the
+		window has a bottom nothing can reach, and the summary is at the bottom */
+	max-height: calc(100vh - 5.5rem);
+	overflow-y: auto;
+	padding: .95rem;
+	border: 1px solid var(--editor-border);
+	border-radius: var(--editor-radius);
+	background:
+		linear-gradient(var(--editor-separator) 1px, transparent 1px),
+		linear-gradient(90deg, var(--editor-separator) 1px, transparent 1px),
+		var(--editor-bg);
+	background-size: 1.5rem 1.5rem;
 }
 @media (max-width: 68rem) {
 	#design-layout {
@@ -180,7 +288,47 @@
 	}
 	#design-preview {
 		position: static;
+		max-height: none;
+		overflow-y: visible;
 	}
+}
+
+/*	One stack inside the pane, so the pane owns the surface and this owns the
+	rhythm between heading, toolbar, frame and summary */
+.design-preview-sticky {
+	display: grid;
+	gap: .7rem;
+	min-width: 0;
+}
+
+/*	An eyebrow over the title, and what the preview has to say beside them */
+.nino-admin .design-preview-heading {
+	display: flex;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: .7rem;
+}
+.nino-admin .design-preview-heading strong {
+	display: block;
+	font-size: .95rem;
+	font-weight: 700;
+	letter-spacing: -.01em;
+}
+/*	The preview's own line, as a chip on the heading's far side. Written by
+	_previewNow(), which sets the class that carries the colour - so the shape
+	is bound to the id, and an error still reads as one. Empty is the ordinary
+	state and shows nothing at all */
+.nino-admin #design-preview-msg {
+	flex: 0 1 auto;
+	margin: 0;
+	padding: .25rem .5rem;
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--editor-bg-elevated) 92%, transparent);
+	font-size: .72rem;
+	text-align: right;
+}
+.nino-admin #design-preview-msg:empty {
+	display: none;
 }
 
 .nino-admin .design-preview-bar {
@@ -188,10 +336,11 @@
 	flex-wrap: wrap;
 	align-items: flex-end;
 	gap: .6rem;
-	margin: 0 0 .6rem;
-}
-.nino-admin .design-preview-bar .nino-admin-field {
 	margin: 0;
+}
+/* The width is one field among buttons rather than a column of its own */
+.nino-admin .design-preview-bar .design-field {
+	flex: 0 0 9.5rem;
 }
 /*	The switch beside the buttons rather than under them: it belongs to the
 	frame, not to the screen, and the bar is where the frame's controls are */
@@ -207,7 +356,7 @@
 .design-stage {
 	position: relative;
 	overflow: hidden;
-	height: clamp(24rem, 58vh, 44rem);
+	height: clamp(20rem, 44vh, 36rem);
 	border: 1px solid var(--editor-border);
 	border-radius: var(--editor-radius-sm);
 	background: var(--editor-bg-grouped);
@@ -223,25 +372,48 @@
 	background: #fff;
 }
 
+/*	What the frame shows, in words. A preview says what a design looks like and
+	nothing about which selection produced it - two sets a step apart are a
+	picture somebody has to compare from memory. Label left, value right, a
+	hairline between rows: the same list the section composer puts under its own
+	preview, and the other half of the answer */
+.design-summary {
+	display: grid;
+	margin: 0;
+}
+.nino-admin .design-summary-row {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: .75rem;
+	padding: .42rem .15rem;
+	font-size: .78rem;
+	line-height: 1.4;
+}
+.nino-admin .design-summary-row + .design-summary-row {
+	border-top: 1px solid var(--editor-separator);
+}
+.nino-admin .design-summary-row span {
+	color: var(--editor-text-secondary);
+}
+.nino-admin .design-summary-row strong {
+	max-width: 62%;
+	font-weight: 650;
+	overflow-wrap: anywhere;
+	text-align: right;
 }
 
-/*	The two halves of a design, above everything they switch between. A margin
-	below rather than a border: the picker under it already draws one, and two
-	lines a row apart read as a box nobody meant to draw */
-.nino-admin .design-tabs {
-	margin: 0 0 1rem;
-}
+/* ---- the colours ----
 
-/*	A colour is the same row as a knob - label left, control right - so the
-	two halves of the panel do not each have their own idea of a row. What it
-	does not share is the segmented control: a colour is a value, not a
-	position, and the swatch is the only honest control for one */
+   A colour is the same row as a knob - label left, control right - so the two
+   halves of the panel do not each have their own idea of a row. What it does
+   not share is the segmented control: a colour is a value, not a position, and
+   the swatch is the only honest control for one */
 .nino-admin .design-colour-row {
 	display: flex;
 	align-items: center;
 	gap: .6rem;
 	padding: .35rem 0;
-	border-bottom: 1px solid var(--editor-separator);
 }
 .nino-admin .design-colour-label {
 	flex: 1 1 auto;
@@ -292,7 +464,7 @@
 	as picked, so text on it is whatever it is. Orange rather than red - it is
 	a property of the colour somebody chose, not a mistake they made */
 .nino-admin .design-colour-warning {
-	margin: .6rem 0;
+	margin: .6rem 0 0;
 	padding: .5rem .7rem;
 	border-left: 3px solid var(--editor-orange);
 	background: var(--editor-bg-grouped);
@@ -312,8 +484,15 @@
 }
 
 /*	The Harmony row carries the swatch too, so it is the widest of them: the
-	positions take what is left of the line and the colour ends it. */
+	positions take what is left of the line and the colour ends it - on the far
+	side of the row where the row had to wrap, so the swatch still lines up with
+	the controls above and below it rather than starting a line of its own */
 .nino-admin #design-colours .design-knob-row:has(> .design-colour-second) .design-knob-steps {
 	flex: 0 1 auto;
 	flex-wrap: wrap;
+}
+.nino-admin #design-colours .design-colour-second {
+	margin-left: auto;
+}
+
 }
