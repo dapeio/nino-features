@@ -14,6 +14,18 @@ A release is the tag `redirects-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The strip stands in the panel's head, beside its name.** The workbench
+  opens every pane with a head that names the panel and takes a strip of the
+  panel's own beside the name, so the rules and the addresses no longer open
+  with a row of their own under it. `assets/admin.js` hands the strip over
+  through `Nino.adminUi.panelHead()` on every draw - the counts in it follow
+  the lists - and the head takes it in place of the one before. Where there
+  is no head, on a kernel from before it or with the script drawn outside its
+  pane, the strip opens whichever screen is on, as it did. The tabs keep
+  their keys. `tests/redirects-js-smoke.js` draws into a stand-in of the pane
+  and its head, and `tests/redirects-smoke.php` runs it where node is on the
+  path.
+
 - **The panel's comment named the wrong class for the group override.** It
   said `\Nino\Admin\Admin::_entry()` puts every panel a feature brought into
   the `features` group; `_entry()` is `\Nino\Admin\Panels`' own, and

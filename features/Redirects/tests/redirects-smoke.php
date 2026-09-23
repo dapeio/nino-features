@@ -13,7 +13,9 @@ declare(strict_types=1);
  *												else set), the addresses nothing answered and the
  *												shapes that are never written down, every panel action
  *												including the probe's three answers, the permission
- *												each of them is behind, and deactivation. Travels with
+ *												each of them is behind, and deactivation - and, where
+ *												node is on the path, redirects-js-smoke.js beside it,
+ *												the panel's script over a dom stand-in. Travels with
  *												the feature and runs against the checkout three levels
  *												up, or the one NINO_ROOT names (see tests/harness.php
  *												there).
@@ -547,5 +549,26 @@ check( 'the class is out of the module list', in_array( '\\Nino\\Modules\\Redire
 // Everything a feature keeps is the project's - putting it back finds its
 // rules where it left them
 check( '...and the rules it wrote are still on disk', ( redirectsFile( $appData )['rules'] ?? [] ) !== [] );
+
+echo "\n";
+
+
+// --- The panel's script, where node is on the path ----------------------------
+//
+// redirects-js-smoke.js beside this file draws both screens over a dom stand-in
+// of the pane and its head; this suite runs it too where node is on the path,
+// the way stats-smoke.php and gallery-smoke.php run theirs, so bin/check.sh and
+// CI cover both halves in one go
+$jsTest	= __DIR__. '/redirects-js-smoke.js';
+$node		= function_exists( 'shell_exec' ) === true ? trim( (string) @shell_exec( 'command -v node 2>/dev/null' ) ) : '';
+
+if( $node === '' || function_exists( 'exec' ) === false ) {
+	echo "  --  - node is not available here: redirects-js-smoke.js was NOT run\n";
+} else {
+	$output = []; $status = 1;
+	exec( escapeshellarg( $node ). ' '. escapeshellarg( $jsTest ). ' 2>&1', $output, $status );
+	$summary = (string) end( $output );
+	check( 'redirects-js-smoke.js passes - '. ( $summary === '' ? 'no output' : $summary ), $status === 0 );
+}
 
 ninoDone( $appData );

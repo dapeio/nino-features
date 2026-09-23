@@ -83,7 +83,9 @@ showing what it already has.
 ## The panel
 
 Two screens under one strip, and the count beside the second is what makes
-somebody look at it.
+somebody look at it. The strip stands in the head the workbench renders over
+the panel, beside its name; on a kernel without that head it opens whichever
+screen is on.
 
 **Redirects** is the rules, as a table: what each answers, where it sends, its
 kind, whether it covers a subtree, how often it has been followed and when it
@@ -138,12 +140,16 @@ address with no route, the silence on one that has a route, the subtree
 remainder, the project directory in the `Location`, `POST` left alone, the
 recording of a miss and the shapes it refuses, a list somebody edited by hand
 and one that is already full, and every panel action including the probe's
-three answers.
+three answers. Where node is on the path it runs the script's suite below as
+well.
 
 `tests/redirects-js-smoke.js` - what the panel's script does over a dom
-stand-in: which of the two screens is on, that the strip travels with it, that
-the rules table and the probe are gone while the addresses are up, and that
-making a rule out of an address opens the editor with it already in.
+stand-in of the pane and its head: which of the two screens is on, that the
+strip goes into the head beside the panel's name and a redraw puts it back
+there instead of beside the one before, that it travels with the screen that
+is on where there is no head, that the rules table and the probe are gone while
+the addresses are up, and that making a rule out of an address opens the editor
+with it already in.
 
 Run them against a Nino checkout:
 

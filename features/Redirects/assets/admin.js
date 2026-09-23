@@ -138,12 +138,27 @@
 			/*	Two mounts, one screen at a time: panes() hands the shell two
 				divs in the same panel rather than two tabs of its own, so which
 				of them is on is this script's to say. Only the one that is on
-				is filled, and the strip goes into it rather than into the rules
-				mount - it is the way back, and a way back drawn into a mount
-				that is off the screen is no way back at all. The rules table
-				and the probe used to stand over the addresses for the same
-				reason: the rules mount was drawn and then never hidden	*/
-			pane.appendChild( Nino.admin.redirects._tabs() );
+				is filled. The rules table and the probe used to stand over the
+				addresses because the rules mount was drawn and then never
+				hidden.
+
+				The strip goes into the head the shell renders over the pane,
+				beside the panel's name (Nino.adminUi.panelHead()), the row every
+				panel with screens of its own puts its strip in. It is handed
+				over on every draw, since the counts in it change with the
+				lists, and tabs() takes the place of the one drawn before rather
+				than standing beside it. Where there is no head - a kernel from
+				before it, or the script drawn somewhere other than its pane -
+				the strip stands at the top of whichever mount is on rather than
+				in the rules mount: it is the way back, and a way back drawn into
+				a mount that is off the screen is no way back at all	*/
+			const strip	= Nino.admin.redirects._tabs();
+			const head	= typeof Nino.adminUi.panelHead === 'function' ? Nino.adminUi.panelHead( rules ) : null;
+
+			if( head === null )
+				pane.appendChild( strip );
+			else
+				head.tabs( strip );
 
 			if( onRules === false )
 				pane.appendChild( Nino.admin.redirects._renderMisses() );
@@ -157,9 +172,10 @@
 		},
 
 		/**
-		 *	The strip over both screens. A tablist, not a group: these really
-		 *	are two panels, and the count beside the second is what makes
-		 *	somebody look at it
+		 *	The strip that switches between the two screens, beside the
+		 *	panel's name in the head (see _render()). A tablist, not a group:
+		 *	these really are two panels, and the count beside the second is
+		 *	what makes somebody look at it
 		 *
 		 *	@return		{Element}
 		 */

@@ -1,13 +1,17 @@
 /**
  *	Nino
  *	redirects-js-smoke.js	What the panel's admin.js does over a dom stand-in:
- *													which of the two screens is on, that the strip over
- *													them travels with it so the way back is always on
- *													screen, that the rules table and the probe are gone
- *													while the addresses are up, that a message line
- *													exists on whichever screen is on, and that making a
- *													rule out of an address takes the operator back to
- *													the rules with the address already in the editor.
+ *													which of the two screens is on, that the strip
+ *													between them goes into the pane's head beside the
+ *													panel's name and a redraw puts it back there in
+ *													place of the one before, that where there is no head
+ *													it travels with the screen that is on so the way back
+ *													is always on screen, that the rules table and the
+ *													probe are gone while the addresses are up, that a
+ *													message line exists on whichever screen is on, and
+ *													that making a rule out of an address takes the
+ *													operator back to the rules with the address already
+ *													in the editor.
  *
  *													No jsdom, no dependency: the same element stand-in
  *													the other feature tests build, with just enough of
@@ -120,23 +124,52 @@ function element( tag ) {
 	return el;
 }
 
+/** The children of $parent that carry the class $name */
+function childrenWith( parent, name ) {
+	return parent === null ? [] : parent.children.filter( function( child ) { return child.matchesClass( name ) } );
+}
+
 /**
- *	The panel, drawn into the two mounts panes() hands the shell
+ *	The panel, drawn into the two mounts panes() hands the shell - inside the
+ *	pane the shell renders for it, with the head over them (see
+ *	Panels::panesHtml() in the kernel): the panel's name and the actions slot
  *
- *	@param		{Object}	options		{ rules, misses, recording }
+ *	@param		{Object}	options		{ rules, misses, recording, head, panelHead } -
+ *																head: false renders the pane without a head,
+ *																panelHead: false stands in for a kernel from
+ *																before the head, which has no panelHead() at all
  */
 function panel( options ) {
 
 	options = options || {};
 
 	const body = element('body');
+	const pane = element('div');
 	const rules = element('div');
 	const misses = element('div');
 
+	pane.id = 'admin-content-redirects';
+	pane.dataset.panel = 'redirects';
+	body.appendChild( pane );
+
+	let head = null;
+	if( options.head !== false ) {
+		head = element('div');
+		head.className = 'admin-panel-head';
+		const title = element('h2');
+		title.className = 'admin-panel-title';
+		title.textContent = 'Redirects';
+		const actions = element('div');
+		actions.className = 'admin-panel-actions';
+		head.appendChild( title );
+		head.appendChild( actions );
+		pane.appendChild( head );
+	}
+
 	rules.id = 'redirects-rules';
 	misses.id = 'redirects-misses';
-	body.appendChild( rules );
-	body.appendChild( misses );
+	pane.appendChild( rules );
+	pane.appendChild( misses );
 
 	const calls = [];
 
@@ -192,6 +225,30 @@ function panel( options ) {
 				config.mount.appendChild( el );
 				return el;
 			},
+			// The kernel's panelHead() in miniature (Nino.admin.js): the head of
+			// the pane an element stands in, null where the pane has none, and
+			// tabs() putting a strip after the name in place of whatever strip
+			// stood there
+			panelHead		: function( el ) {
+				let at = el;
+				while( at !== null && at.dataset.panel === undefined )
+					at = at.parent;
+				const row = at === null ? null : childrenWith( at, 'admin-panel-head' )[0] || null;
+				if( row === null )
+					return null;
+				return {
+					element	: row,
+					title		: childrenWith( row, 'admin-panel-title' )[0] || null,
+					actions	: childrenWith( row, 'admin-panel-actions' )[0] || null,
+					tabs		: function( strip ) {
+						row.children = row.children.filter( function( child ) { return child !== strip && child.matchesClass('admin-panel-tabs') === false } );
+						strip.classList.add('admin-panel-tabs');
+						strip.parent = row;
+						row.children.splice( row.children.indexOf( childrenWith( row, 'admin-panel-title' )[0] ) + 1, 0, strip );
+						return strip;
+					},
+				};
+			},
 			buttonRow		: function( buttons, active, onSelect, flag ) {
 				const paint = function( key ) {
 					Object.keys( buttons ).forEach( function( candidate ) {
@@ -208,6 +265,9 @@ function panel( options ) {
 		},
 	};
 
+	if( options.panelHead === false )
+		delete Nino.adminUi.panelHead;
+
 	const sandbox = { console : console, document : dc, Nino : Nino, window : { Nino : Nino, confirm : function() { return true } } };
 	sandbox.window.window = sandbox.window;
 
@@ -218,10 +278,14 @@ function panel( options ) {
 	return {
 		rules		: rules,
 		misses	: misses,
+		head		: head,
 		calls		: calls,
 		panel		: Nino.admin.redirects,
-		hidden	: function( pane ) { return pane.classList.contains('admin-hidden') },
-		tabs		: function( pane ) { return pane.querySelectorAll('.nino-admin-tabs').length },
+		hidden	: function( mount ) { return mount.classList.contains('admin-hidden') },
+		tabs		: function( mount ) { return mount.querySelectorAll('.nino-admin-tabs').length },
+		// The strips standing in the head itself, which is where a strip of
+		// the panel's own goes
+		strips	: function() { return childrenWith( head, 'nino-admin-tabs' ) },
 		tab			: function( screen ) {
 			return descendants( body ).filter( function( n ) { return n.dataset.screen === screen } )[0] || null;
 		},
@@ -239,8 +303,16 @@ const open = panel( {
 check( 'the panel reads everything both screens draw in one call', open.calls.length === 1 && open.calls[0].action === 'redirects/list' );
 check( 'the rules are what is on screen when the panel opens',
 	open.hidden( open.rules ) === false && open.hidden( open.misses ) === true );
-check( '...with the strip over them, and the rules table and the probe under it',
-	open.tabs( open.rules ) === 1 && open.rules.querySelectorAll('.nino-admin-table').length === 1
+/*	The shell renders a head over the pane - the panel's name, a slot for
+	buttons - and a panel with screens of its own puts its strip there, beside
+	the name, rather than opening a screen with a second row. One strip, and
+	in neither mount	*/
+const firstStrip = open.strips()[0] || null;
+check( 'the strip goes into the pane\'s head, after the panel\'s name, and the rules mount holds the table and the probe',
+	open.strips().length === 1 && open.head.children.indexOf( firstStrip ) === 1
+	&& firstStrip.matchesClass('admin-panel-tabs') === true && firstStrip.getAttribute('role') === 'tablist'
+	&& open.tabs( open.rules ) === 0 && open.tabs( open.misses ) === 0
+	&& open.rules.querySelectorAll('.nino-admin-table').length === 1
 	&& open.rules.querySelectorAll('.redirects-probe').length === 1 );
 
 /*	The strip is a tablist over two mounts the shell hands the panel as two
@@ -254,8 +326,12 @@ check( 'the addresses screen replaces the rules screen rather than appearing und
 check( '...so the rules table and the probe are not on screen beside them',
 	open.rules.querySelectorAll('.nino-admin-table').length === 0
 	&& open.rules.querySelectorAll('.redirects-probe').length === 0 );
-check( '...and the strip is on the screen that is on, which is the way back',
-	open.tabs( open.misses ) === 1 && open.tabs( open.rules ) === 0 );
+// Drawn again on every switch, since the counts in it follow the lists - and
+// handed to the head again, which takes it in place of the one before
+check( '...and the head carries the strip that was drawn with it, in place of the one before rather than beside it',
+	open.strips().length === 1 && open.strips()[0] !== firstStrip && open.head.children.indexOf( open.strips()[0] ) === 1
+	&& open.tab('missing').getAttribute('aria-selected') === 'true'
+	&& open.tabs( open.misses ) === 0 && open.tabs( open.rules ) === 0 );
 check( 'the addresses are a table of their own, with the button that makes a rule',
 	open.misses.querySelectorAll('.nino-admin-table').length === 1
 	&& open.misses.querySelectorAll('.redirects-row-actions').length === 1 );
@@ -266,9 +342,16 @@ check( '...and a message line, because forgetting one of them can fail',
 
 open.tab('rules').click();
 
-check( 'and back again, one screen at a time',
+check( 'and back again, one screen at a time, under the one strip in the head',
 	open.hidden( open.rules ) === false && open.hidden( open.misses ) === true
-	&& open.tabs( open.rules ) === 1 && open.tabs( open.misses ) === 0 );
+	&& open.strips().length === 1 && open.tab('rules').getAttribute('aria-selected') === 'true'
+	&& open.tabs( open.rules ) === 0 && open.tabs( open.misses ) === 0 );
+
+open.tab('missing').click();
+open.misses.querySelectorAll('.redirects-row-actions')[0].children[1].click();
+
+check( 'the count in the head\'s strip follows the list when an address is forgotten',
+	open.strips().length === 1 && open.tab('missing').textContent === '/_admin/redirects/label/tile (0)' );
 
 
 // --- From an address to a rule -------------------------------------------------
@@ -296,6 +379,26 @@ check( 'with nothing on the list the screen says so rather than standing empty',
 	quiet.misses.querySelectorAll('.nino-admin-empty').length === 1 );
 check( '...and says that nothing is being written down at all, which is why it is empty',
 	quiet.misses.querySelectorAll('.nino-admin-error').length === 1 );
+
+
+// --- Where there is no head --------------------------------------------------
+
+/*	The Features panel's fallback: a pane without a head - the script drawn
+	somewhere other than its pane - and a kernel from before the head, which
+	has no panelHead() at all. Either way the strip is the way back, so it
+	stands at the top of whichever mount is on rather than in the rules mount	*/
+[ [ 'a pane without a head', { head : false } ], [ 'a kernel without panelHead()', { head : false, panelHead : false } ] ].forEach( function( variant ) {
+
+	const bare = panel( Object.assign( { misses : [ { path : '/old/press', count : 7, last : '2026-09-12 09:58:41' } ] }, variant[1] ) );
+	const before = bare.tabs( bare.rules ) === 1 && bare.rules.children[0].matchesClass('redirects-tabs') === true;
+
+	bare.tab('missing').click();
+
+	check( 'with '+ variant[0]+ ' the strip opens the screen that is on, and goes with it to the addresses',
+		before === true && bare.hidden( bare.misses ) === false
+		&& bare.tabs( bare.misses ) === 1 && bare.misses.children[0].matchesClass('redirects-tabs') === true
+		&& bare.tabs( bare.rules ) === 0 );
+} );
 
 
 console.log( '\n'+ checks+ ' checks, '+ failures+ ' failed' );

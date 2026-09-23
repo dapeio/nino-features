@@ -11,9 +11,11 @@
  */
 @layer nino.tool {
 
-	/* The strip over the two screens, which are two mounts rather than two
-	   tabs of the shell's own - so the space under it is this panel's */
-	.nino-admin .redirects-tabs {
+	/* The strip over the two screens where there is no head to put it in (see
+	   _render() in admin.js) - the screens are two mounts rather than two tabs
+	   of the shell's own, so the space under it is this panel's. In the head
+	   it is .admin-panel-tabs, and stands on the head's hairline */
+	.nino-admin .redirects-tabs:not(.admin-panel-tabs) {
 		margin-bottom: 1rem;
 	}
 
