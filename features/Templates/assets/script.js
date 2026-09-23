@@ -539,7 +539,6 @@
 				listed.displayName = value;
 			Nino.admin.templates.setDirty( true );
 			Nino.admin.templates.renderPages();
-			dc.getElementById('pd-document-title').textContent = value || Nino.content.getText('/_admin/templates/label/unnamed');
 		},
 
 		deleteTemplate : function() {
@@ -564,8 +563,6 @@
 				dc.getElementById('pd-page-toolbar').classList.add('pd-hidden');
 				dc.getElementById('pd-canvas').classList.add('pd-hidden');
 				dc.getElementById('pd-empty').classList.remove('pd-hidden');
-				dc.getElementById('pd-document-title').textContent = Nino.content.getText('/_admin/templates/empty/title');
-				dc.getElementById('pd-document-detail').textContent = Nino.content.getText('/_admin/templates/empty/detail');
 				Nino.admin.templates.setDirty( false );
 				if( Nino.admin.templates.sectionsUI )
 					Nino.admin.templates.sectionsUI.renderInspector();
@@ -620,8 +617,6 @@
 			const empty = dc.getElementById('pd-empty');
 			const canvas = dc.getElementById('pd-canvas');
 			const toolbar = dc.getElementById('pd-page-toolbar');
-			const title = dc.getElementById('pd-document-title');
-			const detail = dc.getElementById('pd-document-detail');
 			if( !current )
 				return;
 
@@ -630,8 +625,6 @@
 			toolbar.classList.remove('pd-hidden');
 			dc.getElementById('pd-add-section').classList.remove('pd-hidden');
 			dc.getElementById('pd-add-section').disabled = current.readonly !== null;
-			title.textContent = current.displayName || current.pageId.replace( /-/g, ' ' );
-			detail.textContent = 'templates/'+ ( current.filename || current.name+ '.tpl' );
 
 			dc.querySelectorAll('#pd-page-motion button').forEach( function( button ) {
 				button.classList.toggle( 'is-active', button.dataset.value === Nino.admin.templates._pageMotion );
@@ -706,10 +699,8 @@
 					listed.sections = Nino.admin.templates.sections().length;
 					listed.components = Nino.admin.templates.components().length;
 				}
-				if( upToDate ) {
+				if( upToDate )
 					Nino.admin.templates.renderTemplateSettings();
-					dc.getElementById('pd-document-title').textContent = response.displayName;
-				}
 				Nino.admin.templates.renderPages();
 				Nino.admin.templates.toast( upToDate ? Nino.content.getText('/_admin/templates/msg/saved') : Nino.content.getText('/_admin/templates/msg/saved-stale'), false );
 			} ).catch( function( error ) {
@@ -754,9 +745,36 @@
 			} );
 		},
 
+		/**
+		 *	The save state, Delete and Save, into the head the workbench
+		 *	renders over the pane (see Nino.adminUi.panelHead()). The head
+		 *	names the panel, so the bar this panel drew over its screen - the
+		 *	open document's name and file on one side, these three on the
+		 *	other - is gone: the name is in the list on the left and in the
+		 *	settings row, and the three belong at the end of the head, where
+		 *	a panel keeps the buttons it has over its screen.
+		 *
+		 *	Moved rather than built again, so their ids, their disabled state
+		 *	and the listeners init() gives them are the ones the rest of this
+		 *	file reaches for. Where there is no head - a kernel from before
+		 *	it - they stay in their own row over the three columns
+		 *
+		 *	@return		void
+		 */
+		placeActions : function() {
+			const row = dc.getElementById('pd-top-actions');
+			const head = row !== null && typeof Nino.adminUi.panelHead === 'function' ? Nino.adminUi.panelHead( row ) : null;
+			if( head === null || head.actions === null )
+				return;
+			Array.from( row.children ).forEach( function( control ) { head.actions.appendChild( control ) } );
+			row.remove();
+		},
+
 		init : function() {
 			if( !dc.getElementById('pd-app') )
 				return;
+
+			Nino.admin.templates.placeActions();
 
 			dc.getElementById('pd-save').addEventListener( 'click', Nino.admin.templates.save );
 			dc.getElementById('pd-reload-pages').addEventListener( 'click', function() {

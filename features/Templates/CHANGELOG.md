@@ -19,6 +19,22 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The panel's bar is the workbench's head.** The workbench draws one head
+  over every panel now, with the panel's name in it, and the Template
+  Builder drew a bar of its own under that row: the open document's name
+  and file on the left, the save state, Delete and Save on the right. The
+  bar is gone. The three controls move into the head's actions slot at
+  init - the same elements, with their ids, their disabled state and their
+  listeners - and the document's name stays where it already was, in the
+  list on the left and in the settings row; the three text keys only the
+  bar used (`empty/title`, `empty/detail`, `label/unnamed`) are dropped
+  from both languages. The pane is one column for the head and the panel,
+  so the workspace no longer grows past the window by the head's height
+  and scrolls: on a 1440×950 workbench the pane was 1002px tall, it is
+  950px. Below 58rem the head scrolls away like every panel's rather than
+  sticking the way the bar did. On a kernel without the head the three
+  controls keep a row of their own over the columns.
+
 - **The component stack is a table.** Each component of an area was a card
   of its own with air between them, so a section with six components read
   as six boxes rather than as one list. The stack is one bordered frame now,

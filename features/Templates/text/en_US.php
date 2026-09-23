@@ -213,7 +213,6 @@ return [
 	'[[/_admin/templates/label/textfills]]'           	=> 'Textfills',
 	'[[/_admin/templates/label/type]]'                	=> 'Type',
 	'[[/_admin/templates/label/unavailable]]'         	=> 'unavailable',
-	'[[/_admin/templates/label/unnamed]]'             	=> 'Unnamed template',
 	'[[/_admin/templates/label/upload-image]]'        	=> 'Upload image',
 	'[[/_admin/templates/label/use-section]]'         	=> 'Use section',
 	'[[/_admin/templates/label/value-fixed]]'         	=> 'Fixed value',
@@ -357,7 +356,6 @@ return [
 	'[[/_admin/templates/status/saved]]'              	=> 'All template changes saved',
 
 	'[[/_admin/templates/empty/area]]'                	=> 'This area is empty. Add a component below if it should render content.',
-	'[[/_admin/templates/empty/detail]]'              	=> 'Choose or create a page template to begin.',
 	'[[/_admin/templates/empty/documents]]'           	=> 'No page-*.tpl templates found.',
 	'[[/_admin/templates/empty/documents-search]]'    	=> 'No matching templates.',
 	'[[/_admin/templates/empty/headline]]'            	=> 'Build page templates from complete sections',
@@ -368,7 +366,6 @@ return [
 	'[[/_admin/templates/empty/sections]]'            	=> 'This template has no sections yet',
 	'[[/_admin/templates/empty/sections-detail]]'     	=> 'Add a complete HTML section or a reusable %s section.',
 	'[[/_admin/templates/empty/textfills]]'           	=> 'No textfills available',
-	'[[/_admin/templates/empty/title]]'               	=> 'No template selected',
 
 	'[[/_admin/templates/error/choose-existing-type]]'	=> 'Choose an existing Elements type for %s.',
 	'[[/_admin/templates/error/choose-slot]]'         	=> 'Choose an existing image slot for %s.',

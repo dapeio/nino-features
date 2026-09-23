@@ -13,19 +13,35 @@
  *	Nino Template Builder — section-first workspace, the workbench's
  *	Templates panel. Uses the shared design-system tokens and adds only
  *	pd-* components; it joins the workbench's style bundle, so every rule
- *	stays scoped to #pd-app or a pd-* class of its own.
+ *	stays scoped to #pd-app or a pd-* class of its own - and to the pane
+ *	the workbench renders the panel into, #admin-content-templates, which
+ *	carries the panel's own uri.
  */
 
 :root {
-	--pd-topbar-height: 4.75rem;
 	--pd-sidebar-width: var(--nino-admin-sidebar-width);
 	--pd-inspector-width: 20rem;
 	--pd-canvas-width: 58rem;
 	--pd-purple: #7c3aed;
 	--pd-cyan: #0891b2;
 }
-#pd-app {
+/*	The pane holds the head the workbench renders over every panel - the
+ *	panel's name, with the save state, Delete and Save at its end - and then
+ *	#pd-app. One column for the two, so the panel takes whatever height the
+ *	head leaves: #pd-app used to be the pane's whole height on its own, under
+ *	a head that already took 52px of it, and the workspace scrolled by the
+ *	head's height. Below the rail's breakpoint the workbench scrolls as a
+ *	page and the pane has no height to share (see Responsive) */
+#admin-content-templates {
+	display: flex;
+	flex-direction: column;
 	min-height: 100%;
+}
+#pd-app {
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 auto;
+	min-height: 0;
 	background:
 		radial-gradient(circle at 45% -20%, rgba(37,99,235,.09), transparent 38rem),
 		var(--editor-bg);
@@ -124,41 +140,14 @@
 .pd-form-field.is-wide {
 	grid-column: 1 / -1;
 }
-/* --------------------------------------------------------------- Top bar */
+/* ---------------------------------------------------------- Save and Delete */
 
-#pd-topbar {
-	position: relative;
-	z-index: 20;
-	display: grid;
-	grid-template-columns: minmax(0, 1fr) auto;
-	align-items: center;
-	gap: 1rem;
-	height: var(--pd-topbar-height);
-	padding: .6rem 1rem;
-	background: var(--editor-bar-bg);
-	border-bottom: 1px solid var(--editor-separator);
-	backdrop-filter: blur(22px) saturate(175%);
-	-webkit-backdrop-filter: blur(22px) saturate(175%);
-}
-#pd-document-meta {
-	min-width: 0;
-	padding-left: .2rem;
-}
-#pd-document-meta strong, #pd-document-meta span {
-	display: block;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-#pd-document-meta strong {
-	font-size: .86rem;
-}
-#pd-document-meta span {
-	margin-top: .1rem;
-	color: var(--editor-text-secondary);
-	font-family: var(--nino-admin-mono);
-	font-size: .68rem;
-}
+/*	The save state, Delete and Save stand at the end of the pane's head, where
+ *	the script puts them at init (placeActions() in script.js) - the head
+ *	lays them out, and the buttons are the design system's there as they are
+ *	in every other panel's head. #pd-top-actions is the row they wait in, and
+ *	the one they stay in where there is no head: at the right end, over the
+ *	three columns */
 #pd-save-state {
 	color: var(--editor-text-secondary);
 	font-size: .72rem;
@@ -174,19 +163,20 @@
 	display: flex;
 	align-items: center;
 	justify-content: flex-end;
-	gap: .45rem;
-}
-#pd-app #pd-top-actions :is(.nino-admin-btn-primary, .nino-admin-btn-danger) {
-	min-height: 2.2rem;
-	padding: .42rem .72rem;
-	font-size: .69rem;
+	gap: .5rem;
+	padding: .6rem 1rem;
+	border-bottom: 1px solid var(--editor-separator);
+	background: var(--editor-bar-bg);
 }
 /* ----------------------------------------------------------------- Shell */
 
+/*	The height #pd-app is given, not the height of what is in it: each of the
+ *	three columns scrolls inside it on its own */
 #pd-shell {
 	display: grid;
 	grid-template-columns: var(--pd-sidebar-width) minmax(31rem, 1fr) var(--pd-inspector-width);
-	height: calc(100vh - var(--pd-topbar-height));
+	flex: 1 1 0;
+	min-height: 0;
 }
 #pd-pages, #pd-inspector {
 	min-width: 0;
@@ -1565,6 +1555,17 @@
 		grid-template-columns: minmax(24rem, 30rem) minmax(24rem, 1fr);
 	}
 }
+/* Below the rail's breakpoint the workbench scrolls as a page: the pane has
+   no height for the column above to share, so the shell takes the window's
+   own - the three columns still need one to scroll in - and the page scrolls
+   past the head to it. Under 58rem the columns stack and it is as tall as
+   they are (below). */
+@media (max-width: 63.999rem) {
+#pd-shell {
+		flex: none;
+		height: 100vh;
+	}
+}
 /* The Builder already uses its three-column workspace here while the
    workbench still uses its compact top bar. Preserve the narrow transition
    width; from the shared 64rem rail breakpoint onward both are 15rem. */
@@ -1574,16 +1575,6 @@
 	}
 }
 @media (max-width: 58rem) {
-#pd-topbar {
-		position: sticky;
-		top: 0;
-		grid-template-columns: minmax(0, 1fr) auto;
-		height: auto;
-		min-height: var(--pd-topbar-height);
-	}
-#pd-document-meta {
-		display: none;
-	}
 #pd-save-state {
 		display: none;
 	}
@@ -1643,10 +1634,6 @@
 	}
 }
 @media (max-width: 38rem) {
-#pd-topbar {
-		padding-right: .7rem;
-		padding-left: .7rem;
-	}
 #pd-page-toolbar {
 		align-items: stretch;
 		flex-direction: column;

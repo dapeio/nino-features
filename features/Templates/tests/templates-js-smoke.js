@@ -177,14 +177,29 @@ check( 'gallery and detail previews use an opaque sandbox while CSP still denies
 check( 'the initial detail preview uses the same opaque sandbox', templateMarkup.includes( 'sandbox="allow-scripts"' )
 	&& !templateMarkup.includes( 'sandbox="allow-same-origin"' )
 	&& templateMarkup.includes( 'sandbox=""' ) === false );
-check( 'the panel keeps a top bar for the document and its actions only - brand, rail and account are the workbench\'s', templateMarkup.includes('id="pd-topbar"')
+/*	The head the workbench renders over the pane names the panel, so the panel
+	draws no bar of its own over its three columns: the one row it keeps is the
+	save state, Delete and Save, which the script hands to that head at init
+	(see the dom checks further down) - brand, rail, account and name are the
+	workbench's	*/
+check( 'nothing of the panel\'s own stands over the three columns but the row of controls it hands to the head', /<div id="pd-app"[^>]*>\s*<div id="pd-top-actions">(\s*<(span|button)[^>]* id="pd-[a-z-]+"[^>]*>[^<]*<\/(span|button)>){3}\s*<\/div>\s*<div id="pd-shell">/.test( templateMarkup )
 	&& templateMarkup.includes('pd-head-rail') === false
 	&& templateMarkup.includes('admin-tools') === false
 	&& templateMarkup.includes('<html') === false
 	&& templateMarkup.includes('<script') === false );
-check( 'the panel declares itself a workspace, which folds the workbench rail and drops the reading width', panelPhpSource.includes("return 'workspace'")
-	&& styleSource.includes('--pd-topbar-height: 6.85rem') === false
+check( 'the panel declares itself a workspace, which folds the workbench rail and drops the reading width - and sizes nothing by a bar of its own', panelPhpSource.includes("return 'workspace'")
+	&& styleSource.includes('--pd-topbar-height') === false
 	&& styleSource.includes('@media (min-width: 58.001rem) and (max-width: 63.999rem)') );
+/*	The pane holds the head and then #pd-app. #pd-app used to be the pane's
+	whole height under a head that already took 52px of it, and the shell the
+	window's height minus the bar the panel drew, so the workspace scrolled by
+	the head's height: measured on a 1440x950 workbench, a pane of 1002px in a
+	window of 950. The pane is a column the two share now, and the shell takes
+	what #pd-app is given	*/
+check( 'the pane is one column for the head and the panel, and the shell is not the window\'s height minus a bar of the panel\'s own', /#admin-content-templates\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;/.test( styleSource )
+	&& /(^|\n)#pd-app\s*\{[^}]*flex:\s*1 1 auto;/.test( styleSource )
+	&& /(^|\n)#pd-shell\s*\{[^}]*flex:\s*1 1 0;/.test( styleSource )
+	&& /calc\(\s*100d?vh\s*-\s*var\(--pd-/.test( styleSource ) === false );
 check( 'no element-wide rule leaks out of the panel\'s stylesheet into the workbench', /^body\s*\{/m.test( styleSource ) === false
 	&& /^code\s*\{/m.test( styleSource ) === false
 	&& styleSource.includes('#pd-app code {') );
@@ -212,9 +227,6 @@ check( 'new-template UI asks for filename, name, shell slots and VPA', [ 'pd-cre
 check( 'the primary toolbar exposes one Add Section entry point', templateMarkup.includes( 'id="pd-add-section"' ) && templateMarkup.includes( 'id="pd-add-template"' ) === false );
 check( 'Add Section is the final workspace control instead of a template setting',
 	/<div id="pd-canvas"[^>]*><\/div>\s*<button[^>]*id="pd-add-section"[^>]*>[\s\S]*?<\/button>\s*<\/main>/.test( templateMarkup ) );
-check( 'Delete and Save stay together at the right of the real topbar', templateMarkup.indexOf( 'id="pd-top-actions"' ) < templateMarkup.indexOf( 'id="pd-delete-template"' )
-	&& templateMarkup.indexOf( 'id="pd-delete-template"' ) < templateMarkup.indexOf( 'id="pd-save"' )
-	&& scriptSource.includes( "appendChild( topActions )" ) === false );
 check( 'template VPA shares the labeled settings row and uses joined controls', templateMarkup.includes( 'class="pd-slot-setting pd-vpa-setting"' )
 	&& templateMarkup.includes( 'id="pd-page-motion"' ) );
 check( 'dialog close controls use the shared stroke SVG instead of text glyphs', ( templateMarkup.match( /class="pd-icon-button pd-[^"]+-close"[^>]*><svg/g ) || [] ).length === 4
@@ -501,6 +513,193 @@ documentStub.getElementById = plainGetElementById;
 Nino.admin.templates._current = null;
 Nino.admin.templates._saving = false;
 Nino.admin.templates._dirty = false;
+
+/*	The panel under the workbench's head. The shell renders one row over every
+	pane but the Dashboard (see \Nino\Admin\Panels::panesHtml()): the panel's
+	name, and a slot at its end for the buttons a panel keeps over its screen.
+	This panel drew a bar of its own under that row - the open document's name
+	and file on one side, the save state, Delete and Save on the other - so the
+	name stood twice and the controls a bar lower than every other panel's.
+	init() hands the three to the head now, as the same elements: their ids,
+	their disabled state and their listeners are what the rest of the script
+	reaches for. The document's name is in the list and the settings row.
+
+	Driven over a dom stand-in of the rendered pane, the head the way the
+	kernel draws it and Nino.adminUi.panelHead() the way Nino.admin.js answers
+	it - the one in the kernel's own tests/admin-script-js-smoke.js	*/
+function domNode( tag, id ) {
+	const classes = new Set();
+	const el = {
+		tagName : String( tag ).toUpperCase(), id : id || '', children : [], parent : null,
+		dataset : {}, listeners : {}, disabled : false, value : '', textContent : '', title : '', type : '',
+		classList : {
+			add : function( name ) { classes.add( name ) },
+			remove : function( name ) { classes.delete( name ) },
+			toggle : function( name, on ) { if( on === undefined ? !classes.has( name ) : on ) classes.add( name ); else classes.delete( name ) },
+			contains : function( name ) { return classes.has( name ) },
+		},
+		get className() { return Array.from( classes ).join(' ') },
+		set className( value ) { classes.clear(); String( value ).split(' ').filter( Boolean ).forEach( function( name ) { classes.add( name ) } ) },
+		set innerHTML( value ) {
+			if( value !== '' )
+				throw new Error( 'the stand-in only takes innerHTML = \'\'' );
+			el.children.forEach( function( child ) { child.parent = null } );
+			el.children = [];
+		},
+		appendChild : function( child ) {
+			if( child.parent !== null )
+				child.remove();
+			child.parent = el;
+			el.children.push( child );
+			return child;
+		},
+		append : function() { Array.from( arguments ).forEach( el.appendChild ) },
+		remove : function() {
+			if( el.parent === null )
+				return;
+			el.parent.children.splice( el.parent.children.indexOf( el ), 1 );
+			el.parent = null;
+		},
+		addEventListener : function( type, fn ) { ( el.listeners[type] = el.listeners[type] || [] ).push( fn ) },
+		setAttribute : function() {},
+		closest : function() {
+			let at = el;
+			while( at !== null && at.dataset.panel === undefined )
+				at = at.parent;
+			return at;
+		},
+		querySelector : function( selector ) {
+			return el.children.filter( function( child ) { return child.classList.contains( selector.replace( ':scope > .', '' ) ) } )[0] || null;
+		},
+	};
+	return el;
+}
+
+/** Every element below $root, depth first */
+function domAll( root ) {
+	return root.children.reduce( function( all, child ) { return all.concat( [ child ], domAll( child ) ) }, [] );
+}
+
+/**
+ *	The pane as the workbench renders it: the head (unless { head : false }),
+ *	then panel.tpl's #pd-app with the row of three controls and every element
+ *	init() and the document screen reach for by id
+ */
+function templatesPane( options ) {
+	const pane = domNode( 'div', 'admin-content-templates' );
+	pane.dataset.panel = 'templates';
+	const head = domNode('div');
+	head.className = 'admin-panel-head';
+	const title = domNode('h2');
+	title.className = 'admin-panel-title';
+	title.textContent = 'Templates';
+	const actions = domNode('div');
+	actions.className = 'admin-panel-actions';
+	head.append( title, actions );
+	if( ( options || {} ).head !== false )
+		pane.appendChild( head );
+
+	const app = domNode( 'div', 'pd-app' );
+	const row = domNode( 'div', 'pd-top-actions' );
+	const state = domNode( 'span', 'pd-save-state' );
+	state.className = 'nino-admin-actionbar-status';
+	const remove = domNode( 'button', 'pd-delete-template' );
+	const save = domNode( 'button', 'pd-save' );
+	remove.disabled = true;
+	save.disabled = true;
+	row.append( state, remove, save );
+	const shell = domNode( 'div', 'pd-shell' );
+	[ 'pd-new-template', 'pd-reload-pages', 'pd-page-search', 'pd-page-list', 'pd-page-toolbar', 'pd-template-name', 'pd-header-template', 'pd-footer-template',
+		'pd-notice', 'pd-empty', 'pd-canvas', 'pd-add-section', 'pd-create-form', 'pd-create-filename', 'pd-create-name', 'pd-include-search', 'pd-toast' ].forEach( function( id ) {
+		shell.appendChild( domNode( 'div', id ) );
+	} );
+	app.append( row, shell );
+	pane.appendChild( app );
+
+	return { pane : pane, head : head, title : title, actions : actions, app : app, row : row, state : state, remove : remove, save : save, shell : shell,
+		byId : function( id ) { return domAll( pane ).filter( function( el ) { return el.id === id } )[0] || null } };
+}
+
+const headless = { getElementById : documentStub.getElementById, querySelectorAll : documentStub.querySelectorAll, createElement : documentStub.createElement };
+const withPane = function( screen ) {
+	documentStub.getElementById = screen.byId;
+	documentStub.querySelectorAll = function() { return [] };
+	documentStub.createElement = function( tag ) { return domNode( tag ) };
+};
+const withoutPane = function() {
+	documentStub.getElementById = headless.getElementById;
+	documentStub.querySelectorAll = headless.querySelectorAll;
+	documentStub.createElement = headless.createElement;
+};
+
+Nino.adminUi.panelHead = function( el ) {
+	const pane = el && typeof el.closest === 'function' ? el.closest('[data-panel]') : null;
+	const head = pane ? pane.querySelector(':scope > .admin-panel-head') : null;
+	if( !head )
+		return null;
+	return { element : head, title : head.querySelector(':scope > .admin-panel-title'), actions : head.querySelector(':scope > .admin-panel-actions'), tabs : function() {} };
+};
+context.window.addEventListener = function() {};
+
+const headed = templatesPane();
+withPane( headed );
+Nino.admin.templates.init();
+
+check( 'the save state, Delete and Save are handed to the head over the pane, at its end and in that order - the same three elements, ids and all',
+	headed.head.children.length === 2 && headed.head.children[1] === headed.actions
+	&& headed.actions.children.length === 3 && headed.actions.children[0] === headed.state && headed.actions.children[1] === headed.remove && headed.actions.children[2] === headed.save
+	&& [ 'pd-save-state', 'pd-delete-template', 'pd-save' ].every( function( id, at ) { return headed.actions.children[at].id === id } ) );
+check( '...and the row they waited in is gone, so nothing of the panel\'s own stands between the head and the three columns',
+	headed.app.children[0] === headed.shell && headed.byId('pd-top-actions') === null );
+
+// The controls in the head are the live ones: the listeners init() gives them,
+// and the disabled state the document and its changes decide
+const openDocument = { name : 'page-home', filename : 'page-home.tpl', pageId : 'home', displayName : 'Home', pageMotion : 'off', revision : 1, readonly : null, segments : [] };
+const heldSections = Nino.admin.templates.sectionsUI;
+const heldDocuments = Nino.admin.templates._documents;
+Nino.admin.templates.sectionsUI = null;
+Nino.admin.templates._documents = [ { name : 'page-home', filename : 'page-home.tpl', pageId : 'home', displayName : 'Home', editable : true, sections : 0, components : 0 } ];
+Nino.admin.templates._current = openDocument;
+Nino.admin.templates.setDirty( true );
+const dirtyEnables = headed.save.disabled === false && headed.state.classList.contains('is-dirty');
+Nino.admin.templates.setDirty( false );
+const cleanDisables = headed.save.disabled === true;
+Nino.admin.templates.renderTemplateSettings();
+const openEnables = headed.remove.disabled === false;
+
+check( 'Save and Delete in the head are the buttons that save and delete, and follow the open document and its changes',
+	headed.save.parent === headed.actions && headed.remove.parent === headed.actions
+	&& ( headed.save.listeners.click || [] ).includes( Nino.admin.templates.save ) && ( headed.remove.listeners.click || [] ).includes( Nino.admin.templates.deleteTemplate )
+	&& dirtyEnables && cleanDisables && openEnables );
+
+/*	The bar held the document's name and file; the name is in the list and the
+	settings row, and a script still writing a title of its own would reach for
+	an element that is not there	*/
+let named = false;
+try {
+	Nino.admin.templates.renderDocument();
+	const shown = headed.byId('pd-template-name').value === 'Home';
+	Nino.admin.templates.setTemplateName('Home, renamed');
+	const listed = domAll( headed.byId('pd-page-list') ).filter( function( el ) { return el.tagName === 'STRONG' } ).map( function( el ) { return el.textContent } );
+	named = shown && JSON.stringify( listed ) === JSON.stringify( [ 'Home, renamed' ] ) && headed.save.disabled === false;
+} catch( error ) {
+	named = false;
+}
+check( 'a document opened and renamed shows its name in the settings row and the list, and the panel keeps no title of its own to write it into', named );
+
+Nino.admin.templates._current = null;
+Nino.admin.templates._dirty = false;
+Nino.admin.templates._documents = heldDocuments;
+Nino.admin.templates.sectionsUI = heldSections;
+
+// A kernel from before the head: the three stay in their row over the columns
+const bare = templatesPane( { head : false } );
+withPane( bare );
+if( typeof Nino.admin.templates.placeActions === 'function' )
+	Nino.admin.templates.placeActions();
+check( 'where the pane has no head, the three stay in their own row over the columns, as they were',
+	typeof Nino.admin.templates.placeActions === 'function' && bare.app.children[0] === bare.row && bare.row.children.length === 3 && bare.row.children[2] === bare.save );
+withoutPane();
 
 check( 'the background image offers a fixed value next to the two slot choices', areaComposerSource.includes( "{ value : 'fixed', label : Nino.content.getText('/_admin/templates/label/value-fixed') }" )
 	&& /formField\( Nino\.content\.getText\('\/_admin\/templates\/label\/background-image'\), '', \[[^\]]*value : 'fixed'/.test( areaComposerSource )

@@ -134,6 +134,28 @@ check( 'the panel is a fragment the workbench renders into its pane, not a page 
 	&& str_contains( $panelMarkup, '[csrf]' ) === false
 	&& str_contains( $panelMarkup, 'id="pd-app"' ) === true );
 
+/*	The pane as the workbench renders it (\Nino\Admin\Panels::panesHtml()),
+	with the panel's template where its shortcode stands. The head the kernel
+	draws over every panel names it; the panel drew a bar of its own under
+	that row, with the open document's name on one side and the save state,
+	Delete and Save on the other. What it puts over its three columns now is
+	those three and nothing else, and its script hands them to the head's
+	actions slot at init (templates-js-smoke.js drives that). A kernel from
+	before the head renders none, and the pane is read without one	*/
+$paneDocument = new DOMDocument();
+$previousErrors = libxml_use_internal_errors( true );
+$paneDocument->loadHTML( '<?xml encoding="utf-8"?>'. str_replace( '[template '. $registry['templates']['template']. ']', $panelMarkup, \Nino\Admin\Panels::panesHtml( [ $registry['templates'] ] ) ), LIBXML_NOWARNING | LIBXML_NOERROR );
+libxml_clear_errors();
+libxml_use_internal_errors( $previousErrors );
+$paneXpath = new DOMXPath( $paneDocument );
+$paneHead = $paneXpath->query( '//div[@id="admin-content-templates"]/div[contains(concat(" ",normalize-space(@class)," ")," admin-panel-head ")]' );
+$appChildren = array_map( fn( DOMElement $node ): string => $node->getAttribute('id'), iterator_to_array( $paneXpath->query( '//div[@id="pd-app"]/*' ) ) );
+$rowControls = array_map( fn( DOMElement $node ): string => $node->getAttribute('id'), iterator_to_array( $paneXpath->query( '//div[@id="pd-app"]/div[@id="pd-top-actions"]/*' ) ) );
+check( 'the rendered pane opens with the head that names the panel, and the panel puts nothing over its three columns but the three controls it hands to that head',
+	( $paneHead->length === 0 || $paneXpath->query( './h2[contains(@class,"admin-panel-title")]', $paneHead->item(0) )->length === 1 )
+	&& array_slice( $appChildren, 0, 2 ) === [ 'pd-top-actions', 'pd-shell' ]
+	&& $rowControls === [ 'pd-save-state', 'pd-delete-template', 'pd-save' ] );
+
 \Nino\Auth::insertUser( $appData, 'dev@example.com', 'correct horse battery staple', [ '/*' ] );
 \Nino\Auth::loginUser( $appData, 'dev@example.com', 'correct horse battery staple' );
 

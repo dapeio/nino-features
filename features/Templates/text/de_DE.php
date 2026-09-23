@@ -213,7 +213,6 @@ return [
 	'[[/_admin/templates/label/textfills]]'           	=> 'Textfills',
 	'[[/_admin/templates/label/type]]'                	=> 'Typ',
 	'[[/_admin/templates/label/unavailable]]'         	=> 'nicht verfügbar',
-	'[[/_admin/templates/label/unnamed]]'             	=> 'Unbenanntes Template',
 	'[[/_admin/templates/label/upload-image]]'        	=> 'Bild hochladen',
 	'[[/_admin/templates/label/use-section]]'         	=> 'Abschnitt übernehmen',
 	'[[/_admin/templates/label/value-fixed]]'         	=> 'Fester Wert',
@@ -357,7 +356,6 @@ return [
 	'[[/_admin/templates/status/saved]]'              	=> 'Alle Änderungen gespeichert',
 
 	'[[/_admin/templates/empty/area]]'                	=> 'Dieser Bereich ist leer. Füge unten eine Komponente hinzu, wenn er Inhalte zeigen soll.',
-	'[[/_admin/templates/empty/detail]]'              	=> 'Wähle ein Seiten-Template oder lege eines an.',
 	'[[/_admin/templates/empty/documents]]'           	=> 'Keine page-*.tpl-Templates gefunden.',
 	'[[/_admin/templates/empty/documents-search]]'    	=> 'Kein Template passt.',
 	'[[/_admin/templates/empty/headline]]'            	=> 'Seiten-Templates aus vollständigen Abschnitten bauen',
@@ -368,7 +366,6 @@ return [
 	'[[/_admin/templates/empty/sections]]'            	=> 'Dieses Template hat noch keine Abschnitte',
 	'[[/_admin/templates/empty/sections-detail]]'     	=> 'Füge einen vollständigen HTML-Abschnitt oder einen wiederverwendbaren %s-Abschnitt hinzu.',
 	'[[/_admin/templates/empty/textfills]]'           	=> 'Keine Textfills verfügbar',
-	'[[/_admin/templates/empty/title]]'               	=> 'Kein Template gewählt',
 
 	'[[/_admin/templates/error/choose-existing-type]]'	=> 'Wähle einen bestehenden Elementtyp für %s.',
 	'[[/_admin/templates/error/choose-slot]]'         	=> 'Wähle einen bestehenden Bildplatz für %s.',

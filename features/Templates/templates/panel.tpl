@@ -2,22 +2,20 @@
      left, the section canvas in the middle, the inspector on the right, and
      the composer dialogs below (inside #pd-app, so they share its scope).
      Rendered whole into the workbench's pane (see \Nino\Admin\Panels::panesHtml())
-     as a workspace: the shell, the rail and the account chrome are the
-     workbench's, this file owns only what is inside the panel. Every id and
-     class here is the panel's own (pd-*), styled from assets/style.css; the
-     buttons and fields are the design system's. -->
+     as a workspace: the shell, the rail, the account chrome and the head over
+     the pane - the panel's name - are the workbench's, this file owns only
+     what is inside the panel. The save state, Delete and Save are the one row
+     it keeps over its screen: the script hands them to the head's actions
+     slot at init (placeActions() in assets/script.js), and only where there
+     is no head do they stay here. Every id and class here is the panel's own
+     (pd-*), styled from assets/style.css; the buttons and fields are the
+     design system's. -->
 <div id="pd-app" data-dir="[[/nino/dir]]" data-public="[[/nino/public]]">
-	<header id="pd-topbar">
-		<div id="pd-document-meta" aria-live="polite">
-			<strong id="pd-document-title">[[/_admin/templates/empty/title]]</strong>
-			<span id="pd-document-detail">[[/_admin/templates/empty/detail]]</span>
-		</div>
-		<div id="pd-top-actions">
-			<span id="pd-save-state" class="nino-admin-actionbar-status" role="status"></span>
-			<button type="button" id="pd-delete-template" class="nino-admin-btn-danger" disabled>[[/_admin/templates/label/delete]]</button>
-			<button type="button" id="pd-save" class="nino-admin-btn-primary" disabled>[[/_admin/templates/label/save-template]]</button>
-		</div>
-	</header>
+	<div id="pd-top-actions">
+		<span id="pd-save-state" class="nino-admin-actionbar-status" role="status"></span>
+		<button type="button" id="pd-delete-template" class="nino-admin-btn-danger" disabled>[[/_admin/templates/label/delete]]</button>
+		<button type="button" id="pd-save" class="nino-admin-btn-primary" disabled>[[/_admin/templates/label/save-template]]</button>
+	</div>
 
 	<div id="pd-shell">
 		<aside id="pd-pages" aria-label="[[/_admin/templates/label/page-templates]]">
