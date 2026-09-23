@@ -52,6 +52,15 @@ A release is the tag `search-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The list no longer names the panel a second time.** The workbench opens
+  every pane with a head that names the panel, so the list's own "Elements
+  search index" stood one line under "Search" and said the same thing again.
+  The list opens with its hint now, the first line under the head; the editor
+  and the probe keep their headings, a level below it. The fill
+  `/_admin/search/label/title` is gone from both text files. A kernel from
+  before the head draws no name over any pane, its own included, and the list
+  opens with the hint there too.
+
 - **The README still said the feature has no settings and no route.** The
   JSON endpoint is a setting (`api`, off by default) and the Features panel
   draws it, where the Configuration section said the manifest "declares no

@@ -6,7 +6,6 @@
 return [
 	'[[/_admin/nav/search]]'								=> 'Suche',
 
-	'[[/_admin/search/label/title]]'				=> 'Suchindex der Elemente',
 	'[[/_admin/search/label/tile]]'					=> 'Elemente durchsuchbar',
 	'[[/_admin/search/label/tile-stale]]'		=> 'Durchsuchbar (Index veraltet)',
 	'[[/_admin/search/hint/intro]]'					=> 'Eine Zeile je Elementtyp, den das Projekt hat. Was indiziert ist, wird durchsuchbar – alles andere findet die Suche nicht, auch wenn es auf der Seite steht.',

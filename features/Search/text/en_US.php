@@ -5,7 +5,6 @@
 return [
 	'[[/_admin/nav/search]]'								=> 'Search',
 
-	'[[/_admin/search/label/title]]'				=> 'Elements search index',
 	'[[/_admin/search/label/tile]]'					=> 'Elements searchable',
 	'[[/_admin/search/label/tile-stale]]'		=> 'Searchable (index stale)',
 	'[[/_admin/search/hint/intro]]'					=> 'One row per Element type this project has. What is indexed is what can be found - everything else the search will not return, however plainly it is on the page.',

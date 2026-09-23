@@ -183,10 +183,12 @@
 			Nino.admin.search._level('list');
 			wrap.innerHTML = '';
 
-			const heading = dc.createElement('h2');
-			heading.textContent = Nino.content.getText('/_admin/search/label/title');
-			wrap.appendChild( heading );
-
+			/*	No heading of its own: the head the shell renders over the pane
+				names the panel (Nino.adminUi.panelHead()), and a second name a
+				line under it would only say the same thing again. The editor
+				and the probe keep theirs - they are a level below this list,
+				like every form in the workbench, and their context bar is the
+				way back	*/
 			const hint = dc.createElement('p');
 			hint.className = 'nino-admin-hint';
 			hint.textContent = Nino.content.getText('/_admin/search/hint/intro');

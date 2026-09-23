@@ -639,6 +639,21 @@ check( 'the panel names every action it answers', array_keys( \Nino\Modules\Sear
 	=== [ 'search/list', 'search/save', 'search/createindex', 'search/probe' ] );
 check( 'it ships the three panes its screens live in', \Nino\Modules\Search\Admin::panes() === [ 'search-list', 'search-type', 'search-probe' ] );
 check( 'and the two assets they are drawn with', count( \Nino\Modules\Search\Admin::assets() ) === 2 );
+
+/*	The workbench renders a head over every pane but the Dashboard and names
+	the panel in it (Nino.adminUi.panelHead() in the kernel), so the list -
+	the screen the panel opens on - starts with what it is about rather than
+	with the panel's name a second time, a line under the first. Read off the
+	script, since this suite has no dom to draw it in: the method that draws
+	the list, from its own line to the one that closes it	*/
+$listScreen = preg_match( '/^\t\t_renderList : function\(\) \{\n(.*?)^\t\t\},$/ms',
+	(string) file_get_contents( dirname( __DIR__ ). '/assets/admin.js' ), $method ) === 1 ? $method[1] : '';
+check( 'the list draws no heading of its own - the head over the pane names the panel',
+	$listScreen !== '' && preg_match( '/createElement\(\s*\'h[1-6]\'\s*\)/', $listScreen ) === 0 );
+check( '...and the first line it draws under that head is its hint',
+	preg_match( '/\bappendChild\(\s*(\w+)\s*\)/', $listScreen, $first ) === 1
+	&& str_contains( $listScreen, $first[1]. '.className = \'nino-admin-hint\'' ) === true );
+
 check( 'a save is written to the activity log by name',
 	\Nino\Modules\Search\Admin::log( 'search/save', [ 'type' => '/articles' ] ) === 'Configure Search Index (/articles)' );
 
