@@ -19,6 +19,21 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The three static blocks are named for what they are.** `items-list`,
+  `items-table` and `items-accordion` were the one group whose key said
+  "items" while their manifests said "Static": they are the blocks an editor
+  shapes in HTML+, not the collection-driven ones the other `items-*`
+  presets are. They are `static-list`, `static-table` and `static-accordion`
+  now, directory and key alike, and the list the panel offers groups them
+  after the image presets and before the collection-driven blocks rather
+  than among them. A section composed from one of the old keys stays on its
+  page byte for byte - the builder leaves what it does not recognise - but
+  opens as a custom section rather than in the preset's editor; add it
+  again from the library to take it back. `templates-smoke.php` composes
+  the table and the accordion by their new names, and
+  `demo-catalogue-smoke.php`, which reads the keys off the library and off
+  the kernel's demo page, needs that page renamed with it (kernel 185).
+
 - **The panel's bar is the workbench's head.** The workbench draws one head
   over every panel now, with the panel's name in it, and the Template
   Builder drew a bar of its own under that row: the open document's name

@@ -744,7 +744,7 @@ $stacked = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'items-timel
 check( 'its second Layout restacks the same steps instead of restyling the item', str_contains( $stacked['source'], 'nino-timeline--stacked' )
 	&& str_contains( $stacked['source'], '<li class="nino-timeline-step">' ) );
 
-$staticTable = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'items-table', 'pageId' => 'home', 'id' => 'hours', 'layout' => 'striped-elements' ] );
+$staticTable = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'static-table', 'pageId' => 'home', 'id' => 'hours', 'layout' => 'striped-elements' ] );
 check( 'a static block reaches the section exactly as the Layout wrote it, loop and all', str_contains( $staticTable['source'], '<table class="nino-table nino-table--striped">' )
 	&& str_contains( $staticTable['source'], '<tr><th>Service</th><th>Duration</th></tr>' )
 	&& str_contains( $staticTable['source'], '[elements /example-rows limit="10"]' )
@@ -754,7 +754,7 @@ check( 'its intro stays an ordinary textfill Area while the outro renders nothin
 	&& str_contains( $staticTable['source'], 'nino-mt-3' ) === false
 	&& preg_match( '/\n[\t ]*\n/', $staticTable['source'] ) !== 1 );
 $staticOutro = \Nino\Modules\Templates\Composer::compose( [
-	'preset' => 'items-table', 'pageId' => 'home', 'id' => 'hours',
+	'preset' => 'static-table', 'pageId' => 'home', 'id' => 'hours',
 	'areas' => [ 'outro' => [ 'components' => [ [
 		'id' => 'action', 'type' => 'button', 'style' => 'primary',
 		'bindings' => [ 'label' => '', 'href' => '' ], 'bindingSources' => [ 'label' => 'new', 'href' => 'new' ],
@@ -762,7 +762,7 @@ $staticOutro = \Nino\Modules\Templates\Composer::compose( [
 ] );
 check( 'and carries a closing action as soon as the outro gets one', str_contains( $staticOutro['source'], 'nino-mt-3' )
 	&& str_contains( $staticOutro['source'], '[[/page-home/hours/action-label]]' ) );
-$accordion = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'items-accordion', 'pageId' => 'home', 'id' => 'faq' ] );
+$accordion = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'static-accordion', 'pageId' => 'home', 'id' => 'faq' ] );
 check( 'a static block resolves [[section:id]], so two of them on one page stay independent', str_contains( $accordion['source'], 'name="faq-faq"' )
 	&& str_contains( $accordion['source'], '[[section:id]]' ) === false );
 $contact = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'form-contact', 'pageId' => 'home', 'id' => 'reach-us', 'layout' => 'split' ] );
