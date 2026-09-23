@@ -459,6 +459,20 @@ $appData['/nino/install/completed'] = true;
 
 check( 'the panel is in the registry while the feature is active', isset( \Nino\Admin\Admin::panels( $appData )['mailer'] ) === true );
 
+/*	The workbench renders a head over every pane but the Dashboard and names
+	the panel in it (Nino.adminUi.panelHead() in the kernel), so the screen
+	starts with what it is about rather than with the panel's name a second
+	time, a line under the first. Read off the script, since this suite has
+	no dom to draw it in: init(), which draws the whole screen, from its own
+	line to the one that closes it	*/
+$screen = preg_match( '/^\t\tinit : function\(\) \{\n(.*?)^\t\t\},$/ms',
+	(string) file_get_contents( __DIR__. '/../assets/admin.js' ), $method ) === 1 ? $method[1] : '';
+check( 'the screen draws no heading of its own - the head over the pane names the panel',
+	$screen !== '' && preg_match( '/createElement\(\s*\'h[1-6]\'\s*\)/', $screen ) === 0 );
+check( '...and the first line it draws under that head is its hint',
+	preg_match( '/\bappendChild\(\s*(\w+)\s*\)/', $screen, $first ) === 1
+	&& str_contains( $screen, $first[1]. '.className = \'nino-admin-hint\'' ) === true );
+
 [ $statusCode, $statusBody ] = callAdminPost( $appData, 'mailer/status' );
 check( 'mailer/status succeeds and never carries the password or username', $statusCode === 200
 	&& $statusBody === [ 'host' => '127.0.0.1', 'port' => $server['port'], 'encryption' => 'none' ]

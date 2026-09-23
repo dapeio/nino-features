@@ -6,7 +6,6 @@
 // einzigen Mail, die dieses Feature selbst verfasst.
 return [
 	'[[/_admin/nav/mailer]]'							=> 'Mailer',
-	'[[/_admin/mailer/label/title]]'			=> 'SMTP-Mailversand',
 	'[[/_admin/mailer/hint/intro]]'				=> 'Sendet eine Testmail über die im Panel Features für dieses Feature hinterlegten Einstellungen, über denselben Versandweg und dasselbe Limit je IP (5 pro Stunde) wie jede andere Mail der Website.',
 	'[[/_admin/mailer/label/status]]'		=> 'Versand über %host:%port (%encryption).',
 	'[[/_admin/mailer/label/unconfigured]]'	=> 'Noch nicht konfiguriert - Mail geht weiterhin über das mail() des Servers hinaus. Zuerst einen Host im Panel Features hinterlegen.',

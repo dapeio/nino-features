@@ -35,6 +35,14 @@ A release is the tag `mailer-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The panel no longer names itself a second time.** The workbench opens
+  every pane with a head that names the panel, so "SMTP mail delivery" stood
+  one line under "Mailer" and said the same thing again. The screen opens
+  with its hint now, the first line under the head. The fill
+  `/_admin/mailer/label/title` is gone from both text files. A kernel from
+  before the head draws no name over any pane, its own included, and the
+  screen opens with the hint there too.
+
 - **The README put the panel in a group it cannot be in, and pointed at a
   section that is not there.** A panel a feature brings lands under Features
   whatever `nav()` names - `\Nino\Admin\Panels` overrides the group so that

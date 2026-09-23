@@ -31,10 +31,9 @@
 
 			wrap.innerHTML = '';
 
-			const heading = dc.createElement('h2');
-			heading.textContent = Nino.content.getText('/_admin/mailer/label/title');
-			wrap.appendChild( heading );
-
+			// No heading of its own: the head the shell renders over the pane
+			// names the panel (Nino.adminUi.panelHead()), and a second name a
+			// line under it would only say the same thing again
 			const hint = dc.createElement('p');
 			hint.className = 'nino-admin-hint';
 			hint.textContent = Nino.content.getText('/_admin/mailer/hint/intro');
