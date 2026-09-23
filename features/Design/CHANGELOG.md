@@ -5,6 +5,13 @@ A release is the tag `design-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+- **The panel's two screens switch on the underline strip every other
+  panel uses.** Structure and Colours were a segmented row of boxes, the
+  design system's control for a value, while the Users and Features panels
+  switch their screens on `--bar`: natural widths, one rule, an underline.
+  The strip carries `nino-admin-tabs--bar` now, and with the kernel's fix
+  for that variant outside the panel head it draws the same way there.
+
 - **`library/base.css`'s header follows the kernel's `theme.css`.** The one
   place of the nine that still pointed at `design-library/` is the token
   layer's header, which is the base unit's `theme.css` header byte for byte

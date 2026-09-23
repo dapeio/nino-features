@@ -567,7 +567,10 @@
 		_renderTabs : function() {
 
 			const bar = dc.createElement('div');
-			bar.className = 'nino-admin-tabs design-tabs';
+			// --bar: the underline strip every panel with two screens uses, the
+			// Users and Features panels among them - not the segmented row of
+			// boxes, which is a control for a value, not for a screen
+			bar.className = 'nino-admin-tabs nino-admin-tabs--bar design-tabs';
 			bar.setAttribute( 'role', 'tablist' );
 			bar.setAttribute( 'aria-label', Nino.content.getText('/_admin/design/label/title') );
 
