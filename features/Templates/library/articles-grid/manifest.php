@@ -4,6 +4,7 @@
 	'category' => 'Cards',
 	'tags' => [ 'articles', 'cards', 'elements', 'grid', 'services', 'features' ],
 	'version' => 3,
+	'weight' => 30,
 	'recommend' => [
 		'frame' => [ 'background' => 'alt', 'container' => 'wide', 'padding' => 'default', 'margin' => 'none' ],
 		'layout' => 'default',

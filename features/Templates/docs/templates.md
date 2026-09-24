@@ -122,8 +122,10 @@ features/Templates/library/<preset-key>/
 ```
 
 Preset keys and directory names match `^[a-z0-9][a-z0-9-]*$`. Invalid
-manifests are not exposed. Generated HTML+ is copied into the page template;
-the public request never reads the preset library.
+manifests are not exposed. Every directory with a valid manifest is offered,
+in the order the manifests' `weight` says; a preset without one comes after
+every one with. Generated HTML+ is copied into the page template; the public
+request never reads the preset library.
 
 The library ships two kinds of preset. The first manages its content: every
 repeatable part reads an Elements collection, and every line of copy is a

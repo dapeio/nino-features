@@ -4,6 +4,7 @@
 	'category' => 'Content',
 	'tags' => [ 'features', 'checklist', 'benefits', 'services', 'split', 'elements' ],
 	'version' => 3,
+	'weight' => 70,
 	'recommend' => [
 		'layout' => 'media-right',
 		'frame' => [ 'background' => 'alt', 'container' => 'wide', 'padding' => 'default', 'margin' => 'none' ],

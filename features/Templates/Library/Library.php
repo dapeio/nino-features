@@ -26,31 +26,18 @@ namespace Nino\Modules\Templates {
 			'ttf'	=> 'font/ttf',
 			'otf'	=> 'font/otf',
 		];
-		/*	What the panel offers, in the order it offers it - grouped by what an
-			editor is looking for rather than sorted by key, which is why this is
-			a list and not a scandir(). Every directory under library/ belongs in
-			here: one that is on disk and not named below is a preset nobody can
-			reach any more, silently, and templates-smoke.php holds the two
-			together for exactly that reason	*/
-		private const array LIBRARY_ITEM = [
-			'hero-fullscreen-image',
-			'hero-cta',
-			'articles-grid',
-			'articles-filterable-grid',
-			'image-banner',
-			'image-content-split',
-			'image-list-split',
-			'static-list',
-			'static-table',
-			'static-accordion',
-			'static-content',
-			'items-timeline',
-			'items-pricing',
-			'items-logos',
-			'form-newsletter',
-			'form-contact',
-			'template-include'
-		];
+		/*	The library is its directory. Every library/<key>/manifest.php of
+			version 3 that normalizes is offered - nothing lists the presets a
+			second time, so one a project drops in is on offer without a line
+			anywhere else, and one that is taken out is gone with it. Where a
+			preset stands in the list is the manifest's own 'weight', ascending,
+			the way a panel's nav() weight places it in the rail; the shipped
+			ones run from 10 to 170 in steps of ten so a project's own takes any
+			number between, and a manifest that names no weight comes after
+			every one that does, in key order. templates-smoke.php holds the rule
+			with two presets it writes into the directory for the length of its
+			run	*/
+		private const string KEY_PATTERN = '/^[a-z0-9][a-z0-9-]*$/';
 
 		public static function actions(): array {
 			return [
@@ -122,12 +109,12 @@ namespace Nino\Modules\Templates {
 			if( $cache !== null )
 				return $cache;
 
-			$presets = [];
+			$found = [];
 
-			foreach( self::LIBRARY_ITEM as $key ) {
+			foreach( glob( self::DIRECTORY. '/*/manifest.php' ) ?: [] as $path ) {
 
-				$path = self::DIRECTORY. '/'. $key. '/manifest.php';
-				if( is_file( $path ) === false )
+				$key = basename( dirname( $path ) );
+				if( preg_match( self::KEY_PATTERN, $key ) !== 1 )
 					continue;
 
 				$manifest = include $path;
@@ -137,13 +124,28 @@ namespace Nino\Modules\Templates {
 					continue;
 
 				try {
-					$presets[$key] = AreaComposer::normalizePreset( $key, $manifest, self::DIRECTORY. '/'. $key );
+					$preset = AreaComposer::normalizePreset( $key, $manifest, dirname( $path ) );
 				} catch( \Throwable ) {
 					continue;
 				}
+
+				$found[$key] = [ 'weight' => isset( $manifest['weight'] ) === true ? (int) $manifest['weight'] : null, 'preset' => $preset ];
 			}
 
-			$cache = $presets;
+			// Weighted first, ascending, the unweighted after them, and key
+			// order between equals - so two presets that weigh the same still
+			// come out the same way on every filesystem
+			uksort( $found, static function( string $a, string $b ) use ( $found ): int {
+				$weightA = $found[$a]['weight'];
+				$weightB = $found[$b]['weight'];
+				if( $weightA === null && $weightB === null )
+					return strcmp( $a, $b );
+				if( $weightA === null || $weightB === null )
+					return $weightA === null ? 1 : -1;
+				return ( $weightA <=> $weightB ) ?: strcmp( $a, $b );
+			} );
+
+			$cache = array_map( static fn( array $entry ): array => $entry['preset'], $found );
 
 			return $cache;
 		}
@@ -154,7 +156,7 @@ namespace Nino\Modules\Templates {
 
 		public static function template( string $key ): ?string {
 
-			if( preg_match( '/^[a-z0-9][a-z0-9-]*$/', $key ) !== 1 )
+			if( preg_match( self::KEY_PATTERN, $key ) !== 1 )
 				return null;
 
 			$path = self::DIRECTORY. '/'. $key. '/section.tpl';

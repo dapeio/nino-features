@@ -39,6 +39,13 @@ features/Templates/library/hero-fullscreen-image/
 The directory slug MUST match `^[a-z0-9][a-z0-9-]*$`. Layout filenames must
 be local safe `.tpl` basenames; traversal and external paths are forbidden.
 
+The library is its directory. A directory under `library/` whose
+`manifest.php` is version 3 and normalises is offered - nothing lists it a
+second time - and where it stands in the panel's list is the manifest's
+`weight`, ascending: the shipped presets run from 10 to 170 in steps of ten,
+so a project's own preset takes any number between, and a manifest that
+names no weight comes after every one that does, in key order.
+
 ## Mental model
 
 A v3 preset owns:
@@ -80,6 +87,9 @@ icons, nested structures, or project-specific behavior.
 	'category' => 'Services',
 	'tags' => [ 'services', 'cards', 'grid', 'elements' ],
 	'version' => 3,
+	// Where the preset stands in the library's list, ascending; without one
+	// it comes after every preset that names one
+	'weight' => 45,
 	'recommend' => [
 		'layout' => 'default',
 		'frame' => [

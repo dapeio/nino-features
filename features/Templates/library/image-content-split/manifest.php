@@ -4,6 +4,7 @@
 	'category' => 'Content',
 	'tags' => [ 'media', 'image', 'text', 'split', 'columns', 'cta' ],
 	'version' => 3,
+	'weight' => 60,
 	'recommend' => [
 		'layout' => 'media-left',
 		'frame' => [ 'background' => 'default', 'container' => 'wide', 'padding' => 'default', 'margin' => 'none' ],

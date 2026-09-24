@@ -19,6 +19,22 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The library is its directory.** Which presets the panel offers, and in
+  what order, stood in `Library::LIBRARY_ITEM` while everything else about a
+  preset stood in its `manifest.php` - a second place to keep in step, and a
+  preset dropped into `library/` without a line there was one nobody could
+  reach. `Library::presets()` reads the directory now: every
+  `library/<key>/manifest.php` of version 3 that normalises is offered, and
+  the manifest's own `weight` says where - ascending, the way a panel's
+  `nav()` weight places it in the rail; the shipped presets carry 10 to 170
+  in steps of ten, and a manifest without a weight comes after every one
+  with, in key order. `templates-smoke.php` no longer reads the constant: it
+  writes two presets into the directory for the length of its run, one
+  weighed into the middle and one without a weight, and holds that the
+  first stands where its weight says and the second last - 4 checks, 3 red
+  over the `Library.php` before this change. The recipe, the manual and the
+  README say so.
+
 - **The three static blocks are named for what they are.** `items-list`,
   `items-table` and `items-accordion` were the one group whose key said
   "items" while their manifests said "Static": they are the blocks an editor

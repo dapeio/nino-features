@@ -4,6 +4,7 @@
 	'category' => 'Content',
 	'tags' => [ 'logos', 'partners', 'customers', 'trust', 'references', 'elements' ],
 	'version' => 3,
+	'weight' => 140,
 	'recommend' => [
 		'layout' => 'row',
 		'frame' => [ 'background' => 'alt', 'container' => 'default', 'padding' => 'small', 'margin' => 'none' ],

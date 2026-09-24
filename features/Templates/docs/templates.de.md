@@ -127,7 +127,7 @@ Diese Metadaten erlauben das erneute Öffnen der Composer-Einstellungen. Sie sin
 
 ## Section-Library
 
-System-Presets liegen in `features/Templates/library/<preset-key>/`. Der erzeugte HTML+-Quelltext wird in die Seite kopiert; die öffentliche Website liest die Library nicht zur Laufzeit.
+System-Presets liegen in `features/Templates/library/<preset-key>/`. Jedes Verzeichnis mit gültigem Manifest wird angeboten, in der Reihenfolge, die das `weight` der Manifeste vorgibt; ein Preset ohne Gewicht kommt nach allen mit. Der erzeugte HTML+-Quelltext wird in die Seite kopiert; die öffentliche Website liest die Library nicht zur Laufzeit.
 
 Die Library liefert zwei Sorten Preset. Die erste verwaltet ihren Inhalt: alles
 Wiederholte liest eine Elements-Collection, jede Textzeile ist ein Textfill.

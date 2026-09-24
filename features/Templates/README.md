@@ -39,6 +39,9 @@ feature split, filterable grid, fullscreen image, image banner, logo bar,
 media split areas, newsletter form, pricing plans, process timeline, static
 accordion, static list, static table, and template include.
 
+The library is its directory: a preset is on offer because its directory is
+there, and its manifest's `weight` says where in the list.
+
 A manifest declares named areas, the components each area allows, and - for a
 repeating area - the Elements model behind it.
 [recipe-section-preset.md](docs/recipe-section-preset.md) walks through writing

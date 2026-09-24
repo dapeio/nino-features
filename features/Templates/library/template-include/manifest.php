@@ -4,6 +4,7 @@
 	'category' => 'Structure',
 	'tags' => [ 'template', 'include', 'shortcode', 'reusable', 'form', 'navigation' ],
 	'version' => 3,
+	'weight' => 170,
 	'recommend' => [
 		'layout' => 'default',
 		'frame' => [ 'background' => 'default', 'container' => 'default', 'padding' => 'none', 'margin' => 'none' ],

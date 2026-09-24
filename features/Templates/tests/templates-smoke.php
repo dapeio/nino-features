@@ -166,30 +166,54 @@ echo "\n";
 
 echo "Library / Composer\n";
 
+/*	The library is its directory: every library/<key>/manifest.php of
+	version 3 that normalizes is offered, and the manifest's own weight says
+	where - ascending, a manifest without one after every one with, by key.
+	Nothing lists the presets a second time any more (the constant that did
+	was a second place to keep in step, and a preset dropped into library/
+	without a line there was one nobody could reach), so what is held is the
+	rule itself, with two presets this test writes into the directory for the
+	length of its run - a copy of static-content weighed into the middle, and
+	one that names no weight - and takes out again when it ends, whatever
+	ends it. Written before the first presets() call: the catalogue is read
+	once per process	*/
+$smokePresets = [ 'smoke-weighted' => 25, 'smoke-unweighted' => null ];
+register_shutdown_function( static function() use ( $smokePresets ): void {
+	foreach( array_keys( $smokePresets ) as $smokeKey )
+		if( is_dir( FEATURE. '/library/'. $smokeKey ) === true )
+			\Nino\Filesystem::removeDir( FEATURE. '/library/'. $smokeKey );
+} );
+foreach( $smokePresets as $smokeKey => $smokeWeight ) {
+	$smokeDirectory = FEATURE. '/library/'. $smokeKey;
+	mkdir( $smokeDirectory );
+	foreach( glob( FEATURE. '/library/static-content/*.tpl' ) ?: [] as $smokeLayout )
+		copy( $smokeLayout, $smokeDirectory. '/'. basename( $smokeLayout ) );
+	$smokeManifest = include FEATURE. '/library/static-content/manifest.php';
+	unset( $smokeManifest['weight'] );
+	if( $smokeWeight !== null )
+		$smokeManifest['weight'] = $smokeWeight;
+	file_put_contents( $smokeDirectory. '/manifest.php', '<?php return '. var_export( $smokeManifest, true ). ';' );
+}
+
 $presets = \Nino\Modules\Templates\Library::presets();
 $modules = \Nino\Modules\Templates\Composer::modules();
 
-/*	The order is the one Library::LIBRARY_ITEM lists, not the alphabetical one
-	a scandir() plus ksort() used to produce: the constant is what the panel
-	offers and in what order. It is read here rather than copied, so a preset
-	added to it needs no line in this file. What is held is that presets()
-	offers every name the list has, in that order, and nothing the list does
-	not - a listed preset that is skipped on the way (no directory, an older
-	manifest version, a normalize that throws) shows up as a shorter list, and
-	the checks below say which	*/
-$libraryItem = (array) ( new \ReflectionClassConstant( \Nino\Modules\Templates\Library::class, 'LIBRARY_ITEM' ) )->getValue();
-check( 'offers every preset the maintained list names, in its order, and nothing it does not', $libraryItem !== [] && array_keys( $presets ) === $libraryItem );
-
-/*	...and the list and the directory agree. The constant decides what the
-	panel offers, so a preset added to library/ without a line in it is one
-	nobody can reach, and a line without a directory is an offer that cannot
-	be composed - Library::presets() swallows both, by design, which is what
-	makes them invisible without this	*/
-$presetDirectories = array_values( array_filter( scandir( FEATURE. '/library' ) ?: [], static fn( string $entry ): bool => is_file( FEATURE. '/library/'. $entry. '/manifest.php' ) ) );
-sort( $presetDirectories );
-$presetKeys = array_keys( $presets );
-sort( $presetKeys );
-check( 'every preset directory is offered, and every offer has a directory', $presetKeys === $presetDirectories );
+$manifestWeights = [];
+foreach( glob( FEATURE. '/library/*/manifest.php' ) ?: [] as $manifestPath )
+	$manifestWeights[basename( dirname( $manifestPath ) )] = ( include $manifestPath )['weight'] ?? null;
+$expectedOrder = array_keys( $manifestWeights );
+usort( $expectedOrder, static fn( string $a, string $b ): int => match( true ) {
+	$manifestWeights[$a] === null && $manifestWeights[$b] === null => strcmp( $a, $b ),
+	$manifestWeights[$a] === null => 1,
+	$manifestWeights[$b] === null => -1,
+	default => ( $manifestWeights[$a] <=> $manifestWeights[$b] ) ?: strcmp( $a, $b ),
+} );
+check( 'offers every directory that carries a version-3 manifest, in the order the manifests weigh themselves, and nothing else', array_keys( $presets ) === $expectedOrder );
+check( 'a preset written into the directory is offered without being listed anywhere, its weight placing it among the shipped ones', array_search( 'smoke-weighted', array_keys( $presets ), true ) === 2 );
+check( '...and one that names no weight comes after every one that does', array_key_last( $presets ) === 'smoke-unweighted' );
+// array_key_exists(), not isset(): the unweighted one is in the list as null
+$shippedWeights = array_filter( $manifestWeights, static fn( string $key ): bool => array_key_exists( $key, $smokePresets ) === false, ARRAY_FILTER_USE_KEY );
+check( 'every shipped manifest names its weight, and no two share one - the order is meant, not the filesystem\'s', in_array( null, $shippedWeights, true ) === false && count( array_unique( $shippedWeights ) ) === count( $shippedWeights ) );
 
 // Library::presets() swallows a broken manifest so one bad preset cannot take
 // the whole catalog down. That is right at runtime and wrong here: the check

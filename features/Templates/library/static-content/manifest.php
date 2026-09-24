@@ -4,6 +4,7 @@
 	'category' => 'Content',
 	'tags' => [ 'content', 'text', 'intro', 'heading', 'cta', 'template', 'flexible' ],
 	'version' => 3,
+	'weight' => 110,
 	'recommend' => [
 		'layout' => 'default',
 		'frame' => [ 'background' => 'default', 'container' => 'default', 'padding' => 'default', 'margin' => 'none' ],

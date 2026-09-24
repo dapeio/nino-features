@@ -4,6 +4,7 @@
 	'category' => 'Content',
 	'tags' => [ 'pricing', 'plans', 'packages', 'price', 'cards', 'elements' ],
 	'version' => 3,
+	'weight' => 130,
 	'recommend' => [
 		'layout' => 'equal',
 		'frame' => [ 'background' => 'alt', 'container' => 'default', 'padding' => 'default', 'margin' => 'none' ],

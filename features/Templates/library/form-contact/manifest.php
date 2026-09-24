@@ -4,6 +4,7 @@
 	'category' => 'Forms',
 	'tags' => [ 'contact', 'form', 'message', 'email', 'address', 'static' ],
 	'version' => 3,
+	'weight' => 160,
 	'recommend' => [
 		'layout' => 'split',
 		'frame' => [ 'background' => 'default', 'container' => 'default', 'padding' => 'default', 'margin' => 'none' ],

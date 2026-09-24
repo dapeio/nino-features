@@ -4,6 +4,7 @@
 	'category' => 'Hero',
 	'tags' => [ 'hero', 'fullscreen', 'image', 'cover', 'parallax', 'title', 'cta' ],
 	'version' => 3,
+	'weight' => 10,
 	'recommend' => [
 		'layout' => 'cover',
 		'frame' => [ 'container' => 'wide', 'padding' => 'default', 'margin' => 'none', 'focus' => '5', 'overlay' => 'dim' ],

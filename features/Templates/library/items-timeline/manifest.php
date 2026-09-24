@@ -4,6 +4,7 @@
 	'category' => 'Content',
 	'tags' => [ 'process', 'timeline', 'steps', 'how it works', 'onboarding', 'elements' ],
 	'version' => 3,
+	'weight' => 120,
 	'recommend' => [
 		'layout' => 'timeline',
 		'frame' => [ 'background' => 'default', 'container' => 'default', 'padding' => 'default', 'margin' => 'none' ],

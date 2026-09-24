@@ -4,6 +4,7 @@
 	'category' => 'Static',
 	'tags' => [ 'table', 'rows', 'static', 'html', 'prices', 'opening hours', 'specs' ],
 	'version' => 3,
+	'weight' => 90,
 	'recommend' => [
 		'layout' => 'default-demo',
 		'frame' => [ 'background' => 'default', 'container' => 'default', 'padding' => 'default', 'margin' => 'none' ],

@@ -4,6 +4,7 @@
 	'category' => 'Forms',
 	'tags' => [ 'newsletter', 'signup', 'form', 'email', 'subscribe', 'static' ],
 	'version' => 3,
+	'weight' => 150,
 	'recommend' => [
 		'layout' => 'centered',
 		'frame' => [ 'background' => 'dark', 'container' => 'default', 'padding' => 'default', 'margin' => 'none' ],

@@ -4,6 +4,7 @@
 	'category' => 'Hero',
 	'tags' => [ 'banner', 'image', 'background', 'statement', 'cta', 'quote' ],
 	'version' => 3,
+	'weight' => 50,
 	'recommend' => [
 		'layout' => 'plain',
 		'frame' => [ 'screen' => 'off', 'background' => 'cover', 'container' => 'default', 'padding' => 'big', 'margin' => 'none', 'focus' => '5', 'overlay' => 'dim' ],

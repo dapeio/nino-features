@@ -4,6 +4,7 @@
 	'category' => 'Static',
 	'tags' => [ 'faq', 'accordion', 'questions', 'details', 'static', 'html', 'support' ],
 	'version' => 3,
+	'weight' => 100,
 	'recommend' => [
 		'layout' => 'demo',
 		'frame' => [ 'background' => 'default', 'container' => 'default', 'padding' => 'default', 'margin' => 'none' ],

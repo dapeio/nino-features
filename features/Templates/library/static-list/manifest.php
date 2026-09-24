@@ -4,6 +4,7 @@
 	'category' => 'Static',
 	'tags' => [ 'list', 'checklist', 'numbered', 'static', 'html', 'features', 'steps' ],
 	'version' => 3,
+	'weight' => 80,
 	'recommend' => [
 		'layout' => 'check-demo',
 		'frame' => [ 'background' => 'default', 'container' => 'default', 'padding' => 'default', 'margin' => 'none' ],

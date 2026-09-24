@@ -4,6 +4,7 @@
 	'category' => 'Action',
 	'tags' => [ 'cta', 'call to action', 'banner', 'contact', 'conversion', 'buttons' ],
 	'version' => 3,
+	'weight' => 20,
 	'recommend' => [
 		'layout' => 'centered',
 		'frame' => [ 'background' => 'dark', 'container' => 'default', 'padding' => 'default', 'margin' => 'none' ],
