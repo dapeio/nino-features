@@ -26,16 +26,6 @@
 	}
 
 	function humanize( value ) {
-		const labels = {
-			button : Nino.content.getText('/_admin/templates/component/button'),
-			'dual-buttons' : Nino.content.getText('/_admin/templates/component/dual-buttons'),
-			'image-static' : Nino.content.getText('/_admin/templates/component/image-static'),
-			'image-cover' : Nino.content.getText('/_admin/templates/component/image-cover'),
-			'media-left-full' : Nino.content.getText('/_admin/templates/component/media-left-full'),
-			'media-right-full' : Nino.content.getText('/_admin/templates/component/media-right-full'),
-		};
-		if( labels[value] )
-			return labels[value];
 		return pd.sectionsUI.humanize( value );
 	}
 
@@ -57,11 +47,16 @@
 		Nothing called selectInclude(), so _includePath was null from the first
 		line to the last, and every branch that asked about it had one answer.
 		The includes themselves are not gone - area-composer.js offers them
-		where an area takes one.	*/
+		where an area takes one.
 
-	function moduleFor( content ) {
-		return pd._library.modules.find( function( module ) { return module.key === content } ) || { key : 'none', source : 'none', layouts : [ 'auto' ], fields : [], images : [], model : {} };
-	}
+		And the composer from before named areas: a module catalogue the
+		library answered beside its presets (Composer::modules(), 28 section
+		types), a moduleFor() over it, and a single-screen settings form with
+		its own fields, summary, validation and submit, which area-composer.js
+		stood in front of for every preset whose version is 3 - which is every
+		preset there is. Only a preset of another version reached them, and
+		the library hands the panel none. The configuration of a section is
+		area-composer.js's, from the first step to the insert.	*/
 
 	function selectedPreset() {
 		return pd._library.presets.find( function( preset ) { return preset.key === pd.composer._presetKey } ) || null;
@@ -158,73 +153,10 @@
 		wn.requestAnimationFrame( function() { fitPreviewFrame( frame ) } );
 	}
 
-	function formField( label, key, values, value, wide, help ) {
-		const field = element( 'label', 'pd-form-field'+ ( wide ? ' is-wide' : '' ) );
-		field.appendChild( element( 'span', '', label ) );
-		let input;
-		if( Array.isArray( values ) ) {
-			input = element('select');
-			values.forEach( function( optionValue ) {
-				const option = element( 'option', '', humanize( optionValue ) );
-				option.value = optionValue;
-				option.selected = optionValue === value;
-				input.appendChild( option );
-			} );
-		} else {
-			input = element('input');
-			input.type = values || 'text';
-			input.value = value === undefined ? '' : value;
-			if( input.type === 'number' ) {
-				input.min = '1';
-				input.max = '12';
-			}
-		}
-		input.dataset.key = key;
-		field.appendChild( input );
-		if( help )
-			field.appendChild( element( 'small', '', help ) );
-		return field;
-	}
-
-	function summaryRow( label, value ) {
-		const row = element( 'div', 'pd-summary-row' );
-		row.append( element( 'span', '', label ), element( 'strong', '', value ) );
-		return row;
-	}
-
-	function fieldSuffixes( draft ) {
-		const fields = [];
-		if( draft.header !== 'none' )
-			fields.push('title');
-		if( [ 'title-subtitle', 'title-subtitle-description' ].includes( draft.header ) )
-			fields.push('subtitle');
-		if( draft.header === 'title-subtitle-description' )
-			fields.push('description');
-		( moduleFor( draft.content ).fields || [] ).forEach( function( suffix ) { fields.push( suffix ) } );
-		if( draft.action !== 'none' )
-			fields.push( 'cta-label', 'cta-uri' );
-		if( draft.action === 'dual-buttons' )
-			fields.push( 'secondary-cta-label', 'secondary-cta-uri' );
-		return Array.from( new Set( fields ) );
-	}
-
-	function imageSuffixes( draft ) {
-		const images = [];
-		if( draft.background !== 'none' )
-			images.push('background');
-		( moduleFor( draft.content ).images || [] ).forEach( function( suffix ) { images.push( suffix ) } );
-		return Array.from( new Set( images ) );
-	}
-
-	function contentKey( draft, suffix ) {
-		return '/page-'+ draft.pageId+ '/'+ draft.id+ '/'+ suffix;
-	}
-
 	Object.assign( pd, { composer : {
 
 		matchesPreset : matchesPreset,
 		previewDocument : previewDocument,
-		fieldSuffixes : fieldSuffixes,
 		_context : null,
 		_presetKey : null,
 		_category : '*',
@@ -232,19 +164,10 @@
 		_librarySignature : null,
 		_draft : null,
 		_step : 'library',
-		_autoElementType : '',
 		_idTouched : false,
 		_previewTimer : null,
 		_previewToken : 0,
-		_contentTimer : null,
 		_contentToken : 0,
-		_contentValues : {},
-		_contentEntries : {},
-		_contentTouched : new Set(),
-		_contentLoadedSignature : '',
-		_nativeLocale : '',
-		_createElementType : null,
-		_createImages : null,
 		_textEntries : [],
 		_textValues : {},
 		_touched : new Set(),
@@ -286,13 +209,6 @@
 			pd.composer._idTouched = context.spec !== null;
 			pd.composer._category = '*';
 			pd.composer._step = 'library';
-			pd.composer._contentValues = {};
-			pd.composer._contentEntries = {};
-			pd.composer._contentTouched = new Set();
-			pd.composer._contentLoadedSignature = '';
-			pd.composer._nativeLocale = '';
-			pd.composer._createElementType = null;
-			pd.composer._createImages = null;
 			pd.composer._textEntries = [];
 			pd.composer._textValues = {};
 			pd.composer._touched = new Set();
@@ -312,13 +228,9 @@
 			if( !context.spec )
 				pd.composer.resetGeneratedBindings();
 			// An edit skips the library - the section already carries its preset
-			// - and lands on the first configuration step, which is the preset's
-			// own answer: two steps for a named-area preset, one for the rest
+			// - and lands on the design step
 			if( context.mode === 'replace' )
-				pd.composer._step = pd.composer.firstConfigStep();
-			pd.composer._autoElementType = pd._current.pageId+ '-'+ pd.composer._draft.id;
-			if( !pd.composer._draft.elementType && moduleFor( pd.composer._draft.content ).source === 'elements' )
-				pd.composer._draft.elementType = pd.composer._autoElementType;
+				pd.composer._step = 'design';
 
 			const dialog = dc.getElementById('pd-composer');
 			dialog.classList.toggle( 'is-edit', context.mode === 'replace' );
@@ -359,49 +271,22 @@
 			pd.composer._draft.pageMotion = pd._pageMotion;
 			pd.composer._draft.id = pd.composer._idTouched ? keep.id : suggestedId;
 			pd.composer.resetGeneratedBindings();
-			pd.composer._autoElementType = pd._current.pageId+ '-'+ pd.composer._draft.id;
-			if( moduleFor( pd.composer._draft.content ).source === 'elements' )
-				pd.composer._draft.elementType = pd.composer._autoElementType;
-			pd.composer._contentValues = {};
-			pd.composer._contentEntries = {};
-			pd.composer._contentTouched = new Set();
-			pd.composer._contentLoadedSignature = '';
-			pd.composer._createElementType = null;
-			pd.composer._createImages = null;
 			pd.composer._textValues = {};
 			pd.composer._touched = new Set();
 			pd.composer.renderLibrary();
 		},
 
-		/*	The dialog has one library step and, after it, either one
-			configuration step or two.
-
-			Two while a named-area preset is being inserted: there, deciding how
-			the section looks and filling it with content are two jobs, and
-			doing both on one screen is the wall of controls this dialog was
-			accused of being. The edit mode keeps them as the pair of tabs it
-			already has (see area-composer.js), because somebody who opens an
-			existing section usually wants one of the two and knows which.
-
-			Everything else - a preset without areas, and every edit - keeps the
-			single 'config' screen	*/
-		STEPS : [ 'library', 'config', 'design', 'content' ],
+		/*	The dialog has three steps: the library, then the design of the
+			section and then its content. Deciding how a section looks and
+			filling it with content are two jobs, and doing both on one screen
+			is the wall of controls this dialog was accused of being. An edit
+			skips the library - the section already has its preset - and walks
+			the other two	*/
+		STEPS : [ 'library', 'design', 'content' ],
 
 		/**
-		 *	Whether the insert flow splits configuration into design and
-		 *	content. The area composer answers for the preset in hand; without
-		 *	it (or for a preset it does not drive) there is one screen
-		 *
-		 *	@return		{boolean}
-		 */
-		splitSteps : function() {
-			return !!( pd.areaComposer && typeof pd.areaComposer.splitSteps === 'function' && pd.areaComposer.splitSteps() );
-		},
-
-		/**
-		 *	Whether the dialog is past the library, on any of the configuration
-		 *	steps - what every renderer that used to compare against 'config'
-		 *	asks now
+		 *	Whether the dialog is past the library, on the design or the
+		 *	content step - the one question every renderer asks
 		 *
 		 *	@return		{boolean}
 		 */
@@ -411,9 +296,8 @@
 
 		/**
 		 *	The area the preview frame should put in front, '' for a preview
-		 *	that stays evenly lit - a preset without an area editor. Both
-		 *	configuration steps carry the area tabs, so both point the frame at
-		 *	the area whose editor is open
+		 *	that stays evenly lit. Both configuration steps carry the area tabs,
+		 *	so both point the frame at the area whose editor is open
 		 *
 		 *	@return		{string}
 		 */
@@ -437,21 +321,6 @@
 		},
 
 		/**
-		 *	The first configuration step for the preset in hand: 'design' where
-		 *	the dialog splits its controls in two, 'config' where they share
-		 *	one screen
-		 *
-		 *	@return		{string}
-		 */
-		firstConfigStep : function() {
-			return pd.composer.splitSteps() ? 'design' : 'config';
-		},
-
-		continueFromLibrary : function() {
-			pd.composer.setStep( pd.composer.firstConfigStep() );
-		},
-
-		/**
 		 *	The step the primary button leads to, '' where it is the last one
 		 *	and the button submits instead
 		 *
@@ -459,13 +328,13 @@
 		 */
 		nextStep : function() {
 			if( pd.composer._step === 'library' )
-				return pd.composer.splitSteps() ? 'design' : 'config';
+				return 'design';
 			return pd.composer._step === 'design' ? 'content' : '';
 		},
 
 		/**
 		 *	One step back: out of the content step into the design step, and
-		 *	out of either single-screen step into the library
+		 *	out of the design step into the library
 		 *
 		 *	@return		void
 		 */
@@ -478,19 +347,11 @@
 				return;
 			if( step === 'library' && pd.composer._context && pd.composer._context.mode === 'replace' )
 				return;
-			// A preset picked in the library decides how many configuration
-			// steps there are, so a step that does not exist for this one is
-			// answered with the one that does
-			if( pd.composer.splitSteps() === false && ( step === 'design' || step === 'content' ) )
-				step = 'config';
-			if( pd.composer.splitSteps() === true && step === 'config' )
-				step = 'design';
-			pd.composer.captureNativeInputs();
 			pd.composer._step = step;
 			pd.composer.renderStep();
 			if( step !== 'library' ) {
 				pd.composer.renderConfiguration();
-				pd.composer.loadNativeContent();
+				pd.composer.loadTextValues();
 				wn.requestAnimationFrame( fitPreviewFrames );
 			} else {
 				pd.composer.renderLibrary();
@@ -504,7 +365,7 @@
 			pd.composer.renderStep();
 			if( pd.composer.configStep() === true ) {
 				pd.composer.renderConfiguration();
-				pd.composer.loadNativeContent();
+				pd.composer.loadTextValues();
 			}
 		},
 
@@ -528,27 +389,26 @@
 			// thing on each step, and "Continue" three times over says none of
 			// them
 			if( nextStep !== '' )
-				next.textContent = Nino.content.getText( '/_admin/templates/label/next-'+ ( nextStep === 'config' ? 'config' : nextStep ) );
+				next.textContent = Nino.content.getText( '/_admin/templates/label/next-'+ nextStep );
 			pd.composer.renderComposerHeading();
 			submit.classList.toggle( 'pd-hidden', nextStep !== '' );
 			pd.composer.renderStepper();
 		},
 
 		/**
-		 *	The numbered strip in the dialog's header. Its middle entry is
-		 *	drawn only where there is a design step to reach, and the numbers
-		 *	are written here rather than in the markup so that two of them read
-		 *	1-2 and three of them 1-2-3
+		 *	The numbered strip in the dialog's header. Its first entry is
+		 *	drawn only where there is a library to go back to - not in an edit -
+		 *	and the numbers are written here rather than in the markup so that
+		 *	two of them read 1-2 and three of them 1-2-3
 		 *
 		 *	@return		void
 		 */
 		renderStepper : function() {
 			const editing = pd.composer._context && pd.composer._context.mode === 'replace';
-			const split = pd.composer.splitSteps();
-			const active = pd.composer._step === 'library' ? 'library' : ( pd.composer._step === 'design' ? 'design' : 'content' );
-			const steps = [ [ 'pd-step-library', 'library', !editing ], [ 'pd-step-design', 'design', split ], [ 'pd-step-content', 'content', true ] ];
-			// One step is no progress to show: an edit of a preset without areas
-			// has nothing to walk, and the bar says so by not being there
+			const active = pd.composer._step;
+			const steps = [ [ 'pd-step-library', 'library', !editing ], [ 'pd-step-design', 'design', true ], [ 'pd-step-content', 'content', true ] ];
+			// One step would be no progress to show, and the bar would say so by
+			// not being there - an edit still walks two
 			const stepper = dc.getElementById('pd-composer-stepper');
 			if( stepper )
 				stepper.classList.toggle( 'pd-hidden', steps.filter( function( entry ) { return entry[2] } ).length < 2 );
@@ -757,259 +617,12 @@
 			wrap.appendChild( change );
 		},
 
-		renderSettings : function() {
-			const wrap = dc.getElementById('pd-composer-settings');
-			const preset = selectedPreset();
-			const draft = pd.composer._draft;
-			if( !wrap || !preset || !draft )
-				return;
-			pd.composer.captureNativeInputs();
-			wrap.innerHTML = '';
-			const activeModule = moduleFor( draft.content );
-
-			const identity = element( 'section', 'pd-form-section' );
-			identity.appendChild( element( 'h3', '', Nino.content.getText('/_admin/templates/step/identity') ) );
-			const identityGrid = element( 'div', 'pd-form-grid' );
-			identityGrid.appendChild( formField( Nino.content.getText('/_admin/templates/label/section-id'), 'id', 'text', draft.id, true, Nino.content.getText('/_admin/templates/hint/section-id').replace( '%p', draft.pageId ).replace( '%i', draft.id ) ) );
-			identity.appendChild( identityGrid );
-			wrap.appendChild( identity );
-
-			const style = element( 'section', 'pd-form-section' );
-			style.appendChild( element( 'h3', '', Nino.content.getText('/_admin/templates/step/style') ) );
-			const styleGrid = element( 'div', 'pd-form-grid' );
-			[ [ Nino.content.getText('/_admin/templates/label/surface'), 'surface' ], [ Nino.content.getText('/_admin/templates/label/background'), 'background' ], [ Nino.content.getText('/_admin/templates/label/heading'), 'header' ], [ Nino.content.getText('/_admin/templates/label/alignment'), 'align' ] ].forEach( function( field ) {
-				styleGrid.appendChild( formField( field[0], field[1], preset.allow[field[1]], draft[field[1]], false ) );
-			} );
-			style.appendChild( styleGrid );
-			const images = imageSuffixes( draft );
-			if( images.length ) {
-				const knownImages = ( pd.sectionsUI._images || [] ).map( function( slot ) { return slot.uri } );
-				const missingImages = images.filter( function( suffix ) { return knownImages.includes( contentKey( draft, suffix ) ) === false } );
-				const createImages = element( 'label', 'pd-check' );
-				const imageCheckbox = element('input');
-				imageCheckbox.type = 'checkbox';
-				imageCheckbox.id = 'pd-create-image-slots';
-				imageCheckbox.checked = pd.composer._createImages === null ? missingImages.length > 0 : pd.composer._createImages;
-				imageCheckbox.addEventListener( 'change', function() { pd.composer._createImages = imageCheckbox.checked } );
-				createImages.append( imageCheckbox, element( 'span', '', Nino.content.getText('/_admin/templates/label/create-slots').replace( '%s', images.join(', ') ) ) );
-				style.appendChild( createImages );
-			}
-			wrap.appendChild( style );
-
-			const content = element( 'section', 'pd-form-section' );
-			content.appendChild( element( 'h3', '', Nino.content.getText('/_admin/templates/step/content') ) );
-			const contentGrid = element( 'div', 'pd-form-grid' );
-			contentGrid.appendChild( formField( Nino.content.getText('/_admin/templates/label/type'), 'content', preset.allow.content, draft.content, false ) );
-			const layouts = preset.allow.layout.filter( function( layout ) { return activeModule.layouts.includes( layout ) } );
-			const availableLayouts = layouts.length ? layouts : activeModule.layouts;
-			if( availableLayouts.includes( draft.layout ) === false )
-				draft.layout = availableLayouts[0];
-			contentGrid.appendChild( formField( Nino.content.getText('/_admin/templates/label/layout'), 'layout', availableLayouts, draft.layout, false ) );
-			if( activeModule.source === 'elements' ) {
-				contentGrid.appendChild( formField( Nino.content.getText('/_admin/templates/label/collection'), 'elementType', 'text', draft.elementType || '', true, Nino.content.getText('/_admin/templates/hint/collection') ) );
-				const known = ( pd.sectionsUI._types || [] ).map( function( entry ) { return entry.type } );
-				const datalist = element('datalist');
-				datalist.id = 'pd-element-types';
-				known.forEach( function( uri ) { const option = element('option'); option.value = uri; datalist.appendChild( option ) } );
-				contentGrid.querySelector('[data-key="elementType"]').setAttribute( 'list', datalist.id );
-				contentGrid.appendChild( datalist );
-				const create = element( 'label', 'pd-check is-wide' );
-				const checkbox = element('input');
-				checkbox.type = 'checkbox';
-				checkbox.id = 'pd-create-element-type';
-				checkbox.checked = pd.composer._createElementType === null ? known.includes( draft.elementType ) === false : pd.composer._createElementType;
-				checkbox.addEventListener( 'change', function() { pd.composer._createElementType = checkbox.checked } );
-				create.append( checkbox, element( 'span', '', Nino.content.getText('/_admin/templates/label/create-collection') ) );
-				contentGrid.appendChild( create );
-				contentGrid.appendChild( formField( Nino.content.getText('/_admin/templates/label/limit'), 'limit', 'number', draft.limit || 3, false ) );
-				contentGrid.appendChild( formField( Nino.content.getText('/_admin/templates/label/cardstyle'), 'contentStyle', preset.allow.contentStyle, draft.contentStyle, false ) );
-			}
-			content.appendChild( contentGrid );
-			wrap.appendChild( content );
-
-			const action = element( 'section', 'pd-form-section' );
-			action.appendChild( element( 'h3', '', Nino.content.getText('/_admin/templates/step/action') ) );
-			const actionGrid = element( 'div', 'pd-form-grid' );
-			actionGrid.appendChild( formField( 'CTA', 'action', preset.allow.action, draft.action, false ) );
-			actionGrid.appendChild( formField( Nino.content.getText('/_admin/templates/label/viewport-motion'), 'motion', preset.allow.motion, draft.motion, false ) );
-			action.appendChild( actionGrid );
-			wrap.appendChild( action );
-
-			pd.composer.renderNativeFields( wrap );
-
-			const advanced = element( 'details', 'pd-form-section pd-form-details' );
-			advanced.appendChild( element( 'summary', '', Nino.content.getText('/_admin/templates/label/advanced') ) );
-			const advancedGrid = element( 'div', 'pd-form-grid' );
-			advancedGrid.style.marginTop = '.7rem';
-			[ [ Nino.content.getText('/_admin/templates/label/padding'), 'padding' ], [ Nino.content.getText('/_admin/templates/label/margin'), 'margin' ], [ Nino.content.getText('/_admin/templates/label/border'), 'border' ] ].forEach( function( field ) {
-				advancedGrid.appendChild( formField( field[0], field[1], preset.allow[field[1]], draft[field[1]], false ) );
-			} );
-			advanced.appendChild( advancedGrid );
-			wrap.appendChild( advanced );
-
-			wrap.querySelectorAll('[data-key]').forEach( function( input ) {
-				if( input.classList.contains('pd-native-input') )
-					return;
-				if( input.tagName === 'SELECT' || input.type === 'number' )
-					input.addEventListener( 'change', function() { pd.composer.updateDraft( input, true ) } );
-				else {
-					input.addEventListener( 'input', function() { pd.composer.updateDraft( input, false ) } );
-					input.addEventListener( 'change', function() { pd.composer.updateDraft( input, true ) } );
-				}
-			} );
-		},
-
-		renderNativeFields : function( wrap ) {
-			const draft = pd.composer._draft;
-			const suffixes = fieldSuffixes( draft );
-			const panel = element( 'section', 'pd-form-section pd-native-section' );
-			const heading = element( 'div', 'pd-native-heading' );
-			const copy = element('div');
-			copy.append( element( 'h3', '', Nino.content.getText('/_admin/templates/step/native') ), element( 'p', '', Nino.content.getText('/_admin/templates/hint/native') ) );
-			if( pd.composer._nativeLocale )
-				heading.append( copy, element( 'span', 'pd-locale-badge', pd.composer._nativeLocale ) );
-			else
-				heading.appendChild( copy );
-			panel.appendChild( heading );
-
-			if( suffixes.length === 0 )
-				panel.appendChild( element( 'p', 'nino-admin-hint', moduleFor( draft.content ).source === 'elements' ? Nino.content.getText('/_admin/templates/hint/repeated') : Nino.content.getText('/_admin/templates/hint/no-fills') ) );
-			else {
-				const fields = element( 'div', 'pd-native-grid' );
-				suffixes.forEach( function( suffix ) {
-					const key = contentKey( draft, suffix );
-					const entry = pd.composer._contentEntries[key];
-					const field = element( 'label', 'pd-content-field'+ ( [ 'description', 'content', 'subtitle', 'address' ].includes( suffix ) ? ' is-wide' : '' ) );
-					const label = element('span');
-					label.append( element( 'b', '', humanize( suffix ) ), element( 'small', '', entry ? ( entry.global ? Nino.content.getText('/_admin/templates/label/fill-global') : ( entry.exists ? pd.composer._nativeLocale : Nino.content.getText('/_admin/templates/label/fill-new2') ) ) : Nino.content.getText('/_admin/templates/msg/loading-short') ) );
-					const long = [ 'description', 'content', 'subtitle', 'address' ].includes( suffix );
-					const input = element( long ? 'textarea' : 'input', 'pd-native-input' );
-					input.value = Object.prototype.hasOwnProperty.call( pd.composer._contentValues, key ) ? pd.composer._contentValues[key] : '';
-					input.dataset.contentKey = key;
-					input.addEventListener( 'input', function() {
-						pd.composer._contentValues[key] = input.value;
-						pd.composer._contentTouched.add( key );
-					} );
-					field.append( label, input );
-					fields.appendChild( field );
-				} );
-				panel.appendChild( fields );
-			}
-
-			if( moduleFor( draft.content ).source === 'elements' ) {
-				const note = element( 'p', 'pd-elements-note' );
-				note.appendChild( dc.createTextNode( Nino.content.getText('/_admin/templates/hint/repeated-before') ) );
-				const link = element( 'a', '', Nino.content.getText('/_admin/templates/label/admin-elements') );
-				link.href = pd.assetUrl( '/_admin/#elements/'+ encodeURIComponent( draft.elementType || '' ) );
-				note.append( link, dc.createTextNode( Nino.content.getText('/_admin/templates/hint/repeated-after') ) );
-				panel.appendChild( note );
-			}
-			wrap.appendChild( panel );
-		},
-
-		resetGeneratedBindings : function() {},
-
 		captureValues : function() {
-			pd.composer.captureNativeInputs();
 			const wrap = dc.getElementById('pd-composer-settings');
 			if( !wrap )
 				return;
 			wrap.querySelectorAll('[data-text-key]').forEach( function( input ) {
 				pd.composer._textValues[input.dataset.textKey] = input.value;
-			} );
-		},
-
-		loadTextValues : function() {
-			return pd.composer.loadNativeContent();
-		},
-
-		captureNativeInputs : function() {
-			const wrap = dc.getElementById('pd-composer-settings');
-			if( !wrap )
-				return;
-			wrap.querySelectorAll('[data-content-key]').forEach( function( input ) {
-				pd.composer._contentValues[input.dataset.contentKey] = input.value;
-			} );
-		},
-
-		updateDraft : function( input, changed ) {
-			const key = input.dataset.key;
-			const oldId = pd.composer._draft.id;
-			pd.composer.captureNativeInputs();
-			pd.composer._draft[key] = input.type === 'number' ? Number( input.value ) : input.value;
-			if( key === 'id' )
-				pd.composer._idTouched = true;
-			if( key === 'id' && ( !pd.composer._draft.elementType || pd.composer._draft.elementType === pd.composer._autoElementType ) ) {
-				pd.composer._autoElementType = pd._current.pageId+ '-'+ input.value;
-				pd.composer._draft.elementType = pd.composer._autoElementType;
-			}
-			if( key === 'content' ) {
-				const module = moduleFor( input.value );
-				pd.composer._draft.layout = module.layouts[0];
-				if( module.source === 'elements' && !pd.composer._draft.elementType )
-					pd.composer._draft.elementType = pd._current.pageId+ '-'+ oldId;
-				pd.composer._createElementType = null;
-			}
-
-			const rerender = changed && [ 'id', 'background', 'header', 'content', 'action' ].includes( key );
-			if( rerender )
-				pd.composer.renderSettings();
-			if( [ 'id', 'header', 'content', 'action' ].includes( key ) )
-				pd.composer.queueNativeContent();
-			pd.composer.renderSummary();
-			pd.composer.requestPreview();
-		},
-
-		queueNativeContent : function() {
-			wn.clearTimeout( pd.composer._contentTimer );
-			pd.composer._contentTimer = wn.setTimeout( function() { pd.composer.loadNativeContent() }, 220 );
-		},
-
-		loadNativeContent : function() {
-			const draft = pd.composer._draft;
-			// The version half of this used to be asked here too, and every
-			// preset is a named-area one - so what is left is the question that
-			// has two answers: whether area-composer.js is loaded beside this
-			// one, the same guard previewFocus() makes
-			if( pd.areaComposer )
-				return pd.composer.loadTextValues();
-			if( !draft || /^[a-z][a-z0-9-]*$/.test( draft.id ) === false )
-				return Promise.resolve();
-			pd.composer.captureNativeInputs();
-			const keys = fieldSuffixes( draft ).map( function( suffix ) { return contentKey( draft, suffix ) } );
-			return pd.composer.fetchNativeContent( keys, true );
-		},
-
-		fetchNativeContent : function( keys, rerender ) {
-			const signature = keys.join('\n');
-			const token = ++pd.composer._contentToken;
-			if( keys.length === 0 ) {
-				pd.composer._contentLoadedSignature = signature;
-				if( rerender )
-					pd.composer.renderSettings();
-				return Promise.resolve();
-			}
-			return pd.api( 'content/fields', { keys : keys } ).then( function( response ) {
-				if( token !== pd.composer._contentToken ) {
-					if( rerender === false )
-						throw new Error( Nino.content.getText('/_admin/templates/error/content-changed') );
-					return;
-				}
-				pd.composer._nativeLocale = response.nativeLocale || '';
-				( response.fields || [] ).forEach( function( entry ) {
-					pd.composer._contentEntries[entry.key] = entry;
-					if( pd.composer._contentTouched.has( entry.key ) === false )
-						pd.composer._contentValues[entry.key] = entry.value || '';
-				} );
-				pd.composer._contentLoadedSignature = signature;
-				if( rerender && pd.composer.configStep() === true )
-					pd.composer.renderSettings();
-			} ).catch( function( error ) {
-				if( token === pd.composer._contentToken && rerender ) {
-					dc.getElementById('pd-composer-error').textContent = Nino.content.getText('/_admin/templates/error/native-prefix').replace( '%s', error.message );
-					return;
-				}
-				throw error;
 			} );
 		},
 
@@ -1034,122 +647,8 @@
 			}, immediate ? 0 : 180 );
 		},
 
-		renderSummary : function() {
-			const draft = pd.composer._draft;
-			const summary = dc.getElementById('pd-composer-summary');
-			if( !draft || !summary )
-				return;
-			const fields = fieldSuffixes( draft );
-			const images = imageSuffixes( draft );
-			const module = moduleFor( draft.content );
-			summary.innerHTML = '';
-			summary.appendChild( summaryRow( Nino.content.getText('/_admin/templates/label/textfills'), fields.length ? fields.join(', ') : Nino.content.getText('/_admin/templates/label/none2') ) );
-			summary.appendChild( summaryRow( Nino.content.getText('/_admin/templates/label/images'), images.length ? images.join(', ') : Nino.content.getText('/_admin/templates/label/none2') ) );
-			summary.appendChild( summaryRow( Nino.content.getText('/_admin/templates/label/content-source'), module.source === 'elements' ? ( draft.elementType || Nino.content.getText('/_admin/templates/label/choose-collection') ) : humanize( module.source ) ) );
-			summary.appendChild( summaryRow( Nino.content.getText('/_admin/templates/label/generated-prefix'), '/page-'+ draft.pageId+ '/'+ ( draft.id || '…' ) ) );
-		},
-
-		validate : function() {
-			const draft = pd.composer._draft;
-			if( /^[a-z][a-z0-9-]*$/.test( draft.id ) === false )
-				throw new Error( Nino.content.getText('/_admin/templates/error/section-id') );
-			const duplicate = pd.sections().find( function( section ) {
-				return section.htmlId === draft.id && section._clientId !== pd.composer._context.targetId;
-			} );
-			if( duplicate )
-				throw new Error( Nino.content.getText('/_admin/templates/error/duplicate-id').replace( '%s', draft.id ) );
-			const module = moduleFor( draft.content );
-			if( module.source === 'elements' && /^[a-z][a-z0-9_-]*$/.test( draft.elementType || '' ) === false )
-				throw new Error( Nino.content.getText('/_admin/templates/error/collection') );
-			return module;
-		},
-
-		createImageSlots : function( result ) {
-			const checkbox = dc.getElementById('pd-create-image-slots');
-			if( !checkbox || checkbox.checked === false || result.imageSlots.length === 0 )
-				return Promise.resolve( result );
-
-			return pd.sectionsUI.ensureImages().then( function( slots ) {
-				const existing = new Set( slots.map( function( slot ) { return slot.uri } ) );
-				const uris = result.imageSlots.map( function( suffix ) { return contentKey( result.spec, suffix ) } ).filter( function( uri ) { return existing.has( uri ) === false } );
-				return Promise.all( uris.map( function( uri ) {
-					return pd.api( 'content/image-create', { uri : uri, label : humanize( uri.split('/').slice(-2).join(' ') ) } ).then( function() {
-						pd.sectionsUI._images.push( { uri : uri, hasImage : false } );
-					} );
-				} ) ).then( function() { return result } );
-			} );
-		},
-
-		ensureNativeContent : function( result ) {
-			pd.composer.captureNativeInputs();
-			const keys = result.fields.map( function( suffix ) { return contentKey( result.spec, suffix ) } );
-			const signature = keys.join('\n');
-			const loaded = pd.composer._contentLoadedSignature === signature;
-			const ready = loaded ? Promise.resolve() : pd.composer.fetchNativeContent( keys, false );
-			return ready.then( function() {
-				const items = keys.filter( function( key ) {
-					const entry = pd.composer._contentEntries[key];
-					return pd.composer._context.mode !== 'replace' || pd.composer._contentTouched.has( key ) || !entry || entry.exists === false;
-				} ).map( function( key ) {
-					const entry = pd.composer._contentEntries[key];
-					return { key : key, value : pd.composer._contentValues[key] || '', create : !entry || entry.exists === false };
-				} );
-				if( items.length === 0 )
-					return result;
-				return pd.api( 'content/save', { items : items } ).then( function() { return result } );
-			} );
-		},
-
-		submit : function() {
-			const errorWrap = dc.getElementById('pd-composer-error');
-			const submit = dc.getElementById('pd-compose-submit');
-			const back = dc.getElementById('pd-compose-back');
-			let module;
-			try {
-				module = pd.composer.validate();
-			} catch( error ) {
-				errorWrap.textContent = error.message;
-				return;
-			}
-
-			errorWrap.textContent = Nino.content.getText('/_admin/templates/msg/building');
-			wn.clearTimeout( pd.composer._contentTimer );
-			submit.disabled = true;
-			back.disabled = true;
-			pd.api( 'library/compose', pd.composer._draft ).then( function( result ) {
-				if( module.source !== 'elements' )
-					return result;
-				const types = pd.sectionsUI._types || [];
-				const exists = types.some( function( entry ) { return entry.type === result.spec.elementType } );
-				const create = dc.getElementById('pd-create-element-type');
-				if( exists )
-					return result;
-				if( !create || create.checked === false )
-					throw new Error( Nino.content.getText('/_admin/templates/error/collection-missing') );
-				return pd.api( 'content/type-create', {
-					module : result.spec.content,
-					uri : result.spec.elementType,
-					title : humanize( result.spec.elementType ),
-				} ).then( function( response ) {
-					pd.sectionsUI._types = pd.sectionsUI._types || [];
-					pd.sectionsUI._types.push( { type : response.uri, title : response.title, model : response.model } );
-					return result;
-				} );
-			} ).then( pd.composer.createImageSlots ).then( pd.composer.ensureNativeContent ).then( function( result ) {
-				pd.sectionsUI.insertResult( result, pd.composer._context );
-				dc.getElementById('pd-composer').close();
-				pd.toast( pd.composer._context.mode === 'replace' ? Nino.content.getText('/_admin/templates/msg/section-updated') : Nino.content.getText('/_admin/templates/msg/section-inserted'), false );
-			} ).catch( function( error ) {
-				errorWrap.textContent = error.message;
-			} ).finally( function() {
-				submit.disabled = false;
-				back.disabled = false;
-			} );
-		},
-
 		cancelAsync : function() {
 			wn.clearTimeout( pd.composer._previewTimer );
-			wn.clearTimeout( pd.composer._contentTimer );
 			pd.composer._previewToken++;
 			pd.composer._contentToken++;
 		},

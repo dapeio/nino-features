@@ -39,8 +39,15 @@
 		return node;
 	}
 
+	/*	The preset a stored section is managed by: the library's preset of
+		that key, for a spec the composer writes - version 3, named areas.
+		A marker that says anything else is not one the builder can open,
+		so the section is what the builder does not recognise: its source,
+		left byte for byte, edited as HTML+	*/
 	function presetFor( spec ) {
-		return spec ? pd._library.presets.find( function( preset ) { return preset.key === spec.preset } ) || null : null;
+		if( isAreaSpec( spec ) === false )
+			return null;
+		return pd._library.presets.find( function( preset ) { return preset.key === spec.preset } ) || null;
 	}
 
 	function humanize( value ) {
@@ -119,77 +126,20 @@
 		return Array.from( wrap.childNodes );
 	}
 
-	function preview( spec, compact ) {
-		const areaPreset = isAreaSpec( spec ) ? presetFor( spec ) : null;
+	/**
+	 *	The card's drawing of a section: its areas where a preset manages it,
+	 *	and otherwise a title over three lines - what the canvas can say
+	 *	about source it does not read
+	 *
+	 *	@param		{Object|null}	spec
+	 *
+	 *	@return		{Array}
+	 */
+	function preview( spec ) {
+		const areaPreset = presetFor( spec );
 		if( areaPreset )
 			return areaPreview( spec, areaPreset );
-		const wrap = element('div');
-		const header = spec && spec.header || 'title';
-		const content = spec && spec.content || 'custom';
-		const layout = spec && spec.layout || 'auto';
-
-		if( header !== 'none' ) {
-			if( header.includes('subtitle') )
-				wrap.appendChild( element( 'span', 'pd-preview-kicker' ) );
-			wrap.appendChild( element( 'span', 'pd-preview-title' ) );
-			if( header.includes('description') )
-				wrap.appendChild( element( 'span', 'pd-preview-line' ) );
-		}
-
-		if( content === 'text' ) {
-			wrap.append( element( 'span', 'pd-preview-line' ), element( 'span', 'pd-preview-line' ) );
-		} else if( [ 'media-split', 'feature-list', 'contact' ].includes( content ) ) {
-			const split = element( 'div', 'pd-preview-split' );
-			const media = element( 'span', 'pd-preview-media' );
-			const lines = element( 'span', 'pd-preview-lines' );
-			lines.append( element( 'span', 'pd-preview-title' ), element( 'span', 'pd-preview-line' ), element( 'span', 'pd-preview-line' ) );
-			if( [ 'media-right', 'media-right-full' ].includes( layout ) )
-				split.append( lines, media );
-			else
-				split.append( media, lines );
-			wrap.appendChild( split );
-		} else if( [ 'articles', 'articles-image', 'cards', 'profiles', 'stats', 'features', 'pricing', 'timeline' ].includes( content ) ) {
-			const items = element( 'div', 'pd-preview-items' );
-			items.style.setProperty( '--pd-items', layout === 'spotlight' ? '1' : ( [ '2', '3', '4' ].includes( layout ) ? layout : '3' ) );
-			for( let i = 0; i < Number( items.style.getPropertyValue('--pd-items') ); i++ )
-				items.appendChild( element( 'span', 'pd-preview-item' ) );
-			wrap.appendChild( items );
-		} else if( [ 'slider', 'media-slider' ].includes( content ) || ( content === 'testimonials' && layout === 'slider' ) ) {
-			const items = element( 'div', 'pd-preview-items' );
-			items.style.setProperty( '--pd-items', compact ? '2' : '2' );
-			items.append( element( 'span', 'pd-preview-item' ), element( 'span', 'pd-preview-item' ) );
-			wrap.appendChild( items );
-		} else if( content === 'testimonials' ) {
-			const items = element( 'div', 'pd-preview-items' );
-			items.style.setProperty( '--pd-items', layout === 'spotlight' ? '1' : ( [ '2', '3' ].includes( layout ) ? layout : '3' ) );
-			for( let i = 0; i < Number( items.style.getPropertyValue('--pd-items') ); i++ )
-				items.appendChild( element( 'span', 'pd-preview-item' ) );
-			wrap.appendChild( items );
-		} else if( [ 'logos', 'badges', 'gallery' ].includes( content ) ) {
-			const items = element( 'div', 'pd-preview-items' );
-			items.style.setProperty( '--pd-items', '4' );
-			for( let i = 0; i < 4; i++ )
-				items.appendChild( element( 'span', 'pd-preview-item' ) );
-			wrap.appendChild( items );
-		} else if( [ 'lists', 'accordion', 'tabs', 'comparison', 'data-table' ].includes( content ) ) {
-			for( let i = 0; i < 3; i++ )
-				wrap.appendChild( element( 'span', 'pd-preview-line' ) );
-		} else if( [ 'video', 'video-embed' ].includes( content ) ) {
-			wrap.appendChild( element( 'span', 'pd-preview-media' ) );
-		} else if( content === 'notice' ) {
-			wrap.append( element( 'span', 'pd-preview-line' ), element( 'span', 'pd-preview-line' ) );
-		} else if( content === 'newsletter' ) {
-			wrap.append( element( 'span', 'pd-preview-line' ), element( 'span', 'pd-preview-button' ) );
-		} else if( content === 'custom' ) {
-			wrap.append( element( 'span', 'pd-preview-line' ), element( 'span', 'pd-preview-line' ), element( 'span', 'pd-preview-line' ) );
-		}
-
-		if( spec && spec.action && spec.action !== 'none' )
-			wrap.appendChild( element( 'span', 'pd-preview-button' ) );
-		if( spec && spec.action === 'dual-buttons' )
-			wrap.appendChild( element( 'span', 'pd-preview-button' ) );
-
-		return Array.from( wrap.childNodes );
+		return [ element( 'span', 'pd-preview-title' ), element( 'span', 'pd-preview-line' ), element( 'span', 'pd-preview-line' ), element( 'span', 'pd-preview-line' ) ];
 	}
 
 	function rawLabel( source, position ) {
@@ -206,11 +156,9 @@
 		const templateSection = section.type === 'template';
 		const spec = section.spec;
 		const preset = presetFor( spec );
-		const managed = spec !== null && spec !== undefined && preset !== null;
-		const areas = managed && isAreaSpec( spec );
+		const managed = preset !== null;
 		const card = element( 'article', 'pd-section-card'+ ( pd._selectedId === section._clientId ? ' is-selected' : '' ) );
 		card.dataset.kind = templateSection ? 'template' : ( managed ? 'managed' : 'custom' );
-		card.dataset.content = templateSection ? 'template' : ( managed ? ( areas ? 'areas' : spec.content ) : 'custom' );
 		card.tabIndex = 0;
 		card.setAttribute( 'aria-label', Nino.content.getText('/_admin/templates/label/section-aria').replace( '%s', sectionLabel( section, sectionIndex ) ) );
 		card.addEventListener( 'click', function() { pd.select( section._clientId ) } );
@@ -226,7 +174,7 @@
 		const copy = element( 'div', 'pd-section-copy' );
 		const meta = element( 'div', 'pd-section-meta' );
 		meta.appendChild( element( 'span', 'pd-badge', templateSection ? Nino.content.getText('/_admin/templates/label/badge-template') : ( managed ? Nino.adminUi.text( preset.category ) : Nino.content.getText('/_admin/templates/label/badge-custom') ) ) );
-		meta.appendChild( element( 'span', 'pd-badge is-neutral', templateSection ? '[template]' : ( managed ? humanize( areas ? effectiveFrameValue( spec, preset, 'background' ) : spec.surface ) : '<section>' ) ) );
+		meta.appendChild( element( 'span', 'pd-badge is-neutral', templateSection ? '[template]' : ( managed ? humanize( effectiveFrameValue( spec, preset, 'background' ) ) : '<section>' ) ) );
 		copy.appendChild( meta );
 		copy.appendChild( element( 'h3', '', sectionLabel( section, sectionIndex ) ) );
 		copy.appendChild( element( 'p', '', templateSection ? ( section.path || '/templates/'+ section.template )+ '.tpl' : ( managed ? Nino.adminUi.text( preset.name ) : Nino.content.getText('/_admin/templates/hint/code-authored') ) ) );
@@ -257,7 +205,7 @@
 		copy.appendChild( bindings );
 
 		const visual = element( 'div', 'pd-card-preview' );
-		visual.dataset.surface = managed ? ( areas ? effectiveFrameValue( spec, preset, 'background' ) : spec.surface ) : 'default';
+		visual.dataset.surface = managed ? effectiveFrameValue( spec, preset, 'background' ) : 'default';
 		if( templateSection ) {
 			const templatePreview = element( 'div', 'pd-template-preview' );
 			const icon = element( 'span', 'pd-template-preview-icon', section.template === 'html-header' ? 'HEAD' : ( section.template === 'html-footer' ? 'FOOT' : 'TPL' ) );
@@ -266,7 +214,7 @@
 			templatePreview.append( icon, lines );
 			visual.appendChild( templatePreview );
 		} else
-			preview( managed ? spec : { header : 'title', content : 'custom', action : 'none' }, true ).forEach( function( node ) { visual.appendChild( node ) } );
+			preview( spec ).forEach( function( node ) { visual.appendChild( node ) } );
 		main.append( copy, visual );
 
 		const actions = element( 'div', 'pd-section-actions' );
@@ -357,7 +305,7 @@
 				return;
 			if( section.type === 'template' )
 				return pd.openInclude( { mode : 'replace', targetId : clientId } );
-			if( section.spec && presetFor( section.spec ) )
+			if( presetFor( section.spec ) )
 				return pd.composer.open( { mode : 'replace', targetId : clientId, spec : section.spec } );
 			pd.sectionsUI.openCode( { mode : 'replace', targetId : clientId, source : section.source } );
 		},
@@ -375,7 +323,7 @@
 				return;
 			}
 			const suggested = pd.model.nextId( pd._current.segments, ( section.htmlId || 'section' )+ '-copy' );
-			if( section.spec && presetFor( section.spec ) )
+			if( presetFor( section.spec ) )
 				return pd.composer.open( { mode : 'insert', afterId : clientId, spec : Object.assign( {}, section.spec, { id : suggested } ) } );
 
 			let source = section.source;
@@ -517,16 +465,14 @@
 				const structure = element( 'section', 'pd-inspector-section' );
 				structure.appendChild( element( 'h3', '', Nino.content.getText('/_admin/templates/label/structure') ) );
 				const grid = element( 'div', 'pd-spec-grid' );
-				const details = isAreaSpec( spec )
-					? [
-						[ Nino.content.getText('/_admin/templates/label/background'), effectiveFrameValue( spec, preset, 'background' ) ],
-						[ Nino.content.getText('/_admin/templates/label/layout'), spec.layout === 'auto' ? preset.recommend.layout : spec.layout ],
-						[ Nino.content.getText('/_admin/templates/label/areas'), Object.keys( spec.areas ).length ],
-						[ Nino.content.getText('/_admin/templates/label/components'), Object.keys( spec.areas ).reduce( function( count, key ) { return count + ( spec.areas[key].components || [] ).length }, 0 ) ],
-						[ Nino.content.getText('/_admin/templates/label/collections'), Object.keys( preset.areas ).filter( function( key ) { return preset.areas[key].source === 'elements' } ).length ],
-						[ Nino.content.getText('/_admin/templates/label/motion'), spec.pageMotion ],
-					]
-					: [ [ Nino.content.getText('/_admin/templates/label/surface'), spec.surface ], [ Nino.content.getText('/_admin/templates/label/header-slot'), spec.header ], [ Nino.content.getText('/_admin/templates/label/content'), spec.content ], [ Nino.content.getText('/_admin/templates/label/layout'), spec.layout ], [ Nino.content.getText('/_admin/templates/label/motion'), spec.motion ], [ Nino.content.getText('/_admin/templates/label/action'), spec.action ] ];
+				const details = [
+					[ Nino.content.getText('/_admin/templates/label/background'), effectiveFrameValue( spec, preset, 'background' ) ],
+					[ Nino.content.getText('/_admin/templates/label/layout'), spec.layout === 'auto' ? preset.recommend.layout : spec.layout ],
+					[ Nino.content.getText('/_admin/templates/label/areas'), Object.keys( spec.areas ).length ],
+					[ Nino.content.getText('/_admin/templates/label/components'), Object.keys( spec.areas ).reduce( function( count, key ) { return count + ( spec.areas[key].components || [] ).length }, 0 ) ],
+					[ Nino.content.getText('/_admin/templates/label/collections'), Object.keys( preset.areas ).filter( function( key ) { return preset.areas[key].source === 'elements' } ).length ],
+					[ Nino.content.getText('/_admin/templates/label/motion'), spec.pageMotion ],
+				];
 				details.forEach( function( item ) {
 					const cell = element( 'div', 'pd-spec-item' );
 					cell.append( element( 'small', '', item[0] ), element( 'strong', '', humanize( item[1] ) ) );
@@ -630,7 +576,6 @@
 
 		renderResources : function( container, section, token ) {
 			const preset = presetFor( section.spec );
-			const areaSpec = isAreaSpec( section.spec ) && preset;
 			if( section.imageSlots.length ) {
 				const images = element( 'section', 'pd-inspector-section' );
 				images.appendChild( element( 'h3', '', Nino.content.getText('/_admin/templates/label/image-slots') ) );
@@ -658,7 +603,7 @@
 							link.href = pd.assetUrl( '/_admin/#images/'+ encodeURIComponent( uri.split('/').filter( Boolean )[0] || '' ) );
 							row.appendChild( link );
 						} else {
-							const request = areaSpec ? pd.sectionsUI.areaImageRequest( section.spec, preset, uri ) : { uri : uri, label : humanize( uri.split('/').slice(-2).join(' ') ) };
+							const request = preset ? pd.sectionsUI.areaImageRequest( section.spec, preset, uri ) : null;
 							if( request ) row.appendChild( button( Nino.content.getText('/_admin/templates/label/create-slot'), Nino.content.getText('/_admin/templates/label/create-slot-title').replace( '%s', uri ), function() {
 								pd.api( 'content/image-create', request ).then( function() {
 									pd.sectionsUI._images.push( { uri : uri, hasImage : false } );
@@ -703,7 +648,7 @@
 						const link = element( 'a', '', Nino.content.getText('/_admin/templates/label/edit-elements') );
 						link.href = pd.assetUrl( '/_admin/#elements/'+ encodeURIComponent( uri ) );
 						row.appendChild( link );
-					} else if( areaSpec ) {
+					} else if( preset ) {
 						const area = Object.keys( preset.areas ).find( function( key ) {
 							return preset.areas[key].source === 'elements' && section.spec.areas[key] && section.spec.areas[key].source.elementType === uri;
 						} );
@@ -719,14 +664,6 @@
 							link.href = pd.assetUrl( '/_admin/#types' );
 							row.appendChild( link );
 						}
-					} else if( section.spec && section.spec.content ) {
-						row.appendChild( button( Nino.content.getText('/_admin/templates/label/create-type'), Nino.content.getText('/_admin/templates/label/create-type-title').replace( '%s', uri ), function() {
-							pd.api( 'content/type-create', { module : section.spec.content, uri : uri, title : humanize( uri ) } ).then( function( response ) {
-								pd.sectionsUI._types.push( { type : response.uri, title : response.title, model : response.model } );
-								pd.toast( Nino.content.getText('/_admin/templates/msg/type-created').replace( '%s', uri ), false );
-								pd.sectionsUI.renderInspector();
-							} ).catch( function( error ) { pd.toast( error.message, true ) } );
-						} ) );
 					} else {
 						const link = element( 'a', '', Nino.content.getText('/_admin/templates/label/create-in-admin') );
 						link.href = pd.assetUrl( '/_admin/#types' );

@@ -200,21 +200,23 @@ namespace Nino\Modules\Templates {
 
 			$data = Admin::postData();
 			$preset = Library::preset( (string) ( $data['preset'] ?? '' ) );
+			// A collection is an Elements area of a preset, and its model is the
+			// one that area's manifest declares - there is no other place a
+			// model could come from
 			$area = is_array( $preset )
 				? AreaComposer::collectionDefinition( $preset, (string) ( $data['area'] ?? '' ) )
 				: null;
-			$module = Composer::modules()[(string) ( $data['module'] ?? '' )] ?? null;
 			$uri = (string) ( $data['uri'] ?? '' );
 
-			if( ( $area === null && ( $module['source'] ?? '' ) !== 'elements' ) || preg_match( '/^[a-z][a-z0-9_-]*$/', $uri ) !== 1 ) {
+			if( $area === null || preg_match( '/^[a-z][a-z0-9_-]*$/', $uri ) !== 1 ) {
 				\Nino\Http::fail( $request, 400, 'invalid preset area or element type' );
 				return;
 			}
 
 			$_POST['data'] = json_encode( [
 				'uri' => $uri,
-				'title' => trim( (string) ( $data['title'] ?? '' ) ) ?: ( $area['typeTitle'] ?? ucwords( str_replace( '-', ' ', $uri ) ) ),
-				'model' => $area['model'] ?? $module['model'],
+				'title' => trim( (string) ( $data['title'] ?? '' ) ) ?: $area['typeTitle'],
+				'model' => $area['model'],
 			] );
 
 			\Nino\Modules\Elements\Types::apiCreate( $appData, $request );

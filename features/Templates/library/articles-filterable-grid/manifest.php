@@ -1,7 +1,7 @@
 <?php return [
-	'name' => 'Filterable grid — Services or portfolio',
+	'name' => 'Articles, grid with filters',
 	'description' => 'A heading, a client-side category filter and repeatable cards for services or portfolio work.',
-	'category' => 'Cards',
+	'category' => 'Articles',
 	'tags' => [ 'services', 'portfolio', 'filter', 'cards', 'grid', 'elements' ],
 	'version' => 3,
 	'weight' => 40,

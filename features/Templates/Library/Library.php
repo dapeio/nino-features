@@ -67,7 +67,6 @@ namespace Nino\Modules\Templates {
 			unset( $preset );
 			\Nino\Http::ok( $request, [
 				'presets'	=> $presets,
-				'modules'	=> array_values( Composer::modules() ),
 				'choices'	=> AreaComposer::choices(),
 				'previewCss' => self::_previewCss( $appData ),
 			] );

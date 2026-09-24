@@ -206,9 +206,8 @@ check( 'no element-wide rule leaks out of the panel\'s stylesheet into the workb
 check( 'the panel loads nothing until its tab is selected, then keeps its state across switches', scriptSource.includes('showCurrent : function()')
 	&& scriptSource.includes('Nino.admin.templates._loaded === true')
 	&& scriptSource.includes("Nino.http.sendRequest( '/_admin/', 'POST'") );
-check( 'a link into the Elements panel is a hash deep-link, the way the workbench routes', composerSource.includes("'/_admin/#elements/'")
-	&& sectionsSource.includes("'/_admin/#elements/'")
-	&& composerSource.includes('?tab=elements') === false );
+check( 'a link into the Elements panel is a hash deep-link, the way the workbench routes', sectionsSource.includes("'/_admin/#elements/'")
+	&& [ composerSource, areaComposerSource, sectionsSource ].every( function( source ) { return source.includes('?tab=elements') === false } ) );
 /*	And so is every other link out of the inspector. The shell reads
 	location.hash and no query at all (see its own script.js), so the two
 	'?tab=' links resolved to nothing: loaded against a stand-in of the
@@ -393,12 +392,12 @@ const stepComposer = Nino.admin.templates.composer;
 const stepAreas = Nino.admin.templates.areaComposer;
 const stepLibrary = Nino.admin.templates._library.presets;
 
-Nino.admin.templates._library.presets = [ { key : 'v3-hero', version : 3, category : 'Hero', name : 'Hero', allow : {} }, { key : 'v1-plain', version : 1, category : 'Hero', name : 'Plain', allow : {} } ];
+Nino.admin.templates._library.presets = [ { key : 'v3-hero', version : 3, category : 'Hero', name : 'Hero' } ];
 stepComposer._context = { mode : 'insert' };
 stepComposer._presetKey = 'v3-hero';
 
 stepComposer._step = 'library';
-check( 'inserting a named-area preset splits configuration in two', stepComposer.splitSteps() === true && stepComposer.nextStep() === 'design' );
+check( 'inserting a preset splits configuration in two', stepComposer.nextStep() === 'design' && stepComposer.STEPS.join(' ') === 'library design content' );
 stepComposer._step = 'design';
 check( '...where the primary button opens the content step rather than inserting', stepComposer.nextStep() === 'content' && stepAreas.areaStep() === 'design' );
 stepAreas._areaKey = 'heading';
@@ -414,27 +413,53 @@ stepComposer._step = 'content';
 check( '...and the content step is the one that inserts', stepComposer.nextStep() === '' && stepAreas.areaStep() === 'content' );
 check( '...where the area tabs stay, and the preview keeps following them', stepComposer.previewFocus() === 'heading' );
 
-stepComposer._presetKey = 'v1-plain';
-stepComposer._step = 'library';
-check( 'a preset without areas keeps its single configuration screen', stepComposer.splitSteps() === false
-	&& stepComposer.nextStep() === 'config' && stepAreas.areaStep() === '' );
-stepComposer._step = 'config';
-check( '...which is the one that inserts', stepComposer.nextStep() === '' );
+/*	The composer knows one kind of preset - the library hands it no other
+	(Library::presets() drops every manifest whose version is not 3) - so a
+	step that belonged to another kind is one it no longer offers, and a
+	request for it is answered with nothing rather than with a screen	*/
+check( 'there is no single configuration screen for another kind of preset to land on', ( function() {
+	stepComposer._step = 'design';
+	// A step that exists would render, and this stand-in has no dialog to
+	// render into - so a composer that still offers it fails here rather
+	// than taking the rest of the suite down with it
+	try {
+		stepComposer.setStep( 'config' );
+	} catch( error ) {
+		return false;
+	}
+	return stepComposer._step === 'design' && stepComposer.STEPS.includes('config') === false;
+} )() );
 
-stepComposer._presetKey = 'v3-hero';
 stepComposer._context = { mode : 'replace' };
 stepComposer._step = 'design';
-check( 'an edit walks the same two steps, starting at the first one', stepComposer.splitSteps() === true
-	&& stepComposer.firstConfigStep() === 'design'
-	&& stepAreas.areaStep() === 'design' && stepComposer.nextStep() === 'content' );
+check( 'an edit walks the same two steps, starting at the first one', stepAreas.areaStep() === 'design' && stepComposer.nextStep() === 'content' );
 stepComposer._step = 'content';
 check( '...and the content step is the one that updates', stepComposer.nextStep() === '' && stepAreas.areaStep() === 'content' );
-check( '...while an edit without areas keeps its one screen, and shows no progress for it', ( function() {
-	stepComposer._presetKey = 'v1-plain';
-	const single = stepComposer.firstConfigStep() === 'config' && stepComposer.splitSteps() === false;
-	stepComposer._presetKey = 'v3-hero';
-	return single;
-} )() && composerSource.includes( "stepper.classList.toggle( 'pd-hidden', steps.filter( function( entry ) { return entry[2] } ).length < 2 )" ) );
+check( '...and a stepper of one would show no progress, so it is not drawn', composerSource.includes( "stepper.classList.toggle( 'pd-hidden', steps.filter( function( entry ) { return entry[2] } ).length < 2 )" ) );
+
+/*	What the builder did not write in its current form it opens as source.
+	A section's marker names a preset key and a version; one that is not
+	version 3 is not a spec the composer can edit - it would be handed a
+	draft without areas - so the section is what the builder does not
+	recognise, and its pencil opens the HTML+ editor, the same as for a
+	section with no marker at all	*/
+check( 'a stored section whose spec is not version 3 opens as source, whatever preset key it names', ( function() {
+	const ui = Nino.admin.templates.sectionsUI;
+	const opened = [];
+	const keepSection = Nino.admin.templates.section;
+	const keepOpen = stepComposer.open;
+	const keepCode = ui.openCode;
+	stepComposer.open = function() { opened.push('composer') };
+	ui.openCode = function() { opened.push('source') };
+	[ { version : 3, preset : 'v3-hero', areas : {} }, { version : 2, preset : 'v3-hero', content : 'text' } ].forEach( function( spec ) {
+		Nino.admin.templates.section = function() { return { type : 'section', spec : spec, source : '<section></section>' } };
+		ui.edit('any');
+	} );
+	Nino.admin.templates.section = keepSection;
+	stepComposer.open = keepOpen;
+	ui.openCode = keepCode;
+	return opened.join(' ') === 'composer source';
+} )() );
 
 check( 'the section frame belongs to the design step, the area editor to both', areaComposerSource.includes( "if( areaStep() !== 'content' )" )
 	&& /if\( areaStep\(\) === 'design' \)\s*\n\s*renderDesign\(/.test( areaComposerSource ) );

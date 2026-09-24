@@ -196,7 +196,6 @@ foreach( $smokePresets as $smokeKey => $smokeWeight ) {
 }
 
 $presets = \Nino\Modules\Templates\Library::presets();
-$modules = \Nino\Modules\Templates\Composer::modules();
 
 $manifestWeights = [];
 foreach( glob( FEATURE. '/library/*/manifest.php' ) ?: [] as $manifestPath )
@@ -268,6 +267,11 @@ $libraryBody = $libraryRequest['/nino/http/response']['body'];
 $publicPresets = $libraryBody['presets'];
 check( 'library API supplies editable v3 defaults without leaking Layout source', array_filter( $publicPresets, fn( array $preset ): bool => $preset['version'] === 3
 	&& ( !isset( $preset['defaults']['areas'] ) || isset( $preset['_layouts'] ) ) ) === [] );
+/*	What a section can be is the manifests' to say and nobody else's: the
+	answer carries the presets, the frame choices every preset shares and the
+	project stylesheet for the previews - and no second list of section kinds
+	beside the presets, which is what Composer::modules() used to add to it	*/
+check( 'the library answers its presets and what every preset shares, and no second catalogue of sections beside them', array_keys( $libraryBody ) === [ 'presets', 'choices', 'previewCss' ] );
 check( 'library API refreshes and embeds project CSS for request-free previews', str_contains( $libraryBody['previewCss'], 'template-preview-project-css' )
 	&& str_contains( $libraryBody['previewCss'], 'stale-template-preview-css' ) === false );
 check( 'sandbox previews inline local fonts and discard unresolved remote font rules', str_contains( $libraryBody['previewCss'], 'data:font/woff2;base64,'. base64_encode('preview-font') )
@@ -382,7 +386,7 @@ check( 'a data attribute cannot carry a rich text field, whose value is sanitize
 	// ...while an ordinary field and the compile token stay available
 	&& $richFieldRejects( [ 'filter-item' => '[[title]]' ], 'item' ) === false
 	&& $richFieldRejects( [ 'group' => 'cards-[[section:id]]' ], 'item' ) === false );
-check( 'repeatable articles recommend a localized CTA label', ( $modules['articles']['model']['linkLabel']['locale'] ?? false ) === true );
+check( 'repeatable articles recommend a localized CTA label', ( $presets['articles-grid']['areas']['articles']['model']['linkLabel']['locale'] ?? false ) === true );
 check( 'every curated preset composes with its defaults', array_filter( array_keys( $presets ), function( string $key ): bool {
 	try {
 		\Nino\Modules\Templates\Composer::compose( [ 'preset' => $key, 'pageId' => 'test', 'id' => str_replace( '_', '-', $key ) ] );
@@ -1255,11 +1259,15 @@ $invalidContentRequest = response();
 \Nino\Modules\Templates\Content::apiSave( $appData, $invalidContentRequest );
 check( 'rejects content keys outside /page-*/section/suffix', $invalidContentRequest['/nino/http/response']['statusCode'] === 400 );
 
+/*	A collection's model is the one its preset's Elements area declares, and
+	nothing else: a request that names a section kind instead of a preset and
+	an area - what the composer before named areas posted - is refused rather
+	than answered from a catalogue beside the manifests, and writes nothing	*/
 post( [ 'module' => 'articles', 'uri' => 'home-services', 'title' => 'Home Services' ] );
 $createTypeRequest = response();
 \Nino\Modules\Templates\Content::apiCreateType( $appData, $createTypeRequest );
-$createdType = \Nino\Filesystem::getFileContent( $appData, '/elements/home-services.php', [] );
-check( 'creates a recommended Element Type through the shared Admin API', $createTypeRequest['/nino/http/response']['statusCode'] === 200 && isset( $createdType['model']['title'], $createdType['model']['linkLabel'] ) );
+check( 'a collection comes from a preset\'s Elements area only - a request naming no preset is refused and writes nothing', $createTypeRequest['/nino/http/response']['statusCode'] === 400
+	&& \Nino\Filesystem::getFileContent( $appData, '/elements/home-services.php', [] ) === [] );
 
 post( [ 'preset' => 'articles-grid', 'area' => 'articles', 'uri' => 'home-area-services', 'title' => 'Area Services' ] );
 $createAreaTypeRequest = response();

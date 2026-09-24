@@ -1,6 +1,7 @@
 /**
- * Nino Template Builder v3 — named area editor.
- * Extends the established preset library for named-area manifests.
+ * Nino Template Builder — the named-area editor: the design and content steps
+ * of the section composer, from the first control to the insert. composer.js
+ * owns the dialog around them - the library, the steps, the preview frame.
  */
 
 ( function(wn,dc) {
@@ -19,16 +20,16 @@
 	const pd = Nino.admin.templates;
 	if( !pd.composer ) return;
 
-	const original = {};
-	[ 'resetGeneratedBindings', 'renderSettings', 'renderSummary', 'loadTextValues', 'updateDraft', 'validate', 'submit' ].forEach( function( name ) { original[name] = pd.composer[name] } );
-
 	function preset() {
 		return pd._library.presets.find( function( item ) { return item.key === pd.composer._presetKey } ) || null;
 	}
 
+	/*	Whether there is a preset in hand. Every preset the library hands the
+		panel is a named-area one (Library::presets() drops every manifest of
+		another version), so this asks the one thing left to ask - and
+		answers false only before the dialog has opened on one	*/
 	function active() {
-		const item = preset();
-		return item && Number( item.version ) === 3;
+		return preset() !== null;
 	}
 
 	function node( tag, className, text ) {
@@ -216,27 +217,15 @@
 	}
 
 	/**
-	 *	Whether the dialog splits its configuration into a design step and a
-	 *	content step - see composer.js's own STEPS. True for every named-area
-	 *	preset, on the way in and on the way back: deciding how a section looks
-	 *	and deciding what it says are two jobs, and one screen carrying both is
-	 *	the wall of controls this dialog was accused of being
-	 *
-	 *	@return		{boolean}
-	 */
-	function splitSteps() {
-		return active();
-	}
-
-	/**
-	 *	Which of the two the dialog is on: 'design' while the section's frame
-	 *	and its components are chosen, 'content' while they are filled. '' for
-	 *	a preset without areas, whose one screen shows both
+	 *	Which of the two configuration steps the dialog is on: 'design' while
+	 *	the section's frame and its components are chosen, 'content' while
+	 *	they are filled - see composer.js's STEPS. '' before a preset is in
+	 *	hand
 	 *
 	 *	@return		{string}
 	 */
 	function areaStep() {
-		if( splitSteps() === false )
+		if( active() === false )
 			return '';
 		return pd.composer._step === 'content' ? 'content' : 'design';
 	}
@@ -409,7 +398,7 @@
 	}
 
 	function resetGeneratedBindings() {
-		if( !active() ) return original.resetGeneratedBindings.call( pd.composer );
+		if( !active() ) return;
 		const draft = pd.composer._draft;
 		const item = preset();
 		areaKeys( item ).forEach( function( areaKey ) {
@@ -775,7 +764,7 @@
 	}
 
 	function renderSettings() {
-		if( !active() ) return original.renderSettings.call( pd.composer );
+		if( !active() ) return;
 		const wrap = dc.getElementById('pd-composer-settings');
 		const draft = pd.composer._draft;
 		const item = preset();
@@ -814,7 +803,7 @@
 	}
 
 	function updateDraft( input, committed ) {
-		if( !active() ) return original.updateDraft.call( pd.composer, input, committed );
+		if( !active() ) return;
 		pd.composer.captureValues();
 		const draft = pd.composer._draft;
 		const path = input.dataset.path;
@@ -888,7 +877,7 @@
 	}
 
 	function loadTextValues() {
-		if( !active() ) return original.loadTextValues.call( pd.composer );
+		if( !active() ) return Promise.resolve();
 		const draft = pd.composer._draft;
 		if( !draft || !/^[a-z][a-z0-9-]*$/.test( draft.id ) ) return Promise.resolve();
 		const fields = textDescriptors( draft, preset() );
@@ -906,7 +895,7 @@
 	}
 
 	function renderSummary() {
-		if( !active() ) return original.renderSummary.call( pd.composer );
+		if( !active() ) return;
 		const summary = dc.getElementById('pd-composer-summary');
 		const draft = pd.composer._draft;
 		const item = preset();
@@ -919,7 +908,7 @@
 	}
 
 	function validate() {
-		if( !active() ) return original.validate.call( pd.composer );
+		if( !active() ) return;
 		const draft = pd.composer._draft;
 		const item = preset();
 		if( !/^[a-z][a-z0-9-]*$/.test( draft.id ) ) throw new Error( Nino.content.getText('/_admin/templates/error/section-id') );
@@ -957,7 +946,7 @@
 	}
 
 	function submit() {
-		if( !active() ) return original.submit.call( pd.composer );
+		if( !active() ) return;
 		const error = dc.getElementById('pd-composer-error');
 		const submitButton = dc.getElementById('pd-compose-submit');
 		const back = dc.getElementById('pd-compose-back');
@@ -1007,7 +996,6 @@
 			const areaDraft = pd.composer._draft && pd.composer._draft.areas ? pd.composer._draft.areas[areaKey] : null;
 			return areaDraft && areaDraft.components && areaDraft.components.length ? areaKey : '';
 		},
-		splitSteps : splitSteps,
 		areaStep : areaStep,
 		nextComponentId : nextComponentId,
 		moveComponent : moveComponent,

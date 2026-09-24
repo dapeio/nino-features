@@ -175,6 +175,36 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
   the save now; a key that does not exist yet still starts as the preset's
   default, which is what a new section is for.
 
+### Removed
+
+- **The composer from before named areas, and the catalogue that fed it.**
+  What a section can be is the manifests' to say, preset by preset - and
+  `Composer.php` said it a second time: `Composer::modules()`, 28 section
+  types with names, layouts, fields, images and Elements models, left from
+  the composer before named areas. No preset named one of them. The library
+  answer carried the whole list to the panel on every load, and
+  `composer.js` read it through a `moduleFor()` on a single-screen settings
+  form with its own summary, validation and submit - which
+  `area-composer.js` stood in front of for every preset of version 3,
+  that is every preset `Library::presets()` hands the panel. Behind it only
+  a preset of another version reached that form, and there is none; its
+  image slots could not even be created any more, since
+  `content/image-create` refuses a request that names no preset. The
+  catalogue, its place in `library/list`, the `module` path of
+  `content/type-create`, the old form with its step, the section cards'
+  drawings of the old section types and the inspector's branch for them
+  are gone, and with them 50 text keys, the stylesheet rules and the one
+  button label only they used. The composer walks library, design and
+  content for every preset; a stored section whose marker is not version
+  3 opens as the source it is, in HTML+, rather than in a composer that
+  would be handed a draft without areas. `templates-smoke.php` holds that
+  the library answers its presets and what they share and no second list,
+  and that a collection only comes from a preset's Elements area;
+  `templates-js-smoke.js` that there is no single configuration step and
+  that such a section opens as source - 2 and 3 red against the code
+  before. Inserting, editing and a new collection walk the same on the
+  bench as before.
+
 ### Added
 
 - **A content type "HTML+".** Insertable beside title, subtitle and button,
