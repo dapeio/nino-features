@@ -538,7 +538,7 @@ Die Section Library lädt ausschließlich Manifeste mit explizitem `version => 3
 
 ## Aktuelle Grenzen
 
-- Library und Konfiguration rendern erzeugtes Markup mit Beispieldaten. Das Backend aktualisiert zuerst das konfigurierte Bundle `/.cache/style.css` und liefert dessen Inhalt im authentifizierten Library-Payload; der Client bettet ihn in jedes isolierte `srcdoc` ein und benötigt deshalb keinen eigenen Request auf ein öffentliches Dot-Verzeichnis. Script-Tags und Inline-Handler werden entfernt, die CSP sperrt Skripte und Netzwerkaktionen, Formulare können nicht senden und Links werden nicht verfolgt.
+- Library und Konfiguration rendern erzeugtes Markup mit den eigenen Inhalten des Presets: dem, womit eine neue Section angelegt wird, und für den Rest den Beispielen, die sein Manifest unter `samples` nennt. Das Backend aktualisiert zuerst das konfigurierte Bundle `/.cache/style.css` und liefert dessen Inhalt im authentifizierten Library-Payload; der Client bettet ihn in jedes isolierte `srcdoc` ein und benötigt deshalb keinen eigenen Request auf ein öffentliches Dot-Verzeichnis. Script-Tags und Inline-Handler werden entfernt, die CSP sperrt Skripte und Netzwerkaktionen, Formulare können nicht senden und Links werden nicht verfolgt.
 - Visuelle Content-Einheiten sind oberste `<section>`-Elemente. Bestehende alleinstehende `[template]`-Zeilen bleiben verlustfrei bearbeitbar; neue Includes werden über eine Area-Komponente eingefügt. Markierte Header-/Footer-Slots liegen in den Template Settings.
 - Der Builder kann `page-*.tpl` anlegen; die Zuordnung von Route zu Template bleibt im Panel Routen oder im Code.
 - Native Quick-Fills sind einfache Texteingaben. Rich Text, Übersetzungen und Batch-Pflege bleiben in den etablierten Content-Werkzeugen.

@@ -532,7 +532,56 @@ $articlePreview = \Nino\Modules\Templates\Composer::preview( [
 	'preset' => 'articles-grid', 'pageId' => 'preview', 'id' => 'articles',
 	'areas' => [ 'articles' => [ 'style' => 'two-columns', 'source' => [ 'shortcode' => [ 'limit' => 2 ] ] ] ],
 ] );
-check( 'renders real preview HTML with deterministic text and image fixtures', $articlePreview !== null && str_contains( $articlePreview, '<section' ) && str_contains( $articlePreview, 'data:image/svg+xml' ) && str_contains( $articlePreview, 'Thoughtful item 1' ) );
+check( 'renders real preview HTML with deterministic text and image fixtures', $articlePreview !== null && str_contains( $articlePreview, '<section' ) && str_contains( $articlePreview, 'data:image/svg+xml' )
+	&& str_contains( $articlePreview, str_replace( '%n', '1', (string) ( $presets['articles-grid']['samples']['title'] ?? 'no sample' ) ) ) );
+
+/*	What a preview shows is the preset's to say, like everything else about
+	it: a textfill the section creates shows the value it is created with
+	(its field's default), every other fill what the manifest names under
+	'samples', and the preview's own mechanics answer the two project paths.
+	The Composer used to answer from a table of its own, keyed by field name
+	- a table that knew what a price is, what a table's columns are and what
+	the contact form's company lines say, and fell back to the fill's name
+	for eight fills the shipped presets ask for. Held over every shipped
+	preset and layout: nothing a preview shows is left to that fallback	*/
+$unanswered = [];
+foreach( $presets as $previewKey => $previewPreset ) {
+	if( str_starts_with( $previewKey, 'smoke-' ) === true )
+		continue;
+	foreach( array_keys( $previewPreset['layouts'] ) as $previewLayout ) {
+		$composed = \Nino\Modules\Templates\Composer::compose( [ 'preset' => $previewKey, 'layout' => $previewLayout, 'pageId' => 'preview', 'id' => 'preview-'. $previewKey, 'elementType' => 'preview-items' ], true );
+		// An item's image is drawn by the preview itself, and a loop's own
+		// counters are the loop's
+		$previewSource = preg_replace( '#src=(["\'])[^"\']*/images/\[\[image\]\]\1#i', '', $composed['source'] ) ?? '';
+		preg_match_all( '#\[\[([^\]]+)\]\]#', $previewSource, $previewFills );
+		$previewSamples = method_exists( \Nino\Modules\Templates\Composer::class, 'previewSamples' ) === true ? \Nino\Modules\Templates\Composer::previewSamples( $previewPreset, $composed ) : [];
+		foreach( array_unique( $previewFills[1] ) as $previewFill )
+			if( in_array( $previewFill, [ '.id', '.value', '.count' ], true ) === false
+				&& ( method_exists( \Nino\Modules\Templates\Composer::class, 'previewSample' ) === false || \Nino\Modules\Templates\Composer::previewSample( $previewFill, 0, $previewSamples ) === null ) )
+				$unanswered[$previewKey. ':'. $previewFill] = true;
+	}
+}
+check( 'every fill a shipped preset\'s preview shows is answered by the section itself or its manifest'. ( $unanswered === [] ? '' : ' - '. implode( ', ', array_slice( array_keys( $unanswered ), 0, 6 ) ). ( count( $unanswered ) > 6 ? ' and '. ( count( $unanswered ) - 6 ). ' more' : '' ) ), $unanswered === [] );
+
+$heroPreview = (string) \Nino\Modules\Templates\Composer::preview( [ 'preset' => 'hero-cta', 'pageId' => 'preview', 'id' => 'hero' ] );
+$heroFields = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'hero-cta', 'pageId' => 'preview', 'id' => 'hero' ], true )['fields'];
+check( 'a preview shows the section as inserting it would: every text it creates, with the value it is created with', $heroFields !== []
+	&& array_filter( $heroFields, static fn( array $field ): bool => (string) $field['default'] !== '' && str_contains( $heroPreview, (string) $field['default'] ) === false ) === [] );
+
+$tablePreview = (string) \Nino\Modules\Templates\Composer::preview( [ 'preset' => 'static-table', 'pageId' => 'preview', 'id' => 'hours', 'layout' => 'default-elements' ] );
+$tableSamples = $presets['static-table']['samples'] ?? [];
+check( 'a loop field shows its manifest sample, %n numbering the items and a list giving each item its own', isset( $tableSamples['columnA'], $tableSamples['columnB'] ) && is_array( $tableSamples['columnB'] )
+	&& str_contains( $tablePreview, str_replace( '%n', '1', $tableSamples['columnA'] ) ) && str_contains( $tablePreview, str_replace( '%n', '2', $tableSamples['columnA'] ) )
+	&& str_contains( $tablePreview, $tableSamples['columnB'][0] ) && str_contains( $tablePreview, $tableSamples['columnB'][1] ) );
+
+$samplesManifest = include __DIR__. '/../library/static-content/manifest.php';
+$refusesSamples = static function( mixed $samples ) use ( $samplesManifest ): bool {
+	$samplesManifest['samples'] = $samples;
+	return throwsInvalidArgument( static fn() => \Nino\Modules\Templates\AreaComposer::normalizePreset( 'bad-samples', $samplesManifest, __DIR__. '/../library/static-content' ) );
+};
+check( 'a manifest\'s samples name fills and hold texts - anything else is refused like every other manifest mistake', $refusesSamples( [ 'not a fill' => 'x' ] )
+	&& $refusesSamples( [ 'title' => 3 ] ) && $refusesSamples( [ 'title' => [] ] ) && $refusesSamples( [ 'title' => [ 'a', 2 ] ] ) && $refusesSamples( 'title' )
+	&& $refusesSamples( [ 'title' => 'Item %n', '/company/email' => 'a@b.c', 'price' => [ '1', '2' ] ] ) === false );
 // The panel dims every area but the one being edited, and needs to be told
 // where each one begins - a stored section is a file somebody reads and
 // edits, and says nothing about a dialog

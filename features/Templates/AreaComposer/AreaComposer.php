@@ -221,8 +221,41 @@ namespace Nino\Modules\Templates {
 				'layouts' => $layouts,
 				'areas' => $areas,
 				'componentCatalog' => self::catalog(),
+				'samples' => self::samples( $manifest['samples'] ?? [] ),
 				'_layouts' => $layoutSources,
 			];
+		}
+
+		/**
+		 *	What the preview shows for a fill the section does not create: the
+		 *	fields a collection loops over and the project texts a layout
+		 *	writes in (see Composer::previewSamples()). A fill name as the
+		 *	layout writes it - a field ('columnA') or a text key
+		 *	('/company/email') - and a text, or a list of texts one per item;
+		 *	%n in a text is the item's number. Anything else is a manifest
+		 *	mistake and says so, the way every other part of a manifest does
+		 *
+		 *	@param		mixed		$samples
+		 *
+		 *	@return		array
+		 */
+		private static function samples( mixed $samples ): array {
+			if( is_array( $samples ) === false )
+				throw new \InvalidArgumentException( 'samples need to be a map of fill names' );
+			$result = [];
+			foreach( $samples as $fill => $sample ) {
+				$fill = (string) $fill;
+				if( preg_match( '#^(?:[A-Za-z][A-Za-z0-9_-]*|/[a-z0-9][a-z0-9_/-]*)$#', $fill ) !== 1 )
+					throw new \InvalidArgumentException( 'sample '. $fill. ' does not name a fill' );
+				if( is_string( $sample ) === true ) {
+					$result[$fill] = $sample;
+					continue;
+				}
+				if( is_array( $sample ) === false || $sample === [] || array_is_list( $sample ) === false || count( array_filter( $sample, 'is_string' ) ) !== count( $sample ) )
+					throw new \InvalidArgumentException( 'sample '. $fill. ' needs a text or a list of texts' );
+				$result[$fill] = $sample;
+			}
+			return $result;
 		}
 
 		public static function defaults( array $preset, string $pageId, string $id ): array {

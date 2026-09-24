@@ -88,10 +88,74 @@ namespace Nino\Modules\Templates {
 				return null;
 			}
 
-			return self::_previewHtml( $result['source'] );
+			$preset = Library::preset( (string) ( $input['preset'] ?? '' ) );
+
+			return self::_previewHtml( $result['source'], self::previewSamples( $preset ?? [], $result ) );
 		}
 
-		private static function _previewHtml( string $source ): string {
+		/**
+		 *	What the preview shows for the fills of one composed section, and
+		 *	where it comes from - nowhere in this class. A textfill the section
+		 *	creates shows the value it is created with: its field's default,
+		 *	the component catalogue's or the preset's own override, so the
+		 *	preview is what inserting the section gives. Every other fill -
+		 *	the fields a collection loops over, the project texts a layout
+		 *	writes in - shows what the preset's manifest names under
+		 *	'samples'. A fill neither answers is shown as its own name.
+		 *
+		 *	This used to be a table of thirty-six sample values here, keyed by
+		 *	field name, that knew the presets from the outside: that a table's
+		 *	columns are a service and a duration, what a price is, what the
+		 *	contact form's company fields say - and, over its keys, the section
+		 *	types of the composer before named areas, which nineteen of them
+		 *	were for and nothing asked any more
+		 *
+		 *	@param		array			$preset				Library::preset(), [] for none
+		 *	@param		array			$result				What compose() answered
+		 *
+		 *	@return 	array								[ fill => text or list of texts ]
+		 */
+		public static function previewSamples( array $preset, array $result ): array {
+
+			$samples = (array) ( $preset['samples'] ?? [] );
+
+			foreach( (array) ( $result['fields'] ?? [] ) as $field )
+				$samples[(string) $field['key']] = (string) $field['default'];
+
+			return $samples;
+		}
+
+		/**
+		 *	One fill's preview value, null where neither the section nor its
+		 *	manifest answers it. The two fills of the preview's own mechanics
+		 *	answer '' - the frame is inert and loads nothing from a project
+		 *	path. A list gives each item its own entry, round again after the
+		 *	last; %n in a text is the item's number
+		 *
+		 *	@param		string			$token				The fill, without its brackets
+		 *	@param		?int			$index				The item's position inside a loop, null outside one
+		 *	@param		array			$samples			See previewSamples()
+		 *
+		 *	@return 	?string
+		 */
+		public static function previewSample( string $token, ?int $index, array $samples ): ?string {
+
+			if( $token === '/nino/dir' || $token === '/nino/public' )
+				return '';
+
+			if( isset( $samples[$token] ) === false )
+				return null;
+
+			$position = $index ?? 0;
+			$sample = $samples[$token];
+
+			if( is_array( $sample ) === true )
+				$sample = (string) $sample[ $position % count( $sample ) ];
+
+			return str_replace( '%n', (string) ( $position + 1 ), (string) $sample );
+		}
+
+		private static function _previewHtml( string $source, array $samples ): string {
 
 			$source = preg_replace( '/[\t ]*<!--\s*nino:section\s+\{[^\r\n]*\}\s*-->[\t ]*(?:\r?\n)?/', '', $source ) ?? $source;
 			$source = preg_replace( '#<script\b[^>]*>.*?</script\s*>#is', '', $source ) ?? $source;
@@ -120,7 +184,7 @@ namespace Nino\Modules\Templates {
 			}, $source ) ?? $source;
 			$source = preg_replace_callback( '#\[image\s+'. self::SHORTCODE_ARGUMENTS. '\]#i', fn(): string => '<img src="'. self::_previewImage( 'Section image' ). '" alt="">', $source ) ?? $source;
 
-			$source = preg_replace_callback( '#\[elements\s+('. self::SHORTCODE_ARGUMENTS. ')\](.*?)\[/elements\]#is', function( array $match ): string {
+			$source = preg_replace_callback( '#\[elements\s+('. self::SHORTCODE_ARGUMENTS. ')\](.*?)\[/elements\]#is', function( array $match ) use ( $samples ): string {
 				$limit = [];
 				preg_match( '/\blimit="(\d+)"/i', $match[1], $limit );
 				$columns = match( true ) {
@@ -142,7 +206,7 @@ namespace Nino\Modules\Templates {
 					) ?? $item;
 					$item = preg_replace_callback(
 						'#\[\[([^\]]+)\]\]#',
-						fn( array $fill ): string => self::_previewFill( $fill[1], $index ),
+						fn( array $fill ): string => self::_previewFill( $fill[1], $index, $samples ),
 						$item
 					) ?? $item;
 					$out .= $item;
@@ -150,28 +214,29 @@ namespace Nino\Modules\Templates {
 				return $out;
 			}, $source ) ?? $source;
 
-			// [elementvalues] loops one field's distinct values, not records - a
-			// fixed, realistic set of sample category buttons stands in, the same
-			// way [elements] above stands in with sample cards.
-			$source = preg_replace_callback( '#\[elementvalues\s+('. self::SHORTCODE_ARGUMENTS. ')\](.*?)\[/elementvalues\]#is', function( array $match ): string {
-				$sampleValues = [ 'Consulting' => 2, 'Design' => 3, 'Development' => 1 ];
+			// [elementvalues] loops one field's distinct values, not records - the
+			// field's own sample for the first three items stands in, so the
+			// buttons name what the sample cards above carry
+			$source = preg_replace_callback( '#\[elementvalues\s+('. self::SHORTCODE_ARGUMENTS. ')\](.*?)\[/elementvalues\]#is', function( array $match ) use ( $samples ): string {
+				$field = [];
+				preg_match( '/\bkey="([^"]+)"/i', $match[1], $field );
 				// Honour limit the same way the [elements] fixture above does, so
 				// a preset that bounds its button row previews what it ships
 				$limit = [];
 				preg_match( '/\blimit="(\d+)"/i', $match[1], $limit );
-				$count = min( count( $sampleValues ), max( 1, (int) ( $limit[1] ?? count( $sampleValues ) ) ) );
+				$count = min( 3, max( 1, (int) ( $limit[1] ?? 3 ) ) );
+				$values = [];
+				for( $index = 0; $index < $count; $index++ )
+					$values[] = self::_previewFill( (string) ( $field[1] ?? '' ), $index, $samples );
 				$out = '';
-				$index = 0;
-				foreach( array_slice( $sampleValues, 0, $count, true ) as $value => $usage ) {
-					$out .= str_replace( [ '[[.id]]', '[[.value]]', '[[.count]]' ], [ (string) $index, $value, (string) $usage ], $match[2] );
-					$index++;
-				}
+				foreach( array_values( array_unique( $values ) ) as $index => $value )
+					$out .= str_replace( [ '[[.id]]', '[[.value]]', '[[.count]]' ], [ (string) $index, $value, '1' ], $match[2] );
 				return $out;
 			}, $source ) ?? $source;
 
 			$source = preg_replace_callback(
 				'#\[\[([^\]]+)\]\]#',
-				fn( array $fill ): string => self::_previewFill( $fill[1], null ),
+				fn( array $fill ): string => self::_previewFill( $fill[1], null, $samples ),
 				$source
 			) ?? $source;
 			$source = str_replace( '[csrf]', '', $source );
@@ -187,54 +252,20 @@ namespace Nino\Modules\Templates {
 			return $source;
 		}
 
-		private static function _previewFill( string $token, ?int $index ): string {
-
-			if( $token === '/nino/dir' )
-				return '';
-
-			$key = strtolower( basename( str_replace( '\\', '/', $token ) ) );
-			$number = ( $index ?? 0 ) + 1;
-			$absolute = str_starts_with( $token, '/' );
-			$values = [
-				'title' => $absolute ? 'A clear headline for this section' : 'Thoughtful item '. $number,
-				'subtitle' => 'A concise supporting line makes the purpose immediately clear.',
-				'description' => $absolute ? 'Use this space to explain the most important idea in a calm, readable way.' : 'Useful supporting copy that gives this item enough context.',
-				'content' => 'Realistic sample content shows spacing, rhythm and hierarchy before anything is inserted.',
-				'quote' => '“The result feels focused, considered and remarkably easy to use.”',
-				'author' => 'Alex Morgan',
-				'role' => 'Product lead',
-				'number' => (string) ( 24 + ( $number * 17 ) ),
-				'step' => (string) $number,
-				'suffix' => $number % 2 === 0 ? '%' : '+',
-				'price' => (string) ( 49 + ( $number * 50 ) ),
-				'badge' => $number === 2 ? 'Recommended' : 'Popular',
-				'features' => 'Strategy · Design · Delivery · Support',
-				'linklabel' => 'Learn more',
-				'link' => '#',
-				'cta-label' => 'Get started',
-				'cta-uri' => '#',
-				'secondary-cta-label' => 'See details',
-				'secondary-cta-uri' => '#',
-				'column-a' => 'Service',
-				'column-b' => 'Duration',
-				'column-c' => 'Investment',
-				'columna' => 'Service '. $number,
-				'columnb' => ( 30 + $number * 15 ). ' min',
-				'columnc' => ( 90 + $number * 40 ). ' €',
-				'optiona' => $number % 2 === 0 ? 'Included' : 'Optional',
-				'optionb' => $number % 2 === 0 ? 'Advanced' : 'Standard',
-				'video-uri' => 'about:blank',
-				'email' => 'hello@example.com',
-				'phone' => '+49 123 456789',
-				'address' => 'Example Street 12<br>12345 Example City',
-				'name' => 'Your name',
-				'message' => 'Your message',
-				'submit' => 'Send message',
-				'required' => 'Required fields',
-				'image' => 'preview-image.jpg',
-			];
-
-			return $values[$key] ?? ucwords( str_replace( [ '-', '_' ], ' ', $key ) );
+		/**
+		 *	A fill as the preview shows it: its sample, or its own name where
+		 *	nothing answers it - a preset whose manifest leaves a fill out
+		 *	shows the gap rather than borrowing another preset's words
+		 *
+		 *	@param		string			$token
+		 *	@param		?int			$index
+		 *	@param		array			$samples
+		 *
+		 *	@return 	string
+		 */
+		private static function _previewFill( string $token, ?int $index, array $samples ): string {
+			return self::previewSample( $token, $index, $samples )
+				?? ucwords( str_replace( [ '-', '_' ], ' ', strtolower( basename( str_replace( '\\', '/', $token ) ) ) ) );
 		}
 
 		private static function _previewImage( string $label ): string {

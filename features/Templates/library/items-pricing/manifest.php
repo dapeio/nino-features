@@ -64,4 +64,15 @@
 			] ],
 		],
 	],
+	// What the preview shows for the fills this section does not create -
+	// the fields its loop repeats and the project texts its layout writes
+	// in. %n is the item's number, a list gives each item its own
+	'samples' => [
+		'title' => 'Thoughtful item %n',
+		'price' => [ '99', '149', '199' ],
+		'suffix' => '€',
+		'description' => 'Useful supporting copy that gives this item enough context.',
+		'linkLabel' => 'Learn more',
+		'link' => '#',
+	],
 ];

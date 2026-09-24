@@ -19,6 +19,29 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **A preview says what its preset's manifest says.** The Composer filled
+  every preview from a table of its own - 36 sample values keyed by field
+  name - that knew the presets from outside: that a table's columns are a
+  service and a duration, what a price looks like, what the contact form's
+  company lines say. Nineteen of its keys belonged to the section types of
+  the composer before named areas and nothing asked for them; eight fills
+  the shipped presets do ask for fell back to their own name - the buttons
+  read "Action Label", the contact form "Adress" - and others borrowed a
+  meaning they did not have: the pricing cards read "99+" and "149%", the
+  newsletter's field label an email address. A textfill the section
+  creates now shows the value it is created with, its field's default, so
+  the preview is what inserting the section gives; every other fill - the
+  fields a collection loops over, the project texts a layout writes in -
+  shows what the manifest names under `samples`, a text with `%n` for the
+  item's number or a list with one entry per item. The table is gone, the
+  eleven shipped presets that need samples carry them, and a malformed
+  sample is refused like every other manifest mistake. `templates-smoke.php`
+  holds that no fill of any shipped preset's preview is left to the
+  fallback, that the created texts and the manifest's samples are what the
+  preview shows, and the refusal - 5 red against the Composer before. The
+  recipe documents `samples`, and the manual says where preview text comes
+  from.
+
 - **The library is its directory.** Which presets the panel offers, and in
   what order, stood in `Library::LIBRARY_ITEM` while everything else about a
   preset stood in its `manifest.php` - a second place to keep in step, and a

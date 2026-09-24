@@ -169,6 +169,15 @@ icons, nested structures, or project-specific behavior.
 			],
 		],
 	],
+	// What the preview shows for a fill the section does not create: the
+	// fields its loop repeats, and any project text its layout writes in
+	// ('/company/email'). %n is the item's number; a list gives each item
+	// its own entry
+	'samples' => [
+		'title' => 'Service %n',
+		'description' => 'What this service does, in one or two sentences.',
+		'price' => [ '99', '149', '199' ],
+	],
 ];
 ```
 
@@ -404,9 +413,14 @@ ownership. Never add a public runtime dependency on the manifest.
 ## Preview and tests
 
 Preview remains inert: no scripts, active forms, network iframes, or project
-callbacks. It strips VPA's hidden state, uses deterministic text and image
-fixtures, and renders the number of collection items implied by 1/2/3/4-column
-Styles where possible.
+callbacks. It strips VPA's hidden state, draws every image as a generated
+placeholder, and renders the number of collection items implied by
+1/2/3/4-column Styles where possible. Its text is the preset's own: every
+textfill the section creates shows the value it is created with - its
+component's default, or the manifest's render override - and every other fill
+shows what the manifest names under `samples`. A fill neither answers is shown
+as its own name, so a preset that leaves one out shows the gap; nothing
+outside the manifest knows what a preset's fields hold.
 
 Extend `tests/templates-smoke.php` and `tests/templates-js-smoke.js` in the
 feature's own `tests/`. Test:

@@ -557,7 +557,7 @@ maintained v3 manifest.
 
 ## Current limitations
 
-- Library and configuration previews render generated markup with fixture content. The backend refreshes the configured `/.cache/style.css` bundle and returns its contents in the authenticated library payload; the client embeds it in each isolated `srcdoc`, avoiding a separate public dot-directory request. Script tags and inline handlers are removed, CSP denies scripts/network actions, forms cannot submit and links cannot be followed.
+- Library and configuration previews render generated markup with the preset's own content: what a new section is created with, and the samples its manifest names for the rest. The backend refreshes the configured `/.cache/style.css` bundle and returns its contents in the authenticated library payload; the client embeds it in each isolated `srcdoc`, avoiding a separate public dot-directory request. Script tags and inline handlers are removed, CSP denies scripts/network actions, forms cannot submit and links cannot be followed.
 - Visual content units are top-level `<section>` elements. Existing standalone `[template]` lines remain losslessly editable; new includes are inserted through an Area component. Marked header/footer slots live in Template Settings.
 - The builder can create `page-*.tpl` files; route-to-template assignment remains in the Routes panel or code.
 - Native quick fill is plain text input. Rich, translated and batch content remains in the established content tools.

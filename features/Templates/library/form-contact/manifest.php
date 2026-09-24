@@ -46,4 +46,18 @@
 			'recommend' => [ 'style' => 'left', 'components' => [] ],
 		],
 	],
+	// What the preview shows for the fills this section does not create -
+	// the fields its loop repeats and the project texts its layout writes
+	// in. %n is the item's number, a list gives each item its own
+	'samples' => [
+		'/form/label/name' => 'Your name',
+		'/form/label/email' => 'Your email',
+		'/form/label/message' => 'Your message',
+		'/form/required' => 'Required fields',
+		'/form/label/submit' => 'Send message',
+		'/company/name' => 'Example Company',
+		'/company/adress' => 'Example Street 12<br>12345 Example City',
+		'/company/email' => 'hello@example.com',
+		'/company/phone' => '+49 123 456789',
+	],
 ];
