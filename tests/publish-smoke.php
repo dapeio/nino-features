@@ -204,6 +204,38 @@ putenv( 'NINO_CATALOGUE_PUBKEY' );
 putenv( 'NINO_CATALOGUE_DIR' );
 check( 'without either the directory is the script\'s own and the rest empty', publishConfig()['dir'] === dirname( __DIR__ ). '/server' && publishConfig()['token'] === '' && publishConfig()['publicKey'] === '' );
 
+/*	The manual is the other half of that contract. The deployment tables of
+	README.md and README.de.md, and the AGENTS.md row for this script, spell
+	the settings a deployer sets: every NINO_ name they spell is one
+	publishConfig() reads, and every one it reads stands in both tables. The
+	rename to NINO_CATALOGUE_PUBKEY reached the script and not the manual,
+	and a deployer who set the two names the manual gave got an endpoint
+	that answered 500 with the key it never read	*/
+preg_match_all( '/\$read\( \'(NINO_[A-Z_]+)\' \)/', (string) file_get_contents( dirname( __DIR__ ). '/server/publish.php' ), $matches );
+$namesRead = array_values( array_unique( $matches[1] ) );
+sort( $namesRead );
+$namesInTable = static function( string $file, string $header ): array {
+	$lines = explode( "\n", (string) file_get_contents( dirname( __DIR__ ). '/'. $file ) );
+	$at = array_search( $header, $lines, true );
+	$names = [];
+	for( $i = $at === false ? count( $lines ) : $at; $i < count( $lines ) && str_starts_with( $lines[$i], '|' ) === true; $i++ ) {
+		preg_match_all( '/\bNINO_[A-Z_]+\b/', $lines[$i], $found );
+		$names = array_merge( $names, $found[0] );
+	}
+	$names = array_values( array_unique( $names ) );
+	sort( $names );
+	return $names;
+};
+check( 'the deployment tables of both READMEs name the settings the endpoint reads, and no other', $namesRead !== []
+	&& $namesInTable( 'README.md', '| Setting | What it holds |' ) === $namesRead
+	&& $namesInTable( 'README.de.md', '| Einstellung | Was sie enthält |' ) === $namesRead );
+$agentsRow = '';
+foreach( explode( "\n", (string) file_get_contents( dirname( __DIR__ ). '/AGENTS.md' ) ) as $line )
+	if( str_starts_with( $line, '| `server/publish.php` |' ) === true )
+		$agentsRow = $line;
+preg_match_all( '/\bNINO_[A-Z_]+\b/', $agentsRow, $found );
+check( 'the AGENTS.md row for the endpoint names settings it reads, and no other', $found[0] !== [] && array_diff( $found[0], $namesRead ) === [] );
+
 echo "\n";
 
 

@@ -183,7 +183,7 @@ Ausrollen heißt, `server/publish.php` in dieses Verzeichnis zu kopieren und dre
 | Einstellung | Was sie enthält |
 | --- | --- |
 | `NINO_CATALOGUE_TOKEN` | das Token, das der Workflow schickt, mindestens 32 Zeichen – `openssl rand -hex 32`; dieselbe Zeichenkette ist das Secret `PUBLISH_TOKEN` |
-| `NINO_CATALOGUE_PUBLIC_KEY` | der öffentliche PEM-Schlüssel, `catalogue-key.pub.pem` – oder `NINO_CATALOGUE_PUBLIC_KEY_FILE`, der Pfad einer Datei damit |
+| `NINO_CATALOGUE_PUBKEY` | der Pfad der Datei mit dem öffentlichen PEM-Schlüssel, mit dem die Signatur des Katalogs geprüft wird, `catalogue-key.pub.pem` – der Schlüssel, den Nino als `\Nino\Catalogue::PUBLIC_KEY` ausliefert |
 | `NINO_CATALOGUE_DIR` | das Verzeichnis, in das geschrieben wird; das des Skripts, wenn nicht gesetzt |
 
 php muss den Upload zulassen – `upload_max_filesize` und `post_max_size` über dem größten Archiv, `32M` und `64M` lassen Luft –, und ein Proxy vor php braucht seine eigene Grenze (`client_max_body_size 64m` bei nginx). Das Verzeichnis ist für den php-Nutzer beschreibbar; ein veröffentlichtes Archiv darf danach schreibgeschützt werden, der Endpunkt schreibt keines zweimal. Eine Datei, die nicht da ist, muss mit **404** antworten – ein Front-Controller, der für jeden Pfad 200 mit leerem Body liefert, lässt den Workflow ein leeres Archiv für ein veröffentlichtes halten (`bin/build.php` entfernt eine Datei mit null Bytes und baut neu, und der Workflow behandelt ein leeres 200 als „nicht veröffentlicht“, aber der Server sollte von vornherein richtig antworten). `tests/publish-smoke.php` ist der Test des Endpunkts. Ein Release von Hand ist dieselbe Anfrage, die der Workflow stellt:

@@ -191,7 +191,7 @@ Deploying it is copying `server/publish.php` into that directory and configuring
 | Setting | What it holds |
 | --- | --- |
 | `NINO_CATALOGUE_TOKEN` | the token the workflow sends, at least 32 characters - `openssl rand -hex 32`; the same string is the secret `PUBLISH_TOKEN` |
-| `NINO_CATALOGUE_PUBLIC_KEY` | the PEM public key, `catalogue-key.pub.pem` - or `NINO_CATALOGUE_PUBLIC_KEY_FILE`, the path of a file holding it |
+| `NINO_CATALOGUE_PUBKEY` | the path of the PEM public key file the catalogue's signature is verified with, `catalogue-key.pub.pem` - the key Nino ships as `\Nino\Catalogue::PUBLIC_KEY` |
 | `NINO_CATALOGUE_DIR` | the directory the files are written to; the script's own directory when unset |
 
 php has to allow the upload - `upload_max_filesize` and `post_max_size` above the largest archive, `32M` and `64M` leave room - and a proxy in front of php needs its own body limit (`client_max_body_size 64m` for nginx). The directory is writable for the php user; a published archive may be made read-only afterwards, the endpoint never writes one twice. A file that is not there has to answer **404** - a front controller that answers 200 with an empty body for any path makes the workflow take an empty archive for a published one (`bin/build.php` removes a zero-byte file and builds afresh, and the workflow treats an empty 200 as "not published", but the server should be right in the first place). `tests/publish-smoke.php` is the endpoint's test. A release by hand is the same request the workflow makes:

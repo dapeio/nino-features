@@ -268,4 +268,49 @@ else {
 
 echo "\n";
 
+
+// --- the manual --------------------------------------------------------------
+
+echo "bin/release.sh - what the manual says it reads\n";
+
+/*	Every variable the script reads carries the NINO_ prefix, and README.md
+	says so where it walks the script. The AGENTS.md row for it is held to
+	the script: the NINO_ names it spells are ones the script reads, the
+	key and the token the script requires are among them, and an unprefixed
+	name in the row is the release workflow's - the workflow's secrets and
+	variables live on another machine under names of their own, and the row
+	from before the rename handed those out as the script's	*/
+preg_match_all( '/\bNINO_[A-Z_]+\b/', (string) file_get_contents( $release ), $found );
+$readByScript = array_values( array_unique( $found[0] ) );
+$row = '';
+foreach( explode( "\n", (string) file_get_contents( $repo. '/AGENTS.md' ) ) as $line )
+	if( str_starts_with( $line, '| `bin/release.sh` |' ) === true )
+		$row = $line;
+preg_match_all( '/\bNINO_[A-Z_]+\b/', $row, $prefixed );
+preg_match_all( '/\b[A-Z]+(?:_[A-Z]+)+\b/', $row, $names );
+$unprefixed = array_values( array_filter( $names[0], static fn( string $name ): bool => str_starts_with( $name, 'NINO_' ) === false ) );
+$workflow = (string) file_get_contents( $repo. '/.github/workflows/release.yml' );
+check( 'the AGENTS.md row for the script names the key and the token it requires, by the names it reads', in_array( 'NINO_CATALOGUE_KEY', $prefixed[0], true ) === true
+	&& in_array( 'NINO_CATALOGUE_TOKEN', $prefixed[0], true ) === true && array_diff( $prefixed[0], $readByScript ) === [] );
+check( '...and every unprefixed name in it is one the release workflow uses', $unprefixed !== []
+	&& array_filter( $unprefixed, static fn( string $name ): bool => str_contains( $workflow, $name ) === false ) === [] );
+
+/*	And across the manual: a NINO_ name README.md, README.de.md or AGENTS.md
+	spells is one that a script under bin/ or server/ reads. The two names
+	of the public key from before the rename were spelled in all three and
+	read by nothing	*/
+$readAnywhere = [];
+foreach( array_merge( (array) glob( $repo. '/bin/*' ), [ $repo. '/server/publish.php' ] ) as $script ) {
+	preg_match_all( '/\bNINO_[A-Z_]+\b/', (string) file_get_contents( (string) $script ), $found );
+	$readAnywhere = array_merge( $readAnywhere, $found[0] );
+}
+$spelled = [];
+foreach( [ 'README.md', 'README.de.md', 'AGENTS.md' ] as $doc ) {
+	preg_match_all( '/\bNINO_[A-Z_]+\b/', (string) file_get_contents( $repo. '/'. $doc ), $found );
+	$spelled = array_merge( $spelled, $found[0] );
+}
+check( 'every NINO_ name the manual and AGENTS.md spell is one a script of this repository reads', $spelled !== [] && array_diff( array_unique( $spelled ), $readAnywhere ) === [] );
+
+echo "\n";
+
 ninoDone( $appData );

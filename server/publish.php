@@ -30,9 +30,10 @@ declare(strict_types=1);
  *	file returning an array with the same keys (a container sets the
  *	environment, a plain web server writes the file):
  *
- *	  NINO_CATALOGUE_TOKEN             				the token the workflow sends, at least 32 characters
- *	                                    (`openssl rand -hex 32`), the secret NINO_CATALOGUE_TOKEN there
- *	  NINO_CATALOGUE_PUBKEY         		the PEM public key file the catalogue is signed with
+ *	  NINO_CATALOGUE_TOKEN              the token the workflow sends, at least 32 characters
+ *	                                    (`openssl rand -hex 32`), the secret PUBLISH_TOKEN there
+ *	  NINO_CATALOGUE_PUBKEY             the path of the PEM public key file the catalogue's
+ *	                                    signature is verified with - the key Nino ships as
  *	                                    \Nino\Catalogue::PUBLIC_KEY
  *	  NINO_CATALOGUE_DIR                where the files are written and served from;
  *	                                    this file's directory when unset
