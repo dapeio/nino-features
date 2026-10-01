@@ -141,6 +141,18 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **A collection field named `content` could be declared but never
+  filled.** `AreaComposer::normalizePreset()` refused any Layout whose
+  source carried `[[content]]`, `[[intro]]`, `[[outro]]`, `[[template]]` or
+  `[[variant-class]]` as "a obsolete global compile token" - a guard
+  against the intro/content/outro Layouts from before named areas, which
+  no library has shipped since manifest version 3 and nothing writes. A
+  Layout that fills a per-record field of one of those names inside an
+  `[elements]` loop over the area's collection fell under the same rule, so
+  a manifest could declare the field and no Layout could show it. The guard
+  is gone; the fields a collection has are the manifest's to name, and the
+  suite holds that a Layout filling one called `content` is taken.
+
 - **The newsletter preset posted from the domain root.** Both of its
   Layouts wrote `action="/.newsletter"`, and the address in the attribute
   wins over the one `Nino.ui.js` would have built with the project

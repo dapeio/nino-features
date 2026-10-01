@@ -649,6 +649,27 @@ check( 'a collection token naming something that is not an Elements area of the 
 	\Nino\Modules\Templates\AreaComposer::normalizePreset( 'bad-collection', $manifest, $areaPresetDirectory );
 } ) );
 
+/*	A collection's fields are named by whoever writes the manifest, and a
+	layout fills one of them inside a static [elements] loop over the area's
+	collection as [[<field>]]. The composer used to refuse a layout for
+	carrying [[content]], [[intro]], [[outro]], [[template]] or
+	[[variant-class]] - a guard against the intro/content/outro layouts from
+	before named areas, which no library has shipped since manifest version
+	3 - so a field called content could be declared but never filled	*/
+file_put_contents( $areaPresetDirectory. '/content-field.tpl', "[[area:first]]\n[elements /[[section:collection:first]]]<li>[[content]]</li>[/elements]\n[[area:second]]\n" );
+$contentFieldManifest = $multiAreaManifest;
+$contentFieldManifest['layouts']['default']['template'] = 'content-field.tpl';
+$contentFieldManifest['areas']['first']['model']['content'] = [ 'type' => 'string', 'locale' => true ];
+try {
+	$contentFieldRefusal = '';
+	$contentFieldPreset = \Nino\Modules\Templates\AreaComposer::normalizePreset( 'content-field', $contentFieldManifest, $areaPresetDirectory );
+} catch( \InvalidArgumentException $exception ) {
+	$contentFieldRefusal = $exception->getMessage();
+	$contentFieldPreset = [];
+}
+check( 'a layout that fills a collection field named content is taken - the field is the manifest\'s to name', $contentFieldRefusal === ''
+	&& isset( $contentFieldPreset['areas']['first']['model']['content'] ) === true && isset( $contentFieldPreset['layouts']['default'] ) === true );
+
 $filterPreview = \Nino\Modules\Templates\Composer::preview( [ 'preset' => 'articles-filterable-grid', 'pageId' => 'preview', 'id' => 'grid' ] );
 check( 'renders a real preview with sample filter buttons, no raw shortcode text left visible', $filterPreview !== null
 	&& str_contains( $filterPreview, '[elementvalues' ) === false

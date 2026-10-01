@@ -179,8 +179,6 @@ namespace Nino\Modules\Templates {
 				$source = (string) file_get_contents( $path );
 				if( str_contains( $source, '<?' ) )
 					throw new \InvalidArgumentException( $template. ' must not contain PHP' );
-				if( preg_match( '/\[\[(?:intro|content|outro|template|variant-class)\]\]/', $source ) === 1 )
-					throw new \InvalidArgumentException( $template. ' contains a obsolete global compile token' );
 				foreach( array_keys( $areas ) as $areaKey )
 					if( substr_count( $source, '[[area:'. $areaKey. ']]' ) !== 1 )
 						throw new \InvalidArgumentException( $template. ' must contain [[area:'. $areaKey. ']] exactly once' );
