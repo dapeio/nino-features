@@ -174,6 +174,40 @@ else {
 		&& trim( substr( $theirs, 0, $cut ) ) === trim( substr( $ours, $oursAt + 3 ) ) );
 }
 
+/*	A frame is a template of the project the base unit set up, so every fill it
+	reads has to be one the unit gives a value - or one the kernel fills while
+	it renders. A key the unit stopped shipping stands on the page as itself:
+	footer v2 read /website/footer/title/followus, which left the base unit with
+	the social links. A fill built out of another one names a key per page and
+	is the page's business ([[/webpage[[/nino/http/response/uri]]/title]]), so
+	only its inner half is read	*/
+$baseText = $root. '/_admin/install/library/base/text';
+
+if( is_dir( $baseText ) === false )
+	echo "  --  this checkout has no installer library, so the frames' fills are not compared\n";
+else {
+	$shipped = [ '/nino/dir' => true, '/nino/public' => true, '/date/year' => true, '/nino/http/response/uri' => true ];
+	foreach( glob( $baseText. '/*.php' ) ?: [] as $file )
+		foreach( array_keys( (array) include $file ) as $key )
+			$shipped[ trim( (string) $key, '[]' ) ] = true;
+
+	$unshipped = [];
+	foreach( \Nino\Modules\Design\Setup::PARTS as $part => $kind ) {
+
+		if( $kind !== 'frame' )
+			continue;
+
+		foreach( \Nino\Modules\Design\Setup::available( $library, $part ) as $set ) {
+			preg_match_all( '/\[\[(\/[^\[\]]+)\]\]/', (string) file_get_contents( \Nino\Modules\Design\Setup::file( $library, $part, $set, 'template' ) ), $fills );
+			foreach( array_unique( $fills[1] ) as $key )
+				if( isset( $shipped[$key] ) === false )
+					$unshipped[] = $part. '/'. $set. ': '. $key;
+		}
+	}
+
+	check( 'every fill a frame reads is one the base unit ships or the kernel fills'. ( $unshipped === [] ? '' : ' - '. implode( ', ', $unshipped ) ), $unshipped === [] );
+}
+
 echo "\nThe setup, held against the library that is there\n";
 
 $notes = [];

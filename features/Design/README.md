@@ -119,7 +119,7 @@ log. The same holds for the two frame templates.
 ### The preview
 
 Beside the selects is what they mean: the specimen page, rendered against
-**this** project - its menu, its logo, its socialmedia block, its fonts - under
+**this** project - its menu, its logo, its social links, its fonts - under
 the stylesheet the current selection compiles to. It follows every select, and
 it shows the selection **on screen**, not the one on disk: looking is what a
 person does while deciding, and a preview that could only show a saved decision
@@ -268,9 +268,12 @@ Two things a header frame has to keep, whichever shape it is:
   give the bar a plain `height`, which none of that can take back. A frame
   that is not a bar opts out where it says so: `v6`'s rail hands
   `max-height: none` back above its own breakpoint.
-- `footer/v2` includes `[template /templates/html-socialmedia]`. That template
-  is in the base install unit, so the include resolves in any project - a
-  frame that needs it does not have to bring it.
+- `header/v7` and `footer/v2`, `v8` and `v10` include
+  `[template /templates/social-links]`, the template the catalogue's Social
+  links feature installs, holding its `[social]`. Without that feature the
+  include names a template the project does not have, which renders as
+  nothing - so a frame never names the shortcode itself, which would stand on
+  the page as text wherever the feature is not there.
 
 ## The finetune knob
 
@@ -462,7 +465,7 @@ in it. A set name out of a stored file is input, so it is held to
 
 A set is authored in the panel's own preview. `Preview` is where the
 specimen, the frames around it and the compile live, and the panel renders
-it against this project - its menu, its logo, its socialmedia block, its
+it against this project - its menu, its logo, its social links, its
 fonts - so a set looks the same while it is being designed as it will on the
 site. Edit a set under `library/sets/<part>/`, pick it in the panel, and the
 preview follows the picker; a knob or a step that did not resolve is named in

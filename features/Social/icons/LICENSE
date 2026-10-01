@@ -1,24 +1,3 @@
-# Third-party notices
-
-The catalogue's own code is released under the [MIT License](LICENSE). It
-bundles no third-party library, but its features draw icons from one: the
-`icon()` of every feature's workbench panel (`features/*/Admin/Admin.php`)
-and the close buttons of the Template Builder's panel
-(`features/Templates/templates/panel.tpl`) inline SVG icons from
-[Lucide](https://lucide.dev). Lucide is released under the ISC License; the
-icons it took over from Feather, the project it grew out of, are under the
-MIT License as well. Both licenses ask for their notice to travel with every
-copy of the icons, and this file is where it does.
-
-A feature is published as an archive of its own directory, which does not
-carry this file. Nino, which every feature runs in, carries the same notice
-in its own `THIRD-PARTY-NOTICES.md`. The Social links feature, whose icons are
-what it draws on a site, carries its licenses in its own directory:
-`features/Social/icons/LICENSE`, and `LICENSE-0.577.0` for the six brand icons
-it takes from Lucide 0.577.0.
-
-## Lucide
-
 ISC License
 
 Copyright (c) 2026 Lucide Icons and Contributors

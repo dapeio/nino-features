@@ -1,0 +1,71 @@
+/**
+ *	Nino - Social links
+ *	social.css		The row the links stand in and the size of their icons, and
+ *					nothing else. Bundled into the project's own /.cache/style.css
+ *					the same way the kernel bundles Nino.css (see Social::init()) -
+ *					never rendered through the fill/shortcode engine, so nothing in
+ *					here is a textfill.
+ *
+ *					The icons are Lucide's line icons, drawn in currentColor: a
+ *					link is the colour the frame around it gives its links, in a
+ *					dark section and under forced colours alike. fill: none is set
+ *					here as well as on the svg, because a rule elsewhere that fills
+ *					svgs - Nino.css does it for .nino-icon - beats the attribute and
+ *					turns a line icon into a blot.
+ */
+
+.nino-social {
+	--nino-social-size: 1.5em;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--space-1, .5rem) var(--space-2, 1rem);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.nino-social--small {
+	--nino-social-size: 1.125em;
+}
+
+.nino-social--large {
+	--nino-social-size: 2em;
+}
+
+.nino-social-item {
+	margin: 0;
+}
+
+/*	In a list, icon and name side by side, and 24px at the least however small
+	the icon: the smallest target WCAG 2.5.8 accepts, without making a thin
+	utility line any taller */
+.nino-social .nino-social-link {
+	display: inline-flex;
+	align-items: center;
+	min-width: 24px;
+	min-height: 24px;
+}
+
+/*	Out of a list - [social-link] in running text, [social-icon] beside a word
+	- the name is text of the line like any other, and the icon sits on it the
+	way a capital does, a little below the baseline */
+.nino-social-icon {
+	display: inline-block;
+	flex: none;
+	width: var(--nino-social-size, 1.25em);
+	height: var(--nino-social-size, 1.25em);
+	vertical-align: -.25em;
+}
+
+.nino-social-icon + .nino-social-label {
+	margin-inline-start: .4em;
+}
+
+.nino-social-icon > svg {
+	display: block;
+	width: 100%;
+	height: 100%;
+	fill: none;
+	stroke: currentColor;
+}

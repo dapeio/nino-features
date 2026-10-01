@@ -1,13 +1,10 @@
 		<footer>
 			<section class="nino-footer-main">
 				<div class="nino-grid-row nino-pt-2">
-					<div class="nino-grid-100 nino-grid-l-25 nino-pb-2">
+					<div class="nino-grid-100 nino-grid-l-50 nino-pb-2">
 						<img src="[[/nino/public]]/images/logo-invert.png" class="nino-footer-logo nino-mb-2" alt="[[/company/name]]">
 						<p>[[/company/description]]</p>
-					</div>
-					<div class="nino-grid-100 nino-grid-l-25 nino-pb-2">
-						<h2 class="nino-footer-title">[[/website/footer/title/followus]]</h2>
-						[template /templates/html-socialmedia]
+						[template /templates/social-links]
 					</div>
 					<div class="nino-grid-100 nino-grid-l-25 nino-pb-2">
 						<h2 class="nino-footer-title">[[/website/footer/title/getintouch]]</h2>
