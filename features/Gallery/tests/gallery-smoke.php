@@ -263,7 +263,7 @@ echo "[gallery] - the markup the Lightbox reads\n";
 
 $html = \Nino\Html::renderHtml( $appData, '[gallery album="trip"]' );
 
-check( 'it renders one item per image, in the stored order', substr_count( $html, '<li class="nino-gallery-item">' ) === 2 );
+check( 'it renders one item per image, in the stored order', substr_count( $html, '<li class="nino-gallery-cell">' ) === 2 );
 check( 'every thumbnail is a link to the large view', substr_count( $html, 'class="nino-gallery-link"' ) === 2 && str_contains( $html, '/images/gallery/trip/' ) === true );
 // The group is the album, so two galleries on one page stay two sets - and
 // this is the whole of what the Lightbox feature needs from here
@@ -275,6 +275,26 @@ check( 'the column count travels as a custom property, so the stylesheet needs n
 check( '[gallery columns="2"] overrides it for one gallery', str_contains( \Nino\Html::renderHtml( $appData, '[gallery album="trip" columns="2"]' ), '--nino-gallery-columns:2' ) === true );
 check( 'a bare [gallery] renders the first album', str_contains( \Nino\Html::renderHtml( $appData, '[gallery]' ), 'data-lightbox="gallery-trip"' ) === true );
 check( 'an album key nothing has renders nothing at all', \Nino\Html::renderHtml( $appData, '[gallery album="nowhere"]' ) === '' );
+
+/*	The classes the two templates and the stylesheet write are this feature's
+	own. Nino.css lands in the same /.cache/style.css bundle and has a public
+	.nino-gallery mosaic - fixed rows of 160 and 200 px, an item that clips -
+	and the list carried its two names once: every thumbnail was cut off at
+	the bottom of a 200 px cell, and this stylesheet's grid rules restyled
+	every mosaic a project drew with the kernel's class	*/
+// Selectors, not comments: both stylesheets talk about the other's classes
+$uncommented = static fn( string $file ): string => (string) preg_replace( '#/\*.*?\*/#s', '', (string) file_get_contents( $file ) );
+$ninoCss = $uncommented( $root. '/_nino/Nino.css' );
+$written = [];
+foreach( [ 'templates/gallery.tpl', 'templates/gallery-item.tpl' ] as $file ) {
+	preg_match_all( '/class="([^"]*)"/', (string) file_get_contents( dirname( __DIR__ ). '/'. $file ), $found );
+	foreach( $found[1] as $list )
+		$written = array_merge( $written, (array) preg_split( '/\s+/', trim( $list ) ) );
+}
+preg_match_all( '/\.(nino-[a-z0-9-]+)/', $uncommented( dirname( __DIR__ ). '/assets/gallery.css' ), $found );
+$written = array_values( array_unique( array_merge( $written, $found[1] ) ) );
+$styledByKernel = array_values( array_filter( $written, static fn( string $class ): bool => preg_match( '/\.'. preg_quote( $class, '/' ). '(?![\w-])/', $ninoCss ) === 1 ) );
+check( 'no class the templates or the stylesheet write is one Nino.css styles - the bundle is shared, and the kernel\'s .nino-gallery is another grid', $written !== [] && $styledByKernel === [] );
 
 // A caption is editor text and may be a textfill, which is how one caption
 // serves every language - and what comes out of the fill engine is escaped

@@ -88,10 +88,13 @@ backup already carries them.
 
 ## Styling
 
-The grid reads three custom properties off `.nino-gallery`:
+The grid reads three custom properties off `.nino-gallery-grid`:
 `--nino-gallery-columns` (written by the shortcode), `--nino-gallery-gap` and
-`--nino-gallery-radius`. The overlay is the Lightbox feature's and has two of
-its own.
+`--nino-gallery-radius`. The classes the markup carries - `.nino-gallery-grid`,
+`.nino-gallery-cell`, `.nino-gallery-link` and `.nino-gallery-thumb` - are this
+feature's own; Nino.css's `.nino-gallery` is the design system's mosaic, another
+grid, and neither styles the other. The overlay is the Lightbox feature's and
+has two of its own.
 
 ## Tests
 

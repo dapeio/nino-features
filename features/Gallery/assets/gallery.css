@@ -15,9 +15,18 @@
  *						[gallery columns="3"] said. Everything else is a custom
  *						property with a default, so a project restyles a gallery
  *						without overriding a single rule.
+ *
+ *						The class names are this feature's own. Nino.css, which sits
+ *						in the same bundle, has a public .nino-gallery mosaic with
+ *						fixed rows and a clipping .nino-gallery-item - another grid.
+ *						The list and its cells carried those two names once, and every
+ *						thumbnail was cut off at the bottom of a 200 px cell while
+ *						these rules restyled every mosaic a project drew. Nothing
+ *						here names a class the kernel styles, and the feature's test
+ *						holds it that way.
  */
 
-.nino-gallery {
+.nino-gallery-grid {
 	--nino-gallery-columns: 4;
 	--nino-gallery-gap: .75rem;
 	--nino-gallery-radius: 3px;
@@ -33,7 +42,7 @@
 	list-style: none;
 }
 
-.nino-gallery-item {
+.nino-gallery-cell {
 	margin: 0;
 	padding: 0;
 }

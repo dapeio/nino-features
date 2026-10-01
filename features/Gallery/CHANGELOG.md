@@ -42,6 +42,22 @@ versions [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Every thumbnail was cut off at the bottom, and the grid restyled the
+  design system's mosaic.** The list was `.nino-gallery` and an item
+  `.nino-gallery-item` - the names of Nino.css's public mosaic grid, which
+  lands in the same `/.cache/style.css` bundle with fixed rows of 160 and
+  200 px and an item that clips what overflows. Rendered, a 500 × 500
+  thumbnail in a 292 px column stood in a 200 px cell and lost its lower
+  92 px; on a phone a 173 px thumbnail lost 13 px; and on any page that
+  used the kernel's mosaic, this stylesheet's margin, padding and column
+  formula won over the kernel's. The list is `.nino-gallery-grid` now and
+  an item `.nino-gallery-cell`; `.nino-gallery-link`, `.nino-gallery-thumb`
+  and the three custom properties keep their names. A project stylesheet
+  that addressed `.nino-gallery` or `.nino-gallery-item` for this grid
+  addresses the two new names - a documented styling hook changes, so the
+  next release is a minor one. The suite holds that no class the templates
+  or the stylesheet write is one Nino.css styles.
+
 - **A caption could not be put back to what it was.** A tile is not rebuilt
   after its caption was saved - the cursor is in the field - so the image
   object the tile was drawn from stayed at the caption the screen was drawn
