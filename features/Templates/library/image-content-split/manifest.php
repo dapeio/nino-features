@@ -1,7 +1,7 @@
 <?php return [
-	'name' => 'Media / Text — Flexible split',
+	'name' => 'Image, content split',
 	'description' => 'A two-column image and content section with switchable visual order.',
-	'category' => 'Content',
+	'category' => 'Image',
 	'tags' => [ 'media', 'image', 'text', 'split', 'columns', 'cta' ],
 	'version' => 3,
 	'weight' => 60,

@@ -1,7 +1,7 @@
 <?php return [
-	'name' => 'Process — Numbered steps',
+	'name' => 'Items, timeline',
 	'description' => 'An ordered process: connected, numbered steps with one explaining line each.',
-	'category' => 'Content',
+	'category' => 'Items',
 	'tags' => [ 'process', 'timeline', 'steps', 'how it works', 'onboarding', 'elements' ],
 	'version' => 3,
 	'weight' => 120,

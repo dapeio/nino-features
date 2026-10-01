@@ -1,5 +1,5 @@
 <?php return [
-	'name' => 'Contact — Form',
+	'name' => 'Form, contact',
 	'description' => 'The project contact form, either centered on its own or beside the company details.',
 	'category' => 'Forms',
 	'tags' => [ 'contact', 'form', 'message', 'email', 'address', 'static' ],

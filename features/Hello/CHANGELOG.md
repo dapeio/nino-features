@@ -46,6 +46,19 @@ A release is the tag `hello-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **The upgrade hook could not be called.** `Hello::upgrade()` took three
+  arguments and answered nothing, where the kernel's contract
+  (`docs/features.md`) is `upgrade( array &$appData, string $fromVersion ):
+  bool` and `\Nino\Features::activate()` calls it with the recorded version
+  alone and reads `false` as a refusal. The first activation of a Hello
+  newer than the one a project recorded would have ended in an
+  `ArgumentCountError`. The hook has the kernel's signature now and answers
+  `true`; the test calls it the way the kernel does, so the next drift is a
+  red line. `greeting()`'s comment also said `setting()`'s fourth argument
+  is the value before anybody saves - it answers for a name the schema does
+  not declare, and the manifest's default answers first. Hello is what a
+  feature is copied from, so both were being copied.
+
 - **The runtime route overwrote a project's own page at the same address.**
   `Hello::init()` assigned `GET://hello` on every request without looking, so
   a project that had made `/hello` its own page in `config.php` got the

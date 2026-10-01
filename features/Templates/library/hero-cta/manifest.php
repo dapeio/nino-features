@@ -1,7 +1,7 @@
 <?php return [
-	'name' => 'Call to action — Banner',
+	'name' => 'Hero, call-to-action',
 	'description' => 'One clear next step: a short message and the buttons that follow from it.',
-	'category' => 'Action',
+	'category' => 'Hero',
 	'tags' => [ 'cta', 'call to action', 'banner', 'contact', 'conversion', 'buttons' ],
 	'version' => 3,
 	'weight' => 20,

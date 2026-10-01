@@ -1,5 +1,5 @@
 <?php return [
-	'name' => 'Newsletter — Signup form',
+	'name' => 'Form, newsletter',
 	'description' => 'The working double-opt-in signup form, with its own submit handler and honeypot.',
 	'category' => 'Forms',
 	'tags' => [ 'newsletter', 'signup', 'form', 'email', 'subscribe', 'static' ],

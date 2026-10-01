@@ -1,7 +1,7 @@
 <?php return [
-	'name' => 'Partners — Logo bar',
+	'name' => 'Item, logos',
 	'description' => 'A quiet row of customer or partner logos, greyscaled until hovered.',
-	'category' => 'Content',
+	'category' => 'Items',
 	'tags' => [ 'logos', 'partners', 'customers', 'trust', 'references', 'elements' ],
 	'version' => 3,
 	'weight' => 140,

@@ -1,5 +1,5 @@
 <?php return [
-	'name' => 'Table — Static block',
+	'name' => 'Static, table',
 	'description' => 'A real table between an editable intro and outro. Insert it, then shape the rows in HTML+.',
 	'category' => 'Static',
 	'tags' => [ 'table', 'rows', 'static', 'html', 'prices', 'opening hours', 'specs' ],

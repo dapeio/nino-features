@@ -1,7 +1,7 @@
 <?php return [
-	'name' => 'Articles — Responsive grid',
+	'name' => 'Articles, grid',
 	'description' => 'Repeatable image cards for services, offers, news or feature overviews.',
-	'category' => 'Cards',
+	'category' => 'Articles',
 	'tags' => [ 'articles', 'cards', 'elements', 'grid', 'services', 'features' ],
 	'version' => 3,
 	'weight' => 30,

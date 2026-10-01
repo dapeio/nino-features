@@ -1,5 +1,5 @@
 <?php return [
-	'name' => 'FAQ — Static accordion',
+	'name' => 'Static, accordion',
 	'description' => 'Questions and answers as native details elements, no JavaScript. Insert it, then write the entries in HTML+.',
 	'category' => 'Static',
 	'tags' => [ 'faq', 'accordion', 'questions', 'details', 'static', 'html', 'support' ],

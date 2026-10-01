@@ -1,7 +1,7 @@
 <?php return [
-	'name' => 'Content — Flexible section',
+	'name' => 'Static, content',
 	'description' => 'A flexible heading, body and action section for editorial page content.',
-	'category' => 'Content',
+	'category' => 'Static',
 	'tags' => [ 'content', 'text', 'intro', 'heading', 'cta', 'template', 'flexible' ],
 	'version' => 3,
 	'weight' => 110,

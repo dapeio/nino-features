@@ -1,7 +1,7 @@
 <?php return [
-	'name' => 'Banner — Text over a background image',
+	'name' => 'Image, banner',
 	'description' => 'A calm full-bleed image with a dark scrim and one message on top. No scroll effect.',
-	'category' => 'Hero',
+	'category' => 'Image',
 	'tags' => [ 'banner', 'image', 'background', 'statement', 'cta', 'quote' ],
 	'version' => 3,
 	'weight' => 50,

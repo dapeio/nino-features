@@ -1,5 +1,5 @@
 <?php return [
-	'name' => 'List — Static block',
+	'name' => 'Static, list',
 	'description' => 'A checked or numbered list between an editable intro and outro. Insert it, then shape the items in HTML+.',
 	'category' => 'Static',
 	'tags' => [ 'list', 'checklist', 'numbered', 'static', 'html', 'features', 'steps' ],

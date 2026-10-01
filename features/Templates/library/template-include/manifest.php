@@ -1,5 +1,5 @@
 <?php return [
-	'name' => 'Insert reusable template',
+	'name' => 'Template include',
 	'description' => 'Place one reusable .tpl include inside a normal managed section.',
 	'category' => 'Structure',
 	'tags' => [ 'template', 'include', 'shortcode', 'reusable', 'form', 'navigation' ],

@@ -304,9 +304,18 @@ check( '...and nothing else of its own under data/', array_values( array_filter(
 ) ) === [ 'hello.php' ] );
 
 /*	The only hook there is, and at 1.0.0 it has nothing to do. Called here all
-	the same: an upgrade() that throws on a project with no stored data yet is
-	the classic way a feature breaks the release it was meant to fix	*/
-\Nino\Modules\Hello::upgrade( $appData, '0.9.0', '1.0.0' );
+	the same, and called the way \Nino\Features::activate() calls it - the
+	recorded version as the one argument beside $appData, false as the
+	refusal - because a hook the kernel cannot call is the classic way a
+	feature breaks the release it was meant to fix, and an upgrade() that
+	throws on a project with no stored data yet is the other. The catch is
+	what turns the wrong signature into a red line instead of a dead suite	*/
+try {
+	$upgraded = \Nino\Modules\Hello::upgrade( $appData, '0.9.0' );
+} catch( \ArgumentCountError $e ) {
+	$upgraded = $e->getMessage();
+}
+check( 'upgrade() takes the call the kernel makes, and answers true', $upgraded === true );
 check( 'upgrade() survives being called with nothing to migrate', \Nino\Modules\Hello::name( $appData ) === 'Ada' );
 
 echo "\n";

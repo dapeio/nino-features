@@ -1,5 +1,5 @@
 <?php return [
-	'name' => 'Fullscreen image',
+	'name' => 'Hero, fullscreen image',
 	'description' => 'A focused image stage with optional title, supporting copy and actions.',
 	'category' => 'Hero',
 	'tags' => [ 'hero', 'fullscreen', 'image', 'cover', 'parallax', 'title', 'cta' ],

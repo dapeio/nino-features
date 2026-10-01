@@ -1,7 +1,7 @@
 <?php return [
-	'name' => 'Pricing — Plan cards',
+	'name' => 'Items, pricing plans',
 	'description' => 'One card per plan: name, price and what it includes, from an Elements collection.',
-	'category' => 'Content',
+	'category' => 'Items',
 	'tags' => [ 'pricing', 'plans', 'packages', 'price', 'cards', 'elements' ],
 	'version' => 3,
 	'weight' => 130,

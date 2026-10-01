@@ -1,7 +1,7 @@
 <?php return [
-	'name' => 'Features — Checklist and image',
+	'name' => 'Image, list split',
 	'description' => 'A checked list of what is included, next to one supporting image.',
-	'category' => 'Content',
+	'category' => 'Image',
 	'tags' => [ 'features', 'checklist', 'benefits', 'services', 'split', 'elements' ],
 	'version' => 3,
 	'weight' => 70,

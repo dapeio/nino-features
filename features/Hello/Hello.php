@@ -141,15 +141,19 @@ namespace Nino\Modules {
 		 *	Migrate stored data here, and nothing else. It runs with the new
 		 *	code and the old data, exactly once, and a project that installs
 		 *	this feature fresh never calls it at all - so anything a fresh
-		 *	install also needs belongs in the install unit, not here.
+		 *	install also needs belongs in the install unit, not here. The kernel
+		 *	hands over the recorded version alone: the one being migrated to is
+		 *	the one in feature.php, which is the code that is running.
+		 *
+		 *	Answer true. false refuses the update - the kernel says so and keeps
+		 *	the recorded version, and the next activation asks again.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$from					The version that was recorded
-		 *	@param		string		$to						The version in feature.php now
 		 *
-		 *	@return 	void
+		 *	@return 	bool
 		 */
-		public static function upgrade( array &$appData, string $from, string $to ): void {
+		public static function upgrade( array &$appData, string $from ): bool {
 
 			/*	Nothing to migrate at 1.0.0 - there has been no earlier shape of
 				/data/hello.php to move out of. What a real one looks like:
@@ -163,6 +167,8 @@ namespace Nino\Modules {
 
 				Guarded by the version it belongs to, so a project skipping two
 				releases runs every step it missed and none it did not	*/
+
+			return true;
 		}
 
 		/**
@@ -206,8 +212,9 @@ namespace Nino\Modules {
 		 *	this feature needs no screen for it.
 		 *
 		 *	\Nino\Features::setting() takes the feature key, the setting name
-		 *	and what it is worth when nobody has saved one. Reading it costs a
-		 *	lookup in config.php, which is already in memory.
+		 *	and what it is worth for a name the schema does not declare - for a
+		 *	declared one the manifest's default answers before anybody saves.
+		 *	Reading it costs a lookup in config.php, which is already in memory.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
