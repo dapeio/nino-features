@@ -92,9 +92,11 @@ foreach( $demoMatches as $match )
 	$shown[$match[1]][$match[2]] = ( $shown[$match[1]][$match[2]] ?? 0 ) + 1;
 
 $presets = \Nino\Modules\Templates\Library::presets();
+$failuresBefore = $failures;
 
 check( 'the page marks its specimens for this test to count', $demoMatches !== [] );
-check( 'every preset in the library is shown', array_diff( array_keys( $presets ), array_keys( $shown ) ) === [] );
+$unshown = array_diff( array_keys( $presets ), array_keys( $shown ) );
+check( 'every preset in the library is shown'. ( $unshown === [] ? '' : ' - missing '. implode( ', ', $unshown ) ), $unshown === [] );
 
 $missingLayouts = [];
 foreach( $presets as $key => $preset )
@@ -106,6 +108,15 @@ check( 'every layout of every preset is shown'. ( $missingLayouts === [] ? '' : 
 
 $unknown = array_diff( array_keys( $shown ), array_keys( $presets ) );
 check( 'no specimen claims a preset the library does not have'. ( $unknown === [] ? '' : ' - '. implode( ', ', $unknown ) ), $unknown === [] );
+
+// Two repositories meet in the checks above: the marks are on Nino's page, the
+// keys are this feature's. Where they disagree, one side renamed or dropped a
+// key the other still names, and the fix belongs to whichever side moved -
+// which a list of keys alone does not say, so a failure names both places
+if( $failures > $failuresBefore )
+	echo "      the marks: data-demo-preset in Nino's ", substr( $template, strlen( NINO ) + 1 ), "\n",
+		"      the keys:  Library::LIBRARY_ITEM and library/<key>/ of this feature\n",
+		"      one side renamed or dropped a key the other still names - their changelogs say which\n";
 
 // A preset whose areas or frame change its appearance is worth more than one
 // specimen; these are the ones where a second variant is the point

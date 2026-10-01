@@ -240,4 +240,6 @@ The publishing side is here: `bin/build.php`, the release workflow, the signed c
 
 ## License
 
-[MIT](LICENSE) - the same author as [Nino](https://github.com/dapeio/nino).
+[MIT](LICENSE) - the same author as [Nino](https://github.com/dapeio/nino). The icons of the
+features' panels come from [Lucide](https://lucide.dev) (ISC, the ones taken over from Feather also
+MIT); their notices are in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

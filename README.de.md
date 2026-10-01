@@ -232,4 +232,6 @@ Die Veröffentlichungsseite ist hier: `bin/build.php`, der Release-Workflow, der
 
 ## Lizenz
 
-[MIT](LICENSE) – derselbe Autor wie [Nino](https://github.com/dapeio/nino).
+[MIT](LICENSE) – derselbe Autor wie [Nino](https://github.com/dapeio/nino). Die Icons der
+Feature-Panels stammen von [Lucide](https://lucide.dev) (ISC, die aus Feather übernommenen
+zusätzlich MIT); ihre Lizenzhinweise stehen in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
