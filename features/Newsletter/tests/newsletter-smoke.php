@@ -207,6 +207,16 @@ $appData['/nino/install/completed'] = true;
 \Nino\Auth::insertUser( $appData, 'plain@example.com', 'plain password', [] );
 \Nino\Auth::loginUser( $appData, 'admin@example.com', 'correct horse battery staple' );
 
+/*	The page and the confirmation mail carry [[/newsletter/page/title]],
+	[[/newsletter/page/text]] and [[/newsletter/confirm/url]], which the class
+	fills at request time and no text file answers. The Text panel's scan for
+	missing keys reads the templates as source, so without the unit's
+	blacklist entries it reported the three - and the Dashboard counted them -
+	on every project with this feature, as gaps nobody could close	*/
+[ $status, $body ] = callAdminPost( $appData, 'keys/scan' );
+check( 'the Text panel\'s scan reports no key of this feature: what the templates use is in the text files or in the blacklist', $status === 200
+	&& array_filter( array_column( (array) ( $body['missing'] ?? [] ), 'key' ), static fn( string $key ): bool => str_starts_with( $key, '/newsletter/' ) === true ) === [] );
+
 check( 'the panel is in the registry while the feature is active', isset( \Nino\Admin\Admin::panels( $appData )['newsletter'] ) === true );
 
 $annaRequest = submitNewsletter( $appData, [ 'email' => 'anna@example.com' ] );

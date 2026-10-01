@@ -158,6 +158,22 @@ check( 'the unit merged the texts for both locales', \Nino\Filesystem::getFileCo
 	&& \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/protected/label/submit]]'] === 'Unlock' );
 check( 'the settings answer their defaults - inert until a password is set', \Nino\Features::settings( $appData, 'protected' ) === [ 'paths' => [], 'password' => '', 'attempts' => 5 ] );
 
+/*	The page template carries [[/protected/return]], which the gate fills at
+	request time and no text file answers. The Text panel's scan for missing
+	keys reads the templates as source, so without the unit's blacklist entry
+	it reported that key - and the Dashboard counted it - on every project
+	with this feature, as a gap nobody could close	*/
+\Nino\Auth::insertUser( $appData, 'scan@example.com', 'correct horse battery staple', [ '/*' ] );
+\Nino\Auth::loginUser( $appData, 'scan@example.com', 'correct horse battery staple' );
+$_POST = [ 'action' => 'keys/scan', 'data' => '{}' ];
+$scanRequest = [ '/nino/http/response' => [ 'statusCode' => 200 ] ];
+\Nino\Admin\Admin::handlePost( $appData, $scanRequest );
+$reported = array_column( (array) ( $scanRequest['/nino/http/response']['body']['missing'] ?? [] ), 'key' );
+check( 'the Text panel\'s scan reports no key of this feature: what the template uses is in the text files or in the blacklist', $scanRequest['/nino/http/response']['statusCode'] === 200
+	&& array_filter( $reported, static fn( string $key ): bool => str_starts_with( $key, '/protected/' ) === true ) === [] );
+\Nino\Auth::logoutUser( $appData );
+$_POST = [];
+
 echo "\n";
 
 

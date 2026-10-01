@@ -26,6 +26,16 @@ A release is the tag `protected-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **The Text panel reported `/protected/return` as a missing key.** The
+  password form's template carries it, the gate fills it at request time, and
+  no text file ever answers it - so the panel's scan for missing keys listed
+  it on every project with this feature, and the Dashboard counted it, as a
+  gap nobody could close. The install unit lists the key under `blacklist`
+  now, which is what the scan skips. A project that activated the feature
+  before this entry ignores the key once in Text → Keys (the same entry), or
+  activates the feature again; the suite holds that the scan reports no key
+  of this feature.
+
 - **The form, the logout link and both redirects left a site that sits in
   a subdirectory.** They started at the domain root - `action="/.protected"`,
   `href="/.protected/logout"`, a redirect to the posted `return` as it came

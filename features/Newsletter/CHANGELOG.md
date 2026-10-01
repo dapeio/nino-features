@@ -29,6 +29,18 @@ A release is the tag `newsletter-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **The Text panel reported three keys of this feature as missing.**
+  `/newsletter/page/title`, `/newsletter/page/text` and
+  `/newsletter/confirm/url` stand in the page and the confirmation mail, the
+  class fills them at request time, and no text file ever answers them - so
+  the panel's scan for missing keys listed the three on every project with
+  this feature, and the Dashboard counted them, as gaps nobody could close.
+  The install unit lists them under `blacklist` now, beside the eleven
+  `/mail/style/*` keys, which is what the scan skips. A project that
+  activated the feature before this entry ignores the three once in Text →
+  Keys, or activates the feature again; the suite holds that the scan reports
+  no key of this feature.
+
 - **Two checks watched a path the subscriber file is never written to.**
   `is_file( \Nino\Filesystem::getPath( $appData ). '/data/newsletter.php' )`
   looks under the project root, and `/data` is a private directory: the file

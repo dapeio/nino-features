@@ -5,4 +5,8 @@
 // would, but for every protected uri at once rather than one of its own.
 return [
 	'templates' => [ 'page-protected.tpl' ],
+	// The template's [[/protected/return]] is filled by the gate at request
+	// time (see ProtectedArea::_answerForm()) and no text file ever answers
+	// it: blacklisted, so the Text panel's scan does not report it as a gap
+	'blacklist' => [ '/protected/return' ],
 ];

@@ -159,7 +159,10 @@ already has stays:
 
 The eleven `/mail/style/*` keys are also listed under `blacklist` and are
 merged into `text/blacklist.php`: they are technical values, hidden from the
-Text panel's normal editing. `label`, `moduleClass` and `requiresModules` in
+Text panel's normal editing. So are `/newsletter/confirm/url`,
+`/newsletter/page/title` and `/newsletter/page/text`, which the class fills
+at request time and no text file answers - blacklisted, the Text panel's
+scan for missing keys does not report them. `label`, `moduleClass` and `requiresModules` in
 the unit's manifest are the setup wizard's keys and are not read by an
 activation - the wizard does not offer features.
 

@@ -156,6 +156,9 @@ actually failed one of those two ways - nothing otherwise. The words
 `/protected/error/locked`, `/protected/label/logout`) are ordinary,
 editor-maintained texts the install unit writes into the project's
 `text/<locale>.php`, merged add-only the way every unit is applied.
+`/protected/return` is not one of them: the gate fills it at request time,
+and the unit lists it under `blacklist` so that the Text panel's scan for
+missing keys does not report a key no text file can answer.
 
 ## Helpers
 

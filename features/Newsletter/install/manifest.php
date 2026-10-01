@@ -19,5 +19,12 @@
 		'/mail/style/spacing/1',
 		'/mail/style/spacing/2',
 		'/mail/style/spacing/3',
+		// Filled by the class at request time - the confirmation link, and the
+		// page's title and text for the outcome at hand (see Newsletter::
+		// callbackAction() and _sendConfirmation()) - and answered by no text
+		// file, so the Text panel's scan would report them as gaps forever
+		'/newsletter/confirm/url',
+		'/newsletter/page/title',
+		'/newsletter/page/text',
 	],
 ];
