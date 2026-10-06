@@ -197,6 +197,15 @@ A release is the tag `design-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **`library/base.css`'s section 2 follows the kernel's `theme.css`.** Its
+  comments explained the colours and sizes through `/_design`,
+  `assets/style.design.css` and a manifest's default knobs, none of which
+  exist: the tokens are section 1's, compiled once and frozen, and this
+  feature's palette is compiled over them. The words are the base unit's
+  byte for byte, and held to it by the suite - so this needs a kernel that
+  carries the same correction; against an older one the suite's
+  byte-for-byte check turns red.
+
 - **The README and the comments describe the panel that ships.** The knob
   block is section 13 of the compiled sheet with every part chosen, and what
   did not resolve is named in the preview's message line; the preview links
