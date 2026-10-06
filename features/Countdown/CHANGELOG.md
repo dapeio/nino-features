@@ -119,7 +119,7 @@ First release.
 
 - `[countdown to="…"]` — the time left until a moment, with `units`, `format`
   and `done` on the element being written.
-- The moment goes out **once**, as an ISO-8601 string with the site's own offset,
+- The moment goes out **once**, as an ISO-8601 string with its offset in it,
   so a reader in another timezone counts down to the same instant rather than the
   same wall clock. The arithmetic is the browser's: a page cached for an hour
   would otherwise be an hour wrong.

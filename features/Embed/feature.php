@@ -65,8 +65,10 @@ return [
 	// lightboxes and the switches
 	'category'		=> 'ui',
 	'version'			=> '1.0.0',
-	// \Nino\Features::setting() and the feature contract this reads its
-	// consent category through
+	// The sectioned 'manual' map above is only read by a kernel newer than
+	// the v1.2.0-beta tag - on that one Features::manifest() refuses this
+	// file outright - so ^1.3 is the first constraint that names only a
+	// kernel which can install it
 	'nino'				=> '^1.3',
 	/*	Consent is not required. Without it every embed waits for a press,
 		which is the safe half of what this does and works on its own. With it,

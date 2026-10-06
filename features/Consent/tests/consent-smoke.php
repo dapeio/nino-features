@@ -39,8 +39,7 @@ $appData['/nino/dir'] = '';
 // \Nino\AppData::prepare() (what ninoSandbox() calls) only seeds the handful
 // of keys needed before config.php loads - everything else in ::DEFAULTS,
 // textfiles' own directory included, arrives through the real ::init() a
-// sandboxed test never runs. Rendering the banner's fills needs it, the way
-// tests/design-smoke.php sets the same key for the same reason
+// sandboxed test never runs. Rendering the banner's fills needs it
 $appData['/nino/locales/textfiles'] = '/text';
 // ninoSandbox() defaults the current locale to 'de_DE' (see tests/harness.php);
 // switched to English here so the rendering assertions below can compare

@@ -14,6 +14,11 @@ A release is the tag `modeswitch-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The stylesheet named the wrong flag.** The comment over
+  `.nino-modeswitch-name--hidden` said `labels=off`; the flag is
+  `[mode-switch icons]`, and `labels="off"` is what `doShortcode()`'s comment
+  calls the form people get wrong. Only the comment changed.
+
 - **The text keys follow Nino's grammar.** `/modeswitch/label` is
   `/feature/modeswitch/switch/label`; `/modeswitch/light`, `system` and `dark`
   are `/feature/modeswitch/mode/light`, `system` and `dark`. The values are the

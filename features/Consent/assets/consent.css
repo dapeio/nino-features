@@ -9,11 +9,10 @@
  *
  *								Every colour, spacing and radius reads the site's own
  *								design-system custom properties (the same names
- *								_nino/Nino.css and every theme under
- *								_admin/install/library/themes define: --color-*,
- *								--space-*, --radius, --fontsize-small) with a plain
- *								fallback value, so the banner looks at home whether or
- *								not the project ever picked a theme.
+ *								_nino/Nino.css and the project's assets/theme.css, which
+ *								Nino's base unit delivers, define: --color-*, --space-*,
+ *								--radius, --fontsize-small) with a plain fallback value,
+ *								so the banner looks at home whatever that theme says.
  */
 
 .nino-consent {

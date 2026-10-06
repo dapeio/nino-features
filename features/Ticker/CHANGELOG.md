@@ -78,6 +78,12 @@ A release is the tag `ticker-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The manual names the track.** Its first markup entry said the children of a
+  `class="nino-ticker"` container run past, and `ticker.js` runs nothing in a
+  row without a `class="nino-ticker-track"` inside it - markup written from
+  the manual stood still. The manual has the row and the track as two entries
+  now, in both languages, as the README always had. `nino` stays `^1.3`.
+
 - **"Wider than the box twice over" was never what the copies cover.**
   `ticker.js`'s file header, the docblock over `run()`, the comment beside
   the measurement ("Twice the box, not twice the row") and `Ticker.php`'s

@@ -13,8 +13,12 @@ return [
 		'shortcodes' => [],
 		'markup' => [
 			'class="nino-ticker"' => [
-				'en_US' => 'On a container: its children run past, one after the other - one cycle, once the row has been scrolled into view, and then it stands still.',
-				'de_DE' => 'An einem Container: Seine Kinder laufen nacheinander vorbei - ein Durchlauf, sobald die Reihe im Bild war, danach steht sie still.',
+				'en_US' => 'On the row: the box the track runs across, and the element the `data-ticker-*` attributes below go on. A row without a `nino-ticker-track` inside it does not run.',
+				'de_DE' => 'An der Reihe: der Kasten, durch den die Spur läuft, und das Element, an das die `data-ticker-*`-Attribute unten gehören. Eine Reihe ohne `nino-ticker-track` darin läuft nicht.',
+			],
+			'class="nino-ticker-track"' => [
+				'en_US' => 'On the one element inside the row that holds what runs: its children run past, one after the other - one cycle, once the row has been scrolled into view, and then it stands still.',
+				'de_DE' => 'An dem einen Element in der Reihe, das hält, was läuft: Seine Kinder laufen nacheinander vorbei - ein Durchlauf, sobald die Reihe im Bild war, danach steht sie still.',
 			],
 			'data-ticker-speed="40"' => [
 				'en_US' => 'Pixels per second. Default 40 - slow enough to read a word on the way past.',

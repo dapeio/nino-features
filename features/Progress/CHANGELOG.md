@@ -22,6 +22,13 @@ A release is the tag `progress-<version>` of dapeio/nino-features.
   feature to an installation that could not then install it. `^1.3` names
   only a kernel that can read the manifest.
 
+### Changed
+
+- **The test said what Ticker's checks are for.** The comment over the manual
+  checks in `progress-smoke.php` spoke of a row's timings, copied from
+  Ticker; it says what the checks hold now - no shortcode, the data attributes
+  a bar is pointed with. Nothing else changed.
+
 ## 1.0.0 — Unreleased
 
 First release.

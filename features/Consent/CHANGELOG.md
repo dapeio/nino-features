@@ -30,6 +30,12 @@ A release is the tag `consent-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **Two comments named what is not there.** `consent.css` named the themes
+  under `_admin/install/library/themes`, which Nino no longer ships; the tokens
+  come from `_nino/Nino.css` and the project's `assets/theme.css`.
+  `consent-smoke.php` cited a `tests/design-smoke.php` that does not exist.
+  Nothing else changed.
+
 - **The cookie name is read the one way.** `allowed()` checked the setting with
   `is_string()` and a fallback of its own, where the kernel already answers a
   string that matches the manifest's pattern; it reads it as the banner does

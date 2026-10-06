@@ -91,7 +91,7 @@
 	height: 1.15em;
 }
 
-/*	labels=off: the word stays in the markup and leaves the layout. Not
+/*	[mode-switch icons]: the word stays in the markup and leaves the layout. Not
 	display:none and not hidden - both take it out of the accessibility tree
 	as well, and then three unlabelled icons are what a screen reader is left
 	with. This is the standard visually-hidden recipe */

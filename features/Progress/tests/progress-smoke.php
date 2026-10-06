@@ -49,9 +49,9 @@ check( 'it names and describes itself in both interface languages', is_array( $m
 $raw = include $dir. '/feature.php';
 check( 'it is filed under ui', ( $raw['category'] ?? '' ) === 'ui' );
 
-/*	Like Typewriter: what runs past is the project's own markup, and every
-	timing belongs to the row being run rather than to the site - a logo bar in
-	a footer and a line of announcements in a header are not one speed	*/
+/*	Like Typewriter: the bar is the project's own markup, pointed at what it
+	measures with data attributes in the one template it is written into -
+	nothing for a shortcode to draw and nothing for a site-wide setting	*/
 check( 'it brings nothing of its own to write - no shortcode in the manual',
 	$manifest['manual']['shortcodes'] === [] && $manifest['manual']['routes'] === [] );
 check( '...and names the data attributes a bar is pointed with instead',

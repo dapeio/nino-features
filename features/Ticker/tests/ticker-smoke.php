@@ -57,6 +57,8 @@ check( 'it brings nothing of its own to write - no shortcode in the manual',
 	$manifest['manual']['shortcodes'] === [] && $manifest['manual']['routes'] === [] );
 check( '...and names the data attributes a row is timed with instead',
 	array_key_exists( 'data-ticker-speed="40"', $manifest['manual']['markup'] ) === true );
+check( '...and the track inside the row, the one element the script runs',
+	array_key_exists( 'class="nino-ticker-track"', $manifest['manual']['markup'] ) === true );
 check( '...and the loop and the pause button, which are opt-in',
 	array_key_exists( 'data-ticker-loop="1"', $manifest['manual']['markup'] ) === true
 	&& array_key_exists( 'data-ticker-toggle="[[/feature/ticker/pause/label]]"', $manifest['manual']['markup'] ) === true );

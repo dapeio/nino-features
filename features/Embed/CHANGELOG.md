@@ -70,7 +70,9 @@ A release is the tag `embed-<version>` of dapeio/nino-features.
   `[[/embed/note]]`), the `<noscript>` way out (`[[/embed/open]]`) and the
   name the frame is given where the shortcode wrote no `title=`
   (`[[/embed/frame]]`). The README and `embed-smoke.php` both say four; the
-  entry says four now, and which they are.
+  entry says four now, and which they are, and so does the unit's own
+  `install/manifest.php`. The comment over `nino` gives the sectioned manual
+  as the reason for `^1.3`, as the first entry of this section does.
 
 - **The "Asset bundling" note asked a project to do something it does not
   have to.** It said `/features/Embed/assets/...` resolves against the
