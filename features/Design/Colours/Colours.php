@@ -84,12 +84,13 @@ namespace Nino\Modules\Design {
 			'success', 'warning', 'danger',
 		];
 
-		/*	Every knob is a step from 1 to 3, and step 2 is the framework
-			itself: with every knob at 2 the generated stylesheet reproduces
-			Nino.css's own values exactly. That is what makes the layer
-			adoptable - turning it on must not move a project that has not
-			asked for anything - and it is why the tables below are anchored on
-			2 rather than on their midpoint by accident.
+		/*	A scale is a step from 1 to 3, and step 2 is the framework
+			itself: with every knob at its default - 2 for each scale - the
+			generated stylesheet reproduces Nino.css's own values exactly.
+			That is what makes the layer adoptable - turning it on must not
+			move a project that has not asked for anything - and it is why the
+			tables below are anchored on 2 rather than on their midpoint by
+			accident.
 
 			Three rather than five because the in-between positions were not
 			decisions anybody made. A setting that reads "less, as it is, more"
@@ -104,18 +105,14 @@ namespace Nino\Modules\Design {
 			where 3 of 3 does not. The name each position carries is a label
 			for the operator, published in KNOBS, never a stored value.
 
-			Not every decision is a scale, though, and the ones that are not
-			say so. A knob is a 'scale' - three positions, 2 is the framework -
-			or a 'choice': a named list of alternatives with no more and no less
-			about it, and its own default. Harmony and Temperature are choices.
-			Which hue the greys lean on is not "less" or "more" of anything, and
-			the four classical harmonies are not a track you slide along; both
-			were pretending to be scales, and the pane was telling the operator
-			the middle position is always Nino's own while two knobs' were not.
-
-			STEPS is therefore the length of a scale rather than of every knob.
-			A choice publishes as many positions as it has names for.	*/
-		public const int STEPS = 3;
+			Not every decision is a scale, though. Harmony and Temperature are
+			choices: a named list of alternatives with no more and no less
+			about it, and a default of their own. Which hue the greys lean on is
+			not "less" or "more" of anything, and the four classical harmonies
+			are not a track you slide along; both were pretending to be scales,
+			and the pane was telling the operator the middle position is always
+			Nino's own while two knobs' were not. A choice publishes as many
+			positions as it has names for.	*/
 
 		/*	Which generation of the tables below a compiled sheet came out of.
 			The positions 1 and 3 of Saturation, Contrast and Depth moved
@@ -129,13 +126,12 @@ namespace Nino\Modules\Design {
 			produces. */
 		public const int REVISION = 1;
 
-		/*	The knobs: what kind of control each is, where it starts, and what
-			its positions are called. The panel draws whatever choices() hands
-			it, so a knob added here needs no line in either template - but it
-			does need its words, which are text keys and not strings here:
-			'/_admin/design/colour/<knob>/label', '/note', and one per position,
-			in every locale under text/. tests/design-smoke.php checks that a
-			published knob has all of them.
+		/*	The knobs: where each starts and what its positions are called. The
+			panel draws whatever choices() hands it, so a knob added here needs no
+			line in either template - but it does need its words, which are text
+			keys and not strings here: '/_admin/design/colour/<knob>/label',
+			'/note', and one per position, in every locale under text/.
+			tests/design-smoke.php checks that a published knob has all of them.
 
 			This list used to carry a 'label', a 'note' and a long 'hint' as
 			well, none of which anything ever drew - and they had drifted from
@@ -146,13 +142,11 @@ namespace Nino\Modules\Design {
 		private const array KNOBS = [
 
 			'harmony' => [
-				'kind'		=> 'choice',
 				'default'	=> 1,
 				'steps'		=> [ 'Monochrome', 'Analogous', 'Triadic', 'Complementary' ],
 			],
 
 			'temperature' => [
-				'kind'		=> 'choice',
 				'default'	=> 3,
 				'steps'		=> [ 'Neutral', 'Cool', 'Brand', 'Warm' ],
 			],
@@ -352,8 +346,8 @@ namespace Nino\Modules\Design {
 		/**
 		 *	The vocabulary a UI renders its controls from, so the frontend
 		 *	never carries a second copy of these lists. Every knob is the same
-		 *	shape - a run from min to max with a name per position - which is
-		 *	what lets one control render all of them however many positions
+		 *	shape - a name per position and the position it starts on - which
+		 *	is what lets one control render all of them however many positions
 		 *	they have.
 		 *
 		 *	How many that is comes from the names rather than from a constant:
@@ -361,16 +355,11 @@ namespace Nino\Modules\Design {
 		 *	and a knob that publishes four names and three positions would be a
 		 *	knob with a name nobody can pick.
 		 *
-		 *	@return 	array									knob => { group, label, hint, kind, steps, default, min, max }
+		 *	@return 	array									knob => { default, steps }
 		 */
 		public static function choices(): array {
 
-			$out = [];
-
-			foreach( self::KNOBS as $knob => $meta )
-				$out[$knob] = $meta + [ 'kind' => 'scale', 'min' => 1, 'max' => self::positions( $knob ) ];
-
-			return $out;
+			return self::KNOBS;
 		}
 
 		/**
@@ -677,7 +666,7 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	What the picked brand actually measures, per mode.
+		 *	What the picked brand actually measures.
 		 *
 		 *	brand is the one surface the generator does not get to move, so it
 		 *	is also the one whose contrast it cannot promise. Rather than leave
@@ -690,30 +679,22 @@ namespace Nino\Modules\Design {
 		 *	was built for, and a theme that maps its text-bearing roles there
 		 *	has already handled it.
 		 *
+		 *	Measured once, under 'light': brand is the picked hex in either mode
+		 *	and its ink does not depend on the mode (see palette()), so a dark
+		 *	entry only ever repeated it.
+		 *
 		 *	@param		array			$settings			Design settings
 		 *
-		 *	@return 	array									mode => { color, ratio, target, safe }
+		 *	@return 	array									{ light: { ratio, target, safe } }
 		 */
 		public static function brand( array $settings ): array {
 
 			$settings	= self::normalize( $settings );
 			$target		= self::TARGET_TEXT[$settings['contrast']];
-			$out		= [];
+			$brand		= self::palette( $settings, 'light' )['brand'];
+			$ratio		= round( self::contrast( $brand['on'], $brand['bg'] ), 2 );
 
-			foreach( [ 'light', 'dark' ] as $mode ) {
-
-				$brand	= self::palette( $settings, $mode )['brand'];
-				$ratio	= round( self::contrast( $brand['on'], $brand['bg'] ), 2 );
-
-				$out[$mode] = [
-					'color'	=> $brand['bg'],
-					'ratio'	=> $ratio,
-					'target'	=> $target,
-					'safe'	=> $ratio >= $target,
-				];
-			}
-
-			return $out;
+			return [ 'light' => [ 'ratio' => $ratio, 'target' => $target, 'safe' => $ratio >= $target ] ];
 		}
 
 		/**

@@ -44,8 +44,6 @@ namespace Nino\Modules {
 	 */
 	class Design {
 
-		public const string KEY = 'design';
-
 		/**
 		 *	The sets, frames and the token layer this feature ships
 		 *

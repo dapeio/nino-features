@@ -265,8 +265,8 @@ function listing( over ) {
 		sizes		: [ 's', 'm', 'l' ],
 		colours	: { primary : '#4faae8', secondary : '' },
 		palette	: {
-			harmony			: { kind : 'choice', 'default' : 1, steps : [ 'Monochrome', 'Analogous', 'Triadic', 'Complementary' ] },
-			temperature	: { kind : 'choice', 'default' : 3, steps : [ 'Neutral', 'Cool', 'Brand', 'Warm' ] },
+			harmony			: { 'default' : 1, steps : [ 'Monochrome', 'Analogous', 'Triadic', 'Complementary' ] },
+			temperature	: { 'default' : 3, steps : [ 'Neutral', 'Cool', 'Brand', 'Warm' ] },
 			saturation	: { 'default' : 2, steps : [ 'Muted', 'Standard', 'Rich' ] },
 			contrast		: { 'default' : 2, steps : [ 'Soft', 'Standard', 'Strong' ] },
 			depth				: { 'default' : 2, steps : [ 'Flat', 'Standard', 'Raised' ] },

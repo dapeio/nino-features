@@ -398,6 +398,16 @@ A release is the tag `design-<version>` of dapeio/nino-features.
 - The `logo-bar` preset named `nino-mb-3` twice on its heading area, so every
   section a project inserted from it carried the class twice.
 
+### Removed
+
+- **What the panel was handed and never read.** The brand colour's
+  measurement came once per mode although brand and its ink are the same in
+  both, so every list and preview solved a second palette for a copy the
+  panel did not read - it is measured once now, under `light`, without the
+  unread `color`. The knobs no longer carry `kind`, `min` and `max`, applying
+  no longer answers `forced`, and `Colours::STEPS` and `Design::KEY`, which
+  nothing read, are gone.
+
 ## 0.1.0 — 2026-09-11
 
 First cut: the setup store, the compiler, the library and the panel. What is

@@ -1471,11 +1471,15 @@ check( 'the list hands over where the palette stands, and the words to draw it w
 	&& array_keys( (array) ( $listed['palette'] ?? [] ) ) === [ 'harmony', 'temperature', 'saturation', 'contrast', 'depth' ] );
 check( '...each knob with its own positions, three for a scale and four for a choice',
 	count( (array) ( $listed['palette']['harmony']['steps'] ?? [] ) ) === 4
-	&& count( (array) ( $listed['palette']['contrast']['steps'] ?? [] ) ) === 3
-	&& ( $listed['palette']['harmony']['kind'] ?? '' ) === 'choice'
-	&& ( $listed['palette']['contrast']['kind'] ?? '' ) === 'scale' );
-check( '...and whether the colour that was picked is one text survives on',
-	isset( $listed['brand']['light']['safe'] ) === true && isset( $listed['brand']['dark']['ratio'] ) === true );
+	&& count( (array) ( $listed['palette']['contrast']['steps'] ?? [] ) ) === 3 );
+/*	Measured once: brand and its ink are the same in both modes, so a dark
+	entry would repeat the light one - and if a mode ever moves them, the second
+	half of this fails and says the measurement has to be per mode again	*/
+$brandIn = static fn( string $mode ): array => array_intersect_key( \Nino\Modules\Design\Colours::palette( (array) ( $listed['colours'] ?? [] ), $mode )['brand'], [ 'bg' => true, 'on' => true ] );
+check( '...and whether the colour that was picked is one text survives on, measured once since no mode moves it',
+	array_keys( (array) ( $listed['brand'] ?? [] ) ) === [ 'light' ]
+	&& isset( $listed['brand']['light']['safe'], $listed['brand']['light']['ratio'], $listed['brand']['light']['target'] ) === true
+	&& $brandIn( 'light' ) === $brandIn( 'dark' ) );
 check( '...and the second colour as it will be compiled, for the swatch that stands for it',
 	preg_match( '/^#[0-9a-f]{6}$/', (string) ( $listed['accent'] ?? '' ) ) === 1 );
 

@@ -355,7 +355,7 @@ namespace Nino\Modules\Design {
 			$library 	= \Nino\Modules\Design::libraryDir();
 			$setup 		= Setup::read( $appData, $library );
 
-			\Nino\Http::ok( $request, [ 'notes' => $notes, 'forced' => $force ] + self::state( $appData, $setup, $library ) );
+			\Nino\Http::ok( $request, [ 'notes' => $notes ] + self::state( $appData, $setup, $library ) );
 		}
 
 		/**
