@@ -4,7 +4,7 @@
 
 Builds the project's `page-*.tpl` files out of whole sections. The panel lists
 the page templates, opens one as a stack of sections, and inserts a section
-from a library of seventeen ready-made ones - each with a live preview and its
+from a library of ready-made ones - each with a live preview and its
 own fields to fill in.
 
 The visible unit is always a complete `<section>`, never an arbitrary node.
@@ -33,11 +33,9 @@ everything else and will be refused there.
 ## The section library
 
 `library/<key>/manifest.php` plus the `.tpl` files its layouts name - one
-`section.tpl`, or one `section-<layout>.tpl` per layout. Seventeen ship
-with the feature: articles grid, contact form, content section, cta banner,
-feature split, filterable grid, fullscreen image, image banner, logo bar,
-media split areas, newsletter form, pricing plans, process timeline, static
-accordion, static list, static table, and template include.
+`section.tpl`, or one `section-<layout>.tpl` per layout. What ships is
+whatever `library/` holds; the manual's [Section Library](docs/templates.md#section-library)
+says what each preset is.
 
 The library is its directory: a preset is on offer because its directory is
 there, and its manifest's `weight` says where in the list.

@@ -5,7 +5,7 @@
 What search engines and AI agents ask a site for, generated from what Nino
 already knows - the persisted routes under `/nino/http/routes`, their
 locales, and the `/_nino/webpage<uri>/title` and `/_nino/webpage<uri>/description` texts
-the wizard's Webpages step (or a hand edit of `/text/<locale>.php`) already
+the wizard's Routes step (or a hand edit of `/text/<locale>.php`) already
 writes. **There is nothing here to maintain by hand**: every response is
 built fresh from `config.php` on every request, so a page added, renamed or
 removed in the routes shows up the next time any of these three files is
@@ -231,7 +231,7 @@ going into an inline `<script>`.
 The base install's own `_admin/install/library/base/manifest.php` persists
 `GET://sitemap.xml`, `GET://robots.txt` and `GET://llms.txt` at setup time,
 each with a static `[template /templates/...]` body the wizard fills in
-once from whichever pages were picked in its Webpages step - and nobody
+once from whichever pages were picked in its Routes step - and nobody
 updates again as pages come and go. This feature's `init()` registers the
 same three route keys with its own callback, which is a plain assignment
 into the live routes array: the same "a stale persisted entry cannot shadow

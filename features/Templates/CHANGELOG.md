@@ -37,6 +37,16 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The manual walks the two steps the panel has.** It still described a
+  motion setting per section, an "Edit Section → Data" step with a Data tab
+  of its own, and a manual HTML+ step for the filterable grid's buttons. The
+  VPA paragraph says the page-level setting is the only one, Add and Edit both
+  rebind in **Configure & fill**, and the buttons follow the cards'
+  collection - in English and German. The README no longer counts and names
+  the presets as they were before the rename but points at `library/` and the
+  manual's table, the filterable grid's manifest and test name the preset
+  recipe by its real path, and the recipe calls the wizard's step "Routes", as
+  the wizard does.
 - **An area has no help text any more.** Every area of the 17 presets
   carried a `help` sentence, and `docs/recipe-section-preset.md` told preset
   authors to write one - but the panel stopped showing it when the area editor

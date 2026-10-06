@@ -59,7 +59,7 @@ Native quick fill creates new keys in the project’s native locale and changes 
 
 **Name**, **Header**, **Footer** and **VPA** share one labeled Template Settings row. **Delete** and **Save template** stay together at the right end of the panel's head, beside its name, with the save state in front of them; **Add section** remains in the document toolbar even after content has been inserted. The header/footer selects show real `.tpl` filenames, list non-page templates known to the project and also offer **None**. Mail bodies (`mail-*`), the `robots`, `sitemap-xml` and `llms-txt` outputs and the frame's own `frame-header` and `frame-footer` are left out of these lists, of the section picker and of a preset's Template component - they are responses and parts of the frame, not parts of a page. They are not removed: a page that already points at one keeps it selected. The selected value is still written as an ordinary `[template /templates/<name>]` shortcode; the controls only prevent shell includes from being mistaken for movable page content. **Delete** removes exactly the loaded file revision after explicit confirmation; recovery requires version control or another external backup.
 
-**VPA** at template level supplies the default for sections whose motion is set to **Page**. Changing it recomposes managed sections, updates their `nino-vpa` class and remains persisted even while a template is still empty. **On** or **Off** on an individual section overrides that default.
+**VPA** at template level sets the motion of every managed section. Changing it recomposes managed sections, updates their `nino-vpa` class and remains persisted even while a template is still empty.
 
 Add and Edit walk the same two configuration steps and expose different depths of the same version-3 metadata:
 
@@ -139,7 +139,7 @@ textfill.
 | Media / Text — Flexible split | Image and copy side by side | Image left · Image right |
 | Features — Checklist and image | A checked list next to an image | Image right · Image left |
 | Articles — Responsive grid | Repeatable image cards | Single (2/3/4 columns as a Style) |
-| Filterable grid — Services or portfolio | Repeatable cards behind a client-side category filter | Single (2/3/4 columns as a Style); filter buttons need one manual HTML+ step, see below |
+| Filterable grid — Services or portfolio | Repeatable cards behind a client-side category filter | Single (2/3/4 columns as a Style); the filter buttons follow the cards' collection, see below |
 | Process — Numbered steps | An ordered process, numbered by the list itself | Connected timeline · Stacked steps |
 | Pricing — Plan cards | One card per plan | Equal · Middle highlighted · Four · Four below one wide card · Four above one wide card |
 | Partners — Logo bar | A quiet row of logos | Caption above · Caption beside |
@@ -196,7 +196,8 @@ has one - so that a category is spelled one way and becomes one button.
 
 Both loops have to read one collection, and a preset must not spell that slug
 out: a new Area is named `<page>-<section>-<area>` when the section is
-inserted, and **Edit Section → Data** can point it somewhere else later. The
+inserted, and **Configure & fill** can point it somewhere else later, on Add or
+on Edit. The
 Layout writes `[elementvalues /[[section:collection:services]] …]` instead —
 a compile token that resolves to whatever the named Area is bound to, so the
 button row follows it on the first insert and after every rebind.
@@ -300,9 +301,7 @@ a step never fights the size the class sets for itself.
 Components can be added, reordered, styled or removed, but the Builder never
 accepts arbitrary markup through the visual editor.
 
-While adding a section, component order and Data live in one compact list.
-After insertion, **Design** controls Area Style, Component Style and component
-order, while **Data** owns the same bindings. Every non-image property has an
+Every non-image property has an
 explicit source:
 
 - a single Area can create a generated key such as

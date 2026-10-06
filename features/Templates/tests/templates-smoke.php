@@ -734,7 +734,7 @@ check( 'the grid Area binds to the chosen collection with no limit, so the filte
 check( 'the hand-written filter block survives compilation untouched, [elementvalues] included', str_contains( $filterSection['source'], '[elementvalues /services key="category" sort="value"]' )
 	&& str_contains( $filterSection['source'], 'class="nino-filter-nav"' )
 	&& str_contains( $filterSection['source'], 'data-filter-value=""' ) );
-check( 'each card is stamped with its own category as still-unresolved [[category]] text - the ordinary per-request [elements] render pass fills it in, not the compiler (docs/recipes/section-preset.md, "Complete manifest shape")', str_contains( $filterSection['source'], 'data-filter-item="[[category]]"' ) );
+check( 'each card is stamped with its own category as still-unresolved [[category]] text - the ordinary per-request [elements] render pass fills it in, not the compiler (docs/recipe-section-preset.md, "Complete manifest shape")', str_contains( $filterSection['source'], 'data-filter-item="[[category]]"' ) );
 check( 'the card keeps its nino-article family styling, including the image class the catalog default omits', str_contains( $filterSection['source'], 'class="nino-article-img nino-article-img--maxheight"' )
 	&& str_contains( $filterSection['source'], 'class="nino-article-descr"' ) );
 

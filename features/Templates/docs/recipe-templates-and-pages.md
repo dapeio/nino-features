@@ -220,7 +220,7 @@ The route's internal URI determines these values. Do not hardcode metadata to a
 library folder when a page can be mounted at another internal URI.
 
 A page's reachable path is available the same way, so one page can link to
-another without repeating a path the Webpages step can change:
+another without repeating a path the Routes step can change:
 
 ```html
 <a href="[[/_nino/webpage/site-contact/uri]]">[[/_nino/webpage/site-contact/name]]</a>
@@ -352,7 +352,7 @@ return [
 	'templates' => [
 		'page-services.tpl',
 	],
-	// What the Webpages step starts this page's name, title and description
+	// What the Routes step starts this page's name, title and description
 	// from: a string, or a string per locale
 	'suggest' => [
 		'uri' => '/services',
@@ -486,7 +486,7 @@ target text files. They are all `/template/<category>/<part>/<name>`, where the
 category is the file name of the unit's template without `.tpl`
 (`page-services`): the unit may deliver keys only for a template it brings.
 
-A Webpages entry has one public HTTP URI. A locale may suggest a different URI
+A Routes entry has one public HTTP URI. A locale may suggest a different URI
 string, but only one suggestion can win for that entry; this does not create
 localized routes. Prefer the same URI in all locales unless the route
 architecture deliberately handles localized URLs.

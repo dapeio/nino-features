@@ -59,7 +59,7 @@ Die schnelle native Befüllung legt neue Schlüssel in der nativen Projektsprach
 
 **Name**, **Header**, **Footer** und **VPA** stehen gemeinsam in einer beschrifteten Zeile der Template Settings. **Delete** und **Save template** stehen gemeinsam am rechten Ende der Kopfzeile des Panels, neben seinem Namen, davor der Speicherstatus; **Add section** bleibt auch nach dem Einfügen von Content in der Dokument-Toolbar sichtbar. Die Header-/Footer-Selects zeigen die echten `.tpl`-Dateinamen, listen dem Projekt bekannte Nicht-Seiten-Templates und bieten außerdem **None**. Mail-Bodies (`mail-*`), die Ausgaben `robots`, `sitemap-xml` und `llms-txt` sowie die Frame-eigenen `frame-header` und `frame-footer` fehlen in diesen Listen, in der Section-Auswahl und in der Template-Komponente eines Presets – sie sind Antworten und Teile des Frames, keine Teile einer Seite. Entfernt werden sie nicht: Eine Seite, die schon auf eines zeigt, behält es ausgewählt. Der ausgewählte Wert wird weiterhin als gewöhnlicher `[template /templates/<name>]`-Shortcode geschrieben; die Controls verhindern nur, dass die Seitenschale mit verschiebbarem Content verwechselt wird. **Delete** entfernt genau die aktuell geladene Revision der Datei nach einer ausdrücklichen Bestätigung; eine Wiederherstellung erfordert Versionsverwaltung oder ein anderes externes Backup.
 
-**VPA** auf Template-Ebene liefert den Standard für Sections mit der Einstellung **Page**. Eine Änderung setzt verwaltete Sections neu zusammen, aktualisiert deren `nino-vpa`-Klasse und bleibt auch in einem noch leeren Template erhalten. **On** oder **Off** an einer einzelnen Section überschreibt den Template-Standard.
+**VPA** auf Template-Ebene legt die Bewegung aller verwalteten Sections fest. Eine Änderung setzt verwaltete Sections neu zusammen, aktualisiert deren `nino-vpa`-Klasse und bleibt auch in einem noch leeren Template erhalten.
 
 Add und Edit durchlaufen dieselben zwei Konfigurationsschritte und zeigen unterschiedliche Tiefen derselben Version-3-Metadaten:
 
@@ -140,7 +140,7 @@ Wiederholte liest eine Elements-Collection, jede Textzeile ist ein Textfill.
 | Media / Text — Flexible split | Bild und Text nebeneinander | Bild links · Bild rechts |
 | Features — Checklist and image | Häkchenliste neben einem Bild | Bild rechts · Bild links |
 | Articles — Responsive grid | Wiederholte Bildkarten | Einzeln (2/3/4 Spalten als Style) |
-| Filterable grid — Services or portfolio | Wiederholte Karten hinter einem clientseitigen Kategorie-Filter | Einzeln (2/3/4 Spalten als Style); Filter-Buttons brauchen einen manuellen HTML+-Schritt, siehe unten |
+| Filterable grid — Services or portfolio | Wiederholte Karten hinter einem clientseitigen Kategorie-Filter | Einzeln (2/3/4 Spalten als Style); die Filter-Buttons folgen der Collection der Karten, siehe unten |
 | Process — Numbered steps | Ein Ablauf in Schritten, nummeriert von der Liste selbst | Verbundene Timeline · Gestapelt |
 | Pricing — Plan cards | Eine Karte je Paket | Gleichwertig · Mittlere hervorgehoben · Vierspaltig · Vier unter einer breiten Karte · Vier über einer breiten Karte |
 | Partners — Logo bar | Ruhige Logo-Reihe | Überschrift darüber · daneben |
@@ -198,7 +198,7 @@ hat und ein Button wird.
 
 Beide Schleifen müssen dieselbe Collection lesen, und ein Preset darf diesen
 Slug nicht ausschreiben: Eine neue Area heißt beim Einfügen
-`<seite>-<section>-<area>`, und **Edit Section → Data** kann sie später
+`<seite>-<section>-<area>`, und **Configure & fill** kann sie später, beim Hinzufügen wie bei Edit,
 umbiegen. Das Layout schreibt deshalb
 `[elementvalues /[[section:collection:services]] …]` – ein Compile-Token, das
 auf die tatsächlich gebundene Collection auflöst. Die Button-Reihe folgt ihr
@@ -427,9 +427,6 @@ Benutzers gewinnt weiterhin:
 - Alle Shortcode-Argumente werden ausgegeben. Seltene Query-/Callback-
   Änderungen bleiben nach dem Ablösen eine HTML+-Aufgabe.
 
-Beim Hinzufügen liegen Komponentenreihenfolge und Data in einer gemeinsamen
-kompakten Liste. Nach dem Einfügen trennt **Edit** wieder **Design** für Area
-Style, Component Style und Reihenfolge von **Data** für dieselben Bindings.
 Gewöhnliche Textfills stehen unter **Content textfills**, Einträge aus
 `text/blacklist.php` unter **Technical values** — dort erscheint auch die
 `/_nino/webpage/<seite>/uri` einer Seite, sodass ein Button auf eine andere Seite

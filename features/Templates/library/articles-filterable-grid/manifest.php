@@ -42,7 +42,7 @@
 				'class' => 'nino-article nino-article--alt nino-mb-3 nino-article--grid nino-filter-item',
 				// [[category]] is plain text until the ordinary [elements] render
 				// pass at request time substitutes it per card, exactly like
-				// [[title]] below - see docs/recipes/section-preset.md, "Complete
+				// [[title]] below - see docs/recipe-section-preset.md, "Complete
 				// manifest shape".
 				'data' => [ 'filter-item' => '[[category]]' ],
 			],

@@ -16,7 +16,7 @@ namespace Nino\Modules {
 	 *	Seo								What search engines and AI agents ask a site for,
 	 *										generated from what Nino already knows - the persisted
 	 *										GET routes, their locales, and the /_nino/webpage<uri>/title
-	 *										and /_nino/webpage<uri>/description texts the wizard's Webpages
+	 *										and /_nino/webpage<uri>/description texts the wizard's Routes
 	 *										step (or a hand-edited /text/<locale>.php) already
 	 *										writes. Nothing here is stored under data/ and nothing is
 	 *										maintained by hand: every response is built fresh from
