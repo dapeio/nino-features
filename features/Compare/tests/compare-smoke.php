@@ -31,11 +31,6 @@ $appData['/nino/dir'] = '';
 $appData['/nino/locales/textfiles'] = '/text';
 $appData['./nino/locales/current'] = 'en_US';
 
-$assetsDir = ninoSandboxDir( $appData ). '/features/Compare/assets';
-mkdir( $assetsDir, 0755, true );
-copy( dirname( __DIR__ ). '/assets/compare.css', $assetsDir. '/compare.css' );
-copy( dirname( __DIR__ ). '/assets/compare.js', $assetsDir. '/compare.js' );
-
 
 // --- The feature -------------------------------------------------------------
 
@@ -49,8 +44,7 @@ check( 'it is written for this kernel', is_array( $manifest ) && \Nino\Features:
 check( 'it names and describes itself in both interface languages', is_array( $manifest )
 	&& \Nino\Features::localized( $manifest['description'], 'de_DE' ) !== \Nino\Features::localized( $manifest['description'], 'en_US' ) );
 
-$raw = include $dir. '/feature.php';
-check( 'it is filed under ui', ( $raw['category'] ?? '' ) === 'ui' );
+check( 'it is filed under ui', $manifest['category'] === 'ui' );
 check( 'it requires no other feature', $manifest['requires'] === [] );
 check( 'it keeps no data of its own', $manifest['data'] === [] );
 

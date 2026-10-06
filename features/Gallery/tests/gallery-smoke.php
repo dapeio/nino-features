@@ -28,14 +28,6 @@ $root = getenv( 'NINO_ROOT' ) ?: dirname( __DIR__, 3 );
 defined( 'NINO_FEATURES_DIR' ) === true || define( 'NINO_FEATURES_DIR', dirname( __DIR__, 2 ) );
 require $root. '/tests/harness.php';
 
-// The two sizes this feature makes are \Nino\Images::process() and its
-// counterpart fit(), which arrived together with the render callback. A
-// checkout without them cannot run a line of what follows
-if( method_exists( '\Nino\Images', 'fit' ) === false ) {
-	fwrite( STDERR, 'The Nino checkout at '. $root. ' ('. \Nino\VERSION. ') has no \\Nino\\Images::fit() - the Gallery feature needs the kernel that brought it'. "\n" );
-	exit( 2 );
-}
-
 if( extension_loaded( 'gd' ) === false ) {
 	fwrite( STDERR, 'No gd extension here - the Gallery feature makes its two sizes with it'. "\n" );
 	exit( 2 );
@@ -121,8 +113,7 @@ check( 'it is written for this kernel', is_array( $manifest ) === true && \Nino\
 check( 'it names and describes itself in both interface languages', is_array( $manifest ) === true
 	&& \Nino\Features::localized( $manifest['description'], 'de_DE' ) !== \Nino\Features::localized( $manifest['description'], 'en_US' ) );
 
-$raw = include $dir. '/feature.php';
-check( 'it is filed under content - it brings something an editor maintains', ( $raw['category'] ?? '' ) === 'content' );
+check( 'it is filed under content - it brings something an editor maintains', $manifest['category'] === 'content' );
 // The overlay is the Lightbox feature's, not a second copy of one. Installing
 // this from the catalogue is what brings it along
 check( 'it requires the Lightbox feature rather than carrying an overlay of its own', $manifest['requires'] === [ 'lightbox' ] );

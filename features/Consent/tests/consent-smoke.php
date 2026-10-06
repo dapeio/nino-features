@@ -46,18 +46,6 @@ $appData['/nino/locales/textfiles'] = '/text';
 // against the plain install/text/en_US.php strings
 $appData['./nino/locales/current'] = 'en_US';
 
-// \Nino\Filesystem::path()'s fallback resolves a virtual path outside
-// PRIVATE_DIRS/PUBLIC_DIRS against the project root - exactly how
-// '/_nino/Nino.css' reaches the kernel's own file (see Consent::init()'s own
-// docblock). The sandbox's project root is a fresh temp directory, not this
-// feature's real parent, so the one file the asset bundler actually has to
-// read - assets/consent.css and consent.js - is mirrored into it here, the
-// way a real project's features/ directory holds it
-$assetsDir = ninoSandboxDir( $appData ). '/features/Consent/assets';
-mkdir( $assetsDir, 0755, true );
-copy( dirname( __DIR__ ). '/assets/consent.css', $assetsDir. '/consent.css' );
-copy( dirname( __DIR__ ). '/assets/consent.js', $assetsDir. '/consent.js' );
-
 /**
  *	@param		array 		&$appData			(reference) A sandbox's app data
  *	@param		string		$cookieName

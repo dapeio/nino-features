@@ -34,28 +34,6 @@ $root = getenv( 'NINO_ROOT' ) ?: dirname( __DIR__, 3 );
 defined( 'NINO_FEATURES_DIR' ) === true || define( 'NINO_FEATURES_DIR', dirname( __DIR__, 2 ) );
 require $root. '/tests/harness.php';
 
-// The engine this feature extends. Its manifest names ^1.3 for it and ^1.4
-// for what follows below (a sectioned 'manual' needs a kernel newer than the
-// v1.2.0-beta tag as well).
-// A checkout that predates it cannot run a line of what follows, and a stack
-// trace two screens down is a worse way to learn that than one sentence here
-// (tests/build-smoke.php in this repository does the same for \Nino\Features)
-if( class_exists( '\Nino\Form' ) === false ) {
-	fwrite( STDERR, 'The Nino checkout at '. $root. ' ('. \Nino\VERSION. ') has no \Nino\Form - the Forms feature extends the kernel\'s form engine, which arrived with it'. "\n" );
-	exit( 2 );
-}
-
-// What the builder asks the engine, and the reason the manifest names ^1.4:
-// \Nino\Form::problems() arrived with the checkbox, radio and date types, in
-// the kernel that is tagged 1.4. On an older one there is nothing here to
-// test - the catalogue's CI runs this against Nino's latest tag as well, where
-// this file leaves quietly (tests/build-smoke.php, which asks the kernel for
-// the feature's availability, is the one that needs the matching tag)
-if( method_exists( '\Nino\Form', 'problems' ) === false ) {
-	echo 'The Nino checkout at '. $root. ' ('. \Nino\VERSION. ') has no \Nino\Form::problems() - the Forms feature is written for Nino 1.4 and later, so there is nothing to test against it'. "\n";
-	exit( 0 );
-}
-
 $appData = ninoSandbox( 'forms' );
 $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
 $appData['/nino/dir'] = '';
@@ -134,7 +112,7 @@ check( 'the feature is written for this kernel', is_array( $manifest ) === true 
 check( 'it names and describes itself in both interface languages', is_array( $manifest ) === true
 	&& \Nino\Features::localized( $manifest['name'], 'de_DE' ) !== \Nino\Features::localized( $manifest['name'], 'en_US' )
 	&& \Nino\Features::localized( $manifest['description'], 'de_DE' ) !== \Nino\Features::localized( $manifest['description'], 'en_US' ) );
-check( 'it is filed under communication', ( include $dir. '/feature.php' )['category'] === 'communication' );
+check( 'it is filed under communication', $manifest['category'] === 'communication' );
 // The definitions are in config.php, where the kernel reads them and a backup
 // already carries them; the submissions are the kernel's own files. What is
 // left is a spam counter that rebuilds itself

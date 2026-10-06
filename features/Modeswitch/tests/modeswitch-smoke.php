@@ -35,17 +35,6 @@ $appData['/nino/locales/textfiles'] = '/text';
 // here so the assertions below compare against install/text/en_US.php
 $appData['./nino/locales/current'] = 'en_US';
 
-/*	\Nino\Filesystem::path()'s fallback resolves a virtual path outside
-	PRIVATE_DIRS/PUBLIC_DIRS against the project root - exactly how
-	'/_nino/Nino.css' reaches the kernel's own file. The sandbox's project root
-	is a fresh temp directory, not this feature's real parent, so the two files
-	the asset bundler actually has to read are mirrored into it here, the way a
-	real project's features/ directory holds them	*/
-$assetsDir = ninoSandboxDir( $appData ). '/features/Modeswitch/assets';
-mkdir( $assetsDir, 0755, true );
-copy( dirname( __DIR__ ). '/assets/modeswitch.css', $assetsDir. '/modeswitch.css' );
-copy( dirname( __DIR__ ). '/assets/modeswitch.js', $assetsDir. '/modeswitch.js' );
-
 
 // --- The feature -------------------------------------------------------------
 
@@ -73,8 +62,7 @@ check( '...and neither 1.1 nor the published 1.2.0-beta can run it', \Nino\Featu
 	&& \Nino\Features::satisfies( (string) $manifest['nino'], '1.2.0-beta' ) === false
 	&& \Nino\Features::satisfies( (string) $manifest['nino'], '1.3.0-beta' ) === true );
 
-$raw = include $dir. '/feature.php';
-check( 'it is filed under ui', ( $raw['category'] ?? '' ) === 'ui' );
+check( 'it is filed under ui', $manifest['category'] === 'ui' );
 check( 'it needs no other feature', $manifest['requires'] === [] );
 check( 'it keeps no data of its own - the choice belongs to the reader\'s browser', $manifest['data'] === [] );
 check( 'and carries no settings: which of the three a reader is on is not the site\'s decision', $manifest['settings'] === [] );

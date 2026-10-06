@@ -39,17 +39,6 @@ $appData['/nino/locales/textfiles'] = '/text';
 // here so the assertions below compare against install/text/en_US.php
 $appData['./nino/locales/current'] = 'en_US';
 
-/*	\Nino\Filesystem::path()'s fallback resolves a virtual path outside
-	PRIVATE_DIRS/PUBLIC_DIRS against the project root - exactly how
-	'/_nino/Nino.css' reaches the kernel's own file. The sandbox's project root
-	is a fresh temp directory, not this feature's real parent, so the two files
-	the asset bundler actually has to read are mirrored into it here, the way a
-	real project's features/ directory holds them	*/
-$assetsDir = ninoSandboxDir( $appData ). '/features/Embed/assets';
-mkdir( $assetsDir, 0755, true );
-copy( dirname( __DIR__ ). '/assets/embed.css', $assetsDir. '/embed.css' );
-copy( dirname( __DIR__ ). '/assets/embed.js', $assetsDir. '/embed.js' );
-
 
 // --- The feature -------------------------------------------------------------
 
@@ -63,8 +52,7 @@ check( 'it is written for this kernel', is_array( $manifest ) && \Nino\Features:
 check( 'it names and describes itself in both interface languages', is_array( $manifest )
 	&& \Nino\Features::localized( $manifest['description'], 'de_DE' ) !== \Nino\Features::localized( $manifest['description'], 'en_US' ) );
 
-$raw = include $dir. '/feature.php';
-check( 'it is filed under ui', ( $raw['category'] ?? '' ) === 'ui' );
+check( 'it is filed under ui', $manifest['category'] === 'ui' );
 
 /*	Consent is deliberately not a requirement. Without it every embed waits for
 	a press, which is the safe half and needs nothing configured; with it, a

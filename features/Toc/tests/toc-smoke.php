@@ -29,11 +29,6 @@ $appData['/nino/dir'] = '';
 $appData['/nino/locales/textfiles'] = '/text';
 $appData['./nino/locales/current'] = 'en_US';
 
-$assetsDir = ninoSandboxDir( $appData ). '/features/Toc/assets';
-mkdir( $assetsDir, 0755, true );
-copy( dirname( __DIR__ ). '/assets/toc.css', $assetsDir. '/toc.css' );
-copy( dirname( __DIR__ ). '/assets/toc.js', $assetsDir. '/toc.js' );
-
 
 // --- The feature -------------------------------------------------------------
 
@@ -47,12 +42,10 @@ check( 'it is written for this kernel', is_array( $manifest ) && \Nino\Features:
 check( 'it names and describes itself in both interface languages', is_array( $manifest )
 	&& \Nino\Features::localized( $manifest['description'], 'de_DE' ) !== \Nino\Features::localized( $manifest['description'], 'en_US' ) );
 
-$raw = include $dir. '/feature.php';
-
 /*	It is a way through what is already written on a page rather than a control
 	that changes how it looks - which is the line the Features panel draws
 	between content and ui	*/
-check( 'it is filed under content', ( $raw['category'] ?? '' ) === 'content' );
+check( 'it is filed under content', $manifest['category'] === 'content' );
 check( 'it requires no other feature', $manifest['requires'] === [] );
 check( 'it keeps no data of its own - the list is the page, read as it stands', $manifest['data'] === [] );
 check( 'and carries one setting: whether every heading gets a link of its own',

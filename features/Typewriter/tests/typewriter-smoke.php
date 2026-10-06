@@ -32,18 +32,6 @@ require $root. '/tests/harness.php';
 $appData = ninoSandbox( 'typewriter' );
 $appData['/nino/dir'] = '';
 
-// \Nino\Filesystem::path()'s fallback resolves a virtual path outside
-// PRIVATE_DIRS/PUBLIC_DIRS against the project root - exactly how
-// '/_nino/Nino.css' reaches the kernel's own file (see Typewriter::init()'s
-// own docblock). The sandbox's project root is a fresh temp directory, not
-// this feature's real parent, so the two files the asset bundler actually
-// has to read are mirrored into it here, the way a real project's features/
-// directory holds them
-$assetsDir = ninoSandboxDir( $appData ). '/features/Typewriter/assets';
-mkdir( $assetsDir, 0755, true );
-copy( dirname( __DIR__ ). '/assets/typewriter.css', $assetsDir. '/typewriter.css' );
-copy( dirname( __DIR__ ). '/assets/typewriter.js', $assetsDir. '/typewriter.js' );
-
 
 // --- The feature -------------------------------------------------------------
 
@@ -61,13 +49,7 @@ check( 'it names itself in both interface languages', is_array( $manifest )
 // is what the panel groups and filters by. A category in the name would sort
 // the list by category instead of by name and say the same thing twice, once
 // per language
-// Read from the file rather than from $manifest: this repository's CI runs
-// every feature's test against Nino's main and against its latest tag, and a
-// kernel released before categories existed drops the field on the way
-// through - which would leave nothing to check on exactly the run where the
-// manifest is what is being checked
-$raw = include $dir. '/feature.php';
-check( 'it is filed under ui, and says so in the field rather than in its name', ( $raw['category'] ?? '' ) === 'ui'
+check( 'it is filed under ui, and says so in the field rather than in its name', $manifest['category'] === 'ui'
 	&& str_contains( \Nino\Features::localized( $manifest['name'], 'en_US' ), ':' ) === false
 	&& str_contains( \Nino\Features::localized( $manifest['name'], 'de_DE' ), ':' ) === false );
 check( 'it needs no other feature', $manifest['requires'] === [] );

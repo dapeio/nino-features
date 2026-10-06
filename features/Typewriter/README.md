@@ -185,11 +185,9 @@ via `[assets /.cache/style.css]`/`[assets /.cache/script.js]` - rather than a
 bundle of this feature's own. A typewriter is written into whatever page
 wants one, and every one of them already loads those two.
 
-The asset paths are `/features/Typewriter/assets/...`: a kernel from the
-catalogue release on resolves `/features/...` through
-`\Nino\Filesystem::path()` against the features directory, wherever
-`NINO_FEATURES_DIR` put it. An older kernel resolves it against the project
-root, which is the same place as long as `features/` is not relocated.
+The asset paths are `/features/Typewriter/assets/...`:
+`\Nino\Filesystem::path()` resolves `/features/...` against the features
+directory, wherever `NINO_FEATURES_DIR` put it.
 
 Nothing is rendered server-side, so the kernel's full-page cache stays valid
 with this feature active: the markup in the cached page is the project's own,

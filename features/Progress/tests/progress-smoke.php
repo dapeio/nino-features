@@ -28,11 +28,6 @@ require $root. '/tests/harness.php';
 $appData = ninoSandbox( 'progress' );
 $appData['/nino/dir'] = '';
 
-$assetsDir = ninoSandboxDir( $appData ). '/features/Progress/assets';
-mkdir( $assetsDir, 0755, true );
-copy( dirname( __DIR__ ). '/assets/progress.css', $assetsDir. '/progress.css' );
-copy( dirname( __DIR__ ). '/assets/progress.js', $assetsDir. '/progress.js' );
-
 
 // --- The feature -------------------------------------------------------------
 
@@ -46,8 +41,7 @@ check( 'it is written for this kernel', is_array( $manifest ) && \Nino\Features:
 check( 'it names and describes itself in both interface languages', is_array( $manifest )
 	&& \Nino\Features::localized( $manifest['description'], 'de_DE' ) !== \Nino\Features::localized( $manifest['description'], 'en_US' ) );
 
-$raw = include $dir. '/feature.php';
-check( 'it is filed under ui', ( $raw['category'] ?? '' ) === 'ui' );
+check( 'it is filed under ui', $manifest['category'] === 'ui' );
 
 /*	Like Typewriter: the bar is the project's own markup, pointed at what it
 	measures with data attributes in the one template it is written into -

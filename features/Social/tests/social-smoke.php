@@ -77,11 +77,8 @@ check( 'it names and describes itself in both interface languages', is_array( $m
 	&& \Nino\Features::localized( $manifest['name'], 'de_DE' ) !== \Nino\Features::localized( $manifest['name'], 'en_US' )
 	&& \Nino\Features::localized( $manifest['description'], 'de_DE' ) !== \Nino\Features::localized( $manifest['description'], 'en_US' ) );
 
-/*	Read from the file rather than from $manifest: CI runs this against Nino's
-	latest tag as well, and a kernel that predates a field drops it	*/
-$raw = include $dir. '/feature.php';
-check( 'it is filed under content, and has no setting, no data and no requirement', ( $raw['category'] ?? '' ) === 'content'
-	&& $raw['settings'] === [] && $raw['data'] === [] && $raw['requires'] === [] );
+check( 'it is filed under content, and has no setting, no data and no requirement', $manifest['category'] === 'content'
+	&& $manifest['settings'] === [] && $manifest['data'] === [] && $manifest['requires'] === [] );
 
 $type			= include $dir. '/install/social.php';
 $options	= $type['model']['icon']['options'];

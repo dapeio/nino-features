@@ -30,17 +30,6 @@ require $root. '/tests/harness.php';
 $appData = ninoSandbox( 'lightbox' );
 $appData['/nino/dir'] = '';
 
-// \Nino\Filesystem::path()'s fallback resolves a virtual path outside
-// PRIVATE_DIRS/PUBLIC_DIRS against the project root - exactly how
-// '/_nino/Nino.css' reaches the kernel's own file. The sandbox's project root
-// is a fresh temp directory, not this feature's real parent, so the two files
-// the asset bundler actually has to read are mirrored into it here, the way a
-// real project's features/ directory holds them
-$assetsDir = ninoSandboxDir( $appData ). '/features/Lightbox/assets';
-mkdir( $assetsDir, 0755, true );
-copy( dirname( __DIR__ ). '/assets/lightbox.css', $assetsDir. '/lightbox.css' );
-copy( dirname( __DIR__ ). '/assets/lightbox.js', $assetsDir. '/lightbox.js' );
-
 
 // --- The feature -------------------------------------------------------------
 
@@ -54,11 +43,7 @@ check( 'it is written for this kernel', is_array( $manifest ) && \Nino\Features:
 check( 'it names and describes itself in both interface languages', is_array( $manifest )
 	&& \Nino\Features::localized( $manifest['description'], 'de_DE' ) !== \Nino\Features::localized( $manifest['description'], 'en_US' ) );
 
-// Read from the file rather than from $manifest: this repository's CI runs
-// every feature's test against Nino's main and against its latest tag, and a
-// kernel released before categories existed drops the field on the way through
-$raw = include $dir. '/feature.php';
-check( 'it is filed under ui', ( $raw['category'] ?? '' ) === 'ui' );
+check( 'it is filed under ui', $manifest['category'] === 'ui' );
 check( 'it needs no other feature - it is the one others depend on', $manifest['requires'] === [] );
 check( 'it keeps no data of its own - what it opens is markup the page already has', $manifest['data'] === [] );
 check( 'and carries no settings: a static asset cannot read one, so the link carries what differs', $manifest['settings'] === [] );

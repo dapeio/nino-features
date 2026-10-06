@@ -29,11 +29,6 @@ require $root. '/tests/harness.php';
 $appData = ninoSandbox( 'ticker' );
 $appData['/nino/dir'] = '';
 
-$assetsDir = ninoSandboxDir( $appData ). '/features/Ticker/assets';
-mkdir( $assetsDir, 0755, true );
-copy( dirname( __DIR__ ). '/assets/ticker.css', $assetsDir. '/ticker.css' );
-copy( dirname( __DIR__ ). '/assets/ticker.js', $assetsDir. '/ticker.js' );
-
 
 // --- The feature -------------------------------------------------------------
 
@@ -47,8 +42,7 @@ check( 'it is written for this kernel', is_array( $manifest ) && \Nino\Features:
 check( 'it names and describes itself in both interface languages', is_array( $manifest )
 	&& \Nino\Features::localized( $manifest['description'], 'de_DE' ) !== \Nino\Features::localized( $manifest['description'], 'en_US' ) );
 
-$raw = include $dir. '/feature.php';
-check( 'it is filed under ui', ( $raw['category'] ?? '' ) === 'ui' );
+check( 'it is filed under ui', $manifest['category'] === 'ui' );
 
 /*	Like Typewriter: what runs past is the project's own markup, and every
 	timing belongs to the row being run rather than to the site - a logo bar in

@@ -49,16 +49,6 @@ $appData['/nino/locales/textfiles'] = '/text';
 // install/text/en_US.php rather than against a translation
 $appData['./nino/locales/current'] = 'en_US';
 
-/*	\Nino\Filesystem::path()'s fallback resolves a virtual path outside
-	PRIVATE_DIRS/PUBLIC_DIRS against the project root - which is how
-	'/_nino/Nino.css' reaches the kernel's own file. The sandbox's root is a
-	fresh temp directory, not this feature's real parent, so the file the
-	asset bundler actually has to read is mirrored into it here, the way a
-	real project's features/ directory holds it	*/
-$assetsDir = ninoSandboxDir( $appData ). '/features/Hello/assets';
-mkdir( $assetsDir, 0755, true );
-copy( dirname( __DIR__ ). '/assets/hello.css', $assetsDir. '/hello.css' );
-
 
 // --- 1. The manifest ---------------------------------------------------------
 
@@ -72,12 +62,10 @@ check( 'it is written for this kernel', is_array( $manifest ) === true && \Nino\
 check( 'it names and describes itself in both interface languages', is_array( $manifest ) === true
 	&& \Nino\Features::localized( $manifest['description'], 'de_DE' ) !== \Nino\Features::localized( $manifest['description'], 'en_US' ) );
 
-/*	Read from the file rather than from $manifest: this repository's CI runs
-	every feature's test against Nino's main *and* against its latest tag, and
-	a kernel released before categories existed drops the field on the way
-	through	*/
+check( 'it is filed under system - an example belongs with the tooling', $manifest['category'] === 'system' );
+/*	The badge is read from the file as well: ^1.3 admits a 1.3 kernel, which
+	predates the field and drops it on the way through	*/
 $raw = include $dir. '/feature.php';
-check( 'it is filed under system - an example belongs with the tooling', ( $raw['category'] ?? '' ) === 'system' );
 check( 'it says in both languages that it is an example', ( $raw['maturity'] ?? [] ) === [ 'en_US' => 'Example', 'de_DE' => 'Beispiel' ] );
 // Only a kernel that knows the field hands it back - an older one drops it
 check( 'the kernel, where it reads the badge, hands back what the file says', array_key_exists( 'maturity', $manifest ) === false || $manifest['maturity'] === $raw['maturity'] );

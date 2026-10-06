@@ -5,6 +5,10 @@ file. A release is the tag `typewriter-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+- The README's note on asset bundling no longer allows for a kernel that
+  resolved `/features/...` against the project root: no kernel the
+  manifest's `^1.3` admits does.
+
 - **`Typewriter::init()`'s comment said the opposite of the README beside
   it.** It read that `/features/Typewriter/assets/...` resolves against the
   project root and reaches this feature's own copy "as long as features/
