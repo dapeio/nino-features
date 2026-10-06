@@ -25,7 +25,7 @@
 
 		_ready		: false,
 		_forms		: [],
-		// The field types Forms::TYPES declares - the panel offers exactly
+		// The field types \Nino\Form::TYPES declares - the panel offers exactly
 		// what the endpoint accepts, so the two cannot drift apart
 		_types		: [],
 		// The mail templates a form can name (/templates/mail-*, without the
@@ -212,8 +212,9 @@
 		},
 
 		/**
-		 *	The list: why nothing works while the kernel's contact form is
-		 *	on, one card per form, and the action that adds one
+		 *	The list: a warning while the endpoint's kernel module is off, a
+		 *	hint while the kernel's fallback contact form is what is shown, one
+		 *	card per form, and the action that adds one
 		 *
 		 *	@return		void
 		 */
@@ -242,10 +243,9 @@
 				wrap.appendChild( hint );
 			}
 
-			if( Nino.admin.forms._forms.length === 0 )
-				wrap.appendChild( Nino.adminUi.emptyState( Nino.content.getText('/_admin/forms/hint/empty') ) );
-			else
-				Nino.admin.forms._forms.forEach( function( form ) { wrap.appendChild( Nino.admin.forms._renderCard( form ) ) } );
+			// Never empty: \Nino\Form::forms() answers the contact form the
+			// kernel falls back to while a project has defined none
+			Nino.admin.forms._forms.forEach( function( form ) { wrap.appendChild( Nino.admin.forms._renderCard( form ) ) } );
 
 			const add = dc.createElement('button');
 			add.type = 'button';
@@ -406,9 +406,8 @@
 		},
 
 		/**
-		 *	The shortcode that renders one form - without a key for the
-		 *	first one defined, which is what a submission carrying no form
-		 *	field belongs to
+		 *	The shortcode that renders one form, always with its key: a bare
+		 *	[form] draws whichever form is first, and the list can be reordered
 		 *
 		 *	@param		{Object}	form
 		 *

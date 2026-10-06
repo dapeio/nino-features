@@ -100,6 +100,16 @@ versions [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **The list has no empty state, and the comments no longer describe a
+  feature that replaces the endpoint.** `\Nino\Form::forms()` answers the
+  kernel's contact form while a project has defined none, so the list is never
+  empty: the branch and its text `/_admin/forms/hint/empty` are gone. The
+  script named a `Forms::TYPES` that is `\Nino\Form::TYPES`, and the list's
+  and the shortcode's docblocks described states that no longer exist; the
+  `[csrf]` comment rested on a shortcode's output not being rendered again,
+  which it is, and `_tooFast()` called the check off by default, where the
+  default is three seconds. Words only, apart from the unreachable branch.
+
 - **The words the builder reads follow Nino 1.4's text keys.** A generated
   form's legend and button read `[[/template/common/form/required]]` and
   `[[/template/common/form/submit]]` (`[[/form/required]]` and

@@ -9,7 +9,6 @@ return [
 
 	'[[/_admin/forms/hint/endpoint]]'			=> 'The kernel module that answers POST /.form is not switched on, so every form here would post into nothing. Add \\Nino\\Modules\\Form back to /nino/modules in config.php.',
 	'[[/_admin/forms/hint/default]]'			=> 'This is the contact form Nino falls back to while a project has defined none of its own, shown as it would be. Saving anything here writes /nino/form/forms into config.php for the first time.',
-	'[[/_admin/forms/hint/empty]]'				=> 'No form is defined. Add one - its own screen then names the shortcode that renders it.',
 	'[[/_admin/forms/hint/shortcode]]'		=> 'Put %s into a template or a text to render this form.',
 	'[[/_admin/forms/hint/fields]]'				=> 'The name is what the field is posted and exported as. A field you add takes its name from the label until you change the name by hand; a saved name stays. The label is what a visitor reads - a text key written as a fill is resolved before it is shown, so one label can serve every language, and the name is then taken from the last part of the key. A checkbox suits a consent: it posts 1 when it is ticked. These names are taken: %s.',
 	'[[/_admin/forms/hint/to]]'						=> 'Empty sends to the address in the text fill /project/mail/address/owner.',

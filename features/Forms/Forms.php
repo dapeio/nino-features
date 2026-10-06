@@ -328,15 +328,9 @@ namespace Nino\Modules {
 				}
 			}
 
-			// [csrf] rendered here rather than left in the output: this string
-			// is a shortcode's result, and the render pass that produced it has
-			// already walked past the point where a shortcode of its own would
-			// have been replaced.
-			//
 			// The subdirectory read from the configuration rather than through
-			// the '[[/nino/dir]]' fill a template would use, for the same
-			// reason: that fill is registered mid-request (see \Nino\request())
-			// and a shortcode's output is not rendered again, so a form drawn
+			// the '[[/nino/dir]]' fill a template would use: that fill is
+			// registered mid-request (see \Nino\request()), so a form drawn
 			// outside that window would carry the literal in its action
 
 			/*	The three that carry markup last - [csrf] and the fields are built
@@ -360,9 +354,9 @@ namespace Nino\Modules {
 
 		/**
 		 *	Whether the submission came back faster than a person could have
-		 *	filled the form in. Only a form [form] drew carries the stamp - a
-		 *	hand-written one posts without it and is simply not checked,
-		 *	which is why this is off unless a project asks for it
+		 *	filled the form in - minSeconds, 3 by default, 0 switches it off.
+		 *	Only a form [form] drew carries the stamp: a hand-written one
+		 *	posts without it and is not checked
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$stamp				The posted '_t'

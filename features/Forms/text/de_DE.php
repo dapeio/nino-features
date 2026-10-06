@@ -10,7 +10,6 @@ return [
 
 	'[[/_admin/forms/hint/endpoint]]'			=> 'Das Kernel-Modul, das POST /.form beantwortet, ist nicht eingeschaltet - jedes Formular hier würde also ins Leere senden. Trage \\Nino\\Modules\\Form in der config.php wieder unter /nino/modules ein.',
 	'[[/_admin/forms/hint/default]]'			=> 'Das ist das Kontaktformular, auf das Nino zurückfällt, solange ein Projekt keines definiert hat - so gezeigt, wie es wäre. Das erste Speichern schreibt /nino/form/forms in die config.php.',
-	'[[/_admin/forms/hint/empty]]'				=> 'Kein Formular definiert. Lege eines an - sein eigener Bildschirm nennt dann den Shortcode, der es zeichnet.',
 	'[[/_admin/forms/hint/shortcode]]'		=> 'Schreibe %s in ein Template oder einen Text, um dieses Formular auszugeben.',
 	'[[/_admin/forms/hint/fields]]'				=> 'Der Name ist das, womit das Feld gesendet und exportiert wird. Ein neues Feld nimmt seinen Namen aus dem Label, bis Du ihn von Hand änderst; ein gespeicherter Name bleibt. Das Label ist das, was ein Besucher liest - ein als Fill geschriebener Textschlüssel wird vor der Ausgabe aufgelöst, ein Label kann also alle Sprachen bedienen, und der Name kommt dann aus dem letzten Teil des Schlüssels. Eine Checkbox passt zu einer Einwilligung: Angehakt sendet sie 1. Diese Namen sind vergeben: %s.',
 	'[[/_admin/forms/hint/to]]'						=> 'Leer schickt an die Adresse aus dem Textfill /project/mail/address/owner.',
