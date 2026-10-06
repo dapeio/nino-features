@@ -164,7 +164,7 @@ $elsewhere = [
 	'nino-toast', 'nino-toast--success', 'nino-toast--error', 'nino-toast--visible', 'nino-toast-container',
 	'nino-slider-controls', 'nino-slider-button', 'nino-slider-points', 'nino-slider-point',
 	'nino-scroll-atf', 'nino-scroll-btf', 'nino-scroll-down',
-	'nino-is-touch', 'nino-is-existing', 'nino-vpa--visible', 'nino-vpa--visible-once',
+	'nino-is-touch', 'nino-vpa--visible', 'nino-vpa--visible-once',
 ];
 
 /*	Nino up to 1.3.2 wrote a cookie banner of its own, and Nino.css carries the
@@ -174,6 +174,13 @@ $elsewhere = [
 	on both - and the list can go once the latest Nino tag no longer has them.	*/
 $retired = [ 'nino-cookie-banner', 'nino-cookie-banner--visible', 'nino-cookie-banner-actions' ];
 $elsewhere = array_merge( $elsewhere, array_values( array_intersect( $retired, $defined ) ) );
+
+/*	Nino up to 1.4.0 styles a form state .nino-is-existing that nothing has
+	set since 1.0.0-beta, and Nino.ui.js asks for it; a later Nino drops both.
+	The same rule as above: it counts as "rendered elsewhere" only while the
+	checkout's Nino.css still defines it - the line can go once the latest
+	Nino tag no longer has it.	*/
+$elsewhere = array_merge( $elsewhere, array_values( array_intersect( [ 'nino-is-existing' ], $defined ) ) );
 
 /*	Nino 1.4's Legal module draws every section of the imprint and the privacy
 	policy in a .nino-legal-section, and Nino.css styles it. No page template

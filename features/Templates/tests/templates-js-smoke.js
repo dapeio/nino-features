@@ -876,7 +876,7 @@ const statesInJs = new Set( ( ninoUiJsSource.match( /'nino-is-[a-z-]+'/g ) || []
 const statesInCss = new Set( ( ninoCssSource.match( /\.nino-is-[a-z-]+/g ) || [] ).map( function( selector ) { return selector.slice( 1 ) } ) );
 check( 'every state class the frontend JS sets is one the stylesheet styles', statesInJs.size > 0
 	&& Array.from( statesInJs ).every( function( state ) { return statesInCss.has( state ) } ) );
-check( 'the frontend state vocabulary is namespaced, not a bare English word', [ 'active', 'touch', 'error', 'success', 'pending', 'existing' ].every( function( state ) {
+check( 'the frontend state vocabulary is namespaced, not a bare English word', [ 'active', 'touch', 'error', 'success', 'pending' ].every( function( state ) {
 	return statesInCss.has( 'nino-is-'+ state ) && new RegExp( '\\.'+ state+ '\\b' ).test( ninoCssSource ) === false;
 } ) );
 check( 'type size is a modifier of the class it changes, not an em utility over it', ninoCssSource.includes( '.nino-font-big' ) === false
