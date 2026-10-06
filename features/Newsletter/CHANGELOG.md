@@ -67,6 +67,14 @@ A release is the tag `newsletter-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The README names the signup preset's real action, and the comments the
+  kernel methods there are.** The `form-newsletter` preset posts to
+  `[[/nino/dir]]/.newsletter`, not `/.newsletter`, and is there only where
+  the Templates feature is installed, which this feature does not require.
+  The class pointed at `Form::_record()` and `Form::callbackResponse`, which
+  are `\Nino\Form::record()` and `\Nino\Form::handle()`; the panel's count
+  is read by `summary()`, not by a `Dashboard::apiSummary`. Words only.
+
 - **The panel asks the feature for its subscriber file and its removal
   record.** `Newsletter\Admin` kept its own copies of `/data/newsletter.php`
   and `/data/newsletter-removed.php` and wrote the removal record itself, with
@@ -274,6 +282,12 @@ A release is the tag `newsletter-<version>` of dapeio/nino-features.
   `substr()`, which splits a multibyte character when the cut lands inside
   one. An address that long is refused either way; what changes is that the
   value the refusal looks at is still text.
+
+### Removed
+
+- **The setup wizard's keys in the install unit.** `label`, `moduleClass` and
+  `requiresModules` were never read by an activation, and the wizard does not
+  offer features. A project's files are unaffected.
 
 ## 1.0.0 — 2026-09-07
 

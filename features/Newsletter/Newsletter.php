@@ -25,7 +25,7 @@ namespace Nino\Modules {
 	 *										the link out, the same answer for every address.
 	 *										Persisted as one growing, email-deduped
 	 *										/data/newsletter.php - no per-month bucketing (unlike
-	 *										Form::_record()'s forms.<Y-m>.php) since a subscriber
+	 *										\Nino\Form::record()'s forms.<Y-m>.php) since a subscriber
 	 *										list isn't naturally date-bucketed the way individual
 	 *										contact inquiries are. The panel in Admin/Admin.php
 	 *										reads the list through PATH and records an address it
@@ -147,8 +147,8 @@ namespace Nino\Modules {
 		 */
 		public static function callbackResponse( array &$appData, array &$request ): void {
 
-			// Respect a rejection from the earlier global Csrf callback - same guard
-			// Form/Auth::callbackResponse use
+			// Respect a rejection from the earlier global Csrf callback - the
+			// same guard \Nino\Form::handle() and \Nino\Auth's callbacks use
 			if( ( $request['./nino/csrf/blocked'] ?? false ) === true )
 				return;
 
@@ -325,7 +325,7 @@ namespace Nino\Modules {
 		/**
 		 *	Read the two posted values of a signup or an unsubscribe request
 		 *
-		 *	Not escaped before validating (see Form::callbackResponse):
+		 *	Not escaped before validating (\Nino\Form::handle() keeps the same order):
 		 *	escaping an address with an apostrophe first would turn it into
 		 *	"&#039;", either failing validation or getting stored in a form
 		 *	getUnsubscribeLink() can never match again.
@@ -442,7 +442,7 @@ namespace Nino\Modules {
 
 		/**
 		 *	Record a pending signup and mail its confirmation link - never
-		 *	thrown, same reasoning as Form::_record: a storage failure is
+		 *	thrown, same reasoning as \Nino\Form::record(): a storage failure is
 		 *	answered, not raised. Every address takes the same way: a new one
 		 *	is recorded as pending with a fresh token, a still-pending one gets
 		 *	its mail again with the same token (the first one may simply never

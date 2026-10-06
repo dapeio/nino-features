@@ -1,7 +1,4 @@
 <?php return [
-	'label' 			=> 'Newsletter',
-	'moduleClass' => '\\Nino\\Modules\\Newsletter',
-	'requiresModules' => [ ],
 	// page-newsletter.tpl serves /.newsletter (confirm/unsubscribe/invalid) and
 	// page-newsletter-unsubscribe.tpl serves /.newsletter/unsubscribe, the form
 	// that asks for the address - the module registers both routes itself (see

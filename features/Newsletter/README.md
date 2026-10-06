@@ -131,9 +131,11 @@ line: put it into every newsletter you send by BCC.
 
 ### The signup form
 
-The feature ships no signup form. The Templates feature does: the `form-newsletter`
-section preset under `features/Templates/library/form-newsletter/`
-renders a `form.nino-newsletter-form` with `action="/.newsletter"`, `[csrf]`,
+The feature ships no signup form. The Templates feature does - a feature of
+its own, which this one does not require, so the preset is there only where
+Templates is installed: the `form-newsletter` section preset under
+`features/Templates/library/form-newsletter/` renders a
+`form.nino-newsletter-form` with `action="[[/nino/dir]]/.newsletter"`, `[csrf]`,
 the `location` trap and the `email` field, and `_nino/Nino.ui.js` submits it
 by xhr and shows the outcome. The words that form and script read are the base
 unit's `/template/common/form/email` and what the install unit writes:
@@ -251,9 +253,7 @@ The unit's `blacklist` is merged into `text/blacklist.php`:
 `/feature/newsletter/unsubscribe/url`, `/feature/newsletter/unsubscribe/error`,
 `/feature/newsletter/page/title` and `/feature/newsletter/page/text`, which the class fills
 at request time and no text file answers - blacklisted, the Text panel's
-scan for missing keys does not report them. `label`, `moduleClass` and `requiresModules` in
-the unit's manifest are the setup wizard's keys and are not read by an
-activation - the wizard does not offer features.
+scan for missing keys does not report them.
 
 ## Privacy policy
 

@@ -67,8 +67,8 @@ namespace Nino\Modules\Newsletter {
 
 		/**
 		 *	How many subscribers are currently on file - the confirmed ones,
-		 *	shared by Dashboard::apiSummary. A pending signup has not agreed to
-		 *	anything yet and is not a subscriber
+		 *	which summary() puts on the Dashboard's tile. A pending signup has
+		 *	not agreed to anything yet and is not a subscriber
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *

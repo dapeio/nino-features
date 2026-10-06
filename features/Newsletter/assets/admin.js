@@ -25,7 +25,7 @@
 
 		/**
 		 *	Load the recorded signups and render them. Same "always
-		 *	re-fetch" shape as logs.js - there's no drill-down state to
+		 *	re-fetch" shape as the Logs panel's script - there's no drill-down state to
 		 *	preserve, and re-fetching on every tab switch keeps the list
 		 *	current with whatever arrived since it was last open
 		 *
