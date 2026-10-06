@@ -361,6 +361,18 @@ namespace Nino\Modules\Templates {
 			return is_array( $area ) && $area['source'] === 'elements' ? $area : null;
 		}
 
+		/**
+		 *	The image slot a cover or parallax background binds: its English
+		 *	label, which the stored slot keeps, and the size a new one is
+		 *	created with. The panel's "New image slot" option spells the size
+		 *	out in both languages (text/*.php, /_admin/templates/label/slot-new)
+		 *
+		 *	@return 	array								{ label, width, height }
+		 */
+		public static function backgroundDefinition(): array {
+			return [ 'label' => 'Background image', 'width' => 1920, 'height' => 1080 ];
+		}
+
 		public static function imageDefinition( array $preset, string $areaKey, string $componentId, string $property ): ?array {
 			$area = $preset['areas'][$areaKey] ?? null;
 			if( is_array( $area ) === false || $area['source'] !== 'single' || preg_match( self::ID_PATTERN, $componentId ) !== 1 || $property !== 'src' || in_array( 'image', $area['allowed'], true ) === false )
@@ -589,7 +601,7 @@ namespace Nino\Modules\Templates {
 				if( self::validKey( $key, true ) === false )
 					throw new \InvalidArgumentException( 'invalid background image binding' );
 				$spec['frame']['backgroundImage'] = $key;
-				$result[] = [ 'slot' => 'background', 'area' => '', 'component' => '', 'property' => 'src', 'label' => 'Background image', 'width' => 1920, 'height' => 1080, 'key' => $key, 'generatedKey' => $generated, 'mode' => $key === $generated ? 'new' : 'existing' ];
+				$result[] = [ 'slot' => 'background', 'area' => '', 'component' => '', 'property' => 'src', ...self::backgroundDefinition(), 'key' => $key, 'generatedKey' => $generated, 'mode' => $key === $generated ? 'new' : 'existing' ];
 			}
 			foreach( $preset['areas'] as $areaKey => $area ) {
 				if( $area['source'] !== 'single' )

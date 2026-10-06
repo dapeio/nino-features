@@ -37,6 +37,14 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The background image slot is defined once.** Its label and size -
+  "Background image", 1920×1080 - were written out in
+  `AreaComposer::imageDescriptors()`, in `content/image-create` and in the
+  panel's script, which did not even read them. `AreaComposer::backgroundDefinition()`
+  is the one place now, and both server paths ask it; the "New image slot"
+  option still names the size, and `templates-smoke.php` holds it to the
+  definition in both languages. Stored slots and their size are unchanged.
+
 - **The frame fallbacks are stated once.** What Auto settles on where neither
   the Layout nor the preset recommends a value was the compiler's
   `FRAME_FALLBACKS` and two hand-kept copies in the panel, in

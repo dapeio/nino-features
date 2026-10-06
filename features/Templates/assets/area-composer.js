@@ -348,7 +348,7 @@
 		const generated = backgroundKey( draft );
 		if( [ 'cover', 'parallax' ].includes( effectiveFrame( draft, item ).background ) && backgroundSource( draft ) !== 'fixed' ) {
 			const key = draft.frame.backgroundImage || generated;
-			images.unshift( { area : '', index : -1, component : '', property : 'src', slot : 'background', label : 'Background image', width : 1920, height : 1080, generatedKey : generated, key : key, mode : key === generated ? 'new' : 'existing' } );
+			images.unshift( { area : '', index : -1, component : '', property : 'src', slot : 'background', generatedKey : generated, key : key, mode : key === generated ? 'new' : 'existing' } );
 		}
 		return images;
 	}

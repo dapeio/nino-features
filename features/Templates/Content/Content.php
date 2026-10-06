@@ -262,7 +262,7 @@ namespace Nino\Modules\Templates {
 			$definition = $preset === null
 				? null
 				: ( $slot === 'background'
-					? [ 'label' => 'Background image', 'width' => 1920, 'height' => 1080 ]
+					? AreaComposer::backgroundDefinition()
 					: AreaComposer::imageDefinition(
 						$preset,
 						(string) ( $data['area'] ?? '' ),

@@ -443,6 +443,11 @@ check( 'composes one ordinary section', str_starts_with( $hero['source'], '<sect
 check( 'writes stable section metadata inside generated source', str_contains( $hero['source'], '<!-- nino:section {' ) );
 check( 'derives textfill keys from page and section ids', in_array( '/template/page-home/main-hero/title', array_column( $hero['fields'], 'key' ), true ) && str_contains( $hero['source'], '[[/template/page-home/main-hero/title]]' ) );
 check( 'reports the generated background image slot', ( $hero['images'][0]['slot'] ?? '' ) === 'background' );
+$background = \Nino\Modules\Templates\AreaComposer::backgroundDefinition();
+check( '...with the label and size of the one background definition', ( $hero['images'][0]['label'] ?? null ) === $background['label']
+	&& ( $hero['images'][0]['width'] ?? null ) === $background['width'] && ( $hero['images'][0]['height'] ?? null ) === $background['height'] );
+$backgroundSize = $background['width']. '×'. $background['height'];
+check( 'the "New image slot" option names the size a background slot is created with, in every language', array_filter( [ 'en_US', 'de_DE' ], fn( string $locale ): bool => str_contains( ( include __DIR__. '/../text/'. $locale. '.php' )['[[/_admin/templates/label/slot-new]]'] ?? '', $backgroundSize ) === false ) === [] );
 check( 'inherits page motion into generated nino-vpa markup', preg_match( '/class="(?=[^"]*\bnino-grid-row\b)(?=[^"]*\bnino-vpa\b)[^"]*"/', $hero['source'] ) === 1 );
 check( 'applies Area alignment without forcing it onto the section shell', str_contains( $hero['source'], 'nino-text-center' ) && str_contains( strtok( $hero['source'], "\n" ), 'nino-text-center' ) === false );
 $contactBinding = array_values( array_filter( $hero['fields'], fn( array $field ): bool => $field['key'] === '/_nino/webpage/contact/uri' ) )[0] ?? null;
@@ -1693,9 +1698,10 @@ check( 'content/type-create accepts the type suggested for a page-404 section', 
 	&& isset( \Nino\Filesystem::getFileContent( $appData, '/elements/page-404-hero-articles.php', [] )['model']['title'] ) );
 
 /*	A slot is always named by the preset it belongs to: every preset in the
-	library is an Area preset, so the caller says which one and which slot,
-	and the dimensions come from the manifest rather than from the shape of
-	the uri.	*/
+	library is an Area preset, so the caller says which one and which slot.
+	The dimensions never come from the shape of the uri - a component's from
+	the manifest, the background's from AreaComposer::backgroundDefinition(),
+	whose size a stored slot keeps.	*/
 post( [
 	'name' => 'page-home', 'preset' => 'hero-fullscreen-image', 'slot' => 'background',
 	'uri' => '/template/page-home/area-stage/background', 'label' => 'Area Stage Background',
