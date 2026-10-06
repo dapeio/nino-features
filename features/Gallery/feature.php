@@ -28,8 +28,8 @@ return [
 		'routes' => [],
 		'panel' => [
 			'Gallery' => [
-				'en_US' => 'Create an album and upload its pictures - two sizes per upload, the original never kept.',
-				'de_DE' => 'Ein Album anlegen und Bilder hochladen – zwei Größen je Upload, das Original wird nie behalten.',
+				'en_US' => 'Create an album and upload its pictures - two sizes per upload, the original never kept. Alt text and caption are written per language.',
+				'de_DE' => 'Ein Album anlegen und Bilder hochladen – zwei Größen je Upload, das Original wird nie behalten. Alternativtext und Bildunterschrift schreibst Du je Sprache.',
 			],
 		],
 		'callbacks' => [],
@@ -43,7 +43,7 @@ return [
 	// The overlay a thumbnail opens into is the Lightbox feature's, not a
 	// second copy of one. Installing this from the catalogue brings it along
 	'requires'		=> [ 'lightbox' ],
-	// The albums and their captions. The images themselves live under
+	// The albums with their alt texts and captions. The images themselves live under
 	// /images/gallery/, where every other uploaded image lives and where a
 	// backup already carries them
 	'data'				=> [ '/data/gallery.php' ],

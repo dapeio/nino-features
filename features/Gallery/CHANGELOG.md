@@ -22,7 +22,69 @@ versions [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   feature to an installation that could not then install it. `^1.3` names
   only a kernel that can read the manifest.
 
+### Added
+
+- **An image has an alt text of its own, and both texts are per language.**
+  The caption was the only text an image had, and it served as the caption
+  under the picture, as `data-caption` and as the thumbnail's `alt` at once.
+  Every image carries an `alt` beside its `caption` now, each either one
+  string for every language or a map of locale to text, the shape the images
+  cluster plans for the alt of an image slot. The shortcode shows the current
+  language's text, else the site's native one, else the first there is.
+  The thumbnail's `alt` is the alt text, or the caption where there is no alt
+  text; an image with an alt text and **no** caption gets an empty
+  `data-caption`, which the Lightbox now reads as "no caption" instead of
+  printing the alt text under the picture. A project that never touches an
+  alt text sees the same markup as before.
+
+- **A language switch in the album's toolbar.** The workbench's own, the one
+  the Elements and Text screens have, hidden where the project has one
+  language. Each tile has an alt text field and a caption field for the chosen
+  language, each saved when it is left. The first text written for a language
+  on an image whose text was one string keeps that string for every other
+  language; clearing a field takes that language's text away.
+
+- **A refused upload says why, and names the limit.** Every refusal was "That
+  image is not in this album." - a text meant for something else. The panel
+  answers *the file is larger than 2 MB* for a file over `upload_max_filesize`
+  and for one over the 8 MiB the kernel makes an image from, *not a JPEG, PNG,
+  GIF or WebP image*, *too many pixels - at most 20 megapixels*, and *the
+  server could not make the two sizes*. The kernel's cap is private to
+  `\Nino\Images`, so the number is mirrored in `Gallery::KERNEL_UPLOAD_BYTES`
+  and only ever used to say why, never to refuse; the pixel limit is the
+  kernel's public `MAX_SOURCE_PIXELS`. "That image is not in this album." stays
+  for the image actions it is true for.
+
+- **A file that is too big is stopped in the browser, by name.** A file over
+  `post_max_size` never reaches the feature: php drops the whole request with
+  its CSRF field, and what came back was the CSRF check's refusal, shown as
+  "The file could not be read." The panel compares each file with php's limit
+  (`gallery/list` answers it) before sending it, and stops the batch at the
+  first one over, saying which. Every message of an upload now starts with the
+  file's name.
+
 ### Changed
+
+- **Saving a text is one locked write.** `gallery/image-save` read the whole
+  file, changed one image and wrote the file back, so two people saving two
+  images could lose one of the changes. It goes through
+  `\Nino\Filesystem::mutate()` now. It takes `{ album, id, locale, alt,
+  caption }` - a language the project has is required, and a text that is not
+  posted is left as it is. The other actions still write the album file whole.
+
+- **A downgrade needs the data looked at first.** Earlier versions of this
+  feature cast a caption with `(string)`, and a map where they expect a string
+  raises *Array to string conversion*, which the kernel treats as fatal. A
+  project that saved a text for a language and goes back to an earlier version
+  has to turn those maps into strings in `/data/gallery.php` by hand first.
+
+- **Nothing for a project to run.** The strings already stored stay valid, so
+  there is no `upgrade()`.
+
+- **The panel's texts.** New fills in `text/en_US.php` and `text/de_DE.php`:
+  `label/alt`, `label/locale`, `error/locale`, `error/size`, `error/type`,
+  `error/pixels` and `error/process`. A project that overrides a panel text
+  has nothing to change.
 
 - **The README's "Styling" chapter counted four custom properties and named
   three.** `gallery.css` declares `--nino-gallery-columns`,

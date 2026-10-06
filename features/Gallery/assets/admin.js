@@ -3,7 +3,9 @@
  *	Modules\Gallery					The panel of the Gallery feature: the albums a
  *													project has, and one album's images on a screen of
  *													its own - two levels in two panes, stepped through
- *													with the workbench's own back link.
+ *													with the workbench's own back link. An image's alt
+ *													text and caption are written per language, with the
+ *													switch in the album's toolbar.
  *
  *													Admin/Admin.php beside it does the reading, the
  *													writing and the two image sizes, and hands every
@@ -30,6 +32,14 @@
 		_thumb	: [ 0, 0 ],
 		_large	: [ 0, 0 ],
 		_keepRatio : true,
+		// The languages an alt text and a caption can be written in, and the
+		// site's own - which is what a picture is shown in where it has none
+		// in the current one
+		_locales : [],
+		_native : '',
+		// What php takes in one upload: bytes (0 where it sets no limit) and
+		// the same said in words, both worked out server side
+		_limits : { bytes : 0, text : '' },
 		// The album whose screen is open, '' while the list is
 		_open		: '',
 
@@ -87,6 +97,12 @@
 			if( response.thumb ) Nino.admin.gallery._thumb = response.thumb;
 			if( response.large ) Nino.admin.gallery._large = response.large;
 			if( response.keepRatio !== undefined ) Nino.admin.gallery._keepRatio = response.keepRatio === true;
+			if( response.locales ) Nino.admin.gallery._locales = response.locales;
+			if( response.native ) Nino.admin.gallery._native = response.native;
+			if( response.limits ) Nino.admin.gallery._limits = response.limits;
+
+			// The language the workbench last worked in, if no panel has set one
+			if( response.selectedLocale ) Nino.admin.sessionLocale.init( response.selectedLocale );
 
 			// An album that is gone - deleted here, or by hand in the file -
 			// takes its screen with it rather than leaving one about nothing
@@ -107,6 +123,60 @@
 		 */
 		_album : function( key ) {
 			return Nino.admin.gallery._albums.filter( function( album ) { return album.key === key } )[0] || null;
+		},
+
+		/**
+		 *	The language the screen edits in: the one the workbench is working
+		 *	in, where this project has it - else the site's own
+		 *
+		 *	@return		{string}
+		 */
+		_locale : function() {
+
+			const current = Nino.admin.sessionLocale.current;
+
+			return Nino.admin.gallery._locales.indexOf( current ) !== -1 ? current : ( Nino.admin.gallery._native || Nino.admin.gallery._locales[0] || '' );
+		},
+
+		/**
+		 *	What a stored alt text or caption says in one language, for a
+		 *	field to hold: a plain string is every language, a map has an
+		 *	entry for the ones it was written in and nothing for the others
+		 *
+		 *	@param		{string|Object}	value
+		 *	@param		{string}				locale
+		 *
+		 *	@return		{string}
+		 */
+		_textIn : function( value, locale ) {
+
+			if( typeof value === 'string' )
+				return value;
+
+			return ( value && typeof value[locale] === 'string' ) ? value[locale] : '';
+		},
+
+		/**
+		 *	What the page will show for one of them in one language - the
+		 *	same order Gallery::localized() has: that language, the site's
+		 *	own, the first there is
+		 *
+		 *	@param		{string|Object}	value
+		 *	@param		{string}				locale
+		 *
+		 *	@return		{string}
+		 */
+		_shownIn : function( value, locale ) {
+
+			if( typeof value === 'string' )
+				return value;
+
+			if( !value )
+				return '';
+
+			const texts = Object.keys( value ).map( function( key ) { return value[key] } );
+
+			return [ value[locale], value[Nino.admin.gallery._native] ].concat( texts ).filter( function( text ) { return typeof text === 'string' && text !== '' } )[0] || '';
 		},
 
 		/**
@@ -356,7 +426,13 @@
 				Nino.admin.gallery._open = '';
 				Nino.admin.gallery._renderList();
 			} );
-			wrap.appendChild( Nino.admin.formToolbar( backLink ) );
+			const toolbar = Nino.admin.formToolbar( backLink );
+
+			// A project with one language has nothing to switch
+			if( Nino.admin.gallery._locales.length > 1 )
+				toolbar.appendChild( Nino.admin.gallery._renderLocaleSelect() );
+
+			wrap.appendChild( toolbar );
 
 			const title = dc.createElement('h3');
 			title.textContent = album.name;
@@ -386,6 +462,36 @@
 
 			wrap.appendChild( Nino.admin.gallery._renderAlbumActions( album ) );
 			Nino.admin.gallery._level('album');
+		},
+
+		/**
+		 *	The language switch of an album's toolbar, the one the Elements and
+		 *	Text screens have: the choice is the workbench's, so it is still
+		 *	there on the next screen that has one
+		 *
+		 *	@return		{Element}							<select>
+		 */
+		_renderLocaleSelect : function() {
+
+			const select = dc.createElement('select');
+			select.id = 'gallery-locale-select';
+			select.className = 'nino-admin-locale-select nino-admin-contextbar-select';
+			select.setAttribute( 'aria-label', Nino.content.getText('/_admin/gallery/label/locale') );
+
+			Nino.admin.gallery._locales.forEach( function( locale ) {
+				const option = dc.createElement('option');
+				option.value = locale;
+				option.textContent = locale;
+				option.selected = ( locale === Nino.admin.gallery._locale() );
+				select.appendChild( option );
+			} );
+
+			select.addEventListener( 'change', function() {
+				Nino.admin.sessionLocale.set( select.value );
+				Nino.admin.gallery._renderAlbum();
+			} );
+
+			return select;
 		},
 
 		/**
@@ -472,6 +578,19 @@
 				}
 
 				const file = files.shift();
+
+				/*	Said before the request, because for a file over post_max_size
+					there is no answer worth the name: php drops the whole request,
+					the csrf field with it, and what comes back is a refusal that
+					names no cause. The limit is the one php reports; the kernel's
+					own cap on a picture is explained by the server, afterwards	*/
+				if( Nino.admin.gallery._limits.bytes > 0 && file.size > Nino.admin.gallery._limits.bytes ) {
+					input.disabled = false;
+					input.value = '';
+					say( file.name+ ': '+ Nino.content.getText('/_admin/gallery/error/size').replace( '%s', Nino.admin.gallery._limits.text ) );
+					return;
+				}
+
 				msg.textContent = Nino.content.getText('/_admin/gallery/msg/uploading').replace( '%s', file.name );
 
 				Nino.admin.gallery._apiCall( 'upload', { album : album.key }, function( status, response ) {
@@ -483,7 +602,7 @@
 							before this one is on the server and in _albums
 							already, and a grid still showing the album as it
 							stood before the batch says the upload did nothing	*/
-						say( ( response && response.error ) ? response.error : Nino.content.getText('/_admin/gallery/error/upload') );
+						say( file.name+ ': '+ ( ( response && response.error ) ? response.error : Nino.content.getText('/_admin/gallery/error/upload') ) );
 						return;
 					}
 
@@ -497,8 +616,9 @@
 		},
 
 		/**
-		 *	One image: the thumbnail as it will be seen, its caption, and
-		 *	moving it or taking it away
+		 *	One image: the thumbnail as it will be seen, its alt text and its
+		 *	caption in the language the screen is on, and moving it or taking
+		 *	it away
 		 *
 		 *	@param		{Object}	album
 		 *	@param		{Object}	image
@@ -508,13 +628,17 @@
 		 */
 		_renderTile : function( album, image, index ) {
 
+			const locale = Nino.admin.gallery._locale();
+
 			const tile = dc.createElement('li');
 			tile.className = 'gallery-tile';
 			tile.dataset.image = image.id;
 
+			// Named the way the page names it: by its alt text, and where it has
+			// none by its caption
 			const thumb = dc.createElement('img');
 			thumb.src = image.thumbUrl;
-			thumb.alt = image.caption || '';
+			thumb.alt = Nino.admin.gallery._shownIn( image.alt, locale ) || Nino.admin.gallery._shownIn( image.caption, locale );
 			thumb.loading = 'lazy';
 			tile.appendChild( thumb );
 
@@ -522,20 +646,26 @@
 			msg.className = 'nino-admin-hint gallery-tile-msg';
 			msg.setAttribute( 'aria-live', 'polite' );
 
-			const caption = dc.createElement('input');
-			caption.type = 'text';
-			caption.className = 'nino-admin-input';
-			caption.value = image.caption || '';
-			caption.placeholder = Nino.content.getText('/_admin/gallery/label/caption');
-			caption.setAttribute( 'aria-label', Nino.content.getText('/_admin/gallery/label/caption') );
-			// On blur rather than on every keystroke: a caption is a sentence,
-			// not a slider
-			caption.addEventListener( 'blur', function() {
-				if( caption.value === ( image.caption || '' ) )
-					return;
-				Nino.admin.gallery._saveCaption( album, image, caption, msg );
+			[ 'alt', 'caption' ].forEach( function( name ) {
+
+				const label = Nino.content.getText('/_admin/gallery/label/'+ name);
+
+				const field = dc.createElement('input');
+				field.type = 'text';
+				field.className = 'nino-admin-input';
+				field.dataset.field = name;
+				field.value = Nino.admin.gallery._textIn( image[name], locale );
+				field.placeholder = label;
+				field.setAttribute( 'aria-label', label );
+				// On blur rather than on every keystroke: these are sentences,
+				// not sliders
+				field.addEventListener( 'blur', function() {
+					if( field.value === Nino.admin.gallery._textIn( image[name], locale ) )
+						return;
+					Nino.admin.gallery._saveText( album, image, name, locale, field, msg );
+				} );
+				tile.appendChild( field );
 			} );
-			tile.appendChild( caption );
 
 			const actions = dc.createElement('div');
 			actions.className = 'gallery-tile-actions';
@@ -571,11 +701,27 @@
 			return tile;
 		},
 
-		_saveCaption : function( album, image, field, msg ) {
+		/**
+		 *	Save one of an image's two texts in one language - only that one:
+		 *	the other is not in the request, so it stays as the server has it
+		 *
+		 *	@param		{Object}		album
+		 *	@param		{Object}		image
+		 *	@param		{string}		name				'alt' or 'caption'
+		 *	@param		{string}		locale
+		 *	@param		{Element}		field
+		 *	@param		{Element}		msg
+		 *
+		 *	@return		void
+		 */
+		_saveText : function( album, image, name, locale, field, msg ) {
 
 			msg.textContent = Nino.content.getText('/_admin/common/msg/saving');
 
-			Nino.admin.gallery._apiCall( 'image-save', { album : album.key, id : image.id, caption : field.value }, function( status, response ) {
+			const payload = { album : album.key, id : image.id, locale : locale };
+			payload[name] = field.value;
+
+			Nino.admin.gallery._apiCall( 'image-save', payload, function( status, response ) {
 				if( status !== 200 || response === null ) {
 					msg.textContent = ( response && response.error ) ? response.error : Nino.content.getText('/_admin/common/error/save');
 					return;
@@ -583,14 +729,21 @@
 				Nino.admin.gallery._albums = response.albums || [];
 
 				/*	What the next blur is compared against: the tile is not
-					rebuilt after a caption was saved - the cursor is in the
-					field - so the image object it was drawn from is the only
-					record this field has of what it has sent. Left at the
-					caption the screen was drawn with, it made putting a caption
-					back to that one read as "nothing changed" while the server
-					held what it was sent in between, and every other blur send
-					the same caption again	*/
-				image.caption = field.value;
+					rebuilt after a text was saved - the cursor is in the field -
+					so the image object it was drawn from is the only record this
+					field has of what it has sent. Taken from the answer, not from
+					the field: the first translation of a text that was one string
+					for every language makes it a map, and the server decides what
+					the other languages hold then. Only the text that was saved:
+					the other field may have been sent since, and an answer that
+					predates it must not take it back. Left at what the screen was
+					drawn with, putting a text back to that one read as "nothing
+					changed" while the server held what it was sent in between,
+					and every other blur sent the same text again	*/
+				const saved = ( Nino.admin.gallery._album( album.key ) || { images : [] } ).images.filter( function( one ) { return one.id === image.id } )[0];
+
+				if( saved !== undefined )
+					image[name] = saved[name];
 
 				msg.textContent = Nino.content.getText('/_admin/common/msg/saved');
 			} );

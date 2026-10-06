@@ -48,8 +48,8 @@ namespace Nino\Modules {
 	 */
 	class Gallery {
 
-		// The albums and their captions. The images are files under
-		// /images/gallery/, where every other uploaded image lives
+		// The albums, with each image's alt text and caption. The images are
+		// files under /images/gallery/, where every other uploaded image lives
 		public const string ALBUMS = '/data/gallery.php';
 
 		// Below \Nino\Images' own upload directory - what process() and fit()
@@ -65,8 +65,16 @@ namespace Nino\Modules {
 		public const string KEY_PATTERN = '/^[a-z][a-z0-9-]*$/';
 		public const string ID_PATTERN 	= '/^[a-f0-9]{16}$/';
 
-		// What one caption may carry - a line under a picture, not an essay
+		// What one caption - or one alt text - may carry: a line under a
+		// picture, not an essay
 		public const int MAX_CAPTION = 300;
+
+		// The byte cap \Nino\Images::_render() refuses an upload above. The
+		// constant there is private, and a feature does not reach past the
+		// kernel's public API, so the number is mirrored here - and only ever
+		// used to say why a refusal happened (see refusal()), never to refuse
+		// one. Switch to the kernel's own once it publishes it
+		public const int KERNEL_UPLOAD_BYTES = 8 * 1024 * 1024;
 
 		/**
 		 *	The panel this feature brings along
@@ -181,7 +189,8 @@ namespace Nino\Modules {
 					'id'			=> $id,
 					'thumb'		=> $thumb,
 					'large'		=> $large,
-					'caption'	=> mb_strcut( trim( (string) ( $image['caption'] ?? '' ) ), 0, self::MAX_CAPTION, 'UTF-8' ),
+					'alt'			=> self::text( $image['alt'] ?? '' ),
+					'caption'	=> self::text( $image['caption'] ?? '' ),
 				];
 			}
 
@@ -190,6 +199,152 @@ namespace Nino\Modules {
 				'name'		=> mb_strcut( trim( (string) ( $entry['name'] ?? $key ) ), 0, 120, 'UTF-8' ),
 				'images'	=> $images,
 			];
+		}
+
+		/**
+		 *	One stored alt text or caption read into either of its two shapes:
+		 *	a string, which is every language, or a map of locale => string -
+		 *	the shape the images cluster plans for an image slot's alt. Anything
+		 *	else is '' rather than a cast: a map must never reach (string),
+		 *	which php answers with a fatal 'Array to string conversion'.
+		 *	Every text is cut to MAX_CAPTION on a character boundary, and a
+		 *	locale without one is not kept
+		 *
+		 *	@param		mixed			$value
+		 *
+		 *	@return 	string|array
+		 */
+		public static function text( mixed $value ): string|array {
+
+			$cut = static fn( mixed $text ): string => is_string( $text ) === true ? mb_strcut( trim( $text ), 0, self::MAX_CAPTION, 'UTF-8' ) : '';
+
+			if( is_array( $value ) === false )
+				return $cut( $value );
+
+			$map = [];
+
+			foreach( $value as $locale => $text )
+				if( is_string( $locale ) === true && $locale !== '' && ( $text = $cut( $text ) ) !== '' )
+					$map[$locale] = $text;
+
+			return $map === [] ? '' : $map;
+		}
+
+		/**
+		 *	What a stored alt text or caption says in one language: the current
+		 *	one, else the site's native one, else the first that has anything
+		 *	at all - a picture with one translation is better described in the
+		 *	wrong language than not at all. A plain string is every language
+		 *
+		 *	@param		mixed			$value				A string or a locale => string map (see text())
+		 *	@param		string		$locale				The wanted locale
+		 *	@param		string		$native				The site's native locale
+		 *
+		 *	@return 	string
+		 */
+		public static function localized( mixed $value, string $locale, string $native ): string {
+
+			if( is_string( $value ) === true )
+				return $value;
+
+			if( is_array( $value ) === false )
+				return '';
+
+			foreach( [ $locale, $native ] as $wanted )
+				if( is_string( $value[$wanted] ?? null ) === true && $value[$wanted] !== '' )
+					return $value[$wanted];
+
+			foreach( $value as $text )
+				if( is_string( $text ) === true && $text !== '' )
+					return $text;
+
+			return '';
+		}
+
+		/**
+		 *	A stored alt text or caption with one language changed. A plain
+		 *	string is first made into a map by giving every available locale
+		 *	that string - so the first translation does not take the others'
+		 *	text away - and an empty $text removes the locale again
+		 *
+		 *	@param		mixed			$value				What is stored now (see text())
+		 *	@param		string		$locale				The locale being edited
+		 *	@param		string		$text					Its new text
+		 *	@param		array 		$available		Every locale the project has
+		 *
+		 *	@return 	string|array
+		 */
+		public static function withLocale( mixed $value, string $locale, string $text, array $available ): string|array {
+
+			$value = self::text( $value );
+
+			if( is_string( $value ) === true )
+				$value = $value === '' ? [] : array_fill_keys( $available, $value );
+
+			$value[$locale] = $text;
+
+			return self::text( $value );
+		}
+
+		/**
+		 *	The most bytes php itself will take in one upload: the smaller of
+		 *	upload_max_filesize and post_max_size, where each is a limit at
+		 *	all (0 is none). A file over it never reaches the panel's action -
+		 *	php answers with an error code, or with nothing, see apiUpload()
+		 *
+		 *	@return 	int												0 where php sets no limit
+		 */
+		public static function uploadLimit(): int {
+
+			$limits = [];
+
+			foreach( [ 'upload_max_filesize', 'post_max_size' ] as $name )
+				if( ( $bytes = ini_parse_quantity( (string) ini_get( $name ) ) ) > 0 )
+					$limits[] = $bytes;
+
+			return $limits === [] ? 0 : min( $limits );
+		}
+
+		/**
+		 *	A byte count the way a person reads one, in whole units: the
+		 *	largest of GB, MB and KB that holds it exactly, else KB
+		 *
+		 *	@param		int				$bytes
+		 *
+		 *	@return 	string
+		 */
+		public static function formatBytes( int $bytes ): string {
+
+			foreach( [ 'GB' => 1024 ** 3, 'MB' => 1024 ** 2, 'KB' => 1024 ] as $unit => $size )
+				if( $bytes >= $size && $bytes % $size === 0 )
+					return ( $bytes / $size ). ' '. $unit;
+
+			return $bytes >= 1024 ? round( $bytes / 1024 ). ' KB' : $bytes. ' B';
+		}
+
+		/**
+		 *	Why store() answered null for these bytes. \Nino\Images only
+		 *	says false, and an upload that is refused without a reason is a
+		 *	panel that can only say "that did not work" - so this asks the
+		 *	same questions in the same order, for the message only. It
+		 *	refuses nothing itself
+		 *
+		 *	@param		string		$bytes				The uploaded bytes
+		 *
+		 *	@return 	string										'size', 'type', 'pixels' or - where the bytes pass all three, so
+		 *																	something after them (gd, a render callback) said no - 'process'
+		 */
+		public static function refusal( string $bytes ): string {
+
+			if( strlen( $bytes ) > self::KERNEL_UPLOAD_BYTES )
+				return 'size';
+
+			$info = @getimagesizefromstring( $bytes );
+
+			if( $info === false || in_array( $info[2], [ IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_GIF, IMAGETYPE_WEBP ], true ) === false )
+				return 'type';
+
+			return $info[0] * $info[1] > \Nino\Images::MAX_SOURCE_PIXELS ? 'pixels' : 'process';
 		}
 
 		/**
@@ -252,7 +407,7 @@ namespace Nino\Modules {
 				return null;
 			}
 
-			return [ 'id' => $id, 'thumb' => $thumb, 'large' => $large, 'caption' => '' ];
+			return [ 'id' => $id, 'thumb' => $thumb, 'large' => $large, 'alt' => '', 'caption' => '' ];
 		}
 
 		/**
@@ -308,8 +463,9 @@ namespace Nino\Modules {
 		 *
 		 *	The markup is a list of links the Lightbox feature understands -
 		 *	its group is this album, so two galleries on one page stay two
-		 *	sets - and nothing else. A caption may be a textfill, and is
-		 *	rendered as one
+		 *	sets - and nothing else. An alt text and a caption are each one
+		 *	string or one string per language (see text()), either may be a
+		 *	textfill, and both are rendered as one
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		$args					Shortcode attributes ( album, columns )
@@ -336,20 +492,31 @@ namespace Nino\Modules {
 			// literal in every src
 			$items = '';
 
+			$locale = \Nino\Locales::getCurrentLocale( $appData );
+			$native = \Nino\Locales::getNativeLocale( $appData );
+
 			foreach( $album['images'] as $image ) {
 
-				// Rendered, then escaped: a caption is editor text that may be a
-				// textfill, and what comes out of the fill engine is still text
-				$caption = $safe( \Nino\Html::renderHtml( $appData, $image['caption'] ) );
+				// Rendered, then escaped: an alt text and a caption are editor
+				// text that may be a textfill, and what comes out of the fill
+				// engine is still text
+				$alt			= $safe( \Nino\Html::renderHtml( $appData, self::localized( $image['alt'], $locale, $native ) ) );
+				$caption	= $safe( \Nino\Html::renderHtml( $appData, self::localized( $image['caption'], $locale, $native ) ) );
 
+				// A thumbnail without an alt text of its own is named by its
+				// caption, so the link is never a link without a name. The
+				// other way round there is no fallback: a picture given an alt
+				// text and no caption says so with an empty data-caption, which
+				// the Lightbox reads as 'no caption' rather than showing the alt
+				// text under the picture a second time
 				$items .= str_replace(
 					[ '[[large]]', '[[group]]', '[[caption]]', '[[thumb]]', '[[alt]]' ],
 					[
 						$safe( \Nino\Images::getUrl( $appData, $image['large'] ) ),
 						$safe( 'gallery-'. $album['key'] ),
-						( $caption === '' ? '' : ' data-caption="'. $caption. '"' ),
+						( $caption !== '' ? ' data-caption="'. $caption. '"' : ( $alt !== '' ? ' data-caption=""' : '' ) ),
 						$safe( \Nino\Images::getUrl( $appData, $image['thumb'] ) ),
-						$caption,
+						$alt !== '' ? $alt : $caption,
 					],
 					self::template( $appData, 'gallery-item' )
 				);

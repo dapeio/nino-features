@@ -28,8 +28,13 @@ thing that can.
 | Attribute | What it does |
 | --- | --- |
 | `data-lightbox` | opts the link in. Its **value is the group**: two galleries on one page stay two sets. An empty value is a set of one |
-| `data-caption` | the caption under the picture. Without one, the `<img>`'s `alt`, then the link's `title` - never the filename |
-| `data-label-close`, `data-label-prev`, `data-label-next` | the labels the controls carry for a screen reader, English without them. A static asset cannot read a textfill, so a multilingual site writes them in the template - `[[/lightbox/label/close]]` and friends, in your own text keys |
+| `data-caption` | the caption under the picture. Without the attribute, the `<img>`'s `alt`, then the link's `title` - never the filename. **Present but empty means no caption**: a picture whose `alt` describes it for somebody who cannot see it does not need the same words printed under it |
+| `data-label-close`, `data-label-prev`, `data-label-next` | the labels the controls carry for a screen reader. Without them the script's own words for the page's language - English and German, chosen by the primary subtag of `<html lang>` (`de`, `de-AT` and `de_DE` are German) - and English for any other language. A static asset cannot read a textfill, so a site in a third language writes them in the template - `[[/lightbox/label/close]]` and friends, in your own text keys |
+
+The three controls are drawn as `×`, `‹` and `›`; the sign is hidden from a
+screen reader, which has the label. The picture in the overlay is named by the
+thumbnail's own `alt`, not by the caption: the caption is on screen beside it
+already.
 
 The `href` has to be an image (`jpg`, `jpeg`, `png`, `gif`, `webp`, `avif`,
 `svg`). A link that opted in but points at a PDF is left to the browser: the
@@ -91,5 +96,5 @@ The manifest, the activation, the two files reaching the bundles, and what
 the stylesheet and the script promise. `lightbox-js-smoke.js` beside it
 measures the behaviour over a dom stand-in - which links it takes and which
 it leaves alone, the set, the captions, moving with keys and swipes, the
-words the controls carry, the focus trap, and the page lock - and the PHP
+signs and the words the controls carry, the focus trap, and the page lock - and the PHP
 test runs it where node is on the path.

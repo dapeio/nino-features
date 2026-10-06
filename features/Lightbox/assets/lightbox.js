@@ -19,8 +19,11 @@
  *
  *						What it never does is guess. A link is a lightbox link because
  *						it says so with data-lightbox, and its caption is what the page
- *						already says the picture is: data-caption, else the <img>'s
- *						alt, else the link's title. Nothing is read out of a filename.
+ *						already says the picture is: data-caption - an empty one being
+ *						the page saying there is none - else the <img>'s alt, else the
+ *						link's title. Nothing is read out of a filename. The picture in
+ *						the overlay is named by that <img>'s alt, not by the caption:
+ *						the caption is already on screen beside it.
  *
  *						This file is a static asset, never rendered through the fill
  *						engine (docs/development.md, "Assets Are Not Templates"), so
@@ -41,6 +44,14 @@
 	// a "lightbox link" to something that is not an image would otherwise be
 	// a broken picture with no way back to the page
 	var IMAGE = /\.(?:jpe?g|png|gif|webp|avif|svg)(?:[?#].*)?$/i;
+
+	// The words on the controls, for a screen reader, by the primary subtag of
+	// <html lang>. A link's own data-label-* comes first and English is what
+	// is left, so a language this does not have still gets words it can read
+	var LABELS = {
+		en : { close : 'Close', prev : 'Previous image', next : 'Next image' },
+		de : { close : 'Schlie\u00dfen', prev : 'Vorheriges Bild', next : 'N\u00e4chstes Bild' },
+	};
 
 	var box = null;			// the overlay, while one is open
 	var set = [];				// the links of the current set, in document order
@@ -101,20 +112,63 @@
 	 */
 	function captionOf( link ) {
 
+		// Present but empty is an answer: the page says this picture has no
+		// caption, and the alt text it carries is for the picture, not for
+		// somebody reading under it. Only an absent attribute falls back
+		if( link.hasAttribute('data-caption') === true )
+			return link.getAttribute('data-caption') || '';
+
 		var image = link.querySelector('img');
 
-		return link.getAttribute('data-caption')
-			|| ( image ? image.getAttribute('alt') : '' )
+		return ( image ? image.getAttribute('alt') : '' )
 			|| link.getAttribute('title')
 			|| '';
 	}
 
-	function button( className, label, onClick ) {
+	/**
+	 *	The words for one opening: the link's own data-label-*, else this
+	 *	file's for the page's language, else English
+	 *
+	 *	@param		{Element}	link
+	 *
+	 *	@return		{Object}									{ close, prev, next }
+	 */
+	function labelsOf( link ) {
+
+		var lang = String( dc.documentElement.getAttribute('lang') || '' ).toLowerCase().split( /[-_]/ )[0];
+		var words = Object.prototype.hasOwnProperty.call( LABELS, lang ) === true ? LABELS[lang] : LABELS.en;
+
+		return {
+			close : link.getAttribute('data-label-close') || words.close,
+			prev : link.getAttribute('data-label-prev') || words.prev,
+			next : link.getAttribute('data-label-next') || words.next,
+		};
+	}
+
+	/**
+	 *	One round control. The sign is drawn text inside it and hidden from a
+	 *	screen reader - the label says what the button does, and "multiplication
+	 *	sign" is not it
+	 *
+	 *	@param		{string}		className
+	 *	@param		{string}		label
+	 *	@param		{string}		symbol
+	 *	@param		{Function}	onClick
+	 *
+	 *	@return		{Element}
+	 */
+	function button( className, label, symbol, onClick ) {
 
 		var el = dc.createElement('button');
 		el.type = 'button';
 		el.className = 'nino-lightbox-btn ' + className;
 		el.setAttribute( 'aria-label', label );
+
+		var sign = dc.createElement('span');
+		sign.setAttribute( 'aria-hidden', 'true' );
+		sign.textContent = symbol;
+		el.appendChild( sign );
+
 		el.addEventListener( 'click', function( ev ) {
 			ev.preventDefault();
 			ev.stopPropagation();
@@ -126,9 +180,9 @@
 
 	/**
 	 *	Build the overlay once per opening. The words come off the link that
-	 *	opened it (data-label-*), because this file cannot read a textfill -
-	 *	with English as the fallback, which is what the markup would have said
-	 *	anyway
+	 *	opened it (data-label-*), because this file cannot read a textfill;
+	 *	where it carries none, from the dictionary above for the page's
+	 *	language (<html lang>), and from English where that has none either
 	 *
 	 *	@param		{Element}	link
 	 *
@@ -144,11 +198,7 @@
 		}
 		opener = link;
 
-		var labels = {
-			close : link.getAttribute('data-label-close') || 'Close',
-			prev : link.getAttribute('data-label-prev') || 'Previous image',
-			next : link.getAttribute('data-label-next') || 'Next image',
-		};
+		var labels = labelsOf( link );
 
 		box = dc.createElement('div');
 		box.className = 'nino-lightbox';
@@ -179,11 +229,11 @@
 			count.hidden = true;
 		stage.appendChild( count );
 
-		stage.appendChild( button( 'nino-lightbox-close', labels.close, close ) );
+		stage.appendChild( button( 'nino-lightbox-close', labels.close, '\u00d7', close ) );
 
 		if( set.length > 1 ) {
-			stage.appendChild( button( 'nino-lightbox-prev', labels.prev, function() { go( -1 ) } ) );
-			stage.appendChild( button( 'nino-lightbox-next', labels.next, function() { go( 1 ) } ) );
+			stage.appendChild( button( 'nino-lightbox-prev', labels.prev, '\u2039', function() { go( -1 ) } ) );
+			stage.appendChild( button( 'nino-lightbox-next', labels.next, '\u203a', function() { go( 1 ) } ) );
 		}
 
 		box.appendChild( stage );
@@ -250,7 +300,11 @@
 		};
 		box.image.onerror = box.image.onload;
 		box.image.src = href;
-		box.image.alt = box.caption.textContent;
+		// The thumbnail's own alt text, not the caption: the caption is on
+		// screen under the picture already, and a screen reader would read it
+		// twice. A link without a thumbnail has no alt text to give it
+		var thumb = link.querySelector('img');
+		box.image.alt = thumb ? ( thumb.getAttribute('alt') || '' ) : '';
 
 		// The neighbour, quietly, so the next arrow press has nothing to wait
 		// for. Never more than one in each direction: a set of forty images is

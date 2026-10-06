@@ -13,7 +13,8 @@ namespace Nino\Modules\Gallery {
 	/**
 	 *	Nino							A compact filesystembased php framework
 	 *	Gallery\Admin			The albums a project has, and one album's images on a
-	 *										screen of its own: upload, caption, order, delete.
+	 *										screen of its own: upload, alt text and caption per
+	 *										language, order, delete.
 	 *										Two levels, two panes, the workbench's own back link
 	 *										between them.
 	 *
@@ -97,7 +98,9 @@ namespace Nino\Modules\Gallery {
 		}
 
 		/**
-		 *	Every album with its images, and the urls the panel shows them at
+		 *	Every album with its images, and the urls the panel shows them at -
+		 *	plus what the screen needs to edit them: the languages an alt text
+		 *	and a caption can be written in, and how big a file php takes
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
@@ -109,6 +112,8 @@ namespace Nino\Modules\Gallery {
 			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::MANAGE_PERM ) === false )
 				return;
 
+			$limit = \Nino\Modules\Gallery::uploadLimit();
+
 			\Nino\Http::ok( $request, [
 				'albums'	=> self::_albums( $appData ),
 				// What a thumbnail will be cropped to, so the panel can say so
@@ -116,6 +121,16 @@ namespace Nino\Modules\Gallery {
 				'thumb'		=> [ \Nino\Modules\Gallery::setting( $appData, 'thumbWidth', 500 ), \Nino\Modules\Gallery::setting( $appData, 'thumbHeight', 500 ) ],
 				'large'		=> [ \Nino\Modules\Gallery::setting( $appData, 'largeWidth', 1800 ), \Nino\Modules\Gallery::setting( $appData, 'largeHeight', 1800 ) ],
 				'keepRatio'	=> \Nino\Features::setting( $appData, 'gallery', 'keepRatio', true ) === true,
+				'locales'	=> \Nino\Locales::getAvailableLocales( $appData ),
+				'native'	=> \Nino\Locales::getNativeLocale( $appData ),
+				// The one the screen opens in: what was last chosen in any panel
+				// that has a language switch, so it does not start over
+				'selectedLocale'	=> \Nino\Admin\Admin::sessionLocale( $appData ),
+				// What php takes in one upload, so the panel can say which file is
+				// too big before it is sent - a file over post_max_size is not
+				// refused by this panel at all, php drops the whole request and
+				// what comes back is the csrf check's 403 (see apiUpload())
+				'limits'	=> [ 'bytes' => $limit, 'text' => \Nino\Modules\Gallery::formatBytes( $limit ) ],
 			] );
 		}
 
@@ -232,7 +247,20 @@ namespace Nino\Modules\Gallery {
 				return;
 			}
 
-			if( isset( $_FILES['file'] ) === false || ( $_FILES['file']['error'] ?? 1 ) !== UPLOAD_ERR_OK ) {
+			$error = isset( $_FILES['file'] ) === true ? ( $_FILES['file']['error'] ?? 1 ) : 1;
+
+			// php's own ceiling, with the number. A file over post_max_size never
+			// gets here: php answers with an empty $_POST, so the csrf check has
+			// nothing to compare and refuses first - which is why the panel checks
+			// the size itself before it sends anything
+			$limit = \Nino\Modules\Gallery::uploadLimit();
+
+			if( ( $error === UPLOAD_ERR_INI_SIZE || $error === UPLOAD_ERR_FORM_SIZE ) && $limit > 0 ) {
+				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/size', \Nino\Modules\Gallery::formatBytes( $limit ) ) );
+				return;
+			}
+
+			if( $error !== UPLOAD_ERR_OK ) {
 				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/upload' ) );
 				return;
 			}
@@ -247,7 +275,14 @@ namespace Nino\Modules\Gallery {
 			$image = \Nino\Modules\Gallery::store( $appData, $key, $bytes );
 
 			if( $image === null ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/image' ) );
+
+				$reason = \Nino\Modules\Gallery::refusal( $bytes );
+
+				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/'. $reason, match( $reason ) {
+					'size'		=> \Nino\Modules\Gallery::formatBytes( \Nino\Modules\Gallery::KERNEL_UPLOAD_BYTES ),
+					'pixels'	=> (string) ( \Nino\Images::MAX_SOURCE_PIXELS / 1000000 ),
+					default		=> '',
+				} ) );
 				return;
 			}
 
@@ -265,8 +300,16 @@ namespace Nino\Modules\Gallery {
 		}
 
 		/**
-		 *	One image's caption. It may be a textfill, which is how one
-		 *	caption serves every language
+		 *	One image's alt text and caption in one language. Either may be a
+		 *	textfill, which is how one text serves every language - and a
+		 *	field that was not posted is left as it is, so the screen sends the
+		 *	one that was changed.
+		 *
+		 *	Stored as one string for every language until the first translation
+		 *	is saved; then as a locale => string map (see
+		 *	\Nino\Modules\Gallery::withLocale()). Written through mutate(): two
+		 *	people on two screens saving two images are two writes of one file,
+		 *	and the second must start from what the first left
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
@@ -278,33 +321,67 @@ namespace Nino\Modules\Gallery {
 			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::MANAGE_PERM ) === false )
 				return;
 
-			$data			= \Nino\Admin\Admin::postData();
-			$key			= self::_key( $data['album'] ?? null );
-			$id				= self::_id( $data['id'] ?? null );
-			// See apiAlbumSave() for why this is not substr()
-			$caption	= mb_strcut( trim( (string) ( is_string( $data['caption'] ?? null ) ? $data['caption'] : '' ) ), 0, \Nino\Modules\Gallery::MAX_CAPTION, 'UTF-8' );
-			$albums		= \Nino\Modules\Gallery::albums( $appData );
-			$index		= self::_indexOf( $albums, $key );
+			$data		= \Nino\Admin\Admin::postData();
+			$key		= self::_key( $data['album'] ?? null );
+			$id			= self::_id( $data['id'] ?? null );
+			$locale	= is_string( $data['locale'] ?? null ) === true ? $data['locale'] : '';
 
-			if( $index === null || $id === '' ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/album' ) );
+			if( \Nino\Locales::verifyLocale( $appData, $locale ) === false ) {
+				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/locale' ) );
 				return;
 			}
 
-			$found = false;
+			// text() is what cuts them to MAX_CAPTION - on a character
+			// boundary, see apiAlbumSave() for why that is not substr()
+			$posted	= [];
 
-			foreach( $albums[$index]['images'] as $position => $image )
-				if( $image['id'] === $id ) {
-					$albums[$index]['images'][$position]['caption'] = $caption;
-					$found = true;
+			foreach( [ 'alt', 'caption' ] as $field )
+				if( is_string( $data[$field] ?? null ) === true )
+					$posted[$field] = \Nino\Modules\Gallery::text( $data[$field] );
+
+			$available	= \Nino\Locales::getAvailableLocales( $appData );
+			$albumFound	= false;
+			$found			= false;
+
+			$written = \Nino\Filesystem::mutate( $appData, \Nino\Modules\Gallery::ALBUMS, static function( mixed $state ) use ( $key, $id, $locale, $posted, $available, &$albumFound, &$found ): ?array {
+
+				$albums = [];
+
+				foreach( (array) $state as $entry )
+					if( is_array( $entry ) === true && ( $album = \Nino\Modules\Gallery::normalize( $entry ) ) !== null )
+						$albums[] = $album;
+
+				foreach( $albums as $index => $album ) {
+
+					if( $album['key'] !== $key )
+						continue;
+
+					$albumFound = true;
+
+					foreach( $album['images'] as $position => $image )
+						if( $image['id'] === $id ) {
+
+							$found = true;
+
+							foreach( $posted as $field => $text )
+								$albums[$index]['images'][$position][$field] = \Nino\Modules\Gallery::withLocale( $image[$field], $locale, (string) $text, $available );
+						}
 				}
+
+				return $found === true ? $albums : null;
+			}, [] );
+
+			if( $albumFound === false ) {
+				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/album' ) );
+				return;
+			}
 
 			if( $found === false ) {
 				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/image' ) );
 				return;
 			}
 
-			if( \Nino\Modules\Gallery::save( $appData, $albums ) === false ) {
+			if( $written === false ) {
 				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/save' ) );
 				return;
 			}
@@ -478,16 +555,19 @@ namespace Nino\Modules\Gallery {
 
 		/**
 		 *	One of this panel's own fills, in the language of whoever is
-		 *	looking - the panel phrases its refusals, the script shows them
+		 *	looking - the panel phrases its refusals, the script shows them.
+		 *	A refusal that names a limit has a %s in its text, filled here
+		 *	because only this side knows the number
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$key
+		 *	@param		string		$limit				What replaces %s
 		 *
 		 *	@return 	string
 		 */
-		private static function _say( array &$appData, string $key ): string {
+		private static function _say( array &$appData, string $key, string $limit = '' ): string {
 
-			return \Nino\Html::renderHtml( $appData, '[['. $key. ']]' );
+			return str_replace( '%s', $limit, \Nino\Html::renderHtml( $appData, '[['. $key. ']]' ) );
 		}
 	}
 }

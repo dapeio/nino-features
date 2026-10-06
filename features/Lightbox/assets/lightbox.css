@@ -116,6 +116,14 @@
 	transition: background .15s ease, transform .15s ease;
 }
 
+/*	The sign inside a button (an x and two angle brackets, see button() in
+	lightbox.js) is text: a block of its own, so the flex centring above
+	centres the glyph's box rather than a text run the line height can push. */
+.nino-lightbox-btn > span {
+	display: block;
+	line-height: 1;
+}
+
 .nino-lightbox-btn:hover,
 .nino-lightbox-btn:focus-visible {
 	background: rgba(255, 255, 255, .18);

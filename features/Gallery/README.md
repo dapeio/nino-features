@@ -33,12 +33,30 @@ could swap the overlay without touching the gallery.
 
 It renders one `<li>` per image: a link to the large view carrying
 `data-lightbox="gallery-<album>"` - so two galleries on one page stay two sets
-- with the caption as `data-caption` and as the thumbnail's `alt`. An album
-that does not exist, or has no images yet, renders nothing at all.
+- with the image's **caption** as `data-caption` and its **alt text** as the
+thumbnail's `alt`. An album that does not exist, or has no images yet, renders
+nothing at all.
 
-A caption may be written as a textfill (`[[/gallery/caption/pass]]`), which is
-how one caption serves every language. It is resolved when the gallery is
-rendered and escaped on the way into the attribute.
+The two are texts of their own, because they are for different readers: the
+alt text says what the picture shows to somebody who cannot see it, the
+caption is what is printed under it in the overlay.
+
+- An image with no alt text gets its caption as the thumbnail's `alt`, so the
+  link always has a name.
+- An image with an alt text and **no caption** gets an empty `data-caption`,
+  which the [Lightbox](../Lightbox/README.md) reads as "no caption" - the alt
+  text is not printed under the picture a second time. The overlay's own
+  picture carries the thumbnail's `alt`.
+- An image with neither gets no `data-caption` and an empty `alt`.
+
+Either may be written as a textfill (`[[/gallery/caption/pass]]`), which is how
+one text serves every language. It is resolved when the gallery is rendered
+and escaped on the way into the attribute.
+
+Each is stored as one string - the same for every language - or as a map of
+locale to text, `{ "de_DE": "Über dem Pass", "en_US": "Above the pass" }`. The
+page shows the current language's text, else the site's native language's,
+else the first one there is, else nothing.
 
 ## The panel
 
@@ -48,7 +66,35 @@ The list is one row per album with its shortcode and how many pictures it
 holds. A row leads to that album's own screen: what an upload will become
 (said before the upload, not after), the file field - several files at once,
 uploaded one after the other - and the pictures as a grid, each with its
-caption, two buttons to move it, and one to delete it.
+alt text and its caption, two buttons to move it, and one to delete it.
+
+A project with more than one language has the workbench's language switch in
+the album's toolbar - the same one the Elements and Text screens have, and
+the choice is shared with them. The alt text and the caption fields show and
+save that language's text; each is saved when the field is left. A text that
+was one string for every language stays every language's until the first one is
+written - then each language keeps the old text, and the one that was edited
+is the new one. Clearing a field takes that language's text away.
+
+### When an upload is refused
+
+The panel says why, with the limit where there is one:
+
+| Message | When |
+| --- | --- |
+| *The file is larger than …* | the file is over what php takes in one upload - the smaller of `upload_max_filesize` and `post_max_size` - or over the 8 MiB the kernel makes an image from |
+| *The file is not a JPEG, PNG, GIF or WebP image.* | the bytes are not one of those |
+| *The image has too many pixels …* | more than 20 megapixels (`\Nino\Images::MAX_SOURCE_PIXELS`) |
+| *The server could not make the two sizes …* | the file passes all of that and gd, or a handler on `\Nino\Images::RENDER`, still refused it |
+| *The file could not be read.* | php reported any other upload error |
+
+A file over `post_max_size` never reaches the feature: php drops the whole
+request, the CSRF field with it, and all that comes back is the CSRF check's
+refusal. So the panel compares each file with php's limit before it sends it,
+stops the batch at the first one that is over, and names it - every message
+of an upload starts with the file's name. The 8 MiB of the kernel is checked
+by the kernel only; this feature mirrors the number to explain a refusal, never
+to make one.
 
 Deleting an image takes both of its files with it. Deleting an album takes
 every picture in it: unlike a form's submissions, an album's images *are* the
@@ -81,8 +127,10 @@ in the developer manual.
 
 ## Data
 
-`/data/gallery.php` holds the albums, their names and their captions - the
-file the manifest declares, so a backup carries it. The pictures live under
+`/data/gallery.php` holds the albums, their names and each image's alt text and
+caption - the file the manifest declares, so a backup carries it. Saving a
+text writes the file under a lock, so two people saving two images do not
+overwrite each other. The pictures live under
 `/images/gallery/<album>/`, where every other uploaded image lives and where a
 backup already carries them.
 
@@ -105,11 +153,13 @@ node features/Gallery/tests/gallery-js-smoke.js
 
 The manifest and its requirement, the two sizes and the one thing that is
 never stored, the render callback carrying this feature's images too, the
-panel with its albums, captions, order and deletions, and the markup the
-Lightbox reads.
+panel with its albums, alt texts and captions per language, order and
+deletions, every refusal of an upload with the limit it names, and the markup
+the Lightbox reads.
 
 `gallery-js-smoke.js` is the panel's own script over a dom stand-in: the tiles
-it draws, the caption it saves when a field is left and the one it does not,
-and what an upload of several files leaves on the screen — when all of them
-arrive and when one of them does not. `gallery-smoke.php` runs it too where
+it draws, the language switch, the text it saves when a field is left and the
+one it does not, a file that is too big to be sent, and what an upload of
+several files leaves on the screen — when all of them arrive and when one of
+them does not. `gallery-smoke.php` runs it too where
 `node` is on the path.

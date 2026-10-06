@@ -17,8 +17,8 @@ return [
 				'de_DE' => 'An einem Link auf ein Bild: öffnet es bildschirmfüllend. Links mit gleichem Wert sind ein Satz – Pfeile, Wischen und Tastatur bewegen sich darin.',
 			],
 			'data-caption="Above the pass"' => [
-				'en_US' => 'The caption. Without it the image\'s alt, else the link\'s title.',
-				'de_DE' => 'Die Bildunterschrift. Ohne sie das alt des Bildes, sonst das title des Links.',
+				'en_US' => 'The caption. Without the attribute the image\'s alt, else the link\'s title; present but empty it means no caption.',
+				'de_DE' => 'Die Bildunterschrift. Ohne das Attribut das alt des Bildes, sonst das title des Links; vorhanden, aber leer heißt: keine Bildunterschrift.',
 			],
 		],
 		'routes' => [],

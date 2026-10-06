@@ -4,9 +4,11 @@
  *												links it takes and which it leaves alone, the set a
  *												link belongs to, what the overlay carries, moving
  *												through a set with the arrows and with a swipe, the
- *												words the controls carry, the focus going in and coming
- *												back, and the page behind it not scrolling while one is
- *												open.
+ *												signs and words the controls carry - by the page's
+ *												language, with the link's own winning - the caption
+ *												and the alt text of the picture, the focus going in and
+ *												coming back, and the page behind it not scrolling while
+ *												one is open.
  *
  *												No jsdom, no dependency: the same element stand-in
  *												the workbench's own panel tests build, so this runs
@@ -240,6 +242,9 @@ check( 'the overlay is a modal dialog, and the page behind it stops scrolling', 
 	&& overlay().attributes['aria-modal'] === 'true' && documentElement.classList.contains('nino-lightbox-lock') === true );
 check( 'it shows the image the link pointed at', shownSrc() === '/images/gallery/a.jpg' );
 check( 'the caption is the one the page wrote', caption() === 'The first one' );
+// The caption is on screen under the picture, so the picture is named by the
+// thumbnail's alt text - not by the same words a second time
+check( 'the picture is named by the thumbnail\'s alt text, not by the caption', overlay().querySelector('.nino-lightbox-image').alt === 'alt of /images/gallery/a.jpg' );
 check( 'the set is the group, and the other two of it are in it - the pdf and the ungrouped link are not', counter() === '1 / 3' );
 check( 'the focus went to the close button', focused !== null && String( focused.className ).indexOf('nino-lightbox-close') !== -1 );
 check( 'both neighbours are preloaded, and only they', preloaded.length === 2
@@ -251,6 +256,7 @@ check( 'both neighbours are preloaded, and only they', preloaded.length === 2
 check( 'the right arrow moves on, and takes the caption and the counter with it', key('ArrowRight') === true
 	&& shownSrc() === '/images/gallery/b.jpg' && counter() === '2 / 3' );
 check( 'a picture the page gave no caption falls back to the alt rather than to a filename', caption() === 'alt of /images/gallery/b.jpg' );
+check( 'and the picture keeps that alt text as its own', overlay().querySelector('.nino-lightbox-image').alt === 'alt of /images/gallery/b.jpg' );
 check( 'the left arrow moves back', key('ArrowLeft') === true && shownSrc() === '/images/gallery/a.jpg' );
 check( 'and it wraps rather than stopping', key('ArrowLeft') === true && shownSrc() === '/images/gallery/c.jpg' && counter() === '3 / 3' );
 
@@ -344,7 +350,40 @@ click( LINKS[0].children[0] );
 check( 'every control the overlay offers is named for somebody who cannot see it',
 	labels().length === 3 && labels().every( function( word ) { return typeof word === 'string' && word !== '' } ) );
 check( '...and so is the dialog around them', ( overlay().getAttribute('aria-label') || '' ) !== '' );
+check( 'with no language on the page the words are English', labels().join(' | ') === 'Close | Previous image | Next image' );
+
+// The signs are drawn, and a screen reader is told what the button does by
+// its label rather than by what is drawn on it
+function signs() {
+	return overlay().querySelectorAll('button').map( function( el ) { return el.children[0] || element('span') } );
+}
+check( 'close, previous and next show \u00d7, \u2039 and \u203a', signs().map( function( el ) { return el.textContent } ).join(' ') === '\u00d7 \u2039 \u203a' );
+check( '...hidden from a screen reader, which has the labels', signs().every( function( el ) { return el.getAttribute('aria-hidden') === 'true' } ) );
 shut();
+
+// The page's language comes from <html lang>, by its primary subtag
+documentElement.setAttribute( 'lang', 'de' );
+click( LINKS[0].children[0] );
+check( 'on a page in German the controls carry German words', labels().join(' | ') === 'Schlie\u00dfen | Vorheriges Bild | N\u00e4chstes Bild' );
+shut();
+
+documentElement.setAttribute( 'lang', 'de-AT' );
+click( LINKS[0].children[0] );
+check( '...and a regional variant of it is read by its primary subtag', labels()[0] === 'Schlie\u00dfen' );
+shut();
+
+documentElement.setAttribute( 'lang', 'fr' );
+click( LINKS[0].children[0] );
+check( 'a language this has no words for is English, not nothing', labels().join(' | ') === 'Close | Previous image | Next image' );
+shut();
+
+documentElement.setAttribute( 'lang', 'de' );
+LINKS[0].setAttribute( 'data-label-close', 'Zu' );
+click( LINKS[0].children[0] );
+check( 'a label the link carries wins over the dictionary, and the other two are still German', labels().join(' | ') === 'Zu | Vorheriges Bild | N\u00e4chstes Bild' );
+shut();
+LINKS[0].setAttribute( 'data-label-close', '' );
+documentElement.setAttribute( 'lang', '' );
 
 LINKS[0].setAttribute( 'data-label-close', 'Schliessen' );
 LINKS[0].setAttribute( 'data-label-prev', 'Vorheriges Bild' );
@@ -352,6 +391,26 @@ LINKS[0].setAttribute( 'data-label-next', 'Naechstes Bild' );
 click( LINKS[0].children[0] );
 check( 'and where the link carries the page\'s own words, those are the names the controls get',
 	labels().join(' | ') === 'Schliessen | Vorheriges Bild | Naechstes Bild' );
+shut();
+
+
+// --- an empty caption is an answer ----------------------------------------------
+
+// A page that gives a picture an alt text and says it has no caption: the
+// alt text is for the picture, and must not turn up under it as a caption
+const QUIET = link( '/images/gallery/quiet.jpg', 'quiet', '' );
+QUIET.setAttribute( 'data-caption', '' );
+const LOUD = link( '/images/gallery/loud.jpg', 'loud', '' );
+body.appendChild( QUIET );
+body.appendChild( LOUD );
+
+click( QUIET.children[0] );
+check( 'a data-caption that is present but empty means no caption - not the alt text, not the title', caption() === '' );
+check( '...and the picture is still named by the thumbnail\'s alt text', overlay().querySelector('.nino-lightbox-image').alt === 'alt of /images/gallery/quiet.jpg' );
+shut();
+
+click( LOUD.children[0] );
+check( 'a link with no data-caption at all keeps the old fallback to the alt text', caption() === 'alt of /images/gallery/loud.jpg' );
 shut();
 
 console.log( '\n'+ checks+ ' checks, '+ failures+ ' failed' );

@@ -7,9 +7,11 @@ declare(strict_types=1);
  *										the manifest and its requirement on the Lightbox
  *										feature, the two sizes an upload becomes and the one
  *										thing that is never stored, the shortcode's markup -
- *										which is what the Lightbox reads - the panel with its
- *										albums, captions, order and deletions, and the seam a
- *										richer uploader hooks into. What the panel's own script
+ *										which is what the Lightbox reads, with an alt text and
+ *										a caption of their own per language - the panel with
+ *										its albums, alt texts, captions, order and deletions,
+ *										the refusals of an upload and the limit each one
+ *										names, and the seam a richer uploader hooks into. What the panel's own script
  *										does with all of that is the browser's, and
  *										gallery-js-smoke.js beside this file measures it; this
  *										test runs that one too where node is on the path.
@@ -82,6 +84,17 @@ function callGalleryAdmin( array &$appData, string $action, array $data = [] ): 
 	$_POST = [ 'action' => $action, 'data' => json_encode( $data ) ];
 	\Nino\Admin\Admin::handlePost( $appData, $request );
 	return [ $request['/nino/http/response']['statusCode'], $request['/nino/http/response']['body'] ?? null ];
+}
+
+/** A png header and nothing else - width and height are all getimagesizefromstring() asks of it */
+function galleryPng( int $width, int $height ): string {
+	$ihdr = pack( 'NN', $width, $height ). "\x08\x02\x00\x00\x00";
+	return "\x89PNG\r\n\x1a\n". pack( 'N', 13 ). 'IHDR'. $ihdr. pack( 'N', crc32( 'IHDR'. $ihdr ) );
+}
+
+/** The error a panel answer carries, '' where it has none */
+function galleryError( ?array $body ): string {
+	return (string) ( $body['error'] ?? '' );
 }
 
 /** An upload, the way php hands one over */
@@ -168,6 +181,49 @@ check( 'with the ratio switched off the large view is cropped like the thumbnail
 check( 'an album key that is not a slug stores nothing', \Nino\Modules\Gallery::store( $appData, '../escape', $wide ) === null );
 check( 'and bytes that are not an image store nothing', \Nino\Modules\Gallery::store( $appData, 'trip', 'not an image' ) === null );
 
+// The reasons store() cannot give: \Nino\Images only answers false
+check( 'refusal() says why: too many bytes', \Nino\Modules\Gallery::refusal( str_repeat( 'a', \Nino\Modules\Gallery::KERNEL_UPLOAD_BYTES + 1 ) ) === 'size' );
+check( '...not an image of a type the kernel takes', \Nino\Modules\Gallery::refusal( 'not an image' ) === 'type' && \Nino\Modules\Gallery::refusal( '' ) === 'type' );
+check( '...too many pixels - a png header claiming 6000x4000 is enough, nothing is allocated for it', \Nino\Modules\Gallery::refusal( galleryPng( 6000, 4000 ) ) === 'pixels'
+	&& \Nino\Modules\Gallery::store( $appData, 'trip', galleryPng( 6000, 4000 ) ) === null );
+check( '...and where the bytes pass all three, that something after them said no', \Nino\Modules\Gallery::refusal( $wide ) === 'process' );
+check( 'the mirrored byte cap is the kernel\'s own: that many bytes of a real image get through, one more does not', ( static function() use ( &$appData ): bool {
+	$padded = galleryImage( 40, 40 );
+	$padded .= str_repeat( "\0", \Nino\Modules\Gallery::KERNEL_UPLOAD_BYTES - strlen( $padded ) );
+	$kept = \Nino\Modules\Gallery::store( $appData, 'trip', $padded );
+	$over = \Nino\Modules\Gallery::store( $appData, 'trip', $padded. "\0" );
+	if( $kept !== null )
+		\Nino\Modules\Gallery::forget( $appData, $kept );
+	return $kept !== null && $over === null;
+} )() );
+
+// An alt text and a caption are one string for every language, or one string
+// per language - and a map must never be cast
+check( 'an alt text or a caption is a string or a map, cut to the cap, with no empty language kept', \Nino\Modules\Gallery::text( '  Pass ' ) === 'Pass'
+	&& \Nino\Modules\Gallery::text( [ 'de_DE' => ' Pass ', 'en_US' => '', 'fr_FR' => 3 ] ) === [ 'de_DE' => 'Pass' ]
+	&& \Nino\Modules\Gallery::text( [ 'en_US' => '' ] ) === '' && \Nino\Modules\Gallery::text( null ) === ''
+	&& \Nino\Modules\Gallery::text( [ 'de_DE' => str_repeat( 'ä', \Nino\Modules\Gallery::MAX_CAPTION ) ] )['de_DE'] === str_repeat( 'ä', \Nino\Modules\Gallery::MAX_CAPTION / 2 ) );
+check( 'localized(): this language, else the native one, else the first there is, else nothing',
+	\Nino\Modules\Gallery::localized( [ 'de_DE' => 'Pass', 'en_US' => 'Pass!' ], 'en_US', 'de_DE' ) === 'Pass!'
+	&& \Nino\Modules\Gallery::localized( [ 'de_DE' => 'Pass', 'fr_FR' => 'Col' ], 'en_US', 'de_DE' ) === 'Pass'
+	&& \Nino\Modules\Gallery::localized( [ 'fr_FR' => 'Col' ], 'en_US', 'de_DE' ) === 'Col'
+	&& \Nino\Modules\Gallery::localized( [], 'en_US', 'de_DE' ) === '' && \Nino\Modules\Gallery::localized( 'Pass', 'en_US', 'de_DE' ) === 'Pass' );
+check( 'normalize() takes both shapes of both texts, and a hand-written map does not raise a warning', ( static function(): bool {
+	$album = \Nino\Modules\Gallery::normalize( [ 'key' => 'trip', 'images' => [
+		[ 'id' => '0123456789abcdef', 'thumb' => 't.webp', 'large' => 'l.webp', 'alt' => [ 'de_DE' => 'Pass' ], 'caption' => 'Col' ],
+		[ 'id' => 'fedcba9876543210', 'thumb' => 't.webp', 'large' => 'l.webp' ],
+	] ] );
+	return $album !== null && $album['images'][0]['alt'] === [ 'de_DE' => 'Pass' ] && $album['images'][0]['caption'] === 'Col'
+		&& $album['images'][1]['alt'] === '' && $album['images'][1]['caption'] === '';
+} )() && ninoWarnings() === [] );
+check( 'withLocale() gives a plain string to every language before it changes one, and an empty text takes the language away again',
+	\Nino\Modules\Gallery::withLocale( 'Pass', 'en_US', 'Col', [ 'de_DE', 'en_US' ] ) === [ 'de_DE' => 'Pass', 'en_US' => 'Col' ]
+	&& \Nino\Modules\Gallery::withLocale( [ 'de_DE' => 'Pass', 'en_US' => 'Col' ], 'de_DE', '', [ 'de_DE', 'en_US' ] ) === [ 'en_US' => 'Col' ]
+	&& \Nino\Modules\Gallery::withLocale( [ 'en_US' => 'Col' ], 'en_US', '', [ 'de_DE', 'en_US' ] ) === ''
+	&& \Nino\Modules\Gallery::withLocale( '', 'de_DE', '', [ 'de_DE', 'en_US' ] ) === '' );
+check( 'formatBytes() says a limit in whole units', \Nino\Modules\Gallery::formatBytes( 8 * 1024 * 1024 ) === '8 MB' && \Nino\Modules\Gallery::formatBytes( 1024 ** 3 ) === '1 GB'
+	&& \Nino\Modules\Gallery::formatBytes( 1536 * 1024 ) === '1536 KB' && \Nino\Modules\Gallery::formatBytes( 512 ) === '512 B' );
+
 // Off disk again: nothing in an album points at these two, and the album
 // checks further down count what is in the directory
 \Nino\Modules\Gallery::forget( $appData, $image );
@@ -203,6 +259,11 @@ echo "Gallery\\Admin - albums, captions, order\n";
 [ $status, $body ] = callGalleryAdmin( $appData, 'gallery/list' );
 check( 'gallery/list answers no album yet, and what an upload will be made into', $status === 200 && galleryAlbums( $body ) === []
 	&& ( $body['thumb'] ?? null ) === [ 200, 200 ] && ( $body['large'] ?? null ) === [ 600, 600 ] && ( $body['keepRatio'] ?? null ) === true );
+check( 'it carries the languages a text can be written in, the site\'s own, and the one the screen opens in', ( $body['locales'] ?? null ) === [ 'de_DE', 'en_US' ]
+	&& ( $body['native'] ?? null ) === 'de_DE' && ( $body['selectedLocale'] ?? null ) === 'de_DE' );
+check( 'and what php takes in one upload, as a number and in words - the smaller of upload_max_filesize and post_max_size', ( $body['limits']['bytes'] ?? null ) === \Nino\Modules\Gallery::uploadLimit()
+	&& ( $body['limits']['text'] ?? null ) === \Nino\Modules\Gallery::formatBytes( \Nino\Modules\Gallery::uploadLimit() ) && \Nino\Modules\Gallery::uploadLimit() > 0
+	&& \Nino\Modules\Gallery::uploadLimit() <= min( array_filter( [ ini_parse_quantity( (string) ini_get( 'upload_max_filesize' ) ), ini_parse_quantity( (string) ini_get( 'post_max_size' ) ) ] ) ) );
 
 [ $status ] = callGalleryAdmin( $appData, 'gallery/album-save', [ 'album' => 'Not A Key', 'name' => 'x' ] );
 check( 'an album key that is not a slug is refused', $status === 400 );
@@ -224,20 +285,98 @@ check( 'each image comes back with the urls the panel shows it at', str_contains
 
 $ids = array_pad( array_column( galleryImages( $body ), 'id' ), 3, '' );
 
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'caption' => 'Above the pass' ] );
-check( 'a caption is saved on the image it names', $status === 200 && ( galleryImages( $body )[1]['caption'] ?? null ) === 'Above the pass' );
+// An upload that is refused says why, with the limit it ran into - not
+// 'That image is not in this album.', which is what all of them said. The sandbox has no text files, so the panel's own are what the fills say
+$panelText = include dirname( __DIR__ ). '/text/en_US.php';
+\Nino\Html::addFills( $appData, $panelText, '*' );
+$refuse = static function( string $bytes, int $error = UPLOAD_ERR_OK ) use ( &$appData ): array {
+	[ $status, $body ] = withUpload( $bytes, static function() use ( &$appData, $error ): array {
+		$_FILES['file']['error'] = $error;
+		return callGalleryAdmin( $appData, 'gallery/upload', [ 'album' => 'trip' ] );
+	} );
+	return [ $status, galleryError( $body ) ];
+};
+$limitText = \Nino\Modules\Gallery::formatBytes( \Nino\Modules\Gallery::uploadLimit() );
+
+check( 'the panel\'s texts are there in both languages, every key of one in the other', array_keys( $panelText ) === array_keys( include dirname( __DIR__ ). '/text/de_DE.php' )
+	&& str_contains( $panelText['[[/_admin/gallery/error/size]]'], '%s' ) === true && str_contains( ( include dirname( __DIR__ ). '/text/de_DE.php' )['[[/_admin/gallery/error/size]]'], '%s' ) === true );
+
+[ $status, $error ] = $refuse( $wide, UPLOAD_ERR_INI_SIZE );
+check( 'a file over upload_max_filesize is a 400 that names the limit php has', $status === 400 && $error === str_replace( '%s', $limitText, $panelText['[[/_admin/gallery/error/size]]'] ) );
+[ $status, $error ] = $refuse( $wide, UPLOAD_ERR_FORM_SIZE );
+check( '...so is one over the form\'s own', $status === 400 && $error === str_replace( '%s', $limitText, $panelText['[[/_admin/gallery/error/size]]'] ) );
+[ $status, $error ] = $refuse( $wide, UPLOAD_ERR_PARTIAL );
+check( 'any other upload error stays "the file could not be read"', $status === 400 && $error === $panelText['[[/_admin/gallery/error/upload]]'] );
+
+[ $status, $sizeError ] = $refuse( str_repeat( 'a', \Nino\Modules\Gallery::KERNEL_UPLOAD_BYTES + 1 ) );
+check( 'more than the kernel\'s 8 MiB is refused with that number', $status === 400 && $sizeError === str_replace( '%s', '8 MB', $panelText['[[/_admin/gallery/error/size]]'] ) );
+
+[ $status, $error ] = $refuse( 'not an image' );
+check( 'bytes that are not an image are refused as the wrong type', $status === 400 && $error === $panelText['[[/_admin/gallery/error/type]]'] );
+
+[ $status, $error ] = $refuse( galleryPng( 6000, 4000 ) );
+check( 'a picture of 24 megapixels is refused with the 20 the kernel takes', $status === 400 && $error === str_replace( '%s', '20', $panelText['[[/_admin/gallery/error/pixels]]'] ) );
+
+\Nino\Callbacks::registerCallback( $appData, \Nino\Images::RENDER, static function( array &$appData, array &$img ): void {
+	$img['filename'] = false;
+} );
+[ $status, $error ] = $refuse( $wide );
+unset( $appData['./nino/callbacks'][ \Nino\Images::RENDER ] );
+check( 'an image that passes the checks and is still not made says so, and is none of the above', $status === 400 && $error === $panelText['[[/_admin/gallery/error/process]]'] );
+check( 'none of the refusals stored anything', count( galleryImages( callGalleryAdmin( $appData, 'gallery/list' )[1] ) ) === 3 );
+
+[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'en_US', 'caption' => 'Above the pass' ] );
+check( 'a caption is saved on the image it names, in the language it was written in', $status === 200 && ( galleryImages( $body )[1]['caption'] ?? null ) === [ 'en_US' => 'Above the pass' ]
+	&& ( galleryImages( $body )[1]['alt'] ?? null ) === '' && ( galleryImages( $body )[0]['caption'] ?? null ) === '' );
+
+[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'de_DE', 'caption' => 'Über dem Pass', 'alt' => 'Der Pass im Sommer' ] );
+check( 'each language has its own, and an alt text is saved beside a caption', $status === 200
+	&& ( galleryImages( $body )[1]['caption'] ?? null ) === [ 'en_US' => 'Above the pass', 'de_DE' => 'Über dem Pass' ]
+	&& ( galleryImages( $body )[1]['alt'] ?? null ) === [ 'de_DE' => 'Der Pass im Sommer' ] );
+
+[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'en_US', 'alt' => 'The pass in summer' ] );
+check( 'a text that is not posted is left as it is', $status === 200 && ( galleryImages( $body )[1]['alt'] ?? null ) === [ 'de_DE' => 'Der Pass im Sommer', 'en_US' => 'The pass in summer' ]
+	&& ( galleryImages( $body )[1]['caption'] ?? null ) === [ 'en_US' => 'Above the pass', 'de_DE' => 'Über dem Pass' ] );
+
+[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'en_US', 'alt' => '' ] );
+check( 'an empty text takes that language away - the others stay', $status === 200 && ( galleryImages( $body )[1]['alt'] ?? null ) === [ 'de_DE' => 'Der Pass im Sommer' ] );
+[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'de_DE', 'alt' => '' ] );
+check( '...and the last one leaves an empty string, not an empty map', $status === 200 && ( galleryImages( $body )[1]['alt'] ?? null ) === '' );
+
+// What an earlier version of this feature wrote: one string, for every language
+$stored = \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, [] );
+$stored[0]['images'][2]['caption'] = 'Vom Pass';
+\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, $stored );
+[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[2], 'locale' => 'en_US', 'caption' => 'From the pass' ] );
+check( 'a caption that was one string for every language is every language\'s until the first is written - then each keeps it', $status === 200
+	&& ( galleryImages( $body )[2]['caption'] ?? null ) === [ 'de_DE' => 'Vom Pass', 'en_US' => 'From the pass' ] );
+[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[2], 'locale' => 'en_US', 'caption' => '' ] );
+check( '...and an empty one takes only its own language off', ( galleryImages( $body )[2]['caption'] ?? null ) === [ 'de_DE' => 'Vom Pass' ] );
+
+// What a request can get wrong, none of it a write
+$before = \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, [] );
+[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'xx_XX', 'caption' => 'x' ] );
+check( 'a language the project does not have is refused - and as that, not as a missing image', $status === 400 && galleryError( $body ) === $panelText['[[/_admin/gallery/error/locale]]'] );
+check( '...so is none at all', callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'caption' => 'x' ] )[0] === 400 );
+check( '...and an image the album does not have, or an album nobody has', callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => 'ffffffffffffffff', 'locale' => 'en_US', 'caption' => 'x' ] )[0] === 400
+	&& callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'nowhere', 'id' => $ids[1], 'locale' => 'en_US', 'caption' => 'x' ] )[0] === 400 );
+check( 'a text that is not a string is not one', callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'en_US', 'caption' => [ 'x' ], 'alt' => 5 ] )[0] === 200 );
+check( 'none of those wrote anything', \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, [] ) === $before );
+
+[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'en_US', 'caption' => 'Above the pass' ] );
 
 // The cap is in bytes, and a cut through the middle of a multibyte character
 // leaves a byte sequence that is not utf-8 - which json_encode() answers with
 // false, so the panel's whole answer came back empty and every screen of it
 // stopped working until somebody found the caption by hand
 $longCaption = str_repeat( 'a', \Nino\Modules\Gallery::MAX_CAPTION - 1 ). 'ä und weiter';
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'caption' => $longCaption ] );
-check( 'a caption longer than the cap is cut on a character boundary, and the panel still answers', $status === 200
-	&& ( galleryImages( $body )[1]['caption'] ?? null ) === str_repeat( 'a', \Nino\Modules\Gallery::MAX_CAPTION - 1 )
+[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'en_US', 'caption' => $longCaption, 'alt' => $longCaption ] );
+check( 'a caption or an alt text longer than the cap is cut on a character boundary, and the panel still answers', $status === 200
+	&& ( galleryImages( $body )[1]['caption']['en_US'] ?? null ) === str_repeat( 'a', \Nino\Modules\Gallery::MAX_CAPTION - 1 )
+	&& ( galleryImages( $body )[1]['alt']['en_US'] ?? null ) === str_repeat( 'a', \Nino\Modules\Gallery::MAX_CAPTION - 1 )
 	&& json_encode( $body ) !== false );
 
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'caption' => 'Above the pass' ] );
+[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'en_US', 'caption' => 'Above the pass', 'alt' => '' ] );
 
 [ $status, $body ] = callGalleryAdmin( $appData, 'gallery/reorder', [ 'album' => 'trip', 'order' => [ $ids[2], $ids[0], $ids[1] ] ] );
 check( 'the order is the whole list, posted and stored', $status === 200 && array_column( galleryImages( $body ), 'id' ) === [ $ids[2], $ids[0], $ids[1] ] );
@@ -261,6 +400,10 @@ echo "\n";
 
 echo "[gallery] - the markup the Lightbox reads\n";
 
+// The sandbox is in German; the captions the panel part above wrote for the
+// second image are in both languages, and this part reads them in English first
+\Nino\Locales::useLocale( $appData, 'en_US' );
+
 $html = \Nino\Html::renderHtml( $appData, '[gallery album="trip"]' );
 
 check( 'it renders one item per image, in the stored order', substr_count( $html, '<li class="nino-gallery-cell">' ) === 2 );
@@ -268,7 +411,7 @@ check( 'every thumbnail is a link to the large view', substr_count( $html, 'clas
 // The group is the album, so two galleries on one page stay two sets - and
 // this is the whole of what the Lightbox feature needs from here
 check( 'each link carries the lightbox group of its own album', substr_count( $html, 'data-lightbox="gallery-trip"' ) === 2 );
-check( 'a caption travels as the caption and as the alt', str_contains( $html, 'data-caption="Above the pass"' ) === true && str_contains( $html, 'alt="Above the pass"' ) === true );
+check( 'a caption travels as the caption and - where there is no alt text - as the alt', str_contains( $html, 'data-caption="Above the pass"' ) === true && str_contains( $html, 'alt="Above the pass"' ) === true );
 check( 'an image without one carries no empty caption attribute', substr_count( $html, 'data-caption=' ) === 1 );
 check( 'the thumbnails are lazy', substr_count( $html, 'loading="lazy"' ) === 2 );
 check( 'the column count travels as a custom property, so the stylesheet needs no rule per number', str_contains( $html, '--nino-gallery-columns:4' ) === true );
@@ -300,10 +443,37 @@ check( 'no class the templates or the stylesheet write is one Nino.css styles - 
 // serves every language - and what comes out of the fill engine is escaped
 // like anything else that reaches an attribute
 \Nino\Html::addFills( $appData, [ '[[/gallery/caption/one]]' => 'Am Pass "oben"' ], '*' );
-callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[0], 'caption' => '[[/gallery/caption/one]]' ] );
+callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[0], 'locale' => 'en_US', 'caption' => '[[/gallery/caption/one]]' ] );
 $filled = \Nino\Html::renderHtml( $appData, '[gallery album="trip"]' );
 check( 'a caption written as a fill is resolved, and what comes out is escaped', str_contains( $filled, 'data-caption="Am Pass &quot;oben&quot;"' ) === true
 	&& str_contains( $filled, '[[/gallery/caption/' ) === false );
+
+// The alt text is a text of its own, and so is each language's. What the
+// thumbnail says is the alt text; what the Lightbox shows under the picture is
+// the caption - and where there is an alt text and no caption, an empty
+// data-caption tells it there is none, instead of showing the alt text there
+callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[0], 'locale' => 'en_US', 'caption' => '', 'alt' => 'Front of the "house"' ] );
+callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[0], 'locale' => 'de_DE', 'alt' => 'Vorderseite des Hauses' ] );
+$both = \Nino\Html::renderHtml( $appData, '[gallery album="trip"]' );
+check( 'an alt text and no caption: the thumbnail is named by the alt text, and the link says it has no caption', str_contains( $both, 'alt="Front of the &quot;house&quot;"' ) === true
+	&& str_contains( $both, 'data-caption=""' ) === true && substr_count( $both, 'data-caption=' ) === 2 );
+check( 'the alt text is escaped like anything that reaches an attribute', str_contains( $both, 'alt="Front of the "house""' ) === false );
+check( 'an image with only a caption keeps it as both, and one with neither carries no caption attribute at all', substr_count( $both, 'data-caption="Above the pass"' ) === 1
+	&& substr_count( \Nino\Html::renderHtml( $appData, '[gallery album="trip" columns="2"]' ), 'alt=""' ) === 0 );
+
+\Nino\Locales::useLocale( $appData, 'de_DE' );
+$german = \Nino\Html::renderHtml( $appData, '[gallery album="trip"]' );
+check( 'the same page in German reads the German alt text and the German caption', str_contains( $german, 'alt="Vorderseite des Hauses"' ) === true
+	&& str_contains( $german, 'data-caption="Über dem Pass"' ) === true && str_contains( $german, 'Above the pass' ) === false );
+
+// Only English written for the second image: German is the site's own language
+// and has nothing, so the first there is is better than a picture with no words
+callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'de_DE', 'caption' => '' ] );
+check( 'a language that has no text falls back to the site\'s own, then to the first there is', str_contains( \Nino\Html::renderHtml( $appData, '[gallery album="trip"]' ), 'data-caption="Above the pass"' ) === true );
+
+// Not ninoWarnings() === []: the sandbox has no text files, and every fill the
+// panel renders says so. What a map in a text must never do is be cast
+check( 'none of it cast a map to a string', array_filter( ninoWarnings(), static fn( string $warning ): bool => str_contains( $warning, 'Array to string' ) === true ) === [] );
 
 echo "\n";
 

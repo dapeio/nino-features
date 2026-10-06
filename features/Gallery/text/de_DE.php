@@ -22,6 +22,8 @@ return [
 	'[[/_admin/gallery/label/count]]'		=> '%s Bilder',
 	'[[/_admin/gallery/label/upload]]'	=> 'Bilder hinzufügen',
 	'[[/_admin/gallery/label/caption]]'	=> 'Bildunterschrift',
+	'[[/_admin/gallery/label/alt]]'			=> 'Alternativtext',
+	'[[/_admin/gallery/label/locale]]'	=> 'Sprache',
 	'[[/_admin/gallery/label/earlier]]'	=> 'Eine Position nach vorn',
 	'[[/_admin/gallery/label/later]]'		=> 'Eine Position nach hinten',
 
@@ -35,6 +37,11 @@ return [
 	'[[/_admin/gallery/error/album]]'		=> 'Kein Album hat diesen Schlüssel.',
 	'[[/_admin/gallery/error/image]]'		=> 'Dieses Bild liegt nicht in diesem Album.',
 	'[[/_admin/gallery/error/order]]'		=> 'Die Reihenfolge nannte nicht jedes Bild des Albums – es wurde nichts geändert.',
+	'[[/_admin/gallery/error/locale]]'	=> 'Diese Sprache gibt es nicht.',
 	'[[/_admin/gallery/error/upload]]'	=> 'Die Datei konnte nicht gelesen werden.',
+	'[[/_admin/gallery/error/size]]'		=> 'Die Datei ist größer als %s.',
+	'[[/_admin/gallery/error/type]]'		=> 'Die Datei ist kein JPEG-, PNG-, GIF- oder WebP-Bild.',
+	'[[/_admin/gallery/error/pixels]]'	=> 'Das Bild hat zu viele Pixel: Es werden höchstens %s Megapixel angenommen. Verkleinere es und versuche es noch einmal.',
+	'[[/_admin/gallery/error/process]]'	=> 'Der Server konnte aus diesem Bild die zwei Größen nicht erzeugen.',
 	'[[/_admin/gallery/error/save]]'		=> 'Die Alben konnten nicht geschrieben werden.',
 ];

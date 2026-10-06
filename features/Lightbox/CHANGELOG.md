@@ -15,6 +15,16 @@ versions [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **The controls show a sign, and say it in the page's language.** The close,
+  previous and next buttons were empty round discs with a label nobody sees;
+  they draw `×`, `‹` and `›` now, in a span hidden from a screen reader, which
+  still has the `aria-label`. The labels come from the link's
+  `data-label-*` first, then from a dictionary in the script - English and
+  German, picked by the primary subtag of `<html lang>` - and then English,
+  where they used to be English unless every page wrote them out. A project
+  that writes the three attributes sees no change; one in a third language
+  keeps writing them.
+
 - **The three `data-label-*` attributes had nothing holding them.** The
   README names them as how a page that is not in English gives the controls
   their words, since a static asset cannot read a textfill, and neither test
@@ -24,6 +34,18 @@ versions [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   from.
 
 ### Changed
+
+- **An empty `data-caption` means no caption, and the picture keeps its own
+  alt text.** `captionOf()` read the attribute as a string, so an empty one
+  was the same as none and the overlay fell back to the thumbnail's `alt` -
+  and then set that same text as the alt of the big picture, so a screen
+  reader read it twice. A `data-caption` that is present but empty now shows no
+  caption; one that is absent keeps the fallback to `alt`, then `title`. The
+  picture in the overlay is named by the thumbnail's `alt`, not by the caption
+  next to it. A page that wrote `data-caption=""` and counted on the `alt`
+  showing up under the picture has to leave the attribute out. The Gallery
+  feature writes it that way for an image that has an alt text and no
+  caption.
 
 - **The "Asset bundling" chapter asked a project to do something it does not
   have to.** It said `/features/Lightbox/assets/...` resolves against the
