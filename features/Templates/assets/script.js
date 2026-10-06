@@ -503,8 +503,8 @@
 			}
 		},
 
-		insertInclude : function( include, context, dialogId ) {
-			context = context || Nino.admin.templates._includeContext || { mode : 'insert', afterId : null };
+		insertInclude : function( include ) {
+			const context = Nino.admin.templates._includeContext || { mode : 'insert', afterId : null };
 			const segment = {
 				type : 'template',
 				template : include.name,
@@ -528,7 +528,7 @@
 			Nino.admin.templates._selectedId = segment._clientId;
 			Nino.admin.templates.setDirty( true );
 			Nino.admin.templates.renderDocument();
-			const dialog = dc.getElementById( dialogId || 'pd-include-dialog' );
+			const dialog = dc.getElementById('pd-include-dialog');
 			if( dialog && dialog.open )
 				dialog.close();
 			Nino.admin.templates.toast( Nino.content.getText('/_admin/templates/msg/include-inserted').replace( '%s', include.name ), false );

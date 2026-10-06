@@ -420,6 +420,16 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
 
 ### Removed
 
+- **The words and rules of the include gallery and the old step-two panel.**
+  Five text keys - `label/category-template`, `label/next-template`,
+  `hint/include-card`, `hint/panel-section-full`, `hint/panel-section-quick` -
+  and the stylesheet rules of the include gallery's cards, of a heading the
+  settings panel no longer has, of a Design/Data switch and of a bindings
+  list were still shipped for screens the composer stopped drawing.
+  `insertInclude()` takes the include alone, as its one caller always called
+  it. A project that copied the keys into its own text files keeps them
+  harmlessly.
+
 - **The panel scripts' allowances for answers the server never sends.** A
   preset of another version than 3, a missing composer or area composer, a
   page list without component counts, a gallery card without a layout label:

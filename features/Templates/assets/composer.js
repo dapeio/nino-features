@@ -183,10 +183,9 @@
 		},
 
 		/**
-		 *	What a category chip is called. Two of them are this panel's own -
-		 *	'*' for everything and 'tpl' for the reusable templates - and are
-		 *	named here; every other chip is a section preset's own category,
-		 *	which the manifest supplies
+		 *	What a category chip is called. '*', for everything, is this panel's
+		 *	own and named here; every other chip is a section preset's own
+		 *	category, which the manifest supplies
 		 *
 		 *	@param		{string}	category
 		 *

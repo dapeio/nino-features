@@ -81,7 +81,7 @@
 	border-radius: var(--editor-radius-sm);
 	background: var(--editor-bg);
 }
-.pd-page-icon, .pd-inspector-icon, .pd-template-preview-icon, .pd-include-icon, .pd-template-library-icon, .pd-v3-area-index, .pd-v3-component-order, .pd-v3-binding-order {
+.pd-page-icon, .pd-inspector-icon, .pd-template-preview-icon, .pd-include-icon, .pd-v3-area-index, .pd-v3-component-order, .pd-v3-binding-order {
 	display: grid;
 	place-items: center;
 	flex: 0 0 auto;
@@ -1169,36 +1169,6 @@
 .pd-real-preview.is-detail iframe {
 	pointer-events: auto;
 }
-.pd-template-library-preview {
-	display: grid;
-	place-items: center;
-	align-content: center;
-	gap: .8rem;
-	min-height: 12.4rem;
-	padding: 1.5rem;
-	border-bottom: 1px solid var(--editor-border);
-	background:
-		linear-gradient(135deg, color-mix(in srgb, var(--pd-cyan) 12%, transparent), transparent 58%),
-		var(--editor-bg);
-}
-.pd-template-library-icon {
-	width: 3.5rem;
-	height: 3.5rem;
-	background: color-mix(in srgb, var(--pd-cyan) 14%, var(--editor-bg-elevated));
-	box-shadow: var(--editor-shadow-sm);
-	color: var(--pd-cyan);
-	font-size: .75rem;
-	font-weight: 800;
-	letter-spacing: .08em;
-}
-.pd-template-library-preview code {
-	max-width: 100%;
-	overflow: hidden;
-	color: var(--editor-text-secondary);
-	font-size: .62rem;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
 .pd-preset-copy {
 	display: grid;
 	gap: .3rem;
@@ -1308,10 +1278,6 @@
 .pd-form-section {
 	margin: 0 0 .8rem;
 	padding: .85rem;
-}
-.pd-form-section h3 {
-	margin: 0 0 .7rem;
-	font-size: .74rem;
 }
 .pd-form-grid {
 	display: grid;
@@ -1767,14 +1733,10 @@
 .pd-v3-area-tabs button.is-active .pd-v3-area-index { background: var(--editor-blue); color: #fff; }
 .pd-v3-area-tab-copy { display: grid; min-width: 0; }
 .pd-v3-area-tab-copy strong { overflow: hidden; font-size: .72rem; font-weight: 720; text-overflow: ellipsis; white-space: nowrap; }
-.pd-v3-area-tab-copy small { margin-top: .12rem; color: var(--editor-text-secondary); font-size: .58rem; }
 .pd-v3-area-editor {
 	min-width: 0;
 	background: var(--editor-bg);
 }
-/*	All that is left over the area editor is its Design/Data switch - the tab
-	above it is lit and carries the name, so the bar holds one control and is
-	sized for one. */
 .pd-v3-area-body {
 	min-width: 0;
 	padding: .9rem;
@@ -1789,8 +1751,6 @@
 }
 .pd-v3-section-label strong { font-size: .69rem; letter-spacing: -.005em; }
 .pd-v3-section-label small { color: var(--editor-text-secondary); font-size: .59rem; line-height: 1.4; }
-.pd-v3-area-body > .pd-v3-section-label:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
-.pd-v3-bindings { display: grid; gap: .5rem; margin-top: 0; }
 /*	The component stack is a table, not a stack of cards: one bordered
 	frame, a row per component with a rule between them, the same three
 	columns on every row - the order and the name, the style, the actions -
