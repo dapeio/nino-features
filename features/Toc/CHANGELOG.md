@@ -22,6 +22,12 @@ A release is the tag `toc-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **Two lines in the stylesheet described something else.** The list reset a
+  counter `nino-toc` that nothing counts with, and the comment over the heading
+  anchor said `:focus-within` brings it back where the rule is `:focus-visible`.
+  The reset is gone and the comment names the rule. Nothing a page shows
+  changed.
+
 - **The text keys follow Nino's grammar.** `/toc/title` is
   `/feature/toc/list/title` and `/toc/anchor` is `/feature/toc/anchor/label`.
   The values are the same. Nothing has been published under the old keys, so

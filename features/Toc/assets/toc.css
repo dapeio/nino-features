@@ -29,7 +29,6 @@
 	margin: 0;
 	padding: 0;
 	list-style: none;
-	counter-reset: nino-toc;
 }
 
 .nino-toc-item {
@@ -60,7 +59,7 @@
 }
 
 /*	The anchor on a heading: there for anybody looking for it, out of the way
-	of everybody else. It stays reachable by keyboard - :focus-within brings it
+	of everybody else. It stays reachable by keyboard - :focus-visible brings it
 	back - so it is not a mouse-only affordance	*/
 .nino-toc-anchor {
 	margin-left: .4em;

@@ -24,6 +24,10 @@ A release is the tag `progress-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The bar carried a `transform-origin` it never used.** It grows by its
+  `width`; nothing transforms it. The declaration is gone and nothing a page
+  shows changed.
+
 - **The test said what Ticker's checks are for.** The comment over the manual
   checks in `progress-smoke.php` spoke of a row's timings, copied from
   Ticker; it says what the checks hold now - no shortcode, the data attributes

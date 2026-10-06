@@ -36,7 +36,6 @@
 	width: var(--nino-progress, 0%);
 	height: 100%;
 	background-color: var(--color-accent, currentColor);
-	transform-origin: left center;
 }
 
 /*	A bar that eases towards its new width reads as smooth while it is scrolled
