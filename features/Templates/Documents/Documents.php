@@ -104,7 +104,6 @@ namespace Nino\Modules\Templates {
 					'filename' => $name. '.tpl',
 					'displayName' => $parsed['displayName'],
 					'pageId' => $category,
-					'pageMotion' => $parsed['pageMotion'],
 					'sections' => $parsed['sectionCount'],
 					'components' => $parsed['componentCount'],
 					'editable' => $parsed['error'] === null && $category !== null,

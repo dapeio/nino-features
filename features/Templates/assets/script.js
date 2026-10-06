@@ -155,22 +155,6 @@
 			return ( app ? app.dataset.dir || '' : '' )+ path;
 		},
 
-		/**
-		 *	The url of something a browser loads directly - the bundled
-		 *	stylesheet a preview renders with, an uploaded image. Those live
-		 *	under the public content directory, one level below the project
-		 *	root (see \Nino\Filesystem::getPublicDir()), unlike a link into
-		 *	the workbench
-		 *
-		 *	@param		{string}	path			Eg. '/.cache/style.css'
-		 *
-		 *	@return		{string}
-		 */
-		publicUrl : function( path ) {
-			const app = dc.getElementById('pd-app');
-			return ( app ? app.dataset.public || '' : '' )+ path;
-		},
-
 		section : function( clientId ) {
 			if( Nino.admin.templates._current === null )
 				return null;
@@ -344,8 +328,8 @@
 
 				const count = dc.createElement('span');
 				count.className = 'pd-page-count';
-				count.textContent = String( entry.components === undefined ? entry.sections : entry.components );
-				count.title = Nino.content.getText('/_admin/templates/label/page-count').replace( '%s', String( entry.sections || 0 ) ).replace( '%c', String( entry.components === undefined ? entry.sections : entry.components ) );
+				count.textContent = String( entry.components );
+				count.title = Nino.content.getText('/_admin/templates/label/page-count').replace( '%s', String( entry.sections || 0 ) ).replace( '%c', String( entry.components ) );
 
 				button.append( icon, copy, count );
 				button.addEventListener( 'click', function() { Nino.admin.templates.openDocument( entry.name ) } );
@@ -755,7 +739,6 @@
 				const listed = Nino.admin.templates._documents.find( function( entry ) { return entry.name === current.name } );
 				if( listed ) {
 					listed.displayName = current.displayName;
-					listed.pageMotion = Nino.admin.templates._pageMotion;
 					listed.sections = Nino.admin.templates.sections().length;
 					listed.components = Nino.admin.templates.components().length;
 				}

@@ -237,7 +237,6 @@
 		_images : null,
 		_codeContext : null,
 
-		preview : preview,
 		humanize : humanize,
 		detachMetadata : detachMetadata,
 

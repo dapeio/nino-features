@@ -10,7 +10,7 @@
      is no head do they stay here. Every id and class here is the panel's own
      (pd-*), styled from assets/style.css; the buttons and fields are the
      design system's. -->
-<div id="pd-app" data-dir="[[/nino/dir]]" data-public="[[/nino/public]]">
+<div id="pd-app" data-dir="[[/nino/dir]]">
 	<div id="pd-top-actions">
 		<span id="pd-save-state" class="nino-admin-actionbar-status" role="status"></span>
 		<button type="button" id="pd-delete-template" class="nino-admin-btn-danger" disabled>[[/_admin/templates/label/delete]]</button>

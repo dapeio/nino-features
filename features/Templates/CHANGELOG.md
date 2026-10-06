@@ -420,6 +420,17 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
 
 ### Removed
 
+- **The panel scripts' allowances for answers the server never sends.** A
+  preset of another version than 3, a missing composer or area composer, a
+  page list without component counts, a gallery card without a layout label:
+  the library, the asset order and `documents/list` rule each of them out, and
+  the scripts no longer ask. Gone with them are three exports nothing called
+  from outside (`areaKeys`, `pd.composer.validate`, `sectionsUI.preview`),
+  `publicUrl()` and the `data-public` attribute it read,
+  and the `pageMotion` of every `documents/list` entry -
+  the page's motion comes from `documents/load`, as before.
+  `templates-js-smoke.js` now holds area-composer.js to the version rule too,
+  red before.
 - **What the composer from before named areas left behind.** The preview and
   the library list passed a section-wide `elementType` that only an area's
   own source decides now; `Composer::compose()` fell back to a preset called

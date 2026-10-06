@@ -29,7 +29,6 @@ function check( label, condition ) {
 	console.log( 'FAIL  - '+ label );
 }
 
-const callbacks = [];
 const documentStub = {
 	getElementById : function() { return null },
 	querySelectorAll : function() { return [] },
@@ -39,7 +38,7 @@ const documentStub = {
 // the lint config knows it as one - a second declaration of the same name here
 // would be a redeclaration of it
 globalThis.Nino = {
-	events : { bindCallback : function( event, callback ) { if( event === 'ready' ) callbacks.push( callback ) } },
+	events : { bindCallback : function() {} },
 	http : { sendRequest : function() {} },
 	// The panel says nothing in its own words any more - every string it
 	// renders is a fill (see the feature's text/). The key stands
@@ -60,7 +59,6 @@ const context = vm.createContext( {
 	console : console,
 	Promise : Promise,
 	Set : Set,
-	URLSearchParams : URLSearchParams,
 } );
 
 [ 'script.js', 'sections.js', 'composer.js', 'area-composer.js' ].forEach( function( file ) {
@@ -139,14 +137,14 @@ check( 'preview documents remove executable markup before assigning srcdoc', !ho
 	&& !/\son[a-z]+=/i.test( hostilePreview ) );
 
 const composerSource = fs.readFileSync( path.join( FEATURE, 'assets/composer.js' ), 'utf8' );
+const areaComposerSource = fs.readFileSync( path.join( FEATURE, 'assets/area-composer.js' ), 'utf8' );
 
 /*	Which presets are named-area ones is the server's answer, not this
 	script's: Library::presets() drops every manifest whose version is not 3
 	before the panel is handed one (templates-smoke.php asserts that). The
-	script used to ask again, per preset, in four places - a question with one
+	scripts used to ask again, per preset, in four places - a question with one
 	answer over that list	*/
-check( 'the script does not filter by preset version - the library it is handed holds only v3', /version\s*\)\s*===\s*3/.test( composerSource ) === false );
-const areaComposerSource = fs.readFileSync( path.join( FEATURE, 'assets/area-composer.js' ), 'utf8' );
+check( 'the scripts do not filter by preset version - the library they are handed holds only v3', [ composerSource, areaComposerSource ].every( function( source ) { return /version\s*\)\s*[!=]==\s*3/.test( source ) === false } ) );
 const sectionsSource = fs.readFileSync( path.join( FEATURE, 'assets/sections.js' ), 'utf8' );
 const scriptSource = fs.readFileSync( path.join( FEATURE, 'assets/script.js' ), 'utf8' );
 const styleSource = fs.readFileSync( path.join( FEATURE, 'assets/style.css' ), 'utf8' );

@@ -212,8 +212,7 @@
 			pd.composer._textEntries = [];
 			pd.composer._textValues = {};
 			pd.composer._touched = new Set();
-			if( pd.areaComposer )
-				pd.areaComposer._areaKey = '';
+			pd.areaComposer._areaKey = '';
 
 			const fallback = pd._library.presets[0].key;
 			const requested = context.spec && context.spec.preset ? context.spec.preset : fallback;
@@ -246,8 +245,7 @@
 			const activeContext = context;
 			Promise.all( [ pd.sectionsUI.ensureTypes(), pd.sectionsUI.ensureImages(), pd.api( 'content/keys', {} ) ] ).then( function( responses ) {
 				pd.composer._textEntries = responses[2].entries || [];
-				if( pd.areaComposer )
-					pd.areaComposer.reconcileAvailableCollections();
+				pd.areaComposer.reconcileAvailableCollections();
 				if( pd.composer._context === activeContext && pd.composer.configStep() === true )
 					pd.composer.renderSettings();
 			} ).catch( function() {} );
@@ -302,7 +300,7 @@
 		 *	@return		{string}
 		 */
 		previewFocus : function() {
-			return pd.areaComposer && typeof pd.areaComposer.previewFocus === 'function' ? pd.areaComposer.previewFocus() : '';
+			return pd.areaComposer.previewFocus();
 		},
 
 		/**
@@ -543,11 +541,7 @@
 				const copy = element( 'div', 'pd-preset-copy' );
 				const meta = element( 'div', 'pd-preset-meta' );
 				meta.appendChild( element( 'span', 'pd-preset-category', Nino.adminUi.text( preset.category ) ) );
-				const facts = [ presetKind( preset ), preset.layouts && preset.layouts[preset.recommend.layout] ? Nino.adminUi.text( preset.layouts[preset.recommend.layout].label ) : '' ];
-				const visibleFacts = facts.filter( function( fact ) { return fact && ![ 'none', 'auto' ].includes( fact ) } );
-				if( visibleFacts.length < 2 && ( preset.tags || [] ).length )
-					visibleFacts.push( preset.tags[0] );
-				visibleFacts.slice( 0, 2 ).forEach( function( fact ) { meta.appendChild( element( 'span', '', humanize( fact ) ) ); } );
+				[ presetKind( preset ), Nino.adminUi.text( preset.layouts[preset.recommend.layout].label ) ].forEach( function( fact ) { meta.appendChild( element( 'span', '', humanize( fact ) ) ); } );
 				copy.append( meta, element( 'strong', '', Nino.adminUi.text( preset.name ) ), element( 'p', '', Nino.adminUi.text( preset.description ) ) );
 				card.appendChild( copy );
 
@@ -637,7 +631,7 @@
 			const status = dc.getElementById('pd-preview-status');
 			status.textContent = Nino.content.getText('/_admin/templates/msg/updating');
 			pd.composer._previewTimer = wn.setTimeout( function() {
-				pd.api( 'library/preview', Object.assign( {}, draft, { texts : pd.areaComposer ? pd.areaComposer.previewTexts() : {} } ) ).then( function( response ) {
+				pd.api( 'library/preview', Object.assign( {}, draft, { texts : pd.areaComposer.previewTexts() } ) ).then( function( response ) {
 					if( token !== pd.composer._previewToken )
 						return;
 					setPreviewFrame( dc.getElementById('pd-composer-preview'), response.html || '', Nino.content.getText('/_admin/templates/label/live-preview').replace( '%s', Nino.adminUi.text( selectedPreset().name ) ), pd.composer.previewFocus() );

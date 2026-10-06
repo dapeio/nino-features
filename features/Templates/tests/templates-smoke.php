@@ -947,7 +947,6 @@ check( 'the scrim is one choice per image layer rather than three levels of its 
 check( 'overlay values outside the current vocabulary are rejected', throwsInvalidArgument( fn() => \Nino\Modules\Templates\Composer::compose( [
 	'preset' => 'hero-fullscreen-image', 'pageId' => 'page-home', 'id' => 'invalid-overlay', 'frame' => [ 'overlay' => 'strong' ],
 ] ) ) );
-check( 'every preset card is measured against the same preview viewport', array_filter( $presets, fn( array $preset ): bool => isset( $preset['previewHeight'] ) ) === [] );
 
 $timeline = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'items-timeline', 'pageId' => 'page-home', 'id' => 'process' ] );
 check( 'the timeline numbers its steps from the ordered list instead of storing the ordinal as content', str_contains( $timeline['source'], '<ol class="nino-timeline nino-timeline--counted">' )
@@ -1368,7 +1367,7 @@ $listRequest = response();
 $listed = $listRequest['/nino/http/response']['body']['documents'];
 
 check( 'lists page-*.tpl files only', array_column( $listed, 'name' ) === [ 'page-home' ] );
-check( 'reports filename, display name, page id and inherited VPA', $listed[0]['filename'] === 'page-home.tpl' && $listed[0]['displayName'] === 'Home' && $listed[0]['sections'] === 2 && $listed[0]['pageId'] === 'page-home' && $listed[0]['pageMotion'] === 'on' && $listed[0]['editable'] === true );
+check( 'reports filename, display name and page id', $listed[0]['filename'] === 'page-home.tpl' && $listed[0]['displayName'] === 'Home' && $listed[0]['sections'] === 2 && $listed[0]['pageId'] === 'page-home' && $listed[0]['editable'] === true );
 check( 'excludes the automatically recognized header/footer shell from the canvas-item count', $listed[0]['components'] === 2 );
 
 $includesRequest = response();

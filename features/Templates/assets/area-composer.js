@@ -26,7 +26,6 @@
 	const PREVIEW_MAX_TEXTS = 100;
 
 	const pd = Nino.admin.templates;
-	if( !pd.composer ) return;
 
 	function preset() {
 		return pd._library.presets.find( function( item ) { return item.key === pd.composer._presetKey } ) || null;
@@ -1140,13 +1139,12 @@
 		watchEmpty : watchEmpty,
 		generatedValueField : generatedValueField,
 		linkAccepted : linkAccepted,
-		areaKeys : areaKeys,
 		areaLabel : areaLabel,
 		recommendedFrame : recommendedFrame,
 		effectiveFrame : effectiveFrame,
 		reconcileAvailableCollections : function() {
 			const item = preset();
-			if( !item || Number( item.version ) !== 3 ) return;
+			if( !item ) return;
 			areaKeys( item ).forEach( function( areaKey ) {
 				const area = item.areas[areaKey];
 				const source = pd.composer._draft.areas[areaKey].source;
@@ -1225,7 +1223,6 @@
 	pd.composer.renderSummary = renderSummary;
 	pd.composer.loadTextValues = loadTextValues;
 	pd.composer.updateDraft = updateDraft;
-	pd.composer.validate = validate;
 	pd.composer.submit = submit;
 
 })(window, document);
