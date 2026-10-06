@@ -106,6 +106,17 @@ namespace Nino\Modules\Templates {
 		}
 
 		/**
+		 *	What 'auto' settles on for a frame axis that neither the Layout nor
+		 *	the preset recommends - the last step of effective(), sent to the
+		 *	panel beside choices() so it resolves Auto the same way
+		 *
+		 *	@return		array								axis => value
+		 */
+		public static function fallbacks(): array {
+			return self::FRAME_FALLBACKS;
+		}
+
+		/**
 		 *	The components a named area may be built from, and the properties
 		 *	each of them binds.
 		 *

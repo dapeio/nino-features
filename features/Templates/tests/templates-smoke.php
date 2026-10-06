@@ -298,10 +298,17 @@ $publicPresets = $libraryBody['presets'];
 check( 'library API supplies editable v3 defaults without leaking Layout source', array_filter( $publicPresets, fn( array $preset ): bool => $preset['version'] === 3
 	&& ( !isset( $preset['defaults']['areas'] ) || isset( $preset['_layouts'] ) ) ) === [] );
 /*	What a section can be is the manifests' to say and nobody else's: the
-	answer carries the presets, the frame choices every preset shares and the
+	answer carries the presets, the frame choices and fallbacks every preset shares and the
 	project stylesheet for the previews - and no second list of section kinds
 	beside the presets, which is what Composer::modules() used to add to it	*/
-check( 'the library answers its presets and what every preset shares, and no second catalogue of sections beside them', array_keys( $libraryBody ) === [ 'presets', 'choices', 'previewCss' ] );
+check( 'the library answers its presets and what every preset shares, and no second catalogue of sections beside them', isset( $libraryBody['presets'], $libraryBody['choices'], $libraryBody['fallbacks'], $libraryBody['previewCss'] ) === true
+	&& array_key_exists( 'modules', $libraryBody ) === false );
+// The panel resolves Auto with the compiler's own table rather than a copy of it
+$libraryFallbacks = $libraryBody['fallbacks'] ?? [];
+check( 'the frame fallbacks it answers are the compiler\'s, one per axis, each one of that axis\' choices', $libraryFallbacks !== []
+	&& count( $libraryFallbacks ) === count( $libraryBody['choices'] ) && array_diff_key( $libraryFallbacks, $libraryBody['choices'] ) === []
+	&& array_filter( $libraryFallbacks, fn( string $value, string $axis ): bool => $value === 'auto' || in_array( $value, $libraryBody['choices'][$axis], true ) === false, ARRAY_FILTER_USE_BOTH ) === []
+	&& $libraryFallbacks === \Nino\Modules\Templates\AreaComposer::fallbacks() );
 check( 'library API refreshes and embeds project CSS for request-free previews', str_contains( $libraryBody['previewCss'], 'template-preview-project-css' )
 	&& str_contains( $libraryBody['previewCss'], 'stale-template-preview-css' ) === false );
 check( 'sandbox previews inline local fonts and discard unresolved remote font rules', str_contains( $libraryBody['previewCss'], 'data:font/woff2;base64,'. base64_encode('preview-font') )

@@ -265,7 +265,9 @@
 		return draft.layout !== 'auto' && item.layouts[draft.layout] ? draft.layout : item.recommend.layout;
 	}
 
-	const FRAME_FALLBACK = { screen : 'off', vertical : 'middle', background : 'default', container : 'default', padding : 'default', margin : 'none', focus : '5', overlay : 'dim' };
+	function frameFallbacks() {
+		return pd._library.fallbacks || {};
+	}
 
 	/**
 	 *	What "auto" settles on for every frame axis: the Layout's recommendation,
@@ -274,10 +276,11 @@
 	 */
 	function recommendedFrame( draft, item ) {
 		const layout = item.layouts[effectiveLayout( draft, item )] || {};
+		const fallbacks = frameFallbacks();
 		const frame = {};
-		Object.keys( FRAME_FALLBACK ).forEach( function( key ) {
+		Object.keys( fallbacks ).forEach( function( key ) {
 			const recommended = layout.frame && layout.frame[key] && layout.frame[key] !== 'auto' ? layout.frame[key] : item.recommend.frame && item.recommend.frame[key];
-			frame[key] = recommended && recommended !== 'auto' ? recommended : FRAME_FALLBACK[key];
+			frame[key] = recommended && recommended !== 'auto' ? recommended : fallbacks[key];
 		} );
 		return frame;
 	}
@@ -285,7 +288,7 @@
 	function effectiveFrame( draft, item ) {
 		const recommended = recommendedFrame( draft, item );
 		const frame = {};
-		Object.keys( FRAME_FALLBACK ).forEach( function( key ) {
+		Object.keys( recommended ).forEach( function( key ) {
 			frame[key] = draft.frame[key] && draft.frame[key] !== 'auto' ? draft.frame[key] : recommended[key];
 		} );
 		return frame;
@@ -1139,6 +1142,8 @@
 		linkAccepted : linkAccepted,
 		areaKeys : areaKeys,
 		areaLabel : areaLabel,
+		recommendedFrame : recommendedFrame,
+		effectiveFrame : effectiveFrame,
 		reconcileAvailableCollections : function() {
 			const item = preset();
 			if( !item || Number( item.version ) !== 3 ) return;

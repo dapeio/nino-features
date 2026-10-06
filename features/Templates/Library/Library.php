@@ -68,6 +68,7 @@ namespace Nino\Modules\Templates {
 			\Nino\Http::ok( $request, [
 				'presets'	=> $presets,
 				'choices'	=> AreaComposer::choices(),
+				'fallbacks'	=> AreaComposer::fallbacks(),
 				'previewCss' => self::_previewCss( $appData ),
 			] );
 		}

@@ -900,11 +900,21 @@ check( 'every Auto option names the value it resolves to', /return Nino\.content
 check( 'a component is defined by its area\'s render map alone - the panel reads no catalogue beside it', areaComposerSource.includes( 'componentCatalog' ) === false );
 const recommendedFrameBody = areaComposerSource.slice( areaComposerSource.indexOf( 'function recommendedFrame(' ) ).split( '\n\tfunction ' )[0];
 check( 'what Auto resolves to is read without the choice the user already made', recommendedFrameBody.includes( 'draft.frame' ) === false
-	&& recommendedFrameBody.includes( 'FRAME_FALLBACK[key]' )
+	&& recommendedFrameBody.includes( 'fallbacks[key]' )
 	&& areaComposerSource.includes( 'const recommended = recommendedFrame( draft, item );' ) );
-check( 'the client frame fallbacks match the compiler\'s own', [ areaComposerSource, sectionsSource ].every( function( source ) {
-	return source.includes( "overlay : 'dim'" ) && source.includes( "overlay : 'medium'" ) === false;
+check( 'the panel keeps no copy of the compiler\'s frame fallbacks - library/list sends them', [ areaComposerSource, sectionsSource ].every( function( source ) {
+	return source.includes( "overlay : 'dim'" ) === false && source.includes( "focus : '5'" ) === false;
 } ) );
+// A table that says something else for one axis is what all three readers answer
+const keepFallbacks = Nino.admin.templates._library.fallbacks;
+Nino.admin.templates._library.fallbacks = { screen : 'off', vertical : 'middle', background : 'default', container : 'default', padding : 'default', margin : 'none', focus : '5', overlay : 'none' };
+const fallbackPreset = { key : 'fallback-test', version : 3, recommend : { layout : 'stacked', frame : {} }, layouts : { stacked : { label : 'Stacked', frame : {} } }, areas : {} };
+check( 'what Auto settles on where nothing recommends a value is the fallback library/list sent', typeof Nino.admin.templates.areaComposer.recommendedFrame === 'function' && typeof Nino.admin.templates.sectionsUI.effectiveFrameValue === 'function'
+	&& Nino.admin.templates.areaComposer.recommendedFrame( { layout : 'auto', frame : {} }, fallbackPreset ).overlay === 'none'
+	&& Nino.admin.templates.areaComposer.effectiveFrame( { layout : 'auto', frame : { overlay : 'auto' } }, fallbackPreset ).overlay === 'none'
+	&& Nino.admin.templates.sectionsUI.effectiveFrameValue( { layout : 'auto', frame : {} }, fallbackPreset, 'overlay' ) === 'none'
+	&& Nino.admin.templates.sectionsUI.effectiveFrameValue( { layout : 'auto', frame : {} }, fallbackPreset, 'no-such-axis' ) === 'auto' );
+Nino.admin.templates._library.fallbacks = keepFallbacks;
 check( 'every preview card is scaled to one viewport, so the gallery compares presets and not tile heights', composerSource.includes( "frame.dataset.viewportHeight = '760'" )
 	&& composerSource.includes( 'previewHeight' ) === false );
 const resourceSpec = { version : 3, preset : 'sample', pageId : 'page-home', id : 'services', areas : { copy : { components : [ { id : 'visual', type : 'image', bindings : { src : '/template/page-home/services/visual' } } ] } } };

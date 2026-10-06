@@ -107,7 +107,7 @@
 		model : model,
 		_documents : [],
 		_includes : [],
-		_library : { presets : [], modules : [], choices : {} },
+		_library : { presets : [], choices : {}, fallbacks : {} },
 		_current : null,
 		_selectedId : null,
 		_dirty : false,

@@ -37,6 +37,19 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The frame fallbacks are stated once.** What Auto settles on where neither
+  the Layout nor the preset recommends a value was the compiler's
+  `FRAME_FALLBACKS` and two hand-kept copies in the panel, in
+  `area-composer.js` and in `sections.js`. `library/list` sends the table
+  beside the frame choices now (`AreaComposer::fallbacks()`), and the Auto
+  labels, the inspector and the section badges read it from there; the
+  leftover `modules` slot of the panel's library state is gone with them.
+  `templates-smoke.php` holds that the answer carries the compiler's table, one
+  value per axis and each one of that axis' choices; `templates-js-smoke.js`
+  that neither script keeps a copy and that a table with another value is what
+  the panel answers - 6 red against the code before. Nothing changes for a
+  project.
+
 - **A preset no longer carries the whole component catalogue.** `library/list`
   sent `componentCatalog` - every component type with its properties - inside
   every preset, beside each area's own `render` map, which already holds the
