@@ -17,9 +17,10 @@ namespace Nino\Modules\Templates {
 			is the source of a template, which is the product the Template Builder
 			exists to make. A .tpl of its own would be a template that writes a
 			template, and every section it assembles already comes out of the
-			library's own .tpl files (see Library::template()). What is here is the
-			scaffolding between them and the indentation that makes the result
-			readable to whoever opens it afterwards.
+			preset's own layout .tpl files, which normalizePreset() reads from
+			its directory. What is here is the scaffolding between them and the
+			indentation that makes the result readable to whoever opens it
+			afterwards.
 
 			See AGENTS.md, "Markup belongs in a template", which names this as the
 			exception it is	*/
@@ -328,7 +329,6 @@ namespace Nino\Modules\Templates {
 				throw new \InvalidArgumentException( 'composed preset is not one complete section: '. ( $inspection['error'] ?? 'invalid source' ) );
 
 			$collections = [];
-			$imageFields = [];
 			foreach( $preset['areas'] as $areaKey => $area ) {
 				if( $area['source'] !== 'elements' )
 					continue;
@@ -339,10 +339,6 @@ namespace Nino\Modules\Templates {
 					'typeTitle' => $area['typeTitle'],
 					'model' => $area['model'],
 				];
-				foreach( $spec['areas'][$areaKey]['components'] as $component )
-					foreach( $area['render'][$component['type']]['properties'] as $property => $definition )
-						if( $definition['fieldType'] === 'image' && ( $component['bindingSources'][$property] ?? 'field' ) === 'field' )
-							$imageFields[] = $component['bindings'][$property];
 			}
 
 			return [
@@ -352,7 +348,7 @@ namespace Nino\Modules\Templates {
 				'segment' => $inspection['segment'],
 				'fields' => $fields,
 				'images' => $images,
-				'content' => [ 'source' => 'areas', 'collections' => $collections, 'imageFields' => array_values( array_unique( $imageFields ) ) ],
+				'content' => [ 'collections' => $collections ],
 			];
 		}
 
@@ -398,7 +394,7 @@ namespace Nino\Modules\Templates {
 				is the item's own markup, and a [[field]] in it is resolved per
 				record by the [elements] pass at request time, like the fills
 				the catalogue's components write (see renderArea() and
-				Elements::doShortcode()). What used to be refused as "the same
+				Elements::doShortcodeElements()). What used to be refused as "the same
 				thing about every element" is a row template somebody wrote by
 				hand, which the preset's fixed components could not express	*/
 			$styles = self::styles( $definition['styles'] ?? [] );

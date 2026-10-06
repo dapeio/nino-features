@@ -24,14 +24,10 @@ namespace Nino\Modules\Templates {
 	 */
 	class Composer {
 
-		/*	The one class of feature that writes markup in php on purpose, and
-			the reason it may: what this composes is not a view of anything - it
-			is the source of a template, which is the product the Template Builder
-			exists to make. A .tpl of its own would be a template that writes a
-			template, and every section it assembles already comes out of the
-			library's own .tpl files (see Library::template()). What is here is the
-			scaffolding between them and the indentation that makes the result
-			readable to whoever opens it afterwards.
+		/*	Markup in php on purpose, and the reason it may: the inert preview
+			below is the composed section itself, with its [image] shortcodes
+			swapped for an <img> and a placeholder image drawn in their place -
+			the builder showing its own product, not a view of anything.
 
 			See AGENTS.md, "Markup belongs in a template", which names this as the
 			exception it is	*/
@@ -63,11 +59,11 @@ namespace Nino\Modules\Templates {
 		 *	@param		array			$input				Preset key plus the browser's own values
 		 *	@param		bool			$preview			Mark every area for the panel's preview frame
 		 *
-		 *	@return 	array								{ source, spec, fields, imageSlots, elementSchema, segment }
+		 *	@return 	array								{ spec, effective, source, segment, fields, images, content } - see AreaComposer::compose()
 		 */
 		public static function compose( array $input, bool $preview = false ): array {
 
-			$preset = Library::preset( (string) ( $input['preset'] ?? 'blank' ) );
+			$preset = Library::preset( (string) ( $input['preset'] ?? '' ) );
 
 			if( $preset === null )
 				throw new \InvalidArgumentException( 'unknown section preset' );
@@ -90,7 +86,6 @@ namespace Nino\Modules\Templates {
 
 			$input['pageId'] = (string) ( $input['pageId'] ?? 'preview' );
 			$input['id'] = (string) ( $input['id'] ?? 'preview-section' );
-			$input['elementType'] = (string) ( $input['elementType'] ?? 'preview-items' );
 
 			try {
 				$result = self::compose( $input, true );

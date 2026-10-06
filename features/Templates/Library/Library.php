@@ -59,7 +59,6 @@ namespace Nino\Modules\Templates {
 					'preset' => $preset['key'],
 					'pageId' => 'preview',
 					'id' => 'preview-'. $preset['key'],
-					'elementType' => 'preview-items',
 				], self::_text( $appData ) );
 				if( $preview !== null )
 					$preset['preview'] = $preview;
@@ -243,15 +242,6 @@ namespace Nino\Modules\Templates {
 
 		public static function preset( string $key ): ?array {
 			return self::presets()[$key] ?? null;
-		}
-
-		public static function template( string $key ): ?string {
-
-			if( preg_match( self::KEY_PATTERN, $key ) !== 1 )
-				return null;
-
-			$path = self::DIRECTORY. '/'. $key. '/section.tpl';
-			return is_file( $path ) ? (string) file_get_contents( $path ) : null;
 		}
 
 		public static function publicPreset( array $preset ): array {

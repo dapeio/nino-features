@@ -344,6 +344,7 @@ $multiAreaResult = \Nino\Modules\Templates\AreaComposer::compose(
 check( 'one preset can compose several independent Elements Areas', count( $multiAreaResult['content']['collections'] ) === 2
 	&& $multiAreaResult['content']['collections'][0]['elementType'] === 'page-home-related-first'
 	&& $multiAreaResult['content']['collections'][1]['elementType'] === 'page-home-related-second' );
+check( 'what the compose answer says about content is the collections it creates - the one part of it the panel reads', array_keys( $multiAreaResult['content'] ) === [ 'collections' ] );
 file_put_contents( $areaPresetDirectory. '/unsafe.tpl', "<?php echo 'unsafe'; ?>\n[[area:first]]\n[[area:second]]\n" );
 $unsafeManifest = $multiAreaManifest;
 $unsafeManifest['layouts']['default']['template'] = 'unsafe.tpl';
@@ -592,7 +593,7 @@ foreach( $presets as $previewKey => $previewPreset ) {
 	if( str_starts_with( $previewKey, 'smoke-' ) === true )
 		continue;
 	foreach( array_keys( $previewPreset['layouts'] ) as $previewLayout ) {
-		$composed = \Nino\Modules\Templates\Composer::compose( [ 'preset' => $previewKey, 'layout' => $previewLayout, 'pageId' => 'preview', 'id' => 'preview-'. $previewKey, 'elementType' => 'preview-items' ], true );
+		$composed = \Nino\Modules\Templates\Composer::compose( [ 'preset' => $previewKey, 'layout' => $previewLayout, 'pageId' => 'preview', 'id' => 'preview-'. $previewKey ], true );
 		// An item's image is drawn by the preview itself, and a loop's own
 		// counters are the loop's
 		$previewSource = preg_replace( '#src=(["\'])[^"\']*/images/\[\[image\]\]\1#i', '', $composed['source'] ) ?? '';

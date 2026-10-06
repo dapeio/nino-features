@@ -420,6 +420,17 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
 
 ### Removed
 
+- **What the composer from before named areas left behind.** The preview and
+  the library list passed a section-wide `elementType` that only an area's
+  own source decides now; `Composer::compose()` fell back to a preset called
+  `blank`, which does not exist; every `library/compose` answer carried
+  `content.source` and `content.imageFields`, which the panel never read - it
+  reads `content.collections`, and that is all `content` holds now, so the
+  answer is smaller; `documents/load` worked out a `hasMetadata` flag nobody
+  asked for; and `Library::template()` read a `section.tpl` for no caller.
+  The comments that sent a reader to it name the layout templates
+  `normalizePreset()` reads, and the docblocks the keys and the kernel
+  method there are.
 - **The composer from before named areas, and the catalogue that fed it.**
   What a section can be is the manifests' to say, preset by preset - and
   `Composer.php` said it a second time: `Composer::modules()`, 28 section

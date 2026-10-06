@@ -472,7 +472,6 @@ namespace Nino\Modules\Templates {
 			$parsed = SectionDocument::split( $metadata['source'], \Nino\Modules\Template::category( $name ) );
 			$parsed['displayName'] = $metadata['displayName'];
 			$parsed['pageMotion'] = $metadata['pageMotion'];
-			$parsed['hasMetadata'] = $metadata['hasMetadata'];
 			if( $parsed['error'] !== null )
 				return $parsed;
 
@@ -561,7 +560,6 @@ namespace Nino\Modules\Templates {
 				'source' => $source,
 				'displayName' => self::_defaultDisplayName( $name ),
 				'pageMotion' => 'off',
-				'hasMetadata' => false,
 				'hasPageMotion' => false,
 			];
 			$pattern = '~\A<!--[\t ]*nino:template-name[\t ]+([^\r\n<>]+?)[\t ]*-->[\t ]*(?:\r?\n|$)(?:<!--[\t ]*nino:template-vpa[\t ]+(on|off)[\t ]*-->[\t ]*(?:\r?\n|$))?~';
@@ -574,7 +572,6 @@ namespace Nino\Modules\Templates {
 
 			$result['source'] = substr( $source, strlen( $match[0] ) );
 			$result['displayName'] = $displayName;
-			$result['hasMetadata'] = true;
 			// The vpa line is optional, and an optional group that did not
 			// take part is simply absent - never present and empty
 			if( isset( $match[2] ) === true ) {
