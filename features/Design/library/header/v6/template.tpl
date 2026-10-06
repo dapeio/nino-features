@@ -1,7 +1,7 @@
 		<header class="nino-frame-header">
 			<div class="nino-frame-header-rail nino-scroll-header">
-				<a href="[[/nino/dir]]/" class="nino-logo">
-					<img src="[[/nino/public]]/images/logo-invert.png" alt="">
+				<a href="[[/nino/dir]]/" class="nino-logo nino-logo--invert">
+					[image /logo alt=""]
 					<h1 class="nino-sr-only" id="header-title">[[/project/company/general/name]] | [[/_nino/webpage[[/nino/http/response/uri]]/title]]</h1>
 				</a>
 				<nav class="nino-frame-header-nav" aria-label="[[/template/frame-header/navigation/label]]">

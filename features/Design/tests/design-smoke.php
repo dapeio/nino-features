@@ -1069,6 +1069,113 @@ $legacyDefault['compiled']['input'] = $beforeRevision( $legacyDefault, $library 
 \Nino\Modules\Design\Setup::write( $appData, $legacyDefault );
 check( 'with every colour knob at 2 the same record still reads current', ( callDesignAction( $appData, 'apiList' )[1]['current'] ?? null ) === true );
 
+/*	A write the disk refuses half way. The stylesheet goes out first and the
+	frames after it, so a frame that failed used to leave the new stylesheet over
+	the old markup - and the version kept for a change that then did not happen
+	stayed behind as the version before, where there had been none. A directory
+	where a file belongs is how a test makes the disk say no. What the answer has
+	to leave is the site as the call found it	*/
+callDesignAction( $appData, 'apiSave', [ 'parts' => $parts( 'v1', 'v1' ), 'knobs' => [], 'size' => 'm', 'colours' => [] ] );
+callDesignAction( $appData, 'apiApply', [ 'force' => true ] );
+callDesignAction( $appData, 'apiSave', [ 'parts' => $parts( 'v2', 'v2' ), 'knobs' => [], 'size' => 'l', 'colours' => [] ] );
+callDesignAction( $appData, 'apiApply' );
+
+$old 			= $onDisk();
+$oldSlot	= \Nino\Modules\Design\Previous::read( $appData );
+
+// The draft that changes all three files: what the apply writes, and so what it can fail at
+callDesignAction( $appData, 'apiSave', [ 'parts' => $parts( 'v3', 'v3' ), 'knobs' => [], 'size' => 's', 'colours' => [] ] );
+$draft = (string) file_get_contents( $pathOf( \Nino\Modules\Design\Setup::PATH ) );
+
+check( 'the arrangement: three files of Design\'s own, a version before them, and a draft that would change every one',
+	count( array_filter( $old, static fn( ?string $bytes ): bool => $bytes !== null ) ) === 3 && $oldSlot !== null
+	&& count( array_filter( array_column( $planOf(), 'changes' ) ) ) === 3 );
+
+/** The three files as that left them and the slot as it was - or with no slot, and a frame missing where one is named */
+$reset = static function( bool $withSlot, array $missing = [] ) use ( $old, $oldSlot, $pathOf, $slotPath, &$appData ): void {
+
+	foreach( $old as $target => $bytes ) {
+
+		if( in_array( $target, $missing, true ) === true )
+			@unlink( $pathOf( $target ) );
+		else
+			file_put_contents( $pathOf( $target ), (string) $bytes );
+	}
+
+	if( $withSlot === true )
+		\Nino\Modules\Design\Previous::write( $appData, $oldSlot );
+	else
+		@unlink( $slotPath );
+};
+
+/** One apply with a directory where $dir belongs, and what it left - read before the directory goes again */
+$halfway = static function( string $dir, bool $withSlot, array $missing = [] ) use ( $reset, $onDisk, $pathOf, $slotPath, &$appData ): array {
+
+	$reset( $withSlot, $missing );
+
+	if( is_file( $pathOf( $dir ) ) === true )
+		unlink( $pathOf( $dir ) );
+
+	mkdir( $pathOf( $dir ) );
+	ninoWarnings();
+	[ $status, $body ] = callDesignAction( $appData, 'apiApply' );
+	ninoWarnings();
+
+	$left = [
+		'status' 		=> $status,
+		'error' 		=> (string) ( $body['error'] ?? '' ),
+		'files' 		=> $onDisk(),
+		'directory'	=> is_dir( $pathOf( $dir ) ),
+		'slotFile' 	=> is_file( $slotPath ),
+		'slot' 			=> \Nino\Modules\Design\Previous::read( $appData ),
+		'setup' 		=> (string) file_get_contents( $pathOf( \Nino\Modules\Design\Setup::PATH ) ),
+	];
+
+	rmdir( $pathOf( $dir ) );
+
+	return $left;
+};
+
+// The files as they are with the directory in the place of one of them
+$with = static fn( string ...$targets ): array => array_merge( $old, array_fill_keys( $targets, null ) );
+
+$footerLast = $halfway( '/templates/frame-footer.tpl', true );
+check( 'an apply whose last write fails - a directory where the footer belongs, with the stylesheet and the header already out - answers 500 and names the file',
+	$footerLast['status'] === 500 && str_contains( $footerLast['error'], 'could not write /templates/frame-footer.tpl' ) === true && $footerLast['directory'] === true );
+check( '...puts the stylesheet and the header back byte for byte, so the new stylesheet is not left over the old markup',
+	$footerLast['files'] === $with( '/templates/frame-footer.tpl' ) );
+check( '...leaves the previous version exactly as it was, and no record of a compile that did not happen',
+	$footerLast['slot'] === $oldSlot && $footerLast['setup'] === $draft );
+
+$headerFirst = $halfway( '/templates/frame-header.tpl', true );
+check( 'the header refused, with only the stylesheet out: it goes back too, the footer was never touched, and the slot stays',
+	$headerFirst['status'] === 500 && str_contains( $headerFirst['error'], 'could not write /templates/frame-header.tpl' ) === true
+	&& $headerFirst['files'] === $with( '/templates/frame-header.tpl' ) && $headerFirst['slot'] === $oldSlot && $headerFirst['setup'] === $draft );
+
+$noSlotFrame = $halfway( '/templates/frame-footer.tpl', false );
+check( 'with no previous version a failure half way leaves none behind - the one kept for the change that did not happen is taken away again',
+	$noSlotFrame['status'] === 500 && $noSlotFrame['slotFile'] === false && $noSlotFrame['files'] === $with( '/templates/frame-footer.tpl' )
+	&& $noSlotFrame['setup'] === $draft );
+
+$noSlotCss = $halfway( '/assets/theme.css', false );
+check( 'a stylesheet that cannot be written, with no previous version, leaves no slot file behind either',
+	$noSlotCss['status'] === 500 && str_contains( $noSlotCss['error'], 'could not write /assets/theme.css' ) === true
+	&& $noSlotCss['slotFile'] === false && $noSlotCss['files'] === $with( '/assets/theme.css' ) );
+
+$slotCss = $halfway( '/assets/theme.css', true );
+check( '...and where there is one it stays exactly as it was',
+	$slotCss['status'] === 500 && $slotCss['slot'] === $oldSlot && $slotCss['files'] === $with( '/assets/theme.css' ) );
+
+$madeHeader = $halfway( '/templates/frame-footer.tpl', false, [ '/templates/frame-header.tpl' ] );
+check( 'a frame the apply had only just made is taken away again: the project had no header, and has none',
+	$madeHeader['status'] === 500 && $madeHeader['files'] === $with( '/templates/frame-header.tpl', '/templates/frame-footer.tpl' )
+	&& $madeHeader['slotFile'] === false );
+
+$reset( true );
+check( 'the same apply goes through once the disk allows it, and keeps the version it found',
+	callDesignAction( $appData, 'apiApply' )[0] === 200 && $onDisk() !== $old
+	&& ( \Nino\Modules\Design\Previous::read( $appData )['files'] ?? [] ) === $old );
+
 // What the preview tests further down take for the stored setup
 callDesignAction( $appData, 'apiSave', [ 'parts' => [], 'knobs' => [], 'size' => 'm' ] );
 
@@ -1137,9 +1244,50 @@ echo "\nThe preview: a selection, before it is one\n";
 	sandbox has no kernel in it at all - so it gets one, the same way a project
 	has one. Modules\Assets is what writes the bundle, Modules\Template what a
 	frame's [template] includes resolve through */
+$root = realpath( $root ) ?: $root;	// a relative NINO_ROOT (release.yml) would make a dangling link
 symlink( $root. '/_nino', ninoSandboxDir( $appData ). '/_nino' );
 $appData['/nino/modules'] = [ '\\Nino\\Modules\\Assets', '\\Nino\\Modules\\Template' ];
 \Nino\Modules::callModules( $appData, 'init' );
+
+/*	The logo is the kernel's slot, as the base unit's own frames ask for it - never
+	a file name of a library template, which a project that uploaded its logo
+	through the Images panel does not have. One slot serves every variant: a frame
+	that was drawn for a dark ground says so with nino-logo--invert and applies no
+	filter of its own	*/
+\Nino\Modules\Images::init( $appData );
+$logoNamed		= [];
+$logoRender		= [ 'filled' => [], 'empty' => [] ];
+$logoUrl			= \Nino\Images::getUrl( $appData, 'logo.webp' );
+
+foreach( [ 'header', 'footer' ] as $part )
+	foreach( \Nino\Modules\Design\Setup::available( $library, $part ) as $set ) {
+
+		$source = (string) file_get_contents( \Nino\Modules\Design\Setup::file( $library, $part, $set, 'template' ) );
+
+		if( preg_match( '#logo(?:-invert)?\.png#', $source ) === 1 || str_contains( $source, 'images/logo' ) === true )
+			$logoNamed[] = $part. '/'. $set;
+
+		unset( $appData['/nino/html/images']['/logo'] );
+		$logoRender['empty'][$part. '/'. $set] = \Nino\Html::renderHtml( $appData, $source );
+		$appData['/nino/html/images']['/logo'] = [ 'label' => 'Logo', 'filename' => 'logo.webp', 'width' => 500, 'height' => 100 ];
+		$logoRender['filled'][$part. '/'. $set] = \Nino\Html::renderHtml( $appData, $source );
+	}
+
+unset( $appData['/nino/html/images']['/logo'] );
+
+check( 'no library template names logo.png or logo-invert.png'. ( $logoNamed === [] ? '' : ' - '. implode( ', ', $logoNamed ) ), $logoNamed === [] && count( $logoRender['empty'] ) >= 17 );
+check( 'every frame asks the logo slot', count( array_filter( $logoRender['filled'], static fn( string $html ): bool
+	=> str_contains( $html, 'src="'. $logoUrl. '"' ) === true && str_contains( $html, 'width="500" height="100"' ) === true ) ) === 17 );
+check( '...and with no logo uploaded none leaves an <img>, a slot tag or a fill of the shortcode behind',
+	array_filter( $logoRender['empty'], static fn( string $html ): bool
+		=> preg_match( '#<img[^>]*logo#i', $html ) === 1 || str_contains( $html, '[image' ) === true
+			|| str_contains( $html, '[[src]]' ) === true || str_contains( $html, '[[width]]' ) === true || str_contains( $html, '[[alt]]' ) === true
+			|| str_contains( $html, $logoUrl ) === true || str_contains( $html, '/images/logo' ) === true ) === [] );
+check( 'a frame drawn for a dark ground carries nino-logo--invert, one slot for both variants',
+	str_contains( $logoRender['filled']['header/v4'], 'nino-logo--invert' ) === true && str_contains( $logoRender['filled']['footer/v2'], 'nino-logo--invert' ) === true
+	&& str_contains( $logoRender['filled']['header/v1'], 'nino-logo--invert' ) === false );
+check( '...and no stylesheet of the library filters it', array_filter( glob( $library. '/*/*/style.css' ) ?: [], static fn( string $file ): bool
+	=> preg_match( '#nino-logo--invert[^{]*\{[^}]*filter#', (string) file_get_contents( $file ) ) === 1 ) === [] );
 
 $specimen = \Nino\Modules\Design\Preview::specimen( $appData );
 

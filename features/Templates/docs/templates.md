@@ -272,7 +272,9 @@ is offered in single Areas and in collections alike - the six collections the
 shipped presets loop over included.
 
 In a collection the source is the item's own markup, rendered once per element,
-and it starts as `<p class="nino-section-text">[[<first text field>]]</p>`. The
+and it starts as `<p class="nino-section-text">[[<first text field>]]</p>` - the first
+field that is a string without `'html' => true`, which a number, a date or a rich
+text before it is not. The
 editor lists what the item can name, `[[title]], [[description]], …, [[.id]]`:
 one `[[field]]` for every field of the collection by its model key, and `[[.id]]`
 for the entry's position, counted from 0. The fills are double-bracketed -
@@ -283,7 +285,8 @@ for content, and `[` in either is written as `&#91;`; global fills such as
 nested `[elements]` block, because the kernel ends the outer block at the first
 `[/elements]`, and - for a collection the section creates - a rich text field
 inside a tag, since sanitizing keeps `"` and the value could close an attribute
-and hand the editor's content an event handler. The same field in text content
+and hand the editor's content an event handler. For the same reason a component's source
+may not end inside a tag: the next component would finish it. The same field in text content
 is fine. Quote every attribute that carries a field: escaping does not encode a
 space or `=`, so an unquoted `class=[[title]]` can still be broken open.
 Every text component offers the same three styles — **Auto**, **Quiet** and **Loud** —

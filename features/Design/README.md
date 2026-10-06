@@ -150,11 +150,15 @@ from the choices, and a restore of it reads *saved, not applied*. For files that
 no apply of Design's wrote (the delivered ones, or a stylesheet that is no
 longer the one the record names) the slot holds no setup at all. One rather
 than a history, because "the version before" is what the panel promises - a
-list would need ids, pruning and a screen to choose from. If an apply fails
-before it has written anything, the slot it replaced is put back. If it cannot
-be written the apply is refused and nothing is overwritten. An apply that would write bytes identical to every file already there keeps
-nothing, so a second apply of the same thing never replaces the previous
-version with a copy of the present.
+list would need ids, pruning and a screen to choose from. If a write of an
+apply fails, the files it had already written are put back from memory - a
+frame that was not there is removed again, so the stylesheet never stays over
+frames it was not drawn against - and the slot is as it was: the one it replaced
+written again, or none where the apply had made one for a change that did not
+happen (`500`). If the slot cannot be written the apply is refused and nothing
+is overwritten. An apply that would write bytes identical to every file already
+there keeps nothing, so a second apply of the same thing never replaces the
+previous version with a copy of the present.
 
 **Restore previous version** (state box, with the date) asks, then swaps the
 slot with the present: the files are written from it, `data/design.php` goes
@@ -332,6 +336,18 @@ Two things a header frame has to keep, whichever shape it is:
   include names a template the project does not have, which renders as
   nothing - so a frame never names the shortcode itself, which would stand on
   the page as text wherever the feature is not there.
+
+A frame draws the logo from the kernel's slot, as the base unit's own frame
+does: `[image /logo alt=""]` in the header, and in a footer, where the picture
+carries a class of its own, the same shortcode around the `<img>` the frame
+wants - `[image /logo alt=""]<img src="[[src]]" width="[[width]]" height="[[height]]" class="nino-footer-logo" alt="[[alt]]">[/image]`.
+A frame never names `images/logo.png` or `images/logo-invert.png`: a project
+that uploaded its logo in the Images panel has neither file, and with no logo
+uploaded yet the slot renders nothing, not a broken picture. There is **one slot
+for both variants**. A frame drawn for a dark ground says so with the modifier
+class `nino-logo--invert` on the wrapper (on the picture itself in a footer,
+which has no wrapper) and the library applies no CSS filter to it - a project
+that needs a lighter or darker mark uploads one that is, or styles the class.
 
 Every footer frame shows the link to the imprint and the privacy policy the
 same way: it outputs the project's menu `legal` with
@@ -603,6 +619,13 @@ only edited beside a stylesheet that is ours is planned as `edited` and goes
 through with `force`; that the fingerprint carries `Colours::REVISION` for a
 colour knob off *Standard* and for no other setup; and that both text files hold
 the same keys and every text the script names is one of them.
+
+For a write the disk refuses half way - a directory where the footer, the header
+or the stylesheet belongs: that the apply answers `500` and names the file, puts
+the stylesheet and the other frame back byte for byte, leaves the previous
+version as it was and no record of a compile that did not happen, leaves no slot
+behind where there was none, takes away a frame it had only just made, and goes
+through once the disk allows it.
 
 For the colours: for Saturation, Contrast and Depth at every position, in both
 modes, on `#4faae8`, `#8b1d3f`, `#facc15` and `#111827` - text 4.5:1 (10:1 at

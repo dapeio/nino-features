@@ -300,6 +300,33 @@ A release is the tag `design-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **A write the disk refused half way left the site half applied.** Applying
+  writes the stylesheet first and the frames after it, so a frame that could
+  not be written left the new `assets/theme.css` over the old markup - and the
+  header too, where it had gone out before the footer that failed. Where there
+  was no previous version, the slot the apply had made for itself stayed behind
+  when the stylesheet could not be written, holding the version that was still
+  the present. Everything already written is put back from the bytes held
+  before the first write now (a frame that was not there is removed again), the
+  slot is what it was - the one that was kept written again, or removed where
+  the apply made it - and the answer is the same `could not write ...`.
+  `tests/design-smoke.php` has the disk refuse with a directory where the
+  footer, the header and the stylesheet belong, with and without a previous
+  version, and runs the same apply again once the directory is gone.
+
+- **The frames asked for a logo file instead of the logo slot.** All 17
+  header and footer frames drew `images/logo.png` or `images/logo-invert.png`,
+  which a project that uploaded its logo in the Images panel does not have - it
+  got a broken picture. They use `[image /logo alt=""]` now, exactly as the base
+  unit's frame does: nothing is rendered until a logo is uploaded. One slot
+  serves both variants; a frame that used `logo-invert.png` carries the modifier
+  class `nino-logo--invert` and no filter is applied. A frame already applied
+  is the project's own and is not rewritten - copy the line by hand.
+
+- **A relative `NINO_ROOT` made `design-smoke.php` fail.** The link it makes to
+  the kernel's `_nino` was dangling once the path was relative, which is how
+  `release.yml` sets it. The path is resolved first.
+
 - **An invalid byte in a value rendered as nothing.** `htmlspecialchars()`
   answers input that is not valid UTF-8 with `''` unless `ENT_SUBSTITUTE` is
   among its flags, and every call here spelled the flags out without it.

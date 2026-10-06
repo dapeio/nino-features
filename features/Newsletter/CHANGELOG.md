@@ -112,7 +112,7 @@ A release is the tag `newsletter-<version>` of dapeio/nino-features.
   has; its status and date stay as they are, confirming that mail changes
   nothing, and the signup does not clear its removal record. A legacy entry
   without a token gets one, and confirming that mail records it as `subscribed`
-  with the date of the confirmation. The flag `./nino/mail/ratelimited` is sticky, so
+  and keeps the date it signed up on. The flag `./nino/mail/ratelimited` is sticky, so
   it is unset before the send. Note that the shipped mail's line "you will not
   receive any newsletter" does not describe that case; `/mail/newsletter/
   notice` is the project's to word.
@@ -155,6 +155,16 @@ A release is the tag `newsletter-<version>` of dapeio/nino-features.
   the code is unchanged.
 
 ### Fixed
+
+- **The link of a confirmation or unsubscribe mail stayed in the fills.** It was
+  added for every language to render the mail and never taken out, so it was
+  there for whatever else the request rendered afterwards. It is removed right
+  after `Mail::send()`, also when the send throws.
+
+- **Confirming an entry from before the double opt-in flow replaced its date.**
+  An entry with a token but no status counts as subscribed since the day it
+  signed up; confirming its mail set the date to the day of the confirmation.
+  Only the status is set now.
 
 - **The Text panel reported three keys of this feature as missing.**
   `/newsletter/page/title`, `/newsletter/page/text` and

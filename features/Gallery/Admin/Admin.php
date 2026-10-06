@@ -131,6 +131,9 @@ namespace Nino\Modules\Gallery {
 				// refused by this panel at all, php drops the whole request and
 				// what comes back is the csrf check's 403 (see apiUpload())
 				'limits'	=> [ 'bytes' => $limit, 'text' => \Nino\Modules\Gallery::formatBytes( $limit ) ],
+				// How long an alt text or a caption may be: what the server keeps of
+				// one is cut to it, and the panel compares with what it keeps
+				'maxText'	=> \Nino\Modules\Gallery::MAX_CAPTION,
 			] );
 		}
 
@@ -340,11 +343,13 @@ namespace Nino\Modules\Gallery {
 					$posted[$field] = \Nino\Modules\Gallery::text( $data[$field] );
 
 			$available	= \Nino\Locales::getAvailableLocales( $appData );
+			$ran				= false;
 			$albumFound	= false;
 			$found			= false;
 
-			$written = \Nino\Filesystem::mutate( $appData, \Nino\Modules\Gallery::ALBUMS, static function( mixed $state ) use ( $key, $id, $locale, $posted, $available, &$albumFound, &$found ): ?array {
+			$written = \Nino\Filesystem::mutate( $appData, \Nino\Modules\Gallery::ALBUMS, static function( mixed $state ) use ( $key, $id, $locale, $posted, $available, &$ran, &$albumFound, &$found ): ?array {
 
+				$ran = true;
 				$albums = [];
 
 				foreach( (array) $state as $entry )
@@ -370,6 +375,13 @@ namespace Nino\Modules\Gallery {
 
 				return $found === true ? $albums : null;
 			}, [] );
+
+			// The callback never ran where the list could not be locked: nothing was
+			// looked at, so neither the album nor the image is missing - the save is
+			if( $ran === false ) {
+				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/save' ) );
+				return;
+			}
 
 			if( $albumFound === false ) {
 				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/album' ) );

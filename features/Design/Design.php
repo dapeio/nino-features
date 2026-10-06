@@ -134,6 +134,14 @@ namespace Nino\Modules {
 		 *	applies, so data/design.php already holds the new choices by now. If
 		 *	keeping it fails, nothing is written.
 		 *
+		 *	A write that fails after that leaves the site as the call found it:
+		 *	the files already written are put back from the bytes held before the
+		 *	first one (a frame that was not there is removed again), and the slot
+		 *	is what it was - the one that was kept written again, or removed where
+		 *	this apply made it. The stylesheet never stays over frames it was not
+		 *	drawn against, and a version is never kept for a change that did not
+		 *	happen.
+		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$notes				(reference) What was replaced or missing
 		 *	@param		bool			$force				Overwrite a theme.css or a frame this never wrote
@@ -175,26 +183,37 @@ namespace Nino\Modules {
 			if( $same === false && Design\Previous::write( $appData, $before ) === false )
 				return 'could not keep the previous version in '. ltrim( Design\Previous::PATH, '/' ). ' - nothing was overwritten';
 
-			$written = Design\Compiler::write( $appData, $outputs[Design\Compiler::TARGET]['bytes'], $force );
-
-			if( $written !== true ) {
-				// Nothing on the site changed, so the version kept before it
-				// stays the version kept
-				if( $slot !== null )
-					Design\Previous::write( $appData, $slot );
-
-				return $written;
-			}
+			/*	The stylesheet first, then the frames - the order of $outputs. A
+				write that fails leaves the site as this call found it, not half
+				way: the stylesheet used to stay over the old markup of a frame
+				the disk refused, and the version kept for a change that did not
+				happen stayed behind as the version before. What was written is
+				put back from $before, which holds the files as they were before
+				the first write (a frame that was not there is taken away again),
+				and so is the slot: the one that was there is written again, and
+				one this apply made is removed - a file that was no slot counts as
+				none, the way read() has it	*/
+			$replaced = [];
 
 			foreach( $outputs as $target => $output ) {
 
-				if( $output['part'] === '' )
-					continue;
+				$result = $output['part'] === ''
+					? Design\Compiler::write( $appData, $output['bytes'], $force )
+					: Design\Compiler::writeFrame( $appData, $output['part'], $output['markup'], $output['set'], $force );
 
-				$result = Design\Compiler::writeFrame( $appData, $output['part'], $output['markup'], $output['set'], $force );
+				if( $result !== true ) {
 
-				if( $result !== true )
+					self::_putBack( $appData, $before, $replaced );
+
+					if( $slot !== null )
+						Design\Previous::write( $appData, $slot );
+					elseif( $same === false )
+						@unlink( \Nino\Filesystem::path( $appData, Design\Previous::PATH ) );
+
 					return $result;
+				}
+
+				$replaced[] = $target;
 			}
 
 			/*	What was compiled, so the panel can say whether the file on disk
@@ -444,11 +463,13 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	Put files back as they were held in memory before a restore began
+		 *	Put files back as they were held in memory before a restore or an
+		 *	apply began. A target that was not there is removed again: only the
+		 *	call being undone can have written it
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		$present			Previous::capture()'s answer, taken before the first write
-		 *	@param		array 		$replaced			The targets the restore had already written
+		 *	@param		array 		$replaced			The targets the restore or the apply had already written
 		 *
 		 *	@return 	void
 		 */

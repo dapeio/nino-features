@@ -633,10 +633,18 @@ check( '...a text is cut at 4000 bytes', str_contains( (string) \Nino\Modules\Te
 $tooMany = [ $typedKey => 'Typed' ];
 for( $tooManyIndex = 0; $tooManyIndex < 100; $tooManyIndex++ )
 	$tooMany['/template/preview/hero/extra-'. $tooManyIndex] = 'x';
-check( '...more than 100 entries, another shape or a value that is no string are left out, and the preview still renders', ( \Nino\Modules\Templates\Composer::preview( $typedInput( $tooMany ), $sampleText ) ?? '' ) !== ''
-	&& str_contains( (string) \Nino\Modules\Templates\Composer::preview( $typedInput( $tooMany ), $sampleText ), 'Typed' ) === false
+$lateTyped = [];
+for( $tooManyIndex = 0; $tooManyIndex < 100; $tooManyIndex++ )
+	$lateTyped['/template/preview/hero/extra-'. $tooManyIndex] = 'x';
+$lateTyped[$typedKey] = 'Typed';
+check( '...another shape or a value that is no string is left out, and the preview still renders', ( \Nino\Modules\Templates\Composer::preview( $typedInput( $tooMany ), $sampleText ) ?? '' ) !== ''
 	&& str_contains( (string) \Nino\Modules\Templates\Composer::preview( $typedInput( 'Typed' ), $sampleText ), '<section' )
 	&& str_contains( (string) \Nino\Modules\Templates\Composer::preview( $typedInput( [ $typedKey => [ 'Typed' ] ] ), $sampleText ), $sampleText( (string) $heroFields[0]['sample'] ) ) );
+// What follows the hundredth entry is dropped, what is before it is kept: the
+// answer used to be nothing at all, so a section with a hundred and one texts
+// showed every one of them as its sample
+check( '...the first 100 entries are kept, the ones after them are left out', str_contains( (string) \Nino\Modules\Templates\Composer::preview( $typedInput( $tooMany ), $sampleText ), 'Typed' )
+	&& str_contains( (string) \Nino\Modules\Templates\Composer::preview( $typedInput( $lateTyped ), $sampleText ), 'Typed' ) === false );
 
 // The library resolves the samples through the workbench's own fills, in the
 // workbench's language: here a fill that a sandbox would not have by itself
@@ -1096,6 +1104,26 @@ try {
 check( 'a single area\'s HTML+ without a source of its own composes to the catalogue default, not to a text key', str_contains( $htmlSingleDefault['source'], '<p class="nino-section-text">Your own HTML+ here.</p>' )
 	&& str_contains( $htmlSingleDefault['source'], 'note-source' ) === false );
 
+// The first text field is a string without html: a number before it, or a rich text field, is not one
+$loopSourceOf = static function( array $model ) use ( $multiAreaManifest, $areaPresetDirectory ): ?string {
+	try {
+		$manifest = $multiAreaManifest;
+		$manifest['areas']['first'] = array_replace( $manifest['areas']['first'], [ 'source' => 'elements', 'allowed' => [ 'title', 'html' ], 'model' => $model ] );
+		$preset = \Nino\Modules\Templates\AreaComposer::normalizePreset( 'html-loop-first', $manifest, $areaPresetDirectory );
+		$spec = \Nino\Modules\Templates\AreaComposer::defaults( $preset, 'page-home', 'rows' );
+		$spec['areas']['first']['components'] = [ [ 'id' => 'row', 'type' => 'html', 'style' => 'auto', 'settings' => [ 'target' => 'same' ], 'bindings' => [], 'bindingSources' => [ 'source' => 'source' ] ] ];
+		$composed = \Nino\Modules\Templates\AreaComposer::compose( $spec, $preset );
+	} catch( \Throwable ) {
+		return null;
+	}
+	return preg_match( '#\[elements /[a-z0-9-]+[^\]]*\](.*?)\[/elements\]#s', $composed['source'], $item ) === 1 ? $item[1] : null;
+};
+$loopFields = $loopSourceOf( [ 'portrait' => [ 'type' => 'image' ], 'years' => [ 'type' => 'integer' ], 'bio' => [ 'type' => 'string', 'html' => true ], 'title' => [ 'type' => 'string' ] ] );
+check( 'the first text field of a collection is the first string without html - not an image, a number or a rich text', $loopFields !== null
+	&& str_contains( $loopFields, '<p class="nino-section-text">[[title]]</p>' ) && str_contains( $loopFields, '[[bio]]' ) === false && str_contains( $loopFields, '[[years]]' ) === false );
+$loopNoText = $loopSourceOf( [ 'portrait' => [ 'type' => 'image' ], 'bio' => [ 'type' => 'string', 'html' => true ], 'years' => [ 'type' => 'integer' ], 'title' => [ 'type' => 'string', 'html' => true ] ] );
+check( '...and a collection with none keeps the component\'s own default', $loopNoText !== null && str_contains( $loopNoText, 'Your own HTML+ here.' ) && str_contains( $loopNoText, '[[bio]]' ) === false && str_contains( $loopNoText, '[[title]]' ) === false );
+
 /*	What it may not hold in a collection: the kernel's pattern ends an
 	[elements] block at the first [/elements], so a block inside the item
 	closes the outer one and takes the rest of the page with it; and a rich
@@ -1133,6 +1161,36 @@ check( '...and a rich text field inside a tag, in an attribute, in a tag or quot
 	&& $htmlLoopRefuses( '<[[blurb]]>', 'new', 'inside a tag' ) === true
 	&& $htmlLoopRefuses( '<p title="[[title]]">[[blurb]]</p>' ) === false
 	&& $htmlLoopRefuses( '<div>[[blurb]]</div><p title="x">[[title]]</p>' ) === false );
+// The components of an area are set one after the other, so a tag one of them leaves open is closed by the next:
+// the field is then inside an attribute although neither source shows it
+$htmlOpenTag = static function( array $preset, array $sources, string $mode = 'new' ): ?string {
+	if( $preset['areas'] === [] )
+		return null;
+	$spec = \Nino\Modules\Templates\AreaComposer::defaults( $preset, 'page-home', 'rows' );
+	$spec['areas']['first']['source']['elementMode'] = $mode;
+	$spec['areas']['first']['components'] = [];
+	foreach( $sources as $index => $source )
+		$spec['areas']['first']['components'][] = [ 'id' => 'row-'. $index, 'type' => 'html', 'style' => 'auto', 'settings' => [ 'target' => 'same' ], 'bindings' => [ 'source' => $source ], 'bindingSources' => [ 'source' => 'source' ] ];
+	try {
+		\Nino\Modules\Templates\AreaComposer::compose( $spec, $preset );
+	} catch( \InvalidArgumentException $error ) {
+		return $error->getMessage();
+	}
+	return '';
+};
+$openSplit = [ '<a title="', '[[blurb]]">x</a>' ];
+check( '...a source whose last tag is left open is refused where the collection has a rich text field, so it cannot be closed by the next component',
+	str_contains( (string) $htmlOpenTag( $htmlLoopPreset, $openSplit ), 'leaves a tag open' )
+	&& str_contains( (string) $htmlOpenTag( $htmlLoopPreset, [ '<p>[[title]]</p><a href="/x" title="a > b', '[[blurb]]">x</a>' ] ), 'leaves a tag open' )
+	&& str_contains( (string) $htmlOpenTag( $htmlLoopPreset, [ '<p>x</p><a class=', '[[blurb]]>x</a>' ] ), 'leaves a tag open' ) );
+check( '...while a closed tag, the same field in text and an unknown collection are as they were', $htmlOpenTag( $htmlLoopPreset, [ '<a title="x">', '</a>[[blurb]]' ] ) === ''
+	&& $htmlOpenTag( $htmlLoopPreset, [ '<p>[[blurb]]</p>', '<p>[[title]]</p>' ] ) === ''
+	&& str_contains( (string) $htmlOpenTag( $htmlLoopPreset, $openSplit, 'existing' ), 'leaves a tag open' ) === false );
+$htmlPlainManifest = $multiAreaManifest;
+$htmlPlainManifest['areas']['first'] = array_replace( $htmlPlainManifest['areas']['first'], [ 'source' => 'elements', 'allowed' => [ 'title', 'html' ], 'model' => [ 'blurb' => [ 'type' => 'string' ], 'title' => [ 'type' => 'string' ] ] ] );
+$htmlPlainPreset = [ 'areas' => [] ];
+try { $htmlPlainPreset = \Nino\Modules\Templates\AreaComposer::normalizePreset( 'html-plain-loop', $htmlPlainManifest, $areaPresetDirectory ); } catch( \Throwable $htmlPlainError ) {}
+check( '...and a collection with no rich text field has nothing to guard', str_contains( (string) $htmlOpenTag( $htmlPlainPreset, $openSplit ), 'leaves a tag open' ) === false && $htmlPlainPreset['areas'] !== [] );
 check( '...a collection the project already has is known by its name alone, so there is no model to hold the field against', $htmlLoopRefuses( '<p title="[[blurb]]">x</p>', 'existing' ) === false );
 check( '...while the template component stays a single-area one', throwsInvalidArgument( fn() => \Nino\Modules\Templates\AreaComposer::normalizePreset( 'template-collection',
 	array_replace_recursive( $multiAreaManifest, [ 'areas' => [ 'first' => [ 'source' => 'elements', 'allowed' => [ 'title', 'template' ] ] ] ] ), $areaPresetDirectory ) ) );
@@ -1741,6 +1799,21 @@ unlink( $sandbox. '/private/templates/page-services.tpl' );
 \Nino\Auth::logoutUser( $appData );
 
 echo "\n";
+
+
+// --- The browser half ----------------------------------------------------------
+
+$node = trim( (string) @shell_exec( 'command -v node 2>/dev/null' ) );
+
+if( $node === '' )
+	echo "  --  node is not on the path, so templates-js-smoke.js is not run here\n\n";
+else {
+	echo "templates-js-smoke.js\n";
+	$out = (string) @shell_exec( escapeshellarg( $node ). ' '. escapeshellarg( __DIR__. '/templates-js-smoke.js' ). ' 2>&1' );
+	echo $out;
+	check( 'the browser half passes too', preg_match( '/^\d+ checks, 0 failed$/m', $out ) === 1 );
+	echo "\n";
+}
 
 
 \Nino\Filesystem::removeDir( $sandbox );

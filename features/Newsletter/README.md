@@ -55,8 +55,8 @@ mailed too, with the token it already has - its status and its date stay as
 they are, confirming that mail changes nothing, and the signup does not clear
 its removal record. An entry from before the double opt-in flow, which has no
 token, gets one in the same write; confirming that mail is the first
-confirmation such an entry has, so it is recorded as `subscribed` with the
-date of the confirmation. A recorded signup clears the address from
+confirmation such an entry has, so it is recorded as `subscribed`; its date
+stays the one it signed up on. A recorded signup clears the address from
 the removal record (see [Data and restore](#data-and-restore)) - a fresh signup
 is a current consent. The page shows the generic `/feature/newsletter/info/error` for
 the `429` and the `500`; no text of its own is needed.
@@ -163,7 +163,10 @@ form had no such fill at all.) Where it does not resolve to an address,
 naming a fill - the mail still goes out, because the recipient and the body
 were never the problem. `Mail::send()` rate-limits per client IP, and the flag
 it leaves behind when it refuses (`./nino/mail/ratelimited`) is unset before
-every send of this feature, so a refusal is always this send's own. Whether the
+every send of this feature, so a refusal is always this send's own. The link is
+a credential, so the fill is removed from the fills for every language again
+right after the send (in a `finally`) - the same goes for the unsubscribe
+link - and no response later in the same request can carry it. Whether the
 mail went out is what the visitor is answered (see above); the pending entry is
 recorded either way, and submitting again resends it.
 

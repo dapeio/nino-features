@@ -67,6 +67,7 @@ file of the public directory comes before any route or rule:
 | another rule | a note: visitors are redirected twice. Where that rule's own target is answered by nothing, it is the next row |
 | nothing | a warning: whoever follows the rule lands on the 404 page until a page, a route or a rule answers it |
 | a chain of rules that comes back to where it was | a warning: a browser stops such a chain with an error |
+| a chain of more than 8 rules (`Rules::HOPS`) that never comes back to an address it has been at | a warning of its own, "too many rules in a row": it is not a loop, it is long, and a browser stops it with an error all the same |
 
 The answer is read off the routes and the rules every time and is never
 stored, so a page created or removed later changes it without a rule being

@@ -29,9 +29,14 @@ two (`paths`, `password`):
   `password` setting, posted as `pw`, and never shown again - the screen says
   that one is set, nothing more. **A new password signs everybody out**, see
   [Signing everybody out](#signing-everybody-out), so a member who left loses
-  access with it. The Features panel's own form for `password` does not do
-  that - it is a settings form and rotates nothing - so a password changed
-  there is followed by the panel's **Sign everybody out**.
+  access with it. A password set in the Features panel's form for `password`
+  does the same: the feature listens on `/nino/admin/action` for
+  `features/settings` of `protected` that sent a password and rotates the epoch.
+  A secret sent empty keeps the one it has, and the kernel may blank a secret in
+  what it announces, so an empty value is not taken at its word: the epoch file
+  says which password it was written under (a keyed hash, never the password),
+  and a save that leaves the password as it was signs nobody out. That event is
+  Nino 1.4's; the screen above does not depend on it.
 - **Pages.** The site's pages as a list to tick off, instead of typed uris.
   The list is the persisted `GET` routes of `config.php` that a visitor opens
   in a browser: the front page is not in it (the gate skips an empty prefix, so
@@ -177,7 +182,10 @@ feature stored before the epoch existed - so an update asks nobody for the
 password again - and `unlocked()` accepts it until the first sign-out. A
 password change writes the epoch first and the password second, so a write that
 fails leaves the old password in place rather than the new one beside sessions
-it never asked for.
+it never asked for - and the epoch once more after the password was written
+successfully, since somebody who knew the old password could still unlock
+between the two writes. The length is counted in characters (`mb_strlen()`
+here, the number of code points in the script), not in bytes.
 
 ## Locking again
 
@@ -306,7 +314,7 @@ workbench's daily backup carries them:
 | File | Content |
 | --- | --- |
 | `/data/protected.php` | the attempt cap's own counter, by client ip: `{ tries, reset }` per ip with an unsuccessful try in the current window |
-| `/data/protected-session.php` | the session epoch, `{ epoch }`, written by a sign-out and read by every unlock - see [Signing everybody out](#signing-everybody-out); absent until the first sign-out |
+| `/data/protected-session.php` | the session epoch, `{ epoch, pw }` - `pw` is a keyed hash saying which password the epoch was written under, so a change in the Features panel can be told from a save that left it - written by a sign-out and read by every unlock - see [Signing everybody out](#signing-everybody-out); absent until the first sign-out |
 
 There is nothing to restore-merge here (unlike a subscriber list, an
 elapsed rate-limit window is never worth preserving across a restore), so

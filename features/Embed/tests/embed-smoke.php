@@ -305,8 +305,40 @@ check( 'url= with a host a policy cannot name safely - credentials, an ip addres
 	&& \Nino\Modules\Embed::source( [ 'url' => 'https://192.0.2.7/embed' ] ) === ''
 	&& \Nino\Modules\Embed::source( [ 'url' => 'https://[2001:db8::1]/embed' ] ) === ''
 	&& \Nino\Modules\Embed::source( [ 'url' => 'https://2130706433/embed' ] ) === ''
-	&& \Nino\Modules\Embed::source( [ 'url' => 'https://m\u{fc}nchen.example/embed' ] ) === ''
+	&& \Nino\Modules\Embed::source( [ 'url' => "https://m\u{fc}nchen.example/embed" ] ) === ''
 	&& \Nino\Html::renderHtml( $appData, '[embed url="https://192.0.2.7/embed" title="x"]' ) === '' );
+
+check( 'url= with a hex number as the last label of the host renders nothing - an ip address in a form php does not call one',
+	\Nino\Modules\Embed::source( [ 'url' => 'https://maps.0x7f000001/embed' ] ) === ''
+	&& \Nino\Modules\Embed::source( [ 'url' => 'https://maps.example.0x/embed' ] ) === ''
+	&& \Nino\Modules\Embed::source( [ 'url' => 'https://0x7f.maps.example/embed' ] ) === 'https://0x7f.maps.example/embed' );
+
+/*	'$' matches before a newline at the end unless the pattern says D. video() trims
+	what it is given, so a newline cannot get there that way - but the patterns are
+	the one thing that stands between an address and the markup, and they say what
+	they mean: nothing after the id	*/
+$vimeoHash = ( new \ReflectionClassConstant( \Nino\Modules\Embed::class, 'VIMEO_HASH' ) )->getValue();
+check( 'the id and hash patterns accept no newline at their end',
+	preg_match( \Nino\Modules\Embed::PROVIDERS['youtube']['pattern'], 'dQw4w9WgXcQ' ) === 1 && preg_match( \Nino\Modules\Embed::PROVIDERS['youtube']['pattern'], "dQw4w9WgXcQ\n" ) === 0
+	&& preg_match( \Nino\Modules\Embed::PROVIDERS['vimeo']['pattern'], '76979871' ) === 1 && preg_match( \Nino\Modules\Embed::PROVIDERS['vimeo']['pattern'], "76979871\n" ) === 0
+	&& preg_match( $vimeoHash, 'abcdef1234' ) === 1 && preg_match( $vimeoHash, "abcdef1234\n" ) === 0 );
+check( '...and an address with one at its end still names its video, the whitespace being trimmed before anything is read',
+	\Nino\Modules\Embed::video( 'youtube', "https://youtu.be/dQw4w9WgXcQ\n" ) === [ 'id' => 'dQw4w9WgXcQ', 'hash' => '', 'embed' => false ]
+	&& \Nino\Modules\Embed::source( [ 'youtube' => "dQw4w9WgXcQ\n" ] ) === 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?rel=0' );
+
+/*	v= and h= are read out of the query string as they stand, not by parse_str(): it
+	takes at most max_input_vars variables, so a parameter after a thousand others
+	was never there, and it renames and arrays the ones it does take	*/
+$manyParameters = str_repeat( 'a=1&', 1200 );
+check( 'v= and h= are found after any number of other parameters, and in front of an [] one',
+	\Nino\Modules\Embed::video( 'youtube', 'https://www.youtube.com/watch?'. $manyParameters. 'v=dQw4w9WgXcQ' )['id'] === 'dQw4w9WgXcQ'
+	&& \Nino\Modules\Embed::video( 'vimeo', 'https://vimeo.com/76979871?'. $manyParameters. 'h=abcdef1234' )['hash'] === 'abcdef1234'
+	&& \Nino\Modules\Embed::video( 'youtube', 'https://www.youtube.com/watch?list[]=1&v=dQw4w9WgXcQ&t=5' )['id'] === 'dQw4w9WgXcQ' );
+check( '...a v that is an array, empty or only the end of another name is no id',
+	\Nino\Modules\Embed::video( 'youtube', 'https://www.youtube.com/watch?v[]=dQw4w9WgXcQ' ) === null
+	&& \Nino\Modules\Embed::video( 'youtube', 'https://www.youtube.com/watch?v=' ) === null
+	&& \Nino\Modules\Embed::video( 'youtube', 'https://www.youtube.com/watch?xv=dQw4w9WgXcQ' ) === null
+	&& \Nino\Modules\Embed::video( 'youtube', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ#t=5' )['id'] === 'dQw4w9WgXcQ' );
 
 /*	The pasted address, rendered: the frame is still only a data attribute	*/
 $pasted = \Nino\Html::renderHtml( $appData, '[embed youtube="https://youtu.be/dQw4w9WgXcQ" title="x"]' );
@@ -375,6 +407,11 @@ check( 'a child-src-only policy gets a frame-src built from child-src\'s list - 
 	embedPolicy( $appData, $request, '[embed youtube="dQw4w9WgXcQ"]', "child-src 'self' https://cdn.example; default-src 'none'" ) === "child-src 'self' https://cdn.example; default-src 'none'; frame-src 'self' https://cdn.example https://www.youtube-nocookie.com" );
 check( 'a default-src that lists more than \'self\' is carried over rather than narrowed to \'self\'',
 	embedPolicy( $appData, $request, '[embed youtube="dQw4w9WgXcQ"]', "default-src 'self' https://cdn.example" ) === "default-src 'self' https://cdn.example; frame-src 'self' https://cdn.example https://www.youtube-nocookie.com" );
+check( 'a frame-src with no source at all blocks everything as \'none\' does - the project\'s decision too, so it stays',
+	embedPolicy( $appData, $request, '[embed youtube="dQw4w9WgXcQ"]', "default-src 'self'; frame-src" ) === "default-src 'self'; frame-src"
+	&& embedPolicy( $appData, $request, '[embed youtube="dQw4w9WgXcQ"]', "default-src 'self'; frame-src; img-src *" ) === "default-src 'self'; frame-src; img-src *"
+	&& embedPolicy( $appData, $request, '[embed youtube="dQw4w9WgXcQ"]', "child-src; default-src 'self'" ) === "child-src; default-src 'self'"
+	&& embedPolicy( $appData, $request, '[embed youtube="dQw4w9WgXcQ"]', "default-src; img-src *" ) === "default-src; img-src *" );
 check( 'a frame-src of \'none\' is the project\'s decision and stays',
 	embedPolicy( $appData, $request, '[embed youtube="dQw4w9WgXcQ"]', "default-src 'self'; frame-src 'none'" ) === "default-src 'self'; frame-src 'none'" );
 check( 'a default-src of \'none\' with nothing nearer stays too',
@@ -387,6 +424,21 @@ check( 'an array body - an api answer - is not touched, nor is a response with n
 check( 'the hosts come from the shortcode and not from the body: markup that says "nino-embed" without a shortcode adds nothing',
 	embedPolicy( $appData, $request, '<div class="nino-embed" data-embed-src="https://evil.example/x"></div>', $shipped ) === $shipped );
 
+// The workbench is not a page of the site: it sends a policy of its own, and what an [embed] in a page it shows said is not its business
+$adminRequest = $request;
+$adminRequest['/nino/http/request']['uri'] = '/_admin';
+$adminRequest['/nino/http/response']['uri'] = '/_admin';
+$adminBelow = $request;
+$adminBelow['/nino/http/request']['uri'] = '/_admin/panel';
+$notAdmin = $request;
+$notAdmin['/nino/http/request']['uri'] = '/_administrator';
+$notAdmin['/nino/http/response']['uri'] = '/_administrator';
+check( 'a response of /_admin or below is left alone, its policy byte for byte', embedPolicy( $appData, $adminRequest, '[embed youtube="dQw4w9WgXcQ"]', $shipped ) === $shipped
+	&& embedPolicy( $appData, $adminBelow, '[embed youtube="dQw4w9WgXcQ"]', $shipped ) === $shipped );
+check( '...while a page that only starts with the same letters is a page of the site', embedPolicy( $appData, $notAdmin, '[embed youtube="dQw4w9WgXcQ"]', $shipped ) === $shipped. "; frame-src 'self' https://www.youtube-nocookie.com" );
+
+// Another request must not inherit this one's hosts
+unset( $appData['./embed/frames'] );
 // Another request must not inherit this one's hosts
 unset( $appData['./embed/frames'] );
 

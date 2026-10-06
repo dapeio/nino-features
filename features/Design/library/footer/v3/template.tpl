@@ -2,7 +2,7 @@
 			<section class="nino-footer-main">
 				<div class="nino-grid-row">
 					<div class="nino-grid-100 nino-grid-l-50 nino-frame-footer-brand">
-						<img src="[[/nino/public]]/images/logo-invert.png" class="nino-footer-logo" alt="[[/project/company/general/name]]">
+						[image /logo alt=""]<img src="[[src]]" width="[[width]]" height="[[height]]" class="nino-footer-logo nino-logo--invert" alt="[[alt]]">[/image]
 						<p>[[/project/company/general/description]]</p>
 					</div>
 					<address class="nino-grid-100 nino-grid-m-50 nino-grid-l-25 nino-frame-footer-contact">

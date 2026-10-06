@@ -77,6 +77,25 @@ A release is the tag `embed-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **Hex numbers and a trailing newline in what the policy is built from.** A
+  host whose last label is a hex number (`0x7f000001`) is an IP address in a
+  form PHP does not call one and is refused like `2130706433` was; the patterns
+  of the ids and the hash, and the host patterns, carry `D`, so `$` does not also
+  match before a newline at the end. The non-ASCII host test (and Consent's)
+  was written in single quotes, where `\u{fc}` is not an escape, and tested
+  nothing.
+
+- **A `frame-src` with no source was widened.** It blocks everything, like
+  `'none'`, and is the project's decision just the same - it is left alone now,
+  and so is a `child-src` or `default-src` of that kind it would be built from.
+
+- **The workbench's own policy was extended.** A response of `/_admin` or below
+  is skipped.
+
+- **`v=` and `h=` of a pasted address were read with `parse_str()`**, which takes
+  at most `max_input_vars` parameters and renames and arrays the ones it takes.
+  They are read with a pattern now.
+
 - **An embed's frame was blocked by the browser.** Nino's default
   `Content-Security-Policy` has no `frame-src`, so `default-src 'self'` refused
   the frame of every provider: pressing the surface showed an empty, blocked

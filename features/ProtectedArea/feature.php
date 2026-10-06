@@ -42,6 +42,10 @@ return [
 				'en_US' => 'Tells the SEO feature, where it is installed, to keep the protected pages out of sitemap.xml and llms.txt.',
 				'de_DE' => 'Sagt dem Feature SEO, wo es installiert ist, die geschützten Seiten aus sitemap.xml und llms.txt herauszuhalten.',
 			],
+			'/nino/admin/action' => [
+				'en_US' => 'Signs everybody out when the password was changed through the feature settings instead of the panel.',
+				'de_DE' => 'Meldet alle ab, wenn das Passwort über die Feature-Einstellungen statt über das Panel geändert wurde.',
+			],
 		],
 		'install' => [
 			'templates/page-protected.tpl' => [

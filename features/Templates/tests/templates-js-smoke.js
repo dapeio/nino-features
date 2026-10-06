@@ -1049,6 +1049,18 @@ const existingLoopHtml = emptyComposer._draft.areas.rows.components[1];
 check( 'HTML+ added to a single area starts as the catalogue\'s source, not as a generated key', singleHtml.bindings.source === htmlDefault && singleHtml.bindingSources.source === 'source' );
 check( '...and in a collection as one paragraph with the first text field in it', loopHtml.bindings.source === '<p class="nino-section-text">[[headline]]</p>' && loopHtml.bindingSources.source === 'source' );
 check( '...of the type the section reads, when that is one the project already has', existingLoopHtml.bindings.source === '<p class="nino-section-text">[[name]]</p>' );
+// The first text field is a string without html: a number, a date or a rich text before it is no sentence
+const rowsArea = Nino.admin.templates._library.presets[0].areas.rows;
+const keptModel = rowsArea.model;
+emptyComposer._draft.areas.rows.source = { elementMode : 'new', elementType : 'home-hero-rows', shortcode : {} };
+rowsArea.model = { picture : { type : 'image' }, count : { type : 'integer' }, intro : { type : 'string', html : true }, headline : { type : 'string' } };
+areaTools.addComponent( 'rows', 'html' );
+rowsArea.model = { picture : { type : 'image' }, count : { type : 'integer' }, intro : { type : 'string', html : true } };
+areaTools.addComponent( 'rows', 'html' );
+const rowComponents = emptyComposer._draft.areas.rows.components;
+check( 'the first text field of a collection is the first string without html - not a number or a rich text before it', rowComponents[2].bindings.source === '<p class="nino-section-text">[[headline]]</p>' );
+check( '...and a collection with none keeps the component\'s own default', rowComponents[3].bindings.source === htmlDefault );
+rowsArea.model = keptModel;
 emptyComposer.renderSettings = keepRender[0]; emptyComposer.renderSummary = keepRender[1]; emptyComposer.loadTextValues = keepRender[2];
 emptyComposer.requestPreview = keepPreview;
 Nino.admin.templates.sectionsUI._types = emptyTypes;
@@ -1132,6 +1144,88 @@ const asyncChecks = new Promise( function( resolve ) { setTimeout( resolve, 20 )
 	return Nino.admin.templates.composer.loadTextValues();
 } ).then( function() {
 	check( '...and one that does is held as it is written', emptyComposer._textValues['/template/page-home/hero/title'] === 'Written before' );
+
+	/*	The answer of content/fields arrives after the fields were drawn, and the
+		field on screen says '' until it is drawn again. Every drawing reads the
+		fields back first (captureValues), and so does submit(): an answer that
+		was held but not shown was read back as '' and saved over the text	*/
+	const titleKey = '/template/page-home/hero/title';
+	const shown = fakeElement('input');
+	shown.dataset.textKey = titleKey;
+	const settingsWrap = fakeElement('div');
+	settingsWrap.querySelectorAll = function() { return [ shown ] };
+	documentStub.getElementById = function( id ) { return id === 'pd-composer-settings' ? settingsWrap : null };
+	emptyComposer._textValues = {};
+	emptyComposer._touched = new Set();
+	let release = null;
+	Nino.admin.templates.api = function() { return new Promise( function( resolve ) { release = resolve } ) };
+	const slowLoad = emptyComposer.loadTextValues();
+	return Promise.resolve().then( function() {
+		release( { fields : [ { key : titleKey, exists : true, value : 'Stored text' } ] } );
+		return slowLoad;
+	} ).then( function() {
+		check( 'a slow content/fields answer is put into the field that was drawn before it', shown.value === 'Stored text' );
+		emptyComposer.captureValues();
+		check( '...so the read-back that every drawing and submit() make keeps the stored text instead of saving \'\' over it', emptyComposer._textValues[titleKey] === 'Stored text' );
+
+		// Somebody who typed while the answer was on its way keeps what was typed
+		shown.value = 'Typed meanwhile';
+		emptyComposer._touched.add( titleKey );
+		emptyComposer._textValues[titleKey] = 'Typed meanwhile';
+		Nino.admin.templates.api = function() { return Promise.resolve( { fields : [ { key : titleKey, exists : true, value : 'Stored text' } ] } ) };
+		return emptyComposer.loadTextValues();
+	} ).then( function() {
+		check( '...and so does the one who typed while it was on its way', shown.value === 'Typed meanwhile' && emptyComposer._textValues[titleKey] === 'Typed meanwhile' );
+
+		// The dialog draws the settings again once the values are there, on both ways into a step
+		const kept = {};
+		[ 'renderStep', 'renderConfiguration', 'renderSettings', 'renderCategories', 'renderLibrary', 'loadTextValues' ].forEach( function( name ) { kept[name] = emptyComposer[name] } );
+		const drawn = [];
+		let resolveLoad = null;
+		[ 'renderStep', 'renderConfiguration', 'renderCategories', 'renderLibrary' ].forEach( function( name ) { emptyComposer[name] = function() {} } );
+		emptyComposer.renderSettings = function() { drawn.push( 'settings' ) };
+		emptyComposer.loadTextValues = function() { drawn.push( 'load' ); return new Promise( function( resolve ) { resolveLoad = resolve } ) };
+		context.window.requestAnimationFrame = function() {};
+		emptyComposer._step = 'library';
+		emptyComposer.setStep( 'content' );
+		const beforeAnswer = drawn.join();
+		resolveLoad();
+		return Promise.resolve().then( function() { return Promise.resolve() } ).then( function() {
+			const afterSetStep = drawn.join();
+			drawn.length = 0;
+			emptyComposer._step = 'design';
+			emptyComposer.render();
+			const renderBefore = drawn.join();
+			resolveLoad();
+			return Promise.resolve().then( function() { return Promise.resolve() } ).then( function() {
+				check( 'entering a step loads the values and draws the settings again when they are there', beforeAnswer === 'load' && afterSetStep === 'load,settings' );
+				check( '...and so does opening the dialog on a step', renderBefore === 'load' && drawn.join() === 'load,settings' );
+				Object.keys( kept ).forEach( function( name ) { emptyComposer[name] = kept[name] } );
+				documentStub.getElementById = realById;
+			} );
+		} );
+	} ).then( function() {
+
+		// The server keeps the first hundred typed texts; so does what is sent
+		const many = [];
+		const manyValues = {};
+		for( let index = 0; index < 130; index++ ) {
+			const key = '/template/page-home/hero/title-'+ index;
+			many.push( { id : 'title-'+ index, type : 'title', style : 'auto', settings : {}, bindings : { text : key }, bindingSources : { text : 'new' } } );
+			manyValues[key] = 'Text '+ index;
+		}
+		const keepDraft = emptyComposer._draft;
+		emptyComposer._draft = { pageId : 'page-home', id : 'hero', preset : 'empty-test', layout : 'auto', frame : {}, areas : {
+			body : { style : 'auto', source : {}, components : many },
+			rows : { style : 'auto', source : { elementMode : 'new', elementType : 'home-hero-rows' }, components : [] },
+		} };
+		emptyComposer._textValues = manyValues;
+		const sent = Object.keys( areaTools.previewTexts() );
+		check( 'a preview request carries at most the 100 texts the server takes - the first ones', sent.length === 100
+			&& sent[0] === '/template/page-home/hero/title-0' && sent[99] === '/template/page-home/hero/title-99'
+			&& sent.includes( '/template/page-home/hero/title-100' ) === false );
+		emptyComposer._draft = keepDraft;
+	} ).then( function() {
 	Nino.admin.templates.api = keepApi;
 	Nino.admin.templates._current = keepCurrent;
 	Nino.admin.templates._library.presets = emptyLibrary;
@@ -1152,6 +1246,7 @@ const asyncChecks = new Promise( function( resolve ) { setTimeout( resolve, 20 )
 			&& error.message === 'Section id "offer" has texts (/template/page-home/offer/title). Try "offer-2".' );
 		Nino.admin.templates.apiCall = keepCall;
 		Nino.content.getText = keepGetText;
+	} );
 	} );
 } );
 

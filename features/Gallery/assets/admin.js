@@ -40,6 +40,9 @@
 		// What php takes in one upload: bytes (0 where it sets no limit) and
 		// the same said in words, both worked out server side
 		_limits : { bytes : 0, text : '' },
+		// How many bytes of an alt text or a caption the server keeps
+		// (Gallery::MAX_CAPTION); the answer of gallery/list carries the real one
+		_maxText : 300,
 		// The album whose screen is open, '' while the list is
 		_open		: '',
 
@@ -100,6 +103,7 @@
 			if( response.locales ) Nino.admin.gallery._locales = response.locales;
 			if( response.native ) Nino.admin.gallery._native = response.native;
 			if( response.limits ) Nino.admin.gallery._limits = response.limits;
+			if( typeof response.maxText === 'number' && response.maxText > 0 ) Nino.admin.gallery._maxText = response.maxText;
 
 			// The language the workbench last worked in, if no panel has set one
 			if( response.selectedLocale ) Nino.admin.sessionLocale.init( response.selectedLocale );
@@ -154,6 +158,39 @@
 				return value;
 
 			return ( value && typeof value[locale] === 'string' ) ? value[locale] : '';
+		},
+
+		/**
+		 *	A text as the server will keep it: trimmed the way php's trim() does
+		 *	(the space, tab, line feeds, NUL and vertical tab - not every space
+		 *	of Unicode) and cut to _maxText bytes of UTF-8 on a character
+		 *	boundary, like Gallery::text(). What a field is compared with on
+		 *	blur: a text put in with blanks round it, or longer than the server
+		 *	keeps, never equals what comes back, and would be sent again by
+		 *	every blur
+		 *
+		 *	@param		{string}	value
+		 *
+		 *	@return		{string}
+		 */
+		_kept : function( value ) {
+
+			const trimmed = String( value ).replace( /^[ \t\n\r\0\x0B]+|[ \t\n\r\0\x0B]+$/g, '' );
+			let bytes = 0;
+			let kept = '';
+
+			for( const character of trimmed ) {
+
+				const code = character.codePointAt( 0 );
+				bytes += code < 0x80 ? 1 : ( code < 0x800 ? 2 : ( code < 0x10000 ? 3 : 4 ) );
+
+				if( bytes > Nino.admin.gallery._maxText )
+					break;
+
+				kept += character;
+			}
+
+			return kept;
 		},
 
 		/**
@@ -715,7 +752,7 @@
 				// On blur rather than on every keystroke: these are sentences,
 				// not sliders
 				field.addEventListener( 'blur', function() {
-					if( field.value === Nino.admin.gallery._textIn( image[name], locale ) )
+					if( Nino.admin.gallery._kept( field.value ) === Nino.admin.gallery._textIn( image[name], locale ) )
 						return;
 					Nino.admin.gallery._saveText( album, image, name, locale, field, msg );
 				} );

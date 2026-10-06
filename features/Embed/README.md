@@ -153,8 +153,14 @@ port) of a `url=`. With the shipped policy that gives
   (a browser ignores the second). Where there is none it is built from
   `child-src`'s list, or else `default-src`'s — what a browser would have used,
   so a policy that lists more than `'self'` keeps it.
-- `'none'` is the project's decision and is left alone. So is a policy with
-  neither fallback, which is unrestricted already.
+- `'none'` is the project's decision and is left alone, and so is a directive
+  that lists no source at all (`frame-src;`), which a browser reads the same
+  way. So is a policy with neither fallback, which is unrestricted already.
+- A response of `/_admin` or below is never touched: the workbench sends a policy
+  of its own.
+- A host the policy cannot name safely is refused, and the embed renders
+  nothing: credentials, an IP address in any notation - a last label that is a
+  number or a hex number (`0x7f000001`) is one -, a non-ascii name, a wildcard.
 - A page with no `[embed]` keeps its policy byte for byte.
 
 **Why this is allowed.** Nino's guide says not to add a remote source to the

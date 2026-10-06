@@ -44,6 +44,7 @@ return [
 	'[[/_admin/redirects/answer/nothing]]'		=> 'keine Antwort',
 	'[[/_admin/redirects/answer/rule]]'				=> 'über eine weitere Regel',
 	'[[/_admin/redirects/answer/loop]]'				=> 'Schleife',
+	'[[/_admin/redirects/answer/chain]]'			=> 'zu viele Regeln hintereinander',
 
 	'[[/_admin/redirects/empty/rules]]'				=> 'Noch keine Weiterleitung.',
 	'[[/_admin/redirects/empty/missing]]'			=> 'Seit dem Einschalten wurde nach nichts vergeblich gefragt.',
@@ -75,4 +76,5 @@ return [
 	'[[/_admin/redirects/warning/nothing]]'	=> 'Gespeichert - aber auf "%s" antwortet noch nichts. Wer dieser Regel folgt, landet auf der 404-Seite, bis Du dort eine Seite, eine Route oder eine Regel anlegst.',
 	'[[/_admin/redirects/warning/rule]]'		=> 'Gespeichert. "%s" beantwortet eine weitere Regel - Besucher werden also zweimal weitergeleitet.',
 	'[[/_admin/redirects/warning/loop]]'		=> 'Gespeichert - aber "%s" führt über andere Regeln hierher zurück; Browser brechen so eine Kette mit einem Fehler ab.',
+	'[[/_admin/redirects/warning/chain]]'		=> 'Gespeichert - aber "%s" führt über mehr Regeln hintereinander, als ein Browser verfolgt; er bricht so eine Kette mit einem Fehler ab.',
 ];

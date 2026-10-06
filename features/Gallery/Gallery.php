@@ -292,15 +292,29 @@ namespace Nino\Modules {
 		 *	all (0 is none). A file over it never reaches the panel's action -
 		 *	php answers with an error code, or with nothing, see apiUpload()
 		 *
-		 *	@return 	int												0 where php sets no limit
+		 *	@return 	int												0 where php sets no limit, or one that reads as none
 		 */
 		public static function uploadLimit(): int {
 
 			$limits = [];
 
-			foreach( [ 'upload_max_filesize', 'post_max_size' ] as $name )
-				if( ( $bytes = ini_parse_quantity( (string) ini_get( $name ) ) ) > 0 )
+			foreach( [ 'upload_max_filesize', 'post_max_size' ] as $name ) {
+
+				// ini_parse_quantity() raises a warning for a string it cannot read
+				// whole - "abc", "1.5M", a number too big - and answers what php
+				// itself would make of it. A warning is a 500 for the panel that
+				// asked, so it is let pass here: the answer is the engine's
+				set_error_handler( static fn(): bool => true );
+
+				try {
+					$bytes = ini_parse_quantity( trim( (string) ini_get( $name ) ) );
+				} finally {
+					restore_error_handler();
+				}
+
+				if( $bytes > 0 )
 					$limits[] = $bytes;
+			}
 
 			return $limits === [] ? 0 : min( $limits );
 		}

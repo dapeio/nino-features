@@ -730,6 +730,75 @@ check( '...the old one no longer unlocks, the new one does', protectedUnlock( $a
 check( 'a password of exactly 200 characters is taken', protectedPanel( $appData, 'protected/password', [ 'pw' => str_repeat( 'x', 200 ) ] )['statusCode'] === 200 );
 protectedPanel( $appData, 'protected/password', [ 'pw' => 'eight-chars-ok' ] );
 
+// The length is counted in characters here as on the screen, not in bytes
+check( 'seven characters are too short although they are fourteen bytes', protectedPanel( $appData, 'protected/password', [ 'pw' => 'äöüäöüä' ] )['statusCode'] === 400
+	&& \Nino\Features::setting( $appData, 'protected', 'password' ) === 'eight-chars-ok' );
+check( '...and a hundred and fifty are not too long although they are three hundred', protectedPanel( $appData, 'protected/password', [ 'pw' => str_repeat( 'ä', 150 ) ] )['statusCode'] === 200
+	&& protectedPanel( $appData, 'protected/password', [ 'pw' => str_repeat( 'ä', 201 ) ] )['statusCode'] === 400 );
+protectedPanel( $appData, 'protected/password', [ 'pw' => 'eight-chars-ok' ] );
+
+// The sessions are locked out again once the password is written, so nobody who unlocked with the
+// old one between the two writes keeps a session of the new one's epoch
+$adminSource = (string) file_get_contents( dirname( __DIR__ ). '/Admin/Admin.php' );
+$passwordBody = substr( $adminSource, (int) strpos( $adminSource, 'public static function apiPassword' ) );
+$passwordBody = substr( $passwordBody, 0, (int) strpos( $passwordBody, 'public static function apiSignOut' ) );
+check( 'the password action rotates the epoch before the write and again after it', substr_count( $passwordBody, 'signOutAll(' ) === 2
+	&& strpos( $passwordBody, 'signOutAll(' ) < strpos( $passwordBody, 'saveSettings(' )
+	&& strrpos( $passwordBody, 'signOutAll(' ) > strpos( $passwordBody, 'saveSettings(' ) );
+$epochBefore = \Nino\Filesystem::getFileContent( $appData, '/data/protected-session.php', [] )['epoch'] ?? '';
+protectedPanel( $appData, 'protected/password', [ 'pw' => 'eight-chars-ok' ] );
+check( '...so a save leaves an epoch no earlier unlock carries', ( \Nino\Filesystem::getFileContent( $appData, '/data/protected-session.php', [] )['epoch'] ?? '' ) !== $epochBefore );
+
+// The password is also a setting of the Features panel, and a change there locks everybody out as well
+$featuresSave = static function( array &$appData, array $fields ): int {
+	$_POST = [ 'action' => 'features/settings', 'data' => json_encode( [ 'key' => 'protected', 'fields' => $fields ] ) ];
+	$request = [ '/nino/http/response' => [ 'statusCode' => 200 ] ];
+	\Nino\Admin\Admin::handlePost( $appData, $request );
+	$_POST = [];
+	return (int) $request['/nino/http/response']['statusCode'];
+};
+$unlockedBefore( $appData );
+check( 'a path saved in the Features panel locks nobody out', $featuresSave( $appData, [ 'paths' => [ '/preview/client-a', '/blog' ] ] ) === 200 && \Nino\Modules\ProtectedArea::unlocked( $appData ) === true );
+check( '...nor does a password sent empty, which keeps the one it has', $featuresSave( $appData, [ 'password' => '' ] ) === 200 && \Nino\Modules\ProtectedArea::unlocked( $appData ) === true );
+check( '...nor does a save that was refused', $featuresSave( $appData, [ 'password' => 'refused-with-it', 'attempts' => 500 ] ) === 400 && \Nino\Modules\ProtectedArea::unlocked( $appData ) === true
+	&& \Nino\Features::setting( $appData, 'protected', 'password' ) === 'eight-chars-ok' );
+check( 'a new password saved in the Features panel locks everybody out', $featuresSave( $appData, [ 'password' => 'set-in-features' ] ) === 200
+	&& \Nino\Features::setting( $appData, 'protected', 'password' ) === 'set-in-features' && \Nino\Modules\ProtectedArea::unlocked( $appData ) === false );
+// The kernel may blank a secret in what it announces, and a secret sent empty keeps the stored one: what the
+// listener goes by is then the password the epoch was written under, not what the event carries
+$announce = static function( array &$appData, array $fields, int $status = 200, string $key = 'protected', string $action = 'features/settings' ): bool {
+	$event = [ 'action' => $action, 'panel' => 'x', 'status' => $status, 'user' => 'dev@example.com', 'data' => [ 'key' => $key, 'fields' => $fields ] ];
+	\Nino\Modules\ProtectedArea::callbackAdminAction( $appData, $event );
+	return \Nino\Modules\ProtectedArea::unlocked( $appData ) === false;
+};
+$unlockedBefore( $appData );
+check( 'an event that blanks the password, with the password the one the epoch was written under, signs nobody out', $announce( $appData, [ 'password' => '' ] ) === false );
+\Nino\Features::saveSettings( $appData, 'protected', [ 'password' => 'changed-elsewhere' ] );
+check( '...and one that blanks it after the password was changed does: the fingerprint of the epoch is not the password in force', $announce( $appData, [ 'password' => '' ] ) === true );
+$unlockedBefore( $appData );
+check( '...once - the rotation recorded the new password, and the next event compares with that', $announce( $appData, [ 'password' => '' ] ) === false );
+check( 'a password that is there is a new one, whatever the epoch says', $announce( $appData, [ 'password' => 'changed-elsewhere' ] ) === true );
+$unlockedBefore( $appData );
+check( 'an event without a password among the fields, of another feature, of another action or refused does nothing',
+	$announce( $appData, [ 'paths' => [ '/x' ] ] ) === false && $announce( $appData, [ 'password' => 'x' ], 200, 'search' ) === false
+	&& $announce( $appData, [ 'password' => 'x' ], 200, 'protected', 'features/activate' ) === false && $announce( $appData, [ 'password' => 'x' ], 400 ) === false );
+// An epoch from before it recorded the password: nothing to compare with, so a password that was sent counts as changed - once
+\Nino\Filesystem::putFileContent( $appData, '/data/protected-session.php', [ 'epoch' => str_repeat( 'a', 32 ) ] );
+\Nino\Runtime::setSessionValue( $appData, './protected/unlocked', str_repeat( 'a', 32 ) );
+check( 'an epoch written before it recorded the password is rotated by the first save that sent one', $announce( $appData, [ 'password' => '' ] ) === true
+	&& is_string( \Nino\Filesystem::getFileContent( $appData, '/data/protected-session.php', [] )['pw'] ?? null ) === true );
+\Nino\Features::saveSettings( $appData, 'protected', [ 'password' => 'eight-chars-ok' ] );
+\Nino\Modules\ProtectedArea::signOutAll( $appData );
+check( 'the epoch file holds a keyed hash and not the password', str_contains( (string) json_encode( \Nino\Filesystem::getFileContent( $appData, '/data/protected-session.php', [] ) ), 'eight-chars-ok' ) === false );
+
+$unlockedBefore( $appData );
+$_POST = [ 'action' => 'protected/pages', 'data' => json_encode( [ 'paths' => [ '/blog' ] ] ) ];
+$unrelated = [ '/nino/http/response' => [ 'statusCode' => 200 ] ];
+\Nino\Admin\Admin::handlePost( $appData, $unrelated );
+$_POST = [];
+check( '...and the other actions of this panel do not rotate it', \Nino\Modules\ProtectedArea::unlocked( $appData ) === true );
+protectedPanel( $appData, 'protected/password', [ 'pw' => 'eight-chars-ok' ] );
+
 // sign-out
 $unlockedBefore( $appData );
 $signedOut = protectedPanel( $appData, 'protected/signout' );

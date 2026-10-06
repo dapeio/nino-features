@@ -144,6 +144,8 @@ const pages = [
 check( '_collect: every address of every ticked page, in list order', JSON.stringify( panel._collect( pages, { '/about' : true, '/intern' : true, '/intern/notes' : false, '/blog' : false } ) ) === '["/about","/ueber-uns","/intern"]' );
 check( '_collect: nothing ticked is an empty list', JSON.stringify( panel._collect( pages, {} ) ) === '[]' );
 
+check( '_pwProblem: characters are counted as the server counts them - one outside the BMP is one, not two', panel._pwProblem( '\u{1F600}'.repeat( 7 ), '\u{1F600}'.repeat( 7 ), 8 ) === 'short'
+	&& panel._pwProblem( '\u{1F600}'.repeat( 8 ), '\u{1F600}'.repeat( 8 ), 8 ) === '' && panel._pwProblem( '\u00E4'.repeat( 7 ), '\u00E4'.repeat( 7 ), 8 ) === 'short' );
 check( '_pwProblem: shorter than the minimum, two different entries, and a good one',
 	panel._pwProblem( '1234567', '1234567', 8 ) === 'short' && panel._pwProblem( '12345678', '12345679', 8 ) === 'mismatch' && panel._pwProblem( '12345678', '12345678', 8 ) === '' );
 
@@ -157,8 +159,40 @@ answer = function( action ) { return action === 'protected/state' ? [ 200, state
 panel.showCurrent();
 
 check( 'opening the panel asks for the state, once', asked.length === 1 && asked[0].action === 'protected/state' );
+
+// Opening it again asks again, so a page made elsewhere since is in the list - and
+// draws only where nothing is waiting to be saved
+const newPage = { uri : '/neu', title : 'Neu', paths : [ '/neu' ], selected : false, covered : false };
+answer = function() { return [ 200, state( { pages : pages.concat( [ newPage ] ) } ) ] };
 panel.showCurrent();
-check( '...and opening it again keeps what is on screen instead of asking again', asked.length === 1 );
+check( 'opening the panel again asks for the state again', asked.length === 2 && asked[1].action === 'protected/state' );
+check( '...and a page that is there now is on the list', all( mount, function( el ) { return el.tagName === 'LABEL' && el.className === '' } ).length === 5 );
+
+const typedFirst = find('protected-newpw');
+typedFirst.value = 'half-typed-pw';
+answer = function() { return [ 200, state( { pages : pages } ) ] };
+panel.showCurrent();
+check( 'a password half typed keeps the screen, though the state is asked for', asked.length === 3 && find('protected-newpw') === typedFirst && find('protected-newpw').value === 'half-typed-pw'
+	&& all( mount, function( el ) { return el.tagName === 'LABEL' && el.className === '' } ).length === 5 );
+typedFirst.value = '';
+
+const ticking = all( mount, function( el ) { return el.tagName === 'LABEL' && el.className === '' } )[3].children[0];
+ticking.checked = true;
+fire( ticking, 'change' );
+panel.showCurrent();
+check( '...and so does a page ticked and not saved', asked.length === 4 && all( mount, function( el ) { return el.tagName === 'LABEL' && el.className === '' } ).length === 5 );
+ticking.checked = false;
+fire( ticking, 'change' );
+
+answer = function() { return [ 500, { error : 'down' } ] };
+panel.showCurrent();
+check( '...and a state that cannot be had leaves what is on screen alone, without an error over it', asked.length === 5 && all( mount, function( el ) { return el.className.indexOf('nino-admin-error') !== -1 } ).length === 0
+	&& all( mount, function( el ) { return el.tagName === 'LABEL' && el.className === '' } ).length === 5 );
+
+// Back to the list the rest of this test is written against
+answer = function( action ) { return action === 'protected/state' ? [ 200, state() ] : [ 200, {} ] };
+panel.showCurrent();
+asked.length = 1;
 
 const sections = mount.children.filter( function( el ) { return el.tagName === 'FIELDSET' } );
 check( 'the screen is the three sections - password, pages, sign-out - each a fieldset with a legend', sections.length === 3

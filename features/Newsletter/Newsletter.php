@@ -417,14 +417,21 @@ namespace Nino\Modules {
 				// and this is a new send
 				unset( $appData['./nino/mail/ratelimited'] );
 
+				// The link is the one thing this mail has to carry, and it is a
+				// credential: a fill for '*' stays in $appData for the rest of the
+				// request, so it is taken out again whatever the send does
 				\Nino\Html::addFills( $appData, [ '[[/feature/newsletter/unsubscribe/url]]' => self::_getActionUrl( $appData, 'unsubscribe', $token ) ], '*' );
 
-				$template = $appData['/nino/newsletter/unsubscribe-mail-template'] ?? '/templates/mail-newsletter-unsubscribe';
-				$tpl 			= \Nino\Html::renderHtml( $appData, '[template '. $template. ']' );
-				$subject 	= \Nino\Html::renderHtml( $appData, '[[/feature/newsletter/subject/unsubscribe]]' );
-				$replyTo 	= \Nino\Html::renderHtml( $appData, '[[/project/mail/address/owner]]' );
+				try {
+					$template = $appData['/nino/newsletter/unsubscribe-mail-template'] ?? '/templates/mail-newsletter-unsubscribe';
+					$tpl 			= \Nino\Html::renderHtml( $appData, '[template '. $template. ']' );
+					$subject 	= \Nino\Html::renderHtml( $appData, '[[/feature/newsletter/subject/unsubscribe]]' );
+					$replyTo 	= \Nino\Html::renderHtml( $appData, '[[/project/mail/address/owner]]' );
 
-				\Nino\Mail::send( $appData, $email, $subject, $tpl, $replyTo );
+					\Nino\Mail::send( $appData, $email, $subject, $tpl, $replyTo );
+				} finally {
+					self::_dropFill( $appData, '[[/feature/newsletter/unsubscribe/url]]' );
+				}
 
 			} catch( \Throwable $e ) {
 				trigger_error( 'Newsletter unsubscribe request failed: '. $e->getMessage() );
@@ -442,8 +449,8 @@ namespace Nino\Modules {
 		 *	confirming that mail changes nothing. Entries written before the
 		 *	double opt-in flow (no status/token fields) count as subscribed and
 		 *	get a token the first time they are asked for one; confirming that
-		 *	token's mail records them with status 'subscribed' and the date of
-		 *	the confirmation
+		 *	token's mail records them with status 'subscribed' and leaves the
+		 *	date they signed up on
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$email				Validated email address
@@ -608,25 +615,48 @@ namespace Nino\Modules {
 
 			$template = $appData['/nino/newsletter/confirm-template'] ?? '/templates/mail-newsletter-confirm';
 
+			// A fill for '*' stays in $appData for the rest of the request, and
+			// the link is a credential: it is taken out again once the mail is
+			// out, whatever the send does, so no later response can carry it
 			\Nino\Html::addFills( $appData, [ '[[/feature/newsletter/confirm/url]]' => self::_getActionUrl( $appData, 'confirm', $token ) ], '*' );
 
-			$tpl 			= \Nino\Html::renderHtml( $appData, '[template '. $template. ']' );
-			$subject 	= \Nino\Html::renderHtml( $appData, '[[/feature/newsletter/subject/confirm]]' );
-			$replyTo 	= \Nino\Html::renderHtml( $appData, '[[/project/mail/address/owner]]' );
+			try {
+				$tpl 			= \Nino\Html::renderHtml( $appData, '[template '. $template. ']' );
+				$subject 	= \Nino\Html::renderHtml( $appData, '[[/feature/newsletter/subject/confirm]]' );
+				$replyTo 	= \Nino\Html::renderHtml( $appData, '[[/project/mail/address/owner]]' );
 
-			// Sticky until somebody unsets it (Mail::send() only ever sets it),
-			// so a flag left by an earlier send of this request must not read
-			// as this one's refusal - the Mailer panel's test mail does the same
-			unset( $appData['./nino/mail/ratelimited'] );
+				// Sticky until somebody unsets it (Mail::send() only ever sets it),
+				// so a flag left by an earlier send of this request must not read
+				// as this one's refusal - the Mailer panel's test mail does the same
+				unset( $appData['./nino/mail/ratelimited'] );
 
-			return \Nino\Mail::send( $appData, $email, $subject, $tpl, $replyTo );
+				return \Nino\Mail::send( $appData, $email, $subject, $tpl, $replyTo );
+			} finally {
+				self::_dropFill( $appData, '[[/feature/newsletter/confirm/url]]' );
+			}
+		}
+
+		/**
+		 *	Take a fill that was added for every language back out. \Nino\Html
+		 *	has no call for it, and the fill would otherwise be there for
+		 *	whatever renders next in this request
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$fill					The fill with its brackets, as addFills() stores it
+		 *
+		 *	@return 	void
+		 */
+		private static function _dropFill( array &$appData, string $fill ): void {
+			unset( $appData['./nino/html/fills']['*'][$fill] );
 		}
 
 		/**
 		 *	Flip a pending entry to subscribed for a visited confirm link.
 		 *	Idempotent - confirming an already-subscribed token stays true,
 		 *	so a twice-clicked mail link doesn't scare the visitor with an
-		 *	error
+		 *	error. A pending entry gets the date of the confirmation; a legacy
+		 *	one - a token but no status, from before the double opt-in flow -
+		 *	keeps the date it signed up on, and only its status is set
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$token				Token from the visited link
@@ -654,8 +684,14 @@ namespace Nino\Modules {
 						if( ( $entry['status'] ?? '' ) === 'subscribed' )
 							return null;
 
+						// An entry from before the double opt-in flow has a token but no
+						// status, and its date is the day it signed up: only the status
+						// is set. A pending one has no date of its own yet
+						$legacy = isset( $entry['status'] ) === false && empty( $entry['date'] ) === false;
 						$entries[$entryKey]['status']	= 'subscribed';
-						$entries[$entryKey]['date']		= date( 'Y-m-d H:i:s' );
+
+						if( $legacy === false )
+							$entries[$entryKey]['date']	= date( 'Y-m-d H:i:s' );
 
 						return $entries;
 					}

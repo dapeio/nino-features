@@ -274,6 +274,36 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **A slow `content/fields` answer could make Update save an empty text over
+  the stored one.** The values arrive after the fields were drawn, and the
+  field on screen said `''` until it was drawn again; every drawing and
+  `submit()` read the fields back first, so the empty field was held, and
+  saved, in place of the text the answer had just brought. The dialog now
+  draws the settings again when the values are there (as the Area editor did
+  after an edit), and the answer is put into a field that was drawn before it -
+  unless something was typed into it meanwhile.
+
+- **A tag left open by one HTML+ component could be finished by the next.** The
+  components of an area are set one after the other, and the check that keeps a
+  rich text field of a collection out of an attribute looked at each source on
+  its own. A source whose last tag is left open (a quote that swallows a `>`
+  included) is refused where the collection the section creates has a rich text
+  field.
+
+- **HTML+ in a collection started with a field that is no text.** It took the
+  first field that was not an image: a number, a date or a rich text field. It
+  takes the first string without `'html' => true` now, in the panel and in
+  `AreaComposer::loopSource()`; with none the component keeps its own default.
+
+- **More than 100 typed texts took every typed text out of the preview.** The
+  server answered with the samples for all of them; it keeps the first 100 now,
+  and the panel sends no more than that.
+
+- **The browser half of the test was not run with the PHP test.**
+  `tests/templates-smoke.php` runs `templates-js-smoke.js` where `node` is on the
+  path, as the Compare feature's does, with checks for the race above, the cap
+  and the first text field.
+
 - **A collection field named `content` could be declared but never
   filled.** `AreaComposer::normalizePreset()` refused any Layout whose
   source carried `[[content]]`, `[[intro]]`, `[[outro]]`, `[[template]]` or

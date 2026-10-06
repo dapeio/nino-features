@@ -123,6 +123,21 @@ versions [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **A list that could not be locked said the album was missing.** Saving an
+  alt text or a caption answered "No album has that key" when the callback never
+  ran, because nothing had been looked at. It answers that the albums could not be
+  written.
+
+- **A malformed `upload_max_filesize` took the panel down.** `ini_parse_quantity()`
+  raises a warning for a value it cannot read whole (`abc`, `1.5M`, a number too
+  big), and a warning is a 500 for the list that asks for the limit. The warning is
+  let pass and the answer is what php itself makes of the setting.
+
+- **An alt text or a caption was saved again on every blur.** The server keeps it
+  trimmed and cut to 300 bytes, the field held what was typed, and the two were
+  never equal. The field is compared with the text as the server keeps it - cut on a
+  character boundary - and `gallery/list` names the length (`maxText`).
+
 - **Every thumbnail was cut off at the bottom, and the grid restyled the
   design system's mosaic.** The list was `.nino-gallery` and an item
   `.nino-gallery-item` - the names of Nino.css's public mosaic grid, which

@@ -2,7 +2,7 @@
 			<div class="nino-grid-row">
 				<div class="nino-grid-100 nino-frame-footer-stack">
 					<a href="[[/nino/dir]]/" class="nino-frame-footer-brand">
-						<img src="[[/nino/public]]/images/logo.png" class="nino-footer-logo" alt="[[/project/company/general/name]]">
+						[image /logo alt=""]<img src="[[src]]" width="[[width]]" height="[[height]]" class="nino-footer-logo" alt="[[alt]]">[/image]
 					</a>
 					<nav class="nino-frame-footer-nav" aria-label="[[/template/common/navigation/footer]]">
 						[template /templates/html-footer-nav]

@@ -442,6 +442,13 @@ check( '...the first two as errors, the last as a note, and a rule that is answe
 	&& flags[2].matchesClass('nino-admin-error') === false
 	&& picking.rules.querySelectorAll('.nino-admin-row').length === 4 );
 
+// A chain that is too long is flagged as the error it is, in words of its own - it is not a loop
+const chained = { from : '/e', to : '/long-0', status : 301, subtree : false, hits : 0, last : '', answer : 'chain' };
+const chaining = panel( { rules : [ chained ], routes : [], save : { saved : '/e', rules : [ chained ], warnings : [], notes : [] } } );
+const chainFlags = chaining.rules.querySelectorAll('.redirects-flag');
+check( 'a chain of too many rules carries its own flag, as an error', chainFlags.length === 1 && chainFlags[0].textContent === '/_admin/redirects/answer/chain'
+	&& chainFlags[0].matchesClass('nino-admin-error') === true );
+
 picking.rules.querySelectorAll('.nino-admin-list-actions')[0].children[0].click();
 
 const select = picking.rules.querySelectorAll('select').filter( function( node ) { return node.getAttribute('data-key') === 'pick' } )[0] || null;

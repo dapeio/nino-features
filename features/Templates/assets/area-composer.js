@@ -21,6 +21,10 @@
 	// lower-case letters and digits, joined by hyphens, the first one starting with a letter
 	const SECTION_ID = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 
+	// How many typed texts a preview request carries - what the server takes
+	// (Composer::PREVIEW_MAX_TEXTS)
+	const PREVIEW_MAX_TEXTS = 100;
+
 	const pd = Nino.admin.templates;
 	if( !pd.composer ) return;
 
@@ -397,12 +401,15 @@
 	/**
 	 *	What an HTML+ component starts as in a collection: one paragraph with
 	 *	the collection's first text field in it - the item's own markup, which
-	 *	is resolved per record. A collection without a text field keeps the
+	 *	is resolved per record. A text field is a string without html: a rich
+	 *	text field is not one (its value brings markup of its own), and neither
+	 *	is a number or a date. A collection without a text field keeps the
 	 *	component's own default (AreaComposer::loopSource() says the same)
 	 */
 	function loopSource( area, source, definition ) {
-		const options = modelOptions( area, source.elementMode === 'existing' ? source.elementType : '', 'string' );
-		return options.length ? '<p class="nino-section-text">[['+ options[0].value+ ']]</p>' : definition.default || '';
+		const model = collectionModel( area, source.elementMode === 'existing' ? source.elementType : '' );
+		const field = Object.keys( model ).find( function( key ) { return model[key].type === 'string' && model[key].html !== true } );
+		return field ? '<p class="nino-section-text">[['+ field+ ']]</p>' : definition.default || '';
 	}
 
 	/**
@@ -610,6 +617,9 @@
 		const texts = {};
 		if( !active() || !pd.composer._draft ) return texts;
 		textDescriptors( pd.composer._draft, preset() ).forEach( function( field ) {
+			// The server takes the first PREVIEW_MAX_TEXTS and leaves the rest out
+			// (Composer::previewTexts()): what it would drop is not sent
+			if( Object.keys( texts ).length >= PREVIEW_MAX_TEXTS ) return;
 			if( Object.prototype.hasOwnProperty.call( pd.composer._textValues, field.key ) ) texts[field.key] = pd.composer._textValues[field.key];
 		} );
 		return texts;
@@ -1000,9 +1010,17 @@
 		const token = ++pd.composer._contentToken;
 		return pd.api( 'content/fields', { name : pd._current.name, keys : keys } ).then( function( response ) {
 			if( token !== pd.composer._contentToken ) return;
+			const wrap = dc.getElementById('pd-composer-settings');
 			response.fields.forEach( function( entry ) {
 				if( pd.composer._touched.has( entry.key ) ) return;
 				pd.composer._textValues[entry.key] = entry.exists ? entry.value : '';
+				// The field on screen was drawn before this answer and shows ''.
+				// Every renderSettings() reads the fields back first
+				// (captureValues()), which would put that '' over the value
+				// that has just arrived
+				if( wrap ) wrap.querySelectorAll('[data-text-key]').forEach( function( input ) {
+					if( input.dataset.textKey === entry.key ) input.value = pd.composer._textValues[entry.key];
+				} );
 			} );
 		} );
 	}

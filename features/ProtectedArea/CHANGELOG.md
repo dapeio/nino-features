@@ -51,8 +51,8 @@ A release is the tag `protected-<version>` of dapeio/nino-features.
   unlocked before it is locked again. Changing the password in the panel does
   that, and so does the button. A session that holds the old `true` stays
   valid until the first sign-out, so an update asks nobody for the password
-  again. Changing `password` in the Features panel does not rotate the epoch -
-  use the panel, or the button, for that.
+  again. A `password` changed in the Features panel rotates the epoch as well
+  (see Fixed below).
 
 - **The protected pages stay out of the sitemap.** Where the SEO feature is
   installed it asks `/seo/exclude`, and this feature answers with every
@@ -96,6 +96,29 @@ A release is the tag `protected-<version>` of dapeio/nino-features.
   the code is unchanged.
 
 ### Fixed
+
+- **A password changed in the Features panel signed nobody out.** It is a
+  settings form and rotated nothing, so a member who left kept the session the
+  browser held. The feature listens on `/nino/admin/action` now and rotates
+  the epoch for a `features/settings` of `protected` that sent a password. A
+  secret sent empty keeps the stored one and the kernel may blank it in the
+  event, so the epoch file records a keyed hash of the password it was written
+  under (`pw`, never the password) and a save that left it signs nobody out; an
+  epoch from before that has nothing to compare with and is rotated by the first
+  such save, once. The README sentence that said it does not is corrected.
+
+- **A password changed on the feature's own screen could leave a session of
+  the old one.** The sessions were locked out before the password was written
+  only; somebody unlocking with the old password in between was stamped with the
+  new epoch. They are locked out again after a successful write.
+
+- **The panel showed the pages as of the first time it was opened.** Opening it
+  again asks for the state again, and draws it unless something typed or
+  ticked is waiting to be saved (a failed answer leaves the screen alone).
+
+- **A password's length was counted in bytes on the server and in UTF-16 units
+  on the screen.** Seven characters with umlauts passed the floor, a hundred and
+  fifty failed the ceiling. Both count characters now.
 
 - **With javascript on, nobody got through the password form.** The form
   carried `class="nino-form"`, which the kernel's script binds to the

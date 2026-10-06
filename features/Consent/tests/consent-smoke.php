@@ -317,7 +317,7 @@ foreach( [
 	'an ip address'					=> '<script type="text/plain" data-consent="statistics" data-src="https://192.0.2.7/t.js"></script>',
 	'an ip in another notation'	=> '<script type="text/plain" data-consent="statistics" data-src="https://2130706433/t.js"></script>',
 	'an ipv6 literal'				=> '<script type="text/plain" data-consent="statistics" data-src="https://[2001:db8::1]/t.js"></script>',
-	'a non-ascii host'			=> '<script type="text/plain" data-consent="statistics" data-src="https://st\u{e4}ts.example/t.js"></script>',
+	'a non-ascii host'			=> "<script type=\"text/plain\" data-consent=\"statistics\" data-src=\"https://st\u{e4}ts.example/t.js\"></script>",
 	'a host with a wildcard'	=> '<script type="text/plain" data-consent="statistics" data-src="https://*.example/t.js"></script>',
 	'a source list injected through the host' => '<script type="text/plain" data-consent="statistics" data-src="https://stats.example;script-src *">',
 	'a script that is not a placeholder' => '<script data-consent="statistics" data-src="https://stats.example/t.js"></script>',
@@ -328,6 +328,32 @@ foreach( [
 ] as $what => $markup )
 	check( $what. ' adds nothing', consentPolicy( $appData, $request, $markup, $jstext ) === $jstext );
 
+foreach( [
+	'a hex number as its last label'	=> 'https://stats.0x7f000001/t.js',
+	'a hex number with nothing after the 0x'	=> 'https://stats.example.0x/t.js',
+	'a hex number in capitals'				=> 'https://stats.0X7F000001/t.js',
+	'a host with a newline at its end'	=> "https://stats.example\n/t.js",
+] as $what => $address )
+	check( $what. ' adds nothing - it is an ip address written in a form php does not call one', consentPolicy( $appData, $request, '<script type="text/plain" data-consent="statistics" data-src="'. $address. '"></script>', $jstext ) === $jstext );
+check( 'while a hex-looking label that is not the last one is a host like another',
+	str_contains( consentPolicy( $appData, $request, '<script type="text/plain" data-consent="statistics" data-src="https://0x7f.stats.example/t.js"></script>', $jstext ), 'https://0x7f.stats.example' ) === true );
+
+// The workbench is not a page of the site: it sends a policy of its own and nobody's placeholder is its business
+$adminRequest = $request;
+$adminRequest['/nino/http/request']['uri'] = '/_admin';
+$adminRequest['/nino/http/response']['uri'] = '/_admin';
+$adminBelow = $request;
+$adminBelow['/nino/http/request']['uri'] = '/_admin/panel';
+$notAdmin = $request;
+$notAdmin['/nino/http/request']['uri'] = '/_administrator';
+$notAdmin['/nino/http/response']['uri'] = '/_administrator';
+check( 'a response of /_admin or below is left alone, its policy byte for byte', consentPolicy( $appData, $adminRequest, $stats, $jstext ) === $jstext
+	&& consentPolicy( $appData, $adminBelow, $stats, $jstext ) === $jstext );
+check( '...while a page that only starts with the same letters is a page of the site', str_contains( consentPolicy( $appData, $notAdmin, $stats, $jstext ), 'https://stats.example' ) === true );
+
+// The button the script hides must stay hidden whatever display a rule gives it
+check( 'consent.css keeps a hidden [consent-settings] button hidden', preg_match( '/\.nino-consent-open\[hidden\]\s*\{\s*display:\s*none;\s*\}/', (string) file_get_contents( dirname( __DIR__ ). '/assets/consent.css' ) ) === 1 );
+
 check( 'an attribute that comes twice counts once, the first - the way a browser reads it',
 	consentPolicy( $appData, $request, '<script type="text/plain" data-consent="statistics" data-src="https://stats.example/t.js" data-src="https://evil.example/t.js"></script>', $jstext ) === "default-src 'self'; script-src 'self' 'nonce-x' https://stats.example; img-src * data:" );
 check( 'a ">" inside a quoted value does not end the tag early',
@@ -335,6 +361,10 @@ check( 'a ">" inside a quoted value does not end the tag early',
 check( 'script-src \'none\' stays, and so does a default-src of \'none\' with no script-src',
 	consentPolicy( $appData, $request, $stats, "default-src 'self'; script-src 'none'" ) === "default-src 'self'; script-src 'none'"
 	&& consentPolicy( $appData, $request, $stats, "default-src 'none'; img-src *" ) === "default-src 'none'; img-src *" );
+check( 'a script-src with no source at all blocks everything just as \'none\' does, and stays - so does a default-src that has none',
+	consentPolicy( $appData, $request, $stats, "default-src 'self'; script-src; img-src *" ) === "default-src 'self'; script-src; img-src *"
+	&& consentPolicy( $appData, $request, $stats, "default-src 'self'; script-src" ) === "default-src 'self'; script-src"
+	&& consentPolicy( $appData, $request, $stats, "default-src; img-src *" ) === "default-src; img-src *" );
 check( 'script-src-elem is extended where the policy has one, and not created where it has none',
 	consentPolicy( $appData, $request, $stats, "default-src 'self'; script-src 'self'; script-src-elem 'self'" ) === "default-src 'self'; script-src 'self' https://stats.example; script-src-elem 'self' https://stats.example"
 	&& str_contains( consentPolicy( $appData, $request, $stats, $jstext ), 'script-src-elem' ) === false );

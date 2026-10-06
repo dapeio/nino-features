@@ -372,7 +372,8 @@
 
 		/**
 		 *	What a rule's target leads to, said only where it leads somewhere
-		 *	worth a second look: nothing, a loop, or another rule. A target a
+		 *	worth a second look: nothing, a loop, a chain that is too long, or
+		 *	another rule. A target a
 		 *	page, a file or another site answers is the ordinary case and says
 		 *	nothing
 		 *
@@ -382,7 +383,7 @@
 		 */
 		_flag : function( answer ) {
 
-			if( answer !== 'nothing' && answer !== 'loop' && answer !== 'rule' )
+			if( answer !== 'nothing' && answer !== 'loop' && answer !== 'chain' && answer !== 'rule' )
 				return '';
 
 			const flag = dc.createElement('span');

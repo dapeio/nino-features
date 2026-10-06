@@ -137,6 +137,13 @@
 	font: inherit;
 }
 
+/* The script hides the button where there is no banner to open. A rule that
+   gives it a display of its own - a footer laid out with flex, say - would beat
+   the browser's [hidden] and leave a button that does nothing */
+.nino-consent-open[hidden] {
+	display: none;
+}
+
 @media (max-width: 640px) {
 
 	.nino-consent {

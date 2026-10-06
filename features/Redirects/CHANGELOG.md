@@ -81,6 +81,12 @@ A release is the tag `redirects-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **A chain that was merely long was called a loop.** `Rules::answer()` followed
+  a chain for `HOPS` rules and answered `loop` when it ran out of them, though
+  no address had come back. It is `chain` now, with a flag and a warning of its
+  own in both languages ("too many rules in a row"); `loop` stays for a chain
+  that does come back to where it was.
+
 - **The home page was refused as a target, and a subtree rule to it would have
   sent an empty `Location`.** `Rules::target()` ran a target through `path()`,
   which answers `''` for `/` - a rule from the front page would take the whole

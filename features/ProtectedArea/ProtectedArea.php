@@ -109,6 +109,12 @@ namespace Nino\Modules {
 			// where a callback nobody fires costs one array entry
 			\Nino\Callbacks::registerCallback( $appData, '/seo/exclude', [ self::class, 'callbackSeoExclude' ] );
 
+			// The password can also be changed in the Features panel, where it is
+			// a setting like any other: that save has to lock the sessions of the
+			// old one out as well. The kernel announces every workbench action
+			// after the fact (Nino 1.4); a Nino without the event never calls it
+			\Nino\Callbacks::registerCallback( $appData, '/nino/admin/action', [ self::class, 'callbackAdminAction' ] );
+
 			self::_extendCacheBlacklist( $appData );
 		}
 
@@ -179,9 +185,70 @@ namespace Nino\Modules {
 		 */
 		public static function signOutAll( array &$appData ): bool {
 
-			return \Nino\Filesystem::mutate( $appData, self::EPOCH_PATH, static function( mixed $state ): array {
-				return [ 'epoch' => bin2hex( random_bytes( 16 ) ) ];
+			$password = self::_password( $appData );
+
+			return \Nino\Filesystem::mutate( $appData, self::EPOCH_PATH, static function( mixed $state ) use ( $password ): array {
+
+				$epoch = bin2hex( random_bytes( 16 ) );
+
+				// 'pw' is which password this epoch was written under - not the
+				// password: a keyed hash that only says whether it is still the
+				// one in force (see callbackAdminAction())
+				return [ 'epoch' => $epoch, 'pw' => hash_hmac( 'sha256', $password, $epoch ) ];
 			}, [] );
+		}
+
+		/**
+		 *	'/nino/admin/action': a password set in the Features panel
+		 *	(features/settings for this feature, with a password among the
+		 *	posted fields) locks every session, the way this feature's own
+		 *	screen does. A save that was refused changed nothing and rotates
+		 *	nothing, and neither does one that sent no password.
+		 *
+		 *	Whether the password changed is not read off the event: a secret
+		 *	sent empty keeps the stored one, and the kernel may blank a secret
+		 *	in what it announces, so an empty value says nothing. A value that
+		 *	is there is taken as a new password; for an empty one the epoch
+		 *	file says which password it was written under (signOutAll()), and
+		 *	the password in force now is compared with that. An epoch written
+		 *	before it said so has nothing to compare with, and a password that
+		 *	was sent is then taken as changed - once, since the rotation writes
+		 *	what the next one compares with.
+		 *
+		 *	The announcement is the kernel's, after the answer was given, so a
+		 *	failure here is a warning and not an answer: the screen of this
+		 *	feature, which is the one that says so, signs out before and after
+		 *	its own write
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		&$event				(reference) { action, panel, status, user, data }
+		 *
+		 *	@return 	void
+		 */
+		public static function callbackAdminAction( array &$appData, array &$event ): void {
+
+			if( ( $event['action'] ?? '' ) !== 'features/settings' || (int) ( $event['status'] ?? 0 ) !== 200 )
+				return;
+
+			$data = is_array( $event['data'] ?? null ) ? $event['data'] : [];
+
+			if( ( $data['key'] ?? '' ) !== self::FEATURE_KEY || is_array( $data['fields'] ?? null ) === false || array_key_exists( 'password', $data['fields'] ) === false )
+				return;
+
+			$posted = $data['fields']['password'];
+
+			if( is_string( $posted ) === false || $posted === '' ) {
+
+				$state = \Nino\Filesystem::getFileContent( $appData, self::EPOCH_PATH, [] );
+				$epoch = is_array( $state ) === true ? ( $state['epoch'] ?? null ) : null;
+				$known = is_array( $state ) === true ? ( $state['pw'] ?? null ) : null;
+
+				if( is_string( $epoch ) === true && is_string( $known ) === true && hash_equals( $known, hash_hmac( 'sha256', self::_password( $appData ), $epoch ) ) === true )
+					return;
+			}
+
+			if( self::signOutAll( $appData ) === false )
+				trigger_error( 'ProtectedArea: the password was changed in the Features panel, but the sessions could not be locked out' );
 		}
 
 		/**

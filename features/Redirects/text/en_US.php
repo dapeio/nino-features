@@ -44,6 +44,7 @@ return [
 	'[[/_admin/redirects/answer/nothing]]'		=> 'nothing answers',
 	'[[/_admin/redirects/answer/rule]]'				=> 'through another rule',
 	'[[/_admin/redirects/answer/loop]]'				=> 'loop',
+	'[[/_admin/redirects/answer/chain]]'			=> 'too many rules in a row',
 
 	'[[/_admin/redirects/empty/rules]]'				=> 'No redirect yet.',
 	'[[/_admin/redirects/empty/missing]]'			=> 'Nothing has been asked for in vain since this was switched on.',
@@ -75,4 +76,5 @@ return [
 	'[[/_admin/redirects/warning/nothing]]'	=> 'Saved - but nothing answers "%s" yet. Whoever follows this rule lands on the 404 page until you create a page, a route or a rule for it.',
 	'[[/_admin/redirects/warning/rule]]'		=> 'Saved. "%s" is answered by another rule, so visitors are redirected twice.',
 	'[[/_admin/redirects/warning/loop]]'		=> 'Saved - but "%s" leads back here through other rules; browsers stop such a chain with an error.',
+	'[[/_admin/redirects/warning/chain]]'		=> 'Saved - but "%s" leads through more rules, one after the other, than a browser follows; it stops such a chain with an error.',
 ];

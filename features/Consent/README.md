@@ -224,9 +224,10 @@ finished page is in hand, it reads the page's
 placeholders and appends each host to the `script-src` of the response
 (`script-src-elem` too, where the policy has one). `script-src` is extended in
 place and never written twice; where the policy has none it is built from
-`default-src`'s own list; a policy that says `'none'` is left as it is, and so
-is one with no `default-src` to fall back to - that policy is unrestricted
-already. A page with no placeholder keeps its policy byte for byte.
+`default-src`'s own list; a policy that says `'none'` - or lists no source at all, which a browser reads the same way - is
+left as it is, and so is one with no `default-src` to fall back to - that policy is unrestricted
+already. A response of `/_admin` or below is never touched: the workbench sends
+a policy of its own. A page with no placeholder keeps its policy byte for byte.
 
 **Why this is allowed.** Nino's guide says not to add a remote source to the
 policy merely to make one widget work. This is the exception, and it is
@@ -243,8 +244,9 @@ a project wrote on purpose:
   and each optional category whose setting is on. Markup naming a category
   nobody offers opens nothing;
 - only an `https` address counts, whose host is a plain ascii name: no
-  credentials, no IP address, no wildcard, no `;` that would end the
-  directive. A port is kept;
+  credentials, no IP address (a last label that is a number or a hex
+  number such as `0x7f000001` is one, in a notation PHP does not call one), no wildcard, no `;`
+  that would end the directive. A port is kept;
 - an inline, relative, `http:` or protocol-relative placeholder adds nothing.
 
 Texts and elements are escaped or stripped on their way into a page, so

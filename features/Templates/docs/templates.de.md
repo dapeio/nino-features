@@ -377,7 +377,8 @@ Benutzers gewinnt weiterhin:
   Single-Areas wie in Collections, auch in den sechs Collections, über die die
   mitgelieferten Presets laufen. In einer Collection ist der Quelltext das
   Markup des Items, einmal pro Element gerendert; er beginnt als
-  `<p class="nino-section-text">[[<erstes Textfeld>]]</p>`, und ein `[[feld]]`
+  `<p class="nino-section-text">[[<erstes Textfeld>]]</p>` – das erste Feld, das ein
+  String ohne `'html' => true` ist, keine Zahl, kein Datum und kein Rich Text –, und ein `[[feld]]`
   darin wird je Datensatz aufgelöst wie die Fills der anderen Komponenten – eine
   von Hand geschriebene Zeile, wo die festen Komponenten des Presets nicht
   reichen. Der Editor listet, was das Item nennen kann:
@@ -392,7 +393,9 @@ Benutzers gewinnt weiterhin:
   ersten `[/elements]` beendet, und – bei einer Collection, die die Section
   selbst anlegt – ein Rich-Text-Feld innerhalb eines Tags, denn die Bereinigung
   lässt `"` stehen, und der Wert könnte ein Attribut schließen und dem Inhalt
-  einen Event-Handler mitgeben. Dasselbe Feld im Textinhalt ist in Ordnung.
+  einen Event-Handler mitgeben. Aus demselben Grund darf der Quelltext einer
+  Komponente nicht in einem Tag enden: Die nächste würde es beenden. Dasselbe
+  Feld im Textinhalt ist in Ordnung.
   Setze jedes Attribut, das ein Feld trägt, in Anführungszeichen: Das Escapen
   kodiert weder Leerzeichen noch `=`, ein unquotiertes `class=[[title]]` lässt
   sich also trotzdem aufbrechen.

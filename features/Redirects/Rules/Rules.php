@@ -55,9 +55,10 @@ namespace Nino\Modules\Redirects {
 		// is that the ones worth a rule are near the top, not that it is complete
 		public const int MISS_LIMIT = 50;
 
-		// How many rules answer one another before a chain is called a loop.
+		// How many rules answer one another before a chain is called too long.
 		// A browser gives up after about twenty redirects; a chain of this
-		// length is not one anybody wrote on purpose
+		// length is not one anybody wrote on purpose. That it comes back to an
+		// address it has been at is another thing, and is called a loop
 		public const int HOPS = 8;
 
 		/**
@@ -405,9 +406,11 @@ namespace Nino\Modules\Redirects {
 		 *	the pages that moved. 'rule' is another rule answering the target,
 		 *	so a visitor is redirected twice; the chain is followed for HOPS
 		 *	rules and is 'loop' where it comes back to an address it has been
-		 *	at. A chain is a 'rule' where its last address is answered, by a
-		 *	page, a file or another site, and 'nothing' where it is not.
-		 *	Everything else is 'nothing': a visitor gets the 404 page.
+		 *	at, and 'chain' where it is longer than that without coming back -
+		 *	a browser gives up on either. A chain is a 'rule' where its last
+		 *	address is answered, by a page, a file or another site, and
+		 *	'nothing' where it is not. Everything else is 'nothing': a visitor
+		 *	gets the 404 page.
 		 *
 		 *	The one question behind the panel's probe, the warning after a save
 		 *	and the flag in the table, so the three never disagree.
@@ -416,7 +419,7 @@ namespace Nino\Modules\Redirects {
 		 *	@param		string		$to						A rule's target
 		 *	@param		bool			$subtree			Whether the rule covers everything below its address
 		 *
-		 *	@return 	string								'external', 'route', 'rule', 'loop', 'file' or 'nothing'
+		 *	@return 	string								'external', 'route', 'rule', 'loop', 'chain', 'file' or 'nothing'
 		 */
 		public static function answer( array &$appData, string $to, bool $subtree = false ): string {
 
@@ -460,7 +463,8 @@ namespace Nino\Modules\Redirects {
 				$to = $match['to'];
 			}
 
-			return 'loop';
+			// Every address of the chain was a new one: it is not a cycle, it is long
+			return 'chain';
 		}
 
 		/**

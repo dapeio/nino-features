@@ -265,6 +265,27 @@ check( 'and what php takes in one upload, as a number and in words - the smaller
 	&& ( $body['limits']['text'] ?? null ) === \Nino\Modules\Gallery::formatBytes( \Nino\Modules\Gallery::uploadLimit() ) && \Nino\Modules\Gallery::uploadLimit() > 0
 	&& \Nino\Modules\Gallery::uploadLimit() <= min( array_filter( [ ini_parse_quantity( (string) ini_get( 'upload_max_filesize' ) ), ini_parse_quantity( (string) ini_get( 'post_max_size' ) ) ] ) ) );
 
+/*	upload_max_filesize and post_max_size cannot be set from inside a request, so a
+	process of its own is started with them: a value php cannot read whole raised a
+	warning from ini_parse_quantity(), which is a 500 for the panel that asked	*/
+$gallerySource = dirname( __DIR__ ). '/Gallery.php';
+$limitWith = static function( string $upload, string $post ) use ( $gallerySource ): ?string {
+	if( function_exists( 'shell_exec' ) === false )
+		return null;
+	// The startup warning php itself gives for such a setting goes to stderr, which is let go;
+	// what the class raises while it runs is caught and printed, so it shows in the answer
+	$code = 'set_error_handler( static function( int $n, string $m ): bool { echo "WARNING:", $m; return true; } ); require '. var_export( $gallerySource, true ). '; echo \\Nino\\Modules\\Gallery::uploadLimit();';
+	return trim( (string) shell_exec( escapeshellarg( PHP_BINARY ). ' -d '. escapeshellarg( 'upload_max_filesize='. $upload ). ' -d '. escapeshellarg( 'post_max_size='. $post ). ' -d display_errors=0 -d log_errors=0 -r '. escapeshellarg( $code ). ' 2>/dev/null' ) );
+};
+if( $limitWith( '8M', '8M' ) === null )
+	echo "  --  shell_exec is not available, so a malformed upload_max_filesize is not tried\n";
+else {
+	check( 'a limit php can read is read: the smaller of the two', $limitWith( '2M', '8M' ) === (string) ( 2 * 1048576 ) && $limitWith( '8M', '1G' ) === (string) ( 8 * 1048576 ) );
+	check( 'a malformed upload_max_filesize raises nothing - it is a limit nobody can tell, and post_max_size still counts',
+		$limitWith( 'abc', '8M' ) === (string) ( 8 * 1048576 ) && $limitWith( 'abc', 'xyz' ) === '0' );
+	check( '...nor does one with a decimal point, or one that is too big for an integer', $limitWith( '1.5M', '8M' ) === (string) 1048576 && $limitWith( '99999999999999999999G', '8M' ) === (string) ( 8 * 1048576 ) );
+}
+
 [ $status ] = callGalleryAdmin( $appData, 'gallery/album-save', [ 'album' => 'Not A Key', 'name' => 'x' ] );
 check( 'an album key that is not a slug is refused', $status === 400 );
 
@@ -362,6 +383,25 @@ check( '...and an image the album does not have, or an album nobody has', callGa
 	&& callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'nowhere', 'id' => $ids[1], 'locale' => 'en_US', 'caption' => 'x' ] )[0] === 400 );
 check( 'a text that is not a string is not one', callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'en_US', 'caption' => [ 'x' ], 'alt' => 5 ] )[0] === 200 );
 check( 'none of those wrote anything', \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, [] ) === $before );
+
+/*	A list that cannot be locked was never looked at: the album is not missing and
+	neither is the image - the albums could not be written, which is what is said	*/
+$locks = \Nino\Filesystem::path( $appData, '/data/.locks' );
+$locksAside = $locks. '-aside';
+$hadLocks = file_exists( $locks );
+if( $hadLocks === true )
+	rename( $locks, $locksAside );
+file_put_contents( $locks, 'not a directory' );
+ninoWarnings();
+[ $lockedStatus, $lockedBody ] = callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'en_US', 'caption' => 'Locked out' ] );
+ninoWarnings();
+unlink( $locks );
+if( $hadLocks === true )
+	rename( $locksAside, $locks );
+check( 'a list that cannot be locked answers that the albums could not be written - not that the album or the image is missing',
+	$lockedStatus === 400 && galleryError( $lockedBody ) === $panelText['[[/_admin/gallery/error/save]]']
+	&& galleryError( $lockedBody ) !== $panelText['[[/_admin/gallery/error/album]]'] );
+check( '...and wrote nothing', \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, [] ) === $before );
 
 [ $status, $body ] = callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'en_US', 'caption' => 'Above the pass' ] );
 

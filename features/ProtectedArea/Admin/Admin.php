@@ -182,9 +182,13 @@ namespace Nino\Modules\ProtectedArea {
 		 *	Set a new password, and lock every session that unlocked with the
 		 *	old one. The sessions go first: a write that fails there leaves
 		 *	the old password in place, where the other order would leave the
-		 *	new one beside sessions it never asked for. The password is posted
-		 *	as 'pw', checked twice by the screen and once more here, and never
-		 *	echoed back - not in the answer, not in the log.
+		 *	new one beside sessions it never asked for. And they go again once
+		 *	the password is written: between the two, somebody who knew the old
+		 *	password could unlock and be stamped with the epoch of the first
+		 *	round, a session the new password never asked for. The password is
+		 *	posted as 'pw', checked twice by the screen and once more here, and
+		 *	never echoed back - not in the answer, not in the log. Its length
+		 *	is counted in characters, as the screen counts it.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
@@ -198,12 +202,12 @@ namespace Nino\Modules\ProtectedArea {
 
 			$pw = \Nino\Admin\Admin::postData()['pw'] ?? null;
 
-			if( is_string( $pw ) === false || strlen( $pw ) < self::MIN_PW_LENGTH ) {
+			if( is_string( $pw ) === false || mb_strlen( $pw, 'UTF-8' ) < self::MIN_PW_LENGTH ) {
 				\Nino\Http::fail( $request, 400, 'password must be at least '. self::MIN_PW_LENGTH. ' characters' );
 				return;
 			}
 
-			if( strlen( $pw ) > self::MAX_PW_LENGTH ) {
+			if( mb_strlen( $pw, 'UTF-8' ) > self::MAX_PW_LENGTH ) {
 				\Nino\Http::fail( $request, 400, 'password must be at most '. self::MAX_PW_LENGTH. ' characters' );
 				return;
 			}
@@ -217,6 +221,12 @@ namespace Nino\Modules\ProtectedArea {
 
 			if( self::_failed( $request, $errors ) === true )
 				return;
+
+			// Again, now that the new password is the one in force
+			if( \Nino\Modules\ProtectedArea::signOutAll( $appData ) === false ) {
+				\Nino\Http::fail( $request, 500, 'the password was saved, but not everybody could be signed out again' );
+				return;
+			}
 
 			\Nino\Http::ok( $request, self::_state( $appData ) );
 		}

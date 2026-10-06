@@ -351,7 +351,9 @@
 			pd.composer.renderStep();
 			if( step !== 'library' ) {
 				pd.composer.renderConfiguration();
-				pd.composer.loadTextValues();
+				// The values arrive after the fields were drawn: draw them again,
+				// or submit() reads the empty fields back over the stored texts
+				pd.composer.loadTextValues().then( function() { if( pd.composer.configStep() === true ) pd.composer.renderSettings() } );
 				wn.requestAnimationFrame( fitPreviewFrames );
 			} else {
 				pd.composer.renderLibrary();
@@ -365,7 +367,7 @@
 			pd.composer.renderStep();
 			if( pd.composer.configStep() === true ) {
 				pd.composer.renderConfiguration();
-				pd.composer.loadTextValues();
+				pd.composer.loadTextValues().then( function() { if( pd.composer.configStep() === true ) pd.composer.renderSettings() } );
 			}
 		},
 

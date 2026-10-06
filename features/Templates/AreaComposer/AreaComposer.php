@@ -1078,13 +1078,22 @@ namespace Nino\Modules\Templates {
 				if( stripos( $source, $forbidden ) !== false )
 					throw new \InvalidArgumentException( 'component '. $id. ': \''. $forbidden. '\' cannot appear in the source of a collection item - the item is already inside one' );
 
-			// Every tag, quoted values included, one left open at the end, and a field in the place of the tag's name
-			preg_match_all( '/<[A-Za-z\/!\[](?:"[^"]*(?:"|$)|\'[^\']*(?:\'|$)|[^\'">])*(?:>|$)/', $source, $tags );
-			foreach( $model as $field => $definition )
-				if( ( $definition['html'] ?? false ) === true )
-					foreach( $tags[0] as $tag )
-						if( str_contains( $tag, '[['. $field. ']]' ) )
-							throw new \InvalidArgumentException( 'component '. $id. ' cannot carry the rich text field '. $field. ' inside a tag: its value is sanitized for content, not for an attribute' );
+			// Every tag, quoted values included, one left open at the end, and a field in the place of the tag's name.
+			// Group 1 is what ends a tag: '>' or, for one that is left open, the end of the source - an unclosed quote
+			// swallows a '>' that is typed inside it, so the last character of a match says nothing
+			preg_match_all( '/<[A-Za-z\/!\[](?:"[^"]*(?:"|$)|\'[^\']*(?:\'|$)|[^\'">])*(>|$)/', $source, $matches, PREG_SET_ORDER );
+			$tags = array_column( $matches, 0 );
+			$rich = array_keys( array_filter( $model, static fn( $definition ): bool => is_array( $definition ) && ( $definition['html'] ?? false ) === true ) );
+
+			foreach( $rich as $field )
+				foreach( $tags as $tag )
+					if( str_contains( $tag, '[['. $field. ']]' ) )
+						throw new \InvalidArgumentException( 'component '. $id. ' cannot carry the rich text field '. $field. ' inside a tag: its value is sanitized for content, not for an attribute' );
+
+			// The components of an area are put one after the other, so a tag this one leaves open is closed by the next
+			// one - and a rich text field there would be inside an attribute, where no single source shows it
+			if( $rich !== [] && $matches !== [] && end( $matches )[1] === '' )
+				throw new \InvalidArgumentException( 'component '. $id. ' leaves a tag open at the end of its source: in a collection with the rich text field '. $rich[0]. ' the next component would finish it, inside an attribute' );
 
 			return $source;
 		}
@@ -1092,8 +1101,10 @@ namespace Nino\Modules\Templates {
 		/**
 		 *	What an HTML+ component starts as in a collection: one paragraph
 		 *	with the collection's first text field in it, which is what a
-		 *	row written by hand needs first. A model without a text field
-		 *	leaves the component's own default
+		 *	row written by hand needs first. A text field is a string without
+		 *	html - a rich text field brings markup of its own, a number or a
+		 *	date is no sentence. A model without a text field leaves the
+		 *	component's own default
 		 *
 		 *	@param		array			$model				The collection's model
 		 *
@@ -1101,7 +1112,7 @@ namespace Nino\Modules\Templates {
 		 */
 		private static function loopSource( array $model ): string {
 			foreach( $model as $field => $definition )
-				if( ( $definition['type'] ?? '' ) !== 'image' )
+				if( ( $definition['type'] ?? '' ) === 'string' && ( $definition['html'] ?? false ) !== true )
 					return '<p class="nino-section-text">[['. $field. ']]</p>';
 			return self::HTML_DEFAULT;
 		}

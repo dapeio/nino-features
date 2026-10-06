@@ -273,6 +273,12 @@ namespace Nino\Modules {
 		 */
 		public static function callbackOutput( array &$appData, array &$request ): void {
 
+			// The workbench sends a policy of its own and is not a page of the website:
+			// a placeholder in a page it previews is none of its business
+			foreach( [ $request['/nino/http/request']['uri'] ?? '', $request['/nino/http/response']['uri'] ?? '' ] as $uri )
+				if( is_string( $uri ) === true && ( $uri === '/_admin' || str_starts_with( $uri, '/_admin/' ) === true ) )
+					return;
+
 			$body = $request['/nino/http/response']['body'] ?? null;
 
 			if( is_string( $body ) === false || stripos( $body, 'text/plain' ) === false )
@@ -352,8 +358,9 @@ namespace Nino\Modules {
 		/**
 		 *	The origin of an address as a Content-Security-Policy source, or ''
 		 *	where it cannot safely be one: https only, no credentials, and a host
-		 *	that is a plain ascii name - no ip literal, no '*', no whitespace, no
-		 *	';' or ',' that would end the directive. A non-ascii host would have
+		 *	that is a plain ascii name - no ip literal (a name whose last label is a number or a
+		 *	hex number is one, written in a form php does not call one), no '*', no
+		 *	whitespace, no ';' or ',' that would end the directive. A non-ascii host would have
 		 *	to be written as punycode; it is refused rather than converted. The
 		 *	port is kept, since a source without one means 443 only.
 		 *
@@ -373,10 +380,12 @@ namespace Nino\Modules {
 
 			$host = strtolower( (string) ( $parts['host'] ?? '' ) );
 
-			// The last label of a name is never all digits, and one that is
-			// is an ip address written in a form php does not call one
-			if( $host === '' || strlen( $host ) > 253 || preg_match( '/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/', $host ) !== 1
-				|| preg_match( '/(?:^|\.)[0-9]+$/', $host ) === 1 )
+			// The last label of a name is never all digits or a hex number (0x7f000001),
+			// and one that is is an ip address written in a form php does not call one.
+			// The D: without it '$' also matches before a trailing newline, which would
+			// end up in a header
+			if( $host === '' || strlen( $host ) > 253 || preg_match( '/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/D', $host ) !== 1
+				|| preg_match( '/(?:^|\.)(?:[0-9]+|0x[0-9a-f]*)$/iD', $host ) === 1 )
 				return '';
 
 			return 'https://'. $host. ( isset( $parts['port'] ) === true ? ':'. (int) $parts['port'] : '' );
@@ -395,7 +404,8 @@ namespace Nino\Modules {
 		 *	would have used: naming 'self' by hand would narrow a policy whose
 		 *	default-src lists more. A policy with no such fallback is unrestricted
 		 *	already and is left alone, and so is a directive - or a fallback -
-		 *	that says 'none': that is the project having decided.
+		 *	that says 'none' or lists no source at all (the same
+		 *	thing to a browser): that is the project having decided.
 		 *
 		 *	@param		string		$policy				The header value
 		 *	@param		string		$directive		The directive to widen, e.g. 'script-src'
@@ -417,7 +427,9 @@ namespace Nino\Modules {
 						return $index;
 				return null;
 			};
-			$none = static fn( string $part ): bool => preg_match( "/(?:^|\s)'none'(?:\s|\$)/i", $part ) === 1;
+			// Closed: 'none', or a name with no source at all - which blocks everything
+			// just the same, and is the project having decided too
+			$none = static fn( string $part ): bool => preg_match( "/(?:^|\s)'none'(?:\s|\$)/i", $part ) === 1 || preg_match( '/^\S+$/', $part ) === 1;
 
 			$index = $find( $directive );
 
@@ -455,8 +467,9 @@ namespace Nino\Modules {
 					$added = true;
 				}
 
-			// A directive built from its fallback that adds nothing the fallback
-			// did not name changes nothing, so it is not written either
+			// A directive built from its fallback is new even when it adds nothing
+			// the fallback did not name - and then it changes nothing, so it is not
+			// written either
 			return $added === true ? implode( '; ', $directives ) : $policy;
 		}
 
@@ -498,7 +511,7 @@ namespace Nino\Modules {
 			// A name from this class and nowhere else, and held to a slug anyway:
 			// the one thing this could otherwise be turned into is a read of
 			// something outside the feature
-			if( preg_match( '/^[a-z][a-z0-9-]*$/', $name ) !== 1 )
+			if( preg_match( '/^[a-z][a-z0-9-]*$/D', $name ) !== 1 )
 				return '';
 
 			$template = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $name. '.tpl', '' );

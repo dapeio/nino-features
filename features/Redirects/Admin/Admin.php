@@ -257,6 +257,7 @@ namespace Nino\Modules\Redirects {
 				$warning = match( $rule['answer'] ) {
 					'nothing'	=> '/_admin/redirects/warning/nothing',
 					'loop'		=> '/_admin/redirects/warning/loop',
+					'chain'		=> '/_admin/redirects/warning/chain',
 					'rule'		=> '/_admin/redirects/warning/rule',
 					default		=> '',
 				};

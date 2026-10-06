@@ -2,7 +2,7 @@
 			<section class="nino-footer-main">
 				<div class="nino-grid-row nino-pt-2">
 					<div class="nino-grid-100 nino-grid-l-50 nino-pb-2">
-						<img src="[[/nino/public]]/images/logo-invert.png" class="nino-footer-logo nino-mb-2" alt="[[/project/company/general/name]]">
+						[image /logo alt=""]<img src="[[src]]" width="[[width]]" height="[[height]]" class="nino-footer-logo nino-mb-2 nino-logo--invert" alt="[[alt]]">[/image]
 						<p>[[/project/company/general/description]]</p>
 						[template /templates/social-links]
 					</div>

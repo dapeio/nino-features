@@ -336,6 +336,38 @@ texted.answer( 200, { albums : [ album( [ picture( 'a1', '', { de_DE : 'Das Haus
 texted.alt( 0 ).fire( 'blur' );
 check( '...and what the server answered is what the field is compared with next', texted.requests.length === 0 );
 
+/*	The server keeps a text trimmed and cut to 300 bytes. A field holding it as it
+	was typed - with blanks round it, or longer - never equals what comes back,
+	and every blur sent it again	*/
+const padded = panel( { images : [ picture( 'a1', '' ) ] } );
+padded.caption( 0 ).value = '  Gartenseite \n';
+padded.caption( 0 ).fire( 'blur' );
+check( 'a text with blanks round it is sent as typed', padded.requests.length === 1 && padded.requests[0].payload.caption === '  Gartenseite \n' );
+padded.answer( 200, { albums : [ album( [ picture( 'a1', { de_DE : 'Gartenseite' } ) ] ) ] } );
+padded.caption( 0 ).fire( 'blur' );
+check( '...and is not sent again on the next blur, the server having kept it trimmed', padded.requests.length === 0 );
+padded.caption( 0 ).value = 'Gartenseite';
+padded.caption( 0 ).fire( 'blur' );
+check( '...nor when the blanks are taken off by hand', padded.requests.length === 0 );
+padded.caption( 0 ).value = 'Gartenseite\u00A0';
+padded.caption( 0 ).fire( 'blur' );
+check( 'a no-break space is not a blank to php\'s trim(), so that one is a change', padded.requests.length === 1 );
+padded.answer( 200, { albums : [ album( [ picture( 'a1', { de_DE : 'Gartenseite\u00A0' } ) ] ) ] } );
+
+const longText = 'ä'.repeat( 200 );
+const kept = 'ä'.repeat( 150 );
+const cut = panel( { images : [ picture( 'a1', '' ) ] } );
+cut.caption( 0 ).value = longText;
+cut.caption( 0 ).fire( 'blur' );
+cut.answer( 200, { albums : [ album( [ picture( 'a1', { de_DE : kept } ) ] ) ] } );
+cut.caption( 0 ).fire( 'blur' );
+check( 'a text longer than the server keeps is sent once, not on every blur', cut.requests.length === 0 );
+check( '...300 bytes on a character boundary: a two-byte character is never cut in half', cut.gallery._kept( longText ) === kept
+	&& cut.gallery._kept( 'a'+ 'ä'.repeat( 200 ) ) === 'a'+ 'ä'.repeat( 149 )
+	&& cut.gallery._kept( '\u{1F600}'.repeat( 100 ) ) === '\u{1F600}'.repeat( 75 ) );
+cut.gallery._maxText = 10;
+check( '...and the limit is the one the server named', cut.gallery._kept( 'abcdefghijklmnop' ) === 'abcdefghij' );
+
 // Two saves in flight, answered the wrong way round: the answer to the alt
 // text predates the caption's, and must not take the caption back
 const twice = panel( { images : [ picture( 'a1', '' ) ] } );
@@ -401,6 +433,10 @@ check( 'the answer to gallery/list sets the languages, the one to start in and t
 	listed0.gallery._locales.join() === 'de_DE,en_US' && listed0.gallery._native === 'de_DE' && listed0.gallery._limits.bytes === 2097152
 	&& listed0.gallery._locale() === 'en_US' );
 listed0.gallery._take( { albums : [ album( [] ) ] } );
+listed0.gallery._take( { albums : [ album( [] ) ], maxText : 120 } );
+check( 'the answer names how much of a text the server keeps', listed0.gallery._maxText === 120 );
+listed0.gallery._take( { albums : [ album( [] ) ] } );
+check( '...and an answer without it leaves that as it was', listed0.gallery._maxText === 120 );
 check( '...and an answer that carries none of it leaves them as they were', listed0.gallery._locales.length === 2 && listed0.gallery._limits.text === '2 MB' );
 
 console.log('');

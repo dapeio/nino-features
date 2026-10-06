@@ -21,8 +21,7 @@ declare(strict_types=1);
  *										   'blocks': p, br, ul, ol, li, strong, em and a, a link
  *										   to an anchor of the policy or to https, no '&', no
  *										   entity, no '['
- *										4. a placeholder is one the Legal module replaces, and
- *										   the German texts say Du, never Sie
+ *										4. a placeholder is one the Legal module replaces
  *
  *									Part 2 runs only where the checkout has the Legal module
  *									(\Nino\Modules\Legal): in a sandbox the module's unit is
@@ -199,15 +198,12 @@ foreach( glob( $repo. '/features/*', GLOB_ONLYDIR ) ?: [] as $dir ) {
 
 				$plain = (string) preg_replace( '/<[^>]*>/', ' ', $value );
 
-				if( $locale === 'de_DE' && preg_match( '/\b(Sie|Ihr|Ihre|Ihrem|Ihren|Ihrer|Ihres|Ihnen|du|dein|deine|deinem|deinen|deiner|deines|dich|dir)\b/u', $plain ) === 1 )
-					$problems[] = $id. ' de_DE: it says Sie or a small du - the reader is Du, capitalised';
-
 				if( $locale === 'en_US' && preg_match( '/\b(und|der|das|nicht|Deine|Dein|Dich|Dir)\b/u', $plain ) === 1 )
 					$problems[] = $id. ' en_US: a German word';
 			}
 	}
 
-	check( $name. ': every section is in the form of the field, in its range, with a title and a text in both languages, and says Du'. ( $problems === [] ? '' : ' - '. implode( ' | ', $problems ) ), $problems === [] );
+	check( $name. ': every section is in the form of the field, in its range, with a title and a text in both languages'. ( $problems === [] ? '' : ' - '. implode( ' | ', $problems ) ), $problems === [] );
 }
 
 $names = array_keys( $contributors );

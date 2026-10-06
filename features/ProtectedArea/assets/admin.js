@@ -50,16 +50,53 @@
 		},
 
 		/**
-		 *	The shell calls this when the panel is opened. What is on screen
-		 *	stays - a password half typed is not something to throw away by
-		 *	looking at another panel
+		 *	The shell calls this when the panel is opened. The state is asked for
+		 *	again every time: a page that was made, renamed or protected
+		 *	elsewhere since the panel was last looked at must be in the list.
+		 *	What is on screen stays where it holds something not yet saved - a
+		 *	password half typed, a page ticked - since looking at another panel
+		 *	is no reason to throw that away; and it stays when the answer is
+		 *	none, with nothing said, since what is there is still true as far
+		 *	as it goes
 		 *
 		 *	@return		void
 		 */
 		showCurrent : function() {
 
 			if( Nino.admin.protected._ready === false )
-				Nino.admin.protected.init();
+				return Nino.admin.protected.init();
+
+			Nino.admin.protected._apiCall( 'state', {}, function( status, response ) {
+
+				if( status !== 200 || response === null || Nino.admin.protected._unsaved() === true )
+					return;
+
+				Nino.admin.protected._take( response );
+				Nino.admin.protected._render();
+			} );
+		},
+
+		/**
+		 *	Whether the screen holds something that is not saved: a new
+		 *	password typed into either field, or a page ticked or unticked
+		 *	against what the server last said
+		 *
+		 *	@return		{boolean}
+		 */
+		_unsaved : function() {
+
+			const typed = [ 'protected-newpw', 'protected-newpw2' ].some( function( id ) {
+				const input = dc.getElementById( id );
+				return input !== null && input.value !== '';
+			} );
+
+			if( typed === true )
+				return true;
+
+			const state = Nino.admin.protected._state;
+			const chosen = Nino.admin.protected._chosen;
+
+			return state !== null && ( state.pages || [] ).some( function( page ) { return ( chosen[ page.uri ] === true ) !== ( page.selected === true ) } );
 		},
 
 		/**
@@ -207,7 +244,9 @@
 		 */
 		_pwProblem : function( pw, again, min ) {
 
-			if( pw.length < min )
+			// Counted in characters, as the server counts them (mb_strlen), not in
+			// UTF-16 units: a character outside the BMP is one here as well
+			if( Array.from( pw ).length < min )
 				return 'short';
 
 			return pw === again ? '' : 'mismatch';

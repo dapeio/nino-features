@@ -529,6 +529,25 @@ check( '...and one that ends where nothing answers is nothing, because that is w
 	&& \Nino\Modules\Redirects\Rules::answer( $appData, '/dead-hop' ) === 'nothing' );
 check( 'a chain of rules that comes back to where it was is a loop', \Nino\Modules\Redirects\Rules::answer( $appData, '/chain-a' ) === 'loop'
 	&& \Nino\Modules\Redirects\Rules::answer( $appData, '/chain-b' ) === 'loop' );
+// A chain longer than Rules::HOPS that never comes back to an address is not a loop: it is long
+$withLongChain = static function( array &$appData ): array {
+	$before = \Nino\Modules\Redirects\Rules::read( $appData );
+	$long = [];
+	for( $hop = 0; $hop < \Nino\Modules\Redirects\Rules::HOPS + 3; $hop++ )
+		$long[] = [ 'from' => '/long-'. $hop, 'to' => '/long-'. ( $hop + 1 ) ];
+	$long[] = [ 'from' => '/long-'. ( \Nino\Modules\Redirects\Rules::HOPS + 3 ), 'to' => '/here' ];
+	$notes = [];
+	\Nino\Modules\Redirects\Rules::write( $appData, \Nino\Modules\Redirects\Rules::normalize( [ 'rules' => array_merge( $before['rules'], $long ), 'misses' => $before['misses'] ], $notes ) );
+	return $before;
+};
+$rulesBeforeLong = $withLongChain( $appData );
+check( 'a chain of more than HOPS rules that never comes back is a chain, not a loop - whatever it ends on',
+	\Nino\Modules\Redirects\Rules::answer( $appData, '/long-0' ) === 'chain' && \Nino\Modules\Redirects\Rules::answer( $appData, '/long-1' ) === 'chain' );
+check( '...while the end of the same chain, a few rules from the page, is the rule it always was',
+	\Nino\Modules\Redirects\Rules::answer( $appData, '/long-'. ( \Nino\Modules\Redirects\Rules::HOPS + 3 ) ) === 'rule'
+	&& \Nino\Modules\Redirects\Rules::answer( $appData, '/long-'. ( \Nino\Modules\Redirects\Rules::HOPS + 1 ) ) === 'rule' );
+\Nino\Modules\Redirects\Rules::write( $appData, $rulesBeforeLong );
+
 check( 'a file in the public directory answers its address', \Nino\Modules\Redirects\Rules::answer( $appData, '/public/a.pdf' ) === 'file'
 	&& \Nino\Modules\Redirects\Rules::answer( $appData, '/public/b.pdf' ) === 'nothing' );
 check( '...before any rule: the web server serves it, so a rule for that address is never reached',
@@ -649,10 +668,22 @@ check( 'a chain of rules that leads back to where it started is warned about, an
 	$status === 200 && count( $cycle['warnings'] ) === 1 && str_contains( $cycle['warnings'][0], '/cycle-a' ) === true
 	&& count( array_filter( redirectsFile( $appData )['rules'], static fn( array $r ): bool => $r['from'] === '/cycle-b' ) ) === 1 );
 
+$rulesBeforeLong = $withLongChain( $appData );
+[ $status, $longSaved ] = redirectsPanel( $appData, 'apiSave', [ 'from' => '/long-start', 'to' => '/long-0' ] );
+check( 'saving a rule into such a chain is warned about, and still saved - with the answer the table flags',
+	$status === 200 && count( $longSaved['warnings'] ) === 1 && str_contains( $longSaved['warnings'][0], '/long-0' ) === true
+	&& ( array_column( $longSaved['rules'], 'answer', 'from' )['/long-start'] ?? '' ) === 'chain'
+	&& count( array_filter( $longSaved['rules'], static fn( array $r ): bool => $r['from'] === '/long-start' ) ) === 1 );
+$chainWords = include __DIR__. '/../text/en_US.php';
+check( '...in words of its own: a loop leads back, a chain is only long', isset( $chainWords['[[/_admin/redirects/warning/chain]]'], $chainWords['[[/_admin/redirects/answer/chain]]'] )
+	&& $chainWords['[[/_admin/redirects/warning/chain]]'] !== $chainWords['[[/_admin/redirects/warning/loop]]']
+	&& $chainWords['[[/_admin/redirects/answer/chain]]'] !== $chainWords['[[/_admin/redirects/answer/loop]]'] );
+\Nino\Modules\Redirects\Rules::write( $appData, $rulesBeforeLong );
+
 [ $status, $listed ] = redirectsPanel( $appData, 'apiList' );
 $answers = array_column( $listed['rules'], 'answer', 'from' );
 check( 'the list carries what answers every rule\'s target, and the pages a target can be picked from',
-	$status === 200 && count( $answers ) === count( $listed['rules'] ) && array_diff( $answers, [ 'route', 'external', 'rule', 'loop', 'file', 'nothing' ] ) === []
+	$status === 200 && count( $answers ) === count( $listed['rules'] ) && array_diff( $answers, [ 'route', 'external', 'rule', 'loop', 'chain', 'file', 'nothing' ] ) === []
 	&& ( $answers['/dead-end'] ?? '' ) === 'nothing' && ( $answers['/to-page'] ?? '' ) === 'route'
 	&& ( $answers['/to-site'] ?? '' ) === 'external' && ( $answers['/twice'] ?? '' ) === 'rule'
 	&& ( $answers['/cycle-a'] ?? '' ) === 'loop'
@@ -668,14 +699,14 @@ check( '...and flips to nothing when the page is removed, without the rule being
 	( array_column( redirectsPanel( $appData, 'apiList' )[1]['rules'], 'answer', 'from' )['/for-later'] ?? '' ) === 'nothing' );
 
 check( 'saving and deleting answer with the rules as the list does, answers included',
-	array_diff( array_column( redirectsPanel( $appData, 'apiSave', [ 'from' => '/to-page', 'to' => '/here' ] )[1]['rules'], 'answer' ), [ 'route', 'external', 'rule', 'loop', 'file', 'nothing' ] ) === []
+	array_diff( array_column( redirectsPanel( $appData, 'apiSave', [ 'from' => '/to-page', 'to' => '/here' ] )[1]['rules'], 'answer' ), [ 'route', 'external', 'rule', 'loop', 'chain', 'file', 'nothing' ] ) === []
 	&& isset( redirectsPanel( $appData, 'apiDelete', [ 'from' => '/for-later' ] )[1]['rules'][0]['answer'] ) === true );
 
 $fillsEn = include __DIR__. '/../text/en_US.php';
 $fillsDe = include __DIR__. '/../text/de_DE.php';
-check( 'the words about a target exist in both languages, and the warnings name the target',
+check( 'the words about a target exist in both languages, and the warnings name the target - four of them now, the chain having words of its own',
 	array_keys( $fillsEn ) === array_keys( $fillsDe )
-	&& count( array_filter( array_keys( $fillsEn ), static fn( string $key ): bool => str_contains( $key, '/redirects/warning/' ) === true ) ) === 3
+	&& count( array_filter( array_keys( $fillsEn ), static fn( string $key ): bool => str_contains( $key, '/redirects/warning/' ) === true ) ) === 4
 	&& count( array_filter( array_merge( $fillsEn, $fillsDe ), static fn( string $text, string $key ): bool => str_contains( $key, '/redirects/warning/' ) === true && str_contains( $text, '"%s"' ) === false, ARRAY_FILTER_USE_BOTH ) ) === 0 );
 
 foreach( [ '/dead-end', '/to-page', '/to-site', '/to-home', '/twice', '/cycle-a', '/cycle-b' ] as $made )

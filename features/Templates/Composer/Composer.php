@@ -105,10 +105,11 @@ namespace Nino\Modules\Templates {
 
 		/**
 		 *	What the panel typed into the section's text fields, as far as the
-		 *	preview takes it: up to 100 entries of a fill key and a text, each
+		 *	preview takes it: the first 100 entries of a fill key and a text, each
 		 *	text cut to 4000 bytes, and only the keys the composed section
-		 *	has a field for. Anything else - another shape, too many entries,
-		 *	a key the section does not own - is left out rather than refused,
+		 *	has a field for. Anything else - another shape, the entries after
+		 *	the hundredth, a key the section does not own - is left out rather
+		 *	than refused,
 		 *	since the preview is a courtesy and has to render whatever it is
 		 *	sent. A typed value goes through \Nino\Text::sanitizeValue()
 		 *	later, in previewSamples(), the way saving it would
@@ -120,8 +121,13 @@ namespace Nino\Modules\Templates {
 		 */
 		private static function previewTexts( mixed $texts, array $result ): array {
 
-			if( is_array( $texts ) === false || count( $texts ) > self::PREVIEW_MAX_TEXTS )
+			if( is_array( $texts ) === false )
 				return [];
+
+			// The first ones are kept: a section with more fields than the cap
+			// shows the typed text of those, where an answer of nothing at all
+			// would show the sample over what has been typed
+			$texts = array_slice( $texts, 0, self::PREVIEW_MAX_TEXTS, true );
 
 			$keys = array_column( (array) ( $result['fields'] ?? [] ), 'key' );
 			$typed = [];
