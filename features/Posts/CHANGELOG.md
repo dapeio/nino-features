@@ -89,6 +89,11 @@ A release is the tag `posts-<version>` of dapeio/nino-features.
   `[[.image]]`. A body containing `[template /templates/page-whatever]` ran
   it. Both take the same two steps as every other value now.
 
+### Removed
+
+- **`Posts::KEY`.** The constant was read nowhere; the manifest's `key` is
+  where the feature's key is written.
+
 ## 1.1.0 — 2026-09-12
 
 - **The section and its posts are in `sitemap.xml` and `llms.txt` now.** A

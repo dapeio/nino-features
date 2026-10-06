@@ -43,8 +43,6 @@ namespace Nino\Modules {
 	 */
 	class Posts {
 
-		public const string KEY = 'posts';
-
 		/*	The internal uri of a section's two routes - the identity its text
 			keys hang off, and what the response callback is registered on.
 			Separate identities on purpose: a list page and a post page want
