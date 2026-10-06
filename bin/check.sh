@@ -4,18 +4,9 @@
 # can run - bin/applicable.php names them by their "nino" constraint - are
 # copied into the checkout's features/ for the run, the same layout a project
 # has, and removed again afterwards; the others are listed with their reason.
-# Then tests/keys-smoke.php holds every feature's text keys to the grammar of
-# Nino's - what it can check of them against this checkout - and
-# tests/legal-smoke.php the sections of the privacy policy the features bring
-# to their form, adding them to the Legal module's type where the checkout has
-# the module; tests/markup-smoke.php holds the catalogue to the one rule it
-# shares with the framework - markup belongs in a template, not in php -
-# tests/language-smoke.php to the other one, which is that it is written in
-# English, and tests/escaping-smoke.php to the escape that keeps what it cannot
-# encode, and tests/panels-smoke.php to how a panel's script reaches the
-# workbench. Then the publishing tool's own test, tests/build-smoke.php, builds
-# a signed catalogue into a directory of its own against the same checkout, and
-# tests/publish-smoke.php drives the endpoint a release is posted to.
+# Then every test of this repository's own under tests/, against the same
+# checkout - the lines at the end of this script are the list, and each test's
+# header says what it holds.
 #
 # Usage: bin/check.sh            (../nino)
 #        NINO_ROOT=/path/to/nino bin/check.sh

@@ -4,13 +4,14 @@ declare(strict_types=1);
  *	Nino features
  *	catalogue.php	The preview: reads every feature's manifest through a Nino
  *								checkout and prints what the catalogue would list, as JSON -
- *								key, name, description, version, the Nino version constraint,
- *								PHP extensions, what it requires and the directory it lives
- *								in - without building an archive, without a signature. A
- *								manifest that does not validate fails the run: the catalogue
- *								never lists what Nino would skip. bin/check.sh and CI use it
- *								as the manifest check; .github/workflows/release.yml reads
- *								the directory and version of a feature from it.
+ *								key, name, description, category, maturity, version, the Nino
+ *								version constraint, PHP extensions, what it requires and the
+ *								directory it lives in - without building an archive, without a
+ *								signature. A manifest that does not validate fails the run:
+ *								the catalogue never lists what Nino would skip. bin/check.sh
+ *								and CI use it as the manifest check;
+ *								.github/workflows/release.yml reads the directory and version
+ *								of a feature from it.
  *
  *								What getnino.dev publishes - the archives and the signed
  *								catalogue.json in format 1 - is built by bin/build.php.

@@ -183,12 +183,24 @@ echo "Checkout: $root (Nino ". \Nino\VERSION. ")\nWork:     $work\n\n";
 echo "The repository - what there is to publish\n";
 
 check( 'every feature directory has a manifest this kernel validates', count( $manifests ) >= 2 && ninoWarnings() === [] );
-check( 'the two features of the catalogue are among them', isset( $manifests['newsletter'] ) === true && isset( $manifests['search'] ) === true );
+check( 'the two features the checks below name by key, newsletter and search, are among them', isset( $manifests['newsletter'] ) === true && isset( $manifests['search'] ) === true );
 // At least one, not every one: a test is optional here (see README.md and
 // AGENTS.md - the release tooling asks for it in strict mode alone), and this
 // check exists to give the archive check below something to leave out. A
 // feature that carries none would have made this fail for following the rule
 check( 'a feature carries its test under tests/, and the archive is what has to leave it out', array_filter( $manifests, static fn( array $manifest ): bool => ( glob( $manifest['dir']. '/tests/*-smoke.php' ) ?: [] ) !== [] ) !== [] );
+
+// The features table is written by hand, in two languages; what each row says
+// is what the manifest says, and no directory is left out of either
+$wanted = array_map( static fn( array $manifest ): array => [ $manifest['category'], $manifest['version'], $manifest['nino'] ], $manifests );
+foreach( [ 'README.md', 'README.de.md' ] as $readme ) {
+	$rows = [];
+	foreach( explode( "\n", (string) file_get_contents( $repo. '/'. $readme ) ) as $line )
+		if( preg_match( '/^\| `([a-z0-9-]+)` \| [^|]+ \| `([a-z0-9-]+)` \| ([0-9]+\.[0-9]+\.[0-9]+) \| `([^`]+)` \|/', $line, $cells ) === 1 )
+			$rows[$cells[1]] = [ $cells[2], $cells[3], $cells[4] ];
+	ksort( $rows );
+	check( $readme. ': the features table has one row per feature, with the category, version and nino of its manifest'. ( $rows === $wanted ? '' : ' - '. implode( ', ', array_keys( array_diff_key( $wanted, $rows ) + array_diff_key( $rows, $wanted ) ) ) ), $rows === $wanted );
+}
 
 check( 'every feature of this repository is filed under one of the kernel\'s categories', array_filter( $manifests, static fn( array $manifest ): bool => in_array( $manifest['category'], \Nino\Features::CATEGORIES, true ) === false ) === [] );
 
@@ -254,7 +266,7 @@ check( 'and nothing was built', ( glob( $out. '/*.tar.gz' ) ?: [] ) === [] );
 // The Features panel shows a feature by its name and never by its key, so two
 // features carrying one name are two rows nobody can tell apart. Written into
 // the copy rather than asserted over the real manifests: what is checked is
-// the refusal, not that today's eleven happen not to collide
+// the refusal, not that today's names happen not to collide
 $seo			= $broken. '/features/Seo/feature.php';
 $original	= (string) file_get_contents( $seo );
 
