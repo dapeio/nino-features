@@ -28,8 +28,10 @@ One directory, the shape the [feature recipe](https://github.com/dapeio/nino/blo
 describes: `feature.php`, `Forms.php`, `Admin/Admin.php`, `assets/`
 (`admin.js` and `admin.css` for the panel, `forms.css` for the two fields that
 need one on the page), `templates/` (the markup of the form and of one field
-each), `text/`, `tests/`. No `install/` unit: a form points at the mail
-templates the kernel's contact form already installed. The changes per version are in
+each), `text/`, `install/`, `tests/`. The install unit carries only the
+feature's section of the privacy policy, see [Privacy policy](#privacy-policy),
+and no mail templates: a form points at the mail templates the kernel's contact
+form already installed. The changes per version are in
 [CHANGELOG.md](CHANGELOG.md).
 
 It needs Nino 1.4: the three field types below and the engine's own
@@ -219,6 +221,35 @@ is the proxy for every visitor alike unless it is named under
 `/nino/http/proxies` - there, without that key, the first visitor to spend
 either allowance turns the site's form off for everybody. See the Config panel's
 **Reverse proxies in front of this site**.
+
+## Privacy policy
+
+`install/elements/privacy.php`, named under `elements` in
+`install/manifest.php`, adds the section `forms` (position 520) to the type
+`privacy` of the Legal module that comes with Nino 1.4 - add-only, as
+everything an install unit does: a section an editor changed stays as it is,
+one deleted for good does not come back, and a Nino without the module ignores
+the file. The text says only what the code does, in German and English; a fact
+of the website would be a placeholder of the module
+(`#/project/company/contact/email#`), not written text.
+
+- **What it says.** What the section "Contact form" of the module's own text
+  says applies to every form the feature draws: the entries are stored with
+  the date, the time and the address of the sender, kept for three months and
+  then deleted, on the same legal bases - and the spam counter counts the
+  submissions per sender for one hour, over a hash of the address and not the
+  address itself (`Forms::WINDOW`, `/data/forms-rate.php`). The link in it
+  goes to the module's section `contact-form`.
+- **The numbers.** The three months are the default of `/nino/form/retention`,
+  and the text assumes the kernel records submissions (`/nino/form/store`).
+  Whoever changes either changes the section in the Elements panel too.
+
+The section is a starting point and no legal advice, like the texts of Nino's
+own Legal module: it is not tailored to any particular website and has not
+been legally reviewed, and the operator is responsible for having it checked
+and adapted before the website goes live. The notice in full is in the
+[Legal](https://github.com/dapeio/nino/blob/main/docs/development.md#legal)
+chapter of Nino's `docs/development.md`.
 
 ## Data
 

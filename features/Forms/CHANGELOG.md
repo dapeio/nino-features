@@ -87,6 +87,17 @@ versions [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   feature to an installation that could not then install it. `^1.3` names
   only a kernel that can read the manifest.
 
+### Added
+
+- **It brings its section of the privacy policy.** The feature has an install
+  unit now, which carries nothing but the section `forms` (what is stored of a
+  submission, the three months it is kept by default, the hash of the address in
+  the spam counter) for the type `privacy` of Nino 1.4's Legal module -
+  add-only, and a Nino without the module ignores the file. The section names
+  three months, the default of `/nino/form/retention`: whoever changes the
+  retention changes the section too. It is a starting point, not legal advice -
+  see "Legal" in Nino's `docs/development.md`.
+
 ### Changed
 
 - **The words the builder reads follow Nino 1.4's text keys.** A generated

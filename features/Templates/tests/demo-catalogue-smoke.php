@@ -175,6 +175,14 @@ $elsewhere = [
 $retired = [ 'nino-cookie-banner', 'nino-cookie-banner--visible', 'nino-cookie-banner-actions' ];
 $elsewhere = array_merge( $elsewhere, array_values( array_intersect( $retired, $defined ) ) );
 
+/*	Nino 1.4's Legal module draws every section of the imprint and the privacy
+	policy in a .nino-legal-section, and Nino.css styles it. No page template
+	of a unit can carry it - the module's shortcodes write it - so it counts as
+	"rendered elsewhere" only while the checkout's Nino.css defines it, and this
+	test passes on a Nino without the module as well	*/
+$drawnByModules = [ 'nino-legal-section' ];
+$elsewhere = array_merge( $elsewhere, array_values( array_intersect( $drawnByModules, $defined ) ) );
+
 $uncovered = [];
 foreach( $defined as $class )
 	if( isset( $used[$class] ) === false && in_array( $class, $elsewhere, true ) === false )

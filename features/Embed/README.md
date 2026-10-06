@@ -200,6 +200,46 @@ picture needs, and the loaded box.
 | **Consent category** | `external` | the Consent category that releases an embed without a press. Empty: every embed always waits for one |
 | **Remember a press for the visit** | off | after one embed of a provider is loaded, load that provider's others on this page too. Nothing is stored — it lasts as long as the page is open, because a decision kept past that would be a decision to declare |
 
+## Privacy policy
+
+`install/elements/privacy.php`, named under `elements` in
+`install/manifest.php`, adds three sections (positions 700 to 720) to the type
+`privacy` of the Legal module that comes with Nino 1.4 - add-only, as
+everything an install unit does: a section an editor changed stays as it is,
+one deleted for good does not come back, and a Nino without the module ignores
+the file. The text says only what the code does, in German and English; a fact
+of the website would be a placeholder of the module
+(`#/project/company/contact/email#`), not written text.
+
+- **`embed`** - what every provider does: nothing is loaded before a press or
+  before the category "External media" is allowed; then the provider receives
+  the visitor's address and the details of the device and the browser, and may
+  set cookies; the legal basis is the consent (Art. 6 (1) (a) GDPR, Section 25
+  (1) TDDDG) and it can be withdrawn.
+- **`embed-youtube`** and **`embed-vimeo`** - the two providers the code knows
+  (`Embed::PROVIDERS`): YouTube through `youtube-nocookie.com`, Google Ireland
+  Limited, and Vimeo with `dnt=1`, Vimeo.com, Inc. Each names the provider and
+  sends the reader to its own privacy policy for what it does with the data
+  and on what basis it transfers it to the USA. Whoever uses only one of the
+  two hides the other section in the Elements panel; a map or any other
+  address embedded with `url=` is covered by the first section alone, and is
+  for the operator to name.
+- **The category.** The text names "External media", which is the default of
+  the setting `category` (**Consent category**, `external`) and the label
+  Consent gives it. Whoever
+  changes the setting changes the section in the Elements panel too.
+- **What was checked.** The cookie-less host and the flag are the ones of
+  `Embed::PROVIDERS`. The names, registered offices and links of the providers
+  are those of their privacy policies when the section was written, which can
+  change: whoever publishes the page checks them.
+
+The section is a starting point and no legal advice, like the texts of Nino's
+own Legal module: it is not tailored to any particular website and has not
+been legally reviewed, and the operator is responsible for having it checked
+and adapted before the website goes live. The notice in full is in the
+[Legal](https://github.com/dapeio/nino/blob/main/docs/development.md#legal)
+chapter of Nino's `docs/development.md`.
+
 ## Data
 
 None. What is embedded is written into the project's own templates, and whether a

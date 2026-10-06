@@ -50,6 +50,14 @@ A release is the tag `mailer-<version>` of dapeio/nino-features.
 
 ### Added
 
+- **It brings its section of the privacy policy.** The feature has an install
+  unit now, which carries nothing but the section `mailer` (the mail server of
+  an email service provider, who receives what) for the type `privacy` of Nino
+  1.4's Legal module - add-only, and a Nino without the module ignores the file.
+  The provider is named as a category, not by name: the operator adds who it is.
+  It is a starting point, not legal advice - see "Legal" in Nino's
+  `docs/development.md`.
+
 - **The test mail's address is filled in, and the last errors are in the
   panel.** The address field starts with the signed-in account's own address
   (the From address where that is none) instead of an empty box, and is never

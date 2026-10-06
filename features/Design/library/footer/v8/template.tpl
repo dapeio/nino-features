@@ -10,7 +10,7 @@
 					<div class="nino-frame-footer-social">[template /templates/social-links]</div>
 					<p class="nino-frame-footer-copyright">&copy; [[/nino/date/year]] [[/project/company/general/name]]</p>
 					<div class="nino-frame-footer-utility">
-						[template /templates/html-footer-legal]
+						[navigation nav="legal" id="legal__nav"][/navigation]
 						[template /templates/html-footer-localepicker]
 					</div>
 				</div>

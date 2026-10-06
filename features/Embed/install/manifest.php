@@ -7,5 +7,9 @@ declare(strict_types=1);
 // embed belongs, the way docs/recipes/feature.md's own example leaves a
 // feature's markup to the project. All this unit carries is the two
 // sentences the surface says, merged into text/<locale>.php for every
-// available locale.
-return [];
+// available locale, and the feature's sections of the privacy policy.
+return [
+	// Added to the Legal module's type, never replacing a section - see
+	// \Nino\Elements::seed(). A Nino without the module reads no such key
+	'elements'	=> [ 'privacy' => 'elements/privacy.php' ],
+];

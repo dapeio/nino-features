@@ -173,6 +173,35 @@ else {
 		&& trim( substr( $theirs, 0, $cut ) ) === trim( substr( $ours, $oursAt + 3 ) ) );
 }
 
+/*	The link to the imprint and the privacy policy is a menu of the project: the
+	one the Legal module's unit creates and the base unit's footer frame outputs
+	(Nino 1.4). Every footer frame outputs it the same way, and none includes
+	html-footer-legal, the template that is no longer delivered - it answers ''
+	for a file that is not there, and the frame would show no link at all	*/
+$legalNav			= '[navigation nav="legal" id="legal__nav"][/navigation]';
+$legalProblems	= [];
+$footers			= \Nino\Modules\Design\Setup::available( $library, 'footer' );
+
+foreach( $footers as $set ) {
+
+	$markup = (string) file_get_contents( \Nino\Modules\Design\Setup::file( $library, 'footer', $set, 'template' ) );
+
+	if( substr_count( $markup, $legalNav ) !== 1 )
+		$legalProblems[] = $set. ': the legal navigation is not output exactly once';
+
+	if( str_contains( $markup, 'html-footer-legal' ) === true )
+		$legalProblems[] = $set. ': includes html-footer-legal';
+}
+
+check( 'every footer frame outputs the legal navigation and none includes html-footer-legal'. ( $legalProblems === [] ? '' : ' - '. implode( ' | ', $legalProblems ) ), $footers !== [] && $legalProblems === [] );
+
+$baseFrame = $root. '/_admin/install/library/base/templates/frame-footer.tpl';
+
+if( is_file( $baseFrame ) === true && str_contains( (string) file_get_contents( $baseFrame ), 'nav="legal"' ) === true )
+	check( 'it is the shortcode the base unit\'s own footer frame uses', str_contains( (string) file_get_contents( $baseFrame ), $legalNav ) === true );
+else
+	echo "  --  this checkout's base footer frame has no legal navigation yet, so the shortcode is not compared\n";
+
 /*	A frame is a template of the project the base unit set up, so every fill it
 	reads has to be one the unit gives a value - or one the kernel fills while
 	it renders. A key the unit stopped shipping stands on the page as itself:

@@ -34,11 +34,19 @@ return [
 				'en_US' => 'Adds the hosts of the page\'s consent-gated scripts to the policy\'s script-src.',
 				'de_DE' => 'Ergänzt die script-src der Content-Security-Policy um die Hosts der einwilligungsabhängigen Skripte auf der Seite.',
 			],
+			'/nino/legal/section' => [
+				'en_US' => 'Adds the "Cookie settings" button to the privacy policy\'s section on consent. Only fired where the Legal module is there.',
+				'de_DE' => 'Hängt die Schaltfläche „Cookie-Einstellungen“ an den Abschnitt der Datenschutzerklärung zur Einwilligung. Wird nur dort ausgelöst, wo es das Modul Legal gibt.',
+			],
 		],
 		'install' => [
 			'text/<locale>.php' => [
 				'en_US' => 'The banner\'s words, into the Text panel.',
 				'de_DE' => 'Die Worte des Banners, ins Panel Texte.',
+			],
+			'elements/privacy.php' => [
+				'en_US' => 'Its section of the privacy policy, added to the Legal module\'s type - never replacing a section. Where there is no such module, nothing happens.',
+				'de_DE' => 'Sein Abschnitt der Datenschutzerklärung, dem Typ des Moduls Legal hinzugefügt – ohne einen Abschnitt zu ersetzen. Wo es das Modul nicht gibt, passiert nichts.',
 			],
 		],
 	],
@@ -82,16 +90,16 @@ return [
 			'type'		=> 'url',
 			'label'		=> [ 'en_US' => 'Privacy policy URL', 'de_DE' => 'URL der Datenschutzerklärung' ],
 			'hint'		=> [
-				'en_US' => 'Linked from the banner text. Empty: no link is shown.',
-				'de_DE' => 'Wird im Bannertext verlinkt. Leer: es wird kein Link angezeigt.',
+				'en_US' => 'Linked from the banner text. Empty: the privacy policy of the Legal module, otherwise no link.',
+				'de_DE' => 'Wird im Bannertext verlinkt. Leer: die Datenschutzerklärung des Moduls Legal, sonst kein Link.',
 			],
 		],
 		'cookieName' => [
 			'type'				=> 'string',
 			'label'				=> [ 'en_US' => 'Cookie name', 'de_DE' => 'Cookie-Name' ],
 			'hint'				=> [
-				'en_US' => 'Name of the cookie the banner writes the consent choice into.',
-				'de_DE' => 'Name des Cookies, in das das Banner die Einwilligung schreibt.',
+				'en_US' => 'Name of the cookie the banner writes the consent choice into. The privacy policy\'s section on consent names it - change it there too.',
+				'de_DE' => 'Name des Cookies, in das das Banner die Einwilligung schreibt. Der Abschnitt zur Einwilligung in der Datenschutzerklärung nennt ihn – änderst Du den Wert, passe ihn dort mit an.',
 			],
 			'maxlength'		=> 100,
 			'pattern'			=> '/^[A-Za-z0-9_-]+$/',
@@ -101,8 +109,8 @@ return [
 			'type'		=> 'int',
 			'label'		=> [ 'en_US' => 'Consent lifetime', 'de_DE' => 'Gültigkeitsdauer' ],
 			'hint'		=> [
-				'en_US' => 'How many days the cookie is kept before the banner asks again.',
-				'de_DE' => 'Wie viele Tage das Cookie gültig bleibt, bevor das Banner erneut fragt.',
+				'en_US' => 'How many days the cookie is kept before the banner asks again. The privacy policy\'s section on consent names 180 days - change it there too.',
+				'de_DE' => 'Wie viele Tage das Cookie gültig bleibt, bevor das Banner erneut fragt. Der Abschnitt zur Einwilligung in der Datenschutzerklärung nennt 180 Tage – änderst Du den Wert, passe ihn dort mit an.',
 			],
 			'min'			=> 1,
 			'max'			=> 365,

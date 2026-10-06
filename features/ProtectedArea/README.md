@@ -273,6 +273,31 @@ session epoch, `false` where the file could not be written.
   (`\Nino\Auth`) instead - this feature does not read them, and being
   signed in to `/_admin` does not unlock a protected page either.
 
+## Privacy policy
+
+`install/elements/privacy.php`, named under `elements` in
+`install/manifest.php`, adds the section `protected` (position 800) to the
+type `privacy` of the Legal module that comes with Nino 1.4 - add-only, as
+everything an install unit does: a section an editor changed stays as it is,
+one deleted for good does not come back, and a Nino without the module ignores
+the file. The text says only what the code does, in German and English; a fact
+of the website would be a placeholder of the module
+(`#/project/company/contact/email#`), not written text.
+
+- **What it says.** A page behind the password sets a session cookie when the
+  password is right, which is deleted when the browser is closed; the failed
+  attempts are counted per address for one hour (`/data/protected.php`); the
+  legal basis is the legitimate interest in opening the area only to the
+  authorised and in protecting it against attacks (Art. 6 (1) (f) GDPR), and
+  for the cookie Section 25 (2) no. 2 TDDDG.
+
+The section is a starting point and no legal advice, like the texts of Nino's
+own Legal module: it is not tailored to any particular website and has not
+been legally reviewed, and the operator is responsible for having it checked
+and adapted before the website goes live. The notice in full is in the
+[Legal](https://github.com/dapeio/nino/blob/main/docs/development.md#legal)
+chapter of Nino's `docs/development.md`.
+
 ## Data
 
 Two files under `data/`, listed under `data` in the manifest so the

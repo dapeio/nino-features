@@ -18,7 +18,7 @@
 				<div class="nino-grid-100 nino-frame-footer-legal">
 					<p>&copy; [[/nino/date/year]] [[/project/company/general/name]]</p>
 					<div class="nino-frame-footer-utility">
-						[template /templates/html-footer-legal]
+						[navigation nav="legal" id="legal__nav"][/navigation]
 						[template /templates/html-footer-localepicker]
 					</div>
 				</div>

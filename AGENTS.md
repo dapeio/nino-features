@@ -86,8 +86,9 @@ After editing:
    validates every manifest through the checkout's kernel, runs the own
    test of every feature that checkout can run against it - a feature
    written for a newer Nino is listed with its reason and left out - then
-   `tests/keys-smoke.php` and `tests/build-smoke.php`, the publishing
-   tool's own test. It MUST pass before you report.
+   `tests/keys-smoke.php`, `tests/legal-smoke.php` and
+   `tests/build-smoke.php`, the publishing tool's own test. It MUST pass
+   before you report.
 4. With the features copied into the checkout, run `phpstan analyse` and
    `npx eslint features` there - what CI does.
 5. Report changed files, behaviour, tests, and any remaining limitation.
@@ -100,12 +101,13 @@ After editing:
 | `bin/catalogue.php` | The preview: reads every manifest through a Nino checkout and prints what the catalogue would list as JSON - key, name, description, version, `nino`, `php`, `requires`, directory - without an archive or a signature. A manifest Nino would skip fails the run. Defines `NINO_FEATURES_DIR` as this repository's `features/`, so the checkout's own directory is never what it reads. `bin/check.sh`, CI and the release workflow use it as the manifest check |
 | `bin/build.php` | The publishing tool: `php bin/build.php <nino-checkout> <out-dir> [--base-url …] [--key private.pem] [--only <key>]`. Validates every manifest the same way, builds `<out-dir>/<key>-<version>.tar.gz` per feature as a plain ustar tar written by the script itself, every entry stamped with one fixed time - exactly one directory `<Name>/`, without `tests/`, `.git*`, `.DS_Store` and editor leftovers, sorted so a build is reproducible - and merges the entries into `<out-dir>/catalogue.json` in format 1 (see `\Nino\Catalogue` in Nino), signing it with `--key`. An archive that already exists is never rebuilt or overwritten and its entry is kept: a published version is immutable |
 | `bin/applicable.php` | `php bin/applicable.php <nino>` prints the directories of the features whose `nino` constraint the checkout's version satisfies (`\Nino\Features::satisfies()` of that checkout), one per line, and on STDERR the others with their reason (`Seo: skipped on Nino 1.3.2: needs ^1.4`). A feature written for a newer Nino claims nothing about an older one. `bin/check.sh`, CI, `tests/build-smoke.php` and `tests/keys-smoke.php` all ask it, so the question has one answer. `bin/catalogue.php` does not: it describes every feature of this repository |
-| `bin/check.sh` | Copies every feature the checkout can run (`bin/applicable.php`) into it (`../nino` or `NINO_ROOT`), runs `bin/catalogue.php`, those features' tests, `tests/keys-smoke.php`, `tests/build-smoke.php`, `tests/publish-smoke.php` and `tests/release-smoke.php`, removes the copies again. A directory the checkout already carries is left alone |
+| `bin/check.sh` | Copies every feature the checkout can run (`bin/applicable.php`) into it (`../nino` or `NINO_ROOT`), runs `bin/catalogue.php`, those features' tests, `tests/keys-smoke.php`, `tests/legal-smoke.php`, `tests/build-smoke.php`, `tests/publish-smoke.php` and `tests/release-smoke.php`, removes the copies again. A directory the checkout already carries is left alone |
 | `tests/keys-smoke.php` | The text key grammar over every feature. Part 1, against any checkout: what an install unit writes follows `/feature/<key>/<part>/<name>` or `/template/<category>/<part>/<name>`, reads the same in both languages, blacklists what its own code fills; no old key family is left in a shipped file; the key literals in the code name a namespace. Part 2, against a Nino that has `\Nino\Modules\Template::category()` and for the features `bin/applicable.php` names: every key a template reads is a runtime fill, a key of the system or delivered, a template reads template keys of its own category or of `common` only, a template the kernel delivers too is byte for byte the kernel's. The vocabulary of the workbench is looked up where the checkout has one, as a note |
+| `tests/legal-smoke.php` | The sections of the privacy policy the features bring (`install/elements/privacy.php`, section 4c). Part 1, against any checkout: each file is named in the manifest of its unit, brings no type of its own, has the same sections in `*`, `de_DE` and `en_US`, ids that are the feature's key or the key and a name, a position in the feature's range, only `p`, `br`, `ul`, `ol`, `li`, `strong`, `em` and `a` with a `#privacy-<id>` or `https://` link, no `&`, entity or `[`, only placeholders Nino's Legal module replaces, and a German text that says Du. Part 2, against a Nino that has `\Nino\Modules\Legal`: the module's unit applied in a sandbox, then each feature's add-only - the sections are there, a second run changes nothing, no id is the module's, every anchor names a section, the field's own model leaves every text as it is, `Legal::contributions()` names them. Otherwise a line starting `note` |
 | `tests/build-smoke.php` | The publishing tool's own test over Nino's harness: a keypair per run, a signed build into a temporary directory, the archives' contents, the catalogue's fields, the signature, a second run that rebuilds nothing, `--only`, the merge, the refusals - and, where the checkout has `\Nino\Catalogue`, an installation of the archives through it |
 | `bin/release.sh` | A release without GitHub: the workflow's steps on your own machine - the feature's version (and changelog entry where there is one), its tests where it has some against `NINO_ROOT`, the published catalogue fetched into `dist/` (`--offline` skips that), `bin/build.php` with `NINO_CATALOGUE_KEY`, one POST to `NINO_PUBLISH_URL` with `NINO_CATALOGUE_TOKEN` (`--dry-run` stops before it). `--strict` (or `NINO_RELEASE_STRICT=1`) requires the changelog entry, README and test. Every variable the script reads carries the `NINO_` prefix; `RELEASE_STRICT` without it is the workflow's repository variable, and `PUBLISH_URL` and `PUBLISH_TOKEN` are its secrets. `tests/release-smoke.php` drives it against `server/publish.php` on php's built-in server |
 | `tests/publish-smoke.php` | The endpoint's own test: every refusal without a file written, a release, the next release keeping what is published, other bytes under a published name refused, the configuration from environment and file, and one real request through php's built-in server |
-| `.github/workflows/ci.yml` | The matrix: Nino `main` and Nino's latest tag. Lint, copy what the checkout can run, validate, those features' tests, `tests/keys-smoke.php`, `tests/build-smoke.php`, `tests/publish-smoke.php`, Nino's `tests/features-smoke.php`, PHPStan, ESLint; `catalogue.json` kept as an artifact of the `main` run |
+| `.github/workflows/ci.yml` | The matrix: Nino `main` and Nino's latest tag. Lint, copy what the checkout can run, validate, those features' tests, `tests/keys-smoke.php`, `tests/legal-smoke.php`, `tests/build-smoke.php`, `tests/publish-smoke.php`, Nino's `tests/features-smoke.php`, PHPStan, ESLint; `catalogue.json` kept as an artifact of the `main` run |
 | `.github/workflows/release.yml` | Publishes one feature version to catalogue.getnino.dev when the tag `<key>-<version>` is pushed (or on `workflow_dispatch` with `key` and `version`): checks the tag against the manifest (and the changelog where there is one), runs the feature's tests where it has some (`RELEASE_STRICT=1` as a repository variable makes changelog, README and test required), fetches the published catalogue, runs `bin/build.php --only <key> --key …` with the key from the secret `CATALOGUE_SIGNING_KEY`, and posts catalogue, signature and the new archive to `server/publish.php` with `curl` (`PUBLISH_URL`, `PUBLISH_TOKEN`; the variable `CATALOGUE_URL` names another base url). No ssh. README.md, Publishing, is the manual |
 | `server/publish.php` | The endpoint the workflow posts to, deployed into the directory the catalogue is served from (a container with php): checks the token (`NINO_CATALOGUE_TOKEN`), verifies the catalogue's signature with the public key (`NINO_CATALOGUE_PUBKEY`, the path of the key file), holds every uploaded archive against the catalogue's digest and size, refuses a catalogue naming an archive that is neither published nor uploaded, never overwrites a published archive (409), then writes archives, catalogue and signature through temporary files. Pure functions under the cli, so `tests/publish-smoke.php` drives it as a library and once through `php -S` |
 | `README.md`, `README.de.md` | The catalogue for humans: what it is, the features table, install, develop, write, versions, publishing, outlook. English is the primary version, German the author's; both are published together with identical commands and paths |
@@ -130,6 +132,7 @@ because a feature here is published on its own:
 | `text/<locale>.php` | the panel's fills for every interface language Nino ships, `en_US` and `de_DE` |
 | `templates/*.tpl` | the feature's own markup, when it draws anything: see section 4a. Not the same thing as `install/templates/`, which are the project's files, copied once |
 | `install/` | the unit, when the feature ships templates, texts, routes or config defaults for the website; `install/manifest.php` in the wizard's library format |
+| `install/elements/privacy.php` | the feature's section of the privacy policy, named under `elements` in the unit's manifest - **required** for a feature that processes personal data or loads something from a third party, section 4c |
 | `tests/<key>-smoke.php` | optional; when present: the feature's own test over Nino's harness, section 5 |
 | `README.md` | optional; when present: English, in the shape of the two existing ones: what it does, routes, panel and permission, install unit, settings, data and restore, configuration, tests. Every name in it exists in the code |
 | `CHANGELOG.md` | optional; when present: `## <version> — <date>` per release, newest first |
@@ -238,6 +241,60 @@ English, with no language in them and no number as a name.
 `tests/keys-smoke.php` holds the catalogue to this. It does not accept an old
 key form anywhere in a shipped file: a form that is renamed in Nino is renamed
 here, in code, templates, texts and documents, in the same change.
+
+## 4c. The privacy policy section
+
+A feature that processes personal data - it stores something about a visitor,
+sets a cookie, counts by address - or loads something from a third party
+brings its section of the privacy policy: `install/elements/privacy.php`,
+named under `elements` in its unit's manifest (`install/manifest.php`, which a
+feature with nothing else to install carries just for this). Nino 1.4's Legal
+module shows it in the type `privacy`; an older Nino ignores the key, so no
+`nino` constraint changes for it. The recipe is in Nino's
+[feature recipe](https://github.com/dapeio/nino/blob/main/docs/recipes/feature.md)
+and its [Features](https://github.com/dapeio/nino/blob/main/docs/features.md)
+manual; what this catalogue adds:
+
+- **Add-only, and never a type.** The file has the buckets `*`, `de_DE` and
+  `en_US` and nothing else - no `model`, no `title`. `\Nino\Elements::seed()`
+  adds a section that is not there and never replaces one, so a section an
+  editor changed stays and one deleted for good does not come back.
+- **Ids and positions.** An id is the feature's `key` or the key and a name
+  (`embed`, `embed-youtube`), the same in all three buckets. `order` is a
+  position in the range of what the section is about: cookies and consent
+  400-499, contact, forms and mail 500-599, statistics 600-699, embedded
+  content 700-799, further features 800-899 - the module keeps 100-399 and
+  900-999, and has sections at 400, 410, 500 and 510, so those two ranges are
+  shared with it. The table of ranges is in `tests/legal-smoke.php`; a new feature
+  adds its row.
+- **Own words, German and English.** No sentence from a generator of legal
+  texts or from a provider's privacy policy: a source line would be needed
+  then. German addresses the reader as Du, capitalised. State only what the
+  code does - the name and lifetime of a cookie, what is stored, for how long,
+  which host is called - and let a placeholder name a fact of the website
+  (`#/project/company/contact/email#`, only keys below `/project/company/` and
+  `/project/website/general/`). Check every statement of fact against the code
+  when you write it, and against the provider's own page for a provider.
+- **The form the field gives.** The text is already what the sanitizer returns
+  for a field with `blocks`: `p`, `br`, `ul`, `ol`, `li`, `strong`, `em` and
+  `a`, a link only to `#privacy-<id>` or `https://`, no `&`, no entity, no `[`
+  - or the form in the Elements panel reports an untouched section as unsaved.
+- **Numbers from settings.** A section may name the default of a setting (180
+  days, seven days). Whoever changes the setting changes the section; the README
+  says so.
+- **The README** has a section "Privacy policy" that says what the file adds,
+  what the text assumes, and - in every one of them - that the section is a
+  starting point and no legal advice, with a link to the notice in Nino's
+  `docs/development.md` ("Legal"). The `CHANGELOG.md` says it under Added.
+- **No dependency on the module.** A feature does not require `Legal`: the
+  `elements` key is read by a Nino that has it and ignored by one that does
+  not. What a feature does with the module itself - Consent's button, which a
+  listener on `/nino/legal/section` appends to its own section, and its link
+  to `\Nino\Modules\Legal::url()` - sits behind `class_exists()`, never
+  `method_exists()`, which PHPStan reports as always false on a Nino without
+  the class and as always true on one with it.
+
+`tests/legal-smoke.php` holds the files to this.
 
 ## 5. How a test is written
 

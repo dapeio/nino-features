@@ -171,10 +171,37 @@ check( 'the port may be 0, which is what it is until somebody sets one', is_arra
 \Nino\AppData::writeContentData( $appData, [ '/nino/modules', '/nino/locales/available', '/nino/locales/native' ] );
 ninoWarnings();
 
+// Where this kernel has the Legal module: the type its unit creates, which is what
+// the feature's section is added to when it is activated below
+$legalFile	= $root. '/_nino/Nino/Modules/Legal/install/elements/privacy.php';
+$hasLegal		= class_exists( '\\Nino\\Modules\\Legal' ) === true && is_file( $legalFile ) === true;
+
+if( $hasLegal === true )
+	check( 'the module\'s type is seeded', \Nino\Elements::seed( $appData, 'privacy', include $legalFile, [ 'de_DE', 'en_US' ] ) === true );
+
 check( 'the Features registry lists it, inactive', ( \Nino\Features::get( $appData, 'mailer' )['active'] ?? null ) === false );
 check( 'activation succeeds', \Nino\Features::activate( $appData, 'mailer' ) === true );
 check( 'the class is listed and the version recorded', in_array( '\\Nino\\Modules\\Mailer', \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/modules'], true ) === true
 	&& \Nino\Features::get( $appData, 'mailer' )['installed'] === $manifest['version'] );
+check( 'its unit carries the feature\'s section of the privacy policy, and nothing else', array_keys( include $dir. '/install/manifest.php' ) === [ 'elements' ]
+	&& ( include $dir. '/install/manifest.php' )['elements'] === [ 'privacy' => 'elements/privacy.php' ] && is_file( $dir. '/install/elements/privacy.php' ) === true );
+
+if( $hasLegal === false )
+	echo "  note - this Nino has no \\Nino\\Modules\\Legal: the section is not added to a type here, tests/legal-smoke.php of the catalogue says what it can\n";
+else {
+	$privacyOf = static fn( string $locale ): array => (array) \Nino\Elements::getElement( $appData, '/privacy/mailer', $locale, false );
+	check( 'activation added the section "mailer" to the module\'s type, in both languages and at its position', ( $privacyOf( 'de_DE' )['title'] ?? null ) === 'E-Mail-Versand'
+		&& ( $privacyOf( 'en_US' )['title'] ?? null ) === 'Sending emails' && ( $privacyOf( 'en_US' )['order'] ?? null ) === 540 );
+
+	// An editor's change stays, and the next activation adds nothing
+	\Nino\Filesystem::mutate( $appData, '/elements/privacy.php', static function( array $type ): array {
+		$type['de_DE']['mailer']['title'] = 'Vom Redakteur geändert';
+		return $type;
+	}, [] );
+	$typeBefore = \Nino\Filesystem::getFileContent( $appData, '/elements/privacy.php', [] );
+	check( 'activating again leaves the type as it is - an edited section stays and nothing is added twice', \Nino\Features::activate( $appData, 'mailer' ) === true
+		&& \Nino\Filesystem::getFileContent( $appData, '/elements/privacy.php', [] ) === $typeBefore );
+}
 check( 'the settings answer their defaults', \Nino\Features::settings( $appData, 'mailer' ) === [
 	'host' => '', 'port' => 0, 'encryption' => 'starttls', 'username' => '', 'password' => '',
 	'from' => '', 'fromName' => '', 'timeout' => 15, 'verify' => true,

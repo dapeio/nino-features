@@ -142,15 +142,42 @@ check( 'it owns nothing under data/ - there is nothing of its own to back up', i
 check( 'its settings are the three guards and nothing else', is_array( $manifest ) === true
 	&& array_keys( $manifest['settings'] ) === [ 'rateLimit', 'minSeconds', 'blocklist' ] );
 check( 'it needs no other feature and no php extension', is_array( $manifest ) === true && $manifest['requires'] === [] && ( $manifest['php']['ext'] ?? [] ) === [] );
-check( 'and it brings no install unit: the mail templates a form points at are the kernel\'s own', is_dir( $dir. '/install' ) === false );
+check( 'it brings an install unit that carries only the section of the privacy policy: the mail templates a form points at are the kernel\'s own', is_dir( $dir. '/install/templates' ) === false && is_dir( $dir. '/install/text' ) === false );
 
 \Nino\AppData::writeContentData( $appData, [ '/nino/modules', '/nino/locales/available', '/nino/locales/native' ] );
 ninoWarnings();
+
+// Where this kernel has the Legal module: the type its unit creates, which is what
+// the feature's section is added to when it is activated below
+$legalFile	= $root. '/_nino/Nino/Modules/Legal/install/elements/privacy.php';
+$hasLegal		= class_exists( '\\Nino\\Modules\\Legal' ) === true && is_file( $legalFile ) === true;
+
+if( $hasLegal === true )
+	check( 'the module\'s type is seeded', \Nino\Elements::seed( $appData, 'privacy', include $legalFile, [ 'de_DE', 'en_US' ] ) === true );
 
 check( 'the Features registry lists it, inactive', ( \Nino\Features::get( $appData, 'forms' )['active'] ?? null ) === false );
 check( 'activation succeeds', \Nino\Features::activate( $appData, 'forms' ) === true );
 check( 'the class is listed in /nino/modules and the version recorded', in_array( '\\Nino\\Modules\\Forms', \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/modules'], true ) === true
 	&& \Nino\Features::get( $appData, 'forms' )['installed'] === $manifest['version'] );
+check( 'its unit carries the feature\'s section of the privacy policy, and nothing else', array_keys( include $dir. '/install/manifest.php' ) === [ 'elements' ]
+	&& ( include $dir. '/install/manifest.php' )['elements'] === [ 'privacy' => 'elements/privacy.php' ] && is_file( $dir. '/install/elements/privacy.php' ) === true );
+
+if( $hasLegal === false )
+	echo "  note - this Nino has no \\Nino\\Modules\\Legal: the section is not added to a type here, tests/legal-smoke.php of the catalogue says what it can\n";
+else {
+	$privacyOf = static fn( string $locale ): array => (array) \Nino\Elements::getElement( $appData, '/privacy/forms', $locale, false );
+	check( 'activation added the section "forms" to the module\'s type, in both languages and at its position', ( $privacyOf( 'de_DE' )['title'] ?? null ) === 'Weitere Formulare'
+		&& ( $privacyOf( 'en_US' )['title'] ?? null ) === 'Other forms' && ( $privacyOf( 'en_US' )['order'] ?? null ) === 520 );
+
+	// An editor's change stays, and the next activation adds nothing
+	\Nino\Filesystem::mutate( $appData, '/elements/privacy.php', static function( array $type ): array {
+		$type['de_DE']['forms']['title'] = 'Vom Redakteur geändert';
+		return $type;
+	}, [] );
+	$typeBefore = \Nino\Filesystem::getFileContent( $appData, '/elements/privacy.php', [] );
+	check( 'activating again leaves the type as it is - an edited section stays and nothing is added twice', \Nino\Features::activate( $appData, 'forms' ) === true
+		&& \Nino\Filesystem::getFileContent( $appData, '/elements/privacy.php', [] ) === $typeBefore );
+}
 
 \Nino\Modules\Forms::init( $appData );
 

@@ -20,7 +20,7 @@ route.
 | Reusable shell | `html-header.tpl` | Header/footer/layout include |
 | Reusable section | `section-newsletter.tpl` | Shared content included in pages |
 | Mail template | `mail-owner.tpl` | HTML email structure |
-| Locale variant | `page-legal.de_DE.tpl` | Structure that truly differs per locale |
+| Locale variant | `page-pricing.de_DE.tpl` | Structure that truly differs per locale |
 
 Only `templates/page-*.tpl` files appear as editable documents in
 the Templates panel. Do not prefix reusable includes with `page-`.
@@ -498,17 +498,16 @@ use locale-keyed files:
 
 ```php
 'routes' => [
-	'GET://legal' => [
-		'uri' => '/legal',
+	'GET://pricing' => [
+		'uri' => '/pricing',
 		'body'
-			=> '[template /templates/page-legal.[[/nino/http/response/locale]]]',
-		'navs' => [ 'footer' => 5 ],
+			=> '[template /templates/page-pricing.[[/nino/http/response/locale]]]',
+		'navs' => [ 'main' => 4 ],
 	],
 ],
 'templates' => [
-	'de_DE' => 'page-legal.de_DE.tpl',
-	'en_US' => 'page-legal.en_US.tpl',
-	'html-footer-legal.tpl',
+	'de_DE' => 'page-pricing.de_DE.tpl',
+	'en_US' => 'page-pricing.en_US.tpl',
 ],
 ```
 

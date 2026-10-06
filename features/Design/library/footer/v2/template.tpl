@@ -34,7 +34,7 @@
 						<p>&copy; [[/nino/date/year]] [[/project/company/general/name]]</p>
 					</div>
 					<div class="nino-grid-100 nino-grid-l-50 nino-pt-1 nino-pb-1">
-						[template /templates/html-footer-legal]
+						[navigation nav="legal" id="legal__nav"][/navigation]
 					</div>
 					<div class="nino-grid-100 nino-grid-l-25 nino-pb-1">
 						[template /templates/html-footer-localepicker]

@@ -23,6 +23,12 @@ A release is the tag `protected-<version>` of dapeio/nino-features.
 
 ### Added
 
+- **It brings its section of the privacy policy.** The install unit adds the
+  section `protected` (the session cookie, the attempts counted per address and
+  hour, the legal bases) to the type `privacy` of Nino 1.4's Legal module -
+  add-only, and a Nino without the module ignores the file. It is a starting
+  point, not legal advice - see "Legal" in Nino's `docs/development.md`.
+
 - **A panel for the password and the pages, with its own permission.**
   **Protected area** in the Features group (`/_admin/protected/manage`, offered
   on the Users panel's roles tab) sets a new password - typed twice, 8 to 200

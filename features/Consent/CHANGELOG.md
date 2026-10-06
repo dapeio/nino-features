@@ -12,6 +12,22 @@ A release is the tag `consent-<version>` of dapeio/nino-features.
   feature to an installation that could not then install it. `^1.3` names
   only a kernel that can read the manifest.
 
+### Added
+
+- **It brings its section of the privacy policy, links the policy by itself and
+  puts its button there.** The install unit adds the section `consent` (cookie
+  `nino_consent`, 180 days, the legal bases, withdrawal) to the type `privacy`
+  of Nino 1.4's Legal module - add-only, so a section an editor changed or
+  deleted is not touched again - and a Nino without the module ignores the file.
+  With no `policyUrl` the banner links the module's privacy policy in the
+  visitor's language; an address in the settings still wins, and without the
+  module no link is shown, as before. A listener on `/nino/legal/section`
+  appends the "Cookie settings" button to that section, so the withdrawal the
+  text speaks of can be done where it is described. The text names the cookie
+  and the 180 days as the settings' defaults: whoever changes `cookieName` or
+  `days` changes the section too. It is a starting point, not legal advice - see
+  "Legal" in Nino's `docs/development.md`. `nino` stays `^1.3`.
+
 ### Changed
 
 - **The text keys follow Nino's grammar.** `/consent/title`, `text` and

@@ -6,13 +6,15 @@
 # has, and removed again afterwards; the others are listed with their reason.
 # Then tests/keys-smoke.php holds every feature's text keys to the grammar of
 # Nino's - what it can check of them against this checkout - and
-# tests/markup-smoke.php holds the catalogue to the one rule it shares with the
-# framework - markup belongs in a template, not in php - tests/language-smoke.php
-# to the other one, which is that it is written in English, and
-# tests/escaping-smoke.php to the escape that keeps what it cannot encode, and
-# tests/panels-smoke.php to how a panel's script reaches the workbench. Then
-# the publishing tool's own test, tests/build-smoke.php, builds a signed
-# catalogue into a directory of its own against the same checkout, and
+# tests/legal-smoke.php the sections of the privacy policy the features bring
+# to their form, adding them to the Legal module's type where the checkout has
+# the module; tests/markup-smoke.php holds the catalogue to the one rule it
+# shares with the framework - markup belongs in a template, not in php -
+# tests/language-smoke.php to the other one, which is that it is written in
+# English, and tests/escaping-smoke.php to the escape that keeps what it cannot
+# encode, and tests/panels-smoke.php to how a panel's script reaches the
+# workbench. Then the publishing tool's own test, tests/build-smoke.php, builds
+# a signed catalogue into a directory of its own against the same checkout, and
 # tests/publish-smoke.php drives the endpoint a release is posted to.
 #
 # Usage: bin/check.sh            (../nino)
@@ -59,6 +61,7 @@ for test in "$root"/features/*/tests/*-smoke.php; do
 done
 
 NINO_ROOT="$root" php "$here/tests/keys-smoke.php"
+NINO_ROOT="$root" php "$here/tests/legal-smoke.php"
 php "$here/tests/markup-smoke.php"
 php "$here/tests/language-smoke.php"
 php "$here/tests/escaping-smoke.php"

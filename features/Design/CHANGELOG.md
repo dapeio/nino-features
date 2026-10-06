@@ -200,6 +200,15 @@ A release is the tag `design-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The footer frames show the legal navigation.** The eleven footer frames
+  output `[navigation nav="legal" id="legal__nav"][/navigation]` where they
+  included `[template /templates/html-footer-legal]`, a template Nino 1.4 no
+  longer delivers: the link to the imprint and the privacy policy is the menu
+  `legal` now, which the setup wizard creates with both pages and the
+  Navigations panel keeps. The footer stylesheets are unchanged: the menu is a
+  child of the same container the single link was. Needs Nino `^1.4`, which the
+  feature already names.
+
 - **The frames are `frame-header.tpl` and `frame-footer.tpl`, and read Nino
   1.4's text keys.** Applying a set writes the project's
   `templates/frame-header.tpl` and `frame-footer.tpl` (`theme.header.tpl` and

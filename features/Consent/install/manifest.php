@@ -7,5 +7,10 @@ declare(strict_types=1);
 // into the project's own page frame and [consent-settings] into the
 // footer by hand, the way docs/recipes/feature.md's own example leaves a
 // feature's markup to the project. All this unit carries is the banner's
-// texts, merged into text/<locale>.php for every available locale.
-return [];
+// texts, merged into text/<locale>.php for every available locale, and the
+// feature's section of the privacy policy.
+return [
+	// Added to the Legal module's type, never replacing a section - see
+	// \Nino\Elements::seed(). A Nino without the module reads no such key
+	'elements'	=> [ 'privacy' => 'elements/privacy.php' ],
+];

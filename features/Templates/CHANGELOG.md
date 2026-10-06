@@ -37,6 +37,13 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The recipe's example of a locale-specific template is a pricing page.** It
+  was the legal page with `html-footer-legal.tpl`, which Nino 1.4 no longer
+  delivers: the link in the footer is the menu `legal` now, and the pages are the
+  Legal module's. `demo-catalogue-smoke.php` counts `nino-legal-section`, the
+  class the module draws every section in, among the classes rendered
+  elsewhere - where Nino.css has it. Nothing else changed.
+
 - **The keys it writes and reads follow Nino 1.4's grammar, and a section only
   writes its own template's.** A section's keys are
   `/template/<category>/<section>/<name>`, the category being the page

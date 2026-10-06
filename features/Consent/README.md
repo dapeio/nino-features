@@ -39,10 +39,12 @@ bottom-fixed element belongs in your markup; it is `position: fixed` in
 [consent-settings]
 ```
 
-renders a small text button that reopens the banner - `[[/feature/consent/action/open]]`,
-"Cookie settings" - meant for the footer, next to the imprint/privacy
-links. On a page that has no banner the button hides itself: it would have
-nothing to open.
+renders a small text button that reopens the banner -
+`[[/feature/consent/action/open]]`, "Cookie settings" - meant for the
+footer, next to the imprint/privacy links. (The privacy policy of Nino 1.4's
+Legal module carries one of its own, see [Privacy policy](#privacy-policy).)
+On a page that has no banner the button hides itself: it would have nothing
+to open.
 
 Both are ordinary shortcodes (`\Nino\Html::addShortcode()`), registered
 in `init()` while the feature is active.
@@ -86,8 +88,10 @@ in `init()` while the feature is active.
   enabled; `necessary` always renders first, checked and disabled. A
   category the settings did not switch on is neither shown nor storable -
   its `<label>` simply is not in the markup.
-- The privacy link (`<a class="nino-consent-link">`) only renders when the
-  `policyUrl` setting is not empty.
+- The privacy link (`<a class="nino-consent-link">`) only renders when there
+  is an address: the `policyUrl` setting, or - with the setting empty - the
+  privacy policy of Nino 1.4's Legal module, where it is there (see
+  [Privacy policy](#privacy-policy)).
 - `data-consent-cookie`/`data-consent-days` carry the `cookieName`/`days`
   settings onto the banner itself, because `consent.css`/`consent.js` are
   static assets, never rendered through the fill engine (see
@@ -105,7 +109,7 @@ in `init()` while the feature is active.
 | `statistics` | bool | `false` | show the statistics category and allow it to be stored |
 | `marketing` | bool | `false` | show the marketing category and allow it to be stored |
 | `external` | bool | `false` | show the external media category (maps, videos, ...) and allow it to be stored |
-| `policyUrl` | url | `''` | linked from the banner text; empty renders no link |
+| `policyUrl` | url | `''` | linked from the banner text; empty: the privacy policy of the Legal module where there is one, otherwise no link |
 | `cookieName` | string | `nino_consent` | the cookie `consent.js` reads and writes; `/^[A-Za-z0-9_-]+$/` |
 | `days` | int | `180` | how many days the cookie is kept (1..365) |
 
@@ -282,7 +286,8 @@ Text panel from then on:
 the imprint, or any other markup, can be added straight into
 `[[/feature/consent/banner/text]]` from the Text panel - fills are not escaped, so a
 project is free to put a second `<a>` there; this feature only ever renders
-the one privacy link it has a dedicated setting for.
+the one privacy link it has a dedicated setting for (or, with that setting
+empty, the Legal module's page).
 
 ## Asset bundling and the page cache
 
@@ -339,6 +344,45 @@ without this feature. Scripts of the project that were gated on
 `Nino.ui.cookieConsent` listen for the `nino:consent` event (or read
 `<html data-consent>`) instead - see above.
 
+## Privacy policy
+
+`install/elements/privacy.php`, named under `elements` in
+`install/manifest.php`, adds the section `consent` (position 420) to the type
+`privacy` of the Legal module that comes with Nino 1.4 - add-only, as
+everything an install unit does: a section an editor changed stays as it is,
+one deleted for good does not come back, and a Nino without the module ignores
+the file. The text says only what the code does, in German and English; a fact
+of the website would be a placeholder of the module
+(`#/project/company/contact/email#`), not written text.
+
+- **What it says.** The choice is kept for 180 days in the cookie
+  `nino_consent`, which holds nothing but the choice; the legal bases; and
+  that the visitor can change or withdraw it at any time with the "Cookie
+  settings" button at the end of the section.
+- **The button.** `init()` registers a listener on `/nino/legal/section`, the
+  callback the Legal module fires for every section it draws, and it appends
+  the template of `[consent-settings]` to the section `consent` of the type
+  `privacy` - to that one, and only while this feature is active. Where there
+  is no Legal module nobody fires the callback, and nothing happens.
+- **The link in the banner.** With the setting `policyUrl` empty, the banner
+  links the privacy policy of the Legal module, `\Nino\Modules\Legal::url()`,
+  in the visitor's language - when the module is there and its page has a
+  route. An address in the setting wins. The call is guarded by
+  `class_exists()` and not by `method_exists()`, which PHPStan reads as always
+  false on a Nino without the class and as always true on one with it; on Nino
+  1.3 there is no such class, and no link is shown unless the setting names
+  one, as before.
+- **The numbers.** The cookie name and the 180 days are the defaults of the
+  settings `cookieName` and `days`. Whoever changes a setting changes the
+  section in the Elements panel too.
+
+The section is a starting point and no legal advice, like the texts of Nino's
+own Legal module: it is not tailored to any particular website and has not
+been legally reviewed, and the operator is responsible for having it checked
+and adapted before the website goes live. The notice in full is in the
+[Legal](https://github.com/dapeio/nino/blob/main/docs/development.md#legal)
+chapter of Nino's `docs/development.md`.
+
 ## What it does not do
 
 - No consent logging: the feature does not record *that* a visitor
@@ -364,7 +408,9 @@ key survives), the shortcodes registering in `init()`, the real
 `\Nino\Html::addAsset()`/`[assets ...]` bundling end to end (the generated
 `/.cache/style.css`/`script.js` genuinely carry this feature's files),
 `[consent]` rendering only the categories the settings enabled, as a dialog,
-and the policy link only when `policyUrl` is set, `[consent-settings]`,
+and the policy link only when `policyUrl` is set - or, with it empty, the
+Legal module's privacy page where the checkout has the module - the button in
+the privacy policy's own section, `[consent-settings]`,
 `allowed()` reading the configured cookie name and refusing a disabled
 category or an unknown one regardless of what an old cookie says, the
 Content-Security-Policy gaining the host of an offered category's placeholder

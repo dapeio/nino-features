@@ -108,8 +108,12 @@ back. Both guard themselves on their first line, because the routing does not: a
 panel that is not drawn is not a panel that cannot be posted to.
 
 **`install/manifest.php`** — what activation puts in the project, add-only. The
-whole vocabulary is `routes`, `templates`, `files`, `elementTypes`, `blacklist`
-and `config`, plus the text files beside it. Activating twice changes nothing.
+whole vocabulary is `routes`, `templates`, `files`, `elementTypes`, `elements`,
+`blacklist` and `config`, plus the text files beside it. `elements` (Nino 1.4)
+adds elements to a type the project has, or creates the type when the file
+brings a model - the way a feature that processes
+personal data brings its section of the privacy policy; Hello has nothing of the
+kind to say. Activating twice changes nothing.
 
 ## Two rules that are never optional
 

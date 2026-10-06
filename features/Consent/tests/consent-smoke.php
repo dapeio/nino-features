@@ -12,7 +12,10 @@ declare(strict_types=1);
  *											settings name, the asset bundling mechanism
  *											(\Nino\Html::addAsset() into the site's own bundles),
  *											the Content-Security-Policy gaining the hosts of the
- *											page's placeholders, and deactivation. The browser
+ *											page's placeholders, the privacy policy of Nino's Legal
+ *											module (the banner's link when no address is set, the
+ *											settings button in the policy's own section - both only
+ *											where the module is there) and deactivation. The browser
  *											half is consent-js-smoke.js beside this file, which
  *											this test runs too where node is on the path.
  *											Travels with the feature and runs against the
@@ -83,8 +86,10 @@ check( 'it declares the six settings, every optional category off by default', i
 check( 'the cookie name defaults to "nino_consent" and is pattern-checked', $manifest['settings']['cookieName']['default'] === 'nino_consent' && $manifest['settings']['cookieName']['pattern'] === '/^[A-Za-z0-9_-]+$/' );
 check( 'the lifetime defaults to 180 days, bounded 1..365', $manifest['settings']['days']['default'] === 180 && $manifest['settings']['days']['min'] === 1 && $manifest['settings']['days']['max'] === 365 );
 check( 'it keeps no data of its own - the choice lives in the browser', $manifest['data'] === [] );
-check( 'it declares the one callback it registers - the output phase, where the finished response is in hand',
-	array_keys( $manifest['manual']['callbacks'] ) === [ '/nino/http/output' ] );
+check( 'it declares the two callbacks it registers - the output phase, where the finished response is in hand, and the Legal module\'s section',
+	array_keys( $manifest['manual']['callbacks'] ) === [ '/nino/http/output', '/nino/legal/section' ] );
+check( 'its unit brings the feature\'s section of the privacy policy, and says so', ( include dirname( __DIR__ ). '/install/manifest.php' )['elements'] === [ 'privacy' => 'elements/privacy.php' ]
+	&& isset( $manifest['manual']['install']['elements/privacy.php'] ) === true );
 
 // A project's config.php, written the way the wizard leaves it, so the
 // activation has something to add its class to
@@ -130,6 +135,8 @@ check( 'init registers [consent]', isset( $appData['./nino/html/shortcodes']['co
 check( 'init registers [consent-settings]', isset( $appData['./nino/html/shortcodes']['consent-settings'] ) === true );
 check( 'init hooks the output phase, where the body is rendered - the response phase runs before it',
 	in_array( [ \Nino\Modules\Consent::class, 'callbackOutput' ], array_merge( ...( $appData['./nino/callbacks']['/nino/http/output'] ?? [ [] ] ) ), true ) === true );
+check( 'init hooks the Legal module\'s section, which only that module ever fires',
+	in_array( [ \Nino\Modules\Consent::class, 'callbackLegalSection' ], array_merge( ...( $appData['./nino/callbacks']['/nino/legal/section'] ?? [ [] ] ) ), true ) === true );
 check( 'consent.css joined the project\'s own /.cache/style.css bundle - the same target Nino.css already sits in', in_array( '/features/Consent/assets/consent.css', \Nino\Html::getAssets( $appData, '/.cache/style.css' ), true ) === true );
 check( 'consent.js joined the project\'s own /.cache/script.js bundle - so it runs on every page that bundle loads on, [consent] or not', in_array( '/features/Consent/assets/consent.js', \Nino\Html::getAssets( $appData, '/.cache/script.js' ), true ) === true );
 
@@ -341,6 +348,74 @@ check( 'an array body and a response with no policy are untouched',
 check( 'switching the category on is what lets its placeholders count',
 	str_contains( consentPolicy( $appData, $request, '<script type="text/plain" data-consent="marketing" data-src="https://ads.example/a.js"></script>', $jstext ), 'https://ads.example' ) === true );
 \Nino\Features::saveSettings( $appData, 'consent', [ 'statistics' => 'true', 'marketing' => 'true' ] );
+
+echo "\n";
+
+
+// --- The privacy policy ---------------------------------------------------------------
+
+echo "The privacy policy - the banner's link without a policyUrl, and the button in the policy's own section\n";
+
+$legalClass = '\\Nino\\Modules\\Legal';
+$openButton = '<button type="button" class="nino-consent-open">Cookie settings</button>';
+// What the listener appends is the template as it is - the fill in it is resolved with the rest of the page
+$openTemplate = '<button type="button" class="nino-consent-open">[[/feature/consent/action/open]]</button>';
+
+\Nino\Features::saveSettings( $appData, 'consent', [ 'policyUrl' => '' ] );
+
+// What the listener does with a section, whether or not the module is there to fire it
+$section = [ 'type' => 'privacy', 'id' => 'consent', 'html' => '<p>Text</p>' ];
+\Nino\Modules\Consent::callbackLegalSection( $appData, $section );
+check( 'the button is appended to the privacy policy\'s section "consent", and to nothing else of it', $section === [ 'type' => 'privacy', 'id' => 'consent', 'html' => '<p>Text</p>'. $openTemplate ] );
+
+foreach( [ 'another section' => [ 'privacy', 'forms' ], 'the imprint' => [ 'legal', 'consent' ] ] as $what => $of ) {
+	$other = [ 'type' => $of[0], 'id' => $of[1], 'html' => '<p>Text</p>' ];
+	\Nino\Modules\Consent::callbackLegalSection( $appData, $other );
+	check( $what. ' gets no button', $other['html'] === '<p>Text</p>' );
+}
+
+$odd = [ 'type' => 'privacy', 'id' => 'consent' ];
+ninoWarnings();
+\Nino\Modules\Consent::callbackLegalSection( $appData, $odd );
+check( 'a section without a text is left as it is, and nothing is raised', $odd === [ 'type' => 'privacy', 'id' => 'consent' ] && ninoWarnings() === [] );
+
+if( class_exists( $legalClass ) === false ) {
+
+	echo "  note - this Nino has no \\Nino\\Modules\\Legal: the fallback link and the button in the drawn section are not exercised\n";
+	check( 'without the module an empty policyUrl renders no link, as before', str_contains( \Nino\Html::renderHtml( $appData, '[consent]' ), 'nino-consent-link' ) === false );
+}
+else {
+
+	check( 'with the module not active, an empty policyUrl renders no link either - url() gives nothing', str_contains( \Nino\Html::renderHtml( $appData, '[consent]' ), 'nino-consent-link' ) === false );
+
+	// The module active, with its routes, as a project that ran the wizard has it
+	$appData['/nino/modules'][] = $legalClass;
+	$appData['/nino/http/routes'] = $appData['/nino/http/routes'] ?? [];
+	\Nino\Modules\Legal::init( $appData );
+	ninoWarnings();
+
+	$bannerPolicy = \Nino\Html::renderHtml( $appData, '[consent]' );
+	check( 'with no policyUrl the banner links the privacy policy of the module, in the visitor\'s language', str_contains( $bannerPolicy, '<a href="/privacy" class="nino-consent-link">Privacy policy</a>' ) === true );
+	$appData['./nino/locales/current'] = 'de_DE';
+	check( '...which is the German path in German', str_contains( \Nino\Html::renderHtml( $appData, '[consent]' ), '<a href="/datenschutz" class="nino-consent-link">Datenschutzerklärung</a>' ) === true );
+	$appData['./nino/locales/current'] = 'en_US';
+
+	\Nino\Features::saveSettings( $appData, 'consent', [ 'policyUrl' => 'https://example.com/privacy' ] );
+	$bannerOwn = \Nino\Html::renderHtml( $appData, '[consent]' );
+	check( 'a policyUrl in the settings wins', str_contains( $bannerOwn, 'href="https://example.com/privacy" class="nino-consent-link"' ) === true && str_contains( $bannerOwn, 'href="/privacy"' ) === false );
+	\Nino\Features::saveSettings( $appData, 'consent', [ 'policyUrl' => '' ] );
+
+	// End to end: the module's own sections and this feature's, drawn by [privacy]
+	$locales = [ 'de_DE', 'en_US' ];
+	$seeded = \Nino\Elements::seed( $appData, 'privacy', include $root. '/_nino/Nino/Modules/Legal/install/elements/privacy.php', $locales );
+	$added = \Nino\Elements::seed( $appData, 'privacy', include dirname( __DIR__ ). '/install/elements/privacy.php', $locales );
+	check( 'the unit\'s file adds the section to the module\'s type', $seeded === true && $added === true && is_array( \Nino\Elements::getElement( $appData, '/privacy/consent', 'en_US', false ) ) === true );
+
+	$page = \Nino\Html::renderHtml( $appData, '[privacy]' );
+	check( 'the page draws the section with the button at its end - the withdrawal the text speaks of is on the page it speaks on',
+		preg_match( '#<section class="nino-legal-section" id="privacy-consent">.*?'. preg_quote( $openButton, '#' ). '</div></section>#s', $page ) === 1 );
+	check( 'and no other section carries it', substr_count( $page, 'nino-consent-open' ) === 1 );
+}
 
 echo "\n";
 

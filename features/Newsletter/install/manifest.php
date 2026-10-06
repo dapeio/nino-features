@@ -8,6 +8,10 @@
 	// Newsletter::init()), so unlike a "page" bundle this needs no config.php
 	// route entry, just the template files copied into place
 	'templates' 	=> [ 'mail-newsletter-confirm.tpl', 'mail-newsletter-unsubscribe.tpl', 'page-newsletter.tpl', 'page-newsletter-unsubscribe.tpl', 'mail-header.tpl', 'mail-footer.tpl' ],
+	// The feature's section of the privacy policy, added to the Legal module's
+	// type and never replacing a section - see \Nino\Elements::seed(). A Nino
+	// without the module reads no such key
+	'elements' 		=> [ 'privacy' => 'elements/privacy.php' ],
 	'blacklist' => [
 		// Filled by the class at request time - the confirmation link, the
 		// unsubscribe link, the page's title and text for the outcome at hand

@@ -23,6 +23,15 @@ A release is the tag `newsletter-<version>` of dapeio/nino-features.
 
 ### Added
 
+- **It brings its section of the privacy policy.** The install unit adds the
+  section `newsletter` (double opt-in, what is stored, the seven days an
+  unconfirmed sign-up is kept, the hash that remains after unsubscribing) to the
+  type `privacy` of Nino 1.4's Legal module - add-only, and a Nino without the
+  module ignores the file. The section names seven days, the default of
+  `/nino/newsletter/pending-days`: whoever changes it changes the section too.
+  It is a starting point, not legal advice - see "Legal" in Nino's
+  `docs/development.md`.
+
 - **A way out without a link.** A BCC mail cannot carry a personal unsubscribe
   link, and a subscriber may have lost the one they had; until now the only
   way off the list was a link nobody could ask for again. `/.newsletter/

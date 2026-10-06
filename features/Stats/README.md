@@ -14,8 +14,10 @@ just aggregated as it happens instead of parsed after the fact.
 
 One directory, the shape the [feature recipe](https://github.com/dapeio/nino/blob/main/docs/recipes/feature.md)
 describes: `feature.php`, `Stats.php`, `Admin/Admin.php`, `assets/`,
-`text/`, `tests/`. There is no install unit - the feature ships nothing for
-the public site, only the counter and the workbench panel. The changes per
+`text/`, `install/`, `tests/`. The install unit ships nothing for
+the public site - only the feature's section of the privacy policy, see
+[Privacy policy](#privacy-policy) - the rest is the counter and the
+workbench panel. The changes per
 version are in [CHANGELOG.md](CHANGELOG.md).
 
 ## What is counted, and where
@@ -166,6 +168,31 @@ direction of the restore can make yesterday's total wrong in a way that
 matters to an operator looking at a chart. `init()` therefore registers no
 `/nino/admin/restore` callback - the plain whole-`data/`-directory copy the
 backup already does is enough.
+
+## Privacy policy
+
+`install/elements/privacy.php`, named under `elements` in
+`install/manifest.php`, adds the section `stats` (position 600) to the type
+`privacy` of the Legal module that comes with Nino 1.4 - add-only, as
+everything an install unit does: a section an editor changed stays as it is,
+one deleted for good does not come back, and a Nino without the module ignores
+the file. The text says only what the code does, in German and English; a fact
+of the website would be a placeholder of the module
+(`#/project/company/contact/email#`), not written text.
+
+- **What it says.** That the website counts page views per page and day and
+  the host of the page a visit came from, without a cookie and without reading
+  an address, and that the figures cannot be linked to any person, so that no
+  personal data arise. This is what the code does (see [What is counted, and
+  where](#what-is-counted-and-where)); a project that extends the counting
+  changes the section with it.
+
+The section is a starting point and no legal advice, like the texts of Nino's
+own Legal module: it is not tailored to any particular website and has not
+been legally reviewed, and the operator is responsible for having it checked
+and adapted before the website goes live. The notice in full is in the
+[Legal](https://github.com/dapeio/nino/blob/main/docs/development.md#legal)
+chapter of Nino's `docs/development.md`.
 
 ## Settings
 

@@ -5,6 +5,10 @@ A release is the tag `hello-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+- The README names `elements` among the keys an install unit reads (Nino 1.4),
+  the one a feature that processes personal data uses for its section of the
+  privacy policy. Hello has no such section and its unit does not use it.
+
 - **The panel uses the workbench's request helper, its status line, its wording
   of a failure and its question about unsaved input, where the Nino has them -
   and says so, being the feature to copy.** Every request goes through

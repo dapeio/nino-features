@@ -35,6 +35,15 @@ A release is the tag `stats-<version>` of dapeio/nino-features.
   feature to an installation that could not then install it. `^1.3` names
   only a kernel that can read the manifest.
 
+### Added
+
+- **It brings its section of the privacy policy.** The feature has an install
+  unit now, which carries nothing but the section `stats` (a count per page and
+  day and the referrer's host; no cookie, no address, no personal data) for the
+  type `privacy` of Nino 1.4's Legal module - add-only, and a Nino without the
+  module ignores the file. It is a starting point, not legal advice - see
+  "Legal" in Nino's `docs/development.md`.
+
 ### Changed
 
 - **The page titles it reads follow Nino 1.4's text keys.** A page's title in

@@ -213,7 +213,8 @@ untouched. Everything the panel shows is fetched again after each change.
 `install/manifest.php` is applied by the activation add-only: what the
 project already has stays, only what is missing arrives. It carries no
 routes (the class registers them), no `config` defaults and no element
-types.
+types of its own - its one `elements` entry only adds the section of the
+privacy policy (see [Privacy policy](#privacy-policy)).
 
 **Templates**, copied into the project's `templates/`:
 
@@ -250,6 +251,43 @@ at request time and no text file answers - blacklisted, the Text panel's
 scan for missing keys does not report them. `label`, `moduleClass` and `requiresModules` in
 the unit's manifest are the setup wizard's keys and are not read by an
 activation - the wizard does not offer features.
+
+## Privacy policy
+
+`install/elements/privacy.php`, named under `elements` in
+`install/manifest.php`, adds the section `newsletter` (position 530) to the
+type `privacy` of the Legal module that comes with Nino 1.4 - add-only, as
+everything an install unit does: a section an editor changed stays as it is,
+one deleted for good does not come back, and a Nino without the module ignores
+the file. The text says only what the code does, in German and English; a fact
+of the website would be a placeholder of the module
+(`#/project/company/contact/email#`), not written text.
+
+- **What it says.** Double opt-in; what is stored (the address, the time of
+  the confirmation and the address the sign-up came from, as proof of the
+  consent, `/data/newsletter.php`); that an unconfirmed sign-up expires after
+  seven days and is deleted the next time someone signs up; Art. 6 (1) (a)
+  GDPR; that every issue carries the unsubscribe link, and that after
+  unsubscribing only a hash of the address is kept
+  (`/data/newsletter-removed.php`), so that an older backup cannot bring it
+  back.
+- **The numbers.** The seven days are the default of
+  `/nino/newsletter/pending-days`. Whoever changes it changes the section in
+  the Elements panel too. The deletion is lazy: `_prunePending()` runs inside
+  the write of the next sign-up, so on a quiet site an unconfirmed address
+  stays in `/data/newsletter.php` past the seven days until someone signs up.
+  The text says so; whoever wants it tighter changes the code.
+- **What it assumes.** That the unsubscribe link is in every issue. The
+  feature sends no issues itself - they go out by BCC, with the panel giving
+  the hint - so putting the link (`/.newsletter/unsubscribe`) into each one is
+  the operator's part, and the sentence is wrong where it is not done.
+
+The section is a starting point and no legal advice, like the texts of Nino's
+own Legal module: it is not tailored to any particular website and has not
+been legally reviewed, and the operator is responsible for having it checked
+and adapted before the website goes live. The notice in full is in the
+[Legal](https://github.com/dapeio/nino/blob/main/docs/development.md#legal)
+chapter of Nino's `docs/development.md`.
 
 ## Configuration
 

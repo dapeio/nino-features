@@ -54,6 +54,10 @@ return [
 				'en_US' => 'The four words an unreleased embed carries - the two on the surface, the way out without JavaScript and the frame\'s own name - into the Text panel.',
 				'de_DE' => 'Die vier Wörter einer nicht freigegebenen Einbindung - die zwei auf der Fläche, der Ausweg ohne JavaScript und der Name des Rahmens - ins Panel Texte.',
 			],
+			'elements/privacy.php' => [
+				'en_US' => 'Its three sections of the privacy policy (embedded content, YouTube, Vimeo), added to the Legal module\'s type - never replacing a section. Where there is no such module, nothing happens.',
+				'de_DE' => 'Seine drei Abschnitte der Datenschutzerklärung (eingebettete Inhalte, YouTube, Vimeo), dem Typ des Moduls Legal hinzugefügt – ohne einen Abschnitt zu ersetzen. Wo es das Modul nicht gibt, passiert nichts.',
+			],
 		],
 	],
 	// It puts a control on the page that decides when something already

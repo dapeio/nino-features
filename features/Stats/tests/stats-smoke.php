@@ -100,6 +100,14 @@ check( 'it declares only the directory it owns under data/', is_array( $manifest
 \Nino\AppData::writeContentData( $appData, [ '/nino/modules', '/nino/locales/available', '/nino/locales/native' ] );
 ninoWarnings();
 
+// Where this kernel has the Legal module: the type its unit creates, which is what
+// the feature's section is added to when it is activated below
+$legalFile	= $root. '/_nino/Nino/Modules/Legal/install/elements/privacy.php';
+$hasLegal		= class_exists( '\\Nino\\Modules\\Legal' ) === true && is_file( $legalFile ) === true;
+
+if( $hasLegal === true )
+	check( 'the module\'s type is seeded', \Nino\Elements::seed( $appData, 'privacy', include $legalFile, [ 'de_DE', 'en_US' ] ) === true );
+
 check( 'the registry lists it inactive, with nothing in the way', ( static function() use ( &$appData ): bool {
 	$feature = \Nino\Features::get( $appData, 'stats' );
 	return $feature !== null && $feature['active'] === false && $feature['problems'] === [];
@@ -109,6 +117,25 @@ check( 'activation succeeds', \Nino\Features::activate( $appData, 'stats' ) === 
 $stored = \Nino\Filesystem::getFileContent( $appData, '/config.php', [] );
 check( 'the class is listed and the version recorded', in_array( '\\Nino\\Modules\\Stats', $stored['/nino/modules'], true ) === true
 	&& $stored['/nino/features']['stats']['version'] === $manifest['version'] );
+check( 'its unit carries the feature\'s section of the privacy policy, and nothing else', array_keys( include $dir. '/install/manifest.php' ) === [ 'elements' ]
+	&& ( include $dir. '/install/manifest.php' )['elements'] === [ 'privacy' => 'elements/privacy.php' ] && is_file( $dir. '/install/elements/privacy.php' ) === true );
+
+if( $hasLegal === false )
+	echo "  note - this Nino has no \\Nino\\Modules\\Legal: the section is not added to a type here, tests/legal-smoke.php of the catalogue says what it can\n";
+else {
+	$privacyOf = static fn( string $locale ): array => (array) \Nino\Elements::getElement( $appData, '/privacy/stats', $locale, false );
+	check( 'activation added the section "stats" to the module\'s type, in both languages and at its position', ( $privacyOf( 'de_DE' )['title'] ?? null ) === 'Statistik'
+		&& ( $privacyOf( 'en_US' )['title'] ?? null ) === 'Statistics' && ( $privacyOf( 'en_US' )['order'] ?? null ) === 600 );
+
+	// An editor's change stays, and the next activation adds nothing
+	\Nino\Filesystem::mutate( $appData, '/elements/privacy.php', static function( array $type ): array {
+		$type['de_DE']['stats']['title'] = 'Vom Redakteur geändert';
+		return $type;
+	}, [] );
+	$typeBefore = \Nino\Filesystem::getFileContent( $appData, '/elements/privacy.php', [] );
+	check( 'activating again leaves the type as it is - an edited section stays and nothing is added twice', \Nino\Features::activate( $appData, 'stats' ) === true
+		&& \Nino\Filesystem::getFileContent( $appData, '/elements/privacy.php', [] ) === $typeBefore );
+}
 check( 'the settings answer their defaults', \Nino\Features::settings( $appData, 'stats' ) === [
 	'countSignedIn' 	=> false,
 	'exclude' 				=> [],

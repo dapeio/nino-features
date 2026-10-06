@@ -333,6 +333,15 @@ Two things a header frame has to keep, whichever shape it is:
   nothing - so a frame never names the shortcode itself, which would stand on
   the page as text wherever the feature is not there.
 
+Every footer frame shows the link to the imprint and the privacy policy the
+same way: it outputs the project's menu `legal` with
+`[navigation nav="legal" id="legal__nav"][/navigation]` - the menu the Legal
+module of Nino 1.4 has the setup wizard create with both pages, and the
+Navigations panel keeps - where it used to include `html-footer-legal`, a
+template that is no longer delivered. The `id` is there because the fragment
+would otherwise write `id=""`. The menu is a child of the same container the
+single link was; a frame that includes `html-footer-legal` again links nothing.
+
 ## The finetune knob
 
 The knobs are **Nino's own** - the ones the kernel's Design module published as
@@ -567,7 +576,9 @@ presets with modifications, may come later.
 `tests/design-smoke.php` covers the manifest and activation through
 `\Nino\Features`, the library coverage per part, the traversal refusals,
 normalisation and step resolution, what the compiler emits and in which order,
-the cross-repo comparison of `base.css` against the delivered `theme.css`,
+the cross-repo comparison of `base.css` against the delivered `theme.css`, that
+every footer frame outputs the menu `legal` once and none includes
+`html-footer-legal`,
 `write()`'s refusal and its `$force` for the stylesheet **and** for the frame
 templates, the names and descriptions read out of the library files, and the
 panel's six actions - what it lists, that saving stores without compiling,

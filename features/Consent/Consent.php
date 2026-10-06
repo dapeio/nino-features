@@ -28,7 +28,11 @@ namespace Nino\Modules {
 	 *										scripts in the Content-Security-Policy (see
 	 *										callbackOutput()). The choice itself is a cookie the
 	 *										browser writes (consent.js) - PHP only ever reads it,
-	 *										see allowed().
+	 *										see allowed(). Where Nino's Legal module is there, the
+	 *										banner links its privacy policy unless the settings
+	 *										name another address, and the policy's section on
+	 *										consent carries the button that reopens the choice
+	 *										(see callbackLegalSection()).
 	 *
 	 *										consent.css/consent.js reach the browser the way the
 	 *										kernel ships its own Nino.css/Nino.js/Nino.ui.js (see
@@ -88,6 +92,10 @@ namespace Nino\Modules {
 			// browser may load what consent.js releases - see callbackOutput()
 			\Nino\Callbacks::registerCallback( $appData, '/nino/http/output', [ self::class, 'callbackOutput' ] );
 
+			// The name as a string: the Legal module is Nino 1.4's and may not be
+			// there - nothing fires the hook then, and nothing is lost
+			\Nino\Callbacks::registerCallback( $appData, '/nino/legal/section', [ self::class, 'callbackLegalSection' ] );
+
 			// A source under \Nino\Filesystem::FEATURES_DIR is resolved
 			// against \Nino\Features::dir() rather than against the project
 			// root, so '/features/Consent/assets/...' reaches this feature's
@@ -117,6 +125,15 @@ namespace Nino\Modules {
 			$cookieName	= (string) \Nino\Features::setting( $appData, 'consent', 'cookieName', self::DEFAULT_COOKIE_NAME );
 			$days				= (int) \Nino\Features::setting( $appData, 'consent', 'days', 180 );
 			$policyUrl	= (string) \Nino\Features::setting( $appData, 'consent', 'policyUrl', '' );
+
+			/*	No address in the settings: the privacy policy of the Legal module, in
+				the visitor's language, where the module is there and its page has a
+				route. The setting wins whenever it is set. class_exists() and not
+				method_exists(): PHPStan reads the second as always false where the
+				class is not part of the checkout and as always true where it is, and
+				the kernel this feature may run on has no such class	*/
+			if( $policyUrl === '' && class_exists( '\\Nino\\Modules\\Legal' ) === true )
+				$policyUrl = \Nino\Modules\Legal::url( $appData, 'privacy' );
 
 			$categories = '';
 			foreach( self::CATEGORIES as $category )
@@ -151,6 +168,29 @@ namespace Nino\Modules {
 		public static function doConsentSettingsShortcode( array &$appData, array $args ): string {
 
 			return self::template( $appData, 'consent-open' );
+		}
+
+		/**
+		 *	The button that reopens the choice, at the end of the privacy
+		 *	policy's section on consent - listener of '/nino/legal/section', which
+		 *	the Legal module fires for every section it draws. The section is the
+		 *	one this feature's own install unit adds ('consent' of the type
+		 *	'privacy'), so the withdrawal the text speaks of is on the page it
+		 *	speaks on, and a site that does not run this feature shows no button.
+		 *	What is appended is the template of [consent-settings], which the
+		 *	kernel renders once more with the rest of the page
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			&$section			(reference) [ 'type', 'id', 'html' ] of the section about to be drawn
+		 *
+		 *	@return 	void
+		 */
+		public static function callbackLegalSection( array &$appData, array &$section ): void {
+
+			if( ( $section['type'] ?? null ) !== 'privacy' || ( $section['id'] ?? null ) !== 'consent' || is_string( $section['html'] ?? null ) === false )
+				return;
+
+			$section['html'] .= self::template( $appData, 'consent-open' );
 		}
 
 		/**

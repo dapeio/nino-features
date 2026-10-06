@@ -15,7 +15,7 @@
 					<p>&copy; [[/nino/date/year]] [[/project/company/general/name]]</p>
 					<p class="nino-frame-footer-contact">[[/project/company/contact/email]] <span aria-hidden="true">·</span> [[/project/company/contact/phone]]</p>
 					<div class="nino-frame-footer-utility">
-						[template /templates/html-footer-legal]
+						[navigation nav="legal" id="legal__nav"][/navigation]
 						[template /templates/html-footer-localepicker]
 					</div>
 				</div>

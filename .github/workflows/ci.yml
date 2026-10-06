@@ -81,6 +81,12 @@ jobs:
       - name: Run the text key grammar's smoke test
         run: NINO_ROOT=nino php tests/keys-smoke.php
 
+      # The sections of the privacy policy the features bring: their form
+      # always, and - where the checkout has Nino's Legal module - added to its
+      # type the way an activation does it
+      - name: Run the privacy policy sections' smoke test
+        run: NINO_ROOT=nino php tests/legal-smoke.php
+
       # The publishing tool builds a signed catalogue of this repository's
       # features into a directory of its own, and the kernel has to accept
       # what came out (see .github/workflows/release.yml for the real thing)

@@ -12,6 +12,16 @@ A release is the tag `embed-<version>` of dapeio/nino-features.
   feature to an installation that could not then install it. `^1.3` names
   only a kernel that can read the manifest.
 
+### Added
+
+- **It brings its sections of the privacy policy.** The install unit adds
+  `embed` (what happens when an embed is released), `embed-youtube` and
+  `embed-vimeo` (the provider, `youtube-nocookie.com`, `dnt=1`, where its own
+  policy is) to the type `privacy` of Nino 1.4's Legal module - add-only, and a
+  Nino without the module ignores the file. A project that uses only one of the
+  two providers hides the other section in the Elements panel. It is a starting
+  point, not legal advice - see "Legal" in Nino's `docs/development.md`.
+
 ### Changed
 
 - **The text keys follow Nino's grammar.** `/embed/load` is

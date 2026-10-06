@@ -28,7 +28,12 @@ return [
 			],
 		],
 		'callbacks' => [],
-		'install' => [],
+		'install' => [
+			'elements/privacy.php' => [
+				'en_US' => 'Its section of the privacy policy, added to the Legal module\'s type - never replacing a section. Where there is no such module, nothing happens.',
+				'de_DE' => 'Sein Abschnitt der Datenschutzerklärung, dem Typ des Moduls Legal hinzugefügt – ohne einen Abschnitt zu ersetzen. Wo es das Modul nicht gibt, passiert nichts.',
+			],
+		],
 	],
 	'category'		=> 'communication',
 	'version'			=> '1.0.0',

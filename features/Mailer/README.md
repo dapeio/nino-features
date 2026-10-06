@@ -10,10 +10,11 @@ sending it itself, with a real login, to a real mail server.
 
 One directory, the shape the [feature recipe](https://github.com/dapeio/nino/blob/main/docs/recipes/feature.md)
 describes: `feature.php`, `Mailer.php`, `Smtp/Smtp.php`, `Admin/Admin.php`,
-`assets/`, `text/`, `tests/`. No install unit - the feature has no page and no
-template of its own, and the only mail it composes itself (the test mail's
-subject and body) lives in the panel's own `text/`. The changes per version
-are in [CHANGELOG.md](CHANGELOG.md).
+`assets/`, `text/`, `install/`, `tests/`. The install unit carries only the
+feature's section of the privacy policy, see [Privacy policy](#privacy-policy):
+the feature has no page and no template of its own, and the only mail it
+composes itself (the test mail's subject and body) lives in the panel's own
+`text/`. The changes per version are in [CHANGELOG.md](CHANGELOG.md).
 
 ## How it works
 
@@ -151,6 +152,33 @@ when that is what refused it.
 | Activity log | `log()` writes `Send test mail to "<to>"` |
 | Assets | `assets/admin.js`, named through `\Nino\Admin\Panels::relative()` so it moves with the directory |
 | Text | `text/en_US.php`, `text/de_DE.php` - the panel's own words, and the test mail's subject/body |
+
+## Privacy policy
+
+`install/elements/privacy.php`, named under `elements` in
+`install/manifest.php`, adds the section `mailer` (position 540) to the type
+`privacy` of the Legal module that comes with Nino 1.4 - add-only, as
+everything an install unit does: a section an editor changed stays as it is,
+one deleted for good does not come back, and a Nino without the module ignores
+the file. The text says only what the code does, in German and English; a fact
+of the website would be a placeholder of the module
+(`#/project/company/contact/email#`), not written text.
+
+- **What it says.** The mails of the website go through the mail server of an
+  email service provider, which receives the recipient, the content and
+  technical details of the delivery and processes them on behalf of the
+  operator (Art. 28 GDPR), on the legal basis of the reason for the mail.
+- **What it leaves open.** The provider is a category in the text and not a
+  name: the feature does not know who runs the server behind `host`. The
+  operator completes the section with the provider and the data processing
+  agreement, in the Elements panel.
+
+The section is a starting point and no legal advice, like the texts of Nino's
+own Legal module: it is not tailored to any particular website and has not
+been legally reviewed, and the operator is responsible for having it checked
+and adapted before the website goes live. The notice in full is in the
+[Legal](https://github.com/dapeio/nino/blob/main/docs/development.md#legal)
+chapter of Nino's `docs/development.md`.
 
 ## Data
 
