@@ -131,8 +131,8 @@ namespace Nino\Modules\Design {
 
 		/**
 		 *	The page around the render: the shell, with the head the caller
-		 *	hands in - the panel carries its stylesheets inline, because an
-		 *	iframe's srcdoc is the whole document it has
+		 *	hands in - the panel's links the framework from a bundle and
+		 *	carries the compiled sheet inline (see Admin::document())
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$locale				The render's locale - its first two letters

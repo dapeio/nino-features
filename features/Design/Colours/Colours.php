@@ -128,7 +128,7 @@ namespace Nino\Modules\Design {
 
 		/*	The knobs: where each starts and what its positions are called. The
 			panel draws whatever choices() hands it, so a knob added here needs no
-			line in either template - but it does need its words, which are text
+			line in the panel's script - but it does need its words, which are text
 			keys and not strings here: '/_admin/design/colour/<knob>/label',
 			'/note', and one per position, in every locale under text/.
 			tests/design-smoke.php checks that a published knob has all of them.
@@ -408,8 +408,9 @@ namespace Nino\Modules\Design {
 		 *	value can be an array or an object as easily as a number, and php
 		 *	raises rather than returning false when one is used as an array
 		 *	offset - isset() included. Reached from the wire through
-		 *	the Design panel's design/save and the wizard's design/apply, so an
-		 *	unchecked one is a 500 anybody can ask for.
+		 *	the Design panel's design/save and design/preview, and from
+		 *	data/design.php, which design/apply reads and a hand may have
+		 *	edited - so an unchecked one is a 500 anybody can ask for.
 		 *
 		 *	@param		mixed			$value				Straight off the wire
 		 *	@param		string		$knob					Which knob it belongs to

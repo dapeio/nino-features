@@ -322,6 +322,10 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **The `items-logos` preset (`logo-bar` before) named `nino-mb-3` twice on
+  its heading area**, so every section a project inserted from it carried the
+  class twice.
+
 - **A slow `content/fields` answer could make Update save an empty text over
   the stored one.** The values arrive after the fields were drawn, and the
   field on screen said `''` until it was drawn again; every drawing and

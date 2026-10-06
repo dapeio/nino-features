@@ -401,10 +401,11 @@ its three steps *are*, and the knob picks one. **`--default` is the value the
 framework uses today**, in every set the library ships: a knob nobody has moved
 compiles to the page that was already there, which is what makes a set adoptable
 at all. The compiler gathers the picks into a single block at the end of the
-sheet, one line per part and knob:
+sheet, one line per part and knob - section 13 with every part
+chosen, one less for each part that brings no stylesheet:
 
 ```css
-/* ==== 12. the knob positions ==== */
+/* ==== 13. the knob positions ==== */
 :root {
 	--buttons-shaping: var(--buttons-shaping--less);
 	--section-spacing: var(--section-spacing--more);
@@ -580,8 +581,9 @@ specimen, the frames around it and the compile live, and the panel renders
 it against this project - its menu, its logo, its social links, its
 fonts - so a set looks the same while it is being designed as it will on the
 site. Edit a set under `library/sets/<part>/`, pick it in the panel, and the
-preview follows the picker; a knob or a step that did not resolve is named in
-the bar rather than passed over in silence.
+preview follows the picker; a set, stylesheet or template that did not
+resolve is named in the preview's message line above the frame rather
+than passed over in silence.
 
 The whole-page themes Nino's setup wizard offered up to 1.1 are gone from this
 repository, on purpose: a project composes its look from the part sets rather

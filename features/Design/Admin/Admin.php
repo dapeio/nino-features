@@ -481,9 +481,11 @@ namespace Nino\Modules\Design {
 		/**
 		 *	The whole page the frame shows: the framework, the compiled sheet,
 		 *	the specimen with its frames, and the behaviour a header set is half
-		 *	made of. One document with everything in it - an iframe's srcdoc
-		 *	links nothing, and that is the point: no url of this is reachable,
-		 *	nothing of it is written, and it is gone when the screen is
+		 *	made of. The compiled sheet is inline, under PREVIEW_STYLE's id, so
+		 *	the panel can swap it in a frame that is already standing and no
+		 *	url of this design is written or reachable; the framework, the
+		 *	same for every design, is linked from its two bundles (see
+		 *	_bundle() for why it is not inlined)
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$library			The feature's library

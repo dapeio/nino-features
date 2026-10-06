@@ -119,9 +119,9 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	Read the setup, compile it, write it. The one path the panel, the
-		 *	upgrade hook and a test all take, so there is one answer to "what
-		 *	does applying actually do"
+		 *	Read the setup, compile it, write it. The one path the panel and
+		 *	the tests take, so there is one answer to "what does applying
+		 *	actually do"
 		 *
 		 *	What was there is kept first: the three files and the setup they were
 		 *	written under go to Previous, unless every file that exists already

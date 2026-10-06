@@ -167,9 +167,6 @@ A release is the tag `design-<version>` of dapeio/nino-features.
   reads the setup and writes it back - is the write that does it without
   waiting for a save.
 
-- The README's check count matches the suite again - 191 rather than the
-  number it carried, which the suite passed some time ago.
-
 - Needs Nino `^1.3`, where the constraint said `^1.2`. The sectioned `manual`
   map this manifest carries is only read by a kernel newer than the
   `v1.2.0-beta` tag - `Features::manifest()` refuses it on the tagged one -
@@ -199,6 +196,15 @@ A release is the tag `design-<version>` of dapeio/nino-features.
   once proves only that the last one landed.
 
 ### Changed
+
+- **The README and the comments describe the panel that ships.** The knob
+  block is section 13 of the compiled sheet with every part chosen, and what
+  did not resolve is named in the preview's message line; the preview links
+  the framework from its bundles and carries only the compiled sheet inline;
+  a knob's step comes off the wire through `design/save` and
+  `design/preview`. Sentences of earlier entries here that the panel's
+  rebuild made untrue are gone, and the `logo-bar` fix moved to the Templates
+  changelog, where the preset is.
 
 - **The footer frames show the legal navigation.** The eleven footer frames
   output `[navigation nav="legal" id="legal__nav"][/navigation]` where they
@@ -259,20 +265,13 @@ A release is the tag `design-<version>` of dapeio/nino-features.
   select and the "Finetuning" heading over the knob are gone, and the knob no
   longer holds a margin above itself - the picker, the variant and the knob are
   read together, and a paragraph between each of them was more of the screen
-  than the three controls were. What the sentence said is on the control as its
-  title, so hovering a variant still tells you what it is.
+  than the three controls were.
 
 - **The panel's two selects no longer look like two selects.** The picker says
   which part the whole column below it is about; the variant select is that
   part's own answer, and the knob under it belongs to the same part again. Two
   identical fields a row apart said the opposite - so the picker carries the
-  weight now and everything that hangs off it stands inside a rail.
-- **What a select means sits between its name and the select**, not in a
-  paragraph under it: a sentence floating below a control reads as the next
-  thing on the screen rather than as something about the thing above it. That
-  is the variant's `@description` and the root size's own line; the paragraph
-  over the whole screen and the one under the Finetuning rows are gone
-  altogether.
+  weight now.
 - **"The file answers to this selection" is a plain line rather than a green
   panel.** A green panel is a thing the eye keeps checking, and that one said
   nothing about the selection on screen - it spoke about the last compile and
@@ -395,8 +394,6 @@ A release is the tag `design-<version>` of dapeio/nino-features.
   per section, every child of a row a grid cell, and every cell but the last of
   a multi-cell row carrying a spacing utility. Proven both ways - putting one
   stacked row back fails the first, taking one `nino-mb-3` away fails the third.
-- The `logo-bar` preset named `nino-mb-3` twice on its heading area, so every
-  section a project inserted from it carried the class twice.
 
 ### Removed
 
