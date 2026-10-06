@@ -112,8 +112,7 @@
 	font-weight: 450;
 	line-height: 1.45;
 }
-/*	A field - or a sentence about the whole card - across both columns */
-.design-field.is-wide,
+/*	The sentence about the whole card, across both columns */
 .nino-admin .design-note {
 	grid-column: 1 / -1;
 	margin: 0;

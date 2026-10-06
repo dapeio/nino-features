@@ -400,6 +400,12 @@ A release is the tag `design-<version>` of dapeio/nino-features.
 
 ### Removed
 
+- **Panel script leftovers.** The window `resize` binding, which the
+  workbench's frame scaler already covers with its own observer, the unread
+  `_refit`, `_select()`'s `wide` argument and its `.is-wide` rule, and the
+  option `title` nothing read. The knob docblocks describe the rows as they
+  are, and `_setStep`'s sits above `_setStep` again.
+
 - **Rules for two classes nothing draws.** Forms v2-v5 styled
   `.nino-form-title` and Lists v5 `.nino-list-title`; neither Nino.css nor any
   template has them, and the knob example in both `v1.css` taught them. The

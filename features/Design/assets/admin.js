@@ -497,8 +497,7 @@
 					const named = row.catalogue[set] || {};
 					return {
 						value : set,
-						label : named.name && named.name !== set ? set + ' - ' + named.name : set,
-						title : named.description || ''
+						label : named.name && named.name !== set ? set + ' - ' + named.name : set
 					};
 				} ), chosen.set, function( value ) {
 					chosen.set = value;
@@ -558,10 +557,10 @@
 		},
 
 		/**
-		 *	What the knob has rows for. Global has exactly one - the position
-		 *	every part follows - and a part has whatever its variant declares
+		 *	What the knob has rows for: one per knob in data.global on the
+		 *	global tab, or one per knob the chosen variant answers to
 		 *
-		 *	@return		{Array}					{ key, label, value, inherited }
+		 *	@return		{Array}					{ key, value, inherited }
 		 */
 		_knobRows : function() {
 
@@ -598,7 +597,7 @@
 		/**
 		 *	One of them: three steps and, once it is its own, the way back
 		 *
-		 *	@param		{Object}	row			{ key, label, value, inherited }
+		 *	@param		{Object}	row			{ key, value, inherited }
 		 *
 		 *	@return		{Element}
 		 */
@@ -670,14 +669,6 @@
 		},
 
 		/**
-		 *	Move one - or let it follow again
-		 *
-		 *	@param		{string}				key			A token, '' for the global knob
-		 *	@param		{string|null}		step		null puts it back to following
-		 *
-		 *	@return		void
-		 */
-		/**
 		 *	The controls column, on its own so a tab switch can redraw it
 		 *	without touching the frame beside it - or the strip in the pane's
 		 *	head, which is the element the switch was made on, and keeps the
@@ -718,7 +709,8 @@
 
 				/*	Filled by _renderCurrentPart(). It is display:contents, so the
 					field it holds is a cell of the grid above rather than a box
-					inside one - which is what lets a wide field span both columns	*/
+					inside one - which is what lets the note under a frame span both
+					columns	*/
 				const part = dc.createElement('div');
 				part.id = 'design-part';
 				grid.appendChild( part );
@@ -1216,6 +1208,14 @@
 			}
 		},
 
+		/**
+		 *	Move one - or let it follow again
+		 *
+		 *	@param		{string}				key			A knob key (a key of Setup::KNOBS), never a part
+		 *	@param		{string|null}		step		null puts it back to following
+		 *
+		 *	@return		void
+		 */
 		_setStep : function( key, step ) {
 
 			const edit = Nino.admin.design._edit;
@@ -1758,9 +1758,9 @@
 			if( frame === null || frame.parentNode === null )
 				return;
 
-			// Rebuilt rather than kept: the width is a choice, and scaleFrame
+			// Asked afresh every time: the width is a choice, and scaleFrame
 			// closes over the one it was given
-			Nino.admin.design._refit = Nino.adminUi.scaleFrame( frame, frame.parentNode, Nino.admin.design._width );
+			Nino.adminUi.scaleFrame( frame, frame.parentNode, Nino.admin.design._width );
 		},
 
 		/**
@@ -1777,11 +1777,10 @@
 		 *															were more of the screen than the controls were -
 		 *															in the field grid they stand side by side, and a
 		 *															hint a hand has to hover for is one nobody reads
-		 *	@param		{boolean}		[wide]		Across both columns of the grid
 		 *
 		 *	@return		{Element}
 		 */
-		_select : function( id, label, options, current, onChange, note, wide ) {
+		_select : function( id, label, options, current, onChange, note ) {
 
 			/*	A label over the control and a small under it - the shape the
 				section composer gives every field it asks about. The name is a
@@ -1789,7 +1788,7 @@
 				with an id, and a label that names it is what a screen reader
 				reads out	*/
 			const field = dc.createElement('div');
-			field.className = 'design-field'+ ( wide === true ? ' is-wide' : '' );
+			field.className = 'design-field';
 
 			if( label !== '' ) {
 				const tag = dc.createElement('label');
@@ -2068,8 +2067,5 @@
 		} );
 
 	Nino.events.bindCallback( 'ready', Nino.admin.design.init );
-	// The column the frame is scaled into changes width when the window does,
-	// and when the rail is folded away
-	Nino.events.bindCallback( 'resize', Nino.admin.design._fit );
 
 })(window, document, document.documentElement, document.body);
