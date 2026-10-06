@@ -24,7 +24,7 @@
 		// Read with the list, because it is what the routes are right now
 		_routes			: [],
 		_misses			: [],
-		_statuses		: [ 301, 302 ],
+		_statuses		: [],
 		// Whether this installation writes down what happened at all. The
 		// second screen says so rather than looking empty for a reason nobody
 		// can see from it
@@ -68,7 +68,7 @@
 				Nino.admin.redirects._rules			= response.rules || [];
 				Nino.admin.redirects._routes		= response.routes || [];
 				Nino.admin.redirects._misses		= response.misses || [];
-				Nino.admin.redirects._statuses	= response.statuses || [ 301, 302 ];
+				Nino.admin.redirects._statuses	= response.statuses || [];
 				Nino.admin.redirects._recording	= response.recording !== false;
 				Nino.admin.redirects._limit			= response.limit || 0;
 				Nino.admin.redirects._notes			= response.notes || [];

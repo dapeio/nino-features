@@ -302,7 +302,7 @@ namespace Nino\Modules\Redirects {
 				return;
 			}
 
-			\Nino\Http::ok( $request, [ 'deleted' => $from, 'rules' => self::_annotate( $appData, $rules ) ] );
+			\Nino\Http::ok( $request, [ 'rules' => self::_annotate( $appData, $rules ) ] );
 		}
 
 		/**
@@ -334,7 +334,7 @@ namespace Nino\Modules\Redirects {
 				return;
 			}
 
-			\Nino\Http::ok( $request, [ 'forgotten' => $path, 'misses' => array_keys( $misses ) ] );
+			\Nino\Http::ok( $request );
 		}
 
 		/**

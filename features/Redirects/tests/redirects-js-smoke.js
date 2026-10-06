@@ -139,7 +139,7 @@ function childrenWith( parent, name ) {
  *	pane the shell renders for it, with the head over them (see
  *	Panels::panesHtml() in the kernel): the panel's name and the actions slot
  *
- *	@param		{Object}	options		{ rules, routes, misses, recording, save, head, panelHead, fail, api, dirty } -
+ *	@param		{Object}	options		{ rules, routes, misses, statuses, recording, save, head, panelHead, fail, api, dirty } -
  *																routes: the pages a target can be picked from,
  *																save: what a save answers,
  *																fail: { action: { status, body } } answers that action with a failure,
@@ -206,7 +206,7 @@ function panel( options ) {
 					rules			: options.rules || [],
 					routes		: options.routes || [],
 					misses		: options.misses || [],
-					statuses	: [ 301, 302 ],
+					statuses	: options.statuses === null ? undefined : ( options.statuses || [ 301, 302 ] ),
 					recording	: options.recording !== false,
 					limit			: 50,
 					notes			: [],
@@ -466,6 +466,17 @@ select.change();
 check( 'picking a page writes its path into the target field and into the working copy',
 	inputs[1].value === '/blog' && picking.panel._editing.to === '/blog' );
 check( '...and the picker goes back to its first entry, so the next pick is a change again', select.value === '' );
+
+// The statuses are the server's: the editor offers what the list answered,
+// and an answer that names none leaves it none of its own
+const statusOptions = function( drawn ) {
+	drawn.rules.querySelectorAll('.nino-admin-list-actions')[0].children[0].click();
+	const field = drawn.rules.querySelectorAll('select').filter( function( node ) { return node.getAttribute('data-key') === 'status' } )[0] || null;
+	return field === null ? null : field.children.map( function( option ) { return option.value } ).join(' ');
+};
+check( 'the editor offers the statuses the list answered, and none of its own where the answer names none',
+	statusOptions( panel( { rules : [], routes : [], statuses : [ 301, 302, 308 ] } ) ) === '301 302 308'
+	&& statusOptions( panel( { rules : [], routes : [], statuses : null } ) ) === '' );
 
 // Typing stays what decides: another site, a page that is not made yet
 inputs[1].value = '/typed';

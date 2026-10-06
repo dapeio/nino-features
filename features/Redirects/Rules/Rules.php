@@ -243,7 +243,7 @@ namespace Nino\Modules\Redirects {
 			if( $from === $to )
 				return '/_admin/redirects/reason/self';
 
-			if( $subtree === true && ( $to === $from || str_starts_with( $to, $from. '/' ) === true ) )
+			if( $subtree === true && str_starts_with( $to, $from. '/' ) === true )
 				return '/_admin/redirects/reason/subtree';
 
 			return '';

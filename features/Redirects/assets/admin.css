@@ -1,3 +1,5 @@
+@layer nino.system, nino.tool, nino.local;
+
 /*	Nino Design - Redirects panel
  *
  *	Everything this panel is made of belongs to the workbench already - the
@@ -7,8 +9,8 @@
  *	its own is a panel that stops following the workbench the next time the
  *	workbench moves.
  *
- *	Only added to nino.tool - the layer a feature's admin css belongs in (see
- *	the layer order in _nino/Nino.css).
+ *	Only added to nino.tool - the layer a feature's admin css belongs in; the
+ *	shell's stylesheet, _admin/assets/style.css, fixes the layer order.
  */
 @layer nino.tool {
 

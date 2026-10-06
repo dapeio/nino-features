@@ -53,6 +53,13 @@ A release is the tag `redirects-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The panel's answers carry what it reads.** `redirects/delete` answers the
+  rules alone (`deleted` is gone) and `redirects/forget` a plain ok
+  (`forgotten` and `misses` are gone): the panel never read them. The editor
+  offers the statuses the list answers and keeps no copy of its own. The
+  stylesheet names `_admin/assets/style.css` for the layer order, which it
+  declares at its top like the other panels' stylesheets.
+
 - **The page names it reads follow Nino 1.4's text keys.** A rule's target is
   named by `[[/_nino/webpage<uri>/name]]` where it was `[[/webpage<uri>/name]]`.
   Nino 1.4.0 renames the keys the feature reads and it is renamed with them, so

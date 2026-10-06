@@ -713,11 +713,15 @@ foreach( [ '/dead-end', '/to-page', '/to-site', '/to-home', '/twice', '/cycle-a'
 	redirectsPanel( $appData, 'apiDelete', [ 'from' => $made ] );
 
 [ $status, $deleted ] = redirectsPanel( $appData, 'apiDelete', [ 'from' => '/presse' ] );
-check( 'a rule can be deleted', $status === 200 && count( array_filter( $deleted['rules'], static fn( array $r ): bool => $r['from'] === '/presse' ) ) === 0 );
+check( 'a rule can be deleted, and the answer is the rules the panel redraws from - nothing beside them', $status === 200
+	&& array_keys( $deleted ) === [ 'rules' ]
+	&& count( array_filter( $deleted['rules'], static fn( array $r ): bool => $r['from'] === '/presse' ) ) === 0 );
 check( '...and deleting one that is not there is a 404, not a silent success', redirectsPanel( $appData, 'apiDelete', [ 'from' => '/presse' ] )[0] === 404 );
 
 redirectsRequest( $appData, '/one-more' );
-check( 'one address can be forgotten', redirectsPanel( $appData, 'apiForget', [ 'path' => '/one-more' ] )[0] === 200
+[ $status, $forgot ] = redirectsPanel( $appData, 'apiForget', [ 'path' => '/one-more' ] );
+check( 'one address can be forgotten, with a plain ok - the panel drops the row itself', $status === 200
+	&& $forgot === [ 'ok' => true ]
 	&& isset( redirectsFile( $appData )['misses']['/one-more'] ) === false );
 check( '...and all of them at once', redirectsPanel( $appData, 'apiForget' )[0] === 200
 	&& ( redirectsFile( $appData )['misses'] ?? [] ) === [] );
