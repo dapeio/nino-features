@@ -31,9 +31,9 @@ namespace Nino\Modules {
 	 *										kernel reads them.
 	 *
 	 *										The guards sit on the route callback at priority 1,
-	 *										ahead of the module - the seam \Nino\Csrf::init()
-	 *										already uses, and the reason there is no callback name
-	 *										of its own for refusing a submission. A guard leaves a
+	 *										ahead of the module - the seam Nino documents for
+	 *										refusing a submission, and the reason there is no
+	 *										callback name of its own for it. A guard leaves a
 	 *										status behind and \Nino\Form::handle() returns without
 	 *										sending or writing anything. 418 for the stamp and for a
 	 *										blocked word: the shared .nino-form script shows one generic

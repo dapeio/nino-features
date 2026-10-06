@@ -100,6 +100,12 @@ versions [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **The guards' seam is named for what it is.** The README and the class
+  docblock called the `.form` route callback at priority 1 the seam
+  `\Nino\Csrf::init()` uses; Csrf refuses on the global
+  `/nino/http/response`, one step earlier. The seam is the one Nino's
+  manual documents for refusing a submission. Nothing else changed.
+
 - **The list has no empty state, and the comments no longer describe a
   feature that replaces the endpoint.** `\Nino\Form::forms()` answers the
   kernel's contact form while a project has defined none, so the list is never

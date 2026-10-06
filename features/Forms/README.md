@@ -191,8 +191,10 @@ having no form at all is done by switching the `Form` module off.
 All three sit on `/nino/http/response/POST://.form` at priority 1 - the
 kernel's own route callback, ahead of the engine. A guard that refuses leaves
 a status behind and `\Nino\Form::handle()` returns without sending or writing
-anything. This is the seam `\Nino\Csrf::init()` already uses; it needs no
-callback name of its own.
+anything. This is the seam the kernel documents for refusing a submission
+("Refusing a submission" in Nino's `docs/development.md`); it needs no
+callback name of its own. `\Nino\Csrf` refuses the same way one step earlier,
+on the global `/nino/http/response`.
 
 | Setting | What it does |
 | --- | --- |
