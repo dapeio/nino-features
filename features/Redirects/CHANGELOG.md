@@ -53,6 +53,10 @@ A release is the tag `redirects-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The page names the editor offers are read from `/text`.** Where the Text
+  panel writes them, whatever `/nino/locales/textfiles` in config.php said -
+  Nino reads that key nowhere any more and drops it in 2.0.
+
 - **The panel's answers carry what it reads.** `redirects/delete` answers the
   rules alone (`deleted` is gone) and `redirects/forget` a plain ok
   (`forgotten` and `misses` are gone): the panel never read them. The editor

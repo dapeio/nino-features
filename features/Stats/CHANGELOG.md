@@ -44,6 +44,10 @@ A release is the tag `stats-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The page titles are read from `/text`.** Where the Text panel writes
+  them, whatever `/nino/locales/textfiles` in config.php said - Nino reads
+  that key nowhere any more and drops it in 2.0.
+
 - **The README promised a number of visits the feature never had.** A
   paragraph under "What is *not* counted" offered visits - views with an
   external or empty referrer - as a second number shown in the panel.

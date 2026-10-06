@@ -24,6 +24,10 @@ A release is the tag `seo-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **llms.txt reads the titles from `/text`.** Where the Text panel writes
+  them, whatever `/nino/locales/textfiles` in config.php said - Nino reads
+  that key nowhere any more and drops it in 2.0.
+
 - **The keys it reads follow Nino 1.4's text keys.** The site name is
   `/project/company/general/name`, the domain `/project/website/general/url`,
   and a page's title and description `/_nino/webpage<uri>/title` and

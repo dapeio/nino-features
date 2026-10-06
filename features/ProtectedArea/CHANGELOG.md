@@ -63,6 +63,10 @@ A release is the tag `protected-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The page names the panel offers are read from `/text`.** Where the Text
+  panel writes them, whatever `/nino/locales/textfiles` in config.php said -
+  Nino reads that key nowhere any more and drops it in 2.0.
+
 - **The text keys follow Nino's grammar, and the feature reads Nino 1.4's.**
   `/protected/title`, `text`, `label/password` and `label/submit` are
   `/template/page-protected/intro/title`, `…/intro/text`, `…/form/password` and

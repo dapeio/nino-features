@@ -724,8 +724,8 @@ namespace Nino\Modules {
 		private static function _fillsForLocale( array &$appData, string $locale ): array {
 
 			return array_merge(
-				(array) \Nino\Filesystem::getFileContent( $appData, $appData['/nino/locales/textfiles']. '/global.php', [] ),
-				(array) \Nino\Filesystem::getFileContent( $appData, $appData['/nino/locales/textfiles']. '/'. $locale. '.php', [] ),
+				(array) \Nino\Filesystem::getFileContent( $appData, '/text/global.php', [] ),
+				(array) \Nino\Filesystem::getFileContent( $appData, '/text/'. $locale. '.php', [] ),
 				(array) ( $appData['./nino/html/fills'][$locale] ?? [] ),
 				(array) ( $appData['./nino/html/fills']['*'] ?? [] )
 			);

@@ -20,7 +20,8 @@ declare(strict_types=1);
  *										3. a feature's key is a word of one
  *										4. no old key family is left anywhere - code, templates,
  *										   texts, documents - and the key literals in the code name
- *										   a namespace of the grammar, the system or a runtime fill
+ *										   a namespace of the grammar, the system or a runtime fill, and no feature's
+ *										   code asks /nino/locales/textfiles where the text is
  *
  *									Part 2 checks the features against a kernel that has the grammar
  *									(\Nino\Modules\Template::category() decides it), and only the
@@ -440,6 +441,19 @@ foreach( keysFiles( $repo. '/features', [ 'php', 'js' ] ) as $file ) {
 	}
 }
 keysCheck( 'every key literal in the features\' code ('. $literals. ') names a namespace of the grammar, the system or a runtime fill'. ( $stray === [] ? '' : ' - '. implode( '; ', array_slice( array_unique( $stray ), 0, 8 ) ) ), $stray === [] && $literals > 40 );
+
+// Text lives in /text: the directory the Text panel writes and the page reads. Nino keeps
+// /nino/locales/textfiles in its defaults only for the features that read it - none should
+$textDirReaders = [];
+foreach( keysFiles( $repo. '/features', [ 'php' ] ) as $file ) {
+
+	$relative = ltrim( substr( $file, strlen( $repo ) ), '/' );
+
+	// A test sets the key for the kernel it runs on, which may still read it
+	if( str_contains( '/'. $relative, '/tests/' ) === false && str_contains( (string) file_get_contents( $file ), "'/nino/locales/textfiles'" ) === true )
+		$textDirReaders[] = $relative;
+}
+keysCheck( 'no feature\'s code asks /nino/locales/textfiles where the text files are - they are in /text'. ( $textDirReaders === [] ? '' : ' - '. implode( ', ', $textDirReaders ) ), $textDirReaders === [] );
 echo "\n";
 
 

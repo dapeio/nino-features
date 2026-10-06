@@ -400,8 +400,8 @@ namespace Nino\Modules\ProtectedArea {
 
 					if( isset( $fills[$locale] ) === false )
 						$fills[$locale] = array_merge(
-							(array) \Nino\Filesystem::getFileContent( $appData, $appData['/nino/locales/textfiles']. '/global.php', [] ),
-							(array) \Nino\Filesystem::getFileContent( $appData, $appData['/nino/locales/textfiles']. '/'. $locale. '.php', [] )
+							(array) \Nino\Filesystem::getFileContent( $appData, '/text/global.php', [] ),
+							(array) \Nino\Filesystem::getFileContent( $appData, '/text/'. $locale. '.php', [] )
 						);
 
 					$title = trim( (string) ( $fills[$locale]['[[/_nino/webpage'. $uri. '/title]]'] ?? '' ) );

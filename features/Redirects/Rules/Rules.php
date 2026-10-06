@@ -343,7 +343,7 @@ namespace Nino\Modules\Redirects {
 		 */
 		public static function routes( array &$appData ): array {
 
-			$textDir	= (string) ( $appData['/nino/locales/textfiles'] ?? '/text' );
+			$textDir	= '/text';
 			$global		= \Nino\Filesystem::getFileContent( $appData, $textDir. '/global.php', [] );
 			$global		= is_array( $global ) === true ? $global : [];
 			$texts		= [];
