@@ -250,7 +250,7 @@ check( 'the field picker is offered the model minus what carries no searchable t
 	in_array( 'title', $state['/articles']['model'] ?? [], true ) === true
 	&& in_array( 'keywords', $state['/articles']['model'] ?? [], true ) === true );
 check( 'a type nobody configured is listed as what it is', ( $state['/notes']['configured'] ?? null ) === true
-	&& ( $state['/missing-type']['exists'] ?? null ) === false );
+	&& ( $state['/missing-type']['issues'] ?? null ) === [ 'there is no element type "/missing-type"' ] );
 
 // Written after the index was: the one stat call that catches an element
 // edited while the feature was off, and a restored backup
@@ -629,6 +629,13 @@ check( '...and takes it', $status === 200 && ( $savedAddress['fields'] ?? null )
 check( '...so a visitor who types the slug finds the Element by its address',
 	callSearchAction( $appData, 'apiCreateIndex', [ 'type' => '/notes' ] )[0] === 200
 	&& searchUris( $appData, 'notes', 'one' ) === [ '/notes/one' ] );
+/*	Where an index lives is Search's to say: the file a rebuild of /notes wrote
+	is the one removeIndex() takes, and a second call finds nothing to take	*/
+check( 'removing a type\'s index takes the file its rebuild wrote, and says whether there was one',
+	is_file( $notesIndex ) === true
+	&& \Nino\Modules\Search::removeIndex( $appData, '/notes' ) === true
+	&& is_file( $notesIndex ) === false
+	&& \Nino\Modules\Search::removeIndex( $appData, '/notes' ) === false );
 callSearchAction( $appData, 'apiSave', [ 'type' => '/notes', 'fields' => [] ] );
 
 // The screen the panel exists for

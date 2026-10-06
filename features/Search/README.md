@@ -111,6 +111,8 @@ Beside the shortcodes, the feature's public surface:
 | `configuration( &$appData ): array` | everything `/nino/elements/index` names, as `/type => { fields, issues }` - **including what cannot be used, and why** |
 | `indexState( &$appData ): array` | one row per Element type the project has, plus any the configuration names and it does not: title, model, element count, configured fields, issues, and whether the index is missing or stale. What the panel draws |
 | `createIndexes( &$appData, string $only = '' ): array` | recreate every valid configured index, or just the one type named; answers `{ created, elements, failed, skipped, issues }` |
+| `typeUri( mixed $type ): ?string` | the canonical `/type` for `services` or `/services`, `null` for anything that is not a flat Element type name - the one rule the configuration and the panel read a type by |
+| `removeIndex( &$appData, string $typeUri ): bool` | deletes that type's derived index, `data/index-<type>.php`; `true` when there was one. The panel's save calls it when a type loses its last field |
 | `callbackElementsCommitted()` | registered in `init()` under `'/nino/elements/committed'`: after an insert, update or delete of a configured type has committed, that one type's index is recreated. A failed write is reported with `trigger_error()` and never rolls back the Element commit it follows |
 | `Shortcodes::query( string $key ): string` | what the visitor typed, for one query variable name |
 | `callbackApi( &$appData, &$request )` | registered in `init()` under `'/nino/http/response/GET://.search'` while the **JSON endpoint** setting is on - see [The JSON endpoint](#the-json-endpoint) |

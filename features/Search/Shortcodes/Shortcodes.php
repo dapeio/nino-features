@@ -270,11 +270,9 @@ namespace Nino\Modules\Search {
 			if( $inner === '' )
 				return '';
 
-			/*	tag="none" rather than tag="": Nino's shortcode parser cannot tell
-				an empty value from a bare flag - `tag=""` arrives as the
-				positional argument "tag" and never as the key - so an empty
-				string is not a thing an attribute can say here (see
-				\Nino\Html::_doShortcode()) */
+			/*	tag="none" rather than tag="": an attribute left off and one
+				written empty both read as '' here, and '' is the default
+				wrapper - so "no wrapper" needs a word of its own */
 			$tag = self::_attribute( $args, 'tag' );
 
 			if( $tag === 'none' )
@@ -361,13 +359,7 @@ namespace Nino\Modules\Search {
 		}
 
 		/**
-		 *	One attribute, with a fill that did not resolve treated as absent
-		 *
-		 *	Attributes are rendered before shortcodes are (see
-		 *	\Nino\Html::renderHtml()), so `empty="[[/template/page-suche/results/empty]]"`
-		 *	arrives here as the text it resolved to. When the project never
-		 *	defined that key it arrives as the brackets themselves, and reading
-		 *	those as a value is worse than the default
+		 *	One attribute, trimmed - absent reads as ''
 		 *
 		 *	@param		array 		$args					Shortcode arguments
 		 *	@param		string		$name
@@ -376,9 +368,7 @@ namespace Nino\Modules\Search {
 		 */
 		private static function _attribute( array $args, string $name ): string {
 
-			$value = trim( (string) ( $args[$name] ?? '' ) );
-
-			return preg_match( '/^\[\[.*\]\]$/s', $value ) === 1 ? '' : $value;
+			return trim( (string) ( $args[$name] ?? '' ) );
 		}
 
 		/**

@@ -75,6 +75,12 @@ A release is the tag `search-<version>` of dapeio/nino-features.
   feature to an installation that could not then install it. `^1.3` names
   only a kernel that can read the manifest.
 
+### Added
+
+- **`Search::typeUri()` and `Search::removeIndex()` are public.** The panel's
+  save asks them for what a type name is and which file is a type's index,
+  instead of restating both rules beside Search's own.
+
 ### Changed
 
 - **The README's and the docblock's examples of a text fill use Nino's key
@@ -133,6 +139,16 @@ A release is the tag `search-<version>` of dapeio/nino-features.
   missing on the field values `[search-results]` fills its rows with, and a
   field the model releases for html was not sanitised at all. Both go through
   the two steps the kernel's own `[element]` takes.
+
+### Removed
+
+- **`exists` in the rows of `indexState()`.** Nothing read it, and the README
+  never listed it: a type the configuration names and the project lacks says
+  so in its `issues`.
+- **The shortcodes' check for an attribute that is an unresolved fill.** A
+  value ending in `]]` cannot reach a shortcode - the parser ends the
+  attributes at the first `]` - so the check never applied. Output is
+  unchanged.
 
 ## 1.1.0 — 2026-09-11
 

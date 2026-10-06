@@ -175,13 +175,13 @@ namespace Nino\Modules\Search {
 				return;
 
 			$data 		= \Nino\Admin\Admin::postData();
-			// is_string() rather than a cast: an array in the posted json
-			// raises "Array to string conversion", which the runtime treats
-			// as fatal - a 500 where the 400 below is the answer
-			$typeUri 	= '/'. trim( is_string( $data['type'] ?? null ) === true ? $data['type'] : '', '/' );
+			// Search's own reading of a type name, never a cast: an array in
+			// the posted json raises "Array to string conversion", which the
+			// runtime treats as fatal - a 500 where the 400 below is the answer
+			$typeUri 	= \Nino\Modules\Search::typeUri( $data['type'] ?? null );
 			$posted 	= $data['fields'] ?? [];
 
-			if( preg_match( '/^\/[a-z][a-z0-9_-]*$/', $typeUri ) !== 1 ) {
+			if( $typeUri === null ) {
 				\Nino\Http::fail( $request, 400, 'not an element type name' );
 				return;
 			}
@@ -240,10 +240,8 @@ namespace Nino\Modules\Search {
 
 			$removed = false;
 
-			if( $fields === [] ) {
-				$path = \Nino\Filesystem::path( $appData, '/data/index-'. ltrim( $typeUri, '/' ). '.php' );
-				$removed = is_file( $path ) === true && @unlink( $path ) === true;
-			}
+			if( $fields === [] )
+				$removed = \Nino\Modules\Search::removeIndex( $appData, $typeUri );
 			else
 				$config[$typeUri] = $fields;
 

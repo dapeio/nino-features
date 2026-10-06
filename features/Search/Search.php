@@ -160,7 +160,7 @@ namespace Nino\Modules {
 			$types			= [];
 
 			foreach( (array) ( $query['type'] ?? array_keys( $configured ) ) as $wanted ) {
-				$typeUri = self::_typeUri( $wanted );
+				$typeUri = self::typeUri( $wanted );
 				if( $typeUri !== null && isset( $configured[$typeUri] ) === true && in_array( $typeUri, $types, true ) === false )
 					$types[] = $typeUri;
 			}
@@ -224,7 +224,7 @@ namespace Nino\Modules {
 		 */
 		public static function callbackElementsCommitted( array &$appData, array &$change ): void {
 
-			$typeUri = self::_typeUri( $change['type'] ?? null );
+			$typeUri = self::typeUri( $change['type'] ?? null );
 			if( $typeUri === null )
 				return;
 
@@ -262,7 +262,7 @@ namespace Nino\Modules {
 				'issues'		=> [],
 			];
 
-			$wanted = $only === '' ? null : self::_typeUri( $only );
+			$wanted = $only === '' ? null : self::typeUri( $only );
 
 			if( $only !== '' && $wanted === null )
 				return $result;
@@ -330,7 +330,7 @@ namespace Nino\Modules {
 
 			foreach( is_array( $elementType ) === true ? $elementType : [ $elementType ] as $wanted ) {
 
-				$typeUri = self::_typeUri( $wanted );
+				$typeUri = self::typeUri( $wanted );
 
 				if( $typeUri === null || isset( $types[$typeUri] ) === false )
 					continue;
@@ -431,7 +431,7 @@ namespace Nino\Modules {
 
 			foreach( $config as $rawType => $rawFields ) {
 
-				$typeUri = self::_typeUri( $rawType );
+				$typeUri = self::typeUri( $rawType );
 
 				if( $typeUri === null ) {
 					// An array key is an int or a string, so it is always printable
@@ -552,7 +552,6 @@ namespace Nino\Modules {
 			return [
 				'type' 			=> $typeUri,
 				'title' 		=> is_string( $typeData['title'] ?? null ) === true ? $typeData['title'] : ltrim( $typeUri, '/' ),
-				'exists' 		=> $model !== [] || $typeData !== [],
 				// What a priority slot may be given: the Element's address first,
 				// then every field the model has minus the ones that carry no
 				// text to search (see _normalizeValue)
@@ -605,8 +604,14 @@ namespace Nino\Modules {
 		/**
 		 *	One flat Elements type only. Both "services" and "/services" are
 		 *	accepted at the API/config boundary and canonicalized to "/services".
+		 *	The panel's save asks this too, so the two cannot disagree on what a
+		 *	type name is
+		 *
+		 *	@param		mixed			$type					As posted or configured - anything
+		 *
+		 *	@return 	?string									The canonical /type, or null when it is none
 		 */
-		private static function _typeUri( mixed $type ): ?string {
+		public static function typeUri( mixed $type ): ?string {
 
 			if( is_string( $type ) === false )
 				return null;
@@ -693,8 +698,9 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	Read only. A broken or missing index stays broken/missing until the
-		 *	Config button is pressed or a configured Elements write refreshes it.
+		 *	Read only. A broken or missing index stays broken/missing until
+		 *	Rebuild or Save and build in the Search panel, or a configured
+		 *	Elements write, refreshes it.
 		 */
 		private static function _readIndex( array &$appData, string $typeUri ): array {
 
@@ -714,6 +720,23 @@ namespace Nino\Modules {
 
 		private static function _indexPath( string $typeUri ): string {
 			return '/data/index-'. ltrim( $typeUri, '/' ). '.php';
+		}
+
+		/**
+		 *	Delete one type's derived index file. What the panel's save does when
+		 *	a type loses its last field - an index nobody searches is a copy of
+		 *	the content with nothing reading it
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$typeUri			A canonical /type (see typeUri())
+		 *
+		 *	@return 	bool										true when there was a file and it is gone
+		 */
+		public static function removeIndex( array &$appData, string $typeUri ): bool {
+
+			$path = \Nino\Filesystem::path( $appData, self::_indexPath( $typeUri ) );
+
+			return is_file( $path ) === true && @unlink( $path ) === true;
 		}
 
 		/**
