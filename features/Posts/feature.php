@@ -67,10 +67,11 @@ return [
 	],
 	'category'		=> 'content',
 	'version'			=> '1.1.0',
-	/*	1.1 is where \Nino\Features arrived and a feature could bring an install
-		unit and a runtime module of its own at all. Nothing here needs more
-		than that: wildcard routes, element queries with sort and the runtime
-		fills this overrides a page title with are all 1.0 kernel. */
+	/*	1.4, because the words the unit delivers and the page details a post
+		sets are Nino 1.4's text keys (/template/..., /_nino/webpage<uri>/...),
+		which no earlier Nino has. The sectioned 'manual' above is read from
+		1.3.0-beta on - v1.2.0-beta refuses it - and wildcard routes, element
+		queries with sort and runtime fills are 1.0 kernel. */
 	'nino'				=> '^1.4',
 	'requires'		=> [],
 	// Which element type is a section of the site, under which path, through

@@ -19,9 +19,9 @@ namespace Nino\Modules\Posts {
 	 *										A section is a handful of strings, and every one of them
 	 *										ends up in a route, a file path or an element query - so
 	 *										none of them is taken as written. normalize() is the one
-	 *										gate: it runs on what is read from disk and on what a
-	 *										request posts, and what it cannot honour it says in
-	 *										`notes` rather than passing on.
+	 *										gate: it runs on what is read from data/posts.php, and
+	 *										what it cannot honour it says in `notes` rather than
+	 *										passing on.
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -32,8 +32,6 @@ namespace Nino\Modules\Posts {
 		// Declared under `data` in feature.php, so a backup carries it and
 		// removing the feature leaves it where it is
 		public const string PATH = '/data/posts.php';
-
-		public const int FORMAT = 1;
 
 		// A section key, an element type, a path segment: three different
 		// alphabets, and each one of them is joined to something later
@@ -73,7 +71,7 @@ namespace Nino\Modules\Posts {
 		 *	One section, with everything that cannot be honoured said out loud
 		 *
 		 *	@param		string		$key					The section's own key
-		 *	@param		array 		$raw					What was read or posted
+		 *	@param		array 		$raw					What data/posts.php holds
 		 *	@param		array 		&$notes				(reference) What was not taken as written
 		 *
 		 *	@return 	array										A section, every field present
@@ -136,7 +134,7 @@ namespace Nino\Modules\Posts {
 		/**
 		 *	Every section, normalised, keyed by a key that is really a key
 		 *
-		 *	@param		array 		$raw					What was read or posted
+		 *	@param		array 		$raw					What data/posts.php holds
 		 *	@param		array 		&$notes				(reference) What was not taken as written
 		 *
 		 *	@return 	array										[ key => section ]
@@ -203,22 +201,6 @@ namespace Nino\Modules\Posts {
 			$stored = \Nino\Filesystem::getFileContent( $appData, self::PATH, [] );
 
 			return self::normalize( is_array( $stored ) === true ? $stored : [], $notes );
-		}
-
-		/**
-		 *	Store them
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array 		$sections			Normalised sections
-		 *
-		 *	@return 	bool
-		 */
-		public static function write( array &$appData, array $sections ): bool {
-
-			return \Nino\Filesystem::putFileContent( $appData, self::PATH, [
-				'format' 		=> self::FORMAT,
-				'sections'	=> $sections,
-			] );
 		}
 
 		/**

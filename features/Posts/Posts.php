@@ -78,9 +78,9 @@ namespace Nino\Modules {
 			Posts\Shortcodes::init( $appData );
 			self::routes( $appData );
 
-			// Here rather than in routes(), which anything that changes a section
-			// calls again: callbacks accumulate, and a second registration would
-			// put every post in the sitemap twice
+			// Here rather than in routes(), which a test calls again after it
+			// changes a section: callbacks accumulate, and a second registration
+			// would put every post in the sitemap twice
 			\Nino\Callbacks::registerCallback( $appData, '/seo/pages', [ self::class, 'callbackSeoPages' ] );
 		}
 

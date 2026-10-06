@@ -41,9 +41,21 @@ A section is an element type, a path and the two templates that render them:
 | `body` | `body` | the field `[[.body]]` renders as paragraphs |
 | `perPage` | 10 | how long a page of the list is |
 
-They live in `data/posts.php`, and a project that has said nothing has exactly
-the section above - installing the feature is enough to have a blog. An empty
-list in a file that exists is a real answer, and stays one.
+They live in `data/posts.php`, which a project writes by hand - Posts has no
+panel. Every section is a key under `sections`, and a field left out takes the
+default from the table above:
+
+```php
+<?php return [
+	'sections' => [
+		'blog' => [ 'type' => '/posts', 'path' => 'blog', 'perPage' => 2 ],
+	],
+];
+```
+
+A project without the file has exactly the default section - installing the
+feature is enough to have a blog. An empty list in a file that exists is a real
+answer, and stays one.
 
 A **post dated in the future is not published**: it is not in the list, and its
 own url is a 404. So a post can be written today and appear on Monday without

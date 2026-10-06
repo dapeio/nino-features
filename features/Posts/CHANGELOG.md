@@ -17,9 +17,6 @@ A release is the tag `posts-<version>` of dapeio/nino-features.
   two patches running, and a reader of the README needs the suite's name, not
   its size.
 
-- The README's check count matches the suite again - 70 rather than the
-  number it carried, which the suite passed some time ago.
-
 - Needs Nino `^1.3`, where the constraint said `^1.1`. The sectioned `manual`
   map this manifest carries is only read by a kernel newer than the
   `v1.2.0-beta` tag - `Features::manifest()` refuses it on the tagged one -
@@ -90,6 +87,11 @@ A release is the tag `posts-<version>` of dapeio/nino-features.
   it. Both take the same two steps as every other value now.
 
 ### Removed
+
+- **`Sections::write()` and `Sections::FORMAT`.** Only the feature's own test
+  called the writer, and nothing ever read the `format` it stamped into
+  `data/posts.php`; a file that carries it reads as before. A project writes
+  the file by hand, and the README now shows its shape.
 
 - **`Posts::KEY`.** The constant was read nowhere; the manifest's `key` is
   where the feature's key is written.

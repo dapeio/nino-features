@@ -447,8 +447,9 @@ namespace Nino\Modules\Posts {
 
 			$given = (string) ( $args[$which] ?? '' );
 
-			// An attribute that still carries brackets is an unresolved fill,
-			// not a label - the project has no such text key
+			// A word with '[[' in it is not taken as a label. A whole unresolved
+			// fill never arrives here - an attribute ends at the first ']' - but
+			// what is left of one is no word anybody meant to show
 			if( $given !== '' && str_contains( $given, '[[' ) === false )
 				return htmlspecialchars( $given, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
 

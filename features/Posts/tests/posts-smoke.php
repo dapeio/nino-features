@@ -137,10 +137,18 @@ check( '...and the two templates', \Nino\Filesystem::fileExists( $appData, '/tem
 	&& \Nino\Filesystem::fileExists( $appData, '/templates/page-post.tpl' ) === true );
 check( 'and the words those templates say', \Nino\Html::renderTextfill( $appData, '/template/page-posts/intro/title' ) !== '' );
 
-// The section the rest of this runs against
-\Nino\Modules\Posts\Sections::write( $appData, \Nino\Modules\Posts\Sections::normalize( [ 'sections' => [
-	'blog' => [ 'type' => '/posts', 'path' => 'blog', 'perPage' => 2 ],
-] ] ) );
+/*	The section the rest of this runs against is the README's own example of
+	data/posts.php. Posts has no panel and no writer, so that example is how a
+	project learns the file's shape - it has to be a file read() takes as
+	written	*/
+preg_match( '/```php\n(<\?php return \[.*?)```/s', (string) file_get_contents( dirname( __DIR__ ). '/README.md' ), $example );
+$sectionsFile = \Nino\Filesystem::path( $appData, \Nino\Modules\Posts\Sections::PATH );
+is_dir( dirname( $sectionsFile ) ) === true || mkdir( dirname( $sectionsFile ), 0755, true );
+file_put_contents( $sectionsFile, (string) ( $example[1] ?? '' ) );
+$exampleNotes = [];
+check( 'the README\'s example of data/posts.php is a file the feature reads as written',
+	\Nino\Modules\Posts\Sections::read( $appData, $exampleNotes ) === [ 'blog' => \Nino\Modules\Posts\Sections::normalizeSection( 'blog', [ 'type' => '/posts', 'path' => 'blog', 'perPage' => 2 ] ) ]
+	&& $exampleNotes === [] );
 unset( $appData['./posts/sections'] );
 
 $appData['/nino/modules'] = [ '\\Nino\\Modules\\Elements', '\\Nino\\Modules\\Posts' ];
@@ -255,15 +263,15 @@ $_GET = [ 'page' => '2' ];
 check( 'from page two the way back is the section\'s own url', str_contains( postsRender( $appData, '[posts-pager]' ), '<li><a href="/blog" rel="prev">' ) === true );
 $_GET = [];
 
-\Nino\Modules\Posts\Sections::write( $appData, \Nino\Modules\Posts\Sections::normalize( [ 'sections' => [
+\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Posts\Sections::PATH, [ 'sections' => [
 	'blog' => [ 'type' => '/posts', 'path' => 'blog', 'perPage' => 50 ],
-] ] ) );
+] ] );
 unset( $appData['./posts/sections'] );
 check( 'one page is no pager - saying "1 of 1" is telling somebody there is more', postsRender( $appData, '[posts-pager]' ) === '' );
 
-\Nino\Modules\Posts\Sections::write( $appData, \Nino\Modules\Posts\Sections::normalize( [ 'sections' => [
+\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Posts\Sections::PATH, [ 'sections' => [
 	'blog' => [ 'type' => '/posts', 'path' => 'blog', 'perPage' => 2 ],
-] ] ) );
+] ] );
 unset( $appData['./posts/sections'] );
 
 postsResolve( $appData, '/blog/second-wind' );
@@ -449,9 +457,9 @@ check( 'the index keeps the uri its own route has, so the textfills of its title
 /*	A section with no index page has no page at its path either - the wildcard
 	route answers below it and nothing answers it. Offering one would put a 404
 	in the sitemap. */
-\Nino\Modules\Posts\Sections::write( $appData, \Nino\Modules\Posts\Sections::normalize( [ 'sections' => [
+\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Posts\Sections::PATH, [ 'sections' => [
 	'blog' => [ 'type' => '/posts', 'path' => 'blog', 'index' => '', 'perPage' => 2 ],
-] ] ) );
+] ] );
 unset( $appData['./posts/sections'] );
 
 $withoutIndex = [];
