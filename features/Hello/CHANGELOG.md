@@ -5,6 +5,10 @@ A release is the tag `hello-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+- Carries a `maturity` badge, `Example` / `Beispiel`: the Features panel of
+  a Nino that reads the field draws it beside the name, and the catalogue
+  entry carries it. A Nino from before the field ignores the key.
+
 - Needs Nino `^1.3`, where the constraint said `^1.1`. The sectioned `manual`
   map this manifest carries is only read by a kernel newer than the
   `v1.2.0-beta` tag - `Features::manifest()` refuses it on the tagged one -

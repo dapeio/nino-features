@@ -55,7 +55,7 @@ const BUILD_MAX_ENTRIES					= 5000;
 // path segment; 'tests' only against the first
 const BUILD_EXCLUDED						= [ '.git*', '.DS_Store', 'Thumbs.db', '.idea', '.vscode', '*~', '*.swp', '*.swo', '*.swx', '.#*', '#*#', '*.orig', '*.rej', '*.bak' ];
 
-const BUILD_ENTRY_FIELDS				= [ 'key', 'name', 'description', 'category', 'version', 'nino', 'php', 'requires', 'directory', 'archive', 'sha256', 'size', 'released' ];
+const BUILD_ENTRY_FIELDS				= [ 'key', 'name', 'description', 'category', 'maturity', 'version', 'nino', 'php', 'requires', 'directory', 'archive', 'sha256', 'size', 'released' ];
 
 // The categories a published feature may name - the same six the kernel
 // publishes as \Nino\Features::CATEGORIES, kept here rather than read from
@@ -632,6 +632,7 @@ foreach( $selected as $key => $manifest ) {
 		'name'				=> $manifest['name'],
 		'description'	=> $manifest['description'],
 		'category'		=> $manifest['category'] ?? '',
+		'maturity'		=> $manifest['maturity'] ?? '',
 		'version'			=> $version,
 		'nino'				=> $manifest['nino'],
 		'php'					=> [ 'ext' => array_values( $manifest['php']['ext'] ) ],
@@ -652,6 +653,12 @@ foreach( $selected as $key => $manifest ) {
 	// than says nothing meaningful
 	if( $entry['category'] === '' )
 		unset( $entry['category'] );
+
+	// Optional by design: most features carry no badge, and a kernel from
+	// before the field drops it from the manifest - the entry then says
+	// nothing, which every kernel reads
+	if( $entry['maturity'] === '' )
+		unset( $entry['maturity'] );
 
 	$entries[$id] = $entry;
 }

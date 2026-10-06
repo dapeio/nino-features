@@ -57,6 +57,8 @@ foreach( \Nino\Features::all( $appData ) as $feature )
 		// ?? '': the preview runs against whatever checkout NINO_ROOT names,
 		// including one released before features had a category
 		'category'		=> $feature['category'] ?? '',
+		// Same for the maturity badge, which most features leave empty
+		'maturity'		=> $feature['maturity'] ?? '',
 		'version'			=> $feature['version'],
 		'nino'				=> $feature['nino'],
 		'php'					=> $feature['php'],

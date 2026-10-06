@@ -36,6 +36,8 @@ Dieses Repository ist der Ort, von dem aus Ninos Features veröffentlicht werden
 
 **Kategorie** ist das, wonach das Features-Panel gruppiert und filtert, eine je Feature: `content`, `ui`, `communication`, `marketing`, `security` oder `system` – das Vokabular, das Nino als `\Nino\Features::CATEGORIES` veröffentlicht und das [Features](https://github.com/dapeio/nino/blob/main/docs/features.de.md#kategorien) erklärt, samt der Regel für den Fall, dass zwei davon passen. Nino selbst nimmt jeden Slug an, damit ein älterer Kernel einen Katalog lesen kann, der ein Feature unter einer Kategorie führt, die er nicht kennt; `bin/build.php` ist die Stelle, die ein veröffentlichtes Feature auf die sechs festlegt – ein Tippfehler wird also hier gefangen und nicht als eigene Überschrift in jemandes Panel angezeigt.
 
+**Reifegrad** ist ein optionales Abzeichen, das das Features-Panel neben den Namen eines Features zeichnet, in seinen Zeilen, unter den verfügbaren Features und über seinem Handbuch: freier Text von höchstens 24 Zeichen, ein String oder eine Abbildung `locale => string`, als Schlüssel `maturity` im Manifest. Die meisten Features tragen keinen; `hello` sagt `Beispiel`. `bin/build.php` veröffentlicht ihn im Katalogeintrag, wo das Manifest einen hat. Ein Nino aus der Zeit vor dem Schlüssel ignoriert ihn, ein Feature kann ihn also tragen, bevor jedes Projekt aktualisiert hat.
+
 **Name** ist das, was eine Zeile im Features-Panel sagt – der Key steht dort nie, das Verzeichnis auch nicht –, deshalb dürfen zwei Features in keiner Sprache denselben Namen tragen, und `bin/build.php` weist ein solches Paar ab. Groß- und Kleinschreibung zählt dabei nicht, denn „Seo" und „SEO" sind so schwer auseinanderzuhalten wie zwei gleichlautende Zeilen; ein Name als einfacher String ist der Name in jeder Sprache und kollidiert entsprechend.
 
 Die README eines Features, wenn es eine hat, beschreibt seine Routen, sein Panel, seine Install-Einheit, seine Daten und seine Tests; sein `CHANGELOG.md`, wenn es eines hat, die Änderungen zwischen den Versionen. `bin/catalogue.php` liest dieselben Manifeste und gibt diese Tabelle als JSON aus, `bin/build.php` baut die Archive und das signierte `catalogue.json`, das getnino.dev veröffentlicht – siehe [Entwickeln und testen](#entwickeln-und-testen) und [Veröffentlichen](#veröffentlichen).
@@ -88,7 +90,7 @@ Das [Feature-Rezept](https://github.com/dapeio/nino/blob/main/docs/recipes/featu
 
 ```text
 features/<Name>/
-├── feature.php              das Manifest: key, name, description, manual, category, version, nino, requires, settings, data
+├── feature.php              das Manifest: key, name, description, manual, category, maturity (optional), version, nino, requires, settings, data
 ├── <Name>.php               die Laufzeitklasse \Nino\Modules\<Name>
 ├── Admin/Admin.php          das Panel \Nino\Modules\<Name>\Admin, wenn es eines gibt
 ├── assets/                  Skript und Stylesheet des Panels
@@ -215,6 +217,7 @@ Ohne `--key` schreibt es keine Signatur und gibt diesen Einzeiler aus; mit `--ke
 | `key` | der Feature-Key, ein Slug – `newsletter` |
 | `name`, `description` | wie das Manifest sie hat: ein String oder eine Abbildung `locale => string` |
 | `category` | wofür das Feature da ist, ein Slug – das des Manifests; fehlt, wo es keine nennt |
+| `maturity` | das Abzeichen, das das Features-Panel neben den Namen zeichnet, ein String oder eine Abbildung `locale => string` – das des Manifests; fehlt, wo es keines nennt |
 | `version` | `major.minor.patch`, die des Manifests |
 | `nino` | die Nino-Versionsbedingung, `^1.3` |
 | `php` | `{ "ext": [ ... ] }` – die PHP-Erweiterungen, die das Feature braucht |
@@ -225,7 +228,7 @@ Ohne `--key` schreibt es keine Signatur und gibt diesen Einzeiler aus; mit `--ke
 | `size` | seine Größe in Bytes, höchstens 20 MB |
 | `released` | der Tag der Veröffentlichung, `YYYY-MM-DD` |
 
-`generated` ist die Zeit des letzten Builds, ISO 8601 UTC. Die Einträge sind nach Key sortiert, dann absteigend nach Version; ein Kernel nimmt die höchste Version, die er ausführen kann. Was `\Nino\Catalogue::parse()` in Nino abweist – ein fehlendes Feld, eine URL, die nicht https ist, ein Archiv über 20 MB –, weist den ganzen Katalog ab; darum prüft `bin/build.php`, was es geschrieben hat, gegen `parse()`, wo der Checkout es hat. `category` ist das einzige Feld, das verworfen statt abgewiesen wird: Es ist eine Überschrift in einer Liste, und ein Kernel, der einen signierten Katalog wegen einer Kategorie ablehnte, die er nie gehört hat, hörte an dem Tag auf, den Katalog zu lesen, an dem ein neuerer eine veröffentlicht. Deshalb hat es auch die Formatnummer nicht erhöht – `parse()` nimmt nur die Schlüssel, die es kennt.
+`generated` ist die Zeit des letzten Builds, ISO 8601 UTC. Die Einträge sind nach Key sortiert, dann absteigend nach Version; ein Kernel nimmt die höchste Version, die er ausführen kann. Was `\Nino\Catalogue::parse()` in Nino abweist – ein fehlendes Feld, eine URL, die nicht https ist, ein Archiv über 20 MB –, weist den ganzen Katalog ab; darum prüft `bin/build.php`, was es geschrieben hat, gegen `parse()`, wo der Checkout es hat. `category` und `maturity` sind die Felder, die verworfen statt abgewiesen werden: das erste ist eine Überschrift in einer Liste, das zweite ein Abzeichen neben einem Namen, und ein Kernel, der einen signierten Katalog wegen einer Kategorie ablehnte, die er nie gehört hat, hörte an dem Tag auf, den Katalog zu lesen, an dem ein neuerer eine veröffentlicht. Deshalb hat keines die Formatnummer erhöht – `parse()` nimmt nur die Schlüssel, die es kennt.
 
 ## Ausblick
 

@@ -336,10 +336,18 @@ foreach( $manifests as $key => $manifest ) {
 		? [ 'key', 'name', 'description', 'category', 'version', 'nino', 'php', 'requires', 'directory', 'archive', 'sha256', 'size', 'released' ]
 		: [ 'key', 'name', 'description', 'version', 'nino', 'php', 'requires', 'directory', 'archive', 'sha256', 'size', 'released' ];
 
+	// The badge is optional: an entry carries it only where the manifest this
+	// kernel read does, right after the category - a kernel from before the
+	// field drops it from the manifest, and then the entry has none either
+	if( ( $manifest['maturity'] ?? '' ) !== '' )
+		array_splice( $fields, array_search( 'description', $fields, true ) + ( $categorised === true ? 2 : 1 ), 0, 'maturity' );
+
 	check( $key. ': the entry carries exactly the fields of format 1, in order', is_array( $entry ) === true && array_keys( $entry ) === $fields );
 	check( $key. ': name, description, version, nino, php and requires are the manifest\'s', is_array( $entry ) === true && $entry['name'] === $manifest['name'] && $entry['description'] === $manifest['description'] && $entry['version'] === $manifest['version'] && $entry['nino'] === $manifest['nino'] && $entry['php'] === [ 'ext' => $manifest['php']['ext'] ] && $entry['requires'] === $manifest['requires'] );
 	check( $key. ': the category is the manifest\'s, and one the catalogue publishes', $categorised === false
 		|| ( is_array( $entry ) === true && $entry['category'] === $manifest['category'] && in_array( $entry['category'], $categories, true ) === true ) );
+	check( $key. ': the maturity is the manifest\'s where there is one, and left out where there is none', is_array( $entry ) === true
+		&& ( ( $manifest['maturity'] ?? '' ) === '' ? array_key_exists( 'maturity', $entry ) === false : $entry['maturity'] === $manifest['maturity'] ) );
 	check( $key. ': directory and archive url name the archive under the base url', is_array( $entry ) === true && $entry['directory'] === basename( $manifest['dir'] ) && $entry['archive'] === $baseUrl. '/'. $name );
 	check( $key. ': sha256 and size are the archive\'s as written', is_array( $entry ) === true && $entry['sha256'] === hash_file( 'sha256', $out. '/'. $name ) && $entry['size'] === filesize( $out. '/'. $name ) );
 	check( $key. ': released is the build day', is_array( $entry ) === true && $entry['released'] === $today );
@@ -356,7 +364,15 @@ if( class_exists( '\Nino\Catalogue' ) === true ) {
 	$parsed = \Nino\Catalogue::parse( $json );
 
 	check( 'the kernel parses the catalogue', is_array( $parsed ) === true );
-	check( 'and reads every entry as written', is_array( $parsed ) === true && count( $parsed['features'] ) === count( $manifests ) && array_map( static fn( array $entry ): array => $entry, $parsed['features'] ) === $document['features'] );
+	check( 'and reads every entry as written', is_array( $parsed ) === true && count( $parsed['features'] ) === count( $manifests ) && array_map( static function( array $entry ): array {
+
+		// A kernel that knows the badge hands back '' for an entry without one
+		// where the document leaves the key out - an empty badge is no badge
+		if( ( $entry['maturity'] ?? null ) === '' )
+			unset( $entry['maturity'] );
+
+		return $entry;
+	}, $parsed['features'] ) === $document['features'] );
 	check( 'the kernel verifies the signature with the public key', \Nino\Catalogue::verify( $json, $signature, $publicPem ) === true );
 	check( 'and refuses it with another key', \Nino\Catalogue::verify( $json, $signature, $otherPublicPem ) === false );
 	check( 'the signature verifies the way `openssl dgst -sha256 -sign | base64 -w0` is read: whitespace tolerated', \Nino\Catalogue::verify( $json, "  ". trim( $signature ). "\n\n", $publicPem ) === true );

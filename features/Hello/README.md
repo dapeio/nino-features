@@ -80,7 +80,7 @@ on deactivation, because there would be nothing left to give back.
 ## The parts, in the order a request meets them
 
 **`feature.php`** — the manifest. Key, name, description, the manual an operator
-reads, the category, the version, which Nino it needs, what it requires, what it
+reads, the category, the maturity badge, the version, which Nino it needs, what it requires, what it
 stores and what it can be configured with. Nothing here runs.
 
 **`Hello::init()`** — called on every request while the feature is active.

@@ -44,6 +44,8 @@ This repository is the place Nino's features are published from. `features/<Name
 
 **Category** is what the Features panel groups and filters by, one per feature: `content`, `ui`, `communication`, `marketing`, `security` or `system` - the vocabulary Nino publishes as `\Nino\Features::CATEGORIES` and [Features](https://github.com/dapeio/nino/blob/main/docs/features.md#categories) explains, with the rule for deciding between two of them. Nino itself takes any slug, so an older kernel can read a catalogue that files a feature under a category it predates; `bin/build.php` is what holds a published feature to the six, so a typo is caught here rather than shown as a heading of its own in someone's panel.
 
+**Maturity** is an optional badge the Features panel draws beside a feature's name, in its rows, among the available features and over its manual: free text of at most 24 characters, a string or a `locale => string` map, as the manifest's `maturity` key. Most features carry none; `hello` says `Example`. `bin/build.php` publishes it in the catalogue entry where the manifest has one. A Nino from before the key ignores it, so a feature may carry it before every project has updated.
+
 **Name** is what a row in the Features panel says - the key is never on screen there, and neither is the directory - so no two features may carry one name, in any locale, and `bin/build.php` refuses a pair that does. Case is ignored, since "Seo" and "SEO" are as hard to tell apart as two rows reading the same; a name given as a plain string is that name in every locale and collides accordingly.
 
 A feature's README, where it has one, describes its routes, its panel, its install unit, its data and its tests; its `CHANGELOG.md`, where it has one, the changes between versions. `bin/catalogue.php` reads the same manifests and prints this table as JSON, `bin/build.php` builds the archives and the signed `catalogue.json` getnino.dev publishes - see [Develop and test](#develop-and-test) and [Publishing](#publishing).
@@ -96,7 +98,7 @@ The [feature recipe](https://github.com/dapeio/nino/blob/main/docs/recipes/featu
 
 ```text
 features/<Name>/
-├── feature.php              the manifest: key, name, description, manual, category, version, nino, requires, settings, data
+├── feature.php              the manifest: key, name, description, manual, category, maturity (optional), version, nino, requires, settings, data
 ├── <Name>.php               the runtime class \Nino\Modules\<Name>
 ├── Admin/Admin.php          the panel \Nino\Modules\<Name>\Admin, when there is one
 ├── assets/                  the panel's script and stylesheet
@@ -223,6 +225,7 @@ Without `--key` it writes no signature and prints that one-liner; with `--key ca
 | `key` | the feature key, a slug - `newsletter` |
 | `name`, `description` | as the manifest has them: a string, or a `locale => string` map |
 | `category` | what the feature is for, one slug - the manifest's; left out where it names none |
+| `maturity` | the badge the Features panel draws beside the name, a string or a `locale => string` map - the manifest's; left out where it names none |
 | `version` | `major.minor.patch`, the manifest's |
 | `nino` | the Nino version constraint, `^1.3` |
 | `php` | `{ "ext": [ ... ] }` - the PHP extensions the feature needs |
@@ -233,7 +236,7 @@ Without `--key` it writes no signature and prints that one-liner; with `--key ca
 | `size` | its size in bytes, at most 20 MB |
 | `released` | the day it was published, `YYYY-MM-DD` |
 
-`generated` is the time of the last build, ISO 8601 UTC. The entries are sorted by key, then by version descending; a kernel picks the highest version it can run. What `\Nino\Catalogue::parse()` in Nino refuses - a missing field, a url that is not https, an archive above 20 MB - refuses the whole catalogue, so `bin/build.php` checks what it wrote against `parse()` where the checkout has it. `category` is the one field that is dropped rather than refused: it is a heading in a list, and a kernel that turned down a signed catalogue over a category it had never heard of would stop reading the catalogue the day a newer one publishes one. That is also why it did not raise the format number - `parse()` takes only the keys it knows.
+`generated` is the time of the last build, ISO 8601 UTC. The entries are sorted by key, then by version descending; a kernel picks the highest version it can run. What `\Nino\Catalogue::parse()` in Nino refuses - a missing field, a url that is not https, an archive above 20 MB - refuses the whole catalogue, so `bin/build.php` checks what it wrote against `parse()` where the checkout has it. `category` and `maturity` are the fields that are dropped rather than refused: the first is a heading in a list, the second a badge beside a name, and a kernel that turned down a signed catalogue over a category it had never heard of would stop reading the catalogue the day a newer one publishes one. That is also why neither raised the format number - `parse()` takes only the keys it knows.
 
 ## Outlook
 

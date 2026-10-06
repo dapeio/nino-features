@@ -103,6 +103,14 @@ return [
 		with the tooling rather than with anything a site needs	*/
 	'category'		=> 'system',
 
+	/*	Optional: a short badge the Features panel draws beside the name, in
+		the active and inactive rows, among the available features and over the
+		open manual. Free text of at most 24 characters, a string or a locale
+		map, where the feature wants to say how far along it is - or, as here,
+		that it is an example and not a feature to run on a site. Leave it out
+		and no badge is drawn. A kernel from before the field ignores it	*/
+	'maturity'		=> [ 'en_US' => 'Example', 'de_DE' => 'Beispiel' ],
+
 	// The feature's own version, semver. It is what the panel records on
 	// activation and what upgrade() is told when it changes (see Hello.php)
 	'version'			=> '1.0.0',

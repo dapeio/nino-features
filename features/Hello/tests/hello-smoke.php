@@ -76,6 +76,9 @@ check( 'it names and describes itself in both interface languages', is_array( $m
 	through	*/
 $raw = include $dir. '/feature.php';
 check( 'it is filed under system - an example belongs with the tooling', ( $raw['category'] ?? '' ) === 'system' );
+check( 'it says in both languages that it is an example', ( $raw['maturity'] ?? [] ) === [ 'en_US' => 'Example', 'de_DE' => 'Beispiel' ] );
+// Only a kernel that knows the field hands it back - an older one drops it
+check( 'the kernel, where it reads the badge, hands back what the file says', array_key_exists( 'maturity', $manifest ) === false || $manifest['maturity'] === $raw['maturity'] );
 
 check( 'the setting is declared with a type the panel can draw', ( $manifest['settings']['greeting']['type'] ?? '' ) === 'string'
 	&& in_array( $manifest['settings']['greeting']['type'], \Nino\Features::SETTING_TYPES, true ) === true );
