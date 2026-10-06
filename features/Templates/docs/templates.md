@@ -190,6 +190,9 @@ carries (with a usage count), the companion to `[elements]` looping records.
 **Filterable grid** in the table above is a complete worked example: a static
 filter block sits next to an ordinary, composer-editable Elements Area, and a
 click on a button shows or hides matching cards without a page reload.
+A category no card carries yet therefore has no button. Give `category` a
+fixed set of options under **Element Types** - the type the preset creates
+has one - so that a category is spelled one way and becomes one button.
 
 Both loops have to read one collection, and a preset must not spell that slug
 out: a new Area is named `<page>-<section>-<area>` when the section is

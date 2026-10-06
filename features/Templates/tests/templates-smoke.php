@@ -289,6 +289,7 @@ foreach( $presets as $areaLabelPreset => $areaLabelDefinition )
 check( 'every area names itself twice - a fill key for the panel, English for what gets stored'. ( $areaLabelErrors === [] ? '' : ' - '. implode( ' | ', $areaLabelErrors ) ), $areaLabelErrors === [] );
 $areaLabelManifest = include __DIR__. '/../library/articles-grid/manifest.php';
 $areaLabelManifest['areas']['heading']['labelKey'] = 'Title area';
+check( 'an area carries no text the panel never shows', array_filter( $presets, fn( array $preset ): bool => array_filter( $preset['areas'], fn( array $area ): bool => array_key_exists( 'help', $area ) ) !== [] ) === [] );
 check( 'an area label key that is not a fill key is dropped rather than shown as text', \Nino\Modules\Templates\AreaComposer::normalizePreset( 'bad-label-key', $areaLabelManifest, __DIR__. '/../library/articles-grid' )['areas']['heading']['labelKey'] === '' );
 
 $libraryRequest = response();

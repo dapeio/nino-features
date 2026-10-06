@@ -432,7 +432,6 @@ namespace Nino\Modules\Templates {
 				// labelKey is the same name as a fill key, for the panel alone.
 				'label' => trim( (string) ( $definition['label'] ?? '' ) ) ?: ucwords( str_replace( '-', ' ', $key ) ),
 				'labelKey' => self::fillKey( $definition['labelKey'] ?? '' ),
-				'help' => trim( (string) ( $definition['help'] ?? '' ) ),
 				'source' => $source,
 				'allowed' => $allowed,
 				'maxComponents' => max( 1, min( 20, (int) ( $definition['maxComponents'] ?? 12 ) ) ),

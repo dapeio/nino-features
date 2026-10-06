@@ -111,7 +111,6 @@ structures, or project-specific behavior go.
 			// key and shows an area in the interface language
 			'label' => 'Title area',
 			'labelKey' => '/_admin/templates/area/title-area',
-			'help' => 'The non-repeating introduction.',
 			'source' => 'single',
 			'allowed' => [ 'title', 'subtitle', 'description' ],
 			'container' => [

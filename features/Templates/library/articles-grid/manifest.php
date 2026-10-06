@@ -16,7 +16,6 @@
 		'heading' => [
 			'label' => 'Title area',
 			'labelKey' => '/_admin/templates/area/title-area',
-			'help' => 'The non-repeating introduction above the collection.',
 			'source' => 'single',
 			'allowed' => [ 'title', 'subtitle', 'description', 'html' ],
 			'container' => [ 'class' => 'nino-grid-100 nino-mb-3' ],
@@ -38,7 +37,6 @@
 		'articles' => [
 			'label' => 'Articles',
 			'labelKey' => '/_admin/templates/area/articles',
-			'help' => 'A repeatable collection. Add, reorder or remove the fields rendered for every article.',
 			'source' => 'elements',
 			'allowed' => [ 'image', 'title', 'description', 'button', 'html' ],
 			'item' => [ 'tag' => 'article', 'class' => 'nino-article nino-article--alt nino-mb-3 nino-article--grid' ],
@@ -81,7 +79,6 @@
 		'action' => [
 			'label' => 'Action area',
 			'labelKey' => '/_admin/templates/area/action-area',
-			'help' => 'Optional non-repeating text and calls to action below the collection.',
 			'source' => 'single',
 			'allowed' => [ 'title', 'description', 'button', 'html', 'template' ],
 			'container' => [ 'class' => 'nino-grid-100 nino-mt-3' ],

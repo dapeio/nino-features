@@ -191,6 +191,10 @@ Feld „category“ trägt (inklusive Nutzungszähler) – das Gegenstück zu
 oben ist ein vollständiges Beispiel: ein statischer Filter-Block steht neben
 einer gewöhnlichen, im Composer editierbaren Elements-Area, und ein Klick auf
 einen Button blendet passende Karten ein oder aus, ohne Seiten-Reload.
+Eine Kategorie, die noch keine Karte trägt, hat deshalb keinen Button. Gib
+`category` unter **Elementtypen** eine feste Auswahl von Optionen – der Typ,
+den das Preset anlegt, hat eine –, damit eine Kategorie nur eine Schreibweise
+hat und ein Button wird.
 
 Beide Schleifen müssen dieselbe Collection lesen, und ein Preset darf diesen
 Slug nicht ausschreiben: Eine neue Area heißt beim Einfügen

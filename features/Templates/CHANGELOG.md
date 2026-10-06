@@ -37,6 +37,16 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **An area has no help text any more.** Every area of the 17 presets
+  carried a `help` sentence, and `docs/recipe-section-preset.md` told preset
+  authors to write one - but the panel stopped showing it when the area editor
+  stopped repeating itself, and nothing read it since. `normalizeArea()` no
+  longer passes it on, the manifests and the recipe's example lose it; a
+  manifest of your own that still has one is valid, the key is ignored. The
+  one sentence an operator needed - the filterable grid's `category` wants a
+  fixed set of options, and a category no card carries has no button - is in
+  the manual now, in both languages.
+
 - **The background image slot is defined once.** Its label and size -
   "Background image", 1920×1080 - were written out in
   `AreaComposer::imageDescriptors()`, in `content/image-create` and in the

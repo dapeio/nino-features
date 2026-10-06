@@ -16,7 +16,6 @@
 		'heading' => [
 			'label' => 'Heading',
 			'labelKey' => '/_admin/templates/area/heading',
-			'help' => 'The optional introduction above the main content.',
 			'source' => 'single',
 			'allowed' => [ 'title', 'subtitle', 'description', 'html' ],
 			'container' => [ 'class' => 'nino-grid-100 nino-mb-3' ],
@@ -34,7 +33,6 @@
 		'body' => [
 			'label' => 'Body',
 			'labelKey' => '/_admin/templates/area/body',
-			'help' => 'Ordered text, images or reusable templates.',
 			'source' => 'single',
 			'allowed' => [ 'title', 'subtitle', 'description', 'text', 'image', 'html', 'template' ],
 			'container' => [ 'class' => 'nino-grid-100' ],
@@ -45,7 +43,6 @@
 		'action' => [
 			'label' => 'Action',
 			'labelKey' => '/_admin/templates/area/action',
-			'help' => 'Optional calls to action below the content.',
 			'source' => 'single',
 			'allowed' => [ 'description', 'button', 'html', 'template' ],
 			'container' => [ 'class' => 'nino-grid-100 nino-mt-3' ],

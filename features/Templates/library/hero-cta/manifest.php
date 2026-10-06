@@ -17,7 +17,6 @@
 		'content' => [
 			'label' => 'Message',
 			'labelKey' => '/_admin/templates/area/message',
-			'help' => 'The reason to act, in one or two lines.',
 			'source' => 'single',
 			'allowed' => [ 'title', 'subtitle', 'description', 'html' ],
 			'container' => [ 'class' => 'nino-grid-100' ],
@@ -34,7 +33,6 @@
 		'actions' => [
 			'label' => 'Actions',
 			'labelKey' => '/_admin/templates/area/actions',
-			'help' => 'One primary button, optionally a quieter second one.',
 			'source' => 'single',
 			'allowed' => [ 'button', 'description', 'html', 'template' ],
 			'container' => [ 'class' => 'nino-grid-100 nino-mt-3' ],
