@@ -6,8 +6,10 @@
  *	admin.css								What the feature's /_admin panel needs beyond the
  *													design system in _admin/assets/style.css: the row of
  *													buttons a form's card carries, one field of the form
- *													editor as a row rather than a column of five
- *													controls, and the two submission settings in a card
+ *													editor as a row rather than a column of controls,
+ *													the buttons that move it up or down, the sentence
+ *													under a field a save was refused for, and the two
+ *													submission settings in a card
  *													of their own under the list. Bundled while the
  *													feature is active (see the panel's assets()), so the
  *													same layer rules apply - the shell's stylesheet fixes
@@ -68,6 +70,45 @@
 #forms-form .forms-field > button {
 	flex: 0 0 auto;
 	margin-bottom: .35rem;
+}
+
+/*	The pair of buttons that moves a field up or down the list. The design
+	system has one for the page builder, written for #admin-page-wrap - the
+	shell's own, which a feature does not lean on - so the rules are copied
+	here under the editor, for the same small square buttons. */
+#forms-form .forms-field-move {
+	display: flex;
+	flex: 0 0 auto;
+	gap: .25rem;
+	margin-bottom: .35rem;
+}
+
+#forms-form .forms-field-move button {
+	display: inline-grid;
+	place-items: center;
+	width: 1.85rem;
+	height: 1.85rem;
+	min-height: 0;
+	padding: 0;
+	border-radius: var(--editor-radius-sm);
+	box-shadow: inset 0 0 0 1px var(--editor-border);
+	font-size: .76rem;
+	line-height: 1;
+}
+
+#forms-form .forms-field-move button:disabled {
+	opacity: .32;
+}
+
+/*	The sentence under a field a save was refused for takes the whole row,
+	and the summary above the editor sits close to the form it is about. */
+#forms-form .forms-field > .nino-admin-field-error {
+	flex: 1 1 100%;
+	margin: 0;
+}
+
+#forms-form #forms-summary {
+	margin: 0 0 .75rem;
 }
 
 /*	How long submissions are kept and whether they are kept - two controls

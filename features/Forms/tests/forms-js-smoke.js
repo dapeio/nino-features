@@ -11,6 +11,14 @@
  *												whether it worked, and that coming back to the panel
  *												draws the list again.
  *
+ *												And the editor's own part of a field: the name a field
+ *												takes from its label (and keeps to itself once it is
+ *												typed into, through add, retype and move), the pair of
+ *												buttons that moves it, the type names in the
+ *												workbench's language, the mail templates as a list that
+ *												keeps what the form names, the options box of a radio
+ *												group, and where a refused save is marked.
+ *
  *												No jsdom, no dependency: the same element stand-in the
  *												other feature tests build, with just enough of
  *												Nino.adminUi for the panel to draw itself - the
@@ -62,9 +70,12 @@ function matches( node, selector ) {
 	if( selector.charAt( 0 ) === '.' ) return node.matchesClass( selector.slice( 1 ) );
 	if( selector.charAt( 0 ) === '#' ) return node.id === selector.slice( 1 );
 	if( selector.charAt( 0 ) === '[' ) {
-		const parts = /^\[data-([a-z]+)(?:="([^"]*)")?\]$/.exec( selector );
+		const parts = /^\[([a-z-]+)(?:="([^"]*)")?\]$/.exec( selector );
 		if( parts === null ) return false;
-		return Object.prototype.hasOwnProperty.call( node.dataset, parts[1] ) && ( parts[2] === undefined || node.dataset[parts[1]] === parts[2] );
+		// data-x is the element's dataset, anything else one of its attributes
+		const own = parts[1].indexOf('data-') === 0 ? node.dataset : node.attributes;
+		const name = parts[1].indexOf('data-') === 0 ? parts[1].slice( 5 ) : parts[1];
+		return Object.prototype.hasOwnProperty.call( own, name ) && ( parts[2] === undefined || own[name] === parts[2] );
 	}
 	return node.tagName === selector.toUpperCase();
 }
@@ -90,7 +101,22 @@ function element( tag ) {
 		_text						: '',
 		getAttribute		: function( name ) { return Object.prototype.hasOwnProperty.call( this.attributes, name ) ? this.attributes[name] : null },
 		setAttribute		: function( name, value ) { this.attributes[name] = String( value ) },
-		appendChild			: function( child ) { child.parent = this; this.children.push( child ); return child },
+		parentNode			: null,
+		appendChild			: function( child ) { child.parent = this; child.parentNode = this; this.children.push( child ); return child },
+		after						: function( node ) {
+			const siblings = this.parent.children;
+			node.parent = this.parent;
+			node.parentNode = this.parent;
+			siblings.splice( siblings.indexOf( this ) + 1, 0, node );
+		},
+		remove					: function() {
+			if( this.parent !== null )
+				this.parent.children.splice( this.parent.children.indexOf( this ), 1 );
+			this.parent = null;
+			this.parentNode = null;
+		},
+		focus						: function() { element.focused = this },
+		removeAttribute	: function( name ) { delete this.attributes[name] },
 		addEventListener: function( type, fn ) { ( this.listeners[type] = this.listeners[type] || [] ).push( fn ) },
 		dispatch				: function( type ) { ( this.listeners[type] || [] ).forEach( function( fn ) { fn( { preventDefault : function() {} } ) } ) },
 		click						: function() { this.dispatch('click') },
@@ -137,6 +163,9 @@ function element( tag ) {
 	return el;
 }
 
+// The element the last focus() call was made on
+element.focused = null;
+
 /**
  *	The panel, drawn into the two panes the shell hands it
  *
@@ -145,7 +174,11 @@ function element( tag ) {
  *																back until release() is called, status: the
  *																status that answer carries, api and status: stand in for
  *																Nino.adminUi.api and Nino.adminUi.status (a newer workbench),
- *																dirty: for the shell's Nino.admin.dirty registry
+ *																dirty: for the shell's Nino.admin.dirty registry,
+ *																templates: what forms/list names as mail templates,
+ *																types: the field types it names, text: what a fill key
+ *																reads as (the key itself where nothing is said),
+ *																refuse: the body forms/save answers with, status 400
  */
 function panel( options ) {
 
@@ -178,7 +211,7 @@ function panel( options ) {
 	};
 
 	const Nino = {
-		content	: { getText : function( key ) { return key } },
+		content	: { getText : function( key ) { return typeof options.text === 'function' ? options.text( key ) : key } },
 		events	: { bindCallback : function() {} },
 		// Nino.http.sendRequest() calls back with the xhr, and the panel reads
 		// .status and .responseJSON off it - so that is what stands in for one
@@ -188,13 +221,18 @@ function panel( options ) {
 			if( payload.action === 'forms/list' )
 				return callback( { status : 200, responseJSON : {
 					forms			: options.forms || [],
-					types			: [ 'text', 'email', 'select' ],
-					reserved	: [ 'form', 'location' ],
+					types			: options.types || [ 'text', 'email', 'select' ],
+					templates	: options.templates || [],
+					reserved	: [ 'form', 'location', '_csrf', '_t', 'id', 'date', 'ip' ],
 					default		: false,
 					endpoint	: true,
 					retention	: 3,
 					store			: true,
 				} } );
+			if( payload.action === 'forms/save' && options.refuse )
+				return callback( { status : 400, responseJSON : options.refuse } );
+			if( payload.action === 'forms/save' && status === 200 )
+				return callback( { status : 200, responseJSON : { form : JSON.parse( payload.data ).form } } );
 			if( options.hold === true )
 				return pending = function() { answer( callback, payload ) };
 			answer( callback, payload );
@@ -214,6 +252,22 @@ function panel( options ) {
 				input.value = config.value;
 				input.dataset.key = config.key;
 				el.appendChild( input );
+				return el;
+			},
+			selectField	: function( config ) {
+				const el = element('label');
+				el.className = 'nino-admin-field';
+				const select = element('select');
+				select.className = 'nino-admin-input';
+				select.dataset.key = config.key;
+				config.options.forEach( function( entry ) {
+					const option = element('option');
+					option.value = entry.value;
+					option.textContent = entry.label;
+					select.appendChild( option );
+				} );
+				select.value = config.value;
+				el.appendChild( select );
 				return el;
 			},
 			switchField	: function( config ) {
@@ -262,6 +316,7 @@ function panel( options ) {
 		msg			: function() { return settings().querySelector('#forms-settings-msg') },
 		field		: function( key ) { return settings().querySelector('[data-key="'+ key+ '"]') },
 		bars		: function( mount ) { return mount.querySelectorAll('.nino-admin-actionbar').length },
+		rows		: function() { return form.querySelectorAll('.forms-field') },
 		hidden	: function( mount ) { return mount.classList.contains('admin-hidden') },
 		status	: function( value ) { status = value },
 		release	: function() { const run = pending; pending = null; run() },
@@ -499,6 +554,261 @@ plain.list.querySelectorAll('.nino-admin-list-actions')[0].children[0].click();
 plain.form.appendChild( mark );
 plain.panel.showCurrent();
 check( 'a workbench without the registry draws the editor again as it always did', plain.form.children.indexOf( mark ) === -1 );
+
+
+// --- A field's name follows its label -------------------------------------------
+
+const allTypes = [ 'text', 'email', 'tel', 'url', 'number', 'textarea', 'select', 'checkbox', 'radio', 'date' ];
+const reservedNames = [ 'form', 'location', '_csrf', '_t', 'id', 'date', 'ip' ];
+const named = panel( { forms : two, types : allTypes } ).panel;
+
+/*	The pure part: what a label becomes. The German umlauts and the sharp s
+	are spelled out, any other accent is dropped, and the result is a name the
+	engine takes - a letter first, 64 characters at most, never a reserved name
+	and never one that is taken	*/
+[
+	[ 'Straße', 'strasse' ], [ 'Ihre Nachricht', 'ihre-nachricht' ], [ 'Größe', 'groesse' ], [ 'ÄÖÜ', 'aeoeue' ], [ 'Café', 'cafe' ],
+	[ '1. Wahl', 'field-1-wahl' ], [ '  E-Mail (privat) ', 'e-mail-privat' ], [ '', 'field' ], [ '???', 'field' ],
+	[ '[[/form/label/email]]', 'email' ], [ '[[/x/y/Ihre Größe]]', 'ihre-groesse' ], [ 'date', 'date-field' ], [ 'Date', 'date-field' ], [ 'ID', 'id-field' ],
+].forEach( function( fixture ) {
+	check( '_deriveName: "'+ fixture[0]+ '" gives "'+ fixture[1]+ '"', named._deriveName( fixture[0], [], reservedNames ) === fixture[1] );
+} );
+check( '_deriveName: a name that is taken gets -2, then -3', named._deriveName( 'Nachricht', [ 'nachricht' ], reservedNames ) === 'nachricht-2'
+	&& named._deriveName( 'Nachricht', [ 'nachricht', 'nachricht-2' ], reservedNames ) === 'nachricht-3' );
+check( '_deriveName: a reserved name that is taken as well keeps both suffixes', named._deriveName( 'date', [ 'date-field' ], reservedNames ) === 'date-field-2' );
+const long = named._deriveName( 'a'.repeat( 70 ), [], reservedNames );
+check( '_deriveName: a long label stays within 64 characters', long.length === 64 && /^[a-z][a-z0-9-]*$/.test( long ) );
+check( '...and so do the suffixes of a long one', named._deriveName( 'a'.repeat( 70 ), [ long ], reservedNames ).length === 64
+	&& named._deriveName( 'a'.repeat( 70 ), [ long ], reservedNames ).slice( -2 ) === '-2'
+	&& named._deriveName( 'date'.repeat( 20 ), [], [ 'date'.repeat( 16 ) ] ).length <= 64 );
+
+/*	The editor: a new field takes its name from its label until the name is
+	typed into by hand, and that survives what redraws the editor - adding
+	another field, retyping, moving. A field that was loaded is never renamed	*/
+const follow = panel( { forms : two, types : allTypes } );
+follow.list.querySelectorAll('.nino-admin-list-actions')[0].children[0].click();
+const addField = function() { follow.form.querySelectorAll('.nino-admin-btn-secondary')[0].click() };
+const nameOf = function( index ) { return follow.rows()[index].querySelector('[data-role="name"]') };
+const labelOf = function( index ) { return follow.rows()[index].querySelector('[data-role="label"]') };
+const typeIn = function( input, text ) { input.value = text; input.dispatch('input') };
+
+check( 'a new form starts with the one field it always had, whose name is its own', follow.rows().length === 1 && nameOf( 0 ).value === 'name' );
+typeIn( labelOf( 0 ), 'Ihre Nachricht' );
+check( '...and which a label does not rename', nameOf( 0 ).value === 'name' );
+
+addField();
+check( 'Add field draws a second row that already has a name a form can be saved with', follow.rows().length === 2 && nameOf( 1 ).value === 'field' );
+typeIn( labelOf( 1 ), 'Straße' );
+check( '...which follows what is typed into the label', nameOf( 1 ).value === 'strasse' );
+
+addField();
+typeIn( labelOf( 2 ), 'Straße' );
+check( 'a name another field has is made unique', nameOf( 2 ).value === 'strasse-2' );
+typeIn( labelOf( 2 ), 'date' );
+check( '...and a name the form keeps for itself is made another', nameOf( 2 ).value === 'date-field' );
+
+const typeSelect = function( index ) { return follow.rows()[index].querySelector('[data-role="type"]') };
+typeSelect( 1 ).value = 'textarea';
+typeSelect( 1 ).dispatch('change');
+typeIn( labelOf( 1 ), 'Größe' );
+check( 'it goes on following after the field is retyped, which draws the editor again', follow.rows().length === 3 && nameOf( 1 ).value === 'groesse'
+	&& typeSelect( 1 ).value === 'textarea' );
+
+follow.rows()[1].querySelector('[data-role="up"]').click();
+check( '...and after it is moved, which draws it again in another place', nameOf( 0 ).value === 'groesse' && nameOf( 1 ).value === 'name' );
+typeIn( labelOf( 0 ), 'Café' );
+typeIn( labelOf( 1 ), 'Zeit' );
+check( '...it still follows, and the field that had its own name still does not', nameOf( 0 ).value === 'cafe' && nameOf( 1 ).value === 'name' );
+
+// Typing into a name is the end of it for that field - and only for that one
+const hand = follow.rows().map( function( row ) { return row.querySelector('[data-role="name"]').value } );
+nameOf( 2 ).value = 'mine';
+nameOf( 2 ).dispatch('input');
+typeIn( labelOf( 2 ), 'Something else' );
+check( 'a name that was typed into by hand stays what it was', nameOf( 2 ).value === 'mine' );
+addField();
+typeIn( labelOf( 2 ), 'Still not' );
+check( '...through the next redraw as well', nameOf( 2 ).value === 'mine' && hand.length === 3 );
+
+// Loaded fields: the name that is saved is never rewritten
+const loaded = panel( { forms : two, types : allTypes } );
+loaded.list.querySelectorAll('[data-form] button')[0].click();
+loaded.rows()[0].querySelector('[data-role="label"]').value = 'Totally different';
+loaded.rows()[0].querySelector('[data-role="label"]').dispatch('input');
+check( 'a field that was loaded is never renamed by its label', loaded.rows()[0].querySelector('[data-role="name"]').value === 'email' );
+loaded.panel._collect();
+check( '...nor after the editor is read back and drawn again', loaded.panel._editing.fields[0].auto === false && ( loaded.panel._renderForm(), loaded.rows()[0].querySelector('[data-role="name"]').value === 'email' ) );
+
+// What is posted is the form, not how a name came about
+const posting = panel( { forms : two, types : allTypes } );
+posting.list.querySelectorAll('.nino-admin-list-actions')[0].children[0].click();
+posting.form.querySelectorAll('.nino-admin-btn-secondary')[0].click();
+posting.form.querySelector('[data-about="key"]').value = 'fresh';
+posting.panel._submit();
+const posted = JSON.parse( posting.calls.filter( function( call ) { return call.action === 'forms/save' } )[0].data ).form;
+check( 'saving posts the fields without the marker that says a name follows its label', posted.fields.length === 2 && posted.fields.every( function( field ) { return Object.prototype.hasOwnProperty.call( field, 'auto' ) === false } )
+	&& posted.fields[1].name === 'field' );
+
+
+// --- Sorting -------------------------------------------------------------------
+
+const sorting = panel( { forms : [ { key : 'q', name : 'Q', to : '', subject : '', confirm : false, ownerTemplate : '/templates/mail-owner', userTemplate : '/templates/mail-user', entries : 0, fields : [
+	{ name : 'one', label : 'One', type : 'text', required : false, options : [] },
+	{ name : 'two', label : 'Two', type : 'radio', required : true, options : [ 'A', 'B' ] },
+	{ name : 'three', label : 'Three', type : 'text', required : false, options : [] },
+] } ], types : allTypes } );
+sorting.list.querySelectorAll('[data-form] button')[0].click();
+const orderOf = function() { return sorting.rows().map( function( row ) { return row.querySelector('[data-role="name"]').value } ).join() };
+const stepOf = function( index, which ) { return sorting.rows()[index].querySelector('[data-role="'+ which+ '"]') };
+
+check( 'every row has a button up and a button down, with a title and a label of their own', sorting.rows().every( function( row ) {
+	const up = row.querySelector('[data-role="up"]'), down = row.querySelector('[data-role="down"]');
+	return up.type === 'button' && down.type === 'button' && up.title === '/_admin/common/label/moveup' && up.getAttribute('aria-label') === '/_admin/common/label/moveup'
+		&& down.title === '/_admin/common/label/movedown' && down.getAttribute('aria-label') === '/_admin/common/label/movedown';
+} ) );
+check( '...the first cannot go up and the last cannot go down', stepOf( 0, 'up' ).disabled === true && stepOf( 0, 'down' ).disabled === false
+	&& stepOf( 2, 'down' ).disabled === true && stepOf( 2, 'up' ).disabled === false && stepOf( 1, 'up' ).disabled === false && stepOf( 1, 'down' ).disabled === false );
+
+stepOf( 0, 'down' ).click();
+check( 'down swaps a field with the one below it, and what was typed in the editor travels with it', orderOf() === 'two,one,three' );
+check( '...and the focus is on the button that was pressed, on the field in its new place', element.focused === stepOf( 1, 'down' ) );
+
+stepOf( 1, 'down' ).click();
+check( 'a field that reaches the end has its down button off, so the focus goes to its up button', orderOf() === 'two,three,one' && stepOf( 2, 'down' ).disabled === true && element.focused === stepOf( 2, 'up' ) );
+
+stepOf( 2, 'up' ).click();
+stepOf( 1, 'up' ).click();
+check( 'up swaps the other way, and a field that reaches the top moves the focus to its down button', orderOf() === 'one,two,three' && element.focused === stepOf( 0, 'down' ) );
+
+sorting.rows()[0].querySelector('[data-role="label"]').value = 'Typed before moving';
+sorting.rows()[1].querySelector('[data-role="options"]').value = 'X\nY\nZ';
+stepOf( 1, 'up' ).click();
+check( 'the options and the labels typed before a move are in the field that moved', orderOf() === 'two,one,three'
+	&& sorting.rows()[0].querySelector('[data-role="options"]').value === 'X\nY\nZ' && sorting.rows()[1].querySelector('[data-role="label"]').value === 'Typed before moving' );
+
+
+/*	What a save replaces is the key the editor was opened with. The key box is
+	read back into the working copy on every redraw - a move, an added field -
+	so a typed key must not become the one a save is told it replaces: a taken
+	key would overwrite that form, a rename would become a second form	*/
+const replaced = function( run ) {
+	const probe = panel( { forms : two, types : allTypes } );
+	run( probe );
+	probe.panel._submit();
+	return JSON.parse( probe.calls.filter( function( call ) { return call.action === 'forms/save' } )[0].data );
+};
+const taken = replaced( function( probe ) {
+	probe.list.querySelectorAll('.nino-admin-list-actions')[0].children[0].click();
+	probe.form.querySelector('[data-about="key"]').value = 'quote';
+	probe.form.querySelectorAll('.nino-admin-btn-secondary')[0].click();
+	probe.form.querySelectorAll('.nino-admin-btn-secondary')[0].click();
+	probe.rows()[1].querySelector('[data-role="up"]').click();
+} );
+check( 'a new form with a key that is taken, after its fields were moved, is still saved as new - the server then refuses it', taken.key === '' && taken.form.key === 'quote' );
+const renamed = replaced( function( probe ) {
+	probe.list.querySelectorAll('[data-form] button')[0].click();
+	probe.form.querySelector('[data-about="key"]').value = 'renamed';
+	probe.form.querySelectorAll('.nino-admin-btn-secondary')[0].click();
+	probe.rows()[0].querySelector('[data-role="down"]').click();
+} );
+check( '...and a renamed form that was moved afterwards still replaces the key it was opened with', renamed.key === 'contact' && renamed.form.key === 'renamed' );
+
+
+// --- Types, options and templates ----------------------------------------------
+
+const worded = panel( { forms : two, types : allTypes, text : function( key ) { return key.indexOf('/_admin/forms/type/') === 0 && key !== '/_admin/forms/type/tel' ? 'Type '+ key.slice( 19 ) : '' } } );
+worded.list.querySelectorAll('[data-form] button')[0].click();
+const typeOptions = worded.rows()[0].querySelector('[data-role="type"]').children;
+check( 'the type list is in the words of the workbench, with the type itself as the value', typeOptions.length === 10
+	&& typeOptions[0].textContent === 'Type text' && typeOptions[0].value === 'text' && typeOptions[8].textContent === 'Type radio' && typeOptions[9].value === 'date' );
+check( '...and a type nobody has a word for is shown as itself', typeOptions[2].value === 'tel' && typeOptions[2].textContent === 'tel' );
+
+check( 'the box for options is there for a radio group and a select, and for no other type', ( function() {
+	const kinds = {};
+	allTypes.forEach( function( kind ) {
+		worded.panel._editing.fields = [ { name : 'x', label : '', type : kind, required : false, options : [ 'A' ] } ];
+		worded.panel._renderForm();
+		kinds[kind] = worded.rows()[0].querySelector('[data-role="options"]') !== null;
+	} );
+	return Object.keys( kinds ).filter( function( kind ) { return kinds[kind] } ).join() === 'select,radio';
+} )() );
+
+const mailed = panel( { forms : [ Object.assign( {}, two[0], { ownerTemplate : '/templates/mail-owner', userTemplate : '/templates/mail-gone' } ) ], types : allTypes, templates : [ '/templates/mail-owner', '/templates/mail-user' ] } );
+mailed.list.querySelectorAll('[data-form] button')[0].click();
+const ownerSelect = mailed.form.querySelector('[data-about="ownertpl"]');
+const userSelect = mailed.form.querySelector('[data-about="usertpl"]');
+check( 'each mail template is a list of what the project has', ownerSelect.tagName === 'SELECT' && userSelect.tagName === 'SELECT'
+	&& ownerSelect.children.map( function( option ) { return option.value } ).join() === '/templates/mail-owner,/templates/mail-user' && ownerSelect.value === '/templates/mail-owner' );
+check( '...and what the form names is in it even where the project has no such file, so that the list does not switch to another one by itself',
+	userSelect.value === '/templates/mail-gone' && userSelect.children[0].value === '/templates/mail-gone' && userSelect.children.length === 3 );
+mailed.panel._collect();
+check( '...and is what is read back', mailed.panel._editing.ownerTemplate === '/templates/mail-owner' && mailed.panel._editing.userTemplate === '/templates/mail-gone' );
+check( 'only the second one carries the hint', userSelect.parent.querySelectorAll('small').length === 1 && ownerSelect.parent.querySelectorAll('small').length === 0 );
+const hinted = panel( { forms : two, types : allTypes, text : function( key ) { return key === '/_admin/forms/hint/templates' ? 'Shown by %s.' : key } } );
+hinted.list.querySelectorAll('[data-form] button')[0].click();
+check( '...which names the placeholder that carries every field into a mail, put in by the script', hinted.form.querySelector('[data-about="usertpl"]').parent.querySelectorAll('small')[0].textContent === 'Shown by [[fields]].' );
+
+
+// --- Where a refused save went wrong -------------------------------------------
+
+const refused = panel( { forms : [ { key : 'q', name : 'Q', to : '', subject : '', confirm : false, ownerTemplate : '/templates/mail-owner', userTemplate : '/templates/mail-user', entries : 0, fields : [
+	{ name : 'one', label : 'One', type : 'text', required : false, options : [] },
+	{ name : 'one', label : 'Two', type : 'text', required : false, options : [] },
+	{ name : 'three', label : 'Three', type : 'radio', required : false, options : [] },
+] } ], types : allTypes, templates : [ '/templates/mail-owner', '/templates/mail-user' ],
+	refuse : {
+		error : 'Not saved.', fields : { 1 : 'Taken.', 2 : 'Needs one.', 9 : 'Where?' }, controls : { 1 : 'name', 2 : 'options', 9 : 'name' },
+		about : { to : 'No address.', ownertpl : 'Gone.', fields : 'Needs a field.' },
+	} } );
+refused.list.querySelectorAll('[data-form] button')[0].click();
+refused.panel._submit();
+
+const marks = function() { return refused.form.querySelectorAll('[aria-invalid="true"]') };
+check( 'a refused save marks the control of every field it names - the name, or the box of options - and the controls of the form itself',
+	marks().length === 4
+	&& refused.rows()[1].querySelector('[data-role="name"]').getAttribute('aria-invalid') === 'true'
+	&& refused.rows()[2].querySelector('[data-role="options"]').getAttribute('aria-invalid') === 'true'
+	&& refused.form.querySelector('[data-about="to"]').getAttribute('aria-invalid') === 'true'
+	&& refused.form.querySelector('[data-about="ownertpl"]').getAttribute('aria-invalid') === 'true'
+	&& refused.rows()[0].querySelectorAll('[aria-invalid]').length === 0 );
+check( '...with the sentence under it, which the control points to', refused.form.querySelectorAll('.nino-admin-field-error').length === 4 && marks().every( function( control ) {
+	const sentence = refused.form.querySelectorAll('.nino-admin-field-error').filter( function( error ) { return error.id === control.getAttribute('aria-describedby') } )[0];
+	return sentence !== undefined && sentence.parent === control.parentNode.parent;
+} ) );
+check( '...the sentence is after the label of the control, not in it', refused.rows()[1].querySelector('[data-role="name"]').parentNode.querySelectorAll('.nino-admin-field-error').length === 0
+	&& refused.rows()[1].children.some( function( child ) { return child.textContent === 'Taken.' } ) );
+check( '...and the first one the person meets is focused: the form\'s own controls come before the fields', element.focused === refused.form.querySelector('[data-about="to"]') );
+check( 'the summary at the top of the editor says what the server said, and what has no control to mark - a form without fields, a field that is no more there',
+	refused.form.querySelector('#forms-summary').hidden === false
+	&& refused.form.querySelector('#forms-summary').textContent === 'Not saved. Needs a field. Where?' );
+check( '...and the editor is still the editor, with nothing lost', refused.hidden( refused.form ) === false && refused.panel._editing !== null && refused.rows().length === 3 );
+
+// The next save starts from a clean editor
+refused.panel._submit();
+check( 'a second save takes the marks of the first off before it marks again', refused.form.querySelectorAll('.nino-admin-field-error').length === 4 && marks().length === 4
+	&& refused.form.querySelectorAll('#forms-summary').length === 1 );
+refused.panel._unmark();
+check( 'and they can be taken off altogether', refused.form.querySelectorAll('.nino-admin-field-error').length === 0 && marks().length === 0
+	&& refused.form.querySelector('#forms-summary').hidden === true && refused.form.querySelector('#forms-summary').textContent === '' );
+
+// A refusal that names nothing is only a sentence
+const plainly = panel( { forms : two, types : allTypes, refuse : { error : 'Another form already has that key.' } } );
+plainly.list.querySelectorAll('[data-form] button')[0].click();
+plainly.panel._submit();
+check( 'a refusal that names no field marks nothing, and still says it inside the form', plainly.form.querySelectorAll('[aria-invalid]').length === 0
+	&& plainly.form.querySelector('#forms-summary').textContent === 'Another form already has that key.' );
+
+
+// A failure that is not a refusal of the form has no control to mark
+const failing = panel( { forms : two, types : allTypes } );
+failing.list.querySelectorAll('[data-form] button')[0].click();
+failing.status( 500 );
+failing.panel._submit();
+check( 'a failure that names no control - a server error, a refused permission - is said inside the editor as well',
+	failing.form.querySelector('#forms-summary').hidden === false && failing.form.querySelector('#forms-summary').textContent === '(500) Refused'
+	&& failing.form.querySelectorAll('[aria-invalid]').length === 0 );
+failing.panel._unmark();
+check( '...and is taken off with the rest', failing.form.querySelector('#forms-summary').hidden === true );
 
 
 console.log( '\n'+ checks+ ' checks, '+ failures+ ' failed' );

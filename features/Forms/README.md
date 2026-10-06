@@ -1,6 +1,6 @@
 # Forms
 
-**Key:** `forms` · **Class:** `\Nino\Modules\Forms` · **Version:** 1.0.0 · **Nino:** `^1.3`
+**Key:** `forms` · **Class:** `\Nino\Modules\Forms` · **Version:** 1.0.0 · **Nino:** `^1.4`
 
 A builder for Nino's own form endpoint. Nino has always had one form: a
 contact form, defined in the kernel, posted to `POST /.form`. Since 1.2 it can
@@ -25,10 +25,15 @@ workbench's own **Submissions** panel shows, filters, exports and deletes
 them - for every form, whether this feature is installed or not.
 
 One directory, the shape the [feature recipe](https://github.com/dapeio/nino/blob/main/docs/recipes/feature.md)
-describes: `feature.php`, `Forms.php`, `Admin/Admin.php`, `assets/`,
-`templates/`, `text/`, `tests/`. No `install/` unit: a form points at the mail
+describes: `feature.php`, `Forms.php`, `Admin/Admin.php`, `assets/`
+(`admin.js` and `admin.css` for the panel, `forms.css` for the two fields that
+need one on the page), `templates/` (the markup of the form and of one field
+each), `text/`, `tests/`. No `install/` unit: a form points at the mail
 templates the kernel's contact form already installed. The changes per version are in
 [CHANGELOG.md](CHANGELOG.md).
+
+It needs Nino 1.4: the three field types below and the engine's own
+`\Nino\Form::problems()`, which the panel asks what to refuse, arrived there.
 
 ## What a form is
 
@@ -61,6 +66,22 @@ feature off costs a project nothing.
 Validation is `\Nino\Form::normalize()` - the engine's own, not a copy of it.
 What the panel accepts is exactly what the endpoint accepts.
 
+The field types, with what each one posts:
+
+| Type | Draws | Posts |
+| --- | --- | --- |
+| `text`, `email`, `tel`, `url`, `number` | an input of that type | what was typed, checked for its shape |
+| `textarea` | a text area | what was typed |
+| `select` | a drop-down list of `options` | one of the options |
+| `radio` | a group of radio buttons, one per option - **needs at least one option** | the ticked option |
+| `checkbox` | one checkbox with its label | `1` when ticked, nothing when not - a required one has to be ticked |
+| `date` | the browser's date input | `Y-m-d`, a day that exists |
+
+An option may be written as a text fill, like a label (`[[/form/option/small]]`):
+it shows the text it stands for and posts the key, which is what is stored and
+what the engine compares it with. The mail's `[[fields]]` and the Submissions
+panel show that stored key, not the words it stands for.
+
 ## The shortcode
 
 ```
@@ -78,6 +99,22 @@ drawn, which is what the "fastest accepted submission" guard reads.
 A key no form has renders nothing at all: an empty page beats a form that
 posts nowhere.
 
+A checkbox is one `<label>` around the input and its words, a radio group a
+`<fieldset>` with the question as its `<legend>` and one `<label>` per option.
+Both carry feature-owned classes - `nino-forms-check` and `nino-forms-group` -
+which `assets/forms.css` styles and which the project restyles through the
+`--nino-forms-gap` custom property or a rule of its own. The other fields keep
+the kernel's `nino-form-input` and `nino-form-textarea`.
+
+**A consent** is a checkbox that is required. The label is plain text - markup
+in it is shown as text, not drawn - so a link to the privacy page goes beside
+the form, in the template or the text that holds `[form]`:
+
+```
+<p>Details are in our <a href="/privacy">privacy policy</a>.</p>
+[form key="consent"]
+```
+
 The markup a project already has keeps working. `page-contact.tpl` from the
 wizard is hand-written and carries no key, so it posts to the first form
 defined - which is the contact form until somebody reorders the list.
@@ -90,6 +127,47 @@ The list is one card per form: its name, the shortcode that draws it, its
 field names and how many submissions it has on file. A card leads to that
 form's own screen - what it is called, where its mail goes, which templates it
 renders, and its fields as one row each.
+
+In a field's row:
+
+- **Name from the label.** A field that is added here takes its name from its
+  label as long as the name is not typed into by hand: `Ihre Straße` becomes
+  `ihre-strasse` (umlauts and the sharp s are spelled out, other accents
+  dropped, words joined by a hyphen, a letter first, 64 characters at most,
+  `date` or another name the form keeps becomes `date-field`, a name another
+  field has gets `-2`). A label written as a text fill gives the last part of
+  the key: `[[/form/label/email]]` becomes `email`. A field that was saved is
+  never renamed, whatever its label is changed to. The mail templates
+  installed before Nino 1.4 fill only `[[name]]`, `[[email]]`, `[[subject]]` and
+  `[[message]]`, so a form that keeps those names for those fields keeps its
+  confirmation mail - the first field of a new form is called `name` for that
+  reason.
+- **Type** in the words of the workbench's language, **Required**, and for a
+  select or a radio group the **options**, one per line.
+- **Up and down** move the field in the list; the first cannot go up, the last
+  cannot go down, and the focus stays on the button that was pressed - at
+  either end of the list, where that button is off, it goes to the other one.
+
+The two mail templates are **chosen from the project's own**
+`/templates/mail-*.tpl` (without `mail-header` and `mail-footer`). A template
+the form names that is not in the list is still shown, so opening a form never
+changes it by itself - and saving it is refused: a template that is not on disk
+renders as nothing, and the mail that goes out would be an empty one.
+
+A field reaches a mail only where its template shows it. The `mail-owner` and
+`mail-user` templates of a new project carry `[[fields]]`, which draws every
+field of the form - a checkbox, a radio group, a date and every field of your
+own - as a table; a project that was installed before that copies it into its
+own templates by hand. A template that fills only `[[name]]` and its three
+siblings mails nothing of a field of another name.
+
+**A refused save says where.** What the engine would only repair - a name that
+is no identifier or one the form keeps, a name twice, a type nobody knows, a
+radio group without options, an address that is none, a template path that is
+none or not on disk, a form without a field - is refused instead, with a
+sentence under the control it is about, `aria-invalid` on it and the focus on
+the first. The sentence for the whole form is also at the top of the editor,
+because the status line is not shown on a phone. Nothing is written.
 
 Under the list sits a card of its own, with its own Save, for the two things
 about the submissions a project decides, because the kernel is what writes
@@ -163,9 +241,31 @@ shaped like this one: that with nothing configured a submission goes through
 the engine exactly as it did before, and that after deactivation the forms are
 still there and still work.
 
+On a Nino older than 1.4 `forms-smoke.php` says so and stops - there is no
+`\Nino\Form::problems()` to test against, and the manifest does not offer the
+feature to it.
+
+The shortcode over the three new types (the checkbox inside its label, the
+radio group as a fieldset, a date as an input), hostile labels and options
+drawn as text, an option written as a fill keeping its key as the value and
+being accepted when it is posted, and no `<p>` or `<button>` in a field
+template - the `.nino-form` script takes the first of each for its own. The
+panel refusing a definition at the field, the control or the form, with
+nothing written, and a template that is not on disk; the list of templates;
+what a checkbox, a radio group and a date post through the endpoint. The two
+text files carry the same fills, a name for every field type and a sentence
+for every refusal.
+
 `tests/forms-js-smoke.js` is the panel's own script over a dom stand-in. It
 checks one fixed action bar on the list (New form) and one in the editor (its
 Save), and the two submission settings as a card with their own Save and status
 line: what they post, the button kept off while the request runs, a refusal
 marked as an error. It also checks that the panel is drawn again when the shell
-reopens it. `forms-smoke.php` runs it too where node is on the path.
+reopens it. Of the editor it checks the name a label gives (`Straße` becomes
+`strasse`, `[[/form/label/email]]` becomes `email`, a name that is taken or
+reserved, 64 characters at most) and that a name follows its label until it is
+typed into, through add, retype and move, while a saved field is never
+renamed; the buttons that move a field, the ends disabled and the focus kept;
+the type names in the workbench's language, the options box of a radio group,
+the template lists that keep what the form names, and where a refused save is
+marked. `forms-smoke.php` runs it too where node is on the path.

@@ -28,9 +28,15 @@ namespace Nino\Modules\Forms {
 	 *										Validation is \Nino\Form::normalize(), not a copy of
 	 *										it - so what the panel accepts is exactly what the
 	 *										endpoint accepts, and a rule that changes changes in
-	 *										one place. Every word a person reads is resolved here,
-	 *										in the session language, so the script renders what it
-	 *										gets: the same split the Features panel makes.
+	 *										one place. \Nino\Form::problems() asks the same
+	 *										routine what it would leave out, so a refused save
+	 *										says which field and which control instead of one
+	 *										sentence for the whole form; a mail template that is
+	 *										not on disk is refused here as well, since a form
+	 *										that mails an empty body is worse than one that is
+	 *										not saved. Every word a person reads is resolved
+	 *										here, in the session language, so the script renders
+	 *										what it gets: the same split the Features panel makes.
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -43,6 +49,26 @@ namespace Nino\Modules\Forms {
 		// A form key as the engine writes one - checked here before anything
 		// is read, so a stray value never reaches an error message
 		private const string KEY_PATTERN = '/^[a-z][a-z0-9-]*$/';
+
+		// What \Nino\Form::problems() reports, as the fill that says it. A code
+		// that is not here is said with the general sentence of its kind: that a
+		// field cannot be read, or that the form was not saved
+		private const array PROBLEMS = [
+			'key'							=> 'key',
+			'field'						=> 'field',
+			'name'						=> 'name',
+			'reserved'				=> 'reserved',
+			'duplicate'				=> 'duplicate',
+			'type'						=> 'type',
+			'options'					=> 'options',
+			'fields'					=> 'fields',
+			'to'							=> 'to',
+			'ownerTemplate'		=> 'ownertpl',
+			'userTemplate'		=> 'usertpl',
+		];
+
+		// The two mail templates a form names, by the control the script marks
+		private const array TEMPLATES = [ 'ownerTemplate' => 'ownertpl', 'userTemplate' => 'usertpl' ];
 
 		public static function actions(): array {
 			return [
@@ -109,10 +135,11 @@ namespace Nino\Modules\Forms {
 		}
 
 		/**
-		 *	Every form as the engine reads it, what a field may be, and the
-		 *	two things about the submissions a project decides. Plus the one
-		 *	state in which a form drawn by [form] would post into nothing:
-		 *	the kernel module that owns the endpoint switched off
+		 *	Every form as the engine reads it, what a field may be, the mail
+		 *	templates a form can name, and the two things about the
+		 *	submissions a project decides. Plus the one state in which a form
+		 *	drawn by [form] would post into nothing: the kernel module that
+		 *	owns the endpoint switched off
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
@@ -136,6 +163,7 @@ namespace Nino\Modules\Forms {
 				'forms'			=> $forms,
 				'types'			=> \Nino\Form::TYPES,
 				'reserved'	=> \Nino\Form::RESERVED,
+				'templates'	=> self::_templates( $appData ),
 				// True while the project has defined none: the list is showing
 				// the contact form the kernel falls back to, not a definition of
 				// its own - and saving anything is what first writes the key
@@ -152,7 +180,14 @@ namespace Nino\Modules\Forms {
 		/**
 		 *	Create or replace one form. The whole definition is posted and
 		 *	written as one: a form is small, and a field-at-a-time api would
-		 *	buy nothing but a half-saved form
+		 *	buy nothing but a half-saved form.
+		 *
+		 *	A definition the engine would only repair is refused instead, and
+		 *	the answer says where: 'fields' maps the index of a field in the
+		 *	posted list to the sentence, 'controls' to the control of that
+		 *	field the sentence belongs to, and 'about' maps a control of the
+		 *	form itself (key, to, ownertpl, usertpl) to its sentence. Nothing
+		 *	is written
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
@@ -167,10 +202,34 @@ namespace Nino\Modules\Forms {
 			$data		= \Nino\Admin\Admin::postData();
 			$posted	= is_array( $data['form'] ?? null ) === true ? $data['form'] : [];
 			$was		= is_string( $data['key'] ?? null ) === true ? $data['key'] : '';
-			$form		= \Nino\Form::normalize( $posted );
+
+			$problems = \Nino\Form::problems( $posted );
+
+			if( $problems !== [] ) {
+				self::_refuse( $appData, $request, $problems );
+				return;
+			}
+
+			$form = \Nino\Form::normalize( $posted );
 
 			if( $form === null ) {
 				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/forms/error/invalid' ) );
+				return;
+			}
+
+			// A template that is not on disk renders as nothing, and the mail
+			// that goes out is an empty one - which nobody sees until a visitor
+			// asks why no answer came. The pattern is already checked, so the
+			// path is one \Nino\Filesystem resolves inside the project
+			$missing = [];
+
+			foreach( self::TEMPLATES as $role => $control )
+				if( is_file( \Nino\Filesystem::path( $appData, $form[ $role ]. '.tpl' ) ) === false )
+					$missing[ $control ] = self::_say( $appData, '/_admin/forms/problem/missingtpl' );
+
+			if( $missing !== [] ) {
+				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/forms/error/fields' ) );
+				$request['/nino/http/response']['body']['about'] = $missing;
 				return;
 			}
 
@@ -195,6 +254,7 @@ namespace Nino\Modules\Forms {
 
 				if( $existing['key'] === $form['key'] ) {
 					\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/forms/error/duplicate' ) );
+					$request['/nino/http/response']['body']['about'] = [ 'key' => self::_say( $appData, '/_admin/forms/error/duplicate' ) ];
 					return;
 				}
 
@@ -292,6 +352,81 @@ namespace Nino\Modules\Forms {
 			}
 
 			\Nino\Http::ok( $request, [ 'retention' => $retention, 'store' => $appData[ \Nino\Form::STORE ] ] );
+		}
+
+		/**
+		 *	The 400 for a definition \Nino\Form::problems() found something in:
+		 *	one general sentence, and every problem as the sentence of the field
+		 *	or the control it is about
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		&$request			(reference) Current server request
+		 *	@param		array 		$problems			What \Nino\Form::problems() answered
+		 *
+		 *	@return 	void
+		 */
+		private static function _refuse( array &$appData, array &$request, array $problems ): void {
+
+			$fields		= [];
+			$controls	= [];
+			$about		= [];
+
+			foreach( $problems as $problem ) {
+
+				$code		= (string) $problem['code'];
+				$say		= isset( self::PROBLEMS[ $code ] ) === true
+					? self::_say( $appData, '/_admin/forms/problem/'. self::PROBLEMS[ $code ] )
+					: self::_say( $appData, $problem['field'] !== null ? '/_admin/forms/problem/field' : '/_admin/forms/error/fields' );
+
+				if( $problem['field'] !== null ) {
+					// The first thing found in a field is the one said: it is what
+					// the person has to change first
+					if( isset( $fields[ $problem['field'] ] ) === false ) {
+						$fields[ $problem['field'] ]		= $say;
+						$controls[ $problem['field'] ]	= match( $code ) {
+							'options'	=> 'options',
+							'type'		=> 'type',
+							default		=> 'name',
+						};
+					}
+					continue;
+				}
+
+				$about[ self::TEMPLATES[ $code ] ?? $code ] = $say;
+			}
+
+			\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/forms/error/fields' ) );
+
+			$request['/nino/http/response']['body']['fields']		= $fields;
+			$request['/nino/http/response']['body']['controls']	= $controls;
+			$request['/nino/http/response']['body']['about']		= $about;
+		}
+
+		/**
+		 *	The mail templates a form can name: the project's own
+		 *	/templates/mail-*.tpl, without the header and the footer every one
+		 *	of them is wrapped in. Only names \Nino\Form would accept as a
+		 *	template path are offered, sorted
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	array										Template paths, eg. '/templates/mail-owner'
+		 */
+		private static function _templates( array &$appData ): array {
+
+			$templates = [];
+
+			foreach( (array) glob( \Nino\Filesystem::path( $appData, '/templates' ). '/mail-*.tpl' ) as $file ) {
+
+				$name = basename( (string) $file, '.tpl' );
+
+				if( in_array( $name, [ 'mail-header', 'mail-footer' ], true ) === false && preg_match( '/^[a-zA-Z0-9_-]+$/', $name ) === 1 )
+					$templates[] = '/templates/'. $name;
+			}
+
+			sort( $templates );
+
+			return $templates;
 		}
 
 		/**

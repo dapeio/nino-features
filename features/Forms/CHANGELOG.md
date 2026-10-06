@@ -6,6 +6,49 @@ versions [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+- **A checkbox for a consent, radio buttons and a date.** Three field types
+  more, drawn by `[form]` and accepted by the endpoint: a `checkbox` (it posts
+  `1` when it is ticked, and a required one has to be), a `radio` group (it
+  needs at least one option and posts the ticked one) and a `date` (`Y-m-d`, a
+  day that exists). The checkbox and the radio group carry classes of their own,
+  `nino-forms-check` and `nino-forms-group`, with a small stylesheet
+  (`assets/forms.css`) bundled into the project's `/.cache/style.css`. Every
+  field template is one line without a `<p>` or a `<button>`, which the
+  `.nino-form` script would take for its message and its submit button. Needs
+  Nino `^1.4`, where the three types and `\Nino\Form::problems()` arrived: the
+  constraint said `^1.3`, and a Nino older than 1.4 is not offered the feature.
+
+- **A field's name follows its label.** A field added in the panel takes its
+  name from its label until the name is typed into by hand - `Ihre Straße`
+  gives `ihre-strasse`, `[[/form/label/email]]` gives `email`, a name the form
+  keeps becomes `date-field`, one that is taken `-2` - and a field that was
+  saved is never renamed. A new field no longer starts without a name.
+
+- **A refused save says where it went wrong.** The panel asks the engine what
+  it would leave out or repair (`\Nino\Form::problems()`) and refuses that
+  instead of saving something other than what was typed: a name that is none,
+  one the form keeps or one that is taken, a radio group without options, an
+  unknown type, an address that is none, a template path that is none, a form
+  without a field. The sentence stands under the control it is about, the
+  control is `aria-invalid` and focused, and the same sentence is at the top of
+  the editor, since the status line is not shown on a phone. Nothing is written.
+
+- **The type names are words, and fields can be sorted.** The type list is in
+  the workbench's language instead of `textarea`, and every field has a button
+  up and a button down; the focus stays on the one that was pressed, or goes to
+  the other one at either end of the list, where that one is off.
+
+- **The mail templates are chosen, not typed.** Both are lists of the
+  project's own `/templates/mail-*.tpl` (without the header and the footer). A
+  template the form names that is not on disk is still shown, so opening a form
+  never changes it - and saving it is refused: a missing template renders as
+  nothing, and the mail that went out was an empty one. The panel's hint on the
+  templates said both of them carry the whole submission, which was not true of
+  the ones an installation started from; it now says which placeholder does
+  (`[[fields]]`, carried by the templates of a new project, which a project
+  installed earlier adds by hand), and the editor gives every control the
+  workbench's input class.
+
 - **The panel uses the workbench's request helper, its status line, its wording
   of a failure and its question about unsaved input, where the Nino has them.**
   Every request goes through `Nino.adminUi.api`, which signs the page in again
@@ -18,7 +61,7 @@ versions [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   what was typed into it. On a Nino without the helper (1.3.x) the panel posts
   as it did, but from the project's own directory: it posted to `/_admin/` from
   the root of the domain, which a project in a subdirectory does not answer.
-  `nino` stays `^1.3`.
+  With `nino` at `^1.4` (see above) the fallbacks are no longer reached.
 
 - **New form lay under a second Save bar.** The two submission settings drew
   their own fixed action bar over the list's, so on every screen size a click
@@ -61,6 +104,14 @@ versions [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   unchanged.
 
 ### Fixed
+
+- **An option written as a text fill could never be submitted.** `[form]`'s
+  output is rendered once more, so a select option such as `[[/shop/small]]` was
+  drawn with the text it stands for as its value, and the engine - which
+  compares what is posted with the key that is stored - refused it. The bracket
+  of a value is a character reference now, which the browser reads back as the
+  bracket and the second pass leaves alone; the option's words are still the
+  text the key stands for. A radio group takes its options the same way.
 
 - **An invalid byte in a value rendered as nothing.** `htmlspecialchars()`
   answers input that is not valid UTF-8 with `''` unless `ENT_SUBSTITUTE` is

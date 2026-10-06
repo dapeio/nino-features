@@ -28,6 +28,9 @@
 		// The field types Forms::TYPES declares - the panel offers exactly
 		// what the endpoint accepts, so the two cannot drift apart
 		_types		: [],
+		// The mail templates a form can name (/templates/mail-*, without the
+		// header and the footer), which the editor offers as a list
+		_templates: [],
 		// The field names a form may not take (\Nino\Form::RESERVED), so the
 		// editor can say so before a save is refused for it
 		_reserved	: [],
@@ -44,6 +47,9 @@
 		// The form being edited - a working copy, so leaving the screen
 		// without saving changes nothing. null while the list is on screen
 		_editing	: null,
+		// The key the editor was opened with, '' for a new form: what a save
+		// replaces, however the key is edited meanwhile
+		_was		: '',
 		// What the editor on show saves with: the key it is replacing, its Save
 		// button and its status line. null while there is no editor
 		_editor		: null,
@@ -67,6 +73,7 @@
 
 				Nino.admin.forms._forms			= response.forms || [];
 				Nino.admin.forms._types			= response.types || [];
+				Nino.admin.forms._templates	= response.templates || [];
 				Nino.admin.forms._reserved	= response.reserved || [];
 				Nino.admin.forms._default		= response.default === true;
 				Nino.admin.forms._endpoint	= response.endpoint !== false;
@@ -99,7 +106,7 @@
 				if( typeof Nino.admin.dirty === 'object' && Nino.admin.dirty.isDirty( [ 'forms' ] ) === true )
 					return;
 
-				return Nino.admin.forms._showForm( Nino.admin.forms._editing );
+				return Nino.admin.forms._showForm( Nino.admin.forms._editing, Nino.admin.forms._was );
 			}
 
 			Nino.admin.forms._renderList();
@@ -216,6 +223,7 @@
 			wrap.innerHTML = '';
 
 			Nino.admin.forms._editing = null;
+			Nino.admin.forms._was = '';
 			Nino.admin.forms._editor	= null;
 
 			// A form that draws fine and posts to a 404 is the one failure this
@@ -243,7 +251,7 @@
 			add.type = 'button';
 			add.className = 'nino-admin-btn-primary';
 			add.textContent = Nino.content.getText('/_admin/forms/label/new');
-			add.addEventListener( 'click', function() { Nino.admin.forms._showForm( Nino.admin.forms._blank() ) } );
+			add.addEventListener( 'click', function() { Nino.admin.forms._showForm( Nino.admin.forms._blank(), '' ) } );
 
 			wrap.appendChild( Nino.adminUi.listActions( [ add ] ) );
 			wrap.appendChild( Nino.admin.forms._renderSettings() );
@@ -382,7 +390,7 @@
 			edit.type = 'button';
 			edit.className = 'nino-admin-btn-primary';
 			edit.textContent = Nino.content.getText('/_admin/forms/label/edit');
-			edit.addEventListener( 'click', function() { Nino.admin.forms._showForm( form ) } );
+			edit.addEventListener( 'click', function() { Nino.admin.forms._showForm( form, form.key ) } );
 			actions.appendChild( edit );
 
 			const remove = dc.createElement('button');
@@ -452,12 +460,14 @@
 		 *	saving changes nothing that was loaded
 		 *
 		 *	@param		{Object}	form
+		 *	@param		{string}	was					The key it is saved under, '' for a new form
 		 *
 		 *	@return		void
 		 */
-		_showForm : function( form ) {
+		_showForm : function( form, was ) {
 
 			Nino.admin.forms._editing = JSON.parse( JSON.stringify( form ) );
+			Nino.admin.forms._was = was;
 			Nino.admin.forms._renderForm();
 
 			// What is on screen now is what is saved
@@ -486,10 +496,19 @@
 			wrap.appendChild( Nino.admin.formToolbar( backLink ) );
 
 			// The key it is replacing, so a rename stays one entry rather
-			// than becoming a second form beside the old one
-			const was = form.key;
+			// than becoming a second form beside the old one - the one the
+			// editor was opened with, not what is typed into the box by now
+			const was = Nino.admin.forms._was;
 
 			const el = dc.createElement('form');
+
+			// What a refused save says, inside the form: the status line sits in
+			// the action bar, which a phone does not show
+			const summary = dc.createElement('p');
+			summary.id = 'forms-summary';
+			summary.className = 'nino-admin-error';
+			summary.hidden = true;
+			el.appendChild( summary );
 
 			const about = dc.createElement('fieldset');
 			const legend = dc.createElement('legend');
@@ -514,8 +533,8 @@
 			confirm.dataset.about = 'confirm';
 			about.appendChild( confirm );
 
-			Nino.admin.forms._input( about, '/_admin/forms/label/ownertpl', 'text', form.ownerTemplate, '', 'ownertpl' );
-			Nino.admin.forms._input( about, '/_admin/forms/label/usertpl', 'text', form.userTemplate, '/_admin/forms/hint/templates', 'usertpl' );
+			Nino.admin.forms._templateField( about, 'ownertpl', '/_admin/forms/label/ownertpl', form.ownerTemplate, '' );
+			Nino.admin.forms._templateField( about, 'usertpl', '/_admin/forms/label/usertpl', form.userTemplate, '/_admin/forms/hint/templates' );
 
 			el.appendChild( about );
 
@@ -543,7 +562,12 @@
 			add.textContent = Nino.content.getText('/_admin/forms/label/addfield');
 			add.addEventListener( 'click', function() {
 				Nino.admin.forms._collect();
-				Nino.admin.forms._editing.fields.push( { name : '', label : '', type : 'text', required : false, options : [] } );
+				const taken = Nino.admin.forms._editing.fields.map( function( field ) { return field.name } );
+				// A new field takes its name from its label, which is empty yet
+				Nino.admin.forms._editing.fields.push( {
+					name : Nino.admin.forms._deriveName( '', taken, Nino.admin.forms._reserved ),
+					label : '', type : 'text', required : false, options : [], auto : true,
+				} );
 				Nino.admin.forms._renderForm();
 			} );
 			fields.appendChild( add );
@@ -602,6 +626,7 @@
 
 			const input = dc.createElement('input');
 			input.type = type;
+			input.className = 'nino-admin-input';
 			input.value = value === null || value === undefined ? '' : String( value );
 			input.autocomplete = 'off';
 			if( role !== undefined )
@@ -621,9 +646,110 @@
 		},
 
 		/**
+		 *	One mail template picked from the ones the project has, as a
+		 *	labelled list. What the form names now is always in it, whether the
+		 *	project has such a file or not: a list that left it out would show
+		 *	the first template in its place, and the next save would quietly
+		 *	change the form
+		 *
+		 *	@param		{Element}	parent
+		 *	@param		{string}	role				What it is, for _collect() and for a refusal
+		 *	@param		{string}	label				Fill key
+		 *	@param		{string}	value				The template path the form names
+		 *	@param		{string}	hint				Fill key, '' for none
+		 *
+		 *	@return		{Element}							The <select>
+		 */
+		_templateField : function( parent, role, label, value, hint ) {
+
+			const paths = Nino.admin.forms._templates.slice();
+			if( value !== '' && paths.indexOf( value ) === -1 )
+				paths.unshift( value );
+
+			const field = Nino.adminUi.selectField( {
+				key			: role,
+				label		: Nino.content.getText( label ),
+				options	: paths.map( function( path ) { return { value : path, label : path } } ),
+				value		: value,
+			} );
+
+			const select = field.querySelector('select');
+			select.dataset.about = role;
+
+			if( hint !== '' ) {
+				const small = dc.createElement('small');
+				small.className = 'nino-admin-hint';
+				// The placeholder that carries every field into a mail is a token of
+				// its own, so it is put in here and not written into the fill
+				small.textContent = Nino.content.getText( hint ).replace( '%s', '[[fields]]' );
+				field.appendChild( small );
+			}
+
+			parent.appendChild( field );
+
+			return select;
+		},
+
+		/**
+		 *	The name a field takes from its label: lower case, ascii, words
+		 *	joined by a hyphen - the shape of a form key. A label written as a
+		 *	fill key gives the last part of the key. The German umlauts and the
+		 *	sharp s are spelled out (ae, oe, ue, ss) before any other accent is
+		 *	dropped, so a name stays readable in the export. The result starts
+		 *	with a letter, is at most 64 characters, is never one of the names
+		 *	the form keeps for itself and never one another field has
+		 *
+		 *	@param		{string}				label
+		 *	@param		{Array<string>}	taken				The names the other fields have
+		 *	@param		{Array<string>}	reserved			\Nino\Form::RESERVED
+		 *
+		 *	@return		{string}
+		 */
+		_deriveName : function( label, taken, reserved ) {
+
+			const spelled = { 'ä' : 'ae', 'ö' : 'oe', 'ü' : 'ue', 'ß' : 'ss', 'Ä' : 'Ae', 'Ö' : 'Oe', 'Ü' : 'Ue', 'ẞ' : 'SS' };
+
+			const key = /^\[\[\/(?:[^\[\]\/]+\/)*([^\[\]\/]+)\]\]$/.exec( String( label ).trim() );
+			const text = key === null ? String( label ) : key[1];
+
+			let name = text
+				.replace( /[äöüßÄÖÜẞ]/g, function( character ) { return spelled[character] } )
+				.normalize('NFD')
+				.replace( /[\u0300-\u036f]/g, '' )
+				.toLowerCase()
+				.replace( /[^a-z0-9]+/g, '-' )
+				.replace( /^-+|-+$/g, '' );
+
+			if( name === '' )
+				name = 'field';
+			else if( /^[a-z]/.test( name ) === false )
+				name = 'field-'+ name;
+
+			// A suffix is part of the 64, so the name is cut to leave room for it
+			const cut = function( base, suffix ) { return base.slice( 0, 64 - suffix.length ).replace( /-+$/, '' )+ suffix };
+
+			name = cut( name, '' );
+
+			if( reserved.indexOf( name ) !== -1 )
+				name = cut( name, '-field' );
+
+			const base = name;
+			for( let number = 2; taken.indexOf( name ) !== -1; number++ )
+				name = cut( base, '-'+ number );
+
+			return name;
+		},
+
+		/**
 		 *	One field of the form being edited: what it is called, what a
 		 *	visitor reads, what shape it takes, whether it has to be filled -
-		 *	and, for a select, its options
+		 *	and, for a select or a group of radio buttons, its options. And the
+		 *	pair of buttons that moves it up or down the list
+		 *
+		 *	A field that was added here takes its name from its label until the
+		 *	name is typed into by hand (row.dataset.auto, which _collect() reads
+		 *	back into the working copy so a redraw keeps it). A field that was
+		 *	loaded never does: a name that is saved is never rewritten
 		 *
 		 *	@param		{Object}	field
 		 *	@param		{number}	index
@@ -636,8 +762,30 @@
 			row.className = 'forms-field';
 			row.dataset.index = String( index );
 
-			Nino.admin.forms._input( row, '/_admin/forms/label/fieldname', 'text', field.name, '' ).dataset.role = 'name';
-			Nino.admin.forms._input( row, '/_admin/forms/label/fieldlabel', 'text', field.label, '' ).dataset.role = 'label';
+			if( field.auto === true )
+				row.dataset.auto = 'true';
+
+			const name = Nino.admin.forms._input( row, '/_admin/forms/label/fieldname', 'text', field.name, '' );
+			name.dataset.role = 'name';
+			// The first thing typed into the name is the person's own, and the
+			// label stops following it
+			name.addEventListener( 'input', function() { delete row.dataset.auto } );
+
+			const label = Nino.admin.forms._input( row, '/_admin/forms/label/fieldlabel', 'text', field.label, '' );
+			label.dataset.role = 'label';
+			label.addEventListener( 'input', function() {
+
+				if( row.dataset.auto !== 'true' )
+					return;
+
+				const taken = [];
+				Array.prototype.slice.call( dc.getElementById('forms-field-rows').children ).forEach( function( other ) {
+					if( other !== row )
+						taken.push( other.querySelector('[data-role="name"]').value.trim() );
+				} );
+
+				name.value = Nino.admin.forms._deriveName( label.value, taken, Nino.admin.forms._reserved );
+			} );
 
 			const typeWrap = dc.createElement('label');
 			typeWrap.className = 'nino-admin-field';
@@ -646,14 +794,15 @@
 			typeWrap.appendChild( typeSpan );
 
 			const type = dc.createElement('select');
+			type.className = 'nino-admin-input';
 			type.dataset.role = 'type';
-			Nino.admin.forms._types.forEach( function( name ) {
+			Nino.admin.forms._types.forEach( function( kind ) {
 				const option = dc.createElement('option');
-				option.value = name;
-				// The type names are the manifest's own words, not sentences -
-				// they stay as they are in every interface language
-				option.textContent = name;
-				if( name === field.type )
+				option.value = kind;
+				// The kernel's list of types, in the words of the workbench's
+				// language - the type itself, which is what is stored, stays the value
+				option.textContent = Nino.content.getText( '/_admin/forms/type/'+ kind ) || kind;
+				if( kind === field.type )
 					option.selected = true;
 				type.appendChild( option );
 			} );
@@ -673,21 +822,40 @@
 			required.dataset.role = 'required';
 			row.appendChild( required );
 
-			// Only a select has options, and only then is the box for them
-			// anything but noise
-			if( field.type === 'select' ) {
+			// Only a select and a group of radio buttons have options, and only
+			// then is the box for them anything but noise
+			if( field.type === 'select' || field.type === 'radio' ) {
 				const optionsWrap = dc.createElement('label');
 				optionsWrap.className = 'nino-admin-field nino-admin-field-wide';
 				const optionsSpan = dc.createElement('span');
 				optionsSpan.textContent = Nino.content.getText('/_admin/forms/label/options');
 				optionsWrap.appendChild( optionsSpan );
 				const options = dc.createElement('textarea');
+				options.className = 'nino-admin-input';
 				options.rows = 3;
 				options.dataset.role = 'options';
 				options.value = ( field.options || [] ).join('\n');
 				optionsWrap.appendChild( options );
 				row.appendChild( optionsWrap );
 			}
+
+			const move = dc.createElement('div');
+			move.className = 'forms-field-move';
+
+			[ [ 'up', -1, '/_admin/common/label/moveup', '\u2191' ], [ 'down', 1, '/_admin/common/label/movedown', '\u2193' ] ].forEach( function( step ) {
+				const button = dc.createElement('button');
+				button.type = 'button';
+				button.dataset.role = step[0];
+				button.title = Nino.content.getText( step[2] );
+				button.setAttribute( 'aria-label', Nino.content.getText( step[2] ) );
+				button.textContent = step[3];
+				// The first field has nothing above it, the last nothing below
+				button.disabled = index + step[1] < 0 || index + step[1] >= Nino.admin.forms._editing.fields.length;
+				button.addEventListener( 'click', function() { Nino.admin.forms._move( index, step[1] ) } );
+				move.appendChild( button );
+			} );
+
+			row.appendChild( move );
 
 			const remove = dc.createElement('button');
 			remove.type = 'button';
@@ -701,6 +869,166 @@
 			row.appendChild( remove );
 
 			return row;
+		},
+
+		/**
+		 *	Move one field up or down the list: what is typed is read back
+		 *	first, the two fields trade places in the working copy and the
+		 *	editor is drawn again. The focus goes to the button that was
+		 *	pressed on the field in its new place - or to the other one where
+		 *	that button is switched off because the field is at the end now
+		 *
+		 *	@param		{number}	index
+		 *	@param		{number}	direction			-1 up, 1 down
+		 *
+		 *	@return		void
+		 */
+		_move : function( index, direction ) {
+
+			Nino.admin.forms._collect();
+
+			const fields = Nino.admin.forms._editing.fields;
+			const to = index + direction;
+
+			if( to < 0 || to >= fields.length )
+				return;
+
+			const moved = fields[index];
+			fields[index] = fields[to];
+			fields[to] = moved;
+
+			Nino.admin.forms._renderForm();
+
+			const row = dc.getElementById('forms-field-rows').children[to];
+			let button = row.querySelector( '[data-role="'+ ( direction < 0 ? 'up' : 'down' ) +'"]' );
+
+			if( button.disabled === true )
+				button = row.querySelector( '[data-role="'+ ( direction < 0 ? 'down' : 'up' ) +'"]' );
+
+			button.focus();
+		},
+
+		/**
+		 *	Take the marks of a refused save off the editor: the sentences
+		 *	under the fields and the summary above them
+		 *
+		 *	@return		void
+		 */
+		_unmark : function() {
+
+			const wrap = dc.getElementById('forms-form');
+
+			if( wrap === null )
+				return;
+
+			wrap.querySelectorAll('.nino-admin-field-error').forEach( function( el ) { el.remove() } );
+			wrap.querySelectorAll('[aria-invalid]').forEach( function( el ) {
+				el.removeAttribute('aria-invalid');
+				el.removeAttribute('aria-describedby');
+			} );
+
+			const summary = dc.getElementById('forms-summary');
+			if( summary !== null ) {
+				summary.hidden = true;
+				summary.textContent = '';
+			}
+		},
+
+		/**
+		 *	Show where a refused save went wrong. The server answers a form it
+		 *	would only repair with a sentence for the whole form and, beside it,
+		 *	one for every field (fields, by its place in the list, and controls,
+		 *	which of its controls) and for every control of the form itself
+		 *	(about): each is written under its control, which is marked invalid
+		 *	and linked to it, and the first one is focused. The sentence for the
+		 *	whole form and what has no control of its own - a form without a
+		 *	field - go into the summary at the top of the editor, since the
+		 *	status line is not shown on a phone. Any other failure - a refused
+		 *	permission, a server error, no answer - is said there as well
+		 *
+		 *	@param		{number}	status
+		 *	@param		{*}				response
+		 *
+		 *	@return		void
+		 */
+		_mark : function( status, response ) {
+
+			const wrap = dc.getElementById('forms-form');
+
+			if( wrap === null )
+				return;
+
+			if( status !== 400 || response === null || typeof response !== 'object' ) {
+
+				const failed = dc.getElementById('forms-summary');
+
+				if( failed !== null ) {
+					failed.textContent = Nino.admin.forms._errorText( status, response, '/_admin/common/error/save' );
+					failed.hidden = false;
+				}
+
+				return;
+			}
+
+			const marked = [];
+			const rest = [];
+
+			const mark = function( control, text ) {
+
+				if( control === null ) {
+					rest.push( text );
+					return;
+				}
+
+				const id = 'forms-error-'+ marked.length;
+				const error = dc.createElement('p');
+				error.id = id;
+				error.className = 'nino-admin-field-error';
+				error.textContent = text;
+				// After the label, not in it: the sentence describes the control, and
+				// inside the label it would be part of the control's name as well
+				control.parentNode.after( error );
+
+				control.setAttribute( 'aria-invalid', 'true' );
+				control.setAttribute( 'aria-describedby', id );
+				marked.push( control );
+			};
+
+			const about = response.about || {};
+
+			[ 'key', 'to', 'ownertpl', 'usertpl' ].forEach( function( role ) {
+				if( typeof about[role] === 'string' )
+					mark( wrap.querySelector('[data-about="'+ role+ '"]'), about[role] );
+			} );
+
+			Object.keys( about ).forEach( function( role ) {
+				if( [ 'key', 'to', 'ownertpl', 'usertpl' ].indexOf( role ) === -1 && typeof about[role] === 'string' )
+					rest.push( about[role] );
+			} );
+
+			const rows = dc.getElementById('forms-field-rows');
+			const fields = response.fields || {};
+			const controls = response.controls || {};
+
+			Object.keys( fields ).sort( function( a, b ) { return a - b } ).forEach( function( index ) {
+
+				const row = rows === null ? null : rows.children[ parseInt( index, 10 ) ];
+
+				if( row === undefined || row === null )
+					return rest.push( fields[index] );
+
+				mark( row.querySelector('[data-role="'+ ( controls[index] || 'name' ) +'"]'), fields[index] );
+			} );
+
+			const summary = dc.getElementById('forms-summary');
+
+			if( summary !== null && typeof response.error === 'string' ) {
+				summary.textContent = [ response.error ].concat( rest ).join(' ');
+				summary.hidden = false;
+			}
+
+			if( marked.length > 0 )
+				marked[0].focus();
 		},
 
 		/**
@@ -728,8 +1056,8 @@
 				form.to							= about('to').value.trim();
 				form.subject				= about('subject').value.trim();
 				form.confirm				= about('confirm').querySelector('[data-key]').checked === true;
-				form.ownerTemplate	= about('ownertpl').value.trim();
-				form.userTemplate		= about('usertpl').value.trim();
+				form.ownerTemplate	= about('ownertpl').value;
+				form.userTemplate		= about('usertpl').value;
 			}
 
 			const rows = dc.getElementById('forms-field-rows');
@@ -750,6 +1078,7 @@
 					type 			: row.querySelector('[data-role="type"]').value,
 					required 	: required !== null && required.checked === true,
 					options 	: options === null ? [] : options.value.split('\n').map( function( line ) { return line.trim() } ).filter( Boolean ),
+					auto			: row.dataset.auto === 'true',
 				} );
 			} );
 
@@ -803,13 +1132,20 @@
 
 			save.disabled = true;
 			line.saving();
+			Nino.admin.forms._unmark();
 
-			Nino.admin.forms._apiCall( 'save', { key : was, form : posted }, function( status, response ) {
+			// What the working copy remembers about how a name came about is
+			// not part of the form
+			const form = JSON.parse( JSON.stringify( posted ) );
+			form.fields.forEach( function( field ) { delete field.auto } );
+
+			Nino.admin.forms._apiCall( 'save', { key : was, form : form }, function( status, response ) {
 
 				save.disabled = false;
 
 				if( status !== 200 || response === null ) {
 					line.error( status, response, '/_admin/common/error/save' );
+					Nino.admin.forms._mark( status, response );
 					return finish( false );
 				}
 

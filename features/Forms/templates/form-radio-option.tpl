@@ -1,0 +1,1 @@
+<label class="nino-forms-check"><input type="radio" id="[[id]]" name="[[name]]" value="[[value]]"[[required]]> [[label]]</label>

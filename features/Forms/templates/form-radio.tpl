@@ -1,0 +1,1 @@
+<fieldset class="nino-forms-group"><legend>[[label]][[star]]</legend>[[options]]</fieldset>

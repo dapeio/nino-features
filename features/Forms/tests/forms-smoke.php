@@ -34,15 +34,26 @@ $root = getenv( 'NINO_ROOT' ) ?: dirname( __DIR__, 3 );
 defined( 'NINO_FEATURES_DIR' ) === true || define( 'NINO_FEATURES_DIR', dirname( __DIR__, 2 ) );
 require $root. '/tests/harness.php';
 
-// The engine this feature extends, and one of the two reasons its manifest
-// names ^1.3 (the other is that a sectioned 'manual' needs a kernel newer
-// than the v1.2.0-beta tag).
+// The engine this feature extends. Its manifest names ^1.3 for it and ^1.4
+// for what follows below (a sectioned 'manual' needs a kernel newer than the
+// v1.2.0-beta tag as well).
 // A checkout that predates it cannot run a line of what follows, and a stack
 // trace two screens down is a worse way to learn that than one sentence here
 // (tests/build-smoke.php in this repository does the same for \Nino\Features)
 if( class_exists( '\Nino\Form' ) === false ) {
 	fwrite( STDERR, 'The Nino checkout at '. $root. ' ('. \Nino\VERSION. ') has no \Nino\Form - the Forms feature extends the kernel\'s form engine, which arrived with it'. "\n" );
 	exit( 2 );
+}
+
+// What the builder asks the engine, and the reason the manifest names ^1.4:
+// \Nino\Form::problems() arrived with the checkbox, radio and date types, in
+// the kernel that is tagged 1.4. On an older one there is nothing here to
+// test - the catalogue's CI runs this against Nino's latest tag as well, where
+// this file leaves quietly (tests/build-smoke.php, which asks the kernel for
+// the feature's availability, is the one that needs the matching tag)
+if( method_exists( '\Nino\Form', 'problems' ) === false ) {
+	echo 'The Nino checkout at '. $root. ' ('. \Nino\VERSION. ') has no \Nino\Form::problems() - the Forms feature is written for Nino 1.4 and later, so there is nothing to test against it'. "\n";
+	exit( 0 );
 }
 
 $appData = ninoSandbox( 'forms' );
@@ -196,6 +207,93 @@ check( 'the classes the shared .nino-form script drives are all there', str_cont
 
 check( 'a key no form has draws nothing at all - an empty page beats a form that posts nowhere', \Nino\Html::renderHtml( $appData, '[form key="nowhere"]' ) === '' );
 
+/*	The three types a form can ask for beyond text: a checkbox for a consent, a
+	group of radio buttons and a date. The checkbox carries its words inside
+	its own label, so there is no second <label> for it; the radio group is one
+	fieldset with a legend, an input for every option and the required mark on
+	every member - the browser asks for the group, not for one button	*/
+$typed = $appData;
+$typed[ \Nino\Form::FORMS ] = [ [
+	'key' 		=> 'typed',
+	'fields'	=> [
+		[ 'name' => 'privacy',	'label' => 'I agree',		'type' => 'checkbox',	'required' => true,		'options' => [] ],
+		[ 'name' => 'news',			'label' => 'Newsletter',	'type' => 'checkbox',	'required' => false,	'options' => [] ],
+		[ 'name' => 'plan',			'label' => 'Plan',				'type' => 'radio',		'required' => true,		'options' => [ 'Small', 'Large' ] ],
+		[ 'name' => 'day',			'label' => 'Day',					'type' => 'date',			'required' => false,	'options' => [] ],
+	],
+] ];
+$typedHtml = \Nino\Html::renderHtml( $typed, '[form key="typed"]' );
+check( 'a checkbox is one label around the input and its words, with the required mark after them and no <label for> of its own',
+	str_contains( $typedHtml, '<label class="nino-forms-check"><input type="checkbox" id="form-typed-privacy" name="privacy" value="1" required> I agree *</label>' ) === true
+	&& str_contains( $typedHtml, '<label for="form-typed-privacy">' ) === false );
+check( '...an optional one carries neither', str_contains( $typedHtml, '<input type="checkbox" id="form-typed-news" name="news" value="1"> Newsletter</label>' ) === true );
+check( 'a radio group is a fieldset with a legend and one input for every option, all of them named like the field',
+	str_contains( $typedHtml, '<fieldset class="nino-forms-group"><legend>Plan *</legend>' ) === true
+	&& substr_count( $typedHtml, 'type="radio"' ) === 2 && substr_count( $typedHtml, 'name="plan"' ) === 2
+	&& str_contains( $typedHtml, 'id="form-typed-plan-1" name="plan" value="Small" required> Small</label>' ) === true
+	&& str_contains( $typedHtml, 'id="form-typed-plan-2" name="plan" value="Large" required> Large</label>' ) === true );
+check( 'a date goes through the input every other typed field uses', str_contains( $typedHtml, '<input type="date" id="form-typed-day" name="day" class="nino-form-input">' ) === true );
+
+/*	Hostile text in the new fields is text as well, in the label and in the
+	option and in the value attribute	*/
+$hostile = $appData;
+$hostile[ \Nino\Form::FORMS ] = [ [
+	'key' 		=> 'hostile',
+	'fields'	=> [
+		[ 'name' => 'agree',	'label' => '<script>alert(1)</script>',		'type' => 'checkbox',	'required' => false,	'options' => [] ],
+		[ 'name' => 'plan',		'label' => '"><img src=x onerror=alert(2)>',	'type' => 'radio',		'required' => false,	'options' => [ '<b>x</b>', '" onfocus="alert(3)' ] ],
+	],
+] ];
+$hostileHtml = \Nino\Html::renderHtml( $hostile, '[form key="hostile"]' );
+check( 'a checkbox label, a radio legend and radio options carrying markup are drawn as text', str_contains( $hostileHtml, '<script>' ) === false && str_contains( $hostileHtml, '<img' ) === false
+	&& str_contains( $hostileHtml, '<b>x</b>' ) === false && str_contains( $hostileHtml, '" onfocus="' ) === false
+	&& str_contains( $hostileHtml, '&lt;script&gt;alert(1)&lt;/script&gt;' ) === true && str_contains( $hostileHtml, 'value="&quot; onfocus=&quot;alert(3)"' ) === true );
+
+/*	[form]'s output is rendered once more, which turns an option written as a
+	fill key into the text it stands for - in the value as well as in the
+	words, and a value that is not what is stored is a value the engine
+	refuses. The bracket is a character reference in the attribute, which the
+	browser reads back as the bracket	*/
+\Nino\Html::addFills( $appData, [ '[[/x/opt]]' => 'Small', '[[/x/opt-other]]' => 'Other' ], '*' );
+$optionsForm = $appData;
+$optionsForm[ \Nino\Form::FORMS ] = [ [
+	'key' 		=> 'options',
+	'fields'	=> [
+		[ 'name' => 'size',	'label' => 'Size',	'type' => 'select',	'required' => true,	'options' => [ '[[/x/opt]]', '[[/x/opt-other]]' ] ],
+		[ 'name' => 'plan',	'label' => 'Plan',	'type' => 'radio',	'required' => true,	'options' => [ '[[/x/opt]]', 'Large' ] ],
+	],
+] ];
+$optionsHtml = \Nino\Html::renderHtml( $optionsForm, '[form key="options"]' );
+check( 'an option written as a fill key shows the text it stands for and keeps the key as its value, in a select and in a radio group',
+	str_contains( $optionsHtml, '<option value="&#91;&#91;/x/opt]]">Small</option>' ) === true
+	&& str_contains( $optionsHtml, 'name="plan" value="&#91;&#91;/x/opt]]" required> Small</label>' ) === true
+	&& str_contains( $optionsHtml, 'value="Small"' ) === false && str_contains( $optionsHtml, 'value="Other"' ) === false );
+
+/*	No field template carries a <p> or a <button>: the shared .nino-form script
+	takes the form's first <p> for its message and the first <button> for its
+	submit, and the fields come first	*/
+$fieldTemplates = [ 'form-label', 'form-input', 'form-textarea', 'form-select', 'form-option', 'form-checkbox', 'form-radio', 'form-radio-option' ];
+$paragraphs = array_filter( $fieldTemplates, static fn( string $name ): bool => preg_match( '/<(p|button)[\s>]/i', (string) file_get_contents( dirname( __DIR__ ). '/templates/'. $name. '.tpl' ) ) === 1 );
+check( 'no field template carries a <p> or a <button>'. ( $paragraphs === [] ? '' : ' - '. implode( ', ', $paragraphs ) ), $paragraphs === [] );
+
+/*	The stylesheet joins Nino.css in one bundle, and .nino-form-* is the
+	kernel's family. The classes the new templates and the stylesheet write are
+	this feature's own - read as selectors, not as the comments that talk about
+	the other family	*/
+$uncommented = static fn( string $file ): string => (string) preg_replace( '#/\*.*?\*/#s', '', (string) file_get_contents( $file ) );
+$ninoCss = $uncommented( $root. '/_nino/Nino.css' );
+$written = [];
+foreach( [ 'form-checkbox', 'form-radio', 'form-radio-option' ] as $name ) {
+	preg_match_all( '/class="([^"]*)"/', (string) file_get_contents( dirname( __DIR__ ). '/templates/'. $name. '.tpl' ), $found );
+	foreach( $found[1] as $list )
+		$written = array_merge( $written, (array) preg_split( '/\s+/', trim( $list ) ) );
+}
+preg_match_all( '/\.(nino-[a-z0-9-]+)/', $uncommented( dirname( __DIR__ ). '/assets/forms.css' ), $found );
+$written = array_values( array_unique( array_merge( $written, $found[1] ) ) );
+$styledByKernel = array_values( array_filter( $written, static fn( string $class ): bool => preg_match( '/\.'. preg_quote( $class, '/' ). '(?![\w-])/', $ninoCss ) === 1 ) );
+check( 'no class the new templates or the stylesheet write is one Nino.css styles', $written !== [] && $styledByKernel === [] );
+check( 'the stylesheet is bundled into the project\'s own /.cache/style.css', in_array( '/features/Forms/assets/forms.css', \Nino\Html::getAssets( $appData, '/.cache/style.css' ), true ) === true );
+
 echo "\n";
 
 
@@ -207,12 +305,21 @@ echo "Forms\\Admin - the builder writes the key the kernel reads\n";
 \Nino\Auth::loginUser( $appData, 'dev@example.com', 'correct horse battery staple' );
 \Nino\Admin\Admin::init( $appData );
 
+// The mail templates a form names are files of the project, and a form that
+// names one that is not there is refused: a project has the pair its install
+// unit wrote, the header and footer they are wrapped in, and one of its own
+foreach( [ 'mail-owner', 'mail-user', 'mail-header', 'mail-footer', 'mail-quote' ] as $mail )
+	\Nino\Filesystem::putFileContent( $appData, '/templates/'. $mail. '.tpl', '<p>'. $mail. '</p>[[fields]]' );
+ninoWarnings();
+
 [ $status, $body ] = callFormsAdmin( $appData, 'forms/list' );
 check( 'forms/list answers the forms, the types a field may be and the names it may not take', $status === 200
 	&& array_column( $body['forms'], 'key' ) === [ 'contact' ] && $body['types'] === \Nino\Form::TYPES && $body['reserved'] === \Nino\Form::RESERVED );
 check( '...and says that nothing is defined yet, so the list is showing the fallback', $body['default'] === true );
 check( '...and that the endpoint every form posts to is switched on', $body['endpoint'] === true );
 check( '...with the two things about the submissions a project decides', $body['retention'] === \Nino\Form::RETENTION_MONTHS && $body['store'] === true );
+check( '...and the mail templates a form can name: the project\'s mail-* files, without the header and the footer, sorted',
+	$body['templates'] === [ '/templates/mail-owner', '/templates/mail-quote', '/templates/mail-user' ] );
 
 $quote = [
 	'key' => 'quote', 'name' => 'Quote', 'to' => 'sales@example.com', 'subject' => '', 'confirm' => false,
@@ -231,8 +338,50 @@ check( '...and the engine has it on the very next read, without the panel tellin
 [ $status ] = callFormsAdmin( $appData, 'forms/save', [ 'form' => [ 'key' => 'Not A Key', 'fields' => [] ], 'key' => '' ] );
 check( 'a definition the engine would refuse is refused here, by the engine\'s own normalize()', $status === 400 );
 
-[ $status ] = callFormsAdmin( $appData, 'forms/save', [ 'form' => $quote, 'key' => '' ] );
-check( 'creating a second form under a key that is taken is refused rather than silently replacing it', $status === 400 && count( definedForms( $appData ) ) === 2 );
+/*	What the engine would repair instead of keep is refused here, and the answer
+	says where: the index of the field in the posted list, the control of that
+	field, and the sentence in the language of whoever is looking. Nothing is
+	written - the config is what it was	*/
+$configBefore = \Nino\Filesystem::getFileContent( $appData, '/config.php', [] );
+$withField = static fn( array $field ): array => [ 'form' => [ 'fields' => [ $quote['fields'][0], $field ] ] + $quote, 'key' => '' ];
+$field = static fn( string $name, string $type = 'text', array $options = [] ): array => [ 'name' => $name, 'label' => $name, 'type' => $type, 'required' => false, 'options' => $options ];
+
+foreach( [
+	'a name with an umlaut'							=> [ $field( 'Straße' ), 'name' ],
+	'a name that is a label'						=> [ $field( 'Ihre Nachricht' ), 'name' ],
+	'a name the form keeps for itself'	=> [ $field( 'date' ), 'name' ],
+	'a name another field has'					=> [ $field( 'email' ), 'name' ],
+	'radio buttons without an option'		=> [ $field( 'plan', 'radio' ), 'options' ],
+	'a type nobody knows'								=> [ $field( 'plan', 'color' ), 'type' ],
+] as $label => [ $bad, $control ] ) {
+	[ $status, $body ] = callFormsAdmin( $appData, 'forms/save', $withField( $bad ) );
+	check( $label. ' is refused at its field: 400, the sentence under index 1 and the control '. $control. ', nothing written', $status === 400
+		&& is_string( $body['error'] ) === true && array_keys( $body['fields'] ) === [ 1 ] && is_string( $body['fields'][1] ) === true && $body['fields'][1] !== ''
+		&& $body['controls'] === [ 1 => $control ] && \Nino\Filesystem::getFileContent( $appData, '/config.php', [] ) === $configBefore );
+}
+
+[ $status, $body ] = callFormsAdmin( $appData, 'forms/save', [ 'form' => [ 'to' => 'a@b' ] + $quote, 'key' => '' ] );
+check( 'a recipient that is no address is refused at the "to" control', $status === 400 && array_keys( $body['about'] ) === [ 'to' ] && $body['fields'] === [] );
+
+[ $status, $body ] = callFormsAdmin( $appData, 'forms/save', [ 'form' => [ 'ownerTemplate' => '/templates/../x', 'userTemplate' => 'nope' ] + $quote, 'key' => '' ] );
+check( '...a template path that is none at the control of each of the two', $status === 400 && array_keys( $body['about'] ) === [ 'ownertpl', 'usertpl' ] );
+
+[ $status, $body ] = callFormsAdmin( $appData, 'forms/save', [ 'form' => [ 'key' => 'Not A Key' ] + $quote, 'key' => '' ] );
+check( '...a key that is none at the key control', $status === 400 && array_keys( $body['about'] ) === [ 'key' ] );
+
+[ $status, $body ] = callFormsAdmin( $appData, 'forms/save', [ 'form' => [ 'fields' => [] ] + $quote, 'key' => '' ] );
+check( '...a form without a field, which has no control of its own to mark', $status === 400 && array_keys( $body['about'] ) === [ 'fields' ] && $body['fields'] === [] );
+
+[ $status, $body ] = callFormsAdmin( $appData, 'forms/save', [ 'form' => [ 'ownerTemplate' => '/templates/mail-gone' ] + $quote, 'key' => '' ] );
+check( 'a template that is well formed and not on disk is refused at its control, whatever else is right - an empty mail is worse than no form',
+	$status === 400 && array_keys( $body['about'] ) === [ 'ownertpl' ] && \Nino\Filesystem::getFileContent( $appData, '/config.php', [] ) === $configBefore );
+
+[ $status ] = callFormsAdmin( $appData, 'forms/save', [ 'form' => [ 'key' => 'extra', 'userTemplate' => '/templates/mail-quote' ] + $quote, 'key' => '' ] );
+check( '...and one that is there, a project\'s own mail-* file, is not', $status === 200 );
+callFormsAdmin( $appData, 'forms/delete', [ 'key' => 'extra' ] );
+
+[ $status, $body ] = callFormsAdmin( $appData, 'forms/save', [ 'form' => $quote, 'key' => '' ] );
+check( 'creating a second form under a key that is taken is refused rather than silently replacing it - at the key', $status === 400 && count( definedForms( $appData ) ) === 2 && array_keys( $body['about'] ) === [ 'key' ] );
 
 [ $status ] = callFormsAdmin( $appData, 'forms/save', [ 'form' => [ 'key' => 'offer' ] + $quote, 'key' => 'quote' ] );
 check( 'a rename stays one form rather than becoming two', $status === 200 && definedForms( $appData ) === [ 'contact', 'offer' ] );
@@ -332,6 +481,70 @@ $blocked = [ '/nino/http/response' => [ 'statusCode' => 403 ], './nino/csrf/bloc
 $_POST = $valid + [ 'location' => '' ];
 \Nino\Modules\Forms::callbackGuard( $appData, $blocked );
 check( 'a request the csrf guard already refused is left alone', $blocked['/nino/http/response']['statusCode'] === 403 );
+
+echo "\n";
+
+
+// --- The typed fields, through the endpoint ------------------------------------
+
+echo "Modules\\Forms - what a checkbox, a radio group, a date and an option written as a fill post\n";
+
+$consent = [
+	'key' => 'consent', 'name' => 'Consent', 'to' => 'sales@example.com', 'subject' => '', 'confirm' => false,
+	'ownerTemplate' => '/templates/mail-owner', 'userTemplate' => '/templates/mail-user',
+	'fields' => [
+		[ 'name' => 'email',		'label' => 'Mail',		'type' => 'email',		'required' => true,		'options' => [] ],
+		[ 'name' => 'privacy',	'label' => 'I agree',	'type' => 'checkbox',	'required' => true,		'options' => [] ],
+		[ 'name' => 'plan',			'label' => 'Plan',		'type' => 'radio',		'required' => true,		'options' => [ '[[/x/opt]]', 'Large' ] ],
+		[ 'name' => 'size',			'label' => 'Size',		'type' => 'select',		'required' => false,	'options' => [ '[[/x/opt]]', 'Large' ] ],
+		[ 'name' => 'day',			'label' => 'Day',			'type' => 'date',			'required' => false,	'options' => [] ],
+	],
+];
+[ $status ] = callFormsAdmin( $appData, 'forms/save', [ 'form' => $consent, 'key' => '' ] );
+check( 'a form with all of them saves', $status === 200 );
+
+$good = [ 'form' => 'consent', 'email' => 'jo@example.com', 'privacy' => '1', 'plan' => 'Large', 'day' => '2026-02-28' ];
+$sent = [];
+check( 'a ticked required checkbox, a ticked radio and a real date are accepted, and the answers reach the owner\'s mail through [[fields]]',
+	submitForm( $appData, $good )['/nino/http/response']['statusCode'] === 200 && count( $sent ) === 1
+	&& str_contains( $sent[0]['body'], '2026-02-28' ) && str_contains( $sent[0]['body'], 'Large' ) );
+check( 'an unticked required checkbox is not', submitForm( $appData, [ 'privacy' => '' ] + $good )['/nino/http/response']['statusCode'] === 400 );
+check( 'a radio value that is none of the options is not', submitForm( $appData, [ 'plan' => 'Medium' ] + $good )['/nino/http/response']['statusCode'] === 400 );
+check( 'nor is a date that does not exist, or one written the other way round', submitForm( $appData, [ 'day' => '2026-02-30' ] + $good )['/nino/http/response']['statusCode'] === 400
+	&& submitForm( $appData, [ 'day' => '28.02.2026' ] + $good )['/nino/http/response']['statusCode'] === 400 );
+check( 'an option written as a fill key is accepted as the key it is stored as - the value the form draws, read back by the browser',
+	submitForm( $appData, [ 'plan' => '[[/x/opt]]', 'size' => '[[/x/opt]]' ] + $good )['/nino/http/response']['statusCode'] === 200 );
+callFormsAdmin( $appData, 'forms/delete', [ 'key' => 'consent' ] );
+
+echo "\n";
+
+
+// --- The words ---------------------------------------------------------------
+
+echo "Forms\\Admin - the words the editor reads\n";
+
+$words = [ 'en_US' => include $dir. '/text/en_US.php', 'de_DE' => include $dir. '/text/de_DE.php' ];
+check( 'both interface languages carry the same fills', array_diff( array_keys( $words['en_US'] ), array_keys( $words['de_DE'] ) ) === [] && array_diff( array_keys( $words['de_DE'] ), array_keys( $words['en_US'] ) ) === [] );
+foreach( $words as $locale => $fills ) {
+	$missing = [];
+	foreach( \Nino\Form::TYPES as $type )
+		if( isset( $fills[ '[[/_admin/forms/type/'. $type. ']]' ] ) === false )
+			$missing[] = $type;
+	check( $locale. ' names every field type the kernel knows'. ( $missing === [] ? '' : ' - missing '. implode( ', ', $missing ) ), $missing === [] );
+
+	// A sentence for every refusal the panel can answer with
+	$codes = [ 'key', 'field', 'name', 'reserved', 'duplicate', 'type', 'options', 'fields', 'to', 'ownertpl', 'usertpl', 'missingtpl' ];
+	$absent = array_values( array_filter( $codes, static fn( string $code ): bool => isset( $fills[ '[[/_admin/forms/problem/'. $code. ']]' ] ) === false ) );
+	check( $locale. ' says every problem the engine can find, and the missing template'. ( $absent === [] ? '' : ' - missing '. implode( ', ', $absent ) ), $absent === [] && isset( $fills['[[/_admin/forms/error/fields]]'] ) === true );
+
+	// A fill carries no token of its own: the script puts [[fields]] in where the hint asks, with %s
+	check( $locale. ': no fill carries a token the fill engine would answer for', array_filter( $fills, static fn( string $text ): bool => str_contains( $text, '[[' ) === true ) === [] );
+}
+
+// One entry for each code the kernel's problems() answers, and the panel's
+// sentence for it is the one in the list
+$problemCodes = ( new ReflectionClassConstant( \Nino\Modules\Forms\Admin::class, 'PROBLEMS' ) )->getValue();
+check( 'the panel has a sentence for each of the eleven codes problems() answers', array_keys( $problemCodes ) === [ 'key', 'field', 'name', 'reserved', 'duplicate', 'type', 'options', 'fields', 'to', 'ownerTemplate', 'userTemplate' ] );
 
 echo "\n";
 

@@ -1,0 +1,39 @@
+/**
+ *	Nino - Forms
+ *	forms.css	The two kinds of field [form] draws that the kernel's
+ *						.nino-form-input does not skin: a checkbox beside its words,
+ *						and a group of radio buttons under one question. Bundled into
+ *						the project's own /.cache/style.css the same way the kernel
+ *						bundles Nino.css (see Forms::init() and docs/development.md,
+ *						"Assets Are Not Templates") - never rendered through the
+ *						fill/shortcode engine, so nothing in here is a textfill.
+ *
+ *						The class names are this feature's own: .nino-form-* is the
+ *						kernel's family, and the feature's test holds the two apart.
+ *						Spacing is a custom property with a default, so a project
+ *						restyles a field without overriding a rule.
+ */
+
+.nino-forms-check {
+	--nino-forms-gap: .5rem;
+
+	display: flex;
+	align-items: baseline;
+	gap: var(--nino-forms-gap);
+	margin: 0 0 var(--space-1, .5rem);
+}
+
+.nino-forms-check > input {
+	flex: 0 0 auto;
+}
+
+.nino-forms-group {
+	min-width: 0;
+	margin: 0 0 var(--space-1, .5rem);
+	padding: 0;
+	border: 0;
+}
+
+.nino-forms-group > legend {
+	margin-bottom: var(--space-1, .5rem);
+}

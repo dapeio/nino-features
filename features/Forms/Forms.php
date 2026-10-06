@@ -86,10 +86,11 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	Register the shortcode and the two halves of the guard. No route:
-		 *	the endpoint is \Nino\Modules\Form's, and a project that switched
-		 *	that module off has no form endpoint on purpose - this feature is
-		 *	not the place to put one back
+		 *	Register the shortcode, the stylesheet of the two fields that need
+		 *	one and the two halves of the guard. No route: the endpoint is
+		 *	\Nino\Modules\Form's, and a project that switched that module off
+		 *	has no form endpoint on purpose - this feature is not the place to
+		 *	put one back
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
@@ -98,6 +99,8 @@ namespace Nino\Modules {
 		public static function init( array &$appData ): void {
 
 			\Nino\Html::addShortcode( $appData, 'form', [ self::class, 'doShortcode' ] );
+
+			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Forms/assets/forms.css' );
 
 			\Nino\Callbacks::registerCallback( $appData, self::ROUTE, [ self::class, 'callbackGuard' ], 1 );
 			\Nino\Callbacks::registerCallback( $appData, self::ROUTE, [ self::class, 'callbackCount' ], 8 );
@@ -225,6 +228,15 @@ namespace Nino\Modules {
 				return '';
 
 			$safe = static fn( string $value ): string => htmlspecialchars( $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
+
+			/*	[form]'s output is rendered once more, so a value that is
+				written as a fill key would come back as the text it stands
+				for - and the server, which compares what is posted with
+				what is stored, would refuse it. A bracket as its character
+				reference is what the browser reads back as the bracket and
+				what that pass does not touch	*/
+			$value = static fn( string $option ): string => str_replace( '[', '&#91;', $safe( $option ) );
+
 			$id 	= 'form-'. $form['key'];
 
 			$fields = '';
@@ -233,6 +245,7 @@ namespace Nino\Modules {
 
 				$fieldId	= $id. '-'. $field['name'];
 				$required	= $field['required'] === true ? ' required' : '';
+				$star			= $field['required'] === true ? ' *' : '';
 
 				/*	Rendered and then escaped, the same two steps the option
 					below takes. A label is a fill key or a word an operator
@@ -243,9 +256,39 @@ namespace Nino\Modules {
 					whichever of them is wrong, it is this one: a label is
 					drawn inside a <label> the template owns, and markup in it
 					is markup the template did not put there	*/
+				$label = $safe( \Nino\Html::renderHtml( $appData, $field['label'] ) );
+
+				if( $field['type'] === 'checkbox' ) {
+					$fields .= str_replace(
+						[ '[[id]]', '[[name]]', '[[required]]', '[[star]]', '[[label]]' ],
+						[ $safe( $fieldId ), $safe( $field['name'] ), $required, $star, $label ],
+						self::template( $appData, 'form-checkbox' )
+					);
+					continue;
+				}
+
+				if( $field['type'] === 'radio' ) {
+
+					$options = '';
+
+					foreach( $field['options'] as $number => $option )
+						$options .= str_replace(
+							[ '[[id]]', '[[name]]', '[[required]]', '[[value]]', '[[label]]' ],
+							[ $safe( $fieldId. '-'. ( $number + 1 ) ), $safe( $field['name'] ), $required, $value( $option ), $safe( \Nino\Html::renderHtml( $appData, $option ) ) ],
+							self::template( $appData, 'form-radio-option' )
+						);
+
+					$fields .= str_replace(
+						[ '[[star]]', '[[label]]', '[[options]]' ],
+						[ $star, $label, $options ],
+						self::template( $appData, 'form-radio' )
+					);
+					continue;
+				}
+
 				$fields .= str_replace(
 					[ '[[id]]', '[[star]]', '[[label]]' ],
-					[ $safe( $fieldId ), ( $field['required'] === true ? ' *' : '' ), $safe( \Nino\Html::renderHtml( $appData, $field['label'] ) ) ],
+					[ $safe( $fieldId ), $star, $label ],
 					self::template( $appData, 'form-label' )
 				);
 
@@ -264,7 +307,7 @@ namespace Nino\Modules {
 					foreach( $field['options'] as $option )
 						$options .= str_replace(
 							[ '[[value]]', '[[label]]' ],
-							[ $safe( $option ), $safe( \Nino\Html::renderHtml( $appData, $option ) ) ],
+							[ $value( $option ), $safe( \Nino\Html::renderHtml( $appData, $option ) ) ],
 							self::template( $appData, 'form-option' )
 						);
 
@@ -275,6 +318,7 @@ namespace Nino\Modules {
 					);
 				}
 
+				// An input of its own type: text, email, tel, url, number and date
 				else {
 					$fields .= str_replace(
 						[ '[[type]]', '[[id]]', '[[name]]', '[[required]]' ],

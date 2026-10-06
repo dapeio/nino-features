@@ -1,0 +1,1 @@
+<label class="nino-forms-check"><input type="checkbox" id="[[id]]" name="[[name]]" value="1"[[required]]> [[label]][[star]]</label>
