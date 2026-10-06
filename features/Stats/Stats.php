@@ -96,7 +96,7 @@ namespace Nino\Modules {
 
 			$uri 			= (string) ( $request['/nino/http/request']['uri'] ?? '' );
 			$referrer	= self::_referrerHost( $request );
-			$maxUris	= max( 1, (int) \Nino\Features::setting( $appData, self::KEY, 'maxUris', 500 ) );
+			$maxUris	= (int) \Nino\Features::setting( $appData, self::KEY, 'maxUris', 500 );
 
 			$day	= date( 'Y-m-d' );
 			$path	= self::STORAGE_DIR. '/'. date( 'Y-m' ). '.php';
@@ -460,9 +460,6 @@ namespace Nino\Modules {
 		 *	@return 	void
 		 */
 		private static function _prune( array &$appData, int $retentionMonths ): void {
-
-			if( $retentionMonths < 1 )
-				$retentionMonths = 1;
 
 			/*	This month counts as one of the months that are kept, so the
 				oldest one to survive is the month $retentionMonths - 1 back and

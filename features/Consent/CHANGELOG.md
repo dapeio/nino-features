@@ -30,6 +30,12 @@ A release is the tag `consent-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The cookie name is read the one way.** `allowed()` checked the setting with
+  `is_string()` and a fallback of its own, where the kernel already answers a
+  string that matches the manifest's pattern; it reads it as the banner does
+  now. The cookie the visitor sends is still checked with `is_string()`.
+  Nothing changes for a project; `nino` stays `^1.3`.
+
 - **The text keys follow Nino's grammar.** `/consent/title`, `text` and
   `policy-label` are `/feature/consent/banner/title`, `text` and `link`;
   `/consent/accept-all`, `necessary-only`, `save` and `open` are

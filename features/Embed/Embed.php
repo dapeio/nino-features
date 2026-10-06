@@ -439,9 +439,10 @@ namespace Nino\Modules {
 
 		/**
 		 *	The Consent category that releases an embed without a press, as the
-		 *	settings have it. '' where the project switched that off, and also
-		 *	where this feature is read outside an installation that has it -
-		 *	the safe half is the one that needs no configuration
+		 *	settings have it - the kernel already holds a stored value to the
+		 *	manifest's pattern. '' only where the project emptied the setting,
+		 *	and every embed then waits for a press; outside an installation that
+		 *	has this feature the answer is the manifest's default, 'external'
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
@@ -449,9 +450,7 @@ namespace Nino\Modules {
 		 */
 		public static function category( array &$appData ): string {
 
-			$category = (string) \Nino\Features::setting( $appData, 'embed', 'category', 'external' );
-
-			return preg_match( '/^[a-z0-9_-]*$/D', $category ) === 1 ? $category : '';
+			return (string) \Nino\Features::setting( $appData, 'embed', 'category', 'external' );
 		}
 
 		/**

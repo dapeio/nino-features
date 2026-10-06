@@ -67,11 +67,11 @@ namespace Nino\Modules {
 		// one that is always on
 		private const array OPTIONAL_CATEGORIES = [ 'statistics', 'marketing', 'external' ];
 
-		// What consent.js falls back to reading/writing when no [consent]
-		// banner is on the current page to carry the project's own
-		// cookieName setting (see doConsentShortcode()'s data-consent-cookie
-		// attribute) - the same literal the setting itself defaults to, so
-		// a project that never touched the setting is covered either way
+		// The cookie name where the settings have none: the fourth argument
+		// of both reads of the setting (doConsentShortcode() and allowed()),
+		// the same literal the manifest defaults to. consent.js keeps a
+		// constant of its own for a page without a [consent] banner to read
+		// the name from
 		private const string DEFAULT_COOKIE_NAME = 'nino_consent';
 
 		/**
@@ -216,15 +216,13 @@ namespace Nino\Modules {
 			if( \Nino\Features::setting( $appData, 'consent', $category, false ) !== true )
 				return false;
 
-			// is_string() rather than a cast, on both: a cookie is sent by
-			// the client, and 'nino_consent[]=x' parses to an array. Cast,
-			// that raises "Array to string conversion" - a level
-			// \Nino\Runtime treats as fatal, ie. an unauthenticated 500 on
-			// every page of the site from a cookie anybody can set. The
-			// setting is read the same way, since a hand-edited config.php
-			// is no more typed than a request is
-			$setting		= \Nino\Features::setting( $appData, 'consent', 'cookieName', self::DEFAULT_COOKIE_NAME );
-			$cookieName	= is_string( $setting ) === true ? $setting : self::DEFAULT_COOKIE_NAME;
+			$cookieName	= (string) \Nino\Features::setting( $appData, 'consent', 'cookieName', self::DEFAULT_COOKIE_NAME );
+
+			// is_string() rather than a cast: a cookie is sent by the client,
+			// and 'nino_consent[]=x' parses to an array. Cast, that raises
+			// "Array to string conversion" - a level \Nino\Runtime treats as
+			// fatal, ie. an unauthenticated 500 on every page of the site
+			// from a cookie anybody can set
 			$raw				= is_string( $_COOKIE[ $cookieName ] ?? null ) === true ? $_COOKIE[ $cookieName ] : '';
 
 			if( $raw === '' )

@@ -46,6 +46,11 @@ A release is the tag `stats-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **`maxUris` and the retention are read as the kernel hands them.** A
+  `max( 1, … )` and a `< 1` guard stood behind settings the kernel already holds
+  to the manifest's 50..5000 and 1..60. They are gone; nothing changes for a
+  project, and `nino` stays `^1.3`.
+
 - **The page titles it reads follow Nino 1.4's text keys.** A page's title in
   the panel is `/_nino/webpage<uri>/title` (`/webpage<uri>/title` before). Nino
   1.4.0 renames the keys the feature reads and it is renamed with them, so

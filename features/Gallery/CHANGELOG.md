@@ -79,6 +79,13 @@ versions [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **The image sizes are read as the kernel hands them.** `Gallery::setting()`
+  clamped every size to 40..4000 after `\Nino\Features::setting()` had already
+  held it to the manifest's own bounds (thumbnails 40..1200, large 200..4000)
+  and answered the default for anything outside - a second, looser copy of the
+  bounds that a change to the manifest would not have reached. It is the cast
+  now. Nothing changes for a project; `nino` stays `^1.3`.
+
 - **The README's example of a caption as a text fill uses Nino's key grammar.**
   `[[/project/gallery/pass/caption]]` - a caption is the project's own content,
   `/project/<category>/<part>/<name>` - where it said `[[/gallery/caption/pass]]`.

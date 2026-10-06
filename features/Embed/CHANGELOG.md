@@ -24,6 +24,13 @@ A release is the tag `embed-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The consent category is read as the kernel hands it.** `Embed::category()`
+  matched the setting against the manifest's pattern a second time; the kernel
+  already answers the default for a value that does not match. Its docblock
+  said a feature read outside an installation answers `''` - it answers
+  `external`, the manifest's default, and says so now. Nothing changes for a
+  project; `nino` stays `^1.3`.
+
 - **The text keys follow Nino's grammar.** `/embed/load` is
   `/feature/embed/placeholder/button`, `/embed/note` is
   `/feature/embed/placeholder/note`, `/embed/open` is

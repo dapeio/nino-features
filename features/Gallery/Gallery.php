@@ -453,9 +453,9 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	One int setting, clamped the way the manifest declares it - a
-		 *	hand-edited config.php is not a reason to ask gd for a 40000px
-		 *	canvas
+		 *	One int setting of the gallery's. The kernel already holds a stored
+		 *	value to the manifest's min and max and answers the manifest's
+		 *	default for one outside them, so this is the cast and nothing more
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$name
@@ -465,9 +465,7 @@ namespace Nino\Modules {
 		 */
 		public static function setting( array &$appData, string $name, int $default ): int {
 
-			$value = (int) \Nino\Features::setting( $appData, 'gallery', $name, $default );
-
-			return ( $value >= 40 && $value <= 4000 ) ? $value : $default;
+			return (int) \Nino\Features::setting( $appData, 'gallery', $name, $default );
 		}
 
 		/**
