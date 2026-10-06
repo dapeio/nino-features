@@ -15,7 +15,6 @@ return [
 	'[[/_admin/gallery/hint/sizes-crop]]'	=> 'Aus jedem Upload werden zwei Bilder: eine Vorschau, zugeschnitten auf %1, und eine große Ansicht, zugeschnitten auf %2. Die gewählte Datei wird nicht aufbewahrt – die große Ansicht ist das Größte, was ein Besucher je zu sehen bekommt.',
 
 	'[[/_admin/gallery/label/new]]'			=> 'Album anlegen',
-	'[[/_admin/gallery/label/open]]'		=> 'Bilder',
 	'[[/_admin/gallery/label/delete]]'	=> 'Löschen',
 	'[[/_admin/gallery/label/key]]'			=> 'Schlüssel',
 	'[[/_admin/gallery/label/name]]'		=> 'Name',

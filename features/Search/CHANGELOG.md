@@ -142,6 +142,10 @@ A release is the tag `search-<version>` of dapeio/nino-features.
 
 ### Removed
 
+- **Two panel words nothing showed**: `/_admin/search/label/save` and
+  `/_admin/search/hint/nofields`, left from the editor before Save and build.
+  A project that overrode them keeps an unused key.
+
 - **`exists` in the rows of `indexState()`.** Nothing read it, and the README
   never listed it: a type the configuration names and the project lacks says
   so in its `issues`.

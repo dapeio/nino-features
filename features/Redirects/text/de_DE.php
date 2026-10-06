@@ -25,7 +25,6 @@ return [
 	'[[/_admin/redirects/label/edit]]'				=> 'Bearbeiten',
 	'[[/_admin/redirects/label/delete]]'			=> 'Löschen',
 	'[[/_admin/redirects/label/save]]'				=> 'Speichern',
-	'[[/_admin/redirects/label/cancel]]'			=> 'Abbrechen',
 	'[[/_admin/redirects/label/back]]'				=> 'Zurück zu den Regeln',
 	'[[/_admin/redirects/label/probe]]'				=> 'Adresse ausprobieren',
 	'[[/_admin/redirects/label/probe-run]]'		=> 'Prüfen',
@@ -52,7 +51,6 @@ return [
 
 	'[[/_admin/redirects/msg/saved]]'					=> 'Gespeichert.',
 	'[[/_admin/redirects/msg/deleted]]'				=> 'Gelöscht.',
-	'[[/_admin/redirects/msg/forgotten]]'			=> 'Vergessen.',
 	'[[/_admin/redirects/msg/probe-route]]'		=> 'Eine Seite beantwortet diese Adresse, es wird also keine Regel gefragt.',
 	'[[/_admin/redirects/msg/probe-rule]]'		=> '"%s" beantwortet sie und schickt nach %s.',
 	'[[/_admin/redirects/msg/probe-nothing]]'	=> 'Nichts beantwortet sie. Ein Besucher bekommt die 404-Seite, und die Adresse wird als fehlend gemerkt.',

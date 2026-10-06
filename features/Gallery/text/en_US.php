@@ -14,7 +14,6 @@ return [
 	'[[/_admin/gallery/hint/sizes-crop]]'	=> 'Every upload becomes two pictures: a thumbnail cropped to %1, and a large view cropped to %2. The file you choose is not kept - the large view is the biggest a visitor can ever see.',
 
 	'[[/_admin/gallery/label/new]]'			=> 'Add album',
-	'[[/_admin/gallery/label/open]]'		=> 'Images',
 	'[[/_admin/gallery/label/delete]]'	=> 'Delete',
 	'[[/_admin/gallery/label/key]]'			=> 'Key',
 	'[[/_admin/gallery/label/name]]'		=> 'Name',

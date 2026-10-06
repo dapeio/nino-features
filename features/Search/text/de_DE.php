@@ -30,12 +30,10 @@ return [
 	'[[/_admin/search/label/slot]]'					=> 'Priorität %d',
 	'[[/_admin/search/label/weight]]'				=> 'zählt %s',
 	'[[/_admin/search/label/nofield]]'			=> '— kein Feld —',
-	'[[/_admin/search/label/save]]'					=> 'Speichern',
 	'[[/_admin/search/label/saveandbuild]]'	=> 'Speichern und aufbauen',
 	'[[/_admin/search/hint/slots]]'					=> 'Vier Plätze, vom stärksten zum schwächsten. Die Gewichtung entscheidet über die Reihenfolge der Treffer, nicht darüber, ob ein Wort als gefunden gilt: Was in Priorität 3 steht, wird genauso gefunden wie Priorität 0 – nur weiter unten.',
 	'[[/_admin/search/hint/indexable]]'			=> 'Angeboten werden die Felder des Modells, die Text tragen. Bilder, Verweise und Ja/Nein-Felder stehen nicht zur Wahl – daraus lässt sich nichts suchen.',
 	'[[/_admin/search/hint/empty]]'					=> 'Dieses Projekt hat noch keine Elementtypen. Lege im Panel Typen einen an, dann ist hier etwas zu indizieren.',
-	'[[/_admin/search/hint/nofields]]'			=> 'Kein Feld gewählt – dieser Typ wird nicht indiziert, und ein vorhandener Index wird beim Speichern entfernt.',
 	'[[/_admin/search/hint/stale]]'					=> 'Der Index ist älter als der Typ oder wurde aus anderen Feldern gebaut, als hier stehen. Neu aufbauen.',
 
 	'[[/_admin/search/label/query]]'				=> 'Suchbegriff',

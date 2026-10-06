@@ -25,7 +25,6 @@ return [
 	'[[/_admin/redirects/label/edit]]'				=> 'Edit',
 	'[[/_admin/redirects/label/delete]]'			=> 'Delete',
 	'[[/_admin/redirects/label/save]]'				=> 'Save',
-	'[[/_admin/redirects/label/cancel]]'			=> 'Cancel',
 	'[[/_admin/redirects/label/back]]'				=> 'Back to the rules',
 	'[[/_admin/redirects/label/probe]]'				=> 'Try an address',
 	'[[/_admin/redirects/label/probe-run]]'		=> 'Check',
@@ -52,7 +51,6 @@ return [
 
 	'[[/_admin/redirects/msg/saved]]'					=> 'Saved.',
 	'[[/_admin/redirects/msg/deleted]]'				=> 'Deleted.',
-	'[[/_admin/redirects/msg/forgotten]]'			=> 'Forgotten.',
 	'[[/_admin/redirects/msg/probe-route]]'		=> 'A page answers this address, so no rule is consulted for it.',
 	'[[/_admin/redirects/msg/probe-rule]]'		=> '"%s" answers it, and sends to %s.',
 	'[[/_admin/redirects/msg/probe-nothing]]'	=> 'Nothing answers it. A visitor gets the 404 page, and the address is remembered as missing.',

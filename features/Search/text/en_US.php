@@ -29,12 +29,10 @@ return [
 	'[[/_admin/search/label/slot]]'					=> 'Priority %d',
 	'[[/_admin/search/label/weight]]'				=> 'weighs %s',
 	'[[/_admin/search/label/nofield]]'			=> '— no field —',
-	'[[/_admin/search/label/save]]'					=> 'Save',
 	'[[/_admin/search/label/saveandbuild]]'	=> 'Save and build',
 	'[[/_admin/search/hint/slots]]'					=> 'Four slots, strongest to weakest. The weight decides the order of the hits, not whether a word counts as found: what sits in priority 3 is found exactly as well as priority 0 - just further down.',
 	'[[/_admin/search/hint/indexable]]'			=> 'Offered are the model fields that carry text. Images, references and yes/no fields are not on the list - there is nothing in them to search.',
 	'[[/_admin/search/hint/empty]]'					=> 'This project has no Element types yet. Add one in the Types panel, then there is something here to index.',
-	'[[/_admin/search/hint/nofields]]'			=> 'No field chosen - this type is not indexed, and saving removes an index it already has.',
 	'[[/_admin/search/hint/stale]]'					=> 'The index is older than the type, or was built from other fields than the ones here. Rebuild it.',
 
 	'[[/_admin/search/label/query]]'				=> 'Search term',

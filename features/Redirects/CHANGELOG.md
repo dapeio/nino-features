@@ -151,6 +151,12 @@ A release is the tag `redirects-<version>` of dapeio/nino-features.
   the key of its reason rather than a sentence, because a reason is a fill
   too - the note carries it under `%r` and the panel resolves that first.
 
+### Removed
+
+- **Two panel words nothing showed**: `/_admin/redirects/label/cancel` and
+  `/_admin/redirects/msg/forgotten`. A project that overrode them keeps an
+  unused key.
+
 ## 1.0.0 — 2026-09-12
 
 First release: old addresses that still work, and a list of the ones that do not.
