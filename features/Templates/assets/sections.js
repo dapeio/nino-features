@@ -1,5 +1,5 @@
 /**
- *	Nino Template Builder — section canvas, inspector and HTML+ escape hatch.
+ *	Nino Template Builder — section canvas, inspector and HTML+ editor.
  */
 
 ( function(wn,dc) {
@@ -373,6 +373,16 @@
 			dc.getElementById('pd-code-source').value = context.mode === 'component'
 				? ( source || '' )
 				: ( source || '<section id="section-id" class="nino-section">\n\t<div class="nino-grid-row">\n\t</div>\n</section>\n' );
+			// A collection's HTML+ is the item, filled per record: the fields it can
+			// name, written as the fills they are. The sentence carries a %s and
+			// this fills it - a fill value holding [[...]] would be resolved
+			// before it ever got here (see SHORTCODE above)
+			const fields = dc.getElementById('pd-code-fields');
+			if( fields ) {
+				const names = context.mode === 'component' && Array.isArray( context.fields ) ? context.fields.concat( [ '.id' ] ) : [];
+				fields.hidden = names.length === 0;
+				fields.textContent = names.length === 0 ? '' : Nino.content.getText('/_admin/templates/hint/loop-fields').replace( '%s', names.map( function( name ) { return '[['+ name+ ']]' } ).join(', ') );
+			}
 			dc.getElementById('pd-code-error').textContent = '';
 			dialog.showModal();
 			dc.getElementById('pd-code-source').focus();

@@ -36,7 +36,7 @@
 			'labelKey' => '/_admin/templates/area/steps',
 			'help' => 'One entry per step. The step number is drawn by the ordered list itself, so it is not part of the content.',
 			'source' => 'elements',
-			'allowed' => [ 'title', 'description', 'text' ],
+			'allowed' => [ 'title', 'description', 'text', 'html' ],
 			'item' => [ 'tag' => 'li', 'class' => 'nino-timeline-step' ],
 			'typeTitle' => 'Process steps',
 			'model' => [

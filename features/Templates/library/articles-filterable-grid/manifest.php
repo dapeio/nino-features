@@ -38,7 +38,7 @@
 			'labelKey' => '/_admin/templates/area/elements',
 			'help' => 'Repeatable cards. Give "category" a fixed set of options in the type editor - the filter buttons above list exactly those, and a category with no entry yet is hidden. The button row follows this Area\'s collection automatically, including after it is rebound here.',
 			'source' => 'elements',
-			'allowed' => [ 'image', 'title', 'description', 'button' ],
+			'allowed' => [ 'image', 'title', 'description', 'button', 'html' ],
 			'item' => [
 				'tag' => 'article',
 				'class' => 'nino-article nino-article--alt nino-mb-3 nino-article--grid nino-filter-item',

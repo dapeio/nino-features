@@ -164,7 +164,7 @@ The Builder rejects duplicate non-empty section IDs. Composer-created IDs match
 Only Composer-created sections have a valid
 `<!-- nino:section {...} -->` comment and can reopen their exact wizard
 settings. Do not invent the JSON manually. A hand-authored top-level section is
-still movable and editable through the HTML+ escape hatch.
+still movable and editable through the HTML+ editor.
 
 ## Textfill path design
 

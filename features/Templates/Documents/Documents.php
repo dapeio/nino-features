@@ -17,6 +17,18 @@ namespace Nino\Modules\Templates {
 	 */
 	class Documents {
 
+		/*	Which reusable templates the panel does not offer. A project's
+			templates/ holds more than the sections a page is built from: the
+			mail bodies, which the mailer sends, and robots, sitemap and
+			llms, which a route answers as plain text - an 'output' is a
+			response, never a part of a page - and the two the frame includes
+			itself, which are the frame's own and never a page's header or
+			section on their own. They stay in the list the client gets, with
+			a kind that says so: a page that already points at one still has
+			to find it, and the panel must not call it gone	*/
+		private const array OUTPUT = [ 'robots', 'sitemap-xml', 'llms-txt' ];
+		private const array INTERNAL = [ 'theme.header', 'theme.footer' ];
+
 		public static function actions(): array {
 			return [
 				'documents/list'	=> [ self::class, 'apiList' ],
@@ -171,9 +183,13 @@ namespace Nino\Modules\Templates {
 				// A slug rather than a word: the panel shows this and compares
 				// it (see script.js's includeKind()), and a comparison against
 				// a translated label would only hold in one language
-				$kind = in_array( $name, [ 'html-header', 'html-footer' ], true )
-					? 'frame'
-					: ( str_starts_with( $name, 'section-' ) ? 'section' : 'partial' );
+				$kind = match( true ) {
+					in_array( $name, [ 'html-header', 'html-footer' ], true ) => 'frame',
+					in_array( $name, self::OUTPUT, true ), str_starts_with( $name, 'mail-' ) => 'output',
+					in_array( $name, self::INTERNAL, true ) => 'internal',
+					str_starts_with( $name, 'section-' ) => 'section',
+					default => 'partial',
+				};
 				$includes[] = [
 					'name' => $name,
 					'path' => '/templates/'. $name,

@@ -57,7 +57,7 @@ Die schnelle native Befüllung legt neue Schlüssel in der nativen Projektsprach
 
 ## Seiten- und Section-Einstellungen
 
-**Name**, **Header**, **Footer** und **VPA** stehen gemeinsam in einer beschrifteten Zeile der Template Settings. **Delete** und **Save template** stehen gemeinsam am rechten Ende der Kopfzeile des Panels, neben seinem Namen, davor der Speicherstatus; **Add section** bleibt auch nach dem Einfügen von Content in der Dokument-Toolbar sichtbar. Die Header-/Footer-Selects zeigen die echten `.tpl`-Dateinamen, listen dem Projekt bekannte Nicht-Seiten-Templates und bieten außerdem **None**. Der ausgewählte Wert wird weiterhin als gewöhnlicher `[template /templates/<name>]`-Shortcode geschrieben; die Controls verhindern nur, dass die Seitenschale mit verschiebbarem Content verwechselt wird. **Delete** entfernt genau die aktuell geladene Revision der Datei nach einer ausdrücklichen Bestätigung; eine Wiederherstellung erfordert Versionsverwaltung oder ein anderes externes Backup.
+**Name**, **Header**, **Footer** und **VPA** stehen gemeinsam in einer beschrifteten Zeile der Template Settings. **Delete** und **Save template** stehen gemeinsam am rechten Ende der Kopfzeile des Panels, neben seinem Namen, davor der Speicherstatus; **Add section** bleibt auch nach dem Einfügen von Content in der Dokument-Toolbar sichtbar. Die Header-/Footer-Selects zeigen die echten `.tpl`-Dateinamen, listen dem Projekt bekannte Nicht-Seiten-Templates und bieten außerdem **None**. Mail-Bodies (`mail-*`), die Ausgaben `robots`, `sitemap-xml` und `llms-txt` sowie die Frame-eigenen `theme.header` und `theme.footer` fehlen in diesen Listen, in der Section-Auswahl und in der Template-Komponente eines Presets – sie sind Antworten und Teile des Frames, keine Teile einer Seite. Entfernt werden sie nicht: Eine Seite, die schon auf eines zeigt, behält es ausgewählt. Der ausgewählte Wert wird weiterhin als gewöhnlicher `[template /templates/<name>]`-Shortcode geschrieben; die Controls verhindern nur, dass die Seitenschale mit verschiebbarem Content verwechselt wird. **Delete** entfernt genau die aktuell geladene Revision der Datei nach einer ausdrücklichen Bestätigung; eine Wiederherstellung erfordert Versionsverwaltung oder ein anderes externes Backup.
 
 **VPA** auf Template-Ebene liefert den Standard für Sections mit der Einstellung **Page**. Eine Änderung setzt verwaltete Sections neu zusammen, aktualisiert deren `nino-vpa`-Klasse und bleibt auch in einem noch leeren Template erhalten. **On** oder **Off** an einer einzelnen Section überschreibt den Template-Standard.
 
@@ -85,7 +85,7 @@ Layout-Empfehlung, Preset-Empfehlung, sicherer Fallback.
 
 Add blendet Höhe, Breite, Inhaltsposition, Margin und Padding der Section aus, sonst nichts: Der Schritt soll zuerst eine sinnvolle Section erzeugen, die man im echten Frontend beurteilen kann. Edit behält das vollständige grafische Feinjustierungsmodell; beide Abläufe kompilieren dieselben Metadaten. Das Manifest bestimmt, welche Areas, Komponenten, Styles und Layouts kompatibel sind. HTML+ bleibt der ausdrückliche Weg für freie Quelltextänderungen.
 
-## Quelltext-Sicherheit und HTML+-Escape-Hatch
+## Quelltext-Sicherheit und HTML+ Editor
 
 Beim Laden scannt das Backend oberste `<section>`-Elemente, ohne den umgebenden Quelltext zu serialisieren. Eine bereits vorhandene alleinstehende `[template /templates/<name>]`-Zeile außerhalb einer Section bleibt eine eigene Canvas-Karte; neue wiederverwendbare Includes werden über die Template-Komponente eines Presets gewählt. Markierte Header-/Footer-Shortcodes werden stattdessen zu festen Settings-Slots. Sonstiger Quelltext wird als gesperrtes Raw-Segment ausgeliefert. Beim Speichern gilt:
 
@@ -367,17 +367,35 @@ Benutzers gewinnt weiterhin:
   `image`, `button`, `price`, `number` und `template`. `html` – im Panel
   **HTML+** – ist die, deren Wert Templatequelltext ist und kein Textfill:
   nach dem Einfügen öffnet ihr Knopf **Bearbeiten** denselben großen
-  Quelltexteditor wie der HTML+-Escape-Hatch der Section, schreibt aber in
+  Quelltexteditor wie der HTML+ Editor der Section, schreibt aber in
   diese eine Komponente zurück, während die Section darum herum
   zusammengesetzt bleibt. Ihre Fills und Shortcodes überleben, was ein
   Textfill nicht kann: `sanitizeValue()` macht aus jeder `[` und `]` eine
   Entity. Sie darf keine verschachtelte `<section>` tragen, kein `script`,
   `iframe`, `object`, `embed`, `form` oder `style`, und kein `-->`; für alles
-  darüber nimmt der Escape-Hatch die ganze Section und sagt das auch. In
-  Single-Areas wie in Collections: In einer Collection ist der Quelltext das
-  Markup des Items, einmal pro Element gerendert, und ein `[[feld]]` darin wird
-  je Datensatz aufgelöst wie die Fills der anderen Komponenten – eine von Hand
-  geschriebene Zeile, wo die festen Komponenten des Presets nicht reichen.
+  darüber nimmt der HTML+ Editor die ganze Section und sagt das auch. In
+  Single-Areas wie in Collections, auch in den sechs Collections, über die die
+  mitgelieferten Presets laufen. In einer Collection ist der Quelltext das
+  Markup des Items, einmal pro Element gerendert; er beginnt als
+  `<p class="nino-section-text">[[<erstes Textfeld>]]</p>`, und ein `[[feld]]`
+  darin wird je Datensatz aufgelöst wie die Fills der anderen Komponenten – eine
+  von Hand geschriebene Zeile, wo die festen Komponenten des Presets nicht
+  reichen. Der Editor listet, was das Item nennen kann:
+  `[[title]], [[description]], …, [[.id]]`, je ein `[[feld]]` pro Feld der
+  Collection mit seinem Modellschlüssel und `[[.id]]` für die Position des
+  Eintrags, von 0 gezählt. Die Fills stehen in doppelten Klammern: `[title]`
+  würde als Shortcode `title` gelesen und bliebe als Text auf der Seite. Ein
+  einfacher Wert wird escaped, ein Rich-Text-Feld (`'html' => true`) für Inhalt
+  bereinigt, `[` wird in beiden zu `&#91;`; globale Fills wie `[[/company/name]]`
+  werden im Item ebenfalls aufgelöst. Abgelehnt werden zwei Dinge: ein
+  verschachtelter `[elements]`-Block, weil der Kernel den äußeren Block am
+  ersten `[/elements]` beendet, und – bei einer Collection, die die Section
+  selbst anlegt – ein Rich-Text-Feld innerhalb eines Tags, denn die Bereinigung
+  lässt `"` stehen, und der Wert könnte ein Attribut schließen und dem Inhalt
+  einen Event-Handler mitgeben. Dasselbe Feld im Textinhalt ist in Ordnung.
+  Setze jedes Attribut, das ein Feld trägt, in Anführungszeichen: Das Escapen
+  kodiert weder Leerzeichen noch `=`, ein unquotiertes `class=[[title]]` lässt
+  sich also trotzdem aufbrechen.
   Jede Textkomponente bietet
   dieselben drei Styles – **Auto**, **Quiet**, **Loud** –, die zu einem
   Modifikator der jeweils getragenen Klasse kompilieren
@@ -538,7 +556,7 @@ Die Section Library lädt ausschließlich Manifeste mit explizitem `version => 3
 
 ## Aktuelle Grenzen
 
-- Library und Konfiguration rendern erzeugtes Markup mit den eigenen Inhalten des Presets: dem, womit eine neue Section angelegt wird, und für den Rest den Beispielen, die sein Manifest unter `samples` nennt. Das Backend aktualisiert zuerst das konfigurierte Bundle `/.cache/style.css` und liefert dessen Inhalt im authentifizierten Library-Payload; der Client bettet ihn in jedes isolierte `srcdoc` ein und benötigt deshalb keinen eigenen Request auf ein öffentliches Dot-Verzeichnis. Script-Tags und Inline-Handler werden entfernt, die CSP sperrt Skripte und Netzwerkaktionen, Formulare können nicht senden und Links werden nicht verfolgt.
+- Library und Konfiguration rendern erzeugtes Markup mit den eigenen Inhalten des Presets: Die Texte einer neuen Section starten leer, ein leeres Feld zeigt deshalb sein Beispiel – die eigenen Worte der Workbench dafür, was in ein solches Feld gehört, in ihrer Sprache –, ein getippter Text erscheint wie getippt und so bereinigt, wie das Speichern ihn bereinigt; für den Rest stehen die Beispiele, die das Manifest unter `samples` nennt. Nichts davon wird gespeichert: Ein leerer Text ist im Panel markiert (gestrichelter Rahmen und der Hinweis, dass auf der Website hier nichts erscheint) und legt einen leeren Schlüssel an. Eine früher eingefügte Section behält die Texte, mit denen sie angelegt wurde. Das Backend aktualisiert zuerst das konfigurierte Bundle `/.cache/style.css` und liefert dessen Inhalt im authentifizierten Library-Payload; der Client bettet ihn in jedes isolierte `srcdoc` ein und benötigt deshalb keinen eigenen Request auf ein öffentliches Dot-Verzeichnis. Script-Tags und Inline-Handler werden entfernt, die CSP sperrt Skripte und Netzwerkaktionen, Formulare können nicht senden und Links werden nicht verfolgt.
 - Visuelle Content-Einheiten sind oberste `<section>`-Elemente. Bestehende alleinstehende `[template]`-Zeilen bleiben verlustfrei bearbeitbar; neue Includes werden über eine Area-Komponente eingefügt. Markierte Header-/Footer-Slots liegen in den Template Settings.
 - Der Builder kann `page-*.tpl` anlegen; die Zuordnung von Route zu Template bleibt im Panel Routen oder im Code.
 - Native Quick-Fills sind einfache Texteingaben. Rich Text, Übersetzungen und Batch-Pflege bleiben in den etablierten Content-Werkzeugen.

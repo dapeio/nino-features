@@ -40,7 +40,7 @@
 			'labelKey' => '/_admin/templates/area/articles',
 			'help' => 'A repeatable collection. Add, reorder or remove the fields rendered for every article.',
 			'source' => 'elements',
-			'allowed' => [ 'image', 'title', 'description', 'button' ],
+			'allowed' => [ 'image', 'title', 'description', 'button', 'html' ],
 			'item' => [ 'tag' => 'article', 'class' => 'nino-article nino-article--alt nino-mb-3 nino-article--grid' ],
 			'styles' => [
 				'two-columns' => [ 'label' => '2 columns', 'class' => 'nino-grid-m-50' ],

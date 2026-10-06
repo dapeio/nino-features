@@ -57,7 +57,7 @@ Native quick fill creates new keys in the project’s native locale and changes 
 
 ## Page and section settings
 
-**Name**, **Header**, **Footer** and **VPA** share one labeled Template Settings row. **Delete** and **Save template** stay together at the right end of the panel's head, beside its name, with the save state in front of them; **Add section** remains in the document toolbar even after content has been inserted. The header/footer selects show real `.tpl` filenames, list non-page templates known to the project and also offer **None**. The selected value is still written as an ordinary `[template /templates/<name>]` shortcode; the controls only prevent shell includes from being mistaken for movable page content. **Delete** removes exactly the loaded file revision after explicit confirmation; recovery requires version control or another external backup.
+**Name**, **Header**, **Footer** and **VPA** share one labeled Template Settings row. **Delete** and **Save template** stay together at the right end of the panel's head, beside its name, with the save state in front of them; **Add section** remains in the document toolbar even after content has been inserted. The header/footer selects show real `.tpl` filenames, list non-page templates known to the project and also offer **None**. Mail bodies (`mail-*`), the `robots`, `sitemap-xml` and `llms-txt` outputs and the frame's own `theme.header` and `theme.footer` are left out of these lists, of the section picker and of a preset's Template component - they are responses and parts of the frame, not parts of a page. They are not removed: a page that already points at one keeps it selected. The selected value is still written as an ordinary `[template /templates/<name>]` shortcode; the controls only prevent shell includes from being mistaken for movable page content. **Delete** removes exactly the loaded file revision after explicit confirmation; recovery requires version control or another external backup.
 
 **VPA** at template level supplies the default for sections whose motion is set to **Page**. Changing it recomposes managed sections, updates their `nino-vpa` class and remains persisted even while a template is still empty. **On** or **Off** on an individual section overrides that default.
 
@@ -71,7 +71,7 @@ Add and Edit walk the same two configuration steps and expose different depths o
 
 Add omits the Section's height, width, content position, margin and padding, and nothing else: it is meant to produce a useful first version before the page is judged in its real frontend. Edit keeps the complete graphical fine-tuning model; both flows compile the same metadata. Each manifest decides which Areas, components, Styles and Layouts are compatible. HTML+ remains the explicit route for arbitrary source changes.
 
-## Source safety and the HTML+ escape hatch
+## Source safety and the HTML+ editor
 
 On load, the backend scans top-level `<section>` elements without serializing the surrounding source. An existing standalone `[template /templates/<name>]` line outside a section remains a first-class canvas card; new reusable includes are chosen through a preset's Template component. Marked header/footer shortcodes become fixed settings slots instead. Other source is returned as locked raw segments. On save:
 
@@ -262,16 +262,30 @@ The fixed component catalog is `title`, `subtitle`, `description`,
 `text`, `html`, `image`, `button`, `price`, `number` and `template`. `html` —
 **HTML+** in the panel — is the one whose value is template source rather than
 a textfill: after inserting it, its **Edit** button opens the same large source
-editor the section's own HTML+ escape hatch opens, and writes back into that
+editor the section's own HTML+ editor opens, and writes back into that
 one component while the section stays composed around it. Its fills and
 shortcodes survive, which is what a textfill cannot do: `sanitizeValue()` turns
 every `[` and `]` into an entity. It may not carry a nested `<section>`, nor
 `script`, `iframe`, `object`, `embed`, `form` or `style`, nor `-->`; for
-anything beyond that, the escape hatch takes the whole section and says so. It
-is offered in single Areas and in collections alike: in a collection the source
-is the item's own markup, rendered once per element, and a `[[field]]` in it is
-resolved per record the way the other components' fills are - a row written by
-hand, where the preset's fixed components would not do.
+anything beyond that, the HTML+ editor takes the whole section and says so. It
+is offered in single Areas and in collections alike - the six collections the
+shipped presets loop over included.
+
+In a collection the source is the item's own markup, rendered once per element,
+and it starts as `<p class="nino-section-text">[[<first text field>]]</p>`. The
+editor lists what the item can name, `[[title]], [[description]], …, [[.id]]`:
+one `[[field]]` for every field of the collection by its model key, and `[[.id]]`
+for the entry's position, counted from 0. The fills are double-bracketed -
+`[title]` would be read as a shortcode named `title` and stay on the page as
+text. A plain value is escaped, a rich text field (`'html' => true`) is sanitized
+for content, and `[` in either is written as `&#91;`; global fills such as
+`[[/company/name]]` resolve inside the item too. Two things are refused: a
+nested `[elements]` block, because the kernel ends the outer block at the first
+`[/elements]`, and - for a collection the section creates - a rich text field
+inside a tag, since sanitizing keeps `"` and the value could close an attribute
+and hand the editor's content an event handler. The same field in text content
+is fine. Quote every attribute that carries a field: escaping does not encode a
+space or `=`, so an unquoted `class=[[title]]` can still be broken open.
 Every text component offers the same three styles — **Auto**, **Quiet** and **Loud** —
 which compile to a modifier of whatever class the component carries:
 `nino-section-title--loud` in a content section, `nino-atf-title--loud` in a hero,
@@ -557,7 +571,7 @@ maintained v3 manifest.
 
 ## Current limitations
 
-- Library and configuration previews render generated markup with the preset's own content: what a new section is created with, and the samples its manifest names for the rest. The backend refreshes the configured `/.cache/style.css` bundle and returns its contents in the authenticated library payload; the client embeds it in each isolated `srcdoc`, avoiding a separate public dot-directory request. Script tags and inline handlers are removed, CSP denies scripts/network actions, forms cannot submit and links cannot be followed.
+- Library and configuration previews render generated markup with the preset's own content: a new section's texts start empty, so an empty field shows its sample - the workbench's own words for what such a field is for, in its language - and a typed text shows as typed, made as safe as saving it makes it; the samples the manifest names stand for the rest. None of it is stored: an empty text is marked in the panel (a dashed outline and the note that nothing appears on the website there) and writes an empty key. A section inserted earlier keeps the texts it was created with. The backend refreshes the configured `/.cache/style.css` bundle and returns its contents in the authenticated library payload; the client embeds it in each isolated `srcdoc`, avoiding a separate public dot-directory request. Script tags and inline handlers are removed, CSP denies scripts/network actions, forms cannot submit and links cannot be followed.
 - Visual content units are top-level `<section>` elements. Existing standalone `[template]` lines remain losslessly editable; new includes are inserted through an Area component. Marked header/footer slots live in Template Settings.
 - The builder can create `page-*.tpl` files; route-to-template assignment remains in the Routes panel or code.
 - Native quick fill is plain text input. Rich, translated and batch content remains in the established content tools.

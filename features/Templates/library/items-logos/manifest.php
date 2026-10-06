@@ -35,7 +35,7 @@
 			'labelKey' => '/_admin/templates/area/logos',
 			'help' => 'One entry per partner. Use the Image component for real logo files, or the Title component for plain names.',
 			'source' => 'elements',
-			'allowed' => [ 'image', 'title' ],
+			'allowed' => [ 'image', 'title', 'html' ],
 			'item' => [ 'tag' => 'span', 'class' => 'nino-logos-item' ],
 			'typeTitle' => 'Partner logos',
 			'model' => [

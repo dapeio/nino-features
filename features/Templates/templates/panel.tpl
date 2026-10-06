@@ -166,11 +166,12 @@
 <dialog id="pd-code-dialog" class="pd-dialog pd-code-dialog">
 	<form method="dialog" class="pd-dialog-shell" id="pd-code-form">
 		<header class="pd-dialog-header">
-			<div><span class="pd-eyebrow">[[/_admin/templates/label/escape-hatch]]</span><h2 id="pd-code-title">[[/_admin/templates/label/edit-source]]</h2></div>
+			<div><span class="pd-eyebrow">[[/_admin/templates/label/html-editor]]</span><h2 id="pd-code-title">[[/_admin/templates/label/edit-source]]</h2></div>
 			<button type="button" class="pd-icon-button pd-code-close" aria-label="[[/_admin/templates/label/close]]"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
 		</header>
 		<div class="pd-code-body">
 			<p id="pd-code-note">[[/_admin/templates/hint/one-section-html]]</p>
+			<p id="pd-code-fields" hidden></p>
 			<label for="pd-code-source">[[/_admin/templates/label/section-source]]</label>
 			<textarea id="pd-code-source" spellcheck="false"></textarea>
 		</div>

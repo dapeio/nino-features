@@ -635,7 +635,7 @@
 			const status = dc.getElementById('pd-preview-status');
 			status.textContent = Nino.content.getText('/_admin/templates/msg/updating');
 			pd.composer._previewTimer = wn.setTimeout( function() {
-				pd.api( 'library/preview', draft ).then( function( response ) {
+				pd.api( 'library/preview', Object.assign( {}, draft, { texts : pd.areaComposer ? pd.areaComposer.previewTexts() : {} } ) ).then( function( response ) {
 					if( token !== pd.composer._previewToken )
 						return;
 					setPreviewFrame( dc.getElementById('pd-composer-preview'), response.html || '', Nino.content.getText('/_admin/templates/label/live-preview').replace( '%s', Nino.adminUi.text( selectedPreset().name ) ), pd.composer.previewFocus() );

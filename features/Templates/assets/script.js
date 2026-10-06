@@ -229,8 +229,27 @@
 				frame 	: Nino.content.getText('/_admin/templates/label/kind-frame'),
 				section : Nino.content.getText('/_admin/templates/label/kind-section'),
 				partial : Nino.content.getText('/_admin/templates/label/kind-partial'),
+				output 	: Nino.content.getText('/_admin/templates/label/kind-output'),
+				internal : Nino.content.getText('/_admin/templates/label/kind-internal'),
 			};
 			return named[kind] || kind;
+		},
+
+		/**
+		 *	Whether a reusable template is one a list offers. A mail body, the
+		 *	robots, sitemap and llms outputs and the frame's own parts are in
+		 *	what the server sends - a page may already point at one, and the
+		 *	panel must not call it gone - but nobody picks them as a header,
+		 *	a footer or a component, so a list leaves them out unless it is
+		 *	the one the page has now (Documents::apiIncludes())
+		 *
+		 *	@param		{Object}	include
+		 *	@param		{string}	[currentPath]		What the list's owner has selected, which stays
+		 *
+		 *	@return		{boolean}
+		 */
+		includeListed : function( include, currentPath ) {
+			return [ 'output', 'internal' ].indexOf( include.kind ) === -1 || ( !!currentPath && include.path === currentPath );
 		},
 
 		showNotice : function( message, error ) {
@@ -340,6 +359,8 @@
 
 			const groups = {};
 			Nino.admin.templates._includes.forEach( function( include ) {
+				if( !Nino.admin.templates.includeListed( include, currentPath ) )
+					return;
 				// The server sends a slug, not a word: it is compared below as well
 				// as shown, and a comparison against a translated string would hold
 				// in one language only (see Documents::apiIncludes())
@@ -443,7 +464,7 @@
 			const query = ( search ? search.value : '' ).trim().toLowerCase();
 			list.innerHTML = '';
 			Nino.admin.templates._includes.filter( function( include ) {
-				if( include.kind === 'frame' )
+				if( include.kind === 'frame' || !Nino.admin.templates.includeListed( include ) )
 					return false;
 				return query === '' || ( include.name+ ' '+ include.label+ ' '+ Nino.admin.templates.includeKind( include.kind ) ).toLowerCase().includes( query );
 			} ).forEach( function( include ) {

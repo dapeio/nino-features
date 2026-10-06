@@ -68,7 +68,7 @@ namespace Nino\Modules\Templates {
 			its product rather than its view	*/
 		private const string HTML_DEFAULT = '<div class="nino-grid-100">' . "\n\t" . '<p class="nino-section-text">Your own HTML+ here.</p>' . "\n" . '</div>';
 
-		/*	How much of it. The section source the escape hatch takes is bounded
+		/*	How much of it. The section source the HTML+ editor takes is bounded
 			by what a template may weigh; one component inside a section is a
 			part, not a page	*/
 		private const int HTML_MAXLENGTH = 8000;
@@ -79,7 +79,7 @@ namespace Nino\Modules\Templates {
 			not what the document model reads back - SectionDocument splits a
 			template on them.
 			script/iframe/object/embed/form/style because a component is written
-			into the project's own template by the panel: the escape hatch asks
+			into the project's own template by the panel: the HTML+ editor asks
 			for the whole section and says so, this asks for a part and keeps the
 			preset, and the two are not the same promise. A project that needs
 			one of these writes the template itself, which it always could.
@@ -87,6 +87,13 @@ namespace Nino\Modules\Templates {
 			component's source closes the marker early and spills the rest of the
 			spec onto the page as visible markup	*/
 		private const array HTML_FORBIDDEN = [ '<section', '<script', '<iframe', '<object', '<embed', '<form', '<style', '-->' ];
+
+		/*	What an HTML+ component inside a collection may not contain either.
+
+			A nested [elements] block is read by the kernel's shortcode pattern
+			up to the first [/elements], which is the outer block's closer - the
+			item would end there and the rest of the page with it	*/
+		private const array HTML_LOOP_FORBIDDEN = [ '[elements', '[/elements]' ];
 
 		public static function choices(): array {
 			return self::FRAME_CHOICES;
@@ -101,36 +108,43 @@ namespace Nino\Modules\Templates {
 		 *	language the rest of the workbench does. The client resolves them
 		 *	with Nino.adminUi.text(), which passes literal text through
 		 *	unchanged - so a section library manifest may still name its own
-		 *	areas, layouts and styles in plain words. The default values below
-		 *	are content, not labels: they are what gets written into the page
+		 *	areas, layouts and styles in plain words.
+		 *
+		 *	A text property starts empty: its default is '' and nothing a
+		 *	section is created with is written into the page. What the panel
+		 *	shows in the empty field, and the preview on the empty one, is the
+		 *	property's sample - a fill key of the workbench's own, so it is said
+		 *	in the interface language and never stored. The one default that is
+		 *	content is the HTML+ component's source: it is code the developer
+		 *	opens, and it is what the component starts as
 		 *
 		 *	@return 	array
 		 */
 		public static function catalog(): array {
 			return [
-				'title' => self::component( '/_admin/templates/catalog/title', [ 'text' => self::property( '/_admin/templates/catalog/text', 'text', 'string', 'Section title' ) ], 'h3', 'nino-section-title', [ 'auto', 'quiet', 'loud' ] ),
-				'subtitle' => self::component( '/_admin/templates/catalog/subtitle', [ 'text' => self::property( '/_admin/templates/catalog/text', 'text', 'string', 'A concise supporting line' ) ], 'p', 'nino-section-subtitle', [ 'auto', 'quiet', 'loud' ] ),
-				'description' => self::component( '/_admin/templates/catalog/description', [ 'text' => self::property( '/_admin/templates/catalog/text', 'textarea', 'string', 'Explain what this area offers.' ) ], 'div', 'nino-section-text', [ 'auto', 'quiet', 'loud' ] ),
-				'text' => self::component( '/_admin/templates/catalog/text', [ 'text' => self::property( '/_admin/templates/catalog/text', 'textarea', 'string', 'Add useful content here.' ) ], 'div', 'nino-section-text', [ 'auto', 'quiet', 'loud' ] ),
+				'title' => self::component( '/_admin/templates/catalog/title', [ 'text' => self::property( '/_admin/templates/catalog/text', 'text', 'string', '', 0, 0, false, '/_admin/templates/sample/title-text' ) ], 'h3', 'nino-section-title', [ 'auto', 'quiet', 'loud' ] ),
+				'subtitle' => self::component( '/_admin/templates/catalog/subtitle', [ 'text' => self::property( '/_admin/templates/catalog/text', 'text', 'string', '', 0, 0, false, '/_admin/templates/sample/subtitle-text' ) ], 'p', 'nino-section-subtitle', [ 'auto', 'quiet', 'loud' ] ),
+				'description' => self::component( '/_admin/templates/catalog/description', [ 'text' => self::property( '/_admin/templates/catalog/text', 'textarea', 'string', '', 0, 0, false, '/_admin/templates/sample/description-text' ) ], 'div', 'nino-section-text', [ 'auto', 'quiet', 'loud' ] ),
+				'text' => self::component( '/_admin/templates/catalog/text', [ 'text' => self::property( '/_admin/templates/catalog/text', 'textarea', 'string', '', 0, 0, false, '/_admin/templates/sample/text-text' ) ], 'div', 'nino-section-text', [ 'auto', 'quiet', 'loud' ] ),
 				'image' => self::component( '/_admin/templates/catalog/image', [
 					'src' => self::property( '/_admin/templates/catalog/image', 'image', 'image', '', 1200, 800 ),
 					// Rendered inside alt="..." - see validateBinding()
-					'alt' => self::property( '/_admin/templates/catalog/alt', 'text', 'string', '', 0, 0, true ),
+					'alt' => self::property( '/_admin/templates/catalog/alt', 'text', 'string', '', 0, 0, true, '/_admin/templates/sample/image-alt' ),
 				], 'div', '', [ 'auto', 'cover' ] ),
 				'button' => self::component( '/_admin/templates/catalog/button', [
-					'label' => self::property( '/_admin/templates/catalog/label', 'text', 'string', 'Learn more' ),
+					'label' => self::property( '/_admin/templates/catalog/label', 'text', 'string', '', 0, 0, false, '/_admin/templates/sample/button-label' ),
 					// Rendered inside href="..." - see validateBinding()
-					'href' => self::property( '/_admin/templates/catalog/url', 'url', 'string', '#', 0, 0, true ),
+					'href' => self::property( '/_admin/templates/catalog/url', 'url', 'string', '', 0, 0, true, '/_admin/templates/sample/button-href' ),
 				], 'a', '', [ 'link', 'default', 'primary', 'outline' ], [ 'target' => [ 'same', 'new' ] ] ),
 				'price' => self::component( '/_admin/templates/catalog/price', [
-					'value' => self::property( '/_admin/templates/catalog/price', 'text', 'string', '99' ),
-					'suffix' => self::property( '/_admin/templates/catalog/suffix', 'text', 'string', '€' ),
+					'value' => self::property( '/_admin/templates/catalog/price', 'text', 'string', '', 0, 0, false, '/_admin/templates/sample/price-value' ),
+					'suffix' => self::property( '/_admin/templates/catalog/suffix', 'text', 'string', '', 0, 0, false, '/_admin/templates/sample/price-suffix' ),
 				], 'div', 'nino-section-text', [ 'auto', 'quiet', 'loud' ] ),
 				'number' => self::component( '/_admin/templates/catalog/number', [
-					'value' => self::property( '/_admin/templates/catalog/value', 'text', 'string', '12' ),
-					'label' => self::property( '/_admin/templates/catalog/label', 'text', 'string', 'Projects' ),
+					'value' => self::property( '/_admin/templates/catalog/value', 'text', 'string', '', 0, 0, false, '/_admin/templates/sample/number-value' ),
+					'label' => self::property( '/_admin/templates/catalog/label', 'text', 'string', '', 0, 0, false, '/_admin/templates/sample/number-label' ),
 				], 'div', 'nino-section-text', [ 'auto', 'quiet', 'loud' ] ),
-				/*	HTML+ as one component: the section's own escape hatch is
+				/*	HTML+ as one component: the section's own HTML+ editor is
 					all-or-nothing - it detaches the whole section from its preset -
 					and this is the same editing for one place inside it, with the
 					section staying composed around it. The value is template source,
@@ -430,7 +444,7 @@ namespace Nino\Modules\Templates {
 				// somewhere the value lives - so it is checked as source and
 				// carries 'source' as its binding origin
 				if( $definition['kind'] === 'source' ) {
-					$bindings[$property] = self::htmlSource( $id, (string) ( $inputBindings[$property] ?? $definition['default'] ) );
+					$bindings[$property] = self::htmlSource( $id, (string) ( $inputBindings[$property] ?? ( $source === 'elements' ? self::loopSource( $model ) : $definition['default'] ) ), $source, $strictModel ? $model : [] );
 					$bindingSources[$property] = 'source';
 					continue;
 				}
@@ -540,7 +554,7 @@ namespace Nino\Modules\Templates {
 						$node['bindings'][$property] = $key;
 						$result[] = [
 							'slot' => $areaKey. '.'. $node['id']. '.'. $property, 'area' => $areaKey, 'component' => $node['id'], 'property' => $property,
-							'label' => $area['label']. ' · '. $definition['label'], 'control' => $definition['control'], 'default' => $definition['default'],
+							'label' => $area['label']. ' · '. $definition['label'], 'control' => $definition['control'], 'default' => $definition['default'], 'sample' => $definition['sample'],
 							'key' => $key, 'generatedKey' => $generated, 'mode' => ( $node['bindingSources'][$property] ?? '' ) === 'new' || $key === $generated ? 'new' : 'existing',
 						];
 					}
@@ -659,7 +673,14 @@ namespace Nino\Modules\Templates {
 				$values = [];
 				foreach( $area['render'][$node['type']]['properties'] as $property => $definition ) {
 					$bindingSource = (string) ( $node['bindingSources'][$property] ?? ( $area['source'] === 'elements' ? 'field' : 'new' ) );
-					if( $bindingSource === 'fixed' )
+					// Verbatim: it is template source, checked by htmlSource() on
+					// the way into the spec, and escaping it would be escaping the
+					// thing the editor came here to write. Asked first, in a
+					// collection too: its value is the item's markup and no field's
+					// name, so '[[' around it made '[[<p ...>]]' of every row
+					if( $definition['kind'] === 'source' )
+						$values[$property] = (string) ( $node['bindings'][$property] ?? '' );
+					elseif( $bindingSource === 'fixed' )
 						$values[$property] = self::escapeLiteral( (string) $node['bindings'][$property] );
 					elseif( $area['source'] === 'elements' )
 						$values[$property] = '[['. $node['bindings'][$property]. ']]';
@@ -667,11 +688,6 @@ namespace Nino\Modules\Templates {
 						$values[$property] = $images[$slot. $property] ?? '';
 					elseif( $definition['kind'] === 'template' )
 						$values[$property] = $node['bindings'][$property] ?? '';
-					// Verbatim: it is template source, checked by htmlSource() on
-					// the way into the spec, and escaping it would be escaping the
-					// thing the editor came here to write
-					elseif( $definition['kind'] === 'source' )
-						$values[$property] = (string) ( $node['bindings'][$property] ?? '' );
 					else
 						$values[$property] = isset( $fields[$slot. $property] ) ? '[['. $fields[$slot. $property]. ']]' : '';
 				}
@@ -806,8 +822,8 @@ namespace Nino\Modules\Templates {
 			return [ 'label' => $label, 'properties' => $properties, 'tag' => $tag, 'class' => $class, 'data' => [], 'styles' => array_values( array_unique( [ 'auto', ...$styles ] ) ), 'styleClasses' => $styleClasses, 'settings' => $settings ];
 		}
 
-		private static function property( string $label, string $control, string $fieldType, string $default, int $width = 0, int $height = 0, bool $attribute = false ): array {
-			return [ 'label' => $label, 'kind' => $control, 'control' => $control === 'image' ? 'image' : $control, 'fieldType' => $fieldType, 'default' => $default, 'width' => $width, 'height' => $height, 'attribute' => $attribute ];
+		private static function property( string $label, string $control, string $fieldType, string $default, int $width = 0, int $height = 0, bool $attribute = false, string $sample = '' ): array {
+			return [ 'label' => $label, 'kind' => $control, 'control' => $control === 'image' ? 'image' : $control, 'fieldType' => $fieldType, 'default' => $default, 'sample' => $sample, 'width' => $width, 'height' => $height, 'attribute' => $attribute ];
 		}
 
 		private static function element( mixed $definition, string $tag, string $class, array $htmlFields = [] ): array {
@@ -869,7 +885,7 @@ namespace Nino\Modules\Templates {
 				// value that is not a key into a generated one, which for this
 				// property would replace what somebody wrote with a path
 				if( $definition['kind'] === 'source' ) {
-					$node['bindings'][$property] = self::htmlSource( $node['id'], $value !== '' ? $value : (string) $definition['default'] );
+					$node['bindings'][$property] = self::htmlSource( $node['id'], $value !== '' ? $value : (string) $definition['default'], 'single', [] );
 					$node['bindingSources'][$property] = 'source';
 					continue;
 				}
@@ -1023,12 +1039,24 @@ namespace Nino\Modules\Templates {
 		 *	and not sanitised - it is checked, and what it may not carry is
 		 *	HTML_FORBIDDEN above, each entry with its reason.
 		 *
+		 *	In a collection the source is the item and is checked for two more
+		 *	things. A nested [elements] block is refused (HTML_LOOP_FORBIDDEN),
+		 *	and so is a rich text field of the collection inside a tag: the
+		 *	[elements] pass runs it through sanitizeHtml(), which leaves '"'
+		 *	alone, so in an attribute it would close the value and hand the
+		 *	editor's content an event handler - the rule validateBinding() holds
+		 *	a component's own property to. Only a collection this section makes
+		 *	has a model to hold it against; one the project already has is
+		 *	known by its name alone
+		 *
 		 *	@param		string		$id						The component, for the message
 		 *	@param		string		$source				What the editor wrote
+		 *	@param		string		$areaSource		'single' or 'elements'
+		 *	@param		array			$model				The collection's model, [] where it is not known
 		 *
 		 *	@return 	string
 		 */
-		private static function htmlSource( string $id, string $source ): string {
+		private static function htmlSource( string $id, string $source, string $areaSource, array $model ): string {
 
 			if( strlen( $source ) > self::HTML_MAXLENGTH )
 				throw new \InvalidArgumentException( 'component '. $id. ': the source is longer than '. self::HTML_MAXLENGTH. ' characters' );
@@ -1037,7 +1065,39 @@ namespace Nino\Modules\Templates {
 				if( stripos( $source, $forbidden ) !== false )
 					throw new \InvalidArgumentException( 'component '. $id. ': \''. $forbidden. '\' cannot appear in a component\'s source' );
 
+			if( $areaSource !== 'elements' )
+				return $source;
+
+			foreach( self::HTML_LOOP_FORBIDDEN as $forbidden )
+				if( stripos( $source, $forbidden ) !== false )
+					throw new \InvalidArgumentException( 'component '. $id. ': \''. $forbidden. '\' cannot appear in the source of a collection item - the item is already inside one' );
+
+			// Every tag, quoted values included, one left open at the end, and a field in the place of the tag's name
+			preg_match_all( '/<[A-Za-z\/!\[](?:"[^"]*(?:"|$)|\'[^\']*(?:\'|$)|[^\'">])*(?:>|$)/', $source, $tags );
+			foreach( $model as $field => $definition )
+				if( ( $definition['html'] ?? false ) === true )
+					foreach( $tags[0] as $tag )
+						if( str_contains( $tag, '[['. $field. ']]' ) )
+							throw new \InvalidArgumentException( 'component '. $id. ' cannot carry the rich text field '. $field. ' inside a tag: its value is sanitized for content, not for an attribute' );
+
 			return $source;
+		}
+
+		/**
+		 *	What an HTML+ component starts as in a collection: one paragraph
+		 *	with the collection's first text field in it, which is what a
+		 *	row written by hand needs first. A model without a text field
+		 *	leaves the component's own default
+		 *
+		 *	@param		array			$model				The collection's model
+		 *
+		 *	@return 	string
+		 */
+		private static function loopSource( array $model ): string {
+			foreach( $model as $field => $definition )
+				if( ( $definition['type'] ?? '' ) !== 'image' )
+					return '<p class="nino-section-text">[['. $field. ']]</p>';
+			return self::HTML_DEFAULT;
 		}
 
 		private static function suffix( string $id, string $property, string $type ): string {

@@ -134,6 +134,25 @@ check( 'the panel is a fragment the workbench renders into its pane, not a page 
 	&& str_contains( $panelMarkup, '[csrf]' ) === false
 	&& str_contains( $panelMarkup, 'id="pd-app"' ) === true );
 
+/*	The section source editor is the HTML+ Editor - in the panel, in both
+	languages, and in every word written about it: the first name, an escape
+	hatch (the Notausgang in German), said to a developer that it was a way
+	out of the builder, which it is not. Nothing the feature ships under
+	text/, templates/, assets/, docs/ or in its classes may still say it;
+	the changelog keeps the history as it was	*/
+$editorText = [];
+foreach( [ 'en_US', 'de_DE' ] as $editorLocale )
+	$editorText[$editorLocale] = include FEATURE. '/text/'. $editorLocale. '.php';
+check( 'the dialog\'s eyebrow is the key of the HTML+ Editor, which both languages carry', str_contains( $panelMarkup, '[[/_admin/templates/label/html-editor]]' )
+	&& ( $editorText['en_US']['[[/_admin/templates/label/html-editor]]'] ?? '' ) === 'HTML+ Editor'
+	&& ( $editorText['de_DE']['[[/_admin/templates/label/html-editor]]'] ?? '' ) === 'HTML+ Editor' );
+$oldEditorName = [];
+foreach( new RecursiveIteratorIterator( new RecursiveDirectoryIterator( FEATURE, FilesystemIterator::SKIP_DOTS ) ) as $editorFile )
+	if( $editorFile->isFile() && in_array( $editorFile->getExtension(), [ 'php', 'js', 'css', 'tpl', 'md' ], true ) && str_contains( $editorFile->getPathname(), '/tests/' ) === false && $editorFile->getFilename() !== 'CHANGELOG.md'
+		&& preg_match( '/escape[- ]hatch|Notausgang/i', (string) file_get_contents( $editorFile->getPathname() ) ) === 1 )
+		$oldEditorName[] = substr( $editorFile->getPathname(), strlen( FEATURE ) + 1 );
+check( 'nothing the feature ships still calls it an escape hatch or a Notausgang'. ( $oldEditorName === [] ? '' : ' - '. implode( ', ', $oldEditorName ) ), $oldEditorName === [] );
+
 /*	The pane as the workbench renders it (\Nino\Admin\Panels::panesHtml()),
 	with the panel's template where its shortcode stands. The head the kernel
 	draws over every panel names it; the panel drew a bar of its own under
@@ -563,10 +582,73 @@ foreach( $presets as $previewKey => $previewPreset ) {
 }
 check( 'every fill a shipped preset\'s preview shows is answered by the section itself or its manifest'. ( $unanswered === [] ? '' : ' - '. implode( ', ', array_slice( array_keys( $unanswered ), 0, 6 ) ). ( count( $unanswered ) > 6 ? ' and '. ( count( $unanswered ) - 6 ). ' more' : '' ) ), $unanswered === [] );
 
-$heroPreview = (string) \Nino\Modules\Templates\Composer::preview( [ 'preset' => 'hero-cta', 'pageId' => 'preview', 'id' => 'hero' ] );
+/*	A new text starts empty. What a section used to be created with - a
+	title, a subtitle, a button reading 'Learn more' - was written into the
+	page as if somebody had typed it, and a developer who did not read every
+	field shipped it. The catalogue carries a sample instead, a fill key of
+	the workbench's own: it is what the empty field shows as its placeholder
+	and what the preview shows for it, said in the language of the workbench
+	and stored nowhere. The preview reads the sample through a resolver, the
+	way the library does through the workbench's fills - here one over the
+	English text file	*/
+$sampleFills = $areaLabelText['en_US'];
+$sampleText = static fn( string $key ): string => (string) ( $sampleFills[ '[['. $key. ']]' ] ?? '' );
+$heroPreview = (string) \Nino\Modules\Templates\Composer::preview( [ 'preset' => 'hero-cta', 'pageId' => 'preview', 'id' => 'hero' ], $sampleText );
 $heroFields = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'hero-cta', 'pageId' => 'preview', 'id' => 'hero' ], true )['fields'];
-check( 'a preview shows the section as inserting it would: every text it creates, with the value it is created with', $heroFields !== []
-	&& array_filter( $heroFields, static fn( array $field ): bool => (string) $field['default'] !== '' && str_contains( $heroPreview, (string) $field['default'] ) === false ) === [] );
+check( 'a new section starts empty: no text it creates carries a default', $heroFields !== []
+	&& array_filter( $heroFields, static fn( array $field ): bool => (string) $field['default'] !== '' ) === [] );
+check( '...and the preview shows the sample of every empty field in the workbench\'s words', array_filter( $heroFields, static fn( array $field ): bool => (string) $field['sample'] === ''
+	|| $sampleText( (string) $field['sample'] ) === ''
+	|| str_contains( $heroPreview, $sampleText( (string) $field['sample'] ) ) === false ) === [] );
+$sampleCatalogue = [];
+foreach( \Nino\Modules\Templates\AreaComposer::catalog() as $sampleType => $sampleComponent )
+	foreach( $sampleComponent['properties'] as $sampleProperty => $sampleDefinition )
+		if( in_array( $sampleDefinition['kind'], [ 'text', 'textarea', 'url' ], true ) )
+			$sampleCatalogue[$sampleType. '.'. $sampleProperty] = $sampleDefinition;
+check( 'no text property of the catalogue has a default, and each names a sample', $sampleCatalogue !== []
+	&& array_filter( $sampleCatalogue, static fn( array $definition ): bool => $definition['default'] !== '' || $definition['sample'] === '' ) === [] );
+check( 'every sample is a fill of both text files, which carry the same keys', array_filter( $sampleCatalogue, static fn( array $definition ): bool => isset( $areaLabelText['en_US'][ '[['. $definition['sample']. ']]' ], $areaLabelText['de_DE'][ '[['. $definition['sample']. ']]' ] ) === false ) === []
+	&& array_diff_key( $areaLabelText['en_US'], $areaLabelText['de_DE'] ) === []
+	&& array_diff_key( $areaLabelText['de_DE'], $areaLabelText['en_US'] ) === [] );
+check( 'the HTML+ component is the one default that stays: it is source the developer opens', str_contains( (string) \Nino\Modules\Templates\AreaComposer::catalog()['html']['properties']['source']['default'], 'Your own HTML+ here.' ) );
+check( 'without a resolver an empty field shows its own name, never a placeholder from the catalogue', str_contains( (string) \Nino\Modules\Templates\Composer::preview( [ 'preset' => 'hero-cta', 'pageId' => 'preview', 'id' => 'hero' ] ), '>Title<' )
+	&& str_contains( (string) \Nino\Modules\Templates\Composer::preview( [ 'preset' => 'hero-cta', 'pageId' => 'preview', 'id' => 'hero' ] ), 'Section title' ) === false );
+
+// What the panel types goes with the preview, and goes through the sanitizer
+// that saving it would
+$typedKey = (string) $heroFields[0]['key'];
+$typedInput = static fn( mixed $texts ): array => [ 'preset' => 'hero-cta', 'pageId' => 'preview', 'id' => 'hero', 'texts' => $texts ];
+$typedPreview = (string) \Nino\Modules\Templates\Composer::preview( $typedInput( [ $typedKey => 'Typed <b>words</b> & "quotes"', '/page-preview/other/field' => 'Intruder' ] ), $sampleText );
+check( 'a typed text replaces the sample of its field in the preview', str_contains( $typedPreview, 'Typed words & &quot;quotes&quot;' ) && str_contains( $typedPreview, $sampleText( (string) $heroFields[0]['sample'] ) ) === false );
+check( '...made as safe as saving it makes it: no tag survives, the quote is an entity', str_contains( (string) \Nino\Modules\Templates\Composer::preview( $typedInput( [ $typedKey => '<script>x</script>"' ] ), $sampleText ), 'x&quot;' )
+	&& str_contains( (string) \Nino\Modules\Templates\Composer::preview( $typedInput( [ $typedKey => '<script>x</script>"' ] ), $sampleText ), '<script' ) === false );
+$hrefFields = array_values( array_filter( $heroFields, static fn( array $field ): bool => $field['control'] === 'url' ) );
+check( '...and an address that reads javascript: reaches the preview as none, the pass that strips it running after the fills are in', $hrefFields !== []
+	&& str_contains( (string) \Nino\Modules\Templates\Composer::preview( $typedInput( [ $hrefFields[0]['key'] => 'javascript:alert(1)' ] ), $sampleText ), 'javascript:' ) === false
+	&& str_contains( (string) \Nino\Modules\Templates\Composer::preview( $typedInput( [ $hrefFields[0]['key'] => '/kontakt' ] ), $sampleText ), 'href="/kontakt"' ) );
+check( '...a key the section has no field for is ignored', str_contains( $typedPreview, 'Intruder' ) === false );
+check( '...an empty one still shows the sample', str_contains( (string) \Nino\Modules\Templates\Composer::preview( $typedInput( [ $typedKey => '' ] ), $sampleText ), $sampleText( (string) $heroFields[0]['sample'] ) ) );
+check( '...a text is cut at 4000 bytes', str_contains( (string) \Nino\Modules\Templates\Composer::preview( $typedInput( [ $typedKey => str_repeat( 'x', 5000 ) ] ), $sampleText ), str_repeat( 'x', 4000 ) )
+	&& str_contains( (string) \Nino\Modules\Templates\Composer::preview( $typedInput( [ $typedKey => str_repeat( 'x', 5000 ) ] ), $sampleText ), str_repeat( 'x', 4001 ) ) === false );
+$tooMany = [ $typedKey => 'Typed' ];
+for( $tooManyIndex = 0; $tooManyIndex < 100; $tooManyIndex++ )
+	$tooMany['/page-preview/hero/extra-'. $tooManyIndex] = 'x';
+check( '...more than 100 entries, another shape or a value that is no string are left out, and the preview still renders', ( \Nino\Modules\Templates\Composer::preview( $typedInput( $tooMany ), $sampleText ) ?? '' ) !== ''
+	&& str_contains( (string) \Nino\Modules\Templates\Composer::preview( $typedInput( $tooMany ), $sampleText ), 'Typed' ) === false
+	&& str_contains( (string) \Nino\Modules\Templates\Composer::preview( $typedInput( 'Typed' ), $sampleText ), '<section' )
+	&& str_contains( (string) \Nino\Modules\Templates\Composer::preview( $typedInput( [ $typedKey => [ 'Typed' ] ] ), $sampleText ), $sampleText( (string) $heroFields[0]['sample'] ) ) );
+
+// The library resolves the samples through the workbench's own fills, in the
+// workbench's language: here a fill that a sandbox would not have by itself
+\Nino\Html::addFills( $appData, [ '[[/_admin/templates/sample/title-text]]' => 'Workbench sample title' ], '*' );
+post( $typedInput( [] ) );
+$samplePreviewRequest = response();
+\Nino\Modules\Templates\Library::apiPreview( $appData, $samplePreviewRequest );
+check( 'the preview action answers an empty field with the workbench\'s text for its sample', str_contains( (string) ( $samplePreviewRequest['/nino/http/response']['body']['html'] ?? '' ), 'Workbench sample title' ) );
+post( $typedInput( [ $typedKey => 'Typed in the panel' ] ) );
+$samplePreviewRequest = response();
+\Nino\Modules\Templates\Library::apiPreview( $appData, $samplePreviewRequest );
+check( '...and a typed one with what was typed', str_contains( (string) ( $samplePreviewRequest['/nino/http/response']['body']['html'] ?? '' ), 'Typed in the panel' ) );
 
 $tablePreview = (string) \Nino\Modules\Templates\Composer::preview( [ 'preset' => 'static-table', 'pageId' => 'preview', 'id' => 'hours', 'layout' => 'default-elements' ] );
 $tableSamples = $presets['static-table']['samples'] ?? [];
@@ -891,7 +973,7 @@ check( 'the banner uses the static background layer rather than the scripted cov
 	&& str_contains( $everyLayout['image-banner/plain'], 'data-cover-height' ) === false );
 /*	The HTML+ component: one place inside a composed section whose markup is
 	the editor's own, with the section staying composed around it. The
-	section's own escape hatch is the all-or-nothing version of this - it
+	section's own HTML+ editor is the all-or-nothing version of this - it
 	detaches the whole section from its preset.
 
 	Its value is source, not a textfill, and it has to be: Text::sanitizeValue()
@@ -950,8 +1032,8 @@ check( '...and composes to the same section again', $htmlAgain !== '' && $htmlAg
 
 /*	What it may not carry, each with its own reason (see HTML_FORBIDDEN):
 	a nested section is not what the document model reads back, the loading and
-	scripting tags are a promise this component does not make - the escape
-	hatch asks for the whole section and says so - and '-->' is the marker	*/
+	scripting tags are a promise this component does not make - the HTML+
+	editor asks for the whole section and says so - and '-->' is the marker	*/
 $htmlRefuses = function( string $source ) use ( $htmlSpec, $htmlArea ): bool {
 	$try = $htmlSpec;
 	$try['areas'][$htmlArea]['components'][0]['bindings']['source'] = $source;
@@ -985,22 +1067,87 @@ try {
 	$htmlCollectionSpec['areas']['first']['components'] = [ [ 'id' => 'row', 'type' => 'html', 'style' => 'auto', 'settings' => [ 'target' => 'same' ], 'bindings' => [ 'source' => '<p class="nino-section-text">[[title]] &middot; [[/company/name]]</p>' ], 'bindingSources' => [ 'source' => 'fixed' ] ] ];
 	$htmlCollection = \Nino\Modules\Templates\AreaComposer::compose( $htmlCollectionSpec, $htmlCollectionPreset );
 } catch( \Throwable $htmlCollectionError ) {}
+/*	...and it is the item itself. The first version of this check asked only
+	whether the source was somewhere inside the block, which '[[<p ...>]]' -
+	the source taken for the name of a field and put in fill brackets - also
+	satisfies. The item is held whole: the area's own element around the
+	source and nothing around the source	*/
 check( '...and its source is the item the [elements] pass repeats, [[field]] and all',
 	preg_match( '#\[elements /[a-z0-9-]+[^\]]*\](.*?)\[/elements\]#s', $htmlCollection['source'], $htmlItem ) === 1
-	&& str_contains( $htmlItem[1], '<p class="nino-section-text">[[title]] &middot; [[/company/name]]</p>' ) === true );
+	&& $htmlItem[1] === '<article class="nino-grid-m-33"><p class="nino-section-text">[[title]] &middot; [[/company/name]]</p></article>'
+	&& str_contains( $htmlCollection['source'], '[[<' ) === false );
+
+// A collection's HTML+ starts as one paragraph with the first text field in it
+$htmlLoopDefault = [ 'source' => '' ];
+try {
+	$htmlLoopDefaultSpec = \Nino\Modules\Templates\AreaComposer::defaults( $htmlCollectionPreset, 'home', 'rows' );
+	$htmlLoopDefaultSpec['areas']['first']['components'] = [ [ 'id' => 'row', 'type' => 'html', 'style' => 'auto', 'settings' => [ 'target' => 'same' ], 'bindings' => [], 'bindingSources' => [ 'source' => 'source' ] ] ];
+	$htmlLoopDefault = \Nino\Modules\Templates\AreaComposer::compose( $htmlLoopDefaultSpec, $htmlCollectionPreset );
+} catch( \Throwable $htmlLoopDefaultError ) {}
+check( 'a collection\'s HTML+ without a source of its own starts as one paragraph with the first text field in it', str_contains( $htmlLoopDefault['source'], '<article class="nino-grid-m-33"><p class="nino-section-text">[[title]]</p></article>' ) );
+
+// ...while a single area starts it as the catalogue says, whatever its key
+$htmlSingleDefault = [ 'source' => '' ];
+try {
+	$htmlSingleDefaultSpec = \Nino\Modules\Templates\AreaComposer::defaults( $presets['static-content'], 'home', 'note' );
+	$htmlSingleDefaultSpec['areas'][$htmlArea]['components'] = [ [ 'id' => 'note', 'type' => 'html', 'style' => 'auto', 'settings' => [ 'target' => 'same' ], 'bindings' => [], 'bindingSources' => [ 'source' => 'source' ] ] ];
+	$htmlSingleDefault = \Nino\Modules\Templates\AreaComposer::compose( $htmlSingleDefaultSpec, $presets['static-content'] );
+} catch( \Throwable $htmlSingleDefaultError ) {}
+check( 'a single area\'s HTML+ without a source of its own composes to the catalogue default, not to a text key', str_contains( $htmlSingleDefault['source'], '<p class="nino-section-text">Your own HTML+ here.</p>' )
+	&& str_contains( $htmlSingleDefault['source'], 'note-source' ) === false );
+
+/*	What it may not hold in a collection: the kernel's pattern ends an
+	[elements] block at the first [/elements], so a block inside the item
+	closes the outer one and takes the rest of the page with it; and a rich
+	field - sanitized for content, with its '"' left alone - inside a tag
+	could close an attribute and hand the editor's content an event handler,
+	the rule a component's own property is held to as well	*/
+$htmlLoopManifest = array_replace_recursive( $multiAreaManifest, [ 'areas' => [ 'first' => [
+	'source' => 'elements', 'allowed' => [ 'title', 'html' ],
+	'model' => [ 'blurb' => [ 'type' => 'string', 'html' => true ] ],
+] ] ] );
+$htmlLoopPreset = [ 'areas' => [] ];
+try { $htmlLoopPreset = \Nino\Modules\Templates\AreaComposer::normalizePreset( 'html-loop-guards', $htmlLoopManifest, $areaPresetDirectory ); } catch( \Throwable $htmlLoopError ) {}
+$htmlLoopRefuses = function( string $source, string $mode = 'new', string $message = '' ) use ( $htmlLoopPreset ): ?bool {
+	if( $htmlLoopPreset['areas'] === [] )
+		return null;
+	$spec = \Nino\Modules\Templates\AreaComposer::defaults( $htmlLoopPreset, 'home', 'rows' );
+	$spec['areas']['first']['source']['elementMode'] = $mode;
+	$spec['areas']['first']['components'] = [ [ 'id' => 'row', 'type' => 'html', 'style' => 'auto', 'settings' => [ 'target' => 'same' ], 'bindings' => [ 'source' => $source ], 'bindingSources' => [ 'source' => 'source' ] ] ];
+	try {
+		\Nino\Modules\Templates\AreaComposer::compose( $spec, $htmlLoopPreset );
+	} catch( \InvalidArgumentException $error ) {
+		return str_contains( $error->getMessage(), $message );
+	}
+	return false;
+};
+check( 'a collection item refuses a nested [elements] block, whatever its case', $htmlLoopRefuses( '<p>[elements /x][[title]][/elements]</p>' ) === true
+	&& $htmlLoopRefuses( '<p>a</p>[/ELEMENTS]' ) === true
+	&& $htmlLoopRefuses( '<p>[[title]]</p>' ) === false );
+check( '...and a rich text field inside a tag, in an attribute, in a tag or quote left open or as the tag name - while the same field in text content is accepted', $htmlLoopRefuses( '<p title="[[blurb]]">x</p>' ) === true
+	&& $htmlLoopRefuses( '<a href=\'/x\' data-b="a > b [[blurb]]">x</a>' ) === true
+	&& $htmlLoopRefuses( '<p class="[[blurb]]' ) === true
+	&& $htmlLoopRefuses( '<p title="[[blurb]]>x</p>' ) === true
+	&& $htmlLoopRefuses( '<[[blurb]]>' ) === true
+	&& $htmlLoopRefuses( '<p class="[[blurb]]', 'new', 'inside a tag' ) === true
+	&& $htmlLoopRefuses( '<[[blurb]]>', 'new', 'inside a tag' ) === true
+	&& $htmlLoopRefuses( '<p title="[[title]]">[[blurb]]</p>' ) === false
+	&& $htmlLoopRefuses( '<div>[[blurb]]</div><p title="x">[[title]]</p>' ) === false );
+check( '...a collection the project already has is known by its name alone, so there is no model to hold the field against', $htmlLoopRefuses( '<p title="[[blurb]]">x</p>', 'existing' ) === false );
 check( '...while the template component stays a single-area one', throwsInvalidArgument( fn() => \Nino\Modules\Templates\AreaComposer::normalizePreset( 'template-collection',
 	array_replace_recursive( $multiAreaManifest, [ 'areas' => [ 'first' => [ 'source' => 'elements', 'allowed' => [ 'title', 'template' ] ] ] ] ), $areaPresetDirectory ) ) );
 
 // Every single area that takes anything but an image offers it, so an editor
 // never has to pick a different preset to get one place of their own
-$htmlAreas = 0; $openAreas = 0;
+$htmlAreas = 0; $openAreas = 0; $htmlLoops = 0;
 foreach( $presets as $preset )
 	foreach( $preset['areas'] as $area ) {
-		if( $area['source'] !== 'single' || array_keys( $area['render'] ) === [ 'image' ] ) continue;
+		if( array_keys( $area['render'] ) === [ 'image' ] ) continue;
 		$openAreas++;
 		if( isset( $area['render']['html'] ) ) $htmlAreas++;
+		if( isset( $area['render']['html'] ) && $area['source'] === 'elements' ) $htmlLoops++;
 	}
-check( 'every single area that is not image-only offers it', $openAreas > 0 && $htmlAreas === $openAreas );
+check( 'every area that is not image-only offers it, the six collections the shipped presets loop over included', $openAreas > 0 && $htmlAreas === $openAreas && $htmlLoops >= 6 );
 
 check( 'list and table tags are available to Areas that need them, scripts and media are not', throwsInvalidArgument( fn() => \Nino\Modules\Templates\AreaComposer::normalizePreset( 'unsafe-tag', array_replace_recursive( $multiAreaManifest, [ 'areas' => [ 'first' => [ 'item' => [ 'tag' => 'iframe' ] ] ] ] ), $areaPresetDirectory ) )
 	&& \Nino\Modules\Templates\AreaComposer::normalizePreset( 'list-tag', array_replace_recursive( $multiAreaManifest, [ 'areas' => [ 'first' => [ 'item' => [ 'tag' => 'li' ] ] ] ] ), $areaPresetDirectory )['areas']['first']['item']['tag'] === 'li' );
@@ -1051,7 +1198,7 @@ check( 'reports an unmatched section instead of guessing', \Nino\Modules\Templat
 	Every section after that '<' was gone, the page opened with nothing to
 	edit, and split() reported no error - as far as it could tell there were
 	no sections. One apostrophe after one '<', in a page somebody was writing
-	by hand, which is what the escape hatch invites	*/
+	by hand, which is what the HTML+ editor invites	*/
 $proseLess = \Nino\Modules\Templates\SectionDocument::split( '<p>5 < 6 and it doesn\'t matter</p><section id="a" class="nino-section"><p>x</p></section>' );
 check( 'a bare < in prose does not swallow the sections after it', $proseLess['sectionCount'] === 1
 	&& $proseLess['error'] === null
@@ -1134,6 +1281,24 @@ $includesRequest = response();
 $includes = $includesRequest['/nino/http/response']['body']['includes'];
 check( 'include library always starts with html-header and html-footer', array_column( array_slice( $includes, 0, 2 ), 'name' ) === [ 'html-header', 'html-footer' ] );
 check( 'include library offers section templates but excludes page templates', in_array( 'section-card', array_column( $includes, 'name' ), true ) && in_array( 'page-home', array_column( $includes, 'name' ), true ) === false );
+
+/*	A project's templates/ holds more than the parts of a page: the mail
+	bodies, the plain-text outputs a route answers and the two files the frame
+	includes itself. They are classified, not dropped - a page may already
+	point at one, and the panel has to find it - and the client leaves the
+	kinds that are not for choosing out of its lists	*/
+$hiddenTemplates = [ 'mail-user', 'mail-owner', 'mail-newsletter-confirm', 'robots', 'sitemap-xml', 'llms-txt', 'theme.header', 'theme.footer', 'social-links' ];
+foreach( $hiddenTemplates as $hiddenTemplate )
+	file_put_contents( $sandbox. '/private/templates/'. $hiddenTemplate. '.tpl', 'x' );
+$kindsRequest = response();
+\Nino\Modules\Templates\Documents::apiIncludes( $appData, $kindsRequest );
+$kinds = array_column( $kindsRequest['/nino/http/response']['body']['includes'], 'kind', 'name' );
+check( 'mail bodies and the robots, sitemap and llms outputs are listed as output, and the frame\'s own parts as internal', array_map( static fn( string $name ): string => $kinds[$name] ?? 'missing', [ 'mail-user', 'mail-owner', 'mail-newsletter-confirm', 'robots', 'sitemap-xml', 'llms-txt' ] ) === array_fill( 0, 6, 'output' )
+	&& ( $kinds['theme.header'] ?? '' ) === 'internal' && ( $kinds['theme.footer'] ?? '' ) === 'internal' );
+check( '...while a section, a partial and the frame keep their kinds, and a page still finds the template it points at', ( $kinds['section-card'] ?? '' ) === 'section' && ( $kinds['social-links'] ?? '' ) === 'partial'
+	&& ( $kinds['html-header'] ?? '' ) === 'frame' && ( $kinds['html-footer'] ?? '' ) === 'frame' );
+foreach( $hiddenTemplates as $hiddenTemplate )
+	unlink( $sandbox. '/private/templates/'. $hiddenTemplate. '.tpl' );
 
 file_put_contents( $sandbox. '/private/templates/page-2026.home.tpl', $page );
 $variantListRequest = response();

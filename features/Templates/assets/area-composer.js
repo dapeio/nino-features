@@ -318,7 +318,7 @@
 						// The English label, not areaLabel(): this descriptor mirrors the
 						// one the server composes, and its text is stored with the slot
 						label : Nino.adminUi.text( area.label )+ ' · '+ Nino.adminUi.text( definition.label )+ ' · '+ Nino.adminUi.text( propertyDefinition.label ),
-						control : propertyDefinition.control, default : propertyDefinition.default || '',
+						control : propertyDefinition.control, default : propertyDefinition.default || '', sample : propertyDefinition.sample || '',
 						width : propertyDefinition.width || 0, height : propertyDefinition.height || 0,
 						generatedKey : generated, key : key, mode : source === 'new' || key === generated ? 'new' : 'existing',
 					} );
@@ -359,12 +359,21 @@
 		return copy;
 	}
 
-	function modelOptions( area, elementType, fieldType ) {
+	/**
+	 *	The fields of the collection an area reads: the model its preset
+	 *	declares, or - for a type the project already has - that type's own
+	 */
+	function collectionModel( area, elementType ) {
 		let model = area.model || {};
 		if( elementType ) {
 			const existing = ( pd.sectionsUI._types || [] ).find( function( type ) { return type.type === elementType } );
 			if( existing ) model = existing.model || {};
 		}
+		return model;
+	}
+
+	function modelOptions( area, elementType, fieldType ) {
+		const model = collectionModel( area, elementType );
 		return Object.keys( model ).filter( function( key ) { return ( model[key].type === 'image' ) === ( fieldType === 'image' ) } ).map( function( key ) { return { value : key, label : key+ ' · '+ model[key].type } } );
 	}
 
@@ -379,6 +388,31 @@
 			: [ component.type, component.id, property ];
 		const match = options.find( function( option ) { return semantic.some( function( word ) { return option.value.toLowerCase().includes( word.toLowerCase() ) } ) } );
 		return match ? match.value : options[0].value;
+	}
+
+	/**
+	 *	What an HTML+ component starts as in a collection: one paragraph with
+	 *	the collection's first text field in it - the item's own markup, which
+	 *	is resolved per record. A collection without a text field keeps the
+	 *	component's own default (AreaComposer::loopSource() says the same)
+	 */
+	function loopSource( area, source, definition ) {
+		const options = modelOptions( area, source.elementMode === 'existing' ? source.elementType : '', 'string' );
+		return options.length ? '<p class="nino-section-text">[['+ options[0].value+ ']]</p>' : definition.default || '';
+	}
+
+	/**
+	 *	What a Template component offers: the project's reusable templates but
+	 *	the frame's two (a page has them as its header and footer) and the
+	 *	kinds nobody picks as a part of a page - mail bodies, outputs, the
+	 *	frame's own files - unless the component already points at one
+	 *
+	 *	@param		{string}	current			The path the component has now
+	 *
+	 *	@return		{Array}
+	 */
+	function templateOptions( current ) {
+		return [ { value : '', label : Nino.content.getText('/_admin/templates/label/none') } ].concat( pd._includes.filter( function( include ) { return include.kind !== 'frame' && pd.includeListed( include, current ) } ).map( function( include ) { return { value : include.path, label : include.name+ '.tpl' } } ) );
 	}
 
 	function normalizeCollectionMappings( areaKey ) {
@@ -498,9 +532,83 @@
 		body.appendChild( sourcePanel );
 	}
 
+	let emptyNotes = 0;
+
+	/**
+	 *	A field that is empty says so. Nothing is written into the page for an
+	 *	empty text - the section starts that way, and a sample in the field is
+	 *	only a placeholder - so the field is marked with a dashed outline and
+	 *	a note rather than by colour alone, and both follow the typing. The
+	 *	note is the field's description for a screen reader. Saving stays
+	 *	allowed: an empty text is a decision, not a mistake
+	 *
+	 *	@param		{HTMLElement}	field			The field's wrapper
+	 *	@param		{HTMLElement}	input
+	 *
+	 *	@return		{HTMLElement}						The wrapper
+	 */
+	function watchEmpty( field, input ) {
+		const note = node( 'small', 'pd-v3-empty-note', Nino.content.getText('/_admin/templates/hint/empty-value') );
+		note.id = 'pd-v3-empty-'+ ++emptyNotes;
+		field.appendChild( note );
+		const mark = function() {
+			const empty = String( input.value ).trim() === '';
+			field.classList.toggle( 'pd-v3-empty', empty );
+			note.hidden = !empty;
+			// A hidden note still describes a field that points at it, so the
+			// pointer is there only while the field is empty
+			if( empty ) input.setAttribute( 'aria-describedby', note.id ); else input.removeAttribute( 'aria-describedby' );
+		};
+		input.addEventListener( 'input', mark );
+		mark();
+		return field;
+	}
+
 	function fixedValueField( propertyDefinition, path, value, wide ) {
 		const control = propertyDefinition.control === 'textarea' ? 'textarea' : ( propertyDefinition.control === 'url' ? 'url' : 'text' );
-		return formField( Nino.content.getText('/_admin/templates/label/property-value'), path, control, value, Nino.content.getText('/_admin/templates/hint/fixed-value'), wide === true );
+		const field = formField( Nino.content.getText('/_admin/templates/label/property-value'), path, control, value, Nino.content.getText('/_admin/templates/hint/fixed-value'), wide === true );
+		return watchEmpty( field, field.querySelector( control === 'textarea' ? 'textarea' : 'input' ) );
+	}
+
+	/**
+	 *	The value of a text the section creates: empty until somebody types,
+	 *	with the property's sample as the placeholder (a fill of the
+	 *	workbench's own, so it is said in its language) and the preview
+	 *	following every keystroke - the texts held here go with the request
+	 *	(see previewTexts())
+	 *
+	 *	@param		{Object}	propertyDefinition
+	 *	@param		{string}	generated				The key the text is created under
+	 *
+	 *	@return		{HTMLElement}
+	 */
+	function generatedValueField( propertyDefinition, generated ) {
+		const value = node( 'label', 'pd-form-field pd-v3-generated-value' );
+		const input = node( propertyDefinition.control === 'textarea' ? 'textarea' : 'input' );
+		if( input.tagName === 'INPUT' ) input.type = 'text';
+		input.value = Object.prototype.hasOwnProperty.call( pd.composer._textValues, generated ) ? pd.composer._textValues[generated] : '';
+		if( input.tagName === 'INPUT' && propertyDefinition.control === 'url' ) asLinkInput( input );
+		input.dataset.textKey = generated; input.placeholder = Nino.adminUi.text( propertyDefinition.sample || '' );
+		value.append( node( 'span', '', Nino.content.getText('/_admin/templates/label/property-value') ), input );
+		input.addEventListener( 'input', function() { pd.composer._textValues[generated] = input.value; pd.composer._touched.add( generated ); pd.composer.requestPreview() } );
+		return watchEmpty( value, input );
+	}
+
+	/**
+	 *	The texts the preview is asked to show: what is held for every text
+	 *	the section creates or fills, by key. The server takes the keys the
+	 *	composed section has a field for and makes each value as safe as
+	 *	saving it would (Composer::preview())
+	 *
+	 *	@return		{Object}
+	 */
+	function previewTexts() {
+		const texts = {};
+		if( !active() || !pd.composer._draft ) return texts;
+		textDescriptors( pd.composer._draft, preset() ).forEach( function( field ) {
+			if( Object.prototype.hasOwnProperty.call( pd.composer._textValues, field.key ) ) texts[field.key] = pd.composer._textValues[field.key];
+		} );
+		return texts;
 	}
 
 	/**
@@ -532,17 +640,18 @@
 			const path = 'areas.'+ areaKey+ '.components.'+ index+ '.bindings.'+ property;
 			const current = component.bindings[property] || '';
 			if( propertyDefinition.kind === 'template' ) {
-				const options = [ { value : '', label : Nino.content.getText('/_admin/templates/label/none') } ].concat( pd._includes.filter( function( include ) { return include.kind !== 'frame' } ).map( function( include ) { return { value : include.path, label : include.name+ '.tpl' } } ) );
-				group.appendChild( formField( Nino.adminUi.text( propertyDefinition.label ), path, options, current, Nino.content.getText('/_admin/templates/hint/template-shortcode').replace( '%s', SHORTCODE ), true ) );
+				group.appendChild( formField( Nino.adminUi.text( propertyDefinition.label ), path, templateOptions( current ), current, Nino.content.getText('/_admin/templates/hint/template-shortcode').replace( '%s', SHORTCODE ), true ) );
 				return;
 			}
 
 			/*	HTML+ is not a value a form field can hold: it is source, and
 				coding in a one-line input is not coding. So the row carries what
 				is there and a button, and the button opens the same large editor
-				the section's own HTML+ escape hatch opens - the difference being
+				the section's own HTML+ editor opens - the difference being
 				that this one writes back into one component and the section stays
-				composed around it	*/
+				composed around it. In a collection the dialog also lists the
+				fields the item is filled from, which are what the component's own
+				source can name	*/
 			if( propertyDefinition.kind === 'source' ) {
 				const row = node( 'div', 'pd-form-field pd-v3-source-field' );
 				const written = ( component.bindings[property] || propertyDefinition.default || '' ).trim();
@@ -555,6 +664,7 @@
 						mode : 'component', source : written,
 						title : Nino.content.getText('/_admin/templates/label/edit-source-component'),
 						component : { areaKey : areaKey, index : index, property : property },
+						fields : area.source === 'elements' ? Object.keys( collectionModel( area, areaDraft.source.elementMode === 'existing' ? areaDraft.source.elementType : '' ) ) : null,
 					} );
 				} );
 				row.append( node( 'span', '', Nino.adminUi.text( propertyDefinition.label ) ), summary, edit );
@@ -587,14 +697,7 @@
 			} else if( mode === 'fixed' ) {
 				value = fixedValueField( propertyDefinition, path, current );
 			} else if( propertyDefinition.kind !== 'image' ) {
-				value = node( 'label', 'pd-form-field pd-v3-generated-value' );
-				const input = node( propertyDefinition.control === 'textarea' ? 'textarea' : 'input' );
-				if( input.tagName === 'INPUT' ) input.type = 'text';
-				input.value = Object.prototype.hasOwnProperty.call( pd.composer._textValues, generated ) ? pd.composer._textValues[generated] : propertyDefinition.default;
-				if( input.tagName === 'INPUT' && propertyDefinition.control === 'url' ) asLinkInput( input );
-				input.dataset.textKey = generated; input.placeholder = propertyDefinition.default;
-				value.append( node( 'span', '', Nino.content.getText('/_admin/templates/label/property-value') ), input );
-				input.addEventListener( 'input', function() { pd.composer._textValues[generated] = input.value; pd.composer._touched.add( generated ) } );
+				value = generatedValueField( propertyDefinition, generated );
 			}
 			bindingRow( group, Nino.adminUi.text( propertyDefinition.label ), source, value );
 			if( mode === 'new' && propertyDefinition.kind === 'image' )
@@ -781,9 +884,9 @@
 	 *	Carry what is typed for a generated textfill over to the key the
 	 *	rename gave it. The dialog holds those texts by key, and
 	 *	loadTextValues() fills every key it has not been told was typed in
-	 *	with the preset's default - so a value left behind under the old key
-	 *	was silently replaced by the default the moment the section id
-	 *	changed, and the operator's own sentence was gone
+	 *	with the stored value (or '' for a key that does not exist) - so a
+	 *	value left behind under the old key was silently replaced by that the
+	 *	moment the section id changed, and the operator's own sentence was gone
 	 *
 	 *	@param		{string}	from					The key before the rename
 	 *	@param		{string}	to						The key after it
@@ -849,14 +952,16 @@
 	 *	is a function for. The values arrive from content/fields, which
 	 *	render() starts when the dialog opens and does not wait for - so
 	 *	somebody who opened an existing section and pressed Update before that
-	 *	answer landed saved every one of its fills as field.default, the
-	 *	preset's catalogue placeholder, over whatever was written there.
+	 *	answer landed saved every one of its fills as the catalogue's
+	 *	placeholder, over whatever was written there.
 	 *	Nothing said so: the section composes, the save succeeds, and the page
 	 *	reads as the demo text again.
 	 *
 	 *	A key that does not exist yet is the other case: there is nothing to
-	 *	lose, and the default is what a new section is meant to start as -
-	 *	which is also what the dialog shows while it loads.
+	 *	lose, and a new section starts empty - the field's sample is only the
+	 *	placeholder the dialog shows, and nothing of it is stored. The key is
+	 *	created all the same, because a fill that does not exist is left
+	 *	standing as literal text on the page
 	 *
 	 *	@param		{Array}			fields			result.fields from library/compose
 	 *	@param		{Array}			entries			Every textfill this project has (content/keys)
@@ -872,7 +977,7 @@
 			const loaded = Object.prototype.hasOwnProperty.call( held, field.key );
 			if( exists === true && loaded === false )
 				return null;
-			return { key : field.key, value : loaded === true ? held[field.key] : field.default, create : !exists };
+			return { key : field.key, value : loaded === true ? held[field.key] : '', create : !exists };
 		} ).filter( function( item ) { return item !== null } );
 	}
 
@@ -888,8 +993,7 @@
 			if( token !== pd.composer._contentToken ) return;
 			response.fields.forEach( function( entry ) {
 				if( pd.composer._touched.has( entry.key ) ) return;
-				const definition = fields.find( function( field ) { return field.key === entry.key } );
-				pd.composer._textValues[entry.key] = entry.exists ? entry.value : ( definition ? definition.default : '' );
+				pd.composer._textValues[entry.key] = entry.exists ? entry.value : '';
 			} );
 		} );
 	}
@@ -1000,6 +1104,11 @@
 		nextComponentId : nextComponentId,
 		moveComponent : moveComponent,
 		contentItems : contentItems,
+		previewTexts : previewTexts,
+		templateOptions : templateOptions,
+		fixedValueField : fixedValueField,
+		watchEmpty : watchEmpty,
+		generatedValueField : generatedValueField,
 		linkAccepted : linkAccepted,
 		areaKeys : areaKeys,
 		areaLabel : areaLabel,
@@ -1027,6 +1136,12 @@
 			Object.keys( definition.properties || {} ).forEach( function( property ) {
 				if( definition.properties[property].kind === 'template' ) {
 					component.bindings[property] = ''; component.bindingSources[property] = 'template';
+				} else if( definition.properties[property].kind === 'source' ) {
+					// Its value is its own source: the catalogue's start, or in a collection
+					// the item's first text field. A generated key or a field name here
+					// would be written into the page as the source itself
+					component.bindings[property] = area.source === 'elements' ? loopSource( area, areaDraft.source, definition.properties[property] ) : definition.properties[property].default || '';
+					component.bindingSources[property] = 'source';
 				} else if( area.source === 'single' ) {
 					component.bindings[property] = generatedKey( pd.composer._draft, component, property ); component.bindingSources[property] = 'new';
 				}

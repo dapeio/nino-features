@@ -39,7 +39,7 @@
 			'labelKey' => '/_admin/templates/area/plans',
 			'help' => 'One entry per plan. Which card is emphasized is a Layout choice, not content — the four-column Layouts read the first or the last entry of this collection as the wide one, so raise the limit to 5 for those.',
 			'source' => 'elements',
-			'allowed' => [ 'title', 'price', 'description', 'button' ],
+			'allowed' => [ 'title', 'price', 'description', 'button', 'html' ],
 			'item' => [ 'tag' => 'div', 'class' => 'nino-pricing-item' ],
 			'typeTitle' => 'Pricing plans',
 			'model' => [

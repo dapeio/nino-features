@@ -74,9 +74,9 @@ focused semantic preset instead of duplicating it into several class-only
 cards; Layouts are for real source changes and Area Styles are for visual
 variants.
 
-HTML+, not another general-purpose Advanced panel, is the escape hatch for
-arbitrary HTML, heading hierarchy, additional ARIA attributes, custom classes,
-icons, nested structures, or project-specific behavior.
+HTML+, not another general-purpose Advanced panel, is where arbitrary HTML,
+heading hierarchy, additional ARIA attributes, custom classes, icons, nested
+structures, or project-specific behavior go.
 
 ## Complete manifest shape
 
@@ -329,6 +329,17 @@ Area the source is the item's markup, rendered once per record, and a
 write. `template` stays a Single Area component - an include repeated for
 every record says the same thing about every one of them.
 
+A loop item's source is filled per record: `[[title]]`, `[[description]]` and
+the rest of the model, by the model's own key, plus `[[.id]]` for the entry's
+position from 0. They are double-bracketed fills - `[title]` is a shortcode and
+stays on the page as text. A plain value is escaped, an `'html' => true` value
+is sanitized for content, `[` in either is written `&#91;`, and global fills
+(`[[/company/name]]`) resolve there as well. The composer refuses a nested
+`[elements]` block, whose closer would end the outer block, and - for a
+collection the section creates - a rich field inside a tag. Quote every
+attribute that carries a field: escaping does not encode a space or `=`. List `html` under
+`allowed` of an Elements Area to offer it; the six shipped loops do.
+
 A preset MUST write the design system's own classes. The frontend has exactly
 one namespace, `nino-*` - the same class carries structure, appearance and, where
 `Nino.ui.js` looks for a hook, behaviour; `nino-is-*` marks a transient state that
@@ -415,12 +426,15 @@ ownership. Never add a public runtime dependency on the manifest.
 Preview remains inert: no scripts, active forms, network iframes, or project
 callbacks. It strips VPA's hidden state, draws every image as a generated
 placeholder, and renders the number of collection items implied by
-1/2/3/4-column Styles where possible. Its text is the preset's own: every
-textfill the section creates shows the value it is created with - its
-component's default, or the manifest's render override - and every other fill
-shows what the manifest names under `samples`. A fill neither answers is shown
-as its own name, so a preset that leaves one out shows the gap; nothing
-outside the manifest knows what a preset's fields hold.
+1/2/3/4-column Styles where possible. Its text comes from the section and from
+the manifest. A textfill the section creates starts empty - nothing of a
+component is written into the page by default - so an empty one shows its
+sample: the component catalogue's `sample`, a fill key of the workbench's own
+that is said in its language (`/_admin/templates/sample/*`) and stored nowhere;
+a text the panel holds shows as typed, after `\Nino\Text::sanitizeValue()`.
+Every other fill shows what the manifest names under `samples`. A fill neither
+answers is shown as its own name, so a preset that leaves one out shows the
+gap; nothing outside the manifest knows what a preset's fields hold.
 
 Extend `tests/templates-smoke.php` and `tests/templates-js-smoke.js` in the
 feature's own `tests/`. Test:

@@ -45,6 +45,13 @@ namespace Nino\Modules\Templates {
 		private const string SHORTCODE_ARGUMENTS = '(?:"[^"]*"|\'[^\']*\'|[^\]"\'])*';
 
 		/**
+		 * What the preview takes of the texts the panel holds: how many, and
+		 * how long each one may be
+		 */
+		private const int PREVIEW_MAX_TEXTS = 100;
+		private const int PREVIEW_MAX_TEXT_BYTES = 4000;
+
+		/**
 		 *	Compose one section from a preset.
 		 *
 		 *	Every preset in the library is an Area preset - Library::presets()
@@ -75,8 +82,11 @@ namespace Nino\Modules\Templates {
 		 *
 		 * Every area carries a data-pd-area marker here and nowhere else, so the
 		 * panel can dim the ones the operator is not editing.
+		 *
+		 * @param		array			$input				The draft, plus 'texts' where the panel holds typed values - see previewTexts()
+		 * @param		?callable	$text					Answers a fill key with its text in the workbench's language, for the samples of an empty field
 		 */
-		public static function preview( array $input ): ?string {
+		public static function preview( array $input, ?callable $text = null ): ?string {
 
 			$input['pageId'] = (string) ( $input['pageId'] ?? 'preview' );
 			$input['id'] = (string) ( $input['id'] ?? 'preview-section' );
@@ -90,18 +100,51 @@ namespace Nino\Modules\Templates {
 
 			$preset = Library::preset( (string) ( $input['preset'] ?? '' ) );
 
-			return self::_previewHtml( $result['source'], self::previewSamples( $preset ?? [], $result ) );
+			return self::_previewHtml( $result['source'], self::previewSamples( $preset ?? [], $result, self::previewTexts( $input['texts'] ?? null, $result ), $text ) );
+		}
+
+		/**
+		 *	What the panel typed into the section's text fields, as far as the
+		 *	preview takes it: up to 100 entries of a fill key and a text, each
+		 *	text cut to 4000 bytes, and only the keys the composed section
+		 *	has a field for. Anything else - another shape, too many entries,
+		 *	a key the section does not own - is left out rather than refused,
+		 *	since the preview is a courtesy and has to render whatever it is
+		 *	sent. A typed value goes through \Nino\Text::sanitizeValue()
+		 *	later, in previewSamples(), the way saving it would
+		 *
+		 *	@param		mixed			$texts				$input['texts']
+		 *	@param		array			$result				What compose() answered
+		 *
+		 *	@return 	array								[ fill key => text ]
+		 */
+		private static function previewTexts( mixed $texts, array $result ): array {
+
+			if( is_array( $texts ) === false || count( $texts ) > self::PREVIEW_MAX_TEXTS )
+				return [];
+
+			$keys = array_column( (array) ( $result['fields'] ?? [] ), 'key' );
+			$typed = [];
+
+			foreach( $texts as $key => $value )
+				if( is_string( $value ) === true && in_array( (string) $key, $keys, true ) === true )
+					$typed[(string) $key] = mb_strcut( $value, 0, self::PREVIEW_MAX_TEXT_BYTES, 'UTF-8' );
+
+			return $typed;
 		}
 
 		/**
 		 *	What the preview shows for the fills of one composed section, and
 		 *	where it comes from - nowhere in this class. A textfill the section
-		 *	creates shows the value it is created with: its field's default,
-		 *	the component catalogue's or the preset's own override, so the
-		 *	preview is what inserting the section gives. Every other fill -
-		 *	the fields a collection loops over, the project texts a layout
-		 *	writes in - shows what the preset's manifest names under
-		 *	'samples'. A fill neither answers is shown as its own name.
+		 *	creates shows what the panel has typed into it, made as safe as
+		 *	saving it would make it; where nothing is typed - and a new
+		 *	section starts empty - it shows the field's sample, the workbench's
+		 *	own words for what such a field is for (the component catalogue's
+		 *	'sample', a fill key), so the preview reads as a section with text
+		 *	in it although none of that is stored. Every other fill - the
+		 *	fields a collection loops over, the project texts a layout writes
+		 *	in - shows what the preset's manifest names under 'samples'. A fill
+		 *	neither answers is shown as its own name.
 		 *
 		 *	This used to be a table of thirty-six sample values here, keyed by
 		 *	field name, that knew the presets from the outside: that a table's
@@ -112,15 +155,28 @@ namespace Nino\Modules\Templates {
 		 *
 		 *	@param		array			$preset				Library::preset(), [] for none
 		 *	@param		array			$result				What compose() answered
+		 *	@param		array			$texts				What the panel typed, by fill key - see previewTexts()
+		 *	@param		?callable	$text					Resolves a sample's fill key; without one the field's own name stands in for it
 		 *
 		 *	@return 	array								[ fill => text or list of texts ]
 		 */
-		public static function previewSamples( array $preset, array $result ): array {
+		public static function previewSamples( array $preset, array $result, array $texts = [], ?callable $text = null ): array {
 
 			$samples = (array) ( $preset['samples'] ?? [] );
 
-			foreach( (array) ( $result['fields'] ?? [] ) as $field )
-				$samples[(string) $field['key']] = (string) $field['default'];
+			foreach( (array) ( $result['fields'] ?? [] ) as $field ) {
+
+				$key = (string) $field['key'];
+				$typed = (string) ( $texts[$key] ?? '' );
+
+				if( $typed !== '' ) {
+					$samples[$key] = \Nino\Text::sanitizeValue( $typed, false );
+					continue;
+				}
+
+				$sample = $text !== null && (string) ( $field['sample'] ?? '' ) !== '' ? (string) $text( (string) $field['sample'] ) : '';
+				$samples[$key] = $sample !== '' ? $sample : self::_previewName( $key );
+			}
 
 			return $samples;
 		}
@@ -162,12 +218,6 @@ namespace Nino\Modules\Templates {
 			$source = preg_replace( '#<script\b[^>]*>.*$#is', '', $source ) ?? $source;
 			$source = preg_replace( '#</?script\b[^>]*>#is', '', $source ) ?? $source;
 			$source = preg_replace( '#\s+on[a-z0-9:_-]+\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s>]+)#i', '', $source ) ?? $source;
-			$source = preg_replace_callback(
-				'#\s+(href|src|action|formaction|xlink:href)\s*=\s*(["\'])\s*javascript:[^"\']*\2#i',
-				fn( array $match ): string => ' '. $match[1]. '="#"',
-				$source
-			) ?? $source;
-			$source = preg_replace( '#\s+(href|src|action|formaction|xlink:href)\s*=\s*javascript:[^\s>]*#i', ' $1="#"', $source ) ?? $source;
 			$source = preg_replace( '#<\?.*?\?>#s', '', $source ) ?? $source;
 			// Preview frames deliberately run without Nino.ui.js. Remove VPA's
 			// hidden initial state (and its variants) instead of leaving motion-
@@ -248,6 +298,15 @@ namespace Nino\Modules\Templates {
 			$source = preg_replace( '#\[(?:template|image)\b\s*'. self::SHORTCODE_ARGUMENTS. '\]#is', '', $source ) ?? $source;
 			$source = preg_replace( '#(<iframe\b[^>]*\bsrc=)(["\'])[^"\']*\2#i', '$1$2about:blank$2', $source ) ?? $source;
 			$source = preg_replace( '#(<form\b[^>]*\baction=)(["\'])[^"\']*\2#i', '$1$2#$2', $source ) ?? $source;
+			// Last, after every fill is in: a text the panel typed is substituted
+			// by then, and an address of it that reads javascript: would be one
+			// the pass over the source could not have seen
+			$source = preg_replace_callback(
+				'#\s+(href|src|action|formaction|xlink:href)\s*=\s*(["\'])\s*javascript:[^"\']*\2#i',
+				fn( array $match ): string => ' '. $match[1]. '="#"',
+				$source
+			) ?? $source;
+			$source = preg_replace( '#\s+(href|src|action|formaction|xlink:href)\s*=\s*javascript:[^\s>]*#i', ' $1="#"', $source ) ?? $source;
 
 			return $source;
 		}
@@ -264,8 +323,19 @@ namespace Nino\Modules\Templates {
 		 *	@return 	string
 		 */
 		private static function _previewFill( string $token, ?int $index, array $samples ): string {
-			return self::previewSample( $token, $index, $samples )
-				?? ucwords( str_replace( [ '-', '_' ], ' ', strtolower( basename( str_replace( '\\', '/', $token ) ) ) ) );
+			return self::previewSample( $token, $index, $samples ) ?? self::_previewName( $token );
+		}
+
+		/**
+		 *	A fill's own name as a phrase: its last segment, words apart and
+		 *	capitalised
+		 *
+		 *	@param		string		$token
+		 *
+		 *	@return 	string
+		 */
+		private static function _previewName( string $token ): string {
+			return ucwords( str_replace( [ '-', '_' ], ' ', strtolower( basename( str_replace( '\\', '/', $token ) ) ) ) );
 		}
 
 		private static function _previewImage( string $label ): string {

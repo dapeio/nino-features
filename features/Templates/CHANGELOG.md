@@ -12,12 +12,82 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
   one thing the fixed components cannot express: a row written by hand. The
   source is the item's own markup now, rendered once per element inside the
   `[elements]` block the area composes, and a `[[field]]` in it is resolved
-  per record the way the other components' fills are. `template` stays a
-  Single Area component. The manual, its German twin and the preset recipe
-  say so, and `templates-smoke.php` composes such a row and reads it back
-  inside the block.
+  per record the way the other components' fills are. It starts as
+  `<p class="nino-section-text">[[<first text field>]]</p>` there, and the
+  editor lists what the item can name - `[[title]], [[description]], …,
+  [[.id]]`, the position of the entry counted from 0; the fills are
+  double-bracketed, `[title]` would be a shortcode and stay on the page as
+  text. Two things are refused so that it cannot make a broken or unsafe
+  page: a nested `[elements]` block, whose closer would end the outer one, and
+  - for a collection the section creates - a rich text field inside a tag,
+  the rule a component's own property is already held to. The six
+  collections the shipped presets loop over (articles, the filterable grid,
+  the image list, the logos, the pricing plans and the timeline) list `html`
+  among their components. The first version had two faults the
+  suite did not see, because it asked only whether the source stood somewhere
+  inside the block: a row came out as `[[<p class="nino-section-text">…</p>]]`,
+  the source taken for the name of a field, and an HTML+ component added
+  to a single area through the panel rendered the text
+  `/page-home/rows/html-source`, the key a textfill would have had. Both are
+  fixed - the source is asked for first when an area renders, and a component
+  starts as its source - and `templates-smoke.php` holds the item whole, with
+  checks for the default, the two refusals and the six loops, all red before.
+  `template` stays a Single Area component. The manual, its
+  German twin and the preset recipe say so.
 
 ### Changed
+
+- **A new text starts empty, and what it shows instead is a sample.** A
+  component the builder inserted carried a catalogue default - "Section
+  title", "A concise supporting line", a button reading "Learn more" pointing
+  at `#`, a price of 99 € - and wrote it into the page as if somebody had typed
+  it, so a section nobody finished went live with the placeholder. A text
+  property has no default now, and `contentItems()` creates every key it owns
+  empty (the key must exist, or the page shows the literal fill). What the
+  field shows is its `sample`, a fill key of the workbench's own
+  (`/_admin/templates/sample/*`, in both languages - "Abschnittstitel" and
+  "Section title", "Mehr erfahren" and "Learn more"): the placeholder of the
+  empty input, and what the preview shows for it. The button's address starts
+  empty. An empty field is marked by a dashed outline and the note "Empty -
+  nothing appears here on the website." - never by colour alone - and saving it
+  stays allowed. The preview follows the typing, 180 ms after the last key:
+  the panel sends the texts it holds with the draft (`texts`, at most 100
+  entries of 4000 bytes, only keys the section has a field for) and
+  `Composer::preview()` makes each one as safe as saving it,
+  `\Nino\Text::sanitizeValue()`. `Composer::previewSamples()` takes the typed
+  texts and a resolver for the samples, `Library` answers it from the
+  workbench's fills, and without one an empty field shows its own name. The
+  HTML+ component's source stays the one default: it is code the developer
+  opens. A section inserted earlier keeps the texts it was created with - it
+  has them stored; nothing is rewritten. This reverses the sentence of the
+  preview entry below, that the preview is what inserting the section gives.
+  `templates-smoke.php` and `templates-js-smoke.js` hold the empty start, the
+  sample, the typed and the refused texts, the marker and the request, all red against
+  the code before.
+
+- **"HTML+ escape hatch" is the "HTML+ Editor".** The dialog that edits a
+  section's own source, and one component's, was called an escape hatch -
+  "Notausgang" in German - which told a developer it was a way out of the
+  builder, and it is the builder's own editor. The text key
+  `/_admin/templates/label/escape-hatch` is `/_admin/templates/label/html-editor`
+  now, "HTML+ Editor" in both languages; the manual, its German twin, the
+  two recipes and the comments follow. A project that overrode the key in
+  its own text files names the new one.
+
+- **Mail bodies, the plain-text outputs and the frame's own files are no longer
+  offered.** The header and footer selects, the section picker and a preset's
+  Template component listed everything in `templates/` that is not a page -
+  `mail-*`, `robots`, `sitemap-xml`, `llms-txt` and the `theme.header` and
+  `theme.footer` the frame includes itself - although none is a part of a
+  page. `Documents::apiIncludes()` classifies them as `output` and `internal`
+  instead of dropping them, so a page that already points at one still finds
+  it selected rather than reported as gone, and the lists leave them out.
+  `templates-smoke.php` writes nine templates and holds the kinds, and
+  `templates-js-smoke.js` the three lists.
+
+- **One German word of the panel is capitalised.** `/_admin/templates/empty/lead`
+  said "kombinierst du"; every other address in the catalogue's panels says
+  "Du".
 
 - **A preview says what its preset's manifest says.** The Composer filled
   every preview from a table of its own - 36 sample values keyed by field

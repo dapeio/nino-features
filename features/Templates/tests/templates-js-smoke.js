@@ -261,7 +261,7 @@ console.log('\nNamed area composer');
 
 /*	HTML+ as a component. Coding in a one-line input is not coding, so the row
 	carries what is written and a button, and the button opens the same large
-	editor the section's own escape hatch opens - the difference being that
+	editor the section's own HTML+ editor opens - the difference being that
 	this one writes back into one component instead of detaching the section.
 	Node has no DOM, so what is measured is that both halves reach for the one
 	dialog rather than building a second	*/
@@ -303,8 +303,8 @@ check( 'the Area editor loads after the established composer and exposes bounded
 	written there. The section composed, the save succeeded, and the page read
 	as the demo text again	*/
 const editFields = [
-	{ key : '/page-home/hero/title', mode : 'new', default : 'A clear headline for this section' },
-	{ key : '/page-home/hero/subtitle', mode : 'new', default : 'A concise supporting line' },
+	{ key : '/page-home/hero/title', mode : 'new', default : '', sample : '/_admin/templates/sample/title-text' },
+	{ key : '/page-home/hero/subtitle', mode : 'new', default : '', sample : '/_admin/templates/sample/subtitle-text' },
 ];
 const existing = [ { key : '/page-home/hero/title' }, { key : '/page-home/hero/subtitle' } ];
 
@@ -322,12 +322,13 @@ check( 'an existing fill the dialog has not loaded yet is not saved at all', ( c
 check( '...and one it has loaded is saved as what it loaded', JSON.stringify( contentItems( editFields, existing, { '/page-home/hero/title' : 'Was da stand' } ) )
 	=== JSON.stringify( [ { key : '/page-home/hero/title', value : 'Was da stand', create : false } ] ) );
 
-// A key that does not exist yet is the other case: nothing to lose, and the
-// default is what a new section is meant to start as
-check( 'a fill that does not exist yet is created with the preset default', JSON.stringify( contentItems( editFields, [], {} ) )
+// A key that does not exist yet is the other case: nothing to lose, and a new
+// section starts empty - the sample is a placeholder and is never stored. The
+// key is created all the same, or the page would show the literal fill
+check( 'a fill that does not exist yet is created empty', JSON.stringify( contentItems( editFields, [], {} ) )
 	=== JSON.stringify( [
-		{ key : '/page-home/hero/title', value : 'A clear headline for this section', create : true },
-		{ key : '/page-home/hero/subtitle', value : 'A concise supporting line', create : true },
+		{ key : '/page-home/hero/title', value : '', create : true },
+		{ key : '/page-home/hero/subtitle', value : '', create : true },
 	] ) );
 
 // An emptied field is a value like any other - held, and saved as what it is
@@ -805,5 +806,229 @@ check( 'v3 image creation is limited to generated background and declared Area i
 	&& Nino.admin.templates.sectionsUI.areaImageRequest( resourceSpec, resourcePreset, '/page-home/services/visual' ).component === 'visual'
 	&& Nino.admin.templates.sectionsUI.areaImageRequest( resourceSpec, resourcePreset, '/shared/existing-image' ) === null );
 
-console.log( '\n'+ checks+ ' checks, '+ failures+ ' failed' );
-process.exit( failures > 0 ? 1 : 0 );
+/*	A new text starts empty. The catalogue carries a sample for it - a fill key
+	of the workbench's own - which the field shows as its placeholder and the
+	preview shows for it; nothing of it is held or stored. An empty field is
+	marked by a dashed outline and a note, which follow the typing, and typing
+	asks for a preview with the texts that are held. Node has no DOM, so the
+	elements below are a small stand-in with the parts the builder touches	*/
+console.log('\nEmpty texts, samples and the live preview');
+
+function fakeElement( tag ) {
+	const classes = new Set();
+	const attributes = {};
+	const listeners = {};
+	const element = {
+		tagName : String( tag ).toUpperCase(), children : [], dataset : {}, hidden : false, id : '', value : '', placeholder : '', type : '', inputMode : '', textContent : '',
+		classList : {
+			add : function( name ) { classes.add( name ) },
+			remove : function( name ) { classes.delete( name ) },
+			toggle : function( name, on ) { if( on === undefined ? !classes.has( name ) : on ) classes.add( name ); else classes.delete( name ) },
+			contains : function( name ) { return classes.has( name ) },
+		},
+		get className() { return Array.from( classes ).join(' ') },
+		set className( value ) { classes.clear(); String( value ).split(' ').filter( Boolean ).forEach( function( name ) { classes.add( name ) } ) },
+		get childNodes() { return element.children },
+		set innerHTML( value ) { element.children.length = 0; element.markup = value },
+		setAttribute : function( name, value ) { attributes[name] = String( value ) },
+		getAttribute : function( name ) { return name in attributes ? attributes[name] : null },
+		removeAttribute : function( name ) { delete attributes[name] },
+		setCustomValidity : function() {},
+		appendChild : function( child ) { element.children.push( child ); return child },
+		append : function() { Array.from( arguments ).forEach( function( child ) { element.children.push( child ) } ) },
+		addEventListener : function( type, callback ) { ( listeners[type] = listeners[type] || [] ).push( callback ) },
+		dispatch : function( type ) { ( listeners[type] || [] ).forEach( function( callback ) { callback() } ) },
+		querySelector : function( selector ) {
+			const wanted = selector.charAt(0) === '.' ? function( node ) { return node.classList.contains( selector.slice(1) ) } : function( node ) { return node.tagName === selector.toUpperCase() };
+			const stack = element.children.slice();
+			while( stack.length ) {
+				const next = stack.shift();
+				if( wanted( next ) ) return next;
+				stack.unshift.apply( stack, next.children );
+			}
+			return null;
+		},
+	};
+	return element;
+}
+
+const realCreate = documentStub.createElement;
+const realById = documentStub.getElementById;
+const realGetText = Nino.content.getText;
+const areaTools = Nino.admin.templates.areaComposer;
+const emptyComposer = Nino.admin.templates.composer;
+const keepTexts = emptyComposer._textValues;
+const keepTouched = emptyComposer._touched;
+const keepApi = Nino.admin.templates.api;
+documentStub.createElement = fakeElement;
+const sampleKey = '/_admin/templates/sample/title-text';
+let previews = 0;
+const keepPreview = emptyComposer.requestPreview;
+emptyComposer.requestPreview = function() { previews++ };
+
+emptyComposer._textValues = {};
+emptyComposer._touched = new Set();
+const sampleField = areaTools.generatedValueField( { control : 'text', sample : sampleKey, default : '' }, '/page-home/hero/title' );
+const sampleInput = sampleField.children[1];
+const sampleNote = sampleField.querySelector('.pd-v3-empty-note');
+check( 'a new text starts empty and shows the property\'s sample as its placeholder, resolved through the text system', sampleInput.value === '' && sampleInput.placeholder === sampleKey );
+check( '...marked as empty by a class and a note, which the field itself points to', sampleField.classList.contains('pd-v3-empty') === true
+	&& sampleNote !== null && sampleNote.hidden === false && sampleNote.textContent === '/_admin/templates/hint/empty-value'
+	&& sampleInput.getAttribute('aria-describedby') === sampleNote.id && sampleNote.id !== '' );
+sampleInput.value = 'Hello';
+sampleInput.dispatch('input');
+check( 'typing lifts the mark, holds the text and asks for a preview', sampleField.classList.contains('pd-v3-empty') === false && sampleNote.hidden === true
+	&& emptyComposer._textValues['/page-home/hero/title'] === 'Hello' && emptyComposer._touched.has('/page-home/hero/title') && previews === 1 );
+check( '...and a filled field no longer points at the note, which a hidden note would still make a screen reader announce', sampleInput.getAttribute('aria-describedby') === null );
+sampleInput.value = '  ';
+sampleInput.dispatch('input');
+check( '...and clearing it - blanks included - marks it again, saving staying allowed', sampleField.classList.contains('pd-v3-empty') === true && sampleNote.hidden === false && previews === 2
+	&& sampleInput.getAttribute('aria-describedby') === sampleNote.id );
+emptyComposer._textValues = { '/page-home/hero/title' : 'Held' };
+const heldField = areaTools.generatedValueField( { control : 'textarea', sample : sampleKey, default : '' }, '/page-home/hero/title' );
+check( 'a text the dialog holds is shown, and an area with text in it is not marked', heldField.children[1].value === 'Held' && heldField.classList.contains('pd-v3-empty') === false );
+const fixedField = areaTools.fixedValueField( { control : 'url' }, 'areas.a.components.0.bindings.href', '', true );
+check( 'a fixed value is marked the same way while it is empty', fixedField.classList.contains('pd-v3-empty') === true && fixedField.querySelector('.pd-v3-empty-note') !== null
+	&& areaTools.fixedValueField( { control : 'text' }, 'x', 'Fixed', false ).classList.contains('pd-v3-empty') === false );
+const filledFixed = areaTools.fixedValueField( { control : 'text' }, 'x', 'Fixed', false );
+check( '...and a fixed value that is filled carries no description pointer', filledFixed.querySelector('input').getAttribute('aria-describedby') === null
+	&& fixedField.querySelector('input').getAttribute('aria-describedby') === fixedField.querySelector('.pd-v3-empty-note').id );
+documentStub.createElement = realCreate;
+
+// A preset in hand for what needs one: a single area and a collection
+const emptyLibrary = Nino.admin.templates._library.presets;
+const emptyTypes = Nino.admin.templates.sectionsUI._types;
+const htmlDefault = '<div class="nino-grid-100">Default</div>';
+Nino.admin.templates._library.presets = [ { key : 'empty-test', version : 3, recommend : { layout : 'stacked' }, layouts : { stacked : { label : 'Stacked' } },
+	componentCatalog : {
+		title : { label : 'Title', styles : [ 'auto' ], properties : { text : { label : 'Text', kind : 'text', control : 'text', fieldType : 'string', default : '', sample : sampleKey } } },
+		html : { label : 'HTML+', styles : [ 'auto' ], properties : { source : { label : 'Source', kind : 'source', control : 'source', fieldType : 'source', default : htmlDefault } } },
+	},
+	areas : {
+		body : { source : 'single', label : 'Body', allowed : [ 'title', 'html' ], maxComponents : 4, styles : { plain : { label : 'Plain' } }, recommend : { style : 'plain' } },
+		rows : { source : 'elements', label : 'Rows', allowed : [ 'title', 'html' ], maxComponents : 4, styles : { plain : { label : 'Plain' } }, recommend : { style : 'plain' }, model : { picture : { type : 'image' }, headline : { type : 'string' }, blurb : { type : 'string', html : true } } },
+	},
+} ];
+emptyComposer._presetKey = 'empty-test';
+emptyComposer._step = 'design';
+emptyComposer._textValues = { '/page-home/hero/title' : 'Typed title', '/page-home/elsewhere/title' : 'Not this section\'s' };
+emptyComposer._touched = new Set();
+emptyComposer._draft = { pageId : 'home', id : 'hero', preset : 'empty-test', layout : 'auto', frame : {}, areas : {
+	body : { style : 'auto', source : {}, components : [ { id : 'title', type : 'title', style : 'auto', settings : {}, bindings : { text : '/page-home/hero/title' }, bindingSources : { text : 'new' } } ] },
+	rows : { style : 'auto', source : { elementMode : 'new', elementType : 'home-hero-rows' }, components : [] },
+} };
+const heldTexts = areaTools.previewTexts();
+check( 'the texts the preview is asked to show are the held ones of the section\'s own fields', JSON.stringify( heldTexts ) === JSON.stringify( { '/page-home/hero/title' : 'Typed title' } ) );
+
+// The request itself: the draft, and the texts with it
+const payloads = [];
+Nino.admin.templates.api = function( action, payload ) { payloads.push( [ action, payload ] ); return new Promise( function() {} ) };
+documentStub.getElementById = function( id ) { return id === 'pd-preview-status' ? { textContent : '' } : null };
+emptyComposer.requestPreview = keepPreview;
+emptyComposer.requestPreview( true );
+
+// HTML+ starts as source in both kinds of area, and as a loop's own item in a collection
+const keepRender = [ emptyComposer.renderSettings, emptyComposer.renderSummary, emptyComposer.loadTextValues ];
+emptyComposer.renderSettings = emptyComposer.renderSummary = emptyComposer.loadTextValues = function() {};
+emptyComposer.requestPreview = function() {};
+areaTools.addComponent( 'body', 'html' );
+areaTools.addComponent( 'rows', 'html' );
+Nino.admin.templates.sectionsUI._types = [ { type : 'staff', model : { portrait : { type : 'image' }, name : { type : 'string' } } } ];
+emptyComposer._draft.areas.rows.source = { elementMode : 'existing', elementType : 'staff', shortcode : {} };
+areaTools.addComponent( 'rows', 'html' );
+const singleHtml = emptyComposer._draft.areas.body.components[1];
+const loopHtml = emptyComposer._draft.areas.rows.components[0];
+const existingLoopHtml = emptyComposer._draft.areas.rows.components[1];
+check( 'HTML+ added to a single area starts as the catalogue\'s source, not as a generated key', singleHtml.bindings.source === htmlDefault && singleHtml.bindingSources.source === 'source' );
+check( '...and in a collection as one paragraph with the first text field in it', loopHtml.bindings.source === '<p class="nino-section-text">[[headline]]</p>' && loopHtml.bindingSources.source === 'source' );
+check( '...of the type the section reads, when that is one the project already has', existingLoopHtml.bindings.source === '<p class="nino-section-text">[[name]]</p>' );
+emptyComposer.renderSettings = keepRender[0]; emptyComposer.renderSummary = keepRender[1]; emptyComposer.loadTextValues = keepRender[2];
+emptyComposer.requestPreview = keepPreview;
+Nino.admin.templates.sectionsUI._types = emptyTypes;
+
+// The loops' own fills in the code dialog, filled into the sentence by the script
+const codeNodes = {};
+[ 'pd-code-dialog', 'pd-code-title', 'pd-code-note', 'pd-code-source', 'pd-code-error', 'pd-code-fields' ].forEach( function( id ) {
+	codeNodes[id] = fakeElement( 'p' );
+	codeNodes[id].showModal = function() {};
+	codeNodes[id].focus = function() {};
+} );
+documentStub.getElementById = function( id ) { return codeNodes[id] || null };
+Nino.content.getText = function( key ) { return key === '/_admin/templates/hint/loop-fields' ? 'Fields: %s' : key };
+const codeDialog = Nino.admin.templates.sectionsUI;
+codeDialog.openCode( { mode : 'component', source : '<p></p>', fields : [ 'title', 'description' ], component : {} } );
+check( 'the code dialog of a collection\'s HTML+ lists its fields as the fills they are, and the entry\'s position', codeNodes['pd-code-fields'].hidden === false
+	&& codeNodes['pd-code-fields'].textContent === 'Fields: [[title]], [[description]], [[.id]]' );
+codeDialog.openCode( { mode : 'component', source : '<p></p>', fields : null, component : {} } );
+check( '...and says nothing in a single area', codeNodes['pd-code-fields'].hidden === true && codeNodes['pd-code-fields'].textContent === ''
+	&& ( codeDialog.openCode( { mode : 'insert', source : '', title : 'x' } ), codeNodes['pd-code-fields'].hidden === true ) );
+Nino.content.getText = realGetText;
+
+// Which reusable templates a list offers
+const listedIncludes = [
+	{ name : 'html-header', path : '/templates/html-header', label : 'Html Header', kind : 'frame', exists : true },
+	{ name : 'mail-user', path : '/templates/mail-user', label : 'Mail User', kind : 'output', exists : true },
+	{ name : 'robots', path : '/templates/robots', label : 'Robots', kind : 'output', exists : true },
+	{ name : 'theme.header', path : '/templates/theme.header', label : 'Theme.header', kind : 'internal', exists : true },
+	{ name : 'section-card', path : '/templates/section-card', label : 'Section Card', kind : 'section', exists : true },
+	{ name : 'social-links', path : '/templates/social-links', label : 'Social Links', kind : 'partial', exists : true },
+];
+const keepIncludes = Nino.admin.templates._includes;
+Nino.admin.templates._includes = listedIncludes;
+const templates = Nino.admin.templates;
+check( 'an output and the frame\'s own parts are not listed, unless a page points at one of them', templates.includeListed( listedIncludes[1] ) === false && templates.includeListed( listedIncludes[3] ) === false
+	&& templates.includeListed( listedIncludes[1], '/templates/robots' ) === false && templates.includeListed( listedIncludes[2], '/templates/robots' ) === true
+	&& templates.includeListed( listedIncludes[4] ) === true && templates.includeListed( listedIncludes[5] ) === true && templates.includeListed( listedIncludes[0] ) === true );
+check( 'the template component offers the same, without the frame\'s two and with its own current choice kept', JSON.stringify( areaTools.templateOptions( '' ).map( function( option ) { return option.value } ) ) === JSON.stringify( [ '', '/templates/section-card', '/templates/social-links' ] )
+	&& JSON.stringify( areaTools.templateOptions( '/templates/robots' ).map( function( option ) { return option.value } ) ) === JSON.stringify( [ '', '/templates/robots', '/templates/section-card', '/templates/social-links' ] ) );
+documentStub.createElement = fakeElement;
+const selectFor = function( current ) {
+	const select = fakeElement('select');
+	templates.populateTemplateSelect( select, current );
+	const options = [];
+	select.children.forEach( function( group ) { ( group.children.length && group.tagName === 'OPTGROUP' ? group.children : [ group ] ).forEach( function( option ) { options.push( option ) } ) } );
+	return options.filter( function( option ) { return option.tagName === 'OPTION' && option.value !== '' } );
+};
+check( 'the header and footer selects leave them out too', JSON.stringify( selectFor( '' ).map( function( option ) { return option.value } ) ) === JSON.stringify( [ '/templates/html-header', '/templates/section-card', '/templates/social-links' ] ) );
+const keptOutput = selectFor( '/templates/robots' );
+check( '...and keep the output a page uses, found rather than reported as gone', keptOutput.some( function( option ) { return option.value === '/templates/robots' && option.textContent === 'robots.tpl' } )
+	&& keptOutput.some( function( option ) { return option.textContent.indexOf( '/_admin/templates/hint/file-gone' ) !== -1 } ) === false );
+codeNodes['pd-include-list'] = fakeElement( 'div' );
+codeNodes['pd-include-search'] = { value : '' };
+templates.renderIncludes();
+check( 'the section picker lists a section and a partial, and neither frame, output nor the frame\'s own files', codeNodes['pd-include-list'].children.length === 2 );
+documentStub.createElement = realCreate;
+documentStub.getElementById = realById;
+Nino.admin.templates._includes = keepIncludes;
+check( 'what the picker calls an output and an internal file is said in the text system', templates.includeKind( 'output' ) === '/_admin/templates/label/kind-output' && templates.includeKind( 'internal' ) === '/_admin/templates/label/kind-internal' );
+
+// What a fill loads for a key that does not exist yet: nothing, and the key is held as loaded
+const missingPayloads = [];
+
+const asyncChecks = new Promise( function( resolve ) { setTimeout( resolve, 20 ) } ).then( function() {
+	check( 'a preview request carries the draft and the texts held for it', payloads.length === 1 && payloads[0][0] === 'library/preview' && payloads[0][1].preset === 'empty-test' && payloads[0][1].pageId === 'home'
+		&& JSON.stringify( payloads[0][1].texts ) === JSON.stringify( heldTexts ) );
+	Nino.admin.templates.api = function( action, payload ) {
+		missingPayloads.push( [ action, payload ] );
+		return Promise.resolve( { fields : [ { key : '/page-home/hero/title', exists : false, value : '' } ] } );
+	};
+	emptyComposer._textValues = {};
+	emptyComposer._touched = new Set();
+	return Nino.admin.templates.composer.loadTextValues();
+} ).then( function() {
+	check( 'a fill that does not exist yet is held as empty - the default is not made up for it', missingPayloads.length === 1 && missingPayloads[0][0] === 'content/fields'
+		&& Object.prototype.hasOwnProperty.call( emptyComposer._textValues, '/page-home/hero/title' ) && emptyComposer._textValues['/page-home/hero/title'] === '' );
+	Nino.admin.templates.api = function() { return Promise.resolve( { fields : [ { key : '/page-home/hero/title', exists : true, value : 'Written before' } ] } ) };
+	return Nino.admin.templates.composer.loadTextValues();
+} ).then( function() {
+	check( '...and one that does is held as it is written', emptyComposer._textValues['/page-home/hero/title'] === 'Written before' );
+	Nino.admin.templates.api = keepApi;
+	Nino.admin.templates._library.presets = emptyLibrary;
+	emptyComposer._draft = null; emptyComposer._presetKey = ''; emptyComposer._step = 'library';
+	emptyComposer._textValues = keepTexts; emptyComposer._touched = keepTouched;
+} );
+
+asyncChecks.then( function() {
+	console.log( '\n'+ checks+ ' checks, '+ failures+ ' failed' );
+	process.exit( failures > 0 ? 1 : 0 );
+} );

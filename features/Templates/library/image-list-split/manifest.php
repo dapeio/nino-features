@@ -35,7 +35,7 @@
 			'labelKey' => '/_admin/templates/area/checklist',
 			'help' => 'One entry per line. The check mark comes from the list, not from the content.',
 			'source' => 'elements',
-			'allowed' => [ 'text', 'title' ],
+			'allowed' => [ 'text', 'title', 'html' ],
 			'item' => [ 'tag' => 'li', 'class' => '' ],
 			'typeTitle' => 'Feature list',
 			'model' => [

@@ -60,7 +60,7 @@ namespace Nino\Modules\Templates {
 					'pageId' => 'preview',
 					'id' => 'preview-'. $preset['key'],
 					'elementType' => 'preview-items',
-				] );
+				], self::_text( $appData ) );
 				if( $preview !== null )
 					$preset['preview'] = $preview;
 			}
@@ -92,13 +92,29 @@ namespace Nino\Modules\Templates {
 			if( Admin::guard( $appData, $request ) === false )
 				return;
 
-			$preview = Composer::preview( Admin::postData() );
+			$preview = Composer::preview( Admin::postData(), self::_text( $appData ) );
 			if( $preview === null ) {
 				\Nino\Http::fail( $request, 400, 'could not render section preview' );
 				return;
 			}
 
 			\Nino\Http::ok( $request, [ 'html' => $preview ] );
+		}
+
+		/**
+		 *	The workbench's own words for a fill key, which is what a preview
+		 *	says in an empty field: the sample of a component's property is a
+		 *	fill of this panel's text files, read in the language the
+		 *	workbench is in (see \Nino\Admin\Admin::init())
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	callable
+		 */
+		private static function _text( array &$appData ): callable {
+			return static function( string $key ) use ( &$appData ): string {
+				return \Nino\Html::renderTextfill( $appData, $key );
+			};
 		}
 
 		public static function presets(): array {
