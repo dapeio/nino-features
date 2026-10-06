@@ -27,8 +27,9 @@ namespace Nino\Modules {
 	 *										/data/newsletter.php - no per-month bucketing (unlike
 	 *										Form::_record()'s forms.<Y-m>.php) since a subscriber
 	 *										list isn't naturally date-bucketed the way individual
-	 *										contact inquiries are. Read independently by
-	 *										Newsletter\Admin in Admin/Admin.php beside this file.
+	 *										contact inquiries are. The panel in Admin/Admin.php
+	 *										reads the list through PATH and records an address it
+	 *										deletes through recordRemoval().
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -38,7 +39,7 @@ namespace Nino\Modules {
 
 		private const int MAX_FIELD_LENGTH = 1000;
 
-		private const string PATH = '/data/newsletter.php';
+		public const string PATH = '/data/newsletter.php';
 
 		/*	The signup endpoint is public and unauthenticated, and what it
 			writes is a file that used to only ever grow: an unconfirmed entry
@@ -68,14 +69,15 @@ namespace Nino\Modules {
 		// Flat, append-only list of a sha256 of every email ever removed
 		// (self-service unsubscribe or an admin delete) - hashed, not the
 		// address itself: this list is never pruned by design (see
-		// _recordRemoval()'s own docblock for why), and a plaintext address
+		// callbackRestore()'s docblock for why), and a plaintext address
 		// would sit in it forever even past its own deletion, working
 		// against the exact erasure this exists to protect. A hash is
 		// enough - all this ever needs to answer is "was this address
-		// removed", never "which addresses were removed". Consulted by
-		// \Nino\Backup and Dev\Restore, both via the plain
-		// '/data/newsletter-removed.php' literal rather than this constant -
-		// see Backup::manifest()'s own docblock for why
+		// removed", never "which addresses were removed". \Nino\Backup
+		// archives the file under the plain '/data/newsletter-removed.php'
+		// literal rather than this constant - see Backup::manifest()'s own
+		// docblock for why - and this feature's manifest names it under
+		// 'data'
 		private const string REMOVED_PATH = '/data/newsletter-removed.php';
 
 		/**
@@ -741,7 +743,7 @@ namespace Nino\Modules {
 				} );
 
 				if( $found === true && is_string( $email ) === true )
-					self::_recordRemoval( $appData, $email );
+					self::recordRemoval( $appData, $email );
 
 				return $found;
 
@@ -816,8 +818,7 @@ namespace Nino\Modules {
 			$entries = array_values( array_filter(
 				self::_readDataFile( $stagedEntries ),
 				function( array $entry ) use ( $removed ): bool {
-					$hash = hash( 'sha256', mb_strtolower( trim( (string) ( $entry['email'] ?? '' ) ) ) );
-					return in_array( $hash, $removed, true ) === false;
+					return in_array( self::_removalHash( (string) ( $entry['email'] ?? '' ) ), $removed, true ) === false;
 				}
 			) );
 
@@ -841,22 +842,23 @@ namespace Nino\Modules {
 			return is_array( $data ) ? $data : [];
 		}
 
-		// Record an email as removed - called on self-service unsubscribe
-		// above. Newsletter\Admin::apiDelete() (Admin/Admin.php) does its
-		// own equivalent write (same hash) rather than calling this: a
-		// static method call autoloads this class just as unconditionally
-		// as a constant read does (see Backup::manifest()'s own docblock
-		// for the underlying reason), which would turn deleting a
-		// subscriber - a routine admin action - into a fatal error for a
-		// project that removed this module's file because it never used
-		// the public signup routes. This list is never pruned (that's the
-		// point - see REMOVED_PATH's own docblock), so only the hash goes
-		// in, never the address itself
-		private static function _recordRemoval( array &$appData, string $email ): void {
+		/**
+		 *	Record an address as removed - by the self-service unsubscribe
+		 *	above, and by the panel's delete (Admin::apiDelete()), which
+		 *	calls it inside the list's lock and keeps the address on the list
+		 *	when this answers false. The list is never pruned (see
+		 *	REMOVED_PATH), so only the hash goes in, never the address itself
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$email				The removed address
+		 *
+		 *	@return 	bool										False when the record could not be written
+		 */
+		public static function recordRemoval( array &$appData, string $email ): bool {
 
-			$hash = hash( 'sha256', mb_strtolower( trim( $email ) ) );
+			$hash = self::_removalHash( $email );
 
-			\Nino\Filesystem::mutate( $appData, self::REMOVED_PATH, function( array $removed ) use ( $hash ): array {
+			return \Nino\Filesystem::mutate( $appData, self::REMOVED_PATH, function( array $removed ) use ( $hash ): array {
 
 				if( in_array( $hash, $removed, true ) === false )
 					$removed[] = $hash;
@@ -865,15 +867,23 @@ namespace Nino\Modules {
 			} );
 		}
 
-		// Undoes _recordRemoval() for a fresh signup - see its call site in
+		// Undoes recordRemoval() for a fresh signup - see its call site in
 		// _requestSignup()
 		private static function _clearRemoval( array &$appData, string $email ): void {
 
-			$hash = hash( 'sha256', mb_strtolower( trim( $email ) ) );
+			$hash = self::_removalHash( $email );
 
 			\Nino\Filesystem::mutate( $appData, self::REMOVED_PATH, function( array $removed ) use ( $hash ): array {
 				return array_values( array_filter( $removed, function( $entry ) use ( $hash ): bool { return $entry !== $hash; } ) );
 			} );
+		}
+
+		// What the removal record holds for an address: the sha256 of it,
+		// trimmed and lower-cased, so the spelling it was typed in does not
+		// matter - written by recordRemoval(), cleared by _clearRemoval(),
+		// matched by callbackRestore()
+		private static function _removalHash( string $email ): string {
+			return hash( 'sha256', mb_strtolower( trim( $email ) ) );
 		}
 	}
 

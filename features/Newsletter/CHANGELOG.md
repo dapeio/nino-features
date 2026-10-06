@@ -67,6 +67,16 @@ A release is the tag `newsletter-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The panel asks the feature for its subscriber file and its removal
+  record.** `Newsletter\Admin` kept its own copies of `/data/newsletter.php`
+  and `/data/newsletter-removed.php` and wrote the removal record itself, with
+  a fourth copy of the hash rule, justified by an autoload hazard that cannot
+  occur - the panel exists only once the feature's class is loaded. It reads
+  `Newsletter::PATH` now and records a deletion through
+  `Newsletter::recordRemoval()`, which answers whether the record was written;
+  the hash is computed in one place. A delete whose record cannot be written
+  still answers 500 and leaves the subscriber on the list.
+
 - **The text keys follow Nino's grammar, and the unit no longer carries the look
   of the mails.** The words of the feature are `/feature/newsletter/...`:
   `label/submit`, `info/{required,email,success,error}` (the `existing` text,

@@ -603,6 +603,23 @@ check( 'an account without the permission is rejected from newsletter/delete', $
 [ $status ] = callAdminPost( $appData, 'newsletter/delete', [ 'email' => 'does-not-exist@example.com' ] );
 check( 'newsletter/delete 404s for an email that was never subscribed', $status === 404 );
 
+/*	The removal record is written first, inside the list's lock, and the
+	address leaves the list only once it is: with the record's sidecar lock
+	made unopenable - a directory where the lock file goes, the answer a
+	read-only or full disk gives - the delete fails and the subscriber stays,
+	so the panel's delete can simply be repeated	*/
+$removalLock = \Nino\Filesystem::path( $appData, '/data' ). '/.locks/'. sha1( '/data/newsletter-removed.php' ). '.lock';
+unset( $appData['./nino/filesystem/locks'] );
+@unlink( $removalLock );
+@mkdir( $removalLock );
+[ $status ] = callAdminPost( $appData, 'newsletter/delete', [ 'email' => 'jo@example.com' ] );
+check( 'a delete whose removal record cannot be written answers 500', $status === 500 );
+check( '...and leaves the subscriber on the list', in_array( 'jo@example.com', array_column( \Nino\Filesystem::getFileContent( $appData, '/data/newsletter.php', [] ), 'email' ), true ) === true );
+check( '...because the one writer of the record says it failed', \Nino\Modules\Newsletter::recordRemoval( $appData, 'jo@example.com' ) === false
+	&& in_array( hash( 'sha256', 'jo@example.com' ), \Nino\Filesystem::getFileContent( $appData, '/data/newsletter-removed.php', [] ), true ) === false );
+@rmdir( $removalLock );
+unset( $appData['./nino/filesystem/locks'] );
+
 [ $status ] = callAdminPost( $appData, 'newsletter/delete', [ 'email' => 'jo@example.com' ] );
 check( 'newsletter/delete succeeds for an existing subscriber', $status === 200 );
 

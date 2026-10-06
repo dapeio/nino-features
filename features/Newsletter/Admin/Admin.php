@@ -13,13 +13,13 @@ namespace Nino\Modules\Newsletter {
 	/**
 	 *	Nino							A compact filesystembased php framework
 	 *	Modules						Optional modules
-	 *	Newsletter				View + delete of the newsletter signups -
-	 *												\Nino\Modules\Newsletter (in features/Newsletter/) writes
-	 *												these, this reads/deletes its storage independently (same
-	 *												shape as Admin\Submissions reading Modules\Form's
-	 *												output: fixed path). Project-root /data, plain array file -
-	 *												not a workbench concern, see Modules\Newsletter's own
-	 *												docblock. Besides apiDelete, entries also go away via the
+	 *	Newsletter				View + delete of the newsletter signups that
+	 *												\Nino\Modules\Newsletter (in Newsletter.php beside
+	 *												this) records - it reads them through
+	 *												Newsletter::PATH, and a delete records the removal
+	 *												through Newsletter::recordRemoval(). Project-root
+	 *												/data, plain array file - not a workbench concern.
+	 *												Besides apiDelete, entries also go away via the
 	 *												self-service unsubscribe link (Modules\Newsletter).
 	 *
 	 *	@package					Dape/Nino
@@ -65,15 +65,6 @@ namespace Nino\Modules\Newsletter {
 			return $action === 'newsletter/delete' ? 'Delete Newsletter Subscriber '. ( $data['email'] ?? '' ) : '';
 		}
 
-		private const string PATH = '/data/newsletter.php';
-
-		// Same literal \Nino\Modules\Newsletter uses for its own removal
-		// record (see that class' REMOVED_PATH docblock, including why it's
-		// a sha256 hash and not the address) - duplicated rather than
-		// referenced, same reasoning as PATH just above already being its
-		// own copy rather than \Nino\Modules\Newsletter::PATH
-		private const string REMOVED_PATH = '/data/newsletter-removed.php';
-
 		/**
 		 *	How many subscribers are currently on file - the confirmed ones,
 		 *	shared by Dashboard::apiSummary. A pending signup has not agreed to
@@ -87,7 +78,7 @@ namespace Nino\Modules\Newsletter {
 
 			$subscribed = 0;
 
-			foreach( \Nino\Filesystem::getFileContent( $appData, self::PATH, [] ) as $entry )
+			foreach( \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Newsletter::PATH, [] ) as $entry )
 				if( is_array( $entry ) === true && self::_status( $entry ) === 'subscribed' )
 					$subscribed++;
 
@@ -124,7 +115,7 @@ namespace Nino\Modules\Newsletter {
 			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::MANAGE_PERM ) === false )
 				return;
 
-			$entries = \Nino\Filesystem::getFileContent( $appData, self::PATH, [] );
+			$entries = \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Newsletter::PATH, [] );
 
 			/*	Without the token. It is not a field, it is a credential: presented
 				as ?unsubscribe=<token> on the public route it takes that address
@@ -188,9 +179,8 @@ namespace Nino\Modules\Newsletter {
 
 			$outcome = 'notfound';
 			$readEntries = false;
-			$removedHash = hash( 'sha256', mb_strtolower( trim( $email ) ) );
 
-			$written = \Nino\Filesystem::mutate( $appData, self::PATH, function( array $entries ) use ( $email, $removedHash, &$appData, &$outcome, &$readEntries ): ?array {
+			$written = \Nino\Filesystem::mutate( $appData, \Nino\Modules\Newsletter::PATH, function( array $entries ) use ( $email, &$appData, &$outcome, &$readEntries ): ?array {
 
 				$readEntries = true;
 
@@ -202,13 +192,7 @@ namespace Nino\Modules\Newsletter {
 				// Persist the durable removal before dropping the address. If that
 				// write fails, leave the subscriber list untouched; if the following
 				// list write fails, a retry is safe because the hash is idempotent.
-				$removalWritten = \Nino\Filesystem::mutate( $appData, self::REMOVED_PATH, function( array $removed ) use ( $removedHash ): array {
-					if( in_array( $removedHash, $removed, true ) === false )
-						$removed[] = $removedHash;
-					return $removed;
-				} );
-
-				if( $removalWritten === false ) {
+				if( \Nino\Modules\Newsletter::recordRemoval( $appData, $email ) === false ) {
 					$outcome = 'removal-failed';
 					return null;
 				}
