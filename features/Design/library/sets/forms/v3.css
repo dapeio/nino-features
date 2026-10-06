@@ -54,11 +54,6 @@
 	border-bottom-color: var(--color-focus-default);
 }
 
-.nino-form-title {
-	font-size: calc( var(--forms-volume) *1.5 );
-	margin-bottom: var(--forms-spacing);
-}
-
 .nino-form-message {
 	border-left: 3px solid currentColor;
 	border-radius: 0;

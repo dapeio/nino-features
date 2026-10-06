@@ -37,11 +37,6 @@
 	color: var(--color-subtitle);
 }
 
-.nino-list-title {
-	font-size: var(--lists-volume);
-	font-weight: 700;
-}
-
 /*	Outline rather than fill: the colour still says which kind of badge it is,
 	and the paragraph beside it keeps the weight */
 .nino-badge {

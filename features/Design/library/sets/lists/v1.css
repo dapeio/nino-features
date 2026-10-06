@@ -34,7 +34,7 @@
  *	    --lists-volume--default: 2rem;
  *	    --lists-volume--more:    2.6rem;
  *	  }
- *	  .nino-list-title { font-size: var(--lists-volume); }
+ *	  .nino-list { font-size: var(--lists-volume); }
  *
  *	Copy this file to v2.css and start there.
  */

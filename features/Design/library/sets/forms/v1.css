@@ -34,7 +34,7 @@
  *	    --forms-volume--default: 2rem;
  *	    --forms-volume--more:    2.6rem;
  *	  }
- *	  .nino-form-title { font-size: var(--forms-volume); }
+ *	  .nino-form-input { font-size: var(--forms-volume); }
  *
  *	Copy this file to v2.css and start there.
  */

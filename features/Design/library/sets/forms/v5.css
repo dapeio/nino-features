@@ -45,11 +45,6 @@
 	outline-offset: 0;
 }
 
-.nino-form-title {
-	font-size: calc( var(--forms-volume) *1.3 );
-	margin-bottom: calc( var(--forms-spacing) *2 );
-}
-
 .nino-form-message {
 	border-radius: var(--forms-shaping);
 	padding: calc( var(--forms-spacing) *1.2 );
