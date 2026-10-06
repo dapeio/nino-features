@@ -55,18 +55,6 @@ const BUILD_MAX_ENTRIES					= 5000;
 // path segment; 'tests' only against the first
 const BUILD_EXCLUDED						= [ '.git*', '.DS_Store', 'Thumbs.db', '.idea', '.vscode', '*~', '*.swp', '*.swo', '*.swx', '.#*', '#*#', '*.orig', '*.rej', '*.bak' ];
 
-const BUILD_ENTRY_FIELDS				= [ 'key', 'name', 'description', 'category', 'maturity', 'version', 'nino', 'php', 'requires', 'directory', 'archive', 'sha256', 'size', 'released' ];
-
-// The categories a published feature may name - the same six the kernel
-// publishes as \Nino\Features::CATEGORIES, kept here rather than read from
-// there because this is the side that decides them: the kernel takes any
-// slug so that an older Nino can still read a catalogue filing a feature
-// under a category it predates, which means a typo would travel all the way
-// to a project's Features panel as a heading of its own. This is where it is
-// caught, while it is still one line to fix - and a new category is a change
-// here and a catalogue release, not a Nino release
-const BUILD_CATEGORIES					= [ 'content', 'ui', 'communication', 'marketing', 'security', 'system' ];
-
 // The modification time every archive entry carries - one fixed instant,
 // 2026-01-01T00:00:00Z, never the clock: what makes a rebuild the same bytes
 const BUILD_MTIME								= 1767225600;
@@ -473,8 +461,8 @@ set_error_handler( static function( int $level, string $message ) use ( &$warnin
 
 require $root. '/_nino/Nino.php';
 
-if( class_exists( '\Nino\Features' ) === false )
-	fail( 'The Nino checkout at '. $root. ' ('. \Nino\VERSION. ') has no \\Nino\\Features - the catalogue needs a Nino that carries the feature contract (docs/features.md)', 2 );
+if( class_exists( '\Nino\Features' ) === false || defined( '\Nino\Features::CATEGORIES' ) === false )
+	fail( 'The Nino checkout at '. $root. ' ('. \Nino\VERSION. ') has no \\Nino\\Features::CATEGORIES - the catalogue needs a Nino that carries the feature contract and its categories, 1.2 or later (docs/features.md)', 2 );
 
 $features = [];		// key => manifest, every directory below features/
 
@@ -493,13 +481,12 @@ foreach( scandir( NINO_FEATURES_DIR ) ?: [] as $entry ) {
 	if( isset( $features[ $manifest['key'] ] ) === true )
 		fail( 'features/'. $entry. ' claims the key "'. $manifest['key']. '" that features/'. basename( $features[ $manifest['key'] ]['dir'] ). ' already holds' );
 
-	// Only where the checkout being built against understands the field at
-	// all: CI runs this against Nino's main and against its latest tag, and a
-	// kernel released before categories existed hands back a manifest without
-	// one. Nothing to enforce there - and nothing lost either, since the
-	// entry it builds carries no category to get wrong
-	if( array_key_exists( 'category', $manifest ) === true && in_array( $manifest['category'], BUILD_CATEGORIES, true ) === false )
-		fail( 'features/'. $entry. ' is filed under '. ( $manifest['category'] === '' ? 'no category' : '"'. $manifest['category']. '"' ). ' - a published feature names one of: '. implode( ', ', BUILD_CATEGORIES ) );
+	// The kernel takes any slug, so that an older Nino can read a catalogue
+	// filing a feature under a category it predates; a typo would travel all
+	// the way to a project's Features panel as a heading of its own. This is
+	// where a published feature is held to the kernel's vocabulary
+	if( in_array( $manifest['category'], \Nino\Features::CATEGORIES, true ) === false )
+		fail( 'features/'. $entry. ' is filed under '. ( $manifest['category'] === '' ? 'no category' : '"'. $manifest['category']. '"' ). ' - a published feature names one of: '. implode( ', ', \Nino\Features::CATEGORIES ) );
 
 	$features[ $manifest['key'] ] = $manifest;
 }
@@ -631,7 +618,7 @@ foreach( $selected as $key => $manifest ) {
 		'key'					=> $key,
 		'name'				=> $manifest['name'],
 		'description'	=> $manifest['description'],
-		'category'		=> $manifest['category'] ?? '',
+		'category'		=> $manifest['category'],
 		'maturity'		=> $manifest['maturity'] ?? '',
 		'version'			=> $version,
 		'nino'				=> $manifest['nino'],
@@ -647,12 +634,6 @@ foreach( $selected as $key => $manifest ) {
 	// The kernel refuses an empty description where it accepts a missing one
 	if( is_string( $entry['description'] ) === true && trim( $entry['description'] ) === '' )
 		unset( $entry['description'] );
-
-	// Same rule, and the only way an entry gets here without one: a checkout
-	// older than the field itself. A published catalogue says nothing rather
-	// than says nothing meaningful
-	if( $entry['category'] === '' )
-		unset( $entry['category'] );
 
 	// Optional by design: most features carry no badge, and a kernel from
 	// before the field drops it from the manifest - the entry then says
@@ -690,28 +671,19 @@ catch( \JsonException $e ) {
 	fail( 'The catalogue cannot be encoded: '. $e->getMessage() );
 }
 
-// What the kernel on the other end will make of it - when this checkout
-// carries the kernel side already
-$checked = '';
-if( class_exists( '\Nino\Catalogue' ) === true ) {
+// What the kernel on the other end will make of it
+$parsed = \Nino\Catalogue::parse( $json );
 
-	$parsed = \Nino\Catalogue::parse( $json );
+if( is_string( $parsed ) === true )
+	fail( 'This kernel would refuse the catalogue: '. $parsed );
 
-	if( is_string( $parsed ) === true )
-		fail( 'This kernel would refuse the catalogue: '. $parsed );
-
-	if( count( $parsed['features'] ) !== count( $entries ) )
-		fail( 'This kernel reads '. count( $parsed['features'] ). ' of '. count( $entries ). ' entries - two entries name the same key and version' );
-
-	$checked = ', accepted by \\Nino\\Catalogue::parse()';
-}
-else
-	$checked = ', not checked against \\Nino\\Catalogue (this Nino has none yet)';
+if( count( $parsed['features'] ) !== count( $entries ) )
+	fail( 'This kernel reads '. count( $parsed['features'] ). ' of '. count( $entries ). ' entries - two entries name the same key and version' );
 
 if( @file_put_contents( $cataloguePath, $json ) !== strlen( $json ) )
 	fail( 'Could not write '. $cataloguePath );
 
-say( 'wrote    '. $cataloguePath. ' ('. count( $entries ). ' '. ( count( $entries ) === 1 ? 'entry' : 'entries' ). $checked. ')' );
+say( 'wrote    '. $cataloguePath. ' ('. count( $entries ). ' '. ( count( $entries ) === 1 ? 'entry' : 'entries' ). ', accepted by \\Nino\\Catalogue::parse())' );
 
 // Signed are the bytes on disk, not the string in memory
 $bytes = (string) file_get_contents( $cataloguePath );
@@ -734,9 +706,9 @@ if( openssl_sign( $bytes, $der, $privateKey, OPENSSL_ALGO_SHA256 ) !== true )
 $signature = base64_encode( $der ). "\n";
 
 // The public half of the same key has to accept it - the way the kernel
-// checks, where this checkout has the kernel side, and with openssl either way
+// checks, and with openssl
 $holds = openssl_verify( $bytes, $der, $publicKey, OPENSSL_ALGO_SHA256 ) === 1
-	&& ( class_exists( '\Nino\Catalogue' ) === false || \Nino\Catalogue::verify( $bytes, $signature, $publicKey ) === true );
+	&& \Nino\Catalogue::verify( $bytes, $signature, $publicKey ) === true;
 
 if( $holds === false )
 	fail( 'The signature does not verify with the public key derived from '. $options['key'] );

@@ -236,7 +236,7 @@ Without `--key` it writes no signature and prints that one-liner; with `--key ca
 | `size` | its size in bytes, at most 20 MB |
 | `released` | the day it was published, `YYYY-MM-DD` |
 
-`generated` is the time of the last build, ISO 8601 UTC. The entries are sorted by key, then by version descending; a kernel picks the highest version it can run. What `\Nino\Catalogue::parse()` in Nino refuses - a missing field, a url that is not https, an archive above 20 MB - refuses the whole catalogue, so `bin/build.php` checks what it wrote against `parse()` where the checkout has it. `category` and `maturity` are the fields that are dropped rather than refused: the first is a heading in a list, the second a badge beside a name, and a kernel that turned down a signed catalogue over a category it had never heard of would stop reading the catalogue the day a newer one publishes one. That is also why neither raised the format number - `parse()` takes only the keys it knows.
+`generated` is the time of the last build, ISO 8601 UTC. The entries are sorted by key, then by version descending; a kernel picks the highest version it can run. What `\Nino\Catalogue::parse()` in Nino refuses - a missing field, a url that is not https, an archive above 20 MB - refuses the whole catalogue, so `bin/build.php` runs what it is about to write through `parse()` first. `category` and `maturity` are the fields that are dropped rather than refused: the first is a heading in a list, the second a badge beside a name, and a kernel that turned down a signed catalogue over a category it had never heard of would stop reading the catalogue the day a newer one publishes one. That is also why neither raised the format number - `parse()` takes only the keys it knows.
 
 ## Outlook
 

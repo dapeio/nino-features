@@ -38,11 +38,11 @@ set_error_handler( static function( int $level, string $message ) use ( &$warnin
 
 require $root. '/_nino/Nino.php';
 
-// A checkout that predates the feature contract has no \Nino\Features: say
-// so instead of dying with a class-not-found - Nino 1.0.0-beta is such a
-// checkout, and so is any main that has not taken the contract in yet
-if( class_exists( '\Nino\Features' ) === false ) {
-	fwrite( STDERR, "The Nino checkout at ". $root. " (". \Nino\VERSION. ") has no \\Nino\\Features - the catalogue needs a Nino that carries the feature contract (docs/features.md)\n" );
+// A checkout that predates the feature contract and its categories: say so
+// instead of dying with a class-not-found or an undefined key - Nino
+// 1.1.0-beta and everything before it is such a checkout
+if( class_exists( '\Nino\Features' ) === false || defined( '\Nino\Features::CATEGORIES' ) === false ) {
+	fwrite( STDERR, "The Nino checkout at ". $root. " (". \Nino\VERSION. ") has no \\Nino\\Features::CATEGORIES - the catalogue needs a Nino that carries the feature contract and its categories, 1.2 or later (docs/features.md)\n" );
 	exit( 2 );
 }
 
@@ -54,10 +54,9 @@ foreach( \Nino\Features::all( $appData ) as $feature )
 		'key'					=> $feature['key'],
 		'name'				=> $feature['name'],
 		'description'	=> $feature['description'],
-		// ?? '': the preview runs against whatever checkout NINO_ROOT names,
-		// including one released before features had a category
-		'category'		=> $feature['category'] ?? '',
-		// Same for the maturity badge, which most features leave empty
+		'category'		=> $feature['category'],
+		// ?? '': most features leave the badge out, and a kernel from before
+		// the field (1.3) drops it from the manifest
 		'maturity'		=> $feature['maturity'] ?? '',
 		'version'			=> $feature['version'],
 		'nino'				=> $feature['nino'],

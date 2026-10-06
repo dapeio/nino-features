@@ -12,10 +12,11 @@ declare(strict_types=1);
  *									that rebuilds nothing and leaves every archive's bytes
  *									alone, --only touching one entry, the merge keeping every
  *									other entry, and the refusals: a manifest that does not
- *									validate, a symlink, a key nothing has, an archive that is
- *									not what the catalogue names. Where the checkout carries the
- *									kernel side of the catalogue (\Nino\Catalogue), the archives
- *									are installed through it too.
+ *									validate, a category outside the kernel's vocabulary, a
+ *									checkout without one, a symlink, a key nothing has, an
+ *									archive that is not what the catalogue names - and the
+ *									archives installed through the kernel's side of the
+ *									catalogue, \Nino\Catalogue.
  *
  *									Runs against the checkout beside this repository (../nino)
  *									or the one NINO_ROOT names, over its tests/harness.php.
@@ -43,8 +44,8 @@ mkdir( $work. '/features', 0700, true );
 defined( 'NINO_FEATURES_DIR' ) === true || define( 'NINO_FEATURES_DIR', $work. '/features' );
 require $root. '/tests/harness.php';
 
-if( class_exists( '\Nino\Features' ) === false ) {
-	fwrite( STDERR, 'The Nino checkout at '. $root. ' ('. \Nino\VERSION. ') has no \\Nino\\Features - bin/build.php needs a Nino that carries the feature contract'. "\n" );
+if( class_exists( '\Nino\Features' ) === false || defined( '\Nino\Features::CATEGORIES' ) === false ) {
+	fwrite( STDERR, 'The Nino checkout at '. $root. ' ('. \Nino\VERSION. ') has no \\Nino\\Features::CATEGORIES - bin/build.php needs a Nino that carries the feature contract and its categories, 1.2 or later'. "\n" );
 	exit( 2 );
 }
 
@@ -189,21 +190,7 @@ check( 'the two features of the catalogue are among them', isset( $manifests['ne
 // feature that carries none would have made this fail for following the rule
 check( 'a feature carries its test under tests/, and the archive is what has to leave it out', array_filter( $manifests, static fn( array $manifest ): bool => ( glob( $manifest['dir']. '/tests/*-smoke.php' ) ?: [] ) !== [] ) !== [] );
 
-// CI builds against Nino's main and against its latest tag, and a kernel
-// released before features had a category hands back manifests without one -
-// so the entries built from them carry none either, and there is nothing to
-// hold to a vocabulary
-$categorised = defined( '\Nino\Features::CATEGORIES' );
-
-// The vocabulary read from the tool rather than repeated here: what this pins
-// is that the two lists are one list, not which six words they hold today
-preg_match( '/const BUILD_CATEGORIES\s*=\s*\[([^\]]*)\]/', (string) file_get_contents( $build ), $categoryMatch );
-$categories = array_values( array_filter( array_map( static fn( string $part ): string => trim( $part, " \t\n\r'" ), explode( ',', $categoryMatch[1] ?? '' ) ) ) );
-
-check( 'the tool publishes a vocabulary of categories, and it is the kernel\'s wherever the kernel has one', count( $categories ) === 6
-	&& ( $categorised === false || $categories === \Nino\Features::CATEGORIES ) );
-check( 'and every feature of this repository is filed under one of them', $categorised === false
-	|| array_filter( $manifests, static fn( array $manifest ): bool => in_array( $manifest['category'], $categories, true ) === false ) === [] );
+check( 'every feature of this repository is filed under one of the kernel\'s categories', array_filter( $manifests, static fn( array $manifest ): bool => in_array( $manifest['category'], \Nino\Features::CATEGORIES, true ) === false ) === [] );
 
 echo "\n";
 
@@ -235,6 +222,16 @@ check( 'a key file that holds no private key: exit 1', $status === 1 && str_cont
 
 [ $status, , $stderr ] = runScript( $build, [ $root, $out, '--only', 'nosuch' ] );
 check( 'a key no feature has: exit 1, naming the keys there are', $status === 1 && str_contains( $stderr, '"nosuch"' ) === true && str_contains( $stderr, 'newsletter' ) === true && str_contains( $stderr, 'search' ) === true );
+
+// A checkout whose \Nino\Features has no vocabulary of categories - what
+// Nino was before 1.2 - is refused before anything is read, with a reason
+$bare = $work. '/bare';
+mkdir( $bare. '/_nino', 0755, true );
+file_put_contents( $bare. '/_nino/Nino.php', "<?php\nnamespace Nino { const VERSION = '1.1.0'; final class Features {} }\n" );
+[ $status, , $stderr ] = runScript( $build, [ $bare, $out ] );
+check( 'a checkout without the kernel\'s categories: exit 2, naming what is missing', $status === 2 && str_contains( $stderr, 'CATEGORIES' ) === true );
+[ $status, , $stderr ] = runScript( $repo. '/bin/catalogue.php', [ $bare ] );
+check( '...and the preview refuses it the same way', $status === 2 && str_contains( $stderr, 'CATEGORIES' ) === true );
 
 check( 'none of that created the output directory', is_dir( $out ) === false );
 
@@ -280,6 +277,17 @@ check( 'a name given as a plain string is that name in every locale', $status ==
 
 file_put_contents( $seo, $original );
 
+// The kernel takes any slug as a category; the build publishes only its six
+file_put_contents( $seo, str_replace( "'category'		=> 'marketing',", "'category'		=> 'seo',", $original ) );
+[ $status, , $stderr ] = runScript( $broken. '/bin/build.php', [ $root, $out ] );
+check( 'a category outside the kernel\'s vocabulary fails the run, naming the directory and the six', $status === 1 && str_contains( $stderr, 'features/Seo is filed under "seo"' ) === true
+	&& str_contains( $stderr, implode( ', ', \Nino\Features::CATEGORIES ) ) === true );
+file_put_contents( $seo, str_replace( "	'category'		=> 'marketing',\n", '', $original ) );
+[ $status, , $stderr ] = runScript( $broken. '/bin/build.php', [ $root, $out ] );
+check( '...and so does a feature filed under none', $status === 1 && str_contains( $stderr, 'features/Seo is filed under no category' ) === true );
+file_put_contents( $seo, $original );
+check( 'and nothing was built by either', ( glob( $out. '/*.tar.gz' ) ?: [] ) === [] );
+
 
 if( @symlink( $broken. '/features/Search/feature.php', $broken. '/features/Search/link.php' ) === true ) {
 	[ $status, , $stderr ] = runScript( $broken. '/bin/build.php', [ $root, $out ] );
@@ -315,7 +323,7 @@ foreach( $manifests as $key => $manifest ) {
 	check( $name. ' holds no tests/', array_filter( array_keys( $entries ), static fn( string $path ): bool => str_starts_with( $path, $directory. '/tests' ) === true ) === [] );
 	check( $name. ' holds the README and the changelog', ( $entries[ $directory. '/README.md' ] ?? '' ) === 'file' && ( $entries[ $directory. '/CHANGELOG.md' ] ?? '' ) === 'file' );
 	check( $name. ' holds nothing but files and directories', array_filter( $entries, static fn( string $kind ): bool => $kind !== 'file' && $kind !== 'dir' ) === [] );
-	check( $name. ' is listed in sorted order', array_keys( $entries ) === array_keys( $entries ) && filesize( $out. '/'. $name ) < 20 * 1024 * 1024 );
+	check( $name. ' is under the 20 MB the kernel takes', filesize( $out. '/'. $name ) < 20 * 1024 * 1024 );
 }
 
 check( 'no other archive was written', count( archiveHashes( $out ) ) === count( $manifests ) );
@@ -332,20 +340,17 @@ foreach( $manifests as $key => $manifest ) {
 	$name		= $key. '-'. $manifest['version']. '.tar.gz';
 	$entry	= entryOf( $document, $key );
 
-	$fields = $categorised === true
-		? [ 'key', 'name', 'description', 'category', 'version', 'nino', 'php', 'requires', 'directory', 'archive', 'sha256', 'size', 'released' ]
-		: [ 'key', 'name', 'description', 'version', 'nino', 'php', 'requires', 'directory', 'archive', 'sha256', 'size', 'released' ];
+	$fields = [ 'key', 'name', 'description', 'category', 'version', 'nino', 'php', 'requires', 'directory', 'archive', 'sha256', 'size', 'released' ];
 
 	// The badge is optional: an entry carries it only where the manifest this
 	// kernel read does, right after the category - a kernel from before the
 	// field drops it from the manifest, and then the entry has none either
 	if( ( $manifest['maturity'] ?? '' ) !== '' )
-		array_splice( $fields, array_search( 'description', $fields, true ) + ( $categorised === true ? 2 : 1 ), 0, 'maturity' );
+		array_splice( $fields, array_search( 'category', $fields, true ) + 1, 0, 'maturity' );
 
 	check( $key. ': the entry carries exactly the fields of format 1, in order', is_array( $entry ) === true && array_keys( $entry ) === $fields );
 	check( $key. ': name, description, version, nino, php and requires are the manifest\'s', is_array( $entry ) === true && $entry['name'] === $manifest['name'] && $entry['description'] === $manifest['description'] && $entry['version'] === $manifest['version'] && $entry['nino'] === $manifest['nino'] && $entry['php'] === [ 'ext' => $manifest['php']['ext'] ] && $entry['requires'] === $manifest['requires'] );
-	check( $key. ': the category is the manifest\'s, and one the catalogue publishes', $categorised === false
-		|| ( is_array( $entry ) === true && $entry['category'] === $manifest['category'] && in_array( $entry['category'], $categories, true ) === true ) );
+	check( $key. ': the category is the manifest\'s, and one the catalogue publishes', is_array( $entry ) === true && $entry['category'] === $manifest['category'] && in_array( $entry['category'], \Nino\Features::CATEGORIES, true ) === true );
 	check( $key. ': the maturity is the manifest\'s where there is one, and left out where there is none', is_array( $entry ) === true
 		&& ( ( $manifest['maturity'] ?? '' ) === '' ? array_key_exists( 'maturity', $entry ) === false : $entry['maturity'] === $manifest['maturity'] ) );
 	check( $key. ': directory and archive url name the archive under the base url', is_array( $entry ) === true && $entry['directory'] === basename( $manifest['dir'] ) && $entry['archive'] === $baseUrl. '/'. $name );
@@ -359,26 +364,21 @@ check( 'it is an ECDSA signature over SHA-256 of the exact bytes, DER, that the 
 check( 'another key does not accept it', openssl_verify( $json, (string) base64_decode( trim( $signature ), true ), $otherPublicPem, OPENSSL_ALGO_SHA256 ) !== 1 );
 check( 'one changed byte and it does not hold', openssl_verify( $json. ' ', (string) base64_decode( trim( $signature ), true ), $publicPem, OPENSSL_ALGO_SHA256 ) !== 1 );
 
-if( class_exists( '\Nino\Catalogue' ) === true ) {
+$parsed = \Nino\Catalogue::parse( $json );
 
-	$parsed = \Nino\Catalogue::parse( $json );
+check( 'the kernel parses the catalogue', is_array( $parsed ) === true );
+check( 'and reads every entry as written', is_array( $parsed ) === true && count( $parsed['features'] ) === count( $manifests ) && array_map( static function( array $entry ): array {
 
-	check( 'the kernel parses the catalogue', is_array( $parsed ) === true );
-	check( 'and reads every entry as written', is_array( $parsed ) === true && count( $parsed['features'] ) === count( $manifests ) && array_map( static function( array $entry ): array {
+	// A kernel that knows the badge hands back '' for an entry without one
+	// where the document leaves the key out - an empty badge is no badge
+	if( ( $entry['maturity'] ?? null ) === '' )
+		unset( $entry['maturity'] );
 
-		// A kernel that knows the badge hands back '' for an entry without one
-		// where the document leaves the key out - an empty badge is no badge
-		if( ( $entry['maturity'] ?? null ) === '' )
-			unset( $entry['maturity'] );
-
-		return $entry;
-	}, $parsed['features'] ) === $document['features'] );
-	check( 'the kernel verifies the signature with the public key', \Nino\Catalogue::verify( $json, $signature, $publicPem ) === true );
-	check( 'and refuses it with another key', \Nino\Catalogue::verify( $json, $signature, $otherPublicPem ) === false );
-	check( 'the signature verifies the way `openssl dgst -sha256 -sign | base64 -w0` is read: whitespace tolerated', \Nino\Catalogue::verify( $json, "  ". trim( $signature ). "\n\n", $publicPem ) === true );
-}
-else
-	echo "  note - this Nino has no \\Nino\\Catalogue yet: parse() and verify() are not exercised\n";
+	return $entry;
+}, $parsed['features'] ) === $document['features'] );
+check( 'the kernel verifies the signature with the public key', \Nino\Catalogue::verify( $json, $signature, $publicPem ) === true );
+check( 'and refuses it with another key', \Nino\Catalogue::verify( $json, $signature, $otherPublicPem ) === false );
+check( 'the signature verifies the way `openssl dgst -sha256 -sign | base64 -w0` is read: whitespace tolerated', \Nino\Catalogue::verify( $json, "  ". trim( $signature ). "\n\n", $publicPem ) === true );
 
 $firstHashes		= archiveHashes( $out );
 $firstDocument	= $document;
@@ -476,7 +476,7 @@ $json = (string) file_get_contents( $out. '/catalogue.json' );
 openssl_sign( $json, $der, $privatePem, OPENSSL_ALGO_SHA256 );
 file_put_contents( $out. '/catalogue.json.sig', base64_encode( $der ) );
 check( 'a signature made by hand over the written bytes verifies', openssl_verify( $json, (string) base64_decode( (string) file_get_contents( $out. '/catalogue.json.sig' ), true ), $publicPem, OPENSSL_ALGO_SHA256 ) === 1
-	&& ( class_exists( '\Nino\Catalogue' ) === false || \Nino\Catalogue::verify( $json, (string) file_get_contents( $out. '/catalogue.json.sig' ), $publicPem ) === true ) );
+	&& \Nino\Catalogue::verify( $json, (string) file_get_contents( $out. '/catalogue.json.sig' ), $publicPem ) === true );
 
 echo "\n";
 
@@ -519,8 +519,7 @@ foreach( [ [ 'other', '1.0.0' ], [ 'search', '0.9.0' ], [ 'other', '2.0.0' ] ] a
 usort( $expected, static fn( array $a, array $b ): int => strcmp( $a['key'], $b['key'] ) ?: version_compare( $b['version'], $a['version'] ) );
 check( 'sorted by key, then version descending', array_map( static fn( array $entry ): string => $entry['key']. '@'. $entry['version'], $document['features'] ) === array_map( static fn( array $e ): string => $e['key']. '@'. $e['version'], $expected ) );
 
-if( class_exists( '\Nino\Catalogue' ) === true )
-	check( 'the kernel parses the merged catalogue', is_array( \Nino\Catalogue::parse( (string) file_get_contents( $merge. '/catalogue.json' ) ) ) === true );
+check( 'the kernel parses the merged catalogue', is_array( \Nino\Catalogue::parse( (string) file_get_contents( $merge. '/catalogue.json' ) ) ) === true );
 
 $garbage = $work. '/garbage';
 mkdir( $garbage, 0755, true );
@@ -535,76 +534,64 @@ echo "\n";
 
 // --- Through the kernel --------------------------------------------------------
 
-$appData = [];
+echo "\\Nino\\Catalogue::install - the archives install through the kernel\n";
 
-if( class_exists( '\Nino\Catalogue' ) === true && class_exists( '\Nino\Fetch' ) === true ) {
+$appData = ninoSandbox( 'build' );
 
-	echo "\\Nino\\Catalogue::install - the archives install through the kernel\n";
+// The output directory, served from the stub the kernel's own test uses
+$remote = [];
+foreach( scandir( $out ) ?: [] as $file )
+	if( is_file( $out. '/'. $file ) === true )
+		$remote[ $baseUrl. '/'. $file ] = (string) file_get_contents( $out. '/'. $file );
 
-	$appData = ninoSandbox( 'build' );
+$appData['./nino/fetch/stub'] = static function( string $url, array $options ) use ( &$remote ): array {
+	if( isset( $remote[$url] ) === false )
+		return [ 'ok' => false, 'status' => 404, 'error' => 'http 404' ];
+	if( strlen( $remote[$url] ) > $options['maxBytes'] )
+		return [ 'ok' => false, 'status' => 200, 'error' => 'the answer exceeds '. $options['maxBytes']. ' bytes' ];
+	return [ 'ok' => true, 'status' => 200, 'body' => $remote[$url] ];
+};
 
-	// The output directory, served from the stub the kernel's own test uses
-	$remote = [ 'https://catalogue.test/ping' => 'pong' ];
-	foreach( scandir( $out ) ?: [] as $file )
-		if( is_file( $out. '/'. $file ) === true )
-			$remote[ $baseUrl. '/'. $file ] = (string) file_get_contents( $out. '/'. $file );
+$appData['/nino/catalogue/url'] = $baseUrl. '/catalogue.json';
+$appData['/nino/catalogue/key'] = $publicPem;
 
-	$appData['./nino/fetch/stub'] = static function( string $url, array $options ) use ( &$remote ): array {
-		if( isset( $remote[$url] ) === false )
-			return [ 'ok' => false, 'status' => 404, 'error' => 'http 404' ];
-		if( strlen( $remote[$url] ) > $options['maxBytes'] )
-			return [ 'ok' => false, 'status' => 200, 'error' => 'the answer exceeds '. $options['maxBytes']. ' bytes' ];
-		return [ 'ok' => true, 'status' => 200, 'body' => $remote[$url] ];
-	};
+$catalogue = \Nino\Catalogue::fetch( $appData );
+check( 'the kernel fetches and verifies the catalogue as published', is_array( $catalogue ) === true && count( $catalogue['features'] ) === count( $manifests ) );
 
-	if( ( \Nino\Fetch::get( $appData, 'https://catalogue.test/ping' )['body'] ?? '' ) !== 'pong' )
-		echo "  note - this Nino's \\Nino\\Fetch honours no stub, the installation is not exercised\n";
-	else {
+// Which of them this kernel can run is bin/applicable.php's to say, the
+// same answer the CI copies by: a feature written for a newer Nino than
+// this one is offered, as incompatible, and cannot be installed
+[ $applicableStatus, $applicableOut ] = runScript( $repo. '/bin/applicable.php', [ $root ] );
+$runnable = array_values( array_filter( explode( "\n", $applicableOut ) ) );
+check( 'bin/applicable.php names the directories of the features this kernel can run', $applicableStatus === 0 && $runnable !== []
+	&& array_diff( $runnable, array_map( static fn( array $manifest ): string => basename( $manifest['dir'] ), $manifests ) ) === [] );
 
-		$appData['/nino/catalogue/url'] = $baseUrl. '/catalogue.json';
-		$appData['/nino/catalogue/key'] = $publicPem;
+$offers = is_array( $catalogue ) === true ? \Nino\Catalogue::offers( $appData, $catalogue ) : [];
+$states = [];
+foreach( $offers as $key => $offer )
+	$states[(string) $key] = $offer['state'];
+$expectedStates = [];
+foreach( $manifests as $key => $manifest )
+	$expectedStates[$key] = in_array( basename( $manifest['dir'] ), $runnable, true ) === true ? 'available' : 'incompatible';
+ksort( $states );
+ksort( $expectedStates );
+check( 'every feature this kernel can run is offered to it as available, every other one as incompatible', count( $offers ) === count( $manifests ) && $states === $expectedStates );
 
-		$catalogue = \Nino\Catalogue::fetch( $appData );
-		check( 'the kernel fetches and verifies the catalogue as published', is_array( $catalogue ) === true && count( $catalogue['features'] ) === count( $manifests ) );
-
-		// Which of them this kernel can run is bin/applicable.php's to say, the
-		// same answer the CI copies by: a feature written for a newer Nino than
-		// this one is offered, as incompatible, and cannot be installed
-		[ $applicableStatus, $applicableOut ] = runScript( $repo. '/bin/applicable.php', [ $root ] );
-		$runnable = array_values( array_filter( explode( "\n", $applicableOut ) ) );
-		check( 'bin/applicable.php names the directories of the features this kernel can run', $applicableStatus === 0 && $runnable !== []
-			&& array_diff( $runnable, array_map( static fn( array $manifest ): string => basename( $manifest['dir'] ), $manifests ) ) === [] );
-
-		$offers = is_array( $catalogue ) === true ? \Nino\Catalogue::offers( $appData, $catalogue ) : [];
-		$states = [];
-		foreach( $offers as $key => $offer )
-			$states[(string) $key] = $offer['state'];
-		$expectedStates = [];
-		foreach( $manifests as $key => $manifest )
-			$expectedStates[$key] = in_array( basename( $manifest['dir'] ), $runnable, true ) === true ? 'available' : 'incompatible';
-		ksort( $states );
-		ksort( $expectedStates );
-		check( 'every feature this kernel can run is offered to it as available, every other one as incompatible', count( $offers ) === count( $manifests ) && $states === $expectedStates );
-
-		foreach( $manifests as $key => $manifest ) {
-			if( $expectedStates[$key] === 'incompatible' ) {
-				$refusal = \Nino\Catalogue::install( $appData, $key, $manifest['version'] );
-				check( $key. ' needs Nino '. $manifest['nino']. ', and this kernel refuses it: '. ( is_string( $refusal ) === true ? $refusal : '' ), is_string( $refusal ) === true
-					&& str_contains( $refusal, 'requires Nino '. $manifest['nino'] ) === true && is_dir( NINO_FEATURES_DIR. '/'. basename( $manifest['dir'] ) ) === false );
-				continue;
-			}
-
-			$directory = basename( $manifest['dir'] );
-			check( $key. ' '. $manifest['version']. ' installs from the archive', \Nino\Catalogue::install( $appData, $key, $manifest['version'] ) === true );
-			check( $key. ': the directory is in place, without tests/', is_file( NINO_FEATURES_DIR. '/'. $directory. '/feature.php' ) === true && is_file( NINO_FEATURES_DIR. '/'. $directory. '/'. $directory. '.php' ) === true && is_dir( NINO_FEATURES_DIR. '/'. $directory. '/tests' ) === false );
-			check( $key. ': the registry sees the version the catalogue promised', ( \Nino\Features::get( $appData, $key )['version'] ?? null ) === $manifest['version'] && ninoWarnings() === [] );
-		}
+foreach( $manifests as $key => $manifest ) {
+	if( $expectedStates[$key] === 'incompatible' ) {
+		$refusal = \Nino\Catalogue::install( $appData, $key, $manifest['version'] );
+		check( $key. ' needs Nino '. $manifest['nino']. ', and this kernel refuses it: '. ( is_string( $refusal ) === true ? $refusal : '' ), is_string( $refusal ) === true
+			&& str_contains( $refusal, 'requires Nino '. $manifest['nino'] ) === true && is_dir( NINO_FEATURES_DIR. '/'. basename( $manifest['dir'] ) ) === false );
+		continue;
 	}
 
-	echo "\n";
+	$directory = basename( $manifest['dir'] );
+	check( $key. ' '. $manifest['version']. ' installs from the archive', \Nino\Catalogue::install( $appData, $key, $manifest['version'] ) === true );
+	check( $key. ': the directory is in place, without tests/', is_file( NINO_FEATURES_DIR. '/'. $directory. '/feature.php' ) === true && is_file( NINO_FEATURES_DIR. '/'. $directory. '/'. $directory. '.php' ) === true && is_dir( NINO_FEATURES_DIR. '/'. $directory. '/tests' ) === false );
+	check( $key. ': the registry sees the version the catalogue promised', ( \Nino\Features::get( $appData, $key )['version'] ?? null ) === $manifest['version'] && ninoWarnings() === [] );
 }
-else
-	echo "note - this Nino has no \\Nino\\Catalogue yet: the installation through the kernel is not exercised\n\n";
+
+echo "\n";
 
 // --- an empty file where an archive should be ----------------------------
 

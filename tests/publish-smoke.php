@@ -174,8 +174,7 @@ $release3 = catalogueJson( [ entryFor( 'helper', '1.1.0', $helper110 ), entryFor
 [ $status ] = publishHandle( $config, 'POST', $token, arrived( $work, $release3, sign( $release3, $privateKey ), [] ) );
 check( 'a catalogue that lists fewer versions is published without an upload; the archives stay', $status === 200 && is_file( $served. '/helper-1.0.0.tar.gz' ) === true && file_get_contents( $served. '/catalogue.json' ) === $release3 );
 
-check( 'a Nino kernel with \\Nino\\Catalogue verifies what was published', class_exists( '\\Nino\\Catalogue' ) === false
-	|| \Nino\Catalogue::verify( (string) file_get_contents( $served. '/catalogue.json' ), (string) file_get_contents( $served. '/catalogue.json.sig' ), $publicKey ) === true );
+check( 'the kernel\'s \\Nino\\Catalogue verifies what was published', \Nino\Catalogue::verify( (string) file_get_contents( $served. '/catalogue.json' ), (string) file_get_contents( $served. '/catalogue.json.sig' ), $publicKey ) === true );
 
 echo "\n";
 
