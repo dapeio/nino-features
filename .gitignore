@@ -13,5 +13,10 @@ Thumbs.db
 /dist/
 *.pem
 
+# A local copy of the directory the catalogue is served from - catalogue.json,
+# its signature, the archives and publish.php. What it holds is published, and
+# what the server runs is server/publish.php: never versioned here
+/public/
+
 # The endpoint's configuration on a server - a token and a key, never here
 /server/publish.config.php
