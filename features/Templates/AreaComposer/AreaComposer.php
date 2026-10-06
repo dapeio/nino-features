@@ -238,7 +238,6 @@ namespace Nino\Modules\Templates {
 				],
 				'layouts' => $layouts,
 				'areas' => $areas,
-				'componentCatalog' => self::catalog(),
 				'samples' => self::samples( $manifest['samples'] ?? [] ),
 				'_layouts' => $layoutSources,
 			];
@@ -355,7 +354,8 @@ namespace Nino\Modules\Templates {
 			$area = $preset['areas'][$areaKey] ?? null;
 			if( is_array( $area ) === false || $area['source'] !== 'single' || preg_match( self::ID_PATTERN, $componentId ) !== 1 || $property !== 'src' || in_array( 'image', $area['allowed'], true ) === false )
 				return null;
-			$definition = $area['render']['image']['properties']['src'] ?? self::catalog()['image']['properties']['src'];
+			// renderDefinitions() gives every allowed type an entry, image included
+			$definition = $area['render']['image']['properties']['src'];
 			return [ 'label' => $area['label']. ' · Image', 'width' => $definition['width'], 'height' => $definition['height'] ];
 		}
 

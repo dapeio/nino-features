@@ -578,7 +578,7 @@ stepComposer._step = 'library';
 	sentence was gone without a word. The held values move with the binding	*/
 const renameLibrary = Nino.admin.templates._library.presets;
 const renameComposer = Nino.admin.templates.composer;
-Nino.admin.templates._library.presets = [ { key : 'rename-hero', version : 3, recommend : { layout : 'stacked' }, layouts : { stacked : { label : 'Stacked' } }, componentCatalog : { title : { label : 'Title', styles : [ 'auto' ], properties : { text : { kind : 'text', default : 'A clear headline' } } } }, areas : { body : { source : 'single', label : 'Body', allowed : [ 'title' ], maxComponents : 4, styles : { plain : { label : 'Plain' } }, recommend : { style : 'plain' } } } } ];
+Nino.admin.templates._library.presets = [ { key : 'rename-hero', version : 3, recommend : { layout : 'stacked' }, layouts : { stacked : { label : 'Stacked' } }, areas : { body : { source : 'single', label : 'Body', allowed : [ 'title' ], maxComponents : 4, styles : { plain : { label : 'Plain' } }, recommend : { style : 'plain' }, render : { title : { label : 'Title', styles : [ 'auto' ], properties : { text : { kind : 'text', default : 'A clear headline' } } } } } } } ];
 renameComposer._presetKey = 'rename-hero';
 renameComposer._draft = { pageId : 'page-home', id : 'hero', layout : 'auto', frame : {}, areas : { body : { style : 'auto', source : {}, components : [ { id : 'title', type : 'title', style : 'auto', settings : {}, bindings : { text : '/template/page-home/hero/title' }, bindingSources : { text : 'new' } } ] } } };
 renameComposer._textValues = { '/template/page-home/hero/title' : 'What the operator typed' };
@@ -897,6 +897,7 @@ check( 'every Auto option names the value it resolves to', /return Nino\.content
 	&& areaComposerSource.includes( 'autoLabel( Nino.adminUi.text( item.layouts[item.recommend.layout].label ) )' )
 	&& areaComposerSource.includes( 'autoLabel( Nino.adminUi.text( area.styles[area.recommend.style].label ) )' )
 	&& areaComposerSource.includes( "'Auto · '" ) === false );
+check( 'a component is defined by its area\'s render map alone - the panel reads no catalogue beside it', areaComposerSource.includes( 'componentCatalog' ) === false );
 const recommendedFrameBody = areaComposerSource.slice( areaComposerSource.indexOf( 'function recommendedFrame(' ) ).split( '\n\tfunction ' )[0];
 check( 'what Auto resolves to is read without the choice the user already made', recommendedFrameBody.includes( 'draft.frame' ) === false
 	&& recommendedFrameBody.includes( 'FRAME_FALLBACK[key]' )
@@ -1006,14 +1007,15 @@ documentStub.createElement = realCreate;
 const emptyLibrary = Nino.admin.templates._library.presets;
 const emptyTypes = Nino.admin.templates.sectionsUI._types;
 const htmlDefault = '<div class="nino-grid-100">Default</div>';
+// What library/list sends for an area: the definition of every type it allows
+const emptyRender = {
+	title : { label : 'Title', styles : [ 'auto' ], properties : { text : { label : 'Text', kind : 'text', control : 'text', fieldType : 'string', default : '', sample : sampleKey } } },
+	html : { label : 'HTML+', styles : [ 'auto' ], properties : { source : { label : 'Source', kind : 'source', control : 'source', fieldType : 'source', default : htmlDefault } } },
+};
 Nino.admin.templates._library.presets = [ { key : 'empty-test', version : 3, recommend : { layout : 'stacked' }, layouts : { stacked : { label : 'Stacked' } },
-	componentCatalog : {
-		title : { label : 'Title', styles : [ 'auto' ], properties : { text : { label : 'Text', kind : 'text', control : 'text', fieldType : 'string', default : '', sample : sampleKey } } },
-		html : { label : 'HTML+', styles : [ 'auto' ], properties : { source : { label : 'Source', kind : 'source', control : 'source', fieldType : 'source', default : htmlDefault } } },
-	},
 	areas : {
-		body : { source : 'single', label : 'Body', allowed : [ 'title', 'html' ], maxComponents : 4, styles : { plain : { label : 'Plain' } }, recommend : { style : 'plain' } },
-		rows : { source : 'elements', label : 'Rows', allowed : [ 'title', 'html' ], maxComponents : 4, styles : { plain : { label : 'Plain' } }, recommend : { style : 'plain' }, model : { picture : { type : 'image' }, headline : { type : 'string' }, blurb : { type : 'string', html : true } } },
+		body : { source : 'single', label : 'Body', allowed : [ 'title', 'html' ], maxComponents : 4, styles : { plain : { label : 'Plain' } }, recommend : { style : 'plain' }, render : emptyRender },
+		rows : { source : 'elements', label : 'Rows', allowed : [ 'title', 'html' ], maxComponents : 4, styles : { plain : { label : 'Plain' } }, recommend : { style : 'plain' }, render : emptyRender, model : { picture : { type : 'image' }, headline : { type : 'string' }, blurb : { type : 'string', html : true } } },
 	},
 } ];
 emptyComposer._presetKey = 'empty-test';

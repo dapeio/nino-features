@@ -37,6 +37,18 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **A preset no longer carries the whole component catalogue.** `library/list`
+  sent `componentCatalog` - every component type with its properties - inside
+  every preset, beside each area's own `render` map, which already holds the
+  definition of every type the area allows, overrides included. The panel read
+  the catalogue only for an area without `render`, which the server never
+  sends. The copy is gone from `AreaComposer::normalizePreset()`,
+  `area-composer.js` reads an area's `render` alone, and `imageDefinition()`
+  no longer falls back to the catalogue. `templates-smoke.php` holds that every
+  area defines each type it allows and that no preset carries the catalogue,
+  `templates-js-smoke.js` that the panel does not read it - 2 red against the
+  code before. Nothing changes for a project.
+
 - **The recipe's example of a locale-specific template is a pricing page.** It
   was the legal page with `html-footer-legal.tpl`, which Nino 1.4 no longer
   delivers: the link in the footer is the menu `legal` now, and the pages are the
@@ -175,21 +187,16 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
   recipe documents `samples`, and the manual says where preview text comes
   from.
 
-- **The library is its directory.** Which presets the panel offers, and in
-  what order, stood in `Library::LIBRARY_ITEM` while everything else about a
-  preset stood in its `manifest.php` - a second place to keep in step, and a
-  preset dropped into `library/` without a line there was one nobody could
-  reach. `Library::presets()` reads the directory now: every
-  `library/<key>/manifest.php` of version 3 that normalises is offered, and
-  the manifest's own `weight` says where - ascending, the way a panel's
+- **The library's order is the manifests' own.** `Library::presets()` offers
+  every `library/<key>/manifest.php` of version 3 that normalises, as it did,
+  and the manifest's own `weight` says where - ascending, the way a panel's
   `nav()` weight places it in the rail; the shipped presets carry 10 to 170
   in steps of ten, and a manifest without a weight comes after every one
-  with, in key order. `templates-smoke.php` no longer reads the constant: it
-  writes two presets into the directory for the length of its run, one
-  weighed into the middle and one without a weight, and holds that the
-  first stands where its weight says and the second last - 4 checks, 3 red
-  over the `Library.php` before this change. The recipe, the manual and the
-  README say so.
+  with, in key order. 1.0.0 listed them in key order alone.
+  `templates-smoke.php` writes two presets into the directory for the length
+  of its run, one weighed into the middle and one without a weight, and
+  holds that the first stands where its weight says and the second last. The
+  recipe, the manual and the README say so.
 
 - **The three static blocks are named for what they are.** `items-list`,
   `items-table` and `items-accordion` were the one group whose key said
@@ -260,11 +267,11 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
   presets, the three title styles, the three overlay choices, the five pricing
   Layouts and two presets' recommended scrim as literal lists, so every
   addition to the catalogue was a second edit in the suite and a red run in
-  between. They read `Library::LIBRARY_ITEM`, the component catalogue, the
+  between. They read the `library/` directory, the component catalogue, the
   frame choices and the pricing manifest now, and hold what the lists were
-  standing in for: every listed preset is offered in the list's order and
-  nothing else is, every style is a modifier named after it and `auto` is the
-  class alone, `none` paints no scrim and every other choice paints exactly
+  standing in for: every preset in the directory is offered, in its manifest's
+  order, and nothing else is, every style is a modifier named after it and
+  `auto` is the class alone, `none` paints no scrim and every other choice paints exactly
   one, and every pricing Layout composes to markup of its own. The check that
   counted `Text::entries(` calls in `Content.php` is dropped - a count of
   source lines is a check on the shape of the code, not on what it does, and
@@ -344,13 +351,6 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
   `save()` assigned `className = ''` to the save status, dropping the
   design-system class that `setDirty()`'s own comment says has to stay; it
   takes the two state classes off instead.
-
-- **A dead `?: []` behind the preset list failed the static analysis both
-  repositories run.** `LIBRARY_ITEM` is a constant and never empty, so the
-  fallback could never be taken; PHPStan reports that as an error, and the CI
-  of this repository and of the kernel - which analyses every feature it
-  fetches - has been red since the constant arrived. The line reads the
-  constant as what it is now. Nothing about the panel changed.
 
 - **One apostrophe after one `<` in prose made a page open with nothing to
   edit.** The scanner looked for the end of a tag at every `<` in the file,
@@ -436,13 +436,6 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
   section carries the old key in its own `page-*.tpl` and that section is not
   recognised as a library section any more (see the note in the patch body).
 
-- **The available presets are defined with a constant and not sorted by key.**
-  The part presets in the wizard are manually sorted by casual page position.
-  `image-banner` was missing from it, which took a working preset out of the
-  panel without removing anything; it is back, and `templates-smoke.php` now
-  holds the constant and the `library/` directory to each other, so neither
-  can drift from the other unnoticed.
-
 - **The section library is built once, not once per keystroke.** A card does
   not depend on the search text, only on whether it matches it - but the
   gallery was emptied and rebuilt on every `input` event, and every rebuilt
@@ -473,9 +466,7 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
   step the dialog is on says which of the two this is, and a pair of tabs
   offering the step somebody just left is one control too many. An edit keeps
   its fine tuning, though: the frame controls the insert flow leaves out are
-  still on its design step. A preset without named areas keeps its single
-  configuration screen either way - there is nothing to split - and shows no
-  progress bar for one step.
+  still on its design step.
 
   The section's own frame belongs to the design step and is not repeated on
   the content step; the area editor is on both, showing its components on the

@@ -253,8 +253,19 @@ check( 'every preset has searchable metadata and a normalized v3 contract', arra
 	|| $preset['tags'] === []
 	|| $preset['version'] !== 3
 	|| $preset['areas'] === []
-	|| $preset['layouts'] === []
-	|| $preset['componentCatalog'] === [] ) === [] );
+	|| $preset['layouts'] === [] ) === [] );
+/*	What an area may hold is defined once, in its own render map: every type it
+	allows has its entry there, so the panel needs no copy of the whole
+	component catalogue beside each preset	*/
+$renderGaps = [];
+foreach( $presets as $renderPreset => $renderDefinition ) {
+	if( array_key_exists( 'componentCatalog', $renderDefinition ) === true )
+		$renderGaps[] = $renderPreset. ' carries a component catalogue';
+	foreach( $renderDefinition['areas'] as $renderArea => $renderAreaDefinition )
+		if( array_diff( $renderAreaDefinition['allowed'], array_keys( $renderAreaDefinition['render'] ) ) !== [] )
+			$renderGaps[] = $renderPreset. ':'. $renderArea. ' allows a type it has no render entry for';
+}
+check( 'every area defines each type it allows, and no preset carries the whole catalogue beside its areas'. ( $renderGaps === [] ? '' : ' - '. implode( ' | ', $renderGaps ) ), $renderGaps === [] );
 // The panel shows an area's name in the interface language, the server
 // composes stored strings from the English one - so every area carries
 // both, and the two have to say the same thing in English

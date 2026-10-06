@@ -207,7 +207,7 @@
 	}
 
 	function componentDefinition( item, area, component ) {
-		return area.render && area.render[component.type] || item.componentCatalog[component.type];
+		return area.render[component.type];
 	}
 
 	function suffix( component, property ) {
@@ -524,7 +524,7 @@
 		field.appendChild( node( 'span', '', Nino.content.getText('/_admin/templates/label/component-type') ) );
 		const select = node('select');
 		area.allowed.forEach( function( type ) {
-			const option = node( 'option', '', Nino.adminUi.text( item.componentCatalog[type].label ) );
+			const option = node( 'option', '', Nino.adminUi.text( area.render[type].label ) );
 			option.value = type; select.appendChild( option );
 		} );
 		const button = node( 'button', 'nino-admin-btn-secondary', Nino.content.getText('/_admin/templates/label/add-component') );
