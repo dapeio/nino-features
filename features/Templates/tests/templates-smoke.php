@@ -890,8 +890,9 @@ check( 'the Builder, the presets and the design system carry no legacy class pre
 // between .nino-grid-row and the cards, so without one the cards stop being
 // flex children and their .nino-grid-m-* widths render as stacked blocks. A
 // string assertion cannot see that, but it can see the rule is there at all -
-// unlike a pure behaviour hook (.nino-autoheight, .nino-filter-item), which
-// Nino.ui.js drives and which correctly has no rule.
+// unlike a pure behaviour hook such as .nino-autoheight, which Nino.ui.js
+// drives and which has no rule (.nino-filter-item has one only to restate
+// [hidden]).
 check( 'the filter wrapper carries the layout rule its nested cards depend on', preg_match( '/\.nino-filter\s*\{[^}]*display:\s*flex/', (string) file_get_contents( NINO. '/_nino/Nino.css' ) ) === 1 );
 check( 'a component step is a modifier of whichever class the preset gave it', str_contains( \Nino\Modules\Templates\Composer::compose( array_merge(
 	\Nino\Modules\Templates\AreaComposer::defaults( $presets['hero-fullscreen-image'], 'page-home', 'loud-hero' ),
