@@ -117,33 +117,29 @@ echo "Releasing $key $version from features/$directory"
 # What the feature requires travels with it. A feature that requires another
 # cannot be activated without it in the same features/ directory, so its own
 # test cannot run either - and a release is a poor place to find that out.
-# Resolved through the manifests, their own requirements included
-needs=$(php -r '
+# Resolved through the preview above - the manifests as the kernel read
+# them - their own requirements included
+needs=$(printf '%s' "$preview" | php -r '
 	$byKey = [];
-	foreach( glob( $argv[1]. "/*/feature.php" ) as $file ) {
-		$manifest = include $file;
-		if( is_array( $manifest ) === false )
-			continue;
-		$name = basename( dirname( $file ) );
-		$byKey[ (string) ( $manifest["key"] ?? strtolower( $name ) ) ] = [ $name, (array) ( $manifest["requires"] ?? [] ) ];
-	}
-	$want = [ $argv[2] ];
+	foreach( json_decode( stream_get_contents( STDIN ), true )["features"] ?? [] as $feature )
+		$byKey[ $feature["key"] ] = [ $feature["directory"], $feature["requires"] ];
+	$want = [ $argv[1] ];
 	$seen = [];
 	while( $want !== [] ) {
 		$key = (string) array_shift( $want );
 		if( isset( $seen[$key] ) === true )
 			continue;
 		if( isset( $byKey[$key] ) === false ) {
-			fwrite( STDERR, "features/". $argv[3]. " requires \"". $key. "\", which no feature below features/ has - the requirement has to be in this repository to be tested against". PHP_EOL );
+			fwrite( STDERR, "features/". $argv[2]. " requires \"". $key. "\", which no feature below features/ has - the requirement has to be in this repository to be tested against". PHP_EOL );
 			exit( 1 );
 		}
 		$seen[$key] = $byKey[$key][0];
 		foreach( $byKey[$key][1] as $need )
 			$want[] = (string) $need;
 	}
-	unset( $seen[ $argv[2] ] );
+	unset( $seen[ $argv[1] ] );
 	echo implode( PHP_EOL, $seen );
-' "$here/features" "$key" "$directory")
+' "$key" "$directory")
 
 # A copy the checkout already carries (bin/check.sh places one for its
 # run, a project has its own) is used as it is and left alone

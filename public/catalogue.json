@@ -1,0 +1,534 @@
+{
+    "format": 1,
+    "generated": "2026-10-06T05:52:42Z",
+    "features": [
+        {
+            "key": "compare",
+            "name": {
+                "en_US": "Before/After",
+                "de_DE": "Vorher/Nachher"
+            },
+            "description": {
+                "en_US": "Two pictures of the same thing under one divider the visitor moves - with the mouse, a finger or the arrow keys, because the divider is a real range control rather than a script pretending to be one.",
+                "de_DE": "Zwei Bilder derselben Sache unter einem Trenner, den der Besucher bewegt - mit Maus, Finger oder Pfeiltasten, denn der Trenner ist ein echtes Schieberegler-Element und kein Skript, das so tut."
+            },
+            "category": "ui",
+            "version": "1.0.0",
+            "nino": "^1.3",
+            "php": {
+                "ext": []
+            },
+            "requires": [],
+            "directory": "Compare",
+            "archive": "https://catalogue.getnino.dev/compare-1.0.0.tar.gz",
+            "sha256": "73e09c0dc0a118f450b4e6da7de76da1ecc01b3448dcaff77e17c5ea20d79620",
+            "size": 10743,
+            "released": "2026-10-02"
+        },
+        {
+            "key": "consent",
+            "name": {
+                "en_US": "Consent",
+                "de_DE": "Cookie-Einwilligung"
+            },
+            "description": {
+                "en_US": "A cookie/consent banner with categories (statistics, marketing, external media) and consent-gated scripts - no third party involved.",
+                "de_DE": "Ein Cookie-/Consent-Banner mit Kategorien (Statistik, Marketing, externe Medien) und einwilligungsabhängigen Skripten - ohne Drittanbieter."
+            },
+            "category": "security",
+            "version": "1.0.0",
+            "nino": "^1.3",
+            "php": {
+                "ext": []
+            },
+            "requires": [],
+            "directory": "Consent",
+            "archive": "https://catalogue.getnino.dev/consent-1.0.0.tar.gz",
+            "sha256": "affc09afdd331fc4578193f3ef979b3b2738732703741d38718344c0f48c186c",
+            "size": 16732,
+            "released": "2026-10-02"
+        },
+        {
+            "key": "copy",
+            "name": {
+                "en_US": "Copy to Clipboard",
+                "de_DE": "In die Zwischenablage"
+            },
+            "description": {
+                "en_US": "A copy button on anything worth copying by hand - a code block, an IBAN, a voucher code - that says it worked, and stays a piece of selectable text where it cannot.",
+                "de_DE": "Ein Kopierknopf an allem, was sonst abgetippt wird - ein Codeblock, eine IBAN, ein Gutscheincode -, der sagt, dass es geklappt hat, und dort, wo er nicht kann, ein markierbarer Text bleibt."
+            },
+            "category": "ui",
+            "version": "1.0.0",
+            "nino": "^1.3",
+            "php": {
+                "ext": []
+            },
+            "requires": [],
+            "directory": "Copy",
+            "archive": "https://catalogue.getnino.dev/copy-1.0.0.tar.gz",
+            "sha256": "de8434e90737486f693081fa4d30a436263b8d7b0857cb20b0e39fffabd3b9d6",
+            "size": 10398,
+            "released": "2026-10-02"
+        },
+        {
+            "key": "countdown",
+            "name": {
+                "en_US": "Countdown",
+                "de_DE": "Countdown"
+            },
+            "description": {
+                "en_US": "The time left until a date, counted down on the page - and, where the script never runs, the date itself, written out and machine-readable.",
+                "de_DE": "Die Zeit bis zu einem Datum, auf der Seite heruntergezählt - und dort, wo das Skript nie läuft, das Datum selbst, ausgeschrieben und maschinenlesbar."
+            },
+            "category": "ui",
+            "version": "1.0.0",
+            "nino": "^1.3",
+            "php": {
+                "ext": []
+            },
+            "requires": [],
+            "directory": "Countdown",
+            "archive": "https://catalogue.getnino.dev/countdown-1.0.0.tar.gz",
+            "sha256": "a6d47586e09b8008336941b34f68b82b664fa938d14e34c0bfb6ce11a268610b",
+            "size": 12897,
+            "released": "2026-10-02"
+        },
+        {
+            "key": "design",
+            "name": {
+                "en_US": "Design",
+                "de_DE": "Design"
+            },
+            "description": {
+                "en_US": "The look, per part of a page rather than per page: a set for headings, surfaces, articles, buttons, forms, lists and blocks, compiled into one stylesheet.",
+                "de_DE": "Das Aussehen, pro Bauteil einer Seite statt pro Seite: je ein Set für Überschriften, Flächen, Artikel, Buttons, Formulare, Listen und Bausteine, in ein Stylesheet kompiliert."
+            },
+            "category": "ui",
+            "version": "0.1.0",
+            "nino": "^1.3",
+            "php": {
+                "ext": []
+            },
+            "requires": [],
+            "directory": "Design",
+            "archive": "https://catalogue.getnino.dev/design-0.1.0.tar.gz",
+            "sha256": "575c167f581351de69c1fb4831a20fa8be19a9d5bb8337e983d745be4b9a4d63",
+            "size": 117501,
+            "released": "2026-10-02"
+        },
+        {
+            "key": "embed",
+            "name": {
+                "en_US": "External Embeds",
+                "de_DE": "Externe Einbindungen"
+            },
+            "description": {
+                "en_US": "A video or a map as a surface the visitor presses, not as an iframe that loads itself: nothing is requested from the provider until they ask for it, or until they have allowed external media.",
+                "de_DE": "Ein Video oder eine Karte als Fläche, die der Besucher drückt, nicht als iframe, das sich selbst lädt: Beim Anbieter wird nichts angefragt, bevor er es verlangt oder externe Medien erlaubt hat."
+            },
+            "category": "ui",
+            "version": "1.0.0",
+            "nino": "^1.3",
+            "php": {
+                "ext": []
+            },
+            "requires": [],
+            "directory": "Embed",
+            "archive": "https://catalogue.getnino.dev/embed-1.0.0.tar.gz",
+            "sha256": "777f26e3ef965742af3ae2e2b51e1b74be5562f18fbad473f200739b45fb0a82",
+            "size": 14981,
+            "released": "2026-10-02"
+        },
+        {
+            "key": "gallery",
+            "name": {
+                "en_US": "Gallery",
+                "de_DE": "Galerie"
+            },
+            "description": {
+                "en_US": "Any number of image galleries, each a grid of thumbnails that open full screen - two sizes made on upload, nothing kept that a visitor never sees.",
+                "de_DE": "Beliebig viele Bildergalerien, je ein Raster aus Vorschaubildern, die sich bildschirmfüllend öffnen - zwei Größen beim Hochladen, nichts gespeichert, was ein Besucher nie zu sehen bekommt."
+            },
+            "category": "content",
+            "version": "1.0.0",
+            "nino": "^1.3",
+            "php": {
+                "ext": []
+            },
+            "requires": [
+                "lightbox"
+            ],
+            "directory": "Gallery",
+            "archive": "https://catalogue.getnino.dev/gallery-1.0.0.tar.gz",
+            "sha256": "890a513db0a10c17f894c4b59e4fe54f420a39dcf1b88c4b0acc2489f9e370d5",
+            "size": 22491,
+            "released": "2026-10-02"
+        },
+        {
+            "key": "hello",
+            "name": {
+                "en_US": "Hello World",
+                "de_DE": "Hallo Welt"
+            },
+            "description": {
+                "en_US": "A complete feature that does one small thing, written to be copied: a shortcode, a route, a panel, a setting, an install unit and a test, each exactly once.",
+                "de_DE": "Ein vollständiges Feature, das eine Kleinigkeit tut und zum Kopieren geschrieben ist: Shortcode, Route, Panel, Einstellung, Install-Einheit und Test, jedes genau einmal."
+            },
+            "category": "system",
+            "version": "1.0.0",
+            "nino": "^1.3",
+            "php": {
+                "ext": []
+            },
+            "requires": [],
+            "directory": "Hello",
+            "archive": "https://catalogue.getnino.dev/hello-1.0.0.tar.gz",
+            "sha256": "f2e9b890e40e360057fbe290903b4740a3eb8b57cf061d94e6b7f93344de5471",
+            "size": 19260,
+            "released": "2026-10-02"
+        },
+        {
+            "key": "lightbox",
+            "name": {
+                "en_US": "Lightbox",
+                "de_DE": "Lightbox"
+            },
+            "description": {
+                "en_US": "Opens any link to an image full screen, with the group it belongs to as a set - arrows, swipe, captions and a focus trap, and no library.",
+                "de_DE": "Öffnet jeden Link auf ein Bild bildschirmfüllend, mit seiner Gruppe als Serie - Pfeile, Wischen, Bildunterschriften und ein Fokusrahmen, ohne Bibliothek."
+            },
+            "category": "ui",
+            "version": "1.0.0",
+            "nino": "^1.3",
+            "php": {
+                "ext": []
+            },
+            "requires": [],
+            "directory": "Lightbox",
+            "archive": "https://catalogue.getnino.dev/lightbox-1.0.0.tar.gz",
+            "sha256": "bfea6d55d4e327a57e9a6dfd4acdd344cf79935299e2c1263d25e35238ccde7d",
+            "size": 10436,
+            "released": "2026-10-02"
+        },
+        {
+            "key": "mailer",
+            "name": {
+                "en_US": "Mailer",
+                "de_DE": "Mailer"
+            },
+            "description": {
+                "en_US": "Delivers every mail Nino sends over SMTP instead of the server's mail() - reliable on hosts where mail() is missing or unreliable.",
+                "de_DE": "Versendet jede von Nino verschickte Mail über SMTP statt über das mail() des Servers - zuverlässig auch dort, wo mail() fehlt oder unzuverlässig ist."
+            },
+            "category": "system",
+            "version": "1.0.0",
+            "nino": "^1.3",
+            "php": {
+                "ext": []
+            },
+            "requires": [],
+            "directory": "Mailer",
+            "archive": "https://catalogue.getnino.dev/mailer-1.0.0.tar.gz",
+            "sha256": "54514d43af3ff1c3f297aa05a0815aab96f616cac515dce662e3f39f9c09e45b",
+            "size": 17497,
+            "released": "2026-10-02"
+        },
+        {
+            "key": "modeswitch",
+            "name": {
+                "en_US": "Light/Dark Switch",
+                "de_DE": "Hell/Dunkel-Schalter"
+            },
+            "description": {
+                "en_US": "Lets a visitor read the site light, dark, or the way their system asks for it - a three-state switch put anywhere with [mode-switch]. The dark palette is the one the project already ships.",
+                "de_DE": "Lässt Besucher die Seite hell, dunkel oder so lesen, wie ihr System es vorgibt - ein Schalter mit drei Zuständen, den [mode-switch] an eine beliebige Stelle setzt. Die dunkle Palette ist die, die das Projekt ohnehin mitbringt."
+            },
+            "category": "ui",
+            "version": "1.0.0",
+            "nino": "^1.3",
+            "php": {
+                "ext": []
+            },
+            "requires": [],
+            "directory": "Modeswitch",
+            "archive": "https://catalogue.getnino.dev/modeswitch-1.0.0.tar.gz",
+            "sha256": "6d297f2ec114bc235a7448716a257711c1edf7e74ab42b1640adc8d4f1b8cbf2",
+            "size": 13452,
+            "released": "2026-10-02"
+        },
+        {
+            "key": "newsletter",
+            "name": "Newsletter",
+            "description": {
+                "en_US": "Double opt-in signup with confirmation and unsubscribe links, and the subscriber list as a workbench panel.",
+                "de_DE": "Double-Opt-in-Anmeldung mit Bestätigungs- und Abmeldelink, und die Abonnentenliste als Panel der Workbench."
+            },
+            "category": "communication",
+            "version": "1.0.0",
+            "nino": "^1.3",
+            "php": {
+                "ext": []
+            },
+            "requires": [],
+            "directory": "Newsletter",
+            "archive": "https://catalogue.getnino.dev/newsletter-1.0.0.tar.gz",
+            "sha256": "a8a7aa5b6c45b53e1a1eb505ec488024cb3e9945f0d7f23347ef9b49c92ece35",
+            "size": 24447,
+            "released": "2026-10-02"
+        },
+        {
+            "key": "posts",
+            "name": {
+                "en_US": "Posts",
+                "de_DE": "Beiträge"
+            },
+            "description": {
+                "en_US": "A page per element and a list with paging: what turns an element type into a blog, a news section or a journal - the posts stay ordinary elements.",
+                "de_DE": "Eine Seite je Element und eine Liste mit Seitenzahlen: was aus einem Elementtyp einen Blog, eine News-Rubrik oder ein Journal macht - die Beiträge bleiben gewöhnliche Elemente."
+            },
+            "category": "content",
+            "version": "1.1.0",
+            "nino": "^1.3",
+            "php": {
+                "ext": []
+            },
+            "requires": [],
+            "directory": "Posts",
+            "archive": "https://catalogue.getnino.dev/posts-1.1.0.tar.gz",
+            "sha256": "4aa749ca4a4b2bf03cdb5263d328461326965022332939b666269fa5d365aeea",
+            "size": 21221,
+            "released": "2026-10-02"
+        },
+        {
+            "key": "progress",
+            "name": {
+                "en_US": "Reading Progress",
+                "de_DE": "Lesefortschritt"
+            },
+            "description": {
+                "en_US": "A thin bar that says how far through a long text the reader is - over the whole page, or over the one element that holds the article.",
+                "de_DE": "Ein schmaler Balken, der zeigt, wie weit der Leser in einem langen Text ist - über die ganze Seite oder über das eine Element, das den Artikel enthält."
+            },
+            "category": "ui",
+            "version": "1.0.0",
+            "nino": "^1.3",
+            "php": {
+                "ext": []
+            },
+            "requires": [],
+            "directory": "Progress",
+            "archive": "https://catalogue.getnino.dev/progress-1.0.0.tar.gz",
+            "sha256": "dc3f94d9e913b9c4c94a3303ba3e2b92722993cd8d26f291d5785fe13b8a6171",
+            "size": 5951,
+            "released": "2026-10-02"
+        },
+        {
+            "key": "protected",
+            "name": {
+                "en_US": "Protected area",
+                "de_DE": "Geschützter Bereich"
+            },
+            "description": {
+                "en_US": "Puts one or more pages behind one shared password - a members' area, a client preview, an internal page - without accounts.",
+                "de_DE": "Stellt eine oder mehrere Seiten hinter ein gemeinsames Passwort - einen Mitgliederbereich, eine Kundenvorschau, eine interne Seite - ganz ohne Benutzerkonten."
+            },
+            "category": "security",
+            "version": "1.0.0",
+            "nino": "^1.3",
+            "php": {
+                "ext": []
+            },
+            "requires": [],
+            "directory": "ProtectedArea",
+            "archive": "https://catalogue.getnino.dev/protected-1.0.0.tar.gz",
+            "sha256": "713f2e5f987a01456b4a6aae1cc8835e3486e6b9fdbde27fd6763b95dcca45fb",
+            "size": 15381,
+            "released": "2026-10-02"
+        },
+        {
+            "key": "redirects",
+            "name": {
+                "en_US": "Redirects",
+                "de_DE": "Weiterleitungen"
+            },
+            "description": {
+                "en_US": "Old addresses that still work: one rule per page or per subtree, 301 or 302, applied only where nothing else answers - and a list of the addresses nothing answered, so the rules worth writing can be read rather than guessed.",
+                "de_DE": "Alte Adressen, die weiter funktionieren: eine Regel je Seite oder je Teilbaum, 301 oder 302, angewendet nur dort, wo sonst nichts antwortet - und eine Liste der Adressen, die nichts beantwortet hat, damit die lohnenden Regeln ablesbar sind statt geraten."
+            },
+            "category": "system",
+            "version": "1.0.0",
+            "nino": "^1.3",
+            "php": {
+                "ext": []
+            },
+            "requires": [],
+            "directory": "Redirects",
+            "archive": "https://catalogue.getnino.dev/redirects-1.0.0.tar.gz",
+            "sha256": "4b82a5d021354eb13cc873524c44a65fe8147614b90ec0d3022ec14cbf9e4772",
+            "size": 24553,
+            "released": "2026-10-02"
+        },
+        {
+            "key": "search",
+            "name": {
+                "en_US": "Elements search",
+                "de_DE": "Elemente-Suche"
+            },
+            "description": {
+                "en_US": "A locale-aware fuzzy search index over configured Element fields, rebuilt on every save, with two shortcodes that draw the hits and their number on any page, under a form the project writes itself.",
+                "de_DE": "Ein sprachbewusster unscharfer Suchindex über konfigurierte Elementfelder, neu gebaut bei jedem Speichern, mit zwei Shortcodes, die Treffer und Trefferzahl auf jeder Seite zeichnen, unter einem Formular, das das Projekt selbst schreibt."
+            },
+            "category": "content",
+            "version": "1.1.0",
+            "nino": "^1.3",
+            "php": {
+                "ext": []
+            },
+            "requires": [],
+            "directory": "Search",
+            "archive": "https://catalogue.getnino.dev/search-1.1.0.tar.gz",
+            "sha256": "e5208b201fd5dd32139b82b7c507369a66c243e6fac3b5ef7983c8573f941a31",
+            "size": 39771,
+            "released": "2026-10-02"
+        },
+        {
+            "key": "seo",
+            "name": {
+                "en_US": "SEO",
+                "de_DE": "SEO"
+            },
+            "description": {
+                "en_US": "Sitemap, robots.txt and llms.txt generated from the routes, locales and texts Nino already has - nothing to maintain by hand.",
+                "de_DE": "Sitemap, robots.txt und llms.txt, erzeugt aus den Routen, Sprachen und Texten, die Nino bereits kennt - nichts, das von Hand gepflegt werden muss."
+            },
+            "category": "marketing",
+            "version": "1.1.0",
+            "nino": "^1.3",
+            "php": {
+                "ext": []
+            },
+            "requires": [],
+            "directory": "Seo",
+            "archive": "https://catalogue.getnino.dev/seo-1.1.0.tar.gz",
+            "sha256": "2684c95af59322e3232a8b267159e6fdc8f410df593a2011e00cfd23dac10264",
+            "size": 18979,
+            "released": "2026-10-02"
+        },
+        {
+            "key": "stats",
+            "name": {
+                "en_US": "Stats",
+                "de_DE": "Statistik"
+            },
+            "description": {
+                "en_US": "Page-view counts for the workbench - no cookies, no ip addresses, no fingerprints, nothing stored per visitor.",
+                "de_DE": "Seitenaufruf-Zählung für die Workbench - keine Cookies, keine IP-Adressen, keine Fingerprints, nichts wird pro Besucher gespeichert."
+            },
+            "category": "marketing",
+            "version": "1.0.0",
+            "nino": "^1.3",
+            "php": {
+                "ext": []
+            },
+            "requires": [],
+            "directory": "Stats",
+            "archive": "https://catalogue.getnino.dev/stats-1.0.0.tar.gz",
+            "sha256": "6ceb5e744bb73f28aab5d5c8ccbd0b4fbdaedf1de21fdb0fc92748d4873668e7",
+            "size": 17512,
+            "released": "2026-10-02"
+        },
+        {
+            "key": "templates",
+            "name": {
+                "en_US": "Template Builder",
+                "de_DE": "Template-Baukasten"
+            },
+            "description": {
+                "en_US": "Builds the project's page templates out of whole sections: a library of ready-made ones, a live preview, and page source that stays yours between them.",
+                "de_DE": "Baut die Seitentemplates des Projekts aus ganzen Abschnitten: eine Bibliothek fertiger Abschnitte, eine Live-Vorschau, und dazwischen bleibt der Quelltext der Seite Deiner."
+            },
+            "category": "content",
+            "version": "1.0.0",
+            "nino": "^1.3",
+            "php": {
+                "ext": []
+            },
+            "requires": [],
+            "directory": "Templates",
+            "archive": "https://catalogue.getnino.dev/templates-1.0.0.tar.gz",
+            "sha256": "bf8a741855d162928389ed7c61f7537a145d8c61c23da486489fc75c8197112a",
+            "size": 153862,
+            "released": "2026-10-02"
+        },
+        {
+            "key": "ticker",
+            "name": {
+                "en_US": "Ticker",
+                "de_DE": "Laufband"
+            },
+            "description": {
+                "en_US": "A row that runs - logos, references, a line of announcements - looping without a seam, pausing when it is pointed at, and standing still for a visitor who asked for less motion.",
+                "de_DE": "Eine Reihe, die läuft - Logos, Referenzen, eine Zeile Ankündigungen -, nahtlos in der Schleife, angehalten, wenn man darauf zeigt, und still für Besucher, die weniger Bewegung wollen."
+            },
+            "category": "ui",
+            "version": "1.0.0",
+            "nino": "^1.3",
+            "php": {
+                "ext": []
+            },
+            "requires": [],
+            "directory": "Ticker",
+            "archive": "https://catalogue.getnino.dev/ticker-1.0.0.tar.gz",
+            "sha256": "0dcb10ede9d8f179fc60756ce567ed89ee25c7a59ee8e6e4e72f782e87b022fe",
+            "size": 8512,
+            "released": "2026-10-02"
+        },
+        {
+            "key": "toc",
+            "name": {
+                "en_US": "Table of Contents",
+                "de_DE": "Inhaltsverzeichnis"
+            },
+            "description": {
+                "en_US": "A list of a long page's own headings, built from the page as it stands, that says which section is being read - and an anchor on every heading, so a passage can be linked to.",
+                "de_DE": "Eine Liste der eigenen Überschriften einer langen Seite, aus der Seite selbst gebaut, die zeigt, welcher Abschnitt gerade gelesen wird - und ein Anker an jeder Überschrift, damit sich eine Stelle verlinken lässt."
+            },
+            "category": "content",
+            "version": "1.0.0",
+            "nino": "^1.3",
+            "php": {
+                "ext": []
+            },
+            "requires": [],
+            "directory": "Toc",
+            "archive": "https://catalogue.getnino.dev/toc-1.0.0.tar.gz",
+            "sha256": "a54b0f92ba9b50674bd59f1d82b8d6249f85d19d021993872692656445c9efad",
+            "size": 11404,
+            "released": "2026-10-02"
+        },
+        {
+            "key": "typewriter",
+            "name": {
+                "en_US": "Typewriter",
+                "de_DE": "Schreibmaschine"
+            },
+            "description": {
+                "en_US": "Types the lines of a container one after the other, with a cursor at the writing head - a headline that writes itself, timed per element with data attributes.",
+                "de_DE": "Tippt die Zeilen eines Containers nacheinander, mit Cursor am Schreibkopf - eine Überschrift, die sich selbst schreibt, je Element über data-Attribute getaktet."
+            },
+            "category": "ui",
+            "version": "1.0.0",
+            "nino": "^1.3",
+            "php": {
+                "ext": []
+            },
+            "requires": [],
+            "directory": "Typewriter",
+            "archive": "https://catalogue.getnino.dev/typewriter-1.0.0.tar.gz",
+            "sha256": "f5ea551e4d8dddd24534f152a4d9fbcef768e9d067998500c9adb83d1e8fd07c",
+            "size": 11417,
+            "released": "2026-10-02"
+        }
+    ]
+}

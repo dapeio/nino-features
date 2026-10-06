@@ -11,7 +11,9 @@ declare(strict_types=1);
  *								the catalogue never lists what Nino would skip. bin/check.sh
  *								and CI use it as the manifest check;
  *								.github/workflows/release.yml reads the directory and version
- *								of a feature from it.
+ *								of a feature from it, and bin/release.sh those and what the
+ *								feature requires, the requirements of its requirements
+ *								included.
  *
  *								What getnino.dev publishes - the archives and the signed
  *								catalogue.json in format 1 - is built by bin/build.php.
