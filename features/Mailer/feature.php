@@ -14,8 +14,8 @@ return [
 		'routes' => [],
 		'panel' => [
 			'Mailer' => [
-				'en_US' => 'The test mail. Send yourself one before relying on it - from then on every mail Nino sends goes over SMTP.',
-				'de_DE' => 'Die Testmail. Schick Dir eine, bevor Du Dich darauf verlässt – ab dann geht jede Mail von Nino über SMTP.',
+				'en_US' => 'The test mail and the last errors. Send yourself one before relying on it - from then on every mail Nino sends goes over SMTP.',
+				'de_DE' => 'Die Testmail und die letzten Fehler. Schick Dir eine, bevor Du Dich darauf verlässt – ab dann geht jede Mail von Nino über SMTP.',
 			],
 		],
 		'callbacks' => [],
@@ -25,10 +25,11 @@ return [
 	'version'			=> '1.0.0',
 	'nino'				=> '^1.3',
 	'requires'		=> [],
-	// Nothing under data/: the last failure reason lives only for the
-	// current request (./mailer/last), nothing is persisted beyond the
-	// settings the Features panel already carries
-	'data'				=> [],
+	// The last five failures, newest first (no password, never): what the
+	// panel lists. The newest also lives for the current request alone, under
+	// ./mailer/last, for the test button. Beyond that nothing is persisted
+	// but the settings the Features panel already carries
+	'data'				=> [ '/data/mailer.php' ],
 	'settings'		=> [
 		'host' => [
 			'type'			=> 'string',
@@ -44,12 +45,12 @@ return [
 			'type'			=> 'int',
 			'label'			=> [ 'en_US' => 'Port', 'de_DE' => 'Port' ],
 			'hint'			=> [
-				'en_US' => '587 for STARTTLS, 465 for TLS from the start.',
-				'de_DE' => '587 für STARTTLS, 465 für TLS von Anfang an.',
+				'en_US' => '0 = from the encryption: 587 STARTTLS, 465 TLS, 25 none; any other number is used as it is.',
+				'de_DE' => '0 = aus der Verschlüsselung: 587 STARTTLS, 465 TLS, 25 keine; jede andere Zahl wird so verwendet.',
 			],
-			'min'				=> 1,
+			'min'				=> 0,
 			'max'				=> 65535,
-			'default'		=> 587,
+			'default'		=> 0,
 		],
 		'encryption' => [
 			'type'			=> 'select',

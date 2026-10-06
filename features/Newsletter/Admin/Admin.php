@@ -75,19 +75,44 @@ namespace Nino\Modules\Newsletter {
 		private const string REMOVED_PATH = '/data/newsletter-removed.php';
 
 		/**
-		 *	How many subscribers are currently on file - shared by
-		 *	Dashboard::apiSummary
+		 *	How many subscribers are currently on file - the confirmed ones,
+		 *	shared by Dashboard::apiSummary. A pending signup has not agreed to
+		 *	anything yet and is not a subscriber
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
 		 *	@return 	int
 		 */
 		public static function count( array &$appData ): int {
-			return count( \Nino\Filesystem::getFileContent( $appData, self::PATH, [] ) );
+
+			$subscribed = 0;
+
+			foreach( \Nino\Filesystem::getFileContent( $appData, self::PATH, [] ) as $entry )
+				if( is_array( $entry ) === true && self::_status( $entry ) === 'subscribed' )
+					$subscribed++;
+
+			return $subscribed;
 		}
 
 		/**
-		 *	List every recorded newsletter signup, most recent first
+		 *	What an entry is: 'pending' until its confirm link was visited,
+		 *	'subscribed' otherwise. An entry written before the double opt-in
+		 *	flow has no status and counts as subscribed - the same reading
+		 *	\Nino\Modules\Newsletter applies to it
+		 *
+		 *	@param		array 		$entry
+		 *
+		 *	@return 	string									'pending' or 'subscribed'
+		 */
+		private static function _status( array $entry ): string {
+			return ( $entry['status'] ?? '' ) === 'pending' ? 'pending' : 'subscribed';
+		}
+
+		/**
+		 *	List every recorded newsletter signup, most recent first, each with
+		 *	its status ('pending' or 'subscribed'), the count of either and the
+		 *	address of the page where a subscriber asks for an unsubscribe link
+		 *	- the one thing a BCC mail can carry in place of a personal link
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
@@ -112,16 +137,31 @@ namespace Nino\Modules\Newsletter {
 
 				The ip stays: it is the record of a consent, which is what it was
 				stored for, and it does not let anybody act	*/
+			$counts = [ 'subscribed' => 0, 'pending' => 0 ];
 			$listed = array_map(
-				static function( mixed $entry ): mixed {
-					if( is_array( $entry ) === true )
-						unset( $entry['token'] );
+				static function( mixed $entry ) use ( &$counts ): mixed {
+
+					if( is_array( $entry ) === false )
+						return $entry;
+
+					unset( $entry['token'] );
+
+					// Normalised, so the panel and the CSV read one value where an
+					// entry from before the double opt-in flow has none
+					$entry['status'] = self::_status( $entry );
+					$counts[ $entry['status'] ]++;
+
 					return $entry;
 				},
 				$entries
 			);
 
-			\Nino\Http::ok( $request, [ 'entries' => array_reverse( $listed ) ] );
+			\Nino\Http::ok( $request, [
+				'entries' 				=> array_reverse( $listed ),
+				'counts' 					=> $counts,
+				// Same https://[[/website/url]] convention as the links in the mails
+				'unsubscribeUrl' 	=> 'https://'. \Nino\Html::renderHtml( $appData, '[[/website/url]]' ). '/.newsletter/unsubscribe',
+			] );
 		}
 
 		/**

@@ -33,7 +33,44 @@ A release is the tag `mailer-<version>` of dapeio/nino-features.
   feature to an installation that could not then install it. `^1.3` names
   only a kernel that can read the manifest.
 
+### Added
+
+- **The test mail's address is filled in, and the last errors are in the
+  panel.** The address field starts with the signed-in account's own address
+  (the From address where that is none) instead of an empty box, and is never
+  written over once somebody typed in it. Under the form the panel lists the
+  last five failed sends, newest first, with their dates, as text - or says
+  there were none; a failed test mail adds itself to it at once. A failed send
+  was only ever a line in the runtime's error log, which no screen shows, and a
+  reason on the test button for the one request that had it. They are kept in
+  `/data/mailer.php`, a ring of five `{ date, reason }` that a delivery never
+  touches and the password is never in - the manifest lists it under `data`, so
+  a backup carries it. A reason can name an address the server refused, as the
+  log's line does. The status line shows the port a send really connects to.
+
 ### Changed
+
+- **The port comes from the encryption.** `port` is `0` by default and `0`
+  means "from the encryption": 587 for STARTTLS, 465 for TLS from the start, 25
+  for none; any other number is used as it is. It was 587 whatever the
+  encryption said, so choosing `tls` and forgetting the port sent TLS to 587, a
+  timeout with nothing in it that said why. A failed send now says it when the
+  port and the encryption are a pair that does not go together - 587 or 25 with
+  `tls`, 465 with `starttls` - and how to fix it, whatever the failure was
+  (STARTTLS against 465 connects fine and then waits for a greeting that never
+  comes). **`upgrade()` migrates the projects that saved the settings:** the
+  Features form posts every field, so every configured installation holds an
+  explicit 587, and "from the encryption" would never have reached it. A stored
+  port that is its encryption's own standard one (587 with STARTTLS, 465 with
+  TLS, 25 with none) is set to 0 - the same port, following the encryption from
+  then on - and any other number stays. It is idempotent, and it runs when the
+  feature is updated, which is when the version is bumped. A fresh installation
+  never calls it.
+
+- **German panel text says Du.** The test mail's body, `/_admin/mailer/mail/body`
+  in `text/de_DE.php`, said "Ihrer Nino-Installation"; it says "Deiner" now.
+  Panel texts are read live, so every project gets it with the update; English
+  is unchanged.
 
 - **The panel no longer names itself a second time.** The workbench opens
   every pane with a head that names the panel, so "SMTP mail delivery" stood

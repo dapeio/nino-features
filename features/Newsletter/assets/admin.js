@@ -32,6 +32,18 @@
 		 *	@return		void
 		 */
 		init : function() {
+			Nino.admin.newsletter._load( 'all' );
+		},
+
+		/**
+		 *	Fetch the list and draw it with a status filter chosen - 'all' for a
+		 *	fresh screen, the one that was on screen after a delete
+		 *
+		 *	@param		{string}	filter				'all', 'subscribed' or 'pending'
+		 *
+		 *	@return		void
+		 */
+		_load : function( filter ) {
 
 			if( dc.getElementById('newsletter-list') === null )
 				return;
@@ -40,7 +52,7 @@
 				if( status !== 200 || response === null )
 					return Nino.admin.newsletter._showError( status, response );
 
-				Nino.admin.newsletter._renderList( response.entries );
+				Nino.admin.newsletter._renderList( response, filter );
 			} );
 		},
 
@@ -86,17 +98,52 @@
 		},
 
 		/**
+		 *	The rows a status filter lets through - all of them for 'all' (or
+		 *	anything that is not one of the two statuses), else the entries of
+		 *	that status. Pure: the table and the CSV export both ask it, so
+		 *	what is on screen is what is exported
+		 *
+		 *	@param		{Array}		entries				[ { email, status, date, ip }, ... ]
+		 *	@param		{string}	filter				'all', 'subscribed' or 'pending'
+		 *
+		 *	@return		{Array}
+		 */
+		_rows : function( entries, filter ) {
+
+			if( filter !== 'subscribed' && filter !== 'pending' )
+				return entries;
+
+			return entries.filter( function( entry ) { return ( entry.status === 'pending' ? 'pending' : 'subscribed' ) === filter } );
+		},
+
+		/**
+		 *	The BCC line: the confirmed addresses, comma-separated - a
+		 *	standard BCC field's own separator. A pending address has not
+		 *	agreed to anything yet and is not mailed
+		 *
+		 *	@param		{Array}		entries				[ { email, status, date, ip }, ... ]
+		 *
+		 *	@return		{string}
+		 */
+		_bccLine : function( entries ) {
+			return Nino.admin.newsletter._rows( entries, 'subscribed' ).map( function( entry ) { return entry.email ?? '' } ).join(', ');
+		},
+
+		/**
 		 *	Render the subscriber count, a copyable BCC address line and
 		 *	the individual entries, most recent first (already sorted that
-		 *	way by the server)
+		 *	way by the server), filterable by status
 		 *
-		 *	@param		{Array}		entries				[ { email, date, ip }, ... ]
+		 *	@param		{Object}	response			{ entries : [ { email, status, date, ip }, ... ], counts : { subscribed, pending }, unsubscribeUrl }
+		 *	@param		{string}	[filter]			The status filter to start on, 'all' when left out
 		 *
 		 *	@return		void
 		 */
-		_renderList : function( entries ) {
+		_renderList : function( response, filter ) {
 
-			const wrap = dc.getElementById('newsletter-list');
+			const entries = response.entries;
+			const counts 	= response.counts || { subscribed : 0, pending : 0 };
+			const wrap 		= dc.getElementById('newsletter-list');
 			wrap.innerHTML = '';
 
 			if( entries.length === 0 ) {
@@ -104,12 +151,27 @@
 				return;
 			}
 
+			// The confirmed addresses are the subscribers; what is still waiting
+			// for its link to be visited is named beside them, not counted in
 			const summary = dc.createElement('p');
 			summary.id = 'newsletter-summary';
-			summary.textContent = entries.length+ ' '+ Nino.content.getText( entries.length === 1 ? '/_admin/newsletter/label/subscriber' : '/_admin/newsletter/label/subscribers' );
+			summary.textContent = counts.subscribed+ ' '+ Nino.content.getText( counts.subscribed === 1 ? '/_admin/newsletter/label/subscriber' : '/_admin/newsletter/label/subscribers' )
+				+ ( counts.pending > 0 ? ' · '+ counts.pending+ ' '+ Nino.content.getText('/_admin/newsletter/label/pending') : '' );
 			wrap.appendChild( summary );
 
-			wrap.appendChild( Nino.admin.newsletter._renderBcc( entries ) );
+			// What the filter says now - the table shows it and the export writes it
+			const state = { filter : filter === 'subscribed' || filter === 'pending' ? filter : 'all' };
+
+			wrap.appendChild( Nino.admin.newsletter._renderBcc( entries, response.unsubscribeUrl, function() { return Nino.admin.newsletter._rows( entries, state.filter ) } ) );
+
+			const statusLabels = {
+				subscribed 	: Nino.content.getText('/_admin/newsletter/status/subscribed'),
+				pending 		: Nino.content.getText('/_admin/newsletter/status/pending'),
+			};
+
+			const filterMount = dc.createElement('div');
+			filterMount.id = 'newsletter-filter';
+			wrap.appendChild( filterMount );
 
 			const table = dc.createElement('div');
 			table.id = 'newsletter-entries';
@@ -118,10 +180,12 @@
 			// Subscribers are records, not cards - the shared table gives this
 			// list search, sorting and paging that it never had. The mail column
 			// and the per-row delete are drawn through the column render hook,
-			// so both stay sortable/searchable on their plain values
-			Nino.adminUi.table( {
+			// so both stay sortable/searchable on their plain values - and so
+			// does the status, which is searched and sorted on its slug while
+			// the cell says it in words
+			const list = Nino.adminUi.table( {
 				mount 	: table,
-				rows 		: entries,
+				rows 		: Nino.admin.newsletter._rows( entries, state.filter ),
 				rowKey 	: 'email',
 				columns : [
 					{ key : 'email', label : Nino.content.getText('/_admin/newsletter/label/mail'), type : 'string',
@@ -131,6 +195,8 @@
 							link.textContent = value ?? '';
 							return link;
 						} },
+					{ key : 'status', label : Nino.content.getText('/_admin/newsletter/label/status'), type : 'string',
+					  render : function( value ) { return statusLabels[ value ] ?? value } },
 					{ key : 'date', label : Nino.content.getText('/_admin/newsletter/label/date'), type : 'datetime' },
 					{ key : 'email', label : '', type : 'string',
 					  render : function( value ) {
@@ -138,28 +204,49 @@
 							btn.type = 'button';
 							btn.className = 'nino-admin-btn-danger newsletter-entry-delete';
 							btn.textContent = Nino.content.getText('/_admin/newsletter/label/delete');
-							btn.addEventListener( 'click', function() { Nino.admin.newsletter._delete( value ) } );
+							btn.addEventListener( 'click', function() { Nino.admin.newsletter._delete( value, state.filter ) } );
 							return btn;
 						} },
 				],
 				labels 	: {
 					search 	: Nino.content.getText('/_admin/newsletter/label/search'),
-					empty 	: Nino.content.getText('/_admin/newsletter/empty'),
+					// Only reached under a status filter - with no entries at
+					// all the list says so before this table is drawn
+					empty 	: Nino.content.getText('/_admin/newsletter/emptyfilter'),
 					noMatch : Nino.content.getText('/_admin/newsletter/nomatch'),
 				},
 			} );
+
+			// A change sets the rows of the table that is there - search box and
+			// all - instead of drawing it again
+			filterMount.appendChild( Nino.adminUi.selectField( {
+				key 			: 'newsletter-filter',
+				label 		: Nino.content.getText('/_admin/newsletter/label/filter'),
+				value 		: state.filter,
+				options 	: [
+					{ value : 'all', 				label : Nino.content.getText('/_admin/newsletter/filter/all') },
+					{ value : 'subscribed', label : statusLabels.subscribed },
+					{ value : 'pending', 		label : statusLabels.pending },
+				],
+				onChange 	: function( value ) {
+					state.filter = value;
+					list.setRows( Nino.admin.newsletter._rows( entries, state.filter ) );
+				},
+			} ) );
 		},
 
 		/**
 		 *	Delete one subscriber, after a confirm prompt, then re-fetch
 		 *	the list - simplest way to keep the BCC field/summary count in
-		 *	sync, same "always re-fetch" shape the rest of this panel uses
+		 *	sync, same "always re-fetch" shape the rest of this panel uses -
+		 *	and draw it on the status filter that was chosen
 		 *
 		 *	@param		{string}	email
+		 *	@param		{string}	filter				The status filter on screen
 		 *
 		 *	@return		void
 		 */
-		_delete : function( email ) {
+		_delete : function( email, filter ) {
 
 			if( wn.confirm( email+ Nino.content.getText('/_admin/newsletter/confirm/delete') ) === false )
 				return;
@@ -168,22 +255,27 @@
 				if( status !== 200 )
 					return Nino.admin.newsletter._showError( status, response );
 
-				Nino.admin.newsletter.init();
+				Nino.admin.newsletter._load( filter );
 			} );
 		},
 
 		/**
-		 *	Build the read-only BCC textarea (every current email, comma-
+		 *	Build the read-only BCC textarea (every confirmed email, comma-
 		 *	separated - a standard BCC field's own separator) plus its
-		 *	copy-to-clipboard button - the actual send still happens
+		 *	copy-to-clipboard button and the address of the page a subscriber
+		 *	without a link asks for one at - the actual send still happens
 		 *	outside Nino (own mail client for a small list, a project's
-		 *	ESP for a larger one), this only gets the addresses there
+		 *	ESP for a larger one), this only gets the addresses there. The
+		 *	export is a separate thing: it writes the rows the filter lets
+		 *	through, pending ones included, with their status
 		 *
-		 *	@param		{Array}		entries				[ { email, date, ip }, ... ]
+		 *	@param		{Array}			entries				[ { email, status, date, ip }, ... ]
+		 *	@param		{string}		unsubscribeUrl		Where a subscriber asks for an unsubscribe link, '' for none
+		 *	@param		{Function}	exportRows				Called when the export is clicked, answers the rows to write
 		 *
 		 *	@return		{Element}
 		 */
-		_renderBcc : function( entries ) {
+		_renderBcc : function( entries, unsubscribeUrl, exportRows ) {
 
 			const wrap = dc.createElement('div');
 			wrap.id = 'newsletter-bcc';
@@ -197,9 +289,20 @@
 			const field = dc.createElement('textarea');
 			field.id = 'newsletter-bcc-field';
 			field.readOnly = true;
-			field.value = entries.map( function( entry ) { return entry.email ?? '' } ).join(', ');
+			field.value = Nino.admin.newsletter._bccLine( entries );
 			field.addEventListener( 'click', function() { this.select() } );
 			wrap.appendChild( field );
+
+			// A BCC mail has no personal unsubscribe link to carry, so this one
+			// is the way out it can: the page asks for the address and mails
+			// the personal link
+			if( typeof unsubscribeUrl === 'string' && unsubscribeUrl !== '' ) {
+				const hint = dc.createElement('p');
+				hint.id = 'newsletter-bcc-hint';
+				hint.className = 'nino-admin-hint';
+				hint.textContent = Nino.content.getText('/_admin/newsletter/hint/unsubscribe').replace( '%s', unsubscribeUrl );
+				wrap.appendChild( hint );
+			}
 
 			const actions = dc.createElement('div');
 			actions.id = 'newsletter-bcc-actions';
@@ -242,7 +345,7 @@
 			exportBtn.id = 'newsletter-export';
 			exportBtn.textContent = Nino.content.getText('/_admin/newsletter/label/export');
 			exportBtn.addEventListener( 'click', function() {
-				Nino.admin.exportCsv( Nino.content.getText('/_admin/newsletter/label/filename'), entries );
+				Nino.admin.exportCsv( Nino.content.getText('/_admin/newsletter/label/filename'), exportRows() );
 			} );
 			actions.appendChild( exportBtn );
 

@@ -14,12 +14,13 @@ namespace Nino\Modules\Mailer {
 	 *	Nino							A compact filesystembased php framework
 	 *	Mailer\Admin			"Mailer" panel: a status line naming the configured
 	 *										host/port/encryption (never the password, and "not
-	 *										configured" while host is empty) and one button that
+	 *										configured" while host is empty), one button that
 	 *										sends a test mail through \Nino\Mail::send() - the same
 	 *										path, and the same per-ip cap, every other mail on the
-	 *										site goes through. The actual settings form is the
-	 *										Features panel's own; this panel only proves the
-	 *										configured settings actually deliver.
+	 *										site goes through - and the last failures the transport
+	 *										recorded. The actual settings form is the Features
+	 *										panel's own; this panel only proves the configured
+	 *										settings actually deliver.
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -67,8 +68,11 @@ namespace Nino\Modules\Mailer {
 		}
 
 		/**
-		 *	The status line's data - host, port and encryption, never the
-		 *	username or the password
+		 *	The status line's data - host, the port a send really connects to
+		 *	(the setting's own, or the one its encryption names) and encryption,
+		 *	never the username or the password - the address the test mail is
+		 *	offered to (the signed-in account's own, else the From address, else
+		 *	none) and the last failures
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
@@ -81,11 +85,19 @@ namespace Nino\Modules\Mailer {
 				return;
 
 			$settings = \Nino\Features::settings( $appData, 'mailer' );
+			$account	= \Nino\Auth::getCurrentUser( $appData );
+			$testTo		= '';
+
+			foreach( [ is_array( $account ) === true ? (string) ( $account['mail'] ?? '' ) : '', (string) $settings['from'] ] as $candidate )
+				if( $testTo === '' && filter_var( $candidate, FILTER_VALIDATE_EMAIL ) !== false )
+					$testTo = $candidate;
 
 			\Nino\Http::ok( $request, [
 				'host'				=> $settings['host'],
-				'port'				=> $settings['port'],
+				'port'				=> \Nino\Modules\Mailer::port( $settings ),
 				'encryption'	=> $settings['encryption'],
+				'testTo'			=> $testTo,
+				'errors'			=> \Nino\Modules\Mailer::errors( $appData ),
 			] );
 		}
 

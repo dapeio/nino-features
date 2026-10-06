@@ -13,19 +13,23 @@ return [
 	'manual'			=> [
 		'shortcodes' => [],
 		'markup' => [
-			[ 'en_US' => 'The feature ships no form: place the Newsletter section from the Templates panel on the page that collects addresses.',
-			  'de_DE' => 'Das Feature bringt kein Formular mit: setze die Newsletter-Section aus dem Panel Templates auf die Seite, die Adressen sammelt.' ],
+			[ 'en_US' => 'The feature ships no signup form: place the Newsletter section from the Templates panel on the page that collects addresses.',
+			  'de_DE' => 'Das Feature bringt kein Anmeldeformular mit: setze die Newsletter-Section aus dem Panel Templates auf die Seite, die Adressen sammelt.' ],
 		],
 		'routes' => [
 			'/.newsletter' => [
 				'en_US' => 'Where the confirmation and unsubscribe links land.',
 				'de_DE' => 'Wo die Bestätigungs- und Abmeldelinks ankommen.',
 			],
+			'/.newsletter/unsubscribe' => [
+				'en_US' => 'The way out without a link: an address in, a mail with the unsubscribe link out.',
+				'de_DE' => 'Der Weg hinaus ohne Link: Adresse hinein, Mail mit dem Abmeldelink hinaus.',
+			],
 		],
 		'panel' => [
 			'Newsletter' => [
-				'en_US' => 'The addresses, a BCC line to copy, a CSV export. Sending the letter is a job for a mail client.',
-				'de_DE' => 'Die Adressen, eine BCC-Zeile zum Kopieren, ein CSV-Export. Das Versenden selbst ist Sache eines Mailprogramms.',
+				'en_US' => 'The addresses with their status, a BCC line of the confirmed ones to copy, a CSV export. Sending the letter is a job for a mail client.',
+				'de_DE' => 'Die Adressen mit ihrem Status, eine BCC-Zeile der bestätigten zum Kopieren, ein CSV-Export. Das Versenden selbst ist Sache eines Mailprogramms.',
 			],
 		],
 		'callbacks' => [
@@ -39,9 +43,17 @@ return [
 				'en_US' => 'What /.newsletter renders.',
 				'de_DE' => 'Was /.newsletter rendert.',
 			],
+			'templates/page-newsletter-unsubscribe.tpl' => [
+				'en_US' => 'What /.newsletter/unsubscribe renders: the form that asks for the address.',
+				'de_DE' => 'Was /.newsletter/unsubscribe rendert: das Formular, das nach der Adresse fragt.',
+			],
 			'templates/mail-newsletter-confirm.tpl' => [
 				'en_US' => 'The confirmation mail.',
 				'de_DE' => 'Die Bestätigungsmail.',
+			],
+			'templates/mail-newsletter-unsubscribe.tpl' => [
+				'en_US' => 'The mail that carries the unsubscribe link.',
+				'de_DE' => 'Die Mail, die den Abmeldelink trägt.',
 			],
 			'text/<locale>.php' => [
 				'en_US' => 'Its words, into the Text panel.',

@@ -12,7 +12,87 @@ A release is the tag `newsletter-<version>` of dapeio/nino-features.
   feature to an installation that could not then install it. `^1.3` names
   only a kernel that can read the manifest.
 
+### Added
+
+- **A way out without a link.** A BCC mail cannot carry a personal unsubscribe
+  link, and a subscriber may have lost the one they had; until now the only
+  way off the list was a link nobody could ask for again. `/.newsletter/
+  unsubscribe` is a page with a form (`GET`) and the post behind it (`POST`):
+  the visitor enters the address and gets a mail with the link, and visiting
+  the link unsubscribes as before - the request itself removes nothing. The
+  answer is the same for every address and for every outcome of the mail: a
+  page that says a link is on its way if the address is on the list, `200`
+  whether the address is known or not, whether the mail went out, was refused
+  or hit the cap - never a `429`, never a `500`, which would tell a known
+  address from an unknown one. Two differences remain, neither in the answer:
+  the time the request takes (a mail costs a `mail()` fork or an SMTP session,
+  no mail nothing), and the per-ip mail cap, which only a sent mail charges
+  and which the signup answers with `429`. Equalising the cap would need a
+  public kernel API for it. A filled honeypot is a `418`, an address that is
+  none a `400` with the form and its error line, a post the CSRF check refused
+  is left alone. An entry without a token (written before the double opt-in
+  flow) gets one in the same write. The panel shows the address of the
+  page beside the BCC line, to put into every BCC mail. New: the routes
+  `GET/POST://.newsletter/unsubscribe`, the templates
+  `page-newsletter-unsubscribe.tpl` and `mail-newsletter-unsubscribe.tpl`, the
+  text keys `/newsletter/unsubscribe/*`, `/newsletter/page/unsubscribe-requested/*`
+  and `/mail/newsletter/unsubscribe/*`, the config keys
+  `/nino/newsletter/unsubscribe-template` and `/nino/newsletter/
+  unsubscribe-mail-template`, and the blacklist entries
+  `/newsletter/unsubscribe/url` and `/newsletter/unsubscribe/error`. **The
+  install unit is applied add-only:** a project that activated the feature
+  earlier gets the two templates and the keys when it activates the feature
+  again (the Features panel's update); a template or key it already has stays.
+  The form carries neither `.nino-form` nor `.nino-newsletter-form`, which the
+  kernel script binds to an xhr handler that would show the contact form's
+  success text.
+
 ### Changed
+
+- **The signup is answered by what happened to the mail, and an address that
+  is subscribed already is mailed too.** The answer used to be `200` whatever
+  came of the mail - a visitor was told to check the inbox for a mail the
+  server never sent, with a host that has no `mail()`, a refusing transport or
+  the cap of five mails an hour per ip. It is `200` when the mail went out,
+  `429` when `\Nino\Mail::send()` refused it for the cap, and `500` when it
+  could not be sent or the entry could not be stored (a list that cannot be
+  locked or written used to read as "already subscribed"); the page shows its
+  generic `/newsletter/info/error` for the last two. For that to tell nothing
+  about who is on the list, every address takes the same way: an address that
+  is subscribed already is no longer answered without a mail - a `429` or a
+  `500` that only some addresses could reach would be a free test of whether an
+  address is subscribed. It gets the confirmation mail again, with the token it
+  has; its status and date stay as they are, confirming that mail changes
+  nothing, and the signup does not clear its removal record. A legacy entry
+  without a token gets one, and confirming that mail records it as `subscribed`
+  with the date of the confirmation. The flag `./nino/mail/ratelimited` is sticky, so
+  it is unset before the send. Note that the shipped mail's line "you will not
+  receive any newsletter" does not describe that case; `/mail/newsletter/
+  notice` is the project's to word.
+
+- **A pending signup is no subscriber.** The panel's count, the Dashboard tile
+  and the BCC line took every entry on the list, so an address that never
+  confirmed - and so never agreed to a newsletter - was counted and put into
+  the mails. They are the confirmed addresses now. The list answers a `status`
+  for every row (`pending`, or `subscribed` - an entry from before the double
+  opt-in flow has none and reads as subscribed), `counts` and the address of
+  the unsubscribe page; the panel shows the status in a column, names the
+  pending ones beside the count (`12 subscribers · 3 pending`), and filters
+  by it - All, Confirmed, Pending, All being the default. The CSV export
+  follows the filter, so what is on screen is what is written; it had been tied
+  to the BCC rows. The README's pointer to the signup form preset named a
+  directory that does not exist; it is `features/Templates/library/
+  form-newsletter/`.
+
+- **German install texts say Du.** Newsletter's German words said Sie and
+  Ihr; they read "Du", "Dein" and "Dich" now, with the verbs and the
+  imperatives in step. Keys: `/newsletter/info/required`, `email`, `success`
+  and `error`; `/mail/newsletter/subject`, `intro`, `notice` and `closing`;
+  `/newsletter/page/confirmed/text`, `/newsletter/page/unsubscribed/text` and
+  `/newsletter/page/invalid/text`; English is unchanged. The unit is applied
+  add-only: a project that activated the feature keeps its wording, activating
+  it again does not replace a key it has, and it changes the words in the Text
+  panel. A new activation gets the new ones.
 
 - **The panel's script still described the module this used to be.** Its
   docblock called itself `editor.js`, pointed at a

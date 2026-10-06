@@ -32,8 +32,11 @@ UTF-8. The callback:
   `DATA`, `false` on any failure;
 - never throws. A failure is recorded with `trigger_error( 'Mailer: ...',
   E_USER_WARNING )` - the reason, never the password - so it reaches the
-  runtime's error log, and under `./mailer/last` for the current request, so
-  the panel's test button can report it.
+  runtime's error log, under `./mailer/last` for the current request, so the
+  panel's test button can report it, and among the last five in
+  `/data/mailer.php` (see [Data](#data)), which the panel lists.
+- connects to `Mailer::port( $settings )`: the `port` setting, or - while that
+  is `0` - the port the encryption names (see [Settings](#settings)).
 
 ### The message it builds
 
@@ -85,7 +88,7 @@ once saved - there is no settings screen of the feature's own, only the
 | Setting | Type | Rules | Default |
 | --- | --- | --- | --- |
 | `host` | string | maxlength 253 | `''` (not configured) |
-| `port` | int | 1–65535 | `587` |
+| `port` | int | 0–65535; `0` = from the encryption: 587 for `starttls`, 465 for `tls`, 25 for `none`; any other number is used as it is | `0` |
 | `encryption` | select | `starttls` (STARTTLS, port 587), `tls` (TLS from the start, port 465), `none` (only for a local relay) | `starttls` |
 | `username` | string | maxlength 200 | `''` |
 | `password` | secret | maxlength 200 | - (never has a default, never shown again once saved) |
@@ -97,9 +100,23 @@ once saved - there is no settings screen of the feature's own, only the
 ### Provider notes
 
 - Port `587` with `starttls` is the usual choice; port `465` with `tls` (TLS
-  from the connection's first byte) is the other common one. Plain `none`
-  only makes sense against a local relay on the same host or network that
-  needs no encryption and no login.
+  from the connection's first byte) is the other common one. Leave `port` at
+  `0` and the encryption picks the right one, so the two cannot disagree; set a
+  number only for a provider that uses an unusual port. Plain `none` only makes
+  sense against a local relay on the same host or network that needs no
+  encryption and no login.
+- A port that does not go with the encryption - `587` or `25` with `tls`, `465`
+  with `starttls` - is a failure that names it: the reason carries a hint to
+  fix the pair or to set the port to `0`. The hint is keyed on the pair rather
+  than on how the send failed, because STARTTLS against `465` connects fine and
+  then waits for a greeting that never comes - a timeout with nothing in it that
+  says why.
+- A project that saved the settings before `0` existed holds an explicit `587`,
+  because the Features form posts every field. `upgrade()` sets a stored port
+  that is its encryption's own standard one to `0` - the same port, following
+  the encryption from then on - and leaves any other number alone. It runs when
+  the feature is updated (activated again at a new version); a fresh install
+  never calls it.
 - `username` is usually the mailbox's full address, the same as `from`.
 - `from` has to be an address the provider actually lets this account send
   as - most reject, or silently rewrite, a `From:` that is not one of the
@@ -109,10 +126,14 @@ once saved - there is no settings screen of the feature's own, only the
 
 `\Nino\Modules\Mailer\Admin` brings a **Mailer** panel to the workbench's
 Features group (`/_admin/mailer/manage`). One pane: a status line naming the
-configured host, port and encryption - never the password, and "not
+configured host, the port a send really connects to (the resolved one, so `0`
+shows as 587, 465 or 25) and encryption - never the password, and "not
 configured yet" while `host` is empty - an address field and a **Send test
-mail** button, posting `mailer/test { to }`. The action validates the
-address with `FILTER_VALIDATE_EMAIL`, then sends through the very same
+mail** button, posting `mailer/test { to }`. The address field starts with the
+signed-in account's own address (the From address where that is none, nothing
+where neither is an address) and is never written over once somebody typed in
+it. Under the form the panel lists the last errors, or says there are none.
+The action validates the address with `FILTER_VALIDATE_EMAIL`, then sends through the very same
 `\Nino\Mail::send()` every other mail on the site goes through - so a
 successful test mail proves the settings actually work, not just that they
 parse. A failure answers `400` with the reason the transport itself
@@ -125,15 +146,29 @@ when that is what refused it.
 | --- | --- |
 | Navigation | **Mailer**, uri `mailer`, position 35. `nav()` names the System group, but a panel a feature brings lands under Features whatever it names - `\Nino\Admin\Panels` decides that, not the panel |
 | Permission | `/_admin/mailer/manage` on every action |
-| Actions | `mailer/status` (`apiStatus()`): host/port/encryption, never username or password · `mailer/test` (`apiSendTest()`): one test mail |
+| Actions | `mailer/status` (`apiStatus()`): `host`, the resolved `port`, `encryption`, `testTo` (the address to offer, a valid one or `''`) and `errors` (the ring file's entries), never username or password · `mailer/test` (`apiSendTest()`): one test mail |
 | Activity log | `log()` writes `Send test mail to "<to>"` |
 | Assets | `assets/admin.js`, named through `\Nino\Admin\Panels::relative()` so it moves with the directory |
 | Text | `text/en_US.php`, `text/de_DE.php` - the panel's own words, and the test mail's subject/body |
 
+## Data
+
+One file under `data/`, listed under `data` in the manifest so a backup carries
+it:
+
+| File | Content |
+| --- | --- |
+| `/data/mailer.php` | the last five failed sends, newest first: `{ date, reason }` each, `date` as `Y-m-d H:i:s`. The reason is the one the log gets, cut to 300 bytes (the port hint, if there is one, always stays whole at its end), and never holds the password - but it can name an address the server refused, the way the log does. Written through `Filesystem::mutate()` on every failure, never on a delivery; a write that fails is ignored, the send is not failed twice |
+
+`Mailer::errors()` reads it, and answers an empty list for a file that is not
+that, so a hand-edited file, even one that no longer parses, cannot take the panel down. The kernel's own
+`mail()` fallback records nothing of the kind.
+
 ## What is logged
 
 Every failed send - real mail or the panel's test - calls `trigger_error(
-'Mailer: <reason>', E_USER_WARNING )`, landing in the runtime's error log.
+'Mailer: <reason>', E_USER_WARNING )`, landing in the runtime's error log, and
+is kept in `/data/mailer.php` for the panel.
 The reason names what went wrong (a connect failure, a refused command with
 the server's own reply line) but never the password.
 
@@ -144,7 +179,8 @@ the server's own reply line) but never the password.
 | "STARTTLS negotiation failed" | The server's certificate does not verify - check the host name matches the certificate, or turn `verify` off only for a development server you control |
 | "AUTH PLAIN refused" / "AUTH LOGIN refused..." (535) | Wrong username or password, or the provider requires an app-specific password rather than the account's own |
 | "MAIL FROM refused" / "RCPT TO ... refused" (550 or similar) | The `from` address is not one the provider allows this account to send as, or the recipient address itself is rejected |
-| "could not connect to host:port" | Wrong host or port, a firewall in the way, or `encryption` set to `tls` against a port that expects `starttls` (or the other way round) |
+| "could not connect to host:port" | Wrong host or port, a firewall in the way, or `encryption` set to `tls` against a port that expects `starttls` (or the other way round) - the reason says so when the pair is a known mismatch |
+| "no greeting from the server" after the full timeout | Often `starttls` against port 465, which waits for TLS from the first byte. Set `port` to `0` and let the encryption choose |
 | Send succeeds here but mail still does not arrive | Check the receiving side - spam folder, SPF/DKIM/DMARC on the `from` domain - this feature only proves the SMTP session succeeded, not that a filter downstream accepted the result |
 
 ## Tests
@@ -154,9 +190,13 @@ activation through `\Nino\Features`, the transport's registration, the
 "not configured" fall-through, a real SMTP session against a fake server run
 as a child process (no network) - the dialogue, the built message, a long
 non-ASCII subject as several folded encoded words, From resolution, several recipients on one comma-separated address, `AUTH LOGIN`
-as well as `AUTH PLAIN`, refusals (`RCPT` 550, `AUTH` 535), a dead port, and
-the workbench panel with its permission. It loads Nino's `tests/harness.php`
-from the checkout three levels up - or from the one `NINO_ROOT` names - and
+as well as `AUTH PLAIN`, refusals (`RCPT` 550, `AUTH` 535), a dead port, the
+port from the encryption with its `upgrade()` and the hint for a pair that does
+not go together, and the workbench panel with its permission, the address it
+prefills and the ring file of errors. `tests/mailer-js-smoke.js` draws the
+panel's status, address and errors over a dom stand-in and runs on its own with
+node, and from `mailer-smoke.php` where node is on the path. It loads Nino's
+`tests/harness.php` from the checkout three levels up - or from the one `NINO_ROOT` names - and
 defines `NINO_FEATURES_DIR` as this feature's parent directory:
 
 ```bash

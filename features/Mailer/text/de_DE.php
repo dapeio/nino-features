@@ -14,8 +14,10 @@ return [
 	'[[/_admin/mailer/msg/loading]]'			=> 'Wird geladen …',
 	'[[/_admin/mailer/msg/sending]]'			=> 'Wird gesendet …',
 	'[[/_admin/mailer/msg/sent]]'					=> 'Testmail gesendet.',
+	'[[/_admin/mailer/label/errors]]'				=> 'Letzte Fehler',
+	'[[/_admin/mailer/hint/errors-empty]]'			=> 'Kein fehlgeschlagener Versand aufgezeichnet.',
 	'[[/_admin/mailer/error/load]]'				=> 'Der Status konnte nicht geladen werden.',
 	'[[/_admin/mailer/error/send]]'				=> 'Die Testmail konnte nicht gesendet werden.',
 	'[[/_admin/mailer/mail/subject]]'		=> 'Nino-Testmail',
-	'[[/_admin/mailer/mail/body]]'				=> '<p>Dies ist eine Testmail Ihrer Nino-Installation, versendet über die SMTP-Einstellungen des Mailer-Features.</p><p>Ist sie angekommen, funktionieren Host, Port, Verschlüsselung und Zugangsdaten wie konfiguriert.</p>',
+	'[[/_admin/mailer/mail/body]]'				=> '<p>Dies ist eine Testmail Deiner Nino-Installation, versendet über die SMTP-Einstellungen des Mailer-Features.</p><p>Ist sie angekommen, funktionieren Host, Port, Verschlüsselung und Zugangsdaten wie konfiguriert.</p>',
 ];

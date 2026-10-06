@@ -13,6 +13,8 @@ return [
 	'[[/_admin/mailer/msg/loading]]'			=> 'Loading …',
 	'[[/_admin/mailer/msg/sending]]'			=> 'Sending …',
 	'[[/_admin/mailer/msg/sent]]'					=> 'Test mail sent.',
+	'[[/_admin/mailer/label/errors]]'				=> 'Last errors',
+	'[[/_admin/mailer/hint/errors-empty]]'			=> 'No failed sends recorded.',
 	'[[/_admin/mailer/error/load]]'				=> 'Failed to load the status.',
 	'[[/_admin/mailer/error/send]]'				=> 'Failed to send the test mail.',
 	'[[/_admin/mailer/mail/subject]]'		=> 'Nino test mail',

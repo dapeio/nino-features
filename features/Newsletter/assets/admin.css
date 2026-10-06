@@ -41,6 +41,9 @@
 	font-size: .8rem;
 	font-weight: 650;
 }
+#newsletter-filter {
+	margin: 1rem 0 .5rem;
+}
 /*	A row action, not a screen action: it has to fit a table cell */
 .newsletter-entry-delete {
 	min-height: 30px;

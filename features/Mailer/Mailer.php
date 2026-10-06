@@ -24,8 +24,11 @@ namespace Nino\Modules {
 	 *										try - an operator who switches this on before configuring
 	 *										it loses no mail. A failure is never thrown: it sets
 	 *										'sent' to false, records why under './mailer/last' (for
-	 *										the panel's test button) and logs it with
-	 *										trigger_error(), the password never among the words.
+	 *										the panel's test button), keeps the last five in
+	 *										/data/mailer.php (for the panel's list of errors) and
+	 *										logs it with trigger_error(), the password never among
+	 *										the words. The port is the setting's own, or - at 0,
+	 *										what it is by default - the one the encryption names.
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -34,6 +37,17 @@ namespace Nino\Modules {
 	class Mailer {
 
 		private const string FEATURE_KEY = 'mailer';
+
+		// The last failures, newest first - a ring of MAX_ERRORS entries, each
+		// { date, reason }. The reason is what trigger_error() gets, and never
+		// holds the password
+		private const string ERRORS_PATH = '/data/mailer.php';
+
+		private const int MAX_ERRORS = 5;
+
+		// A reason is the server's own reply line, which has no length of its
+		// own to speak of - a file that is written on every failure does
+		private const int MAX_REASON = 300;
 
 		/**
 		 *	The /_admin screen this feature brings along - collected by
@@ -59,6 +73,82 @@ namespace Nino\Modules {
 		 */
 		public static function init( array &$appData ): void {
 			\Nino\Callbacks::registerCallback( $appData, \Nino\Mail::TRANSPORT, [ self::class, 'callbackSend' ] );
+		}
+
+		/**
+		 *	The port a send connects to: the setting's own number, or - while it
+		 *	is 0, the default - the one the encryption names. 587 for STARTTLS,
+		 *	465 for TLS from the start, 25 for none; any other number is used as
+		 *	it is
+		 *
+		 *	@param		array 		$settings			The feature's settings, { port, encryption, ... }
+		 *
+		 *	@return 	int
+		 */
+		public static function port( array $settings ): int {
+
+			$port = (int) ( $settings['port'] ?? 0 );
+
+			if( $port > 0 )
+				return $port;
+
+			return match( (string) ( $settings['encryption'] ?? 'starttls' ) ) {
+				'tls'		=> 465,
+				'none'	=> 25,
+				default	=> 587,
+			};
+		}
+
+		/**
+		 *	The last failures the transport recorded, newest first - at most
+		 *	five, { date, reason } each. A file that is not that, or that does
+		 *	not parse, is an empty list: nothing here may take the panel down
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	array
+		 */
+		public static function errors( array &$appData ): array {
+
+			$errors = [];
+
+			try {
+				$stored = \Nino\Filesystem::getFileContent( $appData, self::ERRORS_PATH, [] );
+			} catch( \Throwable $e ) {
+				return [];
+			}
+
+			foreach( is_array( $stored ) === true ? $stored : [] as $entry )
+				if( is_array( $entry ) === true && is_string( $entry['date'] ?? null ) === true && is_string( $entry['reason'] ?? null ) === true )
+					$errors[] = [ 'date' => $entry['date'], 'reason' => $entry['reason'] ];
+
+			return array_slice( $errors, 0, self::MAX_ERRORS );
+		}
+
+		/**
+		 *	Migrate a stored port that only says what the encryption already
+		 *	says. The Features form posts every field, so a project that ever
+		 *	saved this feature's settings holds an explicit 587 whatever it
+		 *	chose - and "from the encryption", which is what 0 means, would
+		 *	never reach it. A port that is the encryption's own standard one is
+		 *	set to 0, which sends to the same port and follows the encryption
+		 *	from then on; any other number stays. Idempotent, so it needs no
+		 *	version guard
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$from					The version that was recorded
+		 *
+		 *	@return 	bool
+		 */
+		public static function upgrade( array &$appData, string $from ): bool {
+
+			$settings = \Nino\Features::settings( $appData, self::FEATURE_KEY );
+			$port			= (int) ( $settings['port'] ?? 0 );
+
+			if( $port === 0 || $port !== self::port( [ 'port' => 0, 'encryption' => $settings['encryption'] ?? 'starttls' ] ) )
+				return true;
+
+			return \Nino\Features::saveSettings( $appData, self::FEATURE_KEY, [ 'port' => 0 ] ) === [];
 		}
 
 		/**
@@ -93,7 +183,7 @@ namespace Nino\Modules {
 
 			$config = [
 				'host'				=> $host,
-				'port'				=> (int) ( $settings['port'] ?? 587 ),
+				'port'				=> self::port( $settings ),
 				'encryption'	=> (string) ( $settings['encryption'] ?? 'starttls' ),
 				'username'		=> trim( (string) ( $settings['username'] ?? '' ) ),
 				'password'		=> (string) ( $settings['password'] ?? '' ),
@@ -126,23 +216,68 @@ namespace Nino\Modules {
 			$mail['sent'] = $result['sent'];
 
 			if( $result['sent'] === false )
-				self::_fail( $appData, (string) ( $result['reason'] ?? 'the mail could not be sent' ) );
+				self::_fail( $appData, (string) ( $result['reason'] ?? 'the mail could not be sent' ), self::_portHint( $config['port'], $config['encryption'] ) );
 		}
 
 		/**
 		 *	Record why the last send failed - the panel's test button reports
-		 *	this - and log it, the password never among the words
+		 *	this - keep it among the last five in /data/mailer.php for the panel
+		 *	to list, and log it, the password never among the words. A file
+		 *	that cannot be written is not a reason to fail the send twice: it is
+		 *	skipped
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$reason
+		 *	@param		string		$hint					Appended to the reason; kept whole in the panel's list, where the reason is cut short before it
 		 *
 		 *	@return 	void
 		 */
-		private static function _fail( array &$appData, string $reason ): void {
+		private static function _fail( array &$appData, string $reason, string $hint = '' ): void {
+
+			$listed = mb_strcut( $reason, 0, max( 0, self::MAX_REASON - strlen( $hint ) ), 'UTF-8' ). $hint;
+			$reason .= $hint;
 
 			$appData['./mailer/last'] = $reason;
 
 			trigger_error( 'Mailer: '. $reason, E_USER_WARNING );
+
+			$entry = [ 'date' => date( 'Y-m-d H:i:s' ), 'reason' => $listed ];
+
+			try {
+				\Nino\Filesystem::mutate( $appData, self::ERRORS_PATH, static function( mixed $state ) use ( $entry ): array {
+					$errors = is_array( $state ) === true ? $state : [];
+					array_unshift( $errors, $entry );
+					return array_slice( $errors, 0, self::MAX_ERRORS );
+				} );
+			} catch( \Throwable $e ) {
+				// The visitor's request must not fail over the ring file - the
+				// reason is logged above, the lost record is noted here
+				trigger_error( 'Mailer: the error could not be recorded: '. $e->getMessage(), E_USER_WARNING );
+			}
+		}
+
+		/**
+		 *	What to add to a failed send's reason when the port and the
+		 *	encryption are a pair that does not go together: 587 and 25 do not
+		 *	speak TLS from the first byte, 465 does not speak STARTTLS. Keyed on
+		 *	the pair rather than on how the send failed - STARTTLS against 465
+		 *	connects fine and then waits for a greeting that never comes, so the
+		 *	failure is a timeout with nothing in it that says why
+		 *
+		 *	@param		int				$port					The port the send used
+		 *	@param		string		$encryption		'starttls', 'tls' or 'none'
+		 *
+		 *	@return 	string									'' for a pair that is fine, else a sentence to append
+		 */
+		private static function _portHint( int $port, string $encryption ): string {
+
+			if( $encryption === 'tls' && ( $port === 587 || $port === 25 ) )
+				return ' (hint: port '. $port. ' speaks STARTTLS or no encryption, not TLS from the start - set the encryption to STARTTLS, or set the port to 0 to take 465 from it)';
+
+			if( $encryption === 'starttls' && $port === 465 )
+				return ' (hint: port 465 speaks TLS from the start, not STARTTLS - set the encryption to TLS from the start, or set the port to 0 to take 587 from it)';
+
+			return '';
 		}
 
 		/**

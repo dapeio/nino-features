@@ -1,10 +1,12 @@
 /**
  *	Nino										A compact filesystembased php framework
  *	Modules\Mailer					The module's /_admin panel, "Mailer": a status line
- *													(host/port/encryption, never the password) and an
- *													address field with a "Send test mail" button, going
+ *													(host/port/encryption, never the password), an
+ *													address field - the signed-in account's own address
+ *													to begin with - with a "Send test mail" button, going
  *													through the same \Nino\Mail::send() and the same
- *													per-ip cap every other mail on the site does. See
+ *													per-ip cap every other mail on the site does, and the
+ *													last failures the transport recorded. See
  *													Modules\Mailer\Admin beside this file.
  *
  *	@package								Dape/Nino
@@ -75,14 +77,19 @@
 			form.appendChild( actions );
 			form.appendChild( msg );
 
+			// Under the form, where a failed test mail is looked up afterwards
+			const errors = dc.createElement('div');
+			errors.id = 'mailer-errors';
+
 			form.addEventListener( 'submit', function( event ) {
 				event.preventDefault();
-				Nino.admin.mailer._sendTest( input, send, msg );
+				Nino.admin.mailer._sendTest( input, send, msg, status, errors );
 			} );
 
 			wrap.appendChild( form );
+			wrap.appendChild( errors );
 
-			Nino.admin.mailer._loadStatus( status );
+			Nino.admin.mailer._loadStatus( status, input, errors );
 		},
 
 		/**
@@ -109,13 +116,16 @@
 		},
 
 		/**
-		 *	Load host/port/encryption and render the status line
+		 *	Load host/port/encryption, render the status line, offer the
+		 *	address the test mail goes to and list the last errors
 		 *
 		 *	@param		{Element}	status
+		 *	@param		{Element}	input				The test mail's address field - filled only while it is empty
+		 *	@param		{Element}	errors			Where the last failures are listed
 		 *
 		 *	@return		void
 		 */
-		_loadStatus : function( status ) {
+		_loadStatus : function( status, input, errors ) {
 
 			Nino.admin.mailer._apiCall( 'status', {}, function( httpStatus, response ) {
 
@@ -130,7 +140,48 @@
 						.replace( '%port', String( response.port ) )
 						.replace( '%encryption', response.encryption )
 					: Nino.content.getText('/_admin/mailer/label/unconfigured');
+
+				// Never over what somebody has typed already
+				if( input.value === '' && response.testTo )
+					input.value = response.testTo;
+
+				Nino.admin.mailer._renderErrors( errors, response.errors || [] );
 			} );
+		},
+
+		/**
+		 *	List the last failures - date and reason, newest first, as text -
+		 *	or say there are none
+		 *
+		 *	@param		{Element}	errors
+		 *	@param		{Array}		list				[ { date, reason }, ... ]
+		 *
+		 *	@return		void
+		 */
+		_renderErrors : function( errors, list ) {
+
+			errors.innerHTML = '';
+
+			const label = dc.createElement('p');
+			label.className = 'nino-admin-eyebrow';
+			label.textContent = Nino.content.getText('/_admin/mailer/label/errors');
+			errors.appendChild( label );
+
+			if( list.length === 0 ) {
+				errors.appendChild( Nino.adminUi.emptyState( Nino.content.getText('/_admin/mailer/hint/errors-empty') ) );
+				return;
+			}
+
+			const items = dc.createElement('ul');
+			items.className = 'nino-admin-list nino-admin-list-dense';
+
+			list.forEach( function( error ) {
+				const item = dc.createElement('li');
+				item.textContent = error.date+ ' - '+ error.reason;
+				items.appendChild( item );
+			} );
+
+			errors.appendChild( items );
 		},
 
 		/**
@@ -139,10 +190,12 @@
 		 *	@param		{Element}	input
 		 *	@param		{Element}	send
 		 *	@param		{Element}	msg
+		 *	@param		{Element}	statusLine	The status line, loaded again with the errors once the test is done
+		 *	@param		{Element}	errors
 		 *
 		 *	@return		void
 		 */
-		_sendTest : function( input, send, msg ) {
+		_sendTest : function( input, send, msg, statusLine, errors ) {
 
 			send.disabled = true;
 			msg.textContent = Nino.content.getText('/_admin/mailer/msg/sending');
@@ -150,6 +203,10 @@
 			Nino.admin.mailer._apiCall( 'test', { to : input.value }, function( status, response ) {
 
 				send.disabled = false;
+
+				// A failure was recorded on the server: list it, with the ones
+				// before it
+				Nino.admin.mailer._loadStatus( statusLine, input, errors );
 
 				if( status !== 200 ) {
 					msg.textContent = '('+ status+ ') '+ ( ( response && response.error ) ? response.error : Nino.content.getText('/_admin/mailer/error/send') );
