@@ -12,7 +12,49 @@ A release is the tag `protected-<version>` of dapeio/nino-features.
   feature to an installation that could not then install it. `^1.3` names
   only a kernel that can read the manifest.
 
+### Added
+
+- **A panel for the password and the pages, with its own permission.**
+  **Protected area** in the Features group (`/_admin/protected/manage`, offered
+  on the Users panel's roles tab) sets a new password - typed twice, 8 to 200
+  characters, never shown again, never in the activity log - lists the site's
+  pages to tick the protected ones off, and signs everybody out. The page list
+  is the persisted `GET` routes that are pages: no front page, no `/_`, `/.`,
+  error pages or files; the language variants of a page are one row and one
+  tick; a wildcard route is listed as its prefix. Saving replaces what the
+  list can name and keeps every other line of `paths` as the developer wrote
+  it, and the server holds every posted path to the list it builds itself.
+  Choosing nothing, which switches the protection of the listed pages off, is
+  asked about first. The settings stay the Features panel's too. The manifest
+  names the panel and the new callback in its `manual`.
+
+- **A new password, and a button, sign everybody out.** An unlock carried a
+  bare `true` in the session, so a member who left kept the area until the
+  browser's session ended. It carries a session epoch now,
+  `/data/protected-session.php` (listed under `data`, so a backup carries it),
+  and `ProtectedArea::signOutAll()` writes a new one: every session that
+  unlocked before it is locked again. Changing the password in the panel does
+  that, and so does the button. A session that holds the old `true` stays
+  valid until the first sign-out, so an update asks nobody for the password
+  again. Changing `password` in the Features panel does not rotate the epoch -
+  use the panel, or the button, for that.
+
+- **The protected pages stay out of the sitemap.** Where the SEO feature is
+  installed it asks `/seo/exclude`, and this feature answers with every
+  protected prefix and its subtree while a password is set - so `sitemap.xml`
+  and `llms.txt` no longer list a page the visitor cannot open, with its
+  title. Nothing is added to `requires`, and without a password nothing is
+  excluded.
+
 ### Changed
+
+- **The German install texts say „Du“.** `/protected/text`,
+  `/protected/error/wrong` and `/protected/error/locked` read „Bitte gib das
+  Passwort ein, um fortzufahren.“, „Bitte versuche es erneut.“ and „Bitte
+  versuche es in einer Stunde erneut.“ now. The install unit is applied
+  add-only: a project that already activated the feature keeps its wording,
+  activating it again does not replace it, and the three keys can be edited in
+  the Text panel. English is unchanged.
 
 - **The README listed a `text/` this feature does not have and named a number
   no setting does.** The directory holds `templates/` and `tests/` and no
@@ -25,6 +67,18 @@ A release is the tag `protected-<version>` of dapeio/nino-features.
   the code is unchanged.
 
 ### Fixed
+
+- **With javascript on, nobody got through the password form.** The form
+  carried `class="nino-form"`, which the kernel's script binds to the
+  contact-form request: it prevents the native submit, posts the password by
+  XHR and writes the answer into the form's first `<p>` - this one has none,
+  so the handler stopped with a TypeError. A right password did not take the
+  visitor to the page (reloading did) and a wrong one showed nothing. The
+  class is gone from `install/templates/page-protected.tpl`, and the form is a
+  plain form again. An install unit is applied add-only and never again, so
+  the fix reaches new activations only: a project that activated the feature
+  earlier removes ` class="nino-form"` from the `<form>` tag of its own
+  `templates/page-protected.tpl` by hand.
 
 - **The Text panel reported `/protected/return` as a missing key.** The
   password form's template carries it, the gate fills it at request time, and

@@ -24,6 +24,13 @@ A release is the tag `stats-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The pages table shows the page's title.** A column for the title - the
+  `/webpage<uri>/title` text of the page, in the language of the route that
+  answers it and else the native one - and one for the path in a muted
+  column beside it, instead of the path alone. Without a title the path is
+  the name, and the overflow bucket `/…` reads „Other pages“ / „Weitere
+  Seiten“. `stats/month` answers `title` with every page row.
+
 - **The README put the panel and its permission in the Content group.** A
   panel a feature brings lands under Features whatever `nav()` names -
   `\Nino\Admin\Panels` overrides the group, so that granting it stays a
@@ -34,6 +41,37 @@ A release is the tag `stats-<version>` of dapeio/nino-features.
   code is unchanged.
 
 ### Fixed
+
+- **robots.txt, sitemap.xml and a json endpoint were counted as pages.** Any
+  `GET` answered with `200` counted, so a crawler fetching `/robots.txt` every
+  day topped the pages. Only HTML pages count now: a response whose route
+  declares a `Content-Type` other than `text/html` is a file, and so is an
+  address ending in `.txt`, `.xml`, `.json`, `.rss`, `.atom` or `.webmanifest`
+  on a route that declares none. Not any extension - `/v1.2-release-notes` is
+  a page. The kernel's own `robots.txt`, `sitemap.xml` and `llms.txt` routes
+  and this catalogue's SEO feature declare their type already. A json
+  endpoint of your own declares its `Content-Type` on its route
+  (`'header' => [ 'Content-Type' => 'application/json' ]`), or it counts as a
+  page.
+
+- **The months already counted showed the file hits, and the tile with them.**
+  Nothing is deleted: the files hold what they held. The panel and the
+  Dashboard tile read through the same rule now (`Stats::isPage()`, the route
+  resolved the way the request was), so a month counted before this fix shows
+  its pages only - each day's total is the sum of the pages left, a day that
+  had nothing else is not listed, and the summary counts what is. The
+  referrers of a dropped day go with it; on a day that had files and pages
+  both they are as stored, since a referrer is kept per day and not per page.
+
+- **The summary said "1 views" and "1 days with data".** The singular has its
+  own word now: "1 view · 1 day with data", „1 Aufruf · 1 Tag mit Daten“.
+
+- **The referrers table said "No views recorded yet".** It has a text of its
+  own: no referrers recorded yet.
+
+- **The bar row had no y axis at all.** The busiest day's count is written at
+  the top of the row now, where its bar reaches. A label and not a scale: the
+  heights stay a share of that number, so one view is still a full bar.
 
 - **"Keep for 13 months" kept fourteen month files.** The retention sweep took
   its cutoff from the first day of the month `retentionMonths` back, which

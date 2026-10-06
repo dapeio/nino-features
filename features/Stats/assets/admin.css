@@ -34,12 +34,13 @@
 /*	A day per column, no chart library: each bar's own height is set inline
 	as a percentage of the month's busiest day (see admin.js's _renderBars()) */
 #stats-bars {
+	position: relative;
 	display: flex;
 	align-items: flex-end;
 	gap: 2px;
 	height: 10rem;
 	margin: 0 0 1.5rem;
-	padding: 0 0 1.4rem;
+	padding: 1rem 0 1.4rem;
 	border-bottom: 1px solid var(--editor-border);
 	overflow-x: auto;
 }
@@ -85,6 +86,19 @@
 	white-space: nowrap;
 }
 
+/*	The y axis: the busiest day's count, in the strip above the bars where the
+	tallest of them reaches. A label and not a scale - the heights are a share
+	of that one number (see _renderBars()) */
+#stats-bars .stats-axis {
+	position: absolute;
+	top: 0;
+	left: 0;
+	font-size: .62rem;
+	color: var(--editor-text-secondary);
+	white-space: nowrap;
+	pointer-events: none;
+}
+
 #stats-tables {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
@@ -93,6 +107,10 @@
 .stats-table h3 {
 	margin: 0 0 .6rem;
 	font-size: .9rem;
+}
+.stats-table .stats-path {
+	color: var(--editor-text-secondary);
+	font-size: .76rem;
 }
 
 }

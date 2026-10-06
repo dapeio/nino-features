@@ -40,8 +40,10 @@ namespace Nino\Modules {
 	 *										A "page" is any persisted GET route whose external path
 	 *										(the part of its route key after "GET:/") is not one of
 	 *										this feature's own three endpoints, not below /_ (the
-	 *										workbench) or /. (a module's own technical endpoint), and
-	 *										not matched by the exclude setting. Two routes are locale
+	 *										workbench) or /. (a module's own technical endpoint), not
+	 *										an error page (the not-found route, or a route whose own
+	 *										statusCode is 400 or more), and not matched by the exclude
+	 *										setting or by what answers EXCLUDE. Two routes are locale
 	 *										variants of the same page when they share the same 'uri'
 	 *										field (the internal identity \Nino\Http::findRouteUri()
 	 *										itself pairs a locale switch against) with different
@@ -91,6 +93,23 @@ namespace Nino\Modules {
 		 *	installed is a fatal error instead.
 		 */
 		public const string PAGES = '/seo/pages';
+
+		/**
+		 *	The callback a feature names the addresses it keeps out of sitemap.xml
+		 *	and llms.txt under - the opposite of PAGES, for what a route lists and
+		 *	its owner knows is not for everybody. Fired with an empty list; an
+		 *	answer appends its own patterns to it and returns nothing, each one
+		 *	spelled the way the 'exclude' setting is: '/members' for that page,
+		 *	'/members/*' for it and everything below it. It adds to what the
+		 *	operator wrote and never takes a line of it away, and it covers the
+		 *	pages a PAGES answer brings as well as the persisted ones.
+		 *
+		 *	Named here for the same reason as PAGES: a feature that names the
+		 *	constant on a site without this feature installed is a fatal error,
+		 *	and a callback nobody fires costs an array entry. ProtectedArea
+		 *	answers it with its prefixes while a password is set.
+		 */
+		public const string EXCLUDE = '/seo/exclude';
 
 		/**
 		 *	Register the three technical routes and their handlers. GET://llms.txt
@@ -281,7 +300,10 @@ namespace Nino\Modules {
 		/**
 		 *	Every persisted GET route that counts as a site page: not this
 		 *	feature's own three endpoints, not below /_ or /. , not matched
-		 *	by the exclude setting. Read from config.php directly, the way
+		 *	by the exclude setting or by what answers EXCLUDE, and not an error
+		 *	page - the kernel's not-found route 'GET://404' or any route whose
+		 *	own 'statusCode' is 400 or more, which answers a visitor with that
+		 *	status and is nothing to send a crawler to. Read from config.php directly, the way
 		 *	\Nino\Features::activate() reads routes to apply a unit against -
 		 *	never the live array, which also carries this request's own
 		 *	runtime routes (the workbench's, every active module's own).
@@ -298,9 +320,24 @@ namespace Nino\Modules {
 			$exclude	= (array) \Nino\Features::setting( $appData, self::KEY, 'exclude', [] );
 			$pages		= [];
 
+			// What other features keep out, on top of the operator's own lines
+			$excluded = [];
+			\Nino\Callbacks::doCallbacks( $appData, self::EXCLUDE, $excluded );
+
+			if( is_array( $excluded ) === true )
+				foreach( $excluded as $pattern )
+					if( is_string( $pattern ) === true )
+						$exclude[] = $pattern;
+
 			foreach( self::_persistedRoutes( $appData ) as $routeKey => $route ) {
 
 				if( is_string( $routeKey ) === false || str_starts_with( $routeKey, 'GET:/' ) === false || is_array( $route ) === false )
+					continue;
+
+				// The kernel answers any address no route matches with
+				// 'GET://404' (see \Nino\Http::response()), and a route that
+				// carries its own error status is an error page whatever its key
+				if( $routeKey === 'GET://404' || (int) ( $route['statusCode'] ?? 200 ) >= 400 )
 					continue;
 
 				$externalPath = substr( $routeKey, strlen( 'GET:/' ) );

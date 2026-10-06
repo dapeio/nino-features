@@ -15,7 +15,10 @@ declare(strict_types=1);
  *									sitemap and llms.txt mentions, in order), llms.txt
  *									(heading, description, titled pages grouped by locale,
  *									and a 404 - with no mention in robots.txt - once 'agents'
- *									is off), [seo-alternates] and [seo-jsonld], and
+ *									is off), the error pages a route can be (the not-found
+ *									route, a route with a 4xx status of its own), what a
+ *									callback under /seo/exclude keeps out, [seo-alternates]
+ *									and [seo-jsonld], and
  *									deactivation. Travels with the feature and runs against
  *									the checkout three levels up, or the one NINO_ROOT names
  *									(see tests/harness.php there).
@@ -82,7 +85,7 @@ function seoCurrentUri( array &$appData, string $uri ): void {
 // GET://rechtliches / GET://legal pair), and a locale-agnostic "faq&more"
 // whose uri exercises xml escaping. Plus three entries that must never
 // appear anywhere this feature generates: an excluded page, a dot-prefixed
-// module endpoint, and a workbench tool uri
+// module endpoint, a workbench tool uri, and the two error pages
 $appData['/nino/http/routes'] = [
 	'GET://about'			=> [ 'uri' => '/about', 'locale' => 'en_US', 'body' => '[template /templates/page-about]' ],
 	'GET://ueber-uns'	=> [ 'uri' => '/about', 'locale' => 'de_DE', 'body' => '[template /templates/page-about]' ],
@@ -90,6 +93,10 @@ $appData['/nino/http/routes'] = [
 	'GET://staging'		=> [ 'uri' => '/staging', 'body' => '[template /templates/page-staging]' ],
 	'GET://.internal'	=> [ 'uri' => '/.internal', 'body' => 'internal content' ],
 	'GET://_admin/x'	=> [ 'uri' => '/_admin/x', 'body' => 'admin content' ],
+	// Error pages: the not-found route the wizard writes, and one that carries
+	// a status of its own under a key of its own
+	'GET://404'				=> [ 'uri' => '/404', 'body' => '[template /templates/page-404]', 'statusCode' => 404 ],
+	'GET://gone'			=> [ 'uri' => '/gone', 'body' => 'gone', 'statusCode' => 410 ],
 ];
 
 \Nino\Filesystem::putFileContent( $appData, '/templates/page-about.tpl', '<h1>[[/webpage/about/title]]</h1>' );
@@ -101,8 +108,10 @@ $appData['/nino/http/routes'] = [
 \Nino\Filesystem::putFileContent( $appData, '/text/en_US.php', [
 	'[[/webpage/about/title]]'				=> 'About Us',
 	'[[/webpage/about/description]]' => 'Who we are',
+	'[[/webpage/404/title]]'					=> 'Not Found',
 ] );
 \Nino\Filesystem::putFileContent( $appData, '/text/de_DE.php', [
+	'[[/webpage/404/title]]'							=> 'Nicht gefunden',
 	'[[/webpage/about/title]]'						=> 'Über uns',
 	'[[/webpage/about/description]]'			=> 'Wer wir sind',
 	// No explicit locale on GET://faq&more, so it groups under the site's
@@ -190,7 +199,7 @@ check( 'the document is well-formed xml', $sitemapXml !== false );
 
 $locs = is_object( $sitemapXml ) ? array_map( 'strval', $sitemapXml->xpath( '//*[local-name()="url"]/*[local-name()="loc"]' ) ?: [] ) : [];
 sort( $locs );
-check( 'it lists exactly the site pages, as absolute urls - not the excluded, dot or admin ones', $locs === [
+check( 'it lists exactly the site pages, as absolute urls - not the excluded, dot, admin or error ones', $locs === [
 	'https://example.com/about',
 	'https://example.com/faq&more',
 	'https://example.com/ueber-uns',
@@ -257,6 +266,8 @@ check( 'it lists the paired page under both locale headings, and the unpaired on
 	&& str_contains( $llmsBody, "### de-DE" ) === true && str_contains( $llmsBody, '- [Über uns](https://example.com/ueber-uns): Wer wir sind' ) === true
 	&& str_contains( $llmsBody, '- [FAQ & Mehr](https://example.com/faq&more): Antworten auf häufige Fragen' ) === true );
 check( 'the excluded page never appears', str_contains( $llmsBody, 'staging' ) === false );
+check( 'neither does the 404 page, for all it has a title', str_contains( $llmsBody, 'Nicht gefunden' ) === false
+	&& str_contains( $llmsBody, 'Not Found' ) === false && str_contains( $llmsBody, '/404' ) === false && str_contains( $llmsBody, '/gone' ) === false );
 
 echo "\n";
 
@@ -405,6 +416,74 @@ $llmsLines	= explode( "\n", $contributedLlmsBody );
 $pageLines	= array_slice( $llmsLines, (int) array_search( '## Pages', $llmsLines, true ) + 1 );
 check( '...and the list is still a list',
 	array_filter( $pageLines, static fn( string $line ): bool => $line !== '' && str_starts_with( $line, '### ' ) === false && str_starts_with( $line, '- [' ) === false ) === [] );
+
+echo "\n";
+
+
+// --- Pages a feature keeps out -----------------------------------------------
+
+echo "Pages a feature keeps out, answered under Seo::EXCLUDE\n";
+
+/*	ProtectedArea is the feature this exists for. It is faked here the way the
+	contributor above is: this suite runs against a checkout that may not have
+	it, and what is under test is the contract. A persisted /members subtree
+	is written to config.php now, so that it is one of the persisted routes -
+	the fixture list at the top has to stay what it was	*/
+$appData['/nino/http/routes']['GET://members']				= [ 'uri' => '/members', 'body' => 'members' ];
+$appData['/nino/http/routes']['GET://members/area']		= [ 'uri' => '/members/area', 'body' => 'members area' ];
+\Nino\AppData::writeContentData( $appData, [ '/nino/http/routes' ] );
+
+\Nino\Callbacks::registerCallback( $appData, \Nino\Modules\Seo::PAGES, static function( array &$appData, array &$pages ): void {
+	$pages[] = [ 'externalPath' => '/members/first-post', 'title' => 'Members only' ];
+} );
+
+$openSitemap = fakeRequest( $appData, '/sitemap.xml' );
+\Nino\Http::response( $appData, $openSitemap );
+check( 'before anyone answers, the members pages are listed, persisted and contributed alike',
+	str_contains( (string) $openSitemap['/nino/http/response']['body'], '<loc>https://example.com/members</loc>' ) === true
+	&& str_contains( (string) $openSitemap['/nino/http/response']['body'], '<loc>https://example.com/members/area</loc>' ) === true
+	&& str_contains( (string) $openSitemap['/nino/http/response']['body'], '<loc>https://example.com/members/first-post</loc>' ) === true );
+
+\Nino\Callbacks::registerCallback( $appData, \Nino\Modules\Seo::EXCLUDE, static function( array &$appData, array &$list ): void {
+	$list[] = '/members/*';
+	// An answer is another feature's data: nothing but a string is a pattern
+	$list[] = [ 'not' => 'a pattern' ];
+	$list[] = 42;
+} );
+
+$keptOutSitemap = fakeRequest( $appData, '/sitemap.xml' );
+\Nino\Http::response( $appData, $keptOutSitemap );
+$keptOutBody = (string) ( $keptOutSitemap['/nino/http/response']['body'] ?? '' );
+$keptOutXml = @simplexml_load_string( $keptOutBody );
+$keptOutLocs = is_object( $keptOutXml ) ? array_map( 'strval', $keptOutXml->xpath( '//*[local-name()="url"]/*[local-name()="loc"]' ) ?: [] ) : [];
+
+check( 'the document is still well-formed', $keptOutXml !== false );
+check( 'the page itself, a page below it and a contributed one are all out of sitemap.xml',
+	in_array( 'https://example.com/members', $keptOutLocs, true ) === false
+	&& in_array( 'https://example.com/members/area', $keptOutLocs, true ) === false
+	&& in_array( 'https://example.com/members/first-post', $keptOutLocs, true ) === false );
+check( 'every other page stays, the operator\'s own lines and the error pages as before',
+	in_array( 'https://example.com/about', $keptOutLocs, true ) === true
+	&& in_array( 'https://example.com/ueber-uns', $keptOutLocs, true ) === true
+	&& in_array( 'https://example.com/faq&more', $keptOutLocs, true ) === true
+	&& in_array( 'https://example.com/blog/first-light', $keptOutLocs, true ) === true
+	&& in_array( 'https://example.com/staging', $keptOutLocs, true ) === false
+	&& in_array( 'https://example.com/404', $keptOutLocs, true ) === false
+	&& in_array( 'https://example.com/gone', $keptOutLocs, true ) === false );
+
+$keptOutLlms = fakeRequest( $appData, '/llms.txt' );
+\Nino\Http::response( $appData, $keptOutLlms );
+$keptOutLlmsBody = (string) ( $keptOutLlms['/nino/http/response']['body'] ?? '' );
+check( '...and llms.txt leaves them out too, the others in',
+	str_contains( $keptOutLlmsBody, '/members' ) === false && str_contains( $keptOutLlmsBody, 'Members only' ) === false
+	&& str_contains( $keptOutLlmsBody, '- [About Us](https://example.com/about): Who we are' ) === true );
+
+$keptOutRobots = fakeRequest( $appData, '/robots.txt' );
+\Nino\Http::response( $appData, $keptOutRobots );
+check( 'robots.txt does not name the paths a feature keeps out', str_contains( (string) ( $keptOutRobots['/nino/http/response']['body'] ?? '' ), 'members' ) === false );
+
+seoCurrentUri( $appData, '/members/area' );
+check( '[seo-alternates] knows no page where the page is kept out', \Nino\Modules\Seo::doAlternatesShortcode( $appData, [] ) === '' );
 
 echo "\n";
 

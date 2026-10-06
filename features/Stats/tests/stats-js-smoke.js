@@ -4,7 +4,10 @@
  *											bar row, over a dom stand-in. The store holds a day once
  *											it has a view, so what the panel is handed is the days
  *											with data - and the row has to be the month anyway, one
- *											column per day, the empty ones as a baseline mark.
+ *											column per day, the empty ones as a baseline mark. The
+ *											row's axis label, the summary line in the singular where
+ *											it is one, and the tables: the pages with a title
+ *											column and a path column, and the two empty texts.
  *
  *											No jsdom, no dependency: the same element stand-in the
  *											other feature tests build, so this runs with nothing but
@@ -52,14 +55,22 @@ function element( tag ) {
 
 /*	The namespace the panel script extends - a local stand-in, not the
 	global, so the file lints like a browser script with the rest of them	*/
+const tableCalls = [];
+const body = element('div');
+
 const nino = {
 	admin		: {},
-	adminUi	: { emptyState : function( text ) { const p = element('p'); p.className = 'nino-admin-empty'; p.textContent = text; return p } },
-	content	: { getText : function( key ) { return key } },
+	adminUi	: {
+		emptyState : function( text ) { const p = element('p'); p.className = 'nino-admin-empty'; p.textContent = text; return p },
+		// What the shared table component was handed, call by call
+		table : function( options ) { tableCalls.push( options ) },
+	},
+	// The key itself, except where a placeholder has to be filled
+	content	: { getText : function( key ) { return key === '/_admin/stats/label/max' ? 'Peak: %d' : key } },
 	events	: { bindCallback : function() {} },
 	http		: { sendRequest : function() { throw new Error( 'the bar row asks the server for nothing' ) } },
 };
-const sandbox = { console : console, document : { createElement : function( tag ) { return element( tag ) }, getElementById : function() { return null } }, Nino : nino };
+const sandbox = { console : console, document : { createElement : function( tag ) { return element( tag ) }, getElementById : function( id ) { return id === 'stats-body' ? body : null } }, Nino : nino };
 sandbox.window = sandbox;
 vm.runInContext( source, vm.createContext( sandbox ), { filename : 'admin.js' } );
 
@@ -99,6 +110,52 @@ check( '...and a day handed with zero views is empty like a day not handed at al
 check( 'a row handed no month name draws the days it was given', columns( stats._renderBars( [ { day : '2026-09-22', total : 1 }, { day : '2026-09-25', total : 3 } ], '' ) ).map( function( c ) { return c.day } ).join(' ') === '22 25' );
 const empty = stats._renderBars( [], '2026-09' );
 check( 'a month with no data at all says so instead of drawing thirty empty columns', empty.children.length === 1 && empty.children[0].className === 'nino-admin-empty' );
+
+// --- The axis ------------------------------------------------------------------------
+
+const axisOf = function( row ) { return row.children.filter( function( child ) { return child.className === 'stats-axis' } ) };
+const withAxis = stats._renderBars( [ { day : '2026-09-01', total : 8 }, { day : '2026-09-02', total : 2 } ], '2026-09' );
+check( 'the busiest day\'s count is written at the top of the row', axisOf( withAxis ).length === 1 && axisOf( withAxis )[0].textContent === 'Peak: 8' );
+check( '...and the bars are still a share of it - thirty columns, 100% and 25%', columns( withAxis ).length === 30 && columns( withAxis )[0].height === '100%' && columns( withAxis )[1].height === '25%' );
+check( 'one view is a full bar and the label says one', columns( stats._renderBars( [ { day : '2026-09-22', total : 1 } ], '2026-09' ) )[21].height === '100%'
+	&& axisOf( stats._renderBars( [ { day : '2026-09-22', total : 1 } ], '2026-09' ) )[0].textContent === 'Peak: 1' );
+check( 'a row with no day that counted something has no axis label', axisOf( stats._renderBars( [ { day : '2026-09-01', total : 0 } ], '2026-09' ) ).length === 0
+	&& axisOf( stats._renderBars( [], '2026-09' ) ).length === 0 );
+
+// --- The summary line ----------------------------------------------------------------------
+
+check( 'one view on one day reads in the singular, both words', stats._summaryText( { views : 1, days : 1 } ) === '1 /_admin/stats/label/view · 1 /_admin/stats/label/day' );
+check( 'more are plural, each word on its own count', stats._summaryText( { views : 12, days : 1 } ) === '12 /_admin/stats/label/views · 1 /_admin/stats/label/day'
+	&& stats._summaryText( { views : 1, days : 3 } ) === '1 /_admin/stats/label/view · 3 /_admin/stats/label/days' );
+check( 'none is plural too', stats._summaryText( { views : 0, days : 0 } ) === '0 /_admin/stats/label/views · 0 /_admin/stats/label/days' );
+
+// --- The tables --------------------------------------------------------------------------------
+
+const rows = stats._pageRows( [
+	{ uri : '/about', title : 'About Us', views : 5 },
+	{ uri : '/docs/intro', title : '', views : 3 },
+	{ uri : '/…', title : '', views : 2 },
+] );
+check( 'a page row shows the title, else the path it was counted under', rows[0].title === 'About Us' && rows[1].title === '/docs/intro' );
+check( '...the overflow bucket by a name of its own and no path', rows[2].title === '/_admin/stats/label/other' && rows[2].path === '' );
+check( '...every other row keeps its path in a column of its own', rows[0].path === '/about' && rows[1].path === '/docs/intro' && rows[0].views === 5 );
+
+stats._renderMonth( { month : '2026-09', days : [ { day : '2026-09-01', total : 8 } ], totals : { views : 8, days : 1 }, uris : [ { uri : '/about', title : 'About Us', views : 8 } ], referrers : [ { host : 'example.org', views : 3 } ] } );
+check( 'the summary line is the singular-aware one', body.children[0].textContent === '8 /_admin/stats/label/views · 1 /_admin/stats/label/day' );
+check( 'the pages table is handed a title column, a path column and the views', tableCalls.length === 2
+	&& tableCalls[0].columns.map( function( column ) { return column.key } ).join(' ') === 'title path views' && tableCalls[0].rowKey === 'uri' );
+check( '...the title column is named for the page, the path column for the path', tableCalls[0].columns[0].label === '/_admin/stats/label/uri' && tableCalls[0].columns[1].label === '/_admin/stats/label/path' );
+const pathCell = tableCalls[0].columns[1].render( '/about', tableCalls[0].rows[0] );
+check( '...the path is drawn as text in a muted cell', pathCell.className === 'stats-path' && pathCell.textContent === '/about' );
+check( 'the referrers table has its two columns', tableCalls[1].columns.map( function( column ) { return column.key } ).join(' ') === 'host views' && tableCalls[1].rowKey === 'host' );
+
+tableCalls.length = 0;
+body.children.length = 0;
+stats._renderMonth( { month : '2026-09', days : [], totals : { views : 0, days : 0 }, uris : [], referrers : [] } );
+const tablesBox = body.children[body.children.length - 1];
+const empties = tablesBox.children.map( function( card ) { return card.children[1].textContent } );
+check( 'no pages and no referrers: each card says what is missing in words of its own', tableCalls.length === 0
+	&& empties[0] === '/_admin/stats/empty' && empties[1] === '/_admin/stats/empty/referrers' );
 
 console.log( '\n'+ checks+ ' checks, '+ failures+ ' failed' );
 process.exit( failures === 0 ? 0 : 1 );

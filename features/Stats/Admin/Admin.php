@@ -14,10 +14,14 @@ namespace Nino\Modules\Stats {
 	 *	Nino							A compact filesystembased php framework
 	 *	Modules						Optional modules
 	 *	Stats							One pane on \Nino\Modules\Stats's own counts: a month
-	 *										selector, a bar per day and the two top-50 tables (uris,
+	 *										selector, a bar per day and the two top-50 tables (pages,
 	 *										referrer hosts). Read-only - the counting itself happens
 	 *										in Stats.php's callback, this panel only ever reads what
-	 *										is already on disk and aggregates it for display.
+	 *										is already on disk and aggregates it for display. Of
+	 *										what is on disk it shows the pages only (see
+	 *										\Nino\Modules\Stats::isPage()): a month counted before
+	 *										files were left out keeps its file hits in the file and
+	 *										shows none of them here.
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -86,8 +90,22 @@ namespace Nino\Modules\Stats {
 
 		/**
 		 *	One month, aggregated for the pane: the day-by-day totals for the
-		 *	bar row, the grand total, and the top 50 uris and referrer hosts
+		 *	bar row, the grand total, and the top 50 pages and referrer hosts
 		 *	across the whole month.
+		 *
+		 *	Pages only. Each distinct uri of the month is classified once by
+		 *	Stats::isPage() and a file - robots.txt, sitemap.xml, a json
+		 *	endpoint - is dropped, the overflow bucket kept. A day's total is
+		 *	then the sum of the uris that are left, which is exact because a
+		 *	counted view increments exactly one uri; a day with nothing left is
+		 *	dropped, and `totals` is counted from what is kept. The referrers
+		 *	of a day are kept or dropped with the day: a referrer is stored per
+		 *	day, not per page, so a day that was both has the referrers of
+		 *	both.
+		 *
+		 *	A page row carries its title - the page's own '/webpage<uri>/title'
+		 *	text, in the route's locale and else the native one - and '' where
+		 *	no route or no text has one.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
@@ -114,18 +132,35 @@ namespace Nino\Modules\Stats {
 			$totalViews		= 0;
 			$uriTotals		= [];
 			$referrerTotals	= [];
+			$pages				= [];
 
 			foreach( $days as $day => $entry ) {
 
 				if( is_array( $entry ) === false )
 					continue;
 
-				$total = (int) ( $entry['total'] ?? 0 );
-				$dayRows[] = [ 'day' => (string) $day, 'total' => $total ];
-				$totalViews += $total;
+				$kept = 0;
 
-				foreach( is_array( $entry['uris'] ?? null ) ? $entry['uris'] : [] as $uri => $views )
-					$uriTotals[(string) $uri] = ( $uriTotals[(string) $uri] ?? 0 ) + (int) $views;
+				foreach( is_array( $entry['uris'] ?? null ) ? $entry['uris'] : [] as $uri => $views ) {
+
+					$uri = (string) $uri;
+
+					if( isset( $pages[$uri] ) === false )
+						$pages[$uri] = \Nino\Modules\Stats::isPage( $appData, $uri );
+
+					if( $pages[$uri] === false )
+						continue;
+
+					$kept += (int) $views;
+					$uriTotals[$uri] = ( $uriTotals[$uri] ?? 0 ) + (int) $views;
+				}
+
+				// A day that had files and nothing else is not a day with data
+				if( $kept === 0 )
+					continue;
+
+				$dayRows[] = [ 'day' => (string) $day, 'total' => $kept ];
+				$totalViews += $kept;
 
 				foreach( is_array( $entry['referrers'] ?? null ) ? $entry['referrers'] : [] as $host => $views )
 					$referrerTotals[(string) $host] = ( $referrerTotals[(string) $host] ?? 0 ) + (int) $views;
@@ -134,9 +169,10 @@ namespace Nino\Modules\Stats {
 			arsort( $uriTotals );
 			arsort( $referrerTotals );
 
-			$uriRows = [];
+			$fills		= [];
+			$uriRows	= [];
 			foreach( array_slice( $uriTotals, 0, self::TOP_LIMIT, true ) as $uri => $views )
-				$uriRows[] = [ 'uri' => $uri, 'views' => $views ];
+				$uriRows[] = [ 'uri' => $uri, 'title' => self::_title( $appData, $uri, $fills ), 'views' => $views ];
 
 			$referrerRows = [];
 			foreach( array_slice( $referrerTotals, 0, self::TOP_LIMIT, true ) as $host => $views )
@@ -145,10 +181,54 @@ namespace Nino\Modules\Stats {
 			\Nino\Http::ok( $request, [
 				'month'			=> $month,
 				'days'			=> $dayRows,
-				'totals'		=> [ 'views' => $totalViews, 'days' => count( $days ) ],
+				'totals'		=> [ 'views' => $totalViews, 'days' => count( $dayRows ) ],
 				'uris'			=> $uriRows,
 				'referrers'	=> $referrerRows,
 			] );
+		}
+
+		/**
+		 *	The title of the page a counted uri was: '/webpage<route uri>/title'
+		 *	in the locale of the route that answers it, else in the native one,
+		 *	read from the project's global and locale text files the way
+		 *	\Nino\Modules\Seo reads them for llms.txt - a request carries one
+		 *	locale, and this lists every page's own. The route is resolved as
+		 *	the request was, wildcards included; the title belongs to its
+		 *	internal uri, not to the address a visitor typed.
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$uri					As counted
+		 *	@param		array 		&$fills				Text files read so far, by locale - the caller's memo
+		 *
+		 *	@return 	string										'' where no route or no text has one
+		 */
+		private static function _title( array &$appData, string $uri, array &$fills ): string {
+
+			$route = \Nino\Http::requestRoute( $appData, $uri, 'GET' );
+
+			if( is_array( $route ) === false || is_string( $route['uri'] ?? null ) === false )
+				return '';
+
+			$locales = [ \Nino\Locales::getNativeLocale( $appData ) ];
+
+			if( is_string( $route['locale'] ?? null ) === true )
+				array_unshift( $locales, $route['locale'] );
+
+			foreach( $locales as $locale ) {
+
+				if( isset( $fills[$locale] ) === false )
+					$fills[$locale] = array_merge(
+						(array) \Nino\Filesystem::getFileContent( $appData, $appData['/nino/locales/textfiles']. '/global.php', [] ),
+						(array) \Nino\Filesystem::getFileContent( $appData, $appData['/nino/locales/textfiles']. '/'. $locale. '.php', [] )
+					);
+
+				$title = trim( (string) ( $fills[$locale]['[[/webpage'. $route['uri']. '/title]]'] ?? '' ) );
+
+				if( $title !== '' )
+					return $title;
+			}
+
+			return '';
 		}
 	}
 }

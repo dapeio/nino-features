@@ -12,7 +12,22 @@ A release is the tag `seo-<version>` of dapeio/nino-features.
   feature to an installation that could not then install it. `^1.3` names
   only a kernel that can read the manifest.
 
+### Added
+
+- **A feature can keep pages out of the sitemap: `/seo/exclude`.** The
+  opposite of `/seo/pages`: fired with an empty list, an answer appends
+  patterns spelled like the **Never list these** setting (`/members` for that
+  page, `/members/*` for it and everything below it). They add to the
+  operator's own lines, never replace one, and cover persisted and
+  contributed pages alike. The Protected area feature answers it with its
+  prefixes while a password is set. `robots.txt` stays as it was.
+
 ### Changed
+
+- **The German manual called `[seo-jsonld]` „Ihre strukturierten Daten“.** The
+  English says "Its structured data": the block belongs to the page. Alone in
+  the Features panel the German read like a formal „Your“. It says „Die
+  strukturierten Daten der Seite“ now. Words only.
 
 - **The directory listing had no `templates/` in it, and the class pointed at
   a path the base install does not have.** The README still listed
@@ -32,6 +47,13 @@ A release is the tag `seo-<version>` of dapeio/nino-features.
   are. The output is the same.
 
 ### Fixed
+
+- **sitemap.xml and llms.txt listed the 404 page and every error page.** A
+  page was any persisted `GET` route, so the wizard's `GET://404` - a route
+  that answers with status 404 - was offered to crawlers with its title, as
+  was any other route carrying a `statusCode` of 400 or more. The kernel's
+  not-found route `GET://404` and every route whose `statusCode` is 400 or
+  more are left out of both now.
 
 - **A title, an address or a description could end a link in llms.txt
   halfway through itself.** An entry there is `- [title](url): description`

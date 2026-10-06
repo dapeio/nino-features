@@ -32,6 +32,16 @@ namespace Nino\Modules {
 	 *										/data/protected.php, the same fixed-window idea as
 	 *										\Nino\Mail::_hit() (copied, not called - that counter
 	 *										is mail's own send cap, this one is this feature's).
+	 *										Every unlock is stamped with the session epoch of
+	 *										/data/protected-session.php (see _epoch()), and
+	 *										signOutAll() - the panel's button, and every password
+	 *										change - writes a new one, so every session that
+	 *										unlocked before it reads locked again. The feature
+	 *										also has a small panel (Admin/Admin.php) for the
+	 *										password and for ticking pages off the route list, and
+	 *										tells \Nino\Modules\Seo, where that is installed,
+	 *										which prefixes to keep out of the sitemap
+	 *										(callbackSeoExclude()).
 	 *
 	 *										The directory is ProtectedArea, not Protected: the
 	 *										class is derived from the directory name, and
@@ -52,8 +62,13 @@ namespace Nino\Modules {
 
 		// A runtime session flag, never written to config.php - the one
 		// thing that decides whether a locked visitor is actually this
-		// feature's visitor, not an account of any kind
+		// feature's visitor, not an account of any kind. Its value is the
+		// session epoch the unlock happened under (see _epoch())
 		private const string SESSION_KEY 	= './protected/unlocked';
+
+		// The session epoch - what 'sign everybody out' rewrites. Listed under
+		// 'data' in the manifest, next to the attempt counter
+		private const string EPOCH_PATH 		= '/data/protected-session.php';
 
 		// Wrong-attempt counter, keyed by client ip - what the manifest's
 		// 'data' entry documents
@@ -89,7 +104,19 @@ namespace Nino\Modules {
 			\Nino\Callbacks::registerCallback( $appData, '/nino/http/response/POST://.protected', [ self::class, 'callbackUnlock' ] );
 			\Nino\Callbacks::registerCallback( $appData, '/nino/http/response/GET://.protected/logout', [ self::class, 'callbackLogout' ] );
 
+			// The literal string, not Seo::EXCLUDE: this feature does not require
+			// Seo, and a constant of a class that is not there is a fatal error
+			// where a callback nobody fires costs one array entry
+			\Nino\Callbacks::registerCallback( $appData, '/seo/exclude', [ self::class, 'callbackSeoExclude' ] );
+
 			self::_extendCacheBlacklist( $appData );
+		}
+
+		// The panel comes and goes with the feature: the kernel asks every
+		// active module, in /nino/modules order (see \Nino\Modules::collect())
+		public static function adminPanels( array &$appData ): array {
+
+			return [ \Nino\Modules\ProtectedArea\Admin::class ];
 		}
 
 		/**
@@ -106,7 +133,7 @@ namespace Nino\Modules {
 			if( self::_password( $appData ) === '' )
 				return false;
 
-			foreach( self::_prefixes( $appData ) as $prefix )
+			foreach( self::prefixes( $appData ) as $prefix )
 				if( $uri === $prefix || str_starts_with( $uri, $prefix. '/' ) === true )
 					return true;
 
@@ -115,7 +142,12 @@ namespace Nino\Modules {
 
 		/**
 		 *	Whether this session has already unlocked - the one thing the
-		 *	gate checks besides protects(), see callbackGate()
+		 *	gate checks besides protects(), see callbackGate(). It has when the
+		 *	epoch it unlocked under is the current one: a sign-out writes a
+		 *	new one, and a session from before it reads locked again. A bare
+		 *	true, which is what this feature stored before the epoch existed,
+		 *	stays valid until the first sign-out - nobody is asked for the
+		 *	password again by an update.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
@@ -123,7 +155,53 @@ namespace Nino\Modules {
 		 */
 		public static function unlocked( array &$appData ): bool {
 
-			return \Nino\Runtime::getSessionValue( $appData, self::SESSION_KEY ) === true;
+			$session = \Nino\Runtime::getSessionValue( $appData, self::SESSION_KEY );
+
+			// Nothing to compare for a visitor who never unlocked, so the file
+			// is only read for one who did
+			if( $session !== true && ( is_string( $session ) === false || $session === '' ) )
+				return false;
+
+			return $session === self::_epoch( $appData );
+		}
+
+		/**
+		 *	Lock every session at once: write a new session epoch, which no
+		 *	session that unlocked before it carries. The panel's 'Sign
+		 *	everybody out' and every change of the password end here - a
+		 *	member who left must not stay in because the browser kept the
+		 *	session. Nobody is identified, so there is no one to name; the
+		 *	epoch is all there is to rotate.
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	bool										False where the file could not be written
+		 */
+		public static function signOutAll( array &$appData ): bool {
+
+			return \Nino\Filesystem::mutate( $appData, self::EPOCH_PATH, static function( mixed $state ): array {
+				return [ 'epoch' => bin2hex( random_bytes( 16 ) ) ];
+			}, [] );
+		}
+
+		/**
+		 *	The addresses a crawler has no business listing, answered under
+		 *	'/seo/exclude' for the Seo feature, where that is installed: every
+		 *	protected prefix and everything below it - while a password is set,
+		 *	because without one nothing is protected and nothing is excluded.
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		&$list				(reference) Patterns, in the spelling of Seo's 'exclude' setting
+		 *
+		 *	@return 	void
+		 */
+		public static function callbackSeoExclude( array &$appData, array &$list ): void {
+
+			if( self::_password( $appData ) === '' )
+				return;
+
+			foreach( self::prefixes( $appData ) as $prefix )
+				$list[] = $prefix. '/*';
 		}
 
 		/**
@@ -211,7 +289,7 @@ namespace Nino\Modules {
 				// should still be counting down on
 				self::_clearAttempts( $appData, $ip );
 
-				\Nino\Runtime::setSessionValue( $appData, self::SESSION_KEY, true );
+				\Nino\Runtime::setSessionValue( $appData, self::SESSION_KEY, self::_epoch( $appData ) );
 
 				// The uri a request carries is the project's own - routes are
 				// keyed without the directory a site may sit in - so the
@@ -351,6 +429,24 @@ namespace Nino\Modules {
 		}
 
 		/**
+		 *	The session epoch the current unlocks are stamped with: the string
+		 *	signOutAll() wrote, or true while it has never been called - the
+		 *	value a session got before the epoch existed, so those are still
+		 *	valid. A file that holds anything else counts as none.
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	string|true
+		 */
+		private static function _epoch( array &$appData ): string|true {
+
+			$state = \Nino\Filesystem::getFileContent( $appData, self::EPOCH_PATH, [] );
+			$epoch = is_array( $state ) === true ? ( $state['epoch'] ?? null ) : null;
+
+			return is_string( $epoch ) === true && $epoch !== '' ? $epoch : true;
+		}
+
+		/**
 		 *	The configured shared password - '' means the feature is inert,
 		 *	nothing is protected while there is nothing to unlock with
 		 *
@@ -371,12 +467,14 @@ namespace Nino\Modules {
 		 *	dropped. An entry that fails any of this is silently skipped
 		 *	rather than refused - the settings form already accepted it as a
 		 *	'lines' value, and there is nothing left to refuse it with here.
+		 *	Public for the panel, which shows what is protected through the
+		 *	same reading the gate has.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
 		 *	@return 	array
 		 */
-		private static function _prefixes( array &$appData ): array {
+		public static function prefixes( array &$appData ): array {
 
 			$prefixes = [];
 
@@ -418,7 +516,7 @@ namespace Nino\Modules {
 
 			$blacklist = (array) ( $appData['/nino/cache/blacklist'] ?? [] );
 
-			foreach( self::_prefixes( $appData ) as $prefix )
+			foreach( self::prefixes( $appData ) as $prefix )
 				foreach( [ $prefix, $prefix. '/*' ] as $entry )
 					if( in_array( $entry, $blacklist, true ) === false )
 						$blacklist[] = $entry;

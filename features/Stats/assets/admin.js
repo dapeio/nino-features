@@ -163,17 +163,75 @@
 
 			const summary = dc.createElement('p');
 			summary.id = 'stats-summary';
-			summary.textContent = data.totals.views+ ' '+ Nino.content.getText('/_admin/stats/label/views')
-				+ ' · '+ data.totals.days+ ' '+ Nino.content.getText('/_admin/stats/label/days');
+			summary.textContent = Nino.admin.stats._summaryText( data.totals );
 			body.appendChild( summary );
 
 			body.appendChild( Nino.admin.stats._renderBars( data.days, String( data.month || '' ) ) );
 
 			const tables = dc.createElement('div');
 			tables.id = 'stats-tables';
-			tables.appendChild( Nino.admin.stats._renderTable( 'uri', Nino.content.getText('/_admin/stats/label/uri'), data.uris ) );
-			tables.appendChild( Nino.admin.stats._renderTable( 'host', Nino.content.getText('/_admin/stats/label/referrer'), data.referrers ) );
+			tables.appendChild( Nino.admin.stats._renderTable( 'uri', Nino.content.getText('/_admin/stats/label/uri'), Nino.admin.stats._pageRows( data.uris ), [
+				{ key : 'title', label : Nino.content.getText('/_admin/stats/label/uri'), type : 'string' },
+				{ key : 'path', label : Nino.content.getText('/_admin/stats/label/path'), type : 'string', render : Nino.admin.stats._pathCell },
+				{ key : 'views', label : Nino.content.getText('/_admin/stats/label/views'), type : 'integer' },
+			], Nino.content.getText('/_admin/stats/empty') ) );
+			tables.appendChild( Nino.admin.stats._renderTable( 'host', Nino.content.getText('/_admin/stats/label/referrer'), data.referrers, [
+				{ key : 'host', label : Nino.content.getText('/_admin/stats/label/referrer'), type : 'string' },
+				{ key : 'views', label : Nino.content.getText('/_admin/stats/label/views'), type : 'integer' },
+			], Nino.content.getText('/_admin/stats/empty/referrers') ) );
 			body.appendChild( tables );
+		},
+
+		/**
+		 *	The line over the bars: how many views, how many days - each in the
+		 *	singular where it is one, so a single view reads "1 view" and not
+		 *	"1 views". Two literal lookups per word rather than a key built from
+		 *	the number, which the static check every workbench script is held to
+		 *	could not see
+		 *
+		 *	@param		{Object}	totals			{ views, days }
+		 *
+		 *	@return		{string}
+		 */
+		_summaryText : function( totals ) {
+			return totals.views+ ' '+ Nino.content.getText( totals.views === 1 ? '/_admin/stats/label/view' : '/_admin/stats/label/views' )
+				+ ' · '+ totals.days+ ' '+ Nino.content.getText( totals.days === 1 ? '/_admin/stats/label/day' : '/_admin/stats/label/days' );
+		},
+
+		/**
+		 *	The pages table's rows: the title where the page has one, else the
+		 *	path it was counted under - and the overflow bucket by a name of its
+		 *	own, since '/…' is not an address anybody can open - plus the path
+		 *	in a column of its own. The bucket has none
+		 *
+		 *	@param		{Array}		rows				[ { uri, title, views }, ... ]
+		 *
+		 *	@return		{Array}								[ { uri, title, path, views }, ... ]
+		 */
+		_pageRows : function( rows ) {
+			return rows.map( function( row ) {
+				const other = row.uri === '/…';
+				return {
+					uri		: row.uri,
+					title	: row.title || ( other ? Nino.content.getText('/_admin/stats/label/other') : row.uri ),
+					path	: other ? '' : row.uri,
+					views	: row.views,
+				};
+			} );
+		},
+
+		/**
+		 *	The path cell: the address, set back from the title beside it
+		 *
+		 *	@param		{string}	value
+		 *
+		 *	@return		{Element}
+		 */
+		_pathCell : function( value ) {
+			const span = dc.createElement('span');
+			span.className = 'stats-path';
+			span.textContent = value;
+			return span;
 		},
 
 		/**
@@ -204,7 +262,8 @@
 
 			const totals = {};
 			days.forEach( function( entry ) { totals[entry.day] = entry.total } );
-			const max = days.reduce( function( m, entry ) { return Math.max( m, entry.total ) }, 1 );
+			const peak = days.reduce( function( m, entry ) { return Math.max( m, entry.total ) }, 0 );
+			const max = Math.max( peak, 1 );
 
 			// The month's length from its own calendar; a row handed days with
 			// no month name draws the days it was given
@@ -240,6 +299,18 @@
 				wrap.appendChild( col );
 			} );
 
+			// The y axis, as far as it goes: the busiest day's count, at the top
+			// of the row where its bar reaches. The heights above stay a share
+			// of that one number - a scale of nice numbers would make one view
+			// less than a full bar, and a single day with a single view is the
+			// month the row is most often looking at
+			if( peak > 0 ) {
+				const axis = dc.createElement('span');
+				axis.className = 'stats-axis';
+				axis.textContent = Nino.content.getText('/_admin/stats/label/max').replace( '%d', String( peak ) );
+				wrap.appendChild( axis );
+			}
+
 			return wrap;
 		},
 
@@ -247,13 +318,15 @@
 		 *	One top-50 table (pages, or referrer hosts) - the shared,
 		 *	searchable/sortable table component, same as Newsletter's list
 		 *
-		 *	@param		{string}	key					Row property holding the label column ('uri' or 'host')
-		 *	@param		{string}	label				Column caption
-		 *	@param		{Array}		rows				[ { [key]: string, views: number }, ... ]
+		 *	@param		{string}	key					Row property that identifies a row ('uri' or 'host')
+		 *	@param		{string}	label				The heading of the card
+		 *	@param		{Array}		rows				[ { [key]: string, views: number, ... }, ... ]
+		 *	@param		{Array}		columns			The table's columns, see Nino.adminUi.table()
+		 *	@param		{string}	empty				What the card says when there are no rows
 		 *
 		 *	@return		{Element}
 		 */
-		_renderTable : function( key, label, rows ) {
+		_renderTable : function( key, label, rows, columns, empty ) {
 
 			const wrap = dc.createElement('div');
 			wrap.className = 'nino-admin-card stats-table';
@@ -263,7 +336,7 @@
 			wrap.appendChild( heading );
 
 			if( rows.length === 0 ) {
-				wrap.appendChild( Nino.adminUi.emptyState( Nino.content.getText('/_admin/stats/empty') ) );
+				wrap.appendChild( Nino.adminUi.emptyState( empty ) );
 				return wrap;
 			}
 
@@ -274,13 +347,10 @@
 				mount 	: mount,
 				rows 		: rows,
 				rowKey 	: key,
-				columns : [
-					{ key : key, label : label, type : 'string' },
-					{ key : 'views', label : Nino.content.getText('/_admin/stats/label/views'), type : 'integer' },
-				],
+				columns : columns,
 				labels 	: {
 					search 	: Nino.content.getText('/_admin/stats/label/search'),
-					empty 	: Nino.content.getText('/_admin/stats/empty'),
+					empty 	: empty,
 					noMatch : Nino.content.getText('/_admin/stats/nomatch'),
 				},
 			} );

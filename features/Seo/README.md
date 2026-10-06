@@ -35,8 +35,13 @@ the route key after `GET:/`, ie. what a browser actually requests):
   persisted route happens to say about it;
 - starts with `/_` (the workbench) or `/.` (a module's own technical
   endpoint, `/.form`, `/.newsletter`, `/.protected`, ...);
+- is an error page: the kernel's not-found route `GET://404`, or any route
+  whose own `statusCode` is 400 or more - it answers a visitor with that
+  status, so a sitemap has no business sending a crawler there;
 - matches a line of the **Never list these** setting (`exclude`) - an exact
-  path, or `/path/*` for that path and everything below it.
+  path, or `/path/*` for that path and everything below it - or a pattern a
+  feature added under `/seo/exclude`, see
+  [Pages a feature keeps out](#pages-a-feature-keeps-out).
 
 ## Pages no route can name
 
@@ -73,6 +78,30 @@ setting still applies, the reserved and `/_`, `/.` paths are refused exactly
 as a persisted route's would be, an address some route already carries is
 listed once, and a `lastmod` that is not a real calendar date is dropped
 rather than written into the document.
+
+## Pages a feature keeps out
+
+The opposite question, asked the same way. A feature that puts pages behind
+something - the Protected area feature keeps them behind a password - knows
+which addresses a crawler has no business listing, and nothing outside it
+does. `\Nino\Modules\Seo::EXCLUDE` (`/seo/exclude`) is fired with an empty
+list, and whoever knows appends patterns to it, spelled the way the **Never
+list these** setting is:
+
+```php
+\Nino\Callbacks::registerCallback( $appData, '/seo/exclude', [ self::class, 'callbackSeoExclude' ] );
+
+public static function callbackSeoExclude( array &$appData, array &$list ): void {
+	$list[] = '/members/*';	// that page and everything below it; '/members' alone is that page only
+}
+```
+
+An answer adds to the operator's own lines and never takes one away. It
+covers persisted routes and the pages a `/seo/pages` answer contributes
+alike, so a protected `/members/first-post` is out whichever way it arrived.
+Register under the string, not under the constant, for the reason given
+above. `robots.txt` is not touched: a `Disallow` line would tell every
+reader which paths a password guards.
 
 ## Locale variants
 
@@ -259,7 +288,9 @@ no template), `robots.txt` (the fixed lines, the settings, the sitemap and
 llms.txt mentions, in order), `llms.txt` (heading, description, titled pages
 grouped by locale, a title and an address carrying the characters a link is
 made of and a description written over two lines, and a 404 - with no mention
-in robots.txt - once `agents` is off), `[seo-alternates]` and `[seo-jsonld]`, and deactivation. It loads
+in robots.txt - once `agents` is off), the error pages a route can be and
+what a callback under `/seo/exclude` keeps out (a persisted and a contributed
+page alike), `[seo-alternates]` and `[seo-jsonld]`, and deactivation. It loads
 Nino's `tests/harness.php` from the checkout three levels up - where the
 feature sits in a project - or from the one `NINO_ROOT` names, and defines
 `NINO_FEATURES_DIR` as this feature's parent directory, so the kernel serves

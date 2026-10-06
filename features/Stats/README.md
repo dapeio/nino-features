@@ -39,6 +39,7 @@ A response is counted when all of the following hold:
   replicated in `Stats::_isTool()` because `Cache::_isTool()` itself is
   private;
 - the uri does not match a line under the **Never count these** setting;
+- the response is a page and not a file (see [Pages, not files](#pages-not-files));
 - the visitor is not signed in to the workbench, unless **Count signed-in
   visitors** is switched on.
 
@@ -46,6 +47,34 @@ The uri stored is the request uri with its query string already gone - not
 stripped by this feature, but because `\Nino\Http::cleanUri()` never puts a
 query string into `$request['/nino/http/request']['uri']` in the first
 place, so `?utm_source=...` and the like are dropped before this ever runs.
+
+## Pages, not files
+
+A site answers more than pages: `/robots.txt`, `/sitemap.xml`, `/llms.txt`, a
+feed, a json endpoint. Those are fetched by crawlers and tools, not read by
+visitors, and a crawler that asks for `robots.txt` every day used to be the top
+of the pages. Only HTML pages are counted:
+
+- A response that declares a `Content-Type` other than `text/html` is a file.
+  The route declares it - the base unit's persisted `robots.txt`, `sitemap.xml`
+  and `llms.txt` routes do, and so do this catalogue's SEO feature's own - and
+  the header is on the response by the time the counter runs. The name is
+  looked for in any case.
+- A uri whose last segment ends in `.txt`, `.xml`, `.json`, `.rss`, `.atom` or
+  `.webmanifest` is a file too, for the route that declares nothing. Not any
+  extension: `pathinfo( '/v1.2-release-notes' )` has one, and that is a page.
+- A route that declares nothing and does not end like that is a page. A JSON
+  endpoint on a route of its own - the feature recipe's `/api/catalog` - declares
+  its `Content-Type` on the route (`'header' => [ 'Content-Type' =>
+  'application/json' ]`), or it is counted as the page it cannot tell it from.
+
+`\Nino\Modules\Stats::isPage( $appData, $uri )` is the same decision for a uri
+that was counted already: it resolves the route the way the request did
+(`\Nino\Http::requestRoute()`, wildcards included), applies the same header and
+extension rule, and counts an address no route answers any more as the page it
+was. The panel and the Dashboard tile use it, so a month counted before this
+rule existed shows pages only: the file hits stay in `/data/stats/` exactly as
+they were written and are simply not shown.
 
 ## What is *not* counted, and why there is no unique-visitor number
 
@@ -163,16 +192,21 @@ writes anything beyond the settings form every feature already gets.
 | Navigation | **Stats**, uri `stats`, position 70. `nav()` names the Content group, but a panel a feature brings lands under Features whatever it names - `\Nino\Admin\Panels` decides that, not the panel |
 | Permission | `/_admin/stats/view` on every action. The Users panel's roles tab offers it under Features, the group the panel is in; the **Editor** role is built from the Content panels alone and does not receive it, so an operator grants it there |
 | Actions | `stats/months` (`apiMonths()`): every month that has a file, newest first · `stats/month` (`apiMonth()`): one month's numbers, `{ month }` validated as `YYYY-MM`, else `400` |
-| `stats/month` answers | `{ month, days: [ { day, total } ], totals: { views, days }, uris: [ { uri, views } ], referrers: [ { host, views } ] }` - `uris` and `referrers` are the month's totals across every day in it, top 50 each, most-viewed first |
-| Dashboard | `summary()` gives the Dashboard a tile: views over the last 7 days (today included), labelled `/_admin/stats/label/tile`. The panel contract's tile only ever carries `{ value, label }` (see `\Nino\Admin\Panels::collect()`), so today's count alone is not shown as a separate number there - only on the panel's own pane, as the first bar of the current month |
+| `stats/month` answers | `{ month, days: [ { day, total } ], totals: { views, days }, uris: [ { uri, title, views } ], referrers: [ { host, views } ] }` - `uris` and `referrers` are the month's totals across every day in it, top 50 each, most-viewed first. Pages only (see [Pages, not files](#pages-not-files)): each distinct uri is classified once, a file is dropped, the overflow bucket `/…` kept; a day's `total` is the sum of the pages left, a day with none is not listed, and `totals` counts what is listed. `title` is the page's `/webpage<uri>/title` text, in the route's locale and else the native one, `''` where there is none. A referrer is stored per day, not per page: the referrers of a day that is dropped go with it, those of a day that had files and pages both are as stored |
+| Dashboard | `summary()` gives the Dashboard a tile: views of pages over the last 7 days (today included), labelled `/_admin/stats/label/tile`. The panel contract's tile only ever carries `{ value, label }` (see `\Nino\Admin\Panels::collect()`), so today's count alone is not shown as a separate number there - only on the panel's own pane, as the first bar of the current month |
 | Activity log | `log()` always answers `''` - opening the panel and looking at a chart is not something the activity log has any use recording |
 | Assets | `assets/admin.js`, `assets/admin.css`, named through `\Nino\Admin\Panels::relative()` so they move with the directory |
 | Text | `text/en_US.php` and `text/de_DE.php` |
 
-The pane offers a month selector, a plain-css bar per day of the selected
-month (a `<div>` per day, its height a percentage of that month's busiest
-day - no chart library), and the two top-50 tables (pages, referrer hosts)
-built from the shared, searchable/sortable admin table component.
+The pane offers a month selector, a summary line ("1 view · 1 day with data",
+singular where it is one), a plain-css bar per day of the selected month (a
+`<div>` per day, its height a percentage of that month's busiest day - no
+chart library - with that day's count written at the top of the row, the one
+number the axis carries), and the two top-50 tables built from the shared,
+searchable/sortable admin table component: the pages with the page's **title**
+and, in a muted column beside it, its **path** (the path alone where no text
+has a title, **Other pages** for the `/…` bucket), and the referrer hosts. Each
+table says in words of its own that it is empty.
 
 ## The cost
 
@@ -213,13 +247,20 @@ activation through `\Nino\Features`, what is and is not counted (method,
 status, the tool/dot/exclude boundaries, a signed-in visitor, `countSignedIn`,
 a query string dropped, a referrer's own host dropped), the storage shape,
 the `maxUris` fold, retention on the first count of a new day and how many
-month files it leaves, a cache hit
+month files it leaves, a file - a route declaring `text/plain`, `application/xml` or
+`application/json`, an address ending in `.json` or `.xml` - not counted while
+`/v1.2-release-notes` and an extension-less page are, a cache hit
 still counting (driven through the real `/nino/http/response` callback chain
 so the priority-8-before-9 ordering is genuine, not asserted by construction -
 the hit itself runs in a subprocess, since `Modules\Cache` answers one by
 calling `\Nino\Http::output()`, which `exit()`s), the panel's two actions
-with their permission and a `400` for an invalid month, the dashboard tile,
-and deactivation. It loads Nino's `tests/harness.php` from the checkout three
+with their permission and a `400` for an invalid month, the pages-only panel -
+an old month seeded with file hits in it, the days recomputed, a day with
+nothing but files dropped, the titles per route locale - the dashboard tile
+agreeing with it, and deactivation. `tests/stats-js-smoke.js` draws the panel
+script over a dom stand-in - the bar row and its axis label, the summary line
+in the singular, the title and path columns - and `stats-smoke.php` runs it
+where node is on the path. It loads Nino's `tests/harness.php` from the checkout three
 levels up - where the feature sits in a project - or from the one
 `NINO_ROOT` names, and defines `NINO_FEATURES_DIR` as this feature's parent
 directory, so the kernel serves the class from wherever the feature is:

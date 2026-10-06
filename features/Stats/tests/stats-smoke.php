@@ -5,11 +5,14 @@ declare(strict_types=1);
  *	Nino
  *	stats-smoke.php			Contract test for the Stats feature (Modules\Stats):
  *											the manifest and activation through \Nino\Features, what
- *											is and is not counted (method, status, tool/dot uris, the
- *											exclude list, signed-in visitors, a cache hit still
- *											counting), the per-day/per-month storage shape including
- *											the maxUris fold and the retention sweep, the read-only
- *											panel and its permission, the dashboard tile, and
+ *											is and is not counted (method, status, tool/dot uris, a
+ *											file - the route's declared Content-Type or a file
+ *											extension - the exclude list, signed-in visitors, a
+ *											cache hit still counting), the per-day/per-month storage
+ *											shape including the maxUris fold and the retention
+ *											sweep, the read-only panel and its permission - showing
+ *											pages only, with their titles, even of a month counted
+ *											before files were left out - the dashboard tile, and
  *											deactivation. Travels with the feature and runs against
  *											the checkout three levels up, or the one NINO_ROOT names
  *											(see tests/harness.php there).
@@ -217,6 +220,57 @@ check( '...and is not counted - "a GET" means the raw method too', dayTotal( $ap
 echo "\n";
 
 
+echo "Files are not pages - a declared Content-Type, a file extension\n";
+
+/*	robots.txt, sitemap.xml and a json endpoint answer 200 to a GET and were
+	counted like pages: a crawler fetching robots.txt every day put it in the
+	top of the pages. Driven through Http::request() and Http::response() - the
+	way a request reaches the counter - because what decides is the header the
+	route declares, which the response carries by the time the counter runs.
+	The pages beside them are the controls: an address with a dot in it is not
+	a file ('/v1.2-release-notes' has an "extension" to pathinfo()), and a route
+	that declares nothing is a page	*/
+$appData['/nino/http/routes']['GET://robots.txt']			= [ 'uri' => '/robots.txt', 'body' => 'User-agent: *', 'header' => [ 'Content-Type' => 'text/plain; charset=UTF-8' ] ];
+$appData['/nino/http/routes']['GET://sitemap.xml']		= [ 'uri' => '/sitemap.xml', 'body' => '<urlset/>', 'header' => [ 'Content-Type' => 'application/xml; charset=UTF-8' ] ];
+$appData['/nino/http/routes']['GET://api/catalog']		= [ 'uri' => '/api/catalog', 'body' => '{}', 'header' => [ 'content-type' => 'application/json' ] ];
+$appData['/nino/http/routes']['GET://feed.json']			= [ 'uri' => '/feed.json', 'body' => '{}' ];
+$appData['/nino/http/routes']['GET://feed.xml']				= [ 'uri' => '/feed.xml', 'body' => '<rss/>' ];
+$appData['/nino/http/routes']['GET://v1.2-release-notes']	= [ 'uri' => '/v1.2-release-notes', 'body' => 'notes' ];
+$appData['/nino/http/routes']['GET://plain-page']			= [ 'uri' => '/plain-page', 'body' => 'page' ];
+$appData['/nino/http/routes']['GET://html-page']			= [ 'uri' => '/html-page', 'body' => 'page', 'header' => [ 'Content-Type' => 'TEXT/HTML; charset=utf-8' ] ];
+
+$viewOf = static function( string $uri ) use ( &$appData, $month, $today ): int {
+	$request = fakeRequest( $appData, $uri );
+	$before = (int) ( monthFile( $appData, $month )['days'][$today]['uris'][$uri] ?? 0 );
+	\Nino\Http::response( $appData, $request );
+	return (int) ( monthFile( $appData, $month )['days'][$today]['uris'][$uri] ?? 0 ) - $before;
+};
+
+check( 'a route declaring text/plain (robots.txt) is not counted', $viewOf( '/robots.txt' ) === 0 );
+check( '...nor one declaring application/xml (sitemap.xml)', $viewOf( '/sitemap.xml' ) === 0 );
+check( '...nor a json endpoint, however its route spells the header name', $viewOf( '/api/catalog' ) === 0 );
+check( '...nor an address that ends in .json or .xml without declaring anything', $viewOf( '/feed.json' ) === 0 && $viewOf( '/feed.xml' ) === 0 );
+check( 'a page whose address has a dot in it is still counted', $viewOf( '/v1.2-release-notes' ) === 1 );
+check( '...and so is a page without an extension', $viewOf( '/plain-page' ) === 1 );
+check( '...and one that declares text/html, in any case', $viewOf( '/html-page' ) === 1 );
+
+// The same rule on the response the counter is handed: a route can set the
+// header at any point before it runs
+$fileRequest = fakeRequest( $appData, '/ad-hoc' );
+$fileRequest['/nino/http/response']['header']['CONTENT-TYPE'] = 'Text/Plain';
+$before = dayTotal( $appData, $month, $today );
+countRequest( $appData, $fileRequest );
+check( 'a header carrying text/plain is a file whatever the case of its name', dayTotal( $appData, $month, $today ) === $before );
+
+check( 'Stats::isPage() agrees: pages are pages, files are files, the overflow bucket and an unknown address are pages',
+	\Nino\Modules\Stats::isPage( $appData, '/plain-page' ) === true && \Nino\Modules\Stats::isPage( $appData, '/v1.2-release-notes' ) === true
+	&& \Nino\Modules\Stats::isPage( $appData, '/robots.txt' ) === false && \Nino\Modules\Stats::isPage( $appData, '/api/catalog' ) === false
+	&& \Nino\Modules\Stats::isPage( $appData, '/feed.json' ) === false && \Nino\Modules\Stats::isPage( $appData, '/FEED.XML' ) === false
+	&& \Nino\Modules\Stats::isPage( $appData, \Nino\Modules\Stats::OVERFLOW_URI ) === true && \Nino\Modules\Stats::isPage( $appData, '/gone-since' ) === true );
+
+echo "\n";
+
+
 echo "The exclude setting - exact uris and a wildcard subtree\n";
 
 check( 'exclude is saved', \Nino\Features::saveSettings( $appData, 'stats', [ 'exclude' => "/internal\n/blog/*" ] ) === [] );
@@ -411,6 +465,73 @@ check( 'a well-formed but empty month is a 200 with zero totals, not an error', 
 check( 'summary() gives the dashboard tile - here, the 7-day total equals today\'s, since everything happened today', \Nino\Modules\Stats::summary( $appData ) === [ 'value' => (string) $expectedTotal, 'label' => '/_admin/stats/label/tile' ] );
 check( 'the panel\'s own summary() delegates to it', \Nino\Modules\Stats\Admin::summary( $appData ) === \Nino\Modules\Stats::summary( $appData ) );
 check( 'log() never writes an activity-log line - the panel is read-only', \Nino\Modules\Stats\Admin::log( 'stats/month', [] ) === '' );
+
+/*	What was counted before files were left out is still in the month files, and
+	has to stay out of what is shown. Seeded by hand in an old month and in
+	today's file - and put back, so the checks that follow see what they saw	*/
+echo "\nModules\\Stats\\Admin - pages only, with titles, also of a month counted before\n";
+
+$appData['/nino/locales/textfiles'] = '/text';
+\Nino\Filesystem::putFileContent( $appData, '/text/en_US.php', [
+	'[[/webpage/about/title]]'	=> 'About Us',
+] );
+\Nino\Filesystem::putFileContent( $appData, '/text/de_DE.php', [
+	'[[/webpage/about/title]]'				=> 'Über uns',
+	'[[/webpage/only-native/title]]'	=> 'Nur Deutsch',
+] );
+// One page, two languages, the way the wizard writes them; one page whose
+// locale has no title of its own; and a wildcard route that is a page
+$appData['/nino/http/routes']['GET://about']				= [ 'uri' => '/about', 'locale' => 'en_US', 'body' => 'about' ];
+$appData['/nino/http/routes']['GET://ueber-uns']		= [ 'uri' => '/about', 'locale' => 'de_DE', 'body' => 'ueber uns' ];
+$appData['/nino/http/routes']['GET://only-native']	= [ 'uri' => '/only-native', 'locale' => 'en_US', 'body' => 'x' ];
+$appData['/nino/http/routes']['GET://docs/*']				= [ 'uri' => '/docs', 'body' => 'docs' ];
+
+$oldMonth			= '2026-01';
+$oldMonthFile	= '/data/stats/'. $oldMonth. '.php';
+\Nino\Filesystem::putFileContent( $appData, $oldMonthFile, [ 'days' => [
+	'2026-01-05' => [ 'total' => 10, 'uris' => [ '/about' => 5, '/robots.txt' => 3, \Nino\Modules\Stats::OVERFLOW_URI => 2 ], 'referrers' => [ 'example.org' => 2 ] ],
+	// Nothing but files: not a day with data any more
+	'2026-01-06' => [ 'total' => 4, 'uris' => [ '/robots.txt' => 3, '/sitemap.xml' => 1 ], 'referrers' => [ 'crawler.example' => 4 ] ],
+	'2026-01-07' => [ 'total' => 8, 'uris' => [ '/feed.json' => 1, '/ueber-uns' => 2, '/only-native' => 1, '/docs/intro' => 3, '/gone-since' => 1 ], 'referrers' => [ 'example.org' => 1 ] ],
+] ] );
+
+[ $status, $body ] = callAdminPost( $appData, 'stats/month', [ 'month' => $oldMonth ] );
+check( 'an old month with file hits in it is answered', $status === 200 );
+check( '...the days are recomputed from the pages: the file hits are not in a day\'s total', array_column( $body['days'], 'total', 'day' ) === [ '2026-01-05' => 7, '2026-01-07' => 7 ] );
+check( '...a day with nothing but files is gone, and totals are counted from what is left', $body['totals'] === [ 'views' => 14, 'days' => 2 ] );
+
+$pageViews = array_column( $body['uris'], 'views', 'uri' );
+check( '...no file in the pages table, the overflow bucket kept', isset( $pageViews['/robots.txt'] ) === false && isset( $pageViews['/sitemap.xml'] ) === false
+	&& isset( $pageViews['/feed.json'] ) === false && ( $pageViews[\Nino\Modules\Stats::OVERFLOW_URI] ?? 0 ) === 2 );
+check( '...the rest as counted', $pageViews['/about'] === 5 && $pageViews['/ueber-uns'] === 2 && $pageViews['/docs/intro'] === 3 );
+
+$pageTitles = array_column( $body['uris'], 'title', 'uri' );
+check( 'a page row carries the page\'s title in the language of the route that answers it', $pageTitles['/about'] === 'About Us' && $pageTitles['/ueber-uns'] === 'Über uns' );
+check( '...the native language\'s where the route\'s own has none', $pageTitles['/only-native'] === 'Nur Deutsch' );
+check( '...and nothing where no text has one: a wildcard route, an address no route answers, the overflow bucket', $pageTitles['/docs/intro'] === ''
+	&& $pageTitles['/gone-since'] === '' && $pageTitles[\Nino\Modules\Stats::OVERFLOW_URI] === '' );
+
+check( 'the referrers of a day that is dropped go with it, the others stay', array_column( $body['referrers'], 'views', 'host' ) === [ 'example.org' => 3 ] );
+
+// The tile and the panel say the same. Today's file gets file hits it was
+// never meant to have - as an old install's would - and neither shows them
+$todayFile	= '/data/stats/'. $month. '.php';
+$todayState	= monthFile( $appData, $month );
+$withFiles	= $todayState;
+$withFiles['days'][$today]['uris']['/robots.txt'] = 7;
+$withFiles['days'][$today]['total'] += 7;
+\Nino\Filesystem::putFileContent( $appData, $todayFile, $withFiles );
+
+$pagesToday = (int) $todayState['days'][$today]['total'];
+[ $status, $body ] = callAdminPost( $appData, 'stats/month', [ 'month' => $month ] );
+check( 'in the current month too the file hits are not shown', $status === 200 && $body['totals']['views'] === $pagesToday && $body['days'][0]['total'] === $pagesToday );
+check( 'the Dashboard tile is the panel\'s 7-day sum, not the stored total', \Nino\Modules\Stats::summary( $appData )['value'] === (string) $pagesToday
+	&& (string) ( $pagesToday + 7 ) !== \Nino\Modules\Stats::summary( $appData )['value'] );
+
+\Nino\Filesystem::putFileContent( $appData, $todayFile, $todayState );
+@unlink( \Nino\Filesystem::path( $appData, $oldMonthFile ) );
+unset( $appData['./nino/filesystem/cache'][$oldMonthFile] );
+echo "\n";
 
 unset( $appData['./nino/auth/current'] );
 [ $status ] = callAdminPost( $appData, 'stats/months' );

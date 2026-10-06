@@ -24,7 +24,8 @@ namespace Nino\Modules {
 	 *										through \Nino\Filesystem::mutate() (locked, atomic), one
 	 *										mutate per counted view. See README.md for the exact
 	 *										storage shape, the retention sweep and why there is no
-	 *										unique-visitor number.
+	 *										unique-visitor number. Only pages are counted, and only
+	 *										pages are shown: see isPage().
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -40,6 +41,12 @@ namespace Nino\Modules {
 		// this single bucket instead of its own key - an ellipsis is never a
 		// real path, so it cannot collide with one
 		public const string OVERFLOW_URI = '/…';
+
+		// What a uri ending in one of these is: a file a crawler or a browser
+		// fetches, not a page somebody reads. Counted neither by the counter
+		// nor by the panel - the declared Content-Type decides first, this is
+		// for the route that declares none (a hand-written /feed.xml)
+		private const array FILE_EXTENSIONS = [ 'txt', 'xml', 'json', 'rss', 'atom', 'webmanifest' ];
 
 		/**
 		 *	The /_admin screen this feature brings along - collected by
@@ -188,6 +195,42 @@ namespace Nino\Modules {
 		}
 
 		/**
+		 *	Whether a uri is a page - something a visitor reads - rather than a
+		 *	file the site also answers, robots.txt and sitemap.xml among them.
+		 *	What the counter does not count from now on, and what the panel and
+		 *	the tile leave out of the months that were counted before: the file
+		 *	hits of those stay on disk as they were, and are simply not shown.
+		 *
+		 *	The route decides, the way the request did (\Nino\Http::requestRoute(),
+		 *	wildcard routes included): a route that declares a Content-Type other
+		 *	than text/html is a file, whatever its address. A route that declares
+		 *	none is looked at by its last segment - txt, xml, json, rss, atom and
+		 *	webmanifest are files - and an address no route answers any more
+		 *	counts as the page it was. Not the extension alone: '/v1.2-release-notes'
+		 *	has one to pathinfo(), and is a page.
+		 *
+		 *	A JSON endpoint that declares no Content-Type on its route still
+		 *	counts, then, unless it ends in .json: such a route declares its
+		 *	Content-Type on the route, see the feature recipe's /api/catalog.
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$uri					As counted: the request path
+		 *
+		 *	@return 	bool
+		 */
+		public static function isPage( array &$appData, string $uri ): bool {
+
+			if( $uri === self::OVERFLOW_URI )
+				return true;
+
+			$route = \Nino\Http::requestRoute( $appData, $uri, 'GET' );
+			$route = is_array( $route ) === true ? $route : [];
+
+			return self::_isHtml( is_array( $route['header'] ?? null ) === true ? $route['header'] : [] ) === true
+				&& self::_isFile( $uri ) === false;
+		}
+
+		/**
 		 *	The Dashboard tile: views over the last 7 days (today included).
 		 *	The panel contract's summary() only ever carries { value, label }
 		 *	(see \Nino\Admin\Panels::collect() and Dashboard\Admin::apiSummary()),
@@ -207,8 +250,10 @@ namespace Nino\Modules {
 		 *	GET (the raw method too, so a HEAD folded to GET for routing is
 		 *	not one - see \Nino\Http::_cleanRawMethod()), answered 200, not
 		 *	one of the workbench's or a module's own technical uris, not a
-		 *	uri the operator excluded, and not a signed-in visitor unless
-		 *	countSignedIn is on.
+		 *	file (the response declares a Content-Type other than text/html, or
+		 *	the uri ends in .txt, .xml, ... - see isPage()), not a uri the
+		 *	operator excluded, and not a signed-in visitor unless countSignedIn
+		 *	is on.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		$request
@@ -228,10 +273,46 @@ namespace Nino\Modules {
 			if( $uri === '' || self::_isTool( $uri ) === true )
 				return false;
 
+			// The header the response carries now: the route's own, merged in by
+			// \Nino\Http::response() before this callback runs
+			if( self::_isHtml( (array) ( $request['/nino/http/response']['header'] ?? [] ) ) === false || self::_isFile( $uri ) === true )
+				return false;
+
 			if( \Nino\Features::setting( $appData, self::KEY, 'countSignedIn', false ) !== true && \Nino\Auth::getCurrentUser( $appData ) !== false )
 				return false;
 
 			return self::_excluded( (array) \Nino\Features::setting( $appData, self::KEY, 'exclude', [] ), $uri ) === false;
+		}
+
+		/**
+		 *	Whether a header map allows html: no Content-Type at all does (the
+		 *	kernel answers html), one that starts with text/html does, anything
+		 *	else - text/plain, application/xml, application/json - is a file.
+		 *	The name is looked for in any case, the way a route may spell it.
+		 *
+		 *	@param		array			$header				name => value
+		 *
+		 *	@return 	bool
+		 */
+		private static function _isHtml( array $header ): bool {
+
+			foreach( $header as $name => $value )
+				if( is_string( $name ) === true && strtolower( $name ) === 'content-type' )
+					return is_string( $value ) === true && str_starts_with( strtolower( trim( $value ) ), 'text/html' ) === true;
+
+			return true;
+		}
+
+		/**
+		 *	Whether the last segment of a uri ends in one of FILE_EXTENSIONS
+		 *
+		 *	@param		string		$uri
+		 *
+		 *	@return 	bool
+		 */
+		private static function _isFile( string $uri ): bool {
+
+			return in_array( strtolower( pathinfo( $uri, PATHINFO_EXTENSION ) ), self::FILE_EXTENSIONS, true );
 		}
 
 		/**
@@ -326,9 +407,13 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	Sum of 'total' over the last $days calendar days, today included,
-		 *	reading each month file at most once even when the range crosses
-		 *	a month boundary
+		 *	Views over the last $days calendar days, today included, reading
+		 *	each month file at most once even when the range crosses a month
+		 *	boundary. The views of the pages only: the days' uris are summed,
+		 *	each classified once by isPage(), so the tile says what the panel
+		 *	does and a file hit counted before this was fixed is not in it.
+		 *	Every counted view increments exactly one uri, so the sum over the
+		 *	kept uris is exact.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		int				$days
@@ -337,8 +422,9 @@ namespace Nino\Modules {
 		 */
 		private static function _rangeTotal( array &$appData, int $days ): int {
 
-			$total = 0;
-			$cache = [];
+			$total	= 0;
+			$cache	= [];
+			$pages	= [];
 
 			for( $i = 0; $i < $days; $i++ ) {
 
@@ -348,7 +434,16 @@ namespace Nino\Modules {
 				if( array_key_exists( $month, $cache ) === false )
 					$cache[$month] = self::monthData( $appData, $month );
 
-				$total += (int) ( $cache[$month]['days'][$day]['total'] ?? 0 );
+				foreach( (array) ( $cache[$month]['days'][$day]['uris'] ?? [] ) as $uri => $views ) {
+
+					$uri = (string) $uri;
+
+					if( isset( $pages[$uri] ) === false )
+						$pages[$uri] = self::isPage( $appData, $uri );
+
+					if( $pages[$uri] === true )
+						$total += (int) $views;
+				}
 			}
 
 			return $total;

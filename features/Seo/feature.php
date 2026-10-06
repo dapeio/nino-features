@@ -16,7 +16,7 @@ return [
 			],
 			'[seo-jsonld]' => [
 				'en_US' => 'Its structured data.',
-				'de_DE' => 'Ihre strukturierten Daten.',
+				'de_DE' => 'Die strukturierten Daten der Seite.',
 			],
 		],
 		'markup' => [],
@@ -39,6 +39,10 @@ return [
 			'/seo/pages' => [
 				'en_US' => 'Add a page sitemap.xml and llms.txt cannot find from a route - what a feature that answers /blog/* knows and config.php does not.',
 				'de_DE' => 'Eine Seite ergänzen, die sitemap.xml und llms.txt über keine Route finden - was ein Feature weiß, das /blog/* beantwortet, und die config.php nicht.',
+			],
+			'/seo/exclude' => [
+				'en_US' => 'Keep a page out of sitemap.xml and llms.txt - what a feature knows is not for everybody, eg. the paths behind a password.',
+				'de_DE' => 'Eine Seite aus sitemap.xml und llms.txt heraushalten - was ein Feature als nicht für alle bestimmt kennt, zB die Pfade hinter einem Passwort.',
 			],
 		],
 		'install' => [],

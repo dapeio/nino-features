@@ -27,11 +27,20 @@ return [
 				'de_DE' => 'Wohin das Passwortformular sendet.',
 			],
 		],
-		'panel' => [],
+		'panel' => [
+			'Protected area' => [
+				'en_US' => 'The password, the protected pages as a list to tick off, and a button that signs everybody out. A new password signs everybody out too.',
+				'de_DE' => 'Das Passwort, die geschützten Seiten als Liste zum Ankreuzen und ein Knopf, der alle abmeldet. Ein neues Passwort meldet ebenfalls alle ab.',
+			],
+		],
 		'callbacks' => [
 			'/nino/http/response' => [
 				'en_US' => 'Puts the password form in front of every protected page.',
 				'de_DE' => 'Stellt das Passwortformular vor jede geschützte Seite.',
+			],
+			'/seo/exclude' => [
+				'en_US' => 'Tells the SEO feature, where it is installed, to keep the protected pages out of sitemap.xml and llms.txt.',
+				'de_DE' => 'Sagt dem Feature SEO, wo es installiert ist, die geschützten Seiten aus sitemap.xml und llms.txt herauszuhalten.',
 			],
 		],
 		'install' => [
@@ -49,8 +58,9 @@ return [
 	'version'			=> '1.0.0',
 	'nino'				=> '^1.3',
 	'requires'		=> [],
-	// The attempt-cap counter this feature owns - what a backup carries
-	'data'				=> [ '/data/protected.php' ],
+	// The attempt-cap counter and the session epoch this feature owns - what a
+	// backup carries
+	'data'				=> [ '/data/protected.php', '/data/protected-session.php' ],
 	'settings'		=> [
 		'paths' => [
 			'type'	=> 'lines',

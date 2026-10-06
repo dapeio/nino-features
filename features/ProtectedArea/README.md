@@ -10,10 +10,55 @@ they lock the area again or the session ends. There is no account, no user
 list, and no per-visitor tracking - just one password and one session flag.
 
 One directory, the shape the [feature recipe](https://github.com/dapeio/nino/blob/main/docs/recipes/feature.md)
-describes: `feature.php`, `ProtectedArea.php`, `install/`, `templates/`,
-`tests/`. No `text/`: this feature has no workbench panel, and the words its
-own two templates carry are the project's, written by the install unit. The
+describes: `feature.php`, `ProtectedArea.php`, `Admin/` with `assets/` and
+`text/` for the workbench panel, `install/`, `templates/`, `tests/`. The words
+the panel carries are in `text/`; the words of the password form and of the
+two small templates are the project's, written by the install unit. The
 changes per version are in [CHANGELOG.md](CHANGELOG.md).
+
+## The panel
+
+**Protected area** in the Features group of the workbench rail, behind its own
+permission, `/_admin/protected/manage` - the Users panel's roles tab offers it
+under Features. It does three things, and only those; the settings
+themselves stay the Features panel's, and both read and write the same
+two (`paths`, `password`):
+
+- **Password.** A new password, typed twice and at least 8 characters (the
+  floor the kernel holds an account to; 200 at most). It is saved as the
+  `password` setting, posted as `pw`, and never shown again - the screen says
+  that one is set, nothing more. **A new password signs everybody out**, see
+  [Signing everybody out](#signing-everybody-out), so a member who left loses
+  access with it. The Features panel's own form for `password` does not do
+  that - it is a settings form and rotates nothing - so a password changed
+  there is followed by the panel's **Sign everybody out**.
+- **Pages.** The site's pages as a list to tick off, instead of typed uris.
+  The list is the persisted `GET` routes of `config.php` that a visitor opens
+  in a browser: the front page is not in it (the gate skips an empty prefix, so
+  ticking it would protect nothing), nor are `/_...` and `/...` paths, error
+  pages (a `statusCode` of 400 or more), anything that declares a
+  `Content-Type` other than `text/html` - robots.txt, sitemap.xml, a json
+  endpoint - and a route that is not `GET`. A wildcard route such as
+  `GET://blog/*` is listed as the prefix it stands for, `/blog`. The locale
+  variants of one page - the routes that share an internal `uri` - are one
+  row, and one tick protects every language; the title is that page's
+  `/webpage<uri>/title` text in the route's locale, else the native one, else
+  the path. A row whose address already lies below a protected prefix reads
+  "through a wider path" and cannot be changed. Saving replaces what the list
+  can name and **keeps every other line of `paths`** as the developer wrote
+  it, ahead of the choice - a prefix of a wildcard feature's records, or one
+  with no route at all, stays what it was and is shown under the list. The
+  server holds every posted path to the list it builds itself, in full: an
+  address it does not list is a `400`. Choosing nothing switches the protection
+  of the listed pages off, and the screen asks first.
+- **Sign out.** One button, asked about first, that locks every session.
+
+Actions: `protected/state`, `protected/pages`, `protected/password` and
+`protected/signout`, each guarded with the panel's permission. The activity
+log says that the password changed, never what it is. The workbench announces
+every dispatched action, the posted data included, on `/nino/admin/action`:
+on Nino 1.3 a listener of that event is handed `pw` the way it is handed an
+account's password on the Users panel.
 
 ## Settings
 
@@ -21,7 +66,7 @@ The Features panel's form for `protected`:
 
 | Setting | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `paths` | lines | *(empty)* | One uri prefix per line, eg. `/intern` - protects that page and everything below it. A line has to start with `/` and must not start with `/_` (Nino's own tools) or `/.` (module endpoints, this feature's own `/.protected` included); such a line is silently ignored rather than protecting nothing by accident. A trailing slash is stripped. |
+| `paths` | lines | *(empty)* | One uri prefix per line, eg. `/intern` - protects that page and everything below it (the panel's page list writes this setting). A line has to start with `/` and must not start with `/_` (Nino's own tools) or `/.` (module endpoints, this feature's own `/.protected` included); such a line is silently ignored rather than protecting nothing by accident. A trailing slash is stripped. |
 | `password` | secret | *(empty)* | The one password every visitor uses. **Empty means nothing is protected** - the feature stays completely inert, whatever `paths` says, until this is set. |
 | `attempts` | int, 1-50 | 5 | Wrong passwords allowed per visitor and hour before the form refuses for the rest of that hour, right password included (see [The attempt cap](#the-attempt-cap)). |
 
@@ -79,9 +124,10 @@ checks the kernel's CSRF state (`./nino/csrf/blocked`, set by the required
    [The attempt cap](#the-attempt-cap) - without even looking at the
    password;
 2. compares the posted password against the configured one with
-   `hash_equals()` and, on a match, drops the ip's counter, calls
-   `\Nino\Runtime::setSessionValue( $appData, './protected/unlocked', true )`
-   and answers `303` to `return`, resolved to a **local path only** - one
+   `hash_equals()` and, on a match, drops the ip's counter, stamps the session
+   with the current epoch (`\Nino\Runtime::setSessionValue( $appData,
+   './protected/unlocked', <epoch> )`, see [Signing everybody
+   out](#signing-everybody-out)) and answers `303` to `return`, resolved to a **local path only** - one
    starting with a single `/`, no `//`, no scheme. Anything else (a full
    url, a protocol-relative one, `/javascript:...`) becomes `/` instead;
 3. otherwise re-renders the password form with `statusCode` `401` and the
@@ -114,6 +160,24 @@ the proxy for every visitor alike unless the proxy is named under
 `/nino/http/proxies`, and without that the first visitor to spend the hour's
 allowance locks the area for everybody. See the Config panel's **Reverse
 proxies in front of this site**.
+
+## Signing everybody out
+
+An unlock is the session's `unlocked` flag, and its value is the **session
+epoch** the unlock happened under: a string in `/data/protected-session.php`,
+`{ epoch }`. `\Nino\Modules\ProtectedArea::signOutAll()` writes a new one
+(`bin2hex( random_bytes( 16 ) )`, through `Filesystem::mutate()`), and from then
+on every session that unlocked before it reads locked - the flag it holds is
+not the epoch any more. The panel's **Sign everybody out** and every change of
+the password end there. Nobody is identified, so there is no one to name; the
+epoch is all there is to rotate.
+
+While no epoch has ever been written the flag is a bare `true`, the value this
+feature stored before the epoch existed - so an update asks nobody for the
+password again - and `unlocked()` accepts it until the first sign-out. A
+password change writes the epoch first and the password second, so a write that
+fails leaves the old password in place rather than the new one beside sessions
+it never asked for.
 
 ## Locking again
 
@@ -150,7 +214,14 @@ button. `[protected-error]` renders
 ```
 
 or the same with `locked` in place of `wrong`, only while this very request
-actually failed one of those two ways - nothing otherwise. The words
+actually failed one of those two ways - nothing otherwise. The form carries no
+`nino-form` class: the kernel's script binds every `.nino-form` to the
+contact-form request, which prevents the native submit, posts by XHR and
+writes the answer into the form's first `<p>` - this one has none - so a
+visitor with javascript on was never taken to the page and a wrong password
+showed nothing. A project that activated the feature before this was fixed has
+the old file: the unit is applied add-only and never again, so it removes the
+class from `templates/page-protected.tpl` by hand (see the changelog). The words
 (`/protected/title`, `/protected/text`, `/protected/label/password`,
 `/protected/label/submit`, `/protected/error/wrong`,
 `/protected/error/locked`, `/protected/label/logout`) are ordinary,
@@ -160,17 +231,33 @@ editor-maintained texts the install unit writes into the project's
 and the unit lists it under `blacklist` so that the Text panel's scan for
 missing keys does not report a key no text file can answer.
 
+## The sitemap
+
+Where the [SEO feature](../Seo/README.md) is installed, the protected pages
+stay out of `sitemap.xml` and `llms.txt`: `init()` registers a callback under
+the literal string `/seo/exclude` (nothing is added to `requires`, and a
+constant of a feature that may not be there would be a fatal error), which
+answers every configured prefix as `<prefix>/*` - the page and everything
+below it - while a password is set. Without a password nothing is protected
+and nothing is excluded. `robots.txt` is not touched: a `Disallow` line would
+tell every reader which paths a password guards.
+
 ## Helpers
 
 ```php
 \Nino\Modules\ProtectedArea::protects( array &$appData, string $uri ): bool
 \Nino\Modules\ProtectedArea::unlocked( array &$appData ): bool
+\Nino\Modules\ProtectedArea::prefixes( array &$appData ): array
+\Nino\Modules\ProtectedArea::signOutAll( array &$appData ): bool
 ```
 
 `protects()` answers whether a uri lies under a configured prefix (`false`
 for every uri while the password is empty); `unlocked()` answers whether the
-current session has already unlocked. Both are safe to call from a template
-shortcode or a project's own module - the gate itself uses nothing else.
+current session has already unlocked, under the current epoch. Both are safe
+to call from a template shortcode or a project's own module - the gate itself
+uses nothing else. `prefixes()` is the configured `paths` as the gate reads
+them - normalised, the invalid ones dropped - and `signOutAll()` writes a new
+session epoch, `false` where the file could not be written.
 
 ## What this is not
 
@@ -188,16 +275,20 @@ shortcode or a project's own module - the gate itself uses nothing else.
 
 ## Data
 
-One file under `data/`, listed under `data` in the manifest so the
-workbench's daily backup carries it:
+Two files under `data/`, listed under `data` in the manifest so the
+workbench's daily backup carries them:
 
 | File | Content |
 | --- | --- |
 | `/data/protected.php` | the attempt cap's own counter, by client ip: `{ tries, reset }` per ip with an unsuccessful try in the current window |
+| `/data/protected-session.php` | the session epoch, `{ epoch }`, written by a sign-out and read by every unlock - see [Signing everybody out](#signing-everybody-out); absent until the first sign-out |
 
 There is nothing to restore-merge here (unlike a subscriber list, an
 elapsed rate-limit window is never worth preserving across a restore), so
-this feature registers no `/nino/admin/restore` callback.
+this feature registers no `/nino/admin/restore` callback. A restore brings the
+epoch of the backup back with it, which makes a session that was signed out
+after that backup valid again for as long as the browser holds it - sign
+everybody out once more after a restore if that matters.
 
 ## Tests
 
@@ -208,8 +299,16 @@ locked response and extending the cache blacklist, unlocking with a wrong
 and then the right password, an unsafe `return` falling back to `/`, the
 per-ip attempt cap - including eight real processes posting at once, since
 what a cap has to survive is a burst - locking again and
-`[protected-logout]`, an empty password leaving the feature inert, and
-deactivation. It loads Nino's
+`[protected-logout]`, the session epoch (a sign-out, a new password, a
+session from before the epoch kept), the Seo exclusion, the password form
+not being one the contact-form script binds, an empty password leaving the
+feature inert, the panel (its guards, the state, the pages - a choice, an
+unlisted path, the developer's own prefixes kept, locale variants together,
+an empty choice - the password and signing out, none of them ever holding the
+password) and deactivation. `tests/protected-js-smoke.js` is the panel
+script's own test over a dom stand-in - the list and its states, what a save
+posts, the confirmations, the two password entries - and the suite above runs
+it where node is on the path. It loads Nino's
 `tests/harness.php` from the checkout three levels up - where the feature
 sits in a project - or from the one `NINO_ROOT` names:
 
