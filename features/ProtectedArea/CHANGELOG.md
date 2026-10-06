@@ -57,6 +57,20 @@ A release is the tag `protected-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The text keys follow Nino's grammar, and the feature reads Nino 1.4's.**
+  `/protected/title`, `text`, `label/password` and `label/submit` are
+  `/template/page-protected/intro/title`, `…/intro/text`, `…/form/password` and
+  `…/form/submit` (the words of `page-protected.tpl`); `/protected/error/wrong`
+  and `locked` are `/feature/protected/error/wrong` and `locked`,
+  `/protected/label/logout` is `/feature/protected/logout/label`, and the fill
+  the gate sets, `/protected/return`, is `/feature/protected/form/return`, still
+  blacklisted. The panel names a page by `/_nino/webpage<uri>/title`. Nino 1.4.0
+  renames the keys the feature reads and it is renamed with them, so `nino` is
+  `^1.4`: a Nino before 1.4 has neither the words nor the keys, and is not
+  offered the feature. Nothing has been published under the old keys, so there
+  is no migration; a project that already has texts under them copies the values
+  to the new keys.
+
 - **The German install texts say „Du“.** `/protected/text`,
   `/protected/error/wrong` and `/protected/error/locked` read „Bitte gib das
   Passwort ein, um fortzufahren.“, „Bitte versuche es erneut.“ and „Bitte

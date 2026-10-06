@@ -89,6 +89,17 @@ versions [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **The words the builder reads follow Nino 1.4's text keys.** A generated
+  form's legend and button read `[[/template/common/form/required]]` and
+  `[[/template/common/form/submit]]` (`[[/form/required]]` and
+  `[[/form/label/submit]]` before), a field's label the same family -
+  `[[/template/common/form/email]]` gives the name `email` - and the panel's
+  hints name `/project/mail/address/owner` and `/module/form/subject/owner` for
+  `/form/email/owner` and `/form/subject/owner`. `nino` was `^1.4` already; the
+  keys are why. Nothing has been published under the old keys, so there is no
+  migration; a project that already has texts under them copies the values to
+  the new keys.
+
 - **Four sentences named something the code does not.** The README dated the
   form engine to Nino 1.1, where `/nino/form/forms` arrived with 1.2.0-beta,
   and listed the directory's contents without the `templates/` the form's

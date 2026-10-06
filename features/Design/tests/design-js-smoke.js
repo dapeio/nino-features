@@ -282,8 +282,8 @@ function listing( over ) {
 		// Whose each of the three files is - all of them Design's here
 		files		: [
 			{ target : '/assets/theme.css', exists : true, state : 'ours' },
-			{ target : '/templates/theme.header.tpl', exists : true, state : 'ours' },
-			{ target : '/templates/theme.footer.tpl', exists : true, state : 'ours' },
+			{ target : '/templates/frame-header.tpl', exists : true, state : 'ours' },
+			{ target : '/templates/frame-footer.tpl', exists : true, state : 'ours' },
 		],
 		previous: null,
 	}, over || {} );
@@ -708,8 +708,8 @@ console.log( 'Applying' );
 /** design/plan's answer for a project the wizard just delivered, with [consent-settings] added to the footer by hand */
 const delivered = [
 	{ target : '/assets/theme.css', exists : true, state : 'foreign', changes : true, lost : [] },
-	{ target : '/templates/theme.header.tpl', exists : true, state : 'foreign', changes : true, lost : [] },
-	{ target : '/templates/theme.footer.tpl', exists : true, state : 'foreign', changes : true, lost : [ '[consent-settings]' ] },
+	{ target : '/templates/frame-header.tpl', exists : true, state : 'foreign', changes : true, lost : [] },
+	{ target : '/templates/frame-footer.tpl', exists : true, state : 'foreign', changes : true, lost : [ '[consent-settings]' ] },
 ];
 
 /** The requests a click on "Apply to website" sends, in order */
@@ -728,7 +728,7 @@ check( 'a line under the bar says which of the two does what',
 check( '...and it stands after the bar, not in it', asking.form.children.indexOf( asking.byId('design-actions-hint') ) > asking.form.children.indexOf( byClass( asking.form, 'nino-admin-actionbar' )[0] ) );
 check( 'with files that are not Design\'s the state line says so and names them, rather than only the stylesheet',
 	asking.design._stateKey() === 'foreign'
-	&& byClass( asking.form, 'design-state--warn' )[0].textContent.indexOf('assets/theme.css, templates/theme.header.tpl, templates/theme.footer.tpl') !== -1 );
+	&& byClass( asking.form, 'design-state--warn' )[0].textContent.indexOf('assets/theme.css, templates/frame-header.tpl, templates/frame-footer.tpl') !== -1 );
 
 asking.byId('design-apply').fire('click');
 
@@ -742,7 +742,7 @@ asking.answer( 200, { files : delivered } );
 
 check( 'the confirmation names the three files, which of them are not Design\'s, and the shortcode a frame would lose',
 	asking.confirms.length === 1
-	&& asking.confirms[0].indexOf('assets/theme.css, templates/theme.header.tpl, templates/theme.footer.tpl') !== -1
+	&& asking.confirms[0].indexOf('assets/theme.css, templates/frame-header.tpl, templates/frame-footer.tpl') !== -1
 	&& asking.confirms[0].indexOf('Not written by Design, and replaced: assets/theme.css') !== -1
 	&& asking.confirms[0].indexOf('[consent-settings]') !== -1 );
 check( '...says the present state is kept first, one fact to a line',
@@ -777,8 +777,8 @@ ours.byId('design-apply').fire('click');
 ours.answer( 200, {} );
 ours.answer( 200, { files : [
 	{ target : '/assets/theme.css', exists : true, state : 'ours', changes : true, lost : [] },
-	{ target : '/templates/theme.header.tpl', exists : true, state : 'ours', changes : false, lost : [] },
-	{ target : '/templates/theme.footer.tpl', exists : true, state : 'ours', changes : false, lost : [] },
+	{ target : '/templates/frame-header.tpl', exists : true, state : 'ours', changes : false, lost : [] },
+	{ target : '/templates/frame-footer.tpl', exists : true, state : 'ours', changes : false, lost : [] },
 ] } );
 
 check( 'with every file Design\'s the apply is sent without force',
@@ -793,13 +793,13 @@ edited.byId('design-apply').fire('click');
 edited.answer( 200, {} );
 edited.answer( 200, { files : [
 	{ target : '/assets/theme.css', exists : true, state : 'ours', changes : true, lost : [] },
-	{ target : '/templates/theme.header.tpl', exists : true, state : 'ours', changes : true, lost : [] },
-	{ target : '/templates/theme.footer.tpl', exists : true, state : 'edited', changes : true, lost : [] },
+	{ target : '/templates/frame-header.tpl', exists : true, state : 'ours', changes : true, lost : [] },
+	{ target : '/templates/frame-footer.tpl', exists : true, state : 'edited', changes : true, lost : [] },
 ] } );
 
 check( 'a frame that was only edited gets force too - the refusal has something to answer to now',
 	JSON.stringify( endpoints( edited ) ) === JSON.stringify( [ 'apply' ] ) && edited.requests[0].payload.force === true
-	&& edited.confirms[0].indexOf('Not written by Design, and replaced: templates/theme.footer.tpl') !== -1 );
+	&& edited.confirms[0].indexOf('Not written by Design, and replaced: templates/frame-footer.tpl') !== -1 );
 
 // "Save draft" asks nothing
 const drafting = panel( {} );

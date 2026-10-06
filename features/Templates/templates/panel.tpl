@@ -121,7 +121,7 @@
 			<div class="pd-create-grid">
 				<label class="pd-form-field is-wide" for="pd-create-filename">
 					<span>[[/_admin/templates/label/filename]]</span>
-					<input id="pd-create-filename" name="filename" type="text" required pattern="page-[A-Za-z0-9][A-Za-z0-9._-]*\.tpl" autocomplete="off" placeholder="page-services.tpl">
+					<input id="pd-create-filename" name="filename" type="text" required pattern="page-[a-z0-9]+(-[a-z0-9]+)*\.tpl" autocomplete="off" placeholder="page-services.tpl">
 					<small>[[/_admin/templates/hint/filename]]</small>
 				</label>
 				<label class="pd-form-field is-wide" for="pd-create-name">

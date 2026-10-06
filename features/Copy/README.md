@@ -65,9 +65,9 @@ worse than no button.
 
 | Fill | English | Deutsch |
 | --- | --- | --- |
-| `[[/copy/do]]` | Copy | Kopieren |
-| `[[/copy/done]]` | Copied | Kopiert |
-| `[[/copy/failed]]` | Press Ctrl+C | Strg+C drücken |
+| `[[/feature/copy/button/label]]` | Copy | Kopieren |
+| `[[/feature/copy/button/success]]` | Copied | Kopiert |
+| `[[/feature/copy/button/error]]` | Press Ctrl+C | Strg+C drücken |
 
 Merged into the project's own `text/<locale>.php` at activation, for every locale
 it has, and handed to `copy.js` on the button itself.

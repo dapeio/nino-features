@@ -14,6 +14,13 @@ A release is the tag `copy-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The text keys follow Nino's grammar.** `/copy/do`, `/copy/done` and
+  `/copy/failed` are `/feature/copy/button/label`, `…/success` and `…/error`.
+  The values are the same. Nothing has been published under the old keys, so
+  there is no migration; a project that already has texts under them copies the
+  values to the new keys. `nino` stays `^1.3`: the keys are the feature's own,
+  and a Nino before 1.4 takes them as they come.
+
 - **The manual still offered `[copy block]` as a `<pre>`.** The Features
   panel's entry for the flag said "a block rather than a line - a `<pre>`,
   with the whitespace kept", and there has been no `<pre>` in

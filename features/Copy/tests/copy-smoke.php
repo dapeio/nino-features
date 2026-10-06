@@ -59,7 +59,7 @@ check( 'the class is listed and the version recorded', in_array( '\\Nino\\Module
 foreach( [ 'en_US', 'de_DE' ] as $locale ) {
 	$text = \Nino\Filesystem::getFileContent( $appData, '/text/'. $locale. '.php', [] );
 	check( 'activation merged the button\'s words into text/'. $locale. '.php',
-		array_diff_key( array_flip( [ '[[/copy/do]]', '[[/copy/done]]', '[[/copy/failed]]' ] ), $text ) === [] );
+		array_diff_key( array_flip( [ '[[/feature/copy/button/label]]', '[[/feature/copy/button/success]]', '[[/feature/copy/button/error]]' ] ), $text ) === [] );
 }
 
 echo "\n";
@@ -98,7 +98,7 @@ check( 'all three words reach the browser on the button, resolved before the pag
 	str_contains( $html, 'data-copy-do="Copy"' ) === true
 	&& str_contains( $html, 'data-copy-done="Copied"' ) === true
 	&& str_contains( $html, 'data-copy-failed="Press Ctrl+C"' ) === true
-	&& str_contains( $html, '[[/copy/' ) === false );
+	&& str_contains( $html, '[[/feature/copy/' ) === false );
 check( '...and the first of them is the word on it', str_contains( $html, '<span class="nino-copy-word">Copy</span>' ) === true );
 
 check( 'nothing is copied by default that is not what is shown', str_contains( $html, 'data-copy-value' ) === false );
@@ -204,6 +204,6 @@ echo "Deactivation\n";
 check( 'deactivation succeeds', \Nino\Features::deactivate( $appData, 'copy' ) === true );
 check( 'the class is gone from /nino/modules', in_array( '\\Nino\\Modules\\Copy', \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/modules'], true ) === false );
 check( 'the words stay in the project\'s text files - they are the project\'s now',
-	isset( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/copy/do]]'] ) === true );
+	isset( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/feature/copy/button/label]]'] ) === true );
 
 ninoDone( $appData );

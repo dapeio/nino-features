@@ -36,16 +36,15 @@ $feature = \Nino\Features::manifest( dirname( __DIR__ ) );
 
 check( 'the manifest reads, with the key and the class the directory implies', is_array( $feature ) === true
 	&& $feature['key'] === 'design' && $feature['module'] === '\\Nino\\Modules\\Design' );
-// ^1.3 rather than the ^1.2 this needs on its own merits - the look became
-// one file to compile over in 1.2, and that is still the substantive floor.
-// What raises it is the manifest itself: the sectioned 'manual' map below is
-// only read by a kernel newer than the v1.2.0-beta tag, so a constraint that
-// admitted 1.2 offered the feature to an installation whose manifest() then
-// refused it. The stricter bound covers both
-check( 'it names ^1.3 - the kernel that can read this manifest at all', ( $feature['nino'] ?? '' ) === '^1.3' );
-check( '...and neither 1.1 nor the published 1.2.0-beta can run it', \Nino\Features::satisfies( (string) $feature['nino'], '1.1.0' ) === false
+// ^1.4: the frames read words of the kernel's - /project/company/..., the
+// words of /template/frame-header and /template/frame-footer, the page
+// details after /_nino/webpage - and writes the project's frame-header.tpl
+// and frame-footer.tpl, which are named so from 1.4 on. A kernel before it
+// has neither the words nor the files. A pre-release of 1.4 counts as 1.4
+check( 'it names ^1.4 - the kernel that has the words its frames read', ( $feature['nino'] ?? '' ) === '^1.4' );
+check( '...and no 1.3 can run it, a 1.4 pre-release can', \Nino\Features::satisfies( (string) $feature['nino'], '1.3.2' ) === false
 	&& \Nino\Features::satisfies( (string) $feature['nino'], '1.2.0-beta' ) === false
-	&& \Nino\Features::satisfies( (string) $feature['nino'], '1.3.0-beta' ) === true );
+	&& \Nino\Features::satisfies( (string) $feature['nino'], '1.4.0-dev' ) === true );
 check( 'the setup file is declared under data, so a backup carries it', in_array( \Nino\Modules\Design\Setup::PATH, (array) ( $feature['data'] ?? [] ), true ) === true );
 
 echo "\nThe library it ships\n";
@@ -179,14 +178,15 @@ else {
 	it renders. A key the unit stopped shipping stands on the page as itself:
 	footer v2 read /website/footer/title/followus, which left the base unit with
 	the social links. A fill built out of another one names a key per page and
-	is the page's business ([[/webpage[[/nino/http/response/uri]]/title]]), so
+	is the page's business ([[/_nino/webpage[[/nino/http/response/uri]]/title]]), so
 	only its inner half is read	*/
 $baseText = $root. '/_admin/install/library/base/text';
 
 if( is_dir( $baseText ) === false )
 	echo "  --  this checkout has no installer library, so the frames' fills are not compared\n";
 else {
-	$shipped = [ '/nino/dir' => true, '/nino/public' => true, '/date/year' => true, '/nino/http/response/uri' => true ];
+	// What the kernel fills while it renders is the kernel's to list, not a copy of it
+	$shipped = array_fill_keys( \Nino\Html::runtimeFillKeys( $appData ), true );
 	foreach( glob( $baseText. '/*.php' ) ?: [] as $file )
 		foreach( array_keys( (array) include $file ) as $key )
 			$shipped[ trim( (string) $key, '[]' ) ] = true;
@@ -646,6 +646,9 @@ check( '...so the file holds the same choices, without it', array_keys( (array) 
 /*	A frame is a stylesheet AND the markup it was drawn against. Compiling one
 	without writing the other is how a page ends up with v3's css over v1's
 	html, which is exactly what this did before the panel went looking */
+// The two templates the kernel's base unit delivers, which html-header.tpl and html-footer.tpl include
+check( 'the frames it writes are the base unit\'s frame-header.tpl and frame-footer.tpl', sprintf( \Nino\Modules\Design\Compiler::FRAME_TARGET, 'header' ) === '/templates/frame-header.tpl'
+	&& sprintf( \Nino\Modules\Design\Compiler::FRAME_TARGET, 'footer' ) === '/templates/frame-footer.tpl' );
 $headerTemplate = \Nino\Filesystem::path( $appData, sprintf( \Nino\Modules\Design\Compiler::FRAME_TARGET, 'header' ) );
 check( 'applying writes the chosen frame\'s markup, not only its stylesheet',
 	is_file( $headerTemplate ) === true
@@ -664,7 +667,7 @@ $sizedSetup['size'] = $sizedSetup['size'] === 'l' ? 'm' : 'l';
 \Nino\Modules\Design\Setup::write( $appData, $sizedSetup );
 $refusedFrame = \Nino\Modules\Design::apply( $appData, $notes );
 check( 'a frame template somebody edited is not overwritten either', $refusedFrame !== true
-	&& str_contains( (string) $refusedFrame, 'theme.header.tpl was not written by Design' ) === true
+	&& str_contains( (string) $refusedFrame, 'frame-header.tpl was not written by Design' ) === true
 	&& file_get_contents( $headerTemplate ) === $byHand );
 // "Nothing was overwritten" is what the refusal says, and it has to be true:
 // the stylesheet used to be written first, so a hand-taken header left the
@@ -789,7 +792,7 @@ $planOf = static function() use ( &$appData ): array {
 };
 
 check( 'the files Design writes are the stylesheet and the two frames, in that order',
-	$targets === [ '/assets/theme.css', '/templates/theme.header.tpl', '/templates/theme.footer.tpl' ] );
+	$targets === [ '/assets/theme.css', '/templates/frame-header.tpl', '/templates/frame-footer.tpl' ] );
 check( 'the previous version is declared under data, so a backup carries it too',
 	in_array( \Nino\Modules\Design\Previous::PATH, (array) ( $feature['data'] ?? [] ), true ) === true );
 
@@ -797,8 +800,8 @@ check( 'the previous version is declared under data, so a backup carries it too'
 // frames with no stamp - and a shortcode put into the footer by hand
 $delivered = [
 	'/assets/theme.css'							=> "/* delivered */\nbody { margin: 0; }\n",
-	'/templates/theme.header.tpl'		=> "<header>[template /templates/html-header-nav]</header>\n",
-	'/templates/theme.footer.tpl'		=> "<footer>[template /templates/html-footer-nav]\n[consent-settings]</footer>\n",
+	'/templates/frame-header.tpl'		=> "<header>[template /templates/html-header-nav]</header>\n",
+	'/templates/frame-footer.tpl'		=> "<footer>[template /templates/html-footer-nav]\n[consent-settings]</footer>\n",
 ];
 
 foreach( $delivered as $target => $bytes )
@@ -814,11 +817,11 @@ check( 'plan answers one entry per file Design writes, in the order it writes th
 check( '...all three delivered, so all three not ours, existing, and different from what applying writes',
 	count( array_filter( $plan, static fn( array $file ): bool => $file['state'] === 'foreign' && $file['exists'] === true && $file['changes'] === true ) ) === 3 );
 check( '...and the footer is told apart by the shortcode somebody put in it that the variant replacing it does not have',
-	$plan['/templates/theme.footer.tpl']['lost'] === [ '[consent-settings]' ]
-	&& $plan['/templates/theme.header.tpl']['lost'] === [] && $plan['/assets/theme.css']['lost'] === [] );
+	$plan['/templates/frame-footer.tpl']['lost'] === [ '[consent-settings]' ]
+	&& $plan['/templates/frame-header.tpl']['lost'] === [] && $plan['/assets/theme.css']['lost'] === [] );
 $shortcodes = new ReflectionMethod( \Nino\Modules\Design::class, '_shortcodes' );
 check( 'a shortcode is the whole token, a [[fill]] in one of its arguments included, and a bare [[fill]] is none',
-	$shortcodes->invoke( null, '<p>[[/company/name]] [image /x alt="[[/company/name]]"] [consent-settings]</p>' ) === [ '[image /x alt="[[/company/name]]"]', '[consent-settings]' ] );
+	$shortcodes->invoke( null, '<p>[[/project/company/general/name]] [image /x alt="[[/project/company/general/name]]"] [consent-settings]</p>' ) === [ '[image /x alt="[[/project/company/general/name]]"]', '[consent-settings]' ] );
 check( 'planning writes nothing: the files are the delivered ones and there is no previous version',
 	$onDisk() === $delivered && is_file( $slotPath ) === false );
 
@@ -899,21 +902,21 @@ callDesignAction( $appData, 'apiApply', [ 'force' => true ] );
 $before 	= $onDisk();
 $slotHeld = \Nino\Modules\Design\Previous::read( $appData );
 
-unlink( $pathOf( '/templates/theme.footer.tpl' ) );
-mkdir( $pathOf( '/templates/theme.footer.tpl' ) );
+unlink( $pathOf( '/templates/frame-footer.tpl' ) );
+mkdir( $pathOf( '/templates/frame-footer.tpl' ) );
 ninoWarnings();
 [ $status, $failedRestore ] = callDesignAction( $appData, 'apiRestore' );
 ninoWarnings();
-rmdir( $pathOf( '/templates/theme.footer.tpl' ) );
+rmdir( $pathOf( '/templates/frame-footer.tpl' ) );
 
-check( 'a restore whose last write fails answers 500 and says so', $status === 500 && str_contains( (string) ( $failedRestore['error'] ?? '' ), 'theme.footer.tpl' ) === true );
+check( 'a restore whose last write fails answers 500 and says so', $status === 500 && str_contains( (string) ( $failedRestore['error'] ?? '' ), 'frame-footer.tpl' ) === true );
 check( '...puts the files it had replaced back, and leaves the previous version where it was',
-	$slotHeld['files']['/assets/theme.css'] !== $before['/assets/theme.css'] && $slotHeld['files']['/templates/theme.header.tpl'] !== $before['/templates/theme.header.tpl']
+	$slotHeld['files']['/assets/theme.css'] !== $before['/assets/theme.css'] && $slotHeld['files']['/templates/frame-header.tpl'] !== $before['/templates/frame-header.tpl']
 	&& file_get_contents( $pathOf( '/assets/theme.css' ) ) === $before['/assets/theme.css']
-	&& file_get_contents( $pathOf( '/templates/theme.header.tpl' ) ) === $before['/templates/theme.header.tpl']
+	&& file_get_contents( $pathOf( '/templates/frame-header.tpl' ) ) === $before['/templates/frame-header.tpl']
 	&& \Nino\Modules\Design\Previous::read( $appData ) === $slotHeld );
 
-file_put_contents( $pathOf( '/templates/theme.footer.tpl' ), (string) $before['/templates/theme.footer.tpl'] );
+file_put_contents( $pathOf( '/templates/frame-footer.tpl' ), (string) $before['/templates/frame-footer.tpl'] );
 
 unlink( $slotPath );
 check( 'with no previous version a restore is a 404 and writes nothing',
@@ -934,17 +937,17 @@ check( '...and not one of the three files changed', $onDisk() === $before );
 // A stylesheet that is Design's beside a frame somebody edited used to be a
 // dead end: the refusal had nothing on screen to answer yes to
 callDesignAction( $appData, 'apiApply' );
-$footerPath = $pathOf( '/templates/theme.footer.tpl' );
+$footerPath = $pathOf( '/templates/frame-footer.tpl' );
 file_put_contents( $footerPath, (string) file_get_contents( $footerPath ). "\n<p>[consent-settings]</p>\n" );
 $plan = $planOf();
 
 check( 'plan tells a stylesheet that is ours from a frame somebody edited', $plan['/assets/theme.css']['state'] === 'ours'
-	&& $plan['/templates/theme.footer.tpl']['state'] === 'edited' && $plan['/templates/theme.header.tpl']['state'] === 'ours' );
+	&& $plan['/templates/frame-footer.tpl']['state'] === 'edited' && $plan['/templates/frame-header.tpl']['state'] === 'ours' );
 check( '...applying over it needs force, and force is what gets it through',
 	callDesignAction( $appData, 'apiApply' )[0] === 409 && callDesignAction( $appData, 'apiApply', [ 'force' => true ] )[0] === 200
 	&& \Nino\Modules\Design\Compiler::ownership( (string) file_get_contents( $footerPath ), true ) === 'ours' );
 check( '...and the edited footer is in the previous version',
-	str_contains( (string) ( \Nino\Modules\Design\Previous::read( $appData )['files']['/templates/theme.footer.tpl'] ?? '' ), '<p>[consent-settings]</p>' ) === true );
+	str_contains( (string) ( \Nino\Modules\Design\Previous::read( $appData )['files']['/templates/frame-footer.tpl'] ?? '' ), '<p>[consent-settings]</p>' ) === true );
 
 /*	The panel's own sequence, which is not apply on its own: _save(true) posts
 	the draft, asks for the plan and only then applies. By the time the apply
@@ -1112,7 +1115,7 @@ $appData['/nino/modules'] = [ '\\Nino\\Modules\\Assets', '\\Nino\\Modules\\Templ
 $specimen = \Nino\Modules\Design\Preview::specimen( $appData );
 
 check( 'the specimen brings no frame of its own - markup() puts the chosen ones around it',
-	str_contains( $specimen, 'theme.header' ) === false && str_contains( $specimen, 'theme.footer' ) === false );
+	str_contains( $specimen, 'frame-header' ) === false && str_contains( $specimen, 'frame-footer' ) === false );
 check( 'it has a section per part a set can reach, named after the part',
 	count( array_filter( [ 'atf', 'section', 'article', 'buttons', 'forms', 'lists', 'blocks' ],
 		static fn( string $part ): bool => str_contains( $specimen, 'id="'. $part. '"' ) ) ) === 7 );

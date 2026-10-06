@@ -1,6 +1,6 @@
 # Design
 
-**Key:** `design` · **Class:** `\Nino\Modules\Design` · **Version:** 0.1.0 · **Nino:** `^1.3`
+**Key:** `design` · **Class:** `\Nino\Modules\Design` · **Version:** 0.1.0 · **Nino:** `^1.4`
 
 The look of a site, chosen per part of a page rather than per page, and
 compiled into the one stylesheet the css bundle already names:
@@ -37,7 +37,7 @@ than a thing you argue yourself out of.
 
 Two kinds, because two of them are different in a way worth naming: a **frame**
 brings markup with it (`template.tpl`, which becomes the project's
-`theme.header.tpl` / `theme.footer.tpl`) and a stylesheet beside it. A **set**
+`frame-header.tpl` / `frame-footer.tpl`) and a stylesheet beside it. A **set**
 is one stylesheet and nothing else - it changes how something already on the
 page looks, and can never change what is on it.
 
@@ -313,8 +313,8 @@ the panel reads the declarations.
 ### Writing a frame
 
 A frame is a `template.tpl` and a `style.css` in `library/<part>/<name>/`. The
-template is what the project's `theme.header.tpl` / `theme.footer.tpl` becomes,
-included by `html-header.tpl` through `[template /templates/theme.header]`, so
+template is what the project's `frame-header.tpl` / `frame-footer.tpl` becomes,
+included by `html-header.tpl` through `[template /templates/frame-header]`, so
 it goes through `\Nino\Html::renderHtml()` and may use textfills, `[template]`
 includes and shortcodes - `[navigation]` in particular.
 

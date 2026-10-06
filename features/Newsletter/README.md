@@ -1,6 +1,6 @@
 # Newsletter
 
-**Key:** `newsletter` · **Class:** `\Nino\Modules\Newsletter` · **Version:** 1.0.0 · **Nino:** `^1.3`
+**Key:** `newsletter` · **Class:** `\Nino\Modules\Newsletter` · **Version:** 1.0.0 · **Nino:** `^1.4`
 
 Double opt-in newsletter signup, everything under the `/.newsletter` uri: a
 visitor posts an address, receives a confirmation mail, and is on the list
@@ -58,13 +58,13 @@ token, gets one in the same write; confirming that mail is the first
 confirmation such an entry has, so it is recorded as `subscribed` with the
 date of the confirmation. A recorded signup clears the address from
 the removal record (see [Data and restore](#data-and-restore)) - a fresh signup
-is a current consent. The page shows the generic `/newsletter/info/error` for
+is a current consent. The page shows the generic `/feature/newsletter/info/error` for
 the `429` and the `500`; no text of its own is needed.
 
 The shipped confirmation mail says "if you did not sign up, ignore this email -
 you will not receive any newsletter". For an address that is subscribed already
 the second half does not describe what happens; a project that minds words it
-differently in `/mail/newsletter/notice`.
+differently in `/template/mail-newsletter-confirm/outro/notice`.
 
 ### `GET /.newsletter` - confirm and unsubscribe
 
@@ -75,13 +75,15 @@ differently in `/mail/newsletter/notice`.
 | anything else, or an unknown token | nothing; the page answers with status `404` |
 
 Every outcome renders `page-newsletter.tpl`. The handler adds two fills for
-it - `[[/newsletter/page/title]]` and `[[/newsletter/page/text]]` - that
-resolve to `[[/newsletter/page/<result>/title]]` and `…/text` with `<result>`
-one of `confirmed`, `unsubscribed` or `invalid`, and those are ordinary
-translated fills the unit writes into the project's `text/<locale>.php`.
+it - `[[/feature/newsletter/page/title]]` and `[[/feature/newsletter/page/text]]` - that
+resolve to `[[/feature/newsletter/result-<result>/title]]` and `…/text` with
+`<result>` one of `confirmed`, `unsubscribed` or `invalid`, and those are
+ordinary translated fills the unit writes into the project's `text/<locale>.php`.
+They belong to the feature rather than to the page template because the code
+chooses between them, and the template is the project's to replace.
 
-Both links are absolute: `https://[[/website/url]]/.newsletter?confirm=<token>`
-and `…?unsubscribe=<token>`. `[[/website/url]]` is the base fill the setup
+Both links are absolute: `https://[[/project/website/general/url]]/.newsletter?confirm=<token>`
+and `…?unsubscribe=<token>`. `[[/project/website/general/url]]` is the base fill the setup
 wizard writes; it has to be the site's real host for the links to work.
 
 ### `/.newsletter/unsubscribe` - the way out without a link
@@ -94,13 +96,13 @@ asks for the address (`page-newsletter-unsubscribe.tpl`, or the template
 
 | Answer | When |
 | --- | --- |
-| `400`, the form again with `/newsletter/info/email` as its error | `email` missing, or not a valid address |
+| `400`, the form again with `/feature/newsletter/info/email` as its error | `email` missing, or not a valid address |
 | `418`, the answer page | the honeypot is filled; no mail |
 | `200`, the answer page | in every other case |
 
-The answer page is `page-newsletter.tpl` with `[[/newsletter/page/title]]` and
-`[[/newsletter/page/text]]` pointing at
-`/newsletter/page/unsubscribe-requested/title` and `…/text` ("if this address is
+The answer page is `page-newsletter.tpl` with `[[/feature/newsletter/page/title]]` and
+`[[/feature/newsletter/page/text]]` pointing at
+`/feature/newsletter/result-unsubscribe-requested/title` and `…/text` ("if this address is
 on the list, a link to unsubscribe is on its way"). It never depends on the
 address or on the mail: not on whether the address is on the list, not on a
 mail cap, not on a transport that refuses - never a `429`, never a `500`.
@@ -110,8 +112,8 @@ address is the asker's, and visiting it unsubscribes as before.
 For an address on the list - pending or subscribed - the handler mails
 `/templates/mail-newsletter-unsubscribe` (or the template
 `/nino/newsletter/unsubscribe-mail-template` names), with
-`[[/newsletter/unsubscribe/url]]` set to that entry's unsubscribe link, the
-subject `[[/mail/newsletter/unsubscribe/subject]]` and `[[/form/email/owner]]`
+`[[/feature/newsletter/unsubscribe/url]]` set to that entry's unsubscribe link, the
+subject `[[/feature/newsletter/subject/unsubscribe]]` and `[[/project/mail/address/owner]]`
 as Reply-To. An entry without a token gets one in the same write. An unknown
 address gets no mail.
 
@@ -133,24 +135,26 @@ The feature ships no signup form. The Templates feature does: the `form-newslett
 section preset under `features/Templates/library/form-newsletter/`
 renders a `form.nino-newsletter-form` with `action="/.newsletter"`, `[csrf]`,
 the `location` trap and the `email` field, and `_nino/Nino.ui.js` submits it
-by xhr and shows the outcome. The words that form and script read are what
-the install unit writes: `/newsletter/label/email`,
-`/newsletter/label/submit`, `/newsletter/info/required`,
-`/newsletter/info/email`, `/newsletter/info/success` and
-`/newsletter/info/error`, which is what the page shows for a `429` and for a
-`500`. `/newsletter/info/existing` is written as well but never shown by the
-shipped handler, because the endpoint does not distinguish the case. A form
-of your own posts the same two fields to the same uri.
+by xhr and shows the outcome. The words that form and script read are the base
+unit's `/template/common/form/email` and what the install unit writes:
+`/feature/newsletter/label/submit`, `/feature/newsletter/info/required`,
+`/feature/newsletter/info/email`, `/feature/newsletter/info/success` and
+`/feature/newsletter/info/error`, which is what the page shows for a `429` and for a
+`500`. The endpoint does not distinguish an address that is subscribed already,
+so there is no text for that case. `/template/common/form/email` is the base
+unit's word for an email address field, which the contact form uses as well; the
+Newsletter unit does not write it. A form of your own posts the same two fields
+to the same uri.
 
 ### The confirmation mail
 
 `_sendConfirmMail()` renders the template `/nino/newsletter/confirm-template`
 names - `/templates/mail-newsletter-confirm` by default - with the fill
-`[[/newsletter/confirm/url]]` set to the confirm link, in the visitor's
+`[[/feature/newsletter/confirm/url]]` set to the confirm link, in the visitor's
 current locale, and sends it through `\Nino\Mail::send()` to the address,
-with `[[/mail/newsletter/subject]]` as the subject and `[[/form/email/owner]]`
-as Reply-To. `[[/form/email/owner]]` is the **base** install unit's fill,
-shipped as `[[/company/email]]` - the mailbox the project already named, so
+with `[[/feature/newsletter/subject/confirm]]` as the subject and `[[/project/mail/address/owner]]`
+as Reply-To. `[[/project/mail/address/owner]]` is the **base** install unit's fill,
+shipped as `[[/project/company/contact/email]]` - the mailbox the project already named, so
 every install has one and the newsletter's own unit writes none. (Before Nino
 1.3.0 it belonged to the Form module's unit, which the wizard offers rather
 than always installing, so a project running this feature without the contact
@@ -215,19 +219,22 @@ types.
 
 | Template | Purpose |
 | --- | --- |
-| `page-newsletter.tpl` | the page `/.newsletter` renders for every confirm and unsubscribe outcome, and `/.newsletter/unsubscribe` for its answer: `[[/newsletter/page/title]]`, `[[/newsletter/page/text]]` and a button back to `[[/webpage/home/uri]]`, inside `[template /templates/html-header]` and `html-footer` |
-| `page-newsletter-unsubscribe.tpl` | the form `GET /.newsletter/unsubscribe` renders: a `form.nino-form--inline` posting to `[[/nino/dir]]/.newsletter/unsubscribe` with `[csrf]`, the `location` trap, an `email` input, the button `[[/newsletter/unsubscribe/submit]]` and the error line `[[/newsletter/unsubscribe/error]]`. It carries neither `.nino-form` nor `.nino-newsletter-form`: the kernel script binds every one of those to an xhr handler that prevents the native post and shows the contact form's success text |
-| `mail-newsletter-confirm.tpl` | the confirmation mail: `[[/mail/newsletter/title]]`, `intro`, the button to `[[/newsletter/confirm/url]]` labelled `[[/mail/newsletter/action]]`, `notice`, `closing` and `[[/company/name]]`, inside the mail frame |
-| `mail-newsletter-unsubscribe.tpl` | the mail that carries the unsubscribe link: `[[/mail/newsletter/unsubscribe/title]]`, `intro`, the button to `[[/newsletter/unsubscribe/url]]` labelled `[[/mail/newsletter/unsubscribe/action]]`, `notice`, `closing` and `[[/company/name]]`, inside the mail frame |
-| `mail-header.tpl`, `mail-footer.tpl` | the mail frame: a complete html document with inline styles from the `/mail/style/*` fills and the logo from `https://[[/website/url]][[/nino/public]]/images/logo.png`. The Form module's unit ships the same two files; whichever unit is applied first provides them, and the other leaves them alone |
+| `page-newsletter.tpl` | the page `/.newsletter` renders for every confirm and unsubscribe outcome, and `/.newsletter/unsubscribe` for its answer: `[[/feature/newsletter/page/title]]`, `[[/feature/newsletter/page/text]]` and a button back to `[[/_nino/webpage/home/uri]]`, inside `[template /templates/html-header]` and `html-footer` |
+| `page-newsletter-unsubscribe.tpl` | the form `GET /.newsletter/unsubscribe` renders: a `form.nino-form--inline` posting to `[[/nino/dir]]/.newsletter/unsubscribe` with `[csrf]`, the `location` trap, an `email` input, the button `[[/template/page-newsletter-unsubscribe/form/submit]]` and the error line `[[/feature/newsletter/unsubscribe/error]]`. It carries neither `.nino-form` nor `.nino-newsletter-form`: the kernel script binds every one of those to an xhr handler that prevents the native post and shows the contact form's success text |
+| `mail-newsletter-confirm.tpl` | the confirmation mail: `[[/template/mail-newsletter-confirm/intro/title]]`, `intro`, the button to `[[/feature/newsletter/confirm/url]]` labelled `[[/template/mail-newsletter-confirm/action/button]]`, `notice`, `closing` and `[[/project/company/general/name]]`, inside the mail frame |
+| `mail-newsletter-unsubscribe.tpl` | the mail that carries the unsubscribe link: `[[/template/mail-newsletter-unsubscribe/intro/title]]`, `intro`, the button to `[[/feature/newsletter/unsubscribe/url]]` labelled `[[/template/mail-newsletter-unsubscribe/action/button]]`, `notice`, `closing` and `[[/project/company/general/name]]`, inside the mail frame |
+| `mail-header.tpl`, `mail-footer.tpl` | the mail frame: a complete html document with inline styles from the `/project/mail/color`, `font` and `spacing` fills of the base unit, and the logo as the image slot `[image /logo]`. They are the Form module's two files, byte for byte, and one template: whichever unit is applied first provides them, and the other leaves them alone |
 
 **Text**, merged into the project's `text/` files - a key the project
 already has stays:
 
 | File | Keys |
 | --- | --- |
-| `install/text/global.php` | `/mail/style/color/primary`, `text`, `background`, `border`, `section/alt/bg`; `/mail/style/typography/line-height`, `font-small`, `font-big`; `/mail/style/spacing/1`, `2`, `3` - the values the mail frame's inline styles read |
-| `install/text/en_US.php`, `de_DE.php` | `/newsletter/label/email`, `submit`; `/newsletter/info/required`, `email`, `success`, `existing`, `error`; `/mail/newsletter/subject`, `title`, `intro`, `action`, `notice`, `closing`; `/newsletter/page/confirmed/title`, `text`, `/newsletter/page/unsubscribed/title`, `text`, `/newsletter/page/invalid/title`, `text`, `/newsletter/page/unsubscribe-requested/title`, `text`; `/newsletter/unsubscribe/title`, `text`, `submit`; `/mail/newsletter/unsubscribe/subject`, `title`, `intro`, `action`, `notice`, `closing` |
+| `install/text/en_US.php`, `de_DE.php` | `/feature/newsletter/label/submit`; `/feature/newsletter/info/required`, `email`, `success`, `error`; `/feature/newsletter/subject/confirm` and `unsubscribe`; `/feature/newsletter/result-confirmed/title` and `text`, and the same for `result-unsubscribed`, `result-invalid` and `result-unsubscribe-requested`; `/template/page-newsletter-unsubscribe/intro/title`, `intro/text`, `form/submit`; `/template/mail-newsletter-confirm/intro/title`, `intro/text`, `action/button`, `outro/notice`, `outro/closing`; and the same six for `/template/mail-newsletter-unsubscribe/` |
+
+There is no `install/text/global.php`: the look of the mails - `/project/mail/color/*`,
+`font/*` and `spacing/*` - is the base unit's, which every project has, and
+the email address word is the base unit's `/template/common/form/email`.
 
 The unit is applied add-only: a project that activated the feature before the
 unsubscribe route existed gets the two new templates and the new keys when it
@@ -235,11 +242,10 @@ activates the feature again (the Features panel's update), and keeps every file
 and key it has. Where a project already carries `page-newsletter.tpl` it keeps
 its own - the new page `/.newsletter/unsubscribe` answers with it.
 
-The eleven `/mail/style/*` keys are also listed under `blacklist` and are
-merged into `text/blacklist.php`: they are technical values, hidden from the
-Text panel's normal editing. So are `/newsletter/confirm/url`,
-`/newsletter/unsubscribe/url`, `/newsletter/unsubscribe/error`,
-`/newsletter/page/title` and `/newsletter/page/text`, which the class fills
+The unit's `blacklist` is merged into `text/blacklist.php`:
+`/feature/newsletter/confirm/url`,
+`/feature/newsletter/unsubscribe/url`, `/feature/newsletter/unsubscribe/error`,
+`/feature/newsletter/page/title` and `/feature/newsletter/page/text`, which the class fills
 at request time and no text file answers - blacklisted, the Text panel's
 scan for missing keys does not report them. `label`, `moduleClass` and `requiresModules` in
 the unit's manifest are the setup wizard's keys and are not read by an

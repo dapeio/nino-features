@@ -8,11 +8,11 @@ return [
 
 	// What the switch is as a whole, for a screen reader - the three buttons
 	// inside it do not say on their own what they belong to
-	'[[/modeswitch/label]]'		=> 'Appearance',
+	'[[/feature/modeswitch/switch/label]]'	=> 'Appearance',
 
-	'[[/modeswitch/light]]'		=> 'Light',
+	'[[/feature/modeswitch/mode/light]]'	=> 'Light',
 	// Not "Auto": what happens here is not the site deciding something, it
 	// is the site leaving it to the device
-	'[[/modeswitch/system]]'	=> 'System',
-	'[[/modeswitch/dark]]'		=> 'Dark',
+	'[[/feature/modeswitch/mode/system]]'	=> 'System',
+	'[[/feature/modeswitch/mode/dark]]'		=> 'Dark',
 ];

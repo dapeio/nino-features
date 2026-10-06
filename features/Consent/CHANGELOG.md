@@ -14,6 +14,18 @@ A release is the tag `consent-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The text keys follow Nino's grammar.** `/consent/title`, `text` and
+  `policy-label` are `/feature/consent/banner/title`, `text` and `link`;
+  `/consent/accept-all`, `necessary-only`, `save` and `open` are
+  `/feature/consent/action/accept-all`, `necessary-only`, `save` and `open`;
+  `/consent/category/<name>` and `…/hint` are
+  `/feature/consent/category-<name>/name` and `…/hint`, for `necessary`,
+  `statistics`, `marketing` and `external`. The values are the same. Nothing has
+  been published under the old keys, so there is no migration; a project that
+  already has texts under them copies the values to the new keys. `nino` stays
+  `^1.3`: the keys are the feature's own, and a Nino before 1.4 takes them as
+  they come.
+
 - **The banner is a dialog, and its three actions look alike.** `[consent]`
   carries `role="dialog"`, `aria-labelledby` and `aria-describedby` (ids on the
   title and the text) and `tabindex="-1"`. Reopened from a `[consent-settings]`

@@ -174,7 +174,7 @@ namespace Nino\Modules {
 			// stored token, which is what lets every address take the same
 			// way through the mail cap and the transport. A visitor is told
 			// what happened to the mail, not who is on the list; the page
-			// shows the generic /newsletter/info/error for anything but 200
+			// shows the generic /feature/newsletter/info/error for anything but 200
 			if( $outcome === 'ratelimited' ) {
 				$request['/nino/http/response']['statusCode'] = 429;
 				return;
@@ -221,15 +221,15 @@ namespace Nino\Modules {
 			// Nested fills - the outer key is what the page template uses,
 			// the inner one resolves per-locale from text/*.php
 			\Nino\Html::addFills( $appData, [
-				'[[/newsletter/page/title]]'	=> '[[/newsletter/page/'. $result. '/title]]',
-				'[[/newsletter/page/text]]'		=> '[[/newsletter/page/'. $result. '/text]]',
+				'[[/feature/newsletter/page/title]]'	=> '[[/feature/newsletter/result-'. $result. '/title]]',
+				'[[/feature/newsletter/page/text]]'		=> '[[/feature/newsletter/result-'. $result. '/text]]',
 			], '*' );
 		}
 
 		/**
 		 *	Build the absolute self-service unsubscribe url for a subscribed
 		 *	(or still pending) email - append it to any outgoing newsletter
-		 *	mail. Same https://[[/website/url]] convention the sitemap
+		 *	mail. Same https://[[/project/website/general/url]] convention the sitemap
 		 *	template uses for absolute urls
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
@@ -260,7 +260,7 @@ namespace Nino\Modules {
 		 */
 		public static function callbackUnsubscribeForm( array &$appData, array &$request ): void {
 
-			\Nino\Html::addFills( $appData, [ '[[/newsletter/unsubscribe/error]]' => '' ], '*' );
+			\Nino\Html::addFills( $appData, [ '[[/feature/newsletter/unsubscribe/error]]' => '' ], '*' );
 		}
 
 		/**
@@ -294,8 +294,8 @@ namespace Nino\Modules {
 			$answer = static function( array &$appData, array &$request ) use ( $page ): void {
 
 				\Nino\Html::addFills( $appData, [
-					'[[/newsletter/page/title]]'	=> '[[/newsletter/page/unsubscribe-requested/title]]',
-					'[[/newsletter/page/text]]'		=> '[[/newsletter/page/unsubscribe-requested/text]]',
+					'[[/feature/newsletter/page/title]]'	=> '[[/feature/newsletter/result-unsubscribe-requested/title]]',
+					'[[/feature/newsletter/page/text]]'		=> '[[/feature/newsletter/result-unsubscribe-requested/text]]',
 				], '*' );
 
 				$request['/nino/http/response']['body'] = $page;
@@ -310,7 +310,7 @@ namespace Nino\Modules {
 			if( $email === '' || filter_var( $email, FILTER_VALIDATE_EMAIL ) === false ) {
 				$request['/nino/http/response']['statusCode'] = 400;
 				$request['/nino/http/response']['body'] 			= $form;
-				\Nino\Html::addFills( $appData, [ '[[/newsletter/unsubscribe/error]]' => '[[/newsletter/info/email]]' ], '*' );
+				\Nino\Html::addFills( $appData, [ '[[/feature/newsletter/unsubscribe/error]]' => '[[/feature/newsletter/info/email]]' ], '*' );
 				return;
 			}
 
@@ -417,12 +417,12 @@ namespace Nino\Modules {
 				// and this is a new send
 				unset( $appData['./nino/mail/ratelimited'] );
 
-				\Nino\Html::addFills( $appData, [ '[[/newsletter/unsubscribe/url]]' => self::_getActionUrl( $appData, 'unsubscribe', $token ) ], '*' );
+				\Nino\Html::addFills( $appData, [ '[[/feature/newsletter/unsubscribe/url]]' => self::_getActionUrl( $appData, 'unsubscribe', $token ) ], '*' );
 
 				$template = $appData['/nino/newsletter/unsubscribe-mail-template'] ?? '/templates/mail-newsletter-unsubscribe';
 				$tpl 			= \Nino\Html::renderHtml( $appData, '[template '. $template. ']' );
-				$subject 	= \Nino\Html::renderHtml( $appData, '[[/mail/newsletter/unsubscribe/subject]]' );
-				$replyTo 	= \Nino\Html::renderHtml( $appData, '[[/form/email/owner]]' );
+				$subject 	= \Nino\Html::renderHtml( $appData, '[[/feature/newsletter/subject/unsubscribe]]' );
+				$replyTo 	= \Nino\Html::renderHtml( $appData, '[[/project/mail/address/owner]]' );
 
 				\Nino\Mail::send( $appData, $email, $subject, $tpl, $replyTo );
 
@@ -608,11 +608,11 @@ namespace Nino\Modules {
 
 			$template = $appData['/nino/newsletter/confirm-template'] ?? '/templates/mail-newsletter-confirm';
 
-			\Nino\Html::addFills( $appData, [ '[[/newsletter/confirm/url]]' => self::_getActionUrl( $appData, 'confirm', $token ) ], '*' );
+			\Nino\Html::addFills( $appData, [ '[[/feature/newsletter/confirm/url]]' => self::_getActionUrl( $appData, 'confirm', $token ) ], '*' );
 
 			$tpl 			= \Nino\Html::renderHtml( $appData, '[template '. $template. ']' );
-			$subject 	= \Nino\Html::renderHtml( $appData, '[[/mail/newsletter/subject]]' );
-			$replyTo 	= \Nino\Html::renderHtml( $appData, '[[/form/email/owner]]' );
+			$subject 	= \Nino\Html::renderHtml( $appData, '[[/feature/newsletter/subject/confirm]]' );
+			$replyTo 	= \Nino\Html::renderHtml( $appData, '[[/project/mail/address/owner]]' );
 
 			// Sticky until somebody unsets it (Mail::send() only ever sets it),
 			// so a flag left by an earlier send of this request must not read
@@ -727,7 +727,7 @@ namespace Nino\Modules {
 		 */
 		private static function _getActionUrl( array &$appData, string $action, string $token ): string {
 
-			return 'https://'. \Nino\Html::renderHtml( $appData, '[[/website/url]]' ). '/.newsletter?'. $action. '='. rawurlencode( $token );
+			return 'https://'. \Nino\Html::renderHtml( $appData, '[[/project/website/general/url]]' ). '/.newsletter?'. $action. '='. rawurlencode( $token );
 		}
 
 		/**

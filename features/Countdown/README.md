@@ -83,11 +83,11 @@ and only chooses between them.
 
 | Fill | English | Deutsch |
 | --- | --- | --- |
-| `[[/countdown/day]]` / `[[/countdown/days]]` | day / days | Tag / Tage |
-| `[[/countdown/hour]]` / `[[/countdown/hours]]` | hour / hours | Stunde / Stunden |
-| `[[/countdown/minute]]` / `[[/countdown/minutes]]` | minute / minutes | Minute / Minuten |
-| `[[/countdown/second]]` / `[[/countdown/seconds]]` | second / seconds | Sekunde / Sekunden |
-| `[[/countdown/done]]` | The time has come | Es ist so weit |
+| `[[/feature/countdown/unit-day/one]]` / `[[/feature/countdown/unit-day/many]]` | day / days | Tag / Tage |
+| `[[/feature/countdown/unit-hour/one]]` / `[[/feature/countdown/unit-hour/many]]` | hour / hours | Stunde / Stunden |
+| `[[/feature/countdown/unit-minute/one]]` / `[[/feature/countdown/unit-minute/many]]` | minute / minutes | Minute / Minuten |
+| `[[/feature/countdown/unit-second/one]]` / `[[/feature/countdown/unit-second/many]]` | second / seconds | Sekunde / Sekunden |
+| `[[/feature/countdown/end/message]]` | The time has come | Es ist so weit |
 
 Merged into the project's own `text/<locale>.php` at activation, for every locale
 it has. From then on they are the project's.

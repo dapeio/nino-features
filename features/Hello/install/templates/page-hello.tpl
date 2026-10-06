@@ -6,8 +6,8 @@
 	<div class="nino-grid-row">
 		<div class="nino-grid-100">
 
-			<h1 class="nino-section-title">[[/hello/page/title]]</h1>
-			<p class="nino-section-text">[[/hello/page/text]]</p>
+			<h1 class="nino-section-title">[[/template/page-hello/intro/title]]</h1>
+			<p class="nino-section-text">[[/template/page-hello/intro/text]]</p>
 
 			[hello]
 

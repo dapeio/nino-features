@@ -1,10 +1,10 @@
 <?php return [
 
-	'[[/protected/title]]' => 'Protected area',
-	'[[/protected/text]]' => 'This part of the site is password protected. Please enter the password to continue.',
-	'[[/protected/label/password]]' => 'Password',
-	'[[/protected/label/submit]]' => 'Unlock',
-	'[[/protected/error/wrong]]' => 'Wrong password. Please try again.',
-	'[[/protected/error/locked]]' => 'Too many wrong attempts. Please try again in an hour.',
-	'[[/protected/label/logout]]' => 'Lock this area again',
+	'[[/template/page-protected/intro/title]]' => 'Protected area',
+	'[[/template/page-protected/intro/text]]' => 'This part of the site is password protected. Please enter the password to continue.',
+	'[[/template/page-protected/form/password]]' => 'Password',
+	'[[/template/page-protected/form/submit]]' => 'Unlock',
+	'[[/feature/protected/error/wrong]]' => 'Wrong password. Please try again.',
+	'[[/feature/protected/error/locked]]' => 'Too many wrong attempts. Please try again in an hour.',
+	'[[/feature/protected/logout/label]]' => 'Lock this area again',
 ];

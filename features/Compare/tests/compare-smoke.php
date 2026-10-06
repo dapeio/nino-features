@@ -69,7 +69,7 @@ check( 'the class is listed and the version recorded', in_array( '\\Nino\\Module
 foreach( [ 'en_US', 'de_DE' ] as $locale ) {
 	$text = \Nino\Filesystem::getFileContent( $appData, '/text/'. $locale. '.php', [] );
 	check( 'activation merged the pair\'s words into text/'. $locale. '.php',
-		array_diff_key( array_flip( [ '[[/compare/before]]', '[[/compare/after]]', '[[/compare/handle]]' ] ), $text ) === [] );
+		array_diff_key( array_flip( [ '[[/feature/compare/side/before]]', '[[/feature/compare/side/after]]', '[[/feature/compare/handle/label]]' ] ), $text ) === [] );
 }
 
 echo "\n";
@@ -162,7 +162,7 @@ check( '...and a name that climbs out of the project\'s images is not a picture'
 	&& \Nino\Html::renderHtml( $appData, '[compare before="../x.jpg" after="b.jpg"]' ) === '' );
 
 check( 'every word is a text fill the project owns, resolved by the time it renders',
-	str_contains( $html, '[[/compare/' ) === false );
+	str_contains( $html, '[[/feature/compare/' ) === false );
 
 echo "\n";
 
@@ -235,6 +235,6 @@ echo "Deactivation\n";
 check( 'deactivation succeeds', \Nino\Features::deactivate( $appData, 'compare' ) === true );
 check( 'the class is gone from /nino/modules', in_array( '\\Nino\\Modules\\Compare', \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/modules'], true ) === false );
 check( 'the words stay in the project\'s text files - they are the project\'s now',
-	isset( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/compare/before]]'] ) === true );
+	isset( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/feature/compare/side/before]]'] ) === true );
 
 ninoDone( $appData );

@@ -45,13 +45,13 @@ of the developer manual describes it:
 	[
 		'key'						=> 'quote',
 		'name'					=> 'Quote request',
-		'to'						=> 'sales@example.com',	// '' sends to '[[/form/email/owner]]'
-		'subject'				=> '',									// '' uses '[[/form/subject/owner]]'
+		'to'						=> 'sales@example.com',	// '' sends to '[[/project/mail/address/owner]]'
+		'subject'				=> '',									// '' uses '[[/module/form/subject/owner]]'
 		'confirm'				=> true,								// a confirmation to the first address given
 		'ownerTemplate'	=> '/templates/mail-owner',
 		'userTemplate'	=> '/templates/mail-user',
 		'fields'				=> [
-			[ 'name' => 'email',	'label' => '[[/form/label/email]]', 'type' => 'email', 'required' => true ],
+			[ 'name' => 'email',	'label' => '[[/template/common/form/email]]', 'type' => 'email', 'required' => true ],
 			[ 'name' => 'budget',	'label' => 'Budget',								'type' => 'number' ],
 		],
 	],
@@ -77,7 +77,7 @@ The field types, with what each one posts:
 | `checkbox` | one checkbox with its label | `1` when ticked, nothing when not - a required one has to be ticked |
 | `date` | the browser's date input | `Y-m-d`, a day that exists |
 
-An option may be written as a text fill, like a label (`[[/form/option/small]]`):
+An option may be written as a text fill, like a label (`[[/template/page-contact/option/small]]`):
 it shows the text it stands for and posts the key, which is what is stored and
 what the engine compares it with. The mail's `[[fields]]` and the Submissions
 panel show that stored key, not the words it stands for.
@@ -136,7 +136,7 @@ In a field's row:
   dropped, words joined by a hyphen, a letter first, 64 characters at most,
   `date` or another name the form keeps becomes `date-field`, a name another
   field has gets `-2`). A label written as a text fill gives the last part of
-  the key: `[[/form/label/email]]` becomes `email`. A field that was saved is
+  the key: `[[/template/common/form/email]]` becomes `email`. A field that was saved is
   never renamed, whatever its label is changed to. The mail templates
   installed before Nino 1.4 fill only `[[name]]`, `[[email]]`, `[[subject]]` and
   `[[message]]`, so a form that keeps those names for those fields keeps its
@@ -262,7 +262,7 @@ Save), and the two submission settings as a card with their own Save and status
 line: what they post, the button kept off while the request runs, a refusal
 marked as an error. It also checks that the panel is drawn again when the shell
 reopens it. Of the editor it checks the name a label gives (`Straße` becomes
-`strasse`, `[[/form/label/email]]` becomes `email`, a name that is taken or
+`strasse`, `[[/template/common/form/email]]` becomes `email`, a name that is taken or
 reserved, 64 characters at most) and that a name follows its label until it is
 typed into, through add, retype and move, while a saved field is never
 renamed; the buttons that move a field, the ends disabled and the focus kept;

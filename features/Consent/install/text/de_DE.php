@@ -6,21 +6,21 @@ declare(strict_types=1);
 // keep them current in the Text panel from then on. See README.md.
 return [
 
-	'[[/consent/title]]'		=> 'Wir verwenden Cookies',
-	'[[/consent/text]]'		=> 'Wir verwenden Cookies und ähnliche Technologien, um diese Website zu betreiben. Notwendige Cookies halten sie funktionsfähig; die übrigen setzen wir nur mit Deiner Einwilligung ein, die Du jederzeit widerrufen kannst.',
-	'[[/consent/policy-label]]'	=> 'Datenschutzerklärung',
+	'[[/feature/consent/banner/title]]'	=> 'Wir verwenden Cookies',
+	'[[/feature/consent/banner/text]]'	=> 'Wir verwenden Cookies und ähnliche Technologien, um diese Website zu betreiben. Notwendige Cookies halten sie funktionsfähig; die übrigen setzen wir nur mit Deiner Einwilligung ein, die Du jederzeit widerrufen kannst.',
+	'[[/feature/consent/banner/link]]'	=> 'Datenschutzerklärung',
 
-	'[[/consent/accept-all]]'			=> 'Alle akzeptieren',
-	'[[/consent/necessary-only]]'	=> 'Nur notwendige',
-	'[[/consent/save]]'						=> 'Auswahl speichern',
-	'[[/consent/open]]'						=> 'Cookie-Einstellungen',
+	'[[/feature/consent/action/accept-all]]'		=> 'Alle akzeptieren',
+	'[[/feature/consent/action/necessary-only]]'	=> 'Nur notwendige',
+	'[[/feature/consent/action/save]]'				=> 'Auswahl speichern',
+	'[[/feature/consent/action/open]]'				=> 'Cookie-Einstellungen',
 
-	'[[/consent/category/necessary]]'					=> 'Notwendig',
-	'[[/consent/category/necessary/hint]]'			=> 'Für den Betrieb der Website erforderlich; kann nicht deaktiviert werden.',
-	'[[/consent/category/statistics]]'					=> 'Statistik',
-	'[[/consent/category/statistics/hint]]'		=> 'Anonymisierte Nutzungsdaten, die uns helfen zu verstehen, wie die Website genutzt wird.',
-	'[[/consent/category/marketing]]'					=> 'Marketing',
-	'[[/consent/category/marketing/hint]]'			=> 'Dient der Erfolgsmessung und Personalisierung von Werbung.',
-	'[[/consent/category/external]]'						=> 'Externe Medien',
-	'[[/consent/category/external/hint]]'			=> 'Lädt Karten, Videos und andere Einbindungen externer Anbieter, die dabei Deine IP-Adresse erhalten.',
+	'[[/feature/consent/category-necessary/name]]'	=> 'Notwendig',
+	'[[/feature/consent/category-necessary/hint]]'	=> 'Für den Betrieb der Website erforderlich; kann nicht deaktiviert werden.',
+	'[[/feature/consent/category-statistics/name]]'	=> 'Statistik',
+	'[[/feature/consent/category-statistics/hint]]'	=> 'Anonymisierte Nutzungsdaten, die uns helfen zu verstehen, wie die Website genutzt wird.',
+	'[[/feature/consent/category-marketing/name]]'	=> 'Marketing',
+	'[[/feature/consent/category-marketing/hint]]'	=> 'Dient der Erfolgsmessung und Personalisierung von Werbung.',
+	'[[/feature/consent/category-external/name]]'	=> 'Externe Medien',
+	'[[/feature/consent/category-external/hint]]'	=> 'Lädt Karten, Videos und andere Einbindungen externer Anbieter, die dabei Deine IP-Adresse erhalten.',
 ];

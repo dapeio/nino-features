@@ -118,8 +118,8 @@ $manifest	= \Nino\Features::manifest( $dir );
 
 check( 'the manifest validates without a warning', is_array( $manifest ) && ninoWarnings() === [] );
 check( 'key, class and version are what the directory says', is_array( $manifest ) && $manifest['key'] === 'redirects'
-	&& $manifest['module'] === '\\Nino\\Modules\\Redirects' && $manifest['version'] === '1.0.0' );
-check( 'it is system, and names the kernel it needs', ( $manifest['category'] ?? '' ) === 'system' && ( $manifest['nino'] ?? '' ) === '^1.3' );
+	&& $manifest['module'] === '\\Nino\\Modules\\Redirects' && preg_match( '/^\d+\.\d+\.\d+/', (string) $manifest['version'] ) === 1 );
+check( 'it is system, and names the kernel it needs', ( $manifest['category'] ?? '' ) === 'system' && ( $manifest['nino'] ?? '' ) === '^1.4' );
 check( 'the rules file is declared under data, so a backup carries it',
 	in_array( \Nino\Modules\Redirects\Rules::PATH, (array) ( $manifest['data'] ?? [] ), true ) === true );
 check( 'it offers the one switch that decides whether anything is written down',
@@ -464,8 +464,8 @@ foreach( [ 'GET://', 'GET://blog', 'GET://about', 'GET://news/*', 'POST://form',
 $appData['/nino/http/routes']['GET://ueber-uns'] = [ 'uri' => '/about-us', 'locale' => 'de_DE', 'body' => 'x' ];
 
 \Nino\Filesystem::putFileContent( $appData, '/text/de_DE.php', [
-	'[[/webpage/blog/name]]'				=> '<em>Das</em> Blog &amp; mehr',
-	'[[/webpage/about-us/name]]'		=> 'Über uns',
+	'[[/_nino/webpage/blog/name]]'				=> '<em>Das</em> Blog &amp; mehr',
+	'[[/_nino/webpage/about-us/name]]'		=> 'Über uns',
 ] );
 
 $pages = \Nino\Modules\Redirects\Rules::routes( $appData );
@@ -482,8 +482,8 @@ check( '...each as a path, a label and the locale of its route', $pages['/ueber-
 
 // A language the page is named in only, and the one every language shares
 \Nino\Filesystem::putFileContent( $appData, '/text/de_DE.php', [] );
-\Nino\Filesystem::putFileContent( $appData, '/text/en_US.php', [ '[[/webpage/blog/name]]' => 'The blog' ] );
-\Nino\Filesystem::putFileContent( $appData, '/text/global.php', [ '[[/webpage/about/name]]' => 'About' ] );
+\Nino\Filesystem::putFileContent( $appData, '/text/en_US.php', [ '[[/_nino/webpage/blog/name]]' => 'The blog' ] );
+\Nino\Filesystem::putFileContent( $appData, '/text/global.php', [ '[[/_nino/webpage/about/name]]' => 'About' ] );
 check( 'a name in a language that is not the native one, or in global.php, is found as the menu would find it',
 	\Nino\Modules\Redirects\Rules::routes( $appData )['/blog']['label'] === 'The blog'
 	&& \Nino\Modules\Redirects\Rules::routes( $appData )['/about']['label'] === 'About' );

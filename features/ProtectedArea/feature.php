@@ -56,7 +56,7 @@ return [
 	],
 	'category'		=> 'security',
 	'version'			=> '1.0.0',
-	'nino'				=> '^1.3',
+	'nino'				=> '^1.4',
 	'requires'		=> [],
 	// The attempt-cap counter and the session epoch this feature owns - what a
 	// backup carries

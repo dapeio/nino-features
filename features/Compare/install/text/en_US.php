@@ -8,10 +8,10 @@ return [
 
 	// What the two sides are called where the shortcode did not say. A
 	// project that writes before-label="Rohbau" says something these cannot
-	'[[/compare/before]]'	=> 'Before',
-	'[[/compare/after]]'	=> 'After',
+	'[[/feature/compare/side/before]]'	=> 'Before',
+	'[[/feature/compare/side/after]]'	=> 'After',
 
 	// What the control is, for somebody who reaches it with the keyboard and
 	// has never seen the two pictures
-	'[[/compare/handle]]'	=> 'Move the divider between the two pictures',
+	'[[/feature/compare/handle/label]]'	=> 'Move the divider between the two pictures',
 ];

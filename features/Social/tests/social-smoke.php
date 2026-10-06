@@ -293,7 +293,7 @@ check( 'a link the editors deleted stays deleted', \Nino\Elements::getElement( $
 // A project with a type /social and a template of the same name of its own:
 // both are kept as they were, and [social] draws nothing it does not understand
 $foreign	= "<?php\nreturn [ 'title' => 'Mine', 'model' => [ 'name' => [ 'type' => 'string' ], 'url' => [ 'type' => 'string' ] ], '*' => [ '*' => [], 'a' => [ 'name' => 'A', 'url' => 'https://a.example/' ] ] ];\n";
-$ownTpl		= "<p>Our links: [[/company/name]]</p>\n";
+$ownTpl		= "<p>Our links: [[/project/company/general/name]]</p>\n";
 $own = socialSandbox( [ 'de_DE', 'en_US' ], static function( array &$appData ) use ( $foreign, $ownTpl ): void {
 	\Nino\Filesystem::forceDir( $appData, '/elements' );
 	\Nino\Filesystem::forceDir( $appData, '/templates' );

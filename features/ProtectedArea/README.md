@@ -1,6 +1,6 @@
 # Protected area
 
-**Key:** `protected` · **Class:** `\Nino\Modules\ProtectedArea` · **Version:** 1.0.0 · **Nino:** `^1.3`
+**Key:** `protected` · **Class:** `\Nino\Modules\ProtectedArea` · **Version:** 1.0.0 · **Nino:** `^1.4`
 
 Puts one or more pages behind one shared password - a members' area, a
 client preview, an internal page - without accounts. A visitor who opens a
@@ -42,7 +42,7 @@ two (`paths`, `password`):
   `GET://blog/*` is listed as the prefix it stands for, `/blog`. The locale
   variants of one page - the routes that share an internal `uri` - are one
   row, and one tick protects every language; the title is that page's
-  `/webpage<uri>/title` text in the route's locale, else the native one, else
+  `/_nino/webpage<uri>/title` text in the route's locale, else the native one, else
   the path. A row whose address already lies below a protected prefix reads
   "through a wider path" and cannot be changed. Saving replaces what the list
   can name and **keeps every other line of `paths`** as the developer wrote
@@ -187,7 +187,7 @@ visitor on a protected page could not already tell, so it needs no CSRF
 token to be safe. The shortcode `[protected-logout]` renders
 
 ```html
-<a href="[[/nino/dir]]/.protected/logout" class="nino-protected-logout">[[/protected/label/logout]]</a>
+<a href="[[/nino/dir]]/.protected/logout" class="nino-protected-logout">[[/feature/protected/logout/label]]</a>
 ```
 
 only while the current session actually reads unlocked, and nothing at all
@@ -210,7 +210,7 @@ a failed unlock, the `return` that was posted), `[csrf]`, and a submit
 button. `[protected-error]` renders
 
 ```html
-<p class="nino-protected-error">[[/protected/error/wrong]]</p>
+<p class="nino-protected-error">[[/feature/protected/error/wrong]]</p>
 ```
 
 or the same with `locked` in place of `wrong`, only while this very request
@@ -222,12 +222,12 @@ visitor with javascript on was never taken to the page and a wrong password
 showed nothing. A project that activated the feature before this was fixed has
 the old file: the unit is applied add-only and never again, so it removes the
 class from `templates/page-protected.tpl` by hand (see the changelog). The words
-(`/protected/title`, `/protected/text`, `/protected/label/password`,
-`/protected/label/submit`, `/protected/error/wrong`,
-`/protected/error/locked`, `/protected/label/logout`) are ordinary,
+(`/template/page-protected/intro/title`, `/template/page-protected/intro/text`, `/template/page-protected/form/password`,
+`/template/page-protected/form/submit`, `/feature/protected/error/wrong`,
+`/feature/protected/error/locked`, `/feature/protected/logout/label`) are ordinary,
 editor-maintained texts the install unit writes into the project's
 `text/<locale>.php`, merged add-only the way every unit is applied.
-`/protected/return` is not one of them: the gate fills it at request time,
+`/feature/protected/form/return` is not one of them: the gate fills it at request time,
 and the unit lists it under `blacklist` so that the Text panel's scan for
 missing keys does not report a key no text file can answer.
 

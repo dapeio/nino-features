@@ -73,10 +73,10 @@ $appData['/nino/html/images'] = [];
 $appData['/nino/html/assets'] = [ '/.cache/style.css' => [ '/assets/style.preview.css' ] ];
 
 \Nino\Filesystem::putFileContent( $appData, '/config.php', [ '/nino/html/images' => [] ] );
-\Nino\Filesystem::putFileContent( $appData, '/text/global.php', [ '[[/webpage/contact/uri]]' => '/contact' ] );
-\Nino\Filesystem::putFileContent( $appData, '/text/blacklist.php', [ '/webpage/contact/uri' ] );
-\Nino\Filesystem::putFileContent( $appData, '/text/en_US.php', [ '[[/page-home/hero/title]]' => 'Old title' ] );
-\Nino\Filesystem::putFileContent( $appData, '/text/de_DE.php', [ '[[/page-home/hero/title]]' => 'Alter Titel' ] );
+\Nino\Filesystem::putFileContent( $appData, '/text/global.php', [ '[[/_nino/webpage/contact/uri]]' => '/contact' ] );
+\Nino\Filesystem::putFileContent( $appData, '/text/blacklist.php', [ '/_nino/webpage/contact/uri' ] );
+\Nino\Filesystem::putFileContent( $appData, '/text/en_US.php', [ '[[/template/page-home/hero/title]]' => 'Old title' ] );
+\Nino\Filesystem::putFileContent( $appData, '/text/de_DE.php', [ '[[/template/page-home/hero/title]]' => 'Alter Titel' ] );
 
 echo "Sandbox: $sandbox\n\n";
 
@@ -95,7 +95,7 @@ $appData['/nino/modules'][] = '\\Nino\\Modules\\Templates';
 	that one instead of the feature's, because the autoloader resolves _nino/
 	before features/ on purpose, and the two checks below then fail on paths
 	while every other check in the file passes against the kernel's copy. The
-	manifest refuses such a checkout ('nino' => '^1.3'); this line says so
+	manifest refuses such a checkout ('nino' => '^1.4'); this line says so
 	rather than leaving it to be read out of two path failures	*/
 $panelFile = (string) ( new \ReflectionClass( \Nino\Modules\Templates\Admin::class ) )->getFileName();
 check( 'the module under test is this feature\'s own, not a copy the checkout ships in _nino/', str_starts_with( (string) realpath( $panelFile ), FEATURE. DIRECTORY_SEPARATOR ) );
@@ -319,12 +319,12 @@ $multiAreaManifest = [
 ];
 $multiAreaPreset = \Nino\Modules\Templates\AreaComposer::normalizePreset( 'two-collections', $multiAreaManifest, $areaPresetDirectory );
 $multiAreaResult = \Nino\Modules\Templates\AreaComposer::compose(
-	\Nino\Modules\Templates\AreaComposer::defaults( $multiAreaPreset, 'home', 'related' ),
+	\Nino\Modules\Templates\AreaComposer::defaults( $multiAreaPreset, 'page-home', 'related' ),
 	$multiAreaPreset
 );
 check( 'one preset can compose several independent Elements Areas', count( $multiAreaResult['content']['collections'] ) === 2
-	&& $multiAreaResult['content']['collections'][0]['elementType'] === 'home-related-first'
-	&& $multiAreaResult['content']['collections'][1]['elementType'] === 'home-related-second' );
+	&& $multiAreaResult['content']['collections'][0]['elementType'] === 'page-home-related-first'
+	&& $multiAreaResult['content']['collections'][1]['elementType'] === 'page-home-related-second' );
 file_put_contents( $areaPresetDirectory. '/unsafe.tpl', "<?php echo 'unsafe'; ?>\n[[area:first]]\n[[area:second]]\n" );
 $unsafeManifest = $multiAreaManifest;
 $unsafeManifest['layouts']['default']['template'] = 'unsafe.tpl';
@@ -354,7 +354,7 @@ $dataAttributeManifest = [
 	],
 ];
 $dataAttributePreset = \Nino\Modules\Templates\AreaComposer::normalizePreset( 'data-attributes', $dataAttributeManifest, $areaPresetDirectory );
-$dataAttributeInput = \Nino\Modules\Templates\AreaComposer::defaults( $dataAttributePreset, 'home', 'stage' );
+$dataAttributeInput = \Nino\Modules\Templates\AreaComposer::defaults( $dataAttributePreset, 'page-home', 'stage' );
 $dataAttributeSource = \Nino\Modules\Templates\AreaComposer::compose( $dataAttributeInput, $dataAttributePreset )['source'];
 $dataAttributeSection = strtok( $dataAttributeSource, "\n" );
 check( 'a Layout data attribute overrides the preset default on the section element', str_contains( $dataAttributeSection, 'data-cover-width="80"' )
@@ -415,23 +415,23 @@ check( 'every curated preset composes with its defaults', array_filter( array_ke
 	}
 } ) === [] );
 
-$heroInput = \Nino\Modules\Templates\AreaComposer::defaults( $presets['hero-fullscreen-image'], 'home', 'main-hero' );
+$heroInput = \Nino\Modules\Templates\AreaComposer::defaults( $presets['hero-fullscreen-image'], 'page-home', 'main-hero' );
 $heroInput['pageMotion'] = 'on';
-$heroInput['areas']['content']['components'][3]['bindings']['href'] = '/webpage/contact/uri';
+$heroInput['areas']['content']['components'][3]['bindings']['href'] = '/_nino/webpage/contact/uri';
 $heroInput['areas']['content']['components'][3]['bindingSources']['href'] = 'textfill';
 $hero = \Nino\Modules\Templates\Composer::compose( $heroInput );
 
 check( 'composes one ordinary section', str_starts_with( $hero['source'], '<section' ) && str_contains( $hero['source'], '</section>' ) );
 check( 'writes stable section metadata inside generated source', str_contains( $hero['source'], '<!-- nino:section {' ) );
-check( 'derives textfill keys from page and section ids', in_array( '/page-home/main-hero/title', array_column( $hero['fields'], 'key' ), true ) && str_contains( $hero['source'], '[[/page-home/main-hero/title]]' ) );
+check( 'derives textfill keys from page and section ids', in_array( '/template/page-home/main-hero/title', array_column( $hero['fields'], 'key' ), true ) && str_contains( $hero['source'], '[[/template/page-home/main-hero/title]]' ) );
 check( 'reports the generated background image slot', ( $hero['images'][0]['slot'] ?? '' ) === 'background' );
 check( 'inherits page motion into generated nino-vpa markup', preg_match( '/class="(?=[^"]*\bnino-grid-row\b)(?=[^"]*\bnino-vpa\b)[^"]*"/', $hero['source'] ) === 1 );
 check( 'applies Area alignment without forcing it onto the section shell', str_contains( $hero['source'], 'nino-text-center' ) && str_contains( strtok( $hero['source'], "\n" ), 'nino-text-center' ) === false );
-$contactBinding = array_values( array_filter( $hero['fields'], fn( array $field ): bool => $field['key'] === '/webpage/contact/uri' ) )[0] ?? null;
-check( 'single-Area actions can reuse technical textfills without creating a new field', str_contains( $hero['source'], 'href="[[/webpage/contact/uri]]"' )
+$contactBinding = array_values( array_filter( $hero['fields'], fn( array $field ): bool => $field['key'] === '/_nino/webpage/contact/uri' ) )[0] ?? null;
+check( 'single-Area actions can reuse technical textfills without creating a new field', str_contains( $hero['source'], 'href="[[/_nino/webpage/contact/uri]]"' )
 	&& ( $contactBinding['mode'] ?? '' ) === 'existing'
 	&& ( $hero['spec']['areas']['content']['components'][3]['bindingSources']['href'] ?? '' ) === 'textfill' );
-$missingHeroSources = \Nino\Modules\Templates\AreaComposer::defaults( $presets['hero-fullscreen-image'], 'home', 'missing-sources' );
+$missingHeroSources = \Nino\Modules\Templates\AreaComposer::defaults( $presets['hero-fullscreen-image'], 'page-home', 'missing-sources' );
 unset( $missingHeroSources['areas']['content']['components'][0]['bindingSources'] );
 check( 'section metadata must declare every Single-Area binding source', throwsInvalidArgument( fn() => \Nino\Modules\Templates\Composer::compose( $missingHeroSources ) ) );
 
@@ -446,7 +446,7 @@ check( 'preview-only VPA cleanup never changes composed template source', str_co
 // takes the field value as the [elements] pass leaves it, and a field the
 // model released for html comes out of sanitizeHtml() with its '"' intact -
 // so it would close the attribute and land whatever follows on the element
-$richBindingInput = \Nino\Modules\Templates\AreaComposer::defaults( $presets['articles-grid'], 'home', 'rich-binding' );
+$richBindingInput = \Nino\Modules\Templates\AreaComposer::defaults( $presets['articles-grid'], 'page-home', 'rich-binding' );
 $richBindingImage = null;
 foreach( $richBindingInput['areas']['articles']['components'] as $position => $component )
 	if( $component['type'] === 'image' )
@@ -461,7 +461,7 @@ $plainAltInput['areas']['articles']['components'][$richBindingImage]['bindings']
 $plainAltInput['areas']['articles']['components'][$richBindingImage]['bindingSources']['alt'] = 'field';
 check( '...while an ordinary field stays available for it', throwsInvalidArgument( fn() => \Nino\Modules\Templates\Composer::compose( $plainAltInput ) ) === false );
 
-$articleInput = \Nino\Modules\Templates\AreaComposer::defaults( $presets['articles-grid'], 'home', 'services' );
+$articleInput = \Nino\Modules\Templates\AreaComposer::defaults( $presets['articles-grid'], 'page-home', 'services' );
 $articleInput['areas']['articles']['style'] = 'four-columns';
 $articleInput['areas']['articles']['source'] = [
 	'elementMode' => 'existing',
@@ -508,12 +508,12 @@ check( 'section metadata must declare every Elements-Area binding source', throw
 
 $sharedActionInput = $articleInput;
 $sharedActionInput['id'] = 'shared-action';
-$sharedActionInput['areas']['articles']['components'][3]['bindings']['href'] = '/webpage/contact/uri';
+$sharedActionInput['areas']['articles']['components'][3]['bindings']['href'] = '/_nino/webpage/contact/uri';
 $sharedActionInput['areas']['articles']['components'][3]['bindingSources']['href'] = 'textfill';
 $sharedActionInput['areas']['articles']['components'][3]['bindings']['label'] = 'Contact [now]';
 $sharedActionInput['areas']['articles']['components'][3]['bindingSources']['label'] = 'fixed';
 $sharedAction = \Nino\Modules\Templates\Composer::compose( $sharedActionInput );
-check( 'repeatable components can combine Element fields, shared textfills and escaped fixed values', str_contains( $sharedAction['source'], 'href="[[/webpage/contact/uri]]"' )
+check( 'repeatable components can combine Element fields, shared textfills and escaped fixed values', str_contains( $sharedAction['source'], 'href="[[/_nino/webpage/contact/uri]]"' )
 	&& str_contains( $sharedAction['source'], 'Contact &#91;now&#93;' )
 	&& str_contains( $sharedAction['source'], '[[name]]' ) );
 $unsafeActionInput = $sharedActionInput;
@@ -524,7 +524,7 @@ $obfuscatedUnsafeActionInput = $unsafeActionInput;
 $obfuscatedUnsafeActionInput['areas']['articles']['components'][3]['bindings']['href'] = "java\nscript:alert(1)";
 check( 'fixed URL bindings reject control-character scheme obfuscation', throwsInvalidArgument( fn() => \Nino\Modules\Templates\Composer::compose( $obfuscatedUnsafeActionInput ) ) );
 $invalidImageSourceInput = $articleInput;
-$invalidImageSourceInput['areas']['articles']['components'][0]['bindings']['src'] = '/page-home/services/shared-image';
+$invalidImageSourceInput['areas']['articles']['components'][0]['bindings']['src'] = '/template/page-home/services/shared-image';
 $invalidImageSourceInput['areas']['articles']['components'][0]['bindingSources']['src'] = 'textfill';
 check( 'Elements images cannot bypass compatible field mappings', throwsInvalidArgument( fn() => \Nino\Modules\Templates\Composer::compose( $invalidImageSourceInput ) ) );
 
@@ -618,7 +618,7 @@ check( 'without a resolver an empty field shows its own name, never a placeholde
 // that saving it would
 $typedKey = (string) $heroFields[0]['key'];
 $typedInput = static fn( mixed $texts ): array => [ 'preset' => 'hero-cta', 'pageId' => 'preview', 'id' => 'hero', 'texts' => $texts ];
-$typedPreview = (string) \Nino\Modules\Templates\Composer::preview( $typedInput( [ $typedKey => 'Typed <b>words</b> & "quotes"', '/page-preview/other/field' => 'Intruder' ] ), $sampleText );
+$typedPreview = (string) \Nino\Modules\Templates\Composer::preview( $typedInput( [ $typedKey => 'Typed <b>words</b> & "quotes"', '/template/preview/other/field' => 'Intruder' ] ), $sampleText );
 check( 'a typed text replaces the sample of its field in the preview', str_contains( $typedPreview, 'Typed words & &quot;quotes&quot;' ) && str_contains( $typedPreview, $sampleText( (string) $heroFields[0]['sample'] ) ) === false );
 check( '...made as safe as saving it makes it: no tag survives, the quote is an entity', str_contains( (string) \Nino\Modules\Templates\Composer::preview( $typedInput( [ $typedKey => '<script>x</script>"' ] ), $sampleText ), 'x&quot;' )
 	&& str_contains( (string) \Nino\Modules\Templates\Composer::preview( $typedInput( [ $typedKey => '<script>x</script>"' ] ), $sampleText ), '<script' ) === false );
@@ -632,7 +632,7 @@ check( '...a text is cut at 4000 bytes', str_contains( (string) \Nino\Modules\Te
 	&& str_contains( (string) \Nino\Modules\Templates\Composer::preview( $typedInput( [ $typedKey => str_repeat( 'x', 5000 ) ] ), $sampleText ), str_repeat( 'x', 4001 ) ) === false );
 $tooMany = [ $typedKey => 'Typed' ];
 for( $tooManyIndex = 0; $tooManyIndex < 100; $tooManyIndex++ )
-	$tooMany['/page-preview/hero/extra-'. $tooManyIndex] = 'x';
+	$tooMany['/template/preview/hero/extra-'. $tooManyIndex] = 'x';
 check( '...more than 100 entries, another shape or a value that is no string are left out, and the preview still renders', ( \Nino\Modules\Templates\Composer::preview( $typedInput( $tooMany ), $sampleText ) ?? '' ) !== ''
 	&& str_contains( (string) \Nino\Modules\Templates\Composer::preview( $typedInput( $tooMany ), $sampleText ), 'Typed' ) === false
 	&& str_contains( (string) \Nino\Modules\Templates\Composer::preview( $typedInput( 'Typed' ), $sampleText ), '<section' )
@@ -663,7 +663,7 @@ $refusesSamples = static function( mixed $samples ) use ( $samplesManifest ): bo
 };
 check( 'a manifest\'s samples name fills and hold texts - anything else is refused like every other manifest mistake', $refusesSamples( [ 'not a fill' => 'x' ] )
 	&& $refusesSamples( [ 'title' => 3 ] ) && $refusesSamples( [ 'title' => [] ] ) && $refusesSamples( [ 'title' => [ 'a', 2 ] ] ) && $refusesSamples( 'title' )
-	&& $refusesSamples( [ 'title' => 'Item %n', '/company/email' => 'a@b.c', 'price' => [ '1', '2' ] ] ) === false );
+	&& $refusesSamples( [ 'title' => 'Item %n', '/project/company/contact/email' => 'a@b.c', 'price' => [ '1', '2' ] ] ) === false );
 // The panel dims every area but the one being edited, and needs to be told
 // where each one begins - a stored section is a file somebody reads and
 // edits, and says nothing about a dialog
@@ -687,7 +687,7 @@ check( 'named-area preview mirrors the selected column count', substr_count( $tw
 
 // --- articles-filterable-grid: the [elementvalues]-driven category filter --------
 
-$filterInput = \Nino\Modules\Templates\AreaComposer::defaults( $presets['articles-filterable-grid'], 'home', 'services' );
+$filterInput = \Nino\Modules\Templates\AreaComposer::defaults( $presets['articles-filterable-grid'], 'page-home', 'services' );
 $filterInput['areas']['elements']['source'] = [
 	'elementMode' => 'existing',
 	'elementType' => 'services',
@@ -716,12 +716,12 @@ $collectionOf = function( string $source ): array {
 	preg_match( '#\[elementvalues /([a-z0-9_-]+) #', $source, $buttons );
 	return [ $cards[1] ?? 'cards?', $buttons[1] ?? 'buttons?' ];
 };
-$defaultInsert = $collectionOf( \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'articles-filterable-grid', 'pageId' => 'home', 'id' => 'work' ] )['source'] );
+$defaultInsert = $collectionOf( \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'articles-filterable-grid', 'pageId' => 'page-home', 'id' => 'work' ] )['source'] );
 $reboundInput = $filterInput;
 $reboundInput['id'] = 'services-rebound';
 $reboundInput['areas']['elements']['source']['elementType'] = 'consulting';
 $rebound = $collectionOf( \Nino\Modules\Templates\Composer::compose( $reboundInput )['source'] );
-check( 'the filter buttons read the same collection as the cards - on a new Area, an existing one, and after a rebind', $defaultInsert === [ 'home-work-elements', 'home-work-elements' ]
+check( 'the filter buttons read the same collection as the cards - on a new Area, an existing one, and after a rebind', $defaultInsert === [ 'page-home-work-elements', 'page-home-work-elements' ]
 	&& $collectionOf( $filterSection['source'] ) === [ 'services', 'services' ]
 	&& $rebound === [ 'consulting', 'consulting' ] );
 check( 'a collection token naming something that is not an Elements area of the preset is refused', throwsInvalidArgument( function() use ( $areaPresetDirectory, $multiAreaManifest ): void {
@@ -760,14 +760,14 @@ check( 'renders a real preview with sample filter buttons, no raw shortcode text
 	&& str_contains( $filterPreview, '<article' ) === true );
 
 $fullscreen = \Nino\Modules\Templates\Composer::compose( [
-	'preset' => 'hero-fullscreen-image', 'pageId' => 'home', 'id' => 'stage', 'layout' => 'parallax',
+	'preset' => 'hero-fullscreen-image', 'pageId' => 'page-home', 'id' => 'stage', 'layout' => 'parallax',
 ] );
 check( 'Layout changes real markup and can recommend a matching frame', str_contains( $fullscreen['source'], 'nino-parallex' )
 	&& $fullscreen['effective']['layout'] === 'parallax'
 	&& $fullscreen['effective']['frame']['background'] === 'parallax'
-	&& ( $fullscreen['images'][0]['key'] ?? '' ) === '/page-home/stage/background' );
+	&& ( $fullscreen['images'][0]['key'] ?? '' ) === '/template/page-home/stage/background' );
 
-$backgroundInput = \Nino\Modules\Templates\AreaComposer::defaults( $presets['hero-fullscreen-image'], 'home', 'stage' );
+$backgroundInput = \Nino\Modules\Templates\AreaComposer::defaults( $presets['hero-fullscreen-image'], 'page-home', 'stage' );
 $backgroundInput['frame']['backgroundImageSource'] = 'image';
 $backgroundInput['frame']['backgroundImage'] = '/shared/hero-image';
 $existingBackground = \Nino\Modules\Templates\Composer::compose( $backgroundInput );
@@ -802,7 +802,7 @@ check( 'a fixed background still allows the public prefix and ordinary project p
 	&& $rejectsBackground( 'fixed', '/images/hero.jpg' ) === false
 	&& $rejectsBackground( 'fixed', 'https://cdn.example.com/hero.jpg' ) === false );
 
-$templateInput = \Nino\Modules\Templates\AreaComposer::defaults( $presets['articles-grid'], 'home', 'with-form' );
+$templateInput = \Nino\Modules\Templates\AreaComposer::defaults( $presets['articles-grid'], 'page-home', 'with-form' );
 $templateInput['areas']['action']['components'][] = [
 	'id' => 'form', 'type' => 'template', 'style' => 'auto', 'settings' => [ 'target' => 'same' ],
 	'bindings' => [ 'path' => '/templates/form-contact' ],
@@ -811,13 +811,13 @@ $templateInput['areas']['action']['components'][] = [
 $templateSection = \Nino\Modules\Templates\Composer::compose( $templateInput );
 check( 'Template is an ordered Area input rather than a gallery pseudo-section', str_contains( $templateSection['source'], '[template /templates/form-contact]' ) );
 
-$includeInput = \Nino\Modules\Templates\AreaComposer::defaults( $presets['template-include'], 'home', 'form-contact' );
+$includeInput = \Nino\Modules\Templates\AreaComposer::defaults( $presets['template-include'], 'page-home', 'form-contact' );
 $includeInput['areas']['include']['components'][0]['bindings']['path'] = '/templates/form-contact';
 $includeSection = \Nino\Modules\Templates\Composer::compose( $includeInput );
 check( 'the focused reusable-template preset emits one normal managed section', str_contains( $includeSection['source'], '[template /templates/form-contact]' )
 	&& substr_count( $includeSection['source'], '<section' ) === 1 );
 
-$splitInput = \Nino\Modules\Templates\AreaComposer::defaults( $presets['image-content-split'], 'home', 'story' );
+$splitInput = \Nino\Modules\Templates\AreaComposer::defaults( $presets['image-content-split'], 'page-home', 'story' );
 $splitInput['layout'] = 'media-right';
 $splitSection = \Nino\Modules\Templates\Composer::compose( $splitInput );
 $splitPreview = \Nino\Modules\Templates\Composer::preview( [ 'preset' => 'image-content-split', 'pageId' => 'preview', 'id' => 'story' ] );
@@ -834,7 +834,7 @@ $everyLayout = [];
 foreach( $presets as $presetKey => $preset )
 	foreach( array_keys( $preset['layouts'] ) as $layoutKey )
 		try {
-			$everyLayout[$presetKey. '/'. $layoutKey] = \Nino\Modules\Templates\Composer::compose( [ 'preset' => $presetKey, 'pageId' => 'home', 'id' => $presetKey, 'layout' => $layoutKey ] )['source'];
+			$everyLayout[$presetKey. '/'. $layoutKey] = \Nino\Modules\Templates\Composer::compose( [ 'preset' => $presetKey, 'pageId' => 'page-home', 'id' => $presetKey, 'layout' => $layoutKey ] )['source'];
 		} catch( \Throwable $exception ) {
 			$everyLayout[$presetKey. '/'. $layoutKey] = 'FAILED: '. $exception->getMessage();
 		}
@@ -850,7 +850,7 @@ check( 'no Layout nests a second grid row inside the one the compiler writes', a
 	subdirectory: a form that posts to "/.newsletter" posts beside a site at
 	/shop, and the entry never arrives. [[/nino/dir]] is what the kernel's own
 	templates put in front of every address (page-contact.tpl's action,
-	theme.header.tpl's links) and what Nino.ui.js falls back to when a form
+	frame-header.tpl's links) and what Nino.ui.js falls back to when a form
 	names no action - so a Layout names the fill or names nothing	*/
 $rootAbsolute = [];
 foreach( glob( FEATURE. '/library/*/*.tpl' ) ?: [] as $layoutFile )
@@ -871,11 +871,11 @@ check( 'the Builder, the presets and the design system carry no legacy class pre
 // Nino.ui.js drives and which correctly has no rule.
 check( 'the filter wrapper carries the layout rule its nested cards depend on', preg_match( '/\.nino-filter\s*\{[^}]*display:\s*flex/', (string) file_get_contents( NINO. '/_nino/Nino.css' ) ) === 1 );
 check( 'a component step is a modifier of whichever class the preset gave it', str_contains( \Nino\Modules\Templates\Composer::compose( array_merge(
-	\Nino\Modules\Templates\AreaComposer::defaults( $presets['hero-fullscreen-image'], 'home', 'loud-hero' ),
+	\Nino\Modules\Templates\AreaComposer::defaults( $presets['hero-fullscreen-image'], 'page-home', 'loud-hero' ),
 	[ 'areas' => [ 'content' => [ 'components' => [ [ 'id' => 'title', 'type' => 'title', 'style' => 'loud', 'bindings' => [ 'text' => 'title' ], 'bindingSources' => [ 'text' => 'new' ] ] ] ] ] ]
 ) )['source'], '<h2 class="nino-atf-title nino-atf-title--loud"' )
 	&& str_contains( \Nino\Modules\Templates\Composer::compose( array_merge(
-		\Nino\Modules\Templates\AreaComposer::defaults( $presets['static-content'], 'home', 'loud-copy' ),
+		\Nino\Modules\Templates\AreaComposer::defaults( $presets['static-content'], 'page-home', 'loud-copy' ),
 		[ 'areas' => [ 'heading' => [ 'components' => [ [ 'id' => 'title', 'type' => 'title', 'style' => 'loud', 'bindings' => [ 'text' => 'title' ], 'bindingSources' => [ 'text' => 'new' ] ] ] ] ] ]
 	) )['source'], '<h2 class="nino-section-title nino-section-title--loud"' )
 	&& str_contains( json_encode( $presets ), 'nino-font-big' ) === false );
@@ -887,7 +887,7 @@ check( 'a component step is a modifier of whichever class the preset gave it', s
 	nothing does	*/
 $titleStyles = \Nino\Modules\Templates\AreaComposer::catalog()['title']['styles'];
 $titleWith = fn( string $style ): string => \Nino\Modules\Templates\Composer::compose( array_merge(
-	\Nino\Modules\Templates\AreaComposer::defaults( $presets['static-content'], 'home', 'styled-copy' ),
+	\Nino\Modules\Templates\AreaComposer::defaults( $presets['static-content'], 'page-home', 'styled-copy' ),
 	[ 'areas' => [ 'heading' => [ 'components' => [ [ 'id' => 'title', 'type' => 'title', 'style' => $style, 'bindings' => [ 'text' => 'title' ], 'bindingSources' => [ 'text' => 'new' ] ] ] ] ] ]
 ) )['source'];
 check( 'every style the catalogue offers is such a modifier, and auto is the class alone', in_array( 'auto', $titleStyles, true ) === true
@@ -903,7 +903,7 @@ check( 'every style the catalogue offers is such a modifier, and auto is the cla
 	already reports	*/
 $overlayChoices = \Nino\Modules\Templates\AreaComposer::choices()['overlay'];
 $scrimsOf = function( string $overlay ): array {
-	$section = strtok( \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'hero-fullscreen-image', 'pageId' => 'home', 'id' => 'scrim-'. $overlay, 'frame' => [ 'overlay' => $overlay ] ] )['source'], "\n" );
+	$section = strtok( \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'hero-fullscreen-image', 'pageId' => 'page-home', 'id' => 'scrim-'. $overlay, 'frame' => [ 'overlay' => $overlay ] ] )['source'], "\n" );
 	preg_match_all( '/\b(?:nino-cover|nino-img-background|nino-parallex)--([a-z0-9-]+)/', $section, $matches );
 	return $matches[1];
 };
@@ -912,40 +912,40 @@ check( 'the scrim is one choice per image layer rather than three levels of its 
 	&& count( $scrimsOf( 'auto' ) ) <= 1
 	&& array_filter( array_diff( $overlayChoices, [ 'auto', 'none' ] ), fn( string $overlay ): bool => $scrimsOf( $overlay ) !== [ $overlay ] ) === [] );
 check( 'overlay values outside the current vocabulary are rejected', throwsInvalidArgument( fn() => \Nino\Modules\Templates\Composer::compose( [
-	'preset' => 'hero-fullscreen-image', 'pageId' => 'home', 'id' => 'invalid-overlay', 'frame' => [ 'overlay' => 'strong' ],
+	'preset' => 'hero-fullscreen-image', 'pageId' => 'page-home', 'id' => 'invalid-overlay', 'frame' => [ 'overlay' => 'strong' ],
 ] ) ) );
 check( 'every preset card is measured against the same preview viewport', array_filter( $presets, fn( array $preset ): bool => isset( $preset['previewHeight'] ) ) === [] );
 
-$timeline = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'items-timeline', 'pageId' => 'home', 'id' => 'process' ] );
+$timeline = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'items-timeline', 'pageId' => 'page-home', 'id' => 'process' ] );
 check( 'the timeline numbers its steps from the ordered list instead of storing the ordinal as content', str_contains( $timeline['source'], '<ol class="nino-timeline nino-timeline--counted">' )
 	&& str_contains( $timeline['source'], '<li class="nino-timeline-step"><h4>[[title]]</h4>' )
 	&& isset( $timeline['content']['collections'][0]['model']['step'] ) === false );
-$stacked = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'items-timeline', 'pageId' => 'home', 'id' => 'process', 'layout' => 'stacked' ] );
+$stacked = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'items-timeline', 'pageId' => 'page-home', 'id' => 'process', 'layout' => 'stacked' ] );
 check( 'its second Layout restacks the same steps instead of restyling the item', str_contains( $stacked['source'], 'nino-timeline--stacked' )
 	&& str_contains( $stacked['source'], '<li class="nino-timeline-step">' ) );
 
-$staticTable = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'static-table', 'pageId' => 'home', 'id' => 'hours', 'layout' => 'striped-elements' ] );
+$staticTable = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'static-table', 'pageId' => 'page-home', 'id' => 'hours', 'layout' => 'striped-elements' ] );
 check( 'a static block reaches the section exactly as the Layout wrote it, loop and all', str_contains( $staticTable['source'], '<table class="nino-table nino-table--striped">' )
 	&& str_contains( $staticTable['source'], '<tr><th>Service</th><th>Duration</th></tr>' )
 	&& str_contains( $staticTable['source'], '[elements /example-rows limit="10"]' )
 	&& str_contains( $staticTable['source'], '<tr><td>[[columnA]]</td><td>[[columnB]]</td></tr>' )
 	&& $staticTable['content']['collections'] === [] );
-check( 'its intro stays an ordinary textfill Area while the outro renders nothing at all', str_contains( $staticTable['source'], '[[/page-home/hours/title]]' )
+check( 'its intro stays an ordinary textfill Area while the outro renders nothing at all', str_contains( $staticTable['source'], '[[/template/page-home/hours/title]]' )
 	&& str_contains( $staticTable['source'], 'nino-mt-3' ) === false
 	&& preg_match( '/\n[\t ]*\n/', $staticTable['source'] ) !== 1 );
 $staticOutro = \Nino\Modules\Templates\Composer::compose( [
-	'preset' => 'static-table', 'pageId' => 'home', 'id' => 'hours',
+	'preset' => 'static-table', 'pageId' => 'page-home', 'id' => 'hours',
 	'areas' => [ 'outro' => [ 'components' => [ [
 		'id' => 'action', 'type' => 'button', 'style' => 'primary',
 		'bindings' => [ 'label' => '', 'href' => '' ], 'bindingSources' => [ 'label' => 'new', 'href' => 'new' ],
 	] ] ] ],
 ] );
 check( 'and carries a closing action as soon as the outro gets one', str_contains( $staticOutro['source'], 'nino-mt-3' )
-	&& str_contains( $staticOutro['source'], '[[/page-home/hours/action-label]]' ) );
-$accordion = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'static-accordion', 'pageId' => 'home', 'id' => 'faq' ] );
+	&& str_contains( $staticOutro['source'], '[[/template/page-home/hours/action-label]]' ) );
+$accordion = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'static-accordion', 'pageId' => 'page-home', 'id' => 'faq' ] );
 check( 'a static block resolves [[section:id]], so two of them on one page stay independent', str_contains( $accordion['source'], 'name="faq-faq"' )
 	&& str_contains( $accordion['source'], '[[section:id]]' ) === false );
-$contact = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'form-contact', 'pageId' => 'home', 'id' => 'reach-us', 'layout' => 'split' ] );
+$contact = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'form-contact', 'pageId' => 'page-home', 'id' => 'reach-us', 'layout' => 'split' ] );
 check( 'the shipped forms keep their CSRF token, honeypot and per-section field ids', str_contains( $contact['source'], '[csrf]' )
 	&& str_contains( $contact['source'], 'name="location"' )
 	&& str_contains( $contact['source'], 'id="reach-us-email"' )
@@ -963,7 +963,7 @@ check( 'every pricing Layout is a real composition of its own, and no two of the
 	&& array_filter( $pricingSections, fn( string $section ): bool => str_contains( $section, 'nino-pricing-row' ) === false ) === []
 	&& count( array_unique( $pricingSections ) ) === count( $pricingSections ) );
 
-$pricing = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'items-pricing', 'pageId' => 'home', 'id' => 'plans', 'layout' => 'feature-middle' ] );
+$pricing = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'items-pricing', 'pageId' => 'page-home', 'id' => 'plans', 'layout' => 'feature-middle' ] );
 check( 'pricing emphasis is a Layout, not a second collection or a hidden item class', str_contains( $pricing['source'], 'nino-pricing-row nino-pricing-row--feature-middle' )
 	&& str_contains( $pricing['source'], '<div class="nino-pricing-item">' )
 	&& str_contains( $pricing['source'], '<div class="nino-pricing-price"><strong>[[price]]</strong><span>[[suffix]]</span></div>' ) );
@@ -985,9 +985,9 @@ check( 'the catalog offers an HTML+ component whose value is source', isset( $ca
 	&& ( $catalog['html']['properties']['source']['kind'] ?? '' ) === 'source'
 	&& isset( $catalog['html']['properties']['text'] ) === false );
 
-$htmlSpec = \Nino\Modules\Templates\AreaComposer::defaults( $presets['static-content'], 'home', 'note' );
+$htmlSpec = \Nino\Modules\Templates\AreaComposer::defaults( $presets['static-content'], 'page-home', 'note' );
 $htmlArea = array_key_first( $htmlSpec['areas'] );
-$htmlWritten = '<div class="nino-grid-100"><p>Hallo <strong>Welt</strong> [[/company/name]] [image /demo]</p></div>';
+$htmlWritten = '<div class="nino-grid-100"><p>Hallo <strong>Welt</strong> [[/project/company/general/name]] [image /demo]</p></div>';
 $htmlSpec['areas'][$htmlArea]['components'] = [ [ 'id' => 'note', 'type' => 'html', 'style' => 'auto', 'settings' => [ 'target' => 'same' ], 'bindings' => [ 'source' => $htmlWritten ], 'bindingSources' => [ 'source' => 'source' ] ] ];
 /*	Composed through a catch, like resolvedUri() in the kernel suite: every
 	check below used to die here instead of failing, and a suite that dies
@@ -1001,7 +1001,7 @@ check( 'an HTML+ component is written into the section exactly as it was typed',
 
 // A fill and a shortcode survive, which is the whole difference from the
 // rich-text a textfill can hold
-check( '...with its fills and shortcodes intact, which is what HTML+ means here', str_contains( $htmlComposed['source'], '[[/company/name]]' ) === true
+check( '...with its fills and shortcodes intact, which is what HTML+ means here', str_contains( $htmlComposed['source'], '[[/project/company/general/name]]' ) === true
 	&& str_contains( $htmlComposed['source'], '[image /demo]' ) === true );
 
 // It needs no textfill created or filled, so it is no text binding either
@@ -1063,8 +1063,8 @@ try {
 check( 'the HTML+ component is offered in a collection area', isset( $htmlCollectionPreset['areas']['first']['render']['html'] ) === true );
 $htmlCollection = [ 'source' => '' ];
 try {
-	$htmlCollectionSpec = \Nino\Modules\Templates\AreaComposer::defaults( $htmlCollectionPreset, 'home', 'rows' );
-	$htmlCollectionSpec['areas']['first']['components'] = [ [ 'id' => 'row', 'type' => 'html', 'style' => 'auto', 'settings' => [ 'target' => 'same' ], 'bindings' => [ 'source' => '<p class="nino-section-text">[[title]] &middot; [[/company/name]]</p>' ], 'bindingSources' => [ 'source' => 'fixed' ] ] ];
+	$htmlCollectionSpec = \Nino\Modules\Templates\AreaComposer::defaults( $htmlCollectionPreset, 'page-home', 'rows' );
+	$htmlCollectionSpec['areas']['first']['components'] = [ [ 'id' => 'row', 'type' => 'html', 'style' => 'auto', 'settings' => [ 'target' => 'same' ], 'bindings' => [ 'source' => '<p class="nino-section-text">[[title]] &middot; [[/project/company/general/name]]</p>' ], 'bindingSources' => [ 'source' => 'fixed' ] ] ];
 	$htmlCollection = \Nino\Modules\Templates\AreaComposer::compose( $htmlCollectionSpec, $htmlCollectionPreset );
 } catch( \Throwable $htmlCollectionError ) {}
 /*	...and it is the item itself. The first version of this check asked only
@@ -1074,13 +1074,13 @@ try {
 	source and nothing around the source	*/
 check( '...and its source is the item the [elements] pass repeats, [[field]] and all',
 	preg_match( '#\[elements /[a-z0-9-]+[^\]]*\](.*?)\[/elements\]#s', $htmlCollection['source'], $htmlItem ) === 1
-	&& $htmlItem[1] === '<article class="nino-grid-m-33"><p class="nino-section-text">[[title]] &middot; [[/company/name]]</p></article>'
+	&& $htmlItem[1] === '<article class="nino-grid-m-33"><p class="nino-section-text">[[title]] &middot; [[/project/company/general/name]]</p></article>'
 	&& str_contains( $htmlCollection['source'], '[[<' ) === false );
 
 // A collection's HTML+ starts as one paragraph with the first text field in it
 $htmlLoopDefault = [ 'source' => '' ];
 try {
-	$htmlLoopDefaultSpec = \Nino\Modules\Templates\AreaComposer::defaults( $htmlCollectionPreset, 'home', 'rows' );
+	$htmlLoopDefaultSpec = \Nino\Modules\Templates\AreaComposer::defaults( $htmlCollectionPreset, 'page-home', 'rows' );
 	$htmlLoopDefaultSpec['areas']['first']['components'] = [ [ 'id' => 'row', 'type' => 'html', 'style' => 'auto', 'settings' => [ 'target' => 'same' ], 'bindings' => [], 'bindingSources' => [ 'source' => 'source' ] ] ];
 	$htmlLoopDefault = \Nino\Modules\Templates\AreaComposer::compose( $htmlLoopDefaultSpec, $htmlCollectionPreset );
 } catch( \Throwable $htmlLoopDefaultError ) {}
@@ -1089,7 +1089,7 @@ check( 'a collection\'s HTML+ without a source of its own starts as one paragrap
 // ...while a single area starts it as the catalogue says, whatever its key
 $htmlSingleDefault = [ 'source' => '' ];
 try {
-	$htmlSingleDefaultSpec = \Nino\Modules\Templates\AreaComposer::defaults( $presets['static-content'], 'home', 'note' );
+	$htmlSingleDefaultSpec = \Nino\Modules\Templates\AreaComposer::defaults( $presets['static-content'], 'page-home', 'note' );
 	$htmlSingleDefaultSpec['areas'][$htmlArea]['components'] = [ [ 'id' => 'note', 'type' => 'html', 'style' => 'auto', 'settings' => [ 'target' => 'same' ], 'bindings' => [], 'bindingSources' => [ 'source' => 'source' ] ] ];
 	$htmlSingleDefault = \Nino\Modules\Templates\AreaComposer::compose( $htmlSingleDefaultSpec, $presets['static-content'] );
 } catch( \Throwable $htmlSingleDefaultError ) {}
@@ -1111,7 +1111,7 @@ try { $htmlLoopPreset = \Nino\Modules\Templates\AreaComposer::normalizePreset( '
 $htmlLoopRefuses = function( string $source, string $mode = 'new', string $message = '' ) use ( $htmlLoopPreset ): ?bool {
 	if( $htmlLoopPreset['areas'] === [] )
 		return null;
-	$spec = \Nino\Modules\Templates\AreaComposer::defaults( $htmlLoopPreset, 'home', 'rows' );
+	$spec = \Nino\Modules\Templates\AreaComposer::defaults( $htmlLoopPreset, 'page-home', 'rows' );
 	$spec['areas']['first']['source']['elementMode'] = $mode;
 	$spec['areas']['first']['components'] = [ [ 'id' => 'row', 'type' => 'html', 'style' => 'auto', 'settings' => [ 'target' => 'same' ], 'bindings' => [ 'source' => $source ], 'bindingSources' => [ 'source' => 'source' ] ] ];
 	try {
@@ -1153,11 +1153,21 @@ check( 'list and table tags are available to Areas that need them, scripts and m
 	&& \Nino\Modules\Templates\AreaComposer::normalizePreset( 'list-tag', array_replace_recursive( $multiAreaManifest, [ 'areas' => [ 'first' => [ 'item' => [ 'tag' => 'li' ] ] ] ] ), $areaPresetDirectory )['areas']['first']['item']['tag'] === 'li' );
 
 check( 'rejects invalid page ids', throwsInvalidArgument( fn() => \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'articles-grid', 'pageId' => '../home', 'id' => 'intro' ] ) ) );
+// A page's id is its template's category and a section's id a segment of a key: words
+// joined by single hyphens, the first one starting with a letter - a page's
+// always does, it begins with page-
+check( 'ids are words joined by single hyphens, and a section\'s starts with a letter', throwsInvalidArgument( fn() => \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'articles-grid', 'pageId' => 'page-home', 'id' => 'intro--text' ] ) )
+	&& throwsInvalidArgument( fn() => \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'articles-grid', 'pageId' => 'page-home', 'id' => 'intro-' ] ) )
+	&& throwsInvalidArgument( fn() => \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'articles-grid', 'pageId' => 'page-home', 'id' => '2intro' ] ) )
+	&& \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'hero-cta', 'pageId' => 'page-404', 'id' => 'hero' ] )['fields'][0]['key'] === '/template/page-404/hero/title'
+	&& \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'hero-cta', 'pageId' => 'page-2026-home', 'id' => 'hero' ] )['fields'][0]['key'] === '/template/page-2026-home/hero/title' );
+check( 'a section with the id of its page keeps the category segment of its keys, and the type it proposes is the page, the section and the area', \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'hero-cta', 'pageId' => 'page-home', 'id' => 'page-home' ] )['fields'][0]['key'] === '/template/page-home/page-home/title'
+	&& \Nino\Modules\Templates\AreaComposer::defaults( $presets['articles-grid'], 'page-404', 'hero' )['areas']['articles']['source']['elementType'] === 'page-404-hero-articles' );
 check( 'rejects invalid Area styles and element type paths', throwsInvalidArgument( fn() => \Nino\Modules\Templates\Composer::compose( [
-	'preset' => 'articles-grid', 'pageId' => 'home', 'id' => 'intro',
+	'preset' => 'articles-grid', 'pageId' => 'page-home', 'id' => 'intro',
 	'areas' => [ 'articles' => [ 'style' => 'unknown' ] ],
 ] ) ) && throwsInvalidArgument( fn() => \Nino\Modules\Templates\Composer::compose( [
-	'preset' => 'articles-grid', 'pageId' => 'home', 'id' => 'intro',
+	'preset' => 'articles-grid', 'pageId' => 'page-home', 'id' => 'intro',
 	'areas' => [ 'articles' => [ 'source' => [ 'elementType' => '../items' ] ] ],
 ] ) ) );
 
@@ -1173,10 +1183,10 @@ $source = "[template /templates/html-header]\n"
 	. "<?php \$sample = '<section>not markup either</section>'; ?>\n"
 	. "<script>const sample = '</scripture><section>not markup</section>';</script>\n"
 	. "<section id=\"hero\" class=\"nino-section\">\n\t<section class=\"nested\"><p>Nested</p></section>\n</section>\n"
-	. "<section id='content'>[[/page-home/content/title]]</section>\n"
+	. "<section id='content'>[[/template/page-home/content/title]] [[/template/page-services/intro/title]] [[/template/common/form/submit]] [[/project/company/general/name]] [[/_nino/webpage/home/title]]</section>\n"
 	. "[template /templates/html-footer]\n";
 
-$parsed = \Nino\Modules\Templates\SectionDocument::split( $source );
+$parsed = \Nino\Modules\Templates\SectionDocument::split( $source, 'page-home' );
 $joined = implode( '', array_column( $parsed['segments'], 'source' ) );
 $sections = array_values( array_filter( $parsed['segments'], fn( array $segment ): bool => $segment['type'] === 'section' ) );
 $templateSections = array_values( array_filter( $parsed['segments'], fn( array $segment ): bool => $segment['type'] === 'template' ) );
@@ -1186,7 +1196,9 @@ check( 'promotes standalone template shortcodes to canvas components', count( $t
 check( 'counts HTML and template sections together as canvas components', $parsed['componentCount'] === 4 );
 check( 'ignores section-like text in comments, PHP and raw script bodies', count( $sections ) === 2 );
 check( 'keeps a nested section inside its top-level parent', str_contains( $sections[0]['source'], 'class="nested"' ) );
-check( 'extracts ids, fills and bindings for the UI', $sections[1]['htmlId'] === 'content' && $sections[1]['fills'] === [ '/page-home/content/title' ] );
+check( 'extracts ids, fills and bindings for the UI - the fills being the keys of the template\'s own category, no other key', $sections[1]['htmlId'] === 'content' && $sections[1]['fills'] === [ '/template/page-home/content/title' ] );
+$uncategorised = array_values( array_filter( \Nino\Modules\Templates\SectionDocument::split( $source )['segments'], fn( array $segment ): bool => $segment['type'] === 'section' ) );
+check( '...and a source read without a category has none', $uncategorised[1]['fills'] === [] );
 check( 'rejoining untouched segments is byte-identical', $joined === $source );
 check( 'reports an unmatched section instead of guessing', \Nino\Modules\Templates\SectionDocument::split( '<section><p>x</p>' )['error'] !== null );
 
@@ -1273,7 +1285,7 @@ $listRequest = response();
 $listed = $listRequest['/nino/http/response']['body']['documents'];
 
 check( 'lists page-*.tpl files only', array_column( $listed, 'name' ) === [ 'page-home' ] );
-check( 'reports filename, display name, page id and inherited VPA', $listed[0]['filename'] === 'page-home.tpl' && $listed[0]['displayName'] === 'Home' && $listed[0]['sections'] === 2 && $listed[0]['pageId'] === 'home' && $listed[0]['pageMotion'] === 'on' );
+check( 'reports filename, display name, page id and inherited VPA', $listed[0]['filename'] === 'page-home.tpl' && $listed[0]['displayName'] === 'Home' && $listed[0]['sections'] === 2 && $listed[0]['pageId'] === 'page-home' && $listed[0]['pageMotion'] === 'on' && $listed[0]['editable'] === true );
 check( 'excludes the automatically recognized header/footer shell from the canvas-item count', $listed[0]['components'] === 2 );
 
 $includesRequest = response();
@@ -1287,25 +1299,56 @@ check( 'include library offers section templates but excludes page templates', i
 	includes itself. They are classified, not dropped - a page may already
 	point at one, and the panel has to find it - and the client leaves the
 	kinds that are not for choosing out of its lists	*/
-$hiddenTemplates = [ 'mail-user', 'mail-owner', 'mail-newsletter-confirm', 'robots', 'sitemap-xml', 'llms-txt', 'theme.header', 'theme.footer', 'social-links' ];
+$hiddenTemplates = [ 'mail-user', 'mail-owner', 'mail-newsletter-confirm', 'robots', 'sitemap-xml', 'llms-txt', 'frame-header', 'frame-footer', 'social-links' ];
 foreach( $hiddenTemplates as $hiddenTemplate )
 	file_put_contents( $sandbox. '/private/templates/'. $hiddenTemplate. '.tpl', 'x' );
 $kindsRequest = response();
 \Nino\Modules\Templates\Documents::apiIncludes( $appData, $kindsRequest );
 $kinds = array_column( $kindsRequest['/nino/http/response']['body']['includes'], 'kind', 'name' );
 check( 'mail bodies and the robots, sitemap and llms outputs are listed as output, and the frame\'s own parts as internal', array_map( static fn( string $name ): string => $kinds[$name] ?? 'missing', [ 'mail-user', 'mail-owner', 'mail-newsletter-confirm', 'robots', 'sitemap-xml', 'llms-txt' ] ) === array_fill( 0, 6, 'output' )
-	&& ( $kinds['theme.header'] ?? '' ) === 'internal' && ( $kinds['theme.footer'] ?? '' ) === 'internal' );
+	&& ( $kinds['frame-header'] ?? '' ) === 'internal' && ( $kinds['frame-footer'] ?? '' ) === 'internal' );
 check( '...while a section, a partial and the frame keep their kinds, and a page still finds the template it points at', ( $kinds['section-card'] ?? '' ) === 'section' && ( $kinds['social-links'] ?? '' ) === 'partial'
 	&& ( $kinds['html-header'] ?? '' ) === 'frame' && ( $kinds['html-footer'] ?? '' ) === 'frame' );
 foreach( $hiddenTemplates as $hiddenTemplate )
 	unlink( $sandbox. '/private/templates/'. $hiddenTemplate. '.tpl' );
 
-file_put_contents( $sandbox. '/private/templates/page-2026.home.tpl', $page );
+/*	The page id is the template's category - its file name without .tpl, the
+	prefix and a number included - and a name that is no category is a template
+	the builder lists and does not open: it could not give it keys of its own	*/
+foreach( [ 'page-2026-home', 'page-2026.home', 'page-Foo', 'page-a.b' ] as $variantName )
+	file_put_contents( $sandbox. '/private/templates/'. $variantName. '.tpl', $page );
 $variantListRequest = response();
 \Nino\Modules\Templates\Documents::apiList( $appData, $variantListRequest );
-$variant = array_values( array_filter( $variantListRequest['/nino/http/response']['body']['documents'], fn( array $document ): bool => $document['name'] === 'page-2026.home' ) )[0] ?? [];
-check( 'derives a valid distinct id from dotted or number-prefixed page names', ( $variant['pageId'] ?? '' ) === 'p-2026-home' );
-unlink( $sandbox. '/private/templates/page-2026.home.tpl' );
+$variants = array_column( $variantListRequest['/nino/http/response']['body']['documents'], null, 'name' );
+check( 'the page id of page-2026-home.tpl is page-2026-home: nothing is cut off, nothing put in front', ( $variants['page-2026-home']['pageId'] ?? '' ) === 'page-2026-home' && ( $variants['page-2026-home']['editable'] ?? false ) === true );
+check( 'a name with a dot or a capital gives no category: listed, not editable, with the reason, and with no page id', array_map( static fn( string $name ): array => [ $variants[$name]['pageId'], $variants[$name]['editable'], $variants[$name]['reason'] ], [ 'page-2026.home', 'page-Foo', 'page-a.b' ] ) === array_fill( 0, 3, [ null, false, 'category' ] ) );
+post( [ 'name' => 'page-Foo' ] );
+$noCategoryLoad = response();
+\Nino\Modules\Templates\Documents::apiLoad( $appData, $noCategoryLoad );
+check( 'such a template opens read-only when it is asked for, and does not save', is_string( $noCategoryLoad['/nino/http/response']['body']['readonly'] ?? null ) === true && array_key_exists( 'pageId', $noCategoryLoad['/nino/http/response']['body'] ) === true && $noCategoryLoad['/nino/http/response']['body']['pageId'] === null );
+post( [ 'name' => 'page-Foo', 'revision' => $noCategoryLoad['/nino/http/response']['body']['revision'], 'segments' => $noCategoryLoad['/nino/http/response']['body']['segments'] ] );
+$noCategorySave = response();
+\Nino\Modules\Templates\Documents::apiSave( $appData, $noCategorySave );
+check( '...and is refused', $noCategorySave['/nino/http/response']['statusCode'] === 400 );
+foreach( [ 'page-2026-home', 'page-2026.home', 'page-Foo', 'page-a.b' ] as $variantName )
+	unlink( $sandbox. '/private/templates/'. $variantName. '.tpl' );
+
+foreach( [ 'page-2026.home.tpl', 'page-Foo.tpl', 'page-a.b.tpl', 'page-a_b.tpl', 'page-a--b.tpl', 'page-.tpl', 'page-home.TPL' ] as $badFilename ) {
+	post( [ 'filename' => $badFilename, 'displayName' => 'Bad' ] );
+	$badCreate = response();
+	\Nino\Modules\Templates\Documents::apiCreate( $appData, $badCreate );
+	check( 'a new page template is a name that is a category: '. $badFilename. ' is refused', $badCreate['/nino/http/response']['statusCode'] === 400 && is_file( $sandbox. '/private/templates/'. $badFilename ) === false );
+}
+/*	A name that stands for a category of its own: page-common and page-footer
+	are the categories page-common and page-footer, which meet no category of
+	"common" or of the frame - the prefix keeps them apart	*/
+foreach( [ 'page-common', 'page-footer', 'page-404' ] as $goodName ) {
+	post( [ 'filename' => $goodName. '.tpl', 'displayName' => 'Good' ] );
+	$goodCreate = response();
+	\Nino\Modules\Templates\Documents::apiCreate( $appData, $goodCreate );
+	check( $goodName. '.tpl is created, its page id is '. $goodName, $goodCreate['/nino/http/response']['statusCode'] === 200 && ( $goodCreate['/nino/http/response']['body']['pageId'] ?? '' ) === $goodName );
+	unlink( $sandbox. '/private/templates/'. $goodName. '.tpl' );
+}
 
 $bareSource = "<section id=\"bare\"></section>\n";
 file_put_contents( $sandbox. '/private/templates/page-bare.tpl', $bareSource );
@@ -1463,13 +1506,13 @@ post( [] );
 $keysRequest = response();
 \Nino\Modules\Templates\Content::apiKeys( $appData, $keysRequest );
 $listedTextfills = $keysRequest['/nino/http/response']['body']['entries'];
-$technicalTextfill = array_values( array_filter( $listedTextfills, fn( array $entry ): bool => $entry['key'] === '/webpage/contact/uri' ) )[0] ?? null;
-check( 'lists content and blacklisted technical textfills for reusable Area bindings', in_array( '/page-home/hero/title', array_column( $listedTextfills, 'key' ), true )
+$technicalTextfill = array_values( array_filter( $listedTextfills, fn( array $entry ): bool => $entry['key'] === '/_nino/webpage/contact/uri' ) )[0] ?? null;
+check( 'lists content and blacklisted technical textfills for reusable Area bindings', in_array( '/template/page-home/hero/title', array_column( $listedTextfills, 'key' ), true )
 	&& ( $technicalTextfill['blacklisted'] ?? false ) === true );
 check( 'a page uri written by /_install or /_admin is offered as a global technical value', ( $technicalTextfill['global'] ?? false ) === true
 	&& ( $technicalTextfill['value'] ?? '' ) === '/contact' );
 
-post( [ 'keys' => [ '/page-home/hero/title', '/page-home/hero/subtitle', '/webpage/contact/uri' ] ] );
+post( [ 'name' => 'page-home', 'keys' => [ '/template/page-home/hero/title', '/template/page-home/hero/subtitle', '/_nino/webpage/contact/uri', '/template/common/form/submit', '/project/mail/address/owner' ] ] );
 $fieldsRequest = response();
 \Nino\Modules\Templates\Content::apiFields( $appData, $fieldsRequest );
 $fields = $fieldsRequest['/nino/http/response']['body'];
@@ -1477,22 +1520,76 @@ check( 'reads existing, missing and technical native textfill values together', 
 	&& $fields['fields'][0]['value'] === 'Old title'
 	&& $fields['fields'][1]['exists'] === false
 	&& $fields['fields'][2]['value'] === '/contact' );
+/*	The builder writes one template's own keys: /template/<its category>/...
+	Every other one it is bound to - a word of another template, a common one,
+	the project's, a page's details - it reads, and says it is not its to write	*/
+check( 'says which of them are this template\'s to write: its own keys, and no other', array_column( $fields['fields'], 'writable' ) === [ true, true, false, false, false ] );
 
-post( [ 'items' => [
-	[ 'key' => '/page-home/hero/title', 'value' => 'New title' ],
-	[ 'key' => '/page-home/hero/subtitle', 'value' => 'New subtitle', 'create' => true ],
+post( [ 'keys' => [ '/template/page-home/hero/title' ] ] );
+$noNameFields = response();
+\Nino\Modules\Templates\Content::apiFields( $appData, $noNameFields );
+post( [ 'name' => 'page-nothing', 'keys' => [ '/template/page-nothing/hero/title' ] ] );
+$unknownNameFields = response();
+\Nino\Modules\Templates\Content::apiFields( $appData, $unknownNameFields );
+check( 'a read of values needs the page template it is for, and one that exists', $noNameFields['/nino/http/response']['statusCode'] === 400 && $unknownNameFields['/nino/http/response']['statusCode'] === 400 );
+
+post( [ 'name' => 'page-home', 'items' => [
+	[ 'key' => '/template/page-home/hero/title', 'value' => 'New title' ],
+	[ 'key' => '/template/page-home/hero/subtitle', 'value' => 'New subtitle', 'create' => true ],
 ] ] );
 $contentSaveRequest = response();
 \Nino\Modules\Templates\Content::apiSave( $appData, $contentSaveRequest );
 $nativeText = \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] );
 $germanText = \Nino\Filesystem::getFileContent( $appData, '/text/de_DE.php', [] );
-check( 'quick fill updates the native value and creates missing keys', $nativeText['[[/page-home/hero/title]]'] === 'New title' && $nativeText['[[/page-home/hero/subtitle]]'] === 'New subtitle' );
-check( 'quick fill leaves translations untouched', $germanText['[[/page-home/hero/title]]'] === 'Alter Titel' && isset( $germanText['[[/page-home/hero/subtitle]]'] ) === false );
+check( 'quick fill updates the native value and creates missing keys', $nativeText['[[/template/page-home/hero/title]]'] === 'New title' && $nativeText['[[/template/page-home/hero/subtitle]]'] === 'New subtitle' );
+check( 'quick fill leaves translations untouched', $germanText['[[/template/page-home/hero/title]]'] === 'Alter Titel' && isset( $germanText['[[/template/page-home/hero/subtitle]]'] ) === false );
 
-post( [ 'items' => [ [ 'key' => '../../config', 'value' => 'x' ] ] ] );
+post( [ 'name' => 'page-home', 'items' => [ [ 'key' => '../../config', 'value' => 'x' ] ] ] );
 $invalidContentRequest = response();
 \Nino\Modules\Templates\Content::apiSave( $appData, $invalidContentRequest );
-check( 'rejects content keys outside /page-*/section/suffix', $invalidContentRequest['/nino/http/response']['statusCode'] === 400 );
+check( 'rejects content keys outside /template/<category>/<section>/<name>', $invalidContentRequest['/nino/http/response']['statusCode'] === 400 );
+
+/*	What one page template's quick fill may write is its own keys. A binding
+	to the contact form's address, to a word every template shares, to a page's
+	details, to another template's text or to a key of the project is read, and
+	a request that carries one is refused whole: nothing of it is written	*/
+\Nino\Filesystem::putFileContent( $appData, '/text/global.php', [ '[[/project/mail/address/owner]]' => 'sales@example.com', '[[/template/common/form/submit]]' => 'Send', '[[/_nino/webpage/home/uri]]' => '/' ] );
+$globalBefore = \Nino\Filesystem::getFileContent( $appData, '/text/global.php', [] );
+$nativeBefore = \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] );
+foreach( [ '/project/mail/address/owner', '/template/common/form/submit', '/_nino/webpage/home/uri', '/template/page-services/intro/title', '/project/company/general/name', '/feature/posts/pager/next', '/_admin/common/word/title', '/template/page-home/hero' ] as $foreignKey ) {
+	post( [ 'name' => 'page-home', 'items' => [ [ 'key' => '/template/page-home/hero/title', 'value' => 'Kept out' ], [ 'key' => $foreignKey, 'value' => 'Changed', 'create' => true ] ] ] );
+	$foreignRequest = response();
+	\Nino\Modules\Templates\Content::apiSave( $appData, $foreignRequest );
+	check( 'content/save refuses '. $foreignKey. ' and writes nothing of the batch', $foreignRequest['/nino/http/response']['statusCode'] === 400
+		&& \Nino\Filesystem::getFileContent( $appData, '/text/global.php', [] ) === $globalBefore && \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] ) === $nativeBefore );
+}
+post( [ 'items' => [ [ 'key' => '/template/page-home/hero/title', 'value' => 'No name' ] ] ] );
+$noNameSave = response();
+\Nino\Modules\Templates\Content::apiSave( $appData, $noNameSave );
+check( 'content/save needs the page template, and the category is its, not the request\'s', $noNameSave['/nino/http/response']['statusCode'] === 400 && \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] ) === $nativeBefore );
+// The category is the document's: the keys of another page template are another's
+post( [ 'name' => 'page-home', 'items' => [ [ 'key' => '/template/page-2026-home/hero/title', 'value' => 'Not mine', 'create' => true ] ] ] );
+$otherCategorySave = response();
+\Nino\Modules\Templates\Content::apiSave( $appData, $otherCategorySave );
+check( 'the keys of another page template are refused, even where that template exists', $otherCategorySave['/nino/http/response']['statusCode'] === 400 );
+
+// A key a unit keeps up to date - on a blacklist - is no value to save from here, even under the template's own category
+\Nino\Filesystem::putFileContent( $appData, '/text/blacklist.php', [ '/template/page-home/hero/technical' ] );
+\Nino\Filesystem::putFileContent( $appData, '/text/en_US.php', array_merge( $nativeBefore, [ '[[/template/page-home/hero/technical]]' => 'kept' ] ) );
+post( [ 'name' => 'page-home', 'items' => [ [ 'key' => '/template/page-home/hero/technical', 'value' => 'changed' ] ] ] );
+$blacklistedSave = response();
+\Nino\Modules\Templates\Content::apiSave( $appData, $blacklistedSave );
+check( 'a blacklisted key is never written, even one of the template\'s own', $blacklistedSave['/nino/http/response']['statusCode'] !== 200
+	&& \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/template/page-home/hero/technical]]'] === 'kept' );
+\Nino\Filesystem::putFileContent( $appData, '/text/blacklist.php', [] );
+\Nino\Filesystem::putFileContent( $appData, '/text/en_US.php', $nativeBefore );
+
+// A key that ends in a line break is no key of the template's: $ alone would let it pass and create a junk key
+post( [ 'name' => 'page-home', 'items' => [ [ 'key' => "/template/page-home/hero/junk\n", 'value' => 'junk', 'create' => true ] ] ] );
+$newlineSave = response();
+\Nino\Modules\Templates\Content::apiSave( $appData, $newlineSave );
+check( 'a key ending in a line break is refused and creates nothing', $newlineSave['/nino/http/response']['statusCode'] !== 200
+	&& array_filter( array_keys( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] ) ), fn( string $key ): bool => str_contains( $key, '/hero/junk' ) ) === [] );
 
 /*	A collection's model is the one its preset's Elements area declares, and
 	nothing else: a request that names a section kind instead of a preset and
@@ -1511,30 +1608,135 @@ $createdAreaType = \Nino\Filesystem::getFileContent( $appData, '/elements/home-a
 check( 'creates only the Elements model declared by the requested Area', $createAreaTypeRequest['/nino/http/response']['statusCode'] === 200
 	&& isset( $createdAreaType['model']['title'], $createdAreaType['model']['linkLabel'], $createdAreaType['model']['image'] ) );
 
+// ...and the type the composer proposes for a page named by its category - page-404, a word of its own - is a type it may create
+$suggestedType = \Nino\Modules\Templates\AreaComposer::defaults( $presets['articles-grid'], 'page-404', 'hero' )['areas']['articles']['source']['elementType'];
+post( [ 'preset' => 'articles-grid', 'area' => 'articles', 'uri' => $suggestedType, 'title' => 'Hero Articles' ] );
+$suggestedTypeRequest = response();
+\Nino\Modules\Templates\Content::apiCreateType( $appData, $suggestedTypeRequest );
+check( 'content/type-create accepts the type suggested for a page-404 section', $suggestedType === 'page-404-hero-articles' && $suggestedTypeRequest['/nino/http/response']['statusCode'] === 200
+	&& isset( \Nino\Filesystem::getFileContent( $appData, '/elements/page-404-hero-articles.php', [] )['model']['title'] ) );
+
 /*	A slot is always named by the preset it belongs to: every preset in the
 	library is an Area preset, so the caller says which one and which slot,
 	and the dimensions come from the manifest rather than from the shape of
 	the uri.	*/
 post( [
-	'preset' => 'hero-fullscreen-image', 'slot' => 'background',
-	'uri' => '/page-home/area-stage/background', 'label' => 'Area Stage Background',
+	'name' => 'page-home', 'preset' => 'hero-fullscreen-image', 'slot' => 'background',
+	'uri' => '/template/page-home/area-stage/background', 'label' => 'Area Stage Background',
 ] );
 $createAreaImageRequest = response();
 \Nino\Modules\Templates\Content::apiCreateImage( $appData, $createAreaImageRequest );
 check( 'creates a background image slot with safe recommended dimensions', $createAreaImageRequest['/nino/http/response']['statusCode'] === 200
-	&& $appData['/nino/html/images']['/page-home/area-stage/background']['width'] === 1920
-	&& $appData['/nino/html/images']['/page-home/area-stage/background']['height'] === 1080 );
+	&& $appData['/nino/html/images']['/template/page-home/area-stage/background']['width'] === 1920
+	&& $appData['/nino/html/images']['/template/page-home/area-stage/background']['height'] === 1080 );
 
 // ...and a request that names no preset cannot invent one from the uri
-post( [ 'uri' => '/page-home/main-hero/background', 'label' => 'Main Hero Background' ] );
+post( [ 'name' => 'page-home', 'uri' => '/template/page-home/main-hero/background', 'label' => 'Main Hero Background' ] );
 $presetlessImageRequest = response();
 \Nino\Modules\Templates\Content::apiCreateImage( $appData, $presetlessImageRequest );
 check( 'refuses a slot whose preset it was never told', $presetlessImageRequest['/nino/http/response']['statusCode'] === 400 );
 
-post( [ 'uri' => '/arbitrary/slot', 'label' => 'Unsafe' ] );
+post( [ 'name' => 'page-home', 'uri' => '/arbitrary/slot', 'label' => 'Unsafe' ] );
 $invalidImageRequest = response();
 \Nino\Modules\Templates\Content::apiCreateImage( $appData, $invalidImageRequest );
 check( 'refuses to create image slots outside a generated page section', $invalidImageRequest['/nino/http/response']['statusCode'] === 400 );
+
+// ...and outside the page template's own category
+post( [ 'name' => 'page-home', 'preset' => 'hero-fullscreen-image', 'slot' => 'background', 'uri' => '/template/page-2026-home/area-stage/background', 'label' => 'Not mine' ] );
+$foreignImageRequest = response();
+\Nino\Modules\Templates\Content::apiCreateImage( $appData, $foreignImageRequest );
+check( 'refuses an image slot of another page template', $foreignImageRequest['/nino/http/response']['statusCode'] === 400 && isset( $appData['/nino/html/images']['/template/page-2026-home/area-stage/background'] ) === false );
+
+/*	A section writes /template/<category>/<its id>/...: a hand-written page
+	that reads /template/page-services/intro/title must not be edited by a
+	section that merely has the id "intro". The id is refused, with one that is free	*/
+file_put_contents( $sandbox. '/private/templates/page-services.tpl', "[template /templates/html-header]\n<section id=\"intro\"><h1>[[/template/page-services/intro/title]]</h1><p>[[/template/page-services/intro/text]]</p></section>\n[template /templates/html-footer]\n" );
+\Nino\Filesystem::putFileContent( $appData, '/text/en_US.php', array_merge( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] ), [ '[[/template/page-services/intro/title]]' => 'Services', '[[/template/page-services/intro/text]]' => 'What we do.' ] ) );
+post( [ 'name' => 'page-services', 'preset' => 'hero-cta', 'pageId' => 'page-services', 'id' => 'intro' ] );
+$takenCompose = response();
+\Nino\Modules\Templates\Library::apiCompose( $appData, $takenCompose );
+check( 'library/compose refuses a section id under which the template already has keys, names the key and offers a free id', $takenCompose['/nino/http/response']['statusCode'] === 409
+	&& str_contains( (string) ( $takenCompose['/nino/http/response']['body']['error'] ?? '' ), '/template/page-services/intro/' )
+	&& str_contains( (string) ( $takenCompose['/nino/http/response']['body']['error'] ?? '' ), '"intro-2"' ) );
+post( [ 'name' => 'page-services', 'preset' => 'hero-cta', 'pageId' => 'page-services', 'id' => 'offer' ] );
+$freeCompose = response();
+\Nino\Modules\Templates\Library::apiCompose( $appData, $freeCompose );
+check( '...while a free id composes, under the template\'s category', $freeCompose['/nino/http/response']['statusCode'] === 200
+	&& ( $freeCompose['/nino/http/response']['body']['fields'][0]['key'] ?? '' ) === '/template/page-services/offer/title' );
+post( [ 'name' => 'page-services', 'preset' => 'hero-cta', 'pageId' => 'page-home', 'id' => 'offer' ] );
+$wrongPageCompose = response();
+\Nino\Modules\Templates\Library::apiCompose( $appData, $wrongPageCompose );
+post( [ 'preset' => 'hero-cta', 'pageId' => 'page-services', 'id' => 'offer' ] );
+$noNameCompose = response();
+\Nino\Modules\Templates\Library::apiCompose( $appData, $noNameCompose );
+check( 'a section\'s page id is the template\'s category, and compose needs the template', $wrongPageCompose['/nino/http/response']['statusCode'] === 400 && $noNameCompose['/nino/http/response']['statusCode'] === 400 );
+
+// A section the document holds owns its keys: updating it finds them its own, not taken
+$ownSection = \Nino\Modules\Templates\Composer::compose( [ 'preset' => 'hero-cta', 'pageId' => 'page-services', 'id' => 'intro' ] )['source'];
+file_put_contents( $sandbox. '/private/templates/page-services.tpl', "[template /templates/html-header]\n". $ownSection. "[template /templates/html-footer]\n" );
+post( [ 'name' => 'page-services', 'preset' => 'hero-cta', 'pageId' => 'page-services', 'id' => 'intro' ] );
+$updateCompose = response();
+\Nino\Modules\Templates\Library::apiCompose( $appData, $updateCompose );
+check( 'a section that is in the document may be composed again under its own id', $updateCompose['/nino/http/response']['statusCode'] === 200 );
+
+/*	A section that was inserted a moment ago has written its keys already (content/save)
+	while the page is still unsaved, so the file does not hold it yet. The panel says which
+	sections its open draft holds, and those are the document's own: updating one is not a
+	clash with itself - while a key no section of the draft holds stays refused	*/
+\Nino\Filesystem::putFileContent( $appData, '/text/en_US.php', array_merge( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] ), [ '[[/template/page-services/offer/title]]' => 'Our offer' ] ) );
+post( [ 'name' => 'page-services', 'preset' => 'hero-cta', 'pageId' => 'page-services', 'id' => 'offer' ] );
+$unsavedRefused = response();
+\Nino\Modules\Templates\Library::apiCompose( $appData, $unsavedRefused );
+post( [ 'name' => 'page-services', 'preset' => 'hero-cta', 'pageId' => 'page-services', 'id' => 'offer', 'sectionIds' => [ 'intro', 'offer' ] ] );
+$unsavedOwn = response();
+\Nino\Modules\Templates\Library::apiCompose( $appData, $unsavedOwn );
+post( [ 'name' => 'page-services', 'preset' => 'hero-cta', 'pageId' => 'page-services', 'id' => 'offer', 'sectionIds' => [ 'intro', 7, [ 'offer' ] ] ] );
+$unsavedOther = response();
+\Nino\Modules\Templates\Library::apiCompose( $appData, $unsavedOther );
+check( 'a section the open draft holds finds its own keys, saved or not, and one no section of the draft holds is still refused', $unsavedRefused['/nino/http/response']['statusCode'] === 409
+	&& $unsavedOwn['/nino/http/response']['statusCode'] === 200 && $unsavedOther['/nino/http/response']['statusCode'] === 409 );
+check( 'the refusal carries a code and the values for the panel\'s own sentence: the id, the key and a free id', ( $unsavedRefused['/nino/http/response']['body']['code'] ?? '' ) === 'section-id-taken'
+	&& ( $unsavedRefused['/nino/http/response']['body']['params'] ?? [] ) === [ 'offer', '/template/page-services/offer/title', 'offer-2' ] );
+
+/*	What a composed section reads is what the panel shows as its fills: the segment that
+	compose returns - the one the client keeps when it inserts or updates - lists the
+	generated keys, and so does inspecting the source of a section	*/
+$composedFills = $freeCompose['/nino/http/response']['body']['segment']['fills'] ?? [];
+$composedKeys = array_column( $freeCompose['/nino/http/response']['body']['fields'], 'key' );
+sort( $composedFills );
+sort( $composedKeys );
+check( 'the segment library/compose returns lists the keys the section generates as its fills', $composedFills !== [] && $composedFills === $composedKeys
+	&& array_filter( $composedFills, fn( string $key ): bool => str_starts_with( $key, '/template/page-services/offer/' ) === false ) === [] );
+post( [ 'name' => 'page-services', 'source' => $freeCompose['/nino/http/response']['body']['source'] ] );
+$inspected = response();
+\Nino\Modules\Templates\Documents::apiInspect( $appData, $inspected );
+$inspectedFills = $inspected['/nino/http/response']['body']['segment']['fills'] ?? [];
+sort( $inspectedFills );
+check( 'documents/inspect reads the fills of the template\'s own category from a section\'s source', $inspected['/nino/http/response']['statusCode'] === 200 && $inspectedFills === $composedKeys );
+post( [ 'name' => 'page-home', 'source' => $freeCompose['/nino/http/response']['body']['source'] ] );
+$inspectedElsewhere = response();
+\Nino\Modules\Templates\Documents::apiInspect( $appData, $inspectedElsewhere );
+post( [ 'source' => $freeCompose['/nino/http/response']['body']['source'] ] );
+$inspectedNoName = response();
+\Nino\Modules\Templates\Documents::apiInspect( $appData, $inspectedNoName );
+check( '...none from another category, and it needs the page template', ( $inspectedElsewhere['/nino/http/response']['body']['segment']['fills'] ?? null ) === [] && $inspectedNoName['/nino/http/response']['statusCode'] === 400 );
+
+/*	What a section may bind: the keys the system writes, /_nino/webpage<uri>/..., and no key of the workbench's own	*/
+$bindingInput = \Nino\Modules\Templates\AreaComposer::defaults( $presets['hero-fullscreen-image'], 'page-services', 'offer-hero' );
+$bindingInput['areas']['content']['components'][3]['bindings']['href'] = '/_nino/webpage/contact/uri';
+$bindingInput['areas']['content']['components'][3]['bindingSources']['href'] = 'textfill';
+post( array_merge( [ 'name' => 'page-services' ], $bindingInput ) );
+$systemBinding = response();
+\Nino\Modules\Templates\Library::apiCompose( $appData, $systemBinding );
+$bindingInput['areas']['content']['components'][3]['bindings']['href'] = '/_admin/templates/label/category-all';
+post( array_merge( [ 'name' => 'page-services' ], $bindingInput ) );
+$workbenchBinding = response();
+\Nino\Modules\Templates\Library::apiCompose( $appData, $workbenchBinding );
+check( 'library/compose binds a key the system writes and refuses one of the workbench\'s own', $systemBinding['/nino/http/response']['statusCode'] === 200
+	&& str_contains( (string) $systemBinding['/nino/http/response']['body']['source'], '[[/_nino/webpage/contact/uri]]' )
+	&& $workbenchBinding['/nino/http/response']['statusCode'] === 400 );
+
+unlink( $sandbox. '/private/templates/page-services.tpl' );
 
 \Nino\Auth::logoutUser( $appData );
 

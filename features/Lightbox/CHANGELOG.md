@@ -35,6 +35,12 @@ versions [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **The README's example of the labels for a third language uses Nino's key
+  grammar.** `[[/feature/lightbox/controls/close]]`, `…/prev` and `…/next` - a
+  project may write the words of a feature under the feature's own name - where
+  it said `[[/lightbox/label/close]]`. Nothing in the code changed; `nino` stays
+  `^1.3`.
+
 - **An empty `data-caption` means no caption, and the picture keeps its own
   alt text.** `captionOf()` read the attribute as a string, so an empty one
   was the same as none and the overlay fell back to the thumbnail's `alt` -

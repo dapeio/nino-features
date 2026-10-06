@@ -567,10 +567,33 @@ if( class_exists( '\Nino\Catalogue' ) === true && class_exists( '\Nino\Fetch' ) 
 		$catalogue = \Nino\Catalogue::fetch( $appData );
 		check( 'the kernel fetches and verifies the catalogue as published', is_array( $catalogue ) === true && count( $catalogue['features'] ) === count( $manifests ) );
 
+		// Which of them this kernel can run is bin/applicable.php's to say, the
+		// same answer the CI copies by: a feature written for a newer Nino than
+		// this one is offered, as incompatible, and cannot be installed
+		[ $applicableStatus, $applicableOut ] = runScript( $repo. '/bin/applicable.php', [ $root ] );
+		$runnable = array_values( array_filter( explode( "\n", $applicableOut ) ) );
+		check( 'bin/applicable.php names the directories of the features this kernel can run', $applicableStatus === 0 && $runnable !== []
+			&& array_diff( $runnable, array_map( static fn( array $manifest ): string => basename( $manifest['dir'] ), $manifests ) ) === [] );
+
 		$offers = is_array( $catalogue ) === true ? \Nino\Catalogue::offers( $appData, $catalogue ) : [];
-		check( 'every feature is offered to this kernel as available', array_filter( $offers, static fn( array $offer ): bool => $offer['state'] !== 'available' ) === [] && count( $offers ) === count( $manifests ) );
+		$states = [];
+		foreach( $offers as $key => $offer )
+			$states[(string) $key] = $offer['state'];
+		$expectedStates = [];
+		foreach( $manifests as $key => $manifest )
+			$expectedStates[$key] = in_array( basename( $manifest['dir'] ), $runnable, true ) === true ? 'available' : 'incompatible';
+		ksort( $states );
+		ksort( $expectedStates );
+		check( 'every feature this kernel can run is offered to it as available, every other one as incompatible', count( $offers ) === count( $manifests ) && $states === $expectedStates );
 
 		foreach( $manifests as $key => $manifest ) {
+			if( $expectedStates[$key] === 'incompatible' ) {
+				$refusal = \Nino\Catalogue::install( $appData, $key, $manifest['version'] );
+				check( $key. ' needs Nino '. $manifest['nino']. ', and this kernel refuses it: '. ( is_string( $refusal ) === true ? $refusal : '' ), is_string( $refusal ) === true
+					&& str_contains( $refusal, 'requires Nino '. $manifest['nino'] ) === true && is_dir( NINO_FEATURES_DIR. '/'. basename( $manifest['dir'] ) ) === false );
+				continue;
+			}
+
 			$directory = basename( $manifest['dir'] );
 			check( $key. ' '. $manifest['version']. ' installs from the archive', \Nino\Catalogue::install( $appData, $key, $manifest['version'] ) === true );
 			check( $key. ': the directory is in place, without tests/', is_file( NINO_FEATURES_DIR. '/'. $directory. '/feature.php' ) === true && is_file( NINO_FEATURES_DIR. '/'. $directory. '/'. $directory. '.php' ) === true && is_dir( NINO_FEATURES_DIR. '/'. $directory. '/tests' ) === false );

@@ -1,1 +1,1 @@
-<p class="nino-protected-error">[[/protected/error/[[error]]]]</p>
+<p class="nino-protected-error">[[/feature/protected/error/[[error]]]]</p>

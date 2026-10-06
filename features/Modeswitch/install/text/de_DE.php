@@ -9,11 +9,11 @@ return [
 
 	// Was der Schalter als Ganzes ist, für Screenreader - die drei Knöpfe
 	// darin sagen für sich genommen nicht, wozu sie zusammengehören
-	'[[/modeswitch/label]]'		=> 'Darstellung',
+	'[[/feature/modeswitch/switch/label]]'	=> 'Darstellung',
 
-	'[[/modeswitch/light]]'		=> 'Hell',
+	'[[/feature/modeswitch/mode/light]]'	=> 'Hell',
 	// Nicht "Automatisch": was hier passiert, ist nicht, dass die Seite
 	// etwas entscheidet, sondern dass sie es dem Gerät überlässt
-	'[[/modeswitch/system]]'	=> 'System',
-	'[[/modeswitch/dark]]'		=> 'Dunkel',
+	'[[/feature/modeswitch/mode/system]]'	=> 'System',
+	'[[/feature/modeswitch/mode/dark]]'		=> 'Dunkel',
 ];

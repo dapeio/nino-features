@@ -97,8 +97,10 @@ model.insertSection( rawOnly, inserted, null );
 check( 'puts a first section after a lone locked raw frame', rawOnly[0] === raw && rawOnly[1] === inserted );
 check( 'serializes an optional shell template as an ordinary marked shortcode', model.slotSource( 'footer', '' ) === '<!-- nino:template-slot footer -->\n' && model.slotSource( 'header', '/templates/site-header' ).includes( '[template /templates/site-header]' ) );
 check( 'creates a stable unique section id', model.nextId( segments, 'Main Hero') === 'main-hero' && model.nextId( segments.concat( [ { type : 'section', htmlId : 'main-hero' } ] ), 'Main Hero') === 'main-hero-2' );
-check( 'document search covers display name, filename and page id', model.matchesDocument( { name : 'page-about-us', filename : 'page-about-us.tpl', displayName : 'About the studio', pageId : 'about-us' }, 'studio' ) && model.matchesDocument( { name : 'page-about-us', filename : 'page-about-us.tpl', displayName : 'About the studio', pageId : 'about-us' }, '.tpl' ) && !model.matchesDocument( { name : 'page-home', displayName : 'Homepage', pageId : 'home' }, 'contact' ) );
+check( 'document search covers display name, filename and page id', model.matchesDocument( { name : 'page-about-us', filename : 'page-about-us.tpl', displayName : 'About the studio', pageId : 'page-about-us' }, 'studio' ) && model.matchesDocument( { name : 'page-about-us', filename : 'page-about-us.tpl', displayName : 'About the studio', pageId : 'page-about-us' }, '.tpl' ) && !model.matchesDocument( { name : 'page-home', displayName : 'Homepage', pageId : 'page-home' }, 'contact' ) );
 check( 'validates real page template filenames without hiding prefix or suffix', model.validFilename('page-error-404.tpl') && !model.validFilename('error-404') && !model.validFilename('page-../config.tpl') );
+// The name is the category of the template's keys: lowercase words joined by single hyphens
+check( 'a filename is a category - no capital, dot, underscore or doubled hyphen', model.validFilename('page-2026-home.tpl') && !model.validFilename('page-Foo.tpl') && !model.validFilename('page-a.b.tpl') && !model.validFilename('page-a_b.tpl') && !model.validFilename('page-a--b.tpl') && !model.validFilename('page-.tpl') );
 check( 'derives a readable initial name from the filename', model.displayNameFromFilename('page-error-404.tpl') === 'Error 404' );
 check( 'rejects names that cannot be safely stored in an HTML comment', model.validDisplayName('Error 404') && !model.validDisplayName('Broken --> comment') );
 check( 'HTML+ editing detaches generated composer metadata', Nino.admin.templates.sectionsUI.detachMetadata( '<section>\n\t<!-- nino:section {"preset":"blank"} -->\n\t<p>Kept</p>\n</section>' ) === '<section>\n\t<p>Kept</p>\n</section>' );
@@ -364,9 +366,24 @@ check( 'there is one code editor in this panel, not two', ( templateMarkup.match
 check( 'a component gets neither the section skeleton nor the detach warning', sectionsSource.includes( "hint/one-component" )
 	&& sectionsSource.includes( "? ( source || '' )" ) );
 
+/*	The server derives the category a section's keys sit under from the page
+	template, so every call that reads or writes them says which one: no request
+	of the five goes without its name - the motion's recompose in script.js, which
+	spells the namespace out, included	*/
+const keyRequests = ( areaComposerSource+ sectionsSource+ scriptSource ).match( /(?:pd|Nino\.admin\.templates)\.api\( '(?:content\/fields|content\/save|content\/image-create|library\/compose|documents\/inspect)', [^\n]*/g ) || [];
+check( 'content/fields, content/save, content/image-create, library/compose and documents/inspect carry the name of the page template (' + keyRequests.length + ' calls)', keyRequests.length === 10
+	&& keyRequests.every( function( call ) { return /name : (?:pd|Nino\.admin\.templates)\._current\.name/.test( call ) } ) );
+
+/*	A section the open draft holds is the document's own, saved or not: every
+	compose says which ones the draft holds, so updating a section that was
+	inserted a moment ago is not a clash with itself	*/
+const composeRequests = ( areaComposerSource+ scriptSource ).match( /(?:pd|Nino\.admin\.templates)\.api\( 'library\/compose', [^\n]*/g ) || [];
+check( 'every library/compose carries the ids of the sections in the open draft (' + composeRequests.length + ' calls)', composeRequests.length === 3
+	&& composeRequests.every( function( call ) { return /sectionIds : (?:pd|Nino\.admin\.templates)\.sectionIds\(\)/.test( call ) } ) );
+
 /*	What the dialog accepts is what the composer accepts, because it asks it:
 	no second rule in the client to drift from the one on the server	*/
-check( 'the source is checked by composing it, not by a rule of its own', areaComposerSource.includes( "pd.api( 'library/compose', draft )" )
+check( 'the source is checked by composing it, not by a rule of its own', areaComposerSource.includes( "pd.api( 'library/compose', Object.assign( { name : pd._current.name, sectionIds : pd.sectionIds() }, draft ) )" )
 	&& areaComposerSource.includes( 'applyComponentSource' )
 	&& /source|markup/i.test( areaComposerSource.slice( areaComposerSource.indexOf( 'applyComponentSource' ) ) ) );
 
@@ -384,10 +401,10 @@ check( 'the Area editor loads after the established composer and exposes bounded
 	written there. The section composed, the save succeeded, and the page read
 	as the demo text again	*/
 const editFields = [
-	{ key : '/page-home/hero/title', mode : 'new', default : '', sample : '/_admin/templates/sample/title-text' },
-	{ key : '/page-home/hero/subtitle', mode : 'new', default : '', sample : '/_admin/templates/sample/subtitle-text' },
+	{ key : '/template/page-home/hero/title', mode : 'new', default : '', sample : '/_admin/templates/sample/title-text' },
+	{ key : '/template/page-home/hero/subtitle', mode : 'new', default : '', sample : '/_admin/templates/sample/subtitle-text' },
 ];
-const existing = [ { key : '/page-home/hero/title' }, { key : '/page-home/hero/subtitle' } ];
+const existing = [ { key : '/template/page-home/hero/title' }, { key : '/template/page-home/hero/subtitle' } ];
 
 /*	Through a guard rather than called directly: the builder used to be an
 	inline expression inside the submit chain, so against the code before this
@@ -400,26 +417,26 @@ function contentItems( fields, entries, values ) {
 
 check( 'an existing fill the dialog has not loaded yet is not saved at all', ( contentItems( editFields, existing, {} ) || [ 'unreachable' ] ).length === 0 );
 
-check( '...and one it has loaded is saved as what it loaded', JSON.stringify( contentItems( editFields, existing, { '/page-home/hero/title' : 'Was da stand' } ) )
-	=== JSON.stringify( [ { key : '/page-home/hero/title', value : 'Was da stand', create : false } ] ) );
+check( '...and one it has loaded is saved as what it loaded', JSON.stringify( contentItems( editFields, existing, { '/template/page-home/hero/title' : 'Was da stand' } ) )
+	=== JSON.stringify( [ { key : '/template/page-home/hero/title', value : 'Was da stand', create : false } ] ) );
 
 // A key that does not exist yet is the other case: nothing to lose, and a new
 // section starts empty - the sample is a placeholder and is never stored. The
 // key is created all the same, or the page would show the literal fill
 check( 'a fill that does not exist yet is created empty', JSON.stringify( contentItems( editFields, [], {} ) )
 	=== JSON.stringify( [
-		{ key : '/page-home/hero/title', value : '', create : true },
-		{ key : '/page-home/hero/subtitle', value : '', create : true },
+		{ key : '/template/page-home/hero/title', value : '', create : true },
+		{ key : '/template/page-home/hero/subtitle', value : '', create : true },
 	] ) );
 
 // An emptied field is a value like any other - held, and saved as what it is
-check( 'a field somebody emptied is saved empty, not refilled from the catalogue', JSON.stringify( contentItems( editFields, existing, { '/page-home/hero/title' : '' } ) )
-	=== JSON.stringify( [ { key : '/page-home/hero/title', value : '', create : false } ] ) );
+check( 'a field somebody emptied is saved empty, not refilled from the catalogue', JSON.stringify( contentItems( editFields, existing, { '/template/page-home/hero/title' : '' } ) )
+	=== JSON.stringify( [ { key : '/template/page-home/hero/title', value : '', create : false } ] ) );
 
 // Only what this section owns: a binding pointing at a fill somebody else
 // wrote is not this dialog's to save
 check( 'a field bound to an existing fill elsewhere is left alone', ( contentItems(
-	[ { key : '/company/name', mode : 'existing', default : 'x' } ], existing, { '/company/name' : 'Acme' } ) || [ 'unreachable' ] ).length === 0 );
+	[ { key : '/project/company/general/name', mode : 'existing', default : 'x' } ], existing, { '/project/company/general/name' : 'Acme' } ) || [ 'unreachable' ] ).length === 0 );
 
 const componentList = [ { id : 'title' }, { id : 'title-2' }, { id : 'image' } ];
 check( 'new component IDs remain stable and unique within an Area', Nino.admin.templates.areaComposer.nextComponentId( componentList, 'title' ) === 'title-3'
@@ -563,15 +580,24 @@ const renameLibrary = Nino.admin.templates._library.presets;
 const renameComposer = Nino.admin.templates.composer;
 Nino.admin.templates._library.presets = [ { key : 'rename-hero', version : 3, recommend : { layout : 'stacked' }, layouts : { stacked : { label : 'Stacked' } }, componentCatalog : { title : { label : 'Title', styles : [ 'auto' ], properties : { text : { kind : 'text', default : 'A clear headline' } } } }, areas : { body : { source : 'single', label : 'Body', allowed : [ 'title' ], maxComponents : 4, styles : { plain : { label : 'Plain' } }, recommend : { style : 'plain' } } } } ];
 renameComposer._presetKey = 'rename-hero';
-renameComposer._draft = { pageId : 'home', id : 'hero', layout : 'auto', frame : {}, areas : { body : { style : 'auto', source : {}, components : [ { id : 'title', type : 'title', style : 'auto', settings : {}, bindings : { text : '/page-home/hero/title' }, bindingSources : { text : 'new' } } ] } } };
-renameComposer._textValues = { '/page-home/hero/title' : 'What the operator typed' };
-renameComposer._touched = new Set( [ '/page-home/hero/title' ] );
+renameComposer._draft = { pageId : 'page-home', id : 'hero', layout : 'auto', frame : {}, areas : { body : { style : 'auto', source : {}, components : [ { id : 'title', type : 'title', style : 'auto', settings : {}, bindings : { text : '/template/page-home/hero/title' }, bindingSources : { text : 'new' } } ] } } };
+renameComposer._textValues = { '/template/page-home/hero/title' : 'What the operator typed' };
+renameComposer._touched = new Set( [ '/template/page-home/hero/title' ] );
 renameComposer.updateDraft( { dataset : { path : 'id' }, tagName : 'INPUT', type : 'text', value : 'intro' }, false );
-check( 'renaming a section carries the texts typed for it to their new keys', renameComposer._draft.areas.body.components[0].bindings.text === '/page-home/intro/title'
-	&& renameComposer._textValues['/page-home/intro/title'] === 'What the operator typed'
-	&& Object.prototype.hasOwnProperty.call( renameComposer._textValues, '/page-home/hero/title' ) === false
-	&& renameComposer._touched.has( '/page-home/intro/title' ) === true
-	&& renameComposer._touched.has( '/page-home/hero/title' ) === false );
+check( 'renaming a section carries the texts typed for it to their new keys', renameComposer._draft.areas.body.components[0].bindings.text === '/template/page-home/intro/title'
+	&& renameComposer._textValues['/template/page-home/intro/title'] === 'What the operator typed'
+	&& Object.prototype.hasOwnProperty.call( renameComposer._textValues, '/template/page-home/hero/title' ) === false
+	&& renameComposer._touched.has( '/template/page-home/intro/title' ) === true
+	&& renameComposer._touched.has( '/template/page-home/hero/title' ) === false );
+/*	A section whose id is its page's category: the whole prefix is the one that
+	changes, and the category segment stays - a replace of '/page-home/' would
+	have found it first	*/
+renameComposer._draft = { pageId : 'page-home', id : 'page-home', layout : 'auto', frame : { backgroundImage : '/template/page-home/page-home/background', backgroundImageSource : 'new' }, areas : { body : { style : 'auto', source : {}, components : [ { id : 'title', type : 'title', style : 'auto', settings : {}, bindings : { text : '/template/page-home/page-home/title' }, bindingSources : { text : 'new' } } ] } } };
+renameComposer._textValues = {};
+renameComposer._touched = new Set();
+renameComposer.updateDraft( { dataset : { path : 'id' }, tagName : 'INPUT', type : 'text', value : 'intro' }, false );
+check( 'a section with the id of its page keeps the category when it is renamed - in its texts and in its background', renameComposer._draft.areas.body.components[0].bindings.text === '/template/page-home/intro/title'
+	&& renameComposer._draft.frame.backgroundImage === '/template/page-home/intro/background' );
 Nino.admin.templates._library.presets = renameLibrary;
 renameComposer._draft = null;
 renameComposer._presetKey = '';
@@ -761,11 +787,11 @@ check( '...and the row they waited in is gone, so nothing of the panel\'s own st
 
 // The controls in the head are the live ones: the listeners init() gives them,
 // and the disabled state the document and its changes decide
-const openDocument = { name : 'page-home', filename : 'page-home.tpl', pageId : 'home', displayName : 'Home', pageMotion : 'off', revision : 1, readonly : null, segments : [] };
+const openDocument = { name : 'page-home', filename : 'page-home.tpl', pageId : 'page-home', displayName : 'Home', pageMotion : 'off', revision : 1, readonly : null, segments : [] };
 const heldSections = Nino.admin.templates.sectionsUI;
 const heldDocuments = Nino.admin.templates._documents;
 Nino.admin.templates.sectionsUI = null;
-Nino.admin.templates._documents = [ { name : 'page-home', filename : 'page-home.tpl', pageId : 'home', displayName : 'Home', editable : true, sections : 0, components : 0 } ];
+Nino.admin.templates._documents = [ { name : 'page-home', filename : 'page-home.tpl', pageId : 'page-home', displayName : 'Home', editable : true, sections : 0, components : 0 } ];
 Nino.admin.templates._current = openDocument;
 Nino.admin.templates.setDirty( true );
 const dirtyEnables = headed.save.disabled === false && headed.state.classList.contains('is-dirty');
@@ -880,11 +906,11 @@ check( 'the client frame fallbacks match the compiler\'s own', [ areaComposerSou
 } ) );
 check( 'every preview card is scaled to one viewport, so the gallery compares presets and not tile heights', composerSource.includes( "frame.dataset.viewportHeight = '760'" )
 	&& composerSource.includes( 'previewHeight' ) === false );
-const resourceSpec = { version : 3, preset : 'sample', pageId : 'home', id : 'services', areas : { copy : { components : [ { id : 'visual', type : 'image', bindings : { src : '/page-home/services/visual' } } ] } } };
+const resourceSpec = { version : 3, preset : 'sample', pageId : 'page-home', id : 'services', areas : { copy : { components : [ { id : 'visual', type : 'image', bindings : { src : '/template/page-home/services/visual' } } ] } } };
 const resourcePreset = { areas : { copy : { label : 'Copy', source : 'single' } } };
 check( 'v3 image creation is limited to generated background and declared Area image slots',
-	Nino.admin.templates.sectionsUI.areaImageRequest( resourceSpec, resourcePreset, '/page-home/services/background' ).slot === 'background'
-	&& Nino.admin.templates.sectionsUI.areaImageRequest( resourceSpec, resourcePreset, '/page-home/services/visual' ).component === 'visual'
+	Nino.admin.templates.sectionsUI.areaImageRequest( resourceSpec, resourcePreset, '/template/page-home/services/background' ).slot === 'background'
+	&& Nino.admin.templates.sectionsUI.areaImageRequest( resourceSpec, resourcePreset, '/template/page-home/services/visual' ).component === 'visual'
 	&& Nino.admin.templates.sectionsUI.areaImageRequest( resourceSpec, resourcePreset, '/shared/existing-image' ) === null );
 
 /*	A new text starts empty. The catalogue carries a sample for it - a fill key
@@ -949,7 +975,7 @@ emptyComposer.requestPreview = function() { previews++ };
 
 emptyComposer._textValues = {};
 emptyComposer._touched = new Set();
-const sampleField = areaTools.generatedValueField( { control : 'text', sample : sampleKey, default : '' }, '/page-home/hero/title' );
+const sampleField = areaTools.generatedValueField( { control : 'text', sample : sampleKey, default : '' }, '/template/page-home/hero/title' );
 const sampleInput = sampleField.children[1];
 const sampleNote = sampleField.querySelector('.pd-v3-empty-note');
 check( 'a new text starts empty and shows the property\'s sample as its placeholder, resolved through the text system', sampleInput.value === '' && sampleInput.placeholder === sampleKey );
@@ -959,14 +985,14 @@ check( '...marked as empty by a class and a note, which the field itself points 
 sampleInput.value = 'Hello';
 sampleInput.dispatch('input');
 check( 'typing lifts the mark, holds the text and asks for a preview', sampleField.classList.contains('pd-v3-empty') === false && sampleNote.hidden === true
-	&& emptyComposer._textValues['/page-home/hero/title'] === 'Hello' && emptyComposer._touched.has('/page-home/hero/title') && previews === 1 );
+	&& emptyComposer._textValues['/template/page-home/hero/title'] === 'Hello' && emptyComposer._touched.has('/template/page-home/hero/title') && previews === 1 );
 check( '...and a filled field no longer points at the note, which a hidden note would still make a screen reader announce', sampleInput.getAttribute('aria-describedby') === null );
 sampleInput.value = '  ';
 sampleInput.dispatch('input');
 check( '...and clearing it - blanks included - marks it again, saving staying allowed', sampleField.classList.contains('pd-v3-empty') === true && sampleNote.hidden === false && previews === 2
 	&& sampleInput.getAttribute('aria-describedby') === sampleNote.id );
-emptyComposer._textValues = { '/page-home/hero/title' : 'Held' };
-const heldField = areaTools.generatedValueField( { control : 'textarea', sample : sampleKey, default : '' }, '/page-home/hero/title' );
+emptyComposer._textValues = { '/template/page-home/hero/title' : 'Held' };
+const heldField = areaTools.generatedValueField( { control : 'textarea', sample : sampleKey, default : '' }, '/template/page-home/hero/title' );
 check( 'a text the dialog holds is shown, and an area with text in it is not marked', heldField.children[1].value === 'Held' && heldField.classList.contains('pd-v3-empty') === false );
 const fixedField = areaTools.fixedValueField( { control : 'url' }, 'areas.a.components.0.bindings.href', '', true );
 check( 'a fixed value is marked the same way while it is empty', fixedField.classList.contains('pd-v3-empty') === true && fixedField.querySelector('.pd-v3-empty-note') !== null
@@ -992,14 +1018,14 @@ Nino.admin.templates._library.presets = [ { key : 'empty-test', version : 3, rec
 } ];
 emptyComposer._presetKey = 'empty-test';
 emptyComposer._step = 'design';
-emptyComposer._textValues = { '/page-home/hero/title' : 'Typed title', '/page-home/elsewhere/title' : 'Not this section\'s' };
+emptyComposer._textValues = { '/template/page-home/hero/title' : 'Typed title', '/template/page-home/elsewhere/title' : 'Not this section\'s' };
 emptyComposer._touched = new Set();
-emptyComposer._draft = { pageId : 'home', id : 'hero', preset : 'empty-test', layout : 'auto', frame : {}, areas : {
-	body : { style : 'auto', source : {}, components : [ { id : 'title', type : 'title', style : 'auto', settings : {}, bindings : { text : '/page-home/hero/title' }, bindingSources : { text : 'new' } } ] },
+emptyComposer._draft = { pageId : 'page-home', id : 'hero', preset : 'empty-test', layout : 'auto', frame : {}, areas : {
+	body : { style : 'auto', source : {}, components : [ { id : 'title', type : 'title', style : 'auto', settings : {}, bindings : { text : '/template/page-home/hero/title' }, bindingSources : { text : 'new' } } ] },
 	rows : { style : 'auto', source : { elementMode : 'new', elementType : 'home-hero-rows' }, components : [] },
 } };
 const heldTexts = areaTools.previewTexts();
-check( 'the texts the preview is asked to show are the held ones of the section\'s own fields', JSON.stringify( heldTexts ) === JSON.stringify( { '/page-home/hero/title' : 'Typed title' } ) );
+check( 'the texts the preview is asked to show are the held ones of the section\'s own fields', JSON.stringify( heldTexts ) === JSON.stringify( { '/template/page-home/hero/title' : 'Typed title' } ) );
 
 // The request itself: the draft, and the texts with it
 const payloads = [];
@@ -1050,7 +1076,7 @@ const listedIncludes = [
 	{ name : 'html-header', path : '/templates/html-header', label : 'Html Header', kind : 'frame', exists : true },
 	{ name : 'mail-user', path : '/templates/mail-user', label : 'Mail User', kind : 'output', exists : true },
 	{ name : 'robots', path : '/templates/robots', label : 'Robots', kind : 'output', exists : true },
-	{ name : 'theme.header', path : '/templates/theme.header', label : 'Theme.header', kind : 'internal', exists : true },
+	{ name : 'frame-header', path : '/templates/frame-header', label : 'Frame Header', kind : 'internal', exists : true },
 	{ name : 'section-card', path : '/templates/section-card', label : 'Section Card', kind : 'section', exists : true },
 	{ name : 'social-links', path : '/templates/social-links', label : 'Social Links', kind : 'partial', exists : true },
 ];
@@ -1085,28 +1111,48 @@ check( 'what the picker calls an output and an internal file is said in the text
 
 // What a fill loads for a key that does not exist yet: nothing, and the key is held as loaded
 const missingPayloads = [];
+// The server reads the keys for a page template, and which of them are its own to write
+const keepCurrent = Nino.admin.templates._current;
+Nino.admin.templates._current = { name : 'page-home', pageId : 'page-home', readonly : null, segments : [] };
 
 const asyncChecks = new Promise( function( resolve ) { setTimeout( resolve, 20 ) } ).then( function() {
-	check( 'a preview request carries the draft and the texts held for it', payloads.length === 1 && payloads[0][0] === 'library/preview' && payloads[0][1].preset === 'empty-test' && payloads[0][1].pageId === 'home'
+	check( 'a preview request carries the draft and the texts held for it', payloads.length === 1 && payloads[0][0] === 'library/preview' && payloads[0][1].preset === 'empty-test' && payloads[0][1].pageId === 'page-home'
 		&& JSON.stringify( payloads[0][1].texts ) === JSON.stringify( heldTexts ) );
 	Nino.admin.templates.api = function( action, payload ) {
 		missingPayloads.push( [ action, payload ] );
-		return Promise.resolve( { fields : [ { key : '/page-home/hero/title', exists : false, value : '' } ] } );
+		return Promise.resolve( { fields : [ { key : '/template/page-home/hero/title', exists : false, value : '' } ] } );
 	};
 	emptyComposer._textValues = {};
 	emptyComposer._touched = new Set();
 	return Nino.admin.templates.composer.loadTextValues();
 } ).then( function() {
-	check( 'a fill that does not exist yet is held as empty - the default is not made up for it', missingPayloads.length === 1 && missingPayloads[0][0] === 'content/fields'
-		&& Object.prototype.hasOwnProperty.call( emptyComposer._textValues, '/page-home/hero/title' ) && emptyComposer._textValues['/page-home/hero/title'] === '' );
-	Nino.admin.templates.api = function() { return Promise.resolve( { fields : [ { key : '/page-home/hero/title', exists : true, value : 'Written before' } ] } ) };
+	check( 'a fill that does not exist yet is held as empty - the default is not made up for it', missingPayloads.length === 1 && missingPayloads[0][0] === 'content/fields' && missingPayloads[0][1].name === 'page-home'
+		&& Object.prototype.hasOwnProperty.call( emptyComposer._textValues, '/template/page-home/hero/title' ) && emptyComposer._textValues['/template/page-home/hero/title'] === '' );
+	Nino.admin.templates.api = function() { return Promise.resolve( { fields : [ { key : '/template/page-home/hero/title', exists : true, value : 'Written before' } ] } ) };
 	return Nino.admin.templates.composer.loadTextValues();
 } ).then( function() {
-	check( '...and one that does is held as it is written', emptyComposer._textValues['/page-home/hero/title'] === 'Written before' );
+	check( '...and one that does is held as it is written', emptyComposer._textValues['/template/page-home/hero/title'] === 'Written before' );
 	Nino.admin.templates.api = keepApi;
+	Nino.admin.templates._current = keepCurrent;
 	Nino.admin.templates._library.presets = emptyLibrary;
 	emptyComposer._draft = null; emptyComposer._presetKey = ''; emptyComposer._step = 'library';
 	emptyComposer._textValues = keepTexts; emptyComposer._touched = keepTouched;
+
+	/*	A section id that already has texts comes back with a code and its values;
+		the panel says it in its own words - the sentence of its text files, not the
+		server's English one - with the id, the key and the id to use instead	*/
+	const keepCall = Nino.admin.templates.apiCall;
+	const keepGetText = Nino.content.getText;
+	Nino.content.getText = function( key ) { return key === '/_admin/templates/error/id-taken' ? 'Section id "%s" has texts (%s). Try "%s".' : key };
+	Nino.admin.templates.apiCall = function( action, payload, callback ) {
+		callback( 409, { error : 'the key is taken, in English', code : 'section-id-taken', params : [ 'offer', '/template/page-home/offer/title', 'offer-2' ] } );
+	};
+	return Nino.admin.templates.api( 'library/compose', {} ).then( function() { return null }, function( error ) { return error } ).then( function( error ) {
+		check( 'a section id that has texts is refused in the panel\'s words, with the id, the key and a free id', error !== null && error.status === 409
+			&& error.message === 'Section id "offer" has texts (/template/page-home/offer/title). Try "offer-2".' );
+		Nino.admin.templates.apiCall = keepCall;
+		Nino.content.getText = keepGetText;
+	} );
 } );
 
 asyncChecks.then( function() {

@@ -93,7 +93,7 @@ check( 'the class is listed and the version recorded', in_array( '\\Nino\\Module
 foreach( [ 'en_US', 'de_DE' ] as $locale ) {
 	$text = \Nino\Filesystem::getFileContent( $appData, '/text/'. $locale. '.php', [] );
 	check( 'activation merged the surface\'s words into text/'. $locale. '.php',
-		array_diff_key( array_flip( [ '[[/embed/load]]', '[[/embed/note]]', '[[/embed/open]]', '[[/embed/frame]]' ] ), $text ) === [] );
+		array_diff_key( array_flip( [ '[[/feature/embed/placeholder/button]]', '[[/feature/embed/placeholder/note]]', '[[/feature/embed/fallback/link]]', '[[/feature/embed/frame/title]]' ] ), $text ) === [] );
 }
 check( 'it wrote no template and no route of its own - where an embed goes is the project\'s call',
 	is_dir( ninoSandboxDir( $appData ). '/templates' ) === false
@@ -173,7 +173,7 @@ check( 'the host is named on the surface, because that is what somebody decides 
 check( 'the consent category the settings name is written into the markup for the script to read',
 	str_contains( $html, 'data-embed-consent="external"' ) === true );
 check( 'every word is a text fill the project owns, resolved by the time it renders',
-	str_contains( $html, '[[/embed/' ) === false && str_contains( $html, 'loads content from' ) === true );
+	str_contains( $html, '[[/feature/embed/' ) === false && str_contains( $html, 'loads content from' ) === true );
 check( 'a title given in the shortcode names both the surface and the frame that will be there',
 	str_contains( $html, 'data-embed-title="Ein Video"' ) === true && str_contains( $html, '>Ein Video</span>' ) === true );
 
@@ -487,7 +487,7 @@ echo "Deactivation\n";
 check( 'deactivation succeeds', \Nino\Features::deactivate( $appData, 'embed' ) === true );
 check( 'the class is gone from /nino/modules', in_array( '\\Nino\\Modules\\Embed', \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/modules'], true ) === false );
 check( 'the words stay in the project\'s text files - they are the project\'s now',
-	isset( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/embed/note]]'] ) === true );
+	isset( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/feature/embed/placeholder/note]]'] ) === true );
 check( 'the feature is still on disk, listed and inactive', ( \Nino\Features::get( $appData, 'embed' )['active'] ?? true ) === false );
 
 ninoDone( $appData );

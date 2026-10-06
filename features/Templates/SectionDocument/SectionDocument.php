@@ -20,7 +20,14 @@ namespace Nino\Modules\Templates {
 		private const array RAW_TAGS = [ 'script', 'style', 'textarea' ];
 		private const array VOID_TAGS = [ 'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr' ];
 
-		public static function split( string $source ): array {
+		/**
+		 *	@param		string			$source
+		 *	@param		string|null	$category		The category of the template the source belongs to (see \Nino\Modules\Template::category()):
+		 *																		the keys of that category are a section's fills, no other key is
+		 *
+		 *	@return 	array
+		 */
+		public static function split( string $source, ?string $category = null ): array {
 
 			$segments = [];
 			$cursor = 0;
@@ -78,7 +85,7 @@ namespace Nino\Modules\Templates {
 
 				$sectionSource = substr( $source, $sectionStart, $end - $sectionStart );
 				$sectionCount++;
-				$segments[] = self::_segment( $sectionSource, 'section-'. $sectionCount );
+				$segments[] = self::_segment( $sectionSource, 'section-'. $sectionCount, $category );
 
 				$cursor = $end;
 				$offset = $end;
@@ -109,9 +116,9 @@ namespace Nino\Modules\Templates {
 			];
 		}
 
-		public static function inspectSection( string $source ): array {
+		public static function inspectSection( string $source, ?string $category = null ): array {
 
-			$parsed = self::split( $source );
+			$parsed = self::split( $source, $category );
 			$sections = array_values( array_filter( $parsed['segments'], fn( array $segment ): bool => $segment['type'] === 'section' ) );
 			$templates = array_values( array_filter( $parsed['segments'], fn( array $segment ): bool => $segment['type'] === 'template' ) );
 			$slots = array_values( array_filter( $parsed['segments'], fn( array $segment ): bool => $segment['type'] === 'slot' ) );
@@ -179,7 +186,7 @@ namespace Nino\Modules\Templates {
 			) );
 		}
 
-		private static function _segment( string $source, string $id ): array {
+		private static function _segment( string $source, string $id, ?string $category ): array {
 
 			$openingEnd = self::_tagEnd( $source, 0 ) ?? 0;
 			$opening = substr( $source, 0, $openingEnd );
@@ -201,7 +208,7 @@ namespace Nino\Modules\Templates {
 			}
 
 			$fills = [];
-			if( preg_match_all( '#\[\[(\/page-[a-z0-9_-]+\/[a-z0-9-]+\/[a-z0-9-]+)\]\]#i', $source, $matches ) > 0 )
+			if( $category !== null && preg_match_all( '#\[\[(/template/'. preg_quote( $category, '#' ). '/[a-z0-9]+(?:-[a-z0-9]+)*/[a-z0-9]+(?:-[a-z0-9]+)*)\]\]#', $source, $matches ) > 0 )
 				$fills = array_values( array_unique( $matches[1] ) );
 
 			$elementTypes = [];

@@ -585,7 +585,7 @@ const endless = world( { lines : [ 'Ab' ], attributes : { 'data-typewriter-start
 endless.advance( 100000 );
 check( 'one that loops keeps its button, since it never stops moving', endless.toggle() !== null );
 
-[ [ 'an empty label', '' ], [ 'a label that is still a fill nobody resolved', '[[/typewriter/toggle]]' ], [ 'a label of nothing but blanks', '   ' ] ].forEach( function( bad ) {
+[ [ 'an empty label', '' ], [ 'a label that is still a fill nobody resolved', '[[/feature/typewriter/pause/label]]' ], [ 'a label of nothing but blanks', '   ' ] ].forEach( function( bad ) {
 	const none = world( { lines : [ 'Ab' ], attributes : { 'data-typewriter-start' : 'load', 'data-typewriter-toggle' : bad[1] } } );
 	check( bad[0]+ ' draws no button', none.host.children.length === 1 && none.toggle() === null );
 } );

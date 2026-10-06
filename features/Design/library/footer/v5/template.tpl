@@ -2,18 +2,18 @@
 			<div class="nino-grid-row">
 				<div class="nino-grid-100 nino-grid-middle nino-frame-footer-primary">
 					<a href="[[/nino/dir]]/" class="nino-frame-footer-brand">
-						<img src="[[/nino/public]]/images/logo.png" class="nino-footer-logo" alt="[[/company/name]]">
+						<img src="[[/nino/public]]/images/logo.png" class="nino-footer-logo" alt="[[/project/company/general/name]]">
 					</a>
-					<p class="nino-frame-footer-description">[[/company/description]]</p>
-					<nav class="nino-frame-footer-nav" aria-label="[[/website/footer/title/navigation]]">
+					<p class="nino-frame-footer-description">[[/project/company/general/description]]</p>
+					<nav class="nino-frame-footer-nav" aria-label="[[/template/common/navigation/footer]]">
 						[template /templates/html-footer-nav]
 					</nav>
 				</div>
 			</div>
 			<div class="nino-grid-row">
 				<div class="nino-grid-100 nino-grid-middle nino-frame-footer-meta">
-					<p>&copy; [[/date/year]] [[/company/name]]</p>
-					<p class="nino-frame-footer-contact">[[/company/email]] <span aria-hidden="true">·</span> [[/company/phone]]</p>
+					<p>&copy; [[/nino/date/year]] [[/project/company/general/name]]</p>
+					<p class="nino-frame-footer-contact">[[/project/company/contact/email]] <span aria-hidden="true">·</span> [[/project/company/contact/phone]]</p>
 					<div class="nino-frame-footer-utility">
 						[template /templates/html-footer-legal]
 						[template /templates/html-footer-localepicker]

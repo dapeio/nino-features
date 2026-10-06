@@ -452,7 +452,7 @@ namespace Nino\Modules\Posts {
 			if( $given !== '' && str_contains( $given, '[[' ) === false )
 				return htmlspecialchars( $given, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
 
-			$fill = \Nino\Html::renderTextfill( $appData, '/posts/'. $which );
+			$fill = \Nino\Html::renderTextfill( $appData, '/feature/posts/pager/'. $which );
 
 			if( $fill !== '' )
 				return htmlspecialchars( $fill, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );

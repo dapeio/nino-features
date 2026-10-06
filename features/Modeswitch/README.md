@@ -101,10 +101,10 @@ activation, add-only:
 
 | Key | English | Deutsch |
 | --- | --- | --- |
-| `/modeswitch/label` | Appearance | Darstellung |
-| `/modeswitch/light` | Light | Hell |
-| `/modeswitch/system` | System | System |
-| `/modeswitch/dark` | Dark | Dunkel |
+| `/feature/modeswitch/switch/label` | Appearance | Darstellung |
+| `/feature/modeswitch/mode/light` | Light | Hell |
+| `/feature/modeswitch/mode/system` | System | System |
+| `/feature/modeswitch/mode/dark` | Dark | Dunkel |
 
 From then on they are the project's: an editor changes them in the Text panel and
 never opens a feature directory. A key the project already had is left alone.

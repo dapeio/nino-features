@@ -28,7 +28,7 @@ goes and what a hit looks like are the project's:
 
 ```
 <form role="search" method="get" action="/suche">
-	<input type="search" name="q" value="[[/page-suche/query]]" aria-label="Suchbegriff">
+	<input type="search" name="q" value="[[/template/page-suche/form/query]]" aria-label="Suchbegriff">
 	<button type="submit">Suchen</button>
 </form>
 

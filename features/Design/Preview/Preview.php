@@ -63,7 +63,7 @@ namespace Nino\Modules\Design {
 		 *	kernel to render.
 		 *
 		 *	The frames are inlined rather than included as [template
-		 *	/templates/theme.header]: a preview shows a header nobody has applied
+		 *	/templates/frame-header]: a preview shows a header nobody has applied
 		 *	yet, and the file that include names is the one currently on disk.
 		 *	Reading the library directly is the difference between "what this
 		 *	would look like" and "what it looks like"

@@ -63,7 +63,7 @@ return [
 	],
 	'category'		=> 'communication',
 	'version'			=> '1.0.0',
-	'nino'				=> '^1.3',
+	'nino'				=> '^1.4',
 	'requires'		=> [],
 	'settings'		=> [],
 	// The files under data/ this feature owns - what a backup carries and

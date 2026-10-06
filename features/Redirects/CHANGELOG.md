@@ -53,6 +53,14 @@ A release is the tag `redirects-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The page names it reads follow Nino 1.4's text keys.** A rule's target is
+  named by `[[/_nino/webpage<uri>/name]]` where it was `[[/webpage<uri>/name]]`.
+  Nino 1.4.0 renames the keys the feature reads and it is renamed with them, so
+  `nino` is `^1.4`: a Nino before 1.4 has neither the words nor the keys, and is
+  not offered the feature. Nothing has been published under the old keys, so
+  there is no migration; a project that already has texts under them copies the
+  values to the new keys.
+
 - **The strip stands in the panel's head, beside its name.** The workbench
   opens every pane with a head that names the panel and takes a strip of the
   panel's own beside the name, so the rules and the addresses no longer open

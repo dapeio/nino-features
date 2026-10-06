@@ -120,7 +120,7 @@
 	/**
 	 *	The label a row's toggle button carries, or '' where it gets none: no
 	 *	attribute, an empty one, or one that still holds a text fill nobody
-	 *	resolved - a button that says "[[/ticker/toggle]]" is worse than none
+	 *	resolved - a button that says "[[/feature/ticker/pause/label]]" is worse than none
 	 *
 	 *	@param		{Element}		row
 	 *

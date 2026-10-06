@@ -8,8 +8,8 @@ declare(strict_types=1);
 // anderer Satz, in features/Hello/text/ - siehe README.md.
 return [
 
-	'[[/hello/note]]'				=> 'Gerendert vom Feature Hallo Welt.',
+	'[[/feature/hello/greeting/note]]'	=> 'Gerendert vom Feature Hallo Welt.',
 
-	'[[/hello/page/title]]'	=> 'Hallo Welt',
-	'[[/hello/page/text]]'	=> 'Diese Seite und der Gruß darunter kamen mit einem Feature. Beides gehört jetzt Dir: die Worte stehen im Panel Texte, die Seite in templates/page-hello.tpl.',
+	'[[/template/page-hello/intro/title]]'	=> 'Hallo Welt',
+	'[[/template/page-hello/intro/text]]'	=> 'Diese Seite und der Gruß darunter kamen mit einem Feature. Beides gehört jetzt Dir: die Worte stehen im Panel Texte, die Seite in templates/page-hello.tpl.',
 ];

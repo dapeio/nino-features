@@ -24,7 +24,11 @@ namespace Nino\Modules\Templates {
 			See AGENTS.md, "Markup belongs in a template", which names this as the
 			exception it is	*/
 
-		private const string ID_PATTERN = '/^[a-z][a-z0-9-]*$/';
+		// A page's id is its template's category (page-404) and a section's id its
+		// segment of a key: words of lower-case letters and digits, joined by
+		// hyphens, the first one starting with a letter - the section id is an
+		// html id as well
+		private const string ID_PATTERN = '/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/D';
 		// A field of the collection this area renders. An area that makes its
 		// own Elements type names its fields in the preset's model, in
 		// lowerCamel; an area bound to a type the project already has names
@@ -34,8 +38,10 @@ namespace Nino\Modules\Templates {
 		// the models this repository happens to ship - a type with a field
 		// called header_image was refused, and told it did not exist
 		private const string FIELD_PATTERN = '/^[A-Za-z][A-Za-z0-9_-]*$/';
-		private const string TEXT_KEY_PATTERN = '#^/[A-Za-z0-9][A-Za-z0-9_./-]*$#';
-		private const string IMAGE_KEY_PATTERN = '#^/[a-z0-9][a-z0-9_/-]*$#';
+		// What the system writes, /_nino/webpage<uri>/..., may be read and bound;
+		// the workbench's own, /_admin/..., never
+		private const string TEXT_KEY_PATTERN = '#^/(?:_nino/)?[A-Za-z0-9][A-Za-z0-9_./-]*$#D';
+		private const string IMAGE_KEY_PATTERN = '#^/(?:_nino/)?[a-z0-9][a-z0-9_/-]*$#D';
 		private const string TEMPLATE_PATTERN = '#^/templates/[A-Za-z0-9][A-Za-z0-9._-]*$#';
 		private const string DATA_NAME_PATTERN = '/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/';
 		private const int MAX_LITERAL_LENGTH = 4000;
@@ -243,7 +249,7 @@ namespace Nino\Modules\Templates {
 		 *	fields a collection loops over and the project texts a layout
 		 *	writes in (see Composer::previewSamples()). A fill name as the
 		 *	layout writes it - a field ('columnA') or a text key
-		 *	('/company/email') - and a text, or a list of texts one per item;
+		 *	('/project/company/contact/email') - and a text, or a list of texts one per item;
 		 *	%n in a text is the item's number. Anything else is a manifest
 		 *	mistake and says so, the way every other part of a manifest does
 		 *
@@ -307,7 +313,7 @@ namespace Nino\Modules\Templates {
 			$fields = self::fieldDescriptors( $spec, $preset );
 			$images = self::imageDescriptors( $spec, $preset, $effective );
 			$source = self::render( $spec, $preset, $effective, $fields, $images, $preview );
-			$inspection = SectionDocument::inspectSection( $source );
+			$inspection = SectionDocument::inspectSection( $source, (string) $spec['pageId'] );
 			if( $inspection['valid'] !== true )
 				throw new \InvalidArgumentException( 'composed preset is not one complete section: '. ( $inspection['error'] ?? 'invalid source' ) );
 
@@ -1109,7 +1115,7 @@ namespace Nino\Modules\Templates {
 		}
 
 		private static function generatedKey( array $spec, string $suffix ): string {
-			return '/page-'. $spec['pageId']. '/'. $spec['id']. '/'. $suffix;
+			return '/template/'. $spec['pageId']. '/'. $spec['id']. '/'. $suffix;
 		}
 
 		private static function sectionClasses( array $frame ): array {

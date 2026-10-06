@@ -159,8 +159,8 @@ namespace Nino\Modules\Newsletter {
 			\Nino\Http::ok( $request, [
 				'entries' 				=> array_reverse( $listed ),
 				'counts' 					=> $counts,
-				// Same https://[[/website/url]] convention as the links in the mails
-				'unsubscribeUrl' 	=> 'https://'. \Nino\Html::renderHtml( $appData, '[[/website/url]]' ). '/.newsletter/unsubscribe',
+				// Same https://[[/project/website/general/url]] convention as the links in the mails
+				'unsubscribeUrl' 	=> 'https://'. \Nino\Html::renderHtml( $appData, '[[/project/website/general/url]]' ). '/.newsletter/unsubscribe',
 			] );
 		}
 

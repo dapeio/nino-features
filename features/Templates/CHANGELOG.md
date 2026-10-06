@@ -37,6 +37,42 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The keys it writes and reads follow Nino 1.4's grammar, and a section only
+  writes its own template's.** A section's keys are
+  `/template/<category>/<section>/<name>`, the category being the page
+  template's file name without `.tpl` (`/template/page-home/main-hero/title`;
+  `/page-<page>/<section>/<name>` before): `page-404.tpl` is `page-404`, nothing
+  is cut off and no `p-` is put in front of a digit, and the page id the panel
+  shows is the category. The elements type a collection proposes is still
+  `<page>-<section>-<area>` (`page-404-hero-items`). A page template's file name
+  has to be a category - `page-` and lowercase words joined by single hyphens -
+  and `documents/create` refuses anything else; one that exists with a name that
+  is none (`page-Foo.tpl`, `page-a.b.tpl`) is listed, not editable, and with the
+  reason. A section id is words joined by single hyphens, the first one starting
+  with a letter. `content/save` and `content/image-create` get the page
+  template's name and take the category from it, not from the request: they
+  write `/template/<its category>/<section>/<name>` and nothing else, never a
+  blacklisted key - a word of the project, of another template, a common one or
+  a page's details is read when it is bound, and edited in the Text panel
+  (`content/fields` says which keys are `writable`). `library/compose` refuses a
+  section id under which the template already has keys that belong to no section
+  of the document - a hand-written `intro` - with `409` and a free id
+  (`intro-2`); the panel sends the ids of the sections in its open draft, so a
+  section inserted a moment ago, not saved yet, still finds its own keys.
+  `documents/inspect` takes the template's name too, and the segment a compose
+  returns carries the section's fills. `/_nino/webpage<uri>/...` may be bound to read. The presets read
+  `/template/common/form/*`, `/project/company/...` and
+  `/feature/newsletter/label/submit`; the frames are `frame-header` and
+  `frame-footer`, and are left out of the lists as `theme.header` and
+  `theme.footer` were. `SectionDocument::split()` takes the category of the
+  template, whose keys are a section's fills. The documents say so, and that a
+  page unit proposes its page's details in the manifest's `suggest`. The
+  category is the kernel's own rule, `\Nino\Modules\Template::category()`, and
+  the keys the presets and the frames read are Nino 1.4's, so `nino` is `^1.4`:
+  a Nino before 1.4 has neither, and is not offered the feature. Nothing has
+  been published under the old keys, so there is no migration; a project that
+  already has texts under them copies the values to the new keys.
+
 - **The panel uses the workbench's request helper and its question about unsaved
   input, where the Nino has them.** Every request goes through
   `Nino.adminUi.api`, which signs the page in again over what is on screen when

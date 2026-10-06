@@ -406,7 +406,7 @@
 				return;
 			}
 
-			pd.api( 'documents/inspect', { source : source } ).then( function( response ) {
+			pd.api( 'documents/inspect', { name : pd._current.name, source : source } ).then( function( response ) {
 				const duplicate = pd.sections().find( function( section ) {
 					return section.htmlId && section.htmlId === response.segment.htmlId && section._clientId !== context.targetId;
 				} );
@@ -522,7 +522,7 @@
 			panel.appendChild( status );
 			container.appendChild( panel );
 
-			pd.api( 'content/fields', { keys : section.fills } ).then( function( response ) {
+			pd.api( 'content/fields', { name : pd._current.name, keys : section.fills } ).then( function( response ) {
 				if( token !== pd.sectionsUI._inspectorToken )
 					return;
 				status.remove();
@@ -535,8 +535,16 @@
 					const long = [ 'description', 'content', 'subtitle', 'quote', 'address' ].includes( suffix );
 					const input = element( long ? 'textarea' : 'input' );
 					input.value = entry.value;
-					input.dataset.key = entry.key;
-					input.dataset.create = entry.exists ? 'false' : 'true';
+					// Only the page template's own keys are saved from here; a word of
+					// another template, of the project or of the system is shown as it
+					// is, and edited in the Text panel
+					if( entry.writable === false ) {
+						input.readOnly = true;
+						input.title = Nino.content.getText('/_admin/templates/hint/fill-readonly');
+					} else {
+						input.dataset.key = entry.key;
+						input.dataset.create = entry.exists ? 'false' : 'true';
+					}
 					field.append( label, input );
 					fields.appendChild( field );
 				} );
@@ -547,7 +555,7 @@
 					save.disabled = true;
 					message.textContent = Nino.content.getText('/_admin/templates/msg/saving-content');
 					const items = Array.from( fields.querySelectorAll('[data-key]') ).map( function( input ) { return { key : input.dataset.key, value : input.value, create : input.dataset.create === 'true' } } );
-					pd.api( 'content/save', { items : items } ).then( function() {
+					pd.api( 'content/save', { name : pd._current.name, items : items } ).then( function() {
 						save.disabled = false;
 						message.textContent = Nino.content.getText('/_admin/templates/msg/content-saved');
 						pd.toast( Nino.content.getText('/_admin/templates/msg/content-saved-toast'), false );
@@ -615,7 +623,7 @@
 						} else {
 							const request = preset ? pd.sectionsUI.areaImageRequest( section.spec, preset, uri ) : null;
 							if( request ) row.appendChild( button( Nino.content.getText('/_admin/templates/label/create-slot'), Nino.content.getText('/_admin/templates/label/create-slot-title').replace( '%s', uri ), function() {
-								pd.api( 'content/image-create', request ).then( function() {
+								pd.api( 'content/image-create', Object.assign( { name : pd._current.name }, request ) ).then( function() {
 									pd.sectionsUI._images.push( { uri : uri, hasImage : false } );
 									pd.toast( Nino.content.getText('/_admin/templates/msg/slot-created'), false );
 									pd.sectionsUI.renderInspector();
@@ -688,7 +696,7 @@
 		},
 
 		areaImageRequest : function( spec, preset, uri ) {
-			const generatedPrefix = '/page-'+ spec.pageId+ '/'+ spec.id+ '/';
+			const generatedPrefix = '/template/'+ spec.pageId+ '/'+ spec.id+ '/';
 			if( uri === generatedPrefix+ 'background' )
 				return { preset : spec.preset, slot : 'background', uri : uri, label : Nino.content.getText('/_admin/templates/label/background-image') };
 			for( const areaKey of Object.keys( preset.areas || {} ) ) {

@@ -103,7 +103,7 @@ namespace Nino\Modules\Stats {
 		 *	day, not per page, so a day that was both has the referrers of
 		 *	both.
 		 *
-		 *	A page row carries its title - the page's own '/webpage<uri>/title'
+		 *	A page row carries its title - the page's own '/_nino/webpage<uri>/title'
 		 *	text, in the route's locale and else the native one - and '' where
 		 *	no route or no text has one.
 		 *
@@ -188,7 +188,7 @@ namespace Nino\Modules\Stats {
 		}
 
 		/**
-		 *	The title of the page a counted uri was: '/webpage<route uri>/title'
+		 *	The title of the page a counted uri was: '/_nino/webpage<route uri>/title'
 		 *	in the locale of the route that answers it, else in the native one,
 		 *	read from the project's global and locale text files the way
 		 *	\Nino\Modules\Seo reads them for llms.txt - a request carries one
@@ -222,7 +222,7 @@ namespace Nino\Modules\Stats {
 						(array) \Nino\Filesystem::getFileContent( $appData, $appData['/nino/locales/textfiles']. '/'. $locale. '.php', [] )
 					);
 
-				$title = trim( (string) ( $fills[$locale]['[[/webpage'. $route['uri']. '/title]]'] ?? '' ) );
+				$title = trim( (string) ( $fills[$locale]['[[/_nino/webpage'. $route['uri']. '/title]]'] ?? '' ) );
 
 				if( $title !== '' )
 					return $title;

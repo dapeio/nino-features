@@ -65,6 +65,15 @@ A release is the tag `mailer-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The text fill it names is `/project/mail/address/envelope`.** The message it
+  logs when no From address is available names
+  `[[/project/mail/address/envelope]]`, the envelope sender of Nino 1.4
+  (`/mail/sender` before). Nino 1.4.0 renames the keys the feature reads and it
+  is renamed with them, so `nino` is `^1.4`: a Nino before 1.4 has neither the
+  words nor the keys, and is not offered the feature. Nothing has been published
+  under the old keys, so there is no migration; a project that already has texts
+  under them copies the values to the new keys.
+
 - **The port comes from the encryption.** `port` is `0` by default and `0`
   means "from the encryption": 587 for STARTTLS, 465 for TLS from the start, 25
   for none; any other number is used as it is. It was 587 whatever the

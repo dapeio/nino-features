@@ -24,6 +24,16 @@ A release is the tag `seo-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The keys it reads follow Nino 1.4's text keys.** The site name is
+  `/project/company/general/name`, the domain `/project/website/general/url`,
+  and a page's title and description `/_nino/webpage<uri>/title` and
+  `…/description`: `/company/name`, `/website/url` and `/webpage<uri>/…` before.
+  Nino 1.4.0 renames the keys the feature reads and it is renamed with them, so
+  `nino` is `^1.4`: a Nino before 1.4 has neither the words nor the keys, and is
+  not offered the feature. Nothing has been published under the old keys, so
+  there is no migration; a project that already has texts under them copies the
+  values to the new keys.
+
 - **The German manual called `[seo-jsonld]` „Ihre strukturierten Daten“.** The
   English says "Its structured data": the block belongs to the page. Alone in
   the Features panel the German read like a formal „Your“. It says „Die

@@ -3,9 +3,9 @@
 	<div class="nino-cover-content">
 	<div class="nino-grid-row">
 		<div class="nino-grid-100">
-			<h2 class="nino-atf-title">[[/newsletter/page/title]]</h2>
-			<p class="nino-atf-subtitle">[[/newsletter/page/text]]</p>
-			<a href="[[/webpage/home/uri]]" class="nino-btn nino-btn--primary">[[/webpage/home/name]]</a>
+			<h2 class="nino-atf-title">[[/feature/newsletter/page/title]]</h2>
+			<p class="nino-atf-subtitle">[[/feature/newsletter/page/text]]</p>
+			<a href="[[/_nino/webpage/home/uri]]" class="nino-btn nino-btn--primary">[[/_nino/webpage/home/name]]</a>
 		</div>
 		</div>
 	</div>

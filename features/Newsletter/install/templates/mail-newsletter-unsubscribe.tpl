@@ -1,10 +1,10 @@
 [template /templates/mail-header]
-<h1>[[/mail/newsletter/unsubscribe/title]]</h1>
-<p>[[/mail/newsletter/unsubscribe/intro]]</p>
+<h1>[[/template/mail-newsletter-unsubscribe/intro/title]]</h1>
+<p>[[/template/mail-newsletter-unsubscribe/intro/text]]</p>
 <p style="text-align:center;">
-	<a href="[[/newsletter/unsubscribe/url]]" style="display:inline-block; padding:[[/mail/style/spacing/1]] [[/mail/style/spacing/2]]; background:[[/mail/style/color/primary]]; color:[[/mail/style/color/background]]; text-decoration:none;">[[/mail/newsletter/unsubscribe/action]]</a>
+	<a href="[[/feature/newsletter/unsubscribe/url]]" style="display:inline-block; padding:[[/project/mail/spacing/small]] [[/project/mail/spacing/medium]]; background:[[/project/mail/color/primary]]; color:[[/project/mail/color/background]]; text-decoration:none;">[[/template/mail-newsletter-unsubscribe/action/button]]</a>
 </p>
-<p class="mail-note">[[/mail/newsletter/unsubscribe/notice]]</p>
-<p>[[/mail/newsletter/unsubscribe/closing]]<br>
-[[/company/name]]</p>
+<p class="mail-note">[[/template/mail-newsletter-unsubscribe/outro/notice]]</p>
+<p>[[/template/mail-newsletter-unsubscribe/outro/closing]]<br>
+[[/project/company/general/name]]</p>
 [template /templates/mail-footer]

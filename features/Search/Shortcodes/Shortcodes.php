@@ -364,7 +364,7 @@ namespace Nino\Modules\Search {
 		 *	One attribute, with a fill that did not resolve treated as absent
 		 *
 		 *	Attributes are rendered before shortcodes are (see
-		 *	\Nino\Html::renderHtml()), so `empty="[[/page/search/empty]]"`
+		 *	\Nino\Html::renderHtml()), so `empty="[[/template/page-suche/results/empty]]"`
 		 *	arrives here as the text it resolved to. When the project never
 		 *	defined that key it arrives as the brackets themselves, and reading
 		 *	those as a value is worse than the default

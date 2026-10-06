@@ -4,9 +4,9 @@
 					<div class="nino-grid-100 nino-frame-header-inner">
 						<a href="[[/nino/dir]]/" class="nino-frame-header-brand nino-logo">
 							<img src="[[/nino/public]]/images/logo-invert.png" alt="">
-							<h1 class="nino-sr-only" id="header-title">[[/company/name]] | [[/webpage[[/nino/http/response/uri]]/title]]</h1>
+							<h1 class="nino-sr-only" id="header-title">[[/project/company/general/name]] | [[/_nino/webpage[[/nino/http/response/uri]]/title]]</h1>
 						</a>
-						<nav class="nino-frame-header-nav" aria-label="[[/website/header/title/navigation]]">
+						<nav class="nino-frame-header-nav" aria-label="[[/template/frame-header/navigation/label]]">
 							[template /templates/html-header-nav]
 						</nav>
 					</div>

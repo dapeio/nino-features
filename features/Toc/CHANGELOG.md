@@ -22,6 +22,13 @@ A release is the tag `toc-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The text keys follow Nino's grammar.** `/toc/title` is
+  `/feature/toc/list/title` and `/toc/anchor` is `/feature/toc/anchor/label`.
+  The values are the same. Nothing has been published under the old keys, so
+  there is no migration; a project that already has texts under them copies the
+  values to the new keys. `nino` stays `^1.3`: the keys are the feature's own,
+  and a Nino before 1.4 takes them as they come.
+
 - **The anchors setting said the opposite of what switching it off does.**
   The hint in the manifest read "off: only the list's own headings get one,
   and only so the list can reach them", and off draws no anchor at all -

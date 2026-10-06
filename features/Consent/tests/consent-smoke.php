@@ -99,15 +99,15 @@ check( 'the registry lists it inactive, with nothing in the way', ( static funct
 // A key the project already has, under one of the very keys the unit is
 // about to write - activation must leave it exactly as it is (add-only,
 // docs/features.md: "Activating", step 3)
-\Nino\Filesystem::putFileContent( $appData, '/text/en_US.php', [ '[[/consent/title]]' => 'Cookie notice (project-edited)' ] );
+\Nino\Filesystem::putFileContent( $appData, '/text/en_US.php', [ '[[/feature/consent/banner/title]]' => 'Cookie notice (project-edited)' ] );
 
 $result = \Nino\Features::activate( $appData, 'consent' );
 check( 'activation succeeds', $result === true );
 check( 'the class is listed and the version recorded', in_array( '\\Nino\\Modules\\Consent', \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/modules'], true ) === true
 	&& \Nino\Features::get( $appData, 'consent' )['installed'] === $manifest['version'] );
-check( 'the unit merged the new keys into both locales', \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/consent/accept-all]]'] === 'Accept all'
-	&& \Nino\Filesystem::getFileContent( $appData, '/text/de_DE.php', [] )['[[/consent/accept-all]]'] === 'Alle akzeptieren' );
-check( 'add-only: the key the project already had was not overwritten', \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/consent/title]]'] === 'Cookie notice (project-edited)' );
+check( 'the unit merged the new keys into both locales', \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/feature/consent/action/accept-all]]'] === 'Accept all'
+	&& \Nino\Filesystem::getFileContent( $appData, '/text/de_DE.php', [] )['[[/feature/consent/action/accept-all]]'] === 'Alle akzeptieren' );
+check( 'add-only: the key the project already had was not overwritten', \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/feature/consent/banner/title]]'] === 'Cookie notice (project-edited)' );
 check( 'the settings answer their defaults', \Nino\Features::settings( $appData, 'consent' ) === [
 	'statistics' => false, 'marketing' => false, 'external' => false, 'policyUrl' => '', 'cookieName' => 'nino_consent', 'days' => 180,
 ] );
@@ -162,7 +162,7 @@ check( 'it is a dialog with a name and a description, and can take the focus wit
 check( 'no action is the primary one - accepting everything is no easier to press than refusing it',
 	str_contains( $banner, 'nino-consent-btn--primary' ) === false );
 check( 'it carries the cookie name and lifetime for a page with no other way to know them', str_contains( $banner, 'data-consent-cookie="nino_consent"' ) === true && str_contains( $banner, 'data-consent-days="180"' ) === true );
-check( 'the title and text fills are in it', str_contains( $banner, 'Cookie notice (project-edited)' ) === true && str_contains( $banner, '[[/consent/text]]' ) === false ); // fills already resolved by renderHtml()
+check( 'the title and text fills are in it', str_contains( $banner, 'Cookie notice (project-edited)' ) === true && str_contains( $banner, '[[/feature/consent/banner/text]]' ) === false ); // fills already resolved by renderHtml()
 check( 'necessary is checked and disabled', str_contains( $banner, 'data-consent-category="necessary" checked disabled' ) === true );
 check( 'with every optional category off, none of their checkboxes are rendered', str_contains( $banner, 'data-consent-category="statistics"' ) === false
 	&& str_contains( $banner, 'data-consent-category="marketing"' ) === false && str_contains( $banner, 'data-consent-category="external"' ) === false );
@@ -183,6 +183,16 @@ check( 'external stays off - a category the settings did not enable is neither s
 check( 'the optional categories are not checked/disabled the way necessary is', str_contains( $banner2, 'data-consent-category="statistics" checked disabled' ) === false );
 check( 'the privacy link now renders, escaped, pointing at policyUrl', str_contains( $banner2, '<a href="https://example.com/privacy" class="nino-consent-link">Privacy policy</a>' ) === true );
 check( 'the lifetime setting reaches the markup too', str_contains( $banner2, 'data-consent-days="90"' ) === true );
+
+/*	The words of a category are a composed key, /feature/consent/category-[[category]]/name: a template
+	that broke the composition would still render every attribute above. The words themselves, in both
+	languages, and no fill left standing	*/
+check( 'each category carries its own words, from a key the template composes, in English', str_contains( $banner2, '>Statistics</span>' ) === true && str_contains( $banner2, '>Marketing</span>' ) === true
+	&& str_contains( $banner2, 'Anonymised usage data' ) === true && str_contains( $banner2, '[[' ) === false );
+$appData['./nino/locales/current'] = 'de_DE';
+$bannerDe = \Nino\Html::renderHtml( $appData, '[consent]' );
+check( '...and in German', str_contains( $bannerDe, '>Statistik</span>' ) === true && str_contains( $bannerDe, '>Marketing</span>' ) === true && str_contains( $bannerDe, '>Statistics</span>' ) === false && str_contains( $bannerDe, '[[' ) === false );
+$appData['./nino/locales/current'] = 'en_US';
 
 echo "\n";
 
@@ -357,6 +367,6 @@ echo "Deactivation\n";
 check( 'deactivation succeeds', \Nino\Features::deactivate( $appData, 'consent' ) === true );
 check( 'the class is gone from /nino/modules', in_array( '\\Nino\\Modules\\Consent', \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/modules'], true ) === false );
 check( 'the settings survive deactivation', \Nino\Features::setting( $appData, 'consent', 'marketing', false ) === true );
-check( 'the merged texts survive deactivation', \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/consent/accept-all]]'] === 'Accept all' );
+check( 'the merged texts survive deactivation', \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/feature/consent/action/accept-all]]'] === 'Accept all' );
 
 ninoDone( $appData );

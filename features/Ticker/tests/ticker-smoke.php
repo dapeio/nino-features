@@ -59,7 +59,7 @@ check( '...and names the data attributes a row is timed with instead',
 	array_key_exists( 'data-ticker-speed="40"', $manifest['manual']['markup'] ) === true );
 check( '...and the loop and the pause button, which are opt-in',
 	array_key_exists( 'data-ticker-loop="1"', $manifest['manual']['markup'] ) === true
-	&& array_key_exists( 'data-ticker-toggle="[[/ticker/toggle]]"', $manifest['manual']['markup'] ) === true );
+	&& array_key_exists( 'data-ticker-toggle="[[/feature/ticker/pause/label]]"', $manifest['manual']['markup'] ) === true );
 check( 'it requires no other feature, keeps no data and carries no settings',
 	$manifest['requires'] === [] && $manifest['data'] === [] && $manifest['settings'] === [] );
 check( 'its install unit brings the pause button\'s label and nothing a project has to write for itself, and the manual lists it',
@@ -73,15 +73,15 @@ check( 'activation succeeds', \Nino\Features::activate( $appData, 'ticker' ) ===
 check( 'the class is listed and the version recorded', in_array( '\\Nino\\Modules\\Ticker', \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/modules'], true ) === true
 	&& \Nino\Features::get( $appData, 'ticker' )['installed'] === $manifest['version'] );
 check( 'activation merged the pause button\'s label into the text file of both locales',
-	( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/ticker/toggle]]'] ?? '' ) === 'Pause animation'
-	&& ( \Nino\Filesystem::getFileContent( $appData, '/text/de_DE.php', [] )['[[/ticker/toggle]]'] ?? '' ) === 'Animation pausieren' );
+	( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/feature/ticker/pause/label]]'] ?? '' ) === 'Pause animation'
+	&& ( \Nino\Filesystem::getFileContent( $appData, '/text/de_DE.php', [] )['[[/feature/ticker/pause/label]]'] ?? '' ) === 'Animation pausieren' );
 check( '...and wrote no template into the project', is_dir( ninoSandboxDir( $appData ). '/templates' ) === false );
 
 /*	Add-only: what a project has written for that key is its own, and an update
 	- activating an active feature - leaves it as it is	*/
-\Nino\Filesystem::putFileContent( $appData, '/text/en_US.php', [ '[[/ticker/toggle]]' => 'Stop it' ] );
+\Nino\Filesystem::putFileContent( $appData, '/text/en_US.php', [ '[[/feature/ticker/pause/label]]' => 'Stop it' ] );
 check( 'an update keeps the value a project has for that key', \Nino\Features::activate( $appData, 'ticker' ) === true
-	&& ( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/ticker/toggle]]'] ?? '' ) === 'Stop it' );
+	&& ( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/feature/ticker/pause/label]]'] ?? '' ) === 'Stop it' );
 
 echo "\n";
 

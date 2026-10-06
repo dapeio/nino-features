@@ -27,7 +27,7 @@ namespace Nino\Modules\Templates {
 			a kind that says so: a page that already points at one still has
 			to find it, and the panel must not call it gone	*/
 		private const array OUTPUT = [ 'robots', 'sitemap-xml', 'llms-txt' ];
-		private const array INTERNAL = [ 'theme.header', 'theme.footer' ];
+		private const array INTERNAL = [ 'frame-header', 'frame-footer' ];
 
 		public static function actions(): array {
 			return [
@@ -50,6 +50,41 @@ namespace Nino\Modules\Templates {
 			};
 		}
 
+		/**
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$name					A page template's name, page-services
+		 *
+		 *	@return 	string|null							Its category (see \Nino\Modules\Template::category()), or null where
+		 *																	there is no such page template or its name gives none
+		 */
+		public static function category( array &$appData, string $name ): ?string {
+
+			$path = self::_path( $appData, $name );
+
+			return $path !== null && is_file( $path ) === true ? \Nino\Modules\Template::category( $name ) : null;
+		}
+
+		/**
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$name					A page template's name, page-services
+		 *
+		 *	@return 	array									The ids of the sections the builder composed in it, the id each one's
+		 *																	nino:section spec names - the second segment of the keys it owns
+		 */
+		public static function sectionIds( array &$appData, string $name ): array {
+
+			$path = self::_path( $appData, $name );
+			if( $path === null || is_file( $path ) === false )
+				return [];
+
+			$ids = [];
+			foreach( self::_pageSegments( (string) file_get_contents( $path ), $name )['segments'] as $segment )
+				if( ( $segment['type'] ?? '' ) === 'section' && is_array( $segment['spec'] ?? null ) && is_string( $segment['spec']['id'] ?? null ) )
+					$ids[] = $segment['spec']['id'];
+
+			return $ids;
+		}
+
 		public static function apiList( array &$appData, array &$request ): void {
 
 			if( Admin::guard( $appData, $request ) === false )
@@ -60,15 +95,20 @@ namespace Nino\Modules\Templates {
 				$name = basename( $file, '.tpl' );
 				$source = (string) file_get_contents( $file );
 				$parsed = self::_pageSegments( $source, $name );
+				// A name that is no category - page-Foo.tpl, page-a.b.tpl - is a
+				// template the builder cannot give keys of its own: it is listed,
+				// and not editable
+				$category = \Nino\Modules\Template::category( $name );
 				$documents[] = [
 					'name' => $name,
 					'filename' => $name. '.tpl',
 					'displayName' => $parsed['displayName'],
-					'pageId' => self::_pageId( $name ),
+					'pageId' => $category,
 					'pageMotion' => $parsed['pageMotion'],
 					'sections' => $parsed['sectionCount'],
 					'components' => $parsed['componentCount'],
-					'editable' => $parsed['error'] === null,
+					'editable' => $parsed['error'] === null && $category !== null,
+					'reason' => $category === null ? 'category' : null,
 				];
 			}
 
@@ -83,8 +123,10 @@ namespace Nino\Modules\Templates {
 
 			$data = Admin::postData();
 			$filename = trim( (string) ( $data['filename'] ?? '' ) );
-			if( preg_match( '/^page-[A-Za-z0-9][A-Za-z0-9._-]*\.tpl$/', $filename ) !== 1 || str_contains( $filename, '..' ) ) {
-				\Nino\Http::fail( $request, 400, 'filename must look like page-services.tpl and may contain only letters, numbers, dots, underscores and hyphens' );
+			// A file name that is a category: the template's text keys are
+			// /template/<its name without .tpl>/...
+			if( preg_match( '/^page-[a-z0-9]+(?:-[a-z0-9]+)*\.tpl$/', $filename ) !== 1 ) {
+				\Nino\Http::fail( $request, 400, 'filename must look like page-services.tpl and may contain only lowercase letters, numbers and hyphens' );
 				return;
 			}
 
@@ -128,7 +170,7 @@ namespace Nino\Modules\Templates {
 				'name' => $name,
 				'filename' => $filename,
 				'displayName' => $displayName,
-				'pageId' => self::_pageId( $name ),
+				'pageId' => \Nino\Modules\Template::category( $name ),
 				'pageMotion' => $pageMotion,
 				'revision' => hash( 'sha256', $source ),
 			] );
@@ -226,11 +268,11 @@ namespace Nino\Modules\Templates {
 				'name'		=> $name,
 				'filename'	=> $name. '.tpl',
 				'displayName' => $parsed['displayName'],
-				'pageId'	=> self::_pageId( $name ),
+				'pageId'	=> \Nino\Modules\Template::category( $name ),
 				'pageMotion' => $parsed['pageMotion'],
 				'revision'	=> hash( 'sha256', $source ),
 				'segments'	=> $parsed['segments'],
-				'readonly'	=> $parsed['error'],
+				'readonly'	=> $parsed['error'] ?? ( \Nino\Modules\Template::category( $name ) === null ? 'The name of this template gives no category, so the builder cannot give it text keys of its own.' : null ),
 			] );
 		}
 
@@ -239,13 +281,21 @@ namespace Nino\Modules\Templates {
 			if( Admin::guard( $appData, $request ) === false )
 				return;
 
-			$source = (string) ( Admin::postData()['source'] ?? '' );
+			$data = Admin::postData();
+			$source = (string) ( $data['source'] ?? '' );
 			if( strlen( $source ) > 1048576 ) {
 				\Nino\Http::fail( $request, 413, 'section source is too large' );
 				return;
 			}
 
-			$result = SectionDocument::inspectSection( $source );
+			// The keys of the document's category are the section's fills
+			$category = self::category( $appData, (string) ( $data['name'] ?? '' ) );
+			if( $category === null ) {
+				\Nino\Http::fail( $request, 400, 'the page template is unknown, or its name gives no category' );
+				return;
+			}
+
+			$result = SectionDocument::inspectSection( $source, $category );
 			if( $result['valid'] !== true ) {
 				\Nino\Http::fail( $request, 400, $result['error'] ?? 'invalid section source' );
 				return;
@@ -265,6 +315,10 @@ namespace Nino\Modules\Templates {
 
 			if( $path === null || is_file( $path ) === false ) {
 				\Nino\Http::fail( $request, 404, 'unknown page template' );
+				return;
+			}
+			if( \Nino\Modules\Template::category( $name ) === null ) {
+				\Nino\Http::fail( $request, 400, 'the name of this page template gives no category' );
 				return;
 			}
 
@@ -406,12 +460,6 @@ namespace Nino\Modules\Templates {
 			] );
 		}
 
-		private static function _pageId( string $name ): string {
-			$id = strtolower( (string) preg_replace( '/[^a-zA-Z0-9-]+/', '-', substr( $name, 5 ) ) );
-			$id = trim( $id, '-' ) ?: 'page';
-			return preg_match( '/^[a-z]/', $id ) === 1 ? $id : 'p-'. $id;
-		}
-
 		/**
 		 * Page-only normalization: marked shell includes become fixed slots. A
 		 * hand-written page using the conventional exact html-header/html-footer
@@ -421,7 +469,7 @@ namespace Nino\Modules\Templates {
 		private static function _pageSegments( string $source, string $name = 'page' ): array {
 
 			$metadata = self::_readMetadata( $source, $name );
-			$parsed = SectionDocument::split( $metadata['source'] );
+			$parsed = SectionDocument::split( $metadata['source'], \Nino\Modules\Template::category( $name ) );
 			$parsed['displayName'] = $metadata['displayName'];
 			$parsed['pageMotion'] = $metadata['pageMotion'];
 			$parsed['hasMetadata'] = $metadata['hasMetadata'];

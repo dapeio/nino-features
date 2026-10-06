@@ -83,7 +83,7 @@ last line:
 One that starts over after the last line, with the pause button:
 
 ```html
-<div class="nino-typewriter" data-typewriter-loop="1" data-typewriter-toggle="[[/typewriter/toggle]]">
+<div class="nino-typewriter" data-typewriter-loop="1" data-typewriter-toggle="[[/feature/typewriter/pause/label]]">
 	<p>Handmade in Munich.</p>
 	<p>Since 1998.</p>
 </div>
@@ -166,7 +166,7 @@ of `data-typewriter-toggle`.
 
 | Fill | English | Deutsch |
 | --- | --- | --- |
-| `[[/typewriter/toggle]]` | Pause animation | Animation pausieren |
+| `[[/feature/typewriter/pause/label]]` | Pause animation | Animation pausieren |
 
 The install unit merges it into the project's own `text/<locale>.php` at
 activation, for every available locale and add-only, so a label a project

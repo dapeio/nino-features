@@ -562,7 +562,7 @@ namespace Nino\Modules\Design {
 		 *	The one thing an /_admin request cannot give the frames: a page.
 		 *
 		 *	They resolve their title through a nested fill,
-		 *	[[/webpage[[/nino/http/response/uri]]/title]] - and the inner one is
+		 *	[[/_nino/webpage[[/nino/http/response/uri]]/title]] - and the inner one is
 		 *	'/_admin' here, which is no webpage. The project's own front page
 		 *	stands in where there is one; it is the page a header gets judged on
 		 *	anyway
@@ -582,8 +582,8 @@ namespace Nino\Modules\Design {
 
 			return [
 				'/nino/http/response/uri' 			=> '/design-preview',
-				'/webpage/design-preview/title' => $stand,
-				'/webpage/design-preview/name' 	=> $stand,
+				'/_nino/webpage/design-preview/title' => $stand,
+				'/_nino/webpage/design-preview/name' 	=> $stand,
 			];
 		}
 	}

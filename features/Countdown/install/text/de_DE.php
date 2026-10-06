@@ -10,17 +10,17 @@ return [
 	/*	Beide Formen jeder Einheit, denn sonst steht dort „1 Tage". Das Skript
 		bekommt die zwei Wörter am Teil selbst und wählt nur zwischen ihnen -
 		ein statisches Asset kann keinen Textfill lesen	*/
-	'[[/countdown/day]]'			=> 'Tag',
-	'[[/countdown/days]]'			=> 'Tage',
-	'[[/countdown/hour]]'			=> 'Stunde',
-	'[[/countdown/hours]]'		=> 'Stunden',
-	'[[/countdown/minute]]'		=> 'Minute',
-	'[[/countdown/minutes]]'	=> 'Minuten',
-	'[[/countdown/second]]'		=> 'Sekunde',
-	'[[/countdown/seconds]]'	=> 'Sekunden',
+	'[[/feature/countdown/unit-day/one]]'		=> 'Tag',
+	'[[/feature/countdown/unit-day/many]]'		=> 'Tage',
+	'[[/feature/countdown/unit-hour/one]]'		=> 'Stunde',
+	'[[/feature/countdown/unit-hour/many]]'		=> 'Stunden',
+	'[[/feature/countdown/unit-minute/one]]'	=> 'Minute',
+	'[[/feature/countdown/unit-minute/many]]'	=> 'Minuten',
+	'[[/feature/countdown/unit-second/one]]'	=> 'Sekunde',
+	'[[/feature/countdown/unit-second/many]]'	=> 'Sekunden',
 
 	// Was dort steht, wenn der Moment vorbei ist, sofern der Shortcode nichts
 	// gesagt hat. Wer done="Der Verkauf läuft" schreibt, sagt etwas, das
 	// dieser Satz nicht sagen kann
-	'[[/countdown/done]]'			=> 'Es ist so weit',
+	'[[/feature/countdown/end/message]]'	=> 'Es ist so weit',
 ];

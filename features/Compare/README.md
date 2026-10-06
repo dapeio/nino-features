@@ -55,9 +55,9 @@ it is, plus a named control that changes how much of it is showing.
 
 | Fill | English |
 | --- | --- |
-| `[[/compare/before]]` | Before |
-| `[[/compare/after]]` | After |
-| `[[/compare/handle]]` | Move the divider between the two pictures |
+| `[[/feature/compare/side/before]]` | Before |
+| `[[/feature/compare/side/after]]` | After |
+| `[[/feature/compare/handle/label]]` | Move the divider between the two pictures |
 
 From then on they are the project's: an editor changes them in the Text panel and
 never opens a feature directory. A key the project already had is left alone.

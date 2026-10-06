@@ -77,14 +77,89 @@ namespace Nino\Modules\Templates {
 			if( Admin::guard( $appData, $request ) === false )
 				return;
 
+			$data = Admin::postData();
+			$name = (string) ( $data['name'] ?? '' );
+			$category = Documents::category( $appData, $name );
+
+			if( $category === null ) {
+				\Nino\Http::fail( $request, 400, 'the page template is unknown, or its name gives no category' );
+				return;
+			}
+
 			try {
-				$result = Composer::compose( Admin::postData() );
+				$result = Composer::compose( $data );
 			} catch( \InvalidArgumentException $exception ) {
 				\Nino\Http::fail( $request, 400, $exception->getMessage() );
 				return;
 			}
 
+			// The keys a section creates are /template/<category>/<its id>/...,
+			// and the category is the document's, not the draft's to choose
+			if( (string) $result['spec']['pageId'] !== $category ) {
+				\Nino\Http::fail( $request, 400, 'the page ID of a section is the category of its page template, '. $category );
+				return;
+			}
+
+			// The sections of the panel's open draft, which may not be saved yet:
+			// a section inserted a moment ago has written its keys already, and
+			// updating it is not a clash with itself
+			$draftIds = array_values( array_filter( (array) ( $data['sectionIds'] ?? [] ), static fn( mixed $id ): bool => is_string( $id ) ) );
+			$taken = self::_takenId( $appData, $name, $category, (string) $result['spec']['id'], $draftIds );
+			if( $taken !== null ) {
+				\Nino\Http::fail( $request, 409, $taken['error'], 'section-id-taken', $taken['params'] );
+				return;
+			}
+
 			\Nino\Http::ok( $request, $result );
+		}
+
+		/**
+		 *	Whether a new section's id would make it write keys that are not its
+		 *	own. A hand-written page-services.tpl reads /template/page-services/
+		 *	intro/title; a section with the id "intro" creates exactly that key,
+		 *	and whoever edited the section would be editing the introduction too,
+		 *	without a word about it. Keys of a section the document already holds
+		 *	are that section's, and a section being updated finds its own - one
+		 *	the file holds, or one the open draft holds and the file does not yet
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$name					The page template's name
+		 *	@param		string		$category			Its category
+		 *	@param		string		$id						The section's id
+		 *	@param		array			$draftIds			The ids of the Builder sections in the panel's open draft
+		 *
+		 *	@return 	array|null						Why not, as { error, params: [ id, key, a free id ] }, or null
+		 */
+		private static function _takenId( array &$appData, string $name, string $category, string $id, array $draftIds ): ?array {
+
+			if( in_array( $id, $draftIds, true ) === true || in_array( $id, Documents::sectionIds( $appData, $name ), true ) === true )
+				return null;
+
+			$keys = array_merge(
+				array_map( static fn( array $entry ): string => (string) ( $entry['key'] ?? '' ), \Nino\Text::entries( $appData, true ) ),
+				array_map( 'strval', array_keys( (array) ( $appData['/nino/html/images'] ?? [] ) ) )
+			);
+
+			$first = static function( string $candidate ) use ( $category, $keys ): ?string {
+				$prefix = '/template/'. $category. '/'. $candidate. '/';
+				foreach( $keys as $key )
+					if( str_starts_with( $key, $prefix ) === true )
+						return $key;
+				return null;
+			};
+
+			$found = $first( $id );
+			if( $found === null )
+				return null;
+
+			$free = 2;
+			while( $first( $id. '-'. $free ) !== null && $free < 100 )
+				$free++;
+
+			return [
+				'error' => 'the key '. $found. ' already belongs to this page template, and a section with the id "'. $id. '" would write it too - use another id, such as "'. $id. '-'. $free. '"',
+				'params' => [ $id, $found, $id. '-'. $free ],
+			];
 		}
 
 		public static function apiPreview( array &$appData, array &$request ): void {

@@ -39,7 +39,7 @@ namespace Nino\Modules\Templates {
 		/**
 		 * One shortcode's argument list, for the inert preview's own matching.
 		 * Quoted values are consumed whole because a bound alt text compiles to
-		 * alt="[[/page-…/…-alt]]" - reading up to the first "]" ended the match
+		 * alt="[[/template/page-…/…-alt]]" - reading up to the first "]" ended the match
 		 * inside that fill and left its tail (]"]) standing in the preview.
 		 */
 		private const string SHORTCODE_ARGUMENTS = '(?:"[^"]*"|\'[^\']*\'|[^\]"\'])*';

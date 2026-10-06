@@ -73,9 +73,9 @@ foreach( [ 'en_US', 'de_DE' ] as $locale ) {
 	$text = \Nino\Filesystem::getFileContent( $appData, '/text/'. $locale. '.php', [] );
 	check( 'activation merged both forms of every unit into text/'. $locale. '.php',
 		array_diff_key( array_flip( [
-			'[[/countdown/day]]', '[[/countdown/days]]', '[[/countdown/hour]]', '[[/countdown/hours]]',
-			'[[/countdown/minute]]', '[[/countdown/minutes]]', '[[/countdown/second]]', '[[/countdown/seconds]]',
-			'[[/countdown/done]]',
+			'[[/feature/countdown/unit-day/one]]', '[[/feature/countdown/unit-day/many]]', '[[/feature/countdown/unit-hour/one]]', '[[/feature/countdown/unit-hour/many]]',
+			'[[/feature/countdown/unit-minute/one]]', '[[/feature/countdown/unit-minute/many]]', '[[/feature/countdown/unit-second/one]]', '[[/feature/countdown/unit-second/many]]',
+			'[[/feature/countdown/end/message]]',
 		] ), $text ) === [] );
 }
 
@@ -202,7 +202,7 @@ check( 'the four parts are drawn by default, largest first',
 check( 'every part carries both forms of its name, resolved before the page was sent',
 	str_contains( $html, 'data-countdown-one="day" data-countdown-many="days"' ) === true
 	&& str_contains( $html, 'data-countdown-one="second" data-countdown-many="seconds"' ) === true
-	&& str_contains( $html, '[[/countdown/' ) === false );
+	&& str_contains( $html, '[[/feature/countdown/' ) === false );
 
 $some = \Nino\Html::renderHtml( $appData, '[countdown to="2026-12-24 18:00" units="hours,days"]' );
 check( 'a shorter list of parts is taken, and always drawn largest first whatever order it was written in',
@@ -295,6 +295,6 @@ echo "Deactivation\n";
 check( 'deactivation succeeds', \Nino\Features::deactivate( $appData, 'countdown' ) === true );
 check( 'the class is gone from /nino/modules', in_array( '\\Nino\\Modules\\Countdown', \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/modules'], true ) === false );
 check( 'the words stay in the project\'s text files - they are the project\'s now',
-	isset( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/countdown/days]]'] ) === true );
+	isset( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/feature/countdown/unit-day/many]]'] ) === true );
 
 ninoDone( $appData );

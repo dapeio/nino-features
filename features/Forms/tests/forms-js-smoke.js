@@ -569,7 +569,7 @@ const named = panel( { forms : two, types : allTypes } ).panel;
 [
 	[ 'Straße', 'strasse' ], [ 'Ihre Nachricht', 'ihre-nachricht' ], [ 'Größe', 'groesse' ], [ 'ÄÖÜ', 'aeoeue' ], [ 'Café', 'cafe' ],
 	[ '1. Wahl', 'field-1-wahl' ], [ '  E-Mail (privat) ', 'e-mail-privat' ], [ '', 'field' ], [ '???', 'field' ],
-	[ '[[/form/label/email]]', 'email' ], [ '[[/x/y/Ihre Größe]]', 'ihre-groesse' ], [ 'date', 'date-field' ], [ 'Date', 'date-field' ], [ 'ID', 'id-field' ],
+	[ '[[/template/common/form/email]]', 'email' ], [ '[[/x/y/Ihre Größe]]', 'ihre-groesse' ], [ 'date', 'date-field' ], [ 'Date', 'date-field' ], [ 'ID', 'id-field' ],
 ].forEach( function( fixture ) {
 	check( '_deriveName: "'+ fixture[0]+ '" gives "'+ fixture[1]+ '"', named._deriveName( fixture[0], [], reservedNames ) === fixture[1] );
 } );

@@ -194,7 +194,7 @@ namespace Nino\Modules {
 			$given = trim( $given );
 
 			if( $given === '' )
-				return '[[/compare/'. $side. ']]';
+				return '[[/feature/compare/side/'. $side. ']]';
 
 			return htmlspecialchars( \Nino\Html::renderHtml( $appData, $given ), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
 		}

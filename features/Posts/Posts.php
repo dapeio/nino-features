@@ -48,7 +48,7 @@ namespace Nino\Modules {
 		/*	The internal uri of a section's two routes - the identity its text
 			keys hang off, and what the response callback is registered on.
 			Separate identities on purpose: a list page and a post page want
-			different titles, and [[/webpage/blog/title]] can only be one thing */
+			different titles, and [[/_nino/webpage/blog/title]] can only be one thing */
 		public const string INDEX_URI = '/%s';
 		public const string POST_URI 	= '/%s/post';
 
@@ -262,7 +262,7 @@ namespace Nino\Modules {
 
 			/*	The page's own title and description, for this request only.
 				getFills() merges the runtime fills over the text files, so this
-				wins over [[/webpage/blog/post/title]] without the text key
+				wins over [[/_nino/webpage/blog/post/title]] without the text key
 				having to go away - which is what makes it a fallback for a post
 				whose title field is empty rather than dead weight */
 			$fills 	= [];
@@ -270,10 +270,10 @@ namespace Nino\Modules {
 			$summary= self::field( $section, $element, 'summary' );
 
 			if( $title !== '' )
-				$fills['/webpage'. $request['/nino/http/response']['uri']. '/title'] = $title;
+				$fills['/_nino/webpage'. $request['/nino/http/response']['uri']. '/title'] = $title;
 
 			if( $summary !== '' )
-				$fills['/webpage'. $request['/nino/http/response']['uri']. '/description'] = $summary;
+				$fills['/_nino/webpage'. $request['/nino/http/response']['uri']. '/description'] = $summary;
 
 			if( $fills !== [] )
 				\Nino\Html::addFills( $appData, $fills, '*' );

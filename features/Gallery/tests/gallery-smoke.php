@@ -442,11 +442,11 @@ check( 'no class the templates or the stylesheet write is one Nino.css styles - 
 // A caption is editor text and may be a textfill, which is how one caption
 // serves every language - and what comes out of the fill engine is escaped
 // like anything else that reaches an attribute
-\Nino\Html::addFills( $appData, [ '[[/gallery/caption/one]]' => 'Am Pass "oben"' ], '*' );
-callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[0], 'locale' => 'en_US', 'caption' => '[[/gallery/caption/one]]' ] );
+\Nino\Html::addFills( $appData, [ '[[/project/gallery/one/caption]]' => 'Am Pass "oben"' ], '*' );
+callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[0], 'locale' => 'en_US', 'caption' => '[[/project/gallery/one/caption]]' ] );
 $filled = \Nino\Html::renderHtml( $appData, '[gallery album="trip"]' );
 check( 'a caption written as a fill is resolved, and what comes out is escaped', str_contains( $filled, 'data-caption="Am Pass &quot;oben&quot;"' ) === true
-	&& str_contains( $filled, '[[/gallery/caption/' ) === false );
+	&& str_contains( $filled, '[[/project/gallery/' ) === false );
 
 // The alt text is a text of its own, and so is each language's. What the
 // thumbnail says is the alt text; what the Lightbox shows under the picture is

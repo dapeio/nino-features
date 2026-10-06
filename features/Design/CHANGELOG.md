@@ -200,6 +200,28 @@ A release is the tag `design-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The frames are `frame-header.tpl` and `frame-footer.tpl`, and read Nino
+  1.4's text keys.** Applying a set writes the project's
+  `templates/frame-header.tpl` and `frame-footer.tpl` (`theme.header.tpl` and
+  `theme.footer.tpl` before), which the base unit delivers under the same names
+  and `html-header.tpl` includes with `[template /templates/frame-header]`. The
+  21 frames read `/project/company/general/name` and its siblings under
+  `/project/company/`, `/_nino/webpage[[…]]/title`,
+  `/template/frame-header/navigation/label`,
+  `/template/common/navigation/footer`, `/template/frame-footer/contact/title`,
+  `/template/frame-footer/label/address`, `/template/common/label/phone`,
+  `/template/common/label/email` and `/nino/date/year`, for what they read as
+  `/company/...`, `/webpage[[…]]/title`, `/website/header/title/navigation`,
+  `/website/footer/title/navigation`, `…/getintouch`,
+  `/global/{adress,phone,email}` and `/date/year`. The preview's page details
+  are `/_nino/webpage/design-preview/…`. Nino 1.4.0 renames the keys the feature
+  reads and it is renamed with them, so `nino` is `^1.4`: a Nino before 1.4 has
+  neither the words nor the keys, and is not offered the feature. A project that
+  applied a set before has the old files: apply it again, and copy what it
+  edited by hand. Nothing has been published under the old keys, so there is no
+  migration; a project that already has texts under them copies the values to
+  the new keys.
+
 - **The preview specimen is written in English.** Its demonstration copy, its
   control labels and the two constants behind them were German in a catalogue
   that is English everywhere else, as were the `@knob` notes in 35 library

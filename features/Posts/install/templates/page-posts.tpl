@@ -2,8 +2,8 @@
 <section class="nino-section">
 	<div class="nino-grid-row">
 		<div class="nino-grid-100">
-			<h2 class="nino-section-title">[[/posts/index/title]]</h2>
-			<p class="nino-section-subtitle">[[/posts/index/intro]]</p>
+			<h2 class="nino-section-title">[[/template/page-posts/intro/title]]</h2>
+			<p class="nino-section-subtitle">[[/template/page-posts/intro/text]]</p>
 		</div>
 	</div>
 	<div class="nino-grid-row">

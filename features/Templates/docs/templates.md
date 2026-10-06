@@ -43,7 +43,7 @@ Use HTTPS, keep developer accounts few and work from a recoverable project state
 
 ## Main workflow
 
-1. Select a page template in the left rail or create one with **New page template**. The dialog asks for the complete filename, display name, header, footer and VPA default.
+1. Select a page template in the left rail or create one with **New page template**. The dialog asks for the complete filename, display name, header, footer and VPA default. The filename is the category of the template's text keys: `page-` and lowercase words joined by single hyphens, so `page-services.tpl` writes `/template/page-services/<section>/<name>`. An existing `page-*.tpl` whose name is no category (`page-Foo.tpl`, `page-a.b.tpl`) is listed and does not open.
 2. Choose **Add section**.
 3. In **Choose**, search or filter the fullscreen gallery and select a named-area preset from its real-markup preview. The library intentionally contains only the current version-3 contract. Reusable `.tpl` files do not appear as pseudo-sections; a supporting preset can expose them as a **Template** component inside one of its Areas.
 4. Continue to **Design** and give the section a meaningful ID such as `main-hero` or `services-overview`. This step holds the section's own frame - structure, background, layout - and each Area's component stack: add, reorder or remove components and choose their styles, against the live preview.
@@ -53,11 +53,11 @@ Use HTTPS, keep developer accounts few and work from a recoverable project state
 8. Reorder the HTML and template-section cards and save the page template.
 9. Complete translations afterwards under Translations or Text.
 
-Native quick fill creates new keys in the project’s native locale and changes only that locale for per-language keys. A pre-existing global key deliberately remains global. Existing translated buckets are never cleared or replaced.
+Native quick fill creates new keys in the project’s native locale and changes only that locale for per-language keys. A pre-existing global key deliberately remains global. Existing translated buckets are never cleared or replaced. It writes the open template's own keys, `/template/<its category>/...`, and no other: a property bound to a word of the project, to a word every template shares (`/template/common/...`), to another template's text or to a page's details is read, never written - the Text panel is where it is edited. The server takes the category from the template it is asked about, not from the request, and never writes a blacklisted key. A new section whose id would write keys the template already has - a hand-written `intro` the Builder did not make - is refused with a free id.
 
 ## Page and section settings
 
-**Name**, **Header**, **Footer** and **VPA** share one labeled Template Settings row. **Delete** and **Save template** stay together at the right end of the panel's head, beside its name, with the save state in front of them; **Add section** remains in the document toolbar even after content has been inserted. The header/footer selects show real `.tpl` filenames, list non-page templates known to the project and also offer **None**. Mail bodies (`mail-*`), the `robots`, `sitemap-xml` and `llms-txt` outputs and the frame's own `theme.header` and `theme.footer` are left out of these lists, of the section picker and of a preset's Template component - they are responses and parts of the frame, not parts of a page. They are not removed: a page that already points at one keeps it selected. The selected value is still written as an ordinary `[template /templates/<name>]` shortcode; the controls only prevent shell includes from being mistaken for movable page content. **Delete** removes exactly the loaded file revision after explicit confirmation; recovery requires version control or another external backup.
+**Name**, **Header**, **Footer** and **VPA** share one labeled Template Settings row. **Delete** and **Save template** stay together at the right end of the panel's head, beside its name, with the save state in front of them; **Add section** remains in the document toolbar even after content has been inserted. The header/footer selects show real `.tpl` filenames, list non-page templates known to the project and also offer **None**. Mail bodies (`mail-*`), the `robots`, `sitemap-xml` and `llms-txt` outputs and the frame's own `frame-header` and `frame-footer` are left out of these lists, of the section picker and of a preset's Template component - they are responses and parts of the frame, not parts of a page. They are not removed: a page that already points at one keeps it selected. The selected value is still written as an ordinary `[template /templates/<name>]` shortcode; the controls only prevent shell includes from being mistaken for movable page content. **Delete** removes exactly the loaded file revision after explicit confirmation; recovery requires version control or another external backup.
 
 **VPA** at template level supplies the default for sections whose motion is set to **Page**. Changing it recomposes managed sections, updates their `nino-vpa` class and remains persisted even while a template is still empty. **On** or **Off** on an individual section overrides that default.
 
@@ -224,7 +224,7 @@ The shared Section frame offers:
 | Background image | A new image slot, an existing one, or a fixed URL |
 
 A cover or parallax background binds one image. **New image slot** generates
-`/page-<page>/<section>/background` and creates it on insert, **Existing image
+`/template/<page>/<section>/background` and creates it on insert, **Existing image
 slot** points at a slot that is already there, and **Fixed value** writes the
 URL straight into the section — a project path such as
 `[[/nino/public]]/images/hero.jpg`, an ordinary relative path or an `https`
@@ -279,7 +279,7 @@ for the entry's position, counted from 0. The fills are double-bracketed -
 `[title]` would be read as a shortcode named `title` and stay on the page as
 text. A plain value is escaped, a rich text field (`'html' => true`) is sanitized
 for content, and `[` in either is written as `&#91;`; global fills such as
-`[[/company/name]]` resolve inside the item too. Two things are refused: a
+`[[/project/company/general/name]]` resolve inside the item too. Two things are refused: a
 nested `[elements]` block, because the kernel ends the outer block at the first
 `[/elements]`, and - for a collection the section creates - a rich text field
 inside a tag, since sanitizing keeps `"` and the value could close an attribute
@@ -300,7 +300,7 @@ order, while **Data** owns the same bindings. Every non-image property has an
 explicit source:
 
 - a single Area can create a generated key such as
-  `/page-home/services/title`, reference an existing textfill or store a fixed
+  `/template/page-home/services/title`, reference an existing textfill or store a fixed
   value directly in the compiled section;
 - an Elements Area creates a new collection or selects an existing one. Each
   non-image property can independently use a collection field, an existing
@@ -311,7 +311,7 @@ explicit source:
 
 The Builder lists ordinary textfills under **Content textfills** and keys from
 `text/blacklist.php` under **Technical values** — that is where a page's own
-`/webpage/<page>/uri` shows up, so a button can point at another page instead of
+`/_nino/webpage/<page>/uri` shows up, so a button can point at another page instead of
 carrying a hardcoded path. Blacklisting controls normal
 editor visibility; it does not make route URIs or other technical values
 invalid template bindings. Existing and technical bindings are referenced only
@@ -332,7 +332,7 @@ guessed from its value. Manifests may use the same contract for recommendations:
     'type' => 'button',
     'bindings' => [
         'label' => 'Contact us',
-        'href' => '/webpage/contact/uri',
+        'href' => '/_nino/webpage/contact/uri',
     ],
     'bindingSources' => [
         'label' => 'fixed',

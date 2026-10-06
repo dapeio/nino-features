@@ -100,7 +100,7 @@ namespace Nino\Modules {
 				nothing, the fill the install unit wrote is left for the kernel	*/
 			$title = trim( (string) ( $args['title'] ?? '' ) );
 			$title = $title === ''
-				? '[[/toc/title]]'
+				? '[[/feature/toc/list/title]]'
 				: $safe( \Nino\Html::renderHtml( $appData, $title ) );
 
 			/*	Which element the headings are taken from. A selector rather than

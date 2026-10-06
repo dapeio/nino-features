@@ -14,6 +14,15 @@ A release is the tag `compare-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The text keys follow Nino's grammar.** `/compare/before` and
+  `/compare/after` are `/feature/compare/side/before` and `…/after`,
+  `/compare/handle` is `/feature/compare/handle/label`:
+  `/<namespace>/<category>/<part>/<name>`, the feature's key as the category.
+  The values are the same. Nothing has been published under the old keys, so
+  there is no migration; a project that already has texts under them copies the
+  values to the new keys. `nino` stays `^1.3`: the keys are the feature's own,
+  and a Nino before 1.4 takes them as they come.
+
 - **The "Asset bundling" note asked a project to do something it does not
   have to.** It said `/features/Compare/assets/...` resolves against the
   project root, and that a project which moved its features elsewhere with

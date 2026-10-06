@@ -43,6 +43,15 @@ file. A release is the tag `typewriter-<version>` of dapeio/nino-features.
 
 ### Changed (behaviour)
 
+- **The pause button's text key follows Nino's grammar.** `/typewriter/toggle`
+  is `/feature/typewriter/pause/label`:
+  `data-typewriter-toggle="[[/feature/typewriter/pause/label]]"` in the markup,
+  in the manual and in the README. The attribute is the same. The value is the
+  same. Nothing has been published under the old keys, so there is no migration;
+  a project that already has texts under them copies the values to the new keys.
+  `nino` stays `^1.3`: the keys are the feature's own, and a Nino before 1.4
+  takes them as they come.
+
 - **A typewriter types once and stops, instead of looping forever.** Every
   `.nino-typewriter` whose `data-typewriter-loop` is missing or empty looped
   forever until now. Afterwards it types each line once and stops. The last

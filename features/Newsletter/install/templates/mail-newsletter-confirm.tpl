@@ -1,10 +1,10 @@
 [template /templates/mail-header]
-<h1>[[/mail/newsletter/title]]</h1>
-<p>[[/mail/newsletter/intro]]</p>
+<h1>[[/template/mail-newsletter-confirm/intro/title]]</h1>
+<p>[[/template/mail-newsletter-confirm/intro/text]]</p>
 <p style="text-align:center;">
-	<a href="[[/newsletter/confirm/url]]" style="display:inline-block; padding:[[/mail/style/spacing/1]] [[/mail/style/spacing/2]]; background:[[/mail/style/color/primary]]; color:[[/mail/style/color/background]]; text-decoration:none;">[[/mail/newsletter/action]]</a>
+	<a href="[[/feature/newsletter/confirm/url]]" style="display:inline-block; padding:[[/project/mail/spacing/small]] [[/project/mail/spacing/medium]]; background:[[/project/mail/color/primary]]; color:[[/project/mail/color/background]]; text-decoration:none;">[[/template/mail-newsletter-confirm/action/button]]</a>
 </p>
-<p class="mail-note">[[/mail/newsletter/notice]]</p>
-<p>[[/mail/newsletter/closing]]<br>
-[[/company/name]]</p>
+<p class="mail-note">[[/template/mail-newsletter-confirm/outro/notice]]</p>
+<p>[[/template/mail-newsletter-confirm/outro/closing]]<br>
+[[/project/company/general/name]]</p>
 [template /templates/mail-footer]

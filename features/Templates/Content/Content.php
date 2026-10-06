@@ -17,8 +17,11 @@ namespace Nino\Modules\Templates {
 	 */
 	class Content {
 
-		private const string KEY_PATTERN = '#^/[A-Za-z0-9][A-Za-z0-9_./-]*$#';
-		private const string GENERATED_KEY_PATTERN = '#^/page-[a-z][a-z0-9-]*/[a-z][a-z0-9-]*/[a-z][a-z0-9-]*$#';
+		// What may be read and bound: any text key, the ones the system writes -
+		// /_nino/webpage<uri>/... - included, the workbench's own never. What may
+		// be written is narrower and is the document's, see _owned()
+		private const string KEY_PATTERN = '#^/(?:_nino/)?[A-Za-z0-9][A-Za-z0-9_./-]*$#D';
+		private const string WORD = '[a-z0-9]+(?:-[a-z0-9]+)*';
 
 		public static function actions(): array {
 			return [
@@ -70,7 +73,12 @@ namespace Nino\Modules\Templates {
 			if( Admin::guard( $appData, $request ) === false )
 				return;
 
-			$keys = array_values( array_unique( array_map( 'strval', (array) ( Admin::postData()['keys'] ?? [] ) ) ) );
+			$data = Admin::postData();
+			$category = self::_category( $appData, $request, $data );
+			if( $category === null )
+				return;
+
+			$keys = array_values( array_unique( array_map( 'strval', (array) ( $data['keys'] ?? [] ) ) ) );
 			if( count( $keys ) > 100 ) {
 				\Nino\Http::fail( $request, 400, 'too many text keys' );
 				return;
@@ -99,6 +107,9 @@ namespace Nino\Modules\Templates {
 				$fields[] = [
 					'key' => $key,
 					'exists' => $entry !== null,
+					// A key of another template, of the project or of the system is
+					// read here and edited in the Text panel
+					'writable' => self::_owned( $key, $category ),
 					'global' => ( $entry['global'] ?? false ) === true,
 					'value' => $entry === null ? '' : (string) ( $entry['global'] === true ? ( $entry['values']['*'] ?? '' ) : ( $entry['values'][$native] ?? '' ) ),
 				];
@@ -113,6 +124,10 @@ namespace Nino\Modules\Templates {
 				return;
 
 			$data = Admin::postData();
+			$category = self::_category( $appData, $request, $data );
+			if( $category === null )
+				return;
+
 			$items = is_array( $data['items'] ?? null ) ? $data['items'] : [];
 			if( count( $items ) > 100 ) {
 				\Nino\Http::fail( $request, 400, 'too many text values' );
@@ -142,13 +157,17 @@ namespace Nino\Modules\Templates {
 					return;
 				}
 
+				// The document decides what is written, not the request: its own keys
+				// and nothing else. A binding to a word of the project, of the
+				// system or of another template stays what it is
+				if( self::_owned( $key, $category ) === false ) {
+					\Nino\Http::fail( $request, 400, 'only the text keys of this page template can be saved here - edit '. $key. ' in the Text panel' );
+					return;
+				}
+
 				$entry = $catalogue[$key] ?? null;
 				if( $entry === null && ( $item['create'] ?? false ) !== true ) {
 					\Nino\Http::fail( $request, 400, 'an existing textfill binding no longer exists' );
-					return;
-				}
-				if( $entry === null && preg_match( self::GENERATED_KEY_PATTERN, $key ) !== 1 ) {
-					\Nino\Http::fail( $request, 400, 'new textfills must use the generated page/section prefix' );
 					return;
 				}
 				if( $entry === null )
@@ -171,7 +190,8 @@ namespace Nino\Modules\Templates {
 				}
 			}
 
-			$results = \Nino\Text::saveBatch( $appData, $clean, true );
+			// Without the blacklist: a value a unit keeps up to date is no value to save from here
+			$results = \Nino\Text::saveBatch( $appData, $clean, false );
 			if( array_filter( $results, fn( array $result ): bool => ( $result['ok'] ?? false ) !== true ) !== [] ) {
 				\Nino\Http::fail( $request, 500, 'could not save every native text value' );
 				return;
@@ -228,6 +248,10 @@ namespace Nino\Modules\Templates {
 				return;
 
 			$data = Admin::postData();
+			$category = self::_category( $appData, $request, $data );
+			if( $category === null )
+				return;
+
 			$preset = Library::preset( (string) ( $data['preset'] ?? '' ) );
 			$uri = (string) ( $data['uri'] ?? '' );
 			$slot = (string) ( $data['slot'] ?? '' );
@@ -247,7 +271,7 @@ namespace Nino\Modules\Templates {
 					) );
 			$expectedSuffix = $slot === 'background' ? 'background' : $component;
 
-			if( $definition === null || preg_match( '#^/page-[a-z][a-z0-9-]*/[a-z][a-z0-9-]*/[a-z][a-z0-9-]*$#', $uri ) !== 1 || str_ends_with( $uri, '/'. $expectedSuffix ) === false ) {
+			if( $definition === null || self::_owned( $uri, $category ) === false || str_ends_with( $uri, '/'. $expectedSuffix ) === false ) {
 				\Nino\Http::fail( $request, 400, 'invalid page image slot' );
 				return;
 			}
@@ -260,6 +284,37 @@ namespace Nino\Modules\Templates {
 			] );
 
 			\Nino\Modules\Images\Slots::apiCreate( $appData, $request );
+		}
+
+		/**
+		 *	The category of the page template a request is about, which is the
+		 *	template's name without .tpl (see \Nino\Modules\Template::category())
+		 *	and the one thing the builder may write under: /template/<category>/...
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		&$request			(reference) Request; answered here when there is no category
+		 *	@param		array 		$data					What was posted: 'name' is the document's
+		 *
+		 *	@return 	string|null							null where the request has been answered
+		 */
+		private static function _category( array &$appData, array &$request, array $data ): ?string {
+
+			$category = Documents::category( $appData, (string) ( $data['name'] ?? '' ) );
+
+			if( $category === null )
+				\Nino\Http::fail( $request, 400, 'the page template is unknown, or its name gives no category' );
+
+			return $category;
+		}
+
+		/**
+		 *	@param		string		$key
+		 *	@param		string		$category			The document's
+		 *
+		 *	@return 	bool									Whether the key is /template/<category>/<part>/<name>
+		 */
+		private static function _owned( string $key, string $category ): bool {
+			return preg_match( '#^/template/'. preg_quote( $category, '#' ). '/'. self::WORD. '/'. self::WORD. '$#D', $key ) === 1;
 		}
 
 		private static function _validKey( string $key ): bool {

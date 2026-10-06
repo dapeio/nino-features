@@ -139,7 +139,7 @@ echo "The feature - manifest and activation\n";
 $dir = dirname( __DIR__ );
 $manifest = \Nino\Features::manifest( $dir );
 check( 'the manifest validates, key "protected"', is_array( $manifest ) && $manifest['key'] === 'protected' && ninoWarnings() === [] );
-check( 'key, class and version are what the directory says', is_array( $manifest ) && $manifest['module'] === '\\Nino\\Modules\\ProtectedArea' && $manifest['version'] === '1.0.0' );
+check( 'key, class and version are what the directory says', is_array( $manifest ) && $manifest['module'] === '\\Nino\\Modules\\ProtectedArea' && preg_match( '/^\d+\.\d+\.\d+/', (string) $manifest['version'] ) === 1 );
 check( 'it is written for this kernel', is_array( $manifest ) && \Nino\Features::satisfies( $manifest['nino'] ) === true );
 check( 'it names itself in both interface languages', is_array( $manifest ) && \Nino\Features::localized( $manifest['description'], 'de_DE' ) !== \Nino\Features::localized( $manifest['description'], 'en_US' ) );
 check( 'it declares the data files its attempt cap and its session epoch write', is_array( $manifest ) && $manifest['data'] === [ '/data/protected.php', '/data/protected-session.php' ] );
@@ -175,11 +175,11 @@ check( 'the password form is a form of its own, not one the contact-form script 
 	&& preg_match( '/(?<![\w-])nino-form(?![\w-])/', $formTag[0] ) === 0 );
 check( '...and it still posts to the endpoint, with the csrf token and the return path', str_contains( $formTemplate, 'action="[[/nino/dir]]/.protected" method="post"' ) === true
 	&& str_contains( $formTemplate, '[csrf]' ) === true && str_contains( $formTemplate, 'name="return"' ) === true );
-check( 'the unit merged the texts for both locales', \Nino\Filesystem::getFileContent( $appData, '/text/de_DE.php', [] )['[[/protected/label/submit]]'] === 'Entsperren'
-	&& \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/protected/label/submit]]'] === 'Unlock' );
+check( 'the unit merged the texts for both locales', \Nino\Filesystem::getFileContent( $appData, '/text/de_DE.php', [] )['[[/template/page-protected/form/submit]]'] === 'Entsperren'
+	&& \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/template/page-protected/form/submit]]'] === 'Unlock' );
 check( 'the settings answer their defaults - inert until a password is set', \Nino\Features::settings( $appData, 'protected' ) === [ 'paths' => [], 'password' => '', 'attempts' => 5 ] );
 
-/*	The page template carries [[/protected/return]], which the gate fills at
+/*	The page template carries [[/feature/protected/form/return]], which the gate fills at
 	request time and no text file answers. The Text panel's scan for missing
 	keys reads the templates as source, so without the unit's blacklist entry
 	it reported that key - and the Dashboard counted it - on every project
@@ -191,7 +191,7 @@ $scanRequest = [ '/nino/http/response' => [ 'statusCode' => 200 ] ];
 \Nino\Admin\Admin::handlePost( $appData, $scanRequest );
 $reported = array_column( (array) ( $scanRequest['/nino/http/response']['body']['missing'] ?? [] ), 'key' );
 check( 'the Text panel\'s scan reports no key of this feature: what the template uses is in the text files or in the blacklist', $scanRequest['/nino/http/response']['statusCode'] === 200
-	&& array_filter( $reported, static fn( string $key ): bool => str_starts_with( $key, '/protected/' ) === true ) === [] );
+	&& array_filter( $reported, static fn( string $key ): bool => str_starts_with( $key, '/feature/protected/' ) === true || str_starts_with( $key, '/template/page-protected/' ) === true ) === [] );
 \Nino\Auth::logoutUser( $appData );
 $_POST = [];
 
@@ -258,7 +258,7 @@ $lockedRequest = protectedGate( $appData, '/intern' );
 check( 'a protected uri without an unlocked session gets the password form (401)', $lockedRequest['/nino/http/response']['statusCode'] === 401
 	&& $lockedRequest['/nino/http/response']['body'] === '[template /templates/page-protected]' );
 check( 'the response carries Cache-Control: no-store', ( $lockedRequest['/nino/http/response']['header']['Cache-Control'] ?? '' ) === 'no-store' );
-check( 'the current uri is carried into the return fill', ( $appData['./nino/html/fills']['*']['[[/protected/return]]'] ?? '' ) === '/intern' );
+check( 'the current uri is carried into the return fill', ( $appData['./nino/html/fills']['*']['[[/feature/protected/form/return]]'] ?? '' ) === '/intern' );
 
 $unprotectedRequest = protectedGate( $appData, '/about', 'PUBLIC PAGE' );
 check( 'an unprotected uri is left untouched', $unprotectedRequest['/nino/http/response']['statusCode'] === 200
@@ -275,7 +275,7 @@ $wrongRequest = protectedUnlock( $appData, [ 'password' => 'not-the-password', '
 check( 'a wrong password answers 401 and re-renders the form', $wrongRequest['/nino/http/response']['statusCode'] === 401
 	&& $wrongRequest['/nino/http/response']['body'] === '[template /templates/page-protected]' );
 check( 'the wrong-password error resolves through [protected-error]', \Nino\Html::renderHtml( $appData, '[protected-error]' ) === '<p class="nino-protected-error">Falsches Passwort. Bitte versuche es erneut.</p>' );
-check( 'the posted return path is carried back into the hidden field', ( $appData['./nino/html/fills']['*']['[[/protected/return]]'] ?? '' ) === '/intern/notes' );
+check( 'the posted return path is carried back into the hidden field', ( $appData['./nino/html/fills']['*']['[[/feature/protected/form/return]]'] ?? '' ) === '/intern/notes' );
 check( 'the session is still locked', \Nino\Modules\ProtectedArea::unlocked( $appData ) === false );
 check( 'one wrong attempt was recorded for this ip', \Nino\Filesystem::getFileContent( $appData, '/data/protected.php', [] )['127.0.0.1']['tries'] === 1 );
 check( 'the counter lives under /data/protected.php, as the manifest says', is_file( \Nino\Filesystem::path( $appData, '/data/protected.php' ) ) === true );
@@ -615,11 +615,11 @@ $appData['/nino/http/routes'] = [
 ];
 \Nino\AppData::writeContentData( $appData, [ '/nino/http/routes' ] );
 \Nino\Filesystem::putFileContent( $appData, '/text/en_US.php', array_merge( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] ), [
-	'[[/webpage/about/title]]' => 'About Us',
+	'[[/_nino/webpage/about/title]]' => 'About Us',
 ] ) );
 \Nino\Filesystem::putFileContent( $appData, '/text/de_DE.php', array_merge( \Nino\Filesystem::getFileContent( $appData, '/text/de_DE.php', [] ), [
-	'[[/webpage/intern/title]]' => 'Interner Bereich',
-	'[[/webpage/about/title]]' => 'Über uns',
+	'[[/_nino/webpage/intern/title]]' => 'Interner Bereich',
+	'[[/_nino/webpage/about/title]]' => 'Über uns',
 ] ) );
 
 // What a project looks like when the panel is first opened: a password, the

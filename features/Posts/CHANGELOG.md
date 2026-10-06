@@ -29,6 +29,22 @@ A release is the tag `posts-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The text keys follow Nino's grammar, and the feature reads Nino 1.4's.**
+  `/posts/index/title` and `intro` are `/template/page-posts/intro/title` and
+  `…/text` (the words of the `page-posts.tpl` the unit copies); `/posts/label`,
+  `prev` and `next` are `/feature/posts/pager/label`, `prev` and `next` (what
+  `[posts]` draws); `/posts/nav/label`, `prev` and `next` are
+  `/feature/posts/navigation/...`, chosen by `page-post.tpl` as
+  `[[/feature/posts/navigation/[[.rel]]]]`. A post without a title takes the
+  title of `/_nino/webpage/blog/post/title`, and the page details it sets for a
+  post are `/_nino/webpage<uri>/title` and `…/description`. The README says that
+  the Routes panel lists the two routes since Nino 1.4, in its *Feature routes*,
+  for a name, a title and a description. Nino 1.4.0 renames the keys the feature
+  reads and it is renamed with them, so `nino` is `^1.4`: a Nino before 1.4 has
+  neither the words nor the keys, and is not offered the feature. Nothing has
+  been published under the old keys, so there is no migration; a project that
+  already has texts under them copies the values to the new keys.
+
 - **Three counts of things named a smaller number than there is.** The README
   announced "two consequences worth knowing" above three bullets - the third
   arrived with the SEO callback in 1.1.0 - and called the values a block adds

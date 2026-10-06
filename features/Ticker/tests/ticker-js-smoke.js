@@ -452,7 +452,7 @@ loopingButton.resize( 3000 );
 loopingButton.settle();
 check( 'a row that loops keeps its button, since it never stops moving', loopingButton.toggle() !== null && loopingButton.host.children.length === 2 );
 
-[ [ 'an empty label', '' ], [ 'a label of nothing but blanks', '   ' ], [ 'a label that is still a fill nobody resolved', '[[/ticker/toggle]]' ] ].forEach( function( bad ) {
+[ [ 'an empty label', '' ], [ 'a label of nothing but blanks', '   ' ], [ 'a label that is still a fill nobody resolved', '[[/feature/ticker/pause/label]]' ] ].forEach( function( bad ) {
 	const none = page( { toggle : bad[1] } );
 	check( bad[0]+ ' draws no button', none.toggle() === null && none.host.children.length === 1 );
 } );

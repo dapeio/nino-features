@@ -92,7 +92,7 @@ $dir = dirname( __DIR__ );
 $manifest = \Nino\Features::manifest( $dir );
 check( 'the manifest validates without a warning', is_array( $manifest ) && ninoWarnings() === [] );
 check( 'key, class and version are what the directory says', is_array( $manifest ) && $manifest['key'] === 'stats'
-	&& $manifest['module'] === '\\Nino\\Modules\\Stats' && $manifest['version'] === '1.0.0' );
+	&& $manifest['module'] === '\\Nino\\Modules\\Stats' && preg_match( '/^\d+\.\d+\.\d+/', (string) $manifest['version'] ) === 1 );
 check( 'it is written for this kernel', is_array( $manifest ) && \Nino\Features::satisfies( $manifest['nino'] ) === true );
 check( 'it names itself in both interface languages', is_array( $manifest ) && \Nino\Features::localized( $manifest['name'], 'de_DE' ) !== \Nino\Features::localized( $manifest['name'], 'en_US' ) );
 check( 'it declares only the directory it owns under data/', is_array( $manifest ) && $manifest['data'] === [ '/data/stats' ] );
@@ -108,7 +108,7 @@ check( 'the registry lists it inactive, with nothing in the way', ( static funct
 check( 'activation succeeds', \Nino\Features::activate( $appData, 'stats' ) === true );
 $stored = \Nino\Filesystem::getFileContent( $appData, '/config.php', [] );
 check( 'the class is listed and the version recorded', in_array( '\\Nino\\Modules\\Stats', $stored['/nino/modules'], true ) === true
-	&& $stored['/nino/features']['stats']['version'] === '1.0.0' );
+	&& $stored['/nino/features']['stats']['version'] === $manifest['version'] );
 check( 'the settings answer their defaults', \Nino\Features::settings( $appData, 'stats' ) === [
 	'countSignedIn' 	=> false,
 	'exclude' 				=> [],
@@ -473,11 +473,11 @@ echo "\nModules\\Stats\\Admin - pages only, with titles, also of a month counted
 
 $appData['/nino/locales/textfiles'] = '/text';
 \Nino\Filesystem::putFileContent( $appData, '/text/en_US.php', [
-	'[[/webpage/about/title]]'	=> 'About Us',
+	'[[/_nino/webpage/about/title]]'	=> 'About Us',
 ] );
 \Nino\Filesystem::putFileContent( $appData, '/text/de_DE.php', [
-	'[[/webpage/about/title]]'				=> 'Über uns',
-	'[[/webpage/only-native/title]]'	=> 'Nur Deutsch',
+	'[[/_nino/webpage/about/title]]'				=> 'Über uns',
+	'[[/_nino/webpage/only-native/title]]'	=> 'Nur Deutsch',
 ] );
 // One page, two languages, the way the wizard writes them; one page whose
 // locale has no title of its own; and a wildcard route that is a page

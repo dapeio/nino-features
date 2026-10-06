@@ -224,7 +224,7 @@ namespace Nino\Modules {
 			if( self::protects( $appData, $uri ) === false || self::unlocked( $appData ) === true )
 				return;
 
-			\Nino\Html::addFills( $appData, [ '[[/protected/return]]' => htmlspecialchars( $uri, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) ], '*' );
+			\Nino\Html::addFills( $appData, [ '[[/feature/protected/form/return]]' => htmlspecialchars( $uri, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) ], '*' );
 
 			$request['/nino/http/response']['body']										= '[template /templates/page-protected]';
 			$request['/nino/http/response']['statusCode']							= 401;
@@ -387,7 +387,7 @@ namespace Nino\Modules {
 			// an escaped value was still read by the fill and the shortcode
 			// pass - a locked visitor could put any of the project's templates,
 			// and any of its texts, into the 401 they were served
-			\Nino\Html::addFills( $appData, [ '[[/protected/return]]' => str_replace( '[', '&#91;', htmlspecialchars( $return, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) ) ], '*' );
+			\Nino\Html::addFills( $appData, [ '[[/feature/protected/form/return]]' => str_replace( '[', '&#91;', htmlspecialchars( $return, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) ) ], '*' );
 
 			// A runtime-only, per-request flag - never persisted - read back
 			// by doErrorShortcode() a few lines above

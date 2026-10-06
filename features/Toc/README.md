@@ -61,10 +61,10 @@ per event.
 
 | Fill | English | Deutsch |
 | --- | --- | --- |
-| `[[/toc/title]]` | On this page | Auf dieser Seite |
-| `[[/toc/anchor]]` | Link to this section | Link zu diesem Abschnitt |
+| `[[/feature/toc/list/title]]` | On this page | Auf dieser Seite |
+| `[[/feature/toc/anchor/label]]` | Link to this section | Link zu diesem Abschnitt |
 
-`[[/toc/anchor]]` reaches `toc.js` as a data attribute on the nav, resolved by the
+`[[/feature/toc/anchor/label]]` reaches `toc.js` as a data attribute on the nav, resolved by the
 fill engine before the page was sent — a static asset cannot read a text fill.
 
 ## Asset bundling

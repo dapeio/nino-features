@@ -113,8 +113,8 @@ check( 'the page template is in the project now', \Nino\Filesystem::fileExists( 
 // Add-only, and for every locale the project has
 foreach( [ 'en_US', 'de_DE' ] as $locale ) {
 	$text = \Nino\Filesystem::getFileContent( $appData, '/text/'. $locale. '.php', [] );
-	check( 'the site\'s words are in text/'. $locale. '.php', isset( $text['[[/hello/note]]'] ) === true
-		&& isset( $text['[[/hello/page/title]]'] ) === true );
+	check( 'the site\'s words are in text/'. $locale. '.php', isset( $text['[[/feature/hello/greeting/note]]'] ) === true
+		&& isset( $text['[[/template/page-hello/intro/title]]'] ) === true );
 }
 
 // The panel's own words are not: they are read out of features/Hello/text/
@@ -172,7 +172,7 @@ $html = \Nino\Html::renderHtml( $appData, '[hello]' );
 
 check( 'it greets, with the setting\'s default and the stored fallback', str_contains( $html, 'Hello, World!' ) === true );
 check( '...and its fill is resolved rather than printed', str_contains( $html, 'Rendered by the Hello World feature.' ) === true
-	&& str_contains( $html, '[[/hello/note]]' ) === false );
+	&& str_contains( $html, '[[/feature/hello/greeting/note]]' ) === false );
 check( 'an argument names somebody else', str_contains( \Nino\Html::renderHtml( $appData, '[hello name="Ada"]' ), 'Hello, Ada!' ) === true );
 
 /*	The one rule that is never optional: a shortcode argument comes straight
@@ -337,7 +337,7 @@ check( 'the class is gone from /nino/modules', in_array( '\\Nino\\Modules\\Hello
 	contract: the template and the words were merged in and stay, the stored
 	data stays for a reactivation, and only the running code goes	*/
 check( 'the page template stays - it is the project\'s file now', \Nino\Filesystem::fileExists( $appData, '/templates/page-hello.tpl' ) === true );
-check( 'the words stay too', isset( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/hello/note]]'] ) === true );
+check( 'the words stay too', isset( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/feature/hello/greeting/note]]'] ) === true );
 check( 'and what was stored is still there for a reactivation', \Nino\Filesystem::fileExists( $appData, \Nino\Modules\Hello::PATH ) === true );
 check( 'the feature is still on disk, listed and inactive', ( \Nino\Features::get( $appData, 'hello' )['active'] ?? true ) === false );
 

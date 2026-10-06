@@ -77,6 +77,12 @@ A release is the tag `search-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The README's and the docblock's examples of a text fill use Nino's key
+  grammar.** `[[/template/page-suche/form/query]]` and
+  `empty="[[/template/page-suche/results/empty]]"` - the words of the project's
+  own `page-suche.tpl` - where they said `[[/page-suche/query]]` and
+  `[[/page/search/empty]]`. Nothing in the code changed; `nino` stays `^1.3`.
+
 - **The list no longer names the panel a second time.** The workbench opens
   every pane with a head that names the panel, so the list's own "Elements
   search index" stood one line under "Search" and said the same thing again.

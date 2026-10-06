@@ -75,7 +75,7 @@ $feature = \Nino\Features::manifest( dirname( __DIR__ ) );
 check( 'the manifest reads, with the key and the class the directory implies', is_array( $feature ) === true
 	&& $feature['key'] === 'posts' && $feature['module'] === '\\Nino\\Modules\\Posts' );
 check( 'it is content, and names the kernel it needs', ( $feature['category'] ?? '' ) === 'content'
-	&& ( $feature['nino'] ?? '' ) === '^1.3' );
+	&& ( $feature['nino'] ?? '' ) === '^1.4' );
 check( 'the sections file is declared under data, so a backup carries it',
 	in_array( \Nino\Modules\Posts\Sections::PATH, (array) ( $feature['data'] ?? [] ), true ) === true );
 check( 'the posts themselves are not - they are ordinary elements, and /elements is backed up already',
@@ -135,7 +135,7 @@ check( '...with the three fields the defaults point at',
 	&& ( \Nino\Elements::getElementModel( $appData, '/posts' )['date']['type'] ?? '' ) === 'date' );
 check( '...and the two templates', \Nino\Filesystem::fileExists( $appData, '/templates/page-posts.tpl' ) === true
 	&& \Nino\Filesystem::fileExists( $appData, '/templates/page-post.tpl' ) === true );
-check( 'and the words those templates say', \Nino\Html::renderTextfill( $appData, '/posts/index/title' ) !== '' );
+check( 'and the words those templates say', \Nino\Html::renderTextfill( $appData, '/template/page-posts/intro/title' ) !== '' );
 
 // The section the rest of this runs against
 \Nino\Modules\Posts\Sections::write( $appData, \Nino\Modules\Posts\Sections::normalize( [ 'sections' => [
@@ -198,8 +198,8 @@ $request = postsResolve( $appData, '/blog/second-wind' );
 check( 'a slug that is a post resolves to it', \Nino\Modules\Posts::current( $appData ) === '/posts/second-wind'
 	&& $request['/nino/http/response']['statusCode'] === 200 );
 check( '...and the page takes the post\'s title over the route\'s',
-	\Nino\Html::renderTextfill( $appData, '/webpage/blog/post/title' ) === 'Second wind'
-	&& \Nino\Html::renderTextfill( $appData, '/webpage/blog/post/description' ) === 'And onwards.' );
+	\Nino\Html::renderTextfill( $appData, '/_nino/webpage/blog/post/title' ) === 'Second wind'
+	&& \Nino\Html::renderTextfill( $appData, '/_nino/webpage/blog/post/description' ) === 'And onwards.' );
 
 foreach( [
 	'a slug nobody has'						=> '/blog/nothing-here',
@@ -283,6 +283,28 @@ check( 'the way to the post before and the post after, in the section\'s own ord
 
 postsResolve( $appData, '/blog/third-rail' );
 check( '...and the newest post has no newer one', postsRender( $appData, '[post-nav][[.rel]] [/post-nav]' ) === 'next ' );
+
+/*	Two keys are composed - the page template's /feature/posts/navigation/[[.rel]] and the pager's
+	/feature/posts/pager/<which> - so a template or a class that broke the composition still renders:
+	the words themselves are what is looked at, in both languages, in the template the unit copies	*/
+postsResolve( $appData, '/blog/second-wind' );
+$navigation = trim( (string) preg_replace( '/^\[template [^\]]+\]\s*$/m', '', \Nino\Filesystem::getFileContent( $appData, '/templates/page-post.tpl', '' ) ) );
+foreach( [ 'en_US' => [ 'Previous post', 'Next post' ], 'de_DE' => [ 'Vorheriger Beitrag', 'Nächster Beitrag' ] ] as $locale => $words ) {
+	$appData['./nino/locales/current'] = $locale;
+	$rendered = postsRender( $appData, $navigation );
+	check( 'the page template says "'. $words[0]. '" and "'. $words[1]. '" under the way to the post before and after ('. $locale. ')',
+		str_contains( $rendered, '<p class="nino-section-subtitle">'. $words[0]. '</p>' ) === true && str_contains( $rendered, '<p class="nino-section-subtitle">'. $words[1]. '</p>' ) === true
+		&& str_contains( $rendered, '[[/feature' ) === false );
+}
+
+$appData['./nino/locales/current'] = 'en_US';
+$_GET = [];
+$textFile = \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] );
+\Nino\Filesystem::putFileContent( $appData, '/text/en_US.php', array_merge( $textFile, [ '[[/feature/posts/pager/next]]' => 'Further on' ] ) );
+check( 'the pager says what the project has set for its next link, a composed key', str_contains( postsRender( $appData, '[posts-pager]' ), 'Further on' ) === true );
+check( '...and a word given as an attribute wins over it', str_contains( postsRender( $appData, '[posts-pager next="More"]' ), '>More<' ) === true && str_contains( postsRender( $appData, '[posts-pager next="More"]' ), 'Further on' ) === false );
+\Nino\Filesystem::putFileContent( $appData, '/text/en_US.php', $textFile );
+$appData['./nino/locales/current'] = 'de_DE';
 
 
 echo "\nWhat a post may put in a page\n";

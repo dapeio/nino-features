@@ -47,23 +47,23 @@ New page templates SHOULD use explicit metadata and shell slots:
 	<div class="nino-grid-row nino-grid-middle">
 		<div class="nino-grid-100 nino-grid-m-50">
 			<h1 class="nino-section-title">
-				[[/page-services/services-intro/title]]
+				[[/template/page-services/services-intro/title]]
 			</h1>
 			<p class="nino-section-subtitle">
-				[[/page-services/services-intro/subtitle]]
+				[[/template/page-services/services-intro/subtitle]]
 			</p>
 			<div>
-				[[/page-services/services-intro/description]]
+				[[/template/page-services/services-intro/description]]
 			</div>
 			<a
 				class="nino-btn nino-btn--primary"
-				href="[[/page-services/services-intro/cta-uri]]"
+				href="[[/template/page-services/services-intro/cta-uri]]"
 			>
-				[[/page-services/services-intro/cta-label]]
+				[[/template/page-services/services-intro/cta-label]]
 			</a>
 		</div>
 		<div class="nino-grid-100 nino-grid-m-50 nino-img-cover">
-			[image /page-services/services-intro/image alt=""]
+			[image /template/page-services/services-intro/image alt=""]
 		</div>
 	</div>
 </section>
@@ -159,7 +159,9 @@ Each editable top-level section SHOULD have a unique semantic ID:
 ```
 
 The Builder rejects duplicate non-empty section IDs. Composer-created IDs match
-`^[a-z][a-z0-9-]*$`. Use that form for hand-authored sections too.
+`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`: words of lowercase letters and numbers joined by single
+hyphens, the first one starting with a letter. Use that form for hand-authored
+sections too.
 
 Only Composer-created sections have a valid
 `<!-- nino:section {...} -->` comment and can reopen their exact wizard
@@ -171,21 +173,35 @@ still movable and editable through the HTML+ editor.
 For section-owned native content, use:
 
 ```text
-/page-<pageId>/<sectionId>/<semantic-suffix>
+/template/<category>/<sectionId>/<semantic-suffix>
 ```
+
+`<category>` is the page template's file name without `.tpl`, prefix and all:
+`page-home.tpl` is `page-home`, and its keys are `/template/page-home/...`. It
+is also the page id the Builder shows, so a page template's name has to be one:
+`page-` and lowercase words joined by single hyphens (`page-404.tpl`,
+`page-2026-home.tpl`). A name with a dot, a capital or an underscore
+(`page-Foo.tpl`, `page-a.b.tpl`) has no category: the Builder lists the
+template and does not open it.
 
 Examples:
 
 ```text
-/page-home/main-hero/title
-/page-home/main-hero/subtitle
-/page-home/main-hero/cta-label
-/page-services/services-overview/description
+/template/page-home/main-hero/title
+/template/page-home/main-hero/subtitle
+/template/page-home/main-hero/cta-label
+/template/page-services/services-overview/description
 ```
 
 Rules:
 
-- page and section segments are stable lowercase slugs;
+- category and section segments are stable lowercase slugs;
+- the Builder reads and writes the keys of the template it has open, and only those: a
+  word of the project (`/project/...`), a word every template shares (`/template/common/...`),
+  a feature's or the page's details (`/_nino/webpage<uri>/...`) can be bound to a property, and
+  are edited in the Text panel. A section whose id would write keys the template already
+  has - a hand-written `intro`, say, that is not a Builder section - is refused, with an
+  id that is free;
 - the suffix describes meaning, not position or HTML tag;
 - use `title` rather than `h2` and `description` rather than `left-p-1`;
 - use `cta-label` and `cta-uri` as a pair;
@@ -195,9 +211,9 @@ Rules:
 General page metadata is separate:
 
 ```html
-[[/webpage[[/nino/http/response/uri]]/name]]
-[[/webpage[[/nino/http/response/uri]]/title]]
-[[/webpage[[/nino/http/response/uri]]/description]]
+[[/_nino/webpage[[/nino/http/response/uri]]/name]]
+[[/_nino/webpage[[/nino/http/response/uri]]/title]]
+[[/_nino/webpage[[/nino/http/response/uri]]/description]]
 ```
 
 The route's internal URI determines these values. Do not hardcode metadata to a
@@ -207,7 +223,7 @@ A page's reachable path is available the same way, so one page can link to
 another without repeating a path the Webpages step can change:
 
 ```html
-<a href="[[/webpage/site-contact/uri]]">[[/webpage/site-contact/name]]</a>
+<a href="[[/_nino/webpage/site-contact/uri]]">[[/_nino/webpage/site-contact/name]]</a>
 ```
 
 The wizard's Routes step and the Routes panel both write that key whenever they save a page: keyed
@@ -221,7 +237,7 @@ reads the routes directly - this key is for a deliberate single link.
 A native section image is an image slot:
 
 ```html
-[image /page-services/services-intro/image alt=""]
+[image /template/page-services/services-intro/image alt=""]
 ```
 
 Register and populate that slot through the existing Images APIs/tools. Do not
@@ -305,7 +321,7 @@ Create:
 _admin/install/library/pages/services/
 ├── manifest.php
 ├── images/
-│   └── page-services/hero/image.svg
+│   └── template/page-services/hero/image.svg
 ├── templates/
 │   └── page-services.tpl
 ├── text/
@@ -336,20 +352,31 @@ return [
 	'templates' => [
 		'page-services.tpl',
 	],
+	// What the Webpages step starts this page's name, title and description
+	// from: a string, or a string per locale
+	'suggest' => [
+		'uri' => '/services',
+		'name' => [ 'en_US' => 'Services', 'de_DE' => 'Leistungen' ],
+		'title' => [ 'en_US' => 'Services built around your goals', 'de_DE' => 'Leistungen für klare Ziele' ],
+		'description' => [
+			'en_US' => 'Strategy, design and implementation from one team.',
+			'de_DE' => 'Strategie, Design und Umsetzung aus einer Hand.',
+		],
+	],
 	'elementTypes' => [
 		'services.php',
 	],
 	'files' => [
-		'images/page-services/hero/image.svg',
+		'images/template/page-services/hero/image.svg',
 	],
-	// The picture the template shows with [image /page-services/hero/image
+	// The picture the template shows with [image /template/page-services/hero/image
 	// alt=""], seeded with the file above
 	'imageSlots' => [
-		'/page-services/hero/image' => [
+		'/template/page-services/hero/image' => [
 			'label' => [ 'en_US' => 'Services - hero image', 'de_DE' => 'Leistungen - Titelbild' ],
 			'width' => 1920,
 			'height' => 1080,
-			'filename' => 'page-services/hero/image.svg',
+			'filename' => 'template/page-services/hero/image.svg',
 		],
 	],
 ];
@@ -361,6 +388,7 @@ Current page-unit consumers recognize:
 - `requiresModules` using installer module slugs;
 - `routes`;
 - `templates`, including locale-keyed entries;
+- `suggest`, the starting `uri`, `name`, `title` and `description` of the page;
 - `elementTypes`;
 - `files`, copied from the unit to the same project-relative virtual path;
 - `imageSlots`, the image slots the unit's templates show, from the Nino
@@ -377,7 +405,9 @@ Current page-unit consumers recognize:
   never touched, so applying the step again does not reset an editor's
   image;
 - `blacklist`;
-- and `text/global.php` plus selected `text/<locale>.php`.
+- and `text/global.php` plus selected `text/<locale>.php`, whose keys are
+  `/template/<the template's category>/<part>/<name>` - nothing else. A page's
+  details are not text fragments: `[[/_nino/webpage<uri>/...]]` is the system's.
 
 Every declared `files` entry MUST be a unit-relative file or directory that
 exists. Tests should assert its observable copied output, not merely the
@@ -413,21 +443,15 @@ manifest. Choose one owner.
 declare(strict_types=1);
 
 return [
-	'[[/webpage/services/uri]]' => '/services',
-	'[[/webpage/services/name]]' => 'Services',
-	'[[/webpage/services/title]]' => 'Services built around your goals',
-	'[[/webpage/services/description]]'
-		=> 'Strategy, design and implementation from one team.',
-
-	'[[/page-services/services-intro/title]]'
+	'[[/template/page-services/services-intro/title]]'
 		=> 'Useful work, clearly delivered',
-	'[[/page-services/services-intro/subtitle]]'
+	'[[/template/page-services/services-intro/subtitle]]'
 		=> 'From the first idea to a maintainable website.',
-	'[[/page-services/services-intro/description]]'
+	'[[/template/page-services/services-intro/description]]'
 		=> 'Choose the support that fits the current stage of your project.',
-	'[[/page-services/services-intro/cta-label]]'
+	'[[/template/page-services/services-intro/cta-label]]'
 		=> 'Start a conversation',
-	'[[/page-services/services-intro/cta-uri]]'
+	'[[/template/page-services/services-intro/cta-uri]]'
 		=> '/contact',
 ];
 ```
@@ -439,38 +463,33 @@ return [
 declare(strict_types=1);
 
 return [
-	'[[/webpage/services/uri]]' => '/services',
-	'[[/webpage/services/name]]' => 'Leistungen',
-	'[[/webpage/services/title]]' => 'Leistungen für klare Ziele',
-	'[[/webpage/services/description]]'
-		=> 'Strategie, Design und Umsetzung aus einer Hand.',
-
-	'[[/page-services/services-intro/title]]'
+	'[[/template/page-services/services-intro/title]]'
 		=> 'Sinnvolle Arbeit, klar umgesetzt',
-	'[[/page-services/services-intro/subtitle]]'
+	'[[/template/page-services/services-intro/subtitle]]'
 		=> 'Von der ersten Idee bis zur wartbaren Website.',
-	'[[/page-services/services-intro/description]]'
+	'[[/template/page-services/services-intro/description]]'
 		=> 'Wähle die Unterstützung, die zur aktuellen Projektphase passt.',
-	'[[/page-services/services-intro/cta-label]]'
+	'[[/template/page-services/services-intro/cta-label]]'
 		=> 'Gespräch beginnen',
-	'[[/page-services/services-intro/cta-uri]]'
+	'[[/template/page-services/services-intro/cta-uri]]'
 		=> '/contact',
 ];
 ```
 
-The four `/webpage/<library-slug>/*` keys are suggestions read into the
-installation form. They are stripped from the page fragment during merge.
-The wizard writes the actual metadata under the internal URI chosen for that
-page instance - `name`, `title` and `description` per locale, and `uri` once in
-`text/global.php`.
+The manifest's `suggest` is read into the installation form. The wizard writes
+the actual metadata under the internal URI chosen for that page instance -
+`name`, `title` and `description` per locale as `/_nino/webpage<uri>/...`, and
+`uri` once in `text/global.php`.
 
-All other keys are ordinary project content and are merged into the target text
-files.
+Every key of the text files is ordinary project content and is merged into the
+target text files. They are all `/template/<category>/<part>/<name>`, where the
+category is the file name of the unit's template without `.tpl`
+(`page-services`): the unit may deliver keys only for a template it brings.
 
-A Webpages entry has one public HTTP URI. Locale fragments may technically
-suggest different URI strings, but only one suggestion can win for that entry;
-this does not create localized routes. Prefer the same URI in all locale files
-unless the route architecture deliberately handles localized URLs.
+A Webpages entry has one public HTTP URI. A locale may suggest a different URI
+string, but only one suggestion can win for that entry; this does not create
+localized routes. Prefer the same URI in all locales unless the route
+architecture deliberately handles localized URLs.
 
 ## Locale-specific structural templates
 
@@ -495,7 +514,9 @@ use locale-keyed files:
 
 Use this only when markup—not merely wording—differs. Every supported locale
 must resolve to an existing filename, and an omitted locale-gated file must not
-leave a broken include.
+leave a broken include. A name with a dot has no category: such a template
+carries no text keys of its own and reads those of the project and the common
+words (`/template/common/...`).
 
 ## Page/template tests
 

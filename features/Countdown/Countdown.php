@@ -129,7 +129,7 @@ namespace Nino\Modules {
 				nothing, the fill the install unit wrote is left for the kernel	*/
 			$done = trim( (string) ( $args['done'] ?? '' ) );
 			$done = $done === ''
-				? '[[/countdown/done]]'
+				? '[[/feature/countdown/end/message]]'
 				: $safe( \Nino\Html::renderHtml( $appData, $done ) );
 
 			$parts = '';
@@ -267,9 +267,12 @@ namespace Nino\Modules {
 		 */
 		private static function _part( array &$appData, string $unit ): string {
 
+			// The key is the singular's - unit-day - with both forms below it
+			$part = '[[/feature/countdown/unit-'. rtrim( $unit, 's' ). '/';
+
 			return str_replace(
 				[ '[[unit]]', '[[one]]', '[[many]]' ],
-				[ $unit, '[[/countdown/'. rtrim( $unit, 's' ). ']]', '[[/countdown/'. $unit. ']]' ],
+				[ $unit, $part. 'one]]', $part. 'many]]' ],
 				self::template( $appData, 'countdown-part' )
 			);
 		}

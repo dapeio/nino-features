@@ -196,7 +196,7 @@ namespace Nino\Modules {
 
 			if( $fromAddress === '' ) {
 				$mail['sent'] = false;
-				self::_fail( $appData, 'no From address is available - set "from" in the mailer settings, or the [[/mail/sender]] textfill' );
+				self::_fail( $appData, 'no From address is available - set "from" in the mailer settings, or the [[/project/mail/address/envelope]] textfill' );
 				return;
 			}
 

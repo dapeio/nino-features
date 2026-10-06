@@ -43,7 +43,7 @@ Verwende HTTPS, halte die Zahl der Entwicklerkonten klein und arbeite mit einem 
 
 ## Hauptablauf
 
-1. Wähle links ein Seitentemplate oder lege es über **New page template** an. Der Dialog fragt den vollständigen Dateinamen, Anzeigenamen, Header, Footer und den VPA-Standard ab.
+1. Wähle links ein Seitentemplate oder lege es über **New page template** an. Der Dialog fragt den vollständigen Dateinamen, Anzeigenamen, Header, Footer und den VPA-Standard ab. Der Dateiname ist die Kategorie der Textschlüssel des Templates: `page-` und kleingeschriebene Wörter, durch einfache Bindestriche verbunden; `page-services.tpl` schreibt also `/template/page-services/<section>/<name>`. Ein vorhandenes `page-*.tpl`, dessen Name keine Kategorie ergibt (`page-Foo.tpl`, `page-a.b.tpl`), steht in der Liste und lässt sich nicht öffnen.
 2. Öffne **Add section**.
 3. Durchsuche oder filtere unter **Choose** die große Galerie und wähle ein Preset mit benannten Areas anhand seiner echten Markup-Vorschau. Die Library enthält bewusst nur noch den aktuellen Version-3-Vertrag. Wiederverwendbare `.tpl`-Dateien erscheinen nicht als Pseudo-Sections; ein passendes Preset kann sie als **Template**-Komponente in einer Area anbieten.
 4. Wechsle zu **Design** und vergib eine sprechende ID wie `main-hero` oder `services-overview`. Dieser Schritt trägt den Rahmen der Section – Structure, Background, Layout – und den Komponentenstapel jeder Area: ergänzen, sortieren, entfernen und den Stil wählen, neben der Live-Vorschau.
@@ -53,11 +53,11 @@ Verwende HTTPS, halte die Zahl der Entwicklerkonten klein und arbeite mit einem 
 8. Ordne HTML- und Template-Section-Karten und speichere das Seitentemplate.
 9. Vervollständige Übersetzungen danach unter Übersetzungen oder Texte.
 
-Die schnelle native Befüllung legt neue Schlüssel in der nativen Projektsprache an und ändert bei sprachabhängigen Schlüsseln nur diese Sprache. Ein bereits globaler Schlüssel bleibt bewusst global. Bestehende Übersetzungs-Buckets werden nie geleert oder überschrieben.
+Die schnelle native Befüllung legt neue Schlüssel in der nativen Projektsprache an und ändert bei sprachabhängigen Schlüsseln nur diese Sprache. Ein bereits globaler Schlüssel bleibt bewusst global. Bestehende Übersetzungs-Buckets werden nie geleert oder überschrieben. Sie schreibt die eigenen Schlüssel des geöffneten Templates, `/template/<seine Kategorie>/...`, und keine anderen: Eine Eigenschaft, die an ein Wort des Projekts, an ein Wort aller Templates (`/template/common/...`), an den Text eines anderen Templates oder an Seitenangaben gebunden ist, wird gelesen und nie geschrieben - bearbeitet wird sie im Panel Texte. Der Server nimmt die Kategorie von dem Template, nach dem er gefragt wird, nicht aus der Anfrage, und schreibt nie einen Schlüssel der Blacklist. Eine neue Section, deren Id Schlüssel schriebe, die das Template schon hat - ein handgeschriebenes `intro`, das der Builder nicht gemacht hat -, wird mit einer freien Id abgelehnt.
 
 ## Seiten- und Section-Einstellungen
 
-**Name**, **Header**, **Footer** und **VPA** stehen gemeinsam in einer beschrifteten Zeile der Template Settings. **Delete** und **Save template** stehen gemeinsam am rechten Ende der Kopfzeile des Panels, neben seinem Namen, davor der Speicherstatus; **Add section** bleibt auch nach dem Einfügen von Content in der Dokument-Toolbar sichtbar. Die Header-/Footer-Selects zeigen die echten `.tpl`-Dateinamen, listen dem Projekt bekannte Nicht-Seiten-Templates und bieten außerdem **None**. Mail-Bodies (`mail-*`), die Ausgaben `robots`, `sitemap-xml` und `llms-txt` sowie die Frame-eigenen `theme.header` und `theme.footer` fehlen in diesen Listen, in der Section-Auswahl und in der Template-Komponente eines Presets – sie sind Antworten und Teile des Frames, keine Teile einer Seite. Entfernt werden sie nicht: Eine Seite, die schon auf eines zeigt, behält es ausgewählt. Der ausgewählte Wert wird weiterhin als gewöhnlicher `[template /templates/<name>]`-Shortcode geschrieben; die Controls verhindern nur, dass die Seitenschale mit verschiebbarem Content verwechselt wird. **Delete** entfernt genau die aktuell geladene Revision der Datei nach einer ausdrücklichen Bestätigung; eine Wiederherstellung erfordert Versionsverwaltung oder ein anderes externes Backup.
+**Name**, **Header**, **Footer** und **VPA** stehen gemeinsam in einer beschrifteten Zeile der Template Settings. **Delete** und **Save template** stehen gemeinsam am rechten Ende der Kopfzeile des Panels, neben seinem Namen, davor der Speicherstatus; **Add section** bleibt auch nach dem Einfügen von Content in der Dokument-Toolbar sichtbar. Die Header-/Footer-Selects zeigen die echten `.tpl`-Dateinamen, listen dem Projekt bekannte Nicht-Seiten-Templates und bieten außerdem **None**. Mail-Bodies (`mail-*`), die Ausgaben `robots`, `sitemap-xml` und `llms-txt` sowie die Frame-eigenen `frame-header` und `frame-footer` fehlen in diesen Listen, in der Section-Auswahl und in der Template-Komponente eines Presets – sie sind Antworten und Teile des Frames, keine Teile einer Seite. Entfernt werden sie nicht: Eine Seite, die schon auf eines zeigt, behält es ausgewählt. Der ausgewählte Wert wird weiterhin als gewöhnlicher `[template /templates/<name>]`-Shortcode geschrieben; die Controls verhindern nur, dass die Seitenschale mit verschiebbarem Content verwechselt wird. **Delete** entfernt genau die aktuell geladene Revision der Datei nach einer ausdrücklichen Bestätigung; eine Wiederherstellung erfordert Versionsverwaltung oder ein anderes externes Backup.
 
 **VPA** auf Template-Ebene liefert den Standard für Sections mit der Einstellung **Page**. Eine Änderung setzt verwaltete Sections neu zusammen, aktualisiert deren `nino-vpa`-Klasse und bleibt auch in einem noch leeren Template erhalten. **On** oder **Off** an einer einzelnen Section überschreibt den Template-Standard.
 
@@ -70,7 +70,7 @@ Add und Edit durchlaufen dieselben zwei Konfigurationsschritte und zeigen unters
 | Configure & fill → Area | die Collection, aus der eine Elements-Area liest, und die nativen Text-/Bild-/Template-Bindings jeder Komponente oder ihr Feld-Mapping |
 
 Ein Cover- oder Parallax-Hintergrund bindet genau ein Bild, und die Quelle wird
-mitgespeichert: **New image slot** erzeugt `/page-<seite>/<section>/background`
+mitgespeichert: **New image slot** erzeugt `/template/<seite>/<section>/background`
 und legt den Platz beim Einfügen an, **Existing image slot** verweist auf einen
 vorhandenen, **Fixed value** schreibt die URL direkt in die Section — ein
 Projektpfad wie `[[/nino/public]]/images/hero.jpg`, ein gewöhnlicher relativer
@@ -386,7 +386,7 @@ Benutzers gewinnt weiterhin:
   Eintrags, von 0 gezählt. Die Fills stehen in doppelten Klammern: `[title]`
   würde als Shortcode `title` gelesen und bliebe als Text auf der Seite. Ein
   einfacher Wert wird escaped, ein Rich-Text-Feld (`'html' => true`) für Inhalt
-  bereinigt, `[` wird in beiden zu `&#91;`; globale Fills wie `[[/company/name]]`
+  bereinigt, `[` wird in beiden zu `&#91;`; globale Fills wie `[[/project/company/general/name]]`
   werden im Item ebenfalls aufgelöst. Abgelehnt werden zwei Dinge: ein
   verschachtelter `[elements]`-Block, weil der Kernel den äußeren Block am
   ersten `[/elements]` beendet, und – bei einer Collection, die die Section
@@ -404,7 +404,7 @@ Benutzers gewinnt weiterhin:
   verschachtelt werden.
 - Jede Komponente braucht eine eindeutige kleingeschriebene Slug-`id`. Sie ist
   der stabile Default-Suffix. Bild `hero-image` erzeugt beispielsweise
-  `/page-<page>/<section>/hero-image` und `hero-image-alt`.
+  `/template/<page>/<section>/hero-image` und `hero-image-alt`.
 - Eine `template`-Komponente bietet gezielt einen wiederverwendbaren `.tpl`-
   Input an. Sie kompiliert zu validiertem `[template /templates/<name>]` und
   kann an jeder Position der Komponentenliste stehen.
@@ -425,7 +425,7 @@ kompakten Liste. Nach dem Einfügen trennt **Edit** wieder **Design** für Area
 Style, Component Style und Reihenfolge von **Data** für dieselben Bindings.
 Gewöhnliche Textfills stehen unter **Content textfills**, Einträge aus
 `text/blacklist.php` unter **Technical values** — dort erscheint auch die
-`/webpage/<seite>/uri` einer Seite, sodass ein Button auf eine andere Seite
+`/_nino/webpage/<seite>/uri` einer Seite, sodass ein Button auf eine andere Seite
 zeigen kann, statt einen festen Pfad zu tragen. Die Blacklist steuert nur die
 Sichtbarkeit im normalen Editor; technische Route-URIs bleiben gültige
 Template-Bindings und werden beim Einfügen nicht überschrieben.
@@ -441,7 +441,7 @@ Vertrag kann auch als Manifest-Empfehlung angegeben werden:
 	'type' => 'button',
 	'bindings' => [
 		'label' => 'Kontakt',
-		'href' => '/webpage/contact/uri',
+		'href' => '/_nino/webpage/contact/uri',
 	],
 	'bindingSources' => [
 		'label' => 'fixed',

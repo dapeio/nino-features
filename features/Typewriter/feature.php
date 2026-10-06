@@ -32,7 +32,7 @@ return [
 				'en_US' => 'Starts over after the last line instead of stopping. Default: types once.',
 				'de_DE' => 'Beginnt nach der letzten Zeile von vorn, statt anzuhalten. Vorgabe: tippt einmal.',
 			],
-			'data-typewriter-toggle="[[/typewriter/toggle]]"' => [
+			'data-typewriter-toggle="[[/feature/typewriter/pause/label]]"' => [
 				'en_US' => 'A button after the container that pauses the typing and takes it up again (WCAG 2.2.2). The value is its label; the fill is the one the install unit brings.',
 				'de_DE' => 'Ein Knopf hinter dem Container, der das Tippen anhält und wieder aufnimmt (WCAG 2.2.2). Der Wert ist die Beschriftung; der Textfill ist der, den die Install-Einheit mitbringt.',
 			],
@@ -46,8 +46,8 @@ return [
 		'callbacks' => [],
 		'install' => [
 			'text/<locale>.php' => [
-				'en_US' => 'The label of the pause button, [[/typewriter/toggle]], into the Text panel.',
-				'de_DE' => 'Die Beschriftung des Pause-Knopfs, [[/typewriter/toggle]], ins Panel Texte.',
+				'en_US' => 'The label of the pause button, [[/feature/typewriter/pause/label]], into the Text panel.',
+				'de_DE' => 'Die Beschriftung des Pause-Knopfs, [[/feature/typewriter/pause/label]], ins Panel Texte.',
 			],
 		],
 	],

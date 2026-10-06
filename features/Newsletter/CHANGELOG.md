@@ -58,6 +58,35 @@ A release is the tag `newsletter-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The text keys follow Nino's grammar, and the unit no longer carries the look
+  of the mails.** The words of the feature are `/feature/newsletter/...`:
+  `label/submit`, `info/{required,email,success,error}` (the `existing` text,
+  which nothing read, is gone), `subject/confirm` and `subject/unsubscribe` (the
+  mails' subjects),
+  `result-{confirmed,unsubscribed,invalid,unsubscribe-requested}/{title,text}`
+  (the outcome the code chooses, `/newsletter/page/<result>/...` before) and the
+  fills the class sets at request time - `page/title`, `page/text`,
+  `confirm/url`, `unsubscribe/url`, `unsubscribe/error` - blacklisted as before.
+  The words of the templates it copies are theirs:
+  `/template/page-newsletter-unsubscribe/{intro/title,intro/text,form/submit}`,
+  `/template/mail-newsletter-confirm/{intro/title,intro/text,action/button,outro/notice,outro/closing}`
+  and the same under `/template/mail-newsletter-unsubscribe/`. The email field's
+  label is the base unit's `/template/common/form/email`, which the unit no
+  longer writes. `install/text/global.php` and the 11 `/mail/style/*` entries of
+  the blacklist are gone: the look of the mails is the base unit's,
+  `/project/mail/{color,font,spacing}/*`, which every project has.
+  `mail-header.tpl` and `mail-footer.tpl` are the Form module's files byte for
+  byte (the logo is the image slot `[image /logo]`). What the templates and the
+  class read of the kernel is `/project/website/general/url`,
+  `/project/company/general/name`, `/project/mail/address/owner`,
+  `/project/website/html/{lang,charset}` and `/_nino/webpage/home/{uri,name}`.
+  Nino 1.4.0 renames the keys the feature reads and it is renamed with them, so
+  `nino` is `^1.4`: a Nino before 1.4 has neither the words nor the keys, and is
+  not offered the feature. A project that has the unit's old files copies them
+  by hand: the unit is add-only and does not re-apply. Nothing has been
+  published under the old keys, so there is no migration; a project that already
+  has texts under them copies the values to the new keys.
+
 - **The signup is answered by what happened to the mail, and an address that
   is subscribed already is mailed too.** The answer used to be `200` whatever
   came of the mail - a visitor was told to check the inbox for a mail the

@@ -31,6 +31,17 @@ A release is the tag `hello-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The text keys follow Nino's grammar.** `/hello/note` is
+  `/feature/hello/greeting/note`, the word the class and its template read;
+  `/hello/page/title` and `/hello/page/text` are
+  `/template/page-hello/intro/title` and `…/text`, the words of the page it
+  copies into the project, in the category of that template's name. The README
+  says so where it explains what to rename for a feature of your own. The values
+  are the same. Nothing has been published under the old keys, so there is no
+  migration; a project that already has texts under them copies the values to
+  the new keys. `nino` stays `^1.3`: the keys are the feature's own, and a Nino
+  before 1.4 takes them as they come.
+
 - **The panel no longer names itself a second time.** The workbench opens
   every pane with a head that names the panel with the label `nav()` gave, so
   the screen's own "Hello World" stood one line under "Hello World". The

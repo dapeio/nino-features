@@ -8,6 +8,6 @@
 		</div>
 		<span class="nino-compare-divider" aria-hidden="true"></span>
 	</div>
-	<input class="nino-compare-range" type="range" min="0" max="100" step="1" value="[[start]]" aria-label="[[/compare/handle]]" hidden>
+	<input class="nino-compare-range" type="range" min="0" max="100" step="1" value="[[start]]" aria-label="[[/feature/compare/handle/label]]" hidden>
 	<figcaption class="nino-compare-caption">[[alt]]</figcaption>
 </figure>

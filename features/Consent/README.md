@@ -39,7 +39,7 @@ bottom-fixed element belongs in your markup; it is `position: fixed` in
 [consent-settings]
 ```
 
-renders a small text button that reopens the banner - `[[/consent/open]]`,
+renders a small text button that reopens the banner - `[[/feature/consent/action/open]]`,
 "Cookie settings" - meant for the footer, next to the imprint/privacy
 links. On a page that has no banner the button hides itself: it would have
 nothing to open.
@@ -95,7 +95,7 @@ in `init()` while the feature is active.
   the script learns a project's own cookie name and lifetime without a
   build step.
 - Plain HTML with classes, no inline styles. Every word is a textfill
-  (`[[/consent/...]]`) the install unit wrote into the project - see
+  (`[[/feature/consent/...]]`) the install unit wrote into the project - see
   [Texts](#texts).
 
 ## The settings
@@ -268,19 +268,19 @@ Text panel from then on:
 
 | Key | English default | German default |
 | --- | --- | --- |
-| `[[/consent/title]]` | We use cookies | Wir verwenden Cookies |
-| `[[/consent/text]]` | We use cookies and similar technologies ... | Wir verwenden Cookies und ähnliche Technologien ... |
-| `[[/consent/policy-label]]` | Privacy policy | Datenschutzerklärung |
-| `[[/consent/accept-all]]` | Accept all | Alle akzeptieren |
-| `[[/consent/necessary-only]]` | Necessary only | Nur notwendige |
-| `[[/consent/save]]` | Save selection | Auswahl speichern |
-| `[[/consent/open]]` | Cookie settings | Cookie-Einstellungen |
-| `[[/consent/category/<name>]]` | the category's own label | ditto |
-| `[[/consent/category/<name>/hint]]` | one-line explanation | ditto |
+| `[[/feature/consent/banner/title]]` | We use cookies | Wir verwenden Cookies |
+| `[[/feature/consent/banner/text]]` | We use cookies and similar technologies ... | Wir verwenden Cookies und ähnliche Technologien ... |
+| `[[/feature/consent/banner/link]]` | Privacy policy | Datenschutzerklärung |
+| `[[/feature/consent/action/accept-all]]` | Accept all | Alle akzeptieren |
+| `[[/feature/consent/action/necessary-only]]` | Necessary only | Nur notwendige |
+| `[[/feature/consent/action/save]]` | Save selection | Auswahl speichern |
+| `[[/feature/consent/action/open]]` | Cookie settings | Cookie-Einstellungen |
+| `[[/feature/consent/category-<name>/name]]` | the category's own label | ditto |
+| `[[/feature/consent/category-<name>/hint]]` | one-line explanation | ditto |
 
 `<name>` is `necessary`, `statistics`, `marketing` or `external`. A link to
 the imprint, or any other markup, can be added straight into
-`[[/consent/text]]` from the Text panel - fills are not escaped, so a
+`[[/feature/consent/banner/text]]` from the Text panel - fills are not escaped, so a
 project is free to put a second `<a>` there; this feature only ever renders
 the one privacy link it has a dedicated setting for.
 

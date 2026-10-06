@@ -377,10 +377,8 @@ echo "\n";
 echo "From resolution\n";
 
 // The kernel's envelope sender, set the way the kernel reads it: the
-// '[[/mail/sender]]' textfill since Nino 1.3.0, the config.php key before -
-// both, so this suite answers the same against either kernel the CI runs
-$appData['/nino/mail/sender'] = 'kernel-sender@example.org';
-\Nino\Html::addFills( $appData, [ '[[/mail/sender]]' => 'kernel-sender@example.org' ], '*' );
+// '[[/project/mail/address/envelope]]' textfill, which Nino 1.4 has and this feature needs
+\Nino\Html::addFills( $appData, [ '[[/project/mail/address/envelope]]' => 'kernel-sender@example.org' ], '*' );
 resetMailerRateLimit( $appData );
 resetMailerLog( $server );
 check( 'a send with a kernel sender still succeeds', \Nino\Mail::send( $appData, 'to@example.org', 'x', 'y', '' ) === true );
@@ -392,8 +390,7 @@ check( 'MAIL FROM uses the kernel\'s own sender, not the setting', in_array( 'MA
 check( 'the header block\'s own From: is kept, and Mailer adds none of its own', substr_count( $kernelSenderData, "\r\nFrom:" ) === 1
 	&& str_contains( $kernelSenderData, "From: kernel-sender@example.org\r\n" ) === true );
 
-unset( $appData['/nino/mail/sender'] );
-\Nino\Html::addFills( $appData, [ '[[/mail/sender]]' => '' ], '*' );
+\Nino\Html::addFills( $appData, [ '[[/project/mail/address/envelope]]' => '' ], '*' );
 
 echo "\n";
 

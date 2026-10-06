@@ -79,6 +79,11 @@ versions [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **The README's example of a caption as a text fill uses Nino's key grammar.**
+  `[[/project/gallery/pass/caption]]` - a caption is the project's own content,
+  `/project/<category>/<part>/<name>` - where it said `[[/gallery/caption/pass]]`.
+  Nothing in the code changed; `nino` stays `^1.3`.
+
 - **Saving a text is one locked write.** `gallery/image-save` read the whole
   file, changed one image and wrote the file back, so two people saving two
   images could lose one of the changes. It goes through

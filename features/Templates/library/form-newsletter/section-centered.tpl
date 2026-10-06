@@ -3,9 +3,9 @@
 	<form class="nino-form nino-newsletter-form nino-form--inline" action="[[/nino/dir]]/.newsletter">
 		[csrf]
 		<input type="text" name="location" value="" tabindex="-1" autocomplete="off" aria-hidden="true" class="nino-form-trap">
-		<label for="[[section:id]]-email" class="nino-sr-only">[[/newsletter/label/email]]</label>
-		<input type="email" id="[[section:id]]-email" name="email" class="nino-form-input" placeholder="[[/newsletter/label/email]]" required>
-		<button type="submit" class="nino-btn nino-btn--primary nino-form-submit">[[/newsletter/label/submit]]</button>
+		<label for="[[section:id]]-email" class="nino-sr-only">[[/template/common/form/email]]</label>
+		<input type="email" id="[[section:id]]-email" name="email" class="nino-form-input" placeholder="[[/template/common/form/email]]" required>
+		<button type="submit" class="nino-btn nino-btn--primary nino-form-submit">[[/feature/newsletter/label/submit]]</button>
 		<p class="nino-form-message nino-grid-100"></p>
 	</form>
 </div>

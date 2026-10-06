@@ -8,8 +8,8 @@ declare(strict_types=1);
 // features/Hello/text/ - see README.md.
 return [
 
-	'[[/hello/note]]'				=> 'Rendered by the Hello World feature.',
+	'[[/feature/hello/greeting/note]]'	=> 'Rendered by the Hello World feature.',
 
-	'[[/hello/page/title]]'	=> 'Hello World',
-	'[[/hello/page/text]]'	=> 'This page and the greeting below it came with a feature. Both are yours now: the words are in the Text panel, the page in templates/page-hello.tpl.',
+	'[[/template/page-hello/intro/title]]'	=> 'Hello World',
+	'[[/template/page-hello/intro/text]]'	=> 'This page and the greeting below it came with a feature. Both are yours now: the words are in the Text panel, the page in templates/page-hello.tpl.',
 ];

@@ -1,6 +1,6 @@
 # Posts
 
-**Key:** `posts` · **Class:** `\Nino\Modules\Posts` · **Version:** 1.1.0 · **Nino:** `^1.3`
+**Key:** `posts` · **Class:** `\Nino\Modules\Posts` · **Version:** 1.1.0 · **Nino:** `^1.4`
 
 A page per element, and a list with paging. What turns an element type into a
 section of the site - a blog, a news column, a journal.
@@ -57,8 +57,12 @@ into `config.php`, so they follow the section rather than a copy of it made at
 install time - and they go away with the feature instead of leaving a path
 nothing answers. Three consequences worth knowing:
 
-- The **Routes panel does not list them.** They are the module's, the way the
-  Seo feature's `sitemap.xml` is.
+- The **Routes panel does not manage them.** They are the module's, the way the
+  Seo feature's `sitemap.xml` is. Since Nino 1.4 it lists them in a section of
+  its own, *Feature routes*, with the one thing it can keep for them: a name, a
+  title and a description in every language, written to
+  `/_nino/webpage<uri>/name`, `title` and `description`. Until the name is
+  written the index stays out of every menu; no route and no path is saved.
 - A page the project already has under that path **keeps everything it says** -
   its menus, its locale, the identity its texts hang off - and only what it
   renders becomes the section's list. Remove the feature and the page is back
@@ -114,7 +118,7 @@ and no way on. `[posts-pager]` renders nothing when there is only one page:
 saying "1 of 1" is telling somebody there is more. It writes the
 markup `.nino-pagination` in `Nino.css` is written against, and its three words
 come from the attributes `prev`, `next` and `label`, else from the textfills
-`/posts/prev`, `/posts/next` and `/posts/label`, else from its own English and
+`/feature/posts/pager/prev`, `/feature/posts/pager/next` and `/feature/posts/pager/label`, else from its own English and
 German.
 
 ### The body

@@ -9,10 +9,10 @@ return [
 
 	// Wie die beiden Seiten heißen, wenn der Shortcode nichts gesagt hat. Wer
 	// before-label="Rohbau" schreibt, sagt etwas, das diese nicht sagen können
-	'[[/compare/before]]'	=> 'Vorher',
-	'[[/compare/after]]'	=> 'Nachher',
+	'[[/feature/compare/side/before]]'	=> 'Vorher',
+	'[[/feature/compare/side/after]]'	=> 'Nachher',
 
 	// Was das Bedienelement ist, für jemanden, der es mit der Tastatur
 	// erreicht und die beiden Bilder nie gesehen hat
-	'[[/compare/handle]]'	=> 'Trenner zwischen den beiden Bildern bewegen',
+	'[[/feature/compare/handle/label]]'	=> 'Trenner zwischen den beiden Bildern bewegen',
 ];

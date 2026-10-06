@@ -74,15 +74,15 @@ $appData['/nino/modules'][] = '\\Nino\\Modules\\Form';
 \Nino\Modules\Csrf::init( $appData );
 
 \Nino\Html::addFills( $appData, [
-	'[[/form/email/owner]]'		=> 'owner@example.com',
-	'[[/form/subject/owner]]'	=> 'New inquiry',
-	'[[/form/subject/user]]'	=> 'Thanks',
-	'[[/form/label/name]]'		=> 'Name',
-	'[[/form/label/email]]'		=> 'E-Mail',
-	'[[/form/label/cat]]'			=> 'Subject',
-	'[[/form/label/message]]'	=> 'Message',
-	'[[/form/label/submit]]'	=> 'Send',
-	'[[/form/required]]'			=> 'required',
+	'[[/project/mail/address/owner]]'		=> 'owner@example.com',
+	'[[/module/form/subject/owner]]'	=> 'New inquiry',
+	'[[/module/form/subject/user]]'	=> 'Thanks',
+	'[[/template/common/form/name]]'		=> 'Name',
+	'[[/template/common/form/email]]'		=> 'E-Mail',
+	'[[/template/common/form/reason]]'			=> 'Subject',
+	'[[/template/common/form/message]]'	=> 'Message',
+	'[[/template/common/form/submit]]'	=> 'Send',
+	'[[/template/common/form/required]]'			=> 'required',
 ], '*' );
 
 // Every mail lands here instead of going out - the kernel's own transport
@@ -181,7 +181,7 @@ check( 'it posts to the kernel\'s endpoint and says which form it is', str_conta
 check( 'it carries the csrf token, rendered rather than left as a shortcode', str_contains( $html, 'name="_csrf"' ) === true && str_contains( $html, '[csrf]' ) === false );
 check( 'it carries the honeypot the engine checks and the stamp the guard checks', str_contains( $html, 'name="location"' ) === true
 	&& preg_match( '/name="_t" value="\d{10}"/', $html ) === 1 );
-check( 'a label written as a fill is resolved, not printed', str_contains( $html, '>Message *<' ) === true && str_contains( $html, '[[/form/label/' ) === false );
+check( 'a label written as a fill is resolved, not printed', str_contains( $html, '>Message *<' ) === true && str_contains( $html, '[[/template/common/form/' ) === false );
 
 /*	...and drawn as the text it is. A label and a select option are the same
 	kind of value - a fill key, or a word an operator typed - and the option

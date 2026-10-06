@@ -8,13 +8,13 @@ return [
 
 	// On the button, and half of its accessible name where the shortcode said
 	// what is being copied: "Copy: IBAN"
-	'[[/copy/do]]'			=> 'Copy',
+	'[[/feature/copy/button/label]]'	=> 'Copy',
 
 	// For the moment after. The word changes, not only the colour - a colour
 	// says it to whoever can see it and to nobody else
-	'[[/copy/done]]'		=> 'Copied',
+	'[[/feature/copy/button/success]]'	=> 'Copied',
 
 	// Where neither way of copying worked. It names what to do instead,
 	// because the text is selected and that is now the reader's move
-	'[[/copy/failed]]'	=> 'Press Ctrl+C',
+	'[[/feature/copy/button/error]]'	=> 'Press Ctrl+C',
 ];

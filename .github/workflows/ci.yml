@@ -55,16 +55,31 @@ jobs:
             cd nino && git fetch --tags --depth 1 && tag=$(git -c versionsort.suffix=- tag --sort=-v:refname | head -n1) && [ -n "$tag" ] && git checkout -q "$tag" && echo "Nino $tag"
           fi
 
-      # The same layout a project has: every feature below the checkout's
-      # features/, where the autoloader and the tests find it
-      - name: Install every feature into the checkout
-        run: cp -R features/. nino/features/
+      # The same layout a project has: every feature the checkout can run
+      # below its features/, where the autoloader and the tests find it. A
+      # feature written for a newer Nino than the one under test (its "nino"
+      # constraint, read by the checkout's own \Nino\Features::satisfies())
+      # claims nothing about it: it is listed with its reason and left out,
+      # and the tests, the contract test, PHPStan and ESLint see the rest.
+      # The tests that go over every feature ask the same question
+      - name: Install every feature into the checkout that it can run
+        run: |
+          names=$(php bin/applicable.php nino)
+          for name in $names; do
+            cp -R "features/$name" "nino/features/$name"
+          done
 
       - name: Validate every manifest
         run: php bin/catalogue.php nino > catalogue.json && cat catalogue.json
 
       - name: Run every feature's own smoke tests
         run: for test in nino/features/*/tests/*-smoke.php; do [ -e "$test" ] || continue; php "$test" || exit 1; done
+
+      # Every feature's text keys follow the grammar of the kernel's: what
+      # needs no kernel always, the rest where the checkout has what it is
+      # checked against (\Nino\Modules\Template::category())
+      - name: Run the text key grammar's smoke test
+        run: NINO_ROOT=nino php tests/keys-smoke.php
 
       # The publishing tool builds a signed catalogue of this repository's
       # features into a directory of its own, and the kernel has to accept

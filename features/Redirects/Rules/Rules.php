@@ -369,7 +369,7 @@ namespace Nino\Modules\Redirects {
 
 				foreach( $texts as $fills ) {
 
-					$name = $fills['[[/webpage'. $uri. '/name]]'] ?? '';
+					$name = $fills['[[/_nino/webpage'. $uri. '/name]]'] ?? '';
 
 					if( is_string( $name ) === false )
 						continue;

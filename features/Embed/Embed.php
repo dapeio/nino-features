@@ -181,8 +181,8 @@ namespace Nino\Modules {
 					$safe( self::host( $src ) ),
 					$safe( $category ),
 					( self::remembers( $appData ) === true ? ' data-embed-remember="1"' : '' ),
-					( $title === '' ? '[[/embed/frame]]' : $title ),
-					( $title === '' ? '[[/embed/load]]' : $title ),
+					( $title === '' ? '[[/feature/embed/frame/title]]' : $title ),
+					( $title === '' ? '[[/feature/embed/placeholder/button]]' : $title ),
 					self::_poster( $appData, (string) ( $args['poster'] ?? '' ) ),
 				],
 				self::template( $appData, 'embed' )

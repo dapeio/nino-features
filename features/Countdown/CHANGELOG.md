@@ -31,6 +31,14 @@ A release is the tag `countdown-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The text keys follow Nino's grammar.** `/countdown/day` and
+  `/countdown/days` are `/feature/countdown/unit-day/one` and `…/many`, and so
+  are `hour`, `minute` and `second`; `/countdown/done` is
+  `/feature/countdown/end/message`. The values are the same. Nothing has been
+  published under the old keys, so there is no migration; a project that already
+  has texts under them copies the values to the new keys. `nino` stays `^1.3`:
+  the keys are the feature's own, and a Nino before 1.4 takes them as they come.
+
 - **The manual promised the parts in the order they are written.** The
   Features panel's entry for `units=` said "which parts are shown, in that
   order", and `Countdown::units()` has always answered a subset of `UNITS`

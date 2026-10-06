@@ -79,7 +79,7 @@ finished row is not measured or copied again either.
 | `data-ticker-direction="right"` | runs the other way. Default is to the left |
 | `data-ticker-pause="off"` | keeps running under the pointer. Default is to stop, so a logo can be looked at |
 | `data-ticker-loop="1"` | runs round and round instead of one cycle. `0`, `false`, `off`, `no` and an empty value are the default; anything else is on |
-| `data-ticker-toggle="[[/ticker/toggle]]"` | a pause button after the row; the value is its label. See *Pause, stop, hide* below |
+| `data-ticker-toggle="[[/feature/ticker/pause/label]]"` | a pause button after the row; the value is its label. See *Pause, stop, hide* below |
 
 A row also stops while something inside it has the keyboard focus: a row that
 runs away under a tab stop is a row nobody can use.
@@ -122,7 +122,7 @@ of `data-ticker-toggle`.
 
 | Fill | English | Deutsch |
 | --- | --- | --- |
-| `[[/ticker/toggle]]` | Pause animation | Animation pausieren |
+| `[[/feature/ticker/pause/label]]` | Pause animation | Animation pausieren |
 
 The install unit merges it into the project's own `text/<locale>.php` at
 activation, for every available locale and add-only, so a label a project

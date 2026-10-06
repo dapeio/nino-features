@@ -61,7 +61,7 @@ namespace Nino\Modules\Design {
 			a page ends up with v3's css over v1's html. The two templates the base
 			install unit delivers are the ones this writes over - and refuses to,
 			by the same stamp, when they are not ours */
-		public const string FRAME_TARGET = '/templates/theme.%s.tpl';
+		public const string FRAME_TARGET = '/templates/frame-%s.tpl';
 
 		/**
 		 *	The stylesheet a setup produces

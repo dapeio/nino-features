@@ -68,7 +68,7 @@ check( 'the class is listed and the version recorded', in_array( '\\Nino\\Module
 foreach( [ 'en_US', 'de_DE' ] as $locale ) {
 	$text = \Nino\Filesystem::getFileContent( $appData, '/text/'. $locale. '.php', [] );
 	check( 'activation merged the list\'s words into text/'. $locale. '.php',
-		array_diff_key( array_flip( [ '[[/toc/title]]', '[[/toc/anchor]]' ] ), $text ) === [] );
+		array_diff_key( array_flip( [ '[[/feature/toc/list/title]]', '[[/feature/toc/anchor/label]]' ] ), $text ) === [] );
 }
 
 echo "\n";
@@ -120,7 +120,7 @@ check( '...and it is escaped on the way, because it goes into an attribute',
 	str_contains( \Nino\Html::renderHtml( $appData, '[toc within="a\" onx=\"1"]' ), 'onx=' ) === false );
 
 check( 'the heading over the list falls back to the project\'s own fill',
-	str_contains( $html, '>On this page</h2>' ) === true && str_contains( $html, '[[/toc/' ) === false );
+	str_contains( $html, '>On this page</h2>' ) === true && str_contains( $html, '[[/feature/toc/' ) === false );
 check( '...and to what the shortcode says where it says one',
 	str_contains( \Nino\Html::renderHtml( $appData, '[toc title="Auf dieser Seite"]' ), '>Auf dieser Seite</h2>' ) === true );
 
@@ -188,6 +188,6 @@ echo "Deactivation\n";
 check( 'deactivation succeeds', \Nino\Features::deactivate( $appData, 'toc' ) === true );
 check( 'the class is gone from /nino/modules', in_array( '\\Nino\\Modules\\Toc', \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/modules'], true ) === false );
 check( 'the words stay in the project\'s text files - they are the project\'s now',
-	isset( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/toc/title]]'] ) === true );
+	isset( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/feature/toc/list/title]]'] ) === true );
 
 ninoDone( $appData );

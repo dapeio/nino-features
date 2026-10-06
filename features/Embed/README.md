@@ -122,12 +122,12 @@ fetches nothing until it is clicked.
 
 | Fill | English |
 | --- | --- |
-| `[[/embed/load]]` | Load external content |
-| `[[/embed/note]]` | Pressing this loads content from |
-| `[[/embed/open]]` | Open in a new tab at |
-| `[[/embed/frame]]` | External content |
+| `[[/feature/embed/placeholder/button]]` | Load external content |
+| `[[/feature/embed/placeholder/note]]` | Pressing this loads content from |
+| `[[/feature/embed/fallback/link]]` | Open in a new tab at |
+| `[[/feature/embed/frame/title]]` | External content |
 
-`[[/embed/note]]` and `[[/embed/open]]` end where a host name follows — the
+`[[/feature/embed/placeholder/note]]` and `[[/feature/embed/fallback/link]]` end where a host name follows — the
 shortcode puts it there. From then on they are the project's: an editor changes
 them in the Text panel and never opens a feature directory. A key the project
 already had is left alone.

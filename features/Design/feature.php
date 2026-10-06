@@ -33,7 +33,7 @@ return [
 		Features::manifest() refuses this file outright - so a constraint
 		admitting 1.2 offered a feature that could not be installed. ^1.3 is
 		the first that names only a kernel which does both. */
-	'nino'				=> '^1.3',
+	'nino'				=> '^1.4',
 	'requires'		=> [],
 	// The whole setup: which set per part, the knob positions, the deviations,
 	// the palette's colours and knobs, and the fingerprint of what was last

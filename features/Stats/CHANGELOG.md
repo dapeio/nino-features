@@ -37,6 +37,14 @@ A release is the tag `stats-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The page titles it reads follow Nino 1.4's text keys.** A page's title in
+  the panel is `/_nino/webpage<uri>/title` (`/webpage<uri>/title` before). Nino
+  1.4.0 renames the keys the feature reads and it is renamed with them, so
+  `nino` is `^1.4`: a Nino before 1.4 has neither the words nor the keys, and is
+  not offered the feature. Nothing has been published under the old keys, so
+  there is no migration; a project that already has texts under them copies the
+  values to the new keys.
+
 - **The pages table shows the page's title.** A column for the title - the
   `/webpage<uri>/title` text of the page, in the language of the route that
   answers it and else the native one - and one for the path in a muted

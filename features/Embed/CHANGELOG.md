@@ -14,6 +14,15 @@ A release is the tag `embed-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The text keys follow Nino's grammar.** `/embed/load` is
+  `/feature/embed/placeholder/button`, `/embed/note` is
+  `/feature/embed/placeholder/note`, `/embed/open` is
+  `/feature/embed/fallback/link` and `/embed/frame` is
+  `/feature/embed/frame/title`. The values are the same. Nothing has been
+  published under the old keys, so there is no migration; a project that already
+  has texts under them copies the values to the new keys. `nino` stays `^1.3`:
+  the keys are the feature's own, and a Nino before 1.4 takes them as they come.
+
 - **`youtube=` and `vimeo=` take the address copied from the browser.** A
   watch address, a short link with its tracking parameter, a share link with a
   time code, `/shorts/`, `/live/` and `/embed/` for YouTube; the page, channel,

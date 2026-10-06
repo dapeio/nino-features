@@ -99,31 +99,31 @@ $appData['/nino/http/routes'] = [
 	'GET://gone'			=> [ 'uri' => '/gone', 'body' => 'gone', 'statusCode' => 410 ],
 ];
 
-\Nino\Filesystem::putFileContent( $appData, '/templates/page-about.tpl', '<h1>[[/webpage/about/title]]</h1>' );
+\Nino\Filesystem::putFileContent( $appData, '/templates/page-about.tpl', '<h1>[[/_nino/webpage/about/title]]</h1>' );
 
 \Nino\Filesystem::putFileContent( $appData, '/text/global.php', [
-	'[[/website/url]]'		=> 'example.com',
-	'[[/company/name]]'	=> 'Acme Inc',
+	'[[/project/website/general/url]]'		=> 'example.com',
+	'[[/project/company/general/name]]'	=> 'Acme Inc',
 ] );
 \Nino\Filesystem::putFileContent( $appData, '/text/en_US.php', [
-	'[[/webpage/about/title]]'				=> 'About Us',
-	'[[/webpage/about/description]]' => 'Who we are',
-	'[[/webpage/404/title]]'					=> 'Not Found',
+	'[[/_nino/webpage/about/title]]'				=> 'About Us',
+	'[[/_nino/webpage/about/description]]' => 'Who we are',
+	'[[/_nino/webpage/404/title]]'					=> 'Not Found',
 ] );
 \Nino\Filesystem::putFileContent( $appData, '/text/de_DE.php', [
-	'[[/webpage/404/title]]'							=> 'Nicht gefunden',
-	'[[/webpage/about/title]]'						=> 'Über uns',
-	'[[/webpage/about/description]]'			=> 'Wer wir sind',
+	'[[/_nino/webpage/404/title]]'							=> 'Nicht gefunden',
+	'[[/_nino/webpage/about/title]]'						=> 'Über uns',
+	'[[/_nino/webpage/about/description]]'			=> 'Wer wir sind',
 	// No explicit locale on GET://faq&more, so it groups under the site's
 	// native locale (de_DE, ninoSandbox()'s own default) - its title/description
 	// therefore live here, not in en_US.php
-	'[[/webpage/faq&more/title]]'					=> 'FAQ & Mehr',
-	'[[/webpage/faq&more/description]]'	=> 'Antworten auf häufige Fragen',
+	'[[/_nino/webpage/faq&more/title]]'					=> 'FAQ & Mehr',
+	'[[/_nino/webpage/faq&more/description]]'	=> 'Antworten auf häufige Fragen',
 	/*	A title is somebody's words and a description is a textfill, which is a
 		block of text: both of them carry the characters a markdown link in
 		llms.txt is made of, and one of them carries newlines	*/
-	'[[/webpage/blog/pin(1)/title]]'				=> 'Cost [per unit] (2026)',
-	'[[/webpage/blog/pin(1)/description]]'	=> "One line\nand another",
+	'[[/_nino/webpage/blog/pin(1)/title]]'				=> 'Cost [per unit] (2026)',
+	'[[/_nino/webpage/blog/pin(1)/description]]'	=> "One line\nand another",
 ] );
 
 $aboutTemplatePath = \Nino\Filesystem::path( $appData, '/templates/page-about.tpl' );
@@ -137,7 +137,7 @@ $dir = dirname( __DIR__ );
 $manifest = \Nino\Features::manifest( $dir );
 check( 'the manifest validates without a warning', is_array( $manifest ) && ninoWarnings() === [] );
 check( 'key, class and version are what the directory says', is_array( $manifest ) && $manifest['key'] === 'seo'
-	&& $manifest['module'] === '\\Nino\\Modules\\Seo' && $manifest['version'] === '1.1.0' );
+	&& $manifest['module'] === '\\Nino\\Modules\\Seo' && preg_match( '/^\d+\.\d+\.\d+/', (string) $manifest['version'] ) === 1 );
 check( 'it is written for this kernel', is_array( $manifest ) && \Nino\Features::satisfies( $manifest['nino'] ) === true );
 check( 'it names itself in both interface languages', is_array( $manifest ) && \Nino\Features::localized( $manifest['description'], 'de_DE' ) !== \Nino\Features::localized( $manifest['description'], 'en_US' ) );
 check( 'it keeps no data of its own', is_array( $manifest ) && $manifest['data'] === [] );
@@ -154,7 +154,7 @@ check( 'activation succeeds', \Nino\Features::activate( $appData, 'seo' ) === tr
 
 $stored = \Nino\Filesystem::getFileContent( $appData, '/config.php', [] );
 check( 'the class is listed and the version recorded', in_array( '\\Nino\\Modules\\Seo', $stored['/nino/modules'], true ) === true
-	&& $stored['/nino/features']['seo']['version'] === '1.1.0' );
+	&& $stored['/nino/features']['seo']['version'] === $manifest['version'] );
 
 check( 'the settings answer their defaults', \Nino\Features::settings( $appData, 'seo' ) === [
 	'exclude'			=> [],

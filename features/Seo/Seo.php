@@ -15,8 +15,8 @@ namespace Nino\Modules {
 	 *	Nino							A compact filesystembased php framework
 	 *	Seo								What search engines and AI agents ask a site for,
 	 *										generated from what Nino already knows - the persisted
-	 *										GET routes, their locales, and the /webpage<uri>/title
-	 *										and /webpage<uri>/description texts the wizard's Webpages
+	 *										GET routes, their locales, and the /_nino/webpage<uri>/title
+	 *										and /_nino/webpage<uri>/description texts the wizard's Webpages
 	 *										step (or a hand-edited /text/<locale>.php) already
 	 *										writes. Nothing here is stored under data/ and nothing is
 	 *										maintained by hand: every response is built fresh from
@@ -270,7 +270,7 @@ namespace Nino\Modules {
 		 */
 		public static function doJsonLdShortcode( array &$appData, array $args ): string {
 
-			$name	= \Nino\Html::renderTextfill( $appData, '/company/name' );
+			$name	= \Nino\Html::renderTextfill( $appData, '/project/company/general/name' );
 			$url	= self::_baseUrl( $appData );
 
 			$organization = [ '@type' => 'Organization', 'name' => $name, 'url' => $url ];
@@ -571,7 +571,7 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	'https://' plus the '/website/url' textfill (the bare domain the
+		 *	'https://' plus the '/project/website/general/url' textfill (the bare domain the
 		 *	wizard's PersonalInfos step writes, eg. "www.example.com" -
 		 *	html-header.tpl's own canonical link builds the same way), a
 		 *	trailing slash trimmed off in case a project's value carries one
@@ -582,7 +582,7 @@ namespace Nino\Modules {
 		 */
 		private static function _baseUrl( array &$appData ): string {
 
-			return 'https://'. trim( \Nino\Html::renderTextfill( $appData, '/website/url' ), '/' );
+			return 'https://'. trim( \Nino\Html::renderTextfill( $appData, '/project/website/general/url' ), '/' );
 		}
 
 		/**
@@ -808,7 +808,7 @@ namespace Nino\Modules {
 		 */
 		private static function _buildLlms( array &$appData ): string {
 
-			$name					= \Nino\Html::renderTextfill( $appData, '/company/name' );
+			$name					= \Nino\Html::renderTextfill( $appData, '/project/company/general/name' );
 			$description	= (string) \Nino\Features::setting( $appData, self::KEY, 'description', '' );
 			$free					= (string) \Nino\Features::setting( $appData, self::KEY, 'llms', '' );
 
@@ -853,11 +853,11 @@ namespace Nino\Modules {
 
 					// Same order as the sitemap's lastmod: what the page brought,
 					// then the textfills of a page that has some
-					$title = $page['title'] ?? trim( (string) ( $fills['[[/webpage'. $page['uri']. '/title]]'] ?? '' ) );
+					$title = $page['title'] ?? trim( (string) ( $fills['[[/_nino/webpage'. $page['uri']. '/title]]'] ?? '' ) );
 					if( $title === '' )
 						continue;
 
-					$pageDescription = $page['description'] ?? trim( (string) ( $fills['[[/webpage'. $page['uri']. '/description]]'] ?? '' ) );
+					$pageDescription = $page['description'] ?? trim( (string) ( $fills['[[/_nino/webpage'. $page['uri']. '/description]]'] ?? '' ) );
 					/*	Every part of the entry is held to what a markdown link is
 						made of before it goes in. A title, an address and a
 						description are all somebody else's words, and an entry that

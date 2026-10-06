@@ -1,6 +1,6 @@
 # Stats
 
-**Key:** `stats` · **Class:** `\Nino\Modules\Stats` · **Version:** 1.0.0 · **Nino:** `^1.3`
+**Key:** `stats` · **Class:** `\Nino\Modules\Stats` · **Version:** 1.0.0 · **Nino:** `^1.4`
 
 Page-view counts for the workbench - counts, and only counts. No cookie is
 set, no ip address is read, no fingerprint of any kind is derived and
@@ -194,7 +194,7 @@ writes anything beyond the settings form every feature already gets.
 | Navigation | **Stats**, uri `stats`, position 70. `nav()` names the Content group, but a panel a feature brings lands under Features whatever it names - `\Nino\Admin\Panels` decides that, not the panel |
 | Permission | `/_admin/stats/view` on every action. The Users panel's roles tab offers it under Features, the group the panel is in; the **Editor** role is built from the Content panels alone and does not receive it, so an operator grants it there |
 | Actions | `stats/months` (`apiMonths()`): every month that has a file, newest first · `stats/month` (`apiMonth()`): one month's numbers, `{ month }` validated as `YYYY-MM`, else `400` |
-| `stats/month` answers | `{ month, days: [ { day, total } ], totals: { views, days }, uris: [ { uri, title, views } ], referrers: [ { host, views } ] }` - `uris` and `referrers` are the month's totals across every day in it, top 50 each, most-viewed first. Pages only (see [Pages, not files](#pages-not-files)): each distinct uri is classified once, a file is dropped, the overflow bucket `/…` kept; a day's `total` is the sum of the pages left, a day with none is not listed, and `totals` counts what is listed. `title` is the page's `/webpage<uri>/title` text, in the route's locale and else the native one, `''` where there is none. A referrer is stored per day, not per page: the referrers of a day that is dropped go with it, those of a day that had files and pages both are as stored |
+| `stats/month` answers | `{ month, days: [ { day, total } ], totals: { views, days }, uris: [ { uri, title, views } ], referrers: [ { host, views } ] }` - `uris` and `referrers` are the month's totals across every day in it, top 50 each, most-viewed first. Pages only (see [Pages, not files](#pages-not-files)): each distinct uri is classified once, a file is dropped, the overflow bucket `/…` kept; a day's `total` is the sum of the pages left, a day with none is not listed, and `totals` counts what is listed. `title` is the page's `/_nino/webpage<uri>/title` text, in the route's locale and else the native one, `''` where there is none. A referrer is stored per day, not per page: the referrers of a day that is dropped go with it, those of a day that had files and pages both are as stored |
 | Dashboard | `summary()` gives the Dashboard a tile: views of pages over the last 7 days (today included), labelled `/_admin/stats/label/tile`. The panel contract's tile only ever carries `{ value, label }` (see `\Nino\Admin\Panels::collect()`), so today's count alone is not shown as a separate number there - only on the panel's own pane, as the first bar of the current month |
 | Activity log | `log()` always answers `''` - opening the panel and looking at a chart is not something the activity log has any use recording |
 | Assets | `assets/admin.js`, `assets/admin.css`, named through `\Nino\Admin\Panels::relative()` so they move with the directory |

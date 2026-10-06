@@ -76,7 +76,7 @@ check( 'it ships an install unit for the one text fill it needs, and the manual 
 	array_keys( $manifest['manual']['install'] ) === [ 'text/<locale>.php' ] && is_file( $dir. '/install/manifest.php' ) === true
 	&& is_file( $dir. '/install/text/en_US.php' ) === true && is_file( $dir. '/install/text/de_DE.php' ) === true );
 check( '...and names the pause button and the one-pass default in its markup entries',
-	array_key_exists( 'data-typewriter-toggle="[[/typewriter/toggle]]"', $manifest['manual']['markup'] ) === true
+	array_key_exists( 'data-typewriter-toggle="[[/feature/typewriter/pause/label]]"', $manifest['manual']['markup'] ) === true
 	&& array_key_exists( 'data-typewriter-loop="1"', $manifest['manual']['markup'] ) === true
 	&& array_key_exists( 'data-typewriter-loop="0"', $manifest['manual']['markup'] ) === false );
 check( 'and carries no settings: what a typewriter is timed with belongs to the element being typed', $manifest['settings'] === [] );
@@ -93,7 +93,7 @@ check( 'the registry lists it inactive, with nothing in the way', ( static funct
 
 /*	A project that wrote the label itself before it activated the feature: what
 	it has is its own, and the unit only adds what is missing	*/
-\Nino\Filesystem::putFileContent( $appData, '/text/de_DE.php', [ '[[/typewriter/toggle]]' => 'Anhalten' ] );
+\Nino\Filesystem::putFileContent( $appData, '/text/de_DE.php', [ '[[/feature/typewriter/pause/label]]' => 'Anhalten' ] );
 
 check( 'activation succeeds', \Nino\Features::activate( $appData, 'typewriter' ) === true );
 check( 'the class is listed and the version recorded', in_array( '\\Nino\\Modules\\Typewriter', \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/modules'], true ) === true
@@ -104,12 +104,12 @@ check( 'the class is listed and the version recorded', in_array( '\\Nino\\Module
 // else
 check( 'activation wrote no template into the project', is_dir( ninoSandboxDir( $appData ). '/templates' ) === false );
 check( 'it merged the pause button\'s label into the text file of a locale that had none',
-	( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/typewriter/toggle]]'] ?? '' ) === 'Pause animation' );
-check( '...and added nothing but that one fill', array_keys( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] ) ) === [ '[[/typewriter/toggle]]' ] );
+	( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/feature/typewriter/pause/label]]'] ?? '' ) === 'Pause animation' );
+check( '...and added nothing but that one fill', array_keys( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] ) ) === [ '[[/feature/typewriter/pause/label]]' ] );
 check( '...and kept the value a project already had for that key - the unit is add-only',
-	( \Nino\Filesystem::getFileContent( $appData, '/text/de_DE.php', [] )['[[/typewriter/toggle]]'] ?? '' ) === 'Anhalten' );
+	( \Nino\Filesystem::getFileContent( $appData, '/text/de_DE.php', [] )['[[/feature/typewriter/pause/label]]'] ?? '' ) === 'Anhalten' );
 check( 'the German label the unit brings is the one a project that has none gets',
-	( include $dir. '/install/text/de_DE.php' )['[[/typewriter/toggle]]'] === 'Animation pausieren' );
+	( include $dir. '/install/text/de_DE.php' )['[[/feature/typewriter/pause/label]]'] === 'Animation pausieren' );
 
 echo "\n";
 
@@ -208,7 +208,7 @@ echo "Deactivation\n";
 check( 'deactivation succeeds', \Nino\Features::deactivate( $appData, 'typewriter' ) === true );
 check( 'the class is gone from /nino/modules', in_array( '\\Nino\\Modules\\Typewriter', \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/modules'], true ) === false );
 check( 'the label stays in the project\'s text files - it is the project\'s now',
-	( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/typewriter/toggle]]'] ?? '' ) === 'Pause animation' );
+	( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/feature/typewriter/pause/label]]'] ?? '' ) === 'Pause animation' );
 check( 'the feature is still on disk, listed and inactive', ( \Nino\Features::get( $appData, 'typewriter' )['active'] ?? true ) === false );
 
 ninoDone( $appData );

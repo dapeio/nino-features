@@ -1,10 +1,10 @@
 # SEO
 
-**Key:** `seo` · **Class:** `\Nino\Modules\Seo` · **Version:** 1.1.0 · **Nino:** `^1.3`
+**Key:** `seo` · **Class:** `\Nino\Modules\Seo` · **Version:** 1.1.0 · **Nino:** `^1.4`
 
 What search engines and AI agents ask a site for, generated from what Nino
 already knows - the persisted routes under `/nino/http/routes`, their
-locales, and the `/webpage<uri>/title` and `/webpage<uri>/description` texts
+locales, and the `/_nino/webpage<uri>/title` and `/_nino/webpage<uri>/description` texts
 the wizard's Webpages step (or a hand edit of `/text/<locale>.php`) already
 writes. **There is nothing here to maintain by hand**: every response is
 built fresh from `config.php` on every request, so a page added, renamed or
@@ -168,8 +168,8 @@ This feature's shape:
 - ...
 ```
 
-A page's title and description come from the `/webpage<uri>/title` and
-`/webpage<uri>/description` texts - the same fills `html-header.tpl` uses -
+A page's title and description come from the `/_nino/webpage<uri>/title` and
+`/_nino/webpage<uri>/description` texts - the same fills `html-header.tpl` uses -
 looked up in the page's own locale (its `locale` field, else the site's
 native locale, the same fallback a locale-agnostic route renders under). A
 page without a title is left out rather than listed empty.
@@ -205,14 +205,14 @@ variant, or none the feature recognizes, so it is safe to place
 unconditionally on every page:
 
 ```html
-<link rel="canonical" href="https://[[/website/url]][[/nino/http/request/uri]]">
+<link rel="canonical" href="https://[[/project/website/general/url]][[/nino/http/request/uri]]">
 [seo-alternates]
 ```
 
 ## `[seo-jsonld]`
 
 A minimal `Organization` + `WebSite` json-ld block - name and url from the
-`/company/name` and `/website/url` texts, a `logo` from the **Logo url**
+`/project/company/general/name` and `/project/website/general/url` texts, a `logo` from the **Logo url**
 setting when one is set - placed anywhere in the page, `html-header.tpl`'s
 own `<head>` next to its `LocalBusiness` block being the natural spot. No
 nonce: a `<script type="application/ld+json">` is never *executed* by a
@@ -263,8 +263,8 @@ Features panel's settings form like any other feature - see
 
 - No `<title>`, `meta description`, canonical link or Open Graph tags - the
   base install's own `html-header.tpl` already renders every one of those
-  from `/webpage<uri>/title`, `/webpage<uri>/description`, `/website/url`
-  and `/company/name`. This feature adds only what that template does not:
+  from `/_nino/webpage<uri>/title`, `/_nino/webpage<uri>/description`, `/project/website/general/url`
+  and `/project/company/general/name`. This feature adds only what that template does not:
   the machine-readable files, the hreflang alternates, and a json-ld block.
 - No keyword research, no ranking reports, no analytics of any kind - see
   the catalogue's `Stats` feature for page-view counts, kept entirely

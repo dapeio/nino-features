@@ -50,7 +50,7 @@
 	// the fields its loop repeats and the project texts its layout writes
 	// in. %n is the item's number, a list gives each item its own
 	'samples' => [
-		'/newsletter/label/email' => 'Email address',
-		'/newsletter/label/submit' => 'Subscribe',
+		'/template/common/form/email' => 'Email address',
+		'/feature/newsletter/label/submit' => 'Subscribe',
 	],
 ];

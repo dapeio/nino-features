@@ -80,11 +80,11 @@
 
 		matchesDocument : function( entry, query ) {
 			const needle = String( query || '' ).trim().toLowerCase();
-			return needle === '' || ( ( entry.displayName || '' )+ ' '+ ( entry.filename || entry.name+ '.tpl' )+ ' '+ entry.name+ ' '+ entry.pageId ).toLowerCase().includes( needle );
+			return needle === '' || ( ( entry.displayName || '' )+ ' '+ ( entry.filename || entry.name+ '.tpl' )+ ' '+ entry.name+ ' '+ ( entry.pageId || '' ) ).toLowerCase().includes( needle );
 		},
 
 		validFilename : function( filename ) {
-			return /^page-[A-Za-z0-9][A-Za-z0-9._-]*\.tpl$/.test( String( filename || '' ) ) && String( filename ).includes('..') === false;
+			return /^page-[a-z0-9]+(?:-[a-z0-9]+)*\.tpl$/.test( String( filename || '' ) );
 		},
 
 		validDisplayName : function( displayName ) {
@@ -138,7 +138,11 @@
 				Nino.admin.templates.apiCall( action, payload, function( status, response ) {
 					if( status >= 200 && status < 300 && response !== null )
 						return resolve( response );
-					const error = new Error( ( response && response.error ) || Nino.content.getText('/_admin/templates/error/request') );
+					let message = ( response && response.error ) || Nino.content.getText('/_admin/templates/error/request');
+					// A section id that already has texts: said in the panel's language, with the key and the id to use instead
+					if( response && response.code === 'section-id-taken' && Array.isArray( response.params ) )
+						message = response.params.reduce( function( text, param ) { return text.replace( '%s', function() { return param } ) }, Nino.content.getText('/_admin/templates/error/id-taken') );
+					const error = new Error( message );
 					error.status = status;
 					error.response = response;
 					reject( error );
@@ -181,6 +185,17 @@
 
 		sections : function() {
 			return Nino.admin.templates._current === null ? [] : Nino.admin.templates._current.segments.filter( function( segment ) { return segment.type === 'section' } );
+		},
+
+		/**
+		 *	The ids of the Builder sections in the open draft, saved or not:
+		 *	what the server treats as the document's own when a section's
+		 *	keys are composed (see Library::apiCompose())
+		 *
+		 *	@return		{Array}
+		 */
+		sectionIds : function() {
+			return Nino.admin.templates.sections().filter( function( section ) { return section.spec && typeof section.spec.id === 'string' } ).map( function( section ) { return section.spec.id } );
 		},
 
 		components : function() {
@@ -313,7 +328,7 @@
 				button.type = 'button';
 				button.className = 'pd-page-button'+ ( Nino.admin.templates._current && Nino.admin.templates._current.name === entry.name ? ' is-active' : '' )+ ( entry.editable ? '' : ' is-locked' );
 				button.disabled = entry.editable === false;
-				button.title = entry.editable ? entry.name : Nino.content.getText('/_admin/templates/hint/readonly');
+				button.title = entry.editable ? entry.name : Nino.content.getText( entry.reason === 'category' ? '/_admin/templates/hint/no-category' : '/_admin/templates/hint/readonly' );
 
 				const icon = dc.createElement('span');
 				icon.className = 'pd-page-icon';
@@ -322,7 +337,7 @@
 				const copy = dc.createElement('span');
 				copy.className = 'pd-page-copy';
 				const title = dc.createElement('strong');
-				title.textContent = entry.displayName || entry.pageId.replace( /-/g, ' ' );
+				title.textContent = entry.displayName || ( entry.pageId || entry.name ).replace( /-/g, ' ' );
 				const file = dc.createElement('small');
 				file.textContent = entry.filename || entry.name+ '.tpl';
 				copy.append( title, file );
@@ -777,7 +792,7 @@
 			buttons.forEach( function( button ) { button.disabled = true } );
 
 			Promise.all( managed.map( function( section ) {
-				return Nino.admin.templates.api( 'library/compose', Object.assign( {}, section.spec, { pageMotion : value } ) );
+				return Nino.admin.templates.api( 'library/compose', Object.assign( { name : Nino.admin.templates._current.name, sectionIds : Nino.admin.templates.sectionIds() }, section.spec, { pageMotion : value } ) );
 			} ) ).then( function( results ) {
 				results.forEach( function( result, index ) {
 					const clientId = managed[index]._clientId;

@@ -98,7 +98,7 @@ check( 'the class is listed and the version recorded', in_array( '\\Nino\\Module
 foreach( [ 'en_US', 'de_DE' ] as $locale ) {
 	$text = \Nino\Filesystem::getFileContent( $appData, '/text/'. $locale. '.php', [] );
 	check( 'activation merged the switch\'s words into text/'. $locale. '.php',
-		array_diff_key( array_flip( [ '[[/modeswitch/label]]', '[[/modeswitch/light]]', '[[/modeswitch/system]]', '[[/modeswitch/dark]]' ] ), $text ) === [] );
+		array_diff_key( array_flip( [ '[[/feature/modeswitch/switch/label]]', '[[/feature/modeswitch/mode/light]]', '[[/feature/modeswitch/mode/system]]', '[[/feature/modeswitch/mode/dark]]' ] ), $text ) === [] );
 }
 check( 'it wrote no template and no route of its own - where the switch goes is the project\'s call',
 	is_dir( ninoSandboxDir( $appData ). '/templates' ) === false
@@ -159,7 +159,7 @@ check( 'nothing is rendered pressed', substr_count( $html, 'aria-pressed="false"
 check( '...and the whole switch is hidden until the script has it', preg_match( '/<div class="nino-modeswitch"[^>]*\shidden/', $html ) === 1 );
 
 check( 'every word is a text fill the project owns, resolved by the time it renders',
-	str_contains( $html, '[[/modeswitch/' ) === false
+	str_contains( $html, '[[/feature/modeswitch/' ) === false
 	&& substr_count( $html, 'System' ) >= 1 && substr_count( $html, 'Dark' ) >= 1 );
 check( 'the group says what it is, for a reader who cannot see the three together',
 	str_contains( $html, 'aria-label="Appearance"' ) === true );
@@ -243,7 +243,7 @@ echo "Deactivation\n";
 check( 'deactivation succeeds', \Nino\Features::deactivate( $appData, 'modeswitch' ) === true );
 check( 'the class is gone from /nino/modules', in_array( '\\Nino\\Modules\\Modeswitch', \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/modules'], true ) === false );
 check( 'the words stay in the project\'s text files - they are the project\'s now',
-	isset( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/modeswitch/dark]]'] ) === true );
+	isset( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/feature/modeswitch/mode/dark]]'] ) === true );
 check( 'the feature is still on disk, listed and inactive', ( \Nino\Features::get( $appData, 'modeswitch' )['active'] ?? true ) === false );
 
 ninoDone( $appData );

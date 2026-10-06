@@ -14,6 +14,15 @@ A release is the tag `ticker-<version>` of dapeio/nino-features.
 
 ### Changed (behaviour)
 
+- **The pause button's text key follows Nino's grammar.** `/ticker/toggle` is
+  `/feature/ticker/pause/label`:
+  `data-ticker-toggle="[[/feature/ticker/pause/label]]"` in the markup, in the
+  manual and in the README. The attribute is the same. The value is the same.
+  Nothing has been published under the old keys, so there is no migration; a
+  project that already has texts under them copies the values to the new keys.
+  `nino` stays `^1.3`: the keys are the feature's own, and a Nino before 1.4
+  takes them as they come.
+
 - **A ticker runs one cycle, once it has been scrolled into view, instead of
   an endless loop from page load.** Every `.nino-ticker` ran an endless loop
   from page load until now. Afterwards it waits until it is scrolled into view

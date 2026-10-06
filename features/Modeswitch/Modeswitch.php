@@ -182,7 +182,7 @@ namespace Nino\Modules {
 		 */
 		private static function _button( array &$appData, string $mode, bool $labels ): string {
 
-			$fill = '[[/modeswitch/'. $mode. ']]';
+			$fill = '[[/feature/modeswitch/mode/'. $mode. ']]';
 
 			/*	The word is in the markup either way, and hidden with a class
 				rather than left out: a switch whose buttons are three unlabelled

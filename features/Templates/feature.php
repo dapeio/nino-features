@@ -34,7 +34,7 @@ return [
 	// below is read from 1.3 on - Features::manifest() on the 1.2 kernel
 	// refuses the whole manifest over it, so ^1.2 offered this to a kernel
 	// that could not then install it
-	'nino'				=> '^1.3',
+	'nino'				=> '^1.4',
 	'requires'		=> [],
 	// The page templates it edits are the project's own, in private/templates/,
 	// and a backup carries them as project content - none of it belongs to this

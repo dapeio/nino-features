@@ -27,8 +27,12 @@ Then rename the three things that have to agree with each other:
 
 The class is never declared anywhere: `features/Weather/` can only ever serve
 `\Nino\Modules\Weather`, which is what makes a feature findable without a
-registry. Rename the test and its `hello/` action names and text keys too, and
-you have a feature of your own that passes its own test on the first run.
+registry. Rename the test and its `hello/` action names and text keys too - the
+words the class and `templates/hello.tpl` read are `/feature/hello/...`, and the
+words of the page it copies into the project, `page-hello.tpl`, are
+`/template/page-hello/...`; the two become `/feature/weather/...` and
+`/template/page-weather/...`, with the page's file - and you have a feature of
+your own that passes its own test on the first run.
 
 ## What is in here, and why
 
@@ -114,7 +118,7 @@ fill engine, which is what an editor's own text is written in. A shortcode
 argument comes straight out of a template and a panel's stored value straight out
 of a form — both are escaped, always. `Hello::doShortcode()` shows both sides of
 it: the two values it escapes before they go into `templates/hello.tpl`, and the
-`[[/hello/note]]` fill that template carries beside them, which nobody escapes.
+`[[/feature/hello/greeting/note]]` fill that template carries beside them, which nobody escapes.
 
 **The screen validates to be kind; the server validates to be right.** Do both.
 An error that arrives before the request is a better error, and the only check

@@ -14,6 +14,14 @@ A release is the tag `modeswitch-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The text keys follow Nino's grammar.** `/modeswitch/label` is
+  `/feature/modeswitch/switch/label`; `/modeswitch/light`, `system` and `dark`
+  are `/feature/modeswitch/mode/light`, `system` and `dark`. The values are the
+  same. Nothing has been published under the old keys, so there is no migration;
+  a project that already has texts under them copies the values to the new keys.
+  `nino` stays `^1.3`: the keys are the feature's own, and a Nino before 1.4
+  takes them as they come.
+
 - **The comment describing the three states stood over `TEMPLATES`.** "The
   three the switch offers, in the order it draws them" explains `MODES`; the
   constant the template patch added was put between it and `MODES`, with its

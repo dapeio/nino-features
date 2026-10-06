@@ -17,6 +17,10 @@
 		safe here and the fills carry a %s.	*/
 	const SHORTCODE = '[template]';
 
+	// A section's id is the second segment of every key it owns, and an html id: words of
+	// lower-case letters and digits, joined by hyphens, the first one starting with a letter
+	const SECTION_ID = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
+
 	const pd = Nino.admin.templates;
 	if( !pd.composer ) return;
 
@@ -209,7 +213,7 @@
 	}
 
 	function generatedKey( draft, component, property ) {
-		return '/page-'+ draft.pageId+ '/'+ draft.id+ '/'+ suffix( component, property );
+		return '/template/'+ draft.pageId+ '/'+ draft.id+ '/'+ suffix( component, property );
 	}
 
 	function quickMode() {
@@ -244,7 +248,7 @@
 	}
 
 	function backgroundKey( draft ) {
-		return '/page-'+ draft.pageId+ '/'+ draft.id+ '/background';
+		return '/template/'+ draft.pageId+ '/'+ draft.id+ '/background';
 	}
 
 	function firstTextfill() {
@@ -914,14 +918,19 @@
 		setPath( draft, path, input.type === 'checkbox' ? input.checked : input.value );
 		if( path === 'id' ) {
 			pd.composer._idTouched = true;
+			// The prefix a section's own keys have, whole: the id of a section may
+			// be the page's category too, and a replace of '/'+ oldId+ '/' would
+			// find the category first
+			const oldPrefix = '/template/'+ draft.pageId+ '/'+ oldId+ '/';
+			const newPrefix = '/template/'+ draft.pageId+ '/'+ draft.id+ '/';
 			areaKeys( preset() ).forEach( function( areaKey ) {
 				const area = preset().areas[areaKey];
 				draft.areas[areaKey].components.forEach( function( component ) {
 					Object.keys( component.bindings || {} ).forEach( function( property ) {
 						const value = component.bindings[property];
 						const source = bindingSource( component, property );
-						if( area.source === 'single' && source === 'new' && typeof value === 'string' && value.startsWith( '/page-'+ draft.pageId+ '/'+ oldId+ '/' ) ) {
-							component.bindings[property] = value.replace( '/'+ oldId+ '/', '/'+ draft.id+ '/' );
+						if( area.source === 'single' && source === 'new' && typeof value === 'string' && value.startsWith( oldPrefix ) ) {
+							component.bindings[property] = newPrefix+ value.slice( oldPrefix.length );
 							carryTypedValue( value, component.bindings[property] );
 						}
 					} );
@@ -929,7 +938,7 @@
 				const source = draft.areas[areaKey].source;
 				if( area.source === 'elements' && source.elementMode === 'new' && source.elementType === draft.pageId+ '-'+ oldId+ '-'+ areaKey ) source.elementType = draft.pageId+ '-'+ draft.id+ '-'+ areaKey;
 			} );
-			if( draft.frame.backgroundImageSource !== 'fixed' && draft.frame.backgroundImage && draft.frame.backgroundImage.startsWith( '/page-'+ draft.pageId+ '/'+ oldId+ '/' ) ) draft.frame.backgroundImage = draft.frame.backgroundImage.replace( '/'+ oldId+ '/', '/'+ draft.id+ '/' );
+			if( draft.frame.backgroundImageSource !== 'fixed' && draft.frame.backgroundImage && draft.frame.backgroundImage.startsWith( oldPrefix ) ) draft.frame.backgroundImage = newPrefix+ draft.frame.backgroundImage.slice( oldPrefix.length );
 		}
 		const sourceMatch = path.match( /^areas\.([a-z0-9-]+)\.source\.(elementMode|elementType)$/ );
 		if( sourceMatch ) {
@@ -984,12 +993,12 @@
 	function loadTextValues() {
 		if( !active() ) return Promise.resolve();
 		const draft = pd.composer._draft;
-		if( !draft || !/^[a-z][a-z0-9-]*$/.test( draft.id ) ) return Promise.resolve();
+		if( !draft || !SECTION_ID.test( draft.id ) ) return Promise.resolve();
 		const fields = textDescriptors( draft, preset() );
 		const keys = fields.map( function( field ) { return field.key } );
 		if( keys.length === 0 ) return Promise.resolve();
 		const token = ++pd.composer._contentToken;
-		return pd.api( 'content/fields', { keys : keys } ).then( function( response ) {
+		return pd.api( 'content/fields', { name : pd._current.name, keys : keys } ).then( function( response ) {
 			if( token !== pd.composer._contentToken ) return;
 			response.fields.forEach( function( entry ) {
 				if( pd.composer._touched.has( entry.key ) ) return;
@@ -1006,7 +1015,7 @@
 		if( !summary || !draft ) return;
 		summary.innerHTML = '';
 		const collections = areaKeys( item ).filter( function( key ) { return item.areas[key].source === 'elements' } );
-		[ [ Nino.content.getText('/_admin/templates/label/layout'), Nino.adminUi.text( item.layouts[effectiveLayout( draft, item )].label ) ], [ Nino.content.getText('/_admin/templates/label/areas'), areaKeys( item ).length ], [ Nino.content.getText('/_admin/templates/label/components'), areaKeys( item ).reduce( function( total, key ) { return total + draft.areas[key].components.length }, 0 ) ], [ Nino.content.getText('/_admin/templates/label/collections'), collections.length ? collections.map( function( key ) { return draft.areas[key].source.elementType } ).join(', ') : Nino.content.getText('/_admin/templates/label/none2') ], [ Nino.content.getText('/_admin/templates/label/text-bindings'), textDescriptors( draft, item ).length ], [ Nino.content.getText('/_admin/templates/label/image-bindings'), imageDescriptors( draft, item ).length ], [ Nino.content.getText('/_admin/templates/label/generated-prefix'), '/page-'+ draft.pageId+ '/'+ ( draft.id || '…' ) ] ].forEach( function( entry ) {
+		[ [ Nino.content.getText('/_admin/templates/label/layout'), Nino.adminUi.text( item.layouts[effectiveLayout( draft, item )].label ) ], [ Nino.content.getText('/_admin/templates/label/areas'), areaKeys( item ).length ], [ Nino.content.getText('/_admin/templates/label/components'), areaKeys( item ).reduce( function( total, key ) { return total + draft.areas[key].components.length }, 0 ) ], [ Nino.content.getText('/_admin/templates/label/collections'), collections.length ? collections.map( function( key ) { return draft.areas[key].source.elementType } ).join(', ') : Nino.content.getText('/_admin/templates/label/none2') ], [ Nino.content.getText('/_admin/templates/label/text-bindings'), textDescriptors( draft, item ).length ], [ Nino.content.getText('/_admin/templates/label/image-bindings'), imageDescriptors( draft, item ).length ], [ Nino.content.getText('/_admin/templates/label/generated-prefix'), '/template/'+ draft.pageId+ '/'+ ( draft.id || '…' ) ] ].forEach( function( entry ) {
 			const row = node( 'div', 'pd-summary-row' ); row.append( node( 'span', '', entry[0] ), node( 'strong', '', String( entry[1] ) ) ); summary.appendChild( row );
 		} );
 	}
@@ -1015,7 +1024,7 @@
 		if( !active() ) return;
 		const draft = pd.composer._draft;
 		const item = preset();
-		if( !/^[a-z][a-z0-9-]*$/.test( draft.id ) ) throw new Error( Nino.content.getText('/_admin/templates/error/section-id') );
+		if( !SECTION_ID.test( draft.id ) ) throw new Error( Nino.content.getText('/_admin/templates/error/section-id') );
 		const duplicate = pd.sections().find( function( section ) { return section.htmlId === draft.id && section._clientId !== pd.composer._context.targetId } );
 		if( duplicate ) throw new Error( Nino.content.getText('/_admin/templates/error/duplicate-id').replace( '%s', draft.id ) );
 		areaKeys( item ).forEach( function( areaKey ) {
@@ -1058,7 +1067,7 @@
 		try { validate() } catch( exception ) { error.textContent = exception.message; return }
 		submitButton.disabled = true; back.disabled = true; error.textContent = Nino.content.getText('/_admin/templates/msg/preparing');
 		let result;
-		pd.api( 'library/compose', pd.composer._draft ).then( function( response ) {
+		pd.api( 'library/compose', Object.assign( { name : pd._current.name, sectionIds : pd.sectionIds() }, pd.composer._draft ) ).then( function( response ) {
 			result = response;
 			return ( result.content.collections || [] ).reduce( function( chain, collection ) {
 				return chain.then( function() {
@@ -1070,11 +1079,11 @@
 		} ).then( function() {
 			const known = ( pd.sectionsUI._images || [] ).map( function( image ) { return image.uri } );
 			return Promise.all( ( result.images || [] ).filter( function( image ) { return image.mode === 'new' && !known.includes( image.key ) } ).map( function( image ) {
-				return pd.api( 'content/image-create', { preset : result.spec.preset, slot : image.slot, area : image.area, component : image.component, property : image.property, uri : image.key, label : image.label } ).then( function() { pd.sectionsUI._images.push( { uri : image.key, hasImage : false } ) } );
+				return pd.api( 'content/image-create', { name : pd._current.name, preset : result.spec.preset, slot : image.slot, area : image.area, component : image.component, property : image.property, uri : image.key, label : image.label } ).then( function() { pd.sectionsUI._images.push( { uri : image.key, hasImage : false } ) } );
 			} ) );
 		} ).then( function() {
 			const items = contentItems( result.fields || [], pd.composer._textEntries, pd.composer._textValues );
-			return items.length ? pd.api( 'content/save', { items : items } ) : null;
+			return items.length ? pd.api( 'content/save', { name : pd._current.name, items : items } ) : null;
 		} ).then( function() {
 			pd.sectionsUI.insertResult( result, pd.composer._context ); dc.getElementById('pd-composer').close(); pd.toast( pd.composer._context.mode === 'replace' ? Nino.content.getText('/_admin/templates/msg/areas-updated') : Nino.content.getText('/_admin/templates/msg/areas-inserted'), false );
 		} ).catch( function( exception ) { error.textContent = exception.message } ).finally( function() { submitButton.disabled = false; back.disabled = false } );
@@ -1173,7 +1182,7 @@
 		const previous = component.bindings[target.property];
 		component.bindings[target.property] = source;
 		component.bindingSources[target.property] = 'source';
-		return pd.api( 'library/compose', draft ).then( function() {
+		return pd.api( 'library/compose', Object.assign( { name : pd._current.name, sectionIds : pd.sectionIds() }, draft ) ).then( function() {
 			pd.composer.renderSettings();
 			pd.composer.renderSummary();
 			pd.composer.requestPreview( true );

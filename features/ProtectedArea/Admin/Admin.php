@@ -347,7 +347,7 @@ namespace Nino\Modules\ProtectedArea {
 		 *	Routes that share the internal uri - the locale variants of one
 		 *	page - are one entry with every path they have, so that one tick
 		 *	protects every language. Its title is the page's own
-		 *	'/webpage<uri>/title', in the route's locale and else the native
+		 *	'/_nino/webpage<uri>/title', in the route's locale and else the native
 		 *	one; '' where no text has one.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
@@ -394,7 +394,7 @@ namespace Nino\Modules\ProtectedArea {
 							(array) \Nino\Filesystem::getFileContent( $appData, $appData['/nino/locales/textfiles']. '/'. $locale. '.php', [] )
 						);
 
-					$title = trim( (string) ( $fills[$locale]['[[/webpage'. $uri. '/title]]'] ?? '' ) );
+					$title = trim( (string) ( $fills[$locale]['[[/_nino/webpage'. $uri. '/title]]'] ?? '' ) );
 
 					if( $title !== '' )
 						break;

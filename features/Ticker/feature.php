@@ -28,7 +28,7 @@ return [
 				'en_US' => 'Starts again without a seam instead of standing still after one cycle. Default: one cycle.',
 				'de_DE' => 'Beginnt nahtlos von vorn, statt nach einem Durchlauf still zu stehen. Vorgabe: ein Durchlauf.',
 			],
-			'data-ticker-toggle="[[/ticker/toggle]]"' => [
+			'data-ticker-toggle="[[/feature/ticker/pause/label]]"' => [
 				'en_US' => 'A button after the row that pauses it and takes it up again (WCAG 2.2.2). The value is its label; the fill is the one the install unit brings.',
 				'de_DE' => 'Ein Knopf hinter der Reihe, der sie anhält und wieder aufnimmt (WCAG 2.2.2). Der Wert ist die Beschriftung; der Textfill ist der, den die Install-Einheit mitbringt.',
 			],
@@ -42,8 +42,8 @@ return [
 		'callbacks' => [],
 		'install' => [
 			'text/<locale>.php' => [
-				'en_US' => 'The label of the pause button, [[/ticker/toggle]], into the Text panel.',
-				'de_DE' => 'Die Beschriftung des Pause-Knopfs, [[/ticker/toggle]], ins Panel Texte.',
+				'en_US' => 'The label of the pause button, [[/feature/ticker/pause/label]], into the Text panel.',
+				'de_DE' => 'Die Beschriftung des Pause-Knopfs, [[/feature/ticker/pause/label]], ins Panel Texte.',
 			],
 		],
 	],

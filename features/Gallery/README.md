@@ -49,7 +49,7 @@ caption is what is printed under it in the overlay.
   picture carries the thumbnail's `alt`.
 - An image with neither gets no `data-caption` and an empty `alt`.
 
-Either may be written as a textfill (`[[/gallery/caption/pass]]`), which is how
+Either may be written as a textfill (`[[/project/gallery/pass/caption]]`), which is how
 one text serves every language. It is resolved when the gallery is rendered
 and escaped on the way into the attribute.
 

@@ -171,7 +171,7 @@ structures, or project-specific behavior go.
 	],
 	// What the preview shows for a fill the section does not create: the
 	// fields its loop repeats, and any project text its layout writes in
-	// ('/company/email'). %n is the item's number; a list gives each item
+	// ('/project/company/contact/email'). %n is the item's number; a list gives each item
 	// its own entry
 	'samples' => [
 		'title' => 'Service %n',
@@ -334,7 +334,7 @@ the rest of the model, by the model's own key, plus `[[.id]]` for the entry's
 position from 0. They are double-bracketed fills - `[title]` is a shortcode and
 stays on the page as text. A plain value is escaped, an `'html' => true` value
 is sanitized for content, `[` in either is written `&#91;`, and global fills
-(`[[/company/name]]`) resolve there as well. The composer refuses a nested
+(`[[/project/company/general/name]]`) resolve there as well. The composer refuses a nested
 `[elements]` block, whose closer would end the outer block, and - for a
 collection the section creates - a rich field inside a tag. Quote every
 attribute that carries a field: escaping does not encode a space or `=`. List `html` under
@@ -363,7 +363,8 @@ Each property persists an explicit `bindingSources` value. Single non-image
 properties allow `new`, `textfill`, or `fixed`; Single images allow `new` or
 `image`; an `html` component's own property carries `source`, the markup
 itself. Generated keys use
-`/page-<pageId>/<sectionId>/<component-suffix>`. Elements non-image properties
+`/template/<pageId>/<sectionId>/<component-suffix>`, where `<pageId>` is the page
+template's category: its file name without `.tpl` (`page-home`). Elements non-image properties
 allow `field`, `textfill`, or `fixed`, while Elements images remain `field`.
 Template properties use `template`, accept only `/templates/<safe-name>`, and
 compile to a normal `[template]` shortcode. Template components are forbidden
@@ -394,7 +395,7 @@ silently as a custom class.
 
 Cover and parallax backgrounds bind one background image, and the choice is
 stored as `frame.backgroundImageSource`: `new` generates the slot
-`/page-<pageId>/<sectionId>/background`, `image` references an existing slot,
+`/template/<pageId>/<sectionId>/background`, `image` references an existing slot,
 and `fixed` writes a plain `<img>` with a literal URL and creates no slot at
 all. A fixed value may start with `[[/nino/public]]` or `[[/nino/dir]]` and is
 otherwise a relative path or an `http`/`https` URL - every other bracket,

@@ -8,9 +8,9 @@ declare(strict_types=1);
 return [
 
 	// Was über der Liste steht, wenn der Shortcode nichts gesagt hat
-	'[[/toc/title]]'	=> 'Auf dieser Seite',
+	'[[/feature/toc/list/title]]'	=> 'Auf dieser Seite',
 
 	// Was das „#" neben einer Überschrift ist, für jemanden, der es mit der
 	// Tastatur erreicht und nicht sieht, dass es ein Link auf die Stelle ist
-	'[[/toc/anchor]]'	=> 'Link zu diesem Abschnitt',
+	'[[/feature/toc/anchor/label]]'	=> 'Link zu diesem Abschnitt',
 ];
