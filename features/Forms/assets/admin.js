@@ -187,7 +187,8 @@
 
 		/**
 		 *	The two things about the submissions a project decides, under the
-		 *	list: how long they are kept, and whether they are kept at all.
+		 *	list, as a card of their own with its own Save: how long they are
+		 *	kept, and whether they are kept at all.
 		 *	Both are the kernel's own config keys - it is the kernel that
 		 *	writes the records - so a project that switches this feature off
 		 *	keeps whatever was chosen here
@@ -197,7 +198,7 @@
 		_renderSettings : function() {
 
 			const el = dc.createElement('form');
-			el.className = 'forms-settings';
+			el.className = 'nino-admin-card forms-settings';
 
 			const legend = dc.createElement('h3');
 			legend.textContent = Nino.content.getText('/_admin/forms/label/submissions-settings');
@@ -221,8 +222,11 @@
 				checked : Nino.admin.forms._store,
 			} ) );
 
+			// A row of the card, not the workbench's fixed action bar: that one
+			// belongs to the screen, and a second one lay over the first - and
+			// over New form with it
 			const actions = dc.createElement('div');
-			actions.className = 'nino-admin-actionbar';
+			actions.className = 'forms-actions';
 
 			const save = dc.createElement('button');
 			save.type = 'submit';
@@ -232,6 +236,8 @@
 
 			const msg = dc.createElement('p');
 			msg.id = 'forms-settings-msg';
+			msg.className = 'nino-admin-hint';
+			msg.setAttribute( 'role', 'status' );
 			actions.appendChild( msg );
 
 			el.appendChild( actions );
@@ -241,6 +247,8 @@
 			// they hand back the label, not the control
 			el.addEventListener( 'submit', function( ev ) {
 				ev.preventDefault();
+				save.disabled = true;
+				msg.classList.remove('nino-admin-error');
 				msg.textContent = Nino.content.getText('/_admin/common/msg/saving');
 
 				const values = {};
@@ -252,7 +260,9 @@
 					retention : parseInt( values.retention, 10 ),
 					store : values.store === true,
 				}, function( status, response ) {
+					save.disabled = false;
 					if( status !== 200 || response === null ) {
+						msg.classList.add('nino-admin-error');
 						msg.textContent = '('+ status+ ') '+ ( ( response && response.error ) ? response.error : Nino.content.getText('/_admin/common/error/save') );
 						return;
 					}

@@ -6,6 +6,15 @@ versions [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+- **New form lay under a second Save bar.** The two submission settings drew
+  their own fixed action bar over the list's, so on every screen size a click
+  on New form hit the Save of the retention instead and saved that. The
+  settings are a card of their own now, with their own Save, which stays off
+  while the request runs, and a status line that marks a failed save as an
+  error; the list carries the one fixed bar it should, and the suite draws
+  the panel over a dom stand-in (`tests/forms-js-smoke.js`) to count the bars
+  on each screen.
+
 - **Returning to the panel threw instead of drawing the list.** `showCurrent()`,
   which the shell calls whenever the panel is opened again, called
   `_showList()` - a method that has been `_renderList()` since the list and

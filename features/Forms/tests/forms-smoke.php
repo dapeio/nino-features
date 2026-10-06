@@ -14,7 +14,9 @@ declare(strict_types=1);
  *										config.php - plus the thing that matters most about a
  *										feature like this: that switching it on changes nothing
  *										about a submission that should go through, and switching
- *										it off leaves every form working.
+ *										it off leaves every form working - and, where node is on
+ *										the path, forms-js-smoke.js beside it, the panel's script
+ *										over a dom stand-in.
  *
  *										Travels with the feature and runs against the checkout
  *										three levels up, or the one NINO_ROOT names (see
@@ -363,6 +365,27 @@ preg_match_all( '/Nino\.admin\.forms\.([_a-zA-Z0-9]+)\s*\(/', $panelScript, $cal
 preg_match_all( '/^\t\t([_a-zA-Z0-9]+)\s*:\s*function/m', $panelScript, $definedMethods );
 $undefinedCalls = array_values( array_unique( array_diff( $calledMethods[1], $definedMethods[1] ) ) );
 check( 'every method the panel script calls on its own namespace is one it defines'. ( $undefinedCalls === [] ? '' : ' - '. implode( ', ', $undefinedCalls ) ), $definedMethods[1] !== [] && $undefinedCalls === [] );
+
+echo "\n";
+
+
+// --- The panel's script, where node is on the path ----------------------------
+//
+// forms-js-smoke.js beside this file draws the list, the settings card and the
+// editor over a dom stand-in and counts the fixed action bars on each screen;
+// this suite runs it too where node is on the path, the way redirects-smoke.php
+// does, so bin/check.sh and CI cover both halves in one go
+$jsTest	= __DIR__. '/forms-js-smoke.js';
+$node		= function_exists( 'shell_exec' ) === true ? trim( (string) @shell_exec( 'command -v node 2>/dev/null' ) ) : '';
+
+if( $node === '' || function_exists( 'exec' ) === false ) {
+	echo "  --  - node is not available here: forms-js-smoke.js was NOT run\n";
+} else {
+	$output = []; $status = 1;
+	exec( escapeshellarg( $node ). ' '. escapeshellarg( $jsTest ). ' 2>&1', $output, $status );
+	$summary = (string) end( $output );
+	check( 'forms-js-smoke.js passes - '. ( $summary === '' ? 'no output' : $summary ), $status === 0 );
+}
 
 ninoWarnings();
 ninoDone( $appData );

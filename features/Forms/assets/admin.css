@@ -7,12 +7,12 @@
  *													design system in _admin/assets/style.css: the row of
  *													buttons a form's card carries, one field of the form
  *													editor as a row rather than a column of five
- *													controls, and the two submission settings under the
- *													list. Bundled while the feature is active (see
- *													the panel's assets()), so the same layer rules apply -
- *													the shell's stylesheet fixes the layer order, this one
- *													only ever adds to nino.tool, scoped to the panel's own
- *													panes.
+ *													controls, and the two submission settings in a card
+ *													of their own under the list. Bundled while the
+ *													feature is active (see the panel's assets()), so the
+ *													same layer rules apply - the shell's stylesheet fixes
+ *													the layer order, this one only ever adds to nino.tool,
+ *													scoped to the panel's own panes.
  *
  *	@package								Dape/Nino
  *	@author									David Perchermeier <mail@dape.io>
@@ -21,8 +21,9 @@
 
 @layer nino.tool {
 
-/*	Edit and Delete on one card. The script builds them as siblings with no
-	whitespace between them, so the row carries its gap itself. */
+/*	Edit and Delete on a form's card, and Save with its status line on the
+	settings card. The script builds them as siblings with no whitespace
+	between them, so the row carries its gap itself. */
 #forms-list .forms-actions {
 	display: flex;
 	flex-wrap: wrap;
@@ -71,12 +72,16 @@
 
 /*	How long submissions are kept and whether they are kept - two controls
 	that belong to the list as a whole rather than to any one form, so they
-	sit under it, set apart by a rule rather than by a card. A card would
-	read as a form among the forms. */
+	are a card of their own under the forms, with a Save of their own in a
+	row of the card. The workbench's fixed action bar is the screen's, and
+	the list already carries one: New form. The card pads itself, so only
+	the space above it is set here. */
 #forms-list .forms-settings {
 	margin-top: 1.5rem;
-	padding-top: 1.25rem;
-	border-top: 1px solid var(--editor-separator);
+}
+
+#forms-list .forms-settings .forms-actions > p {
+	margin: 0;
 }
 
 #forms-list .forms-settings > h3 {

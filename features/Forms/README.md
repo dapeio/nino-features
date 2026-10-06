@@ -91,9 +91,9 @@ field names and how many submissions it has on file. A card leads to that
 form's own screen - what it is called, where its mail goes, which templates it
 renders, and its fields as one row each.
 
-Under the list sit the two things about the submissions a project decides,
-because the kernel is what writes them and a project keeps them when this
-feature goes:
+Under the list sits a card of its own, with its own Save, for the two things
+about the submissions a project decides, because the kernel is what writes
+them and a project keeps them when this feature goes:
 
 | Control | Config key |
 | --- | --- |
@@ -153,6 +153,7 @@ feature's.
 
 ```bash
 NINO_ROOT=../nino php features/Forms/tests/forms-smoke.php
+node features/Forms/tests/forms-js-smoke.js
 ```
 
 The manifest and the activation, the shortcode over a definition the kernel
@@ -161,3 +162,10 @@ letting a good submission through - and the two that matter most for a feature
 shaped like this one: that with nothing configured a submission goes through
 the engine exactly as it did before, and that after deactivation the forms are
 still there and still work.
+
+`tests/forms-js-smoke.js` is the panel's own script over a dom stand-in. It
+checks one fixed action bar on the list (New form) and one in the editor (its
+Save), and the two submission settings as a card with their own Save and status
+line: what they post, the button kept off while the request runs, a refusal
+marked as an error. It also checks that the panel is drawn again when the shell
+reopens it. `forms-smoke.php` runs it too where node is on the path.
