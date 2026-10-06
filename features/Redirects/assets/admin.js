@@ -38,6 +38,11 @@
 		// The rule being edited, as a working copy - leaving without saving
 		// changes nothing. null while the list is on screen
 		_editing		: null,
+		// What it was when it was opened, as the json it is compared with: the
+		// editor holds something nobody has saved when it is not that any more
+		_opened			: '',
+		// The Save of the editor on show, which the shell's own Save presses
+		_saveButton	: null,
 		// Which of the two screens is on
 		_screen			: 'rules',
 		_probe			: { path : '', answer : null },
@@ -87,11 +92,21 @@
 			if( Nino.admin.redirects._ready === false )
 				return Nino.admin.redirects.init();
 
+			// The shell brings the panel on screen again after a Save it asked
+			// for failed: drawn anew, the reason the save gave would be gone,
+			// and so would the rule nobody has saved
+			if( typeof Nino.admin.dirty === 'object' && Nino.admin.dirty.isDirty( [ 'redirects' ] ) === true )
+				return;
+
 			Nino.admin.redirects._render();
 		},
 
 		/**
-		 *	Call a redirects/* action
+		 *	Call a redirects/* action. The workbench's own request helper posts
+		 *	where this Nino has one - it knows the project's directory and what
+		 *	to do when the page has outlived its session; the post below is
+		 *	what every panel did before it, with the base the asset bundle
+		 *	fills in, because Nino.dir does not exist before Nino 1.3.2
 		 *
 		 *	@param		{string}		endpoint	Action name, eg. "list" -> "redirects/list"
 		 *	@param		{Object}		payload		Request payload, sent json-encoded as "data"
@@ -100,9 +115,72 @@
 		 *	@return		void
 		 */
 		_apiCall : function( endpoint, payload, callback ) {
-			Nino.http.sendRequest( '/_admin/', 'POST', function( xhr ) {
+
+			if( Nino.adminUi && Nino.adminUi.api )
+				return Nino.adminUi.api.call( 'redirects/'+ endpoint, payload, callback );
+
+			Nino.http.sendRequest( '[[/nino/dir]]/_admin/', 'POST', function( xhr ) {
 				callback( xhr.status, xhr.responseJSON );
 			}, { action : 'redirects/'+ endpoint, data : JSON.stringify( payload ) } );
+		},
+
+		/**
+		 *	What a failed request says: the server's code in the workbench's
+		 *	language, then its own message, then this panel's sentence - where
+		 *	this Nino has errorText(). Before it, "(status) message"
+		 *
+		 *	@param		{number}		status
+		 *	@param		{*}					response
+		 *	@param		{string}		key				Fill key of the panel's own sentence, '' for none
+		 *
+		 *	@return		{string}
+		 */
+		_errorText : function( status, response, key ) {
+
+			if( Nino.adminUi && Nino.adminUi.api && typeof Nino.adminUi.api.errorText === 'function' )
+				return Nino.adminUi.api.errorText( status, response, key );
+
+			return '('+ status+ ') '+ ( ( response && response.error ) ? response.error : ( key === '' ? '' : Nino.content.getText( key ) ) );
+		},
+
+		/**
+		 *	Open the editor on a rule, as a working copy
+		 *
+		 *	@param		{Object}	rule			{ from, to, status, subtree, was }
+		 *
+		 *	@return		void
+		 */
+		_open : function( rule ) {
+
+			Nino.admin.redirects._editing	= rule;
+			Nino.admin.redirects._opened	= JSON.stringify( rule );
+			Nino.admin.redirects._render();
+		},
+
+		/**
+		 *	Whether the editor holds anything nobody has saved
+		 *
+		 *	@return		{boolean}
+		 */
+		_isDirty : function() {
+			return Nino.admin.redirects._editing !== null && JSON.stringify( Nino.admin.redirects._editing ) !== Nino.admin.redirects._opened;
+		},
+
+		/**
+		 *	Leave the editor - after asking, where this Nino can, when it holds
+		 *	something nobody has saved
+		 *
+		 *	@param		{Function}	proceed
+		 *	@param		{Function}	[onCancel]		What puts the screen back as it was, when whoever asked says no
+		 *
+		 *	@return		void
+		 */
+		_leave : function( proceed, onCancel ) {
+
+			if( typeof Nino.admin.dirty === 'object' )
+				return Nino.admin.dirty.guard( [ 'redirects' ], proceed, onCancel );
+
+			proceed();
 		},
 
 		/**
@@ -208,9 +286,13 @@
 			// - the whole panel is drawn again, which is also what moves the
 			// editor out of the way when somebody leaves it by the tab
 			Nino.adminUi.buttonRow( buttons, Nino.admin.redirects._screen, function( screen ) {
-				Nino.admin.redirects._screen = screen;
-				Nino.admin.redirects._editing = null;
-				Nino.admin.redirects._render();
+				// The strip painted the screen it was asked for before this ran:
+				// drawn again, it is put back if the editor is kept
+				Nino.admin.redirects._leave( function() {
+					Nino.admin.redirects._screen = screen;
+					Nino.admin.redirects._editing = null;
+					Nino.admin.redirects._render();
+				}, function() { Nino.admin.redirects._render() } );
 			}, 'aria-selected' );
 
 			return bar;
@@ -239,8 +321,7 @@
 			add.className = 'nino-admin-btn nino-admin-btn-primary';
 			add.textContent = Nino.content.getText('/_admin/redirects/label/new');
 			add.addEventListener( 'click', function() {
-				Nino.admin.redirects._editing = { from : '', to : '', status : 301, subtree : false, was : '' };
-				Nino.admin.redirects._render();
+				Nino.admin.redirects._open( { from : '', to : '', status : 301, subtree : false, was : '' } );
 			} );
 
 			box.appendChild( Nino.adminUi.listActions( [ add ] ) );
@@ -328,10 +409,9 @@
 			edit.className = 'nino-admin-btn';
 			edit.textContent = Nino.content.getText('/_admin/redirects/label/edit');
 			edit.addEventListener( 'click', function() {
-				Nino.admin.redirects._editing = {
+				Nino.admin.redirects._open( {
 					from : rule.from, to : rule.to, status : rule.status, subtree : rule.subtree === true, was : rule.from,
-				};
-				Nino.admin.redirects._render();
+				} );
 			} );
 
 			const remove = dc.createElement('button');
@@ -377,8 +457,10 @@
 			back.className = 'nino-admin-btn';
 			back.textContent = Nino.content.getText('/_admin/redirects/label/back');
 			back.addEventListener( 'click', function() {
-				Nino.admin.redirects._editing = null;
-				Nino.admin.redirects._render();
+				Nino.admin.redirects._leave( function() {
+					Nino.admin.redirects._editing = null;
+					Nino.admin.redirects._render();
+				} );
 			} );
 
 			box.appendChild( Nino.adminUi.contextBar( back, [] ) );
@@ -450,29 +532,8 @@
 			save.type = 'button';
 			save.className = 'nino-admin-btn nino-admin-btn-primary';
 			save.textContent = Nino.content.getText('/_admin/redirects/label/save');
-			save.addEventListener( 'click', function() {
-
-				save.disabled = true;
-
-				Nino.admin.redirects._apiCall( 'save', edit, function( status, response ) {
-
-					save.disabled = false;
-
-					if( status !== 200 || response === null )
-						return Nino.admin.redirects._message( status, response );
-
-					Nino.admin.redirects._rules		= response.rules || [];
-					Nino.admin.redirects._notes		= response.notes || [];
-					// The address is answered now, so it is not an address
-					// nothing answers - the server drops it, and the screen has
-					// to agree without asking again
-					Nino.admin.redirects._misses	= Nino.admin.redirects._misses.filter( function( miss ) { return miss.path !== response.saved } );
-					Nino.admin.redirects._editing	= null;
-					Nino.admin.redirects._render();
-					Nino.admin.redirects._message( 200, null, '/_admin/redirects/msg/saved' );
-					Nino.admin.redirects._warn( response.warnings || [] );
-				} );
-			} );
+			Nino.admin.redirects._saveButton = save;
+			save.addEventListener( 'click', function() { Nino.admin.redirects._save( edit, save ) } );
 
 			const bar = dc.createElement('div');
 			bar.appendChild( save );
@@ -481,6 +542,52 @@
 			box.appendChild( Nino.adminUi.actionBar( bar ) );
 
 			return box;
+		},
+
+		/**
+		 *	Save the rule being edited
+		 *
+		 *	@param		{Object}		edit
+		 *	@param		{Element}		save
+		 *	@param		{Function}	[done]		Told whether it was saved - the shell's Save asks
+		 *
+		 *	@return		void
+		 */
+		_save : function( edit, save, done ) {
+
+			const finish = function( ok ) {
+				if( typeof done === 'function' )
+					done( ok );
+			};
+
+			// A second click while one is on its way
+			if( save.disabled === true )
+				return finish( false );
+
+			save.disabled = true;
+
+			Nino.admin.redirects._apiCall( 'save', edit, function( status, response ) {
+
+				save.disabled = false;
+
+				if( status !== 200 || response === null ) {
+					Nino.admin.redirects._message( status, response );
+					return finish( false );
+				}
+
+				Nino.admin.redirects._rules		= response.rules || [];
+				Nino.admin.redirects._notes		= response.notes || [];
+				// The address is answered now, so it is not an address
+				// nothing answers - the server drops it, and the screen has
+				// to agree without asking again
+				Nino.admin.redirects._misses	= Nino.admin.redirects._misses.filter( function( miss ) { return miss.path !== response.saved } );
+				Nino.admin.redirects._editing	= null;
+				Nino.admin.redirects._render();
+				Nino.admin.redirects._message( 200, null, '/_admin/redirects/msg/saved' );
+				Nino.admin.redirects._warn( response.warnings || [] );
+
+				finish( true );
+			} );
 		},
 
 		/**
@@ -547,7 +654,7 @@
 
 					if( status !== 200 || response === null ) {
 						out.classList.add('nino-admin-error');
-						out.textContent = '('+ status+ ') '+ ( ( response && response.error ) ? response.error : '' );
+						out.textContent = Nino.admin.redirects._errorText( status, response, '' );
 						return;
 					}
 
@@ -666,9 +773,8 @@
 				// Opened on the rules screen with the address already in it:
 				// what is missing is the target, and that is the only thing
 				// somebody actually has to decide here
-				Nino.admin.redirects._editing = { from : miss.path, to : '', status : 301, subtree : false, was : '' };
 				Nino.admin.redirects._screen	= 'rules';
-				Nino.admin.redirects._render();
+				Nino.admin.redirects._open( { from : miss.path, to : '', status : 301, subtree : false, was : '' } );
 			} );
 
 			const drop = dc.createElement('button');
@@ -732,7 +838,7 @@
 			}
 
 			line.classList.add('nino-admin-error');
-			line.textContent = '('+ status+ ') '+ ( ( response && response.error ) ? response.error : Nino.content.getText('/_admin/redirects/error/load') );
+			line.textContent = Nino.admin.redirects._errorText( status, response, '/_admin/redirects/error/load' );
 		},
 
 		/**
@@ -770,10 +876,31 @@
 
 			const line = dc.createElement('p');
 			line.className = 'nino-admin-hint nino-admin-error';
-			line.textContent = '('+ status+ ') '+ ( ( response && response.error ) ? response.error : Nino.content.getText('/_admin/redirects/error/load') );
+			line.textContent = Nino.admin.redirects._errorText( status, response, '/_admin/redirects/error/load' );
 
 			wrap.appendChild( line );
 		},
 	};
+
+	/*	The shell asks Save, Discard or Cancel before a log out or a language
+		change would lose a rule nobody has saved, and a reload gets the
+		browser's own question. A panel registers where this Nino has the
+		registry and does without where it has not - panel scripts run on
+		older workbenches too	*/
+	if( typeof Nino.admin.dirty === 'object' )
+		Nino.admin.dirty.register( 'redirects', {
+			isDirty : function() { return Nino.admin.redirects._isDirty() },
+			save : function( done ) {
+
+				const save = Nino.admin.redirects._saveButton;
+
+				if( Nino.admin.redirects._editing === null || save === null )
+					return done( false );
+
+				Nino.admin.redirects._save( Nino.admin.redirects._editing, save, done );
+			},
+			// What the shell is about to leave takes the editor with it
+			discard : function() { Nino.admin.redirects._opened = JSON.stringify( Nino.admin.redirects._editing ) },
+		} );
 
 } )( window, document );

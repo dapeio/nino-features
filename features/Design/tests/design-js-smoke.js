@@ -305,7 +305,10 @@ function listing( over ) {
  *	before the head
  *
  *	@param		{Object}	[over]		What this screen's listing has differently
- *	@param		{Object}	[shell]		{ head : false } for a pane without a head
+ *	@param		{Object}	[shell]		{ head : false } for a pane without a head; raw: true leaves
+ *															the panel's own _apiCall in place and { send } stands in for
+ *															Nino.http.sendRequest, { api } for Nino.adminUi.api (a newer
+ *															workbench) and { dirty } for the shell's Nino.admin.dirty
  */
 function panel( over, shell ) {
 
@@ -425,9 +428,14 @@ function panel( over, shell ) {
 			bindCallback : function() {},
 		},
 		http : {
-			sendRequest : function() { throw new Error( 'every request goes through _apiCall, which this test holds' ) },
+			sendRequest : ( shell || {} ).send || function() { throw new Error( 'every request goes through _apiCall, which this test holds' ) },
 		},
 	};
+
+	if( ( shell || {} ).api )
+		Nino.adminUi.api = shell.api;
+	if( ( shell || {} ).dirty )
+		Nino.admin = { dirty : shell.dirty };
 
 	const sandbox = {
 		console			: console,
@@ -443,9 +451,10 @@ function panel( over, shell ) {
 
 	const design = Nino.admin.design;
 
-	design._apiCall = function( endpoint, payload, callback ) {
-		requests.push( { endpoint : endpoint, payload : payload, answer : callback } );
-	};
+	if( ( shell || {} ).raw !== true )
+		design._apiCall = function( endpoint, payload, callback ) {
+			requests.push( { endpoint : endpoint, payload : payload, answer : callback } );
+		};
 
 	design._data	= listing( over );
 	design._edit	= design._selection( design._data );
@@ -847,6 +856,95 @@ failing.answer( 500, { error : 'could not write /assets/theme.css' } );
 
 check( 'a restore that failed says why and does not redraw', ( failing.byId('design-msg') || {} ).textContent === '(500) could not write /assets/theme.css'
 	&& failing.requests.length === 0 );
+
+// --- Asking the workbench ----------------------------------------------------------
+
+console.log( 'The workbench' );
+
+/*	Where the shell has a request helper the panel asks it; where it has not it
+	posts from the project's own directory - the literal the asset bundle fills
+	in, as Nino.dir does not exist before Nino 1.3.2	*/
+const wasPosted = [];
+const noHelper = panel( {}, { raw : true, send : function( uri, method, callback, data ) { wasPosted.push( [ uri, method, data ] ); callback( { status : 200, responseJSON : { ok : true } } ) } } );
+let gotAnswer = null;
+noHelper.design._apiCall( 'list', { a : 1 }, function( status, response ) { gotAnswer = [ status, response ] } );
+check( 'without the shell\'s request helper the panel posts to the project\'s own _admin, with the action and the json',
+	wasPosted.length === 1 && wasPosted[0][0] === '[[/nino/dir]]/_admin/' && wasPosted[0][1] === 'POST'
+	&& wasPosted[0][2].action === 'design/list' && wasPosted[0][2].data === '{"a":1}' && JSON.stringify( gotAnswer ) === '[200,{"ok":true}]' );
+
+const wasRouted = [];
+const withHelper = panel( {}, { raw : true, api : { call : function( action, payload, callback ) { wasRouted.push( [ action, payload ] ); callback( 200, { via : 'api' } ) } } } );
+gotAnswer = null;
+withHelper.design._apiCall( 'save', { b : 2 }, function( status, response ) { gotAnswer = [ status, response ] } );
+check( 'with it the panel hands the action \'design/<action>\' and the payload to the helper, and posts nothing by hand',
+	wasRouted.length === 1 && wasRouted[0][0] === 'design/save' && wasRouted[0][1].b === 2 && gotAnswer[1].via === 'api' );
+
+check( 'a failure says "(status) message" as it always did where the shell has no errorText()',
+	noHelper.design._errorText( 503, { error : 'Busy' }, '/_admin/design/error/save' ) === '(503) Busy'
+	&& noHelper.design._errorText( 503, null, '/_admin/design/error/save' ) === '(503) /_admin/design/error/save' );
+const helped = panel( {}, { raw : true, api : { errorText : function( status, response, key ) { return 'told '+ status+ ' ['+ key+ ']' } } } );
+check( '...and what errorText() makes of it where it has one', helped.design._errorText( 503, { error : 'Busy' }, '/_admin/design/error/save' ) === 'told 503 [/_admin/design/error/save]' );
+
+console.log('');
+
+
+// --- Unsaved input -----------------------------------------------------------------
+
+console.log( 'Unsaved input' );
+
+// The shell's registry in miniature: what the panel registered, and how often it was asked to look again
+const registry = { entries : {}, refreshed : 0 };
+registry.register = function( name, registered ) { registry.entries[name] = registered };
+registry.refresh = function() { registry.refreshed++ };
+registry.isDirty = function( names ) { return names.some( function( name ) { return registry.entries[name] !== undefined && registry.entries[name].isDirty() === true } ) };
+
+const tracked = panel( {}, { dirty : registry } );
+const registered = registry.entries['design'] || null;
+
+check( 'where the shell has the registry the panel registers under its own uri', registered !== null && typeof registered.isDirty === 'function' && typeof registered.save === 'function' && typeof registered.discard === 'function' );
+check( '...a screen drawn from what is stored holds nothing unsaved, and the shell is told when it is drawn', registered.isDirty() === false && registry.refreshed > 0 );
+
+tracked.move( 'Spacing', 'more' );
+check( '...a knob that was moved does - the same answer the way back is shown for', registered.isDirty() === true && tracked.byId('design-reset').hidden === false );
+
+tracked.byId('design-reset').fire('click');
+check( '...and the way back, which draws the stored selection again, makes it not', registered.isDirty() === false && tracked.byId('design-reset').hidden === true );
+
+tracked.move( 'Spacing', 'more' );
+registered.discard();
+check( 'discarding takes the stored selection for the screen\'s own', registered.isDirty() === false );
+
+tracked.move( 'Spacing', 'more' );
+let savedFor = [];
+registered.save( function( ok ) { savedFor.push( ok ) } );
+check( 'the shell\'s Save stores the draft - and asks nothing, since applying is a question of its own',
+	JSON.stringify( endpoints( tracked ) ) === JSON.stringify( [ 'save' ] ) && tracked.confirms.length === 0 && savedFor.length === 0 );
+
+registered.save( function( ok ) { savedFor.push( ok ) } );
+check( '...a second Save while the first is on its way says it did not save', savedFor.length === 1 && savedFor[0] === false );
+
+tracked.answer( 200, {} );
+check( '...and the first says it did, once the draft is stored', savedFor.length === 2 && savedFor[1] === true );
+
+const refused = panel( {}, { dirty : registry } );
+refused.move( 'Spacing', 'more' );
+savedFor = [];
+registry.entries['design'].save( function( ok ) { savedFor.push( ok ) } );
+refused.answer( 500, { error : 'could not write data/design.php' } );
+check( 'a draft the server turns down says so, on the screen and to the shell, and the way back stays',
+	savedFor.length === 1 && savedFor[0] === false && ( refused.byId('design-msg') || {} ).textContent === '(500) could not write data/design.php'
+	&& refused.byId('design-reset').hidden === false );
+
+// The shell answers a refused Save by showing the panel again
+refused.design.showCurrent();
+check( '...and the shell showing the panel again does not wipe the reason, nor the selection nobody has stored',
+	( refused.byId('design-msg') || {} ).textContent === '(500) could not write data/design.php' && registry.entries['design'].isDirty() === true );
+
+registry.entries['design'].discard();
+check( '...while a discard draws the stored selection again, so a leave that does not happen shows the truth',
+	registry.entries['design'].isDirty() === false && refused.byId('design-reset').hidden === true );
+
+console.log('');
 
 console.log( '\n'+ checks+ ' checks, '+ failures+ ' failed' );
 process.exit( failures === 0 ? 0 : 1 );

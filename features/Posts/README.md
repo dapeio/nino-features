@@ -83,7 +83,12 @@ not a blank page with a header on it.
 
 Inside every block the fields are Elements' own - `[[title]]`, `[[date]]`,
 escaped exactly the way `[elements]` escapes them - plus the five values an
-element cannot know by itself.
+element cannot know by itself. A field the model gives a format - paragraphs and
+lists (`blocks`), the line breaks of a plain text (`breaks`) - is drawn the way
+`[elements]` draws it where the Nino has `\Nino\Html::fieldValue()`, and as
+the flat field it always was on one that has not. Give the element that holds a
+`blocks` value the class `nino-richtext`: the framework's reset takes every
+paragraph gap and list marker away, and the class restores them.
 
 ```
 [posts]…[/posts]              the page of the list that is on

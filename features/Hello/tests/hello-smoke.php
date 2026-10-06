@@ -17,7 +17,9 @@ declare(strict_types=1);
  *										activation, then what init() registers, then what the
  *										shortcode renders, then the panel, then the data, then
  *										deactivation. Copy the shape and delete the sections
- *										your feature has no equivalent of.
+ *										your feature has no equivalent of. Where node is on the
+ *										path it runs hello-js-smoke.js beside it too, the
+ *										panel's script over a dom stand-in.
  *
  *	Usage: php features/Hello/tests/hello-smoke.php
  *	       NINO_ROOT=../nino php features/Hello/tests/hello-smoke.php
@@ -338,5 +340,23 @@ check( 'the page template stays - it is the project\'s file now', \Nino\Filesyst
 check( 'the words stay too', isset( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/hello/note]]'] ) === true );
 check( 'and what was stored is still there for a reactivation', \Nino\Filesystem::fileExists( $appData, \Nino\Modules\Hello::PATH ) === true );
 check( 'the feature is still on disk, listed and inactive', ( \Nino\Features::get( $appData, 'hello' )['active'] ?? true ) === false );
+
+// --- The panel's script, where node is on the path ----------------------------
+//
+// hello-js-smoke.js beside this file runs the panel's script over a dom
+// stand-in - its request, its status line and what it tells the shell about
+// unsaved input; this suite runs it too where node is on the path, the way
+// forms-smoke.php does, so bin/check.sh and CI cover both halves in one go
+$jsTest	= __DIR__. '/hello-js-smoke.js';
+$node		= function_exists( 'shell_exec' ) === true ? trim( (string) @shell_exec( 'command -v node 2>/dev/null' ) ) : '';
+
+if( $node === '' || function_exists( 'exec' ) === false ) {
+	echo "  --  - node is not available here: hello-js-smoke.js was NOT run\n";
+} else {
+	$output = []; $status = 1;
+	exec( escapeshellarg( $node ). ' '. escapeshellarg( $jsTest ). ' 2>&1', $output, $status );
+	$summary = (string) end( $output );
+	check( 'hello-js-smoke.js passes - '. ( $summary === '' ? 'no output' : $summary ), $status === 0 );
+}
 
 ninoDone( $appData );

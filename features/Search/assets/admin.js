@@ -28,6 +28,10 @@
 		// The type being edited, as a working copy: leaving without saving
 		// changes nothing. null while the list is on screen
 		_editing	: null,
+		// The status line and the Save of the editor on show, which the
+		// shell's own Save presses
+		_line			: null,
+		_saveButton	: null,
 		// What the probe last ran, so switching panels and back keeps it
 		_probe		: { query : '', types : [], locale : '', hits : null, limit : 0 },
 
@@ -72,14 +76,26 @@
 			if( Nino.admin.search._ready === false )
 				return Nino.admin.search.init();
 
-			if( Nino.admin.search._editing !== null )
+			if( Nino.admin.search._editing !== null ) {
+
+				// The shell brings the panel on screen again after a Save it
+				// asked for failed: drawn anew, the reason the save gave would
+				// be gone, and so would the slots nobody has saved
+				if( typeof Nino.admin.dirty === 'object' && Nino.admin.dirty.isDirty( [ 'search' ] ) === true )
+					return;
+
 				return Nino.admin.search._renderType();
+			}
 
 			Nino.admin.search._renderList();
 		},
 
 		/**
-		 *	Call a search/* action
+		 *	Call a search/* action. The workbench's own request helper posts
+		 *	where this Nino has one - it knows the project's directory and what
+		 *	to do when the page has outlived its session; the post below is
+		 *	what every panel did before it, with the base the asset bundle
+		 *	fills in, because Nino.dir does not exist before Nino 1.3.2
 		 *
 		 *	@param		{string}		endpoint			Action name, eg. "list" -> "search/list"
 		 *	@param		{Object}		payload				Request payload, sent json-encoded as "data"
@@ -88,9 +104,32 @@
 		 *	@return		void
 		 */
 		_apiCall : function( endpoint, payload, callback ) {
-			Nino.http.sendRequest( '/_admin/', 'POST', function( xhr ) {
+
+			if( Nino.adminUi && Nino.adminUi.api )
+				return Nino.adminUi.api.call( 'search/'+ endpoint, payload, callback );
+
+			Nino.http.sendRequest( '[[/nino/dir]]/_admin/', 'POST', function( xhr ) {
 				callback( xhr.status, xhr.responseJSON );
 			}, { action : 'search/'+ endpoint, data : JSON.stringify( payload ) } );
+		},
+
+		/**
+		 *	What a failed request says: the server's code in the workbench's
+		 *	language, then its own message, then this panel's sentence - where
+		 *	this Nino has errorText(). Before it, "(status) message"
+		 *
+		 *	@param		{number}		status
+		 *	@param		{*}					response
+		 *	@param		{string}		key					Fill key of the panel's own sentence
+		 *
+		 *	@return		{string}
+		 */
+		_errorText : function( status, response, key ) {
+
+			if( Nino.adminUi && Nino.adminUi.api && typeof Nino.adminUi.api.errorText === 'function' )
+				return Nino.adminUi.api.errorText( status, response, key );
+
+			return '('+ status+ ') '+ ( ( response && response.error ) ? response.error : Nino.content.getText( key ) );
 		},
 
 		/**
@@ -106,8 +145,49 @@
 			container.innerHTML = '';
 			const p = dc.createElement('p');
 			p.className = 'nino-admin-error';
-			p.textContent = '('+ status+ ') '+ ( ( response && response.error ) ? response.error : Nino.content.getText('/_admin/common/error/load') );
+			p.textContent = Nino.admin.search._errorText( status, response, '/_admin/common/error/load' );
 			container.appendChild( p );
+		},
+
+		/**
+		 *	Leave the type's editor - after asking, where this Nino can, when
+		 *	it holds slots nobody has saved
+		 *
+		 *	@param		{Function}	proceed
+		 *
+		 *	@return		void
+		 */
+		_leave : function( proceed ) {
+
+			if( typeof Nino.admin.dirty === 'object' )
+				return Nino.admin.dirty.guard( [ 'search' ], proceed );
+
+			proceed();
+		},
+
+		/**
+		 *	The line that says whether the slots are saved. Where this Nino has
+		 *	Nino.adminUi.status() it is that: "saving", "unsaved changes" once
+		 *	a slot is changed, or why it failed. Before it, the same calls
+		 *	write this panel's sentences into the paragraph
+		 *
+		 *	@param		{Element}		msg
+		 *	@param		{Element}		form
+		 *
+		 *	@return		{Object}						{ saving(), error( status, response, key ) }
+		 */
+		_status : function( msg, form ) {
+
+			if( Nino.adminUi && typeof Nino.adminUi.status === 'function' ) {
+				const line = Nino.adminUi.status( msg );
+				line.bind( form );
+				return line;
+			}
+
+			return {
+				saving : function() { msg.className = ''; msg.textContent = '' },
+				error	 : function( status, response, key ) { msg.className = 'nino-admin-error'; msg.textContent = Nino.admin.search._errorText( status, response, key ) },
+			};
 		},
 
 		/**
@@ -362,7 +442,7 @@
 
 				if( status !== 200 || response === null || typeof response !== 'object' ) {
 					if( msg !== null )
-						msg.textContent = '('+ status+ ') '+ ( ( response && response.error ) ? response.error : Nino.content.getText('/_admin/search/error/create') );
+						msg.textContent = Nino.admin.search._errorText( status, response, '/_admin/search/error/create' );
 					return;
 				}
 
@@ -404,6 +484,10 @@
 			Nino.admin.search._editing = JSON.parse( JSON.stringify( row ) );
 			Nino.admin.search._editing.fields = Nino.admin.search._editing.fields || {};
 			Nino.admin.search._renderType();
+
+			// What is on screen now is what is saved
+			if( typeof Nino.admin.dirty === 'object' )
+				Nino.admin.dirty.snapshot('search');
 		},
 
 		/**
@@ -426,7 +510,10 @@
 			const back = dc.createElement('a');
 			back.href = '#';
 			back.textContent = Nino.content.getText('/_admin/search/label/back');
-			back.addEventListener( 'click', function( ev ) { ev.preventDefault(); Nino.admin.search._renderList() } );
+			back.addEventListener( 'click', function( ev ) {
+				ev.preventDefault();
+				Nino.admin.search._leave( function() { Nino.admin.search._renderList() } );
+			} );
 			wrap.appendChild( Nino.adminUi.contextBar( back ) );
 
 			const heading = dc.createElement('h2');
@@ -465,12 +552,17 @@
 			save.id = 'search-save';
 			save.className = 'nino-admin-btn-primary';
 			save.textContent = Nino.content.getText('/_admin/search/label/saveandbuild');
-			save.addEventListener( 'click', function() { Nino.admin.search._save( save, msg ) } );
+			const line = Nino.admin.search._status( msg, slots );
+			save.addEventListener( 'click', function() { Nino.admin.search._save( save, line ) } );
 
 			const actions = dc.createElement('div');
 			actions.appendChild( save );
+			actions.appendChild( msg );
 			wrap.appendChild( Nino.adminUi.actionBar( actions ) );
-			wrap.appendChild( msg );
+
+			// The shell's own Save presses the same button
+			Nino.admin.search._line = line;
+			Nino.admin.search._saveButton = save;
 		},
 
 		/**
@@ -530,27 +622,39 @@
 		 *	configuring and indexing are two things, and the button says both
 		 *
 		 *	@param		{Element}		btn
-		 *	@param		{Element}		msg
+		 *	@param		{Object}		line				_status()'s answer
+		 *	@param		{Function}	[done]			Told whether the slots were saved - the shell's Save asks
 		 *
 		 *	@return		void
 		 */
-		_save : function( btn, msg ) {
+		_save : function( btn, line, done ) {
 
 			const row = Nino.admin.search._editing;
+			const finish = function( ok ) {
+				if( typeof done === 'function' )
+					done( ok );
+			};
+
+			// A second click while one is on its way
+			if( btn.disabled === true )
+				return finish( false );
+
 			btn.disabled = true;
-			msg.textContent = '';
+			line.saving();
 
 			Nino.admin.search._apiCall( 'save', { type : row.type, fields : row.fields }, function( status, response ) {
 
 				if( status !== 200 || response === null ) {
 					btn.disabled = false;
-					msg.className = 'nino-admin-error';
-					msg.textContent = '('+ status+ ') '+ ( ( response && response.error ) ? response.error : Nino.content.getText('/_admin/search/error/save') );
-					return;
+					line.error( status, response, '/_admin/search/error/save' );
+					return finish( false );
 				}
 
+				// Nothing is built from no slots, so the slots being stored is
+				// all there was to do
 				if( response.removed === true || Object.keys( response.fields || {} ).length === 0 ) {
 					btn.disabled = false;
+					finish( true );
 					return Nino.admin.search.init( function() {
 						const back = dc.getElementById('search-list-msg');
 						if( back !== null )
@@ -561,6 +665,11 @@
 				Nino.admin.search._apiCall( 'createindex', { type : row.type }, function( status, built ) {
 
 					btn.disabled = false;
+
+					// What asked for the save (a log out, a language change)
+					// goes on only now: the index is built from the slots, and
+					// a request after the session ended is refused
+					finish( true );
 
 					const said = status === 200 && built !== null && ( built.created || 0 ) > 0
 						? Nino.admin.search._text( '/_admin/search/msg/created', built.created, built.elements )
@@ -817,6 +926,19 @@
 			}
 		},
 	};
+
+	/*	The shell asks Save, Discard or Cancel before the editor's back link, a
+		log out or a language change would lose slots nobody has saved. A panel
+		registers where this Nino has the registry and does without where it
+		has not - panel scripts run on older workbenches too	*/
+	if( typeof Nino.admin.dirty === 'object' )
+		Nino.admin.dirty.watchForm( 'search', function() { return dc.getElementById('search-type') }, function( done ) {
+
+			if( Nino.admin.search._editing === null || Nino.admin.search._saveButton === null )
+				return done( false );
+
+			Nino.admin.search._save( Nino.admin.search._saveButton, Nino.admin.search._line, done );
+		} );
 
 	Nino.events.bindCallback( 'ready', Nino.admin.search.init );
 

@@ -365,6 +365,27 @@ check( 'an empty body is nothing rather than an empty paragraph',
 		return postsRender( $appData, '[post][[.body]][/post]' ) === '';
 	} )() === true );
 
+echo "\nA field the model gives a format\n";
+
+/*	A field is the kernel's to render where it has \Nino\Html::fieldValue() -
+	the paragraphs and lists of a field that holds them, the line breaks of one
+	that keeps them - and a Nino from before it keeps what it always did. Both
+	are held to what they promise, so this runs on either	*/
+$formatted 		= is_callable( [ \Nino\Html::class, 'fieldValue' ] ) === true;
+$renderValue 	= new ReflectionMethod( \Nino\Modules\Posts\Shortcodes::class, '_value' );
+$fieldValue 	= static fn( string $value, array $field ): string => (string) $renderValue->invoke( null, $value, $field );
+
+check( 'a plain field is escaped, and a bracket in it is not a shortcode',
+	$fieldValue( '<b>[x]</b>', [ 'type' => 'string' ] ) === '&lt;b&gt;&#91;x]&lt;/b&gt;' && $fieldValue( '[x]', [] ) === '&#91;x]' );
+check( 'a field released for html keeps its inline tags and neutralises a bracket',
+	$fieldValue( '<strong>Bold</strong> [x]', [ 'type' => 'string', 'html' => true ] ) === '<strong>Bold</strong> &#91;x]' );
+$blocks = $fieldValue( '<p>Alpha</p><ul><li>Beta</li></ul>', [ 'type' => 'string', 'html' => true, 'blocks' => true ] );
+check( 'a field that holds paragraphs and lists keeps them where the kernel renders it, and flattens them where it does not',
+	$formatted === true ? $blocks === '<p>Alpha</p><ul><li>Beta</li></ul>' : str_contains( $blocks, '<p>' ) === false );
+$breaks = $fieldValue( "Gamma\nDelta <b>", [ 'type' => 'string', 'breaks' => true ] );
+check( 'a field that keeps its line breaks draws them as <br>, escaped, where the kernel renders it',
+	$formatted === true ? $breaks === "Gamma<br>\nDelta &lt;b&gt;" : str_contains( $breaks, '<br>' ) === false && str_contains( $breaks, '&lt;b&gt;' ) === true );
+
 echo "\nThe pages the SEO feature cannot find on its own\n";
 
 /*	A section's routes live in /data/posts.php and are registered per request,

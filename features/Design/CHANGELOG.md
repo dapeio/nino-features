@@ -5,6 +5,19 @@ A release is the tag `design-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+- **The panel uses the workbench's request helper, its wording of a failure and
+  its question about unsaved input, where the Nino has them.** Every request
+  goes through `Nino.adminUi.api`, which signs the page in again over what is on
+  screen when the session has ended instead of losing it; a failed one reads the
+  way the workbench says it (`errorText()`). The selection that is not stored
+  yet is registered with the shell, so a log out or a language change asks
+  **Save**, **Discard** or **Cancel** first, and a reload gets the browser's own
+  question - Save stores the draft, and applying stays the question of its own
+  it was. On a Nino without the helper (1.3.x) the panel posts as it did, but
+  from the project's own directory: it posted to `/_admin/` from the root of the
+  domain, which a project in a subdirectory does not answer. `nino` stays
+  `^1.3`.
+
 - **Applying asks first, keeps the previous version and can restore it.**
   The two buttons are **Save draft** and **Apply to website**, with a line
   under them saying which does what; **Take the file over and compile** is

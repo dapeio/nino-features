@@ -5,6 +5,15 @@ A release is the tag `newsletter-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+- **The panel uses the workbench's request helper and its wording of a failure,
+  where the Nino has them.** Every request goes through `Nino.adminUi.api`,
+  which signs the page in again over what is on screen when the session has
+  ended instead of losing it. The panel holds nothing to save, so nothing is
+  registered with the shell's question about unsaved input. On a Nino without
+  the helper (1.3.x) the panel posts as it did, but from the project's own
+  directory: it posted to `/_admin/` from the root of the domain, which a
+  project in a subdirectory does not answer. `nino` stays `^1.3`.
+
 - Needs Nino `^1.3`, where the constraint said `^1.0`. The sectioned `manual`
   map this manifest carries is only read by a kernel newer than the
   `v1.2.0-beta` tag - `Features::manifest()` refuses it on the tagged one -

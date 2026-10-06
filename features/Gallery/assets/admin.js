@@ -183,6 +183,12 @@
 		 *	Call a gallery/* action. An extra multipart field (a File) is
 		 *	handed through the way the Images panel does it
 		 *
+		 *	The workbench's own request helper posts where this Nino has one -
+		 *	it knows the project's directory and what to do when the page has
+		 *	outlived its session; the post below is what every panel did before
+		 *	it, with the base the asset bundle fills in, because Nino.dir does
+		 *	not exist before Nino 1.3.2
+		 *
 		 *	@param		{string}		endpoint
 		 *	@param		{Object}		payload
 		 *	@param		{Function}	callback		Called with ( xhr.status, xhr.responseJSON )
@@ -191,17 +197,66 @@
 		 *	@return		void
 		 */
 		_apiCall : function( endpoint, payload, callback, extra ) {
-			Nino.http.sendRequest( '/_admin/', 'POST', function( xhr ) {
+
+			if( Nino.adminUi && Nino.adminUi.api )
+				return Nino.adminUi.api.call( 'gallery/'+ endpoint, payload, callback, extra );
+
+			Nino.http.sendRequest( '[[/nino/dir]]/_admin/', 'POST', function( xhr ) {
 				callback( xhr.status, xhr.responseJSON );
 			}, Object.assign( { action : 'gallery/'+ endpoint, data : JSON.stringify( payload ) }, extra || {} ) );
+		},
+
+		/**
+		 *	What a failed load says: the server's code in the workbench's
+		 *	language, then its own message, then this panel's sentence - where
+		 *	this Nino has errorText(). Before it, "(status) message". The
+		 *	answers to an edit stay as they are: this panel's server writes
+		 *	them in the workbench's language itself (see Admin::_say()) and
+		 *	they carry no status number
+		 *
+		 *	@param		{number}		status
+		 *	@param		{*}					response
+		 *	@param		{string}		key					Fill key of the panel's own sentence
+		 *
+		 *	@return		{string}
+		 */
+		_errorText : function( status, response, key ) {
+
+			if( Nino.adminUi && Nino.adminUi.api && typeof Nino.adminUi.api.errorText === 'function' )
+				return Nino.adminUi.api.errorText( status, response, key );
+
+			return '('+ status+ ') '+ ( ( response && response.error ) ? response.error : Nino.content.getText( key ) );
 		},
 
 		_showError : function( container, status, response ) {
 			container.innerHTML = '';
 			const p = dc.createElement('p');
 			p.className = 'nino-admin-error';
-			p.textContent = '('+ status+ ') '+ ( ( response && response.error ) ? response.error : Nino.content.getText('/_admin/common/error/load') );
+			p.textContent = Nino.admin.gallery._errorText( status, response, '/_admin/common/error/load' );
 			container.appendChild( p );
+		},
+
+		/**
+		 *	The line under an image that says whether its text is saved.
+		 *	Where this Nino has Nino.adminUi.status() it is that: "saving",
+		 *	"saved at 09:41", or the error state around the sentence the server
+		 *	gave. Before it, the same calls write this panel's sentences into
+		 *	the paragraph
+		 *
+		 *	@param		{Element}		msg
+		 *
+		 *	@return		{Object}						{ saving(), saved(), fail( text ) }
+		 */
+		_status : function( msg ) {
+
+			if( Nino.adminUi && typeof Nino.adminUi.status === 'function' )
+				return Nino.adminUi.status( msg );
+
+			return {
+				saving : function() { msg.textContent = Nino.content.getText('/_admin/common/msg/saving') },
+				saved	 : function() { msg.textContent = Nino.content.getText('/_admin/common/msg/saved') },
+				fail	 : function( text ) { msg.textContent = text },
+			};
 		},
 
 		/**
@@ -716,14 +771,15 @@
 		 */
 		_saveText : function( album, image, name, locale, field, msg ) {
 
-			msg.textContent = Nino.content.getText('/_admin/common/msg/saving');
+			const line = Nino.admin.gallery._status( msg );
+			line.saving();
 
 			const payload = { album : album.key, id : image.id, locale : locale };
 			payload[name] = field.value;
 
 			Nino.admin.gallery._apiCall( 'image-save', payload, function( status, response ) {
 				if( status !== 200 || response === null ) {
-					msg.textContent = ( response && response.error ) ? response.error : Nino.content.getText('/_admin/common/error/save');
+					line.fail( ( response && response.error ) ? response.error : Nino.content.getText('/_admin/common/error/save') );
 					return;
 				}
 				Nino.admin.gallery._albums = response.albums || [];
@@ -745,7 +801,7 @@
 				if( saved !== undefined )
 					image[name] = saved[name];
 
-				msg.textContent = Nino.content.getText('/_admin/common/msg/saved');
+				line.saved();
 			} );
 		},
 

@@ -71,8 +71,14 @@ Beside the model's own fields, every row can use:
 | `[[.n]]` | its 1-based place in the list |
 
 Values are escaped on the way into the page, unless the model marks the field
-as `html`. An array field reads as a comma-separated list. A placeholder the
-model does not have is **left standing** rather than emptied - that is what an
+as `html`. A string field the model gives a format - paragraphs and lists
+(`blocks`), or the line breaks of a plain text (`breaks`) - is drawn the way
+Nino draws it everywhere else, where the Nino has `\Nino\Html::fieldValue()`;
+on one that has not it is escaped or kept inline as it always was. The index
+reads a paragraph's end, a list item's end and a `<br>` as the end of a word
+on such a Nino too - press **Rebuild all** once to index what was stored
+before. An array field reads as a comma-separated list. A placeholder the model
+does not have is **left standing** rather than emptied - that is what an
 unresolved fill does everywhere else in Nino, and a typo nobody can see is a
 typo nobody fixes.
 
@@ -117,9 +123,11 @@ endpoint setting is on - the route that answers it: activation creates no file.
 
 ## The JSON endpoint
 
-Off until the **JSON endpoint** setting in the Features panel is on: a public
-address that hands out content is a decision, not a side effect of activating
-a search. On, `init()` registers `GET /.search` and this answers it:
+Off until the **JSON endpoint** setting is on. It is one of the feature's
+**Settings** - the form the Features panel has for it, or the **Settings** tab
+of the Search panel on a Nino that offers one - because a public address that
+hands out content is a decision, not a side effect of activating a search. On,
+`init()` registers `GET /.search` and this answers it:
 
 ```
 GET /.search?q=lighthouse&type=/products&limit=20&offset=0
@@ -370,6 +378,7 @@ serves the class from wherever the feature is:
 ```bash
 php features/Search/tests/search-smoke.php
 NINO_ROOT=../nino php features/Search/tests/search-smoke.php
+node features/Search/tests/search-js-smoke.js
 ```
 
 It covers the panel's four actions - the rows the list draws, the editor
@@ -394,5 +403,13 @@ and delete, read-only handling of a deleted or malformed index, the panel
 action refusing an unauthenticated request and rebuilding every configured
 index for an authenticated one, an empty configuration as a successful
 no-op, an index write failure that cannot roll back the Element commit, and
-the `500` the action answers when a file cannot be written. `bin/check.sh`
-runs it against the checkout beside this repository.
+the `500` the action answers when a file cannot be written, and what a field
+the model gives a format - paragraphs and lists, line breaks - comes out as in
+`[search-results]` and in the index. `bin/check.sh` runs it against the checkout
+beside this repository.
+
+`tests/search-js-smoke.js` is the panel's script over a dom stand-in, and
+`search-smoke.php` runs it too where node is on the path: the panel's request
+and how a failure is worded, with and without the workbench's own helpers, the
+type editor's status line, and what the panel tells the shell about slots
+nobody has saved.

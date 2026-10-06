@@ -5,6 +5,31 @@ A release is the tag `search-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+- **The panel uses the workbench's request helper, its status line, its wording
+  of a failure and its question about unsaved input, where the Nino has them.**
+  Every request goes through `Nino.adminUi.api`, which signs the page in again
+  over what is on screen when the session has ended instead of losing it. The
+  type editor says "saving" and "unsaved changes" in the workbench's status line
+  and a failed save reads the way the workbench says it; the editor is
+  registered with the shell, so its back link, a log out or a language change
+  asks **Save**, **Discard** or **Cancel** first. On a Nino without the helper
+  (1.3.x) the panel posts as it did, but from the project's own directory: it
+  posted to `/_admin/` from the root of the domain, which a project in a
+  subdirectory does not answer. `nino` stays `^1.3`. `tests/search-js-smoke.js`
+  is new, and `search-smoke.php` runs it where node is on the path.
+
+- **A field with paragraphs, lists or line breaks is drawn as such in
+  `[search-results]`, and the index keeps its words apart.** Where the Nino has
+  `\Nino\Html::fieldValue()` a string field the model gives `blocks` or `breaks`
+  comes out the way `[elements]` draws it, and the index reads the end of a
+  paragraph, of a list item and a `<br>` as the end of a word - `<p>One</p><p>Two</p>`
+  was one word, `onetwo`. Press **Rebuild all** once to index what is stored.
+  A Nino without them draws and indexes as it did.
+
+- The README says where the **JSON endpoint** setting is: in the feature's
+  **Settings** - the Features panel's form for it, or a **Settings** tab of the
+  Search panel on a Nino that has one.
+
 - **`[search-count]` says how many.** The number of hits the running search
   has over the named types, as digits and nothing around them, so a page
   writes its own sentence - `<p>[search-count type="/products"] Treffer</p>`.

@@ -50,6 +50,11 @@ namespace Nino\Modules\Search {
 		// The query variable both shortcodes read unless `key` says otherwise
 		public const string DEFAULT_KEY = 'q';
 
+		// The kernel's escape for a field value, where it has one. A property
+		// rather than a literal, so a static analysis of a kernel that has the
+		// method does not fold the check away
+		private static array $fieldValue = [ \Nino\Html::class, 'fieldValue' ];
+
 		// How many hits a result block draws when it names no limit, and the
 		// ceiling a named one is held to. Coverage scoring means a multi-word
 		// query matches more documents than it used to (see Search::_score()),
@@ -210,6 +215,12 @@ namespace Nino\Modules\Search {
 		 *	One field value as html. Escaped, unless the model says the field is
 		 *	markup - the same 'html' flag the workbench's own table reader honours
 		 *
+		 *	A string field is the kernel's to render where it has the one rule
+		 *	for it, \Nino\Html::fieldValue(): paragraphs and lists of a field that
+		 *	holds them, the line breaks of a field that keeps them, the escape for
+		 *	the rest. A Nino from before it is asked for what it has always been
+		 *	asked for here
+		 *
 		 *	@param		mixed			$value
 		 *	@param		array 		$definition		The model's entry for this field
 		 *
@@ -229,11 +240,16 @@ namespace Nino\Modules\Search {
 			if( is_scalar( $value ) === false || is_bool( $value ) === true )
 				return '';
 
+			$isString = ( $definition['type'] ?? '' ) === 'string';
+
+			if( $isString === true && is_callable( self::$fieldValue ) === true )
+				return (string) ( self::$fieldValue )( (string) $value, $definition );
+
 			// The same two steps Modules\Elements takes on a field value, and
 			// for the same reason: the value is editor content, and the row is
 			// rendered again after this - so a '[' left standing runs whatever
 			// the editor typed
-			$safe = ( $definition['type'] ?? '' ) === 'string' && ( $definition['html'] ?? false ) === true
+			$safe = $isString === true && ( $definition['html'] ?? false ) === true
 				? \Nino\Html::sanitizeHtml( (string) $value )
 				: htmlspecialchars( (string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
 

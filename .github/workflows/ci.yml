@@ -72,6 +72,12 @@ jobs:
       - name: Run the publishing tool's smoke test
         run: NINO_ROOT=nino php tests/build-smoke.php
 
+      # The catalogue's own rules over every feature's files: markup belongs in
+      # a template, the text is English, the escape keeps what it cannot
+      # encode, and a panel reaches the workbench the way it has to
+      - name: Run the catalogue's rule tests
+        run: for test in markup language escaping panels; do php "tests/$test-smoke.php" || exit 1; done
+
       # The endpoint the release workflow posts to, driven as a library and
       # once through php's built-in server
       - name: Run the publishing endpoint's smoke test

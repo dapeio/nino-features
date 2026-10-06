@@ -227,6 +227,12 @@ A native section image is an image slot:
 Register and populate that slot through the existing Images APIs/tools. Do not
 construct its generated filename.
 
+A page unit of the setup wizard's library that shows a picture does the same: it
+declares the slot with `imageSlots` (see "Installable page unit" below) and its
+template shows it with `[image <uri> alt=""]`, never with a literal `<img>` and
+a file path. The starter site's home hero is built that way. A decorative
+picture takes an empty `alt`; the title stays text on top of it.
+
 Inside an Elements loop, an image field contains a filename relative to
 project `images/`, which is served under the public directory - `[[/nino/dir]]`
 is the project itself and would miss that segment:
@@ -299,7 +305,7 @@ Create:
 _admin/install/library/pages/services/
 ├── manifest.php
 ├── images/
-│   └── services-hero.jpg
+│   └── page-services/hero/image.svg
 ├── templates/
 │   └── page-services.tpl
 ├── text/
@@ -334,7 +340,17 @@ return [
 		'services.php',
 	],
 	'files' => [
-		'images/services-hero.jpg',
+		'images/page-services/hero/image.svg',
+	],
+	// The picture the template shows with [image /page-services/hero/image
+	// alt=""], seeded with the file above
+	'imageSlots' => [
+		'/page-services/hero/image' => [
+			'label' => [ 'en_US' => 'Services - hero image', 'de_DE' => 'Leistungen - Titelbild' ],
+			'width' => 1920,
+			'height' => 1080,
+			'filename' => 'page-services/hero/image.svg',
+		],
 	],
 ];
 ```
@@ -347,6 +363,19 @@ Current page-unit consumers recognize:
 - `templates`, including locale-keyed entries;
 - `elementTypes`;
 - `files`, copied from the unit to the same project-relative virtual path;
+- `imageSlots`, the image slots the unit's templates show, from the Nino
+  release after 1.3.2 on - an older Nino ignores the key, and the page shows
+  no picture until the slot is created by hand under **Image Slots**. Keyed by
+  the slot uri, each entry is `label` (a string or a locale map, resolved for
+  the project's native language), `width`, `height` and optionally `filename`.
+  A `filename` is a seed file below `images/` that the unit ships under
+  `files`; it is checked once the files are copied, and a seed that is not
+  there fails the step by name. Name the file after the slot, as the example
+  does, so an upload replaces it and **Remove image** deletes it. A slot
+  without a `filename` starts empty and renders nothing until somebody
+  uploads a picture. Slots are only ever added: a slot the project has is
+  never touched, so applying the step again does not reset an editor's
+  image;
 - `blacklist`;
 - and `text/global.php` plus selected `text/<locale>.php`.
 

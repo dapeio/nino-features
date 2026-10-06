@@ -196,9 +196,15 @@ function panel( options ) {
 			bindCallback : function() {},
 		},
 		http : {
-			sendRequest : function() { throw new Error( 'every request goes through _apiCall, which this test holds' ) },
+			sendRequest : options.send || function() { throw new Error( 'every request goes through _apiCall, which this test holds' ) },
 		},
 	};
+
+	// A newer workbench's request helper and status line, where a test gives them
+	if( options.api )
+		Nino.adminUi.api = options.api;
+	if( options.status )
+		Nino.adminUi.status = options.status;
 
 	const sandbox = { console : console, document : dc, Nino : Nino, confirm : function() { return true } };
 	sandbox.window = sandbox;
@@ -210,9 +216,10 @@ function panel( options ) {
 	/*	The seam: what the panel asked for, and the answer handed back when
 		the test is ready for it. Every action answers the whole album list,
 		so what a test answers with is the state the panel goes on from	*/
-	gallery._apiCall = function( endpoint, payload, callback, extra ) {
-		requests.push( { endpoint : endpoint, payload : payload, answer : callback, extra : extra || {} } );
-	};
+	if( options.raw !== true )
+		gallery._apiCall = function( endpoint, payload, callback, extra ) {
+			requests.push( { endpoint : endpoint, payload : payload, answer : callback, extra : extra || {} } );
+		};
 
 	gallery._albums = [ album( options.images || [] ) ];
 	gallery._locales = options.locales || [ 'de_DE' ];
@@ -489,6 +496,78 @@ row.fire( 'click' );
 check( 'the row opens the album', listed.gallery._open === 'haus' && listed.tiles().length === 1 );
 check( '...and Delete is on the album\'s screen, under its pictures', byClass( listed.pane, 'gallery-album-actions' ).length === 1
 	&& byClass( byClass( listed.pane, 'gallery-album-actions' )[0], 'nino-admin-btn-danger' ).length === 1 );
+
+// --- Asking the workbench ------------------------------------------------------------
+
+console.log( 'The workbench' );
+
+/*	Where the shell has a request helper the panel asks it - the file of an
+	upload goes with it; where it has not the panel posts from the project's own
+	directory, the literal the asset bundle fills in, as Nino.dir does not exist
+	before Nino 1.3.2	*/
+const wasPosted = [];
+const noHelper = panel( { raw : true, send : function( uri, method, callback, data ) { wasPosted.push( [ uri, method, data ] ); callback( { status : 200, responseJSON : { ok : true } } ) } } );
+noHelper.gallery._apiCall( 'upload', { album : 'haus' }, function() {}, { file : 'F' } );
+check( 'without the shell\'s request helper the panel posts to the project\'s own _admin, with the action, the json and the file',
+	wasPosted.length === 1 && wasPosted[0][0] === '[[/nino/dir]]/_admin/' && wasPosted[0][1] === 'POST'
+	&& wasPosted[0][2].action === 'gallery/upload' && wasPosted[0][2].data === '{"album":"haus"}' && wasPosted[0][2].file === 'F' );
+
+const wasRouted = [];
+const withHelper = panel( { raw : true, api : { call : function( action, payload, callback, extra ) { wasRouted.push( [ action, payload, extra ] ); callback( 200, {} ) } } } );
+withHelper.gallery._apiCall( 'upload', { album : 'haus' }, function() {}, { file : 'F' } );
+check( 'with it the action, the payload and the file go to the helper, and nothing is posted by hand',
+	wasRouted.length === 1 && wasRouted[0][0] === 'gallery/upload' && wasRouted[0][1].album === 'haus' && wasRouted[0][2].file === 'F' );
+
+check( 'a failed load says "(status) message" as it always did where the shell has no errorText()',
+	noHelper.gallery._errorText( 503, { error : 'Busy' }, '/_admin/common/error/load' ) === '(503) Busy' );
+const withText = panel( { raw : true, api : { errorText : function( status, response, key ) { return 'told '+ status+ ' ['+ key+ ']' } } } );
+check( '...and what errorText() makes of it where it has one', withText.gallery._errorText( 503, { error : 'Busy' }, '/_admin/common/error/load' ) === 'told 503 [/_admin/common/error/load]' );
+
+console.log('');
+
+
+// --- Saying what happened ------------------------------------------------------------
+
+console.log( 'The status line' );
+
+// Nino.adminUi.status() in miniature: what it was told, on which line
+const lines = [];
+const statusStub = function( el ) {
+	const line = { el : el, told : [],
+		saving : function() { line.told.push('saving') },
+		saved : function() { line.told.push('saved') },
+		fail : function( text ) { line.told.push( 'fail '+ text ) },
+	};
+	lines.push( line );
+	return line;
+};
+
+const lined = panel( { images : [ picture( 'a1', '' ) ], status : statusStub } );
+lined.caption( 0 ).value = 'Gartenseite';
+lined.caption( 0 ).fire( 'blur' );
+const tileLine = lines[lines.length - 1];
+check( 'where the shell has a status line the tile\'s message is one, told when the text is on its way',
+	tileLine.el === byClass( lined.tiles()[0], 'gallery-tile-msg' )[0] && tileLine.told.join() === 'saving' );
+lined.answer( 200, { albums : [ album( [ picture( 'a1', { de_DE : 'Gartenseite' } ) ] ) ] } );
+check( '...and when it is saved, without a sentence of the panel\'s own beside it', tileLine.told.join() === 'saving,saved' && tileLine.el.textContent === '' );
+
+lined.caption( 0 ).value = 'Zu lang';
+lined.caption( 0 ).fire( 'blur' );
+const failLine = lines[lines.length - 1];
+lined.answer( 400, { error : 'Die Beschriftung ist zu lang.' } );
+check( '...a refusal is told as it is - the sentence the server wrote in the workbench\'s language, with no status number in front',
+	failLine.told.join() === 'saving,fail Die Beschriftung ist zu lang.' );
+
+const plainly = panel( { images : [ picture( 'a1', '' ) ] } );
+plainly.caption( 0 ).value = 'Gartenseite';
+plainly.caption( 0 ).fire( 'blur' );
+const plainMsg = byClass( plainly.tiles()[0], 'gallery-tile-msg' )[0];
+check( 'without one the paragraph says what it always said', plainMsg.textContent === 'Saving …' );
+plainly.answer( 200, { albums : [ album( [ picture( 'a1', { de_DE : 'Gartenseite' } ) ] ) ] } );
+check( '...and "Saved." when it is saved', plainMsg.textContent === 'Saved.' );
+
+console.log('');
+
 
 console.log( '\n'+ checks+ ' checks, '+ failures+ ' failed' );
 process.exit( failures === 0 ? 0 : 1 );

@@ -205,7 +205,88 @@ check( 'no element-wide rule leaks out of the panel\'s stylesheet into the workb
 	&& styleSource.includes('#pd-app code {') );
 check( 'the panel loads nothing until its tab is selected, then keeps its state across switches', scriptSource.includes('showCurrent : function()')
 	&& scriptSource.includes('Nino.admin.templates._loaded === true')
-	&& scriptSource.includes("Nino.http.sendRequest( '/_admin/', 'POST'") );
+	&& scriptSource.includes("Nino.http.sendRequest( '[[/nino/dir]]/_admin/', 'POST'") );
+
+/*	The request helper. A post to the workbench goes through the shell's own
+	where this Nino has one, and through the panel's old one where it has not -
+	the one a Nino before 1.3.2 runs, whose base is the literal the asset bundle
+	fills in, because Nino.dir does not exist there and a root-absolute '/_admin/'
+	misses a project in a subdirectory	*/
+{
+	const posted = [];
+	const keepSend = Nino.http.sendRequest;
+	Nino.http.sendRequest = function( uri, method, callback, data ) {
+		posted.push( [ uri, method, data ] );
+		callback( { status : 200, responseJSON : { ok : true } } );
+	};
+	let answered = null;
+	Nino.admin.templates.apiCall( 'documents/list', { a : 1 }, function( status, response ) { answered = [ status, response ] } );
+	check( 'without the workbench\'s request helper the post goes to the project\'s own _admin, as it always did', posted.length === 1
+		&& posted[0][0] === '[[/nino/dir]]/_admin/' && posted[0][1] === 'POST'
+		&& posted[0][2].action === 'documents/list' && posted[0][2].data === '{"a":1}'
+		&& JSON.stringify( answered ) === '[200,{"ok":true}]' );
+
+	const routed = [];
+	Nino.adminUi.api = { call : function( action, payload, callback ) { routed.push( [ action, payload ] ); callback( 200, { via : 'api' } ) } };
+	answered = null;
+	Nino.admin.templates.apiCall( 'documents/save', { b : 2 }, function( status, response ) { answered = [ status, response ] } );
+	check( 'with it, the request is the shell\'s: the action and the payload go to Nino.adminUi.api.call(), and nothing is posted by hand', routed.length === 1
+		&& routed[0][0] === 'documents/save' && routed[0][1].b === 2 && posted.length === 1 && answered[1].via === 'api' );
+	delete Nino.adminUi.api;
+	Nino.http.sendRequest = keepSend;
+}
+/*	The shell's registry of unsaved input. The panel's own save state stays
+	what says "unsaved" in its head; the shell is told, so that a log out, the
+	language and a reload ask first - and the panel's own beforeunload is only
+	there where there is no registry to ask	*/
+{
+	const entries = {};
+	let refreshed = 0;
+	const shell = vm.createContext( {
+		window : { Nino : { admin : { dirty : { register : function( name, entry ) { entries[name] = entry }, refresh : function() { refreshed++ } } }, events : { bindCallback : function() {} }, http : Nino.http, content : Nino.content, adminUi : Nino.adminUi } },
+		document : documentStub,
+		console : console,
+		Promise : Promise,
+		Set : Set,
+	} );
+	shell.Nino = shell.window.Nino;
+	vm.runInContext( fs.readFileSync( path.join( FEATURE, 'assets/script.js' ), 'utf8' ), shell, { filename : 'script.js' } );
+	const entry = entries['templates'] || null;
+	const panel = shell.Nino.admin.templates;
+	check( 'where the shell has a registry, the panel registers under its own uri', entry !== null && typeof entry.isDirty === 'function' && typeof entry.save === 'function' && typeof entry.discard === 'function' );
+	if( entry !== null ) {
+		panel._dirty = false;
+		const clean = entry.isDirty();
+		panel._dirty = true;
+		check( '...isDirty() follows the panel\'s own unsaved state', clean === false && entry.isDirty() === true );
+		check( '...and draws no marker of its own, since its head says "unsaved" already', entry.bar() === null );
+		// A change that arrives with an answer (a section inserted from the code
+		// dialog, one composed from the library) is no input event the shell
+		// hears, so the shell is told, or a reload would go unasked
+		refreshed = 0;
+		panel.setDirty( true );
+		check( '...a change the page\'s own events do not carry tells the shell to look again', refreshed === 1 );
+		panel.setDirty( false );
+		check( '...and so does the way back to saved', refreshed === 2 );
+		let told = [];
+		panel._dirty = false;
+		entry.save( function( ok ) { told.push( ok ) } );
+		check( '...a Save with nothing to save is a Save', told.length === 1 && told[0] === true );
+		panel._dirty = true;
+		panel._current = { name : 'page-x', readonly : 'Read only', revision : 1, segments : [] };
+		told = [];
+		entry.save( function( ok ) { told.push( ok ) } );
+		check( '...and one on a document that cannot be saved says so, and says it once', told.length === 1 && told[0] === false );
+		panel._saving = true;
+		panel._current.readonly = null;
+		told = [];
+		entry.save( function( ok ) { told.push( ok ) } );
+		check( '...as does a second Save while the first is on its way', told.length === 1 && told[0] === false );
+		panel._saving = false;
+		panel._current = null;
+		panel._dirty = false;
+	}
+}
 check( 'a link into the Elements panel is a hash deep-link, the way the workbench routes', sectionsSource.includes("'/_admin/#elements/'")
 	&& [ composerSource, areaComposerSource, sectionsSource ].every( function( source ) { return source.includes('?tab=elements') === false } ) );
 /*	And so is every other link out of the inspector. The shell reads

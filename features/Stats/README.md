@@ -177,7 +177,9 @@ backup already does is enough.
 | `retentionMonths` | `int`, 1-60 | `13` | How many monthly files to keep |
 
 Read through `\Nino\Features::setting()`/`settings()`, saved through the
-Features panel's settings form like any other feature - see
+feature's **Settings** like any other feature's - the form the Features panel
+has for it, or the **Settings** tab of the Stats panel on a Nino that offers
+one - see
 [docs/features.md](https://github.com/dapeio/nino/blob/main/docs/features.md).
 
 ## The panel

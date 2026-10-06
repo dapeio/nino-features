@@ -82,20 +82,63 @@
 		showCurrent : function() {
 			if( Nino.admin.design._ready === false )
 				return Nino.admin.design.init();
+
+			// The shell brings the panel on screen again after a Save it asked
+			// for failed: drawn anew, the reason the save gave would be gone,
+			// and so would the selection nobody has stored
+			if( typeof Nino.admin.dirty === 'object' && Nino.admin.dirty.isDirty( [ 'design' ] ) === true )
+				return;
+
 			Nino.admin.design._render();
 		},
 
+		/**
+		 *	One action of this panel. The workbench's own request helper posts
+		 *	where this Nino has one - it knows the project's directory and what
+		 *	to do when the page has outlived its session; the post below is
+		 *	what every panel did before it, with the base the asset bundle
+		 *	fills in, because Nino.dir does not exist before Nino 1.3.2
+		 *
+		 *	@param		{string}		endpoint
+		 *	@param		{Object}		payload
+		 *	@param		{Function}	callback		( status, parsed json or null )
+		 *
+		 *	@return		void
+		 */
 		_apiCall : function( endpoint, payload, callback ) {
-			Nino.http.sendRequest( '/_admin/', 'POST', function( xhr ) {
+
+			if( Nino.adminUi && Nino.adminUi.api )
+				return Nino.adminUi.api.call( 'design/'+ endpoint, payload, callback );
+
+			Nino.http.sendRequest( '[[/nino/dir]]/_admin/', 'POST', function( xhr ) {
 				callback( xhr.status, xhr.responseJSON );
 			}, { action : 'design/'+ endpoint, data : JSON.stringify( payload ) } );
+		},
+
+		/**
+		 *	What a failed request says: the server's code in the workbench's
+		 *	language, then its own message, then this panel's sentence - where
+		 *	this Nino has errorText(). Before it, "(status) message"
+		 *
+		 *	@param		{number}		status
+		 *	@param		{*}					response
+		 *	@param		{string}		key					Fill key of the panel's own sentence
+		 *
+		 *	@return		{string}
+		 */
+		_errorText : function( status, response, key ) {
+
+			if( Nino.adminUi && Nino.adminUi.api && typeof Nino.adminUi.api.errorText === 'function' )
+				return Nino.adminUi.api.errorText( status, response, key );
+
+			return '('+ status+ ') '+ ( ( response && response.error ) ? response.error : Nino.content.getText( key ) );
 		},
 
 		_showError : function( container, status, response ) {
 			container.innerHTML = '';
 			const p = dc.createElement('p');
 			p.className = 'nino-admin-error';
-			p.textContent = '('+ status+ ') '+ ( ( response && response.error ) ? response.error : Nino.content.getText('/_admin/common/error/load') );
+			p.textContent = Nino.admin.design._errorText( status, response, '/_admin/common/error/load' );
 			container.appendChild( p );
 		},
 
@@ -340,6 +383,11 @@
 				straight away rather than on a button somebody has to find */
 			Nino.admin.design._frames = null;
 			Nino.admin.design._preview( 0 );
+
+			// A screen drawn from the stored selection has nothing unsaved
+			// to mark any more
+			if( typeof Nino.admin.dirty === 'object' )
+				Nino.admin.dirty.refresh();
 		},
 
 		/**
@@ -1114,6 +1162,21 @@
 		},
 
 		/**
+		 *	Whether the selection on screen is not the stored one - which is
+		 *	what the way back is shown for, and what the shell asks about
+		 *	before it would lose the selection
+		 *
+		 *	@return		{boolean}
+		 */
+		_isDirty : function() {
+
+			const data = Nino.admin.design._data;
+
+			return data !== null && Nino.admin.design._edit !== null
+				&& Nino.admin.design._canonical( Nino.admin.design._edit ) !== Nino.admin.design._canonical( Nino.admin.design._selection( data ) );
+		},
+
+		/**
 		 *	Show or hide the way back, from whether there is one
 		 *
 		 *	@return		void
@@ -1121,13 +1184,11 @@
 		_refreshDirty : function() {
 
 			const button = dc.getElementById('design-reset');
-			const data 	 = Nino.admin.design._data;
 
-			if( button === null || data === null )
+			if( button === null || Nino.admin.design._data === null )
 				return;
 
-			button.hidden = Nino.admin.design._canonical( Nino.admin.design._edit )
-				=== Nino.admin.design._canonical( Nino.admin.design._selection( data ) );
+			button.hidden = Nino.admin.design._isDirty() === false;
 		},
 
 		/**
@@ -1564,7 +1625,7 @@
 				if( status !== 200 || response === null ) {
 					if( msg !== null ) {
 						msg.className = 'nino-admin-error';
-						msg.textContent = '('+ status+ ') '+ ( ( response && response.error ) ? response.error : Nino.content.getText('/_admin/design/error/preview') );
+						msg.textContent = Nino.admin.design._errorText( status, response, '/_admin/design/error/preview' );
 					}
 					return;
 				}
@@ -1785,12 +1846,21 @@
 		 *	@param		{boolean}		apply
 		 *	@param		{Element}		btn
 		 *	@param		{Element}		msg
+		 *	@param		{Function}	[done]			Told whether the draft was saved - the shell's Save asks
 		 *
 		 *	@return		void
 		 */
-		_save : function( apply, btn, msg ) {
+		_save : function( apply, btn, msg, done ) {
 
 			const edit = Nino.admin.design._edit;
+			const finish = function( ok ) {
+				if( typeof done === 'function' )
+					done( ok );
+			};
+
+			// A second click while one is on its way
+			if( btn.disabled === true )
+				return finish( false );
 
 			btn.disabled = true;
 			msg.className = '';
@@ -1801,9 +1871,13 @@
 				if( status !== 200 || response === null ) {
 					btn.disabled = false;
 					msg.className = 'nino-admin-error';
-					msg.textContent = '('+ status+ ') '+ ( ( response && response.error ) ? response.error : Nino.content.getText('/_admin/design/error/save') );
-					return;
+					msg.textContent = Nino.admin.design._errorText( status, response, '/_admin/design/error/save' );
+					return finish( false );
 				}
+
+				// The draft is stored either way; what asked for it may go on
+				// while the screen is drawn from it again
+				finish( true );
 
 				if( apply === false ) {
 					btn.disabled = false;
@@ -1819,7 +1893,7 @@
 					if( planStatus !== 200 || planned === null ) {
 						btn.disabled = false;
 						msg.className = 'nino-admin-error';
-						msg.textContent = '('+ planStatus+ ') '+ ( ( planned && planned.error ) ? planned.error : Nino.content.getText('/_admin/design/error/apply') );
+						msg.textContent = Nino.admin.design._errorText( planStatus, planned, '/_admin/design/error/apply' );
 						return;
 					}
 
@@ -1843,7 +1917,7 @@
 
 						if( applyStatus !== 200 ) {
 							msg.className = 'nino-admin-error';
-							msg.textContent = '('+ applyStatus+ ') '+ ( ( applied && applied.error ) ? applied.error : Nino.content.getText('/_admin/design/error/apply') );
+							msg.textContent = Nino.admin.design._errorText( applyStatus, applied, '/_admin/design/error/apply' );
 							return;
 						}
 
@@ -1941,7 +2015,7 @@
 
 					if( msg !== null ) {
 						msg.className = 'nino-admin-error';
-						msg.textContent = '('+ status+ ') '+ ( ( response && response.error ) ? response.error : Nino.content.getText('/_admin/design/error/restore') );
+						msg.textContent = Nino.admin.design._errorText( status, response, '/_admin/design/error/restore' );
 					}
 					return;
 				}
@@ -1961,6 +2035,37 @@
 			} );
 		},
 	};
+
+	/*	The shell asks Save, Discard or Cancel before a log out or a language
+		change would lose a selection nobody has stored, and a reload gets
+		the browser's own question. Save stores the draft - applying it is its
+		own question. A panel registers where this Nino has the registry and
+		does without where it has not - panel scripts run on older
+		workbenches too	*/
+	if( typeof Nino.admin.dirty === 'object' )
+		Nino.admin.dirty.register( 'design', {
+			isDirty : function() { return Nino.admin.design._isDirty() },
+			save : function( done ) {
+
+				const btn = dc.getElementById('design-save');
+				const msg = dc.getElementById('design-msg');
+
+				if( btn === null || msg === null )
+					return done( false );
+
+				Nino.admin.design._save( false, btn, msg, done );
+			},
+			// Drawn again with the stored selection: if the exit then does not
+			// leave the page, the controls show what the model holds
+			discard : function() {
+
+				if( Nino.admin.design._data === null )
+					return;
+
+				Nino.admin.design._edit = Nino.admin.design._selection( Nino.admin.design._data );
+				Nino.admin.design._render();
+			},
+		} );
 
 	Nino.events.bindCallback( 'ready', Nino.admin.design.init );
 	// The column the frame is scaled into changes width when the window does,

@@ -6,7 +6,8 @@
 # catalogue to the one rule it shares with the framework - markup belongs in a
 # template, not in php - tests/language-smoke.php to the other one, which
 # is that it is written in English, and tests/escaping-smoke.php to the
-# escape that keeps what it cannot encode. Then the publishing tool's own test,
+# escape that keeps what it cannot encode, and tests/panels-smoke.php to how a
+# panel's script reaches the workbench. Then the publishing tool's own test,
 # tests/build-smoke.php, builds a signed catalogue into a directory of its
 # own against the same checkout, and tests/publish-smoke.php drives the
 # endpoint a release is posted to.
@@ -55,6 +56,7 @@ done
 php "$here/tests/markup-smoke.php"
 php "$here/tests/language-smoke.php"
 php "$here/tests/escaping-smoke.php"
+php "$here/tests/panels-smoke.php"
 NINO_ROOT="$root" php "$here/tests/build-smoke.php"
 NINO_ROOT="$root" php "$here/tests/publish-smoke.php"
 NINO_ROOT="$root" php "$here/tests/release-smoke.php"

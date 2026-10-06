@@ -63,7 +63,11 @@
 		},
 
 		/**
-		 *	Call a protected/* admin action
+		 *	Call a protected/* admin action. The workbench's own request helper
+		 *	posts where this Nino has one - it knows the project's directory
+		 *	and what to do when the page has outlived its session; the post
+		 *	below is what every panel did before it, with the base the asset
+		 *	bundle fills in, because Nino.dir does not exist before Nino 1.3.2
 		 *
 		 *	@param		{string}		endpoint			Action name (eg. "pages", becomes "protected/pages")
 		 *	@param		{Object}		payload				Request payload, sent json-encoded as "data"
@@ -72,7 +76,11 @@
 		 *	@return		void
 		 */
 		_apiCall : function( endpoint, payload, callback ) {
-			Nino.http.sendRequest( '/_admin/', 'POST', function( xhr ) {
+
+			if( Nino.adminUi && Nino.adminUi.api )
+				return Nino.adminUi.api.call( 'protected/'+ endpoint, payload, callback );
+
+			Nino.http.sendRequest( '[[/nino/dir]]/_admin/', 'POST', function( xhr ) {
 				callback( xhr.status, xhr.responseJSON );
 			}, { action : 'protected/'+ endpoint, data : JSON.stringify( payload ) } );
 		},
@@ -95,7 +103,10 @@
 		},
 
 		/**
-		 *	"(status) what the server said", or the fill when it said nothing
+		 *	What a failed request says: the server's code in the workbench's
+		 *	language, then its own message, then the fill - where this Nino has
+		 *	errorText(). Before it, "(status) what the server said", or the fill
+		 *	when it said nothing
 		 *
 		 *	@param		{number}		status
 		 *	@param		{*}					response
@@ -104,6 +115,10 @@
 		 *	@return		{string}
 		 */
 		_failure : function( status, response, fallback ) {
+
+			if( Nino.adminUi && Nino.adminUi.api && typeof Nino.adminUi.api.errorText === 'function' )
+				return Nino.adminUi.api.errorText( status, response, fallback );
+
 			return '('+ status+ ') '+ ( ( response && response.error ) ? response.error : Nino.content.getText( fallback ) );
 		},
 

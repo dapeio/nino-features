@@ -45,6 +45,7 @@ install/text/<locale>.php      the words the *site* says
 templates/hello.tpl            the markup [hello] fills
 text/<locale>.php              the words the *panel* says
 tests/hello-smoke.php          the feature's own test
+tests/hello-js-smoke.js        the panel's script over a dom stand-in
 ```
 
 Three pairs in there are worth pointing at, because each is a decision rather
@@ -58,11 +59,13 @@ read straight out of the feature while the panel is drawn — the workbench's
 words, which an operator has no business editing and an editor never sees.
 
 **A setting and a panel.** The greeting is a setting declared in `feature.php`;
-the Features panel draws and stores it and this feature writes no code for it at
-all. The name is stored by `Admin/Admin.php` in `data/hello.php`. The line
-between them: a setting is *one value that belongs to the site*; a panel is
-anything with more than one row, anything that needs a button, and anything that
-is content rather than configuration.
+the workbench draws and stores it - in the form the Features panel has for the
+feature, or in the **Settings** tab of the feature's own panel on a Nino that
+offers one - and this feature writes no code for it at all. The name is stored
+by `Admin/Admin.php` in `data/hello.php`. The line between them: a setting is
+*one value that belongs to the site*; a panel is anything with more than one
+row, anything that needs a button, and anything that is content rather than
+configuration.
 
 **A runtime route and an installed one.** `Hello::init()` registers
 `GET://hello` on every request, so it vanishes when the feature is deactivated.
@@ -122,7 +125,7 @@ that counts is the one on the server.
 Activate it in the Features panel, then:
 
 - `[hello]` on any page greets the world — or whoever the **Hello World** panel
-  names, with whatever word the row's **Settings** hold.
+  names, with whatever word its **Settings** hold.
 - `[hello name="Ada"]` names somebody for that one page.
 - `/hello` is a page of its own, installed with the feature.
 
@@ -135,9 +138,17 @@ two actions, what is stored and where, the upgrade hook, and what deactivation
 leaves behind. It is laid out in that order, so copy the shape and delete the
 sections your feature has no equivalent of.
 
+`tests/hello-js-smoke.js` is the panel's own script over a dom stand-in, and
+`hello-smoke.php` runs it too where node is on the path. It checks the panel's
+request - through the workbench's request helper where the Nino has one, and
+from the project's own directory where it has not - how a failure is worded,
+that the save line is the workbench's status line where there is one, and what
+the panel tells the shell about a name nobody has saved.
+
 ```bash
 php features/Hello/tests/hello-smoke.php
 NINO_ROOT=../nino php features/Hello/tests/hello-smoke.php
+node features/Hello/tests/hello-js-smoke.js
 ```
 
 ## Should this be in the catalogue at all?

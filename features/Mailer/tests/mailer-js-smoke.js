@@ -80,6 +80,7 @@ const texts = {
 const wrap = element('div');
 wrap.id = 'mailer-form';
 const requests = [];
+const uris = [];
 let answer = { host : 'smtp.example.com', port : 465, encryption : 'tls', testTo : 'me@example.org', errors : [] };
 
 /*	The namespace the panel script extends - a local stand-in, not the global,
@@ -90,6 +91,7 @@ const nino = {
 	content	: { getText : function( key ) { return Object.prototype.hasOwnProperty.call( texts, key ) ? texts[key] : key } },
 	events	: { bindCallback : function() {} },
 	http		: { sendRequest : function( url, method, callback, data ) {
+		uris.push( url );
 		requests.push( data.action );
 		callback( { status : 200, responseJSON : answer } );
 	} },
@@ -131,6 +133,28 @@ check( 'the status line follows the new answer', find('mailer-status').textConte
 answer = { host : '', port : 587, encryption : 'starttls', testTo : '', errors : [] };
 mailer._loadStatus( find('mailer-status'), find('mailer-to'), find('mailer-errors') );
 check( 'with no host the status line says it is not configured', find('mailer-status').textContent === 'Not configured yet' );
+
+// --- Asking the workbench ------------------------------------------------------------
+
+/*	Where the shell has a request helper the panel asks it; where it has not it
+	posts from the project's own directory - the literal the asset bundle fills
+	in, as Nino.dir does not exist before Nino 1.3.2	*/
+check( 'without the shell\'s request helper the panel posts to the project\'s own _admin', uris.length > 0 && uris.every( function( uri ) { return uri === '[[/nino/dir]]/_admin/' } ) );
+
+const routed = [];
+nino.adminUi.api = { call : function( action, payload, callback ) { routed.push( [ action, payload ] ); callback( 500, { error : 'smtp said no' } ) } };
+const before = requests.length;
+let told = null;
+mailer._apiCall( 'test', { to : 'a@example.org' }, function( status, response ) { told = [ status, response.error ] } );
+check( 'with it the action \'mailer/<action>\' and the payload go to the helper, and nothing is posted by hand',
+	routed.length === 1 && routed[0][0] === 'mailer/test' && routed[0][1].to === 'a@example.org' && requests.length === before && told[0] === 500 );
+
+check( 'a failed test mail says "(status) reason" as it always did where the shell has no errorText()', mailer._errorText( 500, { error : 'smtp said no' }, '/_admin/mailer/error/send' ) === '(500) smtp said no' );
+
+nino.adminUi.api.errorText = function( status, response, key ) { return 'told '+ status+ ' '+ response.error+ ' ['+ key+ ']' };
+mailer._sendTest( find('mailer-to'), find('mailer-send'), find('mailer-msg'), find('mailer-status'), find('mailer-errors') );
+check( '...and what errorText() makes of it where it has one, on the line under the form', find('mailer-msg').textContent === 'told 500 smtp said no [/_admin/mailer/error/send]' );
+delete nino.adminUi.api;
 
 console.log( '\n'+ checks+ ' checks, '+ failures+ ' failed' );
 process.exit( failures === 0 ? 0 : 1 );

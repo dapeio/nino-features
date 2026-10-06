@@ -101,7 +101,11 @@
 		},
 
 		/**
-		 *	Call a mailer/* admin action
+		 *	Call a mailer/* admin action. The workbench's own request helper
+		 *	posts where this Nino has one - it knows the project's directory
+		 *	and what to do when the page has outlived its session; the post
+		 *	below is what every panel did before it, with the base the asset
+		 *	bundle fills in, because Nino.dir does not exist before Nino 1.3.2
 		 *
 		 *	@param		{string}		endpoint			Action name (eg. "test", becomes "mailer/test")
 		 *	@param		{Object}		payload				Request payload, sent json-encoded as "data"
@@ -110,9 +114,33 @@
 		 *	@return		void
 		 */
 		_apiCall : function( endpoint, payload, callback ) {
-			Nino.http.sendRequest( '/_admin/', 'POST', function( xhr ) {
+
+			if( Nino.adminUi && Nino.adminUi.api )
+				return Nino.adminUi.api.call( 'mailer/'+ endpoint, payload, callback );
+
+			Nino.http.sendRequest( '[[/nino/dir]]/_admin/', 'POST', function( xhr ) {
 				callback( xhr.status, xhr.responseJSON );
 			}, { action : 'mailer/'+ endpoint, data : JSON.stringify( payload ) } );
+		},
+
+		/**
+		 *	What a failed request says: the server's code in the workbench's
+		 *	language, then its own message - which for a test mail is the
+		 *	reason the mail server gave - then this panel's sentence, where
+		 *	this Nino has errorText(). Before it, "(status) message"
+		 *
+		 *	@param		{number}		status
+		 *	@param		{*}					response
+		 *	@param		{string}		key					Fill key of the panel's own sentence
+		 *
+		 *	@return		{string}
+		 */
+		_errorText : function( status, response, key ) {
+
+			if( Nino.adminUi && Nino.adminUi.api && typeof Nino.adminUi.api.errorText === 'function' )
+				return Nino.adminUi.api.errorText( status, response, key );
+
+			return '('+ status+ ') '+ ( ( response && response.error ) ? response.error : Nino.content.getText( key ) );
 		},
 
 		/**
@@ -130,7 +158,7 @@
 			Nino.admin.mailer._apiCall( 'status', {}, function( httpStatus, response ) {
 
 				if( httpStatus !== 200 || response === null ) {
-					status.textContent = '('+ httpStatus+ ') '+ ( ( response && response.error ) ? response.error : Nino.content.getText('/_admin/mailer/error/load') );
+					status.textContent = Nino.admin.mailer._errorText( httpStatus, response, '/_admin/mailer/error/load' );
 					return;
 				}
 
@@ -209,7 +237,7 @@
 				Nino.admin.mailer._loadStatus( statusLine, input, errors );
 
 				if( status !== 200 ) {
-					msg.textContent = '('+ status+ ') '+ ( ( response && response.error ) ? response.error : Nino.content.getText('/_admin/mailer/error/send') );
+					msg.textContent = Nino.admin.mailer._errorText( status, response, '/_admin/mailer/error/send' );
 					return;
 				}
 

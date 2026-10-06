@@ -139,9 +139,12 @@ function childrenWith( parent, name ) {
  *	pane the shell renders for it, with the head over them (see
  *	Panels::panesHtml() in the kernel): the panel's name and the actions slot
  *
- *	@param		{Object}	options		{ rules, routes, misses, recording, save, head, panelHead } -
+ *	@param		{Object}	options		{ rules, routes, misses, recording, save, head, panelHead, fail, api, dirty } -
  *																routes: the pages a target can be picked from,
  *																save: what a save answers,
+ *																fail: { action: { status, body } } answers that action with a failure,
+ *																api: stands in for Nino.adminUi.api (a newer workbench),
+ *																dirty: stands in for the shell's Nino.admin.dirty registry,
  *																head: false renders the pane without a head,
  *																panelHead: false stands in for a kernel from
  *																before the head, which has no panelHead() at all
@@ -179,6 +182,7 @@ function panel( options ) {
 	pane.appendChild( misses );
 
 	const calls = [];
+	const uris = [];
 
 	const dc = {
 		createElement		: function( tag ) { return element( tag ) },
@@ -194,6 +198,9 @@ function panel( options ) {
 		// .status and .responseJSON off it - so that is what stands in for one
 		http		: { sendRequest : function( uri, method, callback, payload ) {
 			calls.push( payload );
+			uris.push( uri );
+			if( options.fail && options.fail[payload.action] )
+				return callback( { status : options.fail[payload.action].status, responseJSON : options.fail[payload.action].body } );
 			if( payload.action === 'redirects/list' )
 				return callback( { status : 200, responseJSON : {
 					rules			: options.rules || [],
@@ -295,6 +302,12 @@ function panel( options ) {
 	if( options.panelHead === false )
 		delete Nino.adminUi.panelHead;
 
+	if( options.api )
+		Nino.adminUi.api = options.api;
+
+	if( options.dirty )
+		Nino.admin = { dirty : options.dirty };
+
 	const sandbox = { console : console, document : dc, Nino : Nino, window : { Nino : Nino, confirm : function() { return true } } };
 	sandbox.window.window = sandbox.window;
 
@@ -307,7 +320,9 @@ function panel( options ) {
 		misses	: misses,
 		head		: head,
 		calls		: calls,
+		uris		: uris,
 		panel		: Nino.admin.redirects,
+		byId		: function( id ) { return dc.getElementById( id ) },
 		hidden	: function( mount ) { return mount.classList.contains('admin-hidden') },
 		tabs		: function( mount ) { return mount.querySelectorAll('.nino-admin-tabs').length },
 		// The strips standing in the head itself, which is where a strip of
@@ -472,6 +487,122 @@ check( 'a save without a warning says only that it saved',
 	plainLine !== null && plainLine.textContent === '/_admin/redirects/msg/saved' && plainLine.matchesClass('nino-admin-error') === false );
 check( '...and a panel with no pages to offer still has a picker, with its one empty entry',
 	plain.panel._routes.length === 0 && plainSelect !== null && plainSelect.children.length === 1 && plainSelect.children[0].value === '' );
+
+
+// --- Asking the workbench ------------------------------------------------------
+
+/*	Before the workbench had a request helper a panel posted by itself, from
+	the project's directory (the literal the asset bundle fills in); where there
+	is one, the helper posts and the panel's own post is never reached	*/
+const bare = panel( {} );
+check( 'without the shell\'s request helper the panel posts to the project\'s own _admin, with the action and the json',
+	bare.uris.length === 1 && bare.uris[0] === '[[/nino/dir]]/_admin/' && bare.calls[0].action === 'redirects/list' && bare.calls[0].data === '{}' );
+
+const routed = [];
+const viaApi = panel( {
+	rules	: [ fine ],
+	api		: {
+		call : function( action, payload, callback ) {
+			routed.push( [ action, payload ] );
+			callback( 200, { rules : [ fine ], routes : [], misses : [], statuses : [ 301, 302 ], recording : true, limit : 5, notes : [] } );
+		},
+	},
+} );
+check( 'with it the panel asks the helper for \'redirects/<action>\' - and posts nothing by hand',
+	routed.length === 1 && routed[0][0] === 'redirects/list' && viaApi.uris.length === 0
+	&& viaApi.rules.querySelectorAll('.nino-admin-row').length === 1 );
+
+// What a failure says: the shell's errorText() where there is one, the old
+// "(status) message" where there is not. The probe shows it
+function probeFailure( errorText ) {
+	const failing = panel( {
+		fail	: { 'redirects/probe' : { status : 500, body : { error : 'boom' } } },
+		// Where the shell has the helper it answers for the panel: the list as
+		// the stand-in's own http would, the probe as a failure
+		api		: errorText === undefined ? undefined : {
+			errorText	: errorText,
+			call			: function( action, payload, callback ) {
+				if( action === 'redirects/probe' )
+					return callback( 500, { error : 'boom' } );
+				callback( 200, { rules : [], routes : [], misses : [], statuses : [ 301, 302 ], recording : true, limit : 5, notes : [] } );
+			},
+		},
+	} );
+	failing.rules.querySelectorAll('.redirects-probe')[0].querySelectorAll('button')[0].click();
+	return failing.rules.querySelectorAll('.redirects-probe')[0].querySelectorAll('p').filter( function( node ) { return node.matchesClass('nino-admin-hint') } ).pop().textContent;
+}
+check( 'a failed probe reads "(500) boom" as it always did where the shell has no errorText()', probeFailure( undefined ) === '(500) boom' );
+check( '...and what errorText() makes of it where it has one, with the status, the body and no sentence of the panel\'s own',
+	probeFailure( function( status, response, key ) { return 'told '+ status+ ' '+ response.error+ ' ['+ key+ ']' } ) === 'told 500 boom []' );
+
+
+// --- Unsaved input -------------------------------------------------------------
+
+const registry = { entries : {}, asked : [] };
+registry.register = function( name, entry ) { registry.entries[name] = entry };
+// The shell's guard in miniature: it records what it was asked and lets the exit go
+registry.guard = function( names, proceed ) { registry.asked.push( names ); proceed() };
+registry.isDirty = function( names ) { return names.some( function( name ) { return registry.entries[name] !== undefined && registry.entries[name].isDirty() === true } ) };
+
+const guarded = panel( { rules : [ fine ], dirty : registry, save : { saved : '/b', rules : [ fine ], warnings : [], notes : [] } } );
+const entry = registry.entries['redirects'] || null;
+
+check( 'where the shell has the registry the panel registers under its own uri', entry !== null && typeof entry.isDirty === 'function' && typeof entry.save === 'function' && typeof entry.discard === 'function' );
+check( '...with the list on screen there is nothing unsaved', entry.isDirty() === false );
+
+guarded.rules.querySelectorAll('.nino-admin-list-actions')[0].children[0].click();
+check( '...and a freshly opened editor holds nothing unsaved either', entry.isDirty() === false );
+
+const typing = guarded.rules.querySelectorAll('input')[0];
+typing.value = '/typed';
+typing.listeners['input'].forEach( function( fn ) { fn() } );
+check( '...but what is typed into it is', entry.isDirty() === true );
+
+typing.value = '';
+typing.listeners['input'].forEach( function( fn ) { fn() } );
+check( '...and typing it back to what it was is not', entry.isDirty() === false );
+
+typing.value = '/typed';
+typing.listeners['input'].forEach( function( fn ) { fn() } );
+let told = [];
+entry.save( function( ok ) { told.push( ok ) } );
+check( 'the shell\'s Save saves the rule and says it did, once, and the editor is closed',
+	told.length === 1 && told[0] === true && guarded.panel._editing === null
+	&& guarded.calls.filter( function( call ) { return call.action === 'redirects/save' } ).length === 1 );
+
+told = [];
+entry.save( function( ok ) { told.push( ok ) } );
+check( '...a Save with no editor open says it did not', told.length === 1 && told[0] === false );
+
+// The way out of the editor, and the strip between the screens, ask first
+guarded.rules.querySelectorAll('.nino-admin-list-actions')[0].children[0].click();
+guarded.rules.querySelectorAll('.nino-admin-context-bar')[0].children[0].click();
+check( 'the editor\'s Back asks the shell first, naming this panel, and then goes back', registry.asked.length === 1 && registry.asked[0][0] === 'redirects' && guarded.panel._editing === null );
+
+guarded.rules.querySelectorAll('.nino-admin-list-actions')[0].children[0].click();
+guarded.tab('missing').click();
+check( '...and so does the strip between the two screens', registry.asked.length === 2 && guarded.panel._screen === 'missing' && guarded.panel._editing === null );
+
+// A Save the shell asked for that fails brings the panel on screen again
+// (showCurrent()): the reason it gave, and the rule, have to still be there
+const refused = panel( { rules : [ fine ], dirty : registry, fail : { 'redirects/save' : { status : 500, body : { error : 'boom' } } } } );
+refused.rules.querySelectorAll('.nino-admin-list-actions')[0].children[0].click();
+const refusedInput = refused.rules.querySelectorAll('input')[0];
+refusedInput.value = '/typed';
+refusedInput.listeners['input'].forEach( function( fn ) { fn() } );
+told = [];
+registry.entries['redirects'].save( function( ok ) { told.push( ok ) } );
+check( 'a Save the shell asked for that the server refuses says it did not save, with the reason on screen',
+	told.length === 1 && told[0] === false && refused.byId('redirects-msg').textContent === '(500) boom' );
+refused.panel.showCurrent();
+check( '...and the shell showing the panel again keeps the reason, and the rule that was not saved',
+	refused.byId('redirects-msg').textContent === '(500) boom' && refused.panel._editing !== null && registry.entries['redirects'].isDirty() === true );
+
+// Without the registry nothing asks, and the exits are the ones they were
+const plainly = panel( { rules : [ fine ] } );
+plainly.rules.querySelectorAll('.nino-admin-list-actions')[0].children[0].click();
+plainly.rules.querySelectorAll('.nino-admin-context-bar')[0].children[0].click();
+check( 'on a workbench without the registry Back leaves the editor at once', plainly.panel._editing === null && plainly.rules.querySelectorAll('.nino-admin-table').length === 1 );
 
 
 // --- Nothing to draw -----------------------------------------------------------

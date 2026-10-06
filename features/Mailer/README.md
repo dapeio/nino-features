@@ -81,9 +81,10 @@ skipped entirely when `username` is empty (a local relay that needs none).
 
 ## Settings
 
-Configured in the Features panel, under `/nino/features` in `config.php`
-once saved - there is no settings screen of the feature's own, only the
-[panel](#the-test-mail) that proves them.
+Configured in the feature's **Settings** - the form the Features panel has for
+it, or the **Settings** tab of the Mailer panel on a Nino that offers one - and
+kept under `/nino/features` in `config.php` once saved. The feature has no
+settings screen of its own, only the [panel](#the-test-mail) that proves them.
 
 | Setting | Type | Rules | Default |
 | --- | --- | --- | --- |

@@ -8,7 +8,9 @@ declare(strict_types=1);
  *									locale selection, committed Elements writes, and the
  *									guarded /_admin rebuild action. Travels with the feature
  *									and runs against the checkout three levels up, or the one
- *									NINO_ROOT names (see tests/harness.php there).
+ *									NINO_ROOT names (see tests/harness.php there). Where node
+ *									is on the path it runs search-js-smoke.js beside it too,
+ *									the panel's script over a dom stand-in.
  *
  *	Usage: php features/Search/tests/search-smoke.php
  *	       NINO_ROOT=../nino php features/Search/tests/search-smoke.php
@@ -355,6 +357,38 @@ check( 'an element carries its uri, its last segment and its place in the list',
 $escaped = \Nino\Html::renderHtml( $appData, '[search-results type="articles" limit="1"]<p>[[title]] | [[keywords]]</p>[/search-results]' );
 check( 'a value is escaped on the way into the page, and an array field reads as a list',
 	str_contains( $escaped, 'Orbit &amp; &lt;b&gt;bold&lt;/b&gt;' ) === true && str_contains( $escaped, 'a, b' ) === true );
+
+/*	A string field the model gives a format is the kernel's to render where it
+	has \Nino\Html::fieldValue() - the paragraphs and lists of one that holds
+	them, the line breaks of one that keeps them - and a Nino from before it keeps
+	what it always did. Both are held to what they promise, so this runs on
+	either	*/
+$formatted 		= is_callable( [ \Nino\Html::class, 'fieldValue' ] ) === true;
+$renderValue 	= new ReflectionMethod( \Nino\Modules\Search\Shortcodes::class, '_value' );
+$fieldValue 	= static fn( mixed $value, array $definition ): string => (string) $renderValue->invoke( null, $value, $definition );
+
+check( 'a plain field is escaped, and a bracket in it is not a shortcode',
+	$fieldValue( '<b>[x]</b>', [ 'type' => 'string' ] ) === '&lt;b&gt;&#91;x]&lt;/b&gt;' );
+check( 'a field released for html keeps its inline tags and neutralises a bracket',
+	$fieldValue( '<strong>Orbit</strong> [x]', [ 'type' => 'string', 'html' => true ] ) === '<strong>Orbit</strong> &#91;x]' );
+$blocks = $fieldValue( '<p>Alpha</p><ul><li>Beta</li></ul>', [ 'type' => 'string', 'html' => true, 'blocks' => true ] );
+check( 'a field that holds paragraphs and lists keeps them where the kernel renders it, and flattens them where it does not',
+	$formatted === true ? $blocks === '<p>Alpha</p><ul><li>Beta</li></ul>' : str_contains( $blocks, '<p>' ) === false );
+$breaks = $fieldValue( "Gamma\nDelta <b>", [ 'type' => 'string', 'breaks' => true ] );
+check( 'a field that keeps its line breaks draws them as <br>, escaped, where the kernel renders it',
+	$formatted === true ? $breaks === "Gamma<br>\nDelta &lt;b&gt;" : str_contains( $breaks, '<br>' ) === false && str_contains( $breaks, '&lt;b&gt;' ) === true );
+check( 'a list field reads as its values however the model is written, and a value that is not text is nothing',
+	$fieldValue( [ 'a', [ 'b' ] ], [ 'type' => 'array' ] ) === 'a, b' && $fieldValue( true, [ 'type' => 'string' ] ) === '' );
+
+$normalized = new ReflectionMethod( \Nino\Modules\Search::class, '_normalizeValue' );
+// Only where the kernel can say what the end of a paragraph is; one that cannot
+// strips the tags and joins the words, which is not a result to pin down
+if( is_callable( [ \Nino\Html::class, 'breaksToNewlines' ] ) === true )
+	check( 'what the index keeps of paragraphs and list items is words, with a word end where the markup had one',
+		(string) $normalized->invoke( null, '<p>Alpha</p><ul><li>Beta</li></ul>Gamma<br>Delta' ) === 'alpha beta gamma delta' );
+else
+	echo "  skip- paragraphs and list items end a word (this Nino has no \\Nino\\Html::breaksToNewlines())\n";
+check( '...and inline tags in the middle of a word do not split it', (string) $normalized->invoke( null, 'Or<strong>bit</strong>' ) === 'orbit' );
 
 check( 'limit cuts the list', substr_count(
 	\Nino\Html::renderHtml( $appData, '[search-results type="articles" limit="1"]<p>[[title]]</p>[/search-results]' ), '<p>' ) === 1 );
@@ -705,5 +739,23 @@ check( 'write failures are reported per configured type', ( $failed['created'] ?
 check( 'the Admin action turns any index write failure into a 500',
 	$status === 500
 	&& str_contains( (string) ( $body['error'] ?? '' ), '/articles, /notes' ) === true );
+
+// --- The panel's script, where node is on the path ----------------------------
+//
+// search-js-smoke.js beside this file runs the panel's script over a dom
+// stand-in - its request, the type editor's status line and what it tells the
+// shell about unsaved input; this suite runs it too where node is on the path,
+// the way forms-smoke.php does, so bin/check.sh and CI cover both halves in one go
+$jsTest	= __DIR__. '/search-js-smoke.js';
+$node		= function_exists( 'shell_exec' ) === true ? trim( (string) @shell_exec( 'command -v node 2>/dev/null' ) ) : '';
+
+if( $node === '' || function_exists( 'exec' ) === false ) {
+	echo "  --  - node is not available here: search-js-smoke.js was NOT run\n";
+} else {
+	$output = []; $status = 1;
+	exec( escapeshellarg( $node ). ' '. escapeshellarg( $jsTest ). ' 2>&1', $output, $status );
+	$summary = (string) end( $output );
+	check( 'search-js-smoke.js passes - '. ( $summary === '' ? 'no output' : $summary ), $status === 0 );
+}
 
 ninoDone( $appData );

@@ -143,7 +143,9 @@ function element( tag ) {
  *	@param		{Object}	options		{ forms } - what forms/list answers with;
  *																hold: true keeps the answer to forms/settings
  *																back until release() is called, status: the
- *																status that answer carries
+ *																status that answer carries, api and status: stand in for
+ *																Nino.adminUi.api and Nino.adminUi.status (a newer workbench),
+ *																dirty: for the shell's Nino.admin.dirty registry
  */
 function panel( options ) {
 
@@ -159,6 +161,7 @@ function panel( options ) {
 	body.appendChild( form );
 
 	const calls = [];
+	const uris = [];
 	let pending = null;
 	let status = 200;
 
@@ -181,6 +184,7 @@ function panel( options ) {
 		// .status and .responseJSON off it - so that is what stands in for one
 		http		: { sendRequest : function( uri, method, callback, payload ) {
 			calls.push( payload );
+			uris.push( uri );
 			if( payload.action === 'forms/list' )
 				return callback( { status : 200, responseJSON : {
 					forms			: options.forms || [],
@@ -228,6 +232,13 @@ function panel( options ) {
 	// Where the real shell defines it (script.js): the back link's row
 	Nino.admin = { formToolbar : function( back ) { return Nino.adminUi.contextBar( back ) } };
 
+	if( options.api )
+		Nino.adminUi.api = options.api;
+	if( options.status )
+		Nino.adminUi.status = options.status;
+	if( options.dirty )
+		Nino.admin.dirty = options.dirty;
+
 	const sandbox = { console : console, document : dc, Nino : Nino, window : { Nino : Nino, confirm : function() { return true } } };
 	sandbox.window.window = sandbox.window;
 	sandbox.document.documentElement = element('html');
@@ -244,6 +255,7 @@ function panel( options ) {
 		list		: list,
 		form		: form,
 		calls		: calls,
+		uris		: uris,
 		panel		: Nino.admin.forms,
 		settings: settings,
 		save		: function() { return settings().querySelector('button') },
@@ -370,6 +382,123 @@ back.form.querySelectorAll('.nino-admin-back-link')[0].click();
 
 check( 'the way back from the editor puts the list on, with one bar',
 	back.hidden( back.list ) === false && back.hidden( back.form ) === true && back.bars( back.list ) === 1 );
+
+
+// --- Asking the workbench ------------------------------------------------------
+
+/*	Where the shell has a request helper the panel asks it; where it has not it
+	posts from the project's own directory - the literal the asset bundle fills
+	in, as Nino.dir does not exist before Nino 1.3.2	*/
+const bare = panel( { forms : two } );
+check( 'without the shell\'s request helper the panel posts to the project\'s own _admin, with the action and the json',
+	bare.uris.length === 1 && bare.uris[0] === '[[/nino/dir]]/_admin/' && bare.calls[0].action === 'forms/list' && bare.calls[0].data === '{}' );
+
+const routed = [];
+const viaApi = panel( { api : { call : function( action, payload, callback ) {
+	routed.push( [ action, payload ] );
+	callback( 200, { forms : two, types : [ 'text' ], reserved : [], default : false, endpoint : true, retention : 3, store : true } );
+} } } );
+check( 'with it the panel asks the helper for \'forms/<action>\' and posts nothing by hand',
+	routed.length === 1 && routed[0][0] === 'forms/list' && viaApi.uris.length === 0 && viaApi.list.querySelectorAll('[data-form]').length === 2 );
+
+
+// --- Saying what happened ------------------------------------------------------
+
+// Nino.adminUi.status() in miniature: what it was told, and which form it follows
+const lines = [];
+const statusStub = function( el ) {
+	const line = { el : el, told : [], bound : null,
+		saving : function() { line.told.push('saving') },
+		saved : function() { line.told.push('saved') },
+		error : function( status, response, key ) { line.told.push( [ 'error', status, response.error, key ].join(' ') ) },
+		bind : function( form ) { line.bound = form },
+	};
+	lines.push( line );
+	return line;
+};
+
+const lined = panel( { forms : two, status : statusStub } );
+const cardLine = lines[lines.length - 1];
+check( 'where the shell has a status line the settings card\'s message is one, following the card', cardLine.el === lined.msg() && cardLine.bound === lined.settings() );
+lined.settings().dispatch('submit');
+check( '...told when the save starts and when it is done, and the panel\'s own sentences are not written beside it',
+	cardLine.told.join() === 'saving,saved' && lined.msg().textContent === '' );
+lined.status( 422 );
+lined.settings().dispatch('submit');
+check( '...and a refused save is told as the error it is, with the status, the body and the panel\'s own sentence for it',
+	cardLine.told[cardLine.told.length - 1] === 'error 422 Refused /_admin/common/error/save' && lined.save().disabled === false );
+
+const typed = panel( { forms : two, status : statusStub } );
+typed.list.querySelectorAll('.nino-admin-list-actions')[0].children[0].click();
+const editorLine = lines[lines.length - 1];
+check( 'the editor\'s message is one too, following the editor\'s form', editorLine.bound !== null && editorLine.bound.tagName === 'FORM' && typed.form.querySelectorAll('form').length === 1 );
+
+const errors = panel( { forms : two, api : { call : function( action, payload, callback ) {
+	if( action === 'forms/list' )
+		return callback( 500, { error : 'Down' } );
+}, errorText : function( status, response, key ) { return 'told '+ status+ ' '+ response.error+ ' ['+ key+ ']' } } } );
+check( 'a list that could not be read says so in the shell\'s words where it has them', errors.list.querySelectorAll('.nino-admin-error')[0].textContent === 'told 500 Down [/_admin/common/error/load]' );
+check( '...and in the old "(status) message" where it has not', ( function() {
+	const old = panel( { forms : two } );
+	old.panel._showError( old.list, 503, { error : 'Busy' } );
+	return old.list.querySelectorAll('.nino-admin-error')[0].textContent === '(503) Busy';
+} )() );
+
+
+// --- Unsaved input -------------------------------------------------------------
+
+// The shell's registry in miniature: what the panel registered, and what it
+// was asked to take for saved
+const registry = { watched : {}, snapshots : [], dirty : false };
+registry.watchForm = function( name, getter, save ) { registry.watched[name] = { getter : getter, save : save } };
+registry.snapshot = function( name ) { registry.snapshots.push( name ) };
+registry.isDirty = function() { return registry.dirty };
+
+const guarded = panel( { forms : two, dirty : registry } );
+const watched = registry.watched['forms'] || null;
+
+check( 'where the shell has the registry the panel watches its editor under its own uri', watched !== null && watched.getter() === guarded.form && typeof watched.save === 'function' );
+check( '...and what is on screen is taken for saved when the editor opens, and not before', registry.snapshots.length === 0 );
+
+guarded.list.querySelectorAll('.nino-admin-list-actions')[0].children[0].click();
+check( '...opened', registry.snapshots.length === 1 && registry.snapshots[0] === 'forms' );
+
+// Another panel and back again: an editor that holds input is left as it is
+const mark = element('span');
+guarded.form.appendChild( mark );
+registry.dirty = true;
+guarded.panel.showCurrent();
+check( 'coming back to the panel does not draw an editor over what is typed into it', guarded.form.children.indexOf( mark ) !== -1 );
+registry.dirty = false;
+guarded.panel.showCurrent();
+check( '...and an editor that holds nothing is drawn again as before', guarded.form.children.indexOf( mark ) === -1 && guarded.hidden( guarded.form ) === false );
+
+// The shell's Save saves from its own question
+guarded.form.querySelector('[data-about="key"]').value = 'Renamed';
+let told = [];
+watched.save( function( ok ) { told.push( ok ) } );
+check( 'the shell\'s Save posts the form and says it was saved - once, before the list is read again',
+	told.length === 1 && told[0] === true && guarded.calls.filter( function( call ) { return call.action === 'forms/save' } ).length === 1
+	&& JSON.parse( guarded.calls.filter( function( call ) { return call.action === 'forms/save' } )[0].data ).form.key === 'renamed' );
+
+guarded.status( 422 );
+guarded.panel._editing = JSON.parse( JSON.stringify( two[0] ) );
+guarded.panel._renderForm();
+told = [];
+watched.save( function( ok ) { told.push( ok ) } );
+check( '...and says it was not when the server refused it', told.length === 1 && told[0] === false );
+
+guarded.panel._editing = null;
+told = [];
+watched.save( function( ok ) { told.push( ok ) } );
+check( '...as it does when there is no editor to save', told.length === 1 && told[0] === false );
+
+// A workbench without the registry draws the editor again as it always did
+const plain = panel( { forms : two } );
+plain.list.querySelectorAll('.nino-admin-list-actions')[0].children[0].click();
+plain.form.appendChild( mark );
+plain.panel.showCurrent();
+check( 'a workbench without the registry draws the editor again as it always did', plain.form.children.indexOf( mark ) === -1 );
 
 
 console.log( '\n'+ checks+ ' checks, '+ failures+ ' failed' );

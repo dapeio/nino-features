@@ -6,6 +6,20 @@ versions [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+- **The panel uses the workbench's request helper, its status line, its wording
+  of a failure and its question about unsaved input, where the Nino has them.**
+  Every request goes through `Nino.adminUi.api`, which signs the page in again
+  over what is on screen when the session has ended instead of losing it. The
+  two submission settings and the form editor say "saving", "saved at 09:41" or
+  "unsaved changes" in the workbench's status line, and a failed save reads the
+  way the workbench says it. The editor is registered with the shell, so its
+  back link, a log out or a language change asks **Save**, **Discard** or
+  **Cancel** first; and opening the panel again no longer draws the editor over
+  what was typed into it. On a Nino without the helper (1.3.x) the panel posts
+  as it did, but from the project's own directory: it posted to `/_admin/` from
+  the root of the domain, which a project in a subdirectory does not answer.
+  `nino` stays `^1.3`.
+
 - **New form lay under a second Save bar.** The two submission settings drew
   their own fixed action bar over the list's, so on every screen size a click
   on New form hit the Save of the retention instead and saved that. The

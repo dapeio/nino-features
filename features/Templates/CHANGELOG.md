@@ -37,6 +37,26 @@ A release is the tag `templates-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The panel uses the workbench's request helper and its question about unsaved
+  input, where the Nino has them.** Every request goes through
+  `Nino.adminUi.api`, which signs the page in again over what is on screen when
+  the session has ended instead of losing it. The document's unsaved changes are
+  registered with the shell, so a log out or a language change asks **Save**,
+  **Discard** or **Cancel** first and a reload gets the browser's own question;
+  the panel's own warning on leaving is only there on a Nino without the
+  registry, so that the question is asked once. The panel's own save state in
+  its head still says "unsaved". On a Nino without the helper (1.3.x) the panel
+  posts as it did, but from the project's own directory: it posted to `/_admin/`
+  from the root of the domain, which a project in a subdirectory does not
+  answer. `nino` stays `^1.3`.
+
+- **The page-unit recipe documents `imageSlots`.** A page unit of the setup
+  wizard's library declares the image slots its templates show with
+  `[image <uri> alt=""]`, and may seed one with a file it ships, instead of a
+  literal `<img>`: the example manifest and the list of recognised keys carry
+  it, and the Images section says why. The key is read by the Nino release
+  after 1.3.2; an older one ignores it. Documentation only.
+
 - **A new text starts empty, and what it shows instead is a sample.** A
   component the builder inserted carried a catalogue default - "Section
   title", "A concise supporting line", a button reading "Learn more" pointing

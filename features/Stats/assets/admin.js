@@ -54,7 +54,11 @@
 		},
 
 		/**
-		 *	Call a stats/* admin action
+		 *	Call a stats/* admin action. The workbench's own request helper
+		 *	posts where this Nino has one - it knows the project's directory
+		 *	and what to do when the page has outlived its session; the post
+		 *	below is what every panel did before it, with the base the asset
+		 *	bundle fills in, because Nino.dir does not exist before Nino 1.3.2
 		 *
 		 *	@param		{string}		endpoint			Action name (eg. "months", becomes "stats/months")
 		 *	@param		{Object}		payload				Request payload, sent json-encoded as "data"
@@ -63,9 +67,32 @@
 		 *	@return		void
 		 */
 		_apiCall : function( endpoint, payload, callback ) {
-			Nino.http.sendRequest( '/_admin/', 'POST', function( xhr ) {
+
+			if( Nino.adminUi && Nino.adminUi.api )
+				return Nino.adminUi.api.call( 'stats/'+ endpoint, payload, callback );
+
+			Nino.http.sendRequest( '[[/nino/dir]]/_admin/', 'POST', function( xhr ) {
 				callback( xhr.status, xhr.responseJSON );
 			}, { action : 'stats/'+ endpoint, data : JSON.stringify( payload ) } );
+		},
+
+		/**
+		 *	What a failed request says: the server's code in the workbench's
+		 *	language, then its own message, then this panel's sentence - where
+		 *	this Nino has errorText(). Before it, "(status) message"
+		 *
+		 *	@param		{number}		status
+		 *	@param		{*}					response
+		 *	@param		{string}		key					Fill key of the panel's own sentence
+		 *
+		 *	@return		{string}
+		 */
+		_errorText : function( status, response, key ) {
+
+			if( Nino.adminUi && Nino.adminUi.api && typeof Nino.adminUi.api.errorText === 'function' )
+				return Nino.adminUi.api.errorText( status, response, key );
+
+			return '('+ status+ ') '+ ( ( response && response.error ) ? response.error : Nino.content.getText( key ) );
 		},
 
 		/**
@@ -81,7 +108,7 @@
 			wrap.innerHTML = '';
 			const p = dc.createElement('p');
 			p.className = 'nino-admin-error';
-			p.textContent = '('+ status+ ') '+ ( ( response && response.error ) ? response.error : Nino.content.getText('/_admin/stats/error/load') );
+			p.textContent = Nino.admin.stats._errorText( status, response, '/_admin/stats/error/load' );
 			wrap.appendChild( p );
 		},
 

@@ -120,8 +120,15 @@
 		_toastTimer : null,
 		_loaded : false,
 
+		/*	The workbench's own request helper posts where this Nino has one - it
+			knows the project's directory and what to do when the page has
+			outlived its session. The post below is what every panel did before
+			it, with the base the asset bundle fills in, because Nino.dir does
+			not exist before Nino 1.3.2	*/
 		apiCall : function( action, payload, callback ) {
-			Nino.http.sendRequest( '/_admin/', 'POST', function( xhr ) {
+			if( Nino.adminUi && Nino.adminUi.api )
+				return Nino.adminUi.api.call( action, payload, callback );
+			Nino.http.sendRequest( '[[/nino/dir]]/_admin/', 'POST', function( xhr ) {
 				callback( xhr.status, xhr.responseJSON );
 			}, { action : action, data : JSON.stringify( payload || {} ) } );
 		},
@@ -212,6 +219,11 @@
 				state.classList.toggle( 'is-dirty', dirty );
 				state.textContent = dirty ? Nino.content.getText('/_admin/templates/status/dirty') : ( Nino.admin.templates._current ? Nino.content.getText('/_admin/templates/status/saved') : '' );
 			}
+			// The shell hears of an edit from the page's own events; a change
+			// that arrives with an answer (an inserted section, a composed
+			// one) has none, and a reload would go unasked
+			if( typeof Nino.admin.dirty === 'object' )
+				Nino.admin.dirty.refresh();
 		},
 
 		/**
@@ -659,10 +671,22 @@
 			}
 		},
 
-		save : function() {
+		save : function( done ) {
 			const current = Nino.admin.templates._current;
-			if( current === null || Nino.admin.templates._dirty === false || Nino.admin.templates._saving === true || current.readonly !== null )
-				return;
+			// Told whether it was saved when the shell's Save asks - once: a
+			// done() that throws inside the promise lands in its catch as well
+			let told = false;
+			const finish = function( ok ) {
+				if( told === true || typeof done !== 'function' )
+					return;
+				told = true;
+				done( ok );
+			};
+			// Nothing to save is saved
+			if( current === null || Nino.admin.templates._dirty === false )
+				return finish( true );
+			if( Nino.admin.templates._saving === true || current.readonly !== null )
+				return finish( false );
 
 			Nino.admin.templates._saving = true;
 			const changeVersion = Nino.admin.templates._changeVersion;
@@ -696,7 +720,7 @@
 				state.classList.remove('is-dirty');
 				state.classList.add('is-error');
 				state.textContent = Nino.content.getText('/_admin/templates/error/displayname-save');
-				return;
+				return finish( false );
 			}
 
 			Nino.admin.templates.api( 'documents/save', payload ).then( function( response ) {
@@ -704,7 +728,7 @@
 				Nino.admin.templates._saving = false;
 				if( Nino.admin.templates._current !== current ) {
 					Nino.admin.templates.setDirty( Nino.admin.templates._dirty );
-					return;
+					return finish( true );
 				}
 				const upToDate = Nino.admin.templates._changeVersion === changeVersion;
 				if( upToDate ) {
@@ -724,17 +748,21 @@
 					Nino.admin.templates.renderTemplateSettings();
 				Nino.admin.templates.renderPages();
 				Nino.admin.templates.toast( upToDate ? Nino.content.getText('/_admin/templates/msg/saved') : Nino.content.getText('/_admin/templates/msg/saved-stale'), false );
+				// What was typed while the save was on its way is not in what
+				// was saved, so the document is still unsaved
+				finish( upToDate );
 			} ).catch( function( error ) {
 				Nino.admin.templates._saving = false;
 				if( Nino.admin.templates._current !== current ) {
 					Nino.admin.templates.setDirty( Nino.admin.templates._dirty );
-					return;
+					return finish( false );
 				}
 				Nino.admin.templates.setDirty( true );
 				state.classList.remove('is-dirty');
 				state.classList.add('is-error');
 				state.textContent = '('+ error.status+ ') '+ error.message;
 				Nino.admin.templates.toast( error.message, true );
+				finish( false );
 			} );
 		},
 
@@ -840,12 +868,16 @@
 			} );
 			dc.getElementById('pd-delete-template').addEventListener( 'click', Nino.admin.templates.deleteTemplate );
 
-			wn.addEventListener( 'beforeunload', function( event ) {
-				if( Nino.admin.templates._dirty ) {
-					event.preventDefault();
-					event.returnValue = '';
-				}
-			} );
+			// Where this Nino has the shell's registry (see the end of this
+			// file) it asks, and asks once; this is the question every
+			// workbench had before it
+			if( typeof Nino.admin.dirty !== 'object' )
+				wn.addEventListener( 'beforeunload', function( event ) {
+					if( Nino.admin.templates._dirty ) {
+						event.preventDefault();
+						event.returnValue = '';
+					}
+				} );
 		},
 
 		/**
@@ -877,6 +909,27 @@
 			} );
 		},
 	} );
+
+	/*	The shell asks Save, Discard or Cancel before a log out or a language
+		change would lose the document's changes, and a reload gets the
+		browser's own question. The panel's own save state in its head says
+		"unsaved" already, so the shell draws no marker of its own. A panel
+		registers where this Nino has the registry and does without where it
+		has not - panel scripts run on older workbenches too	*/
+	if( typeof Nino.admin.dirty === 'object' )
+		Nino.admin.dirty.register( 'templates', {
+			isDirty : function() { return Nino.admin.templates._dirty === true },
+			save : function( done ) { Nino.admin.templates.save( done ) },
+			// The document goes back to what is stored, so a leave that does
+			// not happen shows the truth
+			discard : function() {
+				const current = Nino.admin.templates._current;
+				Nino.admin.templates.setDirty( false );
+				if( current !== null )
+					Nino.admin.templates.openDocument( current.name, true );
+			},
+			bar : function() { return null },
+		} );
 
 	Nino.events.bindCallback( 'ready', Nino.admin.templates.init );
 

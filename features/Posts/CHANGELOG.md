@@ -5,6 +5,14 @@ A release is the tag `posts-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+- **A field with paragraphs, lists or line breaks is drawn as such.** Where the
+  Nino has `\Nino\Html::fieldValue()`, a field the model gives `blocks` or
+  `breaks` comes out in `[post]`, `[posts]` and `[post-nav]` the way
+  `[elements]` draws it; give the element that holds a `blocks` value the class
+  `nino-richtext`, or the framework's reset leaves it without paragraph gaps and
+  list markers. A Nino without it draws a field as it did - flat, escaped or
+  with its inline tags. `[[.body]]` is unchanged.
+
 - The README no longer counts the suite's checks. The number was corrected in
   two patches running, and a reader of the README needs the suite's name, not
   its size.

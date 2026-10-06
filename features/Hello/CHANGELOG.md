@@ -5,6 +5,19 @@ A release is the tag `hello-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+- **The panel uses the workbench's request helper, its status line, its wording
+  of a failure and its question about unsaved input, where the Nino has them -
+  and says so, being the feature to copy.** Every request goes through
+  `Nino.adminUi.api`; the save line is the workbench's status line ("saving",
+  "saved at 09:41", "unsaved changes", the error); the name nobody has saved is
+  registered with the shell, so a log out or a language change asks **Save**,
+  **Discard** or **Cancel** first, and opening the panel again does not draw the
+  screen over it. Each is a check for what the Nino has, so the same script runs
+  on 1.3.0 and later. On a Nino without the helper (1.3.x) the panel posts from
+  the project's own directory, not from `/_admin/` at the root of the domain.
+  `tests/hello-js-smoke.js` is new, and `hello-smoke.php` runs it where node is
+  on the path. `nino` stays `^1.3`.
+
 - Carries a `maturity` badge, `Example` / `Beispiel`: the Features panel of
   a Nino that reads the field draws it beside the name, and the catalogue
   entry carries it. A Nino from before the field ignores the key.

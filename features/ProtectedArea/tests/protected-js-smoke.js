@@ -290,5 +290,32 @@ panel._ready = false;
 panel.showCurrent();
 check( 'a refused state is shown where the screen would be', mount.children.length === 1 && mount.children[0].className === 'nino-admin-error' && mount.children[0].textContent === '(403) not allowed' );
 
+// --- Asking the workbench ------------------------------------------------------------
+
+/*	Where the shell has a request helper the panel asks it; where it has not it
+	posts from the project's own directory - the literal the asset bundle fills
+	in, as Nino.dir does not exist before Nino 1.3.2	*/
+const keepSend = nino.http.sendRequest;
+const wasPosted = [];
+nino.http.sendRequest = function( url, method, callback, payload ) { wasPosted.push( [ url, method, payload ] ); callback( { status : 200, responseJSON : { ok : true } } ) };
+let gotAnswer = null;
+panel._apiCall( 'pages', { paths : [ '/a' ] }, function( status, response ) { gotAnswer = [ status, response ] } );
+check( 'without the shell\'s request helper the panel posts to the project\'s own _admin, with the action and the json',
+	wasPosted.length === 1 && wasPosted[0][0] === '[[/nino/dir]]/_admin/' && wasPosted[0][1] === 'POST'
+	&& wasPosted[0][2].action === 'protected/pages' && wasPosted[0][2].data === '{"paths":["/a"]}' && JSON.stringify( gotAnswer ) === '[200,{"ok":true}]' );
+
+const wasRouted = [];
+nino.adminUi.api = { call : function( action, payload, callback ) { wasRouted.push( [ action, payload ] ); callback( 200, { via : 'api' } ) } };
+gotAnswer = null;
+panel._apiCall( 'pages', { paths : [ '/b' ] }, function( status, response ) { gotAnswer = [ status, response ] } );
+check( 'with it the action \'protected/<action>\' and the payload go to the helper, and nothing is posted by hand',
+	wasRouted.length === 1 && wasRouted[0][0] === 'protected/pages' && wasRouted[0][1].paths[0] === '/b' && wasPosted.length === 1 && gotAnswer[1].via === 'api' );
+
+check( 'a failure says "(status) message" as it always did where the shell has no errorText()', panel._failure( 503, { error : 'Busy' }, '/_admin/common/error/save' ) === '(503) Busy' );
+nino.adminUi.api.errorText = function( status, response, key ) { return 'told '+ status+ ' '+ response.error+ ' ['+ key+ ']' };
+check( '...and what errorText() makes of it where it has one', panel._failure( 503, { error : 'Busy' }, '/_admin/common/error/save' ) === 'told 503 Busy [/_admin/common/error/save]' );
+delete nino.adminUi.api;
+nino.http.sendRequest = keepSend;
+
 console.log( '\n'+ checks+ ' checks, '+ failures+ ' failed' );
 process.exit( failures === 0 ? 0 : 1 );

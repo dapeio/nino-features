@@ -6,6 +6,20 @@ versions [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+- **The panel uses the workbench's request helper, its status line and its
+  wording of a failed load, where the Nino has them.** Every request - the
+  upload with its file included - goes through `Nino.adminUi.api`, which signs
+  the page in again over what is on screen when the session has ended instead of
+  losing it. The line under an image says "saving" and "saved at 09:41" in the
+  workbench's status line. What the server answers to an edit is still the
+  sentence it wrote in the workbench's language, without a status number, and
+  the upload's own texts are untouched. Nothing is registered with the shell's
+  question about unsaved input: an alt text or a caption is saved the moment the
+  field is left. On a Nino without the helper (1.3.x) the panel posts as it did,
+  but from the project's own directory: it posted to `/_admin/` from the root of
+  the domain, which a project in a subdirectory does not answer. `nino` stays
+  `^1.3`.
+
 - **The album list is the design system's row of buttons.** A row used to
   be a card of its own with two buttons on it, a red Delete first - the one
   thing on a list a hand hits by mistake - and looked like nothing else in

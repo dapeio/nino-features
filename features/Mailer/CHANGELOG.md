@@ -5,6 +5,21 @@ A release is the tag `mailer-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+- **The panel uses the workbench's request helper and its wording of a failure,
+  where the Nino has them.** Every request goes through `Nino.adminUi.api`,
+  which signs the page in again over what is on screen when the session has
+  ended instead of losing it; a failed test mail reads the way the workbench
+  says it, with the reason the mail server gave as before. The test address is
+  not stored, so nothing is registered with the shell's question about unsaved
+  input. On a Nino without the helper (1.3.x) the panel posts as it did, but
+  from the project's own directory: it posted to `/_admin/` from the root of the
+  domain, which a project in a subdirectory does not answer. `nino` stays
+  `^1.3`.
+
+- The README says where the settings are: in the feature's **Settings** - the
+  Features panel's form for it, or a **Settings** tab of the Mailer panel on a
+  Nino that has one.
+
 - **A non-ASCII subject went out as one encoded word of any length, and an
   encoded display name went out inside quotes.** `_encodeHeaderValue()`
   base64'd the whole value into a single `=?UTF-8?B?...?=`, where an encoded

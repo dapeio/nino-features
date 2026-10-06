@@ -65,6 +65,11 @@ namespace Nino\Modules {
 		public const string META = '.meta';
 		public const int META_FORMAT = 1;
 
+		// The kernel's \Nino\Html::breaksToNewlines(), where it has one. A
+		// property rather than a literal, so a static analysis of a kernel that
+		// has the method does not fold the check away
+		private static array $breaksToNewlines = [ \Nino\Html::class, 'breaksToNewlines' ];
+
 		/*	The model field types a priority slot may be given. 'image' carries a
 			path, 'element' a reference and 'boolean' a flag - none of them is text
 			a visitor would type, and _normalizeValue() would reduce them to noise
@@ -731,6 +736,13 @@ namespace Nino\Modules {
 		}
 
 		private static function _normalize( string $value ): string {
+
+			// Where the kernel can say what a <br> and the end of a paragraph or a
+			// list item are, they end a word: stripped without that, a
+			// paragraph's last word and the next one's first are one, and
+			// nobody searches for that
+			if( is_callable( self::$breaksToNewlines ) === true )
+				$value = (string) ( self::$breaksToNewlines )( $value );
 
 			$value = html_entity_decode( $value, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
 			$value = mb_strtolower( strip_tags( $value ), 'UTF-8' );
