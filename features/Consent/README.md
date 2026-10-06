@@ -19,6 +19,11 @@ in [CHANGELOG.md](CHANGELOG.md).
 
 ## Put it on the site
 
+**Activating the feature shows nothing.** The banner is a shortcode, and
+nothing writes it into a page for you: until `[consent]` is in the project's
+page frame - `templates/html-footer.tpl`, say - no visitor ever sees a banner
+and no placeholder script is ever released. Add the two shortcodes by hand.
+
 Two shortcodes, both meant for the project's shared page frame so they are
 on every page:
 
@@ -36,7 +41,8 @@ bottom-fixed element belongs in your markup; it is `position: fixed` in
 
 renders a small text button that reopens the banner - `[[/consent/open]]`,
 "Cookie settings" - meant for the footer, next to the imprint/privacy
-links.
+links. On a page that has no banner the button hides itself: it would have
+nothing to open.
 
 Both are ordinary shortcodes (`\Nino\Html::addShortcode()`), registered
 in `init()` while the feature is active.
@@ -44,10 +50,10 @@ in `init()` while the feature is active.
 ## The banner markup
 
 ```html
-<div class="nino-consent" hidden data-consent-cookie="nino_consent" data-consent-days="180">
+<div class="nino-consent" hidden role="dialog" aria-labelledby="nino-consent-title" aria-describedby="nino-consent-text" tabindex="-1" data-consent-cookie="nino_consent" data-consent-days="180">
 	<div class="nino-consent-content">
-		<p class="nino-consent-title">...</p>
-		<p class="nino-consent-text">... <a href="..." class="nino-consent-link">...</a></p>
+		<p class="nino-consent-title" id="nino-consent-title">...</p>
+		<p class="nino-consent-text" id="nino-consent-text">... <a href="..." class="nino-consent-link">...</a></p>
 		<div class="nino-consent-categories">
 			<label class="nino-consent-category">
 				<input type="checkbox" data-consent-category="necessary" checked disabled>
@@ -58,7 +64,7 @@ in `init()` while the feature is active.
 		</div>
 	</div>
 	<div class="nino-consent-actions">
-		<button type="button" class="nino-consent-btn nino-consent-btn--primary" data-consent-action="accept-all">...</button>
+		<button type="button" class="nino-consent-btn" data-consent-action="accept-all">...</button>
 		<button type="button" class="nino-consent-btn" data-consent-action="necessary-only">...</button>
 		<button type="button" class="nino-consent-btn" data-consent-action="save">...</button>
 	</div>
@@ -67,6 +73,15 @@ in `init()` while the feature is active.
 
 - `hidden` by default - `consent.js` unhides it once the document is ready
   and it finds no stored choice.
+- A dialog (`role="dialog"`, named and described by its title and text), not
+  a modal: nothing traps the focus in it. Reopened from a `[consent-settings]`
+  button it takes the focus, and gives it back to that button once a choice is
+  made. `tabindex="-1"` lets it take the focus without joining the tab order.
+- The three actions look the same: accepting everything is no easier to press
+  than refusing it.
+- The checkboxes show what is stored. Reopen the banner with `statistics`
+  allowed and its box is checked, and "Save selection" keeps it; after
+  "Necessary only" they are all unchecked.
 - One `<label class="nino-consent-category">` per category the settings
   enabled; `necessary` always renders first, checked and disabled. A
   category the settings did not switch on is neither shown nor storable -
@@ -113,6 +128,17 @@ which is the whole point:
 	console.log( 'statistics allowed' );
 </script>
 ```
+
+The inline form does not run under the policy Nino ships (see
+[CSP](#csp-the-hosts-a-placeholder-loads-from)): the script it creates is an
+inline script, which the policy refuses without `'unsafe-inline'` or a nonce
+the template cannot get. Put the code in a file and use `data-src`.
+
+Only a category this site offers is ever allowed in the browser: a
+`marketing` placeholder stays a placeholder while the `marketing` setting is
+off, whatever an old cookie says. (A page that renders no `[consent]` has no
+banner to read the offer from; put the banner in the frame so every page
+knows it.)
 
 Once `statistics` is allowed, `consent.js` clones the placeholder into a
 real `<script>` - every attribute but `type` copied over, `data-src`
@@ -181,6 +207,58 @@ is never allowed, whatever an old cookie might still say; an unknown
 category name is refused the same way. **PHP never writes the cookie** -
 only `consent.js` does, from the banner's own buttons.
 
+## CSP: the hosts a placeholder loads from
+
+Nino's default `Content-Security-Policy` lets a script come from the site
+itself (`default-src 'self'`, and `script-src 'self'` with the `[jstext]`
+nonce). A released placeholder is a script from another host, so without more
+the browser would block it - the visitor's consent would release nothing.
+
+So this feature adds the host to the policy. On `/nino/http/output`, where the
+finished page is in hand, it reads the page's
+`<script type="text/plain" data-consent="…" data-src="https://host/…">`
+placeholders and appends each host to the `script-src` of the response
+(`script-src-elem` too, where the policy has one). `script-src` is extended in
+place and never written twice; where the policy has none it is built from
+`default-src`'s own list; a policy that says `'none'` is left as it is, and so
+is one with no `default-src` to fall back to - that policy is unrestricted
+already. A page with no placeholder keeps its policy byte for byte.
+
+**Why this is allowed.** Nino's guide says not to add a remote source to the
+policy merely to make one widget work. This is the exception, and it is
+narrow: the visitor has to allow the category before anything is loaded, the
+host is one the project named in its own template, and without it the feature
+cannot do the one thing it is for. What it adds is the origin - not
+`'unsafe-inline'`, not a wildcard, not a host nobody wrote.
+
+**What the page's own markup decides.** The hosts come from the page, so
+markup that reaches the page can name one. Three rules hold that down to what
+a project wrote on purpose:
+
+- only a placeholder of a category the site **offers** counts - `necessary`,
+  and each optional category whose setting is on. Markup naming a category
+  nobody offers opens nothing;
+- only an `https` address counts, whose host is a plain ascii name: no
+  credentials, no IP address, no wildcard, no `;` that would end the
+  directive. A port is kept;
+- an inline, relative, `http:` or protocol-relative placeholder adds nothing.
+
+Texts and elements are escaped or stripped on their way into a page, so
+today this is defence in depth and not a gap; but a template that prints
+visitor-controlled markup unescaped can now widen the script policy for a
+category the site offers, and that is the project's to keep out.
+
+**What it does not cover:**
+
+- an inline placeholder (see above);
+- the hosts a released script loads further things from itself: a tag that
+  pulls in a second script, a beacon (`connect-src`), a frame it opens. Each
+  needs its own source, which a project adds to its policy itself;
+- a script that redirects to another host - the policy is checked against the
+  redirect target too;
+- the maintenance page, which is answered before the output phase;
+- a page the page cache answers (next section).
+
 ## Texts
 
 Every word in the banner is a textfill the install unit writes into the
@@ -228,23 +306,38 @@ project root cannot read this manifest at all.
 
 The banner's markup is the same for every visitor - no per-visitor state is
 rendered server-side, the choice itself is read and written by the browser
-- so the kernel's full-page cache stays valid with this feature active. If
-`/nino/cache/status` is on, `[consent]` and `[consent-settings]` render
-into the cached page exactly like any other shortcode; nothing here needs
-excluding from it.
+- so the kernel's full-page cache stays valid for the banner: if
+`/nino/cache/status` is on, `[consent]` and `[consent-settings]` render into
+the cached page exactly like any other shortcode.
+
+The policy is the exception. The cache keeps the body and answers a hit with
+the default policy, so a hit does not carry the hosts this feature added when
+the page was rendered, and a placeholder on a cached page is blocked. Until
+the kernel keeps the widened policy with the entry, list the pages that carry
+placeholders under `/nino/cache/blacklist` (`/page` for one, `/section/*` for a
+branch), or leave the cache off. A placeholder in the shared page frame is on
+every page, so with the cache on that means the whole site.
 
 ## Relationship to the base install's own cookie banner
 
-The base install (`_admin/install/library/base/templates/html-footer.tpl`)
-ships a plain accept/decline `.nino-cookie-banner`, backed by
-`Nino.ui.cookieConsent` in `_nino/Nino.ui.js`, writing `'accepted'` or
-`'declined'` into a cookie named `nino_consent`. This feature supersedes it:
-`consent.js` removes a `.nino-cookie-banner` it finds in the page, so a
-visitor never sees two banners, and it reads the old values - `'accepted'`
-counts as every category, `'declined'` as the necessary one alone - so a
-choice a visitor already made is kept until they change it. Removing the old
-block from the project's `templates/html-footer.tpl` is tidier but not
-required.
+Nino up to 1.3.x shipped a plain accept/decline `.nino-cookie-banner` in the
+base install's `templates/html-footer.tpl`, driven by `Nino.ui.cookieConsent`,
+writing `'accepted'` or `'declined'` into a cookie named `nino_consent`. A
+newer kernel ships none. A project set up with the older one still has the
+block in its own `templates/html-footer.tpl` - the install is applied once and
+never rewritten - and this feature deals with what is left:
+
+- `consent.js` removes a `.nino-cookie-banner` it finds in the page, so a
+  visitor never sees two banners, nor an unstyled leftover;
+- it reads the old values - `'accepted'` counts as every category the site
+  offers, `'declined'` as the necessary one alone - so a choice a visitor
+  already made is kept until they change it.
+
+Deleting the `<div class="nino-cookie-banner">` block from
+`templates/html-footer.tpl` is the clean fix, and the only one for a page
+without this feature. Scripts of the project that were gated on
+`Nino.ui.cookieConsent` listen for the `nino:consent` event (or read
+`<html data-consent>`) instead - see above.
 
 ## What it does not do
 
@@ -270,18 +363,28 @@ six settings, activation with the unit's texts merged add-only (an existing
 key survives), the shortcodes registering in `init()`, the real
 `\Nino\Html::addAsset()`/`[assets ...]` bundling end to end (the generated
 `/.cache/style.css`/`script.js` genuinely carry this feature's files),
-`[consent]` rendering only the categories the settings enabled and the
-policy link only when `policyUrl` is set, `[consent-settings]`, `allowed()`
-reading the configured cookie name and refusing a disabled category or an
-unknown one regardless of what an old cookie says, and deactivation leaving
-the settings and merged texts in place. It loads Nino's `tests/harness.php`
-from the checkout three levels up - where the feature sits in a project -
-or from the one `NINO_ROOT` names:
+`[consent]` rendering only the categories the settings enabled, as a dialog,
+and the policy link only when `policyUrl` is set, `[consent-settings]`,
+`allowed()` reading the configured cookie name and refusing a disabled
+category or an unknown one regardless of what an old cookie says, the
+Content-Security-Policy gaining the host of an offered category's placeholder
+and nothing else (every refusal of the CSP section above, and the merge into
+a policy that has a `script-src`, has none, says `'none'` or has no
+`default-src`), and deactivation leaving the settings and merged texts in
+place. It loads Nino's `tests/harness.php` from the checkout three levels up -
+where the feature sits in a project - or from the one `NINO_ROOT` names:
 
 ```bash
 php features/Consent/tests/consent-smoke.php
 NINO_ROOT=../nino php features/Consent/tests/consent-smoke.php
 ```
+
+`tests/consent-js-smoke.js` is what `consent.js` does over a DOM stand-in, run
+by the PHP test too where `node` is on the path: a stored choice shown by the
+checkboxes and kept by "Save selection", a category the site does not offer
+never allowed, the placeholders released for what is allowed and nothing else,
+the older banner removed, the reopen button of a page without a banner hidden,
+and where the focus goes.
 
 `node --check features/Consent/assets/consent.js` and `eslint` (the
 checkout's own `eslint.config.mjs`) check the script; PHPStan analyses the

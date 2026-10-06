@@ -13,8 +13,8 @@ return [
 	'manual'			=> [
 		'shortcodes' => [
 			'[consent]' => [
-				'en_US' => 'The banner, into the page frame. Shown on the first visit and never again once a choice is stored.',
-				'de_DE' => 'Das Banner, ins Seitengerüst. Erscheint beim ersten Besuch und nie wieder, sobald eine Wahl gespeichert ist.',
+				'en_US' => 'The banner, into the page frame - nothing is shown until it is there. Shown on the first visit and never again once a choice is stored.',
+				'de_DE' => 'Das Banner, ins Seitengerüst - ohne diesen Eintrag zeigt sich nichts. Erscheint beim ersten Besuch und nie wieder, sobald eine Wahl gespeichert ist.',
 			],
 			'[consent-settings]' => [
 				'en_US' => 'A button that opens the choice again - for a privacy page.',
@@ -23,13 +23,18 @@ return [
 		],
 		'markup' => [
 			'<script type="text/plain" data-consent="statistics" data-src="…">' => [
-				'en_US' => 'Starts the moment that category is allowed, and not before.',
-				'de_DE' => 'Startet in dem Moment, in dem diese Kategorie erlaubt ist – und nicht davor.',
+				'en_US' => 'Starts the moment that category is allowed, and not before. The host of data-src joins the policy\'s script-src.',
+				'de_DE' => 'Startet in dem Moment, in dem diese Kategorie erlaubt ist – und nicht davor. Der Host von data-src kommt in die script-src der Richtlinie.',
 			],
 		],
 		'routes' => [],
 		'panel' => [],
-		'callbacks' => [],
+		'callbacks' => [
+			'/nino/http/output' => [
+				'en_US' => 'Adds the hosts of the page\'s consent-gated scripts to the policy\'s script-src.',
+				'de_DE' => 'Ergänzt die script-src der Content-Security-Policy um die Hosts der einwilligungsabhängigen Skripte auf der Seite.',
+			],
+		],
 		'install' => [
 			'text/<locale>.php' => [
 				'en_US' => 'The banner\'s words, into the Text panel.',

@@ -14,6 +14,29 @@ A release is the tag `embed-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **`youtube=` and `vimeo=` take the address copied from the browser.** A
+  watch address, a short link with its tracking parameter, a share link with a
+  time code, `/shorts/`, `/live/` and `/embed/` for YouTube; the page, channel,
+  group and showcase addresses and the player address for Vimeo, and the hash of
+  an unlisted video (`vimeo.com/<id>/<hash>` or `?h=`). The id is the only thing
+  taken from it, and it still has to pass the provider's own pattern, so nothing
+  of the address reaches the frame. The host must be the provider's own, compared
+  whole: `youtube.com.evil.example` and `www.youtube.com@evil.example` are not
+  YouTube; credentials, a port, a playlist, a channel and another provider's
+  address name no video. Time codes are dropped. Bare ids work as they did.
+  An address that names no video renders nothing, as before, but logs
+  `Nino: [embed youtube="…"] is not a video address this can read.` on every
+  uncached render (the way Countdown reports a value it cannot read); an empty
+  attribute stays silent. The manual and the README say so.
+
+- **`url=` with a YouTube or Vimeo page address becomes the player address.**
+  What somebody pastes there is a page that refuses to be framed; it is the same
+  no-cookie or `dnt` player `youtube=`/`vimeo=` would build. A player address
+  (`/embed/…`, `player.vimeo.com/video/…`) with its own `start` or `autoplay`, and
+  every other host, stay as written. A `url=` whose host a policy cannot name -
+  credentials, an IP address, a non-ASCII host - renders nothing, since the frame
+  would be refused anyway.
+
 - **The manual counted two words where the unit carries four.** The Features
   panel's entry for the install unit said "the two sentences the surface
   carries, into the Text panel", and `install/text/<locale>.php` has four
@@ -34,6 +57,31 @@ A release is the tag `embed-<version>` of dapeio/nino-features.
   templates this feature reads through the same prefix included.
 
 ### Fixed
+
+- **An embed's frame was blocked by the browser.** Nino's default
+  `Content-Security-Policy` has no `frame-src`, so `default-src 'self'` refused
+  the frame of every provider: pressing the surface showed an empty, blocked
+  frame. The feature now adds the origin of every `[embed]` on the page to the
+  response's `frame-src` (`https://www.youtube-nocookie.com`,
+  `https://player.vimeo.com`, the host and port of a `url=`), and the manual
+  lists the callback it registers: `/nino/http/output`.
+
+  It stands on the output phase and not on the response phase, because only
+  there is the page rendered; the hosts are the ones the shortcodes recorded
+  while rendering - a page's texts and elements cannot name a frame host, since
+  they cannot carry a shortcode. An existing `frame-src` is extended in place;
+  where there is none it is built from `child-src`'s list or else
+  `default-src`'s, as a browser would have used it; `'none'` is left as the
+  project decided it, and so is a policy with neither fallback. A page with no
+  `[embed]` keeps its policy byte for byte. The README's "CSP" section gives the
+  reasoning, as Nino's guide asks of any addition to the policy.
+
+  **A page the page cache answers does not carry the added host.** The cache
+  keeps the body and answers a hit with the default policy, so the frame is
+  blocked there. Until the kernel keeps the widened policy with the entry, list
+  the pages that carry embeds under `/nino/cache/blacklist`, or leave the cache
+  off. The maintenance page is answered before the output phase and is not
+  widened either.
 
 - **An invalid byte in a value rendered as nothing.** `htmlspecialchars()`
   answers input that is not valid UTF-8 with `''` unless `ENT_SUBSTITUTE` is

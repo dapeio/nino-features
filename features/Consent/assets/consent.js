@@ -35,6 +35,10 @@
 	var DEFAULT_DAYS = 180;
 	var CATEGORIES = [ 'necessary', 'statistics', 'marketing', 'external' ];
 
+	// The [consent-settings] button that last reopened the banner, so the
+	// focus goes back to it once a choice is made
+	var opener = null;
+
 	/**
 	 *	The banner, or null on a page that does not render [consent]
 	 *
@@ -97,8 +101,33 @@
 	}
 
 	/**
+	 *	A category list cut to what this site offers - what the banner has a
+	 *	checkbox for. A category the settings switched off is never allowed
+	 *	(\Nino\Modules\Consent::allowed() refuses it whatever the cookie says),
+	 *	and the browser must not release its placeholders either. On a page with
+	 *	no banner there is nothing to read the offer from, and the list is kept
+	 *	as it is
+	 *
+	 *	@param		{Array}			list
+	 *
+	 *	@return		{Array}
+	 */
+	function onlyOffered( list ) {
+
+		if( banner() === null )
+			return list;
+
+		var offered = offeredCategories();
+
+		return list.filter( function( category ) {
+			return category === 'necessary' || offered.indexOf( category ) !== -1;
+		} );
+	}
+
+	/**
 	 *	The stored cookie value as a clean, deduped category list -
-	 *	"necessary" is always in it, an unknown token is dropped
+	 *	"necessary" is always in it, an unknown token is dropped, and so is a
+	 *	category the site does not offer (see onlyOffered())
 	 *
 	 *	@param		{?string}		raw
 	 *
@@ -109,11 +138,12 @@
 		if( raw === null || raw === '' )
 			return null;
 
-		// The base install's own banner (Nino.ui.cookieConsent) wrote
-		// 'accepted' or 'declined' into a cookie of the same name: a choice
-		// already made, kept - all categories, or the necessary one alone
+		// The banner Nino's base install shipped up to 1.3.x wrote 'accepted'
+		// or 'declined' into a cookie of the same name (for 365 days): a choice
+		// already made, kept - every category the site offers, or the necessary
+		// one alone
 		if( raw === 'accepted' )
-			return CATEGORIES.slice();
+			return onlyOffered( CATEGORIES.slice() );
 		if( raw === 'declined' )
 			return [ 'necessary' ];
 
@@ -126,7 +156,7 @@
 		if( list.indexOf( 'necessary' ) === -1 )
 			list.unshift( 'necessary' );
 
-		return list;
+		return onlyOffered( list );
 	}
 
 	/**
@@ -163,9 +193,31 @@
 	}
 
 	/**
+	 *	Set the banner's checkboxes to a choice, so reopening it shows what is
+	 *	stored and "Save selection" keeps it rather than quietly revoking it.
+	 *	"necessary" is disabled and stays as it is
+	 *
+	 *	@param		{Array}			allowed
+	 *
+	 *	@return		void
+	 */
+	function syncBoxes( allowed ) {
+
+		var el = banner();
+		if( el === null )
+			return;
+
+		var boxes = el.querySelectorAll( '[data-consent-category]' );
+		for( var i = 0; i < boxes.length; i++ )
+			if( boxes[i].disabled !== true )
+				boxes[i].checked = allowed.indexOf( boxes[i].getAttribute( 'data-consent-category' ) ) !== -1;
+	}
+
+	/**
 	 *	Apply one allowed-categories list to the whole page: the
-	 *	documentElement dataset, every matching placeholder script, the
-	 *	data-consent-show/hide toggles, and the "nino:consent" event
+	 *	documentElement dataset, the banner's checkboxes, every matching
+	 *	placeholder script, the data-consent-show/hide toggles, and the
+	 *	"nino:consent" event
 	 *
 	 *	@param		{Array}			allowed
 	 *
@@ -174,6 +226,8 @@
 	function applyConsent( allowed ) {
 
 		document.documentElement.dataset.consent = allowed.join( ',' );
+
+		syncBoxes( allowed );
 
 		var placeholders = document.querySelectorAll( 'script[type="text/plain"][data-consent]' );
 		for( var i = 0; i < placeholders.length; i++ )
@@ -231,6 +285,13 @@
 		var el = banner();
 		if( el !== null )
 			el.hidden = true;
+
+		// Back to the button that opened it. Nothing keeps the focus inside the
+		// banner meanwhile - it is a notice, not a modal
+		if( opener !== null && opener.parentNode !== null && typeof opener.focus === 'function' )
+			opener.focus();
+
+		opener = null;
 	}
 
 	/**
@@ -275,20 +336,35 @@
 				} );
 		}
 
+		// A reopen button on a page with no banner has nothing to open: it is
+		// hidden rather than left to do nothing
 		var openButtons = document.querySelectorAll( '.nino-consent-open' );
-		for( var b = 0; b < openButtons.length; b++ )
+		for( var b = 0; b < openButtons.length; b++ ) {
+
+			if( el === null ) {
+				openButtons[b].hidden = true;
+				continue;
+			}
+
 			openButtons[b].addEventListener( 'click', function() {
 				var current = banner();
-				if( current !== null )
-					current.hidden = false;
+				if( current === null )
+					return;
+
+				opener = this;
+				current.hidden = false;
+				current.focus();
 			} );
+		}
 	}
 
 	function init() {
 
-		// This feature supersedes the base install's plain accept/decline
-		// banner (.nino-cookie-banner in the project's html-footer.tpl): where
-		// one is still in the page, it goes, so a visitor never sees two
+		// This feature supersedes the plain accept/decline banner Nino's base
+		// install shipped up to 1.3.x (.nino-cookie-banner in the project's
+		// html-footer.tpl). A project set up then keeps the block - an install
+		// unit is applied once and never rewritten - so where one is still in the
+		// page, it goes: a visitor never sees two, nor an unstyled leftover
 		Array.prototype.forEach.call( document.querySelectorAll( '.nino-cookie-banner' ), function( el ) {
 			if( el.parentNode !== null )
 				el.parentNode.removeChild( el );

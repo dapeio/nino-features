@@ -14,6 +14,36 @@ A release is the tag `consent-<version>` of dapeio/nino-features.
 
 ### Changed
 
+- **The banner is a dialog, and its three actions look alike.** `[consent]`
+  carries `role="dialog"`, `aria-labelledby` and `aria-describedby` (ids on the
+  title and the text) and `tabindex="-1"`. Reopened from a `[consent-settings]`
+  button it takes the focus and gives it back to that button once a choice is
+  made; nothing traps the focus meanwhile - it is a notice, not a modal.
+  "Accept all" lost `nino-consent-btn--primary`, and the rule went with it:
+  accepting everything is no easier to press than refusing it. The banner is
+  this feature's own template, so it reaches every project that updates; a
+  project stylesheet that styled `.nino-consent-btn--primary` has nothing left to
+  style.
+
+- **The German texts of the install unit address the reader as "Du".**
+  `[[/consent/text]]` and `[[/consent/category/external/hint]]` said "Ihrer
+  Einwilligung", "Sie" and "Ihre IP-Adresse"; they say "Deiner Einwilligung", "Du"
+  and "Deine IP-Adresse" now. The unit is applied add-only: a project that
+  already activated the feature keeps its wording, activating again does not
+  replace it, and the two keys can be edited in the Text panel.
+
+- **The README no longer names a kernel version for the older banner.** Nino
+  up to 1.3.x shipped a plain `.nino-cookie-banner` in the base install's
+  `templates/html-footer.tpl`; a newer kernel ships none. "Relationship to the
+  base install's own cookie banner" says what this feature does with a leftover
+  block (`consent.js` still removes it and still reads its `'accepted'` and
+  `'declined'`) and that deleting the block is the clean fix. Scripts that were
+  gated on `Nino.ui.cookieConsent` listen for `nino:consent` instead. "Put it on
+  the site" says plainly that activating the feature shows nothing until
+  `[consent]` is in the page frame, and so does the manual entry in the Features
+  panel. The comments in `consent.js` and `Consent.php` name the banner by what
+  it was, not by `Nino.ui.cookieConsent`. No code changed for this.
+
 - **The words described a feature that had moved on.** The README listed the
   directory's contents without the `templates/` the banner's markup lives in
   now, and said the manifest carries no `data` entry where it carries an empty
@@ -35,6 +65,46 @@ A release is the tag `consent-<version>` of dapeio/nino-features.
   template". The output is the same.
 
 ### Fixed
+
+- **A consent-gated script from another host was blocked by the browser.**
+  `consent.js` releases a `<script type="text/plain" data-consent="…"
+  data-src="https://…">` by cloning it into a real script, and the policy Nino
+  ships lets a script come from the site alone - so a visitor's consent released
+  a script the browser then refused. The feature now adds the host to the
+  response's `script-src` (and `script-src-elem` where the policy has one). The
+  manual says which callback it registers: `/nino/http/output`.
+
+  It stands on the output phase and not on the response phase, because the
+  hosts are known only once the body is rendered, and every response hook runs
+  before that. `script-src` is extended in place and never written twice, built
+  from `default-src`'s list where the policy has none, and left alone where it
+  says `'none'` or the policy has no `default-src` to fall back to. A page with no
+  placeholder keeps its policy byte for byte. Only a placeholder of a category the
+  site offers counts (`necessary` and the optional ones whose setting is on), and
+  only an `https` host that is a plain ascii name - no credentials, no IP address,
+  no wildcard - so markup that reaches the page cannot open the policy for a host
+  of its own. The README's "CSP" section gives the reasoning, and the limits: an
+  inline placeholder does not run under this policy, the hosts a released script
+  loads from itself are not covered, and neither is the maintenance page.
+
+  **A page the page cache answers does not carry the added host.** The cache
+  keeps the body and answers a hit with the default policy. Until the kernel
+  keeps the widened policy with the entry, list the pages that carry placeholders
+  under `/nino/cache/blacklist`, or leave the cache off.
+
+- **A category the site had switched off was allowed in the browser.**
+  `parseAllowed()` kept every category in the cookie and read the older banner's
+  `'accepted'` as all four, so the placeholders of a category the settings turned
+  off were released although `allowed()` refuses it. It is cut to what the banner
+  offers now. A page that renders no `[consent]` has no offer to read, and keeps
+  the stored list.
+
+- **Reopening the banner dropped the stored choice.** The checkboxes were never
+  set from the cookie, so "Save selection" after a reopen wrote `necessary` alone
+  - a quiet revocation. They show what is stored now: `accepted` checks every
+  offered box, a first visit and "Necessary only" leave them unchecked.
+
+- **The reopen button of a page with no banner did nothing.** It is hidden now.
 
 - **An invalid byte in a value rendered as nothing.** `htmlspecialchars()`
   answers input that is not valid UTF-8 with `''` unless `ENT_SUBSTITUTE` is

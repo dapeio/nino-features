@@ -11,16 +11,16 @@ return [
 	'manual'			=> [
 		'shortcodes' => [
 			'[embed youtube="ID"]' => [
-				'en_US' => 'A YouTube video, through youtube-nocookie.com.',
-				'de_DE' => 'Ein YouTube-Video, über youtube-nocookie.com.',
+				'en_US' => 'A YouTube video, through youtube-nocookie.com. The video ID, or the address copied from the browser.',
+				'de_DE' => 'Ein YouTube-Video, über youtube-nocookie.com. Die Video-ID oder die aus dem Browser kopierte Adresse.',
 			],
 			'[embed vimeo="ID"]' => [
-				'en_US' => 'A Vimeo video, with its own do-not-track flag set.',
-				'de_DE' => 'Ein Vimeo-Video, mit dessen eigenem Do-not-track-Schalter.',
+				'en_US' => 'A Vimeo video, with its own do-not-track flag set. The video ID, or the address copied from the browser.',
+				'de_DE' => 'Ein Vimeo-Video, mit dessen eigenem Do-not-track-Schalter. Die Video-ID oder die aus dem Browser kopierte Adresse.',
 			],
 			'[embed url="https://..."]' => [
-				'en_US' => 'Anything else with an embed address - a map, a booking widget, a calendar. https only.',
-				'de_DE' => 'Alles andere mit einer Einbettungsadresse - eine Karte, ein Buchungswidget, ein Kalender. Nur https.',
+				'en_US' => 'Anything else with an embed address - a map, a booking widget, a calendar. https only. A YouTube or Vimeo page address becomes the player address.',
+				'de_DE' => 'Alles andere mit einer Einbettungsadresse - eine Karte, ein Buchungswidget, ein Kalender. Nur https. Eine YouTube- oder Vimeo-Seitenadresse wird zur Player-Adresse.',
 			],
 			'[embed ... title="Anfahrt"]' => [
 				'en_US' => 'What the surface says and what the loaded frame is called. Say it for every embed: it is the only name a screen reader gets.',
@@ -43,7 +43,12 @@ return [
 		],
 		'routes' => [],
 		'panel' => [],
-		'callbacks' => [],
+		'callbacks' => [
+			'/nino/http/output' => [
+				'en_US' => 'Adds the hosts of the embeds on this page to the policy\'s frame-src.',
+				'de_DE' => 'Ergänzt die frame-src der Content-Security-Policy um die Hosts der Einbindungen auf der Seite.',
+			],
+		],
 		'install' => [
 			'text/<locale>.php' => [
 				'en_US' => 'The four words an unreleased embed carries - the two on the surface, the way out without JavaScript and the frame\'s own name - into the Text panel.',

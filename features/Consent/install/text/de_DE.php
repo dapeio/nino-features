@@ -7,7 +7,7 @@ declare(strict_types=1);
 return [
 
 	'[[/consent/title]]'		=> 'Wir verwenden Cookies',
-	'[[/consent/text]]'		=> 'Wir verwenden Cookies und ähnliche Technologien, um diese Website zu betreiben. Notwendige Cookies halten sie funktionsfähig; die übrigen setzen wir nur mit Ihrer Einwilligung ein, die Sie jederzeit widerrufen können.',
+	'[[/consent/text]]'		=> 'Wir verwenden Cookies und ähnliche Technologien, um diese Website zu betreiben. Notwendige Cookies halten sie funktionsfähig; die übrigen setzen wir nur mit Deiner Einwilligung ein, die Du jederzeit widerrufen kannst.',
 	'[[/consent/policy-label]]'	=> 'Datenschutzerklärung',
 
 	'[[/consent/accept-all]]'			=> 'Alle akzeptieren',
@@ -22,5 +22,5 @@ return [
 	'[[/consent/category/marketing]]'					=> 'Marketing',
 	'[[/consent/category/marketing/hint]]'			=> 'Dient der Erfolgsmessung und Personalisierung von Werbung.',
 	'[[/consent/category/external]]'						=> 'Externe Medien',
-	'[[/consent/category/external/hint]]'			=> 'Lädt Karten, Videos und andere Einbindungen externer Anbieter, die dabei Ihre IP-Adresse erhalten.',
+	'[[/consent/category/external/hint]]'			=> 'Lädt Karten, Videos und andere Einbindungen externer Anbieter, die dabei Deine IP-Adresse erhalten.',
 ];

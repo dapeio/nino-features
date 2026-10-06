@@ -64,7 +64,13 @@ namespace Nino\Modules {
 		/*	The two providers worth knowing by name, because their embed address
 			is not the address anybody has in their clipboard - what a person
 			copies is a watch page, and turning that into an embed is the step
-			this saves them.
+			this saves them. YouTube and Vimeo are the only ones the code knows:
+			another is one row here and its rule in video().
+
+			'pattern' is the shape of the id, and the only thing of a pasted
+			address that ever reaches the markup. 'hosts' is every host that
+			counts as that provider's own, spelled out and compared as a whole
+			- a suffix match would take youtube.com.evil.example for it.
 
 			'youtube' is youtube-nocookie.com rather than youtube.com: it is
 			Google's own no-cookie host, the same video, and there is no reason
@@ -73,9 +79,20 @@ namespace Nino\Modules {
 			see the visitor's address once the frame is there, which is why
 			nothing here loads by itself	*/
 		public const array PROVIDERS = [
-			'youtube'	=> [ 'pattern' => '/^[A-Za-z0-9_-]{6,20}$/',	'src' => 'https://www.youtube-nocookie.com/embed/%s?rel=0' ],
-			'vimeo'		=> [ 'pattern' => '/^[0-9]{5,15}$/',					'src' => 'https://player.vimeo.com/video/%s?dnt=1' ],
+			'youtube'	=> [
+				'pattern'	=> '/^[A-Za-z0-9_-]{6,20}$/',
+				'src'			=> 'https://www.youtube-nocookie.com/embed/%s?rel=0',
+				'hosts'		=> [ 'youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtube-nocookie.com', 'www.youtube-nocookie.com', 'youtu.be' ],
+			],
+			'vimeo'		=> [
+				'pattern'	=> '/^[0-9]{5,15}$/',
+				'src'			=> 'https://player.vimeo.com/video/%s?dnt=1',
+				'hosts'		=> [ 'vimeo.com', 'www.vimeo.com', 'player.vimeo.com' ],
+			],
 		];
+
+		// The hex token that makes an unlisted Vimeo video reachable
+		private const string VIMEO_HASH = '/^[0-9a-f]{6,20}$/';
 
 		// The shapes a box can have, as the class suffix a project writes and
 		// the ratio embed.css gives it. Named rather than free, because a
@@ -95,6 +112,10 @@ namespace Nino\Modules {
 		public static function init( array &$appData ): void {
 
 			\Nino\Html::addShortcode( $appData, 'embed', [ self::class, 'doShortcode' ] );
+
+			// The policy is widened where the finished response is in hand, and by
+			// the hosts doShortcode() recorded - see callbackOutput()
+			\Nino\Callbacks::registerCallback( $appData, '/nino/http/output', [ self::class, 'callbackOutput' ] );
 
 			/*	The virtual '/features/...' prefix resolves against
 				\Nino\Features::dir() (\Nino\Filesystem::FEATURES_DIR), the same way
@@ -125,6 +146,11 @@ namespace Nino\Modules {
 
 			if( $src === '' )
 				return '';
+
+			// What the policy has to name, collected here and not read back out of
+			// the body: a shortcode is written by the project, whereas the body is
+			// every text, element and template the page was made of
+			$appData['./embed/frames'][ self::_origin( $src ) ] = true;
 
 			$safe = static fn( string $value ): string => htmlspecialchars( $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
 
@@ -164,10 +190,48 @@ namespace Nino\Modules {
 		}
 
 		/**
+		 *	Name the hosts of this page's embeds in the Content-Security-Policy's
+		 *	frame-src. The shipped policy has no frame-src, so its default-src
+		 *	'self' refuses every provider's frame - which is correct for a page
+		 *	with no embed, and the reason an embed could never load without this.
+		 *
+		 *	It stands on /nino/http/output and not on /nino/http/response: the
+		 *	hosts are known once the body is rendered, and every response hook
+		 *	runs before that. The hosts are the ones doShortcode() recorded, so a
+		 *	page with no [embed] keeps its policy byte for byte; the directive is
+		 *	extended where it exists, built from child-src or default-src where
+		 *	it does not, and 'none' is left as the project decided it - see
+		 *	_extendPolicy(). The README's "CSP" section says why this is allowed.
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			&$request			(reference) Current request and its response
+		 *
+		 *	@return 	void
+		 */
+		public static function callbackOutput( array &$appData, array &$request ): void {
+
+			$frames = $appData['./embed/frames'] ?? [];
+
+			if( is_array( $frames ) === false || $frames === [] || is_string( $request['/nino/http/response']['body'] ?? null ) === false )
+				return;
+
+			$policy = $request['/nino/http/response']['header']['Content-Security-Policy'] ?? '';
+
+			if( is_string( $policy ) === false || $policy === '' )
+				return;
+
+			$request['/nino/http/response']['header']['Content-Security-Policy'] = self::_extendPolicy( $policy, 'frame-src', [ 'child-src', 'default-src' ], array_keys( $frames ) );
+		}
+
+		/**
 		 *	The embed address one set of shortcode attributes names, or '' where
 		 *	they name none. A provider id is checked against that provider's own
 		 *	shape rather than pasted in: what goes into the markup here ends up
 		 *	in an iframe's src once it is released
+		 *
+		 *	youtube="" and vimeo="" take the id or the address copied from the
+		 *	browser (see video()); one that is neither is logged, since the
+		 *	shortcode then renders nothing and the page says why nowhere else.
 		 *
 		 *	@param		array			$args					Shortcode attributes
 		 *
@@ -177,14 +241,21 @@ namespace Nino\Modules {
 
 			foreach( self::PROVIDERS as $provider => $definition ) {
 
-				$id = trim( (string) ( $args[$provider] ?? '' ) );
+				$value = trim( (string) ( $args[$provider] ?? '' ) );
 
-				if( $id === '' )
+				if( $value === '' )
 					continue;
 
-				return preg_match( $definition['pattern'], $id ) === 1
-					? sprintf( $definition['src'], $id )
-					: '';
+				$video = self::video( $provider, $value );
+
+				if( $video === null ) {
+					// Cut and cleaned: it is whatever somebody pasted, and it goes
+					// into a log line
+					trigger_error( 'Nino: [embed '. $provider. '="'. preg_replace( '/[\x00-\x1F\x7F]+/', ' ', mb_strcut( $value, 0, 200, 'UTF-8' ) ). '"] is not a video address this can read.', E_USER_WARNING );
+					return '';
+				}
+
+				return self::_playerSrc( $provider, $video );
 			}
 
 			$url = trim( (string) ( $args['url'] ?? '' ) );
@@ -201,7 +272,125 @@ namespace Nino\Modules {
 			if( is_array( $parts ) === false || ( $parts['scheme'] ?? '' ) !== 'https' || ( $parts['host'] ?? '' ) === '' )
 				return '';
 
+			// A host the policy cannot name safely (see _origin()) is a frame the
+			// browser would refuse - so there is no surface for it either
+			if( self::_origin( $url ) === '' )
+				return '';
+
+			/*	The page address of a video is the address of a page that refuses to
+				be framed, and what somebody pastes into url= is that one. A YouTube
+				or Vimeo page is therefore turned into the provider's own player, the
+				same as youtube=/vimeo= would; a player address - which carries its
+				own start and autoplay parameters - and every other host stay as
+				they were written	*/
+			foreach( self::PROVIDERS as $provider => $definition ) {
+
+				$video = in_array( strtolower( $parts['host'] ), $definition['hosts'], true ) === true ? self::video( $provider, $url ) : null;
+
+				if( $video !== null && $video['embed'] === false )
+					return self::_playerSrc( $provider, $video );
+			}
+
 			return $url;
+		}
+
+		/**
+		 *	The video an id or an address names at one provider. What somebody
+		 *	pastes is a watch page, a short link, a share link with a time code
+		 *	and a tracking parameter on it, or the id alone; the one thing taken
+		 *	from it is the id - and, for an unlisted Vimeo video, the hash that
+		 *	makes it reachable. Everything else, time codes and tracking
+		 *	included, is dropped, so only an id that passes the provider's own
+		 *	pattern and a hex hash can reach an iframe's src.
+		 *
+		 *	An address is read only where its host is one of the provider's own
+		 *	(compared whole, lower-cased), over http or https, with no
+		 *	credentials and no port: youtube.com.evil.example and
+		 *	www.youtube.com@evil.example are not YouTube. A playlist, a channel,
+		 *	a search and every other provider's address name no video.
+		 *
+		 *	@param		string		$provider			A key of PROVIDERS
+		 *	@param		string		$value				An id, or an address copied from the browser
+		 *
+		 *	@return 	array|null						[ 'id' => string, 'hash' => string ('' where there is none),
+		 *																	'embed' => bool (the address already was the provider's player) ],
+		 *																or null where it names no video
+		 */
+		public static function video( string $provider, string $value ): ?array {
+
+			$definition = self::PROVIDERS[$provider] ?? null;
+
+			if( $definition === null )
+				return null;
+
+			// The attribute may come out of an html field, where '&' is '&amp;' -
+			// and '?feature=share&amp;v=...' has no v otherwise
+			$value = trim( html_entity_decode( $value, ENT_QUOTES | ENT_HTML5, 'UTF-8' ) );
+
+			if( preg_match( $definition['pattern'], $value ) === 1 )
+				return [ 'id' => $value, 'hash' => '', 'embed' => false ];
+
+			$parts = parse_url( $value );
+
+			if( is_array( $parts ) === false || in_array( strtolower( (string) ( $parts['scheme'] ?? '' ) ), [ 'http', 'https' ], true ) === false )
+				return null;
+
+			if( isset( $parts['user'] ) === true || isset( $parts['pass'] ) === true || isset( $parts['port'] ) === true )
+				return null;
+
+			$host = strtolower( (string) ( $parts['host'] ?? '' ) );
+
+			if( in_array( $host, $definition['hosts'], true ) === false )
+				return null;
+
+			$segments = array_values( array_filter( explode( '/', (string) ( $parts['path'] ?? '' ) ), static fn( string $segment ): bool => $segment !== '' ) );
+			parse_str( (string) ( $parts['query'] ?? '' ), $query );
+
+			$id			= '';
+			$hash		= '';
+			$embed	= false;
+
+			if( $provider === 'youtube' ) {
+
+				if( $host === 'youtu.be' )
+					$id = $segments[0] ?? '';
+				elseif( ( $segments[0] ?? '' ) === 'watch' )
+					$id = is_string( $query['v'] ?? null ) === true ? $query['v'] : '';
+				elseif( in_array( $segments[0] ?? '', [ 'embed', 'shorts', 'live', 'v' ], true ) === true )
+					$id = $segments[1] ?? '';
+
+				$embed = ( $segments[0] ?? '' ) === 'embed';
+
+				// /embed/videoseries is a playlist, and its "id" has an id's shape
+				if( $id === 'videoseries' )
+					return null;
+			}
+			else {
+
+				if( $host === 'player.vimeo.com' ) {
+					$id			= ( $segments[0] ?? '' ) === 'video' ? ( $segments[1] ?? '' ) : '';
+					$embed	= true;
+				}
+				elseif( preg_match( '/^[0-9]+$/', $segments[0] ?? '' ) === 1 ) {
+					$id		= $segments[0];
+					$hash	= $segments[1] ?? '';
+				}
+				// /channels/<name>/<id>, /groups/<name>/videos/<id>, /showcase/<name>/video/<id>
+				elseif( ( $segments[0] ?? '' ) === 'channels' )
+					$id = $segments[2] ?? '';
+				elseif( ( $segments[0] ?? '' ) === 'groups' && ( $segments[2] ?? '' ) === 'videos' )
+					$id = $segments[3] ?? '';
+				elseif( ( $segments[0] ?? '' ) === 'showcase' && ( $segments[2] ?? '' ) === 'video' )
+					$id = $segments[3] ?? '';
+
+				if( $hash === '' && is_string( $query['h'] ?? null ) === true )
+					$hash = $query['h'];
+
+				if( preg_match( self::VIMEO_HASH, $hash ) !== 1 )
+					$hash = '';
+			}
+
+			return preg_match( $definition['pattern'], $id ) === 1 ? [ 'id' => $id, 'hash' => $hash, 'embed' => $embed ] : null;
 		}
 
 		/**
@@ -247,6 +436,134 @@ namespace Nino\Modules {
 		 */
 		public static function remembers( array &$appData ): bool {
 			return \Nino\Features::setting( $appData, 'embed', 'remember', false ) === true;
+		}
+
+		/**
+		 *	The address a provider's player is framed from, for a video()
+		 *
+		 *	@param		string		$provider			A key of PROVIDERS
+		 *	@param		array			$video				What video() returned
+		 *
+		 *	@return 	string
+		 */
+		private static function _playerSrc( string $provider, array $video ): string {
+
+			$src = sprintf( self::PROVIDERS[$provider]['src'], $video['id'] );
+
+			// An unlisted Vimeo video is reachable with its hash only
+			return $video['hash'] === '' ? $src : str_replace( '?', '?h='. $video['hash']. '&', $src );
+		}
+
+		/**
+		 *	The origin of an address as a Content-Security-Policy source, or ''
+		 *	where it cannot safely be one: https only, no credentials, and a host
+		 *	that is a plain ascii name - no ip literal, no '*', no whitespace, no
+		 *	';' or ',' that would end the directive. A non-ascii host would have
+		 *	to be written as punycode; it is refused rather than converted. The
+		 *	port is kept, since a source without one means 443 only.
+		 *
+		 *	Embed::host() is not this: it names the host for a sentence, and drops
+		 *	the www. a policy needs.
+		 *
+		 *	@param		string		$url
+		 *
+		 *	@return 	string								'https://host' or 'https://host:port', or ''
+		 */
+		private static function _origin( string $url ): string {
+
+			$parts = parse_url( $url );
+
+			if( is_array( $parts ) === false || ( $parts['scheme'] ?? '' ) !== 'https' || isset( $parts['user'] ) === true || isset( $parts['pass'] ) === true )
+				return '';
+
+			$host = strtolower( (string) ( $parts['host'] ?? '' ) );
+
+			// The last label of a name is never all digits, and one that is
+			// is an ip address written in a form php does not call one
+			if( $host === '' || strlen( $host ) > 253 || preg_match( '/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/', $host ) !== 1
+				|| preg_match( '/(?:^|\.)[0-9]+$/', $host ) === 1 )
+				return '';
+
+			return 'https://'. $host. ( isset( $parts['port'] ) === true ? ':'. (int) $parts['port'] : '' );
+		}
+
+		/**
+		 *	One directive of a Content-Security-Policy, widened by some sources.
+		 *	The merge Modules\Jstext makes for the nonce, written out again
+		 *	because a feature may use nothing outside \Nino\*'s public API and its
+		 *	own directory - Consent carries the same routine for script-src.
+		 *
+		 *	Where the directive exists, the sources it lacks are appended to its
+		 *	first occurrence (a second occurrence is ignored by a browser, so
+		 *	adding one would widen nothing). Where it does not, it is built from
+		 *	the first fallback that does exist, since that is the list a browser
+		 *	would have used: naming 'self' by hand would narrow a policy whose
+		 *	default-src lists more. A policy with no such fallback is unrestricted
+		 *	already and is left alone, and so is a directive - or a fallback -
+		 *	that says 'none': that is the project having decided.
+		 *
+		 *	@param		string		$policy				The header value
+		 *	@param		string		$directive		The directive to widen, e.g. 'frame-src'
+		 *	@param		array			$fallbacks		The directives a browser falls back to, nearest first
+		 *	@param		array			$sources			Origins to add
+		 *
+		 *	@return 	string								The widened policy, or $policy itself where nothing is added
+		 */
+		private static function _extendPolicy( string $policy, string $directive, array $fallbacks, array $sources ): string {
+
+			if( $sources === [] )
+				return $policy;
+
+			$directives = array_values( array_filter( array_map( 'trim', explode( ';', $policy ) ), static fn( string $part ): bool => $part !== '' ) );
+
+			$find = static function( string $name ) use ( $directives ): ?int {
+				foreach( $directives as $index => $part )
+					if( preg_match( '/^'. preg_quote( $name, '/' ). '(?:\s|$)/i', $part ) === 1 )
+						return $index;
+				return null;
+			};
+			$none = static fn( string $part ): bool => preg_match( "/(?:^|\s)'none'(?:\s|\$)/i", $part ) === 1;
+
+			$index = $find( $directive );
+
+			if( $index === null ) {
+
+				foreach( $fallbacks as $fallback ) {
+
+					$from = $find( $fallback );
+
+					if( $from === null )
+						continue;
+
+					if( $none( $directives[$from] ) === true )
+						return $policy;
+
+					// The fallback's own list, under this directive's name
+					$directives[] = $directive. substr( $directives[$from], strlen( $fallback ) );
+					$index = array_key_last( $directives );
+					break;
+				}
+
+				if( $index === null )
+					return $policy;
+			}
+			elseif( $none( $directives[$index] ) === true )
+				return $policy;
+
+			$present = array_map( 'strtolower', preg_split( '/\s+/', $directives[$index] ) ?: [] );
+			$added = false;
+
+			foreach( $sources as $source )
+				if( in_array( strtolower( (string) $source ), $present, true ) === false ) {
+					$directives[$index] .= ' '. $source;
+					$present[] = strtolower( (string) $source );
+					$added = true;
+				}
+
+			// A directive built from its fallback is new even when it adds nothing
+			// the fallback did not name - and then it changes nothing, so it is not
+			// written either
+			return $added === true ? implode( '; ', $directives ) : $policy;
 		}
 
 		/**

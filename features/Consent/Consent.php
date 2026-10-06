@@ -23,10 +23,12 @@ namespace Nino\Modules {
 	 *										(the banner's markup via [consent]/[consent-settings],
 	 *										the gating in the browser) is documented in this
 	 *										feature's own README.md; this class only renders the
-	 *										markup and answers whether a category is currently
-	 *										allowed. The choice itself is a cookie the browser
-	 *										writes (consent.js) - PHP only ever reads it, see
-	 *										allowed().
+	 *										markup, answers whether a category is currently
+	 *										allowed and names the hosts of the page's gated
+	 *										scripts in the Content-Security-Policy (see
+	 *										callbackOutput()). The choice itself is a cookie the
+	 *										browser writes (consent.js) - PHP only ever reads it,
+	 *										see allowed().
 	 *
 	 *										consent.css/consent.js reach the browser the way the
 	 *										kernel ships its own Nino.css/Nino.js/Nino.ui.js (see
@@ -81,6 +83,10 @@ namespace Nino\Modules {
 
 			\Nino\Html::addShortcode( $appData, 'consent', [ self::class, 'doConsentShortcode' ] );
 			\Nino\Html::addShortcode( $appData, 'consent-settings', [ self::class, 'doConsentSettingsShortcode' ] );
+
+			// A placeholder's host has to be in the policy's script-src before the
+			// browser may load what consent.js releases - see callbackOutput()
+			\Nino\Callbacks::registerCallback( $appData, '/nino/http/output', [ self::class, 'callbackOutput' ] );
 
 			// A source under \Nino\Filesystem::FEATURES_DIR is resolved
 			// against \Nino\Features::dir() rather than against the project
@@ -184,8 +190,9 @@ namespace Nino\Modules {
 			if( $raw === '' )
 				return false;
 
-			// The base install's own banner wrote 'accepted' or 'declined'
-			// into a cookie of this name - read the way consent.js reads it
+			// The banner Nino's base install shipped up to 1.3.x wrote
+			// 'accepted' or 'declined' into a cookie of this name - read the way
+			// consent.js reads it
 			if( $raw === 'accepted' )
 				return true;
 			if( $raw === 'declined' )
@@ -194,6 +201,223 @@ namespace Nino\Modules {
 			$allowed = array_map( 'trim', explode( ',', $raw ) );
 
 			return in_array( $category, $allowed, true );
+		}
+
+		/**
+		 *	Name the hosts of this page's consent-gated scripts in the
+		 *	Content-Security-Policy's script-src. consent.js releases a
+		 *	<script type="text/plain" data-consent="..." data-src="https://...">
+		 *	by cloning it into a real script, and the shipped policy (script-src
+		 *	'self' and the jstext nonce) refuses the host - so without this a
+		 *	placeholder is consent for a script the browser then blocks.
+		 *
+		 *	The hosts are read out of the finished body, which is why this is on
+		 *	/nino/http/output and not on /nino/http/response, and which is also the
+		 *	trust question: markup that reaches the page can name a host. Three
+		 *	things hold that to what a project wrote on purpose. Only a placeholder
+		 *	of a category this site offers counts ('necessary' and the optional
+		 *	ones its settings switched on - the rule allowed() keeps), so a
+		 *	category nobody offers cannot be used to open the policy. Only an
+		 *	https host that is a plain ascii name counts, with no credentials and
+		 *	no ip address. And an inline, relative, http: or protocol-relative
+		 *	placeholder adds nothing. The README's "CSP" section says what is left.
+		 *
+		 *	script-src is extended where it exists and built from default-src where
+		 *	it does not; script-src-elem only where the policy has one; 'none' is
+		 *	left as the project decided it - see _extendPolicy().
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			&$request			(reference) Current request and its response
+		 *
+		 *	@return 	void
+		 */
+		public static function callbackOutput( array &$appData, array &$request ): void {
+
+			$body = $request['/nino/http/response']['body'] ?? null;
+
+			if( is_string( $body ) === false || stripos( $body, 'text/plain' ) === false )
+				return;
+
+			$policy = $request['/nino/http/response']['header']['Content-Security-Policy'] ?? '';
+
+			if( is_string( $policy ) === false || $policy === '' )
+				return;
+
+			$offered = [ 'necessary' ];
+			foreach( self::OPTIONAL_CATEGORIES as $category )
+				if( \Nino\Features::setting( $appData, 'consent', $category, false ) === true )
+					$offered[] = $category;
+
+			/*	A start tag, with a quoted value allowed to hold a '>' - the same
+				way a browser reads one. Possessive, so an unterminated quote costs
+				one pass over the rest of the body and not one per backtrack	*/
+			if( preg_match_all( '/<script\b(?:[^>"\']|"[^"]*"|\'[^\']*\')*+>/i', $body, $tags ) === false )
+				return;
+
+			$sources = [];
+
+			foreach( $tags[0] as $tag ) {
+
+				$attributes = self::_attributes( $tag );
+
+				if( strtolower( $attributes['type'] ?? '' ) !== 'text/plain' || in_array( $attributes['data-consent'] ?? '', $offered, true ) === false )
+					continue;
+
+				$origin = self::_origin( $attributes['data-src'] ?? '' );
+
+				if( $origin !== '' )
+					$sources[$origin] = true;
+			}
+
+			$sources = array_keys( $sources );
+			$widened = self::_extendPolicy( $policy, 'script-src', [ 'default-src' ], $sources );
+
+			// Only where the policy has one already: a script-src-elem nobody wrote
+			// is not one to create, and the browser would answer script elements
+			// from script-src when it is not there
+			$widened = self::_extendPolicy( $widened, 'script-src-elem', [], $sources );
+
+			if( $widened !== $policy )
+				$request['/nino/http/response']['header']['Content-Security-Policy'] = $widened;
+		}
+
+		/**
+		 *	The attributes of one start tag, name lower-cased and value decoded
+		 *	the way a browser decodes it. The first of a name wins, as in a
+		 *	browser; a name without a value is ''
+		 *
+		 *	@param		string		$tag					A start tag, '<script ...>'
+		 *
+		 *	@return 	array									name => value
+		 */
+		private static function _attributes( string $tag ): array {
+
+			$inner = (string) preg_replace( '/^<script\b|>$/i', '', $tag );
+
+			preg_match_all( '/([^\s"\'<>\/=]+)(?:\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\s"\'=<>`]+)))?/', $inner, $found, PREG_SET_ORDER );
+
+			$attributes = [];
+
+			foreach( $found as $set ) {
+
+				$name = strtolower( $set[1] );
+
+				if( isset( $attributes[$name] ) === false )
+					$attributes[$name] = html_entity_decode( ( $set[2] ?? '' ). ( $set[3] ?? '' ). ( $set[4] ?? '' ), ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+			}
+
+			return $attributes;
+		}
+
+		/**
+		 *	The origin of an address as a Content-Security-Policy source, or ''
+		 *	where it cannot safely be one: https only, no credentials, and a host
+		 *	that is a plain ascii name - no ip literal, no '*', no whitespace, no
+		 *	';' or ',' that would end the directive. A non-ascii host would have
+		 *	to be written as punycode; it is refused rather than converted. The
+		 *	port is kept, since a source without one means 443 only.
+		 *
+		 *	The same routine Embed carries, since a feature uses nothing outside
+		 *	\Nino\*'s public API and its own directory.
+		 *
+		 *	@param		string		$url
+		 *
+		 *	@return 	string								'https://host' or 'https://host:port', or ''
+		 */
+		private static function _origin( string $url ): string {
+
+			$parts = parse_url( $url );
+
+			if( is_array( $parts ) === false || ( $parts['scheme'] ?? '' ) !== 'https' || isset( $parts['user'] ) === true || isset( $parts['pass'] ) === true )
+				return '';
+
+			$host = strtolower( (string) ( $parts['host'] ?? '' ) );
+
+			// The last label of a name is never all digits, and one that is
+			// is an ip address written in a form php does not call one
+			if( $host === '' || strlen( $host ) > 253 || preg_match( '/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/', $host ) !== 1
+				|| preg_match( '/(?:^|\.)[0-9]+$/', $host ) === 1 )
+				return '';
+
+			return 'https://'. $host. ( isset( $parts['port'] ) === true ? ':'. (int) $parts['port'] : '' );
+		}
+
+		/**
+		 *	One directive of a Content-Security-Policy, widened by some sources.
+		 *	The merge Modules\Jstext makes for the nonce, written out again
+		 *	because a feature may use nothing outside \Nino\*'s public API and
+		 *	its own directory - Embed carries the same routine for frame-src.
+		 *
+		 *	Where the directive exists, the sources it lacks are appended to its
+		 *	first occurrence (a second occurrence is ignored by a browser, so
+		 *	adding one would widen nothing). Where it does not, it is built from
+		 *	the first fallback that does exist, since that is the list a browser
+		 *	would have used: naming 'self' by hand would narrow a policy whose
+		 *	default-src lists more. A policy with no such fallback is unrestricted
+		 *	already and is left alone, and so is a directive - or a fallback -
+		 *	that says 'none': that is the project having decided.
+		 *
+		 *	@param		string		$policy				The header value
+		 *	@param		string		$directive		The directive to widen, e.g. 'script-src'
+		 *	@param		array			$fallbacks		The directives a browser falls back to, nearest first
+		 *	@param		array			$sources			Origins to add
+		 *
+		 *	@return 	string								The widened policy, or $policy itself where nothing is added
+		 */
+		private static function _extendPolicy( string $policy, string $directive, array $fallbacks, array $sources ): string {
+
+			if( $sources === [] )
+				return $policy;
+
+			$directives = array_values( array_filter( array_map( 'trim', explode( ';', $policy ) ), static fn( string $part ): bool => $part !== '' ) );
+
+			$find = static function( string $name ) use ( $directives ): ?int {
+				foreach( $directives as $index => $part )
+					if( preg_match( '/^'. preg_quote( $name, '/' ). '(?:\s|$)/i', $part ) === 1 )
+						return $index;
+				return null;
+			};
+			$none = static fn( string $part ): bool => preg_match( "/(?:^|\s)'none'(?:\s|\$)/i", $part ) === 1;
+
+			$index = $find( $directive );
+
+			if( $index === null ) {
+
+				foreach( $fallbacks as $fallback ) {
+
+					$from = $find( $fallback );
+
+					if( $from === null )
+						continue;
+
+					if( $none( $directives[$from] ) === true )
+						return $policy;
+
+					// The fallback's own list, under this directive's name
+					$directives[] = $directive. substr( $directives[$from], strlen( $fallback ) );
+					$index = array_key_last( $directives );
+					break;
+				}
+
+				if( $index === null )
+					return $policy;
+			}
+			elseif( $none( $directives[$index] ) === true )
+				return $policy;
+
+			$present = array_map( 'strtolower', preg_split( '/\s+/', $directives[$index] ) ?: [] );
+			$added = false;
+
+			foreach( $sources as $source )
+				if( in_array( strtolower( (string) $source ), $present, true ) === false ) {
+					$directives[$index] .= ' '. $source;
+					$present[] = strtolower( (string) $source );
+					$added = true;
+				}
+
+			// A directive built from its fallback that adds nothing the fallback
+			// did not name changes nothing, so it is not written either
+			return $added === true ? implode( '; ', $directives ) : $policy;
 		}
 
 		/**

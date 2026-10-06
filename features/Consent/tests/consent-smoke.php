@@ -11,9 +11,13 @@ declare(strict_types=1);
  *											[consent-settings], allowed() reading the cookie the
  *											settings name, the asset bundling mechanism
  *											(\Nino\Html::addAsset() into the site's own bundles),
- *											and deactivation. Travels with the feature and runs
- *											against the checkout three levels up, or the one
- *											NINO_ROOT names (see tests/harness.php there).
+ *											the Content-Security-Policy gaining the hosts of the
+ *											page's placeholders, and deactivation. The browser
+ *											half is consent-js-smoke.js beside this file, which
+ *											this test runs too where node is on the path.
+ *											Travels with the feature and runs against the
+ *											checkout three levels up, or the one NINO_ROOT names
+ *											(see tests/harness.php there).
  *
  *	Usage: php features/Consent/tests/consent-smoke.php
  *	       NINO_ROOT=../nino php features/Consent/tests/consent-smoke.php
@@ -79,6 +83,8 @@ check( 'it declares the six settings, every optional category off by default', i
 check( 'the cookie name defaults to "nino_consent" and is pattern-checked', $manifest['settings']['cookieName']['default'] === 'nino_consent' && $manifest['settings']['cookieName']['pattern'] === '/^[A-Za-z0-9_-]+$/' );
 check( 'the lifetime defaults to 180 days, bounded 1..365', $manifest['settings']['days']['default'] === 180 && $manifest['settings']['days']['min'] === 1 && $manifest['settings']['days']['max'] === 365 );
 check( 'it keeps no data of its own - the choice lives in the browser', $manifest['data'] === [] );
+check( 'it declares the one callback it registers - the output phase, where the finished response is in hand',
+	array_keys( $manifest['manual']['callbacks'] ) === [ '/nino/http/output' ] );
 
 // A project's config.php, written the way the wizard leaves it, so the
 // activation has something to add its class to
@@ -98,7 +104,7 @@ check( 'the registry lists it inactive, with nothing in the way', ( static funct
 $result = \Nino\Features::activate( $appData, 'consent' );
 check( 'activation succeeds', $result === true );
 check( 'the class is listed and the version recorded', in_array( '\\Nino\\Modules\\Consent', \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/modules'], true ) === true
-	&& \Nino\Features::get( $appData, 'consent' )['installed'] === '1.0.0' );
+	&& \Nino\Features::get( $appData, 'consent' )['installed'] === $manifest['version'] );
 check( 'the unit merged the new keys into both locales', \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/consent/accept-all]]'] === 'Accept all'
 	&& \Nino\Filesystem::getFileContent( $appData, '/text/de_DE.php', [] )['[[/consent/accept-all]]'] === 'Alle akzeptieren' );
 check( 'add-only: the key the project already had was not overwritten', \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/consent/title]]'] === 'Cookie notice (project-edited)' );
@@ -122,6 +128,8 @@ $appData['/nino/modules'][] = '\\Nino\\Modules\\Assets';
 
 check( 'init registers [consent]', isset( $appData['./nino/html/shortcodes']['consent'] ) === true );
 check( 'init registers [consent-settings]', isset( $appData['./nino/html/shortcodes']['consent-settings'] ) === true );
+check( 'init hooks the output phase, where the body is rendered - the response phase runs before it',
+	in_array( [ \Nino\Modules\Consent::class, 'callbackOutput' ], array_merge( ...( $appData['./nino/callbacks']['/nino/http/output'] ?? [ [] ] ) ), true ) === true );
 check( 'consent.css joined the project\'s own /.cache/style.css bundle - the same target Nino.css already sits in', in_array( '/features/Consent/assets/consent.css', \Nino\Html::getAssets( $appData, '/.cache/style.css' ), true ) === true );
 check( 'consent.js joined the project\'s own /.cache/script.js bundle - so it runs on every page that bundle loads on, [consent] or not', in_array( '/features/Consent/assets/consent.js', \Nino\Html::getAssets( $appData, '/.cache/script.js' ), true ) === true );
 
@@ -147,6 +155,12 @@ echo "[consent] / [consent-settings] - the banner markup\n";
 
 $banner = \Nino\Html::renderHtml( $appData, '[consent]' );
 check( 'the banner is a hidden .nino-consent div', str_starts_with( $banner, '<div class="nino-consent" hidden' ) === true );
+check( 'it is a dialog with a name and a description, and can take the focus without being in the tab order',
+	str_contains( $banner, ' role="dialog" aria-labelledby="nino-consent-title" aria-describedby="nino-consent-text" tabindex="-1" ' ) === true
+	&& str_contains( $banner, 'class="nino-consent-title" id="nino-consent-title"' ) === true
+	&& str_contains( $banner, 'class="nino-consent-text" id="nino-consent-text"' ) === true );
+check( 'no action is the primary one - accepting everything is no easier to press than refusing it',
+	str_contains( $banner, 'nino-consent-btn--primary' ) === false );
 check( 'it carries the cookie name and lifetime for a page with no other way to know them', str_contains( $banner, 'data-consent-cookie="nino_consent"' ) === true && str_contains( $banner, 'data-consent-days="180"' ) === true );
 check( 'the title and text fills are in it', str_contains( $banner, 'Cookie notice (project-edited)' ) === true && str_contains( $banner, '[[/consent/text]]' ) === false ); // fills already resolved by renderHtml()
 check( 'necessary is checked and disabled', str_contains( $banner, 'data-consent-category="necessary" checked disabled' ) === true );
@@ -186,10 +200,11 @@ withConsentCookie( $appData, 'nino_consent', 'necessary,statistics' );
 check( 'an enabled category the cookie lists is allowed', \Nino\Modules\Consent::allowed( $appData, 'statistics' ) === true );
 check( 'an enabled category the cookie does not list is not allowed', \Nino\Modules\Consent::allowed( $appData, 'marketing' ) === false );
 
-// The base install's plain banner wrote 'accepted' or 'declined' under the
-// same cookie name: a choice already made, read the way consent.js reads it
+// The banner Nino's base install shipped up to 1.3.x wrote 'accepted' or
+// 'declined' under the same cookie name: a choice already made, read the way
+// consent.js reads it
 $_COOKIE['nino_consent'] = 'accepted';
-check( 'the old banner\'s "accepted" counts as every enabled category', \Nino\Modules\Consent::allowed( $appData, 'statistics' ) === true && \Nino\Modules\Consent::allowed( $appData, 'necessary' ) === true );
+check( 'the older banner\'s "accepted" counts as every enabled category', \Nino\Modules\Consent::allowed( $appData, 'statistics' ) === true && \Nino\Modules\Consent::allowed( $appData, 'necessary' ) === true );
 $_COOKIE['nino_consent'] = 'declined';
 check( 'its "declined" as the necessary one alone', \Nino\Modules\Consent::allowed( $appData, 'statistics' ) === false && \Nino\Modules\Consent::allowed( $appData, 'necessary' ) === true );
 $_COOKIE['nino_consent'] = 'necessary,statistics';
@@ -221,6 +236,118 @@ check( 'and only lists what it actually names', \Nino\Modules\Consent::allowed( 
 $_COOKIE = [];
 
 echo "\n";
+
+
+// --- The policy -------------------------------------------------------------------
+
+echo "The Content-Security-Policy - the hosts the page's placeholders load from\n";
+
+/*	A placeholder is released by consent.js into a real <script src>, and the
+	shipped policy lets a script come from 'self' alone: without the host in
+	script-src a visitor's consent would release a script the browser blocks.
+	The hosts are read out of the finished body, so what counts is held to what
+	a project wrote on purpose: a category the site offers, https, a plain host	*/
+\Nino\Features::saveSettings( $appData, 'consent', [ 'statistics' => 'true', 'marketing' => 'false', 'external' => 'false', 'cookieName' => 'nino_consent' ] );
+$request = [ 'REQUEST_METHOD' => 'GET', 'REQUEST_URI' => '/' ];
+\Nino\Http::request( $appData, $request );
+$shipped = (string) $request['/nino/http/response']['header']['Content-Security-Policy'];
+
+/**
+ *	The policy a page ends up with: the output callbacks run over a response
+ *	carrying $policy and $body
+ *
+ *	@param		array			&$appData
+ *	@param		array			$request			A response from \Nino\Http::request()
+ *	@param		mixed			$body
+ *	@param		string		$policy
+ *
+ *	@return 	string
+ */
+function consentPolicy( array &$appData, array $request, mixed $body, string $policy ): string {
+
+	$request['/nino/http/response']['body'] = $body;
+	$request['/nino/http/response']['header']['Content-Security-Policy'] = $policy;
+	\Nino\Callbacks::doCallbacks( $appData, '/nino/http/output', $request );
+
+	return (string) $request['/nino/http/response']['header']['Content-Security-Policy'];
+}
+
+$jstext = "default-src 'self'; script-src 'self' 'nonce-x'; img-src * data:";
+$stats = '<script type="text/plain" data-consent="statistics" data-src="https://stats.example/tag.js"></script>';
+
+check( 'the shipped policy names no script host but its own - the case this exists for', str_contains( $shipped, 'script-src' ) === false && str_contains( $shipped, "default-src 'self'" ) === true );
+check( 'an offered category\'s placeholder adds its host to the script-src the jstext block already wrote, in place',
+	consentPolicy( $appData, $request, '<p>x</p>'. $stats, $jstext ) === "default-src 'self'; script-src 'self' 'nonce-x' https://stats.example; img-src * data:" );
+check( '...and builds one from default-src where the policy has none, carrying default-src\'s whole list',
+	consentPolicy( $appData, $request, $stats, "default-src 'self' https://cdn.example; img-src *" ) === "default-src 'self' https://cdn.example; img-src *; script-src 'self' https://cdn.example https://stats.example" );
+check( 'on the shipped policy that is script-src \'self\' and the host', consentPolicy( $appData, $request, $stats, $shipped ) === $shipped. "; script-src 'self' https://stats.example" );
+check( '"necessary" is always offered',
+	consentPolicy( $appData, $request, '<script type="text/plain" data-consent="necessary" data-src="https://cdn.example/n.js"></script>', $jstext ) === "default-src 'self'; script-src 'self' 'nonce-x' https://cdn.example; img-src * data:" );
+check( 'a category the settings switched off adds nothing - markup cannot open the policy for one nobody offers',
+	consentPolicy( $appData, $request, '<script type="text/plain" data-consent="marketing" data-src="https://ads.example/a.js"></script>', $jstext ) === $jstext
+	&& consentPolicy( $appData, $request, '<script type="text/plain" data-consent="tracking" data-src="https://ads.example/a.js"></script>', $jstext ) === $jstext );
+check( 'a second one in the same page, in another order of attributes and with &amp; in the query, adds its host once',
+	consentPolicy( $appData, $request, '<script data-src="https://stats.example/a.js?x=1&amp;y=2" data-consent=\'statistics\' type=text/plain></script>'. $stats, $jstext ) === "default-src 'self'; script-src 'self' 'nonce-x' https://stats.example; img-src * data:" );
+check( 'the type is compared without regard to case, as the browser does', str_contains( consentPolicy( $appData, $request, '<SCRIPT TYPE="Text/Plain" DATA-CONSENT="statistics" DATA-SRC="https://stats.example/t.js"></SCRIPT>', $jstext ), 'https://stats.example' ) === true );
+
+foreach( [
+	'http:'									=> '<script type="text/plain" data-consent="statistics" data-src="http://stats.example/t.js"></script>',
+	'protocol-relative'			=> '<script type="text/plain" data-consent="statistics" data-src="//stats.example/t.js"></script>',
+	'relative'							=> '<script type="text/plain" data-consent="statistics" data-src="/assets/t.js"></script>',
+	'inline'								=> '<script type="text/plain" data-consent="statistics">console.log( 1 );</script>',
+	'userinfo'							=> '<script type="text/plain" data-consent="statistics" data-src="https://stats.example@evil.example/t.js"></script>',
+	'userinfo with a password'	=> '<script type="text/plain" data-consent="statistics" data-src="https://u:p@stats.example/t.js"></script>',
+	'an ip address'					=> '<script type="text/plain" data-consent="statistics" data-src="https://192.0.2.7/t.js"></script>',
+	'an ip in another notation'	=> '<script type="text/plain" data-consent="statistics" data-src="https://2130706433/t.js"></script>',
+	'an ipv6 literal'				=> '<script type="text/plain" data-consent="statistics" data-src="https://[2001:db8::1]/t.js"></script>',
+	'a non-ascii host'			=> '<script type="text/plain" data-consent="statistics" data-src="https://st\u{e4}ts.example/t.js"></script>',
+	'a host with a wildcard'	=> '<script type="text/plain" data-consent="statistics" data-src="https://*.example/t.js"></script>',
+	'a source list injected through the host' => '<script type="text/plain" data-consent="statistics" data-src="https://stats.example;script-src *">',
+	'a script that is not a placeholder' => '<script data-consent="statistics" data-src="https://stats.example/t.js"></script>',
+	'another type'					=> '<script type="module" data-consent="statistics" data-src="https://stats.example/t.js"></script>',
+	'no category'						=> '<script type="text/plain" data-src="https://stats.example/t.js"></script>',
+	'a data-src inside another attribute\'s value' => '<script type="text/plain" data-consent="statistics" title=\'data-src="https://evil.example/t.js"\'></script>',
+	'a placeholder in a text that only says so' => '<p>Use a text/plain script with data-src="https://evil.example/t.js"</p>',
+] as $what => $markup )
+	check( $what. ' adds nothing', consentPolicy( $appData, $request, $markup, $jstext ) === $jstext );
+
+check( 'an attribute that comes twice counts once, the first - the way a browser reads it',
+	consentPolicy( $appData, $request, '<script type="text/plain" data-consent="statistics" data-src="https://stats.example/t.js" data-src="https://evil.example/t.js"></script>', $jstext ) === "default-src 'self'; script-src 'self' 'nonce-x' https://stats.example; img-src * data:" );
+check( 'a ">" inside a quoted value does not end the tag early',
+	str_contains( consentPolicy( $appData, $request, '<script type="text/plain" data-consent="statistics" data-x="a>b" data-src="https://stats.example/t.js"></script>', $jstext ), 'https://stats.example' ) === true );
+check( 'script-src \'none\' stays, and so does a default-src of \'none\' with no script-src',
+	consentPolicy( $appData, $request, $stats, "default-src 'self'; script-src 'none'" ) === "default-src 'self'; script-src 'none'"
+	&& consentPolicy( $appData, $request, $stats, "default-src 'none'; img-src *" ) === "default-src 'none'; img-src *" );
+check( 'script-src-elem is extended where the policy has one, and not created where it has none',
+	consentPolicy( $appData, $request, $stats, "default-src 'self'; script-src 'self'; script-src-elem 'self'" ) === "default-src 'self'; script-src 'self' https://stats.example; script-src-elem 'self' https://stats.example"
+	&& str_contains( consentPolicy( $appData, $request, $stats, $jstext ), 'script-src-elem' ) === false );
+check( 'a policy with no default-src and no script-src is unrestricted already and stays',
+	consentPolicy( $appData, $request, $stats, "img-src *" ) === "img-src *" );
+check( 'a body with no placeholders is untouched, byte for byte', consentPolicy( $appData, $request, '<p>Hello</p>', $shipped ) === $shipped );
+check( 'an array body and a response with no policy are untouched',
+	consentPolicy( $appData, $request, [ 'html' => $stats ], $jstext ) === $jstext && consentPolicy( $appData, $request, $stats, '' ) === '' );
+
+\Nino\Features::saveSettings( $appData, 'consent', [ 'marketing' => 'true' ] );
+check( 'switching the category on is what lets its placeholders count',
+	str_contains( consentPolicy( $appData, $request, '<script type="text/plain" data-consent="marketing" data-src="https://ads.example/a.js"></script>', $jstext ), 'https://ads.example' ) === true );
+\Nino\Features::saveSettings( $appData, 'consent', [ 'statistics' => 'true', 'marketing' => 'true' ] );
+
+echo "\n";
+
+
+// --- The browser half ----------------------------------------------------------------
+
+$node = trim( (string) @shell_exec( 'command -v node 2>/dev/null' ) );
+
+if( $node === '' )
+	echo "  --  node is not on the path, so consent-js-smoke.js is not run here\n\n";
+else {
+	echo "consent-js-smoke.js\n";
+	$out = (string) @shell_exec( escapeshellarg( $node ). ' '. escapeshellarg( __DIR__. '/consent-js-smoke.js' ). ' 2>&1' );
+	echo $out;
+	check( 'the browser half passes too', preg_match( '/^\d+ checks, 0 failed$/m', $out ) === 1 );
+	echo "\n";
+}
 
 
 // --- Deactivation -----------------------------------------------------------------

@@ -160,12 +160,20 @@ $elsewhere = [
 	'nino-scroll-header',
 	// Nino.ui.js writes these onto the page while it runs: page chrome it
 	// creates itself, and the state classes it toggles
-	'nino-preloader', 'nino-back-to-top', 'nino-cookie-banner', 'nino-cookie-banner--visible', 'nino-cookie-banner-actions',
+	'nino-preloader', 'nino-back-to-top',
 	'nino-toast', 'nino-toast--success', 'nino-toast--error', 'nino-toast--visible', 'nino-toast-container',
 	'nino-slider-controls', 'nino-slider-button', 'nino-slider-points', 'nino-slider-point',
 	'nino-scroll-atf', 'nino-scroll-btf', 'nino-scroll-down',
 	'nino-is-touch', 'nino-is-existing', 'nino-vpa--visible', 'nino-vpa--visible-once',
 ];
+
+/*	Nino up to 1.3.2 wrote a cookie banner of its own, and Nino.css carries the
+	three classes of it; a later Nino ships none and Nino.css drops them (the
+	Consent feature is the banner now). The names count as "rendered elsewhere"
+	only while the checkout's Nino.css still defines them, so this test passes
+	on both - and the list can go once the latest Nino tag no longer has them.	*/
+$retired = [ 'nino-cookie-banner', 'nino-cookie-banner--visible', 'nino-cookie-banner-actions' ];
+$elsewhere = array_merge( $elsewhere, array_values( array_intersect( $retired, $defined ) ) );
 
 $uncovered = [];
 foreach( $defined as $class )

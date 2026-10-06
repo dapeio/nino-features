@@ -36,6 +36,12 @@
 	line-height: 1.5;
 }
 
+/* Focus is moved here when the banner is reopened (consent.js), so a screen
+   reader starts at its title - a box that is not a control needs no ring */
+.nino-consent:focus {
+	outline: none;
+}
+
 /* [hidden]/hidden already stops rendering everywhere - this is only here so
    a project stylesheet loaded after this one, or one that resets [hidden],
    cannot leave a "hidden" banner visible by accident */
@@ -115,12 +121,6 @@
 .nino-consent-btn:hover,
 .nino-consent-btn:focus-visible {
 	border-color: var(--color-primary, #1a73e8);
-}
-
-.nino-consent-btn--primary {
-	background: var(--color-primary, #1a73e8);
-	border-color: var(--color-primary, #1a73e8);
-	color: var(--color-primary-text, #fff);
 }
 
 /* [consent-settings] - a plain text link/button for the footer, not a
