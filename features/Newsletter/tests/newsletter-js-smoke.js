@@ -59,7 +59,8 @@ function element( tag ) {
 		id					: '',
 		textContent	: '',
 		value				: '',
-		classList		: { add : function() {}, remove : function() {} },
+		classes			: [],
+		classList		: { add : function( name ) { el.classes.includes( name ) || el.classes.push( name ) }, remove : function( name ) { el.classes = el.classes.filter( function( c ) { return c !== name } ) } },
 		listeners		: {},
 		setAttribute: function() {},
 		appendChild	: function( child ) { this.children.push( child ); return child },
@@ -196,6 +197,28 @@ tables.length = 0;
 fields.length = 0;
 panel._renderList( { entries : entries, counts : { subscribed : 2, pending : 2 }, unsubscribeUrl : '' }, 'nonsense' );
 check( '...and anything that is not a status starts on all', fields[0].options.value === 'all' && tables[0].options.rows === entries );
+
+// --- Copying the BCC line ------------------------------------------------------------
+
+/*	The clipboard answers through a thenable that settles at once, so the
+	outcome is on screen before the next line runs	*/
+const settled = function( ok ) {
+	return { then : function( done ) { if( ok === true ) done(); return { catch : function( failed ) { if( ok !== true ) failed() } } } };
+};
+list.innerHTML = '';
+panel._renderList( { entries : entries, counts : { subscribed : 2, pending : 2 }, unsubscribeUrl : '' } );
+const copyArea = descendants( list );
+const copied = copyArea.filter( function( el ) { return el.id === 'newsletter-bcc-copied' } )[0];
+const copyButton = copyArea.filter( function( el ) { return el.textContent === '/_admin/newsletter/label/copy' } )[0];
+sandbox.window.navigator.clipboard = { writeText : function() { return settled( false ) } };
+copyButton.click();
+const failedCopy = [ copied.textContent, copied.classes.includes( 'nino-admin-error' ) ];
+sandbox.window.navigator.clipboard = { writeText : function() { return settled( true ) } };
+copyButton.click();
+check( 'a copy that failed says so in the workbench\'s error colour, and the next one that worked is not marked so any more',
+	failedCopy[0] === '/_admin/newsletter/error/copy' && failedCopy[1] === true
+	&& copied.textContent === '/_admin/newsletter/label/copied' && copied.classes.includes( 'nino-admin-error' ) === false );
+delete sandbox.window.navigator.clipboard;
 
 // --- Asking the workbench ------------------------------------------------------------
 

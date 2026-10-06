@@ -349,12 +349,12 @@
 					} );
 				write.then( function() {
 					copied.textContent = Nino.content.getText('/_admin/newsletter/label/copied');
-					copied.classList.remove('text-import-error');
+					copied.classList.remove('nino-admin-error');
 					copied.classList.remove('admin-hidden');
 					setTimeout( function() { copied.classList.add('admin-hidden') }, 2000 );
 				} ).catch( function() {
 					copied.textContent = Nino.content.getText('/_admin/newsletter/error/copy');
-					copied.classList.add('text-import-error');
+					copied.classList.add('nino-admin-error');
 					copied.classList.remove('admin-hidden');
 				} );
 			} );

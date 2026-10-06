@@ -156,6 +156,13 @@ A release is the tag `newsletter-<version>` of dapeio/nino-features.
 
 ### Fixed
 
+- **A BCC line that could not be copied was reported in green.** The panel
+  marked the failure with a class no stylesheet defines, and the id rule that
+  colours the "copied" note would have kept it green over the workbench's
+  error class anyway. The note carries `nino-admin-error` on a failure now and
+  the panel's stylesheet gives it the error colour; a copy that works clears
+  it again.
+
 - **The link of a confirmation or unsubscribe mail stayed in the fills.** It was
   added for every language to render the mail and never taken out, so it was
   there for whatever else the request rendered afterwards. It is removed right

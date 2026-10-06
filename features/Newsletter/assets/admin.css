@@ -41,6 +41,11 @@
 	font-size: .8rem;
 	font-weight: 650;
 }
+/*	A copy that failed says so in the workbench's error colour - the id rule
+	above would otherwise keep it green over the shell's .nino-admin-error */
+#newsletter-bcc-copied.nino-admin-error {
+	color: var(--editor-red);
+}
 #newsletter-filter {
 	margin: 1rem 0 .5rem;
 }
