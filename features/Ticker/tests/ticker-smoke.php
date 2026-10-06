@@ -6,11 +6,13 @@ declare(strict_types=1);
  *	ticker-smoke.php	Contract test for the Ticker feature (Modules\Ticker): the
  *										manifest, the activation through \Nino\Features, the two
  *										files it puts into the site's own asset bundles
- *										(\Nino\Html::addAsset()), what those two files promise,
- *										and deactivation. Like Typewriter this feature renders
- *										nothing at all - what runs past is markup the project's
- *										own template carries - so there is no shortcode here to
- *										test, and that absence is itself checked.
+ *										(\Nino\Html::addAsset()), the one text fill its install
+ *										unit merges for the pause button, what those two files
+ *										promise, and deactivation. Like Typewriter this
+ *										feature renders nothing at all - what runs past is
+ *										markup the project's own template carries - so there
+ *										is no shortcode here to test, and that absence is
+ *										itself checked.
  *
  *										What the two files then do is the browser's, and
  *										ticker-js-smoke.js beside this file measures it; this
@@ -55,17 +57,31 @@ check( 'it brings nothing of its own to write - no shortcode in the manual',
 	$manifest['manual']['shortcodes'] === [] && $manifest['manual']['routes'] === [] );
 check( '...and names the data attributes a row is timed with instead',
 	array_key_exists( 'data-ticker-speed="40"', $manifest['manual']['markup'] ) === true );
+check( '...and the loop and the pause button, which are opt-in',
+	array_key_exists( 'data-ticker-loop="1"', $manifest['manual']['markup'] ) === true
+	&& array_key_exists( 'data-ticker-toggle="[[/ticker/toggle]]"', $manifest['manual']['markup'] ) === true );
 check( 'it requires no other feature, keeps no data and carries no settings',
 	$manifest['requires'] === [] && $manifest['data'] === [] && $manifest['settings'] === [] );
-check( 'and ships no install unit - there is nothing for it to write into a project',
-	$manifest['manual']['install'] === [] );
+check( 'its install unit brings the pause button\'s label and nothing a project has to write for itself, and the manual lists it',
+	array_keys( $manifest['manual']['install'] ) === [ 'text/<locale>.php' ] && is_file( $dir. '/install/manifest.php' ) === true
+	&& is_file( $dir. '/install/text/en_US.php' ) === true && is_file( $dir. '/install/text/de_DE.php' ) === true );
 
 \Nino\AppData::writeContentData( $appData, [ '/nino/modules' ] );
 ninoWarnings();
 
 check( 'activation succeeds', \Nino\Features::activate( $appData, 'ticker' ) === true );
 check( 'the class is listed and the version recorded', in_array( '\\Nino\\Modules\\Ticker', \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/modules'], true ) === true
-	&& \Nino\Features::get( $appData, 'ticker' )['installed'] === '1.0.0' );
+	&& \Nino\Features::get( $appData, 'ticker' )['installed'] === $manifest['version'] );
+check( 'activation merged the pause button\'s label into the text file of both locales',
+	( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/ticker/toggle]]'] ?? '' ) === 'Pause animation'
+	&& ( \Nino\Filesystem::getFileContent( $appData, '/text/de_DE.php', [] )['[[/ticker/toggle]]'] ?? '' ) === 'Animation pausieren' );
+check( '...and wrote no template into the project', is_dir( ninoSandboxDir( $appData ). '/templates' ) === false );
+
+/*	Add-only: what a project has written for that key is its own, and an update
+	- activating an active feature - leaves it as it is	*/
+\Nino\Filesystem::putFileContent( $appData, '/text/en_US.php', [ '[[/ticker/toggle]]' => 'Stop it' ] );
+check( 'an update keeps the value a project has for that key', \Nino\Features::activate( $appData, 'ticker' ) === true
+	&& ( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/ticker/toggle]]'] ?? '' ) === 'Stop it' );
 
 echo "\n";
 
@@ -121,6 +137,25 @@ check( '...and there is a ceiling on the copying, so one narrow logo in a wide b
 check( 'the copies are hidden from a screen reader - the row is read once, which is how many times it is there',
 	str_contains( $js, "setAttribute( 'aria-hidden', 'true' )" ) === true );
 
+/*	One cycle by default: the copy ends where the original stood, so the last
+	frame is the first and nothing jumps when it stops. The endless loop is the
+	opt-in, and only the class the script writes switches it on - the list of
+	values that mean "on" is in one place	*/
+check( 'a row runs one cycle by default',
+	preg_match( '/\.nino-ticker\.nino-is-running \.nino-ticker-track\s*\{[^}]*animation-iteration-count:\s*1;/s', $css ) === 1 );
+check( '...and the endless loop is only for a row the script marked as looping',
+	substr_count( $css, 'animation-iteration-count: infinite' ) === 1
+	&& preg_match( '/\.nino-ticker\.nino-is-looping\.nino-is-running \.nino-ticker-track\s*\{[^}]*animation-iteration-count:\s*infinite;/s', $css ) === 1
+	&& str_contains( $css, '[data-ticker-loop' ) === false );
+check( 'a row that has not been seen is held, and one the visitor paused is, whatever the pointer does',
+	preg_match( '/\.nino-ticker\.nino-is-waiting \.nino-ticker-track\s*\{[^}]*animation-play-state:\s*paused/s', $css ) === 1
+	&& preg_match( '/\.nino-ticker\.nino-is-paused \.nino-ticker-track\s*\{[^}]*animation-play-state:\s*paused/s', $css ) === 1
+	&& str_contains( $css, ':not(.nino-is-paused)' ) === true );
+check( 'a finished pass has no animation at all, so a resize cannot start it over',
+	preg_match( '/\.nino-ticker\.nino-is-done \.nino-ticker-track\s*\{[^}]*animation:\s*none/s', $css ) === 1 );
+check( 'the pause button\'s pressed state hangs off the class the script gives it',
+	str_contains( $css, '.nino-ticker-toggle[aria-pressed="true"]' ) === true );
+
 check( 'a row stops while it is pointed at, so a logo can be looked at',
 	str_contains( $css, ':hover .nino-ticker-track' ) === true && str_contains( $css, 'animation-play-state: paused' ) === true );
 check( '...and while something inside it has the keyboard focus, because a row that runs away under a tab stop is unusable',
@@ -132,6 +167,12 @@ check( 'a row that asked to keep running under the pointer does',
 	the most literal reading of that there is	*/
 check( 'a visitor who asked for less motion gets a row that stands still and scrolls by hand',
 	str_contains( $css, 'prefers-reduced-motion' ) === true && str_contains( $css, 'overflow-x: auto' ) === true );
+
+check( 'the script draws the pause button with createElement() and textContent, never inside the track, and removes it rather than hiding it',
+	str_contains( $js, "createElement( 'button' )" ) === true && str_contains( $js, 'row.nextSibling' ) === true
+	&& str_contains( $js, 'innerHTML' ) === false && str_contains( $js, "'hidden'" ) === false );
+check( 'a single pass is held until the row has been seen, and ends on the animation\'s own end',
+	str_contains( $js, 'IntersectionObserver' ) === true && str_contains( $js, "'animationend'" ) === true );
 
 check( 'nothing about a ticker reaches the server or outlives the page',
 	str_contains( $js, 'XMLHttpRequest' ) === false && str_contains( $js, 'fetch(' ) === false

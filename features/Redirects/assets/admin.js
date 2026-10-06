@@ -20,6 +20,9 @@
 
 		_ready			: false,
 		_rules			: [],
+		// The pages of this site a target can be picked from: { path, label }.
+		// Read with the list, because it is what the routes are right now
+		_routes			: [],
 		_misses			: [],
 		_statuses		: [ 301, 302 ],
 		// Whether this installation writes down what happened at all. The
@@ -58,6 +61,7 @@
 					return Nino.admin.redirects._showError( wrap, status, response );
 
 				Nino.admin.redirects._rules			= response.rules || [];
+				Nino.admin.redirects._routes		= response.routes || [];
 				Nino.admin.redirects._misses		= response.misses || [];
 				Nino.admin.redirects._statuses	= response.statuses || [ 301, 302 ];
 				Nino.admin.redirects._recording	= response.recording !== false;
@@ -265,6 +269,9 @@
 					columns	: [
 						{ key : 'from', label : Nino.content.getText('/_admin/redirects/label/from'), type : 'string' },
 						{ key : 'to', label : Nino.content.getText('/_admin/redirects/label/to'), type : 'string' },
+						{ key : 'answer', label : Nino.content.getText('/_admin/redirects/label/answer'), type : 'string', render : function( value ) {
+							return Nino.admin.redirects._flag( value );
+						} },
 						{ key : 'status', label : Nino.content.getText('/_admin/redirects/label/status'), type : 'integer',
 							render : function( value ) { return Nino.content.getText('/_admin/redirects/status/'+ value ) } },
 						{ key : 'subtree', label : Nino.content.getText('/_admin/redirects/label/subtree'), type : 'string',
@@ -280,6 +287,28 @@
 			box.appendChild( Nino.admin.redirects._renderProbe() );
 
 			return box;
+		},
+
+		/**
+		 *	What a rule's target leads to, said only where it leads somewhere
+		 *	worth a second look: nothing, a loop, or another rule. A target a
+		 *	page, a file or another site answers is the ordinary case and says
+		 *	nothing
+		 *
+		 *	@param		{string}	answer		Rules::answer()'s word for it
+		 *
+		 *	@return		{Element|string}
+		 */
+		_flag : function( answer ) {
+
+			if( answer !== 'nothing' && answer !== 'loop' && answer !== 'rule' )
+				return '';
+
+			const flag = dc.createElement('span');
+			flag.className = 'redirects-flag'+ ( answer === 'rule' ? '' : ' nino-admin-error' );
+			flag.textContent = Nino.content.getText('/_admin/redirects/answer/'+ answer );
+
+			return flag;
 		},
 
 		/**
@@ -355,7 +384,39 @@
 			box.appendChild( Nino.adminUi.contextBar( back, [] ) );
 
 			box.appendChild( Nino.admin.redirects._field( '/_admin/redirects/label/from', edit.from, function( value ) { edit.from = value }, '/old/page' ) );
-			box.appendChild( Nino.admin.redirects._field( '/_admin/redirects/label/to', edit.to, function( value ) { edit.to = value }, '/new/page' ) );
+			const target = Nino.admin.redirects._field( '/_admin/redirects/label/to', edit.to, function( value ) { edit.to = value }, '/new/page' );
+			box.appendChild( target );
+
+			/*	The pages this site has, under the free text: a target is a path
+				somebody would otherwise type from memory. Picking one writes its
+				path into the field and into the working copy, and the select
+				goes back to its first entry so the next pick is a change again.
+				The free text stays what decides - an address on another site, a
+				page that is not made yet	*/
+			const pick = Nino.adminUi.selectField( {
+				key				: 'pick',
+				label			: Nino.content.getText('/_admin/redirects/label/pick'),
+				options		: [ { value : '', label : '\u2014' } ].concat( Nino.admin.redirects._routes.map( function( route ) {
+					return { value : route.path, label : route.label === route.path ? route.path : route.label+ ' ('+ route.path+ ')' };
+				} ) ),
+				value			: '',
+				onChange	: function( value ) {
+
+					if( value === '' )
+						return;
+
+					edit.to = value;
+
+					const input = target.querySelector('input');
+					if( input !== null )
+						input.value = value;
+
+					const select = pick.querySelector('select');
+					if( select !== null )
+						select.value = '';
+				},
+			} );
+			box.appendChild( pick );
 
 			box.appendChild( Nino.adminUi.selectField( {
 				key				: 'status',
@@ -409,6 +470,7 @@
 					Nino.admin.redirects._editing	= null;
 					Nino.admin.redirects._render();
 					Nino.admin.redirects._message( 200, null, '/_admin/redirects/msg/saved' );
+					Nino.admin.redirects._warn( response.warnings || [] );
 				} );
 			} );
 
@@ -671,6 +733,26 @@
 
 			line.classList.add('nino-admin-error');
 			line.textContent = '('+ status+ ') '+ ( ( response && response.error ) ? response.error : Nino.content.getText('/_admin/redirects/error/load') );
+		},
+
+		/**
+		 *	What a save said about the rule it saved, on the message line the
+		 *	editor left behind. The rule is written either way - this is a
+		 *	sentence, not a refusal - so it replaces the plain "Saved." rather
+		 *	than standing beside an error
+		 *
+		 *	@param		{Array}		warnings		Sentences, already in the workbench's language
+		 *
+		 *	@return		void
+		 */
+		_warn : function( warnings ) {
+
+			const line = dc.getElementById('redirects-msg');
+			if( line === null || warnings.length === 0 )
+				return;
+
+			line.classList.add('nino-admin-error');
+			line.textContent = warnings.join(' ');
 		},
 
 		/**

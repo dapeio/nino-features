@@ -35,9 +35,15 @@ return [
 	'[[/_admin/redirects/label/search]]'			=> 'Suchen',
 	'[[/_admin/redirects/label/on]]'					=> 'an',
 	'[[/_admin/redirects/label/off]]'					=> 'aus',
+	'[[/_admin/redirects/label/pick]]'				=> 'Oder eine Seite dieser Site wählen',
+	'[[/_admin/redirects/label/answer]]'			=> 'Ziel',
 
 	'[[/_admin/redirects/status/301]]'				=> 'Endgültig umgezogen (301)',
 	'[[/_admin/redirects/status/302]]'				=> 'Vorübergehend umgezogen (302)',
+
+	'[[/_admin/redirects/answer/nothing]]'		=> 'keine Antwort',
+	'[[/_admin/redirects/answer/rule]]'				=> 'über eine weitere Regel',
+	'[[/_admin/redirects/answer/loop]]'				=> 'Schleife',
 
 	'[[/_admin/redirects/empty/rules]]'				=> 'Noch keine Weiterleitung.',
 	'[[/_admin/redirects/empty/missing]]'			=> 'Seit dem Einschalten wurde nach nichts vergeblich gefragt.',
@@ -66,4 +72,7 @@ return [
 	'[[/_admin/redirects/reason/self]]'			=> 'sie schickt die Adresse auf sich selbst',
 	'[[/_admin/redirects/reason/subtree]]'	=> 'sie schickt alles darunter auf eine Adresse, die wieder darunter liegt',
 	'[[/_admin/redirects/error/status]]'		=> 'Das ist kein Weiterleitungsstatus.',
+	'[[/_admin/redirects/warning/nothing]]'	=> 'Gespeichert - aber auf "%s" antwortet noch nichts. Wer dieser Regel folgt, landet auf der 404-Seite, bis Du dort eine Seite, eine Route oder eine Regel anlegst.',
+	'[[/_admin/redirects/warning/rule]]'		=> 'Gespeichert. "%s" beantwortet eine weitere Regel - Besucher werden also zweimal weitergeleitet.',
+	'[[/_admin/redirects/warning/loop]]'		=> 'Gespeichert - aber "%s" führt über andere Regeln hierher zurück; Browser brechen so eine Kette mit einem Fehler ab.',
 ];

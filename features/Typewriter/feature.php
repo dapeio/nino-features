@@ -6,15 +6,15 @@ return [
 	'key'					=> 'typewriter',
 	'name'				=> [ 'en_US' => 'Typewriter', 'de_DE' => 'Schreibmaschine' ],
 	'description'	=> [
-		'en_US' => 'Types the lines of a container one after the other, with a cursor at the writing head - a headline that writes itself, timed per element with data attributes.',
-		'de_DE' => 'Tippt die Zeilen eines Containers nacheinander, mit Cursor am Schreibkopf - eine Überschrift, die sich selbst schreibt, je Element über data-Attribute getaktet.',
+		'en_US' => 'Types the lines of a container one after the other, with a cursor at the writing head - a headline that writes itself, once or in a loop, timed per element with data attributes.',
+		'de_DE' => 'Tippt die Zeilen eines Containers nacheinander, mit Cursor am Schreibkopf - eine Überschrift, die sich selbst schreibt, einmal oder in der Schleife, je Element über data-Attribute getaktet.',
 	],
 	'manual'			=> [
 		'shortcodes' => [],
 		'markup' => [
 			'class="nino-typewriter"' => [
-				'en_US' => 'On a container: its <p> lines are typed one after the other.',
-				'de_DE' => 'An einem Container: seine <p>-Zeilen werden nacheinander getippt.',
+				'en_US' => 'On a container: its <p> lines are typed one after the other, once. The last line stays.',
+				'de_DE' => 'An einem Container: seine <p>-Zeilen werden nacheinander getippt, einmal. Die letzte Zeile bleibt stehen.',
 			],
 			'data-typewriter-speed="60"' => [
 				'en_US' => 'Milliseconds per character.',
@@ -28,9 +28,13 @@ return [
 				'en_US' => 'Erases instead of fading.',
 				'de_DE' => 'Löscht rückwärts, statt auszublenden.',
 			],
-			'data-typewriter-loop="0"' => [
-				'en_US' => 'Stops on the last line.',
-				'de_DE' => 'Hält auf der letzten Zeile an.',
+			'data-typewriter-loop="1"' => [
+				'en_US' => 'Starts over after the last line instead of stopping. Default: types once.',
+				'de_DE' => 'Beginnt nach der letzten Zeile von vorn, statt anzuhalten. Vorgabe: tippt einmal.',
+			],
+			'data-typewriter-toggle="[[/typewriter/toggle]]"' => [
+				'en_US' => 'A button after the container that pauses the typing and takes it up again (WCAG 2.2.2). The value is its label; the fill is the one the install unit brings.',
+				'de_DE' => 'Ein Knopf hinter dem Container, der das Tippen anhält und wieder aufnimmt (WCAG 2.2.2). Der Wert ist die Beschriftung; der Textfill ist der, den die Install-Einheit mitbringt.',
 			],
 			'data-typewriter-start="load"' => [
 				'en_US' => 'Starts at once instead of when it scrolls into view.',
@@ -40,11 +44,17 @@ return [
 		'routes' => [],
 		'panel' => [],
 		'callbacks' => [],
-		'install' => [],
+		'install' => [
+			'text/<locale>.php' => [
+				'en_US' => 'The label of the pause button, [[/typewriter/toggle]], into the Text panel.',
+				'de_DE' => 'Die Beschriftung des Pause-Knopfs, [[/typewriter/toggle]], ins Panel Texte.',
+			],
+		],
 	],
 	// What it is for: it changes how what is already on the page behaves and
-	// brings nothing of its own to write - the Features panel files it with
-	// the sliders and the lightboxes rather than with the content
+	// brings one text fill of its own, the label of the pause button - the
+	// Features panel files it with the sliders and the lightboxes rather than
+	// with the content
 	'category'		=> 'ui',
 	'version'			=> '1.0.0',
 	'nino'				=> '^1.3',

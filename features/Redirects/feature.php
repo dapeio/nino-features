@@ -16,8 +16,8 @@ return [
 		'routes' => [],
 		'panel' => [
 			'Redirects' => [
-				'en_US' => 'The rules, and the addresses nothing answered - each with the one button that turns it into a rule.',
-				'de_DE' => 'Die Regeln und die Adressen, die nichts beantwortet hat - jede mit dem einen Knopf, der eine Regel daraus macht.',
+				'en_US' => 'The rules, and the addresses nothing answered - each with the one button that turns it into a rule. A target can be picked from the pages of the site, and one nothing answers is flagged and warned about, never refused.',
+				'de_DE' => 'Die Regeln und die Adressen, die nichts beantwortet hat - jede mit dem einen Knopf, der eine Regel daraus macht. Ein Ziel lässt sich aus den Seiten der Site wählen, und eines, das nichts beantwortet, wird markiert und beim Speichern gemeldet, aber nie abgelehnt.',
 			],
 		],
 		'callbacks' => [

@@ -12,6 +12,61 @@ A release is the tag `ticker-<version>` of dapeio/nino-features.
   feature to an installation that could not then install it. `^1.3` names
   only a kernel that can read the manifest.
 
+### Changed (behaviour)
+
+- **A ticker runs one cycle, once it has been scrolled into view, instead of
+  an endless loop from page load.** Every `.nino-ticker` ran an endless loop
+  from page load until now. Afterwards it waits until it is scrolled into view
+  and runs exactly one cycle: one original row width plus one gap at
+  `data-ticker-speed` (three items of 200 px plus gaps = 696 px at 40 px/s =
+  17.4 s). It stops on a frame identical to its first, because the copy stands
+  where the original stood, so nothing jumps. It then stands still, with the
+  items past the box edge cut off as in any frame before it.
+  `data-ticker-loop="1"` restores the endless loop - read the way
+  `data-typewriter-loop` is read: missing or empty is the default, `0`, `false`,
+  `off` and `no` say it too, anything else asks for the loop - and the script
+  writes the result as the class `nino-is-looping`. `data-ticker-speed`,
+  `-direction` and `-pause`, the stop under the pointer and under keyboard
+  focus, reduced motion and no-JavaScript behaviour are unchanged. The markup
+  and the server output do not change, so the page cache is unaffected; the
+  new script reaches browsers through the bundle's `?v=` hash. WCAG 2.2.2 is
+  why: an endless loop is the plainest case of movement that has to be
+  pausable; one pass ends by itself, but a pass longer than five seconds
+  still needs `data-ticker-toggle` to conform.
+
+### Added
+
+- **The viewport start.** A row is measured at once but held
+  (`nino-is-waiting`, `animation-play-state: paused`) until an
+  `IntersectionObserver` has seen it, and starts at once where there is none
+  - a footer row would otherwise be through its single pass before anybody
+  scrolled to it. `nino-is-running` still means "measured".
+
+- **When a pass ends it stays ended.** On the track's own `animationend` the
+  row is marked `nino-is-done`, which the stylesheet turns into
+  `animation: none`, so a later resize - which sets the duration again - can
+  never start it over. A finished row is not measured or copied again.
+
+- **A pause button, on request (WCAG 2.2.2).** `data-ticker-toggle="<label>"`
+  puts a button after the row - its next sibling, never inside the track,
+  which is cloned. A press pauses the animation (`aria-pressed`, and
+  `nino-is-paused` on the row, which holds for touch and keyboard unlike
+  `:hover` and `:focus-within`) and the next one takes it up again. It is
+  drawn once the row runs, once however often the row is measured again,
+  and removed when a single pass ends - the keyboard focus, where the button
+  has it then, moves to the row (`tabindex="-1"`) instead of falling back to
+  the top of the page; a looping row keeps it. No button for an
+  empty label, for one that still holds a fill nobody resolved, or under
+  `prefers-reduced-motion`. A cycle longer than five seconds still needs it to
+  conform. The button wears the kernel's `nino-btn` classes; `ticker.css`
+  adds its pressed state.
+
+- **An install unit with one text fill, `[[/ticker/toggle]]`** - *Pause
+  animation* / *Animation pausieren* - the label for the button. Activation,
+  and the update, merge it add-only into `text/<locale>.php` for every
+  available locale; a locale added later needs the key by hand. The fill goes
+  into the page as it stands, so a label must not contain a double quote.
+
 ### Changed
 
 - **"Wider than the box twice over" was never what the copies cover.**

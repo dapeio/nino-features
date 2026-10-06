@@ -12,12 +12,12 @@ return [
 	'manual'			=> [
 		'shortcodes' => [
 			'[countdown to="2026-12-24 18:00"]' => [
-				'en_US' => 'Counts down to that moment. Without tz= it is read in the timezone the server runs in.',
-				'de_DE' => 'Zählt bis zu diesem Moment herunter. Ohne tz= wird er in der Zeitzone gelesen, in der der Server läuft.',
+				'en_US' => 'Counts down to that moment. Without tz= it is read in the timezone the Countdown setting names - the one the server runs in, by default.',
+				'de_DE' => 'Zählt bis zu diesem Moment herunter. Ohne tz= wird er in der Zeitzone gelesen, die die Einstellung von Countdown nennt - standardmäßig die, in der der Server läuft.',
 			],
 			'[countdown ... tz="Europe/Berlin"]' => [
-				'en_US' => 'The timezone a wall-clock moment is read in. A name PHP does not know renders nothing and says so in the log.',
-				'de_DE' => 'Die Zeitzone, in der ein Moment ohne eigenen Offset gelesen wird. Ein Name, den PHP nicht kennt, zeigt nichts und sagt es im Log.',
+				'en_US' => 'The timezone a wall-clock moment is read in, for this one countdown instead of the setting. A name PHP does not know renders nothing and says so in the log.',
+				'de_DE' => 'Die Zeitzone, in der ein Moment ohne eigenen Offset gelesen wird, für diesen einen Countdown statt der Einstellung. Ein Name, den PHP nicht kennt, zeigt nichts und sagt es im Log.',
 			],
 			'[countdown ... units="days,hours,minutes"]' => [
 				'en_US' => 'Which parts are shown. Always largest first, whatever order they are written in. Default: days, hours, minutes, seconds.',
@@ -53,9 +53,27 @@ return [
 	// Nothing under data/: the moment is written into the page it counts down
 	// on, and what is left of it is arithmetic in the reader's own browser
 	'data'				=> [],
-	/*	And no settings. Which moment, which parts of it and what stands there
-		afterwards all belong to the one place the countdown is written - a sale
+	/*	One setting, the zone a wall-clock moment is read in where the shortcode
+		names none. Which moment, which parts of it and what stands there
+		afterwards stay with the one place the countdown is written - a sale
 		ending and a conference opening are not the same countdown, and a site
-		may well have both	*/
-	'settings'		=> [],
+		may well have both. 'server' is a value of its own rather than '': a
+		select the Features panel has once filled cannot be emptied again, and
+		the kernel refuses '' for a required one anyway. The map is built here
+		without a variable, because Features::manifest(), bin/build.php and the
+		tests all include() this file	*/
+	'settings'		=> [
+		'timezone' => [
+			'type'			=> 'select',
+			'label'			=> [ 'en_US' => 'Default timezone', 'de_DE' => 'Standard-Zeitzone' ],
+			'hint'			=> [
+				'en_US' => 'The timezone a countdown without tz= and without an offset of its own is read in. "As the server is set" keeps the behaviour from before; tz= on the shortcode always wins.',
+				'de_DE' => 'Die Zeitzone, in der ein Countdown ohne tz= und ohne eigenen Offset gelesen wird. „Wie der Server eingestellt ist“ lässt alles wie bisher; tz= am Shortcode hat immer Vorrang.',
+			],
+			'options'		=> [ 'server' => [ 'en_US' => 'As the server is set (PHP default)', 'de_DE' => 'Wie der Server eingestellt ist (PHP-Standard)' ] ]
+				+ ( static fn( array $ids ): array => array_combine( $ids, $ids ) )( \DateTimeZone::listIdentifiers() ),
+			'required'	=> true,
+			'default'		=> 'server',
+		],
+	],
 ];

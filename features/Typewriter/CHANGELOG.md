@@ -41,6 +41,47 @@ file. A release is the tag `typewriter-<version>` of dapeio/nino-features.
   feature to an installation that could not then install it. `^1.3` names
   only a kernel that can read the manifest.
 
+### Changed (behaviour)
+
+- **A typewriter types once and stops, instead of looping forever.** Every
+  `.nino-typewriter` whose `data-typewriter-loop` is missing or empty looped
+  forever until now. Afterwards it types each line once and stops. The last
+  line stays visible and complete, and its cursor is removed, so the blinking
+  ends. Earlier lines stay faded out (`opacity: 0`; their text stays readable
+  to screen readers through the reader spans), so a three-line headline ends
+  showing only its last line. A one-line typewriter types once and stays.
+  `data-typewriter-loop="0"`, `"false"`, `"off"` and `"no"` are unchanged;
+  any other non-empty value (`1`, `true`, `on`, `yes`) keeps the old endless
+  loop; spaces around the value are ignored, so `" 0"` is `"0"` and `" "` is
+  empty, as in `data-ticker-loop`. The way back for an existing page is
+  `data-typewriter-loop="1"` on its container. No JavaScript and reduced
+  motion are unchanged. Nothing the server sends changes, so the page cache is unaffected, and the new script
+  reaches browsers through the bundle's `?v=` hash. WCAG 2.2.2 is why: an
+  endless loop is the plainest case of movement that has to be pausable; one
+  pass ends by itself, but a pass longer than five seconds still needs
+  `data-typewriter-toggle` to conform.
+
+### Added
+
+- **A pause button, on request.** `data-typewriter-toggle="<label>"` on a
+  container puts a button after it - its next sibling, never a child, so a
+  heading used as a typewriter does not take the button into its accessible
+  name. A press pauses the typing and the cursor's blinking
+  (`aria-pressed`, and `nino-is-paused` on the container) and the next one
+  takes it up again with the full delay of the step that was waiting. The
+  button is removed once nothing moves any more, after the last line of a
+  single pass - the keyboard focus, where the button has it then, moves to the
+  container (`tabindex="-1"`) instead of falling back to the top of the
+  page. It wears the kernel's `nino-btn` classes; `typewriter.css` adds its
+  pressed state. No button is drawn for an empty label, for one that
+  still holds a fill nobody resolved, or under `prefers-reduced-motion`.
+
+- **An install unit with one text fill, `[[/typewriter/toggle]]`** - *Pause
+  animation* / *Animation pausieren* - the label for the button. Activation,
+  and the update, merge it add-only into `text/<locale>.php` for every
+  available locale; a locale added later needs the key by hand. The fill goes
+  into the page as it stands, so a label must not contain a double quote.
+
 ## 1.0.0 — 2026-09-08
 
 - First release: `.nino-typewriter` types its lines - the container's own

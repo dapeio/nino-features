@@ -12,6 +12,34 @@ A release is the tag `redirects-<version>` of dapeio/nino-features.
   feature to an installation that could not then install it. `^1.3` names
   only a kernel that can read the manifest.
 
+### Added
+
+- **A target can be picked from the pages of the site.** The editor offers
+  every GET route shaped like a page - not a wildcard, a POST route, the
+  workbench or a name like `sitemap.xml` - under the target field, named the
+  way the menu names it (`[[/webpage<uri>/name]]`, in any language the project
+  offers, the native one winning) and by its path where nobody did. The free
+  text stays what decides: an address of another site, or a page that is not
+  made yet, is typed. `apiList` answers the pages as `routes`.
+
+- **A target nothing answers is flagged and warned about.** The target is
+  checked in the order a request is asked - a file in the public directory,
+  which the web server serves before Nino is asked, then another site, a
+  route, another rule - and a rule answers one of `external`, `route`,
+  `rule`, `loop`, `file` or `nothing`. The table has a **Target** column that
+  flags `nothing`, `loop` and `rule`, so a dead target stored before this
+  stands out, and a save answers with `warnings` for the rule it wrote. It
+  never refuses and nothing new is stored: the answer is read off the routes
+  and the rules every time, so the data shape is unchanged. An
+  https target is never fetched. A wildcard route answers everything below
+  itself, so a missing post under the Posts feature's `/blog/*` is not
+  detected, and the README says so. The probe asks the same question, so the
+  probe, the warning and the flag never disagree; its three answers are as
+  they were, bar one: an existing file of the public directory is answered by
+  the web server, so the probe says a page answers it where it used to say
+  nothing does. A chain of rules that ends where nothing answers is `nothing`,
+  not `rule`, since that is where a visitor lands.
+
 ### Changed
 
 - **The strip stands in the panel's head, beside its name.** The workbench
@@ -33,6 +61,16 @@ A release is the tag `redirects-<version>` of dapeio/nino-features.
   nothing. Words only - the code is unchanged.
 
 ### Fixed
+
+- **The home page was refused as a target, and a subtree rule to it would have
+  sent an empty `Location`.** `Rules::target()` ran a target through `path()`,
+  which answers `''` for `/` - a rule from the front page would take the whole
+  site, which is why `path()` keeps refusing it as an old address - so the
+  commonest rule there is, an old address that moved to the front page, was
+  turned down as not a target. `/` is a target now. And a subtree rule whose
+  target is `/` built `rtrim( '/', '/' ). $rest`, which is `''` for the base
+  itself; it answers `/` there, and `/x` for `/old/x`. Existing rules and the
+  stored file are untouched.
 
 - **A list of unanswered addresses that somebody had edited by hand answered
   every 404 with a 500.** `Rules::noteMiss()` sorted whatever stood under

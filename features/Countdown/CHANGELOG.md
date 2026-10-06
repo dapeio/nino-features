@@ -12,6 +12,23 @@ A release is the tag `countdown-<version>` of dapeio/nino-features.
   feature to an installation that could not then install it. `^1.3` names
   only a kernel that can read the manifest.
 
+### Added
+
+- **A setting, "Default timezone".** The timezone a countdown without `tz=`
+  and without an offset of its own is read in. Its default, "As the server is
+  set (PHP default)", is what every countdown was read in before, so an update
+  leaves every page as it was. Once a zone is chosen, every such countdown is
+  read in it, by that zone's rules on the day: going from UTC to Europe/Berlin
+  moves the instant one hour earlier in winter and two in summer. `tz=` on the
+  shortcode still wins, and a moment that carries its own offset or zone is
+  read at that one. Saving the setting in the Features panel drops the
+  full-page cache by itself; only a hand edit of `config.php` waits for the
+  cache's lifetime (3600 s by default). A stored value that is no option any
+  more - a zone a later tzdata dropped - is answered with the default. The
+  setting is a select with a `server` value of its own rather than an empty
+  one, because the panel cannot return a select to empty once it holds a
+  value.
+
 ### Changed
 
 - **The manual promised the parts in the order they are written.** The
@@ -65,14 +82,15 @@ A release is the tag `countdown-<version>` of dapeio/nino-features.
   with nothing on the page to show it. The shortcode says which timezone now -
   `[countdown to="2026-12-24 18:00" tz="Europe/Berlin"]` - which is where it
   belongs, beside the moment itself: a sale ending in Berlin and a conference
-  opening in Lisbon are not the same countdown, and this feature has no
-  settings for the same reason. Without `tz` the process default is still what
-  is used, and the README and the manual say that instead of promising a site
-  timezone; a `to` that carries its own offset is unaffected, as it always was.
-  A `tz` php does not know renders nothing and says so in the log, the way an
-  unreadable date does - a counter an hour off looks right, which is worse than
-  one that is not there. And a `<time>` that had stopped being a time kept
-  saying it was one: when the moment passes and the shortcode was given a
+  opening in Lisbon are not the same countdown, so the zone stays the
+  shortcode's to say, with the Default timezone setting below it for the
+  countdowns that say nothing. Without either the process default is still
+  what is used, and the README and the manual say that instead of promising a
+  site timezone; a `to` that carries its own offset is unaffected, as it
+  always was. A `tz` php does not know renders nothing and says so in the log,
+  the way an unreadable date does - a counter an hour off looks right, which
+  is worse than one that is not there. And a `<time>` that had stopped being a
+  time kept saying it was one: when the moment passes and the shortcode was given a
   `done` sentence, `finish()` wrote that sentence into the
   `<time class="nino-countdown-date">` and left
   `datetime="2026-12-24T18:00:00+01:00"` on it, so the element told every

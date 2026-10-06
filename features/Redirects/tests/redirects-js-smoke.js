@@ -11,7 +11,11 @@
  *													message line exists on whichever screen is on, and
  *													that making a rule out of an address takes the
  *													operator back to the rules with the address already
- *													in the editor.
+ *													in the editor - and that a target can be picked from
+ *													the pages of the site, that a rule whose target
+ *													leads nowhere carries a flag in the table, and that
+ *													what a save warned about is on the message line
+ *													while the editor is closed.
  *
  *													No jsdom, no dependency: the same element stand-in
  *													the other feature tests build, with just enough of
@@ -78,6 +82,7 @@ function element( tag ) {
 		appendChild			: function( child ) { child.parent = this; this.children.push( child ); return child },
 		addEventListener: function( type, fn ) { ( this.listeners[type] = this.listeners[type] || [] ).push( fn ) },
 		click						: function() { ( this.listeners['click'] || [] ).forEach( function( fn ) { fn() } ) },
+		change					: function() { ( this.listeners['change'] || [] ).forEach( function( fn ) { fn() } ) },
 		matchesClass		: function( name ) { return ( this.attributes['class'] || '' ).split( /\s+/ ).indexOf( name ) !== -1 },
 		querySelector		: function( selector ) { return this.querySelectorAll( selector )[0] || null },
 		querySelectorAll: function( selector ) {
@@ -134,7 +139,9 @@ function childrenWith( parent, name ) {
  *	pane the shell renders for it, with the head over them (see
  *	Panels::panesHtml() in the kernel): the panel's name and the actions slot
  *
- *	@param		{Object}	options		{ rules, misses, recording, head, panelHead } -
+ *	@param		{Object}	options		{ rules, routes, misses, recording, save, head, panelHead } -
+ *																routes: the pages a target can be picked from,
+ *																save: what a save answers,
  *																head: false renders the pane without a head,
  *																panelHead: false stands in for a kernel from
  *																before the head, which has no panelHead() at all
@@ -190,12 +197,15 @@ function panel( options ) {
 			if( payload.action === 'redirects/list' )
 				return callback( { status : 200, responseJSON : {
 					rules			: options.rules || [],
+					routes		: options.routes || [],
 					misses		: options.misses || [],
 					statuses	: [ 301, 302 ],
 					recording	: options.recording !== false,
 					limit			: 50,
 					notes			: [],
 				} } );
+			if( payload.action === 'redirects/save' )
+				return callback( { status : 200, responseJSON : options.save || { saved : '', rules : [], warnings : [], notes : [] } } );
 			callback( { status : 200, responseJSON : {} } );
 		} },
 		adminUi	: {
@@ -204,7 +214,24 @@ function panel( options ) {
 			listActions	: function( buttons ) { const el = element('div'); el.className = 'nino-admin-list-actions'; buttons.forEach( function( b ) { el.appendChild( b ) } ); return el },
 			actionBar		: function( bar ) { const el = element('div'); el.className = 'nino-admin-action-bar'; el.appendChild( bar ); return el },
 			contextBar	: function( back ) { const el = element('div'); el.className = 'nino-admin-context-bar'; el.appendChild( back ); return el },
-			selectField	: function() { const el = element('div'); el.className = 'nino-admin-field'; return el },
+			// A select with its options and its change, because what a pick
+			// writes where is exactly what is under test
+			selectField	: function( config ) {
+				const el = element('label');
+				el.className = 'nino-admin-field';
+				const select = element('select');
+				select.setAttribute( 'data-key', config.key );
+				( config.options || [] ).forEach( function( option ) {
+					const choice = element('option');
+					choice.value = String( option.value );
+					choice.textContent = option.label;
+					select.appendChild( choice );
+				} );
+				select.value = String( config.value );
+				select.addEventListener( 'change', function() { config.onChange( select.value ) } );
+				el.appendChild( select );
+				return el;
+			},
 			switchField	: function() { const el = element('div'); el.className = 'nino-admin-field'; el.appendChild( element('input') ); return el },
 			table				: function( config ) {
 				const el = element('table');
@@ -367,6 +394,84 @@ check( 'making a rule out of an address puts the rules screen on, with the addre
 check( '...and the editor is what stands there rather than the table',
 	made.rules.querySelectorAll('.nino-admin-context-bar').length === 1
 	&& made.rules.querySelectorAll('.nino-admin-table').length === 0 );
+
+
+// --- A target from the pages of the site ---------------------------------------
+
+const dead = { from : '/a', to : '/dead', status : 301, subtree : false, hits : 0, last : '', answer : 'nothing' };
+const fine = { from : '/b', to : '/here', status : 301, subtree : false, hits : 0, last : '', answer : 'route' };
+const looped = { from : '/c', to : '/c-2', status : 301, subtree : false, hits : 0, last : '', answer : 'loop' };
+const twice = { from : '/d', to : '/a', status : 301, subtree : false, hits : 0, last : '', answer : 'rule' };
+
+const picking = panel( {
+	rules		: [ dead, fine, looped, twice ],
+	routes	: [ { path : '/blog', label : 'The blog', locale : '' }, { path : '/about', label : '/about', locale : '' } ],
+	save		: {
+		saved		: '/new',
+		rules		: [ dead, fine ],
+		warnings	: [ 'Saved - but nothing answers "/blog" yet.' ],
+		notes		: [],
+	},
+} );
+
+/*	A rule whose target leads nowhere looks exactly like one that works until
+	somebody follows it, so the table says so: nothing, a loop and another rule
+	are flagged, and a target a page or a file or another site answers is not	*/
+const flags = picking.rules.querySelectorAll('.redirects-flag');
+check( 'a rule whose target nothing answers carries a flag in the table, and so do a loop and a rule through another rule',
+	flags.length === 3
+	&& flags[0].textContent === '/_admin/redirects/answer/nothing' && flags[1].textContent === '/_admin/redirects/answer/loop'
+	&& flags[2].textContent === '/_admin/redirects/answer/rule' );
+check( '...the first two as errors, the last as a note, and a rule that is answered says nothing',
+	flags[0].matchesClass('nino-admin-error') === true && flags[1].matchesClass('nino-admin-error') === true
+	&& flags[2].matchesClass('nino-admin-error') === false
+	&& picking.rules.querySelectorAll('.nino-admin-row').length === 4 );
+
+picking.rules.querySelectorAll('.nino-admin-list-actions')[0].children[0].click();
+
+const select = picking.rules.querySelectorAll('select').filter( function( node ) { return node.getAttribute('data-key') === 'pick' } )[0] || null;
+
+check( 'the editor offers the pages of the site under the free text, after an empty first entry',
+	select !== null && select.children.length === 3 && select.children[0].value === ''
+	&& select.children[1].value === '/blog' && select.children[2].value === '/about' );
+check( '...a page that has a name with the name and the path, and one that has none with the path alone',
+	select.children[1].textContent === 'The blog (/blog)' && select.children[2].textContent === '/about' );
+
+const inputs = picking.rules.querySelectorAll('input');
+select.value = '/blog';
+select.change();
+
+check( 'picking a page writes its path into the target field and into the working copy',
+	inputs[1].value === '/blog' && picking.panel._editing.to === '/blog' );
+check( '...and the picker goes back to its first entry, so the next pick is a change again', select.value === '' );
+
+// Typing stays what decides: another site, a page that is not made yet
+inputs[1].value = '/typed';
+inputs[1].listeners['input'].forEach( function( fn ) { fn() } );
+check( 'the free text still wins over what was picked', picking.panel._editing.to === '/typed' );
+
+const bar = picking.rules.querySelectorAll('.nino-admin-action-bar')[0];
+bar.children[0].children[0].click();
+
+const line = picking.rules.querySelectorAll('#redirects-msg')[0] || null;
+check( 'after a save that came with a warning the editor is closed and the table is back',
+	picking.panel._editing === null && picking.rules.querySelectorAll('.nino-admin-table').length === 1
+	&& picking.rules.querySelectorAll('.nino-admin-context-bar').length === 0 );
+check( '...and the warning stands on the message line, as an error and as text',
+	line !== null && line.textContent === 'Saved - but nothing answers "/blog" yet.' && line.matchesClass('nino-admin-error') === true );
+
+const plain = panel( { rules : [ fine ], save : { saved : '/new', rules : [ fine ], warnings : [], notes : [] } } );
+plain.rules.querySelectorAll('.nino-admin-list-actions')[0].children[0].click();
+
+const plainSelect = plain.rules.querySelectorAll('select').filter( function( node ) { return node.getAttribute('data-key') === 'pick' } )[0] || null;
+
+plain.rules.querySelectorAll('.nino-admin-action-bar')[0].children[0].children[0].click();
+
+const plainLine = plain.rules.querySelectorAll('#redirects-msg')[0] || null;
+check( 'a save without a warning says only that it saved',
+	plainLine !== null && plainLine.textContent === '/_admin/redirects/msg/saved' && plainLine.matchesClass('nino-admin-error') === false );
+check( '...and a panel with no pages to offer still has a picker, with its one empty entry',
+	plain.panel._routes.length === 0 && plainSelect !== null && plainSelect.children.length === 1 && plainSelect.children[0].value === '' );
 
 
 // --- Nothing to draw -----------------------------------------------------------

@@ -24,12 +24,20 @@ moment is written, because that is where it belongs: a sale ending in Berlin and
 a conference opening in Lisbon are not the same countdown, and a site may well
 have both.
 
+A `to=` without `tz=` is read in the **Default timezone** of the feature's
+settings, and that one is `As the server is set` until somebody chooses another.
+The order is:
+
+1. the `tz=` of the shortcode;
+2. the Default timezone setting, when it names a zone;
+3. the timezone the php process runs in.
+
 Nino has no timezone of its own — there is no such key in
 `\Nino\AppData::DEFAULTS` and the kernel calls no `date_default_timezone_set()`.
-So a `to=` written **without** `tz=` is read in whatever timezone the php process
-runs in, which is `UTC` unless the host says otherwise. A `to=` that carries its
-own offset or zone name (`2026-12-24T18:00:00+01:00`, `2026-12-24 18:00
-Europe/Berlin`) is read at that one, and `tz=` does not enter into it.
+So `As the server is set` is whatever the php process is configured with, which
+is `UTC` unless the host says otherwise. A `to=` that carries its own offset or
+zone name (`2026-12-24T18:00:00+01:00`, `2026-12-24 18:00 Europe/Berlin`) is read
+at that one, and neither `tz=` nor the setting enters into it.
 
 A `tz=` naming a timezone PHP does not know renders nothing and says so in the
 log, the same way an unreadable date does: a counter an hour off looks right,
@@ -57,7 +65,7 @@ what the element says, and "The time has come" is not that instant.
 | Attribute | What it does |
 | --- | --- |
 | `to=` | the moment, in anything PHP's `DateTimeImmutable` reads. A date this cannot read renders nothing and says so in the log |
-| `tz=` | the timezone a wall-clock `to=` is read in, as an identifier PHP knows — `Europe/Berlin`. Without it the timezone the server runs in is used; see *Which offset* above |
+| `tz=` | the timezone a wall-clock `to=` is read in, as an identifier PHP knows — `Europe/Berlin`. It wins over the Default timezone setting for this one countdown; without either, the timezone the server runs in is used; see *Which offset* above |
 | `units=` | which parts are shown: any of `days`, `hours`, `minutes`, `seconds`. Always drawn largest first whatever order they are written in — "3 Minuten 2 Tage" is not a duration anybody reads. Default: all four |
 | `format=` | how the date under the counter is written, in PHP's `date()` letters. Default `Y-m-d H:i`, which is unambiguous in every language |
 | `done=` | what stands there once the moment has passed. Without it — and with `done=""`, which is the same thing — the Text panel's own sentence is used; empty that fill in the Text panel and the date itself comes back |
@@ -100,8 +108,23 @@ it stops as soon as the last one has run out.
 
 ## Settings
 
-None. Which moment, which parts of it and what stands there afterwards all belong
-to the one place the countdown is written. A sale ending and a conference opening
+| Setting | What it does |
+| --- | --- |
+| Default timezone | the timezone a countdown without `tz=` and without an offset of its own is read in. `As the server is set` (the default) keeps what every countdown did before the setting existed; any other value is a timezone PHP knows, such as `Europe/Berlin`. `tz=` on the shortcode always wins |
+
+Once a zone is chosen, every countdown without `tz=` and without an offset of
+its own is read in it: going from `UTC` to `Europe/Berlin` moves the instant one
+hour earlier in winter and two in summer. The zone is applied by its rules on the
+day, so one setting serves a winter and a summer date alike. Saving it in the
+Features panel drops the full-page cache by itself; only a hand edit of
+`config.php` waits for the cache's lifetime.
+
+A zone a later tzdata drops (`Europe/Kiev`, now `Europe/Kyiv`) is no option any
+more, and a stored value that is not one is answered with the default —
+`As the server is set` — rather than handed to the shortcode.
+
+Which moment, which parts of it and what stands there afterwards still belong to
+the one place the countdown is written. A sale ending and a conference opening
 are not the same countdown, and a site may well have both.
 
 ## Data
@@ -113,7 +136,8 @@ it is arithmetic in the reader's own browser.
 
 `tests/countdown-smoke.php` — the manifest, the activation and the nine words it
 merges, the shortcode over its units and formats, the timezone a wall-clock
-moment is read in, and every way of getting the moment wrong, the two files it
+moment is read in — the shortcode's, the setting's and the server's, in that
+order — and every way of getting the moment wrong, the two files it
 puts into the site's bundles, and deactivation. It runs
 `tests/countdown-js-smoke.js` too where `node` is on the path.
 

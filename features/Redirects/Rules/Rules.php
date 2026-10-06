@@ -25,6 +25,11 @@ namespace Nino\Modules\Redirects {
 	 *										that would send a visitor back into itself. A file
 	 *										somebody edited by hand is input like any other.
 	 *
+	 *										And two questions the panel asks about a target
+	 *										without storing the answer: which pages of the site
+	 *										there are to send to (routes()), and what answers an
+	 *										address a rule sends to (answer()).
+	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
 	 *	@link							https://github.com/dapeio/nino
@@ -49,6 +54,11 @@ namespace Nino\Modules\Redirects {
 		// an afternoon than a person will ever read; what makes the list useful
 		// is that the ones worth a rule are near the top, not that it is complete
 		public const int MISS_LIMIT = 50;
+
+		// How many rules answer one another before a chain is called a loop.
+		// A browser gives up after about twenty redirects; a chain of this
+		// length is not one anybody wrote on purpose
+		public const int HOPS = 8;
 
 		/**
 		 *	The stored file, normalised
@@ -197,7 +207,11 @@ namespace Nino\Modules\Redirects {
 				// sending every one of them to the same page
 				$rest = substr( $path, strlen( $rule['from'] ) );
 
-				return [ 'from' => $rule['from'], 'to' => rtrim( $rule['to'], '/' ). $rest, 'status' => $rule['status'] ];
+				// The home page is the one target that is nothing but a slash:
+				// a subtree that moved there has to answer '/', never ''
+				$to = rtrim( $rule['to'], '/' ). $rest;
+
+				return [ 'from' => $rule['from'], 'to' => $to === '' ? '/' : $to, 'status' => $rule['status'] ];
 			}
 
 			return null;
@@ -269,6 +283,10 @@ namespace Nino\Modules\Redirects {
 		 *	Where a rule may send somebody: a path of this site, or an https
 		 *	address of another one.
 		 *
+		 *	The home page, '/', is a target although path() answers '' for it:
+		 *	an old address that moved to the front page is the commonest rule
+		 *	there is, and what a rule *starts* from is another question
+		 *
 		 *	http is refused rather than passed through. A redirect is the one
 		 *	moment a site chooses the next address for somebody, and choosing a
 		 *	plaintext one hands that request to whoever is on the wire
@@ -280,6 +298,14 @@ namespace Nino\Modules\Redirects {
 		public static function target( string $value ): string {
 
 			$value = trim( $value );
+
+			// Query and fragment go first, as path() drops them: '/?x' is the
+			// home page the way '/a?x' is '/a'
+			if( str_starts_with( $value, '/' ) === true )
+				$value = (string) preg_replace( '/[?#].*$/', '', $value );
+
+			if( $value === '/' )
+				return '/';
 
 			if( str_starts_with( $value, '/' ) === true )
 				return self::path( $value );
@@ -293,6 +319,186 @@ namespace Nino\Modules\Redirects {
 			$host = parse_url( $value, PHP_URL_HOST );
 
 			return is_string( $host ) === true && $host !== '' ? rtrim( $value, '/' ) : '';
+		}
+
+		/**
+		 *	The pages a rule could send to, for the panel's picker.
+		 *
+		 *	Read from the routes of this request rather than from config.php,
+		 *	because a route a module registers in init() answers an address as
+		 *	well as one a project persisted. A GET route without a wildcard and
+		 *	shaped like a page (see pageShaped(), which also drops the
+		 *	workbench and a name like sitemap.xml) is offered; '/' is.
+		 *
+		 *	The label is the page's name the way a menu resolves it: the
+		 *	locale-independent global.php under the file of a locale, the
+		 *	native one first and so winning where several name the page.
+		 *	Navigation's own lookup is private, so this is its reading again.
+		 *	A page nobody named is its path.
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	array								path => [ 'path', 'label', 'locale' ], by path
+		 */
+		public static function routes( array &$appData ): array {
+
+			$textDir	= (string) ( $appData['/nino/locales/textfiles'] ?? '/text' );
+			$global		= \Nino\Filesystem::getFileContent( $appData, $textDir. '/global.php', [] );
+			$global		= is_array( $global ) === true ? $global : [];
+			$texts		= [];
+
+			foreach( array_unique( array_merge( [ \Nino\Locales::getNativeLocale( $appData ) ], \Nino\Locales::getAvailableLocales( $appData ) ) ) as $locale ) {
+				$fills		= \Nino\Filesystem::getFileContent( $appData, $textDir. '/'. $locale. '.php', [] );
+				$texts[]	= array_merge( $global, is_array( $fills ) === true ? $fills : [] );
+			}
+
+			$pages = [];
+
+			foreach( (array) ( $appData['/nino/http/routes'] ?? [] ) as $key => $route ) {
+
+				if( is_string( $key ) === false || str_starts_with( $key, 'GET://' ) === false || str_ends_with( $key, '/*' ) === true )
+					continue;
+
+				$path = substr( $key, strlen( 'GET:/' ) );
+
+				if( ( $path !== '/' && self::pageShaped( $path ) === false ) || isset( $pages[$path] ) === true )
+					continue;
+
+				$uri		= is_array( $route ) === true && is_string( $route['uri'] ?? null ) === true ? $route['uri'] : $path;
+				$label	= '';
+
+				foreach( $texts as $fills ) {
+
+					$name = $fills['[[/webpage'. $uri. '/name]]'] ?? '';
+
+					if( is_string( $name ) === false )
+						continue;
+
+					$label = trim( html_entity_decode( strip_tags( $name ), ENT_QUOTES | ENT_HTML5, 'UTF-8' ) );
+
+					if( $label !== '' )
+						break;
+				}
+
+				$pages[$path] = [
+					'path'		=> $path,
+					'label'		=> $label !== '' ? $label : $path,
+					'locale'	=> is_array( $route ) === true && is_string( $route['locale'] ?? null ) === true ? $route['locale'] : '',
+				];
+			}
+
+			ksort( $pages );
+
+			return $pages;
+		}
+
+		/**
+		 *	What answers an address a rule sends to, in the order a request is
+		 *	asked: a file, another site, a route, a rule, or nothing.
+		 *
+		 *	'file' is a file of the project's public directory, which the web
+		 *	server answers without Nino - before any route or rule, so a rule
+		 *	for such an address is never reached. 'external' is an https
+		 *	address, which is never fetched - what is there is that site's.
+		 *	'route' is a page of this site; for a subtree rule it is also any
+		 *	route below the target, because a page or a wildcard there answers
+		 *	the pages that moved. 'rule' is another rule answering the target,
+		 *	so a visitor is redirected twice; the chain is followed for HOPS
+		 *	rules and is 'loop' where it comes back to an address it has been
+		 *	at. A chain is a 'rule' where its last address is answered, by a
+		 *	page, a file or another site, and 'nothing' where it is not.
+		 *	Everything else is 'nothing': a visitor gets the 404 page.
+		 *
+		 *	The one question behind the panel's probe, the warning after a save
+		 *	and the flag in the table, so the three never disagree.
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$to						A rule's target
+		 *	@param		bool			$subtree			Whether the rule covers everything below its address
+		 *
+		 *	@return 	string								'external', 'route', 'rule', 'loop', 'file' or 'nothing'
+		 */
+		public static function answer( array &$appData, string $to, bool $subtree = false ): string {
+
+			if( str_starts_with( $to, 'https://' ) === true )
+				return 'external';
+
+			$rules	= self::read( $appData )['rules'];
+			$seen		= [];
+
+			for( $hop = 0; $hop <= self::HOPS; $hop++ ) {
+
+				// A chain that ends on another site is an answer, and not ours
+				// to follow
+				if( str_starts_with( $to, 'https://' ) === true )
+					return 'rule';
+
+				$to = $to === '/' ? '/' : self::path( $to );
+
+				if( $to === '' )
+					return 'nothing';
+
+				if( isset( $seen[$to] ) === true )
+					return 'loop';
+
+				$seen[$to] = true;
+
+				if( self::_file( $appData, $to ) === true )
+					return $hop === 0 ? 'file' : 'rule';
+
+				if( \Nino\Http::requestRoute( $appData, $to, 'GET' ) !== null )
+					return $hop === 0 ? 'route' : 'rule';
+
+				if( $hop === 0 && $subtree === true && self::_routeBelow( $appData, $to ) === true )
+					return 'route';
+
+				$match = self::match( $rules, $to );
+
+				if( $match === null )
+					return 'nothing';
+
+				$to = $match['to'];
+			}
+
+			return 'loop';
+		}
+
+		/**
+		 *	Whether any GET route lies below an address - a page, or a wildcard
+		 *	that answers everything under it
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$to						A path, '/' for the whole site
+		 *
+		 *	@return 	bool
+		 */
+		private static function _routeBelow( array &$appData, string $to ): bool {
+
+			$prefix = 'GET:/'. rtrim( $to, '/' ). '/';
+
+			foreach( array_keys( (array) ( $appData['/nino/http/routes'] ?? [] ) ) as $key )
+				if( is_string( $key ) === true && str_starts_with( $key, $prefix ) === true )
+					return true;
+
+			return false;
+		}
+
+		/**
+		 *	Whether a path is a file below the project's public directory. Only
+		 *	that tree: the web server answers it as it stands, and the rest of
+		 *	the project is code or private
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$to						A path as path() answers it
+		 *
+		 *	@return 	bool
+		 */
+		private static function _file( array &$appData, string $to ): bool {
+
+			if( str_starts_with( $to, '/public/' ) === false )
+				return false;
+
+			return is_file( \Nino\Filesystem::getPublicPath( $appData ). substr( $to, strlen( '/public' ) ) ) === true;
 		}
 
 		/**

@@ -2,12 +2,14 @@
  *	Nino
  *	typewriter-js-smoke.js	Behaviour test for typewriter.js, the half of this
  *							feature that PHP never touches: the line sequence it
- *							plays, every data attribute that times it, the markup
- *							it leaves for assistive technology, and the markup it
- *							leaves alone. DOM-light - the file is evaluated in a
- *							vm context against stand-ins for the handful of DOM
- *							APIs it uses, with a clock that only moves when this
- *							test says so.
+ *							plays - once by default, in a loop where the container
+ *							asks - the pause button a container can ask for, every
+ *							data attribute that times it, the markup it leaves for
+ *							assistive technology, and the markup it leaves alone.
+ *							DOM-light - the file is evaluated in a vm context
+ *							against stand-ins for the handful of DOM APIs it
+ *							uses, with a clock that only moves when this test
+ *							says so.
  *
  *							typewriter-smoke.php runs this through node when node
  *							is on the path, so bin/check.sh and CI cover it; it
@@ -58,11 +60,16 @@ function classList( initial ) {
  *	them the way the DOM does - the typewriter empties a line and appends
  *	spans to it, so a plain string property would not measure anything.
  */
+let focused = null;
+
 function element( attributes ) {
 	const el = {
 		attributes : attributes || {},
 		children : [],
 		own : '',
+		tagName : '',
+		type : '',
+		listeners : {},
 		className : '',
 		style : {},
 		parentNode : null,
@@ -78,17 +85,44 @@ function element( attributes ) {
 		},
 		insertBefore : function( child, before ) {
 			this.appendChild( child );
+
+			// Nothing to go before is the end of the list, which is where
+			// appendChild() has put it already
+			if( before === null || before === undefined )
+				return child;
+
 			this.children.pop();
 			this.children.splice( this.children.indexOf( before ), 0, child );
 			return child;
 		},
+		addEventListener : function( type, callback ) {
+			( this.listeners[type] = this.listeners[type] || [] ).push( callback );
+		},
+		click : function() {
+			( this.listeners['click'] || [] ).forEach( function( callback ) { callback() } );
+		},
 		removeChild : function( child ) {
 			this.children = this.children.filter( function( node ) { return node !== child } );
 			child.parentNode = null;
+
+			// A focused element that leaves the page takes the focus with it
+			if( focused === child )
+				focused = null;
+
 			return child;
 		},
+		focus : function() { focused = this },
 		querySelectorAll : function() { return [] },
 	};
+
+	// The sibling after this element in its parent, null where it is the last
+	Object.defineProperty( el, 'nextSibling', {
+		get : function() {
+			if( this.parentNode === null )
+				return null;
+			return this.parentNode.children[ this.parentNode.children.indexOf( this ) + 1 ] ?? null;
+		},
+	} );
 
 	Object.defineProperty( el, 'textContent', {
 		get : function() {
@@ -128,13 +162,20 @@ function cursorAtHead( line ) {
  */
 function world( spec ) {
 
+	focused = null;
+
 	const
 		lines = ( spec.lines || [] ).map( function( text ) {
 			const line = element();
 			line.textContent = text;
 			return line;
 		} ),
-		wrap = element( spec.attributes || {} );
+		wrap = element( spec.attributes || {} ),
+		// What the container stands in: the pause button goes after it, as its
+		// sibling, so it has to have a parent to stand beside
+		host = element();
+
+	host.appendChild( wrap );
 
 	wrap.querySelectorAll = function( selector ) { return selector === ( spec.selector || 'p' ) ? lines : [] };
 
@@ -160,10 +201,15 @@ function world( spec ) {
 		timers = [],
 		observers = [],
 		document = {
+			get activeElement() { return focused },
 			readyState : 'complete',
 			addEventListener : function() {},
 			querySelectorAll : function( selector ) { return selector === '.nino-typewriter' ? ( refused === null ? [ wrap ] : [ refused, wrap ] ) : [] },
-			createElement : function() { return element() },
+			createElement : function( tag ) {
+				const created = element();
+				created.tagName = tag;
+				return created;
+			},
 		};
 
 	let now = 0;
@@ -177,6 +223,11 @@ function world( spec ) {
 		setTimeout : function( callback, delay ) {
 			timers.push( { at : now + ( Number( delay ) || 0 ), callback : callback, done : false } );
 			return timers.length;
+		},
+		// A cleared timer is one that has been run: the clock skips it
+		clearTimeout : function( id ) {
+			if( timers[id - 1] !== undefined )
+				timers[id - 1].done = true;
 		},
 		IntersectionObserver : function( callback ) {
 			const observer = this;
@@ -216,6 +267,9 @@ function world( spec ) {
 
 	return {
 		wrap : wrap,
+		host : host,
+		// The pause button, where there is one: the container's next sibling
+		toggle : function() { return wrap.nextSibling },
 		lines : lines,
 		refusedLine : refusedLine,
 		observers : observers,
@@ -274,9 +328,54 @@ check( 'and the cursor is gone from the first', childByClass( first, 'nino-typew
 fade.advance( 400 + 45 + 45 );
 check( 'the second line types the same way', childByClass( second, 'nino-typewriter-text' ).textContent === 'Cd' );
 
-fade.advance( 45 + 1600 + 400 + 300 );
-check( 'after the last line it starts over', first.classList.contains('nino-is-active') === true && second.classList.contains('nino-is-active') === false );
-check( 'and rewrites it from nothing', childByClass( first, 'nino-typewriter-text' ).textContent === '' );
+/*	The default is one pass: after the last line the typewriter stops, with that
+	line complete and its cursor gone, so nothing blinks on forever. The earlier
+	lines stay faded out - their text is still there for a screen reader, in the
+	reader spans	*/
+fade.advance( 45 + 1600 );
+check( 'after the last line it stops, with that line complete and still showing',
+	second.classList.contains('nino-is-active') === true && childByClass( second, 'nino-typewriter-text' ).textContent === 'Cd' );
+check( '...its cursor gone, so the blinking ends', childByClass( second, 'nino-typewriter-cursor' ) === null );
+check( '...and the line before it faded out for good, its text still there for a screen reader',
+	first.classList.contains('nino-is-active') === false && childByClass( first, 'nino-typewriter-reader' ).textContent === 'Ab' );
+
+fade.advance( 100000 );
+check( 'a typewriter that has stopped stays stopped', second.classList.contains('nino-is-active') === true
+	&& first.classList.contains('nino-is-active') === false && childByClass( second, 'nino-typewriter-text' ).textContent === 'Cd' );
+
+const single = world( { lines : [ 'Ab' ], attributes : { 'data-typewriter-start' : 'load' } } );
+single.advance( 400 + 45 + 45 + 1600 );
+check( 'a typewriter of one line types it once and leaves it standing',
+	single.lines[0].classList.contains('nino-is-active') === true && childByClass( single.lines[0], 'nino-typewriter-text' ).textContent === 'Ab'
+	&& childByClass( single.lines[0], 'nino-typewriter-cursor' ) === null );
+
+/*	What an existing page does to get the old behaviour back: any non-empty
+	value that is not one of the four that switch a flag off	*/
+[ '1', 'true', 'on', 'yes', 'YES' ].forEach( function( value ) {
+
+	const looped = world( { lines : [ 'Ab', 'Cd' ], attributes : { 'data-typewriter-start' : 'load', 'data-typewriter-loop' : value } } );
+
+	// 0 + 400 + 90 + 1600 to leave the first line, 400 + 300 to open the second,
+	// 400 + 90 + 1600 to leave it, and 400 + 300 to come round again
+	looped.advance( 400 + 90 + 1600 + 400 + 300 + 400 + 90 + 1600 + 400 + 300 );
+	check( 'data-typewriter-loop="'+ value+ '" starts over after the last line, from nothing',
+		looped.lines[0].classList.contains('nino-is-active') === true && looped.lines[1].classList.contains('nino-is-active') === false
+		&& childByClass( looped.lines[0], 'nino-typewriter-text' ).textContent === ''
+		&& childByClass( looped.lines[0], 'nino-typewriter-cursor' ) !== null );
+} );
+
+// Spaces around the value are not part of it, as in data-ticker-loop
+const blankLoop = world( { lines : [ 'Ab' ], attributes : { 'data-typewriter-start' : 'load', 'data-typewriter-loop' : '  ' } } );
+blankLoop.advance( 400 + 45 + 45 + 1600 );
+check( 'a data-typewriter-loop of nothing but blanks is the default, which is one pass', childByClass( blankLoop.lines[0], 'nino-typewriter-cursor' ) === null );
+
+const spacedOff = world( { lines : [ 'Ab' ], attributes : { 'data-typewriter-start' : 'load', 'data-typewriter-loop' : ' 0 ' } } );
+spacedOff.advance( 400 + 45 + 45 + 1600 );
+check( 'a data-typewriter-loop of " 0 " switches the loop off like "0"', childByClass( spacedOff.lines[0], 'nino-typewriter-cursor' ) === null );
+
+const emptyLoop = world( { lines : [ 'Ab' ], attributes : { 'data-typewriter-start' : 'load', 'data-typewriter-loop' : '' } } );
+emptyLoop.advance( 400 + 45 + 45 + 1600 );
+check( 'an empty data-typewriter-loop is the default, which is one pass', childByClass( emptyLoop.lines[0], 'nino-typewriter-cursor' ) === null );
 
 console.log('');
 
@@ -406,6 +505,94 @@ check( 'and ends on its last', childByClass( shaped.lines[0], 'nino-typewriter-t
 
 shaped.advance( 2 );
 check( 'a character outside the basic plane is typed whole, never as half a pair', childByClass( shaped.lines[1], 'nino-typewriter-text' ).textContent === '\u{1F680}' );
+
+console.log('');
+
+
+// --- The pause button ------------------------------------------------------
+
+console.log( 'data-typewriter-toggle' );
+
+const plain = world( { lines : [ 'Ab' ], attributes : { 'data-typewriter-start' : 'load' } } );
+check( 'a container that does not ask for one gets no button', plain.host.children.length === 1 && plain.toggle() === null );
+
+const asked = world( { lines : [ 'Ab', 'Cd' ], attributes : { 'data-typewriter-start' : 'load', 'data-typewriter-loop' : '1', 'data-typewriter-toggle' : 'Pause animation' } } );
+const button = asked.toggle();
+
+check( 'a container with a label gets exactly one button, as its next sibling and not inside it',
+	button !== null && asked.host.children.length === 2 && asked.host.children[0] === asked.wrap
+	&& asked.wrap.children.length === 0 && button.tagName === 'button' );
+check( '...a real button that submits nothing, wearing the kernel\'s button classes and its own',
+	button.type === 'button' && button.className === 'nino-btn nino-btn--outline nino-btn--small nino-typewriter-toggle' );
+check( '...labelled with the attribute, and not pressed', button.textContent === 'Pause animation' && button.getAttribute('aria-pressed') === 'false' );
+
+asked.advance( 400 );
+check( 'the typing runs before anybody presses it', childByClass( asked.lines[0], 'nino-typewriter-text' ).textContent === 'A' );
+
+button.click();
+check( 'a press marks the button pressed and the container paused',
+	button.getAttribute('aria-pressed') === 'true' && asked.wrap.classList.contains('nino-is-paused') === true );
+
+asked.advance( 100000 );
+check( 'and nothing is typed or changed for as long as it stays so',
+	childByClass( asked.lines[0], 'nino-typewriter-text' ).textContent === 'A' && asked.lines[0].classList.contains('nino-is-active') === true
+	&& asked.lines[1].classList.contains('nino-is-active') === false );
+
+button.click();
+check( 'a second press takes the container out of its pause', button.getAttribute('aria-pressed') === 'false'
+	&& asked.wrap.classList.contains('nino-is-paused') === false );
+
+asked.advance( 44 );
+check( '...and the step that was waiting is armed again with its full delay', childByClass( asked.lines[0], 'nino-typewriter-text' ).textContent === 'A' );
+
+asked.advance( 1 );
+check( '...so the next character lands one step after the press', childByClass( asked.lines[0], 'nino-typewriter-text' ).textContent === 'Ab' );
+
+// A pause is the visitor's, and it can be asked for before anything has
+// started - the button is there from the first paint
+const early = world( { lines : [ 'Ab' ], attributes : { 'data-typewriter-toggle' : 'Pause' } } );
+early.toggle().click();
+early.scrollIntoView();
+early.advance( 100000 );
+check( 'a pause before the container has started holds it back until it is taken up again',
+	early.lines[0].classList.contains('nino-is-active') === false );
+
+early.toggle().click();
+early.advance( 0 );
+check( '...and then it starts', early.lines[0].classList.contains('nino-is-active') === true );
+
+// Where nothing moves any more, there is nothing left to pause
+const once = world( { lines : [ 'Ab', 'Cd' ], attributes : { 'data-typewriter-start' : 'load', 'data-typewriter-toggle' : 'Pause' } } );
+once.advance( 400 + 90 + 1600 + 400 + 300 + 400 + 90 );
+check( 'the button stays while the last line is still being written', once.toggle() !== null );
+
+once.advance( 1600 );
+check( 'and is removed - not hidden - after the last line of a single pass', once.toggle() === null && once.host.children.length === 1 );
+
+// The keyboard focus does not fall back to the page's top with the button
+const focusing = world( { lines : [ 'Ab' ], attributes : { 'data-typewriter-start' : 'load', 'data-typewriter-toggle' : 'Pause' } } );
+focusing.toggle().focus();
+focusing.advance( 400 + 45 + 45 + 1600 );
+check( 'a button that has the focus when it is removed hands it to the container',
+	focusing.toggle() === null && focused === focusing.wrap && focusing.wrap.getAttribute('tabindex') === '-1' );
+
+const unfocused = world( { lines : [ 'Ab' ], attributes : { 'data-typewriter-start' : 'load', 'data-typewriter-toggle' : 'Pause' } } );
+unfocused.advance( 400 + 45 + 45 + 1600 );
+check( '...and one that has not leaves the container as it was', unfocused.toggle() === null && focused === null
+	&& unfocused.wrap.getAttribute('tabindex') === null );
+
+const endless = world( { lines : [ 'Ab' ], attributes : { 'data-typewriter-start' : 'load', 'data-typewriter-loop' : '1', 'data-typewriter-toggle' : 'Pause' } } );
+endless.advance( 100000 );
+check( 'one that loops keeps its button, since it never stops moving', endless.toggle() !== null );
+
+[ [ 'an empty label', '' ], [ 'a label that is still a fill nobody resolved', '[[/typewriter/toggle]]' ], [ 'a label of nothing but blanks', '   ' ] ].forEach( function( bad ) {
+	const none = world( { lines : [ 'Ab' ], attributes : { 'data-typewriter-start' : 'load', 'data-typewriter-toggle' : bad[1] } } );
+	check( bad[0]+ ' draws no button', none.host.children.length === 1 && none.toggle() === null );
+} );
+
+const reduced = world( { lines : [ 'Ab' ], reducedMotion : true, attributes : { 'data-typewriter-toggle' : 'Pause' } } );
+check( 'a visitor who asked for less motion gets no button, and the markup is left alone',
+	reduced.host.children.length === 1 && reduced.lines[0].children.length === 0 && reduced.lines[0].textContent === 'Ab' );
 
 console.log('');
 

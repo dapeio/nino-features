@@ -52,15 +52,22 @@ check( 'it names and describes itself in both interface languages', is_array( $m
 $raw = include $dir. '/feature.php';
 check( 'it is filed under ui', ( $raw['category'] ?? '' ) === 'ui' );
 check( 'it requires no other feature', $manifest['requires'] === [] );
-check( 'it keeps no data and carries no settings - a sale ending and a conference opening are not one countdown',
-	$manifest['data'] === [] && $manifest['settings'] === [] );
+check( 'it keeps no data, and carries one setting: the timezone a countdown without tz= is read in',
+	$manifest['data'] === [] && array_keys( $manifest['settings'] ) === [ 'timezone' ] );
+
+$setting = $manifest['settings']['timezone'];
+check( '...a required select that defaults to "server", which is how every countdown was read before',
+	$setting['type'] === 'select' && $setting['required'] === true && $setting['default'] === 'server' );
+check( '...offering "server" and every timezone PHP knows',
+	isset( $setting['options']['server'], $setting['options']['UTC'], $setting['options']['Europe/Berlin'] )
+	&& count( $setting['options'] ) === 1 + count( \DateTimeZone::listIdentifiers() ) );
 
 \Nino\AppData::writeContentData( $appData, [ '/nino/modules', '/nino/locales/available', '/nino/locales/native' ] );
 ninoWarnings();
 
 check( 'activation succeeds', \Nino\Features::activate( $appData, 'countdown' ) === true );
 check( 'the class is listed and the version recorded', in_array( '\\Nino\\Modules\\Countdown', \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/modules'], true ) === true
-	&& \Nino\Features::get( $appData, 'countdown' )['installed'] === '1.0.0' );
+	&& \Nino\Features::get( $appData, 'countdown' )['installed'] === $manifest['version'] );
 
 foreach( [ 'en_US', 'de_DE' ] as $locale ) {
 	$text = \Nino\Filesystem::getFileContent( $appData, '/text/'. $locale. '.php', [] );
@@ -106,11 +113,11 @@ check( '...and the same string is the machine-readable half of a <time>',
 
 /*	Which offset, is the shortcode's to say. A wall-clock time is half a
 	moment - 18:00 is a different instant in Berlin than it is in London - and
-	there is no site-wide timezone to take the other half from: Nino declares
-	none in AppData::DEFAULTS and calls no date_default_timezone_set(), so
-	what was called "the site's own timezone" was the php process's, UTC on an
-	installation whose host says nothing. 'tz' is the other half, written
-	where the moment is written	*/
+	Nino declares no timezone in AppData::DEFAULTS and calls no
+	date_default_timezone_set(), so what was called "the site's own timezone"
+	was the php process's, UTC on an installation whose host says nothing.
+	'tz' is the other half, written where the moment is written, and the
+	setting is the one a countdown without it is read in	*/
 $processZone = date_default_timezone_get();
 date_default_timezone_set( 'UTC' );
 
@@ -134,6 +141,45 @@ check( 'a timezone this cannot read is no countdown at all, rather than one coun
 	&& \Nino\Html::renderHtml( $appData, '[countdown to="2026-12-24 18:00" tz="Somewhere/Else"]' ) === '' );
 check( '...and it is said out loud, twice for the two of them',
 	count( array_filter( ninoWarnings(), static fn( string $w ): bool => str_contains( $w, '[countdown tz="Somewhere/Else"]' ) ) ) === 2 );
+
+/*	The setting. Its default, 'server', is the process's zone and changes
+	nothing for a page written before it existed; a zone chosen is the one
+	every countdown without tz= and without an offset of its own is read in,
+	by its rules on that day - a zone, not a fixed offset	*/
+check( 'zone() is the shortcode\'s tz, else the setting\'s, else the process\'s',
+	\Nino\Modules\Countdown::zone( $appData, [ 'tz' => ' Europe/London ' ] ) === 'Europe/London'
+	&& \Nino\Modules\Countdown::zone( $appData, [] ) === ''
+	&& \Nino\Modules\Countdown::zone( $appData, [ 'tz' => '' ] ) === '' );
+check( 'a setting still on its default leaves the instant where it was',
+	str_contains( \Nino\Html::renderHtml( $appData, '[countdown to="2026-12-24 18:00"]' ), 'data-countdown-to="2026-12-24T18:00:00+00:00"' ) === true );
+
+check( 'a zone the setting does not offer is refused',
+	array_keys( \Nino\Features::saveSettings( $appData, 'countdown', [ 'timezone' => 'Mars/Olympus' ] ) ) === [ 'timezone' ]
+	&& array_keys( \Nino\Features::saveSettings( $appData, 'countdown', [ 'timezone' => '' ] ) ) === [ 'timezone' ]
+	&& \Nino\Features::setting( $appData, 'countdown', 'timezone' ) === 'server' );
+
+check( 'a zone from the options is saved', \Nino\Features::saveSettings( $appData, 'countdown', [ 'timezone' => 'Europe/Berlin' ] ) === [] );
+check( '...and a countdown without tz= is read in it - at the offset the day had, winter and summer',
+	str_contains( \Nino\Html::renderHtml( $appData, '[countdown to="2026-12-24 18:00"]' ), 'data-countdown-to="2026-12-24T18:00:00+01:00"' ) === true
+	&& str_contains( \Nino\Html::renderHtml( $appData, '[countdown to="2026-07-01 12:00"]' ), 'data-countdown-to="2026-07-01T12:00:00+02:00"' ) === true );
+check( '...a tz= still wins over it, and so does an offset the moment carries',
+	str_contains( \Nino\Html::renderHtml( $appData, '[countdown to="2026-12-24 18:00" tz="Europe/London"]' ), 'data-countdown-to="2026-12-24T18:00:00+00:00"' ) === true
+	&& str_contains( \Nino\Html::renderHtml( $appData, '[countdown to="2026-12-24T18:00:00+05:00"]' ), 'data-countdown-to="2026-12-24T18:00:00+05:00"' ) === true );
+check( '...and zone() now answers it', \Nino\Modules\Countdown::zone( $appData, [] ) === 'Europe/Berlin'
+	&& \Nino\Modules\Countdown::zone( $appData, [ 'tz' => 'Asia/Tokyo' ] ) === 'Asia/Tokyo' );
+
+check( 'saving "server" again puts every countdown back where it was', \Nino\Features::saveSettings( $appData, 'countdown', [ 'timezone' => 'server' ] ) === []
+	&& str_contains( \Nino\Html::renderHtml( $appData, '[countdown to="2026-12-24 18:00"]' ), 'data-countdown-to="2026-12-24T18:00:00+00:00"' ) === true );
+
+/*	A value the options no longer hold - a hand edit, a zone a later tzdata
+	dropped - is not handed over: the default is, so the page renders as it
+	did before and nothing is logged	*/
+$appData['/nino/features']['countdown']['settings']['timezone'] = 'Mars/Olympus';
+ninoWarnings();
+check( 'a stored zone that is not an option falls back to "server" without a warning',
+	str_contains( \Nino\Html::renderHtml( $appData, '[countdown to="2026-12-24 18:00"]' ), 'data-countdown-to="2026-12-24T18:00:00+00:00"' ) === true
+	&& ninoWarnings() === [] );
+$appData['/nino/features']['countdown']['settings']['timezone'] = 'server';
 
 date_default_timezone_set( $processZone );
 

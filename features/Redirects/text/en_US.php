@@ -35,9 +35,15 @@ return [
 	'[[/_admin/redirects/label/search]]'			=> 'Search',
 	'[[/_admin/redirects/label/on]]'					=> 'on',
 	'[[/_admin/redirects/label/off]]'					=> 'off',
+	'[[/_admin/redirects/label/pick]]'				=> 'Or pick a page of this site',
+	'[[/_admin/redirects/label/answer]]'			=> 'Target',
 
 	'[[/_admin/redirects/status/301]]'				=> 'Moved for good (301)',
 	'[[/_admin/redirects/status/302]]'				=> 'Moved for now (302)',
+
+	'[[/_admin/redirects/answer/nothing]]'		=> 'nothing answers',
+	'[[/_admin/redirects/answer/rule]]'				=> 'through another rule',
+	'[[/_admin/redirects/answer/loop]]'				=> 'loop',
 
 	'[[/_admin/redirects/empty/rules]]'				=> 'No redirect yet.',
 	'[[/_admin/redirects/empty/missing]]'			=> 'Nothing has been asked for in vain since this was switched on.',
@@ -66,4 +72,7 @@ return [
 	'[[/_admin/redirects/reason/self]]'			=> 'it sends the address to itself',
 	'[[/_admin/redirects/reason/subtree]]'	=> 'it sends everything under it to an address that is under it again',
 	'[[/_admin/redirects/error/status]]'		=> 'That is not a redirect status.',
+	'[[/_admin/redirects/warning/nothing]]'	=> 'Saved - but nothing answers "%s" yet. Whoever follows this rule lands on the 404 page until you create a page, a route or a rule for it.',
+	'[[/_admin/redirects/warning/rule]]'		=> 'Saved. "%s" is answered by another rule, so visitors are redirected twice.',
+	'[[/_admin/redirects/warning/loop]]'		=> 'Saved - but "%s" leads back here through other rules; browsers stop such a chain with an error.',
 ];

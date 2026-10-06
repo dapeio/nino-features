@@ -14,8 +14,18 @@
  *					has been measured, and again after the box it runs in has
  *					changed width.
  *
- *					Nothing here paints. What runs past is whatever the project put
- *					in the row, in its own type, colour and size.
+ *					A row runs one cycle by default and stops on a frame identical to
+ *					its first; nino-is-looping, which ticker.js writes where the row
+ *					carries data-ticker-loop, makes the iteration count endless, so
+ *					this file never repeats which values switch it on. The other
+ *					classes it writes are nino-is-waiting (not yet seen, so held),
+ *					nino-is-paused (the visitor pressed the button the row asked for
+ *					with data-ticker-toggle) and nino-is-done (the pass is over).
+ *
+ *					Nothing here paints, but for the pressed state of that button,
+ *					which wears the kernel's own button classes. What runs past is
+ *					whatever the project put in the row, in its own type, colour and
+ *					size.
  */
 
 .nino-ticker {
@@ -32,12 +42,26 @@
 
 /*	Only once the script has copied the row and measured it: before that the
 	track is a plain flex row, which is what it reads like in the markup and
-	what a visitor without JavaScript keeps - a row of logos, side by side	*/
+	what a visitor without JavaScript keeps - a row of logos, side by side.
+	One cycle, because the copy ends where the original stood: the last frame
+	is the first, and nothing jumps when it stops	*/
 .nino-ticker.nino-is-running .nino-ticker-track {
 	animation-name: nino-ticker-run;
 	animation-duration: var(--nino-ticker-duration, 20s);
 	animation-timing-function: linear;
+	animation-iteration-count: 1;
+}
+/*	Round and round, where the row asked for it with data-ticker-loop. The
+	script reads the attribute and writes the class, so the words that switch it
+	on are in one place	*/
+.nino-ticker.nino-is-looping.nino-is-running .nino-ticker-track {
 	animation-iteration-count: infinite;
+}
+/*	Not yet seen: the animation exists and is held at its first frame until the
+	row has been in the viewport, or a row in a footer would be through its pass
+	before anybody scrolled to it	*/
+.nino-ticker.nino-is-waiting .nino-ticker-track {
+	animation-play-state: paused;
 }
 
 .nino-ticker[data-ticker-direction="right"].nino-is-running .nino-ticker-track {
@@ -56,8 +80,31 @@
 .nino-ticker.nino-is-running:focus-within .nino-ticker-track {
 	animation-play-state: paused;
 }
-.nino-ticker[data-ticker-pause="off"].nino-is-running:hover .nino-ticker-track {
+.nino-ticker[data-ticker-pause="off"].nino-is-running:not(.nino-is-paused):not(.nino-is-waiting):hover .nino-ticker-track {
 	animation-play-state: running;
+}
+
+/*	Paused with the button the row asked for (data-ticker-toggle). A class the
+	script toggles rather than :hover or :focus-within, so it holds for touch and
+	keyboard - and for a visitor who also has the pointer over the row	*/
+.nino-ticker.nino-is-paused .nino-ticker-track {
+	animation-play-state: paused;
+}
+
+/*	The pass is over. No animation at all rather than a finished one, so a later
+	resize - which sets the duration again - can never start it over. After the
+	rule that starts it, since both are as specific as each other	*/
+.nino-ticker.nino-is-done .nino-ticker-track {
+	animation: none;
+}
+
+/*	Pressed, for a visitor who can see it: the colours the kernel gives an
+	outline button under the pointer, and a ring inside the border, so the state
+	is not told by colour alone. What a screen reader is told is aria-pressed */
+.nino-ticker-toggle[aria-pressed="true"] {
+	background-color: var(--color-primary);
+	color: var(--color-primary-text);
+	box-shadow: inset 0 0 0 2px currentColor;
 }
 
 /*	Somebody asked for less movement, and a row that runs across the screen is

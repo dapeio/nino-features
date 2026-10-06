@@ -128,7 +128,11 @@ namespace Nino\Modules\Redirects {
 				$misses[] = [ 'path' => $path, 'count' => $miss['count'], 'last' => $miss['last'] ];
 
 			\Nino\Http::ok( $request, [
-				'rules'			=> $file['rules'],
+				'rules'			=> self::_annotate( $appData, $file['rules'] ),
+				// The pages a target can be picked from, which is what a
+				// workbench account reads here and nobody else: this is behind
+				// the same permission as the rules themselves
+				'routes'		=> array_values( Rules::routes( $appData ) ),
 				'misses'		=> $misses,
 				'statuses'	=> Rules::STATUSES,
 				// What the panel has to say about itself rather than guess: the
@@ -238,7 +242,30 @@ namespace Nino\Modules\Redirects {
 				return;
 			}
 
-			\Nino\Http::ok( $request, [ 'saved' => $from, 'rules' => $next['rules'], 'notes' => self::_notes( $appData, $notes ) ] );
+			$rules		= self::_annotate( $appData, $next['rules'] );
+			$warnings	= [];
+
+			/*	Saved either way. A target nothing answers is a mistake the
+				operator may be about to fix - the page comes next - so it is
+				said once, here, and never refused: a rule for a page that
+				does not exist yet is how a move is prepared	*/
+			foreach( $rules as $rule ) {
+
+				if( $rule['from'] !== $from )
+					continue;
+
+				$warning = match( $rule['answer'] ) {
+					'nothing'	=> '/_admin/redirects/warning/nothing',
+					'loop'		=> '/_admin/redirects/warning/loop',
+					'rule'		=> '/_admin/redirects/warning/rule',
+					default		=> '',
+				};
+
+				if( $warning !== '' )
+					$warnings[] = self::_say( $appData, $warning, $to );
+			}
+
+			\Nino\Http::ok( $request, [ 'saved' => $from, 'rules' => $rules, 'warnings' => $warnings, 'notes' => self::_notes( $appData, $notes ) ] );
 		}
 
 		/**
@@ -274,7 +301,7 @@ namespace Nino\Modules\Redirects {
 				return;
 			}
 
-			\Nino\Http::ok( $request, [ 'deleted' => $from, 'rules' => $rules ] );
+			\Nino\Http::ok( $request, [ 'deleted' => $from, 'rules' => self::_annotate( $appData, $rules ) ] );
 		}
 
 		/**
@@ -335,8 +362,13 @@ namespace Nino\Modules\Redirects {
 			}
 
 			// The same question the callback asks, in the same order, or a
-			// probe would answer about a site this is not
-			if( \Nino\Http::requestRoute( $appData, $path, 'GET' ) !== null ) {
+			// probe would answer about a site this is not - and the same one
+			// the save and the table ask of a target. A file in the public
+			// directory is answered by the web server before any rule is
+			// asked, so for a probe it is a page like any other
+			$answer = Rules::answer( $appData, $path );
+
+			if( $answer === 'route' || $answer === 'file' ) {
 				\Nino\Http::ok( $request, [ 'path' => $path, 'answer' => 'route' ] );
 				return;
 			}
@@ -346,6 +378,25 @@ namespace Nino\Modules\Redirects {
 			\Nino\Http::ok( $request, $match === null
 				? [ 'path' => $path, 'answer' => 'nothing' ]
 				: [ 'path' => $path, 'answer' => 'rule', 'from' => $match['from'], 'to' => \Nino\Modules\Redirects::address( $appData, $match['to'] ), 'status' => $match['status'] ] );
+		}
+
+		/**
+		 *	The rules with what answers each one's target, so the table can flag
+		 *	a rule that leads nowhere. Nothing of it is stored: it is read off
+		 *	the routes and the other rules every time, and a page created or
+		 *	removed later changes it without a rule being touched
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		$rules				Normalised rules
+		 *
+		 *	@return 	array								The same rules, each with an 'answer' (see Rules::answer())
+		 */
+		private static function _annotate( array &$appData, array $rules ): array {
+
+			foreach( $rules as $index => $rule )
+				$rules[$index]['answer'] = Rules::answer( $appData, $rule['to'], $rule['subtree'] );
+
+			return $rules;
 		}
 
 		/**

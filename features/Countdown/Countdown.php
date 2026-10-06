@@ -22,15 +22,16 @@ namespace Nino\Modules {
 	 *										the browser's, because a page that is cached for an
 	 *										hour would otherwise be an hour wrong.
 	 *
-	 *										Which offset that is, is the shortcode's to say: `tz`
-	 *										names the timezone the wall-clock moment in `to` is
-	 *										read in. Nino has no timezone of its own - there is no
-	 *										such key in AppData::DEFAULTS and the kernel calls no
-	 *										date_default_timezone_set() - so without `tz` the
-	 *										moment is read in whatever the php process is
-	 *										configured with, which is UTC unless the host says
-	 *										otherwise. A moment that carries its own offset or
-	 *										zone name is read at that one, whatever `tz` says.
+	 *										Which offset that is, is the shortcode's to say first:
+	 *										`tz` names the timezone the wall-clock moment in `to`
+	 *										is read in. Where it says nothing the setting
+	 *										`timezone` does - its default, 'server', is the
+	 *										php process's own, which is UTC unless the host says
+	 *										otherwise: Nino has no timezone of its own, there is
+	 *										no such key in AppData::DEFAULTS and the kernel calls
+	 *										no date_default_timezone_set(). A moment that carries
+	 *										its own offset or zone name is read at that one,
+	 *										whatever `tz` or the setting say.
 	 *
 	 *										Without JavaScript what stands there is the date, in a
 	 *										<time datetime="..."> - written out for a reader and
@@ -58,6 +59,9 @@ namespace Nino\Modules {
 	 *	@link							https://github.com/dapeio/nino
 	 */
 	class Countdown {
+
+		// The feature's key, which is what Features::setting() is asked by
+		public const string KEY = 'countdown';
 
 		// Where this feature's own templates are, as \Nino\Filesystem resolves
 		// them: /features is the installed features directory, wherever
@@ -110,7 +114,7 @@ namespace Nino\Modules {
 		 */
 		public static function doShortcode( array &$appData, array $args ): string {
 
-			$moment = self::moment( (string) ( $args['to'] ?? '' ), (string) ( $args['tz'] ?? '' ) );
+			$moment = self::moment( (string) ( $args['to'] ?? '' ), self::zone( $appData, $args ) );
 
 			if( $moment === null )
 				return '';
@@ -148,18 +152,43 @@ namespace Nino\Modules {
 		}
 
 		/**
+		 *	The timezone a countdown is read in: the one the shortcode names,
+		 *	else the setting's, else - '' - the php process's.
+		 *
+		 *	A setting still on 'server' answers '', which is what every
+		 *	countdown was read in before the setting existed. A stored value
+		 *	that is not an option any more never gets here: Features::settings()
+		 *	answers the default for it.
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$args					Shortcode attributes
+		 *
+		 *	@return 	string								A timezone name, '' for the process default
+		 */
+		public static function zone( array &$appData, array $args ): string {
+
+			$zone = trim( (string) ( $args['tz'] ?? '' ) );
+
+			if( $zone !== '' )
+				return $zone;
+
+			$zone = \Nino\Features::setting( $appData, self::KEY, 'timezone', 'server' );
+
+			return is_string( $zone ) === true && $zone !== 'server' ? $zone : '';
+		}
+
+		/**
 		 *	The moment a countdown counts to, or null where what was written is
 		 *	not one.
 		 *
 		 *	A wall-clock time is only half a moment: "18:00" is a different
 		 *	instant in Berlin than it is in London. $zone is the other half, and
-		 *	it comes from the shortcode, because that is where the moment comes
-		 *	from - there is no site-wide timezone to take it from. Nino declares
-		 *	none (\Nino\AppData::DEFAULTS has no such key) and sets none, so
-		 *	without $zone this reads what was written in whatever timezone the
-		 *	php process runs in - UTC on an installation whose host says
-		 *	nothing. A $to that carries its own offset or zone name is read at
-		 *	that one and $zone does not enter into it, which is
+		 *	it comes from zone(): the shortcode's tz, else the setting. Nino
+		 *	declares no timezone of its own (\Nino\AppData::DEFAULTS has no such
+		 *	key) and sets none, so without $zone this reads what was written in
+		 *	whatever timezone the php process runs in - UTC on an installation
+		 *	whose host says nothing. A $to that carries its own offset or zone
+		 *	name is read at that one and $zone does not enter into it, which is
 		 *	\DateTimeImmutable's own rule.
 		 *
 		 *	@param		string		$to						Anything \DateTimeImmutable reads

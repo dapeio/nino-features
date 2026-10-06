@@ -22,7 +22,7 @@ nobody knows is missing does not get written.
 | | |
 | --- | --- |
 | **Old address** | A path of this site: `/old/page`. A query and a fragment are cut off - a rule is about a path, and one that only applied to a single spelling of the same address would look broken. |
-| **Sends to** | A path of this site, or an `https://` address of another one. `http` is refused: a redirect is the one moment a site chooses the next address for somebody, and choosing a plaintext one hands that request to whoever is on the wire. |
+| **Sends to** | A path of this site - the home page, `/`, among them - or an `https://` address of another one. `http` is refused: a redirect is the one moment a site chooses the next address for somebody, and choosing a plaintext one hands that request to whoever is on the wire. |
 | **Kind** | `301` moved for good - what a search engine acts on and a browser caches. `302` moved for now. Nothing else: `307`/`308` are for a request with a body, and this only ever answers `GET` and `HEAD`. |
 | **Everything below it too** | A subtree. What stood after the old prefix stands after the new one, so a section that moved takes its pages with it rather than sending every one of them to the same page. |
 
@@ -51,6 +51,51 @@ Two consequences worth knowing:
   intention. `301` and `302` let a browser drop both and repeat it as a `GET`,
   and `307`/`308` would ask it to post the same body to an address the sender
   never chose.
+
+## Targets
+
+A rule is saved whatever it sends to - a rule for a page that is not made yet is
+how a move is prepared - but the panel checks the target against what the site
+has and says so, in the order a request is asked - the web server first, so a
+file of the public directory comes before any route or rule:
+
+| What answers the target | The panel says |
+| --- | --- |
+| a file in the project's public directory (`/public/…`) | nothing: the web server answers it as it stands, and a rule for that address is never reached |
+| another site (`https://…`) | nothing. It is never fetched - what is there is that site's, and this feature makes no network request |
+| a route of this site | nothing |
+| another rule | a note: visitors are redirected twice. Where that rule's own target is answered by nothing, it is the next row |
+| nothing | a warning: whoever follows the rule lands on the 404 page until a page, a route or a rule answers it |
+| a chain of rules that comes back to where it was | a warning: a browser stops such a chain with an error |
+
+The answer is read off the routes and the rules every time and is never
+stored, so a page created or removed later changes it without a rule being
+touched. It stands in the **Target** column of the table, for the rules that
+need a second look, and after a save the warning stands on the message line.
+**It warns and never refuses**; a rule that sends an address to itself is still
+refused, as before.
+
+Two things the check does not see:
+
+- **A wildcard route answers everything below itself.** A rule to
+  `/blog/old-post` is answered while the Posts feature's `GET://blog/*` is
+  there, whether or not a post is - which is the same reason a moved post is
+  that feature's to redirect, not this one's.
+- **A subtree rule is answered by any route below its target**, since a page or
+  a wildcard there answers the pages that moved. It does not say whether every
+  one of them has one.
+
+The **home page** is a valid target: an old address that moved to the front page
+is the commonest rule there is. A subtree rule to `/` keeps the rest of the
+path - `/old/x` goes to `/x` - and `/old` itself goes to `/`, with the project
+directory in front where the site does not stand at the root. `/` is still never
+an old address, since a rule from it would take the whole site.
+
+The editor offers the pages of the site under the target field - every GET route
+shaped like a page, named the way the menu names it and by its path where
+nobody did - so a target does not have to be typed from memory. The field stays
+what decides: an address of another site, or a page that is not made yet, is
+typed.
 
 ## The addresses nothing answered
 
@@ -87,19 +132,22 @@ somebody look at it. The strip stands in the head the workbench renders over
 the panel, beside its name; on a kernel without that head it opens whichever
 screen is on.
 
-**Redirects** is the rules, as a table: what each answers, where it sends, its
-kind, whether it covers a subtree, how often it has been followed and when it
-last was. Edit and Delete per row, **New redirect** above them, and under the
-table a probe. Editing an address onto one another rule already answers is
-refused, naming it: that other rule would otherwise go away with its hits, and
-a rule that silently went away is a redirect somebody believes is in place.
+**Redirects** is the rules, as a table: what each answers, where it sends and
+whether anything answers that, its kind, whether it covers a subtree, how often
+it has been followed and when it last was. Edit and Delete per row,
+**New redirect** above them, and under the table a probe. Editing an address
+onto one another rule already answers is refused, naming it: that other rule
+would otherwise go away with its hits, and a rule that silently went away is a
+redirect somebody believes is in place.
 
 The probe is the half that earns its keep. A redirect is invisible until
 somebody follows one, and a rule that does not fire looks exactly like a rule
 that is not there. It asks the same question the live request asks, in the same
-order, and answers one of three things: a page answers this address, so no rule
-is consulted; this rule answers it and sends there; or nothing answers it, and a
-visitor gets the 404 page.
+order, and answers one of three things: a page (or a file of the public
+directory) answers this address, so no rule is consulted; this rule answers it
+and sends there; or nothing answers it, and a visitor gets the 404 page. It
+asks the same question the table's flag and the warning after a save do, so the
+three never disagree.
 
 **Addresses with no answer** is the second list, most asked for first, with one
 button per row that opens the editor with the address already in it - what is
@@ -139,9 +187,12 @@ target may be, the order rules are matched in, the loop guard, a redirect on an
 address with no route, the silence on one that has a route, the subtree
 remainder, the project directory in the `Location`, `POST` left alone, the
 recording of a miss and the shapes it refuses, a list somebody edited by hand
-and one that is already full, and every panel action including the probe's
-three answers. Where node is on the path it runs the script's suite below as
-well.
+and one that is already full, the home page as a target and the subtree
+remainder that leads to it, which pages a target can be picked from and how they
+are named, what answers a target (a route, a rule, a loop, a file, another site
+or nothing), and every panel action including the warnings of a save, the answer
+each rule carries and the probe's three answers. Where node is on the path it
+runs the script's suite below as well.
 
 `tests/redirects-js-smoke.js` - what the panel's script does over a dom
 stand-in of the pane and its head: which of the two screens is on, that the
@@ -149,7 +200,9 @@ strip goes into the head beside the panel's name and a redraw puts it back
 there instead of beside the one before, that it travels with the screen that
 is on where there is no head, that the rules table and the probe are gone while
 the addresses are up, and that making a rule out of an address opens the editor
-with it already in.
+with it already in, that a target can be picked from the pages of the site, that
+a rule whose target leads nowhere carries a flag in the table and that what a
+save warned about stands on the message line while the editor is closed.
 
 Run them against a Nino checkout:
 

@@ -8,7 +8,8 @@ declare(strict_types=1);
  *												through \Nino\Features, the one thing the class
  *												does - putting typewriter.css/typewriter.js into
  *												the site's own asset bundles
- *												(\Nino\Html::addAsset()) - and deactivation. The
+ *												(\Nino\Html::addAsset()) - the one text fill its install
+ *												unit merges, add-only - and deactivation. The
  *												behaviour those two files carry is the browser's,
  *												and typewriter-js-smoke.js beside this file
  *												measures it; this test runs that one too where
@@ -71,6 +72,13 @@ check( 'it is filed under ui, and says so in the field rather than in its name',
 	&& str_contains( \Nino\Features::localized( $manifest['name'], 'de_DE' ), ':' ) === false );
 check( 'it needs no other feature', $manifest['requires'] === [] );
 check( 'it keeps no data of its own - it animates the markup a project already has', $manifest['data'] === [] );
+check( 'it ships an install unit for the one text fill it needs, and the manual says so',
+	array_keys( $manifest['manual']['install'] ) === [ 'text/<locale>.php' ] && is_file( $dir. '/install/manifest.php' ) === true
+	&& is_file( $dir. '/install/text/en_US.php' ) === true && is_file( $dir. '/install/text/de_DE.php' ) === true );
+check( '...and names the pause button and the one-pass default in its markup entries',
+	array_key_exists( 'data-typewriter-toggle="[[/typewriter/toggle]]"', $manifest['manual']['markup'] ) === true
+	&& array_key_exists( 'data-typewriter-loop="1"', $manifest['manual']['markup'] ) === true
+	&& array_key_exists( 'data-typewriter-loop="0"', $manifest['manual']['markup'] ) === false );
 check( 'and carries no settings: what a typewriter is timed with belongs to the element being typed', $manifest['settings'] === [] );
 
 // A project's config.php, written the way the wizard leaves it, so the
@@ -83,14 +91,25 @@ check( 'the registry lists it inactive, with nothing in the way', ( static funct
 	return $feature !== null && $feature['active'] === false && $feature['installed'] === null && $feature['problems'] === [];
 } )() );
 
+/*	A project that wrote the label itself before it activated the feature: what
+	it has is its own, and the unit only adds what is missing	*/
+\Nino\Filesystem::putFileContent( $appData, '/text/de_DE.php', [ '[[/typewriter/toggle]]' => 'Anhalten' ] );
+
 check( 'activation succeeds', \Nino\Features::activate( $appData, 'typewriter' ) === true );
 check( 'the class is listed and the version recorded', in_array( '\\Nino\\Modules\\Typewriter', \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/modules'], true ) === true
-	&& \Nino\Features::get( $appData, 'typewriter' )['installed'] === '1.0.0' );
+	&& \Nino\Features::get( $appData, 'typewriter' )['installed'] === $manifest['version'] );
 
-// It has no install unit, and that is the point: a typewriter is written
-// into a template by whoever wants one, so there is no file to copy in
-check( 'activation wrote no template and no text of its own into the project', is_dir( ninoSandboxDir( $appData ). '/templates' ) === false
-	&& \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] ) === [] );
+// A typewriter is written into a template by whoever wants one, so there is no
+// file to copy in - the unit carries the label of the pause button and nothing
+// else
+check( 'activation wrote no template into the project', is_dir( ninoSandboxDir( $appData ). '/templates' ) === false );
+check( 'it merged the pause button\'s label into the text file of a locale that had none',
+	( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/typewriter/toggle]]'] ?? '' ) === 'Pause animation' );
+check( '...and added nothing but that one fill', array_keys( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] ) ) === [ '[[/typewriter/toggle]]' ] );
+check( '...and kept the value a project already had for that key - the unit is add-only',
+	( \Nino\Filesystem::getFileContent( $appData, '/text/de_DE.php', [] )['[[/typewriter/toggle]]'] ?? '' ) === 'Anhalten' );
+check( 'the German label the unit brings is the one a project that has none gets',
+	( include $dir. '/install/text/de_DE.php' )['[[/typewriter/toggle]]'] === 'Animation pausieren' );
 
 echo "\n";
 
@@ -145,6 +164,18 @@ check( 'and the cursor out of the line box, so nothing inside one moves either',
 check( 'the script asks for the reduced-motion preference before it changes anything', str_contains( $js, "prefers-reduced-motion: reduce" ) === true );
 check( 'and writes the lines with textContent, never as markup', str_contains( $js, 'innerHTML' ) === false );
 
+/*	The pause button, like the rest, hangs off classes the script writes: the
+	pressed state off the button it draws, the held cursor off the class it puts
+	on the container. Still no rule on the bare container	*/
+check( 'the pause button\'s pressed state and the paused cursor hang off classes the script writes',
+	str_contains( $css, '.nino-typewriter-toggle[aria-pressed="true"]' ) === true
+	&& preg_match( '/\.nino-typewriter\.nino-is-paused \.nino-typewriter-cursor\s*\{[^}]*animation-play-state:\s*paused/s', $css ) === 1 );
+check( 'the script draws the button with createElement() and textContent, as the next sibling, and removes it rather than hiding it',
+	str_contains( $js, "createElement( 'button' )" ) === true && str_contains( $js, 'el.nextSibling' ) === true
+	&& str_contains( $js, '.hidden' ) === false && str_contains( $js, "'hidden'" ) === false );
+check( 'it is a single pass by default, and says so where the defaults are',
+	preg_match( '/loop\s*:\s*false,/', $js ) === 1 );
+
 echo "\n";
 
 
@@ -176,6 +207,8 @@ echo "Deactivation\n";
 
 check( 'deactivation succeeds', \Nino\Features::deactivate( $appData, 'typewriter' ) === true );
 check( 'the class is gone from /nino/modules', in_array( '\\Nino\\Modules\\Typewriter', \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/modules'], true ) === false );
+check( 'the label stays in the project\'s text files - it is the project\'s now',
+	( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/typewriter/toggle]]'] ?? '' ) === 'Pause animation' );
 check( 'the feature is still on disk, listed and inactive', ( \Nino\Features::get( $appData, 'typewriter' )['active'] ?? true ) === false );
 
 ninoDone( $appData );

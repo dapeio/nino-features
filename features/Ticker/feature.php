@@ -6,15 +6,15 @@ return [
 	'key'					=> 'ticker',
 	'name'				=> [ 'en_US' => 'Ticker', 'de_DE' => 'Laufband' ],
 	'description'	=> [
-		'en_US' => 'A row that runs - logos, references, a line of announcements - looping without a seam, pausing when it is pointed at, and standing still for a visitor who asked for less motion.',
-		'de_DE' => 'Eine Reihe, die läuft - Logos, Referenzen, eine Zeile Ankündigungen -, nahtlos in der Schleife, angehalten, wenn man darauf zeigt, und still für Besucher, die weniger Bewegung wollen.',
+		'en_US' => 'A row that runs - logos, references, a line of announcements - once, or looping without a seam, pausing when it is pointed at, with a pause button on request, and standing still for a visitor who asked for less motion.',
+		'de_DE' => 'Eine Reihe, die läuft - Logos, Referenzen, eine Zeile Ankündigungen -, einmal oder nahtlos in der Schleife, angehalten, wenn man darauf zeigt, auf Wunsch mit Pause-Knopf, und still für Besucher, die weniger Bewegung wollen.',
 	],
 	'manual'			=> [
 		'shortcodes' => [],
 		'markup' => [
 			'class="nino-ticker"' => [
-				'en_US' => 'On a container: its children run past, one after the other, and start again.',
-				'de_DE' => 'An einem Container: Seine Kinder laufen nacheinander vorbei und beginnen von vorn.',
+				'en_US' => 'On a container: its children run past, one after the other - one cycle, once the row has been scrolled into view, and then it stands still.',
+				'de_DE' => 'An einem Container: Seine Kinder laufen nacheinander vorbei - ein Durchlauf, sobald die Reihe im Bild war, danach steht sie still.',
 			],
 			'data-ticker-speed="40"' => [
 				'en_US' => 'Pixels per second. Default 40 - slow enough to read a word on the way past.',
@@ -24,6 +24,14 @@ return [
 				'en_US' => 'Runs the other way. Default is to the left.',
 				'de_DE' => 'Läuft andersherum. Vorgabe ist nach links.',
 			],
+			'data-ticker-loop="1"' => [
+				'en_US' => 'Starts again without a seam instead of standing still after one cycle. Default: one cycle.',
+				'de_DE' => 'Beginnt nahtlos von vorn, statt nach einem Durchlauf still zu stehen. Vorgabe: ein Durchlauf.',
+			],
+			'data-ticker-toggle="[[/ticker/toggle]]"' => [
+				'en_US' => 'A button after the row that pauses it and takes it up again (WCAG 2.2.2). The value is its label; the fill is the one the install unit brings.',
+				'de_DE' => 'Ein Knopf hinter der Reihe, der sie anhält und wieder aufnimmt (WCAG 2.2.2). Der Wert ist die Beschriftung; der Textfill ist der, den die Install-Einheit mitbringt.',
+			],
 			'data-ticker-pause="off"' => [
 				'en_US' => 'Keeps running under the pointer. Default is to stop, so a logo can be looked at.',
 				'de_DE' => 'Läuft unter dem Zeiger weiter. Vorgabe ist anzuhalten, damit ein Logo betrachtet werden kann.',
@@ -32,11 +40,16 @@ return [
 		'routes' => [],
 		'panel' => [],
 		'callbacks' => [],
-		'install' => [],
+		'install' => [
+			'text/<locale>.php' => [
+				'en_US' => 'The label of the pause button, [[/ticker/toggle]], into the Text panel.',
+				'de_DE' => 'Die Beschriftung des Pause-Knopfs, [[/ticker/toggle]], ins Panel Texte.',
+			],
+		],
 	],
-	// It changes how what is already on the page behaves and brings nothing of
-	// its own to write - the Features panel files that with the sliders and
-	// the lightboxes
+	// It changes how what is already on the page behaves and brings one text
+	// fill of its own, the label of the pause button - the Features panel
+	// files that with the sliders and the lightboxes
 	'category'		=> 'ui',
 	'version'			=> '1.0.0',
 	'nino'				=> '^1.3',

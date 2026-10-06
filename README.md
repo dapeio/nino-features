@@ -38,7 +38,7 @@ This repository is the place Nino's features are published from. `features/<Name
 | `social` | [Social links](features/Social/README.md) | `content` | 1.0.0 | `^1.3` | Links to the profiles a site keeps elsewhere, each with its icon - an element type the editors keep under Elements, drawn by `[social]` wherever a template wants them, every address checked before it becomes a link |
 | `stats` | [Stats](features/Stats/README.md) | `marketing` | 1.0.0 | `^1.3` | Page-view counts for the workbench, without cookies, ip addresses or anything stored per visitor |
 | `templates` | [Template Builder](features/Templates/README.md) | `content` | 1.0.0 | `^1.3` | Builds the project's page templates out of whole sections - a library of seventeen, a live preview, and page source that stays yours between them |
-| `ticker` | [Ticker](features/Ticker/README.md) | `ui` | 1.0.0 | `^1.3` | A row that runs - logos, references, a line of announcements - looping without a seam, pausing when it is pointed at, and standing still for a visitor who asked for less motion |
+| `ticker` | [Ticker](features/Ticker/README.md) | `ui` | 1.0.0 | `^1.3` | A row that runs - logos, references, a line of announcements - once, or looping without a seam, pausing when it is pointed at, with a pause button on request, and standing still for a visitor who asked for less motion |
 | `toc` | [Table of Contents](features/Toc/README.md) | `content` | 1.0.0 | `^1.3` | A list of a long page's own headings that says which section is being read, and an anchor on every heading so a passage can be linked to |
 | `typewriter` | [Typewriter](features/Typewriter/README.md) | `ui` | 1.0.0 | `^1.3` | Types the lines of a container one after the other, with a cursor at the writing head, timed per element |
 

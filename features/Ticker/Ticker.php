@@ -13,9 +13,9 @@ namespace Nino\Modules {
 
 	/**
 	 *	Nino							A compact filesystembased php framework
-	 *	Ticker						A row that runs and starts again without a seam: a bar
-	 *										of logos, a line of references, a strip of
-	 *										announcements.
+	 *	Ticker						A row that runs - one cycle, or round and round
+	 *										without a seam: a bar of logos, a line of references,
+	 *										a strip of announcements.
 	 *
 	 *										The seam is the whole problem. A row that simply
 	 *										scrolls runs out and jumps back, and the jump is what
@@ -28,12 +28,20 @@ namespace Nino\Modules {
 	 *										aria-hidden: to a screen reader the row is read once,
 	 *										which is how many times it is there.
 	 *
+	 *										By default the row runs exactly one cycle, once it has
+	 *										been scrolled into view, and stands still on a frame
+	 *										identical to its first. data-ticker-loop asks for the
+	 *										endless loop; data-ticker-toggle asks for a pause
+	 *										button after the row (WCAG 2.2.2), labelled with the
+	 *										text fill the install unit brings.
+	 *
 	 *										There is nothing for PHP to do here: what runs past is
 	 *										markup a project's own template already carries
 	 *										(<div class="nino-ticker">) plus the two static files
 	 *										below, so this class is the two lines that put them
 	 *										into the site's bundles - no shortcode, no route, no
-	 *										settings, no state. Every timing belongs to the row
+	 *										settings, no state; the unit's one text fill is the
+	 *										label of that button. Every timing belongs to the row
 	 *										being run, and a static asset could not read a
 	 *										site-wide setting anyway (see feature.php).
 	 *

@@ -16,17 +16,22 @@ namespace Nino\Modules {
 	 *	Typewriter				A container types its lines one after the other: fade
 	 *										one in, write it out character by character with the
 	 *										cursor riding at the writing head, hold it, take it
-	 *										away again, then the next one - looping, or stopping
-	 *										on the last line. The lines are the container's own
-	 *										<p>s; every timing is a data attribute on that same
-	 *										container, and this feature's README.md lists them.
+	 *										away again, then the next one - stopping on the last
+	 *										line, or looping where the container asks for it. The
+	 *										lines are the container's own <p>s; every timing is a
+	 *										data attribute on that same container, and this
+	 *										feature's README.md lists them.
+	 *										A container can also ask for a pause button after it
+	 *										(data-typewriter-toggle, WCAG 2.2.2), labelled with
+	 *										the text fill the install unit brings.
 	 *
 	 *										There is nothing for PHP to do here: the effect is
 	 *										markup a project's own template already carries
 	 *										(<div class="nino-typewriter">) plus the two static
 	 *										files below, so this class is the two lines that put
 	 *										them into the site's bundles - no shortcode, no route,
-	 *										no settings, no state. What a typewriter is timed with
+	 *										no settings, no state; the unit's one text fill is the
+	 *										label of that button. What a typewriter is timed with
 	 *										belongs to the element being typed, and a static asset
 	 *										could not read a site-wide setting anyway (see
 	 *										feature.php).

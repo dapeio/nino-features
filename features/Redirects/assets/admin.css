@@ -2,9 +2,10 @@
  *
  *	Everything this panel is made of belongs to the workbench already - the
  *	table, the fields, the action bar, the segmented strip. What is left here
- *	is the three places where two of them stand next to each other, and that
- *	is deliberately all of it: a panel with a stylesheet of its own is a panel
- *	that stops following the workbench the next time the workbench moves.
+ *	is the three places where two of them stand next to each other and one
+ *	flag, and that is deliberately all of it: a panel with a stylesheet of
+ *	its own is a panel that stops following the workbench the next time the
+ *	workbench moves.
  *
  *	Only added to nino.tool - the layer a feature's admin css belongs in (see
  *	the layer order in _nino/Nino.css).
@@ -25,6 +26,13 @@
 	.nino-admin .redirects-row-actions {
 		display: flex;
 		gap: .35rem;
+		white-space: nowrap;
+	}
+
+	/* What a rule's target leads to, where it is worth saying. The colour is
+	   the workbench's own error class on the element; this only keeps the
+	   words on one line, as a flag that wrapped would look like two */
+	.nino-admin .redirects-flag {
 		white-space: nowrap;
 	}
 

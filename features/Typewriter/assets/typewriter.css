@@ -13,7 +13,11 @@
  *								own template put in it, in whatever type, colour and size
  *								the surrounding classes give it. There is nothing to theme,
  *								so there is no custom property to read either - unlike
- *								consent.css, which draws a banner of its own.
+ *								consent.css, which draws a banner of its own. The one
+ *								exception is the pause button a container can ask for
+ *								(data-typewriter-toggle): it wears the kernel's own button
+ *								classes, and what this file adds to it is the pressed
+ *								state, in the kernel's own colours.
  *
  *								Every rule below is bound to a class typewriter.js writes
  *								when it takes over - .nino-typewriter-line on the lines,
@@ -61,6 +65,22 @@
 @keyframes nino-typewriter-blink {
 	0%, 100% { opacity: 1; }
 	50% { opacity: 0; }
+}
+
+/* Paused by the visitor, with the button typewriter.js draws after the
+   container (WCAG 2.2.2). The typing stops in the script; what stops here is
+   the one thing a script cannot hold, the blinking */
+.nino-typewriter.nino-is-paused .nino-typewriter-cursor {
+	animation-play-state: paused;
+}
+/* Pressed, for a visitor who can see it: the colours the kernel gives an
+   outline button under the pointer, and a ring inside the border, so the
+   state is not told by colour alone. The label stays the same - what a
+   screen reader is told is aria-pressed */
+.nino-typewriter-toggle[aria-pressed="true"] {
+	background-color: var(--color-primary);
+	color: var(--color-primary-text);
+	box-shadow: inset 0 0 0 2px currentColor;
 }
 
 /* The line's own text, once, for a screen reader - the same clipping every

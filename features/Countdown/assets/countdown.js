@@ -9,9 +9,10 @@
  *					The arithmetic is here rather than on the server because a
  *					page cached for an hour would otherwise be an hour wrong. The
  *					moment itself is the server's: an ISO-8601 string with its own
- *					offset in it - the one the shortcode's tz= named, or the one the
- *					php process runs in - so a reader in another timezone counts
- *					down to the same instant rather than the same wall clock.
+ *					offset in it - the one the shortcode's tz= named, else the
+ *					one the Countdown setting's zone has, else the php process's -
+ *					so a reader in another timezone counts down to the same
+ *					instant rather than the same wall clock.
  *
  *					Both forms of every unit name are handed to this file on the
  *					part they belong to - data-countdown-one and -many, resolved

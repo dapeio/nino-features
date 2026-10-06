@@ -4,10 +4,11 @@
  *							after the other: fade one in, write it out character by
  *							character with the cursor riding at the writing head, hold
  *							it, take it away again - fading, or erasing it backwards -
- *							then the next one, looping or stopping on the last line.
- *							No dependencies, no build step - not even on Nino.js:
- *							bundled into the project's own /.cache/script.js the same
- *							way the kernel bundles Nino.js/Nino.ui.js (see
+ *							then the next one, stopping on the last line or looping
+ *							where the container asks for it. No dependencies, no
+ *							build step - not even on Nino.js: bundled into the
+ *							project's own /.cache/script.js the same way the
+ *							kernel bundles Nino.js/Nino.ui.js (see
  *							Typewriter::init()), and a project that dropped the
  *							kernel's own scripts still gets a working typewriter.
  *
@@ -28,6 +29,15 @@
  *							without JavaScript, and for a visitor who asked for
  *							reduced motion, the container stays what the markup says
  *							it is - paragraphs below one another.
+ *
+ *							A container that carries data-typewriter-toggle gets a
+ *							button after it that pauses the typing and takes it up
+ *							again (WCAG 2.2.2). The button is the container's next
+ *							sibling, never a child of it: a heading used as a
+ *							typewriter would take the button into its own name. It is
+ *							taken away again once nothing moves any more, which is
+ *							the end of the last line of a typewriter that does not
+ *							loop.
  *
  *							Browser baseline is its stylesheet's: :has() there,
  *							IntersectionObserver and Array.from here.
@@ -52,9 +62,13 @@
 		fade					: 400,			// ms of the fade in and out, 0 switches it off
 		backspaceSpeed	: 25,			// ms per erased character
 		pause					: 300,			// ms between one line and the next
-		loop					: true,			// false stops on the last line instead
+		loop					: false,		// true starts over after the last line instead of stopping
 		cursor				: '|'				// the cursor character, '' leaves it out
 	};
+
+	// The two classes the toggle takes; the kernel's own button classes carry
+	// its look, so what this file adds is the pressed state (typewriter.css)
+	var BUTTON = 'nino-btn nino-btn--outline nino-btn--small nino-typewriter-toggle';
 
 	var OFF = [ '0', 'false', 'off', 'no' ];
 
@@ -116,16 +130,16 @@
 
 	/**
 	 *	The same as a switch. '0', 'false', 'off' and 'no' turn it off, any
-	 *	other value on - a default that is on has to stay switchable
+	 *	other value on - a default that is off has to stay switchable on
 	 *
 	 *	@param		{Element}	el						Typewriter container
 	 *	@param		{string}	name					Attribute without its data-typewriter- prefix
-	 *	@param		{boolean}	fallback			Default to keep when it is missing or empty
+	 *	@param		{boolean}	fallback			Default to keep when it is missing, empty or blank
 	 *
 	 *	@return		{boolean}
 	 */
 	function flag( el, name, fallback ) {
-		var value = text( el, name, '' );
+		var value = text( el, name, '' ).trim();
 		return value === '' ? fallback : OFF.indexOf( value.toLowerCase() ) === -1;
 	}
 
@@ -203,6 +217,23 @@
 	}
 
 	/**
+	 *	The label a container's toggle button carries, or '' where it gets
+	 *	none: no attribute, an empty one, or one that still holds a text fill
+	 *	nobody resolved - a button that says "[[/typewriter/toggle]]" is worse
+	 *	than none
+	 *
+	 *	@param		{Element}	el						Typewriter container
+	 *
+	 *	@return		{string}
+	 */
+	function toggleLabel( el ) {
+
+		var label = ( el.getAttribute( 'data-typewriter-toggle' ) || '' ).trim();
+
+		return label.indexOf( '[[' ) === -1 ? label : '';
+	}
+
+	/**
 	 *	Prepare one .nino-typewriter and run its lines
 	 *
 	 *	@param		{Element}	el						Typewriter container
@@ -216,6 +247,85 @@
 
 		if( lines.length === 0 )
 			return;
+
+		/*	Every step of the animation waits for the next one through later(),
+			which remembers the one that is pending. A pause cancels the timer
+			and keeps the step; taking it up again arms the step with its full
+			delay, rather than working out how much of it was left - the clock
+			is the browser's and a typewriter does not need it to the
+			millisecond	*/
+		var pending = null;
+		var timer = null;
+		var paused = false;
+		var toggle = null;
+
+		function fire() {
+			var step = pending;
+			pending = null;
+			timer = null;
+			step.callback();
+		}
+
+		function later( callback, delay ) {
+			pending = { callback : callback, delay : delay };
+
+			if( paused === false )
+				timer = window.setTimeout( fire, delay );
+		}
+
+		function pause() {
+			paused = true;
+
+			if( timer !== null )
+				window.clearTimeout( timer );
+
+			timer = null;
+		}
+
+		function resume() {
+			paused = false;
+
+			if( pending !== null && timer === null )
+				timer = window.setTimeout( fire, pending.delay );
+		}
+
+		/**
+		 *	Draw the pause button after the container, once. createElement()
+		 *	and textContent only: the label is the project's own text
+		 *
+		 *	@return		void
+		 */
+		function button() {
+
+			var label = toggleLabel( el );
+
+			if( label === '' || el.parentNode === null )
+				return;
+
+			toggle = document.createElement( 'button' );
+			toggle.type = 'button';
+			toggle.className = BUTTON;
+			toggle.setAttribute( 'aria-pressed', 'false' );
+			toggle.textContent = label;
+
+			toggle.addEventListener( 'click', function() {
+
+				var on = toggle.getAttribute( 'aria-pressed' ) !== 'true';
+
+				toggle.setAttribute( 'aria-pressed', on === true ? 'true' : 'false' );
+
+				if( on === true ) {
+					el.classList.add( 'nino-is-paused' );
+					pause();
+				}
+				else {
+					el.classList.remove( 'nino-is-paused' );
+					resume();
+				}
+			} );
+
+			el.parentNode.insertBefore( toggle, el.nextSibling );
+		}
 
 		var cursor = document.createElement( 'span' );
 		cursor.className = 'nino-typewriter-cursor';
@@ -283,7 +393,7 @@
 			write();
 			sequence[index].line.insertBefore( cursor, sequence[index].rest );
 			sequence[index].line.classList.add( 'nino-is-active' );
-			window.setTimeout( type, opt.exit === 'fade' ? opt.fade : 0 );
+			later( type, opt.exit === 'fade' ? opt.fade : 0 );
 		}
 
 		/**
@@ -297,18 +407,19 @@
 			if( typed < sequence[index].chars.length ) {
 				typed++;
 				write();
-				window.setTimeout( type, opt.speed );
+				later( type, opt.speed );
 				return;
 			}
 
-			window.setTimeout( leave, opt.hold );
+			later( leave, opt.hold );
 		}
 
 		/**
 		 *	Take the finished line away - fading it out, or erasing it one
 		 *	character at a time - and queue the next one. The last line of a
 		 *	typewriter that does not loop stays where it is, without its
-		 *	cursor: an animation that has ended should not go on blinking
+		 *	cursor and without its pause button: an animation that has ended
+		 *	should not go on blinking, or offer to stop what has stopped
 		 *
 		 *	@return		void
 		 */
@@ -317,20 +428,34 @@
 			if( opt.loop === false && index === sequence.length - 1 ) {
 				if( cursor.parentNode !== null )
 					cursor.parentNode.removeChild( cursor );
+
+				// Removed rather than hidden: .nino-btn's own display rule
+				// beats the [hidden] attribute. A button that has the keyboard
+				// focus hands it to the container first, or it would fall
+				// back to the page's top
+				if( toggle !== null && toggle.parentNode !== null ) {
+					if( document.activeElement === toggle ) {
+						el.setAttribute( 'tabindex', '-1' );
+						el.focus();
+					}
+
+					toggle.parentNode.removeChild( toggle );
+				}
+
 				return;
 			}
 
 			if( opt.exit === 'backspace' && typed > 0 ) {
 				typed--;
 				write();
-				window.setTimeout( leave, opt.backspaceSpeed );
+				later( leave, opt.backspaceSpeed );
 				return;
 			}
 
 			sequence[index].line.classList.remove( 'nino-is-active' );
 			index = ( index + 1 ) % sequence.length;
 
-			window.setTimeout( show, ( opt.exit === 'fade' ? opt.fade : 0 ) + opt.pause );
+			later( show, ( opt.exit === 'fade' ? opt.fade : 0 ) + opt.pause );
 		}
 
 		/**
@@ -339,8 +464,10 @@
 		 *	@return		void
 		 */
 		function begin() {
-			window.setTimeout( show, opt.startDelay );
+			later( show, opt.startDelay );
 		}
+
+		button();
 
 		if( opt.start === 'load' )
 			begin();

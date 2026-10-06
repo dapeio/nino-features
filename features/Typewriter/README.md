@@ -4,14 +4,15 @@
 
 A container types its lines one after the other: fade one in, write it out
 character by character with the cursor riding at the writing head, hold it,
-take it away again, then the next one - looping, or stopping on the last
-line. The lines are the container's own `<p>`s, and every timing is a data
-attribute on that same container.
+take it away again, then the next one - stopping on the last line, or looping
+where the container asks for it. The lines are the container's own `<p>`s, and
+every timing is a data attribute on that same container.
 
-Four files, no panel, no settings, no state: `feature.php`, `Typewriter.php`
-- two lines that put the stylesheet and the script into the site's own
-bundles - and `assets/typewriter.css`/`assets/typewriter.js`. The changes
-per version are in [CHANGELOG.md](CHANGELOG.md).
+No panel, no settings, no state: `feature.php`, `Typewriter.php` - two lines
+that put the stylesheet and the script into the site's own bundles -,
+`assets/typewriter.css`/`assets/typewriter.js` and an install unit that brings
+one text fill, the label of the pause button. The changes per version are in
+[CHANGELOG.md](CHANGELOG.md).
 
 ## Put it on the site
 
@@ -33,8 +34,18 @@ instead of simply standing there.
 
 It starts when it has been scrolled into view, types at 45 ms per character,
 holds a finished line for 1.6 seconds, fades it out over 400 ms, waits
-another 300 ms, and starts over after the last line. Every one of those
-numbers is an attribute away.
+another 300 ms, and types the next one. After the last line it **stops**: the
+last line stays, complete, and its cursor is gone, so nothing blinks on forever.
+The earlier lines have faded out - their text stays readable to a screen reader
+through the `.nino-typewriter-reader` spans - so a three-line headline ends on
+its last line alone, and a one-line typewriter types once and stays. Every one
+of those numbers is an attribute away, and `data-typewriter-loop="1"` starts it
+over instead.
+
+**Existing pages.** A typewriter without `data-typewriter-loop` looped until
+now and now types once; a three-line headline ends on its last line. The way
+back is `data-typewriter-loop="1"` on the container. No JavaScript and reduced
+motion are unchanged.
 
 ## The data attributes
 
@@ -54,14 +65,25 @@ one attribute, never the other typewriters on the page.
 | `data-typewriter-fade` | `400` | Milliseconds of the fade in and out; `0` switches it off. Not used by `backspace` |
 | `data-typewriter-backspace-speed` | `25` | Milliseconds per erased character, with `exit=backspace` |
 | `data-typewriter-pause` | `300` | Milliseconds between one line leaving and the next arriving |
-| `data-typewriter-loop` | on | `0`, `false`, `off` or `no` stops on the last line instead of starting over |
+| `data-typewriter-loop` | off | `1`, `true`, `on` or `yes` (any other non-empty value, `0`, `false`, `off` and `no` apart; surrounding spaces do not count) starts over after the last line instead of stopping |
+| `data-typewriter-toggle` | none | A button after the container that pauses the typing and takes it up again; the value is its label. See *Pause, stop, hide* below |
 | `data-typewriter-cursor` | `\|` | The cursor character; empty (`data-typewriter-cursor=""`) leaves it out |
 
-A typewriter that writes one claim slowly and then stops, erasing as it goes:
+A typewriter that writes its claim slowly, erasing as it goes, and stops on the
+last line:
 
 ```html
 <div class="nino-typewriter" data-typewriter-exit="backspace" data-typewriter-speed="70"
-	data-typewriter-hold="900" data-typewriter-cursor="_" data-typewriter-loop="0">
+	data-typewriter-hold="900" data-typewriter-cursor="_">
+	<p>Handmade in Munich.</p>
+	<p>Since 1998.</p>
+</div>
+```
+
+One that starts over after the last line, with the pause button:
+
+```html
+<div class="nino-typewriter" data-typewriter-loop="1" data-typewriter-toggle="[[/typewriter/toggle]]">
 	<p>Handmade in Munich.</p>
 	<p>Since 1998.</p>
 </div>
@@ -90,6 +112,34 @@ The cursor is `width: 0` and drawn over the character it stands in front of,
 so that it too moves nothing: a cursor with a width of its own would shift the
 rest of the line by that width with every character, and rewrap it as it goes.
 
+## Pause, stop, hide (WCAG 2.2.2)
+
+Success criterion 2.2.2 asks for a way to pause, stop or hide anything that
+moves for more than five seconds. A typewriter that **loops** is that, and a
+single pass that takes longer than five seconds is too. Two things come with
+the feature:
+
+- **It stops.** The default is a single pass, so a typewriter that is left
+  alone ends on its last line.
+- **A pause button, on request.** `data-typewriter-toggle="<label>"` puts a
+  button after the container - the container's next sibling, never inside it: a
+  heading used as a typewriter would take the button into its own accessible
+  name. A press pauses the typing (`aria-pressed="true"`, and `nino-is-paused`
+  on the container, which also holds the cursor's blinking); the next press
+  takes it up again, with the full delay of the step that was waiting. The
+  button is removed - not hidden, because `.nino-btn`'s own display rule beats
+  the `[hidden]` attribute - once nothing moves any more: after the last line of
+  a typewriter that does not loop, and a button that has the keyboard focus
+  then hands it to the container (`tabindex="-1"`). For one that does loop, it
+  stays.
+
+No button is drawn when the label is empty or still holds a fill nobody
+resolved (`[[`), and none under `prefers-reduced-motion`, where nothing moves.
+
+A pause button is **opt-in**: a typewriter that needs one to conform asks for
+it. The button wears the kernel's own `nino-btn` classes; this feature adds only
+its pressed state.
+
 ## Screen readers, no JavaScript, reduced motion
 
 The typed text and the cursor are `aria-hidden`; beside them, each line keeps
@@ -108,6 +158,21 @@ what it reads like in the markup - paragraphs below one another:
   `prefers-reduced-motion: reduce` before it changes anything and, when it
   is set, leaves the markup alone entirely. There is no attribute to
   override that.
+
+## The words
+
+The label of the pause button is a text fill, handed to the script as the value
+of `data-typewriter-toggle`.
+
+| Fill | English | Deutsch |
+| --- | --- | --- |
+| `[[/typewriter/toggle]]` | Pause animation | Animation pausieren |
+
+The install unit merges it into the project's own `text/<locale>.php` at
+activation, for every available locale and add-only, so a label a project
+already wrote is kept; from then on it is the project's. A locale added later
+needs the key by hand. The fill goes into the page as it stands, so a label must
+not contain a double quote.
 
 ## Asset bundling
 
@@ -149,13 +214,13 @@ and the browser does the rest.
 ## Tests
 
 `tests/typewriter-smoke.php` is the feature's own test: the manifest,
-activation recording the class and the version without writing a single file
-into the project, the real `\Nino\Html::addAsset()`/`[assets ...]` bundling
-end to end (the generated `/.cache/style.css`/`script.js` genuinely carry
-this feature's files), the two promises the files themselves make - every
-rule bound to the class the script writes, the rest span and the zero-width
-cursor - and deactivation. It loads Nino's `tests/harness.php` from the
-checkout three levels up, where the feature sits in a project, or from the
+activation recording the class and the version and merging the label's text
+fill, add-only, without writing a single file into the project, the real
+`\Nino\Html::addAsset()`/`[assets ...]` bundling end to end (the generated
+`/.cache/style.css`/`script.js` genuinely carry this feature's files), the two
+promises the files themselves make - every rule bound to the class the script
+writes, the rest span and the zero-width cursor - and deactivation. It loads
+Nino's `tests/harness.php` from the checkout three levels up, where the feature sits in a project, or from the
 one `NINO_ROOT` names:
 
 ```bash
@@ -165,11 +230,12 @@ NINO_ROOT=../nino php features/Typewriter/tests/typewriter-smoke.php
 
 `tests/typewriter-js-smoke.js` is the behaviour half, and the bigger of the
 two: `typewriter.js` evaluated against DOM stand-ins and a clock the test
-moves itself, measuring the whole sequence - the viewport start, every data
-attribute, the values it refuses, the emoji it does not cut in half, the
-markup it leaves for a screen reader and the markup it leaves alone under
-reduced motion. `typewriter-smoke.php` runs it through `node` where node is
-on the path, and says so when it is not; it also runs on its own:
+moves itself, measuring the whole sequence - the viewport start, the single
+pass and the loop, the pause button, every data attribute, the values it
+refuses, the emoji it does not cut in half, the markup it leaves for a screen
+reader and the markup it leaves alone under reduced motion.
+`typewriter-smoke.php` runs it through `node` where node is on the path, and
+says so when it is not; it also runs on its own:
 
 ```bash
 node features/Typewriter/tests/typewriter-js-smoke.js
