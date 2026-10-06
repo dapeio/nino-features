@@ -345,7 +345,7 @@ check( 'a return that is a template or a fill is carried back as the text it is,
 // to the request (see \Nino\Runtime::NON_FATAL_LEVELS) - an unauthenticated
 // 500 from a post anybody can send
 $_POST = [ 'password' => [ 'x' ], 'return' => [ 'y' ] ];
-$arrayRequest = [ '/nino/http/request' => [ 'method' => 'POST', 'uri' => '/.unlock' ], '/nino/http/response' => [ 'statusCode' => 200, 'header' => [] ] ];
+$arrayRequest = [ '/nino/http/request' => [ 'method' => 'POST', 'uri' => '/.protected' ], '/nino/http/response' => [ 'statusCode' => 200, 'header' => [] ] ];
 ninoWarnings();
 \Nino\Modules\ProtectedArea::callbackUnlock( $appData, $arrayRequest );
 check( 'a post whose values are arrays is answered, not raised at', ninoWarnings() === [] && $arrayRequest['/nino/http/response']['statusCode'] === 401 );

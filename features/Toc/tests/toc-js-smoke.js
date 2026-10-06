@@ -127,6 +127,7 @@ function element( tag, attributes ) {
  *	A page: one [toc] nav and the headings it is meant to find
  *
  *	@param		{Object}	options		{ headings, levels, anchors, within, second, readyState }
+ *										headings: [ tag, text, class, id, top, inside the toc-scope wrapper ]
  */
 function page( options ) {
 
@@ -153,11 +154,21 @@ function page( options ) {
 	const first = nav( 0 );
 	const other = options.second === true ? nav( 1 ) : null;
 
+	/*	A heading whose sixth entry is true stands inside one wrapper with the
+		class toc-scope, opened where the first of them is - what a within=
+		selector is pointed at	*/
 	const made = [];
+	let scope = null;
 	for( const spec of ( options.headings || [ [ 'h2', 'Erstens' ], [ 'h3', 'Genauer' ], [ 'h2', 'Zweitens' ] ] ) ) {
 		const el = element( spec[0], { text : spec[1], 'class' : spec[2] || '', id : spec[3] || '' } );
 		el.top = spec[4] !== undefined ? spec[4] : made.length * 400;
-		body.appendChild( el );
+		if( spec[5] === true ) {
+			if( scope === null )
+				scope = body.appendChild( element( 'div', { 'class' : 'toc-scope' } ) );
+			scope.appendChild( el );
+		}
+		else
+			body.appendChild( el );
 		made.push( el );
 	}
 
@@ -168,7 +179,13 @@ function page( options ) {
 		readyState			: options.readyState || 'complete',
 		createElement		: function( tag ) { return element( tag, {} ) },
 		getElementById	: function( id ) { return descendants( body ).filter( function( n ) { return n.id === id } )[0] || null },
-		querySelector		: function( selector ) { return body.querySelectorAll( selector )[0] || null },
+		/*	The stand-in reads classes and tag names only; a bracket it refuses
+			the way a browser refuses a selector it cannot parse - by throwing	*/
+		querySelector		: function( selector ) {
+			if( selector.indexOf( '[' ) !== -1 )
+				throw new Error( 'not a valid selector: ' + selector );
+			return body.querySelectorAll( selector )[0] || null;
+		},
 		querySelectorAll	: function( selector ) { return body.querySelectorAll( selector ) },
 		addEventListener	: function( type, fn ) { ( listeners[type] = listeners[type] || [] ).push( fn ) },
 	};
@@ -251,6 +268,19 @@ check( 'a list built from h2 alone leaves the h3 out', only2.texts().join(' | ')
 const empty = page( { headings : [] } );
 check( 'a page with no headings keeps a nav that says nothing rather than an empty list',
 	empty.nav.hidden === true && empty.items().length === 0 );
+
+
+// --- Where it looks ------------------------------------------------------------
+
+const scoped = [ [ 'h2', 'Vorher' ], [ 'h2', 'Drinnen', '', '', undefined, true ], [ 'h3', 'Genauer', '', '', undefined, true ], [ 'h2', 'Danach' ] ];
+
+const within = page( { headings : scoped, within : '.toc-scope' } );
+check( 'a list pointed at part of the page takes the headings in there and none outside it',
+	within.texts().join(' | ') === 'Drinnen | Genauer' );
+
+const unparsable = page( { headings : scoped, within : '[' } );
+check( '...and one pointed at something that is not a selector takes the whole page rather than failing',
+	unparsable.nav.hidden === false && unparsable.texts().join(' | ') === 'Vorher | Drinnen | Genauer | Danach' );
 
 
 // --- The anchors ---------------------------------------------------------------

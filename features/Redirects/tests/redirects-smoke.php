@@ -210,7 +210,6 @@ check( 'the longest path comes first, so a rule under another is reached before 
 	file is held to is Rules' business, which language the workbench says it in
 	is the panel's (see Admin::_notes()). The panel used to print these in
 	English into a German workbench	*/
-$noteKeys = array_column( $notes, 'key' );
 check( 'every note names a fill rather than carrying an English sentence', $notes !== []
 	&& count( array_filter( $notes, static fn( mixed $n ): bool => is_array( $n ) && str_starts_with( (string) ( $n['key'] ?? '' ), '/_admin/redirects/' ) ) ) === count( $notes ) );
 check( 'a second rule for one address is dropped, and said so', count( array_filter( $normalised['rules'], static fn( array $r ): bool => $r['from'] === '/shop' ) ) === 1

@@ -357,7 +357,6 @@ function panel( over, shell ) {
 		adminUi : {
 			actionBar		: function( bar ) { bar.classList.add('nino-admin-actionbar'); return bar },
 			scaleFrame	: function() { return function() {} },
-			text				: function( value ) { return String( value ) },
 			/* The workbench's own painter: one button lit, every button flagged -
 			   and on a tablist the arrow keys its tabKeys() adds: the focus
 			   moves to the next tab, and that tab is opened */

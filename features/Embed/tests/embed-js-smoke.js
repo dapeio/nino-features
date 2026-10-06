@@ -79,14 +79,14 @@ function element( tag, attributes ) {
  *	One embed as the shortcode writes it: the container carrying the address,
  *	and the hidden button inside it
  *
- *	@param		{Object}	options		{ src, host, consent, remember, title }
+ *	@param		{Object}	options		{ src, host, consent, remember }
  */
 function embed( options ) {
 
 	const box = element( 'div', {
 		'class'							: 'nino-embed nino-embed--16-9',
 		'data-embed-src'		: options.src !== undefined ? options.src : 'https://www.youtube-nocookie.com/embed/abc123?rel=0',
-		'data-embed-title'	: options.title !== undefined ? options.title : 'Ein Video',
+		'data-embed-title'	: 'Ein Video',
 		'data-embed-consent': options.consent !== undefined ? options.consent : 'external',
 		'data-embed-host'		: options.host !== undefined ? options.host : 'youtube-nocookie.com',
 	} );

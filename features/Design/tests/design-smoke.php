@@ -784,12 +784,12 @@ check( 'forcing it through takes the file over', callDesignAction( $appData, 'ap
 	&& \Nino\Modules\Design\Compiler::stamped( (string) \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Design\Compiler::TARGET, '' ) ) === true );
 
 // A set that is not in the library is not written, and the answer says why
-[ $status, $refused ] = callDesignAction( $appData, 'apiSave', [ 'parts' => [ 'section' => [ 'set' => 'nope' ] ], 'step' => 'default', 'size' => 'm' ] );
+[ $status, $refused ] = callDesignAction( $appData, 'apiSave', [ 'parts' => [ 'section' => [ 'set' => 'nope' ] ], 'size' => 'm' ] );
 check( 'a variant that is not in the library falls back and is named', $status === 200
 	&& count( (array) ( $refused['notes'] ?? [] ) ) === 1
 	&& str_contains( (string) ( $refused['notes'][0] ?? '' ), '"nope"' ) === true );
 check( 'a set name that could climb out of the library never becomes a path',
-	callDesignAction( $appData, 'apiSave', [ 'parts' => [ 'section' => [ 'set' => '../../../etc/passwd' ] ], 'step' => 'default', 'size' => 'm' ] )[0] === 200
+	callDesignAction( $appData, 'apiSave', [ 'parts' => [ 'section' => [ 'set' => '../../../etc/passwd' ] ], 'size' => 'm' ] )[0] === 200
 	&& \Nino\Modules\Design\Setup::read( $appData, \Nino\Modules\Design::libraryDir() )['parts']['section']['set'] === 'v1' );
 
 // ...and neither does a size that is not a string. Cast, an array raises
@@ -797,7 +797,7 @@ check( 'a set name that could climb out of the library never becomes a path',
 // on the panel's own save where a fallback is the answer
 ninoWarnings();
 check( 'a size posted as an array falls back rather than raising',
-	callDesignAction( $appData, 'apiSave', [ 'parts' => [], 'step' => 'default', 'size' => [ 'l' ] ] )[0] === 200
+	callDesignAction( $appData, 'apiSave', [ 'parts' => [], 'size' => [ 'l' ] ] )[0] === 200
 	&& ninoWarnings() === []
 	&& \Nino\Modules\Design\Setup::read( $appData, \Nino\Modules\Design::libraryDir() )['size'] === 'm' );
 
@@ -1413,7 +1413,7 @@ $stored 	= \Nino\Modules\Design\Setup::read( $appData, $library );
 $sheet 		= (string) \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Design\Compiler::TARGET, '' );
 
 [ $status, $preview ] = callDesignAction( $appData, 'apiPreview', [
-	'parts' => [ 'header' => [ 'set' => 'v3' ] ], 'step' => 'default', 'size' => 's', 'full' => true,
+	'parts' => [ 'header' => [ 'set' => 'v3' ] ], 'size' => 's', 'full' => true,
 ] );
 
 check( 'the preview answers with a whole document and the id of the sheet inside it', $status === 200
@@ -1435,7 +1435,7 @@ check( '...and the bundle it points at really carries the framework',
 	&& str_contains( (string) \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Design\Admin::FRAMEWORK_JS, '' ), 'Nino.ui' ) === true );
 
 [ $status, $partial ] = callDesignAction( $appData, 'apiPreview', [
-	'parts' => [], 'step' => 'default', 'size' => 'l', 'full' => false,
+	'parts' => [], 'size' => 'l', 'full' => false,
 ] );
 check( 'a change that is only a stylesheet sends only that - the frame on screen keeps its page', $status === 200
 	&& ( $partial['document'] ?? null ) === '' && str_contains( (string) ( $partial['css'] ?? '' ), '131.25%' ) === true );

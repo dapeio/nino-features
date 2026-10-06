@@ -67,7 +67,6 @@ const nino = {
 	},
 	// The key itself, except where a placeholder has to be filled
 	content	: { getText : function( key ) { return key === '/_admin/stats/label/max' ? 'Peak: %d' : key } },
-	events	: { bindCallback : function() {} },
 	http		: { sendRequest : function() { throw new Error( 'the bar row asks the server for nothing' ) } },
 };
 const sandbox = { console : console, document : { createElement : function( tag ) { return element( tag ) }, getElementById : function( id ) { return id === 'stats-body' ? body : null } }, Nino : nino };

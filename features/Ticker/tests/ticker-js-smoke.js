@@ -178,7 +178,7 @@ function element( attributes, width ) {
 /**
  *	One row as a project writes it, the script loaded over it
  *
- *	@param		{Object}	options		{ box, items, speed, direction, readyState, withTrack,
+ *	@param		{Object}	options		{ box, items, speed, readyState, withTrack,
  *																loop, toggle, reducedMotion, observer }
  *																observer: false stands in for a browser without
  *																IntersectionObserver
@@ -190,7 +190,6 @@ function page( options ) {
 	const row = element( { 'class' : 'nino-ticker' }, options.box !== undefined ? options.box : 1000 );
 
 	if( options.speed !== undefined ) row.attributes['data-ticker-speed'] = String( options.speed );
-	if( options.direction !== undefined ) row.attributes['data-ticker-direction'] = options.direction;
 	if( options.loop !== undefined ) row.attributes['data-ticker-loop'] = options.loop;
 	if( options.toggle !== undefined ) row.attributes['data-ticker-toggle'] = options.toggle;
 
@@ -200,8 +199,7 @@ function page( options ) {
 		const item = track.appendChild( element( { 'class' : 'nino-ticker-item' }, width ) );
 		// A logo is usually a link, and a link is usually named - which is
 		// what a copy may carry neither of
-		if( options.linked !== false )
-			item.appendChild( element( { 'href' : '/partner', 'id' : 'logo-' + track.children.length } ) );
+		item.appendChild( element( { 'href' : '/partner', 'id' : 'logo-' + track.children.length } ) );
 	}
 
 	if( options.withTrack !== false )

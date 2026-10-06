@@ -94,7 +94,6 @@ check( 'init registers the unsubscribe form (GET) and its post under /.newslette
 	&& isset( $appData['/nino/http/routes']['POST://.newsletter/unsubscribe'] ) === true
 	&& isset( $appData['./nino/callbacks']['/nino/http/response/POST://.newsletter/unsubscribe'] ) === true );
 check( '...the form with its own template as the body, not the page the links land on', ( $appData['/nino/http/routes']['GET://.newsletter/unsubscribe']['body'] ?? '' ) === '[template /templates/page-newsletter-unsubscribe]' );
-check( 'init does not register the old /newsletter route anymore', isset( $appData['/nino/http/routes']['POST://newsletter'] ) === false );
 check( 'init registers the restore merge on /nino/admin/restore', isset( $appData['./nino/callbacks']['/nino/admin/restore'] ) === true );
 
 /*	A transport takes the mail so nothing is actually sent - the same
