@@ -5,6 +5,60 @@ A release is the tag `design-<version>` of dapeio/nino-features.
 
 ## Unreleased
 
+- **Applying asks first, keeps the previous version and can restore it.**
+  The two buttons are **Save draft** and **Apply to website**, with a line
+  under them saying which does what; **Take the file over and compile** is
+  gone. Every apply is preceded by a confirmation built from the new
+  `design/plan`: the three files it rewrites, which of them Design did not
+  write (the delivered file, or one somebody edited) and are replaced, and
+  which shortcodes a frame would lose - a `[consent-settings]` put into the
+  footer by hand, say, which the variant replacing it does not have - so there
+  is a line saying to add it again. Cancelling leaves the draft saved. A
+  stylesheet that is ours beside a frame somebody edited used to be a refusal
+  with nothing on screen to say yes to; the confirmation is that. What was
+  there is kept before anything is written, in the new one-slot
+  `data/design-previous.php` (the three files and the setup they were written
+  under): not when every file already holds the bytes the apply writes, so a
+  second apply of the same thing never replaces the previous version with a
+  copy of the present, and if it cannot be written nothing is overwritten.
+  **Restore previous version**, in the state box with its date, swaps the slot
+  with the present: the files and `data/design.php` go back together - the
+  choices the files were written under, which an apply records beside its
+  compile record, not the draft saved a moment before it - what was there
+  becomes the slot, so it can be undone by restoring again, and a write that
+  fails puts back what it had replaced. Files the delivered project brought
+  (written under no choices of Design's) come back without a setup: the choices
+  on screen stay, and the panel reads *Not written by Design*. A project that
+  applied with this feature before the choices were recorded keeps its saved
+  draft with the old record, and a restore of that reads *saved, not applied*.
+  Restoring replaces the saved draft too, and reloads the panel, so unsaved
+  edits on screen are lost. The state line now looks at all three files, not
+  only the stylesheet, and the wording says *draft* and *apply* throughout.
+  The new file is declared under `data`, so a backup carries it. No
+  `upgrade()` is needed. The activity log records the restore,
+  and an apply that replaced files Design had not written says so.
+
+- **Saturation, Contrast and Depth reach further at their outer positions -
+  apply again to get them.** The positions 1 and 3 moved, position 2 is the
+  framework's own and did not: *Muted* carries a seventh of the chroma and
+  *Rich* more in links, focus and grey tint (it is limited by the sRGB gamut,
+  so the brand surfaces gain little); *Soft* reads about 10:1 instead of
+  13.7:1 and *Strong* solves text, links and surfaces to 10:1 and muted text to
+  9:1; *Flat* keeps a trace of the band (about 1.02:1) and no light shadow,
+  *Raised* draws borders at 7:1 - on the neutral grounds only, a brand, accent
+  or status surface has no room for more than about 4.6:1 - and shadows up to
+  95%. The scrim over a cover photograph has its own target and holds *Strong*
+  at 7:1, so a hero photograph does not go from 80% to 91% dark. *Soft* goes
+  the other way: its dimmer ink needs a darker ground, so the scrim over a cover
+  photograph is 83% in light and 80% in dark mode instead of 76% and 73% -
+  darker than *Strong* leaves it. No floor is taken away: text, muted text,
+  links, the focus ring and borders are held to their ratios at every
+  position, in both modes. Nothing recompiles on its own.
+  A project with one of the three knobs off *Standard* reads *saved, not
+  applied* after the update (`Colours::REVISION` joins its fingerprint) and has
+  to apply again; one with all three on *Standard* compiles the same bytes as
+  before and is not asked.
+
 - **Structure and Colours are tabs in the pane's head.** The workbench
   draws one head over every panel now - its name, and beside it the tabs
   where a panel has some - so the panel's own "Design" heading under that

@@ -233,6 +233,22 @@
 	margin: 0;
 }
 
+/*	The version before the last apply: the line that dates it and, under it,
+	the button that swaps it back. Quiet like the state line above it - an
+	undo that has to be asked for twice is not one that gets pressed by
+	accident. */
+.nino-admin #design-state .design-previous {
+	margin-top: .6rem;
+}
+.nino-admin #design-state #design-restore {
+	margin-top: .4rem;
+}
+
+/*	What the two buttons in the bar are, in a line under it */
+.nino-admin #design-actions-hint {
+	margin: .6rem 0 0;
+}
+
 /*	The way back, pinned to the far side of the bar from the two buttons that
 	commit - the bar itself is justified to the end, so an auto margin here is
 	what puts this one at the beginning. Quiet: it is an undo, not an action. */

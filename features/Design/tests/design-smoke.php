@@ -399,6 +399,93 @@ check( 'an unknown knob position falls back rather than indexing a table with it
 check( 'the compiled sheet carries the palette', str_contains( $css, ':root[data-nino-mode="dark"] {' ) === true
 	&& substr_count( $css, '--nino-brand-safe:' ) >= 1 );
 
+/*	The three scales that reach furthest at their outer positions - Saturation,
+	Contrast and Depth - and what none of those positions may do. Position 2 is
+	the framework itself (the base.css identity above); 1 and 3 are free to go
+	as far as the floors allow, and the floors are what is held here: for every
+	combination of the three, in both modes, on four primaries that are
+	nothing alike - a light blue, a dark red, a yellow, a near-black - the
+	text clears 4.5:1 (10:1 at Strong), muted text 4.5:1, a link its own
+	target (9.98:1 at Strong), a border and the focus ring the 3:1 of
+	SC 1.4.11, and a Raised border 7:1 where the ground leaves room for one. The brand and accent
+	surfaces are the two that are the colour that was picked, so as in the
+	check above they are not measured for text.	*/
+$reach = [];
+$reached = 0;
+
+foreach( [ '#4faae8', '#8b1d3f', '#facc15', '#111827' ] as $primary )
+	foreach( [ 1, 2, 3 ] as $saturation )
+		foreach( [ 1, 2, 3 ] as $contrast )
+			foreach( [ 1, 2, 3 ] as $depth )
+				foreach( [ 'light', 'dark' ] as $mode ) {
+
+					$settings = [ 'primary' => $primary, 'saturation' => $saturation, 'contrast' => $contrast, 'depth' => $depth ];
+					$label		= $primary. ' sat '. $saturation. ' con '. $contrast. ' dep '. $depth. ' '. $mode;
+
+					foreach( \Nino\Modules\Design\Colours::palette( $settings, $mode ) as $surface => $v ) {
+
+						$reached++;
+
+						if( in_array( $surface, [ 'brand', 'accent' ], true ) === true )
+							continue;
+
+						$ratio = static fn( string $key ): float => \Nino\Modules\Design\Colours::contrast( $v[$key], $v['bg'] );
+						// Text holds the 10:1 at Strong. Only a link has the solver
+						// stopping within a hair of its target (9.99:1 on some
+						// harmonies), so that one is held to 9.98
+						$text	= $contrast === 3 ? 10.0 : 4.5;
+						$link	= $contrast === 3 ? 9.98 : 4.5;
+
+						if( $ratio( 'on' ) < $text )
+							$reach[] = $label. ' '. $surface. ' on';
+						if( $ratio( 'on-muted' ) < 4.5 )
+							$reach[] = $label. ' '. $surface. ' on-muted';
+						if( $ratio( 'link' ) < $link )
+							$reach[] = $label. ' '. $surface. ' link';
+						if( $ratio( 'focus' ) < 3.0 )
+							$reach[] = $label. ' '. $surface. ' focus';
+						if( $ratio( 'border' ) < 3.0 )
+							$reach[] = $label. ' '. $surface. ' border';
+						if( $depth === 3 && in_array( $surface, [ 'default', 'alt', 'tint', 'dark', 'black' ], true ) === true && $ratio( 'border' ) < 7.0 )
+							$reach[] = $label. ' '. $surface. ' border at 7:1';
+					}
+				}
+
+check( 'no position of Saturation, Contrast or Depth takes a floor away, in either mode, on four unlike primaries ('. $reached. ' surfaces)'
+	. ( $reach === [] ? '' : ' - '. implode( ', ', array_slice( $reach, 0, 5 ) ) ), $reach === [] );
+
+$chromaAt = static function( int $saturation ): float {
+	return \Nino\Modules\Design\Colours::oklch( \Nino\Modules\Design\Colours::palette( [ 'primary' => '#4faae8', 'saturation' => $saturation ], 'light' )['brand-safe']['bg'] )[1];
+};
+
+check( 'Saturation never takes colour away as it goes up, and Muted and Rich are apart from Standard',
+	$chromaAt( 1 ) <= $chromaAt( 2 ) && $chromaAt( 2 ) <= $chromaAt( 3 ) && $chromaAt( 1 ) < $chromaAt( 2 ) - 0.02 );
+
+$depthOf = static fn( int $depth, string $mode ): array => \Nino\Modules\Design\Colours::palette( [ 'depth' => $depth ], $mode );
+
+foreach( [ 'light', 'dark' ] as $depthMode ) {
+	check( 'Depth 1 is not Depth 2 in '. $depthMode. ': neither the band nor the shadow is the same',
+		$depthOf( 1, $depthMode )['alt']['bg'] !== $depthOf( 2, $depthMode )['alt']['bg']
+		&& $depthOf( 1, $depthMode )['default']['shadow'] !== $depthOf( 2, $depthMode )['default']['shadow'] );
+	// Flat is flatter, not gone: with no band at all the alternate sections
+	// vanish into the page
+	$band = \Nino\Modules\Design\Colours::contrast( $depthOf( 1, $depthMode )['alt']['bg'], $depthOf( 1, $depthMode )['default']['bg'] );
+	check( '...and Flat keeps a trace of the band in '. $depthMode. ' ('. round( $band, 3 ). ':1 against the page)', $band >= 1.015 && $band < 1.05 );
+}
+
+/*	The scrim over a cover photograph has a table of its own. At Strong the
+	text asks 10:1, and a scrim solved to that would take a photograph from 80%
+	dark to about 91% - nearly black - for a headline that is far above AAA
+	already at 7:1	*/
+$scrimAt = static function( int $contrast ): array {
+	preg_match_all( '/--nino-scrim:\s*rgb\([^\/]+\/\s*(\d+)%\)/', \Nino\Modules\Design\Colours::css( [ 'contrast' => $contrast ] ), $found );
+	return array_map( 'intval', $found[1] );
+};
+
+check( 'Strong does not darken a cover photograph beyond 7:1 - the scrim stays at or under 80%, in both modes',
+	$scrimAt( 3 ) !== [] && max( $scrimAt( 3 ) ) <= 80 );
+check( 'the revision of the colour tables is a number that can be raised', \Nino\Modules\Design\Colours::REVISION >= 1 );
+
 echo "\n";
 echo "Compiler - the sheet a setup produces\n";
 
@@ -453,6 +540,28 @@ check( '...and a setup that still carries a digest per part from an older versio
 	\Nino\Modules\Design\Setup::normalize( [ 'parts' => [ 'section' => [ 'set' => 'v1', 'sha' => 'written by a version before this one' ] ] ], $sandbox ), $sandbox ) );
 
 file_put_contents( $sectionSet, $sectionSource );
+
+/*	The colour tables moved at positions 1 and 3 of three knobs and not at 2,
+	so the fingerprint carries their revision for a project with one of those
+	knobs off 2 and for no other: a project that never touched them compiles
+	the same bytes as before and has no reason to read "not applied"	*/
+$beforeRevision = static function( array $setup, string $lib ): string {
+	$files = [];
+	foreach( array_keys( \Nino\Modules\Design\Setup::PARTS ) as $printPart ) {
+		$printSet 					= (string) ( $setup['parts'][$printPart]['set'] ?? '' );
+		$printFile 					= \Nino\Modules\Design\Setup::file( $lib, $printPart, $printSet );
+		$files[$printPart] 	= [ $printSet, ( $printFile === '' || is_file( $printFile ) === false ) ? '' : (string) hash_file( 'sha256', $printFile ) ];
+	}
+	unset( $setup['compiled'] );
+	return hash( 'sha256', serialize( [ $setup, $files ] ) );
+};
+$moved = $sandboxSetup;
+$moved['colours']['contrast'] = 3;
+
+check( 'a setup with every colour knob at 2 fingerprints exactly as it did before the tables moved',
+	\Nino\Modules\Design::fingerprint( $sandboxSetup, $sandbox ) === $beforeRevision( $sandboxSetup, $sandbox ) );
+check( '...and one with Saturation, Contrast or Depth anywhere else does not',
+	\Nino\Modules\Design::fingerprint( $moved, $sandbox ) !== $beforeRevision( $moved, $sandbox ) );
 
 echo "\nWriting it, and what it will not write over\n";
 
@@ -659,6 +768,277 @@ check( 'a size posted as an array falls back rather than raising',
 	callDesignAction( $appData, 'apiSave', [ 'parts' => [], 'step' => 'default', 'size' => [ 'l' ] ] )[0] === 200
 	&& ninoWarnings() === []
 	&& \Nino\Modules\Design\Setup::read( $appData, \Nino\Modules\Design::libraryDir() )['size'] === 'm' );
+
+echo "\nApplying asks first, keeps the version before, and restores it\n";
+
+$slotPath	= \Nino\Filesystem::path( $appData, \Nino\Modules\Design\Previous::PATH );
+$targets	= \Nino\Modules\Design\Previous::targets();
+$pathOf		= static fn( string $target ): string => \Nino\Filesystem::path( $appData, $target );
+
+/** Every file Design writes as it is on disk right now: bytes, or null where there is none */
+$onDisk = static function() use ( $targets, $pathOf ): array {
+	$files = [];
+	foreach( $targets as $target )
+		$files[$target] = is_file( $pathOf( $target ) ) === true ? (string) file_get_contents( $pathOf( $target ) ) : null;
+	return $files;
+};
+
+/** A plan, by target */
+$planOf = static function() use ( &$appData ): array {
+	return array_column( (array) ( callDesignAction( $appData, 'apiPlan' )[1]['files'] ?? [] ), null, 'target' );
+};
+
+check( 'the files Design writes are the stylesheet and the two frames, in that order',
+	$targets === [ '/assets/theme.css', '/templates/theme.header.tpl', '/templates/theme.footer.tpl' ] );
+check( 'the previous version is declared under data, so a backup carries it too',
+	in_array( \Nino\Modules\Design\Previous::PATH, (array) ( $feature['data'] ?? [] ), true ) === true );
+
+// A project the way the wizard leaves it: a delivered stylesheet and two
+// frames with no stamp - and a shortcode put into the footer by hand
+$delivered = [
+	'/assets/theme.css'							=> "/* delivered */\nbody { margin: 0; }\n",
+	'/templates/theme.header.tpl'		=> "<header>[template /templates/html-header-nav]</header>\n",
+	'/templates/theme.footer.tpl'		=> "<footer>[template /templates/html-footer-nav]\n[consent-settings]</footer>\n",
+];
+
+foreach( $delivered as $target => $bytes )
+	file_put_contents( $pathOf( $target ), $bytes );
+
+@unlink( $slotPath );
+$setupBefore = \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Design\Setup::PATH, [] );
+
+[ $status, $listing ] = callDesignAction( $appData, 'apiPlan' );
+$plan = $planOf();
+
+check( 'plan answers one entry per file Design writes, in the order it writes them', $status === 200 && array_keys( $plan ) === $targets );
+check( '...all three delivered, so all three not ours, existing, and different from what applying writes',
+	count( array_filter( $plan, static fn( array $file ): bool => $file['state'] === 'foreign' && $file['exists'] === true && $file['changes'] === true ) ) === 3 );
+check( '...and the footer is told apart by the shortcode somebody put in it that the variant replacing it does not have',
+	$plan['/templates/theme.footer.tpl']['lost'] === [ '[consent-settings]' ]
+	&& $plan['/templates/theme.header.tpl']['lost'] === [] && $plan['/assets/theme.css']['lost'] === [] );
+$shortcodes = new ReflectionMethod( \Nino\Modules\Design::class, '_shortcodes' );
+check( 'a shortcode is the whole token, a [[fill]] in one of its arguments included, and a bare [[fill]] is none',
+	$shortcodes->invoke( null, '<p>[[/company/name]] [image /x alt="[[/company/name]]"] [consent-settings]</p>' ) === [ '[image /x alt="[[/company/name]]"]', '[consent-settings]' ] );
+check( 'planning writes nothing: the files are the delivered ones and there is no previous version',
+	$onDisk() === $delivered && is_file( $slotPath ) === false );
+
+check( 'applying over them without force is refused, and still keeps nothing',
+	callDesignAction( $appData, 'apiApply' )[0] === 409 && is_file( $slotPath ) === false && $onDisk() === $delivered );
+check( 'applying with force goes through', callDesignAction( $appData, 'apiApply', [ 'force' => true ] )[0] === 200 );
+
+$slot 		= \Nino\Modules\Design\Previous::read( $appData );
+$applied 	= $onDisk();
+$setupApplied = \Nino\Modules\Design\Setup::read( $appData, $library );
+
+check( 'the previous version holds the old bytes of all three files', $slot !== null && $slot['files'] === $delivered );
+check( '...and when it was kept - with no setup, because the delivered files were written under none of Design\'s: the record in data/design.php names another stylesheet', $slot !== null && $slot['setup'] === null
+	&& ( $setupBefore['compiled']['sha'] ?? '' ) !== hash( 'sha256', $delivered['/assets/theme.css'] )
+	&& preg_match( '/^\d{4}-\d{2}-\d{2}T/', $slot['at'] ) === 1 );
+check( '...while the files on disk are now Design\'s own',
+	count( array_filter( $targets, static fn( string $target ): bool => \Nino\Modules\Design\Compiler::ownership( (string) $applied[$target], $target !== \Nino\Modules\Design\Compiler::TARGET ) === 'ours' ) ) === 3 );
+check( 'plan afterwards finds every file ours and nothing to change',
+	array_column( $planOf(), 'state' ) === [ 'ours', 'ours', 'ours' ] && array_filter( array_column( $planOf(), 'changes' ) ) === [] );
+
+// Applying the same thing again must not replace the one version there is
+// with a copy of the present. The date is fixed first, so "untouched" is a
+// statement about the whole slot and not about a clock
+$fixed = $slot;
+$fixed['at'] = '2026-01-01T00:00:00+00:00';
+\Nino\Modules\Design\Previous::write( $appData, $fixed );
+
+check( 'applying again with nothing changed leaves the previous version exactly as it was',
+	callDesignAction( $appData, 'apiApply' )[0] === 200 && \Nino\Modules\Design\Previous::read( $appData ) === $fixed
+	&& $onDisk() === $applied );
+
+// A restore is a swap
+[ $status, $restored ] = callDesignAction( $appData, 'apiRestore' );
+
+check( 'restoring puts the three files back byte for byte', $status === 200 && $onDisk() === $delivered );
+check( '...and the slot now holds what was applied, so the swap can be undone',
+	( \Nino\Modules\Design\Previous::read( $appData )['files'] ?? [] ) === $applied );
+$afterApply = $setupApplied;
+unset( $afterApply['compiled'] );
+check( '...and with no setup in the slot only the record of what was compiled goes: the choices stay, and nothing claims the files answer to them',
+	\Nino\Modules\Design\Setup::read( $appData, $library ) === $afterApply + [ 'compiled' => [] ] );
+check( '...and the answer says what the files are now: not Design\'s, so not current',
+	array_column( (array) ( $restored['files'] ?? [] ), 'state' ) === [ 'foreign', 'foreign', 'foreign' ] && ( $restored['current'] ?? null ) === false
+	&& is_array( $restored['previous'] ?? null ) === true && ( $restored['previous']['files'] ?? [] ) === $targets );
+
+// A request already failed by Csrf, which runs before an action, writes nothing
+$_POST['data'] = '[]';
+$failed = [ '/nino/http/response' => [ 'statusCode' => 403 ] ];
+$slotNow = \Nino\Modules\Design\Previous::read( $appData );
+\Nino\Modules\Design\Admin::apiRestore( $appData, $failed );
+$_POST = [];
+
+check( 'a restore the Csrf check already failed writes nothing',
+	$failed['/nino/http/response']['statusCode'] === 403 && $onDisk() === $delivered && \Nino\Modules\Design\Previous::read( $appData ) === $slotNow );
+
+check( 'restoring again returns to what was applied',
+	callDesignAction( $appData, 'apiRestore' )[0] === 200 && $onDisk() === $applied
+	&& ( \Nino\Modules\Design\Previous::read( $appData )['files'] ?? [] ) === $delivered );
+
+// What came back is an older Design output with its own setup, which is a
+// file that answers to the setup beside it. Without a setup in the slot
+// there is nothing saying what the files were compiled from - and the panel
+// does not say they are current
+[ , $listed ] = callDesignAction( $appData, 'apiList' );
+check( 'an older Design output that comes back with its setup is current, because the two belong together', ( $listed['current'] ?? null ) === true );
+
+$slotNoSetup = \Nino\Modules\Design\Previous::read( $appData );
+$slotNoSetup['setup'] = null;
+\Nino\Modules\Design\Previous::write( $appData, $slotNoSetup );
+callDesignAction( $appData, 'apiRestore' );
+[ , $listed ] = callDesignAction( $appData, 'apiList' );
+
+check( 'one that comes back with no setup to match it is not current - there is no record of what it was compiled from',
+	( $listed['current'] ?? null ) === false && ( $listed['compiled'] ?? 'x' ) === '' );
+
+// ...a restore the disk refuses is not half done
+callDesignAction( $appData, 'apiApply', [ 'force' => true ] );
+$before 	= $onDisk();
+$slotHeld = \Nino\Modules\Design\Previous::read( $appData );
+
+unlink( $pathOf( '/templates/theme.footer.tpl' ) );
+mkdir( $pathOf( '/templates/theme.footer.tpl' ) );
+ninoWarnings();
+[ $status, $failedRestore ] = callDesignAction( $appData, 'apiRestore' );
+ninoWarnings();
+rmdir( $pathOf( '/templates/theme.footer.tpl' ) );
+
+check( 'a restore whose last write fails answers 500 and says so', $status === 500 && str_contains( (string) ( $failedRestore['error'] ?? '' ), 'theme.footer.tpl' ) === true );
+check( '...puts the files it had replaced back, and leaves the previous version where it was',
+	$slotHeld['files']['/assets/theme.css'] !== $before['/assets/theme.css'] && $slotHeld['files']['/templates/theme.header.tpl'] !== $before['/templates/theme.header.tpl']
+	&& file_get_contents( $pathOf( '/assets/theme.css' ) ) === $before['/assets/theme.css']
+	&& file_get_contents( $pathOf( '/templates/theme.header.tpl' ) ) === $before['/templates/theme.header.tpl']
+	&& \Nino\Modules\Design\Previous::read( $appData ) === $slotHeld );
+
+file_put_contents( $pathOf( '/templates/theme.footer.tpl' ), (string) $before['/templates/theme.footer.tpl'] );
+
+unlink( $slotPath );
+check( 'with no previous version a restore is a 404 and writes nothing',
+	callDesignAction( $appData, 'apiRestore' )[0] === 404 && $onDisk() === $before );
+
+// A snapshot that cannot be written stops the apply before it writes a file
+callDesignAction( $appData, 'apiSave', [ 'parts' => [], 'knobs' => [], 'size' => 's' ] );
+mkdir( $slotPath );
+ninoWarnings();
+[ $status, $noSnapshot ] = callDesignAction( $appData, 'apiApply' );
+ninoWarnings();
+rmdir( $slotPath );
+
+check( 'an apply that cannot keep the previous version is refused with that reason',
+	$status === 500 && str_contains( (string) ( $noSnapshot['error'] ?? '' ), 'could not keep the previous version in data/design-previous.php - nothing was overwritten' ) === true );
+check( '...and not one of the three files changed', $onDisk() === $before );
+
+// A stylesheet that is Design's beside a frame somebody edited used to be a
+// dead end: the refusal had nothing on screen to answer yes to
+callDesignAction( $appData, 'apiApply' );
+$footerPath = $pathOf( '/templates/theme.footer.tpl' );
+file_put_contents( $footerPath, (string) file_get_contents( $footerPath ). "\n<p>[consent-settings]</p>\n" );
+$plan = $planOf();
+
+check( 'plan tells a stylesheet that is ours from a frame somebody edited', $plan['/assets/theme.css']['state'] === 'ours'
+	&& $plan['/templates/theme.footer.tpl']['state'] === 'edited' && $plan['/templates/theme.header.tpl']['state'] === 'ours' );
+check( '...applying over it needs force, and force is what gets it through',
+	callDesignAction( $appData, 'apiApply' )[0] === 409 && callDesignAction( $appData, 'apiApply', [ 'force' => true ] )[0] === 200
+	&& \Nino\Modules\Design\Compiler::ownership( (string) file_get_contents( $footerPath ), true ) === 'ours' );
+check( '...and the edited footer is in the previous version',
+	str_contains( (string) ( \Nino\Modules\Design\Previous::read( $appData )['files']['/templates/theme.footer.tpl'] ?? '' ), '<p>[consent-settings]</p>' ) === true );
+
+/*	The panel's own sequence, which is not apply on its own: _save(true) posts
+	the draft, asks for the plan and only then applies. By the time the apply
+	takes the snapshot, data/design.php already holds the NEW choices - and the
+	version before is the choices the files were written under, not those	*/
+$parts = static fn( string $header, string $footer ): array => [ 'header' => [ 'set' => $header ], 'footer' => [ 'set' => $footer ] ];
+$sans = static function( array $setup ): array {
+	unset( $setup['compiled'] );
+	return $setup;
+};
+
+callDesignAction( $appData, 'apiSave', [ 'parts' => $parts( 'v1', 'v1' ), 'knobs' => [], 'size' => 'm', 'colours' => [] ] );
+callDesignAction( $appData, 'apiPlan' );
+callDesignAction( $appData, 'apiApply', [ 'force' => true ] );
+
+$setupA = $sans( \Nino\Modules\Design\Setup::read( $appData, $library ) );
+$filesA = $onDisk();
+
+callDesignAction( $appData, 'apiSave', [ 'parts' => $parts( 'v3', 'v2' ), 'knobs' => [], 'size' => 'l', 'colours' => [ 'contrast' => 3 ] ] );
+callDesignAction( $appData, 'apiPlan' );
+callDesignAction( $appData, 'apiApply' );
+
+$setupB = $sans( \Nino\Modules\Design\Setup::read( $appData, $library ) );
+$filesB = $onDisk();
+
+check( 'the two versions of the sequence differ in files, choices, size and colours', $filesA !== $filesB && $setupA !== $setupB
+	&& $setupA['size'] === 'm' && $setupB['size'] === 'l' && $setupB['parts']['header']['set'] === 'v3' && $setupB['colours']['contrast'] === 3 );
+check( 'the slot holds the choices the files were written under, not the draft the panel saved a moment before the apply',
+	( \Nino\Modules\Design\Previous::read( $appData )['files'] ?? [] ) === $filesA
+	&& $sans( (array) ( \Nino\Modules\Design\Previous::read( $appData )['setup'] ?? [] ) ) === $setupA );
+
+[ $status, $back ] = callDesignAction( $appData, 'apiRestore' );
+
+check( 'restoring after save, plan and apply brings back the files AND the setup: the choices, the size and the colours of the older version',
+	$status === 200 && $onDisk() === $filesA && $sans( \Nino\Modules\Design\Setup::read( $appData, $library ) ) === $setupA );
+check( '...and the panel reads that version as applied, with nothing "saved, not applied"', ( $back['current'] ?? null ) === true
+	&& ( callDesignAction( $appData, 'apiList' )[1]['current'] ?? null ) === true );
+
+[ $status, $forth ] = callDesignAction( $appData, 'apiRestore' );
+
+check( 'restoring again gives the newer version back, files and setup, and current',
+	$status === 200 && $onDisk() === $filesB && $sans( \Nino\Modules\Design\Setup::read( $appData, $library ) ) === $setupB
+	&& ( $forth['current'] ?? null ) === true );
+
+// A draft saved over what was applied is not what the files answer to, and
+// the next apply must not keep it as the version before
+callDesignAction( $appData, 'apiSave', [ 'parts' => $parts( 'v5', 'v3' ), 'knobs' => [], 'size' => 's', 'colours' => [] ] );
+callDesignAction( $appData, 'apiApply' );
+
+check( 'a third apply keeps what the second one wrote, with the choices that wrote it',
+	( \Nino\Modules\Design\Previous::read( $appData )['files'] ?? [] ) === $filesB
+	&& $sans( (array) ( \Nino\Modules\Design\Previous::read( $appData )['setup'] ?? [] ) ) === $setupB );
+
+// A project that applied with the release before this one has a record
+// without 'setup'. The draft saved over it cannot be told from the choices, so
+// the slot keeps data/design.php whole with its record, and a restore reads
+// "saved, not applied" - not "never applied", and not foreign
+$wrote = \Nino\Modules\Design\Setup::read( $appData, $library );
+unset( $wrote['compiled']['setup'] );
+\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Design\Setup::PATH, $wrote );
+callDesignAction( $appData, 'apiSave', [ 'parts' => $parts( 'v3', 'v2' ), 'knobs' => [], 'size' => 'l', 'colours' => [] ] );
+callDesignAction( $appData, 'apiPlan' );
+callDesignAction( $appData, 'apiApply' );
+[ $status, $legacyBack ] = callDesignAction( $appData, 'apiRestore' );
+
+check( 'restoring over a record written before it carried its setup reads saved, not applied: the files are ours, the record is there, the draft is not current',
+	$status === 200 && ( $legacyBack['exists'] ?? null ) === true && ( $legacyBack['ours'] ?? null ) === true
+	&& ( $legacyBack['current'] ?? null ) === false && ( $legacyBack['compiled'] ?? '' ) !== ''
+	&& array_column( (array) ( $legacyBack['files'] ?? [] ), 'state' ) === [ 'ours', 'ours', 'ours' ] );
+
+// A project compiled before the tables moved has a fingerprint without the
+// revision. With a colour knob off 2 that is "saved, not applied" once; with
+// all three at 2 the bytes did not change and neither does the answer
+$legacyOff = \Nino\Modules\Design\Setup::read( $appData, $library );
+$legacyOff['colours']['contrast'] = 3;
+\Nino\Modules\Design\Setup::write( $appData, $legacyOff );
+callDesignAction( $appData, 'apiApply' );
+$legacyOff = \Nino\Modules\Design\Setup::read( $appData, $library );
+check( 'a project applied with Contrast at Strong reads current', ( callDesignAction( $appData, 'apiList' )[1]['current'] ?? null ) === true );
+$legacyOff['compiled']['input'] = $beforeRevision( $legacyOff, $library );
+\Nino\Modules\Design\Setup::write( $appData, $legacyOff );
+check( '...and once it was applied before the revision existed it reads saved, not applied', ( callDesignAction( $appData, 'apiList' )[1]['current'] ?? null ) === false );
+
+$legacyDefault = \Nino\Modules\Design\Setup::read( $appData, $library );
+$legacyDefault['colours']['contrast'] = 2;
+\Nino\Modules\Design\Setup::write( $appData, $legacyDefault );
+callDesignAction( $appData, 'apiApply' );
+$legacyDefault = \Nino\Modules\Design\Setup::read( $appData, $library );
+$legacyDefault['compiled']['input'] = $beforeRevision( $legacyDefault, $library );
+\Nino\Modules\Design\Setup::write( $appData, $legacyDefault );
+check( 'with every colour knob at 2 the same record still reads current', ( callDesignAction( $appData, 'apiList' )[1]['current'] ?? null ) === true );
+
+// What the preview tests further down take for the stored setup
+callDesignAction( $appData, 'apiSave', [ 'parts' => [], 'knobs' => [], 'size' => 'm' ] );
 
 echo "\nThe knob: the framework's own vocabulary, and the two levels it asks\n";
 
@@ -969,21 +1349,38 @@ check( 'every action of the panel refuses a request with no session',
 	callDesignAction( $appData, 'apiList' )[0] === 401
 	&& callDesignAction( $appData, 'apiSave', [] )[0] === 401
 	&& callDesignAction( $appData, 'apiApply' )[0] === 401
+	&& callDesignAction( $appData, 'apiPlan' )[0] === 401
+	&& callDesignAction( $appData, 'apiRestore' )[0] === 401
 	&& callDesignAction( $appData, 'apiPreview', [] )[0] === 401 );
 
 \Nino\Auth::insertUser( $appData, 'editor@example.com', 'correct horse battery staple', [ '/_admin/elements/manage' ] );
 \Nino\Auth::loginUser( $appData, 'editor@example.com', 'correct horse battery staple' );
 check( '...and an account without /_admin/design/manage with a 403',
 	callDesignAction( $appData, 'apiList' )[0] === 403 && callDesignAction( $appData, 'apiApply' )[0] === 403
-	&& callDesignAction( $appData, 'apiPreview', [] )[0] === 403 );
+	&& callDesignAction( $appData, 'apiPlan' )[0] === 403 && callDesignAction( $appData, 'apiRestore' )[0] === 403
+	&& callDesignAction( $appData, 'apiPreview', [] )[0] === 403
+	&& callDesignAction( $appData, 'apiSave', [] )[0] === 403 );
 
-check( 'the panel names every action it answers', array_keys( \Nino\Modules\Design\Admin::actions() ) === [ 'design/list', 'design/save', 'design/apply', 'design/preview' ] );
+check( 'the panel names every action it answers', array_keys( \Nino\Modules\Design\Admin::actions() ) === [ 'design/list', 'design/save', 'design/apply', 'design/plan', 'design/restore', 'design/preview' ] );
 check( 'and previewing is not written to the activity log - it happens on every select and changes nothing',
 	\Nino\Modules\Design\Admin::log( 'design/preview', [] ) === '' );
 check( 'and ships the pane and the two assets it is drawn with',
 	\Nino\Modules\Design\Admin::panes() === [ 'design-form' ] && count( \Nino\Modules\Design\Admin::assets() ) === 2 );
-check( 'taking the delivered file over is written to the activity log as that',
-	str_contains( \Nino\Modules\Design\Admin::log( 'design/apply', [ 'force' => true ] ), 'took over' ) === true );
+check( 'taking over files Design had not written is written to the activity log as that, and a restore as one',
+	str_contains( \Nino\Modules\Design\Admin::log( 'design/apply', [ 'force' => true ] ), 'took over files Design had not written' ) === true
+	&& \Nino\Modules\Design\Admin::log( 'design/restore', [] ) === 'Restore previous Design version' );
+check( 'planning only reads, so it is not written to the log either', \Nino\Modules\Design\Admin::log( 'design/plan', [] ) === '' );
+
+/*	Both files hold the same keys. Nothing but this checks it: a key one
+	language lacks draws as the fill itself in that language's panel, and the
+	script reads a dozen of them by name	*/
+$textEn = array_keys( (array) include __DIR__. '/../text/en_US.php' );
+$textDe = array_keys( (array) include __DIR__. '/../text/de_DE.php' );
+check( 'the panel\'s two text files carry the same keys, in the same order', $textEn === $textDe );
+
+preg_match_all( "#'/_admin/design/([a-z0-9/-]*[a-z0-9])'#", (string) file_get_contents( __DIR__. '/../assets/admin.js' ), $scriptKeys );
+$unwritten = array_filter( array_unique( $scriptKeys[1] ), static fn( string $key ): bool => in_array( '[[/_admin/design/'. $key. ']]', $textEn, true ) === false );
+check( '...and every text the script names literally is one of them'. ( $unwritten === [] ? '' : ' - missing: '. implode( ', ', $unwritten ) ), $unwritten === [] );
 
 // --- The panel's script, where node is on the path ------------------------------
 //

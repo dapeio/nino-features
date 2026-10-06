@@ -9,10 +9,10 @@ return [
 	'[[/_admin/design/label/global]]'				=> 'Global',
 	'[[/_admin/design/label/size]]'					=> 'Grundgröße',
 	'[[/_admin/design/label/follow]]'				=> 'Wieder folgen lassen',
-	'[[/_admin/design/label/save]]'					=> 'Auswahl speichern',
+	'[[/_admin/design/label/save]]'					=> 'Entwurf speichern',
 	'[[/_admin/design/label/reset]]'				=> 'Zurücksetzen',
-	'[[/_admin/design/label/apply]]'				=> 'Speichern und kompilieren',
-	'[[/_admin/design/label/takeover]]'			=> 'Datei übernehmen und kompilieren',
+	'[[/_admin/design/label/apply]]'				=> 'Auf Website anwenden',
+	'[[/_admin/design/label/restore]]'				=> 'Vorversion wiederherstellen',
 
 	'[[/_admin/design/part/header]]'				=> 'Header',
 	'[[/_admin/design/part/footer]]'				=> 'Footer',
@@ -33,26 +33,40 @@ return [
 
 	'[[/_admin/design/hint/knob]]'					=> 'Jedes Set erklärt für die Regler, auf die es hört, drei Stufen. Das Finetuning wählt eine davon – es rechnet nicht. Ein Bauteil folgt dem globalen Stand eines Reglers, bis jemand es hier bewegt; danach bleibt es, wo es steht.',
 	'[[/_admin/design/hint/size]]'					=> 'Skaliert die ganze Seite über die Schriftgröße der Wurzel – als Prozentsatz der Browser-Voreinstellung der Besucherin, nie als feste Pixelzahl.',
-	'[[/_admin/design/hint/frames]]'				=> 'Header und Footer bringen ihr eigenes Markup mit: Beim Kompilieren werden die beiden Templates des Projekts überschrieben.',
+	'[[/_admin/design/hint/frames]]'				=> 'Header und Footer bringen ihr eigenes Markup mit: Beim Anwenden werden die beiden Templates des Projekts überschrieben – der bisherige Stand wird vorher als Vorversion abgelegt.',
+	'[[/_admin/design/hint/actions]]'				=> '„Entwurf speichern“ merkt sich Deine Auswahl, die Website bleibt, wie sie ist. „Auf Website anwenden“ schreibt assets/theme.css und die beiden Rahmen-Templates neu und legt den bisherigen Stand vorher unter data/design-previous.php ab.',
+
+	// Was die Rückfrage vor dem Anwenden sagt, eine Zeile je Tatsache – im Skript des Panels gebaut und mit Zeilenumbrüchen verbunden, deshalb trägt hier kein Wert einen
+	'[[/_admin/design/confirm/apply]]'				=> 'Neu geschrieben werden: %s.',
+	'[[/_admin/design/confirm/foreign]]'			=> 'Nicht von Design geschrieben, aber ersetzt: %s.',
+	'[[/_admin/design/confirm/lost]]'				=> 'Steht in Deiner Datei, aber nicht in der neuen Variante: %s – füge es danach bei Bedarf von Hand wieder ein.',
+	'[[/_admin/design/confirm/copy]]'				=> 'Der bisherige Stand wird vorher in data/design-previous.php abgelegt.',
+	'[[/_admin/design/confirm/replaces]]'			=> 'Das ersetzt die Vorversion vom %s.',
+	'[[/_admin/design/confirm/restore]]'			=> 'Vorversion wiederherstellen? Das Setup der Vorversion wird mitgeladen, ungespeicherte Änderungen auf dem Bildschirm gehen dabei verloren. Der jetzige Stand tritt an ihre Stelle, Du kannst das also wieder rückgängig machen.',
 
 	'[[/_admin/design/state/current]]'			=> 'Die Datei entspricht dieser Auswahl.',
-	'[[/_admin/design/state/drifted]]'			=> 'Die Auswahl ist gespeichert, aber noch nicht kompiliert – auf der Seite steht noch der vorige Stand.',
-	'[[/_admin/design/state/missing]]'			=> 'Noch nie kompiliert.',
-	'[[/_admin/design/state/foreign]]'			=> 'Die Datei %s stammt nicht von hier: entweder die ausgelieferte oder eine von Hand bearbeitete. Sie wird nicht überschrieben, solange Du es nicht ausdrücklich sagst.',
-	'[[/_admin/design/state/compiled]]'			=> 'Zuletzt kompiliert: %s',
+	'[[/_admin/design/state/drifted]]'			=> 'Der Entwurf ist gespeichert, aber noch nicht angewendet – auf der Website steht noch der vorige Stand.',
+	'[[/_admin/design/state/missing]]'			=> 'Noch nie angewendet.',
+	'[[/_admin/design/state/foreign]]'			=> 'Nicht von Design geschrieben: %s – ausgeliefert oder von Hand bearbeitet. Beim Anwenden fragt Design vorher nach.',
+	'[[/_admin/design/state/compiled]]'			=> 'Zuletzt angewendet: %s',
+	'[[/_admin/design/state/previous]]'				=> 'Vorversion vom %s',
 
 	// Dieselben vier Zustände in einem Wort, für die Zusammenfassung unter der Vorschau
 	'[[/_admin/design/state/short/current]]'	=> 'Aktuell',
-	'[[/_admin/design/state/short/drifted]]'	=> 'Gespeichert, nicht kompiliert',
-	'[[/_admin/design/state/short/missing]]'	=> 'Nie kompiliert',
+	'[[/_admin/design/state/short/drifted]]'	=> 'Gespeichert, nicht angewendet',
+	'[[/_admin/design/state/short/missing]]'	=> 'Nie angewendet',
 	'[[/_admin/design/state/short/foreign]]'	=> 'Nicht von Design geschrieben',
 
-	'[[/_admin/design/msg/saved]]'					=> 'Auswahl gespeichert.',
+	'[[/_admin/design/msg/saved]]'					=> 'Entwurf gespeichert.',
 	'[[/_admin/design/msg/reverted]]'			=> 'Auswahl auf den gespeicherten Stand zurückgesetzt.',
-	'[[/_admin/design/msg/applied]]'				=> 'Kompiliert. Die Seite sieht ab sofort so aus.',
-	'[[/_admin/design/msg/takenover]]'			=> 'Datei übernommen und kompiliert. Von jetzt an schreibt Design sie.',
+	'[[/_admin/design/msg/applied]]'				=> 'Angewendet. Die Website sieht ab sofort so aus.',
+	'[[/_admin/design/msg/takenover]]'			=> 'Dateien, die nicht von Design stammten, wurden ersetzt. Von jetzt an schreibt Design sie.',
+	'[[/_admin/design/msg/cancelled]]'				=> 'Entwurf gespeichert, nicht angewendet.',
+	'[[/_admin/design/msg/lost]]'					=> 'Nicht mehr in den Rahmen-Templates: %s – falls nötig, von Hand wieder einfügen.',
+	'[[/_admin/design/msg/restored]]'				=> 'Vorversion wiederhergestellt.',
 	'[[/_admin/design/error/save]]'					=> 'Die Auswahl konnte nicht gespeichert werden.',
-	'[[/_admin/design/error/apply]]'				=> 'Es konnte nicht kompiliert werden.',
+	'[[/_admin/design/error/apply]]'				=> 'Es konnte nicht angewendet werden.',
+	'[[/_admin/design/error/restore]]'				=> 'Die Vorversion konnte nicht wiederhergestellt werden.',
 
 	'[[/_admin/design/label/preview]]'			=> 'Vorschau',
 	'[[/_admin/design/label/width]]'				=> 'Breite',
@@ -68,7 +82,7 @@ return [
 
 	'[[/_admin/design/label/picker]]'				=> 'Bauteil',
 	'[[/_admin/design/label/variant]]'			=> 'Variante',
-	'[[/_admin/design/label/state]]'				=> 'Kompilierte Datei',
+	'[[/_admin/design/label/state]]'				=> 'Angewendete Datei',
 
 	// Die Augenbraue über einer Karte und die beiden Blöcke von Zeilen darunter
 	'[[/_admin/design/group/selection]]'		=> 'Auswahl',

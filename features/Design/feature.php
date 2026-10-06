@@ -14,8 +14,8 @@ return [
 		'routes' => [],
 		'panel' => [
 			'Design' => [
-				'en_US' => 'A set per part of a page, a knob per value, a preview beside them - and a compile that writes assets/theme.css.',
-				'de_DE' => 'Ein Set je Bauteil einer Seite, ein Regler je Wert, eine Vorschau daneben – und ein Kompilieren, das assets/theme.css schreibt.',
+				'en_US' => 'A set per part of a page, a knob per value, a preview beside them - and an apply that asks first, writes assets/theme.css and the two frame templates, and keeps the previous version to restore.',
+				'de_DE' => 'Ein Set je Bauteil einer Seite, ein Regler je Wert, eine Vorschau daneben – und ein Anwenden, das vorher nachfragt, assets/theme.css und die beiden Rahmen-Templates schreibt und die Vorversion zum Wiederherstellen aufhebt.',
 			],
 		],
 		'callbacks' => [],
@@ -38,7 +38,9 @@ return [
 	// The whole setup: which set per part, the knob positions, the deviations,
 	// the palette's colours and knobs, and the fingerprint of what was last
 	// compiled. Small, and the one thing that cannot be derived again if it is
-	// lost
-	'data'				=> [ '/data/design.php' ],
+	// lost. And the one version before the last apply - the three files it
+	// replaced and the setup that went with them - which a backup carries too
+	// and a restore of one may simply replace
+	'data'				=> [ '/data/design.php', '/data/design-previous.php' ],
 	'settings'		=> [],
 ];

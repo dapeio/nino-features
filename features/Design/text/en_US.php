@@ -9,10 +9,10 @@ return [
 	'[[/_admin/design/label/global]]'				=> 'Global',
 	'[[/_admin/design/label/size]]'					=> 'Root size',
 	'[[/_admin/design/label/follow]]'				=> 'Follow again',
-	'[[/_admin/design/label/save]]'					=> 'Save the selection',
+	'[[/_admin/design/label/save]]'					=> 'Save draft',
 	'[[/_admin/design/label/reset]]'				=> 'Reset',
-	'[[/_admin/design/label/apply]]'				=> 'Save and compile',
-	'[[/_admin/design/label/takeover]]'			=> 'Take the file over and compile',
+	'[[/_admin/design/label/apply]]'				=> 'Apply to website',
+	'[[/_admin/design/label/restore]]'				=> 'Restore previous version',
 
 	'[[/_admin/design/part/header]]'				=> 'Header',
 	'[[/_admin/design/part/footer]]'				=> 'Footer',
@@ -33,26 +33,40 @@ return [
 
 	'[[/_admin/design/hint/knob]]'					=> 'Every set declares three steps for the knobs it answers to. Finetuning picks one of them - it never computes. A part follows a knob\'s global position until somebody moves it here; then it stays where it was put.',
 	'[[/_admin/design/hint/size]]'					=> 'Scales the whole page through the root font size - as a percentage of the visitor\'s own browser default, never as a fixed pixel value.',
-	'[[/_admin/design/hint/frames]]'				=> 'The header and the footer bring their own markup: compiling overwrites the project\'s two frame templates.',
+	'[[/_admin/design/hint/frames]]'				=> 'The header and the footer bring their own markup: applying overwrites the project\'s two frame templates, after keeping what is there as the previous version.',
+	'[[/_admin/design/hint/actions]]'				=> '"Save draft" remembers your selection and leaves the website as it is. "Apply to website" rewrites assets/theme.css and the two frame templates, and keeps what is there now as the previous version in data/design-previous.php first.',
+
+	// What the confirmation before an apply says, one line per fact - built in the panel's script and joined with line breaks, so no value here carries one
+	'[[/_admin/design/confirm/apply]]'				=> 'Applying rewrites: %s.',
+	'[[/_admin/design/confirm/foreign]]'			=> 'Not written by Design, and replaced: %s.',
+	'[[/_admin/design/confirm/lost]]'				=> 'In your file, but not in the new variant: %s - add it again by hand afterwards if you still need it.',
+	'[[/_admin/design/confirm/copy]]'				=> 'What is there now is kept first, in data/design-previous.php.',
+	'[[/_admin/design/confirm/replaces]]'			=> 'That replaces the previous version from %s.',
+	'[[/_admin/design/confirm/restore]]'			=> 'Restore the previous version? Its setup is loaded with it, so unsaved changes on screen are lost. What is there now takes its place, so this can be undone.',
 
 	'[[/_admin/design/state/current]]'			=> 'The file answers to this selection.',
-	'[[/_admin/design/state/drifted]]'			=> 'The selection is saved but not compiled - the site still shows the previous one.',
-	'[[/_admin/design/state/missing]]'			=> 'Never compiled.',
-	'[[/_admin/design/state/foreign]]'			=> '%s is not one of ours: either the delivered file or one somebody edited. It is not overwritten unless you say so.',
-	'[[/_admin/design/state/compiled]]'			=> 'Last compiled %s',
+	'[[/_admin/design/state/drifted]]'			=> 'The draft is saved but not applied - the site still shows the previous one.',
+	'[[/_admin/design/state/missing]]'			=> 'Never applied.',
+	'[[/_admin/design/state/foreign]]'			=> 'Not written by Design: %s - delivered with the project or edited by hand. Applying asks first.',
+	'[[/_admin/design/state/compiled]]'			=> 'Last applied %s',
+	'[[/_admin/design/state/previous]]'				=> 'Previous version from %s',
 
 	// The same four states in one word, for the summary under the preview
 	'[[/_admin/design/state/short/current]]'	=> 'Up to date',
-	'[[/_admin/design/state/short/drifted]]'	=> 'Saved, not compiled',
-	'[[/_admin/design/state/short/missing]]'	=> 'Never compiled',
+	'[[/_admin/design/state/short/drifted]]'	=> 'Saved, not applied',
+	'[[/_admin/design/state/short/missing]]'	=> 'Never applied',
 	'[[/_admin/design/state/short/foreign]]'	=> 'Not written by Design',
 
-	'[[/_admin/design/msg/saved]]'					=> 'Selection saved.',
+	'[[/_admin/design/msg/saved]]'					=> 'Draft saved.',
 	'[[/_admin/design/msg/reverted]]'			=> 'Selection back to the stored one.',
-	'[[/_admin/design/msg/applied]]'				=> 'Compiled. This is what the site looks like from now on.',
-	'[[/_admin/design/msg/takenover]]'			=> 'File taken over and compiled. Design writes it from now on.',
+	'[[/_admin/design/msg/applied]]'				=> 'Applied. This is what the site looks like from now on.',
+	'[[/_admin/design/msg/takenover]]'			=> 'Files Design had not written were replaced. Design writes them from now on.',
+	'[[/_admin/design/msg/cancelled]]'				=> 'Draft saved, not applied.',
+	'[[/_admin/design/msg/lost]]'					=> 'Not in the frame templates any more: %s - add back by hand if you still need it.',
+	'[[/_admin/design/msg/restored]]'				=> 'Previous version restored.',
 	'[[/_admin/design/error/save]]'					=> 'The selection could not be saved.',
-	'[[/_admin/design/error/apply]]'				=> 'Compiling failed.',
+	'[[/_admin/design/error/apply]]'				=> 'Applying failed.',
+	'[[/_admin/design/error/restore]]'				=> 'The previous version could not be restored.',
 
 	'[[/_admin/design/label/preview]]'			=> 'Preview',
 	'[[/_admin/design/label/width]]'				=> 'Width',
@@ -68,7 +82,7 @@ return [
 
 	'[[/_admin/design/label/picker]]'				=> 'Part',
 	'[[/_admin/design/label/variant]]'			=> 'Variant',
-	'[[/_admin/design/label/state]]'				=> 'Compiled file',
+	'[[/_admin/design/label/state]]'				=> 'Applied file',
 
 	// The eyebrow over a card, and the two blocks of rows under one
 	'[[/_admin/design/group/selection]]'		=> 'Selection',

@@ -85,20 +85,20 @@ compile either way, so a row nobody has touched is not a row with no answer -
 it is one whose answer is still somebody else's. Moving it makes it its own and
 puts the way back (`↺`) beside it.
 
-Choosing and compiling are two actions on purpose. **Save the selection**
-writes `data/design.php` and nothing else; **Save and compile** writes it and
-then produces `assets/theme.css` and the two frame templates. A decision is not
-a stylesheet, and the screen says when the two have drifted apart rather than
-hiding it behind an autosave:
+Choosing and applying are two actions on purpose. **Save draft** writes
+`data/design.php` and nothing else; **Apply to website** writes it and then
+produces `assets/theme.css` and the two frame templates. A draft is not a
+website, and the two buttons carry one line under them saying so. The screen
+says when the two have drifted apart rather than hiding it behind an autosave:
 
 | | |
 | --- | --- |
-| *The file answers to this selection.* | compiled, and nothing has changed since |
-| *saved but not compiled* | the selection is on disk, the site still shows the previous one |
-| *never compiled* | there is no `assets/theme.css` of ours yet |
-| *not one of ours* | the delivered file, or one somebody edited - see below |
+| *The file answers to this selection.* | applied, and nothing has changed since |
+| *The draft is saved but not applied* | the selection is on disk, the site still shows the previous one |
+| *Never applied* | there is no `assets/theme.css` of ours yet |
+| *Not written by Design* | the delivered file, or one somebody edited - any of the three files, see below |
 
-That table stands at the **bottom** of the controls, under *Compiled file*.
+That table stands at the **bottom** of the controls, under *Applied file*.
 It is true and worth saying, and it is not what somebody opening this screen
 came to find out - and only a line that is something to act on is marked. The
 first row used to be a green panel, and a green panel is a thing the eye keeps
@@ -110,11 +110,69 @@ and goes again when it is back. It goes back to what was saved and never
 further: what was saved is saved, and a button that quietly returned a project
 to the delivered design would be a much larger promise.
 
-The last of those is the normal first run: a project's `assets/theme.css` is
-the wizard's until this feature takes it over. The panel turns
-`Compiler::write()`'s refusal into a question rather than an error - the button
-reads **Take the file over and compile**, once, and says so in the activity
-log. The same holds for the two frame templates.
+### Applying asks first
+
+The first apply in a project is the normal one to be careful about: its
+`assets/theme.css` and its two frame templates are the wizard's until this
+feature takes them over, and a later one may meet a header somebody added a
+shortcode to. So **every** apply asks, after saving the draft and before
+writing anything. `design/plan` reads what would happen to each of the three
+files, and the confirmation lists it, one fact to a line:
+
+- which files are rewritten - always the three;
+- which of them Design did not write (`foreign`, the delivered file, or
+  `edited`, one it wrote and somebody changed) and that they are replaced;
+- which **shortcodes** in a frame are lost - the whole token, such as
+  `[consent-settings]` or `[template /templates/html-footer-nav]`, that is in
+  the file on disk and not in the variant that replaces it. `[[fills]]` are not
+  compared; the line says to put it back by hand afterwards;
+- that what is there now is kept first as the previous version, and the date
+  of the one it replaces - said only where something would change.
+
+Cancelling leaves the draft saved and the website as it is. Confirming sends
+the apply with `force` where a file was not Design's - including a frame that
+was only edited beside a stylesheet that is still ours, which used to be a
+`409` with nothing on screen to answer to. The result says it applied, that
+files Design had not written were replaced, and which shortcodes to add again.
+
+### The previous version
+
+One slot, `data/design-previous.php`: the three files as they were and the
+setup they were written under, kept in one atomic write before an apply
+replaces them. "Written under" is meant exactly: the panel saves the draft
+before it applies, so `data/design.php` already holds the new choices when the
+apply takes its snapshot. An apply therefore records the choices it compiled
+from in `compiled.setup`, beside `at`, `sha` and `input`, and the slot keeps
+those with their record - not the draft. A record from before that has no
+setup: where its `sha` still names the stylesheet on disk, the slot keeps
+`data/design.php` whole with it, draft included, since the draft cannot be told
+from the choices, and a restore of it reads *saved, not applied*. For files that
+no apply of Design's wrote (the delivered ones, or a stylesheet that is no
+longer the one the record names) the slot holds no setup at all. One rather
+than a history, because "the version before" is what the panel promises - a
+list would need ids, pruning and a screen to choose from. If an apply fails
+before it has written anything, the slot it replaced is put back. If it cannot
+be written the apply is refused and nothing is overwritten. An apply that would write bytes identical to every file already there keeps
+nothing, so a second apply of the same thing never replaces the previous
+version with a copy of the present.
+
+**Restore previous version** (state box, with the date) asks, then swaps the
+slot with the present: the files are written from it, `data/design.php` goes
+back with them - the choices, size and colours the files were written under,
+with the record of what was compiled, so the panel reads that version as
+*current* - and what was there becomes the slot, exactly as it was (a saved
+draft included), so restoring can be undone by restoring again. The panel is
+loaded from the server afterwards, so the confirmation says that unsaved edits
+on screen are lost. A file the slot did not have is left alone, never deleted:
+the page includes the frames. If a write fails the files already replaced are
+put back from memory and the slot is left as it was (`500`); with no slot it is
+a `404`. If only the new slot cannot be written after the files are back, the
+answer is still `200`, with a note, because the site has changed. A slot with
+no setup (the files were not Design's) brings back no record of what was
+compiled and leaves the choices on screen as they are; the restored files are
+the delivered ones, so the panel reads *Not written by Design* rather than
+*current*. An apply that cannot keep the previous version or cannot write a
+file is a `500`, a refused one a `409`.
 
 ### The preview
 
@@ -388,6 +446,23 @@ Two colours and five knobs.
 - **Depth** - how far a panel separates from the page: the alternate surface,
   the borders and the shadows move together.
 
+The three scales go further at their outer positions than the first cut did;
+the middle one is the framework itself and has not moved, which is what keeps
+an untouched project byte-identical:
+
+| | at the first position | at the third |
+| --- | --- | --- |
+| **Saturation** | *Muted*: a seventh of the chroma on every surface, the greys included - brand-safe surfaces fall from about 0.064 to 0.021 | *Rich*: more chroma in links, focus ring and the grey tint. The brand-safe surfaces gain only a little - a surface solved to 4.5:1 against its ink has little room for chroma, and the sRGB gamut ends there |
+| **Contrast** | *Soft*: a dimmer ink, body text about 10:1 on white instead of 13.7:1; brand surfaces get darker, because the dimmer light ink needs a darker ground - and so does the scrim over a cover photograph, 83% in light and 80% in dark mode instead of 76% and 73%, which is darker than *Strong* leaves it | *Strong*: text, links and surfaces solved to 10:1 and muted text to 9:1. Only a few brand colours reach that on their own, so the note under the brand swatch shows for most. The scrim over a cover photograph is solved to 7:1 and stays where it was (80%) |
+| **Depth** | *Flat*: the alternate band keeps a trace (about 1.02:1 against the page) and the light shadow is gone | *Raised*: a border asks 7:1 and a shadow falls at up to 95%. The 7:1 border is reached on `default`, `alt`, `tint`, `dark` and `black` only - a brand, accent or status surface is solved to about 4.5:1 against its ink and a line on it stops near 4.6:1 |
+
+None of it takes a floor away: the suite holds text, muted text, links, the
+focus ring and borders to their ratios at every position of the three, in both
+modes, on four unlike primaries. A project compiled before this with one of the
+three off *Standard* reads *saved, not applied* once, because
+`Colours::REVISION` joins the fingerprint of exactly those setups; applying
+again brings the new steps, and one with all three on *Standard* is not asked.
+
 Out of that comes every surface a look bands with - `default`, `alt`, `tint`,
 `dark`, `black`, the four brand roles and the three status ones - and, for each,
 everything that has to be readable on it: the ink, the muted ink, the link, the
@@ -439,21 +514,33 @@ one that somebody means to keep. `Compiler::write()` refuses a file whose
 header does not claim a digest that still matches its own body - the delivered
 file, or one that was edited since - and says so, rather than replacing it.
 `$force` is the way past it, and `Design::apply()` passes it through so the
-decision belongs to whoever is looking at the screen.
+decision belongs to whoever is looking at the screen - after the confirmation
+described under [Applying asks first](#applying-asks-first).
+
+`apply()` writes nothing before it has asked about all three files, and keeps
+the version before them (see [The previous version](#the-previous-version))
+between that and the first write. `Compiler::frame()` is the exact bytes of a
+frame as `writeFrame()` puts them, which is what lets `apply()` tell whether
+an apply would change anything, and `Compiler::ownership()` tells `ours` from
+`edited` (a stamp whose digest no longer matches) and `foreign` (no stamp).
 
 ## Data
 
-`data/design.php`, declared under `data` in `feature.php`, so
-`\Nino\Backup::manifest()` carries it. It holds what was chosen and nothing
-derived from it: the set per part and the knobs that part was moved at, the
-global position of every knob, the root size, the palette's two colours and
-five knobs, and the fingerprint of what was last compiled.
+`data/design.php` and `data/design-previous.php`, both declared under `data` in
+`feature.php`, so `\Nino\Backup::manifest()` carries them. The second is the
+previous version (see above): a php array with `at`, the setup, and the bytes of
+the three files, `null` for one that was not there. A backup restore may simply
+replace it - nothing needs merging.
 
-It is the only thing here that cannot be worked out again from what is on disk,
-and it is deliberately outlived by the stylesheet. Removing the feature leaves
-`assets/theme.css` working - it is an ordinary file the bundle already points
-at - and leaves the setup beside it. Installing the feature again finds the
-setup and carries on rather than starting over.
+`data/design.php` holds what was chosen and nothing derived from it: the set per
+part and the knobs that part was moved at, the global position of every knob,
+the root size, the palette's two colours and five knobs, and what was last
+compiled: when, the digest of the stylesheet, the fingerprint of its input and
+the choices themselves (`compiled.setup`, which the previous version needs). It is the only thing here that cannot be worked out
+again from what is on disk, and it is deliberately outlived by the stylesheet.
+Removing the feature leaves `assets/theme.css` working - it is an ordinary file
+the bundle already points at - and leaves the setup beside it. Installing the
+feature again finds the setup and carries on rather than starting over.
 
 Every value is normalised against the library that is actually present:
 `Setup::normalize()` replaces a part naming a set that is not there with the
@@ -483,9 +570,35 @@ normalisation and step resolution, what the compiler emits and in which order,
 the cross-repo comparison of `base.css` against the delivered `theme.css`,
 `write()`'s refusal and its `$force` for the stylesheet **and** for the frame
 templates, the names and descriptions read out of the library files, and the
-panel's four actions - what it lists, that saving stores without compiling,
-that compiling is a `409` over a file that is not ours, and both refusal codes
-(`401` without a session, `403` without the permission).
+panel's six actions - what it lists, that saving stores without compiling,
+that applying is a `409` over a file that is not ours, and both refusal codes
+(`401` without a session, `403` without the permission) for every one of them.
+
+For the previous version and the question before applying: that `plan` lists
+the three delivered files as foreign with the hand-added shortcode of the
+footer as lost; that an apply after it holds the old bytes of all three files
+and, where they were Design's, the setup they were written under; that applying
+again with nothing changed leaves the slot untouched; that a restore writes the
+files back byte for byte, brings the setup with them and leaves the slot holding
+what was applied, so a second restore returns; that this holds for the panel's
+own sequence - save, plan, apply, save, plan, apply, restore - where the first
+version comes back with its choices, size and colours and reads *current*;
+that a restore over a record written before it carried its setup reads *saved,
+not applied*; that a restore without a slot is a `404`, one whose write fails
+is a `500` that puts back what it had replaced and leaves the slot unchanged,
+and one the Csrf check already failed writes nothing; that an apply whose snapshot
+cannot be written is a `500` with every file unchanged; that a frame which is
+only edited beside a stylesheet that is ours is planned as `edited` and goes
+through with `force`; that the fingerprint carries `Colours::REVISION` for a
+colour knob off *Standard* and for no other setup; and that both text files hold
+the same keys and every text the script names is one of them.
+
+For the colours: for Saturation, Contrast and Depth at every position, in both
+modes, on `#4faae8`, `#8b1d3f`, `#facc15` and `#111827` - text 4.5:1 (10:1 at
+Strong; links 9.98:1), muted text, the focus ring and borders held to their ratios, a
+Raised border 7:1 on the neutral grounds, brand-safe chroma never falling as
+Saturation rises, Depth 1 differing from 2 in band and shadow with Flat keeping
+a visible trace, and the scrim at Strong staying at or under 80%.
 
 For the preview it covers the specimen (no frame of its own, a section per
 part, one data-uri picture and no route to fetch it from), that `markup()`
@@ -518,5 +631,10 @@ the workbench renders over every panel: the screen draws no heading of its own
 under it, the Structure / Colours strip stands in the head beside the name - one
 strip however often the screen is drawn - and a switch, by click or arrow key,
 redraws the column and leaves the strip and the focus on it where they are;
-without a head the strip opens the column instead. `design-smoke.php` runs it
-too wherever `node` is on the path.
+without a head the strip opens the column instead. It also covers the two
+buttons and the line under them, that applying sends save, then plan, then asks
+with a text naming the three files, the ones that are not Design's and the lost
+shortcode, that cancelling sends no apply, that `force` is set exactly when a
+file is foreign or edited, and that the restore button appears with a previous
+version, asks first and posts only on a yes. `design-smoke.php` runs it too
+wherever `node` is on the path.

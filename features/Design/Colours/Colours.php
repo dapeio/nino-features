@@ -117,6 +117,18 @@ namespace Nino\Modules\Design {
 			A choice publishes as many positions as it has names for.	*/
 		public const int STEPS = 3;
 
+		/*	Which generation of the tables below a compiled sheet came out of.
+			The positions 1 and 3 of Saturation, Contrast and Depth moved
+			further out in the release after 0.1.0 while 2 stayed exactly
+			where the framework is, so a project with those three knobs at 2
+			compiles to the same bytes it did and a project with one of them
+			elsewhere does not. That is the whole reason Design::fingerprint()
+			carries this number for the latter only: they read "saved, not
+			applied" once and apply again, and the others are not asked to.
+			Raise it whenever a table changes the sheet a non-default knob
+			produces. */
+		public const int REVISION = 1;
+
 		/*	The knobs: what kind of control each is, where it starts, and what
 			its positions are called. The panel draws whatever choices() hands
 			it, so a knob added here needs no line in either template - but it
@@ -181,18 +193,35 @@ namespace Nino\Modules\Design {
 			target - solving it would put grey body copy on white at exactly
 			4.5:1, legal and visibly washed out - so it is a lightness, and
 			that lightness is what a reader actually feels. At 1 the dark ink
-			is a soft near-black around 9:1 on white; at 3 it is black.	*/
-		private const array INK_DARK	= [ 1 => 0.30, 2 => 0.16, 3 => 0.02 ];
-		private const array INK_LIGHT	= [ 1 => 0.88, 2 => 0.99, 3 => 1.00 ];
+			is a soft near-black - about 10:1 on white - and at 3 it is black.
 
-		// Solved values - links, and the lightness a brand surface is moved to
-		// so text survives on it. Never below AA.
-		private const array TARGET_TEXT	= [ 1 => 4.5, 2 => 4.5, 3 => 7.0 ];
+			The outer positions are far apart on purpose: Soft has to be
+			visibly softer than Standard and Strong visibly harder, and a step
+			of a few hundredths of lightness was neither. Only 1 and 3 move,
+			because 2 is pinned to the framework's own palette (see the check
+			against base.css in tests/design-smoke.php).	*/
+		private const array INK_DARK	= [ 1 => 0.38, 2 => 0.16, 3 => 0.0 ];
+		private const array INK_LIGHT	= [ 1 => 0.80, 2 => 0.99, 3 => 1.00 ];
+
+		/*	Solved values - links, and the lightness a brand surface is moved to
+			so text survives on it. Never below AA, and 10:1 at Strong, which
+			is what the position says: text that reads harder than AAA asks.
+			On a brand colour that is more than most of them can give, so at
+			Strong most brands are reported as not safe (see brand()) and the
+			solved -safe roles carry the text instead.	*/
+		private const array TARGET_TEXT	= [ 1 => 4.5, 2 => 4.5, 3 => 10.0 ];
 
 		// The secondary text tier is text. It used to be allowed down to 3.0,
 		// which only passes for large type - a muted paragraph is not large
 		// type, so the floor is the same 4.5 the body gets.
-		private const array TARGET_MUTED = [ 1 => 4.5, 2 => 4.5, 3 => 7.0 ];
+		private const array TARGET_MUTED = [ 1 => 4.5, 2 => 4.5, 3 => 9.0 ];
+
+		/*	What the scrim over a cover photograph has to carry its ink to. Its
+			own table rather than TARGET_TEXT: the scrim is bisected for the
+			quieter ink on a white frame, so a 10:1 target there would take
+			a photograph from 80% dark to about 91% - almost black - for
+			a headline that is already well above AAA at 7:1.	*/
+		private const array TARGET_SCRIM = [ 1 => 4.5, 2 => 4.5, 3 => 7.0 ];
 
 		// UI parts - WCAG 2.2 SC 1.4.11 asks 3:1 for them, and holding those
 		// to the text target makes every border a heavy line. The focus ring
@@ -202,17 +231,24 @@ namespace Nino\Modules\Design {
 		/*	Saturation scales chroma only. Lightness stays with Contrast, or
 			the two knobs fight over the same axis and neither is predictable.
 
+			Rich is limited by the sRGB gamut rather than by this number: a
+			surface solved to 4.5:1 against its ink has little room for
+			chroma, so going from 1.5 to 2.2 moves the average brand-safe
+			chroma only a little, and what widens is the links, the focus
+			ring and the tint of the greys. Muted is where the knob reaches
+			furthest, and it is the position that was too timid before.
+
 			It reaches the neutral surfaces now. Scaling only the brand left
 			the knob invisible on everything a page is actually made of: the
 			page ground, the alternate band, the borders and the links came out
 			byte-identical at all three of its old positions.	*/
-		private const array CHROMA = [ 1 => 0.45, 2 => 1.00, 3 => 1.50 ];
+		private const array CHROMA = [ 1 => 0.15, 2 => 1.00, 3 => 2.20 ];
 
 		// A link carries more chroma than the body text it sits in - that is
 		// what marks it as a link beyond the underline - so it has a floor of
 		// its own rather than inheriting the surface's near-grey
-		private const array LINK_C	= [ 1 => 0.06, 2 => 0.10, 3 => 0.16 ];
-		private const array FOCUS_C	= [ 1 => 0.08, 2 => 0.12, 3 => 0.18 ];
+		private const array LINK_C	= [ 1 => 0.03, 2 => 0.10, 3 => 0.22 ];
+		private const array FOCUS_C	= [ 1 => 0.06, 2 => 0.12, 3 => 0.22 ];
 
 		// How far the brand hue may tint a grey before it stops reading as a
 		// grey. Scaled by Saturation, so the knob is visible on the page ground
@@ -268,15 +304,24 @@ namespace Nino\Modules\Design {
 			SC 1.4.11 wherever it identifies a control, and Nino.css spends one
 			--color-border on cards and form fields alike, so the floor stays
 			3:1 and 'Flat' says what it has to say through the surface and the
-			shadow instead.	*/
+			shadow instead.
+
+			Flat keeps a trace of the band (0.008 is about 1.02:1 against the
+			page) and no more: with none at all the alternate sections
+			disappear into the page, which is a different design rather than a
+			flatter one. Raised asks 7:1 of a border, and that is reached on
+			the neutral grounds only - default, alt, tint, dark and black. A
+			brand, accent or status surface is solved to about 4.5:1 against
+			its ink and has no room left for a line at 7:1, so there the
+			border stops near 4.6:1 however high the target is set.	*/
 		private const array DEPTH_ALT = [
-			'light'	=> [ 1 => 0.015, 2 => 0.035, 3 => 0.075 ],
-			'dark'	=> [ 1 => 0.020, 2 => 0.045, 3 => 0.095 ],
+			'light'	=> [ 1 => 0.008, 2 => 0.035, 3 => 0.11 ],
+			'dark'	=> [ 1 => 0.008, 2 => 0.045, 3 => 0.13 ],
 		];
-		private const array DEPTH_BORDER = [ 1 => 3.0, 2 => 3.0, 3 => 4.6 ];
+		private const array DEPTH_BORDER = [ 1 => 3.0, 2 => 3.0, 3 => 7.0 ];
 		private const array DEPTH_SHADOW = [
-			'light'	=> [ 1 => 0.05, 2 => 0.12, 3 => 0.24 ],
-			'dark'	=> [ 1 => 0.30, 2 => 0.55, 3 => 0.82 ],
+			'light'	=> [ 1 => 0.0, 2 => 0.12, 3 => 0.34 ],
+			'dark'	=> [ 1 => 0.15, 2 => 0.55, 3 => 0.95 ],
 		];
 
 		/*	The weakest the framework ever paints the ink it puts on a scrim.
@@ -753,8 +798,10 @@ namespace Nino\Modules\Design {
 		 *	worst thing it can be: a white frame. Composited on white the scrim
 		 *	is as light as it will ever get, so an alpha that carries the ink
 		 *	there carries it over any picture. The alpha is bisected rather
-		 *	than tabled because what it has to clear moves with Contrast, with
-		 *	the mode, and with how deep this design's own black sits.
+		 *	than tabled because what it has to clear moves with Contrast (its own
+		 *	table, TARGET_SCRIM, which holds Strong at 7:1 rather than the 10:1
+		 *	the text asks), with the mode, and with how deep this design's own
+		 *	black sits.
 		 *
 		 *	Tinted rather than pure black: it is this design's deepest surface
 		 *	at an alpha, so a warm page dims warm and a cool one cool, and the
@@ -773,7 +820,7 @@ namespace Nino\Modules\Design {
 
 			$deepest	= $palette['black']['bg'];
 			$ink		= $palette['black']['on'];
-			$target		= self::TARGET_TEXT[$contrast];
+			$target		= self::TARGET_SCRIM[$contrast];
 
 			$lo = 0.0;
 			$hi = 1.0;

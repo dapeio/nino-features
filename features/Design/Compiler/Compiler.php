@@ -238,6 +238,25 @@ namespace Nino\Modules\Design {
 			if( $refusal !== '' )
 				return $refusal;
 
+			return \Nino\Filesystem::putFileContent( $appData, $target, self::frame( $part, $markup, $set ) ) === true
+				? true
+				: 'could not write '. $target;
+		}
+
+		/**
+		 *	The bytes of one frame template as writeFrame() puts them on disk -
+		 *	the stamped header and the markup under it. Its own method so that
+		 *	\Nino\Modules\Design::apply() can compare what it is about to write
+		 *	with what is there, and plan() can say whether applying changes it
+		 *
+		 *	@param		string		$part					'header' or 'footer'
+		 *	@param		string		$markup				The frame's template.tpl
+		 *	@param		string		$set					Which variant it is, for the header line
+		 *
+		 *	@return 	string
+		 */
+		public static function frame( string $part, string $markup, string $set ): string {
+
 			$body = rtrim( $markup, "\n" ). "\n";
 
 			/*	An html comment rather than a css one, and visible in the page
@@ -247,9 +266,27 @@ namespace Nino\Modules\Design {
 				. ' compile rewrites this file. To take it over by hand, delete this line.'. "\n"
 				. '     '. self::STAMP. ': '. hash( 'sha256', $body ). ' -->'. "\n";
 
-			return \Nino\Filesystem::putFileContent( $appData, $target, $header. $body ) === true
-				? true
-				: 'could not write '. $target;
+			return $header. $body;
+		}
+
+		/**
+		 *	Whose a file is: the three answers stamped() and stampedFrame() give
+		 *	as two, told apart. A stamp that no longer matches is a file Design
+		 *	wrote and somebody changed - what the panel calls edited - and no
+		 *	stamp at all is a file Design never wrote, such as the one the
+		 *	setup wizard delivers
+		 *
+		 *	@param		string		$content			A file as it is on disk
+		 *	@param		bool			$frame				A frame template rather than the stylesheet
+		 *
+		 *	@return 	string								'ours', 'edited' or 'foreign'
+		 */
+		public static function ownership( string $content, bool $frame ): string {
+
+			if( preg_match( '/'. preg_quote( self::STAMP, '/' ). ':\s*([a-f0-9]{64})/', $content ) !== 1 )
+				return 'foreign';
+
+			return ( $frame === true ? self::stampedFrame( $content ) : self::stamped( $content ) ) === true ? 'ours' : 'edited';
 		}
 
 		/**

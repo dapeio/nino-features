@@ -19,17 +19,22 @@ namespace Nino\Modules\Design {
 	 *										the two colours and the five knobs the palette is solved
 	 *										from - compiled together into assets/theme.css.
 	 *
-	 *										Choosing and compiling are two actions on purpose. A
-	 *										setup is a decision and lives in data/design.php whether
-	 *										or not it has been applied; the stylesheet on disk is a
+	 *										Choosing and applying are two actions on purpose. A
+	 *										setup is a draft and lives in data/design.php whether
+	 *										or not it has been applied; the files on disk are a
 	 *										consequence, and the screen says when the two have drifted
 	 *										apart rather than hiding it behind an autosave.
 	 *
-	 *										The first apply in a project meets the theme.css the setup
-	 *										wizard delivered, which is not this feature's to overwrite
-	 *										(see Compiler::write()). That refusal is a screen state
-	 *										here, not an error: the panel says whose file it is and
-	 *										offers to take it over, once, deliberately.
+	 *										Applying asks first. The first apply in a project meets
+	 *										the theme.css and the two frame templates the setup wizard
+	 *										delivered, which are not this feature's to overwrite (see
+	 *										Compiler::refusal()), and a later one may meet a header
+	 *										somebody added a shortcode to. design/plan says what
+	 *										would happen to every file - whose it is, and what a frame
+	 *										would lose - the screen puts that in a confirmation, and
+	 *										only a yes sends the apply with `force`. What was there is
+	 *										kept as the previous version (see Previous) and
+	 *										design/restore swaps it back.
 	 *
 	 *										Beside the selects is what they mean: a preview of the
 	 *										current selection, rendered against this project and never
@@ -75,6 +80,8 @@ namespace Nino\Modules\Design {
 				'design/list' 	=> [ self::class, 'apiList' ],
 				'design/save' 	=> [ self::class, 'apiSave' ],
 				'design/apply' 	=> [ self::class, 'apiApply' ],
+				'design/plan' 	=> [ self::class, 'apiPlan' ],
+				'design/restore'=> [ self::class, 'apiRestore' ],
 				'design/preview'=> [ self::class, 'apiPreview' ],
 			];
 		}
@@ -108,9 +115,11 @@ namespace Nino\Modules\Design {
 		public static function log( string $action, array $data ): string {
 			return match( $action ) {
 				'design/save' 	=> 'Save Design Setup',
-				'design/apply' 	=> 'Compile Design'. ( ( $data['force'] ?? false ) === true ? ' (took over assets/theme.css)' : '' ),
+				'design/apply' 	=> 'Apply Design'. ( ( $data['force'] ?? false ) === true ? ' (took over files Design had not written)' : '' ),
+				'design/restore'=> 'Restore previous Design version',
 				// design/preview writes nothing and happens on every change of
-				// a select - a log line per keystroke is noise, not a record
+				// a select - a log line per keystroke is noise, not a record.
+				// design/plan is the same: it only reads
 				default	=> '',
 			};
 		}
@@ -182,14 +191,15 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	What assets/theme.css currently is, which is the one thing a screen
-		 *	about compiling has to be honest about
+		 *	What the three files Design writes currently are, and the version it
+		 *	keeps before them - the thing a screen about applying has to be
+		 *	honest about
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		$setup				A normalised setup
 		 *	@param		string		$library			The feature's library
 		 *
-		 *	@return 	array										exists, ours, compiled, current
+		 *	@return 	array										exists, ours, compiled, current, files, previous
 		 */
 		public static function state( array &$appData, array $setup, string $library ): array {
 
@@ -221,11 +231,40 @@ namespace Nino\Modules\Design {
 				$current	= (string) ( $setup['compiled']['sha'] ?? '' ) === hash( 'sha256', Compiler::compile( $setup, $library, $notes ) );
 			}
 
+			/*	Whose every file Design writes is - the stylesheet above says it
+				for itself, and the two frames are the same question. 'files' is
+				what the screen reads to say "foreign", since a stylesheet that
+				is ours beside a header somebody edited is not an up to date
+				design either	*/
+			$files = [];
+
+			foreach( Previous::targets() as $target ) {
+
+				$file 		= \Nino\Filesystem::path( $appData, $target );
+				$present 	= $file !== '' && is_file( $file ) === true;
+
+				$files[] = [
+					'target' 	=> $target,
+					'exists' 	=> $present,
+					'state' 	=> $present === false ? 'missing'
+						: Compiler::ownership( (string) @file_get_contents( $file ), $target !== Compiler::TARGET ),
+				];
+			}
+
+			$previous = Previous::read( $appData );
+
 			return [
 				'exists' 		=> $exists,
 				'ours' 			=> $ours,
 				'compiled' 	=> (string) ( $setup['compiled']['at'] ?? '' ),
 				'current' 	=> $ours === true && $current === true,
+				'files' 		=> $files,
+				// What restore would put back, and when it was kept - not the
+				// bytes, which are nobody's business on a screen
+				'previous' 	=> $previous === null ? null : [
+					'at' 		=> $previous['at'],
+					'files' => array_keys( array_filter( $previous['files'], static fn( ?string $bytes ): bool => $bytes !== null ) ),
+				],
 			];
 		}
 
@@ -283,11 +322,12 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	Compile the stored setup into assets/theme.css.
+		 *	Apply the stored setup: write assets/theme.css and the frames.
 		 *
 		 *	Refusing a file this feature did not write is not an error to log and
 		 *	move past - it is the normal first run in a project, where the file
-		 *	on disk is the wizard's. The screen turns the refusal into a question
+		 *	on disk is the wizard's. The screen asks (apiPlan) before it applies
+		 *	and sends 'force' where the answer was yes
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
@@ -304,8 +344,11 @@ namespace Nino\Modules\Design {
 			$done 	= \Nino\Modules\Design::apply( $appData, $notes, $force );
 
 			if( $done !== true ) {
-				// 409: the request was fine, the file on disk disagrees
-				\Nino\Http::fail( $request, 409, $done );
+				// 409: the request was fine, the file on disk disagrees - and
+				// 500 where the server could not write what it was asked to,
+				// which is every message of Design::apply() that says 'could
+				// not' (the slot or a file that could not be written)
+				\Nino\Http::fail( $request, str_contains( $done, 'could not' ) === true ? 500 : 409, $done );
 				return;
 			}
 
@@ -313,6 +356,57 @@ namespace Nino\Modules\Design {
 			$setup 		= Setup::read( $appData, $library );
 
 			\Nino\Http::ok( $request, [ 'notes' => $notes, 'forced' => $force ] + self::state( $appData, $setup, $library ) );
+		}
+
+		/**
+		 *	What applying would do to each file, before it does anything: the
+		 *	screen turns the answer into the question it asks
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		&$request			(reference) Current server request
+		 *
+		 *	@return 	void
+		 */
+		public static function apiPlan( array &$appData, array &$request ): void {
+
+			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::MANAGE_PERM ) === false )
+				return;
+
+			\Nino\Http::ok( $request, [ 'files' => \Nino\Modules\Design::plan( $appData ) ] );
+		}
+
+		/**
+		 *	Swap the previous version and the present one. The screen has asked
+		 *	already; the answer is the new state, including what the slot now
+		 *	holds - which is the version that was just replaced
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		&$request			(reference) Current server request
+		 *
+		 *	@return 	void
+		 */
+		public static function apiRestore( array &$appData, array &$request ): void {
+
+			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::MANAGE_PERM ) === false )
+				return;
+
+			if( Previous::read( $appData ) === null ) {
+				\Nino\Http::fail( $request, 404, 'there is no previous version' );
+				return;
+			}
+
+			$notes 	= [];
+			$done 	= \Nino\Modules\Design::restore( $appData, $notes );
+
+			if( $done !== true ) {
+				\Nino\Http::fail( $request, 500, $done );
+				return;
+			}
+
+			$library 	= \Nino\Modules\Design::libraryDir();
+			$setup 		= Setup::read( $appData, $library );
+
+			\Nino\Http::ok( $request, [ 'notes' => $notes ] + self::state( $appData, $setup, $library ) );
 		}
 
 		/**

@@ -57,7 +57,7 @@ const TEXT = {
 	'/_admin/design/label/variant'		: 'Variant',
 	'/_admin/design/label/global'			: 'Global',
 	'/_admin/design/label/size'				: 'Root size',
-	'/_admin/design/label/state'			: 'Compiled file',
+	'/_admin/design/label/state'			: 'Applied file',
 	'/_admin/design/label/preview'		: 'Preview',
 	'/_admin/design/label/finetune'		: 'Finetuning',
 	'/_admin/design/label/tuning'			: 'Tuning',
@@ -94,10 +94,30 @@ const TEXT = {
 	'/_admin/design/colour/depth/label'				: 'Depth',
 	'/_admin/design/colour/depth/2'						: 'Standard',
 	'/_admin/design/state/current'		: 'The file answers to this selection.',
-	'/_admin/design/state/compiled'		: 'Last compiled %s',
+	'/_admin/design/state/compiled'		: 'Last applied %s',
 	'/_admin/design/state/short/current'	: 'Up to date',
-	'/_admin/design/state/short/drifted'	: 'Saved, not compiled',
+	'/_admin/design/state/short/drifted'	: 'Saved, not applied',
 	'/_admin/design/state/drifted'		: 'The selection is saved but not compiled.',
+	'/_admin/design/state/foreign'		: 'Not written by Design: %s - delivered with the project or edited by hand.',
+	'/_admin/design/state/previous'		: 'Previous version from %s',
+	'/_admin/design/state/short/foreign'	: 'Not written by Design',
+	'/_admin/design/label/save'				: 'Save draft',
+	'/_admin/design/label/apply'			: 'Apply to website',
+	'/_admin/design/label/restore'		: 'Restore previous version',
+	'/_admin/design/hint/actions'			: '"Save draft" remembers your selection and leaves the website as it is.',
+	'/_admin/design/confirm/apply'		: 'Applying rewrites: %s.',
+	'/_admin/design/confirm/foreign'	: 'Not written by Design, and replaced: %s.',
+	'/_admin/design/confirm/lost'			: 'In your file, but not in the new variant: %s - add it again by hand afterwards if you still need it.',
+	'/_admin/design/confirm/copy'			: 'What is there now is kept first, in data/design-previous.php.',
+	'/_admin/design/confirm/replaces'	: 'That replaces the previous version from %s.',
+	'/_admin/design/confirm/restore'	: 'Restore the previous version?',
+	'/_admin/design/msg/saved'				: 'Draft saved.',
+	'/_admin/design/msg/applied'			: 'Applied.',
+	'/_admin/design/msg/takenover'		: 'Files Design had not written were replaced.',
+	'/_admin/design/msg/cancelled'		: 'Draft saved, not applied.',
+	'/_admin/design/msg/lost'					: 'Not in the frame templates any more: %s.',
+	'/_admin/design/msg/restored'			: 'Previous version restored.',
+	'/_admin/design/error/restore'		: 'The previous version could not be restored.',
 };
 
 /**
@@ -259,6 +279,13 @@ function listing( over ) {
 		ours		: true,
 		compiled: '2026-09-01T10:00:00+00:00',
 		current	: true,
+		// Whose each of the three files is - all of them Design's here
+		files		: [
+			{ target : '/assets/theme.css', exists : true, state : 'ours' },
+			{ target : '/templates/theme.header.tpl', exists : true, state : 'ours' },
+			{ target : '/templates/theme.footer.tpl', exists : true, state : 'ours' },
+		],
+		previous: null,
 	}, over || {} );
 }
 
@@ -317,6 +344,11 @@ function panel( over, shell ) {
 	};
 
 	const requests = [];
+
+	/*	What the browser's own question does here: the text it was asked with is
+		kept, and the answer is whatever the test last said it would be - yes	*/
+	const confirms = [];
+	let confirmAnswer = true;
 
 	const Nino = {
 		adminUi : {
@@ -401,6 +433,7 @@ function panel( over, shell ) {
 		console			: console,
 		document		: dc,
 		Nino				: Nino,
+		confirm			: function( text ) { confirms.push( text ); return confirmAnswer },
 		setTimeout	: function() { return 0 },
 		clearTimeout: function() {},
 	};
@@ -422,6 +455,15 @@ function panel( over, shell ) {
 	return {
 		design 	: design,
 		requests: requests,
+		confirms: confirms,
+		/** What the next confirm() answers */
+		willConfirm	: function( answer ) { confirmAnswer = answer },
+		/** The oldest request not yet answered, answered - the way the server would */
+		answer	: function( status, response ) {
+			const next = requests.shift();
+			next.answer( status, response );
+			return next;
+		},
 		form		: form,
 		pane		: pane,
 		head		: head,
@@ -484,7 +526,7 @@ check( '...and says which part is open, what the page is measured in, and where 
 		[ 'Headings', 'Standard' ],
 		[ 'Spacing', 'Standard' ],
 		[ 'Corners', 'Standard' ],
-		[ 'Compiled file', 'Up to date' ],
+		[ 'Applied file', 'Up to date' ],
 	] ) );
 
 /*	The value, not the click: a knob says what will compile, and the list is
@@ -504,7 +546,7 @@ check( 'opening a part puts that part and the variant it is on in the list, over
 		[ 'Root size', 'default' ],
 		[ 'Headings', 'Standard' ],
 		[ 'Spacing', 'Airy' ],
-		[ 'Compiled file', 'Up to date' ],
+		[ 'Applied file', 'Up to date' ],
 	] ) );
 
 screen.tab('Colours');
@@ -517,13 +559,13 @@ check( 'the palette half lists the two colours and every knob the palette is sol
 		[ 'Saturation', 'Standard' ],
 		[ 'Contrast', 'Standard' ],
 		[ 'Depth', 'Standard' ],
-		[ 'Compiled file', 'Up to date' ],
+		[ 'Applied file', 'Up to date' ],
 	] ) );
 
 const drifted = panel( { current : false } );
 
 check( 'the last row is what the file on disk is, in one word',
-	JSON.stringify( drifted.summary().pop() ) === JSON.stringify( [ 'Compiled file', 'Saved, not compiled' ] ) );
+	JSON.stringify( drifted.summary().pop() ) === JSON.stringify( [ 'Applied file', 'Saved, not applied' ] ) );
 
 console.log('');
 
@@ -641,6 +683,170 @@ bare.tab('Colours');
 check( 'where the pane has no head, the strip opens the column and comes back with it on a switch - with no heading over it',
 	opened === true && hasClass( bare.byId('design-controls').children[0], 'design-tabs' ) && byClass( bare.pane, 'design-tabs' ).length === 1
 	&& eyebrow( bare ) === 'Palette' && byTag( bare.form, 'h2' ).length === 0 );
+
+console.log('');
+
+
+// --- Applying asks first ---------------------------------------------------------
+//
+// A draft is not a website. Two buttons, a line under them saying which is
+// which, and a confirmation before anything is written - built from what
+// design/plan says, so it names the files, the ones that are not Design's and
+// the shortcodes a frame would lose
+
+console.log( 'Applying' );
+
+/** design/plan's answer for a project the wizard just delivered, with [consent-settings] added to the footer by hand */
+const delivered = [
+	{ target : '/assets/theme.css', exists : true, state : 'foreign', changes : true, lost : [] },
+	{ target : '/templates/theme.header.tpl', exists : true, state : 'foreign', changes : true, lost : [] },
+	{ target : '/templates/theme.footer.tpl', exists : true, state : 'foreign', changes : true, lost : [ '[consent-settings]' ] },
+];
+
+/** The requests a click on "Apply to website" sends, in order */
+function endpoints( screen ) {
+	return screen.requests.map( function( request ) { return request.endpoint } );
+}
+
+const asking = panel( { files : delivered.map( function( file ) { return Object.assign( {}, file ) } ) } );
+const buttons = byTag( byClass( asking.form, 'nino-admin-actionbar' )[0], 'button' ).map( function( button ) { return button.textContent } );
+
+check( 'the two buttons say what they do: save a draft, apply to the website - and there is no take-over button',
+	buttons.indexOf('Save draft') !== -1 && buttons.indexOf('Apply to website') !== -1 && buttons.length === 3 );
+check( 'a line under the bar says which of the two does what',
+	( asking.byId('design-actions-hint') || {} ).textContent === TEXT['/_admin/design/hint/actions']
+	&& hasClass( asking.byId('design-actions-hint') || element('p'), 'nino-admin-hint' ) );
+check( '...and it stands after the bar, not in it', asking.form.children.indexOf( asking.byId('design-actions-hint') ) > asking.form.children.indexOf( byClass( asking.form, 'nino-admin-actionbar' )[0] ) );
+check( 'with files that are not Design\'s the state line says so and names them, rather than only the stylesheet',
+	asking.design._stateKey() === 'foreign'
+	&& byClass( asking.form, 'design-state--warn' )[0].textContent.indexOf('assets/theme.css, templates/theme.header.tpl, templates/theme.footer.tpl') !== -1 );
+
+asking.byId('design-apply').fire('click');
+
+check( 'applying saves the draft first', JSON.stringify( endpoints( asking ) ) === JSON.stringify( [ 'save' ] ) );
+
+asking.answer( 200, {} );
+
+check( '...then asks what would happen to each file', JSON.stringify( endpoints( asking ) ) === JSON.stringify( [ 'plan' ] ) && asking.confirms.length === 0 );
+
+asking.answer( 200, { files : delivered } );
+
+check( 'the confirmation names the three files, which of them are not Design\'s, and the shortcode a frame would lose',
+	asking.confirms.length === 1
+	&& asking.confirms[0].indexOf('assets/theme.css, templates/theme.header.tpl, templates/theme.footer.tpl') !== -1
+	&& asking.confirms[0].indexOf('Not written by Design, and replaced: assets/theme.css') !== -1
+	&& asking.confirms[0].indexOf('[consent-settings]') !== -1 );
+check( '...says the present state is kept first, one fact to a line',
+	asking.confirms[0].split('\n').length === 4 && asking.confirms[0].indexOf( TEXT['/_admin/design/confirm/copy'] ) !== -1
+	&& asking.confirms[0].indexOf('previous version from') === -1 );
+check( '...and only then is the apply sent, with force because a file is not Design\'s',
+	JSON.stringify( endpoints( asking ) ) === JSON.stringify( [ 'apply' ] ) && asking.requests[0].payload.force === true );
+
+asking.answer( 200, {} );
+asking.answer( 200, listing( { exists : true } ) );
+
+check( 'what the screen says afterwards is that it applied, that files were replaced, and what to put back by hand',
+	( asking.byId('design-msg') || {} ).textContent === 'Applied. Files Design had not written were replaced. Not in the frame templates any more: [consent-settings].' );
+
+// Saying no leaves the draft saved and the website alone
+const declined = panel( {} );
+declined.willConfirm( false );
+declined.byId('design-apply').fire('click');
+declined.answer( 200, {} );
+declined.answer( 200, { files : delivered } );
+
+check( 'no in the confirmation sends no apply - it reloads the panel',
+	JSON.stringify( endpoints( declined ) ) === JSON.stringify( [ 'list' ] ) && declined.confirms.length === 1 );
+
+declined.answer( 200, listing( {} ) );
+
+check( '...and says the draft is saved and not applied', ( declined.byId('design-msg') || {} ).textContent === 'Draft saved, not applied.' );
+
+// Files that are all Design's: no force, nothing replaced, nothing lost
+const ours = panel( { previous : { at : '2026-09-02T08:30:00+00:00', files : [ '/assets/theme.css' ] } } );
+ours.byId('design-apply').fire('click');
+ours.answer( 200, {} );
+ours.answer( 200, { files : [
+	{ target : '/assets/theme.css', exists : true, state : 'ours', changes : true, lost : [] },
+	{ target : '/templates/theme.header.tpl', exists : true, state : 'ours', changes : false, lost : [] },
+	{ target : '/templates/theme.footer.tpl', exists : true, state : 'ours', changes : false, lost : [] },
+] } );
+
+check( 'with every file Design\'s the apply is sent without force',
+	JSON.stringify( endpoints( ours ) ) === JSON.stringify( [ 'apply' ] ) && ours.requests[0].payload.force === false
+	&& ours.confirms[0].indexOf('Not written by Design') === -1 );
+check( '...and a version that is about to be replaced is named by its date',
+	ours.confirms[0].indexOf('That replaces the previous version from 2026-09-02 08:30.') !== -1 );
+
+// A frame somebody edited in beside a stylesheet that is Design's: the dead end
+const edited = panel( {} );
+edited.byId('design-apply').fire('click');
+edited.answer( 200, {} );
+edited.answer( 200, { files : [
+	{ target : '/assets/theme.css', exists : true, state : 'ours', changes : true, lost : [] },
+	{ target : '/templates/theme.header.tpl', exists : true, state : 'ours', changes : true, lost : [] },
+	{ target : '/templates/theme.footer.tpl', exists : true, state : 'edited', changes : true, lost : [] },
+] } );
+
+check( 'a frame that was only edited gets force too - the refusal has something to answer to now',
+	JSON.stringify( endpoints( edited ) ) === JSON.stringify( [ 'apply' ] ) && edited.requests[0].payload.force === true
+	&& edited.confirms[0].indexOf('Not written by Design, and replaced: templates/theme.footer.tpl') !== -1 );
+
+// "Save draft" asks nothing
+const drafting = panel( {} );
+drafting.byId('design-save').fire('click');
+drafting.answer( 200, {} );
+
+check( 'saving a draft sends no plan and asks nothing', drafting.confirms.length === 0 && JSON.stringify( endpoints( drafting ) ) === JSON.stringify( [ 'list' ] ) );
+
+console.log('');
+
+
+// --- The previous version ----------------------------------------------------------
+
+console.log( 'Restoring' );
+
+const empty = panel( {} );
+
+check( 'with no previous version there is nothing to restore', empty.byId('design-restore') === null );
+
+const kept = panel( { previous : { at : '2026-09-02T08:30:00+00:00', files : [ '/assets/theme.css' ] } } );
+const restoreButton = kept.byId('design-restore');
+
+check( 'with one the state box dates it and offers to restore it',
+	restoreButton !== null && restoreButton.textContent === 'Restore previous version'
+	&& byClass( kept.byId('design-state'), 'design-previous' )[0].textContent === 'Previous version from 2026-09-02 08:30' );
+
+kept.willConfirm( false );
+restoreButton.fire('click');
+
+check( 'the button asks first, and a no sends nothing', kept.confirms.length === 1 && kept.confirms[0] === 'Restore the previous version?' && kept.requests.length === 0 );
+
+kept.willConfirm( true );
+restoreButton.fire('click');
+
+check( 'a yes posts the restore', JSON.stringify( endpoints( kept ) ) === JSON.stringify( [ 'restore' ] ) );
+
+kept.answer( 200, {} );
+kept.answer( 200, listing( {} ) );
+
+check( 'and the panel is drawn again from the new state, saying so', ( kept.byId('design-msg') || {} ).textContent === 'Previous version restored.' );
+
+const noted = panel( { previous : { at : '2026-09-02T08:30:00+00:00', files : [] } } );
+noted.willConfirm( true );
+noted.byId('design-restore').fire('click');
+noted.answer( 200, { notes : [ 'restored, but could not keep the version it replaced in data/design-previous.php' ] } );
+noted.answer( 200, listing( {} ) );
+
+check( 'a restore that went through with a note says restored, and the note beside it',
+	( noted.byId('design-msg') || {} ).textContent === 'Previous version restored. restored, but could not keep the version it replaced in data/design-previous.php' );
+
+const failing = panel( { previous : { at : '2026-09-02T08:30:00+00:00', files : [] } } );
+failing.byId('design-restore').fire('click');
+failing.answer( 500, { error : 'could not write /assets/theme.css' } );
+
+check( 'a restore that failed says why and does not redraw', ( failing.byId('design-msg') || {} ).textContent === '(500) could not write /assets/theme.css'
+	&& failing.requests.length === 0 );
 
 console.log( '\n'+ checks+ ' checks, '+ failures+ ' failed' );
 process.exit( failures === 0 ? 0 : 1 );

@@ -146,8 +146,33 @@
 		_text : function( key ) {
 			const values = Array.prototype.slice.call( arguments, 1 );
 			let out = Nino.content.getText( key );
-			values.forEach( function( value ) { out = out.replace( /%[sdn]/, String( value ) ) } );
+			// A function rather than the string: a value is replaced as it is, and
+			// a shortcode that carries a "$" is not a replacement pattern
+			values.forEach( function( value ) { out = out.replace( /%[sdn]/, function() { return String( value ) } ) } );
 			return out;
+		},
+
+		/**
+		 *	When something was written, the way the panel says it: the date and
+		 *	the minute, in the zone the server wrote it in
+		 *
+		 *	@param		{string}	iso						An ISO 8601 timestamp
+		 *
+		 *	@return		{string}
+		 */
+		_when : function( iso ) {
+			return String( iso ).substring( 0, 16 ).replace( 'T', ' ' );
+		},
+
+		/**
+		 *	A file Design writes, as a project names it: without the leading slash
+		 *
+		 *	@param		{string}	target				A virtual path
+		 *
+		 *	@return		{string}
+		 */
+		_name : function( target ) {
+			return String( target ).replace( /^\//, '' );
 		},
 
 		/**
@@ -271,11 +296,10 @@
 			apply.type = 'button';
 			apply.id = 'design-apply';
 			apply.className = 'nino-admin-btn-primary';
-			// The first compile in a project meets the wizard's own theme.css.
-			// The button says which of the two it is about to do
-			apply.textContent = Nino.content.getText( data.exists === true && data.ours === false
-				? '/_admin/design/label/takeover'
-				: '/_admin/design/label/apply' );
+			// Always the same button: what applying will do to which file is
+			// asked in a confirmation after the click, from design/plan, rather
+			// than guessed here from one of the three files
+			apply.textContent = Nino.content.getText('/_admin/design/label/apply');
 			apply.addEventListener( 'click', function() { Nino.admin.design._save( true, apply, msg ) } );
 
 			/*	The way back, on the far side of the bar from the two buttons
@@ -296,6 +320,13 @@
 			actions.appendChild( save );
 			actions.appendChild( apply );
 			wrap.appendChild( Nino.adminUi.actionBar( actions ) );
+
+			// What the two buttons are, under them: a draft is not the website
+			const hint = dc.createElement('p');
+			hint.id = 'design-actions-hint';
+			hint.className = 'nino-admin-hint';
+			hint.textContent = Nino.content.getText('/_admin/design/hint/actions');
+			wrap.appendChild( hint );
 			wrap.appendChild( msg );
 
 			Nino.admin.design._refreshDirty();
@@ -1163,7 +1194,7 @@
 				was last written on the line under it	*/
 			box.appendChild( Nino.admin.design._sectionLabel(
 				Nino.content.getText('/_admin/design/label/state'),
-				data.compiled === '' ? '' : Nino.admin.design._text( '/_admin/design/state/compiled', data.compiled.substring( 0, 16 ).replace( 'T', ' ' ) ) ) );
+				data.compiled === '' ? '' : Nino.admin.design._text( '/_admin/design/state/compiled', Nino.admin.design._when( data.compiled ) ) ) );
 
 			const key = Nino.admin.design._stateKey();
 
@@ -1175,18 +1206,53 @@
 				action bar's job now: see _refreshDirty()	*/
 			const line = dc.createElement('p');
 			line.className = key === 'current' ? 'nino-admin-hint' : 'design-state design-state--warn';
-			line.textContent = Nino.admin.design._text( '/_admin/design/state/'+ key, data.target );
+			line.textContent = Nino.admin.design._text( '/_admin/design/state/'+ key,
+				Nino.admin.design._foreign().map( Nino.admin.design._name ).join(', ') );
 			box.appendChild( line );
+
+			/*	The one version before the last apply, and the way back to it.
+				Restoring swaps the two, so the line says which version this is
+				and the button is the same one again afterwards	*/
+			if( data.previous ) {
+
+				const kept = dc.createElement('p');
+				kept.className = 'nino-admin-hint design-previous';
+				kept.textContent = Nino.admin.design._text( '/_admin/design/state/previous', Nino.admin.design._when( data.previous.at ) );
+				box.appendChild( kept );
+
+				const restore = dc.createElement('button');
+				restore.type = 'button';
+				restore.id = 'design-restore';
+				restore.className = 'nino-admin-btn-secondary';
+				restore.textContent = Nino.content.getText('/_admin/design/label/restore');
+				restore.addEventListener( 'click', function() { Nino.admin.design._restore( restore ) } );
+				box.appendChild( restore );
+			}
 
 			return box;
 		},
 
 		/**
-		 *	Which of the four things assets/theme.css currently is.
+		 *	The files Design writes that it did not write itself, as design/list
+		 *	answered them: the delivered stylesheet or template, or one somebody
+		 *	edited. Both are somebody else's as far as an apply is concerned
+		 *
+		 *	@return		{Array}						Virtual paths
+		 */
+		_foreign : function() {
+			return ( ( Nino.admin.design._data || {} ).files || [] ).filter( function( file ) {
+				return file.exists === true && file.state !== 'ours';
+			} ).map( function( file ) { return file.target } );
+		},
+
+		/**
+		 *	Which of the four things the files Design writes currently are.
 		 *
 		 *	Its own method because two places say it: the card at the foot of
 		 *	the column, in a whole sentence, and the last row of the summary
-		 *	under the frame, in one word
+		 *	under the frame, in one word. Foreign is any of the three files - the
+		 *	stylesheet and the two frames - not being Design's, since a header
+		 *	somebody edited is not an up to date design either
 		 *
 		 *	@return		{string}					'current', 'drifted', 'missing' or 'foreign'
 		 */
@@ -1197,7 +1263,7 @@
 			if( data === null )
 				return 'current';
 
-			if( data.exists === true && data.ours === false )
+			if( Nino.admin.design._foreign().length > 0 )
 				return 'foreign';
 
 			if( data.exists === false || data.compiled === '' )
@@ -1704,20 +1770,27 @@
 		},
 
 		/**
-		 *	Store the selection, and - when asked - compile it afterwards.
-		 *	Two steps rather than one: a decision is not a stylesheet, and the
-		 *	screen stays honest about which of the two just happened
+		 *	Store the selection, and - when asked - apply it afterwards.
+		 *	Two steps rather than one: a draft is not a website, and the
+		 *	screen stays honest about which of the two just happened.
 		 *
-		 *	@param		{boolean}		compile
+		 *	Applying asks first, every time. design/plan says what would happen
+		 *	to each of the three files, the confirmation lists it, and only a
+		 *	yes sends the apply - with `force` where a file is not Design's,
+		 *	which the confirmation has just said it is about to replace. The
+		 *	same question is what gets a project out of a stylesheet that is
+		 *	Design's beside a header that is not, which used to be refused
+		 *	with nothing on screen to say yes to
+		 *
+		 *	@param		{boolean}		apply
 		 *	@param		{Element}		btn
 		 *	@param		{Element}		msg
 		 *
 		 *	@return		void
 		 */
-		_save : function( compile, btn, msg ) {
+		_save : function( apply, btn, msg ) {
 
 			const edit = Nino.admin.design._edit;
-			const foreign = Nino.admin.design._data.exists === true && Nino.admin.design._data.ours === false;
 
 			btn.disabled = true;
 			msg.className = '';
@@ -1732,7 +1805,7 @@
 					return;
 				}
 
-				if( compile === false ) {
+				if( apply === false ) {
 					btn.disabled = false;
 					return Nino.admin.design.init( function() {
 						const back = dc.getElementById('design-msg');
@@ -1741,23 +1814,149 @@
 					} );
 				}
 
-				// `force` only where the screen already said the file is not
-				// ours, and the button already said it is about to take it over
-				Nino.admin.design._apiCall( 'apply', { force : foreign }, function( applyStatus, applied ) {
+				Nino.admin.design._apiCall( 'plan', {}, function( planStatus, planned ) {
 
-					btn.disabled = false;
-
-					if( applyStatus !== 200 ) {
+					if( planStatus !== 200 || planned === null ) {
+						btn.disabled = false;
 						msg.className = 'nino-admin-error';
-						msg.textContent = '('+ applyStatus+ ') '+ ( ( applied && applied.error ) ? applied.error : Nino.content.getText('/_admin/design/error/apply') );
+						msg.textContent = '('+ planStatus+ ') '+ ( ( planned && planned.error ) ? planned.error : Nino.content.getText('/_admin/design/error/apply') );
 						return;
 					}
 
-					Nino.admin.design.init( function() {
-						const back = dc.getElementById('design-msg');
-						if( back !== null )
-							back.textContent = Nino.content.getText( foreign === true ? '/_admin/design/msg/takenover' : '/_admin/design/msg/applied' );
+					const files = planned.files || [];
+
+					// The draft is saved either way; only the website waits
+					if( wn.confirm( Nino.admin.design._confirmText( files ) ) === false ) {
+						btn.disabled = false;
+						return Nino.admin.design.init( function() {
+							const back = dc.getElementById('design-msg');
+							if( back !== null )
+								back.textContent = Nino.content.getText('/_admin/design/msg/cancelled');
+						} );
+					}
+
+					const force = files.some( function( file ) { return file.exists === true && file.state !== 'ours' } );
+
+					Nino.admin.design._apiCall( 'apply', { force : force }, function( applyStatus, applied ) {
+
+						btn.disabled = false;
+
+						if( applyStatus !== 200 ) {
+							msg.className = 'nino-admin-error';
+							msg.textContent = '('+ applyStatus+ ') '+ ( ( applied && applied.error ) ? applied.error : Nino.content.getText('/_admin/design/error/apply') );
+							return;
+						}
+
+						const lost = [];
+						files.forEach( function( file ) {
+							( file.lost || [] ).forEach( function( token ) { lost.push( token ) } );
+						} );
+
+						Nino.admin.design.init( function() {
+							const back = dc.getElementById('design-msg');
+
+							if( back === null )
+								return;
+
+							const said = [ Nino.content.getText('/_admin/design/msg/applied') ];
+
+							if( force === true )
+								said.push( Nino.content.getText('/_admin/design/msg/takenover') );
+
+							if( lost.length > 0 )
+								said.push( Nino.admin.design._text( '/_admin/design/msg/lost', lost.join(', ') ) );
+
+							back.textContent = said.join(' ');
+						} );
 					} );
+				} );
+			} );
+		},
+
+		/**
+		 *	The question before an apply, one line per fact: which files are
+		 *	rewritten, which of them Design did not write, which shortcodes the
+		 *	new frames lose, and that the present state is kept - with the date
+		 *	of the version that keeping it replaces. Built here from the
+		 *	fragments in the text files; none of them carries a line break, and
+		 *	the lines are joined with one
+		 *
+		 *	@param		{Array}		files					design/plan's answer
+		 *
+		 *	@return		{string}
+		 */
+		_confirmText : function( files ) {
+
+			const lines = [ Nino.admin.design._text( '/_admin/design/confirm/apply',
+				files.map( function( file ) { return Nino.admin.design._name( file.target ) } ).join(', ') ) ];
+
+			const foreign = files.filter( function( file ) { return file.exists === true && file.state !== 'ours' } );
+
+			if( foreign.length > 0 )
+				lines.push( Nino.admin.design._text( '/_admin/design/confirm/foreign',
+					foreign.map( function( file ) { return Nino.admin.design._name( file.target ) } ).join(', ') ) );
+
+			files.forEach( function( file ) {
+				( file.lost || [] ).forEach( function( token ) {
+					lines.push( Nino.admin.design._text( '/_admin/design/confirm/lost', token ) );
+				} );
+			} );
+
+			// Nothing is kept where nothing would change, and so nothing is replaced
+			if( files.some( function( file ) { return file.exists === true && file.changes === true } ) ) {
+
+				lines.push( Nino.content.getText('/_admin/design/confirm/copy') );
+
+				const previous = Nino.admin.design._data.previous;
+
+				if( previous )
+					lines.push( Nino.admin.design._text( '/_admin/design/confirm/replaces', Nino.admin.design._when( previous.at ) ) );
+			}
+
+			return lines.join('\n');
+		},
+
+		/**
+		 *	Put the previous version back, after asking. The answer is the new
+		 *	state, so the panel is drawn again from it - and the button now
+		 *	offers the version that was just replaced
+		 *
+		 *	@param		{Element}		btn
+		 *
+		 *	@return		void
+		 */
+		_restore : function( btn ) {
+
+			if( wn.confirm( Nino.content.getText('/_admin/design/confirm/restore') ) === false )
+				return;
+
+			btn.disabled = true;
+
+			Nino.admin.design._apiCall( 'restore', {}, function( status, response ) {
+
+				btn.disabled = false;
+
+				if( status !== 200 || response === null ) {
+					const msg = dc.getElementById('design-msg');
+
+					if( msg !== null ) {
+						msg.className = 'nino-admin-error';
+						msg.textContent = '('+ status+ ') '+ ( ( response && response.error ) ? response.error : Nino.content.getText('/_admin/design/error/restore') );
+					}
+					return;
+				}
+
+				Nino.admin.design.init( function() {
+					const back = dc.getElementById('design-msg');
+					if( back === null )
+						return;
+
+					// What the slot did not hold, or could not keep, is told
+					// beside the answer: the site has changed either way
+					const notes = response.notes || [];
+					back.textContent = [ Nino.content.getText('/_admin/design/msg/restored') ].concat( notes ).join(' ');
+					if( notes.length > 0 )
+						back.className = 'nino-admin-hint';
 				} );
 			} );
 		},
