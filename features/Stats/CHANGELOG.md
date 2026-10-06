@@ -20,11 +20,9 @@ A release is the tag `stats-<version>` of dapeio/nino-features.
 
 - **The bar row is the month.** The store holds a day once it has a view,
   and the panel drew exactly those days, so a month with one visit was one
-  bar the width of the panel, a day number turned on its side under it and
-  no calendar around it. The row draws every day of the month now - the
-  empty ones as a baseline mark with their number - on a card of its own,
-  the columns capped at a bar's width, the day numbers in a line under the
-  baseline. A new `stats-js-smoke.js` draws the row over a dom stand-in
+  bar the width of the panel and no calendar around it. The row draws every
+  day of the month now - the empty ones as a baseline mark with their
+  number. A new `stats-js-smoke.js` draws the row over a dom stand-in
   and holds the calendar, the heights and the edges; `stats-smoke.php`
   runs it where node is on the path.
 
@@ -45,6 +43,12 @@ A release is the tag `stats-<version>` of dapeio/nino-features.
   "Legal" in Nino's `docs/development.md`.
 
 ### Changed
+
+- **The README promised a number of visits the feature never had.** A
+  paragraph under "What is *not* counted" offered visits - views with an
+  external or empty referrer - as a second number shown in the panel.
+  Nothing counts them: the store holds the views per page and day and the
+  referrer hosts, and the panel shows those. The paragraph is gone.
 
 - **`maxUris` and the retention are read as the kernel hands them.** A
   `max( 1, … )` and a `< 1` guard stood behind settings the kernel already holds

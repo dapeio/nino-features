@@ -93,14 +93,6 @@ visited today", it would owe a consent banner, a retention policy for that
 identifier, and an answer to an access or erasure request under Art. 15/17 -
 none of which this feature is built to carry, on purpose.
 
-What it offers instead, as a second, weaker number: **visits**, approximated
-as views with an external or empty referrer (see "Referrers" below) - a
-navigation that arrived from outside the site, or typed the address, or
-followed a bookmark. This overcounts a visitor who opens several pages in a
-row without a referrer surviving (a link opened in a new tab, most privacy
-browsers) as several "visits", and it is called what it is in the panel and
-here, not "unique visitors" - it never claims to recognize a person.
-
 ## Referrers
 
 The `Referer` request header's host, lowercased, `parse_url()`-extracted -

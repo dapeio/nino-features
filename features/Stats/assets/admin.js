@@ -193,7 +193,7 @@
 			summary.textContent = Nino.admin.stats._summaryText( data.totals );
 			body.appendChild( summary );
 
-			body.appendChild( Nino.admin.stats._renderBars( data.days, String( data.month || '' ) ) );
+			body.appendChild( Nino.admin.stats._renderBars( data.days, data.month ) );
 
 			const tables = dc.createElement('div');
 			tables.id = 'stats-tables';
@@ -267,7 +267,7 @@
 		 *	just css (see admin.css's #stats-bars).
 		 *
 		 *	Every day of the month, not only the days that counted something:
-		 *	the store holds a day once it has a view (see Stats::count()), so a
+		 *	the store holds a day once it has a view (see Stats::callbackCount()), so a
 		 *	month with one visit used to be one bar the width of the panel and
 		 *	no calendar around it. A day without a view is a column with a
 		 *	baseline mark and its number, so the row reads as the month it is
@@ -292,13 +292,10 @@
 			const peak = days.reduce( function( m, entry ) { return Math.max( m, entry.total ) }, 0 );
 			const max = Math.max( peak, 1 );
 
-			// The month's length from its own calendar; a row handed days with
-			// no month name draws the days it was given
-			const parts = /^(\d{4})-(\d{2})$/.exec( month || '' );
-			const count = parts === null ? 0 : new Date( Number( parts[1] ), Number( parts[2] ), 0 ).getDate();
-			const keys = count > 0
-				? Array.from( { length : count }, function( _, i ) { return month+ '-'+ String( i + 1 ).padStart( 2, '0' ) } )
-				: days.map( function( entry ) { return entry.day } );
+			// The month's length from its own calendar - stats/month names the
+			// month with every answer and refuses any other shape
+			const parts = /^(\d{4})-(\d{2})$/.exec( month );
+			const keys = Array.from( { length : new Date( Number( parts[1] ), Number( parts[2] ), 0 ).getDate() }, function( _, i ) { return month+ '-'+ String( i + 1 ).padStart( 2, '0' ) } );
 
 			keys.forEach( function( day ) {
 

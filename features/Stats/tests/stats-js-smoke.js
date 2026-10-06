@@ -107,7 +107,6 @@ check( '...and a day handed with zero views is empty like a day not handed at al
 
 // --- The edges --------------------------------------------------------------------------
 
-check( 'a row handed no month name draws the days it was given', columns( stats._renderBars( [ { day : '2026-09-22', total : 1 }, { day : '2026-09-25', total : 3 } ], '' ) ).map( function( c ) { return c.day } ).join(' ') === '22 25' );
 const empty = stats._renderBars( [], '2026-09' );
 check( 'a month with no data at all says so instead of drawing thirty empty columns', empty.children.length === 1 && empty.children[0].className === 'nino-admin-empty' );
 
