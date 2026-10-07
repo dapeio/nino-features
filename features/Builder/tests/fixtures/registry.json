@@ -1,0 +1,358 @@
+{
+    "components": {
+        "title": {
+            "label": "Title",
+            "source": "text",
+            "loop": true,
+            "preview": "title",
+            "attributes": {
+                "level": {
+                    "type": "select",
+                    "label": "Level",
+                    "hint": "",
+                    "options": [
+                        "1",
+                        "2",
+                        "3",
+                        "4"
+                    ],
+                    "default": "2"
+                },
+                "style": {
+                    "type": "select",
+                    "label": "Style",
+                    "hint": "A step up or down the type scale.",
+                    "options": [
+                        "",
+                        "loud",
+                        "quiet"
+                    ],
+                    "default": ""
+                }
+            },
+            "defaults": {
+                "level": "2",
+                "style": "",
+                "class": ""
+            }
+        },
+        "subtitle": {
+            "label": "Subtitle",
+            "source": "text",
+            "loop": true,
+            "preview": "title",
+            "attributes": {
+                "style": {
+                    "type": "select",
+                    "label": "Style",
+                    "hint": "A step up or down the type scale.",
+                    "options": [
+                        "",
+                        "loud",
+                        "quiet"
+                    ],
+                    "default": ""
+                }
+            },
+            "defaults": {
+                "style": "",
+                "class": ""
+            }
+        },
+        "text": {
+            "label": "Text",
+            "source": "text",
+            "loop": true,
+            "preview": "text",
+            "attributes": {
+                "format": {
+                    "type": "select",
+                    "label": "Format",
+                    "hint": "What the text may hold: inline tags, line breaks, or paragraphs and lists.",
+                    "options": [
+                        "inline",
+                        "lines",
+                        "blocks"
+                    ],
+                    "default": "blocks"
+                },
+                "style": {
+                    "type": "select",
+                    "label": "Style",
+                    "hint": "A step up or down the type scale.",
+                    "options": [
+                        "",
+                        "loud",
+                        "quiet"
+                    ],
+                    "default": ""
+                }
+            },
+            "defaults": {
+                "format": "blocks",
+                "style": "",
+                "class": ""
+            }
+        },
+        "image": {
+            "label": "Image",
+            "source": "image",
+            "loop": true,
+            "preview": "image",
+            "attributes": {
+                "alt": {
+                    "type": "string",
+                    "label": "Alternative text",
+                    "hint": "Used where the slot has no text of its own. Empty marks the picture as decoration.",
+                    "default": ""
+                },
+                "focus": {
+                    "type": "select",
+                    "label": "Focus",
+                    "hint": "Which part of the picture survives a crop, as one of nine positions.",
+                    "options": [
+                        "",
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9"
+                    ],
+                    "default": ""
+                },
+                "ratio": {
+                    "type": "select",
+                    "label": "Ratio",
+                    "hint": "",
+                    "options": [
+                        "",
+                        "1-1",
+                        "4-3",
+                        "3-2",
+                        "16-9",
+                        "21-9"
+                    ],
+                    "default": ""
+                }
+            },
+            "defaults": {
+                "alt": "",
+                "focus": "",
+                "ratio": "",
+                "class": ""
+            }
+        },
+        "button": {
+            "label": "Button",
+            "source": "text",
+            "loop": true,
+            "preview": "button",
+            "attributes": {
+                "href": {
+                    "type": "href",
+                    "label": "Link",
+                    "hint": "A text key, an address, or in a stack a field of the element.",
+                    "default": ""
+                },
+                "style": {
+                    "type": "select",
+                    "label": "Style",
+                    "hint": "",
+                    "options": [
+                        "",
+                        "primary",
+                        "outline",
+                        "light",
+                        "dark",
+                        "brand-alt"
+                    ],
+                    "default": ""
+                },
+                "size": {
+                    "type": "select",
+                    "label": "Size",
+                    "hint": "",
+                    "options": [
+                        "",
+                        "small",
+                        "big"
+                    ],
+                    "default": ""
+                },
+                "target": {
+                    "type": "select",
+                    "label": "Opens in",
+                    "hint": "",
+                    "options": [
+                        "",
+                        "_blank"
+                    ],
+                    "default": ""
+                }
+            },
+            "defaults": {
+                "href": "",
+                "style": "",
+                "size": "",
+                "target": "",
+                "class": ""
+            }
+        },
+        "html": {
+            "label": "HTML",
+            "source": "content",
+            "loop": true,
+            "preview": "block",
+            "attributes": [],
+            "defaults": {
+                "class": ""
+            }
+        },
+        "spacer": {
+            "label": "Spacer",
+            "source": "none",
+            "loop": true,
+            "preview": "block",
+            "attributes": {
+                "size": {
+                    "type": "select",
+                    "label": "Size",
+                    "hint": "",
+                    "options": [
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6"
+                    ],
+                    "default": "2"
+                }
+            },
+            "defaults": {
+                "size": "2",
+                "class": ""
+            }
+        }
+    },
+    "stacks": {
+        "stack": {
+            "label": "Stack",
+            "grid": true,
+            "preview": "cells",
+            "attributes": [],
+            "defaults": {
+                "sort": "",
+                "offset": "0",
+                "limit": "0",
+                "query": "",
+                "callback": "",
+                "locale": "",
+                "id": "",
+                "cols": "100 50 33",
+                "gap": "2",
+                "autoheight": "0",
+                "class": ""
+            }
+        },
+        "slider": {
+            "label": "Slider",
+            "grid": false,
+            "preview": "cells",
+            "attributes": {
+                "width": {
+                    "type": "string",
+                    "label": "Slide width",
+                    "hint": "In percent of the slider or in pixels: 60% or 320px.",
+                    "default": "75%"
+                },
+                "min": {
+                    "type": "string",
+                    "label": "Least slide width",
+                    "hint": "Written like the width; empty sets none.",
+                    "default": ""
+                }
+            },
+            "defaults": {
+                "sort": "",
+                "offset": "0",
+                "limit": "0",
+                "query": "",
+                "callback": "",
+                "locale": "",
+                "id": "",
+                "width": "75%",
+                "min": "",
+                "class": ""
+            }
+        },
+        "filter": {
+            "label": "Filter",
+            "grid": true,
+            "preview": "cells",
+            "attributes": {
+                "by": {
+                    "type": "string",
+                    "label": "Filter by",
+                    "hint": "The field whose values become the buttons.",
+                    "default": ""
+                },
+                "all": {
+                    "type": "string",
+                    "label": "Label of the first button",
+                    "hint": "Empty takes the text /template/common/filter/all, or the word of the page's language.",
+                    "default": ""
+                }
+            },
+            "defaults": {
+                "sort": "",
+                "offset": "0",
+                "limit": "0",
+                "query": "",
+                "callback": "",
+                "locale": "",
+                "id": "",
+                "cols": "100 50 33",
+                "gap": "2",
+                "autoheight": "0",
+                "by": "",
+                "all": "",
+                "class": ""
+            }
+        },
+        "list": {
+            "label": "List",
+            "grid": false,
+            "preview": "block",
+            "attributes": {
+                "style": {
+                    "type": "select",
+                    "label": "Style",
+                    "hint": "",
+                    "options": [
+                        "",
+                        "check",
+                        "numbered",
+                        "columns"
+                    ],
+                    "default": ""
+                }
+            },
+            "defaults": {
+                "sort": "",
+                "offset": "0",
+                "limit": "0",
+                "query": "",
+                "callback": "",
+                "locale": "",
+                "id": "",
+                "style": "",
+                "class": ""
+            }
+        }
+    }
+}
