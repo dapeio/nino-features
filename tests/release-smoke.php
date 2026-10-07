@@ -2,15 +2,13 @@
 declare(strict_types=1);
 /**
  *	Nino features
- *	release-smoke.php		bin/release.sh end to end, without a server: a keypair per
- *											run, a directory as the target (rsync works between two
- *											paths as well as over ssh) and --quick. Three runs from a
- *											copy of the repository: the first publishes every feature
- *											and a catalogue that verifies and parses, the second
- *											changes no byte, the third after a version bump of Hello
- *											replaces its archive and leaves every other one as it was;
- *											a dry run uploads nothing, and a file only public/ holds
- *											is not put back. Skipped where rsync is missing.
+ *	release-smoke.php		bin/release.sh end to end: a keypair per run and --quick,
+ *											three runs from a copy of the repository, whose public/ is
+ *											the served directory. The first builds every feature and a
+ *											catalogue that verifies and parses, the second changes no
+ *											byte, the third after a version bump of Hello replaces its
+ *											archive and leaves every other one as it was; a file
+ *											public/ holds that the build does not write stays.
  *
  *	Usage: NINO_ROOT=/path/to/nino php tests/release-smoke.php    (harness only)
  */
@@ -19,11 +17,6 @@ $root = getenv( 'NINO_ROOT' ) ?: dirname( __DIR__ ). '/nino';
 if( is_file( $root. '/tests/harness.php' ) === false ) {
 	fwrite( STDERR, 'No Nino checkout with tests/harness.php at '. $root. " - clone https://github.com/dapeio/nino beside this repository or set NINO_ROOT\n" );
 	exit( 2 );
-}
-
-if( trim( (string) shell_exec( 'command -v rsync' ) ) === '' ) {
-	echo "release-smoke: rsync is not installed - skipped\n";
-	exit( 0 );
 }
 
 $work = sys_get_temp_dir(). '/nino-release-smoke-'. uniqid();
@@ -76,28 +69,24 @@ openssl_pkey_export( $keypair, $privateKey );
 $publicKey = openssl_pkey_get_details( $keypair )['key'];
 file_put_contents( $work. '/catalogue-key.pem', $privateKey );
 
-$target	= $work. '/server';
-mkdir( $target );
-$env		= [ 'NINO_ROOT' => $root, 'NINO_CATALOGUE_KEY' => $work. '/catalogue-key.pem', 'NINO_CATALOGUE_TARGET' => $target. '/', 'NINO_CATALOGUE_URL' => 'https://catalogue.test' ];
+// The copy's public/ is the served directory
+$target	= $copy. '/public';
+$env		= [ 'NINO_ROOT' => $root, 'NINO_CATALOGUE_KEY' => $work. '/catalogue-key.pem', 'NINO_CATALOGUE_URL' => 'https://catalogue.test' ];
 
 $directories = array_filter( scandir( $repo. '/features' ) ?: [], static fn( string $entry ): bool => $entry[0] !== '.' && is_dir( $repo. '/features/'. $entry ) === true );
 
-echo "bin/release.sh - a dry run\n";
+echo "bin/release.sh - the first release\n";
 
-[ $status, $stdout ] = runRelease( $copy, $env, [ '--quick', '--dry-run' ] );
-check( 'a dry run succeeds', $status === 0 );
-check( 'it builds into public/', count( glob( $copy. '/public/*.tar.gz' ) ?: [] ) === count( $directories ) && is_file( $copy. '/public/catalogue.json' ) === true );
-check( 'and uploads nothing', listing( $target ) === [] && str_contains( $stdout, 'published to' ) === false );
-
-echo "\nbin/release.sh - the first release\n";
+[ $status, $stdout, $stderr ] = runRelease( $copy, $env, [ '--quick', '--dry-run' ] );
+check( 'an option it does not have is refused', $status === 2 && is_dir( $target ) === false );
 
 [ $status, $stdout, $stderr ] = runRelease( $copy, $env, [ '--quick' ] );
-check( 'the release succeeds', $status === 0 && str_contains( $stdout, 'published to' ) === true );
+check( 'the release succeeds', $status === 0 && str_contains( $stdout, 'released:' ) === true );
 
 $archives	= glob( $target. '/*.tar.gz' ) ?: [];
 $json			= (string) @file_get_contents( $target. '/catalogue.json' );
 $parsed		= \Nino\Catalogue::parse( $json );
-check( 'the server holds one archive per feature directory', count( $archives ) === count( $directories ) );
+check( 'public/ holds one archive per feature directory', count( $archives ) === count( $directories ) );
 check( 'the catalogue verifies with the public key', \Nino\Catalogue::verify( $json, (string) @file_get_contents( $target. '/catalogue.json.sig' ), $publicKey ) === true );
 check( 'the kernel parses it, one entry per feature', is_array( $parsed ) === true && count( $parsed['features'] ) === count( $directories ) );
 check( 'and every entry names an archive that is there, with its digest', is_array( $parsed ) === true && array_filter( $parsed['features'], fn( array $entry ): bool => is_file( $target. '/'. basename( $entry['archive'] ) ) === false || hash_file( 'sha256', $target. '/'. basename( $entry['archive'] ) ) !== $entry['sha256'] ) === [] );
@@ -108,11 +97,12 @@ echo "\nbin/release.sh - a second release, nothing changed\n";
 
 [ $status ] = runRelease( $copy, $env, [ '--quick' ] );
 check( 'the release succeeds', $status === 0 );
-check( 'not a byte of the server changed, no file added or removed', listing( $target ) === $first );
+check( 'not a byte of public/ changed, no file added or removed', listing( $target ) === $first );
 
-file_put_contents( $copy. '/public/left-over.txt', 'from an earlier run' );
+file_put_contents( $target. '/left-over.txt', 'not the build\'s' );
 [ $status ] = runRelease( $copy, $env, [ '--quick' ] );
-check( 'a file public/ holds and the server does not is not put back', $status === 0 && is_file( $target. '/left-over.txt' ) === false );
+check( 'a file public/ holds that the build does not write stays', $status === 0 && is_file( $target. '/left-over.txt' ) === true );
+unlink( $target. '/left-over.txt' );
 
 echo "\nbin/release.sh - after a version bump of Hello\n";
 

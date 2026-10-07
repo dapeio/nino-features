@@ -99,8 +99,8 @@ jobs:
       - name: Run the catalogue's rule tests
         run: for test in markup language escaping panels; do php "tests/$test-smoke.php" || exit 1; done
 
-      # bin/release.sh from a copy of the repository into a directory as the
-      # target; needs rsync, and skips itself where there is none
+      # bin/release.sh from a copy of the repository, whose public/ stands
+      # in for the served directory
       - name: Run the release script's smoke test
         run: NINO_ROOT=nino php tests/release-smoke.php
 

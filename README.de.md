@@ -65,19 +65,20 @@ Verlangt sind `feature.php` und `<Name>.php`. Das `manual` des Manifests ist die
 
 ## Ein Release
 
-Ein Release ist `bin/release.sh`, vom Owner auf der eigenen Maschine ausgeführt. Der Katalog ist, was `main` trägt: Jeder Lauf baut jedes Feature und legt das Ergebnis auf den Server, und ein Feature, das sich nicht geändert hat, ergibt dieselben Bytes und lädt nichts hoch.
+Ein Release ist `bin/release.sh`, vom Owner im Checkout auf dem Server ausgeführt. Der Katalog ist, was `main` trägt: Jeder Lauf baut jedes Feature nach `public/`, das Verzeichnis, das der Webserver ausliefert, und ein Feature, das sich nicht geändert hat, ergibt dieselben Bytes, sodass sich nichts bewegt, was ein Projekt sieht.
 
 ```bash
-NINO_CATALOGUE_KEY=~/safe/catalogue-key.pem NINO_CATALOGUE_TARGET=nino@host:/srv/catalogue/ bin/release.sh
+git pull
+NINO_CATALOGUE_KEY=/sicherer/ort/catalogue-key.pem bin/release.sh
 ```
 
-Es führt zuerst `bin/check.sh` aus (`--quick` überspringt das), holt per rsync, was der Server hält, nach `public/`, lässt `bin/build.php` jedes Archiv bauen und den Katalog signieren und legt `public/` mit `rsync --delete` zurück. `--dry-run` hält vor dem Upload an. `NINO_ROOT` nennt den Nino-Checkout (Standard `../nino`), `NINO_CATALOGUE_URL`, wo die Archive ausgeliefert werden (Standard `https://catalogue.getnino.dev`).
+Es führt zuerst `bin/check.sh` aus (`--quick` überspringt das), dann baut `bin/build.php` jedes Archiv nach `public/`, schreibt `catalogue.json` und signiert es; jede Datei landet ganz, per Umbenennen. `NINO_ROOT` nennt den Nino-Checkout (Standard `../nino`), `NINO_CATALOGUE_URL`, wo `public/` ausgeliefert wird (Standard `https://catalogue.getnino.dev`). Eine Probe ist der Build in ein anderes Verzeichnis: `php bin/build.php ../nino /tmp/probe`.
 
-Es gibt einen Eintrag je Feature, die Version seines Manifests, und kein Tag. Eine Änderung ohne neue `version` erreicht neue Installationen, bestehende nicht: Das Features-Panel bietet ein Update aus dem Katalog nur für eine höhere Version an. Die `version` wird also erhöht, wenn installierte Projekte das Update angeboten bekommen sollen. Während eines Uploads kann ein Download an der Prüfsumme scheitern; das Projekt wiederholt ihn.
+Es gibt einen Eintrag je Feature, die Version seines Manifests, und kein Tag. Eine Änderung ohne neue `version` erreicht neue Installationen, bestehende nicht: Das Features-Panel bietet ein Update aus dem Katalog nur für eine höhere Version an. Die `version` wird also erhöht, wenn installierte Projekte das Update angeboten bekommen sollen.
 
 ## Der Server
 
-Ein Verzeichnis, über https als statische Dateien ausgeliefert, mit ssh-Zugang für rsync. Eine Datei, die nicht da ist, antwortet **404**. Kein PHP, keine Upload-Limits, keine Konfiguration außer dem VirtualHost. Das Verzeichnis existiert vor dem ersten Lauf, leer; der Upload macht seine Dateien für alle lesbar. Der Kernel liest die Bytes, welchen Content-Type der Server auch dafür nennt.
+Der Checkout dieses Repositories, ein Nino-Checkout daneben, php und ein Webserver, der `public/` als statische Dateien über https ausliefert – nginx mit einem `root`, das darauf zeigt. Eine Datei, die nicht da ist, antwortet **404**. Kein PHP hinter dem Webserver, kein Upload, keine Konfiguration außer dem VirtualHost. Der Kernel liest die Bytes, welchen Content-Type der Server auch dafür nennt. Ein Server anderswo bekommt `public/` von dem, was Dateien dorthin bewegt.
 
 ## Der Signaturschlüssel
 
@@ -92,7 +93,7 @@ Bewahre `catalogue-key.pem` an einem sicheren Ort außerhalb jedes Repositories 
 
 ## Ein eigener Katalog
 
-`bin/release.sh` funktioniert für jeden Satz Features – einen Fork dieses Repositories – mit deinem eigenen `NINO_CATALOGUE_URL` und `NINO_CATALOGUE_TARGET`. `bin/build.php` allein baut dieselben Dateien in ein Verzeichnis:
+`bin/release.sh` funktioniert für jeden Satz Features – einen Fork dieses Repositories – mit deinem eigenen `NINO_CATALOGUE_URL` und einem Webserver, der sein `public/` ausliefert. `bin/build.php` allein baut dieselben Dateien in ein Verzeichnis:
 
 ```bash
 php bin/build.php ../nino public --base-url https://example.org/features

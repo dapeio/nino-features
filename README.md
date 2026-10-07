@@ -65,19 +65,20 @@ Required are `feature.php` and `<Name>.php`. The manifest's `manual` is the docu
 
 ## A release
 
-A release is `bin/release.sh`, run by the owner on their own machine. The catalogue is what `main` carries: every run builds every feature and puts the result on the server, and a feature that did not change gives the same bytes and uploads nothing.
+A release is `bin/release.sh`, run by the owner in the checkout on the server. The catalogue is what `main` carries: every run builds every feature into `public/`, the directory the web server delivers, and a feature that did not change gives the same bytes, so nothing a project sees moves.
 
 ```bash
-NINO_CATALOGUE_KEY=~/safe/catalogue-key.pem NINO_CATALOGUE_TARGET=nino@host:/srv/catalogue/ bin/release.sh
+git pull
+NINO_CATALOGUE_KEY=/safe/place/catalogue-key.pem bin/release.sh
 ```
 
-It runs `bin/check.sh` first (`--quick` skips it), fetches what the server holds into `public/` by rsync, lets `bin/build.php` build every archive and sign the catalogue, and puts `public/` back with `rsync --delete`. `--dry-run` stops before the upload. `NINO_ROOT` names the Nino checkout (default `../nino`), `NINO_CATALOGUE_URL` where the archives are served from (default `https://catalogue.getnino.dev`).
+It runs `bin/check.sh` first (`--quick` skips it), then `bin/build.php` builds every archive into `public/`, writes `catalogue.json` and signs it; every file lands whole, by rename. `NINO_ROOT` names the Nino checkout (default `../nino`), `NINO_CATALOGUE_URL` where `public/` is served from (default `https://catalogue.getnino.dev`). A rehearsal is the build into another directory: `php bin/build.php ../nino /tmp/rehearsal`.
 
-There is one entry per feature, the version of its manifest, and no tag. A change without a new `version` reaches new installations, not existing ones: the Features panel offers an update from the catalogue only for a higher version. So `version` is raised when installed projects should be offered the update. During an upload a download may fail its checksum; the project repeats it.
+There is one entry per feature, the version of its manifest, and no tag. A change without a new `version` reaches new installations, not existing ones: the Features panel offers an update from the catalogue only for a higher version. So `version` is raised when installed projects should be offered the update.
 
 ## The server
 
-A directory served as static files over https, with ssh access for rsync. A file that is not there answers **404**. No PHP, no upload limits, no configuration beyond the virtual host. The directory exists, empty, before the first run; the upload makes its files world-readable. The kernel reads the bytes, whatever content type the server names for them.
+The checkout of this repository, a Nino checkout beside it, php, and a web server that delivers `public/` as static files over https - nginx with a `root` that points at it. A file that is not there answers **404**. No PHP behind the web server, no upload, no configuration beyond the virtual host. The kernel reads the bytes, whatever content type the server names for them. A server elsewhere is given `public/` by whatever moves files to it.
 
 ## The signing key
 
@@ -92,7 +93,7 @@ Keep `catalogue-key.pem` in a safe place outside every repository, with a copy. 
 
 ## A catalogue of your own
 
-`bin/release.sh` works for any set of features - a fork of this repository - with your own `NINO_CATALOGUE_URL` and `NINO_CATALOGUE_TARGET`. `bin/build.php` alone builds the same files into a directory:
+`bin/release.sh` works for any set of features - a fork of this repository - with your own `NINO_CATALOGUE_URL` and a web server that delivers its `public/`. `bin/build.php` alone builds the same files into a directory:
 
 ```bash
 php bin/build.php ../nino public --base-url https://example.org/features

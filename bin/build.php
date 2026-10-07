@@ -667,10 +667,24 @@ if( is_string( $parsed ) === true )
 if( count( $parsed['features'] ) !== count( $entries ) )
 	fail( 'This kernel reads '. count( $parsed['features'] ). ' of '. count( $entries ). ' entries' );
 
+/**
+ *	Write a file whole: into a temporary name beside it, then renamed over it.
+ *	The output directory may be the one a web server delivers, and a reader
+ *	never sees half a catalogue
+ */
+function place( string $path, string $data ): void {
+
+	$staged = $path. '.tmp';
+
+	if( @file_put_contents( $staged, $data ) !== strlen( $data ) || @rename( $staged, $path ) === false ) {
+		@unlink( $staged );
+		fail( 'Could not write '. $path );
+	}
+}
+
 if( $changed === true ) {
 
-	if( @file_put_contents( $cataloguePath, $json ) !== strlen( $json ) )
-		fail( 'Could not write '. $cataloguePath );
+	place( $cataloguePath, $json );
 
 	say( 'wrote    '. $cataloguePath. ' ('. count( $entries ). ' '. ( count( $entries ) === 1 ? 'entry' : 'entries' ). ', accepted by \\Nino\\Catalogue::parse())' );
 }
@@ -714,8 +728,7 @@ $holds = openssl_verify( $bytes, $der, $publicKey, OPENSSL_ALGO_SHA256 ) === 1
 if( $holds === false )
 	fail( 'The signature does not verify with the public key derived from '. $options['key'] );
 
-if( @file_put_contents( $signaturePath, $signature ) !== strlen( $signature ) )
-	fail( 'Could not write '. $signaturePath );
+place( $signaturePath, $signature );
 
 $details = openssl_pkey_get_details( $privateKey );
 $keyKind = ( $details['type'] ?? null ) === OPENSSL_KEYTYPE_EC ? 'EC '. ( $details['ec']['curve_name'] ?? '' ) : ( ( $details['type'] ?? null ) === OPENSSL_KEYTYPE_RSA ? 'RSA '. ( $details['bits'] ?? '' ) : 'key' );

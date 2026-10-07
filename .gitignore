@@ -11,7 +11,7 @@ Thumbs.db
 # A signing key never enters a repository
 *.pem
 
-# A local mirror of the directory the catalogue is served from - what
-# bin/release.sh syncs and bin/build.php writes into: catalogue.json, its
-# signature and the archives. What it holds is published, never versioned
+# The directory the catalogue is served from - what bin/release.sh builds:
+# catalogue.json, its signature and the archives. What it holds is
+# published, never versioned
 /public/

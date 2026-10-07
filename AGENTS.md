@@ -98,21 +98,22 @@ After editing:
 | `bin/build.php` | The build tool: `php bin/build.php <nino-checkout> <out-dir> [--base-url …] [--key private.pem]`. Validates every manifest the same way, builds `<out-dir>/<key>-<version>.tar.gz` for every feature on every run, as a plain ustar tar written by the script itself, every entry stamped with one fixed time - exactly one directory `<Name>/`, without `tests/`, `.git*`, `.DS_Store` and editor leftovers, sorted so a build is reproducible - and writes `<out-dir>/catalogue.json` in format 1 (see `\Nino\Catalogue` in Nino), one entry per feature, signed with `--key`. A feature that did not change gives the same bytes and its file is left alone; an archive no entry names is removed. The `catalogue.json` already in the directory is read for two things: `released` stays while an entry's `sha256` does, and `generated` stays while nothing else in the document changes - then neither `catalogue.json` nor its signature is rewritten |
 | `bin/applicable.php` | `php bin/applicable.php <nino>` prints the directories of the features whose `nino` constraint the checkout's version satisfies (`\Nino\Features::satisfies()` of that checkout), one per line, and on STDERR the others with their reason (`Seo: skipped on Nino 1.3.2: needs ^1.4`). A feature written for a newer Nino claims nothing about an older one. `bin/check.sh`, CI, `tests/build-smoke.php` and `tests/keys-smoke.php` all ask it, so the question has one answer. `bin/catalogue.php` does not: it describes every feature of this repository |
 | `bin/check.sh` | Copies every feature the checkout can run (`bin/applicable.php`) into it (`../nino` or `NINO_ROOT`), runs `bin/catalogue.php`, those features' tests and every test under `tests/` - its own lines are the list - and removes the copies again. A directory the checkout already carries is left alone |
-| `bin/release.sh` | A release, run by the owner on their own machine: `bin/check.sh` (`--quick` skips it), the published catalogue fetched into `public/` from `NINO_CATALOGUE_TARGET` (`rsync -a --delete`, so `public/` is exactly the server's state), `bin/build.php` with `NINO_CATALOGUE_KEY` and `NINO_CATALOGUE_URL`, and `public/` put back with `rsync -a --delete --chmod=D755,F644` (`--dry-run` stops before that). It publishes what `main` carries, whether or not a version changed |
+| `bin/release.sh` | A release, run by the owner in the checkout on the server: `bin/check.sh` (`--quick` skips it), then `bin/build.php` into `public/` with `NINO_CATALOGUE_KEY` and `NINO_CATALOGUE_URL` - the directory the web server delivers, so nothing is copied anywhere. It publishes what `main` carries, whether or not a version changed. A rehearsal is `bin/build.php` into another directory |
 | `tests/keys-smoke.php` | The text key grammar over every feature. Part 1, against any checkout: what an install unit writes follows `/feature/<key>/<part>/<name>` or `/template/<category>/<part>/<name>`, reads the same in both languages, blacklists what its own code fills; no old key family is left in a shipped file; the key literals in the code name a namespace; no feature's code reads `/nino/locales/textfiles`. Part 2, against a Nino that has `\Nino\Modules\Template::category()` and for the features `bin/applicable.php` names: every key a template reads is a runtime fill, a key of the system or delivered, a template reads template keys of its own category or of `common` only, a template the kernel delivers too is byte for byte the kernel's. The vocabulary of the workbench is looked up where the checkout has one, as a note |
 | `tests/legal-smoke.php` | The sections of the privacy policy the features bring (`install/elements/privacy.php`, section 4c). Part 1, against any checkout: each file is named in the manifest of its unit, brings no type of its own, has the same sections in `*`, `de_DE` and `en_US`, ids that are the feature's key or the key and a name, a position in the feature's range, only `p`, `br`, `ul`, `ol`, `li`, `strong`, `em` and `a` with a `#privacy-<id>` or `https://` link, no `&`, entity or `[`, only placeholders Nino's Legal module replaces. Part 2, against a Nino that has `\Nino\Modules\Legal`: the module's unit applied in a sandbox, then each feature's add-only - the sections are there, a second run changes nothing, no id is the module's, every anchor names a section, the field's own model leaves every text as it is, `Legal::contributions()` names them. Otherwise a line starting `note` |
 | `tests/markup-smoke.php`, `tests/language-smoke.php`, `tests/escaping-smoke.php`, `tests/panels-smoke.php` | The rules every feature shares, read over the feature files: markup belongs in a template (section 4a), the text is English, an escape keeps what it cannot encode, a panel reaches the workbench the way it has to |
 | `tests/build-smoke.php` | The build tool's own test over Nino's harness: a keypair per run, a signed build into a temporary directory, the archives' contents, the catalogue's fields, the signature, a second run that changes no byte and leaves `catalogue.json` and its signature untouched, a changed feature that gets new bytes under the same name and a new `released`, a stale archive that is removed, one entry per feature whatever the catalogue held before, the refusals - a category outside the kernel's six and a checkout without them among them - and an installation of the archives through `\Nino\Catalogue` |
-| `tests/release-smoke.php` | `bin/release.sh` end to end from a copy of the repository, with `--quick`, a temporary key and a directory as `NINO_CATALOGUE_TARGET` (rsync works between two paths): the first run publishes every feature and a catalogue that verifies and parses, the second changes no byte, the third after a version bump of Hello replaces its archive and leaves every other one as it was, a dry run uploads nothing, and a file only `public/` holds is not put back. Skipped with a line where rsync is not installed |
+| `tests/release-smoke.php` | `bin/release.sh` end to end from a copy of the repository, with `--quick` and a temporary key: the first run builds every feature into the copy's `public/` and a catalogue that verifies and parses, the second changes no byte, the third after a version bump of Hello replaces its archive and leaves every other one as it was; a file `public/` holds that the build does not write stays |
 | `.github/workflows/ci.yml` | The matrix: Nino `main` and Nino's latest tag. Each test `bin/check.sh` runs as a step of its own, and besides them a syntax check of every PHP and JavaScript file, Nino's `tests/features-smoke.php` with the features in place, PHPStan and ESLint - the workflow's steps are the list; `catalogue.json` kept as an artifact of the `main` run. A test run and nothing more: no release waits for it |
 | `README.md`, `README.de.md` | The catalogue for humans, short: what it is, install, develop and test, write a feature, the release, the server, the signing key, a catalogue of your own, format 1. English is the primary version, German the author's; both have the same structure and identical commands and paths |
-| `.gitignore` | Ignores `/nino/` (a checkout placed inside rather than beside), `*.patch`, `*.pem` (a key never enters the repository) and `/public/` (what `bin/release.sh` syncs and `bin/build.php` writes) |
+| `.gitignore` | Ignores `/nino/` (a checkout placed inside rather than beside), `*.patch`, `*.pem` (a key never enters the repository) and `/public/` (what `bin/release.sh` builds, the served directory) |
 | `LICENSE`, `.editorconfig` | MIT; tabs, LF, UTF-8, the same defaults Nino uses |
 
 There is no `catalogue.json`, no archive and no `public/` in the repository:
-they are generated, by `bin/catalogue.php` and `bin/build.php`, and published
-by `bin/release.sh`. Do not commit one. A signing key is never written
-anywhere but the owner's own machine, outside every repository.
+they are generated, by `bin/catalogue.php` and `bin/build.php`, and
+`bin/release.sh` builds them into `public/`, which the web server delivers.
+Do not commit one. A signing key is never written anywhere but a place of
+the owner's outside every repository.
 
 ## 4. What a feature MUST carry
 
@@ -346,8 +347,8 @@ answer. A request to "implement", "finish", "release" or "apply" is not
 permission to commit or to tag. `.gitignore` ignores `*.patch`, so a patch
 written into the repository is never picked up by mistake.
 
-A release is `bin/release.sh`, run by the owner on their own machine: it
-publishes what `main` carries, so a feature that changed reaches new
+A release is `bin/release.sh`, run by the owner in the checkout on the
+server: it publishes what `main` carries, so a feature that changed reaches new
 installations with the next run, whether or not its `version` changed. A
 version is raised when installed projects should be offered the update. An
 agent prepares a release (the version where one is meant to go out,
@@ -375,9 +376,9 @@ rather than working around them here:
   `bin/build.php` writes to. A new field or a new format goes to Nino first;
   the builder and `tests/build-smoke.php` follow. What lives here is the
   publishing side - `bin/build.php`, `bin/release.sh`, `tests/build-smoke.php`,
-  `tests/release-smoke.php` - and nothing here makes a network request except
-  `bin/release.sh`, which syncs with the server by rsync;
-  `tests/release-smoke.php` syncs between two local directories only.
+  `tests/release-smoke.php` - and nothing here makes a network request:
+  `bin/release.sh` builds into `public/`, the directory the web server
+  delivers.
 
 A feature that needs a kernel capability it does not have is blocked, not
 patched: report the gap, do not copy kernel code into the feature.
