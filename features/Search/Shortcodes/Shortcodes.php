@@ -73,7 +73,16 @@ namespace Nino\Modules\Search {
 		public static function init( array &$appData ): void {
 
 			\Nino\Html::addShortcode( $appData, 'search-results', [ self::class, 'doResults' ] );
-			\Nino\Html::addShortcode( $appData, 'search-count', [ self::class, 'doCount' ] );
+
+			/*	Nino 1.6 has registered [search-count] as a component from the manifest
+				before this runs (\Nino\Features::registerComponents()), and a second
+				registration here would take it back from the wrapper that fills in
+				the defaults. Nino 1.5 ignores the manifest key and needs it. The
+				results are a shortcode: the Builder cannot carry a record template	*/
+			$components = class_exists( '\\Nino\\Modules\\Components' ) === true ? \Nino\Modules\Components::components( $appData ) : [];
+
+			if( isset( $components['search-count'] ) === false )
+				\Nino\Html::addShortcode( $appData, 'search-count', [ self::class, 'doCount' ] );
 		}
 
 		/**

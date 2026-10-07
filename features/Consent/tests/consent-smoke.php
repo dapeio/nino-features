@@ -369,6 +369,65 @@ check( 'switching the category on is what lets its placeholders count',
 echo "\n";
 
 
+// --- Components ----------------------------------------------------------------
+
+echo "Components - [consent-settings] as the Builder offers it\n";
+
+if( class_exists( '\\Nino\\Modules\\Components' ) === false )
+	echo "  --  this Nino has no \\Nino\\Modules\\Components: the manifest's components are not read here, and the shortcode registers itself\n";
+else ( static function( array $appData ): void {
+
+	$declared = \Nino\Features::manifest( dirname( __DIR__ ) )['components'] ?? [];
+
+	// Every documented call form, as it renders before the wrapper is there
+	$calls = [
+		'[consent-settings]',
+		'[consent]',
+	];
+
+	$before = [];
+	foreach( $calls as $call )
+		$before[$call] = \Nino\Html::renderHtml( $appData, $call );
+
+	/*	The kernel reads the manifest ahead of the feature's own init() - that is
+		the order here too, on a copy of the project's data that nothing else in
+		this test sees. The shortcodes the feature registered above are those of
+		a boot that has none to read; this boot registers each of them once	*/
+	$probe = $appData;
+	foreach( [ 'consent', 'consent-settings' ] as $shortcode )
+		\Nino\Callbacks::removeCallbacks( $probe, '/nino/html/shortcode/'. $shortcode );
+	\Nino\Modules\Components::init( $probe );
+	\Nino\Modules\Consent::init( $probe );
+	ninoWarnings();
+
+	check( 'the component is registered with the schema the manifest declares',
+		( \Nino\Modules\Components::components( $probe )['consent-settings'] ?? null ) === ( $declared['consent-settings'] ?? false ) );
+	check( '...as one meant once per page: the registered schema says it stays out of a loop',
+		( \Nino\Modules\Components::components( $probe )['consent-settings']['loop'] ?? null ) === false );
+	check( '...and what the feature registers is answered once - the component by its wrapper',
+		\Nino\Features::shortcodes( $probe, 'consent' ) === [ 'consent', 'consent-settings' ]
+		&& count( $registered = \Nino\Callbacks::registered( $probe, '/nino/html/shortcode/consent-settings' ) ) === 1 && $registered[0] instanceof \Closure );
+	check( '...with the defaults of the schema, as strings',
+		\Nino\Modules\Components::defaults( $probe, 'consent-settings' ) === [ 'class' => '' ] );
+
+	foreach( $calls as $call )
+		check( 'renders as it did: '. $call, \Nino\Html::renderHtml( $probe, $call ) === $before[$call] );
+
+	ninoWarnings();
+
+	check( 'every attribute written out at its default is the call without it',
+		\Nino\Html::renderHtml( $probe, '[consent-settings class=""]' ) === $before['[consent-settings]'] );
+	check( 'a class of its own comes after the button\'s own, no class leaves no space behind',
+		str_contains( \Nino\Html::renderHtml( $probe, '[consent-settings class="footer-link"]' ), '<button type="button" class="nino-consent-open footer-link">' ) === true
+		&& str_contains( $before['[consent-settings]'], '<button type="button" class="nino-consent-open">' ) === true );
+	check( '[consent] is no component: it is the banner of the page frame, and stays the shortcode it was',
+		isset( \Nino\Modules\Components::components( $probe )['consent'] ) === false );
+
+} )( $appData );
+
+echo "\n";
+
+
 // --- The privacy policy ---------------------------------------------------------------
 
 echo "The privacy policy - the banner's link without a policyUrl, and the button in the policy's own section\n";

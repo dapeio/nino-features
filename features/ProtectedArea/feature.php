@@ -19,6 +19,10 @@ return [
 				'en_US' => 'What the password form says when the password was wrong.',
 				'de_DE' => 'Was das Passwortformular sagt, wenn das Passwort falsch war.',
 			],
+			'[protected-logout ... class="my-class"]' => [
+				'en_US' => 'A class of your own, added to those of the link. What the Builder writes for its custom classes.',
+				'de_DE' => 'Eine eigene Klasse, zusätzlich zu denen des Links. Das schreibt der Builder für seine eigenen Klassen.',
+			],
 		],
 		'markup' => [],
 		'routes' => [
@@ -101,6 +105,17 @@ return [
 			'max'			=> 50,
 			'unit'		=> 'per hour',
 			'default'	=> 5,
+		],
+	],
+	/*	The one shortcode of the two that is meant for a page: the link that locks the
+		area again. [protected-error] belongs into the password form's own markup and
+		stays a shortcode. Nino 1.5 ignores the key	*/
+	'components'	=> [
+		'protected-logout' => [
+			'label'			=> [ 'en_US' => 'Lock again', 'de_DE' => 'Wieder sperren' ],
+			'source'		=> 'none',
+			'loop'			=> false,
+			'preview'		=> 'button',
 		],
 	],
 ];

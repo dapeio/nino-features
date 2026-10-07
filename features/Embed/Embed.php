@@ -113,7 +113,14 @@ namespace Nino\Modules {
 		 */
 		public static function init( array &$appData ): void {
 
-			\Nino\Html::addShortcode( $appData, 'embed', [ self::class, 'doShortcode' ] );
+			/*	Nino 1.6 has registered [embed] as a component from the manifest before
+				this runs (\Nino\Features::registerComponents()), and a second
+				registration here would take it back from the wrapper that fills in
+				the defaults. Nino 1.5 ignores the manifest key and needs it	*/
+			$components = class_exists( '\\Nino\\Modules\\Components' ) === true ? \Nino\Modules\Components::components( $appData ) : [];
+
+			if( isset( $components['embed'] ) === false )
+				\Nino\Html::addShortcode( $appData, 'embed', [ self::class, 'doShortcode' ] );
 
 			// The policy is widened where the finished response is in hand, and by
 			// the hosts doShortcode() recorded - see callbackOutput()
@@ -127,6 +134,21 @@ namespace Nino\Modules {
 				'/nino/html/assets'	*/
 			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Embed/assets/embed.css' );
 			\Nino\Html::addAsset( $appData, '/.cache/script.js', '/features/Embed/assets/embed.js' );
+		}
+
+		/**
+		 *	[embed] as the Components module hands it over, the Builder's way:
+		 *	every attribute is there, an empty one where nothing was written,
+		 *	and doShortcode() reads them as it reads a hand-written call
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$args					The resolved arguments (see \Nino\Modules\Components::dispatch())
+		 *
+		 *	@return 	string								What doShortcode() renders for them
+		 */
+		public static function componentEmbed( array &$appData, array $args ): string {
+
+			return self::doShortcode( $appData, $args );
 		}
 
 		/**
@@ -176,8 +198,9 @@ namespace Nino\Modules {
 			// of all: str_replace() works through its arrays in order, so a token
 			// after built markup would be looked for inside it as well
 			return str_replace(
-				[ '[[ratio]]', '[[src]]', '[[host]]', '[[consent]]', '[[remember]]', '[[title]]', '[[label]]', '[[poster]]' ],
+				[ '[[class]]', '[[ratio]]', '[[src]]', '[[host]]', '[[consent]]', '[[remember]]', '[[title]]', '[[label]]', '[[poster]]' ],
 				[
+					self::_class( $args ),
 					$ratio,
 					$safe( $src ),
 					$safe( self::host( $src ) ),
@@ -626,6 +649,23 @@ namespace Nino\Modules {
 				htmlspecialchars( \Nino\Images::getUrl( $appData, $poster ), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ),
 				self::template( $appData, 'embed-poster' )
 			);
+		}
+
+		/**
+		 *	The class of one's own a call adds to the surface, with the space in
+		 *	front of it that the template leaves out - escaped, and with its
+		 *	brackets as character references, because the markup is rendered
+		 *	once more
+		 *
+		 *	@param		array			$args					Shortcode attributes
+		 *
+		 *	@return 	string								'' or ' my-class'
+		 */
+		private static function _class( array $args ): string {
+
+			$class = trim( (string) ( $args['class'] ?? '' ) );
+
+			return $class === '' ? '' : ' '. str_replace( '[', '&#91;', htmlspecialchars( $class, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) );
 		}
 
 		/**

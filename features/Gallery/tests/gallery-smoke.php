@@ -509,6 +509,85 @@ check( 'none of it cast a map to a string', array_filter( ninoWarnings(), static
 echo "\n";
 
 
+// --- Components ----------------------------------------------------------------
+
+echo "Components - [gallery] as the Builder offers it\n";
+
+if( class_exists( '\\Nino\\Modules\\Components' ) === false )
+	echo "  --  this Nino has no \\Nino\\Modules\\Components: the manifest's components are not read here, and the shortcode registers itself\n";
+else ( static function( array $appData ): void {
+
+	$declared = \Nino\Features::manifest( dirname( __DIR__ ) )['components'] ?? [];
+
+	// Every documented call form, as it renders before the wrapper is there
+	$calls = [
+		'[gallery]',
+		'[gallery album="trip"]',
+		'[gallery album="trip" columns="3"]',
+		'[gallery album="trip" columns="2"]',
+		'[gallery album="trip" columns="9"]',
+		'[gallery album="trip" columns="0"]',
+		'[gallery album="trip" columns="3.5"]',
+		'[gallery album="trip" columns="03"]',
+		'[gallery album="trip" columns="x"]',
+		'[gallery album="nowhere"]',
+	];
+
+	$before = [];
+	foreach( $calls as $call )
+		$before[$call] = \Nino\Html::renderHtml( $appData, $call );
+
+	/*	The kernel reads the manifest ahead of the feature's own init() - that is
+		the order here too, on a copy of the project's data that nothing else in
+		this test sees. The shortcodes the feature registered above are those of
+		a boot that has none to read; this boot registers each of them once	*/
+	$probe = $appData;
+	foreach( [ 'gallery' ] as $shortcode )
+		\Nino\Callbacks::removeCallbacks( $probe, '/nino/html/shortcode/'. $shortcode );
+	\Nino\Modules\Components::init( $probe );
+	\Nino\Modules\Gallery::init( $probe );
+	ninoWarnings();
+
+	check( 'the component is registered with the schema the manifest declares',
+		( \Nino\Modules\Components::components( $probe )['gallery'] ?? null ) === ( $declared['gallery'] ?? false ) );
+	check( '...and what the feature registers is answered once - the component by its wrapper',
+		\Nino\Features::shortcodes( $probe, 'gallery' ) === [ 'gallery' ]
+		&& count( $registered = \Nino\Callbacks::registered( $probe, '/nino/html/shortcode/gallery' ) ) === 1 && $registered[0] instanceof \Closure );
+	check( '...with the defaults of the schema, as strings',
+		\Nino\Modules\Components::defaults( $probe, 'gallery' ) === [ 'album' => '', 'columns' => '', 'class' => '' ] );
+
+	foreach( $calls as $call )
+		check( 'renders as it did: '. $call, \Nino\Html::renderHtml( $probe, $call ) === $before[$call] );
+
+	ninoWarnings();
+
+	// The forms that rendered four columns above are rendered again with the setting at 6:
+	// a count the control does not offer is no count, and what is no count was four
+	// before the wrapper as well - not the setting
+	$probe[ \Nino\Features::STATE_KEY ]['gallery']['settings'] = [ 'columns' => 6 ];
+	$plain = $appData;
+	$plain[ \Nino\Features::STATE_KEY ]['gallery']['settings'] = [ 'columns' => 6 ];
+	foreach( [ '[gallery album="trip" columns="9"]', '[gallery album="trip" columns="0"]', '[gallery album="trip" columns="3.5"]', '[gallery album="trip" columns="03"]', '[gallery album="trip" columns="x"]', '[gallery album="trip" columns="3"]', '[gallery album="trip"]' ] as $call )
+		check( 'renders as it did with the setting at 6: '. $call, \Nino\Html::renderHtml( $probe, $call ) === \Nino\Html::renderHtml( $plain, $call ) );
+	check( 'without a count of columns the setting\'s is taken, which a default of 4 in the schema would have overridden - and a count of its own still wins',
+		str_contains( \Nino\Html::renderHtml( $probe, '[gallery album="trip"]' ), '--nino-gallery-columns:6' ) === true
+		&& str_contains( \Nino\Html::renderHtml( $probe, '[gallery album="trip" columns="3"]' ), '--nino-gallery-columns:3' ) === true
+		&& str_contains( \Nino\Html::renderHtml( $probe, '[gallery album="trip" columns="9"]' ), '--nino-gallery-columns:4' ) === true );
+	// The one form the wrapper cannot tell from an omitted attribute
+	check( '...and an explicit columns="" is that omitted attribute, as the wrapper hands it on',
+		str_contains( \Nino\Html::renderHtml( $probe, '[gallery album="trip" columns=""]' ), '--nino-gallery-columns:6' ) === true );
+	unset( $probe[ \Nino\Features::STATE_KEY ]['gallery']['settings'] );
+	check( 'every attribute written out at its default is the call without it',
+		\Nino\Html::renderHtml( $probe, '[gallery album="" columns="" class=""]' ) === $before['[gallery]'] );
+	check( 'a class of its own comes after the grid\'s own, no class leaves no space behind',
+		str_contains( \Nino\Html::renderHtml( $probe, '[gallery album="trip" class="trip"]' ), '<ul class="nino-gallery-grid trip" style="--nino-gallery-columns:4">' ) === true
+		&& str_contains( $before['[gallery album="trip"]'], '<ul class="nino-gallery-grid" style="--nino-gallery-columns:4">' ) === true );
+
+} )( $appData );
+
+echo "\n";
+
+
 // --- Deleting an album -------------------------------------------------------
 
 echo "Gallery\\Admin - deleting an album\n";

@@ -434,6 +434,86 @@ $_GET = [];
 \Nino\Elements::deleteElement( $appData, '/articles/markup', '*' );
 $_GET = [];
 
+// --- Components ----------------------------------------------------------------
+
+echo "Components - [search-count] as the Builder offers it, [search-results] as it was\n";
+
+if( class_exists( '\\Nino\\Modules\\Components' ) === false )
+	echo "  --  this Nino has no \\Nino\\Modules\\Components: the manifest's components are not read here, and the shortcodes register themselves\n";
+else ( static function( array $appData ): void {
+
+	$declared = \Nino\Features::manifest( dirname( __DIR__ ) )['components'] ?? [];
+
+	// The search the page is answering, and the type the hits are of
+	$get = $_GET;
+	$_GET = [ 'q' => 'orbit' ];
+
+	// Every documented call form, as it renders before the wrapper is there
+	$calls = [
+		'[search-results key="q" type="/articles"]<h5>[[title]]</h5><p>[[summary]]</p>[/search-results]',
+		'[search-results type="articles" limit="1"]<p>[[title]]</p>[/search-results]',
+		'[search-results type="articles" limit="500"]<p>[[title]]</p>[/search-results]',
+		'[search-results type="articles" tag="none" limit="1"]<p>[[title]]</p>[/search-results]',
+		'[search-results type="articles" tag="<script>" limit="1"]<p>[[title]]</p>[/search-results]',
+		'[search-results type="articles" tag="ul" class="produkte" limit="1"]<li>[[title]]</li>[/search-results]',
+		'[search-results type="/articles" empty="search-empty"]<p>[[title]]</p>[/search-results]',
+		'[search-results key="my_own_get_var_key" type="articles"]<p>[[title]]</p>[/search-results]',
+		'[search-results type="notes"]<p>[[title]]</p>[/search-results]',
+		'[search-results]<p>[[title]]</p>[/search-results]',
+		'[search-results type="articles"][/search-results]',
+		'<p>[search-count type="articles"] Treffer</p>',
+		'[search-count type="/articles"]',
+		'[search-count key="my_own_get_var_key" type="articles"]',
+		'[search-count type="notes"]',
+		'[search-count]',
+	];
+
+	$before = [];
+	foreach( $calls as $call )
+		$before[$call] = \Nino\Html::renderHtml( $appData, $call );
+
+	/*	The kernel reads the manifest ahead of the feature's own init() - that is
+		the order here too, on a copy of the project's data that nothing else in
+		this test sees. The shortcodes the feature registered above are those of
+		a boot that has none to read; this boot registers each of them once	*/
+	$probe = $appData;
+	foreach( [ 'search-count', 'search-results' ] as $shortcode )
+		\Nino\Callbacks::removeCallbacks( $probe, '/nino/html/shortcode/'. $shortcode );
+	\Nino\Modules\Components::init( $probe );
+	\Nino\Modules\Search\Shortcodes::init( $probe );
+	ninoWarnings();
+
+	check( 'the count is registered with the schema the manifest declares, and it is the only component',
+		( \Nino\Modules\Components::components( $probe )['search-count'] ?? null ) === ( $declared['search-count'] ?? false )
+		&& array_keys( $declared ) === [ 'search-count' ]
+		&& isset( \Nino\Modules\Components::components( $probe )['search-results'] ) === false );
+	check( '...as one meant once per page: the registered schema says it stays out of a loop',
+		( \Nino\Modules\Components::components( $probe )['search-count']['loop'] ?? null ) === false );
+	check( '...and what the feature registers is answered once - the count by its wrapper, the results as the shortcode they are',
+		\Nino\Features::shortcodes( $probe, 'search' ) === [ 'search-count', 'search-results' ]
+		&& count( $registered = \Nino\Callbacks::registered( $probe, '/nino/html/shortcode/search-results' ) ) === 1 && is_array( $registered[0] )
+		&& count( $registered = \Nino\Callbacks::registered( $probe, '/nino/html/shortcode/search-count' ) ) === 1 && $registered[0] instanceof \Closure );
+	check( '...with the defaults of the schema, as strings',
+		\Nino\Modules\Components::defaults( $probe, 'search-count' ) === [ 'type' => '', 'key' => '', 'class' => '' ] );
+
+	foreach( $calls as $call )
+		check( 'renders as it did: '. $call, \Nino\Html::renderHtml( $probe, $call ) === $before[$call] );
+
+	ninoWarnings();
+
+	check( 'every attribute written out at its default is the call without it',
+		\Nino\Html::renderHtml( $probe, '[search-count type="articles" key="" class=""]' ) === \Nino\Html::renderHtml( $probe, '[search-count type="articles"]' ) );
+	check( 'the results keep the class that names their wrapper in place of the default, as it always did',
+		str_starts_with( $before['[search-results type="articles" tag="ul" class="produkte" limit="1"]<li>[[title]]</li>[/search-results]'], '<ul class="produkte">' ) === true
+		&& str_starts_with( \Nino\Html::renderHtml( $probe, '[search-results type="articles"]<p>[[title]]</p>[/search-results]' ), '<div class="nino-search-results">' ) === true );
+
+	$_GET = $get;
+
+} )( $appData );
+
+echo "\n";
+
+
 echo "\nThe JSON endpoint, off until the setting says so\n";
 
 /**

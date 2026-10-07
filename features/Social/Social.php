@@ -49,10 +49,63 @@ namespace Nino\Modules {
 		 *	@return 	void
 		 */
 		public static function init( array &$appData ): void {
-			\Nino\Html::addShortcode( $appData, 'social', [ self::class, 'doShortcode' ] );
-			\Nino\Html::addShortcode( $appData, 'social-link', [ self::class, 'doLinkShortcode' ] );
-			\Nino\Html::addShortcode( $appData, 'social-icon', [ self::class, 'doIconShortcode' ] );
+
+			/*	Nino 1.6 has registered all three as components from the manifest before
+				this runs (\Nino\Features::registerComponents()), and a second
+				registration here would take them back from the wrapper that fills in
+				the defaults. Nino 1.5 ignores the manifest key and needs them	*/
+			$components = class_exists( '\\Nino\\Modules\\Components' ) === true ? \Nino\Modules\Components::components( $appData ) : [];
+
+			foreach( [ 'social' => 'doShortcode', 'social-link' => 'doLinkShortcode', 'social-icon' => 'doIconShortcode' ] as $name => $method )
+				if( isset( $components[$name] ) === false )
+					\Nino\Html::addShortcode( $appData, $name, [ self::class, $method ] );
+
 			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Social/assets/social.css' );
+		}
+
+		/**
+		 *	[social] as the Components module hands it over, the Builder's way:
+		 *	every attribute is there, an empty one where nothing was written,
+		 *	and doShortcode() reads them as it reads a hand-written call
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$args					The resolved arguments (see \Nino\Modules\Components::dispatch())
+		 *
+		 *	@return 	string									What doShortcode() renders for them
+		 */
+		public static function componentSocial( array &$appData, array $args ): string {
+
+			return self::doShortcode( $appData, $args );
+		}
+
+		/**
+		 *	[social-link] as the Components module hands it over, the Builder's
+		 *	way: the link is named by id=, and by the first argument where the
+		 *	call wrote it bare - which the wrapper has as the source
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$args					The resolved arguments (see \Nino\Modules\Components::dispatch())
+		 *
+		 *	@return 	string									What doLinkShortcode() renders for them
+		 */
+		public static function componentSocialLink( array &$appData, array $args ): string {
+
+			return self::doLinkShortcode( $appData, [ 'id' => $args['id'] !== '' ? $args['id'] : $args['source'], 'show' => $args['show'] ] );
+		}
+
+		/**
+		 *	[social-icon] as the Components module hands it over, the Builder's
+		 *	way: the icon is named by name=, and by the first argument where the
+		 *	call wrote it bare - which the wrapper has as the source
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$args					The resolved arguments (see \Nino\Modules\Components::dispatch())
+		 *
+		 *	@return 	string									What doIconShortcode() renders for them
+		 */
+		public static function componentSocialIcon( array &$appData, array $args ): string {
+
+			return self::doIconShortcode( $appData, [ 'name' => $args['name'] !== '' ? $args['name'] : $args['source'] ] );
 		}
 
 		/**

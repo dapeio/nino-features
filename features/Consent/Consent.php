@@ -86,7 +86,15 @@ namespace Nino\Modules {
 		public static function init( array &$appData ): void {
 
 			\Nino\Html::addShortcode( $appData, 'consent', [ self::class, 'doConsentShortcode' ] );
-			\Nino\Html::addShortcode( $appData, 'consent-settings', [ self::class, 'doConsentSettingsShortcode' ] );
+
+			/*	Nino 1.6 has registered [consent-settings] as a component from the
+				manifest before this runs (\Nino\Features::registerComponents()), and a
+				second registration here would take it back from the wrapper that fills
+				in the defaults. Nino 1.5 ignores the manifest key and needs it	*/
+			$components = class_exists( '\\Nino\\Modules\\Components' ) === true ? \Nino\Modules\Components::components( $appData ) : [];
+
+			if( isset( $components['consent-settings'] ) === false )
+				\Nino\Html::addShortcode( $appData, 'consent-settings', [ self::class, 'doConsentSettingsShortcode' ] );
 
 			// A placeholder's host has to be in the policy's script-src before the
 			// browser may load what consent.js releases - see callbackOutput()
@@ -160,13 +168,46 @@ namespace Nino\Modules {
 		 *	(consent.js binds the click), meant for the footer
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array			$args					Shortcode arguments (none used)
+		 *	@param		array			$args					Shortcode arguments (class only)
 		 *
 		 *	@return 	string									The button markup
 		 */
 		public static function doConsentSettingsShortcode( array &$appData, array $args ): string {
 
-			return self::template( $appData, 'consent-open' );
+			return str_replace( '[[class]]', self::_class( $args ), self::template( $appData, 'consent-open' ) );
+		}
+
+		/**
+		 *	[consent-settings] as the Components module hands it over, the
+		 *	Builder's way: every attribute is there, an empty one where nothing
+		 *	was written, and doConsentSettingsShortcode() reads them as it reads
+		 *	a hand-written call
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$args					The resolved arguments (see \Nino\Modules\Components::dispatch())
+		 *
+		 *	@return 	string									What doConsentSettingsShortcode() renders for them
+		 */
+		public static function componentConsentSettings( array &$appData, array $args ): string {
+
+			return self::doConsentSettingsShortcode( $appData, $args );
+		}
+
+		/**
+		 *	The class of one's own a call adds to the button, with the space in
+		 *	front of it that the template leaves out - escaped, and with its
+		 *	brackets as character references, because the markup is rendered
+		 *	once more
+		 *
+		 *	@param		array			$args					Shortcode attributes
+		 *
+		 *	@return 	string								'' or ' my-class'
+		 */
+		private static function _class( array $args ): string {
+
+			$class = trim( (string) ( $args['class'] ?? '' ) );
+
+			return $class === '' ? '' : ' '. str_replace( '[', '&#91;', htmlspecialchars( $class, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) );
 		}
 
 		/**
@@ -189,7 +230,7 @@ namespace Nino\Modules {
 			if( ( $section['type'] ?? null ) !== 'privacy' || ( $section['id'] ?? null ) !== 'consent' || is_string( $section['html'] ?? null ) === false )
 				return;
 
-			$section['html'] .= self::template( $appData, 'consent-open' );
+			$section['html'] .= str_replace( '[[class]]', '', self::template( $appData, 'consent-open' ) );
 		}
 
 		/**

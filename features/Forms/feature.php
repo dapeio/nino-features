@@ -18,6 +18,10 @@ return [
 				'en_US' => 'Draws the first form there is.',
 				'de_DE' => 'Zeichnet das erste Formular, das es gibt.',
 			],
+			'[form ... class="my-class"]' => [
+				'en_US' => 'A class of your own, added to those of the form. What the Builder writes for its custom classes.',
+				'de_DE' => 'Eine eigene Klasse, zusätzlich zu denen des Formulars. Das schreibt der Builder für seine eigenen Klassen.',
+			],
 		],
 		'markup' => [],
 		'routes' => [],
@@ -88,6 +92,27 @@ return [
 				'en_US' => 'One per line, case is ignored. A submission carrying one of them in any field is turned away like a filled honeypot - it is neither mailed nor recorded.',
 				'de_DE' => 'Eins pro Zeile, Groß- und Kleinschreibung egal. Eine Einsendung, die eines davon in irgendeinem Feld trägt, wird wie ein gefüllter Honeypot abgewiesen - sie wird weder verschickt noch gespeichert.',
 			],
+		],
+	],
+	/*	The shortcode as the Builder offers it: no first argument, the form is named by
+		its key. Nino 1.5 ignores the key	*/
+	'components'	=> [
+		'form' => [
+			'label'			=> [ 'en_US' => 'Form', 'de_DE' => 'Formular' ],
+			'source'		=> 'none',
+			'loop'			=> false,
+			'attributes'	=> [
+				'key' => [
+					'type'		=> 'string',
+					'default'	=> '',
+					'label'		=> [ 'en_US' => 'Form', 'de_DE' => 'Formular' ],
+					'hint'		=> [
+						'en_US' => 'The key of the form, as the Forms panel names it. Empty draws the first form there is.',
+						'de_DE' => 'Der Schlüssel des Formulars, wie ihn das Panel Formulare nennt. Leer zeichnet das erste Formular, das es gibt.',
+					],
+				],
+			],
+			'preview'		=> 'block',
 		],
 	],
 ];

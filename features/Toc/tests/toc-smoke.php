@@ -174,6 +174,67 @@ else {
 }
 
 
+// --- Components ----------------------------------------------------------------
+
+echo "Components - [toc] as the Builder offers it\n";
+
+if( class_exists( '\\Nino\\Modules\\Components' ) === false )
+	echo "  --  this Nino has no \\Nino\\Modules\\Components: the manifest's components are not read here, and the shortcode registers itself\n";
+else ( static function( array $appData ): void {
+
+	$declared = \Nino\Features::manifest( dirname( __DIR__ ) )['components'] ?? [];
+
+	// Every documented call form, as it renders before the wrapper is there
+	$calls = [
+		'[toc]',
+		'[toc levels="2"]',
+		'[toc levels="3,2"]',
+		'[toc within="#content"]',
+		'[toc title="Auf dieser Seite"]',
+		'[toc title="Ada & Co" within="main > .x"]',
+	];
+
+	$before = [];
+	foreach( $calls as $call )
+		$before[$call] = \Nino\Html::renderHtml( $appData, $call );
+
+	/*	The kernel reads the manifest ahead of the feature's own init() - that is
+		the order here too, on a copy of the project's data that nothing else in
+		this test sees. The shortcodes the feature registered above are those of
+		a boot that has none to read; this boot registers each of them once	*/
+	$probe = $appData;
+	foreach( [ 'toc' ] as $shortcode )
+		\Nino\Callbacks::removeCallbacks( $probe, '/nino/html/shortcode/'. $shortcode );
+	\Nino\Modules\Components::init( $probe );
+	\Nino\Modules\Toc::init( $probe );
+	ninoWarnings();
+
+	check( 'the component is registered with the schema the manifest declares',
+		( \Nino\Modules\Components::components( $probe )['toc'] ?? null ) === ( $declared['toc'] ?? false ) );
+	check( '...as one meant once per page: the registered schema says it stays out of a loop',
+		( \Nino\Modules\Components::components( $probe )['toc']['loop'] ?? null ) === false );
+	check( '...and what the feature registers is answered once - the component by its wrapper',
+		\Nino\Features::shortcodes( $probe, 'toc' ) === [ 'toc' ]
+		&& count( $registered = \Nino\Callbacks::registered( $probe, '/nino/html/shortcode/toc' ) ) === 1 && $registered[0] instanceof \Closure );
+	check( '...with the defaults of the schema, as strings',
+		\Nino\Modules\Components::defaults( $probe, 'toc' ) === [ 'levels' => '', 'within' => '', 'title' => '', 'class' => '' ] );
+
+	foreach( $calls as $call )
+		check( 'renders as it did: '. $call, \Nino\Html::renderHtml( $probe, $call ) === $before[$call] );
+
+	ninoWarnings();
+
+	check( 'every attribute written out at its default is the call without it',
+		\Nino\Html::renderHtml( $probe, '[toc levels="" within="" title="" class=""]' ) === $before['[toc]'] );
+	check( 'a class of its own comes after the list\'s own, no class leaves no space behind',
+		str_contains( \Nino\Html::renderHtml( $probe, '[toc class="side"]' ), '<nav class="nino-toc side" ' ) === true
+		&& str_contains( $before['[toc]'], '<nav class="nino-toc" ' ) === true );
+
+} )( $appData );
+
+echo "\n";
+
+
 // --- Deactivation --------------------------------------------------------------
 
 echo "Deactivation\n";

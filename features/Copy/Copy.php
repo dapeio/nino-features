@@ -59,7 +59,20 @@ namespace Nino\Modules {
 		 */
 		public static function init( array &$appData ): void {
 
-			\Nino\Html::addShortcode( $appData, 'copy', [ self::class, 'doShortcode' ] );
+			/*	Nino 1.6 has registered [copy] as a component from the manifest before
+				this runs (\Nino\Features::registerComponents()), and a second
+				registration here would take it back from the wrapper that fills in
+				the defaults. Nino 1.5 ignores the manifest key and needs it. The
+				wrapper hands on only the attributes the schema names - and value is
+				a name it keeps for itself, a bare flag is no attribute at all, and
+				the text between the tags is no source of a component whose source
+				is a text: all three are renamed by a callback that runs ahead of it	*/
+			$components = class_exists( '\\Nino\\Modules\\Components' ) === true ? \Nino\Modules\Components::components( $appData ) : [];
+
+			if( isset( $components['copy'] ) === false )
+				\Nino\Html::addShortcode( $appData, 'copy', [ self::class, 'doShortcode' ] );
+			else
+				\Nino\Callbacks::registerCallback( $appData, '/nino/html/shortcode/copy', [ self::class, 'callbackShortcode' ], 1 );
 
 			/*	The virtual '/features/...' prefix resolves against
 				\Nino\Features::dir() (\Nino\Filesystem::FEATURES_DIR), the same way
@@ -69,6 +82,69 @@ namespace Nino\Modules {
 				'/nino/html/assets'	*/
 			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Copy/assets/copy.css' );
 			\Nino\Html::addAsset( $appData, '/.cache/script.js', '/features/Copy/assets/copy.js' );
+		}
+
+		/**
+		 *	The names the schema cannot carry, renamed: value= as copied, the
+		 *	bare word block, wherever it stands in the call, as block="1", and
+		 *	the text between the tags handed on as text=, which is the source a
+		 *	call without a key has. Runs ahead of the Components wrapper on '/nino/html/shortcode/copy'
+		 *	(priority 1, the wrapper has 5) and changes the arguments in place
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		mixed			&$args				(reference) The arguments of the shortcode
+		 *
+		 *	@return 	void
+		 */
+		public static function callbackShortcode( array &$appData, mixed &$args ): void {
+
+			if( is_array( $args ) === false )
+				return;
+
+			if( isset( $args['value'] ) === true ) {
+				$args['copied'] = $args['value'];
+				unset( $args['value'] );
+			}
+
+			/*	The documented body is the text a call has no key for. Handed on
+				as it is: componentCopy() answers a body with doShortcode(), which
+				renders and escapes it itself, so what the wrapper makes of this
+				copy is not used	*/
+			if( isset( $args['text'] ) === false && trim( (string) ( $args['content'] ?? '' ) ) !== '' )
+				$args['text'] = (string) $args['content'];
+
+			// The same reading doShortcode() has of a bare flag: under an integer key
+			if( in_array( 'block', array_filter( $args, static fn( int|string $key ): bool => is_int( $key ), ARRAY_FILTER_USE_KEY ), true ) === true )
+				$args['block'] = '1';
+		}
+
+		/**
+		 *	[copy] as the Components module hands it over, the Builder's way:
+		 *	every attribute is there, an empty one where nothing was written,
+		 *	and doShortcode() reads them under the names it has - the line
+		 *	made a block by the flag it has always been. The text is the
+		 *	source: a key, or text="..." the Builder writes, which arrives
+		 *	resolved and escaped and is drawn as it is - rendered again it
+		 *	would be read for fills a second time. A body between the tags,
+		 *	the form of the manual, goes to doShortcode() whole
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$args					The resolved arguments (see \Nino\Modules\Components::dispatch())
+		 *
+		 *	@return 	string								What the shortcode renders for them
+		 */
+		public static function componentCopy( array &$appData, array $args ): string {
+
+			$call = [ 'content' => $args['content'], 'value' => $args['copied'], 'label' => $args['label'], 'class' => $args['class'] ];
+
+			if( $args['block'] === '1' )
+				$call[] = 'block';
+
+			if( trim( $args['content'] ) !== '' )
+				return self::doShortcode( $appData, $call );
+
+			// A line with nothing to show is none, as with an empty body
+			return trim( $args['value'] ) === '' ? '' : self::_draw( $appData, $call, $args['value'] );
 		}
 
 		/**
@@ -97,7 +173,21 @@ namespace Nino\Modules {
 
 			// Rendered, then escaped: a body is editor text that may hold a
 			// textfill, and what comes out of the fill engine is still text
-			$shown = $safe( \Nino\Html::renderHtml( $appData, $content ) );
+			return self::_draw( $appData, $args, $safe( \Nino\Html::renderHtml( $appData, $content ) ) );
+		}
+
+		/**
+		 *	The line: what is shown, already escaped, and the button that copies it
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$args					Shortcode attributes
+		 *	@param		string		$shown				The text of the line, escaped - a key or a text= has its brackets turned into entities, a body is only escaped
+		 *
+		 *	@return 	string								The text and its button
+		 */
+		private static function _draw( array &$appData, array $args, string $shown ): string {
+
+			$safe = static fn( string $value ): string => htmlspecialchars( $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
 
 			/*	What is copied, where that is not what is shown. Held to the same
 				rendering and escaping: it ends up in an attribute, and an attribute
@@ -118,18 +208,36 @@ namespace Nino\Modules {
 				a body, a value= or a label= that happened to say "block" turned
 				the line into a block	*/
 			$flags = array_filter( $args, static fn( int|string $key ): bool => is_int( $key ), ARRAY_FILTER_USE_KEY );
-			$block = in_array( 'block', $flags, true );
+			$block = in_array( 'block', $flags, true ) || in_array( strtolower( (string) ( $args['block'] ?? '' ) ), [ '1', 'true', 'yes', 'on' ], true );
 
 			return str_replace(
-				[ '[[modifier]]', '[[value]]', '[[named]]', '[[shown]]' ],
+				[ '[[modifier]]', '[[class]]', '[[value]]', '[[named]]', '[[shown]]' ],
 				[
 					( $block === true ? ' nino-copy--block' : '' ),
+					self::_class( $args ),
 					( $value === '' ? '' : ' data-copy-value="'. $value. '"' ),
 					( $label === '' ? '' : ' data-copy-named="'. $label. '"' ),
 					$shown,
 				],
 				self::template( $appData, 'copy' )
 			);
+		}
+
+		/**
+		 *	The class of one's own a call adds to the line, with the space in
+		 *	front of it that the template leaves out - escaped, and with its
+		 *	brackets as character references, because the markup is rendered
+		 *	once more
+		 *
+		 *	@param		array			$args					Shortcode attributes
+		 *
+		 *	@return 	string								'' or ' my-class'
+		 */
+		private static function _class( array $args ): string {
+
+			$class = trim( (string) ( $args['class'] ?? '' ) );
+
+			return $class === '' ? '' : ' '. str_replace( '[', '&#91;', htmlspecialchars( $class, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) );
 		}
 
 		/**

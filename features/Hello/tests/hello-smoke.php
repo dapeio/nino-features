@@ -314,6 +314,62 @@ check( 'upgrade() survives being called with nothing to migrate', \Nino\Modules\
 echo "\n";
 
 
+// --- Components ----------------------------------------------------------------
+
+echo "Components - [hello] as the Builder offers it\n";
+
+if( class_exists( '\\Nino\\Modules\\Components' ) === false )
+	echo "  --  this Nino has no \\Nino\\Modules\\Components: the manifest's components are not read here, and the shortcode registers itself\n";
+else ( static function( array $appData ): void {
+
+	$declared = \Nino\Features::manifest( dirname( __DIR__ ) )['components'] ?? [];
+
+	// Every documented call form, as it renders before the wrapper is there
+	$calls = [
+		'[hello]',
+		'[hello name="Ada"]',
+		'[hello name="<b>x</b>"]',
+	];
+
+	$before = [];
+	foreach( $calls as $call )
+		$before[$call] = \Nino\Html::renderHtml( $appData, $call );
+
+	/*	The kernel reads the manifest ahead of the feature's own init() - that is
+		the order here too, on a copy of the project's data that nothing else in
+		this test sees. The shortcodes the feature registered above are those of
+		a boot that has none to read; this boot registers each of them once	*/
+	$probe = $appData;
+	foreach( [ 'hello' ] as $shortcode )
+		\Nino\Callbacks::removeCallbacks( $probe, '/nino/html/shortcode/'. $shortcode );
+	\Nino\Modules\Components::init( $probe );
+	\Nino\Modules\Hello::init( $probe );
+	ninoWarnings();
+
+	check( 'the component is registered with the schema the manifest declares',
+		( \Nino\Modules\Components::components( $probe )['hello'] ?? null ) === ( $declared['hello'] ?? false ) );
+	check( '...and what the feature registers is answered once - the component by its wrapper',
+		\Nino\Features::shortcodes( $probe, 'hello' ) === [ 'hello' ]
+		&& count( $registered = \Nino\Callbacks::registered( $probe, '/nino/html/shortcode/hello' ) ) === 1 && $registered[0] instanceof \Closure );
+	check( '...with the defaults of the schema, as strings',
+		\Nino\Modules\Components::defaults( $probe, 'hello' ) === [ 'name' => '', 'class' => '' ] );
+
+	foreach( $calls as $call )
+		check( 'renders as it did: '. $call, \Nino\Html::renderHtml( $probe, $call ) === $before[$call] );
+
+	ninoWarnings();
+
+	check( 'every attribute written out at its default is the call without it',
+		\Nino\Html::renderHtml( $probe, '[hello name="" class=""]' ) === $before['[hello]'] );
+	check( 'a class of its own comes after the line\'s own, no class leaves no space behind',
+		str_contains( \Nino\Html::renderHtml( $probe, '[hello name="Ada" class="big"]' ), '<p class="nino-hello big">' ) === true
+		&& str_contains( $before['[hello name="Ada"]'], '<p class="nino-hello">' ) === true );
+
+} )( $appData );
+
+echo "\n";
+
+
 // --- 7. Deactivation ---------------------------------------------------------
 
 echo "Deactivation\n";

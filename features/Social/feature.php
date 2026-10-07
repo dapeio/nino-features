@@ -27,9 +27,17 @@ return [
 				'en_US' => 'One link with icon and name, for running text. show works here too.',
 				'de_DE' => 'Ein einzelner Link mit Icon und Name, für den Fließtext. show geht auch hier.',
 			],
+			'[social-link id="instagram"]' => [
+				'en_US' => 'The same as [social-link instagram], the form the Builder writes.',
+				'de_DE' => 'Dasselbe wie [social-link instagram], die Form, die der Builder schreibt.',
+			],
 			'[social-icon telegram]' => [
 				'en_US' => 'The icon alone, for markup of your own - inside [elements /social] as [social-icon name="[[icon]]"].',
 				'de_DE' => 'Nur das Icon, für eigenes Markup - in [elements /social] als [social-icon name="[[icon]]"].',
+			],
+			'[social-icon name="telegram"]' => [
+				'en_US' => 'The same as [social-icon telegram], the form the Builder writes.',
+				'de_DE' => 'Dasselbe wie [social-icon telegram], die Form, die der Builder schreibt.',
 			],
 		],
 		'markup' => [
@@ -72,4 +80,96 @@ return [
 	// Nothing to set: which links, how many and how large is said where they
 	// are drawn, and a header and a footer want different answers
 	'settings'		=> [],
+	/*	The three shortcodes as the Builder offers them: [social-link] and [social-icon]
+		name their link and their icon by an attribute, and by the first argument where
+		a call writes it bare. Nino 1.5 ignores the key	*/
+	'components'	=> [
+		'social' => [
+			'label'			=> [ 'en_US' => 'Social links', 'de_DE' => 'Social-Links' ],
+			'source'		=> 'none',
+			'attributes'	=> [
+				'only' => [
+					'type'		=> 'string',
+					'default'	=> '',
+					'label'		=> [ 'en_US' => 'Only these', 'de_DE' => 'Nur diese' ],
+					'hint'		=> [
+						'en_US' => 'Element IDs separated by commas, such as instagram,youtube. The order stays the one of the field Position.',
+						'de_DE' => 'Element-IDs, durch Komma getrennt, etwa instagram,youtube. Die Reihenfolge bleibt die des Felds Position.',
+					],
+				],
+				'exclude' => [
+					'type'		=> 'string',
+					'default'	=> '',
+					'label'		=> [ 'en_US' => 'Leave out', 'de_DE' => 'Weglassen' ],
+					'hint'		=> [
+						'en_US' => 'Element IDs separated by commas.',
+						'de_DE' => 'Element-IDs, durch Komma getrennt.',
+					],
+				],
+				'show' => [
+					'type'		=> 'select',
+					'options'	=> [ 'icon', 'both', 'label' ],
+					'default'	=> 'icon',
+					'label'		=> [ 'en_US' => 'Shown', 'de_DE' => 'Gezeigt' ],
+					'hint'		=> [
+						'en_US' => 'icon, both (icon and name) or label (the name alone).',
+						'de_DE' => 'icon, both (Icon und Name) oder label (nur der Name).',
+					],
+				],
+				'size' => [
+					'type'		=> 'select',
+					'options'	=> [ '', 'small', 'large' ],
+					'default'	=> '',
+					'label'		=> [ 'en_US' => 'Size', 'de_DE' => 'Größe' ],
+					'hint'		=> [
+						'en_US' => 'Empty takes the size of the stylesheet.',
+						'de_DE' => 'Leer nimmt die Größe des Stylesheets.',
+					],
+				],
+			],
+			'preview'		=> 'block',
+		],
+		'social-link' => [
+			'label'			=> [ 'en_US' => 'Social link', 'de_DE' => 'Social-Link' ],
+			'source'		=> 'none',
+			'attributes'	=> [
+				'id' => [
+					'type'		=> 'string',
+					'default'	=> '',
+					'label'		=> [ 'en_US' => 'Link', 'de_DE' => 'Link' ],
+					'hint'		=> [
+						'en_US' => 'The element ID of one link, such as instagram. Without one nothing is drawn.',
+						'de_DE' => 'Die Element-ID eines Links, etwa instagram. Ohne eine wird nichts gezeichnet.',
+					],
+				],
+				'show' => [
+					'type'		=> 'select',
+					'options'	=> [ 'icon', 'both', 'label' ],
+					'default'	=> 'both',
+					'label'		=> [ 'en_US' => 'Shown', 'de_DE' => 'Gezeigt' ],
+					'hint'		=> [
+						'en_US' => 'icon, both (icon and name) or label (the name alone).',
+						'de_DE' => 'icon, both (Icon und Name) oder label (nur der Name).',
+					],
+				],
+			],
+			'preview'		=> 'button',
+		],
+		'social-icon' => [
+			'label'			=> [ 'en_US' => 'Social icon', 'de_DE' => 'Social-Icon' ],
+			'source'		=> 'none',
+			'attributes'	=> [
+				'name' => [
+					'type'		=> 'string',
+					'default'	=> '',
+					'label'		=> [ 'en_US' => 'Icon', 'de_DE' => 'Icon' ],
+					'hint'		=> [
+						'en_US' => 'The name of the icon, such as telegram. One the feature does not have draws the link icon.',
+						'de_DE' => 'Der Name des Icons, etwa telegram. Eines, das das Feature nicht hat, zeichnet das Link-Icon.',
+					],
+				],
+			],
+			'preview'		=> 'block',
+		],
+	],
 ];

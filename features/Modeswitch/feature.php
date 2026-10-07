@@ -19,6 +19,14 @@ return [
 				'en_US' => 'The same without the words - for a crowded header bar.',
 				'de_DE' => 'Dasselbe ohne die Wörter – für eine volle Kopfzeile.',
 			],
+			'[mode-switch icons="1"]' => [
+				'en_US' => 'The same as [mode-switch icons], the form the Builder writes.',
+				'de_DE' => 'Dasselbe wie [mode-switch icons], die Form, die der Builder schreibt.',
+			],
+			'[mode-switch ... class="my-class"]' => [
+				'en_US' => 'A class of your own, added to those of the switch. What the Builder writes for its custom classes.',
+				'de_DE' => 'Eine eigene Klasse, zusätzlich zu denen des Schalters. Das schreibt der Builder für seine eigenen Klassen.',
+			],
 		],
 		'markup' => [
 			'data-nino-mode="dark"' => [
@@ -66,4 +74,25 @@ return [
 	// the buttons carry their words, and that belongs to the one place the
 	// switch is written (see manual: [mode-switch icons])
 	'settings'		=> [],
+	/*	The shortcode as the Builder offers it: the flag of the manual is the attribute
+		icons here. Nino 1.5 ignores the key	*/
+	'components'	=> [
+		'mode-switch' => [
+			'label'			=> [ 'en_US' => 'Mode switch', 'de_DE' => 'Modus-Schalter' ],
+			'source'		=> 'none',
+			'loop'			=> false,
+			'attributes'	=> [
+				'icons' => [
+					'type'		=> 'bool',
+					'default'	=> false,
+					'label'		=> [ 'en_US' => 'Icons only', 'de_DE' => 'Nur Icons' ],
+					'hint'		=> [
+						'en_US' => 'Without the words - for a crowded header bar.',
+						'de_DE' => 'Ohne die Wörter - für eine volle Kopfzeile.',
+					],
+				],
+			],
+			'preview'		=> 'button',
+		],
+	],
 ];

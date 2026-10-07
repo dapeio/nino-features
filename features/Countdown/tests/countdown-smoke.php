@@ -282,6 +282,75 @@ else {
 }
 
 
+// --- Components ----------------------------------------------------------------
+
+echo "Components - [countdown] as the Builder offers it\n";
+
+if( class_exists( '\\Nino\\Modules\\Components' ) === false )
+	echo "  --  this Nino has no \\Nino\\Modules\\Components: the manifest's components are not read here, and the shortcode registers itself\n";
+else ( static function( array $appData ): void {
+
+	$declared = \Nino\Features::manifest( dirname( __DIR__ ) )['components'] ?? [];
+
+	// Every documented call form, as it renders before the wrapper is there
+	$calls = [
+		'[countdown to="2026-12-24 18:00"]',
+		'[countdown to="2026-12-24 18:00" tz="Europe/Berlin"]',
+		'[countdown to="2026-12-24 18:00" units="days,hours,minutes"]',
+		'[countdown to="2026-12-24 18:00" done="Es ist so weit"]',
+		'[countdown to="2026-12-24 18:00" format="d.m.Y H:i"]',
+		'[countdown to="2026-12-24 18:00" tz="Somewhere/Else"]',
+		'[countdown to="irgendwann"]',
+		'[countdown]',
+	];
+
+	$before = [];
+	foreach( $calls as $call )
+		$before[$call] = \Nino\Html::renderHtml( $appData, $call );
+
+	/*	The kernel reads the manifest ahead of the feature's own init() - that is
+		the order here too, on a copy of the project's data that nothing else in
+		this test sees. The shortcodes the feature registered above are those of
+		a boot that has none to read; this boot registers each of them once	*/
+	$probe = $appData;
+	foreach( [ 'countdown' ] as $shortcode )
+		\Nino\Callbacks::removeCallbacks( $probe, '/nino/html/shortcode/'. $shortcode );
+	\Nino\Modules\Components::init( $probe );
+	\Nino\Modules\Countdown::init( $probe );
+	ninoWarnings();
+
+	check( 'the component is registered with the schema the manifest declares',
+		( \Nino\Modules\Components::components( $probe )['countdown'] ?? null ) === ( $declared['countdown'] ?? false ) );
+	check( '...and what the feature registers is answered once - the component by its wrapper',
+		\Nino\Features::shortcodes( $probe, 'countdown' ) === [ 'countdown' ]
+		&& count( $registered = \Nino\Callbacks::registered( $probe, '/nino/html/shortcode/countdown' ) ) === 1 && $registered[0] instanceof \Closure );
+	check( '...with the defaults of the schema, as strings',
+		\Nino\Modules\Components::defaults( $probe, 'countdown' ) === [ 'to' => '', 'tz' => '', 'units' => '', 'done' => '', 'format' => '', 'class' => '' ] );
+
+	foreach( $calls as $call )
+		check( 'renders as it did: '. $call, \Nino\Html::renderHtml( $probe, $call ) === $before[$call] );
+
+	ninoWarnings();
+
+	// A call written the Builder's way: the moment and what differs from the
+	// defaults, nothing else - and the same call with every default written out
+	$short = \Nino\Html::renderHtml( $probe, '[countdown to="2026-12-24 18:00" class="launch"]' );
+	check( 'a class of its own comes after the counter\'s own, on the element that carries the moment',
+		str_contains( $short, '<div class="nino-countdown launch" data-countdown-to="2026-12-24T18:00:00' ) === true );
+	check( 'no class leaves the markup as it was, with no space left behind',
+		str_contains( $before['[countdown to="2026-12-24 18:00"]'], '<div class="nino-countdown" data-countdown-to=' ) === true );
+	check( 'every attribute written out at its default is the call without it',
+		\Nino\Html::renderHtml( $probe, '[countdown to="2026-12-24 18:00" tz="" units="" done="" format="" class=""]' ) === $before['[countdown to="2026-12-24 18:00"]'] );
+	check( 'a class is escaped, and a bracket in it opens nothing in the second pass',
+		str_contains( \Nino\Html::renderHtml( $probe, '[countdown to="2026-12-24 18:00" class="a\'b [c"]' ), 'nino-countdown a&quot;b &#91;c"' ) === true );
+	check( 'without a moment the component draws nothing, the wrapper changing nothing about it',
+		\Nino\Html::renderHtml( $probe, '[countdown class="launch"]' ) === '' );
+	ninoWarnings();
+} )( $appData );
+
+echo "\n";
+
+
 // --- Deactivation --------------------------------------------------------------
 
 echo "Deactivation\n";

@@ -1,1 +1,1 @@
-<div class="nino-modeswitch[[modifier]]" hidden role="group" aria-label="[[/feature/modeswitch/switch/label]]">[[buttons]]</div>
+<div class="nino-modeswitch[[modifier]][[class]]" hidden role="group" aria-label="[[/feature/modeswitch/switch/label]]">[[buttons]]</div>

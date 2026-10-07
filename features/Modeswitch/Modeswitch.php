@@ -102,7 +102,14 @@ namespace Nino\Modules {
 		 */
 		public static function init( array &$appData ): void {
 
-			\Nino\Html::addShortcode( $appData, 'mode-switch', [ self::class, 'doShortcode' ] );
+			/*	Nino 1.6 has registered [mode-switch] as a component from the manifest before
+				this runs (\Nino\Features::registerComponents()), and a second
+				registration here would take it back from the wrapper that fills in
+				the defaults. Nino 1.5 ignores the manifest key and needs it	*/
+			$components = class_exists( '\\Nino\\Modules\\Components' ) === true ? \Nino\Modules\Components::components( $appData ) : [];
+
+			if( isset( $components['mode-switch'] ) === false )
+				\Nino\Html::addShortcode( $appData, 'mode-switch', [ self::class, 'doShortcode' ] );
 
 			/*	The virtual '/features/...' prefix resolves against
 				\Nino\Features::dir() (\Nino\Filesystem::FEATURES_DIR), the same way
@@ -112,6 +119,28 @@ namespace Nino\Modules {
 				'/nino/html/assets'	*/
 			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Modeswitch/assets/modeswitch.css' );
 			\Nino\Html::addAsset( $appData, '/.cache/script.js', '/features/Modeswitch/assets/modeswitch.js' );
+		}
+
+		/**
+		 *	[mode-switch] as the Components module hands it over, the Builder's
+		 *	way: every attribute is there, an empty one where nothing was
+		 *	written, and the switch without words is the flag it has always
+		 *	been to doShortcode() - where the call wrote it bare, the wrapper
+		 *	has it as the first argument
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$args					The resolved arguments (see \Nino\Modules\Components::dispatch())
+		 *
+		 *	@return 	string								What doShortcode() renders for them
+		 */
+		public static function componentModeSwitch( array &$appData, array $args ): string {
+
+			$call = [ 'class' => $args['class'] ];
+
+			if( $args['icons'] === '1' || $args['source'] === 'icons' )
+				$call[] = 'icons';
+
+			return self::doShortcode( $appData, $call );
 		}
 
 		/**
@@ -148,8 +177,12 @@ namespace Nino\Modules {
 				A bare flag rather than key="value", because that is the form
 				\Nino\Html's shortcode parser reads without quotes - [mode-switch
 				icons] is what somebody types into a template, and
-				[mode-switch labels="off"] is what they get wrong	*/
-			$labels = in_array( 'icons', $args, true ) === false;
+				[mode-switch labels="off"] is what they get wrong. icons="1" is read
+				as the same flag, and so are "true", "yes" and "on" - the words the
+				Components module of Nino 1.6 reads for a bool attribute, because a
+				Nino before 1.6 hands the attributes on as they stand	*/
+			$flags	= array_filter( $args, static fn( int|string $key ): bool => is_int( $key ), ARRAY_FILTER_USE_KEY );
+			$labels	= in_array( 'icons', $flags, true ) === false && in_array( strtolower( (string) ( $args['icons'] ?? '' ) ), [ '1', 'true', 'yes', 'on' ], true ) === false;
 
 			$buttons = '';
 
@@ -165,8 +198,8 @@ namespace Nino\Modules {
 			// The buttons last - they are built markup, and str_replace() works
 			// through its arrays in order
 			return str_replace(
-				[ '[[modifier]]', '[[buttons]]' ],
-				[ ( $labels === true ? '' : ' nino-modeswitch--icons' ), $buttons ],
+				[ '[[modifier]]', '[[class]]', '[[buttons]]' ],
+				[ ( $labels === true ? '' : ' nino-modeswitch--icons' ), self::_class( $args ), $buttons ],
 				self::template( $appData, 'modeswitch' )
 			);
 		}
@@ -193,6 +226,23 @@ namespace Nino\Modules {
 				[ $mode, ( $labels === true ? '' : ' nino-modeswitch-name--hidden' ), $fill, self::ICONS[$mode] ],
 				self::template( $appData, 'modeswitch-button' )
 			);
+		}
+
+		/**
+		 *	The class of one's own a call adds to the switch, with the space in
+		 *	front of it that the template leaves out - escaped, and with its
+		 *	brackets as character references, because the markup is rendered
+		 *	once more
+		 *
+		 *	@param		array			$args					Shortcode attributes
+		 *
+		 *	@return 	string								'' or ' my-class'
+		 */
+		private static function _class( array $args ): string {
+
+			$class = trim( (string) ( $args['class'] ?? '' ) );
+
+			return $class === '' ? '' : ' '. str_replace( '[', '&#91;', htmlspecialchars( $class, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) );
 		}
 
 		/**

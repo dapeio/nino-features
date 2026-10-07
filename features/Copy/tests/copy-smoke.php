@@ -191,6 +191,95 @@ else {
 }
 
 
+// --- Components ----------------------------------------------------------------
+
+echo "Components - [copy] as the Builder offers it\n";
+
+if( class_exists( '\\Nino\\Modules\\Components' ) === false )
+	echo "  --  this Nino has no \\Nino\\Modules\\Components: the manifest's components are not read here, and the shortcode registers itself\n";
+else ( static function( array $appData ): void {
+
+	$declared = \Nino\Features::manifest( dirname( __DIR__ ) )['components'] ?? [];
+
+	// Every documented call form, as it renders before the wrapper is there
+	$calls = [
+		'[copy]DE02 1203 0000 0000 2020 51[/copy]',
+		'[copy label="IBAN"]DE02[/copy]',
+		'[copy block]php bin/check.sh[/copy]',
+		'[copy label="IBAN" block]DE02[/copy]',
+		'[copy value="DE02120300000000202051"]DE02 1203 0000 0000 2020 51[/copy]',
+		'[copy]block[/copy]',
+		'[copy value="block"]Der Wert[/copy]',
+		'[copy label="block"]Der Wert[/copy]',
+		'[copy value="a\" onx=\"1" label="Ada & Co"]<b>x</b>[/copy]',
+		'[copy][/copy]',
+		'[copy]   [/copy]',
+		'[copy]Ada [b]x[/b] [[/feature/copy/button/label]][/copy]',
+	];
+
+	$before = [];
+	foreach( $calls as $call )
+		$before[$call] = \Nino\Html::renderHtml( $appData, $call );
+
+	/*	The kernel reads the manifest ahead of the feature's own init() - that is
+		the order here too, on a copy of the project's data that nothing else in
+		this test sees. The shortcodes the feature registered above are those of
+		a boot that has none to read; this boot registers each of them once	*/
+	$probe = $appData;
+	foreach( [ 'copy' ] as $shortcode )
+		\Nino\Callbacks::removeCallbacks( $probe, '/nino/html/shortcode/'. $shortcode );
+	\Nino\Modules\Components::init( $probe );
+	\Nino\Modules\Copy::init( $probe );
+	ninoWarnings();
+
+	check( 'the component is registered with the schema the manifest declares',
+		( \Nino\Modules\Components::components( $probe )['copy'] ?? null ) === ( $declared['copy'] ?? false ) );
+	check( '...and what the feature registers is answered once - the component by its wrapper, after the callback that renames what the schema cannot carry',
+		\Nino\Features::shortcodes( $probe, 'copy' ) === [ 'copy' ]
+		&& count( $registered = \Nino\Callbacks::registered( $probe, '/nino/html/shortcode/copy' ) ) === 2 && $registered[0] === [ \Nino\Modules\Copy::class, 'callbackShortcode' ] && $registered[1] instanceof \Closure );
+	check( '...with the defaults of the schema, as strings',
+		\Nino\Modules\Components::defaults( $probe, 'copy' ) === [ 'copied' => '', 'label' => '', 'block' => '0', 'class' => '' ] );
+
+	foreach( $calls as $call )
+		check( 'renders as it did: '. $call, \Nino\Html::renderHtml( $probe, $call ) === $before[$call] );
+
+	ninoWarnings();
+
+	check( 'block="yes" and block="true" are the flag as block="1" is, on the kernel under test - a hand-written file reads the same on every one',
+		\Nino\Html::renderHtml( $probe, '[copy value="DE02" block="yes"]DE02 1203[/copy]' ) === \Nino\Html::renderHtml( $probe, '[copy value="DE02" block="1"]DE02 1203[/copy]' )
+		&& \Nino\Html::renderHtml( $probe, '[copy value="DE02" block="true"]DE02 1203[/copy]' ) === \Nino\Html::renderHtml( $probe, '[copy value="DE02" block="1"]DE02 1203[/copy]' )
+		&& \Nino\Html::renderHtml( $probe, '[copy value="DE02" block="1"]DE02 1203[/copy]' ) !== \Nino\Html::renderHtml( $probe, '[copy value="DE02"]DE02 1203[/copy]' ) );
+
+	// The names written the Builder's way are the names of the manual's
+	check( 'copied="..." and block="1", which the Builder writes, are value="..." and the flag',
+		\Nino\Html::renderHtml( $probe, '[copy copied="DE02120300000000202051" block="1" label="IBAN"]DE02 1203[/copy]' ) === \Nino\Html::renderHtml( $probe, '[copy value="DE02120300000000202051" label="IBAN" block]DE02 1203[/copy]' ) );
+	check( '...and every attribute written out at its default is the call without it',
+		\Nino\Html::renderHtml( $probe, '[copy copied="" label="" block="0" class=""]DE02 1203 0000 0000 2020 51[/copy]' ) === $before['[copy]DE02 1203 0000 0000 2020 51[/copy]'] );
+	// What the Builder writes for a value typed into its dialog: the text is a source,
+	// escaped by the wrapper, and drawn as it is - no paragraph tag in it, and no second
+	// reading of it for fills or shortcodes
+	$typed = \Nino\Html::renderHtml( $probe, '[copy text="DE89 3704 0044 0532 0130 00"]' );
+	check( 'a text written the Builder\'s way is the line of that text, and the same line as the body of the manual draws',
+		str_contains( $typed, '<span class="nino-copy-text">DE89 3704 0044 0532 0130 00</span>' ) === true
+		&& $typed === \Nino\Html::renderHtml( $probe, '[copy]DE89 3704 0044 0532 0130 00[/copy]' ) );
+	check( '...with its flag, its name and its value as the manual writes them',
+		\Nino\Html::renderHtml( $probe, '[copy text="DE89 3704" copied="DE893704" label="IBAN" block="1"]' ) === \Nino\Html::renderHtml( $probe, '[copy value="DE893704" label="IBAN" block]DE89 3704[/copy]' ) );
+	check( '...and what is typed is text: tags are shown, a bracket in it is no start of a fill or a shortcode',
+		str_contains( \Nino\Html::renderHtml( $probe, '[copy text="<b>x</b> [[y [copy"]' ), '<span class="nino-copy-text">&lt;b&gt;x&lt;/b&gt; &#91;&#91;y &#91;copy</span>' ) === true );
+	check( '...and none is none',
+		\Nino\Html::renderHtml( $probe, '[copy text=""]' ) === '' && \Nino\Html::renderHtml( $probe, '[copy text="   "]' ) === '' && \Nino\Html::renderHtml( $probe, '[copy]' ) === '' );
+	check( 'a class of its own comes after the line\'s own, no class leaves no space behind',
+		str_contains( \Nino\Html::renderHtml( $probe, '[copy class="iban"]DE02[/copy]' ), '<span class="nino-copy iban">' ) === true
+		&& str_contains( \Nino\Html::renderHtml( $probe, '[copy block="1" class="iban"]DE02[/copy]' ), '<span class="nino-copy nino-copy--block iban">' ) === true
+		&& str_contains( $before['[copy]DE02 1203 0000 0000 2020 51[/copy]'], '<span class="nino-copy">' ) === true );
+	check( 'a value that is not the flag but says its word is still not the flag, and neither is a class',
+		str_contains( \Nino\Html::renderHtml( $probe, '[copy class="block"]x[/copy]' ), 'nino-copy--block' ) === false );
+
+} )( $appData );
+
+echo "\n";
+
+
 // --- Deactivation --------------------------------------------------------------
 
 echo "Deactivation\n";

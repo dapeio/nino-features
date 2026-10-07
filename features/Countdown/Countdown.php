@@ -88,7 +88,14 @@ namespace Nino\Modules {
 		 */
 		public static function init( array &$appData ): void {
 
-			\Nino\Html::addShortcode( $appData, 'countdown', [ self::class, 'doShortcode' ] );
+			/*	Nino 1.6 has registered [countdown] as a component from the manifest
+				before this runs (\Nino\Features::registerComponents()), and a second
+				registration here would take it back from the wrapper that fills in
+				the defaults. Nino 1.5 ignores the manifest key and needs it	*/
+			$components = class_exists( '\\Nino\\Modules\\Components' ) === true ? \Nino\Modules\Components::components( $appData ) : [];
+
+			if( isset( $components['countdown'] ) === false )
+				\Nino\Html::addShortcode( $appData, 'countdown', [ self::class, 'doShortcode' ] );
 
 			/*	The virtual '/features/...' prefix resolves against
 				\Nino\Features::dir() (\Nino\Filesystem::FEATURES_DIR), the same way
@@ -140,8 +147,9 @@ namespace Nino\Modules {
 			// The parts last - they are built markup, and str_replace() works
 			// through its arrays in order
 			return str_replace(
-				[ '[[iso]]', '[[date]]', '[[done]]', '[[parts]]' ],
+				[ '[[class]]', '[[iso]]', '[[date]]', '[[done]]', '[[parts]]' ],
 				[
+					self::_class( $args ),
 					$safe( $moment->format( \DateTimeInterface::ATOM ) ),
 					$safe( $moment->format( $format ) ),
 					$done,
@@ -149,6 +157,21 @@ namespace Nino\Modules {
 				],
 				self::template( $appData, 'countdown' )
 			);
+		}
+
+		/**
+		 *	[countdown] as the Components module hands it over, the Builder's
+		 *	way: every attribute is there, an empty one where nothing was
+		 *	written, and doShortcode() reads them as it reads a hand-written call
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$args					The resolved arguments (see \Nino\Modules\Components::dispatch())
+		 *
+		 *	@return 	string								What doShortcode() renders for them
+		 */
+		public static function componentCountdown( array &$appData, array $args ): string {
+
+			return self::doShortcode( $appData, $args );
 		}
 
 		/**
@@ -253,6 +276,23 @@ namespace Nino\Modules {
 			$units	= array_values( array_filter( self::UNITS, static fn( string $unit ): bool => in_array( $unit, $wanted, true ) ) );
 
 			return $units === [] ? self::UNITS_DEFAULT : $units;
+		}
+
+		/**
+		 *	The class of one's own a call adds to the counter, with the space in
+		 *	front of it that the template leaves out - escaped, and with its
+		 *	brackets as character references, because the markup is rendered
+		 *	once more
+		 *
+		 *	@param		array			$args					Shortcode attributes
+		 *
+		 *	@return 	string								'' or ' my-class'
+		 */
+		private static function _class( array $args ): string {
+
+			$class = trim( (string) ( $args['class'] ?? '' ) );
+
+			return $class === '' ? '' : ' '. str_replace( '[', '&#91;', htmlspecialchars( $class, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) );
 		}
 
 		/**

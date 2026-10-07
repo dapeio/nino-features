@@ -98,7 +98,14 @@ namespace Nino\Modules {
 		 */
 		public static function init( array &$appData ): void {
 
-			\Nino\Html::addShortcode( $appData, 'form', [ self::class, 'doShortcode' ] );
+			/*	Nino 1.6 has registered [form] as a component from the manifest before
+				this runs (\Nino\Features::registerComponents()), and a second
+				registration here would take it back from the wrapper that fills in
+				the defaults. Nino 1.5 ignores the manifest key and needs it	*/
+			$components = class_exists( '\\Nino\\Modules\\Components' ) === true ? \Nino\Modules\Components::components( $appData ) : [];
+
+			if( isset( $components['form'] ) === false )
+				\Nino\Html::addShortcode( $appData, 'form', [ self::class, 'doShortcode' ] );
 
 			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Forms/assets/forms.css' );
 
@@ -200,6 +207,21 @@ namespace Nino\Modules {
 
 				return $state;
 			} );
+		}
+
+		/**
+		 *	[form] as the Components module hands it over, the Builder's way:
+		 *	every attribute is there, an empty one where nothing was written,
+		 *	and doShortcode() reads them as it reads a hand-written call
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$args					The resolved arguments (see \Nino\Modules\Components::dispatch())
+		 *
+		 *	@return 	string								What doShortcode() renders for them
+		 */
+		public static function componentForm( array &$appData, array $args ): string {
+
+			return self::doShortcode( $appData, $args );
 		}
 
 		/**
@@ -337,8 +359,9 @@ namespace Nino\Modules {
 				html, and str_replace() works through its arrays in order, so a token
 				after them would be looked for in what they put in as well */
 			return str_replace(
-				[ '[[id]]', '[[action]]', '[[key]]', '[[time]]', '[[required]]', '[[submit]]', '[[csrf]]', '[[fields]]' ],
+				[ '[[class]]', '[[id]]', '[[action]]', '[[key]]', '[[time]]', '[[required]]', '[[submit]]', '[[csrf]]', '[[fields]]' ],
 				[
+					self::_class( $args ),
 					$safe( $id ),
 					$safe( (string) ( $appData['/nino/dir'] ?? '' ) ),
 					$safe( $form['key'] ),
@@ -441,6 +464,24 @@ namespace Nino\Modules {
 
 			return (int) ( $entry['tries'] ?? 0 ) >= $max;
 		}
+
+		/**
+		 *	The class of one's own a call adds to the form, with the space in
+		 *	front of it that the template leaves out - escaped, and with its
+		 *	brackets as character references, because the markup is rendered
+		 *	once more
+		 *
+		 *	@param		array			$args					Shortcode attributes
+		 *
+		 *	@return 	string								'' or ' my-class'
+		 */
+		private static function _class( array $args ): string {
+
+			$class = trim( (string) ( $args['class'] ?? '' ) );
+
+			return $class === '' ? '' : ' '. str_replace( '[', '&#91;', htmlspecialchars( $class, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) );
+		}
+
 		/**
 		 *	One of this feature's own templates, read the way a project's are.
 		 *	Markup belongs in a template - see AGENTS.md, "Markup belongs in a

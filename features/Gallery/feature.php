@@ -23,6 +23,10 @@ return [
 				'en_US' => 'The first album there is.',
 				'de_DE' => 'Das erste Album, das es gibt.',
 			],
+			'[gallery ... class="my-class"]' => [
+				'en_US' => 'A class of your own, added to those of the grid. What the Builder writes for its custom classes.',
+				'de_DE' => 'Eine eigene Klasse, zusätzlich zu denen des Rasters. Das schreibt der Builder für seine eigenen Klassen.',
+			],
 		],
 		'markup' => [
 			'data-lightbox="gallery-<album>"' => [
@@ -112,6 +116,38 @@ return [
 			'min'			=> 1,
 			'max'			=> 8,
 			'default'	=> 4,
+		],
+	],
+	/*	The shortcode as the Builder offers it: no first argument, the album is named by
+		its key. columns is a string, not a select of the numbers: the wrapper would turn what
+		is not one of them into the setting, and doShortcode() has always read an (int) of it
+		with 4 where that is none. An explicit columns="" is the one form the wrapper cannot
+		tell from an omitted attribute, and it takes the setting. Nino 1.5 ignores the key	*/
+	'components'	=> [
+		'gallery' => [
+			'label'			=> [ 'en_US' => 'Gallery', 'de_DE' => 'Galerie' ],
+			'source'		=> 'none',
+			'attributes'	=> [
+				'album' => [
+					'type'		=> 'string',
+					'default'	=> '',
+					'label'		=> [ 'en_US' => 'Album', 'de_DE' => 'Album' ],
+					'hint'		=> [
+						'en_US' => 'The key of the album, as the Gallery panel names it. Empty draws the first album there is.',
+						'de_DE' => 'Der Schlüssel des Albums, wie ihn das Panel Galerie nennt. Leer zeichnet das erste Album, das es gibt.',
+					],
+				],
+				'columns' => [
+					'type'		=> 'string',
+					'default'	=> '',
+					'label'		=> [ 'en_US' => 'Columns', 'de_DE' => 'Spalten' ],
+					'hint'		=> [
+						'en_US' => 'How many thumbnails stand beside each other, 1 to 8. Empty takes the setting\'s number.',
+						'de_DE' => 'Wie viele Vorschaubilder nebeneinander stehen, 1 bis 8. Leer nimmt die Zahl aus der Einstellung.',
+					],
+				],
+			],
+			'preview'		=> 'image',
 		],
 	],
 ];

@@ -31,6 +31,10 @@ return [
 				'en_US' => 'How the date under the counter is written, in PHP\'s date() letters. Default Y-m-d H:i.',
 				'de_DE' => 'Wie das Datum unter dem Zähler geschrieben wird, in den Buchstaben von PHPs date(). Standard: Y-m-d H:i.',
 			],
+			'[countdown ... class="my-class"]' => [
+				'en_US' => 'A class of your own, added to those of the counter. What the Builder writes for its custom classes.',
+				'de_DE' => 'Eine eigene Klasse, zusätzlich zu denen des Zählers. Das schreibt der Builder für seine eigenen Klassen.',
+			],
 		],
 		'markup' => [
 			'class="nino-countdown"' => [
@@ -78,6 +82,63 @@ return [
 				+ ( static fn( array $ids ): array => array_combine( $ids, $ids ) )( \DateTimeZone::listIdentifiers() ),
 			'required'	=> true,
 			'default'		=> 'server',
+		],
+	],
+	/*	The shortcode as the Builder offers it: no first argument, because the moment
+		is written in the call itself and a date is no text key's value here - and
+		every attribute a string, as the shortcode reads it. Nino 1.5 ignores the key	*/
+	'components'	=> [
+		'countdown' => [
+			'label'			=> [ 'en_US' => 'Countdown', 'de_DE' => 'Countdown' ],
+			'source'		=> 'none',
+			'attributes'	=> [
+				'to' => [
+					'type'		=> 'string',
+					'default'	=> '',
+					'label'		=> [ 'en_US' => 'Moment', 'de_DE' => 'Zeitpunkt' ],
+					'hint'		=> [
+						'en_US' => 'The moment to count down to, written as 2026-12-24 18:00. Without it nothing is drawn.',
+						'de_DE' => 'Der Zeitpunkt, bis zu dem heruntergezählt wird, geschrieben als 2026-12-24 18:00. Ohne ihn wird nichts gezeichnet.',
+					],
+				],
+				'tz' => [
+					'type'		=> 'string',
+					'default'	=> '',
+					'label'		=> [ 'en_US' => 'Timezone', 'de_DE' => 'Zeitzone' ],
+					'hint'		=> [
+						'en_US' => 'A name such as Europe/Berlin. Empty takes the timezone of the setting.',
+						'de_DE' => 'Ein Name wie Europe/Berlin. Leer nimmt die Zeitzone aus der Einstellung.',
+					],
+				],
+				'units' => [
+					'type'		=> 'string',
+					'default'	=> '',
+					'label'		=> [ 'en_US' => 'Parts', 'de_DE' => 'Teile' ],
+					'hint'		=> [
+						'en_US' => 'Which parts are shown, separated by commas: days, hours, minutes, seconds. Empty shows all four.',
+						'de_DE' => 'Welche Teile gezeigt werden, durch Komma getrennt: days, hours, minutes, seconds. Leer zeigt alle vier.',
+					],
+				],
+				'done' => [
+					'type'		=> 'string',
+					'default'	=> '',
+					'label'		=> [ 'en_US' => 'Sentence for afterwards', 'de_DE' => 'Satz für danach' ],
+					'hint'		=> [
+						'en_US' => 'What stands there once the moment has passed. Empty takes the sentence of the Text panel.',
+						'de_DE' => 'Was dort steht, wenn der Moment vorbei ist. Leer nimmt den Satz aus dem Panel Texte.',
+					],
+				],
+				'format' => [
+					'type'		=> 'string',
+					'default'	=> '',
+					'label'		=> [ 'en_US' => 'Date format', 'de_DE' => 'Datumsformat' ],
+					'hint'		=> [
+						'en_US' => 'How the date under the counter is written, in the letters of PHP\'s date(). Empty takes Y-m-d H:i.',
+						'de_DE' => 'Wie das Datum unter dem Zähler geschrieben wird, in den Buchstaben von PHPs date(). Leer nimmt Y-m-d H:i.',
+					],
+				],
+			],
+			'preview'		=> 'block',
 		],
 	],
 ];

@@ -96,7 +96,14 @@ namespace Nino\Modules {
 		public static function init( array &$appData ): void {
 
 			// 1. A shortcode. The name is what a page writes between brackets
-			\Nino\Html::addShortcode( $appData, 'hello', [ self::class, 'doShortcode' ] );
+			/*	Nino 1.6 has registered [hello] as a component from the manifest before
+				this runs (\Nino\Features::registerComponents()), and a second
+				registration here would take it back from the wrapper that fills in
+				the defaults. Nino 1.5 ignores the manifest key and needs it	*/
+			$components = class_exists( '\\Nino\\Modules\\Components' ) === true ? \Nino\Modules\Components::components( $appData ) : [];
+
+			if( isset( $components['hello'] ) === false )
+				\Nino\Html::addShortcode( $appData, 'hello', [ self::class, 'doShortcode' ] );
 
 			/*	2. A route, registered at runtime rather than written into
 				config.php by the install unit. The difference is what happens on
@@ -172,6 +179,21 @@ namespace Nino\Modules {
 		}
 
 		/**
+		 *	[hello] as the Components module hands it over, the Builder's way:
+		 *	every attribute is there, an empty one where nothing was written,
+		 *	and doShortcode() reads them as it reads a hand-written call
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$args					The resolved arguments (see \Nino\Modules\Components::dispatch())
+		 *
+		 *	@return 	string								What doShortcode() renders for them
+		 */
+		public static function componentHello( array &$appData, array $args ): string {
+
+			return self::doShortcode( $appData, $args );
+		}
+
+		/**
 		 *	[hello] and [hello name="Ada"] - what a page writes.
 		 *
 		 *	A shortcode gets the request's app data by reference and its own
@@ -201,8 +223,8 @@ namespace Nino\Modules {
 				panel's stored value straight out of a form, so both are escaped
 				here - the one rule that is never optional	*/
 			return str_replace(
-				[ '[[greeting]]', '[[name]]' ],
-				[ htmlspecialchars( self::greeting( $appData ), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ), htmlspecialchars( $name, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) ],
+				[ '[[class]]', '[[greeting]]', '[[name]]' ],
+				[ self::_class( $args ), htmlspecialchars( self::greeting( $appData ), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ), htmlspecialchars( $name, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) ],
 				self::template( $appData, 'hello' )
 			);
 		}
@@ -268,6 +290,23 @@ namespace Nino\Modules {
 			return \Nino\Filesystem::putFileContent( $appData, self::PATH, [
 				'name' => $name === '' ? self::DEFAULT_NAME : $name,
 			] ) === true;
+		}
+
+		/**
+		 *	The class of one's own a call adds to the line, with the space in
+		 *	front of it that the template leaves out - escaped, and with its
+		 *	brackets as character references, because the markup is rendered
+		 *	once more
+		 *
+		 *	@param		array			$args					Shortcode attributes
+		 *
+		 *	@return 	string								'' or ' my-class'
+		 */
+		private static function _class( array $args ): string {
+
+			$class = trim( (string) ( $args['class'] ?? '' ) );
+
+			return $class === '' ? '' : ' '. str_replace( '[', '&#91;', htmlspecialchars( $class, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) );
 		}
 
 		/**

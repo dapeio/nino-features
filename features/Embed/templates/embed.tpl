@@ -1,4 +1,4 @@
-<div class="nino-embed nino-embed--[[ratio]]" data-embed-src="[[src]]" data-embed-title="[[title]]" data-embed-consent="[[consent]]" data-embed-host="[[host]]"[[remember]]>
+<div class="nino-embed nino-embed--[[ratio]][[class]]" data-embed-src="[[src]]" data-embed-title="[[title]]" data-embed-consent="[[consent]]" data-embed-host="[[host]]"[[remember]]>
 	<button type="button" class="nino-video-poster nino-embed-open" hidden>
 		[[poster]]
 		<span class="nino-embed-caption">

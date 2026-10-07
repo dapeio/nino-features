@@ -20,6 +20,10 @@ return [
 				'en_US' => 'A button that opens the choice again - for a privacy page.',
 				'de_DE' => 'Eine Schaltfläche, die die Wahl erneut öffnet – für eine Datenschutzseite.',
 			],
+			'[consent-settings ... class="my-class"]' => [
+				'en_US' => 'A class of your own, added to those of the button. What the Builder writes for its custom classes.',
+				'de_DE' => 'Eine eigene Klasse, zusätzlich zu denen des Knopfs. Das schreibt der Builder für seine eigenen Klassen.',
+			],
 		],
 		'markup' => [
 			'<script type="text/plain" data-consent="statistics" data-src="…">' => [
@@ -124,6 +128,17 @@ return [
 			'max'			=> 365,
 			'unit'		=> 'days',
 			'default'	=> 180,
+		],
+	],
+	/*	The one shortcode of the two that is meant for a page: the button that opens the
+		choice again, for a privacy page. [consent] is the banner of the page frame
+		and stays a shortcode. Nino 1.5 ignores the key	*/
+	'components'	=> [
+		'consent-settings' => [
+			'label'			=> [ 'en_US' => 'Consent settings', 'de_DE' => 'Einwilligung ändern' ],
+			'source'		=> 'none',
+			'loop'			=> false,
+			'preview'		=> 'button',
 		],
 	],
 ];

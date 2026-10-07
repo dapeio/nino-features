@@ -1,4 +1,4 @@
-<figure class="nino-compare nino-compare--[[ratio]]" style="--nino-compare-position:[[start]]%">
+<figure class="nino-compare nino-compare--[[ratio]][[class]]" style="--nino-compare-position:[[start]]%">
 	<div class="nino-compare-frame">
 		<img class="nino-compare-image nino-compare-image--before" src="[[before]]" alt="[[alt]]" loading="lazy" decoding="async">
 		<span class="nino-compare-side nino-compare-side--before">[[beforelabel]]</span>

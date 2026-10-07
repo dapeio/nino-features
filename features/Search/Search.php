@@ -220,6 +220,21 @@ namespace Nino\Modules {
 		}
 
 		/**
+		 *	[search-count] as the Components module hands it over, the Builder's way:
+		 *	every attribute is there, an empty one where nothing was written,
+		 *	and Search\Shortcodes::doCount() reads them as it reads a hand-written call
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$args					The resolved arguments (see \Nino\Modules\Components::dispatch())
+		 *
+		 *	@return 	string								What Search\Shortcodes::doCount() renders for them
+		 */
+		public static function componentSearchCount( array &$appData, array $args ): string {
+
+			return Search\Shortcodes::doCount( $appData, $args );
+		}
+
+		/**
 		 *	Refresh the changed configured type after its Elements write committed.
 		 */
 		public static function callbackElementsCommitted( array &$appData, array &$change ): void {

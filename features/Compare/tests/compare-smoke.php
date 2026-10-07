@@ -222,6 +222,83 @@ else {
 }
 
 
+// --- Components ----------------------------------------------------------------
+
+echo "Components - [compare] as the Builder offers it\n";
+
+if( class_exists( '\\Nino\\Modules\\Components' ) === false )
+	echo "  --  this Nino has no \\Nino\\Modules\\Components: the manifest's components are not read here, and the shortcode registers itself\n";
+else ( static function( array $appData ): void {
+
+	$declared = \Nino\Features::manifest( dirname( __DIR__ ) )['components'] ?? [];
+
+	// Every documented call form, as it renders before the wrapper is there
+	$calls = [
+		'[compare before="a.jpg" after="b.jpg"]',
+		'[compare before="haus/roh.jpg" after="haus/fertig.jpg" alt="Die Fassade vor und nach der Sanierung"]',
+		'[compare before="a.jpg" after="b.jpg" before-label="Rohbau" after-label="Fertig"]',
+		'[compare before="a.jpg" after="b.jpg" start="20"]',
+		'[compare before="a.jpg" after="b.jpg" start="140"]',
+		'[compare before="a.jpg" after="b.jpg" start="-5"]',
+		'[compare before="a.jpg" after="b.jpg" start="1000"]',
+		'[compare before="a.jpg" after="b.jpg" start="0000"]',
+		'[compare before="a.jpg" after="b.jpg" start="links"]',
+		'[compare before="a.jpg" after="b.jpg" ratio="16-9"]',
+		'[compare before="a.jpg" after="b.jpg" ratio="7-3"]',
+		'[compare before="a.jpg" after="b.jpg" before-label="Ada & Co" alt="<b>x</b>"]',
+		'[compare before="a.jpg"]',
+		'[compare]',
+		'[compare before="../x.jpg" after="b.jpg"]',
+	];
+
+	$before = [];
+	foreach( $calls as $call )
+		$before[$call] = \Nino\Html::renderHtml( $appData, $call );
+
+	/*	The kernel reads the manifest ahead of the feature's own init() - that is
+		the order here too, on a copy of the project's data that nothing else in
+		this test sees. The shortcodes the feature registered above are those of
+		a boot that has none to read; this boot registers each of them once	*/
+	$probe = $appData;
+	foreach( [ 'compare' ] as $shortcode )
+		\Nino\Callbacks::removeCallbacks( $probe, '/nino/html/shortcode/'. $shortcode );
+	\Nino\Modules\Components::init( $probe );
+	\Nino\Modules\Compare::init( $probe );
+	ninoWarnings();
+
+	check( 'the component is registered with the schema the manifest declares',
+		( \Nino\Modules\Components::components( $probe )['compare'] ?? null ) === ( $declared['compare'] ?? false ) );
+	check( '...and what the feature registers is answered once - the component by its wrapper, after the callback that renames what the schema cannot carry',
+		\Nino\Features::shortcodes( $probe, 'compare' ) === [ 'compare' ]
+		&& count( $registered = \Nino\Callbacks::registered( $probe, '/nino/html/shortcode/compare' ) ) === 2 && $registered[0] === [ \Nino\Modules\Compare::class, 'callbackShortcode' ] && $registered[1] instanceof \Closure );
+	check( '...with the defaults of the schema, as strings',
+		\Nino\Modules\Components::defaults( $probe, 'compare' ) === [ 'before' => '', 'after' => '', 'beforeLabel' => '', 'afterLabel' => '', 'alt' => '', 'start' => '50', 'ratio' => '4-3', 'class' => '' ] );
+
+	foreach( $calls as $call )
+		check( 'renders as it did: '. $call, \Nino\Html::renderHtml( $probe, $call ) === $before[$call] );
+
+	ninoWarnings();
+
+	// The names written the Builder's way are the names of the manual's
+	$hyphen = \Nino\Html::renderHtml( $probe, '[compare before="a.jpg" after="b.jpg" before-label="Rohbau" after-label="Fertig"]' );
+	check( 'beforeLabel and afterLabel, which the Builder writes, are before-label and after-label',
+		\Nino\Html::renderHtml( $probe, '[compare before="a.jpg" after="b.jpg" beforeLabel="Rohbau" afterLabel="Fertig"]' ) === $hyphen
+		&& str_contains( $hyphen, '>Rohbau</span>' ) === true && str_contains( $hyphen, '>Fertig</span>' ) === true );
+	check( '...and every attribute written out at its default is the call without it',
+		\Nino\Html::renderHtml( $probe, '[compare before="a.jpg" after="b.jpg" beforeLabel="" afterLabel="" alt="" start="50" ratio="4-3" class=""]' ) === $before['[compare before="a.jpg" after="b.jpg"]'] );
+	check( 'a class of its own comes after the box\'s own, no class leaves no space behind',
+		str_contains( \Nino\Html::renderHtml( $probe, '[compare before="a.jpg" after="b.jpg" class="facade"]' ), '<figure class="nino-compare nino-compare--4-3 facade" ' ) === true
+		&& str_contains( $before['[compare before="a.jpg" after="b.jpg"]'], '<figure class="nino-compare nino-compare--4-3" ' ) === true );
+	check( 'a divider outside the control\'s own range is not held to it by the schema: start() alone answers, as it did',
+		str_contains( \Nino\Html::renderHtml( $probe, '[compare before="a.jpg" after="b.jpg" start="140"]' ), '--nino-compare-position:50%' ) === true
+		&& str_contains( \Nino\Html::renderHtml( $probe, '[compare before="a.jpg" after="b.jpg" start="-5"]' ), '--nino-compare-position:50%' ) === true
+		&& str_contains( \Nino\Html::renderHtml( $probe, '[compare before="a.jpg" after="b.jpg" start="1000"]' ), '--nino-compare-position:50%' ) === true );
+
+} )( $appData );
+
+echo "\n";
+
+
 // --- Deactivation --------------------------------------------------------------
 
 echo "Deactivation\n";

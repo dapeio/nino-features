@@ -89,7 +89,15 @@ namespace Nino\Modules {
 		public static function init( array &$appData ): void {
 
 			\Nino\Html::addShortcode( $appData, 'protected-error', [ self::class, 'doErrorShortcode' ] );
-			\Nino\Html::addShortcode( $appData, 'protected-logout', [ self::class, 'doLogoutShortcode' ] );
+
+			/*	Nino 1.6 has registered [protected-logout] as a component from the
+				manifest before this runs (\Nino\Features::registerComponents()), and a
+				second registration here would take it back from the wrapper that fills
+				in the defaults. Nino 1.5 ignores the manifest key and needs it	*/
+			$components = class_exists( '\\Nino\\Modules\\Components' ) === true ? \Nino\Modules\Components::components( $appData ) : [];
+
+			if( isset( $components['protected-logout'] ) === false )
+				\Nino\Html::addShortcode( $appData, 'protected-logout', [ self::class, 'doLogoutShortcode' ] );
 
 			// Priority 1: before Modules\Cache's own callback (9) ever gets to
 			// decide whether this response may be stored or served from the
@@ -421,7 +429,7 @@ namespace Nino\Modules {
 		 *	visitor.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array 		$args					Shortcode arguments (unused)
+		 *	@param		array 		$args					Shortcode arguments (class only)
 		 *
 		 *	@return 	string
 		 */
@@ -430,7 +438,40 @@ namespace Nino\Modules {
 			if( self::unlocked( $appData ) === false )
 				return '';
 
-			return self::template( $appData, 'protected-logout' );
+			return str_replace( '[[class]]', self::_class( $args ), self::template( $appData, 'protected-logout' ) );
+		}
+
+		/**
+		 *	[protected-logout] as the Components module hands it over, the
+		 *	Builder's way: every attribute is there, an empty one where nothing
+		 *	was written, and doLogoutShortcode() reads them as it reads a
+		 *	hand-written call
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$args					The resolved arguments (see \Nino\Modules\Components::dispatch())
+		 *
+		 *	@return 	string
+		 */
+		public static function componentProtectedLogout( array &$appData, array $args ): string {
+
+			return self::doLogoutShortcode( $appData, $args );
+		}
+
+		/**
+		 *	The class of one's own a call adds to the link, with the space in
+		 *	front of it that the template leaves out - escaped, and with its
+		 *	brackets as character references, because the markup is rendered
+		 *	once more
+		 *
+		 *	@param		array			$args					Shortcode attributes
+		 *
+		 *	@return 	string								'' or ' my-class'
+		 */
+		private static function _class( array $args ): string {
+
+			$class = trim( (string) ( $args['class'] ?? '' ) );
+
+			return $class === '' ? '' : ' '. str_replace( '[', '&#91;', htmlspecialchars( $class, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) );
 		}
 
 		/**

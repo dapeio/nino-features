@@ -30,6 +30,10 @@ return [
 				'en_US' => 'A second section by its key, and the newest three without paging - a teaser rather than page one of something. A page past the end is an empty list.',
 				'de_DE' => 'Ein zweiter Bereich über seinen Schlüssel, und die neuesten drei ohne Blättern – ein Teaser statt Seite eins von etwas. Eine Seite hinter dem Ende ist eine leere Liste.',
 			],
+			'[posts-pager ... class="my-class"]' => [
+				'en_US' => 'A class of your own, set on the pager\'s navigation. What the Builder writes for its custom classes.',
+				'de_DE' => 'Eine eigene Klasse, an der Navigation des Blätterns. Das schreibt der Builder für seine eigenen Klassen.',
+			],
 		],
 		'markup' => [
 			'[[.url]]' => [
@@ -95,4 +99,55 @@ return [
 	// /elements/, where a backup finds them on their own
 	'data'				=> [ '/data/posts.php' ],
 	'settings'		=> [],
+	/*	Only the pager as the Builder offers it. [posts], [post] and [post-nav] are written
+		around the markup of one record, with [[field]] for what it holds, and the Builder
+		can neither carry that markup nor edit it as it is: it reads a [[title]] as a call of
+		the title component and its editor for a body would flatten the record. They stay
+		shortcodes, like [consent]. Nino 1.5 ignores the key	*/
+	'components'	=> [
+		'posts-pager' => [
+			'label'			=> [ 'en_US' => 'Pager', 'de_DE' => 'Blättern' ],
+			'source'		=> 'none',
+			'loop'			=> false,
+			'attributes'	=> [
+				'section' => [
+					'type'		=> 'string',
+					'default'	=> '',
+					'label'		=> [ 'en_US' => 'Section', 'de_DE' => 'Bereich' ],
+					'hint'		=> [
+						'en_US' => 'The key of a section in /data/posts.php, such as news. Empty takes the section of the page, else the first one.',
+						'de_DE' => 'Der Schlüssel eines Bereichs aus /data/posts.php, etwa news. Leer nimmt den Bereich der Seite, sonst den ersten.',
+					],
+				],
+				'prev' => [
+					'type'		=> 'string',
+					'default'	=> '',
+					'label'		=> [ 'en_US' => 'Word for the newer page', 'de_DE' => 'Wort für die neuere Seite' ],
+					'hint'		=> [
+						'en_US' => 'Empty takes the words of the Text panel.',
+						'de_DE' => 'Leer nimmt die Wörter aus dem Panel Texte.',
+					],
+				],
+				'next' => [
+					'type'		=> 'string',
+					'default'	=> '',
+					'label'		=> [ 'en_US' => 'Word for the older page', 'de_DE' => 'Wort für die ältere Seite' ],
+					'hint'		=> [
+						'en_US' => 'Empty takes the words of the Text panel.',
+						'de_DE' => 'Leer nimmt die Wörter aus dem Panel Texte.',
+					],
+				],
+				'label' => [
+					'type'		=> 'string',
+					'default'	=> '',
+					'label'		=> [ 'en_US' => 'Name of the navigation', 'de_DE' => 'Name der Navigation' ],
+					'hint'		=> [
+						'en_US' => 'What a screen reader calls it. Empty takes the words of the Text panel.',
+						'de_DE' => 'Wie ein Screenreader sie nennt. Leer nimmt die Wörter aus dem Panel Texte.',
+					],
+				],
+			],
+			'preview'		=> 'block',
+		],
+	],
 ];

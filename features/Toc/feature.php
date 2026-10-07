@@ -26,6 +26,10 @@ return [
 				'en_US' => 'What stands over the list. Without it the Text panel\'s own words are used.',
 				'de_DE' => 'Was über der Liste steht. Ohne die Angabe werden die Wörter aus dem Panel Texte verwendet.',
 			],
+			'[toc ... class="my-class"]' => [
+				'en_US' => 'A class of your own, added to those of the list. What the Builder writes for its custom classes.',
+				'de_DE' => 'Eine eigene Klasse, zusätzlich zu denen der Liste. Das schreibt der Builder für seine eigenen Klassen.',
+			],
 		],
 		'markup' => [
 			'class="nino-toc-skip"' => [
@@ -64,6 +68,44 @@ return [
 				'de_DE' => 'Setzt an jede Überschrift der Liste einen Link, damit sich eine Stelle verlinken lässt. Aus: Es wird kein Link gezeichnet, und die Überschriften behalten nur die ids, über die die Liste sie erreicht.',
 			],
 			'default'	=> true,
+		],
+	],
+	/*	The shortcode as the Builder offers it. Nino 1.5 ignores the key	*/
+	'components'	=> [
+		'toc' => [
+			'label'			=> [ 'en_US' => 'Table of contents', 'de_DE' => 'Inhaltsverzeichnis' ],
+			'source'		=> 'none',
+			'loop'			=> false,
+			'attributes'	=> [
+				'levels' => [
+					'type'		=> 'string',
+					'default'	=> '',
+					'label'		=> [ 'en_US' => 'Levels', 'de_DE' => 'Ebenen' ],
+					'hint'		=> [
+						'en_US' => 'The heading levels the list is built from, separated by commas: 2 or 2,3. Empty takes h2 and h3.',
+						'de_DE' => 'Die Überschriftsebenen, aus denen die Liste gebaut wird, durch Komma getrennt: 2 oder 2,3. Leer nimmt h2 und h3.',
+					],
+				],
+				'within' => [
+					'type'		=> 'string',
+					'default'	=> '',
+					'label'		=> [ 'en_US' => 'Taken from', 'de_DE' => 'Entnommen aus' ],
+					'hint'		=> [
+						'en_US' => 'A selector such as #content: the headings come from inside that element. Empty takes the whole page.',
+						'de_DE' => 'Ein Selektor wie #content: Die Überschriften kommen aus diesem Element. Leer nimmt die ganze Seite.',
+					],
+				],
+				'title' => [
+					'type'		=> 'string',
+					'default'	=> '',
+					'label'		=> [ 'en_US' => 'Title', 'de_DE' => 'Titel' ],
+					'hint'		=> [
+						'en_US' => 'What stands over the list. Empty takes the words of the Text panel.',
+						'de_DE' => 'Was über der Liste steht. Leer nimmt die Wörter aus dem Panel Texte.',
+					],
+				],
+			],
+			'preview'		=> 'text',
 		],
 	],
 ];

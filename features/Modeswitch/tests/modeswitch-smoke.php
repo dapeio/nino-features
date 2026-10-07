@@ -157,6 +157,9 @@ check( 'each button carries its icon inline - a switch that paints its icons a r
 
 $icons = \Nino\Html::renderHtml( $appData, '[mode-switch icons]' );
 
+check( 'icons="1" is the flag on every kernel, icons="0" is not, and neither changes the plain switch',
+	\Nino\Html::renderHtml( $appData, '[mode-switch icons="1"]' ) === $icons
+	&& \Nino\Html::renderHtml( $appData, '[mode-switch icons="0"]' ) === \Nino\Html::renderHtml( $appData, '[mode-switch]' ) );
 check( 'the icons flag drops the words from the layout and keeps them in the markup',
 	str_contains( $icons, 'nino-modeswitch--icons' ) === true
 	&& substr_count( $icons, 'nino-modeswitch-name--hidden' ) === 3
@@ -222,6 +225,72 @@ else {
 	check( 'the browser half passes too', preg_match( '/^\d+ checks, 0 failed$/m', $out ) === 1 );
 	echo "\n";
 }
+
+
+// --- Components ----------------------------------------------------------------
+
+echo "Components - [mode-switch] as the Builder offers it\n";
+
+if( class_exists( '\\Nino\\Modules\\Components' ) === false )
+	echo "  --  this Nino has no \\Nino\\Modules\\Components: the manifest's components are not read here, and the shortcode registers itself\n";
+else ( static function( array $appData ): void {
+
+	$declared = \Nino\Features::manifest( dirname( __DIR__ ) )['components'] ?? [];
+
+	// Every documented call form, as it renders before the wrapper is there
+	$calls = [
+		'[mode-switch]',
+		'[mode-switch icons]',
+	];
+
+	$before = [];
+	foreach( $calls as $call )
+		$before[$call] = \Nino\Html::renderHtml( $appData, $call );
+
+	/*	The kernel reads the manifest ahead of the feature's own init() - that is
+		the order here too, on a copy of the project's data that nothing else in
+		this test sees. The shortcodes the feature registered above are those of
+		a boot that has none to read; this boot registers each of them once	*/
+	$probe = $appData;
+	foreach( [ 'mode-switch' ] as $shortcode )
+		\Nino\Callbacks::removeCallbacks( $probe, '/nino/html/shortcode/'. $shortcode );
+	\Nino\Modules\Components::init( $probe );
+	\Nino\Modules\Modeswitch::init( $probe );
+	ninoWarnings();
+
+	check( 'the component is registered with the schema the manifest declares',
+		( \Nino\Modules\Components::components( $probe )['mode-switch'] ?? null ) === ( $declared['mode-switch'] ?? false ) );
+	check( '...as one meant once per page: the registered schema says it stays out of a loop',
+		( \Nino\Modules\Components::components( $probe )['mode-switch']['loop'] ?? null ) === false );
+	check( '...and what the feature registers is answered once - the component by its wrapper',
+		\Nino\Features::shortcodes( $probe, 'modeswitch' ) === [ 'mode-switch' ]
+		&& count( $registered = \Nino\Callbacks::registered( $probe, '/nino/html/shortcode/mode-switch' ) ) === 1 && $registered[0] instanceof \Closure );
+	check( '...with the defaults of the schema, as strings',
+		\Nino\Modules\Components::defaults( $probe, 'mode-switch' ) === [ 'icons' => '0', 'class' => '' ] );
+
+	foreach( $calls as $call )
+		check( 'renders as it did: '. $call, \Nino\Html::renderHtml( $probe, $call ) === $before[$call] );
+
+	ninoWarnings();
+
+	check( 'icons="true" and icons="yes" are the flag as icons="1" is, on the kernel under test - a hand-written file reads the same on every one',
+		\Nino\Html::renderHtml( $probe, '[mode-switch icons="true"]' ) === \Nino\Html::renderHtml( $probe, '[mode-switch icons="1"]' )
+		&& \Nino\Html::renderHtml( $probe, '[mode-switch icons="yes"]' ) === \Nino\Html::renderHtml( $probe, '[mode-switch icons="1"]' )
+		&& \Nino\Html::renderHtml( $probe, '[mode-switch icons="1"]' ) !== \Nino\Html::renderHtml( $probe, '[mode-switch]' ) );
+	check( 'icons="1", which the Builder writes, is the flag',
+		\Nino\Html::renderHtml( $probe, '[mode-switch icons="1"]' ) === $before['[mode-switch icons]']
+		&& \Nino\Html::renderHtml( $probe, '[mode-switch icons="0" class=""]' ) === $before['[mode-switch]'] );
+	check( 'a class of its own comes after the switch\'s own, no class leaves no space behind',
+		str_contains( \Nino\Html::renderHtml( $probe, '[mode-switch class="header-mode"]' ), '<div class="nino-modeswitch header-mode" ' ) === true
+		&& str_contains( \Nino\Html::renderHtml( $probe, '[mode-switch icons class="header-mode"]' ), '<div class="nino-modeswitch nino-modeswitch--icons header-mode" ' ) === true
+		&& str_contains( $before['[mode-switch]'], '<div class="nino-modeswitch" ' ) === true );
+	check( 'a value that says "icons" is not the flag - only a bare word is, which is how the switch is written',
+		\Nino\Html::renderHtml( $probe, '[mode-switch class="icons"]' ) !== $before['[mode-switch icons]']
+		&& str_contains( \Nino\Html::renderHtml( $probe, '[mode-switch class="icons"]' ), 'nino-modeswitch--icons' ) === false );
+
+} )( $appData );
+
+echo "\n";
 
 
 // --- Deactivation ------------------------------------------------------------

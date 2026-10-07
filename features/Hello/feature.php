@@ -66,6 +66,10 @@ return [
 				'en_US' => 'Greets whoever is named here instead.',
 				'de_DE' => 'Grüßt stattdessen, wen Du hier nennst.',
 			],
+			'[hello ... class="my-class"]' => [
+				'en_US' => 'A class of your own, added to those of the line. What the Builder writes for its custom classes.',
+				'de_DE' => 'Eine eigene Klasse, zusätzlich zu denen der Zeile. Das schreibt der Builder für seine eigenen Klassen.',
+			],
 		],
 
 		'routes' => [
@@ -156,6 +160,25 @@ return [
 				'en_US' => 'The word [hello] opens with.',
 				'de_DE' => 'Das Wort, mit dem [hello] beginnt.',
 			],
+		],
+	],
+	/*	The shortcode as the Builder offers it. Nino 1.5 ignores the key	*/
+	'components'	=> [
+		'hello' => [
+			'label'			=> [ 'en_US' => 'Greeting', 'de_DE' => 'Gruß' ],
+			'source'		=> 'none',
+			'attributes'	=> [
+				'name' => [
+					'type'		=> 'string',
+					'default'	=> '',
+					'label'		=> [ 'en_US' => 'Name', 'de_DE' => 'Name' ],
+					'hint'		=> [
+						'en_US' => 'Who is greeted. Empty takes the name of the panel.',
+						'de_DE' => 'Wer gegrüßt wird. Leer nimmt den Namen aus dem Panel.',
+					],
+				],
+			],
+			'preview'		=> 'text',
 		],
 	],
 ];

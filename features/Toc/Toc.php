@@ -66,7 +66,14 @@ namespace Nino\Modules {
 		 */
 		public static function init( array &$appData ): void {
 
-			\Nino\Html::addShortcode( $appData, 'toc', [ self::class, 'doShortcode' ] );
+			/*	Nino 1.6 has registered [toc] as a component from the manifest before
+				this runs (\Nino\Features::registerComponents()), and a second
+				registration here would take it back from the wrapper that fills in
+				the defaults. Nino 1.5 ignores the manifest key and needs it	*/
+			$components = class_exists( '\\Nino\\Modules\\Components' ) === true ? \Nino\Modules\Components::components( $appData ) : [];
+
+			if( isset( $components['toc'] ) === false )
+				\Nino\Html::addShortcode( $appData, 'toc', [ self::class, 'doShortcode' ] );
 
 			/*	The virtual '/features/...' prefix resolves against
 				\Nino\Features::dir() (\Nino\Filesystem::FEATURES_DIR), the same way
@@ -76,6 +83,21 @@ namespace Nino\Modules {
 				'/nino/html/assets'	*/
 			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Toc/assets/toc.css' );
 			\Nino\Html::addAsset( $appData, '/.cache/script.js', '/features/Toc/assets/toc.js' );
+		}
+
+		/**
+		 *	[toc] as the Components module hands it over, the Builder's way:
+		 *	every attribute is there, an empty one where nothing was written,
+		 *	and doShortcode() reads them as it reads a hand-written call
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$args					The resolved arguments (see \Nino\Modules\Components::dispatch())
+		 *
+		 *	@return 	string								What doShortcode() renders for them
+		 */
+		public static function componentToc( array &$appData, array $args ): string {
+
+			return self::doShortcode( $appData, $args );
 		}
 
 		/**
@@ -110,8 +132,9 @@ namespace Nino\Modules {
 			$within = trim( (string) ( $args['within'] ?? '' ) );
 
 			return str_replace(
-				[ '[[levels]]', '[[within]]', '[[anchors]]', '[[title]]' ],
+				[ '[[class]]', '[[levels]]', '[[within]]', '[[anchors]]', '[[title]]' ],
 				[
+					self::_class( $args ),
 					implode( ',', self::levels( $args ) ),
 					$safe( $within ),
 					( self::anchors( $appData ) === true ? '1' : '0' ),
@@ -152,6 +175,23 @@ namespace Nino\Modules {
 		 */
 		public static function anchors( array &$appData ): bool {
 			return \Nino\Features::setting( $appData, 'toc', 'anchors', true ) === true;
+		}
+
+		/**
+		 *	The class of one's own a call adds to the list, with the space in
+		 *	front of it that the template leaves out - escaped, and with its
+		 *	brackets as character references, because the markup is rendered
+		 *	once more
+		 *
+		 *	@param		array			$args					Shortcode attributes
+		 *
+		 *	@return 	string								'' or ' my-class'
+		 */
+		private static function _class( array $args ): string {
+
+			$class = trim( (string) ( $args['class'] ?? '' ) );
+
+			return $class === '' ? '' : ' '. str_replace( '[', '&#91;', htmlspecialchars( $class, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) );
 		}
 
 		/**

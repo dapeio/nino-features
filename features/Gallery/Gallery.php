@@ -98,7 +98,14 @@ namespace Nino\Modules {
 		 */
 		public static function init( array &$appData ): void {
 
-			\Nino\Html::addShortcode( $appData, 'gallery', [ self::class, 'doShortcode' ] );
+			/*	Nino 1.6 has registered [gallery] as a component from the manifest before
+				this runs (\Nino\Features::registerComponents()), and a second
+				registration here would take it back from the wrapper that fills in
+				the defaults. Nino 1.5 ignores the manifest key and needs it	*/
+			$components = class_exists( '\\Nino\\Modules\\Components' ) === true ? \Nino\Modules\Components::components( $appData ) : [];
+
+			if( isset( $components['gallery'] ) === false )
+				\Nino\Html::addShortcode( $appData, 'gallery', [ self::class, 'doShortcode' ] );
 
 			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Gallery/assets/gallery.css' );
 		}
@@ -469,6 +476,26 @@ namespace Nino\Modules {
 		}
 
 		/**
+		 *	[gallery] as the Components module hands it over, the Builder's way:
+		 *	every attribute is there, an empty one where nothing was written,
+		 *	and doShortcode() reads them as it reads a hand-written call - the
+		 *	count of columns only where one was chosen, which is what the
+		 *	setting's default is for
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$args					The resolved arguments (see \Nino\Modules\Components::dispatch())
+		 *
+		 *	@return 	string								What doShortcode() renders for them
+		 */
+		public static function componentGallery( array &$appData, array $args ): string {
+
+			if( $args['columns'] === '' )
+				unset( $args['columns'] );
+
+			return self::doShortcode( $appData, $args );
+		}
+
+		/**
 		 *	Render one album: [gallery] for the first one, [gallery
 		 *	album="trip"] for another, [gallery album="trip" columns="3"] to
 		 *	override the configured width of the grid.
@@ -536,7 +563,24 @@ namespace Nino\Modules {
 
 			// The items last: str_replace() works through its arrays in order, so a
 			// token after them would be looked for in the markup they put in as well
-			return str_replace( [ '[[columns]]', '[[items]]' ], [ (string) $columns, $items ], self::template( $appData, 'gallery' ) );
+			return str_replace( [ '[[class]]', '[[columns]]', '[[items]]' ], [ self::_class( $args ), (string) $columns, $items ], self::template( $appData, 'gallery' ) );
+		}
+
+		/**
+		 *	The class of one's own a call adds to the grid, with the space in
+		 *	front of it that the template leaves out - escaped, and with its
+		 *	brackets as character references, because the markup is rendered
+		 *	once more
+		 *
+		 *	@param		array			$args					Shortcode attributes
+		 *
+		 *	@return 	string								'' or ' my-class'
+		 */
+		private static function _class( array $args ): string {
+
+			$class = trim( (string) ( $args['class'] ?? '' ) );
+
+			return $class === '' ? '' : ' '. str_replace( '[', '&#91;', htmlspecialchars( $class, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) );
 		}
 
 		/**

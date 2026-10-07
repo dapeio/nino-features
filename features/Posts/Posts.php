@@ -85,6 +85,21 @@ namespace Nino\Modules {
 		}
 
 		/**
+		 *	[posts-pager] as the Components module hands it over, the Builder's way:
+		 *	every attribute is there, an empty one where nothing was written,
+		 *	and Posts\Shortcodes::doPager() reads them as it reads a hand-written call
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$args					The resolved arguments (see \Nino\Modules\Components::dispatch())
+		 *
+		 *	@return 	string								What Posts\Shortcodes::doPager() renders for them
+		 */
+		public static function componentPostsPager( array &$appData, array $args ): string {
+
+			return Posts\Shortcodes::doPager( $appData, $args );
+		}
+
+		/**
 		 *	The routes alone - see init(), which is where the kernel calls this
 		 *	from. Its own method because a shortcode may only be registered
 		 *	once (callbacks accumulate, see \Nino\Callbacks::registerCallback())

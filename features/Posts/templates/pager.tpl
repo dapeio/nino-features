@@ -1,1 +1,1 @@
-<nav aria-label="[[label]]"><ul class="nino-pagination">[[items]]</ul></nav>
+<nav[[class]] aria-label="[[label]]"><ul class="nino-pagination">[[items]]</ul></nav>

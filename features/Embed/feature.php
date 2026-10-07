@@ -34,6 +34,10 @@ return [
 				'en_US' => 'The shape of the box: 16-9 (default), 4-3, 1-1 or 21-9.',
 				'de_DE' => 'Die Form des Kastens: 16-9 (Vorgabe), 4-3, 1-1 oder 21-9.',
 			],
+			'[embed ... class="my-class"]' => [
+				'en_US' => 'A class of your own, added to those of the surface. What the Builder writes for its custom classes.',
+				'de_DE' => 'Eine eigene Klasse, zusätzlich zu denen der Fläche. Das schreibt der Builder für seine eigenen Klassen.',
+			],
 		],
 		'markup' => [
 			'class="nino-embed"' => [
@@ -103,6 +107,72 @@ return [
 				'de_DE' => 'Ist eine Einbindung eines Anbieters geladen, werden dessen übrige auf dieser Seite mitgeladen. Gespeichert wird nichts: Es gilt, solange die Seite offen ist.',
 			],
 			'default'	=> false,
+		],
+	],
+	/*	The shortcode as the Builder offers it: no first argument, the provider is named
+		by the attribute that carries the address. Nino 1.5 ignores the key	*/
+	'components'	=> [
+		'embed' => [
+			'label'			=> [ 'en_US' => 'Embedded content', 'de_DE' => 'Eingebetteter Inhalt' ],
+			'source'		=> 'none',
+			'attributes'	=> [
+				'youtube' => [
+					'type'		=> 'string',
+					'default'	=> '',
+					'label'		=> [ 'en_US' => 'YouTube video', 'de_DE' => 'YouTube-Video' ],
+					'hint'		=> [
+						'en_US' => 'The video ID, or the address copied from the browser. Shown through youtube-nocookie.com.',
+						'de_DE' => 'Die Video-ID oder die aus dem Browser kopierte Adresse. Gezeigt über youtube-nocookie.com.',
+					],
+				],
+				'vimeo' => [
+					'type'		=> 'string',
+					'default'	=> '',
+					'label'		=> [ 'en_US' => 'Vimeo video', 'de_DE' => 'Vimeo-Video' ],
+					'hint'		=> [
+						'en_US' => 'The video ID, or the address copied from the browser.',
+						'de_DE' => 'Die Video-ID oder die aus dem Browser kopierte Adresse.',
+					],
+				],
+				'url' => [
+					'type'		=> 'string',
+					'default'	=> '',
+					'label'		=> [ 'en_US' => 'Address', 'de_DE' => 'Adresse' ],
+					'hint'		=> [
+						'en_US' => 'Anything else with an embed address - a map, a booking widget, a calendar. https only. Used where neither video is named.',
+						'de_DE' => 'Alles andere mit einer Einbettungsadresse - eine Karte, ein Buchungswidget, ein Kalender. Nur https. Gilt, wo kein Video genannt ist.',
+					],
+				],
+				'title' => [
+					'type'		=> 'string',
+					'default'	=> '',
+					'label'		=> [ 'en_US' => 'Title', 'de_DE' => 'Titel' ],
+					'hint'		=> [
+						'en_US' => 'What the surface says and what the loaded frame is called. Say it for every embed: it is the only name a screen reader gets.',
+						'de_DE' => 'Was auf der Fläche steht und wie der geladene Rahmen heißt. Bei jeder Einbindung angeben: Es ist der einzige Name, den ein Screenreader bekommt.',
+					],
+				],
+				'poster' => [
+					'type'		=> 'string',
+					'default'	=> '',
+					'label'		=> [ 'en_US' => 'Picture on the surface', 'de_DE' => 'Bild auf der Fläche' ],
+					'hint'		=> [
+						'en_US' => 'A file name below the project\'s images. Never a thumbnail from the provider.',
+						'de_DE' => 'Ein Dateiname unter den Bildern des Projekts. Nie ein Vorschaubild des Anbieters.',
+					],
+				],
+				'ratio' => [
+					'type'		=> 'select',
+					'options'	=> [ '16-9', '4-3', '1-1', '21-9' ],
+					'default'	=> '16-9',
+					'label'		=> [ 'en_US' => 'Shape', 'de_DE' => 'Form' ],
+					'hint'		=> [
+						'en_US' => 'The shape of the box.',
+						'de_DE' => 'Die Form des Kastens.',
+					],
+				],
+			],
+			'preview'		=> 'block',
 		],
 	],
 ];

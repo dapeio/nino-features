@@ -315,6 +315,91 @@ check( '...and a word given as an attribute wins over it', str_contains( postsRe
 $appData['./nino/locales/current'] = 'de_DE';
 
 
+// --- Components ----------------------------------------------------------------
+
+echo "Components - [posts-pager] as the Builder offers it, the record shortcodes as they were\n";
+
+if( class_exists( '\\Nino\\Modules\\Components' ) === false )
+	echo "  --  this Nino has no \\Nino\\Modules\\Components: the manifest's components are not read here, and the shortcodes register themselves\n";
+else ( static function( array $appData ): void {
+
+	$declared = \Nino\Features::manifest( dirname( __DIR__ ) )['components'] ?? [];
+
+	// The page of one post: [post] and [post-nav] have a post to speak of, and
+	// the lists name their section by its key where the page cannot say
+	postsResolve( $appData, '/blog/second-wind' );
+	$_GET = [];
+
+	// Every documented call form, as it renders before the wrapper is there
+	$calls = [
+		'[posts section="blog"]<li><a href="[[.url]]">[[title]]</a></li>[/posts]',
+		'[posts section="blog" limit="3"]<a href="[[.url]]">[[title]]</a> [/posts]',
+		'[posts section="blog" limit="2" offset="1"]<a href="[[.url]]">[[title]]</a> [/posts]',
+		'[posts section="blog" limit="2" offset="-1"]<a href="[[.url]]">[[title]]</a> [/posts]',
+		'[posts section="blog" limit="3x"]<a href="[[.url]]">[[title]]</a> [/posts]',
+		'[posts limit="3"][[title]] [/posts]',
+		'[posts section="nowhere"]<p>[[title]]</p>[/posts]',
+		'[posts section="blog"][/posts]',
+		'[post]<h1>[[title]]</h1>[/post]',
+		'[post]<h1>[[title]]</h1>[[.body]][/post]',
+		'[post][/post]',
+		'[posts-pager]',
+		'[posts-pager section="blog" prev="Zurück" next="Weiter" label="Seiten des Blogs"]',
+		'[posts-pager next="More"]',
+		'[post-nav]<a class="[[.rel]]" href="[[.url]]">[[title]]</a>[/post-nav]',
+		'[post-nav section="blog"][[.rel]] [/post-nav]',
+		'[post-nav section="nowhere"]x[/post-nav]',
+	];
+
+	$before = [];
+	foreach( $calls as $call )
+		$before[$call] = \Nino\Html::renderHtml( $appData, $call );
+
+	/*	The kernel reads the manifest ahead of the feature's own init() - that is
+		the order here too, on a copy of the project's data that nothing else in
+		this test sees. The shortcodes the feature registered above are those of
+		a boot that has none to read; this boot registers each of them once	*/
+	$probe = $appData;
+	foreach( [ 'post', 'post-nav', 'posts', 'posts-pager' ] as $shortcode )
+		\Nino\Callbacks::removeCallbacks( $probe, '/nino/html/shortcode/'. $shortcode );
+	\Nino\Modules\Components::init( $probe );
+	\Nino\Modules\Posts\Shortcodes::init( $probe );
+	ninoWarnings();
+
+	check( 'the pager is registered with the schema the manifest declares, and it is the only component',
+		( \Nino\Modules\Components::components( $probe )['posts-pager'] ?? null ) === ( $declared['posts-pager'] ?? false )
+		&& array_keys( $declared ) === [ 'posts-pager' ]
+		&& array_diff( [ 'posts', 'post', 'post-nav' ], array_keys( \Nino\Modules\Components::components( $probe ) ) ) === [ 'posts', 'post', 'post-nav' ] );
+	check( '...as one meant once per page: the registered schema says it stays out of a loop',
+		( \Nino\Modules\Components::components( $probe )['posts-pager']['loop'] ?? null ) === false );
+	check( '...and what the feature registers is answered once - the pager by its wrapper, the three that carry a record as shortcodes',
+		\Nino\Features::shortcodes( $probe, 'posts' ) === [ 'post', 'post-nav', 'posts', 'posts-pager' ]
+		&& count( $registered = \Nino\Callbacks::registered( $probe, '/nino/html/shortcode/posts' ) ) === 1 && is_array( $registered[0] )
+		&& count( $registered = \Nino\Callbacks::registered( $probe, '/nino/html/shortcode/post' ) ) === 1 && is_array( $registered[0] )
+		&& count( $registered = \Nino\Callbacks::registered( $probe, '/nino/html/shortcode/post-nav' ) ) === 1 && is_array( $registered[0] )
+		&& count( $registered = \Nino\Callbacks::registered( $probe, '/nino/html/shortcode/posts-pager' ) ) === 1 && $registered[0] instanceof \Closure );
+	check( '...with the defaults of the schema, as strings',
+		\Nino\Modules\Components::defaults( $probe, 'posts-pager' ) === [ 'section' => '', 'prev' => '', 'next' => '', 'label' => '', 'class' => '' ] );
+
+	foreach( $calls as $call )
+		check( 'renders as it did: '. $call, \Nino\Html::renderHtml( $probe, $call ) === $before[$call] );
+
+	ninoWarnings();
+
+	check( 'every attribute written out at its default is the call without it',
+		\Nino\Html::renderHtml( $probe, '[posts-pager section="" prev="" next="" label="" class=""]' ) === $before['[posts-pager]']
+		&& str_contains( $before['[posts section="blog"]<li><a href="[[.url]]">[[title]]</a></li>[/posts]'], '<li><a href="/blog/third-rail">Third rail</a></li>' ) === true );
+	check( 'a class of its own is set on the pager\'s navigation, no class leaves no attribute behind',
+		str_contains( \Nino\Html::renderHtml( $probe, '[posts-pager class="paging"]' ), '<nav class="paging" aria-label="' ) === true
+		&& str_contains( $before['[posts-pager]'], '<nav aria-label="' ) === true );
+
+	$_GET = [];
+
+} )( $appData );
+
+echo "\n";
+
+
 echo "\nWhat a post may put in a page\n";
 
 \Nino\Elements::updateElement( $appData, '/posts/second-wind', [

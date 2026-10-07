@@ -1,1 +1,1 @@
-<ul class="nino-gallery-grid" style="--nino-gallery-columns:[[columns]]">[[items]]</ul>
+<ul class="nino-gallery-grid[[class]]" style="--nino-gallery-columns:[[columns]]">[[items]]</ul>

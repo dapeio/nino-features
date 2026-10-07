@@ -554,6 +554,66 @@ check( 'the panel has a sentence for each of the eleven codes problems() answers
 echo "\n";
 
 
+// --- Components ----------------------------------------------------------------
+
+echo "Components - [form] as the Builder offers it\n";
+
+if( class_exists( '\\Nino\\Modules\\Components' ) === false )
+	echo "  --  this Nino has no \\Nino\\Modules\\Components: the manifest's components are not read here, and the shortcode registers itself\n";
+else ( static function( array $appData ): void {
+
+	$declared = \Nino\Features::manifest( dirname( __DIR__ ) )['components'] ?? [];
+
+	// Every documented call form, as it renders before the wrapper is there
+	$calls = [
+		'[form]',
+		'[form key="quote"]',
+		'[form key="contact"]',
+		'[form key="nowhere"]',
+		'[form key="Not A Slug"]',
+	];
+
+	$before = [];
+	foreach( $calls as $call )
+		$before[$call] = preg_replace( '/name="_t" value="\d{10}"/', 'name="_t" value="0"', \Nino\Html::renderHtml( $appData, $call ) );
+
+	/*	The kernel reads the manifest ahead of the feature's own init() - that is
+		the order here too, on a copy of the project's data that nothing else in
+		this test sees. The shortcodes the feature registered above are those of
+		a boot that has none to read; this boot registers each of them once	*/
+	$probe = $appData;
+	foreach( [ 'form' ] as $shortcode )
+		\Nino\Callbacks::removeCallbacks( $probe, '/nino/html/shortcode/'. $shortcode );
+	\Nino\Modules\Components::init( $probe );
+	\Nino\Modules\Forms::init( $probe );
+	ninoWarnings();
+
+	check( 'the component is registered with the schema the manifest declares',
+		( \Nino\Modules\Components::components( $probe )['form'] ?? null ) === ( $declared['form'] ?? false ) );
+	check( '...as one meant once per page: the registered schema says it stays out of a loop',
+		( \Nino\Modules\Components::components( $probe )['form']['loop'] ?? null ) === false );
+	check( '...and what the feature registers is answered once - the component by its wrapper',
+		\Nino\Features::shortcodes( $probe, 'forms' ) === [ 'form' ]
+		&& count( $registered = \Nino\Callbacks::registered( $probe, '/nino/html/shortcode/form' ) ) === 1 && $registered[0] instanceof \Closure );
+	check( '...with the defaults of the schema, as strings',
+		\Nino\Modules\Components::defaults( $probe, 'form' ) === [ 'key' => '', 'class' => '' ] );
+
+	foreach( $calls as $call )
+		check( 'renders as it did: '. $call, preg_replace( '/name="_t" value="\d{10}"/', 'name="_t" value="0"', \Nino\Html::renderHtml( $probe, $call ) ) === $before[$call] );
+
+	ninoWarnings();
+
+	check( 'every attribute written out at its default is the call without it',
+		preg_replace( '/name="_t" value="\d{10}"/', 'name="_t" value="0"', \Nino\Html::renderHtml( $probe, '[form key="" class=""]' ) ) === $before['[form]'] );
+	check( 'a class of its own comes after the form\'s own, no class leaves no space behind',
+		str_contains( \Nino\Html::renderHtml( $probe, '[form key="quote" class="wide"]' ), '<form class="nino-form wide" id="form-quote"' ) === true
+		&& str_contains( $before['[form key="quote"]'], '<form class="nino-form" id="form-quote"' ) === true );
+
+} )( $appData );
+
+echo "\n";
+
+
 // --- Switching it off --------------------------------------------------------
 
 echo "The feature - what a project keeps when it is switched off again\n";

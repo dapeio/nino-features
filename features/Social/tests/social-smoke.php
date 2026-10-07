@@ -203,6 +203,84 @@ ninoWarnings();
 check( 'drawing raised no warning', ninoWarnings() === [] );
 
 
+// --- Components ----------------------------------------------------------------
+
+echo "Components - [social], [social-link], [social-icon] as the Builder offers them\n";
+
+if( class_exists( '\\Nino\\Modules\\Components' ) === false )
+	echo "  --  this Nino has no \\Nino\\Modules\\Components: the manifest's components are not read here, and the shortcodes register themselves\n";
+else ( static function( array $appData ): void {
+
+	$declared = \Nino\Features::manifest( dirname( __DIR__ ) )['components'] ?? [];
+
+	// Every documented call form, as it renders before the wrapper is there
+	$calls = [
+		'[social]',
+		'[social only="telegram, instagram, nope"]',
+		'[social exclude="facebook,telegram"]',
+		'[social show="both" size="large"]',
+		'[social show="label" size="small"]',
+		'[social size="huge" show="all" class="x" onclick="y"]',
+		'Follow us on [social-link youtube].',
+		'[social-link id="youtube" show="label"]',
+		'[social-link nope]',
+		'[social-link]',
+		'[social-icon telegram]',
+		'[social-icon name="telegram"]',
+		'[social-icon ../../config]',
+		'[social-icon name="../LICENSE"]',
+		'[elements /social][social-icon name="[[icon]]"][/elements]',
+	];
+
+	$before = [];
+	foreach( $calls as $call )
+		$before[$call] = \Nino\Html::renderHtml( $appData, $call );
+
+	/*	The kernel reads the manifest ahead of the feature's own init() - that is
+		the order here too, on a copy of the project's data that nothing else in
+		this test sees. The shortcodes the feature registered above are those of
+		a boot that has none to read; this boot registers each of them once	*/
+	$probe = $appData;
+	foreach( [ 'social', 'social-icon', 'social-link' ] as $shortcode )
+		\Nino\Callbacks::removeCallbacks( $probe, '/nino/html/shortcode/'. $shortcode );
+	\Nino\Modules\Components::init( $probe );
+	\Nino\Modules\Social::init( $probe );
+	ninoWarnings();
+
+	check( 'the components are registered with the schema the manifest declares',
+		( \Nino\Modules\Components::components( $probe )['social'] ?? null ) === ( $declared['social'] ?? false )
+		&& ( \Nino\Modules\Components::components( $probe )['social-link'] ?? null ) === ( $declared['social-link'] ?? false )
+		&& ( \Nino\Modules\Components::components( $probe )['social-icon'] ?? null ) === ( $declared['social-icon'] ?? false ) );
+	check( '...and what the feature registers is answered once - the components by its wrapper',
+		\Nino\Features::shortcodes( $probe, 'social' ) === [ 'social', 'social-icon', 'social-link' ]
+		&& count( $registered = \Nino\Callbacks::registered( $probe, '/nino/html/shortcode/social' ) ) === 1 && $registered[0] instanceof \Closure
+		&& count( $registered = \Nino\Callbacks::registered( $probe, '/nino/html/shortcode/social-link' ) ) === 1 && $registered[0] instanceof \Closure
+		&& count( $registered = \Nino\Callbacks::registered( $probe, '/nino/html/shortcode/social-icon' ) ) === 1 && $registered[0] instanceof \Closure );
+	check( '...with the defaults of the schema, as strings',
+		\Nino\Modules\Components::defaults( $probe, 'social' ) === [ 'only' => '', 'exclude' => '', 'show' => 'icon', 'size' => '', 'class' => '' ]
+		&& \Nino\Modules\Components::defaults( $probe, 'social-link' ) === [ 'id' => '', 'show' => 'both', 'class' => '' ]
+		&& \Nino\Modules\Components::defaults( $probe, 'social-icon' ) === [ 'name' => '', 'class' => '' ] );
+
+	foreach( $calls as $call )
+		check( 'renders as it did: '. $call, \Nino\Html::renderHtml( $probe, $call ) === $before[$call] );
+
+	ninoWarnings();
+
+	check( 'every attribute written out at its default is the call without it',
+		\Nino\Html::renderHtml( $probe, '[social only="" exclude="" show="icon" size=""]' ) === $before['[social]']
+		&& \Nino\Html::renderHtml( $probe, '[social-link id="youtube" show="both"]' ) === \Nino\Html::renderHtml( $probe, '[social-link youtube]' ) );
+	check( 'the link of a call written with id= and the link of the bare word are one',
+		\Nino\Html::renderHtml( $probe, '[social-link id="youtube"]' ) === \Nino\Html::renderHtml( $probe, '[social-link youtube]' )
+		&& \Nino\Html::renderHtml( $probe, '[social-link id="youtube"]' ) !== '' );
+	check( 'a class is still nothing this draws - what an editor can put in is not echoed',
+		\Nino\Html::renderHtml( $probe, '[social class="x"]' ) === $before['[social]']
+		&& \Nino\Html::renderHtml( $probe, '[social-link id="youtube" class="x"]' ) === \Nino\Html::renderHtml( $probe, '[social-link youtube]' ) );
+
+} )( $appData );
+
+echo "\n";
+
+
 // --- 4. Positions ------------------------------------------------------------
 
 echo "\nPositions\n";

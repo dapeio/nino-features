@@ -85,4 +85,37 @@ return [
 	// The index files are derived from the Elements and rebuilt on demand -
 	// not data a backup has to carry
 	'data'				=> [],
+	/*	Only the count as the Builder offers it. [search-results] is written around the
+		markup of one hit, with [[field]] for what it holds, and the Builder can neither
+		carry that markup nor edit it as it is: it reads a [[title]] as a call of the title
+		component and its editor for a body would flatten the record. It stays a
+		shortcode, like [consent]. Nino 1.5 ignores the key	*/
+	'components'	=> [
+		'search-count' => [
+			'label'			=> [ 'en_US' => 'Number of hits', 'de_DE' => 'Anzahl der Treffer' ],
+			'source'		=> 'none',
+			'loop'			=> false,
+			'attributes'	=> [
+				'type' => [
+					'type'		=> 'string',
+					'default'	=> '',
+					'label'		=> [ 'en_US' => 'Element types', 'de_DE' => 'Elementtypen' ],
+					'hint'		=> [
+						'en_US' => 'One element type, or several separated by commas, such as /products. Without one nothing is drawn.',
+						'de_DE' => 'Ein Elementtyp oder mehrere, durch Komma getrennt, etwa /products. Ohne einen wird nichts gezeichnet.',
+					],
+				],
+				'key' => [
+					'type'		=> 'string',
+					'default'	=> '',
+					'label'		=> [ 'en_US' => 'Query variable', 'de_DE' => 'Query-Variable' ],
+					'hint'		=> [
+						'en_US' => 'The name of the input of the search form. Empty takes q.',
+						'de_DE' => 'Der Name des Eingabefelds im Suchformular. Leer nimmt q.',
+					],
+				],
+			],
+			'preview'		=> 'text',
+		],
+	],
 ];

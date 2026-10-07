@@ -52,10 +52,20 @@ namespace Nino\Modules\Posts {
 		private static array $fieldValue = [ \Nino\Html::class, 'fieldValue' ];
 
 		public static function init( array &$appData ): void {
+
 			\Nino\Html::addShortcode( $appData, 'posts', 			[ self::class, 'doPosts' ] );
 			\Nino\Html::addShortcode( $appData, 'post', 			[ self::class, 'doPost' ] );
-			\Nino\Html::addShortcode( $appData, 'posts-pager',[ self::class, 'doPager' ] );
 			\Nino\Html::addShortcode( $appData, 'post-nav', 	[ self::class, 'doNav' ] );
+
+			/*	Nino 1.6 has registered [posts-pager] as a component from the manifest
+				before this runs (\Nino\Features::registerComponents()), and a second
+				registration here would take it back from the wrapper that fills in
+				the defaults. Nino 1.5 ignores the manifest key and needs it. The other
+				three are shortcodes: the Builder cannot carry a record template	*/
+			$components = class_exists( '\\Nino\\Modules\\Components' ) === true ? \Nino\Modules\Components::components( $appData ) : [];
+
+			if( isset( $components['posts-pager'] ) === false )
+				\Nino\Html::addShortcode( $appData, 'posts-pager', [ self::class, 'doPager' ] );
 		}
 
 		/**
@@ -192,8 +202,8 @@ namespace Nino\Modules\Posts {
 			// The items last: str_replace() works through its arrays in order, so a
 			// token after them would be looked for in the markup they put in as well
 			return str_replace(
-				[ '[[label]]', '[[items]]' ],
-				[ self::_text( $appData, $args, 'label', 'Pages', 'Seiten' ), $items ],
+				[ '[[class]]', '[[label]]', '[[items]]' ],
+				[ self::_class( $args ), self::_text( $appData, $args, 'label', 'Pages', 'Seiten' ), $items ],
 				self::template( $appData, 'pager' )
 			);
 		}
@@ -459,6 +469,23 @@ namespace Nino\Modules\Posts {
 				return htmlspecialchars( $fill, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
 
 			return str_starts_with( \Nino\Locales::getCurrentLocale( $appData ), 'de' ) === true ? $german : $english;
+		}
+
+		/**
+		 *	The class attribute of one's own a call gives the pager, with the space
+		 *	in front of it that the template leaves out - escaped, and with its
+		 *	brackets as character references, because the markup is rendered
+		 *	once more
+		 *
+		 *	@param		array			$args					Shortcode attributes
+		 *
+		 *	@return 	string								'' or ' class="my-class"'
+		 */
+		private static function _class( array $args ): string {
+
+			$class = trim( (string) ( $args['class'] ?? '' ) );
+
+			return $class === '' ? '' : ' class="'. str_replace( '[', '&#91;', htmlspecialchars( $class, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) ). '"';
 		}
 
 		/**

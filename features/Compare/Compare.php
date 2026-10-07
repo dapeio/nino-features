@@ -72,7 +72,19 @@ namespace Nino\Modules {
 		 */
 		public static function init( array &$appData ): void {
 
-			\Nino\Html::addShortcode( $appData, 'compare', [ self::class, 'doShortcode' ] );
+			/*	Nino 1.6 has registered [compare] as a component from the manifest
+				before this runs (\Nino\Features::registerComponents()), and a second
+				registration here would take it back from the wrapper that fills in
+				the defaults. Nino 1.5 ignores the manifest key and needs it. The
+				wrapper hands on only the attributes the schema names, and an
+				attribute is a name without a hyphen: before-label and after-label are
+				renamed by a callback that runs ahead of it	*/
+			$components = class_exists( '\\Nino\\Modules\\Components' ) === true ? \Nino\Modules\Components::components( $appData ) : [];
+
+			if( isset( $components['compare'] ) === false )
+				\Nino\Html::addShortcode( $appData, 'compare', [ self::class, 'doShortcode' ] );
+			else
+				\Nino\Callbacks::registerCallback( $appData, '/nino/html/shortcode/compare', [ self::class, 'callbackShortcode' ], 1 );
 
 			/*	The virtual '/features/...' prefix resolves against
 				\Nino\Features::dir() (\Nino\Filesystem::FEATURES_DIR), the same way
@@ -122,8 +134,9 @@ namespace Nino\Modules {
 			$alt = $alt === '' ? '' : $safe( \Nino\Html::renderHtml( $appData, $alt ) );
 
 			return str_replace(
-				[ '[[ratio]]', '[[start]]', '[[before]]', '[[after]]', '[[alt]]', '[[beforelabel]]', '[[afterlabel]]' ],
+				[ '[[class]]', '[[ratio]]', '[[start]]', '[[before]]', '[[after]]', '[[alt]]', '[[beforelabel]]', '[[afterlabel]]' ],
 				[
+					self::_class( $args ),
 					$ratio,
 					(string) self::start( $args ),
 					$safe( \Nino\Images::getUrl( $appData, $before ) ),
@@ -134,6 +147,64 @@ namespace Nino\Modules {
 				],
 				self::template( $appData, 'compare' )
 			);
+		}
+
+		/**
+		 *	The names the schema cannot carry, renamed: before-label and
+		 *	after-label as the Components wrapper reads them, beforeLabel and
+		 *	afterLabel. Runs ahead of the wrapper on '/nino/html/shortcode/compare'
+		 *	(priority 1, the wrapper has 5) and changes the arguments in place
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		mixed			&$args				(reference) The arguments of the shortcode
+		 *
+		 *	@return 	void
+		 */
+		public static function callbackShortcode( array &$appData, mixed &$args ): void {
+
+			if( is_array( $args ) === false )
+				return;
+
+			foreach( [ 'before-label' => 'beforeLabel', 'after-label' => 'afterLabel' ] as $written => $attribute )
+				if( isset( $args[$written] ) === true ) {
+					$args[$attribute] = $args[$written];
+					unset( $args[$written] );
+				}
+		}
+
+		/**
+		 *	[compare] as the Components module hands it over, the Builder's
+		 *	way: every attribute is there, an empty one where nothing was
+		 *	written, and doShortcode() reads them under the names it has
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$args					The resolved arguments (see \Nino\Modules\Components::dispatch())
+		 *
+		 *	@return 	string								What doShortcode() renders for them
+		 */
+		public static function componentCompare( array &$appData, array $args ): string {
+
+			$args['before-label']	= $args['beforeLabel'];
+			$args['after-label']	= $args['afterLabel'];
+
+			return self::doShortcode( $appData, $args );
+		}
+
+		/**
+		 *	The class of one's own a call adds to the box, with the space in
+		 *	front of it that the template leaves out - escaped, and with its
+		 *	brackets as character references, because the markup is rendered
+		 *	once more
+		 *
+		 *	@param		array			$args					Shortcode attributes
+		 *
+		 *	@return 	string								'' or ' my-class'
+		 */
+		private static function _class( array $args ): string {
+
+			$class = trim( (string) ( $args['class'] ?? '' ) );
+
+			return $class === '' ? '' : ' '. str_replace( '[', '&#91;', htmlspecialchars( $class, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) );
 		}
 
 		/**
