@@ -1254,7 +1254,12 @@ $appData['/nino/modules'] = [ '\\Nino\\Modules\\Assets', '\\Nino\\Modules\\Templ
 	through the Images panel does not have. One slot serves every variant: a frame
 	that was drawn for a dark ground says so with nino-logo--invert and applies no
 	filter of its own	*/
-\Nino\Modules\Images::init( $appData );
+// [image] is the Components module's from Nino 1.6 and the Images module's
+// before; whichever this checkout carries registers it
+if( class_exists( '\\Nino\\Modules\\Components' ) === true )
+	\Nino\Modules\Components::init( $appData );
+else
+	\Nino\Modules\Images::init( $appData );
 $logoNamed		= [];
 $logoRender		= [ 'filled' => [], 'empty' => [] ];
 $logoUrl			= \Nino\Images::getUrl( $appData, 'logo.webp' );

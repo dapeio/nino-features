@@ -187,7 +187,15 @@ $elsewhere = array_merge( $elsewhere, array_values( array_intersect( [ 'nino-is-
 	of a unit can carry it - the module's shortcodes write it - so it counts as
 	"rendered elsewhere" only while the checkout's Nino.css defines it, and this
 	test passes on a Nino without the module as well	*/
-$drawnByModules = [ 'nino-legal-section' ];
+$drawnByModules = [ 'nino-legal-section',
+	// Nino 1.6's Components module: the section background, the columns a
+	// viewport hides, the component stack and its gaps, the image frame -
+	// written by the Builder and the components, never by a unit's template
+	'nino-section-bg', 'nino-hide-s', 'nino-hide-m', 'nino-hide-l',
+	'nino-stack', 'nino-stack-start', 'nino-stack-center', 'nino-stack-end',
+	'nino-stack-gap-0', 'nino-stack-gap-1', 'nino-stack-gap-2', 'nino-stack-gap-3', 'nino-stack-gap-4', 'nino-stack-gap-5', 'nino-stack-gap-6',
+	'nino-image', 'nino-image--1-1', 'nino-image--4-3', 'nino-image--3-2', 'nino-image--16-9', 'nino-image--21-9',
+];
 $elsewhere = array_merge( $elsewhere, array_values( array_intersect( $drawnByModules, $defined ) ) );
 
 $uncovered = [];
