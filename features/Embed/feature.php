@@ -40,6 +40,10 @@ return [
 				'en_US' => 'What the shortcode writes. The address is a data attribute, not a src - there is no iframe on the page until one is asked for.',
 				'de_DE' => 'Was der Shortcode schreibt. Die Adresse steht in einem data-Attribut, nicht in einem src - vor der Anforderung gibt es kein iframe auf der Seite.',
 			],
+			'nino:embed event' => [
+				'en_US' => 'Fired on the document with the host once an embed is released, by a press or by consent, for anything on the page that wants to know.',
+				'de_DE' => 'Wird am Dokument mit dem Host ausgelöst, sobald ein Embed freigegeben ist, durch einen Klick oder durch eine Einwilligung – für alles auf der Seite, das es wissen will.',
+			],
 		],
 		'routes' => [],
 		'panel' => [],
@@ -55,8 +59,8 @@ return [
 				'de_DE' => 'Die vier Wörter einer nicht freigegebenen Einbindung - die zwei auf der Fläche, der Ausweg ohne JavaScript und der Name des Rahmens - ins Panel Texte.',
 			],
 			'elements/privacy.php' => [
-				'en_US' => 'Its three sections of the privacy policy (embedded content, YouTube, Vimeo), added to the Legal module\'s type - never replacing a section. Where there is no such module, nothing happens.',
-				'de_DE' => 'Seine drei Abschnitte der Datenschutzerklärung (eingebettete Inhalte, YouTube, Vimeo), dem Typ des Moduls Legal hinzugefügt – ohne einen Abschnitt zu ersetzen. Wo es das Modul nicht gibt, passiert nichts.',
+				'en_US' => 'Its three sections of the privacy policy (embedded content, YouTube, Vimeo), added to the Legal module\'s type - never replacing a section. Where there is no such module, nothing happens. A starting point, no legal advice: a project that uses only one of YouTube and Vimeo hides the other section, a url= embed is the operator\'s to name, and whoever publishes checks the provider names, offices and links, which change.',
+				'de_DE' => 'Seine drei Abschnitte der Datenschutzerklärung (eingebettete Inhalte, YouTube, Vimeo), dem Typ des Moduls Legal hinzugefügt – ohne einen Abschnitt zu ersetzen. Wo es das Modul nicht gibt, passiert nichts. Ein Ausgangspunkt, keine Rechtsberatung: Ein Projekt, das nur YouTube oder nur Vimeo nutzt, blendet den anderen Abschnitt aus, eine url=-Einbindung benennt der Betreiber selbst, und wer veröffentlicht, prüft Anbieternamen, Stellen und Links, die sich ändern.',
 			],
 		],
 	],
@@ -84,8 +88,8 @@ return [
 			'type'				=> 'string',
 			'label'				=> [ 'en_US' => 'Consent category', 'de_DE' => 'Einwilligungs-Kategorie' ],
 			'hint'				=> [
-				'en_US' => 'The Consent category that releases an embed without a press. Empty: every embed always waits for one.',
-				'de_DE' => 'Die Consent-Kategorie, die eine Einbindung ohne Druck freigibt. Leer: Jede Einbindung wartet immer auf einen.',
+				'en_US' => 'The Consent category that releases an embed without a press. Empty: every embed always waits for one. The privacy policy\'s section on embedded content names External media, the label of the default - change it there too.',
+				'de_DE' => 'Die Consent-Kategorie, die eine Einbindung ohne Druck freigibt. Leer: Jede Einbindung wartet immer auf einen. Der Abschnitt zu eingebetteten Inhalten in der Datenschutzerklärung nennt Externe Medien, die Bezeichnung des Standards – änderst Du den Wert, passe ihn dort mit an.',
 			],
 			'maxlength'		=> 40,
 			'pattern'			=> '/^[a-z0-9_-]*$/',

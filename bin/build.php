@@ -2,26 +2,30 @@
 declare(strict_types=1);
 /**
  *	Nino features
- *	build.php			Builds what getnino.dev publishes: one .tar.gz per feature
- *								version, holding exactly the directory that lands below a
- *								project's features/, and the catalogue.json that lists them
- *								in format 1 - what \Nino\Catalogue in Nino fetches, verifies
- *								and installs from. Every manifest below features/ is read
- *								through the kernel of a Nino checkout first, --only or not:
- *								the catalogue never lists what Nino would skip.
+ *	build.php			Builds what getnino.dev publishes: one .tar.gz per feature,
+ *								holding exactly the directory that lands below a project's
+ *								features/, and the catalogue.json that lists them in format
+ *								1 - what \Nino\Catalogue in Nino fetches, verifies and
+ *								installs from. Every manifest below features/ is read through
+ *								the kernel of a Nino checkout first: the catalogue never
+ *								lists what Nino would skip.
  *
- *								A published version is immutable. An archive that already
- *								exists in the output directory is neither rebuilt nor
- *								overwritten, and the entry the catalogue carries for it
- *								stays as it is; an entry whose archive is missing here is
- *								rebuilt and has to come out byte for byte the same. A change
- *								to a feature is a new version in feature.php, nothing else.
+ *								What main carries is the catalogue. Every archive is built
+ *								on every run and replaces the one in the output directory;
+ *								the archives are deterministic, so a feature that did not
+ *								change gives the same bytes and its file is left alone. A
+ *								feature that did change gives other bytes under the same
+ *								name <key>-<version>.tar.gz, and its entry carries the new
+ *								sha256 and size. There is one entry per feature, the version
+ *								of its manifest; an archive in the output directory that no
+ *								entry names is removed.
  *
- *								The catalogue is merged, not replaced: a catalogue.json
- *								already in the output directory keeps every entry of every
- *								other key and version. That is how one release joins what
- *								is published - .github/workflows/release.yml fetches the
- *								published catalogue into the output directory first.
+ *								The catalogue.json already in the output directory (bin/
+ *								release.sh fetches the published one there first) is read for
+ *								two things only: an entry's 'released' stays the day of the
+ *								previous entry while its sha256 is the same, and 'generated'
+ *								stays while the rest of the document is. A run that changes
+ *								nothing leaves catalogue.json and its signature untouched.
  *
  *								Pure PHP: the archives are plain ustar tars written here, the
  *								entries sorted and every one stamped with the same fixed time,
@@ -29,16 +33,15 @@ declare(strict_types=1);
  *								would stamp the clock in, and a rebuild a second later would
  *								differ. The signature is openssl_sign(). Nothing is shelled out.
  *
- *	Usage: php bin/build.php <nino-checkout> <out-dir> [--base-url https://catalogue.getnino.dev] [--key private.pem] [--only <key>]
+ *	Usage: php bin/build.php <nino-checkout> <out-dir> [--base-url https://catalogue.getnino.dev] [--key private.pem]
  *
  *	  --base-url   where the archives will be served from: the archive url of
  *	               an entry is <base-url>/<key>-<version>.tar.gz
  *	  --key        the PEM private key to sign catalogue.json with (ECDSA over
  *	               P-256, see README.md). Without it no signature is written
  *	               and the openssl one-liner to sign by hand is printed
- *	  --only       build one feature, by key; every other entry is kept
  *
- *	Exit status 0 when everything was built or kept, 1 on any problem, 2 on
+ *	Exit status 0 when everything was built, 1 on any problem, 2 on
  *	a usage error.
  */
 
@@ -91,7 +94,7 @@ function fail( string $why, int $status = 1 ): never {
  */
 function usage( string $why = '' ): never {
 
-	fail( ( $why === '' ? '' : $why. "\n" ). 'Usage: php bin/build.php <nino-checkout> <out-dir> [--base-url '. BUILD_DEFAULT_BASE_URL. '] [--key private.pem] [--only <key>]', 2 );
+	fail( ( $why === '' ? '' : $why. "\n" ). 'Usage: php bin/build.php <nino-checkout> <out-dir> [--base-url '. BUILD_DEFAULT_BASE_URL. '] [--key private.pem]', 2 );
 }
 
 /**
@@ -287,7 +290,8 @@ function tarHeader( string $name, int $size, string $type, int $mode ): string {
  *	Build one archive: the feature directory as <directory>/..., its files
  *	in sorted order with fixed modes and the fixed time, as one tar in
  *	memory, gzipped, written into a temporary directory, read back and
- *	checked the way the kernel reads it, then moved into place
+ *	checked the way the kernel reads it, then moved into place - unless the
+ *	file there is the same bytes already
  *
  *	@param		string		$source				The feature directory
  *	@param		string		$directory		Its name - the one top-level directory of the archive
@@ -340,6 +344,13 @@ function buildArchive( string $source, string $directory, string $target ): arra
 
 	$stats = inspectArchive( $staged, $directory );
 
+	// The same bytes are already there: the file stays, with the time it has,
+	// so that what syncs the directory sees no change
+	if( is_file( $target ) === true && hash_file( 'sha256', $target ) === hash_file( 'sha256', $staged ) ) {
+		removeTree( $tmp );
+		return $stats;
+	}
+
 	if( @rename( $staged, $target ) === false && ( @copy( $staged, $target ) === false || (int) filesize( $target ) !== strlen( $packed ) ) ) {
 		removeTree( $tmp );
 		@unlink( $target );
@@ -383,7 +394,7 @@ function sharedName( array|string $one, array|string $other ): string {
 // --- Arguments ---------------------------------------------------------------
 
 $positional	= [];
-$options		= [ 'base-url' => BUILD_DEFAULT_BASE_URL, 'key' => '', 'only' => '' ];
+$options		= [ 'base-url' => BUILD_DEFAULT_BASE_URL, 'key' => '' ];
 
 for( $i = 1; $i < count( $argv ); $i++ ) {
 
@@ -423,8 +434,6 @@ if( $out === '' )
 $baseUrl = rtrim( trim( $options['base-url'] ), '/' );
 if( preg_match( '#^https://[a-z0-9.-]+(?::\d+)?(?:/[^\s?\#]*)?$#i', $baseUrl ) !== 1 )
 	usage( '--base-url must be an https url, the kernel fetches nothing else: "'. $options['base-url']. '"' );
-
-$only = trim( $options['only'] );
 
 // The signing key is read before anything is built: a run that cannot sign
 // is a run that leaves nothing half done
@@ -519,11 +528,6 @@ foreach( $features as $key => $manifest )
 			fail( 'features/'. basename( $manifest['dir'] ). ' and features/'. basename( $other['dir'] ). ' are both named "'. $shared. '" - a feature is shown by its name, so no two may carry one' );
 	}
 
-if( $only !== '' && isset( $features[$only] ) === false )
-	fail( 'No feature has the key "'. $only. '" - there are: '. implode( ', ', array_keys( $features ) ) );
-
-$selected = $only === '' ? $features : [ $only => $features[$only] ];
-
 
 // --- The catalogue so far ----------------------------------------------------
 
@@ -535,84 +539,60 @@ if( is_writable( $out ) === false )
 
 $cataloguePath	= $out. '/catalogue.json';
 $signaturePath	= $cataloguePath. '.sig';
-$entries				= [];		// key@version => entry, as the catalogue carries it
+$before					= null;		// the catalogue.json as it was, the bytes
+$previous				= [];			// key => the entry it had
+$generated			= '';
 
 if( is_file( $cataloguePath ) === true ) {
 
-	$document = json_decode( (string) file_get_contents( $cataloguePath ), true );
+	$before		= (string) file_get_contents( $cataloguePath );
+	$document	= json_decode( $before, true );
 
 	if( is_array( $document ) === false || ( $document['format'] ?? null ) !== BUILD_FORMAT || is_array( $document['features'] ?? null ) === false )
-		fail( $cataloguePath. ' is not a format '. BUILD_FORMAT. ' catalogue - not merging into it' );
+		fail( $cataloguePath. ' is not a format '. BUILD_FORMAT. ' catalogue - not building over it' );
 
 	foreach( $document['features'] as $index => $entry ) {
 
 		if( is_array( $entry ) === false || is_string( $entry['key'] ?? null ) === false || is_string( $entry['version'] ?? null ) === false )
-			fail( $cataloguePath. ': entry '. $index. ' names no key and version - not merging into it' );
+			fail( $cataloguePath. ': entry '. $index. ' names no key and version - not building over it' );
 
-		$entries[ $entry['key']. '@'. $entry['version'] ] = $entry;
+		// Per key the highest version: the entry the next one follows
+		if( isset( $previous[ $entry['key'] ] ) === false || version_compare( $entry['version'], $previous[ $entry['key'] ]['version'] ) > 0 )
+			$previous[ $entry['key'] ] = $entry;
 	}
 
-	say( 'merging into '. $cataloguePath. ' ('. count( $entries ). ' '. ( count( $entries ) === 1 ? 'entry' : 'entries' ). ')' );
+	$generated = is_string( $document['generated'] ?? null ) === true ? $document['generated'] : '';
+
+	say( 'reading  '. $cataloguePath. ' ('. count( $document['features'] ). ' '. ( count( $document['features'] ) === 1 ? 'entry' : 'entries' ). ')' );
 }
 
 
-// --- Build or keep -----------------------------------------------------------
+// --- Build every archive -----------------------------------------------------
 
-$today = gmdate( 'Y-m-d' );
+$today		= gmdate( 'Y-m-d' );
+$entries	= [];		// key => entry, as the catalogue carries it
 
-foreach( $selected as $key => $manifest ) {
+foreach( $features as $key => $manifest ) {
 
 	$version		= $manifest['version'];
 	$directory	= basename( $manifest['dir'] );
 	$name				= $key. '-'. $version. '.tar.gz';
 	$path				= $out. '/'. $name;
-	$id					= $key. '@'. $version;
 	$label			= str_pad( $key. ' '. $version, 24 );
-	$existing		= $entries[$id] ?? null;
+	$old				= is_file( $path ) === true ? (string) hash_file( 'sha256', $path ) : '';
 
-	// A file of zero bytes is not an archive that was ever published -
-	// publish.php takes nothing the catalogue does not name with a size -
-	// but what a web server that answers 200 with an empty body for a
-	// missing file leaves behind in dist/. Removed and built afresh
-	if( is_file( $path ) === true && (int) filesize( $path ) === 0 ) {
-		say( 'removed  '. $label. $name. ' - an empty file is not an archive (does the server answer 404 for a missing file?)' );
-		@unlink( $path );
-	}
+	[ $count, $unpacked ] = buildArchive( $manifest['dir'], $directory, $path );
 
-	if( is_file( $path ) === true ) {
+	$sha256	= (string) hash_file( 'sha256', $path );
+	$size		= (int) filesize( $path );
 
-		$sha256	= (string) hash_file( 'sha256', $path );
-		$size		= (int) filesize( $path );
+	say( ( $sha256 === $old ? 'same     ' : 'built    ' ). $label. $name. ' ('. $count. ' entries, '. human( $size ). ' packed, '. human( $unpacked ). ' unpacked, sha256 '. substr( $sha256, 0, 12 ). '…)' );
 
-		if( $existing !== null ) {
-
-			if( strtolower( (string) ( $existing['sha256'] ?? '' ) ) !== $sha256 || ( $existing['size'] ?? null ) !== $size )
-				fail( $name. ' is not the archive the catalogue entry for '. $id. ' names (sha256 '. ( $existing['sha256'] ?? '?' ). ', '. ( $existing['size'] ?? '?' ). ' bytes) - a published version is immutable; if this archive was never published, remove it and build again, else fetch the published one' );
-
-			say( 'kept     '. $label. $name. ' - already exists, a published version is immutable' );
-			continue;
-		}
-
-		say( 'indexed  '. $label. $name. ' - already exists, its entry was missing ('. human( $size ). ', sha256 '. substr( $sha256, 0, 12 ). '…)' );
-	}
-	else {
-
-		[ $count, $unpacked ] = buildArchive( $manifest['dir'], $directory, $path );
-
-		$sha256	= (string) hash_file( 'sha256', $path );
-		$size		= (int) filesize( $path );
-
-		// An entry without its archive here came from the published catalogue:
-		// the rebuild has to be the very bytes projects verify against
-		if( $existing !== null && ( strtolower( (string) ( $existing['sha256'] ?? '' ) ) !== $sha256 || ( $existing['size'] ?? null ) !== $size ) ) {
-			@unlink( $path );
-			fail( $id. ' is already in the catalogue with sha256 '. ( $existing['sha256'] ?? '?' ). ' and '. ( $existing['size'] ?? '?' ). ' bytes, and a rebuild does not give the same archive - a published version is immutable: fetch the published '. $name. ' into '. $out. ' to keep it, or release a new version' );
-		}
-
-		say( 'built    '. $label. $name. ' ('. $count. ' entries, '. human( $size ). ' packed, '. human( $unpacked ). ' unpacked, sha256 '. substr( $sha256, 0, 12 ). '…)' );
-	}
-
-	$released = is_string( $existing['released'] ?? null ) === true && trim( $existing['released'] ) !== '' ? $existing['released'] : $today;
+	// The day of the entry before while the archive is the same bytes, today
+	// when it is not
+	$released = $today;
+	if( isset( $previous[$key] ) === true && strtolower( (string) ( $previous[$key]['sha256'] ?? '' ) ) === $sha256 && is_string( $previous[$key]['released'] ?? null ) === true && trim( $previous[$key]['released'] ) !== '' )
+		$released = $previous[$key]['released'];
 
 	$entry = [
 		'key'					=> $key,
@@ -641,35 +621,42 @@ foreach( $selected as $key => $manifest ) {
 	if( $entry['maturity'] === '' )
 		unset( $entry['maturity'] );
 
-	$entries[$id] = $entry;
+	$entries[$key] = $entry;
 }
 
+// An archive no entry names is what an earlier version or a feature that is
+// gone left behind: the directory holds what the catalogue lists, nothing else
+$named = array_map( static fn( array $entry ): string => $entry['key']. '-'. $entry['version']. '.tar.gz', $entries );
 
-// Where an archive is served from is this build's --base-url, for every
-// entry, kept or built: the url is derived from the place, not part of the
-// version - a catalogue that moves to another host keeps its archives and
-// their digests and names them where they are now
-foreach( $entries as &$entry )
-	$entry['archive'] = $baseUrl. '/'. $entry['key']. '-'. $entry['version']. '.tar.gz';
-unset( $entry );
+foreach( glob( $out. '/*.tar.gz' ) ?: [] as $file )
+	if( in_array( basename( $file ), $named, true ) === false ) {
+		@unlink( $file );
+		say( 'removed  '. basename( $file ). ' - no entry names it' );
+	}
 
 
 // --- Write and sign ----------------------------------------------------------
 
-uasort( $entries, static fn( array $a, array $b ): int => strcmp( $a['key'], $b['key'] ) ?: version_compare( $b['version'], $a['version'] ) );
+$encode = static function( array $features, string $generated ): string {
 
-$document = [
-	'format'		=> BUILD_FORMAT,
-	'generated'	=> gmdate( 'Y-m-d\TH:i:s\Z' ),
-	'features'	=> array_values( $entries ),
-];
+	try {
+		return json_encode( [ 'format' => BUILD_FORMAT, 'generated' => $generated, 'features' => $features ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR ). "\n";
+	}
+	catch( \JsonException $e ) {
+		fail( 'The catalogue cannot be encoded: '. $e->getMessage() );
+	}
+};
 
-try {
-	$json = json_encode( $document, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR ). "\n";
-}
-catch( \JsonException $e ) {
-	fail( 'The catalogue cannot be encoded: '. $e->getMessage() );
-}
+// Sorted by key; one entry per key, so there is no version to order by
+ksort( $entries );
+
+// 'generated' is the time of the last change: while the entries are the
+// ones the catalogue already carries, it stays, and so do the bytes
+$json			= $encode( array_values( $entries ), $generated !== '' ? $generated : gmdate( 'Y-m-d\TH:i:s\Z' ) );
+$changed	= $json !== $before;
+
+if( $changed === true )
+	$json = $encode( array_values( $entries ), gmdate( 'Y-m-d\TH:i:s\Z' ) );
 
 // What the kernel on the other end will make of it
 $parsed = \Nino\Catalogue::parse( $json );
@@ -678,25 +665,39 @@ if( is_string( $parsed ) === true )
 	fail( 'This kernel would refuse the catalogue: '. $parsed );
 
 if( count( $parsed['features'] ) !== count( $entries ) )
-	fail( 'This kernel reads '. count( $parsed['features'] ). ' of '. count( $entries ). ' entries - two entries name the same key and version' );
+	fail( 'This kernel reads '. count( $parsed['features'] ). ' of '. count( $entries ). ' entries' );
 
-if( @file_put_contents( $cataloguePath, $json ) !== strlen( $json ) )
-	fail( 'Could not write '. $cataloguePath );
+if( $changed === true ) {
 
-say( 'wrote    '. $cataloguePath. ' ('. count( $entries ). ' '. ( count( $entries ) === 1 ? 'entry' : 'entries' ). ', accepted by \\Nino\\Catalogue::parse())' );
+	if( @file_put_contents( $cataloguePath, $json ) !== strlen( $json ) )
+		fail( 'Could not write '. $cataloguePath );
+
+	say( 'wrote    '. $cataloguePath. ' ('. count( $entries ). ' '. ( count( $entries ) === 1 ? 'entry' : 'entries' ). ', accepted by \\Nino\\Catalogue::parse())' );
+}
+else
+	say( 'same     '. $cataloguePath. ' ('. count( $entries ). ' '. ( count( $entries ) === 1 ? 'entry' : 'entries' ). ', nothing changed)' );
 
 // Signed are the bytes on disk, not the string in memory
 $bytes = (string) file_get_contents( $cataloguePath );
 
 if( $privateKey === null ) {
 
-	if( is_file( $signaturePath ) === true ) {
+	if( $changed === true && is_file( $signaturePath ) === true ) {
 		@unlink( $signaturePath );
 		say( 'removed  '. $signaturePath. ' - it signed an earlier catalogue.json' );
 	}
 
-	say( 'not signed - sign by hand with the private key:' );
-	say( '  openssl dgst -sha256 -sign catalogue-key.pem '. $cataloguePath. ' | base64 -w0 > '. $signaturePath );
+	if( is_file( $signaturePath ) === false ) {
+		say( 'not signed - sign by hand with the private key:' );
+		say( '  openssl dgst -sha256 -sign catalogue-key.pem '. $cataloguePath. ' | base64 -w0 > '. $signaturePath );
+	}
+
+	exit( 0 );
+}
+
+// The signature that is there already holds for the same bytes: it stays
+if( $changed === false && is_file( $signaturePath ) === true && \Nino\Catalogue::verify( $bytes, (string) file_get_contents( $signaturePath ), $publicKey ) === true ) {
+	say( 'same     '. $signaturePath. ' (verified with the public key)' );
 	exit( 0 );
 }
 

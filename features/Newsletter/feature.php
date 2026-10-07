@@ -25,6 +25,14 @@ return [
 				'en_US' => 'The way out without a link: an address in, a mail with the unsubscribe link out.',
 				'de_DE' => 'Der Weg hinaus ohne Link: Adresse hinein, Mail mit dem Abmeldelink hinaus.',
 			],
+			'POST /.newsletter' => [
+				'en_US' => 'The signup: email and the honeypot location, which has to stay empty, with [csrf] in the form. 200 once the confirmation mail went out - the same for a new, a pending and a subscribed address - 400, 418, 429 or 500.',
+				'de_DE' => 'Die Anmeldung: email und der Honigtopf location, der leer bleiben muss, mit [csrf] im Formular. 200, sobald die Bestätigungsmail raus ist – gleich für eine neue, eine ausstehende und eine bestätigte Adresse – sonst 400, 418, 429 oder 500.',
+			],
+			'/.newsletter?confirm=<token> and ?unsubscribe=<token>' => [
+				'en_US' => 'Confirms a pending address, or removes an entry and records the removal. An unknown token answers 404.',
+				'de_DE' => 'Bestätigt eine ausstehende Adresse, beziehungsweise entfernt einen Eintrag und vermerkt die Entfernung. Ein unbekannter Token antwortet 404.',
+			],
 		],
 		'panel' => [
 			'Newsletter' => [
@@ -60,8 +68,12 @@ return [
 				'de_DE' => 'Seine Worte, ins Panel Texte.',
 			],
 			'elements/privacy.php' => [
-				'en_US' => 'Its section of the privacy policy, added to the Legal module\'s type - never replacing a section. Where there is no such module, nothing happens.',
-				'de_DE' => 'Sein Abschnitt der Datenschutzerklärung, dem Typ des Moduls Legal hinzugefügt – ohne einen Abschnitt zu ersetzen. Wo es das Modul nicht gibt, passiert nichts.',
+				'en_US' => 'Its section of the privacy policy, added to the Legal module\'s type - never replacing a section. Where there is no such module, nothing happens. A starting point, no legal advice. It names seven days, the default of /nino/newsletter/pending-days in config.php: whoever changes the key changes the section in the Elements panel too.',
+				'de_DE' => 'Sein Abschnitt der Datenschutzerklärung, dem Typ des Moduls Legal hinzugefügt – ohne einen Abschnitt zu ersetzen. Wo es das Modul nicht gibt, passiert nichts. Ein Ausgangspunkt, keine Rechtsberatung. Er nennt sieben Tage, den Standard von /nino/newsletter/pending-days in der config.php: Wer den Wert ändert, passt den Abschnitt im Panel Elemente mit an.',
+			],
+			'templates/mail-header.tpl, templates/mail-footer.tpl' => [
+				'en_US' => 'The mail frame, the Form module\'s two files byte for byte: whichever unit is applied first provides them.',
+				'de_DE' => 'Der Mailrahmen, die beiden Dateien des Form-Moduls Byte für Byte: Welche Einheit zuerst angewendet wird, liefert sie.',
 			],
 		],
 	],

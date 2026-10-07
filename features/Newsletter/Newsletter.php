@@ -363,7 +363,7 @@ namespace Nino\Modules {
 		 *	Only a mail that is sent charges the per-ip mail cap, so what is left
 		 *	of the difference between a listed and an unlisted address is the
 		 *	cap (the signup answers 429 at it) and the time the request takes -
-		 *	both accepted, see the README. Charging it for an unlisted address as
+		 *	both accepted. Charging it for an unlisted address as
 		 *	well would need a public \Nino\Mail API for it, not a send to ''
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data

@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // The words a counter carries - merged into the project's text/en_US.php
 // once, at activation (add-only: a key the project already has stays);
-// editors keep them current in the Text panel from then on. See README.md.
+// editors keep them current in the Text panel from then on.
 return [
 
 	/*	Both forms of every unit, because "1 days" is what a counter says

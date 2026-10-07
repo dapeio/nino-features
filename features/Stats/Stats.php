@@ -22,9 +22,9 @@ namespace Nino\Modules {
 	 *										into one file per month under /data/stats/ - views per
 	 *										uri, views per referrer host, and a total - written
 	 *										through \Nino\Filesystem::mutate() (locked, atomic), one
-	 *										mutate per counted view. See README.md for the exact
-	 *										storage shape, the retention sweep and why there is no
-	 *										unique-visitor number. Only pages are counted, and only
+	 *										mutate per counted view. There is no
+	 *										unique-visitor number: telling one visitor from another
+	 *										would be personal data. Only pages are counted, and only
 	 *										pages are shown: see isPage().
 	 *
 	 *	@package					Dape/Nino

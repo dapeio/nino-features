@@ -11,7 +11,7 @@
 // 600-699. The text is in the form the sanitizer gives a field with 'blocks'
 // and carries no '&', no entity and no '['. It names what the code does: a
 // count per page and day and the host of the referrer, no cookie and no ip
-// address (see README.md, "What is counted, and where").
+// address.
 return [
 	'*' => [
 		'stats' => [

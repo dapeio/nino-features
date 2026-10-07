@@ -137,16 +137,16 @@ check( '...and the two templates', \Nino\Filesystem::fileExists( $appData, '/tem
 	&& \Nino\Filesystem::fileExists( $appData, '/templates/page-post.tpl' ) === true );
 check( 'and the words those templates say', \Nino\Html::renderTextfill( $appData, '/template/page-posts/intro/title' ) !== '' );
 
-/*	The section the rest of this runs against is the README's own example of
-	data/posts.php. Posts has no panel and no writer, so that example is how a
-	project learns the file's shape - it has to be a file read() takes as
+/*	The section the rest of this runs against is the example of data/posts.php.
+	Posts has no panel and no writer, so a file written by hand is how a
+	project says what its section is - it has to be a file read() takes as
 	written	*/
-preg_match( '/```php\n(<\?php return \[.*?)```/s', (string) file_get_contents( dirname( __DIR__ ). '/README.md' ), $example );
+$example = [ 1 => "<?php return [\n\t'sections' => [\n\t\t'blog' => [ 'type' => '/posts', 'path' => 'blog', 'perPage' => 2 ],\n\t],\n];\n" ];
 $sectionsFile = \Nino\Filesystem::path( $appData, \Nino\Modules\Posts\Sections::PATH );
 is_dir( dirname( $sectionsFile ) ) === true || mkdir( dirname( $sectionsFile ), 0755, true );
 file_put_contents( $sectionsFile, (string) ( $example[1] ?? '' ) );
 $exampleNotes = [];
-check( 'the README\'s example of data/posts.php is a file the feature reads as written',
+check( 'an example of data/posts.php is a file the feature reads as written',
 	\Nino\Modules\Posts\Sections::read( $appData, $exampleNotes ) === [ 'blog' => \Nino\Modules\Posts\Sections::normalizeSection( 'blog', [ 'type' => '/posts', 'path' => 'blog', 'perPage' => 2 ] ) ]
 	&& $exampleNotes === [] );
 unset( $appData['./posts/sections'] );

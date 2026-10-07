@@ -124,7 +124,7 @@
 		sits in is the last thing in <body>, and every statement earlier than
 		DOMContentLoaded is one repaint less for a reader whose choice differs
 		from their system setting. A project that wants none at all moves
-		[assets /.cache/script.js] into its html-header.tpl - see the README	*/
+		[assets /.cache/script.js] into its html-header.tpl	*/
 	apply( stored() );
 
 	/*	One listener on the document rather than one per button, so a switch

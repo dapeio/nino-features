@@ -6,7 +6,7 @@ declare(strict_types=1);
 // kept); from then on editors keep it in the Text panel. A container asks for
 // the button with data-ticker-toggle="[[/feature/ticker/pause/label]]", and the
 // value goes into the page as it stands - so it must not contain a double
-// quote. See README.md.
+// quote.
 return [
 	'[[/feature/ticker/pause/label]]'	=> 'Pause animation',
 ];

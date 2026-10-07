@@ -581,8 +581,8 @@ namespace Nino\Modules\Redirects {
 		 *	Whatever stood under 'misses', held to what one may be: an address,
 		 *	a count and a time.
 		 *
-		 *	The file is one a person may have edited by hand - README.md says
-		 *	so - and an entry somebody shaped there is input like any other.
+		 *	The file is one a person may have edited by hand,
+		 *	and an entry somebody shaped there is input like any other.
 		 *	Without this the sort below is handed whatever the file held, and a
 		 *	note to self where a count belongs takes every unanswered request
 		 *	on the site with it

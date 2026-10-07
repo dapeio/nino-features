@@ -18,11 +18,16 @@ return [
 				'de_DE' => 'Die Testmail und die letzten Fehler. Schick Dir eine, bevor Du Dich darauf verlässt – ab dann geht jede Mail von Nino über SMTP.',
 			],
 		],
-		'callbacks' => [],
+		'callbacks' => [
+			'/nino/mail/send' => [
+				'en_US' => 'Takes over delivery from mail(): every mail goes over SMTP once a host is set. Without a host it does nothing and mail() stays in charge. A failure is logged, never thrown.',
+				'de_DE' => 'Übernimmt die Zustellung von mail(): Jede Mail geht über SMTP, sobald ein Host eingetragen ist. Ohne Host tut er nichts und mail() bleibt zuständig. Ein Fehler wird protokolliert, nie geworfen.',
+			],
+		],
 		'install' => [
 			'elements/privacy.php' => [
-				'en_US' => 'Its section of the privacy policy, added to the Legal module\'s type - never replacing a section. Where there is no such module, nothing happens.',
-				'de_DE' => 'Sein Abschnitt der Datenschutzerklärung, dem Typ des Moduls Legal hinzugefügt – ohne einen Abschnitt zu ersetzen. Wo es das Modul nicht gibt, passiert nichts.',
+				'en_US' => 'Its section of the privacy policy, added to the Legal module\'s type - never replacing a section. Where there is no such module, nothing happens. A starting point, no legal advice: the operator completes the section with the provider and the data processing agreement, in the Elements panel.',
+				'de_DE' => 'Sein Abschnitt der Datenschutzerklärung, dem Typ des Moduls Legal hinzugefügt – ohne einen Abschnitt zu ersetzen. Wo es das Modul nicht gibt, passiert nichts. Ein Ausgangspunkt, keine Rechtsberatung: Der Betreiber ergänzt den Abschnitt um den Anbieter und den Auftragsverarbeitungsvertrag, im Panel Elemente.',
 			],
 		],
 	],

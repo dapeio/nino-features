@@ -436,7 +436,7 @@ check( '...and the list is not touched by it', $readList( $appData ) === $listBe
 
 /*	An unknown address sends nothing and so charges nothing: the per-ip mail
 	cap stays as it was. That is a difference to a listed address (which
-	charges it with its mail), accepted and documented in the README - the
+	charges it with its mail), accepted - the
 	check only keeps it from growing into something else, such as a send to an
 	empty recipient, which a kernel that records failed deliveries would count
 	as one	*/

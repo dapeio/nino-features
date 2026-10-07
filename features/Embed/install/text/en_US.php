@@ -4,7 +4,6 @@ declare(strict_types=1);
 // The words an unreleased embed carries - merged into the project's
 // text/en_US.php once, at activation (add-only: a key the project already
 // has stays); editors keep them current in the Text panel from then on.
-// See README.md.
 return [
 
 	// Under the play mark, where the shortcode was written without a title

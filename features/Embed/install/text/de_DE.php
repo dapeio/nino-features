@@ -4,7 +4,7 @@ declare(strict_types=1);
 // Die Wörter einer noch nicht freigegebenen Einbindung - beim Aktivieren
 // einmal in die text/de_DE.php des Projekts übernommen (nur ergänzend: ein
 // Schlüssel, den das Projekt schon hat, bleibt); ab dann pflegen Redakteure
-// sie im Panel Texte. Siehe README.md.
+// sie im Panel Texte.
 return [
 
 	// Unter dem Abspielzeichen, wenn der Shortcode ohne eigenen Titel

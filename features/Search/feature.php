@@ -28,8 +28,17 @@ return [
 				'en_US' => 'How many hits the search has, as a plain number - all of them, not the page limit draws. Nothing while nothing was searched for, 0 when nothing was found.',
 				'de_DE' => 'Wie viele Treffer die Suche hat, als reine Zahl - alle, nicht die Seite, die limit zeichnet. Nichts, solange nichts gesucht wurde, 0, wenn nichts gefunden wurde.',
 			],
+			'[search-results ... limit="20" tag="none"]' => [
+				'en_US' => 'How many hits to draw (default 20, at most 200), and the wrapper: a div with class nino-search-results by default, tag="none" leaves the rows unwrapped. type takes several types, separated by commas.',
+				'de_DE' => 'Wie viele Treffer gezeichnet werden (Standard 20, höchstens 200), und die Hülle: standardmäßig ein div mit der Klasse nino-search-results, tag="none" lässt die Zeilen ungehüllt. type nimmt mehrere Typen, durch Komma getrennt.',
+			],
 		],
-		'markup' => [],
+		'markup' => [
+			'[[.uri]] [[.slug]] [[.type]] [[.locale]] [[.score]] [[.n]]' => [
+				'en_US' => 'Inside [search-results], beside the type\'s own [[field]]s: the element uri, its last segment, the type, the locale, the score and the place in the list from 1.',
+				'de_DE' => 'Innerhalb von [search-results], neben den [[Feldern]] des Typs: die Element-Uri, ihr letztes Segment, der Typ, die Sprache, der Score und die Stelle in der Liste ab 1.',
+			],
+		],
 		'routes' => [
 			'GET /.search?q=…&type=/products&limit=20&offset=0' => [
 				'en_US' => 'The search as json, while the "JSON endpoint" setting is on: the hits of one type, or of every indexed one, each with its indexed fields.',
@@ -40,6 +49,10 @@ return [
 			'Search' => [
 				'en_US' => 'Create the index once. After that it rebuilds itself with every save.',
 				'de_DE' => 'Den Index einmal anlegen. Danach baut er sich bei jedem Speichern selbst neu.',
+			],
+			'Index, Type, Try it' => [
+				'en_US' => 'Index: one row per Element type the project has, with its state. Type: four slots of weight over the type\'s own text fields, written to /nino/elements/index in config.php. Try it: the real ranking against the index on disk.',
+				'de_DE' => 'Index: eine Zeile je Element-Typ des Projekts, mit seinem Stand. Typ: vier Gewichtsplätze über die Textfelder des Typs, geschrieben nach /nino/elements/index in der config.php. Ausprobieren: das echte Ranking gegen den Index auf der Platte.',
 			],
 		],
 		'callbacks' => [

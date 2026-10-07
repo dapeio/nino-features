@@ -276,8 +276,7 @@ namespace Nino\Modules {
 		 *	request with the password form. A plain 401 - never a 200, so
 		 *	nothing caches it, and honest about the fact that nothing was
 		 *	actually served. No exception for a signed-in workbench user: the
-		 *	password is the only way in, on purpose - see the feature's
-		 *	README for why.
+		 *	password is the only way in, on purpose.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request

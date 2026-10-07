@@ -24,12 +24,21 @@ return [
 				'de_DE' => 'Das erste Album, das es gibt.',
 			],
 		],
-		'markup' => [],
+		'markup' => [
+			'data-lightbox="gallery-<album>"' => [
+				'en_US' => 'What each thumbnail\'s link carries, so the Lightbox feature opens it and two galleries on one page stay two sets. The caption is data-caption, the alt text the thumbnail\'s alt.',
+				'de_DE' => 'Was der Link jeder Vorschau trägt, damit das Feature Lightbox ihn öffnet und zwei Galerien auf einer Seite zwei Sätze bleiben. Die Bildunterschrift steht in data-caption, der Alternativtext im alt der Vorschau.',
+			],
+		],
 		'routes' => [],
 		'panel' => [
 			'Gallery' => [
 				'en_US' => 'Create an album and upload its pictures - two sizes per upload, the original never kept. Alt text and caption are written per language.',
 				'de_DE' => 'Ein Album anlegen und Bilder hochladen – zwei Größen je Upload, das Original wird nie behalten. Alternativtext und Bildunterschrift schreibst Du je Sprache.',
+			],
+			'Gallery: pictures' => [
+				'en_US' => 'Several files at once, uploaded one after the other; per picture an alt text and a caption in each language, two buttons to move it and one to delete it, which takes both of its files with it.',
+				'de_DE' => 'Mehrere Dateien auf einmal, nacheinander hochgeladen; je Bild ein Alternativtext und eine Bildunterschrift in jeder Sprache, zwei Schaltflächen zum Verschieben und eine zum Löschen, die beide Dateien mitnimmt.',
 			],
 		],
 		'callbacks' => [],

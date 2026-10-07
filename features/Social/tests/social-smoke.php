@@ -330,6 +330,6 @@ $next['./nino/html/cache'] = false;
 $next['/nino/modules'] = [ '\\Nino\\Modules\\Elements', '\\Nino\\Modules\\Template' ];
 \Nino\Modules::callModules( $next, 'init' );
 check( 'afterwards a [social] left in a template is text - the contract every feature has', render( $next, 'A[social]B' ) === 'A[social]B' );
-check( '...the template the frames include among them, which is why the README says to empty it first', trim( render( $next, '[template /templates/social-links]' ) ) === '[social]' );
+check( '...the template the frames include among them, which is why it has to be emptied first', trim( render( $next, '[template /templates/social-links]' ) ) === '[social]' );
 
 ninoDone( $appData );

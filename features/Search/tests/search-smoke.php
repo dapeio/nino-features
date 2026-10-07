@@ -309,8 +309,7 @@ check( 'an element value carrying a shortcode or a fill is drawn as text, not ru
 
 $_GET = [ 'q' => 'orbit' ];
 
-// The shape from the feature's own README, with the type given the way a
-// person writes it
+// The shape the manual shows, with the type given the way a person writes it
 $block = '[search-results key="q" type="/articles"]<h5>[[title]]</h5><p>[[summary]]</p>[/search-results]';
 $results = \Nino\Html::renderHtml( $appData, $block );
 check( 'the body is the row markup, once per hit',

@@ -26,12 +26,25 @@ return [
 				'en_US' => 'Build a form: its fields, where it is sent, the words around it. What visitors send is in the Submissions panel.',
 				'de_DE' => 'Ein Formular bauen: seine Felder, wohin es geht, die Worte drumherum. Was Besucher senden, steht im Panel Anfragen.',
 			],
+			'Forms: fields' => [
+				'en_US' => 'One row per field: text, email, tel, url, number, textarea, select, radio, checkbox or date, required or not; the name follows the label until it is typed into. Saved to /nino/form/forms in config.php.',
+				'de_DE' => 'Eine Zeile je Feld: text, email, tel, url, number, textarea, select, radio, checkbox oder date, Pflicht oder nicht; der Name folgt der Beschriftung, bis er selbst getippt wird. Gespeichert unter /nino/form/forms in der config.php.',
+			],
+			'Submissions: keep and record' => [
+				'en_US' => 'How long the kernel keeps submissions (1 to 60 months) and whether it records them at all - /nino/form/retention and /nino/form/store.',
+				'de_DE' => 'Wie lange der Kernel Einsendungen aufhebt (1 bis 60 Monate) und ob er sie überhaupt speichert – /nino/form/retention und /nino/form/store.',
+			],
 		],
-		'callbacks' => [],
+		'callbacks' => [
+			'/nino/http/response/POST://.form' => [
+				'en_US' => 'Three spam guards on the kernel\'s own form route: a too fast submission and a blocked word answer 418 like a filled honeypot, a rate limit answers 429. Nothing is mailed or recorded then.',
+				'de_DE' => 'Drei Spam-Wächter auf der Route des Kernels: Eine zu schnelle Absendung und ein gesperrtes Wort antworten 418 wie ein gefüllter Honigtopf, ein Limit antwortet 429. Es wird dann nichts gesendet oder gespeichert.',
+			],
+		],
 		'install' => [
 			'elements/privacy.php' => [
-				'en_US' => 'Its section of the privacy policy, added to the Legal module\'s type - never replacing a section. Where there is no such module, nothing happens.',
-				'de_DE' => 'Sein Abschnitt der Datenschutzerklärung, dem Typ des Moduls Legal hinzugefügt – ohne einen Abschnitt zu ersetzen. Wo es das Modul nicht gibt, passiert nichts.',
+				'en_US' => 'Its section of the privacy policy, added to the Legal module\'s type - never replacing a section. Where there is no such module, nothing happens. A starting point, no legal advice. It names three months, the default of /nino/form/retention, and assumes /nino/form/store is on: whoever changes either changes the section in the Elements panel too.',
+				'de_DE' => 'Sein Abschnitt der Datenschutzerklärung, dem Typ des Moduls Legal hinzugefügt – ohne einen Abschnitt zu ersetzen. Wo es das Modul nicht gibt, passiert nichts. Ein Ausgangspunkt, keine Rechtsberatung. Er nennt drei Monate, den Standard von /nino/form/retention, und setzt voraus, dass /nino/form/store an ist: Wer eines davon ändert, passt den Abschnitt im Panel Elemente mit an.',
 			],
 		],
 	],
@@ -49,8 +62,8 @@ return [
 			'type'	=> 'int',
 			'label'	=> [ 'en_US' => 'Submissions per hour and address', 'de_DE' => 'Einsendungen pro Stunde und Adresse' ],
 			'hint'	=> [
-				'en_US' => 'How many submissions one ip address may have accepted before the next is turned away. Only accepted ones count - a visitor who mistypes their address is not spending their allowance. 0 switches the limit off; the kernel\'s own mail cap still applies.',
-				'de_DE' => 'Wie viele Einsendungen von einer IP-Adresse angenommen werden, bevor die nächste abgewiesen wird. Gezählt wird nur, was angenommen wurde - wer sich bei der Adresse vertippt, verbraucht sein Kontingent also nicht. 0 schaltet die Grenze ab; die Mail-Grenze des Kernels gilt weiterhin.',
+				'en_US' => 'How many submissions one ip address may have accepted before the next is turned away. Only accepted ones count - a visitor who mistypes their address is not spending their allowance. 0 switches the limit off; the kernel\'s own mail cap still applies. Behind a reverse proxy without /nino/http/proxies every visitor has the proxy\'s address, so the first to use up the limit turns the form off for everybody.',
+				'de_DE' => 'Wie viele Einsendungen von einer IP-Adresse angenommen werden, bevor die nächste abgewiesen wird. Gezählt wird nur, was angenommen wurde - wer sich bei der Adresse vertippt, verbraucht sein Kontingent also nicht. 0 schaltet die Grenze ab; die Mail-Grenze des Kernels gilt weiterhin. Hinter einem Reverse-Proxy ohne /nino/http/proxies haben alle Besucher die Adresse des Proxys, der Erste, der das Limit aufbraucht, schaltet das Formular also für alle ab.',
 			],
 			'min'			=> 0,
 			'max'			=> 1000,

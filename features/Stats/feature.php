@@ -17,6 +17,10 @@ return [
 				'en_US' => 'The page-view counts, and a tile on the Dashboard. Counting begins when the feature is switched on.',
 				'de_DE' => 'Die Seitenaufrufe, dazu eine Kachel auf dem Dashboard. Gezählt wird ab dem Einschalten.',
 			],
+			'Stats: month, pages, referrers' => [
+				'en_US' => 'A month selector, one bar per day, and the top 50 pages (with their titles) and referrer hosts of the month. Pages only: files such as robots.txt and sitemap.xml are not shown. Read-only, behind /_admin/stats/view.',
+				'de_DE' => 'Eine Monatsauswahl, ein Balken je Tag und die Top 50 der Seiten (mit ihren Titeln) und Referrer-Hosts des Monats. Nur Seiten: Dateien wie robots.txt und sitemap.xml werden nicht gezeigt. Nur lesend, hinter /_admin/stats/view.',
+			],
 		],
 		'callbacks' => [
 			'/nino/http/response' => [
@@ -26,8 +30,8 @@ return [
 		],
 		'install' => [
 			'elements/privacy.php' => [
-				'en_US' => 'Its section of the privacy policy, added to the Legal module\'s type - never replacing a section. Where there is no such module, nothing happens.',
-				'de_DE' => 'Sein Abschnitt der Datenschutzerklärung, dem Typ des Moduls Legal hinzugefügt – ohne einen Abschnitt zu ersetzen. Wo es das Modul nicht gibt, passiert nichts.',
+				'en_US' => 'Its section of the privacy policy, added to the Legal module\'s type - never replacing a section. Where there is no such module, nothing happens. A starting point, no legal advice.',
+				'de_DE' => 'Sein Abschnitt der Datenschutzerklärung, dem Typ des Moduls Legal hinzugefügt – ohne einen Abschnitt zu ersetzen. Wo es das Modul nicht gibt, passiert nichts. Ein Ausgangspunkt, keine Rechtsberatung.',
 			],
 		],
 	],
@@ -37,7 +41,7 @@ return [
 	'requires'		=> [],
 	// The whole directory this feature owns under data/ - what a backup
 	// carries. There is nothing here a restore has to merge rather than
-	// overwrite (see README.md, "Data and retention"): every value is a
+	// overwrite: every value is a
 	// count, so the plain whole-directory copy the daily backup already
 	// does is enough, and no '/nino/admin/restore' callback is registered
 	'data'				=> [ '/data/stats' ],

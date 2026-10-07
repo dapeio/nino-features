@@ -19,6 +19,18 @@ return [
 				'en_US' => 'The rules, and the addresses nothing answered - each with the one button that turns it into a rule. A target can be picked from the pages of the site, and one nothing answers is flagged and warned about, never refused.',
 				'de_DE' => 'Die Regeln und die Adressen, die nichts beantwortet hat - jede mit dem einen Knopf, der eine Regel daraus macht. Ein Ziel lässt sich aus den Seiten der Site wählen, und eines, das nichts beantwortet, wird markiert und beim Speichern gemeldet, aber nie abgelehnt.',
 			],
+			'Redirects: a rule' => [
+				'en_US' => 'Old address, sends to (a path of this site or an https address), kind (301 or 302) and whether everything below it moves too. A rule is consulted only where no route answers; GET and HEAD only.',
+				'de_DE' => 'Alte Adresse, Ziel (ein Pfad dieser Seite oder eine https-Adresse), Art (301 oder 302) und ob alles darunter mitzieht. Eine Regel gilt nur, wo keine Route antwortet; nur GET und HEAD.',
+			],
+			'Probe' => [
+				'en_US' => 'Asks what a visitor would meet at an address: a page answers it, a rule sends it on, or nothing does and the 404 page is shown.',
+				'de_DE' => 'Fragt, was ein Besucher unter einer Adresse träfe: Eine Seite antwortet, eine Regel leitet weiter, oder nichts antwortet und die 404-Seite erscheint.',
+			],
+			'Addresses with no answer' => [
+				'en_US' => 'The second screen: the paths nothing answered, most asked for first, at most 50, with one button that opens the editor with the address filled in. The path only - no visitor is recorded.',
+				'de_DE' => 'Der zweite Bildschirm: die Pfade, auf die nichts antwortete, die häufigsten zuerst, höchstens 50, mit einer Schaltfläche, die den Editor mit der Adresse öffnet. Nur der Pfad – kein Besucher wird erfasst.',
+			],
 		],
 		'callbacks' => [
 			'/nino/http/response' => [

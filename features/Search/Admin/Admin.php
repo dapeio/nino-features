@@ -2,8 +2,7 @@
 declare(strict_types=1);
 /**
  *	Nino								A compact filesystembased php framework
- *	Modules\Search\Admin		The /_admin panel of the Search feature - see
- *											features/Search/README.md
+ *	Modules\Search\Admin		The /_admin panel of the Search feature
  *
  *	@package						Dape/Nino
  *	@author							David Perchermeier <mail@dape.io>

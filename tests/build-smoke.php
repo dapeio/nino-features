@@ -9,14 +9,15 @@ declare(strict_types=1);
  *									one archive per feature holding exactly its directory and
  *									no tests/, a catalogue.json with the right digest, size and
  *									version per entry, a signature that verifies, a second run
- *									that rebuilds nothing and leaves every archive's bytes
- *									alone, --only touching one entry, the merge keeping every
- *									other entry, and the refusals: a manifest that does not
- *									validate, a category outside the kernel's vocabulary, a
- *									checkout without one, a symlink, a key nothing has, an
- *									archive that is not what the catalogue names - and the
- *									archives installed through the kernel's side of the
- *									catalogue, \Nino\Catalogue.
+ *									that rebuilds every archive to the same bytes and leaves
+ *									catalogue.json and its signature untouched, a changed
+ *									feature giving other bytes under the same name and a new
+ *									release day, an archive no entry names removed, one entry
+ *									per feature whatever the catalogue held before, and the
+ *									refusals: a manifest that does not validate, a category
+ *									outside the kernel's vocabulary, a checkout without one, a
+ *									symlink - and the archives installed through the kernel's
+ *									side of the catalogue, \Nino\Catalogue.
  *
  *									Runs against the checkout beside this repository (../nino)
  *									or the one NINO_ROOT names, over its tests/harness.php.
@@ -184,23 +185,10 @@ echo "The repository - what there is to publish\n";
 
 check( 'every feature directory has a manifest this kernel validates', count( $manifests ) >= 2 && ninoWarnings() === [] );
 check( 'the two features the checks below name by key, newsletter and search, are among them', isset( $manifests['newsletter'] ) === true && isset( $manifests['search'] ) === true );
-// At least one, not every one: a test is optional here (see README.md and
-// AGENTS.md - the release tooling asks for it in strict mode alone), and this
-// check exists to give the archive check below something to leave out. A
+// At least one, not every one: a test is optional here (see AGENTS.md), and
+// this check exists to give the archive check below something to leave out. A
 // feature that carries none would have made this fail for following the rule
 check( 'a feature carries its test under tests/, and the archive is what has to leave it out', array_filter( $manifests, static fn( array $manifest ): bool => ( glob( $manifest['dir']. '/tests/*-smoke.php' ) ?: [] ) !== [] ) !== [] );
-
-// The features table is written by hand, in two languages; what each row says
-// is what the manifest says, and no directory is left out of either
-$wanted = array_map( static fn( array $manifest ): array => [ $manifest['category'], $manifest['version'], $manifest['nino'] ], $manifests );
-foreach( [ 'README.md', 'README.de.md' ] as $readme ) {
-	$rows = [];
-	foreach( explode( "\n", (string) file_get_contents( $repo. '/'. $readme ) ) as $line )
-		if( preg_match( '/^\| `([a-z0-9-]+)` \| [^|]+ \| `([a-z0-9-]+)` \| ([0-9]+\.[0-9]+\.[0-9]+) \| `([^`]+)` \|/', $line, $cells ) === 1 )
-			$rows[$cells[1]] = [ $cells[2], $cells[3], $cells[4] ];
-	ksort( $rows );
-	check( $readme. ': the features table has one row per feature, with the category, version and nino of its manifest'. ( $rows === $wanted ? '' : ' - '. implode( ', ', array_keys( array_diff_key( $wanted, $rows ) + array_diff_key( $rows, $wanted ) ) ) ), $rows === $wanted );
-}
 
 check( 'every feature of this repository is filed under one of the kernel\'s categories', array_filter( $manifests, static fn( array $manifest ): bool => in_array( $manifest['category'], \Nino\Features::CATEGORIES, true ) === false ) === [] );
 
@@ -232,8 +220,8 @@ file_put_contents( $work. '/not-a-key.pem', "this is not a key\n" );
 [ $status, , $stderr ] = runScript( $build, [ $root, $out, '--key', $work. '/not-a-key.pem' ] );
 check( 'a key file that holds no private key: exit 1', $status === 1 && str_contains( $stderr, 'not a PEM private key' ) === true );
 
-[ $status, , $stderr ] = runScript( $build, [ $root, $out, '--only', 'nosuch' ] );
-check( 'a key no feature has: exit 1, naming the keys there are', $status === 1 && str_contains( $stderr, '"nosuch"' ) === true && str_contains( $stderr, 'newsletter' ) === true && str_contains( $stderr, 'search' ) === true );
+[ $status, , $stderr ] = runScript( $build, [ $root, $out, '--only', 'search' ] );
+check( '--only is gone: exit 2, an unknown option', $status === 2 && str_contains( $stderr, '--only' ) === true );
 
 // A checkout whose \Nino\Features has no vocabulary of categories - what
 // Nino was before 1.2 - is refused before anything is read, with a reason
@@ -333,7 +321,6 @@ foreach( $manifests as $key => $manifest ) {
 	check( $name. ' holds exactly one top-level directory, '. $directory, array_values( $top ) === [ $directory ] && ( $entries[$directory] ?? '' ) === 'dir' );
 	check( $name. ' holds the manifest and the class file', ( $entries[ $directory. '/feature.php' ] ?? '' ) === 'file' && ( $entries[ $directory. '/'. $directory. '.php' ] ?? '' ) === 'file' );
 	check( $name. ' holds no tests/', array_filter( array_keys( $entries ), static fn( string $path ): bool => str_starts_with( $path, $directory. '/tests' ) === true ) === [] );
-	check( $name. ' holds the README and the changelog', ( $entries[ $directory. '/README.md' ] ?? '' ) === 'file' && ( $entries[ $directory. '/CHANGELOG.md' ] ?? '' ) === 'file' );
 	check( $name. ' holds nothing but files and directories', array_filter( $entries, static fn( string $kind ): bool => $kind !== 'file' && $kind !== 'dir' ) === [] );
 	check( $name. ' is under the 20 MB the kernel takes', filesize( $out. '/'. $name ) < 20 * 1024 * 1024 );
 }
@@ -392,84 +379,91 @@ check( 'the kernel verifies the signature with the public key', \Nino\Catalogue:
 check( 'and refuses it with another key', \Nino\Catalogue::verify( $json, $signature, $otherPublicPem ) === false );
 check( 'the signature verifies the way `openssl dgst -sha256 -sign | base64 -w0` is read: whitespace tolerated', \Nino\Catalogue::verify( $json, "  ". trim( $signature ). "\n\n", $publicPem ) === true );
 
-$firstHashes		= archiveHashes( $out );
-$firstDocument	= $document;
+$firstHashes = archiveHashes( $out );
 
 echo "\n";
 
 
 // --- A second run ------------------------------------------------------------------
 
-echo "bin/build.php - a second run rebuilds nothing\n";
+echo "bin/build.php - a second run changes nothing\n";
+
+$firstJson			= (string) file_get_contents( $out. '/catalogue.json' );
+$firstSignature	= (string) file_get_contents( $out. '/catalogue.json.sig' );
+
+[ $status, $stdout, $stderr ] = runScript( $build, [ $root, $out, '--base-url', $baseUrl, '--key', $keyFile ] );
+check( 'the second run succeeds', $status === 0 && $stderr === '' );
+check( 'it reads the catalogue, builds every archive again and finds every one the same', str_contains( $stdout, 'reading  ' ) === true && substr_count( "\n". $stdout, "\nsame     " ) === count( $manifests ) + 2 && str_contains( $stdout, 'built    ' ) === false && str_contains( $stdout, 'wrote    ' ) === false );
+check( 'every archive is byte for byte what the first run wrote', archiveHashes( $out ) === $firstHashes );
+check( 'catalogue.json is not rewritten - generated stays, every byte stays', (string) file_get_contents( $out. '/catalogue.json' ) === $firstJson );
+check( 'and neither is its signature - an ECDSA signature made again would differ', (string) file_get_contents( $out. '/catalogue.json.sig' ) === $firstSignature );
 
 // A released date from an earlier day is what the published catalogue would
-// carry - it has to survive
+// carry - it has to survive, and the signature of a catalogue edited by hand
+// is made again
 $document = readCatalogue( $out );
 foreach( $document['features'] as &$entry )
 	$entry['released'] = $entry['key'] === 'newsletter' ? '2001-01-01' : '2002-02-02';
 unset( $entry );
 writeCatalogue( $out, $document );
+$editedJson = (string) file_get_contents( $out. '/catalogue.json' );
 
 [ $status, $stdout, $stderr ] = runScript( $build, [ $root, $out, '--base-url', $baseUrl, '--key', $keyFile ] );
-check( 'the second run succeeds', $status === 0 && $stderr === '' );
-check( 'it merges into the existing catalogue and keeps every archive', str_contains( $stdout, 'merging into' ) === true && substr_count( $stdout, "\nkept     " ) + (int) str_starts_with( $stdout, 'kept     ' ) === count( $manifests ) && str_contains( $stdout, 'built    ' ) === false );
-check( 'every archive is byte for byte what the first run wrote', archiveHashes( $out ) === $firstHashes );
-
-$document = readCatalogue( $out );
-check( 'the entries are unchanged, their released dates kept', entryOf( $document, 'newsletter' )['released'] === '2001-01-01' && entryOf( $document, 'search' )['released'] === '2002-02-02'
-	&& array_map( static fn( array $entry ): array => array_diff_key( $entry, [ 'released' => 1 ] ), $document['features'] ) === array_map( static fn( array $entry ): array => array_diff_key( $entry, [ 'released' => 1 ] ), $firstDocument['features'] ) );
-check( 'generated moved on', ( $document['generated'] ?? '' ) >= ( $firstDocument['generated'] ?? '' ) );
-$json = (string) file_get_contents( $out. '/catalogue.json' );
-check( 'the catalogue was signed again, over its new bytes', openssl_verify( $json, (string) base64_decode( trim( (string) file_get_contents( $out. '/catalogue.json.sig' ) ), true ), $publicPem, OPENSSL_ALGO_SHA256 ) === 1 );
+check( 'a catalogue whose entries are the same, with older release days, is read and left as it is', $status === 0 && $stderr === '' && (string) file_get_contents( $out. '/catalogue.json' ) === $editedJson && str_contains( $stdout, 'wrote    ' ) === false );
+check( 'the signature that no longer holds for it is made again', str_contains( $stdout, 'signed   ' ) === true && openssl_verify( $editedJson, (string) base64_decode( trim( (string) file_get_contents( $out. '/catalogue.json.sig' ) ), true ), $publicPem, OPENSSL_ALGO_SHA256 ) === 1 );
+$secondDocument = readCatalogue( $out );
 
 echo "\n";
 
 
-// --- --only ------------------------------------------------------------------------
+// --- A changed feature ---------------------------------------------------------------
 
-echo "bin/build.php --only - one feature, every other entry untouched\n";
+echo "bin/build.php - a feature that changed: other bytes under the same name, released today\n";
+
+// A copy of the repository in which Search carries one more file, built into
+// the directory the unchanged build filled - what the server holds is that
+$changed = $work. '/changed';
+mkdir( $changed. '/bin', 0755, true );
+copy( $build, $changed. '/bin/build.php' );
+copyDir( $repo. '/features', $changed. '/features' );
+file_put_contents( $changed. '/features/Search/note.txt', "one more file\n" );
 
 $searchName = 'search-'. $manifests['search']['version']. '.tar.gz';
-unlink( $out. '/'. $searchName );
 
-[ $status, $stdout, $stderr ] = runScript( $build, [ $root, $out, '--base-url', $baseUrl, '--only', 'search', '--key', $keyFile ] );
-check( '--only search with its archive gone rebuilds it', $status === 0 && $stderr === '' && str_contains( $stdout, 'built    search' ) === true );
-check( 'and mentions no other feature', str_contains( $stdout, 'newsletter' ) === false );
-check( 'the rebuilt archive is the very bytes of the first build - a build is reproducible', archiveHashes( $out ) === $firstHashes );
-
+[ $status, $stdout, $stderr ] = runScript( $changed. '/bin/build.php', [ $root, $out, '--base-url', $baseUrl, '--key', $keyFile ] );
 $document = readCatalogue( $out );
-check( 'the search entry is back as it was, its released date kept from the entry', entryOf( $document, 'search' ) === array_replace( entryOf( $firstDocument, 'search' ), [ 'released' => '2002-02-02' ] ) );
-check( 'the newsletter entry was not touched', entryOf( $document, 'newsletter' ) === array_replace( entryOf( $firstDocument, 'newsletter' ), [ 'released' => '2001-01-01' ] ) );
-check( 'still one entry per feature', count( $document['features'] ) === count( $manifests ) );
+$hashes		= archiveHashes( $out );
+
+check( 'the build succeeds, builds the changed archive and nothing else', $status === 0 && $stderr === '' && substr_count( "\n". $stdout, "\nbuilt    " ) === 1 && str_contains( $stdout, 'built    search' ) === true );
+check( 'search keeps its name and has other bytes', isset( $hashes[$searchName] ) === true && $hashes[$searchName] !== $firstHashes[$searchName] && count( $hashes ) === count( $firstHashes ) );
+check( 'every other archive is what it was', array_diff_key( $hashes, [ $searchName => 1 ] ) === array_diff_key( $firstHashes, [ $searchName => 1 ] ) );
+check( 'its entry names the new digest and size, released today', entryOf( $document, 'search' )['sha256'] === $hashes[$searchName] && entryOf( $document, 'search' )['size'] === filesize( $out. '/'. $searchName ) && entryOf( $document, 'search' )['released'] === $today );
+check( 'the entries of the others are untouched, their release days kept', entryOf( $document, 'newsletter' ) === entryOf( $secondDocument, 'newsletter' ) && entryOf( $document, 'newsletter' )['released'] === '2001-01-01' );
+check( 'the catalogue is written and signed again', str_contains( $stdout, 'wrote    ' ) === true && \Nino\Catalogue::verify( (string) file_get_contents( $out. '/catalogue.json' ), (string) file_get_contents( $out. '/catalogue.json.sig' ), $publicPem ) === true );
+// A copy under another name: PharData keeps what it read from a path
+copy( $out. '/'. $searchName, $work. '/changed-search.tar.gz' );
+check( 'and the archive holds the new file', ( archiveEntries( $work. '/changed-search.tar.gz' )['Search/note.txt'] ?? '' ) === 'file' );
 
 echo "\n";
 
 
-// --- Immutability ------------------------------------------------------------------
+// --- An archive no entry names ---------------------------------------------------------
 
-echo "bin/build.php - a published version is immutable\n";
+echo "bin/build.php - what no entry names is removed\n";
 
-// The archive on disk is not what the catalogue names
-$document = readCatalogue( $out );
-foreach( $document['features'] as &$entry )
-	if( $entry['key'] === 'search' )
-		$entry['sha256'] = str_repeat( '0', 64 );
-unset( $entry );
-writeCatalogue( $out, $document );
+// Search was built from the copy above; the repository's own tree is what
+// the next run builds, and gives back the first bytes under the same name
+file_put_contents( $out. '/search-0.0.1.tar.gz', 'an old version' );
+file_put_contents( $out. '/gone-1.0.0.tar.gz', 'a feature that is gone' );
+file_put_contents( $out. '/notes.txt', 'not an archive' );
 
-[ $status, , $stderr ] = runScript( $build, [ $root, $out, '--base-url', $baseUrl, '--only', 'search' ] );
-check( 'an archive that is not the one its entry names fails the run', $status === 1 && str_contains( $stderr, $searchName ) === true && str_contains( $stderr, 'immutable' ) === true );
-check( 'the archive stays as it is', archiveHashes( $out ) === $firstHashes );
-
-// The archive is gone and a rebuild would not give what the entry names
-unlink( $out. '/'. $searchName );
-
-[ $status, , $stderr ] = runScript( $build, [ $root, $out, '--base-url', $baseUrl, '--only', 'search' ] );
-check( 'a rebuild that does not give the published bytes fails the run', $status === 1 && str_contains( $stderr, 'search@'. $manifests['search']['version'] ) === true && str_contains( $stderr, 'immutable' ) === true );
-check( 'and leaves no archive behind that the catalogue would not name', is_file( $out. '/'. $searchName ) === false );
-check( 'the catalogue was not rewritten', entryOf( readCatalogue( $out ), 'search' )['sha256'] === str_repeat( '0', 64 ) );
-
-writeCatalogue( $out, $firstDocument );
+[ $status, $stdout, $stderr ] = runScript( $build, [ $root, $out, '--base-url', $baseUrl, '--key', $keyFile ] );
+check( 'the build succeeds', $status === 0 && $stderr === '' );
+check( 'the two archives no entry names are removed, and said so', is_file( $out. '/search-0.0.1.tar.gz' ) === false && is_file( $out. '/gone-1.0.0.tar.gz' ) === false && str_contains( $stdout, 'removed  search-0.0.1.tar.gz' ) === true && str_contains( $stdout, 'removed  gone-1.0.0.tar.gz' ) === true );
+check( 'a file that is no archive stays', is_file( $out. '/notes.txt' ) === true );
+unlink( $out. '/notes.txt' );
+check( 'every archive is the repository\'s again, byte for byte the first build', archiveHashes( $out ) === $firstHashes );
+check( 'search is released today again, since its bytes changed back', entryOf( readCatalogue( $out ), 'search' )['released'] === $today && entryOf( readCatalogue( $out ), 'search' )['sha256'] === $firstHashes[$searchName] );
 
 echo "\n";
 
@@ -477,6 +471,15 @@ echo "\n";
 // --- Unsigned ----------------------------------------------------------------------
 
 echo "bin/build.php without --key - unsigned, the one-liner to sign by hand\n";
+
+// An entry that is not what the build gives: the catalogue changes, and the
+// signature it had is no longer one
+$document = readCatalogue( $out );
+foreach( $document['features'] as &$entry )
+	if( $entry['key'] === 'newsletter' )
+		$entry['sha256'] = str_repeat( '0', 64 );
+unset( $entry );
+writeCatalogue( $out, $document );
 
 [ $status, $stdout, $stderr ] = runScript( $build, [ $root, $out, '--base-url', $baseUrl ] );
 check( 'an unsigned run succeeds', $status === 0 && $stderr === '' && archiveHashes( $out ) === $firstHashes );
@@ -493,9 +496,9 @@ check( 'a signature made by hand over the written bytes verifies', openssl_verif
 echo "\n";
 
 
-// --- Merging -----------------------------------------------------------------------
+// --- What the catalogue held before ----------------------------------------------------
 
-echo "bin/build.php - the catalogue is merged, never replaced\n";
+echo "bin/build.php - one entry per feature, whatever the catalogue held before\n";
 
 $merge = $work. '/merge';
 mkdir( $merge, 0755, true );
@@ -516,29 +519,24 @@ $foreign = static fn( string $key, string $version ): array => [
 ];
 
 writeCatalogue( $merge, [ 'format' => 1, 'generated' => '2020-01-01T00:00:00Z', 'features' => [ $foreign( 'other', '1.0.0' ), $foreign( 'search', '0.9.0' ), $foreign( 'other', '2.0.0' ) ] ] );
+foreach( [ 'other-1.0.0', 'other-2.0.0', 'search-0.9.0' ] as $old )
+	file_put_contents( $merge. '/'. $old. '.tar.gz', $old );
 
 [ $status, , $stderr ] = runScript( $build, [ $root, $merge, '--base-url', $baseUrl ] );
 $document = readCatalogue( $merge );
 check( 'a build into a catalogue with other keys and versions succeeds', $status === 0 && $stderr === '' );
-check( 'every foreign entry survives as it was', entryOf( $document, 'other', '1.0.0' ) === $foreign( 'other', '1.0.0' ) && entryOf( $document, 'other', '2.0.0' ) === $foreign( 'other', '2.0.0' ) && entryOf( $document, 'search', '0.9.0' ) === $foreign( 'search', '0.9.0' ) );
-// The expected order, derived from whatever features the repository holds
-// today plus the three foreign entries - a new feature must not break this
-$expected = [];
-foreach( $manifests as $key => $manifest )
-	$expected[] = [ 'key' => $key, 'version' => $manifest['version'] ];
-foreach( [ [ 'other', '1.0.0' ], [ 'search', '0.9.0' ], [ 'other', '2.0.0' ] ] as [ $key, $version ] )
-	$expected[] = [ 'key' => $key, 'version' => $version ];
-usort( $expected, static fn( array $a, array $b ): int => strcmp( $a['key'], $b['key'] ) ?: version_compare( $b['version'], $a['version'] ) );
-check( 'sorted by key, then version descending', array_map( static fn( array $entry ): string => $entry['key']. '@'. $entry['version'], $document['features'] ) === array_map( static fn( array $e ): string => $e['key']. '@'. $e['version'], $expected ) );
-
-check( 'the kernel parses the merged catalogue', is_array( \Nino\Catalogue::parse( (string) file_get_contents( $merge. '/catalogue.json' ) ) ) === true );
+check( 'the catalogue lists the features of the repository, one entry each, and nothing it held before', array_map( static fn( array $entry ): string => $entry['key']. '@'. $entry['version'], $document['features'] ) === array_map( static fn( string $key ): string => $key. '@'. $manifests[$key]['version'], array_keys( $manifests ) ) );
+check( 'a feature that is gone, and an older version of one that is not, are no longer there', entryOf( $document, 'other' ) === null && entryOf( $document, 'search', '0.9.0' ) === null );
+check( 'their archives are removed', ( glob( $merge. '/*.tar.gz' ) ?: [] ) !== [] && archiveHashes( $merge ) === $firstHashes );
+check( 'the release days of the entries were not theirs to keep: the digests differ, so it is today', array_filter( $document['features'], static fn( array $entry ): bool => $entry['released'] !== gmdate( 'Y-m-d' ) ) === [] );
+check( 'the kernel parses the catalogue', is_array( \Nino\Catalogue::parse( (string) file_get_contents( $merge. '/catalogue.json' ) ) ) === true );
 
 $garbage = $work. '/garbage';
 mkdir( $garbage, 0755, true );
 file_put_contents( $garbage. '/catalogue.json', '{ "format": 2, "features": [] }'. "\n" );
 
 [ $status, , $stderr ] = runScript( $build, [ $root, $garbage, '--base-url', $baseUrl ] );
-check( 'a catalogue.json that is not format 1 is not merged into', $status === 1 && str_contains( $stderr, 'not merging' ) === true );
+check( 'a catalogue.json that is not format 1 is not built over', $status === 1 && str_contains( $stderr, 'not building over' ) === true );
 check( 'and stays as it was', file_get_contents( $garbage. '/catalogue.json' ) === '{ "format": 2, "features": [] }'. "\n" && ( glob( $garbage. '/*.tar.gz' ) ?: [] ) === [] );
 
 echo "\n";
@@ -607,7 +605,7 @@ echo "\n";
 
 // --- an empty file where an archive should be ----------------------------
 
-echo "bin/build.php - a zero-byte file is not a published archive\n";
+echo "bin/build.php - a zero-byte file is no archive, it is replaced\n";
 
 $empty = $work. '/empty';
 mkdir( $empty );
@@ -617,7 +615,7 @@ file_put_contents( $empty. '/'. $emptyName, '' );
 
 [ $status, $stdout, $stderr ] = runScript( $build, [ $root, $empty ] );
 check( 'a build over an empty archive file succeeds', $status === 0 && $stderr === '' );
-check( 'it says the file was removed and builds the archive afresh', str_contains( $stdout, 'removed  ' ) === true && str_contains( $stdout, 'an empty file is not an archive' ) === true && filesize( $empty. '/'. $emptyName ) > 0 );
+check( 'the archive is built in its place', filesize( $empty. '/'. $emptyName ) > 0 && hash_file( 'sha256', $empty. '/'. $emptyName ) === $firstHashes[$emptyName] );
 $emptyDocument = readCatalogue( $empty );
 check( 'the entry names the real size', ( entryOf( $emptyDocument, $firstKey, $manifests[$firstKey]['version'] )['size'] ?? 0 ) === filesize( $empty. '/'. $emptyName ) );
 

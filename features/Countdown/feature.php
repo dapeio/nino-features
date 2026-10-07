@@ -27,6 +27,10 @@ return [
 				'en_US' => 'What stands there once the moment has passed. Without it the Text panel\'s own sentence is used.',
 				'de_DE' => 'Was dort steht, wenn der Moment vorbei ist. Ohne die Angabe wird der Satz aus dem Panel Texte verwendet.',
 			],
+			'[countdown ... format="d.m.Y H:i"]' => [
+				'en_US' => 'How the date under the counter is written, in PHP\'s date() letters. Default Y-m-d H:i.',
+				'de_DE' => 'Wie das Datum unter dem Zähler geschrieben wird, in den Buchstaben von PHPs date(). Standard: Y-m-d H:i.',
+			],
 		],
 		'markup' => [
 			'class="nino-countdown"' => [

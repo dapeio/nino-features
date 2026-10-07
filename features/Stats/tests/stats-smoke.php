@@ -582,7 +582,7 @@ echo "\n";
 echo "Retention at the boundary - 13 months is thirteen files\n";
 
 /*	"How many monthly files to keep before the oldest is deleted" is what the
-	setting says (feature.php) and what the README's table says. The sweep kept
+	setting says (feature.php) and what the setting's hint says. The sweep kept
 	one more than that: the cutoff was the first of the month $retentionMonths
 	back, which leaves that month itself on disk beside the twelve after it and
 	this one. Counted rather than sampled, because the difference between

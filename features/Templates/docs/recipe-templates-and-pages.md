@@ -1,7 +1,7 @@
 # Recipe: Write templates and installable page units
 
 **Additional Links:**
-[Templates Panel](templates.md) · [Feature README](../README.md) · [Catalogue agent guide](https://github.com/dapeio/nino-features/blob/main/AGENTS.md) · [Nino agent guide](https://github.com/dapeio/nino/blob/main/AGENTS.md) · [All recipes](https://github.com/dapeio/nino/blob/main/docs/recipes/README.md) · [Developer Manual](https://github.com/dapeio/nino/blob/main/docs/development.md) · [Concepts](https://github.com/dapeio/nino/blob/main/docs/concepts.md) · [`/_admin` Workbench](https://github.com/dapeio/nino/blob/main/docs/_admin.md) · [Setup Wizard](https://github.com/dapeio/nino/blob/main/docs/setup.md) · [Features](https://github.com/dapeio/nino/blob/main/docs/features.md)
+[Templates Panel](templates.md) · [Catalogue agent guide](https://github.com/dapeio/nino-features/blob/main/AGENTS.md) · [Nino agent guide](https://github.com/dapeio/nino/blob/main/AGENTS.md) · [All recipes](https://github.com/dapeio/nino/blob/main/docs/recipes/README.md) · [Developer Manual](https://github.com/dapeio/nino/blob/main/docs/development.md) · [Concepts](https://github.com/dapeio/nino/blob/main/docs/concepts.md) · [`/_admin` Workbench](https://github.com/dapeio/nino/blob/main/docs/_admin.md) · [Setup Wizard](https://github.com/dapeio/nino/blob/main/docs/setup.md) · [Features](https://github.com/dapeio/nino/blob/main/docs/features.md)
 
 One of the seven extension recipes of the [Nino agent guide](https://github.com/dapeio/nino/blob/main/AGENTS.md). Its
 rules - the required workflow, the core runtime model, the conventions and the

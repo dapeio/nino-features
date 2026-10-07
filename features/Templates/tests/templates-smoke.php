@@ -128,8 +128,7 @@ check( 'the panel is a fragment the workbench renders into its pane, not a page 
 	languages, and in every word written about it: the first name, an escape
 	hatch (the Notausgang in German), said to a developer that it was a way
 	out of the builder, which it is not. Nothing the feature ships under
-	text/, templates/, assets/, docs/ or in its classes may still say it;
-	the changelog keeps the history as it was	*/
+	text/, templates/, assets/, docs/ or in its classes may still say it	*/
 $editorText = [];
 foreach( [ 'en_US', 'de_DE' ] as $editorLocale )
 	$editorText[$editorLocale] = include FEATURE. '/text/'. $editorLocale. '.php';
@@ -138,7 +137,7 @@ check( 'the dialog\'s eyebrow is the key of the HTML+ Editor, which both languag
 	&& ( $editorText['de_DE']['[[/_admin/templates/label/html-editor]]'] ?? '' ) === 'HTML+ Editor' );
 $oldEditorName = [];
 foreach( new RecursiveIteratorIterator( new RecursiveDirectoryIterator( FEATURE, FilesystemIterator::SKIP_DOTS ) ) as $editorFile )
-	if( $editorFile->isFile() && in_array( $editorFile->getExtension(), [ 'php', 'js', 'css', 'tpl', 'md' ], true ) && str_contains( $editorFile->getPathname(), '/tests/' ) === false && $editorFile->getFilename() !== 'CHANGELOG.md'
+	if( $editorFile->isFile() && in_array( $editorFile->getExtension(), [ 'php', 'js', 'css', 'tpl', 'md' ], true ) && str_contains( $editorFile->getPathname(), '/tests/' ) === false
 		&& preg_match( '/escape[- ]hatch|Notausgang/i', (string) file_get_contents( $editorFile->getPathname() ) ) === 1 )
 		$oldEditorName[] = substr( $editorFile->getPathname(), strlen( FEATURE ) + 1 );
 check( 'nothing the feature ships still calls it an escape hatch or a Notausgang'. ( $oldEditorName === [] ? '' : ' - '. implode( ', ', $oldEditorName ) ), $oldEditorName === [] );

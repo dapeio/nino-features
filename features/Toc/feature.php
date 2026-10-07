@@ -32,6 +32,10 @@ return [
 				'en_US' => 'On a heading: left out of the list, and given no anchor.',
 				'de_DE' => 'An einer Überschrift: bleibt aus der Liste und bekommt keinen Anker.',
 			],
+			'id="…" on a listed heading' => [
+				'en_US' => 'Every heading in the list gets an id made from its own words; an id the page already had is kept exactly as it was. Two headings with the same words get kontakt and kontakt-2.',
+				'de_DE' => 'Jede Überschrift der Liste bekommt eine id aus ihren eigenen Worten; eine id, die die Seite schon hatte, bleibt, wie sie war. Zwei Überschriften mit denselben Worten bekommen kontakt und kontakt-2.',
+			],
 		],
 		'routes' => [],
 		'panel' => [],

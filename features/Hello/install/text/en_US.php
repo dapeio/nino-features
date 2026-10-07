@@ -5,7 +5,7 @@ declare(strict_types=1);
 // once, at activation (add-only: a key the project already has stays). From
 // then on an editor keeps them current in the Text panel and never opens a
 // feature directory. The panel's own words are a different set, in
-// features/Hello/text/ - see README.md.
+// features/Hello/text/.
 return [
 
 	'[[/feature/hello/greeting/note]]'	=> 'Rendered by the Hello World feature.',

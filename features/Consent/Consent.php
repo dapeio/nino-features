@@ -22,7 +22,7 @@ namespace Nino\Modules {
 	 *										three a site uses at all. Everything visitor-facing
 	 *										(the banner's markup via [consent]/[consent-settings],
 	 *										the gating in the browser) is documented in this
-	 *										feature's own README.md; this class only renders the
+	 *										feature's manual; this class only renders the
 	 *										markup, answers whether a category is currently
 	 *										allowed and names the hosts of the page's gated
 	 *										scripts in the Content-Security-Policy (see
@@ -99,8 +99,7 @@ namespace Nino\Modules {
 			// A source under \Nino\Filesystem::FEATURES_DIR is resolved
 			// against \Nino\Features::dir() rather than against the project
 			// root, so '/features/Consent/assets/...' reaches this feature's
-			// own copy wherever NINO_FEATURES_DIR put the directory; see the
-			// README's "Asset bundling and the page cache" note
+			// own copy wherever NINO_FEATURES_DIR put the directory
 			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Consent/assets/consent.css' );
 			\Nino\Html::addAsset( $appData, '/.cache/script.js', '/features/Consent/assets/consent.js' );
 		}
@@ -258,7 +257,8 @@ namespace Nino\Modules {
 		 *	category nobody offers cannot be used to open the policy. Only an
 		 *	https host that is a plain ascii name counts, with no credentials and
 		 *	no ip address. And an inline, relative, http: or protocol-relative
-		 *	placeholder adds nothing. The README's "CSP" section says what is left.
+		 *	placeholder adds nothing. What is left is a script that redirects, a
+ *	hosted script's own requests and a cached page.
 		 *
 		 *	script-src is extended where it exists and built from default-src where
 		 *	it does not; script-src-elem only where the policy has one; 'none' is

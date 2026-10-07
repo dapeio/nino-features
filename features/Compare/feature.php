@@ -34,8 +34,8 @@ return [
 		],
 		'markup' => [
 			'class="nino-compare"' => [
-				'en_US' => 'What the shortcode writes. Without JavaScript the same markup is two captioned pictures under one another - see README.md.',
-				'de_DE' => 'Was der Shortcode schreibt. Ohne JavaScript sind es zwei beschriftete Bilder untereinander - siehe README.md.',
+				'en_US' => 'What the shortcode writes. Without JavaScript the same markup is two captioned pictures under one another.',
+				'de_DE' => 'Was der Shortcode schreibt. Ohne JavaScript sind es zwei beschriftete Bilder untereinander.',
 			],
 		],
 		'routes' => [],

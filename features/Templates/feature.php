@@ -20,8 +20,17 @@ return [
 				'en_US' => 'A page-*.tpl as a stack of sections: add one from the library, fill it in. What the builder does not recognise it leaves byte for byte.',
 				'de_DE' => 'Eine page-*.tpl als Stapel von Sections: eine aus der Bibliothek hinzufügen, ausfüllen. Was der Baukasten nicht erkennt, lässt er Byte für Byte stehen.',
 			],
+			'Section library' => [
+				'en_US' => 'Whole sections to insert: a preset is a directory under library/ with a manifest naming its areas, its components and, for a repeating area, the Elements model behind it. Four actions reach into the Elements, Types and Slots panels and need their permissions. The manual is docs/templates.md.',
+				'de_DE' => 'Ganze Sektionen zum Einfügen: Ein Preset ist ein Verzeichnis unter library/ mit einem Manifest, das seine Bereiche, seine Komponenten und, für einen sich wiederholenden Bereich, das Elements-Modell dahinter nennt. Vier Aktionen greifen in die Panels Elements, Types und Slots und brauchen deren Berechtigungen. Das Handbuch ist docs/templates.md.',
+			],
 		],
-		'callbacks' => [],
+		'callbacks' => [
+			'/nino/http/response/GET://_admin' => [
+				'en_US' => 'Adds one source, data: fonts, to the workbench page\'s policy, because the sandboxed section previews inline their fonts. Nothing else of the policy is widened.',
+				'de_DE' => 'Ergänzt die Richtlinie der Workbench-Seite um eine Quelle, data:-Schriften, weil die abgeschotteten Sektionsvorschauen ihre Schriften einbetten. Sonst wird nichts an der Richtlinie erweitert.',
+			],
+		],
 		'install' => [],
 	],
 	'category'		=> 'content',

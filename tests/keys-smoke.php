@@ -374,8 +374,8 @@ foreach( $shipped as $file ) {
 
 	$relative = ltrim( substr( $file, strlen( $repo ) ), '/' );
 
-	// A changelog keeps its old entries as they were, and a test names old forms to show they are gone
-	if( str_contains( '/'. $relative, '/tests/' ) === true || basename( $relative ) === 'CHANGELOG.md' || is_file( $file ) === false )
+	// A test names old forms to show they are gone
+	if( str_contains( '/'. $relative, '/tests/' ) === true || is_file( $file ) === false )
 		continue;
 
 	$scanned++;

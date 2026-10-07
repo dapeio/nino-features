@@ -19,8 +19,8 @@ namespace Nino\Modules {
 	 *										away again, then the next one - stopping on the last
 	 *										line, or looping where the container asks for it. The
 	 *										lines are the container's own <p>s; every timing is a
-	 *										data attribute on that same container, and this
-	 *										feature's README.md lists them.
+	 *										data attribute on that same container, and the
+	 *										manual lists them.
 	 *										A container can also ask for a pause button after it
 	 *										(data-typewriter-toggle, WCAG 2.2.2), labelled with
 	 *										the text fill the install unit brings.
@@ -68,8 +68,7 @@ namespace Nino\Modules {
 			// The virtual '/features/...' prefix resolves against
 			// \Nino\Features::dir() (\Nino\Filesystem::FEATURES_DIR), so
 			// '/features/Typewriter/assets/...' reaches this feature's own copy
-			// wherever NINO_FEATURES_DIR put the features directory - see the
-			// README's "Asset bundling" note
+			// wherever NINO_FEATURES_DIR put the features directory
 			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Typewriter/assets/typewriter.css' );
 			\Nino\Html::addAsset( $appData, '/.cache/script.js', '/features/Typewriter/assets/typewriter.js' );
 		}

@@ -2,8 +2,7 @@
 declare(strict_types=1);
 /**
  *	Nino								A compact filesystembased php framework
- *	Modules\Redirects\Admin		The /_admin panel of the Redirects feature - see
- *											features/Redirects/README.md
+ *	Modules\Redirects\Admin		The /_admin panel of the Redirects feature
  *
  *	@package						Dape/Nino
  *	@author							David Perchermeier <mail@dape.io>

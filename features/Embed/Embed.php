@@ -203,7 +203,8 @@ namespace Nino\Modules {
 		 *	page with no [embed] keeps its policy byte for byte; the directive is
 		 *	extended where it exists, built from child-src or default-src where
 		 *	it does not, and 'none' is left as the project decided it - see
-		 *	_extendPolicy(). The README's "CSP" section says why this is allowed.
+		 *	_extendPolicy(). Allowed because it adds only the origin of a frame the
+		 *	project wrote into its own template, to frame-src and nothing else.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array			&$request			(reference) Current request and its response

@@ -8,15 +8,10 @@ Thumbs.db
 # Patches are handed around, never versioned - the change itself is
 *.patch
 
-# What bin/build.php writes - the archives and the catalogue are published,
-# never versioned - and a signing key, which never enters a repository
-/dist/
+# A signing key never enters a repository
 *.pem
 
-# A local copy of the directory the catalogue is served from - catalogue.json,
-# its signature, the archives and publish.php. What it holds is published, and
-# what the server runs is server/publish.php: never versioned here
+# A local mirror of the directory the catalogue is served from - what
+# bin/release.sh syncs and bin/build.php writes into: catalogue.json, its
+# signature and the archives. What it holds is published, never versioned
 /public/
-
-# The endpoint's configuration on a server - a token and a key, never here
-/server/publish.config.php

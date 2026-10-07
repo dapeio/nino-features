@@ -26,6 +26,10 @@ return [
 				'en_US' => 'Where the password form posts to.',
 				'de_DE' => 'Wohin das Passwortformular sendet.',
 			],
+			'/.protected/logout' => [
+				'en_US' => 'Locks the session again and goes to the front page. A plain GET link, which is what [protected-logout] writes.',
+				'de_DE' => 'Sperrt die Sitzung wieder und geht zur Startseite. Ein einfacher GET-Link, wie ihn [protected-logout] schreibt.',
+			],
 		],
 		'panel' => [
 			'Protected area' => [
@@ -57,8 +61,8 @@ return [
 				'de_DE' => 'Seine Worte, ins Panel Texte.',
 			],
 			'elements/privacy.php' => [
-				'en_US' => 'Its section of the privacy policy, added to the Legal module\'s type - never replacing a section. Where there is no such module, nothing happens.',
-				'de_DE' => 'Sein Abschnitt der Datenschutzerklärung, dem Typ des Moduls Legal hinzugefügt – ohne einen Abschnitt zu ersetzen. Wo es das Modul nicht gibt, passiert nichts.',
+				'en_US' => 'Its section of the privacy policy, added to the Legal module\'s type - never replacing a section. Where there is no such module, nothing happens. A starting point, no legal advice.',
+				'de_DE' => 'Sein Abschnitt der Datenschutzerklärung, dem Typ des Moduls Legal hinzugefügt – ohne einen Abschnitt zu ersetzen. Wo es das Modul nicht gibt, passiert nichts. Ein Ausgangspunkt, keine Rechtsberatung.',
 			],
 		],
 	],

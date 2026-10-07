@@ -2,67 +2,27 @@
 
 **Sprache:** [English](README.md) · Deutsch
 
-Der Feature-Katalog von [Nino](https://github.com/dapeio/nino): die Features, die ein Nino-Projekt installieren kann, je eines pro Verzeichnis unter `features/`, mit eigener Version.
+Der Feature-Katalog von [Nino](https://github.com/dapeio/nino): die Features, die ein Nino-Projekt installieren kann, je eines pro Verzeichnis unter `features/`, mit eigener Version. Der Katalog selbst ist die Liste – [catalogue.getnino.dev](https://catalogue.getnino.dev) liefert ihn aus, und das Features-Panel eines Projekts liest ihn.
 
 ## Was dieser Katalog ist
 
 Ein Nino-Checkout liefert kein Feature aus. Was ein Projekt über den Kernel hinaus braucht – einen Newsletter, eine Suche –, kommt als **Feature**: ein Verzeichnis mit einer Laufzeitklasse, bei Bedarf einem Panel der Workbench, einer Install-Einheit mit Templates und Texten und einem Manifest `feature.php`, das sagt, was es ist, für welche Nino-Version es geschrieben wurde und welche Einstellungen es anbietet. Was ein Feature liefern muss, steht im Vertrag [Features](https://github.com/dapeio/nino/blob/main/docs/features.md) in Nino; jedes Feature hier folgt ihm.
 
-Dieses Repository ist der Ort, von dem aus Ninos Features veröffentlicht werden. `features/<Name>/` ist genau das, was in einem Projekt landet – ein Projekt kopiert das Verzeichnis in sein eigenes `features/` und schaltet das Feature im Panel **Features** der Workbench ein. Das Repository selbst macht nichts über das Netz: Es ist ein Dateibestand, den man klont oder kopiert – und die Quelle dessen, was getnino.dev als signierte Archive ausliefert, siehe [Veröffentlichen](#veröffentlichen).
+`features/<Name>/` ist genau das, was in einem Projekt landet. Das Repository macht nichts über das Netz: Es ist ein Dateibestand, den man klont oder kopiert, und die Quelle dessen, was getnino.dev als signierte Archive ausliefert. Was `main` trägt, listet der Katalog, siehe [Ein Release](#ein-release).
 
-`Newsletter` und `Search` haben bis Nino 1.0.0-beta im Nino-Repository selbst gelegen, unter `app/Nino/Modules/`. Hier liegen sie unverändert und tragen von jetzt an ihre eigene Version.
-
-## Die Features
-
-| Key | Name | Kategorie | Version | Nino | Was es tut |
-| --- | --- | --- | --- | --- | --- |
-| `compare` | [Vorher/Nachher](features/Compare/README.md) | `ui` | 1.0.0 | `^1.3` | Zwei Bilder derselben Sache unter einem Trenner, den der Besucher bewegt – mit Maus, Finger oder Pfeiltasten, denn der Trenner ist ein echter Schieberegler |
-| `consent` | [Consent](features/Consent/README.md) | `security` | 1.0.0 | `^1.3` | Ein Cookie-/Consent-Banner mit Kategorien und einwilligungsabhängigen Skripten, ohne Drittanbieter |
-| `copy` | [In die Zwischenablage](features/Copy/README.md) | `ui` | 1.0.0 | `^1.3` | Ein Kopierknopf an allem, was sonst abgetippt wird – ein Codeblock, eine IBAN, ein Gutscheincode –, der sagt, dass es geklappt hat, und dort, wo er nicht kann, markierbarer Text bleibt |
-| `countdown` | [Countdown](features/Countdown/README.md) | `ui` | 1.0.0 | `^1.3` | Die Zeit bis zu einem Datum, auf der Seite heruntergezählt – und dort, wo das Skript nie läuft, das Datum selbst, ausgeschrieben und maschinenlesbar |
-| `design` | [Design](features/Design/README.md) | `ui` | 0.1.0 | `^1.4` | Das Aussehen einer Seite, pro Bauteil gewählt statt pro Seite – je ein Set für Hero, Sections, Artikel, Buttons, Formulare, Listen und Bausteine, dazu Header und Footer, in `assets/theme.css` kompiliert |
-| `embed` | [Externe Einbindungen](features/Embed/README.md) | `ui` | 1.0.0 | `^1.3` | Ein Video oder eine Karte als Fläche, die der Besucher drückt, nicht als iframe, das sich selbst lädt – beim Anbieter wird nichts angefragt, bevor er es verlangt oder externe Medien erlaubt hat |
-| `forms` | [Forms](features/Forms/README.md) | `communication` | 1.0.0 | `^1.4` | Ein Baukasten für Ninos eigenen Formular-Endpunkt: beliebig viele Formulare, ein Shortcode `[form]`, der sie zeichnet, und Spam-Schutz ohne Captcha |
-| `gallery` | [Gallery](features/Gallery/README.md) | `content` | 1.0.0 | `^1.3` | Beliebig viele Bildergalerien, je ein Raster aus Vorschaubildern, die sich bildschirmfüllend öffnen – zwei abgeleitete Größen je Upload, das Original wird nie gespeichert |
-| `hello` | [Hallo Welt](features/Hello/README.md) | `system` | 1.0.0 | `^1.3` | Ein vollständiges Feature, das eine Kleinigkeit tut und zum Kopieren geschrieben ist: Shortcode, Route, Panel, Einstellung, Install-Einheit und Test, jedes genau einmal |
-| `lightbox` | [Lightbox](features/Lightbox/README.md) | `ui` | 1.0.0 | `^1.3` | Öffnet jeden Link auf ein Bild bildschirmfüllend, mit seiner Gruppe als Serie – Pfeile, Wischen, Bildunterschriften und ein Fokusrahmen, ohne Bibliothek |
-| `mailer` | [Mailer](features/Mailer/README.md) | `system` | 1.0.0 | `^1.4` | Versendet jede von Nino verschickte Mail über SMTP statt über das `mail()` des Servers |
-| `modeswitch` | [Hell/Dunkel-Schalter](features/Modeswitch/README.md) | `ui` | 1.0.0 | `^1.3` | Lässt Besucher die Seite hell, dunkel oder so lesen, wie ihr System es vorgibt - ein Schalter mit drei Zuständen, den `[mode-switch]` an eine beliebige Stelle setzt, über der dunklen Palette, die das Projekt ohnehin mitbringt |
-| `newsletter` | [Newsletter](features/Newsletter/README.md) | `communication` | 1.0.0 | `^1.4` | Double-Opt-in-Anmeldung mit Bestätigungs- und Abmeldelink, und die Abonnentenliste als Panel der Workbench |
-| `posts` | [Beiträge](features/Posts/README.md) | `content` | 1.1.0 | `^1.4` | Eine Seite je Element und eine Liste mit Seitenzahlen: was aus einem Elementtyp einen Blog, eine News-Rubrik oder ein Journal macht - die Beiträge bleiben gewöhnliche Elemente |
-| `progress` | [Lesefortschritt](features/Progress/README.md) | `ui` | 1.0.0 | `^1.3` | Ein schmaler Balken, der zeigt, wie weit der Leser in einem langen Text ist – über die ganze Seite oder über das eine Element, das den Artikel enthält |
-| `protected` | [Protected area](features/ProtectedArea/README.md) | `security` | 1.0.0 | `^1.4` | Legt eine oder mehrere Seiten hinter ein gemeinsames Passwort, ohne Konten |
-| `redirects` | [Weiterleitungen](features/Redirects/README.md) | `system` | 1.0.0 | `^1.4` | Alte Adressen, die weiter funktionieren: eine Regel je Seite oder je Teilbaum, angewendet nur dort, wo sonst nichts antwortet – und eine Liste der Adressen, die nichts beantwortet hat, damit sich die lohnenden Regeln ablesen lassen, statt sie zu raten |
-| `search` | [Elements search](features/Search/README.md) | `content` | 1.1.0 | `^1.3` | Ein sprachbewusster unscharfer Suchindex über konfigurierte Element-Felder, neu gebaut bei jedem Speichern, mit zwei Shortcodes, die Treffer und Trefferzahl auf jeder Seite zeichnen, unter einem Formular, das das Projekt selbst schreibt |
-| `seo` | [SEO](features/Seo/README.md) | `marketing` | 1.1.0 | `^1.4` | Sitemap, robots.txt und llms.txt, erzeugt aus Routen, Sprachen und Texten, die Nino ohnehin hat |
-| `social` | [Social-Media-Links](features/Social/README.md) | `content` | 1.0.0 | `^1.3` | Links zu den Profilen, die eine Website anderswo führt, jeder mit seinem Icon – ein Elementtyp, den die Redaktion unter Elemente pflegt, gezeichnet von `[social]`, wo immer ein Template sie haben will; jede Adresse wird geprüft, bevor sie ein Link wird |
-| `stats` | [Stats](features/Stats/README.md) | `marketing` | 1.0.0 | `^1.4` | Seitenaufruf-Zählung für die Workbench, ohne Cookies, IP-Adressen oder irgendetwas pro Besucher |
-| `templates` | [Template Builder](features/Templates/README.md) | `content` | 1.0.0 | `^1.4` | Baut die Seitentemplates des Projekts aus ganzen Abschnitten – eine Bibliothek aus siebzehn, eine Live-Vorschau, und dazwischen bleibt der Quelltext der Seite Deiner |
-| `ticker` | [Laufband](features/Ticker/README.md) | `ui` | 1.0.0 | `^1.3` | Eine Reihe, die läuft – Logos, Referenzen, eine Zeile Ankündigungen –, einmal oder nahtlos in der Schleife, angehalten, wenn man darauf zeigt, auf Wunsch mit Pause-Knopf, und still für Besucher, die weniger Bewegung wollen |
-| `toc` | [Inhaltsverzeichnis](features/Toc/README.md) | `content` | 1.0.0 | `^1.3` | Eine Liste der eigenen Überschriften einer langen Seite, die zeigt, welcher Abschnitt gerade gelesen wird – und ein Anker an jeder Überschrift, damit sich eine Stelle verlinken lässt |
-| `typewriter` | [Typewriter](features/Typewriter/README.md) | `ui` | 1.0.0 | `^1.3` | Tippt die Zeilen eines Containers nacheinander, mit Cursor am Schreibkopf, je Element getaktet |
-
-**Kategorie** ist das, wonach das Features-Panel gruppiert und filtert, eine je Feature: `content`, `ui`, `communication`, `marketing`, `security` oder `system` – das Vokabular, das Nino als `\Nino\Features::CATEGORIES` veröffentlicht und das [Features](https://github.com/dapeio/nino/blob/main/docs/features.de.md#kategorien) erklärt, samt der Regel für den Fall, dass zwei davon passen. Nino selbst nimmt jeden Slug an, damit ein älterer Kernel einen Katalog lesen kann, der ein Feature unter einer Kategorie führt, die er nicht kennt; `bin/build.php` ist die Stelle, die ein veröffentlichtes Feature auf die sechs festlegt – ein Tippfehler wird also hier gefangen und nicht als eigene Überschrift in jemandes Panel angezeigt.
-
-**Reifegrad** ist ein optionales Abzeichen, das das Features-Panel neben den Namen eines Features zeichnet, in seinen Zeilen, unter den verfügbaren Features und über seinem Handbuch: freier Text von höchstens 24 Zeichen, ein String oder eine Abbildung `locale => string`, als Schlüssel `maturity` im Manifest. Die meisten Features tragen keinen; `hello` sagt `Beispiel`. `bin/build.php` veröffentlicht ihn im Katalogeintrag, wo das Manifest einen hat. Ein Nino aus der Zeit vor dem Schlüssel ignoriert ihn, ein Feature kann ihn also tragen, bevor jedes Projekt aktualisiert hat.
-
-**Name** ist das, was eine Zeile im Features-Panel sagt – der Key steht dort nie, das Verzeichnis auch nicht –, deshalb dürfen zwei Features in keiner Sprache denselben Namen tragen, und `bin/build.php` weist ein solches Paar ab. Groß- und Kleinschreibung zählt dabei nicht, denn „Seo" und „SEO" sind so schwer auseinanderzuhalten wie zwei gleichlautende Zeilen; ein Name als einfacher String ist der Name in jeder Sprache und kollidiert entsprechend.
-
-Die README eines Features, wenn es eine hat, beschreibt seine Routen, sein Panel, seine Install-Einheit, seine Daten und seine Tests; sein `CHANGELOG.md`, wenn es eines hat, die Änderungen zwischen den Versionen. `bin/catalogue.php` liest dieselben Manifeste und gibt diese Tabelle als JSON aus, `bin/build.php` baut die Archive und das signierte `catalogue.json`, das getnino.dev veröffentlicht – siehe [Entwickeln und testen](#entwickeln-und-testen) und [Veröffentlichen](#veröffentlichen).
+Ein Feature ist in seinem Manifest dokumentiert: Das `manual` in `feature.php` zeigt das Features-Panel auf dem Tab Beschreibung, und der `hint` einer Einstellung steht neben dem Feld im Formular. Weitere Dokumentation gibt es nicht zu pflegen. Die Geschichte eines Features ist die Commit-Historie.
 
 ## Ein Feature installieren
 
 Ein Feature wird nicht installiert, sondern hingelegt und eingeschaltet:
 
-1. Kopiere `features/<Name>/` aus diesem Repository in das `features/` deines Projekts – als Ganzes, mit demselben Verzeichnisnamen. Der Name ist der Klassenname: `features/Newsletter/Newsletter.php` ist `\Nino\Modules\Newsletter`.
+1. Kopiere `features/<Name>/` aus diesem Repository in das `features/` deines Projekts – als Ganzes, mit demselben Verzeichnisnamen. Der Name ist der Klassenname: `features/Newsletter/Newsletter.php` ist `\Nino\Modules\Newsletter`. Ein Projekt, das den Katalog liest, installiert stattdessen im Features-Panel.
 2. Melde dich an `/_admin` an und öffne **Features** in der Gruppe System. Das Panel verlangt die Entwicklerberechtigung `/_admin/features/manage`. Es listet jedes Verzeichnis mit gültigem Manifest, eingeschaltet oder nicht, mit Version und mit dem, was einer Aktivierung entgegensteht – eine Nino-Version, für die das Feature nicht geschrieben wurde, eine fehlende PHP-Erweiterung, ein benötigtes Feature, das nicht da ist.
-3. **Aktivieren.** Das wendet die Install-Einheit des Features an, ohne etwas zu überschreiben, das dein Projekt bereits hat – ein vorhandenes Template, ein vorhandener Textschlüssel, eine vorhandene Route bleiben –, trägt die Klasse in `/nino/modules` ein und zeichnet die Version unter `/nino/features` in der `config.php` auf.
+3. **Aktivieren.** Das wendet die Install-Einheit des Features an, ohne etwas zu überschreiben, das dein Projekt bereits hat, trägt die Klasse in `/nino/modules` ein und zeichnet die Version unter `/nino/features` in der `config.php` auf.
 
-Ein Panel, das ein Feature mitbringt, erscheint mit dem nächsten Laden der Workbench – lade die Seite neu. Es steht in der Gruppe Features der Workbench, gleich, welche Gruppe sein eigenes `nav()` nennt, und der Tab Nutzerrollen des Panels Nutzer bietet seine Berechtigung dort an; die Rolle **Editor** erhält sie nicht von selbst.
+Ein Panel, das ein Feature mitbringt, erscheint mit dem nächsten Laden der Workbench, in der Gruppe Features; der Tab Nutzerrollen des Panels Nutzer bietet seine Berechtigung dort an, und die Rolle **Editor** erhält sie nicht von selbst.
 
-**Update:** Ersetze `features/<Name>/` durch die neue Fassung und drücke **Update** im Panel Features. Das Panel bietet den Knopf an, sobald das Manifest eine andere Version nennt als die aufgezeichnete. Die Aktualisierung ist dieselbe Aktion wie das Aktivieren: Die Einheit ergänzt, was neu ist, und lässt alles, was das Projekt seit der ersten Aktivierung bearbeitet hat, wie es ist; ein Feature, das seine eigenen Daten migrieren muss, tut das in `upgrade()`, bevor die neue Version aufgezeichnet wird.
-
-**Deaktivieren** trägt die Klasse aus `/nino/modules` aus – und sonst nichts. Einstellungen, Daten, kopierte Templates und Texte bleiben; ein erneutes Einschalten findet alles vor. Eine Deinstallation gibt es bewusst nicht: Was ein Feature hinterlässt, entfernt ein Entwickler wissentlich und von Hand.
+**Update:** Ersetze `features/<Name>/` durch die neue Fassung und drücke **Update** im Panel Features. Das Panel bietet es an, sobald das Manifest eine andere Version nennt als die aufgezeichnete; die Einheit ergänzt, was neu ist, und lässt alles, was das Projekt bearbeitet hat, wie es ist. **Deaktivieren** trägt die Klasse aus `/nino/modules` aus – und sonst nichts: Einstellungen, Daten, kopierte Templates und Texte bleiben.
 
 **Sicherheit:** Alles unter `features/` ist serverseitiger Quelltext. Der Nino-Checkout liefert `features/.htaccess` mit, das den Baum sperrt; ein Webserver, der `.htaccess` nicht liest, braucht die entsprechende Regel, siehe [Deployment](https://github.com/dapeio/nino/blob/main/docs/deployment.md) in Nino.
 
@@ -76,106 +36,50 @@ bin/check.sh
 NINO_ROOT=/path/to/nino bin/check.sh
 ```
 
-`bin/check.sh` kopiert jedes Feature, das der Checkout ausführen kann, in dessen `features/` – dieselbe Anordnung, die ein Projekt hat –, prüft jedes Manifest über `bin/catalogue.php`, führt die Tests dieser Features aus und entfernt die Kopien danach wieder; dazwischen führt es jeden eigenen Test dieses Repositories unter `tests/` aus – die Grammatik der Textschlüssel, die Abschnitte der Datenschutzerklärung, die Regeln, die für jedes Feature gelten, das Veröffentlichungswerkzeug, seinen Endpunkt und das Release-Skript – gegen denselben Checkout. Die Zeilen des Skripts selbst sind die Liste. Welche Features ein Checkout ausführen kann, liest `bin/applicable.php` aus ihrer `nino`-Bedingung; ein Feature, das für ein neueres Nino geschrieben ist, steht mit seinem Grund in der Liste (`Seo: skipped on Nino 1.3.2: needs ^1.4`) und bleibt draußen. Ein Verzeichnis, das im Checkout schon liegt, rührt es nicht an und sagt das.
+`bin/check.sh` kopiert jedes Feature, das der Checkout ausführen kann, in dessen `features/` – dieselbe Anordnung, die ein Projekt hat –, prüft jedes Manifest über `bin/catalogue.php`, führt die Tests dieser Features aus und entfernt die Kopien danach wieder; danach führt es jeden eigenen Test dieses Repositories unter `tests/` aus – die Grammatik der Textschlüssel, die Abschnitte der Datenschutzerklärung, die Regeln, die für jedes Feature gelten, das Build-Werkzeug und das Release-Skript. Die Zeilen des Skripts selbst sind die Liste. Ein Feature, das für ein neueres Nino geschrieben ist als der Checkout, steht mit seinem Grund in der Liste und bleibt draußen (`bin/applicable.php` entscheidet das).
 
-Ein einzelner Test läuft auch direkt. Er lädt `tests/harness.php` aus dem Checkout drei Ebenen über sich – so liegt er in einem Projekt – oder aus dem, den `NINO_ROOT` nennt, und definiert `NINO_FEATURES_DIR` auf sein eigenes Elternverzeichnis, sodass der Kernel die Klasse von dort bedient, wo das Feature gerade liegt:
+Ein einzelner Test läuft auch direkt:
 
 ```bash
 NINO_ROOT=../nino php features/Search/tests/search-smoke.php
 ```
 
-`bin/catalogue.php` ist die Vorschau: Es prüft jedes Manifest durch den Kernel des Checkouts und gibt aus, was der Katalog listen würde, als JSON – Key, Name, Beschreibung, Kategorie, Reifegrad, Version, die Nino-Bedingung, PHP-Erweiterungen, benötigte Features und das Verzeichnis –, ohne Archiv und ohne Signatur. Ein Manifest, das Nino überspringen würde, lässt den Lauf fehlschlagen: Der Katalog listet nie weniger, als im Verzeichnis liegt. `bin/build.php` baut das Eigentliche, siehe [Veröffentlichen](#veröffentlichen).
-
-```bash
-php bin/catalogue.php ../nino > catalogue.json
-```
-
-CI (`.github/workflows/ci.yml`) führt dieselben Tests gegen Ninos `main` und gegen sein jüngstes Tag aus, jeden als eigenen Schritt, und dazu eine Syntaxprüfung aller PHP- und JavaScript-Dateien, Ninos eigenen Vertragstest `tests/features-smoke.php` mit den Features an Ort und Stelle sowie PHPStan und ESLint über `features/` aus dem Checkout heraus. Das `catalogue.json` des `main`-Laufs bleibt als Artefakt erhalten. Lokal laufen PHPStan und ESLint genauso: Features in den Checkout kopieren (`php bin/applicable.php ../nino` nennt die, die zu kopieren sind), dort `phpstan analyse` und `npx eslint features` ausführen.
+`bin/catalogue.php` gibt aus, was der Katalog listen würde, als JSON, ohne Archiv und ohne Signatur. CI (`.github/workflows/ci.yml`) führt dieselben Tests gegen Ninos `main` und gegen sein jüngstes Tag aus, dazu eine Syntaxprüfung, Ninos eigenen Vertragstest sowie PHPStan und ESLint über `features/`. Nichts wartet darauf: Es ist eine Bequemlichkeit.
 
 ## Ein Feature schreiben
 
-Das [Feature-Rezept](https://github.com/dapeio/nino/blob/main/docs/recipes/feature.md) in Nino baut ein Feature Schritt für Schritt bis zum bestandenen Test; das Handbuch [Features](https://github.com/dapeio/nino/blob/main/docs/features.md) ist der Vertrag dahinter – das Manifest, das Settings-Schema, der Lebenszyklus. Jedes Verzeichnis in diesem Katalog folgt derselben Anordnung:
+Das [Feature-Rezept](https://github.com/dapeio/nino/blob/main/docs/recipes/feature.md) in Nino baut ein Feature Schritt für Schritt; das Handbuch [Features](https://github.com/dapeio/nino/blob/main/docs/features.md) ist der Vertrag dahinter. `features/Hello/` ist ein vollständiges Beispiel, das zum Kopieren geschrieben ist: Kopiere es und benenne dann das Verzeichnis, den `key` in `feature.php` und die Klasse `\Nino\Modules\Hello` um, sodass die drei übereinstimmen.
 
 ```text
 features/<Name>/
-├── feature.php              das Manifest: key, name, description, manual, category, maturity (optional), version, nino, requires, settings, data
+├── feature.php              das Manifest: key, name, description, manual, category, version, nino, requires, settings, data
 ├── <Name>.php               die Laufzeitklasse \Nino\Modules\<Name>
-├── Admin/Admin.php          das Panel \Nino\Modules\<Name>\Admin, wenn es eines gibt
-├── assets/                  Skript und Stylesheet des Panels
-├── install/                 die Einheit, die das Aktivieren add-only anwendet: manifest.php, templates/, text/, elements/
-├── text/<locale>.php        die Fills des Panels, solange das Feature aktiv ist
-├── templates/               das eigene Markup des Features, *.tpl, von seiner Klasse gefüllt – wenn es etwas zeichnet
-├── tests/<key>-smoke.php    der eigene Test des Features – wenn es einen gibt
-├── README.md                was es tut, seine Routen, sein Panel, seine Einheit, seine Daten – wenn es eine gibt
-└── CHANGELOG.md             die Änderungen je Version – wenn es eines gibt
+├── Admin/Admin.php          das Panel, wenn es eines gibt
+├── assets/ install/ text/ templates/   wenn das Feature sie braucht
+└── tests/<key>-smoke.php    ein Test, wenn du einen willst
 ```
 
-`manual` ist das, was das Features-Panel auf dem Tab Beschreibung des Bildschirms eines Features zeichnet: eine Map `section => handle => zeile` – Shortcodes, Markup, Routen, Panel, Callbacks, Install – mit dem Handle so, wie man ihn eintippt, und daneben einer Zeile je Sprache, wie es Ninos Handbuch [Features](https://github.com/dapeio/nino/blob/main/docs/features.de.md#das-handbuch) beschreibt und `features/Hello/feature.php` zeigt. Ein String oder eine Map `locale => string` davon ist die ältere Prosaform: Nino liest sie weiterhin, ein neues Feature schreibt sie nicht. Was nicht in eine Zeile passt, gehört ins `README.md`, das für jemanden geschrieben ist, der den Quelltext liest. Die Textschlüssel eines Features sind `/feature/<key>/<Teil>/<Name>` für die Wörter seiner eigenen Funktion und `/template/<Kategorie>/<Teil>/<Name>` für die Wörter eines Templates, das es ins Projekt kopiert – die Kategorie ist der Dateiname dieses Templates ohne `.tpl` –; es ist dieselbe Grammatik mit vier Segmenten, der auch Ninos eigene Schlüssel folgen, nachzulesen in [AGENTS.md](AGENTS.md#4b-text-keys) und von `tests/keys-smoke.php` gehalten. Ein Feature, das etwas zeichnet, hält sein Markup in `templates/*.tpl` neben seiner Klasse, gelesen über `\Nino\Filesystem` und mit `str_replace()` gefüllt – PHP entscheidet, was gezeigt wird, ein Template, wie es aussieht; `features/Hello/` zeigt das Ganze, und [AGENTS.md](AGENTS.md#4a-markup-belongs-in-a-template) nennt die Regel und die drei Formen, die trotzdem Markup in PHP tragen dürfen. Nur `feature.php` und `<Name>.php` verlangt der Kernel. Alles Weitere ist da, wenn das Feature es braucht – `Search` etwa hat keine Install-Einheit. Ein Feature, das personenbezogene Daten verarbeitet oder etwas von einem Dritten lädt, bringt seinen **Abschnitt der Datenschutzerklärung** mit: `install/elements/privacy.php`, im Manifest seiner Einheit unter `elements` genannt, in eigenen Worten auf Deutsch und Englisch geschrieben, mit dem Schlüssel des Features (oder Schlüssel und Name) als Id und einer Position in dem Bereich, in den der Abschnitt gehört – Cookies und Einwilligung 400–499, Kontakt, Formulare und Mail 500–599, Statistik 600–699, eingebettete Inhalte 700–799, weitere Features 800–899. Ninos Modul Legal (1.4) zeigt ihn im Typ `privacy`; ein älteres Nino überliest die Datei. Er ist ein Ausgangspunkt und keine Rechtsberatung, und das README des Features sagt es – `tests/legal-smoke.php` hält die Dateien an ihre Form. Ein `README.md`, ein `CHANGELOG.md` und ein Test unter `tests/` sind willkommen, nicht verlangt: Bei ihrer heutigen Größe liest man die Features in einer Minute, und ein Beitrag soll nicht mit drei Dateien Papierkram beginnen. Das Release-Werkzeug verlangt sie nur im Strict-Modus – `bin/release.sh --strict`, oder die Repository-Variable `RELEASE_STRICT` auf `1` für den Workflow – den dieser Katalog später einschalten kann. Die Regeln für Agenten, die hier arbeiten, stehen in [AGENTS.md](AGENTS.md).
+Verlangt sind `feature.php` und `<Name>.php`. Das `manual` des Manifests ist die Dokumentation: eine Map `section => handle => zeile` – Shortcodes, Markup, Routen, Panel, Callbacks, Install – mit dem Handle so, wie man ihn eintippt, und daneben einer Zeile auf Deutsch und Englisch. Ein Test ist willkommen und nie verlangt. Die Regeln, die bleiben, weil Tests sie prüfen, stehen in [AGENTS.md](AGENTS.md): kein Markup in PHP, Englisch im Code, Escaping, die Grammatik der Textschlüssel und ein Abschnitt der Datenschutzerklärung für ein Feature, das personenbezogene Daten verarbeitet.
 
-## Versionen und Releases
+`category` ist eine von `content`, `ui`, `communication`, `marketing`, `security` oder `system`, und kein Name kommt in irgendeiner Sprache bei zwei Features vor; `bin/build.php` weist beides ab.
 
-Jedes Feature trägt seine eigene `version` in `feature.php` – `major.minor.patch`. Ein Release ist ein Git-Tag `<key>-<version>`, etwa `newsletter-1.0.0`; die Features eines Repositories werden unabhängig voneinander versioniert, und ein Tag benennt genau eines. Das Pushen des Tags veröffentlicht diese Version auf getnino.dev, siehe [Veröffentlichen](#veröffentlichen). Ein Projekt sieht die Version im Panel Features und bekommt ein Update angeboten, sobald das Verzeichnis eine neuere trägt.
+## Ein Release
 
-`nino` im Manifest nennt die Nino-Versionen, für die das Feature geschrieben ist – `^1.3` für die Features, die nur ihre eigenen Wörter lesen, `^1.4` für die, die einen Textschlüssel des Kernels lesen (die Schlüssel haben ab 1.4 eine Form); ein Vorab-Kernel wie `1.0.0-beta` zählt als das Release, dem er vorausgeht. Die Bedingung ist eine Absicht, keine Garantie: Verträglichkeit wird getestet, nicht erklärt. Die CI dieses Repositories führt jedes Feature gegen Ninos `main` und gegen sein jüngstes Tag aus, und Ninos eigene CI klont diesen Katalog, kopiert die Features in ihren Checkout und führt deren Tests dort aus – eine Kernel-Änderung, die ein Feature bricht, schlägt auf beiden Seiten fehl.
-
-## Veröffentlichen
-
-catalogue.getnino.dev veröffentlicht diesen Katalog als signierte Archive, und ein Nino, das `\Nino\Catalogue` trägt, liest ihn von dort: Das Panel Features lädt den Katalog auf Anfrage – nie von selbst –, bietet an, was zum laufenden Kernel passt, und installiert ein Archiv direkt nach `features/`, nachdem es dessen Prüfsumme gegen den signierten Katalog geprüft hat. Alles Veröffentlichte ist eine statische Datei über https:
-
-| Pfad | Was es ist |
-| --- | --- |
-| `https://catalogue.getnino.dev/catalogue.json` | der Katalog, Format 1 – siehe [Der Katalog, Format 1](#der-katalog-format-1) |
-| `https://catalogue.getnino.dev/catalogue.json.sig` | seine abgetrennte Signatur: ECDSA über SHA-256 der exakten Bytes von `catalogue.json`, DER, base64 in einer Zeile |
-| `https://catalogue.getnino.dev/<key>-<version>.tar.gz` | ein Archiv je Feature-Version, mit genau einem Verzeichnis `<Name>/` – was unter dem `features/` eines Projekts landet, ohne `tests/`; höchstens 20 MB gepackt, 50 MB entpackt, 5000 Einträge |
-
-Eine veröffentlichte Version ist unveränderlich: Ein Archiv, das auf dem Server liegt, wird nie neu gebaut oder überschrieben, und sein Eintrag behält Prüfsumme, Größe und Veröffentlichungsdatum. Was sich ändern muss, erscheint als nächste Version.
-
-### Ein Release
-
-1. Erhöhe `version` in `features/<Name>/feature.php`; wo das Feature ein `CHANGELOG.md` hat, schreibe den Eintrag `## <version> — <datum>`, und bringe sein `README.md` auf den Stand, wo sich Verhalten geändert hat.
-2. Führe `bin/check.sh` aus – jedes Manifest, die Tests jedes Features und die eigenen des Repositories.
-3. Mit der Änderung auf `main`: Tagge den Commit `<key>-<version>` und pushe das Tag:
+Ein Release ist `bin/release.sh`, vom Owner auf der eigenen Maschine ausgeführt. Der Katalog ist, was `main` trägt: Jeder Lauf baut jedes Feature und legt das Ergebnis auf den Server, und ein Feature, das sich nicht geändert hat, ergibt dieselben Bytes und lädt nichts hoch.
 
 ```bash
-git tag newsletter-1.0.1
-git push origin newsletter-1.0.1
+NINO_CATALOGUE_KEY=~/safe/catalogue-key.pem NINO_CATALOGUE_TARGET=nino@host:/srv/catalogue/ bin/release.sh
 ```
 
-Das Tag startet `.github/workflows/release.yml`, das
+Es führt zuerst `bin/check.sh` aus (`--quick` überspringt das), holt per rsync, was der Server hält, nach `public/`, lässt `bin/build.php` jedes Archiv bauen und den Katalog signieren und legt `public/` mit `rsync --delete` zurück. `--dry-run` hält vor dem Upload an. `NINO_ROOT` nennt den Nino-Checkout (Standard `../nino`), `NINO_CATALOGUE_URL`, wo die Archive ausgeliefert werden (Standard `https://catalogue.getnino.dev`).
 
-- das Tag auscheckt und Ninos `main` daneben klont, als `../nino`;
-- Key und Version aus dem Tag liest und bei einem fehlschlägt, das nicht `<key>-<major>.<minor>.<patch>` ist;
-- das Feature findet, dessen Manifest diesen Key trägt, prüft, dass sein `feature.php` genau diese Version nennt – und, wo es ein `CHANGELOG.md` hat, dass es den Eintrag trägt –, und die eigenen Tests des Features gegen den Checkout ausführt, wo es welche trägt (die Repository-Variable `RELEASE_STRICT` auf `1` macht Changelog-Eintrag, README und Test verpflichtend);
-- das veröffentlichte `catalogue.json` – und, bei einem erneuten Lauf, das veröffentlichte Archiv dieser Version – nach `dist/` holt; ein 404 ist das erste Release;
-- den Signaturschlüssel aus dem Secret in eine temporäre Datei schreibt, `php bin/build.php ../nino dist --only <key> --key <datei>` ausführt und die Schlüsseldatei wieder entfernt, was auch immer geschehen ist;
-- `dist/` als Workflow-Artefakt behält;
-- `catalogue.json`, `catalogue.json.sig` und das Archiv dieser Version über https an `server/publish.php` postet, ein `curl` (`PUBLISH_URL`, `PUBLISH_TOKEN`); der Endpunkt prüft die Signatur selbst und überschreibt nie ein veröffentlichtes Archiv. Kein ssh.
+Es gibt einen Eintrag je Feature, die Version seines Manifests, und kein Tag. Eine Änderung ohne neue `version` erreicht neue Installationen, bestehende nicht: Das Features-Panel bietet ein Update aus dem Katalog nur für eine höhere Version an. Die `version` wird also erhöht, wenn installierte Projekte das Update angeboten bekommen sollen. Während eines Uploads kann ein Download an der Prüfsumme scheitern; das Projekt wiederholt ihn.
 
-Ein Release, das auf halbem Weg stehen geblieben ist – ein fehlgeschlagener Test, ein fehlgeschlagener Upload –, wird unter **Actions → Release → Run workflow** mit Key und Version erneut gestartet: Der Workflow checkt das Tag erneut aus, und ein Archiv, das schon auf dem Server liegt, bleibt, was es ist. Auf ein Release, das mit einem Fehler hinausging, folgt die nächste Patch-Version; ersetzt wird es nie.
+## Der Server
 
-### Ein Release ohne GitHub
+Ein Verzeichnis, über https als statische Dateien ausgeliefert, mit ssh-Zugang für rsync. Eine Datei, die nicht da ist, antwortet **404**. Kein PHP, keine Upload-Limits, keine Konfiguration außer dem VirtualHost. Das Verzeichnis existiert vor dem ersten Lauf, leer; der Upload macht seine Dateien für alle lesbar. Der Kernel liest die Bytes, welchen Content-Type der Server auch dafür nennt.
 
-`bin/release.sh` geht dieselben Schritte auf deinem eigenen Rechner – GitHub hat immer nur die Automatik hinter dem Tag geliefert. Mit dem Nino-Checkout neben dem Repository, dem privaten Schlüssel und dem Token des Endpunkts zur Hand:
-
-```bash
-NINO_CATALOGUE_KEY=/sicherer/ort/catalogue-key.pem NINO_CATALOGUE_TOKEN=... bin/release.sh newsletter
-```
-
-Es findet das Feature über seinen Key, prüft die Version in `feature.php` (und den Eintrag im `CHANGELOG.md`, wo es eines gibt), führt die Tests des Features, wo es welche hat, gegen `NINO_ROOT` aus (Standard `../nino`) – zusammen mit allem, was sein Manifest unter `requires` nennt, und allem, was jene nennen, im Checkout danebengelegt und danach wieder entfernt, denn ein Feature, das sich nicht aktivieren lässt, lässt sich auch nicht testen –, holt das veröffentlichte `catalogue.json` und das Archiv dieser Version nach `dist/` (ein 404 ist das erste Release, ein leeres 200 gilt als nicht veröffentlicht), baut und signiert mit `bin/build.php --only <key>` und postet die drei Dateien an `NINO_PUBLISH_URL` (Standard `$NINO_CATALOGUE_URL/publish.php`, `NINO_CATALOGUE_URL` standardmäßig `https://catalogue.getnino.dev`). Jede Variable, die das Skript selbst liest, trägt den `NINO_`-Präfix, den der Rest von Nino auch benutzt – die unpräfixierten Namen weiter oben auf dieser Seite sind die GitHub-Secrets und -Variablen des Workflows, also etwas anderes auf einem anderen Rechner. `--dry-run` hält vor dem Posten an und lässt `dist/` zum Ansehen liegen; `--offline` überspringt das Holen und führt in das zusammen, was `dist/` schon enthält. `--strict` (oder `NINO_RELEASE_STRICT=1`) verlangt Changelog-Eintrag, README und Test so, wie es der Workflow mit seiner eigenen Variable tut. Tagge den Commit danach trotzdem, damit das Repository festhält, was hinausging – ein erneuter Lauf des Workflows findet das Archiv veröffentlicht und behält es. `tests/release-smoke.php` treibt das Skript gegen `server/publish.php` auf phps eingebautem Server.
-
-### Die Secrets
-
-Das Repository braucht diese Secrets (**Settings → Secrets and variables → Actions**):
-
-| Secret | Was es enthält |
-| --- | --- |
-| `CATALOGUE_SIGNING_KEY` | der private PEM-Schlüssel, mit dem `catalogue.json` signiert wird – die ganze Datei, `-----BEGIN EC PRIVATE KEY-----` eingeschlossen |
-| `PUBLISH_URL` | die URL des Endpunkts, `https://catalogue.getnino.dev/publish.php` |
-| `PUBLISH_TOKEN` | das Token, mit dem `server/publish.php` konfiguriert ist (`NINO_CATALOGUE_TOKEN`) |
-
-Ein Fork, der einen eigenen Katalog veröffentlicht, setzt die Repository-*Variable* `CATALOGUE_URL` (dieselbe Seite, **Variables**) auf die Adresse, unter der die Dateien ausgeliefert werden; ohne sie nennt der Workflow `https://catalogue.getnino.dev`.
-
-### Der Signaturschlüssel
+## Der Signaturschlüssel
 
 Das Schlüsselpaar entsteht einmal, offline, und die private Hälfte gelangt nie in ein Repository (`.gitignore` weist `*.pem` ab):
 
@@ -184,38 +88,20 @@ openssl ecparam -name prime256v1 -genkey -noout -out catalogue-key.pem
 openssl ec -in catalogue-key.pem -pubout -out catalogue-key.pub.pem
 ```
 
-`catalogue-key.pem` kommt in das Secret `CATALOGUE_SIGNING_KEY` und an einen sicheren Ort. `catalogue-key.pub.pem` ist öffentlich: Es ist, was Nino als `\Nino\Catalogue::PUBLIC_KEY` ausliefert, und was ein Projekt, das einen eigenen Katalog liest, unter `/nino/catalogue/key` in `config.php` einträgt. Ein leerer Schlüssel akzeptiert gar keinen Katalog. Ein neues Schlüsselpaar heißt ein neuer öffentlicher Schlüssel in Nino – einen mit dem neuen Schlüssel signierten Katalog weist jeder Kernel ab, der noch den alten trägt.
+Bewahre `catalogue-key.pem` an einem sicheren Ort außerhalb jedes Repositories auf, mit einer Kopie. `catalogue-key.pub.pem` ist öffentlich: Es ist, was Nino als `\Nino\Catalogue::PUBLIC_KEY` ausliefert, und was ein Projekt, das einen eigenen Katalog liest, unter `/nino/catalogue/key` in `config.php` einträgt. Ein leerer Schlüssel akzeptiert gar keinen Katalog. Ein neues Schlüsselpaar heißt ein neuer öffentlicher Schlüssel in Nino – einen mit dem neuen Schlüssel signierten Katalog weist jeder Kernel ab, der noch den alten trägt.
 
-### Der Server
+## Ein eigener Katalog
 
-catalogue.getnino.dev liefert ein Verzeichnis als schlichte statische Dateien über https aus – `catalogue.json`, `catalogue.json.sig` und die Archive, keine Verzeichnisliste; der Kernel liest die Bytes, welchen Content-Type der Webserver auch nennt – und im selben Verzeichnis `server/publish.php`: den Endpunkt, an den der Release-Workflow postet. Kein ssh. Der Workflow schickt einen https-POST mit dem signierten Katalog, seiner Signatur und dem neuen Archiv, und der Endpunkt nimmt ihn nur an, wenn alles hält: Das Token stimmt, die Signatur prüft mit dem öffentlichen Schlüssel, den der Endpunkt hält, jedes hochgeladene Archiv ist eines, das der Katalog mit dieser Prüfsumme und Größe nennt, jedes Archiv, das der Katalog nennt, ist schon veröffentlicht oder in diesem Upload, und kein veröffentlichtes Archiv würde sich ändern – andere Bytes unter einem veröffentlichten Namen sind ein 409. Ein geleaktes Token allein veröffentlicht nichts: Ohne den privaten Schlüssel gibt es keinen Katalog, den der Endpunkt annimmt.
-
-Ausrollen heißt, `server/publish.php` in dieses Verzeichnis zu kopieren und drei Dinge zu konfigurieren, als Umgebungsvariablen (ein Container) oder als `publish.config.php` neben dem Skript, das ein Array mit denselben Schlüsseln zurückgibt (ein gewöhnlicher Webserver; `.gitignore` hält die Datei aus dem Repository):
-
-| Einstellung | Was sie enthält |
-| --- | --- |
-| `NINO_CATALOGUE_TOKEN` | das Token, das der Workflow schickt, mindestens 32 Zeichen – `openssl rand -hex 32`; dieselbe Zeichenkette ist das Secret `PUBLISH_TOKEN` |
-| `NINO_CATALOGUE_PUBKEY` | der Pfad der Datei mit dem öffentlichen PEM-Schlüssel, mit dem die Signatur des Katalogs geprüft wird, `catalogue-key.pub.pem` – der Schlüssel, den Nino als `\Nino\Catalogue::PUBLIC_KEY` ausliefert |
-| `NINO_CATALOGUE_DIR` | das Verzeichnis, in das geschrieben wird; das des Skripts, wenn nicht gesetzt |
-
-php muss den Upload zulassen – `upload_max_filesize` und `post_max_size` über dem größten Archiv, `32M` und `64M` lassen Luft –, und ein Proxy vor php braucht seine eigene Grenze (`client_max_body_size 64m` bei nginx). Das Verzeichnis ist für den php-Nutzer beschreibbar; ein veröffentlichtes Archiv darf danach schreibgeschützt werden, der Endpunkt schreibt keines zweimal. Eine Datei, die nicht da ist, muss mit **404** antworten – ein Front-Controller, der für jeden Pfad 200 mit leerem Body liefert, lässt den Workflow ein leeres Archiv für ein veröffentlichtes halten (`bin/build.php` entfernt eine Datei mit null Bytes und baut neu, und der Workflow behandelt ein leeres 200 als „nicht veröffentlicht“, aber der Server sollte von vornherein richtig antworten). `tests/publish-smoke.php` ist der Test des Endpunkts. Ein Release von Hand ist dieselbe Anfrage, die der Workflow stellt:
+`bin/release.sh` funktioniert für jeden Satz Features – einen Fork dieses Repositories – mit deinem eigenen `NINO_CATALOGUE_URL` und `NINO_CATALOGUE_TARGET`. `bin/build.php` allein baut dieselben Dateien in ein Verzeichnis:
 
 ```bash
-curl -sS -H "X-Publish-Token: $TOKEN" -F catalogue=@dist/catalogue.json -F signature=@dist/catalogue.json.sig -F "archives[]=@dist/newsletter-1.0.0.tar.gz" https://catalogue.getnino.dev/publish.php
+php bin/build.php ../nino public --base-url https://example.org/features
+openssl dgst -sha256 -sign catalogue-key.pem public/catalogue.json | base64 -w0 > public/catalogue.json.sig
 ```
 
-### Ein eigener Katalog
+Ohne `--key` schreibt es keine Signatur und gibt diesen Einzeiler aus; mit `--key catalogue-key.pem` signiert es selbst und prüft die Signatur mit der öffentlichen Hälfte, bevor es endet. Lade das Verzeichnis nach `https://example.org/features/` hoch und zeige ein Projekt dorthin: `/nino/catalogue/url` nennt die URL des Katalogs, `/nino/catalogue/key` seinen öffentlichen Schlüssel, beides in `config.php`.
 
-`bin/build.php` baut dieselben Dateien für jeden Satz Features – dieses Repository, einen Fork davon – gegen einen Nino-Checkout:
-
-```bash
-php bin/build.php ../nino dist --base-url https://example.org/features
-openssl dgst -sha256 -sign catalogue-key.pem dist/catalogue.json | base64 -w0 > dist/catalogue.json.sig
-```
-
-Ohne `--key` schreibt es keine Signatur und gibt diesen Einzeiler aus; mit `--key catalogue-key.pem` signiert es selbst und prüft die Signatur mit der öffentlichen Hälfte, bevor es endet. `--only <key>` baut ein Feature und behält jeden anderen Eintrag eines `catalogue.json`, das schon in `dist/` liegt; ein Archiv, das schon in `dist/` liegt, bleibt und wird nie neu gebaut. Lade `dist/` nach `https://example.org/features/` hoch – von Hand, oder über ein dort ausgerolltes `server/publish.php` mit der öffentlichen Hälfte deines Schlüssels – und zeige ein Projekt dorthin: `/nino/catalogue/url` nennt die URL des Katalogs, `/nino/catalogue/key` seinen öffentlichen Schlüssel, beides in `config.php`. `tests/build-smoke.php` ist der eigene Test des Werkzeugs.
-
-### Der Katalog, Format 1
+## Der Katalog, Format 1
 
 ```json
 { "format": 1, "generated": "2026-09-07T12:00:00Z", "features": [ { "key": "newsletter", "...": "..." } ] }
@@ -225,19 +111,19 @@ Ohne `--key` schreibt es keine Signatur und gibt diesen Einzeiler aus; mit `--ke
 | --- | --- |
 | `key` | der Feature-Key, ein Slug – `newsletter` |
 | `name`, `description` | wie das Manifest sie hat: ein String oder eine Abbildung `locale => string` |
-| `category` | wofür das Feature da ist, ein Slug – das des Manifests; fehlt, wo es keine nennt |
-| `maturity` | das Abzeichen, das das Features-Panel neben den Namen zeichnet, ein String oder eine Abbildung `locale => string` – das des Manifests; fehlt, wo es keines nennt |
+| `category` | wofür das Feature da ist, ein Slug – das des Manifests |
+| `maturity` | das Abzeichen, das das Features-Panel neben den Namen zeichnet – das des Manifests; fehlt, wo es keines nennt |
 | `version` | `major.minor.patch`, die des Manifests |
 | `nino` | die Nino-Versionsbedingung, `^1.3` |
 | `php` | `{ "ext": [ ... ] }` – die PHP-Erweiterungen, die das Feature braucht |
 | `requires` | die Keys der Features, die es benötigt |
 | `directory` | das eine Verzeichnis, das das Archiv enthält – `Newsletter`, der Klassenname |
-| `archive` | die https-URL des Archivs |
+| `archive` | die https-URL des Archivs, `<key>-<version>.tar.gz`, gepackt höchstens 20 MB |
 | `sha256` | die Hex-Prüfsumme des Archivs – wogegen der Kernel einen Download prüft |
-| `size` | seine Größe in Bytes, höchstens 20 MB |
-| `released` | der Tag der Veröffentlichung, `YYYY-MM-DD` |
+| `size` | seine Größe in Bytes |
+| `released` | der Tag, an dem dieses Archiv zum ersten Mal so veröffentlicht wurde, `YYYY-MM-DD` |
 
-`generated` ist die Zeit des letzten Builds, ISO 8601 UTC. Die Einträge sind nach Key sortiert, dann absteigend nach Version; ein Kernel nimmt die höchste Version, die er ausführen kann. Was `\Nino\Catalogue::parse()` in Nino abweist – ein fehlendes Feld, eine URL, die nicht https ist, ein Archiv über 20 MB –, weist den ganzen Katalog ab; darum lässt `bin/build.php` das, was es gleich schreibt, zuerst durch `parse()` laufen. `category` und `maturity` sind die Felder, die verworfen statt abgewiesen werden: das erste ist eine Überschrift in einer Liste, das zweite ein Abzeichen neben einem Namen, und ein Kernel, der einen signierten Katalog wegen einer Kategorie ablehnte, die er nie gehört hat, hörte an dem Tag auf, den Katalog zu lesen, an dem ein neuerer eine veröffentlicht. Deshalb hat keines die Formatnummer erhöht – `parse()` nimmt nur die Schlüssel, die es kennt.
+`catalogue.json.sig` ist seine abgetrennte Signatur: ECDSA über SHA-256 der exakten Bytes, DER, base64 in einer Zeile. `generated` ist die Zeit der letzten Änderung, ISO 8601 UTC. Was `\Nino\Catalogue::parse()` abweist – ein fehlendes Feld, eine URL, die nicht https ist, ein Archiv über 20 MB –, weist den ganzen Katalog ab; darum lässt `bin/build.php` das, was es gleich schreibt, zuerst durch `parse()` laufen.
 
 ## Lizenz
 

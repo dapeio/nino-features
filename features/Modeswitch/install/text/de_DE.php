@@ -4,7 +4,7 @@ declare(strict_types=1);
 // Die vier Wörter des Schalters - bei der Aktivierung einmal in die
 // text/de_DE.php des Projekts gemischt (add-only: ein Schlüssel, den das
 // Projekt schon hat, bleibt); ab dann pflegen Redakteure sie im Panel
-// Texte. Siehe README.md.
+// Texte.
 return [
 
 	// Was der Schalter als Ganzes ist, für Screenreader - die drei Knöpfe

@@ -26,6 +26,14 @@ return [
 				'en_US' => 'Starts the moment that category is allowed, and not before. The host of data-src joins the policy\'s script-src.',
 				'de_DE' => 'Startet in dem Moment, in dem diese Kategorie erlaubt ist – und nicht davor. Der Host von data-src kommt in die script-src der Richtlinie.',
 			],
+			'data-consent-show="statistics" / data-consent-hide="statistics"' => [
+				'en_US' => 'Shows a box once that category is allowed, hides it then. Not for an iframe: a hidden iframe is still fetched.',
+				'de_DE' => 'Zeigt einen Kasten, sobald diese Kategorie erlaubt ist, beziehungsweise blendet ihn dann aus. Nicht für einen iframe: Auch ein versteckter iframe wird geladen.',
+			],
+			'<html data-consent="necessary,statistics"> and the nino:consent event' => [
+				'en_US' => 'The allowed categories, on load and on every change. Code that has to be told listens for the event: event.detail.allowed.',
+				'de_DE' => 'Die erlaubten Kategorien, beim Laden und bei jeder Änderung. Code, dem man es sagen muss, hört auf das Ereignis: event.detail.allowed.',
+			],
 		],
 		'routes' => [],
 		'panel' => [],
@@ -45,8 +53,8 @@ return [
 				'de_DE' => 'Die Worte des Banners, ins Panel Texte.',
 			],
 			'elements/privacy.php' => [
-				'en_US' => 'Its section of the privacy policy, added to the Legal module\'s type - never replacing a section. Where there is no such module, nothing happens.',
-				'de_DE' => 'Sein Abschnitt der Datenschutzerklärung, dem Typ des Moduls Legal hinzugefügt – ohne einen Abschnitt zu ersetzen. Wo es das Modul nicht gibt, passiert nichts.',
+				'en_US' => 'Its section of the privacy policy, added to the Legal module\'s type - never replacing a section. Where there is no such module, nothing happens. A starting point, no legal advice.',
+				'de_DE' => 'Sein Abschnitt der Datenschutzerklärung, dem Typ des Moduls Legal hinzugefügt – ohne einen Abschnitt zu ersetzen. Wo es das Modul nicht gibt, passiert nichts. Ein Ausgangspunkt, keine Rechtsberatung.',
 			],
 		],
 	],

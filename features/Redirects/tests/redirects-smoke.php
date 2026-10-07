@@ -342,7 +342,7 @@ echo "A list somebody edited by hand\n";
 // the suite was left with is kept here and put back when they are done
 $fileBeforeEdits = redirectsFile( $appData );
 
-/*	README.md invites editing the file, and a rule out of that file is held to
+/*	The file may be edited by hand, and a rule out of that file is held to
 	what a rule may be before any of it is used. The list of addresses was not:
 	noteMiss() sorted whatever stood under 'misses' straight out of the file,
 	so an entry a person had shaped by hand - a note to self where a count and

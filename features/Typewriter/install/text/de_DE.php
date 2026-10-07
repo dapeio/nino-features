@@ -7,7 +7,7 @@ declare(strict_types=1);
 // Ein Container verlangt den Knopf mit
 // data-typewriter-toggle="[[/feature/typewriter/pause/label]]", und der Wert kommt so, wie
 // er ist, in die Seite - er darf also kein doppeltes Anführungszeichen
-// enthalten. Siehe README.md.
+// enthalten.
 return [
 	'[[/feature/typewriter/pause/label]]'	=> 'Animation pausieren',
 ];

@@ -5,7 +5,7 @@ declare(strict_types=1);
 // text/de_DE.php des Projekts gemischt (add-only: ein Schlüssel, den das
 // Projekt schon hat, bleibt). Ab dann pflegen Redakteure sie im Panel Texte
 // und öffnen nie ein Feature-Verzeichnis. Die Worte des Panels sind ein
-// anderer Satz, in features/Hello/text/ - siehe README.md.
+// anderer Satz, in features/Hello/text/.
 return [
 
 	'[[/feature/hello/greeting/note]]'	=> 'Gerendert vom Feature Hallo Welt.',

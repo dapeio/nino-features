@@ -32,7 +32,12 @@ return [
 				'de_DE' => 'Nur das Icon, für eigenes Markup - in [elements /social] als [social-icon name="[[icon]]"].',
 			],
 		],
-		'markup' => [],
+		'markup' => [
+			'rel="me"' => [
+				'en_US' => 'On every http(s) link, so a profile that links back can verify it is the site\'s. Every address is checked first: javascript:, data: and anything with a space is left out without a word.',
+				'de_DE' => 'An jedem http(s)-Link, damit ein Profil, das zurückverlinkt, prüfen kann, dass es das der Seite ist. Jede Adresse wird vorher geprüft: javascript:, data: und alles mit Leerzeichen bleibt ohne Meldung weg.',
+			],
+		],
 		'routes' => [],
 		'panel' => [],
 		'callbacks' => [],
@@ -48,6 +53,10 @@ return [
 			'text/<locale>.php' => [
 				'en_US' => 'The labels of the type\'s fields in the Elements panel.',
 				'de_DE' => 'Die Beschriftungen der Felder des Typs im Panel Elemente.',
+			],
+			'icons/*.svg (not installed)' => [
+				'en_US' => 'One Lucide icon per option, named after what it is for: replacing icons/telegram.svg changes every Telegram link. Never typed by an editor - an element picks one by name.',
+				'de_DE' => 'Ein Lucide-Icon je Auswahl, benannt nach dem Zweck: Wer icons/telegram.svg ersetzt, ändert jeden Telegram-Link. Nie von einem Redakteur getippt – ein Element wählt eines mit seinem Namen.',
 			],
 		],
 	],

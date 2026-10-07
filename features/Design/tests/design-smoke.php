@@ -1244,7 +1244,7 @@ echo "\nThe preview: a selection, before it is one\n";
 	sandbox has no kernel in it at all - so it gets one, the same way a project
 	has one. Modules\Assets is what writes the bundle, Modules\Template what a
 	frame's [template] includes resolve through */
-$root = realpath( $root ) ?: $root;	// a relative NINO_ROOT (release.yml) would make a dangling link
+$root = realpath( $root ) ?: $root;	// a relative NINO_ROOT would make a dangling link
 symlink( $root. '/_nino', ninoSandboxDir( $appData ). '/_nino' );
 $appData['/nino/modules'] = [ '\\Nino\\Modules\\Assets', '\\Nino\\Modules\\Template' ];
 \Nino\Modules::callModules( $appData, 'init' );

@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // The two words a list carries - merged into the project's text/en_US.php
 // once, at activation (add-only: a key the project already has stays);
-// editors keep them current in the Text panel from then on. See README.md.
+// editors keep them current in the Text panel from then on.
 return [
 
 	// What stands over the list, where the shortcode did not say

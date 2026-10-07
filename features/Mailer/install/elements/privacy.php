@@ -11,7 +11,7 @@
 // mail stand in 500-599. The text is in the form the sanitizer gives a field
 // with 'blocks' and carries no '&', no entity and no '['. The provider is a
 // category here, not a name: the project says who it is, and the section
-// has to be completed with it (see README.md, "Privacy policy").
+// has to be completed with it.
 return [
 	'*' => [
 		'mailer' => [

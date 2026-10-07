@@ -13,7 +13,7 @@
  *							kernel's own scripts still gets a working typewriter.
  *
  *							Every timing is a data attribute on the container itself
- *							(see DEFAULTS below and this feature's README.md) - this
+ *							(see DEFAULTS below and the feature's manual) - this
  *							file is a static asset, never rendered through the fill
  *							engine (docs/development.md, "Assets Are Not Templates"),
  *							so the element is the only place a project can say how

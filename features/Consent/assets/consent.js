@@ -20,8 +20,7 @@
  *								static asset, never rendered through the fill engine
  *								(docs/development.md, "Assets Are Not Templates"), so it
  *								cannot read config.php directly. A page with no banner
- *								falls back to the setting's own default cookie name -
- *								see the README's "Asset bundling and the page cache" note.
+ *								falls back to the setting's own default cookie name.
  *
  *	@package						Dape/Nino
  *	@author							David Perchermeier <mail@dape.io>

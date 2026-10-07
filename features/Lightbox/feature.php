@@ -20,6 +20,10 @@ return [
 				'en_US' => 'The caption. Without the attribute the image\'s alt, else the link\'s title; present but empty it means no caption.',
 				'de_DE' => 'Die Bildunterschrift. Ohne das Attribut das alt des Bildes, sonst das title des Links; vorhanden, aber leer heißt: keine Bildunterschrift.',
 			],
+			'data-label-close, data-label-prev, data-label-next' => [
+				'en_US' => 'The labels the three controls carry for a screen reader. Without them the script\'s own English or German words are used, by the page\'s language.',
+				'de_DE' => 'Die Beschriftungen, die die drei Bedienelemente für einen Screenreader tragen. Ohne sie gelten die englischen oder deutschen Worte des Skripts, nach der Sprache der Seite.',
+			],
 		],
 		'routes' => [],
 		'panel' => [],
@@ -38,6 +42,6 @@ return [
 	// files are static assets that never pass the fill engine (see
 	// docs/development.md, "Assets Are Not Templates"), so a site-wide value
 	// could not reach them. What one lightbox does differently from another
-	// is a data attribute on the link - see README.md
+	// is a data attribute on the link
 	'settings'		=> [],
 ];

@@ -40,6 +40,30 @@ return [
 				'en_US' => 'Starts at once instead of when it scrolls into view.',
 				'de_DE' => 'Startet sofort statt beim Hereinscrollen.',
 			],
+			'data-typewriter-lines="p"' => [
+				'en_US' => 'CSS selector of the lines inside the container. Default p.',
+				'de_DE' => 'CSS-Selektor der Zeilen im Container. Standard p.',
+			],
+			'data-typewriter-start-delay="0"' => [
+				'en_US' => 'Milliseconds before the first line - once, not per pass.',
+				'de_DE' => 'Millisekunden vor der ersten Zeile – einmal, nicht je Durchlauf.',
+			],
+			'data-typewriter-fade="400"' => [
+				'en_US' => 'Milliseconds of the fade in and out; 0 switches it off. Not used by backspace.',
+				'de_DE' => 'Millisekunden für das Ein- und Ausblenden; 0 schaltet es ab. Gilt nicht für backspace.',
+			],
+			'data-typewriter-backspace-speed="25"' => [
+				'en_US' => 'Milliseconds per erased character, with exit="backspace".',
+				'de_DE' => 'Millisekunden je gelöschtem Zeichen, bei exit="backspace".',
+			],
+			'data-typewriter-pause="300"' => [
+				'en_US' => 'Milliseconds between one line leaving and the next arriving.',
+				'de_DE' => 'Millisekunden zwischen dem Abgang einer Zeile und dem Auftritt der nächsten.',
+			],
+			'data-typewriter-cursor="|"' => [
+				'en_US' => 'The cursor character; empty leaves it out.',
+				'de_DE' => 'Das Cursor-Zeichen; leer lässt es weg.',
+			],
 		],
 		'routes' => [],
 		'panel' => [],
@@ -64,7 +88,7 @@ return [
 	'data'				=> [],
 	// No settings either, and that is the design: every timing belongs to
 	// the element that is being typed (data-typewriter-speed, -hold, -loop,
-	// ... - see README.md), not to the site. typewriter.js is a static
+	// ...), not to the site. typewriter.js is a static
 	// asset, never rendered through the fill engine (docs/development.md,
 	// "Assets Are Not Templates"), so a site-wide default here could not
 	// reach it in the first place - the way consent.js has to carry its

@@ -25,6 +25,10 @@ return [
 				'en_US' => 'What the switch writes on <html>. assets/theme.css already answers to it; no attribute means "follow the system".',
 				'de_DE' => 'Was der Schalter auf <html> schreibt. assets/theme.css hört längst darauf; kein Attribut heißt „dem System folgen".',
 			],
+			'localStorage[\'nino-mode\']' => [
+				'en_US' => 'Where the choice is kept: in the reader\'s browser only. No cookie, nothing sent to the server.',
+				'de_DE' => 'Wo die Wahl liegt: nur im Browser des Lesers. Kein Cookie, nichts geht an den Server.',
+			],
 		],
 		'routes' => [],
 		'panel' => [],
