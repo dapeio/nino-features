@@ -36,7 +36,7 @@ bin/check.sh
 NINO_ROOT=/path/to/nino bin/check.sh
 ```
 
-`bin/check.sh` copies every feature the checkout can run into the checkout's `features/` - the same layout a project has -, validates every manifest through `bin/catalogue.php`, runs those features' own tests and removes the copies again; then it runs every test of this repository under `tests/` - the text key grammar, the privacy sections, the rules every feature shares, the build tool and the release script. The script's own lines are the list. A feature written for a newer Nino than the checkout is listed with its reason and left out (`bin/applicable.php` decides).
+`bin/check.sh` copies every feature the checkout can run into the checkout's `features/` - the same layout a project has -, validates every manifest through `bin/catalogue.php`, runs those features' own tests and removes the copies again; then it runs every test of this repository under `tests/` - the text key grammar, the privacy sections, the rules every feature shares, the kernel's demo page that draws every class of `Nino.css`, the build tool and the release script. The script's own lines are the list. A feature written for a newer Nino than the checkout is listed with its reason and left out (`bin/applicable.php` decides).
 
 A single test runs directly too:
 

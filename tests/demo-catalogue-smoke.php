@@ -2,25 +2,35 @@
 declare(strict_types=1);
 
 /**
- *	Nino											A compact filesystembased php framework
- *	demo-catalogue-smoke.php	Dependency-free smoke test for the "Demo: Catalogue"
- *														page unit (_admin/install/library/pages/.demo-catalogue).
+ *	Nino features
+ *	demo-catalogue-smoke.php	The "Demo: Catalogue" page unit of the kernel
+ *														(_admin/install/library/pages/.demo-catalogue) is
+ *														the one page that draws every building block of
+ *														Nino.css, and a catalogue of features that bring
+ *														classes of their own has to know the page still
+ *														does. That is what this measures: the unit's own
+ *														manifest and files, every nino-* class Nino.css
+ *														defines on the page (or on the short list of what
+ *														a frame, a module, a feature (the Builder writes
+ *														nino-wrap) or Nino.ui.js draws instead), and a
+ *														page that renders from what every installation of
+ *														it has. Not the wording, which is free to change,
+ *														and not the markup.
  *
- *														The unit makes one promise: it shows every Section
- *														Preset the Template Builder ships, in every layout
- *														that preset declares, and every nino-* class Nino.css
- *														defines. That promise is what this file measures - not
- *														the wording, which is free to change, and not the
- *														markup, which is generated from the library and moves
- *														with it.
+ *														Runs against the checkout beside this repository
+ *														(../nino) or the one NINO_ROOT names.
  *
  *	Usage: php tests/demo-catalogue-smoke.php
+ *	       NINO_ROOT=/path/to/nino php tests/demo-catalogue-smoke.php
  */
 
-// Travels with the feature: the Nino checkout is the one NINO_ROOT names or
-// the one three levels up, and the presets this measures are the feature's own
-define( 'NINO', getenv( 'NINO_ROOT' ) ?: dirname( __DIR__, 3 ) );
-define( 'NINO_FEATURES_DIR', dirname( __DIR__, 2 ) );
+// The Nino checkout is the one NINO_ROOT names or the one beside this repository
+define( 'NINO', realpath( getenv( 'NINO_ROOT' ) ?: dirname( __DIR__, 2 ). '/nino' ) ?: '' );
+
+if( is_file( NINO. '/_nino/Nino.php' ) === false ) {
+	fwrite( STDERR, 'No Nino checkout at '. ( getenv( 'NINO_ROOT' ) ?: dirname( __DIR__, 2 ). '/nino' ). ' - clone https://github.com/dapeio/nino beside this repository or set NINO_ROOT'. "\n" );
+	exit( 2 );
+}
 
 require NINO. '/_nino/Nino.php';
 require NINO. '/_admin/Admin.php';
@@ -77,51 +87,6 @@ $images = array_values( array_unique( $imageMatches[1] ) );
 
 check( 'the page paints with images, and every one of them ships with the unit'. ( $images === [] ? ' - none referenced' : '' ),
 	$images !== [] && array_filter( $images, static fn( string $image ): bool => is_file( $unit. $image ) === false ) === [] );
-
-echo "\n";
-
-
-// --- Section Presets -------------------------------------------------------
-
-echo "Section Presets\n";
-
-preg_match_all( '/data-demo-preset="([^"]+)"\s+data-demo-layout="([^"]+)"/', $source, $demoMatches, PREG_SET_ORDER );
-
-$shown = [];
-foreach( $demoMatches as $match )
-	$shown[$match[1]][$match[2]] = ( $shown[$match[1]][$match[2]] ?? 0 ) + 1;
-
-$presets = \Nino\Modules\Templates\Library::presets();
-$failuresBefore = $failures;
-
-check( 'the page marks its specimens for this test to count', $demoMatches !== [] );
-$unshown = array_diff( array_keys( $presets ), array_keys( $shown ) );
-check( 'every preset in the library is shown'. ( $unshown === [] ? '' : ' - missing '. implode( ', ', $unshown ) ), $unshown === [] );
-
-$missingLayouts = [];
-foreach( $presets as $key => $preset )
-	foreach( array_keys( $preset['layouts'] ) as $layout )
-		if( isset( $shown[$key][$layout] ) === false )
-			$missingLayouts[] = $key. '/'. $layout;
-
-check( 'every layout of every preset is shown'. ( $missingLayouts === [] ? '' : ' - missing '. implode( ', ', $missingLayouts ) ), $missingLayouts === [] );
-
-$unknown = array_diff( array_keys( $shown ), array_keys( $presets ) );
-check( 'no specimen claims a preset the library does not have'. ( $unknown === [] ? '' : ' - '. implode( ', ', $unknown ) ), $unknown === [] );
-
-// Two repositories meet in the checks above: the marks are on Nino's page, the
-// keys are this feature's. Where they disagree, one side renamed or dropped a
-// key the other still names, and the fix belongs to whichever side moved -
-// which a list of keys alone does not say, so a failure names both places
-if( $failures > $failuresBefore )
-	echo "      the marks: data-demo-preset in Nino's ", substr( $template, strlen( NINO ) + 1 ), "\n",
-		"      the keys:  Library::LIBRARY_ITEM and library/<key>/ of this feature\n",
-		"      one side renamed or dropped a key the other still names - their changelogs say which\n";
-
-// A preset whose areas or frame change its appearance is worth more than one
-// specimen; these are the ones where a second variant is the point
-foreach( [ 'articles-grid' => 4, 'items-pricing' => 5, 'static-content' => 5 ] as $key => $least )
-	check( $key. ' is shown in at least '. $least. ' variants', array_sum( $shown[$key] ?? [] ) >= $least );
 
 echo "\n";
 
@@ -189,9 +154,10 @@ $elsewhere = array_merge( $elsewhere, array_values( array_intersect( [ 'nino-is-
 	test passes on a Nino without the module as well	*/
 $drawnByModules = [ 'nino-legal-section',
 	// Nino 1.6's Components module: the section background, the columns a
-	// viewport hides, the component stack and its gaps, the image frame -
-	// written by the Builder and the components, never by a unit's template
-	'nino-section-bg', 'nino-hide-s', 'nino-hide-m', 'nino-hide-l',
+	// viewport hides, the component stack and its gaps and the image frame -
+	// written by the components, never by a unit's template. nino-wrap, the
+	// wrapper around a page's sections, is written by the Builder (a feature)
+	'nino-wrap', 'nino-section-bg', 'nino-hide-s', 'nino-hide-m', 'nino-hide-l',
 	'nino-stack', 'nino-stack-start', 'nino-stack-center', 'nino-stack-end',
 	'nino-stack-gap-0', 'nino-stack-gap-1', 'nino-stack-gap-2', 'nino-stack-gap-3', 'nino-stack-gap-4', 'nino-stack-gap-5', 'nino-stack-gap-6',
 	'nino-image', 'nino-image--1-1', 'nino-image--4-3', 'nino-image--3-2', 'nino-image--16-9', 'nino-image--21-9',
@@ -251,7 +217,7 @@ preg_match_all( '/\[(elements|elementvalues|image|nav|localepicker)\b/', $source
 check( 'no shortcode is left that needs content this unit does not ship'. ( $shortcodeMatches[0] === [] ? '' : ' - '. implode( ', ', array_unique( $shortcodeMatches[0] ) ) ), $shortcodeMatches[0] === [] );
 
 // [template] is allowed exactly three times: the two page slots and the one
-// reusable include the "template-include" preset demonstrates
+// reusable include the page demonstrates
 preg_match_all( '/\[template\s+([^\]]+)\]/', $source, $templateMatches );
 check( 'the page includes the shell and the one demonstrated template, nothing else',
 	$templateMatches[1] === [ '/templates/html-header', '/templates/demo-catalogue-include', '/templates/html-footer' ] );
@@ -260,9 +226,15 @@ check( 'the page includes the shell and the one demonstrated template, nothing e
 // needs one, the framework is what should change
 check( 'no specimen falls back to an inline style', preg_match( '/\sstyle="/i', $source ) !== 1 );
 
-$parsed = \Nino\Modules\Templates\SectionDocument::split( $source );
-check( 'the page parses as one well-formed document'. ( $parsed['error'] === null ? '' : ' - '. $parsed['error'] ), $parsed['error'] === null );
-check( 'it is built from sections, not from one big block', $parsed['sectionCount'] > 50 );
+// Every <section> closes after it opens and none is left over
+$depth = 0;
+$balanced = true;
+preg_match_all( '#<(/?)section\b#', $source, $sectionTags );
+foreach( $sectionTags[1] as $closing ) {
+	$depth += $closing === '/' ? -1 : 1;
+	$balanced = $balanced && $depth >= 0;
+}
+check( 'it is built from sections, not from one big block, and every section closes after it opens', $balanced && $depth === 0 && count( $sectionTags[1] ) > 100 );
 
 echo "\n";
 

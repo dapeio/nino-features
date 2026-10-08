@@ -1312,8 +1312,8 @@ check( 'its one picture is a data uri, so it needs no route wherever it is shown
 	the only thing carrying the horizontal padding and the max-width (Nino.css,
 	"02 Grid"), and it carries no vertical margin, so a second row stacked under
 	the first sits flush against it. Every page the wizard installs and every
-	section the Template Builder compiles (AreaComposer::render() wraps a whole
-	section body in exactly one row) is this shape	*/
+	section the Builder writes (one row to a section, Reader and Writer hold it)
+	is this shape	*/
 
 $document = new DOMDocument();
 $previous = libxml_use_internal_errors( true );
@@ -1354,11 +1354,10 @@ check( 'every section of the specimen holds exactly one grid row - stacked rows 
 check( 'and every child of a row is a grid cell, so nothing sits in the row without a width',
 	$strayCells === [] );
 
-/*	The rhythm between the blocks inside a row is a spacing utility on the cell,
-	which is where the Template Builder's own presets put it - a heading area is
-	'nino-grid-100 nino-mb-3', an action area 'nino-grid-100 nino-mt-3', a card
-	'nino-article ... nino-mb-3'. Without it the cells of a wrapping row meet at
-	the .5rem an element brings of its own	*/
+/*	The rhythm between the blocks inside a row is a spacing utility on the cell:
+	a heading cell is 'nino-grid-100 nino-mb-3', an action cell
+	'nino-grid-100 nino-mt-3', a card 'nino-article ... nino-mb-3'. Without it
+	the cells of a wrapping row meet at the .5rem an element brings of its own	*/
 $multi = 0;
 $spaced = 0;
 

@@ -39,7 +39,7 @@ return [
 	'[[/_admin/builder/error/missing]]'				=> 'Dieses Seitentemplate gibt es nicht.',
 	'[[/_admin/builder/error/exists]]'					=> 'Ein Seitentemplate mit diesem Namen gibt es schon.',
 	'[[/_admin/builder/error/in-use]]'					=> 'Eine Route rendert dieses Template, deshalb wird es nicht gelöscht. Ändere zuerst die Route.',
-	'[[/_admin/builder/error/conflict]]'				=> 'Die Datei hat sich seit dem Laden geändert - in einem anderen Fenster oder im Editor des Panels Templates.',
+	'[[/_admin/builder/error/conflict]]'				=> 'Die Datei hat sich seit dem Laden geändert - in einem anderen Fenster oder in einem anderen Editor.',
 	'[[/_admin/builder/error/invalid]]'				=> 'Das Template ist nicht gültig, und es wurde nichts geschrieben.',
 	'[[/_admin/builder/error/model]]'					=> 'Es gab nichts zu speichern.',
 	'[[/_admin/builder/error/key]]'						=> 'Ein Textschlüssel konnte nicht angelegt, kopiert oder verschoben werden.',

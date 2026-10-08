@@ -34,10 +34,6 @@ $here = dirname( __DIR__ );
 	moving it into a template would make the code worse rather than better, and
 	the file itself carries the same reason where the markup is	*/
 const ALLOWED = [
-	'features/Templates/AreaComposer/AreaComposer.php'
-		=> 'the Template Builder composes template source - markup is its product, not its view',
-	'features/Templates/Composer/Composer.php'
-		=> 'the same builder, rendering a section preview and its placeholder image',
 	'features/Seo/Seo.php'
 		=> 'sitemap.xml is a document format rather than a view of one, like the robots.txt and llms.txt builders beside it',
 	'features/Modeswitch/Modeswitch.php'
@@ -46,8 +42,6 @@ const ALLOWED = [
 		=> 'the <style> and <main> the preview document is handed, as one-line fragments in a named property (the shape \Nino\Modules\Navigation::$html uses)',
 	'features/Posts/Shortcodes/Shortcodes.php'
 		=> 'a newline in a stored body becomes the <br> it already means - a transformation of the text, not a view of it',
-	'features/Templates/SectionDocument/SectionDocument.php'
-		=> 'a message that names a tag in its own words ("self-closing <section> is not valid HTML")',
 ];
 
 $failures	= 0;

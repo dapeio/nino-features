@@ -13,8 +13,8 @@ return [
 	'manual'			=> [
 		'shortcodes' => [],
 		'markup' => [
-			[ 'en_US' => 'The feature ships no signup form: place the Newsletter section from the Templates panel on the page that collects addresses.',
-			  'de_DE' => 'Das Feature bringt kein Anmeldeformular mit: setze die Newsletter-Section aus dem Panel Templates auf die Seite, die Adressen sammelt.' ],
+			[ 'en_US' => 'The feature ships no signup form: write one into an HTML+ block of the Builder, or into a page template of your own, on the page that collects addresses. It is <form class="nino-form nino-newsletter-form" action="[[/nino/dir]]/.newsletter"> with [csrf], the empty honeypot input location (class nino-form-trap, plus tabindex="-1" autocomplete="off" aria-hidden="true"), an input named email, a submit button reading [[/feature/newsletter/label/submit]] and a <p class="nino-form-message"> inside the form. Nino.ui.js posts it and shows the /feature/newsletter/info/ texts in the form\'s first <p>, whatever its class.',
+			  'de_DE' => 'Das Feature bringt kein Anmeldeformular mit: schreibe eines in einen HTML+-Block des Builders oder in ein eigenes Seitentemplate, auf der Seite, die Adressen sammelt. Es ist <form class="nino-form nino-newsletter-form" action="[[/nino/dir]]/.newsletter"> mit [csrf], dem leeren Honigtopf-Input location (Klasse nino-form-trap, dazu tabindex="-1" autocomplete="off" aria-hidden="true"), einem Input namens email, einem Absende-Button mit [[/feature/newsletter/label/submit]] und einem <p class="nino-form-message"> im Formular. Nino.ui.js schickt es ab und zeigt die Texte unter /feature/newsletter/info/ im ersten <p> des Formulars, welche Klasse es auch hat.' ],
 		],
 		'routes' => [
 			'/.newsletter' => [

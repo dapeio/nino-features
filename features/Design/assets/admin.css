@@ -12,17 +12,14 @@
  *													the other. Joins the workbench's style bundle while
  *													the feature is active (see the panel's assets()).
  *
- *													The measures follow the Templates feature's section
- *													composer - card, field grid, section label, summary
- *													list - so the two screens read as one family. What
- *													they do not share is a stylesheet: the composer's
- *													`pd-*` names belong to that feature, and the surfaces,
- *													radii and hairlines here are built out of the design
- *													system's own tokens instead. The type scale is the
- *													workbench's rather than the composer's: that one is a
- *													dense dialog, this is a panel, and a panel whose text
- *													is two steps smaller than the screen beside it would
- *													trade one kind of inconsistency for another.
+ *													The measures are those of a card of labelled fields in a
+ *													grid - card, field grid, section label, summary list. No
+ *													stylesheet is shared with the panel of another feature:
+ *													the surfaces, radii and hairlines here are built out of
+ *													the design system's own tokens. The type scale is the
+ *													workbench's: this is a panel, and a panel whose text is
+ *													two steps smaller than the screen beside it would trade
+ *													one kind of inconsistency for another.
  *
  *													Class names are the feature's own rather than
  *													nino-admin-*: that prefix belongs to the workbench, and
@@ -58,16 +55,15 @@
    One raised surface for all three blocks of the column - the form card, the
    knob block and the file's state - because they are one column of the same
    kind of thing. The surface itself is the design system's .nino-admin-card;
-   only the measures are here, tightened from that card's roomier default to
-   the composer's */
+   only the measures are here, tightened from that card's roomier default */
 .nino-admin .design-form-section,
 .nino-admin .design-block {
 	margin: 0 0 .85rem;
 	padding: .95rem;
 }
 
-/*	Two columns of fields, the way the composer asks four questions in the room
-	one would take. Below the breakpoint the column is too narrow for two */
+/*	Two columns of fields: four questions in the room one would take. Below the
+	breakpoint the column is too narrow for two */
 .design-form-grid {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -278,11 +274,11 @@
 	min-width: 0;
 }
 /*	A pane rather than a column: the frame, its toolbar and the list under it
-	belong together and say so by standing on one surface. The ruled ground is
-	the composer's - it reads as a canvas something is being put on, which is
-	what a preview of a design is. The pane is the sticky one (the workbench's
-	own pane carries overflow-y), so the frame follows the selects down the
-	column instead of scrolling out of sight above them */
+	belong together and say so by standing on one surface. The ruled ground
+	reads as a canvas something is being put on, which is what a preview of a
+	design is. The pane is the sticky one (the workbench's own pane carries
+	overflow-y), so the frame follows the selects down the column instead of
+	scrolling out of sight above them */
 #design-preview {
 	position: sticky;
 	top: 0;
@@ -392,8 +388,7 @@
 /*	What the frame shows, in words. A preview says what a design looks like and
 	nothing about which selection produced it - two sets a step apart are a
 	picture somebody has to compare from memory. Label left, value right, a
-	hairline between rows: the same list the section composer puts under its own
-	preview, and the other half of the answer */
+	hairline between rows - the other half of the answer */
 .design-summary {
 	display: grid;
 	margin: 0;

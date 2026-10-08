@@ -142,8 +142,8 @@ function keysOfFragment( string $file ): array {
 }
 
 /**
- *	The keys one template reads: every [[/...]] from the inside out, [json /...],
- *	[image /...] and the strings of a section's json that name a key
+ *	The keys one template reads: every [[/...]] from the inside out, [json /...]
+ *	and [image /...]
  *
  *	@param		string		$source
  *
@@ -175,17 +175,6 @@ function keysReadBy( string $source ): array {
 	if( preg_match_all( '/\[image\s+(\/[^\s\]]+)/', $source, $image ) > 0 )
 		foreach( $image[1] as $key )
 			$reads[] = [ 'key' => $key, 'composed' => false, 'image' => true ];
-
-	// The bindings and the background of a section the Template Builder wrote
-	if( preg_match_all( '/<!--\s*nino:section\s+(\{.*?\})\s*-->/s', $source, $sections ) > 0 )
-		foreach( $sections[1] as $sectionJson ) {
-			preg_match_all( '/"backgroundImage":"(\/[^"]+)"/', $sectionJson, $backgrounds );
-			foreach( $backgrounds[1] as $key )
-				$reads[] = [ 'key' => $key, 'composed' => false, 'image' => true ];
-			preg_match_all( '/"(\/(?:template|project|feature|module|_nino)\/[^"]+)"/', (string) preg_replace( '/"backgroundImage":"[^"]*"/', '', $sectionJson ), $bound );
-			foreach( $bound[1] as $key )
-				$reads[] = [ 'key' => $key, 'composed' => false, 'image' => false ];
-		}
 
 	return $reads;
 }
@@ -530,7 +519,7 @@ if( $part2 === true ) {
 
 	// Every template of the catalogue that reads keys, with the category it carries its own under:
 	// a template the unit copies into the project has its file's, a Design frame its target's, and
-	// a template inside a feature or a preset of the Template Builder has none and reads the common words
+	// a template inside a feature or a file of a feature library has none and reads the common words
 	$templateFiles = [];
 	foreach( $features as $feature ) {
 
@@ -629,7 +618,7 @@ if( $part2 === true ) {
 	}
 	keysCheck( 'the templates read keys ('. $reads. ' reads): every one is a runtime fill, a key of the system, a placeholder put together in a shape that is allowed, a slot a unit declares, or a key that the feature, the kernel\'s base unit or a module, or the feature it belongs to delivers'
 		. ( $unknown === [] ? '' : ' - '. implode( '; ', array_slice( array_unique( $unknown ), 0, 6 ) ) ), $unknown === [] && $reads > 200 );
-	keysCheck( 'a template reads template keys of its own category or of /template/common only - the templates inside a feature and the presets of the Template Builder have no category, so only common'
+	keysCheck( 'a template reads template keys of its own category or of /template/common only - the templates inside a feature and the files of a feature\'s library have no category, so only common'
 		. ( $strangers === [] ? '' : ' - '. implode( '; ', array_slice( array_unique( $strangers ), 0, 6 ) ) ), $strangers === [] );
 
 	// The code reads keys too: every one it names in full - not put together, which the feature's own test renders -

@@ -93,7 +93,7 @@ After editing:
 
 | Path | Ownership |
 | --- | --- |
-| `features/<Name>/` | One feature, exactly what lands in a project's `features/`. The directory name is the class name `\Nino\Modules\<Name>` and MUST match `/^[A-Z][A-Za-z0-9]*$/`. Its documentation is the `manual` of its `feature.php`; the only other documents are the Template Builder handbook in `features/Templates/docs/` |
+| `features/<Name>/` | One feature, exactly what lands in a project's `features/`. The directory name is the class name `\Nino\Modules\<Name>` and MUST match `/^[A-Z][A-Za-z0-9]*$/`. Its documentation is the `manual` of its `feature.php`; it carries no other document |
 | `bin/catalogue.php` | The preview: reads every manifest through a Nino checkout and prints what the catalogue would list as JSON - key, name, description, `category`, `maturity`, version, `nino`, `php`, `requires`, directory - without an archive or a signature. A manifest Nino would skip fails the run. Defines `NINO_FEATURES_DIR` as this repository's `features/`, so the checkout's own directory is never what it reads. `bin/check.sh` and CI use it as the manifest check |
 | `bin/build.php` | The build tool: `php bin/build.php <nino-checkout> <out-dir> [--base-url …] [--key private.pem]`. Validates every manifest the same way, builds `<out-dir>/<key>-<version>.tar.gz` for every feature on every run, as a plain ustar tar written by the script itself, every entry stamped with one fixed time - exactly one directory `<Name>/`, without `tests/`, `.git*`, `.DS_Store` and editor leftovers, sorted so a build is reproducible - and writes `<out-dir>/catalogue.json` in format 1 (see `\Nino\Catalogue` in Nino), one entry per feature, signed with `--key`. A feature that did not change gives the same bytes and its file is left alone; an archive no entry names is removed. The `catalogue.json` already in the directory is read for two things: `released` stays while an entry's `sha256` does, and `generated` stays while nothing else in the document changes - then neither `catalogue.json` nor its signature is rewritten |
 | `bin/applicable.php` | `php bin/applicable.php <nino>` prints the directories of the features whose `nino` constraint the checkout's version satisfies (`\Nino\Features::satisfies()` of that checkout), one per line, and on STDERR the others with their reason (`Seo: skipped on Nino 1.3.2: needs ^1.4`). A feature written for a newer Nino claims nothing about an older one. `bin/check.sh`, CI, `tests/build-smoke.php` and `tests/keys-smoke.php` all ask it, so the question has one answer. `bin/catalogue.php` does not: it describes every feature of this repository |
@@ -102,6 +102,7 @@ After editing:
 | `tests/keys-smoke.php` | The text key grammar over every feature. Part 1, against any checkout: what an install unit writes follows `/feature/<key>/<part>/<name>` or `/template/<category>/<part>/<name>`, reads the same in both languages, blacklists what its own code fills; no old key family is left in a shipped file; the key literals in the code name a namespace; no feature's code reads `/nino/locales/textfiles`. Part 2, against a Nino that has `\Nino\Modules\Template::category()` and for the features `bin/applicable.php` names: every key a template reads is a runtime fill, a key of the system or delivered, a template reads template keys of its own category or of `common` only, a template the kernel delivers too is byte for byte the kernel's. The vocabulary of the workbench is looked up where the checkout has one, as a note |
 | `tests/legal-smoke.php` | The sections of the privacy policy the features bring (`install/elements/privacy.php`, section 4c). Part 1, against any checkout: each file is named in the manifest of its unit, brings no type of its own, has the same sections in `*`, `de_DE` and `en_US`, ids that are the feature's key or the key and a name, a position in the feature's range, only `p`, `br`, `ul`, `ol`, `li`, `strong`, `em` and `a` with a `#privacy-<id>` or `https://` link, no `&`, entity or `[`, only placeholders Nino's Legal module replaces. Part 2, against a Nino that has `\Nino\Modules\Legal`: the module's unit applied in a sandbox, then each feature's add-only - the sections are there, a second run changes nothing, no id is the module's, every anchor names a section, the field's own model leaves every text as it is, `Legal::contributions()` names them. Otherwise a line starting `note` |
 | `tests/markup-smoke.php`, `tests/language-smoke.php`, `tests/escaping-smoke.php`, `tests/panels-smoke.php` | The rules every feature shares, read over the feature files: markup belongs in a template (section 4a), the text is English, an escape keeps what it cannot encode, a panel reaches the workbench the way it has to |
+| `tests/demo-catalogue-smoke.php` | The kernel's page unit `.demo-catalogue` (`_admin/install/library/pages/`), against any checkout: the unit's manifest and the files it declares, every `nino-*` class `Nino.css` defines on the page - or on the short list of what a frame, a module, a feature (the Builder writes `nino-wrap`) or `Nino.ui.js` draws instead, which fails once `Nino.css` drops one - and a page that renders from the fills, images and modules every installation of it has. A class that `Nino.css` gains is drawn on the page in the same change, or named on that list with its reason |
 | `tests/build-smoke.php` | The build tool's own test over Nino's harness: a keypair per run, a signed build into a temporary directory, the archives' contents, the catalogue's fields, the signature, a second run that changes no byte and leaves `catalogue.json` and its signature untouched, a changed feature that gets new bytes under the same name and a new `released`, a stale archive that is removed, one entry per feature whatever the catalogue held before, the refusals - a category outside the kernel's six and a checkout without them among them - and an installation of the archives through `\Nino\Catalogue` |
 | `tests/release-smoke.php` | `bin/release.sh` end to end from a copy of the repository, with `--quick` and a temporary key: the first run builds every feature into the copy's `public/` and a catalogue that verifies and parses, the second changes no byte, the third after a version bump of Hello replaces its archive and leaves every other one as it was; a file `public/` holds that the build does not write stays |
 | `.github/workflows/ci.yml` | The matrix: Nino `main` and Nino's latest tag. Each test `bin/check.sh` runs as a step of its own, and besides them a syntax check of every PHP and JavaScript file, Nino's `tests/features-smoke.php` with the features in place, PHPStan and ESLint - the workflow's steps are the list; `catalogue.json` kept as an artifact of the `main` run. A test run and nothing more: no release waits for it |
@@ -185,11 +186,9 @@ Three shapes MAY carry markup in PHP, and nothing else:
    asks for as a string (`Admin::icon()`).
 3. **A last-resort fallback** for when no template can be read at all.
 
-Two things that look like exceptions and are not: a **document format** built
+One thing that looks like an exception and is not: a **document format** built
 from data (`sitemap.xml` in `features/Seo/`) is a serialisation rather than a
-view, and a **builder whose product is markup** (`features/Templates/`, which
-composes `.tpl` source) is writing its output, not rendering itself. Both say so
-where the markup is.
+view. It says so where the markup is.
 
 `tests/markup-smoke.php` holds the whole catalogue to this: it reads every
 feature class and fails on a string that opens an html tag, unless the file is
@@ -229,8 +228,8 @@ English, with no language in them and no number as a name.
   feature's own test renders the words that can appear.
 - **A Design frame** is the project's `frame-header.tpl` or `frame-footer.tpl`
   once applied, so it reads `/template/frame-header/...` and
-  `/template/frame-footer/...`, which the base unit delivers; the Template
-  Builder's keys are `/template/<the page template's name>/<section>/<name>`.
+  `/template/frame-footer/...`, which the base unit delivers; the Builder's
+  keys are `/template/<the page template's name>/<section>/<name>`.
 - **The project's text is in `/text`.** A feature that reads the text files
   reads `/text/global.php` and `/text/<locale>.php` - where the Text panel
   writes - and never `$appData['/nino/locales/textfiles']`, which Nino reads
@@ -369,8 +368,8 @@ rather than working around them here:
   the lifecycle, the unit format; `docs/features.md` and
   `tests/features-smoke.php` live there;
 - a workbench screen every project has regardless of its features (that is
-  a module under `_admin/Nino/Modules/`), a kernel module, a section preset,
-  an installer unit for the wizard;
+  a module under `_admin/Nino/Modules/`), a kernel module, an installer unit
+  for the wizard;
 - the download, the signature check and what a catalogue entry has to
   say: that is `\Nino\Catalogue` in Nino, and its `parse()` is the contract
   `bin/build.php` writes to. A new field or a new format goes to Nino first;

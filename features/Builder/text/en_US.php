@@ -62,7 +62,7 @@ return [
 	'[[/_admin/builder/error/missing]]'				=> 'There is no such page template.',
 	'[[/_admin/builder/error/exists]]'					=> 'A page template of this name is there already.',
 	'[[/_admin/builder/error/in-use]]'					=> 'A route renders this template, so it is not deleted. Change the route first.',
-	'[[/_admin/builder/error/conflict]]'				=> 'The file changed since it was loaded - in another window, or in the editor of the Templates panel.',
+	'[[/_admin/builder/error/conflict]]'				=> 'The file changed since it was loaded - in another window, or in another editor.',
 	'[[/_admin/builder/error/invalid]]'				=> 'The template is not valid, and nothing was written.',
 	'[[/_admin/builder/error/model]]'					=> 'There was nothing to save.',
 	'[[/_admin/builder/error/key]]'						=> 'A text key could not be made, copied or moved.',

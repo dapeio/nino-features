@@ -222,8 +222,7 @@
 		 *	A group's eyebrow, over the card it labels.
 		 *
 		 *	The workbench owns the type - .nino-admin-eyebrow is its own - and
-		 *	this file owns where the line sits, the way the section composer
-		 *	puts one over every group of fields it asks about
+		 *	this file owns where the line sits
 		 *
 		 *	@param		{string}	label
 		 *
@@ -237,10 +236,9 @@
 		},
 
 		/**
-		 *	The small heading and the hint line over a block of rows - what the
-		 *	section composer writes over its component stack, and what a block
-		 *	of knob rows needs for the same reason: the rows are a list of
-		 *	values, and a list of values needs a sentence saying what they are
+		 *	The small heading and the hint line over a block of rows - what a block
+		 *	of knob rows needs: the rows are a list of values, and a list of
+		 *	values needs a sentence saying what they are
 		 *
 		 *	@param		{string}	title
 		 *	@param		{string}	[note]		'' draws no second line
@@ -686,10 +684,9 @@
 			if( Nino.admin.design._head() === null )
 				controls.appendChild( Nino.admin.design._renderTabs() );
 
-			/*	One eyebrow over the card, the way the section composer labels a
-				group of fields. It names what the card asks for rather than
-				repeating the tab: the strip already says which half of a
-				design is open	*/
+			/*	One eyebrow over the card, labelling its group of fields. It
+				names what the card asks for rather than repeating the tab: the
+				strip already says which half of a design is open	*/
 			controls.appendChild( Nino.admin.design._eyebrow( Nino.content.getText( Nino.admin.design._tab === 'colours'
 				? '/_admin/design/group/palette'
 				: '/_admin/design/group/selection' ) ) );
@@ -718,9 +715,9 @@
 				card.appendChild( grid );
 				controls.appendChild( card );
 
-				/*	The knob rows are the composer's titled block: a panel of
-					their own under the form card, opened by the small heading and
-					the hint line that say what the rows in it decide	*/
+				/*	The knob rows are a titled block: a panel of their own under
+					the form card, opened by the small heading and the hint line
+					that say what the rows in it decide	*/
 				const knobs = dc.createElement('div');
 				knobs.id = 'design-knobs';
 				knobs.className = 'nino-admin-card design-block';
@@ -1250,9 +1247,9 @@
 			box.id = 'design-state';
 			box.className = 'nino-admin-card design-block';
 
-			/*	The composer's section label rather than a heading of its own:
-				the same small title a block of rows carries, with when the file
-				was last written on the line under it	*/
+			/*	A section label rather than a heading of its own: the same small
+				title a block of rows carries, with when the file was last
+				written on the line under it	*/
 			box.appendChild( Nino.admin.design._sectionLabel(
 				Nino.content.getText('/_admin/design/label/state'),
 				data.compiled === '' ? '' : Nino.admin.design._text( '/_admin/design/state/compiled', Nino.admin.design._when( data.compiled ) ) ) );
@@ -1349,7 +1346,7 @@
 
 			/*	One stack inside the pane, so the pane owns the surface and the
 				padding and this owns the rhythm between heading, toolbar, frame
-				and summary - the shape the section composer's preview pane has	*/
+				and summary	*/
 			const sticky = dc.createElement('div');
 			sticky.className = 'design-preview-sticky';
 			box.appendChild( sticky );
@@ -1458,8 +1455,7 @@
 		 *	A preview shows what a design looks like and says nothing about
 		 *	which selection produced it - two sets a step apart are a picture
 		 *	somebody has to compare from memory. The list is the other half of
-		 *	the answer, in the shape the section composer puts under its own
-		 *	preview, and it is what makes the frame readable: every control on
+		 *	the answer, and it is what makes the frame readable: every control on
 		 *	the left is in it, in the interface language, as the value that
 		 *	will compile
 		 *
@@ -1782,11 +1778,9 @@
 		 */
 		_select : function( id, label, options, current, onChange, note ) {
 
-			/*	A label over the control and a small under it - the shape the
-				section composer gives every field it asks about. The name is a
-				<label for>, not the composer's <span>: the control is a real one
-				with an id, and a label that names it is what a screen reader
-				reads out	*/
+			/*	A label over the control and a small under it. The name is a
+				<label for>: the control is a real one with an id, and a label
+				that names it is what a screen reader reads out	*/
 			const field = dc.createElement('div');
 			field.className = 'design-field';
 

@@ -580,10 +580,9 @@ console.log('');
 
 // --- The shape of the column -----------------------------------------------------
 //
-// The section composer of the Templates feature is the shape being followed
-// here: a card of labelled fields in a grid, each with its name over the
-// control and the terse line under it, and a block of rows under the card that
-// a small heading and a hint line open
+// The shape is a card of labelled fields in a grid, each with its name over
+// the control and the terse line under it, and a block of rows under the card
+// that a small heading and a hint line open
 
 console.log( 'The column' );
 
@@ -609,7 +608,7 @@ check( 'the knob rows stand in a block of their own, opened by a small heading a
 	&& ( byTag( label, 'small' )[0] || {} ).textContent === TEXT['/_admin/design/hint/finetune']
 	&& byClass( knobs, 'design-knob-row' ).length === 3 );
 
-check( 'and the group over the card is named, the way the composer names one',
+check( 'and the group over the card is named',
 	( byClass( column.form, 'design-eyebrow' )[0] || {} ).textContent === 'Selection' );
 
 console.log('');

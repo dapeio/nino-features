@@ -87,6 +87,11 @@ jobs:
       - name: Run the privacy policy sections' smoke test
         run: NINO_ROOT=nino php tests/legal-smoke.php
 
+      # The kernel's demo page draws every class of Nino.css: a class that
+      # Nino.css gains and the page does not show fails here
+      - name: Run the demo page's smoke test
+        run: NINO_ROOT=nino php tests/demo-catalogue-smoke.php
+
       # The publishing tool builds a signed catalogue of this repository's
       # features into a directory of its own, and the kernel has to accept
       # what came out
