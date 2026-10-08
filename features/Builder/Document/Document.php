@@ -15,7 +15,8 @@ namespace Nino\Modules\Builder {
 	 *	Nino								A compact filesystembased php framework
 	 *	Document						The Reader and the Writer joined to the project: the page
 	 *											templates it has, one of them loaded with its hash, saved
-	 *											when the hash is still the file's, created, deleted - and
+	 *											when the hash is still the file's, created, copied under
+	 *											a new name with its keys and slots, deleted - and
 	 *											the registry the panel builds its forms from. No request
 	 *											and no response in here: every method answers an array
 	 *											with a 'status' of what the panel would answer (200, 400,
@@ -170,7 +171,8 @@ namespace Nino\Modules\Builder {
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
 		 *	@return 	array										[ 'status' => 200, 'templates' => [ file, name, header, footer,
-		 *																	sections, foreign, readable, editable, usedBy ] ]
+		 *																	sections, foreign, readable, reason, editable, usedBy ] ], by file;
+		 *																	reason is the first block the Reader failed at, null where there is none
 		 */
 		public static function list( array &$appData ): array {
 
@@ -192,6 +194,7 @@ namespace Nino\Modules\Builder {
 					'sections'	=> (int) ( $kinds['section'] ?? 0 ),
 					'foreign'		=> (int) ( $kinds['html'] ?? 0 ),
 					'readable'	=> $failed === [],
+					'reason'		=> $failed === [] ? null : reset( $failed )['reason'],
 					'editable'	=> self::validFile( $file ),
 					'usedBy'		=> self::usedBy( $appData, $file ),
 				];
@@ -408,7 +411,7 @@ namespace Nino\Modules\Builder {
 			if( $problems !== [] )
 				return self::_error( 400, 'a value cannot stand in a call', 'value', $problems );
 
-			$head = rtrim( Writer::write( [ 'name' => $model['name'] ?? '', 'header' => $model['header'] ?? '', 'blocks' => [] ], $schemas ), "\n" );
+			$head = rtrim( Writer::write( [ 'name' => $model['name'] ?? '', 'vpa' => $model['vpa'] ?? null, 'header' => $model['header'] ?? '', 'blocks' => [] ], $schemas ), "\n" );
 
 			if( $head !== '' )
 				$parts[] = [ 'kind' => 'head', 'source' => $head, 'block' => null ];
@@ -472,7 +475,7 @@ namespace Nino\Modules\Builder {
 				$frames[$place] = $frame;
 			}
 
-			$model		= [ 'file' => $file, 'name' => $name, 'header' => $frames['header'], 'footer' => $frames['footer'], 'blocks' => [] ];
+			$model		= [ 'file' => $file, 'name' => $name, 'vpa' => null, 'header' => $frames['header'], 'footer' => $frames['footer'], 'blocks' => [] ];
 			$source		= Writer::write( $model, self::schemas( $appData ) );
 			$exists		= false;
 
@@ -490,6 +493,329 @@ namespace Nino\Modules\Builder {
 				return $exists === true ? self::_error( 409, 'a page template of this name is there already', 'exists' ) : self::_error( 500, 'could not write the page template', 'write' );
 
 			return [ 'status' => 200, 'model' => $model, 'hash' => hash( 'sha256', $source ) ];
+		}
+
+		/**
+		 *	A page template copied under a new name: the file, with every
+		 *	/template/<file>/ in it - the sources of the sections and the blocks
+		 *	of html alike - made /template/<copy>/ and the name of the template
+		 *	the new one; every text key under /template/<file>/ made again under
+		 *	/template/<copy>/ with the values of every language, and every image
+		 *	slot made again with its label, its size, its alt texts and a copy of
+		 *	its picture, so that taking one of the two away leaves the other
+		 *	as it is. The file is read as text and written as text: nothing the
+		 *	Reader does not read is touched, and what it does read stays what it
+		 *	was - the head line of the animation included.
+		 *
+		 *	It is made like a save: what is refused is refused before the first
+		 *	change - a name, a file that is there, a key or a slot of the copy
+		 *	that is there, the permissions of the panels that own them - and what
+		 *	is made then is made in an order that can be undone. A key is made
+		 *	with the Text Keys' own actions, a slot with the Slots tab's, and what
+		 *	one of them could not make takes everything made so far away again.
+		 *	What was made is what the panels answered 200 for: a key or a slot that
+		 *	another request made in the meantime - the panel answers 409 - is none
+		 *	of the copy's, it stops the copy and is left as it is.
+		 *	A key under /template/<file>/ that is no key of the grammar is not
+		 *	copied: no panel could make it
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$file					page-home, the template to copy
+		 *	@param		string		$name					What the copy is called; its file is page-<the name as a slug>
+		 *
+		 *	@return 	array										[ 'status' => 200, 'model', 'hash' ] of the copy; 400 for a name or a file that is none,
+		 *																	403 for a missing permission, 404 for a template that is not there, 409 for a copy
+		 *																	that is there ('exists') or keys or slots of it that are ('key-exists', with 'keys' and 'slots':
+		 *																	the bare uris in the way), or what a panel that makes a key or a slot answered
+		 */
+		public static function duplicate( array &$appData, string $file, string $name ): array {
+
+			if( self::validFile( $file ) === false )
+				return self::_error( 400, 'a page template is called page- and a slug of lower case letters, digits and hyphens', 'file' );
+
+			$source = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $file. '.tpl', false );
+
+			if( is_string( $source ) === false )
+				return self::_error( 404, 'there is no such page template', 'missing' );
+
+			$name = trim( $name );
+			$slug = self::_validName( $name ) === true ? self::_slug( $name ) : '';
+			$copy = 'page-'. $slug;
+
+			if( $slug === '' || self::validFile( $copy ) === false )
+				return self::_error( 400, 'a name is one line of 1 to 160 characters without <, > or brackets, and has letters or digits to make a file name from', 'name' );
+
+			$path = self::TEMPLATES. '/'. $copy. '.tpl';
+
+			if( \Nino\Filesystem::fileExists( $appData, $path ) === true )
+				return self::_error( 409, 'a page template of this name is there already', 'exists' );
+
+			$from = '/template/'. $file. '/';
+			$to		= '/template/'. $copy. '/';
+
+			[ $failure, $plan ] = self::_planCopy( $appData, $from, $to );
+
+			if( $failure !== null )
+				return $failure;
+
+			$made		= [ 'keys' => [], 'slots' => [] ];
+			$failure	= self::_makeCopy( $appData, $plan, $made );
+
+			if( $failure !== null ) {
+				self::_unmake( $appData, $made );
+				return $failure;
+			}
+
+			$text = str_replace( $from, $to, $source );
+			$text = (string) preg_replace_callback( '~\A(\s*<!--[\t ]*nino:template-name[\t ]+)[^\r\n<>]+?([\t ]*-->)~', static fn( array $match ): string => $match[1]. $name. $match[2], $text, 1, $named );
+
+			// A file without a name line is given one, first, where the Reader looks for it
+			if( $named === 0 )
+				$text = '<!-- nino:template-name '. $name. " -->\n". $text;
+
+			$exists		= false;
+			$written	= \Nino\Filesystem::mutate( $appData, $path, static function( mixed $current ) use ( $text, &$exists ): ?string {
+
+				if( (string) $current !== '' ) {
+					$exists = true;
+					return null;
+				}
+
+				return $text;
+			}, '' );
+
+			if( $written === false ) {
+
+				self::_unmake( $appData, $made );
+
+				return $exists === true ? self::_error( 409, 'a page template of this name is there already', 'exists' ) : self::_error( 500, 'could not write the page template', 'write' );
+			}
+
+			$model = Reader::read( $text, self::schemas( $appData ) );
+			$model['file'] = $copy;
+
+			return [ 'status' => 200, 'model' => $model, 'hash' => hash( 'sha256', $text ) ];
+		}
+
+		/**
+		 *	What a copy is going to make, and whether it may: the keys and the
+		 *	slots under the old file's prefix, each with the name it gets under
+		 *	the new one, checked - none of them is there already, the
+		 *	permission of each panel - before anything is made
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$from					/template/page-home/
+		 *	@param		string		$to						/template/page-copy/
+		 *
+		 *	@return 	array										[ the refusal or null, the plan: 'keys' (new key => the entry it is copied from) and
+		 *																	'slots' (new uri => [ the slot it is copied from, its old uri ]) ]. What is there already is a 409
+		 *																	('key-exists') with 'keys' and 'slots' besides the usual: the bare uris of the copy that are in the
+		 *																	way, for the panel to name in its own words
+		 */
+		private static function _planCopy( array &$appData, string $from, string $to ): array {
+
+			$plan			= [ 'keys' => [], 'slots' => [] ];
+			$inTheWay	= [ 'keys' => [], 'slots' => [] ];
+			$known		= array_column( \Nino\Text::entries( $appData ), null, 'key' );
+
+			foreach( $known as $key => $entry ) {
+
+				if( str_starts_with( (string) $key, $from ) === false )
+					continue;
+
+				$new = $to. substr( (string) $key, strlen( $from ) );
+
+				if( \Nino\Text::isGrammarKey( $new ) === false )
+					continue;
+
+				if( isset( $known[$new] ) === true )
+					$inTheWay['keys'][] = $new;
+				else
+					$plan['keys'][$new] = $entry;
+			}
+
+			foreach( \Nino\Images::getSlots( $appData ) as $uri => $slot ) {
+
+				if( str_starts_with( (string) $uri, $from ) === false || is_array( $slot ) === false )
+					continue;
+
+				$new = $to. substr( (string) $uri, strlen( $from ) );
+
+				if( \Nino\Images::getSlot( $appData, $new ) !== false )
+					$inTheWay['slots'][] = $new;
+				else
+					$plan['slots'][$new] = [ $slot, (string) $uri ];
+			}
+
+			if( $inTheWay['keys'] !== [] || $inTheWay['slots'] !== [] )
+				return [ self::_error( 409, 'a key or a slot of the copy is there already', 'key-exists' ) + $inTheWay, $plan ];
+
+			$permissions = [];
+
+			if( $plan['keys'] !== [] )
+				$permissions[] = \Nino\Modules\Text\Keys::MANAGE_PERM;
+
+			if( $plan['slots'] !== [] )
+				$permissions[] = \Nino\Modules\Images\Slots::MANAGE_PERM;
+
+			foreach( $permissions as $permission )
+				if( \Nino\Auth::checkPermission( $appData, $permission ) === false )
+					return [ self::_error( 403, 'a copy makes keys or slots, which asks for the permission '. $permission, 'permission', [ $permission ] ), $plan ];
+
+			return [ null, $plan ];
+		}
+
+		/**
+		 *	Make what the plan makes: the keys, then the slots. What is made is
+		 *	noted in $made once the panel has answered 200 for it, so that a key
+		 *	or a slot that stopped half way is taken away with the rest - and one
+		 *	that another request made in the meantime (409) is not noted, and so
+		 *	not taken away: it stops the copy and stays
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$plan					See _planCopy()
+		 *	@param		array 		&$made				(reference) [ 'keys' => [ key, ... ], 'slots' => [ uri, ... ] ]
+		 *
+		 *	@return 	array|null								The answer that stopped it, null where all of it was made
+		 */
+		private static function _makeCopy( array &$appData, array $plan, array &$made ): ?array {
+
+			foreach( $plan['keys'] as $key => $entry ) {
+
+				$failure = self::_copyKey( $appData, (string) $key, $entry, $made['keys'] );
+
+				if( $failure !== null )
+					return $failure;
+			}
+
+			foreach( $plan['slots'] as $uri => [ $slot, $old ] ) {
+
+				$last			= (string) substr( (string) $uri, (int) strrpos( (string) $uri, '/' ) + 1 );
+				$label		= trim( (string) ( $slot['label'] ?? '' ) );
+
+				// A slot that is there already is another request's: no alt text and no picture is written into it
+				$failure	= self::_slot( $appData, (string) $uri, $label !== '' ? $label : ucfirst( $last ), (int) ( $slot['width'] ?? 0 ), (int) ( $slot['height'] ?? 0 ), $made['slots'], false );
+
+				if( $failure !== null )
+					return $failure;
+
+				// The alt text of a language the site no longer has is left behind
+				$alt = is_array( $slot['alt'] ?? null ) === true ? array_intersect_key( $slot['alt'], array_flip( \Nino\Locales::getAvailableLocales( $appData ) ) ) : [];
+
+				if( $alt !== [] && \Nino\Images::setSlotAlt( $appData, (string) $uri, $alt ) === false )
+					return self::_error( 500, 'the alt texts of the slot could not be copied', 'slot', [ (string) $uri ] );
+
+				$filename = $slot['filename'] ?? null;
+
+				if( is_string( $filename ) === false || $filename === '' )
+					continue;
+
+				$bytes = \Nino\Images::read( $appData, $filename );
+
+				// A slot that names a picture that is not there has none to hand on
+				if( is_string( $bytes ) === false )
+					continue;
+
+				$base = ltrim( $old, '/' );
+				$copy = ltrim( (string) $uri, '/' ). ( str_starts_with( $filename, $base ) === true ? substr( $filename, strlen( $base ) ) : '.'. basename( $filename ) );
+
+				if( \Nino\Images::restore( $appData, $copy, $bytes ) === false )
+					return self::_error( 500, 'the image of the slot could not be copied', 'slot', [ (string) $uri ] );
+
+				if( \Nino\Images::setSlotFilename( $appData, (string) $uri, $copy ) === false ) {
+					\Nino\Images::delete( $appData, $copy );
+					return self::_error( 500, 'the image of the slot could not be copied', 'slot', [ (string) $uri ] );
+				}
+			}
+
+			return null;
+		}
+
+		/**
+		 *	One key made again under another name, through the Text Keys' own
+		 *	actions: made in the format of the original with its first value in
+		 *	every language, the other values written over, its limit and its
+		 *	place on the blacklist kept - and read again, every value as the
+		 *	original has it, because the panel makes the key without telling
+		 *	whether every language file took it
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$key					The new key
+		 *	@param		array			$entry				The key it is copied from, as \Nino\Text::entries() has it
+		 *	@param		array 		&$made				(reference) Where the key is added once keys/create answered 200 - not for a 409, which is another request's key
+		 *
+		 *	@return 	array|null
+		 */
+		private static function _copyKey( array &$appData, string $key, array $entry, array &$made ): ?array {
+
+			$values	= array_filter( (array) $entry['values'], 'is_string' );
+			$first	= $values === [] ? '' : (string) reset( $values );
+
+			[ $status, $body ] = self::_api( $appData, 'keys/create', [
+				'key'			=> $key,
+				'global'	=> $entry['global'] === true,
+				'value'		=> $first,
+				'format'	=> (string) $entry['format'],
+			] );
+
+			if( $status !== 200 )
+				return self::_error( $status, (string) ( $body['error'] ?? 'the key could not be created' ), 'key', [ $key ] );
+
+			// From here on the key is the copy's, and goes with it where anything below stops
+			$made[] = $key;
+
+			$items = [];
+
+			foreach( $values as $locale => $value )
+				if( $entry['global'] === false && $value !== $first )
+					$items[] = [ 'key' => $key, 'locale' => (string) $locale, 'value' => $value ];
+
+			if( $items !== [] ) {
+
+				[ $status, $body ] = self::_api( $appData, 'keys/savebatch', [ 'items' => $items ] );
+
+				if( $status !== 200 )
+					return self::_error( $status, (string) ( $body['error'] ?? 'the key could not be saved' ), 'key', [ $key ] );
+			}
+
+			// The key is made in the original's format, so that no value loses
+			// its markup on the way in; a format nobody had chosen is forgotten
+			// again, it follows the values as the original's does
+			if( $entry['formatSet'] === false || $entry['maxlengthSet'] === true || $entry['blacklisted'] === true ) {
+
+				[ $status, $body ] = self::_api( $appData, 'keys/save', [ 'key' => $key, 'global' => $entry['global'] === true, 'blacklisted' => $entry['blacklisted'] === true ]
+					+ ( $entry['formatSet'] === false ? [ 'format' => 'auto' ] : [] )
+					+ ( $entry['maxlengthSet'] === true ? [ 'maxlength' => (int) $entry['maxlength'] ] : [] ) );
+
+				if( $status !== 200 )
+					return self::_error( $status, (string) ( $body['error'] ?? 'the key could not be saved' ), 'key', [ $key ] );
+			}
+
+			$stored = \Nino\Text::entry( $appData, $key );
+
+			foreach( $values as $locale => $value )
+				if( $stored === null || ( $stored['values'][$locale] ?? null ) !== \Nino\Text::sanitizeValue( $value, (string) $entry['format'] ) )
+					return self::_error( 500, 'the key could not be written in every language', 'key', [ $key ] );
+
+			return null;
+		}
+
+		/**
+		 *	Take away what a copy made - the slots first, with the pictures made
+		 *	for them, then the keys - by the same actions that made them
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$made					As _makeCopy() noted it
+		 *
+		 *	@return 	void
+		 */
+		private static function _unmake( array &$appData, array $made ): void {
+
+			foreach( array_reverse( $made['slots'] ) as $uri )
+				self::_api( $appData, 'slots/delete', [ 'uri' => $uri ] );
+
+			foreach( array_reverse( $made['keys'] ) as $key )
+				self::_api( $appData, 'keys/delete', [ 'key' => $key ] );
 		}
 
 		/**
@@ -599,7 +925,7 @@ namespace Nino\Modules\Builder {
 				}
 
 				if( self::_readsBack( $block, $found[$id] ) === false ) {
-					$problems[] = 'the section "'. $id. '" does not read back as it was written: its columns, its stacks or its components are not what the grammar makes of them';
+					$problems[] = 'the section "'. $id. '" does not read back as it was written: its columns, its loops or its components are not what the grammar makes of them';
 					continue;
 				}
 
@@ -619,8 +945,10 @@ namespace Nino\Modules\Builder {
 		/**
 		 *	The values of a model that no call can carry: a quote, a bracket
 		 *	or a line break in a fixed text, a source, an attribute (the class
-		 *	and the href among them) or a custom class. The content of a
-		 *	component is no attribute and is not looked at
+		 *	and the href among them) or a custom class - and an animation of the
+		 *	template that is no list of the classes of nino-vpa, which would
+		 *	leave its comment. The content of a component is no attribute and
+		 *	is not looked at
 		 *
 		 *	@param		array			$model
 		 *
@@ -630,6 +958,9 @@ namespace Nino\Modules\Builder {
 
 			$problems	= [];
 			$unsafe		= static fn( mixed $value ): bool => is_scalar( $value ) === true && preg_match( self::UNSAFE, is_bool( $value ) === true ? '' : (string) $value ) === 1;
+
+			if( is_string( $model['vpa'] ?? null ) === true && Reader::vpaClasses( $model['vpa'] ) === false )
+				$problems[] = 'the animation of the template is none of the classes of nino-vpa';
 
 			foreach( (array) ( $model['blocks'] ?? [] ) as $index => $block ) {
 
@@ -701,7 +1032,7 @@ namespace Nino\Modules\Builder {
 					$type = ltrim( (string) ( $col['stack']['source'] ?? '' ), '/' );
 
 					if( preg_match( self::TYPE, $type ) !== 1 || in_array( $type, self::_types( $appData ), true ) === false )
-						$problems[] = 'the stack loops "'. $type. '", which is no element type';
+						$problems[] = 'the loop runs over "'. $type. '", which is no element type';
 					else
 						$fields = (array) ( \Nino\Filesystem::getFileContent( $appData, '/elements/'. $type. '.php', [] )['model'] ?? [] );
 				}
@@ -722,7 +1053,7 @@ namespace Nino\Modules\Builder {
 						$valid = in_array( $source, [ '.id', '.uri' ], true ) === true || isset( $fields[$source] ) === true || $kind === 'href';
 
 					if( $valid === false )
-						$problems[] = 'the source "'. $source. '" of '. ( $component['name'] ?? '' ). ( $fields === null ? ' means nothing in a static stack: it is a text key or an image slot' : ' is no field of the stack\'s type' );
+						$problems[] = 'the source "'. $source. '" of '. ( $component['name'] ?? '' ). ( $fields === null ? ' means nothing in a column without a loop: it is a text key or an image slot' : ' is no field of the loop\'s type' );
 				}
 			}
 
@@ -1126,17 +1457,22 @@ namespace Nino\Modules\Builder {
 		 *	@param		int				$width
 		 *	@param		int				$height
 		 *	@param		array 		&$made				(reference) Where the uri is added when the slot was made here
+		 *	@param		bool			$mayExist			Whether a slot that is there already (409) is the slot to use, as a save has it - or a failure, as
+		 *																	a copy has it: a copy writes alt texts and a picture into its slots, and not into one it did not make
 		 *
 		 *	@return 	array|null
 		 */
-		private static function _slot( array &$appData, string $uri, string $label, int $width, int $height, array &$made ): ?array {
+		private static function _slot( array &$appData, string $uri, string $label, int $width, int $height, array &$made, bool $mayExist = true ): ?array {
 
 			[ $status, $body ] = self::_api( $appData, 'slots/create', [ 'uri' => $uri, 'label' => $label, 'width' => $width, 'height' => $height ] );
 
 			if( $status === 200 )
 				$made[] = $uri;
 
-			return in_array( $status, [ 200, 409 ], true ) === true ? null : self::_error( $status, (string) ( $body['error'] ?? 'the slot could not be created' ), 'slot', [ $uri ] );
+			if( $status === 200 || ( $status === 409 && $mayExist === true ) )
+				return null;
+
+			return self::_error( $status, (string) ( $body['error'] ?? 'the slot could not be created' ), 'slot', [ $uri ] );
 		}
 
 		/**
@@ -1145,7 +1481,7 @@ namespace Nino\Modules\Builder {
 		 *	of this request put back
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$action				keys/create, keys/rename, slots/create or slots/delete
+		 *	@param		string		$action				keys/create, keys/save, keys/savebatch, keys/rename, keys/delete, slots/create or slots/delete
 		 *	@param		array			$data
 		 *
 		 *	@return 	array										[ status, body ]
@@ -1160,10 +1496,13 @@ namespace Nino\Modules\Builder {
 			try {
 
 				match( $action ) {
-					'keys/create'	=> \Nino\Modules\Text\Keys::apiCreate( $appData, $request ),
-					'keys/rename'	=> \Nino\Modules\Text\Keys::apiRename( $appData, $request ),
-					'slots/delete'	=> \Nino\Modules\Images\Slots::apiDelete( $appData, $request ),
-					default				=> \Nino\Modules\Images\Slots::apiCreate( $appData, $request ),
+					'keys/create'		=> \Nino\Modules\Text\Keys::apiCreate( $appData, $request ),
+					'keys/save'			=> \Nino\Modules\Text\Keys::apiSave( $appData, $request ),
+					'keys/savebatch'	=> \Nino\Modules\Text\Keys::apiSaveBatch( $appData, $request ),
+					'keys/rename'		=> \Nino\Modules\Text\Keys::apiRename( $appData, $request ),
+					'keys/delete'		=> \Nino\Modules\Text\Keys::apiDelete( $appData, $request ),
+					'slots/delete'		=> \Nino\Modules\Images\Slots::apiDelete( $appData, $request ),
+					default					=> \Nino\Modules\Images\Slots::apiCreate( $appData, $request ),
 				};
 			}
 			finally {
@@ -1255,7 +1594,7 @@ namespace Nino\Modules\Builder {
 			$problems	= [];
 			$text			= static fn( mixed $value ): bool => $value === null || is_string( $value ) === true;
 
-			foreach( [ 'name', 'header', 'footer' ] as $key )
+			foreach( [ 'name', 'vpa', 'header', 'footer' ] as $key )
 				if( $text( $model[$key] ?? null ) === false )
 					$problems[] = 'the '. $key. ' is no text';
 

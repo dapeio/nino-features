@@ -38,6 +38,7 @@ namespace Nino\Modules\Builder {
 			return [
 				'builder/list'			=> [ self::class, 'apiList' ],
 				'builder/create'		=> [ self::class, 'apiCreate' ],
+				'builder/duplicate'	=> [ self::class, 'apiDuplicate' ],
 				'builder/load'			=> [ self::class, 'apiLoad' ],
 				'builder/save'			=> [ self::class, 'apiSave' ],
 				'builder/delete'		=> [ self::class, 'apiDelete' ],
@@ -85,6 +86,7 @@ namespace Nino\Modules\Builder {
 		public static function log( string $action, array $data ): string {
 			return match( $action ) {
 				'builder/create'	=> 'Create Builder Template "'. (string) ( $data['name'] ?? '' ). '"',
+				'builder/duplicate'	=> 'Duplicate Builder Template '. (string) ( $data['file'] ?? '' ). ' as "'. (string) ( $data['name'] ?? '' ). '"',
 				'builder/save'		=> 'Save Builder Template '. (string) ( $data['file'] ?? '' ),
 				'builder/delete'	=> 'Delete Builder Template '. (string) ( $data['file'] ?? '' ),
 				default						=> '',
@@ -129,6 +131,25 @@ namespace Nino\Modules\Builder {
 				is_string( $data['header'] ?? null ) === true ? $data['header'] : null,
 				is_string( $data['footer'] ?? null ) === true ? $data['footer'] : null
 			) );
+		}
+
+		/**
+		 *	A copy of a page template under a new name, with its text keys and
+		 *	its image slots
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		&$request			(reference) Current server request
+		 *
+		 *	@return 	void
+		 */
+		public static function apiDuplicate( array &$appData, array &$request ): void {
+
+			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::MANAGE_PERM ) === false )
+				return;
+
+			$data = \Nino\Admin\Admin::postData();
+
+			self::_answer( $request, Document::duplicate( $appData, (string) ( $data['file'] ?? '' ), (string) ( $data['name'] ?? '' ) ) );
 		}
 
 		/**
@@ -237,8 +258,8 @@ namespace Nino\Modules\Builder {
 
 		/**
 		 *	An answer of Document as the workbench's: the body without its
-		 *	status for a 200, an error with the status for the rest - the
-		 *	problems or the routes in its params, the code for the script
+		 *	status for a 200, an error with the status for the rest - what goes
+		 *	with it in its params, the code for the script
 		 *
 		 *	@param		array 		&$request			(reference) Current server request
 		 *	@param		array			$answer				What Document answered
@@ -260,8 +281,29 @@ namespace Nino\Modules\Builder {
 				$status,
 				(string) ( $answer['error'] ?? '' ),
 				'builder_'. str_replace( '-', '_', (string) ( $answer['code'] ?? 'error' ) ),
-				(array) ( ( $answer['problems'] ?? [] ) !== [] ? $answer['problems'] : array_column( (array) ( $answer['usedBy'] ?? [] ), 'route' ) )
+				self::_params( $answer )
 			);
+		}
+
+		/**
+		 *	What goes with an error in its params: the problems of a refusal, else
+		 *	the bare uris that the panel names in its own words - the keys of the
+		 *	routes that render a template (it shows their addresses) or, for a
+		 *	copy that finds keys or slots in its way, those two lists in that order
+		 *
+		 *	@param		array			$answer				What Document answered
+		 *
+		 *	@return 	array
+		 */
+		private static function _params( array $answer ): array {
+
+			if( ( $answer['problems'] ?? [] ) !== [] )
+				return (array) $answer['problems'];
+
+			if( isset( $answer['keys'] ) === true || isset( $answer['slots'] ) === true )
+				return [ array_values( (array) ( $answer['keys'] ?? [] ) ), array_values( (array) ( $answer['slots'] ?? [] ) ) ];
+
+			return array_column( (array) ( $answer['usedBy'] ?? [] ), 'route' );
 		}
 	}
 

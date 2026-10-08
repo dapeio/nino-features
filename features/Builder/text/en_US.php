@@ -11,12 +11,12 @@ declare(strict_types=1);
 //
 //   /_admin/builder/label/...     the buttons, the columns of the list and the names of the editor's regions
 //   /_admin/builder/hint/...      the hint under a field of a form
-//   /_admin/builder/tree/...      the rows of the tree, what the add rows say, and why a source is red
-//   /_admin/builder/menu/...      the menu of a row and the titles of its buttons
+//   /_admin/builder/tree/...      what a frame is called, what the add buttons say, and why a source is red
+//   /_admin/builder/menu/...      the titles of the buttons on a frame
 //   /_admin/builder/tab/...       the tabs of the forms
 //   /_admin/builder/section/...   the fields of the section and row forms
 //   /_admin/builder/col/...       the fields of the column form
-//   /_admin/builder/stack/...     the fields of the stack form
+//   /_admin/builder/stack/...     the fields of the loop form (the model and the kernel call it a stack)
 //   /_admin/builder/component/... the title and the content of the component form
 //   /_admin/builder/source/...    the source of a component: its three tabs, the search, a new key or slot
 //   /_admin/builder/html/...      the HTML+ editor
@@ -30,8 +30,6 @@ return [
 
 	'[[/_admin/builder/label/nav]]'						=> 'Builder',
 
-	'[[/_admin/builder/hint/list]]'						=> 'The page templates of the project. The Builder reads each file into sections, columns and components, and writes a file back the way it found it where nothing was changed.',
-
 	'[[/_admin/builder/label/new]]'						=> 'New template',
 	'[[/_admin/builder/label/create]]'				=> 'Create',
 	'[[/_admin/builder/label/name]]'					=> 'Name',
@@ -39,13 +37,11 @@ return [
 	'[[/_admin/builder/label/header]]'				=> 'Header',
 	'[[/_admin/builder/label/footer]]'				=> 'Footer',
 	'[[/_admin/builder/label/sections]]'			=> 'Sections',
-	'[[/_admin/builder/label/foreign]]'				=> 'HTML+ blocks',
-	'[[/_admin/builder/label/readable]]'			=> 'Read completely',
 	'[[/_admin/builder/label/used-by]]'				=> 'Used by',
 	'[[/_admin/builder/label/none]]'					=> 'none',
-	'[[/_admin/builder/label/yes]]'						=> 'Yes',
-	'[[/_admin/builder/label/no]]'						=> 'No',
 	'[[/_admin/builder/label/open]]'					=> 'Open',
+	'[[/_admin/builder/label/duplicate]]'				=> 'Duplicate',
+	'[[/_admin/builder/label/copy-of]]'					=> 'Copy of %s',
 	'[[/_admin/builder/label/delete]]'					=> 'Delete',
 	'[[/_admin/builder/label/reload]]'					=> 'Reload',
 
@@ -54,6 +50,10 @@ return [
 
 	'[[/_admin/builder/msg/deleted]]'					=> 'The template is deleted. Its text keys and image slots stay.',
 	'[[/_admin/builder/confirm/delete]]'				=> 'Delete this template? Its text keys and image slots stay.',
+	'[[/_admin/builder/confirm/delete-node]]'			=> 'This holds other frames. Delete it together with everything in it?',
+	'[[/_admin/builder/confirm/vpa-follow]]'			=> 'The animation of the template changed. Should the sections that are like the template follow it? Sections affected: %s.',
+	'[[/_admin/builder/confirm/vpa-yes]]'				=> 'Change them',
+	'[[/_admin/builder/confirm/vpa-no]]'				=> 'Leave them as they are',
 
 	'[[/_admin/builder/error/file]]'					=> 'That is no page template name: page- and then lower case letters, digits and hyphens.',
 	'[[/_admin/builder/error/name]]'					=> 'A name is one line of 1 to 160 characters, without angle or square brackets.',
@@ -65,11 +65,13 @@ return [
 	'[[/_admin/builder/error/conflict]]'				=> 'The file changed since it was loaded - in another window, or in the editor of the Templates panel.',
 	'[[/_admin/builder/error/invalid]]'				=> 'The template is not valid, and nothing was written.',
 	'[[/_admin/builder/error/model]]'					=> 'There was nothing to save.',
-	'[[/_admin/builder/error/key]]'						=> 'A text key could not be made or moved.',
-	'[[/_admin/builder/error/slot]]'						=> 'An image slot could not be made.',
+	'[[/_admin/builder/error/key]]'						=> 'A text key could not be made, copied or moved.',
+	'[[/_admin/builder/error/slot]]'						=> 'An image slot could not be made or copied.',
 	'[[/_admin/builder/error/value]]'						=> 'A value holds a quote, a square bracket or a line break, which a shortcode call cannot carry. Nothing was written.',
-	'[[/_admin/builder/error/key-exists]]'				=> 'A key or an image slot that a renamed section would take over is there already. Nothing was moved.',
-	'[[/_admin/builder/error/permission]]'			=> 'This save makes or moves keys or image slots, and the permission of the panel that owns them is missing.',
+	'[[/_admin/builder/error/key-exists]]'				=> 'A key or an image slot that a renamed section or a copy would make is there already. Nothing was changed.',
+	'[[/_admin/builder/error/keys-in-the-way]]'			=> 'Keys in the way: %s.',
+	'[[/_admin/builder/error/slots-in-the-way]]'			=> 'Image slots in the way: %s.',
+	'[[/_admin/builder/error/permission]]'			=> 'This makes or moves keys or image slots, and the permission of the panel that owns them is missing.',
 	'[[/_admin/builder/error/write]]'					=> 'The file could not be written.',
 	'[[/_admin/builder/error/load]]'						=> 'The page templates could not be loaded.',
 
@@ -94,18 +96,17 @@ return [
 	'[[/_admin/builder/reason/col-attribute]]'			=> 'The column has the attribute %s, which the Builder does not keep',
 	'[[/_admin/builder/reason/col-width]]'					=> 'The column has no width class for every viewport',
 	'[[/_admin/builder/reason/col-markup]]'				=> 'The column holds markup next to its component calls: %s',
-	'[[/_admin/builder/reason/unknown-shortcode]]'	=> 'The shortcode %s is neither a registered component nor a stack',
+	'[[/_admin/builder/reason/unknown-shortcode]]'	=> 'The shortcode %s is neither a registered component nor a loop',
 	'[[/_admin/builder/reason/call-arguments]]'		=> 'A call whose arguments are not written the way the kernel reads them: %s',
 	'[[/_admin/builder/reason/unknown-attribute]]'	=> 'The attribute %s is none of the component\'s',
 	'[[/_admin/builder/reason/component-content]]'	=> 'The component %s takes no content',
 	'[[/_admin/builder/reason/nested-call]]'				=> 'A call inside the content of %s',
-	'[[/_admin/builder/reason/stack-source]]'			=> 'A stack without the type it loops',
-	'[[/_admin/builder/reason/stack-neighbour]]'		=> 'A stack with other components in its column',
-	'[[/_admin/builder/reason/stack-in-stack]]'		=> 'A stack inside a stack',
-	'[[/_admin/builder/reason/stack-content]]'			=> 'The stack holds markup next to its component calls: %s',
+	'[[/_admin/builder/reason/stack-source]]'			=> 'A loop without the type it loops over',
+	'[[/_admin/builder/reason/stack-neighbour]]'		=> 'A loop with other components in its column',
+	'[[/_admin/builder/reason/stack-in-stack]]'		=> 'A loop inside a loop',
+	'[[/_admin/builder/reason/stack-content]]'			=> 'The loop holds markup next to its component calls: %s',
 
-	// The editor: the two columns, the viewports, the bar
-	'[[/_admin/builder/label/tree]]'						=> 'Structure',
+	// The editor: the preview, the viewports, the bar
 	'[[/_admin/builder/label/preview]]'						=> 'Preview',
 	'[[/_admin/builder/label/viewports]]'					=> 'Viewport of the preview',
 	'[[/_admin/builder/label/source]]'						=> 'Source',
@@ -113,6 +114,7 @@ return [
 	'[[/_admin/builder/label/close]]'						=> 'Close',
 	'[[/_admin/builder/label/search]]'						=> 'Search templates',
 	'[[/_admin/builder/label/no-match]]'					=> 'No template matches.',
+	'[[/_admin/builder/label/not-read]]'				=> 'The Builder does not read this file completely.',
 	'[[/_admin/builder/label/force]]'						=> 'Save anyway',
 	'[[/_admin/builder/viewport/s]]'						=> 'Phone',
 	'[[/_admin/builder/viewport/m]]'						=> 'Tablet',
@@ -120,27 +122,21 @@ return [
 	'[[/_admin/builder/preview/background]]'				=> 'A picture behind the section',
 	'[[/_admin/builder/preview/hidden]]'					=> 'Hidden in this viewport',
 
-	// The tree and its menu
+	// The frames, what they are called and the buttons on them
 	'[[/_admin/builder/tree/template]]'						=> 'Template',
 	'[[/_admin/builder/tree/section]]'						=> 'Section',
-	'[[/_admin/builder/tree/html]]'							=> 'HTML+',
 	'[[/_admin/builder/tree/html-block]]'					=> 'HTML+ block',
 	'[[/_admin/builder/tree/col]]'							=> 'Column',
-	'[[/_admin/builder/tree/col-widths]]'					=> 'Widths %s',
-	'[[/_admin/builder/tree/stack]]'						=> 'Stack',
+	'[[/_admin/builder/tree/stack]]'						=> 'Loop',
 	'[[/_admin/builder/tree/component]]'					=> 'Component',
-	'[[/_admin/builder/tree/red-static]]'					=> 'A field of an element means nothing in a column without a stack. Choose a text key or a fixed value.',
-	'[[/_admin/builder/tree/red-field]]'					=> 'The type of the stack has no such field. Choose another source.',
+	'[[/_admin/builder/tree/red-static]]'					=> 'A field of an element means nothing in a column without a loop. Choose a text key or a fixed value.',
+	'[[/_admin/builder/tree/red-field]]'					=> 'The type of the loop has no such field. Choose another source.',
 	'[[/_admin/builder/tree/red-type]]'						=> 'The Elements panel knows no such type. Choose another one.',
 	'[[/_admin/builder/menu/settings]]'						=> 'Settings',
 	'[[/_admin/builder/menu/template]]'						=> 'Settings of the template',
 	'[[/_admin/builder/menu/edit-html]]'					=> 'Edit as HTML+',
-	'[[/_admin/builder/menu/cut]]'							=> 'Cut',
-	'[[/_admin/builder/menu/paste]]'						=> 'Paste',
 	'[[/_admin/builder/menu/duplicate]]'					=> 'Duplicate',
-	'[[/_admin/builder/menu/fold]]'							=> 'Fold or unfold',
-	'[[/_admin/builder/menu/drag]]'							=> 'Drag to move inside its level',
-	'[[/_admin/builder/menu/more]]'							=> 'More',
+	'[[/_admin/builder/menu/tools]]'					=> 'Tools',
 
 	// The words of the forms
 	'[[/_admin/builder/tab/general]]'						=> 'General',
@@ -149,7 +145,7 @@ return [
 	'[[/_admin/builder/tab/animation]]'						=> 'Animation',
 	'[[/_admin/builder/tab/custom]]'						=> 'Custom',
 	'[[/_admin/builder/tab/layout]]'						=> 'Layout',
-	'[[/_admin/builder/tab/stack]]'							=> 'Stack',
+	'[[/_admin/builder/tab/stack]]'							=> 'Loop',
 	'[[/_admin/builder/section/title]]'						=> 'Section "%s"',
 	'[[/_admin/builder/section/id]]'						=> 'Id',
 	'[[/_admin/builder/section/row]]'						=> 'Row',
@@ -160,15 +156,16 @@ return [
 	'[[/_admin/builder/section/dim]]'						=> 'Dim the picture',
 	'[[/_admin/builder/section/image-pos]]'					=> 'Position of the picture',
 	'[[/_admin/builder/section/cover]]'						=> 'Height of the cover',
-	'[[/_admin/builder/section/mt]]'						=> 'Margin above',
-	'[[/_admin/builder/section/mb]]'						=> 'Margin below',
-	'[[/_admin/builder/section/pt]]'						=> 'Padding above',
-	'[[/_admin/builder/section/pb]]'						=> 'Padding below',
 	'[[/_admin/builder/section/text]]'						=> 'Text alignment',
 	'[[/_admin/builder/section/row-align]]'					=> 'Alignment of the columns',
+	'[[/_admin/builder/section/above]]'					=> 'Above',
+	'[[/_admin/builder/section/below]]'					=> 'Below',
+	'[[/_admin/builder/section/outer]]'					=> 'Outside',
+	'[[/_admin/builder/section/inner]]'					=> 'Inside',
 	'[[/_admin/builder/section/custom]]'					=> 'Custom classes',
 	'[[/_admin/builder/section/row-custom]]'				=> 'Custom classes of the row',
 	'[[/_admin/builder/section/vpa]]'						=> 'Animation',
+	'[[/_admin/builder/section/vpa-effect]]'			=> 'Effect',
 	'[[/_admin/builder/section/vpa-speed]]'					=> 'Speed',
 	'[[/_admin/builder/section/vpa-mode]]'					=> 'Runs',
 	'[[/_admin/builder/section/vpa-delay]]'					=> 'Delay',
@@ -176,12 +173,15 @@ return [
 	'[[/_admin/builder/col/title]]'							=> 'Column of "%s"',
 	'[[/_admin/builder/col/width]]'							=> 'Width, %s',
 	'[[/_admin/builder/col/hidden]]'						=> 'Hidden, %s',
-	'[[/_admin/builder/col/stack-align]]'					=> 'Alignment in the stack',
+	'[[/_admin/builder/col/head-device]]'				=> 'Device',
+	'[[/_admin/builder/col/head-width]]'				=> 'Width',
+	'[[/_admin/builder/col/head-hidden]]'				=> 'Hidden',
+	'[[/_admin/builder/col/stack-align]]'					=> 'Alignment of the components',
 	'[[/_admin/builder/col/stack-gap]]'						=> 'Gap between the components',
 	'[[/_admin/builder/stack/static]]'						=> 'Static',
-	'[[/_admin/builder/stack/kind]]'						=> 'Stack',
+	'[[/_admin/builder/stack/kind]]'						=> 'Loop',
 	'[[/_admin/builder/stack/type]]'						=> 'Type',
-	'[[/_admin/builder/stack/type-hint]]'					=> 'The stack takes the types the Elements panel has. A type that is missing is made there first.',
+	'[[/_admin/builder/stack/type-hint]]'					=> 'The loop takes the types the Elements panel has. A type that is missing is made there first.',
 	'[[/_admin/builder/stack/type-missing]]'				=> 'The Elements panel has no such type. Choose one, or make it there first.',
 	'[[/_admin/builder/stack/types-link]]'					=> 'Element Types',
 	'[[/_admin/builder/stack/sort]]'						=> 'Sort by',
@@ -194,7 +194,7 @@ return [
 	'[[/_admin/builder/stack/cells]]'						=> 'Cell width, %s',
 	'[[/_admin/builder/stack/gap]]'							=> 'Gap between the cells',
 	'[[/_admin/builder/stack/autoheight]]'					=> 'Cells of equal height',
-	'[[/_admin/builder/stack/id]]'							=> 'Id of the stack',
+	'[[/_admin/builder/stack/id]]'							=> 'Id of the loop',
 	'[[/_admin/builder/component/title]]'					=> 'Component "%s"',
 	'[[/_admin/builder/component/content]]'					=> 'Content',
 	'[[/_admin/builder/html/title]]'						=> 'Edit as HTML+',
@@ -235,22 +235,25 @@ return [
 
 	// Hints under the fields
 	'[[/_admin/builder/hint/name]]'							=> 'One line. The file name is made of it when the template is created and stays as it is.',
+	'[[/_admin/builder/hint/duplicate]]'				=> 'A copy is a file of its own, with text keys and image slots of its own: they are made from the ones of %s, with the same texts and pictures. A language in which a text is still missing gets the text of the first language.',
 	'[[/_admin/builder/hint/template]]'						=> 'The file is %s. Its name is the category of the text keys of the page, so it does not change.',
 	'[[/_admin/builder/hint/id]]'							=> 'A slug, once on the page. It is the third part of the keys of the section and the anchor that navigation jumps to; a new one moves the keys.',
 	'[[/_admin/builder/hint/row]]'							=> 'The width of the content inside the section.',
 	'[[/_admin/builder/hint/image]]'						=> 'A picture behind the section makes it a cover or a parallax section.',
 	'[[/_admin/builder/hint/cover]]'						=> 'In percent of the height of the window. Empty sets none.',
 	'[[/_admin/builder/hint/custom]]'						=> 'Classes of Nino.css the form has no field for, separated by spaces.',
-	'[[/_admin/builder/hint/vpa]]'							=> 'Whether the section is animated when it comes into view, and with which effect.',
+	'[[/_admin/builder/hint/vpa]]'							=> 'Whether the animation runs when the section comes into view, and with which effect.',
+	'[[/_admin/builder/hint/vpa-section]]'				=> 'Like the template means the section carries exactly the animation of the template, and follows it where that changes. Own opens the fields.',
+	'[[/_admin/builder/hint/vpa-template]]'				=> 'What a new section is given, and what a section set to like the template carries. The site reads the classes of the sections only.',
 	'[[/_admin/builder/hint/time]]'							=> 'A css time such as 200ms or 1.5s. Empty sets none.',
 	'[[/_admin/builder/hint/stack-align]]'					=> 'Only where it is set does the column lay its components out as a grid of its own.',
-	'[[/_admin/builder/hint/stack-kind]]'					=> 'Static is a list of components. A stack loops the elements of a type, and what is in the column is what each cell shows.',
+	'[[/_admin/builder/hint/stack-kind]]'					=> 'Static is a list of components. A loop runs over the elements of a type, and what is in the column is what each cell shows.',
 	'[[/_admin/builder/hint/sort]]'							=> 'A field of the type, as it is stored.',
 	'[[/_admin/builder/hint/limit]]'						=> '0 shows all.',
 	'[[/_admin/builder/hint/query]]'						=> 'Field=value pairs joined by &, as the elements shortcode reads them. Empty takes every element.',
-	'[[/_admin/builder/hint/autoheight]]'					=> 'Makes the cells of the stack as high as the highest.',
-	'[[/_admin/builder/hint/stack-id]]'						=> 'What filters, auto height and sliders find the stack by. Empty makes one of the section and the type.',
-	'[[/_admin/builder/hint/field]]'						=> 'In a stack the components read the fields of each element.',
+	'[[/_admin/builder/hint/autoheight]]'					=> 'Makes the cells of the loop as high as the highest.',
+	'[[/_admin/builder/hint/stack-id]]'						=> 'What filters, auto height and sliders find the loop by. Empty makes one of the section and the type.',
+	'[[/_admin/builder/hint/field]]'						=> 'In a loop the components read the fields of each element.',
 	'[[/_admin/builder/hint/field-image]]'					=> 'A field that holds a picture.',
 	'[[/_admin/builder/hint/fixed]]'						=> 'The value stands in the template: the editors cannot change it.',
 	'[[/_admin/builder/hint/typed]]'						=> 'You may not read the keys of the project, so a key is typed: /template/<file>/<section>/<name>.',
@@ -259,12 +262,13 @@ return [
 	// What the editor asks and says
 	'[[/_admin/builder/confirm/rename]]'					=> 'Rename the section "%s" to "%s"? Its text keys and image slots are moved to the new name when the template is saved.',
 	'[[/_admin/builder/state/rename]]'						=> 'Rename the section',
+	'[[/_admin/builder/state/vpa-follow]]'				=> 'Animation of the template',
 	'[[/_admin/builder/state/conflict]]'					=> 'The file changed',
 	'[[/_admin/builder/state/line]]'						=> 'Line %s: %s',
 	'[[/_admin/builder/state/narrow]]'						=> 'A template is built at a desk: on a screen this narrow the editor is for reading only.',
 	'[[/_admin/builder/error/id-taken]]'					=> 'Another section has that id.',
 	'[[/_admin/builder/error/id-slug]]'						=> 'An id is lower case words of letters and digits, joined by hyphens.',
-	'[[/_admin/builder/error/red]]'							=> 'A source means nothing where it stands (marked red in the tree). Change it first.',
+	'[[/_admin/builder/error/red]]'							=> 'A source means nothing where it stands (marked red in the preview). Change it first.',
 	'[[/_admin/builder/error/source]]'						=> 'The source could not be shown.',
 
 	// Words of the values of a setting
@@ -282,7 +286,11 @@ return [
 	'[[/_admin/builder/option/text-right]]'					=> 'Right',
 	'[[/_admin/builder/option/row-align-default]]'			=> 'Top',
 	'[[/_admin/builder/option/speed-default]]'				=> 'Default',
-	'[[/_admin/builder/option/mode-default]]'				=> 'Default',
+	'[[/_admin/builder/option/mode-default]]'				=> 'Once',
+	'[[/_admin/builder/option/mode-repeat]]'			=> 'Repeat',
 	'[[/_admin/builder/option/vpa-none]]'					=> 'No animation',
 	'[[/_admin/builder/option/vpa-plain]]'					=> 'Default effect',
+	'[[/_admin/builder/option/anim-like]]'				=> 'Like the template',
+	'[[/_admin/builder/option/anim-off]]'				=> 'Off',
+	'[[/_admin/builder/option/anim-own]]'				=> 'Own',
 ];

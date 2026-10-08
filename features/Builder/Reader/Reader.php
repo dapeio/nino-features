@@ -49,6 +49,11 @@ namespace Nino\Modules\Builder {
 	 *											document
 	 *											  file      string  page-home; read() leaves it '', Document sets it
 	 *											  name      string  the nino:template-name comment, '' where none
+	 *											  vpa       null    no nino:template-vpa comment, or one that says off
+	 *											            string  the classes it names, as they are written - what a
+	 *											                    new section is given and what a section that is
+	 *											                    "like the template" carries; written back only
+	 *											                    where there is one
 	 *											  header    string  html-header, or any html-header* template; '' for none
 	 *											  footer    string  html-footer, ditto
 	 *											  blocks    list    section and html, in the order of the file
@@ -150,6 +155,9 @@ namespace Nino\Modules\Builder {
 		public const array VIEWPORTS = [ 's', 'm', 'l' ];
 		public const array STACK_ALIGN = [ 'start', 'center', 'end' ];
 
+		// One class of the animation the head may name: nino-vpa, or nino-vpa-- and what follows
+		public const string VPA_CLASS = '/^nino-vpa(?:--[a-z0-9]+(?:-[a-z0-9]+)*)?$/D';
+
 		// Why a section is not read: the code of a failure, and the sentence
 		// that says it. %s is the detail, where the failure has one
 		public const array REASONS = [
@@ -174,15 +182,15 @@ namespace Nino\Modules\Builder {
 			'col-attribute'				=> 'the column has the attribute %s, which the builder does not keep',
 			'col-width'						=> 'the column has no width class for every viewport',
 			'col-markup'					=> 'the column holds markup next to its component calls: %s',
-			'unknown-shortcode'		=> 'the shortcode %s is no registered component or stack',
+			'unknown-shortcode'		=> 'the shortcode %s is no registered component or loop',
 			'call-arguments'			=> 'a call whose arguments are not written the way the kernel reads them: %s',
 			'unknown-attribute'		=> 'the attribute %s is none of the component\'s',
 			'component-content'		=> 'the component %s takes no content',
 			'nested-call'					=> 'a call inside the content of %s',
-			'stack-source'				=> 'a stack without the type it loops',
-			'stack-neighbour'			=> 'a stack with other components in its column',
-			'stack-in-stack'			=> 'a stack inside a stack',
-			'stack-content'				=> 'the stack holds markup next to its component calls: %s',
+			'stack-source'				=> 'a loop without the type it loops',
+			'stack-neighbour'			=> 'a loop with other components in its column',
+			'stack-in-stack'			=> 'a loop inside a loop',
+			'stack-content'				=> 'the loop holds markup next to its component calls: %s',
 		];
 
 		// The marker the builder wraps a foreign block in, and its end
@@ -221,6 +229,31 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
+		 *	What the animation line of the head says: off, or the classes of
+		 *	the animation a new section is given
+		 *
+		 *	@param		string		$value				The line without its comment markers and the spaces around
+		 *
+		 *	@return 	string|false|null					null for off, the classes as they are written, false for a line that says neither
+		 */
+		public static function vpaClasses( string $value ): string|false|null {
+
+			if( $value === 'off' )
+				return null;
+
+			if( $value !== trim( $value, "\t " ) )
+				return false;
+
+			$classes = preg_split( '/[\t ]+/', $value, -1, PREG_SPLIT_NO_EMPTY ) ?: [];
+
+			foreach( $classes as $class )
+				if( preg_match( self::VPA_CLASS, $class ) !== 1 )
+					return false;
+
+			return $classes === [] ? false : $value;
+		}
+
+		/**
 		 *	The attributes of a component or a stack and what each is worth
 		 *	where a call does not set it: the 'defaults' the Document puts in
 		 *	the registry (the kernel's Components::defaults(), so a stack has
@@ -255,12 +288,24 @@ namespace Nino\Modules\Builder {
 		 */
 		public static function read( string $source, array $registry ): array {
 
-			$model	= [ 'file' => '', 'name' => '', 'header' => '', 'footer' => '', 'blocks' => [] ];
+			$model	= [ 'file' => '', 'name' => '', 'vpa' => null, 'header' => '', 'footer' => '', 'blocks' => [] ];
 			$pos		= 0;
 
 			if( preg_match( '~\G\s*<!--[\t ]*nino:template-name[\t ]+([^\r\n<>]+?)[\t ]*-->[\t ]*(?:\r?\n|$)~', $source, $match, 0, $pos ) === 1 ) {
 				$model['name'] = $match[1];
 				$pos += strlen( $match[0] );
+			}
+
+			// What the animation of a new section is, for the builder alone: the kernel reads the classes of the sections
+			if( preg_match( '~\G\s*<!--[\t ]*nino:template-vpa[\t ]+([^\r\n<>]+?)[\t ]*-->[\t ]*(?:\r?\n|$)~', $source, $match, 0, $pos ) === 1 ) {
+
+				$vpa = self::vpaClasses( $match[1] );
+
+				// A line that says something else is no head line: it stays where it is, with the block that follows
+				if( $vpa !== false ) {
+					$model['vpa'] = $vpa;
+					$pos += strlen( $match[0] );
+				}
 			}
 
 			if( preg_match( '~\G\s*\[template /templates/(html-header(?:-[a-z0-9]+)*)\][\t ]*(?:\r?\n|$)~', $source, $match, 0, $pos ) === 1 ) {

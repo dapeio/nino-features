@@ -8,11 +8,14 @@ declare(strict_types=1);
  *											example page of the concept (tests/fixtures/page-home.tpl,
  *											the example in its canonical form: the concept's own,
  *											page-home-concept.tpl, says level="2" twice and gap="2"
- *											aloud, which are the defaults the Writer leaves out) and
- *											on a sheet of sections that each fail one rule, then
+ *											aloud, which are the defaults the Writer leaves out;
+ *											page-home-vpa.tpl is the same with the animation line of
+ *											the head) and on a sheet of sections that each fail one rule, then
  *											the Document - listing, loading, saving with a hash, the
- *											keys and the slots a save makes, the refusals - and last
- *											the page the builder wrote, rendered by the kernel. The panel's
+ *											keys and the slots a save makes, the refusals, the
+ *											animation line of the head, a copy of a template with its
+ *											keys and slots and what stops it - and last the page the
+ *											builder wrote, rendered by the kernel. The panel's
  *											script has a test of its own, builder-js-smoke.js, which runs
  *											at the end where node is there; the two fixtures it reads
  *											(fixtures/page-home.json, fixtures/registry.json) are held
@@ -58,12 +61,16 @@ check( 'the feature brings its panel along, and registers nothing on the site', 
 	return $before === $appData;
 } )() );
 
-check( 'the panel names every action it answers', array_keys( \Nino\Modules\Builder\Admin::actions() ) === [ 'builder/list', 'builder/create', 'builder/load', 'builder/save', 'builder/delete', 'builder/source', 'builder/registry' ] );
+check( 'the panel names every action it answers', array_keys( \Nino\Modules\Builder\Admin::actions() ) === [ 'builder/list', 'builder/create', 'builder/duplicate', 'builder/load', 'builder/save', 'builder/delete', 'builder/source', 'builder/registry' ] );
 check( '...asks for its own permission, asks the nav for the structure group (a feature\'s panel lands in the features group whatever it names) and is a workspace', \Nino\Modules\Builder\Admin::perm() === '/_admin/builder/manage'
 	&& \Nino\Modules\Builder\Admin::nav()[3] === 'structure' && \Nino\Modules\Builder\Admin::layout() === 'workspace' );
 check( '...and brings the HTML editor of the workbench, its own script and its stylesheet, which are there', count( \Nino\Modules\Builder\Admin::assets() ) === 3 && in_array( '/_admin/assets/html-editor.js', \Nino\Modules\Builder\Admin::assets(), true ) === true
 	&& array_filter( [ 'assets/admin.js', 'assets/admin.css', 'templates/panel.tpl', 'text/en_US.php', 'text/de_DE.php' ], static fn( string $file ): bool => is_file( dirname( __DIR__ ). '/'. $file ) === false ) === [] );
 check( '...whose words are the same keys in both languages', array_keys( (array) include $dir. '/text/en_US.php' ) === array_keys( (array) include $dir. '/text/de_DE.php' ) );
+check( '...and the sentences that name the keys and the slots of a copy in the way have a place for the list, one each, in both', array_filter( [ 'en_US', 'de_DE' ], static function( string $locale ) use ( $dir ): bool {
+	$texts = (array) include $dir. '/text/'. $locale. '.php';
+	return substr_count( (string) ( $texts['[[/_admin/builder/error/keys-in-the-way]]'] ?? '' ), '%s' ) !== 1 || substr_count( (string) ( $texts['[[/_admin/builder/error/slots-in-the-way]]'] ?? '' ), '%s' ) !== 1;
+} ) === [] );
 check( 'a save, a create and a delete are written to the activity log, a read is not', \Nino\Modules\Builder\Admin::log( 'builder/save', [ 'file' => 'page-home' ] ) !== ''
 	&& \Nino\Modules\Builder\Admin::log( 'builder/create', [] ) !== '' && \Nino\Modules\Builder\Admin::log( 'builder/delete', [] ) !== ''
 	&& \Nino\Modules\Builder\Admin::log( 'builder/load', [] ) === '' && \Nino\Modules\Builder\Admin::log( 'builder/list', [] ) === '' && \Nino\Modules\Builder\Admin::log( 'builder/source', [] ) === '' );
@@ -143,6 +150,36 @@ $hand = str_replace(
 	$fixture
 );
 check( 'a page written by hand is read all the same, and written back in the canonical form', $hand !== $fixture && $read( $hand ) === $model && $write( $read( $hand ) ) === $fixture );
+
+// The animation of the template: a head line of the builder's alone, which the kernel never reads
+$vpaFixture	= (string) file_get_contents( __DIR__. '/fixtures/page-home-vpa.tpl' );
+$vpaModel		= $read( $vpaFixture );
+check( 'the head line of the animation is in the model as it is written - the classes a new section is given - and the rest of the page is what it was', $vpaModel['vpa'] === 'nino-vpa nino-vpa--zoom-soft nino-vpa--speed-medium'
+	&& $vpaModel['name'] === 'Home' && $vpaModel['header'] === 'html-header' && $vpaModel['blocks'] === $model['blocks'] );
+check( '...written back byte for byte, between the name and the header, and Reader( Writer( Reader( x ) ) ) is Reader( x )', $write( $vpaModel ) === $vpaFixture && $read( $write( $vpaModel ) ) === $vpaModel );
+check( 'a file without the line has no animation (null), and none is written for it', $model['vpa'] === null && str_contains( $write( $model ), 'nino:template-vpa' ) === false );
+
+$off = str_replace( '<!-- nino:template-name Home -->', "<!-- nino:template-name Home -->\n<!-- nino:template-vpa off -->", $fixture );
+check( '...a line that says off is the same: null - the line is read as part of the head and not written back, so the model stays what it was', $read( $off ) === $model && $read( $write( $read( $off ) ) ) === $read( $off )
+	&& $write( $read( $off ) ) === $fixture );
+check( '...so is a model whose animation is the word off, which is no class: nothing is written', $write( [ 'name' => 'x', 'vpa' => 'off', 'blocks' => [] ] ) === "<!-- nino:template-name x -->\n" );
+check( 'the line is read without a name before it, and with the frames after it', $read( "<!-- nino:template-vpa nino-vpa--blur-soft -->\n[template /templates/html-header]\n" )['vpa'] === 'nino-vpa--blur-soft'
+	&& $read( "<!-- nino:template-vpa nino-vpa--blur-soft -->\n[template /templates/html-header]\n" )['header'] === 'html-header' );
+
+$foreignVpa = $read( str_replace( 'nino-vpa nino-vpa--zoom-soft nino-vpa--speed-medium', 'zoom-soft', $vpaFixture ) );
+check( 'a line that names no class of the animation is no head line: it is left where it is, in the block that follows, and nothing is lost', $foreignVpa['vpa'] === null && $foreignVpa['blocks'][0]['kind'] === 'html'
+	&& str_contains( $foreignVpa['blocks'][0]['source'], '<!-- nino:template-vpa zoom-soft -->' ) === true );
+
+$thrownVpa = 0;
+foreach( [ 'zoom-soft', "nino-vpa\nnino-vpa--x", 'nino-vpa --> <b>', ' nino-vpa', 'nino-vpa--', "nino-vpa\n", "nino-vpa nino-vpa--zoom-soft\n" ] as $bad ) {
+	try {
+		$write( [ 'vpa' => $bad, 'blocks' => [] ] );
+	}
+	catch( \UnexpectedValueException ) {
+		$thrownVpa++;
+	}
+}
+check( 'the Writer takes no animation that is not a list of its classes - it throws, so a comment cannot be left or an extra line made', $thrownVpa === 7 );
 
 $concept = (string) file_get_contents( __DIR__. '/fixtures/page-home-concept.tpl' );
 check( 'the example as the concept prints it, with the three defaults said aloud, reads as the same model and is written in the canonical form', $concept !== $fixture && $read( $concept ) === $model && $write( $read( $concept ) ) === $fixture );
@@ -412,6 +449,16 @@ check( '...with the name, the frames, the number of sections and of blocks of ht
 check( '...a file the builder does not read is one block of html that failed, and listed as not read completely', $byFile['page-legacy']['sections'] === 0 && $byFile['page-legacy']['foreign'] === 1
 	&& $byFile['page-legacy']['readable'] === false && $byFile['page-legacy']['footer'] === 'html-footer' );
 check( '...and the routes that name it', $byFile['page-home']['usedBy'] === [ [ 'route' => 'GET://', 'uri' => '/' ] ] && $byFile['page-legacy']['usedBy'] === [] );
+
+check( '...a template the Reader does not read completely says why in the list - the reason of the first block it failed at - and one it reads says none', $byFile['page-legacy']['reason']['code'] === 'not-a-section'
+	&& $byFile['page-legacy']['reason']['line'] === 1 && $byFile['page-home']['reason'] === null );
+
+\Nino\Filesystem::putFileContent( $appData, '/templates/page-zzz.tpl', "<!-- nino:template-name Last -->\n" );
+\Nino\Filesystem::putFileContent( $appData, '/templates/page-aaa.tpl', "<!-- nino:template-name First -->\n" );
+$sortedFiles = array_column( \Nino\Modules\Builder\Document::list( $appData )['templates'], 'file' );
+unlink( \Nino\Filesystem::path( $appData, '/templates/page-zzz.tpl' ) );
+unlink( \Nino\Filesystem::path( $appData, '/templates/page-aaa.tpl' ) );
+check( '...and the list is sorted by file, whatever order the files were made in', $sortedFiles === [ 'page-aaa', 'page-home', 'page-legacy', 'page-zzz' ] );
 
 $loaded = \Nino\Modules\Builder\Document::load( $appData, 'page-home' );
 check( 'load answers the model, the hash of the file and the file', $loaded['status'] === 200 && $loaded['model']['file'] === 'page-home' && $loaded['hash'] === hash( 'sha256', $fixture ) && $loaded['source'] === $fixture
@@ -695,7 +742,7 @@ check( 'an id that two sections have is a problem', in_array( 'the id "start" is
 $static = $loaded['model'];
 $static['blocks'][3]['cols'][0]['components'][0]['source'] = 'title';
 $stackless = \Nino\Modules\Builder\Document::save( $appData, 'page-home', $static, $loaded['hash'] );
-check( 'a field name where there is no stack means nothing, and is a problem', $stackless['status'] === 400 && str_contains( implode( ' ', $stackless['problems'] ), 'static stack' ) === true );
+check( 'a field name where there is no stack means nothing, and is a problem', $stackless['status'] === 400 && str_contains( implode( ' ', $stackless['problems'] ), 'a column without a loop' ) === true );
 
 $typeless = $loaded['model'];
 $typeless['blocks'][1]['cols'][1]['stack']['source'] = '/nothing';
@@ -703,7 +750,7 @@ check( 'a stack of a type the Elements panel does not know is a problem', str_co
 
 $fieldless = $loaded['model'];
 $fieldless['blocks'][1]['cols'][1]['components'][1]['source'] = 'nope';
-check( '...and a field the type does not have', str_contains( implode( ' ', \Nino\Modules\Builder\Document::save( $appData, 'page-home', $fieldless, $loaded['hash'] )['problems'] ), 'is no field of the stack\'s type' ) === true );
+check( '...and a field the type does not have', str_contains( implode( ' ', \Nino\Modules\Builder\Document::save( $appData, 'page-home', $fieldless, $loaded['hash'] )['problems'] ), 'is no field of the loop\'s type' ) === true );
 
 $marker = $loaded['model'];
 $marker['blocks'][] = [ 'kind' => 'html', 'source' => "<p>x</p>\n<!-- /nino:html -->\n<p>y</p>", 'reason' => null ];
@@ -871,7 +918,243 @@ check( '...and a second time it is gone: 404', \Nino\Modules\Builder\Document::d
 echo "\n";
 
 
-// --- 9. The page the builder wrote, rendered ---------------------------------
+// --- 9. The animation of the template, and a copy ---------------------------
+
+echo "Document - the animation of the template, and duplicate\n";
+
+$vpaPath = \Nino\Filesystem::path( $appData, '/templates/page-vpa.tpl' );
+\Nino\Filesystem::putFileContent( $appData, '/templates/page-vpa.tpl', $vpaFixture );
+\Nino\Filesystem::putFileContent( $appData, '/templates/html-header.tpl', '<header>Header</header>' );
+$vpaLoad = \Nino\Modules\Builder\Document::load( $appData, 'page-vpa' );
+$vpaSave = \Nino\Modules\Builder\Document::save( $appData, 'page-vpa', $vpaLoad['model'], $vpaLoad['hash'] );
+check( 'a template with the head line is loaded and saved without a change byte for byte: the line is the model\'s vpa', $vpaLoad['model']['vpa'] === 'nino-vpa nino-vpa--zoom-soft nino-vpa--speed-medium'
+	&& $vpaSave['status'] === 200 && file_get_contents( $vpaPath ) === $vpaFixture && $vpaSave['model']['vpa'] === $vpaLoad['model']['vpa'] );
+
+$vpaEdit = $vpaLoad['model'];
+$vpaEdit['vpa'] = 'nino-vpa nino-vpa--blur-hard';
+$vpaSave = \Nino\Modules\Builder\Document::save( $appData, 'page-vpa', $vpaEdit, $vpaLoad['hash'] );
+check( 'a new animation is a new head line, in the one place, and the answer is the file read again', $vpaSave['status'] === 200 && str_starts_with( (string) file_get_contents( $vpaPath ), "<!-- nino:template-name Home -->\n<!-- nino:template-vpa nino-vpa nino-vpa--blur-hard -->\n[template /templates/html-header]\n" )
+	&& $vpaSave['model']['vpa'] === 'nino-vpa nino-vpa--blur-hard' && substr_count( (string) file_get_contents( $vpaPath ), 'nino:template-vpa' ) === 1 );
+
+$vpaEdit = $vpaSave['model'];
+$vpaEdit['vpa'] = null;
+$vpaSave = \Nino\Modules\Builder\Document::save( $appData, 'page-vpa', $vpaEdit, $vpaSave['hash'] );
+check( '...none (off) takes the line out of the file again, and the rest of the file is what it was', $vpaSave['status'] === 200 && (string) file_get_contents( $vpaPath ) === $fixture && $vpaSave['model']['vpa'] === null );
+
+$vpaBefore = (string) file_get_contents( $vpaPath );
+$vpaRefused = [];
+
+foreach( [ 'zoom-soft', "nino-vpa\n<b>", 'nino-vpa --> x', 'off now', "nino-vpa\n", "nino-vpa nino-vpa--zoom-soft\n" ] as $bad ) {
+	$vpaEdit = $vpaSave['model'];
+	$vpaEdit['vpa'] = $bad;
+	$answer = \Nino\Modules\Builder\Document::save( $appData, 'page-vpa', $vpaEdit, $vpaSave['hash'] );
+	if( $answer['status'] !== 400 || str_contains( implode( ' ', $answer['problems'] ), 'animation' ) === false || file_get_contents( $vpaPath ) !== $vpaBefore )
+		$vpaRefused[] = $bad;
+}
+
+$vpaEdit = $vpaSave['model'];
+$vpaEdit['vpa'] = [ 'nino-vpa' ];
+check( 'an animation that is no list of the classes of nino-vpa, or no text at all, is refused with 400 and nothing is written: '. count( $vpaRefused ). ' of 6 were accepted', $vpaRefused === []
+	&& \Nino\Modules\Builder\Document::save( $appData, 'page-vpa', $vpaEdit, $vpaSave['hash'] )['status'] === 400 && file_get_contents( $vpaPath ) === $vpaBefore );
+
+$vpaEdit = $vpaLoad['model'];
+$vpaSource = \Nino\Modules\Builder\Document::source( $appData, $vpaEdit );
+check( 'the source view has the line in its head', $vpaSource['status'] === 200 && $vpaSource['parts'][0]['source'] === "<!-- nino:template-name Home -->\n<!-- nino:template-vpa nino-vpa nino-vpa--zoom-soft nino-vpa--speed-medium -->\n[template /templates/html-header]"
+	&& $vpaSource['source'] === $vpaFixture );
+
+unlink( $vpaPath );
+
+// A template with texts in two languages, a global one, a limit, a slot with a picture and alt texts, a block of html that names a key
+$srcFile = "<!-- nino:template-name Dup -->\n<!-- nino:template-vpa nino-vpa nino-vpa--blur-soft -->\n[template /templates/html-header]\n\n"
+	. "<section id=\"one\" class=\"nino-section nino-vpa nino-vpa--blur-soft\">\n\t<div class=\"nino-section-bg\">[image /template/page-dup/one/background alt=\"\"]</div>\n\t<div class=\"nino-grid-row\">\n\t\t<div class=\"nino-grid-100\">\n\t\t\t[title /template/page-dup/one/title]\n\t\t\t[text /template/page-dup/one/text]\n\t\t</div>\n\t</div>\n</section>\n\n"
+	. "<!-- nino:html -->\n<p>[[/template/page-dup/one/title]] stays a sentence, [[/template/page-dupx/one/title]] another</p>\n<!-- /nino:html -->\n\n[template /templates/html-footer]\n";
+\Nino\Filesystem::putFileContent( $appData, '/templates/page-dup.tpl', $srcFile );
+
+foreach( [ 'en_US' => [ 'Hello', 'Dup text' ], 'de_DE' => [ 'Hallo', 'Dup Text' ] ] as $locale => [ $title, $text ] )
+	\Nino\Filesystem::mutate( $appData, '/text/'. $locale. '.php', static function( mixed $texts ) use ( $title, $text ): array {
+		return (array) $texts + [ '[[/template/page-dup/one/title]]' => $title, '[[/template/page-dup/one/text]]' => '<p>'. $text. '</p>', '[[/template/page-dupx/one/title]]' => 'Not mine', '[[/template/page-dup/not-a-key]]' => 'No grammar' ];
+	} );
+
+\Nino\Filesystem::mutate( $appData, '/text/global.php', static fn( mixed $texts ): array => (array) $texts + [ '[[/template/page-dup/one/note]]' => 'Everywhere' ] );
+\Nino\Text::setMeta( $appData, '/template/page-dup/one/title', 'plain', 120 );
+
+$dupImage = 'template/page-dup/one/background.1200x600.jpg';
+\Nino\Images::restore( $appData, $dupImage, 'the bytes of a picture' );
+$appData['/nino/html/images']['/template/page-dup/one/background'] = [ 'label' => 'Dup background', 'width' => 1200, 'height' => 600, 'filename' => $dupImage, 'alt' => [ 'en_US' => 'A team', 'de_DE' => 'Ein Team' ] ];
+$appData['/nino/html/images']['/template/page-dupx/one/background'] = [ 'label' => 'Not mine', 'width' => 100, 'height' => 100, 'filename' => null ];
+\Nino\AppData::writeContentData( $appData, [ '/nino/html/images' ] );
+
+$state = static fn(): array => [
+	\Nino\Text::entries( $appData ),
+	\Nino\Images::getSlots( $appData ),
+	array_map( static fn( string $path ): string => basename( $path ), glob( \Nino\Filesystem::path( $appData, '/templates' ). '/*.tpl' ) ?: [] ),
+	is_file( \Nino\Filesystem::path( $appData, '/images/'. $dupImage ) ) ?: glob( \Nino\Filesystem::path( $appData, '/images' ). '/template/*/*/*' ),
+];
+$untouched = $state();
+
+// What is refused is refused before anything is made
+$refusals = [
+	'a file name that is none'	=> [ '../x', 'Copy', 400 ],
+	'a template that is not there'	=> [ 'page-nope', 'Copy', 404 ],
+	'no name'							=> [ 'page-dup', '', 400 ],
+	'a name of hyphens'		=> [ 'page-dup', '---', 400 ],
+	'a name with a comment end'	=> [ 'page-dup', 'a --> b', 400 ],
+	'a name with angle brackets'	=> [ 'page-dup', '<b>x</b>', 400 ],
+	'a name with a line break'	=> [ 'page-dup', "two\nlines", 400 ],
+	'a name with a bracket'	=> [ 'page-dup', 'Copy [[/x]]', 400 ],
+	'a name that is too long'	=> [ 'page-dup', str_repeat( 'x', 161 ), 400 ],
+	'a name that makes the file it is'	=> [ 'page-dup', 'Dup', 409 ],
+	'a name that makes a file that is there'	=> [ 'page-dup', 'Home', 409 ],
+];
+$accepted = [];
+
+foreach( $refusals as $label => [ $file, $name, $status ] )
+	if( \Nino\Modules\Builder\Document::duplicate( $appData, $file, $name )['status'] !== $status )
+		$accepted[] = $label;
+
+check( 'a copy that cannot be made is refused as it is, 400 for a name or a file that is none, 404 for a template that is not there, 409 for a file that is there: '. count( $refusals ). ' cases'
+	. ( $accepted === [] ? '' : ' - '. implode( ', ', $accepted ) ), $accepted === [] && $state() === $untouched );
+check( '...and the name of an existing file answers the code the panel looks at', \Nino\Modules\Builder\Document::duplicate( $appData, 'page-dup', 'Home' )['code'] === 'exists'
+	&& \Nino\Modules\Builder\Document::duplicate( $appData, 'page-dup', '' )['code'] === 'name' );
+
+$dup = \Nino\Modules\Builder\Document::duplicate( $appData, 'page-dup', 'Dup Copy' );
+$copyPath = \Nino\Filesystem::path( $appData, '/templates/page-dup-copy.tpl' );
+$copyText = (string) file_get_contents( $copyPath );
+
+check( 'a copy answers 200 with the model of the new file, and its hash', $dup['status'] === 200 && $dup['model']['file'] === 'page-dup-copy' && $dup['hash'] === hash( 'sha256', $copyText )
+	&& \Nino\Modules\Builder\Document::load( $appData, 'page-dup-copy' )['model'] === $dup['model'] );
+check( '...the file is the old one under its new name: the name line, the animation, the frames, and every source made the new file\'s - in the sections and in the blocks of html',
+	$copyText === str_replace( [ '/template/page-dup/', 'template-name Dup -->' ], [ '/template/page-dup-copy/', 'template-name Dup Copy -->' ], $srcFile ) && $dup['model']['name'] === 'Dup Copy'
+	&& $dup['model']['vpa'] === 'nino-vpa nino-vpa--blur-soft' && $dup['model']['blocks'][0]['background']['slot'] === '/template/page-dup-copy/one/background'
+	&& $dup['model']['blocks'][0]['cols'][0]['components'][0]['source'] === '/template/page-dup-copy/one/title' && $dup['model']['blocks'][1]['reason'] === null
+	&& str_contains( $dup['model']['blocks'][1]['source'], '[[/template/page-dup-copy/one/title]] stays a sentence, [[/template/page-dupx/one/title]] another' ) === true );
+check( '...and the old file is as it was', file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-dup.tpl' ) ) === $srcFile );
+
+$title = \Nino\Text::entry( $appData, '/template/page-dup-copy/one/title' ) ?? [];
+$text = \Nino\Text::entry( $appData, '/template/page-dup-copy/one/text' ) ?? [];
+$note = \Nino\Text::entry( $appData, '/template/page-dup-copy/one/note' ) ?? [];
+check( 'every text key under the old name is made under the new one with the values of every language: a key of two languages, one that is global', ( $title['values']['en_US'] ?? null ) === 'Hello' && ( $title['values']['de_DE'] ?? null ) === 'Hallo'
+	&& ( $text['values']['en_US'] ?? null ) === '<p>Dup text</p>' && ( $text['values']['de_DE'] ?? null ) === '<p>Dup Text</p>' && ( $note['global'] ?? null ) === true && ( $note['values'] ?? null ) === [ '*' => 'Everywhere' ] );
+check( '...with the format and the limit that were set', ( $title['formatSet'] ?? null ) === true && ( $title['format'] ?? null ) === 'plain' && ( $title['maxlengthSet'] ?? null ) === true && ( $title['maxlength'] ?? null ) === 120
+	&& ( $text['maxlengthSet'] ?? null ) === false );
+check( '...and the old ones are as they were, and what is no key of the old name is not copied: another template\'s key, and a text that is no key of the grammar', ( \Nino\Text::entry( $appData, '/template/page-dup/one/title' )['values']['de_DE'] ?? null ) === 'Hallo'
+	&& \Nino\Text::entry( $appData, '/template/page-dup-copy/not-a-key' ) === null && \Nino\Text::entry( $appData, '/template/page-dup-copy-x/one/title' ) === null
+	&& \Nino\Text::entry( $appData, '/template/page-dup/one/note' ) !== null && count( array_filter( \Nino\Text::entries( $appData ), static fn( array $entry ): bool => str_starts_with( $entry['key'], '/template/page-dup-copy/' ) ) ) === 3 );
+
+$slot = \Nino\Images::getSlot( $appData, '/template/page-dup-copy/one/background' ) ?: [];
+$copyImage = 'template/page-dup-copy/one/background.1200x600.jpg';
+check( 'every image slot is made again with its label, its size and its alt texts', ( $slot['label'] ?? null ) === 'Dup background' && ( $slot['width'] ?? null ) === 1200 && ( $slot['height'] ?? null ) === 600
+	&& ( $slot['alt'] ?? null ) === [ 'en_US' => 'A team', 'de_DE' => 'Ein Team' ] && \Nino\Images::getSlot( $appData, '/template/page-dup-copy/one/background' ) !== false && \Nino\Images::getSlot( $appData, '/template/page-dup-copy-x/one/background' ) === false );
+check( '...and with a picture of its own: the same bytes under the new name, so that deleting the one slot leaves the other its picture', ( $slot['filename'] ?? null ) === $copyImage && \Nino\Images::read( $appData, $copyImage ) === 'the bytes of a picture'
+	&& ( \Nino\Images::getSlot( $appData, '/template/page-dup/one/background' ) ?: [] )['filename'] === $dupImage && \Nino\Images::read( $appData, $dupImage ) === 'the bytes of a picture' );
+
+$_POST['data'] = (string) json_encode( [ 'uri' => '/template/page-dup-copy/one/background' ] );
+$slotRequest = [ '/nino/http/response' => [ 'statusCode' => 200 ] ];
+\Nino\Modules\Images\Slots::apiDelete( $appData, $slotRequest );
+unset( $_POST['data'] );
+check( '...so the slot of the copy is deleted in the Slots tab and the old one keeps its picture', $slotRequest['/nino/http/response']['statusCode'] === 200 && \Nino\Images::read( $appData, $copyImage ) === false
+	&& \Nino\Images::read( $appData, $dupImage ) === 'the bytes of a picture' );
+
+$once = $state();
+check( 'a second copy under the same name is refused with 409, and nothing is made', \Nino\Modules\Builder\Document::duplicate( $appData, 'page-dup', 'Dup Copy' )['status'] === 409 && $state() === $once );
+
+// A key or a slot of the copy that is there already: a copy of a template whose keys were left behind
+\Nino\Filesystem::mutate( $appData, '/text/en_US.php', static fn( mixed $texts ): array => (array) $texts + [ '[[/template/page-dup-orphan/one/title]]' => 'Left behind' ] );
+$orphans = $state();
+$orphan = \Nino\Modules\Builder\Document::duplicate( $appData, 'page-dup', 'Dup Orphan' );
+check( 'a key of the copy that is there already - the keys of a template that was deleted stay - is refused with 409 (key-exists), named by its bare uri in the keys of the answer, and nothing is made', $orphan['status'] === 409 && $orphan['code'] === 'key-exists'
+	&& $orphan['keys'] === [ '/template/page-dup-orphan/one/title' ] && $orphan['slots'] === [] && $orphan['problems'] === [] && $state() === $orphans );
+$appData['/nino/html/images']['/template/page-dup-slotted/one/background'] = [ 'label' => 'Left', 'width' => 10, 'height' => 10, 'filename' => null ];
+$slotted = \Nino\Modules\Builder\Document::duplicate( $appData, 'page-dup', 'Dup Slotted' );
+unset( $appData['/nino/html/images']['/template/page-dup-slotted/one/background'] );
+check( '...so is a slot, named in the slots of the answer', $slotted['status'] === 409 && $slotted['code'] === 'key-exists' && $slotted['keys'] === [] && $slotted['slots'] === [ '/template/page-dup-slotted/one/background' ]
+	&& $slotted['problems'] === [] && $state() === $orphans );
+
+// The permissions of the panels that own the keys and the slots
+\Nino\Auth::insertUser( $appData, 'nobody@example.com', 'correct horse battery staple', [ '/_admin/builder/manage' ] );
+\Nino\Auth::loginUser( $appData, 'nobody@example.com', 'correct horse battery staple' );
+$noKeys = \Nino\Modules\Builder\Document::duplicate( $appData, 'page-dup', 'Dup Forbidden' );
+\Nino\Auth::loginUser( $appData, 'keys@example.com', 'correct horse battery staple' );
+$noSlots = \Nino\Modules\Builder\Document::duplicate( $appData, 'page-dup', 'Dup Forbidden' );
+\Nino\Auth::loginUser( $appData, 'dev@example.com', 'correct horse battery staple' );
+check( 'an account that may not make keys, or not slots, cannot copy a template that has them: 403, the permission named - before anything is made', $noKeys['status'] === 403 && $noKeys['problems'] === [ '/_admin/keys/manage' ]
+	&& $noSlots['status'] === 403 && $noSlots['problems'] === [ '/_admin/slots/manage' ] && $state() === $orphans );
+
+// A copy that stops takes everything it made away again
+$lock = \Nino\Filesystem::path( $appData, '/data' ). '/.locks/'. sha1( '/templates/page-dup-lock.tpl' ). '.lock';
+@unlink( $lock );
+mkdir( $lock );
+$locked = \Nino\Modules\Builder\Document::duplicate( $appData, 'page-dup', 'Dup Lock' );
+rmdir( $lock );
+check( 'a copy whose file cannot be written answers 500, and the keys and the slots and the pictures it made are taken away again', $locked['status'] === 500 && $locked['code'] === 'write' && $state() === $orphans
+	&& \Nino\Images::read( $appData, 'template/page-dup-lock/one/background.1200x600.jpg' ) === false );
+
+$lock = \Nino\Filesystem::path( $appData, '/data' ). '/.locks/'. sha1( '/text/de_DE.php' ). '.lock';
+@unlink( $lock );
+mkdir( $lock );
+$unwritten = \Nino\Modules\Builder\Document::duplicate( $appData, 'page-dup', 'Dup Key' );
+rmdir( $lock );
+check( 'a copy whose key cannot be written in every language is refused with 500 (key) - the panel makes it without saying - and what was made is taken away again', $unwritten['status'] === 500 && $unwritten['code'] === 'key'
+	&& $state() === $orphans && \Nino\Filesystem::fileExists( $appData, '/templates/page-dup-key.tpl' ) === false );
+
+// A slot the Slots tab will not make, after the keys were: the label is none and the name of the slot is made of its last segment
+$appData['/nino/html/images']['/template/page-dup/two/image'] = [ 'label' => '', 'width' => 100, 'height' => 100, 'filename' => null ];
+\Nino\AppData::writeContentData( $appData, [ '/nino/html/images' ] );
+$unlabelled = \Nino\Modules\Builder\Document::duplicate( $appData, 'page-dup', 'Dup Unlabelled' );
+check( 'a slot with no label is made with its name as the label, so that it can be copied: the Slots tab asks for one', $unlabelled['status'] === 200
+	&& ( \Nino\Images::getSlot( $appData, '/template/page-dup-unlabelled/two/image' ) ?: [] )['label'] === 'Image' );
+
+// A slot that another request makes after the copy has looked and before it makes its own: the Slots tab finds it in config.php (409), which this
+// request's copy of the slots does not have, so the look did not see it. The other request's slot is not the copy's to use
+$beforeRace = $state();
+$theirSlot = [ 'label' => 'Theirs', 'width' => 10, 'height' => 10, 'filename' => null ];
+\Nino\Filesystem::mutate( $appData, '/config.php', static function( mixed $content ) use ( $theirSlot ): array {
+	$content = (array) $content;
+	$content['/nino/html/images']['/template/page-dup-race/two/image'] = $theirSlot;
+	return $content;
+} );
+$race = \Nino\Modules\Builder\Document::duplicate( $appData, 'page-dup', 'Dup Race' );
+$stored = (array) \Nino\Filesystem::getFileContent( $appData, '/config.php', [] );
+check( 'a slot that is there when the copy makes it, though it was not when it looked, is a failure of the copy: 409 (slot), the slot named', $race['status'] === 409 && $race['code'] === 'slot'
+	&& $race['problems'] === [ '/template/page-dup-race/two/image' ] && \Nino\Filesystem::fileExists( $appData, '/templates/page-dup-race.tpl' ) === false );
+check( '...everything the copy made before is taken away again - the keys, the slot with its picture - and the slot of the other request is as it was made', $state() === $beforeRace
+	&& \Nino\Images::read( $appData, 'template/page-dup-race/one/background.1200x600.jpg' ) === false && ( $stored['/nino/html/images']['/template/page-dup-race/one/background'] ?? null ) === null
+	&& ( $stored['/nino/html/images']['/template/page-dup-race/two/image'] ?? null ) === $theirSlot );
+\Nino\Filesystem::mutate( $appData, '/config.php', static function( mixed $content ): array {
+	$content = (array) $content;
+	unset( $content['/nino/html/images']['/template/page-dup-race/two/image'] );
+	return $content;
+} );
+
+// Values of different formats, none of them chosen: every one of them comes through, the first language being plain
+\Nino\Filesystem::putFileContent( $appData, '/templates/page-fmt.tpl', "[template /templates/html-header]\n\n". $section( "[title /template/page-fmt/a/title]\n\t\t\t[text /template/page-fmt/a/text]", 'a' ). "\n" );
+\Nino\Filesystem::mutate( $appData, '/text/de_DE.php', static fn( mixed $texts ): array => (array) $texts + [ '[[/template/page-fmt/a/title]]' => 'Hallo', '[[/template/page-fmt/a/text]]' => 'Nur deutsch' ] );
+\Nino\Filesystem::mutate( $appData, '/text/en_US.php', static fn( mixed $texts ): array => (array) $texts + [ '[[/template/page-fmt/a/title]]' => 'Hello <strong>world</strong>' ] );
+\Nino\Filesystem::mutate( $appData, '/text/global.php', static fn( mixed $texts ): array => (array) $texts + [ '[[/template/page-fmt/a/note]]' => '0' ] );
+$formats = \Nino\Modules\Builder\Document::duplicate( $appData, 'page-fmt', 'Fmt Copy' );
+$fmtOld = \Nino\Text::entry( $appData, '/template/page-fmt/a/title' ) ?? [];
+$fmtNew = \Nino\Text::entry( $appData, '/template/page-fmt-copy/a/title' ) ?? [];
+check( 'a key whose languages hold different formats is copied with every value as it is, though the format was never chosen: the markup of the second language stays', $formats['status'] === 200
+	&& ( $fmtNew['values']['en_US'] ?? null ) === 'Hello <strong>world</strong>' && ( $fmtNew['values']['de_DE'] ?? null ) === 'Hallo' && ( $fmtNew['format'] ?? null ) === ( $fmtOld['format'] ?? '' ) );
+check( '...the format stays unchosen, as it was, so that it follows the values', ( $fmtOld['formatSet'] ?? null ) === false && ( $fmtNew['formatSet'] ?? null ) === false );
+check( '...a global value of 0 is a value, not nothing', ( \Nino\Text::entry( $appData, '/template/page-fmt-copy/a/note' )['values'] ?? null ) === [ '*' => '0' ] );
+
+// A file with no name line is given one, first
+\Nino\Filesystem::putFileContent( $appData, '/templates/page-plain.tpl', "[template /templates/html-header]\n\n". $section( '[title /template/page-plain/a/title]', 'a' ). "\n" );
+$plain = \Nino\Modules\Builder\Document::duplicate( $appData, 'page-plain', 'Plain Copy' );
+check( 'a template with no name line is copied with one - first, where the Reader looks for it - and its sections are what they were', $plain['status'] === 200 && $plain['model']['name'] === 'Plain Copy' && $plain['model']['header'] === 'html-header'
+	&& str_starts_with( (string) file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-plain-copy.tpl' ) ), "<!-- nino:template-name Plain Copy -->\n[template /templates/html-header]\n" ) === true
+	&& $plain['model']['blocks'][0]['cols'][0]['components'][0]['source'] === '/template/page-plain-copy/a/title' );
+
+check( 'the copies of these probes are listed with the rest, by file', array_slice( array_column( \Nino\Modules\Builder\Document::list( $appData )['templates'], 'file' ), 0, 3 ) === [ 'page-dup', 'page-dup-copy', 'page-dup-unlabelled' ] );
+
+foreach( [ 'page-dup', 'page-dup-copy', 'page-dup-unlabelled', 'page-plain', 'page-plain-copy', 'page-fmt', 'page-fmt-copy' ] as $probe )
+	\Nino\Modules\Builder\Document::delete( $appData, $probe );
+
+echo "\n";
+
+
+// --- 10. The page the builder wrote, rendered --------------------------------
 
 echo "The kernel renders what the builder wrote\n";
 
@@ -894,7 +1177,7 @@ check( 'an empty page of the builder renders as its frames and nothing between',
 echo "\n";
 
 
-// --- 10. The panel's actions -------------------------------------------------
+// --- 11. The panel's actions -------------------------------------------------
 
 echo "Modules\\Builder\\Admin - the API\n";
 
@@ -926,7 +1209,7 @@ function callBuilderAction( array &$appData, string $method, array $data = [] ):
 	];
 }
 
-$actions = [ 'apiList', 'apiCreate', 'apiLoad', 'apiSave', 'apiDelete', 'apiSource', 'apiRegistry' ];
+$actions = [ 'apiList', 'apiCreate', 'apiDuplicate', 'apiLoad', 'apiSave', 'apiDelete', 'apiSource', 'apiRegistry' ];
 
 \Nino\Auth::logoutUser( $appData );
 check( 'every action refuses a request with no session: 401', array_filter( $actions, static fn( string $action ): bool => callBuilderAction( $appData, $action )[0] !== 401 ) === [] );
@@ -950,6 +1233,22 @@ check( '...a name that is none: 400, a file that is not there: 404', callBuilder
 [ $status, $createdBody ] = callBuilderAction( $appData, 'apiCreate', [ 'name' => 'Team' ] );
 check( 'create answers the new model, and refuses a name that makes a file that is there with 409', $status === 200 && $createdBody['model']['file'] === 'page-team' && callBuilderAction( $appData, 'apiCreate', [ 'name' => 'team' ] )[0] === 409
 	&& callBuilderAction( $appData, 'apiCreate', [ 'name' => '' ] )[0] === 400 );
+
+[ $status, $copiedBody ] = callBuilderAction( $appData, 'apiDuplicate', [ 'file' => 'page-home', 'name' => 'Home copy' ] );
+check( 'duplicate answers the model of the copy; a name that makes a file that is there is 409, a name that is none 400, a template that is not there 404', $status === 200 && $copiedBody['model']['file'] === 'page-home-copy'
+	&& $copiedBody['model']['blocks'][0]['id'] === 'start' && \Nino\Text::entry( $appData, '/template/page-home-copy/start/title' ) !== null
+	&& callBuilderAction( $appData, 'apiDuplicate', [ 'file' => 'page-home', 'name' => 'home copy' ] )[0] === 409 && callBuilderAction( $appData, 'apiDuplicate', [ 'file' => 'page-home', 'name' => '' ] )[0] === 400
+	&& callBuilderAction( $appData, 'apiDuplicate', [ 'file' => 'page-nope', 'name' => 'Nope' ] )[0] === 404 && callBuilderAction( $appData, 'apiDuplicate', [ 'name' => 'Nope' ] )[0] === 400 );
+check( '...a copy is written to the activity log with the template and the name, as a create is', \Nino\Modules\Builder\Admin::log( 'builder/duplicate', [ 'file' => 'page-home', 'name' => 'Home copy' ] ) === 'Duplicate Builder Template page-home as "Home copy"' );
+callBuilderAction( $appData, 'apiDelete', [ 'file' => 'page-home-copy' ] );
+
+// The file is gone and its keys and slots stay: a copy under the same name finds them in its way
+[ $status, $inTheWay ] = callBuilderAction( $appData, 'apiDuplicate', [ 'file' => 'page-home', 'name' => 'Home copy' ] );
+$wanted = \Nino\Modules\Builder\Document::duplicate( $appData, 'page-home', 'Home copy' );
+check( 'duplicate refuses a copy whose keys or slots are there already with 409 (builder_key_exists), the bare uris in the params - two lists, the keys and then the slots - and no sentence of the server\'s',
+	$status === 409 && $inTheWay['code'] === 'builder_key_exists' && $wanted['code'] === 'key-exists' && $inTheWay['params'] === [ $wanted['keys'], $wanted['slots'] ] && count( $inTheWay['params'] ) === 2
+	&& in_array( '/template/page-home-copy/start/title', $inTheWay['params'][0], true ) === true && in_array( '/template/page-home-copy/start/background', $inTheWay['params'][1], true ) === true
+	&& array_filter( array_merge( ...$inTheWay['params'] ), static fn( mixed $uri ): bool => is_string( $uri ) === false || str_starts_with( $uri, '/template/page-home-copy/' ) === false ) === [] );
 
 $example = \Nino\Modules\Builder\Reader::read( (string) file_get_contents( __DIR__. '/fixtures/page-home.tpl' ), $registry );
 

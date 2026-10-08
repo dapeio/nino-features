@@ -1,6 +1,7 @@
 {
     "file": "page-home",
     "name": "Home",
+    "vpa": null,
     "header": "html-header",
     "footer": "html-footer",
     "blocks": [

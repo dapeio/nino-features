@@ -58,7 +58,8 @@ namespace Nino\Modules\Builder {
 		 *	@param		array			$model				See Reader
 		 *	@param		array			$registry			[ 'components' => name => schema, 'stacks' => name => schema ]
 		 *
-		 *	@return 	string										'' for a page with no name, no frame and no block
+		 *	@return 	string										'' for a page with no name, no frame and no block - but a template animation (vpa)
+		 *																	alone produces a head line
 		 */
 		public static function write( array $model, array $registry ): string {
 
@@ -67,6 +68,18 @@ namespace Nino\Modules\Builder {
 
 			if( trim( (string) ( $model['name'] ?? '' ) ) !== '' )
 				$head[] = '<!-- nino:template-name '. trim( (string) $model['name'] ). ' -->';
+
+			// The classes as they were written, and nothing at all for none
+			if( is_string( $model['vpa'] ?? null ) === true ) {
+
+				$vpa = Reader::vpaClasses( $model['vpa'] );
+
+				if( $vpa === false )
+					throw new \UnexpectedValueException( 'The animation of the template is none of the classes of nino-vpa.' );
+
+				if( $vpa !== null )
+					$head[] = '<!-- nino:template-vpa '. $vpa. ' -->';
+			}
 
 			if( (string) ( $model['header'] ?? '' ) !== '' )
 				$head[] = '[template /templates/'. $model['header']. ']';
