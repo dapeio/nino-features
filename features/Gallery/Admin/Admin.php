@@ -14,9 +14,13 @@ namespace Nino\Modules\Gallery {
 	 *	Nino							A compact filesystembased php framework
 	 *	Gallery\Admin			The albums a project has, and one album's images on a
 	 *										screen of its own: upload, alt text and caption per
-	 *										language, order, delete.
-	 *										Two levels, two panes, the workbench's own back link
-	 *										between them.
+	 *										language, order, delete - and the sizes the album's
+	 *										pictures are made with. A new album is made on a page
+	 *										of its own, drawn into the same pane: a key, a name
+	 *										and those sizes.
+	 *										Three levels, two panes - the page of a new album and
+	 *										an album's page share one - with the workbench's
+	 *										own back link between them.
 	 *
 	 *										\Nino\Modules\Gallery (Gallery.php beside this) owns
 	 *										the shape of the file and the making of the two sizes;
@@ -32,6 +36,21 @@ namespace Nino\Modules\Gallery {
 	class Admin {
 
 		public const string MANAGE_PERM = '/_admin/gallery/manage';
+
+		// What the page that makes an album is addressed by (#gallery/new): an album with
+		// that key would be opened in its place by a reload, so none is made with it
+		private const string RESERVED_KEY = 'new';
+
+		// The panel's word for each of an album's settings, for the message that
+		// names the ones a request got wrong
+		private const array LABELS = [
+			'thumbWidth'	=> '/_admin/gallery/label/thumb-width',
+			'thumbHeight'	=> '/_admin/gallery/label/thumb-height',
+			'largeWidth'	=> '/_admin/gallery/label/large-width',
+			'largeHeight'	=> '/_admin/gallery/label/large-height',
+			'keepRatio'		=> '/_admin/gallery/label/keep-ratio',
+			'columns'			=> '/_admin/gallery/label/columns',
+		];
 
 		public static function actions(): array {
 			return [
@@ -100,7 +119,8 @@ namespace Nino\Modules\Gallery {
 		/**
 		 *	Every album with its images, and the urls the panel shows them at -
 		 *	plus what the screen needs to edit them: the languages an alt text
-		 *	and a caption can be written in, and how big a file php takes
+		 *	and a caption can be written in, how big a file php takes, and what a
+		 *	new album starts with. Each album carries the sizes it is made with
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
@@ -116,11 +136,11 @@ namespace Nino\Modules\Gallery {
 
 			\Nino\Http::ok( $request, [
 				'albums'	=> self::_albums( $appData ),
-				// What a thumbnail will be cropped to, so the panel can say so
-				// rather than let somebody find out after twenty uploads
-				'thumb'		=> [ \Nino\Modules\Gallery::setting( $appData, 'thumbWidth', 500 ), \Nino\Modules\Gallery::setting( $appData, 'thumbHeight', 500 ) ],
-				'large'		=> [ \Nino\Modules\Gallery::setting( $appData, 'largeWidth', 1800 ), \Nino\Modules\Gallery::setting( $appData, 'largeHeight', 1800 ) ],
-				'keepRatio'	=> \Nino\Features::setting( $appData, 'gallery', 'keepRatio', true ) === true,
+				// What a new album starts with, and the range each number may take:
+				// the form of a new album is filled from the one, and its inputs are
+				// limited by the other the way the server will hold them to it
+				'defaults'	=> \Nino\Modules\Gallery::defaults( $appData ),
+				'ranges'	=> \Nino\Modules\Gallery::ranges( $appData ),
 				'locales'	=> \Nino\Locales::getAvailableLocales( $appData ),
 				'native'	=> \Nino\Locales::getNativeLocale( $appData ),
 				// The one the screen opens in: what was last chosen in any panel
@@ -134,13 +154,27 @@ namespace Nino\Modules\Gallery {
 				// How long an alt text or a caption may be: what the server keeps of
 				// one is cut to it, and the panel compares with what it keeps
 				'maxText'	=> \Nino\Modules\Gallery::MAX_CAPTION,
+				// How long the key of a new album may be: the field that asks for it is
+				// limited by it, and the server holds a key to it the same way
+				'maxKey'	=> \Nino\Modules\Gallery::MAX_KEY,
 			] );
 		}
 
 		/**
-		 *	Create or rename one album. The images stay with it: a rename is
-		 *	the album's name, not its key, and the key is what the files are
-		 *	filed under
+		 *	Create one album, rename it, or change the sizes it is made with -
+		 *	each only where the request carries it. The images stay with the
+		 *	album: a rename is the album's name, not its key, and the key is what
+		 *	the files are filed under.
+		 *
+		 *	A request that says it is new is a creation, and a key that is taken
+		 *	is refused rather than renamed: the page of a new album has no say
+		 *	over the sizes of one that exists. 'new' is the address of that page
+		 *	and is refused as the key of an album that is not there yet, while
+		 *	one that has it keeps working - and so is a key longer than
+		 *	\Nino\Modules\Gallery::MAX_KEY: only a new album is held to it. The
+		 *	sizes are held to the bounds of the feature's own settings (see
+		 *	\Nino\Modules\Gallery::checkSettings()), all of them or none; a new
+		 *	album without any starts with the feature's
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
@@ -160,22 +194,50 @@ namespace Nino\Modules\Gallery {
 			// whole answer came back empty and every screen of it stopped
 			$name		= mb_strcut( trim( (string) ( is_string( $data['name'] ?? null ) ? $data['name'] : '' ) ), 0, 120, 'UTF-8' );
 			$albums	= \Nino\Modules\Gallery::albums( $appData );
+			$index	= self::_indexOf( $albums, $key );
 
 			if( $key === '' ) {
 				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/key' ) );
 				return;
 			}
 
-			$found = false;
+			if( $key === self::RESERVED_KEY && $index === null ) {
+				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/reserved' ) );
+				return;
+			}
 
-			foreach( $albums as $index => $album )
-				if( $album['key'] === $key ) {
-					$albums[$index]['name'] = $name !== '' ? $name : $album['name'];
-					$found = true;
+			if( $index === null && strlen( $key ) > \Nino\Modules\Gallery::MAX_KEY ) {
+				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/long', (string) \Nino\Modules\Gallery::MAX_KEY ) );
+				return;
+			}
+
+			if( $index !== null && ( $data['isNew'] ?? false ) === true ) {
+				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/taken' ) );
+				return;
+			}
+
+			$settings = null;
+
+			if( is_array( $data['settings'] ?? null ) === true ) {
+
+				$checked = \Nino\Modules\Gallery::checkSettings( $appData, $data['settings'], $index === null ? [] : $albums[$index] );
+
+				if( $checked['errors'] !== [] ) {
+					\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/settings', self::_named( $appData, array_keys( $checked['errors'] ) ) ) );
+					return;
 				}
 
-			if( $found === false )
-				$albums[] = [ 'key' => $key, 'name' => $name !== '' ? $name : $key, 'images' => [] ];
+				$settings = $checked['values'];
+			}
+
+			if( $index === null )
+				$albums[] = [ 'key' => $key, 'name' => $name !== '' ? $name : $key, 'images' => [], 'settings' => $settings ?? \Nino\Modules\Gallery::defaults( $appData ) ];
+			else {
+				$albums[$index]['name'] = $name !== '' ? $name : $albums[$index]['name'];
+
+				if( $settings !== null )
+					$albums[$index]['settings'] = $settings;
+			}
 
 			if( \Nino\Modules\Gallery::save( $appData, $albums ) === false ) {
 				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/save' ) );
@@ -507,7 +569,9 @@ namespace Nino\Modules\Gallery {
 
 		/**
 		 *	The albums as the panel needs them: the stored shape, plus the url
-		 *	of each image, so the script builds no path of its own
+		 *	of each image, so the script builds no path of its own, and the six
+		 *	settings the album is made with - the feature's where it holds none
+		 *	of its own, so the script knows no defaults either
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
@@ -519,6 +583,8 @@ namespace Nino\Modules\Gallery {
 
 			foreach( \Nino\Modules\Gallery::albums( $appData ) as $album ) {
 
+				$album['settings'] = \Nino\Modules\Gallery::settingsOf( $appData, $album );
+
 				foreach( $album['images'] as $position => $image ) {
 					$album['images'][$position]['thumbUrl'] = \Nino\Images::getUrl( $appData, $image['thumb'] );
 					$album['images'][$position]['largeUrl'] = \Nino\Images::getUrl( $appData, $image['large'] );
@@ -528,6 +594,30 @@ namespace Nino\Modules\Gallery {
 			}
 
 			return $albums;
+		}
+
+		/**
+		 *	The settings a request got wrong, as the panel names them: each by
+		 *	its label and, for a number, the range it may take
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$names				Setting names
+		 *
+		 *	@return 	string											Eg. 'Thumbnail width (40–1200), Columns (1–8)'
+		 */
+		private static function _named( array &$appData, array $names ): string {
+
+			$ranges	= \Nino\Modules\Gallery::ranges( $appData );
+			$named	= [];
+
+			foreach( $names as $name ) {
+
+				$label = isset( self::LABELS[$name] ) === true ? self::_say( $appData, self::LABELS[$name] ) : (string) $name;
+
+				$named[] = isset( $ranges[$name] ) === true ? $label. ' ('. $ranges[$name][0]. '–'. $ranges[$name][1]. ')' : $label;
+			}
+
+			return implode( ', ', $named );
 		}
 
 		/**

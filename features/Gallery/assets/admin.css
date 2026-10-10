@@ -6,11 +6,13 @@
  *	admin.css								What the feature's /_admin panel needs beyond the
  *													design system in _admin/assets/style.css: the grid
  *													of thumbnails on an album's screen, and the row of
- *													controls one of them carries. Bundled while the
- *													feature is active (see the panel's assets()), so
- *													the same layer rules apply - the shell's stylesheet
- *													fixes the layer order, this one only ever adds to
- *													nino.tool, scoped to the panel's own panes.
+ *													controls one of them carries, the small forms of an
+ *													album's key and name and of its sizes, and the upload
+ *													field switched off. Bundled while the feature is
+ *													active (see the panel's assets()), so the same
+ *													layer rules apply - the shell's stylesheet fixes the
+ *													layer order, this one only ever adds to nino.tool,
+ *													scoped to the panel's own panes.
  *
  *	@package								Dape/Nino
  *	@author									David Perchermeier <mail@dape.io>
@@ -96,6 +98,60 @@
 	files and finds out afterwards. */
 #gallery-album .gallery-sizes {
 	margin: 0 0 .75rem;
+}
+
+/*	The forms of the album's page - its key and name, its sizes - and the page of a
+	new album, which is one form. Each ends in a row with its own Save and the line
+	it answers in. */
+#gallery-album form {
+	margin: 0 0 1rem;
+}
+
+#gallery-album .gallery-form-actions {
+	display: flex;
+	align-items: center;
+	gap: .75rem;
+	margin-top: .75rem;
+}
+
+/*	A small form: a key that is read and a name that is written are not a page. */
+#gallery-album .gallery-name-form {
+	max-width: 36rem;
+}
+
+#gallery-album .gallery-form-msg {
+	margin: 0;
+	color: var(--editor-text-secondary);
+	font-size: .78rem;
+}
+
+/*	The sizes fold away behind their summary; the fieldset inside is the design
+	system's own and keeps its fields in the two columns a settings screen has. It
+	has no legend to keep the top of its box clear for - the summary is the group's
+	name - so that room is a gap above the first field. */
+#gallery-album .gallery-sizes-group {
+	margin: 0 0 1rem;
+}
+
+#gallery-album .gallery-sizes-group summary {
+	cursor: pointer;
+	font-size: .82rem;
+	font-weight: 650;
+}
+
+#gallery-album .gallery-sizes-group fieldset {
+	margin: .75rem 0 0;
+	padding-top: 1rem;
+}
+
+/*	The upload field before there is an album to upload into: there to be seen, not
+	to be used - its hint, which says when it will be, stays as readable as any. */
+#gallery-album .gallery-upload-off > :not(.nino-admin-hint) {
+	opacity: .55;
+}
+
+#gallery-album .gallery-upload-off input {
+	cursor: not-allowed;
 }
 
 }

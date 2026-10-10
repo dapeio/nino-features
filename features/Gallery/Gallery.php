@@ -19,7 +19,7 @@ namespace Nino\Modules {
 	 *
 	 *										Two sizes are made when an image is uploaded and
 	 *										neither of them is the upload. The thumbnail is
-	 *										cropped to exactly the configured size, because a grid
+	 *										cropped to exactly the album's size, because a grid
 	 *										of pictures that are all different shapes is not a
 	 *										grid; the large view is the whole picture scaled into
 	 *										a box and keeping its own proportions, because
@@ -27,6 +27,12 @@ namespace Nino\Modules {
 	 *										undone. Both go through \Nino\Images, so a project
 	 *										that registers on \Nino\Images::RENDER renders this
 	 *										feature's images too, without this feature knowing.
+	 *
+	 *										The sizes belong to the album: its record may carry
+	 *										the six settings the feature has (SETTINGS) in
+	 *										'settings', and an album that carries none - or one
+	 *										of them - is made with the feature's, which are also
+	 *										what a new album starts with.
 	 *
 	 *										The original bytes are never stored. What a visitor
 	 *										can reach is the largest thing there is - there is no
@@ -61,13 +67,25 @@ namespace Nino\Modules {
 		// NINO_FEATURES_DIR put it
 		public const string TEMPLATES = '/features/Gallery/templates';
 
-		// An album key, and the id an image is filed under
-		public const string KEY_PATTERN = '/^[a-z][a-z0-9-]*$/';
+		// An album key, and the id an image is filed under. The D modifier makes a
+		// key end where the string does: $ alone also matches before a final newline,
+		// and a key that ends in one names a directory below /images/gallery
+		public const string KEY_PATTERN = '/^[a-z][a-z0-9-]*$/D';
 		public const string ID_PATTERN 	= '/^[a-f0-9]{16}$/';
+
+		// How long the key of a new album may be: it names a directory below
+		// /images/gallery, and a name the file system cannot take makes every
+		// upload into the album fail. The pattern above is what a key is - an
+		// album that has a longer one from before goes on working
+		public const int MAX_KEY = 64;
 
 		// What one caption - or one alt text - may carry: a line under a
 		// picture, not an essay
 		public const int MAX_CAPTION = 300;
+
+		// What an album carries in 'settings', in the order the panel draws it: the
+		// settings of the feature, which a new album starts with
+		public const array SETTINGS = [ 'thumbWidth', 'thumbHeight', 'largeWidth', 'largeHeight', 'keepRatio', 'columns' ];
 
 		// The byte cap \Nino\Images::_render() refuses an upload above. The
 		// constant there is private, and a feature does not reach past the
@@ -88,9 +106,11 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	Register the shortcode and the stylesheet the grid needs. No
-		 *	script: what a thumbnail opens into is the Lightbox feature's
-		 *	overlay, and this feature only renders the markup it reads
+		 *	Register the shortcode - on a Nino with the Components module the
+		 *	component again, with the albums of the project (see
+		 *	_offerAlbums()) - and the stylesheet the grid needs. No script:
+		 *	what a thumbnail opens into is the Lightbox feature's overlay, and
+		 *	this feature only renders the markup it reads
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
@@ -99,15 +119,105 @@ namespace Nino\Modules {
 		public static function init( array &$appData ): void {
 
 			/*	Nino 1.6 has registered [gallery] as a component from the manifest before
-				this runs (\Nino\Features::registerComponents()), and a second
-				registration here would take it back from the wrapper that fills in
-				the defaults. Nino 1.5 ignores the manifest key and needs it	*/
+				this runs (\Nino\Features::registerComponents()), and a plain shortcode
+				here would take it back from the wrapper that fills in the defaults -
+				what is registered here instead is the component again, with the albums
+				of the project (see _offerAlbums()), unless a module of the project has
+				registered a [gallery] of its own since. Nino 1.5 ignores the manifest
+				key and needs the shortcode	*/
 			$components = class_exists( '\\Nino\\Modules\\Components' ) === true ? \Nino\Modules\Components::components( $appData ) : [];
 
 			if( isset( $components['gallery'] ) === false )
 				\Nino\Html::addShortcode( $appData, 'gallery', [ self::class, 'doShortcode' ] );
+			else if( self::_registeredFromManifest( $appData ) === true )
+				self::_offerAlbums( $appData, $components['gallery'] );
 
 			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Gallery/assets/gallery.css' );
+		}
+
+		/**
+		 *	[gallery] as a component again, the schema its manifest declared
+		 *	with one attribute changed: the album is a select of the albums
+		 *	this project has, because the Builder draws a select as a list to
+		 *	choose from and a string as a field to type in. The manifest is
+		 *	read without the project's data and cannot name them;
+		 *	addComponent() replaces a registration of the same name, and a
+		 *	feature's init() runs after the Components module's, which has
+		 *	read every manifest by then - so this is the registration that
+		 *	stays. Where a project lists the feature ahead of the module the
+		 *	manifest's string stays, and nothing else changes.
+		 *
+		 *	It is asked for only while [gallery] is still what the kernel
+		 *	registered from the manifest (see _registeredFromManifest()).
+		 *	A module of the project that comes between the two may have
+		 *	registered a [gallery] of its own - that is how a project changes
+		 *	the markup of a component - and replacing it here would take its
+		 *	renderer and its schema away without a word.
+		 *
+		 *	The renderer does not say whose schema it is: a module may register
+		 *	this feature's own renderer under a schema of its own, which is how
+		 *	a project changes the schema and nothing else. So the select goes
+		 *	over the album of the manifest alone, a string whose default is
+		 *	none; any other - a default album of its own, a select of its own,
+		 *	no album at all - is the project's and stays as it registered it.
+		 *	And addComponent() is called for a schema the kernel accepts only
+		 *	(\Nino\Modules\Components::validate() is the check it refuses by):
+		 *	it refuses one with an E_USER_ERROR, which ends the request, and
+		 *	init() runs in every request there is - the pages of visitors and
+		 *	the workbench alike.
+		 *
+		 *	'' comes first and is the default: no album named draws the first
+		 *	album there is. A key that is not among the options - the album
+		 *	was deleted since, or the call misspells it - is read as the
+		 *	default too, which is how the wrapper reads a select; the
+		 *	shortcode alone (Nino 1.5) draws nothing for it
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$schema				The schema [gallery] is registered with, as the registry holds it
+		 *
+		 *	@return 	void
+		 */
+		private static function _offerAlbums( array &$appData, array $schema ): void {
+
+			// The album of the manifest is a string and has no default; any other is a project's own
+			if( ( $schema['attributes']['album']['type'] ?? null ) !== 'string' || ( $schema['attributes']['album']['default'] ?? null ) !== '' )
+				return;
+
+			$schema['attributes']['album']['type']		= 'select';
+			$schema['attributes']['album']['options']	= array_merge( [ '' ], self::keys( $appData ) );
+
+			/*	init() asks for this only where its registry has [gallery], which is where the
+				Components module is. The guard is for PHPStan: against a checkout of a Nino
+				before 1.6 it reports a call on a class that is not there	*/
+			if( class_exists( '\\Nino\\Modules\\Components' ) === true && is_array( \Nino\Modules\Components::validate( 'gallery', $schema ) ) === true )
+				\Nino\Modules\Components::addComponent( $appData, 'gallery', [ self::class, 'componentGallery' ], $schema );
+		}
+
+		/**
+		 *	Whether [gallery] is registered the way the kernel registered it
+		 *	from this feature's manifest, and as nothing besides. A component's
+		 *	callback is wrapped, and the wrapper takes the scope of the class
+		 *	the renderer belongs to (see
+		 *	\Nino\Modules\Components::addComponent(), and how
+		 *	\Nino\Features::shortcodes() reads an owner): one of this class is
+		 *	this feature's renderer, one of another class is a module's of the
+		 *	project, and a second callback beside it was put there by
+		 *	something else - neither of them is ours to replace.
+		 *
+		 *	That is all the renderer can tell: a module of the project may
+		 *	register this feature's own renderer too, under a schema of its own,
+		 *	and _offerAlbums() looks at the schema for that
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	bool
+		 */
+		private static function _registeredFromManifest( array &$appData ): bool {
+
+			$registered = \Nino\Callbacks::registered( $appData, '/nino/html/shortcode/gallery' );
+
+			return count( $registered ) === 1 && $registered[0] instanceof \Closure
+				&& ( new \ReflectionFunction( $registered[0] ) )->getClosureScopeClass()?->getName() === self::class;
 		}
 
 		/**
@@ -152,6 +262,27 @@ namespace Nino\Modules {
 					return $album;
 
 			return null;
+		}
+
+		/**
+		 *	The key of every album, in the order they are stored - what the
+		 *	Builder's select offers. Read off the file without the images of
+		 *	every album being checked, because init() asks on every request,
+		 *	the pages of visitors included
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	array
+		 */
+		public static function keys( array &$appData ): array {
+
+			$keys = [];
+
+			foreach( (array) \Nino\Filesystem::getFileContent( $appData, self::ALBUMS, [] ) as $entry )
+				if( is_array( $entry ) === true && is_string( $entry['key'] ?? null ) === true && preg_match( self::KEY_PATTERN, $entry['key'] ) === 1 )
+					$keys[] = $entry['key'];
+
+			return array_values( array_unique( $keys ) );
 		}
 
 		/**
@@ -201,11 +332,37 @@ namespace Nino\Modules {
 				];
 			}
 
-			return [
+			$album = [
 				'key'			=> $key,
 				'name'		=> mb_strcut( trim( (string) ( $entry['name'] ?? $key ) ), 0, 120, 'UTF-8' ),
 				'images'	=> $images,
 			];
+
+			// Only what the record holds: an album without sizes reads the feature's,
+			// and an empty map written into it would be a migration nobody asked for
+			$settings = self::_settings( $entry['settings'] ?? null );
+
+			return $settings === [] ? $album : $album + [ 'settings' => $settings ];
+		}
+
+		/**
+		 *	The sizes a record holds, as far as they are some: the names an album
+		 *	carries, with a number or a switch for a value. Whether a number is
+		 *	within its bounds is for settingsOf(), which has the manifest
+		 *
+		 *	@param		mixed			$value
+		 *
+		 *	@return 	array
+		 */
+		private static function _settings( mixed $value ): array {
+
+			$settings = [];
+
+			foreach( self::SETTINGS as $name )
+				if( is_array( $value ) === true && ( is_int( $value[$name] ?? null ) === true || is_bool( $value[$name] ?? null ) === true ) )
+					$settings[$name] = $value[$name];
+
+			return $settings;
 		}
 
 		/**
@@ -392,6 +549,10 @@ namespace Nino\Modules {
 		 *	\Nino\Images::RENDER. The upload itself is never written anywhere:
 		 *	what a visitor can reach is the largest thing that exists.
 		 *
+		 *	The sizes are those of the album the image goes into (see
+		 *	settingsOf()); a key nobody has made an album of yet is made with the
+		 *	feature's
+		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$albumKey			A validated album key
 		 *	@param		string		$bytes				The uploaded bytes
@@ -405,21 +566,21 @@ namespace Nino\Modules {
 
 			$id 			= bin2hex( random_bytes( 8 ) );
 			$basePath	= self::IMAGE_DIR. '/'. $albumKey. '/'. $id;
+			$settings	= self::settingsOf( $appData, self::album( $appData, $albumKey ) ?? [] );
 
-			$thumb = \Nino\Images::process( $appData, $bytes,
-				self::setting( $appData, 'thumbWidth', 500 ), self::setting( $appData, 'thumbHeight', 500 ), $basePath );
+			$thumb = \Nino\Images::process( $appData, $bytes, $settings['thumbWidth'], $settings['thumbHeight'], $basePath );
 
 			if( $thumb === false )
 				return null;
 
-			$width	= self::setting( $appData, 'largeWidth', 1800 );
-			$height	= self::setting( $appData, 'largeHeight', 1800 );
+			$width	= $settings['largeWidth'];
+			$height	= $settings['largeHeight'];
 
 			// The whole picture, or the same crop the thumbnail got. Cropping
 			// is what somebody opening a thumbnail wanted undone, so the whole
 			// picture is the default - but a project whose gallery is a wall of
 			// identical frames may want the frame kept
-			$large = \Nino\Features::setting( $appData, 'gallery', 'keepRatio', true ) === true
+			$large = $settings['keepRatio'] === true
 				? \Nino\Images::fit( $appData, $bytes, $width, $height, $basePath )
 				: \Nino\Images::process( $appData, $bytes, $width, $height, $basePath );
 
@@ -476,11 +637,100 @@ namespace Nino\Modules {
 		}
 
 		/**
+		 *	The settings of the feature as the defaults of an album: what a new
+		 *	album starts with, and what an album that holds no sizes of its own
+		 *	is made with
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	array											SETTINGS => value
+		 */
+		public static function defaults( array &$appData ): array {
+
+			return [
+				'thumbWidth'	=> self::setting( $appData, 'thumbWidth', 500 ),
+				'thumbHeight'	=> self::setting( $appData, 'thumbHeight', 500 ),
+				'largeWidth'	=> self::setting( $appData, 'largeWidth', 1800 ),
+				'largeHeight'	=> self::setting( $appData, 'largeHeight', 1800 ),
+				'keepRatio'		=> \Nino\Features::setting( $appData, 'gallery', 'keepRatio', true ) === true,
+				'columns'			=> self::setting( $appData, 'columns', 4 ),
+			];
+		}
+
+		/**
+		 *	The range each number of an album may take: the bounds the manifest
+		 *	gives the feature's settings, which are the one place they are
+		 *	written - checkSettings() holds a posted value to them, and the panel
+		 *	limits its inputs by them
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	array											name => [ min, max ], for the numbers
+		 */
+		public static function ranges( array &$appData ): array {
+
+			$ranges = [];
+
+			foreach( (array) ( \Nino\Features::get( $appData, 'gallery' )['settings'] ?? [] ) as $name => $schema )
+				if( in_array( $name, self::SETTINGS, true ) === true && ( $schema['type'] ?? '' ) === 'int' )
+					$ranges[$name] = [ $schema['min'] ?? null, $schema['max'] ?? null ];
+
+			return $ranges;
+		}
+
+		/**
+		 *	The settings one album is made with: those its record holds where
+		 *	they pass the bounds of the manifest, the defaults for every one that
+		 *	is not there or does not - the way \Nino\Features::settings() treats a
+		 *	stored value that no longer validates
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		$album				An album, as albums() has it - or [] for none
+		 *
+		 *	@return 	array											SETTINGS => value
+		 */
+		public static function settingsOf( array &$appData, array $album ): array {
+
+			$defaults	= self::defaults( $appData );
+			$schema		= (array) ( \Nino\Features::get( $appData, 'gallery' )['settings'] ?? [] );
+			$held			= \Nino\Features::validateSettings( $schema, self::_settings( $album['settings'] ?? null ) )['values'];
+
+			return array_replace( $defaults, array_intersect_key( $held, $defaults ) );
+		}
+
+		/**
+		 *	Sizes posted for an album, held to the bounds of the feature's own
+		 *	settings - the check its Features screen makes. All or nothing: one
+		 *	value outside its bounds is an error and the album is left as it is.
+		 *	What is not posted stays what the album has (see settingsOf())
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		$posted				name => value as it came in
+		 *	@param		array 		$album				The album they are for, as albums() has it - or [] for a new one
+		 *
+		 *	@return 	array											[ 'values' => SETTINGS => value, 'errors' => name => message ]
+		 */
+		public static function checkSettings( array &$appData, array $posted, array $album = [] ): array {
+
+			$schema = (array) ( \Nino\Features::get( $appData, 'gallery' )['settings'] ?? [] );
+			$result = \Nino\Features::validateSettings( $schema, $posted );
+
+			return [
+				'values'	=> array_replace( self::settingsOf( $appData, $album ), array_intersect_key( $result['values'], array_flip( self::SETTINGS ) ) ),
+				'errors'	=> $result['errors'],
+			];
+		}
+
+		/**
 		 *	[gallery] as the Components module hands it over, the Builder's way:
 		 *	every attribute is there, an empty one where nothing was written,
 		 *	and doShortcode() reads them as it reads a hand-written call - the
 		 *	count of columns only where one was chosen, which is what the
-		 *	setting's default is for
+		 *	album's own count is for. A project may register this renderer under
+		 *	a schema of its own that declares fewer attributes (see
+		 *	_offerAlbums()), and one that is not there is read as one nobody
+		 *	wrote: a key missing from the arguments is a warning, and a warning
+		 *	ends the request
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array			$args					The resolved arguments (see \Nino\Modules\Components::dispatch())
@@ -489,7 +739,7 @@ namespace Nino\Modules {
 		 */
 		public static function componentGallery( array &$appData, array $args ): string {
 
-			if( $args['columns'] === '' )
+			if( ( $args['columns'] ?? '' ) === '' )
 				unset( $args['columns'] );
 
 			return self::doShortcode( $appData, $args );
@@ -498,7 +748,7 @@ namespace Nino\Modules {
 		/**
 		 *	Render one album: [gallery] for the first one, [gallery
 		 *	album="trip"] for another, [gallery album="trip" columns="3"] to
-		 *	override the configured width of the grid.
+		 *	override the count of columns the album has.
 		 *
 		 *	The markup is a list of links the Lightbox feature understands -
 		 *	its group is this album, so two galleries on one page stay two
@@ -519,7 +769,9 @@ namespace Nino\Modules {
 			if( $album === null || $album['images'] === [] )
 				return '';
 
-			$columns = (int) ( $args['columns'] ?? \Nino\Features::setting( $appData, 'gallery', 'columns', 4 ) );
+			// The call's own count, else the album's - which is the feature's where the
+			// album holds none (see settingsOf())
+			$columns = (int) ( $args['columns'] ?? self::settingsOf( $appData, $album )['columns'] );
 			$columns = ( $columns >= 1 && $columns <= 8 ) ? $columns : 4;
 
 			$safe = static fn( string $value ): string => htmlspecialchars( $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );

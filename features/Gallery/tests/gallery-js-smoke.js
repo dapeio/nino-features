@@ -7,7 +7,13 @@
  *												and what it does not, and what an upload of
  *												several files leaves on the screen - when all of
  *												them arrive, when one of them does not, and when
- *												one is too big to be sent at all.
+ *												one is too big to be sent at all. And the three
+ *												levels of the panel - the list, the page of a new
+ *												album, one album's page - with the address that
+ *												names each: the button below the list, the page
+ *												that makes an album from a key, a name and the
+ *												sizes of its pictures, and the album's own page
+ *												with its key shown, its name and its sizes saved.
  *
  *												The panel talks to Admin/Admin.php through one
  *												method, _apiCall(), and every answer carries the
@@ -63,7 +69,35 @@ const TEXT = {
 	'/_admin/common/error/save'			: 'Failed to save.',
 	'/_admin/gallery/hint/shortcode'	: 'Put %s into a template or a text',
 	'/_admin/gallery/label/count'		: '%s images',
+	'/_admin/gallery/label/new'			: 'Add album',
+	'/_admin/gallery/label/key'			: 'Key',
+	'/_admin/gallery/label/name'		: 'Name',
+	'/_admin/gallery/label/sizes'		: 'Image sizes',
+	'/_admin/gallery/label/upload'	: 'Add images',
+	'/_admin/gallery/label/thumb-width'		: 'Thumbnail width',
+	'/_admin/gallery/label/thumb-height'	: 'Thumbnail height',
+	'/_admin/gallery/label/large-width'		: 'Large width',
+	'/_admin/gallery/label/large-height'	: 'Large height',
+	'/_admin/gallery/label/keep-ratio'		: 'Keep the original ratio',
+	'/_admin/gallery/label/columns'				: 'Columns',
+	'/_admin/gallery/hint/key'						: 'Lower case letters, digits and hyphens.',
+	'/_admin/gallery/hint/settings'				: 'These sizes apply to images uploaded from now on.',
+	'/_admin/gallery/hint/upload-after'		: 'Create the album, then you can upload images.',
+	'/_admin/gallery/hint/thumb-width'		: 'Thumbnails are cropped to exactly this.',
+	'/_admin/gallery/hint/large-width'		: 'The size behind a thumbnail.',
+	'/_admin/gallery/hint/keep-ratio'			: 'On, the large view is the whole picture.',
+	'/_admin/gallery/hint/columns'				: 'How many thumbnails a row holds.',
+	'/_admin/gallery/hint/sizes-fit'			: 'A thumbnail cropped to %1, and a large view scaled into %2.',
+	'/_admin/gallery/hint/sizes-crop'			: 'A thumbnail cropped to %1, and a large view cropped to %2.',
+	'/_admin/gallery/error/key'						: 'An album key is a slug.',
+	'/_admin/gallery/error/taken'					: 'An album with this key exists already.',
+	'/_admin/common/label/back'						: 'Back to list',
+	'/_admin/common/label/create'					: 'Create',
+	'/_admin/common/label/save'						: 'Save',
 };
+
+// The elements that were given the focus, in the order they were
+const focused = [];
 
 /**
  *	One element, with just enough of the interface admin.js reaches for
@@ -82,11 +116,20 @@ function element( tag ) {
 		textContent	: '',
 		value				: '',
 		disabled		: false,
+		readOnly		: false,
+		open				: false,
 		getAttribute		: function( name ) { return Object.prototype.hasOwnProperty.call( this.attributes, name ) ? this.attributes[name] : null },
 		setAttribute		: function( name, value ) { this.attributes[name] = String( value ) },
+		removeAttribute	: function( name ) { delete this.attributes[name] },
 		appendChild			: function( child ) { child.parent = this; this.children.push( child ); return child },
 		addEventListener	: function( type, fn ) { ( this.listeners[type] = this.listeners[type] || [] ).push( fn ) },
 		fire						: function( type ) { ( this.listeners[type] || [] ).forEach( function( fn ) { fn( { preventDefault : function() {} } ) } ) },
+		focus						: function() { focused.push( this ) },
+		// By tag, or by the key a field carries: the two ways the script finds an input in a field
+		querySelector		: function( selector ) {
+			const key = /^\[data-key="([^"]+)"\]$/.exec( selector );
+			return descendants( this ).filter( function( child ) { return key === null ? child.tagName === selector.toUpperCase() : child.dataset.key === key[1] } )[0] || null;
+		},
 	};
 
 	el.classList = {
@@ -130,9 +173,16 @@ function byTag( root, tag ) {
 	return descendants( root ).filter( function( el ) { return el.tagName === tag.toUpperCase() } );
 }
 
-/** One album as the panel is handed it */
-function album( images ) {
-	return { key : 'haus', name : 'Haus am See', images : images };
+// What the answer of gallery/list says about the sizes: what a new album starts with, and the range each number may take
+const DEFAULTS = { thumbWidth : 500, thumbHeight : 500, largeWidth : 1800, largeHeight : 1800, keepRatio : true, columns : 4 };
+const RANGES = { thumbWidth : [ 40, 1200 ], thumbHeight : [ 40, 1200 ], largeWidth : [ 200, 4000 ], largeHeight : [ 200, 4000 ], columns : [ 1, 8 ] };
+
+// What the album of the tests is made with - not what a new one starts with, so a screen that reads the wrong one is seen
+const SIZES = { thumbWidth : 300, thumbHeight : 200, largeWidth : 1200, largeHeight : 800, keepRatio : true, columns : 3 };
+
+/** One album as the panel is handed it - always with its six settings, which the server resolves */
+function album( images, settings ) {
+	return { key : 'haus', name : 'Haus am See', images : images, settings : Object.assign( {}, SIZES, settings || {} ) };
 }
 
 /** One image as the panel is handed it: a text is a string or a map of language to string */
@@ -144,8 +194,12 @@ function picture( id, caption, alt ) {
  *	The panel on one album's screen, the script loaded over it, and the
  *	requests it makes held until the test answers them
  *
- *	@param		{Object}	options		{ images, locales, native, locale, limits } - one language, German,
- *														and no limit unless it says otherwise
+ *	@param		{Object}	options		{ images, locales, native, locale, limits, albums, open, creating, address,
+ *														router, init } - one language, German, no limit and the album's screen
+ *														unless it says otherwise. An address is a hash ('#gallery/haus'), the
+ *														router the shell has - false for none, 'set' for one that cannot add
+ *														an entry to the history, the Nino 1.3 one - and init loads the list
+ *														instead of setting the state up
  */
 function panel( options ) {
 
@@ -176,6 +230,13 @@ function panel( options ) {
 	const requests = [];
 	const sessionSet = [];
 
+	// What the panel did to the address: each write, and each move the person made
+	const written = [];
+	const moved = [];
+
+	// The address, as the shell's router reads it: #gallery/haus is the panel and its parts
+	let hash = options.address || '#gallery';
+
 	const Nino = {
 		admin : {
 			formToolbar : function( child ) { const bar = element('div'); bar.className = 'nino-admin-toolbar'; bar.appendChild( child ); return bar },
@@ -188,6 +249,25 @@ function panel( options ) {
 		},
 		adminUi : {
 			emptyState : function( text ) { const p = element('p'); p.className = 'nino-admin-empty'; p.textContent = text; return p },
+			// The bar the workbench pins to the bottom, over a list
+			listActions : function( buttons ) { const bar = element('div'); bar.className = 'nino-admin-actionbar nino-admin-list-actions'; buttons.forEach( function( button ) { bar.appendChild( button ) } ); return bar },
+			// The design system's fields, as far as the panel reads them back: the input, with the key and the bounds it was given
+			numberField : function( field ) {
+				const label = element('label'); label.className = 'nino-admin-field';
+				const name = element('span'); name.textContent = field.label; label.appendChild( name );
+				const input = element('input'); input.type = 'number'; input.dataset.key = field.key; input.value = String( field.value ); input.min = field.min; input.max = field.max;
+				label.appendChild( input );
+				if( field.hint ) { const hint = element('small'); hint.className = 'nino-admin-hint'; hint.textContent = field.hint; label.appendChild( hint ) }
+				return label;
+			},
+			switchField : function( field ) {
+				const label = element('label'); label.className = 'nino-admin-switch';
+				const input = element('input'); input.type = 'checkbox'; input.dataset.key = field.key; input.checked = field.checked === true;
+				label.appendChild( input );
+				const copy = element('span'); copy.textContent = field.label; label.appendChild( copy );
+				if( field.hint ) { const hint = element('small'); hint.textContent = field.hint; copy.appendChild( hint ) }
+				return label;
+			},
 		},
 		content : {
 			getText : function( key ) { return TEXT[key] !== undefined ? TEXT[key] : key },
@@ -206,6 +286,18 @@ function panel( options ) {
 	if( options.status )
 		Nino.adminUi.status = options.status;
 
+	// The shell's router: it reads the address and writes it over the entry the browser is on (set),
+	// and from Nino 1.4 adds an entry for a move the person made (go)
+	if( options.router !== false ) {
+		const path = function( panel, parts ) { return '#'+ [ panel ].concat( parts ).join('/') };
+		Nino.admin.router = {
+			current : function() { const parts = hash.replace( /^#/, '' ).split('/').filter( function( part ) { return part !== '' } ); return { panel : parts[0] || '', parts : parts.slice( 1 ) } },
+			set : function( panel, parts ) { written.push( path( panel, parts ) ); hash = path( panel, parts ) },
+		};
+		if( options.router !== 'set' )
+			Nino.admin.router.go = function( panel, parts ) { moved.push( path( panel, parts ) ); hash = path( panel, parts ) };
+	}
+
 	const sandbox = { console : console, document : dc, Nino : Nino, confirm : function() { return true } };
 	sandbox.window = sandbox;
 
@@ -221,19 +313,38 @@ function panel( options ) {
 			requests.push( { endpoint : endpoint, payload : payload, answer : callback, extra : extra || {} } );
 		};
 
-	gallery._albums = [ album( options.images || [] ) ];
-	gallery._locales = options.locales || [ 'de_DE' ];
-	gallery._native = options.native || 'de_DE';
-	gallery._limits = options.limits || { bytes : 0, text : '' };
 	Nino.admin.sessionLocale.current = options.locale || null;
-	gallery._open = 'haus';
-	gallery._render();
+
+	if( options.init === true )
+		gallery.init();
+	else {
+		gallery._ready = true;
+		gallery._albums = options.albums || [ album( options.images || [] ) ];
+		gallery._defaults = DEFAULTS;
+		gallery._ranges = RANGES;
+		gallery._locales = options.locales || [ 'de_DE' ];
+		gallery._native = options.native || 'de_DE';
+		gallery._limits = options.limits || { bytes : 0, text : '' };
+		gallery._open = options.open === undefined ? 'haus' : options.open;
+		gallery._creating = options.creating === true;
+		gallery._render();
+	}
 
 	return {
 		gallery : gallery,
 		requests : requests,
 		pane : panes['gallery-album'],
 		list : panes['gallery-list'],
+		/** What the panel wrote into the address, and what it asked the history to keep as a step */
+		written : written,
+		moved : moved,
+		/** The address now, and a step through the history to another one (the shell answers it with showCurrent()) */
+		address : function() { return hash },
+		navigate : function( to ) { hash = to },
+		/** Any element on the album's pane - or one of the two panes - by its id */
+		byId : byId,
+		/** Which of the two panes is on screen: 'list', 'album' - or null where neither is */
+		shown : function() { return panes['gallery-list'].classes['admin-hidden'] !== true ? 'list' : ( panes['gallery-album'].classes['admin-hidden'] !== true ? 'album' : null ) },
 		/** The tiles on the screen, in the order they stand in */
 		tiles : function() { return byClass( panes['gallery-album'], 'gallery-tile' ) },
 		/** One tile's caption field, and its alt text field */
@@ -604,6 +715,322 @@ check( '...and "Saved." when it is saved', plainMsg.textContent === 'Saved.' );
 
 console.log('');
 
+
+// --- The way to a new album -----------------------------------------------------------
+//
+// The footer of the list - a key, a name and a button in the bar the workbench pins to
+// the bottom - is gone. The list ends in one button, the way the Elements panel's does,
+// and an album is made on a page of its own
+
+console.log( 'The button below the list' );
+
+/** The two JSON shapes the same, key order and all - what a request is compared by */
+function same( a, b ) {
+	return JSON.stringify( a ) === JSON.stringify( b );
+}
+
+const noAlbums = panel( { open : '', albums : [] } );
+
+check( 'the list holds no field any more: the key and the name are asked on a page of their own',
+	byTag( noAlbums.list, 'form' ).length === 0 && byTag( noAlbums.list, 'input' ).length === 0 );
+check( 'it ends in one button, in the bar the workbench pins below a list, that says what it does',
+	byClass( noAlbums.list, 'nino-admin-list-actions' ).length === 1 && byTag( noAlbums.list, 'button' ).length === 1
+	&& byTag( noAlbums.list, 'button' )[0].textContent === 'Add album' && byTag( noAlbums.list, 'button' )[0].className === 'nino-admin-btn-primary'
+	&& noAlbums.list.children[noAlbums.list.children.length - 1].className.indexOf( 'nino-admin-list-actions' ) !== -1 );
+check( '...below the empty state, and below the rows where there are some', noAlbums.list.children[0].className === 'nino-admin-empty'
+	&& byClass( listed.list, 'nino-admin-list-actions' ).length === 1 && listed.list.children.indexOf( byClass( listed.list, 'nino-admin-list-actions' )[0] ) > listed.list.children.indexOf( rowLists[0] ) );
+check( 'the list writes its address, #gallery', noAlbums.written[noAlbums.written.length - 1] === '#gallery' && noAlbums.shown() === 'list' );
+
+noAlbums.written.length = 0;
+byTag( noAlbums.list, 'button' )[0].fire( 'click' );
+
+check( 'the button opens the page of a new album: a step the history keeps, the address #gallery/new, in the pane of an album\'s screen',
+	same( noAlbums.moved, [ '#gallery/new' ] ) && noAlbums.address() === '#gallery/new' && noAlbums.shown() === 'album' && noAlbums.gallery._creating === true
+	&& noAlbums.byId( 'gallery-new-key' ) !== null );
+
+listed.gallery._open = '';
+listed.gallery._render();
+listed.moved.length = 0;
+byClass( listed.list, 'nino-admin-list-buttons' )[0].children[0].fire( 'click' );
+check( 'a row of the list is a step the history keeps too: #gallery/haus', same( listed.moved, [ '#gallery/haus' ] ) && listed.gallery._open === 'haus' && listed.shown() === 'album' );
+
+console.log('');
+
+
+// --- The page of a new album ------------------------------------------------------------
+
+console.log( 'The page of a new album' );
+
+const fresh = panel( { open : '', creating : true } );
+const freshKey = fresh.byId( 'gallery-new-key' );
+const freshName = fresh.byId( 'gallery-new-name' );
+const freshForm = fresh.byId( 'gallery-new-form' );
+const freshInput = function( name ) { return freshForm.querySelector( '[data-key="'+ name+ '"]' ) };
+
+check( 'it is the pane of an album\'s screen, the list\'s pane hidden, and the address says new',
+	fresh.shown() === 'album' && fresh.written[fresh.written.length - 1] === '#gallery/new' );
+check( '...with the toolbar every level of the panel has: the way back, and no language to switch - nothing here is written in one',
+	byClass( fresh.pane, 'nino-admin-toolbar' ).length === 1 && byClass( fresh.pane, 'nino-admin-back-link' ).length === 1
+	&& byClass( fresh.pane, 'nino-admin-back-link' )[0].textContent === 'Back to list' && fresh.select() === undefined );
+check( '...and a heading that says what the page is for', byTag( fresh.pane, 'h3' ).length === 1 && byTag( fresh.pane, 'h3' )[0].textContent === 'Add album' );
+
+check( 'the key is a text field of its own, which a screen reader is told cannot be left empty - and not through the browser\'s own required, which takes a key of blanks',
+	freshKey.getAttribute('aria-required') === 'true' && freshKey.getAttribute('required') === null && freshKey.readOnly === false && freshKey.value === '' );
+check( '...limited to the length of key the server will make an album with: 64, until the answer of the list names another',
+	freshKey.maxLength === 64 );
+const longer = panel( { open : '', creating : true } );
+longer.gallery._take( { albums : [], maxKey : 40 } );
+check( '...and then that one: the server holds a key to the same number', longer.byId( 'gallery-new-key' ).maxLength === 40 && longer.gallery._maxKey === 40 );
+const keyName = freshKey.parent.children[0];
+check( '...with the mark after its name that is drawn for the eye and hidden from a reader, and the hint under it that tells what a key is made of and that it stays',
+	keyName.textContent === 'Key' && byClass( keyName, 'nino-admin-required' ).length === 1 && byClass( keyName, 'nino-admin-required' )[0].textContent === '*'
+	&& byClass( keyName, 'nino-admin-required' )[0].getAttribute('aria-hidden') === 'true'
+	&& byClass( freshForm, 'nino-admin-field-hint' )[0].textContent === 'Lower case letters, digits and hyphens.'
+	&& freshForm.children.indexOf( byClass( freshForm, 'nino-admin-field-hint' )[0] ) === freshForm.children.indexOf( freshKey.parent ) + 1 );
+check( 'the name is a field of its own, empty and not required', freshName.value === '' && freshName.getAttribute('aria-required') === null && freshName.parent.children[0].textContent === 'Name' );
+
+const group = byTag( fresh.pane, 'details' );
+check( 'the sizes are one group named Image sizes - open here, because they are part of what is decided',
+	group.length === 1 && group[0].open === true && byTag( group[0], 'summary' )[0].textContent === 'Image sizes' );
+check( '...six fields in the order the Features screen has them: the sizes, whether the ratio is kept, and the columns',
+	[ 'thumbWidth', 'thumbHeight', 'largeWidth', 'largeHeight', 'keepRatio', 'columns' ].every( function( name ) { return freshInput( name ) !== null } )
+	&& byTag( group[0], 'input' ).map( function( input ) { return input.dataset.key } ).join() === 'thumbWidth,thumbHeight,largeWidth,largeHeight,keepRatio,columns' );
+check( '...that start as what the feature\'s settings are, and not as the sizes of any album', [ 'thumbWidth', 'thumbHeight', 'largeWidth', 'largeHeight', 'columns' ].every( function( name ) { return freshInput( name ).value === String( DEFAULTS[name] ) } )
+	&& freshInput( 'keepRatio' ).checked === true );
+check( '...each number limited by the range the server will hold it to', freshInput( 'thumbWidth' ).min === 40 && freshInput( 'thumbWidth' ).max === 1200
+	&& freshInput( 'largeHeight' ).min === 200 && freshInput( 'largeHeight' ).max === 4000 && freshInput( 'columns' ).min === 1 && freshInput( 'columns' ).max === 8 );
+check( '...and the fields that have a word to say have it', byTag( group[0], 'small' ).map( function( small ) { return small.textContent } ).join('|')
+	=== 'Thumbnails are cropped to exactly this.|The size behind a thumbnail.|On, the large view is the whole picture.|How many thumbnails a row holds.' );
+
+const freshUpload = fresh.upload();
+check( 'the upload field is drawn - and greyed out, with the word that says when it will be on',
+	freshUpload !== null && freshUpload.disabled === true && freshUpload.parent.className.indexOf( 'gallery-upload-off' ) !== -1 && fresh.said() === 'Create the album, then you can upload images.'
+	&& freshUpload.getAttribute('aria-describedby') === 'gallery-upload-msg' );
+
+const freshBar = byClass( freshForm, 'nino-admin-actionbar' );
+check( 'the page ends in the action bar of a form: the button that makes the album, and the line it answers in',
+	freshBar.length === 1 && byTag( freshBar[0], 'button' ).length === 1 && byTag( freshBar[0], 'button' )[0].type === 'submit' && byTag( freshBar[0], 'button' )[0].textContent === 'Create'
+	&& fresh.byId( 'gallery-new-msg' ).parent === freshBar[0] );
+
+// What a form says of a key it has none of
+freshKey.value = '   ';
+fresh.byId( 'gallery-new-form' ).fire( 'submit' );
+check( 'a key left empty is not sent: the field is marked, has the focus, and the line says what a key is',
+	fresh.requests.length === 0 && freshKey.getAttribute('aria-invalid') === 'true' && focused[focused.length - 1] === freshKey && fresh.byId( 'gallery-new-msg' ).textContent === 'An album key is a slug.' );
+freshKey.fire( 'input' );
+check( '...and what is typed into it takes the mark away', freshKey.getAttribute('aria-invalid') === null );
+
+freshKey.value = ' neu ';
+freshName.value = ' Neu ';
+freshInput( 'thumbWidth' ).value = '120';
+freshInput( 'columns' ).value = '6';
+freshInput( 'keepRatio' ).checked = false;
+fresh.byId( 'gallery-new-form' ).fire( 'submit' );
+
+check( 'the button makes the album with album-save: the key and the name trimmed, the six sizes as numbers and a boolean, and the word that this is a new album',
+	fresh.requests.length === 1 && fresh.requests[0].endpoint === 'album-save'
+	&& same( fresh.requests[0].payload, { album : 'neu', name : 'Neu', settings : { thumbWidth : 120, thumbHeight : 500, largeWidth : 1800, largeHeight : 1800, keepRatio : false, columns : 6 }, isNew : true } ) );
+check( '...and nothing can be pressed twice while it is on its way', byTag( freshBar[0], 'button' )[0].disabled === true && fresh.byId( 'gallery-new-msg' ).textContent === 'Saving …' );
+
+fresh.answer( 400, { error : 'An album with this key exists already.' } );
+check( 'a refusal - the key is taken - is said in the line as the server worded it, and the page stays as it is, with what was typed',
+	fresh.byId( 'gallery-new-msg' ).textContent === 'An album with this key exists already.' && byTag( freshBar[0], 'button' )[0].disabled === false
+	&& fresh.gallery._creating === true && freshKey.value === ' neu ' && freshInput( 'thumbWidth' ).value === '120' && fresh.address() === '#gallery/new' );
+
+fresh.moved.length = 0;
+fresh.written.length = 0;
+fresh.byId( 'gallery-new-form' ).fire( 'submit' );
+fresh.answer( 200, { albums : [ { key : 'neu', name : 'Neu', images : [], settings : { thumbWidth : 120, thumbHeight : 500, largeWidth : 1800, largeHeight : 1800, keepRatio : false, columns : 6 } } ] } );
+
+check( 'a new album opens its own page: the address is written over the one of the new-album page - no step to come back to a page that would make it twice - and names the album',
+	fresh.gallery._open === 'neu' && fresh.gallery._creating === false && fresh.moved.length === 0 && fresh.address() === '#gallery/neu' && fresh.shown() === 'album' );
+check( '...with its key shown and read only, its name in a field, and the upload field on', fresh.byId( 'gallery-album-key' ).value === 'neu' && fresh.byId( 'gallery-album-key' ).readOnly === true
+	&& fresh.byId( 'gallery-album-name' ).value === 'Neu' && fresh.upload().disabled === false && fresh.byId( 'gallery-new-key' ) === null );
+check( '...and the sizes it was made with are the ones the page says an upload will become', byClass( fresh.pane, 'gallery-sizes' )[0].textContent === 'A thumbnail cropped to 120×500, and a large view cropped to 1800×1800.' );
+
+const back = panel( { open : '', creating : true } );
+byClass( back.pane, 'nino-admin-back-link' )[0].fire( 'click' );
+check( 'the back link is a step the history keeps, and leaves the page for the list', same( back.moved, [ '#gallery' ] ) && back.shown() === 'list' && back.gallery._creating === false && back.address() === '#gallery' );
+
+const old13 = panel( { router : 'set', open : '', albums : [] } );
+byTag( old13.list, 'button' )[0].fire( 'click' );
+check( 'a shell that cannot add an entry to the history (Nino 1.3) is written to all the same', old13.shown() === 'album' && old13.address() === '#gallery/new' && old13.moved.length === 0 );
+const unrouted = panel( { router : false, open : '', albums : [] } );
+byTag( unrouted.list, 'button' )[0].fire( 'click' );
+check( '...and one without a router at all draws the page', unrouted.shown() === 'album' && unrouted.byId( 'gallery-new-key' ) !== null );
+
+console.log('');
+
+
+// --- One album's page ---------------------------------------------------------------------
+
+console.log( 'One album\'s page' );
+
+const one = panel( { images : [ picture( 'a1', 'Vorderseite' ) ] } );
+const oneKey = one.byId( 'gallery-album-key' );
+const oneName = one.byId( 'gallery-album-name' );
+const oneTitle = byTag( one.pane, 'h3' )[0];
+const oneForm = byClass( one.pane, 'gallery-name-form' )[0];
+
+check( 'the key of an album is shown and cannot be changed - the shortcode names it and the files are filed under it - with the line to put into a template',
+	oneKey.value === 'haus' && oneKey.readOnly === true && oneKey.parent.children[0].textContent === 'Key'
+	&& byClass( oneForm, 'nino-admin-field-hint' )[0].textContent === 'Put [gallery album="haus"] into a template or a text' );
+check( 'the name is a field that can be written', oneName.value === 'Haus am See' && oneName.readOnly === false && oneTitle.textContent === 'Haus am See' );
+
+const oneTile = one.tiles()[0];
+oneName.value = ' Haus am Meer ';
+oneForm.fire( 'submit' );
+check( 'the name is saved with album-save and the name alone: no sizes, and not as a new album',
+	one.requests.length === 1 && one.requests[0].endpoint === 'album-save' && same( one.requests[0].payload, { album : 'haus', name : 'Haus am Meer' } ) );
+
+one.answer( 200, { albums : [ Object.assign( album( [ picture( 'a1', 'Vorderseite' ) ] ), { name : 'Haus am Meer' } ) ] } );
+check( 'what the server kept is what the page says - the heading, the field and the list - and the page is not drawn again: the pictures and the cursor stay',
+	oneTitle.textContent === 'Haus am Meer' && oneName.value === 'Haus am Meer' && one.gallery._album( 'haus' ).name === 'Haus am Meer' && one.tiles()[0] === oneTile
+	&& byClass( oneForm, 'gallery-form-msg' )[0].textContent === 'Saved.' );
+
+oneName.value = '';
+oneForm.fire( 'submit' );
+one.answer( 200, { albums : [ Object.assign( album( [ picture( 'a1', 'Vorderseite' ) ] ), { name : 'Haus am Meer' } ) ] } );
+check( 'a name emptied is kept as it was by the server, and the field says so', oneName.value === 'Haus am Meer' && oneTitle.textContent === 'Haus am Meer' );
+
+oneName.value = 'x';
+oneForm.fire( 'submit' );
+one.answer( 400, { error : 'The albums could not be written.' } );
+check( 'a refusal is said in the line, and nothing on the page changes', byClass( oneForm, 'gallery-form-msg' )[0].textContent === 'The albums could not be written.' && oneTitle.textContent === 'Haus am Meer'
+	&& one.gallery._album( 'haus' ).name === 'Haus am Meer' );
+
+// The sizes
+const sizesForm = byClass( one.pane, 'gallery-sizes-form' )[0];
+const sizesGroup = byTag( sizesForm, 'details' )[0];
+const sizeInput = function( name ) { return sizesForm.querySelector( '[data-key="'+ name+ '"]' ) };
+
+check( 'the sizes of the album are a group that is folded away, named Image sizes', byClass( one.pane, 'gallery-sizes-group' ).length === 1 && sizesGroup.open === false
+	&& byTag( sizesGroup, 'summary' )[0].textContent === 'Image sizes' );
+check( '...whose fields hold the sizes of this album - not what a new one starts with - limited by the same ranges', [ 'thumbWidth', 'thumbHeight', 'largeWidth', 'largeHeight', 'columns' ].every( function( name ) { return sizeInput( name ).value === String( SIZES[name] ) } )
+	&& sizeInput( 'keepRatio' ).checked === true && sizeInput( 'columns' ).max === 8 );
+check( '...with the word that they apply to what is uploaded from then on, and a Save of their own',
+	byClass( sizesGroup, 'nino-admin-hint' ).filter( function( p ) { return p.textContent === 'These sizes apply to images uploaded from now on.' } ).length === 1
+	&& byTag( sizesGroup, 'button' ).length === 1 && byTag( sizesGroup, 'button' )[0].type === 'submit' && byTag( sizesGroup, 'button' )[0].textContent === 'Save' );
+check( 'what an upload becomes is said in the album\'s own sizes, above the field that uploads', byClass( one.pane, 'gallery-sizes' )[0].textContent === 'A thumbnail cropped to 300×200, and a large view scaled into 1200×800.'
+	&& one.pane.children.indexOf( byClass( one.pane, 'gallery-sizes' )[0] ) < one.pane.children.indexOf( one.upload().parent ) );
+
+sizesGroup.open = true;
+sizeInput( 'thumbWidth' ).value = '150';
+sizeInput( 'columns' ).value = '5';
+sizeInput( 'keepRatio' ).checked = false;
+sizesForm.fire( 'submit' );
+check( 'the sizes are saved with album-save and the sizes alone: the album and the six values, no name',
+	one.requests.length === 1 && same( one.requests[0].payload, { album : 'haus', settings : { thumbWidth : 150, thumbHeight : 200, largeWidth : 1200, largeHeight : 800, keepRatio : false, columns : 5 } } ) );
+
+one.answer( 200, { albums : [ album( [ picture( 'a1', 'Vorderseite' ) ], { thumbWidth : 150, keepRatio : false, columns : 5 } ) ] } );
+check( 'what was saved is what the page says of an upload from now on, and the group stays open under the cursor rather than folding away',
+	byClass( one.pane, 'gallery-sizes' )[0].textContent === 'A thumbnail cropped to 150×200, and a large view cropped to 1200×800.' && sizesGroup.open === true
+	&& one.gallery._album( 'haus' ).settings.columns === 5 && byClass( sizesGroup, 'gallery-form-msg' )[0].textContent === 'Saved.' && one.tiles()[0] === oneTile );
+
+sizeInput( 'columns' ).value = '9';
+sizesForm.fire( 'submit' );
+one.answer( 400, { error : 'These values are outside what is allowed: Columns (1–8).' } );
+check( 'sizes the server refuses are said as it worded them, and the page keeps what it had', byClass( sizesGroup, 'gallery-form-msg' )[0].textContent === 'These values are outside what is allowed: Columns (1–8).'
+	&& byClass( one.pane, 'gallery-sizes' )[0].textContent === 'A thumbnail cropped to 150×200, and a large view cropped to 1200×800.' && one.gallery._album( 'haus' ).settings.columns === 5 );
+
+sizeInput( 'thumbHeight' ).value = '';
+sizesForm.fire( 'submit' );
+check( 'a number that is none is sent as none: the server refuses it with the rest, rather than the panel guessing', one.requests.length === 1 && one.requests[0].payload.settings.thumbHeight === null );
+one.requests.length = 0;
+
+const backOne = panel( { images : [] } );
+byClass( backOne.pane, 'nino-admin-back-link' )[0].fire( 'click' );
+check( 'the back link of an album\'s page is a step the history keeps, and leads to the list', same( backOne.moved, [ '#gallery' ] ) && backOne.shown() === 'list' && backOne.gallery._open === '' );
+check( 'the address of an album\'s page is its key', panel( { images : [] } ).address() === '#gallery/haus' );
+
+console.log('');
+
+
+// --- The address --------------------------------------------------------------------------
+
+console.log( 'The address' );
+
+const answer = function( albums ) { return { albums : albums, defaults : DEFAULTS, ranges : RANGES, locales : [ 'de_DE' ], native : 'de_DE', limits : { bytes : 0, text : '' } } };
+
+/*	The address is read before anything is drawn, because drawing writes it: a list drawn first
+	and the album after would have taken the album's address back to #gallery by then	*/
+const reload = panel( { init : true, address : '#gallery/haus' } );
+reload.answer( 200, answer( [ album( [] ) ] ) );
+check( 'a page opened on the address of an album opens on that album - and the list is never drawn first, so the address is never taken back',
+	reload.shown() === 'album' && reload.gallery._open === 'haus' && same( reload.written, [ '#gallery/haus' ] ) && reload.byId( 'gallery-album-key' ).value === 'haus' );
+check( '...with what the list answered: what a new album starts with, and the ranges', same( reload.gallery._defaults, DEFAULTS ) && same( reload.gallery._ranges, RANGES ) );
+
+const reloadNew = panel( { init : true, address : '#gallery/new' } );
+reloadNew.answer( 200, answer( [ album( [] ) ] ) );
+check( '...and on the address of the page of a new album it opens that page, with the sizes the feature has', reloadNew.shown() === 'album' && reloadNew.gallery._creating === true
+	&& same( reloadNew.written, [ '#gallery/new' ] ) && reloadNew.byId( 'gallery-new-form' ).querySelector( '[data-key="columns"]' ).value === '4' );
+
+const reloadGone = panel( { init : true, address : '#gallery/gone' } );
+reloadGone.answer( 200, answer( [ album( [] ) ] ) );
+check( 'an address that names an album nobody has is the list', reloadGone.shown() === 'list' && reloadGone.gallery._open === '' && reloadGone.gallery._creating === false && reloadGone.address() === '#gallery' );
+
+const reloadBare = panel( { init : true } );
+reloadBare.answer( 200, answer( [ album( [] ) ] ) );
+check( 'the plain address is the list', reloadBare.shown() === 'list' && reloadBare.address() === '#gallery' );
+
+const reloadOther = panel( { init : true, address : '#dashboard' } );
+reloadOther.answer( 200, answer( [ album( [] ) ] ) );
+check( 'an address that names another panel leaves this one on its list', reloadOther.shown() === 'list' && reloadOther.gallery._open === '' && reloadOther.gallery._creating === false );
+
+const reloadNone = panel( { init : true, router : false } );
+reloadNone.answer( 200, answer( [ album( [] ) ] ) );
+check( 'a shell with no router has no address to read: the list', reloadNone.shown() === 'list' );
+
+const newKey = panel( { init : true, address : '#gallery/new' } );
+newKey.answer( 200, answer( [ Object.assign( album( [] ), { key : 'new', name : 'Neues' } ) ] ) );
+check( 'an album whose key is "new" is opened by its address, not mistaken for the page of a new one', newKey.shown() === 'album' && newKey.gallery._open === 'new' && newKey.gallery._creating === false
+	&& newKey.byId( 'gallery-album-key' ).value === 'new' );
+
+/*	A step through the browser's history changes the address and nothing else; the shell answers
+	by asking the panel to show again, and the level the address names is the one shown	*/
+const stepped = panel( { open : '', albums : [ album( [] ) ] } );
+stepped.navigate( '#gallery/haus' );
+stepped.gallery.showCurrent();
+check( 'a step through the history to an album shows it', stepped.shown() === 'album' && stepped.gallery._open === 'haus' && stepped.byId( 'gallery-album-key' ).value === 'haus' );
+stepped.navigate( '#gallery/new' );
+stepped.gallery.showCurrent();
+check( '...to the page of a new album shows that', stepped.gallery._creating === true && stepped.byId( 'gallery-new-key' ) !== null && stepped.gallery._open === '' );
+stepped.navigate( '#gallery' );
+stepped.gallery.showCurrent();
+check( '...and back to the plain address shows the list', stepped.shown() === 'list' && stepped.gallery._creating === false && stepped.gallery._open === '' );
+stepped.gallery._open = 'haus';
+stepped.navigate( '#elements/services' );
+stepped.gallery.showCurrent();
+check( 'an address that names another panel leaves the level in memory as it is: the panel keeps its drill-down state while another is on screen', stepped.gallery._open === 'haus' && stepped.shown() === 'album' );
+
+/*	The panel is opened again - from the rail, after another panel was on screen. A page that is drawn for
+	the level the panel is on is shown as it was: the key that was half typed is still there	*/
+const away = panel( { open : '', creating : true } );
+const typed = away.byId( 'gallery-new-key' );
+typed.value = 'half-typed';
+away.navigate( '#dashboard' );
+away.gallery.showCurrent();
+check( 'the page of a new album is shown as it was when the panel is opened again: the field is the same and holds what was typed, and the address is the page\'s',
+	away.byId( 'gallery-new-key' ) === typed && typed.value === 'half-typed' && away.address() === '#gallery/new' && away.shown() === 'album' );
+
+const awayAlbum = panel( { images : [ picture( 'a1', '' ) ] } );
+const awayName = awayAlbum.byId( 'gallery-album-name' );
+awayName.value = 'half-typed';
+awayAlbum.navigate( '#dashboard' );
+awayAlbum.gallery.showCurrent();
+check( '...and so is the page of an album, with the name that was being changed', awayAlbum.byId( 'gallery-album-name' ) === awayName && awayName.value === 'half-typed' && awayAlbum.address() === '#gallery/haus' );
+
+awayAlbum.navigate( '#gallery' );
+awayAlbum.gallery.showCurrent();
+awayAlbum.navigate( '#gallery/haus' );
+awayAlbum.gallery.showCurrent();
+check( 'a page for another level is drawn: back from the list to the album, the field is a new one with the name the album has', awayAlbum.shown() === 'album' && awayAlbum.byId( 'gallery-album-name' ).value === 'Haus am See' );
+
+const deleted = panel( { images : [] } );
+deleted.gallery._take( { albums : [] } );
+check( 'an album that is gone takes its page with it, and the address goes back to the list', deleted.shown() === 'list' && deleted.address() === '#gallery' && deleted.gallery._open === '' );
+
+console.log('');
 
 console.log( '\n'+ checks+ ' checks, '+ failures+ ' failed' );
 process.exit( failures === 0 ? 0 : 1 );
