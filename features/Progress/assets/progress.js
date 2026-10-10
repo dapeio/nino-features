@@ -122,8 +122,20 @@
 	function init() {
 
 		var found = document.querySelectorAll( SELECTOR );
+		var body = document.body;
 
 		for( var i = 0; i < found.length; i++ ) {
+
+			/*	Into the body, and before anything is measured. A fixed element is
+				pinned to the window only while none of its ancestors has a transform,
+				a filter or a perspective - one that has becomes the box it is fixed
+				to, and the bar scrolls away with that box instead of staying at the
+				top. An animated section keeps its translateY(0) after it has been
+				seen, the row of a cover is centred with translateY(-50%), and the
+				Builder places the bar in a section: so it is moved out of there, to
+				where nothing stands between it and the window	*/
+			if( body && found[i].parentNode !== body )
+				body.appendChild( found[i] );
 
 			var label = found[i].getAttribute( 'data-progress-label' ) || '';
 

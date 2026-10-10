@@ -4,14 +4,22 @@ declare(strict_types=1);
 /**
  *	Nino
  *	progress-smoke.php	Contract test for the Progress feature (Modules\Progress): the
- *										manifest, the activation through \Nino\Features, the two
- *										files it puts into the site's own asset bundles
- *										(\Nino\Html::addAsset()), what those two files promise,
- *										and deactivation. Like Typewriter this feature renders
- *										nothing at all - the bar is one empty element the
- *										project's own template carries - so there is no
- *										shortcode here to test, and that absence is itself
- *										checked.
+ *										manifest, the activation through \Nino\Features, the
+ *										[progress] shortcode that writes the bar's element and
+ *										what it does with the two values it is given, the
+ *										component the Builder places where the Components module
+ *										is, the two files the feature puts into the site's own
+ *										asset bundles (\Nino\Html::addAsset()), what those two
+ *										files promise, and deactivation. The bar is one empty
+ *										element, which a project's own template may still carry
+ *										by hand; the shortcode and the component only write it.
+ *
+ *										A Nino before 1.6 has no Components module and ignores
+ *										the manifest's components: there the feature registers
+ *										the shortcode itself, and that is the half of this test
+ *										that runs on it. Where the module is there, the
+ *										component is checked besides - registered from the
+ *										manifest, and answering what the shortcode answers.
  *
  *										What the two files then do is the browser's, and
  *										progress-js-smoke.js beside this file measures it; this
@@ -43,17 +51,25 @@ check( 'it names and describes itself in both interface languages', is_array( $m
 
 check( 'it is filed under ui', $manifest['category'] === 'ui' );
 
-/*	Like Typewriter: the bar is the project's own markup, pointed at what it
-	measures with data attributes in the one template it is written into -
-	nothing for a shortcode to draw and nothing for a site-wide setting	*/
-check( 'it brings nothing of its own to write - no shortcode in the manual',
-	$manifest['manual']['shortcodes'] === [] && $manifest['manual']['routes'] === [] );
-check( '...and names the data attributes a bar is pointed with instead',
-	array_key_exists( 'data-progress-of="#article"', $manifest['manual']['markup'] ) === true );
+/*	The bar is one empty element, pointed at what it measures with data
+	attributes: the Builder places it as a component, the shortcode writes it
+	where there is no Builder, and a project's own template may carry it by
+	hand. Nothing for a route to do and nothing for a site-wide setting	*/
+check( 'its manual names the shortcode and the class a call adds, and no route',
+	array_keys( $manifest['manual']['shortcodes'] ) === [ '[progress of="#article" label="Lesefortschritt"]', '[progress ... class="my-class"]' ]
+	&& $manifest['manual']['routes'] === [] );
+check( '...and names the data attributes a bar is pointed with in the markup',
+	array_key_exists( 'data-progress-of="#article"', $manifest['manual']['markup'] ) === true
+	&& array_key_exists( 'data-progress-label="Lesefortschritt"', $manifest['manual']['markup'] ) === true );
+check( '...and says in both languages who writes the element: the Builder, as a component, or whoever writes the page, by hand',
+	preg_match( '/Builder.*by hand/', \Nino\Features::localized( $manifest['manual']['markup']['class="nino-progress"'] ?? '', 'en_US' ) ) === 1
+	&& preg_match( '/Builder.*von Hand/', \Nino\Features::localized( $manifest['manual']['markup']['class="nino-progress"'] ?? '', 'de_DE' ) ) === 1 );
 check( 'it requires no other feature, keeps no data and carries no settings',
 	$manifest['requires'] === [] && $manifest['data'] === [] && $manifest['settings'] === [] );
 check( 'and ships no install unit - there is nothing for it to write into a project',
 	$manifest['manual']['install'] === [] );
+check( 'it is written for the Nino it was - an older one ignores the component and takes the shortcode',
+	$manifest['nino'] === '^1.3' );
 
 \Nino\AppData::writeContentData( $appData, [ '/nino/modules' ] );
 ninoWarnings();
@@ -67,17 +83,18 @@ echo "\n";
 
 // --- init() ------------------------------------------------------------------
 
-echo "Modules\\Progress::init() - the bundle, and nothing besides\n";
+echo "Modules\\Progress::init() - the shortcode and the bundle\n";
 
 $appData['/nino/modules'][] = '\\Nino\\Modules\\Assets';
 \Nino\Modules::callModules( $appData, 'init' );
 
+/*	This project has not booted the Components module, so there is no registry
+	for the bar to be in: the feature registers the shortcode itself, which is
+	all a Nino before 1.6 can have it do	*/
+check( 'the shortcode is registered as [progress] where no registry has it', ( $appData['./nino/html/shortcodes']['progress'] ?? null ) !== null );
 check( 'progress.css joined the project\'s own /.cache/style.css bundle', in_array( '/features/Progress/assets/progress.css', \Nino\Html::getAssets( $appData, '/.cache/style.css' ), true ) === true );
 check( 'progress.js joined the project\'s own /.cache/script.js bundle', in_array( '/features/Progress/assets/progress.js', \Nino\Html::getAssets( $appData, '/.cache/script.js' ), true ) === true );
-/*	Measured against this feature's own name rather than against the whole map:
-	Modules\Assets, which the bundle needs, registers [assets] of its own	*/
-check( 'and it registered no shortcode and no route at all', ( $appData['./nino/html/shortcodes']['progress'] ?? null ) === null
-	&& ( \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/http/routes'] ?? [] ) === [] );
+check( 'it registers no route - nothing about a bar reaches the server', ( \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/http/routes'] ?? [] ) === [] );
 
 check( 'the generated cache file carries this feature\'s css', ( static function() use ( &$appData ): bool {
 	\Nino\Html::renderHtml( $appData, '[assets /.cache/style.css]' );
@@ -87,6 +104,67 @@ check( '...and its js', ( static function() use ( &$appData ): bool {
 	\Nino\Html::renderHtml( $appData, '[assets /.cache/script.js]' );
 	return str_contains( (string) \Nino\Filesystem::getFileContent( $appData, '/.cache/script.js', '' ), 'data-progress-of' );
 } )() );
+
+echo "\n";
+
+
+// --- [progress] --------------------------------------------------------------
+
+echo "[progress] - the element, and what happens to the two values in it\n";
+
+check( 'a bar with nothing said about it is the element over the article, with no name',
+	\Nino\Html::renderHtml( $appData, '[progress]' ) === '<div class="nino-progress" data-progress-of="#article" data-progress-label=""></div>' );
+check( 'what it measures and what it is called are written where the call says',
+	\Nino\Html::renderHtml( $appData, '[progress of="main.post" label="Lesefortschritt"]' ) === '<div class="nino-progress" data-progress-of="main.post" data-progress-label="Lesefortschritt"></div>' );
+check( 'an empty "of" is the whole page, and is not taken for the article',
+	\Nino\Html::renderHtml( $appData, '[progress of=""]' ) === '<div class="nino-progress" data-progress-of="" data-progress-label=""></div>' );
+check( 'a value of nothing but spaces is as empty - a label of spaces would be a progressbar with no name',
+	\Nino\Html::renderHtml( $appData, '[progress of="  " label="  "]' ) === '<div class="nino-progress" data-progress-of="" data-progress-label=""></div>' );
+check( 'a class of its own comes after the bar\'s, and none leaves no space behind',
+	\Nino\Html::renderHtml( $appData, '[progress class="thick"]' ) === '<div class="nino-progress thick" data-progress-of="#article" data-progress-label=""></div>'
+	&& \Nino\Html::renderHtml( $appData, '[progress class=""]' ) === \Nino\Html::renderHtml( $appData, '[progress]' ) );
+
+/*	Both values are editor text, and the element is rendered once more with the
+	page: a quote must not end its attribute, and a bracket must not open a fill
+	or a shortcode there	*/
+check( 'a label with markup in it is escaped, not written through',
+	\Nino\Html::renderHtml( $appData, '[progress label="Ada & <b>Co</b>"]' ) === '<div class="nino-progress" data-progress-of="#article" data-progress-label="Ada &amp; &lt;b&gt;Co&lt;/b&gt;"></div>' );
+check( 'a quote in a value is escaped - the shortcode reads an apostrophe as one - and cannot end its attribute',
+	\Nino\Html::renderHtml( $appData, '[progress of="#a\'b" label="say \'hi\'"]' ) === '<div class="nino-progress" data-progress-of="#a&quot;b" data-progress-label="say &quot;hi&quot;"></div>' );
+check( 'a bracket is written as a character reference, which is what keeps it from opening anything',
+	\Nino\Html::renderHtml( $appData, '[progress of="a[b" label="c [d"]' ) === '<div class="nino-progress" data-progress-of="a&#91;b" data-progress-label="c &#91;d"></div>' );
+
+$typed = [ 'of' => 'main > .post[data-kind="long"], #a & #b', 'label' => 'Ada & "Co" <b> \'x\' [[/test/progress/leak]] [y', 'class' => 'x"y [z' ];
+$element = \Nino\Modules\Progress::doShortcode( $appData, $typed );
+
+check( 'whatever the values hold, the element stays one element with its three attributes',
+	preg_match( '/^<div class="[^"<>]*" data-progress-of="[^"<>]*" data-progress-label="[^"<>]*"><\/div>$/', $element ) === 1 );
+check( '...and the browser reads back from them what was typed, selector and label alike',
+	preg_match( '/^<div class="([^"]*)" data-progress-of="([^"]*)" data-progress-label="([^"]*)">/', $element, $found ) === 1
+	&& html_entity_decode( $found[1], ENT_QUOTES | ENT_HTML5, 'UTF-8' ) === 'nino-progress '. $typed['class']
+	&& html_entity_decode( $found[2], ENT_QUOTES | ENT_HTML5, 'UTF-8' ) === $typed['of']
+	&& html_entity_decode( $found[3], ENT_QUOTES | ENT_HTML5, 'UTF-8' ) === $typed['label'] );
+
+$leaky = $appData;
+\Nino\Html::addFills( $leaky, [ '[[/test/progress/leak]]' => 'LEAKED' ], '*' );
+$page = \Nino\Html::renderHtml( $leaky, \Nino\Modules\Progress::doShortcode( $leaky, [ 'of' => '[[/test/progress/leak]]', 'label' => '[progress of="#nested"]', 'class' => '[[/test/progress/leak]]' ] ) );
+
+check( 'the fill and the shortcode the next two checks use are ones a page would take, written bare',
+	\Nino\Html::renderHtml( $leaky, '[[/test/progress/leak]]' ) === 'LEAKED'
+	&& str_contains( \Nino\Html::renderHtml( $leaky, '[progress of="#nested"]' ), 'data-progress-of="#nested"' ) === true );
+check( 'a fill in a value stays text when the page is rendered - in the selector and in the class',
+	str_contains( $page, 'LEAKED' ) === false && substr_count( $page, '&#91;&#91;/test/progress/leak]]' ) === 2 );
+check( '...and a shortcode in a value is not run',
+	substr_count( $page, '<div' ) === 1 && str_contains( $page, 'data-progress-of="#nested"' ) === false
+	&& str_contains( $page, 'data-progress-label="&#91;progress of=&quot;#nested&quot;]"' ) === true );
+
+/*	htmlspecialchars() answers '' for a value that is not valid UTF-8 unless it
+	is told to substitute, and a label that renders as nothing is a bar that is
+	announced with no name	*/
+check( 'a value that is not valid UTF-8 is substituted rather than dropped',
+	str_contains( \Nino\Modules\Progress::doShortcode( $appData, [ 'label' => "Lese\xB1fortschritt" ] ), 'data-progress-label="Lese'. "\u{FFFD}". 'fortschritt"' ) === true );
+
+check( '...and nothing is logged', ninoWarnings() === [] );
 
 echo "\n";
 
@@ -147,6 +225,97 @@ else {
 	check( 'the browser half passes too', preg_match( '/^\d+ checks, 0 failed$/m', $out ) === 1 );
 	echo "\n";
 }
+
+
+// --- Components ----------------------------------------------------------------
+
+echo "Components - [progress] as the Builder offers it\n";
+
+if( class_exists( '\\Nino\\Modules\\Components' ) === false )
+	echo "  --  this Nino has no \\Nino\\Modules\\Components: the manifest's components are not read here, and the shortcode registers itself\n";
+else ( static function( array $appData ): void {
+
+	$declared = \Nino\Features::manifest( dirname( __DIR__ ) )['components'] ?? [];
+	$schema = $declared['progress'] ?? [];
+	$attributes = $schema['attributes'] ?? [];
+
+	check( 'the manifest declares one component, [progress]: no source, meant once per page, drawn as a block',
+		array_keys( $declared ) === [ 'progress' ] && ( $schema['source'] ?? null ) === 'none'
+		&& ( $schema['loop'] ?? null ) === false && ( $schema['preview'] ?? null ) === 'block' );
+	check( '...with the two attributes of the markup, both strings: "of" over the article, "label" with no name',
+		array_keys( $attributes ) === [ 'of', 'label' ]
+		&& ( $attributes['of']['type'] ?? null ) === 'string' && ( $attributes['of']['default'] ?? null ) === \Nino\Modules\Progress::OF_DEFAULT
+		&& ( $attributes['label']['type'] ?? null ) === 'string' && ( $attributes['label']['default'] ?? null ) === '' );
+
+	$words = [ $schema['label'] ?? '' ];
+	foreach( $attributes as $attribute )
+		array_push( $words, $attribute['label'] ?? '', $attribute['hint'] ?? '' );
+
+	check( '...and each of them is named and explained in both interface languages',
+		array_filter( $words, static fn( mixed $word ): bool => \Nino\Features::localized( $word, 'en_US' ) === ''
+			|| \Nino\Features::localized( $word, 'de_DE' ) === \Nino\Features::localized( $word, 'en_US' ) ) === [] );
+
+	// Every documented call form, as it renders before the wrapper is there
+	$calls = [
+		'[progress]',
+		'[progress of="#article" label="Lesefortschritt"]',
+		'[progress of="main.post" label="Lesefortschritt"]',
+		'[progress label="Lesefortschritt"]',
+		'[progress of=""]',
+		'[progress label="Ada & <b>Co</b> \'x\' [y"]',
+		'[progress class="thick"]',
+	];
+
+	$before = [];
+	foreach( $calls as $call )
+		$before[$call] = \Nino\Html::renderHtml( $appData, $call );
+
+	/*	The kernel reads the manifest ahead of the feature's own init() - that is
+		the order here too, on a copy of the project's data that nothing else in
+		this test sees. The shortcode the feature registered above is the one of a
+		boot that has no registry to read; this boot registers it once	*/
+	$probe = $appData;
+	foreach( [ 'progress' ] as $shortcode )
+		\Nino\Callbacks::removeCallbacks( $probe, '/nino/html/shortcode/'. $shortcode );
+	\Nino\Modules\Components::init( $probe );
+	\Nino\Modules\Progress::init( $probe );
+	ninoWarnings();
+
+	check( 'the component is registered with the schema the manifest declares',
+		( \Nino\Modules\Components::components( $probe )['progress'] ?? null ) === ( $declared['progress'] ?? false ) );
+	check( '...as one meant once per page: the registered schema says it stays out of a loop',
+		( \Nino\Modules\Components::components( $probe )['progress']['loop'] ?? null ) === false );
+	check( '...and what the feature registers is answered once - the component by its wrapper, the feature adding none of its own',
+		\Nino\Features::shortcodes( $probe, 'progress' ) === [ 'progress' ]
+		&& count( $registered = \Nino\Callbacks::registered( $probe, '/nino/html/shortcode/progress' ) ) === 1 && $registered[0] instanceof \Closure );
+	check( '...with the defaults of the schema, as strings',
+		\Nino\Modules\Components::defaults( $probe, 'progress' ) === [ 'of' => '#article', 'label' => '', 'class' => '' ] );
+
+	foreach( $calls as $call )
+		check( 'renders as it did: '. $call, \Nino\Html::renderHtml( $probe, $call ) === $before[$call] );
+
+	ninoWarnings();
+
+	// A call written the Builder's way: what differs from the defaults, nothing
+	// else - and the same call with every default written out
+	check( 'every attribute written out at its default is the call without it',
+		\Nino\Html::renderHtml( $probe, '[progress of="#article" label="" class=""]' ) === \Nino\Html::renderHtml( $probe, '[progress]' ) );
+	check( 'a bar with no name is the element with an empty label, which progress.js hides from a screen reader',
+		\Nino\Html::renderHtml( $probe, '[progress of="main.post"]' ) === '<div class="nino-progress" data-progress-of="main.post" data-progress-label=""></div>' );
+
+	$args = [ 'of' => '#a"b', 'label' => 'say "hi" [[/x]]', 'class' => 'thick [y', 'source' => '', 'content' => '' ];
+	check( 'the renderer writes the element from the resolved arguments, every value escaped and its brackets inert',
+		\Nino\Modules\Progress::componentProgress( $probe, $args )
+		=== '<div class="nino-progress thick &#91;y" data-progress-of="#a&quot;b" data-progress-label="say &quot;hi&quot; &#91;&#91;/x]]"></div>' );
+
+	\Nino\Html::addFills( $probe, [ '[[/test/progress/leak]]' => 'LEAKED' ], '*' );
+	$page = \Nino\Html::renderHtml( $probe, \Nino\Modules\Progress::componentProgress( $probe, [ 'of' => '[[/test/progress/leak]]', 'label' => '[progress of="#nested"]', 'class' => '', 'source' => '', 'content' => '' ] ) );
+	check( 'a fill or a shortcode in what the Builder wrote opens nothing when the page is rendered',
+		str_contains( $page, 'LEAKED' ) === false && substr_count( $page, '<div' ) === 1 && str_contains( $page, 'data-progress-of="#nested"' ) === false );
+	ninoWarnings();
+} )( $appData );
+
+echo "\n";
 
 
 // --- Deactivation --------------------------------------------------------------

@@ -5,8 +5,10 @@
  *												and over one named element, what it does with an
  *												element shorter than the screen, that a bar with a
  *												name becomes a named progressbar and one without is
- *												hidden from a screen reader, and that a page with no
- *												bar on it costs nothing.
+ *												hidden from a screen reader, that a bar written into
+ *												a section with a transform is moved to the body before
+ *												it is measured and one that stands there already stays,
+ *												and that a page with no bar on it costs nothing.
  *
  *												No jsdom, no dependency: the same element stand-in
  *												the other feature tests build, so this runs with
@@ -44,10 +46,25 @@ function element( attributes ) {
 		attributes	: Object.assign( {}, attributes || {} ),
 		properties	: {},
 		box					: { top : 0, height : 0 },
+		parentNode	: null,
+		children	: [],
 		getAttribute		: function( name ) { return Object.prototype.hasOwnProperty.call( this.attributes, name ) ? this.attributes[name] : null },
 		setAttribute		: function( name, value ) { this.attributes[name] = String( value ) },
 		getBoundingClientRect : function() { return this.box },
 		matchesClass		: function( name ) { return ( this.attributes['class'] || '' ).split( /\s+/ ).indexOf( name ) !== -1 },
+		// As the DOM does it: a node that stands somewhere leaves that place first
+		appendChild			: function( child ) {
+			if( child.parentNode !== null )
+				child.parentNode.removeChild( child );
+			child.parentNode = this;
+			this.children.push( child );
+			return child;
+		},
+		removeChild			: function( child ) {
+			this.children = this.children.filter( function( node ) { return node !== child } );
+			child.parentNode = null;
+			return child;
+		},
 	};
 
 	el.classList = { add : function( name ) { el.attributes['class'] = ( ( el.attributes['class'] || '' ) + ' ' + name ).trim() } };
@@ -59,7 +76,7 @@ function element( attributes ) {
 /**
  *	A page with a bar on it, the script loaded over it
  *
- *	@param		{Object}	options		{ of, label, scrollHeight, offset, subject, withBar, readyState }
+ *	@param		{Object}	options		{ of, label, scrollHeight, offset, subject, withBar, readyState, inSection }
  */
 function page( options ) {
 
@@ -71,6 +88,33 @@ function page( options ) {
 
 	const bar = element( attributes );
 	const subject = element( { id : 'article' } );
+
+	// Where the bar stood when it was measured first: the move has to come before
+	// that, not after
+	let paintedUnder;
+	const setProperty = bar.style.setProperty;
+	bar.style.setProperty = function( name, value ) {
+		if( paintedUnder === undefined ) paintedUnder = bar.parentNode;
+		setProperty( name, value );
+	};
+
+	// The bar is written first thing in the body or - the way the Builder places
+	// it - into a section, which carries a transform once it has been animated
+	// into view
+	const body = element( {} );
+	const footer = element( { 'class' : 'footer' } );
+	let section = null;
+
+	if( options.inSection === true ) {
+		section = element( { 'class' : 'nino-section nino-vpa nino-vpa--visible' } );
+		section.style.transform = 'translateY(0px)';
+		body.appendChild( section );
+		section.appendChild( bar );
+	}
+	else
+		body.appendChild( bar );
+
+	body.appendChild( footer );
 
 	if( options.subject !== undefined )
 		subject.box = options.subject;
@@ -85,6 +129,7 @@ function page( options ) {
 	const dc = {
 		readyState			: options.readyState || 'complete',
 		documentElement	: root,
+		body				: body,
 		querySelector		: function( selector ) { return selector === '#article' ? subject : null },
 		querySelectorAll	: function( selector ) {
 			return ( selector === '.nino-progress' && options.withBar !== false ) ? [ bar ] : [];
@@ -106,6 +151,8 @@ function page( options ) {
 
 	return {
 		bar : bar, subject : subject, window : wn, listeners : listeners,
+		body : body, section : section, footer : footer,
+		paintedUnder : function() { return paintedUnder },
 		at : function() { return bar.properties['--nino-progress'] },
 		scrollTo : function( offset, top ) {
 			wn.pageYOffset = offset;
@@ -181,6 +228,25 @@ check( '...and the value follows the reading', named.bar.getAttribute('aria-valu
 check( 'a bar with no name is hidden from a screen reader rather than announced as a number nobody asked for',
 	whole.bar.getAttribute('aria-hidden') === 'true' && whole.bar.getAttribute('role') === null
 	&& whole.bar.getAttribute('aria-valuenow') === null );
+
+
+// --- Where the bar stands ------------------------------------------------------
+
+/*	A fixed element is fixed to the window only while no ancestor has a
+	transform, and an animated section keeps one once it has been seen - so a bar
+	the Builder placed in a section is taken out of it, before it is measured	*/
+const nested = page( { inSection : true } );
+
+check( 'a bar written into a section that has a transform is a child of the body once the script has run',
+	nested.section.style.transform === 'translateY(0px)' && nested.bar.parentNode === nested.body
+	&& nested.body.children.indexOf( nested.bar ) !== -1 );
+check( '...and the section does not hold it any more', nested.section.children.indexOf( nested.bar ) === -1 );
+check( '...and it stood there already when it was measured the first time, not only afterwards', nested.paintedUnder() === nested.body );
+
+const placed = page( {} );
+
+check( 'a bar that is a child of the body already is left where it is, not taken out and put behind what follows it',
+	placed.bar.parentNode === placed.body && placed.body.children[0] === placed.bar && placed.body.children[1] === placed.footer );
 
 
 // --- A page with no bar --------------------------------------------------------
