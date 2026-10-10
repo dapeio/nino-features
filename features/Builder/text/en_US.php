@@ -21,6 +21,8 @@ declare(strict_types=1);
 //   /_admin/builder/stack/...     the fields of the loop form (the model and the kernel call it a stack)
 //   /_admin/builder/component/... the title and the content of the component form
 //   /_admin/builder/source/...    the dialog of a source: its tabs, the search, a new key or slot - and the focus of a picture
+//   /_admin/builder/value/...     the text of a key, in the language the editor works in
+//   /_admin/builder/picture/...   the picture of a slot and its alt text, and what is said of the upload
 //   /_admin/builder/focus/...     the nine places of the focus of a picture
 //   /_admin/builder/html/...      the HTML+ editor
 //   /_admin/builder/option/...    the words of a value of a setting, as <setting>-<value>; a value with no
@@ -69,13 +71,16 @@ return [
 	'[[/_admin/builder/error/conflict]]'				=> 'The file changed since it was loaded - in another window, or in another editor.',
 	'[[/_admin/builder/error/invalid]]'				=> 'The template is not valid, and nothing was written.',
 	'[[/_admin/builder/error/model]]'					=> 'There was nothing to save.',
-	'[[/_admin/builder/error/key]]'						=> 'A text key could not be made, copied or moved.',
+	'[[/_admin/builder/error/key]]'						=> 'A text key could not be made, copied, moved or written.',
 	'[[/_admin/builder/error/slot]]'						=> 'An image slot could not be made or copied.',
-	'[[/_admin/builder/error/value]]'						=> 'A value holds a quote, a square bracket or a line break, which a shortcode call cannot carry. Nothing was written.',
+	'[[/_admin/builder/error/value]]'						=> 'A value cannot be written: it holds a quote, a square bracket or a line break, which a shortcode call cannot carry, or it is a text for a language the site does not have. Nothing was written.',
 	'[[/_admin/builder/error/key-exists]]'				=> 'A key or an image slot that a renamed section or a copy would make is there already. Nothing was changed.',
 	'[[/_admin/builder/error/keys-in-the-way]]'			=> 'Keys in the way: %s.',
 	'[[/_admin/builder/error/slots-in-the-way]]'			=> 'Image slots in the way: %s.',
-	'[[/_admin/builder/error/permission]]'			=> 'This makes or moves keys or image slots, and the permission of the panel that owns them is missing.',
+	'[[/_admin/builder/error/permission]]'			=> 'This makes or moves keys or image slots, or writes the text of a key or the alternative text of a picture, and the permission of the panel that owns them is missing.',
+	'[[/_admin/builder/error/upload]]'					=> 'The picture could not be stored.',
+	'[[/_admin/builder/error/alt]]'						=> 'The alternative text could not be stored.',
+	'[[/_admin/builder/error/make-slot]]'				=> 'The image slot could not be made.',
 	'[[/_admin/builder/error/write]]'					=> 'The file could not be written.',
 	'[[/_admin/builder/error/load]]'						=> 'The page templates could not be loaded.',
 
@@ -113,6 +118,7 @@ return [
 	// The editor: the preview, the viewports, the bar
 	'[[/_admin/builder/label/preview]]'						=> 'Preview',
 	'[[/_admin/builder/label/viewports]]'					=> 'Viewport of the preview',
+	'[[/_admin/builder/label/locale]]'						=> 'Language of the texts',
 	'[[/_admin/builder/label/source]]'						=> 'Source',
 	'[[/_admin/builder/label/open-page]]'					=> 'Open the page',
 	'[[/_admin/builder/label/close]]'						=> 'Close',
@@ -258,6 +264,22 @@ return [
 	'[[/_admin/builder/source/no-focus]]'					=> 'No focus',
 	'[[/_admin/builder/source/remove-background]]'			=> 'Remove the picture',
 	'[[/_admin/builder/source/view-note]]'					=> 'The file as it would be saved. Blocks of HTML+ - the ones the Builder keeps as they are - are marked; nothing can be changed here.',
+
+	// The text of a key and the picture of a slot, in the language the editor works in
+	'[[/_admin/builder/value/label]]'						=> 'Text (%s)',
+	'[[/_admin/builder/value/label-global]]'				=> 'Text (all languages)',
+	'[[/_admin/builder/value/hint]]'						=> 'Written to the key when the template is saved.',
+	'[[/_admin/builder/picture/upload]]'					=> 'Upload a picture',
+	'[[/_admin/builder/picture/hint]]'						=> 'A picture is stored at once, not when the template is saved.',
+	'[[/_admin/builder/picture/hint-made]]'				=> 'The first picture makes the slot and is stored at once.',
+	'[[/_admin/builder/picture/alt]]'						=> 'Alternative text (%s)',
+	'[[/_admin/builder/picture/alt-hint]]'					=> 'Stored at once, with the slot.',
+	'[[/_admin/builder/picture/alt-hint-made]]'			=> 'Stored with the slot as soon as it is made.',
+	'[[/_admin/builder/picture/alt-hint-none]]'			=> 'Upload a picture first, or choose a slot with the Source button.',
+	'[[/_admin/builder/picture/alt-saved]]'				=> 'The alternative text is stored.',
+	'[[/_admin/builder/picture/busy]]'						=> 'Storing the picture ...',
+	'[[/_admin/builder/picture/stored]]'					=> 'The picture is stored.',
+	'[[/_admin/builder/picture/small]]'					=> 'The picture is smaller than the slot (%s) and is scaled up.',
 
 	// Hints under the fields
 	'[[/_admin/builder/hint/name]]'							=> 'One line. The file name is made of it when the template is created and stays as it is.',

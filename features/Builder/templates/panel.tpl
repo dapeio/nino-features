@@ -32,11 +32,14 @@
 		<section id="builder-preview-pane" class="builder-preview-pane" aria-label="[[/_admin/builder/label/preview]]">
 			<div class="builder-pane-head">
 				<h3 class="builder-pane-title">[[/_admin/builder/label/preview]]</h3>
-				<div class="builder-viewports" role="group" aria-label="[[/_admin/builder/label/viewports]]">
-					<button type="button" id="builder-viewport-s" class="builder-viewport" title="[[/_admin/builder/viewport/s]]"><svg class="builder-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#builder-icon-smartphone"></use></svg><span>[[/_admin/builder/viewport/s]]</span></button>
-					<button type="button" id="builder-viewport-m" class="builder-viewport" title="[[/_admin/builder/viewport/m]]"><svg class="builder-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#builder-icon-tablet"></use></svg><span>[[/_admin/builder/viewport/m]]</span></button>
-					<button type="button" id="builder-viewport-l" class="builder-viewport" title="[[/_admin/builder/viewport/l]]"><svg class="builder-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#builder-icon-monitor"></use></svg><span>[[/_admin/builder/viewport/l]]</span></button>
-					<button type="button" id="builder-viewport-g" class="builder-viewport" title="[[/_admin/builder/viewport/g]]"><svg class="builder-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#builder-icon-monitor-smartphone"></use></svg><span>[[/_admin/builder/viewport/g]]</span></button>
+				<div class="builder-pane-tools">
+					<select id="builder-locale" class="nino-admin-locale-select builder-locale" title="[[/_admin/builder/label/locale]]" aria-label="[[/_admin/builder/label/locale]]" hidden></select>
+					<div class="builder-viewports" role="group" aria-label="[[/_admin/builder/label/viewports]]">
+						<button type="button" id="builder-viewport-s" class="builder-viewport" title="[[/_admin/builder/viewport/s]]"><svg class="builder-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#builder-icon-smartphone"></use></svg><span>[[/_admin/builder/viewport/s]]</span></button>
+						<button type="button" id="builder-viewport-m" class="builder-viewport" title="[[/_admin/builder/viewport/m]]"><svg class="builder-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#builder-icon-tablet"></use></svg><span>[[/_admin/builder/viewport/m]]</span></button>
+						<button type="button" id="builder-viewport-l" class="builder-viewport" title="[[/_admin/builder/viewport/l]]"><svg class="builder-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#builder-icon-monitor"></use></svg><span>[[/_admin/builder/viewport/l]]</span></button>
+						<button type="button" id="builder-viewport-g" class="builder-viewport" title="[[/_admin/builder/viewport/g]]"><svg class="builder-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#builder-icon-monitor-smartphone"></use></svg><span>[[/_admin/builder/viewport/g]]</span></button>
+					</div>
 				</div>
 			</div>
 			<div id="builder-preview" class="builder-preview" data-viewport="l"></div>
@@ -166,9 +169,12 @@
 		</div>
 	</template>
 
+	<!-- A component in the preview: the image its schema names, or - where its slot has a picture - the picture; its label, or - where its
+	     key has a text - the first line of the text -->
 	<template id="builder-tpl-ph">
 		<div class="builder-ph">
 			<svg class="builder-ph-icon" viewBox="0 0 48 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><use href="#builder-ph-block"></use></svg>
+			<img class="builder-ph-picture" alt="">
 			<span class="builder-ph-label"></span>
 		</div>
 	</template>

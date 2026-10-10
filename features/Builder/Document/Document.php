@@ -32,17 +32,23 @@ namespace Nino\Modules\Builder {
 	 *											What a save creates besides the file, it creates with the
 	 *											code of the panels that own it, never with a copy of it:
 	 *											a text key with \Nino\Modules\Text\Keys::apiCreate() and
-	 *											apiRename(), an image slot with
-	 *											\Nino\Modules\Images\Slots::apiCreate() - and takes one away
-	 *											again with Slots::apiDelete(), where a save that stopped
-	 *											has made it for nothing. Those answer a
+	 *											apiRename(), the texts typed for a key with its
+	 *											apiSaveBatch(), an image slot with
+	 *											\Nino\Modules\Images\Slots::apiCreate() - and takes them away
+	 *											again with Slots::apiDelete() and Keys::apiDelete(), where a
+	 *											save that stopped has made them for nothing, and writes the
+	 *											texts it changed back as they were. Those answer a
 	 *											request, so they are called with one - the posted data set,
 	 *											the request they answer into read back - and they ask for
 	 *											the permission of their own panel, which is as it should be:
 	 *											an account that may not create keys cannot create them
 	 *											through here either - and a save asks for those permissions,
 	 *											and checks what it is going to make, before it changes
-	 *											anything.
+	 *											anything. The alt texts a new slot is made with are written
+	 *											with \Nino\Images::setSlotAlt() itself, which asks for no
+	 *											permission where the Images panel's images/alt asks for its
+	 *											own: so the save asks for that one, before it makes a slot
+	 *											that is to be made with alt texts.
 	 *
 	 *	@package						Dape/Nino
 	 *	@author							David Perchermeier <mail@dape.io>
@@ -64,6 +70,9 @@ namespace Nino\Modules\Builder {
 		// What a call cannot carry: the shortcode syntax has no escape for a quote, a
 		// bracket or a line break in a value, and the kernel reads ' as "
 		private const string UNSAFE = '/["\'\[\]\r\n]/';
+
+		// The longest alt text the Images panel keeps of a picture
+		private const int ALT_MAX = 250;
 
 		/**
 		 *	Whether a name may be a page template's: the file is page-<slug>
@@ -102,12 +111,14 @@ namespace Nino\Modules\Builder {
 		 *	Everything the panel builds its forms from: the components and
 		 *	the stacks with their labels in the language of the workbench, the
 		 *	types of the Elements panel with their fields, the image slots (each
-		 *	with the url of its picture, null where it has none), the frames a
-		 *	page may name
+		 *	with the url of its picture, null where it has none, and its alt
+		 *	texts by language), the frames a page may name - and the languages
+		 *	of the site, by the name the project gives them, with the native
+		 *	one, which is the language the panel starts in
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
-		 *	@return 	array										[ 'status' => 200, 'components', 'stacks', 'types', 'fieldTypes', 'slots', 'headers', 'footers' ]
+		 *	@return 	array										[ 'status' => 200, 'components', 'stacks', 'types', 'fieldTypes', 'slots', 'headers', 'footers', 'locales' => [ [ locale, name ], ... ], 'native' ]
 		 */
 		public static function registry( array &$appData ): array {
 
@@ -149,9 +160,20 @@ namespace Nino\Modules\Builder {
 					'height'		=> (int) ( $slot['height'] ?? 0 ),
 					'hasImage'	=> ( $slot['filename'] ?? null ) !== null,
 					'url'				=> ( $slot['filename'] ?? null ) !== null ? \Nino\Images::getUrl( $appData, (string) $slot['filename'] ) : null,
+					'alt'				=> is_array( $slot['alt'] ?? null ) === true ? $slot['alt'] : [],
 				];
 
 			usort( $slots, static fn( array $a, array $b ): int => strcmp( $a['uri'], $b['uri'] ) );
+
+			$locales = [];
+
+			foreach( \Nino\Locales::getAvailableLocales( $appData ) as $available ) {
+
+				// The name of a language is the project's to give, and the code stands where it gave none
+				$name = \Nino\Html::renderTextfill( $appData, '/_nino/locale/'. $available. '/name' );
+
+				$locales[] = [ 'locale' => (string) $available, 'name' => $name !== '' ? $name : (string) $available ];
+			}
 
 			return [
 				'status'			=> 200,
@@ -162,6 +184,8 @@ namespace Nino\Modules\Builder {
 				'slots'				=> $slots,
 				'headers'			=> self::_frames( $appData, 'html-header' ),
 				'footers'			=> self::_frames( $appData, 'html-footer' ),
+				'locales'			=> $locales,
+				'native'			=> \Nino\Locales::getNativeLocale( $appData ),
 			];
 		}
 
@@ -272,13 +296,27 @@ namespace Nino\Modules\Builder {
 		 *	the alt texts of the old one, and hand their file over to it
 		 *	(nothing is deleted).
 		 *
+		 *	The model also carries what the file does not: the texts typed for
+		 *	the key of a component (values, by language - for a key that is
+		 *	new and for one that is there alike) and the alt texts a new slot
+		 *	is made with (in its create). The texts are written with the Text
+		 *	Keys' own action, each in the language it is for, once the keys are
+		 *	there - made, or moved to their new name - and every one is read
+		 *	again to see that the language files took it. A model that is the
+		 *	file but for its texts writes the texts and leaves the file alone.
+		 *	A language the site does not have is refused (400, value).
+		 *
 		 *	Everything a save refuses for is refused before the first change:
-		 *	the permissions of the panels that own the keys and the slots, what
-		 *	each new key and slot is made of, a target a move would overwrite.
-		 *	What is made then is made in an order that can be undone: the keys
-		 *	and slots that are new first (nothing in the project points at
-		 *	them yet), the keys and the files that move last, just before the
-		 *	file is written - and moved back where the write does not happen.
+		 *	the permissions of the panels that own the keys and the slots (and
+		 *	the Images panel's, where a slot is made with alt texts), what each
+		 *	new key and slot is made of, a target a move would overwrite, a
+		 *	text for a key that is not there. What is made then is made in an
+		 *	order that can be undone: the keys and slots that are new first
+		 *	(nothing in the project points at them yet), then the keys and the
+		 *	files that move, then the texts, just before the file is written -
+		 *	and where it is not written the texts are put back as they were
+		 *	(read before they were changed), the moves are undone, and the keys
+		 *	this save made are taken away again.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$file					page-home
@@ -289,7 +327,7 @@ namespace Nino\Modules\Builder {
 		 *	@return 	array										[ 'status' => 200, 'model', 'hash' ] - the model as it reads back; 400 with
 		 *																	'problems', 403, 404, 409 for a file that changed or a key or slot a
 		 *																	move would overwrite ('key-exists'), or what a panel that makes a key
-		 *																	or a slot answered
+		 *																	or a slot or writes a text answered
 		 */
 		public static function save( array &$appData, string $file, array $model, string $hash, bool $force = false ): array {
 
@@ -316,11 +354,24 @@ namespace Nino\Modules\Builder {
 			$model		= self::_again( $model, $schemas );
 			$moves		= self::_rename( $model, $file, $schemas );
 
-			// Nothing to write: the model is the file
+			// A text is for a language of the site, whatever else the model holds
+			$problems = self::_languages( $appData, $model );
+
+			if( $problems !== [] )
+				return self::_error( 400, 'a text is for a language the site does not have', 'value', $problems );
+
+			[ $texts, $problems ] = self::_texts( $model, $schemas );
+
+			if( $problems !== [] )
+				return self::_error( 400, 'the page template is not valid', 'invalid', $problems );
+
+			// Nothing to write: the model is the file, and has no text to go to a key
 			$disk = Reader::read( $current, $schemas );
 			$disk['file'] = $file;
 
-			if( self::_same( [ 'file' => $file ] + $model, $disk ) === true )
+			$same = self::_same( [ 'file' => $file ] + self::_unstaged( $model ), $disk );
+
+			if( $same === true && $texts === [] )
 				return [ 'status' => 200, 'model' => $disk, 'hash' => hash( 'sha256', $current ) ];
 
 			$problems = self::_values( $model );
@@ -333,26 +384,37 @@ namespace Nino\Modules\Builder {
 			if( $problems !== [] )
 				return self::_error( 400, 'the page template is not valid', 'invalid', $problems );
 
-			[ $failure, $plan ] = self::_plan( $appData, $model, $moves, $schemas );
+			[ $failure, $plan ] = self::_plan( $appData, $model, $moves, $schemas, $texts );
 
 			if( $failure !== null )
 				return $failure;
 
 			$made			= [];
-			$failure	= self::_create( $appData, $plan, $made );
+			$keys			= [];
+			$failure	= self::_create( $appData, $plan, $made, $keys );
 
 			if( $failure !== null ) {
-				self::_drop( $appData, $made );
+				self::_rollback( $appData, [], [], $made, $keys );
 				return $failure;
 			}
 
 			[ $failure, $undo ] = self::_move( $appData, $plan );
 
 			if( $failure !== null ) {
-				self::_undo( $appData, $undo );
-				self::_drop( $appData, $made );
+				self::_rollback( $appData, [], $undo, $made, $keys );
 				return $failure;
 			}
+
+			[ $failure, $before ] = self::_write( $appData, $plan['values'], $keys );
+
+			if( $failure !== null ) {
+				self::_rollback( $appData, $before, $undo, $made, $keys );
+				return $failure;
+			}
+
+			// The file says what the model says already: the texts were all there was to write
+			if( $same === true )
+				return [ 'status' => 200, 'model' => $disk, 'hash' => hash( 'sha256', $current ) ];
 
 			$source = Writer::write( $model, $schemas );
 
@@ -369,8 +431,7 @@ namespace Nino\Modules\Builder {
 
 			if( $written === false ) {
 
-				self::_undo( $appData, $undo );
-				self::_drop( $appData, $made );
+				self::_rollback( $appData, $before, $undo, $made, $keys );
 
 				return $conflict === true
 					? self::_error( 409, 'the page template changed since it was loaded', 'conflict' )
@@ -1177,23 +1238,131 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
+		 *	The languages the texts of a model are for: the texts typed for the
+		 *	key of a component and the alt texts a new slot is made with. Each
+		 *	has to be a language the site has
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$model
+		 *
+		 *	@return 	array										Sentences naming the section and what the text is of, in English
+		 */
+		private static function _languages( array &$appData, array $model ): array {
+
+			$problems = [];
+
+			foreach( (array) ( $model['blocks'] ?? [] ) as $index => $block ) {
+
+				if( ( $block['kind'] ?? '' ) !== 'section' )
+					continue;
+
+				$at			= 'the section "'. (string) ( $block['id'] ?? '' ). '" (block '. ( (int) $index + 1 ). ')';
+				$given	= [ [ 'the alt text of the background', $block['background']['create']['alt'] ?? null ] ];
+
+				foreach( (array) ( $block['cols'] ?? [] ) as $col )
+					foreach( (array) ( $col['components'] ?? [] ) as $component ) {
+
+						$name = (string) ( $component['name'] ?? '' );
+
+						$given[] = [ 'the text of the component "'. $name. '"', $component['values'] ?? null ];
+						$given[] = [ 'the alt text of the component "'. $name. '"', is_array( $component['create'] ?? null ) === true ? ( $component['create']['alt'] ?? null ) : null ];
+					}
+
+				foreach( $given as [ $what, $texts ] )
+					foreach( is_array( $texts ) === true ? array_keys( $texts ) : [] as $locale )
+						if( is_string( $locale ) === false || \Nino\Locales::verifyLocale( $appData, $locale ) === false )
+							$problems[] = $at. ': '. $what. ' is for "'. $locale. '", a language the site does not have';
+			}
+
+			return $problems;
+		}
+
+		/**
+		 *	The texts a model carries for the keys of its components, by key and
+		 *	language: what was typed into the field of a component whose source
+		 *	is a text key. A component that has texts and no such source - a
+		 *	fixed text, the field of a loop, a picture - is a problem: a text
+		 *	with no key to go to is not written to whatever key is nearest
+		 *
+		 *	@param		array			$model
+		 *	@param		array			$schemas
+		 *
+		 *	@return 	array										[ key => [ language => text ], the problems as sentences ]; where
+		 *																	two components name a key, the later text of a language stands
+		 */
+		private static function _texts( array $model, array $schemas ): array {
+
+			$texts		= [];
+			$problems	= [];
+
+			foreach( (array) ( $model['blocks'] ?? [] ) as $index => $block ) {
+
+				if( ( $block['kind'] ?? '' ) !== 'section' )
+					continue;
+
+				foreach( (array) ( $block['cols'] ?? [] ) as $col )
+					foreach( (array) ( $col['components'] ?? [] ) as $component ) {
+
+						$given = (array) ( $component['values'] ?? [] );
+
+						if( $given === [] )
+							continue;
+
+						$name		= (string) ( $component['name'] ?? '' );
+						$source	= (string) ( $component['source'] ?? '' );
+
+						if( self::_kind( $schemas, $name ) !== 'text' || $source === '' || $source[0] !== '/' || is_string( $component['text'] ?? null ) === true ) {
+							$problems[] = 'the section "'. (string) ( $block['id'] ?? '' ). '" (block '. ( (int) $index + 1 ). '): the component "'. $name. '" has a text, and its source is no text key';
+							continue;
+						}
+
+						foreach( $given as $locale => $text )
+							$texts[$source][(string) $locale] = (string) $text;
+					}
+			}
+
+			return [ $texts, $problems ];
+		}
+
+		/**
+		 *	The model as the file holds it: without the texts its components
+		 *	carry for their keys, which are no part of the file
+		 *
+		 *	@param		array			$model
+		 *
+		 *	@return 	array
+		 */
+		private static function _unstaged( array $model ): array {
+
+			foreach( (array) ( $model['blocks'] ?? [] ) as $b => $block )
+				foreach( (array) ( $block['cols'] ?? [] ) as $c => $col )
+					foreach( array_keys( (array) ( $col['components'] ?? [] ) ) as $k )
+						unset( $model['blocks'][$b]['cols'][$c]['components'][$k]['values'] );
+
+			return $model;
+		}
+
+		/**
 		 *	What a save is going to do to the keys and the slots, and whether
 		 *	it may: the keys and slots the model names as new and the ones a
-		 *	renamed section takes along, checked - the permission of each
-		 *	panel, the key grammar, the format, the size of a slot, a target
-		 *	that is there already - before anything is changed
+		 *	renamed section takes along, the texts that are to go to keys -
+		 *	checked: the permission of each panel - the Images panel's too, where
+		 *	a slot is made with alt texts -, the key grammar, the format, the size
+		 *	of a slot and the alt texts it is made with, a target that is there
+		 *	already, a key a text has none of - before anything is changed
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array			$model
 		 *	@param		array			$moves				See _rename()
 		 *	@param		array			$schemas
+		 *	@param		array			$texts				See _texts()
 		 *
 		 *	@return 	array										[ the refusal or null, the plan: 'keys' and 'slots' (source => what it is made with),
-		 *																	'keyMoves' and 'slotMoves' (old => new) ]
+		 *																	'keyMoves' and 'slotMoves' (old => new), 'values' (key => language => text) ]
 		 */
-		private static function _plan( array &$appData, array $model, array $moves, array $schemas ): array {
+		private static function _plan( array &$appData, array $model, array $moves, array $schemas, array $texts = [] ): array {
 
-			$plan			= [ 'keys' => [], 'slots' => [], 'keyMoves' => [], 'slotMoves' => [] ];
+			$plan			= [ 'keys' => [], 'slots' => [], 'keyMoves' => [], 'slotMoves' => [], 'values' => [] ];
 			$exists		= [];
 			$problems	= [];
 
@@ -1242,10 +1411,15 @@ namespace Nino\Modules\Builder {
 						if( is_array( $component['create'] ?? null ) === false || $source === '' )
 							continue;
 
-						if( self::_kind( $schemas, (string) ( $component['name'] ?? '' ) ) === 'image' )
+						if( self::_kind( $schemas, (string) ( $component['name'] ?? '' ) ) === 'image' ) {
 							$plan['slots'][$source] = $component['create'];
-						else
-							$plan['keys'][$source] = $component['create'] + [ 'format' => (string) ( $component['attributes']['format'] ?? '' ) ];
+							continue;
+						}
+
+						// A text key is made in the format its component asks for - the format attribute, where it has one - and plain where it asks for none
+						$asked = (string) ( $component['attributes']['format'] ?? '' );
+
+						$plan['keys'][$source] = $component['create'] + [ 'format' => $asked !== '' ? $asked : 'plain' ];
 					}
 			}
 
@@ -1276,22 +1450,51 @@ namespace Nino\Modules\Builder {
 					$problems[] = 'the image slot "'. $uri. '" is not an uri of a slot';
 				elseif( $size[0] * $size[1] > \Nino\Images::MAX_SOURCE_PIXELS )
 					$problems[] = 'the image slot "'. $uri. '" is larger than an upload can produce';
+
+				// What the Images panel holds an alt text to: one short line of text
+				foreach( (array) ( $create['alt'] ?? [] ) as $alt ) {
+
+					$clean = is_string( $alt ) === true ? \Nino\Images::cleanAlt( $alt ) : false;
+
+					if( $clean === false )
+						$problems[] = 'an alt text of the image slot "'. $uri. '" is not text';
+					elseif( mb_strlen( $clean ) > self::ALT_MAX )
+						$problems[] = 'an alt text of the image slot "'. $uri. '" is longer than '. self::ALT_MAX. ' characters';
+				}
+			}
+
+			// A text goes to a key that is there, or one this save makes or moves
+			$known = $texts === [] ? [] : array_column( \Nino\Text::entries( $appData ), null, 'key' );
+
+			foreach( $texts as $key => $given ) {
+
+				if( isset( $known[$key] ) === true || isset( $plan['keys'][$key] ) === true || in_array( $key, $plan['keyMoves'], true ) === true )
+					$plan['values'][$key] = $given;
+				else
+					$problems[] = 'the text for the key "'. $key. '" has no key to go to: it is not there';
 			}
 
 			if( $problems !== [] )
-				return [ self::_error( 400, 'a key or a slot of the page template cannot be made', 'invalid', $problems ), $plan ];
+				return [ self::_error( 400, 'a key, a slot or a text of the page template cannot be made', 'invalid', $problems ), $plan ];
 
 			$permissions = [];
 
-			if( $plan['keys'] !== [] || $plan['keyMoves'] !== [] )
+			if( $plan['keys'] !== [] || $plan['keyMoves'] !== [] || $plan['values'] !== [] )
 				$permissions[] = \Nino\Modules\Text\Keys::MANAGE_PERM;
 
 			if( $plan['slots'] !== [] || $plan['slotMoves'] !== [] )
 				$permissions[] = \Nino\Modules\Images\Slots::MANAGE_PERM;
 
+			// The alt texts a slot is made with are written by the save itself: the permission is the one the Images panel's images/alt asks for
+			foreach( $plan['slots'] as $create )
+				if( is_array( $create['alt'] ?? null ) === true && $create['alt'] !== [] ) {
+					$permissions[] = \Nino\Modules\Images\Admin::MANAGE_PERM;
+					break;
+				}
+
 			foreach( $permissions as $permission )
 				if( \Nino\Auth::checkPermission( $appData, $permission ) === false )
-					return [ self::_error( 403, 'this save makes or moves keys or slots, which asks for the permission '. $permission, 'permission', [ $permission ] ), $plan ];
+					return [ self::_error( 403, 'this save makes or moves keys or slots, or writes texts or alt texts, which asks for the permission '. $permission, 'permission', [ $permission ] ), $plan ];
 
 			return [ null, $plan ];
 		}
@@ -1308,19 +1511,23 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	Make what the plan makes new: the keys, the slots, and the slots a
-		 *	renamed section moves to, with their alt texts. Nothing in the
-		 *	project points at any of them yet, so a save that stops after
-		 *	this leaves keys and slots that are used by nobody - and nothing
-		 *	that was there changed
+		 *	Make what the plan makes new: the keys, the slots with the alt texts
+		 *	their create names (the plan has asked for the permission of the
+		 *	Images panel for them), and the slots a renamed section moves to,
+		 *	with the alt texts of the old ones. Nothing in the project points
+		 *	at any of them yet, so a save that stops after this leaves keys and
+		 *	slots that are used by nobody - and nothing that was there changed.
+		 *	The keys it made itself are told, so that a save that stops takes
+		 *	them away: they hold the texts it wrote
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array			$plan					See _plan()
 		 *	@param		array 		&$made				(reference) The slots a renamed section moves to that this made, for _drop()
+		 *	@param		array 		&$keys				(reference) The keys this made - not one that was there already (409) - for _rollback()
 		 *
 		 *	@return 	array|null								The answer that stopped it, null where all of it was made
 		 */
-		private static function _create( array &$appData, array $plan, array &$made ): ?array {
+		private static function _create( array &$appData, array $plan, array &$made, array &$keys = [] ): ?array {
 
 			foreach( $plan['keys'] as $source => $create ) {
 
@@ -1333,6 +1540,10 @@ namespace Nino\Modules\Builder {
 
 				if( in_array( $status, [ 200, 409 ], true ) === false )
 					return self::_error( $status, (string) ( $body['error'] ?? 'the key could not be created' ), 'key', [ (string) $source ] );
+
+				// From here on the key is this save's; one that another request made in the meantime (409) is not
+				if( $status === 200 )
+					$keys[] = (string) $source;
 			}
 
 			// The slots of the page's own components stay where a save stops: nothing refuses the retry for them
@@ -1347,6 +1558,12 @@ namespace Nino\Modules\Builder {
 
 				if( $failure !== null )
 					return $failure;
+
+				// A slot that is there already is another request's: the alt texts are written into the slot this save made
+				$alt = is_array( $create['alt'] ?? null ) === true ? $create['alt'] : [];
+
+				if( $alt !== [] && in_array( (string) $uri, $kept, true ) === true && \Nino\Images::setSlotAlt( $appData, (string) $uri, $alt ) === false )
+					return self::_error( 500, 'the alt texts of the slot could not be written', 'slot', [ (string) $uri ] );
 			}
 
 			foreach( $plan['slotMoves'] as $old => $new ) {
@@ -1457,6 +1674,113 @@ namespace Nino\Modules\Builder {
 
 				self::_api( $appData, 'slots/delete', [ 'uri' => $uri ] );
 			}
+		}
+
+		/**
+		 *	Write the texts a save carries, all of them in one batch of the Text
+		 *	Keys' own action. What each key holds in each language is read
+		 *	first, to be put back by _restore() - except for a key this save
+		 *	made, which is taken away with the rest where the save stops. The
+		 *	action says which keys it could not write and not whether each
+		 *	language file took them, so what it did is looked at: every text is
+		 *	read again and has to be what the key's format makes of it. A key
+		 *	every language shares has one text, the last one given
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$texts				See _plan(): key => language => text
+		 *	@param		array			$made					The keys this save made
+		 *
+		 *	@return 	array										[ the answer that stopped it or null, what the keys held, for _restore() ] - the second
+		 *																	is what to put back also where the first stopped half way
+		 */
+		private static function _write( array &$appData, array $texts, array $made ): array {
+
+			if( $texts === [] )
+				return [ null, [] ];
+
+			$known	= array_column( \Nino\Text::entries( $appData ), null, 'key' );
+			$items	= [];
+			$before	= [];
+
+			foreach( $texts as $key => $given ) {
+
+				$entry = $known[$key] ?? null;
+
+				// The key was made, or moved here, a moment ago: it is there, unless the panel that made it did not say that it could not
+				if( $entry === null )
+					return [ self::_error( 500, 'the key could not be written', 'key', [ (string) $key ] ), $before ];
+
+				if( $entry['global'] === true )
+					$given = array_slice( $given, -1, 1, true );
+
+				foreach( $given as $locale => $text ) {
+
+					$items[] = [ 'key' => (string) $key, 'locale' => (string) $locale, 'value' => $text ];
+
+					if( in_array( (string) $key, $made, true ) === false )
+						$before[] = [ 'key' => (string) $key, 'locale' => (string) $locale, 'value' => (string) ( $entry['global'] === true ? ( $entry['values']['*'] ?? '' ) : ( $entry['values'][$locale] ?? '' ) ) ];
+				}
+			}
+
+			[ $status, $body ] = self::_api( $appData, 'keys/savebatch', [ 'items' => $items ] );
+
+			if( $status !== 200 )
+				return [ self::_error( $status, (string) ( $body['error'] ?? 'the texts could not be saved' ), 'key', array_map( 'strval', array_keys( $texts ) ) ), $before ];
+
+			$stored = array_column( \Nino\Text::entries( $appData ), null, 'key' );
+
+			foreach( $items as $item ) {
+
+				$wanted	= \Nino\Text::sanitizeValue( $item['value'], (string) $known[$item['key']]['format'] );
+				$held		= $stored[$item['key']] ?? null;
+
+				if( $held !== null )
+					$held = $held['global'] === true ? ( $held['values']['*'] ?? null ) : ( $held['values'][$item['locale']] ?? null );
+
+				if( $held !== $wanted )
+					return [ self::_error( 500, 'the key could not be written in every language', 'key', [ $item['key'] ] ), $before ];
+			}
+
+			return [ null, $before ];
+		}
+
+		/**
+		 *	Put the texts back that _write() changed: each key in each language
+		 *	as it was read before. A language a key had no text in is written
+		 *	empty - the Text Keys' action writes a text and does not take one
+		 *	away - which a component renders as it renders no text at all
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$before				As _write() answers
+		 *
+		 *	@return 	void
+		 */
+		private static function _restore( array &$appData, array $before ): void {
+
+			if( $before !== [] )
+				self::_api( $appData, 'keys/savebatch', [ 'items' => $before ] );
+		}
+
+		/**
+		 *	Undo what a save did before it stopped, the last thing first: the
+		 *	texts put back, the moves undone, the slots made for them taken
+		 *	away, the keys it made taken away. Each part is told what it has to
+		 *	undo, so a save that stopped early passes what it has so far
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$before				As _write() answers
+		 *	@param		array			$undo					As _move() answers
+		 *	@param		array			$made					The slots _create() made for the moves, for _drop()
+		 *	@param		array			$keys					The keys _create() made
+		 *
+		 *	@return 	void
+		 */
+		private static function _rollback( array &$appData, array $before, array $undo, array $made, array $keys ): void {
+
+			self::_restore( $appData, $before );
+			self::_undo( $appData, $undo );
+			self::_drop( $appData, $made );
+			self::_unmake( $appData, [ 'keys' => $keys, 'slots' => [] ] );
 		}
 
 		/**
@@ -1595,8 +1919,9 @@ namespace Nino\Modules\Builder {
 		 *	read: a name that is no text, a block that is no block, a switch
 		 *	that is neither on nor off (the animation of the template, the
 		 *	full width and the full height of a section - one left out is
-		 *	off), a call that is no call - what the Writer would take for
-		 *	something else or stumble over
+		 *	off), a call that is no call, texts that are no text for each
+		 *	language - what the Writer would take for something else or
+		 *	stumble over
 		 *
 		 *	@param		array			$model
 		 *
@@ -1656,6 +1981,9 @@ namespace Nino\Modules\Builder {
 				if( ( $block['background'] ?? null ) !== null && ( is_array( $block['background'] ) === false || $text( $block['background']['slot'] ?? null ) === false ) )
 					$problems[] = $at. ' has a background that is no image slot';
 
+				if( is_array( $block['background'] ?? null ) === true && self::_texted( [ 'create' => $block['background']['create'] ?? null ] ) === false )
+					$problems[] = $at. ' has a background with an alt text that is none';
+
 				foreach( is_array( $block['cols'] ?? [] ) === true ? $block['cols'] : [] as $col ) {
 
 					if( is_array( $col ) === false || is_array( $col['components'] ?? [] ) === false || is_array( $col['width'] ?? [] ) === false || is_array( $col['hidden'] ?? [] ) === false ) {
@@ -1668,14 +1996,39 @@ namespace Nino\Modules\Builder {
 					if( ( $col['stack'] ?? null ) !== null )
 						$calls[] = $col['stack'];
 
-					foreach( $calls as $call )
+					foreach( $calls as $call ) {
+
 						if( is_array( $call ) === false || $text( $call['name'] ?? null ) === false || $text( $call['source'] ?? null ) === false || $text( $call['text'] ?? null ) === false
 							|| is_array( $call['attributes'] ?? [] ) === false || array_filter( (array) ( $call['attributes'] ?? [] ), static fn( mixed $value ): bool => $value !== null && is_scalar( $value ) === false ) !== [] )
 							$problems[] = $at. ' has a call that is none';
+						elseif( self::_texted( $call ) === false )
+							$problems[] = $at. ' has a text that is none';
+					}
 				}
 			}
 
 			return $problems;
+		}
+
+		/**
+		 *	Whether the texts a call carries are a text for each language: those
+		 *	typed for its key (values) and the alt texts of the slot its create
+		 *	makes. What a language is is looked at by _languages(), which asks
+		 *	the site
+		 *
+		 *	@param		array			$call
+		 *
+		 *	@return 	bool
+		 */
+		private static function _texted( array $call ): bool {
+
+			$given = [ $call['values'] ?? null, is_array( $call['create'] ?? null ) === true ? ( $call['create']['alt'] ?? null ) : null ];
+
+			foreach( $given as $texts )
+				if( $texts !== null && ( is_array( $texts ) === false || array_filter( $texts, static fn( mixed $text ): bool => is_string( $text ) === false ) !== [] ) )
+					return false;
+
+			return true;
 		}
 
 		/**

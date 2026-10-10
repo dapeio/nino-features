@@ -39,6 +39,20 @@
  *												with the four answers it gives: a key, a slot, a new key and
  *												a fixed value.
  *
+ *												The language and what is written in it: the language of the
+ *												texts, chosen in the bar over the preview (the native one at
+ *												the start, the choice kept nowhere); the first line of a text
+ *												in the placeholder of its component, cut and never markup;
+ *												the text of a key under its source, as a line or as the
+ *												editor of the workbench in the profile of the key's format,
+ *												kept in the model by language - a change, and nothing sent
+ *												until the save; and the picture of a slot, in a component and
+ *												behind a section, stored through the actions of the Images
+ *												panel over a stand-in for the API (the slot made first where
+ *												it is not there, then the picture, then the alt text), with
+ *												every way it fails - and a save that stopped on the way, after
+ *												which the slots are asked for again.
+ *
  *	Usage: node features/Builder/tests/builder-js-smoke.js
  */
 
@@ -433,6 +447,8 @@ let requests = [];
 let questions = [];
 let answers = [];
 let changes = 0;
+// The pictures the workbench was asked to check before they were sent
+let checked = [];
 
 // The page: the template of the panel, with its words, parsed - everything the script draws, it draws from that
 const screen = new Document();
@@ -467,7 +483,10 @@ sandbox.Nino = {
 			let at = 0;
 			return String( text ?? '' ).replace( /%[sdn]/g, function( token ) { return at < params.length ? String( params[at++] ) : token } );
 		},
-		api : { call : function( action, payload, callback ) { requests.push( { action : action, payload : payload, callback : callback } ) }, errorText : function( status, response, key ) { return '('+ status+ ') '+ key } },
+		api : { call : function( action, payload, callback, extra ) { requests.push( { action : action, payload : payload, callback : callback, extra : extra } ) }, errorText : function( status, response, key ) { return '('+ status+ ') '+ ( key ?? ( response ?? {} ).code ) } },
+		// What an upload control tells before a file is chosen, and the check of a file before it is sent: a file that says it is too large is refused
+		uploadHint : function() { return made( 'p', 'nino-admin-hint', 'At most 8 MB and 20 megapixels.' ) },
+		checkImage : function( file, done ) { checked.push( file ); done( file.refused === true ? { code : 'image_too_large', params : [ 8 ] } : null ) },
 		selectField : function( options ) {
 
 			const field = made( 'label', options.className || 'nino-admin-field' );
@@ -583,7 +602,9 @@ const registry = function() {
 			{ uri : '/services', title : 'Services', fields : { title : { type : 'string' }, summary : { type : 'string', blocks : true }, image : { type : 'image' }, price : { type : 'double' } } },
 			{ uri : '/team', title : 'Team', fields : { name : { type : 'string' }, photo : { type : 'image' } } },
 		],
-		slots		: [ { uri : '/template/page-home/hero/background', label : 'Background', width : 1600, height : 900, hasImage : true, url : '/uploads/hero.1600x900.jpg' }, { uri : '/project/logo/header/image', label : 'Logo', width : 300, height : 100, hasImage : false, url : null } ],
+		slots		: [ { uri : '/template/page-home/hero/background', label : 'Background', width : 1600, height : 900, hasImage : true, url : '/uploads/hero.1600x900.jpg', alt : { de_DE : 'Ein Held' } }, { uri : '/project/logo/header/image', label : 'Logo', width : 300, height : 100, hasImage : false, url : null, alt : [] } ],
+		locales	: [ { locale : 'en_US', name : 'English (US)' }, { locale : 'de_DE', name : 'Deutsch' } ],
+		native	: 'en_US',
 		headers	: [ 'html-header', 'html-header-slim' ],
 		footers	: [ 'html-footer' ],
 		fieldTypes : [ 'string', 'integer', 'double', 'boolean', 'array', 'date', 'datetime', 'image', 'element' ],
@@ -591,7 +612,10 @@ const registry = function() {
 };
 
 const page = function() { return builder._normalise( fixture('page-home.json') ) };
-const known = function() { return [ { key : '/template/page-home/hero/title', global : false, values : { en_US : 'Welcome' } }, { key : '/template/page-home/hero/subtitle', global : true, values : { '*' : 'We build' } } ] };
+const known = function() { return [
+	{ key : '/template/page-home/hero/title', global : false, format : 'plain', maxlength : 160, values : { en_US : 'Welcome', de_DE : 'Willkommen' } },
+	{ key : '/template/page-home/hero/subtitle', global : true, format : 'plain', maxlength : 160, values : { '*' : 'We build' } },
+] };
 
 // ------------------------------------------------------------ What a person does
 
@@ -1111,6 +1135,7 @@ const open = function( withModel ) {
 	const loaded = withModel === undefined ? page() : withModel;
 
 	builder._registry = registry();
+	builder._locale = builder._nativeLocale( builder._registry );
 	builder._doc = { file : 'page-home', hash : 'h1', model : loaded, saved : JSON.stringify( loaded ), usedBy : [ { route : 'GET://', uri : '/home' }, { route : 'GET://about', uri : '/about' } ] };
 	builder._sel = [];
 	builder._fresh = {};
@@ -1492,7 +1517,7 @@ check( '...and each cell writes its own setting: above the margin and the paddin
 } )() );
 
 const ground = paneOf('background');
-check( 'Background: the colour with the border beside it, the picture with its dimming, where the picture is, its position and the height of the cover, the focus - and the lines hold two fields each', JSON.stringify( labelList( ground ) ) === JSON.stringify( [ 'Colour', 'Border', 'Picture', 'Dim the picture', 'Position of the picture', 'Height of the cover', 'No focus', 'Focus' ] )
+check( 'Background: the colour with the border beside it, the picture with its dimming, where the picture is - and under it the upload of a picture and its alt text -, its position and the height of the cover, the focus - and the lines hold two fields each', JSON.stringify( labelList( ground ) ) === JSON.stringify( [ 'Colour', 'Border', 'Picture', 'Dim the picture', 'Upload a picture', 'Alternative text (English (US))', 'Position of the picture', 'Height of the cover', 'No focus', 'Focus' ] )
 	&& ground.querySelectorAll('.builder-line').map( function( line ) { return line.children.length } ).join() === '2,2,2' && controlOf( ground, 'Picture' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=None,cover=Cover,parallax=Parallax' );
 check( '...the colour is a select with a patch beside it that follows the choice - and the patch is a patch of the page, not of the picture', ( function() {
 	const swatch = ground.querySelector('.builder-swatch');
@@ -1821,11 +1846,12 @@ builder._openSettings( [ 0, 0, 0 ] );
 const componentAt = function( at ) { return builder._doc.model.blocks[at[0]].cols[at[1]].components[at[2]] };
 check( 'the dialog of a component has three tabs: Content, Properties and CSS classes - the title names the component by its label, and no pencil is in it', dialogText('builder-dialog-kind') === 'Component "Title"' && JSON.stringify( dialogTabs() ) === '[["content","Content"],["properties","Properties"],["custom","CSS classes"]]'
 	&& screen.getElementById('builder-dialog-name').hidden === true && dialogBox().classList.contains('is-wide') === false );
-check( '...Content: the source as text, with an icon button beside it that opens the dialog of the sources', ( function() {
+check( '...Content: the source as text, with an icon button beside it that opens the dialog of the sources - and under it, for a key the project knows, the text it holds in the language the editor works in', ( function() {
 	const row = paneOf('content').querySelector('.builder-source');
 	const button = row.querySelector('button');
-	return paneOf('content').children.length === 1 && row.querySelector('.builder-source-caption').textContent === 'Current:' && row.querySelector('.builder-source-caption').hidden === false && row.querySelector('.builder-source-current').textContent === '/template/page-home/hero/title' && row.querySelector('.builder-source-name').hidden === true
-		&& button.className === 'builder-icon-btn' && button.title === 'Source' && button.getAttribute('aria-label') === 'Source' && iconOf( button ) === 'source' && labelList( paneOf('content') ).length === 0;
+	return paneOf('content').children.length === 2 && paneOf('content').children[0] === row && paneOf('content').children[1].className === 'builder-content-extra' && row.querySelector('.builder-source-caption').textContent === 'Current:' && row.querySelector('.builder-source-caption').hidden === false
+		&& row.querySelector('.builder-source-current').textContent === '/template/page-home/hero/title' && row.querySelector('.builder-source-name').hidden === true
+		&& button.className === 'builder-icon-btn' && button.title === 'Source' && button.getAttribute('aria-label') === 'Source' && iconOf( button ) === 'source' && JSON.stringify( labelList( paneOf('content') ) ) === '["Text (English (US))"]';
 } )() );
 check( '...Properties: the attributes of the schema in the order of the schema, the two of them on a line', JSON.stringify( labelList( paneOf('properties') ) ) === JSON.stringify( [ 'Level', 'Style' ] ) && paneOf('properties').children.length === 1 && paneOf('properties').children[0].className === 'builder-line' && paneOf('properties').children[0].children.length === 2
 	&& controlOf( paneOf('properties'), 'Level' ).el.children.map( function( option ) { return option.value } ).join() === '1,2,3,4' && controlOf( paneOf('properties'), 'Style' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=none,loud=loud,quiet=quiet'
@@ -2684,6 +2710,548 @@ console.log( '\nThe refusal to delete' );
 	builder._loadList = realLoad;
 	check( 'the refusal names the addresses the list shows (the routes\' keys through _addresses), not uris', lines.length === 1 && /\/, \/contact$/.test( lines[0] ) && lines[0].indexOf( 'GET:' ) === -1 );
 } )();
+
+console.log( '\nThe language of the editor, the text of a key and the picture of a slot' );
+
+// The editor of the workbench for the texts that are more than a line, as the dialogs make it: it has the text in its own normal form - no white space
+// between the tags - and the text a person typed (value)
+const textEditors = [];
+sandbox.Nino.admin.htmlEditor = { create : function( mount, value, maxlength, rows, format ) {
+	const editor = { value : String( value ).replace( />\s+</g, '><' ), mount : mount, maxlength : maxlength, rows : rows, format : format, destroyed : false,
+		getValue : function() { return editor.value }, destroy : function() { editor.destroyed = true } };
+	textEditors.push( editor );
+	return editor;
+} };
+
+const picker = function() { return screen.getElementById('builder-locale') };
+const lines = function() { return preview().querySelectorAll('.builder-ph-label').map( function( label ) { return label.textContent } ) };
+const heroTitle = function() { return builder._doc.model.blocks[0].cols[0].components[0] };
+const lineLabel = 'Text (English (US))';
+
+doc = open();
+builder._renderEditor();
+check( 'the language is chosen in the bar over the preview, next to the viewports and before them: a select with the words for its title and its label, an option for each language of the site by the name the project gives it, the native one chosen', picker().localName === 'select'
+	&& picker().nextSibling === screen.getElementById('builder-viewport-s').parentNode && picker().parentNode.className === 'builder-pane-tools' && picker().title === 'Language of the texts' && picker().getAttribute('aria-label') === 'Language of the texts'
+	&& texts( picker().children ) === 'English (US),Deutsch' && picker().children.map( function( option ) { return option.value } ).join() === 'en_US,de_DE' && picker().value === 'en_US' && picker().hidden === false && builder._locale === 'en_US' );
+check( '...the language the editor starts in is the native one of the site, the first it has where the native one is none of them, and none for a site that names none', builder._nativeLocale( { locales : [ { locale : 'en_US', name : '' }, { locale : 'de_DE', name : '' } ], native : 'de_DE' } ) === 'de_DE'
+	&& builder._nativeLocale( { locales : [ { locale : 'en_US', name : '' }, { locale : 'de_DE', name : '' } ], native : 'fr_FR' } ) === 'en_US' && builder._nativeLocale( {} ) === '' );
+check( '...a site with one language has nothing to choose, and the select is out of sight; a language with no name is called by its code', ( function() {
+	builder._registry.locales = [ { locale : 'en_US', name : '' } ];
+	builder._drawLocales();
+	const one = picker().hidden === true && texts( picker().children ) === 'en_US';
+	builder._registry.locales = registry().locales;
+	builder._drawLocales();
+	return one && picker().hidden === false;
+} )() );
+check( 'the preview says the first line of the text of each component in that language - the title and the subtitle of the hero - and the label of the ones that have none (a key nobody knows)', lines().slice( 0, 3 ).join() === 'Welcome,We build,Button' );
+picker().value = 'de_DE';
+picker().dispatch('change');
+check( 'choosing another language draws the preview in it, and is no change of the document: nothing is unsaved, nothing asked for, nothing kept', builder._locale === 'de_DE' && lines().slice( 0, 3 ).join() === 'Willkommen,We build,Button' && builder._unsaved( builder._doc ) === false && changes === 0 && requests.length === 0 );
+
+builder._locale = 'de_DE';
+requests = [];
+builder._openEditor( 'page-home' );
+requests.forEach( function( request ) {
+	if( request.action === 'builder/load' )
+		request.callback( 200, { model : page(), hash : 'h9', source : '' } );
+	else if( request.action === 'builder/registry' )
+		request.callback( 200, registry() );
+	else if( request.action === 'text/keys' )
+		request.callback( 200, { keys : known() } );
+	else
+		request.callback( 200, { templates : [ { file : 'page-home', usedBy : [] } ] } );
+} );
+check( 'a document that is opened starts in the native language again: the choice of the last one is kept nowhere', builder._locale === 'en_US' && picker().value === 'en_US' && lines().slice( 0, 3 ).join() === 'Welcome,We build,Button' );
+check( '...and the keys of the project are asked for with it, and the preview is drawn again with them', requests.some( function( request ) { return request.action === 'text/keys' } ) === true );
+
+console.log( '\nThe first line of a text' );
+
+check( 'a text is a line as a placeholder says it: plain text as it is, the tags gone, the end of a paragraph or an item and a break ending the line, the first line that has any text', builder._firstLine( 'Welcome', 60 ) === 'Welcome'
+	&& builder._firstLine( '<p>Hello <strong>big</strong> world</p><p>Second</p>', 60 ) === 'Hello big world' && builder._firstLine( 'One<br>Two', 60 ) === 'One' && builder._firstLine( '<ul><li>First</li><li>Second</li></ul>', 60 ) === 'First'
+	&& builder._firstLine( "\n\n  One\nTwo", 60 ) === 'One' && builder._firstLine( '<p></p><p> Second </p>', 60 ) === 'Second' && builder._firstLine( '', 60 ) === '' && builder._firstLine( null, 60 ) === '' && builder._firstLine( ' <p> </p> ', 60 ) === '' );
+check( '...the entities read as the text they are - and what they make is text and no markup: an escaped tag is not stripped, a tag that is none stays', builder._firstLine( 'Tom &amp; Jerry &quot;at&quot; &#039;home&#039; &#91;x&#93; &nbsp;here &#x41;&#66;', 60 ) === 'Tom & Jerry "at" \'home\' [x] here AB'
+	&& builder._firstLine( '&lt;b&gt;bold&lt;/b&gt;', 60 ) === '<b>bold</b>' && builder._firstLine( '&unknown; &#0; &#9999999;', 60 ) === '&unknown; &#0; &#9999999;' && builder._firstLine( 'a   b\t c', 60 ) === 'a b c' );
+check( '...a line of more than the characters asked for is cut and ends in an ellipsis - at the characters and not at the bytes of the text', builder._firstLine( 'x'.repeat( 61 ), 60 ) === 'x'.repeat( 60 )+ '…' && builder._firstLine( 'x'.repeat( 60 ), 60 ) === 'x'.repeat( 60 )
+	&& builder._firstLine( 'abc def ghi', 5 ) === 'abc d…' && builder._firstLine( 'abc def ghi', 4 ) === 'abc…' && builder._firstLine( 'ab ', 2 ) === 'ab' && builder._firstLine( '\u{1F600}'.repeat( 4 ), 3 ) === '\u{1F600}'.repeat( 3 )+ '…' && builder.LINE_MAX === 60 );
+
+console.log( '\nThe text of a key under its source' );
+
+doc = open();
+builder._renderEditor();
+changes = 0;
+builder._openSettings( [ 0, 0, 0 ] );
+const contentPane = function() { return paneOf('content') };
+const field = function() { return controlOf( contentPane(), lineLabel ) };
+check( 'a component with a text key has the text of its key under its source, in the language the editor works in: a line of text for a key of the plain format, with the limit of the key, a hint that says when it is written - and no editor of the workbench', field().kind === 'text'
+	&& field().el.localName === 'input' && field().el.value === 'Welcome' && field().el.maxLength === 160 && field().el.spellcheck === true && contentPane().children[1].className === 'builder-content-extra'
+	&& contentPane().children[1].querySelector('.nino-admin-hint').textContent === 'Written to the key when the template is saved.' && textEditors.length === 0 );
+change( contentPane(), lineLabel, 'Hello' );
+check( 'what is typed is kept in the model, under the language - a change, and nothing is sent: the key is written when the document is saved - and the preview behind shows it', JSON.stringify( heroTitle().values ) === '{"en_US":"Hello"}' && changes === 1
+	&& builder._unsaved( builder._doc ) === true && requests.length === 0 && lines()[0] === 'Hello' && builder._doc.model.blocks[0].cols[0].components[0].source === '/template/page-home/hero/title' );
+change( contentPane(), lineLabel, 'Welcome' );
+check( '...typed back to what the key holds it is no text at all: none is kept, and the document is as it was saved', heroTitle().values === undefined && builder._unsaved( builder._doc ) === false && lines()[0] === 'Welcome' );
+change( contentPane(), lineLabel, 'Hello' );
+builder._closeDialog();
+builder._openSettings( [ 0, 0, 0 ] );
+check( '...the dialog opened again shows the text that was typed and not saved, and not the one the key holds', field().el.value === 'Hello' );
+builder._closeDialog();
+builder._setLocale('de_DE');
+builder._openSettings( [ 0, 0, 0 ] );
+check( 'in another language it is the text of that language: the label says it by its name, the key holds a German text, and what is typed there is kept beside the other', controlsIn( contentPane() ).map( function( control ) { return control.label } ).join() === 'Text (Deutsch)'
+	&& valueAt( contentPane(), 'Text (Deutsch)' ) === 'Willkommen' && ( change( contentPane(), 'Text (Deutsch)', 'Hallo' ), JSON.stringify( heroTitle().values ) === '{"en_US":"Hello","de_DE":"Hallo"}' ) && lines()[0] === 'Hallo' );
+builder._closeDialog();
+builder._setLocale('en_US');
+builder._openSettings( [ 0, 0, 1 ] );
+check( 'a key every language shares has one text, the same in each: it is called so, the shared text is shown, and a text typed for it is kept once - in the language it was typed in last', controlsIn( contentPane() ).map( function( control ) { return control.label } ).join() === 'Text (all languages)'
+	&& valueAt( contentPane(), 'Text (all languages)' ) === 'We build' && ( change( contentPane(), 'Text (all languages)', 'We make' ), JSON.stringify( builder._doc.model.blocks[0].cols[0].components[1].values ) === '{"en_US":"We make"}' ) );
+builder._closeDialog();
+builder._setLocale('de_DE');
+builder._openSettings( [ 0, 0, 1 ] );
+check( '...it shows the shared text typed in the other language, and what is typed here replaces it', valueAt( contentPane(), 'Text (all languages)' ) === 'We make' && ( change( contentPane(), 'Text (all languages)', 'We craft' ), JSON.stringify( builder._doc.model.blocks[0].cols[0].components[1].values ) === '{"de_DE":"We craft"}' )
+	&& ( change( contentPane(), 'Text (all languages)', 'We build' ), builder._doc.model.blocks[0].cols[0].components[1].values === undefined ) );
+builder._closeDialog();
+builder._setLocale('en_US');
+
+doc = open();
+builder._renderEditor();
+const stripped = {
+	'a fixed text'								: [ 1, 1, 3 ],
+	'the field of a loop'					: [ 1, 1, 1 ],
+	'a picture in a loop'					: [ 1, 1, 0 ],
+	'a key nobody knows'					: [ 0, 0, 2 ],
+};
+check( 'the text has a field where the source is a text key the project knows - and not for a fixed text, the field of an element in a loop, a picture, a key that is not in the list (the account may not read them, or it is hidden)', Object.keys( stripped ).every( function( what ) {
+	builder._openSettings( stripped[what] );
+	const children = paneOf('content').children.length;
+	builder._closeDialog();
+	return children === 1 || console.log( '      '+ what+ ': '+ children+ ' children' ) === undefined;
+} ) );
+check( '...nor for a component that has a fixed text and a key both - the model of a source that was left half changed: the text is fixed', ( function() {
+	const both = Object.assign( {}, heroTitle(), { text : 'Fixed' } );
+	return both.source === '/template/page-home/hero/title' && builder._textOf( both, 'en_US', builder._keys, builder._registry ) === null && builder._textOf( heroTitle(), 'en_US', builder._keys, builder._registry ) !== null;
+} )() );
+builder._keys = [];
+builder._openSettings( [ 0, 0, 0 ] );
+check( '...nor for an account that cannot read the keys: it knows no text to show, and it would only be the text of a key it cannot see', paneOf('content').children.length === 1 );
+builder._closeDialog();
+
+doc = open();
+builder._renderEditor();
+builder._addComponent( [ 0, 0 ], 'title' );
+builder._addComponent( [ 0, 0 ], 'text' );
+const newTitle = builder._doc.model.blocks[0].cols[0].components[3];
+const newText = builder._doc.model.blocks[0].cols[0].components[4];
+builder._openSettings( [ 0, 0, 3 ] );
+check( 'a key the save is going to make has a field too: it holds the text the key is made with, a line of text for a component that asks for no format', field().el.value === 'Title' && field().el.localName === 'input' && newTitle.create.value === 'Title' && textEditors.length === 0 );
+check( '...a text typed there is kept as for a key that is there - the key is made with its first text and written with this one', ( change( contentPane(), lineLabel, 'My title' ), JSON.stringify( newTitle.values ) === '{"en_US":"My title"}' && newTitle.create.value === 'Title' ) );
+builder._closeDialog();
+builder._openSettings( [ 0, 0, 4 ] );
+const madeEditor = textEditors[textEditors.length - 1];
+check( 'a component with a format of its own - [text] - makes its key in that format, and the field is the editor of the workbench in the profile of it: blocks by default, with a limit and not none', madeEditor.format === 'blocks' && madeEditor.value === 'Text' && madeEditor.maxlength === builder.CONTENT_MAX
+	&& madeEditor.mount.parentNode.className === 'builder-value' && madeEditor.mount.className.indexOf('builder-content') !== -1 && contentPane().querySelector('.builder-value .builder-label').textContent === lineLabel && contentPane().querySelectorAll('input').length === 0 );
+const valueGroup = contentPane().querySelector('.builder-value');
+check( '...an editor is no input that a label wraps, so the field is a group that its label names and its hint describes, as the Text panel names its editors', valueGroup.getAttribute('role') === 'group' && valueGroup.getAttribute('aria-labelledby') === valueGroup.querySelector('.builder-label').id
+	&& valueGroup.getAttribute('aria-describedby') === valueGroup.querySelector('.nino-admin-hint').id && valueGroup.querySelector('.builder-label').id !== '' && valueGroup.querySelector('.nino-admin-hint').id !== '' && valueGroup.querySelector('.builder-label').id !== valueGroup.querySelector('.nino-admin-hint').id );
+madeEditor.value = '<p>Hi</p>';
+madeEditor.mount.dispatch('input');
+check( '...what is typed in it is kept as the editor has it, and the preview says its first line', JSON.stringify( newText.values ) === '{"en_US":"<p>Hi</p>"}' && lines()[4] === 'Hi' );
+builder._closeDialog();
+check( '...and the dialog lets go of the editor when it closes', madeEditor.destroyed === true );
+newText.attributes.format = 'lines';
+builder._openSettings( [ 0, 0, 4 ] );
+const lined = textEditors[textEditors.length - 1];
+newText.attributes.format = 'nonsense';
+builder._closeDialog();
+builder._openSettings( [ 0, 0, 4 ] );
+check( '...in the profile its format attribute says (lines, inline) - and plain for a format there is none of, which is how the field shows it: the save refuses a format outside the options of the attribute', lined.format === 'lines' && textEditors.length === 2 && field().el.localName === 'input' && builder._createFormat( registry(), newText ) === 'plain'
+	&& builder._createFormat( registry(), newTitle ) === 'plain' && ( newText.attributes.format = 'blocks', builder._createFormat( registry(), newText ) === 'blocks' ) );
+builder._closeDialog();
+
+doc = open();
+builder._renderEditor();
+builder._keys = known().concat( [
+	{ key : '/template/page-home/services/text', global : false, format : 'blocks', maxlength : 400, values : { en_US : '<p>One</p>\n<p>Two</p>', de_DE : '<p>Eins</p>' } },
+	{ key : '/template/page-home/services/title', global : false, format : 'plain', maxlength : 160, values : { en_US : 'One\nTwo', de_DE : 'Eins' } },
+	{ key : '/template/page-home/contact/title', global : false, html : true, maxlength : 100, values : { en_US : 'A <em>title</em>' } },
+] );
+textEditors.length = 0;
+builder._openSettings( [ 1, 0, 1 ] );
+const stored = textEditors[0];
+check( 'a key that is there keeps its format and the field follows it: blocks is the editor in the blocks profile, with the text of the key and its limit - the format of the key and not the one the component would ask for', stored.format === 'blocks' && stored.maxlength === 400 && stored.value === '<p>One</p><p>Two</p>' );
+stored.mount.dispatch('input');
+stored.mount.dispatch('click');
+stored.mount.dispatch('keyup');
+stored.mount.dispatch('focusout');
+builder._closeDialog();
+check( '...the editor shows the text in its own normal form, which is not the key\'s: opened, clicked in and closed, the text is none to keep and the document is as it was saved', builder._doc.model.blocks[1].cols[0].components[1].values === undefined && builder._unsaved( builder._doc ) === false && changes === 0 );
+builder._openSettings( [ 1, 0, 1 ] );
+const toolbarEditor = textEditors[textEditors.length - 1];
+toolbarEditor.value = '<p><strong>One</strong></p><p>Two</p>';
+toolbarEditor.mount.dispatch('click');
+check( '...a button of its toolbar changes the text without a key press: it is a click, and the text is kept', JSON.stringify( builder._doc.model.blocks[1].cols[0].components[1].values ) === '{"en_US":"<p><strong>One</strong></p><p>Two</p>"}' && builder._unsaved( builder._doc ) === true );
+builder._closeDialog();
+builder._openSettings( [ 1, 0, 0 ] );
+check( '...a key of the plain format that holds a line break is a few lines of text, so that nothing of it is lost by being shown', field().el.localName === 'textarea' && field().el.value === 'One\nTwo' );
+builder._closeDialog();
+builder._doc.model.blocks[3].cols[0].components[0].source = '/template/page-home/contact/title';
+builder._openSettings( [ 3, 0, 0 ] );
+check( '...and a key with no format of its own is read as the keys list reads it: html is inline', textEditors[textEditors.length - 1].format === 'inline' && textEditors[textEditors.length - 1].maxlength === 100 );
+builder._closeDialog();
+
+doc = open();
+builder._renderEditor();
+builder._keys = known().concat( [ { key : '/template/page-home/hero/other', global : false, format : 'plain', maxlength : 160, values : { en_US : 'Another' } } ] );
+builder._openSettings( [ 0, 0, 0 ] );
+change( contentPane(), lineLabel, 'Typed' );
+const pickKey = function() {
+	sourceButton( contentPane() ).click();
+	pickerPane('pick').querySelector('input[type="search"]').value = 'other';
+	pickerPane('pick').querySelector('input[type="search"]').dispatch('input');
+	pickItems()[0].click();
+};
+pickKey();
+check( 'another key as the source is another text: the field shows the text of that key, and what was typed for the one that was is not carried to it', heroTitle().source === '/template/page-home/hero/other' && heroTitle().values === undefined
+	&& valueAt( contentPane(), lineLabel ) === 'Another' && builder._unsaved( builder._doc ) === true );
+builder._closeDialog();
+builder._openSettings( [ 0, 0, 0 ] );
+change( contentPane(), lineLabel, 'Typed again' );
+sourceButton( contentPane() ).click();
+buttonOf( pickerStrip(), 'Static' ).click();
+pickerPane('fixed').querySelector('input').value = 'Mehr';
+buttonOf( pickerPane('fixed'), 'Use it' ).click();
+check( '...a fixed value as the source has no field, and no text of a key is left behind', heroTitle().text === 'Mehr' && heroTitle().values === undefined && contentPane().children.length === 1 );
+builder._closeDialog();
+builder._openSettings( [ 0, 0, 1 ] );
+sourceButton( contentPane() ).click();
+buttonOf( pickerStrip(), 'Create new' ).click();
+fresh('.builder-new-use').click();
+check( '...and the key the source makes is a key to fill: a new one has the field of a key the save makes', valueAt( contentPane(), lineLabel ) === 'Subtitle' && builder._doc.model.blocks[0].cols[0].components[1].create.value === 'Subtitle' );
+builder._closeDialog();
+
+console.log( '\nThe preview says the text and shows the picture' );
+
+doc = open();
+builder._renderEditor();
+builder._keys = known().concat( [ { key : '/template/page-home/contact/title', global : false, format : 'inline', maxlength : 100, values : { en_US : '<p>A very long first line of a text that goes on and on and on past the sixty characters it may have</p><p>Second</p>', de_DE : '&lt;b&gt;Zwei&lt;/b&gt; &amp; <img src="x" onerror="alert(1)">Drei' } } ] );
+builder._renderEditor();
+const contactPh = function() { return preview().querySelector('[data-path="3.0.0"]') };
+check( 'the placeholder of a text component says the first line of the text in the language of the editor, cut to sixty characters, with the label of the component for its title - and has a mark that it says a text', contactPh().querySelector('.builder-ph-label').textContent === 'A very long first line of a text that goes on and on and on…'
+	&& Array.from( contactPh().querySelector('.builder-ph-label').textContent ).length === 60 && contactPh().title === 'Title' && contactPh().classList.contains('has-line') && preview().querySelector('[data-path="0.0.0"]').classList.contains('has-line') );
+check( '...a placeholder with no text to say is as it was: the label of the component, no title, no mark - the ones of a key nobody knows, a key with no text in the language, a field of a loop, a fixed text', preview().querySelector('[data-path="0.0.2"] .builder-ph-label').textContent === 'Button'
+	&& preview().querySelector('[data-path="0.0.2"]').title === '' && preview().querySelector('[data-path="0.0.2"]').classList.contains('has-line') === false && preview().querySelector('[data-path="1.1.1"] .builder-ph-label').textContent === 'Title' && preview().querySelector('[data-path="1.1.3"] .builder-ph-label').textContent === 'Button' );
+builder._setLocale('de_DE');
+check( '...the text is set as text and is never markup: an escaped tag is a tag shown, a tag that is none is gone with its attributes', contactPh().querySelector('.builder-ph-label').textContent === '<b>Zwei</b> & Drei' && contactPh().querySelectorAll('b').length === 0 && contactPh().querySelector('.builder-ph-label').children.length === 0
+	&& contactPh().querySelectorAll('img').every( function( image ) { return image.className === 'builder-ph-picture' && image.src === '' } ) );
+builder._setLocale('en_US');
+heroTitle().values = { en_US : 'Typed, not saved' };
+builder._renderPreview();
+check( '...the text that was typed and not saved is the one it says, before the one the key holds', lines()[0] === 'Typed, not saved' );
+delete heroTitle().values;
+builder._doc.model.blocks[0].cols[0].components.push( { name : 'title', source : '/template/page-home/hero/new', text : null, attributes : { level : '2', style : '', 'class' : '' }, create : { value : 'Made when saved' } } );
+builder._renderPreview();
+check( '...and so is the text a key is going to be made with', lines()[3] === 'Made when saved' );
+check( 'the preview that is told no language and no keys says what a component is, as it did: no line, no picture', builder._preview( builder._doc.model, builder._registry, 'l' )[0].cols[0].components.every( function( component ) { return component.line === '' && component.picture === '' } )
+	&& builder._preview( builder._doc.model, builder._registry, 'l', { locale : 'en_US', keys : builder._keys } )[0].cols[0].components[0].line === 'Welcome' );
+
+builder._doc.model.blocks[0].cols[0].components.push( { name : 'image', source : '/template/page-home/hero/background', text : null, attributes : registry().components.image.defaults } );
+builder._doc.model.blocks[0].cols[0].components.push( { name : 'image', source : '/project/logo/header/image', text : null, attributes : registry().components.image.defaults } );
+builder._renderPreview();
+const pictureAt = function( index ) { return preview().querySelector('[data-path="0.0.'+ index+ '"]') };
+check( 'the placeholder of a picture shows the picture of its slot where the slot has one - in place of the image of its kind -, and keeps the image where it has none', pictureAt( 4 ).classList.contains('has-picture') && pictureAt( 4 ).querySelector('.builder-ph-picture').src === '/uploads/hero.1600x900.jpg'
+	&& pictureAt( 4 ).title === 'Image' && pictureAt( 4 ).querySelector('.builder-ph-label').textContent === 'Image' && pictureAt( 5 ).classList.contains('has-picture') === false && pictureAt( 5 ).querySelector('.builder-ph-picture').src === ''
+	&& pictureAt( 5 ).title === '' && builder._preview( builder._doc.model, builder._registry, 'l', { locale : 'en_US', keys : [] } )[0].cols[0].components.map( function( component ) { return component.picture } ).join() === ',,,,/uploads/hero.1600x900.jpg,' );
+check( '...the picture is the slot\'s and nothing of the loop\'s: the field of a picture in a loop has none to show', preview().querySelector('[data-path="1.1.0"]').classList.contains('has-picture') === false );
+check( '...the stylesheet shows the picture only where there is one, in place of the icon, and the bar has room for the language', stylesheet.indexOf( '.builder-ph.has-picture .builder-ph-picture {\n\tdisplay: block;' ) !== -1 && stylesheet.indexOf( '.builder-ph.has-picture .builder-ph-icon {\n\tdisplay: none;' ) !== -1
+	&& stylesheet.indexOf( '.builder-ph-picture {\n\tdisplay: none;' ) !== -1 && stylesheet.indexOf( '.builder-pane-tools {' ) !== -1 && stylesheet.indexOf( '.builder-locale[hidden] {\n\tdisplay: none;' ) !== -1
+	&& stylesheet.indexOf( '.builder-picture-message.is-warning {\n\tcolor: var(--editor-orange);' ) !== -1 && stylesheet.indexOf( '.builder-picture-message.is-error {\n\tcolor: var(--editor-red);' ) !== -1 );
+
+console.log( '\nThe picture of a slot' );
+
+const fileField = function( root ) { return root.querySelector('input[type="file"]') };
+const thumbOf = function( root ) { return root.querySelector('.builder-picture-thumb') };
+const noteOf = function( root ) { return root.querySelector('.builder-picture-message') };
+const altLabel = 'Alternative text (English (US))';
+const house = { name : 'house.jpg', refused : false };
+const choose = function( root, file ) {
+	const input = fileField( root );
+	input.files = [ file ];
+	input.dispatch('change');
+};
+const actionsOf = function() { return requests.map( function( request ) { return request.action } ).join() };
+
+doc = open();
+builder._renderEditor();
+builder._addComponent( [ 0, 0 ], 'image' );
+const imageAt = [ 0, 0, 3 ];
+const image = function() { return builder._get( builder._doc.model, imageAt ) };
+builder._openSettings( imageAt );
+changes = 0;
+check( 'the content of a picture is its slot, and under it the picture: a thumbnail that is out of sight where the slot has none, the choice of a file that has the words for its label and the limits an upload runs into above it, what is done with the first picture, and the alt text', fileField( contentPane() ).getAttribute('aria-label') === 'Upload a picture'
+	&& thumbOf( contentPane() ).hidden === true && contentPane().querySelector('.builder-picture-controls .nino-admin-hint').textContent === 'At most 8 MB and 20 megapixels.'
+	&& contentPane().querySelector('.builder-picture-controls small').textContent === 'The first picture makes the slot and is stored at once.' && noteOf( contentPane() ).hidden === true );
+check( '...the alt text is the one of the language the editor works in; a slot that is not there yet cannot take it, so it waits in the mark that makes the slot and is said so', valueAt( contentPane(), altLabel ) === ''
+	&& controlOf( contentPane(), altLabel ).el.disabled === false && controlOf( contentPane(), altLabel ).el.closest('label').querySelector('.nino-admin-hint').textContent === 'Stored with the slot as soon as it is made.' );
+change( contentPane(), altLabel, 'A house' );
+check( '...what is typed goes into the mark of the slot, under the language, as a change - and nothing is sent', JSON.stringify( image().create ) === '{"label":"Image","width":1600,"height":900,"alt":{"en_US":"A house"}}' && changes === 1 && requests.length === 0 );
+builder._closeDialog();
+builder._setLocale('de_DE');
+builder._openSettings( imageAt );
+check( '...in another language it is another text; typed, it joins the first - and emptied, it is gone again', valueAt( contentPane(), 'Alternative text (Deutsch)' ) === '' && ( change( contentPane(), 'Alternative text (Deutsch)', 'Ein Haus' ), JSON.stringify( image().create.alt ) === '{"en_US":"A house","de_DE":"Ein Haus"}' )
+	&& ( change( contentPane(), 'Alternative text (Deutsch)', '' ), JSON.stringify( image().create.alt ) === '{"en_US":"A house"}' ) && ( change( contentPane(), 'Alternative text (Deutsch)', 'Ein Haus' ), true ) );
+builder._closeDialog();
+builder._setLocale('en_US');
+builder._openSettings( imageAt );
+changes = 0;
+requests = [];
+choose( contentPane(), house );
+check( 'the first picture of a slot that is not there makes the slot at once, with the label and the size of its mark - the file is looked at first, as the Images panel looks at it - and the field is off while it is on its way', checked.length === 1 && checked[0] === house && actionsOf() === 'slots/create'
+	&& JSON.stringify( requests[0].payload ) === '{"uri":"/template/page-home/hero/image","label":"Image","width":1600,"height":900}' && fileField( contentPane() ).disabled === true && noteOf( contentPane() ).textContent === 'Storing the picture ...' );
+requests[0].callback( 200, { ok : true, uri : '/template/page-home/hero/image' } );
+check( '...the slot is there, so the source is the slot and no mark is left to make it - the document is told - and the picture of the Images panel\'s own upload follows, with the file', image().create === undefined && image().source === '/template/page-home/hero/image' && changes === 1
+	&& builder._slotOf( '/template/page-home/hero/image' ) !== null && builder._slotOf( '/template/page-home/hero/image' ).hasImage === false && actionsOf() === 'slots/create,images/upload'
+	&& JSON.stringify( requests[1].payload ) === '{"uri":"/template/page-home/hero/image"}' && requests[1].extra.file === house );
+requests[1].callback( 200, { filename : 'hero/image.1600x900.jpg', url : '/uploads/image.jpg', source : { width : 2000, height : 1000 }, belowTarget : false } );
+check( '...the alt text that was waiting is written once the picture is stored, to the slot that is there now', actionsOf() === 'slots/create,images/upload,images/alt' && JSON.stringify( requests[2].payload ) === '{"uri":"/template/page-home/hero/image","alt":{"en_US":"A house","de_DE":"Ein Haus"}}' );
+requests[2].callback( 200, { alt : { en_US : 'A house', de_DE : 'Ein Haus' } } );
+check( '...and the form shows it: the thumbnail, a note that the picture is stored, the alt text of the slot with the hint that it is stored at once - and the preview has the picture in the placeholder of the component', thumbOf( contentPane() ).hidden === false && thumbOf( contentPane() ).src.indexOf( '/uploads/image.jpg?t=' ) === 0
+	&& noteOf( contentPane() ).textContent === 'The picture is stored.' && noteOf( contentPane() ).classList.contains('is-error') === false && fileField( contentPane() ).disabled === false && valueAt( contentPane(), altLabel ) === 'A house'
+	&& controlOf( contentPane(), altLabel ).el.closest('label').querySelector('.nino-admin-hint').textContent === 'Stored at once, with the slot.' && preview().querySelector('[data-path="0.0.3"] .builder-ph-picture').src.indexOf( '/uploads/image.jpg' ) === 0
+	&& builder._slotOf( '/template/page-home/hero/image' ).hasImage === true && builder._altOf( builder._slotOf( '/template/page-home/hero/image' ) ).de_DE === 'Ein Haus' );
+
+choose( contentPane(), house );
+check( 'a picture for a slot that is there is the upload alone: no slot is made, and nothing is written that nobody typed', actionsOf() === 'slots/create,images/upload,images/alt,images/upload' && requests[3].extra.file === house );
+requests[3].callback( 200, { filename : 'hero/image.1600x900.jpg', url : '/uploads/image.jpg', source : { width : 800, height : 600 }, belowTarget : true } );
+check( '...a picture smaller than the slot is stored all the same, and the form says that it is scaled up - as a warning in words, which is no error: the picture is stored', noteOf( contentPane() ).textContent === 'The picture is smaller than the slot (800 × 600 px) and is scaled up.'
+	&& noteOf( contentPane() ).classList.contains('is-warning') === true && noteOf( contentPane() ).classList.contains('is-error') === false && actionsOf() === 'slots/create,images/upload,images/alt,images/upload' );
+
+doc = open();
+builder._renderEditor();
+builder._doc.model.blocks[0].cols[0].components.push( { name : 'image', source : '/template/page-home/hero/background', text : null, attributes : registry().components.image.defaults } );
+builder._openSettings( [ 0, 0, 3 ] );
+check( 'the slot that is there shows its picture and the alt text it holds in the language of the editor - none in English, the German one in German', thumbOf( contentPane() ).hidden === false && thumbOf( contentPane() ).src === '/uploads/hero.1600x900.jpg' && valueAt( contentPane(), altLabel ) === ''
+	&& ( builder._closeDialog(), builder._setLocale('de_DE'), builder._openSettings( [ 0, 0, 3 ] ), valueAt( contentPane(), 'Alternative text (Deutsch)' ) === 'Ein Held' ) );
+builder._closeDialog();
+builder._setLocale('en_US');
+builder._openSettings( [ 0, 0, 3 ] );
+changes = 0;
+requests = [];
+const unsavedBefore = builder._unsaved( builder._doc );
+change( contentPane(), altLabel, 'A hero' );
+check( 'an alt text for a slot that is there is written at once, through the Images panel: that language alone, the others as they are - and the document has nothing to save for it', actionsOf() === 'images/alt' && JSON.stringify( requests[0].payload ) === '{"uri":"/template/page-home/hero/background","alt":{"en_US":"A hero"}}'
+	&& changes === 0 && builder._unsaved( builder._doc ) === unsavedBefore && builder._doc.model.blocks[0].cols[0].components[3].create === undefined );
+requests[0].callback( 200, { alt : { de_DE : 'Ein Held', en_US : 'A hero' } } );
+check( '...the slot has it from then on, and the form says so', builder._altOf( builder._slotOf( '/template/page-home/hero/background' ) ).en_US === 'A hero' && noteOf( contentPane() ).textContent === 'The alternative text is stored.' );
+change( contentPane(), altLabel, 'A hero' );
+check( '...an alt text that is the one the slot has is not written again', requests.length === 1 );
+change( contentPane(), altLabel, 'A hero!' );
+requests[1].callback( 403, { code : 'permission' } );
+check( '...one that cannot be written says why where the form says it, and is an error', noteOf( contentPane() ).textContent === '(403) /_admin/builder/error/alt' && noteOf( contentPane() ).classList.contains('is-error') === true );
+requests = [];
+choose( contentPane(), house );
+check( 'a picture for a slot that is there is stored at its own uri: the upload alone', actionsOf() === 'images/upload' && requests[0].payload.uri === '/template/page-home/hero/background' && requests[0].extra.file === house );
+requests[0].callback( 200, { filename : 'f', url : '/uploads/hero.1600x900.jpg', source : { width : 2000, height : 1000 }, belowTarget : false } );
+check( '...the picture of a slot that is replaced is told to the browser as another, the name it is stored under being the same: the url the form keeps has a stamp, the one the registry names for the picker has not been touched', thumbOf( contentPane() ).src.indexOf( '/uploads/hero.1600x900.jpg?t=' ) === 0 );
+
+doc = open();
+builder._renderEditor();
+builder._addComponent( [ 0, 0 ], 'image' );
+builder._openSettings( imageAt );
+requests = [];
+changes = 0;
+house.refused = true;
+choose( contentPane(), house );
+check( 'a picture the check of the workbench refuses - too large -, is refused in words and goes nowhere: no slot is made, nothing is sent, the form is on again', requests.length === 0 && noteOf( contentPane() ).textContent === '(400) image_too_large' && noteOf( contentPane() ).classList.contains('is-error') === true
+	&& fileField( contentPane() ).disabled === false && image().create !== undefined );
+house.refused = false;
+choose( contentPane(), house );
+requests[0].callback( 500, null );
+check( 'a slot that cannot be made stops it where it is: the error is said, the mark that makes the slot is still there, nothing is uploaded', actionsOf() === 'slots/create' && noteOf( contentPane() ).textContent === '(500) /_admin/builder/error/make-slot' && image().create !== undefined && builder._slotOf( image().source ) === null && changes === 0 );
+choose( contentPane(), house );
+requests[1].callback( 409, { code : 'keys_exists' } );
+check( 'a slot that is there already - another request made it in the meantime - is the one to use: the upload goes on, the mark is let go of', image().create === undefined && actionsOf() === 'slots/create,slots/create,images/upload' && builder._slotOf( image().source ) !== null );
+requests[2].callback( 400, { code : 'image_unreadable' } );
+check( 'a picture that cannot be stored says so - the code the Images panel gives is the workbench\'s to say - and the slot stays, without a picture: the source is the slot', noteOf( contentPane() ).textContent === '(400) /_admin/builder/error/upload' && noteOf( contentPane() ).classList.contains('is-error') === true
+	&& builder._slotOf( image().source ).hasImage === false && thumbOf( contentPane() ).hidden === true );
+
+doc = open();
+builder._renderEditor();
+builder._addComponent( [ 0, 0 ], 'image' );
+builder._openSettings( imageAt );
+requests = [];
+choose( contentPane(), house );
+builder._closeDialog();
+let thrown = null;
+try {
+	requests[0].callback( 200, { ok : true } );
+	requests[1].callback( 200, { filename : 'f', url : '/uploads/image.jpg', source : { width : 2000, height : 1000 }, belowTarget : false } );
+} catch( error ) {
+	thrown = error;
+}
+check( 'a dialog that is closed while a picture is on its way takes it all the same: the model and the preview have it, and nothing is drawn into a form that is gone', thrown === null && image().create === undefined && builder._slotOf( image().source ).hasImage === true
+	&& preview().querySelector('[data-path="0.0.3"] .builder-ph-picture').src.indexOf( '/uploads/image.jpg' ) === 0 && dialogBox().open === false );
+
+console.log( '\nThe picture behind a section' );
+
+doc = open();
+builder._renderEditor();
+builder._openSettings( [ 1 ] );
+buttonOf( stripOf(), 'Background' ).click();
+check( 'the picture behind a section has the same under its source: the upload and the alt text - and where the section has none the alt text has no slot to wait in, and says that a picture comes first', fileField( paneOf('background') ) !== null && thumbOf( paneOf('background') ).hidden === true
+	&& controlOf( paneOf('background'), altLabel ).el.disabled === true && controlOf( paneOf('background'), altLabel ).el.closest('label').querySelector('.nino-admin-hint').textContent === 'Upload a picture first, or choose a slot with the Source button.' );
+requests = [];
+changes = 0;
+choose( paneOf('background'), house );
+check( '...a picture chosen for a section that has none makes a slot of the kind of a new one - the name background, free in the section, the size it starts with, and for its label the name of the section and the word for a background - and the background is that slot, without a mark', actionsOf() === 'slots/create'
+	&& JSON.stringify( requests[0].payload ) === '{"uri":"/template/page-home/services/background","label":"services: Background","width":1600,"height":900}' );
+requests[0].callback( 200, { ok : true } );
+check( '...the section has the picture behind it, with no focus until it is chosen and nothing to make', JSON.stringify( builder._doc.model.blocks[1].background ) === '{"slot":"/template/page-home/services/background","focus":null}' && changes === 1 && actionsOf() === 'slots/create,images/upload' );
+requests[1].callback( 200, { filename : 'f', url : '/uploads/services.jpg', source : { width : 2000, height : 1000 }, belowTarget : false } );
+check( '...and the tab is drawn again with it: the thumbnail, the focus and the button that takes the picture away are on, the alt text can be written - and the preview says that a picture is behind the section', thumbOf( paneOf('background') ).hidden === false && thumbOf( paneOf('background') ).src.indexOf( '/uploads/services.jpg' ) === 0
+	&& controlOf( paneOf('background'), 'No focus' ).el.disabled === false && buttonOf( paneOf('background'), 'Remove the picture' ).disabled === false && controlOf( paneOf('background'), altLabel ).el.disabled === false && noteOf( paneOf('background') ).textContent === 'The picture is stored.'
+	&& preview().children[1].querySelector('.is-background') !== null && shownTab( stripOf(), 'builder' ) === 'background' );
+builder._closeDialog();
+builder._doc.model.blocks[1].id = '2col';
+builder._openSettings( [ 1 ] );
+buttonOf( stripOf(), 'Background' ).click();
+builder._doc.model.blocks[1].background = null;
+builder._refreshTab('background');
+requests = [];
+choose( paneOf('background'), house );
+check( 'a section whose id starts with a digit cannot have a slot made of its name: it is told so, as the form of a new slot tells it, and nothing is sent', requests.length === 0 && noteOf( paneOf('background') ).textContent === words['/_admin/builder/source/name-slot'] && noteOf( paneOf('background') ).classList.contains('is-error') );
+builder._closeDialog();
+
+doc = open();
+builder._renderEditor();
+builder._openSettings( [ 0 ] );
+buttonOf( stripOf(), 'Background' ).click();
+check( 'the slot a section has shows its picture and the alt text it holds', thumbOf( paneOf('background') ).src === '/uploads/hero.1600x900.jpg' && valueAt( paneOf('background'), altLabel ) === '' );
+builder._doc.model.blocks[0].background = { slot : '/template/page-home/hero/background-2', focus : 5, create : { label : 'Background', width : 800, height : 400, alt : { en_US : 'Waves' } } };
+builder._refreshTab('background');
+check( '...one that is made when the document is saved holds the alt text in its mark', valueAt( paneOf('background'), altLabel ) === 'Waves' && ( change( paneOf('background'), altLabel, 'More waves' ), builder._doc.model.blocks[0].background.create.alt.en_US === 'More waves' ) && changes > 0 );
+requests = [];
+choose( paneOf('background'), house );
+requests[0].callback( 200, { ok : true } );
+check( '...it is made with the label and the size of the mark, and the alt text it holds goes to it once the picture is stored', JSON.stringify( requests[0].payload ) === '{"uri":"/template/page-home/hero/background-2","label":"Background","width":800,"height":400}' && builder._doc.model.blocks[0].background.create === undefined
+	&& builder._doc.model.blocks[0].background.focus === 5 );
+requests[1].callback( 200, { filename : 'f', url : '/uploads/b2.jpg', source : { width : 2000, height : 1000 }, belowTarget : false } );
+check( '...(the focus it has stays)', actionsOf() === 'slots/create,images/upload,images/alt' && JSON.stringify( requests[2].payload ) === '{"uri":"/template/page-home/hero/background-2","alt":{"en_US":"More waves"}}' );
+builder._closeDialog();
+
+console.log( '\nA document that carries texts and slots' );
+
+doc = open();
+builder._renderEditor();
+heroTitle().values = { de_DE : 'Hallo' };
+builder._doc.model.blocks[0].cols[0].components.push( { name : 'image', source : '/template/page-home/hero/photo', text : null, attributes : registry().components.image.defaults, create : { label : 'Photo', width : 800, height : 400, alt : { en_US : 'Photo' } } } );
+check( 'the texts typed for the keys and the alt texts of the slots to be made are in the model, so the request of a save carries them - and the document is unsaved for them', builder._unsaved( builder._doc ) === true
+	&& builder._saveRequest( builder._doc, false ).model.blocks[0].cols[0].components[0].values.de_DE === 'Hallo' && builder._saveRequest( builder._doc, false ).model.blocks[0].cols[0].components[3].create.alt.en_US === 'Photo' );
+builder._save();
+const sentModel = requests[0].payload.model;
+const savedBack = JSON.parse( JSON.stringify( page() ) );
+requests[0].callback( 200, { model : savedBack, hash : 'h2' } );
+check( 'a save that is answered puts the model the server read in its place - which has none of the texts, they are the keys\' now - and asks for the keys of the project and the slots again, since it wrote some and made others', sentModel.blocks[0].cols[0].components[0].values.de_DE === 'Hallo'
+	&& builder._doc.model.blocks[0].cols[0].components[0].values === undefined && builder._unsaved( builder._doc ) === false && actionsOf() === 'builder/save,text/keys,builder/registry' );
+builder._setLocale('de_DE');
+const newKeys = known();
+newKeys[0].values.de_DE = 'Hallo';
+requests[1].callback( 200, { keys : newKeys } );
+const newRegistry = registry();
+newRegistry.slots.push( { uri : '/template/page-home/hero/photo', label : 'Photo', width : 800, height : 400, hasImage : false, url : null, alt : { en_US : 'Photo' } } );
+requests[2].callback( 200, newRegistry );
+check( '...the preview says the text that was written, and the slots are those of the project now, the one that was made among them', lines()[0] === 'Hallo' && builder._slotOf( '/template/page-home/hero/photo' ) !== null && builder._altOf( builder._slotOf( '/template/page-home/hero/photo' ) ).en_US === 'Photo' );
+builder._setLocale('en_US');
+
+// An account without the permission of the Text panel is refused the keys with a 403 (the kernel's guardPerm), it is not answered an empty list - and only an answer of 200 replaces the keys the panel has
+builder._keysAsked = false;
+builder._loadKeys();
+const refusedKeys = requests[requests.length - 1];
+refusedKeys.callback( 403, { error : 'not allowed' } );
+builder._openSettings( [ 0, 0, 0 ] );
+check( '...asked for again, the keys are refused to an account that may not read them any more (403): the ones it has stay, a refusal takes none of them away - so the preview still says the texts it read, and the field under the source is drawn from them',
+	refusedKeys.action === 'text/keys' && JSON.stringify( builder._keys ) === JSON.stringify( newKeys ) && lines()[0] === 'Welcome' && labelsIn( contentPane() ) === lineLabel && controlsIn( contentPane() )[0].el.value === 'Welcome' );
+builder._closeDialog();
+
+builder._keys = null;
+builder._keysAsked = false;
+builder._keysAnswered = false;
+builder._loadKeys();
+requests[requests.length - 1].callback( 403, { error : 'not allowed' } );
+builder._openSettings( [ 0, 0, 0 ] );
+check( '...an account that never could read them is refused the first time (403) and has none: the keys are an empty list that has been answered, the preview says the label of the component, and there is no text under the source',
+	JSON.stringify( builder._keys ) === '[]' && builder._keysAnswered === true && lines()[0] === 'Title' && paneOf('content').children.length === 1 );
+builder._closeDialog();
+
+doc = open();
+heroTitle().values = { en_US : 'Typed' };
+registered.discard();
+check( 'the shell that drops what is unsaved drops the texts with it: they are part of the document and of nothing else', heroTitle().values === undefined && registered.isDirty() === false );
+
+check( 'a copy of a component has the texts of the original: the key of the copy is new, made with the text the original has, and the texts typed for the original are typed for the copy', ( function() {
+	const model = page();
+	model.blocks[0].cols[0].components[0].values = { de_DE : 'Hallo' };
+	builder._duplicate( model, registry(), 'page-home', [ 0, 0, 0 ], function() { return 'Welcome' } );
+	const copy = model.blocks[0].cols[0].components[1];
+	return copy.source === '/template/page-home/hero/title-2' && copy.create.value === 'Welcome' && JSON.stringify( copy.values ) === '{"de_DE":"Hallo"}' && copy.values !== model.blocks[0].cols[0].components[0].values;
+} )() );
+check( 'a section that is edited as HTML+ and read again keeps the texts typed for its keys, with the instructions to make them', ( function() {
+	const old = page().blocks[0];
+	old.cols[0].components[0].values = { de_DE : 'Hallo' };
+	const again = page().blocks[0];
+	builder._carry( old, again );
+	return JSON.stringify( again.cols[0].components[0].values ) === '{"de_DE":"Hallo"}' && again.cols[0].components[1].values === undefined && again.cols[0].components[0].values !== old.cols[0].components[0].values;
+} )() );
+
+console.log( '\nA save that stopped' );
+
+doc = open();
+builder._renderEditor();
+builder._addComponent( [ 0, 0 ], 'image' );
+builder._openSettings( imageAt );
+change( contentPane(), altLabel, 'A house' );
+builder._closeDialog();
+requests = [];
+builder._save();
+requests[0].callback( 500, { code : 'builder_write', error : 'x' } );
+check( 'a save that stopped on the way - the file could not be written, a panel could not make a slot - asks for the slots of the registry again: it may have made those its marks name, and it keeps them', actionsOf() === 'builder/save,builder/registry'
+	&& builder._status.state === 'error' && builder._unsaved( builder._doc ) === true && image().create !== undefined && builder._slotOf( image().source ) === null );
+const stopped = registry();
+stopped.slots.push( { uri : '/template/page-home/hero/image', label : 'Image', width : 1600, height : 900, hasImage : false, url : null, alt : { en_US : 'A house' } } );
+requests[1].callback( 200, stopped );
+builder._openSettings( imageAt );
+const shown = valueAt( contentPane(), altLabel );
+requests = [];
+changes = 0;
+change( contentPane(), altLabel, 'A big house' );
+check( '...the slot is there for the editor then: its alt text is the one the save wrote, and one typed next goes to the slot at once - not into the mark, which the retry of the save passes over because the slot is there, and the text would be lost',
+	builder._slotOf( image().source ) !== null && shown === 'A house' && actionsOf() === 'images/alt' && JSON.stringify( requests[0].payload ) === '{"uri":"/template/page-home/hero/image","alt":{"en_US":"A big house"}}' && image().create.alt.en_US === 'A house' && changes === 0 );
+builder._closeDialog();
+
+doc = open();
+builder._doc.model.name = 'Start';
+requests = [];
+builder._save();
+requests[0].callback( 400, { code : 'builder_invalid', error : 'x', params : [ 'the name is bad' ] } );
+builder._save();
+requests[1].callback( 409, { code : 'builder_conflict', error : 'x' } );
+check( '...a save the server refused before it made anything - a model that is not valid, a file that changed - asks for nothing', actionsOf() === 'builder/save,builder/save' );
+
+console.log( '\nA section made here keeps the picture that was stored for it' );
+
+doc = open();
+builder._renderEditor();
+builder._addSection();
+const sectionAt = builder._doc.model.blocks.length - 1;
+builder._addComponent( [ sectionAt, 0 ], 'image' );
+builder._addComponent( [ sectionAt, 0 ], 'title' );
+builder._doc.model.blocks[sectionAt].background = { slot : '/template/page-home/section/background', focus : null, create : { label : 'Background', width : 1600, height : 900 } };
+builder._registry.slots.push( { uri : '/template/page-home/section/image', label : 'Image', width : 1600, height : 900, hasImage : true, url : '/uploads/i.jpg', alt : {} } );
+builder._rename( [ sectionAt ], 'about' );
+check( 'a section made here is renamed by writing its sources new, since nothing of it was made - but for a slot that is there already: a picture was stored for it, and it stays what the source names, whatever the section is called', builder._doc.model.blocks[sectionAt].id === 'about'
+	&& builder._doc.model.blocks[sectionAt].cols[0].components[0].source === '/template/page-home/section/image' && builder._doc.model.blocks[sectionAt].cols[0].components[1].source === '/template/page-home/about/title'
+	&& builder._doc.model.blocks[sectionAt].background.slot === '/template/page-home/about/background' && builder._doc.model.blocks[sectionAt].renamedFrom === undefined && builder._fresh.about === true );
+
+delete sandbox.Nino.admin.htmlEditor;
+
 
 console.log( '\nThe screens' );
 

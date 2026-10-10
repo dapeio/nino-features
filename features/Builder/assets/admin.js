@@ -11,18 +11,24 @@
  *													and the settings of a frame open in a dialog that tells
  *													its order in tabs and groups. The source of a text or a
  *													picture is changed in a dialog of its own, over that
- *													one, and the name of a section where it stands.
+ *													one, and the name of a section where it stands. The text of
+ *													a key and the picture of a slot are edited where the
+ *													component is, in the language the bar over the preview
+ *													chooses: the text is kept in the model and written when the
+ *													document is saved, the picture is stored at once.
  *
  *													The server reads and writes the file (see Document,
  *													Reader and Writer): this script knows the model only,
  *													as Reader describes it, changes it in place and sends it
- *													back. The preview is drawn from that model and never from
- *													content, so nothing it shows can fail on a text or a
- *													picture. The pure half of the script - the operations on
- *													the model, the red sources, the preview model, what a
- *													save's answer means - touches no element and is what
- *													builder-js-smoke.js drives; the rest draws what the
- *													template (templates/panel.tpl) holds the fragments of.
+ *													back. The preview is drawn from that model; the first line
+ *													of the text a key holds and the picture a slot has are shown
+ *													in it where they are known, and a placeholder where they are
+ *													not, so nothing it shows can fail on a text or a picture.
+ *													The pure half of the script - the operations on the model,
+ *													the red sources, the preview model, what a save's answer
+ *													means - touches no element and is what builder-js-smoke.js
+ *													drives; the rest draws what the template
+ *													(templates/panel.tpl) holds the fragments of.
  *
  *													The document is registered with the shell's unsaved
  *													input (Nino.admin.dirty): leaving it asks Save, Discard
@@ -62,6 +68,10 @@
 		// the frame the pointer is over: the innermost one, whose tools are seen
 		_viewport	: 'l',
 		_hovered	: null,
+		// The language the editor works in: the texts its dialogs show and write and the
+		// preview shows are those of this one of the site's languages. The native one when
+		// the editor is opened, and kept nowhere
+		_locale		: '',
 		// The sections the editor made since the document was loaded, by id: their
 		// keys and slots are new, so a rename moves them in the model and no
 		// request has to move them
@@ -127,6 +137,13 @@
 		// How many visible characters the editor of an [html] component keeps: the
 		// editor trims to it after every edit, so it is a limit and never none
 		CONTENT_MAX	: 100000,
+
+		// The formats of a text key, as \Nino\Html knows them; the size a slot is made in
+		// where nothing else says it, as the form of a new slot starts; and how many
+		// characters of the first line of a text a placeholder of the preview shows
+		FORMATS			: [ 'plain', 'inline', 'lines', 'blocks' ],
+		SLOT_SIZE		: { width : 1600, height : 900 },
+		LINE_MAX		: 60,
 
 		// What a text key and a section id are made of: lower-case words of letters
 		// and digits joined by hyphens - the grammar \Nino\Text::isGrammarKey() holds
@@ -893,7 +910,7 @@
 				const slug = builder._keyName( section, file, name, known );
 
 				component.source = builder._keyUri( file, section.id, slug );
-				component.create = kind === 'image' ? { label : schema.label || name, width : 1600, height : 900 } : { value : schema.label || name };
+				component.create = kind === 'image' ? Object.assign( { label : schema.label || name }, builder.SLOT_SIZE ) : { value : schema.label || name };
 			}
 
 			return component;
@@ -976,7 +993,7 @@
 
 				return {
 					source	: to+ name,
-					create	: kind === 'image' ? { label : label, width : 1600, height : 900 } : { value : valueOf( source ) || label },
+					create	: kind === 'image' ? Object.assign( { label : label }, builder.SLOT_SIZE ) : { value : valueOf( source ) || label },
 				};
 			};
 
@@ -1062,7 +1079,7 @@
 		// --------------------------------------------------------- The preview
 
 		/**
-		 *	What the preview draws, from the model alone: the sections in order, each
+		 *	What the preview draws, from the model: the sections in order, each
 		 *	with its colour and whether it has a picture behind it, its columns at the
 		 *	width and the visibility of one viewport, in a column its components as
 		 *	placeholders with the image the registry names, and for a column that runs a
@@ -1071,23 +1088,35 @@
 		 *	the cell of each element. A viewport changes nothing but
 		 *	widths and visibility; all of them at once (g) is drawn at the widths of
 		 *	the widest, with no column greyed - which viewports hide a column is
-		 *	what it says in its head
+		 *	what it says in its head. Where it is told the language and the keys, the
+		 *	placeholder of a component that has a text says its first line, and that of a
+		 *	picture has the picture of its slot, where the slot has one
 		 *
 		 *	@param		{Object}		model
 		 *	@param		{Object}		registry
 		 *	@param		{string}		viewport					s, m, l or g
+		 *	@param		{Object}		[texts]						{ locale, keys }: the language the texts are shown in, and the keys of the project they are taken from
 		 *
 		 *	@return		{Array}										One entry per block
 		 */
-		_preview : function( model, registry, viewport ) {
+		_preview : function( model, registry, viewport, texts ) {
 
 			const builder = Nino.admin.builder;
 			const shown = viewport === 'g' ? 'l' : viewport;
-			const place = function( name, path ) {
+			const place = function( component, path ) {
 
-				const schema = ( registry.components || {} )[name] || {};
+				const schema = ( registry.components || {} )[component.name] || {};
+				const text = texts === undefined ? null : builder._textOf( component, texts.locale, texts.keys, registry );
+				const slot = texts === undefined || builder._sourceKind( registry, component.name ) !== 'image' ? undefined : ( registry.slots || [] ).find( function( candidate ) { return candidate.uri === component.source } );
 
-				return { path : path, name : name, label : schema.label || name, image : builder.PREVIEWS.indexOf( schema.preview ) === -1 ? 'block' : schema.preview };
+				return {
+					path		: path,
+					name		: component.name,
+					label		: schema.label || component.name,
+					image		: builder.PREVIEWS.indexOf( schema.preview ) === -1 ? 'block' : schema.preview,
+					line		: text === null ? '' : builder._firstLine( text.value, builder.LINE_MAX ),
+					picture	: slot !== undefined && typeof slot.url === 'string' ? slot.url : '',
+				};
 			};
 
 			return model.blocks.map( function( block, b ) {
@@ -1113,7 +1142,7 @@
 							hidden		: viewport !== 'g' && col.hidden[viewport] === true,
 							hiddenIn	: builder.VIEWPORTS.filter( function( at ) { return col.hidden[at] === true } ),
 							stack			: stack === null ? null : { path : [ b, c, 'x' ], label : builder._stackLabel( registry, stack.name ), type : type === undefined || type.title === '' ? stack.source : type.title },
-							components : col.components.map( function( component, k ) { return place( component.name, [ b, c, k ] ) } ),
+							components : col.components.map( function( component, k ) { return place( component, [ b, c, k ] ) } ),
 						};
 					} ),
 				};
@@ -1256,19 +1285,20 @@
 		 *	@param		{string}		action				builder/<name> - or only the name - or the action of another panel
 		 *	@param		{Object}		payload				Sent json-encoded as "data"
 		 *	@param		{Function}	callback			Called with ( xhr.status, xhr.responseJSON )
+		 *	@param		{Object}		[extra]				Extra multipart fields (eg. { file : File }), as the Images panel posts a picture
 		 *
 		 *	@return		void
 		 */
-		_apiCall : function( action, payload, callback ) {
+		_apiCall : function( action, payload, callback, extra ) {
 
 			const name = action.indexOf('/') === -1 ? 'builder/'+ action : action;
 
 			if( Nino.adminUi && Nino.adminUi.api )
-				return Nino.adminUi.api.call( name, payload, callback );
+				return Nino.adminUi.api.call( name, payload, callback, extra );
 
 			Nino.http.sendRequest( '[[/nino/dir]]/_admin/', 'POST', function( xhr ) {
 				callback( xhr.status, xhr.responseJSON );
-			}, { action : name, data : JSON.stringify( payload ) } );
+			}, Object.assign( { action : name, data : JSON.stringify( payload ) }, extra || {} ) );
 		},
 
 		/**
@@ -1840,9 +1870,9 @@
 		// ------------------------------------------------------------ The editor
 
 		/**
-		 *	Wire what the template draws once: the buttons of the views, the bar, the
-		 *	back link, the buttons below the preview, the frame the pointer is over,
-		 *	the close of the dialogs and the menu's way out
+		 *	Wire what the template draws once: the buttons of the views, the choice of
+		 *	the language, the bar, the back link, the buttons below the preview, the
+		 *	frame the pointer is over, the close of the dialogs and the menu's way out
 		 *
 		 *	@return		void
 		 */
@@ -1865,6 +1895,8 @@
 			const buttons = {};
 			builder.VIEWS.forEach( function( viewport ) { buttons[viewport] = dc.getElementById( 'builder-viewport-'+ viewport ) } );
 			builder._selectView = Nino.adminUi.buttonRow( buttons, builder._viewport, function( viewport ) { builder._setView( viewport ) } );
+
+			dc.getElementById('builder-locale').addEventListener( 'change', function( ev ) { builder._setLocale( ev.target.value ) } );
 
 			builder._status = Nino.adminUi.status( dc.getElementById('builder-status') );
 
@@ -1958,6 +1990,7 @@
 				const entry = ( answers.list.templates || [] ).find( function( candidate ) { return candidate.file === file } );
 
 				builder._registry = answers.registry;
+				builder._locale = builder._nativeLocale( answers.registry );
 				builder._doc = { file : file, hash : answers.load.hash, model : model, saved : JSON.stringify( model ), usedBy : entry === undefined ? [] : entry.usedBy };
 				builder._sel = [];
 				builder._fresh = {};
@@ -1965,6 +1998,7 @@
 				builder._saving = false;
 
 				builder._renderEditor();
+				builder._keysAsked = false;
 				builder._loadKeys();
 				Nino.admin.router.set( 'builder', [ file ] );
 			};
@@ -2003,9 +2037,12 @@
 		},
 
 		/**
-		 *	The text keys of the project, once, for the source field and for a copy
-		 *	that has to know the text of the key it takes over. An account that may
-		 *	not read them gets none and types a key instead
+		 *	The text keys of the project, for the source field, for the texts of the
+		 *	components - their values, and the first line of them in the preview - and
+		 *	for a copy that has to know the text of the key it takes over. An account
+		 *	that may not read them gets none and types a key instead. They are asked
+		 *	for when a document is opened and after it is saved, and what was there
+		 *	stays until the answer is: the preview is drawn again with it
 		 *
 		 *	@return		void
 		 */
@@ -2017,7 +2054,7 @@
 				return;
 
 			builder._keysAsked = true;
-			builder._keys = [];
+			builder._keys = builder._keys ?? [];
 
 			builder._apiCall( 'text/keys', {}, function( status, response ) {
 
@@ -2025,6 +2062,9 @@
 
 				if( status === 200 && response !== null && Array.isArray( response.keys ) === true )
 					builder._keys = response.keys;
+
+				if( builder._doc !== null )
+					builder._renderPreview();
 			} );
 		},
 
@@ -2062,6 +2102,7 @@
 			dc.getElementById('builder-editor-file').textContent = doc.file+ '.tpl';
 
 			builder._showScreen( 'editor' );
+			builder._drawLocales();
 			builder._repaint();
 			builder._status.idle( '' );
 		},
@@ -2257,7 +2298,7 @@
 			const builder = Nino.admin.builder;
 			const mount = dc.getElementById('builder-preview');
 			const model = builder._doc.model;
-			const plan = builder._preview( model, builder._registry, builder._viewport );
+			const plan = builder._preview( model, builder._registry, builder._viewport, { locale : builder._locale, keys : builder._keys } );
 
 			mount.innerHTML = '';
 			mount.dataset.viewport = builder._viewport;
@@ -2512,9 +2553,12 @@
 		},
 
 		/**
-		 *	A placeholder: the image the registry names for a component, and its label
+		 *	A placeholder: the image the registry names for a component and its label -
+		 *	or, where the component has a text, that stands in the place of the label, and
+		 *	where its slot has a picture, the picture in the place of the image. What it
+		 *	is then is told by its title, the label
 		 *
-		 *	@param		{Object}		component			{ path, label, image }
+		 *	@param		{Object}		component			{ path, label, image, line, picture }
 		 *	@param		{string}		how						tools: a frame of its own, with its tools; none: a frame that has
 		 *															its tools elsewhere
 		 *
@@ -2524,10 +2568,24 @@
 
 			const builder = Nino.admin.builder;
 			const ph = builder._fragment( 'ph' );
+			const line = component.line ?? '';
+			const picture = component.picture ?? '';
 
-			builder._one( ph, '.builder-ph-label' ).textContent = component.label;
+			builder._one( ph, '.builder-ph-label' ).textContent = line === '' ? component.label : line;
 			builder._one( ph, 'use' ).setAttribute( 'href', '#builder-ph-'+ component.image );
 			ph.dataset.path = component.path.join('.');
+
+			if( line !== '' || picture !== '' )
+				ph.title = component.label;
+
+			if( line !== '' )
+				ph.classList.add('has-line');
+
+			if( picture !== '' ) {
+				builder._one( ph, '.builder-ph-picture' ).src = picture;
+				ph.classList.add('has-picture');
+			}
+
 			builder._pick( ph, component.path );
 
 			if( how === 'tools' )
@@ -4230,7 +4288,9 @@
 		/**
 		 *	A section gets another id. Where it has been saved the server moves its
 		 *	keys and slots (renamedFrom says from where); where it was made here
-		 *	its sources are written new, since nothing is moved that was never made
+		 *	its sources are written new, since nothing is moved that was never made -
+		 *	but for a slot that is there already, a picture was stored for it: it stays
+		 *	what the source names, whatever the section is called
 		 *
 		 *	@param		{Array}			path
 		 *	@param		{string}		id
@@ -4249,11 +4309,11 @@
 				const from = builder._keyUri( doc.file, old, '' );
 				const to = builder._keyUri( doc.file, id, '' );
 				const move = function( node ) {
-					if( typeof node.source === 'string' && node.source.indexOf( from ) === 0 )
+					if( typeof node.source === 'string' && node.source.indexOf( from ) === 0 && builder._slotOf( node.source ) === null )
 						node.source = to+ node.source.slice( from.length );
 				};
 
-				if( section.background && section.background.slot.indexOf( from ) === 0 )
+				if( section.background && section.background.slot.indexOf( from ) === 0 && builder._slotOf( section.background.slot ) === null )
 					section.background.slot = to+ section.background.slot.slice( from.length );
 
 				section.cols.forEach( function( col ) { col.components.forEach( move ) } );
@@ -4577,10 +4637,11 @@
 
 		/**
 		 *	The form of a component, in tabs: its content - the source of its text or its
-		 *	picture, for [html] the editor of the blocks profile instead -, its properties,
-		 *	which are the attributes its schema declares, in the order of the schema, and the
-		 *	classes of its own. A component without a source, or without attributes, has no
-		 *	tab for what it does not have
+		 *	picture and, under it, the text of the key in the language the editor works in or
+		 *	the picture of the slot with its alt text; for [html] the editor of the blocks
+		 *	profile instead -, its properties, which are the attributes its schema declares, in
+		 *	the order of the schema, and the classes of its own. A component without a source,
+		 *	or without attributes, has no tab for what it does not have
 		 *
 		 *	@param		{Array}			path
 		 *
@@ -4598,6 +4659,8 @@
 			const fields = col.stack === null || col.stack === undefined ? null : ( ( builder._registry.types || [] ).find( function( candidate ) { return candidate.uri === col.stack.source } ) || { fields : {} } ).fields;
 			const declared = builder._declared( schema );
 			const tabs = [];
+			// The editor of an [html] component and those of the texts of a key, which the dialog lets go of when it closes
+			const editors = [];
 			let editor = null;
 			let typed = false;
 
@@ -4619,6 +4682,44 @@
 						return;
 					}
 
+					// What is under the source: the text of its key, or the picture of its slot - and nothing where it has none
+					const extra = builder._el( 'div', 'builder-content-extra' );
+					const fill = function() {
+
+						editors.splice( 0 ).forEach( function( made ) { made.destroy() } );
+						extra.innerHTML = '';
+
+						const text = kind === 'text' ? builder._textOf( component, builder._locale, builder._keys, builder._registry ) : null;
+
+						if( text !== null )
+							extra.appendChild( builder._valueField( component, text, editors ) );
+
+						if( kind === 'image' && ( component.source.charAt(0) === '/' || ( component.source === '' && col.stack === null ) ) )
+							extra.appendChild( builder._pictureField( {
+								owner		: {
+									get : function() { return { uri : component.source, create : component.create } },
+									put : function( uri, create ) {
+										component.source = uri;
+										component.text = null;
+
+										if( create === undefined )
+											delete component.create;
+										else
+											component.create = create;
+									},
+								},
+								section	: section,
+								name		: component.name,
+								seed		: schema.label || component.name,
+								redraw	: fill,
+							} ) );
+
+						if( extra.children.length === 0 )
+							extra.remove();
+						else
+							pane.appendChild( extra );
+					};
+
 					pane.appendChild( builder._sourceRow( {
 						kind		: kind,
 						fixed		: kind !== 'image',
@@ -4632,6 +4733,11 @@
 						caption	: Nino.content.getText('/_admin/builder/source/current'),
 						red			: builder._red( doc.model, builder._registry ).find( function( entry ) { return builder._same( entry.path, path ) } ),
 						onPick	: function( source, create ) {
+
+							// The texts typed for the key the component had are that key's, not the new one's
+							if( source !== component.source )
+								delete component.values;
+
 							component.source = source;
 							component.text = null;
 
@@ -4641,14 +4747,19 @@
 								component.create = create;
 
 							builder._changed();
+							fill();
 						},
 						onFixed	: function( text ) {
 							component.text = text;
 							component.source = '';
 							delete component.create;
+							delete component.values;
 							builder._changed();
+							fill();
 						},
 					} ) );
+
+					fill();
 				} } );
 
 			if( Object.keys( declared ).length > 0 )
@@ -4669,6 +4780,9 @@
 				wide	: kind === 'content',
 				tabs	: tabs,
 				onClose	: function() {
+
+					editors.splice( 0 ).forEach( function( made ) { made.destroy() } );
+
 					// The content stays as it was where nothing was typed: the editor shows it in its own normal form, which is not the file's
 					if( editor !== null ) {
 
@@ -5144,7 +5258,7 @@
 			const builder = Nino.admin.builder;
 			const doc = builder._doc;
 			const box = builder._fragment( 'newkey' );
-			const size = { width : 1600, height : 900 };
+			const size = Object.assign( {}, builder.SLOT_SIZE );
 			const name = builder._one( box, '.builder-new-name' );
 			const uri = builder._one( box, '.builder-new-uri' );
 			const message = builder._one( box, '.builder-new-message' );
@@ -5191,9 +5305,10 @@
 		},
 
 		/**
-		 *	The picture behind a section: its slot, where it stands and how high a cover
-		 *	is, its focus, and the way to take it away again. The picture is the source of
-		 *	the row, which is changed in the dialog of the sources
+		 *	The picture behind a section: its slot, the picture it has with the upload that
+		 *	stores one and the alt text in the language the editor works in, where it stands
+		 *	and how high a cover is, its focus, and the way to take it away again. The slot is
+		 *	the source of the row, which is changed in the dialog of the sources
 		 *
 		 *	@param		{Array}			path
 		 *
@@ -5231,6 +5346,27 @@
 				},
 			} ) );
 
+			wrap.appendChild( builder._pictureField( {
+				owner		: {
+					get : function() { return section.background ? { uri : section.background.slot, create : section.background.create } : { uri : '', create : undefined } },
+					put : function( uri, create ) {
+
+						section.background = section.background ?? { slot : uri, focus : null };
+						section.background.slot = uri;
+
+						if( create === undefined )
+							delete section.background.create;
+						else
+							section.background.create = create;
+					},
+				},
+				section	: section,
+				name		: 'background',
+				// A slot made by an upload has no form to name it: it is the background of this section
+				seed		: section.id+ ': '+ Nino.content.getText('/_admin/builder/source/background'),
+				redraw	: function() { builder._refreshTab('background') },
+			} ) );
+
 			wrap.appendChild( builder._line( [
 				builder._setting( section.settings, { key : 'imagePos', type : 'select', label : '/_admin/builder/section/image-pos', group : 'image-pos', values : builder.IMAGE_POS } ),
 				builder._setting( section.settings, { key : 'cover', type : 'int', label : '/_admin/builder/section/cover', hint : '/_admin/builder/hint/cover', min : 0, max : 100 } ),
@@ -5251,6 +5387,585 @@
 			wrap.appendChild( remove );
 
 			return wrap;
+		},
+
+		// ------------------------------------------ Languages, texts and pictures
+
+		/**
+		 *	The language the editor starts in: the native one of the site, else the first
+		 *	it has
+		 *
+		 *	@param		{Object}		registry
+		 *
+		 *	@return		{string}									'' where the registry names none
+		 */
+		_nativeLocale : function( registry ) {
+
+			const locales = ( registry.locales || [] ).map( function( entry ) { return entry.locale } );
+
+			return locales.indexOf( registry.native ) === -1 ? ( locales[0] ?? '' ) : registry.native;
+		},
+
+		/**
+		 *	What a language is called: the name the project gives it, else its code
+		 *
+		 *	@param		{string}		locale
+		 *
+		 *	@return		{string}
+		 */
+		_localeName : function( locale ) {
+
+			const found = ( Nino.admin.builder._registry.locales || [] ).find( function( entry ) { return entry.locale === locale } );
+
+			return found === undefined || found.name === '' ? locale : found.name;
+		},
+
+		/**
+		 *	The choice of the language in the bar over the preview: an option for each
+		 *	language of the site, the one the editor works in chosen. A site that has one
+		 *	language has nothing to choose, and the select is out of sight
+		 *
+		 *	@return		void
+		 */
+		_drawLocales : function() {
+
+			const builder = Nino.admin.builder;
+			const select = dc.getElementById('builder-locale');
+			const locales = builder._registry.locales || [];
+
+			select.innerHTML = '';
+
+			locales.forEach( function( entry ) {
+
+				const option = builder._el( 'option', '', builder._localeName( entry.locale ) );
+
+				option.value = entry.locale;
+				select.appendChild( option );
+			} );
+
+			select.value = builder._locale;
+			select.hidden = locales.length < 2;
+		},
+
+		/**
+		 *	The editor works in another language: the preview shows its texts, and the
+		 *	dialogs that are opened next show and write them
+		 *
+		 *	@param		{string}		locale
+		 *
+		 *	@return		void
+		 */
+		_setLocale : function( locale ) {
+
+			const builder = Nino.admin.builder;
+
+			builder._locale = locale;
+			builder._renderPreview();
+		},
+
+		/**
+		 *	The first line of a text as a placeholder says it: a break, or the end of a
+		 *	paragraph or an item, ends the line, the tags are gone and the entities read,
+		 *	white space is one space, and a line longer than max is cut and ends in an
+		 *	ellipsis. It is text, to be set as text: nothing in it is markup
+		 *
+		 *	@param		{*}					value							What a key holds: plain text, or the html of the other formats
+		 *	@param		{number}		max
+		 *
+		 *	@return		{string}									'' where the text has no line
+		 */
+		_firstLine : function( value, max ) {
+
+			const entities = { amp : '&', lt : '<', gt : '>', quot : '"', apos : "'", nbsp : ' ' };
+			const line = String( value ?? '' )
+				.replace( /<\s*(?:br|\/p|\/li|\/div|\/h[1-6]|\/blockquote)\b[^>]*>/gi, '\n' )
+				.replace( /<[^>]*>/g, '' )
+				.replace( /&(#x?[0-9a-f]+|[a-z]+);/gi, function( all, name ) {
+
+					if( name.charAt(0) === '#' ) {
+						const code = name.charAt(1).toLowerCase() === 'x' ? parseInt( name.slice( 2 ), 16 ) : parseInt( name.slice( 1 ), 10 );
+						return code > 0 && code < 0x110000 ? String.fromCodePoint( code ) : all;
+					}
+
+					return entities[name.toLowerCase()] ?? all;
+				} )
+				.split( /\r\n|\r|\n/ )
+				.map( function( part ) { return part.replace( /\s+/g, ' ' ).trim() } )
+				.find( function( part ) { return part !== '' } ) ?? '';
+			const characters = Array.from( line );
+
+			return characters.length > max ? characters.slice( 0, max ).join('').trimEnd()+ '…' : line;
+		},
+
+		/**
+		 *	The key a source names, in the list of the keys of the project
+		 *
+		 *	@param		{Array|null}	keys							As text/keys answers them
+		 *	@param		{string}		source
+		 *
+		 *	@return		{Object|null}
+		 */
+		_keyEntry : function( keys, source ) {
+			return ( keys || [] ).find( function( entry ) { return entry.key === source } ) ?? null;
+		},
+
+		/**
+		 *	The format a text key is made in when the document is saved: what its
+		 *	component asks for - the format attribute, where the schema has one -, else plain
+		 *
+		 *	@param		{Object}		registry
+		 *	@param		{Object}		component
+		 *
+		 *	@return		{string}									One of FORMATS
+		 */
+		_createFormat : function( registry, component ) {
+
+			const builder = Nino.admin.builder;
+			const declared = builder._declared( ( registry.components || {} )[component.name] || {} );
+			const asked = Object.prototype.hasOwnProperty.call( declared, 'format' ) === true ? String( component.attributes.format ?? '' ) : '';
+
+			return builder.FORMATS.indexOf( asked ) === -1 ? 'plain' : asked;
+		},
+
+		/**
+		 *	The text of a component in a language, where it has one to show: the one typed
+		 *	for it and not saved yet, else the one its key holds, else - for a key the save is
+		 *	going to make - the one it is made with. A component whose source is no text key
+		 *	has none: a fixed text, the field of a loop, a picture, a key nobody knows
+		 *
+		 *	@param		{Object}		component
+		 *	@param		{string}		locale
+		 *	@param		{Array|null}	keys							The keys of the project, as text/keys answers them
+		 *	@param		{Object}		registry
+		 *
+		 *	@return		{Object|null}							{ value, stored, staged, format, global, maxlength }: what is shown, what the key holds
+		 *															(or is made with), whether what is shown was typed, the format of the key, whether
+		 *															it is the same in every language, its limit (0 for none known)
+		 */
+		_textOf : function( component, locale, keys, registry ) {
+
+			const builder = Nino.admin.builder;
+
+			if( builder._sourceKind( registry, component.name ) !== 'text' || typeof component.text === 'string' || String( component.source ?? '' ).charAt(0) !== '/' )
+				return null;
+
+			const entry = builder._keyEntry( keys, component.source );
+			const typed = component.values ?? {};
+			let info;
+
+			if( entry !== null ) {
+
+				const held = entry.global === true ? entry.values['*'] : entry.values[locale];
+
+				info = {
+					stored		: typeof held === 'string' ? held : '',
+					format		: builder.FORMATS.indexOf( entry.format ) === -1 ? ( entry.html === true ? 'inline' : 'plain' ) : entry.format,
+					global		: entry.global === true,
+					maxlength	: entry.maxlength ?? 0,
+				};
+			} else if( component.create !== null && typeof component.create === 'object' )
+				info = { stored : String( component.create.value ?? '' ), format : builder._createFormat( registry, component ), global : false, maxlength : 0 };
+			else
+				return null;
+
+			// A key every language shares has one text, whichever language it was typed in
+			const given = info.global === true ? Object.values( typed )[0] : typed[locale];
+
+			info.staged = typeof given === 'string';
+			info.value = info.staged === true ? given : info.stored;
+
+			return info;
+		},
+
+		/**
+		 *	Keep a text typed for the key of a component in its model, under the language
+		 *	- and only where it is not what the key holds: typed back to that, it is none
+		 *
+		 *	@param		{Object}		component
+		 *	@param		{Object}		info							As _textOf() answers
+		 *	@param		{string}		locale
+		 *	@param		{string}		text
+		 *
+		 *	@return		void
+		 */
+		_stageValue : function( component, info, locale, text ) {
+
+			const values = component.values ?? {};
+
+			// The one text of a key every language shares is kept once
+			if( info.global === true )
+				Object.keys( values ).forEach( function( key ) { delete values[key] } );
+
+			if( text === info.stored )
+				delete values[locale];
+			else
+				values[locale] = text;
+
+			if( Object.keys( values ).length === 0 )
+				delete component.values;
+			else
+				component.values = values;
+		},
+
+		/**
+		 *	The text of the key of a component in the language the editor works in, as a field
+		 *	under its source: a line of text for a key of the plain format - a few lines where
+		 *	it holds some -, the editor of the workbench in the profile of its format for the
+		 *	others. What is typed goes into the model, under the language; the key is written
+		 *	when the document is saved
+		 *
+		 *	@param		{Object}		component
+		 *	@param		{Object}		info							As _textOf() answers
+		 *	@param		{Array}			editors						Where an editor made here is added, for the dialog to let go of it
+		 *
+		 *	@return		{Element}
+		 */
+		_valueField : function( component, info, editors ) {
+
+			const builder = Nino.admin.builder;
+			const locale = builder._locale;
+			const wrap = builder._el( 'div', 'builder-value' );
+			const label = info.global === true ? Nino.content.getText('/_admin/builder/value/label-global') : Nino.adminUi.format( Nino.content.getText('/_admin/builder/value/label'), builder._localeName( locale ) );
+			const keep = function( text ) {
+				builder._stageValue( component, info, locale, text );
+				builder._changed();
+			};
+
+			if( info.format === 'plain' ) {
+
+				const field = builder._textField( label, Nino.content.getText('/_admin/builder/value/hint'), info.value, keep, { multiline : info.value.indexOf('\n') !== -1 } );
+
+				// A text is for reading: the spelling is checked, which a name or a class is not
+				field.control.spellcheck = true;
+
+				if( info.maxlength > 0 )
+					field.control.maxLength = info.maxlength;
+
+				wrap.appendChild( field );
+			} else {
+
+				const mount = builder._el( 'div', 'builder-content' );
+				const name = builder._el( 'span', 'builder-label', label );
+				const hint = builder._el( 'small', 'nino-admin-hint', Nino.content.getText('/_admin/builder/value/hint') );
+
+				// An editor is no input that its label wraps: the group is named by the label and described by the hint, as the Text panel does it
+				name.id = 'builder-value-label';
+				hint.id = 'builder-value-hint';
+				wrap.setAttribute( 'role', 'group' );
+				wrap.setAttribute( 'aria-labelledby', name.id );
+				wrap.setAttribute( 'aria-describedby', hint.id );
+				wrap.appendChild( name );
+				wrap.appendChild( mount );
+
+				if( typeof Nino.admin.htmlEditor === 'object' ) {
+
+					const editor = Nino.admin.htmlEditor.create( mount, info.value, info.maxlength > 0 ? info.maxlength : builder.CONTENT_MAX, 0, info.format );
+					// What the editor shows is its own normal form of the text, which is not the key's: the text is kept where that changes, not where it is shown
+					let last = editor.getValue();
+					const sync = function() {
+
+						const now = editor.getValue();
+
+						if( now === last )
+							return;
+
+						last = now;
+						keep( now );
+					};
+
+					// A key press and a paste are input; a button of the toolbar is a click, a shortcut is a key up
+					[ 'input', 'click', 'keyup', 'focusout' ].forEach( function( type ) { mount.addEventListener( type, sync ) } );
+					editors.push( editor );
+				}
+
+				wrap.appendChild( hint );
+			}
+
+			return wrap;
+		},
+
+		/**
+		 *	The slot of the project a uri names
+		 *
+		 *	@param		{string}		uri
+		 *
+		 *	@return		{Object|null}
+		 */
+		_slotOf : function( uri ) {
+			return ( Nino.admin.builder._registry.slots || [] ).find( function( slot ) { return slot.uri === uri } ) ?? null;
+		},
+
+		/**
+		 *	The alt texts of a slot as a map - php sends an empty one as a list
+		 *
+		 *	@param		{Object|null}	slot
+		 *
+		 *	@return		{Object}									language => text
+		 */
+		_altOf : function( slot ) {
+			return slot === null || slot.alt === undefined || slot.alt === null || Array.isArray( slot.alt ) === true ? {} : slot.alt;
+		},
+
+		/**
+		 *	A slot for a source that names none: in the section, named as a new one is and
+		 *	free in the project, made with the label and the size a new one is given
+		 *
+		 *	@param		{Object}		section
+		 *	@param		{string}		name							The kind of the component, background for the picture of a section
+		 *	@param		{string}		seed							The label the slot is made with
+		 *
+		 *	@return		{Object|null}							{ uri, create } - null where the id of the section or the name is no part of a slot: it starts with a digit
+		 */
+		_newSource : function( section, name, seed ) {
+
+			const builder = Nino.admin.builder;
+			const file = builder._doc.file;
+			const names = builder._names( section, file, builder._keys );
+			const word = builder._free( builder._segment( name ) || 'item', function( candidate ) {
+				return names[candidate] === true || builder._slotOf( builder._keyUri( file, section.id, candidate ) ) !== null;
+			} );
+
+			if( /^[a-z]/.test( section.id ) === false || /^[a-z]/.test( word ) === false )
+				return null;
+
+			return { uri : builder._keyUri( file, section.id, word ), create : Object.assign( { label : seed }, builder.SLOT_SIZE ) };
+		},
+
+		// What the picture of a slot last said of itself, for the form that is drawn again to say it: { text, kind } - kind is '', 'warning' or 'error'
+		_pictureNote : null,
+
+		/**
+		 *	The picture of a slot in a form: the picture it has, the choice of a file that stores
+		 *	one - at once, not when the document is saved - and beside it the alt text in the
+		 *	language the editor works in. The first picture makes the slot where there is none
+		 *	yet; an alt text goes to the slot at once where it is there, and into the mark of one
+		 *	that is made when the document is saved, where it is not
+		 *
+		 *	@param		{Object}		options
+		 *	@param		{Object}		options.owner			{ get(), put( uri, create ) }: the source in the model - { uri, create } - and
+		 *															the slot it is changed to, create undefined for none to make
+		 *	@param		{Object}		options.section		Whose keys a new slot is named among
+		 *	@param		{string}		options.name			What a new slot is called: the kind of the component, background
+		 *	@param		{string}		options.seed			The label a new slot is made with
+		 *	@param		{Function}	options.redraw		Draws the form again, once the model has changed under it
+		 *
+		 *	@return		{Element}
+		 */
+		_pictureField : function( options ) {
+
+			const builder = Nino.admin.builder;
+			const locale = builder._locale;
+			const source = options.owner.get();
+			const slot = builder._slotOf( source.uri );
+			const wrap = builder._el( 'div', 'builder-picture' );
+			const view = builder._el( 'div', 'builder-picture-view' );
+			const thumb = builder._el( 'img', 'builder-picture-thumb' );
+			const controls = builder._el( 'div', 'builder-picture-controls' );
+			const file = builder._el('input');
+			const message = builder._el( 'p', 'nino-admin-hint builder-picture-message' );
+			const note = builder._pictureNote;
+			// kind: '' for a plain note, 'warning' for one that is no failure - the picture was stored -, 'error'
+			const say = function( text, kind ) {
+				message.textContent = text;
+				message.classList.toggle( 'is-warning', kind === 'warning' );
+				message.classList.toggle( 'is-error', kind === 'error' );
+				message.hidden = text === '';
+			};
+
+			builder._pictureNote = null;
+
+			thumb.alt = '';
+			thumb.hidden = slot === null || typeof slot.url !== 'string';
+
+			if( thumb.hidden === false )
+				thumb.src = slot.url;
+
+			file.type = 'file';
+			file.accept = 'image/*';
+			file.setAttribute( 'aria-label', Nino.content.getText('/_admin/builder/picture/upload') );
+			file.addEventListener( 'change', function() {
+				if( file.files.length > 0 )
+					builder._upload( options, file.files[0], file, say );
+			} );
+
+			controls.appendChild( builder._el( 'span', 'builder-label', Nino.content.getText('/_admin/builder/picture/upload') ) );
+			controls.appendChild( file );
+
+			const limits = Nino.adminUi.uploadHint();
+
+			if( limits !== null )
+				controls.appendChild( limits );
+
+			controls.appendChild( builder._el( 'small', 'nino-admin-hint', Nino.content.getText( slot === null ? '/_admin/builder/picture/hint-made' : '/_admin/builder/picture/hint' ) ) );
+			controls.appendChild( message );
+			view.appendChild( thumb );
+			view.appendChild( controls );
+			wrap.appendChild( view );
+
+			say( note === null ? '' : note.text, note === null ? '' : note.kind );
+
+			// Where the slot is there the alt text is its own; where it is made later it is in the mark that makes it
+			const mark = source.create ?? {};
+			const alt = builder._textField(
+				Nino.adminUi.format( Nino.content.getText('/_admin/builder/picture/alt'), builder._localeName( locale ) ),
+				Nino.content.getText( source.uri === '' ? '/_admin/builder/picture/alt-hint-none' : ( slot === null ? '/_admin/builder/picture/alt-hint-made' : '/_admin/builder/picture/alt-hint' ) ),
+				slot === null ? ( mark.alt || {} )[locale] ?? '' : builder._altOf( slot )[locale] ?? '',
+				function( text ) {
+
+					const now = options.owner.get();
+
+					if( now.uri === '' || builder._slotOf( now.uri ) !== null )
+						return;
+
+					const made = now.create ?? Object.assign( { label : options.seed }, builder.SLOT_SIZE );
+					const texts = Object.assign( {}, made.alt || {} );
+
+					if( text === '' )
+						delete texts[locale];
+					else
+						texts[locale] = text;
+
+					if( Object.keys( texts ).length === 0 )
+						delete made.alt;
+					else
+						made.alt = texts;
+
+					options.owner.put( now.uri, made );
+					builder._changed();
+				},
+				{ onCommit : function( text ) {
+
+					const held = builder._slotOf( options.owner.get().uri );
+
+					if( held === null || text === ( builder._altOf( held )[locale] ?? '' ) )
+						return;
+
+					const sent = {};
+
+					sent[locale] = text;
+
+					builder._apiCall( 'images/alt', { uri : held.uri, alt : sent }, function( status, response ) {
+
+						if( status !== 200 || response === null )
+							return say( builder._errorText( status, response, '/_admin/builder/error/alt' ), 'error' );
+
+						held.alt = response.alt;
+						say( Nino.content.getText('/_admin/builder/picture/alt-saved'), '' );
+					} );
+				} }
+			);
+
+			alt.control.disabled = source.uri === '';
+			wrap.appendChild( alt );
+
+			return wrap;
+		},
+
+		/**
+		 *	Store the picture a person chose for a slot: the slot is made first where it is not
+		 *	there - from the mark of its source, or as a new one where the source names none -,
+		 *	then the Images panel's own upload, then the alt texts that were typed before the
+		 *	slot was there. The source is the slot from the moment it is, and nothing is left to
+		 *	make it. What came of it is said in the form, which is drawn again
+		 *
+		 *	@param		{Object}		options						As _pictureField() has them
+		 *	@param		{File}			picture
+		 *	@param		{Element}		field							The file input, off while the picture is on its way
+		 *	@param		{Function}	say								( text, error ): where the form says it
+		 *
+		 *	@return		void
+		 */
+		_upload : function( options, picture, field, say ) {
+
+			const builder = Nino.admin.builder;
+			const opened = builder._dialogOptions;
+			const source = options.owner.get();
+			let uri = source.uri;
+			let mark = source.create;
+			let alt = {};
+			const done = function( text, kind ) {
+
+				field.disabled = false;
+
+				// The form is drawn again if the dialog it is in is the one that is open; the model has changed either way
+				if( builder._dialogOptions !== opened )
+					return;
+
+				builder._pictureNote = { text : text, kind : kind ?? '' };
+				options.redraw();
+			};
+
+			if( uri === '' ) {
+
+				const made = builder._newSource( options.section, options.name, options.seed );
+
+				if( made === null )
+					return say( Nino.content.getText('/_admin/builder/source/name-slot'), 'error' );
+
+				uri = made.uri;
+				mark = made.create;
+			}
+
+			field.disabled = true;
+			say( Nino.content.getText('/_admin/builder/picture/busy'), '' );
+
+			// What was typed before the slot was there goes to it once it is
+			const finish = function( text, kind ) {
+
+				if( Object.keys( alt ).length === 0 )
+					return done( text, kind );
+
+				builder._apiCall( 'images/alt', { uri : uri, alt : alt }, function( status, response ) {
+
+					if( status !== 200 || response === null )
+						return done( builder._errorText( status, response, '/_admin/builder/error/alt' ), 'error' );
+
+					builder._slotOf( uri ).alt = response.alt;
+					done( text, kind );
+				} );
+			};
+			const send = function() {
+
+				builder._apiCall( 'images/upload', { uri : uri }, function( status, response ) {
+
+					if( status !== 200 || response === null )
+						return finish( builder._errorText( status, response, '/_admin/builder/error/upload' ), 'error' );
+
+					const held = builder._slotOf( uri );
+
+					// The name a picture is stored under stays the same when it is replaced, so the browser is told that this is another
+					held.hasImage = true;
+					held.url = response.url+ ( response.url.indexOf('?') === -1 ? '?' : '&' )+ 't='+ Date.now();
+					builder._renderPreview();
+
+					finish( response.belowTarget === true && response.source ? Nino.adminUi.format( Nino.content.getText('/_admin/builder/picture/small'), response.source.width+ ' × '+ response.source.height+ ' px' )
+						: Nino.content.getText('/_admin/builder/picture/stored'), response.belowTarget === true ? 'warning' : '' );
+				}, { file : picture } );
+			};
+
+			Nino.adminUi.checkImage( picture, function( rejection ) {
+
+				if( rejection !== null )
+					return done( Nino.adminUi.api.errorText( 400, rejection ), 'error' );
+
+				if( builder._slotOf( uri ) !== null )
+					return send();
+
+				const size = mark ?? Object.assign( { label : options.seed }, builder.SLOT_SIZE );
+
+				builder._apiCall( 'slots/create', { uri : uri, label : size.label, width : size.width, height : size.height }, function( status, response ) {
+
+					// A slot that is there already (409) was made by another request in the meantime, and is the one to use
+					if( status !== 200 && status !== 409 )
+						return done( builder._errorText( status, response, '/_admin/builder/error/make-slot' ), 'error' );
+
+					builder._registry.slots.push( { uri : uri, label : size.label, width : size.width, height : size.height, hasImage : false, url : null, alt : {} } );
+					alt = Object.assign( {}, size.alt || {} );
+					options.owner.put( uri, undefined );
+					builder._changed();
+					send();
+				} );
+			} );
 		},
 
 		// --------------------------------------------------------------- HTML+
@@ -5393,9 +6108,9 @@
 
 		/**
 		 *	What a section that was read again has lost: the instructions to make the
-		 *	keys and slots that are new, and where the section was renamed from. The
-		 *	markup carries neither, so they are put back on what stands where it
-		 *	stood - the same source, the same id
+		 *	keys and slots that are new, the texts typed for its keys, and where the
+		 *	section was renamed from. The markup carries none of them, so they are put
+		 *	back on what stands where it stood - the same source, the same id
 		 *
 		 *	@param		{Object}		old								The section as it was
 		 *	@param		{Object}		[again]						The block the server read at its place
@@ -5408,11 +6123,15 @@
 				return;
 
 			const made = {};
+			const typed = {};
 
 			old.cols.forEach( function( col ) {
 				col.components.forEach( function( component ) {
 					if( component.create !== undefined && made[component.source] === undefined )
 						made[component.source] = component.create;
+
+					if( component.values !== undefined && typed[component.source] === undefined )
+						typed[component.source] = component.values;
 				} );
 			} );
 
@@ -5420,6 +6139,9 @@
 				col.components.forEach( function( component ) {
 					if( made[component.source] !== undefined && component.create === undefined )
 						component.create = Nino.admin.builder._clone( made[component.source] );
+
+					if( typed[component.source] !== undefined && component.values === undefined )
+						component.values = Nino.admin.builder._clone( typed[component.source] );
 				} );
 			} );
 
@@ -5530,6 +6252,7 @@
 
 					builder._repaint();
 					builder._status.saved();
+					builder._refreshStores();
 					dc.getElementById('builder-save').disabled = false;
 
 					if( typeof Nino.admin.dirty === 'object' )
@@ -5551,8 +6274,50 @@
 					builder._repaint();
 				}
 
+				// A save that stopped on the way - a panel that could not make or write - may have made the slots its marks name, and it keeps them: they are asked
+				// for again, so that an alt text typed next goes to the slot and not into a mark that is no longer read
+				if( outcome.kind === 'error' )
+					builder._refreshSlots();
+
 				builder._status.fail( builder._errorText( status, response, '/_admin/common/error/save' ) );
 				report( false );
+			} );
+		},
+
+		/**
+		 *	The keys of the project and the slots of the registry, asked for again: a save
+		 *	made some, wrote the texts of others and the alt texts of the slots it made, and
+		 *	the dialogs and the preview show what they hold. The preview is drawn again once
+		 *	each is there
+		 *
+		 *	@return		void
+		 */
+		_refreshStores : function() {
+
+			const builder = Nino.admin.builder;
+
+			builder._keysAsked = false;
+			builder._loadKeys();
+			builder._refreshSlots();
+		},
+
+		/**
+		 *	The slots of the registry, asked for again: those a save made are there, the
+		 *	pictures and alt texts stored since are theirs. The preview is drawn again with them
+		 *
+		 *	@return		void
+		 */
+		_refreshSlots : function() {
+
+			const builder = Nino.admin.builder;
+
+			builder._apiCall( 'registry', {}, function( status, response ) {
+
+				if( status !== 200 || response === null || builder._registry === null || builder._doc === null )
+					return;
+
+				builder._registry.slots = response.slots;
+				builder._renderPreview();
 			} );
 		},
 

@@ -119,7 +119,8 @@ namespace Nino\Modules\Builder {
 	 *											    vpaDuration string                data-vpa-duration
 	 *											    custom      string                every other class of the section
 	 *											  background null|map  slot (string, a text key grammar uri), focus
-	 *											            (int 1..9|null); an image call with alt=""
+	 *											            (int 1..9|null); an image call with alt=""; create (map,
+	 *											            only ever sent by the panel) as that of a component
 	 *											  cols      list    the columns of the one row
 	 *
 	 *											column
@@ -150,7 +151,16 @@ namespace Nino\Modules\Builder {
 	 *											                    default where the call does not set it
 	 *											  content   string  only for a component whose source is 'content'
 	 *											  create    map     only ever sent by the panel: what the key or the slot
-	 *											                    this source names is made with at save
+	 *											                    this source names is made with at save - for a key
+	 *											                    value (its text in every language), format (that of
+	 *											                    its component's format attribute, plain where it has
+	 *											                    none); for a slot label, width, height and alt (a
+	 *											                    text by language, written to the slot once made)
+	 *											  values    map     only ever sent by the panel: the texts typed for the
+	 *											                    key this source names, by language (language =>
+	 *											                    text), only those that were changed. They are the
+	 *											                    key's and not the file's, so the file never has them:
+	 *											                    a save writes them to the key, in their language
 	 *
 	 *	@package						Dape/Nino
 	 *	@author							David Perchermeier <mail@dape.io>

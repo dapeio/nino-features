@@ -18,9 +18,15 @@ namespace Nino\Modules\Builder {
 	 *										no request in it, and Admin says the answer: the status
 	 *										Document gave, and what goes with it. A developer surface -
 	 *										a save writes a template of the project and may make text
-	 *										keys and image slots - so every action, the reads among
+	 *										keys and image slots, and write the texts of keys and the
+	 *										alt texts of new slots - so every action, the reads among
 	 *										them, asks for MANAGE_PERM; the keys and the slots are made
-	 *										by the panels that own them, which ask for their own.
+	 *										and the texts written by the panels that own them, which ask
+	 *										for their own (the alt texts are the Images panel's, and the
+	 *										save asks for its permission itself). The pictures of the
+	 *										slots are not the panel's to store: the script posts them to
+	 *										the Images panel itself, as it reads the texts of the Text
+	 *										panel, and no action of this panel stands in the way.
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>

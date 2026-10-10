@@ -167,6 +167,7 @@
 	top: 0;
 	z-index: 3;
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	justify-content: space-between;
 	gap: .5rem;
@@ -281,6 +282,20 @@
 
 /* ------------------------------------------------------------- The preview */
 
+/* The language the editor works in, and the viewports: the tools of the bar over the preview */
+.builder-pane-tools {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: flex-end;
+	gap: .5rem;
+}
+.builder-locale {
+	max-width: 12rem;
+}
+.builder-locale[hidden] {
+	display: none;
+}
 .builder-viewports {
 	display: flex;
 	gap: .25rem;
@@ -546,6 +561,21 @@ button.builder-status-item:hover {
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
+/* A component whose slot has a picture shows it in place of the image of its kind */
+.builder-ph-picture {
+	display: none;
+	flex: 0 0 auto;
+	width: 3rem;
+	height: 2rem;
+	border-radius: var(--editor-radius-sm);
+	object-fit: cover;
+}
+.builder-ph.has-picture .builder-ph-picture {
+	display: block;
+}
+.builder-ph.has-picture .builder-ph-icon {
+	display: none;
+}
 .builder-add-col {
 	flex: 0 0 auto;
 	align-self: stretch;
@@ -671,6 +701,48 @@ button.builder-status-item:hover {
 .builder-source-red[hidden],
 .builder-new-message:empty {
 	display: none;
+}
+/* What is under the source of a component: the text of its key, or the picture of its slot with its alt text */
+.builder-content-extra,
+.builder-value,
+.builder-picture {
+	display: grid;
+	gap: .5rem;
+}
+.builder-picture-view {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	gap: .75rem;
+}
+.builder-picture-thumb {
+	flex: 0 0 auto;
+	width: 9rem;
+	max-height: 6rem;
+	border: 1px solid var(--editor-border);
+	border-radius: var(--editor-radius-sm);
+	object-fit: cover;
+}
+.builder-picture-thumb[hidden] {
+	display: none;
+}
+.builder-picture-controls {
+	display: grid;
+	flex: 1 1 14rem;
+	gap: .35rem;
+	min-width: 0;
+}
+.builder-picture-controls > * {
+	margin: 0;
+}
+.builder-picture-message[hidden] {
+	display: none;
+}
+.builder-picture-message.is-warning {
+	color: var(--editor-orange);
+}
+.builder-picture-message.is-error {
+	color: var(--editor-red);
 }
 .builder-picker-list {
 	max-height: 12rem;
