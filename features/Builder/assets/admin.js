@@ -1598,9 +1598,9 @@
 				columns	: [
 					{ key : 'name', label : Nino.content.getText('/_admin/builder/label/name'), type : 'string', render : function( value, row ) { return builder._nameCell( row ) } },
 					{ key : 'file', label : Nino.content.getText('/_admin/builder/label/file'), type : 'string' },
+					{ key : 'sections', label : Nino.content.getText('/_admin/builder/label/sections'), type : 'integer' },
 					{ key : 'header', label : Nino.content.getText('/_admin/builder/label/header'), type : 'string' },
 					{ key : 'footer', label : Nino.content.getText('/_admin/builder/label/footer'), type : 'string' },
-					{ key : 'sections', label : Nino.content.getText('/_admin/builder/label/sections'), type : 'integer' },
 					{ key : 'usedBy', label : Nino.content.getText('/_admin/builder/label/used-by'), type : 'string' },
 					{ key : 'actions', label : '', type : 'string', render : function( value, row ) { return builder._rowActions( row ) } },
 				],
@@ -2413,7 +2413,7 @@
 
 				const stack = builder._fragment( 'stack' );
 				const cells = builder._one( stack, '.builder-cells' );
-				const perRow = Math.max( 1, Math.min( 4, Math.floor( 100 / col.stack.cell ) ) );
+				const perRow = Math.max( 1, Math.min( 2, Math.floor( 100 / col.stack.cell ) ) );
 
 				stack.dataset.path = col.stack.path.join('.');
 				builder._one( stack, '.builder-stack-name' ).textContent = col.stack.label;
@@ -3638,7 +3638,7 @@
 				const width = builder._el( 'td' );
 				const hidden = builder._el( 'td' );
 
-				row.appendChild( builder._el( 'th', '', device ) );
+				row.appendChild( builder._el( 'th', 'builder-device-icon-'+viewport, device ) );
 				row.firstChild.setAttribute( 'scope', 'row' );
 
 				width.appendChild( builder._widthSelect( Nino.adminUi.format( Nino.content.getText('/_admin/builder/col/width'), device ), col.width[viewport], function( value ) {
@@ -3949,7 +3949,7 @@
 						} ) );
 
 					const declared = builder._declared( schema );
-
+					
 					Object.keys( declared ).forEach( function( name ) {
 						body.appendChild( builder._attributeField( name, declared[name], component.attributes, { fields : fields, component : component } ) );
 					} );
