@@ -16,15 +16,24 @@
  *												typed into, through add, retype and move), the pair of
  *												buttons that moves it, the type names in the
  *												workbench's language, the mail templates as a list that
- *												keeps what the form names, the options box of a radio
- *												group, and where a refused save is marked.
+ *												keeps what the form names, the options of a select or
+ *												of radio buttons as a list of rows that tells the
+ *												field what it holds (typed, added, moved, removed -
+ *												kept through a retype between the two, left out by
+ *												one to anything else, never with a row that is
+ *												empty), and where a refused save is marked, the list
+ *												as a whole with the focus in it, and the element that
+ *												has the focus described by the sentence as well until
+ *												the marks are taken off.
  *
  *												No jsdom, no dependency: the same element stand-in the
  *												other feature tests build, with just enough of
  *												Nino.adminUi for the panel to draw itself - the
  *												action bar carries the class string the kernel's own
- *												listActions() gives it - so this runs with nothing but
- *												node.
+ *												listActions() gives it, and the list of options does
+ *												what stringList() does for a form: its value is the
+ *												json of a hidden input and onChange hears the list -
+ *												so this runs with nothing but node.
  *
  *	Usage: node features/Forms/tests/forms-js-smoke.js
  */
@@ -195,6 +204,7 @@ function panel( options ) {
 
 	const calls = [];
 	const uris = [];
+	const lists = [];
 	let pending = null;
 	let status = 200;
 
@@ -280,6 +290,104 @@ function panel( options ) {
 				el.appendChild( input );
 				return el;
 			},
+			// stringList() in miniature: its label first, the value as the json of a
+			// hidden input, a row of a text and its three buttons for each text, and the
+			// button that adds one, with the classes the kernel's own gives them. A row
+			// that is empty is not an entry: each change rewrites the input without it
+			// and tells onChange the list as a form reads it
+			stringList	: function( config ) {
+
+				lists.push( { key : config.key, label : config.label, value : ( config.value || [] ).slice(), text : config.text } );
+
+				const texts = ( config.value || [] ).map( String );
+
+				const el = element('div');
+				el.className = 'nino-admin-field nino-admin-stringlist';
+
+				const name = element('span');
+				name.textContent = config.label;
+				el.appendChild( name );
+
+				const store = element('input');
+				store.type = 'hidden';
+				store.dataset.field = config.key;
+				store.dataset.type = 'array';
+				store.value = JSON.stringify( config.value || [] );
+				el.appendChild( store );
+
+				const rows = element('ul');
+				rows.className = 'nino-admin-stringlist-rows';
+				el.appendChild( rows );
+
+				const commit = function() {
+					store.value = JSON.stringify( texts.filter( function( text ) { return text.trim() !== '' } ) );
+					if( typeof config.onChange === 'function' )
+						config.onChange( JSON.parse( store.value ) );
+				};
+
+				const button = function( className, title, glyph, disabled, onClick ) {
+					const control = element('button');
+					control.type = 'button';
+					control.className = className;
+					control.textContent = glyph;
+					control.setAttribute( 'aria-label', title );
+					control.disabled = disabled === true;
+					control.addEventListener( 'click', onClick );
+					return control;
+				};
+
+				const draw = function() {
+
+					rows.innerHTML = '';
+
+					if( texts.length === 0 ) {
+						const empty = element('li');
+						empty.className = 'nino-admin-stringlist-empty';
+						empty.textContent = config.text.empty;
+						rows.appendChild( empty );
+						return;
+					}
+
+					texts.forEach( function( text, index ) {
+
+						const item = element('li');
+
+						const input = element('input');
+						input.type = 'text';
+						input.className = 'nino-admin-stringlist-input';
+						input.value = text;
+						input.setAttribute( 'aria-label', config.text.item.replace( '%d', String( index + 1 ) ) );
+						input.addEventListener( 'input', function() { texts[index] = input.value; commit() } );
+						item.appendChild( input );
+
+						// A button at the end of the list is off, and a click on it moves nothing
+						const move = function( delta ) {
+							if( texts[index + delta] === undefined )
+								return;
+							const moved = texts[index];
+							texts[index] = texts[index + delta];
+							texts[index + delta] = moved;
+							commit();
+							draw();
+						};
+
+						const actions = element('span');
+						actions.className = 'nino-admin-stringlist-actions';
+						actions.appendChild( button( '', config.text.up, '\u2191', index === 0, function() { move( -1 ) } ) );
+						actions.appendChild( button( '', config.text.down, '\u2193', index === texts.length - 1, function() { move( 1 ) } ) );
+						actions.appendChild( button( 'nino-admin-stringlist-remove', config.text.remove, '\u2715', false, function() { texts.splice( index, 1 ); commit(); draw() } ) );
+						item.appendChild( actions );
+
+						rows.appendChild( item );
+					} );
+				};
+
+				el.appendChild( button( 'nino-admin-stringlist-add', '', config.text.add, false, function() { texts.push(''); draw() } ) );
+
+				draw();
+
+				return el;
+			},
 		},
 	};
 
@@ -310,6 +418,7 @@ function panel( options ) {
 		form		: form,
 		calls		: calls,
 		uris		: uris,
+		lists		: lists,
 		panel		: Nino.admin.forms,
 		settings: settings,
 		save		: function() { return settings().querySelector('button') },
@@ -321,6 +430,22 @@ function panel( options ) {
 		status	: function( value ) { status = value },
 		release	: function() { const run = pending; pending = null; run() },
 	};
+}
+
+/**
+ *	The list of options in the row of a field, as the stand-in draws it: the
+ *	texts of its rows, the json its hidden input carries, the three buttons
+ *	of a row (up, down, remove), the button that adds a row, and typing into
+ *	a row - the way a person reaches each of them
+ */
+function optionTexts( row ) { return row.querySelectorAll('.nino-admin-stringlist-input').map( function( input ) { return input.value } ) }
+function optionStore( row ) { return row.querySelector('[data-field="options"]').value }
+function optionButtons( row, index ) { return row.querySelectorAll('.nino-admin-stringlist-actions')[index].children }
+function addOption( row ) { row.querySelector('.nino-admin-stringlist-add').click() }
+function typeOption( row, index, text ) {
+	const input = row.querySelectorAll('.nino-admin-stringlist-input')[index];
+	input.value = text;
+	input.dispatch('input');
 }
 
 const two = [
@@ -681,10 +806,14 @@ stepOf( 1, 'up' ).click();
 check( 'up swaps the other way, and a field that reaches the top moves the focus to its down button', orderOf() === 'one,two,three' && element.focused === stepOf( 0, 'down' ) );
 
 sorting.rows()[0].querySelector('[data-role="label"]').value = 'Typed before moving';
-sorting.rows()[1].querySelector('[data-role="options"]').value = 'X\nY\nZ';
+typeOption( sorting.rows()[1], 0, 'X' );
+typeOption( sorting.rows()[1], 1, 'Y' );
+addOption( sorting.rows()[1] );
+typeOption( sorting.rows()[1], 2, 'Z' );
 stepOf( 1, 'up' ).click();
 check( 'the options and the labels typed before a move are in the field that moved', orderOf() === 'two,one,three'
-	&& sorting.rows()[0].querySelector('[data-role="options"]').value === 'X\nY\nZ' && sorting.rows()[1].querySelector('[data-role="label"]').value === 'Typed before moving' );
+	&& optionTexts( sorting.rows()[0] ).join() === 'X,Y,Z' && optionStore( sorting.rows()[0] ) === '["X","Y","Z"]'
+	&& sorting.rows()[1].querySelector('[data-role="label"]').value === 'Typed before moving' );
 
 
 /*	What a save replaces is the key the editor was opened with. The key box is
@@ -723,12 +852,14 @@ check( 'the type list is in the words of the workbench, with the type itself as 
 	&& typeOptions[0].textContent === 'Type text' && typeOptions[0].value === 'text' && typeOptions[8].textContent === 'Type radio' && typeOptions[9].value === 'date' );
 check( '...and a type nobody has a word for is shown as itself', typeOptions[2].value === 'tel' && typeOptions[2].textContent === 'tel' );
 
-check( 'the box for options is there for a radio group and a select, and for no other type', ( function() {
+check( 'the list of options is there for a radio group and a select, and for no other type - and never a box to type them into', ( function() {
 	const kinds = {};
 	allTypes.forEach( function( kind ) {
 		worded.panel._editing.fields = [ { name : 'x', label : '', type : kind, required : false, options : [ 'A' ] } ];
 		worded.panel._renderForm();
-		kinds[kind] = worded.rows()[0].querySelector('[data-role="options"]') !== null;
+		kinds[kind] = worded.rows()[0].querySelector('[data-role="options"]') !== null
+			&& worded.rows()[0].querySelector('[data-role="options"]') === worded.rows()[0].querySelector('.nino-admin-stringlist')
+			&& worded.rows()[0].querySelectorAll('textarea').length === 0;
 	} );
 	return Object.keys( kinds ).filter( function( kind ) { return kinds[kind] } ).join() === 'select,radio';
 } )() );
@@ -749,6 +880,113 @@ hinted.list.querySelectorAll('[data-form] button')[0].click();
 check( '...which names the placeholder that carries every field into a mail, put in by the script', hinted.form.querySelector('[data-about="usertpl"]').parent.querySelectorAll('small')[0].textContent === 'Shown by [[fields]].' );
 
 
+// --- The options: a list of rows ------------------------------------------------
+
+/*	The options of a select and of radio buttons are the workbench's list of
+	texts: a row for each, moved and removed one by one. It keeps its rows
+	itself and tells onChange what it holds, and the working copy follows -
+	which is where a redraw, a move, a retype and a save start from	*/
+const plan = { key : 'q', name : 'Q', to : '', subject : '', confirm : false, ownerTemplate : '/templates/mail-owner', userTemplate : '/templates/mail-user', entries : 0, fields : [
+	{ name : 'plan', label : 'Plan', type : 'radio', required : true, options : [ 'Small', 'Large' ] },
+	{ name : 'note', label : 'Note', type : 'text', required : false, options : [] },
+] };
+const savedForms = function( probe ) { return probe.calls.filter( function( call ) { return call.action === 'forms/save' } ).map( function( call ) { return JSON.parse( call.data ) } ) };
+const retype = function( probe, index, kind ) {
+	const select = probe.rows()[index].querySelector('[data-role="type"]');
+	select.value = kind;
+	select.dispatch('change');
+};
+const editPlan = function() {
+	const probe = panel( { forms : [ plan ], types : allTypes } );
+	probe.list.querySelectorAll('[data-form] button')[0].click();
+	return probe;
+};
+
+const choice = editPlan();
+const planRow = function() { return choice.rows()[0] };
+
+check( 'a field of radio buttons has a list of options in its row, a row of it for each option, and no box to type them into',
+	planRow().querySelectorAll('.nino-admin-stringlist').length === 1 && planRow().querySelectorAll('textarea').length === 0
+	&& optionTexts( planRow() ).join() === 'Small,Large' && choice.rows()[1].querySelectorAll('.nino-admin-stringlist').length === 0 );
+check( '...handed its key, its label, the options of the field and the panel\'s word for each of its six controls',
+	choice.lists.length === 1 && choice.lists[0].key === 'options' && choice.lists[0].label === '/_admin/forms/label/options' && choice.lists[0].value.join() === 'Small,Large'
+	&& Object.keys( choice.lists[0].text ).join() === 'add,remove,up,down,empty,item'
+	&& Object.keys( choice.lists[0].text ).every( function( name ) { return choice.lists[0].text[name] === '/_admin/forms/options/'+ name } ) );
+check( '...as wide as the row, and found by the role the editor reads it by',
+	planRow().querySelector('[data-role="options"]') === planRow().querySelector('.nino-admin-stringlist')
+	&& planRow().querySelector('[data-role="options"]').matchesClass('nino-admin-field-wide') === true );
+check( '...and its hidden input carries the options as json, which is what the shell\'s check for unsaved input reads of them',
+	planRow().querySelector('[data-field="options"]').type === 'hidden' && optionStore( planRow() ) === '["Small","Large"]' );
+
+typeOption( planRow(), 0, 'Tiny' );
+check( 'a text typed into a row is in the working copy at once, before anything has read the editor back',
+	choice.panel._editing.fields[0].options.join() === 'Tiny,Large' && optionStore( planRow() ) === '["Tiny","Large"]' );
+addOption( planRow() );
+check( '...a row that was added is no option until it holds a text',
+	optionTexts( planRow() ).length === 3 && choice.panel._editing.fields[0].options.join() === 'Tiny,Large' );
+typeOption( planRow(), 2, 'Huge' );
+optionButtons( planRow(), 0 )[2].click();
+check( '...a row that was removed is gone from it', choice.panel._editing.fields[0].options.join() === 'Large,Huge' && optionTexts( planRow() ).join() === 'Large,Huge' );
+optionButtons( planRow(), 1 )[0].click();
+check( '...and so is the order the rows were moved to', choice.panel._editing.fields[0].options.join() === 'Huge,Large' && optionTexts( planRow() ).join() === 'Huge,Large' );
+
+choice.form.querySelectorAll('.nino-admin-btn-secondary')[0].click();
+check( 'a field that is added afterwards leaves them as they are', choice.rows().length === 3 && optionTexts( planRow() ).join() === 'Huge,Large' && choice.panel._editing.fields[0].options.join() === 'Huge,Large' );
+
+const blanks = editPlan();
+addOption( blanks.rows()[0] );
+addOption( blanks.rows()[0] );
+typeOption( blanks.rows()[0], 3, '   ' );
+addOption( blanks.rows()[0] );
+typeOption( blanks.rows()[0], 4, 'Medium' );
+typeOption( blanks.rows()[0], 0, '' );
+blanks.panel._submit();
+check( 'options with empty rows among them arrive without them - a row nobody typed into, one of spaces only and one that was emptied',
+	savedForms( blanks ).length === 1 && savedForms( blanks )[0].form.fields[0].options.join('|') === 'Large|Medium' );
+
+const retyped = editPlan();
+typeOption( retyped.rows()[0], 1, 'Medium' );
+retype( retyped, 0, 'select' );
+check( 'a field of radio buttons retyped to a select keeps its options - in the list, and in the working copy',
+	retyped.rows()[0].querySelector('[data-role="type"]').value === 'select' && retyped.panel._editing.fields[0].type === 'select'
+	&& optionTexts( retyped.rows()[0] ).join() === 'Small,Medium' && retyped.panel._editing.fields[0].options.join() === 'Small,Medium' );
+retype( retyped, 0, 'radio' );
+check( '...and back to radio buttons', retyped.panel._editing.fields[0].type === 'radio' && optionTexts( retyped.rows()[0] ).join() === 'Small,Medium' );
+retype( retyped, 0, 'text' );
+check( 'retyped to text it has no list, and no options - not in the working copy either',
+	retyped.rows()[0].querySelector('[data-role="options"]') === null && retyped.rows()[0].querySelectorAll('.nino-admin-stringlist').length === 0
+	&& retyped.panel._editing.fields[0].type === 'text' && retyped.panel._editing.fields[0].options.length === 0 );
+retype( retyped, 0, 'select' );
+check( '...a select it is retyped to afterwards starts with a list that says it has no option yet',
+	optionTexts( retyped.rows()[0] ).length === 0 && retyped.rows()[0].querySelector('.nino-admin-stringlist-empty').textContent === '/_admin/forms/options/empty' );
+retype( retyped, 0, 'text' );
+retyped.panel._submit();
+check( 'a field retyped to text is saved without options', savedForms( retyped ).length === 1 && savedForms( retyped )[0].form.fields[0].type === 'text' && savedForms( retyped )[0].form.fields[0].options.length === 0 );
+
+// A definition written by hand can carry options on a field that does not use them
+const stray = panel( { forms : [ Object.assign( {}, plan, { fields : [ { name : 'note', label : 'Note', type : 'text', required : false, options : [ 'Left over' ] } ] } ) ], types : allTypes } );
+stray.list.querySelectorAll('[data-form] button')[0].click();
+retype( stray, 0, 'select' );
+check( 'the options a text field was stored with are not given to the select it is retyped to',
+	stray.rows()[0].querySelector('[data-role="options"]') !== null && optionTexts( stray.rows()[0] ).length === 0 && stray.panel._editing.fields[0].options.length === 0 );
+
+/*	The working copy is written by the place of the field in it, not through
+	the object the row was drawn from: reading the editor back puts new objects
+	into it. A save that is refused leaves the editor as it is - and what is
+	done to the list after that is what the next save has to send	*/
+const again = { forms : [ Object.assign( {}, plan, { fields : [ { name : 'plan', label : 'Plan', type : 'radio', required : true, options : [] } ] } ) ], types : allTypes,
+	refuse : { error : 'Not saved.', fields : { 0 : 'Needs one.' }, controls : { 0 : 'options' }, about : {} } };
+const second = panel( again );
+second.list.querySelectorAll('[data-form] button')[0].click();
+second.panel._submit();
+delete again.refuse;
+addOption( second.rows()[0] );
+typeOption( second.rows()[0], 0, 'Yes' );
+second.panel._submit();
+check( 'what is done to the list after a refused save is what the next save sends',
+	savedForms( second ).length === 2 && savedForms( second )[0].form.fields[0].options.length === 0 && savedForms( second )[1].form.fields[0].options.join() === 'Yes' );
+
+
 // --- Where a refused save went wrong -------------------------------------------
 
 const refused = panel( { forms : [ { key : 'q', name : 'Q', to : '', subject : '', confirm : false, ownerTemplate : '/templates/mail-owner', userTemplate : '/templates/mail-user', entries : 0, fields : [
@@ -764,19 +1002,26 @@ refused.list.querySelectorAll('[data-form] button')[0].click();
 refused.panel._submit();
 
 const marks = function() { return refused.form.querySelectorAll('[aria-invalid="true"]') };
-check( 'a refused save marks the control of every field it names - the name, or the box of options - and the controls of the form itself',
+check( 'a refused save marks the control of every field it names - the name, or the list of options - and the controls of the form itself',
 	marks().length === 4
 	&& refused.rows()[1].querySelector('[data-role="name"]').getAttribute('aria-invalid') === 'true'
-	&& refused.rows()[2].querySelector('[data-role="options"]').getAttribute('aria-invalid') === 'true'
+	&& refused.rows()[2].querySelector('.nino-admin-stringlist').getAttribute('aria-invalid') === 'true'
 	&& refused.form.querySelector('[data-about="to"]').getAttribute('aria-invalid') === 'true'
 	&& refused.form.querySelector('[data-about="ownertpl"]').getAttribute('aria-invalid') === 'true'
 	&& refused.rows()[0].querySelectorAll('[aria-invalid]').length === 0 );
 check( '...with the sentence under it, which the control points to', refused.form.querySelectorAll('.nino-admin-field-error').length === 4 && marks().every( function( control ) {
 	const sentence = refused.form.querySelectorAll('.nino-admin-field-error').filter( function( error ) { return error.id === control.getAttribute('aria-describedby') } )[0];
-	return sentence !== undefined && sentence.parent === control.parentNode.parent;
+	// Right after the label the control is in - the list of options has none, it is a wrapper itself
+	const under = control.dataset.role === 'options' ? control : control.parentNode;
+	return sentence !== undefined && sentence.parent === under.parent && under.parent.children[ under.parent.children.indexOf( under ) + 1 ] === sentence;
 } ) );
 check( '...the sentence is after the label of the control, not in it', refused.rows()[1].querySelector('[data-role="name"]').parentNode.querySelectorAll('.nino-admin-field-error').length === 0
 	&& refused.rows()[1].children.some( function( child ) { return child.textContent === 'Taken.' } ) );
+check( '...and after the list of options, not in it', ( function() {
+	const wrapper = refused.rows()[2].querySelector('[data-role="options"]');
+	return wrapper.querySelectorAll('.nino-admin-field-error').length === 0
+		&& refused.rows()[2].children[ refused.rows()[2].children.indexOf( wrapper ) + 1 ].textContent === 'Needs one.';
+} )() );
 check( '...and the first one the person meets is focused: the form\'s own controls come before the fields', element.focused === refused.form.querySelector('[data-about="to"]') );
 check( 'the summary at the top of the editor says what the server said, and what has no control to mark - a form without fields, a field that is no more there',
 	refused.form.querySelector('#forms-summary').hidden === false
@@ -790,6 +1035,58 @@ check( 'a second save takes the marks of the first off before it marks again', r
 refused.panel._unmark();
 check( 'and they can be taken off altogether', refused.form.querySelectorAll('.nino-admin-field-error').length === 0 && marks().length === 0
 	&& refused.form.querySelector('#forms-summary').hidden === true && refused.form.querySelector('#forms-summary').textContent === '' );
+
+// A wrapper takes no focus, so the focus goes into the list - and what the refusal names may be nothing else
+const listed = panel( { forms : [ { key : 'q', name : 'Q', to : '', subject : '', confirm : false, ownerTemplate : '/templates/mail-owner', userTemplate : '/templates/mail-user', entries : 0, fields : [
+	{ name : 'one', label : 'One', type : 'text', required : false, options : [] },
+	{ name : 'three', label : 'Three', type : 'radio', required : false, options : [] },
+] } ], types : allTypes, templates : [ '/templates/mail-owner', '/templates/mail-user' ],
+	refuse : { error : 'Not saved.', fields : { 1 : 'Needs one.' }, controls : { 1 : 'options' }, about : {} } } );
+listed.list.querySelectorAll('[data-form] button')[0].click();
+listed.panel._submit();
+check( 'a refusal that names only the list of options puts the focus on the button of the list while it has no row', element.focused === listed.rows()[1].querySelector('.nino-admin-stringlist-add') );
+
+/*	The wrapper of the list is a div: it takes no focus and has no role, so what
+	it is described by is not read where the focus is. The element that has the
+	focus is described by the sentence as well - and by nothing once the marks
+	are off, so that no link outlives the sentence it points to	*/
+const listWrapper = function() { return listed.rows()[1].querySelector('[data-role="options"]') };
+const listSentence = function() { return listed.rows()[1].querySelectorAll('.nino-admin-field-error')[0] || null };
+const onButton = element.focused;
+check( '...and that button is described by the sentence, as the wrapper of the list is',
+	listSentence() !== null && listSentence().id !== '' && listSentence().textContent === 'Needs one.'
+	&& onButton.getAttribute('aria-describedby') === listSentence().id && listWrapper().getAttribute('aria-describedby') === listSentence().id );
+check( '...the list stays the one that is invalid, not the button', listWrapper().getAttribute('aria-invalid') === 'true' && onButton.getAttribute('aria-invalid') === null );
+addOption( listed.rows()[1] );
+listed.panel._submit();
+check( '...and on the first text of the list once it has one', element.focused === listed.rows()[1].querySelector('.nino-admin-stringlist-input') );
+const onText = element.focused;
+check( '...which is described by the sentence now, and the button, which no longer has the focus, is not',
+	listSentence() !== null && onText.getAttribute('aria-describedby') === listSentence().id && onText.getAttribute('aria-invalid') === null
+	&& listWrapper().getAttribute('aria-describedby') === listSentence().id && onButton.getAttribute('aria-describedby') === null );
+listed.panel._unmark();
+check( 'taking the marks off takes the description off the element that had the focus as well: the sentence is gone, and nothing points to one',
+	onText.getAttribute('aria-describedby') === null && listWrapper().getAttribute('aria-describedby') === null
+	&& listed.form.querySelectorAll('.nino-admin-field-error').length === 0 && listed.form.querySelectorAll('[aria-describedby]').length === 0 );
+
+// The marks come off when the next save starts, so one that goes through leaves no description behind
+const mendable = { forms : [ Object.assign( {}, plan, { fields : [ { name : 'plan', label : 'Plan', type : 'radio', required : true, options : [] } ] } ) ], types : allTypes,
+	refuse : { error : 'Not saved.', fields : { 0 : 'Needs one.' }, controls : { 0 : 'options' }, about : {} } };
+const mended = panel( mendable );
+mended.list.querySelectorAll('[data-form] button')[0].click();
+mended.panel._submit();
+const focusedAfter = element.focused;
+const mendedSentence = mended.rows()[0].querySelectorAll('.nino-admin-field-error')[0] || null;
+check( 'a refused save names its sentence on the element that has the focus - the button of a list with no row, here',
+	focusedAfter === mended.rows()[0].querySelector('.nino-admin-stringlist-add') && mendedSentence !== null && mendedSentence.id !== ''
+	&& focusedAfter.getAttribute('aria-describedby') === mendedSentence.id );
+delete mendable.refuse;
+addOption( mended.rows()[0] );
+typeOption( mended.rows()[0], 0, 'Yes' );
+mended.panel._submit();
+check( '...and the next save, which goes through, has taken that off the element, and the sentence with it',
+	savedForms( mended ).length === 2 && mended.panel._editing === null && focusedAfter.getAttribute('aria-describedby') === null
+	&& mended.form.querySelectorAll('.nino-admin-field-error').length === 0 && mended.form.querySelectorAll('[aria-describedby]').length === 0 );
 
 // A refusal that names nothing is only a sentence
 const plainly = panel( { forms : two, types : allTypes, refuse : { error : 'Another form already has that key.' } } );

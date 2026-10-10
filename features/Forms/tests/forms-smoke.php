@@ -530,6 +530,13 @@ echo "Forms\\Admin - the words the editor reads\n";
 
 $words = [ 'en_US' => include $dir. '/text/en_US.php', 'de_DE' => include $dir. '/text/de_DE.php' ];
 check( 'both interface languages carry the same fills', array_diff( array_keys( $words['en_US'] ), array_keys( $words['de_DE'] ) ) === [] && array_diff( array_keys( $words['de_DE'] ), array_keys( $words['en_US'] ) ) === [] );
+/*	A word the script asks for by its whole key - the labels and hints it hands to its
+	helpers as well - is one both languages say: a key that is mistyped in the script
+	reads as itself on screen. One that ends in a slash is the start of a key it puts
+	together, and is none	*/
+preg_match_all( "~'(/_admin/forms/[a-z0-9/-]*[a-z0-9])'~", (string) file_get_contents( $dir. '/assets/admin.js' ), $quoted );
+$asked = array_values( array_unique( $quoted[1] ) );
+$listWords = array_map( static fn( string $name ): string => '/_admin/forms/options/'. $name, [ 'add', 'remove', 'up', 'down', 'empty', 'item' ] );
 foreach( $words as $locale => $fills ) {
 	$missing = [];
 	foreach( \Nino\Form::TYPES as $type )
@@ -541,6 +548,12 @@ foreach( $words as $locale => $fills ) {
 	$codes = [ 'key', 'field', 'name', 'reserved', 'duplicate', 'type', 'options', 'fields', 'to', 'ownertpl', 'usertpl', 'missingtpl' ];
 	$absent = array_values( array_filter( $codes, static fn( string $code ): bool => isset( $fills[ '[[/_admin/forms/problem/'. $code. ']]' ] ) === false ) );
 	check( $locale. ' says every problem the engine can find, and the missing template'. ( $absent === [] ? '' : ' - missing '. implode( ', ', $absent ) ), $absent === [] && isset( $fills['[[/_admin/forms/error/fields]]'] ) === true );
+
+	$unsaid = array_values( array_filter( $asked, static fn( string $key ): bool => isset( $fills[ '[['. $key. ']]' ] ) === false ) );
+	check( $locale. ' says every word the panel script asks for, the six of the list of options among them'. ( $unsaid === [] ? '' : ' - missing '. implode( ', ', $unsaid ) ), $unsaid === [] && array_diff( $listWords, $asked ) === [] );
+
+	// A row of that list is named for a screen reader by its number
+	check( $locale. ' names a row of the list of options by its number', str_contains( (string) ( $fills['[[/_admin/forms/options/item]]'] ?? '' ), '%d' ) === true );
 
 	// A fill carries no token of its own: the script puts [[fields]] in where the hint asks, with %s
 	check( $locale. ': no fill carries a token the fill engine would answer for', array_filter( $fills, static fn( string $text ): bool => str_contains( $text, '[[' ) === true ) === [] );

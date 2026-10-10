@@ -822,20 +822,33 @@
 			row.appendChild( required );
 
 			// Only a select and a group of radio buttons have options, and only
-			// then is the box for them anything but noise
+			// then is the list for them anything but noise
 			if( field.type === 'select' || field.type === 'radio' ) {
-				const optionsWrap = dc.createElement('label');
-				optionsWrap.className = 'nino-admin-field nino-admin-field-wide';
-				const optionsSpan = dc.createElement('span');
-				optionsSpan.textContent = Nino.content.getText('/_admin/forms/label/options');
-				optionsWrap.appendChild( optionsSpan );
-				const options = dc.createElement('textarea');
-				options.className = 'nino-admin-input';
-				options.rows = 3;
+
+				/*	The workbench's list of texts keeps its rows itself and tells onChange
+					what it holds, without the rows that are empty, each time that changes.
+					The working copy is written by the field's place in it: _collect() puts
+					new objects into the copy, and a write to the one this function was
+					given would go nowhere	*/
+				const options = Nino.adminUi.stringList( {
+					key 			: 'options',
+					label 		: Nino.content.getText('/_admin/forms/label/options'),
+					value 		: field.options || [],
+					text 			: {
+						add 		: Nino.content.getText('/_admin/forms/options/add'),
+						remove 	: Nino.content.getText('/_admin/forms/options/remove'),
+						up 			: Nino.content.getText('/_admin/forms/options/up'),
+						down 		: Nino.content.getText('/_admin/forms/options/down'),
+						empty 	: Nino.content.getText('/_admin/forms/options/empty'),
+						item 		: Nino.content.getText('/_admin/forms/options/item'),
+					},
+					onChange 	: function( list ) { Nino.admin.forms._editing.fields[index].options = list },
+				} );
+
+				// The whole width of the row; the role is how _collect() and a refusal find it
+				options.classList.add('nino-admin-field-wide');
 				options.dataset.role = 'options';
-				options.value = ( field.options || [] ).join('\n');
-				optionsWrap.appendChild( options );
-				row.appendChild( optionsWrap );
+				row.appendChild( options );
 			}
 
 			const move = dc.createElement('div');
@@ -909,7 +922,9 @@
 
 		/**
 		 *	Take the marks of a refused save off the editor: the sentences
-		 *	under the fields and the summary above them
+		 *	under the fields and the summary above them, and what points to a
+		 *	sentence - the invalid controls, and the element that was given the
+		 *	focus in place of a list (see _mark())
 		 *
 		 *	@return		void
 		 */
@@ -920,10 +935,22 @@
 			if( wrap === null )
 				return;
 
-			wrap.querySelectorAll('.nino-admin-field-error').forEach( function( el ) { el.remove() } );
+			const sentences = [];
+
+			wrap.querySelectorAll('.nino-admin-field-error').forEach( function( el ) {
+				sentences.push( el.id );
+				el.remove();
+			} );
 			wrap.querySelectorAll('[aria-invalid]').forEach( function( el ) {
 				el.removeAttribute('aria-invalid');
 				el.removeAttribute('aria-describedby');
+			} );
+
+			// The element that took the focus for a list points to the sentence as
+			// well, and is not invalid itself: the list is
+			wrap.querySelectorAll('[aria-describedby]').forEach( function( el ) {
+				if( sentences.indexOf( el.getAttribute('aria-describedby') ) !== -1 )
+					el.removeAttribute('aria-describedby');
 			} );
 
 			const summary = dc.getElementById('forms-summary');
@@ -943,7 +970,12 @@
 		 *	whole form and what has no control of its own - a form without a
 		 *	field - go into the summary at the top of the editor, since the
 		 *	status line is not shown on a phone. Any other failure - a refused
-		 *	permission, a server error, no answer - is said there as well
+		 *	permission, a server error, no answer - is said there as well. The
+		 *	options of a select or of radio buttons are one control, a list: it
+		 *	is marked as a whole, the sentence follows it and the focus goes to
+		 *	its first text, or to its button while it has no row. That element
+		 *	points to the sentence as well: the wrapper takes no focus and has no
+		 *	role, so nothing is read of it where the focus is
 		 *
 		 *	@param		{number}	status
 		 *	@param		{*}				response
@@ -985,8 +1017,9 @@
 				error.className = 'nino-admin-field-error';
 				error.textContent = text;
 				// After the label, not in it: the sentence describes the control, and
-				// inside the label it would be part of the control's name as well
-				control.parentNode.after( error );
+				// inside the label it would be part of the control's name as well. The
+				// list of options has no label around it, it is its own wrapper
+				( control.dataset.role === 'options' ? control : control.parentNode ).after( error );
 
 				control.setAttribute( 'aria-invalid', 'true' );
 				control.setAttribute( 'aria-describedby', id );
@@ -1026,8 +1059,16 @@
 				summary.hidden = false;
 			}
 
-			if( marked.length > 0 )
-				marked[0].focus();
+			if( marked.length > 0 ) {
+
+				// A wrapper takes no focus: the first text of the list does, or its button
+				// where it has no row yet. The wrapper has no role either, so a screen reader
+				// at that element does not hear what the wrapper is described by: the element
+				// is described by the sentence as well
+				const first = marked[0].dataset.role === 'options' ? marked[0].querySelector('.nino-admin-stringlist-input, .nino-admin-stringlist-add') : marked[0];
+				first.setAttribute( 'aria-describedby', marked[0].getAttribute('aria-describedby') );
+				first.focus();
+			}
 		},
 
 		/**
@@ -1064,19 +1105,26 @@
 			if( rows === null )
 				return;
 
+			const before = form.fields;
 			const fields = [];
 
-			Array.prototype.slice.call( rows.children ).forEach( function( row ) {
+			Array.prototype.slice.call( rows.children ).forEach( function( row, index ) {
 
 				const required	= row.querySelector('[data-role="required"] [data-key]');
-				const options		= row.querySelector('[data-role="options"]');
+				const type			= row.querySelector('[data-role="type"]').value;
+
+				// The options are not read from the list: it told the working copy what it
+				// holds as it changed (see _renderFieldRow()). Only a field that is drawn
+				// with a list and is still a select or a group of radio buttons has any;
+				// one that was retyped to another type leaves them out
+				const listed = row.querySelector('[data-role="options"]') !== null && ( type === 'select' || type === 'radio' );
 
 				fields.push( {
 					name 			: row.querySelector('[data-role="name"]').value.trim(),
 					label 		: row.querySelector('[data-role="label"]').value.trim(),
-					type 			: row.querySelector('[data-role="type"]').value,
+					type 			: type,
 					required 	: required !== null && required.checked === true,
-					options 	: options === null ? [] : options.value.split('\n').map( function( line ) { return line.trim() } ).filter( Boolean ),
+					options 	: listed === true ? ( before[index].options || [] ) : [],
 					auto			: row.dataset.auto === 'true',
 				} );
 			} );
