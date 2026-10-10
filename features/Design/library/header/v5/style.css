@@ -68,7 +68,9 @@ body main {
 }
 
 body main:has(> .nino-cover:first-child),
-body main:has(> .nino-parallex:first-child) {
+body main:has(> .nino-wrap > .nino-cover:first-child),
+body main:has(> .nino-parallex:first-child),
+body main:has(> .nino-wrap > .nino-parallex:first-child) {
 	padding-top: 0;
 }
 
@@ -114,8 +116,11 @@ body main:has(> .nino-parallex:first-child) {
 	}
 
 	body main:has(> .nino-cover.nino-atf:first-child),
+	body main:has(> .nino-wrap > .nino-cover.nino-atf:first-child),
 	body main:has(> .nino-parallex.nino-atf:first-child),
-	body main:has(> .nino-atf--fullscreen:first-child) {
+	body main:has(> .nino-wrap > .nino-parallex.nino-atf:first-child),
+	body main:has(> .nino-atf--fullscreen:first-child),
+	body main:has(> .nino-wrap > .nino-atf--fullscreen:first-child) {
 		padding-top: 0;
 	}
 }

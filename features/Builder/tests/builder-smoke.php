@@ -6,16 +6,20 @@ declare(strict_types=1);
  *	builder-smoke.php		The Builder's server half over Nino's harness: the manifest
  *											and the panel, then the Reader and the Writer on the
  *											example page of the concept (tests/fixtures/page-home.tpl,
- *											the example in its canonical form: the concept's own,
+ *											the example in its canonical form but for the wrap, which a
+ *											file the builder did not write has not: the concept's own,
  *											page-home-concept.tpl, says level="2" twice and gap="2"
  *											aloud, which are the defaults the Writer leaves out;
- *											page-home-vpa.tpl is the same with the animation line of
- *											the head) and on a sheet of sections that each fail one rule, then
+ *											page-home-wrap.tpl is the same in the wrap the builder
+ *											writes, with a kind of animation, and page-home-vpa.tpl
+ *											the same with the animation line an earlier builder wrote
+ *											in the head, which reads as that wrap) and on a sheet of
+ *											sections that each fail one rule, then
  *											the Document - listing, loading, saving with a hash, the
- *											keys and the slots a save makes, the refusals, the
- *											animation line of the head, a copy of a template with its
- *											keys and slots and what stops it - and last the page the
- *											builder wrote, rendered by the kernel. The panel's
+ *											keys and the slots a save makes, the refusals, the wrap
+ *											and the animation of the template, a copy of a template
+ *											with its keys and slots and what stops it - and last the
+ *											page the builder wrote, rendered by the kernel. The panel's
  *											script has a test of its own, builder-js-smoke.js, which runs
  *											at the end where node is there; the two fixtures it reads
  *											(fixtures/page-home.json, fixtures/registry.json) are held
@@ -62,7 +66,7 @@ check( 'the feature brings its panel along, and registers nothing on the site', 
 } )() );
 
 check( 'the panel names every action it answers', array_keys( \Nino\Modules\Builder\Admin::actions() ) === [ 'builder/list', 'builder/create', 'builder/duplicate', 'builder/load', 'builder/save', 'builder/delete', 'builder/source', 'builder/registry' ] );
-check( '...asks for its own permission, asks the nav for the structure group (a feature\'s panel lands in the features group whatever it names) and is a workspace', \Nino\Modules\Builder\Admin::perm() === '/_admin/builder/manage'
+check( '...asks for its own permission, names the structure group in its nav() (a feature\'s panel sits in the group its nav() names) and is a workspace', \Nino\Modules\Builder\Admin::perm() === '/_admin/builder/manage'
 	&& \Nino\Modules\Builder\Admin::nav()[3] === 'structure' && \Nino\Modules\Builder\Admin::layout() === 'workspace' );
 check( '...and brings the HTML editor of the workbench, its own script and its stylesheet, which are there', count( \Nino\Modules\Builder\Admin::assets() ) === 3 && in_array( '/_admin/assets/html-editor.js', \Nino\Modules\Builder\Admin::assets(), true ) === true
 	&& array_filter( [ 'assets/admin.js', 'assets/admin.css', 'templates/panel.tpl', 'text/en_US.php', 'text/de_DE.php' ], static fn( string $file ): bool => is_file( dirname( __DIR__ ). '/'. $file ) === false ) === [] );
@@ -117,7 +121,7 @@ check( 'four blocks in the order of the file: a section, a section, a block of h
 	&& [ $model['blocks'][0]['id'], $model['blocks'][1]['id'], $model['blocks'][3]['id'] ] === [ 'hero', 'services', 'contact' ] );
 
 $hero = $model['blocks'][0];
-check( 'the hero: its classes are settings', $hero['settings']['width'] === 'fullwidth' && $hero['settings']['color'] === 'black' && $hero['settings']['image'] === 'cover'
+check( 'the hero: its classes are settings', $hero['settings']['fullwidth'] === true && $hero['settings']['fullheight'] === false && $hero['settings']['color'] === 'black' && $hero['settings']['image'] === 'cover'
 	&& $hero['settings']['dim'] === true && $hero['settings']['cover'] === 100 && $hero['settings']['vpa'] === '' && $hero['settings']['row'] === 'wide' && $hero['settings']['rowAlign'] === 'middle'
 	&& $hero['settings']['custom'] === '' );
 check( '...its background is a slot with a focus', $hero['background'] === [ 'slot' => '/template/page-home/hero/background', 'focus' => 5 ] );
@@ -142,8 +146,30 @@ check( 'the block of html in its markers is a block of html without a reason, by
 check( 'the contact: 100 wide in every viewport is the short class', $model['blocks'][3]['cols'][0]['width'] === [ 's' => 100, 'm' => 100, 'l' => 100 ] && $model['blocks'][3]['settings']['text'] === 'center' && $model['blocks'][3]['settings']['row'] === 'narrow' );
 
 check( 'the model the panel\'s script test reads (fixtures/page-home.json) is what the Reader makes of the example page', json_decode( (string) file_get_contents( __DIR__. '/fixtures/page-home.json' ), true ) === array_replace( $model, [ 'file' => 'page-home' ] ) );
-check( 'writing the model of the example page gives the example page, byte for byte', $write( $model ) === $fixture );
-check( '...and reading what was written gives the same model', $read( $write( $model ) ) === $model );
+
+// The blocks stand in a wrap, between the head and the foot. A file the builder did not write has none, and is given it with the first change - two lines
+$wrapped = static fn( string $source, string $class = 'nino-wrap' ): string => str_replace(
+	[ "[template /templates/html-header]\n\n", "\n[template /templates/html-footer]\n" ],
+	[ "[template /templates/html-header]\n<div class=\"". $class. "\">\n\n", "\n</div>\n[template /templates/html-footer]\n" ],
+	$source
+);
+
+// The wrap of a page that has blocks and nothing else
+$inWrap = static fn( string $blocks ): string => "<div class=\"nino-wrap\">\n\n". rtrim( $blocks ). "\n\n</div>\n";
+
+// The line a reason names is a line of the file: read from the file the Writer wrapped, a model names each one further down by the lines the wrap put before the blocks
+$shifted = static function( array $model, int $by ): array {
+
+	foreach( $model['blocks'] as $index => $block )
+		if( is_array( $block['reason'] ?? null ) === true )
+			$model['blocks'][$index]['reason']['line'] += $by;
+
+	return $model;
+};
+
+check( 'writing the model of the example page gives the example page in its wrap: two lines more, which the file had none of, and not a byte else', $write( $model ) === $wrapped( $fixture ) && $fixture !== $wrapped( $fixture )
+	&& substr_count( $write( $model ), "\n" ) - substr_count( $fixture, "\n" ) === 2 );
+check( '...and reading what was written gives the same model: a wrap with no class of its own says nothing that a file without one did not', $read( $write( $model ) ) === $model && $model['animate'] === false && $model['vpa'] === '' && $model['vpaSpeed'] === '' && $model['wrapClass'] === '' );
 check( 'a load and a save without a change is the same file: Reader( Writer( Reader( x ) ) ) is Reader( x )', $read( $write( $read( $fixture ) ) ) === $read( $fixture ) );
 
 // A page the builder did not write the way it would: the order of the attributes, a default said aloud, the short class, an empty alt
@@ -152,29 +178,100 @@ $hand = str_replace(
 	[ '[title /template/page-home/hero/title style="loud" class="" level="1"]', '[title /template/page-home/contact/title level="2" style=""]', "\t\t<div class=\"nino-grid-s-100 nino-grid-m-100 nino-grid-l-100\">\n\t\t\t[title" ],
 	$fixture
 );
-check( 'a page written by hand is read all the same, and written back in the canonical form', $hand !== $fixture && $read( $hand ) === $model && $write( $read( $hand ) ) === $fixture );
+check( 'a page written by hand is read all the same, and written back in the canonical form, wrapped', $hand !== $fixture && $read( $hand ) === $model && $write( $read( $hand ) ) === $wrapped( $fixture ) );
 
-// The animation of the template: a head line of the builder's alone, which the kernel never reads
+// The wrap carries the animation of the template: whether its sections are animated, and what kind of animation it is - which every .nino-vpa below it inherits
+$wrapFixture	= (string) file_get_contents( __DIR__. '/fixtures/page-home-wrap.tpl' );
+$wrapModel		= $read( $wrapFixture );
+$exampleBlocks	= $model['blocks'];
+
+check( 'the wrap is read from its place - the line after the head, the line before the foot: its classes are the animation of the template, animated, an effect with its strength, a speed - and the page is what it was', $wrapModel['animate'] === true && $wrapModel['vpa'] === 'zoom-soft'
+	&& $wrapModel['vpaSpeed'] === 'medium' && $wrapModel['wrapClass'] === '' && $wrapModel['name'] === 'Home' && $wrapModel['header'] === 'html-header' && $wrapModel['footer'] === 'html-footer' && $wrapModel['blocks'] === $model['blocks']
+	&& array_keys( $wrapModel ) === [ 'file', 'name', 'animate', 'vpa', 'vpaSpeed', 'wrapClass', 'header', 'footer', 'blocks' ] && array_keys( $model ) === array_keys( $wrapModel ) );
+check( '...written back byte for byte, the wrap hard at the frames, and Reader( Writer( Reader( x ) ) ) is Reader( x )', $write( $wrapModel ) === $wrapFixture && $read( $write( $wrapModel ) ) === $wrapModel );
+check( '...and the file that is wrapped and the file that is not hold the same blocks, so that nothing but the two lines and their classes is the wrap\'s', $wrapFixture === $wrapped( $fixture, 'nino-wrap nino-wrap--vpa nino-vpa--zoom-soft nino-vpa--speed-medium' ) );
+
+// Every switch, effect and speed: the classes are in one order, and what is written is read as it was
+$wrong		= [];
+$combined	= 0;
+
+foreach( [ false, true ] as $animate )
+	foreach( array_merge( [ '' ], \Nino\Modules\Builder\Reader::EFFECTS ) as $effect )
+		foreach( array_merge( [ '' ], \Nino\Modules\Builder\Reader::SPEEDS ) as $speed ) {
+
+			$combined++;
+			$expected	= '<div class="nino-wrap'. ( $animate === true ? ' nino-wrap--vpa' : '' ). ( $effect === '' ? '' : ' nino-vpa--'. $effect ). ( $speed === '' ? '' : ' nino-vpa--speed-'. $speed ). "\">\n\n</div>\n";
+			$written	= $write( [ 'animate' => $animate, 'vpa' => $effect, 'vpaSpeed' => $speed, 'blocks' => [] ] );
+			$back			= $read( $written );
+
+			if( $written !== $expected || [ $back['animate'], $back['vpa'], $back['vpaSpeed'], $back['wrapClass'] ] !== [ $animate, $effect, $speed, '' ] || $write( $back ) !== $written )
+				$wrong[] = ( $animate === true ? 'on' : 'off' ). ' '. $effect. ' '. $speed;
+		}
+
+check( 'the switch, the effect with its strength and the speed are classes of the wrap, in that order: all '. $combined. ' combinations of them are written as they are, and read back as they were set'. ( $wrong === [] ? '' : ' - '. implode( ', ', array_slice( $wrong, 0, 5 ) ) ), $wrong === [] && $combined === 152 );
+
+$foreign = $read( str_replace( 'class="nino-wrap nino-wrap--vpa nino-vpa--zoom-soft nino-vpa--speed-medium"', 'class="my-wrap nino-vpa--speed-slow nino-wrap nino-vpa--blur-hard u-x nino-wrap--vpa nino-vpa--flip-soft nino-vpa--repeat nino-vpa"', $wrapFixture ) );
+check( 'a class of the wrap that the builder does not know is carried in wrapClass - a second effect, the mode and a bare nino-vpa among them - and written behind the known ones', $foreign['animate'] === true && $foreign['vpa'] === 'blur-hard' && $foreign['vpaSpeed'] === 'slow'
+	&& $foreign['wrapClass'] === 'my-wrap u-x nino-vpa--flip-soft nino-vpa--repeat nino-vpa' && $foreign['blocks'] === $model['blocks'] );
+check( '...they survive a round trip: written in the order of the known ones and then theirs, read as they were', str_contains( $write( $foreign ), '<div class="nino-wrap nino-wrap--vpa nino-vpa--blur-hard nino-vpa--speed-slow my-wrap u-x nino-vpa--flip-soft nino-vpa--repeat nino-vpa">' ) === true
+	&& $read( $write( $foreign ) ) === $foreign && $write( $read( $write( $foreign ) ) ) === $write( $foreign ) );
+
+// A wrap is known by its place alone: a line that opens it and one that closes it, each of nothing else
+$open		= '<div class="nino-wrap nino-wrap--vpa nino-vpa--zoom-soft nino-vpa--speed-medium">';
+$noClose	= $read( str_replace( "\n</div>\n[template /templates/html-footer]\n", "\n[template /templates/html-footer]\n", $wrapFixture ) );
+$noOpen		= $read( str_replace( $open. "\n\n", '', $wrapFixture ) );
+
+check( 'a line that opens a wrap and none that closes it is no wrap: the file is read as one that has none, the line is a block of html of its own with the reason it is no section, and the sections after it are read',
+	$noClose['animate'] === false && $noClose['vpa'] === '' && $noClose['wrapClass'] === '' && $noClose['blocks'][0]['kind'] === 'html' && $noClose['blocks'][0]['source'] === $open && is_array( $noClose['blocks'][0]['reason'] ) === true && $noClose['blocks'][0]['reason']['line'] === 3
+	&& array_column( array_slice( $noClose['blocks'], 1 ), 'kind' ) === [ 'section', 'section', 'html', 'section' ] );
+check( '...so is a line that closes it and none that opens it: a block of html at the end', $noOpen['animate'] === false && array_column( $noOpen['blocks'], 'kind' ) === [ 'section', 'section', 'html', 'section', 'html' ] && $noOpen['blocks'][4]['source'] === '</div>' && $noOpen['footer'] === 'html-footer' );
+check( '...and each is written where it stands, among the blocks of html, byte for byte - what the file has it keeps until the wrap is meant to', str_contains( $write( $noClose ), "[template /templates/html-header]\n<div class=\"nino-wrap\">\n\n". $open. "\n\n<section id=\"hero\"" ) === true
+	&& str_ends_with( $write( $noOpen ), "\n\n</div>\n\n</div>\n[template /templates/html-footer]\n" ) === true );
+
+$apart = static fn( string $head, string $first ): array => $read( "[template /templates/html-header]\n". $head. $first. "\n". $section( '[title /template/page-x/a/title]' ). "\n</div>\n[template /templates/html-footer]\n" );
+check( 'a line between the head and the opening line that is none of the wrap\'s - a section, a comment - or an opening tag that has an attribute besides its class is no wrap either, whatever closes the file',
+	$apart( "<!-- hello -->\n", '<div class="nino-wrap">' )['wrapClass'] === '' && $apart( '', '<div class="nino-wrap" id="page">' )['blocks'][0]['source'] === '<div class="nino-wrap" id="page">' && $apart( '', '<div class="nino-wrap" id="page">' )['animate'] === false
+	&& $apart( '', '<div class="nino-wrap nino-wrap--vpa">' )['animate'] === true && $apart( '', '<div class="my-wrap">' )['blocks'][0]['source'] === '<div class="my-wrap">' && $apart( '', '<div class="nino-wrap nino-wrap--vpa">x' )['animate'] === false );
+
+$handWrapped = $read( "[template /templates/html-header]\n\n\n\t<div class=\"nino-wrap  nino-wrap--vpa \">  \n". $section( '[title /template/page-x/a/title]' ). "\n\n\t</div>\n\n[template /templates/html-footer]\n" );
+check( 'the lines of a wrap written by hand may be indented, have blank lines around them and spaces behind them - and a class the builder cannot keep, a quote or an ampersand, makes it no wrap', $handWrapped['animate'] === true && array_column( $handWrapped['blocks'], 'kind' ) === [ 'section' ]
+	&& $read( "<div class=\"nino-wrap a&b\">\n". $section( '[title /template/page-x/a/title]' ). "\n</div>\n" )['blocks'][0]['kind'] === 'html' && $read( "<div class=\"nino-wrap\">\r\n". $section( '[title /template/page-x/a/title]' ). "\r\n</div>\r\n" )['blocks'][0]['kind'] === 'section' );
+
+// What an earlier builder wrote in the head of a page: its animation, as a line of classes - read in the place of a wrap, and never written again
 $vpaFixture	= (string) file_get_contents( __DIR__. '/fixtures/page-home-vpa.tpl' );
 $vpaModel		= $read( $vpaFixture );
-check( 'the head line of the animation is in the model as it is written - the classes a new section is given - and the rest of the page is what it was', $vpaModel['vpa'] === 'nino-vpa nino-vpa--zoom-soft nino-vpa--speed-medium'
-	&& $vpaModel['name'] === 'Home' && $vpaModel['header'] === 'html-header' && $vpaModel['blocks'] === $model['blocks'] );
-check( '...written back byte for byte, between the name and the header, and Reader( Writer( Reader( x ) ) ) is Reader( x )', $write( $vpaModel ) === $vpaFixture && $read( $write( $vpaModel ) ) === $vpaModel );
-check( 'a file without the line has no animation (null), and none is written for it', $model['vpa'] === null && str_contains( $write( $model ), 'nino:template-vpa' ) === false );
 
-$off = str_replace( '<!-- nino:template-name Home -->', "<!-- nino:template-name Home -->\n<!-- nino:template-vpa off -->", $fixture );
-check( '...a line that says off is the same: null - the line is read as part of the head and not written back, so the model stays what it was', $read( $off ) === $model && $read( $write( $read( $off ) ) ) === $read( $off )
-	&& $write( $read( $off ) ) === $fixture );
-check( '...so is a model whose animation is the word off, which is no class: nothing is written', $write( [ 'name' => 'x', 'vpa' => 'off', 'blocks' => [] ] ) === "<!-- nino:template-name x -->\n" );
-check( 'the line is read without a name before it, and with the frames after it', $read( "<!-- nino:template-vpa nino-vpa--blur-soft -->\n[template /templates/html-header]\n" )['vpa'] === 'nino-vpa--blur-soft'
-	&& $read( "<!-- nino:template-vpa nino-vpa--blur-soft -->\n[template /templates/html-header]\n" )['header'] === 'html-header' );
+check( 'the head line of an earlier builder is read as the wrap says it - animated, the effect with its strength, the speed - so the page is the page of the wrap', $vpaModel === $wrapModel && $vpaModel['vpa'] === 'zoom-soft' && $vpaModel['vpaSpeed'] === 'medium' );
+check( '...and it is not written again: the page is written in the wrap that says the same, a head line is not made, and what is written is read as it was', $write( $vpaModel ) === $wrapFixture && str_contains( $write( $vpaModel ), 'nino:template-vpa' ) === false && $read( $write( $vpaModel ) ) === $vpaModel );
+
+$headLine = static fn( string $classes ): array => $read( str_replace( 'nino-vpa nino-vpa--zoom-soft nino-vpa--speed-medium', $classes, $vpaFixture ) );
+$cases		= [ 'off' => [ false, '', '', '' ], 'nino-vpa' => [ true, '', '', '' ], 'nino-vpa nino-vpa--blur-hard nino-vpa--repeat' => [ true, 'blur-hard', '', '' ], 'nino-vpa--speed-fast nino-vpa--slide-left-soft' => [ true, 'slide-left-soft', 'fast', '' ],
+	'nino-vpa--visible' => [ true, '', '', '' ], 'nino-vpa--visible-once nino-vpa--zoom-out-hard nino-vpa--speed-slow' => [ true, 'zoom-out-hard', 'slow', '' ], 'nino-vpa nino-vpa--zoom-soft nino-vpa--flip-soft nino-vpa--foo' => [ true, 'zoom-soft', '', 'nino-vpa--flip-soft nino-vpa--foo' ] ];
+$unread		= [];
+
+foreach( $cases as $classes => $expected ) {
+
+	$got = $headLine( $classes );
+
+	if( [ $got['animate'], $got['vpa'], $got['vpaSpeed'], $got['wrapClass'] ] !== $expected || $got['blocks'] !== $model['blocks'] )
+		$unread[] = $classes;
+}
+
+check( 'a head line says off, or names classes: off is no animation, a class is - the effect, the strength and the speed are the wrap\'s, a mode is dropped for it is not inherited, and a class of nino-vpa-- that Nino.css has none of stays among the other classes of the wrap'
+	. ( $unread === [] ? '' : ' - '. implode( ', ', $unread ) ), $unread === [] );
+check( 'a file that has the line and a wrap is read by its wrap: the line says nothing then, and is gone with the next write', ( static function() use ( $read, $write, $wrapFixture, $wrapped ): bool {
+	$both = $read( str_replace( "<!-- nino:template-name Home -->\n", "<!-- nino:template-name Home -->\n<!-- nino:template-vpa nino-vpa nino-vpa--blur-hard -->\n", $wrapFixture ) );
+	return $both['vpa'] === 'zoom-soft' && $both['vpaSpeed'] === 'medium' && $write( $both ) === $wrapFixture;
+} )() );
 
 $foreignVpa = $read( str_replace( 'nino-vpa nino-vpa--zoom-soft nino-vpa--speed-medium', 'zoom-soft', $vpaFixture ) );
-check( 'a line that names no class of the animation is no head line: it is left where it is, in the block that follows, and nothing is lost', $foreignVpa['vpa'] === null && $foreignVpa['blocks'][0]['kind'] === 'html'
+check( 'a line that names no class of the animation is no head line: it is left where it is, in the block that follows, and nothing is lost', $foreignVpa['animate'] === false && $foreignVpa['blocks'][0]['kind'] === 'html'
 	&& str_contains( $foreignVpa['blocks'][0]['source'], '<!-- nino:template-vpa zoom-soft -->' ) === true );
+check( 'the line is read without a name before it, and with the frames after it', $read( "<!-- nino:template-vpa nino-vpa--blur-soft -->\n[template /templates/html-header]\n" )['vpa'] === 'blur-soft'
+	&& $read( "<!-- nino:template-vpa nino-vpa--blur-soft -->\n[template /templates/html-header]\n" )['header'] === 'html-header' && $read( "<!-- nino:template-vpa nino-vpa--blur-soft -->\n[template /templates/html-header]\n" )['animate'] === true );
 
 $thrownVpa = 0;
-foreach( [ 'zoom-soft', "nino-vpa\nnino-vpa--x", 'nino-vpa --> <b>', ' nino-vpa', 'nino-vpa--', "nino-vpa\n", "nino-vpa nino-vpa--zoom-soft\n" ] as $bad ) {
+foreach( [ 'zoom', 'nino-vpa--zoom-soft', 'zoom-soft nino-vpa', "zoom-soft\n", 'ZOOM-SOFT', 'x" onclick="y', 'repeat' ] as $bad ) {
 	try {
 		$write( [ 'vpa' => $bad, 'blocks' => [] ] );
 	}
@@ -182,16 +279,24 @@ foreach( [ 'zoom-soft', "nino-vpa\nnino-vpa--x", 'nino-vpa --> <b>', ' nino-vpa'
 		$thrownVpa++;
 	}
 }
-check( 'the Writer takes no animation that is not a list of its classes - it throws, so a comment cannot be left or an extra line made', $thrownVpa === 7 );
+foreach( [ 'quick', 'speed-fast', 'FAST', "slow\n" ] as $bad ) {
+	try {
+		$write( [ 'vpaSpeed' => $bad, 'blocks' => [] ] );
+	}
+	catch( \UnexpectedValueException ) {
+		$thrownVpa++;
+	}
+}
+check( 'the Writer takes no effect and no speed of the wrap that Nino.css has none of - it throws, so no class is made that is none of the wrap\'s', $thrownVpa === 11 );
 
 $concept = (string) file_get_contents( __DIR__. '/fixtures/page-home-concept.tpl' );
-check( 'the example as the concept prints it, with the three defaults said aloud, reads as the same model and is written in the canonical form', $concept !== $fixture && $read( $concept ) === $model && $write( $read( $concept ) ) === $fixture );
+check( 'the example as the concept prints it, with the three defaults said aloud, reads as the same model and is written in the canonical form', $concept !== $fixture && $read( $concept ) === $model && $write( $read( $concept ) ) === $wrapped( $fixture ) );
 
-check( 'a file with no head and no frame is read, and written as it is: nothing is added', $write( $read( $section( '[title /template/page-x/a/title]' )."\n" ) ) === $section( '[title /template/page-x/a/title]' )."\n" );
-check( 'an empty file is a page of no blocks, written as an empty file', $read( '' )['blocks'] === [] && $write( $read( '' ) ) === '' );
+check( 'a file with no head and no frame is read, and written as it is in its wrap: nothing else is added', $write( $read( $section( '[title /template/page-x/a/title]' )."\n" ) ) === "<div class=\"nino-wrap\">\n\n". $section( '[title /template/page-x/a/title]' ). "\n\n</div>\n" );
+check( 'an empty file is a page of no blocks, written as its wrap and nothing in it', $read( '' )['blocks'] === [] && $write( $read( '' ) ) === "<div class=\"nino-wrap\">\n\n</div>\n" && $read( $write( $read( '' ) ) ) === $read( '' ) );
 check( 'a frame the Document would refuse on a save - html-headerx, html-footer- - is no frame to the Reader either: the line stays a block of the page', $read( "[template /templates/html-headerx]\n\n". $section( '[title /template/page-x/a/title]' ). "\n" )['header'] === ''
 	&& $read( $section( '[title /template/page-x/a/title]' ). "\n\n[template /templates/html-footer-]\n" )['footer'] === '' );
-check( 'a page of a name and two frames and nothing in between', $write( [ 'name' => 'Empty', 'header' => 'html-header', 'footer' => 'html-footer', 'blocks' => [] ] ) === "<!-- nino:template-name Empty -->\n[template /templates/html-header]\n\n[template /templates/html-footer]\n" );
+check( 'a page of a name and two frames and nothing in between', $write( [ 'name' => 'Empty', 'header' => 'html-header', 'footer' => 'html-footer', 'blocks' => [] ] ) === "<!-- nino:template-name Empty -->\n[template /templates/html-header]\n<div class=\"nino-wrap\">\n\n</div>\n[template /templates/html-footer]\n" );
 
 echo "\n";
 
@@ -300,8 +405,9 @@ $blocks = $read( $hand )['blocks'];
 check( 'a block without markers that is no section stays: between sections, before and after, as it was written', array_column( $blocks, 'kind' ) === [ 'html', 'section', 'html' ]
 	&& $blocks[0]['source'] === "<div class=\"hero\">\n  <h1>Hello</h1>\n  <p>Written by hand</p>\n</div>" && is_array( $blocks[0]['reason'] ) === true
 	&& $blocks[2]['source'] === "<!-- a note -->\n<footer>\n\t<p>Not a section either</p>\n</footer>" );
-check( '...and is written back byte for byte, without markers added', $write( $read( $hand ) ) === $hand && str_contains( $write( $read( $hand ) ), 'nino:html' ) === false );
-check( '...and the whole file is read again as it was', $read( $write( $read( $hand ) ) ) === $read( $hand ) );
+check( '...and is written back byte for byte, in the wrap, without markers added', $write( $read( $hand ) ) === $inWrap( $hand ) && str_contains( $write( $read( $hand ) ), 'nino:html' ) === false );
+check( '...and the whole file is read again as it was, but for the lines its reasons name: each two further down, for the line that opens the wrap and the blank line after it, which a file without a head had not - and the page the builder wrote is the same again, whole',
+	$read( $write( $read( $hand ) ) ) === $shifted( $read( $hand ), 2 ) && $read( $write( $read( $write( $read( $hand ) ) ) ) ) === $read( $write( $read( $hand ) ) ) );
 
 $indented = "\t<aside>\n\t\tIndented, by hand\n\t</aside>\n";
 check( 'the indentation of the first line of a foreign block is part of it', $read( $indented )['blocks'][0]['source'] === "\t<aside>\n\t\tIndented, by hand\n\t</aside>" );
@@ -317,9 +423,11 @@ check( 'a section inside a block that failed is no block of its own', ( static f
 
 // What the builder wraps itself is read without analysis, and written with its markers
 $marked = $page( "<!-- nino:html -->\n<p>Made by the builder</p>\n<!-- /nino:html -->" );
-check( 'a block in its markers has no reason, whatever it holds, and keeps them when written', $read( $marked )['blocks'][0] === [ 'kind' => 'html', 'source' => '<p>Made by the builder</p>', 'reason' => null ] && $write( $read( $marked ) ) === $marked );
-check( 'a block the panel made - a reason of null - is written with markers', $write( [ 'blocks' => [ [ 'kind' => 'html', 'source' => '<p>New</p>', 'reason' => null ] ] ] ) === "<!-- nino:html -->\n<p>New</p>\n<!-- /nino:html -->\n" );
-check( 'a block that failed - a reason - is written without', $write( [ 'blocks' => [ [ 'kind' => 'html', 'source' => '<p>Old</p>', 'reason' => [ 'line' => 1, 'code' => 'not-a-section', 'detail' => '', 'text' => '' ] ] ] ] ) === "<p>Old</p>\n" );
+check( 'a block in its markers has no reason, whatever it holds, and keeps them when written', $read( $marked )['blocks'][0] === [ 'kind' => 'html', 'source' => '<p>Made by the builder</p>', 'reason' => null ] && $write( $read( $marked ) ) === $inWrap( $marked ) );
+check( 'a block the panel made - a reason of null - is written with markers', \Nino\Modules\Builder\Writer::block( [ 'kind' => 'html', 'source' => '<p>New</p>', 'reason' => null ], $registry ) === "<!-- nino:html -->\n<p>New</p>\n<!-- /nino:html -->"
+	&& $write( [ 'blocks' => [ [ 'kind' => 'html', 'source' => '<p>New</p>', 'reason' => null ] ] ] ) === $inWrap( "<!-- nino:html -->\n<p>New</p>\n<!-- /nino:html -->" ) );
+check( 'a block that failed - a reason - is written without', \Nino\Modules\Builder\Writer::block( [ 'kind' => 'html', 'source' => '<p>Old</p>', 'reason' => [ 'line' => 1, 'code' => 'not-a-section', 'detail' => '', 'text' => '' ] ], $registry ) === '<p>Old</p>'
+	&& $write( [ 'blocks' => [ [ 'kind' => 'html', 'source' => '<p>Old</p>', 'reason' => [ 'line' => 1, 'code' => 'not-a-section', 'detail' => '', 'text' => '' ] ] ] ] ) === $inWrap( '<p>Old</p>' ) );
 
 echo "\n";
 
@@ -351,7 +459,7 @@ check( '...and what is written reads back as what was meant', ( static function(
 
 $styled = $blank;
 $styled['settings'] = [
-	'row' => 'narrow', 'rowAlign' => 'bottom', 'width' => 'fullheight', 'color' => 'tint', 'border' => 'primary', 'image' => 'parallax', 'dim' => true,
+	'row' => 'narrow', 'rowAlign' => 'bottom', 'fullwidth' => true, 'fullheight' => true, 'color' => 'tint', 'border' => 'primary', 'image' => 'parallax', 'dim' => true,
 	'mt' => '1', 'mb' => '0', 'pt' => '3', 'pb' => '6', 'text' => 'right', 'vpa' => 'zoom-soft', 'vpaSpeed' => 'slow', 'vpaMode' => 'repeat', 'vpaDelay' => '200ms', 'vpaDuration' => '1.5s',
 	'custom' => 'my-section other', 'rowCustom' => 'my-row',
 ] + $blank['settings'];
@@ -359,8 +467,8 @@ $styled['cols'][0] = [ 'width' => [ 's' => 100, 'm' => 50, 'l' => 33 ], 'hidden'
 $styled['background'] = [ 'slot' => '/template/page-x/a/background', 'focus' => null ];
 $once = $write( [ 'blocks' => [ $styled ] ] );
 
-check( 'a section\'s settings are its classes, in one order: the width, the colour, the border, the image, the spacing, the text, the animation, the custom ones',
-	str_contains( $once, '<section id="a" class="nino-section nino-section--fullheight nino-section--tint nino-section--border-primary nino-parallex nino-parallex--dim nino-mt-1 nino-mb-0 nino-pt-3 nino-pb-6 nino-text-right nino-vpa nino-vpa--zoom-soft nino-vpa--speed-slow nino-vpa--repeat my-section other" data-vpa-delay="200ms" data-vpa-duration="1.5s">' ) === true );
+check( 'a section\'s settings are its classes, in one order: the full width, the full height, the colour, the border, the image, the spacing, the text, the animation, the custom ones',
+	str_contains( $once, '<section id="a" class="nino-section nino-section--fullwidth nino-section--fullheight nino-section--tint nino-section--border-primary nino-parallex nino-parallex--dim nino-mt-1 nino-mb-0 nino-pt-3 nino-pb-6 nino-text-right nino-vpa nino-vpa--zoom-soft nino-vpa--speed-slow nino-vpa--repeat my-section other" data-vpa-delay="200ms" data-vpa-duration="1.5s">' ) === true );
 check( '...and the row\'s and the column\'s', str_contains( $once, '<div class="nino-grid-row nino-grid-row--narrow nino-grid-bottom my-row">' ) === true
 	&& str_contains( $once, '<div class="nino-grid-s-100 nino-grid-m-50 nino-grid-l-33 nino-hide-s nino-stack-end nino-stack-gap-4 nino-text-center nino-vpa my-col">' ) === true );
 check( '...a background without a focus is the block and the image, with an empty alt', str_contains( $once, "\t<div class=\"nino-section-bg\">[image /template/page-x/a/background alt=\"\"]</div>\n" ) === true );
@@ -371,6 +479,49 @@ $sorted = static function( mixed $value ) use ( &$sorted ): mixed {
 	return array_map( $sorted, $value );
 };
 check( '...and every setting is read back as it was set', $sorted( $read( $once )['blocks'][0] ) === $sorted( $styled ) );
+
+// Full width and full height are two switches of a section, not one choice: a class each, side by side, and neither is a custom class
+$fullOf			= static fn( array $block ): array => [ $block['settings']['fullwidth'], $block['settings']['fullheight'], $block['settings']['custom'] ];
+$fullBoth		= $page( $section( '[title /template/page-x/a/title]', 'a', 'nino-section nino-section--fullwidth nino-section--fullheight nino-section--tint' ) );
+$fullModel		= $read( $fullBoth )['blocks'][0];
+
+check( 'a section with nino-section--fullwidth and nino-section--fullheight reads with both switches on, and neither class falls into the custom ones - the width of the model is gone', $fullOf( $fullModel ) === [ true, true, '' ]
+	&& $fullModel['settings']['color'] === 'tint' && array_key_exists( 'width', $fullModel['settings'] ) === false
+	&& array_slice( array_keys( $fullModel['settings'] ), 0, 6 ) === [ 'row', 'rowAlign', 'rowCustom', 'fullwidth', 'fullheight', 'color' ] );
+check( '...and is written back byte for byte: the full width, then the full height, in the place the width had - behind nino-section, before the colour', $write( $read( $fullBoth ) ) === $inWrap( $fullBoth ) );
+
+$fullSwapped = $page( $section( '[title /template/page-x/a/title]', 'a', 'nino-section nino-section--tint nino-section--fullheight nino-section--fullwidth' ) );
+check( '...whatever order the file has them in: it is the same section, written in the one order of the Writer, and what is written reads as it was', $read( $fullSwapped )['blocks'][0] === $fullModel
+	&& $write( $read( $fullSwapped ) ) === $inWrap( $fullBoth ) && $read( $write( $read( $fullSwapped ) ) ) === $read( $fullSwapped ) );
+
+$fullCases = [
+	'neither'				=> [ false, false, 'nino-section nino-section--tint' ],
+	'the full width alone'	=> [ true, false, 'nino-section nino-section--fullwidth nino-section--tint' ],
+	'the full height alone'	=> [ false, true, 'nino-section nino-section--fullheight nino-section--tint' ],
+	'both'					=> [ true, true, 'nino-section nino-section--fullwidth nino-section--fullheight nino-section--tint' ],
+];
+$fullWrong = [];
+
+foreach( $fullCases as $label => [ $fullwidth, $fullheight, $classes ] ) {
+
+	$source		= $page( $section( '[title /template/page-x/a/title]', 'a', $classes ) );
+	$fullMade	= $blank;
+	$fullMade['settings']['fullwidth']	= $fullwidth;
+	$fullMade['settings']['fullheight']	= $fullheight;
+	$fullMade['settings']['color']		= 'tint';
+
+	// Read from the classes, and written back as they were; written from the switches, and read back as they were set
+	if( $fullOf( $read( $source )['blocks'][0] ) !== [ $fullwidth, $fullheight, '' ] || $write( $read( $source ) ) !== $inWrap( $source )
+		|| $write( [ 'blocks' => [ $fullMade ] ] ) !== $inWrap( $source ) || $read( $write( [ 'blocks' => [ $fullMade ] ] ) )['blocks'][0] !== $fullMade )
+		$fullWrong[] = $label;
+}
+
+check( 'each switch alone, neither and both: '. count( $fullCases ). ' combinations are read from their classes, written back byte for byte, and written from the switches and read back as set'. ( $fullWrong === [] ? '' : ' - '. implode( ', ', $fullWrong ) ), $fullWrong === [] );
+
+$fullLeft = $blank;
+unset( $fullLeft['settings']['fullwidth'], $fullLeft['settings']['fullheight'] );
+check( 'a switch the model leaves out is off: the Writer takes its default and writes neither class', str_contains( $write( [ 'blocks' => [ $fullLeft ] ] ), '<section id="a" class="nino-section">' ) === true
+	&& $blank['settings']['fullwidth'] === false && $blank['settings']['fullheight'] === false && \Nino\Modules\Builder\Reader::sectionDefaults()['fullwidth'] === false && \Nino\Modules\Builder\Reader::sectionDefaults()['fullheight'] === false );
 
 $custom = $read( $page( $section( '[title /template/page-x/a/title]', 'a', 'nino-section nino-section--black my-own nino-section--alt nino-cover--dim', 'nino-grid-s-100 nino-grid-m-50 nino-grid-l-50 u-pad' ) ) )['blocks'][0];
 check( 'a class the builder does not know is a custom one, and so are a second colour and a dim without an image - nothing is lost',
@@ -449,6 +600,8 @@ $byFile = array_column( $listed['templates'], null, 'file' );
 check( 'the list has every page-*.tpl of the project, by file', $listed['status'] === 200 && array_keys( $byFile ) === [ 'page-home', 'page-legacy' ] );
 check( '...with the name, the frames, the number of sections and of blocks of html, and whether it is read completely', $byFile['page-home']['name'] === 'Home' && $byFile['page-home']['header'] === 'html-header'
 	&& $byFile['page-home']['footer'] === 'html-footer' && $byFile['page-home']['sections'] === 3 && $byFile['page-home']['foreign'] === 1 && $byFile['page-home']['readable'] === true );
+check( '...and the animation of the template as its wrap says it, which a file that has no wrap has off, with no kind and no class of its own', $byFile['page-home']['animate'] === false && $byFile['page-home']['vpa'] === '' && $byFile['page-home']['vpaSpeed'] === '' && $byFile['page-home']['wrapClass'] === ''
+	&& array_keys( $byFile['page-home'] ) === [ 'file', 'name', 'animate', 'vpa', 'vpaSpeed', 'wrapClass', 'header', 'footer', 'sections', 'foreign', 'readable', 'reason', 'editable', 'usedBy' ] );
 check( '...a file the builder does not read is one block of html that failed, and listed as not read completely', $byFile['page-legacy']['sections'] === 0 && $byFile['page-legacy']['foreign'] === 1
 	&& $byFile['page-legacy']['readable'] === false && $byFile['page-legacy']['footer'] === 'html-footer' );
 check( '...and the routes that name it', $byFile['page-home']['usedBy'] === [ [ 'route' => 'GET://', 'uri' => '/' ] ] && $byFile['page-legacy']['usedBy'] === [] );
@@ -457,11 +610,13 @@ check( '...a template the Reader does not read completely says why in the list -
 	&& $byFile['page-legacy']['reason']['line'] === 1 && $byFile['page-home']['reason'] === null );
 
 \Nino\Filesystem::putFileContent( $appData, '/templates/page-zzz.tpl', "<!-- nino:template-name Last -->\n" );
-\Nino\Filesystem::putFileContent( $appData, '/templates/page-aaa.tpl', "<!-- nino:template-name First -->\n" );
-$sortedFiles = array_column( \Nino\Modules\Builder\Document::list( $appData )['templates'], 'file' );
+\Nino\Filesystem::putFileContent( $appData, '/templates/page-aaa.tpl', "<!-- nino:template-name First -->\n<div class=\"nino-wrap nino-wrap--vpa nino-vpa--blur-soft nino-vpa--speed-fast my-wrap\">\n\n</div>\n" );
+$more = array_column( \Nino\Modules\Builder\Document::list( $appData )['templates'], null, 'file' );
 unlink( \Nino\Filesystem::path( $appData, '/templates/page-zzz.tpl' ) );
 unlink( \Nino\Filesystem::path( $appData, '/templates/page-aaa.tpl' ) );
-check( '...and the list is sorted by file, whatever order the files were made in', $sortedFiles === [ 'page-aaa', 'page-home', 'page-legacy', 'page-zzz' ] );
+check( '...and the list is sorted by file, whatever order the files were made in', array_keys( $more ) === [ 'page-aaa', 'page-home', 'page-legacy', 'page-zzz' ] );
+check( '...a template in a wrap is listed with the animation the classes of the wrap say: on, the effect with its strength, the speed, and the classes of its own', $more['page-aaa']['animate'] === true && $more['page-aaa']['vpa'] === 'blur-soft'
+	&& $more['page-aaa']['vpaSpeed'] === 'fast' && $more['page-aaa']['wrapClass'] === 'my-wrap' && $more['page-aaa']['sections'] === 0 && $more['page-aaa']['foreign'] === 0 && $more['page-aaa']['readable'] === true && $more['page-zzz']['animate'] === false );
 
 $loaded = \Nino\Modules\Builder\Document::load( $appData, 'page-home' );
 check( 'load answers the model, the hash of the file and the file', $loaded['status'] === 200 && $loaded['model']['file'] === 'page-home' && $loaded['hash'] === hash( 'sha256', $fixture ) && $loaded['source'] === $fixture
@@ -834,10 +989,39 @@ $answers = [
 	'a foreign block whose source is a list'					=> $shape( static function( array &$model ): void { $model['blocks'][array_key_first( array_filter( $model['blocks'], static fn( array $block ): bool => $block['kind'] === 'html' ) )]['source'] = []; } ),
 	'a section whose id is a list'										=> $shape( static function( array &$model ): void { $model['blocks'][0]['id'] = []; } ),
 	'a call whose name is a list'											=> $shape( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['components'][0]['name'] = []; } ),
+	'settings that are a text'												=> $shape( static function( array &$model ): void { $model['blocks'][0]['settings'] = 'x'; } ),
+	'a full width that is a text'											=> $shape( static function( array &$model ): void { $model['blocks'][0]['settings']['fullwidth'] = 'true'; } ),
+	'a full height that is a number'										=> $shape( static function( array &$model ): void { $model['blocks'][0]['settings']['fullheight'] = 1; } ),
 	'a column that is a string'												=> $shape( static function( array &$model ): void { $model['blocks'][0]['cols'][0] = 'x'; } ),
 ];
 $typed = array_filter( $answers, static fn( array $answer ): bool => $answer['status'] !== 400 || $answer['code'] !== 'invalid' );
 check( 'a model of the wrong shape is refused with 400 and a problem, none of '. count( $answers ). ' ends in an error: '. implode( ', ', array_keys( $answers ) ), $typed === [] && ninoWarnings() === [] );
+
+// A switch of a section is on or off: anything else would be left out of the classes and read back as off, so it is refused before anything is made
+$switchBad			= [ 'a text' => 'true', 'the old choice' => 'fullwidth', 'an empty text' => '', 'a number' => 1, 'zero' => 0, 'a list' => [ true ], 'an empty list' => [] ];
+$switchRefused	= [];
+
+foreach( [ 0, 3 ] as $at )
+	foreach( [ 'fullwidth', 'fullheight' ] as $key )
+		foreach( $switchBad as $what => $value ) {
+
+			$model = $loaded['model'];
+			$model['blocks'][$at]['settings'][$key] = $value;
+			$answer = \Nino\Modules\Builder\Document::save( $appData, 'page-home', $model, $loaded['hash'] );
+
+			if( $answer['status'] !== 400 || $answer['code'] !== 'invalid' || $answer['problems'] !== [ 'the '. $key. ' of block '. ( $at + 1 ). ' is neither on nor off' ]
+				|| \Nino\Modules\Builder\Document::source( $appData, $model )['status'] !== 400 || file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-home.tpl' ) ) !== $before )
+				$switchRefused[] = $key. ' of block '. ( $at + 1 ). ' as '. $what;
+		}
+
+check( 'a full width or a full height that is no bool - a text, a number, a list - is refused with 400 (code invalid), the switch and the block named, by a save and by the source view alike, and nothing is written: '
+	. count( $switchBad ) * 4 . ' cases'. ( $switchRefused === [] ? '' : ' - '. implode( ', ', $switchRefused ) ), $switchRefused === [] );
+
+$switchLeft = $loaded['model'];
+unset( $switchLeft['blocks'][0]['settings']['fullwidth'], $switchLeft['blocks'][0]['settings']['fullheight'] );
+$switchSource = \Nino\Modules\Builder\Document::source( $appData, $switchLeft );
+check( '...and a switch left out is off, no problem: the section is written without either class', $switchSource['status'] === 200 && str_contains( $switchSource['parts'][1]['source'], '<section id="start" class="nino-section nino-section--black ' ) === true
+	&& str_contains( $switchSource['parts'][1]['source'], 'nino-section--full' ) === false );
 
 $stackWrong = \Nino\Modules\Builder\Document::load( $appData, 'page-home' );
 $stackWrong['model']['blocks'][3]['cols'][0]['components'] = [ [ 'name' => 'stack', 'source' => '/services', 'text' => null, 'attributes' => [], 'content' => '' ] ];
@@ -883,7 +1067,8 @@ echo "Document - create and delete\n";
 $created = \Nino\Modules\Builder\Document::create( $appData, 'Über uns' );
 check( 'a new template: the file is page-<the name as a slug>, with the frames the project has', $created['status'] === 200 && $created['model']['file'] === 'page-ueber-uns' && $created['model']['name'] === 'Über uns'
 	&& $created['model']['header'] === 'html-header' && $created['model']['footer'] === 'html-footer' && $created['model']['blocks'] === [] );
-check( '...it is the empty canonical page, written, and read back as the model', file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-ueber-uns.tpl' ) ) === "<!-- nino:template-name Über uns -->\n[template /templates/html-header]\n\n[template /templates/html-footer]\n"
+check( '...its sections are not animated, with no kind of animation and no class of the wrap of its own', $created['model']['animate'] === false && $created['model']['vpa'] === '' && $created['model']['vpaSpeed'] === '' && $created['model']['wrapClass'] === '' );
+check( '...it is the empty canonical page, in its wrap, written, and read back as the model', file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-ueber-uns.tpl' ) ) === "<!-- nino:template-name Über uns -->\n[template /templates/html-header]\n<div class=\"nino-wrap\">\n\n</div>\n[template /templates/html-footer]\n"
 	&& $created['hash'] === hash( 'sha256', (string) file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-ueber-uns.tpl' ) ) )
 	&& \Nino\Modules\Builder\Document::load( $appData, 'page-ueber-uns' )['model'] === $created['model'] );
 check( '...a name that gives a file that is there is refused with 409, and the file is not touched', \Nino\Modules\Builder\Document::create( $appData, 'ÜBER Uns!' )['status'] === 409
@@ -891,7 +1076,7 @@ check( '...a name that gives a file that is there is refused with 409, and the f
 
 $short = \Nino\Modules\Builder\Document::create( $appData, 'Short', 'html-header-short', '' );
 check( 'the frames can be named, or none', $short['status'] === 200 && $short['model']['header'] === 'html-header-short' && $short['model']['footer'] === ''
-	&& file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-short.tpl' ) ) === "<!-- nino:template-name Short -->\n[template /templates/html-header-short]\n" );
+	&& file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-short.tpl' ) ) === "<!-- nino:template-name Short -->\n[template /templates/html-header-short]\n<div class=\"nino-wrap\">\n\n</div>\n" );
 check( '...but only frames the project has, of the right kind', \Nino\Modules\Builder\Document::create( $appData, 'Third', 'html-header-gone' )['status'] === 400
 	&& \Nino\Modules\Builder\Document::create( $appData, 'Third', 'html-footer' )['status'] === 400 && \Nino\Modules\Builder\Document::create( $appData, 'Third', '../config' )['status'] === 400
 	&& \Nino\Filesystem::fileExists( $appData, '/templates/page-third.tpl' ) === false );
@@ -921,56 +1106,147 @@ check( '...and a second time it is gone: 404', \Nino\Modules\Builder\Document::d
 echo "\n";
 
 
-// --- 9. The animation of the template, and a copy ---------------------------
+// --- 9. The wrap and the animation of the template, and a copy --------------
 
-echo "Document - the animation of the template, and duplicate\n";
+echo "Document - the wrap and the animation of the template, and duplicate\n";
 
+$wrapPath = \Nino\Filesystem::path( $appData, '/templates/page-wrap.tpl' );
+\Nino\Filesystem::putFileContent( $appData, '/templates/page-wrap.tpl', $wrapFixture );
+\Nino\Filesystem::putFileContent( $appData, '/templates/html-header.tpl', '<header>Header</header>' );
+$wrapLoad = \Nino\Modules\Builder\Document::load( $appData, 'page-wrap' );
+$wrapSave = \Nino\Modules\Builder\Document::save( $appData, 'page-wrap', $wrapLoad['model'], $wrapLoad['hash'] );
+check( 'a template with a wrap is loaded and saved without a change byte for byte: the wrap is the model\'s animate, vpa and vpaSpeed', $wrapLoad['model']['animate'] === true && $wrapLoad['model']['vpa'] === 'zoom-soft' && $wrapLoad['model']['vpaSpeed'] === 'medium'
+	&& $wrapSave['status'] === 200 && file_get_contents( $wrapPath ) === $wrapFixture && $wrapSave['model'] === $wrapLoad['model'] && $wrapSave['hash'] === $wrapLoad['hash'] );
+
+$wrapEdit = $wrapLoad['model'];
+$wrapEdit['vpa'] = 'blur-hard';
+$wrapEdit['vpaSpeed'] = 'slow';
+$wrapSave = \Nino\Modules\Builder\Document::save( $appData, 'page-wrap', $wrapEdit, $wrapLoad['hash'] );
+check( 'a new kind of animation is a new set of classes on the wrap, in the one place - the effect with its strength, then the speed - and the answer is the file read again', $wrapSave['status'] === 200
+	&& file_get_contents( $wrapPath ) === str_replace( 'nino-vpa--zoom-soft nino-vpa--speed-medium', 'nino-vpa--blur-hard nino-vpa--speed-slow', $wrapFixture ) && $wrapSave['model']['vpa'] === 'blur-hard' && $wrapSave['model']['vpaSpeed'] === 'slow' && $wrapSave['model']['blocks'] === $exampleBlocks );
+
+$wrapEdit = $wrapSave['model'];
+$wrapEdit['animate'] = false;
+$wrapEdit['vpa'] = '';
+$wrapEdit['vpaSpeed'] = '';
+$wrapSave = \Nino\Modules\Builder\Document::save( $appData, 'page-wrap', $wrapEdit, $wrapSave['hash'] );
+check( '...the switch off and no kind is the wrap with nothing on it, and the rest of the file is what it was: nothing of the animation is left in the head, the sections keep their own', $wrapSave['status'] === 200 && (string) file_get_contents( $wrapPath ) === $wrapped( $fixture )
+	&& $wrapSave['model'] === [ 'file' => 'page-wrap', 'name' => 'Home' ] + \Nino\Modules\Builder\Reader::wrapDefaults() + [ 'header' => 'html-header', 'footer' => 'html-footer', 'blocks' => $exampleBlocks ] );
+
+// What the panel does where the switch is turned: the sections that follow it are changed in the model, the ones with a kind of their own are not
+$follow = static function( array $model, bool $animate ): array {
+
+	$model['animate'] = $animate;
+
+	foreach( $model['blocks'] as $index => $block )
+		if( ( $block['kind'] ?? '' ) === 'section' && $block['settings']['vpa'] === ( $animate === true ? null : '' ) && $block['settings']['vpaSpeed'] === '' && $block['settings']['vpaMode'] === '' && $block['settings']['vpaDelay'] === '' && $block['settings']['vpaDuration'] === '' )
+			$model['blocks'][$index]['settings']['vpa'] = $animate === true ? '' : null;
+
+	return $model;
+};
+
+$own = $wrapLoad['model'];
+$own['blocks'][3]['settings']['vpa'] = 'flip-hard';
+$own['blocks'][3]['settings']['vpaSpeed'] = 'fast';
+$wrapEdit = $follow( $own, false );
+$wrapSave = \Nino\Modules\Builder\Document::save( $appData, 'page-wrap', $wrapEdit, $wrapSave['hash'] );
+$wrapText = (string) file_get_contents( $wrapPath );
+check( 'the sections that follow the switch lose their bare nino-vpa where it is turned off, the one with a kind of its own does not - and the wrap loses nino-wrap--vpa, and keeps its kind', $wrapSave['status'] === 200 && str_contains( $wrapText, '<div class="nino-wrap nino-vpa--zoom-soft nino-vpa--speed-medium">' ) === true
+	&& str_contains( $wrapText, '<section id="hero" class="nino-section nino-section--fullwidth nino-section--black nino-cover nino-cover--dim" data-cover-height="100">' ) === true && str_contains( $wrapText, '<section id="services" class="nino-section">' ) === true
+	&& str_contains( $wrapText, '<section id="contact" class="nino-section nino-section--primary nino-text-center nino-vpa nino-vpa--flip-hard nino-vpa--speed-fast">' ) === true && $wrapSave['model']['animate'] === false && $wrapSave['model']['blocks'][3]['settings']['vpa'] === 'flip-hard' );
+
+$wrapEdit = $follow( $wrapSave['model'], true );
+$wrapSave = \Nino\Modules\Builder\Document::save( $appData, 'page-wrap', $wrapEdit, $wrapSave['hash'] );
+$wrapText = (string) file_get_contents( $wrapPath );
+check( '...and where it is turned on again every section without an animation is given the bare nino-vpa, and the one with its own is left as it was', $wrapSave['status'] === 200 && str_contains( $wrapText, '<div class="nino-wrap nino-wrap--vpa nino-vpa--zoom-soft nino-vpa--speed-medium">' ) === true
+	&& str_contains( $wrapText, 'nino-cover nino-cover--dim nino-vpa" data-cover-height="100">' ) === true && str_contains( $wrapText, '<section id="services" class="nino-section nino-vpa">' ) === true
+	&& str_contains( $wrapText, 'nino-text-center nino-vpa nino-vpa--flip-hard nino-vpa--speed-fast">' ) === true && $wrapSave['model'] === $wrapEdit );
+
+$wrapBefore	= (string) file_get_contents( $wrapPath );
+$wrapRefused	= [];
+$wrapBad		= [
+	'vpa'					=> [ 'zoom', 'nino-vpa--zoom-soft', 'x" onclick="y', 'ZOOM-SOFT', 'zoom-soft nino-vpa--speed-fast', "zoom-soft\n" ],
+	'vpaSpeed'		=> [ 'quick', 'nino-vpa--speed-fast', 'speed-fast', 'FAST' ],
+	'wrapClass'		=> [ 'a" onmouseover="b', "it's", 'a]b', 'a[b', "a\nb", "a\rb" ],
+];
+
+foreach( $wrapBad as $key => $values )
+	foreach( $values as $value ) {
+		$wrapEdit = $wrapSave['model'];
+		$wrapEdit[$key] = $value;
+		$answer = \Nino\Modules\Builder\Document::save( $appData, 'page-wrap', $wrapEdit, $wrapSave['hash'] );
+		if( $answer['status'] !== 400 || $answer['problems'] === [] || file_get_contents( $wrapPath ) !== $wrapBefore )
+			$wrapRefused[] = $key. ' '. json_encode( $value );
+	}
+
+check( 'an effect or a speed that Nino.css has none of, and a class of the wrap with a quote, a bracket or a line break in it, are refused with 400 and nothing is written: '. count( $wrapRefused ). ' of '. array_sum( array_map( 'count', $wrapBad ) ). ' were accepted'. ( $wrapRefused === [] ? '' : ' - '. implode( ', ', $wrapRefused ) ), $wrapRefused === [] );
+
+$wrapEdit = $wrapSave['model'];
+$wrapEdit['vpa'] = [ 'zoom-soft' ];
+$wrapAnswers = [ \Nino\Modules\Builder\Document::save( $appData, 'page-wrap', $wrapEdit, $wrapSave['hash'] ) ];
+$wrapEdit['vpa'] = 'zoom-soft';
+$wrapEdit['animate'] = 'yes';
+$wrapAnswers[] = \Nino\Modules\Builder\Document::save( $appData, 'page-wrap', $wrapEdit, $wrapSave['hash'] );
+$wrapEdit['animate'] = true;
+$wrapEdit['wrapClass'] = 0;
+$wrapAnswers[] = \Nino\Modules\Builder\Document::save( $appData, 'page-wrap', $wrapEdit, $wrapSave['hash'] );
+check( '...so is a model whose switch is no switch and whose effect or classes are no text: 400, a problem of the shape, and nothing is written', array_column( $wrapAnswers, 'status' ) === [ 400, 400, 400 ] && array_column( $wrapAnswers, 'code' ) === [ 'invalid', 'invalid', 'invalid' ] && file_get_contents( $wrapPath ) === $wrapBefore );
+
+$wrapEdit = $wrapSave['model'];
+$wrapEdit['wrapClass'] = 'my-wrap u-x:y nino-vpa--blur-soft';
+$wrapSave = \Nino\Modules\Builder\Document::save( $appData, 'page-wrap', $wrapEdit, $wrapSave['hash'] );
+check( 'a class of the wrap that is the template\'s own is kept after the others and read back as it was - a second effect among them, which is a class like any other where the first is the effect', $wrapSave['status'] === 200
+	&& str_contains( (string) file_get_contents( $wrapPath ), '<div class="nino-wrap nino-wrap--vpa nino-vpa--zoom-soft nino-vpa--speed-medium my-wrap u-x:y nino-vpa--blur-soft">' ) === true && $wrapSave['model']['wrapClass'] === 'my-wrap u-x:y nino-vpa--blur-soft' );
+
+$wrapBefore	= (string) file_get_contents( $wrapPath );
+$wrapRefused	= [];
+
+foreach( [ [ 'nino-wrap--vpa', false, '', '' ], [ 'nino-vpa--blur-soft', true, '', '' ], [ 'nino-vpa--speed-slow', true, 'zoom-soft', '' ], [ 'nino-wrap', true, '', '' ], [ 'a&b', true, '', '' ], [ 'a<b', true, '', '' ] ] as [ $value, $animate, $effect, $speed ] ) {
+	$wrapEdit = $wrapSave['model'];
+	$wrapEdit['wrapClass'] = $value;
+	$wrapEdit['animate'] = $animate;
+	$wrapEdit['vpa'] = $effect;
+	$wrapEdit['vpaSpeed'] = $speed;
+	$answer = \Nino\Modules\Builder\Document::save( $appData, 'page-wrap', $wrapEdit, $wrapSave['hash'] );
+	if( $answer['status'] !== 400 || str_contains( implode( ' ', $answer['problems'] ), 'classes of the wrap do not read back' ) === false || file_get_contents( $wrapPath ) !== $wrapBefore )
+		$wrapRefused[] = $value;
+}
+
+check( 'a class of the wrap that is one of its own and is not the wrap\'s to say, or that the builder cannot keep, would be read as another: it is refused, with the wrap named, and nothing is written: '. count( $wrapRefused ). ' of 6 were accepted'. ( $wrapRefused === [] ? '' : ' - '. implode( ', ', $wrapRefused ) ), $wrapRefused === [] );
+
+$wrapSource = \Nino\Modules\Builder\Document::source( $appData, $wrapLoad['model'] );
+check( 'the source view has the wrap in the head and in the foot, and the parts joined by a blank line are the file', $wrapSource['status'] === 200 && $wrapSource['parts'][0]['kind'] === 'head' && $wrapSource['parts'][0]['source'] === "<!-- nino:template-name Home -->\n[template /templates/html-header]\n". $open
+	&& $wrapSource['parts'][count( $wrapSource['parts'] ) - 1]['kind'] === 'foot' && $wrapSource['parts'][count( $wrapSource['parts'] ) - 1]['source'] === "</div>\n[template /templates/html-footer]"
+	&& implode( "\n\n", array_column( $wrapSource['parts'], 'source' ) ). "\n" === $wrapSource['source'] && $wrapSource['source'] === $wrapFixture );
+check( '...and a page with no frame has the wrap alone in its head and its foot', \Nino\Modules\Builder\Document::source( $appData, [ 'blocks' => [] ] )['parts'] === [ [ 'kind' => 'head', 'source' => '<div class="nino-wrap">', 'block' => null ], [ 'kind' => 'foot', 'source' => '</div>', 'block' => null ] ] );
+
+unlink( $wrapPath );
+
+// A page that has the head line an earlier builder wrote has no wrap: it is read as the wrap says it, kept as it is until it is changed, and then written in the wrap
 $vpaPath = \Nino\Filesystem::path( $appData, '/templates/page-vpa.tpl' );
 \Nino\Filesystem::putFileContent( $appData, '/templates/page-vpa.tpl', $vpaFixture );
-\Nino\Filesystem::putFileContent( $appData, '/templates/html-header.tpl', '<header>Header</header>' );
 $vpaLoad = \Nino\Modules\Builder\Document::load( $appData, 'page-vpa' );
 $vpaSave = \Nino\Modules\Builder\Document::save( $appData, 'page-vpa', $vpaLoad['model'], $vpaLoad['hash'] );
-check( 'a template with the head line is loaded and saved without a change byte for byte: the line is the model\'s vpa', $vpaLoad['model']['vpa'] === 'nino-vpa nino-vpa--zoom-soft nino-vpa--speed-medium'
-	&& $vpaSave['status'] === 200 && file_get_contents( $vpaPath ) === $vpaFixture && $vpaSave['model']['vpa'] === $vpaLoad['model']['vpa'] );
+check( 'a template with the head line is loaded and saved without a change byte for byte: it is not wrapped by being opened', $vpaLoad['model']['animate'] === true && $vpaLoad['model']['vpa'] === 'zoom-soft' && $vpaLoad['model']['vpaSpeed'] === 'medium'
+	&& $vpaSave['status'] === 200 && file_get_contents( $vpaPath ) === $vpaFixture && $vpaSave['hash'] === $vpaLoad['hash'] );
+
+$vpaEdit = $vpaLoad['model'];
+$vpaEdit['vpaSpeed'] = 'fast';
+$vpaSave = \Nino\Modules\Builder\Document::save( $appData, 'page-vpa', $vpaEdit, $vpaLoad['hash'] );
+check( '...and a change writes it in the wrap, with the kind the line said and the change, and no head line: the line is gone', $vpaSave['status'] === 200 && file_get_contents( $vpaPath ) === str_replace( 'speed-medium', 'speed-fast', $wrapFixture )
+	&& str_contains( (string) file_get_contents( $vpaPath ), 'nino:template-vpa' ) === false && $vpaSave['model']['vpaSpeed'] === 'fast' );
 
 $vpaEdit = $vpaLoad['model'];
 $vpaEdit['vpa'] = 'nino-vpa nino-vpa--blur-hard';
-$vpaSave = \Nino\Modules\Builder\Document::save( $appData, 'page-vpa', $vpaEdit, $vpaLoad['hash'] );
-check( 'a new animation is a new head line, in the one place, and the answer is the file read again', $vpaSave['status'] === 200 && str_starts_with( (string) file_get_contents( $vpaPath ), "<!-- nino:template-name Home -->\n<!-- nino:template-vpa nino-vpa nino-vpa--blur-hard -->\n[template /templates/html-header]\n" )
-	&& $vpaSave['model']['vpa'] === 'nino-vpa nino-vpa--blur-hard' && substr_count( (string) file_get_contents( $vpaPath ), 'nino:template-vpa' ) === 1 );
-
-$vpaEdit = $vpaSave['model'];
-$vpaEdit['vpa'] = null;
-$vpaSave = \Nino\Modules\Builder\Document::save( $appData, 'page-vpa', $vpaEdit, $vpaSave['hash'] );
-check( '...none (off) takes the line out of the file again, and the rest of the file is what it was', $vpaSave['status'] === 200 && (string) file_get_contents( $vpaPath ) === $fixture && $vpaSave['model']['vpa'] === null );
-
-$vpaBefore = (string) file_get_contents( $vpaPath );
-$vpaRefused = [];
-
-foreach( [ 'zoom-soft', "nino-vpa\n<b>", 'nino-vpa --> x', 'off now', "nino-vpa\n", "nino-vpa nino-vpa--zoom-soft\n" ] as $bad ) {
-	$vpaEdit = $vpaSave['model'];
-	$vpaEdit['vpa'] = $bad;
-	$answer = \Nino\Modules\Builder\Document::save( $appData, 'page-vpa', $vpaEdit, $vpaSave['hash'] );
-	if( $answer['status'] !== 400 || str_contains( implode( ' ', $answer['problems'] ), 'animation' ) === false || file_get_contents( $vpaPath ) !== $vpaBefore )
-		$vpaRefused[] = $bad;
-}
-
-$vpaEdit = $vpaSave['model'];
-$vpaEdit['vpa'] = [ 'nino-vpa' ];
-check( 'an animation that is no list of the classes of nino-vpa, or no text at all, is refused with 400 and nothing is written: '. count( $vpaRefused ). ' of 6 were accepted', $vpaRefused === []
-	&& \Nino\Modules\Builder\Document::save( $appData, 'page-vpa', $vpaEdit, $vpaSave['hash'] )['status'] === 400 && file_get_contents( $vpaPath ) === $vpaBefore );
-
-$vpaEdit = $vpaLoad['model'];
-$vpaSource = \Nino\Modules\Builder\Document::source( $appData, $vpaEdit );
-check( 'the source view has the line in its head', $vpaSource['status'] === 200 && $vpaSource['parts'][0]['source'] === "<!-- nino:template-name Home -->\n<!-- nino:template-vpa nino-vpa nino-vpa--zoom-soft nino-vpa--speed-medium -->\n[template /templates/html-header]"
-	&& $vpaSource['source'] === $vpaFixture );
+$vpaAnswer = \Nino\Modules\Builder\Document::save( $appData, 'page-vpa', $vpaEdit, $vpaSave['hash'] );
+check( 'the animation as the head line had it is no animation of the model any more: the classes of it are refused where the effect is looked for', $vpaAnswer['status'] === 400 && str_contains( implode( ' ', $vpaAnswer['problems'] ), 'effect of the animation' ) === true );
 
 unlink( $vpaPath );
 
 // A template with texts in two languages, a global one, a limit, a slot with a picture and alt texts, a block of html that names a key
-$srcFile = "<!-- nino:template-name Dup -->\n<!-- nino:template-vpa nino-vpa nino-vpa--blur-soft -->\n[template /templates/html-header]\n\n"
-	. "<section id=\"one\" class=\"nino-section nino-vpa nino-vpa--blur-soft\">\n\t<div class=\"nino-section-bg\">[image /template/page-dup/one/background alt=\"\"]</div>\n\t<div class=\"nino-grid-row\">\n\t\t<div class=\"nino-grid-100\">\n\t\t\t[title /template/page-dup/one/title]\n\t\t\t[text /template/page-dup/one/text]\n\t\t</div>\n\t</div>\n</section>\n\n"
-	. "<!-- nino:html -->\n<p>[[/template/page-dup/one/title]] stays a sentence, [[/template/page-dupx/one/title]] another</p>\n<!-- /nino:html -->\n\n[template /templates/html-footer]\n";
+$srcFile = "<!-- nino:template-name Dup -->\n[template /templates/html-header]\n<div class=\"nino-wrap nino-wrap--vpa nino-vpa--blur-soft\">\n\n"
+	. "<section id=\"one\" class=\"nino-section nino-vpa\">\n\t<div class=\"nino-section-bg\">[image /template/page-dup/one/background alt=\"\"]</div>\n\t<div class=\"nino-grid-row\">\n\t\t<div class=\"nino-grid-100\">\n\t\t\t[title /template/page-dup/one/title]\n\t\t\t[text /template/page-dup/one/text]\n\t\t</div>\n\t</div>\n</section>\n\n"
+	. "<!-- nino:html -->\n<p>[[/template/page-dup/one/title]] stays a sentence, [[/template/page-dupx/one/title]] another</p>\n<!-- /nino:html -->\n\n</div>\n[template /templates/html-footer]\n";
 \Nino\Filesystem::putFileContent( $appData, '/templates/page-dup.tpl', $srcFile );
 
 foreach( [ 'en_US' => [ 'Hello', 'Dup text' ], 'de_DE' => [ 'Hallo', 'Dup Text' ] ] as $locale => [ $title, $text ] )
@@ -1026,9 +1302,9 @@ $copyText = (string) file_get_contents( $copyPath );
 
 check( 'a copy answers 200 with the model of the new file, and its hash', $dup['status'] === 200 && $dup['model']['file'] === 'page-dup-copy' && $dup['hash'] === hash( 'sha256', $copyText )
 	&& \Nino\Modules\Builder\Document::load( $appData, 'page-dup-copy' )['model'] === $dup['model'] );
-check( '...the file is the old one under its new name: the name line, the animation, the frames, and every source made the new file\'s - in the sections and in the blocks of html',
+check( '...the file is the old one under its new name: the name line, the wrap with its animation, the frames, and every source made the new file\'s - in the sections and in the blocks of html',
 	$copyText === str_replace( [ '/template/page-dup/', 'template-name Dup -->' ], [ '/template/page-dup-copy/', 'template-name Dup Copy -->' ], $srcFile ) && $dup['model']['name'] === 'Dup Copy'
-	&& $dup['model']['vpa'] === 'nino-vpa nino-vpa--blur-soft' && $dup['model']['blocks'][0]['background']['slot'] === '/template/page-dup-copy/one/background'
+	&& $dup['model']['animate'] === true && $dup['model']['vpa'] === 'blur-soft' && $dup['model']['blocks'][0]['background']['slot'] === '/template/page-dup-copy/one/background'
 	&& $dup['model']['blocks'][0]['cols'][0]['components'][0]['source'] === '/template/page-dup-copy/one/title' && $dup['model']['blocks'][1]['reason'] === null
 	&& str_contains( $dup['model']['blocks'][1]['source'], '[[/template/page-dup-copy/one/title]] stays a sentence, [[/template/page-dupx/one/title]] another' ) === true );
 check( '...and the old file is as it was', file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-dup.tpl' ) ) === $srcFile );
@@ -1175,7 +1451,7 @@ check( '...and the sections are what Nino.css knows: the cover with its height, 
 	str_contains( $page, '<section id="start" class="nino-section nino-section--fullwidth nino-section--black nino-cover nino-cover--dim nino-vpa" data-cover-height="100">' ) === true
 	&& str_contains( $page, '<div class="nino-section-bg nino-img-focus--5">' ) === true && str_contains( $page, '<div class="nino-grid-row nino-grid-row--wide nino-grid-middle">' ) === true );
 check( '...a block of html written by hand is in the page as it was written', str_contains( $page, '<p>Imprint note</p>' ) === true && str_contains( $page, '<div class="map"></div>' ) === true );
-check( 'an empty page of the builder renders as its frames and nothing between', \Nino\Html::renderHtml( $appData, '[template /templates/page-ueber-uns]' ) === "<!-- nino:template-name Über uns -->\n<header>Header</header>\n\n<footer>Footer</footer>\n" );
+check( 'an empty page of the builder renders as its frames and its wrap, a div the kernel leaves as it is, with nothing in it', \Nino\Html::renderHtml( $appData, '[template /templates/page-ueber-uns]' ) === "<!-- nino:template-name Über uns -->\n<header>Header</header>\n<div class=\"nino-wrap\">\n\n</div>\n<footer>Footer</footer>\n" );
 
 echo "\n";
 
@@ -1256,7 +1532,7 @@ check( 'duplicate refuses a copy whose keys or slots are there already with 409 
 $example = \Nino\Modules\Builder\Reader::read( (string) file_get_contents( __DIR__. '/fixtures/page-home.tpl' ), $registry );
 
 [ $status, $sourceBody ] = callBuilderAction( $appData, 'apiSource', [ 'model' => $example ] );
-check( 'source answers the file the model would be written as, and what the file is made of: the head, each block, the foot', $status === 200 && $sourceBody['source'] === (string) file_get_contents( __DIR__. '/fixtures/page-home.tpl' )
+check( 'source answers the file the model would be written as - the example page in its wrap - and what the file is made of: the head, each block, the foot', $status === 200 && $sourceBody['source'] === $wrapped( (string) file_get_contents( __DIR__. '/fixtures/page-home.tpl' ) )
 	&& array_column( $sourceBody['parts'], 'kind' ) === [ 'head', 'section', 'section', 'html', 'section', 'foot' ] && array_column( $sourceBody['parts'], 'block' ) === [ null, 0, 1, 2, 3, null ]
 	&& implode( "\n\n", array_column( $sourceBody['parts'], 'source' ) ). "\n" === $sourceBody['source'] );
 check( '...a block of html in its markers carries them, a section does not, and nothing was written', str_starts_with( $sourceBody['parts'][3]['source'], '<!-- nino:html -->' ) === true && str_starts_with( $sourceBody['parts'][1]['source'], '<section id="hero"' ) === true
@@ -1297,6 +1573,13 @@ $invalid = $next;
 $invalid['blocks'][0]['cols'][0]['components'][0]['name'] = 'nothing';
 [ $status, $invalidBody ] = callBuilderAction( $appData, 'apiSave', [ 'file' => 'page-home', 'model' => $invalid, 'hash' => \Nino\Modules\Builder\Document::load( $appData, 'page-home' )['hash'] ] );
 check( '...an invalid one: 400, the problems in the params of the answer', $status === 400 && $invalidBody['code'] === 'builder_invalid' && isset( $invalidBody['params'][0] ) === true && str_contains( $invalidBody['params'][0], 'nothing' ) === true );
+
+$notASwitch = $next;
+$notASwitch['blocks'][0]['settings']['fullheight'] = 'yes';
+$switchHash = \Nino\Modules\Builder\Document::load( $appData, 'page-home' )['hash'];
+[ $status, $switchBody ] = callBuilderAction( $appData, 'apiSave', [ 'file' => 'page-home', 'model' => $notASwitch, 'hash' => $switchHash ] );
+check( '...a full height that is no bool: 400, builder_invalid, the switch and its block in the params - and the file is as it was', $status === 400 && $switchBody['code'] === 'builder_invalid'
+	&& $switchBody['params'] === [ 'the fullheight of block 1 is neither on nor off' ] && \Nino\Modules\Builder\Document::load( $appData, 'page-home' )['hash'] === $switchHash );
 
 [ $status, $inUse ] = callBuilderAction( $appData, 'apiDelete', [ 'file' => 'page-home' ] );
 check( 'delete refuses a template a route renders with 409, the key of the route in the params, as the list shows the address', $status === 409 && $inUse['code'] === 'builder_in_use' && $inUse['params'] === [ 'GET://' ] );

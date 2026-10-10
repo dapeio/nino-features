@@ -20,7 +20,7 @@ A feature is not installed; it is dropped in and switched on:
 2. Sign in to `/_admin` and open **Features** in the System group. The panel asks for the developer permission `/_admin/features/manage`. It lists every directory with a valid manifest, switched on or not, with its version and with whatever stands in the way of an activation - a Nino version the feature was not written for, a missing PHP extension, a required feature that is not there.
 3. **Activate.** That applies the feature's install unit without overwriting anything your project already has, lists the class in `/nino/modules` and records the version under `/nino/features` in `config.php`.
 
-A panel a feature brings appears with the next load of the workbench, in the Features group; the roles tab of the Users panel offers its permission there, and the **Editor** role does not receive it by itself.
+A panel a feature brings appears with the next load of the workbench, in the group its `nav()` names (the Builder in Structure) and in the Features group where it names none; a Nino before 1.6 puts every one of them in the Features group. The roles tab of the Users panel offers its permission under that group, and the **Editor** role does not receive it by itself.
 
 **Update:** replace `features/<Name>/` with the new release and press **Update** in the Features panel. The panel offers it as soon as the manifest names a different version than the recorded one; the unit adds what is new and leaves everything the project has edited as it is. **Deactivate** removes the class from `/nino/modules` and nothing else - settings, data, copied templates and texts stay.
 

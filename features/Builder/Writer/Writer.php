@@ -29,6 +29,15 @@ namespace Nino\Modules\Builder {
 	 *											that are 100 wide in all three viewports are written
 	 *											nino-grid-100, any other as three classes.
 	 *
+	 *											The blocks stand in the wrap: the line that opens it
+	 *											follows the name and the frame above, the line that closes
+	 *											it comes before the frame below, and nothing inside is
+	 *											indented for it - a file the builder had not wrapped is
+	 *											wrapped with two lines and is otherwise what it was. Its
+	 *											classes (see wrapClasses()) are the kind of animation of the
+	 *											template; the head line the builder wrote before the wrap
+	 *											is not written any more.
+	 *
 	 *											A foreign block is the one thing written as it came: one
 	 *											the builder made, or that came in its markers, gets the
 	 *											markers (the Reader finds it again without analysing it);
@@ -53,47 +62,73 @@ namespace Nino\Modules\Builder {
 		private static array $fragments = [];
 
 		/**
-		 *	The model written as a page template
+		 *	The model written as a page template: the head, the blocks and the
+		 *	foot, a blank line between them
 		 *
 		 *	@param		array			$model				See Reader
 		 *	@param		array			$registry			[ 'components' => name => schema, 'stacks' => name => schema ]
 		 *
-		 *	@return 	string										'' for a page with no name, no frame and no block - but a template animation (vpa)
-		 *																	alone produces a head line
+		 *	@return 	string										The file; a page with no name, no frame and no block is the wrap and nothing in it
+		 *
+		 *	@throws		\UnexpectedValueException		Where the effect or the speed of the wrap is none of Nino.css
 		 */
 		public static function write( array $model, array $registry ): string {
 
-			$parts	= [];
-			$head		= [];
-
-			if( trim( (string) ( $model['name'] ?? '' ) ) !== '' )
-				$head[] = '<!-- nino:template-name '. trim( (string) $model['name'] ). ' -->';
-
-			// The classes as they were written, and nothing at all for none
-			if( is_string( $model['vpa'] ?? null ) === true ) {
-
-				$vpa = Reader::vpaClasses( $model['vpa'] );
-
-				if( $vpa === false )
-					throw new \UnexpectedValueException( 'The animation of the template is none of the classes of nino-vpa.' );
-
-				if( $vpa !== null )
-					$head[] = '<!-- nino:template-vpa '. $vpa. ' -->';
-			}
-
-			if( (string) ( $model['header'] ?? '' ) !== '' )
-				$head[] = '[template /templates/'. $model['header']. ']';
-
-			if( $head !== [] )
-				$parts[] = implode( "\n", $head );
+			$parts = [ self::head( $model ) ];
 
 			foreach( (array) ( $model['blocks'] ?? [] ) as $block )
-				$parts[] = ( $block['kind'] ?? '' ) === 'section' ? self::_section( $block, $registry ) : self::_foreign( $block );
+				$parts[] = self::block( (array) $block, $registry );
 
-			if( (string) ( $model['footer'] ?? '' ) !== '' )
-				$parts[] = '[template /templates/'. $model['footer']. ']';
+			$parts[] = self::foot( $model );
 
-			return $parts === [] ? '' : implode( "\n\n", $parts ). "\n";
+			return implode( "\n\n", $parts ). "\n";
+		}
+
+		/**
+		 *	What stands above the blocks: the name, the frame above them and the
+		 *	line that opens the wrap
+		 *
+		 *	@param		array			$model
+		 *
+		 *	@return 	string
+		 */
+		public static function head( array $model ): string {
+
+			$lines = [];
+
+			if( trim( (string) ( $model['name'] ?? '' ) ) !== '' )
+				$lines[] = '<!-- nino:template-name '. trim( (string) $model['name'] ). ' -->';
+
+			if( (string) ( $model['header'] ?? '' ) !== '' )
+				$lines[] = '[template /templates/'. $model['header']. ']';
+
+			$lines[] = self::_fill( 'div-open', [ '[[class]]' => self::_class( self::wrapClasses( $model ) ) ] );
+
+			return implode( "\n", $lines );
+		}
+
+		/**
+		 *	What stands below the blocks: the line that closes the wrap and the
+		 *	frame below them
+		 *
+		 *	@param		array			$model
+		 *
+		 *	@return 	string
+		 */
+		public static function foot( array $model ): string {
+			return '</div>'. ( (string) ( $model['footer'] ?? '' ) !== '' ? "\n[template /templates/". $model['footer']. ']' : '' );
+		}
+
+		/**
+		 *	One block, a section or a foreign one
+		 *
+		 *	@param		array			$block
+		 *	@param		array			$registry
+		 *
+		 *	@return 	string
+		 */
+		public static function block( array $block, array $registry ): string {
+			return ( $block['kind'] ?? '' ) === 'section' ? self::_section( $block, $registry ) : self::_foreign( $block );
 		}
 
 		/**
@@ -174,6 +209,40 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
+		 *	The classes of the wrap, in the order they are written: what makes it
+		 *	one, whether its sections are animated, the effect with its strength,
+		 *	the speed, and the rest
+		 *
+		 *	@param		array			$model				The template's
+		 *
+		 *	@return 	array										Class names
+		 *
+		 *	@throws		\UnexpectedValueException		Where the effect or the speed is none of Nino.css, which would be a class that is no wrap's
+		 */
+		public static function wrapClasses( array $model ): array {
+
+			$model	+= Reader::wrapDefaults();
+			$class	= [ Reader::WRAP ];
+
+			if( in_array( (string) $model['vpa'], array_merge( [ '' ], Reader::EFFECTS ), true ) === false )
+				throw new \UnexpectedValueException( 'The effect of the animation of the template is none that Nino.css has.' );
+
+			if( in_array( (string) $model['vpaSpeed'], array_merge( [ '' ], Reader::SPEEDS ), true ) === false )
+				throw new \UnexpectedValueException( 'The speed of the animation of the template is none that Nino.css has.' );
+
+			if( $model['animate'] === true )
+				$class[] = Reader::WRAP_VPA;
+
+			if( (string) $model['vpa'] !== '' )
+				$class[] = 'nino-vpa--'. $model['vpa'];
+
+			if( (string) $model['vpaSpeed'] !== '' )
+				$class[] = 'nino-vpa--speed-'. $model['vpaSpeed'];
+
+			return array_merge( $class, self::_custom( (string) $model['wrapClass'] ) );
+		}
+
+		/**
 		 *	The classes of a section, in the order they are written
 		 *
 		 *	@param		array			$s						The section's settings
@@ -185,8 +254,10 @@ namespace Nino\Modules\Builder {
 			$s			= $s + Reader::sectionDefaults();
 			$class	= [ 'nino-section' ];
 
-			if( (string) $s['width'] !== '' )
-				$class[] = 'nino-section--'. $s['width'];
+			// The full width, then the full height: two switches, either or both
+			foreach( Reader::SECTION_SIZE as $size )
+				if( $s[$size] === true )
+					$class[] = 'nino-section--'. $size;
 
 			if( (string) $s['color'] !== '' )
 				$class[] = 'nino-section--'. $s['color'];

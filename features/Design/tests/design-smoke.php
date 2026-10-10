@@ -134,6 +134,41 @@ foreach( \Nino\Modules\Design\Setup::PARTS as $part => $kind ) {
 	check( '...and every knob it publishes a real triple of a real knob'. ( $knobProblems === [] ? '' : ' - '. implode( ' | ', $knobProblems ) ), $knobProblems === [] );
 }
 
+/*	A page that opens with a hero loses main's top padding - a rule of the
+	header's, since the header is what sets that padding. The Builder writes a
+	div.nino-wrap around a page's sections, and its hero carries no nino-atf:
+	every hero a rule names directly below main it has to name inside the
+	wrap as well, in the same rule. Read from the library's own list of
+	headers, so a header that is added without the wrapped form fails here
+	rather than on a site	*/
+$heroProblems = [];
+
+foreach( \Nino\Modules\Design\Setup::available( $library, 'header' ) as $set ) {
+
+	$css		= \Nino\Modules\Design\Setup::uncomment( (string) file_get_contents( \Nino\Modules\Design\Setup::file( $library, 'header', $set ) ) );
+	$rules	= 0;
+
+	preg_match_all( '/([^{}]+)\{\s*padding-top:\s*0;\s*\}/', $css, $found );
+
+	foreach( $found[1] as $selectors ) {
+
+		// The heroes the rule names directly below main; the wrapped form of each is the same selector with the wrap between
+		if( preg_match_all( '/main:has\(> (\.nino-[a-z.-]+):first-child\)/', $selectors, $heroes ) === 0 )
+			continue;
+
+		$rules++;
+
+		foreach( $heroes[1] as $hero )
+			if( str_contains( $selectors, 'main:has(> .nino-wrap > '. $hero. ':first-child)' ) === false )
+				$heroProblems[] = $set. ': '. $hero;
+	}
+
+	if( $rules === 0 )
+		$heroProblems[] = $set. ': no rule takes main\'s top padding away for a hero';
+}
+
+check( 'every header takes main\'s top padding away for a hero that opens the page, directly below main and inside the Builder\'s wrap alike'. ( $heroProblems === [] ? '' : ' - '. implode( ', ', $heroProblems ) ), $heroProblems === [] );
+
 /*	And the one thing reading the files cannot say: that each of them survives
 	the compiler. Every variant of every part, one at a time, because a single
 	setup naming all of them would prove only that the last one landed	*/

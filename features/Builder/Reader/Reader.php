@@ -34,6 +34,26 @@ namespace Nino\Modules\Builder {
 	 *											<!-- nino:html --> ... <!-- /nino:html --> is recognised
 	 *											without being analysed, and carries no reason.
 	 *
+	 *											All the blocks stand in a wrap, a <div class="nino-wrap ...">
+	 *											between the head and the foot. It is known by its place
+	 *											alone: the first line after the head (the name and the
+	 *											frame above) opens it, a line of nothing but that tag with
+	 *											the class attribute alone, and the last line before the
+	 *											foot (the frame below) closes it, a line of nothing but
+	 *											</div>. A file that lacks either of the two has no wrap and
+	 *											is read as it was before there was one - the one line that
+	 *											is there is a foreign block - and the Writer gives it its
+	 *											wrap with the first change. The classes of the wrap are the
+	 *											kind of animation of the template: nino-wrap--vpa says the
+	 *											sections are animated, an effect with its strength
+	 *											(nino-vpa--zoom-soft) and a speed (nino-vpa--speed-medium)
+	 *											say how, through the custom properties of Nino.css that
+	 *											every .nino-vpa below it inherits; every other class is kept
+	 *											as it is. The kernel reads none of it but the classes of the
+	 *											sections. The head line <!-- nino:template-vpa ... -->, which
+	 *											the builder wrote before it had a wrap, is read in its place
+	 *											where the file has no wrap, and is not written any more.
+	 *
 	 *											The shortcode calls are read the way \Nino\Html reads them:
 	 *											the same expression for the call and its content, the same
 	 *											one for the arguments - a first positional argument, named
@@ -49,11 +69,13 @@ namespace Nino\Modules\Builder {
 	 *											document
 	 *											  file      string  page-home; read() leaves it '', Document sets it
 	 *											  name      string  the nino:template-name comment, '' where none
-	 *											  vpa       null    no nino:template-vpa comment, or one that says off
-	 *											            string  the classes it names, as they are written - what a
-	 *											                    new section is given and what a section that is
-	 *											                    "like the template" carries; written back only
-	 *											                    where there is one
+	 *											  animate   bool    nino-wrap--vpa on the wrap: the sections are animated,
+	 *											                    and a new one is given a bare nino-vpa
+	 *											  vpa       string  the effect of the wrap with its strength as one word
+	 *											                    (nino-vpa--zoom-soft is zoom-soft), '' for none: then
+	 *											                    what the frame sets, else Nino.css, holds
+	 *											  vpaSpeed  string  ''|fast|medium|slow   nino-vpa--speed-<x> on the wrap
+	 *											  wrapClass string  every other class of the wrap, as they are written
 	 *											  header    string  html-header, or any html-header* template; '' for none
 	 *											  footer    string  html-footer, ditto
 	 *											  blocks    list    section and html, in the order of the file
@@ -79,7 +101,8 @@ namespace Nino\Modules\Builder {
 	 *											    row         ''|narrow|wide        nino-grid-row--<x>
 	 *											    rowAlign    ''|center|middle|bottom   nino-grid-<x>
 	 *											    rowCustom   string                classes of the row that are none of these
-	 *											    width       ''|fullwidth|fullheight   nino-section--<x>
+	 *											    fullwidth   bool                  nino-section--fullwidth
+	 *											    fullheight  bool                  nino-section--fullheight, both may be on at once
 	 *											    color       ''|alt|tint|dark|black|primary|brand-alt
 	 *											    border      ''|1|2|3|primary      nino-section--border-<x>
 	 *											    image       ''|cover|parallax     nino-cover, nino-parallex
@@ -108,7 +131,9 @@ namespace Nino\Modules\Builder {
 	 *											  text      ''|left|center|right
 	 *											  stackAlign ''|start|center|end   nino-stack-<x>
 	 *											  stackGap  ''|0..6                nino-stack-gap-<n>
-	 *											  vpa, vpaSpeed, vpaMode, vpaDelay, vpaDuration   as in settings
+	 *											  vpa, vpaSpeed, vpaMode   as in settings
+	 *											  vpaDelay, vpaDuration   always ''; a column is written with its classes
+	 *											                    alone, and has no data-vpa-delay or data-vpa-duration
 	 *											  custom    string
 	 *											  stack     null    the column is a static stack of components
 	 *											            map     name, source (the type's uri), attributes - the
@@ -134,10 +159,12 @@ namespace Nino\Modules\Builder {
 	class Reader {
 
 		// The vocabulary of Nino.css the model keeps in settings of their own,
-		// the order the Writer writes them in - everything else is 'custom'
+		// the order the Writer writes them in - everything else is 'custom'.
+		// SECTION_SIZE is two switches, not one choice: each is a setting of its
+		// own (bool) named like the end of its class, and both may be on
 		public const array ROW = [ 'narrow', 'wide' ];
 		public const array ROW_ALIGN = [ 'center', 'middle', 'bottom' ];
-		public const array SECTION_WIDTH = [ 'fullwidth', 'fullheight' ];
+		public const array SECTION_SIZE = [ 'fullwidth', 'fullheight' ];
 		public const array COLOR = [ 'alt', 'tint', 'dark', 'black', 'primary', 'brand-alt' ];
 		public const array BORDER = [ '1', '2', '3', 'primary' ];
 		public const array IMAGE = [ 'cover' => 'nino-cover', 'parallax' => 'nino-parallex' ];
@@ -155,8 +182,12 @@ namespace Nino\Modules\Builder {
 		public const array VIEWPORTS = [ 's', 'm', 'l' ];
 		public const array STACK_ALIGN = [ 'start', 'center', 'end' ];
 
-		// One class of the animation the head may name: nino-vpa, or nino-vpa-- and what follows
-		public const string VPA_CLASS = '/^nino-vpa(?:--[a-z0-9]+(?:-[a-z0-9]+)*)?$/D';
+		// One class of the animation the head line of an earlier builder may name: nino-vpa, or nino-vpa-- and what follows
+		private const string VPA_CLASS = '/^nino-vpa(?:--[a-z0-9]+(?:-[a-z0-9]+)*)?$/D';
+
+		// The class of the wrap that makes it one, and the one that says its sections are animated
+		public const string WRAP = 'nino-wrap';
+		public const string WRAP_VPA = 'nino-wrap--vpa';
 
 		// Why a section is not read: the code of a failure, and the sentence
 		// that says it. %s is the detail, where the failure has one
@@ -205,7 +236,7 @@ namespace Nino\Modules\Builder {
 		 */
 		public static function sectionDefaults(): array {
 			return [
-				'row' => '', 'rowAlign' => '', 'rowCustom' => '', 'width' => '', 'color' => '', 'border' => '',
+				'row' => '', 'rowAlign' => '', 'rowCustom' => '', 'fullwidth' => false, 'fullheight' => false, 'color' => '', 'border' => '',
 				'image' => '', 'dim' => false, 'imagePos' => '', 'cover' => null,
 				'mt' => '', 'mb' => '', 'pt' => '', 'pb' => '', 'text' => '',
 			] + self::animationDefaults() + [ 'custom' => '' ];
@@ -229,28 +260,11 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	What the animation line of the head says: off, or the classes of
-		 *	the animation a new section is given
-		 *
-		 *	@param		string		$value				The line without its comment markers and the spaces around
-		 *
-		 *	@return 	string|false|null					null for off, the classes as they are written, false for a line that says neither
+		 *	@return 	array										The animation of a template as its wrap has it, off: the switch, the effect with its
+		 *																	strength, the speed, and the other classes of the wrap
 		 */
-		public static function vpaClasses( string $value ): string|false|null {
-
-			if( $value === 'off' )
-				return null;
-
-			if( $value !== trim( $value, "\t " ) )
-				return false;
-
-			$classes = preg_split( '/[\t ]+/', $value, -1, PREG_SPLIT_NO_EMPTY ) ?: [];
-
-			foreach( $classes as $class )
-				if( preg_match( self::VPA_CLASS, $class ) !== 1 )
-					return false;
-
-			return $classes === [] ? false : $value;
+		public static function wrapDefaults(): array {
+			return [ 'animate' => false, 'vpa' => '', 'vpaSpeed' => '', 'wrapClass' => '' ];
 		}
 
 		/**
@@ -288,24 +302,23 @@ namespace Nino\Modules\Builder {
 		 */
 		public static function read( string $source, array $registry ): array {
 
-			$model	= [ 'file' => '', 'name' => '', 'vpa' => null, 'header' => '', 'footer' => '', 'blocks' => [] ];
+			$model	= [ 'file' => '', 'name' => '' ] + self::wrapDefaults() + [ 'header' => '', 'footer' => '', 'blocks' => [] ];
 			$pos		= 0;
+			$line		= false;
 
 			if( preg_match( '~\G\s*<!--[\t ]*nino:template-name[\t ]+([^\r\n<>]+?)[\t ]*-->[\t ]*(?:\r?\n|$)~', $source, $match, 0, $pos ) === 1 ) {
 				$model['name'] = $match[1];
 				$pos += strlen( $match[0] );
 			}
 
-			// What the animation of a new section is, for the builder alone: the kernel reads the classes of the sections
+			// What the animation of a new section was before the wrap, for the builder alone: the kernel reads the classes of the sections
 			if( preg_match( '~\G\s*<!--[\t ]*nino:template-vpa[\t ]+([^\r\n<>]+?)[\t ]*-->[\t ]*(?:\r?\n|$)~', $source, $match, 0, $pos ) === 1 ) {
 
-				$vpa = self::vpaClasses( $match[1] );
+				$line = self::_vpaClasses( $match[1] );
 
 				// A line that says something else is no head line: it stays where it is, with the block that follows
-				if( $vpa !== false ) {
-					$model['vpa'] = $vpa;
+				if( $line !== false )
 					$pos += strlen( $match[0] );
-				}
 			}
 
 			if( preg_match( '~\G\s*\[template /templates/(html-header(?:-[a-z0-9]+)*)\][\t ]*(?:\r?\n|$)~', $source, $match, 0, $pos ) === 1 ) {
@@ -319,6 +332,17 @@ namespace Nino\Modules\Builder {
 				$model['footer'] = $match[1][0];
 				$end = $match[0][1];
 			}
+
+			// The wrap says in its classes what the head line said: where the file has one, the line is not looked at
+			$wrap = self::_wrap( $source, $pos, $end );
+
+			if( $wrap !== null ) {
+				$model	= array_replace( $model, $wrap['settings'] );
+				$pos		= $wrap['from'];
+				$end		= $wrap['to'];
+			}
+			elseif( $line !== false )
+				$model = array_replace( $model, self::_headSettings( $line ) );
 
 			$body		= substr( $source, 0, $end );
 			$ids		= [];
@@ -719,8 +743,8 @@ namespace Nino\Modules\Builder {
 			$dim			= [];
 			$default	= $s;
 
-			// A modifier a second time, or a second of a kind that has one
-			// place, is a class of its own: kept, not lost
+			// A second modifier of a kind that has one place is a class of its
+			// own: kept, not lost
 			$set = static function( string $key, mixed $value, string $token ) use ( &$s, &$custom, $default ): void {
 
 				if( $s[$key] !== $default[$key] )
@@ -734,8 +758,9 @@ namespace Nino\Modules\Builder {
 				if( $token === 'nino-section' )
 					continue;
 
+				// Full width and full height are two switches, not two of a kind: both may stand side by side
 				if( preg_match( '/^nino-section--(fullwidth|fullheight)$/', $token, $m ) === 1 )
-					$set( 'width', $m[1], $token );
+					$s[$m[1]] = true;
 				elseif( preg_match( '/^nino-section--(alt|tint|dark|black|primary|brand-alt)$/', $token, $m ) === 1 )
 					$set( 'color', $m[1], $token );
 				elseif( preg_match( '/^nino-section--border-(1|2|3|primary)$/', $token, $m ) === 1 )
@@ -865,6 +890,147 @@ namespace Nino\Modules\Builder {
 				$s[$key] = $attributes[$attribute];
 				$s['vpa'] ??= '';
 			}
+		}
+
+		/**
+		 *	The wrap of a page, where it has one: its first line is the line after
+		 *	the head, its last the line before the foot, each of nothing but its
+		 *	tag. Where either is missing, or the opening one has an attribute
+		 *	beside its class or a class that cannot be kept, the file has no wrap
+		 *
+		 *	@param		string		$source				The file
+		 *	@param		int				$pos					Where the head ends
+		 *	@param		int				$end					Where the foot starts, the end of the file where it has none
+		 *
+		 *	@return 	array|null								[ 'settings' => animate, vpa, vpaSpeed and wrapClass of its classes, 'from' => where
+		 *																	the blocks start, 'to' => where they end ], null where there is no wrap
+		 */
+		private static function _wrap( string $source, int $pos, int $end ): ?array {
+
+			$body	= rtrim( substr( $source, 0, $end ), " \t\r\n" );
+			$at		= self::_skip( $body, $pos );
+
+			// A file that ends with its head has nothing to wrap
+			if( $at >= strlen( $body ) )
+				return null;
+
+			try {
+				[ $attributes, $after ] = self::_open( $body, $at, 'div', 'not-a-section' );
+				$tokens = self::_tokens( $attributes['class'] ?? '', $at );
+			}
+			catch( \RuntimeException ) {
+				return null;
+			}
+
+			if( array_keys( $attributes ) !== [ 'class' ] || in_array( self::WRAP, $tokens, true ) === false )
+				return null;
+
+			if( preg_match( '~\G[\t ]*(?:\r?\n|\z)~', $body, $line, 0, $after ) !== 1 )
+				return null;
+
+			$from = $after + strlen( $line[0] );
+
+			if( preg_match( '~(?<![^\n])[\t ]*</div[\t ]*>\z~', $body, $close, PREG_OFFSET_CAPTURE, $from ) !== 1 )
+				return null;
+
+			return [ 'settings' => self::_wrapSettings( $tokens ), 'from' => $from, 'to' => (int) $close[0][1] ];
+		}
+
+		/**
+		 *	What the classes of a wrap say: whether its sections are animated, the
+		 *	effect with its strength, the speed - and, as they are written, the rest
+		 *
+		 *	@param		array			$tokens				The classes
+		 *
+		 *	@return 	array										animate, vpa, vpaSpeed, wrapClass
+		 */
+		private static function _wrapSettings( array $tokens ): array {
+
+			$s			= self::wrapDefaults();
+			$custom	= [];
+
+			foreach( $tokens as $token ) {
+
+				if( $token === self::WRAP )
+					continue;
+
+				if( $token === self::WRAP_VPA && $s['animate'] === false )
+					$s['animate'] = true;
+				elseif( preg_match( '/^nino-vpa--(.+)$/', $token, $m ) === 1 && in_array( $m[1], self::EFFECTS, true ) === true && $s['vpa'] === '' )
+					$s['vpa'] = $m[1];
+				elseif( preg_match( '/^nino-vpa--speed-(fast|medium|slow)$/', $token, $m ) === 1 && $s['vpaSpeed'] === '' )
+					$s['vpaSpeed'] = $m[1];
+				else
+					$custom[] = $token;
+			}
+
+			$s['wrapClass'] = implode( ' ', $custom );
+
+			return $s;
+		}
+
+		/**
+		 *	What the animation line of the head says, the one a builder that had no
+		 *	wrap yet wrote: off, or the classes of the animation a new section was given
+		 *
+		 *	@param		string		$value				The line without its comment markers and the spaces around
+		 *
+		 *	@return 	string|false|null					null for off, the classes as they are written, false for a line that says neither
+		 */
+		private static function _vpaClasses( string $value ): string|false|null {
+
+			if( $value === 'off' )
+				return null;
+
+			if( $value !== trim( $value, "\t " ) )
+				return false;
+
+			$classes = preg_split( '/[\t ]+/', $value, -1, PREG_SPLIT_NO_EMPTY ) ?: [];
+
+			foreach( $classes as $class )
+				if( preg_match( self::VPA_CLASS, $class ) !== 1 )
+					return false;
+
+			return $classes === [] ? false : $value;
+		}
+
+		/**
+		 *	What the head line of an earlier builder says as the wrap says it: off is
+		 *	no animation, any class of it is one - the effect, the strength and the
+		 *	speed are the wrap's, the mode is dropped, since a mode is no property
+		 *	that is inherited, and a class of nino-vpa-- the builder does not know
+		 *	stays as a class of the wrap
+		 *
+		 *	@param		string|null	$classes			What _vpaClasses() read, null for off
+		 *
+		 *	@return 	array										animate, vpa, vpaSpeed, wrapClass
+		 */
+		private static function _headSettings( ?string $classes ): array {
+
+			$s = self::wrapDefaults();
+
+			if( $classes === null )
+				return $s;
+
+			$s['animate']	= true;
+			$custom				= [];
+
+			foreach( preg_split( '/[\t ]+/', $classes, -1, PREG_SPLIT_NO_EMPTY ) ?: [] as $token ) {
+
+				if( $token === 'nino-vpa' || preg_match( '/^nino-vpa--(.+)$/', $token, $m ) !== 1 )
+					continue;
+
+				if( in_array( $m[1], self::EFFECTS, true ) === true && $s['vpa'] === '' )
+					$s['vpa'] = $m[1];
+				elseif( preg_match( '/^speed-(fast|medium|slow)$/', $m[1], $speed ) === 1 && $s['vpaSpeed'] === '' )
+					$s['vpaSpeed'] = $speed[1];
+				elseif( in_array( $m[1], self::MODES, true ) === false )
+					$custom[] = $token;
+			}
+
+			$s['wrapClass'] = implode( ' ', $custom );
+
+			return $s;
 		}
 
 		/**

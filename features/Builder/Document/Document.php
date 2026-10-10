@@ -170,9 +170,10 @@ namespace Nino\Modules\Builder {
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
-		 *	@return 	array										[ 'status' => 200, 'templates' => [ file, name, header, footer,
-		 *																	sections, foreign, readable, reason, editable, usedBy ] ], by file;
-		 *																	reason is the first block the Reader failed at, null where there is none
+		 *	@return 	array										[ 'status' => 200, 'templates' => [ file, name, animate, vpa, vpaSpeed, wrapClass,
+		 *																	header, footer, sections, foreign, readable, reason, editable, usedBy ] ], by file;
+		 *																	the animation of the template as the Reader has it from its wrap, reason the
+		 *																	first block the Reader failed at, null where there is none
 		 */
 		public static function list( array &$appData ): array {
 
@@ -189,6 +190,10 @@ namespace Nino\Modules\Builder {
 				$templates[] = [
 					'file'			=> $file,
 					'name'			=> $model['name'],
+					'animate'		=> $model['animate'],
+					'vpa'				=> $model['vpa'],
+					'vpaSpeed'	=> $model['vpaSpeed'],
+					'wrapClass'	=> $model['wrapClass'],
 					'header'		=> $model['header'],
 					'footer'		=> $model['footer'],
 					'sections'	=> (int) ( $kinds['section'] ?? 0 ),
@@ -411,18 +416,12 @@ namespace Nino\Modules\Builder {
 			if( $problems !== [] )
 				return self::_error( 400, 'a value cannot stand in a call', 'value', $problems );
 
-			$head = rtrim( Writer::write( [ 'name' => $model['name'] ?? '', 'vpa' => $model['vpa'] ?? null, 'header' => $model['header'] ?? '', 'blocks' => [] ], $schemas ), "\n" );
-
-			if( $head !== '' )
-				$parts[] = [ 'kind' => 'head', 'source' => $head, 'block' => null ];
+			$parts[] = [ 'kind' => 'head', 'source' => Writer::head( $model ), 'block' => null ];
 
 			foreach( (array) $model['blocks'] as $index => $block )
-				$parts[] = [ 'kind' => (string) $block['kind'], 'source' => rtrim( Writer::write( [ 'blocks' => [ $block ] ], $schemas ), "\n" ), 'block' => (int) $index ];
+				$parts[] = [ 'kind' => (string) $block['kind'], 'source' => Writer::block( $block, $schemas ), 'block' => (int) $index ];
 
-			$foot = rtrim( Writer::write( [ 'footer' => $model['footer'] ?? '', 'blocks' => [] ], $schemas ), "\n" );
-
-			if( $foot !== '' )
-				$parts[] = [ 'kind' => 'foot', 'source' => $foot, 'block' => null ];
+			$parts[] = [ 'kind' => 'foot', 'source' => Writer::foot( $model ), 'block' => null ];
 
 			return [ 'status' => 200, 'model' => $model, 'source' => Writer::write( $model, $schemas ), 'parts' => $parts ];
 		}
@@ -475,7 +474,7 @@ namespace Nino\Modules\Builder {
 				$frames[$place] = $frame;
 			}
 
-			$model		= [ 'file' => $file, 'name' => $name, 'vpa' => null, 'header' => $frames['header'], 'footer' => $frames['footer'], 'blocks' => [] ];
+			$model		= [ 'file' => $file, 'name' => $name ] + Reader::wrapDefaults() + [ 'header' => $frames['header'], 'footer' => $frames['footer'], 'blocks' => [] ];
 			$source		= Writer::write( $model, self::schemas( $appData ) );
 			$exists		= false;
 
@@ -505,7 +504,7 @@ namespace Nino\Modules\Builder {
 		 *	its picture, so that taking one of the two away leaves the other
 		 *	as it is. The file is read as text and written as text: nothing the
 		 *	Reader does not read is touched, and what it does read stays what it
-		 *	was - the head line of the animation included.
+		 *	was - the wrap and the head line of the animation of an earlier builder included.
 		 *
 		 *	It is made like a save: what is refused is refused before the first
 		 *	change - a name, a file that is there, a key or a slot of the copy
@@ -888,6 +887,12 @@ namespace Nino\Modules\Builder {
 			$found	= [];
 			$seen		= [];
 
+			// A class of the wrap that is none of the wrap's own - one of the known ones twice, one that cannot be kept - would read back as another
+			$wrap = static fn( array $of ): array => [ (bool) ( $of['animate'] ?? false ), (string) ( $of['vpa'] ?? '' ), (string) ( $of['vpaSpeed'] ?? '' ), array_values( array_unique( preg_split( '/\s+/', trim( (string) ( $of['wrapClass'] ?? '' ) ), -1, PREG_SPLIT_NO_EMPTY ) ?: [] ) ) ];
+
+			if( $wrap( $model ) !== $wrap( $again ) )
+				$problems[] = 'the classes of the wrap do not read back as they were written: one of them is the wrap\'s own or has characters the builder does not keep';
+
 			foreach( $again['blocks'] as $block )
 				if( $block['kind'] === 'section' )
 					$found[$block['id']] = $block;
@@ -945,10 +950,10 @@ namespace Nino\Modules\Builder {
 		/**
 		 *	The values of a model that no call can carry: a quote, a bracket
 		 *	or a line break in a fixed text, a source, an attribute (the class
-		 *	and the href among them) or a custom class - and an animation of the
-		 *	template that is no list of the classes of nino-vpa, which would
-		 *	leave its comment. The content of a component is no attribute and
-		 *	is not looked at
+		 *	and the href among them) or a custom class - the classes of the wrap
+		 *	among them - and an effect or a speed of the wrap that Nino.css has
+		 *	none of, which would be a class of nothing. The content of a
+		 *	component is no attribute and is not looked at
 		 *
 		 *	@param		array			$model
 		 *
@@ -959,8 +964,14 @@ namespace Nino\Modules\Builder {
 			$problems	= [];
 			$unsafe		= static fn( mixed $value ): bool => is_scalar( $value ) === true && preg_match( self::UNSAFE, is_bool( $value ) === true ? '' : (string) $value ) === 1;
 
-			if( is_string( $model['vpa'] ?? null ) === true && Reader::vpaClasses( $model['vpa'] ) === false )
-				$problems[] = 'the animation of the template is none of the classes of nino-vpa';
+			if( in_array( (string) ( $model['vpa'] ?? '' ), array_merge( [ '' ], Reader::EFFECTS ), true ) === false )
+				$problems[] = 'the effect of the animation of the template is none that Nino.css has';
+
+			if( in_array( (string) ( $model['vpaSpeed'] ?? '' ), array_merge( [ '' ], Reader::SPEEDS ), true ) === false )
+				$problems[] = 'the speed of the animation of the template is none that Nino.css has';
+
+			if( $unsafe( $model['wrapClass'] ?? null ) === true )
+				$problems[] = 'the custom classes of the wrap hold a quote, a bracket or a line break, which a call cannot carry';
 
 			foreach( (array) ( $model['blocks'] ?? [] ) as $index => $block ) {
 
@@ -1581,9 +1592,11 @@ namespace Nino\Modules\Builder {
 
 		/**
 		 *	What is wrong with the shape of a model before anything in it is
-		 *	read: a name that is no text, a block that is no block, a call
-		 *	that is no call - what the Writer would take for something else
-		 *	or stumble over
+		 *	read: a name that is no text, a block that is no block, a switch
+		 *	that is neither on nor off (the animation of the template, the
+		 *	full width and the full height of a section - one left out is
+		 *	off), a call that is no call - what the Writer would take for
+		 *	something else or stumble over
 		 *
 		 *	@param		array			$model
 		 *
@@ -1594,9 +1607,12 @@ namespace Nino\Modules\Builder {
 			$problems	= [];
 			$text			= static fn( mixed $value ): bool => $value === null || is_string( $value ) === true;
 
-			foreach( [ 'name', 'vpa', 'header', 'footer' ] as $key )
+			foreach( [ 'name', 'vpa', 'vpaSpeed', 'wrapClass', 'header', 'footer' ] as $key )
 				if( $text( $model[$key] ?? null ) === false )
 					$problems[] = 'the '. $key. ' is no text';
+
+			if( is_bool( $model['animate'] ?? false ) === false )
+				$problems[] = 'the animate is neither on nor off';
 
 			if( is_array( $model['blocks'] ?? [] ) === false )
 				return array_merge( $problems, [ 'the blocks are no list' ] );
@@ -1631,6 +1647,11 @@ namespace Nino\Modules\Builder {
 				foreach( [ 'settings', 'cols' ] as $key )
 					if( is_array( $block[$key] ?? [] ) === false )
 						$problems[] = 'the '. $key. ' of '. $at. ' are no list';
+
+				// What is no switch would be left out of the classes, and read back as off
+				foreach( Reader::SECTION_SIZE as $key )
+					if( is_bool( $block['settings'][$key] ?? false ) === false )
+						$problems[] = 'the '. $key. ' of '. $at. ' is neither on nor off';
 
 				if( ( $block['background'] ?? null ) !== null && ( is_array( $block['background'] ) === false || $text( $block['background']['slot'] ?? null ) === false ) )
 					$problems[] = $at. ' has a background that is no image slot';

@@ -6,26 +6,38 @@
  *												The model half is driven as it is: moving a node inside its
  *												level and refusing it across levels, a copy that takes new
  *												ids and new keys, delete; what the tools of a frame offer,
- *												what a delete asks about and what the buttons at the end of
- *												a level add; the animation of the template - the classes of
- *												a new section, a section that is like the template, the
- *												sections that follow it; the order of a loop, the widths and
- *												the hidden viewports of a column; the names of a new key and
- *												what the grammar says of one; the red sources of a loop that
- *												changed; the preview of each viewport; what a save's answer
- *												means and what the two answers to a conflict send; the
- *												unsaved state. All of it over the example page of the concept
- *												(fixtures/page-home.json, which builder-smoke.php holds to
- *												what the Reader makes of page-home.tpl) and the registry of
- *												the kernel's own components (registry.json).
+ *												what a delete asks about; the animation - an effect and its
+ *												strength as one word, what a section is to the template
+ *												(like it, off or its own, for a template that animates its
+ *												sections and one that does not, every row of the table), the
+ *												sections that follow the template's switch; the order of a
+ *												loop, the widths and the hidden viewports of a column; the
+ *												names of a new key and what the grammar says of one; the red
+ *												sources of a loop that changed; the preview of each view;
+ *												what a save's answer means and what the two answers to a
+ *												conflict send; the unsaved state. All of it over the example
+ *												page of the concept (fixtures/page-home.json, which
+ *												builder-smoke.php holds to what the Reader makes of
+ *												page-home.tpl) and the registry of the kernel's own
+ *												components (registry.json).
  *
- *												The half that draws is run over an element that accepts
- *												anything: the dialogs, the list and the preview are built
- *												without a page, the field a form is made of is caught where
- *												it is made - a select, a switch, a number, a line of text, a
- *												width, a box, the arrows of an order - and its change is
- *												called the way the page would call it, so what a form writes
- *												into the model is measured, and so is what a request carries.
+ *												The half that draws is run over a small stand-in of the
+ *												page: elements with a tree, attributes, classes, selectors
+ *												and events, and the template of the panel
+ *												(templates/panel.tpl) parsed into it, so that every fragment
+ *												the script clones is the real one. A dialog is opened as the
+ *												page opens it, its controls are found by the name a person
+ *												knows them by - the label of a field, the word of a cell of a
+ *												table, the title of an icon - and changed the way a person
+ *												changes them, so what a form writes into the model is
+ *												measured, and so are the heads of the frames, the tabs, the
+ *												groups, the lines of two fields, the radio groups, the icons,
+ *												the name that is changed where it stands and the focus it
+ *												leaves behind, what an animation leaves to choose (a column
+ *												has no delay and no duration, none has no speed), the
+ *												viewport that shows all of them, and the dialog of a source
+ *												with the four answers it gives: a key, a slot, a new key and
+ *												a fixed value.
  *
  *	Usage: node features/Builder/tests/builder-js-smoke.js
  */
@@ -52,6 +64,8 @@ function check( label, condition ) {
 }
 
 const source = fs.readFileSync( path.join( __dirname, '../assets/admin.js' ), 'utf8' );
+const template = fs.readFileSync( path.join( __dirname, '../templates/panel.tpl' ), 'utf8' );
+const stylesheet = fs.readFileSync( path.join( __dirname, '../assets/admin.css' ), 'utf8' );
 const fixture = function( name ) { return JSON.parse( fs.readFileSync( path.join( __dirname, 'fixtures', name ), 'utf8' ) ) };
 
 // The words of the panel, as the English file has them
@@ -62,62 +76,378 @@ fs.readFileSync( path.join( __dirname, '../text/en_US.php' ), 'utf8' ).split( '\
 		words[found[1]] = found[2].replace( /\\'/g, "'" );
 } );
 
+// ...and the few words of the workbench the panel borrows from it
+Object.assign( words, {
+	'/_admin/common/label/save' : 'Save',
+	'/_admin/common/label/delete' : 'Delete',
+	'/_admin/common/label/rename' : 'Rename',
+	'/_admin/common/label/back' : 'Back to list',
+	'/_admin/common/label/moveup' : 'Move up',
+	'/_admin/common/label/movedown' : 'Move down',
+	'/_admin/common/label/cancel' : 'Cancel',
+	'/_admin/common/label/width' : 'Width (px)',
+	'/_admin/common/label/height' : 'Height (px)',
+	'/_admin/common/error/save' : 'Failed to save.',
+} );
+
+// ------------------------------------------------------------ A small stand-in of the page
+
+const VOID = [ 'input', 'br', 'hr', 'img', 'link', 'meta' ];
+// What does not bubble, as in the page
+const STAYS = [ 'blur', 'focus', 'close', 'mouseleave' ];
+// The attributes that are a property of their own as well, and the flags that are none but their presence
+const REFLECTED = { id : 'id', className : 'class', title : 'title', type : 'type', name : 'name', href : 'href', placeholder : 'placeholder', alt : 'alt', src : 'src' };
+const FLAGS = [ 'hidden', 'disabled', 'readOnly' ];
+
+class Text {
+	constructor( data ) {
+		this.nodeType = 3;
+		this.data = String( data );
+		this.parentNode = null;
+	}
+	get textContent() { return this.data }
+	set textContent( value ) { this.data = String( value ) }
+	cloneNode() { return new Text( this.data ) }
+}
+
+class Tag {
+
+	constructor( tag ) {
+
+		const self = this;
+
+		this.nodeType = 1;
+		this.localName = tag.toLowerCase();
+		this.tagName = tag.toUpperCase();
+		this.childNodes = [];
+		this.parentNode = null;
+		this.attrs = {};
+		this.listeners = {};
+		this.value = '';
+		this.checked = false;
+		this.open = false;
+		this.tabIndex = 0;
+		this.scrollTop = 0;
+		this.content = null;
+		this.style = {
+			values : {},
+			setProperty( key, value ) { this.values[key] = String( value ) },
+			removeProperty( key ) { delete this.values[key] },
+			getPropertyValue( key ) { return this.values[key] ?? '' },
+		};
+		this.dataset = new Proxy( {}, {
+			get( target, key ) { return self.attrs[ 'data-'+ String( key ).replace( /[A-Z]/g, function( letter ) { return '-'+ letter.toLowerCase() } ) ] },
+			set( target, key, value ) { self.attrs[ 'data-'+ String( key ).replace( /[A-Z]/g, function( letter ) { return '-'+ letter.toLowerCase() } ) ] = String( value ); return true },
+		} );
+		this.classList = {
+			list() { return self.className.split( /\s+/ ).filter( function( name ) { return name !== '' } ) },
+			add( ...names ) { const now = this.list(); names.forEach( function( name ) { if( now.indexOf( name ) === -1 ) now.push( name ) } ); self.className = now.join(' ') },
+			remove( ...names ) { self.className = this.list().filter( function( name ) { return names.indexOf( name ) === -1 } ).join(' ') },
+			contains( name ) { return this.list().indexOf( name ) !== -1 },
+			toggle( name, force ) {
+				const on = force === undefined ? this.contains( name ) === false : force === true;
+				if( on === true ) this.add( name ); else this.remove( name );
+				return on;
+			},
+		};
+	}
+
+	get className() { return this.attrs['class'] ?? '' }
+	set className( value ) { if( String( value ) === '' ) delete this.attrs['class']; else this.attrs['class'] = String( value ) }
+
+	get children() { return this.childNodes.filter( function( node ) { return node.nodeType === 1 } ) }
+	get firstChild() { return this.childNodes[0] ?? null }
+	get firstElementChild() { return this.children[0] ?? null }
+	get nextSibling() { const at = this.parentNode === null ? -1 : this.parentNode.childNodes.indexOf( this ); return at === -1 ? null : this.parentNode.childNodes[at + 1] ?? null }
+	get previousSibling() { const at = this.parentNode === null ? -1 : this.parentNode.childNodes.indexOf( this ); return at < 1 ? null : this.parentNode.childNodes[at - 1] }
+
+	get textContent() { return this.childNodes.map( function( node ) { return node.textContent } ).join('') }
+	set textContent( value ) {
+		this.childNodes.forEach( function( node ) { node.parentNode = null } );
+		this.childNodes = [];
+		if( String( value ) !== '' ) this.appendChild( new Text( value ) );
+	}
+	set innerHTML( value ) {
+		if( value !== '' ) throw new Error( 'the stand-in takes an empty innerHTML only' );
+		this.textContent = '';
+	}
+
+	attr( key ) {
+		if( FLAGS.indexOf( key ) !== -1 ) return this.attrs[key] === undefined ? undefined : '';
+		return this.attrs[key];
+	}
+	getAttribute( key ) { return this.attrs[key] === undefined ? null : this.attrs[key] }
+	setAttribute( key, value ) { this.attrs[key] = String( value ) }
+	hasAttribute( key ) { return this.attrs[key] !== undefined }
+
+	appendChild( node ) { return this.insertBefore( node, null ) }
+	insertBefore( node, ref ) {
+		if( node.parentNode !== null && node.parentNode !== undefined )
+			node.parentNode.childNodes.splice( node.parentNode.childNodes.indexOf( node ), 1 );
+		node.parentNode = this;
+		if( ref === null || ref === undefined )
+			this.childNodes.push( node );
+		else
+			this.childNodes.splice( this.childNodes.indexOf( ref ), 0, node );
+		return node;
+	}
+	remove() {
+		if( this.parentNode === null ) return;
+		const at = this.parentNode.childNodes.indexOf( this );
+		this.parentNode.childNodes.splice( at, 1 );
+		this.parentNode = null;
+		// A field that is taken out of the page while it has the focus loses it
+		if( this.document !== undefined && this.document.focused === this ) {
+			this.document.focused = null;
+			this.dispatch( 'blur' );
+		}
+	}
+	contains( node ) { for( let at = node; at !== null && at !== undefined; at = at.parentNode ) if( at === this ) return true; return false }
+	get isConnected() { return this.document !== undefined && this.document.root.contains( this ) }
+
+	cloneNode( deep ) {
+		const copy = new Tag( this.localName );
+		copy.document = this.document;
+		Object.keys( this.attrs ).forEach( function( key ) { copy.attrs[key] = this.attrs[key] }, this );
+		if( this.content !== null ) copy.content = this.content.cloneNode( true );
+		if( deep === true )
+			this.childNodes.forEach( function( node ) { copy.appendChild( node.cloneNode( true ) ) } );
+		return copy;
+	}
+
+	addEventListener( type, fn ) { ( this.listeners[type] = this.listeners[type] || [] ).push( fn ) }
+	/**
+	 *	What the page does when something happens: the listeners of the element are called, and then those of the
+	 *	elements around it unless one stops it
+	 */
+	dispatch( type, more ) {
+		const event = Object.assign( { type : type, target : this, defaultPrevented : false, stopped : false,
+			preventDefault() { this.defaultPrevented = true }, stopPropagation() { this.stopped = true } }, more || {} );
+		for( let at = this; at !== null && at !== undefined && event.stopped === false; at = at.parentNode ) {
+			( at.listeners ? at.listeners[type] || [] : [] ).slice().forEach( function( fn ) { fn.call( at, event ) } );
+			if( STAYS.indexOf( type ) !== -1 ) break;
+		}
+		return event;
+	}
+	click() { return this.dispatch('click') }
+	focus() {
+		const was = this.document === undefined ? null : this.document.activeElement;
+		if( this.document !== undefined ) this.document.activeElement = this;
+		if( was !== null && was !== this ) was.dispatch('blur');
+	}
+	select() {}
+	scrollIntoView() {}
+	getBoundingClientRect() { return { top : 0, left : 0, bottom : 0, right : 0, width : 0, height : 0 } }
+	showModal() { this.open = true }
+	close() { this.open = false; this.dispatch('close') }
+
+	get outerHTML() {
+		const attributes = Object.keys( this.attrs ).map( function( key ) { return this.attrs[key] === '' ? ' '+ key : ' '+ key+ '="'+ this.attrs[key]+ '"' }, this ).join('');
+		return VOID.indexOf( this.localName ) !== -1 ? '<'+ this.localName+ attributes+ '>' : '<'+ this.localName+ attributes+ '>'+ this.childNodes.map( function( node ) { return node.outerHTML ?? node.data } ).join('')+ '</'+ this.localName+ '>';
+	}
+
+	/**
+	 *	The elements below this one, in the order of the document
+	 */
+	all() {
+		const found = [];
+		const walk = function( node ) { node.children.forEach( function( child ) { found.push( child ); walk( child ) } ) };
+		walk( this );
+		return found;
+	}
+	matches( selector ) { return parseSelector( selector ).some( function( chain ) { return matchChain( this, chain, null ) }, this ) }
+	closest( selector ) { for( let at = this; at !== null && at !== undefined && at.nodeType === 1; at = at.parentNode ) if( at.matches( selector ) ) return at; return null }
+	querySelectorAll( selector ) { return this.all().filter( function( node ) { return node.matches( selector ) } ) }
+	querySelector( selector ) { return this.querySelectorAll( selector )[0] ?? null }
+}
+
+// The properties that are attributes as well
+Object.keys( REFLECTED ).forEach( function( property ) {
+	if( property === 'className' ) return;
+	Object.defineProperty( Tag.prototype, property, {
+		get() { return this.attrs[ REFLECTED[property] ] ?? '' },
+		set( value ) { this.attrs[ REFLECTED[property] ] = String( value ) },
+	} );
+} );
+FLAGS.forEach( function( flag ) {
+	Object.defineProperty( Tag.prototype, flag, {
+		get() { return this.attrs[flag] !== undefined },
+		set( value ) { if( value === true ) this.attrs[flag] = ''; else delete this.attrs[flag] },
+	} );
+} );
+
 /**
- *	An element that accepts whatever the panel does to it: every property is
- *	another such element, a call answers one, an assignment is kept, and the
- *	listeners are kept to be called
+ *	A selector as a list of chains - one for each part of a list - each chain a list of [ combinator, compound ]
+ *	from the left: the compounds are a tag, an id, classes, attributes and :not(:disabled)
  */
-function loose() {
+function parseSelector( selector ) {
 
-	const store = { listeners : {} };
-	const cache = {};
+	return selector.split( /,(?![^[]*\])/ ).map( function( part ) {
 
-	return new Proxy( function() {}, {
-		get : function( target, key ) {
+		const chain = [];
+		const pattern = /\s*([>\s])?\s*((?:[a-z*][a-z0-9-]*)?(?:#[\w-]+|\.[\w-]+|\[[^\]]+\]|:not\(:disabled\))*)/gy;
+		let combinator = ' ';
+		let found;
 
-			if( key === Symbol.toPrimitive )
-				return function() { return '' };
+		part = part.trim();
+		pattern.lastIndex = 0;
 
-			if( key === 'then' || key === 'nodeType' )
-				return undefined;
+		while( pattern.lastIndex < part.length && ( found = pattern.exec( part ) ) !== null ) {
+			chain.push( [ chain.length === 0 ? ' ' : ( found[1] === '>' ? '>' : ' ' ), found[2] ] );
+			combinator = found[1];
+			if( found[0] === '' ) break;
+		}
 
-			if( key === 'addEventListener' )
-				return function( type, fn ) { ( store.listeners[type] = store.listeners[type] || [] ).push( fn ) };
-
-			if( key === 'dispatch' )
-				return function( type, ev ) { ( store.listeners[type] || [] ).forEach( function( fn ) { fn( ev || { target : {}, preventDefault : function() {}, stopPropagation : function() {} } ) } ) };
-
-			if( key === 'forEach' || key === 'filter' || key === 'map' || key === 'some' || key === 'find' || key === 'indexOf' )
-				return function() { return key === 'indexOf' ? -1 : ( key === 'find' ? undefined : [] ) };
-
-			if( Object.prototype.hasOwnProperty.call( store, key ) )
-				return store[key];
-
-			return cache[key] = cache[key] || loose();
-		},
-		set : function( target, key, value ) { store[key] = value; return true },
-		apply : function() { return loose() },
+		return chain.length === 0 ? [ [ combinator, '' ] ] : chain;
 	} );
 }
 
-let fields = [];
-let dialogs = [];
+function matchCompound( node, compound ) {
+
+	const pieces = compound.match( /^[a-z*][a-z0-9-]*|#[\w-]+|\.[\w-]+|\[[^\]]+\]|:not\(:disabled\)/g ) || [];
+
+	return pieces.every( function( piece ) {
+
+		if( piece === '*' ) return true;
+		if( piece.charAt(0) === '#' ) return node.attrs.id === piece.slice( 1 );
+		if( piece.charAt(0) === '.' ) return node.classList.contains( piece.slice( 1 ) );
+		if( piece === ':not(:disabled)' ) return node.disabled === false;
+
+		if( piece.charAt(0) === '[' ) {
+			const found = /^\[([\w-]+)(?:="([^"]*)")?\]$/.exec( piece );
+			const value = found[1] === 'class' ? node.className : node.attr( found[1] );
+			return found[2] === undefined ? value !== undefined : value === found[2];
+		}
+
+		return node.localName === piece;
+	} );
+}
+
+/**
+ *	Whether a node matches a chain: the last compound is its own, the ones before it its parents or ancestors
+ */
+function matchChain( node, chain, scope ) {
+
+	const last = chain[chain.length - 1];
+
+	if( matchCompound( node, last[1] ) === false ) return false;
+
+	if( chain.length === 1 ) return true;
+
+	const rest = chain.slice( 0, -1 );
+
+	if( last[0] === '>' )
+		return node.parentNode !== null && node.parentNode.nodeType === 1 && matchChain( node.parentNode, rest, scope );
+
+	for( let at = node.parentNode; at !== null && at !== undefined && at.nodeType === 1; at = at.parentNode )
+		if( matchChain( at, rest, scope ) ) return true;
+
+	return false;
+}
+
+/**
+ *	A page: the elements it makes, those of the template of the panel parsed into it, and the one that has the focus
+ */
+class Document {
+
+	constructor() {
+		this.focused = null;
+		this.root = this.make('div');
+		this.documentElement = this.make('html');
+		this.body = this.make('body');
+		this.listeners = {};
+	}
+
+	// The element that has the focus; a page whose element left it - taken out with what held it - has none
+	get activeElement() { return this.focused !== null && this.root.contains( this.focused ) ? this.focused : null }
+	set activeElement( element ) { this.focused = element }
+
+	make( tag ) {
+		const element = new Tag( tag );
+		element.document = this;
+		return element;
+	}
+	createElement( tag ) { return this.make( tag ) }
+	createTextNode( text ) { return new Text( text ) }
+	getElementById( id ) { return this.root.all().find( function( node ) { return node.attrs.id === id } ) ?? null }
+	querySelector( selector ) { return this.root.querySelector( selector ) }
+	querySelectorAll( selector ) { return this.root.querySelectorAll( selector ) }
+	addEventListener( type, fn ) { ( this.listeners[type] = this.listeners[type] || [] ).push( fn ) }
+
+	/**
+	 *	The template of the panel, parsed: a copy of what the page gets of it, with the words of its fills
+	 *
+	 *	@param		{string}		html
+	 *	@param		{Function}	say								A key's words
+	 */
+	load( html, say ) {
+
+		const text = html.replace( /<!--[\s\S]*?-->/g, '' ).replace( /\[\[(\/[^\]]+)\]\]/g, function( all, key ) { return say( key ) } );
+		const tokens = /<(\/)?([a-zA-Z][a-zA-Z0-9-]*)((?:\s+[^\s=>\/]+(?:="[^"]*")?)*)\s*(\/)?>|([^<]+)/g;
+		const stack = [ this.root ];
+		let opened = null;
+		let found;
+
+		while( ( found = tokens.exec( text ) ) !== null ) {
+
+			const top = stack[stack.length - 1];
+
+			if( found[5] !== undefined ) {
+				// Blanks between elements are no node; the blanks that are all an element holds - a line break in a div - are
+				const alone = opened === top && text.charAt( tokens.lastIndex ) === '<' && text.charAt( tokens.lastIndex + 1 ) === '/';
+				if( found[5].trim() !== '' || top.localName === 'pre' || alone === true ) top.appendChild( new Text( found[5].replace( /&times;/g, '×' ) ) );
+				continue;
+			}
+
+			if( found[1] === '/' ) {
+				stack.pop();
+				opened = null;
+				continue;
+			}
+
+			const element = this.make( found[2] );
+
+			( found[3] || '' ).replace( /([^\s=]+)(?:="([^"]*)")?/g, function( all, name, value ) { element.attrs[name] = value === undefined ? '' : value } );
+
+			// What a template holds goes into its content, not into its children
+			if( top.localName === 'template' ) {
+				if( top.content === null ) top.content = this.make('template-content');
+				top.content.appendChild( element );
+			} else
+				top.appendChild( element );
+
+			opened = null;
+
+			if( found[4] !== '/' && VOID.indexOf( element.localName ) === -1 ) {
+				stack.push( element );
+				opened = element;
+			}
+		}
+	}
+}
+
+// ------------------------------------------------------------ The page the panel draws on, and the panel
+
+
 let requests = [];
 let questions = [];
 let answers = [];
 let changes = 0;
 
+// The page: the template of the panel, with its words, parsed - everything the script draws, it draws from that
+const screen = new Document();
+
+screen.load( template, function( key ) { return words[key] ?? '' } );
+
+const made = function( tag, className, text ) {
+	const element = screen.createElement( tag );
+	if( className !== undefined ) element.className = className;
+	if( text !== undefined ) element.textContent = text;
+	return element;
+};
+
 const sandbox = {
-	document : {
-		getElementById : function() { return loose() },
-		createElement : function() { return loose() },
-		createTextNode : function() { return loose() },
-		querySelector : function() { return null },
-		querySelectorAll : function() { return [] },
-		addEventListener : function() {},
-		documentElement : {},
-		body : {},
-	},
+	document : screen,
 	console : console,
 };
 
@@ -131,25 +461,105 @@ sandbox.Nino = {
 		dirty : { entry : null, register : function( name, entry ) { this.entry = entry }, refresh : function() {} },
 		sessionLocale : { current : 'en_US' },
 	},
+	// The fields of the workbench, as it makes them: a label with its words and its control
 	adminUi : {
 		format : function( text, ...params ) {
 			let at = 0;
 			return String( text ?? '' ).replace( /%[sdn]/g, function( token ) { return at < params.length ? String( params[at++] ) : token } );
 		},
 		api : { call : function( action, payload, callback ) { requests.push( { action : action, payload : payload, callback : callback } ) }, errorText : function( status, response, key ) { return '('+ status+ ') '+ key } },
-		selectField : function() { return loose() },
-		switchField : function() { return loose() },
-		numberField : function() { return loose() },
-		buttonRow : function() { return function() {} },
-		emptyState : function() { return loose() },
-		listActions : function() { return loose() },
-		notice : function() { return loose() },
+		selectField : function( options ) {
+
+			const field = made( 'label', options.className || 'nino-admin-field' );
+			const select = made( 'select', 'nino-admin-input' );
+
+			field.appendChild( made( 'span', undefined, options.label || options.key ) );
+
+			if( options.hint )
+				select.setAttribute( 'title', options.hint );
+
+			( options.options || [] ).forEach( function( option ) {
+				const el = made( 'option', undefined, option.label );
+				el.value = String( option.value );
+				select.appendChild( el );
+			} );
+
+			select.value = String( options.value );
+			select.addEventListener( 'change', function() { options.onChange( select.value ) } );
+			field.appendChild( select );
+
+			return field;
+		},
+		switchField : function( options ) {
+
+			const label = made( 'label', 'nino-admin-switch' );
+			const input = made('input');
+			const copy = made( 'span', 'nino-admin-switch-copy' );
+
+			input.type = 'checkbox';
+			input.checked = options.checked === true;
+			label.appendChild( input );
+			copy.appendChild( screen.createTextNode( options.label ) );
+
+			if( options.hint )
+				copy.appendChild( made( 'small', undefined, options.hint ) );
+
+			label.appendChild( copy );
+
+			return label;
+		},
+		numberField : function( options ) {
+
+			const label = made( 'label', 'nino-admin-field' );
+			const input = made('input');
+
+			input.type = 'number';
+			input.value = options.value;
+			label.appendChild( made( 'span', undefined, options.label ) );
+			label.appendChild( input );
+
+			if( options.hint )
+				label.appendChild( made( 'small', 'nino-admin-hint', options.hint ) );
+
+			return label;
+		},
+		// What a row of buttons does in the workbench: one is active, the choice of the others is told, an aria attribute says which
+		buttonRow : function( buttons, active, onSelect, flag ) {
+
+			const attribute = flag || 'aria-pressed';
+			const keys = Object.keys( buttons ).filter( function( key ) { return buttons[key] !== null && buttons[key] !== undefined } );
+			const paint = function( key ) {
+				keys.forEach( function( candidate ) {
+					buttons[candidate].classList.toggle( 'is-active', candidate === key );
+					buttons[candidate].setAttribute( attribute, candidate === key ? 'true' : 'false' );
+
+					// A tab list is one stop of the tab key, not one for each tab
+					if( attribute === 'aria-selected' )
+						buttons[candidate].tabIndex = candidate === key ? 0 : -1;
+				} );
+			};
+
+			keys.forEach( function( key ) {
+				buttons[key].addEventListener( 'click', function() {
+					paint( key );
+					if( typeof onSelect === 'function' )
+						onSelect( key );
+				} );
+			} );
+
+			paint( active );
+
+			return paint;
+		},
+		emptyState : function() { return made('div') },
+		listActions : function() { return made('div') },
+		notice : function( text, link ) { return made( 'p', 'nino-admin-notice', text+ ( link === undefined ? '' : ' '+ link.label ) ) },
 		table : function() { return { setRows : function() {} } },
 		status : function() {
 			const calls = [];
 			const status = { state : 'idle', calls : calls };
 			[ 'idle', 'saving', 'saved', 'dirty', 'fail', 'error' ].forEach( function( name ) {
-				status[name] = function() { status.state = name === 'fail' ? 'error' : name; calls.push( name ) };
+				status[name] = function( text ) { status.state = name === 'fail' ? 'error' : name; status.text = text; calls.push( name ) };
 			} );
 			return status;
 		},
@@ -182,6 +592,189 @@ const registry = function() {
 
 const page = function() { return builder._normalise( fixture('page-home.json') ) };
 const known = function() { return [ { key : '/template/page-home/hero/title', global : false, values : { en_US : 'Welcome' } }, { key : '/template/page-home/hero/subtitle', global : true, values : { '*' : 'We build' } } ] };
+
+// ------------------------------------------------------------ What a person does
+
+/**
+ *	The name a control has for a person who does not see it: its label, or the word a table or a
+ *	group of radio buttons gives it
+ */
+const nameOf = function( el ) {
+
+	if( el.getAttribute('aria-label') !== null )
+		return el.getAttribute('aria-label');
+
+	const label = el.closest('label');
+
+	if( label === null )
+		return '';
+
+	if( el.type === 'checkbox' && label.classList.contains('nino-admin-switch') )
+		return label.querySelector('.nino-admin-switch-copy').firstChild.textContent;
+
+	return label.children[0].textContent;
+};
+
+const kindOf = function( el ) {
+
+	if( el.getAttribute('role') === 'radiogroup' )
+		return 'group';
+
+	if( el.localName === 'select' )
+		return 'select';
+
+	if( el.type === 'checkbox' )
+		return el.closest('.nino-admin-switch') === null ? 'box' : 'switch';
+
+	return el.type === 'number' ? 'number' : 'text';
+};
+
+/**
+ *	The controls below an element, in the order of the page: a select, a switch, a box, a number, a line of
+ *	text, a group of radio buttons (whose buttons are not counted one by one)
+ */
+const controlsIn = function( root ) {
+	return root.all().filter( function( el ) {
+		return el.localName === 'select' || el.localName === 'textarea' || ( el.localName === 'input' && el.type !== 'radio' ) || el.getAttribute('role') === 'radiogroup';
+	} ).map( function( el ) { return { el : el, kind : kindOf( el ), label : nameOf( el ) } } );
+};
+
+const labelList = function( root ) { return controlsIn( root ).map( function( control ) { return control.label } ) };
+const labelsIn = function( root ) { return labelList( root ).join() };
+
+const controlOf = function( root, label, nth ) {
+
+	const found = controlsIn( root ).filter( function( control ) { return control.label === label } )[nth ?? 0];
+
+	if( found === undefined )
+		throw new Error( 'no control "'+ label+ '" in '+ labelsIn( root ) );
+
+	return found;
+};
+
+const radiosOf = function( group ) { return group.querySelectorAll('input') };
+
+/**
+ *	What a control holds now: the value of a select or a field, whether a switch is on, the value of the radio button that is chosen
+ */
+const currentOf = function( control ) {
+
+	if( control.kind === 'switch' || control.kind === 'box' )
+		return control.el.checked;
+
+	if( control.kind === 'group' )
+		return ( radiosOf( control.el ).find( function( radio ) { return radio.checked } ) ?? { value : null } ).value;
+
+	return control.el.value;
+};
+
+const valueAt = function( root, label, nth ) { return currentOf( controlOf( root, label, nth ) ) };
+
+/**
+ *	A control changed the way a person changes it, and the event the page listens for sent: a select takes one of its
+ *	options, a radio button of a group is chosen, a switch is turned, a field is typed into
+ */
+const change = function( root, label, value, nth ) {
+
+	const control = controlOf( root, label, nth );
+	const el = control.el;
+
+	if( control.kind === 'select' ) {
+
+		if( el.children.some( function( option ) { return option.value === String( value ) } ) === false )
+			throw new Error( 'the select "'+ label+ '" has no option "'+ value+ '"' );
+
+		el.value = String( value );
+		el.dispatch('change');
+	} else if( control.kind === 'switch' || control.kind === 'box' ) {
+		el.checked = value === true;
+		el.dispatch('change');
+	} else if( control.kind === 'group' ) {
+
+		const radios = radiosOf( el );
+		const radio = radios.find( function( candidate ) { return candidate.value === String( value ) } );
+
+		if( radio === undefined )
+			throw new Error( 'the group "'+ label+ '" has no button "'+ value+ '"' );
+
+		if( radio.disabled === true )
+			return false;
+
+		radios.forEach( function( candidate ) { candidate.checked = candidate === radio } );
+		radio.dispatch('change');
+	} else {
+		el.value = String( value );
+		el.dispatch('input');
+		el.dispatch('change');
+	}
+
+	return true;
+};
+
+const pressKey = function( el, key ) { return el.dispatch( 'keydown', { key : key } ) };
+
+// ------------------------------------------------------------ What stands on the page
+
+const dialogBox = function() { return screen.getElementById('builder-dialog') };
+const pickerBox = function() { return screen.getElementById('builder-picker') };
+const dialogText = function( id ) { return screen.getElementById( id ).textContent };
+const paneOf = function( id ) { return screen.getElementById( 'builder-pane-'+ id ) };
+const pickerPane = function( id ) { return screen.getElementById( 'builder-picker-pane-'+ id ) };
+const dialogContent = function() { return screen.getElementById('builder-dialog-content') };
+const preview = function() { return screen.getElementById('builder-preview') };
+
+// The tabs of a strip: [ id, word ] each, in the order they are drawn
+const tabsOf = function( strip, prefix ) {
+	return strip.querySelectorAll('[role="tab"]').map( function( tab ) { return [ tab.id.replace( prefix+ '-tab-', '' ), tab.textContent ] } );
+};
+const dialogTabs = function() { return tabsOf( screen.getElementById('builder-dialog-tabs'), 'builder' ) };
+
+// The tab that is shown: the one whose pane is not hidden
+const shownTab = function( strip, prefix ) {
+	return strip.querySelectorAll('[role="tab"]').filter( function( tab ) {
+		return screen.getElementById( tab.getAttribute('aria-controls') ).hidden === false;
+	} ).map( function( tab ) { return tab.id.replace( prefix+ '-tab-', '' ) } ).join();
+};
+
+const texts = function( els ) { return els.map( function( el ) { return el.textContent } ).join() };
+const classes = function( els ) { return els.map( function( el ) { return el.className } ).join() };
+const titlesIn = function( root ) { return texts( root.querySelectorAll('.builder-group-title') ) };
+
+// The icon a control has, by the sprite symbol its <use> points at
+const iconOf = function( el ) { const use = el.querySelector('use'); return use === null ? null : use.getAttribute('href').replace( '#builder-icon-', '' ) };
+
+// The first button of an element with the words given
+const buttonOf = function( root, text ) {
+
+	const found = root.querySelectorAll('button').find( function( button ) { return button.textContent === text || button.getAttribute('aria-label') === text } );
+
+	if( found === undefined )
+		throw new Error( 'no button "'+ text+ '"' );
+
+	return found;
+};
+
+// Every control that is an icon and nothing else, and does not say what it is: it needs a title, and a label for a screen reader
+const unnamed = function( root ) {
+	return root.all().filter( function( el ) {
+
+		if( el.localName === 'button' && el.querySelector('use') !== null && el.textContent.trim() === '' )
+			return el.title === '' || el.getAttribute('aria-label') !== el.title;
+
+		if( el.localName === 'label' && el.classList.contains('builder-segment-option') && el.querySelector('use') !== null )
+			return el.title === '' || el.querySelector('input').getAttribute('aria-label') !== el.title;
+
+		return false;
+	} );
+};
+
+// Whether every icon below an element is a symbol of the sprite of the template
+const iconsKnown = function( root ) {
+	return root.all().filter( function( el ) { return el.localName === 'use' } ).every( function( use ) {
+		const symbol = screen.getElementById( use.getAttribute('href').slice( 1 ) );
+		return symbol !== null && symbol.localName === 'symbol';
+	} );
+};
 
 console.log( 'The model' );
 
@@ -254,8 +847,8 @@ model = page();
 check( 'delete takes a section, a column or a component out', builder._remove( model, [ 1, 1, 0 ] ) === true && model.blocks[1].cols[1].components.length === 3
 	&& builder._remove( model, [ 2 ] ) === true && model.blocks.length === 3 && builder._remove( model, [ 0, 0 ] ) === true && model.blocks[0].cols.length === 0 && builder._remove( model, [ 9 ] ) === false && builder._remove( model, [] ) === false );
 model = page();
-check( '...and a loop, with the components that are its cell - a column that has none is not a loop to delete', builder._remove( model, [ 1, 1, 'x' ] ) === true && model.blocks[1].cols[1].stack === null && model.blocks[1].cols[1].components.length === 0
-	&& model.blocks[1].cols.length === 2 && builder._remove( model, [ 1, 0, 'x' ] ) === false && builder._remove( model, [ 0, 5, 'x' ] ) === false );
+check( '...a loop is not taken out like that: it is set to Static in the Loop tab of its column, and the components stay', builder._remove( model, [ 1, 1, 'x' ] ) === false && model.blocks[1].cols[1].stack !== null && model.blocks[1].cols[1].components.length === 4
+	&& builder._remove( model, [ 1, 0, 'x' ] ) === false && builder._remove( model, [ 0, 5, 'x' ] ) === false && model.blocks[1].cols.length === 2 );
 
 console.log( '\nThe tools of a frame' );
 
@@ -267,77 +860,104 @@ check( '...a block of html has no tool of its own to edit it as HTML+: its setti
 check( '...a column and a component move inside their level: the first of two cannot go up, the last cannot go down', builder._toolbar( model, [ 1, 0 ] ).up === false && builder._toolbar( model, [ 1, 0 ] ).down === true && builder._toolbar( model, [ 1, 1 ] ).down === false
 	&& builder._toolbar( model, [ 1, 1, 0 ] ).up === false && builder._toolbar( model, [ 1, 1, 3 ] ).down === false && builder._toolbar( model, [ 1, 1, 3 ] ).up === true && builder._toolbar( model, [ 1, 1, 0 ] ).html === null );
 check( '...the only column of a section is not deleted: a section has one at least', builder._toolbar( model, [ 0, 0 ] ).delete === false && builder._toolbar( model, [ 1, 0 ] ).delete === true && builder._toolbar( model, [ 0, 0, 0 ] ).delete === true );
-check( '...a loop has settings and delete, and is neither moved nor copied - it is the one of its column', toolbar( [ 1, 1, 'x' ] ) === '{"settings":true,"html":null,"up":null,"down":null,"duplicate":null,"delete":true}' );
+check( '...a loop is no frame and has no tools: it is set in the Loop tab of its column', builder._toolbar( model, [ 1, 1, 'x' ] ) === null );
 check( '...the template has no tools, and a path the model has nothing at has none to use', builder._toolbar( model, [] ) === null && builder._toolbar( model, [ 9, 0, 0 ] ).up === false && builder._toolbar( model, [ 9, 0, 0 ] ).delete === false );
 
-check( 'what a frame holds that a delete would take with it: the components of a column and of a loop, the loop itself, all of a section', builder._children( model, [ 0 ] ) === 3 && builder._children( model, [ 1 ] ) === 7 && builder._children( model, [ 0, 0 ] ) === 3
-	&& builder._children( model, [ 1, 1 ] ) === 5 && builder._children( model, [ 1, 1, 'x' ] ) === 4 && builder._children( model, [ 0, 0, 0 ] ) === 0 && builder._children( model, [ 2 ] ) === 0 && builder._children( model, [ 9 ] ) === 0 );
+check( 'what a frame holds that a delete would take with it: the components of a column and its loop, all of a section - a loop holds nothing of its own, it is the column\'s', builder._children( model, [ 0 ] ) === 3 && builder._children( model, [ 1 ] ) === 7 && builder._children( model, [ 0, 0 ] ) === 3
+	&& builder._children( model, [ 1, 1 ] ) === 5 && builder._children( model, [ 1, 1, 'x' ] ) === 0 && builder._children( model, [ 0, 0, 0 ] ) === 0 && builder._children( model, [ 2 ] ) === 0 && builder._children( model, [ 9 ] ) === 0 );
 check( '...a section with nothing in it, as a new one is, holds nothing', builder._children( { blocks : [ builder._newSection( model ) ] }, [ 0 ] ) === 0 );
 
-check( 'a column ends in a button for a component and one for a loop - and where it has a loop, in the loop: a component only', builder._columnAdds( model, [ 0, 0 ] ).join() === 'component,stack' && builder._columnAdds( model, [ 1, 0 ] ).join() === 'component,stack'
-	&& builder._columnAdds( model, [ 1, 1 ] ).join() === 'component' && builder._columnAdds( model, [ 9, 9 ] ).length === 0 );
+console.log( '\nThe loop\'s name, the animation of the template and of a section, the order of a loop, the widths of a column' );
 
-console.log( '\nA new loop, the animation of the template, the order of a loop, the widths of a column' );
-
-check( 'a new loop is the kernel\'s own, over the first type of the project, with the attributes it has', ( function() {
-	const stack = builder._newStack( registry() );
-	return stack.name === 'stack' && stack.source === '/services' && stack.attributes.cols === '100 50 33' && stack.attributes.gap === '2' && stack.attributes.id === '';
-} )() );
 check( 'the plain stack of the kernel is called the loop, the others by the label they registered', builder._stackLabel( registry(), 'stack' ) === 'Element loop' && builder._stackLabel( registry(), 'slider' ) === 'Slider' && builder._stackLabel( registry(), 'nothing' ) === 'nothing' );
-check( '...the first loop the registry has where it has not that one, and none where it has none; over no type where the project has none', ( function() {
-	const some = registry();
-	delete some.stacks.stack;
-	const none = registry();
-	none.stacks = {};
-	const typeless = registry();
-	typeless.types = [];
-	return builder._newStack( some ).name === 'slider' && builder._newStack( none ) === null && builder._newStack( typeless ).source === '';
-} )() );
 
-check( 'the animation of the template is read from its classes, and written in the order the Writer writes them', JSON.stringify( builder._vpaParse( 'nino-vpa nino-vpa--zoom-soft nino-vpa--speed-medium' ) ) === '{"vpa":"zoom-soft","vpaSpeed":"medium","vpaMode":""}'
+check( 'an effect and its strength are one word of the model, and the plain effect, which has neither, is none', builder._effectJoin( 'zoom', 'soft' ) === 'zoom-soft' && builder._effectJoin( 'zoom-out', 'hard' ) === 'zoom-out-hard' && builder._effectJoin( 'slide-left', 'medium' ) === 'slide-left-medium'
+	&& builder._effectJoin( '', 'hard' ) === '' );
+check( '...and the word is taken apart again, the effects with a hyphen in them included: every effect with every strength reads back as itself', JSON.stringify( builder._effectSplit( 'zoom-out-soft' ) ) === '{"effect":"zoom-out","strength":"soft"}'
+	&& JSON.stringify( builder._effectSplit( '' ) ) === '{"effect":"","strength":""}' && JSON.stringify( builder._effectSplit( null ) ) === '{"effect":"","strength":""}' && JSON.stringify( builder._effectSplit( 'blur' ) ) === '{"effect":"","strength":""}'
+	&& builder.EFFECTS.slice( 1 ).every( function( effect ) {
+		return builder.STRENGTHS.every( function( strength ) {
+			const split = builder._effectSplit( builder._effectJoin( effect, strength ) );
+			return split.effect === effect && split.strength === strength;
+		} );
+	} ) );
+
+check( 'the animation of a section or a column is read from its classes, and written in the order the Writer writes them', JSON.stringify( builder._vpaParse( 'nino-vpa nino-vpa--zoom-soft nino-vpa--speed-medium' ) ) === '{"vpa":"zoom-soft","vpaSpeed":"medium","vpaMode":""}'
 	&& JSON.stringify( builder._vpaParse( 'nino-vpa--repeat nino-vpa--speed-slow nino-vpa--blur-hard' ) ) === '{"vpa":"blur-hard","vpaSpeed":"slow","vpaMode":"repeat"}' && JSON.stringify( builder._vpaParse( 'nino-vpa' ) ) === '{"vpa":"","vpaSpeed":"","vpaMode":""}'
 	&& JSON.stringify( builder._vpaParse( null ) ) === '{"vpa":null,"vpaSpeed":"","vpaMode":""}' && builder._vpaClasses( { vpa : 'zoom-soft', vpaSpeed : 'medium', vpaMode : 'repeat' } ) === 'nino-vpa nino-vpa--zoom-soft nino-vpa--speed-medium nino-vpa--repeat'
 	&& builder._vpaClasses( { vpa : '', vpaSpeed : '', vpaMode : '' } ) === 'nino-vpa' && builder._vpaClasses( { vpa : null, vpaSpeed : 'fast', vpaMode : '' } ) === null );
-check( '...whatever a template says reads back as itself', [ 'nino-vpa', 'nino-vpa nino-vpa--zoom-soft', 'nino-vpa nino-vpa--blur-hard nino-vpa--speed-fast nino-vpa--repeat', 'nino-vpa nino-vpa--speed-slow' ].every( function( classes ) { return builder._vpaClasses( builder._vpaParse( classes ) ) === classes } ) );
+check( '...whatever a file says reads back as itself', [ 'nino-vpa', 'nino-vpa nino-vpa--zoom-soft', 'nino-vpa nino-vpa--blur-hard nino-vpa--speed-fast nino-vpa--repeat', 'nino-vpa nino-vpa--speed-slow' ].every( function( classes ) { return builder._vpaClasses( builder._vpaParse( classes ) ) === classes } ) );
 
-model = page();
-model.vpa = 'nino-vpa nino-vpa--zoom-soft nino-vpa--speed-medium';
-check( 'a new section is made with the classes of the template: they are its animation', ( function() {
-	const section = builder._newSection( model );
-	return section.settings.vpa === 'zoom-soft' && section.settings.vpaSpeed === 'medium' && section.settings.vpaMode === '' && section.settings.vpaDelay === '' && builder._vpaLike( model.vpa, section.settings ) === true;
-} )() );
-model.vpa = null;
-check( '...and with none where the template has none', builder._newSection( model ).settings.vpa === null );
+// A section as the dialog sees it: the animation of its classes, and its own delay and duration
+const animated = function( vpa, more ) { return Object.assign( { vpa : vpa, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '' }, more || {} ) };
+const holds = function( animate, rows ) {
+	return rows.every( function( row ) {
+		const mode = builder._animationMode( animate, row[0] );
+		if( mode !== row[1] )
+			console.log( '      animate '+ animate+ ', '+ JSON.stringify( row[0] )+ ': '+ mode+ ', not '+ row[1] );
+		return mode === row[1];
+	} );
+};
 
-model = page();
-check( 'a section is like the template where it carries exactly its classes, in whatever order: no more, no less, no delay and no duration of its own', ( function() {
-	const like = { vpa : 'zoom-soft', vpaSpeed : 'medium', vpaMode : '', vpaDelay : '', vpaDuration : '' };
-	const classes = 'nino-vpa--speed-medium nino-vpa nino-vpa--zoom-soft';
-	return builder._vpaLike( classes, like ) === true && builder._vpaLike( classes, Object.assign( {}, like, { vpaSpeed : 'slow' } ) ) === false && builder._vpaLike( classes, Object.assign( {}, like, { vpaMode : 'repeat' } ) ) === false
-		&& builder._vpaLike( classes, Object.assign( {}, like, { vpaDelay : '200ms' } ) ) === false && builder._vpaLike( classes, Object.assign( {}, like, { vpaDuration : '1s' } ) ) === false && builder._vpaLike( classes, { vpa : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '' } ) === false;
-} )() );
-check( '...no animation is like a template that has none, and like nothing else', builder._vpaLike( null, builder._newSection( model ).settings ) === true && builder._vpaLike( 'nino-vpa', builder._newSection( model ).settings ) === false
-	&& builder._vpaLike( null, { vpa : '', vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '' } ) === false );
-check( '...a section is made like the template - its delay and its duration go - or like none', ( function() {
-	const settings = { vpa : 'blur-hard', vpaSpeed : 'fast', vpaMode : 'repeat', vpaDelay : '1s', vpaDuration : '2s' };
-	builder._vpaApply( settings, 'nino-vpa nino-vpa--zoom-soft' );
-	const like = JSON.stringify( settings );
-	builder._vpaApply( settings, null );
-	return like === '{"vpa":"zoom-soft","vpaSpeed":"","vpaMode":"","vpaDelay":"","vpaDuration":""}' && JSON.stringify( settings ) === '{"vpa":null,"vpaSpeed":"","vpaMode":"","vpaDelay":"","vpaDuration":""}';
-} )() );
-check( 'the sections that are like the template are found, and follow where it changes - the others do not', ( function() {
-	model = page();
-	model.vpa = 'nino-vpa nino-vpa--zoom-soft';
-	builder._vpaApply( model.blocks[0].settings, model.vpa );
-	builder._vpaApply( model.blocks[3].settings, model.vpa );
-	model.blocks[3].settings.vpaDelay = '1s';
-	const before = builder._likeSections( model, model.vpa );
-	model.vpa = 'nino-vpa nino-vpa--blur-soft nino-vpa--speed-slow';
-	builder._followVpa( model, before, model.vpa );
-	return before.join() === '0' && model.blocks[0].settings.vpa === 'blur-soft' && model.blocks[0].settings.vpaSpeed === 'slow' && model.blocks[1].settings.vpa === '' && model.blocks[3].settings.vpa === 'zoom-soft' && model.blocks[3].settings.vpaDelay === '1s'
-		&& builder._likeSections( model, model.vpa ).join() === '0';
+check( 'with a template that animates its sections a section is off with no animation, like the template with the bare one - no effect, no speed, no mode, no delay, no duration - and has one of its own with anything else', holds( true, [
+	[ animated( null ), 'off' ], [ animated( null, { vpaSpeed : 'fast' } ), 'off' ],
+	[ animated( '' ), 'like' ],
+	[ animated( '', { vpaSpeed : 'fast' } ), 'own' ], [ animated( '', { vpaMode : 'repeat' } ), 'own' ], [ animated( '', { vpaDelay : '200ms' } ), 'own' ], [ animated( '', { vpaDuration : '1s' } ), 'own' ],
+	[ animated( 'zoom-soft' ), 'own' ], [ animated( 'blur-hard', { vpaSpeed : 'slow' } ), 'own' ],
+] ) );
+check( 'with a template that does not, none is like the template (which is off as well) and everything else is the section\'s own, the bare class among it', holds( false, [
+	[ animated( null ), 'like' ], [ animated( null, { vpaDelay : '1s' } ), 'like' ],
+	[ animated( '' ), 'own' ], [ animated( '', { vpaSpeed : 'slow' } ), 'own' ],
+	[ animated( 'zoom-soft' ), 'own' ], [ animated( 'flip-medium', { vpaMode : 'repeat' } ), 'own' ],
+] ) );
+
+check( 'a section is made like the template, off or its own: like is the bare class where the template animates and none where it does not - its speed, mode, delay and duration go -, off is none, own starts as the plain one', ( function() {
+	const settings = animated( 'blur-hard', { vpaSpeed : 'fast', vpaMode : 'repeat', vpaDelay : '1s', vpaDuration : '2s' } );
+	const state = function() { return JSON.stringify( settings ) };
+	builder._animationSet( true, settings, 'like' );
+	const likeOn = state();
+	builder._animationSet( true, settings, 'off' );
+	const off = state();
+	builder._animationSet( true, settings, 'own' );
+	const own = state();
+	settings.vpa = 'zoom-soft';
+	builder._animationSet( true, settings, 'own' );
+	const kept = settings.vpa;
+	builder._animationSet( false, settings, 'like' );
+	return likeOn === '{"vpa":"","vpaSpeed":"","vpaMode":"","vpaDelay":"","vpaDuration":""}' && off === '{"vpa":null,"vpaSpeed":"","vpaMode":"","vpaDelay":"","vpaDuration":""}' && own === likeOn && kept === 'zoom-soft'
+		&& state() === off && builder._animationMode( false, settings ) === 'like';
 } )() );
 
+check( 'a new section is made with the animation of the template: the bare class where it animates its sections, none where it does not - and it is like the template either way, two switches off, the settings in the order the Reader reads them', ( function() {
+	const off = page();
+	const on = page();
+	on.animate = true;
+	const first = builder._newSection( on );
+	const second = builder._newSection( off );
+	return first.settings.vpa === '' && second.settings.vpa === null && builder._animationMode( true, first.settings ) === 'like' && builder._animationMode( false, second.settings ) === 'like'
+		&& first.settings.fullwidth === false && first.settings.fullheight === false && first.settings.vpaSpeed === '' && first.settings.vpaDelay === ''
+		&& Object.keys( first.settings ).join() === Object.keys( fixture('page-home.json').blocks[0].settings ).join();
+} )() );
+
+check( 'the sections that are like the template are found - and, when the template\'s switch is turned, follow it: on, the ones with no animation get the bare class; off, the ones that have just that lose it. The others stay as they are', ( function() {
+
+	const turned = function( animate, sections ) {
+		const model = page();
+		model.animate = animate;
+		model.blocks = sections.map( function( settings, at ) { return Object.assign( builder._newSection( model ), { id : 's'+ at, settings : Object.assign( builder._newSection( model ).settings, settings ) } ) } ).concat( [ model.blocks[2] ] );
+		const before = builder._likeSections( model );
+		model.animate = animate === false;
+		builder._followSections( model, before );
+		return { before : before.join(), after : model.blocks.filter( function( block ) { return block.kind === 'section' } ).map( function( block ) { return JSON.stringify( block.settings.vpa )+ builder._animationMode( model.animate, block.settings ) } ).join() };
+	};
+
+	// Switched on: none (like the template) gets the bare class; the section with an effect, the plain one and the one with a speed are their own
+	const on = turned( false, [ { vpa : null }, { vpa : 'zoom-soft' }, { vpa : '' }, { vpa : null }, { vpa : '', vpaSpeed : 'fast' } ] );
+	// Switched off: the bare one is like the template and loses it; none (off) stays none and becomes like the template (off) by it
+	const off = turned( true, [ { vpa : '' }, { vpa : null }, { vpa : 'flip-hard' }, { vpa : '' }, { vpa : '', vpaDelay : '1s' } ] );
+
+	return on.before === '0,3' && on.after === '""like,"zoom-soft"own,""like,""like,""own' && off.before === '0,3' && off.after === 'nulllike,nulllike,"flip-hard"own,nulllike,""own';
+} )() );
 check( 'the order of a loop is a field and a direction, written as the loop reads them: a minus for descending, none for no field - and a list of fields is left as it is', ( function() {
 	const stack = { attributes : { sort : 'title' } };
 	const was = JSON.stringify( builder._sortState( stack ) );
@@ -422,25 +1042,32 @@ model.blocks[1].cols[0].width = { s : 100, m : 50, l : 25 };
 model.blocks[1].cols[0].hidden = { s : true, m : true };
 check( 'and so has their visibility: a hidden column is hidden in its viewports, drawn all the same', plan('s')[1].cols[0].hidden === true && plan('m')[1].cols[0].hidden === true && plan('l')[1].cols[0].hidden === false
 	&& plan('s')[1].cols[0].width === 100 && plan('m')[1].cols[0].width === 50 && plan('l')[1].cols[0].width === 25 && plan('s')[1].cols[0].components.length === 2 );
+check( 'the view that shows all the viewports (g) has the widths of the widest, hides no column - and every view says in which viewports a column is hidden', plan('g')[0].cols[0].width === 66 && plan('g')[1].cols[0].width === 25 && plan('g')[1].cols[0].hidden === false
+	&& plan('g')[1].cols[0].hiddenIn.join() === 's,m' && plan('s')[1].cols[0].hiddenIn.join() === 's,m' && plan('l')[1].cols[0].hiddenIn.join() === 's,m' && plan('l')[1].cols[1].hiddenIn.length === 0 );
 check( 'a viewport changes widths and visibility and nothing else', ( function() {
 	const strip = function( viewport ) {
 		return JSON.stringify( plan( viewport ).map( function( block ) { return [ block.path, block.kind, block.id, block.color, block.cols.map( function( col ) { return [ col.path, col.components.map( function( component ) { return [ component.path, component.name, component.image ] } ) ] } ) ] } ) );
 	};
-	return strip('s') === strip('m') && strip('m') === strip('l');
+	return strip('s') === strip('m') && strip('m') === strip('l') && strip('l') === strip('g');
 } )() );
 check( 'a component is a placeholder with the image the registry names - the kernel\'s five, and block for the rest', plan('l')[0].cols[0].components.map( function( component ) { return component.image+ ':'+ component.label } ).join() === 'title:Title,title:Subtitle,button:Button' );
 model.blocks[0].cols[0].components.push( { name : 'unknown-one', source : '', text : null, attributes : {} } );
 model.blocks[0].cols[0].components.push( { name : 'spacer', source : '', text : null, attributes : {} } );
 check( '...a component the registry does not know and one that names no image are blocks, labelled with what they are', plan('l')[0].cols[0].components.slice( 3 ).map( function( component ) { return component.image+ ':'+ component.label } ).join() === 'block:unknown-one,block:Spacer' );
-check( 'a stack is cells in the widths of its own for the viewport, the first of its column\'s components as the stack\'s path', ( function() {
-	const stack = function( viewport ) { return plan( viewport )[1].cols[1].stack };
-	return stack('s').cell === 100 && stack('m').cell === 50 && stack('l').cell === 50 && stack('l').label === 'Element loop' && stack('l').source === '/services' && stack('l').image === 'cells' && builder._same( stack('l').path, [ 1, 1, 'x' ] )
-		&& plan('l')[1].cols[0].stack === null;
+check( 'a loop is no frame of the preview: the column that runs it says so - the label of the loop, the type it runs over by the title the Elements panel gives it, where its settings are - and keeps its components, which are what each cell shows', ( function() {
+	const stack = plan('l')[1].cols[1].stack;
+	return JSON.stringify( Object.keys( stack ) ) === '["path","label","type"]' && stack.label === 'Element loop' && stack.type === 'Services' && builder._same( stack.path, [ 1, 1, 'x' ] )
+		&& plan('s')[1].cols[1].stack.label === 'Element loop' && plan('l')[1].cols[0].stack === null && plan('l')[1].cols[1].components.length === 4;
 } )() );
-model.blocks[1].cols[1].stack.attributes.cols = '100';
-check( 'a stack that names fewer widths than viewports takes the last one for the others', plan('l')[1].cols[1].stack.cell === 100 );
+check( '...a type the Elements panel does not know, or that has no title there, is told by its uri', ( function() {
+	model.blocks[1].cols[1].stack.source = '/nowhere';
+	const unknown = plan('l')[1].cols[1].stack.type;
+	const untitled = builder._preview( model, Object.assign( registry(), { types : [ { uri : '/nowhere', title : '', fields : {} } ] } ), 'l' )[1].cols[1].stack.type;
+	model.blocks[1].cols[1].stack.source = '/services';
+	return unknown === '/nowhere' && untitled === '/nowhere';
+} )() );
 model.blocks[1].cols[1].stack.name = 'slider';
-check( 'a stack without a grid is said to be one', plan('l')[1].cols[1].stack.grid === false );
+check( '...a registered loop is called by the label it registered', plan('l')[1].cols[1].stack.label === 'Slider' );
 
 console.log( '\nUnsaved changes and saving' );
 
@@ -475,7 +1102,10 @@ console.log( '\nThe panel at work' );
 const registered = sandbox.Nino.admin.dirty.entry;
 check( 'the panel registers with the shell\'s unsaved input: a question of whether, a save, a discard, the bar', registered !== null && typeof registered.isDirty === 'function' && typeof registered.save === 'function' && typeof registered.discard === 'function' && typeof registered.bar === 'function' );
 
-// What stands where the page would draw: the document, as _openEditor() makes it
+// What the script wires once, when the page is there
+builder._bind();
+
+// What stands where the page would draw: the document, as _openEditor() makes it, with no dialog open and nothing asked or sent
 const open = function( withModel ) {
 
 	const loaded = withModel === undefined ? page() : withModel;
@@ -488,332 +1118,1028 @@ const open = function( withModel ) {
 	builder._saving = false;
 	builder._keys = known();
 	builder._status = sandbox.Nino.adminUi.status();
+	builder._dialogOptions = null;
+	builder._closing = 0;
+	builder._viewport = 'l';
+	builder._selectView('l');
+	dialogBox().open = false;
+	pickerBox().open = false;
 	requests = [];
 	questions = [];
 	changes = 0;
-	fields = [];
-	dialogs = [];
 
 	return builder._doc;
 };
 
-// The places a form is made in are caught: what it makes is called as the page would call it
-const keep = {};
-[ '_dialog', '_refreshTab', '_closeDialog', '_dialogProblem', '_changed' ].forEach( function( name ) { keep[name] = builder[name] } );
-[ '_selectField', '_switchField', '_numberField', '_textField' ].forEach( function( name ) {
-	keep[name] = builder[name];
-	builder[name] = function() {
-		fields.push( { kind : name.slice( 1, -5 ), label : arguments[0], hint : arguments[1], args : Array.prototype.slice.call( arguments ) } );
-		return loose();
-	};
-} );
-// The controls of the viewport table and the arrows of an order are caught the same way
-[ [ '_widthSelect', 'width' ], [ '_hiddenBox', 'hidden' ], [ '_sortToggles', 'toggles' ] ].forEach( function( entry ) {
-	keep[entry[0]] = builder[entry[0]];
-	builder[entry[0]] = function() {
-		fields.push( { kind : entry[1], label : entry[1] === 'toggles' ? 'Direction' : arguments[0], hint : '', args : Array.prototype.slice.call( arguments ) } );
-		return loose();
-	};
-} );
-// ...and so is every line of fields, with how many it holds
-let lines = [];
-keep._line = builder._line;
-builder._line = function( items, caption ) { lines.push( { count : items.length, caption : caption } ); return keep._line.apply( builder, arguments ) };
-builder._dialog = function( options ) {
-	dialogs.push( options );
-	if( Array.isArray( options.tabs ) === true )
-		options.tabs.forEach( function( tab ) { tab.build( loose() ) } );
-	else
-		options.build( loose() );
-};
-builder._refreshTab = function( id ) { dialogs[dialogs.length - 1].tabs.find( function( tab ) { return tab.id === id } ).build( loose() ) };
-builder._closeDialog = function() {};
-const said = [];
-builder._dialogProblem = function( text ) { said.push( text ) };
+// A change of the model is counted
+const afterwards = builder._changed;
+builder._changed = function() { changes++; afterwards.call( builder ) };
+doc = open();
+builder._renderEditor();
+check( 'the editor draws itself from the model: the preview, the bar, without a page to complain', builder._doc.model.blocks.length === 4 && builder._status.state === 'idle' && builder._unsaved( builder._doc ) === false && preview().children.length === 4 );
 
-const afterwards = keep._changed;
-builder._changed = function() { changes++; builder._problems = []; afterwards.call( builder ) };
+const headsOf = function() { return preview().querySelectorAll('.builder-frame-head, .builder-pcol-head') };
+check( 'every frame has a head of three parts, in this order: its title, what is said of it, its tools - the sections, the block of html and the columns', headsOf().length === 8
+	&& headsOf().every( function( head ) { return classes( head.children ) === 'builder-head-title,builder-head-status,builder-tools' } ) );
+check( '...the title of a section is its name, that of a block of html is HTML+, and that of a column is its width in the viewport', texts( preview().querySelectorAll('.builder-frame-name') ) === 'hero,services,HTML+,contact'
+	&& texts( preview().querySelectorAll('.builder-col-name') ) === '66%,50%,50%,100%' );
+check( '...a section has a pencil right of its name, which is a button with the word for its title and its label - the block of html and the columns have none', preview().querySelectorAll('.builder-rename').length === 3
+	&& preview().querySelectorAll('.builder-rename').every( function( pencil ) {
+		return pencil.localName === 'button' && pencil.title === 'Rename' && pencil.getAttribute('aria-label') === 'Rename' && iconOf( pencil ) === 'pencil' && pencil.previousSibling.className === 'builder-frame-name';
+	} ) && preview().children[2].querySelector('.builder-rename') === null && preview().querySelector('.builder-pcol-head .builder-rename') === null );
+check( '...the tools of a frame are the last part of its head', headsOf().every( function( head ) { return head.children[2].querySelectorAll('button').length > 0 } )
+	&& headsOf()[0].children[2].querySelectorAll('button').map( function( button ) { return button.dataset.tool } ).join() === 'settings,html,up,down,duplicate,delete' );
+check( '...what is said of a section is a picture behind it, as an icon with its word for the title and the label: the section with one says it, the others do not', ( function() {
+	const status = preview().children[0].querySelector('.builder-frame-head .builder-head-status');
+	const item = status.querySelector('.is-background');
+	return status.children.length === 1 && item.localName === 'span' && item.title === 'A picture behind the section' && item.getAttribute('role') === 'img' && item.getAttribute('aria-label') === item.title && iconOf( item ) === 'image'
+		&& preview().children[1].querySelector('.builder-frame-head .builder-head-status').children.length === 0;
+} )() );
 
-const last = function() { return dialogs[dialogs.length - 1] };
-const field = function( label, nth ) {
-	const found = fields.filter( function( entry ) { return entry.label === label } );
-	return nth === undefined ? found.pop() : found[nth];
-};
-// Where the change of a field is called, by what the field is
-const changeAt = { select : 4, switch : 3, number : 5, text : 3, width : 2, hidden : 2, toggles : 1 };
-const choose = function( label, value, nth ) {
-	const entry = field( label, nth );
-	entry.args[changeAt[entry.kind]]( value );
-};
+const loopItem = function() { return preview().querySelector('.builder-status-item.is-loop') };
+check( 'the loop is no frame of its own: the column that runs it says "Element loop · <type>" in its head, as a button that has the settings of the loop for its title - and the components sit directly in the column', ( function() {
+	const item = loopItem();
+	const col = preview().querySelector('[data-path="1.1"]');
+	return preview().querySelectorAll('.builder-status-item.is-loop').length === 1 && item.localName === 'button' && item.textContent === 'Element loop · Services' && item.title === 'Settings of the loop: Element loop · Services' && iconOf( item ) === 'loop'
+		&& col.querySelector('.builder-head-status').contains( item ) && classes( col.querySelector('.builder-col-body').children ) === 'builder-ph builder-pick,builder-ph builder-pick,builder-ph builder-pick,builder-ph builder-pick,builder-adds'
+		&& preview().all().filter( function( el ) { return el.classList.contains('builder-pick') && /\.x$/.test( el.dataset.path ?? '' ) } ).length === 0 && preview().querySelector('.builder-stack') === null;
+} )() );
+check( '...its title carries the status as well, since in a narrow column the text of the button is cut off and the title is not: the settings of the loop, a colon and the status - and the words of the title have a place for it in both languages', ( function() {
+	const german = /^\s*'\[\[\/_admin\/builder\/menu\/loop\]\]'\s*=>\s*'(.*)',\s*$/m.exec( fs.readFileSync( path.join( __dirname, '../text/de_DE.php' ), 'utf8' ) );
+	return loopItem().title === 'Settings of the loop: '+ loopItem().textContent && words['/_admin/builder/menu/loop'].split('%s').length === 2 && german !== null && german[1].split('%s').length === 2;
+} )() );
+check( '...and the loop is set in the Loop tab of the column: the status opens the column dialog on it', ( function() {
+	loopItem().click();
+	const opened = dialogBox().open === true && shownTab( screen.getElementById('builder-dialog-tabs'), 'builder' ) === 'loop' && dialogText('builder-dialog-kind') === 'Column of "services"' && builder._same( builder._sel, [ 1, 1, 'x' ] );
+	dialogBox().open = false;
+	return opened;
+} )() );
+
+check( 'every level ends in a button that adds to it - a section a column, a column a component - and there is no button for a loop', ( function() {
+	const adds = preview().querySelectorAll('.builder-add-button').map( function( button ) { return button.textContent } );
+	return adds.filter( function( text ) { return text === '+ Component' } ).length === 4 && adds.filter( function( text ) { return text === '+ Column' } ).length === 3 && adds.length === 7 && adds.every( function( text ) { return /loop/i.test( text ) === false } );
+} )() );
+check( '...the end of a column is a button for a component and nothing else - where the column has a loop as well as where it has none', ( function() {
+	const plain = builder._addsRow( [ 0, 0 ] );
+	const looped = builder._addsRow( [ 1, 1 ] );
+	return plain.children.length === 1 && looped.children.length === 1 && plain.children[0].textContent === '+ Component' && looped.children[0].textContent === '+ Component';
+} )() );
+check( '...and a component is chosen from the registry\'s, those a loop takes where the column has one', ( function() {
+	const menu = screen.getElementById('builder-menu');
+	builder._pickComponent( [ 0, 0 ], made('button') );
+	const all = menu.children.length;
+	builder._pickComponent( [ 1, 1 ], made('button') );
+	const registryNow = builder._registry.components;
+	return all === Object.keys( registryNow ).length && menu.children.length === Object.keys( registryNow ).filter( function( name ) { return registryNow[name].loop !== false } ).length;
+} )() );
+
+doc = open();
+doc.model.blocks[1].cols[0].hidden = { s : true, m : true };
+doc.model.blocks[2].reason = { line : 3, code : 'second-row', detail : '', text : '' };
+builder._renderEditor();
+const hiddenItem = function() { return preview().querySelector('[data-path="1.0"] .builder-status-item.is-hidden') };
+check( 'a column that is hidden in the viewport shown says so in its head as an icon - and is drawn all the same: not in the viewport that shows it, in which it is hidden with the word for it', hiddenItem() === null
+	&& ( builder._setView('s'), hiddenItem() !== null && hiddenItem().getAttribute('aria-label') === 'Hidden in this viewport' && hiddenItem().title === 'Hidden in this viewport' && iconOf( hiddenItem() ) === 'hidden'
+		&& preview().querySelector('[data-path="1.0"]').classList.contains('is-hidden') && preview().querySelector('[data-path="1.0"] .builder-ph') !== null ) );
+check( '...in the view of all the viewports it is not hidden, and the head says in which of them it is', ( builder._setView('g'), preview().querySelector('[data-path="1.0"]').classList.contains('is-hidden') === false && hiddenItem().getAttribute('aria-label') === 'Hidden in: Mobile, Tablet' ) );
+check( '...a block of html that cannot be read says why in its head', ( builder._setView('l'), preview().children[2].querySelector('.builder-head-status .is-warning').getAttribute('aria-label') === 'Line 3: The section has more than one row' ) );
+
+check( 'the preview is shown in four views: Mobile, Tablet, Desktop and Global, each a button with its icon from the sprite and its word', ( function() {
+	const buttons = builder.VIEWS.map( function( view ) { return screen.getElementById( 'builder-viewport-'+ view ) } );
+	return builder.VIEWS.join() === 's,m,l,g' && buttons.map( iconOf ).join() === 'smartphone,tablet,monitor,monitor-smartphone' && texts( buttons ) === 'Mobile,Tablet,Desktop,Global' && buttons.every( function( button ) { return button.title === button.textContent } );
+} )() );
+check( '...pressing one shows the preview in it: the button is the one that is pressed, the others are not', ( function() {
+	const pressed = function() { return builder.VIEWS.map( function( view ) { return screen.getElementById( 'builder-viewport-'+ view ).getAttribute('aria-pressed') } ).join() };
+	const start = pressed();
+	screen.getElementById('builder-viewport-g').click();
+	const global = builder._viewport === 'g' && preview().dataset.viewport === 'g' && pressed() === 'false,false,false,true';
+	screen.getElementById('builder-viewport-s').click();
+	return start === 'false,false,true,false' && global && builder._viewport === 's' && preview().dataset.viewport === 's' && pressed() === 'true,false,false,false';
+} )() );
+console.log( '\nRenaming a section where its name stands' );
 
 doc = open();
 builder._renderEditor();
-check( 'the editor draws itself from the model: the preview, the bar, without a page to complain', builder._doc.model.blocks.length === 4 && builder._status.state === 'idle' && builder._unsaved( builder._doc ) === false );
-check( 'the template has a name, two frames and the animation a new section is given: an effect, how fast and how often - and no delay, which a section has of its own', ( function() {
-	fields = [];
-	lines = [];
-	builder._openSettings( [] );
-	return dialogs.length === 1 && fields.map( function( entry ) { return entry.label } ).join() === 'Name,Header,Footer,Effect,Speed,Repeat' && fields[1].args[2].map( function( option ) { return option.value } ).join() === ',html-header,html-header-slim'
-		&& fields[5].args[2].map( function( option ) { return option.value } ).join() === ',repeat' && fields[5].args[2].map( function( option ) { return option.label } ).join() === 'Once,Repeat'
-		&& lines.map( function( line ) { return line.count } ).join() === '2,2';
+const pencilOf = function( at ) { return preview().children[at].querySelector('.builder-rename') };
+const frameName = function( at ) { return preview().children[at].querySelector('.builder-frame-name') };
+const fieldOf = function( at ) { return preview().children[at].querySelector('.builder-name-input') };
+
+pencilOf( 0 ).click();
+check( 'the pencil turns the name into a field in the place it stands: the field holds the name and has the focus, the name and the pencil are out of sight', fieldOf( 0 ) !== null && fieldOf( 0 ).value === 'hero' && screen.activeElement === fieldOf( 0 ) && frameName( 0 ).hidden === true && pencilOf( 0 ).hidden === true
+	&& fieldOf( 0 ).nextSibling === frameName( 0 ) && fieldOf( 0 ).getAttribute('aria-label') === 'Id' && builder._doc.model.blocks[0].id === 'hero' );
+check( '...a click in the field is not a click on the frame', ( function() {
+	builder._sel = [];
+	fieldOf( 0 ).click();
+	return builder._same( builder._sel, [] );
 } )() );
-check( '...what is chosen is the classes of its head line: none until an effect is chosen, then the effect, the speed and the mode in the order they are written', ( function() {
-	const model = builder._doc.model;
-	const was = model.vpa;
-	choose( 'Effect', 'zoom-soft' );
-	const effect = model.vpa;
-	choose( 'Speed', 'slow' );
-	choose( 'Repeat', 'repeat' );
-	const all = model.vpa;
-	choose( 'Effect', 'plain' );
-	const plain = model.vpa;
-	choose( 'Effect', 'none' );
-	return was === null && effect === 'nino-vpa nino-vpa--zoom-soft' && all === 'nino-vpa nino-vpa--zoom-soft nino-vpa--speed-slow nino-vpa--repeat' && plain === 'nino-vpa nino-vpa--speed-slow nino-vpa--repeat' && model.vpa === null;
-} )() );
-doc = open();
-builder._doc.model.vpa = 'nino-vpa nino-vpa--zoom-soft';
-builder._vpaApply( builder._doc.model.blocks[0].settings, builder._doc.model.vpa );
-builder._vpaApply( builder._doc.model.blocks[1].settings, builder._doc.model.vpa );
-builder._doc.model.blocks[3].settings.vpa = 'blur-hard';
-fields = [];
-builder._openSettings( [] );
-const templateDialog = last();
-templateDialog.onClose();
-check( 'a template dialog closed without a change of the animation asks nothing', questions.length === 0 );
-choose( 'Effect', 'blur-soft' );
-templateDialog.onClose();
-check( 'a change of it asks whether the sections that are like the template follow it - naming how many; yes is the first of the answers', questions.length === 1 && questions[0].message === 'The animation of the template changed. Should the sections that are like the template follow it? Sections affected: 2.'
-	&& questions[0].choices.map( function( choice ) { return choice.value+ ':'+ choice.kind } ).join() === 'follow:primary,stay:secondary' && builder._doc.model.blocks[0].settings.vpa === 'zoom-soft' );
-questions[0].onChoose( 'stay' );
-check( '...No leaves them as they are - and they are not like the template any more', builder._doc.model.blocks[0].settings.vpa === 'zoom-soft' && builder._doc.model.blocks[1].settings.vpa === 'zoom-soft' && builder._vpaLike( builder._doc.model.vpa, builder._doc.model.blocks[0].settings ) === false );
-questions[0].onChoose( 'follow' );
-check( '...Yes has them follow it, and not the section that has an animation of its own', builder._doc.model.blocks[0].settings.vpa === 'blur-soft' && builder._doc.model.blocks[1].settings.vpa === 'blur-soft' && builder._doc.model.blocks[3].settings.vpa === 'blur-hard'
-	&& builder._doc.model.blocks[2].kind === 'html' && builder._unsaved( builder._doc ) === true );
-doc = open();
-builder._doc.model.vpa = 'nino-vpa nino-vpa--flip-hard';
-fields = [];
-builder._openSettings( [] );
+fieldOf( 0 ).value = 'start';
+const enter = pressKey( fieldOf( 0 ), 'Enter' );
+check( 'Enter takes the name: the field is gone, the name and the pencil are back, the pencil has the focus - and a section with keys under its name is asked first, since they move with it', enter.defaultPrevented === true && fieldOf( 0 ) === null && frameName( 0 ).hidden === false && pencilOf( 0 ).hidden === false
+	&& screen.activeElement === pencilOf( 0 ) && questions.length === 1 && questions[0].title === 'Rename the section' && questions[0].message === 'Rename the section "hero" to "start"? Its text keys and image slots are moved to the new name when the template is saved.'
+	&& questions[0].choices.map( function( choice ) { return choice.value } ).join() === 'rename,cancel' && builder._doc.model.blocks[0].id === 'hero' && changes === 0 );
+questions[0].onChoose( 'cancel' );
+check( '...Cancel leaves the section as it is', builder._doc.model.blocks[0].id === 'hero' && builder._doc.model.blocks[0].renamedFrom === undefined && frameName( 0 ).textContent === 'hero' );
+questions[0].onChoose( 'rename' );
+check( '...Rename moves it, says where it was renamed from, and draws the preview again with the new name', builder._doc.model.blocks[0].id === 'start' && builder._doc.model.blocks[0].renamedFrom === 'hero' && frameName( 0 ).textContent === 'start' && changes === 1 && builder._unsaved( builder._doc ) === true );
+check( '...and the focus stays with the pencil: the one of the preview that was drawn again, since the one that had it is gone', screen.activeElement === pencilOf( 0 ) && screen.activeElement.isConnected === true );
+
 questions = [];
-choose( 'Effect', 'zoom-soft' );
-last().onClose();
-check( 'a template that no section follows asks nothing, and changes', questions.length === 0 && builder._doc.model.vpa === 'nino-vpa nino-vpa--zoom-soft' );
-doc = open();
-builder._doc.model.vpa = 'nino-vpa nino-vpa--blur-hard nino-vpa--visible';
-fields = [];
-builder._openSettings( [] );
-check( '...a template that was written by hand with a mode the form has not still shows it', fields[5].args[2].map( function( option ) { return option.value } ).join() === ',repeat,visible' && fields[5].args[3] === 'visible' && fields[3].args[3] === 'blur-hard' );
-doc = open();
+pencilOf( 0 ).click();
+fieldOf( 0 ).value = 'elsewhere';
+const escaped = pressKey( fieldOf( 0 ), 'Escape' );
+check( 'Escape discards what was typed: the field is gone, the name is as it was, nothing is asked - and the Escape is not the one that closes the dialog the field may be in', escaped.defaultPrevented === true && escaped.stopped === true && fieldOf( 0 ) === null && frameName( 0 ).textContent === 'start' && frameName( 0 ).hidden === false
+	&& questions.length === 0 && builder._doc.model.blocks[0].id === 'start' && screen.activeElement === pencilOf( 0 ) );
 
-fields = [];
-lines = [];
-builder._openSettings( [ 0 ] );
-check( 'the spacing of a section is two lines, above and below, of two fields each - outside and inside - and the other settings stand together two by two', lines.filter( function( line ) { return line.caption !== undefined } ).map( function( line ) { return line.caption+ ':'+ line.count } ).join() === 'Above:2,Below:2'
-	&& lines.length === 9 && lines.every( function( line ) { return line.count === 2 } ) && fields.filter( function( entry ) { return entry.label === 'Margin' } ).length === 2 && fields.filter( function( entry ) { return entry.label === 'Padding' } ).length === 2 );
-check( 'the form of a section is in tabs, and writes into the model as it is changed', last().tabs.map( function( tab ) { return tab.id } ).join() === 'general,background,spacing,animation,custom' && ( function() {
-	choose( 'Colour', 'dark' );
-	choose( 'Margin', '3', 0 );
-	choose( 'Padding', '2', 1 );
-	choose( 'Effect', 'zoom-soft' );
-	choose( 'Dim the picture', false );
-	choose( 'Height of the cover', null );
-	const settings = builder._doc.model.blocks[0].settings;
-	return settings.color === 'dark' && settings.mt === '3' && settings.mb === '' && settings.pt === '' && settings.pb === '2' && settings.vpa === 'zoom-soft' && settings.dim === false && settings.cover === null && changes === 6 && builder._unsaved( builder._doc ) === true;
+pencilOf( 1 ).click();
+const leaving = fieldOf( 1 );
+leaving.value = 'offer';
+// The focus goes to the Save button, which has the field send its blur - and the browser may send a second one when the field is taken out of the page
+screen.getElementById('builder-save').focus();
+leaving.dispatch('blur');
+check( 'leaving the field takes the name as Enter does - once: the field is gone and the question is asked', fieldOf( 1 ) === null && questions.length === 1 && frameName( 1 ).hidden === false
+	&& questions[0].message === 'Rename the section "services" to "offer"? Its text keys and image slots are moved to the new name when the template is saved.' );
+questions[0].onChoose( 'rename' );
+check( '...and the focus is where the person took it: the preview drawn again for the new name does not take it to the pencil', screen.activeElement === screen.getElementById('builder-save') && frameName( 1 ).textContent === 'offer' );
+check( '...and the way back to the name the section was saved with is no rename at all: nothing is asked - the keys have not moved yet - and the section is as it was saved', ( function() {
+	const section = builder._doc.model.blocks[1];
+	const was = section.renamedFrom === 'services' && section.id === 'offer';
+	questions = [];
+	pencilOf( 1 ).click();
+	fieldOf( 1 ).value = 'services';
+	pressKey( fieldOf( 1 ), 'Enter' );
+	return was && questions.length === 0 && section.id === 'services' && section.renamedFrom === undefined && frameName( 1 ).textContent === 'services';
 } )() );
-choose( 'Effect', 'none' );
-check( '...the animation is none, the plain one or an effect: null, an empty string, its name', builder._doc.model.blocks[0].settings.vpa === null && ( choose( 'Effect', 'plain' ), builder._doc.model.blocks[0].settings.vpa === '' ) );
-check( '...and the line over the bar says there is something to save', builder._status.state === 'dirty' );
 
 doc = open();
-builder._doc.model.vpa = 'nino-vpa nino-vpa--blur-soft';
-fields = [];
-builder._openSettings( [ 0 ] );
-const mode = function() { return fields.filter( function( entry ) { return entry.label === 'Animation' && entry.kind === 'select' && entry.args[2][0].value === 'like' } ).pop() };
-check( 'the animation of a section is like the template, off or its own: a section that is neither shows its own fields, after the choice, the effect it has', mode().args[2].map( function( option ) { return option.value+ '='+ option.label } ).join() === 'like=Like the template,off=Off,own=Own'
-	&& mode().args[3] === 'own' && field( 'Effect' ) !== undefined && field( 'Delay' ) !== undefined );
-const picked = mode();
-fields = [];
-picked.args[4]( 'like' );
-check( '...like the template is the classes of the template, and no delay or duration of its own, and the fields of its own are gone', ( function() {
-	const settings = builder._doc.model.blocks[0].settings;
-	return settings.vpa === 'blur-soft' && settings.vpaSpeed === '' && settings.vpaDelay === '' && builder._vpaLike( builder._doc.model.vpa, settings ) === true && field( 'Delay' ) === undefined && fields.filter( function( entry ) { return entry.label === 'Animation' } ).length === 1 && mode().args[3] === 'like';
-} )() );
-mode().args[4]( 'off' );
-check( '...off is none', builder._doc.model.blocks[0].settings.vpa === null && mode().args[3] === 'off' );
-mode().args[4]( 'own' );
-check( '...own starts as the plain animation, with the fields to change it - and what is changed there is the section\'s own, which is no longer like the template', ( function() {
-	const settings = builder._doc.model.blocks[0].settings;
-	const started = settings.vpa;
-	choose( 'Speed', 'fast', 0 );
-	return started === '' && field( 'Delay' ) !== undefined && settings.vpaSpeed === 'fast' && builder._vpaLike( builder._doc.model.vpa, settings ) === false && mode().args[3] === 'own';
-} )() );
-check( '...and the mode of it is once or repeat - the states the page itself sets, visible and visible-once, are no way for an animation to run', field( 'Repeat' ).args[2].map( function( option ) { return option.value } ).join() === ',repeat' );
-fields = [];
-builder._openSettings( [ 0 ] );
-check( '...and a section that has the classes of the template shows like the template when the form is opened', ( function() {
-	builder._vpaApply( builder._doc.model.blocks[0].settings, builder._doc.model.vpa );
-	fields = [];
-	builder._openSettings( [ 0 ] );
-	return mode().args[3] === 'like';
-} )() );
-doc = open();
+builder._renderEditor();
+const rename = function( at, text ) {
+	pencilOf( at ).click();
+	fieldOf( at ).value = text;
+	pressKey( fieldOf( at ), 'Enter' );
+};
+rename( 1, 'Not A Slug' );
+check( 'a name that is no slug is not taken, and the bar says so', builder._doc.model.blocks[1].id === 'services' && questions.length === 0 && builder._status.state === 'error' && builder._status.text === words['/_admin/builder/error/id-slug'] && fieldOf( 1 ) === null && frameName( 1 ).textContent === 'services' );
+builder._status = sandbox.Nino.adminUi.status();
+rename( 1, 'contact' );
+check( '...nor is one another section has', builder._doc.model.blocks[1].id === 'services' && questions.length === 0 && builder._status.state === 'error' && builder._status.text === words['/_admin/builder/error/id-taken'] );
+builder._status = sandbox.Nino.adminUi.status();
+rename( 1, '' );
+check( '...nor is none', builder._doc.model.blocks[1].id === 'services' && builder._status.text === words['/_admin/builder/error/id-slug'] );
+builder._status = sandbox.Nino.adminUi.status();
+rename( 1, 'services' );
+check( '...and the name it has is no change and no complaint', builder._doc.model.blocks[1].id === 'services' && builder._status.state === 'idle' && questions.length === 0 && changes === 0 );
 
-fields = [];
+builder._addSection();
+questions = [];
+rename( 4, 'faq' );
+check( 'a section made here that holds no key is renamed at once, without a question - and the pencil of the frame that was drawn for the new name has the focus', questions.length === 0 && builder._doc.model.blocks[4].id === 'faq' && builder._doc.model.blocks[4].renamedFrom === undefined && builder._fresh.faq === true && builder._fresh.section === undefined
+	&& frameName( 4 ).textContent === 'faq' && screen.activeElement === pencilOf( 4 ) );
+builder._addComponent( [ 4, 0 ], 'title' );
+rename( 4, 'questions' );
+check( '...one that holds a key is asked as a saved one is - and answered, its sources are written new under the new name: nothing is moved that was never made', ( function() {
+	const asked = questions.length === 1;
+	questions[0].onChoose( 'rename' );
+	const component = builder._doc.model.blocks[4].cols[0].components[0];
+	return asked && builder._doc.model.blocks[4].id === 'questions' && builder._doc.model.blocks[4].renamedFrom === undefined && component.source === '/template/page-home/questions/title' && component.create.value === 'Title' && builder._fresh.questions === true;
+} )() );
+
+console.log( '\nRenaming a section in the title of its dialog' );
+
+doc = open();
+builder._renderEditor();
+builder._openSettings( [ 0 ] );
+const heading = screen.getElementById('builder-dialog-heading');
+const titleName = screen.getElementById('builder-dialog-name');
+const problemLine = screen.getElementById('builder-dialog-problems');
+check( 'the title of the dialog of a section is the kind and the name, with the pencil right of the name', dialogText('builder-dialog-kind') === 'Section' && titleName.hidden === false && titleName.textContent === 'hero' && heading.querySelectorAll('.builder-rename').length === 1
+	&& iconOf( heading.querySelector('.builder-rename') ) === 'pencil' && heading.querySelector('.builder-rename').title === 'Rename' );
+check( '...and the form has no field for the id any more', controlsIn( dialogContent() ).filter( function( control ) { return control.label === 'Id' } ).length === 0 );
+heading.querySelector('.builder-rename').click();
+const titleField = heading.querySelector('.builder-name-input');
+check( '...the pencil turns the name into a field in the title', titleField !== null && titleField.value === 'hero' && titleName.hidden === true && titleField.parentNode === titleName.parentNode );
+titleField.value = 'Bad Name';
+pressKey( titleField, 'Enter' );
+check( '...a name that will not do is said in the dialog, which stays open', problemLine.hidden === false && problemLine.textContent === words['/_admin/builder/error/id-slug'] && dialogBox().open === true && builder._doc.model.blocks[0].id === 'hero' );
+heading.querySelector('.builder-rename').click();
+let reached = false;
+dialogBox().addEventListener( 'keydown', function() { reached = true } );
+const titleEscape = pressKey( heading.querySelector('.builder-name-input'), 'Escape' );
+check( '...Escape leaves the field and does not reach the dialog, which stays open', heading.querySelector('.builder-name-input') === null && titleName.hidden === false && titleEscape.defaultPrevented === true && reached === false && dialogBox().open === true );
+heading.querySelector('.builder-rename').click();
+heading.querySelector('.builder-name-input').value = 'top';
+pressKey( heading.querySelector('.builder-name-input'), 'Enter' );
+check( '...a name that will do asks the same question about the keys', questions.length === 1 && questions[0].message === 'Rename the section "hero" to "top"? Its text keys and image slots are moved to the new name when the template is saved.' && builder._doc.model.blocks[0].id === 'hero' );
+questions[0].onChoose( 'rename' );
+check( '...and once it is answered the title and the preview have the new name', builder._doc.model.blocks[0].id === 'top' && titleName.textContent === 'top' && frameName( 0 ).textContent === 'top' && builder._doc.model.blocks[0].renamedFrom === 'hero' && problemLine.hidden === true );
 builder._openSettings( [ 0, 0 ] );
-check( 'the form of a column: a width and a visibility for each viewport as a table of three rows, alignment, the loop, the animation, the classes', last().tabs.map( function( tab ) { return tab.id } ).join() === 'layout,stack,animation,custom'
-	&& fields.filter( function( entry ) { return entry.kind === 'width' } ).map( function( entry ) { return entry.label } ).join() === 'Width, Mobile,Width, Tablet,Width, Desktop'
-	&& fields.filter( function( entry ) { return entry.kind === 'hidden' } ).map( function( entry ) { return entry.label } ).join() === 'Hidden, Mobile,Hidden, Tablet,Hidden, Desktop' );
-check( '...the animation of the column runs once or repeats, like the others', field( 'Repeat' ).args[2].map( function( option ) { return option.value } ).join() === ',repeat' );
-check( '...what the table writes is the width of the viewport, and the viewports that hide the column', ( function() {
-	choose( 'Width, Mobile', '50' );
-	choose( 'Width, Desktop', '25' );
-	choose( 'Hidden, Tablet', true );
-	choose( 'Hidden, Mobile', true );
-	choose( 'Hidden, Mobile', false );
-	const col = builder._doc.model.blocks[0].cols[0];
-	return col.width.s === 50 && col.width.l === 25 && col.width.m === 100 && JSON.stringify( col.hidden ) === '{"m":true}';
+check( 'the dialogs of the other nodes have no name in their title and no pencil', titleName.hidden === true && heading.querySelectorAll('.builder-rename').length === 0 );
+builder._openSettings( [] );
+builder._openSettings( [ 3 ] );
+check( '...and the dialog of a section has one pencil however often it is opened', heading.querySelectorAll('.builder-rename').length === 1 && titleName.textContent === 'contact' );
+console.log( '\nThe dialog of the template' );
+
+doc = open();
+builder._doc.model.wrapClass = 'site-wrap';
+builder._renderEditor();
+builder._openSettings( [] );
+const templateBody = dialogContent();
+const templateKeep = function( model ) { return JSON.stringify( [ model.animate, model.vpa, model.vpaSpeed, model.wrapClass ] ) };
+const fold = templateBody.querySelector('details');
+check( 'the dialog of the template has no tabs and no name in its title; its fields are in groups under their headings: General, Frames, Viewport animation - and, folded away in the last, the kind of animation for this template', dialogText('builder-dialog-kind') === 'Template' && screen.getElementById('builder-dialog-name').hidden === true
+	&& screen.getElementById('builder-dialog-tabs').hidden === true && titlesIn( templateBody ) === 'General,Frames,Viewport animation,Kind for this template' && fold.localName === 'details' && fold.hasAttribute('open') === false && fold.open === false
+	&& fold.parentNode.parentNode.querySelector('.builder-group-title').textContent === 'Viewport animation' && fold.querySelector('summary').textContent === 'Kind for this template' );
+check( '...the fields in the groups: the name and the file, the header and the footer on a line, the switch of the animation, and in the fold the effect, its strength and the speed', labelsIn( templateBody ) === 'Name,File,Header,Footer,Animate the sections,Effect,Strength,Speed'
+	&& templateBody.querySelectorAll('.builder-line').map( function( line ) { return line.children.length } ).join() === '2,2' && fold.querySelectorAll('.builder-line').length === 1 && labelsIn( fold ) === 'Effect,Strength,Speed' );
+check( '...the file is text that cannot be changed, with the slug the text keys of the page are made of in its hint; the name is a field', controlOf( templateBody, 'File' ).el.readOnly === true && valueAt( templateBody, 'File' ) === 'page-home.tpl' && controlOf( templateBody, 'Name' ).el.readOnly === false && valueAt( templateBody, 'Name' ) === 'Home'
+	&& controlOf( templateBody, 'File' ).el.closest('label').querySelector('.nino-admin-hint').textContent === 'The slug is "home". The name of the file is the category of the text keys of the page (/template/page-home/...), so it does not change.' );
+check( '...the effect is a select with words - the plain one first, the others in the order of Nino.css, the two slides named for the motion the visitor sees: slide-left starts at a positive translateX, to the right of its place, and ends at 0, so it slides left -, the strength a group of radio buttons, the speed a select whose first word is the frame', controlOf( templateBody, 'Effect' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join()
+	=== '=Default - fade in and rise,zoom=Zoom,zoom-out=Zoom out,slide-left=Slides left,slide-right=Slides right,flip=Flip,blur=Blur'
+	&& controlOf( templateBody, 'Speed' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Like the frame,fast=Fast,medium=Medium,slow=Slow'
+	&& controlOf( templateBody, 'Strength' ).kind === 'group' && radiosOf( controlOf( templateBody, 'Strength' ).el ).map( function( radio ) { return radio.value } ).join() === 'soft,medium,hard' );
+
+const strengthOf = function() { return controlOf( templateBody, 'Strength' ) };
+const strengthOff = function() { return radiosOf( strengthOf().el ).every( function( radio ) { return radio.disabled === true } ) && strengthOf().el.classList.contains('is-disabled') };
+const strengthOn = function() { return radiosOf( strengthOf().el ).every( function( radio ) { return radio.disabled === false } ) && strengthOf().el.classList.contains('is-disabled') === false };
+check( 'with the plain effect the strength is disabled and greyed, whatever is chosen in it is not taken', valueAt( templateBody, 'Effect' ) === '' && strengthOff() && change( templateBody, 'Strength', 'hard' ) === false && builder._doc.model.vpa === '' && changes === 0 );
+change( templateBody, 'Animate the sections', true );
+change( templateBody, 'Effect', 'zoom' );
+check( 'the switch writes animate; an effect enables the strength and is written with it as one word - the strength it starts with is medium', builder._doc.model.animate === true && builder._doc.model.vpa === 'zoom-medium' && strengthOn() && valueAt( templateBody, 'Strength' ) === 'medium' && changes === 2 );
+change( templateBody, 'Strength', 'hard' );
+check( '...a strength is written with the effect it is chosen for, and stays where the effect is changed', builder._doc.model.vpa === 'zoom-hard' && ( change( templateBody, 'Effect', 'slide-left' ), builder._doc.model.vpa === 'slide-left-hard' ) && valueAt( templateBody, 'Strength' ) === 'hard' );
+change( templateBody, 'Effect', '' );
+check( '...the plain effect is no word at all, and disables the strength again - which comes back as it was left, the next time an effect is chosen', builder._doc.model.vpa === '' && strengthOff() && ( change( templateBody, 'Effect', 'blur' ), builder._doc.model.vpa === 'blur-hard' && strengthOn() ) );
+change( templateBody, 'Speed', 'slow' );
+check( '...the speed is written as it is chosen, empty for the frame\'s own', builder._doc.model.vpaSpeed === 'slow' && ( change( templateBody, 'Speed', '' ), builder._doc.model.vpaSpeed === '' ) && ( change( templateBody, 'Speed', 'fast' ), builder._doc.model.vpaSpeed === 'fast' ) );
+change( templateBody, 'Name', 'Start' );
+change( templateBody, 'Header', 'html-header-slim' );
+change( templateBody, 'Footer', '' );
+check( '...and what the dialog writes is the name, the frames, animate, the effect with its strength and the speed - the other classes of the wrap are left as they are', templateKeep( builder._doc.model ) === '[true,"blur-hard","fast","site-wrap"]' && builder._doc.model.name === 'Start' && builder._doc.model.header === 'html-header-slim' && builder._doc.model.footer === ''
+	&& builder._unsaved( builder._doc ) === true );
+
+doc = open();
+builder._doc.model.animate = true;
+builder._doc.model.vpa = 'flip-hard';
+builder._doc.model.vpaSpeed = 'medium';
+builder._openSettings( [] );
+check( 'a template with an effect shows it: the effect and its strength, the speed, the switch - and the strength enabled', valueAt( dialogContent(), 'Animate the sections' ) === true && valueAt( dialogContent(), 'Effect' ) === 'flip' && valueAt( dialogContent(), 'Strength' ) === 'hard' && valueAt( dialogContent(), 'Speed' ) === 'medium'
+	&& radiosOf( controlOf( dialogContent(), 'Strength' ).el ).every( function( radio ) { return radio.disabled === false } ) );
+
+// The sections of the page with the animation given: the first, the second and the last
+const animation = function( animate, kinds ) {
+	doc = open();
+	builder._doc.model.animate = animate;
+	[ 0, 1, 3 ].forEach( function( at, k ) { builder._vpaApply( builder._doc.model.blocks[at].settings, kinds[k] ) } );
+	builder._openSettings( [] );
+	return builder._doc.model;
+};
+const closeDialog = function() { screen.getElementById('builder-dialog-close').click() };
+const modes = function( model ) { return [ 0, 1, 3 ].map( function( at ) { return builder._animationMode( model.animate, model.blocks[at].settings ) } ).join() };
+
+console.log( '\nThe sections follow the switch of the template' );
+
+let model3 = animation( false, [ 'nino-vpa nino-vpa--zoom-soft', null, null ] );
+change( dialogContent(), 'Animate the sections', true );
+closeDialog();
+check( 'turned on, the template asks whether the sections with no animation of their own follow - how many, and Yes the first of the answers', questions.length === 1 && questions[0].title === 'VPA of the template'
+	&& questions[0].message === 'Should all the sections with no animation of their own follow? Sections affected: 2.' && questions[0].choices.map( function( choice ) { return choice.value+ ':'+ choice.kind } ).join() === 'follow:primary,stay:secondary' && model3.blocks[1].settings.vpa === null );
+questions[0].onChoose( 'stay' );
+check( '...No leaves them as they are, which with the switch on is no animation', model3.blocks[1].settings.vpa === null && model3.blocks[3].settings.vpa === null && modes( model3 ) === 'own,off,off' );
+questions[0].onChoose( 'follow' );
+check( '...Yes gives them the animation of the template, and not the one that has an animation of its own', model3.blocks[1].settings.vpa === '' && model3.blocks[3].settings.vpa === '' && model3.blocks[0].settings.vpa === 'zoom-soft' && modes( model3 ) === 'own,like,like' && builder._unsaved( builder._doc ) === true );
+
+model3 = animation( true, [ 'nino-vpa', null, 'nino-vpa nino-vpa--blur-hard' ] );
+const beforeOff = modes( model3 );
+change( dialogContent(), 'Animate the sections', false );
+closeDialog();
+check( 'turned off, it asks whether the sections that follow the default follow - the ones with the bare class, not those with none or an animation of their own', questions.length === 1 && questions[0].message === 'Should all the sections that follow the default go along? Sections affected: 1.'
+	&& questions[0].choices.map( function( choice ) { return choice.value } ).join() === 'follow,stay' && beforeOff === 'like,off,own' );
+questions[0].onChoose( 'follow' );
+check( '...Yes takes the bare class from them, and the others stay as they are', model3.blocks[0].settings.vpa === null && model3.blocks[1].settings.vpa === null && model3.blocks[3].settings.vpa === 'blur-hard' && modes( model3 ) === 'like,like,own' );
+
+animation( false, [ null, null, null ] );
+change( dialogContent(), 'Animate the sections', true );
+change( dialogContent(), 'Animate the sections', false );
+closeDialog();
+check( 'a switch turned and turned back asks nothing', questions.length === 0 );
+animation( false, [ null, null, null ] );
+change( dialogContent(), 'Effect', 'zoom' );
+change( dialogContent(), 'Speed', 'slow' );
+closeDialog();
+check( 'changing the kind of the animation asks nothing', questions.length === 0 && builder._doc.model.vpa === 'zoom-medium' );
+animation( false, [ 'nino-vpa', 'nino-vpa nino-vpa--flip-soft', 'nino-vpa nino-vpa--speed-fast' ] );
+change( dialogContent(), 'Animate the sections', true );
+closeDialog();
+check( 'a template whose sections all have an animation of their own has none to ask', questions.length === 0 );
+animation( false, [ null, 'nino-vpa nino-vpa--flip-soft', null ] );
+change( dialogContent(), 'Animate the sections', true );
+dialogBox().close();
+check( 'the dialog closed by the browser - Escape - asks as well; and once', questions.length === 1 && questions[0].message === 'Should all the sections with no animation of their own follow? Sections affected: 2.' && ( builder._closeDialog(), questions.length === 1 ) );
+animation( false, [ null, null, null ] );
+change( dialogContent(), 'Animate the sections', true );
+builder._openSettings( [ 1 ] );
+check( 'the dialog replaced by another asks before it goes', questions.length === 1 && dialogText('builder-dialog-kind') === 'Section' );
+console.log( '\nThe dialog of a section' );
+
+doc = open();
+builder._renderEditor();
+builder._openSettings( [ 0 ] );
+const settingsOf = function() { return builder._doc.model.blocks[0].settings };
+const stripOf = function() { return screen.getElementById('builder-dialog-tabs') };
+check( 'the dialog of a section has four tabs: Layout, Background, Viewport animation and CSS classes', JSON.stringify( dialogTabs() ) === '[["layout","Layout"],["background","Background"],["animation","Viewport animation"],["custom","CSS classes"]]' && stripOf().hidden === false );
+check( '...the tabs are tabs of a tab list and the panes are tab panels they name: a tab controls its pane, a pane is labelled by its tab, and the first is chosen and shown', stripOf().getAttribute('role') === 'tablist' && stripOf().querySelectorAll('[role="tab"]').every( function( tab ) {
+	const pane = screen.getElementById( tab.getAttribute('aria-controls') );
+	return pane !== null && pane.getAttribute('role') === 'tabpanel' && pane.getAttribute('aria-labelledby') === tab.id && dialogContent().contains( pane );
+} ) && stripOf().querySelectorAll('[role="tab"]').map( function( tab ) { return tab.getAttribute('aria-selected') } ).join() === 'true,false,false,false' && shownTab( stripOf(), 'builder' ) === 'layout'
+	&& stripOf().querySelectorAll('[role="tab"]').map( function( tab ) { return tab.tabIndex } ).join() === '0,-1,-1,-1' );
+buttonOf( stripOf(), 'Background' ).click();
+check( '...and a tab pressed shows its pane and no other, and is the one stop of the tab list', shownTab( stripOf(), 'builder' ) === 'background' && stripOf().querySelectorAll('[role="tab"]').map( function( tab ) { return tab.getAttribute('aria-selected') } ).join() === 'false,true,false,false'
+	&& stripOf().querySelectorAll('[role="tab"]').map( function( tab ) { return tab.tabIndex } ).join() === '-1,0,-1,-1' );
+buttonOf( stripOf(), 'Layout' ).click();
+
+const layout = paneOf('layout');
+check( 'Layout: the width of the row, the two switches, the two alignments as icons, the spacing as a table', JSON.stringify( labelList( layout ) ) === JSON.stringify( [ 'Row width', 'Full width', 'Full height', 'Vertical alignment', 'Horizontal alignment', 'Above, Margin', 'Above, Padding', 'Below, Margin', 'Below, Padding' ] )
+	&& JSON.stringify( controlsIn( layout ).map( function( control ) { return control.kind } ) ) === JSON.stringify( [ 'select', 'switch', 'switch', 'group', 'group', 'select', 'select', 'select', 'select' ] ) );
+check( '...the width of the row is a select of the three it knows', controlOf( layout, 'Row width' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Normal,narrow=Narrow,wide=Wide' && valueAt( layout, 'Row width' ) === 'wide' );
+check( '...full width and full height are two switches in one line, both on at once if you like', layout.querySelectorAll('.builder-line')[0].children.length === 2 && layout.querySelectorAll('.builder-line')[0].querySelectorAll('.nino-admin-switch').length === 2
+	&& valueAt( layout, 'Full width' ) === true && valueAt( layout, 'Full height' ) === false && ( change( layout, 'Full height', true ), settingsOf().fullheight === true && settingsOf().fullwidth === true && valueAt( layout, 'Full width' ) === true )
+	&& ( change( layout, 'Full width', false ), settingsOf().fullwidth === false && settingsOf().fullheight === true ) );
+check( '...the alignments are two lines of icons in one line: radio buttons, each with its word as its title and its label - the vertical one Top, Middle and Bottom, the horizontal one Inherited as a word and Left, Centre and Right', layout.querySelectorAll('.builder-line')[1].children.length === 2 && ( function() {
+	const vertical = controlOf( layout, 'Vertical alignment' ).el;
+	const horizontal = controlOf( layout, 'Horizontal alignment' ).el;
+	const options = function( group ) { return group.querySelectorAll('.builder-segment-option').map( function( option ) { return [ option.querySelector('input').value, option.title, option.querySelector('input').getAttribute('aria-label'), iconOf( option ) ].join(':') } ).join() };
+	return vertical.getAttribute('role') === 'radiogroup' && horizontal.getAttribute('role') === 'radiogroup'
+		&& options( vertical ) === ':Top:Top:align-top,middle:Middle:Middle:align-middle,bottom:Bottom:Bottom:align-bottom'
+		&& options( horizontal ) === ':::,left:Left:Left:align-left,center:Centre:Centre:align-center,right:Right:Right:align-right'
+		&& horizontal.querySelector('.builder-segment-face').textContent === 'Inherited'
+		&& radiosOf( vertical ).every( function( radio ) { return radio.type === 'radio' && radio.name === radiosOf( vertical )[0].name } ) && radiosOf( vertical )[0].name !== radiosOf( horizontal )[0].name;
+} )() );
+check( '...and the choice is written: the vertical alignment as it is chosen, the horizontal one too', valueAt( layout, 'Vertical alignment' ) === 'middle' && ( change( layout, 'Vertical alignment', 'bottom' ), settingsOf().rowAlign === 'bottom' ) && ( change( layout, 'Vertical alignment', '' ), settingsOf().rowAlign === '' )
+	&& valueAt( layout, 'Horizontal alignment' ) === '' && ( change( layout, 'Horizontal alignment', 'center' ), settingsOf().text === 'center' ) && valueAt( layout, 'Horizontal alignment' ) === 'center' );
+check( '...the spacing is a table: Margin and Padding over the columns, Above and Below at the head of the rows, a select of 0 to 6 in each cell - with the word of the cell for its label', ( function() {
+	const table = layout.querySelector('table');
+	const heads = table.querySelectorAll('thead th');
+	const rows = table.querySelectorAll('tbody tr');
+	return texts( heads ) === 'Spacing,Margin,Padding' && heads.every( function( head ) { return head.getAttribute('scope') === 'col' } ) && rows.length === 2 && rows.map( function( row ) { return row.querySelector('th').textContent } ).join() === 'Above,Below'
+		&& rows.every( function( row ) { return row.querySelector('th').getAttribute('scope') === 'row' && row.querySelectorAll('select').length === 2 } )
+		&& texts( table.querySelector('select').children ) === 'Default,0,1,2,3,4,5,6' && table.querySelector('select').children.map( function( option ) { return option.value } ).join() === ',0,1,2,3,4,5,6';
+} )() );
+check( '...and each cell writes its own setting: above the margin and the padding, below the margin and the padding', ( function() {
+	change( layout, 'Above, Margin', '3' );
+	change( layout, 'Above, Padding', '1' );
+	change( layout, 'Below, Margin', '5' );
+	change( layout, 'Below, Padding', '2' );
+	return [ settingsOf().mt, settingsOf().pt, settingsOf().mb, settingsOf().pb ].join() === '3,1,5,2' && valueAt( layout, 'Below, Margin' ) === '5' && changes === 9;
 } )() );
 
-fields = [];
-lines = [];
+const ground = paneOf('background');
+check( 'Background: the colour with the border beside it, the picture with its dimming, where the picture is, its position and the height of the cover, the focus - and the lines hold two fields each', JSON.stringify( labelList( ground ) ) === JSON.stringify( [ 'Colour', 'Border', 'Picture', 'Dim the picture', 'Position of the picture', 'Height of the cover', 'No focus', 'Focus' ] )
+	&& ground.querySelectorAll('.builder-line').map( function( line ) { return line.children.length } ).join() === '2,2,2' && controlOf( ground, 'Picture' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=None,cover=Cover,parallax=Parallax' );
+check( '...the colour is a select with a patch beside it that follows the choice - and the patch is a patch of the page, not of the picture', ( function() {
+	const swatch = ground.querySelector('.builder-swatch');
+	const first = swatch.dataset.color;
+	change( ground, 'Colour', 'dark' );
+	const second = swatch.dataset.color;
+	change( ground, 'Colour', '' );
+	return first === 'black' && second === 'dark' && swatch.dataset.color === 'plain' && swatch.getAttribute('aria-hidden') === 'true' && swatch.parentNode.contains( controlOf( ground, 'Colour' ).el ) && settingsOf().color === ''
+		&& controlOf( ground, 'Colour' ).el.children.map( function( option ) { return option.value } ).join() === ',alt,tint,dark,black,primary,brand-alt' && swatch.style.getPropertyValue('--builder-swatch') === '';
+} )() );
+check( '...the colours, the border and the places of the picture have words of their own, not the names of the classes of Nino.css - and the empty value of the border and of the position has its word, not the lower case none of the label', controlOf( ground, 'Colour' ).el.children.map( function( option ) { return option.textContent } ).join() === 'Default,Alternate,Tinted,Dark,Black,Brand colour,Second colour'
+	&& controlOf( ground, 'Border' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=None,1=Thin,2=Medium,3=Strong,primary=Brand colour'
+	&& controlOf( ground, 'Position of the picture' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Default,top=Top,center=Centre,bottom=Bottom' );
+sandbox.getComputedStyle = function() {
+	return { getPropertyValue : function( property ) { return { '--color-section-dark-bg' : ' #112233 ', '--color-primary' : 'rgb(10, 20, 30)' }[property] ?? '' } };
+};
+builder._openSettings( [ 0 ] );
+change( paneOf('background'), 'Colour', 'dark' );
+const patch = function() { return paneOf('background').querySelector('.builder-swatch').style.getPropertyValue('--builder-swatch') };
+const darkPatch = patch();
+change( paneOf('background'), 'Colour', 'primary' );
+const primaryPatch = patch();
+change( paneOf('background'), 'Colour', 'tint' );
+check( '...the colour of the patch is read at the time from the custom properties of Nino.css the preview has - and where the page does not know one the patch has no colour of its own, and is the neutral grey of the stylesheet', darkPatch === '#112233' && primaryPatch === 'rgb(10, 20, 30)' && patch() === '' && paneOf('background').querySelector('.builder-swatch').dataset.color === 'tint' );
+delete sandbox.getComputedStyle;
+check( 'the picture behind the section: a row with the slot as text and an icon button beside it that has the source for its title and its label', ( function() {
+	const row = paneOf('background').querySelector('.builder-source');
+	const button = row.querySelector('button');
+	return row.querySelector('.builder-source-caption').textContent === 'Current picture:' && row.querySelector('.builder-source-current').textContent === '/template/page-home/hero/background' && button.className === 'builder-icon-btn' && button.title === 'Source'
+		&& button.getAttribute('aria-label') === 'Source' && iconOf( button ) === 'source' && row.querySelector('.builder-source-line').contains( button );
+} )() );
+
+const focusGrid = function() { return controlOf( paneOf('background'), 'Focus' ).el };
+check( 'the focus of the picture is a grid of nine radio buttons in the order of Nino.css, each with its place for its label, and a switch that says there is none - the focus the section has is the one that is on', ( function() {
+	return focusGrid().getAttribute('role') === 'radiogroup' && radiosOf( focusGrid() ).map( function( radio ) { return radio.value+ '='+ radio.getAttribute('aria-label') } ).join() === '1=Top left,2=Top centre,3=Top right,4=Centre left,5=Centre,6=Centre right,7=Bottom left,8=Bottom centre,9=Bottom right'
+		&& valueAt( paneOf('background'), 'Focus' ) === '5' && valueAt( paneOf('background'), 'No focus' ) === false && radiosOf( focusGrid() ).every( function( radio ) { return radio.disabled === false } ) && focusGrid().classList.contains('is-disabled') === false;
+} )() );
+change( paneOf('background'), 'Focus', '9' );
+check( '...a place is written as its number', builder._doc.model.blocks[0].background.focus === 9 && valueAt( paneOf('background'), 'Focus' ) === '9' );
+change( paneOf('background'), 'No focus', true );
+check( '...no focus is null, and the grid is greyed and takes no choice while there is none', builder._doc.model.blocks[0].background.focus === null && focusGrid().classList.contains('is-disabled') && radiosOf( focusGrid() ).every( function( radio ) { return radio.disabled === true && radio.checked === false } )
+	&& change( paneOf('background'), 'Focus', '3' ) === false && builder._doc.model.blocks[0].background.focus === null );
+change( paneOf('background'), 'No focus', false );
+check( '...and a focus again starts in the middle', builder._doc.model.blocks[0].background.focus === 5 && valueAt( paneOf('background'), 'Focus' ) === '5' && focusGrid().classList.contains('is-disabled') === false );
+buttonOf( paneOf('background'), 'Remove the picture' ).click();
+check( 'the picture is taken away with its button: no background, the row says none, the focus and the button are off', builder._doc.model.blocks[0].background === null && paneOf('background').querySelector('.builder-source-current').textContent === 'none' && focusGrid().classList.contains('is-disabled')
+	&& controlOf( paneOf('background'), 'No focus' ).el.disabled === true && buttonOf( paneOf('background'), 'Remove the picture' ).disabled === true && preview().children[0].querySelector('.is-background') === null );
+builder._openSettings( [ 1 ] );
+check( '...so is a section that has none to begin with', controlOf( paneOf('background'), 'No focus' ).el.disabled === true && radiosOf( focusGrid() ).every( function( radio ) { return radio.disabled === true } ) && buttonOf( paneOf('background'), 'Remove the picture' ).disabled === true );
+change( paneOf('background'), 'Picture', 'parallax' );
+change( paneOf('background'), 'Dim the picture', true );
+change( paneOf('background'), 'Position of the picture', 'bottom' );
+change( paneOf('background'), 'Height of the cover', 60 );
+change( paneOf('background'), 'Border', 'primary' );
+check( '...the other fields of the picture write their settings', ( function() {
+	const settings = builder._doc.model.blocks[1].settings;
+	return settings.image === 'parallax' && settings.dim === true && settings.imagePos === 'bottom' && settings.cover === 60 && settings.border === 'primary';
+} )() );
+change( paneOf('background'), 'Height of the cover', '' );
+check( '...and an emptied height is none', builder._doc.model.blocks[1].settings.cover === null );
+
+doc = open();
+builder._openSettings( [ 0 ] );
+const animationPane = function() { return paneOf('animation') };
+check( 'Viewport animation: the section carries what the template gives, none, or an animation of its own - with a template that does not animate, none is like the template and there is no off', controlOf( animationPane(), 'Animation' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === 'like=Like the template (off),own=Own'
+	&& controlOf( animationPane(), 'Animation' ).el.title === words['/_admin/builder/hint/vpa-section-off'] );
+check( '...a section with the plain animation has an animation of its own where the template has none: its fields are there - the effect and its strength, the speed and how often, the delay and the duration, a line each', valueAt( animationPane(), 'Animation' ) === 'own'
+	&& JSON.stringify( labelList( animationPane() ) ) === JSON.stringify( [ 'Animation', 'Effect', 'Strength', 'Speed', 'Repeat', 'Delay', 'Duration' ] ) && animationPane().querySelectorAll('.builder-line').map( function( line ) { return line.children.length } ).join() === '2,2,2' );
+check( '...its effects are those of Nino.css and no word for none - that is the choice above -, its repeat is once or repeat, its speed the three', controlOf( animationPane(), 'Effect' ).el.children.map( function( option ) { return option.value } ).join() === ',zoom,zoom-out,slide-left,slide-right,flip,blur'
+	&& controlOf( animationPane(), 'Repeat' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Once,repeat=Repeat' && controlOf( animationPane(), 'Speed' ).el.children.map( function( option ) { return option.value } ).join() === ',fast,medium,slow'
+	&& radiosOf( controlOf( animationPane(), 'Strength' ).el ).every( function( radio ) { return radio.disabled === true } ) );
+change( animationPane(), 'Effect', 'zoom' );
+change( animationPane(), 'Strength', 'soft' );
+change( animationPane(), 'Speed', 'fast' );
+change( animationPane(), 'Repeat', 'repeat' );
+change( animationPane(), 'Delay', '200ms' );
+change( animationPane(), 'Duration', '1s' );
+check( '...and writes the effect with its strength as one word, the speed, the repeat, the delay and the duration', JSON.stringify( [ settingsOf().vpa, settingsOf().vpaSpeed, settingsOf().vpaMode, settingsOf().vpaDelay, settingsOf().vpaDuration ] ) === '["zoom-soft","fast","repeat","200ms","1s"]'
+	&& builder._animationMode( false, settingsOf() ) === 'own' );
+change( animationPane(), 'Animation', 'like' );
+check( 'like the template is no animation where the template has none, and the fields of its own go - delay and duration with them', settingsOf().vpa === null && settingsOf().vpaSpeed === '' && settingsOf().vpaDelay === '' && JSON.stringify( labelList( animationPane() ) ) === JSON.stringify( [ 'Animation' ] ) && valueAt( animationPane(), 'Animation' ) === 'like' );
+change( animationPane(), 'Animation', 'own' );
+check( '...own starts as the plain animation, with the fields to change it', settingsOf().vpa === '' && labelList( animationPane() ).length === 7 && valueAt( animationPane(), 'Animation' ) === 'own' && valueAt( animationPane(), 'Effect' ) === '' );
+
+doc = open();
+builder._doc.model.animate = true;
+builder._openSettings( [ 0 ] );
+check( 'with a template that animates its sections: like the template, off or own - a section with the bare class is like the template, and its fields are not shown', controlOf( animationPane(), 'Animation' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === 'like=Like the template,off=Off,own=Own'
+	&& valueAt( animationPane(), 'Animation' ) === 'like' && labelList( animationPane() ).length === 1 && controlOf( animationPane(), 'Animation' ).el.title === words['/_admin/builder/hint/vpa-section'] );
+change( animationPane(), 'Animation', 'off' );
+check( '...off is no class at all', settingsOf().vpa === null && valueAt( animationPane(), 'Animation' ) === 'off' && labelList( animationPane() ).length === 1 );
+change( animationPane(), 'Animation', 'own' );
+check( '...own opens the fields, and the choice stays while the dialog is open: it is the section\'s own animation once something is changed in it', labelList( animationPane() ).length === 7 && valueAt( animationPane(), 'Animation' ) === 'own' && settingsOf().vpa === '' && builder._animationMode( true, settingsOf() ) === 'like'
+	&& ( change( animationPane(), 'Speed', 'slow' ), builder._animationMode( true, settingsOf() ) === 'own' ) );
+change( animationPane(), 'Animation', 'like' );
+check( '...and like the template is the bare class again', settingsOf().vpa === '' && settingsOf().vpaSpeed === '' && builder._animationMode( true, settingsOf() ) === 'like' );
+builder._openSettings( [ 0 ] );
+check( 'a section opened again shows what the classes say: like, off or own', valueAt( animationPane(), 'Animation' ) === 'like' && ( function() {
+	settingsOf().vpa = 'flip-hard';
+	builder._openSettings( [ 0 ] );
+	const own = valueAt( animationPane(), 'Animation' ) === 'own' && valueAt( animationPane(), 'Effect' ) === 'flip' && valueAt( animationPane(), 'Strength' ) === 'hard';
+	settingsOf().vpa = null;
+	builder._openSettings( [ 0 ] );
+	return own && valueAt( animationPane(), 'Animation' ) === 'off';
+} )() );
+check( '...and a repeat that a hand-written file has (visible, visible-once) stays in the list and is shown, so that reading the file changes nothing', ( function() {
+	settingsOf().vpa = 'zoom-soft';
+	settingsOf().vpaMode = 'visible';
+	builder._openSettings( [ 0 ] );
+	return controlOf( animationPane(), 'Repeat' ).el.children.map( function( option ) { return option.value } ).join() === ',repeat,visible' && valueAt( animationPane(), 'Repeat' ) === 'visible' && settingsOf().vpaMode === 'visible';
+} )() );
+
+const custom = paneOf('custom');
+check( 'CSS classes: the class of the section and the class of the row on a line, with the words about classes of Nino.css above them', JSON.stringify( labelList( custom ) ) === JSON.stringify( [ 'Class of the section', 'Class of the row' ] ) && custom.querySelectorAll('.builder-line')[0].children.length === 2
+	&& custom.children[0].textContent === words['/_admin/builder/hint/custom'] && ( change( custom, 'Class of the section', 'my-hero' ), change( custom, 'Class of the row', 'my-row' ), settingsOf().custom === 'my-hero' && settingsOf().rowCustom === 'my-row' ) );
+
+doc = open();
+builder._problems = [ 'the section "services": the source "x" means nothing here', 'the section "hero": the name is bad' ];
+builder._openSettings( [ 1 ] );
+check( 'what a refused save said of a section stands over its first tab', paneOf('layout').children[0].className === 'nino-admin-error' && paneOf('layout').children[0].textContent === 'the section "services": the source "x" means nothing here' && paneOf('background').children[0].className !== 'nino-admin-error' );
+
+doc = open();
+settingsOf().rowAlign = 'center';
+builder._openSettings( [ 0 ] );
+check( 'a vertical alignment written by hand that the form has no button for - nino-grid-center - is left as it is: no button is chosen, until one is', valueAt( paneOf('layout'), 'Vertical alignment' ) === null && settingsOf().rowAlign === 'center'
+	&& ( change( paneOf('layout'), 'Vertical alignment', 'middle' ), settingsOf().rowAlign === 'middle' ) );
+console.log( '\nThe dialog of a column, and the viewports in its tables' );
+
+doc = open();
+builder._renderEditor();
+builder._openSettings( [ 0, 0 ] );
+const colOf = function() { return builder._doc.model.blocks[0].cols[0] };
+check( 'the dialog of a column has four tabs: Layout, Loop, Viewport animation and CSS classes - the name of the section is not part of its title, no pencil is', dialogText('builder-dialog-kind') === 'Column of "hero"' && screen.getElementById('builder-dialog-name').hidden === true
+	&& JSON.stringify( dialogTabs() ) === '[["layout","Layout"],["loop","Loop"],["animation","Viewport animation"],["custom","CSS classes"]]' && shownTab( screen.getElementById('builder-dialog-tabs'), 'builder' ) === 'layout' && screen.getElementById('builder-dialog-heading').querySelectorAll('.builder-rename').length === 0 );
+
+const widths = function() { return paneOf('layout').querySelector('table') };
+check( 'in a viewport the table of the widths has the row of that viewport only - the device with its icon and its word, the width, whether the column is hidden there - and under it a link to all of them', ( function() {
+	const rows = widths().querySelectorAll('tbody tr');
+	return texts( widths().querySelectorAll('thead th') ) === 'Device,Width,Hidden' && rows.length === 1 && rows[0].querySelector('th').textContent === 'Desktop' && iconOf( rows[0] ) === 'monitor' && rows[0].querySelector('th').getAttribute('scope') === 'row'
+		&& valueAt( paneOf('layout'), 'Width, Desktop' ) === '66' && valueAt( paneOf('layout'), 'Hidden, Desktop' ) === false && controlOf( paneOf('layout'), 'Hidden, Desktop' ).kind === 'box'
+		&& controlOf( paneOf('layout'), 'Width, Desktop' ).el.children.map( function( option ) { return option.value } ).join() === '25,33,50,66,75,100' && paneOf('layout').querySelectorAll('.builder-link-btn').map( function( link ) { return link.textContent } ).join() === 'All viewports'
+		&& widths().nextSibling === paneOf('layout').querySelector('.builder-link-btn');
+} )() );
+check( '...and the rest of the tab: the horizontal alignment as icons, the alignment of the components as icons with Off as a word, the gap', JSON.stringify( labelList( paneOf('layout') ) ) === JSON.stringify( [ 'Width, Desktop', 'Hidden, Desktop', 'Horizontal alignment', 'Alignment of the components', 'Gap (--space-*)' ] )
+	&& valueAt( paneOf('layout'), 'Horizontal alignment' ) === 'left' && controlOf( paneOf('layout'), 'Alignment of the components' ).el.querySelectorAll('.builder-segment-option').map( function( option ) { return option.querySelector('input').value+ ':'+ ( iconOf( option ) ?? option.textContent ) } ).join()
+		=== ':Off,start:stack-start,center:stack-center,end:stack-end' && paneOf('layout').querySelectorAll('.builder-line')[0].children.length === 2 && controlOf( paneOf('layout'), 'Gap (--space-*)' ).el.children.map( function( option ) { return option.value } ).join() === ',0,1,2,3,4,5,6' );
+change( paneOf('layout'), 'Width, Desktop', '33' );
+change( paneOf('layout'), 'Horizontal alignment', 'right' );
+change( paneOf('layout'), 'Alignment of the components', 'center' );
+change( paneOf('layout'), 'Gap (--space-*)', '3' );
+check( '...what the tab writes is the width of the viewport, the alignments and the gap', colOf().width.l === 33 && colOf().text === 'right' && colOf().stackAlign === 'center' && colOf().stackGap === '3' && JSON.stringify( colOf().width ) === '{"s":100,"m":100,"l":33}' );
+
+buttonOf( paneOf('layout'), 'All viewports' ).click();
+check( 'the link shows all the viewports: the preview is in the view of all of them (and its button the pressed one), and the tables of the dialog have a row for each - the link is gone, the tab is where it was', builder._viewport === 'g' && preview().dataset.viewport === 'g' && screen.getElementById('builder-viewport-g').getAttribute('aria-pressed') === 'true'
+	&& widths().querySelectorAll('tbody tr').map( function( row ) { return row.querySelector('th').textContent+ ':'+ iconOf( row ) } ).join() === 'Mobile:smartphone,Tablet:tablet,Desktop:monitor' && paneOf('layout').querySelector('.builder-link-btn') === null
+	&& JSON.stringify( labelList( paneOf('layout') ).slice( 0, 6 ) ) === JSON.stringify( [ 'Width, Mobile', 'Hidden, Mobile', 'Width, Tablet', 'Hidden, Tablet', 'Width, Desktop', 'Hidden, Desktop' ] ) && shownTab( screen.getElementById('builder-dialog-tabs'), 'builder' ) === 'layout' && dialogBox().open === true );
+builder._openSettings( [ 0, 0 ] );
+check( 'in the view of all the viewports a dialog opened has the three rows from the start - and no link', widths().querySelectorAll('tbody tr').length === 3 && paneOf('layout').querySelector('.builder-link-btn') === null );
+change( paneOf('layout'), 'Width, Mobile', '50' );
+change( paneOf('layout'), 'Width, Desktop', '25' );
+change( paneOf('layout'), 'Hidden, Tablet', true );
+change( paneOf('layout'), 'Hidden, Mobile', true );
+change( paneOf('layout'), 'Hidden, Mobile', false );
+check( '...what the table writes is the width of each viewport, and the viewports that hide the column: none that shows it', colOf().width.s === 50 && colOf().width.l === 25 && colOf().width.m === 100 && JSON.stringify( colOf().hidden ) === '{"m":true}' );
+
+[ [ 's', 'Mobile', 'smartphone' ], [ 'm', 'Tablet', 'tablet' ] ].forEach( function( view ) {
+	builder._setView( view[0] );
+	builder._openSettings( [ 0, 0 ] );
+	check( 'in the view of '+ view[1]+ ' the table has its row alone, with the link under it', widths().querySelectorAll('tbody tr').length === 1 && widths().querySelector('th[scope="row"]').textContent === view[1] && iconOf( widths() ) === view[2]
+		&& JSON.stringify( labelList( paneOf('layout') ).slice( 0, 2 ) ) === JSON.stringify( [ 'Width, '+ view[1], 'Hidden, '+ view[1] ] ) && paneOf('layout').querySelectorAll('.builder-link-btn').length === 1 );
+} );
+builder._setView('l');
+
+console.log( '\nThe loop of a column' );
+
+const loopPane = function() { return paneOf('loop') };
+
+doc = open();
+builder._renderEditor();
+builder._openSettings( [ 1, 1 ] );
+check( 'in the view of one viewport the cells of a loop are a row, with the link to all of them under the table', loopPane().querySelectorAll('tbody tr').length === 1 && loopPane().querySelectorAll('.builder-link-btn').length === 1 && loopPane().querySelector('tbody th').textContent === 'Desktop' );
+buttonOf( paneOf('layout'), 'All viewports' ).click();
+check( '...the link pressed in the Layout tab has the Loop tab show all of them as well, which is not the tab that is shown', loopPane().querySelectorAll('tbody tr').length === 3 && loopPane().querySelectorAll('.builder-link-btn').length === 0 && paneOf('layout').querySelectorAll('tbody tr').length === 3
+	&& shownTab( screen.getElementById('builder-dialog-tabs'), 'builder' ) === 'layout' );
+doc = open();
+builder._renderEditor();
 builder._openSettings( [ 1, 1, 'x' ] );
-check( 'the loop of a column opens the form of the column on its own tab, and has the form of a loop: its type, its order, its limit, its grid, its id', last().tab === 'stack' && field( 'Type' ) !== undefined && field( 'Sort by' ) !== undefined && field( 'Direction' ) !== undefined && field( 'Limit' ) !== undefined && field( 'Offset' ) !== undefined
-	&& field( 'Query' ) !== undefined && field( 'Cell width, Mobile' ) !== undefined && field( 'Gap between the cells' ) !== undefined && field( 'Cells of equal height' ) !== undefined && field( 'Id of the loop' ) !== undefined );
-check( '...limit and offset share a line, the three cells and the gap another, the id and the equal height a third - and the animation of the column has speed and mode on a line, delay and duration on the next', lines.map( function( line ) { return line.count } ).join() === '2,2,4,2,2,2' );
-check( '...the type is one of the Elements panel\'s, with the title it has there', field( 'Type' ).args[2].map( function( option ) { return option.value+ '='+ option.label } ).join() === '/services=Services (/services),/team=Team (/team)' );
-check( '...the order is a field and two arrows, of which the one for ascending is on where the loop says title', field( 'Sort by' ).args[3] === 'title' && field( 'Direction' ).args[0] === false );
-choose( 'Sort by', 'summary' );
-choose( 'Direction', true );
-choose( 'Limit', 12 );
-choose( 'Offset', 3 );
-choose( 'Cell width, Tablet', '33' );
-choose( 'Cells of equal height', false );
-choose( 'Gap between the cells', '4' );
+buttonOf( loopPane(), 'All viewports' ).click();
+check( '...and the other way round', paneOf('layout').querySelectorAll('tbody tr').length === 3 && loopPane().querySelectorAll('tbody tr').length === 3 && shownTab( screen.getElementById('builder-dialog-tabs'), 'builder' ) === 'loop' );
+
+doc = open();
+builder._renderEditor();
+builder._openSettings( [ 0, 0 ] );
+check( 'the Loop tab of a column with no loop has the choice of the loop and nothing else: Static, and the loops of the registry - the plain one called the element loop', JSON.stringify( labelList( paneOf('loop') ) ) === JSON.stringify( [ 'Loop' ] ) && valueAt( paneOf('loop'), 'Loop' ) === ''
+	&& controlOf( paneOf('loop'), 'Loop' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Static,stack=Element loop,slider=Slider,filter=Filter,list=List' && paneOf('loop').querySelectorAll('.builder-group').length === 0 );
+change( paneOf('loop'), 'Loop', 'stack' );
+check( '...a loop that is chosen is the kernel\'s, over the first type of the project, with the attributes it has - and the tab shows its form in groups: the data it runs over, the order, the grid of the cells', ( function() {
+	const stack = colOf().stack;
+	return stack.name === 'stack' && stack.source === '/services' && stack.attributes.cols === '100 50 33' && stack.attributes.gap === '2' && stack.attributes.id === '' && titlesIn( paneOf('loop') ) === 'Data,Order,Grid' && builder._doc.model.blocks[0].cols[0].components.length === 3;
+} )() );
+
+doc = open();
+builder._renderEditor();
+builder._setView('g');
+builder._openSettings( [ 1, 1, 'x' ] );
+check( 'the loop of a column opens the form of the column on its Loop tab (the loop is no frame, but the column\'s own settings)', dialogText('builder-dialog-kind') === 'Column of "services"' && shownTab( screen.getElementById('builder-dialog-tabs'), 'builder' ) === 'loop' );
+check( 'the form of the loop: the kind, then the groups - Data (the type, a note, the query), Order (the field and the direction, the limit and the offset), Grid (the cells of each viewport, the gap and the equal height, the id)', titlesIn( loopPane() ) === 'Data,Order,Grid'
+	&& JSON.stringify( labelList( loopPane() ) ) === JSON.stringify( [ 'Loop', 'Type', 'Query', 'Sort by', 'Direction', 'Limit', 'Offset', 'Cell width, Mobile', 'Cell width, Tablet', 'Cell width, Desktop', 'Gap between the cells', 'Cells of equal height', 'Id of the loop' ] ) );
+check( '...the groups hold what they are called after: the type and the query in Data, the order in Order - the limit and the offset on a line -, the cells in Grid with the gap and the equal height on a line and the id below', ( function() {
+	const groups = loopPane().querySelectorAll('.builder-group');
+	return groups.map( function( group ) { return labelList( group ).join('|') } ).join('~') === 'Type|Query~Sort by|Direction|Limit|Offset~Cell width, Mobile|Cell width, Tablet|Cell width, Desktop|Gap between the cells|Cells of equal height|Id of the loop'
+		&& groups[1].querySelectorAll('.builder-line').map( function( line ) { return line.children.length } ).join() === '2' && groups[2].querySelectorAll('.builder-line').map( function( line ) { return line.children.length } ).join() === '2';
+} )() );
+check( '...the type is one of the Elements panel\'s, with the title it has there', controlOf( loopPane(), 'Type' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '/services=Services (/services),/team=Team (/team)' );
+check( '...the cells are a table with a row for each viewport - the device with its icon -, in the view of all of them', loopPane().querySelectorAll('tbody tr').map( function( row ) { return row.querySelector('th').textContent+ ':'+ iconOf( row ) } ).join() === 'Mobile:smartphone,Tablet:tablet,Desktop:monitor'
+	&& loopPane().querySelector('table').querySelectorAll('thead th').length === 2 && texts( loopPane().querySelector('table').querySelectorAll('thead th') ) === 'Device,Cell width' );
+check( '...a loop that names fewer widths than there are viewports takes the last for the others: two widths are three cells, one is three of one - and a width that is chosen writes all three', ( function() {
+	const stack = builder._doc.model.blocks[1].cols[1].stack;
+	const shown = function( cols ) {
+		stack.attributes.cols = cols;
+		builder._openSettings( [ 1, 1, 'x' ] );
+		return [ 'Mobile', 'Tablet', 'Desktop' ].map( function( device ) { return valueAt( loopPane(), 'Cell width, '+ device ) } ).join();
+	};
+	const two = shown( '100 50' );
+	const one = shown( '33' );
+	change( loopPane(), 'Cell width, Mobile', '25' );
+	const written = stack.attributes.cols;
+	stack.attributes.cols = '100 50 50';
+	builder._openSettings( [ 1, 1, 'x' ] );
+	return two === '100,50,50' && one === '33,33,33' && written === '25 33 33';
+} )() );
+check( '...the order is a field and two toggles: arrows up and down, a group of two radio buttons with the word for each as the title and the label - of which the one for ascending is on where the loop says title', ( function() {
+	const direction = controlOf( loopPane(), 'Direction' ).el;
+	return valueAt( loopPane(), 'Sort by' ) === 'title' && direction.getAttribute('role') === 'radiogroup' && valueAt( loopPane(), 'Direction' ) === 'asc'
+		&& direction.querySelectorAll('.builder-segment-option').map( function( option ) { return option.querySelector('input').value+ ':'+ option.title+ ':'+ option.querySelector('input').getAttribute('aria-label')+ ':'+ iconOf( option ) } ).join() === 'asc:Ascending:Ascending:arrow-up,desc:Descending:Descending:arrow-down';
+} )() );
+change( loopPane(), 'Sort by', 'summary' );
+change( loopPane(), 'Direction', 'desc' );
+change( loopPane(), 'Limit', 12 );
+change( loopPane(), 'Offset', 3 );
+change( loopPane(), 'Cell width, Tablet', '33' );
+change( loopPane(), 'Cells of equal height', false );
+change( loopPane(), 'Gap between the cells', '4' );
+change( loopPane(), 'Id of the loop', 'services-loop' );
+change( loopPane(), 'Query', 'status=1' );
 check( 'what the form writes is what the call carries: a field and a direction as the loop reads them, the numbers as text, the cells as three widths', ( function() {
 	const stack = builder._doc.model.blocks[1].cols[1].stack;
-	return stack.attributes.sort === '-summary' && stack.attributes.limit === '12' && stack.attributes.offset === '3' && stack.attributes.cols === '100 33 50' && stack.attributes.autoheight === '0' && stack.attributes.gap === '4';
+	return stack.attributes.sort === '-summary' && stack.attributes.limit === '12' && stack.attributes.offset === '3' && stack.attributes.cols === '100 33 50' && stack.attributes.autoheight === '0' && stack.attributes.gap === '4' && stack.attributes.id === 'services-loop' && stack.attributes.query === 'status=1';
 } )() );
-choose( 'Direction', false );
-check( '...the other arrow is ascending, and the field stays', builder._doc.model.blocks[1].cols[1].stack.attributes.sort === 'summary' );
-choose( 'Sort by', 'price' );
-check( '...and the direction stays where a field is chosen after it', builder._doc.model.blocks[1].cols[1].stack.attributes.sort === 'price' );
-choose( 'Direction', true );
-choose( 'Type', '/team' );
-check( 'a loop of another type leaves the components where they are - what their sources mean there is red until changed', builder._doc.model.blocks[1].cols[1].components.length === 4 && builder._red( builder._doc.model, builder._registry ).length === 3 );
-choose( 'Loop', '' );
-check( 'Static drops the loop and keeps the components, and every field of the element is red', builder._doc.model.blocks[1].cols[1].stack === null && builder._doc.model.blocks[1].cols[1].components.length === 4 && builder._red( builder._doc.model, builder._registry ).length === 4 );
-choose( 'Loop', 'slider' );
-check( 'a registered loop comes with its own attributes and the loop it has, over a type of the project', ( function() {
+change( loopPane(), 'Direction', 'asc' );
+check( '...the other arrow is ascending, and the field stays', builder._doc.model.blocks[1].cols[1].stack.attributes.sort === 'summary' && valueAt( loopPane(), 'Sort by' ) === 'summary' );
+change( loopPane(), 'Sort by', 'price' );
+check( '...and the direction stays where a field is chosen after it', builder._doc.model.blocks[1].cols[1].stack.attributes.sort === 'price' && ( change( loopPane(), 'Direction', 'desc' ), builder._doc.model.blocks[1].cols[1].stack.attributes.sort === '-price' ) );
+change( loopPane(), 'Sort by', '' );
+check( '...no field is no order', builder._doc.model.blocks[1].cols[1].stack.attributes.sort === '' );
+builder._doc.model.blocks[1].cols[1].stack.attributes.sort = 'a,-b';
+change( loopPane(), 'Type', '/team' );
+check( 'a list of fields is a line of text that is left as it is, with no arrows beside it', labelList( loopPane() ).indexOf( 'Direction' ) === -1 && valueAt( loopPane(), 'Sort by' ) === 'a,-b' );
+check( 'a loop of another type leaves the components where they are - what their sources mean there is red until changed', builder._doc.model.blocks[1].cols[1].components.length === 4 && builder._red( builder._doc.model, builder._registry ).length === 3 && builder._doc.model.blocks[1].cols[1].stack.source === '/team'
+	&& preview().querySelector('[data-path="1.1"] .is-loop').textContent === 'Element loop · Team' && preview().querySelector('[data-path="1.1"] .is-loop').title === 'Settings of the loop: Element loop · Team' );
+change( loopPane(), 'Loop', '' );
+check( 'Static drops the loop and keeps the components, and every field of the element is red - the status of the loop is gone from the head of the column', builder._doc.model.blocks[1].cols[1].stack === null && builder._doc.model.blocks[1].cols[1].components.length === 4 && builder._red( builder._doc.model, builder._registry ).length === 4
+	&& JSON.stringify( labelList( loopPane() ) ) === JSON.stringify( [ 'Loop' ] ) && preview().querySelector('[data-path="1.1"] .is-loop') === null );
+change( loopPane(), 'Loop', 'slider' );
+check( 'a registered loop comes with its own attributes and the loop it has, over a type of the project; one with no grid has no group for it, and its id is among the data - its own attributes are a group of their own', ( function() {
 	const stack = builder._doc.model.blocks[1].cols[1].stack;
-	return stack.name === 'slider' && stack.source === '/services' && stack.attributes.width === '75%' && stack.attributes.limit === '0' && builder._red( builder._doc.model, builder._registry ).length === 0;
+	return stack.name === 'slider' && stack.source === '/services' && stack.attributes.width === '75%' && stack.attributes.limit === '0' && builder._red( builder._doc.model, builder._registry ).length === 0 && titlesIn( loopPane() ) === 'Data,Order,Own'
+		&& labelList( loopPane().querySelectorAll('.builder-group')[0] ).join() === 'Type,Query,Id of the loop' && labelList( loopPane().querySelectorAll('.builder-group')[2] ).join() === 'Slide width,Least slide width' && preview().querySelector('[data-path="1.1"] .is-loop').textContent === 'Slider · Services'
+		&& preview().querySelector('[data-path="1.1"] .is-loop').title === 'Settings of the loop: Slider · Services';
 } )() );
-choose( 'Loop', 'stack' );
+change( loopPane(), 'Slide width', '60%' );
+check( '...and what the attributes of its own write is a string', builder._doc.model.blocks[1].cols[1].stack.attributes.width === '60%' );
+change( loopPane(), 'Loop', 'stack' );
 check( '...and going on to another loop keeps what both have', ( function() {
 	builder._doc.model.blocks[1].cols[1].stack.attributes.limit = '5';
-	choose( 'Loop', 'list' );
-	return builder._doc.model.blocks[1].cols[1].stack.name === 'list' && builder._doc.model.blocks[1].cols[1].stack.attributes.limit === '5' && builder._doc.model.blocks[1].cols[1].stack.source === '/services';
+	change( loopPane(), 'Loop', 'list' );
+	const stack = builder._doc.model.blocks[1].cols[1].stack;
+	return stack.name === 'list' && stack.attributes.limit === '5' && stack.source === '/services' && titlesIn( loopPane() ) === 'Data,Order,Own' && labelList( loopPane().querySelectorAll('.builder-group')[2] ).join() === 'Style';
+} )() );
+change( loopPane(), 'Loop', 'filter' );
+check( '...a loop with a grid and attributes of its own has all four groups', titlesIn( loopPane() ) === 'Data,Order,Grid,Own' && labelList( loopPane().querySelectorAll('.builder-group')[3] ).join() === 'Filter by,Label of the first button' );
+
+console.log( '\nThe animation and the classes of a column' );
+
+doc = open();
+builder._renderEditor();
+builder._openSettings( [ 0, 0 ] );
+const colAnimation = function() { return paneOf('animation') };
+const pickedOff = function( label ) { return controlOf( colAnimation(), label ).el.disabled === true };
+check( 'the animation of a column is its own, and has no like, off or own: the effect and its strength, the speed and how often - the effect is none before it is the plain one, and the words under it are those of a column', JSON.stringify( labelList( colAnimation() ) ) === JSON.stringify( [ 'Effect', 'Strength', 'Speed', 'Repeat' ] )
+	&& controlOf( colAnimation(), 'Effect' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === 'none=No animation,=Default - fade in and rise,zoom=Zoom,zoom-out=Zoom out,slide-left=Slides left,slide-right=Slides right,flip=Flip,blur=Blur'
+	&& valueAt( colAnimation(), 'Effect' ) === 'none' && colAnimation().querySelectorAll('.builder-line').map( function( line ) { return line.children.length } ).join() === '2,2'
+	&& controlOf( colAnimation(), 'Effect' ).el.title === words['/_admin/builder/hint/vpa-col'] && colAnimation().querySelector('.nino-admin-hint').textContent === 'Whether the animation runs when the column comes into view, and with which effect.' );
+check( '...it has no delay and no duration, whatever the animation is: the file keeps a column\'s animation as classes, and a column has no attribute for either - the animation of a section has both', ( function() {
+	const column = labelList( colAnimation() );
+	builder._openSettings( [ 0 ] );
+	const section = labelList( paneOf('animation') );
+	builder._openSettings( [ 0, 0 ] );
+	return column.indexOf('Delay') === -1 && column.indexOf('Duration') === -1 && section.indexOf('Delay') !== -1 && section.indexOf('Duration') !== -1;
+} )() );
+check( '...with none there is nothing to speed up or to repeat: the speed and the repeat are none to choose, as the strength is', pickedOff('Speed') === true && pickedOff('Repeat') === true && radiosOf( controlOf( colAnimation(), 'Strength' ).el ).every( function( radio ) { return radio.disabled === true } ) );
+change( colAnimation(), 'Effect', '' );
+check( '...the plain effect has them on, and the strength still off - an effect that has one has all three', colOf().vpa === '' && pickedOff('Speed') === false && pickedOff('Repeat') === false && radiosOf( controlOf( colAnimation(), 'Strength' ).el ).every( function( radio ) { return radio.disabled === true } )
+	&& ( change( colAnimation(), 'Effect', 'zoom-out' ), pickedOff('Speed') === false && pickedOff('Repeat') === false && radiosOf( controlOf( colAnimation(), 'Strength' ).el ).every( function( radio ) { return radio.disabled === false } ) ) );
+check( '...none is no class, the plain effect the bare class, an effect with its strength the one word - and none switches them off again', colOf().vpa === 'zoom-out-medium' && ( change( colAnimation(), 'Effect', '' ), colOf().vpa === '' ) && ( change( colAnimation(), 'Effect', 'zoom-out' ), colOf().vpa === 'zoom-out-medium' ) && ( change( colAnimation(), 'Strength', 'hard' ), colOf().vpa === 'zoom-out-hard' )
+	&& ( change( colAnimation(), 'Effect', 'none' ), colOf().vpa === null ) && pickedOff('Speed') === true && pickedOff('Repeat') === true && radiosOf( controlOf( colAnimation(), 'Strength' ).el ).every( function( radio ) { return radio.disabled === true } ) );
+change( colAnimation(), 'Effect', 'zoom' );
+change( colAnimation(), 'Speed', 'slow' );
+change( colAnimation(), 'Repeat', 'repeat' );
+check( '...the speed and the repeat write their settings - and the delay and the duration of a column are what they were: none', colOf().vpaSpeed === 'slow' && colOf().vpaMode === 'repeat' && colOf().vpaDelay === '' && colOf().vpaDuration === '' && colOf().vpa === 'zoom-hard' );
+check( '...a repeat that a hand-written file has (visible, visible-once) stays in the list and is shown, so that reading the file changes nothing', ( function() {
+	colOf().vpaMode = 'visible-once';
+	builder._openSettings( [ 0, 0 ] );
+	const modes = controlOf( colAnimation(), 'Repeat' ).el.children.map( function( option ) { return option.value } ).join();
+	const shown = valueAt( colAnimation(), 'Repeat' );
+	colOf().vpaMode = 'repeat';
+	return modes === ',repeat,visible-once' && shown === 'visible-once' && pickedOff('Repeat') === false;
+} )() );
+change( paneOf('custom'), 'Class of the column', 'my-col' );
+check( 'the class of a column is the only field of the CSS classes tab, with the hint about classes of Nino.css', JSON.stringify( labelList( paneOf('custom') ) ) === JSON.stringify( [ 'Class of the column' ] ) && colOf().custom === 'my-col' && paneOf('custom').querySelector('.nino-admin-hint').textContent === words['/_admin/builder/hint/custom'] );
+console.log( '\nThe dialog of a component' );
+
+doc = open();
+builder._renderEditor();
+builder._openSettings( [ 0, 0, 0 ] );
+const componentAt = function( at ) { return builder._doc.model.blocks[at[0]].cols[at[1]].components[at[2]] };
+check( 'the dialog of a component has three tabs: Content, Properties and CSS classes - the title names the component by its label, and no pencil is in it', dialogText('builder-dialog-kind') === 'Component "Title"' && JSON.stringify( dialogTabs() ) === '[["content","Content"],["properties","Properties"],["custom","CSS classes"]]'
+	&& screen.getElementById('builder-dialog-name').hidden === true && dialogBox().classList.contains('is-wide') === false );
+check( '...Content: the source as text, with an icon button beside it that opens the dialog of the sources', ( function() {
+	const row = paneOf('content').querySelector('.builder-source');
+	const button = row.querySelector('button');
+	return paneOf('content').children.length === 1 && row.querySelector('.builder-source-caption').textContent === 'Current:' && row.querySelector('.builder-source-caption').hidden === false && row.querySelector('.builder-source-current').textContent === '/template/page-home/hero/title' && row.querySelector('.builder-source-name').hidden === true
+		&& button.className === 'builder-icon-btn' && button.title === 'Source' && button.getAttribute('aria-label') === 'Source' && iconOf( button ) === 'source' && labelList( paneOf('content') ).length === 0;
+} )() );
+check( '...Properties: the attributes of the schema in the order of the schema, the two of them on a line', JSON.stringify( labelList( paneOf('properties') ) ) === JSON.stringify( [ 'Level', 'Style' ] ) && paneOf('properties').children.length === 1 && paneOf('properties').children[0].className === 'builder-line' && paneOf('properties').children[0].children.length === 2
+	&& controlOf( paneOf('properties'), 'Level' ).el.children.map( function( option ) { return option.value } ).join() === '1,2,3,4' && controlOf( paneOf('properties'), 'Style' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=none,loud=loud,quiet=quiet'
+	&& valueAt( paneOf('properties'), 'Level' ) === '1' && valueAt( paneOf('properties'), 'Style' ) === 'loud' );
+change( paneOf('properties'), 'Level', '3' );
+change( paneOf('properties'), 'Style', '' );
+change( paneOf('custom'), 'Class of the component', 'big' );
+check( '...and write the attributes, CSS classes the class of the component', componentAt( [ 0, 0, 0 ] ).attributes.level === '3' && componentAt( [ 0, 0, 0 ] ).attributes.style === '' && componentAt( [ 0, 0, 0 ] ).attributes['class'] === 'big' && JSON.stringify( labelList( paneOf('custom') ) ) === JSON.stringify( [ 'Class of the component' ] )
+	&& paneOf('custom').querySelector('.nino-admin-hint').textContent === words['/_admin/builder/hint/custom'] && changes === 3 );
+
+builder._openSettings( [ 0, 0, 2 ] );
+check( 'a link is a source of its own, a line of its own - the other attributes follow in the order of the schema, two to a line where both are short, a select that is left over on a line to itself', dialogText('builder-dialog-kind') === 'Component "Button"'
+	&& classes( paneOf('properties').children ) === 'builder-source,builder-line,nino-admin-field' && JSON.stringify( labelList( paneOf('properties') ) ) === JSON.stringify( [ 'Style', 'Size', 'Opens in' ] ) && paneOf('properties').children[1].children.length === 2
+	&& paneOf('properties').children[0].querySelector('.builder-source-name').textContent === 'Link' && paneOf('properties').children[0].querySelector('.builder-source-current').textContent === '/_nino/webpage/contact/uri'
+	&& paneOf('properties').children[0].querySelector('.builder-source-caption').hidden === true );
+builder._openSettings( [ 1, 1, 0 ] );
+check( '...a text of its own and a select go together, the select that is left over is alone: alt and focus, then ratio', dialogText('builder-dialog-kind') === 'Component "Image"' && classes( paneOf('properties').children ) === 'builder-line,nino-admin-field' && JSON.stringify( labelList( paneOf('properties') ) ) === JSON.stringify( [ 'Alternative text', 'Focus', 'Ratio' ] )
+	&& controlsIn( paneOf('properties') ).map( function( control ) { return control.kind } ).join() === 'text,select,select' );
+
+check( 'the attributes of a schema are paired in the order of the schema: a select, a switch, a number or a line of text goes with the next of them; a lines field, a link, a picture or a key has a line to itself', ( function() {
+	const declared = { a : { type : 'select' }, b : { type : 'bool' }, c : { type : 'lines' }, d : { type : 'int' }, e : { type : 'string' }, f : { type : 'href' }, g : { type : 'select' }, h : { type : 'image' }, i : { type : 'key' }, j : { type : 'select' }, k : { type : 'select' }, l : { type : 'select' } };
+	return JSON.stringify( builder._attributeLines( declared ) ) === '[["a","b"],["c"],["d","e"],["f"],["g"],["h"],["i"],["j","k"],["l"]]' && JSON.stringify( builder._attributeLines( {} ) ) === '[]'
+		&& JSON.stringify( builder._attributeLines( registry().components.button.attributes ) ) === '[["href"],["style","size"],["target"]]' && JSON.stringify( builder._attributeLines( registry().components.image.attributes ) ) === '[["alt","focus"],["ratio"]]'
+		&& JSON.stringify( builder._attributeLines( registry().components.title.attributes ) ) === '[["level","style"]]';
+} )() );
+
+builder._doc.model.blocks[0].cols[0].components.push( { name : 'spacer', source : '', text : null, attributes : { size : '2', 'class' : '' } } );
+builder._doc.model.blocks[0].cols[0].components.push( { name : 'unknown-one', source : '', text : null, attributes : { 'class' : '' } } );
+builder._doc.model.blocks[0].cols[0].components.push( { name : 'html', source : '', text : null, attributes : { 'class' : '' }, content : '<p>x</p>' } );
+const tabsOfComponent = function( at ) { builder._openSettings( at ); return dialogTabs().map( function( tab ) { return tab[0] } ).join() };
+const registryWith = registry();
+registryWith.components.divider = { label : 'Divider', source : 'none', loop : true, preview : 'block', attributes : [], defaults : { 'class' : '' } };
+builder._doc.model.blocks[0].cols[0].components.push( { name : 'divider', source : '', text : null, attributes : { 'class' : '' } } );
+builder._registry = registryWith;
+check( 'a component has the tabs it has something for: no Content where it has no source (a spacer), no Properties where its schema declares none (a component the registry does not know, the editor of the content), and CSS classes always',
+	tabsOfComponent( [ 0, 0, 3 ] ) === 'properties,custom' && tabsOfComponent( [ 0, 0, 4 ] ) === 'content,custom' && tabsOfComponent( [ 0, 0, 5 ] ) === 'content,custom' && tabsOfComponent( [ 0, 0, 6 ] ) === 'custom' );
+builder._openSettings( [ 0, 0, 3 ] );
+check( '...the spacer holds its size, and its title is its label', dialogText('builder-dialog-kind') === 'Component "Spacer"' && JSON.stringify( labelList( paneOf('properties') ) ) === JSON.stringify( [ 'Size' ] ) && valueAt( paneOf('properties'), 'Size' ) === '2' );
+builder._openSettings( [ 0, 0, 4 ] );
+check( '...a component the registry does not know is called by its name, and has a source of the text kind', dialogText('builder-dialog-kind') === 'Component "unknown-one"' && paneOf('content').querySelector('.builder-source') !== null );
+builder._openSettings( [ 0, 0, 6 ] );
+check( '...and the tab that is the only one is the one that is shown', shownTab( screen.getElementById('builder-dialog-tabs'), 'builder' ) === 'custom' && dialogTabs().length === 1 );
+console.log( '\nThe dialog of a source' );
+
+const sourceButton = function( pane ) { return pane.querySelector('.builder-source button') };
+const pickerStrip = function() { return screen.getElementById('builder-picker-tabs') };
+const pickItems = function() { return pickerPane('pick').querySelectorAll('.builder-pick-item') };
+
+doc = open();
+builder._renderEditor();
+builder._openSettings( [ 0, 0, 0 ] );
+sourceButton( paneOf('content') ).click();
+check( 'the source button opens a second dialog above the one of the component - a smaller one of its own, the first stays open - with three tabs for a text: Choose a value, Create new and Static', pickerBox().open === true && dialogBox().open === true && pickerBox().classList.contains('builder-picker-dialog')
+	&& pickerBox().querySelector('.nino-admin-dialog-title').textContent === 'Source' && JSON.stringify( tabsOf( pickerStrip(), 'builder-picker' ) ) === '[["pick","Choose a value"],["new","Create new"],["fixed","Static"]]' && shownTab( pickerStrip(), 'builder-picker' ) === 'pick' );
+check( '...its tabs are tabs and its panes tab panels, as the other dialog\'s are', pickerStrip().querySelectorAll('[role="tab"]').every( function( tab ) {
+	const pane = screen.getElementById( tab.getAttribute('aria-controls') );
+	return pane.getAttribute('role') === 'tabpanel' && pane.getAttribute('aria-labelledby') === tab.id;
+} ) && pickerStrip().querySelectorAll('[role="tab"]').map( function( tab ) { return tab.tabIndex } ).join() === '0,-1,-1' );
+check( 'Choose a value: what the source is now, a search box that starts with the keys of the section, and the keys of the project it finds - the one that is now the source marked', ( function() {
+	const now = pickerPane('pick').querySelector('.builder-source-now');
+	const search = pickerPane('pick').querySelector('input[type="search"]');
+	return now.querySelector('span').textContent === 'Current:' && now.querySelector('.builder-source-current').textContent === '/template/page-home/hero/title' && search.value === '/template/page-home/hero/' && search.getAttribute('aria-label') === 'Find a key by its name or its text'
+		&& pickItems().map( function( item ) { return item.querySelector('.builder-pick-name').textContent+ '='+ item.querySelector('.builder-pick-sub').textContent+ ( item.classList.contains('is-current') ? '*' : '' ) } ).join() === '/template/page-home/hero/title=Welcome*,/template/page-home/hero/subtitle=We build';
+} )() );
+check( '...the search narrows the list by the name and the text of a key - and says when there is none', ( function() {
+	const search = pickerPane('pick').querySelector('input[type="search"]');
+	search.value = 'build';
+	search.dispatch('input');
+	const found = pickItems().length;
+	search.value = 'nothing like it';
+	search.dispatch('input');
+	const none = pickItems().length === 0 && pickerPane('pick').querySelector('.builder-picker-list').textContent === 'Nothing found.';
+	search.value = '';
+	search.dispatch('input');
+	return found === 1 && none && pickItems().length === 2;
+} )() );
+pickItems()[1].click();
+check( '...a key that is chosen is the source of the component, with no instruction to make it - and the dialog of the source closes, the one below it does not and shows the new source', componentAt( [ 0, 0, 0 ] ).source === '/template/page-home/hero/subtitle' && componentAt( [ 0, 0, 0 ] ).create === undefined && componentAt( [ 0, 0, 0 ] ).text === null
+	&& pickerBox().open === false && dialogBox().open === true && paneOf('content').querySelector('.builder-source-current').textContent === '/template/page-home/hero/subtitle' && changes === 1 );
+
+sourceButton( paneOf('content') ).click();
+buttonOf( pickerStrip(), 'Create new' ).click();
+const fresh = function( selector ) { return pickerPane('new').querySelector( selector ) };
+check( 'Create new: a new key, named by the kind of the component and numbered where the section has the name, with the key it makes shown and no size - a key has none', shownTab( pickerStrip(), 'builder-picker' ) === 'new' && fresh('.builder-new-title').textContent === 'New key' && fresh('.builder-new-name').value === 'title-2'
+	&& fresh('.builder-new-uri').textContent === '/template/page-home/hero/title-2' && fresh('.builder-new-message').textContent === '' && fresh('.builder-new-use').disabled === false && fresh('.builder-new-use').textContent === 'Use it' && fresh('.builder-new-size').hidden === true );
+const typed = function( text ) { fresh('.builder-new-name').value = text; fresh('.builder-new-name').dispatch('input') };
+typed('Bad Name');
+const bad = fresh('.builder-new-message').textContent === words['/_admin/builder/source/name-grammar'] && fresh('.builder-new-use').disabled === true;
+typed('title');
+check( '...a name that will not do says why - the grammar, a name the section has - and the button is off', bad && fresh('.builder-new-message').textContent === words['/_admin/builder/source/name-taken'] && fresh('.builder-new-use').disabled === true );
+typed('cta');
+check( '...a name that will do shows the key it makes', fresh('.builder-new-uri').textContent === '/template/page-home/hero/cta' && fresh('.builder-new-message').textContent === '' && fresh('.builder-new-use').disabled === false );
+fresh('.builder-new-use').click();
+check( '...and using it makes the key the source, with what it is made with: the label of the component for its text - the dialog closes', componentAt( [ 0, 0, 0 ] ).source === '/template/page-home/hero/cta' && componentAt( [ 0, 0, 0 ] ).create.value === 'Title' && pickerBox().open === false
+	&& paneOf('content').querySelector('.builder-source-current').textContent === '/template/page-home/hero/cta' );
+
+sourceButton( paneOf('content') ).click();
+buttonOf( pickerStrip(), 'Static' ).click();
+const fixedField = function() { return pickerPane('fixed').querySelector('input') };
+check( 'Static: a value that stands in the template - a field with a hint and a button to use it', shownTab( pickerStrip(), 'builder-picker' ) === 'fixed' && labelsIn( pickerPane('fixed') ) === 'Fixed value' && fixedField().value === '' && buttonOf( pickerPane('fixed'), 'Use it' ).textContent === 'Use it'
+	&& pickerPane('fixed').querySelector('.nino-admin-hint').textContent === words['/_admin/builder/hint/fixed'] );
+fixedField().value = 'Mehr';
+const used = pressKey( fixedField(), 'Enter' );
+check( '...the value is the text of the call and no source - Enter uses it as the button does, and goes no further: the key is not for the button the dialog gives the focus back to -, and the row shows it in quotes', used.defaultPrevented === true && componentAt( [ 0, 0, 0 ] ).text === 'Mehr' && componentAt( [ 0, 0, 0 ] ).source === '' && componentAt( [ 0, 0, 0 ] ).create === undefined && pickerBox().open === false
+	&& paneOf('content').querySelector('.builder-source-current').textContent === '“Mehr”' );
+sourceButton( paneOf('content') ).click();
+check( '...and a source that is a fixed value opens on the tab for it, with the value in the field', shownTab( pickerStrip(), 'builder-picker' ) === 'fixed' && fixedField().value === 'Mehr' );
+screen.getElementById('builder-picker-close').click();
+check( '...closing the dialog of the source gives no answer', pickerBox().open === false && dialogBox().open === true && componentAt( [ 0, 0, 0 ] ).text === 'Mehr' && changes === 3 );
+
+doc = open();
+builder._renderEditor();
+builder._openSettings( [ 0 ] );
+buttonOf( paneOf('background'), 'Source' ).click();
+check( 'the picture behind a section is chosen in the same dialog, with the tabs of a picture: Choose a value and Create new - no Static', JSON.stringify( tabsOf( pickerStrip(), 'builder-picker' ) ) === '[["pick","Choose a value"],["new","Create new"]]'
+	&& pickerPane('pick').querySelector('.builder-label').textContent === 'Image slot' && pickerPane('pick').querySelector('input[type="search"]').getAttribute('aria-label') === 'Find an image slot' && pickerPane('pick').querySelector('.builder-source-current').textContent === '/template/page-home/hero/background' );
+check( '...the slots start with those of the section, each with the picture it has as a small thumbnail - none where it has none - and the word for an empty one', ( function() {
+	const search = pickerPane('pick').querySelector('input[type="search"]');
+	const first = pickItems().length === 1 && pickItems()[0].querySelector('img').getAttribute('src') === '/uploads/hero.1600x900.jpg' && pickItems()[0].querySelector('img').getAttribute('alt') === '' && pickItems()[0].classList.contains('is-current');
+	search.value = '';
+	search.dispatch('input');
+	return first && pickItems().length === 2 && pickItems()[1].querySelector('img') === null && pickItems()[1].querySelector('.builder-pick-sub').textContent === 'Logo – no picture yet';
+} )() );
+pickItems()[1].click();
+check( '...a slot that is chosen is the picture, and the focus stays - the row, the preview and the focus below it follow', builder._doc.model.blocks[0].background.slot === '/project/logo/header/image' && builder._doc.model.blocks[0].background.focus === 5 && builder._doc.model.blocks[0].background.create === undefined && pickerBox().open === false
+	&& paneOf('background').querySelector('.builder-source-current').textContent === '/project/logo/header/image' );
+
+doc = open();
+builder._openSettings( [ 0 ] );
+buttonOf( paneOf('background'), 'Source' ).click();
+buttonOf( pickerStrip(), 'Create new' ).click();
+check( 'a new slot has a name of the section\'s kind, and a size - 1600 by 900 to start with', fresh('.builder-new-title').textContent === 'New image slot' && fresh('.builder-new-name').value === 'background-2' && fresh('.builder-new-uri').textContent === '/template/page-home/hero/background-2'
+	&& fresh('.builder-new-size').hidden === false && fresh('.builder-new-width').value === '1600' && fresh('.builder-new-height').value === '900' && fresh('.builder-new-width-label').textContent === words['/_admin/common/label/width'] );
+fresh('.builder-new-width').value = '800';
+fresh('.builder-new-width').dispatch('input');
+fresh('.builder-new-height').value = '400';
+fresh('.builder-new-height').dispatch('input');
+fresh('.builder-new-use').click();
+check( '...using it makes the slot the picture, with what it is made with: the label and the size', builder._doc.model.blocks[0].background.slot === '/template/page-home/hero/background-2' && builder._doc.model.blocks[0].background.focus === 5
+	&& JSON.stringify( builder._doc.model.blocks[0].background.create ) === '{"label":"Background","width":800,"height":400}' && pickerBox().open === false );
+check( 'a slot is no slot where a segment of it starts with a digit, and the dialog says so before the server does: a section id of 2col blames the section - a name of 2x blames the name, not the section - and a key may have such a name', ( function() {
+	const shown = function( id, name, kind ) {
+		doc = open();
+		builder._doc.model.blocks[0].id = id;
+		builder._openSettings( [ 0 ] );
+		buttonOf( paneOf('background'), 'Source' ).click();
+		buttonOf( pickerStrip(), 'Create new' ).click();
+		if( kind === 'key' ) {
+			pickerBox().open = false;
+			builder._doc.model.blocks[0].cols[0].components.length = 1;
+			builder._openSettings( [ 0, 0, 0 ] );
+			sourceButton( paneOf('content') ).click();
+			buttonOf( pickerStrip(), 'Create new' ).click();
+		}
+		typed( name );
+		return { message : fresh('.builder-new-message').textContent, disabled : fresh('.builder-new-use').disabled };
+	};
+	const digitSection = shown( '2col', 'background', 'slot' );
+	const digitName = shown( 'intro', '2x', 'slot' );
+	const keyDigitName = shown( 'intro', '2x', 'key' );
+	return digitSection.message === words['/_admin/builder/source/name-slot'] && digitSection.disabled === true && digitName.message === words['/_admin/builder/source/name-slot-name'] && digitName.disabled === true && keyDigitName.message === '' && keyDigitName.disabled === false;
+} )() );
+check( 'the slots of the project come with the picture they have for the thumbnail: the url, and none where there is no picture', ( function() {
+	doc = open();
+	builder._openSettings( [ 0 ] );
+	buttonOf( paneOf('background'), 'Source' ).click();
+	pickerPane('pick').querySelector('input[type="search"]').value = '';
+	pickerPane('pick').querySelector('input[type="search"]').dispatch('input');
+	return pickItems().map( function( item ) { return item.querySelector('img') === null ? '' : item.querySelector('img').getAttribute('src') } ).join() === '/uploads/hero.1600x900.jpg,';
 } )() );
 
 doc = open();
-fields = [];
-builder._openSettings( [ 0, 0, 0 ] );
-check( 'the form of a component has its source, then the attributes of its schema, then the classes of its own', fields.map( function( entry ) { return entry.label } ).join() === 'Fixed value,Level,Style,Class of the section' );
-
-// The source field is looked at where the component form makes it
-const sources = [];
-const realSource = builder._sourceField;
-builder._sourceField = function( options ) { sources.push( options ); return loose() };
-builder._openSettings( [ 0, 0, 0 ] );
-check( 'a component of the text kind is given a source field of the text kind, over the section it stands in', sources[0].kind === 'text' && sources[0].value === '/template/page-home/hero/title' && sources[0].section.id === 'hero' && sources[0].fields === null && sources[0].text === null && sources[0].label === 'Title' && sources[0].name === 'title' );
-sources[0].onPick( '/template/page-home/hero/title-2', { value : 'Welcome' } );
-check( 'picking a source sets it, with what the key is made with where it is new', builder._doc.model.blocks[0].cols[0].components[0].source === '/template/page-home/hero/title-2' && builder._doc.model.blocks[0].cols[0].components[0].create.value === 'Welcome' );
-sources[0].onPick( '/template/page-home/hero/title', null );
-check( '...and an old one takes the instruction to make it away again', builder._doc.model.blocks[0].cols[0].components[0].create === undefined );
-sources[0].onFixed( 'Mehr' );
-check( 'a fixed value is the text of the call and no source', builder._doc.model.blocks[0].cols[0].components[0].text === 'Mehr' && builder._doc.model.blocks[0].cols[0].components[0].source === '' );
-sources[0].onPick( '/template/page-home/hero/title', null );
-check( '...a source after it is a source again, and no fixed value', builder._doc.model.blocks[0].cols[0].components[0].text === null && builder._doc.model.blocks[0].cols[0].components[0].source === '/template/page-home/hero/title' );
-sources.length = 0;
+builder._renderEditor();
 builder._openSettings( [ 1, 1, 0 ] );
-check( 'in a stack the source field has the fields of the type, and the image component a field of the image kind', sources[0].kind === 'image' && Object.keys( sources[0].fields ).join() === 'title,summary,image,price' && sources[0].value === 'image' );
-sources.length = 0;
+sourceButton( paneOf('content') ).click();
+check( 'in a loop the source of a picture is a field of the element first - the fields of the type that hold a picture, and none - then the slots of the project', ( function() {
+	const field = controlOf( pickerPane('pick'), 'Field of the element' );
+	return pickerPane('pick').querySelector('.builder-source-current').textContent === 'image' && field.el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=none,image=image' && valueAt( pickerPane('pick'), 'Field of the element' ) === 'image'
+		&& field.el.closest('label').querySelector('.nino-admin-hint').textContent === words['/_admin/builder/hint/field-image'] && pickerPane('pick').querySelector('.builder-label').textContent === 'Image slot' && pickItems().length === 0;
+} )() );
+change( pickerPane('pick'), 'Field of the element', '' );
+check( '...and the choice of none is the choice of no source', componentAt( [ 1, 1, 0 ] ).source === '' && pickerBox().open === false && paneOf('content').querySelector('.builder-source-current').textContent === 'none' );
+builder._openSettings( [ 1, 1, 1 ] );
+sourceButton( paneOf('content') ).click();
+check( 'the source of a text in a loop is a field of the element that holds a text, the id of the element, or a key - the keys of the section first', controlOf( pickerPane('pick'), 'Field of the element' ).el.children.map( function( option ) { return option.value } ).join() === ',title,summary,.id'
+	&& valueAt( pickerPane('pick'), 'Field of the element' ) === 'title' && pickItems().length === 2 && ( change( pickerPane('pick'), 'Field of the element', 'summary' ), componentAt( [ 1, 1, 1 ] ).source === 'summary' ) );
 builder._openSettings( [ 1, 1, 3 ] );
-check( '...the button\'s source is of the text kind, with the value and the fixed text it has', sources[0].kind === 'text' && sources[0].value === '.uri' && sources[0].text === 'Mehr' );
-builder._sourceField = realSource;
+check( 'the button in a loop has the source it has and the fixed text it has: the dialog opens on the fixed value', paneOf('content').querySelector('.builder-source-current').textContent === '.uri' && ( sourceButton( paneOf('content') ).click(), shownTab( pickerStrip(), 'builder-picker' ) === 'fixed' && fixedField().value === 'Mehr' ) );
+builder._openSettings( [ 1, 1, 3 ] );
+buttonOf( paneOf('properties'), 'Source' ).click();
+check( 'the link of a button in a loop may be the uri or the id of the element - or a fixed address, which is a value that stands in the template', controlOf( pickerPane('pick'), 'Field of the element' ).el.children.map( function( option ) { return option.value } ).join() === ',title,summary,.id,.uri'
+	&& JSON.stringify( tabsOf( pickerStrip(), 'builder-picker' ).map( function( tab ) { return tab[0] } ) ) === '["pick","fixed"]' );
+buttonOf( pickerStrip(), 'Static' ).click();
+fixedField().value = '/contact';
+buttonOf( pickerPane('fixed'), 'Use it' ).click();
+check( '...an attribute has no key to make: it has no Create new, and what is used as a fixed value is written as it is', componentAt( [ 1, 1, 3 ] ).attributes.href === '/contact' && pickerBox().open === false && paneOf('properties').querySelector('.builder-source-current').textContent === '“/contact”' );
 
 doc = open();
-fields = [];
-const htmlBefore = dialogs.length;
-builder._openSettings( [ 2 ] );
-check( 'a block of html has no form: it has the editor, which is a dialog of its own, titled as such', dialogs.length === htmlBefore + 1 && last().title === words['/_admin/builder/html/title'] && fields.length === 0 );
+builder._openSettings( [ 0, 0, 2 ] );
+buttonOf( paneOf('properties'), 'Source' ).click();
+pickItems();
+check( 'the link of a button outside a loop is a key; typed addresses are shown as the fixed values they are', JSON.stringify( tabsOf( pickerStrip(), 'builder-picker' ).map( function( tab ) { return tab[0] } ) ) === '["pick","fixed"]' && pickerPane('pick').querySelector('.builder-source-current').textContent === '/_nino/webpage/contact/uri'
+	&& pickerPane('pick').querySelector('.builder-label').textContent === 'Text key' );
 
-// What the editor of the block shows is caught where it is made
-const areas = [];
-const realOne = builder._one;
-builder._one = function( root, selector ) {
-	const found = realOne.call( builder, root, selector );
-	if( selector === '.builder-html-source' )
-		areas.push( found );
-	return found;
+doc = open();
+builder._keys = [];
+builder._keysAnswered = true;
+builder._openSettings( [ 0, 0, 0 ] );
+sourceButton( paneOf('content') ).click();
+check( 'where the keys of the project may not be read the key is typed: a field with the hint, and a key that will do is the answer', ( function() {
+	const field = controlOf( pickerPane('pick'), 'Text key' );
+	field.el.value = 'nothing';
+	field.el.dispatch('input');
+	field.el.dispatch('change');
+	const refused = componentAt( [ 0, 0, 0 ] ).source === '/template/page-home/hero/title';
+	field.el.value = '/template/page-home/hero/other';
+	field.el.dispatch('change');
+	return field.el.closest('label').querySelector('.nino-admin-hint').textContent === words['/_admin/builder/hint/typed'] && refused && componentAt( [ 0, 0, 0 ] ).source === '/template/page-home/hero/other' && pickerBox().open === false;
+} )() );
+builder._keysAnswered = false;
+
+console.log( '\nThe dialog of a source as a dialog of the workbench could take it over' );
+
+// The options are a plain object and nothing of the form that opened it: the dialog answers by the two functions it was given
+doc = open();
+const answer = [];
+const plainOptions = function( more ) {
+	return Object.assign( { kind : 'text', fixed : true, create : true, fields : null, value : '/template/page-home/hero/title', text : null, section : builder._doc.model.blocks[0], name : 'title', seed : 'Title',
+		onPick : function( source, create ) { answer.push( [ source, create ] ) }, onFixed : function( text ) { answer.push( text ) } }, more || {} );
 };
-doc = open();
-builder._openSettings( [ 2 ] );
-builder._one = realOne;
-check( '...with the source of the block in it, and applying it sends that source to be read again', areas.length === 1 && areas[0].value === builder._doc.model.blocks[2].source && ( last().actions[0].onClick( function() {} ), requests.length === 1
-	&& requests[0].action === 'builder/source' && requests[0].payload.model.blocks[2].source === builder._doc.model.blocks[2].source && requests[0].payload.model.blocks[2].edited === true ) );
+builder._sourceDialog( plainOptions() );
+pickItems()[1].click();
+buttonOf( pickerStrip(), 'Create new' ).click();
+fresh('.builder-new-use').click();
+buttonOf( pickerStrip(), 'Static' ).click();
+fixedField().value = 'Hello';
+buttonOf( pickerPane('fixed'), 'Use it' ).click();
+check( 'a text: a key from the list, a new key with what it is made with, a fixed value - the answers are the arguments of the two functions, and each closes the dialog', JSON.stringify( answer ) === '[["/template/page-home/hero/subtitle",null],["/template/page-home/hero/title-2",{"value":"Title"}],"Hello"]' && pickerBox().open === false );
+answer.length = 0;
+builder._sourceDialog( plainOptions( { kind : 'image', fixed : false, name : 'background', seed : 'Background', value : '' } ) );
+pickerPane('pick').querySelector('input[type="search"]').value = '';
+pickerPane('pick').querySelector('input[type="search"]').dispatch('input');
+pickItems()[0].click();
+buttonOf( pickerStrip(), 'Create new' ).click();
+fresh('.builder-new-use').click();
+check( 'a picture: a slot from the list, a new slot with its label and its size - and no tab for a fixed value where the options say there is none', JSON.stringify( answer ) === '[["/template/page-home/hero/background",null],["/template/page-home/hero/background-2",{"label":"Background","width":1600,"height":900}]]'
+	&& answer.length === 2 );
+builder._sourceDialog( plainOptions( { create : false, fixed : false } ) );
+check( 'a source that may not be made new or typed in has the list alone', JSON.stringify( tabsOf( pickerStrip(), 'builder-picker' ).map( function( tab ) { return tab[0] } ) ) === '["pick"]' );
+builder._sourceDialog( plainOptions( { fields : { title : { type : 'string' }, image : { type : 'image' } }, value : 'title', kind : 'href' } ) );
+check( 'the fields of the type of a loop are what the options say they are: a link may be the id and the uri, a text the id', controlOf( pickerPane('pick'), 'Field of the element' ).el.children.map( function( option ) { return option.value } ).join() === ',title,.id,.uri' && valueAt( pickerPane('pick'), 'Field of the element' ) === 'title' );
+builder._sourceDialog( plainOptions() );
+builder._closeDialog();
+check( 'the dialog of a source goes with the dialog it was opened from', pickerBox().open === false );
+console.log( '\nThe editor of HTML+' );
 
-const realFragment = builder._fragment;
-builder._fragment = function( name ) { return name === 'skeleton' ? { outerHTML : '<div>\n</div>' } : realFragment.call( builder, name ) };
-builder._one = function( root, selector ) {
-	const found = realOne.call( builder, root, selector );
-	if( selector === '.builder-html-source' )
-		areas.push( found );
-	return found;
-};
 doc = open();
-areas.length = 0;
+builder._renderEditor();
+builder._openSettings( [ 2 ] );
+check( 'a block of html has no form: it has the editor, which is a dialog of its own, titled as such, wide, with nothing in it to choose but the markup', dialogText('builder-dialog-kind') === words['/_admin/builder/html/title'] && dialogBox().classList.contains('is-wide') && screen.getElementById('builder-dialog-tabs').hidden === true
+	&& JSON.stringify( labelList( dialogContent() ) ) === JSON.stringify( [ 'The markup of the block' ] ) && dialogContent().querySelector('.builder-html-note').textContent === words['/_admin/builder/html/note'] );
+const markup = function() { return dialogContent().querySelector('.builder-html-source') };
+const applyButton = function() { return screen.getElementById('builder-dialog-actions').children[0] };
+check( '...with the source of the block in it, and applying it sends that source to be read again', markup().value === builder._doc.model.blocks[2].source && applyButton().textContent === 'Apply' && ( applyButton().click(), requests.length === 1
+	&& requests[0].action === 'builder/source' && requests[0].payload.model.blocks[2].source === builder._doc.model.blocks[2].source && requests[0].payload.model.blocks[2].edited === true && dialogBox().open === true ) );
+
+doc = open();
 builder._editBlock( null );
-builder._one = realOne;
-builder._fragment = realFragment;
-check( 'a new block of html starts as the skeleton of the template, which is no section, and is titled as a new one', last().title === words['/_admin/builder/html/title-new'] && areas.length === 1 && areas[0].value === '<div>\n</div>' );
-last().actions[0].onClick( function() {} );
+check( 'a new block of html starts as the skeleton of the template, which is no section, and is titled as a new one', dialogText('builder-dialog-kind') === words['/_admin/builder/html/title-new'] && markup().value === '<div>\n</div>' && markup().value === screen.getElementById('builder-tpl-skeleton').content.firstElementChild.outerHTML );
+applyButton().click();
 check( '...and is applied as a block of html without a reason, to be read again', requests.length === 1 && requests[0].payload.model.blocks[4].kind === 'html' && requests[0].payload.model.blocks[4].reason === null && requests[0].payload.model.blocks[4].edited === true );
 
+doc = open();
+builder._editBlock( [ 0 ] );
+requests[0].callback( 200, { parts : [ { kind : 'section', block : 0, source : '<section id="hero"></section>' } ] } );
+check( 'a section is edited as the markup the builder writes for it: the server says, and the note says what applying it does', markup().value === '<section id="hero"></section>' && dialogContent().querySelector('.builder-html-note').textContent === words['/_admin/builder/html/note-section'] );
+applyButton().click();
+requests[1].callback( 400, { code : 'builder_invalid', params : [ 'block 1 is neither a section nor a block of html' ] } );
+check( '...and what the server refuses it for is said in the dialog, which stays open', dialogText('builder-dialog-problems').indexOf( 'block 1' ) !== -1 && screen.getElementById('builder-dialog-problems').hidden === false && dialogBox().open === true );
 console.log( '\nThe editor of an [html] component' );
 
 doc = open();
 const content = { name : 'html', source : '', text : null, attributes : { 'class' : '' }, content : '<p>Hello <strong>world</strong></p>' };
 builder._doc.model.blocks[0].cols[0].components.push( content );
-const made = [];
+const editors = [];
 sandbox.Nino.admin.htmlEditor = { create : function( mount, value, maxlength, rows, format ) {
 	const editor = { value : value, mount : mount, maxlength : maxlength, format : format, getValue : function() { return editor.value }, destroy : function() {} };
-	made.push( editor );
+	editors.push( editor );
 	return editor;
 } };
 builder._openSettings( [ 0, 0, builder._doc.model.blocks[0].cols[0].components.length - 1 ] );
-check( 'the content of an [html] component is edited in the workbench\'s HTML editor, in the blocks format, with a limit above none (an editor of none trims every edit to nothing)', made.length === 1
-	&& made[0].value === '<p>Hello <strong>world</strong></p>' && made[0].format === 'blocks' && made[0].maxlength > 0 && made[0].maxlength === builder.CONTENT_MAX );
-made[0].value = '<p>Hello again</p>';
-made[0].mount.dispatch( 'input' );
+check( 'the content of an [html] component is edited in the workbench\'s HTML editor, in the blocks format, with a limit above none (an editor of none trims every edit to nothing)', editors.length === 1
+	&& editors[0].value === '<p>Hello <strong>world</strong></p>' && editors[0].format === 'blocks' && editors[0].maxlength > 0 && editors[0].maxlength === builder.CONTENT_MAX );
+editors[0].value = '<p>Hello again</p>';
+editors[0].mount.dispatch( 'input' );
 check( '...and what is typed goes into the component, which is a change', content.content === '<p>Hello again</p>' && changes === 1 && builder._unsaved( builder._doc ) === true );
-const dialogOfContent = last();
-dialogOfContent.onClose();
+builder._closeDialog();
 check( '...and closed after typing it stays what was typed', content.content === '<p>Hello again</p>' );
 
 doc = open();
 const plain = { name : 'html', source : '', text : null, attributes : { 'class' : '' }, content : '<h2>Heading</h2>' };
 builder._doc.model.blocks[0].cols[0].components.push( plain );
 builder._doc.saved = JSON.stringify( builder._doc.model );
-made.length = 0;
+editors.length = 0;
 const changesBefore = changes;
 builder._openSettings( [ 0, 0, builder._doc.model.blocks[0].cols[0].components.length - 1 ] );
-made[0].value = '<p>Heading</p>';
-last().onClose();
+editors[0].value = '<p>Heading</p>';
+builder._closeDialog();
 check( 'a dialog of an [html] component opened and closed without typing leaves the content byte for byte (the editor\'s normal form of <h2>Heading</h2> is another) and the document is not unsaved', plain.content === '<h2>Heading</h2>' && changes === changesBefore && builder._unsaved( builder._doc ) === false );
-made.length = 0;
+editors.length = 0;
 builder._openSettings( [ 0, 0, builder._doc.model.blocks[0].cols[0].components.length - 1 ] );
-made[0].value = '<h2>Heading!</h2>';
-made[0].mount.dispatch( 'input' );
-last().onClose();
+editors[0].value = '<h2>Heading!</h2>';
+editors[0].mount.dispatch( 'input' );
+builder._closeDialog();
 check( '...and one with typing writes the value, and that is a change', plain.content === '<h2>Heading!</h2>' && changes > changesBefore && builder._unsaved( builder._doc ) === true );
 delete sandbox.Nino.admin.htmlEditor;
 
@@ -836,46 +2162,42 @@ check( '...and where no route answers a GET there is no link', anchor.hidden ===
 console.log( '\nThe list and the copy of a template' );
 
 doc = open();
+builder._files = [ { file : 'page-home', name : 'Home', editable : true } ];
+builder._duplicateTemplate( 'page-home' );
+const copyName = function() { return controlOf( dialogContent(), 'Name' ) };
+const problemsText = function() { return dialogText('builder-dialog-problems') };
+const copyButton = function() { return screen.getElementById('builder-dialog-actions').children[0] };
 check( 'a template is copied from the list: the dialog asks for the name of the new one, with the name of the old one in it, and sends the old file and the new name', ( function() {
-	builder._files = [ { file : 'page-home', name : 'Home', editable : true } ];
-	fields = [];
-	builder._duplicateTemplate( 'page-home' );
-	const dialog = last();
-	const asked = field( 'Name' );
-	choose( 'Name', 'My copy' );
+	const asked = copyName().el.value;
+	change( dialogContent(), 'Name', 'My copy' );
 	requests = [];
-	dialog.actions[0].onClick( function( text ) { said.push( text ) } );
-	return dialog.title === 'Duplicate' && asked.args[2] === 'Copy of Home' && dialog.actions.length === 1 && dialog.actions[0].label === 'Duplicate'
-		&& requests.length === 1 && requests[0].action === 'builder/duplicate' && JSON.stringify( requests[0].payload ) === '{"file":"page-home","name":"My copy"}';
+	copyButton().click();
+	return dialogText('builder-dialog-kind') === 'Duplicate' && asked === 'Copy of Home' && texts( screen.getElementById('builder-dialog-actions').children ) === 'Duplicate,Cancel' && screen.getElementById('builder-dialog-tabs').hidden === true
+		&& requests.length === 1 && requests[0].action === 'builder/duplicate' && JSON.stringify( requests[0].payload ) === '{"file":"page-home","name":"My copy"}' && dialogBox().open === true;
 } )() );
 check( '...keys and image slots that are in the way are named in the dialog after the sentence of the code, in the panel\'s own words: the server answers the bare uris, the keys and then the slots', ( function() {
-	const before = said.length;
 	requests[0].callback( 409, { code : 'builder_key_exists', params : [ [ '/template/page-home-copy/hero/title', '/template/page-home-copy/hero/subtitle' ], [ '/template/page-home-copy/hero/background' ] ] } );
-	return said.slice( before ).join() === words['/_admin/builder/error/key-exists']
+	return screen.getElementById('builder-dialog-problems').hidden === false && problemsText() === words['/_admin/builder/error/key-exists']
 		+ ' '+ words['/_admin/builder/error/keys-in-the-way'].replace( '%s', '/template/page-home-copy/hero/title, /template/page-home-copy/hero/subtitle' )
 		+ ' '+ words['/_admin/builder/error/slots-in-the-way'].replace( '%s', '/template/page-home-copy/hero/background' );
 } )() );
 check( '...a list with nothing in it says nothing of its kind, and no sentence of the server\'s is shown: an answer in sentences names nothing', ( function() {
-	const before = said.length;
 	requests[0].callback( 409, { code : 'builder_key_exists', params : [ [], [ '/template/page-home-copy/hero/background' ] ] } );
+	const first = problemsText();
 	requests[0].callback( 409, { code : 'builder_key_exists', params : [ 'the key "/template/page-home-copy/hero/title" is there already' ] } );
-	const lines = said.slice( before );
-	return lines.length === 2 && lines[0] === words['/_admin/builder/error/key-exists']+ ' '+ words['/_admin/builder/error/slots-in-the-way'].replace( '%s', '/template/page-home-copy/hero/background' )
-		&& lines[1] === words['/_admin/builder/error/key-exists'];
+	return first === words['/_admin/builder/error/key-exists']+ ' '+ words['/_admin/builder/error/slots-in-the-way'].replace( '%s', '/template/page-home-copy/hero/background' ) && problemsText() === words['/_admin/builder/error/key-exists'];
 } )() );
 check( '...a key or a slot that a panel refused - another request made it in the meantime - is named by its uri after the sentence of its code, and params of another status are not shown', ( function() {
-	const before = said.length;
 	requests[0].callback( 409, { code : 'builder_slot', params : [ '/template/page-home-copy/hero/background' ] } );
+	const slot = problemsText();
 	requests[0].callback( 409, { code : 'builder_key', params : [ '/template/page-home-copy/hero/title' ] } );
+	const key = problemsText();
 	requests[0].callback( 403, { code : 'builder_permission', params : [ '/_admin/keys/manage' ] } );
-	const lines = said.slice( before );
-	return lines.length === 3 && lines[0] === words['/_admin/builder/error/slot']+ ' /template/page-home-copy/hero/background' && lines[1] === words['/_admin/builder/error/key']+ ' /template/page-home-copy/hero/title'
-		&& lines[2] === words['/_admin/builder/error/permission'];
+	return slot === words['/_admin/builder/error/slot']+ ' /template/page-home-copy/hero/background' && key === words['/_admin/builder/error/key']+ ' /template/page-home-copy/hero/title' && problemsText() === words['/_admin/builder/error/permission'];
 } )() );
 check( '...a name that makes a file that is there is said in the dialog, which stays open - and the copy is opened where it was made', ( function() {
-	const before = said.length;
 	requests[0].callback( 409, { code : 'builder_exists' } );
-	const refused = said.slice( before ).join() === words['/_admin/builder/error/exists'];
+	const refused = problemsText() === words['/_admin/builder/error/exists'] && dialogBox().open === true;
 	requests = [];
 	const route = [];
 	const realGo = sandbox.Nino.admin.router.go;
@@ -886,11 +2208,15 @@ check( '...a name that makes a file that is there is said in the dialog, which s
 } )() );
 check( '...and a template the project has no file for is copied from its file name', ( function() {
 	builder._files = [];
-	fields = [];
 	builder._duplicateTemplate( 'page-none' );
-	return field( 'Name' ).args[2] === 'Copy of page-none';
+	return copyName().el.value === 'Copy of page-none';
 } )() );
-
+builder._files = [ { file : 'page-home', name : 'Home', editable : true } ];
+builder._duplicateTemplate( 'page-home' );
+requests = [];
+copyButton().click();
+requests[0].callback( 200, { model : { file : 'page-home-copy' } } );
+check( 'a copy that was made closes the dialog and opens the copy', dialogBox().open === false && requests.some( function( request ) { return request.action === 'builder/load' && request.payload.file === 'page-home-copy' } ) );
 check( 'the list has a name, a file, the frames, the sections and the routes, and the buttons - no count of blocks of HTML+, no column for whether the file is read completely - sorted as the server sorts it', ( function() {
 	let given = null;
 	const realTable = sandbox.Nino.adminUi.table;
@@ -921,30 +2247,27 @@ check( '...a template that is not read completely has a mark by its name, with t
 	return warnings.join( '|' ) === '|Line 3: The section has more than one row' && warned.hidden === false && warned.title === 'Line 3: The section has more than one row' && warned.text === 'page-b' && marks['.builder-name-warning'].hidden === true;
 } )() );
 check( '...and the three buttons of a row: open, duplicate, delete - the first two off for a file that is no page template of the grammar', ( function() {
-	const made = [];
-	const realEl = builder._el;
-	builder._el = function( tag, className, text ) { const el = realEl.apply( builder, arguments ); if( tag === 'button' ) made.push( { text : text, el : el } ); return el };
-	builder._rowActions( { file : 'page-a', editable : false } );
-	builder._el = realEl;
-	return made.map( function( button ) { return button.text } ).join() === 'Open,Duplicate,Delete' && made[0].el.disabled === true && made[1].el.disabled === true && made[2].el.disabled !== true;
+	const buttons = builder._rowActions( { file : 'page-a', editable : false } ).querySelectorAll('button');
+	return texts( buttons ) === 'Open,Duplicate,Delete' && buttons[0].disabled === true && buttons[1].disabled === true && buttons[2].disabled !== true;
 } )() );
 
 console.log( '\nThe tools of the frames, and the buttons that add' );
 
 doc = open();
-const toolButtons = {};
-const oneBefore = builder._one;
-builder._one = function( root, selector ) { const found = oneBefore.call( builder, root, selector ); toolButtons[selector] = found; return found };
+builder._renderEditor();
 // The tools of one frame, as they are when it is drawn - drawing the preview again, as a change does, makes others
 const toolsOf = function( path ) {
 	const found = {};
-	builder._tools( path );
-	[ 'settings', 'html', 'up', 'down', 'duplicate', 'delete' ].forEach( function( name ) { found[name] = toolButtons['[data-tool="'+ name+ '"]'] } );
+	const bar = builder._tools( path );
+	[ 'settings', 'html', 'up', 'down', 'duplicate', 'delete' ].forEach( function( name ) { found[name] = bar.querySelector('[data-tool="'+ name+ '"]') } );
+	found.bar = bar;
 	return found;
 };
 const component = toolsOf( [ 0, 0, 0 ] );
 check( 'the tools of a frame are the buttons of its toolbar: the first component cannot go up, has no tool for HTML+, and has the others', component.up.disabled === true && component.down.disabled === false && component.html.hidden === true && component.settings.hidden === false
 	&& component.duplicate.disabled === false && component.delete.disabled === false );
+check( '...each is an icon with the word for its title and its label', component.bar.getAttribute('role') === 'toolbar' && component.bar.getAttribute('aria-label') === 'Tools' && unnamed( component.bar ).length === 0 && component.bar.querySelectorAll('button').length === 6
+	&& component.bar.querySelectorAll('button').map( function( button ) { return button.title } ).join() === 'Settings,Edit as HTML+,Move up,Move down,Duplicate,Delete' );
 component.down.dispatch( 'click' );
 check( '...and pressed they work on the frame: down moves the title behind the subtitle', builder._doc.model.blocks[0].cols[0].components.map( function( node ) { return node.name } ).join() === 'subtitle,title,button' && changes === 1 );
 component.duplicate.dispatch( 'click' );
@@ -952,13 +2275,17 @@ check( '...duplicate copies what stands first now, behind it', builder._doc.mode
 component.delete.dispatch( 'click' );
 check( '...delete takes it away at once, as it holds nothing', builder._doc.model.blocks[0].cols[0].components.map( function( node ) { return node.name+ ':'+ node.source.split('/').pop() } ).join() === 'subtitle:subtitle-2,title:title,button:name' && changes === 3 && questions.length === 0 );
 const section = toolsOf( [ 0 ] );
-const loop = toolsOf( [ 1, 1, 'x' ] );
-check( 'the tools of a section have one for HTML+ more, and a loop has settings and delete only', section.html.hidden === false && section.up.disabled === true && loop.up.hidden === true && loop.down.hidden === true && loop.duplicate.hidden === true && loop.settings.hidden === false && loop.delete.disabled === false );
+check( 'the tools of a section have one for HTML+ more', section.html.hidden === false && section.up.disabled === true && section.down.disabled === false && section.settings.hidden === false && section.delete.disabled === false );
+check( '...and the loop has none: every frame, every column and every component has its tools in its head, and the loop - which is the status of its column - is not among them', ( function() {
+	const model = builder._doc.model;
+	const frames = model.blocks.length;
+	const cols = model.blocks.reduce( function( sum, block ) { return sum + ( block.cols || [] ).length }, 0 );
+	const components = model.blocks.reduce( function( sum, block ) { return sum + ( block.cols || [] ).reduce( function( inner, col ) { return inner + col.components.length }, 0 ) }, 0 );
+	return preview().querySelectorAll('.builder-tools').length === frames + cols + components && preview().querySelector('.is-loop').querySelector('.builder-tools') === null;
+} )() );
 requests = [];
 section.html.dispatch( 'click' );
 check( '...the one for HTML+ asks the server for the markup of the section', requests.length === 1 && requests[0].action === 'builder/source' );
-builder._one = oneBefore;
-
 doc = open();
 builder._duplicateAt( [ 0 ] );
 check( 'a copy of a section from its tools is a new section: its keys are new, so it may be renamed without moving anything, and it is the selection', builder._doc.model.blocks[1].id === 'hero-2' && builder._fresh['hero-2'] === true && builder._fresh['hero'] !== true
@@ -1005,36 +2332,40 @@ questions[0].onChoose( 'delete' );
 check( '...Delete takes it, with everything in it', builder._doc.model.blocks.length === 3 && builder._doc.model.blocks[0].id === 'services' && builder._same( builder._sel, [] ) );
 questions = [];
 builder._deleteAt( [ 0, 1 ] );
-check( 'a column with a loop asks too, and the loop itself, which takes its components with it', questions.length === 1 && questions[0].title === 'Column' && ( questions[0].onChoose( 'cancel' ), builder._doc.model.blocks[0].cols.length === 2 ) );
+check( 'a column with a loop asks too, and the loop takes its components with it', questions.length === 1 && questions[0].title === 'Column' && ( questions[0].onChoose( 'cancel' ), builder._doc.model.blocks[0].cols.length === 2 ) );
 questions = [];
 builder._deleteAt( [ 0, 1, 'x' ] );
-questions[0].onChoose( 'delete' );
-check( '...a loop that is deleted is gone with its components, and the column is empty and stays', questions[0].title === 'Element loop' && builder._doc.model.blocks[0].cols[1].stack === null && builder._doc.model.blocks[0].cols[1].components.length === 0 && builder._same( builder._sel, [ 0, 1 ] ) );
-questions = [];
+check( '...a loop is no node to delete: it is set to Static in its column, and deleting it does nothing - no question, no change', questions.length === 0 && builder._doc.model.blocks[0].cols[1].stack !== null && builder._doc.model.blocks[0].cols[1].components.length === 4 );
+builder._doc.model.blocks[0].cols[1].stack = null;
+builder._doc.model.blocks[0].cols[1].components = [];
 builder._deleteAt( [ 0, 1 ] );
 check( '...an empty column is deleted without a question', questions.length === 0 && builder._doc.model.blocks[0].cols.length === 1 );
 
 doc = open();
-builder._doc.model.vpa = 'nino-vpa nino-vpa--zoom-soft';
+builder._doc.model.animate = true;
 builder._addSection();
 builder._addCol( [ 0 ] );
 builder._addComponent( [ 0, 0 ], 'button' );
-check( 'a new section is below the last, fresh, with the animation of the template; a column ends the row of its section; a component ends its column - with its key', builder._doc.model.blocks[4].id === 'section' && builder._fresh.section === true && builder._doc.model.blocks[4].settings.vpa === 'zoom-soft'
-	&& builder._doc.model.blocks[0].cols.length === 2 && JSON.stringify( builder._doc.model.blocks[0].cols[1].width ) === '{"s":100,"m":100,"l":100}'
+check( 'a new section is below the last, fresh, with the animation of the template - the bare class where it animates its sections; a column ends the row of its section; a component ends its column - with its key', builder._doc.model.blocks[4].id === 'section' && builder._fresh.section === true && builder._doc.model.blocks[4].settings.vpa === ''
+	&& builder._animationMode( true, builder._doc.model.blocks[4].settings ) === 'like' && builder._doc.model.blocks[0].cols.length === 2 && JSON.stringify( builder._doc.model.blocks[0].cols[1].width ) === '{"s":100,"m":100,"l":100}'
 	&& builder._doc.model.blocks[0].cols[0].components.length === 4 && builder._doc.model.blocks[0].cols[0].components[3].source === '/template/page-home/hero/button' && builder._doc.model.blocks[0].cols[0].components[3].create.value === 'Button' && builder._same( builder._sel, [ 0, 0, 3 ] ) );
 builder._addCol( [ 1 ] );
 builder._addComponent( [ 1, 1 ], 'title' );
 check( '...at the end of the level they are meant for: the column of the services is the third, the component stands last in the loop', builder._doc.model.blocks[1].cols.length === 3 && builder._doc.model.blocks[1].cols[1].components.length === 5 && builder._doc.model.blocks[1].cols[1].components[4].name === 'title'
 	&& builder._doc.model.blocks[1].cols[1].components[4].source === '' && builder._doc.model.blocks[1].cols[1].components[4].create === undefined && builder._doc.model.blocks.length === 5 );
-builder._addLoop( [ 0, 1 ] );
-check( 'a loop in a column that has none is the loop the registry gives, over the first type, and the column keeps its components: it is selected', builder._doc.model.blocks[0].cols[1].stack.name === 'stack' && builder._doc.model.blocks[0].cols[1].stack.source === '/services'
-	&& builder._same( builder._sel, [ 0, 1, 'x' ] ) && builder._doc.model.blocks[0].cols[1].stack.attributes.limit === '0' );
-check( '...and a column that has one gets no second', ( function() {
-	const before = JSON.stringify( builder._doc.model );
-	builder._addLoop( [ 1, 1 ] );
-	return JSON.stringify( builder._doc.model ) === before;
+check( '...the buttons of the preview do the same: a section, a column - and a component, which is chosen from the menu the button opens', ( function() {
+	doc = open();
+	builder._renderEditor();
+	screen.getElementById('builder-add-section').click();
+	preview().children[0].querySelector('.builder-add-col').click();
+	preview().children[0].querySelector('.builder-adds .builder-add-button').click();
+	const menu = screen.getElementById('builder-menu');
+	const opened = menu.hidden === false && menu.getAttribute('role') === 'menu' && menu.children.length === 7 && menu.children.every( function( item ) { return item.getAttribute('role') === 'menuitem' } );
+	buttonOf( menu, 'Button' ).click();
+	return opened && menu.hidden === true && builder._doc.model.blocks.length === 5 && builder._doc.model.blocks[0].cols.length === 2 && builder._doc.model.blocks[0].cols[0].components.length === 4 && builder._doc.model.blocks[0].cols[0].components[3].name === 'button'
+		&& preview().children.length === 5 && changes === 3;
 } )() );
-check( '...a column that was a column of components and became a loop has red sources only where they mean nothing: the keys of its components do', builder._red( builder._doc.model, builder._registry ).length === 0 );
+
 doc = open();
 builder._rename( [ 0 ], 'start' );
 check( 'a section that was saved and is renamed says from where: the server moves its keys, and the sources stay as they are', builder._doc.model.blocks[0].id === 'start' && builder._doc.model.blocks[0].renamedFrom === 'hero'
@@ -1046,27 +2377,6 @@ builder._addComponent( [ 4, 0 ], 'title' );
 builder._rename( [ 4 ], 'faq' );
 check( 'a section made here and renamed is written new: nothing was ever saved under its old name', builder._doc.model.blocks[4].id === 'faq' && builder._doc.model.blocks[4].renamedFrom === undefined && builder._doc.model.blocks[4].cols[0].components[0].source === '/template/page-home/faq/title'
 	&& builder._doc.model.blocks[4].cols[0].components[0].create.value === 'Title' && builder._fresh.faq === true && builder._fresh.section === undefined );
-
-console.log( '\nThe form of the id' );
-
-doc = open();
-fields = [];
-builder._openSettings( [ 1 ] );
-const idField = fields.filter( function( entry ) { return entry.label === 'Id' } ).pop();
-let control = { value : 'x' };
-idField.args[4].onCommit( 'Not A Slug', control );
-check( 'an id that is no slug is put back, and says so', control.value === 'services' && builder._doc.model.blocks[1].id === 'services' && said.pop() === words['/_admin/builder/error/id-slug'] );
-control = { value : 'x' };
-idField.args[4].onCommit( 'contact', control );
-check( '...so is an id another section has', control.value === 'services' && builder._doc.model.blocks[1].id === 'services' && said.pop() === words['/_admin/builder/error/id-taken'] );
-questions = [];
-idField.args[4].onCommit( 'offer', control );
-check( 'a new id for a section that has keys is asked about first, and moved only on the answer', questions.length === 1 && builder._doc.model.blocks[1].id === 'services' );
-questions[0].onChoose( 'cancel' );
-check( '...Cancel puts the field back', control.value === 'services' && builder._doc.model.blocks[1].id === 'services' );
-questions[0].onChoose( 'rename' );
-check( '...Rename moves it', builder._doc.model.blocks[1].id === 'offer' && builder._doc.model.blocks[1].renamedFrom === 'services' );
-
 console.log( '\nSaving the document' );
 
 doc = open();
@@ -1177,31 +2487,6 @@ check( '...but not for a section whose id or sources are not the ones it had: no
 
 console.log( '\nEvery form and menu is drawn' );
 
-// The real fields, the real dialog: over an element that takes anything, every form of every node is made, and the menu of every row
-builder._selectField = keep._selectField;
-builder._switchField = keep._switchField;
-builder._numberField = keep._numberField;
-builder._textField = keep._textField;
-builder._dialog = keep._dialog;
-builder._refreshTab = keep._refreshTab;
-builder._closeDialog = keep._closeDialog;
-builder._dialogProblem = keep._dialogProblem;
-builder._changed = keep._changed;
-[ '_widthSelect', '_hiddenBox', '_sortToggles', '_line' ].forEach( function( name ) { builder[name] = keep[name] } );
-
-check( 'the two arrows of an order are ascending and descending: the one that is on is the order, the one that is pressed is what the loop is told', ( function() {
-	const rows = [];
-	const buttonRow = sandbox.Nino.adminUi.buttonRow;
-	sandbox.Nino.adminUi.buttonRow = function( buttons, current, onChange ) { rows.push( { buttons : buttons, current : current, onChange : onChange } ) };
-	const told = [];
-	builder._sortToggles( true, function( descending ) { told.push( descending ) } );
-	builder._sortToggles( false, function() {} );
-	rows[0].onChange( 'desc' );
-	rows[0].onChange( 'asc' );
-	sandbox.Nino.adminUi.buttonRow = buttonRow;
-	return rows[0].current === 'desc' && rows[1].current === 'asc' && Object.keys( rows[0].buttons ).join() === 'asc,desc' && told.join() === 'true,false';
-} )() );
-
 const drawn = function( what, run ) {
 	try {
 		run();
@@ -1232,24 +2517,70 @@ builder._doc.model.blocks.forEach( function( block, b ) {
 } );
 paths.push( [] );
 
-check( 'the form of every node can be drawn: '+ paths.length+ ' of them - the template, the sections, the blocks, the columns, the stacks, the components', paths.filter( function( at ) {
-	return drawn( 'settings '+ at.join('.'), function() { builder._openSettings( at ) } ) === false;
-} ).length === 0 );
-check( 'the tools of every frame can be drawn, and the frame the pointer is over is the one that has them seen', paths.filter( function( at ) {
-	return at.length > 0 && drawn( 'tools '+ at.join('.'), function() { builder._tools( at ) } ) === false;
+// What every dialog and the preview have in common, looked for in each view: the icons, the groups of radio buttons, the tabs
+const faults = [];
+const inspect = function( where, root ) {
+
+	if( unnamed( root ).length > 0 )
+		faults.push( where+ ': an icon control with no title or no label that says the same' );
+
+	if( iconsKnown( root ) === false )
+		faults.push( where+ ': an icon that is no symbol of the sprite' );
+
+	root.querySelectorAll('[role="radiogroup"]').forEach( function( group ) {
+
+		const radios = radiosOf( group );
+		const names = radios.map( function( radio ) { return radio.name } ).filter( function( name, at, list ) { return list.indexOf( name ) === at } );
+		const chosen = radios.filter( function( radio ) { return radio.checked } ).length;
+
+		if( group.getAttribute('aria-label') === null || group.getAttribute('aria-label') === '' || radios.length === 0 || radios.some( function( radio ) { return radio.type !== 'radio' } ) || names.length !== 1 || chosen > 1 )
+			faults.push( where+ ': a radio group that is none ('+ group.getAttribute('aria-label')+ ')' );
+
+		if( chosen === 0 && radios.some( function( radio ) { return radio.disabled === false } ) )
+			faults.push( where+ ': a radio group with none of its buttons chosen ('+ group.getAttribute('aria-label')+ ')' );
+	} );
+
+	root.querySelectorAll('[role="tab"]').forEach( function( tab ) {
+
+		const pane = screen.getElementById( tab.getAttribute('aria-controls') );
+
+		if( pane === null || pane.getAttribute('role') !== 'tabpanel' || pane.getAttribute('aria-labelledby') !== tab.id )
+			faults.push( where+ ': the tab '+ tab.id+ ' and its pane do not belong together' );
+	} );
+};
+
+check( 'the form of every node can be drawn: '+ paths.length+ ' of them - the template, the sections, the blocks, the columns, the loops, the components - in each view of the preview', builder.VIEWS.every( function( view ) {
+	builder._setView( view );
+	return paths.filter( function( at ) {
+		return drawn( 'settings '+ at.join('.')+ ' in '+ view, function() {
+			builder._openSettings( at );
+			inspect( 'settings '+ at.join('.')+ ' in '+ view, dialogBox() );
+		} ) === false;
+	} ).length === 0;
+} ) );
+builder._setView('l');
+check( '...and every icon of them has a title and a label that say the same, every group of choices is a radio group a screen reader reads as a field, every tab has its pane', faults.length === 0 );
+if( faults.length > 0 )
+	console.log( '      '+ faults.slice( 0, 6 ).join( '\n      ' ) );
+check( 'the tools of every frame can be drawn - a loop has none -, and the frame the pointer is over is the one that has them seen', paths.filter( function( at ) {
+	return at.length > 0 && at[at.length - 1] !== 'x' && drawn( 'tools '+ at.join('.'), function() { builder._tools( at ) } ) === false;
 } ).length === 0 && drawn( 'hover', function() {
 	const first = { classList : { add : function() {}, remove : function() {} } };
 	builder._hover( first );
 	builder._hover( first );
 	builder._hover( null );
 } ) && builder._hovered === null );
-check( 'the picker of components, the preview of every viewport and the buttons at the end of a column can be drawn', drawn( 'picker', function() {
-	builder._pickComponent( [ 0, 0 ], loose() );
-	builder._pickComponent( [ 1, 1 ], loose() );
-	[ 's', 'm', 'l' ].forEach( function( viewport ) { builder._viewport = viewport; builder._renderPreview() } );
-	builder._addsRow( [ 0, 0 ] );
-	builder._addsRow( [ 1, 1 ] );
-} ) );
+check( 'the preview of every view and the buttons at the end of a column can be drawn - and its icons are those of the sprite', builder.VIEWS.every( function( view ) {
+	return drawn( 'preview '+ view, function() {
+		builder._setView( view );
+		builder._pickComponent( [ 0, 0 ], made('button') );
+		builder._pickComponent( [ 1, 1 ], made('button') );
+		builder._addsRow( [ 0, 0 ] );
+		builder._addsRow( [ 1, 1 ] );
+		inspect( 'preview '+ view, preview() );
+	} );
+} ) && faults.length === 0 );
+builder._setView('l');
 check( 'the list, with templates and with none, the name with its mark, and the dialogs that make a new template and a copy of one', drawn( 'list', function() {
 	builder._files = [ { file : 'page-home', name : '', header : '', footer : '', sections : 1, foreign : 1, readable : false, reason : { line : 3, code : 'second-row', detail : '', text : '' }, editable : false, usedBy : [] } ];
 	builder._renderList();
@@ -1261,15 +2592,15 @@ check( 'the list, with templates and with none, the name with its mark, and the 
 	builder._duplicateTemplate( 'page-none' );
 	builder._confirmDelete( 'page-home' );
 } ) );
-check( 'the source field of every kind: a key in a section, a field in a stack, a picture, the background', drawn( 'source field', function() {
+check( 'the source row of every kind: a key in a section, a field in a loop, a picture, a link, the background - and the dialog of the source with no key to find', drawn( 'source row', function() {
 	const section = builder._doc.model.blocks[1];
-	const base = { section : section, fields : null, value : '', text : null, label : 'Title', onPick : function() {}, onFixed : function() {} };
+	const base = { fixed : true, create : true, fields : null, value : '', text : null, section : section, name : 'title', seed : 'Title', caption : 'Current:', onPick : function() {}, onFixed : function() {} };
 	[ 'text', 'href', 'image' ].forEach( function( kind ) {
-		builder._sourceField( Object.assign( {}, base, { kind : kind } ) );
-		builder._sourceField( Object.assign( {}, base, { kind : kind, fields : registry().types[0].fields, value : 'title', text : 'x', red : { why : 'field' } } ) );
+		builder._sourceRow( Object.assign( {}, base, { kind : kind } ) );
+		builder._sourceRow( Object.assign( {}, base, { kind : kind, fields : registry().types[0].fields, value : 'title', text : 'x', red : { why : 'field' }, label : 'Link' } ) );
 	} );
 	builder._keys = [];
-	builder._sourceField( Object.assign( {}, base, { kind : 'text' } ) );
+	builder._sourceDialog( Object.assign( {}, base, { kind : 'text' } ) );
 	builder._backgroundField( [ 0 ] );
 } ) );
 check( 'the HTML+ editor and the source view', drawn( 'html', function() {
@@ -1281,7 +2612,7 @@ check( 'the HTML+ editor and the source view', drawn( 'html', function() {
 	requests[requests.length - 1].callback( 200, { parts : [ { kind : 'head', block : null, source : 'a' }, { kind : 'html', block : 2, source : 'b' }, { kind : 'foot', block : null, source : 'c' } ] } );
 } ) );
 check( 'the errors of the panel, and an editor that is opened and fails to load', drawn( 'load', function() {
-	builder._showError( loose(), 500, { code : 'offline' } );
+	builder._showError( made('div'), 500, { code : 'offline' } );
 	requests = [];
 	builder._openEditor( 'page-home' );
 	requests.forEach( function( request ) { request.callback( 404, { code : 'builder_missing' } ) } );
@@ -1296,63 +2627,47 @@ check( 'the errors of the panel, and an editor that is opened and fails to load'
 	} );
 } ) && builder._doc !== null && builder._doc.hash === 'h9' && builder._doc.usedBy.length === 1 );
 
-check( 'a new key is named by the kind of the component and a new slot of the picture behind a section background, whatever the label says in the language of the workbench (Titel is title)', ( function() {
-	const names = [];
-	const realName = builder._keyName;
-	const section = builder._doc.model.blocks[1];
-	const base = { kind : 'text', name : 'title', section : section, fields : null, value : '', text : null, label : 'Titel', onPick : function() {}, onFixed : function() {} };
-	builder._keyName = function( at, file, name, known ) { names.push( name ); return realName.call( builder, at, file, name, known ) };
-	builder._sourceField( base );
-	builder._sourceField( Object.assign( {}, base, { kind : 'image', name : 'button', label : 'Schaltfläche' } ) );
-	builder._backgroundField( [ 1 ] );
-	builder._keyName = realName;
-	return names.join() === 'title,button,background';
+check( 'the stylesheet keeps what the script hides hidden (a button with display set is shown all the same), paints the sections in grey levels, shows the tools of the frame the pointer is over and of the selected one, gives the dialog 44rem and the dialog of a source 34rem - and has no picture of its own: the icons are the sprite\'s', ( function() {
+	const colours = stylesheet.split( '.builder-frame.builder-color-' ).slice( 1 ).map( function( rule ) { return rule.slice( 0, rule.indexOf( '}' ) ) } );
+	return stylesheet.indexOf( '.builder-icon-btn[hidden] {\n\tdisplay: none;' ) !== -1 && colours.length === 6 && colours.every( function( rule ) { return /var\(--editor-(blue|orange)/.test( rule ) === false } )
+		&& stylesheet.indexOf( '.builder-pick.is-hover > header > .builder-tools' ) !== -1 && stylesheet.indexOf( '.builder-pick.is-selected > .builder-tools' ) !== -1 && stylesheet.indexOf( 'width: min(44rem, calc(100vw - 2rem));' ) !== -1
+		&& stylesheet.indexOf( 'width: min(34rem, calc(100vw - 2rem));' ) !== -1 && stylesheet.indexOf( 'data:' ) === -1 && stylesheet.indexOf( 'url(' ) === -1;
 } )() );
-check( 'a slot is no slot where a segment of it starts with a digit: a section id of 2col says so before the server does', ( function() {
-	const section = { id : '2col', cols : [] };
-	return builder.SLOT.test( builder._keyUri( 'page-home', section.id, 'background' ) ) === false && builder.KEY.test( builder._keyUri( 'page-home', section.id, 'title' ) ) === true;
-} )() );
-( function() {
-	const section = { id : 'intro', cols : [] };
-	const shown = function( id, typed, what ) {
-		const names = {};
-		const real = builder._one;
-		builder._one = function( root, selector ) { const found = real.call( builder, root, selector ); names[selector] = found; return found };
-		builder._newName( loose(), { section : { id : id, cols : [] }, name : 'title' }, what, function() {} );
-		builder._one = real;
-		names['.builder-new-name'].value = typed;
-		names['.builder-new-name'].dispatch( 'input' );
-		return { message : names['.builder-new-message'].textContent, disabled : names['.builder-new-use'].disabled };
-	};
-	const digitSection = shown( '2col', 'background', 'slot' );
-	const digitName = shown( 'intro', '2x', 'slot' );
-	const keyDigitName = shown( 'intro', '2x', 'key' );
-	check( 'a new slot in a section of 2col blames the section, and the Use button is off', digitSection.message === words['/_admin/builder/source/name-slot'] && digitSection.disabled === true );
-	check( '...a slot name of 2x in the section intro blames the name, not the section, and the Use button is off', digitName.message === words['/_admin/builder/source/name-slot-name'] && digitName.message !== words['/_admin/builder/source/name-slot'] && digitName.disabled === true );
-	check( '...a key name of 2x is a name the grammar of a key allows', keyDigitName.message === '' && keyDigitName.disabled === false && section.id === 'intro' );
-} )();
-check( 'the slots of the project come with the picture they have, for the thumbnail: the url, and none where there is no picture', ( function() {
-	const pickers = [];
-	const realPicker = builder._picker;
-	builder._picker = function( mount, items ) { pickers.push( items ) };
-	builder._sourceField( { kind : 'image', name : 'image', section : builder._doc.model.blocks[1], fields : null, value : '', text : null, label : 'Image', onPick : function() {} } );
-	builder._picker = realPicker;
-	const items = pickers[0] || [];
-	return items.length === 2 && items[0].image === '/uploads/hero.1600x900.jpg' && items[1].image === '';
-} )() );
-check( 'the stylesheet keeps what the script hides hidden (a button with display set is shown all the same), paints the sections in grey levels, shows the tools of the frame the pointer is over and of the selected one, and gives the dialog 44rem', ( function() {
-	const css = fs.readFileSync( path.join( __dirname, '../assets/admin.css' ), 'utf8' );
-	const colours = css.split( '.builder-frame.builder-color-' ).slice( 1 ).map( function( rule ) { return rule.slice( 0, rule.indexOf( '}' ) ) } );
-	return css.indexOf( '.builder-icon-btn[hidden] {\n\tdisplay: none;' ) !== -1 && colours.length === 6 && colours.every( function( rule ) { return /var\(--editor-(blue|orange)/.test( rule ) === false } )
-		&& css.indexOf( '.builder-pick.is-hover > header > .builder-tools' ) !== -1 && css.indexOf( '.builder-pick.is-selected > .builder-tools' ) !== -1 && css.indexOf( 'width: min(44rem, calc(100vw - 2rem));' ) !== -1;
-} )() );
-check( 'the template holds a fragment for everything the script clones, and none for a tree', ( function() {
-	const template = fs.readFileSync( path.join( __dirname, '../templates/panel.tpl' ), 'utf8' );
+check( 'the template holds a fragment for everything the script clones, and the script clones everything the template holds - and none for a tree', ( function() {
 	const used = [];
-	source.replace( /_fragment\( '([a-z]+)' \)/g, function( all, name ) { used.push( name ) } );
-	return used.length > 0 && used.every( function( name ) { return template.indexOf( 'id="builder-tpl-'+ name+ '"' ) !== -1 } ) && template.indexOf( 'builder-tpl-row' ) === -1 && template.indexOf( 'builder-tree' ) === -1 && source.indexOf( 'builder-tree' ) === -1;
+	source.replace( /_fragment\(([^)]*)\)/g, function( all, inner ) { inner.replace( /'([a-z]+)'/g, function( found, name ) { used.push( name ) } ) } );
+	const held = [];
+	template.replace( /<template id="builder-tpl-([a-z]+)"/g, function( all, name ) { held.push( name ) } );
+	return used.length > 0 && used.every( function( name ) { return held.indexOf( name ) !== -1 } ) && held.filter( function( name ) { return used.indexOf( name ) === -1 } ).length === 0 && template.indexOf( 'builder-tpl-row' ) === -1 && template.indexOf( 'builder-tree' ) === -1 && source.indexOf( 'builder-tree' ) === -1;
 } )() );
-
+check( 'every icon the script names is a symbol of the sprite, and every symbol of the sprite is named: by the script, or by the template', ( function() {
+	const symbols = [];
+	template.replace( /<symbol id="builder-icon-([a-z-]+)"/g, function( all, name ) { symbols.push( name ) } );
+	const named = [];
+	template.replace( /href="#builder-icon-([a-z-]+)"/g, function( all, name ) { named.push( name ) } );
+	// The script names them as an icon (_icon, _iconButton, _statusItem), as the icon of an option, in DEVICES and in ALIGN_ICONS
+	source.replace( /_(?:icon|iconButton)\( '([a-z-]+)'/g, function( all, name ) { named.push( name ) } );
+	source.replace( /_statusItem\( '[a-z]+', '([a-z-]+)'/g, function( all, name ) { named.push( name ) } );
+	source.replace( /icon\s*:\s*'([a-z-]+)'/g, function( all, name ) { named.push( name ) } );
+	Object.keys( builder.DEVICES ).forEach( function( key ) { named.push( builder.DEVICES[key] ) } );
+	Object.keys( builder.ALIGN_ICONS ).forEach( function( setting ) { Object.keys( builder.ALIGN_ICONS[setting] ).forEach( function( value ) { named.push( builder.ALIGN_ICONS[setting][value] ) } ) } );
+	return named.every( function( name ) { return symbols.indexOf( name ) !== -1 } ) && symbols.every( function( name ) { return named.indexOf( name ) !== -1 } );
+} )() );
+check( 'every text the script and the template ask for by its key is there in both languages - a key that is missing is a word missing on the page - and the two files have the same keys', ( function() {
+	const german = {};
+	fs.readFileSync( path.join( __dirname, '../text/de_DE.php' ), 'utf8' ).split( '\n' ).forEach( function( line ) {
+		const found = /^\s*'\[\[(\/[^\]]+)\]\]'\s*=>/.exec( line );
+		if( found !== null )
+			german[found[1]] = true;
+	} );
+	const asked = {};
+	source.replace( /'(\/_admin\/builder\/[a-z0-9/-]+)'/g, function( all, key ) { asked[key] = true } );
+	template.replace( /\[\[(\/_admin\/builder\/[a-z0-9/-]+)\]\]/g, function( all, key ) { asked[key] = true } );
+	// A key that ends in a slash or a hyphen is the start of one the script puts together
+	const whole = Object.keys( asked ).filter( function( key ) { return /[/-]$/.test( key ) === false } );
+	const english = Object.keys( words ).filter( function( key ) { return key.indexOf('/_admin/builder/') === 0 } );
+	return whole.length > 100 && whole.every( function( key ) { return Object.prototype.hasOwnProperty.call( words, key ) && german[key] === true } ) && english.length === Object.keys( german ).length && english.every( function( key ) { return german[key] === true } );
+} )() );
 console.log( '\nThe refusal to delete' );
 
 ( function() {

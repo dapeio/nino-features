@@ -5,8 +5,10 @@
  *	admin.css		The panel's own stylesheet, loaded exactly while the panel is (see
  *							Admin::assets()). The workbench styles headings, hints, fields,
  *							buttons and the dialog; this file keeps to what the editor adds -
- *							the preview with its frames, placeholders and tools, the tabs and
- *							the lines of a form - and reads the workbench's own custom
+ *							the preview with its frames, placeholders and tools, the tabs,
+ *							the groups and the lines of a form, and the controls of its own
+ *							(a choice of buttons, the focus of a picture, the patch of a
+ *							colour, the row of a source) - and reads the workbench's own custom
  *							properties rather than colours of its own, so the light and the
  *							dark scheme are the workbench's. The one colours that are not are
  *							the fixed greys of a section that is dark, black, primary or
@@ -30,6 +32,16 @@
 	min-height: 100%;
 }
 #builder-root {
+	/* The ground of each colour of a section as the preview knows it: a grey level, since the
+	   panel has no palette of the site's. The patch of a colour in a form is the same grey where
+	   the preview has no custom properties of Nino.css to read it from */
+	--builder-ground-plain: var(--editor-bg-elevated);
+	--builder-ground-alt: color-mix(in srgb, var(--editor-text) 5%, var(--editor-bg-elevated));
+	--builder-ground-tint: color-mix(in srgb, var(--editor-text) 11%, var(--editor-bg-elevated));
+	--builder-ground-dark: #3a3a3a;
+	--builder-ground-black: #0e0e0e;
+	--builder-ground-primary: #666;
+	--builder-ground-brand-alt: #a3a3a3;
 	display: flex;
 	flex: 1 1 auto;
 	flex-direction: column;
@@ -193,18 +205,6 @@
 	outline: 2px solid var(--editor-red);
 	outline-offset: -2px;
 }
-.builder-frame-warning {
-	flex: 0 0 auto;
-	padding: 0 .35rem;
-	border-radius: 99px;
-	background: var(--editor-red);
-	color: #fff;
-	font-size: .62rem;
-	font-weight: 750;
-}
-.builder-frame-warning[hidden] {
-	display: none;
-}
 /* Inside a frame it is the frame's colour, so that it is seen on a dark section as on a light one */
 .builder-add-button {
 	min-height: 0;
@@ -286,6 +286,9 @@
 	gap: .25rem;
 }
 .builder-viewport {
+	display: inline-flex;
+	align-items: center;
+	gap: .35rem;
 	min-height: 0;
 	padding: .2rem .6rem;
 	border: 1px solid var(--editor-border);
@@ -332,36 +335,36 @@
 }
 /* The colour of a section is a grey level: the preview knows no palette, and none of the workbench's accent colours is the site's */
 .builder-frame.builder-color-alt {
-	background: color-mix(in srgb, var(--editor-text) 5%, var(--editor-bg-elevated));
+	background: var(--builder-ground-alt);
 }
 .builder-frame.builder-color-tint {
-	background: color-mix(in srgb, var(--editor-text) 11%, var(--editor-bg-elevated));
+	background: var(--builder-ground-tint);
 }
 .builder-frame.builder-color-dark {
-	background: #3a3a3a;
+	background: var(--builder-ground-dark);
 	color: #f1f1f1;
 }
 .builder-frame.builder-color-black {
-	background: #0e0e0e;
+	background: var(--builder-ground-black);
 	color: #f1f1f1;
 }
 .builder-frame.builder-color-primary {
-	background: #666;
+	background: var(--builder-ground-primary);
 	color: #fff;
 }
 .builder-frame.builder-color-brand-alt {
-	background: #a3a3a3;
+	background: var(--builder-ground-brand-alt);
 	color: #111;
 }
 .builder-frame.is-html {
 	border-style: dashed;
 }
+/* The head of a frame and of a column has three parts: its title, what is said of it, and its tools */
 .builder-frame-head,
-.builder-pcol-head,
-.builder-stack-head {
+.builder-pcol-head {
 	display: flex;
 	align-items: center;
-	gap: .4rem;
+	gap: .5rem;
 	min-width: 0;
 }
 .builder-frame-head {
@@ -370,16 +373,85 @@
 	font-size: .72rem;
 	font-weight: 700;
 }
+.builder-head-title {
+	display: inline-flex;
+	align-items: center;
+	flex: 0 1 auto;
+	gap: .1rem;
+	min-width: 0;
+}
 .builder-frame-name {
-	flex: 1 1 auto;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
-.builder-frame-bg[hidden] {
-	display: none;
+.builder-head-status {
+	display: inline-flex;
+	align-items: center;
+	flex: 1 1 auto;
+	gap: .5rem;
+	min-width: 0;
+	font-weight: 400;
 }
-/* The tools of a frame: in the head of a frame, a column and a loop, at the end of a component.
+.builder-head-title .builder-icon-btn {
+	width: 1.35rem;
+	height: 1.35rem;
+	color: inherit;
+}
+.builder-head-title .builder-icon {
+	width: .8rem;
+	height: .8rem;
+}
+.builder-rename {
+	opacity: .6;
+}
+.builder-rename:hover,
+.builder-rename:focus-visible {
+	opacity: 1;
+}
+.builder-name-input {
+	width: 10rem;
+	min-height: 0;
+	height: 1.6rem;
+	padding: .1rem .35rem;
+	font-size: .72rem;
+}
+.builder-status-item {
+	display: inline-flex;
+	align-items: center;
+	gap: .25rem;
+	min-width: 0;
+	min-height: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	box-shadow: none;
+	color: inherit;
+	font: inherit;
+}
+button.builder-status-item {
+	padding: .05rem .35rem;
+	border-radius: var(--editor-radius-sm);
+	cursor: pointer;
+}
+button.builder-status-item:hover {
+	background: color-mix(in srgb, currentColor 14%, transparent);
+}
+.builder-status-item .builder-icon {
+	flex: 0 0 auto;
+	width: .85rem;
+	height: .85rem;
+}
+.builder-status-item.is-warning {
+	color: var(--editor-red);
+}
+.builder-status-text {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+/* The tools of a frame: in the head of a frame and of a column, at the end of a component.
    They are there, so that Tab reaches them, and seen where the pointer is over the frame
    (is-hover, set for the innermost one), on the one that is selected, and where focus is in them */
 .builder-tools {
@@ -444,12 +516,6 @@
 	font-size: .66rem;
 	opacity: .8;
 }
-.builder-col-name {
-	flex: 1 1 auto;
-}
-.builder-col-hidden[hidden] {
-	display: none;
-}
 .builder-col-body {
 	display: grid;
 	gap: .3rem;
@@ -480,51 +546,11 @@
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
-.builder-ph.is-echo {
-	opacity: .35;
-	pointer-events: none;
-}
 .builder-add-col {
 	flex: 0 0 auto;
 	align-self: stretch;
 	min-width: 5rem;
 }
-.builder-stack {
-	border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
-	border-radius: var(--editor-radius-sm);
-}
-.builder-stack-head {
-	padding: .15rem .25rem .15rem .4rem;
-	font-size: .7rem;
-}
-.builder-stack-name {
-	font-weight: 700;
-}
-.builder-stack-source {
-	flex: 1 1 auto;
-	overflow: hidden;
-	font-size: .66rem;
-	opacity: .75;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-.builder-cells {
-	--builder-gap: .35rem;
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--builder-gap);
-	padding: .35rem;
-}
-.builder-cell {
-	display: grid;
-	flex: 0 0 calc(50% - var(--builder-gap) * (1 - 50 / 100));
-	gap: .25rem;
-	min-width: 0;
-	padding: .25rem;
-	border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
-	border-radius: var(--editor-radius-sm);
-}
-
 /* ---------------------------------------------------------------- Dialogs */
 
 .builder-dialog {
@@ -533,14 +559,29 @@
 .builder-dialog.is-wide {
 	width: min(52rem, calc(100vw - 2rem));
 }
+/* The dialog of a source stands over the one it was opened from, and is smaller */
+.builder-picker-dialog {
+	width: min(34rem, calc(100vw - 2rem));
+}
 .builder-dialog-head {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	gap: .75rem;
 }
+.builder-dialog-heading {
+	display: flex;
+	align-items: center;
+	gap: .25rem;
+	min-width: 0;
+}
 .builder-dialog-head .nino-admin-dialog-title {
 	margin: 0;
+}
+.builder-dialog-heading .builder-name-input {
+	width: 14rem;
+	height: 2rem;
+	font-size: 1rem;
 }
 .builder-dialog-content {
 	display: grid;
@@ -549,8 +590,7 @@
 	overflow: auto;
 	padding-right: .25rem;
 }
-.builder-tabs,
-.builder-source-tabs {
+.builder-tabs {
 	display: flex;
 	flex-wrap: wrap;
 	gap: .15rem;
@@ -577,14 +617,12 @@
 	color: var(--editor-text);
 	font-weight: 650;
 }
-.builder-tabpane,
-.builder-source-pane {
+.builder-tabpane {
 	display: grid;
 	gap: .75rem;
 	padding-top: .25rem;
 }
-.builder-tabpane[hidden],
-.builder-source-pane[hidden] {
+.builder-tabpane[hidden] {
 	display: none;
 }
 .builder-label {
@@ -592,15 +630,41 @@
 	font-size: .78rem;
 	font-weight: 650;
 }
+/* The source of a text or a picture in a form: what it is now and the button that changes it */
 .builder-source {
-	margin: 0;
-	padding: 2rem 1rem 1rem;
-}
-.builder-source-body {
 	display: grid;
-	gap: .5rem;
+	gap: .35rem;
 }
 .builder-source-line {
+	display: flex;
+	align-items: center;
+	gap: .5rem;
+	min-height: var(--nino-admin-control-height);
+	padding: .2rem .25rem .2rem .65rem;
+	border: 1px solid var(--editor-border);
+	border-radius: var(--editor-radius-sm);
+	background: var(--editor-bg-elevated);
+}
+.builder-source-caption {
+	flex: 0 0 auto;
+	color: var(--editor-text-secondary);
+	font-size: .8rem;
+}
+.builder-source-current {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	font-size: .8rem;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.builder-source-line .builder-icon-btn {
+	margin-left: auto;
+	border: 1px solid var(--editor-border);
+}
+.builder-source-now {
+	display: flex;
+	gap: .4rem;
 	margin: 0;
 	font-size: .82rem;
 }
@@ -720,16 +784,34 @@
 .builder-line.has-caption {
 	grid-template-columns: 5rem repeat(auto-fit, minmax(8rem, 1fr));
 }
-.builder-viewports-table {
+/* The tables of a form: the viewports of a column and of a loop, the spacing of a section */
+.builder-table {
 	width: 100%;
 }
-.builder-viewports-table :is(th, td) {
+.builder-table :is(th, td) {
 	padding: .4rem .6rem;
 	text-align: left;
 }
-.builder-viewports-table select {
+.builder-table select {
 	width: 100%;
-	max-width: 8rem;
+	max-width: 9rem;
+}
+.builder-row-head .builder-icon {
+	margin-right: .4rem;
+	vertical-align: -.2em;
+}
+.builder-link-btn {
+	justify-self: start;
+	min-height: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	box-shadow: none;
+	color: var(--editor-blue);
+	font-size: .78rem;
+	text-decoration: underline;
+	cursor: pointer;
 }
 .builder-sort {
 	display: flex;
@@ -738,46 +820,188 @@
 }
 .builder-sort > label {
 	flex: 1 1 auto;
-	margin-bottom: 0;
 }
-.builder-sort-toggles {
-	display: inline-flex;
-	flex: 0 0 auto;
+/* ------------------------------------------------------------ Groups */
+
+/* What belongs together in a form is a group under its heading; a group that is rarely wanted is folded away */
+.builder-group {
+	display: grid;
+	gap: .6rem;
 }
-.builder-sort-toggles .builder-icon-btn {
-	width: 2.2rem;
-	height: 38px;
-	border: 1px solid var(--editor-border);
-	border-radius: 0;
+.builder-group + .builder-group {
+	padding-top: .8rem;
+	border-top: 1px solid var(--editor-separator);
 }
-.builder-sort-toggles .builder-icon-btn:first-child {
-	border-radius: var(--editor-radius-sm) 0 0 var(--editor-radius-sm);
+.builder-group-title {
+	margin: 0;
+	color: var(--editor-text-secondary);
+	font-size: .74rem;
+	font-weight: 750;
+	letter-spacing: .06em;
+	text-transform: uppercase;
 }
-.builder-sort-toggles .builder-icon-btn:last-child {
-	border-left: 0;
-	border-radius: 0 var(--editor-radius-sm) var(--editor-radius-sm) 0;
+.builder-group-body {
+	display: grid;
+	gap: .75rem;
 }
-.builder-sort-toggles .builder-icon-btn.is-active {
-	background: var(--editor-blue-soft);
-	color: var(--editor-text);
+.builder-fold > summary {
+	cursor: pointer;
 }
-/* ------------------------------------------------------------- Icons */
-#builder-viewport-s, #builder-viewport-m, #builder-viewport-l {
-	background-repeat: no-repeat;
-	background-position: 5px center;
-	background-size: 16px 16px;
-	padding-left: 24px;
+.builder-fold[open] > summary {
+	margin-bottom: .6rem;
 }
 
-#builder-viewport-s {
-	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2397a2b5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='14' height='20' x='5' y='2' rx='2' ry='2'/%3E%3Cpath d='M12 18h.01'/%3E%3C/svg%3E");
+/* ---------------------------------------------------- The controls of a form */
+
+/* A choice of a few as buttons that are one field: radio buttons, each a word or an icon */
+.builder-segment-field {
+	min-width: 0;
+	margin-bottom: .72rem;
 }
-#builder-viewport-m {
-	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2397a2b5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='16' height='20' x='4' y='2' rx='2' ry='2'/%3E%3Cline x1='12' x2='12.01' y1='18' y2='18'/%3E%3C/svg%3E");
+.builder-segment-label {
+	display: block;
+	margin-bottom: .22rem;
+	color: var(--editor-text-secondary);
+	font-size: .74rem;
+	font-weight: 600;
 }
-#builder-viewport-l {
-	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2397a2b5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='20' height='14' x='2' y='3' rx='2'/%3E%3Cline x1='8' x2='16' y1='21' y2='21'/%3E%3Cline x1='12' x2='12' y1='17' y2='21'/%3E%3C/svg%3E");
+.builder-segment {
+	display: flex;
+	width: fit-content;
+	max-width: 100%;
+	overflow: hidden;
+	border: 1px solid var(--editor-border);
+	border-radius: var(--editor-radius-sm);
 }
+.builder-segment-option {
+	position: relative;
+	display: inline-grid;
+	place-items: center;
+	min-width: 2.5rem;
+	height: calc(var(--nino-admin-control-height) - 2px);
+	padding: 0 .7rem;
+	border-right: 1px solid var(--editor-border);
+	background: var(--editor-bg-elevated);
+	color: var(--editor-text-secondary);
+	font-size: .82rem;
+	cursor: pointer;
+}
+.builder-segment-option:last-child {
+	border-right: 0;
+}
+.builder-segment-option input {
+	position: absolute;
+	inset: 0;
+	margin: 0;
+	opacity: 0;
+	cursor: pointer;
+}
+.builder-segment-option:has(input:checked) {
+	background: var(--editor-blue-soft);
+	box-shadow: inset 0 0 0 1px var(--editor-blue);
+	color: var(--editor-text);
+}
+.builder-segment-option:has(input:focus-visible) {
+	outline: 2px solid var(--editor-blue);
+	outline-offset: -2px;
+}
+.builder-segment.is-disabled {
+	opacity: .45;
+}
+.builder-segment.is-disabled .builder-segment-option,
+.builder-segment.is-disabled input {
+	cursor: default;
+}
+.builder-background {
+	display: grid;
+	gap: .75rem;
+}
+/* The colour of a section: a select, and beside it a patch of the colour that is chosen */
+.builder-with-swatch {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: end;
+	gap: .5rem;
+}
+.builder-swatch {
+	--builder-ground: var(--builder-ground-plain);
+	width: var(--nino-admin-control-height);
+	height: var(--nino-admin-control-height);
+	margin-bottom: .72rem;
+	border: 1px solid var(--editor-border);
+	border-radius: var(--editor-radius-sm);
+	background: var(--builder-swatch, var(--builder-ground));
+}
+.builder-swatch[data-color="alt"] {
+	--builder-ground: var(--builder-ground-alt);
+}
+.builder-swatch[data-color="tint"] {
+	--builder-ground: var(--builder-ground-tint);
+}
+.builder-swatch[data-color="dark"] {
+	--builder-ground: var(--builder-ground-dark);
+}
+.builder-swatch[data-color="black"] {
+	--builder-ground: var(--builder-ground-black);
+}
+.builder-swatch[data-color="primary"] {
+	--builder-ground: var(--builder-ground-primary);
+}
+.builder-swatch[data-color="brand-alt"] {
+	--builder-ground: var(--builder-ground-brand-alt);
+}
+
+/* The focus of a picture: a switch for none, and nine radio buttons in a grid, one for each place */
+.builder-focus {
+	display: grid;
+	justify-items: start;
+	gap: .25rem;
+}
+.builder-focus-grid {
+	display: grid;
+	grid-template-columns: repeat(3, 2.25rem);
+	gap: .25rem;
+	padding: .35rem;
+	border: 1px solid var(--editor-border);
+	border-radius: var(--editor-radius-sm);
+}
+.builder-focus-place {
+	position: relative;
+	display: grid;
+	place-items: center;
+	height: 1.75rem;
+	border-radius: var(--editor-radius-sm);
+	cursor: pointer;
+}
+.builder-focus-place input {
+	position: absolute;
+	inset: 0;
+	margin: 0;
+	opacity: 0;
+	cursor: pointer;
+}
+.builder-focus-dot {
+	width: .5rem;
+	height: .5rem;
+	border-radius: 50%;
+	background: color-mix(in srgb, var(--editor-text) 30%, transparent);
+}
+.builder-focus-place:has(input:checked) .builder-focus-dot {
+	width: .85rem;
+	height: .85rem;
+	background: var(--editor-blue);
+}
+.builder-focus-place:has(input:focus-visible) {
+	outline: 2px solid var(--editor-blue);
+}
+.builder-focus-grid.is-disabled {
+	opacity: .45;
+}
+.builder-focus-grid.is-disabled .builder-focus-place,
+.builder-focus-grid.is-disabled input {
+	cursor: default;
+}
+
 /* ------------------------------------------------------------- Responsive */
 
 @media (max-width: 38rem) {
@@ -785,6 +1009,7 @@
 		display: block;
 	}
 	.builder-tools,
+	.builder-rename,
 	.builder-add-bar,
 	.builder-adds,
 	.builder-add-col,

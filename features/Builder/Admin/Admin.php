@@ -47,8 +47,9 @@ namespace Nino\Modules\Builder {
 			];
 		}
 
-		// A feature's panel lands in the features group whatever it names
-		// (see \Nino\Admin\Panels), so the group here is where it belongs
+		// A feature's panel sits in the group its nav() names, and in the
+		// features group only where it names none (see \Nino\Admin\Panels):
+		// the Builder names structure, beside Routes
 		public static function nav(): array {
 			return [ 'builder', '/_admin/builder/label/nav', 2, 'structure' ];
 		}
