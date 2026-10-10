@@ -283,7 +283,7 @@ check( 'a new loop is the kernel\'s own, over the first type of the project, wit
 	const stack = builder._newStack( registry() );
 	return stack.name === 'stack' && stack.source === '/services' && stack.attributes.cols === '100 50 33' && stack.attributes.gap === '2' && stack.attributes.id === '';
 } )() );
-check( 'the plain stack of the kernel is called the loop, the others by the label they registered', builder._stackLabel( registry(), 'stack' ) === 'Element loop' && builder._stackLabel( registry(), 'slider' ) === 'Slider' && builder._stackLabel( registry(), 'nothing' ) === 'nothing' );
+check( 'the plain stack of the kernel is called the loop, the others by the label they registered', builder._stackLabel( registry(), 'stack' ) === 'Loop' && builder._stackLabel( registry(), 'slider' ) === 'Slider' && builder._stackLabel( registry(), 'nothing' ) === 'nothing' );
 check( '...the first loop the registry has where it has not that one, and none where it has none; over no type where the project has none', ( function() {
 	const some = registry();
 	delete some.stacks.stack;
@@ -434,7 +434,7 @@ model.blocks[0].cols[0].components.push( { name : 'spacer', source : '', text : 
 check( '...a component the registry does not know and one that names no image are blocks, labelled with what they are', plan('l')[0].cols[0].components.slice( 3 ).map( function( component ) { return component.image+ ':'+ component.label } ).join() === 'block:unknown-one,block:Spacer' );
 check( 'a stack is cells in the widths of its own for the viewport, the first of its column\'s components as the stack\'s path', ( function() {
 	const stack = function( viewport ) { return plan( viewport )[1].cols[1].stack };
-	return stack('s').cell === 100 && stack('m').cell === 50 && stack('l').cell === 50 && stack('l').label === 'Element loop' && stack('l').source === '/services' && stack('l').image === 'cells' && builder._same( stack('l').path, [ 1, 1, 'x' ] )
+	return stack('s').cell === 100 && stack('m').cell === 50 && stack('l').cell === 50 && stack('l').label === 'Loop' && stack('l').source === '/services' && stack('l').image === 'cells' && builder._same( stack('l').path, [ 1, 1, 'x' ] )
 		&& plan('l')[1].cols[0].stack === null;
 } )() );
 model.blocks[1].cols[1].stack.attributes.cols = '100';
@@ -553,7 +553,7 @@ check( 'the template has a name, two frames and the animation a new section is g
 	fields = [];
 	lines = [];
 	builder._openSettings( [] );
-	return dialogs.length === 1 && fields.map( function( entry ) { return entry.label } ).join() === 'Name,Header,Footer,Effect,Speed,Repeat' && fields[1].args[2].map( function( option ) { return option.value } ).join() === ',html-header,html-header-slim'
+	return dialogs.length === 1 && fields.map( function( entry ) { return entry.label } ).join() === 'Name,Header,Footer,Effect,Speed,Runs' && fields[1].args[2].map( function( option ) { return option.value } ).join() === ',html-header,html-header-slim'
 		&& fields[5].args[2].map( function( option ) { return option.value } ).join() === ',repeat' && fields[5].args[2].map( function( option ) { return option.label } ).join() === 'Once,Repeat'
 		&& lines.map( function( line ) { return line.count } ).join() === '2,2';
 } )() );
@@ -563,7 +563,7 @@ check( '...what is chosen is the classes of its head line: none until an effect 
 	choose( 'Effect', 'zoom-soft' );
 	const effect = model.vpa;
 	choose( 'Speed', 'slow' );
-	choose( 'Repeat', 'repeat' );
+	choose( 'Runs', 'repeat' );
 	const all = model.vpa;
 	choose( 'Effect', 'plain' );
 	const plain = model.vpa;
@@ -608,11 +608,11 @@ fields = [];
 lines = [];
 builder._openSettings( [ 0 ] );
 check( 'the spacing of a section is two lines, above and below, of two fields each - outside and inside - and the other settings stand together two by two', lines.filter( function( line ) { return line.caption !== undefined } ).map( function( line ) { return line.caption+ ':'+ line.count } ).join() === 'Above:2,Below:2'
-	&& lines.length === 9 && lines.every( function( line ) { return line.count === 2 } ) && fields.filter( function( entry ) { return entry.label === 'Margin' } ).length === 2 && fields.filter( function( entry ) { return entry.label === 'Padding' } ).length === 2 );
+	&& lines.length === 9 && lines.every( function( line ) { return line.count === 2 } ) && fields.filter( function( entry ) { return entry.label === 'Outside' } ).length === 2 && fields.filter( function( entry ) { return entry.label === 'Inside' } ).length === 2 );
 check( 'the form of a section is in tabs, and writes into the model as it is changed', last().tabs.map( function( tab ) { return tab.id } ).join() === 'general,background,spacing,animation,custom' && ( function() {
 	choose( 'Colour', 'dark' );
-	choose( 'Margin', '3', 0 );
-	choose( 'Padding', '2', 1 );
+	choose( 'Outside', '3', 0 );
+	choose( 'Inside', '2', 1 );
 	choose( 'Effect', 'zoom-soft' );
 	choose( 'Dim the picture', false );
 	choose( 'Height of the cover', null );
@@ -646,7 +646,7 @@ check( '...own starts as the plain animation, with the fields to change it - and
 	choose( 'Speed', 'fast', 0 );
 	return started === '' && field( 'Delay' ) !== undefined && settings.vpaSpeed === 'fast' && builder._vpaLike( builder._doc.model.vpa, settings ) === false && mode().args[3] === 'own';
 } )() );
-check( '...and the mode of it is once or repeat - the states the page itself sets, visible and visible-once, are no way for an animation to run', field( 'Repeat' ).args[2].map( function( option ) { return option.value } ).join() === ',repeat' );
+check( '...and the mode of it is once or repeat - the states the page itself sets, visible and visible-once, are no way for an animation to run', field( 'Runs' ).args[2].map( function( option ) { return option.value } ).join() === ',repeat' );
 fields = [];
 builder._openSettings( [ 0 ] );
 check( '...and a section that has the classes of the template shows like the template when the form is opened', ( function() {
@@ -660,15 +660,15 @@ doc = open();
 fields = [];
 builder._openSettings( [ 0, 0 ] );
 check( 'the form of a column: a width and a visibility for each viewport as a table of three rows, alignment, the loop, the animation, the classes', last().tabs.map( function( tab ) { return tab.id } ).join() === 'layout,stack,animation,custom'
-	&& fields.filter( function( entry ) { return entry.kind === 'width' } ).map( function( entry ) { return entry.label } ).join() === 'Width, Mobile,Width, Tablet,Width, Desktop'
-	&& fields.filter( function( entry ) { return entry.kind === 'hidden' } ).map( function( entry ) { return entry.label } ).join() === 'Hidden, Mobile,Hidden, Tablet,Hidden, Desktop' );
-check( '...the animation of the column runs once or repeats, like the others', field( 'Repeat' ).args[2].map( function( option ) { return option.value } ).join() === ',repeat' );
+	&& fields.filter( function( entry ) { return entry.kind === 'width' } ).map( function( entry ) { return entry.label } ).join() === 'Width, Phone,Width, Tablet,Width, Desktop'
+	&& fields.filter( function( entry ) { return entry.kind === 'hidden' } ).map( function( entry ) { return entry.label } ).join() === 'Hidden, Phone,Hidden, Tablet,Hidden, Desktop' );
+check( '...the animation of the column runs once or repeats, like the others', field( 'Runs' ).args[2].map( function( option ) { return option.value } ).join() === ',repeat' );
 check( '...what the table writes is the width of the viewport, and the viewports that hide the column', ( function() {
-	choose( 'Width, Mobile', '50' );
+	choose( 'Width, Phone', '50' );
 	choose( 'Width, Desktop', '25' );
 	choose( 'Hidden, Tablet', true );
-	choose( 'Hidden, Mobile', true );
-	choose( 'Hidden, Mobile', false );
+	choose( 'Hidden, Phone', true );
+	choose( 'Hidden, Phone', false );
 	const col = builder._doc.model.blocks[0].cols[0];
 	return col.width.s === 50 && col.width.l === 25 && col.width.m === 100 && JSON.stringify( col.hidden ) === '{"m":true}';
 } )() );
@@ -677,7 +677,7 @@ fields = [];
 lines = [];
 builder._openSettings( [ 1, 1, 'x' ] );
 check( 'the loop of a column opens the form of the column on its own tab, and has the form of a loop: its type, its order, its limit, its grid, its id', last().tab === 'stack' && field( 'Type' ) !== undefined && field( 'Sort by' ) !== undefined && field( 'Direction' ) !== undefined && field( 'Limit' ) !== undefined && field( 'Offset' ) !== undefined
-	&& field( 'Query' ) !== undefined && field( 'Cell width, Mobile' ) !== undefined && field( 'Gap between the cells' ) !== undefined && field( 'Cells of equal height' ) !== undefined && field( 'Id of the loop' ) !== undefined );
+	&& field( 'Query' ) !== undefined && field( 'Cell width, Phone' ) !== undefined && field( 'Gap between the cells' ) !== undefined && field( 'Cells of equal height' ) !== undefined && field( 'Id of the loop' ) !== undefined );
 check( '...limit and offset share a line, the three cells and the gap another, the id and the equal height a third - and the animation of the column has speed and mode on a line, delay and duration on the next', lines.map( function( line ) { return line.count } ).join() === '2,2,4,2,2,2' );
 check( '...the type is one of the Elements panel\'s, with the title it has there', field( 'Type' ).args[2].map( function( option ) { return option.value+ '='+ option.label } ).join() === '/services=Services (/services),/team=Team (/team)' );
 check( '...the order is a field and two arrows, of which the one for ascending is on where the loop says title', field( 'Sort by' ).args[3] === 'title' && field( 'Direction' ).args[0] === false );
@@ -716,7 +716,7 @@ check( '...and going on to another loop keeps what both have', ( function() {
 doc = open();
 fields = [];
 builder._openSettings( [ 0, 0, 0 ] );
-check( 'the form of a component has its source, then the attributes of its schema, then the classes of its own', fields.map( function( entry ) { return entry.label } ).join() === 'Fixed value,Level,Style,Class of the section' );
+check( 'the form of a component has its source, then the attributes of its schema, then the classes of its own', fields.map( function( entry ) { return entry.label } ).join() === 'Fixed value,Level,Style,Custom classes' );
 
 // The source field is looked at where the component form makes it
 const sources = [];
@@ -901,7 +901,7 @@ check( 'the list has a name, a file, the frames, the sections and the routes, an
 	];
 	builder._renderList();
 	sandbox.Nino.adminUi.table = realTable;
-	return given.columns.map( function( column ) { return column.key } ).join() === 'name,file,sections,header,footer,usedBy,actions' && given.rows.map( function( row ) { return row.file } ).join() === 'page-a,page-b'
+	return given.columns.map( function( column ) { return column.key } ).join() === 'name,file,header,footer,sections,usedBy,actions' && given.rows.map( function( row ) { return row.file } ).join() === 'page-a,page-b'
 		&& given.rows.map( function( row ) { return row.name } ).join() === 'A,page-b' && given.rows.map( function( row ) { return row.header+ '|'+ row.footer } ).join() === 'html-header|none,none|none';
 } )() );
 check( '...a template that is not read completely has a mark by its name, with the reason of the first block it failed at for a tooltip - one that is read has none', ( function() {
@@ -1009,7 +1009,7 @@ check( 'a column with a loop asks too, and the loop itself, which takes its comp
 questions = [];
 builder._deleteAt( [ 0, 1, 'x' ] );
 questions[0].onChoose( 'delete' );
-check( '...a loop that is deleted is gone with its components, and the column is empty and stays', questions[0].title === 'Element loop' && builder._doc.model.blocks[0].cols[1].stack === null && builder._doc.model.blocks[0].cols[1].components.length === 0 && builder._same( builder._sel, [ 0, 1 ] ) );
+check( '...a loop that is deleted is gone with its components, and the column is empty and stays', questions[0].title === 'Loop' && builder._doc.model.blocks[0].cols[1].stack === null && builder._doc.model.blocks[0].cols[1].components.length === 0 && builder._same( builder._sel, [ 0, 1 ] ) );
 questions = [];
 builder._deleteAt( [ 0, 1 ] );
 check( '...an empty column is deleted without a question', questions.length === 0 && builder._doc.model.blocks[0].cols.length === 1 );

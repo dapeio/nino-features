@@ -1,0 +1,319 @@
+{
+    "file": "page-home",
+    "name": "Home",
+    "vpa": null,
+    "header": "html-header",
+    "footer": "html-footer",
+    "blocks": [
+        {
+            "kind": "section",
+            "id": "hero",
+            "settings": {
+                "row": "wide",
+                "rowAlign": "middle",
+                "rowCustom": "",
+                "width": "fullwidth",
+                "color": "black",
+                "border": "",
+                "image": "cover",
+                "dim": true,
+                "imagePos": "",
+                "cover": 100,
+                "mt": "",
+                "mb": "",
+                "pt": "",
+                "pb": "",
+                "text": "",
+                "vpa": "",
+                "vpaSpeed": "",
+                "vpaMode": "",
+                "vpaDelay": "",
+                "vpaDuration": "",
+                "custom": ""
+            },
+            "background": {
+                "slot": "/template/page-home/hero/background",
+                "focus": 5
+            },
+            "cols": [
+                {
+                    "width": {
+                        "s": 100,
+                        "m": 100,
+                        "l": 66
+                    },
+                    "hidden": [],
+                    "text": "left",
+                    "stackAlign": "",
+                    "stackGap": "",
+                    "vpa": null,
+                    "vpaSpeed": "",
+                    "vpaMode": "",
+                    "vpaDelay": "",
+                    "vpaDuration": "",
+                    "custom": "",
+                    "stack": null,
+                    "components": [
+                        {
+                            "name": "title",
+                            "source": "/template/page-home/hero/title",
+                            "text": null,
+                            "attributes": {
+                                "level": "1",
+                                "style": "loud",
+                                "class": ""
+                            }
+                        },
+                        {
+                            "name": "subtitle",
+                            "source": "/template/page-home/hero/subtitle",
+                            "text": null,
+                            "attributes": {
+                                "style": "",
+                                "class": ""
+                            }
+                        },
+                        {
+                            "name": "button",
+                            "source": "/_nino/webpage/contact/name",
+                            "text": null,
+                            "attributes": {
+                                "href": "/_nino/webpage/contact/uri",
+                                "style": "primary",
+                                "size": "",
+                                "target": "",
+                                "class": ""
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "kind": "section",
+            "id": "services",
+            "settings": {
+                "row": "",
+                "rowAlign": "",
+                "rowCustom": "",
+                "width": "",
+                "color": "",
+                "border": "",
+                "image": "",
+                "dim": false,
+                "imagePos": "",
+                "cover": null,
+                "mt": "",
+                "mb": "",
+                "pt": "",
+                "pb": "",
+                "text": "",
+                "vpa": "",
+                "vpaSpeed": "",
+                "vpaMode": "",
+                "vpaDelay": "",
+                "vpaDuration": "",
+                "custom": ""
+            },
+            "background": null,
+            "cols": [
+                {
+                    "width": {
+                        "s": 100,
+                        "m": 100,
+                        "l": 50
+                    },
+                    "hidden": [],
+                    "text": "",
+                    "stackAlign": "",
+                    "stackGap": "",
+                    "vpa": null,
+                    "vpaSpeed": "",
+                    "vpaMode": "",
+                    "vpaDelay": "",
+                    "vpaDuration": "",
+                    "custom": "",
+                    "stack": null,
+                    "components": [
+                        {
+                            "name": "title",
+                            "source": "/template/page-home/services/title",
+                            "text": null,
+                            "attributes": {
+                                "level": "2",
+                                "style": "",
+                                "class": ""
+                            }
+                        },
+                        {
+                            "name": "text",
+                            "source": "/template/page-home/services/text",
+                            "text": null,
+                            "attributes": {
+                                "format": "blocks",
+                                "style": "quiet",
+                                "class": ""
+                            }
+                        }
+                    ]
+                },
+                {
+                    "width": {
+                        "s": 100,
+                        "m": 100,
+                        "l": 50
+                    },
+                    "hidden": [],
+                    "text": "",
+                    "stackAlign": "",
+                    "stackGap": "",
+                    "vpa": null,
+                    "vpaSpeed": "",
+                    "vpaMode": "",
+                    "vpaDelay": "",
+                    "vpaDuration": "",
+                    "custom": "",
+                    "stack": {
+                        "name": "stack",
+                        "source": "/services",
+                        "attributes": {
+                            "sort": "title",
+                            "offset": "0",
+                            "limit": "6",
+                            "query": "",
+                            "callback": "",
+                            "locale": "",
+                            "id": "",
+                            "cols": "100 50 50",
+                            "gap": "2",
+                            "autoheight": "1",
+                            "class": ""
+                        }
+                    },
+                    "components": [
+                        {
+                            "name": "image",
+                            "source": "image",
+                            "text": null,
+                            "attributes": {
+                                "alt": "",
+                                "focus": "5",
+                                "ratio": "",
+                                "class": ""
+                            }
+                        },
+                        {
+                            "name": "title",
+                            "source": "title",
+                            "text": null,
+                            "attributes": {
+                                "level": "3",
+                                "style": "",
+                                "class": ""
+                            }
+                        },
+                        {
+                            "name": "text",
+                            "source": "summary",
+                            "text": null,
+                            "attributes": {
+                                "format": "blocks",
+                                "style": "",
+                                "class": ""
+                            }
+                        },
+                        {
+                            "name": "button",
+                            "source": ".uri",
+                            "text": "Mehr",
+                            "attributes": {
+                                "href": "",
+                                "style": "",
+                                "size": "",
+                                "target": "",
+                                "class": ""
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "kind": "html",
+            "source": "<section id=\"map\" class=\"nino-section nino-section--alt\">\n\t<div class=\"nino-grid-row\"><div class=\"nino-grid-100\">[osm lat=\"48.1\" lon=\"11.5\" zoom=\"12\"]</div></div>\n</section>",
+            "reason": null
+        },
+        {
+            "kind": "section",
+            "id": "contact",
+            "settings": {
+                "row": "narrow",
+                "rowAlign": "",
+                "rowCustom": "",
+                "width": "",
+                "color": "primary",
+                "border": "",
+                "image": "",
+                "dim": false,
+                "imagePos": "",
+                "cover": null,
+                "mt": "",
+                "mb": "",
+                "pt": "",
+                "pb": "",
+                "text": "center",
+                "vpa": null,
+                "vpaSpeed": "",
+                "vpaMode": "",
+                "vpaDelay": "",
+                "vpaDuration": "",
+                "custom": ""
+            },
+            "background": null,
+            "cols": [
+                {
+                    "width": {
+                        "s": 100,
+                        "m": 100,
+                        "l": 100
+                    },
+                    "hidden": [],
+                    "text": "",
+                    "stackAlign": "",
+                    "stackGap": "",
+                    "vpa": null,
+                    "vpaSpeed": "",
+                    "vpaMode": "",
+                    "vpaDelay": "",
+                    "vpaDuration": "",
+                    "custom": "",
+                    "stack": null,
+                    "components": [
+                        {
+                            "name": "title",
+                            "source": "/template/page-home/contact/title",
+                            "text": null,
+                            "attributes": {
+                                "level": "2",
+                                "style": "",
+                                "class": ""
+                            }
+                        },
+                        {
+                            "name": "button",
+                            "source": "/_nino/webpage/contact/name",
+                            "text": null,
+                            "attributes": {
+                                "href": "/_nino/webpage/contact/uri",
+                                "style": "light",
+                                "size": "",
+                                "target": "",
+                                "class": ""
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

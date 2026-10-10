@@ -131,9 +131,6 @@ check( 'the services: a column with a stack names its type, its loop and its cel
 	&& $services['cols'][1]['stack']['attributes']['sort'] === 'title' && $services['cols'][1]['stack']['attributes']['limit'] === '6'
 	&& $services['cols'][1]['stack']['attributes']['cols'] === '100 50 50' && $services['cols'][1]['stack']['attributes']['autoheight'] === '1'
 	&& $services['cols'][1]['stack']['attributes']['gap'] === '2' );
-
-var_dump($services);
-exit;
 check( '...its components take a field of the type as their source, and a fixed text beside it',
 	array_column( $services['cols'][1]['components'], 'source' ) === [ 'image', 'title', 'summary', '.uri' ] && $services['cols'][1]['components'][3]['text'] === 'Mehr' );
 
