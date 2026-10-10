@@ -128,25 +128,25 @@
 		margin-right: auto;
 		margin-left: auto;
    } */
-/* .nino-section--alt .nino-section-title, .nino-section--alt .nino-section-subtitle, .nino-section--alt .nino-atf-title, .nino-section--alt .nino-atf-subtitle, .nino-section--alt .nino-atf-arrowdown {
+/* .nino-section--alt .nino-section-title, .nino-section--alt .nino-section-subtitle, .nino-section--alt .nino-hero-title, .nino-section--alt .nino-hero-subtitle, .nino-section--alt .nino-hero-arrowdown {
 		color: var(--color-section-alt-text);
    } */
-/* .nino-section--tint .nino-section-title, .nino-section--tint .nino-section-subtitle, .nino-section--tint .nino-atf-title, .nino-section--tint .nino-atf-subtitle, .nino-section--tint .nino-atf-arrowdown {
+/* .nino-section--tint .nino-section-title, .nino-section--tint .nino-section-subtitle, .nino-section--tint .nino-hero-title, .nino-section--tint .nino-hero-subtitle, .nino-section--tint .nino-hero-arrowdown {
 		color: var(--color-section-tint-text);
    } */
-/* .nino-section--dark .nino-section-title, .nino-section--dark .nino-section-subtitle, .nino-section--dark .nino-atf-title, .nino-section--dark .nino-atf-subtitle, .nino-section--dark .nino-atf-arrowdown, .nino-section--dark .nino-btn--outline, .nino-section--dark .nino-filter-btn {
+/* .nino-section--dark .nino-section-title, .nino-section--dark .nino-section-subtitle, .nino-section--dark .nino-hero-title, .nino-section--dark .nino-hero-subtitle, .nino-section--dark .nino-hero-arrowdown, .nino-section--dark .nino-btn--outline, .nino-section--dark .nino-filter-btn {
 		color: var(--color-section-dark-text);
    } */
-/* .nino-section--black .nino-section-title, .nino-section--black .nino-section-subtitle, .nino-section--black .nino-atf-title, .nino-section--black .nino-atf-subtitle, .nino-section--black .nino-atf-arrowdown, .nino-section--black .nino-btn--outline, .nino-section--black .nino-filter-btn {
+/* .nino-section--black .nino-section-title, .nino-section--black .nino-section-subtitle, .nino-section--black .nino-hero-title, .nino-section--black .nino-hero-subtitle, .nino-section--black .nino-hero-arrowdown, .nino-section--black .nino-btn--outline, .nino-section--black .nino-filter-btn {
 		color: var(--color-section-black-text);
    } */
-/* .nino-section--primary .nino-section-title, .nino-section--primary .nino-section-subtitle, .nino-section--primary .nino-atf-title, .nino-section--primary .nino-atf-subtitle, .nino-section--primary .nino-atf-arrowdown {
+/* .nino-section--primary .nino-section-title, .nino-section--primary .nino-section-subtitle, .nino-section--primary .nino-hero-title, .nino-section--primary .nino-hero-subtitle, .nino-section--primary .nino-hero-arrowdown {
 		color: var(--color-primary-text);
    } */
-/* .nino-section--brand-alt .nino-section-title, .nino-section--brand-alt .nino-section-subtitle, .nino-section--brand-alt .nino-atf-title, .nino-section--brand-alt .nino-atf-subtitle, .nino-section--brand-alt .nino-atf-arrowdown {
+/* .nino-section--brand-alt .nino-section-title, .nino-section--brand-alt .nino-section-subtitle, .nino-section--brand-alt .nino-hero-title, .nino-section--brand-alt .nino-hero-subtitle, .nino-section--brand-alt .nino-hero-arrowdown {
 		color: var(--color-brand-alt-text);
    } */
-/* .nino-cover--dim .nino-section-title, .nino-cover--dim .nino-section-subtitle, .nino-cover--dim .nino-atf-title, .nino-cover--dim .nino-atf-subtitle, .nino-cover--dim .nino-atf-arrowdown, .nino-cover--dim .nino-btn--outline, .nino-cover--dim .nino-filter-btn {
+/* .nino-cover--dim .nino-section-title, .nino-cover--dim .nino-section-subtitle, .nino-cover--dim .nino-hero-title, .nino-cover--dim .nino-hero-subtitle, .nino-cover--dim .nino-hero-arrowdown, .nino-cover--dim .nino-btn--outline, .nino-cover--dim .nino-filter-btn {
 		color: var(--color-section-black-text);
    } */
 /* .nino-section--border-1 {
@@ -189,13 +189,13 @@
 /* .nino-section--dark .nino-icon, .nino-section--black .nino-icon {
 		color: var(--color-section-dark-text);
    } */
-/* .nino-text-left :is(.nino-section-title, .nino-section-subtitle, .nino-atf-title, .nino-atf-subtitle) {
+/* .nino-text-left :is(.nino-section-title, .nino-section-subtitle, .nino-hero-title, .nino-hero-subtitle) {
 		text-align: left;
    } */
-/* .nino-text-center :is(.nino-section-title, .nino-section-subtitle, .nino-atf-title, .nino-atf-subtitle) {
+/* .nino-text-center :is(.nino-section-title, .nino-section-subtitle, .nino-hero-title, .nino-hero-subtitle) {
 		text-align: center;
    } */
-/* .nino-text-right :is(.nino-section-title, .nino-section-subtitle, .nino-atf-title, .nino-atf-subtitle) {
+/* .nino-text-right :is(.nino-section-title, .nino-section-subtitle, .nino-hero-title, .nino-hero-subtitle) {
 		text-align: right;
    } */
 

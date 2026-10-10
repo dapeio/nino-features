@@ -136,7 +136,7 @@ foreach( \Nino\Modules\Design\Setup::PARTS as $part => $kind ) {
 
 /*	A page that opens with a hero loses main's top padding - a rule of the
 	header's, since the header is what sets that padding. The Builder writes a
-	div.nino-wrap around a page's sections, and its hero carries no nino-atf:
+	div.nino-wrap around a page's sections, and its hero carries no nino-hero:
 	every hero a rule names directly below main it has to name inside the
 	wrap as well, in the same rule. Read from the library's own list of
 	headers, so a header that is added without the wrapped form fails here

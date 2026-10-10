@@ -20,12 +20,12 @@
 	--atf-spacing--more: 			var(--space-6);
 }
 
-.nino-atf {
+.nino-hero {
 	padding-top: var(--atf-spacing);
 	padding-bottom: var(--atf-spacing);
 }
 
-.nino-atf-title {
+.nino-hero-title {
 	font-size: var(--atf-volume);
 	line-height: 1.25;
 	max-width: 34rem;
@@ -34,7 +34,7 @@
 
 /*	Capitals over the title rather than a sentence under it: at this size a
 	subtitle set as prose would compete with the title instead of introducing it */
-.nino-atf-subtitle {
+.nino-hero-subtitle {
 	font-size: var(--fontsize-small);
 	line-height: 1.4;
 	letter-spacing: .14em;
@@ -44,11 +44,11 @@
 	margin-bottom: calc( var(--atf-spacing) /3 );
 }
 
-.nino-atf-arrowdown {
+.nino-hero-arrowdown {
 	opacity: .55;
 }
 
-.nino-text-center .nino-atf-title {
+.nino-text-center .nino-hero-title {
 	margin-right: auto;
 	margin-left: auto;
 }

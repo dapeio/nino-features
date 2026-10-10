@@ -829,7 +829,7 @@ check( 'a key that a move takes over is not made by the save as well, where it i
 
 // A model that is what the file reads as is not written: the file keeps its bytes, whatever they were
 $shapes = [
-	'a file whose foreign block touches the head and the footer'		=> "[template /templates/html-header]\n<section class=\"nino-atf nino-section\">\n\t<div class=\"nino-grid-row\">\n\t\t<h2>[[/template/page-lib/hero/title]]</h2>\n\t</div>\n</section>\n[template /templates/html-footer]\n",
+	'a file whose foreign block touches the head and the footer'		=> "[template /templates/html-header]\n<section class=\"nino-hero nino-section\">\n\t<div class=\"nino-grid-row\">\n\t\t<h2>[[/template/page-lib/hero/title]]</h2>\n\t</div>\n</section>\n[template /templates/html-footer]\n",
 	'a file whose sections are written without blank lines'					=> "<!-- nino:template-name Lib -->\n[template /templates/html-header]\n". $section( '[title /template/page-lib/a/title]', 'a' ). "\n". $section( '[title /template/page-lib/b/title]', 'b' ). "\n[template /templates/html-footer]\n",
 	'a file written with other line ends and a last line without one'	=> "[template /templates/html-header]\r\n\r\n\r\n". $section( '[title /template/page-lib/a/title]', 'a' ). "\r\n[template /templates/html-footer]",
 ];

@@ -41,13 +41,13 @@
 
 /* ---- what the framework sets today, for reference ---- */
 
-/* .nino-section--dark .nino-section-title, .nino-section--dark .nino-section-subtitle, .nino-section--dark .nino-atf-title, .nino-section--dark .nino-atf-subtitle, .nino-section--dark .nino-atf-arrowdown, .nino-section--dark .nino-btn--outline, .nino-section--dark .nino-filter-btn {
+/* .nino-section--dark .nino-section-title, .nino-section--dark .nino-section-subtitle, .nino-section--dark .nino-hero-title, .nino-section--dark .nino-hero-subtitle, .nino-section--dark .nino-hero-arrowdown, .nino-section--dark .nino-btn--outline, .nino-section--dark .nino-filter-btn {
 		color: var(--color-section-dark-text);
    } */
-/* .nino-section--black .nino-section-title, .nino-section--black .nino-section-subtitle, .nino-section--black .nino-atf-title, .nino-section--black .nino-atf-subtitle, .nino-section--black .nino-atf-arrowdown, .nino-section--black .nino-btn--outline, .nino-section--black .nino-filter-btn {
+/* .nino-section--black .nino-section-title, .nino-section--black .nino-section-subtitle, .nino-section--black .nino-hero-title, .nino-section--black .nino-hero-subtitle, .nino-section--black .nino-hero-arrowdown, .nino-section--black .nino-btn--outline, .nino-section--black .nino-filter-btn {
 		color: var(--color-section-black-text);
    } */
-/* .nino-cover--dim .nino-section-title, .nino-cover--dim .nino-section-subtitle, .nino-cover--dim .nino-atf-title, .nino-cover--dim .nino-atf-subtitle, .nino-cover--dim .nino-atf-arrowdown, .nino-cover--dim .nino-btn--outline, .nino-cover--dim .nino-filter-btn {
+/* .nino-cover--dim .nino-section-title, .nino-cover--dim .nino-section-subtitle, .nino-cover--dim .nino-hero-title, .nino-cover--dim .nino-hero-subtitle, .nino-cover--dim .nino-hero-arrowdown, .nino-cover--dim .nino-btn--outline, .nino-cover--dim .nino-filter-btn {
 		color: var(--color-section-black-text);
    } */
 /* .nino-btn {

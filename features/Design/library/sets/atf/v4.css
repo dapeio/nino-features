@@ -26,7 +26,7 @@
 	--atf-measure--more: 			26ch;
 }
 
-.nino-atf-title {
+.nino-hero-title {
 	font-size: var(--atf-volume);
 	line-height: 1.02;
 	letter-spacing: -.03em;
@@ -36,7 +36,7 @@
 
 /*	Not a proportion of the title: a quarter of a display size is still a
 	headline, and what belongs under one is a sentence */
-.nino-atf-subtitle {
+.nino-hero-subtitle {
 	font-size: var(--text-2);
 	line-height: 1.5;
 	letter-spacing: 0;
@@ -45,8 +45,8 @@
 	margin-bottom: var(--atf-spacing);
 }
 
-.nino-text-center .nino-atf-title,
-.nino-text-center .nino-atf-subtitle {
+.nino-text-center .nino-hero-title,
+.nino-text-center .nino-hero-subtitle {
 	margin-right: auto;
 	margin-left: auto;
 }
@@ -55,7 +55,7 @@
 	face the project set - but only above the phone, where there is a width to
 	hold back. Below it the screen is the measure */
 @media (max-width: 767px) {
-	.nino-atf-title {
+	.nino-hero-title {
 		max-width: none;
 		letter-spacing: -.02em;
 	}

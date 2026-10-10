@@ -20,15 +20,15 @@
 	--atf-spacing--more: 			var(--space-4);
 }
 
-.nino-atf-title,
-.nino-atf-subtitle {
+.nino-hero-title,
+.nino-hero-subtitle {
 	text-align: left;
 	max-width: 32rem;
 	margin-right: 0;
 	margin-left: 0;
 }
 
-.nino-atf-title {
+.nino-hero-title {
 	font-size: var(--atf-volume);
 	line-height: 1.1;
 	padding-left: var(--space-2);
@@ -36,7 +36,7 @@
 	margin-bottom: calc( var(--atf-spacing) /2 );
 }
 
-.nino-atf-subtitle {
+.nino-hero-subtitle {
 	font-size: calc( var(--atf-volume) *.4 );
 	line-height: 1.5;
 	padding-left: calc( var(--space-2) + 3px );
@@ -46,13 +46,13 @@
 
 /*	The rail is the alignment, so a hero told to centre itself keeps the text
 	left and centres the block instead - two alignments in one hero is neither */
-.nino-text-center .nino-atf-title,
-.nino-text-center .nino-atf-subtitle {
+.nino-text-center .nino-hero-title,
+.nino-text-center .nino-hero-subtitle {
 	text-align: left;
 	margin-right: auto;
 	margin-left: auto;
 }
 
-.nino-atf-arrowdown {
+.nino-hero-arrowdown {
 	margin-left: 0;
 }

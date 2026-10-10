@@ -1,21 +1,21 @@
-<section id="atf" class="nino-section nino-section--dark nino-cover nino-atf" data-cover-height="70" aria-labelledby="atf-title">
+<section id="atf" class="nino-section nino-section--dark nino-cover nino-hero" data-cover-height="70" aria-labelledby="atf-title">
 	<div class="nino-cover-content">
 		<div class="nino-grid-row nino-grid-middle">
 			<div class="nino-grid-100 nino-text-center">
-				<h2 class="nino-atf-title" id="atf-title">ATF</h2>
-				<p class="nino-atf-subtitle">[[short]]</p>
+				<h2 class="nino-hero-title" id="atf-title">ATF</h2>
+				<p class="nino-hero-subtitle">[[short]]</p>
 				<p><a class="nino-btn nino-btn--primary" href="#section">Next</a> <a class="nino-btn nino-btn--outline" href="#article">Article</a></p>
 			</div>
 		</div>
 	</div>
-	<button class="nino-atf-arrowdown" data-arrow-target="#section" aria-label="Next"></button>
+	<button class="nino-hero-arrowdown" data-arrow-target="#section" aria-label="Next"></button>
 </section>
 
 <section class="nino-section" aria-label="ATF volumes">
 	<div class="nino-grid-row">
-		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3"><h3 class="nino-atf-title nino-atf-title--quiet">quiet</h3><p class="nino-atf-subtitle nino-atf-subtitle--quiet">[[short]]</p></div>
-		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3"><h3 class="nino-atf-title">default</h3><p class="nino-atf-subtitle">[[short]]</p></div>
-		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3"><h3 class="nino-atf-title nino-atf-title--loud">loud</h3><p class="nino-atf-subtitle nino-atf-subtitle--loud">[[short]]</p></div>
+		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3"><h3 class="nino-hero-title nino-hero-title--quiet">quiet</h3><p class="nino-hero-subtitle nino-hero-subtitle--quiet">[[short]]</p></div>
+		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3"><h3 class="nino-hero-title">default</h3><p class="nino-hero-subtitle">[[short]]</p></div>
+		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3"><h3 class="nino-hero-title nino-hero-title--loud">loud</h3><p class="nino-hero-subtitle nino-hero-subtitle--loud">[[short]]</p></div>
 	</div>
 </section>
 
