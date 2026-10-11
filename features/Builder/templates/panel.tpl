@@ -175,7 +175,10 @@
 		<div class="builder-ph">
 			<svg class="builder-ph-icon" viewBox="0 0 48 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><use href="#builder-ph-block"></use></svg>
 			<img class="builder-ph-picture" alt="">
-			<span class="builder-ph-label"></span>
+			<div class="builder-ph-text">
+				<span class="builder-ph-label"></span>
+				<span class="builder-ph-draws" hidden></span>
+			</div>
 		</div>
 	</template>
 

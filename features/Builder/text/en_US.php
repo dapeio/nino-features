@@ -27,6 +27,8 @@ declare(strict_types=1);
 //   /_admin/builder/html/...      the HTML+ editor
 //   /_admin/builder/option/...    the words of a value of a setting, as <setting>-<value>; a value with no
 //                                 words of its own is shown as it is, and an empty one as "default" or "none"
+//   /_admin/builder/color/...     the grounds a column may paint besides the colours of a section: counter,
+//                                 the one that sets it off from its section, and none of its own
 //   /_admin/builder/state/...     the states the editor is in: a conflict, a rename, the narrow screen
 //   /_admin/builder/viewport/...  the viewports of the preview: the three, and all of them at once (g)
 //   /_admin/builder/preview/...   what the marks on a frame of the preview mean
@@ -95,6 +97,7 @@ return [
 	'[[/_admin/builder/reason/attribute-value]]'		=> 'The attribute %s has a value the Builder does not keep',
 	'[[/_admin/builder/reason/background-class]]'	=> 'The background block has %s, which the Builder does not keep',
 	'[[/_admin/builder/reason/background-image]]'	=> 'The background block is not exactly one image call with an empty alt text',
+	'[[/_admin/builder/reason/grid-background]]'	=> 'The column has a background block that is not the first thing in it, or a second one',
 	'[[/_admin/builder/reason/no-row]]'						=> 'The section has no row',
 	'[[/_admin/builder/reason/second-row]]'				=> 'The section has more than one row',
 	'[[/_admin/builder/reason/section-content]]'		=> 'The section holds markup next to its row',
@@ -132,8 +135,11 @@ return [
 	'[[/_admin/builder/viewport/g]]'						=> 'Global',
 	'[[/_admin/builder/viewport/all]]'						=> 'All viewports',
 	'[[/_admin/builder/preview/background]]'				=> 'A picture behind the section',
+	'[[/_admin/builder/preview/column-background]]'			=> 'A picture behind the column',
 	'[[/_admin/builder/preview/hidden]]'					=> 'Hidden in this viewport',
 	'[[/_admin/builder/preview/hidden-in]]'					=> 'Hidden in: %s',
+	'[[/_admin/builder/preview/align-text]]'				=> 'Horizontal alignment: %s',
+	'[[/_admin/builder/preview/align-stack]]'				=> 'Vertical alignment: %s',
 
 	// The frames, what they are called and the buttons on them
 	'[[/_admin/builder/tree/template]]'						=> 'Template',
@@ -175,6 +181,7 @@ return [
 	'[[/_admin/builder/section/fullheight]]'				=> 'Full height',
 	'[[/_admin/builder/section/color]]'						=> 'Colour',
 	'[[/_admin/builder/section/border]]'					=> 'Border',
+	'[[/_admin/builder/section/border-primary]]'			=> 'In the brand colour',
 	'[[/_admin/builder/section/image]]'						=> 'Picture',
 	'[[/_admin/builder/section/dim]]'						=> 'Dim the picture',
 	'[[/_admin/builder/section/image-pos]]'					=> 'Position of the picture',
@@ -202,7 +209,7 @@ return [
 	'[[/_admin/builder/col/head-device]]'				=> 'Device',
 	'[[/_admin/builder/col/head-width]]'				=> 'Width',
 	'[[/_admin/builder/col/head-hidden]]'				=> 'Hidden',
-	'[[/_admin/builder/col/stack-align]]'					=> 'Alignment of the components',
+	'[[/_admin/builder/col/stack-align]]'					=> 'Vertical alignment',
 	'[[/_admin/builder/col/stack-gap]]'						=> 'Gap (--space-*)',
 	'[[/_admin/builder/col/custom]]'						=> 'Class of the column',
 	'[[/_admin/builder/stack/static]]'						=> 'Static',
@@ -222,6 +229,7 @@ return [
 	'[[/_admin/builder/stack/head-cells]]'					=> 'Cell width',
 	'[[/_admin/builder/stack/gap]]'							=> 'Gap between the cells',
 	'[[/_admin/builder/stack/autoheight]]'					=> 'Cells of equal height',
+	'[[/_admin/builder/stack/article]]'						=> 'Cards',
 	'[[/_admin/builder/stack/id]]'							=> 'Id of the loop',
 	'[[/_admin/builder/template/animate]]'					=> 'Animate the sections',
 	'[[/_admin/builder/component/title]]'					=> 'Component "%s"',
@@ -260,6 +268,7 @@ return [
 	'[[/_admin/builder/source/no-hits]]'					=> 'Nothing found.',
 	'[[/_admin/builder/source/more]]'						=> '%s more - narrow the search.',
 	'[[/_admin/builder/source/background]]'					=> 'Background',
+	'[[/_admin/builder/source/column-background]]'			=> 'Column %s: background',
 	'[[/_admin/builder/source/focus]]'						=> 'Focus',
 	'[[/_admin/builder/source/no-focus]]'					=> 'No focus',
 	'[[/_admin/builder/source/remove-background]]'			=> 'Remove the picture',
@@ -334,11 +343,14 @@ return [
 	'[[/_admin/builder/option/color-black]]'					=> 'Black',
 	'[[/_admin/builder/option/color-primary]]'				=> 'Brand colour',
 	'[[/_admin/builder/option/color-brand-alt]]'				=> 'Second colour',
+	'[[/_admin/builder/color/surroundings]]'					=> 'Like the surroundings',
+	'[[/_admin/builder/color/counter]]'							=> 'Counter',
 	'[[/_admin/builder/option/border-default]]'				=> 'None',
 	'[[/_admin/builder/option/border-1]]'					=> 'Thin',
 	'[[/_admin/builder/option/border-2]]'					=> 'Medium',
 	'[[/_admin/builder/option/border-3]]'					=> 'Strong',
-	'[[/_admin/builder/option/border-primary]]'				=> 'Brand colour',
+	'[[/_admin/builder/option/article-default]]'			=> 'None',
+	'[[/_admin/builder/option/article-card]]'				=> 'Card',
 	'[[/_admin/builder/option/space-default]]'				=> 'Default',
 	'[[/_admin/builder/option/image-cover]]'				=> 'Cover',
 	'[[/_admin/builder/option/image-parallax]]'				=> 'Parallax',

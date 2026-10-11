@@ -1095,9 +1095,12 @@ namespace Nino\Modules\Builder {
 			if( is_array( $section['background'] ?? null ) === true && preg_match( self::SLOT, (string) ( $section['background']['slot'] ?? '' ) ) !== 1 )
 				$problems[] = 'the background is not an image slot';
 
-			foreach( (array) ( $section['cols'] ?? [] ) as $col ) {
+			foreach( (array) ( $section['cols'] ?? [] ) as $c => $col ) {
 
 				$fields = null;
+
+				if( is_array( $col['background'] ?? null ) === true && preg_match( self::SLOT, (string) ( $col['background']['slot'] ?? '' ) ) !== 1 )
+					$problems[] = 'the background of column '. ( (int) $c + 1 ). ' is not an image slot';
 
 				if( is_array( $col['stack'] ?? null ) === true ) {
 
@@ -1214,6 +1217,10 @@ namespace Nino\Modules\Builder {
 					$model['blocks'][$index]['background']['slot'] = $move( (string) $block['background']['slot'], 'slot' );
 
 				foreach( (array) ( $block['cols'] ?? [] ) as $c => $col )
+					if( is_array( $col['background'] ?? null ) === true )
+						$model['blocks'][$index]['cols'][$c]['background']['slot'] = $move( (string) $col['background']['slot'], 'slot' );
+
+				foreach( (array) ( $block['cols'] ?? [] ) as $c => $col )
 					foreach( (array) ( $col['components'] ?? [] ) as $k => $component )
 						if( (string) ( $component['source'] ?? '' ) !== '' )
 							$model['blocks'][$index]['cols'][$c]['components'][$k]['source'] = $move( (string) $component['source'], self::_kind( $schemas, (string) ( $component['name'] ?? '' ) ) === 'image' ? 'slot' : 'key' );
@@ -1258,6 +1265,9 @@ namespace Nino\Modules\Builder {
 
 				$at			= 'the section "'. (string) ( $block['id'] ?? '' ). '" (block '. ( (int) $index + 1 ). ')';
 				$given	= [ [ 'the alt text of the background', $block['background']['create']['alt'] ?? null ] ];
+
+				foreach( (array) ( $block['cols'] ?? [] ) as $c => $col )
+					$given[] = [ 'the alt text of the background of column '. ( (int) $c + 1 ), $col['background']['create']['alt'] ?? null ];
 
 				foreach( (array) ( $block['cols'] ?? [] ) as $col )
 					foreach( (array) ( $col['components'] ?? [] ) as $component ) {
@@ -1402,6 +1412,10 @@ namespace Nino\Modules\Builder {
 
 				if( is_array( $background['create'] ?? null ) === true )
 					$plan['slots'][(string) $background['slot']] = $background['create'];
+
+				foreach( (array) ( $block['cols'] ?? [] ) as $col )
+					if( is_array( $col['background']['create'] ?? null ) === true )
+						$plan['slots'][(string) $col['background']['slot']] = $col['background']['create'];
 
 				foreach( (array) ( $block['cols'] ?? [] ) as $col )
 					foreach( (array) ( $col['components'] ?? [] ) as $component ) {
@@ -1918,10 +1932,13 @@ namespace Nino\Modules\Builder {
 		 *	What is wrong with the shape of a model before anything in it is
 		 *	read: a name that is no text, a block that is no block, a switch
 		 *	that is neither on nor off (the animation of the template, the
-		 *	full width and the full height of a section - one left out is
-		 *	off), a call that is no call, texts that are no text for each
-		 *	language - what the Writer would take for something else or
-		 *	stumble over
+		 *	full width, the full height and the brand colour of the border of
+		 *	a section, the dimming of a column - one left out is off), a
+		 *	border that is no strength, the ground of a column that is none
+		 *	of Nino.css's, a background that is no slot or whose focus is none
+		 *	of the nine places, a call that is no call, texts that are no text
+		 *	for each language - what the Writer would take for something else
+		 *	or stumble over
 		 *
 		 *	@param		array			$model
 		 *
@@ -1931,6 +1948,8 @@ namespace Nino\Modules\Builder {
 
 			$problems	= [];
 			$text			= static fn( mixed $value ): bool => $value === null || is_string( $value ) === true;
+			// The focus of a picture is none or one of the nine places: the Writer casts anything else to a number
+			$place		= static fn( mixed $value ): bool => $value === null || ( is_int( $value ) === true && $value >= 1 && $value <= 9 );
 
 			foreach( [ 'name', 'vpa', 'vpaSpeed', 'wrapClass', 'header', 'footer' ] as $key )
 				if( $text( $model[$key] ?? null ) === false )
@@ -1974,9 +1993,13 @@ namespace Nino\Modules\Builder {
 						$problems[] = 'the '. $key. ' of '. $at. ' are no list';
 
 				// What is no switch would be left out of the classes, and read back as off
-				foreach( Reader::SECTION_SIZE as $key )
+				foreach( array_merge( Reader::SECTION_SIZE, [ 'borderPrimary' ] ) as $key )
 					if( is_bool( $block['settings'][$key] ?? false ) === false )
 						$problems[] = 'the '. $key. ' of '. $at. ' is neither on nor off';
+
+				// The border is a strength, and the brand colour is the switch beside it: what is none of the three would be a class of its own
+				if( in_array( $block['settings']['border'] ?? '', array_merge( [ '' ], Reader::BORDER ), true ) === false )
+					$problems[] = 'the border of '. $at. ' is none of the strengths';
 
 				if( ( $block['background'] ?? null ) !== null && ( is_array( $block['background'] ) === false || $text( $block['background']['slot'] ?? null ) === false ) )
 					$problems[] = $at. ' has a background that is no image slot';
@@ -1984,12 +2007,32 @@ namespace Nino\Modules\Builder {
 				if( is_array( $block['background'] ?? null ) === true && self::_texted( [ 'create' => $block['background']['create'] ?? null ] ) === false )
 					$problems[] = $at. ' has a background with an alt text that is none';
 
-				foreach( is_array( $block['cols'] ?? [] ) === true ? $block['cols'] : [] as $col ) {
+				if( is_array( $block['background'] ?? null ) === true && $place( $block['background']['focus'] ?? null ) === false )
+					$problems[] = $at. ' has a background with a focus that is no place from 1 to 9';
+
+				foreach( is_array( $block['cols'] ?? [] ) === true ? $block['cols'] : [] as $c => $col ) {
 
 					if( is_array( $col ) === false || is_array( $col['components'] ?? [] ) === false || is_array( $col['width'] ?? [] ) === false || is_array( $col['hidden'] ?? [] ) === false ) {
 						$problems[] = $at. ' has a column that is none';
 						continue;
 					}
+
+					$of = 'column '. ( (int) $c + 1 ). ' of '. $at;
+
+					if( in_array( $col['color'] ?? '', array_merge( [ '' ], Reader::COL_COLOR ), true ) === false )
+						$problems[] = 'the color of '. $of. ' is none that Nino.css has';
+
+					if( is_bool( $col['dim'] ?? false ) === false )
+						$problems[] = 'the dim of '. $of. ' is neither on nor off';
+
+					if( ( $col['background'] ?? null ) !== null && ( is_array( $col['background'] ) === false || $text( $col['background']['slot'] ?? null ) === false ) )
+						$problems[] = $of. ' has a background that is no image slot';
+
+					if( is_array( $col['background'] ?? null ) === true && self::_texted( [ 'create' => $col['background']['create'] ?? null ] ) === false )
+						$problems[] = $of. ' has a background with an alt text that is none';
+
+					if( is_array( $col['background'] ?? null ) === true && $place( $col['background']['focus'] ?? null ) === false )
+						$problems[] = $of. ' has a background with a focus that is no place from 1 to 9';
 
 					$calls = $col['components'] ?? [];
 

@@ -21,11 +21,13 @@ namespace Nino\Modules\Builder {
 	 *
 	 *											The grammar it reads is the one the Writer writes: a block
 	 *											is a section (a <section>, an optional background, exactly
-	 *											one row, columns, and in each column either component
-	 *											calls or one stack call) or a foreign block. A section is
+	 *											one row, columns, and in each column an optional background
+	 *											of its own and either component calls or one stack call) or
+	 *											a foreign block. A section is
 	 *											read whole or not at all - whatever it holds that the model
 	 *											cannot keep (a second row, a column without a width, a
 	 *											shortcode that is no component, markup next to a stack,
+	 *											a background that is not the first thing in its column,
 	 *											a nested call, an attribute the schema does not know) makes
 	 *											the whole section a foreign block, with the line and the
 	 *											reason it failed at. A foreign block runs from where the
@@ -104,7 +106,8 @@ namespace Nino\Modules\Builder {
 	 *											    fullwidth   bool                  nino-section--fullwidth
 	 *											    fullheight  bool                  nino-section--fullheight, both may be on at once
 	 *											    color       ''|alt|tint|dark|black|primary|brand-alt
-	 *											    border      ''|1|2|3|primary      nino-section--border-<x>
+	 *											    border      ''|1|2|3              nino-section--border-<n>
+	 *											    borderPrimary bool                nino-section--border-primary, with or without a strength
 	 *											    image       ''|cover|parallax     nino-cover, nino-parallex
 	 *											    dim         bool                  nino-cover--dim, nino-parallex--dim
 	 *											    imagePos    ''|top|center|bottom  nino-cover-<x>
@@ -129,6 +132,14 @@ namespace Nino\Modules\Builder {
 	 *											                    is all three, nino-grid-m-50 holds from m up
 	 *											  hidden    map     s, m, l => true, only the hidden ones (none
 	 *											                    hidden is [] in php, and in the json)
+	 *											  color     ''|counter|alt|tint|dark|black|primary|brand-alt
+	 *											                    nino-grid--<x>; counter is the ground that sets the
+	 *											                    column off from the section it is in
+	 *											  dim       bool    nino-grid--dim, written only while the column has a
+	 *											                    background: there is no picture to darken without one
+	 *											  background null|map  as that of a section: slot, focus, create; the
+	 *											            div.nino-grid-bg, the first thing in the column - before its
+	 *											            stack or its components
 	 *											  text      ''|left|center|right
 	 *											  stackAlign ''|start|center|end   nino-stack-<x>
 	 *											  stackGap  ''|0..6                nino-stack-gap-<n>
@@ -176,7 +187,9 @@ namespace Nino\Modules\Builder {
 		public const array ROW_ALIGN = [ 'center', 'middle', 'bottom' ];
 		public const array SECTION_SIZE = [ 'fullwidth', 'fullheight' ];
 		public const array COLOR = [ 'alt', 'tint', 'dark', 'black', 'primary', 'brand-alt' ];
-		public const array BORDER = [ '1', '2', '3', 'primary' ];
+		// A column paints the same grounds, and the one that sets it off from its section
+		public const array COL_COLOR = [ 'counter', ...self::COLOR ];
+		public const array BORDER = [ '1', '2', '3' ];
 		public const array IMAGE = [ 'cover' => 'nino-cover', 'parallax' => 'nino-parallex' ];
 		public const array IMAGE_POS = [ 'top', 'center', 'bottom' ];
 		public const array SPACING = [ 'mt', 'mb', 'pt', 'pb' ];
@@ -213,6 +226,7 @@ namespace Nino\Modules\Builder {
 			'attribute-value'			=> 'the attribute %s has a value the builder does not keep',
 			'background-class'		=> 'the background block has the class %s, which the builder does not keep',
 			'background-image'		=> 'the background block is not one image call with an empty alt',
+			'grid-background'		=> 'the column has a background block that is not the first thing in it, or a second one',
 			'no-row'							=> 'the section has no row',
 			'second-row'					=> 'the section has more than one row',
 			'section-content'			=> 'the section holds markup next to its row',
@@ -246,7 +260,7 @@ namespace Nino\Modules\Builder {
 		 */
 		public static function sectionDefaults(): array {
 			return [
-				'row' => '', 'rowAlign' => '', 'rowCustom' => '', 'fullwidth' => false, 'fullheight' => false, 'color' => '', 'border' => '',
+				'row' => '', 'rowAlign' => '', 'rowCustom' => '', 'fullwidth' => false, 'fullheight' => false, 'color' => '', 'border' => '', 'borderPrimary' => false,
 				'image' => '', 'dim' => false, 'imagePos' => '', 'cover' => null,
 				'mt' => '', 'mb' => '', 'pt' => '', 'pb' => '', 'text' => '',
 			] + self::animationDefaults() + [ 'custom' => '' ];
@@ -259,7 +273,7 @@ namespace Nino\Modules\Builder {
 		 *	@return 	array
 		 */
 		public static function colDefaults(): array {
-			return [ 'text' => '', 'stackAlign' => '', 'stackGap' => '' ] + self::animationDefaults() + [ 'custom' => '' ];
+			return [ 'color' => '', 'dim' => false, 'background' => null, 'text' => '', 'stackAlign' => '', 'stackGap' => '' ] + self::animationDefaults() + [ 'custom' => '' ];
 		}
 
 		/**
@@ -602,7 +616,7 @@ namespace Nino\Modules\Builder {
 
 			if( $tag === 'div' && in_array( 'nino-section-bg', self::_tokens( $tagAttributes['class'] ?? '', $pos ), true ) === true ) {
 
-				[ $section['background'], $pos ] = self::_background( $body, $pos, $registry );
+				[ $section['background'], $pos ] = self::_background( $body, $pos, $registry, 'nino-section-bg' );
 				$pos = self::_skip( $body, $pos );
 				[ $tag, $tagAttributes, $after ] = self::_peek( $body, $pos );
 			}
@@ -680,6 +694,24 @@ namespace Nino\Modules\Builder {
 			catch( \RuntimeException ) {
 				return [ '', [], $pos ];
 			}
+		}
+
+		/**
+		 *	Whether the tag at a position is a div with a class, by the words of its
+		 *	class attribute - the others it has are not looked at, so that a class the
+		 *	builder cannot keep does not change the reason a column fails with
+		 *
+		 *	@param		string		$body
+		 *	@param		int				$pos
+		 *	@param		string		$class
+		 *
+		 *	@return 	bool
+		 */
+		private static function _isDiv( string $body, int $pos, string $class ): bool {
+
+			[ $tag, $attributes ] = self::_peek( $body, $pos );
+
+			return $tag === 'div' && in_array( $class, preg_split( '/\s+/', trim( $attributes['class'] ?? '' ), -1, PREG_SPLIT_NO_EMPTY ) ?: [], true );
 		}
 
 		/**
@@ -773,8 +805,10 @@ namespace Nino\Modules\Builder {
 					$s[$m[1]] = true;
 				elseif( preg_match( '/^nino-section--(alt|tint|dark|black|primary|brand-alt)$/D', $token, $m ) === 1 )
 					$set( 'color', $m[1], $token );
-				elseif( preg_match( '/^nino-section--border-(1|2|3|primary)$/D', $token, $m ) === 1 )
+				elseif( preg_match( '/^nino-section--border-(1|2|3)$/D', $token, $m ) === 1 )
 					$set( 'border', $m[1], $token );
+				elseif( $token === 'nino-section--border-primary' )
+					$set( 'borderPrimary', true, $token );
 				elseif( $token === 'nino-cover' || $token === 'nino-parallex' )
 					$set( 'image', $token === 'nino-cover' ? 'cover' : 'parallax', $token );
 				elseif( $token === 'nino-cover--dim' || $token === 'nino-parallex--dim' )
@@ -1044,15 +1078,16 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	The background block of a section
+		 *	The background block of a section or a column
 		 *
 		 *	@param		string		$body
 		 *	@param		int				$pos
 		 *	@param		array			$registry
+		 *	@param		string		$class				nino-section-bg or nino-grid-bg: the class that makes the block one
 		 *
 		 *	@return 	array										[ [ slot, focus ], the position after it ]
 		 */
-		private static function _background( string $body, int $pos, array $registry ): array {
+		private static function _background( string $body, int $pos, array $registry, string $class ): array {
 
 			[ $attributes, $pos ] = self::_open( $body, $pos, 'div', 'background-image' );
 
@@ -1063,7 +1098,7 @@ namespace Nino\Modules\Builder {
 					throw self::_fail( 'background-class', $name, $pos );
 
 			foreach( self::_tokens( $attributes['class'] ?? '', $pos ) as $token )
-				if( $token === 'nino-section-bg' )
+				if( $token === $class )
 					continue;
 				elseif( preg_match( '/^nino-img-focus--([1-9])$/D', $token, $m ) === 1 && $focus === null )
 					$focus = (int) $m[1];
@@ -1115,6 +1150,7 @@ namespace Nino\Modules\Builder {
 
 			$col = [ 'width' => [], 'hidden' => [] ] + self::colDefaults() + [ 'stack' => null, 'components' => [] ];
 			$custom = [];
+			$dim = false;
 
 			// Nino.css is mobile-first: nino-grid-100 holds in every viewport, a
 			// prefixed width from its viewport up until a larger one takes over.
@@ -1140,6 +1176,13 @@ namespace Nino\Modules\Builder {
 				}
 				elseif( preg_match( '/^nino-hide-(s|m|l)$/D', $token, $m ) === 1 )
 					$col['hidden'][$m[1]] = true;
+				elseif( preg_match( '/^nino-grid--(counter|alt|tint|dark|black|primary|brand-alt)$/D', $token, $m ) === 1 && $col['color'] === '' )
+					$col['color'] = $m[1];
+				elseif( $token === 'nino-grid--dim' ) {
+
+					$dim = true;
+					$custom[] = $token;
+				}
 				elseif( preg_match( '/^nino-stack-(start|center|end)$/D', $token, $m ) === 1 && $col['stackAlign'] === '' )
 					$col['stackAlign'] = $m[1];
 				elseif( preg_match( '/^nino-stack-gap-([0-6])$/D', $token, $m ) === 1 && $col['stackGap'] === '' )
@@ -1158,11 +1201,23 @@ namespace Nino\Modules\Builder {
 				throw self::_fail( 'col-width', '', $pos );
 
 			$col['width'] = $width;
-			$col['custom'] = implode( ' ', $custom );
 
 			self::_animationAttributes( $attributes, $col, $pos );
 
-			$pos = $after;
+			// The picture behind the column is the first thing in it, in a block of its own as a section has one before its row
+			$pos = self::_skip( $body, $after );
+
+			if( self::_isDiv( $body, $pos, 'nino-grid-bg' ) === true )
+				[ $col['background'], $pos ] = self::_background( $body, $pos, $registry, 'nino-grid-bg' );
+
+			// There is nothing to darken without a picture: the class of a column that has none is a class of its own, and stays where it stood among the others
+			if( $dim === true && $col['background'] !== null ) {
+
+				$col['dim'] = true;
+				$custom = array_values( array_diff( $custom, [ 'nino-grid--dim' ] ) );
+			}
+
+			$col['custom'] = implode( ' ', $custom );
 			$calls = [];
 
 			while( true ) {
@@ -1173,6 +1228,9 @@ namespace Nino\Modules\Builder {
 					$pos += strlen( $close[0] );
 					break;
 				}
+
+				if( self::_isDiv( $body, $pos, 'nino-grid-bg' ) === true )
+					throw self::_fail( 'grid-background', '', $pos );
 
 				$at = $pos;
 				[ $call, $pos ] = self::_call( $body, $pos, 0, $registry, 'col-markup' );

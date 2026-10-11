@@ -96,7 +96,13 @@
 		// The values of Nino.css the forms offer, by the setting they are for (see
 		// Reader). A '' is the setting off
 		COLORS		: [ '', 'alt', 'tint', 'dark', 'black', 'primary', 'brand-alt' ],
-		BORDERS		: [ '', '1', '2', '3', 'primary' ],
+		// A column paints them too, and counter between none and them: the ground that sets it off from its section. The cells of a loop
+		// are cards on one of them or on counter, or a card on the ground they sit on, or none
+		COL_COLORS: [ '', 'counter', 'alt', 'tint', 'dark', 'black', 'primary', 'brand-alt' ],
+		CARDS			: [ '', 'card', 'counter', 'alt', 'tint', 'dark', 'black', 'primary', 'brand-alt' ],
+		// The ground counter is on each ground, the pairs of Nino.css: default and alt, tint to default, dark and black, primary and brand-alt
+		COUNTERS	: { '' : 'alt', alt : '', tint : '', dark : 'black', black : 'dark', primary : 'brand-alt', 'brand-alt' : 'primary' },
+		BORDERS		: [ '', '1', '2', '3' ],
 		ROWS			: [ '', 'narrow', 'wide' ],
 		// Where a row puts its columns, up and down: at the top, which is none, in the middle,
 		// at the bottom. nino-grid-center puts them in the middle across, and is for a file
@@ -480,6 +486,10 @@
 				note( section.background.slot );
 
 			( section.cols || [] ).forEach( function( col ) {
+
+				if( col.background )
+					note( col.background.slot );
+
 				col.components.forEach( function( component ) { note( component.source ) } );
 			} );
 
@@ -559,7 +569,7 @@
 			return {
 				kind			: 'section',
 				id				: id,
-				settings	: { row : '', rowAlign : '', rowCustom : '', fullwidth : false, fullheight : false, color : '', border : '', image : '', dim : false, imagePos : '', cover : null, mt : '', mb : '', pt : '', pb : '', text : '', vpa : model.animate === true ? '' : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '' },
+				settings	: { row : '', rowAlign : '', rowCustom : '', fullwidth : false, fullheight : false, color : '', border : '', borderPrimary : false, image : '', dim : false, imagePos : '', cover : null, mt : '', mb : '', pt : '', pb : '', text : '', vpa : model.animate === true ? '' : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '' },
 				background : null,
 				cols			: [ builder._newCol() ],
 			};
@@ -571,7 +581,7 @@
 		 *	@return		{Object}
 		 */
 		_newCol : function() {
-			return { width : { s : 100, m : 100, l : 100 }, hidden : {}, text : '', stackAlign : '', stackGap : '', vpa : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '', stack : null, components : [] };
+			return { width : { s : 100, m : 100, l : 100 }, hidden : {}, color : '', dim : false, background : null, text : '', stackAlign : '', stackGap : '', vpa : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '', stack : null, components : [] };
 		},
 
 		/**
@@ -997,14 +1007,24 @@
 				};
 			};
 
-			if( node.background ) {
-				const made = remake( node.background.slot, 'image', Nino.content.getText('/_admin/builder/source/background') );
-				node.background.slot = made.source;
+			// The picture behind a copy of a section is a new slot, and so is the one behind each of its columns - and behind a copy of a column
+			const picture = function( holder ) {
+
+				const made = remake( holder.background.slot, 'image', Nino.content.getText('/_admin/builder/source/background') );
+
+				holder.background.slot = made.source;
+
 				if( made.create !== undefined )
-					node.background.create = made.create;
-			}
+					holder.background.create = made.create;
+			};
+
+			if( node.kind === 'section' && node.background )
+				picture( node );
 
 			columns.forEach( function( col ) {
+
+				if( col.background )
+					picture( col );
 
 				( col.components || [] ).forEach( function( component ) {
 
@@ -1079,9 +1099,68 @@
 		// --------------------------------------------------------- The preview
 
 		/**
+		 *	The ground a column paints, said as the colour of a section is: its own, or - for counter - the counter of the
+		 *	ground of the section it is in (see COUNTERS). A column that has none of its own paints none: that is for the
+		 *	caller to say
+		 *
+		 *	@param		{string}		color							A value of COL_COLORS, none but ''
+		 *	@param		{string}		around						The colour of the section
+		 *
+		 *	@return		{string}									A value of COLORS, '' being the ground of the page
+		 */
+		_paints : function( color, around ) {
+			return color === 'counter' ? ( Nino.admin.builder.COUNTERS[around] ?? '' ) : color;
+		},
+
+		/**
+		 *	Where a component of a column would stand, as a component says where it belongs (its 'in'): in a cell where the
+		 *	column runs a loop; in the hero where the column is in the first block of the page and that has a picture behind
+		 *	it - the cover or the parallax, which is when Nino.css takes a section for the hero; else in a section
+		 *
+		 *	@param		{Object}		model
+		 *	@param		{Array}			path							The column
+		 *
+		 *	@return		{string}									cell, hero or section
+		 */
+		_where : function( model, path ) {
+
+			const block = model.blocks[path[0]];
+			const stack = block.cols[path[1]].stack;
+
+			if( stack !== null && stack !== undefined )
+				return 'cell';
+
+			return path[0] === 0 && block.settings.image !== '' ? 'hero' : 'section';
+		},
+
+		/**
+		 *	What a component draws, as the second line of its placeholder says it: the 'draws' of its schema with each
+		 *	{name} put in - the value the component has, else the default of the schema - and the tag, which is the first
+		 *	word, in upper case: H3 .nino-section-title
+		 *
+		 *	@param		{Object}		schema						The component's entry of the registry
+		 *	@param		{Object}		component
+		 *
+		 *	@return		{string}									'' where the schema says nothing of it
+		 */
+		_draws : function( schema, component ) {
+
+			if( typeof schema.draws !== 'string' || schema.draws === '' )
+				return '';
+
+			const defaults = schema.defaults || {};
+			const attributes = component.attributes || {};
+			const text = schema.draws.replace( /\{([a-z0-9-]+)\}/g, function( all, name ) { return String( attributes[name] ?? defaults[name] ?? '' ) } );
+			const space = text.indexOf(' ');
+
+			return space === -1 ? text.toUpperCase() : text.slice( 0, space ).toUpperCase()+ text.slice( space );
+		},
+
+		/**
 		 *	What the preview draws, from the model: the sections in order, each
 		 *	with its colour and whether it has a picture behind it, its columns at the
-		 *	width and the visibility of one viewport, in a column its components as
+		 *	width and the visibility of one viewport and in the ground each paints - dark
+		 *	where its picture is dimmed -, in a column its components as
 		 *	placeholders with the image the registry names, and for a column that runs a
 		 *	loop what the loop is, and the type it runs over by the title the Elements
 		 *	panel gives it - it is said in the head of the column, whose components are
@@ -1116,6 +1195,7 @@
 					image		: builder.PREVIEWS.indexOf( schema.preview ) === -1 ? 'block' : schema.preview,
 					line		: text === null ? '' : builder._firstLine( text.value, builder.LINE_MAX ),
 					picture	: slot !== undefined && typeof slot.url === 'string' ? slot.url : '',
+					draws		: builder._draws( schema, component ),
 				};
 			};
 
@@ -1135,12 +1215,19 @@
 
 						const stack = col.stack === null || col.stack === undefined ? null : col.stack;
 						const type = stack === null ? undefined : ( registry.types || [] ).find( function( candidate ) { return candidate.uri === stack.source } );
+						const picture = col.background !== null && col.background !== undefined;
 
 						return {
 							path			: [ b, c ],
 							width			: parseInt( col.width[shown], 10 ) || 100,
 							hidden		: viewport !== 'g' && col.hidden[viewport] === true,
 							hiddenIn	: builder.VIEWPORTS.filter( function( at ) { return col.hidden[at] === true } ),
+							// The ground the frame is painted in: none where the column paints none, plain where its ground is the page's - and dark where its picture is
+							// dimmed, whatever colour it names: Nino.css paints a dimmed column as the dark ground (a dimming without a picture is no ground)
+							color			: picture === true && col.dim === true ? 'dark' : ( col.color === undefined || col.color === '' ? '' : ( builder._paints( col.color, block.settings.color || '' ) || 'plain' ) ),
+							background : picture,
+							text			: col.text || '',
+							stackAlign : col.stackAlign || '',
 							stack			: stack === null ? null : { path : [ b, c, 'x' ], label : builder._stackLabel( registry, stack.name ), type : type === undefined || type.title === '' ? stack.source : type.title },
 							components : col.components.map( function( component, k ) { return place( component, [ b, c, k ] ) } ),
 						};
@@ -2483,8 +2570,10 @@
 
 		/**
 		 *	One column of the preview, at the width and the visibility of the
-		 *	viewport. Its head has the width for a title; what it says of the column
-		 *	is the loop it runs - a button, which opens the Loop tab - and that it
+		 *	viewport, in the ground it paints. Its head has the width for a title;
+		 *	what it says of the column is a picture behind it, the loop it runs - a
+		 *	button, which opens the Loop tab -, an alignment that is not the default
+		 *	- the icon of the choice, a button that opens the Layout tab - and that it
 		 *	is hidden: where the view is one viewport, in that one, else in which
 		 *	ones. A column with a loop has the components of its cell in it, as one
 		 *	without has its own
@@ -2507,6 +2596,13 @@
 			builder._one( frame, '.builder-col-name' ).textContent = col.width+ '%';
 			builder._pick( frame, col.path );
 
+			// A column that paints a ground is tinted as the section is
+			if( col.color !== '' )
+				frame.classList.add( 'builder-color-'+ col.color );
+
+			if( col.background === true )
+				status.appendChild( builder._statusItem( 'background', 'image', Nino.content.getText('/_admin/builder/preview/column-background'), '' ) );
+
 			if( col.stack !== null ) {
 
 				// What the head says of the loop is in the title as well: in a narrow column the text is cut off, the title is not
@@ -2520,6 +2616,20 @@
 				loop.dataset.path = col.stack.path.join('.');
 				status.appendChild( loop );
 			}
+
+			// An alignment that is not the default is the icon of the choice, as the dialog has it, in every view - it is no property of a viewport
+			[ { key : 'stackAlign', group : 'stack-align', words : 'align-stack' }, { key : 'text', group : 'text', words : 'align-text' } ].forEach( function( how ) {
+
+				const icon = builder.ALIGN_ICONS[how.key][col[how.key]];
+
+				if( col[how.key] === '' || icon === undefined )
+					return;
+
+				status.appendChild( builder._statusItem( 'align', icon, Nino.adminUi.format( Nino.content.getText( '/_admin/builder/preview/'+ how.words ), builder._optionLabel( how.group, col[how.key] ) ), '', function() {
+					builder._select( col.path );
+					builder._openSettings( col.path );
+				} ) );
+			} );
 
 			if( all === true ? col.hiddenIn.length > 0 : col.hidden === true )
 				status.appendChild( builder._statusItem( 'hidden', 'hidden', all === true
@@ -2556,9 +2666,10 @@
 		 *	A placeholder: the image the registry names for a component and its label -
 		 *	or, where the component has a text, that stands in the place of the label, and
 		 *	where its slot has a picture, the picture in the place of the image. What it
-		 *	is then is told by its title, the label
+		 *	is then is told by its title, the label. A component that says what it draws
+		 *	has it under the label, as a line of its own: the tag and the class
 		 *
-		 *	@param		{Object}		component			{ path, label, image, line, picture }
+		 *	@param		{Object}		component			{ path, label, image, line, picture, draws }
 		 *	@param		{string}		how						tools: a frame of its own, with its tools; none: a frame that has
 		 *															its tools elsewhere
 		 *
@@ -2570,16 +2681,23 @@
 			const ph = builder._fragment( 'ph' );
 			const line = component.line ?? '';
 			const picture = component.picture ?? '';
+			const draws = component.draws ?? '';
+			const second = builder._one( ph, '.builder-ph-draws' );
 
 			builder._one( ph, '.builder-ph-label' ).textContent = line === '' ? component.label : line;
 			builder._one( ph, 'use' ).setAttribute( 'href', '#builder-ph-'+ component.image );
 			ph.dataset.path = component.path.join('.');
+			second.textContent = draws;
+			second.hidden = draws === '';
 
 			if( line !== '' || picture !== '' )
 				ph.title = component.label;
 
 			if( line !== '' )
 				ph.classList.add('has-line');
+
+			if( draws !== '' )
+				ph.classList.add('has-draws');
 
 			if( picture !== '' ) {
 				builder._one( ph, '.builder-ph-picture' ).src = picture;
@@ -2599,7 +2717,7 @@
 		 *	where the icon says it all, an icon and a text where there is more to say.
 		 *	With an action it is a button
 		 *
-		 *	@param		{string}		kind							background, warning, hidden or loop: a class of its own
+		 *	@param		{string}		kind							background, warning, hidden, loop or align: a class of its own
 		 *	@param		{string}		icon
 		 *	@param		{string}		title
 		 *	@param		{string}		text							'' for the icon alone
@@ -2618,7 +2736,11 @@
 			if( text !== '' )
 				item.appendChild( builder._el( 'span', 'builder-status-text', text ) );
 			else {
-				item.setAttribute( 'role', 'img' );
+
+				// An icon alone is a picture - but not where it is a button, which keeps its role, and has the title for its name
+				if( action === undefined )
+					item.setAttribute( 'role', 'img' );
+
 				item.setAttribute( 'aria-label', title );
 			}
 
@@ -2823,8 +2945,10 @@
 		},
 
 		/**
-		 *	Choose the component a column gets: the components of the registry, the
-		 *	ones a loop takes where the column has one
+		 *	Choose the component a column gets: the components of the registry that belong
+		 *	where the column is - one that names the places it belongs in (its 'in') only
+		 *	where the list holds this one, one that names none anywhere - and, in the cell
+		 *	of a loop, those a loop takes
 		 *
 		 *	@param		{Array}			path					The column
 		 *	@param		{Element}		anchor
@@ -2835,10 +2959,10 @@
 
 			const builder = Nino.admin.builder;
 			const registry = builder._registry;
-			const stacked = builder._doc.model.blocks[path[0]].cols[path[1]].stack !== null;
+			const place = builder._where( builder._doc.model, path );
 
 			const items = Object.keys( registry.components || {} ).filter( function( name ) {
-				return stacked === false || registry.components[name].loop !== false;
+				return ( place !== 'cell' || registry.components[name].loop !== false ) && ( Array.isArray( registry.components[name].in ) === false || registry.components[name].in.indexOf( place ) !== -1 );
 			} ).map( function( name ) {
 				return { label : registry.components[name].label || name, run : function() { builder._addComponent( path, name ) } };
 			} ).sort( function( a, b ) { return a.label.localeCompare( b.label ) } );
@@ -3589,25 +3713,30 @@
 		/**
 		 *	The colour of a section: a select with words, and beside it a patch of the
 		 *	colour chosen. A select cannot paint a colour in each of its options, so the
-		 *	patch follows the choice
+		 *	patch follows the choice. A column has a select of its own: none of its own,
+		 *	which leaves it as the section it is in, counter and the colours - and its
+		 *	patch is the ground it ends up with: the section's, or the counter of that
 		 *
 		 *	@param		{string}		label
 		 *	@param		{string}		hint
 		 *	@param		{string}		value
 		 *	@param		{Function}	onChange
+		 *	@param		{string}		[around]					For a column: the colour of the section it is in
 		 *
 		 *	@return		{Element}
 		 */
-		_colorField : function( label, hint, value, onChange ) {
+		_colorField : function( label, hint, value, onChange, around ) {
 
 			const builder = Nino.admin.builder;
+			const column = around !== undefined;
 			const row = builder._el( 'div', 'builder-with-swatch' );
 			const swatch = builder._el( 'span', 'builder-swatch' );
 			const paint = function( color ) {
 
-				const ground = builder._ground( color );
+				const shown = column === false ? color : ( color === '' ? around : builder._paints( color, around ) );
+				const ground = builder._ground( shown );
 
-				swatch.dataset.color = color === '' ? 'plain' : color;
+				swatch.dataset.color = shown === '' ? 'plain' : shown;
 
 				if( ground === '' )
 					swatch.style.removeProperty('--builder-swatch');
@@ -3618,13 +3747,54 @@
 			swatch.setAttribute( 'aria-hidden', 'true' );
 			paint( value );
 
-			row.appendChild( builder._selectField( label, hint, builder._options( 'color', builder.COLORS ), value, function( color ) {
+			row.appendChild( builder._selectField( label, hint, column === true ? builder._columnColors() : builder._options( 'color', builder.COLORS ), value, function( color ) {
 				paint( color );
 				onChange( color );
 			} ) );
 			row.appendChild( swatch );
 
 			return row;
+		},
+
+		/**
+		 *	The words of a ground: counter has its own, the colours of a section the ones the select of a section has
+		 *
+		 *	@param		{string}		value							counter, or a colour of a section but ''
+		 *
+		 *	@return		{string}
+		 */
+		_groundLabel : function( value ) {
+			return value === 'counter' ? Nino.content.getText('/_admin/builder/color/counter') : Nino.admin.builder._optionLabel( 'color', value );
+		},
+
+		/**
+		 *	What a column may paint as the options of a select: none of its own, which is the section it is in, counter,
+		 *	and the colours of a section
+		 *
+		 *	@return		{Array}										[ { value, label } ]
+		 */
+		_columnColors : function() {
+
+			const builder = Nino.admin.builder;
+
+			return builder.COL_COLORS.map( function( value ) {
+				return { value : value, label : value === '' ? Nino.content.getText('/_admin/builder/color/surroundings') : builder._groundLabel( value ) };
+			} );
+		},
+
+		/**
+		 *	What the cells of a loop may be as the options of a select: none, a card on the ground it sits on, a card on
+		 *	the counter ground, and a card on a ground of its own - in the words of the grounds of a column
+		 *
+		 *	@return		{Array}										[ { value, label } ]
+		 */
+		_cardOptions : function() {
+
+			const builder = Nino.admin.builder;
+
+			return builder.CARDS.map( function( value ) {
+				return { value : value, label : value === '' || value === 'card' ? builder._optionLabel( 'article', value ) : builder._groundLabel( value ) };
+			} );
 		},
 
 		/**
@@ -3740,9 +3910,10 @@
 		 *	control by the setting's type, its words and the place it writes to
 		 *
 		 *	@param		{Object}		target						The object the value is kept in
-		 *	@param		{Object}		field							{ key, type, label, hint, group, values, items, min, max } - the type is
-		 *															bool, int, string, color, segment (its items being the options of the
-		 *															segment) or else a select over the values
+		 *	@param		{Object}		field							{ key, type, label, hint, group, values, items, min, max, around } - the type is
+		 *															bool, int, string, color (around being the colour of the section, for the colour
+		 *															of a column), segment (its items being the options of the segment) or else a
+		 *															select over the values
 		 *	@param		{Function}	[after]						Called with the value after it was written
 		 *
 		 *	@return		{Element}
@@ -3772,7 +3943,7 @@
 				return builder._textField( label, hint, target[field.key], write );
 
 			if( field.type === 'color' )
-				return builder._colorField( label, hint, String( target[field.key] ), write );
+				return builder._colorField( label, hint, String( target[field.key] ), write, field.around );
 
 			if( field.type === 'segment' )
 				return builder._segmentField( label, field.items, String( target[field.key] ), write, hint );
@@ -3912,9 +4083,10 @@
 		/**
 		 *	The form of a section, in four tabs: how it is laid out (the width of its row, whether
 		 *	it is full width and full height, where its columns and its text are put, the spacing),
-		 *	its background (the colour, the border, the picture), its animation and the classes
-		 *	of its own. The name of the section is part of the title, where it is changed. Each
-		 *	field writes into the model at once
+		 *	its background (the colour, the border - a strength, and a switch for the brand colour
+		 *	that waits for one -, the picture), its animation and the classes of its own. The name
+		 *	of the section is part of the title, where it is changed. Each field writes into the
+		 *	model at once
 		 *
 		 *	@param		{Array}			path
 		 *
@@ -3946,9 +4118,16 @@
 						pane.appendChild( builder._spacingTable( section.settings ) );
 					} },
 					{ id : 'background', label : Nino.content.getText('/_admin/builder/tab/background'), build : function( pane ) {
+						pane.appendChild( setting( { key : 'color', type : 'color', label : '/_admin/builder/section/color' } ) );
+
+						// The brand colour is the colour of the border, and a border of no strength draws nothing: the switch waits for a strength. The model keeps what it holds
+						const primary = setting( { key : 'borderPrimary', type : 'bool', label : '/_admin/builder/section/border-primary' } );
+						const waits = function( strength ) { builder._one( primary, 'input' ).disabled = strength === '' };
+
+						waits( section.settings.border );
 						pane.appendChild( builder._line( [
-							setting( { key : 'color', type : 'color', label : '/_admin/builder/section/color' } ),
-							setting( { key : 'border', type : 'select', label : '/_admin/builder/section/border', group : 'border', values : builder.BORDERS } ),
+							builder._setting( section.settings, { key : 'border', type : 'select', label : '/_admin/builder/section/border', group : 'border', values : builder.BORDERS }, waits ),
+							primary,
 						] ) );
 						pane.appendChild( builder._line( [
 							setting( { key : 'image', type : 'select', label : '/_admin/builder/section/image', hint : '/_admin/builder/hint/image', group : 'image', values : builder.IMAGES } ),
@@ -4316,7 +4495,13 @@
 				if( section.background && section.background.slot.indexOf( from ) === 0 && builder._slotOf( section.background.slot ) === null )
 					section.background.slot = to+ section.background.slot.slice( from.length );
 
-				section.cols.forEach( function( col ) { col.components.forEach( move ) } );
+				section.cols.forEach( function( col ) {
+
+					if( col.background && col.background.slot.indexOf( from ) === 0 && builder._slotOf( col.background.slot ) === null )
+						col.background.slot = to+ col.background.slot.slice( from.length );
+
+					col.components.forEach( move );
+				} );
 
 				delete builder._fresh[old];
 				builder._fresh[id] = true;
@@ -4332,9 +4517,10 @@
 		// ---------------------------------------------------- Columns and loops
 
 		/**
-		 *	The form of a column, in four tabs: its layout (its width and visibility in the
-		 *	viewport or in each of them, where its text and its components are put), the loop it
-		 *	runs, its animation, and the classes of its own
+		 *	The form of a column, in five tabs: its layout (its width and visibility in the
+		 *	viewport or in each of them, where its components and its text are put on a line, the
+		 *	gap below), its background (the colour it paints, the picture behind it, whether the
+		 *	picture is dimmed), the loop it runs, its animation, and the classes of its own
 		 *
 		 *	@param		{Array}			path
 		 *	@param		{string}		tab						The tab to start on: layout or loop
@@ -4344,10 +4530,11 @@
 		_colDialog : function( path, tab ) {
 
 			const builder = Nino.admin.builder;
-			const col = builder._doc.model.blocks[path[0]].cols[path[1]];
+			const section = builder._doc.model.blocks[path[0]];
+			const col = section.cols[path[1]];
 
 			builder._dialog( {
-				title	: Nino.adminUi.format( Nino.content.getText('/_admin/builder/col/title'), builder._doc.model.blocks[path[0]].id ),
+				title	: Nino.adminUi.format( Nino.content.getText('/_admin/builder/col/title'), section.id ),
 				blame	: path[0],
 				tab		: tab,
 				tabs	: [
@@ -4355,11 +4542,22 @@
 
 						builder._widthTable( pane, col );
 
-						pane.appendChild( builder._setting( col, { key : 'text', type : 'segment', label : '/_admin/builder/section/text', items : builder._alignOptions( 'text', 'text', builder.TEXTS ) } ) );
 						pane.appendChild( builder._line( [
 							builder._setting( col, { key : 'stackAlign', type : 'segment', label : '/_admin/builder/col/stack-align', hint : '/_admin/builder/hint/stack-align', items : builder._alignOptions( 'stackAlign', 'stack-align', builder.STACK_ALIGN ) } ),
-							builder._setting( col, { key : 'stackGap', type : 'select', label : '/_admin/builder/col/stack-gap', group : 'space', values : builder.SPACES } ),
+							builder._setting( col, { key : 'text', type : 'segment', label : '/_admin/builder/section/text', items : builder._alignOptions( 'text', 'text', builder.TEXTS ) } ),
 						] ) );
+						pane.appendChild( builder._setting( col, { key : 'stackGap', type : 'select', label : '/_admin/builder/col/stack-gap', group : 'space', values : builder.SPACES } ) );
+					} },
+					{ id : 'background', label : Nino.content.getText('/_admin/builder/tab/background'), build : function( pane ) {
+
+						pane.appendChild( builder._setting( col, { key : 'color', type : 'color', label : '/_admin/builder/section/color', around : section.settings.color } ) );
+						pane.appendChild( builder._backgroundField( path ) );
+
+						// There is a picture to darken, or there is none
+						const dim = builder._setting( col, { key : 'dim', type : 'bool', label : '/_admin/builder/section/dim' } );
+
+						builder._one( dim, 'input' ).disabled = col.background === null || col.background === undefined;
+						pane.appendChild( dim );
 					} },
 					{ id : 'loop', label : Nino.content.getText('/_admin/builder/tab/loop'), build : function( pane ) { builder._stackForm( pane, path ) } },
 					{ id : 'animation', label : Nino.content.getText('/_admin/builder/tab/animation'), build : function( pane ) { builder._animationFields( pane, col, { none : true, times : false, hint : '/_admin/builder/hint/vpa-col' } ) } },
@@ -4521,6 +4719,22 @@
 						builder._changed();
 					} ),
 				] ) );
+
+				// Whether a cell is a card, and on which ground: a loop whose grid has the attribute - the registry lists the attributes a stack declares, and these of the grid are in its defaults
+				if( Object.prototype.hasOwnProperty.call( schema.defaults || {}, 'article' ) === true ) {
+
+					const cards = builder._cardOptions();
+					const article = String( stack.attributes.article ?? '' );
+
+					// A word a hand-written file has that the select has no option for is left as it is
+					if( cards.some( function( card ) { return card.value === article } ) === false )
+						cards.push( { value : article, label : article } );
+
+					cells.appendChild( builder._selectField( Nino.content.getText('/_admin/builder/stack/article'), '', cards, article, function( value ) {
+						stack.attributes.article = value;
+						builder._changed();
+					} ) );
+				}
 
 				cells.appendChild( id );
 			}
@@ -5305,12 +5519,13 @@
 		},
 
 		/**
-		 *	The picture behind a section: its slot, the picture it has with the upload that
-		 *	stores one and the alt text in the language the editor works in, where it stands
-		 *	and how high a cover is, its focus, and the way to take it away again. The slot is
-		 *	the source of the row, which is changed in the dialog of the sources
+		 *	The picture behind a section or a column: its slot, the picture it has with the upload
+		 *	that stores one and the alt text in the language the editor works in, for a section where
+		 *	it stands and how high a cover is, its focus, and the way to take it away again. The slot
+		 *	is the source of the row, which is changed in the dialog of the sources. A column that
+		 *	loses its picture loses the dimming with it
 		 *
-		 *	@param		{Array}			path
+		 *	@param		{Array}			path							A section, or a column
 		 *
 		 *	@return		{Element}
 		 */
@@ -5318,27 +5533,31 @@
 
 			const builder = Nino.admin.builder;
 			const section = builder._doc.model.blocks[path[0]];
-			const has = section.background !== null && section.background !== undefined;
+			const column = path.length === 2;
+			const holder = column === true ? section.cols[path[1]] : section;
+			const has = holder.background !== null && holder.background !== undefined;
 			const wrap = builder._el( 'div', 'builder-background' );
 			const remove = builder._el( 'button', 'nino-admin-btn-secondary', Nino.content.getText('/_admin/builder/source/remove-background') );
+			// What it is called where nothing else names it: the background of the section, or of a column of it
+			const words = column === true ? Nino.adminUi.format( Nino.content.getText('/_admin/builder/source/column-background'), path[1] + 1 ) : Nino.content.getText('/_admin/builder/source/background');
 
 			wrap.appendChild( builder._sourceRow( {
 				kind		: 'image',
 				fixed		: false,
 				create	: true,
 				fields	: null,
-				value		: has === true ? section.background.slot : '',
+				value		: has === true ? holder.background.slot : '',
 				text		: null,
 				section	: section,
-				name		: 'background',
-				seed		: Nino.content.getText('/_admin/builder/source/background'),
+				name		: column === true ? 'column-background' : 'background',
+				seed		: words,
 				caption	: Nino.content.getText('/_admin/builder/source/current-image'),
 				onPick	: function( source, create ) {
 
-					section.background = { slot : source, focus : section.background ? section.background.focus : null };
+					holder.background = { slot : source, focus : holder.background ? holder.background.focus : null };
 
 					if( create !== null )
-						section.background.create = create;
+						holder.background.create = create;
 
 					builder._changed();
 					// The focus and the button that takes the picture away are there for a picture
@@ -5348,39 +5567,47 @@
 
 			wrap.appendChild( builder._pictureField( {
 				owner		: {
-					get : function() { return section.background ? { uri : section.background.slot, create : section.background.create } : { uri : '', create : undefined } },
+					get : function() { return holder.background ? { uri : holder.background.slot, create : holder.background.create } : { uri : '', create : undefined } },
 					put : function( uri, create ) {
 
-						section.background = section.background ?? { slot : uri, focus : null };
-						section.background.slot = uri;
+						holder.background = holder.background ?? { slot : uri, focus : null };
+						holder.background.slot = uri;
 
 						if( create === undefined )
-							delete section.background.create;
+							delete holder.background.create;
 						else
-							section.background.create = create;
+							holder.background.create = create;
 					},
 				},
 				section	: section,
-				name		: 'background',
-				// A slot made by an upload has no form to name it: it is the background of this section
-				seed		: section.id+ ': '+ Nino.content.getText('/_admin/builder/source/background'),
+				name		: column === true ? 'column-background' : 'background',
+				// A slot made by an upload has no form to name it: it is the background of this section, or of this column of it
+				seed		: section.id+ ': '+ words,
 				redraw	: function() { builder._refreshTab('background') },
 			} ) );
 
-			wrap.appendChild( builder._line( [
-				builder._setting( section.settings, { key : 'imagePos', type : 'select', label : '/_admin/builder/section/image-pos', group : 'image-pos', values : builder.IMAGE_POS } ),
-				builder._setting( section.settings, { key : 'cover', type : 'int', label : '/_admin/builder/section/cover', hint : '/_admin/builder/hint/cover', min : 0, max : 100 } ),
-			] ) );
+			// How a picture behind a section is placed and how high a cover is are the section's alone
+			if( column === false )
+				wrap.appendChild( builder._line( [
+					builder._setting( section.settings, { key : 'imagePos', type : 'select', label : '/_admin/builder/section/image-pos', group : 'image-pos', values : builder.IMAGE_POS } ),
+					builder._setting( section.settings, { key : 'cover', type : 'int', label : '/_admin/builder/section/cover', hint : '/_admin/builder/hint/cover', min : 0, max : 100 } ),
+				] ) );
 
-			wrap.appendChild( builder._focusField( has === true ? section.background.focus : null, has, function( focus ) {
-				section.background.focus = focus;
+			wrap.appendChild( builder._focusField( has === true ? holder.background.focus : null, has, function( focus ) {
+				holder.background.focus = focus;
 				builder._changed();
 			} ) );
 
 			remove.type = 'button';
 			remove.disabled = has === false;
 			remove.addEventListener( 'click', function() {
-				section.background = null;
+
+				holder.background = null;
+
+				// There is nothing left to darken
+				if( column === true )
+					holder.dim = false;
+
 				builder._changed();
 				builder._refreshTab('background');
 			} );
@@ -6124,8 +6351,13 @@
 
 			const made = {};
 			const typed = {};
+			const pictured = {};
 
 			old.cols.forEach( function( col ) {
+
+				if( col.background && col.background.create !== undefined )
+					pictured[col.background.slot] = col.background.create;
+
 				col.components.forEach( function( component ) {
 					if( component.create !== undefined && made[component.source] === undefined )
 						made[component.source] = component.create;
@@ -6136,6 +6368,10 @@
 			} );
 
 			again.cols.forEach( function( col ) {
+
+				if( col.background && col.background.create === undefined && pictured[col.background.slot] !== undefined )
+					col.background.create = Nino.admin.builder._clone( pictured[col.background.slot] );
+
 				col.components.forEach( function( component ) {
 					if( made[component.source] !== undefined && component.create === undefined )
 						component.create = Nino.admin.builder._clone( made[component.source] );

@@ -46,11 +46,12 @@ namespace Nino\Modules\Builder {
 	 *											the file does not change where nobody changed it.
 	 *
 	 *											The markup of a section is in templates/, one fragment each
-	 *											- the tags are the same text wherever a section is written,
-	 *											and filled with values that are escaped first (AGENTS.md,
-	 *											"Markup belongs in a template"). What is composed here are
-	 *											the shortcode calls, which are no markup, and the closing
-	 *											tags.
+	 *											- the tags are the same text wherever a section is written
+	 *											(the block of a background is one, for a section and for a
+	 *											column) - and filled with values that are escaped first
+	 *											(AGENTS.md, "Markup belongs in a template"). What is
+	 *											composed here are the shortcode calls, which are no markup,
+	 *											and the closing tags.
 	 *
 	 *	@package						Dape/Nino
 	 *	@author							David Perchermeier <mail@dape.io>
@@ -170,21 +171,17 @@ namespace Nino\Modules\Builder {
 
 			$lines[] = self::_fill( 'section-open', [ '[[id]]' => self::_escape( (string) ( $section['id'] ?? '' ) ), '[[class]]' => self::_class( self::sectionClasses( $settings ) ), '[[attributes]]' => $attributes ] );
 
-			if( is_array( $section['background'] ?? null ) === true && (string) ( $section['background']['slot'] ?? '' ) !== '' ) {
-
-				$focus = (int) ( $section['background']['focus'] ?? 0 );
-
-				$lines[] = "\t". self::_fill( 'section-bg', [
-					'[[class]]'	=> self::_class( [ 'nino-section-bg' ] + ( $focus >= 1 && $focus <= 9 ? [ 1 => 'nino-img-focus--'. $focus ] : [] ) ),
-					'[[slot]]'	=> self::_escape( (string) $section['background']['slot'] ),
-				] );
-			}
+			if( self::_pictured( $section ) === true )
+				$lines[] = "\t". self::_background( (array) $section['background'], 'nino-section-bg' );
 
 			$lines[] = "\t". self::_fill( 'div-open', [ '[[class]]' => self::_class( self::rowClasses( $settings ) ) ] );
 
 			foreach( (array) ( $section['cols'] ?? [] ) as $col ) {
 
 				$lines[] = "\t\t". self::_fill( 'div-open', [ '[[class]]' => self::_class( self::colClasses( (array) $col ) ) ] );
+
+				if( self::_pictured( (array) $col ) === true )
+					$lines[] = "\t\t\t". self::_background( (array) $col['background'], 'nino-grid-bg' );
 
 				if( is_array( $col['stack'] ?? null ) === true ) {
 
@@ -265,6 +262,9 @@ namespace Nino\Modules\Builder {
 			if( (string) $s['border'] !== '' )
 				$class[] = 'nino-section--border-'. $s['border'];
 
+			if( $s['borderPrimary'] === true )
+				$class[] = 'nino-section--border-primary';
+
 			if( isset( Reader::IMAGE[(string) $s['image']] ) === true ) {
 
 				$class[] = Reader::IMAGE[$s['image']];
@@ -330,6 +330,13 @@ namespace Nino\Modules\Builder {
 				if( ( $col['hidden'][$viewport] ?? false ) === true )
 					$class[] = 'nino-hide-'. $viewport;
 
+			if( (string) $col['color'] !== '' )
+				$class[] = 'nino-grid--'. $col['color'];
+
+			// Only a picture is darkened: a column without one has no dimming to write
+			if( $col['dim'] === true && self::_pictured( $col ) === true )
+				$class[] = 'nino-grid--dim';
+
 			if( (string) $col['stackAlign'] !== '' )
 				$class[] = 'nino-stack-'. $col['stackAlign'];
 
@@ -340,6 +347,33 @@ namespace Nino\Modules\Builder {
 				$class[] = 'nino-text-'. $col['text'];
 
 			return array_merge( $class, self::_animationClasses( $col ), self::_custom( (string) $col['custom'] ) );
+		}
+
+		/**
+		 *	@param		array			$node					A section or a column
+		 *
+		 *	@return 	bool										Whether it has a background that names a slot
+		 */
+		private static function _pictured( array $node ): bool {
+			return is_array( $node['background'] ?? null ) === true && (string) ( $node['background']['slot'] ?? '' ) !== '';
+		}
+
+		/**
+		 *	The block of a background: the picture of a slot, with an empty alt, and its focus
+		 *
+		 *	@param		array			$background		slot, focus
+		 *	@param		string		$class				nino-section-bg or nino-grid-bg
+		 *
+		 *	@return 	string
+		 */
+		private static function _background( array $background, string $class ): string {
+
+			$focus = (int) ( $background['focus'] ?? 0 );
+
+			return self::_fill( 'background', [
+				'[[class]]'	=> self::_class( [ $class ] + ( $focus >= 1 && $focus <= 9 ? [ 1 => 'nino-img-focus--'. $focus ] : [] ) ),
+				'[[slot]]'	=> self::_escape( (string) $background['slot'] ),
+			] );
 		}
 
 		/**

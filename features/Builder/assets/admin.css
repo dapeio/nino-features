@@ -348,28 +348,40 @@
 	background: var(--editor-bg-elevated);
 	color: var(--editor-text);
 }
-/* The colour of a section is a grey level: the preview knows no palette, and none of the workbench's accent colours is the site's */
-.builder-frame.builder-color-alt {
-	background: var(--builder-ground-alt);
+/* The colour of a section is a grey level: the preview knows no palette, and none of the workbench's accent colours is the site's.
+   A column that paints a ground of its own is tinted the same way - with the colour alone, so that the stripes of a hidden column stay */
+.builder-frame.builder-color-alt,
+.builder-pcol.builder-color-alt {
+	background-color: var(--builder-ground-alt);
 }
-.builder-frame.builder-color-tint {
-	background: var(--builder-ground-tint);
+.builder-frame.builder-color-tint,
+.builder-pcol.builder-color-tint {
+	background-color: var(--builder-ground-tint);
 }
-.builder-frame.builder-color-dark {
-	background: var(--builder-ground-dark);
+.builder-frame.builder-color-dark,
+.builder-pcol.builder-color-dark {
+	background-color: var(--builder-ground-dark);
 	color: #f1f1f1;
 }
-.builder-frame.builder-color-black {
-	background: var(--builder-ground-black);
+.builder-frame.builder-color-black,
+.builder-pcol.builder-color-black {
+	background-color: var(--builder-ground-black);
 	color: #f1f1f1;
 }
-.builder-frame.builder-color-primary {
-	background: var(--builder-ground-primary);
+.builder-frame.builder-color-primary,
+.builder-pcol.builder-color-primary {
+	background-color: var(--builder-ground-primary);
 	color: #fff;
 }
-.builder-frame.builder-color-brand-alt {
-	background: var(--builder-ground-brand-alt);
+.builder-frame.builder-color-brand-alt,
+.builder-pcol.builder-color-brand-alt {
+	background-color: var(--builder-ground-brand-alt);
 	color: #111;
+}
+/* The counter of a section that is alt or tint is the plain ground: a column of it is drawn, in the ground the frames have */
+.builder-pcol.builder-color-plain {
+	background-color: var(--builder-ground-plain);
+	color: var(--editor-text);
 }
 .builder-frame.is-html {
 	border-style: dashed;
@@ -547,6 +559,10 @@ button.builder-status-item:hover {
 	background: color-mix(in srgb, currentColor 6%, transparent);
 	font-size: .72rem;
 }
+/* A component that says what it draws has a second line: its image stays beside the first */
+.builder-ph.has-draws {
+	align-items: flex-start;
+}
 .builder-ph-icon {
 	flex: 0 0 auto;
 	width: 2rem;
@@ -555,11 +571,24 @@ button.builder-status-item:hover {
 	stroke: currentColor;
 	stroke-width: 2;
 }
-.builder-ph-label {
+.builder-ph-text {
 	flex: 1 1 auto;
+	min-width: 0;
+}
+.builder-ph-label,
+.builder-ph-draws {
+	display: block;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+/* The tag and the class it draws: the code of the page, in the code font of the workbench */
+.builder-ph-draws {
+	font-family: var(--nino-admin-mono);
+	opacity: .5;
+}
+.builder-ph-draws[hidden] {
+	display: none;
 }
 /* A component whose slot has a picture shows it in place of the image of its kind */
 .builder-ph-picture {

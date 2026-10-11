@@ -14,7 +14,10 @@ declare(strict_types=1);
  *											writes, with a kind of animation, and page-home-vpa.tpl
  *											the same with the animation line an earlier builder wrote
  *											in the head, which reads as that wrap) and on a sheet of
- *											sections that each fail one rule, then
+ *											sections that each fail one rule - the picture behind a column
+ *											among them -, then on the ground of a column, its dimming and
+ *											the picture behind it, the border of a section as a strength and
+ *											a brand colour and the cards of a loop, then
  *											the Document - listing, loading, saving with a hash, the keys
  *											and the slots a save makes, the texts it writes to the keys
  *											(new ones and ones that are there, in the language asked for)
@@ -63,6 +66,12 @@ check( 'it is a feature for content, with nothing required, no settings and no d
 check( 'it names and describes itself in both interface languages', \Nino\Features::localized( $manifest['description'], 'de_DE' ) !== \Nino\Features::localized( $manifest['description'], 'en_US' ) );
 check( 'its manual says what it adds: the panel, and no shortcode, route or callback', $manifest['manual']['shortcodes'] === [] && $manifest['manual']['routes'] === [] && $manifest['manual']['callbacks'] === [] && isset( $manifest['manual']['panel']['Builder'] ) === true );
 check( '...and tells, in both languages and in a line each, of the language picker, the texts of the keys and the pictures of the slots', array_diff( [ 'Language of the texts', 'Texts of the keys', 'Pictures of the slots' ], array_keys( $manifest['manual']['panel'] ) ) === [] && array_reduce( [ 'Language of the texts', 'Texts of the keys', 'Pictures of the slots' ], static fn( bool $carry, string $name ): bool => $carry === true && \Nino\Features::localized( $manifest['manual']['panel'][$name], 'de_DE' ) !== \Nino\Features::localized( $manifest['manual']['panel'][$name], 'en_US' ), true ) );
+check( '...and its line on the cards of a loop calls the empty choice what the select calls it, in both languages - the word of the option, not another', array_filter( [ 'en_US' => 'empty', 'de_DE' => 'Leer' ], static function( string $old, string $locale ) use ( $dir, $manifest ): bool {
+	$texts = (array) include $dir. '/text/'. $locale. '.php';
+	$word = (string) ( $texts['[[/_admin/builder/option/article-default]]'] ?? '' );
+	$line = isset( $manifest['manual']['panel']['Cards of a loop'] ) === true ? \Nino\Features::localized( $manifest['manual']['panel']['Cards of a loop'], $locale ) : '';
+	return $word === '' || str_contains( $line, $word ) === false || str_contains( $line, $old ) === true;
+}, ARRAY_FILTER_USE_BOTH ) === [] );
 
 check( 'the feature brings its panel along, and registers nothing on the site', \Nino\Modules\Builder::adminPanels( $appData ) === [ \Nino\Modules\Builder\Admin::class ] && ( static function() use ( &$appData ): bool {
 	$before = $appData;
@@ -79,6 +88,11 @@ check( '...whose words are the same keys in both languages', array_keys( (array)
 check( '...and the sentences that name the keys and the slots of a copy in the way have a place for the list, one each, in both', array_filter( [ 'en_US', 'de_DE' ], static function( string $locale ) use ( $dir ): bool {
 	$texts = (array) include $dir. '/text/'. $locale. '.php';
 	return substr_count( (string) ( $texts['[[/_admin/builder/error/keys-in-the-way]]'] ?? '' ), '%s' ) !== 1 || substr_count( (string) ( $texts['[[/_admin/builder/error/slots-in-the-way]]'] ?? '' ), '%s' ) !== 1;
+} ) === [] );
+check( '...and the word that names the picture behind a column - the label "Create new" proposes for its slot - starts with a capital as the section\'s does, with the place for the number of the column once, in both', array_filter( [ 'en_US', 'de_DE' ], static function( string $locale ) use ( $dir ): bool {
+	$texts = (array) include $dir. '/text/'. $locale. '.php';
+	$column = (string) ( $texts['[[/_admin/builder/source/column-background]]'] ?? '' );
+	return substr_count( $column, '%s' ) !== 1 || preg_match( '/^\p{Lu}/u', $column ) !== 1 || preg_match( '/^\p{Lu}/u', (string) ( $texts['[[/_admin/builder/source/background]]'] ?? '' ) ) !== 1;
 } ) === [] );
 check( 'a save, a create and a delete are written to the activity log, a read is not', \Nino\Modules\Builder\Admin::log( 'builder/save', [ 'file' => 'page-home' ] ) !== ''
 	&& \Nino\Modules\Builder\Admin::log( 'builder/create', [] ) !== '' && \Nino\Modules\Builder\Admin::log( 'builder/delete', [] ) !== ''
@@ -342,6 +356,19 @@ $failures = [
 	'a cover height that is no number'		=> [ "<section id=\"a\" class=\"nino-section nino-cover\" data-cover-height=\"tall\">\n\t". $row. "\n</section>", 'attribute-value', null, 'data-cover-height' ],
 	'a background of two pictures'				=> [ "<section id=\"a\" class=\"nino-section\">\n\t<div class=\"nino-section-bg\">[image /template/page-x/a/one alt=\"\"][image /template/page-x/a/two alt=\"\"]</div>\n\t". $row. "\n</section>", 'background-image' ],
 	'a background that has a class of its own' => [ "<section id=\"a\" class=\"nino-section\">\n\t<div class=\"nino-section-bg my-bg\">[image /template/page-x/a/one alt=\"\"]</div>\n\t". $row. "\n</section>", 'background-class', null, 'my-bg' ],
+	// The picture behind a column: the first thing in it, once, and in the shape of the one behind a section
+	'a background of a column after a component' => [ $section( "[title /template/page-x/a/title]\n\t\t\t<div class=\"nino-grid-bg\">[image /template/page-x/a/one alt=\"\"]</div>" ), 'grid-background' ],
+	'a background of a column after a loop'	=> [ $section( "[stack /services]\n\t\t\t\t[title title]\n\t\t\t[/stack]\n\t\t\t<div class=\"nino-grid-bg\">[image /template/page-x/a/one alt=\"\"]</div>" ), 'grid-background' ],
+	'a second background in a column'			=> [ $section( "<div class=\"nino-grid-bg\">[image /template/page-x/a/one alt=\"\"]</div>\n\t\t\t<div class=\"nino-grid-bg\">[image /template/page-x/a/two alt=\"\"]</div>\n\t\t\t[title /template/page-x/a/title]" ), 'grid-background' ],
+	'a background of a column that has a class of its own' => [ $section( "<div class=\"nino-grid-bg my-bg\">[image /template/page-x/a/one alt=\"\"]</div>\n\t\t\t[title /template/page-x/a/title]" ), 'background-class', null, 'my-bg' ],
+	'a background of a column that has an attribute of its own' => [ $section( "<div class=\"nino-grid-bg\" id=\"bg\">[image /template/page-x/a/one alt=\"\"]</div>" ), 'background-class', null, 'id' ],
+	'a background of a column of two pictures' => [ $section( "<div class=\"nino-grid-bg\">[image /template/page-x/a/one alt=\"\"][image /template/page-x/a/two alt=\"\"]</div>" ), 'background-image' ],
+	'a background of a column with an alt text' => [ $section( "<div class=\"nino-grid-bg\">[image /template/page-x/a/one alt=\"A house\"]</div>" ), 'background-image' ],
+	'a background of a column that is no slot' => [ $section( "<div class=\"nino-grid-bg\">[image photo alt=\"\"]</div>" ), 'background-image' ],
+	'a background of a column that is no image call' => [ $section( "<div class=\"nino-grid-bg\">text</div>" ), 'background-image' ],
+	'the background of a section in a column' => [ $section( "<div class=\"nino-section-bg\">[image /template/page-x/a/one alt=\"\"]</div>" ), 'col-markup' ],
+	// What a loop takes: a card is a cell of a grid
+	'cards for a loop that has no grid'	=> [ $section( "[slider /services article=\"alt\"]\n\t\t\t\t[title title]\n\t\t\t[/slider]" ), 'unknown-attribute', null, 'article' ],
 	// What a call is made of
 	'a value outside its options'					=> [ $section( '[title /template/page-x/a/title level="9"]' ), 'attribute-value', null, 'level' ],
 	'an attribute the component has not'	=> [ $section( '[title /template/page-x/a/title colour="red"]' ), 'unknown-attribute', null, 'colour' ],
@@ -365,6 +392,18 @@ foreach( $failures as $label => $case ) {
 		&& $blocks[0]['source'] === $source && $blocks[0]['reason']['line'] >= 1
 		&& ( $detail === null || str_contains( $blocks[0]['reason']['detail'], $detail ) === true ) && $blocks[0]['reason']['text'] !== '' );
 }
+
+// Every reason has its words in both languages of the panel, with a place for the detail where the English sentence has one
+$reasonWords = [ 'en_US' => (array) include $dir. '/text/en_US.php', 'de_DE' => (array) include $dir. '/text/de_DE.php' ];
+$reasonsWrong = [];
+
+foreach( \Nino\Modules\Builder\Reader::REASONS as $code => $sentence )
+	foreach( $reasonWords as $locale => $words )
+		if( is_string( $words['[[/_admin/builder/reason/'. $code. ']]'] ?? null ) === false || substr_count( $words['[[/_admin/builder/reason/'. $code. ']]'], '%s' ) !== substr_count( $sentence, '%s' ) )
+			$reasonsWrong[] = $locale. ' '. $code;
+
+check( 'every reason a section is not read for has its words in both languages of the panel, with a place for the detail where the sentence has one - the background of a column, which is not the first thing in it, among them: '. count( \Nino\Modules\Builder\Reader::REASONS ). ' reasons'. ( $reasonsWrong === [] ? '' : ' - '. implode( ', ', $reasonsWrong ) ),
+	$reasonsWrong === [] && isset( \Nino\Modules\Builder\Reader::REASONS['grid-background'] ) === true && $reasonWords['en_US']['[[/_admin/builder/reason/grid-background]]'] !== $reasonWords['de_DE']['[[/_admin/builder/reason/grid-background]]'] );
 
 // The line is the line of the file, where the reading failed
 $three = $read( $page( $section( '[title /template/page-x/a/title]', 'good' ), $section( '[osm lat="1"]', 'bad' ) ) );
@@ -464,18 +503,20 @@ check( '...and what is written reads back as what was meant', ( static function(
 
 $styled = $blank;
 $styled['settings'] = [
-	'row' => 'narrow', 'rowAlign' => 'bottom', 'fullwidth' => true, 'fullheight' => true, 'color' => 'tint', 'border' => 'primary', 'image' => 'parallax', 'dim' => true,
+	'row' => 'narrow', 'rowAlign' => 'bottom', 'fullwidth' => true, 'fullheight' => true, 'color' => 'tint', 'border' => '2', 'borderPrimary' => true, 'image' => 'parallax', 'dim' => true,
 	'mt' => '1', 'mb' => '0', 'pt' => '3', 'pb' => '6', 'text' => 'right', 'vpa' => 'zoom-soft', 'vpaSpeed' => 'slow', 'vpaMode' => 'repeat', 'vpaDelay' => '200ms', 'vpaDuration' => '1.5s',
 	'custom' => 'my-section other', 'rowCustom' => 'my-row',
 ] + $blank['settings'];
-$styled['cols'][0] = [ 'width' => [ 's' => 100, 'm' => 50, 'l' => 33 ], 'hidden' => [ 's' => true ], 'text' => 'center', 'stackAlign' => 'end', 'stackGap' => '4', 'vpa' => '', 'custom' => 'my-col' ] + $blank['cols'][0];
+$styled['cols'][0] = [ 'width' => [ 's' => 100, 'm' => 50, 'l' => 33 ], 'hidden' => [ 's' => true ], 'color' => 'dark', 'dim' => true, 'background' => [ 'slot' => '/template/page-x/a/photo', 'focus' => 8 ],
+	'text' => 'center', 'stackAlign' => 'end', 'stackGap' => '4', 'vpa' => '', 'custom' => 'my-col' ] + $blank['cols'][0];
 $styled['background'] = [ 'slot' => '/template/page-x/a/background', 'focus' => null ];
 $once = $write( [ 'blocks' => [ $styled ] ] );
 
-check( 'a section\'s settings are its classes, in one order: the full width, the full height, the colour, the border, the image, the spacing, the text, the animation, the custom ones',
-	str_contains( $once, '<section id="a" class="nino-section nino-section--fullwidth nino-section--fullheight nino-section--tint nino-section--border-primary nino-parallex nino-parallex--dim nino-mt-1 nino-mb-0 nino-pt-3 nino-pb-6 nino-text-right nino-vpa nino-vpa--zoom-soft nino-vpa--speed-slow nino-vpa--repeat my-section other" data-vpa-delay="200ms" data-vpa-duration="1.5s">' ) === true );
-check( '...and the row\'s and the column\'s', str_contains( $once, '<div class="nino-grid-row nino-grid-row--narrow nino-grid-bottom my-row">' ) === true
-	&& str_contains( $once, '<div class="nino-grid-s-100 nino-grid-m-50 nino-grid-l-33 nino-hide-s nino-stack-end nino-stack-gap-4 nino-text-center nino-vpa my-col">' ) === true );
+check( 'a section\'s settings are its classes, in one order: the full width, the full height, the colour, the border and its brand colour, the image, the spacing, the text, the animation, the custom ones',
+	str_contains( $once, '<section id="a" class="nino-section nino-section--fullwidth nino-section--fullheight nino-section--tint nino-section--border-2 nino-section--border-primary nino-parallex nino-parallex--dim nino-mt-1 nino-mb-0 nino-pt-3 nino-pb-6 nino-text-right nino-vpa nino-vpa--zoom-soft nino-vpa--speed-slow nino-vpa--repeat my-section other" data-vpa-delay="200ms" data-vpa-duration="1.5s">' ) === true );
+check( '...and the row\'s and the column\'s: the widths, the hidden ones, the ground and the dimming, the alignment and the gap of the components, the text, the animation, the custom ones', str_contains( $once, '<div class="nino-grid-row nino-grid-row--narrow nino-grid-bottom my-row">' ) === true
+	&& str_contains( $once, '<div class="nino-grid-s-100 nino-grid-m-50 nino-grid-l-33 nino-hide-s nino-grid--dark nino-grid--dim nino-stack-end nino-stack-gap-4 nino-text-center nino-vpa my-col">' ) === true );
+check( '...the picture behind the column is the first thing in it, a block of its own with the focus and the image of its slot with an empty alt', str_contains( $once, "my-col\">\n\t\t\t<div class=\"nino-grid-bg nino-img-focus--8\">[image /template/page-x/a/photo alt=\"\"]</div>\n\t\t\t[title " ) === true );
 check( '...a background without a focus is the block and the image, with an empty alt', str_contains( $once, "\t<div class=\"nino-section-bg\">[image /template/page-x/a/background alt=\"\"]</div>\n" ) === true );
 $sorted = static function( mixed $value ) use ( &$sorted ): mixed {
 	if( is_array( $value ) === false )
@@ -484,6 +525,115 @@ $sorted = static function( mixed $value ) use ( &$sorted ): mixed {
 	return array_map( $sorted, $value );
 };
 check( '...and every setting is read back as it was set', $sorted( $read( $once )['blocks'][0] ) === $sorted( $styled ) );
+
+// The ground of a column, its dimming and the picture behind it: classes of the column, and a block of its own that is the first thing in it
+$groundOf		= static fn( string $classes, string $inside = '[title /template/page-x/a/title]' ): string => $page( $section( $inside, 'a', 'nino-section', $classes ) );
+$columnOf		= static fn( string $source ): array => $read( $source )['blocks'][0]['cols'][0];
+$photo			= "<div class=\"nino-grid-bg nino-img-focus--3\">[image /template/page-x/a/photo alt=\"\"]</div>";
+$groundWrong	= [];
+
+foreach( \Nino\Modules\Builder\Reader::COL_COLOR as $color ) {
+
+	$source	= $groundOf( 'nino-grid-100 nino-grid--'. $color );
+	$ground	= $columnOf( $source );
+
+	if( $ground['color'] !== $color || $ground['dim'] !== false || $ground['background'] !== null || $ground['custom'] !== '' || $write( $read( $source ) ) !== $inWrap( $source ) || $read( $write( $read( $source ) ) ) !== $read( $source ) )
+		$groundWrong[] = $color;
+}
+
+check( 'a column has a ground of its own - the six of a section, and counter, the one that sets it off from its section -, read from nino-grid--<x> and written back byte for byte: all '. count( \Nino\Modules\Builder\Reader::COL_COLOR ). ' of them'. ( $groundWrong === [] ? '' : ' - '. implode( ', ', $groundWrong ) ),
+	$groundWrong === [] && \Nino\Modules\Builder\Reader::COL_COLOR === [ 'counter', 'alt', 'tint', 'dark', 'black', 'primary', 'brand-alt' ] );
+
+$mixedUp = $columnOf( $groundOf( 'nino-text-left nino-grid--alt my-col nino-hide-s nino-stack-gap-3 nino-grid-s-100 nino-stack-center nino-grid-m-50 nino-grid-l-33' ) );
+check( '...the classes of a column are read in any order and written in one: the widths, the hidden ones, the ground, the dimming, the alignment and the gap of the components, the text, the animation, the custom ones',
+	$mixedUp['color'] === 'alt' && $mixedUp['custom'] === 'my-col' && str_contains( $write( [ 'blocks' => [ $read( $groundOf( 'nino-text-left nino-grid--alt my-col nino-hide-s nino-stack-gap-3 nino-grid-s-100 nino-stack-center nino-grid-m-50 nino-grid-l-33' ) )['blocks'][0] ] ] ),
+		'<div class="nino-grid-s-100 nino-grid-m-50 nino-grid-l-33 nino-hide-s nino-grid--alt nino-stack-center nino-stack-gap-3 nino-text-left my-col">' ) === true );
+
+$second = $columnOf( $groundOf( 'nino-grid-100 nino-grid--alt nino-grid--dark' ) );
+check( '...a second ground is a class of its own: kept, not lost', $second['color'] === 'alt' && $second['custom'] === 'nino-grid--dark' && $write( $read( $groundOf( 'nino-grid-100 nino-grid--alt nino-grid--dark' ) ) ) === $inWrap( $groundOf( 'nino-grid-100 nino-grid--alt nino-grid--dark' ) ) );
+
+$pictureSource	= $groundOf( 'nino-grid-100 nino-grid--dark nino-grid--dim', $photo. "\n\t\t\t[title /template/page-x/a/title]" );
+$picture				= $columnOf( $pictureSource );
+check( 'a column with a ground and a picture: the picture is the first thing in it, one image call of a slot with an empty alt and its focus, the dimming is a switch that goes with it - and it is written back byte for byte',
+	$picture['color'] === 'dark' && $picture['dim'] === true && $picture['background'] === [ 'slot' => '/template/page-x/a/photo', 'focus' => 3 ] && $picture['custom'] === '' && array_column( $picture['components'], 'name' ) === [ 'title' ]
+	&& $write( $read( $pictureSource ) ) === $inWrap( $pictureSource ) && $read( $write( $read( $pictureSource ) ) ) === $read( $pictureSource ) );
+
+$bare = $groundOf( 'nino-grid-100', "<div class=\"nino-grid-bg\">[image /template/page-x/a/photo alt=\"\"]</div>" );
+check( '...a picture needs no ground, no focus and no component: a column that holds the picture alone is a column', $columnOf( $bare )['background'] === [ 'slot' => '/template/page-x/a/photo', 'focus' => null] && $columnOf( $bare )['color'] === '' && $columnOf( $bare )['dim'] === false
+	&& $columnOf( $bare )['components'] === [] && $write( $read( $bare ) ) === $inWrap( $bare ) );
+
+$looped = $groundOf( 'nino-grid-100 nino-grid--tint', $photo. "\n\t\t\t[stack /services]\n\t\t\t\t[title title]\n\t\t\t[/stack]" );
+check( '...and stands before the loop of its column, which is still the only thing besides it', $columnOf( $looped )['stack']['name'] === 'stack' && $columnOf( $looped )['background']['slot'] === '/template/page-x/a/photo' && array_column( $columnOf( $looped )['components'], 'name' ) === [ 'title' ]
+	&& $write( $read( $looped ) ) === $inWrap( $looped ) );
+
+$anyOrder = $groundOf( 'nino-grid--dim nino-grid--dark nino-grid-100', $photo. "\n\t\t\t[title /template/page-x/a/title]" );
+check( '...a dimmed column is dimmed whatever the order of its classes is, and is written in one', $columnOf( $anyOrder ) === $picture && $write( $read( $anyOrder ) ) === $inWrap( $pictureSource ) );
+
+$dimmed = $groundOf( 'nino-grid-100 nino-grid--dim' );
+check( 'nino-grid--dim on a column with no picture is a class like any other, to be kept: it stays among the custom ones and is written back where it stood', $columnOf( $dimmed )['dim'] === false && $columnOf( $dimmed )['custom'] === 'nino-grid--dim'
+	&& $write( $read( $dimmed ) ) === $inWrap( $dimmed ) );
+
+$dimAmong		= [ 'nino-grid--dim my-col', 'my-col nino-grid--dim', 'my-col nino-grid--dim other-col' ];
+$dimAmongWrong	= [];
+
+foreach( $dimAmong as $among ) {
+
+	$source = $groundOf( 'nino-grid-100 '. $among );
+
+	if( $columnOf( $source )['dim'] !== false || $columnOf( $source )['custom'] !== $among || $write( $read( $source ) ) !== $inWrap( $source ) )
+		$dimAmongWrong[] = $among;
+}
+
+$dimBeside = $groundOf( 'nino-grid-100 nino-grid--dim my-col', $photo. "\n\t\t\t[title /template/page-x/a/title]" );
+check( '...and among other custom classes it keeps its place - before them, between them, behind them - written back byte for byte, a class after it stays after it; with a picture it is the switch, and the classes beside it stay'. ( $dimAmongWrong === [] ? '' : ' - '. implode( ', ', $dimAmongWrong ) ),
+	$dimAmongWrong === [] && $columnOf( $dimBeside )['dim'] === true && $columnOf( $dimBeside )['custom'] === 'my-col' && $write( $read( $dimBeside ) ) === $inWrap( $dimBeside ) );
+
+$dimless = $read( $pictureSource )['blocks'][0];
+$dimless['cols'][0]['background'] = null;
+$noSlot = $read( $pictureSource )['blocks'][0];
+$noSlot['cols'][0]['background'] = [ 'slot' => '', 'focus' => null ];
+check( '...and the model\'s dimming is written only while the column has a picture: without one, or with one that names no slot, the class is not written and the picture is not either', str_contains( $write( [ 'blocks' => [ $dimless ] ] ), 'nino-grid--dim' ) === false
+	&& str_contains( $write( [ 'blocks' => [ $dimless ] ] ), 'nino-grid-bg' ) === false && str_contains( $write( [ 'blocks' => [ $noSlot ] ] ), 'nino-grid--dim' ) === false && str_contains( $write( [ 'blocks' => [ $noSlot ] ] ), 'nino-grid-bg' ) === false
+	&& str_contains( $write( [ 'blocks' => [ $dimless ] ] ), 'nino-grid--dark' ) === true );
+
+$made = $read( $pictureSource )['blocks'][0];
+$made['cols'][0]['background']['create'] = [ 'label' => 'Photo', 'width' => 800, 'height' => 600, 'alt' => [ 'en_US' => 'A house' ] ];
+check( '...what only the panel sends with the picture - the mark that makes its slot at save - is not written, and not read', $write( [ 'blocks' => [ $made ] ] ) === $write( [ 'blocks' => [ $read( $pictureSource )['blocks'][0] ] ] ) && isset( $read( $write( [ 'blocks' => [ $made ] ] ) )['blocks'][0]['cols'][0]['background']['create'] ) === false );
+
+$left = $read( $fixture )['blocks'];
+foreach( $left as $b => $block )
+	foreach( $block['cols'] ?? [] as $c => $col )
+		unset( $left[$b]['cols'][$c]['color'], $left[$b]['cols'][$c]['dim'], $left[$b]['cols'][$c]['background'] );
+check( 'a column with no ground and no picture is written as it always was: a model without the three keys is the example page, byte for byte', $write( [ 'name' => 'Home', 'header' => 'html-header', 'footer' => 'html-footer', 'blocks' => $left ] ) === $wrapped( $fixture ) && $model['blocks'][0]['cols'][0]['color'] === '' && $model['blocks'][0]['cols'][0]['dim'] === false
+	&& $model['blocks'][0]['cols'][0]['background'] === null );
+
+// The border of a section is a strength and a switch: the brand colour, with a strength or without
+$borderOf		= static fn( string $classes ): array => $read( $page( $section( '[title /template/page-x/a/title]', 'a', $classes ) ) )['blocks'][0]['settings'];
+$borderCases	= [
+	'a strength alone'							=> [ 'nino-section nino-section--border-1', '1', false ],
+	'the strong one'								=> [ 'nino-section nino-section--border-3', '3', false ],
+	'a strength and the brand colour'				=> [ 'nino-section nino-section--border-2 nino-section--border-primary', '2', true ],
+	'the brand colour alone'						=> [ 'nino-section nino-section--border-primary', '', true ],
+];
+$borderWrong	= [];
+
+foreach( $borderCases as $label => [ $classes, $border, $primary ] ) {
+
+	$source = $page( $section( '[title /template/page-x/a/title]', 'a', $classes ) );
+	$got		= $borderOf( $classes );
+
+	if( $got['border'] !== $border || $got['borderPrimary'] !== $primary || $got['custom'] !== '' || $write( $read( $source ) ) !== $inWrap( $source ) )
+		$borderWrong[] = $label;
+}
+
+check( 'the border of a section is a strength - nino-section--border-1 to 3 - and a switch, nino-section--border-primary: each is read and written back byte for byte, the brand colour alone as the one class it is'. ( $borderWrong === [] ? '' : ' - '. implode( ', ', $borderWrong ) ),
+	$borderWrong === [] && \Nino\Modules\Builder\Reader::BORDER === [ '1', '2', '3' ] && \Nino\Modules\Builder\Reader::sectionDefaults()['borderPrimary'] === false );
+
+$reversed = $page( $section( '[title /template/page-x/a/title]', 'a', 'nino-section nino-section--border-primary nino-section--border-3' ) );
+check( '...the two classes are read in either order and written in one: the strength, then the brand colour', $borderOf( 'nino-section nino-section--border-primary nino-section--border-3' )['border'] === '3' && $borderOf( 'nino-section nino-section--border-primary nino-section--border-3' )['borderPrimary'] === true
+	&& $write( $read( $reversed ) ) === $inWrap( $page( $section( '[title /template/page-x/a/title]', 'a', 'nino-section nino-section--border-3 nino-section--border-primary' ) ) ) );
+check( '...a second strength is a class of its own, kept: it cannot be said in a setting that has one place', $borderOf( 'nino-section nino-section--border-1 nino-section--border-3' )['border'] === '1' && $borderOf( 'nino-section nino-section--border-1 nino-section--border-3' )['custom'] === 'nino-section--border-3'
+	&& $borderOf( 'nino-section nino-section--border-4' )['border'] === '' && $borderOf( 'nino-section nino-section--border-4' )['custom'] === 'nino-section--border-4' );
 
 // Full width and full height are two switches of a section, not one choice: a class each, side by side, and neither is a custom class
 $fullOf			= static fn( array $block ): array => [ $block['settings']['fullwidth'], $block['settings']['fullheight'], $block['settings']['custom'] ];
@@ -542,6 +692,17 @@ $stacked = $read( $page( "<section id=\"s\" class=\"nino-section\">\n\t<div clas
 check( 'a stack other than [stack] is read and written as its own, with the attributes of its schema', $stacked['kind'] === 'section' && $stacked['cols'][0]['stack']['name'] === 'slider' && $stacked['cols'][0]['stack']['attributes']['width'] === '60%'
 	&& str_contains( $write( [ 'blocks' => [ $stacked ] ] ), "[slider /services width=\"60%\"]\n\t\t\t\t[title title]\n\t\t\t[/slider]" ) === true );
 
+// The cells of a loop with a grid may be cards: the attribute article, like cols and gap one of the grid, written where it differs from the empty default
+$carded		= $page( $section( "[stack /services sort=\"title\" cols=\"100 50 50\" autoheight=\"1\" article=\"alt\"]\n\t\t\t\t[title title]\n\t\t\t[/stack]" ) );
+$cards		= $read( $carded )['blocks'][0]['cols'][0]['stack'];
+$cardless	= $read( $carded )['blocks'][0];
+$cardless['cols'][0]['stack']['attributes']['article'] = '';
+check( 'a loop with cards is read and written like any attribute of the schema, no special case: article="alt" is the attribute, in the place after the equal height, and written back byte for byte - and a loop without it is written without', $cards['attributes']['article'] === 'alt'
+	&& $write( $read( $carded ) ) === $inWrap( $carded ) && str_contains( $write( [ 'blocks' => [ $cardless ] ] ), 'article=' ) === false && $registry['stacks']['stack']['defaults']['article'] === ''
+	&& str_contains( $write( [ 'blocks' => [ $cardless ] ] ), '[stack /services sort="title" cols="100 50 50" autoheight="1"]' ) === true );
+check( '...the filter has the cards too, and one said aloud with no word is the default and not written', $read( $page( $section( "[filter /services by=\"title\" article=\"counter\"]\n\t\t\t\t[title title]\n\t\t\t[/filter]" ) ) )['blocks'][0]['cols'][0]['stack']['attributes']['article'] === 'counter'
+	&& str_contains( $write( $read( $page( $section( "[stack /services article=\"\"]\n\t\t\t\t[title title]\n\t\t\t[/stack]" ) ) ) ), '[stack /services]' ) === true );
+
 echo "\n";
 
 
@@ -597,6 +758,11 @@ $withEmpty = array_column( \Nino\Modules\Builder\Document::registry( $appData )[
 unset( $appData['/nino/html/images']['/project/logo/header/image'] );
 check( '...a slot with a picture says where it is (the Images panel\'s url) for the thumbnail of the source field, one without says null', $registryAnswer['slots'][0]['url'] === \Nino\Images::getUrl( $appData, 'hero.1600x900.jpg' )
 	&& $withEmpty['/project/logo/header/image']['hasImage'] === false && $withEmpty['/project/logo/header/image']['url'] === null );
+check( '...a component says where it belongs (in) and what it draws (draws), as the kernel registered it: the title for a section, the title of a card for a cell, the title of a hero for a hero, the button everywhere - and one that says neither carries neither',
+	$registryAnswer['components']['title']['in'] === [ 'section' ] && $registryAnswer['components']['title']['draws'] === 'h{level} .nino-section-title' && $registryAnswer['components']['article-title']['in'] === [ 'cell' ]
+	&& $registryAnswer['components']['hero-title']['in'] === [ 'hero' ] && $registryAnswer['components']['hero-subtitle']['draws'] === 'p .nino-hero-subtitle' && $registryAnswer['components']['button']['draws'] === 'a .nino-btn'
+	&& array_key_exists( 'in', $registryAnswer['components']['button'] ) === false && array_key_exists( 'in', $registryAnswer['components']['text'] ) === false && array_key_exists( 'draws', $registryAnswer['components']['text'] ) === false
+	&& array_key_exists( 'draws', $registryAnswer['stacks']['stack'] ) === false && $registryAnswer['components']['article-title']['label'] === 'Article title' );
 check( '...the components and the stacks the panel\'s script test reads (fixtures/registry.json) are what the registry says', json_decode( (string) file_get_contents( __DIR__. '/fixtures/registry.json' ), true ) === json_decode( (string) json_encode( [ 'components' => $registryAnswer['components'], 'stacks' => $registryAnswer['stacks'] ] ), true ) );
 
 $listed = \Nino\Modules\Builder\Document::list( $appData );
@@ -712,6 +878,24 @@ check( '...and the text keys follow: the value is under the new name, and the ol
 check( '...the slot of the background is made again under the new name with the file of the old one, and the old one is kept - without a file', ( \Nino\Images::getSlot( $appData, '/template/page-home/start/background' ) ?: [] )['filename'] === 'hero.1600x900.jpg'
 	&& ( \Nino\Images::getSlot( $appData, '/template/page-home/start/background' ) ?: [] )['label'] === 'Hero' && ( \Nino\Images::getSlot( $appData, '/template/page-home/hero/background' ) ?: [ 'filename' => 'none' ] )['filename'] === null );
 check( '...and the answer is the file as it reads now, without what only the panel sends', $renamed['model']['blocks'][0]['id'] === 'start' && isset( $renamed['model']['blocks'][0]['renamedFrom'] ) === false );
+
+// The picture behind a column is a slot under the id of the section, and moves with it as the picture behind the section does
+$appData['/nino/html/images']['/template/page-grid/one/photo'] = [ 'label' => 'Photo', 'width' => 800, 'height' => 600, 'filename' => 'grid.800x600.jpg' ];
+\Nino\AppData::writeContentData( $appData, [ '/nino/html/images' ] );
+$gridSource = $page( "<section id=\"one\" class=\"nino-section\">\n\t<div class=\"nino-grid-row\">\n\t\t<div class=\"nino-grid-100 nino-grid--tint\">\n\t\t\t<div class=\"nino-grid-bg nino-img-focus--2\">[image /template/page-grid/one/photo alt=\"\"]</div>\n\t\t\t[title /template/page-grid/one/title]\n\t\t</div>\n\t</div>\n</section>" );
+\Nino\Filesystem::putFileContent( $appData, '/templates/page-grid.tpl', $gridSource );
+$grid = \Nino\Modules\Builder\Document::load( $appData, 'page-grid' );
+$moved = $grid['model'];
+$moved['blocks'][0]['id'] = 'two';
+$moved['blocks'][0]['renamedFrom'] = 'one';
+$movedAnswer = \Nino\Modules\Builder\Document::save( $appData, 'page-grid', $moved, $grid['hash'] );
+$movedSource = (string) file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-grid.tpl' ) );
+check( 'the picture behind a column moves with its section: the slot of its block is the new one in the file, made again under the new name with the file of the old one - the old one is kept, without a file - and the ground and the focus are as they were',
+	$grid['model']['blocks'][0]['cols'][0]['background'] === [ 'slot' => '/template/page-grid/one/photo', 'focus' => 2 ] && $movedAnswer['status'] === 200
+	&& str_contains( $movedSource, "<div class=\"nino-grid-bg nino-img-focus--2\">[image /template/page-grid/two/photo alt=\"\"]</div>" ) === true && str_contains( $movedSource, 'nino-grid--tint' ) === true && str_contains( $movedSource, '/template/page-grid/one/' ) === false
+	&& ( \Nino\Images::getSlot( $appData, '/template/page-grid/two/photo' ) ?: [] )['filename'] === 'grid.800x600.jpg' && ( \Nino\Images::getSlot( $appData, '/template/page-grid/one/photo' ) ?: [ 'filename' => 'none' ] )['filename'] === null
+	&& $movedAnswer['model']['blocks'][0]['cols'][0]['background'] === [ 'slot' => '/template/page-grid/two/photo', 'focus' => 2 ] );
+\Nino\Modules\Builder\Document::delete( $appData, 'page-grid' );
 
 // What a save refuses for is refused before it changes anything, and what it moves, it moves whole
 foreach( [ 'en_US', 'de_DE' ] as $locale )
@@ -1028,6 +1212,142 @@ $switchSource = \Nino\Modules\Builder\Document::source( $appData, $switchLeft );
 check( '...and a switch left out is off, no problem: the section is written without either class', $switchSource['status'] === 200 && str_contains( $switchSource['parts'][1]['source'], '<section id="start" class="nino-section nino-section--black ' ) === true
 	&& str_contains( $switchSource['parts'][1]['source'], 'nino-section--full' ) === false );
 
+// The ground of a column, its dimming and the picture behind it, the border of a section and its brand colour: what is none of them is refused before anything is made, as a switch is
+$columnBad = [
+	'a word that is no colour'								=> [ 'color', 'bogus', 'the color of column 1 of block %d is none that Nino.css has' ],
+	'a colour of a section in capitals'					=> [ 'color', 'Alt', 'the color of column 1 of block %d is none that Nino.css has' ],
+	'a number for a colour'									=> [ 'color', 0, 'the color of column 1 of block %d is none that Nino.css has' ],
+	'a list for a colour'										=> [ 'color', [ 'alt' ], 'the color of column 1 of block %d is none that Nino.css has' ],
+	'a colour with a space'									=> [ 'color', 'alt ', 'the color of column 1 of block %d is none that Nino.css has' ],
+	'a dimming that is a text'							=> [ 'dim', 'true', 'the dim of column 1 of block %d is neither on nor off' ],
+	'a dimming that is a number'						=> [ 'dim', 1, 'the dim of column 1 of block %d is neither on nor off' ],
+	'a dimming that is a list'							=> [ 'dim', [], 'the dim of column 1 of block %d is neither on nor off' ],
+	'a background that is a text'						=> [ 'background', 'photo.jpg', 'column 1 of block %d has a background that is no image slot' ],
+	'a background whose slot is a list'			=> [ 'background', [ 'slot' => [ '/template/page-home/hero/photo' ], 'focus' => null ], 'column 1 of block %d has a background that is no image slot' ],
+	'a background whose alt texts are a text'	=> [ 'background', [ 'slot' => '/template/page-home/hero/photo', 'focus' => null, 'create' => [ 'label' => 'Photo', 'alt' => 'A house' ] ], 'column 1 of block %d has a background with an alt text that is none' ],
+];
+$columnRefused	= [];
+
+foreach( [ 0, 3 ] as $at )
+	foreach( $columnBad as $what => [ $key, $value, $sentence ] ) {
+
+		$model = $loaded['model'];
+		$model['blocks'][$at]['cols'][0][$key] = $value;
+		$answer = \Nino\Modules\Builder\Document::save( $appData, 'page-home', $model, $loaded['hash'] );
+
+		if( $answer['status'] !== 400 || $answer['code'] !== 'invalid' || $answer['problems'] !== [ sprintf( $sentence, $at + 1 ) ]
+			|| \Nino\Modules\Builder\Document::source( $appData, $model )['status'] !== 400 || file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-home.tpl' ) ) !== $before )
+			$columnRefused[] = $what. ' of block '. ( $at + 1 );
+	}
+
+check( 'a colour of a column that Nino.css has none of, a dimming that is no bool and a background that is no slot - a text, a list for the slot, alt texts that are a text - are refused with 400 (code invalid), the column and the block named, by a save and by the source view alike, and nothing is written: '
+	. count( $columnBad ) * 2 . ' cases'. ( $columnRefused === [] ? '' : ' - '. implode( ', ', $columnRefused ) ), $columnRefused === [] );
+
+$slotBad = $loaded['model'];
+$slotBad['blocks'][0]['cols'][0]['background'] = [ 'slot' => '/template/page-home/hero/1photo', 'focus' => null ];
+$slotBadAnswer = \Nino\Modules\Builder\Document::save( $appData, 'page-home', $slotBad, $loaded['hash'] );
+check( '...so is a background whose slot is no uri of a slot - a segment of one starts with a letter -: the section and the column are named', $slotBadAnswer['status'] === 400 && $slotBadAnswer['problems'] === [ 'the section "'. $slotBad['blocks'][0]['id']. '": the background of column 1 is not an image slot' ] && file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-home.tpl' ) ) === $before );
+
+$groundGood = $loaded['model'];
+$groundGood['blocks'][0]['cols'][0]['color'] = 'counter';
+$groundGood['blocks'][0]['cols'][0]['dim'] = true;
+$groundGood['blocks'][0]['cols'][0]['background'] = [ 'slot' => '/template/page-home/hero/photo', 'focus' => 4 ];
+$groundSource = \Nino\Modules\Builder\Document::source( $appData, $groundGood );
+check( '...and counter, the dimming of a column with a picture and the slot of one are none of that: the source view writes them', $groundSource['status'] === 200 && str_contains( $groundSource['parts'][1]['source'], "<div class=\"nino-grid-s-100 nino-grid-m-100 nino-grid-l-66 nino-grid--counter nino-grid--dim nino-text-left\">\n\t\t\t<div class=\"nino-grid-bg nino-img-focus--4\">[image /template/page-home/hero/photo alt=\"\"]</div>\n\t\t\t[title " ) === true );
+
+// The focus of the picture behind a column or a section is none or a number from 1 to 9: the Writer casts a text or a list to a number, so it is refused before anything is made
+$focusBad			= [
+	'a text with the number'	=> '5',
+	'a text that is no number'	=> 'center',
+	'an empty text'				=> '',
+	'zero'						=> 0,
+	'ten'						=> 10,
+	'a negative number'			=> -1,
+	'a fraction'				=> 5.5,
+	'a whole number as a float'	=> 5.0,
+	'true'						=> true,
+	'a list'					=> [ 5 ],
+	'an empty list'				=> [],
+];
+$focusRefused	= [ 'column' => [], 'section' => [] ];
+
+foreach( [ 0, 3 ] as $at )
+	foreach( [ 'column', 'section' ] as $owner )
+		foreach( $focusBad as $what => $value ) {
+
+			$model = $loaded['model'];
+
+			if( $owner === 'column' )
+				$model['blocks'][$at]['cols'][0]['background'] = [ 'slot' => '/template/page-home/hero/photo', 'focus' => $value ];
+			else
+				$model['blocks'][$at]['background'] = [ 'slot' => '/template/page-home/hero/photo', 'focus' => $value ];
+
+			$answer = \Nino\Modules\Builder\Document::save( $appData, 'page-home', $model, $loaded['hash'] );
+			$sentence = ( $owner === 'column' ? 'column 1 of ' : '' ). 'block '. ( $at + 1 ). ' has a background with a focus that is no place from 1 to 9';
+
+			if( $answer['status'] !== 400 || $answer['code'] !== 'invalid' || $answer['problems'] !== [ $sentence ]
+				|| \Nino\Modules\Builder\Document::source( $appData, $model )['status'] !== 400 || file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-home.tpl' ) ) !== $before )
+				$focusRefused[$owner][] = $what. ' of block '. ( $at + 1 );
+		}
+
+check( 'the focus of the picture behind a column is none or a number from 1 to 9: a text, a number outside the places, a fraction, a bool and a list are refused with 400 (code invalid), the column and the block named, by a save and by the source view alike, and nothing is written: '
+	. count( $focusBad ) * 2 . ' cases'. ( $focusRefused['column'] === [] ? '' : ' - '. implode( ', ', $focusRefused['column'] ) ), $focusRefused['column'] === [] );
+check( '...so is the focus of the picture behind a section, with the block named and nothing written: '
+	. count( $focusBad ) * 2 . ' cases'. ( $focusRefused['section'] === [] ? '' : ' - '. implode( ', ', $focusRefused['section'] ) ), $focusRefused['section'] === [] );
+
+$focusWrong = [];
+
+foreach( [ 'column', 'section' ] as $owner )
+	foreach( [ null, 1, 2, 3, 4, 5, 6, 7, 8, 9 ] as $value ) {
+
+		$model = $loaded['model'];
+
+		if( $owner === 'column' )
+			$model['blocks'][0]['cols'][0]['background'] = [ 'slot' => '/template/page-home/hero/photo', 'focus' => $value ];
+		else
+			$model['blocks'][0]['background'] = [ 'slot' => '/template/page-home/hero/photo', 'focus' => $value ];
+
+		$answer = \Nino\Modules\Builder\Document::source( $appData, $model );
+		$class = ( $owner === 'column' ? 'nino-grid-bg' : 'nino-section-bg' ). ( $value === null ? '' : ' nino-img-focus--'. $value );
+
+		if( $answer['status'] !== 200 || str_contains( $answer['parts'][1]['source'], '<div class="'. $class. '">[image /template/page-home/hero/photo alt=""]</div>' ) === false )
+			$focusWrong[] = $owner. ' with '. ( $value ?? 'none' );
+	}
+
+check( '...and none and each of the nine places are none of that: the source view writes the picture of a column and of a section with the class of its place, or with none'. ( $focusWrong === [] ? '' : ' - '. implode( ', ', $focusWrong ) ), $focusWrong === [] );
+
+$borderBad = [
+	'the old choice of the border'		=> [ 'border', 'primary', 'the border of block %d is none of the strengths' ],
+	'a strength there is none of'			=> [ 'border', '4', 'the border of block %d is none of the strengths' ],
+	'a strength that is a number'			=> [ 'border', 2, 'the border of block %d is none of the strengths' ],
+	'a strength that is a list'				=> [ 'border', [ '2' ], 'the border of block %d is none of the strengths' ],
+	'a brand colour that is a text'			=> [ 'borderPrimary', 'true', 'the borderPrimary of block %d is neither on nor off' ],
+	'a brand colour that is a number'		=> [ 'borderPrimary', 1, 'the borderPrimary of block %d is neither on nor off' ],
+];
+$borderRefused	= [];
+
+foreach( [ 0, 3 ] as $at )
+	foreach( $borderBad as $what => [ $key, $value, $sentence ] ) {
+
+		$model = $loaded['model'];
+		$model['blocks'][$at]['settings'][$key] = $value;
+		$answer = \Nino\Modules\Builder\Document::save( $appData, 'page-home', $model, $loaded['hash'] );
+
+		if( $answer['status'] !== 400 || $answer['code'] !== 'invalid' || $answer['problems'] !== [ sprintf( $sentence, $at + 1 ) ]
+			|| \Nino\Modules\Builder\Document::source( $appData, $model )['status'] !== 400 || file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-home.tpl' ) ) !== $before )
+			$borderRefused[] = $what. ' of block '. ( $at + 1 );
+	}
+
+check( 'a border that is no strength of the three - the old brand colour among them - and a brand colour that is no bool are refused the same way, the block named: '. count( $borderBad ) * 2 . ' cases'. ( $borderRefused === [] ? '' : ' - '. implode( ', ', $borderRefused ) ), $borderRefused === [] );
+
+$borderGood = $loaded['model'];
+$borderGood['blocks'][0]['settings']['border'] = '1';
+$borderGood['blocks'][0]['settings']['borderPrimary'] = true;
+$borderLeft = $loaded['model'];
+unset( $borderLeft['blocks'][0]['settings']['borderPrimary'] );
+check( '...a strength with the brand colour is written, and a switch left out is off: no class', str_contains( \Nino\Modules\Builder\Document::source( $appData, $borderGood )['parts'][1]['source'], ' nino-section--border-1 nino-section--border-primary ' ) === true
+	&& str_contains( \Nino\Modules\Builder\Document::source( $appData, $borderLeft )['parts'][1]['source'], 'nino-section--border-primary' ) === false );
+
 $stackWrong = \Nino\Modules\Builder\Document::load( $appData, 'page-home' );
 $stackWrong['model']['blocks'][3]['cols'][0]['components'] = [ [ 'name' => 'stack', 'source' => '/services', 'text' => null, 'attributes' => [], 'content' => '' ] ];
 $stackAnswer = \Nino\Modules\Builder\Document::save( $appData, 'page-home', $stackWrong['model'], $stackWrong['hash'] );
@@ -1279,6 +1599,26 @@ check( 'the alt texts a slot is made with end up at the slot, by language and as
 	&& ( \Nino\Images::getSlot( $appData, '/template/page-texts/z/background' ) ?: [] )['alt'] === [ 'en_US' => 'Waves' ] && ( \Nino\Images::getSlot( $appData, '/template/page-texts/z/photo' ) ?: [] )['width'] === 800 );
 check( '...and the registry, the next time it is asked, has them', array_column( \Nino\Modules\Builder\Document::registry( $appData )['slots'], 'alt', 'uri' )['/template/page-texts/z/photo'] === [ 'en_US' => 'A house by the sea', 'de_DE' => 'Ein Haus am Meer' ] );
 
+// The picture behind a column is a slot like the one behind a section: made at the save, with the label and the size of its mark and its alt texts
+$structure = \Nino\Modules\Builder\Document::load( $appData, 'page-texts' );
+$columned = $structure['model'];
+$columned['blocks'][0]['cols'][0]['color'] = 'counter';
+$columned['blocks'][0]['cols'][0]['dim'] = true;
+$columned['blocks'][0]['cols'][0]['background'] = [ 'slot' => '/template/page-texts/z/column-background', 'focus' => 7, 'create' => [ 'label' => 'Column background', 'width' => 600, 'height' => 800, 'alt' => [ 'en_US' => 'A wave', 'de_DE' => 'Eine Welle' ] ] ];
+$columnedAnswer = \Nino\Modules\Builder\Document::save( $appData, 'page-texts', $columned, $structure['hash'] );
+check( 'the picture behind a column is made at the save as the one behind a section is, with the label and the size of its mark and its alt texts by language - and the file has the ground, the dimming and the picture first in the column, which reads back as it was set, without the mark',
+	$columnedAnswer['status'] === 200 && ( \Nino\Images::getSlot( $appData, '/template/page-texts/z/column-background' ) ?: [] )['label'] === 'Column background' && ( \Nino\Images::getSlot( $appData, '/template/page-texts/z/column-background' ) ?: [] )['height'] === 800
+	&& ( \Nino\Images::getSlot( $appData, '/template/page-texts/z/column-background' ) ?: [] )['alt'] === [ 'en_US' => 'A wave', 'de_DE' => 'Eine Welle' ]
+	&& str_contains( (string) file_get_contents( $textsPath ), "<div class=\"nino-grid-100 nino-grid--counter nino-grid--dim\">\n\t\t\t<div class=\"nino-grid-bg nino-img-focus--7\">[image /template/page-texts/z/column-background alt=\"\"]</div>\n" ) === true
+	&& $columnedAnswer['model']['blocks'][0]['cols'][0]['background'] === [ 'slot' => '/template/page-texts/z/column-background', 'focus' => 7 ] && $columnedAnswer['model']['blocks'][0]['cols'][0]['color'] === 'counter' && $columnedAnswer['model']['blocks'][0]['cols'][0]['dim'] === true );
+
+$structure = \Nino\Modules\Builder\Document::load( $appData, 'page-texts' );
+$columnedOther = $structure['model'];
+$columnedOther['blocks'][0]['cols'][0]['background'] = [ 'slot' => '/template/page-texts/z/other-background', 'focus' => null, 'create' => [ 'label' => 'Other', 'width' => 100, 'height' => 100, 'alt' => [ 'xx_XX' => 'Not a language' ] ] ];
+$columnedOtherAnswer = \Nino\Modules\Builder\Document::save( $appData, 'page-texts', $columnedOther, $structure['hash'] );
+check( '...an alt text of it for a language the site does not have is refused with 400 (value) as one of a picture is, the column named - and no slot is made', $columnedOtherAnswer['status'] === 400 && $columnedOtherAnswer['code'] === 'value'
+	&& str_contains( implode( ' ', $columnedOtherAnswer['problems'] ), 'the alt text of the background of column 1 is for "xx_XX"' ) === true && \Nino\Images::getSlot( $appData, '/template/page-texts/z/other-background' ) === false );
+
 $slotsNow = \Nino\Images::getSlots( $appData );
 $structure = \Nino\Modules\Builder\Document::load( $appData, 'page-texts' );
 $altered = static function( array $alt ) use ( $structure ): array {
@@ -1324,6 +1664,11 @@ $mixedAlt = \Nino\Modules\Builder\Document::save( $appData, 'page-texts', $mixed
 check( 'an account that may make slots but may not use the Images panel cannot give a new slot alt texts through the builder - for a picture or for a background, whichever slot of the save has them: 403, the permission named, before anything is made - no slot, nothing in the config, the file as it was',
 	$withAlt['status'] === 403 && $withAlt['code'] === 'permission' && $withAlt['problems'] === [ '/_admin/images/manage' ] && $behindAlt['status'] === 403 && $behindAlt['code'] === 'permission' && $behindAlt['problems'] === [ '/_admin/images/manage' ]
 	&& $mixedAlt['status'] === 403 && $mixedAlt['code'] === 'permission' && $mixedAlt['problems'] === [ '/_admin/images/manage' ] && $stateNow() === $settled );
+
+$inColumn = $structure['model'];
+$inColumn['blocks'][0]['cols'][0]['background'] = [ 'slot' => '/template/page-texts/z/column-mood', 'focus' => null, 'create' => [ 'label' => 'Mood', 'width' => 600, 'height' => 300, 'alt' => [ 'en_US' => 'A column mood' ] ] ];
+$inColumnAlt = \Nino\Modules\Builder\Document::save( $appData, 'page-texts', $inColumn, $structure['hash'] );
+check( '...nor to the slot of a picture behind a column: 403, the permission named, before anything is made', $inColumnAlt['status'] === 403 && $inColumnAlt['code'] === 'permission' && $inColumnAlt['problems'] === [ '/_admin/images/manage' ] && $stateNow() === $settled );
 
 $without = $marked( [ 'label' => 'Mood', 'width' => 600, 'height' => 300 ] );
 $without['blocks'][0]['background'] = [ 'slot' => '/template/page-texts/z/calm', 'focus' => null, 'create' => [ 'label' => 'Calm', 'width' => 600, 'height' => 300, 'alt' => [] ] ];
