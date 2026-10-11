@@ -21,9 +21,10 @@ namespace Nino\Modules\Design {
 	 *										lists and the blocks - in the markup a real page produces,
 	 *										with the chosen header and footer around it and the compiled
 	 *										stylesheet over it. Each tab has an anchor on it, an element
-	 *										with an id the panel scrolls the frame to. Nothing here
-	 *										writes: a preview is a question, and the answer to it must
-	 *										not already be the answer on disk.
+	 *										with an id the panel scrolls the frame to; the cards have one
+	 *										too, for the knobs of the content that are looked at there.
+	 *										Nothing here writes: a preview is a question, and the answer
+	 *										to it must not already be the answer on disk.
 	 *
 	 *										This class holds no markup. The page and the specimen are
 	 *										templates/preview-document.tpl and

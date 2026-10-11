@@ -218,15 +218,15 @@ namespace Nino\Modules\Design {
 		 *	What the page asks of Nino.css as a whole: how wide it is, and how its
 		 *	sections arrive.
 		 *
-		 *	A width of 0 is the kernel's own and writes nothing; the two steps to
-		 *	either side write the maximum width of a row and the space between the
-		 *	viewport and it, with the step it takes from 768px. An animation writes
-		 *	one rule on main with the custom properties the kernel sets for the
-		 *	effect, its strength and its speed, which every viewport animation
-		 *	below main inherits - and which the Builder overrides per template at
-		 *	its wrap, and a section with an animation class of its own overrides
-		 *	again. No effect writes nothing, whatever strength or speed stand
-		 *	beside it: they belong to an effect.
+		 *	A width of 0 is the kernel's own and writes nothing; the two to either
+		 *	side write the maximum width of a row and the space between the viewport
+		 *	and it, with the step it takes from 768px - the wide one no maximum
+		 *	(none) and no space (0) at all. An animation writes one rule on main
+		 *	with the custom properties the kernel sets for the effect, its strength
+		 *	and its speed, which every viewport animation below main inherits - and
+		 *	which the Builder overrides per template at its wrap, and a section with
+		 *	an animation class of its own overrides again. No effect writes nothing,
+		 *	whatever strength or speed stand beside it: they belong to an effect.
 		 *
 		 *	@param		array 		$setup				A normalised setup
 		 *

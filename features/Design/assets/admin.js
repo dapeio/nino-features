@@ -10,9 +10,12 @@
  *													mode the palette is solved from - and the compile that
  *													turns all of it into assets/theme.css (see
  *													Modules\Design\Admin beside this file). Beside the
- *													controls is one specimen page of the selection, which
- *													the frame scrolls to the open tab's anchor. Ships with
- *													the feature and is loaded exactly while it is active.
+ *													controls is one specimen page of the selection, under a
+ *													head with the viewport switch, the switch that lets the
+ *													frame follow and the reload; the frame scrolls to the
+ *													open tab's anchor, or to where a change of a knob shows.
+ *													Ships with the feature and is loaded exactly while it
+ *													is active.
  *
  *	@package								Dape/Nino
  *	@author									David Perchermeier <mail@dape.io>
@@ -45,14 +48,24 @@
 			block, Colours the grounds	*/
 		ANCHORS	: { global : 'global', fonts : 'type', content : 'content', buttons : 'buttons', components : 'components', colours : 'colours' },
 
+		/*	Where a change of one knob is looked at, by the tab: the id of the element
+			on the specimen the frame jumps to in place of the tab's anchor, which is
+			where opening the tab goes. For Content the two knobs of the hero go to the
+			hero (#content) and every other knob of the tab ('*') to the cards, which
+			the specimen's Cards section carries the id of (#cards). A tab with no entry
+			and a knob with neither its own nor a '*' use the tab's anchor. The two maps
+			are told together in the docblock of _jump()	*/
+		KNOB_ANCHORS	: { content : { 'hero-title' : 'content', 'hero-text' : 'content', '*' : 'cards' } },
+
 		// The three widths of the page, by the number the model keeps
 		PAGE_WIDTHS	: { '-1' : 'narrow', '0' : 'normal', '1' : 'wide' },
 
 		// The namespace the elements of an icon are made in
 		SVG			: 'http://www.w3.org/2000/svg',
 
-		/*	The icons in front of the names of the rows: Lucide's (lucide.dev, ISC - the
-			notice is THIRD-PARTY-NOTICES.md), 24 by 24 and drawn with a stroke, as the
+		/*	The icons in front of the names of the rows and on the buttons of the
+			viewport switch: Lucide's (lucide.dev, ISC - the notice is
+			THIRD-PARTY-NOTICES.md), 24 by 24 and drawn with a stroke, as the
 			parts each of them is made of - an element and its attributes, in the order
 			the shape is given in. Built as elements rather than written as markup, the
 			way the rest of the panel is. The class of the svg carries the stroke and the
@@ -123,6 +136,27 @@
 				[ 'path', { d : 'm19 5-1.256 1.256' } ],
 				[ 'path', { d : 'M20 12h2' } ],
 			],
+			// The three devices of the viewport switch: the shapes the Builder's symbols carry
+			'smartphone' : [
+				[ 'rect', { width : '14', height : '20', x : '5', y : '2', rx : '2', ry : '2' } ],
+				[ 'path', { d : 'M12 18h.01' } ],
+			],
+			'tablet' : [
+				[ 'rect', { width : '16', height : '20', x : '4', y : '2', rx : '2', ry : '2' } ],
+				[ 'line', { x1 : '12', x2 : '12.01', y1 : '18', y2 : '18' } ],
+			],
+			'monitor' : [
+				[ 'rect', { width : '20', height : '14', x : '2', y : '3', rx : '2' } ],
+				[ 'line', { x1 : '8', x2 : '16', y1 : '21', y2 : '21' } ],
+				[ 'line', { x1 : '12', x2 : '12', y1 : '17', y2 : '21' } ],
+			],
+			// The reload of the preview, beside the devices: Lucide's refresh-cw
+			'refresh-cw' : [
+				[ 'path', { d : 'M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8' } ],
+				[ 'path', { d : 'M21 3v5h-5' } ],
+				[ 'path', { d : 'M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16' } ],
+				[ 'path', { d : 'M8 16H3v5' } ],
+			],
 		},
 
 		/*	Which icon a row opens with, by the tab and the knob it sets - so that what
@@ -162,18 +196,27 @@
 			'colours/mode' : 'sun-moon',
 		},
 
-		// The widths the preview can be looked at in. A header set is mostly a
-		// decision about where the menu goes when there is no room for it, and
-		// that decision is invisible at one width
+		// The widths the preview can be looked at in, one button of the viewport
+		// switch each, with the icon it is drawn with (see ICONS). A header set is
+		// mostly a decision about where the menu goes when there is no room for it,
+		// and that decision is invisible at one width
 		WIDTHS	: [
-			{ key : 'phone', 	 px :  390 },
-			{ key : 'tablet',  px :  820 },
-			{ key : 'desktop', px : 1280 },
+			{ key : 'phone', 	 px :  390, icon : 'smartphone' },
+			{ key : 'tablet',  px :  820, icon : 'tablet' },
+			{ key : 'desktop', px : 1280, icon : 'monitor' },
 		],
 
 		// Which of them is on screen, and the debounce behind every select
 		_width	: 1280,
 		_timer	: null,
+		// Whether the frame jumps by itself: to the anchor of a tab that is opened and to
+		// where a change is looked at. On at the start of every visit and kept nowhere -
+		// a convenience of the visit, nothing a project should have to store
+		_follow	: true,
+		// Where the next jump goes when it is not the anchor of the open tab: the id of the
+		// element the last change of a knob is looked at in (see KNOB_ANCHORS). null is
+		// the tab's own, which is where opening a tab and choosing a template put it back to
+		_target	: null,
 		// The tab that is open
 		_tab		: 'global',
 		// The header and footer the frame was last built with. Everything else
@@ -440,17 +483,28 @@
 		},
 
 		/**
-		 *	The icon of a row, drawn from the shapes in ICONS: an svg that is
-		 *	decoration - out of reach of assistive technology and of the tab key -
-		 *	and says in data-icon which of them it is
+		 *	The icon of a row, drawn from the shapes in ICONS (see _svg())
 		 *
 		 *	@param		{string}	key				'<tab>/<knob>', as KNOB_ICONS has it
 		 *
 		 *	@return		{?Element}				null where the row has none
 		 */
 		_icon : function( key ) {
+			return Nino.admin.design._svg( Nino.admin.design.KNOB_ICONS[key] );
+		},
 
-			const name = Nino.admin.design.KNOB_ICONS[key];
+		/**
+		 *	An icon by its Lucide name, drawn from the shapes in ICONS: an svg that
+		 *	is decoration - out of reach of assistive technology and of the tab key -
+		 *	and says in data-icon which of them it is. The rows of the tabs and the
+		 *	buttons of the viewport switch are drawn with it
+		 *
+		 *	@param		{string}	name			A key of ICONS
+		 *
+		 *	@return		{?Element}				null where there is no such shape
+		 */
+		_svg : function( name ) {
+
 			const shapes = Nino.admin.design.ICONS[name];
 
 			if( shapes === undefined )
@@ -759,6 +813,10 @@
 
 			Nino.admin.design._tab = key;
 
+			// Where a change was looked at belonged to the tab that was left: the
+			// frame goes to the anchor of this one
+			Nino.admin.design._target = null;
+
 			const column = dc.getElementById('design-controls');
 
 			if( column === null )
@@ -955,6 +1013,10 @@
 
 			edit.parts[part] = set;
 
+			// Another template is a change of the whole tab, not of the knob that was
+			// looked at last: the frame goes to the anchor of the tab
+			Nino.admin.design._target = null;
+
 			if( Nino.admin.design.KNOB_TABS.indexOf( part ) === -1 ) {
 
 				const note = field ? field.querySelector('small') : null;
@@ -1150,7 +1212,9 @@
 				typed comma, so the decimal sign of the language is for the summary
 				only (see _sizeLabel()). What is typed is held inside the bounds of the
 				role the way the server holds it, and the field then shows what was
-				kept	*/
+				kept. The field steps by a tenth, which every bound is on: that is the
+				spinner's step and the browser's own hint of what is valid, and not the
+				model's - a typed 1.25 stays 1.25	*/
 			const bounds = ( data.bounds || {} )[role] || [];
 			const size = dc.createElement('input');
 			size.type = 'number';
@@ -1158,7 +1222,7 @@
 			size.dataset.role = role;
 			size.dataset.key = 'size';
 			size.setAttribute( 'inputmode', 'decimal' );
-			size.setAttribute( 'step', 'any' );
+			size.setAttribute( 'step', '.1' );
 			size.setAttribute( 'min', String( bounds[0] ) );
 			size.setAttribute( 'max', String( bounds[1] ) );
 			size.setAttribute( 'placeholder', String( ( data.inherited || {} )[role] ) );
@@ -1388,8 +1452,28 @@
 			const steps = Nino.admin.design._data.steps || [];
 
 			Nino.admin.design._edit.knobs[tab][knob] = Math.max( 0, steps.indexOf( step ) ) - 1;
+			// A change is looked at where it shows: one target for it, which the jump
+			// that follows the preview goes to
+			Nino.admin.design._target = Nino.admin.design._anchorOf( tab, knob );
 			Nino.admin.design._paintSummary();
 			Nino.admin.design._preview();
+		},
+
+		/**
+		 *	The element a change of one knob is looked at in: the id KNOB_ANCHORS
+		 *	names for the knob, else the one it names for the rest of the tab's
+		 *	knobs, else the anchor of the tab
+		 *
+		 *	@param		{string}		tab				A key of KNOB_TABS
+		 *	@param		{string}		knob			A knob of that tab
+		 *
+		 *	@return		{string}							The id of an element of the specimen
+		 */
+		_anchorOf : function( tab, knob ) {
+
+			const anchors = Nino.admin.design.KNOB_ANCHORS[tab] || {};
+
+			return anchors[knob] || anchors['*'] || Nino.admin.design.ANCHORS[tab];
 		},
 
 		/**
@@ -1877,6 +1961,14 @@
 			sticky.className = 'design-preview-sticky';
 			box.appendChild( sticky );
 
+			/*	The head of the preview is one row: the heading on one side, the bar of
+				the frame's controls on the other. Where the pane has no room for both
+				the bar goes under the heading - nothing is fixed here, the stylesheet's
+				flex-wrap does it	*/
+			const head = dc.createElement('div');
+			head.className = 'design-preview-head';
+			sticky.appendChild( head );
+
 			/*	An eyebrow over the title, and the line the preview says things
 				in beside them: what is in the frame is this selection, not the
 				site, and the eyebrow is where that fits without a sentence	*/
@@ -1891,34 +1983,25 @@
 			copy.appendChild( title );
 			heading.appendChild( copy );
 
-			/*	The preview's own line, in the heading rather than under the
-				frame: it says that a preview is being built, and a sentence
-				below the picture arrives where nobody is looking	*/
-			const msg = dc.createElement('p');
-			msg.id = 'design-preview-msg';
-			msg.className = 'nino-admin-hint';
-			msg.setAttribute( 'aria-live', 'polite' );
-			heading.appendChild( msg );
-
-			sticky.appendChild( heading );
+			head.appendChild( heading );
 
 			const bar = dc.createElement('div');
 			bar.className = 'design-preview-bar';
 
-			bar.appendChild( Nino.admin.design._select(
-				'design-width', Nino.content.getText('/_admin/design/label/width'),
-				Nino.admin.design.WIDTHS.map( function( width ) {
-					return { value : String( width.px ), label : Nino.content.getText('/_admin/design/width/'+ width.key ) };
-				} ), String( Nino.admin.design._width ), function( value ) {
-					Nino.admin.design._width = parseInt( value, 10 );
-					Nino.admin.design._fit();
-				}
-			) );
+			bar.appendChild( Nino.admin.design._renderViewports() );
+			bar.appendChild( Nino.admin.design._renderFollow() );
 
+			/*	The reload, an icon button like the three devices: its words are
+				its title, so the bar stays narrow enough to stand beside the
+				heading in a pane of 555px - the preview's column at a window of
+				1280px - and a sentence on a button is one the row has no room for	*/
 			const reload = dc.createElement('button');
 			reload.type = 'button';
 			reload.id = 'design-reload';
-			reload.textContent = Nino.content.getText('/_admin/design/label/reload');
+			reload.className = 'design-viewport design-reload';
+			reload.title = Nino.content.getText('/_admin/design/label/reload');
+			reload.setAttribute( 'aria-label', Nino.content.getText('/_admin/design/label/reload') );
+			reload.appendChild( Nino.admin.design._svg('refresh-cw') );
 			reload.addEventListener( 'click', function() {
 				// From scratch: the one control for "the library changed under
 				// me", which is what writing a set looks like from here
@@ -1927,7 +2010,7 @@
 			} );
 			bar.appendChild( reload );
 
-			sticky.appendChild( bar );
+			head.appendChild( bar );
 
 			const stage = dc.createElement('div');
 			stage.className = 'design-stage';
@@ -1946,6 +2029,17 @@
 				windows, starting downloads */
 			frame.setAttribute( 'sandbox', 'allow-scripts allow-same-origin' );
 			stage.appendChild( frame );
+
+			/*	The preview's own line, over the frame's top corner rather than
+				in the heading or under the frame: it says that a preview is
+				being built, or why there is none, where the eyes are - and it
+				takes no room of its own, so the head keeps its one row and the
+				frame stays where it is while the line comes and goes	*/
+			const msg = dc.createElement('p');
+			msg.id = 'design-preview-msg';
+			msg.className = 'nino-admin-hint';
+			msg.setAttribute( 'aria-live', 'polite' );
+			stage.appendChild( msg );
 			sticky.appendChild( stage );
 
 			// What the frame shows, in words, under the frame itself
@@ -1957,6 +2051,91 @@
 			Nino.admin.design._paintSummary( summary );
 
 			return box;
+		},
+
+		/**
+		 *	The viewport switch of the preview, the way the Builder's preview has
+		 *	it: a button for each of the widths the frame can be looked at in, an
+		 *	icon on it and the name of the width as its title, one of them pressed
+		 *	(Nino.adminUi.buttonRow() keeps that). There is no button for all of
+		 *	them at once: that is a view of the Builder's and means nothing in a frame
+		 *
+		 *	@return		{Element}
+		 */
+		_renderViewports : function() {
+
+			const group = dc.createElement('div');
+			group.className = 'design-viewports';
+			group.setAttribute( 'role', 'group' );
+			group.setAttribute( 'aria-label', Nino.content.getText('/_admin/design/label/viewports') );
+
+			const buttons = {};
+			let current = '';
+
+			Nino.admin.design.WIDTHS.forEach( function( width ) {
+
+				const name = Nino.content.getText('/_admin/design/width/'+ width.key );
+
+				const button = dc.createElement('button');
+				button.type = 'button';
+				button.id = 'design-viewport-'+ width.key;
+				button.className = 'design-viewport';
+				// An icon alone has no name of its own
+				button.title = name;
+				button.setAttribute( 'aria-label', name );
+
+				const icon = Nino.admin.design._svg( width.icon );
+
+				if( icon !== null )
+					button.appendChild( icon );
+
+				if( width.px === Nino.admin.design._width )
+					current = width.key;
+
+				buttons[width.key] = button;
+				group.appendChild( button );
+			} );
+
+			Nino.adminUi.buttonRow( buttons, current, function( key ) {
+				Nino.admin.design._width = Nino.admin.design.WIDTHS.filter( function( width ) { return width.key === key } )[0].px;
+				Nino.admin.design._fit();
+			} );
+
+			return group;
+		},
+
+		/**
+		 *	The switch that lets the frame follow. On, the page in it jumps to
+		 *	where a tab is opened and where a change is looked at; off, it stays
+		 *	where it is - and a page that is built anew stays at its top. The
+		 *	workbench draws the switch; what the panel keeps of it is the flag
+		 *	_follow, for the visit and no longer: it is a convenience, and nothing
+		 *	a project should have to store
+		 *
+		 *	@return		{Element}
+		 */
+		_renderFollow : function() {
+
+			const field = Nino.adminUi.switchField( {
+				key 		: 'design-follow',
+				label 	: Nino.content.getText('/_admin/design/label/follow'),
+				checked	: Nino.admin.design._follow,
+			} );
+
+			field.classList.add('design-preview-follow');
+
+			const input = field.querySelector('input');
+			input.id = 'design-follow';
+			input.addEventListener( 'change', function() {
+
+				Nino.admin.design._follow = input.checked;
+
+				// Switched on it goes where it would have been all along, once
+				if( input.checked === true )
+					Nino.admin.design._jump();
+			} );
+
+			return field;
 		},
 
 		/**
@@ -2158,9 +2337,13 @@
 			const frames = edit.parts.header + '|' + edit.parts.footer;
 			const full 	 = Nino.admin.design._frames !== frames;
 
+			/*	The line is one line, whatever it says - the head the chip stands in does
+				not move with it - and shows as much of it as the room the bar leaves has,
+				so the whole of it is its title as well	*/
 			if( msg !== null ) {
 				msg.className = 'nino-admin-hint';
 				msg.textContent = Nino.content.getText('/_admin/design/msg/previewing');
+				msg.title = msg.textContent;
 			}
 
 			Nino.admin.design._apiCall( 'preview', Object.assign( {}, edit, { full : full } ), function( status, response ) {
@@ -2169,6 +2352,7 @@
 					if( msg !== null ) {
 						msg.className = 'nino-admin-error';
 						msg.textContent = Nino.admin.design._errorText( status, response, '/_admin/design/error/preview' );
+						msg.title = msg.textContent;
 					}
 					return;
 				}
@@ -2190,8 +2374,9 @@
 					return Nino.admin.design._preview( 0 );
 				}
 				else {
-					// A change was made on this tab, and the tab's anchor is where
-					// it can be seen: the page goes there after every one
+					// A change was made on this tab, and where it can be seen - the
+					// tab's anchor, or the place of the knob that was moved - is where
+					// the page goes after every one
 					Nino.admin.design._jump();
 
 					if( Nino.admin.design._replays === true )
@@ -2209,6 +2394,7 @@
 				const notes = response.notes || [];
 				msg.className = notes.length === 0 ? 'nino-admin-hint' : 'nino-admin-error';
 				msg.textContent = notes.join(' ');
+				msg.title = msg.textContent;
 			} );
 		},
 
@@ -2281,14 +2467,27 @@
 		},
 
 		/**
-		 *	Scroll the page in the frame to the anchor of the open tab, smoothly.
+		 *	Scroll the page in the frame to where the open tab is looked at, smoothly.
 		 *
 		 *	The specimen is one page with an element for each tab (ids global,
 		 *	type, content, buttons, components and colours - see ANCHORS), and
 		 *	the frame is the page of this very origin: the panel scrolls the
 		 *	frame's own window by hand, which needs neither a message to the page
 		 *	nor a hash it would have to read. Done after a tab is opened and after
-		 *	every change, when the answer to the change is in the frame
+		 *	every change, when the answer to the change is in the frame.
+		 *
+		 *	Two maps say where. Opening a tab goes to the anchor of the tab
+		 *	(ANCHORS). A change of one knob goes to the place that knob is looked
+		 *	at in (KNOB_ANCHORS): on Content the hero's two knobs to the hero, which
+		 *	is also the anchor of the tab (#content), and every other knob to the
+		 *	Cards section (#cards); a tab or a knob with no entry there keeps the
+		 *	anchor of the tab. The place of a change is _target, one for each
+		 *	change - it is put back to the tab's own when a tab is opened and when a
+		 *	template is chosen, and it is what is jumped to until then.
+		 *
+		 *	With the follow switch off (_follow) the frame never scrolls by itself:
+		 *	not after a change, not after a tab is opened, and a page that was built
+		 *	anew stays at its top. Switching it on jumps once, to where it would be
 		 *
 		 *	@param		{boolean}	[instant]		Without the smooth scroll - after a
 		 *															rebuild there is nothing to scroll away from
@@ -2301,7 +2500,7 @@
 
 			const frame = dc.getElementById('design-frame');
 
-			if( frame === null )
+			if( frame === null || Nino.admin.design._follow === false )
 				return;
 
 			try {
@@ -2312,7 +2511,7 @@
 					return;
 
 				const tab = Nino.admin.design._tab;
-				const target = doc.getElementById( Nino.admin.design.ANCHORS[tab] );
+				const target = doc.getElementById( Nino.admin.design._target || Nino.admin.design.ANCHORS[tab] );
 				const view = doc.defaultView;
 
 				if( target === null || view === null )

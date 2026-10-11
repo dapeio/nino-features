@@ -161,17 +161,17 @@ namespace Nino\Modules\Design {
 
 			'saturation' => [
 				'default'	=> 2,
-				'steps'		=> [ 'Muted', 'Standard', 'Rich' ],
+				'steps'		=> [ 'Muted', 'Default', 'Rich' ],
 			],
 
 			'contrast' => [
 				'default'	=> 2,
-				'steps'		=> [ 'Soft', 'Standard', 'Strong' ],
+				'steps'		=> [ 'Soft', 'Default', 'Strong' ],
 			],
 
 			'depth' => [
 				'default'	=> 2,
-				'steps'		=> [ 'Flat', 'Standard', 'Raised' ],
+				'steps'		=> [ 'Flat', 'Default', 'Raised' ],
 			],
 
 		];
@@ -208,7 +208,7 @@ namespace Nino\Modules\Design {
 			is a soft near-black - about 10:1 on white - and at 3 it is black.
 
 			The outer positions are far apart on purpose: Soft has to be
-			visibly softer than Standard and Strong visibly harder, and a step
+			visibly softer than Default and Strong visibly harder, and a step
 			of a few hundredths of lightness was neither. Only 1 and 3 move,
 			because 2 is pinned to the framework's own palette (see the check
 			against base.css in tests/design-smoke.php).	*/
@@ -984,10 +984,10 @@ namespace Nino\Modules\Design {
 				lightness axis, so the extreme passing lightness is often the
 				one where the least chroma fits - and turning Saturation up came
 				back *less* saturated than leaving it alone: a brand blue
-				measured 0.126 at Standard and 0.115 at Intense.
+				measured 0.126 at Default and 0.115 at Rich.
 
 				Only worth a second look when chroma was actually lost. When the
-				requested chroma fits - every setting at or below Standard, for
+				requested chroma fits - every setting at or below Default, for
 				most brands - the bisection above is already the answer, exactly
 				as it was before.	*/
 			if( $achieved >= $chroma - self::CHROMA_EPSILON )

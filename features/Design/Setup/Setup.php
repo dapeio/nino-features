@@ -106,28 +106,45 @@ namespace Nino\Modules\Design {
 			published nothing */
 		public const string KNOB_TOKEN = '--%s-%s--%s';
 
-		/*	The root size, as the percentage pair Nino.css wants: below the
-			768px breakpoint, and from it. Relative, never a length - see
+		/*	The root size, as the percentage pair Nino.css wants: below the 768px
+			breakpoint, and from it. Relative, never a length - see
 			--base-size in Nino.css.
 
-			A full step apart rather than a hair: at a browser default of 16px
-			this is 15/18/21 from the breakpoint and 14/16/18 below it, which
-			is a choice somebody can see on the page rather than one they have
-			to measure. The middle position is the delivered size and does not
-			move, so nothing compiled before this reads differently.	*/
+			Five positions, each a choice somebody can see on the page rather than
+			one they have to measure. Below the breakpoint they are 15% apart: at a
+			browser default of 16px that is 11.2, 13.6, 16, 18.4 and 20.8px. From it
+			each is 1.125 times its own, the ratio of the kernel's pair of 100% and
+			112.5%: 12.6, 15.3, 18, 20.7 and 23.4px. The middle position is the
+			delivered size and does not move, so nothing compiled before this reads
+			differently, and a setup that stored s or l still reads as one of the
+			five.	*/
 		public const array SIZES = [
-			's' => [ '87.5%', '93.75%' ],
-			'm' => [ '100%', '112.5%' ],
-			'l' => [ '112.5%', '131.25%' ],
+			'xs' 	=> [ '70%', '78.75%' ],
+			's' 	=> [ '85%', '95.625%' ],
+			'm' 	=> [ '100%', '112.5%' ],
+			'l' 	=> [ '115%', '129.375%' ],
+			'xl' 	=> [ '130%', '146.25%' ],
 		];
 
 		/*	The width of the page, as the maximum width of a row and the space
 			between the viewport and it, below 768px and from it. 0 is Nino.css as
-			it is and writes nothing; each step to a side is one step of the space
-			scale away from what the kernel has (--space-2, from 768px --space-3)	*/
+			it is and writes nothing: a row of at most 120rem, with the kernel's own
+			space to the sides (--space-2, from 768px --space-3).
+
+			The two sides are what can be seen in a preview of 1280px, where 96, 120
+			and 144rem were all as wide as the frame. Narrow keeps a row at 56rem -
+			1008px at the root size the kernel has from 768px, 18px, and 896px at
+			16px, two hundred pixels inside a frame of 1280px - with the kernel's
+			own space to the sides. Wide takes the maximum
+			and, from 768px, the space away: the row runs to the edge of the section,
+			which keeps the padding of its own from there. Below 768px a section has
+			no padding to the sides, so wide keeps the kernel's space there - a phone
+			is as wide as it gets, and the text stays off the edge of the screen. Nino.css reads --grid-max-width as a
+			max-width, of which none is a value, and --grid-gutter as the padding of
+			a row, of which 0 is one.	*/
 		public const array WIDTHS = [
-			-1 => [ '96rem', 'var(--space-1)', 'var(--space-2)' ],
-			1 	=> [ '144rem', 'var(--space-3)', 'var(--space-4)' ],
+			-1 => [ '56rem', 'var(--space-2)', 'var(--space-3)' ],
+			1 	=> [ 'none', 'var(--space-2)', '0' ],
 		];
 
 		/*	The animation of the page: what Nino.css sets for nino-vpa--<effect>-<strength>

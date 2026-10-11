@@ -9,8 +9,10 @@
  *													colour with the icon before its name, the table of the
  *													five font roles, and the two columns the screen is - the
  *													controls on one side (a third of the width, 24rem at
- *													the least), a sticky preview pane with the frame and
- *													a summary of the open tab on the other (two thirds).
+ *													the least), a sticky preview pane on the other (two
+ *													thirds) - a head of one row with the heading and the
+ *													bar of the frame's controls, the viewport switch among
+ *													them, then the frame and a summary of the open tab.
  *													Joins the workbench's style bundle while the feature
  *													is active (see the panel's assets()).
  *
@@ -469,12 +471,27 @@
 	min-width: 0;
 }
 
-/*	An eyebrow over the title, and what the preview has to say beside them */
-.nino-admin .design-preview-heading {
+/*	The head of the preview is one row: the heading on one side, the bar of the
+	frame's controls at the end of it. The bar goes under the heading where the
+	pane has no room for both - nothing is fixed here, flex-wrap does it. The
+	heading is the eyebrow and the title alone, so the row is as narrow as the
+	title and the bar: at a window of 1280px the preview's pane is 555px, and
+	the two stand side by side in it */
+.nino-admin .design-preview-head {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: flex-end;
 	justify-content: space-between;
 	gap: .7rem;
+}
+.nino-admin .design-preview-head > .design-preview-bar {
+	flex: 0 0 auto;
+}
+
+/* An eyebrow over the title */
+.nino-admin .design-preview-heading {
+	flex: 0 1 auto;
+	min-width: 0;
 }
 .nino-admin .design-preview-heading strong {
 	display: block;
@@ -482,18 +499,29 @@
 	font-weight: 700;
 	letter-spacing: -.01em;
 }
-/*	The preview's own line, as a chip on the heading's far side. Written by
-	_previewNow(), which sets the class that carries the colour - so the shape
+/*	The preview's own line, as a chip over the top corner of the frame. Written
+	by _previewNow(), which sets the class that carries the colour - so the shape
 	is bound to the id, and an error still reads as one. Empty is the ordinary
-	state and shows nothing at all */
+	state and shows nothing at all. It lies over the frame and takes no room of
+	its own, so the head and the frame never move when it comes or goes, and
+	what it says never decides where the head wraps; one line, cut where the
+	frame is narrower than the sentence - the whole text is the chip's title */
 .nino-admin #design-preview-msg {
-	flex: 0 1 auto;
+	position: absolute;
+	top: .5rem;
+	right: .5rem;
+	z-index: 2;
+	max-width: calc(100% - 1rem);
 	margin: 0;
 	padding: .25rem .5rem;
 	border-radius: 999px;
 	background: color-mix(in srgb, var(--editor-bg-elevated) 92%, transparent);
+	box-shadow: 0 1px 3px rgba(0, 0, 0, .18);
 	font-size: .72rem;
-	text-align: right;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	pointer-events: none;
 }
 .nino-admin #design-preview-msg:empty {
 	display: none;
@@ -502,13 +530,59 @@
 .nino-admin .design-preview-bar {
 	display: flex;
 	flex-wrap: wrap;
-	align-items: flex-end;
+	align-items: center;
 	gap: .6rem;
 	margin: 0;
 }
-/* The width is one field among buttons rather than a column of its own */
-.nino-admin .design-preview-bar .design-field {
-	flex: 0 0 9.5rem;
+
+/*	The viewport switch is the Builder's: .design-viewports and .design-viewport are
+	its .builder-viewports and .builder-viewport (features/Builder/assets/admin.css)
+	under the names of this feature. The two features share no stylesheet, so the
+	rules are copied and not read, and a change of the look in one is a change to
+	make in the other. Its icon is the .design-icon of the rows */
+.design-viewports {
+	display: flex;
+	gap: .25rem;
+}
+.design-viewport {
+	display: inline-flex;
+	align-items: center;
+	gap: .35rem;
+	min-height: 0;
+	padding: .2rem .6rem;
+	border: 1px solid var(--editor-border);
+	border-radius: var(--editor-radius-sm);
+	background: transparent;
+	box-shadow: none;
+	color: var(--editor-text-secondary);
+	font-size: .74rem;
+	cursor: pointer;
+}
+.design-viewport.is-active {
+	border-color: var(--editor-blue);
+	background: var(--editor-blue-soft);
+	color: var(--editor-text);
+}
+/*	The icon of a row is drawn in the secondary colour of the text; on a button it
+	takes the colour of the button, as the Builder's does, so the lit one is lit	*/
+.nino-admin .design-viewport .design-icon {
+	color: inherit;
+}
+/*	The reload is drawn like the devices and stands apart from them by its gap */
+.nino-admin .design-reload {
+	margin-left: .25rem;
+}
+/*	The switch beside the buttons: it belongs to the frame, not to the screen, and
+	the bar is where the frame's controls are. Compact - the margin of a field, the
+	padding and the border the workbench gives a switch are taken off - and centred
+	like the rest of the bar: the workbench sets its words level with the top of the
+	track, which puts them above the middle of the buttons beside it	*/
+.nino-admin .design-preview-follow {
+	align-items: center;
+	min-height: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
 }
 /*	The port Nino.adminUi.scaleFrame() places the frame inside: it gives the
 	frame a width, a height solved back through the scale, and a position - so

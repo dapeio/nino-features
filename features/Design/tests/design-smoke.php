@@ -8,17 +8,18 @@ declare(strict_types=1);
  *											library of five parts and what a template must declare
  *											to be one, the setup's normalisation against a library
  *											that is really there, what the compiler puts in the
- *											sheet and in which order - the font roles, the width and
- *											the animation of the page, the knob positions - the
- *											palette and its mode, the roles base.css assigns against
- *											the kernel's Nino.css, the refusal to overwrite a file
- *											Design did not write, and that the theme.css the setup wizard
- *											delivers is the body the compiler writes at the defaults, byte
- *											for byte. Travels with the feature and runs against the
- *											checkout three levels up, or the one NINO_ROOT names (see
- *											tests/harness.php there). What the panel's own script
- *											draws is design-js-smoke.js beside this file, which this
- *											suite runs too where node is on the path.
+ *											sheet and in which order - the five root sizes, the font
+ *											roles, the width and the animation of the page, the knob
+ *											positions - the palette and its mode, the roles base.css
+ *											assigns against the kernel's Nino.css, the words of the
+ *											steps and of the selects in both languages, the refusal to
+ *											overwrite a file Design did not write, and that the theme.css
+ *											the setup wizard delivers is the body the compiler writes at
+ *											the defaults, byte for byte. Travels with the feature and
+ *											runs against the checkout three levels up, or the one
+ *											NINO_ROOT names (see tests/harness.php there). What the
+ *											panel's own script draws is design-js-smoke.js beside this
+ *											file, which this suite runs too where node is on the path.
  *
  *	Usage: php features/Design/tests/design-smoke.php
  *	       NINO_ROOT=../nino php features/Design/tests/design-smoke.php
@@ -380,6 +381,37 @@ check( '...and that the way back to the previous version is a button of the acti
 	str_contains( $says( 'Restore previous version', 'en_US' ), 'in the action bar beside Reset, and only while there is such a version' ) === true
 	&& str_contains( $says( 'Restore previous version', 'de_DE' ), 'in der Aktionsleiste neben Zurücksetzen, und nur, solange es eine solche Version gibt' ) === true );
 
+/*	The words of the panel the manual quotes, taken from the text files themselves, so that the
+	manual cannot say a word the panel does not	*/
+$panelWord = static fn( string $key, string $locale ): string => (string) ( ( (array) include __DIR__. '/../text/'. $locale. '.php' )['[[/_admin/design/'. $key. ']]'] ?? '' );
+$sizeWords = static fn( string $locale ): array => array_map( static fn( string $size ): string => $panelWord( 'size/'. $size, $locale ), array_keys( Setup::SIZES ) );
+
+check( 'the five sizes are said in both languages: very small, smaller, default, larger, very large - sehr klein, kleiner, normal, größer, sehr groß',
+	$sizeWords( 'en_US' ) === [ 'very small', 'smaller', 'default', 'larger', 'very large' ] && $sizeWords( 'de_DE' ) === [ 'sehr klein', 'kleiner', 'normal', 'größer', 'sehr groß' ] );
+check( 'the manual names the five sizes of Global in the words of the panel, with what they come to - 70, 85, 100, 115 and 130 % - and says that the middle one is the delivered size, in both languages',
+	array_filter( $sizeWords( 'en_US' ), static fn( string $word ): bool => str_contains( $says( 'Global', 'en_US' ), $word ) === false ) === []
+	&& array_filter( $sizeWords( 'de_DE' ), static fn( string $word ): bool => str_contains( $says( 'Global', 'de_DE' ), $word ) === false ) === []
+	&& str_contains( $says( 'Global', 'en_US' ), '70, 85, 100, 115 or 130 %' ) === true && str_contains( $says( 'Global', 'de_DE' ), '70, 85, 100, 115 oder 130 %' ) === true
+	&& str_contains( $says( 'Global', 'en_US' ), 'the default being the delivered size' ) === true && str_contains( $says( 'Global', 'de_DE' ), 'normal ist die gelieferte Größe' ) === true );
+check( '...and the three widths with what each does: narrow keeps the content at 56 rem, normal at 120 rem, wide lets it run to the edge of the window - and not the 96 and 144 rem of the model before',
+	str_contains( $says( 'Global', 'en_US' ), 'narrow keeps the content at 56 rem, normal at 120 rem' ) === true && str_contains( $says( 'Global', 'en_US' ), 'wide lets it run to the edge of the window' ) === true
+	&& str_contains( $says( 'Global', 'de_DE' ), 'schmal hält den Inhalt bei 56 rem, normal bei 120 rem' ) === true && str_contains( $says( 'Global', 'de_DE' ), 'breit lässt ihn' ) === true && str_contains( $says( 'Global', 'de_DE' ), 'bis an den Rand des Fensters laufen' ) === true
+	&& str_contains( $says( 'Global', 'en_US' ). $says( 'Global', 'de_DE' ), '96 rem' ) === false && str_contains( $says( 'Global', 'en_US' ). $says( 'Global', 'de_DE' ), '144 rem' ) === false );
+check( 'the manual names the viewport buttons, the switch by the words the panel draws it with, and where the frame jumps: the hero for the hero\'s knobs, the cards for the other knobs of Content - in both languages',
+	str_contains( $says( 'Preview', 'en_US' ), 'Three icon buttons' ) === true && str_contains( $says( 'Preview', 'en_US' ), 'as in the Builder' ) === true
+	&& str_contains( $says( 'Preview', 'en_US' ), '"'. $panelWord( 'label/follow', 'en_US' ). '"' ) === true && str_contains( $says( 'Preview', 'en_US' ), 'the hero for the title and the text of the hero and to the cards for the other knobs' ) === true
+	&& str_contains( $says( 'Preview', 'de_DE' ), 'Drei Icon-Knöpfe' ) === true && str_contains( $says( 'Preview', 'de_DE' ), 'wie im Builder' ) === true
+	&& str_contains( $says( 'Preview', 'de_DE' ), '„'. $panelWord( 'label/follow', 'de_DE' ). '“' ) === true && str_contains( $says( 'Preview', 'de_DE' ), 'zum Hero für Titel und Text des Heros, zu den Karten für die übrigen Regler' ) === true );
+check( '...and that the switch is on at every visit, stored nowhere, and with it off the frame never scrolls by itself - in both languages',
+	str_contains( $says( 'Preview', 'en_US' ), 'it is on at every visit and stored nowhere' ) === true && str_contains( $says( 'Preview', 'en_US' ), 'the frame never scrolls by itself' ) === true
+	&& str_contains( $says( 'Preview', 'de_DE' ), 'er ist bei jedem Besuch an und nirgends gespeichert' ) === true && str_contains( $says( 'Preview', 'de_DE' ), 'scrollt der Frame nie von sich aus' ) === true );
+check( '...and that the field of a size steps by a tenth, which every bound is on, and keeps the point whatever decimal sign the browser shows - in both languages, with the bounds of the tenths',
+	str_contains( $says( 'Fonts', 'en_US' ), 'the field steps by a tenth, which every bound is on' ) === true && str_contains( $says( 'Fonts', 'en_US' ), 'a typed 1.25 stays 1.25' ) === true
+	&& str_contains( $says( 'Fonts', 'en_US' ), 'the setup keeps 1.6' ) === true
+	&& str_contains( $says( 'Fonts', 'de_DE' ), 'das Feld zählt in Zehnteln, auf denen jede Grenze liegt' ) === true && str_contains( $says( 'Fonts', 'de_DE' ), 'ein getipptes 1,25 bleibt 1,25' ) === true
+	&& str_contains( $says( 'Fonts', 'de_DE' ), 'das Setup behält 1.6' ) === true
+	&& str_contains( $says( 'Fonts', 'en_US' ), '0.75' ) === false && str_contains( $says( 'Fonts', 'en_US' ), '0.625' ) === false && str_contains( $says( 'Fonts', 'de_DE' ), '0,75' ) === false && str_contains( $says( 'Fonts', 'de_DE' ), '0,625' ) === false );
+
 echo "\nThe library it ships\n";
 
 check( 'five parts: the header and the footer bring markup, the content, the buttons and the components are a stylesheet each',
@@ -657,12 +689,17 @@ $setup = Setup::normalize( [ 'size' => 'l', 'width' => '1', 'motion' => [ 'effec
 check( 'the size, the width and the animation are kept as they were chosen', $setup['size'] === 'l' && $setup['width'] === 1
 	&& $setup['motion'] === [ 'effect' => 'flip', 'strength' => 'hard', 'speed' => 'slow' ] );
 check( '...width -1, 0 and 1 are the three widths', array_map( static fn( int $width ): int => Setup::normalize( [ 'width' => $width ], $library )['width'], [ -1, 0, 1 ] ) === [ -1, 0, 1 ] );
+check( '...the size is one of five: xs, s, m, l and xl, each kept as it was chosen - and the middle one is what a setup out of nothing has',
+	array_keys( Setup::SIZES ) === [ 'xs', 's', 'm', 'l', 'xl' ]
+	&& array_map( static fn( string $size ): string => Setup::normalize( [ 'size' => $size ], $library )['size'], array_keys( Setup::SIZES ) ) === [ 'xs', 's', 'm', 'l', 'xl' ]
+	&& Setup::normalize( [], $library )['size'] === 'm' );
 
 $notes = [];
 $setup = Setup::normalize( [ 'size' => 'xxl', 'width' => 2, 'motion' => [ 'effect' => 'spin', 'strength' => 'loud', 'speed' => 'warp', 'delay' => 1 ] ], $library, $notes );
 
-check( 'a size, a width, an effect, a strength or a speed that is none of the choices is the default, not an error',
-	$setup['size'] === 'm' && $setup['width'] === 0 && $setup['motion'] === [ 'effect' => '', 'strength' => '', 'speed' => '' ] );
+check( 'a size, a width, an effect, a strength or a speed that is none of the choices is the default, not an error - xxl is no size, and neither is the capital of one',
+	$setup['size'] === 'm' && $setup['width'] === 0 && $setup['motion'] === [ 'effect' => '', 'strength' => '', 'speed' => '' ]
+	&& array_filter( [ 'XL', 'xxl', 'xxs', 'medium', '', ' s' ], static fn( string $size ): bool => Setup::normalize( [ 'size' => $size ], $library )['size'] !== 'm' ) === [] );
 check( '...and a key of the animation that is none of its three is dropped and named', count( $notes ) === 1 && str_contains( $notes[0], '"delay"' ) === true );
 
 // None of what comes off the wire may raise: an array cast to a string is a warning the kernel treats as fatal
@@ -691,8 +728,8 @@ check( '...a family, a weight or a size that is none starts from what the role h
 	$setup['fonts']['subtitle'] === Fonts::DEFAULTS['subtitle'] && $setup['fonts']['button'] === Fonts::DEFAULTS['button']
 	&& $setup['fonts']['code']['weight'] === 'bold' && $setup['fonts']['code']['uppercase'] === false && $setup['fonts']['code']['size'] === '0.9' );
 check( '...a size outside the bounds of its role is held at the nearer bound, and one with more than three decimals is rounded to three: the setup keeps what the compiler can write',
-	array_map( static fn( string $role ): string => Setup::normalize( [ 'fonts' => [ $role => [ 'size' => 99 ] ] ], $library )['fonts'][$role]['size'], Fonts::ROLES ) === [ '4', '2.5', '1.5', '1.5', '1.25' ]
-	&& array_map( static fn( string $role ): string => Setup::normalize( [ 'fonts' => [ $role => [ 'size' => '0.1' ] ] ], $library )['fonts'][$role]['size'], Fonts::ROLES ) === [ '1', '0.75', '0.75', '0.625', '0.625' ]
+	array_map( static fn( string $role ): string => Setup::normalize( [ 'fonts' => [ $role => [ 'size' => 99 ] ] ], $library )['fonts'][$role]['size'], Fonts::ROLES ) === [ '4', '2.5', '1.5', '1.5', '1.3' ]
+	&& array_map( static fn( string $role ): string => Setup::normalize( [ 'fonts' => [ $role => [ 'size' => '0.1' ] ] ], $library )['fonts'][$role]['size'], Fonts::ROLES ) === [ '1', '0.8', '0.8', '0.6', '0.6' ]
 	&& Setup::normalize( [ 'fonts' => [ 'text' => [ 'size' => '1.23456' ] ] ], $library )['fonts']['text']['size'] === '1.235'
 	&& Setup::normalize( [ 'fonts' => [ 'text' => [ 'size' => [ 1 ] ] ] ], $library )['fonts']['text']['size'] === '' );
 check( '...and a family the role\'s select does not offer is none: the code is given the monospace ones, of which there are none with files yet - the system stack is its empty family - while the other roles keep a system stack',
@@ -773,14 +810,25 @@ check( 'of two weights as near as each other a word gets the lighter - the list 
 	&& $nearest->invoke( null, [ 400, 700 ], 500 ) === 400 && $nearest->invoke( null, [ 400, 700 ], 800 ) === 700 && $nearest->invoke( null, [ 500 ], 300 ) === 500 );
 check( 'every role has bounds in rem, from the least to the most: the five of them, in the order of the roles',
 	array_keys( Fonts::BOUNDS ) === Fonts::ROLES && array_filter( Fonts::BOUNDS, static fn( array $bounds ): bool => count( $bounds ) !== 2 || $bounds[0] <= 0 || $bounds[0] >= $bounds[1] ) === []
-	&& Fonts::BOUNDS === [ 'title' => [ 1, 4 ], 'subtitle' => [ 0.75, 2.5 ], 'text' => [ 0.75, 1.5 ], 'button' => [ 0.625, 1.5 ], 'code' => [ 0.625, 1.25 ] ] );
+	&& Fonts::BOUNDS === [ 'title' => [ 1, 4 ], 'subtitle' => [ 0.8, 2.5 ], 'text' => [ 0.8, 1.5 ], 'button' => [ 0.6, 1.5 ], 'code' => [ 0.6, 1.3 ] ] );
+/*	The field a size is typed in steps by a tenth from its least, so a bound that is not
+	a number of tenths is a size the spinner cannot reach and the browser calls invalid:
+	every bound is on the step, and the model keeps no less than that	*/
+check( '...and every bound is a number of tenths, the step of the field the size is typed in - the least and the most of each role',
+	array_filter( Fonts::BOUNDS, static fn( array $bounds ): bool => array_filter( $bounds, static fn( int|float $bound ): bool => abs( $bound * 10 - round( $bound * 10 ) ) > 1e-9 ) !== [] ) === [] );
 check( 'a size is a number inside the bounds of its role as the shortest string it can be written as: 2.4 however it is spelled, 1.1250 as 1.125, 2.0 as 2',
 	Fonts::size( 'title', '2.4' ) === '2.4' && Fonts::size( 'title', 2.4 ) === '2.4' && Fonts::size( 'title', '2.40' ) === '2.4' && Fonts::size( 'title', 2 ) === '2'
 	&& Fonts::size( 'title', '1.1250' ) === '1.125' && Fonts::size( 'title', '2.0' ) === '2' && Fonts::size( 'text', 0.875 ) === '0.875' && Fonts::size( 'title', '  1.5 ' ) === '1.5' );
 check( '...a value is held at the nearer bound - below the least it is the least, above the most the most - and rounded to three decimals, which is what a number that is no step of any list is',
 	Fonts::size( 'title', 0.5 ) === '1' && Fonts::size( 'title', '9' ) === '4' && Fonts::size( 'title', -3 ) === '1' && Fonts::size( 'title', 1e9 ) === '4'
-	&& Fonts::size( 'subtitle', 0.7 ) === '0.75' && Fonts::size( 'subtitle', 2.51 ) === '2.5' && Fonts::size( 'button', 0.6 ) === '0.625' && Fonts::size( 'code', 1.3 ) === '1.25'
+	&& Fonts::size( 'subtitle', 0.7 ) === '0.8' && Fonts::size( 'subtitle', 2.51 ) === '2.5' && Fonts::size( 'button', 0.59 ) === '0.6' && Fonts::size( 'code', 1.31 ) === '1.3'
 	&& Fonts::size( 'title', '2.45' ) === '2.45' && Fonts::size( 'code', '0.9375' ) === '0.938' && Fonts::size( 'title', 1.00049 ) === '1' );
+check( '...the bounds themselves are sizes: .8 and 2.5 for the subtitle, .8 and 1.5 for the text, .6 and 1.5 for the button, .6 and 1.3 for the code - and .59 is held at .6, 1.31 at 1.3',
+	Fonts::size( 'subtitle', .8 ) === '0.8' && Fonts::size( 'subtitle', 2.5 ) === '2.5' && Fonts::size( 'text', '.8' ) === '0.8' && Fonts::size( 'text', 1.5 ) === '1.5'
+	&& Fonts::size( 'button', .6 ) === '0.6' && Fonts::size( 'button', '1.5' ) === '1.5' && Fonts::size( 'code', .6 ) === '0.6' && Fonts::size( 'code', 1.3 ) === '1.3'
+	&& Fonts::size( 'button', .59 ) === '0.6' && Fonts::size( 'code', 1.31 ) === '1.3' && Fonts::size( 'text', .79 ) === '0.8' );
+check( '...and a size between two steps of the field is kept as it was typed, to three decimals: 1.25 stays 1.25, 1.125 stays 1.125, 0.875 stays 0.875 - the step is the spinner\'s and not the model\'s',
+	Fonts::size( 'text', '1.25' ) === '1.25' && Fonts::size( 'subtitle', 1.125 ) === '1.125' && Fonts::size( 'code', '0.875' ) === '0.875' && Fonts::size( 'title', '1.55' ) === '1.55' );
 check( '...whatever is no number is the default - nothing, null, text, an array, a bool, a comma for the point - and so is a size for a role there is none of',
 	Fonts::size( 'title', '' ) === '' && Fonts::size( 'title', null ) === '' && Fonts::size( 'title', 'big' ) === '' && Fonts::size( 'title', [ 2 ] ) === ''
 	&& Fonts::size( 'title', true ) === '' && Fonts::size( 'title', '2,4' ) === '' && Fonts::size( 'nothing', '1' ) === '' );
@@ -788,8 +836,8 @@ check( '...whatever is no number is the default - nothing, null, text, an array,
 check( '...and so is a float that is not a number: NAN in, the default out, for every role - not the most of the role, which is what holding it between the bounds made of it',
 	Fonts::size( 'title', NAN ) === '' && array_filter( Fonts::ROLES, static fn( string $role ): bool => Fonts::size( $role, NAN ) !== '' ) === [] );
 check( '...and it answers a size it answers to again: the bounds are sizes of their own, and so is the one Nino.css gives each role',
-	array_map( static fn( string $role ): string => Fonts::size( $role, Fonts::BOUNDS[$role][0] ), Fonts::ROLES ) === [ '1', '0.75', '0.75', '0.625', '0.625' ]
-	&& array_map( static fn( string $role ): string => Fonts::size( $role, Fonts::BOUNDS[$role][1] ), Fonts::ROLES ) === [ '4', '2.5', '1.5', '1.5', '1.25' ]
+	array_map( static fn( string $role ): string => Fonts::size( $role, Fonts::BOUNDS[$role][0] ), Fonts::ROLES ) === [ '1', '0.8', '0.8', '0.6', '0.6' ]
+	&& array_map( static fn( string $role ): string => Fonts::size( $role, Fonts::BOUNDS[$role][1] ), Fonts::ROLES ) === [ '4', '2.5', '1.5', '1.5', '1.3' ]
 	&& array_filter( Fonts::ROLES, static fn( string $role ): bool => Fonts::size( $role, Fonts::INHERITED[$role] ) !== Fonts::INHERITED[$role]
 		|| Fonts::size( $role, Fonts::size( $role, 1.23456 ) ) !== Fonts::size( $role, 1.23456 ) ) === [] );
 
@@ -836,10 +884,40 @@ check( 'the root size is the relative pair, never a length', str_contains( $css,
 	&& str_contains( $css, '@media (min-width: 768px) { :root { --nino-base-size: 112.5%; } }' ) === true
 	&& preg_match( '/--nino-base-size:\s*\d+px/', $css ) !== 1 );
 
-$large = Compiler::compile( Setup::normalize( [ 'size' => 'l' ], $library ), $library );
-check( 'the size knob moves the pair, not one half of it: section 5 has the larger pair and the tokens above it the delivered one',
-	str_contains( designSection( $large, 5, Compiler::SECTION ), '--nino-base-size: 112.5%;' ) === true && str_contains( designSection( $large, 5, Compiler::SECTION ), '--nino-base-size: 131.25%;' ) === true
-	&& str_contains( designSection( $large, 5, Compiler::SECTION ), '--nino-base-size: 100%;' ) === false && str_contains( designSection( $large, 1, Compiler::SECTION ), '--nino-base-size: 100%;' ) === true );
+/*	Five sizes, each a pair, and section 5 writes exactly the pair of the one that was chosen:
+	both halves of it, the rule below the breakpoint and the one from it. The tokens above
+	it keep the delivered 100%, which is what section 5 moves	*/
+$pairProblems = [];
+
+foreach( Setup::SIZES as $size => $pair ) {
+
+	$sized = Compiler::compile( Setup::normalize( [ 'size' => $size ], $library ), $library );
+
+	if( designSection( $sized, 5, Compiler::SECTION ) !== sprintf( Compiler::SECTION, 5, 'the root size' ). "\n:root { --nino-base-size: ". $pair[0]. "; }\n@media (min-width: 768px) { :root { --nino-base-size: ". $pair[1]. "; } }\n\n"
+		|| str_contains( designSection( $sized, 1, Compiler::SECTION ), '--nino-base-size: 100%;' ) === false )
+		$pairProblems[] = $size;
+}
+
+check( 'the size knob moves the pair, not one half of it: for each of the five, section 5 has its pair and the tokens above it the delivered one'
+	. ( $pairProblems === [] ? '' : ' - not so for '. implode( ', ', $pairProblems ) ), $pairProblems === [] );
+
+$xsSheet = designSection( Compiler::compile( Setup::normalize( [ 'size' => 'xs' ], $library ), $library ), 5, Compiler::SECTION );
+$xlSheet = designSection( Compiler::compile( Setup::normalize( [ 'size' => 'xl' ], $library ), $library ), 5, Compiler::SECTION );
+
+check( '...very small is 70% below the breakpoint and 78.75% from it, very large 130% and 146.25% - and nothing of the delivered 100% and 112.5% stays in section 5',
+	str_contains( $xsSheet, '--nino-base-size: 70%;' ) === true && str_contains( $xsSheet, '--nino-base-size: 78.75%;' ) === true
+	&& str_contains( $xlSheet, '--nino-base-size: 130%;' ) === true && str_contains( $xlSheet, '--nino-base-size: 146.25%;' ) === true
+	&& str_contains( $xsSheet. $xlSheet, '--nino-base-size: 100%;' ) === false && str_contains( $xsSheet. $xlSheet, '--nino-base-size: 112.5%;' ) === false );
+
+/*	What a person sees: at a browser default of 16px the five are 11.2, 13.6, 16, 18.4 and 20.8px below the breakpoint,
+	15% of it apart, and the kernel's own ratio of 1.125 more from it - 12.6, 15.3, 18, 20.7 and 23.4px	*/
+$pixels = static fn( string $percent ): float => round( (float) $percent * 16 / 100, 3 );
+
+check( '...the steps are 15% of the default apart below the breakpoint and 1.125 times that from it: 11.2, 13.6, 16, 18.4, 20.8px and 12.6, 15.3, 18, 20.7, 23.4px at 16px',
+	array_map( static fn( array $pair ): float => $pixels( $pair[0] ), array_values( Setup::SIZES ) ) === [ 11.2, 13.6, 16.0, 18.4, 20.8 ]
+	&& array_map( static fn( array $pair ): float => $pixels( $pair[1] ), array_values( Setup::SIZES ) ) === [ 12.6, 15.3, 18.0, 20.7, 23.4 ]
+	&& array_filter( Setup::SIZES, static fn( array $pair ): bool => abs( (float) $pair[1] / (float) $pair[0] - 1.125 ) > 1e-9 ) === []
+	&& Setup::SIZES['m'] === [ '100%', '112.5%' ] );
 
 // A library that is not complete is compiled around, and the notes say what is not in the sheet
 $notes = [];
@@ -907,7 +985,7 @@ check( '...a title with a size of its own fixes the article title as well, becau
 $typed = $rolesIn( $typeOf( [ 'fonts' => [ 'title' => [ 'size' => '2.45' ], 'text' => [ 'size' => 1.35 ], 'subtitle' => [ 'size' => 9 ], 'code' => [ 'size' => '0.1' ] ] ] ) );
 check( '...a size that was typed, and is no step of any list, is written in rem as it is - and one outside the bounds at the bound: 2.45 for the title, 1.35 for the text, 9 for the subtitle, 0.1 for the code',
 	( $typed['--font-title-size'] ?? '' ) === '2.45rem' && ( $typed['--font-text-size'] ?? '' ) === '1.35rem'
-	&& ( $typed['--font-subtitle-size'] ?? '' ) === '2.5rem' && ( $typed['--font-code-size'] ?? '' ) === '0.625rem' && isset( $typed['--font-button-size'] ) === false
+	&& ( $typed['--font-subtitle-size'] ?? '' ) === '2.5rem' && ( $typed['--font-code-size'] ?? '' ) === '0.6rem' && isset( $typed['--font-button-size'] ) === false
 	&& ( $typed['--article-title-scale'] ?? '' ) === '.8' );
 check( '...and an empty size, or one that is no number, writes no size line at all',
 	preg_grep( '/-size$/', array_keys( $rolesIn( $typeOf( [ 'fonts' => [ 'title' => [ 'size' => 'big' ], 'text' => [ 'size' => '' ], 'code' => [ 'size' => null ] ] ] ) ) ) ) === [] );
@@ -941,9 +1019,12 @@ $nothing = '/* a row of the width Nino.css gives it, and the animation Nino.css 
 
 check( 'a width of 0 and no animation write nothing but a comment saying so, and that is the whole of section 6',
 	$pageOf( [] ) === $nothing && designSection( $css, 6, Compiler::SECTION ) === sprintf( Compiler::SECTION, 6, 'the page' ). "\n". $nothing. "\n\n" );
-check( 'a narrow page is a row of 96rem with one step less of space to the sides at both sizes, a wide one 144rem with one more',
-	$pageOf( [ 'width' => -1 ] ) === ":root { --grid-max-width: 96rem; --grid-gutter: var(--space-1); }\n@media (min-width: 768px) { :root { --grid-gutter: var(--space-2); } }"
-	&& $pageOf( [ 'width' => 1 ] ) === ":root { --grid-max-width: 144rem; --grid-gutter: var(--space-3); }\n@media (min-width: 768px) { :root { --grid-gutter: var(--space-4); } }" );
+check( 'a narrow page is a row of at most 56rem with the kernel\'s own space to the sides at both sizes, a wide one no maximum and no space at all - the rules exactly',
+	$pageOf( [ 'width' => -1 ] ) === ":root { --grid-max-width: 56rem; --grid-gutter: var(--space-2); }\n@media (min-width: 768px) { :root { --grid-gutter: var(--space-3); } }"
+	&& $pageOf( [ 'width' => 1 ] ) === ":root { --grid-max-width: none; --grid-gutter: var(--space-2); }\n@media (min-width: 768px) { :root { --grid-gutter: 0; } }" );
+check( '...and they are all of section 6, in the sheet: the page of the width, under its marker, and nothing after it but the next section',
+	array_filter( [ -1, 1 ], static fn( int $width ): bool => designSection( Compiler::compile( Setup::normalize( [ 'width' => $width ], $library ), $library ), 6, Compiler::SECTION )
+		!== sprintf( Compiler::SECTION, 6, 'the page' ). "\n". $pageOf( [ 'width' => $width ] ). "\n\n" ) === [] );
 
 if( $ninoCss === '' )
 	echo "  --  this checkout has no Nino.css, so the width and the animation are not compared with the kernel's\n";
@@ -958,11 +1039,20 @@ else {
 	$gutterSmall = $gutterAt( $ninoRootDecls );
 	$gutterLarge = $gutterAt( $ninoLarge );
 
-	check( 'width -1 and 1 are one step of the space scale either side of Nino.css\'s gutter, at both sizes, and the row 24rem narrower and wider than its 120rem',
-		$ninoRootDecls['--grid-max-width'] === '120rem' && $gutterSmall > 1 && $gutterLarge > 1
-		&& Setup::WIDTHS[-1] === [ '96rem', 'var(--space-'. ( $gutterSmall - 1 ). ')', 'var(--space-'. ( $gutterLarge - 1 ). ')' ]
-		&& Setup::WIDTHS[1] === [ '144rem', 'var(--space-'. ( $gutterSmall + 1 ). ')', 'var(--space-'. ( $gutterLarge + 1 ). ')' ]
-		&& array_keys( Setup::WIDTHS ) === [ -1, 1 ] );
+	// The root of the frame at its desktop width of 1280px: the middle size's pair from 768px, 112.5% of the browser's 16px, which is 18px and not 16
+	$frameRoot = 16 * (float) Setup::SIZES['m'][1] / 100;
+
+	check( 'width -1 keeps the gutters Nino.css has at both sizes under a row of 56rem, which is narrower than a preview of 1280px where its 120rem is not - and width 1 has no maximum and no gutter from 768px, the kernel\'s below it, where a section has no padding to its sides',
+		$ninoRootDecls['--grid-max-width'] === '120rem' && $gutterSmall > 0 && $gutterLarge > 0
+		&& Setup::WIDTHS[-1] === [ '56rem', 'var(--space-'. $gutterSmall. ')', 'var(--space-'. $gutterLarge. ')' ]
+		&& Setup::WIDTHS[1] === [ 'none', 'var(--space-'. $gutterSmall. ')', '0' ]
+		&& array_keys( Setup::WIDTHS ) === [ -1, 1 ]
+		&& $frameRoot === 18.0 && (float) Setup::WIDTHS[-1][0] * $frameRoot < 1280 && (float) $ninoRootDecls['--grid-max-width'] * $frameRoot > 1280 );
+	check( '...which Nino.css reads as the max-width of a row (none is a value of it) and as the padding of one (0 is a value of that) - and as the max-width of the gallery too',
+		preg_match( '/\.nino-grid-row\s*\{[^}]*padding:\s*0 var\(--grid-gutter\);[^}]*max-width:\s*var\(--grid-max-width\);/', $ninoCss ) === 1
+		&& preg_match( '/\.nino-gallery\s*\{[^}]*max-width:\s*var\(--grid-max-width\);/', $ninoCss ) === 1 );
+	check( '...and the middle size is the pair Nino.css has: --base-size is 100% and, from 768px, 112.5% - the delivered size, which the compiler writes beside the other four',
+		( $ninoRootDecls['--base-size'] ?? '' ) === Setup::SIZES['m'][0] && ( $ninoLarge['--base-size'] ?? '' ) === Setup::SIZES['m'][1] );
 
 	/*	The animation is the properties Nino.css sets for nino-vpa--<effect>-<strength>
 		and nino-vpa--speed-<speed>, as one rule on main. The tables are held in
@@ -1008,9 +1098,13 @@ else {
 
 // base.css assigns the role --grid-max-width: var(--nino-measure), as the delivered theme.css does: the page comes after it and wins
 check( 'the compiled sheet carries the page where it was asked for: the width and the animation in section 6, after the roles - so they are the ones that apply',
-	str_contains( designSection( $rich, 6, Compiler::SECTION ), '--grid-max-width: 96rem;' ) === true && str_contains( designSection( $rich, 6, Compiler::SECTION ), '--vpa-duration: 2s;' ) === true
-	&& strpos( $rich, '--grid-max-width: 96rem;' ) > strpos( $rich, '--grid-max-width: var(--nino-measure);' )
-	&& substr_count( $rich, '--grid-max-width: 96rem;' ) === 1 && substr_count( $rich, "\nmain {\n" ) === 1 );
+	str_contains( designSection( $rich, 6, Compiler::SECTION ), '--grid-max-width: 56rem;' ) === true && str_contains( designSection( $rich, 6, Compiler::SECTION ), '--vpa-duration: 2s;' ) === true
+	&& strpos( $rich, '--grid-max-width: 56rem;' ) > strpos( $rich, '--grid-max-width: var(--nino-measure);' )
+	&& substr_count( $rich, '--grid-max-width: 56rem;' ) === 1 && substr_count( $rich, "\nmain {\n" ) === 1 );
+$wideSheet = Compiler::compile( Setup::normalize( [ 'width' => 1 ], $library ), $library );
+check( '...and a wide page the same way: no maximum and no gutter, written after the role base.css assigns the maximum to, at both sizes',
+	str_contains( designSection( $wideSheet, 6, Compiler::SECTION ), ":root { --grid-max-width: none; --grid-gutter: var(--space-2); }\n@media (min-width: 768px) { :root { --grid-gutter: 0; } }" ) === true
+	&& strpos( $wideSheet, '--grid-max-width: none;' ) > strpos( $wideSheet, '--grid-max-width: var(--nino-measure);' ) );
 
 echo "\nThe knob positions, over a library of throwaway sets\n";
 
@@ -1460,7 +1554,7 @@ $chromaAt = static function( int $saturation ): float {
 	return Colours::oklch( Colours::palette( [ 'primary' => '#4faae8', 'saturation' => $saturation ], 'light' )['brand-safe']['bg'] )[1];
 };
 
-check( 'Saturation never takes colour away as it goes up, and Muted and Rich are apart from Standard',
+check( 'Saturation never takes colour away as it goes up, and Muted and Rich are apart from Default',
 	$chromaAt( 1 ) <= $chromaAt( 2 ) && $chromaAt( 2 ) <= $chromaAt( 3 ) && $chromaAt( 1 ) < $chromaAt( 2 ) - 0.02 );
 
 $depthOf = static fn( int $depth, string $mode ): array => Colours::palette( [ 'depth' => $depth ], $mode );
@@ -1484,7 +1578,7 @@ foreach( [ 'light', 'dark' ] as $shadowMode )
 	foreach( [ 1, 2, 3 ] as $depth )
 		$shadows[$shadowMode][] = array_values( array_unique( array_column( $depthOf( $depth, $shadowMode ), 'shadow' ) ) );
 
-check( 'the shadow is one colour for every surface at every Depth, per mode: the same value at Flat, Standard and Raised',
+check( 'the shadow is one colour for every surface at every Depth, per mode: the same value at Flat, Default and Raised',
 	count( array_unique( array_map( 'json_encode', $shadows['light'] ) ) ) === 1 && count( $shadows['light'][0] ) === 1
 	&& count( array_unique( array_map( 'json_encode', $shadows['dark'] ) ) ) === 1 && count( $shadows['dark'][0] ) === 1 );
 
@@ -1521,7 +1615,7 @@ check( 'a sheet Design wrote knows itself', Compiler::stamped( $onDisk ) === tru
 
 $second = Compiler::write( $appData, Compiler::compile( Setup::normalize( [ 'size' => 'l' ], $library ), $library ) );
 check( 'compiling again writes over its own file without being asked twice', $second === true
-	&& str_contains( (string) file_get_contents( ninoSandboxDir( $appData ). '/private/assets/theme.css' ), '131.25%' ) === true );
+	&& str_contains( (string) file_get_contents( ninoSandboxDir( $appData ). '/private/assets/theme.css' ), '--nino-base-size: 129.375%;' ) === true );
 
 // The delivered theme.css is explicitly editable by hand, so the file this
 // finds on a first run may well be somebody's work
@@ -1741,8 +1835,9 @@ file_put_contents( $listingFile, json_encode( $forScreen, JSON_THROW_ON_ERROR ) 
 $appliedSheet = (string) \Nino\Filesystem::getFileContent( $appData, Compiler::TARGET, '' );
 
 check( 'applying compiles it and the file answers again', $status === 200 && ( $applied['current'] ?? null ) === true );
-check( '...and the root size, the width and the animation the save asked for are in the stylesheet', str_contains( $appliedSheet, '131.25%' ) === true
-	&& str_contains( $appliedSheet, '--grid-max-width: 144rem;' ) === true && str_contains( $appliedSheet, '--vpa-duration: .25s;' ) === true
+check( '...and the root size, the width and the animation the save asked for are in the stylesheet: the larger size, a wide page with no maximum and no gutter, a fast animation',
+	str_contains( $appliedSheet, '--nino-base-size: 115%;' ) === true && str_contains( $appliedSheet, '--nino-base-size: 129.375%;' ) === true
+	&& str_contains( $appliedSheet, ':root { --grid-max-width: none; --grid-gutter: var(--space-2); }' ) === true && str_contains( $appliedSheet, '--vpa-duration: .25s;' ) === true
 	&& str_contains( $appliedSheet, '--font-title-transform: uppercase;' ) === true && str_contains( $appliedSheet, 'color-scheme: dark;' ) === true );
 
 // A hand edit makes the file somebody else's again, and the panel says so
@@ -2286,6 +2381,12 @@ ksort( $anchored );
 
 check( 'it is one page with an anchor for each tab: global, type, content, buttons, components and colours, each exactly once',
 	$anchored === [ 'buttons' => 1, 'colours' => 1, 'components' => 1, 'content' => 1, 'global' => 1, 'type' => 1 ] );
+/*	...and one more, which no tab has: where a change of a knob of the content other than
+	the hero's is looked at (KNOB_ANCHORS in admin.js, which design-js-smoke.js holds to
+	the ids of this page)	*/
+check( 'the Cards section carries id="cards", once - and it comes after the hero, which is #content, and before the grounds, which are #colours',
+	substr_count( $specimen, ' id="cards"' ) === 1 && str_contains( $specimen, '<section id="cards" class="nino-section" aria-label="Cards">' ) === true
+	&& (int) strpos( $specimen, 'id="content"' ) < (int) strpos( $specimen, 'id="cards"' ) && (int) strpos( $specimen, 'id="cards"' ) < (int) strpos( $specimen, 'id="colours"' ) );
 
 $oldWords = [];
 foreach( new RecursiveIteratorIterator( new RecursiveDirectoryIterator( dirname( __DIR__ ), FilesystemIterator::SKIP_DOTS ) ) as $file ) {
@@ -2353,6 +2454,9 @@ foreach( $sections as $section ) {
 
 check( 'every section of the specimen holds exactly one grid row of its own - a second one under it has no margin and would sit flush',
 	$sections !== [] && array_unique( $rowCounts ) === [ 1 ] );
+check( '...and the second of them is the one with the cards: #cards, the section the hero is followed by, which holds the articles',
+	isset( $sections[1] ) === true && $sections[1]->getAttribute( 'id' ) === 'cards' && $sections[1]->getAttribute( 'aria-label' ) === 'Cards'
+	&& count( $byClass( $xpath, 'nino-article', $sections[1] ) ) > 10 && $sections[0]->getAttribute( 'id' ) === 'content' );
 check( 'and every child of a row is a grid cell, so nothing sits in the row without a width',
 	$strayCells === [] );
 
@@ -2458,7 +2562,7 @@ check( 'the preview answers with a whole document and the id of the sheet inside
 	&& ( $preview['style'] ?? '' ) === Admin::PREVIEW_STYLE
 	&& str_contains( (string) $preview['document'], 'id="'. Admin::PREVIEW_STYLE. '"' ) === true );
 check( 'it shows what was posted and not what is stored - looking is what you do while deciding',
-	str_contains( (string) ( $preview['css'] ?? '' ), '87.5%' ) === true
+	str_contains( (string) ( $preview['css'] ?? '' ), '--nino-base-size: 85%;' ) === true && str_contains( (string) ( $preview['css'] ?? '' ), '--nino-base-size: 95.625%;' ) === true
 	&& ( $stored['size'] ?? '' ) === 'm'
 	&& str_contains( (string) $preview['document'], 'nino-grid-row nino-grid-row--wide' ) === true );
 // The '?v=' is the bundle's own hash, which \Nino\Modules\Assets puts on the
@@ -2475,7 +2579,7 @@ check( '...and the bundle it points at really carries the framework',
 	'parts' => [], 'size' => 'l', 'full' => false,
 ] );
 check( 'a change that is only a stylesheet sends only that - the frame on screen keeps its page', $status === 200
-	&& ( $partial['document'] ?? null ) === '' && str_contains( (string) ( $partial['css'] ?? '' ), '131.25%' ) === true );
+	&& ( $partial['document'] ?? null ) === '' && str_contains( (string) ( $partial['css'] ?? '' ), '--nino-base-size: 115%;' ) === true && str_contains( (string) ( $partial['css'] ?? '' ), '--nino-base-size: 129.375%;' ) === true );
 
 /*	Both of these move with every colour knob and are drawn beside the controls
 	that moved them, so they ride the preview rather than a request of their own	*/
@@ -2506,7 +2610,7 @@ $shownCss = (string) ( $everything['css'] ?? '' );
 check( 'a preview carries every key of the model the way a save does: the templates, the knobs, the width, the animation, the fonts and the mode', $status === 200
 	&& str_contains( $shownCss, 'content: v4' ) === true && str_contains( $shownCss, 'buttons: v2' ) === true
 	&& str_contains( $shownCss, '--content-corners: var(--content-corners--more);' ) === true && str_contains( $shownCss, '--buttons-space: var(--buttons-space--less);' ) === true
-	&& str_contains( $shownCss, '--grid-max-width: 96rem;' ) === true && str_contains( $shownCss, '--vpa-f-hidden: blur(24px);' ) === true && str_contains( $shownCss, '--vpa-duration: .25s;' ) === true
+	&& str_contains( $shownCss, '--grid-max-width: 56rem;' ) === true && str_contains( $shownCss, '--vpa-f-hidden: blur(24px);' ) === true && str_contains( $shownCss, '--vpa-duration: .25s;' ) === true
 	&& str_contains( $shownCss, '--fontfamily-text: ui-serif' ) === true && str_contains( $shownCss, '--font-text-size: 1.125rem;' ) === true
 	&& str_contains( $shownCss, 'color-scheme: dark;' ) === true );
 check( '...a template the library does not have is named in the answer and the first one is shown, and the stored setup and the stylesheet are still what they were',
@@ -2692,6 +2796,117 @@ $leftover = array_filter( $textEn, static fn( string $key ): bool => str_starts_
 check( '...and no word is left over that nothing draws: every key is one of those, a literal the script names, or the page title of the preview'
 	. ( $leftover === [] ? '' : ' - left over: '. implode( ', ', array_slice( $leftover, 0, 6 ) ) ), $leftover === [] );
 
+/*	The words of the steps. The three words of a knob - the keys under /_admin/design/knob/<tab>/<knob>/ that are less,
+	default and more - begin with a capital letter in both languages, as the words of the Colours tab do
+	(/_admin/design/colour/<knob>/<n>). Only the first letter of a word is the point of it: nothing else of the word
+	changed, and the options of a select stay as they are, in lower case - the five sizes and the three widths of Global,
+	the mode of the palette - as the Colours tab keeps its select lower case and capitalises its steps. And there is one
+	middle word: Normal in German and Default in English, for every knob of the three tabs but the stripes of a table and
+	the labels of a form - which have a middle of their own - and in the Colours tab as well, where Saturation, Contrast
+	and Depth said Standard.	*/
+$initialOf	= static fn( string $word ): string => mb_substr( $word, 0, 1 );
+$isCapital	= static fn( string $word ): bool => $word !== '' && $initialOf( $word ) === mb_strtoupper( $initialOf( $word ) ) && $initialOf( $word ) !== mb_strtolower( $initialOf( $word ) );
+$isLower		= static fn( string $word ): bool => $word !== '' && $initialOf( $word ) === mb_strtolower( $initialOf( $word ) ) && $initialOf( $word ) !== mb_strtoupper( $initialOf( $word ) );
+$stepsOf		= static fn( string $tab, string $knob, string $locale ): array => array_map( static fn( string $step ): string => $panelWord( 'knob/'. $tab. '/'. $knob. '/'. $step, $locale ), Setup::STEPS );
+$distinct		= static function( array $words ): array {
+	$words = array_values( array_unique( $words ) );
+	sort( $words );
+	return $words;
+};
+
+$stepWords		= [ 'en_US' => [], 'de_DE' => [] ];
+$uncapital		= [];
+$stepCount		= array_sum( array_map( 'count', Setup::KNOBS ) ) * count( Setup::STEPS );
+
+foreach( [ 'en_US', 'de_DE' ] as $stepLocale )
+	foreach( Setup::KNOBS as $tab => $names )
+		foreach( $names as $knob )
+			foreach( $stepsOf( $tab, $knob, $stepLocale ) as $at => $word ) {
+
+				$stepWords[$stepLocale][] = $word;
+
+				if( $isCapital( $word ) === false )
+					$uncapital[] = $stepLocale. ' '. $tab. '/'. $knob. '/'. Setup::STEPS[$at]. ' "'. $word. '"';
+			}
+
+check( 'every step word of every knob begins with a capital letter, in both languages: nineteen knobs of three words, '. $stepCount. ' in each'
+	. ( $uncapital === [] ? '' : ' - not so for '. implode( ', ', array_slice( $uncapital, 0, 4 ) ) ),
+	$uncapital === [] && $stepCount === 57 && count( $stepWords['en_US'] ) === $stepCount && count( $stepWords['de_DE'] ) === $stepCount );
+check( '...and nothing else of a word changed: the words in use are the German Aus, Dick, Größer, In der Zeile, Keine, Keiner, Kleiner, Normal, Oben, Rund, Scharf, Schmal, Schwebend, Stark, Weit, Zeilen and Zeilen mit Linie, and the English Above, Default, Floating, In the row, Larger, None, Off, Round, Rows, Rows with a line, Sharp, Smaller, Strong, Thick, Tight and Wide',
+	$distinct( $stepWords['de_DE'] ) === $distinct( [ 'Aus', 'Dick', 'Größer', 'In der Zeile', 'Keine', 'Keiner', 'Kleiner', 'Normal', 'Oben', 'Rund', 'Scharf', 'Schmal', 'Schwebend', 'Stark', 'Weit', 'Zeilen', 'Zeilen mit Linie' ] )
+	&& $distinct( $stepWords['en_US'] ) === $distinct( [ 'Above', 'Default', 'Floating', 'In the row', 'Larger', 'None', 'Off', 'Round', 'Rows', 'Rows with a line', 'Sharp', 'Smaller', 'Strong', 'Thick', 'Tight', 'Wide' ] ) );
+check( '...as the owner wrote them: Kleiner, Normal, Größer for a size, Schmal, Normal, Weit for a space, Scharf, Normal, Rund for corners, Keine, Normal, Dick for a line - and Smaller, Default, Larger, Tight, Default, Wide, Sharp, Default, Round, None, Default, Thick',
+	$stepsOf( 'content', 'hero-title', 'de_DE' ) === [ 'Kleiner', 'Normal', 'Größer' ] && $stepsOf( 'content', 'section-space', 'de_DE' ) === [ 'Schmal', 'Normal', 'Weit' ]
+	&& $stepsOf( 'buttons', 'corners', 'de_DE' ) === [ 'Scharf', 'Normal', 'Rund' ] && $stepsOf( 'components', 'border', 'de_DE' ) === [ 'Keine', 'Normal', 'Dick' ]
+	&& $stepsOf( 'content', 'shadow', 'de_DE' ) === [ 'Keiner', 'Normal', 'Stark' ] && $stepsOf( 'components', 'zebra', 'de_DE' ) === [ 'Aus', 'Zeilen', 'Zeilen mit Linie' ]
+	&& $stepsOf( 'components', 'labels', 'de_DE' ) === [ 'In der Zeile', 'Oben', 'Schwebend' ]
+	&& $stepsOf( 'content', 'hero-title', 'en_US' ) === [ 'Smaller', 'Default', 'Larger' ] && $stepsOf( 'content', 'section-space', 'en_US' ) === [ 'Tight', 'Default', 'Wide' ]
+	&& $stepsOf( 'buttons', 'corners', 'en_US' ) === [ 'Sharp', 'Default', 'Round' ] && $stepsOf( 'components', 'border', 'en_US' ) === [ 'None', 'Default', 'Thick' ]
+	&& $stepsOf( 'content', 'shadow', 'en_US' ) === [ 'None', 'Default', 'Strong' ] && $stepsOf( 'components', 'zebra', 'en_US' ) === [ 'Off', 'Rows', 'Rows with a line' ]
+	&& $stepsOf( 'components', 'labels', 'en_US' ) === [ 'In the row', 'Above', 'Floating' ] );
+
+$middles = [];
+
+foreach( Setup::KNOBS as $tab => $names )
+	foreach( $names as $knob )
+		foreach( [ 'en_US' => 'Default', 'de_DE' => 'Normal' ] as $stepLocale => $middle )
+			if( in_array( $tab. '/'. $knob, [ 'components/zebra', 'components/labels' ], true ) === false && $stepsOf( $tab, $knob, $stepLocale )[1] !== $middle )
+				$middles[] = $stepLocale. ' '. $tab. '/'. $knob;
+
+check( 'the middle word of a knob is Normal in German and Default in English - seventeen knobs of nineteen: the stripes of a table (Zeilen, Rows) and the labels of a form (Oben, Above) have a middle of their own'
+	. ( $middles === [] ? '' : ' - not so for '. implode( ', ', array_slice( $middles, 0, 4 ) ) ),
+	$middles === [] && $stepCount / count( Setup::STEPS ) - 2 === 17 );
+
+/*	The Colours tab: the middle step of Saturation, Contrast and Depth says the one middle word as well, and the other words of
+	the tab are what they were - all of them capitalised already. The names the server publishes for the positions
+	(Colours::choices(), the last fallback of the panel) are the English words of the text file, the middle one included	*/
+$colourWords = [
+	'en_US' => [ 'harmony' => [ 'Monochrome', 'Analogous', 'Triadic', 'Complementary' ], 'temperature' => [ 'Neutral', 'Cool', 'Brand', 'Warm' ], 'saturation' => [ 'Muted', 'Default', 'Rich' ], 'contrast' => [ 'Soft', 'Default', 'Strong' ], 'depth' => [ 'Flat', 'Default', 'Raised' ] ],
+	'de_DE' => [ 'harmony' => [ 'Monochrom', 'Analog', 'Triadisch', 'Komplementär' ], 'temperature' => [ 'Neutral', 'Kühl', 'Marke', 'Warm' ], 'saturation' => [ 'Gedämpft', 'Normal', 'Satt' ], 'contrast' => [ 'Weich', 'Normal', 'Stark' ], 'depth' => [ 'Flach', 'Normal', 'Erhaben' ] ],
+];
+$colourDrawn = [];
+
+foreach( $colourWords as $stepLocale => $knobs )
+	foreach( $knobs as $knob => $words )
+		$colourDrawn[$stepLocale][$knob] = array_map( static fn( int $position ): string => $panelWord( 'colour/'. $knob. '/'. ( $position + 1 ), $stepLocale ), array_keys( $words ) );
+
+check( 'the Colours tab says the middle of Saturation, Contrast and Depth as the knobs of the other tabs do - Normal and Default, no longer Standard - and its other words stay, each capitalised: Gedämpft, Satt, Weich, Stark, Flach, Erhaben, Neutral, Kühl, Marke, Warm and the English',
+	$colourDrawn === $colourWords && array_filter( [ 'en_US', 'de_DE' ], static fn( string $stepLocale ): bool => array_filter( array_merge( ...array_values( $colourDrawn[$stepLocale] ) ), static fn( string $word ): bool => $isCapital( $word ) === false ) !== [] ) === []
+	&& str_contains( implode( ' ', array_merge( ...array_values( $colourDrawn['en_US'] ), ...array_values( $colourDrawn['de_DE'] ) ) ), 'Standard' ) === false );
+check( '...and the names Colours::choices() publishes for the positions are the English words: the same, position for position - the last fallback of the panel says what the text says',
+	array_map( static fn( array $knob ): array => $knob['steps'], array_diff_key( $choices, [ 'mode' => 1 ] ) ) === $colourWords['en_US'] );
+
+$selectWords	= [];
+
+foreach( array_keys( Setup::SIZES ) as $size )
+	$selectWords[] = 'size/'. $size;
+
+foreach( [ 'narrow', 'normal', 'wide' ] as $word )
+	$selectWords[] = 'pagewidth/'. $word;
+
+foreach( $choices['mode']['steps'] as $mode )
+	$selectWords[] = 'colour/mode/'. $mode;
+
+$notLower = [];
+
+foreach( [ 'en_US', 'de_DE' ] as $stepLocale )
+	foreach( $selectWords as $key )
+		if( $isLower( $panelWord( $key, $stepLocale ) ) === false )
+			$notLower[] = $stepLocale. ' '. $key. ' "'. $panelWord( $key, $stepLocale ). '"';
+
+check( 'the options of a select stay lower case: the five sizes and the three widths of the page on Global, the mode of the palette on Colours - eleven words in each language'
+	. ( $notLower === [] ? '' : ' - not so for '. implode( ', ', array_slice( $notLower, 0, 4 ) ) ), $notLower === [] && count( $selectWords ) === 11 );
+check( '...the very small, smaller, default, larger and very large of the English panel and the sehr klein, kleiner, normal, größer and sehr groß of the German, the narrow, default and wide and the schmal, normal and breit, the automatic, light only and dark only and the automatisch, nur hell and nur dunkel',
+	array_map( static fn( string $size ): string => $panelWord( 'size/'. $size, 'en_US' ), array_keys( Setup::SIZES ) ) === [ 'very small', 'smaller', 'default', 'larger', 'very large' ]
+	&& array_map( static fn( string $size ): string => $panelWord( 'size/'. $size, 'de_DE' ), array_keys( Setup::SIZES ) ) === [ 'sehr klein', 'kleiner', 'normal', 'größer', 'sehr groß' ]
+	&& array_map( static fn( string $word ): string => $panelWord( 'pagewidth/'. $word, 'en_US' ), [ 'narrow', 'normal', 'wide' ] ) === [ 'narrow', 'default', 'wide' ]
+	&& array_map( static fn( string $word ): string => $panelWord( 'pagewidth/'. $word, 'de_DE' ), [ 'narrow', 'normal', 'wide' ] ) === [ 'schmal', 'normal', 'breit' ]
+	&& array_map( static fn( string $mode ): string => $panelWord( 'colour/mode/'. $mode, 'en_US' ), $choices['mode']['steps'] ) === [ 'automatic', 'light only', 'dark only' ]
+	&& array_map( static fn( string $mode ): string => $panelWord( 'colour/mode/'. $mode, 'de_DE' ), $choices['mode']['steps'] ) === [ 'automatisch', 'nur hell', 'nur dunkel' ] );
+check( '...and the hint under the size is exact about where the five percentages are: below 768 px, and 1.125 times that from it - the manual says the same - in both languages',
+	str_contains( $panelWord( 'hint/size', 'en_US' ), '70, 85, 100, 115 or 130 percent of the visitor\'s own browser default below 768 px and 1.125 times that from it' ) === true
+	&& str_contains( $panelWord( 'hint/size', 'de_DE' ), '70, 85, 100, 115 oder 130 Prozent der Browser-Voreinstellung der Besucherin unter 768 px und das 1,125-Fache davon ab dort' ) === true );
+
 /*	What the screen stopped drawing took its words with it: the card of the state
 	- how the files stand, and when they were last applied - the eyebrow over the
 	tab, the note under the templates of Global and the heading over the knobs.
@@ -2756,6 +2971,37 @@ check( '...and only on a phone: nothing of it stands outside the media query, wh
 check( 'the rules of what the screen stopped drawing are gone: the state card and its warning, the line that dated the previous version, the sentence under the templates - and the eyebrow rule stays, the preview\'s title has one',
 	str_contains( $panelCss, 'design-state' ) === false && str_contains( $panelCss, 'design-previous' ) === false && str_contains( $panelCss, 'design-note' ) === false
 	&& $cssHas( '.nino-admin .design-eyebrow', [ 'display: block;' ] ) === true );
+
+/*	The head of the preview: the heading and the bar are the two sides of one row, and the bar goes under
+	the heading only where the pane has no room for both - nothing in the stylesheet is a width. What the
+	preview says is not one either: its chip lies over the top corner of the frame, in the stage, where it
+	takes no room of any row - so neither the head nor the frame moves when the line comes and goes, and
+	the heading is the eyebrow and the title alone. The rules are what is held here - where the line
+	breaks is for a browser to measure: at a window of 1280px the pane is 555px and the two stand side by
+	side, in either language, with the reload drawn as an icon like the devices	*/
+check( 'the head of the preview is one row: a flex container that wraps, its two sides at the bottom edge and spread to the ends, .7rem apart - the heading shrinks to its title and the bar keeps its width',
+	$cssHas( '.nino-admin .design-preview-head', [ 'display: flex;', 'flex-wrap: wrap;', 'align-items: flex-end;', 'justify-content: space-between;', 'gap: .7rem;' ] ) === true
+	&& $cssHas( '.nino-admin .design-preview-heading', [ 'flex: 0 1 auto;', 'min-width: 0;' ] ) === true && str_contains( $cssRule( '.nino-admin .design-preview-heading' ), 'display: flex' ) === false
+	&& $cssHas( '.nino-admin .design-preview-head > .design-preview-bar', [ 'flex: 0 0 auto;' ] ) === true );
+check( '...and the chip the preview says things in lies over the frame and takes no room: absolute at the top corner of the stage, above the frame, one line cut by an ellipsis where the frame is narrower, letting the pointer through - and gone when empty',
+	$cssHas( '.nino-admin #design-preview-msg', [ 'position: absolute;', 'top: .5rem;', 'right: .5rem;', 'z-index: 2;', 'max-width: calc(100% - 1rem);', 'white-space: nowrap;', 'overflow: hidden;', 'text-overflow: ellipsis;', 'pointer-events: none;', 'border-radius: 999px;' ] ) === true
+	&& $cssHas( '.nino-admin #design-preview-msg:empty', [ 'display: none;' ] ) === true && $cssHas( '.design-stage', [ 'position: relative;' ] ) === true
+	&& str_contains( $cssRule( '.nino-admin #design-preview-msg' ), 'flex' ) === false );
+check( '...and the reload is drawn as the devices are, a step apart from them',
+	$cssHas( '.nino-admin .design-reload', [ 'margin-left: .25rem;' ] ) === true );
+check( '...and the bar is a row of its own that wraps, with no fixed width in it: the select of the width and the rule that gave it 9.5rem are gone',
+	$cssHas( '.nino-admin .design-preview-bar', [ 'display: flex;', 'flex-wrap: wrap;', 'align-items: center;', 'gap: .6rem;', 'margin: 0;' ] ) === true
+	&& str_contains( $panelCss, 'design-preview-bar .design-field' ) === false && str_contains( $panelCss, '9.5rem' ) === false );
+/*	The viewport switch is the Builder's, in this feature's names: the two features share no stylesheet, so
+	the rules are copies and this is what keeps them whole	*/
+check( 'the viewport switch has the look of the Builder\'s: a group of buttons .25rem apart, each an icon beside a gap of .35rem in a box of .2rem by .6rem with a line, rounded as the workbench rounds, flat and transparent - and the lit one in the blue',
+	$cssHas( '.design-viewports', [ 'display: flex;', 'gap: .25rem;' ] ) === true
+	&& $cssHas( '.design-viewport', [ 'display: inline-flex;', 'align-items: center;', 'gap: .35rem;', 'min-height: 0;', 'padding: .2rem .6rem;', 'border: 1px solid var(--editor-border);',
+		'border-radius: var(--editor-radius-sm);', 'background: transparent;', 'box-shadow: none;', 'color: var(--editor-text-secondary);', 'font-size: .74rem;', 'cursor: pointer;' ] ) === true
+	&& $cssHas( '.design-viewport.is-active', [ 'border-color: var(--editor-blue);', 'background: var(--editor-blue-soft);', 'color: var(--editor-text);' ] ) === true );
+check( '...its icon is the icon of the rows, taking the colour of the button it stands on so that the lit one is lit - and the switch beside it is compact: no minimum height, no margin, no padding, no border, its words at the middle of the track',
+	$cssHas( '.nino-admin .design-viewport .design-icon', [ 'color: inherit;' ] ) === true
+	&& $cssHas( '.nino-admin .design-preview-follow', [ 'align-items: center;', 'min-height: 0;', 'margin: 0;', 'padding: 0;', 'border: 0;' ] ) === true );
 
 // --- The panel's script, where node is on the path ------------------------------
 //

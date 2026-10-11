@@ -75,13 +75,16 @@ namespace Nino\Modules\Design {
 
 		/*	What a size can be fixed at, in rem, as [ least, most ] for each role. A
 			size typed outside it is held at the nearer end (see size()), so that no
-			role can be typed into a line nobody can read, or one that fills the page	*/
+			role can be typed into a line nobody can read, or one that fills the page.
+			Every bound is on a tenth, the step of the field a size is typed in. The
+			spinner of a number field counts from the least, so both ends of a range
+			are sizes it reaches and the browser finds valid	*/
 		public const array BOUNDS = [
 			'title' 		=> [ 1, 4 ],
-			'subtitle' 	=> [ 0.75, 2.5 ],
-			'text' 			=> [ 0.75, 1.5 ],
-			'button' 		=> [ 0.625, 1.5 ],
-			'code' 			=> [ 0.625, 1.25 ],
+			'subtitle' 	=> [ 0.8, 2.5 ],
+			'text' 			=> [ 0.8, 1.5 ],
+			'button' 		=> [ 0.6, 1.5 ],
+			'code' 			=> [ 0.6, 1.3 ],
 		];
 
 		/*	The stacks Nino.css puts after nothing: the system fonts a role has until

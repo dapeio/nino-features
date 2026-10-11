@@ -13,7 +13,7 @@
 	<button class="nino-hero-arrowdown" data-arrow-target="#type" aria-label="Next"></button>
 </section>
 
-<section class="nino-section" aria-label="Cards">
+<section id="cards" class="nino-section" aria-label="Cards">
 	<div class="nino-grid-row">
 		<div class="nino-grid-100 nino-mb-3"><h2 class="nino-section-title">Cards</h2><p class="nino-section-subtitle nino-section-subtitle--quiet">[[short]]</p></div>
 		<article class="nino-article nino-article--grid nino-grid-100 nino-grid-m-33 nino-mb-3 nino-vpa nino-vpa--repeat">
