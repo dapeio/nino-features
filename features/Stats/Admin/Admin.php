@@ -119,7 +119,7 @@ namespace Nino\Modules\Stats {
 
 			$month = (string) ( \Nino\Admin\Admin::postData()['month'] ?? '' );
 
-			if( preg_match( '/^\d{4}-(0[1-9]|1[0-2])$/', $month ) !== 1 ) {
+			if( preg_match( '/^\d{4}-(0[1-9]|1[0-2])$/D', $month ) !== 1 ) {
 				\Nino\Http::fail( $request, 400, 'invalid month' );
 				return;
 			}

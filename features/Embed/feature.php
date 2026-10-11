@@ -96,7 +96,7 @@ return [
 				'de_DE' => 'Die Consent-Kategorie, die eine Einbindung ohne Druck freigibt. Leer: Jede Einbindung wartet immer auf einen. Der Abschnitt zu eingebetteten Inhalten in der Datenschutzerklärung nennt Externe Medien, die Bezeichnung des Standards – änderst Du den Wert, passe ihn dort mit an.',
 			],
 			'maxlength'		=> 40,
-			'pattern'			=> '/^[a-z0-9_-]*$/',
+			'pattern'			=> '/^[a-z0-9_-]*$/D',
 			'default'			=> 'external',
 		],
 		'remember' => [

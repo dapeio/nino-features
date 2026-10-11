@@ -287,7 +287,7 @@ namespace Nino\Modules\Search {
 			if( $tag === 'none' )
 				return $inner;
 
-			if( preg_match( '/^[a-z][a-z0-9]*$/', $tag ) !== 1 )
+			if( preg_match( '/^[a-z][a-z0-9]*$/D', $tag ) !== 1 )
 				$tag = 'div';
 
 			$class = self::_attribute( $args, 'class' );
@@ -325,7 +325,7 @@ namespace Nino\Modules\Search {
 			if( $empty === '' )
 				return '';
 
-			if( preg_match( '/^[a-z0-9][a-z0-9_-]*(?:\/[a-z0-9][a-z0-9_-]*)*$/i', $empty ) !== 1 ) {
+			if( preg_match( '/^[a-z0-9][a-z0-9_-]*(?:\/[a-z0-9][a-z0-9_-]*)*$/iD', $empty ) !== 1 ) {
 				trigger_error( 'Nino: [search-results empty="'. $empty. '"] does not name a template below /templates.', E_USER_WARNING );
 				return '';
 			}
@@ -344,7 +344,7 @@ namespace Nino\Modules\Search {
 
 			$key = self::_attribute( $args, 'key' );
 
-			return preg_match( '/^[A-Za-z_][A-Za-z0-9_-]*$/', $key ) === 1 ? $key : self::DEFAULT_KEY;
+			return preg_match( '/^[A-Za-z_][A-Za-z0-9_-]*$/D', $key ) === 1 ? $key : self::DEFAULT_KEY;
 		}
 
 		/**
@@ -395,7 +395,7 @@ namespace Nino\Modules\Search {
 			// A name from this class and nowhere else, and held to a slug anyway:
 			// the one thing this could otherwise be turned into is a read of
 			// something outside the feature
-			if( preg_match( '/^[a-z][a-z0-9-]*$/', $name ) !== 1 )
+			if( preg_match( '/^[a-z][a-z0-9-]*$/D', $name ) !== 1 )
 				return '';
 
 			$template = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $name. '.tpl', '' );

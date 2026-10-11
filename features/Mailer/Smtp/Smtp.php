@@ -248,7 +248,7 @@ namespace Nino\Modules\Mailer {
 
 				$line = (string) preg_replace( '/^\d{3}[ -]/', '', $line );
 
-				if( preg_match( '/^AUTH\s+(.+)$/i', trim( $line ), $m ) === 1 )
+				if( preg_match( '/^AUTH\s+(.+)$/iD', trim( $line ), $m ) === 1 )
 					$capabilities['auth'] = array_map( 'strtoupper', preg_split( '/\s+/', trim( $m[1] ) ) ?: [] );
 			}
 
@@ -295,7 +295,7 @@ namespace Nino\Modules\Mailer {
 
 				$line = rtrim( $line, "\r\n" );
 
-				if( preg_match( '/^(\d{3})([ -]?)(.*)$/', $line, $m ) !== 1 )
+				if( preg_match( '/^(\d{3})([ -]?)(.*)$/D', $line, $m ) !== 1 )
 					return 'unexpected reply: "'. $line. '"';
 
 				$code			= (int) $m[1];

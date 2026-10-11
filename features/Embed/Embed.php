@@ -579,7 +579,7 @@ namespace Nino\Modules {
 			};
 			// Closed: 'none', or a name with no source at all - which blocks everything
 			// just the same, and is the project having decided too
-			$none = static fn( string $part ): bool => preg_match( "/(?:^|\s)'none'(?:\s|\$)/i", $part ) === 1 || preg_match( '/^\S+$/', $part ) === 1;
+			$none = static fn( string $part ): bool => preg_match( "/(?:^|\s)'none'(?:\s|\$)/i", $part ) === 1 || preg_match( '/^\S+$/D', $part ) === 1;
 
 			$index = $find( $directive );
 

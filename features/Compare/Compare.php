@@ -220,7 +220,7 @@ namespace Nino\Modules {
 
 			$start = $args['start'] ?? null;
 
-			if( is_string( $start ) === false || preg_match( '/^[0-9]{1,3}$/', $start ) !== 1 )
+			if( is_string( $start ) === false || preg_match( '/^[0-9]{1,3}$/D', $start ) !== 1 )
 				return self::START_DEFAULT;
 
 			$start = (int) $start;
@@ -285,7 +285,7 @@ namespace Nino\Modules {
 			// A name from this class and nowhere else, and held to a slug anyway:
 			// the one thing this could otherwise be turned into is a read of
 			// something outside the feature
-			if( preg_match( '/^[a-z][a-z0-9-]*$/', $name ) !== 1 )
+			if( preg_match( '/^[a-z][a-z0-9-]*$/D', $name ) !== 1 )
 				return '';
 
 			$template = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $name. '.tpl', '' );

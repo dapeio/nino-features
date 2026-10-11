@@ -632,7 +632,7 @@ namespace Nino\Modules {
 				return null;
 
 			$slug = trim( $type, '/' );
-			return preg_match( '/^[a-z][a-z0-9_-]*$/', $slug ) === 1 ? '/'. $slug : null;
+			return preg_match( '/^[a-z][a-z0-9_-]*$/D', $slug ) === 1 ? '/'. $slug : null;
 		}
 
 		/**

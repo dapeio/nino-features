@@ -174,7 +174,7 @@ namespace Nino\Modules\Design {
 
 			// A set name is a file name, and a file name from a stored setup is
 			// input: anything that could climb out of the library is not a set
-			if( preg_match( '/^[A-Za-z0-9][A-Za-z0-9._-]*$/', $set ) !== 1 || str_contains( $set, '..' ) === true )
+			if( preg_match( '/^[A-Za-z0-9][A-Za-z0-9._-]*$/D', $set ) !== 1 || str_contains( $set, '..' ) === true )
 				return '';
 
 			$path = ( self::PARTS[$part] ?? '' ) === 'frame'

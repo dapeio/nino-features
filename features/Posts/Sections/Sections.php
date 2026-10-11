@@ -35,12 +35,12 @@ namespace Nino\Modules\Posts {
 
 		// A section key, an element type, a path segment: three different
 		// alphabets, and each one of them is joined to something later
-		public const string KEY_PATTERN 	= '/^[a-z][a-z0-9-]*$/';
-		public const string TYPE_PATTERN	= '#^/[a-z][a-z0-9-]*(?:/[a-z][a-z0-9-]*)*$#';
-		public const string PATH_PATTERN	= '#^[A-Za-z0-9][A-Za-z0-9._-]*(?:/[A-Za-z0-9][A-Za-z0-9._-]*)*$#';
+		public const string KEY_PATTERN 	= '/^[a-z][a-z0-9-]*$/D';
+		public const string TYPE_PATTERN	= '#^/[a-z][a-z0-9-]*(?:/[a-z][a-z0-9-]*)*$#D';
+		public const string PATH_PATTERN	= '#^[A-Za-z0-9][A-Za-z0-9._-]*(?:/[A-Za-z0-9][A-Za-z0-9._-]*)*$#D';
 		// A template is a project-relative path without its extension, which
 		// is what a [template] shortcode takes
-		public const string TEMPLATE_PATTERN = '#^/[A-Za-z0-9][A-Za-z0-9._/-]*$#';
+		public const string TEMPLATE_PATTERN = '#^/[A-Za-z0-9][A-Za-z0-9._/-]*$#D';
 
 		public const int MIN_PER_PAGE = 1;
 		public const int MAX_PER_PAGE = 100;
@@ -243,7 +243,7 @@ namespace Nino\Modules\Posts {
 				if( $desc === true )
 					$field = substr( $field, 1 );
 
-				if( preg_match( '/^[A-Za-z_][A-Za-z0-9_]*$/', $field ) !== 1 )
+				if( preg_match( '/^[A-Za-z_][A-Za-z0-9_]*$/D', $field ) !== 1 )
 					continue;
 
 				$out[] = ( $desc === true ? '-' : '' ). $field;

@@ -470,7 +470,7 @@ namespace Nino\Modules {
 			/*	One segment, and the alphabet an element uri is written in
 				(see Elements::insertElement()). A slug that could climb out of
 				the type - or name a second type - never becomes a path */
-			return preg_match( '/^[A-Za-z0-9][A-Za-z0-9._-]*$/', $rest ) === 1 && str_contains( $rest, '..' ) === false
+			return preg_match( '/^[A-Za-z0-9][A-Za-z0-9._-]*$/D', $rest ) === 1 && str_contains( $rest, '..' ) === false
 				? $rest
 				: '';
 		}

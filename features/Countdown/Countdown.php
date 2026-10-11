@@ -330,7 +330,7 @@ namespace Nino\Modules {
 		public static function template( array &$appData, string $name ): string {
 
 			// A name from this class and nowhere else, and held to a slug anyway
-			if( preg_match( '/^[a-z][a-z0-9-]*$/', $name ) !== 1 )
+			if( preg_match( '/^[a-z][a-z0-9-]*$/D', $name ) !== 1 )
 				return '';
 
 			$template = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $name. '.tpl', '' );

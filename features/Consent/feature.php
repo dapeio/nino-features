@@ -114,7 +114,7 @@ return [
 				'de_DE' => 'Name des Cookies, in das das Banner die Einwilligung schreibt. Der Abschnitt zur Einwilligung in der Datenschutzerklärung nennt ihn – änderst Du den Wert, passe ihn dort mit an.',
 			],
 			'maxlength'		=> 100,
-			'pattern'			=> '/^[A-Za-z0-9_-]+$/',
+			'pattern'			=> '/^[A-Za-z0-9_-]+$/D',
 			'default'			=> 'nino_consent',
 		],
 		'days' => [

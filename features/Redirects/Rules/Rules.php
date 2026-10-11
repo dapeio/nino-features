@@ -261,7 +261,7 @@ namespace Nino\Modules\Redirects {
 		public static function path( string $value ): string {
 
 			$value = trim( $value );
-			$value = (string) preg_replace( '/[?#].*$/', '', $value );
+			$value = (string) preg_replace( '/[?#].*$/D', '', $value );
 			$value = rtrim( $value, '/' );
 
 			if( $value === '' || str_starts_with( $value, '/' ) === false )
@@ -303,7 +303,7 @@ namespace Nino\Modules\Redirects {
 			// Query and fragment go first, as path() drops them: '/?x' is the
 			// home page the way '/a?x' is '/a'
 			if( str_starts_with( $value, '/' ) === true )
-				$value = (string) preg_replace( '/[?#].*$/', '', $value );
+				$value = (string) preg_replace( '/[?#].*$/D', '', $value );
 
 			if( $value === '/' )
 				return '/';
@@ -574,7 +574,7 @@ namespace Nino\Modules\Redirects {
 			if( str_contains( $last, '.' ) === false )
 				return true;
 
-			return preg_match( '/\.html?$/i', $last ) === 1;
+			return preg_match( '/\.html?$/iD', $last ) === 1;
 		}
 
 		/**
@@ -659,7 +659,7 @@ namespace Nino\Modules\Redirects {
 		 */
 		public static function stamp( string $value ): string {
 
-			return preg_match( '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', trim( $value ) ) === 1 ? trim( $value ) : '';
+			return preg_match( '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/D', trim( $value ) ) === 1 ? trim( $value ) : '';
 		}
 	}
 }

@@ -60,12 +60,12 @@ namespace Nino\Modules\Builder {
 		// before a path is made from it - the name is also the category of the
 		// text keys the page owns
 		public const string TEMPLATES = '/templates';
-		public const string FILE = '/^page-[a-z0-9]+(?:-[a-z0-9]+)*$/';
+		public const string FILE = '/^page-[a-z0-9]+(?:-[a-z0-9]+)*$/D';
 
 		// The frames a page may name, and a name for the page
-		private const string FRAME = '/^html-(?:header|footer)(?:-[a-z0-9]+)*$/';
-		private const string TYPE = '/^[a-z][a-z0-9_-]*$/';
-		private const string SLOT = '#^/[a-z][a-z0-9_-]*(?:/[a-z][a-z0-9_-]*)*$#';
+		private const string FRAME = '/^html-(?:header|footer)(?:-[a-z0-9]+)*$/D';
+		private const string TYPE = '/^[a-z][a-z0-9_-]*$/D';
+		private const string SLOT = '#^/[a-z][a-z0-9_-]*(?:/[a-z][a-z0-9_-]*)*$#D';
 
 		// What a call cannot carry: the shortcode syntax has no escape for a quote, a
 		// bracket or a line break in a value, and the kernel reads ' as "
@@ -2078,7 +2078,7 @@ namespace Nino\Modules\Builder {
 		 *	@return 	bool										Whether it can be the name a template calls itself
 		 */
 		private static function _validName( string $name ): bool {
-			return preg_match( '/^[^\r\n<>\[\]]{1,160}$/u', $name ) === 1 && str_contains( $name, '-->' ) === false;
+			return preg_match( '/^[^\r\n<>\[\]]{1,160}$/uD', $name ) === 1 && str_contains( $name, '-->' ) === false;
 		}
 
 		/**

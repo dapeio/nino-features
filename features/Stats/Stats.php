@@ -160,7 +160,7 @@ namespace Nino\Modules {
 
 			foreach( glob( $dir. '/*.php' ) ?: [] as $file ) {
 				$name = basename( $file, '.php' );
-				if( preg_match( '/^\d{4}-(0[1-9]|1[0-2])$/', $name ) === 1 )
+				if( preg_match( '/^\d{4}-(0[1-9]|1[0-2])$/D', $name ) === 1 )
 					$months[] = $name;
 			}
 
@@ -180,7 +180,7 @@ namespace Nino\Modules {
 		 */
 		public static function monthData( array &$appData, string $month ): ?array {
 
-			if( preg_match( '/^\d{4}-(0[1-9]|1[0-2])$/', $month ) !== 1 )
+			if( preg_match( '/^\d{4}-(0[1-9]|1[0-2])$/D', $month ) !== 1 )
 				return null;
 
 			$state = \Nino\Filesystem::getFileContent( $appData, self::STORAGE_DIR. '/'. $month. '.php', [ 'days' => [] ] );
@@ -401,7 +401,7 @@ namespace Nino\Modules {
 			// setup); parse_url() on the referer never includes one on its
 			// own PHP_URL_HOST, so the own side has to drop it to compare
 			// like with like
-			$ownHost = (string) ( preg_replace( '/:\d+$/', '', $ownHost ) ?? $ownHost );
+			$ownHost = (string) ( preg_replace( '/:\d+$/D', '', $ownHost ) ?? $ownHost );
 
 			return $host === $ownHost ? '' : $host;
 		}

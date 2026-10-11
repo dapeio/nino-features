@@ -383,7 +383,7 @@ namespace Nino\Modules\ProtectedArea {
 				if( str_ends_with( $path, '/*' ) === true )
 					$path = substr( $path, 0, -2 );
 
-				if( preg_match( '#^/[^\s\x00-\x1f\x7f*]+$#', $path ) !== 1 || $path === '/404' )
+				if( preg_match( '#^/[^\s\x00-\x1f\x7f*]+$#D', $path ) !== 1 || $path === '/404' )
 					continue;
 
 				if( str_starts_with( $path, '/_' ) === true || str_starts_with( $path, '/.' ) === true )

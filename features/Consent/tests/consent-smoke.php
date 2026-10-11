@@ -70,7 +70,7 @@ check( 'it names itself in both interface languages', is_array( $manifest )
 	&& \Nino\Features::localized( $manifest['description'], 'de_DE' ) !== \Nino\Features::localized( $manifest['description'], 'en_US' ) );
 check( 'it declares the six settings, every optional category off by default', is_array( $manifest ) && array_keys( $manifest['settings'] ) === [ 'statistics', 'marketing', 'external', 'policyUrl', 'cookieName', 'days' ]
 	&& $manifest['settings']['statistics']['default'] === false && $manifest['settings']['marketing']['default'] === false && $manifest['settings']['external']['default'] === false );
-check( 'the cookie name defaults to "nino_consent" and is pattern-checked', $manifest['settings']['cookieName']['default'] === 'nino_consent' && $manifest['settings']['cookieName']['pattern'] === '/^[A-Za-z0-9_-]+$/' );
+check( 'the cookie name defaults to "nino_consent" and is pattern-checked', $manifest['settings']['cookieName']['default'] === 'nino_consent' && $manifest['settings']['cookieName']['pattern'] === '/^[A-Za-z0-9_-]+$/D' );
 check( 'the lifetime defaults to 180 days, bounded 1..365', $manifest['settings']['days']['default'] === 180 && $manifest['settings']['days']['min'] === 1 && $manifest['settings']['days']['max'] === 365 );
 check( 'it keeps no data of its own - the choice lives in the browser', $manifest['data'] === [] );
 check( 'it declares the two callbacks it registers - the output phase, where the finished response is in hand, and the Legal module\'s section',

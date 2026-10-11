@@ -444,7 +444,7 @@ namespace Nino\Modules {
 		 */
 		private static function _contributedDate( mixed $value ): ?string {
 
-			if( is_string( $value ) === false || preg_match( '/^(\d{4})-(\d{2})-(\d{2})$/', $value, $parts ) !== 1 )
+			if( is_string( $value ) === false || preg_match( '/^(\d{4})-(\d{2})-(\d{2})$/D', $value, $parts ) !== 1 )
 				return null;
 
 			return checkdate( (int) $parts[2], (int) $parts[3], (int) $parts[1] ) === true ? $value : null;
@@ -692,7 +692,7 @@ namespace Nino\Modules {
 		 */
 		private static function _lastmod( array &$appData, string $body ): ?string {
 
-			if( preg_match( '#^\[template\s+(/[^\]\s]+)\]$#', trim( $body ), $matches ) !== 1 )
+			if( preg_match( '#^\[template\s+(/[^\]\s]+)\]$#D', trim( $body ), $matches ) !== 1 )
 				return null;
 
 			$path = \Nino\Filesystem::path( $appData, $matches[1]. '.tpl' );
@@ -898,7 +898,7 @@ namespace Nino\Modules {
 			// A name from this class and nowhere else, and held to a slug anyway:
 			// the one thing this could otherwise be turned into is a read of
 			// something outside the feature
-			if( preg_match( '/^[a-z][a-z0-9-]*$/', $name ) !== 1 )
+			if( preg_match( '/^[a-z][a-z0-9-]*$/D', $name ) !== 1 )
 				return '';
 
 			$template = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $name. '.tpl', '' );

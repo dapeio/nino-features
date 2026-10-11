@@ -32,8 +32,8 @@ namespace Nino\Modules {
 		public const string FALLBACK		= 'link';
 
 		// An element id as the Elements panel accepts one, and an icon's slug
-		private const string ID		= '/^[A-Za-z0-9][A-Za-z0-9_-]*$/';
-		private const string SLUG	= '/^[a-z0-9][a-z0-9-]*$/';
+		private const string ID		= '/^[A-Za-z0-9][A-Za-z0-9_-]*$/D';
+		private const string SLUG	= '/^[a-z0-9][a-z0-9-]*$/D';
 
 		// The one attribute this class writes itself, with nothing an editor
 		// typed in it: an address on the web is one of the site's profiles,
@@ -299,7 +299,7 @@ namespace Nino\Modules {
 		 */
 		public static function template( array &$appData, string $name ): string {
 
-			if( preg_match( '/^[a-z][a-z0-9-]*$/', $name ) !== 1 )
+			if( preg_match( '/^[a-z][a-z0-9-]*$/D', $name ) !== 1 )
 				return '';
 
 			$template = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $name. '.tpl', '' );

@@ -71,7 +71,7 @@ namespace Nino\Modules {
 		// key end where the string does: $ alone also matches before a final newline,
 		// and a key that ends in one names a directory below /images/gallery
 		public const string KEY_PATTERN = '/^[a-z][a-z0-9-]*$/D';
-		public const string ID_PATTERN 	= '/^[a-f0-9]{16}$/';
+		public const string ID_PATTERN 	= '/^[a-f0-9]{16}$/D';
 
 		// How long the key of a new album may be: it names a directory below
 		// /images/gallery, and a name the file system cannot take makes every
@@ -850,7 +850,7 @@ namespace Nino\Modules {
 			// A name from this class and nowhere else, and held to a slug anyway:
 			// the one thing this could otherwise be turned into is a read of
 			// something outside the feature
-			if( preg_match( '/^[a-z][a-z0-9-]*$/', $name ) !== 1 )
+			if( preg_match( '/^[a-z][a-z0-9-]*$/D', $name ) !== 1 )
 				return '';
 
 			$template = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $name. '.tpl', '' );

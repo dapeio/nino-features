@@ -581,7 +581,7 @@ namespace Nino\Modules\Builder {
 
 			$id = $attributes['id'] ?? '';
 
-			if( preg_match( '/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $id ) !== 1 )
+			if( preg_match( '/^[a-z0-9]+(?:-[a-z0-9]+)*$/D', $id ) !== 1 )
 				throw self::_fail( 'section-id', '', $pos );
 
 			if( isset( $ids[$id] ) === true )
@@ -730,7 +730,7 @@ namespace Nino\Modules\Builder {
 			$tokens = preg_split( '/\s+/', trim( $class ), -1, PREG_SPLIT_NO_EMPTY ) ?: [];
 
 			foreach( $tokens as $token )
-				if( preg_match( '/^[A-Za-z0-9_:.\/-]+$/', $token ) !== 1 )
+				if( preg_match( '/^[A-Za-z0-9_:.\/-]+$/D', $token ) !== 1 )
 					throw self::_fail( 'class-token', $token, $pos );
 
 			return array_values( array_unique( $tokens ) );
@@ -769,21 +769,21 @@ namespace Nino\Modules\Builder {
 					continue;
 
 				// Full width and full height are two switches, not two of a kind: both may stand side by side
-				if( preg_match( '/^nino-section--(fullwidth|fullheight)$/', $token, $m ) === 1 )
+				if( preg_match( '/^nino-section--(fullwidth|fullheight)$/D', $token, $m ) === 1 )
 					$s[$m[1]] = true;
-				elseif( preg_match( '/^nino-section--(alt|tint|dark|black|primary|brand-alt)$/', $token, $m ) === 1 )
+				elseif( preg_match( '/^nino-section--(alt|tint|dark|black|primary|brand-alt)$/D', $token, $m ) === 1 )
 					$set( 'color', $m[1], $token );
-				elseif( preg_match( '/^nino-section--border-(1|2|3|primary)$/', $token, $m ) === 1 )
+				elseif( preg_match( '/^nino-section--border-(1|2|3|primary)$/D', $token, $m ) === 1 )
 					$set( 'border', $m[1], $token );
 				elseif( $token === 'nino-cover' || $token === 'nino-parallex' )
 					$set( 'image', $token === 'nino-cover' ? 'cover' : 'parallax', $token );
 				elseif( $token === 'nino-cover--dim' || $token === 'nino-parallex--dim' )
 					$dim[] = $token;
-				elseif( preg_match( '/^nino-cover-(top|center|bottom)$/', $token, $m ) === 1 )
+				elseif( preg_match( '/^nino-cover-(top|center|bottom)$/D', $token, $m ) === 1 )
 					$set( 'imagePos', $m[1], $token );
-				elseif( preg_match( '/^nino-(mt|mb|pt|pb)-([0-6])$/', $token, $m ) === 1 )
+				elseif( preg_match( '/^nino-(mt|mb|pt|pb)-([0-6])$/D', $token, $m ) === 1 )
 					$set( $m[1], $m[2], $token );
-				elseif( preg_match( '/^nino-text-(left|center|right)$/', $token, $m ) === 1 )
+				elseif( preg_match( '/^nino-text-(left|center|right)$/D', $token, $m ) === 1 )
 					$set( 'text', $m[1], $token );
 				elseif( self::_animation( $token, $s ) === false )
 					$custom[] = $token;
@@ -797,7 +797,7 @@ namespace Nino\Modules\Builder {
 
 			if( isset( $attributes['data-cover-height'] ) === true ) {
 
-				if( preg_match( '/^[1-9][0-9]{0,3}$/', $attributes['data-cover-height'] ) !== 1 )
+				if( preg_match( '/^[1-9][0-9]{0,3}$/D', $attributes['data-cover-height'] ) !== 1 )
 					throw self::_fail( 'attribute-value', 'data-cover-height', $pos );
 
 				$s['cover'] = (int) $attributes['data-cover-height'];
@@ -828,9 +828,9 @@ namespace Nino\Modules\Builder {
 				if( $token === 'nino-grid-row' )
 					continue;
 
-				if( preg_match( '/^nino-grid-row--(narrow|wide)$/', $token, $m ) === 1 && $settings['row'] === '' )
+				if( preg_match( '/^nino-grid-row--(narrow|wide)$/D', $token, $m ) === 1 && $settings['row'] === '' )
 					$settings['row'] = $m[1];
-				elseif( preg_match( '/^nino-grid-(center|middle|bottom)$/', $token, $m ) === 1 && $settings['rowAlign'] === '' )
+				elseif( preg_match( '/^nino-grid-(center|middle|bottom)$/D', $token, $m ) === 1 && $settings['rowAlign'] === '' )
 					$settings['rowAlign'] = $m[1];
 				else
 					$custom[] = $token;
@@ -855,7 +855,7 @@ namespace Nino\Modules\Builder {
 				return true;
 			}
 
-			if( preg_match( '/^nino-vpa--(.+)$/', $token, $m ) !== 1 )
+			if( preg_match( '/^nino-vpa--(.+)$/D', $token, $m ) !== 1 )
 				return false;
 
 			if( in_array( $m[1], self::EFFECTS, true ) === true && ( $s['vpa'] ?? '' ) === '' ) {
@@ -863,7 +863,7 @@ namespace Nino\Modules\Builder {
 				return true;
 			}
 
-			if( preg_match( '/^speed-(fast|medium|slow)$/', $m[1], $speed ) === 1 && $s['vpaSpeed'] === '' ) {
+			if( preg_match( '/^speed-(fast|medium|slow)$/D', $m[1], $speed ) === 1 && $s['vpaSpeed'] === '' ) {
 				$s['vpa'] ??= '';
 				$s['vpaSpeed'] = $speed[1];
 				return true;
@@ -894,7 +894,7 @@ namespace Nino\Modules\Builder {
 				if( isset( $attributes[$attribute] ) === false )
 					continue;
 
-				if( preg_match( '/^[0-9]+(?:\.[0-9]+)?(?:ms|s)$/', $attributes[$attribute] ) !== 1 )
+				if( preg_match( '/^[0-9]+(?:\.[0-9]+)?(?:ms|s)$/D', $attributes[$attribute] ) !== 1 )
 					throw self::_fail( 'attribute-value', $attribute, $pos );
 
 				$s[$key] = $attributes[$attribute];
@@ -966,9 +966,9 @@ namespace Nino\Modules\Builder {
 
 				if( $token === self::WRAP_VPA && $s['animate'] === false )
 					$s['animate'] = true;
-				elseif( preg_match( '/^nino-vpa--(.+)$/', $token, $m ) === 1 && in_array( $m[1], self::EFFECTS, true ) === true && $s['vpa'] === '' )
+				elseif( preg_match( '/^nino-vpa--(.+)$/D', $token, $m ) === 1 && in_array( $m[1], self::EFFECTS, true ) === true && $s['vpa'] === '' )
 					$s['vpa'] = $m[1];
-				elseif( preg_match( '/^nino-vpa--speed-(fast|medium|slow)$/', $token, $m ) === 1 && $s['vpaSpeed'] === '' )
+				elseif( preg_match( '/^nino-vpa--speed-(fast|medium|slow)$/D', $token, $m ) === 1 && $s['vpaSpeed'] === '' )
 					$s['vpaSpeed'] = $m[1];
 				else
 					$custom[] = $token;
@@ -1027,12 +1027,12 @@ namespace Nino\Modules\Builder {
 
 			foreach( preg_split( '/[\t ]+/', $classes, -1, PREG_SPLIT_NO_EMPTY ) ?: [] as $token ) {
 
-				if( $token === 'nino-vpa' || preg_match( '/^nino-vpa--(.+)$/', $token, $m ) !== 1 )
+				if( $token === 'nino-vpa' || preg_match( '/^nino-vpa--(.+)$/D', $token, $m ) !== 1 )
 					continue;
 
 				if( in_array( $m[1], self::EFFECTS, true ) === true && $s['vpa'] === '' )
 					$s['vpa'] = $m[1];
-				elseif( preg_match( '/^speed-(fast|medium|slow)$/', $m[1], $speed ) === 1 && $s['vpaSpeed'] === '' )
+				elseif( preg_match( '/^speed-(fast|medium|slow)$/D', $m[1], $speed ) === 1 && $s['vpaSpeed'] === '' )
 					$s['vpaSpeed'] = $speed[1];
 				elseif( in_array( $m[1], self::MODES, true ) === false )
 					$custom[] = $token;
@@ -1065,7 +1065,7 @@ namespace Nino\Modules\Builder {
 			foreach( self::_tokens( $attributes['class'] ?? '', $pos ) as $token )
 				if( $token === 'nino-section-bg' )
 					continue;
-				elseif( preg_match( '/^nino-img-focus--([1-9])$/', $token, $m ) === 1 && $focus === null )
+				elseif( preg_match( '/^nino-img-focus--([1-9])$/D', $token, $m ) === 1 && $focus === null )
 					$focus = (int) $m[1];
 				else
 					throw self::_fail( 'background-class', $token, $pos );
@@ -1126,7 +1126,7 @@ namespace Nino\Modules\Builder {
 
 			foreach( $tokens as $token ) {
 
-				if( preg_match( '/^nino-grid-(?:(s|m|l)-)?(25|33|50|66|75|100)$/', $token, $m ) === 1 ) {
+				if( preg_match( '/^nino-grid-(?:(s|m|l)-)?(25|33|50|66|75|100)$/D', $token, $m ) === 1 ) {
 
 					if( $m[1] === '' && $m[2] !== '100' )
 						throw self::_fail( 'col-width', '', $pos );
@@ -1138,13 +1138,13 @@ namespace Nino\Modules\Builder {
 					else
 						$custom[] = $token;
 				}
-				elseif( preg_match( '/^nino-hide-(s|m|l)$/', $token, $m ) === 1 )
+				elseif( preg_match( '/^nino-hide-(s|m|l)$/D', $token, $m ) === 1 )
 					$col['hidden'][$m[1]] = true;
-				elseif( preg_match( '/^nino-stack-(start|center|end)$/', $token, $m ) === 1 && $col['stackAlign'] === '' )
+				elseif( preg_match( '/^nino-stack-(start|center|end)$/D', $token, $m ) === 1 && $col['stackAlign'] === '' )
 					$col['stackAlign'] = $m[1];
-				elseif( preg_match( '/^nino-stack-gap-([0-6])$/', $token, $m ) === 1 && $col['stackGap'] === '' )
+				elseif( preg_match( '/^nino-stack-gap-([0-6])$/D', $token, $m ) === 1 && $col['stackGap'] === '' )
 					$col['stackGap'] = $m[1];
-				elseif( preg_match( '/^nino-text-(left|center|right)$/', $token, $m ) === 1 && $col['text'] === '' )
+				elseif( preg_match( '/^nino-text-(left|center|right)$/D', $token, $m ) === 1 && $col['text'] === '' )
 					$col['text'] = $m[1];
 				elseif( self::_animation( $token, $col ) === false )
 					$custom[] = $token;
@@ -1385,7 +1385,7 @@ namespace Nino\Modules\Builder {
 
 				$valid = match( $type ) {
 					'select'	=> in_array( $value, (array) ( $declared['options'] ?? [] ), true ),
-					'int'			=> preg_match( '/^-?\d{1,9}$/', $value ) === 1 && (int) $value >= ( $declared['min'] ?? PHP_INT_MIN ) && (int) $value <= ( $declared['max'] ?? PHP_INT_MAX ),
+					'int'			=> preg_match( '/^-?\d{1,9}$/D', $value ) === 1 && (int) $value >= ( $declared['min'] ?? PHP_INT_MIN ) && (int) $value <= ( $declared['max'] ?? PHP_INT_MAX ),
 					'bool'		=> $value === '0' || $value === '1',
 					default		=> true,
 				};

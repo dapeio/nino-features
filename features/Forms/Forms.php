@@ -244,7 +244,7 @@ namespace Nino\Modules {
 		public static function doShortcode( array &$appData, array $args ): string {
 
 			$key	= (string) ( $args['key'] ?? '' );
-			$form	= \Nino\Form::form( $appData, preg_match( '/^[a-z][a-z0-9-]*$/', $key ) === 1 ? $key : '' );
+			$form	= \Nino\Form::form( $appData, preg_match( '/^[a-z][a-z0-9-]*$/D', $key ) === 1 ? $key : '' );
 
 			if( $form === null )
 				return '';
@@ -390,7 +390,7 @@ namespace Nino\Modules {
 
 			$min = (int) \Nino\Features::setting( $appData, 'forms', 'minSeconds', 0 );
 
-			if( $min <= 0 || preg_match( '/^\d{1,10}$/', $stamp ) !== 1 )
+			if( $min <= 0 || preg_match( '/^\d{1,10}$/D', $stamp ) !== 1 )
 				return false;
 
 			// A stamp from the future gives a negative age, which is below any
@@ -497,7 +497,7 @@ namespace Nino\Modules {
 			// A name from this class and nowhere else, and held to a slug anyway:
 			// the one thing this could otherwise be turned into is a read of
 			// something outside the feature
-			if( preg_match( '/^[a-z][a-z0-9-]*$/', $name ) !== 1 )
+			if( preg_match( '/^[a-z][a-z0-9-]*$/D', $name ) !== 1 )
 				return '';
 
 			$template = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $name. '.tpl', '' );

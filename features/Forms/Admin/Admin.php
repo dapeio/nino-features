@@ -48,7 +48,7 @@ namespace Nino\Modules\Forms {
 
 		// A form key as the engine writes one - checked here before anything
 		// is read, so a stray value never reaches an error message
-		private const string KEY_PATTERN = '/^[a-z][a-z0-9-]*$/';
+		private const string KEY_PATTERN = '/^[a-z][a-z0-9-]*$/D';
 
 		// What \Nino\Form::problems() reports, as the fill that says it. A code
 		// that is not here is said with the general sentence of its kind: that a
@@ -420,7 +420,7 @@ namespace Nino\Modules\Forms {
 
 				$name = basename( (string) $file, '.tpl' );
 
-				if( in_array( $name, [ 'mail-header', 'mail-footer' ], true ) === false && preg_match( '/^[a-zA-Z0-9_-]+$/', $name ) === 1 )
+				if( in_array( $name, [ 'mail-header', 'mail-footer' ], true ) === false && preg_match( '/^[a-zA-Z0-9_-]+$/D', $name ) === 1 )
 					$templates[] = '/templates/'. $name;
 			}
 

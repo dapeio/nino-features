@@ -196,7 +196,7 @@ namespace Nino\Modules\Design {
 			// A name from this class and nowhere else - kept to a slug anyway,
 			// so the one thing this method could ever be turned into (a read of
 			// something outside the feature) is not possible from here either
-			if( preg_match( '/^[a-z][a-z0-9-]*$/', $name ) !== 1 )
+			if( preg_match( '/^[a-z][a-z0-9-]*$/D', $name ) !== 1 )
 				return '';
 
 			$template = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $name. '.tpl', '' );

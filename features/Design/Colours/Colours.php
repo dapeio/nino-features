@@ -442,10 +442,10 @@ namespace Nino\Modules\Design {
 			$value = strtolower( trim( (string) $value ) );
 			$value = ltrim( $value, '#' );
 
-			if( preg_match( '/^[0-9a-f]{3}$/', $value ) === 1 )
+			if( preg_match( '/^[0-9a-f]{3}$/D', $value ) === 1 )
 				$value = $value[0]. $value[0]. $value[1]. $value[1]. $value[2]. $value[2];
 
-			return preg_match( '/^[0-9a-f]{6}$/', $value ) === 1 ? '#'. $value : $fallback;
+			return preg_match( '/^[0-9a-f]{6}$/D', $value ) === 1 ? '#'. $value : $fallback;
 		}
 
 		/**
@@ -1148,7 +1148,7 @@ namespace Nino\Modules\Design {
 			$hex = ltrim( trim( $hex ), '#' );
 			if( strlen( $hex ) === 3 )
 				$hex = $hex[0]. $hex[0]. $hex[1]. $hex[1]. $hex[2]. $hex[2];
-			if( preg_match( '/^[0-9a-fA-F]{6}$/', $hex ) !== 1 )
+			if( preg_match( '/^[0-9a-fA-F]{6}$/D', $hex ) !== 1 )
 				$hex = '4faae8';
 
 			$r = self::toLinear( hexdec( substr( $hex, 0, 2 ) ) / 255 );
