@@ -46,7 +46,7 @@ namespace Nino\Modules\Design {
 		public const string TEMPLATES = '/features/Design/templates';
 
 		/*	The one picture the specimen shows, as a data uri rather than a file.
-			An article set is judged on the space around an image, not on the
+			A card set is judged on the space around an image, not on the
 			image - and shipping one would mean choosing a photograph, which is a
 			design decision this page must not make for whoever is looking at it.
 			A uri also needs no route: the panel renders inside /_admin, where

@@ -310,22 +310,25 @@ $feature = \Nino\Features::manifest( dirname( __DIR__ ) );
 
 check( 'the manifest reads, with the key and the class the directory implies', is_array( $feature ) === true
 	&& $feature['key'] === 'design' && $feature['module'] === '\\Nino\\Modules\\Design' );
-// ^1.6: the hero and the roles. Nino 1.6 renamed the classes of the hero -
-// nino-hero, nino-hero--fullscreen, nino-hero-arrowdown, nino-hero-title and
-// nino-hero-subtitle - and kept no alias, gave the type its five roles
-// (--fontfamily-<role>, --font-<role>-weight, -transform and -size) and the
-// page its --grid-gutter, and drew the grounds and the counter ground: the
-// content templates, the font roles the compiler writes, the width of the
-// page and the specimen are written for them, so on a 1.5 they style
-// nothing. The floor before it was 1.4: the frames read words of the
+// ^1.7: the card. Nino 1.7 called it one - nino-card with every part and
+// modifier, --card-title-scale, --card-img-max-width and --card-img-max-height
+// - and kept no alias for the old names: the content sets, base.css, the type
+// the compiler writes and the specimen are written for the new ones, and the
+// theme.css the kernel delivers is the body this compiler writes of them, so
+// on a 1.6 they style nothing and the compile is not the delivered file.
+// The floor before it was 1.6, set when the hero's rename, the five roles of the
+// type and the grounds were expected in that release; they came after its tag,
+// with the card, so 1.7 is the first kernel that has all of it (the kernel's
+// CHANGELOG lists them under 1.7). The floor before that was 1.4: the frames read words of the
 // kernel's - /project/company/..., the words of /template/frame-header and
 // /template/frame-footer, the page details after /_nino/webpage - and write
 // the project's frame-header.tpl and frame-footer.tpl, which are named so
-// from 1.4 on, and 1.6 has them all. A pre-release of 1.6 counts as 1.6
-check( 'it names ^1.6 - the kernel whose hero, roles and grounds its templates, its compiler and its specimen are written for', ( $feature['nino'] ?? '' ) === '^1.6' );
-check( '...and no 1.5 can run it, a 1.6 pre-release can', \Nino\Features::satisfies( (string) $feature['nino'], '1.5.0' ) === false
+// from 1.4 on, and 1.6 has them all. A pre-release of 1.7 counts as 1.7
+check( 'it names ^1.7 - the kernel whose card, hero, roles and grounds its templates, its compiler and its specimen are written for', ( $feature['nino'] ?? '' ) === '^1.7' );
+check( '...and no 1.6 can run it, a 1.7 pre-release can', \Nino\Features::satisfies( (string) $feature['nino'], '1.5.0' ) === false
 	&& \Nino\Features::satisfies( (string) $feature['nino'], '1.2.0-beta' ) === false
-	&& \Nino\Features::satisfies( (string) $feature['nino'], '1.6.0-dev' ) === true );
+	&& \Nino\Features::satisfies( (string) $feature['nino'], '1.6.0' ) === false
+	&& \Nino\Features::satisfies( (string) $feature['nino'], '1.7.0-dev' ) === true );
 check( 'it is Design 2.0: the model is another one, and the version says so', ( $feature['version'] ?? '' ) === '2.0.0' );
 check( 'the setup file is declared under data, so a backup carries it', in_array( Setup::PATH, (array) ( $feature['data'] ?? [] ), true ) === true );
 $says = static fn( string $entry, string $locale ): string => \Nino\Features::localized( $feature['manual']['panel'][$entry] ?? [], $locale );
@@ -654,7 +657,7 @@ check( 'a library with nothing in it answers every part with none, and says so f
 	middle, which is the template as it is	*/
 $notes = [];
 $setup = Setup::normalize( [ 'knobs' => [
-	'content' => [ 'hero-title' => -1, 'hero-text' => '1', 'quiet' => 1.4, 'loud' => 2, 'section-space' => 'more', 'article-space' => [ 1 ], 'corners' => null, 'shadow' => true, 'nonsense' => 1 ],
+	'content' => [ 'hero-title' => -1, 'hero-text' => '1', 'quiet' => 1.4, 'loud' => 2, 'section-space' => 'more', 'card-space' => [ 1 ], 'corners' => null, 'shadow' => true, 'nonsense' => 1 ],
 	'buttons' => 'more',
 	'nowhere' => [ 'small' => 1 ],
 ] ], $library, $notes );
@@ -662,7 +665,7 @@ $setup = Setup::normalize( [ 'knobs' => [
 check( 'a knob position is -1, 0 or 1: a string that is a number, or a number that rounds to one, is kept',
 	$setup['knobs']['content']['hero-title'] === -1 && $setup['knobs']['content']['hero-text'] === 1 && $setup['knobs']['content']['quiet'] === 1 );
 check( '...and a word, an array, a boolean, nothing and a number past the ends are the middle, not an error',
-	$setup['knobs']['content']['loud'] === 0 && $setup['knobs']['content']['section-space'] === 0 && $setup['knobs']['content']['article-space'] === 0
+	$setup['knobs']['content']['loud'] === 0 && $setup['knobs']['content']['section-space'] === 0 && $setup['knobs']['content']['card-space'] === 0
 	&& $setup['knobs']['content']['corners'] === 0 && $setup['knobs']['content']['shadow'] === 0 && $setup['knobs']['buttons'] === array_fill_keys( Setup::KNOBS['buttons'], 0 ) );
 check( '...a knob that is none of its tab\'s and a tab that is none of the three are dropped and named, never carried',
 	array_keys( $setup['knobs']['content'] ) === Setup::KNOBS['content'] && isset( $setup['knobs']['nowhere'] ) === false
@@ -868,7 +871,7 @@ check( 'twelve numbered sections - the tokens, the palette, the type, the roles,
 	&& array_slice( $order, 0, 6 ) === [ 'the design tokens', 'the palette', 'the type', 'the roles', 'the root size', 'the page' ] );
 check( '...then the frames, then the three sets in the order the parts are declared in, each saying where its knobs stand, and the knob positions last', array_slice( $order, 6 ) === [
 	'header: v1', 'footer: v1',
-	'content: v1 (hero-title default, hero-text default, quiet default, loud default, section-space default, article-space default, corners default, border default, shadow default)',
+	'content: v1 (hero-title default, hero-text default, quiet default, loud default, section-space default, card-space default, corners default, border default, shadow default)',
 	'buttons: v1 (small default, big default, space default, corners default)',
 	'components: v1 (scale default, space default, corners default, border default, zebra default, labels default)',
 	'the knob positions',
@@ -968,7 +971,7 @@ check( 'the defaults are the faces the wizard delivers: the title in League Spar
 	&& ( $roles['--fontfamily-button'] ?? '' ) === '"Source Sans 3", '. $sans && ( $roles['--font-button-weight'] ?? '' ) === '700' );
 check( '...a role with no family writes none and keeps the system stack Nino.css has for it, and no case and no size is written where nobody chose one',
 	isset( $roles['--fontfamily-code'] ) === false && ( $roles['--font-code-weight'] ?? '' ) === 'normal'
-	&& preg_grep( '/-(transform|size)$/', array_keys( $roles ) ) === [] && isset( $roles['--article-title-scale'] ) === false );
+	&& preg_grep( '/-(transform|size)$/', array_keys( $roles ) ) === [] && isset( $roles['--card-title-scale'] ) === false );
 check( '...and a family two roles use is declared once, one @font-face for each file it comes in',
 	substr_count( $type, "font-family: 'Source Sans 3'" ) === 2 && substr_count( $type, "font-family: 'League Spartan'" ) === 1
 	&& substr_count( $type, '@font-face' ) === 3 && str_contains( $type, "url('[[/nino/public]]/fonts/league-spartan.woff2')" ) === true );
@@ -980,13 +983,13 @@ check( 'a role that was chosen is written as chosen: the stack of a system famil
 	&& ( $chosen['--font-title-transform'] ?? '' ) === 'uppercase' && ( $chosen['--font-title-size'] ?? '' ) === '2.4rem'
 	&& isset( $chosen['--fontfamily-code'] ) === false && ( $chosen['--font-code-weight'] ?? '' ) === 'bold' && ( $chosen['--font-code-size'] ?? '' ) === '0.9rem'
 	&& isset( $chosen['--font-code-transform'] ) === false );
-check( '...a title with a size of its own fixes the article title as well, because Nino.css multiplies the role by a factor that only gives the size it had on a step of the scale',
-	( $chosen['--article-title-scale'] ?? '' ) === '.8' && isset( $rolesIn( $typeOf( [ 'fonts' => [ 'subtitle' => [ 'size' => '1.5' ] ] ] ) )['--article-title-scale'] ) === false );
+check( '...a title with a size of its own fixes the card title as well, because Nino.css multiplies the role by a factor that only gives the size it had on a step of the scale',
+	( $chosen['--card-title-scale'] ?? '' ) === '.8' && isset( $rolesIn( $typeOf( [ 'fonts' => [ 'subtitle' => [ 'size' => '1.5' ] ] ] ) )['--card-title-scale'] ) === false );
 $typed = $rolesIn( $typeOf( [ 'fonts' => [ 'title' => [ 'size' => '2.45' ], 'text' => [ 'size' => 1.35 ], 'subtitle' => [ 'size' => 9 ], 'code' => [ 'size' => '0.1' ] ] ] ) );
 check( '...a size that was typed, and is no step of any list, is written in rem as it is - and one outside the bounds at the bound: 2.45 for the title, 1.35 for the text, 9 for the subtitle, 0.1 for the code',
 	( $typed['--font-title-size'] ?? '' ) === '2.45rem' && ( $typed['--font-text-size'] ?? '' ) === '1.35rem'
 	&& ( $typed['--font-subtitle-size'] ?? '' ) === '2.5rem' && ( $typed['--font-code-size'] ?? '' ) === '0.6rem' && isset( $typed['--font-button-size'] ) === false
-	&& ( $typed['--article-title-scale'] ?? '' ) === '.8' );
+	&& ( $typed['--card-title-scale'] ?? '' ) === '.8' );
 check( '...and an empty size, or one that is no number, writes no size line at all',
 	preg_grep( '/-size$/', array_keys( $rolesIn( $typeOf( [ 'fonts' => [ 'title' => [ 'size' => 'big' ], 'text' => [ 'size' => '' ], 'code' => [ 'size' => null ] ] ] ) ) ) ) === [] );
 check( '...and the Source Sans 3 the other three roles still use is declared once, with the League Spartan nobody uses any more gone',
@@ -1115,7 +1118,7 @@ $sandbox = ninoSandboxDir( $appData ). '/library';
 mkdir( $sandbox. '/content', 0755, true );
 mkdir( $sandbox. '/buttons', 0755, true );
 file_put_contents( $sandbox. '/base.css', "/* ---- 1. the design tokens ---- */\n:root { --x: 1; }\n/* ---- 2. the roles ---- */\n:root { --y: 2; }\n" );
-file_put_contents( $sandbox. '/content/v1.css', "/*\t@name Throwaway\n *\t@description A set that exists for this test.\n *\t@knob corners\n *\t@knob shadow\n *\n *\tAn example in a comment is no declaration:\n *\t--content-border--less: 0; --content-border--default: 1px; --content-border--more: 3px;\n */\n:root {\n\t--content-corners--less: 0;\n\t--content-corners--default: .4rem;\n\t--content-corners--more : 2rem;\n\t--content-shadow--less: none;\n\t--content-shadow--default: none;\n\t--content-shadow--more: 0 .1rem .5rem black;\n\t--content-shadow-lift--less: 0;\n\t--content-shadow-lift--default: 0;\n\t--content-shadow-lift--more: -.1rem;\n}\n.nino-article { border-radius: var(--content-corners); box-shadow: var(--content-shadow); }\n" );
+file_put_contents( $sandbox. '/content/v1.css', "/*\t@name Throwaway\n *\t@description A set that exists for this test.\n *\t@knob corners\n *\t@knob shadow\n *\n *\tAn example in a comment is no declaration:\n *\t--content-border--less: 0; --content-border--default: 1px; --content-border--more: 3px;\n */\n:root {\n\t--content-corners--less: 0;\n\t--content-corners--default: .4rem;\n\t--content-corners--more : 2rem;\n\t--content-shadow--less: none;\n\t--content-shadow--default: none;\n\t--content-shadow--more: 0 .1rem .5rem black;\n\t--content-shadow-lift--less: 0;\n\t--content-shadow-lift--default: 0;\n\t--content-shadow-lift--more: -.1rem;\n}\n.nino-card { border-radius: var(--content-corners); box-shadow: var(--content-shadow); }\n" );
 file_put_contents( $sandbox. '/content/v2.css', ":root {\n\t--content-shadow-lift--less: 0;\n\t--content-shadow-lift--default: 0;\n\t--content-shadow-lift--more: -.1rem;\n\t--content-nonsense--less: 1;\n\t--content-nonsense--default: 2;\n\t--content-nonsense--more: 3;\n}\n" );
 file_put_contents( $sandbox. '/buttons/v1.css', ":root {\n\t--buttons-space--less: .25rem;\n\t--buttons-space--default: .5rem;\n\t--buttons-space--more: 1rem;\n}\n" );
 
@@ -2454,9 +2457,9 @@ foreach( $sections as $section ) {
 
 check( 'every section of the specimen holds exactly one grid row of its own - a second one under it has no margin and would sit flush',
 	$sections !== [] && array_unique( $rowCounts ) === [ 1 ] );
-check( '...and the second of them is the one with the cards: #cards, the section the hero is followed by, which holds the articles',
+check( '...and the second of them is the one with the cards: #cards, the section the hero is followed by, which holds the cards',
 	isset( $sections[1] ) === true && $sections[1]->getAttribute( 'id' ) === 'cards' && $sections[1]->getAttribute( 'aria-label' ) === 'Cards'
-	&& count( $byClass( $xpath, 'nino-article', $sections[1] ) ) > 10 && $sections[0]->getAttribute( 'id' ) === 'content' );
+	&& count( $byClass( $xpath, 'nino-card', $sections[1] ) ) > 10 && $sections[0]->getAttribute( 'id' ) === 'content' );
 check( 'and every child of a row is a grid cell, so nothing sits in the row without a width',
 	$strayCells === [] );
 
@@ -2471,7 +2474,7 @@ $bareCells = [];
 
 foreach( $stacks as $stack )
 	foreach( $stack->childNodes as $child )
-		if( $child instanceof DOMElement && ( $child->tagName !== 'div' || count( $byClass( $xpath, 'nino-article', $child ) ) !== 1 ) )
+		if( $child instanceof DOMElement && ( $child->tagName !== 'div' || count( $byClass( $xpath, 'nino-card', $child ) ) !== 1 ) )
 			$bareCells[] = $child->tagName. '.'. $child->getAttribute( 'class' );
 
 check( 'the stack of cards is drawn as Nino 1.6 draws one: every cell of a stack is a div that holds one card, and no card is a cell'. ( $bareCells === [] ? '' : ' - '. implode( ', ', $bareCells ) ),
@@ -2492,7 +2495,7 @@ check( 'it carries viewport animations on the hero\'s cell, cards, pricing items
 
 /*	The rhythm between the blocks inside a row is a spacing utility on the cell:
 	a heading cell is 'nino-grid-100 nino-mb-3', an action cell
-	'nino-grid-100 nino-mt-3', a card 'nino-article ... nino-mb-3'. Without it
+	'nino-grid-100 nino-mt-3', a card 'nino-card ... nino-mb-3'. Without it
 	the cells of a wrapping row meet at the .5rem an element brings of its own	*/
 $multi = 0;
 $spaced = 0;

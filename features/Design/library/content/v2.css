@@ -8,7 +8,7 @@
  *	@knob	quiet			Size of a quiet title, subtitle and text
  *	@knob	loud			Size of a loud title, subtitle and text
  *	@knob	section-space	Height of a band
- *	@knob	article-space	Space inside a card and between its parts
+ *	@knob	card-space		Space inside a card and between its parts
  *	@knob	corners			Corners of a card
  *	@knob	border			Line round a card
  *
@@ -41,9 +41,9 @@
 	--content-section-space--default: 	var(--space-5);
 	--content-section-space--more: 		var(--space-6);
 
-	--content-article-space--less: 		var(--space-1);
-	--content-article-space--default: 	var(--space-2);
-	--content-article-space--more: 		var(--space-3);
+	--content-card-space--less: 		var(--space-1);
+	--content-card-space--default: 	var(--space-2);
+	--content-card-space--more: 		var(--space-3);
 
 	--content-corners--less: 			0rem;
 	--content-corners--default: 		var(--radius-small);
@@ -118,7 +118,7 @@
 
 /* ---- cards ---- */
 
-.nino-article:where(:not(.nino-article--borderless)) {
+.nino-card:where(:not(.nino-card--borderless)) {
 	border: var(--content-border) solid var(--color-border);
 	border-radius: var(--content-corners);
 	overflow: hidden;
@@ -126,23 +126,23 @@
 
 /*	The picture runs to the edge of the box: a margin around it would be a
 	second frame inside the first	*/
-.nino-article-img {
+.nino-card-img {
 	display: block;
 	width: 100%;
 	margin: 0;
 	border-radius: 0;
 }
-.nino-article-content:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
-	padding: var(--content-article-space);
+.nino-card-content:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
+	padding: var(--content-card-space);
 }
-.nino-article-title:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
-.nino-article-subtitle:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
-.nino-article-descr:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
-	margin-bottom: calc( var(--content-article-space) / 2 );
+.nino-card-title:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
+.nino-card-subtitle:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
+.nino-card-descr:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
+	margin-bottom: calc( var(--content-card-space) / 2 );
 }
 
 /*	Cards side by side keep the padding of a card between them, so a grid
 	reads as a table of boxes rather than as cards floating on a ground	*/
-.nino-article-cols {
-	gap: var(--content-article-space);
+.nino-card-cols {
+	gap: var(--content-card-space);
 }

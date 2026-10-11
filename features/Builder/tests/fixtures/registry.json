@@ -1,7 +1,7 @@
 {
     "components": {
         "title": {
-            "label": "Title",
+            "label": "Title (Section)",
             "source": "text",
             "loop": true,
             "preview": "title",
@@ -40,8 +40,35 @@
                 "class": ""
             }
         },
-        "article-title": {
-            "label": "Article title",
+        "subtitle": {
+            "label": "Subtitle (Section)",
+            "source": "text",
+            "loop": true,
+            "preview": "title",
+            "attributes": {
+                "style": {
+                    "type": "select",
+                    "label": "Style",
+                    "hint": "Quieter or louder than the role: the size times the quiet or the loud factor.",
+                    "options": [
+                        "",
+                        "loud",
+                        "quiet"
+                    ],
+                    "default": ""
+                }
+            },
+            "in": [
+                "section"
+            ],
+            "draws": "p .nino-section-subtitle",
+            "defaults": {
+                "style": "",
+                "class": ""
+            }
+        },
+        "card-title": {
+            "label": "Title (Card)",
             "source": "text",
             "loop": true,
             "preview": "title",
@@ -73,15 +100,42 @@
             "in": [
                 "card"
             ],
-            "draws": "h{level} .nino-article-title",
+            "draws": "h{level} .nino-card-title",
             "defaults": {
                 "level": "2",
                 "style": "",
                 "class": ""
             }
         },
+        "card-subtitle": {
+            "label": "Subtitle (Card)",
+            "source": "text",
+            "loop": true,
+            "preview": "title",
+            "attributes": {
+                "style": {
+                    "type": "select",
+                    "label": "Style",
+                    "hint": "Quieter or louder than the role: the size times the quiet or the loud factor.",
+                    "options": [
+                        "",
+                        "loud",
+                        "quiet"
+                    ],
+                    "default": ""
+                }
+            },
+            "in": [
+                "card"
+            ],
+            "draws": "p .nino-card-subtitle",
+            "defaults": {
+                "style": "",
+                "class": ""
+            }
+        },
         "hero-title": {
-            "label": "Hero title",
+            "label": "Title (Hero)",
             "source": "text",
             "loop": true,
             "preview": "title",
@@ -120,62 +174,8 @@
                 "class": ""
             }
         },
-        "subtitle": {
-            "label": "Subtitle",
-            "source": "text",
-            "loop": true,
-            "preview": "title",
-            "attributes": {
-                "style": {
-                    "type": "select",
-                    "label": "Style",
-                    "hint": "Quieter or louder than the role: the size times the quiet or the loud factor.",
-                    "options": [
-                        "",
-                        "loud",
-                        "quiet"
-                    ],
-                    "default": ""
-                }
-            },
-            "in": [
-                "section"
-            ],
-            "draws": "p .nino-section-subtitle",
-            "defaults": {
-                "style": "",
-                "class": ""
-            }
-        },
-        "article-subtitle": {
-            "label": "Article subtitle",
-            "source": "text",
-            "loop": true,
-            "preview": "title",
-            "attributes": {
-                "style": {
-                    "type": "select",
-                    "label": "Style",
-                    "hint": "Quieter or louder than the role: the size times the quiet or the loud factor.",
-                    "options": [
-                        "",
-                        "loud",
-                        "quiet"
-                    ],
-                    "default": ""
-                }
-            },
-            "in": [
-                "card"
-            ],
-            "draws": "p .nino-article-subtitle",
-            "defaults": {
-                "style": "",
-                "class": ""
-            }
-        },
         "hero-subtitle": {
-            "label": "Hero subtitle",
+            "label": "Subtitle (Hero)",
             "source": "text",
             "loop": true,
             "preview": "title",
@@ -381,7 +381,7 @@
                 "class": ""
             }
         },
-        "article": {
+        "card": {
             "label": "Card",
             "source": "content",
             "loop": true,
@@ -490,7 +490,7 @@
                 "section",
                 "hero"
             ],
-            "draws": "article .nino-article",
+            "draws": "article .nino-card",
             "holds": "card",
             "defaults": {
                 "ground": "",

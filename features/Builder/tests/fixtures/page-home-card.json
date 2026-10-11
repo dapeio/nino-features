@@ -100,7 +100,7 @@
                     "stack": null,
                     "components": [
                         {
-                            "name": "article",
+                            "name": "card",
                             "source": "",
                             "text": null,
                             "attributes": {
@@ -117,7 +117,7 @@
                             },
                             "components": [
                                 {
-                                    "name": "article-title",
+                                    "name": "card-title",
                                     "source": "/template/page-home-card/story/title",
                                     "text": null,
                                     "attributes": {
@@ -225,7 +225,7 @@
                     },
                     "components": [
                         {
-                            "name": "article",
+                            "name": "card",
                             "source": "",
                             "text": null,
                             "attributes": {
@@ -242,7 +242,7 @@
                             },
                             "components": [
                                 {
-                                    "name": "article-title",
+                                    "name": "card-title",
                                     "source": "title",
                                     "text": null,
                                     "attributes": {

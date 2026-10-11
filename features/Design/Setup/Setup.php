@@ -73,7 +73,7 @@ namespace Nino\Modules\Design {
 				content		hero-title, hero-text	the size of the hero's title and text
 							quiet, loud				the size of the --quiet and --loud variants
 							section-space			the vertical space of a section
-							article-space			the space inside and between the parts of a card
+							card-space				the space inside and between the parts of a card
 							corners, border, shadow	the corners, the line and the shadow of a card
 				buttons		small, big				the size of .nino-btn--small and --big
 							space, corners			the padding and the radius
@@ -82,7 +82,7 @@ namespace Nino\Modules\Design {
 							zebra					the stripes of a table
 							labels					where the label of a field stands	*/
 		public const array KNOBS = [
-			'content' 		=> [ 'hero-title', 'hero-text', 'quiet', 'loud', 'section-space', 'article-space', 'corners', 'border', 'shadow' ],
+			'content' 		=> [ 'hero-title', 'hero-text', 'quiet', 'loud', 'section-space', 'card-space', 'corners', 'border', 'shadow' ],
 			'buttons' 		=> [ 'small', 'big', 'space', 'corners' ],
 			'components' 	=> [ 'scale', 'space', 'corners', 'border', 'zebra', 'labels' ],
 		];

@@ -64,7 +64,7 @@ echo "The manifest\n";
 $manifest = \Nino\Features::manifest( $dir );
 
 check( 'it validates, key "builder"', is_array( $manifest ) === true && $manifest['key'] === 'builder' && ninoWarnings() === [] );
-check( 'it is written for the kernel that has the Components module', is_array( $manifest ) === true && $manifest['nino'] === '^1.6' && \Nino\Features::satisfies( $manifest['nino'] ) === true );
+check( 'it is written for the kernel that has the Components module, with the card called one', is_array( $manifest ) === true && $manifest['nino'] === '^1.7' && \Nino\Features::satisfies( $manifest['nino'] ) === true );
 check( 'it is a feature for content, with nothing required, no settings and no data of its own', $manifest['category'] === 'content' && $manifest['requires'] === [] && $manifest['settings'] === [] && $manifest['data'] === [] );
 check( 'it names and describes itself in both interface languages', \Nino\Features::localized( $manifest['description'], 'de_DE' ) !== \Nino\Features::localized( $manifest['description'], 'en_US' ) );
 check( 'its manual says what it adds: the panel, and no shortcode, route or callback', $manifest['manual']['shortcodes'] === [] && $manifest['manual']['routes'] === [] && $manifest['manual']['callbacks'] === [] && isset( $manifest['manual']['panel']['Builder'] ) === true );
@@ -73,10 +73,10 @@ check( '...and tells of the loop, of the components by place and of the card and
 	&& isset( $manifest['manual']['panel']['Cards of a loop'] ) === false && array_reduce( [ 'Loop', 'Components by place', 'The card', 'Properties of a card' ], static fn( bool $carry, string $name ): bool => $carry === true && \Nino\Features::localized( $manifest['manual']['panel'][$name], 'de_DE' ) !== \Nino\Features::localized( $manifest['manual']['panel'][$name], 'en_US' ), true )
 	&& array_filter( [ 'en_US', 'de_DE' ], static function( string $locale ) use ( $dir ): bool {
 		$texts = (array) include $dir. '/text/'. $locale. '.php';
-		return array_filter( array_keys( $texts ), static fn( string $key ): bool => str_contains( $key, '/stack/article' ) === true || str_contains( $key, '/option/article-' ) === true ) !== [];
+		return array_filter( array_keys( $texts ), static fn( string $key ): bool => str_contains( $key, '/stack/card' ) === true || str_contains( $key, '/option/card-' ) === true ) !== [];
 	} ) === [] );
-check( '...and names the markup it reads and writes besides the wrap and the picture of a column: the call of a component that holds components, and the spacing classes of a column, in both languages', array_diff( [ '[article padding="3"][article-title /slot][/article]', 'nino-p-2 nino-mt-1 nino-mb-1' ], array_keys( $manifest['manual']['markup'] ) ) === []
-	&& array_reduce( [ '[article padding="3"][article-title /slot][/article]', 'nino-p-2 nino-mt-1 nino-mb-1' ], static fn( bool $carry, string $name ): bool => $carry === true && \Nino\Features::localized( $manifest['manual']['markup'][$name], 'de_DE' ) !== \Nino\Features::localized( $manifest['manual']['markup'][$name], 'en_US' ), true ) );
+check( '...and names the markup it reads and writes besides the wrap and the picture of a column: the call of a component that holds components, and the spacing classes of a column, in both languages', array_diff( [ '[card padding="3"][card-title /slot][/card]', 'nino-p-2 nino-mt-1 nino-mb-1' ], array_keys( $manifest['manual']['markup'] ) ) === []
+	&& array_reduce( [ '[card padding="3"][card-title /slot][/card]', 'nino-p-2 nino-mt-1 nino-mb-1' ], static fn( bool $carry, string $name ): bool => $carry === true && \Nino\Features::localized( $manifest['manual']['markup'][$name], 'de_DE' ) !== \Nino\Features::localized( $manifest['manual']['markup'][$name], 'en_US' ), true ) );
 
 check( 'the feature brings its panel along, and registers nothing on the site', \Nino\Modules\Builder::adminPanels( $appData ) === [ \Nino\Modules\Builder\Admin::class ] && ( static function() use ( &$appData ): bool {
 	$before = $appData;
@@ -113,13 +113,13 @@ echo "The registry of the Components module\n";
 \Nino\Modules\Components::init( $appData );
 $registry = \Nino\Modules\Builder\Document::schemas( $appData );
 
-check( 'the components and the stacks of the kernel are in it, each with the defaults of its attributes - the card, which holds components, among the components', array_keys( $registry['components'] ) === [ 'title', 'article-title', 'hero-title', 'subtitle', 'article-subtitle', 'hero-subtitle', 'text', 'image', 'button', 'html', 'spacer', 'article' ]
+check( 'the components and the stacks of the kernel are in it, each with the defaults of its attributes - the card, which holds components, among the components', array_keys( $registry['components'] ) === [ 'title', 'subtitle', 'card-title', 'card-subtitle', 'hero-title', 'hero-subtitle', 'text', 'image', 'button', 'html', 'spacer', 'card' ]
 	&& array_keys( $registry['stacks'] ) === [ 'stack', 'slider', 'filter', 'list' ]
 	&& $registry['components']['title']['defaults'] === [ 'level' => '2', 'style' => '', 'class' => '' ]
 	&& $registry['stacks']['stack']['defaults']['gap'] === '2' );
-check( '...the card says what it holds, and is the one that does: a component whose schema has holds is a container, and nothing else is - the Builder asks the schema and names none', \Nino\Modules\Builder\Reader::holds( $registry['components']['article'] ) === true && $registry['components']['article']['holds'] === 'card'
-	&& array_filter( $registry['components'], static fn( array $schema ): bool => \Nino\Modules\Builder\Reader::holds( $schema ) === true ) === [ 'article' => $registry['components']['article'] ] && \Nino\Modules\Builder\Reader::holds( [ 'holds' => '' ] ) === false && \Nino\Modules\Builder\Reader::holds( [] ) === false );
-check( '...and a loop is a grid and nothing more: its defaults carry no card, the cell is a div', array_filter( $registry['stacks'], static fn( array $schema ): bool => array_key_exists( 'article', $schema['defaults'] ) === true ) === [] );
+check( '...the card says what it holds, and is the one that does: a component whose schema has holds is a container, and nothing else is - the Builder asks the schema and names none', \Nino\Modules\Builder\Reader::holds( $registry['components']['card'] ) === true && $registry['components']['card']['holds'] === 'card'
+	&& array_filter( $registry['components'], static fn( array $schema ): bool => \Nino\Modules\Builder\Reader::holds( $schema ) === true ) === [ 'card' => $registry['components']['card'] ] && \Nino\Modules\Builder\Reader::holds( [ 'holds' => '' ] ) === false && \Nino\Modules\Builder\Reader::holds( [] ) === false );
+check( '...and a loop is a grid and nothing more: its defaults carry no card, the cell is a div', array_filter( $registry['stacks'], static fn( array $schema ): bool => array_key_exists( 'card', $schema['defaults'] ) === true ) === [] );
 
 $page = static function( string ...$blocks ) use ( &$page ): string {
 	return implode( "\n\n", $blocks ). "\n";
@@ -162,9 +162,6 @@ check( 'the services: a column with a stack names its type, its loop and its cel
 	&& $services['cols'][1]['stack']['attributes']['sort'] === 'title' && $services['cols'][1]['stack']['attributes']['limit'] === '6'
 	&& $services['cols'][1]['stack']['attributes']['cols'] === '100 50 50' && $services['cols'][1]['stack']['attributes']['autoheight'] === '1'
 	&& $services['cols'][1]['stack']['attributes']['gap'] === '2' );
-
-var_dump($services);
-exit;
 check( '...its components take a field of the type as their source, and a fixed text beside it',
 	array_column( $services['cols'][1]['components'], 'source' ) === [ 'image', 'title', 'summary', '.uri' ] && $services['cols'][1]['components'][3]['text'] === 'Mehr' );
 
@@ -333,12 +330,12 @@ $cardNode			= $story['cols'][1]['components'][0];
 $cell					= $cardModel['blocks'][1]['cols'][0];
 
 check( 'the page with a card is read as it is written: a picture beside a card in one section, a loop in the next', array_column( $cardModel['blocks'], 'kind' ) === [ 'section', 'section' ] && [ $cardModel['blocks'][0]['id'], $cardModel['blocks'][1]['id'] ] === [ 'story', 'services' ]
-	&& array_column( $story['cols'][0]['components'], 'name' ) === [ 'image' ] && array_column( $story['cols'][1]['components'], 'name' ) === [ 'article' ] && $cell['stack']['name'] === 'stack' && array_column( $cell['components'], 'name' ) === [ 'article' ] );
+	&& array_column( $story['cols'][0]['components'], 'name' ) === [ 'image' ] && array_column( $story['cols'][1]['components'], 'name' ) === [ 'card' ] && $cell['stack']['name'] === 'stack' && array_column( $cell['components'], 'name' ) === [ 'card' ] );
 check( '...the card is a component node that carries its children, in order, as components, and no content: the title, the text and the button, each a node as it is in a column', array_keys( $cardNode ) === [ 'name', 'source', 'text', 'attributes', 'components' ]
-	&& $cardNode['source'] === '' && $cardNode['text'] === null && array_column( $cardNode['components'], 'name' ) === [ 'article-title', 'text', 'button' ]
+	&& $cardNode['source'] === '' && $cardNode['text'] === null && array_column( $cardNode['components'], 'name' ) === [ 'card-title', 'text', 'button' ]
 	&& array_column( $cardNode['components'], 'source' ) === [ '/template/page-home-card/story/title', '/template/page-home-card/story/text', '/template/page-home-card/story/button' ] && array_key_exists( 'content', $cardNode ) === false );
 check( '...it has every attribute of its schema, in the order of the schema, the default where the call is silent - the ground and the padding are the two the file sets - and its children theirs', $cardNode['attributes'] === [ 'ground' => 'counter', 'padding' => '3', 'fill' => '0', 'vertical' => '', 'align' => '', 'background' => '', 'focus' => '', 'dim' => '0', 'borderless' => '0', 'class' => '' ]
-	&& array_keys( $cardNode['attributes'] ) === array_keys( $registry['components']['article']['defaults'] ) && $cardNode['components'][0]['attributes'] === [ 'level' => '3', 'style' => '', 'class' => '' ] && array_key_exists( 'components', $cardNode['components'][0] ) === false );
+	&& array_keys( $cardNode['attributes'] ) === array_keys( $registry['components']['card']['defaults'] ) && $cardNode['components'][0]['attributes'] === [ 'level' => '3', 'style' => '', 'class' => '' ] && array_key_exists( 'components', $cardNode['components'][0] ) === false );
 check( '...a plain component carries no list of children, whatever it is: only a component that holds components does', array_filter( array_merge( $story['cols'][0]['components'], $cardNode['components'], $cell['components'][0]['components'] ), static fn( array $node ): bool => array_key_exists( 'components', $node ) === true ) === [] );
 check( '...in a loop the card stands in the content of the stack, once for each element: its picture is a field of the element, so is its title, and the stack holds the card and nothing else', $cell['components'][0]['attributes']['background'] === 'image' && $cell['components'][0]['attributes']['focus'] === '5' && $cell['components'][0]['attributes']['dim'] === '1' && $cell['components'][0]['attributes']['fill'] === '1'
 	&& $cell['components'][0]['components'][0]['source'] === 'title' && $cell['stack']['source'] === '/services' && array_key_exists( 'components', $cell['stack'] ) === false );
@@ -348,17 +345,17 @@ check( 'the model the panel\'s script test reads (fixtures/page-home-card.json) 
 check( 'writing the model gives the page back, byte for byte - the card on a line, its children one tab deeper on lines of their own, its closing tag at the depth of its call, in a loop one tab deeper still - and reading what was written gives the model', $write( $cardModel ) === $cardFixture && $read( $write( $cardModel ) ) === $cardModel && $write( $read( $write( $cardModel ) ) ) === $cardFixture );
 
 // A card written by hand is read all the same, and written in the one form: its attributes in the order of the schema, its children and its closing tag on lines of their own
-$handCard = $page( $section( "[article padding=\"3\" ground=\"counter\"][article-title /template/page-x/a/title][text /template/page-x/a/text][/article]" ) );
+$handCard = $page( $section( "[card padding=\"3\" ground=\"counter\"][card-title /template/page-x/a/title][text /template/page-x/a/text][/card]" ) );
 $handNode = $read( $handCard )['blocks'][0]['cols'][0]['components'][0];
-check( 'a card whose attributes are in another order and whose children stand on its line is read as the card it is, and written in the canonical form', $handNode['attributes']['ground'] === 'counter' && $handNode['attributes']['padding'] === '3' && array_column( $handNode['components'], 'name' ) === [ 'article-title', 'text' ]
-	&& $write( $read( $handCard ) ) === $inWrap( $page( $section( "[article ground=\"counter\" padding=\"3\"]\n\t\t\t\t[article-title /template/page-x/a/title]\n\t\t\t\t[text /template/page-x/a/text]\n\t\t\t[/article]" ) ) ) );
+check( 'a card whose attributes are in another order and whose children stand on its line is read as the card it is, and written in the canonical form', $handNode['attributes']['ground'] === 'counter' && $handNode['attributes']['padding'] === '3' && array_column( $handNode['components'], 'name' ) === [ 'card-title', 'text' ]
+	&& $write( $read( $handCard ) ) === $inWrap( $page( $section( "[card ground=\"counter\" padding=\"3\"]\n\t\t\t\t[card-title /template/page-x/a/title]\n\t\t\t\t[text /template/page-x/a/text]\n\t\t\t[/card]" ) ) ) );
 
 // A card with nothing between its tags is a card with no children, and is written with its closing tag on a line of its own
-$emptyCard = $page( $section( '[article][/article]' ) );
+$emptyCard = $page( $section( '[card][/card]' ) );
 $emptyNode = $read( $emptyCard )['blocks'][0]['cols'][0]['components'][0];
-check( '...a card with nothing between its tags holds nothing: a list of no children, and a card that is written has its closing tag below its call, and reads again as the same card', $emptyNode['components'] === [] && $emptyNode['attributes'] === $registry['components']['article']['defaults']
-	&& $write( $read( $emptyCard ) ) === $inWrap( $page( $section( "[article]\n\t\t\t[/article]" ) ) ) && $read( $write( $read( $emptyCard ) ) ) === $read( $emptyCard ) );
-check( '...a call without its closing tag is a card with no children as well - the kernel reads to the end of the call', $read( $page( $section( '[article ground="alt"]' ) ) )['blocks'][0]['cols'][0]['components'][0]['components'] === [] );
+check( '...a card with nothing between its tags holds nothing: a list of no children, and a card that is written has its closing tag below its call, and reads again as the same card', $emptyNode['components'] === [] && $emptyNode['attributes'] === $registry['components']['card']['defaults']
+	&& $write( $read( $emptyCard ) ) === $inWrap( $page( $section( "[card]\n\t\t\t[/card]" ) ) ) && $read( $write( $read( $emptyCard ) ) ) === $read( $emptyCard ) );
+check( '...a call without its closing tag is a card with no children as well - the kernel reads to the end of the call', $read( $page( $section( '[card ground="alt"]' ) ) )['blocks'][0]['cols'][0]['components'][0]['components'] === [] );
 
 echo "\n";
 
@@ -411,26 +408,26 @@ $failures = [
 	'a background of a column that is no image call' => [ $section( "<div class=\"nino-grid-bg\">text</div>" ), 'background-image' ],
 	'the background of a section in a column' => [ $section( "<div class=\"nino-section-bg\">[image /template/page-x/a/one alt=\"\"]</div>" ), 'col-markup' ],
 	// What a loop takes: the grid, and no card - the cell is a div, and a card is a component in the content
-	'the card attribute a loop had before the card was a component' => [ $section( "[stack /services article=\"alt\"]\n\t\t\t\t[title title]\n\t\t\t[/stack]" ), 'unknown-attribute', null, 'article' ],
+	'the card attribute a loop had before the card was a component' => [ $section( "[stack /services card=\"alt\"]\n\t\t\t\t[title title]\n\t\t\t[/stack]" ), 'unknown-attribute', null, 'card' ],
 	'an attribute of the grid on a loop that has no grid' => [ $section( "[slider /services cols=\"100 50 33\"]\n\t\t\t\t[title title]\n\t\t\t[/slider]" ), 'unknown-attribute', null, 'cols' ],
 	// A component that holds components holds the calls of components that hold none, and nothing else
-	'a loop in a card'								=> [ $section( "[article]\n\t\t\t\t[stack /services]\n\t\t\t\t\t[title title]\n\t\t\t\t[/stack]\n\t\t\t[/article]" ), 'holder-stack' ],
-	'a loop after the calls of a card'		=> [ $section( "[article]\n\t\t\t\t[article-title /template/page-x/a/title]\n\t\t\t\t[stack /services]\n\t\t\t\t\t[title title]\n\t\t\t\t[/stack]\n\t\t\t[/article]" ), 'holder-stack' ],
-	'a card in a card'								=> [ $section( "[article]\n\t\t\t\t[article ground=\"alt\"]\n\t\t\t\t\t[article-title /template/page-x/a/title]\n\t\t\t\t[/article]\n\t\t\t[/article]" ), 'holder-in-holder' ],
-	'a card in a card, the inner one closed first' => [ $section( "[article]\n\t\t\t\t[article-title /template/page-x/a/title]\n\t\t\t\t[article][/article]\n\t\t\t[/article]" ), 'holder-in-holder' ],
-	'a card in a card in a loop'			=> [ $section( "[stack /services]\n\t\t\t\t[article]\n\t\t\t\t\t[article]\n\t\t\t\t\t\t[article-title title]\n\t\t\t\t\t[/article]\n\t\t\t\t[/article]\n\t\t\t[/stack]" ), 'holder-in-holder' ],
-	'markup in a card'							=> [ $section( "[article]\n\t\t\t\t<p>Hello</p>\n\t\t\t[/article]" ), 'holder-content', null, 'article' ],
-	'text next to the calls of a card'	=> [ $section( "[article]\n\t\t\t\t[article-title /template/page-x/a/title]\n\t\t\t\tAnd more\n\t\t\t[/article]" ), 'holder-content', null, 'And more' ],
-	'a fill in a card'							=> [ $section( "[article]\n\t\t\t\t[[/template/page-x/a/title]]\n\t\t\t[/article]" ), 'holder-content' ],
-	'markup in a card in a loop'			=> [ $section( "[stack /services]\n\t\t\t\t[article]\n\t\t\t\t\t<p>Hello</p>\n\t\t\t\t[/article]\n\t\t\t[/stack]" ), 'holder-content', null, 'article' ],
-	'a shortcode that is no component in a card' => [ $section( "[article]\n\t\t\t\t[osm lat=\"1\"]\n\t\t\t[/article]" ), 'unknown-shortcode', null, 'osm' ],
-	'content on a call in a card'		=> [ $section( "[article]\n\t\t\t\t[title /template/page-x/a/title]text[/title]\n\t\t\t[/article]" ), 'component-content', null, 'title' ],
-	'a call inside the content of a call in a card' => [ $section( "[article]\n\t\t\t\t[html]<p>[button /template/page-x/a/button]</p>[/html]\n\t\t\t[/article]" ), 'nested-call', null, 'html' ],
-	'an attribute the card has not'		=> [ $section( '[article colour="red"]' ), 'unknown-attribute', null, 'colour' ],
-	'a value outside the options of the card' => [ $section( '[article ground="neon"]' ), 'attribute-value', null, 'ground' ],
-	'a fixed text on a card'					=> [ $section( '[article text="x"]' ), 'unknown-attribute', null, 'text' ],
-	'a source on a card'						=> [ $section( '[article /template/page-x/a/title]' ), 'call-arguments' ],
-	'a card next to a loop'					=> [ $section( "[article]\n\t\t\t\t[article-title /template/page-x/a/title]\n\t\t\t[/article]\n\t\t\t[stack /services]\n\t\t\t\t[title title]\n\t\t\t[/stack]" ), 'stack-neighbour' ],
+	'a loop in a card'								=> [ $section( "[card]\n\t\t\t\t[stack /services]\n\t\t\t\t\t[title title]\n\t\t\t\t[/stack]\n\t\t\t[/card]" ), 'holder-stack' ],
+	'a loop after the calls of a card'		=> [ $section( "[card]\n\t\t\t\t[card-title /template/page-x/a/title]\n\t\t\t\t[stack /services]\n\t\t\t\t\t[title title]\n\t\t\t\t[/stack]\n\t\t\t[/card]" ), 'holder-stack' ],
+	'a card in a card'								=> [ $section( "[card]\n\t\t\t\t[card ground=\"alt\"]\n\t\t\t\t\t[card-title /template/page-x/a/title]\n\t\t\t\t[/card]\n\t\t\t[/card]" ), 'holder-in-holder' ],
+	'a card in a card, the inner one closed first' => [ $section( "[card]\n\t\t\t\t[card-title /template/page-x/a/title]\n\t\t\t\t[card][/card]\n\t\t\t[/card]" ), 'holder-in-holder' ],
+	'a card in a card in a loop'			=> [ $section( "[stack /services]\n\t\t\t\t[card]\n\t\t\t\t\t[card]\n\t\t\t\t\t\t[card-title title]\n\t\t\t\t\t[/card]\n\t\t\t\t[/card]\n\t\t\t[/stack]" ), 'holder-in-holder' ],
+	'markup in a card'							=> [ $section( "[card]\n\t\t\t\t<p>Hello</p>\n\t\t\t[/card]" ), 'holder-content', null, 'card' ],
+	'text next to the calls of a card'	=> [ $section( "[card]\n\t\t\t\t[card-title /template/page-x/a/title]\n\t\t\t\tAnd more\n\t\t\t[/card]" ), 'holder-content', null, 'And more' ],
+	'a fill in a card'							=> [ $section( "[card]\n\t\t\t\t[[/template/page-x/a/title]]\n\t\t\t[/card]" ), 'holder-content' ],
+	'markup in a card in a loop'			=> [ $section( "[stack /services]\n\t\t\t\t[card]\n\t\t\t\t\t<p>Hello</p>\n\t\t\t\t[/card]\n\t\t\t[/stack]" ), 'holder-content', null, 'card' ],
+	'a shortcode that is no component in a card' => [ $section( "[card]\n\t\t\t\t[osm lat=\"1\"]\n\t\t\t[/card]" ), 'unknown-shortcode', null, 'osm' ],
+	'content on a call in a card'		=> [ $section( "[card]\n\t\t\t\t[title /template/page-x/a/title]text[/title]\n\t\t\t[/card]" ), 'component-content', null, 'title' ],
+	'a call inside the content of a call in a card' => [ $section( "[card]\n\t\t\t\t[html]<p>[button /template/page-x/a/button]</p>[/html]\n\t\t\t[/card]" ), 'nested-call', null, 'html' ],
+	'an attribute the card has not'		=> [ $section( '[card colour="red"]' ), 'unknown-attribute', null, 'colour' ],
+	'a value outside the options of the card' => [ $section( '[card ground="neon"]' ), 'attribute-value', null, 'ground' ],
+	'a fixed text on a card'					=> [ $section( '[card text="x"]' ), 'unknown-attribute', null, 'text' ],
+	'a source on a card'						=> [ $section( '[card /template/page-x/a/title]' ), 'call-arguments' ],
+	'a card next to a loop'					=> [ $section( "[card]\n\t\t\t\t[card-title /template/page-x/a/title]\n\t\t\t[/card]\n\t\t\t[stack /services]\n\t\t\t\t[title title]\n\t\t\t[/stack]" ), 'stack-neighbour' ],
 	// What a call is made of
 	'a value outside its options'					=> [ $section( '[title /template/page-x/a/title level="9"]' ), 'attribute-value', null, 'level' ],
 	'an attribute the component has not'	=> [ $section( '[title /template/page-x/a/title colour="red"]' ), 'unknown-attribute', null, 'colour' ],
@@ -474,12 +471,12 @@ check( 'the reason names the line of the failure: the call on the twelfth line o
 check( '...and the sentence says what the kernel knows no component by', str_contains( $three['blocks'][1]['reason']['text'], 'osm' ) === true );
 
 // Markup in a card: the sentence has two places, the card and the markup, and the detail holds both
-$holding = $read( $page( $section( "[article]\n\t\t\t\t[article-title /template/page-x/a/title]\n\t\t\t\t<p>Hello</p>\n\t\t\t[/article]", 'holding' ) ) )['blocks'][0];
+$holding = $read( $page( $section( "[card]\n\t\t\t\t[card-title /template/page-x/a/title]\n\t\t\t\t<p>Hello</p>\n\t\t\t[/card]", 'holding' ) ) )['blocks'][0];
 check( 'the reason of markup next to the calls of a card names the line of the markup, and is told with two places - the card and the markup -, which its detail holds with a line feed between',
-	$holding['reason']['code'] === 'holder-content' && $holding['reason']['line'] === 6 && $holding['reason']['detail'] === "article\n<p>Hello</p>" && $holding['reason']['text'] === 'the component article holds markup next to its component calls: <p>Hello</p>'
+	$holding['reason']['code'] === 'holder-content' && $holding['reason']['line'] === 6 && $holding['reason']['detail'] === "card\n<p>Hello</p>" && $holding['reason']['text'] === 'the component card holds markup next to its component calls: <p>Hello</p>'
 	&& substr_count( \Nino\Modules\Builder\Reader::REASONS['holder-content'], '%s' ) === 2 && substr_count( \Nino\Modules\Builder\Reader::REASONS['holder-stack'], '%s' ) === 0 && substr_count( \Nino\Modules\Builder\Reader::REASONS['holder-in-holder'], '%s' ) === 0 );
-$holdingLong = $read( $page( $section( "[article]\n\t\t\t\t<p>Hello\n\t\t\t\t   there, and more of it</p>\n\t\t\t[/article]", 'holding' ) ) )['blocks'][0];
-check( '...the markup in it is one line of white space, so that a second place takes it whole, and a sentence with one place takes its detail as it is, whatever it holds', $holdingLong['reason']['detail'] === "article\n<p>Hello there, a" && $holdingLong['reason']['text'] === 'the component article holds markup next to its component calls: <p>Hello there, a'
+$holdingLong = $read( $page( $section( "[card]\n\t\t\t\t<p>Hello\n\t\t\t\t   there, and more of it</p>\n\t\t\t[/card]", 'holding' ) ) )['blocks'][0];
+check( '...the markup in it is one line of white space, so that a second place takes it whole, and a sentence with one place takes its detail as it is, whatever it holds', $holdingLong['reason']['detail'] === "card\n<p>Hello there, a" && $holdingLong['reason']['text'] === 'the component card holds markup next to its component calls: <p>Hello there, a'
 	&& $read( $page( $section( "<p>Hello\n\t\t\t\tthere</p>", 'holding' ) ) )['blocks'][0]['reason']['text'] === "the column holds markup next to its component calls: <p>Hello\n\t\t\t\tthere</p>" );
 
 check( 'a section the reader does read, after one it does not: the foreign block ends where the next section begins',
@@ -764,10 +761,10 @@ check( 'a stack other than [stack] is read and written as its own, with the attr
 	&& str_contains( $write( [ 'blocks' => [ $stacked ] ] ), "[slider /services width=\"60%\"]\n\t\t\t\t[title title]\n\t\t\t[/slider]" ) === true );
 
 // A loop is the grid and nothing about what a cell looks like: it has no card attribute, and a card is a component in its content, once for each element
-$carded		= $page( $section( "[stack /services sort=\"title\" cols=\"100 50 50\" autoheight=\"1\"]\n\t\t\t\t[article ground=\"counter\" fill=\"1\"]\n\t\t\t\t\t[article-title title]\n\t\t\t\t[/article]\n\t\t\t[/stack]" ) );
+$carded		= $page( $section( "[stack /services sort=\"title\" cols=\"100 50 50\" autoheight=\"1\"]\n\t\t\t\t[card ground=\"counter\" fill=\"1\"]\n\t\t\t\t\t[card-title title]\n\t\t\t\t[/card]\n\t\t\t[/stack]" ) );
 $cards		= $read( $carded )['blocks'][0]['cols'][0];
 check( 'a loop that holds a card is read and written like any other: the card is the content of the stack, one level deeper - its call at the depth of the components of a loop, its children one tab deeper still, its closing tag where its call is - and written back byte for byte',
-	$cards['stack']['name'] === 'stack' && array_keys( $cards['stack']['attributes'] ) === [ 'sort', 'offset', 'limit', 'query', 'callback', 'locale', 'id', 'cols', 'gap', 'autoheight', 'class' ] && array_column( $cards['components'], 'name' ) === [ 'article' ]
+	$cards['stack']['name'] === 'stack' && array_keys( $cards['stack']['attributes'] ) === [ 'sort', 'offset', 'limit', 'query', 'callback', 'locale', 'id', 'cols', 'gap', 'autoheight', 'class' ] && array_column( $cards['components'], 'name' ) === [ 'card' ]
 	&& array_column( $cards['components'][0]['components'], 'source' ) === [ 'title' ] && $write( $read( $carded ) ) === $inWrap( $carded ) && $read( $write( $read( $carded ) ) ) === $read( $carded ) );
 
 // The padding of a column and the margin above and below it: p, mt and mb, a step of the space scale each, classes of the column after the text and before the animation
@@ -807,36 +804,36 @@ check( 'a column with none of the three is written as it always was: a model wit
 	&& $write( $wrapModel ) === $wrapFixture && $write( $vpaModel ) === $wrapFixture && $write( $read( $concept ) ) === $wrapped( $fixture ) );
 
 // A card as the Writer writes it: every attribute, in the order of the schema and only where it differs from the default
-$allSet = [ 'name' => 'article', 'source' => '', 'text' => null, 'attributes' => [ 'ground' => 'dark', 'padding' => '0', 'fill' => '1', 'vertical' => 'last-bottom', 'align' => 'center', 'background' => '/template/page-x/a/backdrop', 'focus' => '3', 'dim' => '1', 'borderless' => '1', 'class' => 'my-card' ],
+$allSet = [ 'name' => 'card', 'source' => '', 'text' => null, 'attributes' => [ 'ground' => 'dark', 'padding' => '0', 'fill' => '1', 'vertical' => 'last-bottom', 'align' => 'center', 'background' => '/template/page-x/a/backdrop', 'focus' => '3', 'dim' => '1', 'borderless' => '1', 'class' => 'my-card' ],
 	'components' => [
-		[ 'name' => 'article-title', 'source' => '/template/page-x/a/title', 'text' => null, 'attributes' => [ 'level' => '3', 'style' => 'quiet', 'class' => '' ] ],
+		[ 'name' => 'card-title', 'source' => '/template/page-x/a/title', 'text' => null, 'attributes' => [ 'level' => '3', 'style' => 'quiet', 'class' => '' ] ],
 		[ 'name' => 'button', 'source' => '', 'text' => 'Go', 'attributes' => [ 'href' => '#top', 'style' => '', 'size' => '', 'target' => '', 'class' => '' ] ],
 	] ];
 $cardBlock = $blank;
 $cardBlock['cols'][0]['components'] = [ $allSet ];
 $cardText = $write( [ 'blocks' => [ $cardBlock ] ] );
 check( 'a card with every attribute set is its call with the attributes in the order of the schema - ground, padding, full height, vertical, horizontal, picture, focus, dimming, border, class -, its children one tab deeper on a line each and its closing tag at the depth of its call',
-	str_contains( $cardText, "\t\t\t[article ground=\"dark\" padding=\"0\" fill=\"1\" vertical=\"last-bottom\" align=\"center\" background=\"/template/page-x/a/backdrop\" focus=\"3\" dim=\"1\" borderless=\"1\" class=\"my-card\"]\n"
-		. "\t\t\t\t[article-title /template/page-x/a/title level=\"3\" style=\"quiet\"]\n\t\t\t\t[button text=\"Go\" href=\"#top\"]\n\t\t\t[/article]\n\t\t</div>\n" ) === true );
+	str_contains( $cardText, "\t\t\t[card ground=\"dark\" padding=\"0\" fill=\"1\" vertical=\"last-bottom\" align=\"center\" background=\"/template/page-x/a/backdrop\" focus=\"3\" dim=\"1\" borderless=\"1\" class=\"my-card\"]\n"
+		. "\t\t\t\t[card-title /template/page-x/a/title level=\"3\" style=\"quiet\"]\n\t\t\t\t[button text=\"Go\" href=\"#top\"]\n\t\t\t[/card]\n\t\t</div>\n" ) === true );
 check( '...and what is written reads back as what was meant: the card with its attributes and its children, node for node', $read( $cardText )['blocks'][0]['cols'][0]['components'][0] === $allSet );
 
 // In the content of a loop the card is one level deeper, and so are its children
 $looped = $blank;
 $looped['cols'][0]['stack'] = [ 'name' => 'stack', 'source' => '/services', 'attributes' => $registry['stacks']['stack']['defaults'] ];
-$looped['cols'][0]['components'] = [ [ 'name' => 'article', 'source' => '', 'text' => null, 'attributes' => array_replace( $registry['components']['article']['defaults'], [ 'fill' => '1' ] ),
-	'components' => [ [ 'name' => 'article-title', 'source' => 'title', 'text' => null, 'attributes' => $registry['components']['article-title']['defaults'] ] ] ] ];
+$looped['cols'][0]['components'] = [ [ 'name' => 'card', 'source' => '', 'text' => null, 'attributes' => array_replace( $registry['components']['card']['defaults'], [ 'fill' => '1' ] ),
+	'components' => [ [ 'name' => 'card-title', 'source' => 'title', 'text' => null, 'attributes' => $registry['components']['card-title']['defaults'] ] ] ] ];
 check( '...in the content of a loop the call of the card stands one tab deeper, its children one more and its closing tag with its call - and it reads back as the loop and the card it was', str_contains( $write( [ 'blocks' => [ $looped ] ] ),
-	"\t\t\t[stack /services]\n\t\t\t\t[article fill=\"1\"]\n\t\t\t\t\t[article-title title]\n\t\t\t\t[/article]\n\t\t\t[/stack]\n" ) === true && $read( $write( [ 'blocks' => [ $looped ] ] ) )['blocks'][0] === $looped );
+	"\t\t\t[stack /services]\n\t\t\t\t[card fill=\"1\"]\n\t\t\t\t\t[card-title title]\n\t\t\t\t[/card]\n\t\t\t[/stack]\n" ) === true && $read( $write( [ 'blocks' => [ $looped ] ] ) )['blocks'][0] === $looped );
 
 // A card that holds nothing, one the model gives no list of children, and a content that a card has none of
-$bare = [ 'name' => 'article', 'source' => '', 'text' => null, 'attributes' => [ 'ground' => 'alt' ] ];
+$bare = [ 'name' => 'card', 'source' => '', 'text' => null, 'attributes' => [ 'ground' => 'alt' ] ];
 $strayed = $bare;
 $strayed['content'] = '<p>Not a card\'s</p>';
 $strayed['components'] = [];
 $bareBlock = $blank;
 $bareBlock['cols'][0]['components'] = [ $bare, $strayed ];
 check( 'a card whose model has no list of children, or an empty one, is written with nothing between its tags, its closing tag below its call - and a content is not a card\'s: the Writer leaves it out',
-	substr_count( $write( [ 'blocks' => [ $bareBlock ] ] ), "[article ground=\"alt\"]\n\t\t\t[/article]\n" ) === 2 && str_contains( $write( [ 'blocks' => [ $bareBlock ] ] ), 'Not a card' ) === false );
+	substr_count( $write( [ 'blocks' => [ $bareBlock ] ] ), "[card ground=\"alt\"]\n\t\t\t[/card]\n" ) === 2 && str_contains( $write( [ 'blocks' => [ $bareBlock ] ] ), 'Not a card' ) === false );
 
 // A component that holds nothing is written as a call, whatever the model hands it
 $plain = [ 'name' => 'title', 'source' => '/template/page-x/a/title', 'text' => null, 'attributes' => [ 'level' => '2' ], 'components' => [ [ 'name' => 'text', 'source' => '/template/page-x/a/text', 'text' => null, 'attributes' => [] ] ] ];
@@ -887,7 +884,7 @@ $appData['/nino/http/routes']['GET://about'] = [ 'uri' => '/about', 'body' => '[
 $registryAnswer = \Nino\Modules\Builder\Document::registry( $appData );
 
 check( 'the registry hands the panel the components and the stacks with their labels in the language of the workbench, and the defaults of their attributes', $registryAnswer['status'] === 200
-	&& $registryAnswer['components']['title']['label'] === 'Title' && $registryAnswer['components']['title']['attributes']['level']['label'] === 'Level'
+	&& $registryAnswer['components']['title']['label'] === 'Title (Section)' && $registryAnswer['components']['title']['attributes']['level']['label'] === 'Level'
 	&& $registryAnswer['components']['title']['defaults']['level'] === '2' && $registryAnswer['stacks']['stack']['label'] === 'Stack' && $registryAnswer['stacks']['stack']['defaults']['cols'] === '100 50 33' );
 check( '...the element types of the project with their fields and the field types there are', array_column( $registryAnswer['types'], 'uri' ) === [ '/services' ]
 	&& array_keys( $registryAnswer['types'][0]['fields'] ) === [ 'title', 'summary', 'image' ] && $registryAnswer['types'][0]['fields']['image']['type'] === 'image'
@@ -900,17 +897,17 @@ unset( $appData['/nino/html/images']['/project/logo/header/image'] );
 check( '...a slot with a picture says where it is (the Images panel\'s url) for the thumbnail of the source field, one without says null', $registryAnswer['slots'][0]['url'] === \Nino\Images::getUrl( $appData, 'hero.1600x900.jpg' )
 	&& $withEmpty['/project/logo/header/image']['hasImage'] === false && $withEmpty['/project/logo/header/image']['url'] === null );
 check( '...a component says where it belongs (in) and what it draws (draws), as the kernel registered it: the title for a section, the title of a card for a card, the title of a hero for a hero, the button everywhere - and one that says neither carries neither',
-	$registryAnswer['components']['title']['in'] === [ 'section' ] && $registryAnswer['components']['title']['draws'] === 'h{level} .nino-section-title' && $registryAnswer['components']['article-title']['in'] === [ 'card' ]
+	$registryAnswer['components']['title']['in'] === [ 'section' ] && $registryAnswer['components']['title']['draws'] === 'h{level} .nino-section-title' && $registryAnswer['components']['card-title']['in'] === [ 'card' ]
 	&& $registryAnswer['components']['hero-title']['in'] === [ 'hero' ] && $registryAnswer['components']['hero-subtitle']['draws'] === 'p .nino-hero-subtitle' && $registryAnswer['components']['button']['draws'] === 'a .nino-btn'
 	&& array_key_exists( 'in', $registryAnswer['components']['button'] ) === false && array_key_exists( 'in', $registryAnswer['components']['text'] ) === false && array_key_exists( 'draws', $registryAnswer['components']['text'] ) === false
-	&& array_key_exists( 'draws', $registryAnswer['stacks']['stack'] ) === false && $registryAnswer['components']['article-title']['label'] === 'Article title' );
-check( '...a component says what it holds (holds), the place of the components it takes as its children: the card holds the place card, is offered in a section and in a hero, and draws an article - all three arrive as the kernel has them, and no other component carries holds, nor does a loop',
-	$registryAnswer['components']['article']['in'] === [ 'section', 'hero' ] && $registryAnswer['components']['article']['draws'] === 'article .nino-article' && $registryAnswer['components']['article']['holds'] === 'card' && $registryAnswer['components']['article']['label'] === 'Card'
-	&& $registryAnswer['components']['article']['source'] === 'content' && array_keys( $registryAnswer['components']['article']['attributes'] ) === [ 'ground', 'padding', 'fill', 'vertical', 'align', 'background', 'focus', 'dim', 'borderless' ]
-	&& array_keys( array_filter( $registryAnswer['components'], static fn( array $schema ): bool => array_key_exists( 'holds', $schema ) === true ) ) === [ 'article' ] && array_filter( $registryAnswer['stacks'], static fn( array $schema ): bool => array_key_exists( 'holds', $schema ) === true || array_key_exists( 'in', $schema ) === true ) === []
-	&& array_key_exists( 'article', $registryAnswer['stacks']['stack']['defaults'] ) === false && array_key_exists( 'article', $registryAnswer['stacks']['filter']['defaults'] ) === false );
+	&& array_key_exists( 'draws', $registryAnswer['stacks']['stack'] ) === false && $registryAnswer['components']['card-title']['label'] === 'Title (Card)' );
+check( '...a component says what it holds (holds), the place of the components it takes as its children: the card holds the place card, is offered in a section and in a hero, and draws an article element - all three arrive as the kernel has them, and no other component carries holds, nor does a loop',
+	$registryAnswer['components']['card']['in'] === [ 'section', 'hero' ] && $registryAnswer['components']['card']['draws'] === 'article .nino-card' && $registryAnswer['components']['card']['holds'] === 'card' && $registryAnswer['components']['card']['label'] === 'Card'
+	&& $registryAnswer['components']['card']['source'] === 'content' && array_keys( $registryAnswer['components']['card']['attributes'] ) === [ 'ground', 'padding', 'fill', 'vertical', 'align', 'background', 'focus', 'dim', 'borderless' ]
+	&& array_keys( array_filter( $registryAnswer['components'], static fn( array $schema ): bool => array_key_exists( 'holds', $schema ) === true ) ) === [ 'card' ] && array_filter( $registryAnswer['stacks'], static fn( array $schema ): bool => array_key_exists( 'holds', $schema ) === true || array_key_exists( 'in', $schema ) === true ) === []
+	&& array_key_exists( 'card', $registryAnswer['stacks']['stack']['defaults'] ) === false && array_key_exists( 'card', $registryAnswer['stacks']['filter']['defaults'] ) === false );
 check( '...and the entry of the card is the entry of the registry of the Components module but for its words, which are in the language of the workbench: the panel is handed nothing of its own making',
-	array_diff_key( $registryAnswer['components']['article'], [ 'label' => 1, 'attributes' => 1 ] ) === array_diff_key( \Nino\Modules\Builder\Document::schemas( $appData )['components']['article'], [ 'label' => 1, 'attributes' => 1 ] ) );
+	array_diff_key( $registryAnswer['components']['card'], [ 'label' => 1, 'attributes' => 1 ] ) === array_diff_key( \Nino\Modules\Builder\Document::schemas( $appData )['components']['card'], [ 'label' => 1, 'attributes' => 1 ] ) );
 check( '...the components and the stacks the panel\'s script test reads (fixtures/registry.json) are what the registry says', json_decode( (string) file_get_contents( __DIR__. '/fixtures/registry.json' ), true ) === json_decode( (string) json_encode( [ 'components' => $registryAnswer['components'], 'stacks' => $registryAnswer['stacks'] ] ), true ) );
 
 $listed = \Nino\Modules\Builder\Document::list( $appData );
@@ -1856,17 +1853,17 @@ $stored = static fn( string $key, string $locale = 'en_US' ): ?string => \Nino\T
 check( 'the keys the children of a card name as new are made at the save, as those of the components of a column are: in every language, with the value they were given - and the file is the page with the fourth child, the card closing below it',
 	$kidsAnswer['status'] === 200 && $stored( '/template/page-home-card/story/title' ) === 'Our story' && $stored( '/template/page-home-card/story/title', 'de_DE' ) === 'Our story' && $stored( '/template/page-home-card/story/text' ) === '<p>It began in a garage.</p>'
 	&& $stored( '/template/page-home-card/story/button' ) === 'Read on' && $stored( '/template/page-home-card/story/note' ) === '<p>A note.</p>'
-	&& str_contains( (string) file_get_contents( $cardPath ), "\t\t\t\t[button /template/page-home-card/story/button href=\"/contact\"]\n\t\t\t\t[text /template/page-home-card/story/note]\n\t\t\t[/article]\n" ) === true );
+	&& str_contains( (string) file_get_contents( $cardPath ), "\t\t\t\t[button /template/page-home-card/story/button href=\"/contact\"]\n\t\t\t\t[text /template/page-home-card/story/note]\n\t\t\t[/card]\n" ) === true );
 check( '...the format of a key is the one its component asks for - the text of a card is blocks, the title of a card plain - and the answer is the file as it reads, without the marks',
 	( \Nino\Text::entry( $appData, '/template/page-home-card/story/text' )['format'] ?? '' ) === 'blocks' && ( \Nino\Text::entry( $appData, '/template/page-home-card/story/title' )['format'] ?? '' ) === 'plain'
-	&& isset( $cardAt( $kidsAnswer['model'] )['components'][0]['create'] ) === false && array_column( $cardAt( $kidsAnswer['model'] )['components'], 'name' ) === [ 'article-title', 'text', 'button', 'text' ] );
+	&& isset( $cardAt( $kidsAnswer['model'] )['components'][0]['create'] ) === false && array_column( $cardAt( $kidsAnswer['model'] )['components'], 'name' ) === [ 'card-title', 'text', 'button', 'text' ] );
 
 // The kernel renders what the builder wrote: the card around its children, the loop with a card in each cell
 $cardPage = \Nino\Html::renderHtml( $appData, '[template /templates/page-home-card]' );
 check( 'the kernel renders the page with a card: the column with its spacing, the card around its children with the ground and the padding, the loop with a full-height dimmed card in each cell - no call left in the page',
-	preg_match( '/\[\/?(?:title|article|article-title|text|image|button|stack)[ \]]/', $cardPage ) === 0 && str_contains( $cardPage, '<div class="nino-grid-s-100 nino-grid-m-66 nino-grid-l-66 nino-p-2 nino-mt-1 nino-mb-1">' ) === true
-	&& str_contains( $cardPage, '<article class="nino-article nino-article--counter nino-p-3">' ) === true && str_contains( $cardPage, '<h3 class="nino-article-title">Our story</h3>' ) === true && str_contains( $cardPage, '<a class="nino-btn" href="/contact">Read on</a>' ) === true
-	&& substr_count( $cardPage, '<article class="nino-article nino-article--dim nino-article--fill">' ) === 2 && strpos( $cardPage, '<h3 class="nino-article-title">App</h3>' ) < strpos( $cardPage, '<h3 class="nino-article-title">Web</h3>' )
+	preg_match( '/\[\/?(?:title|card|card-title|text|image|button|stack)[ \]]/', $cardPage ) === 0 && str_contains( $cardPage, '<div class="nino-grid-s-100 nino-grid-m-66 nino-grid-l-66 nino-p-2 nino-mt-1 nino-mb-1">' ) === true
+	&& str_contains( $cardPage, '<article class="nino-card nino-card--counter nino-p-3">' ) === true && str_contains( $cardPage, '<h3 class="nino-card-title">Our story</h3>' ) === true && str_contains( $cardPage, '<a class="nino-btn" href="/contact">Read on</a>' ) === true
+	&& substr_count( $cardPage, '<article class="nino-card nino-card--dim nino-card--fill">' ) === 2 && strpos( $cardPage, '<h3 class="nino-card-title">App</h3>' ) < strpos( $cardPage, '<h3 class="nino-card-title">Web</h3>' )
 	&& strpos( $cardPage, 'Our story' ) < strpos( $cardPage, 'It began in a garage.' ) && strpos( $cardPage, 'It began in a garage.' ) < strpos( $cardPage, 'Read on' ) && strpos( $cardPage, 'Read on' ) < strpos( $cardPage, 'A note.' ) );
 
 // The texts typed for the key of a child are written to it, and the file is left alone
@@ -1887,7 +1884,7 @@ $typedPlain = $cardNow['model'];
 $typedPlain['blocks'][0]['cols'][1]['components'][0]['values'] = [ 'en_US' => 'A text for a card' ];
 check( '...a text for a language the site does not have is refused with 400 (value), the child named - and a text for a card, which has no key, is refused with 400 (invalid) as it is for any component that has none',
 	\Nino\Modules\Builder\Document::save( $appData, 'page-home-card', $typedOther, $cardNow['hash'] )['code'] === 'value' && \Nino\Modules\Builder\Document::save( $appData, 'page-home-card', $typedPlain, $cardNow['hash'] )['code'] === 'invalid'
-	&& str_contains( implode( ' ', \Nino\Modules\Builder\Document::save( $appData, 'page-home-card', $typedOther, $cardNow['hash'] )['problems'] ), 'the text of the component "article-title" is for "xx_XX"' ) === true );
+	&& str_contains( implode( ' ', \Nino\Modules\Builder\Document::save( $appData, 'page-home-card', $typedOther, $cardNow['hash'] )['problems'] ), 'the text of the component "card-title" is for "xx_XX"' ) === true );
 
 // The picture behind a card is a slot an attribute names: made at the save from the mark of the attribute, like the one behind a column
 $pictured = $cardNow['model'];
@@ -1908,7 +1905,7 @@ $picturedAnswer = \Nino\Modules\Builder\Document::save( $appData, 'page-home-car
 $cardSlot = \Nino\Images::getSlot( $appData, '/template/page-home-card/story/card-picture' ) ?: [];
 check( 'the slot a card\'s picture names is made at the save with the label and the size of the mark and its alt texts by language, as the one behind a column is - no file yet -, and the card carries the picture, its focus and its dimming in its call',
 	$picturedAnswer['status'] === 200 && $sorted( array_intersect_key( $cardSlot, [ 'label' => 1, 'width' => 1, 'height' => 1, 'filename' => 1 ] ) ) === $sorted( [ 'label' => 'Card picture', 'width' => 800, 'height' => 600, 'filename' => null ] ) && ( $cardSlot['alt'] ?? [] ) === [ 'en_US' => 'A card' ]
-	&& str_contains( (string) file_get_contents( $cardPath ), '[article ground="counter" padding="3" background="/template/page-home-card/story/card-picture" focus="3" dim="1"]' ) === true );
+	&& str_contains( (string) file_get_contents( $cardPath ), '[card ground="counter" padding="3" background="/template/page-home-card/story/card-picture" focus="3" dim="1"]' ) === true );
 check( '...the answer is the file as it reads: the attribute is there, the mark is not', ( $cardAt( $picturedAnswer['model'] )['attributes']['background'] ?? '' ) === '/template/page-home-card/story/card-picture' && isset( $cardAt( $picturedAnswer['model'] )['slots'] ) === false );
 
 // A slot that is there already is left alone, with everything it holds
@@ -1924,7 +1921,7 @@ $otherLanguage['blocks'][0]['cols'][1]['components'][0]['attributes']['backgroun
 $otherLanguage['blocks'][0]['cols'][1]['components'][0]['slots'] = [ 'background' => [ 'label' => 'Other', 'width' => 100, 'height' => 100, 'alt' => [ 'xx_XX' => 'Not a language' ] ] ];
 $otherAnswer = \Nino\Modules\Builder\Document::save( $appData, 'page-home-card', $otherLanguage, $latest['hash'] );
 check( '...an alt text of the mark for a language the site does not have is refused with 400 (value), the picture and the card named - and no slot is made', $otherAnswer['status'] === 400 && $otherAnswer['code'] === 'value'
-	&& str_contains( implode( ' ', $otherAnswer['problems'] ), 'the alt text of the picture "background" of the component "article" is for "xx_XX"' ) === true && \Nino\Images::getSlot( $appData, '/template/page-home-card/story/other-picture' ) === false );
+	&& str_contains( implode( ' ', $otherAnswer['problems'] ), 'the alt text of the picture "background" of the component "card" is for "xx_XX"' ) === true && \Nino\Images::getSlot( $appData, '/template/page-home-card/story/other-picture' ) === false );
 
 $strayMark = $latest['model'];
 $strayMark['blocks'][0]['cols'][1]['components'][0]['attributes']['background'] = '';
@@ -1934,7 +1931,7 @@ $strayMark['blocks'][0]['cols'][1]['components'][0]['slots'] = [ 'background' =>
 $strayAnswer = \Nino\Modules\Builder\Document::save( $appData, 'page-home-card', $strayMark, $latest['hash'] );
 check( 'a mark is read for an attribute of the type image that names a slot: the mark of a picture that was taken away again, and one for an attribute that is no picture, make nothing - the picture is gone from the card, the slot it had is not deleted', $strayAnswer['status'] === 200
 	&& array_filter( \Nino\Images::getSlots( $appData ), static fn( array $slot ): bool => in_array( $slot['label'] ?? '', [ 'Stray', 'Not a picture' ], true ) ) === [] && \Nino\Images::getSlot( $appData, '/template/page-home-card/story/card-picture' ) !== false && ( $cardAt( $strayAnswer['model'] )['attributes']['background'] ?? 'x' ) === ''
-	&& str_contains( (string) file_get_contents( $cardPath ), '[article ground="counter" padding="3"]' ) === true );
+	&& str_contains( (string) file_get_contents( $cardPath ), '[card ground="counter" padding="3"]' ) === true );
 
 // What a card is made of, and what it is not
 $bounds = \Nino\Modules\Builder\Document::load( $appData, 'page-home-card' );
@@ -1966,13 +1963,13 @@ $bounds = \Nino\Modules\Builder\Document::load( $appData, 'page-home-card' );
 
 $contented = $refusedCard( static function( array &$model ): void { $model['blocks'][0]['cols'][1]['components'][0]['content'] = '<p>Free</p>'; } );
 check( 'a card that has a content is refused with 400 (invalid): what it holds is its children, which it has as components - the block and the card named, and nothing is written', $contented[0] === 400 && $contented[1] === 'invalid'
-	&& str_contains( $contented[2], 'block 1 has the component "article" with a content, and it holds components' ) === true && $contented[3] === true );
+	&& str_contains( $contented[2], 'block 1 has the component "card" with a content, and it holds components' ) === true && $contented[3] === true );
 $childless = $refusedCard( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['components'][0]['components'] = []; } );
 check( '...a component that holds none and has a list of children is refused as well - the list would be written as nothing and read back as nothing', $childless[0] === 400 && str_contains( $childless[2], 'block 1 has the component "image" with components, and it holds none' ) === true && $childless[3] === true );
 $deeper = $refusedCard( static function( array &$model ): void { $model['blocks'][0]['cols'][1]['components'][0]['components'][0]['components'] = []; } );
-check( '...so is a child that has children of its own, a card in a card among them', $deeper[0] === 400 && str_contains( $deeper[2], 'block 1 has the component "article-title" with components, and it holds none' ) === true && $deeper[3] === true );
-$cardInCard = $refusedCard( static function( array &$model ) use ( $registry ): void { $model['blocks'][0]['cols'][1]['components'][0]['components'][] = [ 'name' => 'article', 'source' => '', 'text' => null, 'attributes' => $registry['components']['article']['defaults'], 'components' => [] ]; } );
-check( '...a card in a card is refused with the card named', $cardInCard[0] === 400 && str_contains( $cardInCard[2], 'block 1 has the component "article" inside another that holds components' ) === true && $cardInCard[3] === true );
+check( '...so is a child that has children of its own, a card in a card among them', $deeper[0] === 400 && str_contains( $deeper[2], 'block 1 has the component "card-title" with components, and it holds none' ) === true && $deeper[3] === true );
+$cardInCard = $refusedCard( static function( array &$model ) use ( $registry ): void { $model['blocks'][0]['cols'][1]['components'][0]['components'][] = [ 'name' => 'card', 'source' => '', 'text' => null, 'attributes' => $registry['components']['card']['defaults'], 'components' => [] ]; } );
+check( '...a card in a card is refused with the card named', $cardInCard[0] === 400 && str_contains( $cardInCard[2], 'block 1 has the component "card" inside another that holds components' ) === true && $cardInCard[3] === true );
 $stacked = $refusedCard( static function( array &$model ): void { $model['blocks'][1]['cols'][0]['stack']['components'] = []; } );
 check( '...a loop that carries a list of components is refused with 400 (invalid) as well, the block and the loop named: its cells are the components of its column, the list would be written as nothing - and the file is as it was', $stacked[0] === 400 && $stacked[1] === 'invalid'
 	&& str_contains( $stacked[2], 'block 2 has the loop "stack" with components, and it holds none' ) === true && $stacked[3] === true );
@@ -1993,18 +1990,18 @@ $sourced = static function( callable $change ) use ( &$bounds, &$appData, $regis
 	return implode( ' | ', \Nino\Modules\Builder\Document::problems( $appData, $model, $registry ) );
 };
 check( 'a child of a card in a column without a loop that reads a field of an element means nothing there, as a component of the column does: a problem, the section named', str_contains( $sourced( static function( array &$model ): void { $model['blocks'][0]['cols'][1]['components'][0]['components'][0]['source'] = 'title'; } ),
-	'the section "story": the source "title" of article-title means nothing in a column without a loop' ) === true );
-check( '...in the cell of a loop it is a field of the type, or it is none', $sourced( static function( array &$model ): void { $model['blocks'][1]['cols'][0]['components'][0]['components'][0]['source'] = 'nope'; } ) === 'the section "services": the source "nope" of article-title is no field of the loop\'s type'
+	'the section "story": the source "title" of card-title means nothing in a column without a loop' ) === true );
+check( '...in the cell of a loop it is a field of the type, or it is none', $sourced( static function( array &$model ): void { $model['blocks'][1]['cols'][0]['components'][0]['components'][0]['source'] = 'nope'; } ) === 'the section "services": the source "nope" of card-title is no field of the loop\'s type'
 	&& $sourced( static function( array &$model ): void {} ) === '' );
 check( '...the picture behind a card is a slot of the grammar or, in a loop, a field of the type; elsewhere it means nothing: a field in a column without a loop, a word that is no slot, a field the type has not',
-	$sourced( static function( array &$model ): void { $model['blocks'][0]['cols'][1]['components'][0]['attributes']['background'] = 'photo'; } ) === 'the section "story": the picture "photo" of article means nothing in a column without a loop: it is an image slot'
-	&& $sourced( static function( array &$model ): void { $model['blocks'][0]['cols'][1]['components'][0]['attributes']['background'] = '/Not A Slot'; } ) === 'the section "story": the picture "/Not A Slot" of article is no image slot'
-	&& $sourced( static function( array &$model ): void { $model['blocks'][1]['cols'][0]['components'][0]['attributes']['background'] = 'photo'; } ) === 'the section "services": the picture "photo" of article is no field of the loop\'s type'
+	$sourced( static function( array &$model ): void { $model['blocks'][0]['cols'][1]['components'][0]['attributes']['background'] = 'photo'; } ) === 'the section "story": the picture "photo" of card means nothing in a column without a loop: it is an image slot'
+	&& $sourced( static function( array &$model ): void { $model['blocks'][0]['cols'][1]['components'][0]['attributes']['background'] = '/Not A Slot'; } ) === 'the section "story": the picture "/Not A Slot" of card is no image slot'
+	&& $sourced( static function( array &$model ): void { $model['blocks'][1]['cols'][0]['components'][0]['attributes']['background'] = 'photo'; } ) === 'the section "services": the picture "photo" of card is no field of the loop\'s type'
 	&& $sourced( static function( array &$model ): void { $model['blocks'][1]['cols'][0]['components'][0]['attributes']['background'] = '/template/page-home-card/services/backdrop'; } ) === '' );
 check( '...and a child that does not read back, a component the registry has not, makes the section one that does not read back, and the reason of the Reader is the problem - the card and the child named',
 	str_contains( $sourced( static function( array &$model ): void { $model['blocks'][0]['cols'][1]['components'][0]['components'][1]['name'] = 'osm'; } ), 'the section "story" is not valid: line' ) === true
 	&& str_contains( $sourced( static function( array &$model ): void { $model['blocks'][0]['cols'][1]['components'][0]['components'][1]['name'] = 'osm'; } ), 'osm' ) === true );
-check( '...and a value no call can carry is a problem in the attributes of a card and in those of its children, as it is in a column', str_contains( $sourced( static function( array &$model ): void { $model['blocks'][0]['cols'][1]['components'][0]['attributes']['class'] = 'my"card'; } ), 'the attribute "class" of the component "article" holds a quote' ) === true
+check( '...and a value no call can carry is a problem in the attributes of a card and in those of its children, as it is in a column', str_contains( $sourced( static function( array &$model ): void { $model['blocks'][0]['cols'][1]['components'][0]['attributes']['class'] = 'my"card'; } ), 'the attribute "class" of the component "card" holds a quote' ) === true
 	&& str_contains( $sourced( static function( array &$model ): void { $model['blocks'][0]['cols'][1]['components'][0]['components'][2]['attributes']['href'] = '#a]b'; } ), 'the attribute "href" of the component "button" holds a quote' ) === true );
 
 // A section renamed takes the keys of the children of its cards and the slots their pictures name along
@@ -2017,7 +2014,7 @@ $taleAnswer = \Nino\Modules\Builder\Document::save( $appData, 'page-home-card', 
 $taleSource = (string) file_get_contents( $cardPath );
 $taleSlot = \Nino\Images::getSlot( $appData, '/template/page-home-card/tale/card-picture' ) ?: [];
 check( 'renaming a section rewrites the sources of the children of its cards and the picture a card names - in the file, in the keys and in the slots: the keys are under the new name, the slot is made again under it with the alt texts of the old one, which is left',
-	$taleAnswer['status'] === 200 && str_contains( $taleSource, '[article-title /template/page-home-card/tale/title level="3"]' ) === true && str_contains( $taleSource, 'background="/template/page-home-card/tale/card-picture"' ) === true && str_contains( $taleSource, '/template/page-home-card/story/' ) === false
+	$taleAnswer['status'] === 200 && str_contains( $taleSource, '[card-title /template/page-home-card/tale/title level="3"]' ) === true && str_contains( $taleSource, 'background="/template/page-home-card/tale/card-picture"' ) === true && str_contains( $taleSource, '/template/page-home-card/story/' ) === false
 	&& $stored( '/template/page-home-card/tale/title' ) === 'Our story' && $stored( '/template/page-home-card/tale/note' ) === '<p>A note.</p>' && \Nino\Text::entry( $appData, '/template/page-home-card/story/title' ) === null
 	&& ( $taleSlot['label'] ?? '' ) === 'Card picture' && ( $taleSlot['alt'] ?? [] ) === [ 'en_US' => 'A card' ] && \Nino\Images::getSlot( $appData, '/template/page-home-card/story/card-picture' ) !== false );
 
@@ -2025,7 +2022,7 @@ check( 'renaming a section rewrites the sources of the children of its cards and
 $bounds = \Nino\Modules\Builder\Document::load( $appData, 'page-home-card' );
 $doomed = $bounds['model'];
 $doomed['blocks'][0]['cols'][1]['components'][0]['components'][0]['values'] = [ 'en_US' => 'Changed for nothing' ];
-$doomed['blocks'][0]['cols'][1]['components'][0]['components'][] = [ 'name' => 'article-subtitle', 'source' => '/template/page-home-card/tale/lead', 'text' => null, 'attributes' => $registry['components']['article-subtitle']['defaults'], 'create' => [ 'value' => 'Never made' ] ];
+$doomed['blocks'][0]['cols'][1]['components'][0]['components'][] = [ 'name' => 'card-subtitle', 'source' => '/template/page-home-card/tale/lead', 'text' => null, 'attributes' => $registry['components']['card-subtitle']['defaults'], 'create' => [ 'value' => 'Never made' ] ];
 $doomed['blocks'][0]['cols'][1]['components'][0]['attributes']['ground'] = 'alt';
 $doomed['blocks'][0]['cols'][1]['components'][0]['attributes']['background'] = '/template/page-home-card/tale/card-picture-2';
 $doomed['blocks'][0]['cols'][1]['components'][0]['slots'] = [ 'background' => [ 'label' => 'Second card picture', 'width' => 640, 'height' => 480, 'alt' => [ 'en_US' => 'Another card' ] ] ];
@@ -2040,12 +2037,12 @@ check( 'a save whose file cannot be written answers 500 and puts back what it di
 rmdir( $lock );
 $retryAnswer = \Nino\Modules\Builder\Document::save( $appData, 'page-home-card', $doomed, $bounds['hash'] );
 check( '...and the same save, tried again, is made: 200, the text is written, the key is made, the card has its ground and its picture, and the slot is there', $retryAnswer['status'] === 200 && $stored( '/template/page-home-card/tale/title' ) === 'Changed for nothing' && $stored( '/template/page-home-card/tale/lead' ) === 'Never made'
-	&& str_contains( (string) file_get_contents( $cardPath ), '[article ground="alt" padding="3" background="/template/page-home-card/tale/card-picture-2"' ) === true && \Nino\Images::getSlot( $appData, '/template/page-home-card/tale/card-picture-2' ) !== false );
+	&& str_contains( (string) file_get_contents( $cardPath ), '[card ground="alt" padding="3" background="/template/page-home-card/tale/card-picture-2"' ) === true && \Nino\Images::getSlot( $appData, '/template/page-home-card/tale/card-picture-2' ) !== false );
 
 // The panel asks for the file a model would be written as: the card in it, in the lines the Writer makes
 $sourceAnswer = \Nino\Modules\Builder\Document::source( $appData, $retryAnswer['model'] );
-check( 'source answers the file with the card in it, its children on lines of their own one tab deeper, and the part of the section is the section as a block of the file', $sourceAnswer['status'] === 200 && str_contains( $sourceAnswer['source'], "\t\t\t[/article]\n" ) === true && $sourceAnswer['source'] === (string) file_get_contents( $cardPath )
-	&& str_contains( $sourceAnswer['parts'][1]['source'], "\t\t\t\t[article-subtitle /template/page-home-card/tale/lead]\n\t\t\t[/article]\n" ) === true );
+check( 'source answers the file with the card in it, its children on lines of their own one tab deeper, and the part of the section is the section as a block of the file', $sourceAnswer['status'] === 200 && str_contains( $sourceAnswer['source'], "\t\t\t[/card]\n" ) === true && $sourceAnswer['source'] === (string) file_get_contents( $cardPath )
+	&& str_contains( $sourceAnswer['parts'][1]['source'], "\t\t\t\t[card-subtitle /template/page-home-card/tale/lead]\n\t\t\t[/card]\n" ) === true );
 
 \Nino\Modules\Builder\Document::delete( $appData, 'page-home-card' );
 

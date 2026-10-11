@@ -8,7 +8,7 @@
  *	@knob	quiet			Size of a quiet title, subtitle and text
  *	@knob	loud			Size of a loud title, subtitle and text
  *	@knob	section-space	Padding of a band
- *	@knob	article-space	Space inside a row and between its parts
+ *	@knob	card-space		Space inside a row and between its parts
  *	@knob	corners			Corners of a band and of a picture
  *	@knob	border			Line under a row
  *
@@ -43,9 +43,9 @@
 	--content-section-space--default: 	var(--space-4);
 	--content-section-space--more: 		var(--space-5);
 
-	--content-article-space--less: 		calc( var(--space-1) * .75 );
-	--content-article-space--default: 	var(--space-1);
-	--content-article-space--more: 		var(--space-2);
+	--content-card-space--less: 		calc( var(--space-1) * .75 );
+	--content-card-space--default: 	var(--space-1);
+	--content-card-space--more: 		var(--space-2);
 
 	--content-corners--less: 			0rem;
 	--content-corners--default: 		var(--radius);
@@ -131,51 +131,51 @@
 
 /* ---- cards: rows ---- */
 
-.nino-article:where(:not(.nino-article--borderless)) {
+.nino-card:where(:not(.nino-card--borderless)) {
 	border-radius: 0;
 	border-width: 0 0 var(--content-border);
 	border-style: solid;
 	border-color: var(--color-border);
 }
-.nino-article:where(:not(.nino-article--alt, .nino-article--tint, .nino-article--dark, .nino-article--black, .nino-article--primary, .nino-article--brand-alt, .nino-article--counter, .nino-article--dim)) {
-	padding-top: var(--content-article-space);
-	padding-bottom: var(--content-article-space);
+.nino-card:where(:not(.nino-card--alt, .nino-card--tint, .nino-card--dark, .nino-card--black, .nino-card--primary, .nino-card--brand-alt, .nino-card--counter, .nino-card--dim)) {
+	padding-top: var(--content-card-space);
+	padding-bottom: var(--content-card-space);
 }
-.nino-article-content:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
+.nino-card-content:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
 	padding: 0;
 }
-.nino-article-title:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
-.nino-article-subtitle:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
-.nino-article-descr:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
-	margin-bottom: calc( var(--content-article-space) / 3 );
+.nino-card-title:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
+.nino-card-subtitle:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
+.nino-card-descr:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
+	margin-bottom: calc( var(--content-card-space) / 3 );
 }
-.nino-article-img {
+.nino-card-img {
 	border-radius: var(--content-corners);
 }
-.nino-article-img:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
-	margin-bottom: var(--content-article-space);
+.nino-card-img:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
+	margin-bottom: var(--content-card-space);
 }
 
 /*	Only a card that has a picture is turned on its side: the cell of a stack
 	has its words straight in the card, and they would stand in a row	*/
 @media (min-width: 768px) {
-	.nino-article:has(> .nino-article-img) {
+	.nino-card:has(> .nino-card-img) {
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
 	}
-	.nino-article > .nino-article-img {
+	.nino-card > .nino-card-img {
 		flex: 0 0 auto;
 		width: 5.5rem;
 		height: 5.5rem;
 		margin-bottom: 0;
 		object-fit: cover;
 	}
-	.nino-article > .nino-article-content {
+	.nino-card > .nino-card-content {
 		flex: 1 1 auto;
 		min-width: 0;
 	}
-	.nino-article > .nino-article-price {
+	.nino-card > .nino-card-price {
 		flex: 0 0 auto;
 		margin-left: auto;
 	}

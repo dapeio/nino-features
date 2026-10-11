@@ -248,7 +248,7 @@ function threw( fn ) {
 const TABS = [ 'global', 'fonts', 'content', 'buttons', 'components', 'colours' ];
 
 const KNOBS = {
-	content 		: [ 'hero-title', 'hero-text', 'quiet', 'loud', 'section-space', 'article-space', 'corners', 'border', 'shadow' ],
+	content 		: [ 'hero-title', 'hero-text', 'quiet', 'loud', 'section-space', 'card-space', 'corners', 'border', 'shadow' ],
 	buttons 		: [ 'small', 'big', 'space', 'corners' ],
 	components 	: [ 'scale', 'space', 'corners', 'border', 'zebra', 'labels' ],
 };
@@ -994,7 +994,7 @@ check( '...each with a note beside its name, and three positions in the words th
 const STEP_WORDS = {
 	content : {
 		'hero-title' : 'Smaller,Default,Larger', 'hero-text' : 'Smaller,Default,Larger', quiet : 'Smaller,Default,Larger', loud : 'Smaller,Default,Larger',
-		'section-space' : 'Tight,Default,Wide', 'article-space' : 'Tight,Default,Wide', corners : 'Sharp,Default,Round', border : 'None,Default,Thick', shadow : 'None,Default,Strong',
+		'section-space' : 'Tight,Default,Wide', 'card-space' : 'Tight,Default,Wide', corners : 'Sharp,Default,Round', border : 'None,Default,Thick', shadow : 'None,Default,Strong',
 	},
 	buttons : { small : 'Smaller,Default,Larger', big : 'Smaller,Default,Larger', space : 'Tight,Default,Wide', corners : 'Sharp,Default,Round' },
 	components : {
@@ -1063,7 +1063,7 @@ function knobSummary( tab, positions ) {
 
 check( 'the summary names the template and, for every knob the template answers to, the word of the position it stands at',
 	JSON.stringify( rows.summary() ) === JSON.stringify( [ [ 'Content template', 'v1 - Nino' ] ].concat(
-		knobSummary( 'content', { 'hero-title' : -1, 'hero-text' : 1, quiet : 0, loud : 0, 'section-space' : 0, 'article-space' : 0, corners : 0, border : 0, shadow : 1 } ),
+		knobSummary( 'content', { 'hero-title' : -1, 'hero-text' : 1, quiet : 0, loud : 0, 'section-space' : 0, 'card-space' : 0, corners : 0, border : 0, shadow : 1 } ),
 		[ [ 'Applied file', 'Up to date' ] ] ) ) );
 check( '...in the capitalised words: Smaller for the title of the hero, Larger for its text, Default for the knobs nobody moved and Strong for the shadow',
 	rows.summary().slice( 1, -1 ).map( function( row ) { return row.join(': ') } ).join()
@@ -1407,7 +1407,7 @@ const VIEWPORT_ICON = { phone : 'smartphone', tablet : 'tablet', desktop : 'moni
 /** Which icon each row takes: the knobs of the three tabs, and the rows of the Colours tab */
 const ICON_OF = {
 	'content/hero-title' : 'a-large-small', 'content/hero-text' : 'a-large-small', 'content/quiet' : 'a-large-small', 'content/loud' : 'a-large-small',
-	'content/section-space' : 'scaling', 'content/article-space' : 'align-vertical-space-around', 'content/corners' : 'square-round-corner',
+	'content/section-space' : 'scaling', 'content/card-space' : 'align-vertical-space-around', 'content/corners' : 'square-round-corner',
 	'content/border' : 'square', 'content/shadow' : 'square-stack',
 	'buttons/small' : 'a-large-small', 'buttons/big' : 'a-large-small', 'buttons/space' : 'align-vertical-space-around', 'buttons/corners' : 'square-round-corner',
 	'components/scale' : 'a-large-small', 'components/space' : 'align-vertical-space-around', 'components/corners' : 'square-round-corner',
@@ -1973,7 +1973,7 @@ KNOBS.content.forEach( function( knob ) {
 } );
 
 check( 'each knob of Content has its place: the title and the text of the hero the hero, the other seven - quiet, loud, the spaces, the corners, the line and the shadow - the cards',
-	JSON.stringify( jpWhere ) === JSON.stringify( { 'hero-title' : 'content', 'hero-text' : 'content', quiet : 'cards', loud : 'cards', 'section-space' : 'cards', 'article-space' : 'cards', corners : 'cards', border : 'cards', shadow : 'cards' } ) );
+	JSON.stringify( jpWhere ) === JSON.stringify( { 'hero-title' : 'content', 'hero-text' : 'content', quiet : 'cards', loud : 'cards', 'section-space' : 'cards', 'card-space' : 'cards', corners : 'cards', border : 'cards', shadow : 'cards' } ) );
 
 jp.move( 'Hero title', 'more' );
 jpAnswer();

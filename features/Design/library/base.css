@@ -313,7 +313,7 @@
 	reproduces Nino.css exactly, which is the guarantee the whole design
 	layer rests on: switching it on must not move a project that has not
 	asked for anything.	*/
-	--article-img-max-width: 12vw;
-	--article-img-max-height: 20vh;
+	--card-img-max-width: 12vw;
+	--card-img-max-height: 20vh;
 	--grid-max-width: var(--nino-measure);
 }

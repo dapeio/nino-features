@@ -295,11 +295,11 @@ namespace Nino\Modules\Design {
 		 *	The weight is always written - it is a choice every role has - as the
 		 *	number or keyword weight() makes of it.
 		 *
-		 *	A fixed title size also fixes the article title. Nino.css multiplies the
+		 *	A fixed title size also fixes the card title. Nino.css multiplies the
 		 *	title role by 5/6, and by 25/32 from 768px: a factor which only gives the
 		 *	size it had when the role stands on a step of the scale. On a fixed size
-		 *	the article title would get smaller in rem at the breakpoint, so a
-		 *	factor between the two stands in for both (see "The hero, the article
+		 *	the card title would get smaller in rem at the breakpoint, so a
+		 *	factor between the two stands in for both (see "The hero, the card
 		 *	title and the variants" in Nino's design manual).
 		 *
 		 *	@param		array 		$fonts				The setup's fonts, a role => [ family, weight, uppercase, size ]
@@ -337,7 +337,7 @@ namespace Nino\Modules\Design {
 					$lines[] = "\t--font-". $role. '-size: '. $size. 'rem;';
 
 					if( $role === 'title' )
-						$lines[] = "\t--article-title-scale: .8;";
+						$lines[] = "\t--card-title-scale: .8;";
 				}
 			}
 

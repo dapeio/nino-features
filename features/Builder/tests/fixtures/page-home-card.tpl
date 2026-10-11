@@ -8,11 +8,11 @@
 			[image /template/page-home-card/story/photo ratio="4-3"]
 		</div>
 		<div class="nino-grid-s-100 nino-grid-m-66 nino-grid-l-66 nino-p-2 nino-mt-1 nino-mb-1">
-			[article ground="counter" padding="3"]
-				[article-title /template/page-home-card/story/title level="3"]
+			[card ground="counter" padding="3"]
+				[card-title /template/page-home-card/story/title level="3"]
 				[text /template/page-home-card/story/text]
 				[button /template/page-home-card/story/button href="/contact"]
-			[/article]
+			[/card]
 		</div>
 	</div>
 </section>
@@ -21,9 +21,9 @@
 	<div class="nino-grid-row">
 		<div class="nino-grid-100">
 			[stack /services sort="title" limit="3" cols="100 50 50" autoheight="1"]
-				[article fill="1" background="image" focus="5" dim="1"]
-					[article-title title level="3"]
-				[/article]
+				[card fill="1" background="image" focus="5" dim="1"]
+					[card-title title level="3"]
+				[/card]
 			[/stack]
 		</div>
 	</div>

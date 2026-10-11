@@ -74,8 +74,8 @@ $feature = \Nino\Features::manifest( dirname( __DIR__ ) );
 
 check( 'the manifest reads, with the key and the class the directory implies', is_array( $feature ) === true
 	&& $feature['key'] === 'posts' && $feature['module'] === '\\Nino\\Modules\\Posts' );
-check( 'it is content, and names the kernel it needs', ( $feature['category'] ?? '' ) === 'content'
-	&& ( $feature['nino'] ?? '' ) === '^1.4' );
+check( 'it is content, and names the kernel it needs - the one whose card is called one, which the list page is written in', ( $feature['category'] ?? '' ) === 'content'
+	&& ( $feature['nino'] ?? '' ) === '^1.7' );
 check( 'the sections file is declared under data, so a backup carries it',
 	in_array( \Nino\Modules\Posts\Sections::PATH, (array) ( $feature['data'] ?? [] ), true ) === true );
 check( 'the posts themselves are not - they are ordinary elements, and /elements is backed up already',
@@ -135,6 +135,10 @@ check( '...with the three fields the defaults point at',
 	&& ( \Nino\Elements::getElementModel( $appData, '/posts' )['date']['type'] ?? '' ) === 'date' );
 check( '...and the two templates', \Nino\Filesystem::fileExists( $appData, '/templates/page-posts.tpl' ) === true
 	&& \Nino\Filesystem::fileExists( $appData, '/templates/page-post.tpl' ) === true );
+preg_match( '#<article.*?</article>#s', (string) file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-posts.tpl' ) ), $postCard );
+preg_match_all( '/class="([^"]+)"/', $postCard[0] ?? '', $postClasses );
+check( '...the list page draws a post as the card, in the card classes of Nino 1.7 and the template\'s own class for the link, and no others: the card itself, its link, its content, its subtitle, its title and its description',
+	$postClasses[1] === [ 'nino-card', 'nino-card-link', 'nino-card-content', 'nino-card-subtitle', 'nino-card-title', 'nino-card-descr' ] );
 check( 'and the words those templates say', \Nino\Html::renderTextfill( $appData, '/template/page-posts/intro/title' ) !== '' );
 
 /*	The section the rest of this runs against is the example of data/posts.php.

@@ -68,8 +68,8 @@ return [
 				'de_DE' => 'Ein Elementtyp zum Anfangen, falls das Projekt keinen hat.',
 			],
 			'templates/page-posts.tpl' => [
-				'en_US' => 'The list page.',
-				'de_DE' => 'Die Listenseite.',
+				'en_US' => 'The list page; each post is a card in the classes of Nino 1.7 (nino-card). A project that installed the page earlier renames the classes of its cards by hand - an installed template is not written again.',
+				'de_DE' => 'Die Listenseite; jeder Beitrag ist eine Karte in den Klassen von Nino 1.7 (nino-card). Ein Projekt, das die Seite früher installiert hat, benennt die Klassen seiner Karten von Hand um - ein installiertes Template wird nicht noch einmal geschrieben.',
 			],
 			'templates/page-post.tpl' => [
 				'en_US' => 'The page of one post.',
@@ -91,8 +91,11 @@ return [
 		sets are Nino 1.4's text keys (/template/..., /_nino/webpage<uri>/...),
 		which no earlier Nino has. The sectioned 'manual' above is read from
 		1.3.0-beta on - v1.2.0-beta refuses it - and wildcard routes, element
-		queries with sort and runtime fills are 1.0 kernel. */
-	'nino'				=> '^1.4',
+		queries with sort and runtime fills are 1.0 kernel. And 1.7, because the
+		cards of page-posts.tpl have the classes Nino 1.7 renamed them to
+		(nino-card) and kept no alias for the old ones: on a 1.6 the cards of
+		the list page are styled by nothing. */
+	'nino'				=> '^1.7',
 	'requires'		=> [],
 	// Which element type is a section of the site, under which path, through
 	// which templates. Not the posts - those are ordinary elements and live in

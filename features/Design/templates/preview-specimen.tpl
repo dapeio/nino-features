@@ -16,90 +16,90 @@
 <section id="cards" class="nino-section" aria-label="Cards">
 	<div class="nino-grid-row">
 		<div class="nino-grid-100 nino-mb-3"><h2 class="nino-section-title">Cards</h2><p class="nino-section-subtitle nino-section-subtitle--quiet">[[short]]</p></div>
-		<article class="nino-article nino-article--grid nino-grid-100 nino-grid-m-33 nino-mb-3 nino-vpa nino-vpa--repeat">
-			<img class="nino-article-img" src="[[placeholder]]" alt="" width="640" height="420">
-			<div class="nino-article-content">
-				<h3 class="nino-article-title nino-article-title--quiet">With a price, quiet</h3>
-				<p class="nino-article-subtitle nino-article-subtitle--quiet">Subtitle</p>
-				<p class="nino-article-descr">A description long enough to run into a second line, so the space under it becomes visible.</p>
-				<p class="nino-article-price">49 EUR</p>
+		<article class="nino-card nino-card--grid nino-grid-100 nino-grid-m-33 nino-mb-3 nino-vpa nino-vpa--repeat">
+			<img class="nino-card-img" src="[[placeholder]]" alt="" width="640" height="420">
+			<div class="nino-card-content">
+				<h3 class="nino-card-title nino-card-title--quiet">With a price, quiet</h3>
+				<p class="nino-card-subtitle nino-card-subtitle--quiet">Subtitle</p>
+				<p class="nino-card-descr">A description long enough to run into a second line, so the space under it becomes visible.</p>
+				<p class="nino-card-price">49 EUR</p>
 			</div>
 		</article>
-		<article class="nino-article nino-article--grid nino-grid-100 nino-grid-m-33 nino-mb-3 nino-vpa nino-vpa--repeat">
-			<img class="nino-article-img" src="[[placeholder]]" alt="" width="640" height="420">
-			<div class="nino-article-content">
-				<h3 class="nino-article-title">With a badge</h3>
-				<p class="nino-article-subtitle">Subtitle</p>
-				<p class="nino-article-descr">A description long enough to run into a second line, so the space under it becomes visible.</p>
+		<article class="nino-card nino-card--grid nino-grid-100 nino-grid-m-33 nino-mb-3 nino-vpa nino-vpa--repeat">
+			<img class="nino-card-img" src="[[placeholder]]" alt="" width="640" height="420">
+			<div class="nino-card-content">
+				<h3 class="nino-card-title">With a badge</h3>
+				<p class="nino-card-subtitle">Subtitle</p>
+				<p class="nino-card-descr">A description long enough to run into a second line, so the space under it becomes visible.</p>
 				<p><span class="nino-badge nino-badge--primary">New</span> <span class="nino-badge nino-badge--success">In stock</span></p>
 			</div>
 		</article>
-		<article class="nino-article nino-article--grid nino-grid-100 nino-grid-m-33 nino-mb-3 nino-vpa nino-vpa--repeat">
-			<img class="nino-article-img" src="[[placeholder]]" alt="" width="640" height="420">
-			<div class="nino-article-content">
-				<h3 class="nino-article-title nino-article-title--loud">With an action, loud</h3>
-				<p class="nino-article-subtitle nino-article-subtitle--loud">Subtitle</p>
-				<p class="nino-article-descr">A description long enough to run into a second line, so the space under it becomes visible.</p>
+		<article class="nino-card nino-card--grid nino-grid-100 nino-grid-m-33 nino-mb-3 nino-vpa nino-vpa--repeat">
+			<img class="nino-card-img" src="[[placeholder]]" alt="" width="640" height="420">
+			<div class="nino-card-content">
+				<h3 class="nino-card-title nino-card-title--loud">With an action, loud</h3>
+				<p class="nino-card-subtitle nino-card-subtitle--loud">Subtitle</p>
+				<p class="nino-card-descr">A description long enough to run into a second line, so the space under it becomes visible.</p>
 				<p><a class="nino-btn nino-btn--small nino-btn--outline" href="#buttons">More</a></p>
 			</div>
 		</article>
-		<article class="nino-article nino-article--alt nino-article--grid nino-grid-100 nino-grid-m-33 nino-mb-3">
-			<h3 class="nino-article-title">On alt</h3>
-			<p class="nino-article-descr">A card paints the ground it names.</p>
+		<article class="nino-card nino-card--alt nino-card--grid nino-grid-100 nino-grid-m-33 nino-mb-3">
+			<h3 class="nino-card-title">On alt</h3>
+			<p class="nino-card-descr">A card paints the ground it names.</p>
 		</article>
-		<article class="nino-article nino-article--tint nino-article--grid nino-grid-100 nino-grid-m-33 nino-mb-3">
-			<h3 class="nino-article-title">On tint</h3>
-			<p class="nino-article-descr">A card paints the ground it names.</p>
+		<article class="nino-card nino-card--tint nino-card--grid nino-grid-100 nino-grid-m-33 nino-mb-3">
+			<h3 class="nino-card-title">On tint</h3>
+			<p class="nino-card-descr">A card paints the ground it names.</p>
 		</article>
-		<article class="nino-article nino-article--dark nino-article--grid nino-grid-100 nino-grid-m-33 nino-mb-3">
-			<h3 class="nino-article-title">On dark</h3>
-			<p class="nino-article-descr">A card paints the ground it names.</p>
+		<article class="nino-card nino-card--dark nino-card--grid nino-grid-100 nino-grid-m-33 nino-mb-3">
+			<h3 class="nino-card-title">On dark</h3>
+			<p class="nino-card-descr">A card paints the ground it names.</p>
 		</article>
-		<article class="nino-article nino-article--black nino-article--grid nino-grid-100 nino-grid-m-33 nino-mb-3">
-			<h3 class="nino-article-title">On black</h3>
-			<p class="nino-article-descr">A card paints the ground it names.</p>
+		<article class="nino-card nino-card--black nino-card--grid nino-grid-100 nino-grid-m-33 nino-mb-3">
+			<h3 class="nino-card-title">On black</h3>
+			<p class="nino-card-descr">A card paints the ground it names.</p>
 		</article>
-		<article class="nino-article nino-article--primary nino-article--grid nino-grid-100 nino-grid-m-33 nino-mb-3">
-			<h3 class="nino-article-title">On primary</h3>
-			<p class="nino-article-descr">A card paints the ground it names.</p>
+		<article class="nino-card nino-card--primary nino-card--grid nino-grid-100 nino-grid-m-33 nino-mb-3">
+			<h3 class="nino-card-title">On primary</h3>
+			<p class="nino-card-descr">A card paints the ground it names.</p>
 		</article>
-		<article class="nino-article nino-article--brand-alt nino-article--grid nino-grid-100 nino-grid-m-33 nino-mb-3">
-			<h3 class="nino-article-title">On brand-alt</h3>
-			<p class="nino-article-descr">A card paints the ground it names.</p>
+		<article class="nino-card nino-card--brand-alt nino-card--grid nino-grid-100 nino-grid-m-33 nino-mb-3">
+			<h3 class="nino-card-title">On brand-alt</h3>
+			<p class="nino-card-descr">A card paints the ground it names.</p>
 		</article>
-		<article class="nino-article nino-article--counter nino-article--grid nino-grid-100 nino-grid-m-33 nino-mb-3">
-			<img class="nino-article-img" src="[[placeholder]]" alt="" width="640" height="420">
-			<div class="nino-article-content">
-				<h3 class="nino-article-title">A counter card</h3>
-				<p class="nino-article-descr">The counter of the ground it stands on.</p>
+		<article class="nino-card nino-card--counter nino-card--grid nino-grid-100 nino-grid-m-33 nino-mb-3">
+			<img class="nino-card-img" src="[[placeholder]]" alt="" width="640" height="420">
+			<div class="nino-card-content">
+				<h3 class="nino-card-title">A counter card</h3>
+				<p class="nino-card-descr">The counter of the ground it stands on.</p>
 			</div>
 		</article>
-		<article class="nino-article nino-article--borderless nino-article--grid nino-grid-100 nino-grid-m-33 nino-mb-3">
-			<img class="nino-article-img" src="[[placeholder]]" alt="" width="640" height="420">
-			<div class="nino-article-content">
-				<h3 class="nino-article-title">Borderless</h3>
-				<p class="nino-article-descr">No line and no shadow.</p>
+		<article class="nino-card nino-card--borderless nino-card--grid nino-grid-100 nino-grid-m-33 nino-mb-3">
+			<img class="nino-card-img" src="[[placeholder]]" alt="" width="640" height="420">
+			<div class="nino-card-content">
+				<h3 class="nino-card-title">Borderless</h3>
+				<p class="nino-card-descr">No line and no shadow.</p>
 			</div>
 		</article>
-		<article class="nino-article nino-article--grid nino-grid-100 nino-grid-m-33 nino-mb-3">
-			<img class="nino-article-img" src="[[placeholder]]" alt="" width="640" height="420">
-			<div class="nino-article-content">
-				<h3 class="nino-article-title">In a grid</h3>
-				<p class="nino-article-descr">Sized like a cell of the grid.</p>
+		<article class="nino-card nino-card--grid nino-grid-100 nino-grid-m-33 nino-mb-3">
+			<img class="nino-card-img" src="[[placeholder]]" alt="" width="640" height="420">
+			<div class="nino-card-content">
+				<h3 class="nino-card-title">In a grid</h3>
+				<p class="nino-card-descr">Sized like a cell of the grid.</p>
 			</div>
 		</article>
-		<article class="nino-article nino-article--fullwidth nino-article-cols nino-grid-100 nino-mb-3">
-			<img class="nino-article-img nino-article-img--maxheight" src="[[placeholder]]" alt="" width="640" height="420">
-			<div class="nino-article-content">
-				<h3 class="nino-article-title nino-article-title--loud">Full width, in columns, loud</h3>
-				<p class="nino-article-descr nino-article-descr--quiet">[[lorem]]</p>
+		<article class="nino-card nino-card--fullwidth nino-card-cols nino-grid-100 nino-mb-3">
+			<img class="nino-card-img nino-card-img--maxheight" src="[[placeholder]]" alt="" width="640" height="420">
+			<div class="nino-card-content">
+				<h3 class="nino-card-title nino-card-title--loud">Full width, in columns, loud</h3>
+				<p class="nino-card-descr nino-card-descr--quiet">[[lorem]]</p>
 			</div>
 		</article>
 		<div class="nino-grid-100">
 			<div class="nino-grid-row nino-stack nino-stack-gap-2">
-				<div class="nino-grid-s-100 nino-grid-m-50 nino-grid-l-33"><article class="nino-article nino-article--counter"><h4 class="nino-article-title">A stack of cards</h4><p class="nino-article-subtitle nino-article-subtitle--quiet">A quiet subtitle</p><p>Each cell of the stack holds a card.</p></article></div>
-				<div class="nino-grid-s-100 nino-grid-m-50 nino-grid-l-33"><article class="nino-article nino-article--counter"><h4 class="nino-article-title">The next</h4><p class="nino-article-subtitle">A subtitle</p><p>Neighbours are one gap apart.</p></article></div>
-				<div class="nino-grid-s-100 nino-grid-m-50 nino-grid-l-33"><article class="nino-article nino-article--counter"><h4 class="nino-article-title">And a third</h4><p class="nino-article-subtitle nino-article-subtitle--loud">A loud subtitle</p><p>The edges of the stack are the column's.</p></article></div>
+				<div class="nino-grid-s-100 nino-grid-m-50 nino-grid-l-33"><article class="nino-card nino-card--counter"><h4 class="nino-card-title">A stack of cards</h4><p class="nino-card-subtitle nino-card-subtitle--quiet">A quiet subtitle</p><p>Each cell of the stack holds a card.</p></article></div>
+				<div class="nino-grid-s-100 nino-grid-m-50 nino-grid-l-33"><article class="nino-card nino-card--counter"><h4 class="nino-card-title">The next</h4><p class="nino-card-subtitle">A subtitle</p><p>Neighbours are one gap apart.</p></article></div>
+				<div class="nino-grid-s-100 nino-grid-m-50 nino-grid-l-33"><article class="nino-card nino-card--counter"><h4 class="nino-card-title">And a third</h4><p class="nino-card-subtitle nino-card-subtitle--loud">A loud subtitle</p><p>The edges of the stack are the column's.</p></article></div>
 			</div>
 		</div>
 	</div>
@@ -303,19 +303,19 @@
 		</div>
 
 		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3">
-			<h3 class="nino-article-title nino-article-title--quiet">Article, quiet</h3>
-			<p class="nino-article-subtitle nino-article-subtitle--quiet">[[short]]</p>
-			<p class="nino-article-descr nino-article-descr--quiet">[[short]]</p>
+			<h3 class="nino-card-title nino-card-title--quiet">Card, quiet</h3>
+			<p class="nino-card-subtitle nino-card-subtitle--quiet">[[short]]</p>
+			<p class="nino-card-descr nino-card-descr--quiet">[[short]]</p>
 		</div>
 		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3">
-			<h3 class="nino-article-title">Article</h3>
-			<p class="nino-article-subtitle">[[short]]</p>
-			<p class="nino-article-descr">[[short]]</p>
+			<h3 class="nino-card-title">Card</h3>
+			<p class="nino-card-subtitle">[[short]]</p>
+			<p class="nino-card-descr">[[short]]</p>
 		</div>
 		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3">
-			<h3 class="nino-article-title nino-article-title--loud">Article, loud</h3>
-			<p class="nino-article-subtitle nino-article-subtitle--loud">[[short]]</p>
-			<p class="nino-article-descr nino-article-descr--loud">[[short]]</p>
+			<h3 class="nino-card-title nino-card-title--loud">Card, loud</h3>
+			<p class="nino-card-subtitle nino-card-subtitle--loud">[[short]]</p>
+			<p class="nino-card-descr nino-card-descr--loud">[[short]]</p>
 		</div>
 
 		<div class="nino-grid-100 nino-grid-m-66 nino-mb-3">
@@ -469,9 +469,9 @@
 		</div>
 		<div class="nino-grid-100">
 			<ol class="nino-timeline nino-timeline--counted">
-				<li class="nino-timeline-step"><h3 class="nino-article-title">Choose</h3><p class="nino-article-descr">[[short]]</p></li>
-				<li class="nino-timeline-step"><h3 class="nino-article-title">Adjust</h3><p class="nino-article-descr">[[short]]</p></li>
-				<li class="nino-timeline-step"><h3 class="nino-article-title">Apply</h3><p class="nino-article-descr">[[short]]</p></li>
+				<li class="nino-timeline-step"><h3 class="nino-card-title">Choose</h3><p class="nino-card-descr">[[short]]</p></li>
+				<li class="nino-timeline-step"><h3 class="nino-card-title">Adjust</h3><p class="nino-card-descr">[[short]]</p></li>
+				<li class="nino-timeline-step"><h3 class="nino-card-title">Apply</h3><p class="nino-card-descr">[[short]]</p></li>
 			</ol>
 		</div>
 	</div>

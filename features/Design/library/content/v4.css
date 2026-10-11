@@ -8,7 +8,7 @@
  *	@knob	quiet			Size of a quiet title, subtitle and text
  *	@knob	loud			Size of a loud title, subtitle and text
  *	@knob	section-space	Height of a band
- *	@knob	article-space	Space inside a card and between its parts
+ *	@knob	card-space		Space inside a card and between its parts
  *	@knob	corners			Corners of the picture of a card
  *
  *	One decision: the heading is the page and the text is the footnote to it.
@@ -42,9 +42,9 @@
 	--content-section-space--default: 	var(--space-4);
 	--content-section-space--more: 		var(--space-5);
 
-	--content-article-space--less: 		var(--space-1);
-	--content-article-space--default: 	var(--space-2);
-	--content-article-space--more: 		var(--space-3);
+	--content-card-space--less: 		var(--space-1);
+	--content-card-space--default: 	var(--space-2);
+	--content-card-space--more: 		var(--space-3);
 
 	--content-corners--less: 			0rem;
 	--content-corners--default: 		var(--radius-small);
@@ -132,17 +132,17 @@
 	- a card of a stack has no wrapper round its words, and a column that
 	reversed would turn its title under its text. A card that lays itself out
 	in columns stays as it is	*/
-.nino-article:where(:not(.nino-article-cols)) {
+.nino-card:where(:not(.nino-card-cols)) {
 	display: flex;
 	flex-direction: column;
 	justify-content: flex-start;
 }
-.nino-article:where(:not(.nino-article-cols)) > .nino-article-img {
+.nino-card:where(:not(.nino-card-cols)) > .nino-card-img {
 	order: 1;
 }
 /*	A frame rather than a height: object-fit crops what does not fit the
 	ratio, which is the one way a row of photographs nobody prepared lines up	*/
-.nino-article-img {
+.nino-card-img {
 	display: block;
 	width: 100%;
 	max-width: 100%;
@@ -150,24 +150,24 @@
 	object-fit: cover;
 	border-radius: var(--content-corners);
 }
-.nino-article-img:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
+.nino-card-img:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
 	margin: 0;
 }
-.nino-article-content:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
+.nino-card-content:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
 	padding: 0;
 }
-.nino-article-title {
+.nino-card-title {
 	line-height: 1.2;
 }
-.nino-article-title:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
-.nino-article-subtitle:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
-.nino-article-descr:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
-	margin-bottom: calc( var(--content-article-space) / 2 );
+.nino-card-title:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
+.nino-card-subtitle:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
+.nino-card-descr:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
+	margin-bottom: calc( var(--content-card-space) / 2 );
 }
-.nino-article-subtitle {
+.nino-card-subtitle {
 	letter-spacing: .06em;
 	color: var(--color-subtitle);
 }
-.nino-article-cols {
-	gap: calc( var(--content-article-space) * 2 );
+.nino-card-cols {
+	gap: calc( var(--content-card-space) * 2 );
 }

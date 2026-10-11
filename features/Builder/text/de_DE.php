@@ -109,7 +109,7 @@ return [
 	'[[/_admin/builder/viewport/all]]'						=> 'Alle Viewports',
 	'[[/_admin/builder/preview/background]]'				=> 'Ein Bild hinter der Sektion',
 	'[[/_admin/builder/preview/column-background]]'			=> 'Ein Bild hinter der Spalte',
-	'[[/_admin/builder/preview/card-background]]'			=> 'Bild hinter dem Artikel',
+	'[[/_admin/builder/preview/card-background]]'			=> 'Bild hinter der Karte',
 	'[[/_admin/builder/preview/hidden]]'					=> 'In diesem Viewport verborgen',
 	'[[/_admin/builder/preview/hidden-in]]'					=> 'Verborgen in: %s',
 	'[[/_admin/builder/preview/align-text]]'				=> 'Horizontale Ausrichtung: %s',

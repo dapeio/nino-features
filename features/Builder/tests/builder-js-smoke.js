@@ -864,7 +864,7 @@ check( 'a copy of a section takes an id of its own, and keys and slots of its ow
 		const copy = model.blocks[1];
 		return builder._same( at, [ 1 ] ) && copy.id === 'hero-2' && model.blocks[0].id === 'hero' && model.blocks.length === 5
 			&& copy.cols[0].components[0].source === '/template/page-home/hero-2/title' && copy.cols[0].components[0].create.value === 'Welcome'
-			&& copy.cols[0].components[1].source === '/template/page-home/hero-2/subtitle' && copy.cols[0].components[1].create.value === 'Subtitle'
+			&& copy.cols[0].components[1].source === '/template/page-home/hero-2/subtitle' && copy.cols[0].components[1].create.value === 'Subtitle (Section)'
 			&& copy.background.slot === '/template/page-home/hero-2/background' && copy.background.create.label === 'Background' && copy.background.focus === 5
 			&& copy.cols[0].components[2].source === '/_nino/webpage/contact/name' && copy.cols[0].components[2].create === undefined
 			&& model.blocks[0].cols[0].components[0].source === '/template/page-home/hero/title' && model.blocks[0].cols[0].components[0].create === undefined && model.blocks[0].background.create === undefined;
@@ -1081,7 +1081,7 @@ check( 'a new component has the attributes of its schema, and in a static column
 	const image = builder._newComponent( model, reg, 'page-home', [ 0, 0 ], 'image', [] );
 	const html = builder._newComponent( model, reg, 'page-home', [ 0, 0 ], 'html', [] );
 	const spacer = builder._newComponent( model, reg, 'page-home', [ 0, 0 ], 'spacer', [] );
-	return title.source === '/template/page-home/hero/title-2' && title.create.value === 'Title' && title.attributes.level === '2' && title.text === null
+	return title.source === '/template/page-home/hero/title-2' && title.create.value === 'Title (Section)' && title.attributes.level === '2' && title.text === null
 		&& image.source === '/template/page-home/hero/image' && image.create.label === 'Image' && image.create.width === 1600 && html.content === '' && html.source === '' && html.create === undefined && spacer.source === '' && spacer.create === undefined;
 } )() );
 check( '...and in a stack none: its source is a field, chosen in the form', builder._newComponent( model, reg, 'page-home', [ 1, 1 ], 'title', [] ).source === '' && builder._newComponent( model, reg, 'page-home', [ 1, 1 ], 'title', [] ).create === undefined );
@@ -1125,7 +1125,7 @@ check( 'a viewport changes widths and visibility and nothing else', ( function()
 	};
 	return strip('s') === strip('m') && strip('m') === strip('l') && strip('l') === strip('g');
 } )() );
-check( 'a component is a placeholder with the image the registry names - the kernel\'s five, and block for the rest', plan('l')[0].cols[0].components.map( function( component ) { return component.image+ ':'+ component.label } ).join() === 'title:Title,title:Subtitle,button:Button' );
+check( 'a component is a placeholder with the image the registry names - the kernel\'s five, and block for the rest', plan('l')[0].cols[0].components.map( function( component ) { return component.image+ ':'+ component.label } ).join() === 'title:Title (Section),title:Subtitle (Section),button:Button' );
 model.blocks[0].cols[0].components.push( { name : 'unknown-one', source : '', text : null, attributes : {} } );
 model.blocks[0].cols[0].components.push( { name : 'spacer', source : '', text : null, attributes : {} } );
 check( '...a component the registry does not know and one that names no image are blocks, labelled with what they are', plan('l')[0].cols[0].components.slice( 3 ).map( function( component ) { return component.image+ ':'+ component.label } ).join() === 'block:unknown-one,block:Spacer' );
@@ -1263,7 +1263,7 @@ check( '...the end of a column is a button for a component and nothing else - wh
 check( '...and a component is chosen from the registry\'s, those that belong where the column is: the first section when it has a picture is the hero, anywhere else is a section - the cell of a loop among it, which holds no place of its own - and what names no place is offered in all of them; the card is for the hero and for a section, and a loop takes it as it takes the rest', ( function() {
 	const menu = screen.getElementById('builder-menu');
 	const offered = function( path ) { builder._pickComponent( path, made('button') ); return texts( menu.children ) };
-	return offered( [ 0, 0 ] ) === 'Button,Card,Hero subtitle,Hero title,HTML,Image,Spacer,Text' && offered( [ 1, 0 ] ) === 'Button,Card,HTML,Image,Spacer,Subtitle,Text,Title'
+	return offered( [ 0, 0 ] ) === 'Button,Card,HTML,Image,Spacer,Subtitle (Hero),Text,Title (Hero)' && offered( [ 1, 0 ] ) === 'Button,Card,HTML,Image,Spacer,Subtitle (Section),Text,Title (Section)'
 		&& offered( [ 1, 1 ] ) === offered( [ 1, 0 ] ) && offered( [ 3, 0 ] ) === offered( [ 1, 0 ] );
 } )() );
 check( '...a component that says where it belongs (its "in") is offered there and nowhere else - the hero is the first block when it has a picture, a section is any other column, the cell of a loop included -, one that says nothing is offered everywhere, and one a loop does not take is offered in no column that runs one: the script names no component', ( function() {
@@ -1472,7 +1472,7 @@ check( '...one that holds a key is asked as a saved one is - and answered, its s
 	const asked = questions.length === 1;
 	questions[0].onChoose( 'rename' );
 	const component = builder._doc.model.blocks[4].cols[0].components[0];
-	return asked && builder._doc.model.blocks[4].id === 'questions' && builder._doc.model.blocks[4].renamedFrom === undefined && component.source === '/template/page-home/questions/title' && component.create.value === 'Title' && builder._fresh.questions === true;
+	return asked && builder._doc.model.blocks[4].id === 'questions' && builder._doc.model.blocks[4].renamedFrom === undefined && component.source === '/template/page-home/questions/title' && component.create.value === 'Title (Section)' && builder._fresh.questions === true;
 } )() );
 
 console.log( '\nRenaming a section in the title of its dialog' );
@@ -2048,16 +2048,16 @@ check( '...the groups hold what they are called after: the type and the query in
 } )() );
 const stackNow = function() { return builder._doc.model.blocks[1].cols[1].stack };
 check( '...the stacks of the kernel carry no attribute for the cards of the cells any more - the cell is a div, and what stands in it is the cell\'s components -, so the loop has none to set and writes none: the grid is all it brings', ( function() {
-	const kernel = Object.keys( builder._registry.stacks ).every( function( name ) { return Object.prototype.hasOwnProperty.call( builder._registry.stacks[name].defaults, 'article' ) === false } );
+	const kernel = Object.keys( builder._registry.stacks ).every( function( name ) { return Object.prototype.hasOwnProperty.call( builder._registry.stacks[name].defaults, 'card' ) === false } );
 	change( loopPane(), 'Gap between the cells', '4' );
-	const written = Object.prototype.hasOwnProperty.call( stackNow().attributes, 'article' ) === false;
+	const written = Object.prototype.hasOwnProperty.call( stackNow().attributes, 'card' ) === false;
 	change( loopPane(), 'Gap between the cells', '2' );
 	return kernel === true && written === true && loopPane().querySelector('.builder-group') !== null && labelList( loopPane() ).indexOf('Cards') === -1;
 } )() );
 check( '...and the words of the cards are gone from both languages: the field of the loop and the words of its options', [ 'en_US.php', 'de_DE.php' ].every( function( file ) {
 	const texts = fs.readFileSync( path.join( __dirname, '../text/'+ file ), 'utf8' );
-	return texts.indexOf('/_admin/builder/stack/article') === -1 && texts.indexOf('/_admin/builder/option/article-') === -1;
-} ) && words['/_admin/builder/stack/article'] === undefined );
+	return texts.indexOf('/_admin/builder/stack/card') === -1 && texts.indexOf('/_admin/builder/option/card-') === -1;
+} ) && words['/_admin/builder/stack/card'] === undefined );
 check( '...the type is one of the Elements panel\'s, with the title it has there', controlOf( loopPane(), 'Type' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '/services=Services (/services),/team=Team (/team)' );
 check( '...the cells are a table with a row for each viewport - the device with its icon -, in the view of all of them', loopPane().querySelectorAll('tbody tr').map( function( row ) { return row.querySelector('th').textContent+ ':'+ iconOf( row ) } ).join() === 'Mobile:smartphone,Tablet:tablet,Desktop:monitor'
 	&& loopPane().querySelector('table').querySelectorAll('thead th').length === 2 && texts( loopPane().querySelector('table').querySelectorAll('thead th') ) === 'Device,Cell width' );
@@ -2132,7 +2132,7 @@ builder._renderEditor();
 builder._openSettings( [ 1, 1, 'x' ] );
 change( loopPane(), 'Loop', 'filter' );
 check( 'the kernel\'s filter stack has the grid and its id like the plain one, and no row for cards: the attribute is not carried over to it', labelList( loopPane() ).indexOf('Id of the loop') !== -1 && labelList( loopPane() ).indexOf('Cards') === -1 && stackNow().name === 'filter'
-	&& Object.prototype.hasOwnProperty.call( stackNow().attributes, 'article' ) === false && stackNow().attributes.gap === '2' );
+	&& Object.prototype.hasOwnProperty.call( stackNow().attributes, 'card' ) === false && stackNow().attributes.gap === '2' );
 
 console.log( '\nThe animation and the classes of a column' );
 
@@ -2178,7 +2178,7 @@ doc = open();
 builder._renderEditor();
 builder._openSettings( [ 0, 0, 0 ] );
 const componentAt = function( at ) { return builder._doc.model.blocks[at[0]].cols[at[1]].components[at[2]] };
-check( 'the dialog of a component has three tabs: Content, Properties and CSS classes - the title names the component by its label, and no pencil is in it', dialogText('builder-dialog-kind') === 'Component "Title"' && JSON.stringify( dialogTabs() ) === '[["content","Content"],["properties","Properties"],["custom","CSS classes"]]'
+check( 'the dialog of a component has three tabs: Content, Properties and CSS classes - the title names the component by its label, and no pencil is in it', dialogText('builder-dialog-kind') === 'Component "Title (Section)"' && JSON.stringify( dialogTabs() ) === '[["content","Content"],["properties","Properties"],["custom","CSS classes"]]'
 	&& screen.getElementById('builder-dialog-name').hidden === true && dialogBox().classList.contains('is-wide') === false );
 check( '...Content: the source as text, with an icon button beside it that opens the dialog of the sources - and under it, for a key the project knows, the text it holds in the language the editor works in', ( function() {
 	const row = paneOf('content').querySelector('.builder-source');
@@ -2280,7 +2280,7 @@ check( '...a name that will not do says why - the grammar, a name the section ha
 typed('cta');
 check( '...a name that will do shows the key it makes', fresh('.builder-new-uri').textContent === '/template/page-home/hero/cta' && fresh('.builder-new-message').textContent === '' && fresh('.builder-new-use').disabled === false );
 fresh('.builder-new-use').click();
-check( '...and using it makes the key the source, with what it is made with: the label of the component for its text - the dialog closes', componentAt( [ 0, 0, 0 ] ).source === '/template/page-home/hero/cta' && componentAt( [ 0, 0, 0 ] ).create.value === 'Title' && pickerBox().open === false
+check( '...and using it makes the key the source, with what it is made with: the label of the component for its text - the dialog closes', componentAt( [ 0, 0, 0 ] ).source === '/template/page-home/hero/cta' && componentAt( [ 0, 0, 0 ] ).create.value === 'Title (Section)' && pickerBox().open === false
 	&& paneOf('content').querySelector('.builder-source-current').textContent === '/template/page-home/hero/cta' );
 
 sourceButton( paneOf('content') ).click();
@@ -2737,7 +2737,7 @@ builder._addSection();
 builder._addComponent( [ 4, 0 ], 'title' );
 builder._rename( [ 4 ], 'faq' );
 check( 'a section made here and renamed is written new: nothing was ever saved under its old name', builder._doc.model.blocks[4].id === 'faq' && builder._doc.model.blocks[4].renamedFrom === undefined && builder._doc.model.blocks[4].cols[0].components[0].source === '/template/page-home/faq/title'
-	&& builder._doc.model.blocks[4].cols[0].components[0].create.value === 'Title' && builder._fresh.faq === true && builder._fresh.section === undefined );
+	&& builder._doc.model.blocks[4].cols[0].components[0].create.value === 'Title (Section)' && builder._fresh.faq === true && builder._fresh.section === undefined );
 console.log( '\nSaving the document' );
 
 doc = open();
@@ -3177,8 +3177,8 @@ builder._addComponent( [ 0, 0 ], 'text' );
 const newTitle = builder._doc.model.blocks[0].cols[0].components[3];
 const newText = builder._doc.model.blocks[0].cols[0].components[4];
 builder._openSettings( [ 0, 0, 3 ] );
-check( 'a key the save is going to make has a field too: it holds the text the key is made with, a line of text for a component that asks for no format', field().el.value === 'Title' && field().el.localName === 'input' && newTitle.create.value === 'Title' && textEditors.length === 0 );
-check( '...a text typed there is kept as for a key that is there - the key is made with its first text and written with this one', ( change( contentPane(), lineLabel, 'My title' ), JSON.stringify( newTitle.values ) === '{"en_US":"My title"}' && newTitle.create.value === 'Title' ) );
+check( 'a key the save is going to make has a field too: it holds the text the key is made with, a line of text for a component that asks for no format', field().el.value === 'Title (Section)' && field().el.localName === 'input' && newTitle.create.value === 'Title (Section)' && textEditors.length === 0 );
+check( '...a text typed there is kept as for a key that is there - the key is made with its first text and written with this one', ( change( contentPane(), lineLabel, 'My title' ), JSON.stringify( newTitle.values ) === '{"en_US":"My title"}' && newTitle.create.value === 'Title (Section)' ) );
 builder._closeDialog();
 builder._openSettings( [ 0, 0, 4 ] );
 const madeEditor = textEditors[textEditors.length - 1];
@@ -3260,7 +3260,7 @@ builder._openSettings( [ 0, 0, 1 ] );
 sourceButton( contentPane() ).click();
 buttonOf( pickerStrip(), 'Create new' ).click();
 fresh('.builder-new-use').click();
-check( '...and the key the source makes is a key to fill: a new one has the field of a key the save makes', valueAt( contentPane(), lineLabel ) === 'Subtitle' && builder._doc.model.blocks[0].cols[0].components[1].create.value === 'Subtitle' );
+check( '...and the key the source makes is a key to fill: a new one has the field of a key the save makes', valueAt( contentPane(), lineLabel ) === 'Subtitle (Section)' && builder._doc.model.blocks[0].cols[0].components[1].create.value === 'Subtitle (Section)' );
 builder._closeDialog();
 
 console.log( '\nThe preview says the text and shows the picture' );
@@ -3271,9 +3271,9 @@ builder._keys = known().concat( [ { key : '/template/page-home/contact/title', g
 builder._renderEditor();
 const contactPh = function() { return preview().querySelector('[data-path="3.0.0"]') };
 check( 'the placeholder of a text component says the first line of the text in the language of the editor, cut to sixty characters, with the label of the component for its title - and has a mark that it says a text', contactPh().querySelector('.builder-ph-label').textContent === 'A very long first line of a text that goes on and on and on…'
-	&& Array.from( contactPh().querySelector('.builder-ph-label').textContent ).length === 60 && contactPh().title === 'Title' && contactPh().classList.contains('has-line') && preview().querySelector('[data-path="0.0.0"]').classList.contains('has-line') );
+	&& Array.from( contactPh().querySelector('.builder-ph-label').textContent ).length === 60 && contactPh().title === 'Title (Section)' && contactPh().classList.contains('has-line') && preview().querySelector('[data-path="0.0.0"]').classList.contains('has-line') );
 check( '...a placeholder with no text to say is as it was: the label of the component, no title, no mark - the ones of a key nobody knows, a key with no text in the language, a field of a loop, a fixed text', preview().querySelector('[data-path="0.0.2"] .builder-ph-label').textContent === 'Button'
-	&& preview().querySelector('[data-path="0.0.2"]').title === '' && preview().querySelector('[data-path="0.0.2"]').classList.contains('has-line') === false && preview().querySelector('[data-path="1.1.1"] .builder-ph-label').textContent === 'Title' && preview().querySelector('[data-path="1.1.3"] .builder-ph-label').textContent === 'Button' );
+	&& preview().querySelector('[data-path="0.0.2"]').title === '' && preview().querySelector('[data-path="0.0.2"]').classList.contains('has-line') === false && preview().querySelector('[data-path="1.1.1"] .builder-ph-label').textContent === 'Title (Section)' && preview().querySelector('[data-path="1.1.3"] .builder-ph-label').textContent === 'Button' );
 builder._setLocale('de_DE');
 check( '...the text is set as text and is never markup: an escaped tag is a tag shown, a tag that is none is gone with its attributes', contactPh().querySelector('.builder-ph-label').textContent === '<b>Zwei</b> & Drei' && contactPh().querySelectorAll('b').length === 0 && contactPh().querySelector('.builder-ph-label').children.length === 0
 	&& contactPh().querySelectorAll('img').every( function( image ) { return image.className === 'builder-ph-picture' && image.src === '' } ) );
@@ -3310,7 +3310,7 @@ check( 'a component that says what it draws has a second line in its placeholder
 	&& drawsOf('0.0.0').parentNode.className === 'builder-ph-text' && classes( drawsOf('0.0.0').parentNode.children ) === 'builder-ph-label,builder-ph-draws' && phOf('0.0.0').classList.contains('has-draws') && drawsOf('0.0.1').textContent === 'P .nino-section-subtitle' && drawsOf('0.0.2').textContent === 'A .nino-btn' );
 builder._keys = known();
 builder._renderEditor();
-check( '...the first line is what it was: the label of the component, or the first line of its text - and the second goes under that, while the title is still the label', phOf('0.0.0').querySelector('.builder-ph-label').textContent === 'Welcome' && phOf('0.0.0').title === 'Title'
+check( '...the first line is what it was: the label of the component, or the first line of its text - and the second goes under that, while the title is still the label', phOf('0.0.0').querySelector('.builder-ph-label').textContent === 'Welcome' && phOf('0.0.0').title === 'Title (Section)'
 	&& drawsOf('0.0.0').textContent === 'H1 .nino-section-title' && phOf('0.0.2').querySelector('.builder-ph-label').textContent === 'Button' && phOf('0.0.2').title === '' );
 builder._doc.model.blocks[0].cols[0].components[0].attributes.level = '3';
 builder._renderEditor();
@@ -3605,7 +3605,7 @@ builder._loadKeys();
 requests[requests.length - 1].callback( 403, { error : 'not allowed' } );
 builder._openSettings( [ 0, 0, 0 ] );
 check( '...an account that never could read them is refused the first time (403) and has none: the keys are an empty list that has been answered, the preview says the label of the component, and there is no text under the source',
-	JSON.stringify( builder._keys ) === '[]' && builder._keysAnswered === true && lines()[0] === 'Title' && paneOf('content').children.length === 1 );
+	JSON.stringify( builder._keys ) === '[]' && builder._keysAnswered === true && lines()[0] === 'Title (Section)' && paneOf('content').children.length === 1 );
 builder._closeDialog();
 
 doc = open();
@@ -3721,7 +3721,7 @@ const openCard = function() {
 	return opened;
 };
 
-check( 'a component whose schema has "holds" is a container, and the place it holds is read from the registry - the script names no component: the card of the kernel holds the place card, every other component holds none', builder._holds( registry(), 'article' ) === 'card'
+check( 'a component whose schema has "holds" is a container, and the place it holds is read from the registry - the script names no component: the card of the kernel holds the place card, every other component holds none', builder._holds( registry(), 'card' ) === 'card'
 	&& builder._holds( registry(), 'text' ) === '' && builder._holds( registry(), 'nothing-like-it' ) === '' && ( function() {
 		const own = registry();
 		own.components.stub = { label : 'Stub', source : 'content', preview : 'block', holds : 'tile' };
@@ -3730,7 +3730,7 @@ check( 'a component whose schema has "holds" is a container, and the place it ho
 	} )() );
 
 const cardModel = cardPage();
-check( 'a path into a container is one deeper - block, column, component, child: the child is a node, the container is one, and a path that leads nowhere is null', builder._get( cardModel, [ 0, 1, 0, 1 ] ).name === 'text' && builder._get( cardModel, cardAt ).name === 'article'
+check( 'a path into a container is one deeper - block, column, component, child: the child is a node, the container is one, and a path that leads nowhere is null', builder._get( cardModel, [ 0, 1, 0, 1 ] ).name === 'text' && builder._get( cardModel, cardAt ).name === 'card'
 	&& builder._get( cardModel, [ 0, 1, 0, 3 ] ) === null && builder._get( cardModel, [ 0, 1, 0, 0, 0 ] ) === null && builder._get( cardModel, [ 0, 0, 0, 0 ] ) === null && builder._get( cardModel, [ 1, 0, 'x', 0 ] ) === null
 	&& builder._get( cardModel, [ 1, 0, 'x' ] ) === cardModel.blocks[1].cols[0].stack && builder._get( cardModel, [ 1, 0, 0, 0 ] ).source === 'title' );
 check( '...a child stands in the list of its container, a container in the list of its column; both are components, and a container holds its children as work', builder._place( cardModel, [ 0, 1, 0, 2 ] ).list === cardIn( cardModel ).components && builder._place( cardModel, [ 0, 1, 0, 2 ] ).index === 2
@@ -3751,7 +3751,7 @@ check( 'a child is moved within the list of its container and nowhere else: not 
 	const after = names();
 	const refused = [ builder._move( movable, [ 0, 1, 0, 0 ], [ 0, 1, 1, 0 ] ), builder._move( movable, [ 0, 1, 0, 1 ], [ 0, 1, 1, 2 ] ), builder._move( movable, [ 0, 1, 0, 0 ], [ 0, 1, 1 ] ), builder._move( movable, [ 0, 1, 1 ], [ 0, 1, 0, 1 ] ), builder._move( movable, [ 0, 1, 0, 0 ], [ 0, 1, 0, 7 ] ) ];
 
-	return before === 'article-title,text,button' && moved === true && after === 'text,button,article-title' && refused.every( function( answer ) { return answer === false } ) && names() === after && second.components.map( function( child ) { return child.name } ).join() === before;
+	return before === 'card-title,text,button' && moved === true && after === 'text,button,card-title' && refused.every( function( answer ) { return answer === false } ) && names() === after && second.components.map( function( child ) { return child.name } ).join() === before;
 } )() );
 check( '...a step is one place up or down in the same list: the path of the child follows it, and the first has no step up as the last has none down', ( function() {
 
@@ -3775,18 +3775,18 @@ check( '...a child is taken out of its container, a container with its children 
 	const left = builder._get( model, cardAt ).components.map( function( child ) { return child.name } ).join();
 	const gone = builder._remove( model, cardAt );
 
-	return removed === true && left === 'article-title,button' && gone === true && model.blocks[0].cols[1].components.length === 0 && builder._remove( model, [ 0, 1, 0, 0 ] ) === false;
+	return removed === true && left === 'card-title,button' && gone === true && model.blocks[0].cols[1].components.length === 0 && builder._remove( model, [ 0, 1, 0, 0 ] ) === false;
 } )() );
 
 check( 'a new container starts with no children and no content, and the defaults of its attributes; a new child gets a key of its own in the section, as every component of a static column does', ( function() {
 
 	const model = cardPage();
-	const holder = builder._newComponent( model, registry(), 'page-home-card', [ 0, 1 ], 'article', [] );
-	const child = builder._newComponent( model, registry(), 'page-home-card', cardAt, 'article-title', [] );
-	const loopChild = builder._newComponent( model, registry(), 'page-home-card', [ 1, 0, 0 ], 'article-title', [] );
+	const holder = builder._newComponent( model, registry(), 'page-home-card', [ 0, 1 ], 'card', [] );
+	const child = builder._newComponent( model, registry(), 'page-home-card', cardAt, 'card-title', [] );
+	const loopChild = builder._newComponent( model, registry(), 'page-home-card', [ 1, 0, 0 ], 'card-title', [] );
 
 	return JSON.stringify( holder.components ) === '[]' && Object.prototype.hasOwnProperty.call( holder, 'content' ) === false && holder.source === '' && holder.create === undefined && holder.attributes.fill === '0' && holder.attributes.background === '' && holder.attributes.padding === ''
-		&& child.source === '/template/page-home-card/story/article-title' && child.create.value === 'Article title' && Object.prototype.hasOwnProperty.call( child, 'components' ) === false
+		&& child.source === '/template/page-home-card/story/card-title' && child.create.value === 'Title (Card)' && Object.prototype.hasOwnProperty.call( child, 'components' ) === false
 		&& loopChild.source === '' && loopChild.create === undefined;
 } )() );
 check( '...the content of the other component that takes one - [html] - stays a content: it has no children', ( function() {
@@ -3819,7 +3819,7 @@ check( '...a copy of a child stands right after it in its container, with a key 
 	const model = cardPage();
 	const to = builder._duplicate( model, registry(), 'page-home-card', [ 0, 1, 0, 0 ], function() { return 'Hello' } );
 
-	return JSON.stringify( to ) === '[0,1,0,1]' && cardIn( model ).components.length === 4 && builder._get( model, to ).name === 'article-title' && builder._get( model, to ).source === '/template/page-home-card/story/title-2'
+	return JSON.stringify( to ) === '[0,1,0,1]' && cardIn( model ).components.length === 4 && builder._get( model, to ).name === 'card-title' && builder._get( model, to ).source === '/template/page-home-card/story/title-2'
 		&& builder._get( model, to ).create.value === 'Hello' && builder._get( model, [ 0, 1, 0, 0 ] ).source === '/template/page-home-card/story/title';
 } )() );
 check( '...a copy of a section takes everything it owns under its new id: the keys of the children and the picture behind a card', ( function() {
@@ -3845,7 +3845,7 @@ check( 'a name for a new key or slot is free among the sources of the whole sect
 
 	const names = builder._names( section, 'page-home-card', [] );
 
-	return Object.keys( names ).sort().join() === 'button,card-picture,photo,text,title' && builder._keyName( section, 'page-home-card', 'article-title', [] ) === 'article-title' && builder._keyName( section, 'page-home-card', 'title', [] ) === 'title-2'
+	return Object.keys( names ).sort().join() === 'button,card-picture,photo,text,title' && builder._keyName( section, 'page-home-card', 'card-title', [] ) === 'card-title' && builder._keyName( section, 'page-home-card', 'title', [] ) === 'title-2'
 		&& builder._keyName( section, 'page-home-card', 'card-picture', [] ) === 'card-picture-2' && builder._nameProblem( section, 'page-home-card', 'text', [] ) === 'taken' && builder._nameProblem( section, 'page-home-card', 'card-picture', [] ) === 'taken';
 } )() );
 
@@ -3898,7 +3898,7 @@ check( 'where a component would stand: inside a container the place it holds, in
 
 	const own = registry();
 
-	own.components.article.holds = 'tile';
+	own.components.card.holds = 'tile';
 
 	return before === 'section,card,section,card' && [ builder._where( model, [ 0, 0 ] ), builder._where( model, [ 0, 1 ] ), builder._where( model, cardAt ), builder._where( model, [ 1, 0 ] ) ].join() === 'hero,hero,card,section'
 		&& builder._where( model, cardAt, own ) === 'tile';
@@ -3907,7 +3907,7 @@ check( 'where a component would stand: inside a container the place it holds, in
 check( 'what the schema says of a picture is known by type and place and never by name: the focus is a select over none and the nine places, the dimming a switch that follows a picture - or the focus that follows it -, a ground a select over the grounds of a column', ( function() {
 
 	const places = [ '', '1', '2', '3', '4', '5', '6', '7', '8', '9' ];
-	const declared = builder._declared( registry().components.article );
+	const declared = builder._declared( registry().components.card );
 	const roles = builder._roles( declared );
 	const own = {
 		a : { type : 'image' }, b : { type : 'bool' }, c : { type : 'image' }, d : { type : 'select', options : places }, e : { type : 'bool' }, f : { type : 'string' }, g : { type : 'bool' },
@@ -3930,7 +3930,7 @@ check( 'the ground the content of a column stands on is the one the column paint
 } )() );
 check( '...a component that holds components looks as its attributes say: the ground it paints - none, one, the counter of the ground it stands on - and dark where its picture is dimmed, whatever ground it names; a dimming without a picture is nothing', ( function() {
 
-	const schema = registry().components.article;
+	const schema = registry().components.card;
 	const look = function( ground, picture, dim, surface ) {
 		return builder._look( schema, { attributes : { ground : ground, background : picture, dim : dim } }, surface );
 	};
@@ -3949,7 +3949,7 @@ check( 'the preview of a container is its label, the ground it paints, whether i
 	const loopCard = plan[1].cols[0].components[0];
 
 	return card.holds === true && card.label === 'Card' && card.color === 'alt' && card.background === false && JSON.stringify( card.path ) === '[0,1,0]' && card.children.length === 3
-		&& card.children.map( function( child ) { return child.path.join('.')+ ':'+ child.label+ ':'+ child.draws } ).join() === '0.1.0.0:Article title:H3 .nino-article-title,0.1.0.1:Text:,0.1.0.2:Button:A .nino-btn' && card.children.every( function( child ) { return child.holds === undefined } )
+		&& card.children.map( function( child ) { return child.path.join('.')+ ':'+ child.label+ ':'+ child.draws } ).join() === '0.1.0.0:Title (Card):H3 .nino-card-title,0.1.0.1:Text:,0.1.0.2:Button:A .nino-btn' && card.children.every( function( child ) { return child.holds === undefined } )
 		&& loopCard.holds === true && loopCard.color === 'dark' && loopCard.background === true && loopCard.children.length === 1 && plan[0].cols[0].components[0].holds === undefined && plan[0].cols[0].components[0].children === undefined;
 } )() );
 check( '...the tint of a container follows the ground of its column or, where the column has none, of its section', ( function() {
@@ -3972,18 +3972,18 @@ doc = openCard();
 builder._renderEditor();
 
 const menuOf = function( path ) { builder._pickComponent( path, made('button') ); return texts( screen.getElementById('builder-menu').children ) };
-const inCard = 'Article subtitle,Article title,Button,HTML,Image,Spacer,Text';
-const inSection = 'Button,Card,HTML,Image,Spacer,Subtitle,Text,Title';
+const inCard = 'Button,HTML,Image,Spacer,Subtitle (Card),Text,Title (Card)';
+const inSection = 'Button,Card,HTML,Image,Spacer,Subtitle (Section),Text,Title (Section)';
 
 check( 'the picker offers the card where the card says it belongs - a column of a section, and the bare cell of a loop, which holds no place of its own - and what a column is offered besides', menuOf( [ 0, 1 ] ) === inSection && menuOf( [ 1, 0 ] ) === inSection && menuOf( [ 0, 0 ] ) === inSection );
 check( '...in the first section when it has a picture it is offered as well: the hero is a place the card belongs in', ( function() {
 	builder._doc.model.blocks[0].settings.image = 'cover';
 	const offered = menuOf( [ 0, 0 ] );
 	builder._doc.model.blocks[0].settings.image = '';
-	return offered === 'Button,Card,Hero subtitle,Hero title,HTML,Image,Spacer,Text';
+	return offered === 'Button,Card,HTML,Image,Spacer,Subtitle (Hero),Text,Title (Hero)';
 } )() );
-check( '...inside a card it offers what belongs to the place the card holds - the title and the subtitle of an article - and not the card itself, and not the title of a section nor the title of a hero, whose places are others', menuOf( cardAt ) === inCard && menuOf( [ 1, 0, 0 ] ) === inCard
-	&& menuOf( cardAt ).split(',').indexOf('Card') === -1 && menuOf( [ 0, 1 ] ).split(',').indexOf('Article title') === -1 && menuOf( [ 1, 0 ] ).split(',').indexOf('Article title') === -1 );
+check( '...inside a card it offers what belongs to the place the card holds - the title and the subtitle of a card - and not the card itself, and not the title of a section nor the title of a hero, whose places are others', menuOf( cardAt ) === inCard && menuOf( [ 1, 0, 0 ] ) === inCard
+	&& menuOf( cardAt ).split(',').indexOf('Card') === -1 && menuOf( [ 0, 1 ] ).split(',').indexOf('Title (Card)') === -1 && menuOf( [ 1, 0 ] ).split(',').indexOf('Title (Card)') === -1 );
 check( '...the button of the card in the preview opens the same menu, and the button of its column the column\'s', ( function() {
 
 	const menu = screen.getElementById('builder-menu');
@@ -4022,11 +4022,11 @@ check( 'a card added to a column is its last component, with no children, select
 
 	const col = builder._doc.model.blocks[0].cols[1];
 
-	builder._addComponent( [ 0, 1 ], 'article' );
+	builder._addComponent( [ 0, 1 ], 'card' );
 
 	const added = col.components[col.components.length - 1];
 
-	return col.components.length === 2 && added.name === 'article' && JSON.stringify( added.components ) === '[]' && added.content === undefined && builder._same( builder._sel, [ 0, 1, 1 ] )
+	return col.components.length === 2 && added.name === 'card' && JSON.stringify( added.components ) === '[]' && added.content === undefined && builder._same( builder._sel, [ 0, 1, 1 ] )
 		&& preview().querySelectorAll('[data-path="0.1"] .builder-card').length === 2 && preview().querySelector('[data-path="0.1.1"]').classList.contains('is-selected') && preview().querySelector('[data-path="0.1.1"] .builder-adds') !== null
 		&& preview().querySelector('[data-path="0.1.1"]').querySelectorAll('.builder-ph').length === 0;
 } )() );
@@ -4034,18 +4034,18 @@ check( '...a component added to a card is its last child, with a key of its own 
 
 	const card = cardIn( builder._doc.model );
 
-	builder._addComponent( cardAt, 'article-subtitle' );
-	builder._addComponent( [ 1, 0, 0 ], 'article-subtitle' );
+	builder._addComponent( cardAt, 'card-subtitle' );
+	builder._addComponent( [ 1, 0, 0 ], 'card-subtitle' );
 
 	const added = card.components[card.components.length - 1];
 	const looped = builder._get( builder._doc.model, [ 1, 0, 0, 1 ] );
 
-	return card.components.length === 4 && added.name === 'article-subtitle' && added.source === '/template/page-home-card/story/article-subtitle' && added.create.value === 'Article subtitle'
-		&& looped.name === 'article-subtitle' && looped.source === '' && looped.create === undefined && builder._same( builder._sel, [ 1, 0, 0, 1 ] ) && preview().querySelector('[data-path="0.1.0"]').querySelectorAll('.builder-ph').length === 4
+	return card.components.length === 4 && added.name === 'card-subtitle' && added.source === '/template/page-home-card/story/card-subtitle' && added.create.value === 'Subtitle (Card)'
+		&& looped.name === 'card-subtitle' && looped.source === '' && looped.create === undefined && builder._same( builder._sel, [ 1, 0, 0, 1 ] ) && preview().querySelector('[data-path="0.1.0"]').querySelectorAll('.builder-ph').length === 4
 		&& preview().querySelector('[data-path="1.0.0.1"]').classList.contains('is-selected') && builder._doc.model.blocks[1].cols[0].components.length === 1;
 } )() );
 check( '...and the document that came of it is unsaved, with the children where the Reader puts them and the marks the panel keeps', builder._unsaved( builder._doc ) === true && builder._saveRequest( builder._doc, false ).model.blocks[0].cols[1].components[0].components.length === 4
-	&& builder._saveRequest( builder._doc, false ).model.blocks[0].cols[1].components[0].components[3].create.value === 'Article subtitle' );
+	&& builder._saveRequest( builder._doc, false ).model.blocks[0].cols[1].components[0].components[3].create.value === 'Subtitle (Card)' );
 
 console.log( '\nThe form of a card' );
 
@@ -4068,7 +4068,7 @@ check( '...the ground is the colour select of a column - none of its own, which 
 	=== '=Like the surroundings,counter=Counter,alt=Alternate,tint=Tinted,dark=Dark,black=Black,primary=Brand colour,brand-alt=Second colour' && holderPane().querySelector('.builder-with-swatch').contains( controlOf( holderPane(), 'Ground' ).el ) && holderPane().querySelector('.builder-with-swatch').contains( holderPane().querySelector('.builder-swatch') )
 	&& holderPane().querySelector('.builder-swatch').getAttribute('aria-hidden') === 'true' && valueAt( holderPane(), 'Ground' ) === 'counter' );
 check( '...the hint of the ground stands under the select and the patch, not between them: the patch is level with the select', holderPane().querySelector('.builder-with-swatch').parentNode.className === 'builder-with-hint' && holderPane().querySelector('.builder-with-swatch').nextSibling.className === 'nino-admin-hint'
-	&& holderPane().querySelector('.builder-with-swatch').nextSibling.textContent === registry().components.article.attributes.ground.hint && holderPane().querySelector('.builder-with-swatch').querySelector('.nino-admin-hint') === null && stylesheet.indexOf( '.builder-with-hint > .nino-admin-hint' ) !== -1 );
+	&& holderPane().querySelector('.builder-with-swatch').nextSibling.textContent === registry().components.card.attributes.ground.hint && holderPane().querySelector('.builder-with-swatch').querySelector('.nino-admin-hint') === null && stylesheet.indexOf( '.builder-with-hint > .nino-admin-hint' ) !== -1 );
 check( '...the padding has the steps of the section\'s spacing, the vertical alignment its own words - top, middle, bottom, last element at the bottom - and the horizontal alignment the words of the alignment of a text; each attribute has the words of the Builder, and the values the file has', optionsOf( holderPane(), 'Padding' ) === '=Default,0=0,1=1,2=2,3=3,4=4,5=5,6=6'
 	&& optionsOf( holderPane(), 'Vertical' ) === '=Top,middle=Middle,bottom=Bottom,last-bottom=Last element at the bottom' && optionsOf( holderPane(), 'Horizontal' ) === '=Inherited,left=Left,center=Centre,right=Right' && valueAt( holderPane(), 'Padding' ) === '3' && valueAt( holderPane(), 'Vertical' ) === '' );
 
@@ -4250,9 +4250,9 @@ requests = [];
 changes = 0;
 choose( holderPane(), house );
 check( '...a picture chosen for a card that has none makes a slot of the kind of a new one - named after the component and the attribute, free in the section, the size a new slot starts with, and for its label the section, the component and the attribute', actionsOf() === 'slots/create'
-	&& JSON.stringify( requests[0].payload ) === '{"uri":"/template/page-home-card/story/article-background","label":"story: Card - Picture","width":1600,"height":900}' );
+	&& JSON.stringify( requests[0].payload ) === '{"uri":"/template/page-home-card/story/card-background","label":"story: Card - Picture","width":1600,"height":900}' );
 requests[0].callback( 200, { ok : true } );
-check( '...the picture of the card is that slot, with nothing left to make - the slot is there - and the document is changed', holderNow().attributes.background === '/template/page-home-card/story/article-background' && holderNow().slots === undefined && actionsOf() === 'slots/create,images/upload' && changes === 1 );
+check( '...the picture of the card is that slot, with nothing left to make - the slot is there - and the document is changed', holderNow().attributes.background === '/template/page-home-card/story/card-background' && holderNow().slots === undefined && actionsOf() === 'slots/create,images/upload' && changes === 1 );
 requests[1].callback( 200, { filename : 'f', url : '/uploads/card.jpg', source : { width : 2000, height : 1000 }, belowTarget : false } );
 check( '...and the form is drawn again with it: the thumbnail, the focus and the dimming are on, the picture can be taken away, and the preview says that a picture is behind the card, not behind the column or the section', thumbOf( holderPane() ).hidden === false && thumbOf( holderPane() ).src.indexOf('/uploads/card.jpg') === 0
 	&& controlOf( holderPane(), 'No focus' ).el.disabled === false && controlOf( holderPane(), 'Dim the picture' ).el.disabled === false && buttonOf( holderPane(), 'Remove the picture' ).disabled === false && noteOf( holderPane() ).textContent === 'The picture is stored.'
@@ -4276,24 +4276,24 @@ check( '...a slot that is chosen is the picture: the attribute holds it, there i
 	&& holderPane().querySelector('.builder-source-current').textContent === '/project/logo/header/image' && controlOf( holderPane(), 'Dim the picture' ).el.disabled === false && buttonOf( holderPane(), 'Remove the picture' ).disabled === false );
 buttonOf( holderPane(), 'Source' ).click();
 buttonOf( pickerStrip(), 'Create new' ).click();
-check( 'Create new: a new slot is named after the component and the attribute, in the section, and has the size a new slot starts with', fresh('.builder-new-title').textContent === 'New image slot' && fresh('.builder-new-name').value === 'article-background' && fresh('.builder-new-uri').textContent === '/template/page-home-card/story/article-background'
+check( 'Create new: a new slot is named after the component and the attribute, in the section, and has the size a new slot starts with', fresh('.builder-new-title').textContent === 'New image slot' && fresh('.builder-new-name').value === 'card-background' && fresh('.builder-new-uri').textContent === '/template/page-home-card/story/card-background'
 	&& fresh('.builder-new-size').hidden === false && fresh('.builder-new-width').value === '1600' && fresh('.builder-new-height').value === '900' );
 fresh('.builder-new-width').value = '800';
 fresh('.builder-new-width').dispatch('input');
 fresh('.builder-new-use').click();
-check( '...using it makes the slot the picture of the card, and the mark that makes it when the document is saved stays on the card - under the name of the attribute, with the label and the size - and on nothing else', holderNow().attributes.background === '/template/page-home-card/story/article-background'
+check( '...using it makes the slot the picture of the card, and the mark that makes it when the document is saved stays on the card - under the name of the attribute, with the label and the size - and on nothing else', holderNow().attributes.background === '/template/page-home-card/story/card-background'
 	&& JSON.stringify( holderNow().slots ) === '{"background":{"label":"Card - Picture","width":800,"height":900}}' && holderNow().create === undefined && pickerBox().open === false && preview().querySelector('[data-path="0.1.0"] .is-background') !== null
-	&& holderPane().querySelector('.builder-source-current').textContent === '/template/page-home-card/story/article-background' );
+	&& holderPane().querySelector('.builder-source-current').textContent === '/template/page-home-card/story/card-background' );
 check( '...a slot that is yet to be made has an upload: the first picture makes it from the mark, the size it says, and the mark is gone once it is there', ( function() {
 
 	requests = [];
 	choose( holderPane(), house );
 
-	const first = actionsOf() === 'slots/create' && JSON.stringify( requests[0].payload ) === '{"uri":"/template/page-home-card/story/article-background","label":"Card - Picture","width":800,"height":900}';
+	const first = actionsOf() === 'slots/create' && JSON.stringify( requests[0].payload ) === '{"uri":"/template/page-home-card/story/card-background","label":"Card - Picture","width":800,"height":900}';
 
 	requests[0].callback( 200, { ok : true } );
 
-	return first && holderNow().slots === undefined && holderNow().attributes.background === '/template/page-home-card/story/article-background' && actionsOf() === 'slots/create,images/upload';
+	return first && holderNow().slots === undefined && holderNow().attributes.background === '/template/page-home-card/story/card-background' && actionsOf() === 'slots/create,images/upload';
 } )() );
 requests[1].callback( 200, { filename : 'f', url : '/uploads/made.jpg', source : { width : 2000, height : 1000 }, belowTarget : false } );
 buttonOf( holderPane(), 'Remove the picture' ).click();
@@ -4338,7 +4338,7 @@ check( 'a component that holds components is a frame of its own in the body of i
 	&& classes( frameOf('0.1.0').children ) === 'builder-card-head,builder-card-body' && classes( frameOf('0.1.0').querySelector('.builder-card-head').children ) === 'builder-head-title,builder-head-status,builder-tools' && frameOf('0.1.0').localName === 'div'
 	&& texts( frameOf('0.1.0').querySelectorAll('.builder-card-name') ) === 'Card' );
 check( '...its body has its children as placeholders, in order, each a frame of its own with its tools, and ends in a button that adds a child; the placeholders say what the components draw', classes( frameOf('0.1.0').querySelector('.builder-card-body').children ) === 'builder-ph has-draws builder-pick,builder-ph builder-pick,builder-ph has-draws builder-pick,builder-adds'
-	&& frameOf('0.1.0').querySelectorAll('.builder-ph').map( function( ph ) { return ph.dataset.path } ).join() === '0.1.0.0,0.1.0.1,0.1.0.2' && frameOf('0.1.0.0').querySelector('.builder-ph-draws').textContent === 'H3 .nino-article-title'
+	&& frameOf('0.1.0').querySelectorAll('.builder-ph').map( function( ph ) { return ph.dataset.path } ).join() === '0.1.0.0,0.1.0.1,0.1.0.2' && frameOf('0.1.0.0').querySelector('.builder-ph-draws').textContent === 'H3 .nino-card-title'
 	&& frameOf('0.1.0.0').querySelectorAll('button').map( function( button ) { return button.dataset.tool } ).join() === 'settings,html,up,down,duplicate,delete' && frameOf('0.1.0').querySelector('.builder-adds .builder-add-button').textContent === '+ Component' );
 check( '...a card with no picture behind it says nothing in its head; the head of the column and the head of the section say nothing of the card', frameOf('0.1.0').querySelector('.builder-head-status').children.length === 0 && frameOf('0.1').querySelector('.builder-pcol-head .builder-head-status').children.length === 0
 	&& frameOf('0.1.0').querySelector('.builder-card-head .builder-rename') === null );
@@ -4386,16 +4386,16 @@ const namesOf = function() { return cardIn( builder._doc.model ).components.map(
 check( 'the tools of a frame at depth four: a child can go up and down in its card, and the first has no step up as the last has none down - both are greyed out', toolOf( '0.1.0.0', 'up' ).disabled === true && toolOf( '0.1.0.0', 'down' ).disabled === false && toolOf( '0.1.0.2', 'down' ).disabled === true
 	&& toolOf( '0.1.0.2', 'up' ).disabled === false && toolOf( '0.1.0.1', 'up' ).disabled === false && toolOf( '0.1.0.1', 'down' ).disabled === false );
 toolOf( '0.1.0.1', 'up' ).click();
-check( '...up moves the child one place up in the list of its card and keeps it selected, at its new path', namesOf() === 'text,article-title,button' && builder._same( builder._sel, [ 0, 1, 0, 0 ] ) && frameOf('0.1.0.0').classList.contains('is-selected') && frameOf('0.1.0.0').querySelector('.builder-ph-label').textContent === 'Text' && changes === 1 );
+check( '...up moves the child one place up in the list of its card and keeps it selected, at its new path', namesOf() === 'text,card-title,button' && builder._same( builder._sel, [ 0, 1, 0, 0 ] ) && frameOf('0.1.0.0').classList.contains('is-selected') && frameOf('0.1.0.0').querySelector('.builder-ph-label').textContent === 'Text' && changes === 1 );
 toolOf( '0.1.0.0', 'down' ).click();
 toolOf( '0.1.0.1', 'down' ).click();
-check( '...down one place down; a card has the order its children have in the model', namesOf() === 'article-title,button,text' && builder._same( builder._sel, [ 0, 1, 0, 2 ] ) );
+check( '...down one place down; a card has the order its children have in the model', namesOf() === 'card-title,button,text' && builder._same( builder._sel, [ 0, 1, 0, 2 ] ) );
 toolOf( '0.1.0.2', 'duplicate' ).click();
-check( '...duplicate puts a copy right after the child, with a key of its own, and selects the copy', namesOf() === 'article-title,button,text,text' && builder._same( builder._sel, [ 0, 1, 0, 3 ] ) && builder._get( builder._doc.model, [ 0, 1, 0, 3 ] ).source === '/template/page-home-card/story/text-2'
+check( '...duplicate puts a copy right after the child, with a key of its own, and selects the copy', namesOf() === 'card-title,button,text,text' && builder._same( builder._sel, [ 0, 1, 0, 3 ] ) && builder._get( builder._doc.model, [ 0, 1, 0, 3 ] ).source === '/template/page-home-card/story/text-2'
 	&& builder._get( builder._doc.model, [ 0, 1, 0, 3 ] ).create.value === 'Text' && frameOf('0.1.0.3').classList.contains('is-selected') && builder._fresh.story === undefined );
 questions = [];
 toolOf( '0.1.0.3', 'delete' ).click();
-check( '...delete takes a child out without a question, since it holds nothing, and selects the card it stood in', namesOf() === 'article-title,button,text' && questions.length === 0 && builder._same( builder._sel, cardAt ) && frameOf('0.1.0').classList.contains('is-selected') );
+check( '...delete takes a child out without a question, since it holds nothing, and selects the card it stood in', namesOf() === 'card-title,button,text' && questions.length === 0 && builder._same( builder._sel, cardAt ) && frameOf('0.1.0').classList.contains('is-selected') );
 
 toolOf( '0.1.0', 'duplicate' ).click();
 check( 'the tools of the card are those of a component of a column: duplicate copies it with its children, right after it, and selects the copy; the card has no step up or down in a column that holds nothing else, and has them next to another', builder._doc.model.blocks[0].cols[1].components.length === 2
@@ -4494,7 +4494,7 @@ if( faults.length > 0 )
 
 check( 'a model that php sent with empty lists for maps has them as maps in the children of a container as well', ( function() {
 
-	const model = builder._normalise( { blocks : [ { kind : 'section', settings : [], cols : [ { hidden : [], width : [], components : [ { name : 'article', attributes : [], components : [ { name : 'text', attributes : [] }, { name : 'button' } ] } ] } ] } ] } );
+	const model = builder._normalise( { blocks : [ { kind : 'section', settings : [], cols : [ { hidden : [], width : [], components : [ { name : 'card', attributes : [], components : [ { name : 'text', attributes : [] }, { name : 'button' } ] } ] } ] } ] } );
 	const holder = model.blocks[0].cols[0].components[0];
 
 	return Array.isArray( holder.attributes ) === false && holder.components.every( function( child ) { return Array.isArray( child.attributes ) === false && typeof child.attributes === 'object' } ) && JSON.stringify( holder.components[0].attributes ) === '{}';
@@ -4507,8 +4507,8 @@ const reasonWords = function( code, language ) {
 };
 check( 'what the Reader does not take of a container is said in the words of the panel, in both languages: a loop inside it, another container inside it, and markup next to its component calls - with the name of the component and the markup, the two places of the sentence, which the Reader puts together with a line break', builder._reasonText( { line : 2, code : 'holder-stack', detail : '', text : 'x' } ) === 'Line 2: A loop inside a component that holds components'
 	&& builder._reasonText( { line : 3, code : 'holder-in-holder', detail : '', text : 'x' } ) === 'Line 3: A component that holds components inside another'
-	&& builder._reasonText( { line : 5, code : 'holder-content', detail : 'article\n<p>Hello there, a', text : 'x' } ) === 'Line 5: The component article holds markup next to its component calls: <p>Hello there, a'
-	&& builder._reasonText( { line : 0, code : 'holder-content', detail : 'article\nx\ny', text : 'x' } ) === 'The component article holds markup next to its component calls: x\ny'
+	&& builder._reasonText( { line : 5, code : 'holder-content', detail : 'card\n<p>Hello there, a', text : 'x' } ) === 'Line 5: The component card holds markup next to its component calls: <p>Hello there, a'
+	&& builder._reasonText( { line : 0, code : 'holder-content', detail : 'card\nx\ny', text : 'x' } ) === 'The component card holds markup next to its component calls: x\ny'
 	&& [ 'holder-stack', 'holder-in-holder', 'holder-content' ].every( function( code ) {
 		const places = code === 'holder-content' ? 2 : 0;
 		return [ 'en_US', 'de_DE' ].every( function( language ) { const sentence = reasonWords( code, language ); return sentence !== null && sentence.split('%s').length === places + 1 } );

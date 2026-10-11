@@ -21,7 +21,7 @@ return [
 				'en_US' => 'The picture behind a column: the first thing in it, one image call with the slot and an empty alt text - the alt text belongs to the slot. A column paints a ground of its own with nino-grid--<ground> (alt, tint, dark, black, primary or brand-alt) or the counter ground of its section with nino-grid--counter; nino-grid--dim darkens the picture and is read only while the column has one. A block that is not the first in the column, a second one, or another call in it makes the section an HTML+ block.',
 				'de_DE' => 'Das Bild hinter einer Spalte: das Erste in ihr, ein Bildaufruf mit dem Bildplatz und leerem Alternativtext - der Alternativtext gehört zum Bildplatz. Eine Spalte malt eine eigene Fläche mit nino-grid--<Fläche> (alt, tint, dark, black, primary oder brand-alt) oder die Gegenfläche ihrer Section mit nino-grid--counter; nino-grid--dim dunkelt das Bild ab und wird nur gelesen, solange die Spalte eins hat. Ein Block, der nicht das Erste in der Spalte ist, ein zweiter oder ein anderer Aufruf darin macht die Section zum HTML+-Block.',
 			],
-			'[article padding="3"][article-title /slot][/article]' => [
+			'[card padding="3"][card-title /slot][/card]' => [
 				'en_US' => 'A component that holds components - the card of the kernel is one: its call on a line of its own, each child a call on a line of its own one tab deeper, and the closing tag on a line of its own at the indent of the call. It stands in a column and in the content of a loop, and its attributes are written only where they differ from the default. A loop or another card inside it, or markup next to its calls, makes the section an HTML+ block.',
 				'de_DE' => 'Eine Komponente, die Komponenten enthält - die Karte des Kernels ist eine: ihr Aufruf in einer eigenen Zeile, jedes Kind als Aufruf in einer eigenen Zeile einen Tab tiefer und das schließende Tag in einer eigenen Zeile auf der Einrückung des Aufrufs. Sie steht in einer Spalte und im Inhalt eines Loops, und ihre Attribute werden nur geschrieben, wo sie von der Vorgabe abweichen. Ein Loop oder eine weitere Karte darin oder Markup neben ihren Aufrufen macht die Section zum HTML+-Block.',
 			],
@@ -90,9 +90,10 @@ return [
 	],
 	'category'		=> 'content',
 	'version'			=> '1.0.0',
-	// The Components module of 1.6: the registry the builder reads and the
-	// shortcodes it writes calls of
-	'nino'				=> '^1.6',
+	// The Components module of 1.7: the registry the builder reads, whose card
+	// is [card] with [card-title] and [card-subtitle], and the shortcodes it
+	// writes calls of
+	'nino'				=> '^1.7',
 	'requires'		=> [],
 	// The page templates it edits are the project's own, in private/templates/,
 	// and a backup carries them as project content - none of it belongs to this

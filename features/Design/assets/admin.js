@@ -173,7 +173,7 @@
 			'content/quiet' : 'a-large-small',
 			'content/loud' : 'a-large-small',
 			'content/section-space' : 'scaling',
-			'content/article-space' : 'align-vertical-space-around',
+			'content/card-space' : 'align-vertical-space-around',
 			'content/corners' : 'square-round-corner',
 			'content/border' : 'square',
 			'content/shadow' : 'square-stack',

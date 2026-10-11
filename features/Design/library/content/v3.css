@@ -8,7 +8,7 @@
  *	@knob	quiet			Size of a quiet title, subtitle and text
  *	@knob	loud			Size of a loud title, subtitle and text
  *	@knob	section-space	Height of a band
- *	@knob	article-space	Space inside a card and between its parts
+ *	@knob	card-space		Space inside a card and between its parts
  *	@knob	corners			Corners of a card
  *	@knob	shadow			Shadow of a card, and the lift under the pointer
  *
@@ -45,9 +45,9 @@
 	--content-section-space--default: 	var(--space-3);
 	--content-section-space--more: 		var(--space-4);
 
-	--content-article-space--less: 		var(--space-2);
-	--content-article-space--default: 	var(--space-3);
-	--content-article-space--more: 		var(--space-4);
+	--content-card-space--less: 		var(--space-2);
+	--content-card-space--default: 	var(--space-3);
+	--content-card-space--more: 		var(--space-4);
 
 	--content-corners--less: 			var(--radius-small);
 	--content-corners--default: 		var(--radius-large);
@@ -131,45 +131,45 @@
 
 /* ---- cards ---- */
 
-.nino-article:where(:not(.nino-article--borderless)) {
+.nino-card:where(:not(.nino-card--borderless)) {
 	border-width: 0;
 	border-radius: var(--content-corners);
 	background-color: var(--color-ground);
 	overflow: hidden;
 	transition: transform .18s ease, box-shadow .18s ease;
 }
-.nino-article-img {
+.nino-card-img {
 	display: block;
 	width: 100%;
 	margin: 0;
 	border-radius: 0;
 }
-.nino-article-content:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
-	padding: var(--content-article-space);
+.nino-card-content:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
+	padding: var(--content-card-space);
 }
-.nino-article-title:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
-.nino-article-subtitle:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
-.nino-article-descr:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
-	margin-bottom: calc( var(--content-article-space) / 3 );
+.nino-card-title:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
+.nino-card-subtitle:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
+.nino-card-descr:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
+	margin-bottom: calc( var(--content-card-space) / 3 );
 }
-.nino-article-cols {
-	gap: var(--content-article-space);
+.nino-card-cols {
+	gap: var(--content-card-space);
 }
 
 /*	A card that does not link anywhere does not lift: only one with a link or
 	a button in it answers the pointer	*/
-.nino-article:has(a, button):hover,
-.nino-article:focus-within {
+.nino-card:has(a, button):hover,
+.nino-card:focus-within {
 	transform: translateY(-2px);
 	box-shadow: var(--content-shadow-lift);
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.nino-article {
+	.nino-card {
 		transition: none;
 	}
-	.nino-article:has(a, button):hover,
-	.nino-article:focus-within {
+	.nino-card:has(a, button):hover,
+	.nino-card:focus-within {
 		transform: none;
 	}
 }

@@ -30,7 +30,7 @@ return [
 				'de_DE' => 'Inhalte, Buttons und Komponenten beginnen je mit der Auswahl ihrer Vorlage; Header und Footer werden unter Global gewählt. Unter der Auswahl steht die Beschreibung der gewählten Vorlage, und eine andere Vorlage zeichnet die Zeilen des Tabs neu – der Fokus bleibt dabei auf der Auswahl, die Pfeiltasten laufen also weiter durch die Liste.',
 			],
 			'Content, Buttons, Components' => [
-				'en_US' => 'One row for each named knob of the tab - hero title and text, quiet, loud, section space, article space, corners, border and shadow for the content; small, big, space and corners for the buttons; scale, space, corners, border, zebra and labels for the components - at one step less, as the template has it, or one step more. A template publishes a knob by declaring its three values; one it does not answer to is greyed out with a line saying so. When another template is chosen, only the knobs it answers to keep their position; the others go back to the middle, and choosing the earlier template again does not bring them back. A hero title or subtitle that carries the base class and a variant has the size of the base class from 768 px - that is a rule of Nino.css - so quiet and loud reach a hero below 768 px only.',
+				'en_US' => 'One row for each named knob of the tab - hero title and text, quiet, loud, section space, card space, corners, border and shadow for the content; small, big, space and corners for the buttons; scale, space, corners, border, zebra and labels for the components - at one step less, as the template has it, or one step more. A template publishes a knob by declaring its three values; one it does not answer to is greyed out with a line saying so. When another template is chosen, only the knobs it answers to keep their position; the others go back to the middle, and choosing the earlier template again does not bring them back. A hero title or subtitle that carries the base class and a variant has the size of the base class from 768 px - that is a rule of Nino.css - so quiet and loud reach a hero below 768 px only.',
 				'de_DE' => 'Eine Zeile je benanntem Regler des Tabs – Hero-Titel und -Text, leise, laut, Abstand der Sections, Abstand der Karten, Ecken, Linie und Schatten für die Inhalte; klein, groß, Abstand und Ecken für die Buttons; Schriftgröße, Abstände, Ecken, Linien, Streifen und Beschriftung für die Komponenten – auf eine Stufe weniger, wie die Vorlage es hat, oder eine mehr. Eine Vorlage veröffentlicht einen Regler, indem sie seine drei Werte deklariert; einer, auf den sie nicht hört, steht ausgegraut da, mit einer Zeile, die das sagt. Wird eine andere Vorlage gewählt, behalten nur die Regler ihre Stellung, auf die sie hört; die übrigen stehen wieder in der Mitte, und mit der früheren Vorlage kehren ihre Stellungen nicht zurück. Ein Hero-Titel oder -Untertitel mit der Basisklasse und einer Variante hat ab 768 px die Größe der Basisklasse – das ist eine Regel von Nino.css –, deshalb erreichen „leise“ und „laut“ einen Hero nur darunter.',
 			],
 			'Colours' => [
@@ -68,13 +68,17 @@ return [
 		read by a kernel newer than the v1.2.0-beta tag - on that one
 		Features::manifest() refuses this file outright - so a constraint
 		admitting 1.2 offered a feature that could not be installed. ^1.3 is
-		the first that names only a kernel which does both. A higher one came
-		with 1.6, which renamed the classes of the hero to nino-hero and kept
-		no alias, and gave the font roles, the grounds and the counter ground
-		their custom properties: the content templates, the phone rule of
+		the first that names only a kernel which does both. And the highest came
+		with 1.7, which renamed the classes of the hero to nino-hero and kept
+		no alias, gave the font roles, the grounds and the counter ground
+		their custom properties - the content templates, the phone rule of
 		header v5, the font roles the compiler writes and the specimen are
-		written for them, so on a 1.5 they style nothing. */
-	'nino'				=> '^1.6',
+		written for them - and called the card one - nino-card and its tokens, and kept
+		no alias for the old class - and whose delivered theme.css is the body
+		this compiler writes of a library with those names: the content sets,
+		base.css and the specimen are written for them, so on a 1.6 they style
+		nothing and the compile is not the delivered file. */
+	'nino'				=> '^1.7',
 	'requires'		=> [],
 	// The whole setup: which template per part, the knob positions of the three
 	// template tabs, the size, width and animation, the font roles, the palette's
