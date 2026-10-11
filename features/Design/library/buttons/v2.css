@@ -1,0 +1,65 @@
+/*	Nino Design - buttons v2
+ *
+ *	@name			Pills
+ *	@description	Fully rounded and wide, with a heavier outline. The friendliest of the five.
+ *
+ *	@knob	small		Size of a small button
+ *	@knob	big			Size of a big button
+ *	@knob	space		Space around the label
+ *	@knob	corners		Corner radius
+ *
+ *	The shape only works when the label has room on both axes, so the padding
+ *	here is a good deal wider than the framework's own, and the variants keep
+ *	their ratio to it. The corners knob goes from a rounded box to a pill and
+ *	stops there: past half the height a radius grows nothing.
+ */
+
+:root {
+	--buttons-small--less: 		.7;
+	--buttons-small--default: 	.8;
+	--buttons-small--more: 		.9;
+
+	--buttons-big--less: 		1.1;
+	--buttons-big--default: 	1.2;
+	--buttons-big--more: 		1.35;
+
+	--buttons-space--less: 		var(--space-2);
+	--buttons-space--default: 	calc( var(--space-2) * 1.5 );
+	--buttons-space--more: 		var(--space-3);
+
+	--buttons-corners--less: 	var(--radius-large);
+	--buttons-corners--default: 999rem;
+	--buttons-corners--more: 	999rem;
+}
+
+.nino-btn:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
+	padding: calc( var(--buttons-space) / 2.6 ) var(--buttons-space);
+}
+.nino-btn {
+	border-radius: var(--buttons-corners);
+	line-height: 1.35;
+}
+.nino-btn--small:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
+	padding: calc( var(--buttons-space) / 2.6 * var(--buttons-small) ) calc( var(--buttons-space) * var(--buttons-small) );
+}
+.nino-btn--small {
+	font-size: calc( var(--font-button-size) * var(--buttons-small) );
+	border-radius: var(--buttons-corners);
+}
+.nino-btn--big:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
+	padding: calc( var(--buttons-space) / 2.6 * var(--buttons-big) ) calc( var(--buttons-space) * var(--buttons-big) );
+}
+.nino-btn--big {
+	font-size: calc( var(--font-button-size) * var(--buttons-big) );
+	border-radius: var(--buttons-corners);
+}
+
+/*	A pill's outline has to be heavier than a box's, or the shape reads as a
+	shadow of a button rather than as one	*/
+.nino-btn--outline {
+	border-width: 2px;
+}
+
+.nino-filter-btn {
+	border-radius: var(--buttons-corners);
+}

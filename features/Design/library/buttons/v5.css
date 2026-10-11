@@ -1,0 +1,67 @@
+/*	Nino Design - buttons v5
+ *
+ *	@name			Compact
+ *	@description	Small, tight and quiet, so a page can carry a lot of them without looking like a control panel.
+ *
+ *	@knob	small		Size of a small button
+ *	@knob	big			Size of a big button
+ *	@knob	space		Space around the label
+ *	@knob	corners		Corner radius
+ *
+ *	For pages where a button is an option rather than the point: filter rows,
+ *	tables with an action per line, a form with three ways out. Everything is a
+ *	step down from the framework's own, and the outline variant keeps a hairline
+ *	so a row of them reads as a row rather than as a fence.
+ */
+
+:root {
+	--buttons-small--less: 		.75;
+	--buttons-small--default: 	.85;
+	--buttons-small--more: 		.95;
+
+	--buttons-big--less: 		1.1;
+	--buttons-big--default: 	1.2;
+	--buttons-big--more: 		1.3;
+
+	--buttons-space--less: 		calc( var(--space-1) * .7 );
+	--buttons-space--default: 	var(--space-1);
+	--buttons-space--more: 		var(--space-2);
+
+	--buttons-corners--less: 	0rem;
+	--buttons-corners--default: var(--radius-small);
+	--buttons-corners--more: 	var(--radius);
+}
+
+.nino-btn:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
+	padding: calc( var(--buttons-space) / 2 ) var(--buttons-space);
+}
+.nino-btn {
+	border-radius: var(--buttons-corners);
+	font-size: calc( var(--font-button-size) * .9 );
+	line-height: 1.4;
+}
+.nino-btn--small:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
+	padding: calc( var(--buttons-space) / 2 * var(--buttons-small) ) calc( var(--buttons-space) * var(--buttons-small) );
+}
+.nino-btn--small {
+	font-size: calc( var(--font-button-size) * .9 * var(--buttons-small) );
+	border-radius: var(--buttons-corners);
+	min-height: 0;
+}
+.nino-btn--big:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
+	padding: calc( var(--buttons-space) / 2 * var(--buttons-big) ) calc( var(--buttons-space) * var(--buttons-big) );
+}
+.nino-btn--big {
+	font-size: calc( var(--font-button-size) * .9 * var(--buttons-big) );
+	border-radius: var(--buttons-corners);
+}
+
+.nino-btn--outline {
+	border-width: 1px;
+}
+
+.nino-filter-btn {
+	padding: calc( var(--buttons-space) / 2 ) var(--buttons-space);
+	border-radius: var(--buttons-corners);
+	font-size: calc( var(--font-button-size) * .9 );
+}

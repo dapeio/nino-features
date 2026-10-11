@@ -1,0 +1,148 @@
+/*	Nino Design - content v2
+ *
+ *	@name			Poster
+ *	@description	A big, tightly set opening, tall bands with a narrow column to read in, and flat cards in a hairline box. For sites of a few long sections.
+ *
+ *	@knob	hero-title		Size of the title of a hero
+ *	@knob	hero-text		Size of the text of a hero
+ *	@knob	quiet			Size of a quiet title, subtitle and text
+ *	@knob	loud			Size of a loud title, subtitle and text
+ *	@knob	section-space	Height of a band
+ *	@knob	article-space	Space inside a card and between its parts
+ *	@knob	corners			Corners of a card
+ *	@knob	border			Line round a card
+ *
+ *	The band is the unit here: it is tall, and what stands in it is held to a
+ *	column narrower than the grid so a paragraph is read rather than scanned.
+ *	Twenty flat cards on a screen is the case the cards are made for - what
+ *	separates one from the next is a single line - which is why there is no
+ *	shadow knob: a set that cannot cast one has nothing to tune, and the panel
+ *	says so.
+ */
+
+:root {
+	--content-hero-title--less: 		1.19;
+	--content-hero-title--default: 		1.4;
+	--content-hero-title--more: 		1.68;
+
+	--content-hero-text--less: 			1.02;
+	--content-hero-text--default: 		1.2;
+	--content-hero-text--more: 			1.44;
+
+	--content-quiet--less: 				.75;
+	--content-quiet--default: 			.85;
+	--content-quiet--more: 				.95;
+
+	--content-loud--less: 				1.1;
+	--content-loud--default: 			1.2;
+	--content-loud--more: 				1.35;
+
+	--content-section-space--less: 		var(--space-4);
+	--content-section-space--default: 	var(--space-5);
+	--content-section-space--more: 		var(--space-6);
+
+	--content-article-space--less: 		var(--space-1);
+	--content-article-space--default: 	var(--space-2);
+	--content-article-space--more: 		var(--space-3);
+
+	--content-corners--less: 			0rem;
+	--content-corners--default: 		var(--radius-small);
+	--content-corners--more: 			var(--radius);
+
+	--content-border--less: 			0px;
+	--content-border--default: 			1px;
+	--content-border--more: 			2px;
+}
+
+@media (min-width: 768px) {
+	:root {
+		--content-hero-title--less: 		1.36;
+		--content-hero-title--default: 		1.6;
+		--content-hero-title--more: 		1.92;
+
+		--content-hero-text--less: 			calc(.85 * 10 / 9);
+		--content-hero-text--default: 		calc(10 / 9);
+		--content-hero-text--more: 			calc(1.2 * 10 / 9);
+
+		--content-section-space--less: 		var(--space-5);
+		--content-section-space--default: 	var(--space-6);
+		--content-section-space--more: 		calc( var(--space-6) * 1.25 );
+	}
+}
+
+:root {
+	--hero-title-scale: var(--content-hero-title);
+	--hero-text-scale: var(--content-hero-text);
+	--scale-quiet: var(--content-quiet);
+	--scale-loud: var(--content-loud);
+}
+
+/* ---- the opening ---- */
+
+.nino-hero-title {
+	line-height: 1.08;
+	letter-spacing: -.01em;
+}
+.nino-hero-subtitle {
+	line-height: 1.45;
+	opacity: 1;
+}
+
+/* ---- bands ---- */
+
+.nino-section:where(:not(.nino-section--fullheight, [class*="nino-pt-"], [class*="nino-p-"])) {
+	padding-top: var(--content-section-space);
+}
+.nino-section:where(:not(.nino-section--fullheight, [class*="nino-pb-"], [class*="nino-p-"])) {
+	padding-bottom: var(--content-section-space);
+}
+
+/*	The column, not the grid: .nino-section-text is what a paragraph lands in,
+	and a line that runs the full width of a wide screen is a line nobody
+	finishes. The title keeps the grid so a heading still spans the band	*/
+.nino-section-text,
+.nino-section-subtitle {
+	max-width: 52rem;
+}
+.nino-section-title:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
+	margin-bottom: calc( var(--content-section-space) / 4 );
+}
+
+/*	Centred text centres its column too, or a "centred" band is a centred
+	heading over a paragraph pinned to the left	*/
+.nino-text-center .nino-section-text,
+.nino-text-center .nino-section-subtitle {
+	margin-right: auto;
+	margin-left: auto;
+}
+
+/* ---- cards ---- */
+
+.nino-article:where(:not(.nino-article--borderless)) {
+	border: var(--content-border) solid var(--color-border);
+	border-radius: var(--content-corners);
+	overflow: hidden;
+}
+
+/*	The picture runs to the edge of the box: a margin around it would be a
+	second frame inside the first	*/
+.nino-article-img {
+	display: block;
+	width: 100%;
+	margin: 0;
+	border-radius: 0;
+}
+.nino-article-content:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
+	padding: var(--content-article-space);
+}
+.nino-article-title:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
+.nino-article-subtitle:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
+.nino-article-descr:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
+	margin-bottom: calc( var(--content-article-space) / 2 );
+}
+
+/*	Cards side by side keep the padding of a card between them, so a grid
+	reads as a table of boxes rather than as cards floating on a ground	*/
+.nino-article-cols {
+	gap: var(--content-article-space);
+}

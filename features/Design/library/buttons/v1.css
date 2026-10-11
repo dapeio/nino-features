@@ -1,0 +1,74 @@
+/*	Nino Design - buttons v1
+ *
+ *	@name			Nino
+ *	@description	The framework as it is, with its own values on every knob. Every .nino-btn variant, and the link that looks like one.
+ *
+ *	@knob	small		Size of a small button
+ *	@knob	big			Size of a big button
+ *	@knob	space		Space around the label
+ *	@knob	corners		Corner radius
+ *
+ *	v1 is the starting point, not a design. Every value it declares is the
+ *	framework's own, so a button under it looks as it does under Nino.css
+ *	alone, and every one of them is a triple, so each knob has something to
+ *	reach: the middle of a triple is Nino.css, the other two are one step to
+ *	each side.
+ *
+ *	Two rules for a set:
+ *
+ *	  - Only the classes of this template: the button and its variants. A
+ *	    button set does not touch a section title, however tempting.
+ *	  - Colours through the roles, never as literals. Nor the font: the face,
+ *	    the weight and the case of a button are the button role of the Fonts
+ *	    tab (--font-button-*), and a set that wrote its own would contradict
+ *	    the panel.
+ *
+ *	The variants are the size of the button times a number, in Nino.css as
+ *	here: the padding, the type and the radius of a small button are the
+ *	button's own times the small knob. Copy this file to v2.css and start
+ *	there.
+ */
+
+:root {
+	/*	The number a small and a big button are scaled by: .7 and 1.3	*/
+	--buttons-small--less: 		.6;
+	--buttons-small--default: .7;
+	--buttons-small--more: 		.8;
+
+	--buttons-big--less: 			1.15;
+	--buttons-big--default: 	1.3;
+	--buttons-big--more: 			1.5;
+
+	/*	Twice the padding above and below the label, and the padding beside it	*/
+	--buttons-space--less: 		var(--space-1);
+	--buttons-space--default: var(--space-2);
+	--buttons-space--more: 		var(--space-3);
+
+	/*	A pill is no large number but a radius past half the height, where it stops growing	*/
+	--buttons-corners--less: 		0rem;
+	--buttons-corners--default: var(--radius);
+	--buttons-corners--more: 		999rem;
+}
+
+/*	Not where the button names a padding of its own: the spacing classes of
+	Nino.css come last in its stylesheet so that they win	*/
+.nino-btn:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
+	padding: calc( var(--buttons-space) / 2 ) var(--buttons-space);
+}
+.nino-btn {
+	border-radius: var(--buttons-corners);
+}
+.nino-btn--small:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
+	padding: calc( var(--buttons-space) / 2 * var(--buttons-small) ) calc( var(--buttons-space) * var(--buttons-small) );
+}
+.nino-btn--small {
+	font-size: calc( var(--font-button-size) * var(--buttons-small) );
+	border-radius: calc( var(--buttons-corners) * var(--buttons-small) );
+}
+.nino-btn--big:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
+	padding: calc( var(--buttons-space) / 2 * var(--buttons-big) ) calc( var(--buttons-space) * var(--buttons-big) );
+}
+.nino-btn--big {
+	font-size: calc( var(--font-button-size) * var(--buttons-big) );
+	border-radius: calc( var(--buttons-corners) * var(--buttons-big) );
+}

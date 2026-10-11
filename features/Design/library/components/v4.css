@@ -1,0 +1,175 @@
+/*	Nino Design - components v4
+ *
+ *	@name			Filled
+ *	@description	Tinted fields with no line, small type in tables with figures that line up and stripes you can see, and plans as panels of colour.
+ *
+ *	@knob	scale		Type size of the fields and the tables
+ *	@knob	space		Space inside a field, a cell, a block and between them
+ *	@knob	corners		Corner radius of a field and of everything boxed
+ *	@knob	zebra		Stripes of a table that asks for them
+ *
+ *	The fill is the field, which is why it is the ink of the ground the field
+ *	stands on, thinned out, rather than a colour of its own: a form is not a
+ *	place for a second palette. On focus the fill drops back to the ground and
+ *	the ring takes over, so the field being typed in is the one that looks
+ *	emptiest. Colour instead of edges - the plans are the tinted ground and the
+ *	featured one the brand colour - which is why there is no border knob, and
+ *	the label stays above the field in the rhythm of the form: no labels knob.
+ *	A long table needs what a short one does not: figures that line up on the
+ *	decimal, and the stripes back, because at this row height the eye does
+ *	lose the line.
+ */
+
+:root {
+	--components-scale--less: 		.875;
+	--components-scale--default: 	.9375;
+	--components-scale--more: 		1;
+
+	--components-space--less: 		var(--space-1);
+	--components-space--default: 	var(--space-2);
+	--components-space--more: 		var(--space-3);
+
+	--components-corners--less: 	var(--radius-small);
+	--components-corners--default: 	var(--radius);
+	--components-corners--more: 	var(--radius-large);
+
+	--components-zebra--less: 		transparent;
+	--components-zebra--default: 	var(--color-section-alt-bg);
+	--components-zebra--more: 		var(--color-section-tint-bg);
+
+	--components-zebra-ink--less: 		initial;
+	--components-zebra-ink--default: 	var(--color-section-alt-text);
+	--components-zebra-ink--more: 		var(--color-section-tint-text);
+}
+
+/* ---- fields ---- */
+
+.nino-form-input,
+.nino-form-textarea,
+.nino-form-select {
+	border-color: transparent;
+	border-radius: var(--components-corners);
+	background-color: color-mix( in srgb, var(--color-ink) 7%, var(--color-ground) );
+	font-size: calc( 1rem * var(--components-scale) );
+	line-height: 1.45;
+}
+.nino-form-input:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])),
+.nino-form-textarea:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])),
+.nino-form-select:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])) {
+	padding: calc( var(--components-space) / 1.5 ) var(--components-space);
+}
+.nino-form-select:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])) {
+	padding-right: 2.5rem;
+}
+.nino-form-input:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
+.nino-form-textarea:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
+.nino-form-select:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
+	margin-bottom: var(--components-space);
+}
+.nino-form-input:focus,
+.nino-form-textarea:focus,
+.nino-form-select:focus {
+	background-color: var(--color-ground);
+	border-color: var(--color-border);
+	outline: 2px solid var(--color-focus);
+	outline-offset: 0;
+}
+.nino-form-input::placeholder,
+.nino-form-textarea::placeholder {
+	color: var(--color-subtitle);
+	opacity: 1;
+}
+
+.nino-form.nino-is-error .nino-form-message,
+.nino-form.nino-is-success .nino-form-message {
+	padding: calc( var(--components-space) / 1.4 );
+	border-radius: var(--components-corners);
+}
+
+/* ---- tables ---- */
+
+.nino-table {
+	font-size: calc( 1em * var(--components-scale) );
+	font-variant-numeric: tabular-nums;
+}
+.nino-table th,
+.nino-table td {
+	padding: calc( var(--components-space) / 2.5 ) calc( var(--components-space) * .8 );
+	line-height: 1.4;
+}
+
+/*	Sticky against the wrapper the framework already puts around a table, so
+	the header stays while the rows go past. It needs a ground of its own, or
+	the rows scroll through it	*/
+.nino-table th {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	background-color: var(--color-ground);
+	white-space: nowrap;
+}
+.nino-table--striped tbody tr:nth-child(even) {
+	background-color: var(--components-zebra);
+	color: var(--components-zebra-ink, currentcolor);
+}
+
+/* ---- lists, badges, alerts ---- */
+
+.nino-list:not(.nino-list--columns) {
+	gap: calc( var(--components-space) / 2.5 );
+}
+.nino-badge:not(.nino-badge--pill) {
+	border-radius: var(--components-corners);
+}
+.nino-alert {
+	border-width: 0;
+	border-radius: var(--components-corners);
+}
+.nino-alert:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])) {
+	padding: var(--components-space);
+}
+.nino-alert--content:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])) {
+	padding: calc( var(--components-space) * 2 );
+}
+
+/* ---- blocks ---- */
+
+.nino-pricing-row {
+	gap: var(--components-space);
+}
+.nino-pricing-item {
+	border-width: 0;
+	border-radius: var(--components-corners);
+	background-color: var(--color-section-tint-bg);
+	color: var(--color-section-tint-text);
+	box-shadow: none;
+	--color-ground: var(--color-section-tint-bg);
+	--color-ink: var(--color-section-tint-text);
+}
+.nino-pricing-item:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])) {
+	padding: calc( var(--components-space) * 1.5 );
+}
+.nino-pricing-item--featured {
+	background-color: var(--color-primary);
+	color: var(--color-primary-text);
+	--color-ground: var(--color-primary);
+	--color-ink: var(--color-primary-text);
+	--color-accent: var(--color-primary-text);
+}
+.nino-pricing-title {
+	letter-spacing: .06em;
+}
+.nino-pricing-features {
+	margin-bottom: var(--components-space);
+}
+.nino-accordion-trigger {
+	padding: var(--components-space) 0;
+}
+.nino-accordion-panel {
+	padding: 0 0 var(--components-space) 1em;
+}
+.nino-timeline-number {
+	border-radius: var(--components-corners);
+	background-color: var(--color-primary);
+	color: var(--color-primary-text);
+}

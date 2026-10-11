@@ -1,0 +1,245 @@
+/*	Nino Design - components v1
+ *
+ *	@name			Nino
+ *	@description	The framework as it is, with its own values on every knob. Fields, labels, tables, lists, alerts, badges and the building blocks.
+ *
+ *	@knob	scale		Type size of the fields and the tables
+ *	@knob	space		Space inside a field, a cell, a block and between them
+ *	@knob	corners		Corner radius of a field and of everything boxed
+ *	@knob	border		Weight of the lines of a field, a table and a block
+ *	@knob	zebra		Stripes of a table that asks for them
+ *	@knob	labels		Where the label of a field stands
+ *
+ *	v1 is the starting point, not a design. Every value it declares is the
+ *	framework's own, so a form, a table or a block under it looks as it does
+ *	under Nino.css alone - and every one of them is a triple, so each knob has
+ *	something to reach: the middle of a triple is Nino.css, the other two
+ *	are one step to each side.
+ *
+ *	Two rules for a set:
+ *
+ *	  - Only the classes of this template: the field, the table, the list,
+ *	    the badge, the alert, the accordion, the pricing table and the
+ *	    timeline. A set of buttons does not touch a field, however tempting.
+ *	  - Colours through the roles, never as literals. Nor the font: the face,
+ *	    the weight and the case of the text are the roles of the Fonts tab.
+ *
+ *	A knob that is more than one value - the stripes of a table are a
+ *	background and a colour of text, the place of a label is a layout and a
+ *	lift - declares one more triple for each, named after the knob and an
+ *	aspect of it (--components-zebra-ink--less ...). They move together: the
+ *	compiler selects every triple of a knob where it stands. An aspect at its
+ *	middle step names the value the property has anyway, so a rule that reads
+ *	it changes nothing there.
+ *
+ *	The spacing classes of Nino.css (nino-p-2, nino-mb-3 ...) come last in its
+ *	stylesheet so that they win. A rule of a design layer would beat them, so
+ *	a box that names a padding or a margin of its own is left alone.
+ *	Copy this file to v2.css and start there.
+ */
+
+:root {
+	/*	The type size of a field is 1rem and of a table is the size of the text
+		around it, times this	*/
+	--components-scale--less: 		.875;
+	--components-scale--default: 	1;
+	--components-scale--more: 		1.125;
+
+	/*	Half the padding of a cell, the padding of a field and the space under
+		it, and a quarter of the padding of a block	*/
+	--components-space--less: 		calc( var(--space-1) * .6 );
+	--components-space--default: 	var(--space-1);
+	--components-space--more: 		var(--space-2);
+
+	/*	The radius of a field. A badge, an alert and a block are twice it	*/
+	--components-corners--less: 	0rem;
+	--components-corners--default: 	var(--radius-small);
+	--components-corners--more: 	var(--radius-large);
+
+	--components-border--less: 		0px;
+	--components-border--default: 	1px;
+	--components-border--more: 		2px;
+
+	/*	The even rows of a table that has the class: none, the second ground of
+		the page, or that with a line over it. The text on them is the ink of
+		that ground - or, with no stripe, the text round the table	*/
+	--components-zebra--less: 		transparent;
+	--components-zebra--default: 	var(--color-section-alt-bg);
+	--components-zebra--more: 		linear-gradient( var(--color-border), var(--color-border) ) top / 100% 1px no-repeat var(--color-section-alt-bg);
+
+	--components-zebra-ink--less: 		initial;
+	--components-zebra-ink--default: 	var(--color-section-alt-text);
+	--components-zebra-ink--more: 		var(--color-section-alt-text);
+
+	/*	Where a label stands. Above the field is Nino.css: the form is a block
+		and the label a line of text. In the row the form is a grid of a column
+		for the labels and a column for the fields, this far apart. Floating, the
+		label is lifted onto the top edge of its field, a little smaller, on the
+		ground the field stands on	*/
+	--components-labels--less: 		var(--space-2);
+	--components-labels--default: 	normal;
+	--components-labels--more: 		normal;
+
+	--components-labels-form--less: 		grid;
+	--components-labels-form--default: 		block;
+	--components-labels-form--more: 		block;
+
+	--components-labels-cols--less: 		max-content minmax(0, 1fr);
+	--components-labels-cols--default: 		none;
+	--components-labels-cols--more: 		none;
+
+	--components-labels-align--less: 		baseline;
+	--components-labels-align--default: 	normal;
+	--components-labels-align--more: 		normal;
+
+	--components-labels-wide--less: 		1 / -1;
+	--components-labels-wide--default: 		auto;
+	--components-labels-wide--more: 		auto;
+
+	--components-labels-start--less: 		start;
+	--components-labels-start--default: 		auto;
+	--components-labels-start--more: 		auto;
+
+	--components-labels-block--less: 		inline;
+	--components-labels-block--default: 	inline;
+	--components-labels-block--more: 		table;
+
+	--components-labels-pos--less: 			static;
+	--components-labels-pos--default: 		static;
+	--components-labels-pos--more: 			relative;
+
+	--components-labels-lift--less: 		0em;
+	--components-labels-lift--default: 		0em;
+	--components-labels-lift--more: 		.8em;
+
+	--components-labels-cut--less: 			transparent;
+	--components-labels-cut--default: 		transparent;
+	--components-labels-cut--more: 			var(--color-ground);
+}
+
+/* ---- fields ---- */
+
+.nino-form-input,
+.nino-form-textarea,
+.nino-form-select {
+	border-width: var(--components-border);
+	border-radius: var(--components-corners);
+	font-size: calc( 1rem * var(--components-scale) );
+}
+.nino-form-input:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])),
+.nino-form-textarea:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])),
+.nino-form-select:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])) {
+	padding: var(--components-space);
+}
+.nino-form-select:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])) {
+	padding-right: 2.5rem;
+}
+.nino-form-input:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
+.nino-form-textarea:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
+.nino-form-select:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
+	margin-bottom: var(--components-space);
+}
+
+.nino-form.nino-is-error .nino-form-message,
+.nino-form.nino-is-success .nino-form-message {
+	padding: var(--components-space) calc( var(--components-space) * 2 );
+	border-radius: calc( var(--components-corners) * 2 );
+}
+
+/* ---- labels ---- */
+
+/*	A form of rows - not the inline one, nor the newsletter's, which are flex
+	boxes of their own. In the grid a label and the field after it share a row;
+	everything else (a checkbox, a message, the button) takes the whole of it -
+	but for a button and a checkbox, which a form of blocks leaves as wide as
+	their words and a grid would stretch to the row	*/
+.nino-form:where(:not(.nino-form--inline, .nino-newsletter-inline)) {
+	display: var(--components-labels-form);
+	grid-template-columns: var(--components-labels-cols);
+	column-gap: var(--components-labels);
+	align-items: var(--components-labels-align);
+}
+.nino-form:where(:not(.nino-form--inline, .nino-newsletter-inline)) > :where(:not(
+	label:not(.nino-forms-check, .nino-sr-only),
+	label:not(.nino-forms-check, .nino-sr-only) + :is(.nino-form-input, .nino-form-select, .nino-form-textarea),
+	.nino-form-trap, .nino-sr-only
+)) {
+	grid-column: var(--components-labels-wide);
+}
+.nino-form:where(:not(.nino-form--inline, .nino-newsletter-inline)) > :is(.nino-btn, .nino-forms-check) {
+	justify-self: var(--components-labels-start);
+}
+.nino-form:where(:not(.nino-form--inline, .nino-newsletter-inline)) > label:where(:not(.nino-forms-check, .nino-sr-only)) {
+	display: var(--components-labels-block);
+	position: var(--components-labels-pos);
+	margin: 0 0 calc( var(--components-labels-lift) * -.55 ) var(--components-labels-lift);
+	padding: 0 calc( var(--components-labels-lift) / 4 );
+	background-color: var(--components-labels-cut);
+	font-size: calc( 1em - var(--components-labels-lift) * .25 );
+}
+
+/* ---- tables ---- */
+
+.nino-table {
+	font-size: calc( 1em * var(--components-scale) );
+}
+.nino-table th,
+.nino-table td {
+	padding: var(--components-space) calc( var(--components-space) * 2 );
+	border-bottom-width: var(--components-border);
+}
+.nino-table--bordered th,
+.nino-table--bordered td {
+	border-width: var(--components-border);
+}
+.nino-table--striped tbody tr:nth-child(even) {
+	background: var(--components-zebra);
+	color: var(--components-zebra-ink, currentcolor);
+}
+
+/* ---- lists, badges, alerts ---- */
+
+.nino-list:not(.nino-list--columns) {
+	gap: var(--components-space);
+}
+.nino-badge:not(.nino-badge--pill) {
+	border-radius: calc( var(--components-corners) * 2 );
+}
+.nino-alert {
+	border-width: var(--components-border);
+	border-radius: calc( var(--components-corners) * 2 );
+}
+.nino-alert:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])) {
+	padding: calc( var(--components-space) * 2 );
+}
+.nino-alert--content {
+	border-radius: calc( var(--components-corners) * 4 );
+}
+.nino-alert--content:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])) {
+	padding: calc( var(--components-space) * 4 );
+}
+
+/* ---- blocks ---- */
+
+.nino-pricing-row {
+	gap: calc( var(--components-space) * 2 );
+}
+.nino-pricing-item {
+	border-radius: calc( var(--components-corners) * 2 );
+}
+.nino-pricing-item:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])) {
+	padding: calc( var(--components-space) * 2 );
+}
+.nino-pricing-item:not(.nino-pricing-item--featured) {
+	border-width: var(--components-border);
+}
+
+.nino-accordion {
+	border-bottom-width: var(--components-border);
+}
+.nino-accordion-trigger {
+	padding: calc( var(--components-space) * 2 ) 0;
+}
+.nino-accordion-panel {
+	padding: 0 0 calc( var(--components-space) * 2 ) 1em;
+}

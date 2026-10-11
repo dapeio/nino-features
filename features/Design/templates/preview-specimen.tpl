@@ -1,126 +1,31 @@
-<section id="atf" class="nino-section nino-section--dark nino-cover nino-hero" data-cover-height="70" aria-labelledby="atf-title">
+<div id="global"></div>
+
+<section id="content" class="nino-section nino-section--dark nino-cover nino-hero" data-cover-height="60" aria-label="Hero">
 	<div class="nino-cover-content">
 		<div class="nino-grid-row nino-grid-middle">
-			<div class="nino-grid-100 nino-text-center">
-				<h2 class="nino-hero-title" id="atf-title">ATF</h2>
+			<div class="nino-grid-100 nino-text-center nino-vpa nino-vpa--repeat">
+				<h2 class="nino-hero-title">A hero</h2>
 				<p class="nino-hero-subtitle">[[short]]</p>
-				<p><a class="nino-btn nino-btn--primary" href="#section">Next</a> <a class="nino-btn nino-btn--outline" href="#article">Article</a></p>
+				<p><a class="nino-btn nino-btn--primary" href="#type">Primary</a> <a class="nino-btn nino-btn--outline" href="#buttons">Outline</a></p>
 			</div>
 		</div>
 	</div>
-	<button class="nino-hero-arrowdown" data-arrow-target="#section" aria-label="Next"></button>
+	<button class="nino-hero-arrowdown" data-arrow-target="#type" aria-label="Next"></button>
 </section>
 
-<section class="nino-section" aria-label="ATF volumes">
+<section class="nino-section" aria-label="Cards">
 	<div class="nino-grid-row">
-		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3"><h3 class="nino-hero-title nino-hero-title--quiet">quiet</h3><p class="nino-hero-subtitle nino-hero-subtitle--quiet">[[short]]</p></div>
-		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3"><h3 class="nino-hero-title">default</h3><p class="nino-hero-subtitle">[[short]]</p></div>
-		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3"><h3 class="nino-hero-title nino-hero-title--loud">loud</h3><p class="nino-hero-subtitle nino-hero-subtitle--loud">[[short]]</p></div>
-	</div>
-</section>
-
-<section id="section" class="nino-section" aria-label="Section default">
-	<div class="nino-grid-row">
-		<div class="nino-grid-100">
-			<h2 class="nino-section-title">Section &mdash; default</h2>
-			<p class="nino-section-subtitle">[[short]]</p>
-			<p class="nino-section-text">[[lorem]]</p>
-			<p><a class="nino-btn nino-btn--primary" href="#">Primary</a> <a class="nino-btn nino-btn--outline" href="#">Outline</a></p>
-		</div>
-	</div>
-</section>
-
-<section class="nino-section nino-section--alt" aria-label="Section alt">
-	<div class="nino-grid-row">
-		<div class="nino-grid-100">
-			<h2 class="nino-section-title">Section &mdash; alt</h2>
-			<p class="nino-section-subtitle">[[short]]</p>
-			<p class="nino-section-text">[[lorem]]</p>
-			<p><a class="nino-btn nino-btn--primary" href="#">Primary</a> <a class="nino-btn nino-btn--outline" href="#">Outline</a></p>
-		</div>
-	</div>
-</section>
-
-<section class="nino-section nino-section--tint" aria-label="Section tint">
-	<div class="nino-grid-row">
-		<div class="nino-grid-100">
-			<h2 class="nino-section-title">Section &mdash; tint</h2>
-			<p class="nino-section-subtitle">[[short]]</p>
-			<p class="nino-section-text">[[lorem]]</p>
-			<p><a class="nino-btn nino-btn--primary" href="#">Primary</a> <a class="nino-btn nino-btn--outline" href="#">Outline</a></p>
-		</div>
-	</div>
-</section>
-
-<section class="nino-section nino-section--primary" aria-label="Section primary">
-	<div class="nino-grid-row">
-		<div class="nino-grid-100">
-			<h2 class="nino-section-title">Section &mdash; primary</h2>
-			<p class="nino-section-subtitle">[[short]]</p>
-			<p class="nino-section-text">[[lorem]]</p>
-			<p><a class="nino-btn nino-btn--primary" href="#">Primary</a> <a class="nino-btn nino-btn--outline" href="#">Outline</a></p>
-		</div>
-	</div>
-</section>
-
-<section class="nino-section nino-section--brand-alt" aria-label="Section brand-alt">
-	<div class="nino-grid-row">
-		<div class="nino-grid-100">
-			<h2 class="nino-section-title">Section &mdash; brand-alt</h2>
-			<p class="nino-section-subtitle">[[short]]</p>
-			<p class="nino-section-text">[[lorem]]</p>
-			<p><a class="nino-btn nino-btn--primary" href="#">Primary</a> <a class="nino-btn nino-btn--outline" href="#">Outline</a></p>
-		</div>
-	</div>
-</section>
-
-<section class="nino-section nino-section--dark" aria-label="Section dark">
-	<div class="nino-grid-row">
-		<div class="nino-grid-100">
-			<h2 class="nino-section-title">Section &mdash; dark</h2>
-			<p class="nino-section-subtitle">[[short]]</p>
-			<p class="nino-section-text">[[lorem]]</p>
-			<p><a class="nino-btn nino-btn--primary" href="#">Primary</a> <a class="nino-btn nino-btn--outline" href="#">Outline</a></p>
-		</div>
-	</div>
-</section>
-
-<section class="nino-section nino-section--black" aria-label="Section black">
-	<div class="nino-grid-row">
-		<div class="nino-grid-100">
-			<h2 class="nino-section-title">Section &mdash; black</h2>
-			<p class="nino-section-subtitle">[[short]]</p>
-			<p class="nino-section-text">[[lorem]]</p>
-			<p><a class="nino-btn nino-btn--primary" href="#">Primary</a> <a class="nino-btn nino-btn--outline" href="#">Outline</a></p>
-		</div>
-	</div>
-</section>
-
-<section class="nino-section nino-section--border-1" aria-label="Section volumes and borders">
-	<div class="nino-grid-row">
-		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3"><h3 class="nino-section-title nino-section-title--quiet">quiet</h3><p class="nino-section-subtitle nino-section-subtitle--quiet">[[short]]</p><p class="nino-section-text nino-section-text--quiet">[[short]]</p></div>
-		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3"><h3 class="nino-section-title">default</h3><p class="nino-section-subtitle">[[short]]</p><p class="nino-section-text">[[short]]</p></div>
-		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3"><h3 class="nino-section-title nino-section-title--loud">loud</h3><p class="nino-section-subtitle nino-section-subtitle--loud">[[short]]</p><p class="nino-section-text nino-section-text--loud">[[short]]</p></div>
-	</div>
-</section>
-
-<section class="nino-section nino-section--border-2" aria-label="Border level 2"><div class="nino-grid-row"><div class="nino-grid-100"><p class="nino-section-text">border-2</p></div></div></section>
-<section class="nino-section nino-section--border-3" aria-label="Border level 3"><div class="nino-grid-row"><div class="nino-grid-100"><p class="nino-section-text">border-3</p></div></div></section>
-<section class="nino-section nino-section--border-primary" aria-label="Border in the brand colour"><div class="nino-grid-row"><div class="nino-grid-100"><p class="nino-section-text">border-primary</p></div></div></section>
-
-<section id="article" class="nino-section" aria-labelledby="article-title">
-	<div class="nino-grid-row">
-		<div class="nino-grid-100 nino-mb-3"><h2 class="nino-section-title" id="article-title">Article</h2></div>
-		<article class="nino-article nino-grid-100 nino-grid-m-33 nino-mb-3">
+		<div class="nino-grid-100 nino-mb-3"><h2 class="nino-section-title">Cards</h2><p class="nino-section-subtitle nino-section-subtitle--quiet">[[short]]</p></div>
+		<article class="nino-article nino-article--grid nino-grid-100 nino-grid-m-33 nino-mb-3 nino-vpa nino-vpa--repeat">
 			<img class="nino-article-img" src="[[placeholder]]" alt="" width="640" height="420">
 			<div class="nino-article-content">
-				<h3 class="nino-article-title">With a price</h3>
-				<p class="nino-article-subtitle">Subtitle</p>
+				<h3 class="nino-article-title nino-article-title--quiet">With a price, quiet</h3>
+				<p class="nino-article-subtitle nino-article-subtitle--quiet">Subtitle</p>
 				<p class="nino-article-descr">A description long enough to run into a second line, so the space under it becomes visible.</p>
-				<p class="nino-article-price">49 €</p>
+				<p class="nino-article-price">49 EUR</p>
 			</div>
 		</article>
-		<article class="nino-article nino-grid-100 nino-grid-m-33 nino-mb-3">
+		<article class="nino-article nino-article--grid nino-grid-100 nino-grid-m-33 nino-mb-3 nino-vpa nino-vpa--repeat">
 			<img class="nino-article-img" src="[[placeholder]]" alt="" width="640" height="420">
 			<div class="nino-article-content">
 				<h3 class="nino-article-title">With a badge</h3>
@@ -129,81 +34,369 @@
 				<p><span class="nino-badge nino-badge--primary">New</span> <span class="nino-badge nino-badge--success">In stock</span></p>
 			</div>
 		</article>
-		<article class="nino-article nino-grid-100 nino-grid-m-33 nino-mb-3">
+		<article class="nino-article nino-article--grid nino-grid-100 nino-grid-m-33 nino-mb-3 nino-vpa nino-vpa--repeat">
 			<img class="nino-article-img" src="[[placeholder]]" alt="" width="640" height="420">
 			<div class="nino-article-content">
-				<h3 class="nino-article-title">With an action</h3>
-				<p class="nino-article-subtitle">Subtitle</p>
+				<h3 class="nino-article-title nino-article-title--loud">With an action, loud</h3>
+				<p class="nino-article-subtitle nino-article-subtitle--loud">Subtitle</p>
 				<p class="nino-article-descr">A description long enough to run into a second line, so the space under it becomes visible.</p>
-				<p><a class="nino-btn nino-btn--small nino-btn--outline" href="#">More</a></p>
+				<p><a class="nino-btn nino-btn--small nino-btn--outline" href="#buttons">More</a></p>
 			</div>
 		</article>
-		<article class="nino-article nino-article--alt nino-grid-100 nino-grid-m-33 nino-mb-3">
+		<article class="nino-article nino-article--alt nino-article--grid nino-grid-100 nino-grid-m-33 nino-mb-3">
+			<h3 class="nino-article-title">On alt</h3>
+			<p class="nino-article-descr">A card paints the ground it names.</p>
+		</article>
+		<article class="nino-article nino-article--tint nino-article--grid nino-grid-100 nino-grid-m-33 nino-mb-3">
+			<h3 class="nino-article-title">On tint</h3>
+			<p class="nino-article-descr">A card paints the ground it names.</p>
+		</article>
+		<article class="nino-article nino-article--dark nino-article--grid nino-grid-100 nino-grid-m-33 nino-mb-3">
+			<h3 class="nino-article-title">On dark</h3>
+			<p class="nino-article-descr">A card paints the ground it names.</p>
+		</article>
+		<article class="nino-article nino-article--black nino-article--grid nino-grid-100 nino-grid-m-33 nino-mb-3">
+			<h3 class="nino-article-title">On black</h3>
+			<p class="nino-article-descr">A card paints the ground it names.</p>
+		</article>
+		<article class="nino-article nino-article--primary nino-article--grid nino-grid-100 nino-grid-m-33 nino-mb-3">
+			<h3 class="nino-article-title">On primary</h3>
+			<p class="nino-article-descr">A card paints the ground it names.</p>
+		</article>
+		<article class="nino-article nino-article--brand-alt nino-article--grid nino-grid-100 nino-grid-m-33 nino-mb-3">
+			<h3 class="nino-article-title">On brand-alt</h3>
+			<p class="nino-article-descr">A card paints the ground it names.</p>
+		</article>
+		<article class="nino-article nino-article--counter nino-article--grid nino-grid-100 nino-grid-m-33 nino-mb-3">
 			<img class="nino-article-img" src="[[placeholder]]" alt="" width="640" height="420">
 			<div class="nino-article-content">
-				<h3 class="nino-article-title">alt</h3>
-				<p class="nino-article-subtitle">Subtitle</p>
-				<p class="nino-article-descr">A description long enough to run into a second line, so the space under it becomes visible.</p>
+				<h3 class="nino-article-title">A counter card</h3>
+				<p class="nino-article-descr">The counter of the ground it stands on.</p>
 			</div>
 		</article>
-		<article class="nino-article nino-article--borderless nino-grid-100 nino-grid-m-33 nino-mb-3">
+		<article class="nino-article nino-article--borderless nino-article--grid nino-grid-100 nino-grid-m-33 nino-mb-3">
 			<img class="nino-article-img" src="[[placeholder]]" alt="" width="640" height="420">
 			<div class="nino-article-content">
-				<h3 class="nino-article-title">borderless</h3>
-				<p class="nino-article-subtitle">Subtitle</p>
-				<p class="nino-article-descr">A description long enough to run into a second line, so the space under it becomes visible.</p>
+				<h3 class="nino-article-title">Borderless</h3>
+				<p class="nino-article-descr">No line and no shadow.</p>
 			</div>
 		</article>
 		<article class="nino-article nino-article--grid nino-grid-100 nino-grid-m-33 nino-mb-3">
 			<img class="nino-article-img" src="[[placeholder]]" alt="" width="640" height="420">
 			<div class="nino-article-content">
-				<h3 class="nino-article-title">grid</h3>
-				<p class="nino-article-subtitle">Subtitle</p>
-				<p class="nino-article-descr">A description long enough to run into a second line, so the space under it becomes visible.</p>
+				<h3 class="nino-article-title">In a grid</h3>
+				<p class="nino-article-descr">Sized like a cell of the grid.</p>
 			</div>
 		</article>
-		<article class="nino-article nino-article--fullwidth nino-article-cols nino-grid-100">
+		<article class="nino-article nino-article--fullwidth nino-article-cols nino-grid-100 nino-mb-3">
 			<img class="nino-article-img nino-article-img--maxheight" src="[[placeholder]]" alt="" width="640" height="420">
 			<div class="nino-article-content">
-				<h3 class="nino-article-title nino-article-title--loud">fullwidth, cols, loud</h3>
+				<h3 class="nino-article-title nino-article-title--loud">Full width, in columns, loud</h3>
 				<p class="nino-article-descr nino-article-descr--quiet">[[lorem]]</p>
 			</div>
 		</article>
+		<div class="nino-grid-100">
+			<div class="nino-grid-row nino-stack nino-stack-gap-2">
+				<article class="nino-article nino-article--counter nino-grid-s-100 nino-grid-m-50 nino-grid-l-33"><h4 class="nino-article-title">A stack of cards</h4><p class="nino-article-subtitle nino-article-subtitle--quiet">A quiet subtitle</p><p>Each cell of the stack is a card.</p></article>
+				<article class="nino-article nino-article--counter nino-grid-s-100 nino-grid-m-50 nino-grid-l-33"><h4 class="nino-article-title">The next</h4><p class="nino-article-subtitle">A subtitle</p><p>Neighbours are one gap apart.</p></article>
+				<article class="nino-article nino-article--counter nino-grid-s-100 nino-grid-m-50 nino-grid-l-33"><h4 class="nino-article-title">And a third</h4><p class="nino-article-subtitle nino-article-subtitle--loud">A loud subtitle</p><p>The edges of the stack are the column's.</p></article>
+			</div>
+		</div>
 	</div>
 </section>
 
-<section id="buttons" class="nino-section" aria-labelledby="buttons-title">
-	<div class="nino-grid-row"><div class="nino-grid-100">
-		<h2 class="nino-section-title" id="buttons-title">Buttons</h2>
-		<p><a class="nino-btn" href="#">btn</a> <a class="nino-btn nino-btn--primary" href="#">primary</a> <a class="nino-btn nino-btn--outline" href="#">outline</a> <a class="nino-btn nino-btn--brand-alt" href="#">brand-alt</a> <a class="nino-btn nino-btn--light" href="#">light</a> <a class="nino-btn nino-btn--dark" href="#">dark</a> <a class="nino-btn nino-btn--primary nino-btn--big" href="#">big</a> <a class="nino-btn nino-btn--primary nino-btn--small" href="#">small</a></p>
-	</div></div>
-</section>
-<section class="nino-section nino-section--dark" aria-label="Buttons on a dark surface">
-	<div class="nino-grid-row"><div class="nino-grid-100"><p><a class="nino-btn" href="#">btn</a> <a class="nino-btn nino-btn--primary" href="#">primary</a> <a class="nino-btn nino-btn--outline" href="#">outline</a> <a class="nino-btn nino-btn--brand-alt" href="#">brand-alt</a> <a class="nino-btn nino-btn--light" href="#">light</a> <a class="nino-btn nino-btn--dark" href="#">dark</a> <a class="nino-btn nino-btn--primary nino-btn--big" href="#">big</a> <a class="nino-btn nino-btn--primary nino-btn--small" href="#">small</a></p></div></div>
+<section id="colours" class="nino-section" aria-label="Section default">
+	<div class="nino-grid-row nino-grid-row--wide">
+		<div class="nino-grid-100 nino-mb-2">
+			<h2 class="nino-section-title nino-text-left">Section: default</h2>
+			<p class="nino-section-subtitle nino-text-left">[[short]]</p>
+		</div>
+		<div class="nino-grid-100 nino-grid-m-50 nino-p-1">
+			<div class="nino-grid-100 nino-grid--alt">
+				<h3 class="nino-section-title nino-text-left">A column on alt</h3>
+				<p class="nino-section-text">[[short]]</p>
+				<p><a class="nino-btn nino-btn--primary" href="#buttons">Primary</a></p>
+			</div>
+		</div>
+		<div class="nino-grid-100 nino-grid-m-50 nino-p-1">
+			<div class="nino-grid-100 nino-grid--counter">
+				<h3 class="nino-section-title nino-text-left">A counter column</h3>
+				<p class="nino-section-text">[[short]]</p>
+				<p><a class="nino-btn nino-btn--outline" href="#buttons">Outline</a></p>
+			</div>
+		</div>
+	</div>
 </section>
 
-<section id="forms" class="nino-section nino-section--alt" aria-labelledby="forms-title">
+<section class="nino-section nino-section--alt" aria-label="Section alt">
+	<div class="nino-grid-row nino-grid-row--wide">
+		<div class="nino-grid-100 nino-mb-2">
+			<h2 class="nino-section-title nino-text-left">Section: alt</h2>
+			<p class="nino-section-subtitle nino-text-left">[[short]]</p>
+		</div>
+		<div class="nino-grid-100 nino-grid-m-50 nino-p-1">
+			<div class="nino-grid-100 nino-grid--dark">
+				<h3 class="nino-section-title nino-text-left">A column on dark</h3>
+				<p class="nino-section-text">[[short]]</p>
+				<p><a class="nino-btn nino-btn--primary" href="#buttons">Primary</a></p>
+			</div>
+		</div>
+		<div class="nino-grid-100 nino-grid-m-50 nino-p-1">
+			<div class="nino-grid-100 nino-grid--counter">
+				<h3 class="nino-section-title nino-text-left">A counter column</h3>
+				<p class="nino-section-text">[[short]]</p>
+				<p><a class="nino-btn nino-btn--outline" href="#buttons">Outline</a></p>
+			</div>
+		</div>
+	</div>
+</section>
+
+<section class="nino-section nino-section--tint" aria-label="Section tint">
+	<div class="nino-grid-row nino-grid-row--wide">
+		<div class="nino-grid-100 nino-mb-2">
+			<h2 class="nino-section-title nino-text-left">Section: tint</h2>
+			<p class="nino-section-subtitle nino-text-left">[[short]]</p>
+		</div>
+		<div class="nino-grid-100 nino-grid-m-50 nino-p-1">
+			<div class="nino-grid-100 nino-grid--black">
+				<h3 class="nino-section-title nino-text-left">A column on black</h3>
+				<p class="nino-section-text">[[short]]</p>
+				<p><a class="nino-btn nino-btn--primary" href="#buttons">Primary</a></p>
+			</div>
+		</div>
+		<div class="nino-grid-100 nino-grid-m-50 nino-p-1">
+			<div class="nino-grid-100 nino-grid--counter">
+				<h3 class="nino-section-title nino-text-left">A counter column</h3>
+				<p class="nino-section-text">[[short]]</p>
+				<p><a class="nino-btn nino-btn--outline" href="#buttons">Outline</a></p>
+			</div>
+		</div>
+	</div>
+</section>
+
+<section class="nino-section nino-section--dark" aria-label="Section dark">
+	<div class="nino-grid-row nino-grid-row--wide">
+		<div class="nino-grid-100 nino-mb-2">
+			<h2 class="nino-section-title nino-text-left">Section: dark</h2>
+			<p class="nino-section-subtitle nino-text-left">[[short]]</p>
+		</div>
+		<div class="nino-grid-100 nino-grid-m-50 nino-p-1">
+			<div class="nino-grid-100 nino-grid--tint">
+				<h3 class="nino-section-title nino-text-left">A column on tint</h3>
+				<p class="nino-section-text">[[short]]</p>
+				<p><a class="nino-btn nino-btn--primary" href="#buttons">Primary</a></p>
+			</div>
+		</div>
+		<div class="nino-grid-100 nino-grid-m-50 nino-p-1">
+			<div class="nino-grid-100 nino-grid--counter">
+				<h3 class="nino-section-title nino-text-left">A counter column</h3>
+				<p class="nino-section-text">[[short]]</p>
+				<p><a class="nino-btn nino-btn--outline" href="#buttons">Outline</a></p>
+			</div>
+		</div>
+	</div>
+</section>
+
+<section class="nino-section nino-section--black" aria-label="Section black">
+	<div class="nino-grid-row nino-grid-row--wide">
+		<div class="nino-grid-100 nino-mb-2">
+			<h2 class="nino-section-title nino-text-left">Section: black</h2>
+			<p class="nino-section-subtitle nino-text-left">[[short]]</p>
+		</div>
+		<div class="nino-grid-100 nino-grid-m-50 nino-p-1">
+			<div class="nino-grid-100 nino-grid--primary">
+				<h3 class="nino-section-title nino-text-left">A column on primary</h3>
+				<p class="nino-section-text">[[short]]</p>
+				<p><a class="nino-btn nino-btn--primary" href="#buttons">Primary</a></p>
+			</div>
+		</div>
+		<div class="nino-grid-100 nino-grid-m-50 nino-p-1">
+			<div class="nino-grid-100 nino-grid--counter">
+				<h3 class="nino-section-title nino-text-left">A counter column</h3>
+				<p class="nino-section-text">[[short]]</p>
+				<p><a class="nino-btn nino-btn--outline" href="#buttons">Outline</a></p>
+			</div>
+		</div>
+	</div>
+</section>
+
+<section class="nino-section nino-section--primary" aria-label="Section primary">
+	<div class="nino-grid-row nino-grid-row--wide">
+		<div class="nino-grid-100 nino-mb-2">
+			<h2 class="nino-section-title nino-text-left">Section: primary</h2>
+			<p class="nino-section-subtitle nino-text-left">[[short]]</p>
+		</div>
+		<div class="nino-grid-100 nino-grid-m-50 nino-p-1">
+			<div class="nino-grid-100 nino-grid--brand-alt">
+				<h3 class="nino-section-title nino-text-left">A column on brand-alt</h3>
+				<p class="nino-section-text">[[short]]</p>
+				<p><a class="nino-btn nino-btn--primary" href="#buttons">Primary</a></p>
+			</div>
+		</div>
+		<div class="nino-grid-100 nino-grid-m-50 nino-p-1">
+			<div class="nino-grid-100 nino-grid--counter">
+				<h3 class="nino-section-title nino-text-left">A counter column</h3>
+				<p class="nino-section-text">[[short]]</p>
+				<p><a class="nino-btn nino-btn--outline" href="#buttons">Outline</a></p>
+			</div>
+		</div>
+	</div>
+</section>
+
+<section class="nino-section nino-section--brand-alt" aria-label="Section brand-alt">
+	<div class="nino-grid-row nino-grid-row--wide">
+		<div class="nino-grid-100 nino-mb-2">
+			<h2 class="nino-section-title nino-text-left">Section: brand-alt</h2>
+			<p class="nino-section-subtitle nino-text-left">[[short]]</p>
+		</div>
+		<div class="nino-grid-100 nino-grid-m-50 nino-p-1">
+			<div class="nino-grid-100 nino-grid--primary">
+				<h3 class="nino-section-title nino-text-left">A column on primary</h3>
+				<p class="nino-section-text">[[short]]</p>
+				<p><a class="nino-btn nino-btn--primary" href="#buttons">Primary</a></p>
+			</div>
+		</div>
+		<div class="nino-grid-100 nino-grid-m-50 nino-p-1">
+			<div class="nino-grid-100 nino-grid--counter">
+				<h3 class="nino-section-title nino-text-left">A counter column</h3>
+				<p class="nino-section-text">[[short]]</p>
+				<p><a class="nino-btn nino-btn--outline" href="#buttons">Outline</a></p>
+			</div>
+		</div>
+	</div>
+</section>
+
+<section id="type" class="nino-section" aria-label="Typography">
+	<div class="nino-grid-row nino-grid-row--wide">
+		<div class="nino-grid-100 nino-mb-3">
+			<h2 class="nino-section-title nino-text-left">Typography</h2>
+			<p class="nino-section-subtitle nino-text-left">Six titles and subtitles, each quiet, as it is and loud; the text under them; inline code and a block of it.</p>
+		</div>
+
+		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3">
+			<h3 class="nino-hero-title nino-hero-title--quiet">Hero, quiet</h3>
+			<p class="nino-hero-subtitle nino-hero-subtitle--quiet">[[short]]</p>
+		</div>
+		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3">
+			<h3 class="nino-hero-title">Hero</h3>
+			<p class="nino-hero-subtitle">[[short]]</p>
+		</div>
+		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3">
+			<h3 class="nino-hero-title nino-hero-title--loud">Hero, loud</h3>
+			<p class="nino-hero-subtitle nino-hero-subtitle--loud">[[short]]</p>
+		</div>
+
+		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3">
+			<h3 class="nino-section-title nino-section-title--quiet">Section, quiet</h3>
+			<p class="nino-section-subtitle nino-section-subtitle--quiet">[[short]]</p>
+			<p class="nino-section-text nino-section-text--quiet">[[short]]</p>
+		</div>
+		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3">
+			<h3 class="nino-section-title">Section</h3>
+			<p class="nino-section-subtitle">[[short]]</p>
+			<p class="nino-section-text">[[short]]</p>
+		</div>
+		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3">
+			<h3 class="nino-section-title nino-section-title--loud">Section, loud</h3>
+			<p class="nino-section-subtitle nino-section-subtitle--loud">[[short]]</p>
+			<p class="nino-section-text nino-section-text--loud">[[short]]</p>
+		</div>
+
+		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3">
+			<h3 class="nino-article-title nino-article-title--quiet">Article, quiet</h3>
+			<p class="nino-article-subtitle nino-article-subtitle--quiet">[[short]]</p>
+			<p class="nino-article-descr nino-article-descr--quiet">[[short]]</p>
+		</div>
+		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3">
+			<h3 class="nino-article-title">Article</h3>
+			<p class="nino-article-subtitle">[[short]]</p>
+			<p class="nino-article-descr">[[short]]</p>
+		</div>
+		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3">
+			<h3 class="nino-article-title nino-article-title--loud">Article, loud</h3>
+			<p class="nino-article-subtitle nino-article-subtitle--loud">[[short]]</p>
+			<p class="nino-article-descr nino-article-descr--loud">[[short]]</p>
+		</div>
+
+		<div class="nino-grid-100 nino-grid-m-66 nino-mb-3">
+			<p>[[lorem]]</p>
+			<p>A paragraph of body text with <code>inline code</code>, a <a href="#type">link</a>, <strong>strong</strong> and <em>emphasised</em> words, so the weight, the leading and the colour of running text can be judged where they are used.</p>
+		</div>
+		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3">
+			<pre class="nino-code" tabindex="0"><code>.nino-section {
+	padding: var(--space-4) 0;
+}</code></pre>
+		</div>
+	</div>
+</section>
+
+<section id="buttons" class="nino-section" aria-label="Buttons">
+	<div class="nino-grid-row">
+		<div class="nino-grid-100 nino-mb-2"><h2 class="nino-section-title">Buttons</h2></div>
+		<div class="nino-grid-100 nino-text-center nino-mb-2">
+			<p><a class="nino-btn nino-btn--small" href="#">small</a> <a class="nino-btn nino-btn--small nino-btn--primary" href="#">primary</a> <a class="nino-btn nino-btn--small nino-btn--outline" href="#">outline</a> <a class="nino-btn nino-btn--small nino-btn--brand-alt" href="#">brand-alt</a> <a class="nino-btn nino-btn--small nino-btn--light" href="#">light</a> <a class="nino-btn nino-btn--small nino-btn--dark" href="#">dark</a></p>
+			<p><a class="nino-btn" href="#">button</a> <a class="nino-btn nino-btn--primary" href="#">primary</a> <a class="nino-btn nino-btn--outline" href="#">outline</a> <a class="nino-btn nino-btn--brand-alt" href="#">brand-alt</a> <a class="nino-btn nino-btn--light" href="#">light</a> <a class="nino-btn nino-btn--dark" href="#">dark</a></p>
+			<p><a class="nino-btn nino-btn--big" href="#">big</a> <a class="nino-btn nino-btn--big nino-btn--primary" href="#">primary</a> <a class="nino-btn nino-btn--big nino-btn--outline" href="#">outline</a> <a class="nino-btn nino-btn--big nino-btn--brand-alt" href="#">brand-alt</a> <a class="nino-btn nino-btn--big nino-btn--light" href="#">light</a> <a class="nino-btn nino-btn--big nino-btn--dark" href="#">dark</a></p>
+			<p><button class="nino-btn nino-btn--primary" type="button" disabled>Disabled</button> <button class="nino-filter-btn" type="button">Filter</button> <button class="nino-filter-btn nino-is-active" type="button">Filter, active</button></p>
+		</div>
+	</div>
+</section>
+<section class="nino-section nino-section--dark" aria-label="Buttons on a dark ground">
+	<div class="nino-grid-row">
+		<div class="nino-grid-100 nino-text-center">
+			<p><a class="nino-btn nino-btn--small nino-btn--primary" href="#">small</a> <a class="nino-btn nino-btn--small nino-btn--outline" href="#">outline</a> <a class="nino-btn nino-btn--small nino-btn--light" href="#">light</a></p>
+			<p><a class="nino-btn nino-btn--primary" href="#">primary</a> <a class="nino-btn nino-btn--outline" href="#">outline</a> <a class="nino-btn nino-btn--brand-alt" href="#">brand-alt</a> <a class="nino-btn nino-btn--light" href="#">light</a> <a class="nino-btn nino-btn--dark" href="#">dark</a></p>
+			<p><a class="nino-btn nino-btn--big nino-btn--primary" href="#">big</a> <a class="nino-btn nino-btn--big nino-btn--outline" href="#">outline</a></p>
+		</div>
+	</div>
+</section>
+
+<section id="components" class="nino-section" aria-label="Form and table">
 	<div class="nino-grid-row">
 		<div class="nino-grid-100 nino-grid-m-50 nino-mb-3">
-			<h2 class="nino-section-title" id="forms-title">Forms</h2>
+			<h2 class="nino-section-title nino-text-left">Form</h2>
 			<form class="nino-form" action="#" method="post" onsubmit="return false">
-				<label for="p-name">Name *</label>
-				<input type="text" id="p-name" name="name" class="nino-form-input" value="Ada Lovelace" required>
-				<label for="p-mail">E-mail *</label>
-				<input type="email" id="p-mail" name="email" class="nino-form-input" placeholder="ada@example.org" required>
-				<label for="p-topic">Topic</label>
-				<select id="p-topic" name="topic" class="nino-form-select"><option>Enquiry</option><option>Offer</option></select>
-				<label for="p-message">Message *</label>
-				<textarea id="p-message" name="message" class="nino-form-textarea" required>Two lines, so the height and the padding are visible.</textarea>
+				<label for="specimen-name">Name *</label>
+				<input type="text" id="specimen-name" name="name" class="nino-form-input" value="Ada Lovelace" required>
+				<label for="specimen-mail">E-mail *</label>
+				<input type="email" id="specimen-mail" name="email" class="nino-form-input" placeholder="ada@example.org" required>
+				<label for="specimen-topic">Topic</label>
+				<select id="specimen-topic" name="topic" class="nino-form-select"><option>Enquiry</option><option>Offer</option></select>
+				<label for="specimen-message">Message *</label>
+				<textarea id="specimen-message" name="message" class="nino-form-textarea" required>Two lines, so the height and the padding are visible.</textarea>
+				<label class="nino-forms-check"><input type="checkbox" id="specimen-privacy" name="privacy" value="1"> I agree *</label>
+				<fieldset class="nino-forms-group">
+					<legend>How did you find us?</legend>
+					<label class="nino-forms-check"><input type="radio" name="source" value="search" checked> A search</label>
+					<label class="nino-forms-check"><input type="radio" name="source" value="friend"> A friend</label>
+				</fieldset>
 				<p class="nino-form-message" aria-live="polite"></p>
-				<p><small>* Required</small></p>
 				<button type="submit" class="nino-btn nino-btn--primary nino-form-submit">Send</button>
 			</form>
 		</div>
-		<div class="nino-grid-100 nino-grid-m-50">
-			<h3 class="nino-section-subtitle">States</h3>
+		<div class="nino-grid-100 nino-grid-m-50 nino-mb-3">
+			<h2 class="nino-section-title nino-text-left">Table</h2>
+			<div class="nino-table-wrap"><table class="nino-table nino-table--striped">
+				<thead><tr><th>Component</th><th>Template</th><th>Position</th></tr></thead>
+				<tbody>
+					<tr><td>Content</td><td>v1</td><td>as it is</td></tr>
+					<tr><td>Buttons</td><td>v2</td><td>more</td></tr>
+					<tr><td>Components</td><td>v3</td><td>less</td></tr>
+					<tr><td>Header</td><td>v4</td><td>as it is</td></tr>
+					<tr><td>Footer</td><td>v5</td><td>as it is</td></tr>
+				</tbody>
+			</table></div>
+			<div class="nino-table-wrap nino-mt-2"><table class="nino-table nino-table--bordered">
+				<thead><tr><th>Bordered</th><th>Left</th><th>Right</th></tr></thead>
+				<tbody>
+					<tr><td>One</td><td>A cell</td><td>Another cell</td></tr>
+					<tr><td>Two</td><td>A cell</td><td>Another cell</td></tr>
+				</tbody>
+			</table></div>
+			<h3 class="nino-section-subtitle nino-text-left nino-mt-2">Messages</h3>
 			<form class="nino-form nino-is-error" action="#" onsubmit="return false"><p class="nino-form-message">Something is still missing.</p></form>
 			<form class="nino-form nino-is-success" action="#" onsubmit="return false"><p class="nino-form-message">Thank you, that arrived.</p></form>
+			<h3 class="nino-section-subtitle nino-text-left">In one line</h3>
 			<form class="nino-form nino-form--inline" action="#" onsubmit="return false">
 				<input type="email" class="nino-form-input" placeholder="E-mail" aria-label="E-mail">
 				<button type="submit" class="nino-btn nino-btn--primary nino-form-submit">Sign up</button>
@@ -212,66 +405,73 @@
 	</div>
 </section>
 
-<section id="lists" class="nino-section" aria-labelledby="lists-title">
+<section class="nino-section nino-section--alt" aria-label="Lists">
 	<div class="nino-grid-row">
-		<div class="nino-grid-100 nino-mb-3"><h2 class="nino-section-title" id="lists-title">Lists &amp; tables</h2></div>
+		<div class="nino-grid-100 nino-mb-3"><h2 class="nino-section-title">Lists</h2></div>
 		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3"><p class="nino-section-subtitle">list</p><ul class="nino-list"><li>First item</li><li>A second one, long enough to wrap and show the leading</li><li>Third</li></ul></div>
 		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3"><p class="nino-section-subtitle">check</p><ul class="nino-list nino-list--check"><li>First item</li><li>A second one, long enough to wrap and show the leading</li><li>Third</li></ul></div>
 		<div class="nino-grid-100 nino-grid-m-33 nino-mb-3"><p class="nino-section-subtitle">numbered</p><ol class="nino-list nino-list--numbered"><li>First item</li><li>A second one, long enough to wrap and show the leading</li><li>Third</li></ol></div>
-		<div class="nino-grid-100 nino-grid-m-50 nino-mb-3"><p class="nino-section-subtitle">columns</p><ul class="nino-list nino-list--columns"><li>First item</li><li>A second one, long enough to wrap and show the leading</li><li>Third</li><li>First item</li><li>A second one, long enough to wrap and show the leading</li><li>Third</li></ul></div>
+		<div class="nino-grid-100 nino-grid-m-50 nino-mb-3"><p class="nino-section-subtitle">columns</p><ul class="nino-list nino-list--columns"><li>First item</li><li>A second one, long enough to wrap and show the leading</li><li>Third</li><li>Fourth</li></ul></div>
 		<div class="nino-grid-100 nino-grid-m-50 nino-mb-3"><p class="nino-section-subtitle">content</p><ul class="nino-list nino-list--content"><li>First item</li><li>A second one, long enough to wrap and show the leading</li><li>Third</li></ul></div>
-		<div class="nino-grid-100 nino-mb-3">
-			<p class="nino-section-subtitle">striped, bordered</p>
-			<div class="nino-table-wrap"><table class="nino-table nino-table--striped nino-table--bordered">
-				<thead><tr><th>Component</th><th>Set</th><th>Level</th></tr></thead>
-				<tbody><tr><td>Section</td><td>v1</td><td>default</td></tr><tr><td>Article</td><td>v1</td><td>less</td></tr><tr><td>Buttons</td><td>v2</td><td>more</td></tr></tbody>
-			</table></div>
-		</div>
-		<div class="nino-grid-100">
-			<p class="nino-section-subtitle">badges</p>
-			<p class="nino-badge-cloud"><span class="nino-badge">plain</span> <span class="nino-badge nino-badge--primary">primary</span> <span class="nino-badge nino-badge--success">success</span> <span class="nino-badge nino-badge--error">error</span> <span class="nino-badge nino-badge--pill">pill</span></p>
-		</div>
 	</div>
 </section>
 
-<section id="blocks" class="nino-section nino-section--tint" aria-labelledby="blocks-title">
+<section class="nino-section nino-section--tint" aria-label="Blocks">
 	<div class="nino-grid-row">
-		<div class="nino-grid-100 nino-mb-3"><h2 class="nino-section-title" id="blocks-title">Building blocks</h2><p class="nino-section-subtitle">Pricing and process &mdash; its own vocabulary, its own set</p></div>
+		<div class="nino-grid-100 nino-mb-3"><h2 class="nino-section-title">Blocks</h2><p class="nino-section-subtitle">Pricing, figures, questions, badges, alerts and steps</p></div>
 		<div class="nino-grid-100 nino-mb-3">
 			<div class="nino-pricing-row">
-				<div class="nino-pricing-item">
+				<div class="nino-pricing-item nino-vpa nino-vpa--repeat">
 					<h3 class="nino-pricing-title">Small</h3>
-					<p class="nino-pricing-price">9 €</p>
+					<p class="nino-pricing-price">9 EUR</p>
 					<ul class="nino-list nino-list--check nino-pricing-features"><li>A feature</li><li>Another one</li><li>And a third</li></ul>
 					<p><a class="nino-btn nino-btn--primary" href="#">Pick</a></p>
 				</div>
-				<div class="nino-pricing-item nino-pricing-item--featured">
+				<div class="nino-pricing-item nino-pricing-item--featured nino-vpa nino-vpa--repeat">
 					<h3 class="nino-pricing-title">Medium</h3>
-					<p class="nino-pricing-price">29 €</p>
+					<p class="nino-pricing-price">29 EUR</p>
 					<ul class="nino-list nino-list--check nino-pricing-features"><li>A feature</li><li>Another one</li><li>And a third</li></ul>
 					<p><a class="nino-btn nino-btn--primary" href="#">Pick</a></p>
 				</div>
-				<div class="nino-pricing-item">
+				<div class="nino-pricing-item nino-vpa nino-vpa--repeat">
 					<h3 class="nino-pricing-title">Large</h3>
-					<p class="nino-pricing-price">79 €</p>
+					<p class="nino-pricing-price">79 EUR</p>
 					<ul class="nino-list nino-list--check nino-pricing-features"><li>A feature</li><li>Another one</li><li>And a third</li></ul>
 					<p><a class="nino-btn nino-btn--primary" href="#">Pick</a></p>
 				</div>
 			</div>
 		</div>
-		<div class="nino-grid-100 nino-mb-3">
-			<p class="nino-section-subtitle">timeline &mdash; counted (a CSS counter makes the number)</p>
+		<div class="nino-grid-100 nino-grid-m-33 nino-text-center nino-mb-3 nino-vpa nino-vpa--repeat"><div class="nino-stat-counter" data-stat-counter-to="12" data-stat-counter-suffix="">12</div><p>Years</p></div>
+		<div class="nino-grid-100 nino-grid-m-33 nino-text-center nino-mb-3 nino-vpa nino-vpa--repeat"><div class="nino-stat-counter" data-stat-counter-to="480" data-stat-counter-suffix="+">480+</div><p>Projects</p></div>
+		<div class="nino-grid-100 nino-grid-m-33 nino-text-center nino-mb-3 nino-vpa nino-vpa--repeat"><div class="nino-stat-counter" data-stat-counter-to="99" data-stat-counter-suffix="%">99%</div><p>Kept</p></div>
+		<div class="nino-grid-100 nino-grid-m-50 nino-mb-3">
+			<details class="nino-accordion" name="specimen-faq" open>
+				<summary class="nino-accordion-trigger">What is included in the price?</summary>
+				<div class="nino-accordion-panel"><p>One question to a details element, and the answer under it.</p></div>
+			</details>
+			<details class="nino-accordion" name="specimen-faq">
+				<summary class="nino-accordion-trigger">How long does it take?</summary>
+				<div class="nino-accordion-panel"><p>The shared name keeps one answer open at a time.</p></div>
+			</details>
+			<details class="nino-accordion" name="specimen-faq">
+				<summary class="nino-accordion-trigger">Can I change it later?</summary>
+				<div class="nino-accordion-panel"><p>Yes. Everything on this page is a choice of the Design panel.</p></div>
+			</details>
+		</div>
+		<div class="nino-grid-100 nino-grid-m-50 nino-mb-3">
+			<p class="nino-badge-cloud nino-badge-cloud--left"><span class="nino-badge">plain</span> <span class="nino-badge nino-badge--primary">primary</span> <span class="nino-badge nino-badge--success">success</span> <span class="nino-badge nino-badge--error">error</span> <span class="nino-badge nino-badge--pill">pill</span></p>
+			<p class="nino-alert nino-mb-1">A neutral alert</p>
+			<p class="nino-alert nino-alert--info nino-mb-1">An alert in the accent colour</p>
+			<p class="nino-alert nino-alert--success nino-mb-1">Success, on a surface of its own</p>
+			<p class="nino-alert nino-alert--warning nino-mb-1">Warning, between the two</p>
+			<p class="nino-alert nino-alert--error nino-mb-1">Error, on a surface of its own</p>
+			<p class="nino-alert nino-alert--content">A larger alert, set in the larger type</p>
+		</div>
+		<div class="nino-grid-100">
 			<ol class="nino-timeline nino-timeline--counted">
 				<li class="nino-timeline-step"><h3 class="nino-article-title">Choose</h3><p class="nino-article-descr">[[short]]</p></li>
-				<li class="nino-timeline-step"><h3 class="nino-article-title">Adjust</h3><p class="nino-article-descr">[[lorem]]</p></li>
-				<li class="nino-timeline-step"><h3 class="nino-article-title">Compile</h3><p class="nino-article-descr">[[short]]</p></li>
-			</ol>
-		</div>
-		<div class="nino-grid-100 nino-grid-m-66">
-			<p class="nino-section-subtitle">timeline &mdash; stacked, with a number of its own</p>
-			<ol class="nino-timeline nino-timeline--stacked">
-				<li class="nino-timeline-step"><span class="nino-timeline-number">01</span><div><h3 class="nino-article-title">Choose</h3><p class="nino-article-descr">[[short]]</p></div></li>
-				<li class="nino-timeline-step"><span class="nino-timeline-number">02</span><div><h3 class="nino-article-title">Adjust</h3><p class="nino-article-descr">[[short]]</p></div></li>
+				<li class="nino-timeline-step"><h3 class="nino-article-title">Adjust</h3><p class="nino-article-descr">[[short]]</p></li>
+				<li class="nino-timeline-step"><h3 class="nino-article-title">Apply</h3><p class="nino-article-descr">[[short]]</p></li>
 			</ol>
 		</div>
 	</div>

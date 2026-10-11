@@ -1,26 +1,30 @@
 /**
  *	Nino
  *	design-js-smoke.js		What the Design panel's screen is, over a dom
- *												stand-in: the form card the part and its size are
- *												chosen in, the titled block the knob rows stand in,
- *												the summary under the preview frame - the list
- *												that says, in words, what the frame beside it is
- *												showing and what is about to compile - and the
- *												head of the pane the screen stands in, which names
- *												the panel and carries the Structure / Colours strip.
+ *												stand-in: the strip of six tabs in the head of the
+ *												pane, and under it the controls of the tab that is open
+ *												- the five templates, the page and its animation; the
+ *												five font roles; the named knobs of content, buttons
+ *												and components, greyed where the chosen template does
+ *												not answer to them; the palette and its mode - the
+ *												state of the files over them, the summary under the
+ *												preview frame, and the scroll of the frame to the
+ *												anchor of the tab.
  *
- *												The list is the half a picture cannot give: a
+ *												The summary is the half a picture cannot give: a
  *												preview says what a design looks like and nothing
- *												about which selection produced it, so the checks
- *												here read it back after every kind of change the
- *												screen allows - a knob moved, another part opened,
- *												the other half of the design switched to.
+ *												about which selection produced it, so the checks here
+ *												read it back after every kind of change the screen
+ *												allows - a knob moved, another template chosen, a font
+ *												changed, another tab opened.
  *
  *												No jsdom, no dependency: the same element stand-in
  *												the other feature tests build, so this runs with
  *												nothing but node. design-smoke.php runs it through
  *												node when node is on the path, so bin/check.sh and
- *												CI cover it; it also runs on its own.
+ *												CI cover it - and hands it the answer design/list
+ *												really gave (DESIGN_LISTING), which the screen is
+ *												then drawn from as well; it also runs on its own.
  *
  *	Usage: node features/Design/tests/design-js-smoke.js
  */
@@ -48,77 +52,23 @@ function check( label, condition ) {
 
 const source = fs.readFileSync( path.join( __dirname, '../assets/admin.js' ), 'utf8' );
 
-// The panel's own words, as text/en_US.php carries them - the ones this test
-// reads back off the screen. A key with no entry answers as itself, which is
-// what the workbench does with a fill nobody wrote
-const TEXT = {
-	'/_admin/design/label/title'			: 'Design',
-	'/_admin/design/label/picker'			: 'Part',
-	'/_admin/design/label/variant'		: 'Variant',
-	'/_admin/design/label/global'			: 'Global',
-	'/_admin/design/label/size'				: 'Root size',
-	'/_admin/design/label/state'			: 'Applied file',
-	'/_admin/design/label/preview'		: 'Preview',
-	'/_admin/design/label/finetune'		: 'Finetuning',
-	'/_admin/design/label/tuning'			: 'Tuning',
-	'/_admin/design/group/selection'	: 'Selection',
-	'/_admin/design/group/palette'		: 'Palette',
-	'/_admin/design/preview/eyebrow'	: 'This selection',
-	'/_admin/design/hint/size'				: 'Scales the whole page through the root font size.',
-	'/_admin/design/hint/finetune'		: 'One step below what the chosen set declares, the set as it is, or one step above.',
-	'/_admin/design/hint/tuning'			: 'How the rest of the palette is solved out of the brand colour.',
-	'/_admin/design/part/section'			: 'Section',
-	'/_admin/design/part/header'			: 'Header',
-	'/_admin/design/size/m'						: 'default',
-	'/_admin/design/step/less'				: '−1',
-	'/_admin/design/step/default'			: '0',
-	'/_admin/design/step/more'				: '+1',
-	'/_admin/design/knob/volume/label'		: 'Headings',
-	'/_admin/design/knob/volume/default'	: 'Standard',
-	'/_admin/design/knob/spacing/label'		: 'Spacing',
-	'/_admin/design/knob/spacing/default'	: 'Standard',
-	'/_admin/design/knob/spacing/more'		: 'Airy',
-	'/_admin/design/knob/shaping/label'		: 'Corners',
-	'/_admin/design/knob/shaping/default'	: 'Standard',
-	'/_admin/design/tab/structure'		: 'Structure',
-	'/_admin/design/tab/colours'			: 'Colours',
-	'/_admin/design/label/primary'		: 'Brand colour',
-	'/_admin/design/label/secondary'	: 'Second colour',
-	'/_admin/design/colour/harmony/1'					: 'Monochrome',
-	'/_admin/design/colour/temperature/label'	: 'Temperature',
-	'/_admin/design/colour/temperature/3'			: 'Brand',
-	'/_admin/design/colour/saturation/label'	: 'Saturation',
-	'/_admin/design/colour/saturation/2'			: 'Standard',
-	'/_admin/design/colour/contrast/label'		: 'Contrast',
-	'/_admin/design/colour/contrast/2'				: 'Standard',
-	'/_admin/design/colour/depth/label'				: 'Depth',
-	'/_admin/design/colour/depth/2'						: 'Standard',
-	'/_admin/design/state/current'		: 'The file answers to this selection.',
-	'/_admin/design/state/compiled'		: 'Last applied %s',
-	'/_admin/design/state/short/current'	: 'Up to date',
-	'/_admin/design/state/short/drifted'	: 'Saved, not applied',
-	'/_admin/design/state/drifted'		: 'The selection is saved but not compiled.',
-	'/_admin/design/state/foreign'		: 'Not written by Design: %s - delivered with the project or edited by hand.',
-	'/_admin/design/state/previous'		: 'Previous version from %s',
-	'/_admin/design/state/short/foreign'	: 'Not written by Design',
-	'/_admin/design/label/save'				: 'Save draft',
-	'/_admin/design/label/apply'			: 'Apply to website',
-	'/_admin/design/label/restore'		: 'Restore previous version',
-	'/_admin/design/hint/actions'			: '"Save draft" remembers your selection and leaves the website as it is.',
-	'/_admin/design/confirm/apply'		: 'Applying rewrites: %s.',
-	'/_admin/design/confirm/foreign'	: 'Not written by Design, and replaced: %s.',
-	'/_admin/design/confirm/lost'			: 'In your file, but not in the new variant: %s - add it again by hand afterwards if you still need it.',
-	'/_admin/design/confirm/copy'			: 'What is there now is kept first, in data/design-previous.php.',
-	'/_admin/design/confirm/replaces'	: 'That replaces the previous version from %s.',
-	'/_admin/design/confirm/restore'	: 'Restore the previous version?',
-	'/_admin/design/msg/saved'				: 'Draft saved.',
-	'/_admin/design/msg/applied'			: 'Applied.',
-	'/_admin/design/msg/takenover'		: 'Files Design had not written were replaced.',
-	'/_admin/design/msg/cancelled'		: 'Draft saved, not applied.',
-	'/_admin/design/msg/lost'					: 'Not in the frame templates any more: %s.',
-	'/_admin/design/msg/restored'			: 'Previous version restored.',
-	'/_admin/design/error/restore'		: 'The previous version could not be restored.',
-};
+/*	The panel's own words, read out of text/en_US.php as the workbench reads
+	them - one entry to a line, a quote escaped with a backslash. A key with no
+	entry answers as itself, which is what the workbench does with a fill nobody
+	wrote, so a text the script asks for and the file lacks shows up as a key on
+	the screen and in the checks below	*/
+const TEXT = ( function() {
+
+	const texts = {};
+	const line = /^\s*'\[\[(\/[^\]]+)\]\]'\s*=>\s*'((?:[^'\\]|\\.)*)'\s*,?\s*$/gm;
+	const file = fs.readFileSync( path.join( __dirname, '../text/en_US.php' ), 'utf8' );
+	let found;
+
+	while( ( found = line.exec( file ) ) !== null )
+		texts[found[1]] = found[2].replace( /\\(['\\])/g, '$1' );
+
+	return texts;
+} )();
 
 /**
  *	One element, with just enough of the interface admin.js reaches for
@@ -142,8 +92,12 @@ function element( tag ) {
 		setAttribute		: function( name, value ) { this.attributes[name] = String( value ) },
 		appendChild			: function( child ) { child.parent = this; this.children.push( child ); return child },
 		addEventListener	: function( type, fn ) { ( this.listeners[type] = this.listeners[type] || [] ).push( fn ) },
-		removeEventListener	: function() {},
-		fire						: function( type ) { ( this.listeners[type] || [] ).forEach( function( fn ) { fn( { preventDefault : function() {} } ) } ) },
+		removeEventListener	: function( type, fn ) { this.listeners[type] = ( this.listeners[type] || [] ).filter( function( listener ) { return listener !== fn } ) },
+		// A handler is called on the element it was put on, as a browser does: the colour inputs read this.value
+		fire						: function( type ) {
+			const self = this;
+			( this.listeners[type] || [] ).slice().forEach( function( fn ) { fn.call( self, { preventDefault : function() {} } ) } );
+		},
 		// _switchTab() and _redrawColours() swap a whole column for a new one
 		replaceWith			: function( node ) {
 			const parent = this.parent;
@@ -197,7 +151,6 @@ function element( tag ) {
 	};
 
 	Object.defineProperty( el, 'firstChild', { get : function() { return el.children[0] || null } } );
-
 	el.classList = {
 		add				: function( name ) { el.classes[name] = true },
 		toggle		: function( name, on ) { if( on === true ) el.classes[name] = true; else delete el.classes[name] },
@@ -246,30 +199,138 @@ function byTag( root, tag ) {
 	return descendants( root ).filter( function( el ) { return el.tagName === String( tag ).toUpperCase() } );
 }
 
-/** One part, as design/list answers it */
-function part( name, kind, knobs ) {
-	return {
-		part : name, kind : kind, set : 'v1', moved : {}, knobs : knobs,
-		catalogue : { v1 : { name : 'Nino', description : 'The framework as it is' }, v2 : { name : 'Wide', description : 'Wider' } },
-	};
+/** The value a select shows - the option marked selected, as a browser's select.value would say */
+function shown( select ) {
+	const on = byTag( select, 'option' ).filter( function( option ) { return option.selected === true } )[0];
+	return on === undefined ? null : on.value;
+}
+
+/** What a select offers, as [ value, label ] pairs */
+function offered( select ) {
+	return byTag( select, 'option' ).map( function( option ) { return [ option.value, option.textContent ] } );
+}
+
+/** Choose a value in a select, the way a hand does */
+function choose( select, value ) {
+	select.value = value;
+	select.fire('change');
+}
+
+/** Run a function and say whether it threw */
+function threw( fn ) {
+	try {
+		fn();
+		return false;
+	}
+	catch( e ) {
+		return true;
+	}
+}
+
+const TABS = [ 'global', 'fonts', 'content', 'buttons', 'components', 'colours' ];
+
+const KNOBS = {
+	content 		: [ 'hero-title', 'hero-text', 'quiet', 'loud', 'section-space', 'article-space', 'corners', 'border', 'shadow' ],
+	buttons 		: [ 'small', 'big', 'space', 'corners' ],
+	components 	: [ 'scale', 'space', 'corners', 'border', 'zebra', 'labels' ],
+};
+
+/** A list without some of its items */
+function without( list, drop ) {
+	return list.filter( function( item ) { return drop.indexOf( item ) === -1 } );
+}
+
+/** One part, as design/list answers it: the set that is chosen and the catalogue it is chosen from */
+function part( name, kind, set, catalogue ) {
+	return { part : name, kind : kind, set : set, catalogue : catalogue };
 }
 
 /** The whole answer of design/list, with whatever a test wants different in it */
 function listing( over ) {
+
+	const roles = [ 'title', 'subtitle', 'text', 'button', 'code' ];
+	const fonts = {};
+	const defaults = {
+		title 		: { family : 'league-spartan', weight : 'bold', uppercase : false, size : '' },
+		subtitle 	: { family : 'source-sans-3', weight : 'normal', uppercase : false, size : '' },
+		text 			: { family : 'source-sans-3', weight : 'normal', uppercase : false, size : '' },
+		button 		: { family : 'source-sans-3', weight : 'bold', uppercase : false, size : '' },
+		code 			: { family : '', weight : 'normal', uppercase : false, size : '' },
+	};
+	roles.forEach( function( role ) { fonts[role] = Object.assign( {}, defaults[role] ) } );
+
+	const knobs = {};
+	Object.keys( KNOBS ).forEach( function( tab ) {
+		knobs[tab] = {};
+		KNOBS[tab].forEach( function( knob ) { knobs[tab][knob] = 0 } );
+	} );
+
 	return Object.assign( {
-		parts		: [ part( 'header', 'frame', [] ), part( 'section', 'set', [ 'volume', 'spacing' ] ) ],
-		knobs		: {},
-		global	: [ 'volume', 'spacing', 'shaping' ],
-		size		: 'm',
-		steps		: [ 'less', 'default', 'more' ],
-		sizes		: [ 's', 'm', 'l' ],
-		colours	: { primary : '#4faae8', secondary : '' },
-		palette	: {
+		parts : [
+			part( 'header', 'frame', 'v1', {
+				v1 : { name : 'Plain bar', description : 'A bar with a rule under it' },
+				v2 : { name : 'Centred', description : 'The logo in the middle' },
+			} ),
+			part( 'footer', 'frame', 'v1', {
+				v1 : { name : 'Plain footer', description : 'Two columns' },
+				v2 : { name : 'Dark footer', description : 'On the dark ground' },
+			} ),
+			part( 'content', 'set', 'v1', {
+				v1 : { name : 'Nino', description : 'The framework as it is', knobs : KNOBS.content.slice() },
+				v2 : { name : 'Poster', description : 'Large type, no shadow', knobs : without( KNOBS.content, [ 'shadow' ] ) },
+			} ),
+			part( 'buttons', 'set', 'v1', {
+				v1 : { name : 'Nino', description : 'The framework as it is', knobs : KNOBS.buttons.slice() },
+				v3 : { name : 'Square', description : 'No corners', knobs : without( KNOBS.buttons, [ 'corners' ] ) },
+			} ),
+			part( 'components', 'set', 'v1', {
+				v1 : { name : 'Nino', description : 'The framework as it is', knobs : KNOBS.components.slice() },
+				v4 : { name : 'Filled', description : 'Fields on a ground', knobs : without( KNOBS.components, [ 'border', 'labels' ] ) },
+			} ),
+		],
+		tabs 			: { content : KNOBS.content.slice(), buttons : KNOBS.buttons.slice(), components : KNOBS.components.slice() },
+		knobs 		: knobs,
+		steps 		: [ 'less', 'default', 'more' ],
+		size 			: 'm',
+		sizes 		: [ 's', 'm', 'l' ],
+		width 		: 0,
+		motion 		: { effect : '', strength : '', speed : '' },
+		effects 	: [ 'zoom', 'zoom-out', 'slide-left', 'slide-right', 'blur', 'flip' ],
+		strengths : [ 'soft', 'medium', 'hard' ],
+		speeds 		: [ 'fast', 'medium', 'slow' ],
+		roles 		: roles,
+		fonts 		: fonts,
+		families 	: {
+			'source-sans-3' 	: { name : 'Source Sans 3', category : 'sans', system : false },
+			'league-spartan' 	: { name : 'League Spartan', category : 'sans', system : false },
+			'system-sans' 		: { name : 'System sans-serif', category : 'sans', system : true },
+			'system-serif' 		: { name : 'System serif', category : 'serif', system : true },
+			'system-mono' 		: { name : 'System monospace', category : 'mono', system : true },
+		},
+		options 	: {
+			title 		: [ '', 'source-sans-3', 'league-spartan', 'system-sans', 'system-serif', 'system-mono' ],
+			subtitle 	: [ '', 'source-sans-3', 'league-spartan', 'system-sans', 'system-serif', 'system-mono' ],
+			text 			: [ '', 'source-sans-3', 'league-spartan', 'system-sans', 'system-serif', 'system-mono' ],
+			button 		: [ '', 'source-sans-3', 'league-spartan', 'system-sans', 'system-serif', 'system-mono' ],
+			code 			: [ '' ],
+		},
+		weights 	: [ 'light', 'normal', 'bold' ],
+		fontsizes : {
+			title 		: [ '1.6', '1.7', '2.4', '4' ],
+			subtitle 	: [ '1', '1.5', '2' ],
+			text 			: [ '0.875', '1', '1.125', '1.25' ],
+			button 		: [ '0.75', '1', '1.25' ],
+			code 			: [ '0.75', '0.875', '1' ],
+		},
+		inherited : { title : '1.6', subtitle : '1.125', text : '1', button : '1', code : '0.875' },
+		colours		: { primary : '#4faae8', secondary : '', mode : 'auto' },
+		palette		: {
 			harmony			: { 'default' : 1, steps : [ 'Monochrome', 'Analogous', 'Triadic', 'Complementary' ] },
 			temperature	: { 'default' : 3, steps : [ 'Neutral', 'Cool', 'Brand', 'Warm' ] },
 			saturation	: { 'default' : 2, steps : [ 'Muted', 'Standard', 'Rich' ] },
 			contrast		: { 'default' : 2, steps : [ 'Soft', 'Standard', 'Strong' ] },
 			depth				: { 'default' : 2, steps : [ 'Flat', 'Standard', 'Raised' ] },
+			mode				: { 'default' : 'auto', steps : [ 'auto', 'light', 'dark' ] },
 		},
 		brand		: { light : { safe : true, ratio : 5.4, target : 4.5 } },
 		accent	: '#8ad0f5',
@@ -290,13 +351,69 @@ function listing( over ) {
 }
 
 /**
+ *	The page in the frame, as far as the panel reaches into it: the elements
+ *	it asks for by id - the sheet it swaps and the anchors it scrolls to - and
+ *	the window it scrolls. Where each anchor stands is the test's to say.
+ */
+function frameStage() {
+
+	const stage = { scrolls : [], asked : [], reachable : true, scrollY : 100, clearance : 0, tops : { type : 700, content : 300, buttons : 1200, components : 1500, colours : 450 } };
+
+	stage.style = element('style');
+	// The room main keeps at its top for the fixed header, which the header template of the page sets: none until a test says
+	stage.main = {};
+	// The elements in view that carry a viewport animation, as the page's own script has marked them
+	stage.animated = [];
+	// The page's fonts, as the page reports them: null where it has no FontFaceSet to ask
+	stage.fonts = null;
+	stage.document = {
+		body 							: {},
+		documentElement 	: { scrollTop : 0 },
+		querySelector			: function( selector ) { return selector === 'main' ? stage.main : null },
+		querySelectorAll	: function( selector ) { return selector === '.nino-vpa--visible' ? stage.animated : [] },
+		getElementById		: function( id ) {
+			stage.asked.push( id );
+			if( id === 'design-preview-css' )
+				return stage.style;
+			return stage.tops[id] === undefined && id !== 'global' ? null : { getBoundingClientRect : function() { return { top : stage.tops[id] || 0 } } };
+		},
+		defaultView : {
+			scrollTo : function( options ) { stage.scrolls.push( options ) },
+			getComputedStyle : function( node ) { return node === stage.main ? { paddingTop : stage.clearance+ 'px' } : {} },
+		},
+	};
+	Object.defineProperty( stage.document, 'fonts', { get : function() { return stage.fonts } } );
+	Object.defineProperty( stage.document.defaultView, 'scrollY', { get : function() { return stage.scrollY } } );
+
+	return stage;
+}
+
+/**
+ *	An element of the page in the frame that carries a viewport animation and
+ *	stands in view: what is done to its classes, and the transition it had
+ *	at the time
+ */
+function animated( transition ) {
+
+	const el = { style : { transition : transition || '' }, log : [] };
+
+	el.classList = {
+		remove	: function() { el.log.push( [ 'remove', Array.prototype.slice.call( arguments ).join(), el.style.transition ] ) },
+		add			: function() { el.log.push( [ 'add', Array.prototype.slice.call( arguments ).join(), el.style.transition ] ) },
+	};
+
+	return el;
+}
+
+/**
  *	The panel's screen, drawn out of one design/list answer.
  *
  *	Every request the script makes goes through _apiCall(), which is held here
  *	the way the other feature tests hold it - and the preview behind it is
  *	debounced, so a stand-in timer that never fires is exactly what a test of
  *	the screen wants: what is asserted on is what the click wrote, not what an
- *	answer wrote back.
+ *	answer wrote back. A preview is asked for by hand (_previewNow()) where a
+ *	test wants to read what it carries.
  *
  *	The mount stands in its pane, under the head the shell renders over every
  *	panel (see \Nino\Admin\Panels::panesHtml()): the panel's name, the slot
@@ -308,7 +425,8 @@ function listing( over ) {
  *	@param		{Object}	[shell]		{ head : false } for a pane without a head; raw: true leaves
  *															the panel's own _apiCall in place and { send } stands in for
  *															Nino.http.sendRequest, { api } for Nino.adminUi.api (a newer
- *															workbench) and { dirty } for the shell's Nino.admin.dirty
+ *															workbench) and { dirty } for the shell's Nino.admin.dirty;
+ *															whole: true takes `over` as the whole answer and fills nothing in
  */
 function panel( over, shell ) {
 
@@ -339,10 +457,23 @@ function panel( over, shell ) {
 		return descendants( pane ).filter( function( el ) { return el.id === id } )[0] || null;
 	}
 
+	// What the frame shows: its own page, which the panel reaches into
+	const stage = frameStage();
+
 	const dc = {
 		documentElement	: element('html'),
 		body						: element('body'),
-		createElement		: function( tag ) { return element( tag ) },
+		createElement		: function( tag ) {
+			const el = element( tag );
+			// The frame's page, or the refusal a browser gives for one it may not reach
+			if( tag === 'iframe' )
+				Object.defineProperty( el, 'contentDocument', { get : function() {
+					if( stage.reachable === false )
+						throw new Error('Blocked a frame from accessing a cross-origin frame');
+					return stage.document;
+				} } );
+			return el;
+		},
 		getElementById	: function( id ) { return byId( id ) },
 	};
 
@@ -452,10 +583,10 @@ function panel( over, shell ) {
 
 	if( ( shell || {} ).raw !== true )
 		design._apiCall = function( endpoint, payload, callback ) {
-			requests.push( { endpoint : endpoint, payload : payload, answer : callback } );
+			requests.push( { endpoint : endpoint, payload : JSON.parse( JSON.stringify( payload ) ), answer : callback } );
 		};
 
-	design._data	= listing( over );
+	design._data	= ( shell || {} ).whole === true ? over : listing( over );
 	design._edit	= design._selection( design._data );
 	design._ready	= true;
 	design._render();
@@ -464,6 +595,7 @@ function panel( over, shell ) {
 		design 	: design,
 		requests: requests,
 		confirms: confirms,
+		stage		: stage,
 		/** What the next confirm() answers */
 		willConfirm	: function( answer ) { confirmAnswer = answer },
 		/** The oldest request not yet answered, answered - the way the server would */
@@ -486,157 +618,75 @@ function panel( over, shell ) {
 				return [ ( byTag( row, 'span' )[0] || {} ).textContent, ( byTag( row, 'strong' )[0] || {} ).textContent ];
 			} );
 		},
-		/** One knob row on the left, by the name it carries */
+		/** One knob row of the open tab, by the name it carries */
 		knobRow : function( label ) {
 			return byClass( form, 'design-knob-row' ).filter( function( row ) {
 				return ( byClass( row, 'design-knob-label' )[0] || {} ).textContent === label;
 			} )[0] || null;
 		},
+		/** The step buttons of a knob row, by the step they stand for */
+		steps : function( label ) {
+			const row = this.knobRow( label );
+			return row === null ? [] : byTag( row, 'button' );
+		},
 		/** Move a knob the way a hand does */
 		move : function( label, step ) {
-			byTag( this.knobRow( label ), 'button' ).filter( function( button ) {
+			this.steps( label ).filter( function( button ) {
 				return button.dataset.step === step;
 			} ).forEach( function( button ) { button.fire('click') } );
 		},
-		/** Open another part in the picker */
-		open : function( name ) {
-			const picker = byId('design-picker');
-			picker.value = name;
-			picker.fire('change');
-		},
-		/** Switch to the other half of the design, wherever its strip stands */
+		/** Open another tab, by the word on it, wherever its strip stands */
 		tab : function( label ) {
 			byTag( byClass( pane, 'design-tabs' )[0], 'button' ).filter( function( button ) {
 				return button.textContent === label;
 			} ).forEach( function( button ) { button.fire('click') } );
 		},
+		/** The controls of the open tab: the box under the eyebrow */
+		body : function() { return byId('design-body') },
 		byId : byId,
 	};
 }
 
+/** A text of the panel with its %s filled in, the way the script's own _text() does */
+function say( key ) {
+	let out = TEXT[key];
+	Array.prototype.slice.call( arguments, 1 ).forEach( function( value ) { out = out.replace( /%[sdn]/, function() { return String( value ) } ) } );
+	return out;
+}
 
-// --- The summary under the frame -------------------------------------------------
-
-console.log( 'The summary' );
-
-const screen = panel();
-
-const preview = screen.byId('design-preview');
-const summary = screen.byId('design-summary');
-
-check( 'the summary stands inside the preview column, under the frame',
-	summary !== null && preview !== null && descendants( preview ).indexOf( summary ) > descendants( preview ).indexOf( screen.byId('design-frame') ) );
-
-check( '...and says which part is open, what the page is measured in, and where each of the three knobs stands',
-	JSON.stringify( screen.summary() ) === JSON.stringify( [
-		[ 'Part', 'Global' ],
-		[ 'Root size', 'default' ],
-		[ 'Headings', 'Standard' ],
-		[ 'Spacing', 'Standard' ],
-		[ 'Corners', 'Standard' ],
-		[ 'Applied file', 'Up to date' ],
-	] ) );
-
-/*	The value, not the click: a knob says what will compile, and the list is
-	read as the answer to "what am I looking at" rather than as a log of what
-	was pressed */
-screen.move( 'Spacing', 'more' );
-
-check( 'a knob that was moved is a knob the list says the new value of',
-	JSON.stringify( screen.summary()[3] ) === JSON.stringify( [ 'Spacing', 'Airy' ] ) );
-
-screen.open('section');
-
-check( 'opening a part puts that part and the variant it is on in the list, over its own two knobs',
-	JSON.stringify( screen.summary() ) === JSON.stringify( [
-		[ 'Part', 'Section' ],
-		[ 'Variant', 'v1' ],
-		[ 'Root size', 'default' ],
-		[ 'Headings', 'Standard' ],
-		[ 'Spacing', 'Airy' ],
-		[ 'Applied file', 'Up to date' ],
-	] ) );
-
-screen.tab('Colours');
-
-check( 'the palette half lists the two colours and every knob the palette is solved with',
-	JSON.stringify( screen.summary() ) === JSON.stringify( [
-		[ 'Brand colour', '#4faae8' ],
-		[ 'Second colour', 'Monochrome' ],
-		[ 'Temperature', 'Brand' ],
-		[ 'Saturation', 'Standard' ],
-		[ 'Contrast', 'Standard' ],
-		[ 'Depth', 'Standard' ],
-		[ 'Applied file', 'Up to date' ],
-	] ) );
-
-const drifted = panel( { current : false } );
-
-check( 'the last row is what the file on disk is, in one word',
-	JSON.stringify( drifted.summary().pop() ) === JSON.stringify( [ 'Applied file', 'Saved, not applied' ] ) );
-
-console.log('');
-
-
-// --- The shape of the column -----------------------------------------------------
-//
-// The shape is a card of labelled fields in a grid, each with its name over
-// the control and the terse line under it, and a block of rows under the card
-// that a small heading and a hint line open
-
-console.log( 'The column' );
-
-const column = panel();
-const grid = byClass( column.form, 'design-form-grid' )[0] || null;
-const fields = grid === null ? [] : byClass( grid, 'design-field' );
-
-check( 'the part and the size are two fields of one grid, not a select above a card',
-	fields.length === 2
-	&& ( byTag( fields[0], 'select' )[0] || {} ).id === 'design-picker'
-	&& ( byTag( fields[1], 'select' )[0] || {} ).id === 'design-size' );
-check( '...each with its name over the control and what it does under it',
-	fields.length === 2
-	&& ( byTag( fields[1], 'label' )[0] || {} ).textContent === 'Root size'
-	&& ( byTag( fields[1], 'small' )[0] || {} ).textContent === TEXT['/_admin/design/hint/size'] );
-
-const knobs = column.byId('design-knobs');
-const label = knobs === null ? null : byClass( knobs, 'design-section-label' )[0] || null;
-
-check( 'the knob rows stand in a block of their own, opened by a small heading and a hint line',
-	label !== null
-	&& ( byTag( label, 'strong' )[0] || {} ).textContent === 'Finetuning'
-	&& ( byTag( label, 'small' )[0] || {} ).textContent === TEXT['/_admin/design/hint/finetune']
-	&& byClass( knobs, 'design-knob-row' ).length === 3 );
-
-check( 'and the group over the card is named',
-	( byClass( column.form, 'design-eyebrow' )[0] || {} ).textContent === 'Selection' );
-
-console.log('');
-
-
-// --- The pane's head -------------------------------------------------------------
-//
-// The panel's name is the head's - the row the shell renders over every pane -
-// so the screen under it draws no heading of its own. The strip that switches
-// the two halves stands in that row beside the name, where the Features
-// panel's does: it switches the column of controls and nothing else, and the
-// frame beside the column stays on both tabs
-
-console.log( 'The head' );
+/** The word over the controls - which group of the design the column is showing */
+function eyebrow( screen ) {
+	return ( byClass( screen.form, 'design-eyebrow' )[0] || {} ).textContent;
+}
 
 /** A key pressed on a tab, the way the kernel's tabKeys() hears it */
 function press( button, key ) {
 	( button.listeners.keydown || [] ).forEach( function( fn ) { fn( { key : key, preventDefault : function() {} } ) } );
 }
 
-/** The word over the card - which half of the design the column is showing */
-function eyebrow( screen ) {
-	return ( byClass( screen.form, 'design-eyebrow' )[0] || {} ).textContent;
-}
+check( 'the stand-in reads the panel\'s words out of text/en_US.php', Object.keys( TEXT ).length > 200 && TEXT['/_admin/design/tab/global'] === 'Global'
+	&& TEXT['/_admin/design/hint/unanswered'].indexOf('%s') !== -1 );
+
+
+// --- The pane's head -------------------------------------------------------------
+//
+// The panel's name is the head's - the row the shell renders over every pane -
+// so the screen under it draws no heading of its own. The strip of the six tabs
+// stands in that row beside the name, where the Features panel's does: it
+// switches the column of controls and nothing else, and the frame beside the
+// column stays on every tab
+
+console.log( 'The head' );
 
 const headed = panel();
 const strip = headed.headStrips()[0] || null;
+const tabs = strip === null ? [] : byTag( strip, 'button' );
 
+check( 'the strip has six tabs - Global, Fonts, Content, Buttons, Components and Colours, in that order',
+	headed.design.TABS.join() === TABS.join() && tabs.map( function( tab ) { return tab.textContent } ).join() === 'Global,Fonts,Content,Buttons,Components,Colours' );
+check( '...a tablist of tabs, the first of them selected and the others not',
+	strip !== null && strip.getAttribute('role') === 'tablist' && tabs.every( function( tab ) { return tab.getAttribute('role') === 'tab' } )
+	&& tabs.map( function( tab ) { return tab.getAttribute('aria-selected') } ).join() === 'true,false,false,false,false,false' );
 check( 'the screen draws no heading of its own - the head names the panel',
 	byTag( headed.form, 'h1' ).concat( byTag( headed.form, 'h2' ), byTag( headed.form, 'h3' ) ).length === 0 );
 check( 'the strip is handed to the pane\'s head and stands right after the name, not over the column',
@@ -650,13 +700,13 @@ check( '...and a screen drawn again puts one strip there, not a second beside th
 	headed.headStrips().length === 1 && headed.head.children.length === 3
 	&& hasClass( headed.head.children[1], 'design-tabs' ) && hasClass( headed.head.children[2], 'admin-panel-actions' ) );
 
-const shown = headed.headStrips()[0] || null;
+const shownStrip = headed.headStrips()[0] || null;
 headed.tab('Colours');
 
-check( 'the other half redraws the column under the head and leaves the strip standing - the same element, its tab lit',
-	shown !== null && headed.headStrips()[0] === shown && headed.headStrips().length === 1
-	&& byTag( shown, 'button' )[1].getAttribute('aria-selected') === 'true' && eyebrow( headed ) === 'Palette'
-	&& headed.byId('design-frame') !== null );
+check( 'another tab redraws the column under the head and leaves the strip standing - the same element, its tab lit',
+	shownStrip !== null && headed.headStrips()[0] === shownStrip && headed.headStrips().length === 1
+	&& byTag( shownStrip, 'button' )[5].getAttribute('aria-selected') === 'true' && byTag( shownStrip, 'button' )[0].getAttribute('aria-selected') === 'false'
+	&& eyebrow( headed ) === 'Palette' && headed.byId('design-frame') !== null );
 
 /*	The keyboard is the reason the strip is not drawn again on a switch. An
 	arrow key moves the focus to the next tab and opens it; a strip drawn anew
@@ -666,19 +716,24 @@ const keyed = panel();
 const keyTabs = byTag( keyed.headStrips()[0] || element('div'), 'button' );
 
 focused = null;
-if( keyTabs.length === 2 )
+if( keyTabs.length === 6 )
 	press( keyTabs[0], 'ArrowRight' );
 
-check( 'an arrow key on the strip opens the other half and the focus stays on the tab it moved to, in the head',
-	keyTabs.length === 2 && focused === keyTabs[1] && keyTabs[1].parent === keyed.headStrips()[0]
-	&& keyTabs[1].getAttribute('aria-selected') === 'true' && eyebrow( keyed ) === 'Palette' );
+check( 'an arrow key on the strip opens the next tab and the focus stays on the tab it moved to, in the head',
+	keyTabs.length === 6 && focused === keyTabs[1] && keyTabs[1].parent === keyed.headStrips()[0]
+	&& keyTabs[1].getAttribute('aria-selected') === 'true' && eyebrow( keyed ) === 'Font roles' );
 
-if( keyTabs.length === 2 )
+if( keyTabs.length === 6 )
 	press( keyTabs[1], 'ArrowLeft' );
 
 check( '...so the next one has a tab to start from, and walks back',
-	keyTabs.length === 2 && focused === keyTabs[0] && keyTabs[0].parent === keyed.headStrips()[0]
-	&& keyTabs[0].getAttribute('aria-selected') === 'true' && eyebrow( keyed ) === 'Selection' );
+	keyTabs.length === 6 && focused === keyTabs[0] && keyTabs[0].parent === keyed.headStrips()[0]
+	&& keyTabs[0].getAttribute('aria-selected') === 'true' && eyebrow( keyed ) === 'Templates and page' );
+
+if( keyTabs.length === 6 )
+	press( keyTabs[0], 'ArrowLeft' );
+
+check( '...and from the first tab the arrow key wraps round to the last', keyTabs.length === 6 && focused === keyTabs[5] && eyebrow( keyed ) === 'Palette' );
 
 /*	A kernel from before the head, or the script drawn outside its pane: the
 	strip has nowhere else to go, so it opens the column the way it did - and
@@ -693,6 +748,611 @@ check( 'where the pane has no head, the strip opens the column and comes back wi
 
 console.log('');
 
+
+// --- The shape of the column -----------------------------------------------------
+//
+// Controls on one side and the page on the other: the state of the files and
+// the open tab in the column, the frame and the summary in the preview, the
+// two buttons under both
+
+console.log( 'The column' );
+
+const column = panel();
+const layout = column.byId('design-layout');
+const controls = column.byId('design-controls');
+const previewBox = column.byId('design-preview');
+
+check( 'the screen is a layout of two columns - the controls and the preview - with the bar of actions under it',
+	layout !== null && layout.children.length === 2 && layout.children[0] === controls && layout.children[1] === previewBox
+	&& column.form.children.indexOf( layout ) < column.form.children.indexOf( byClass( column.form, 'nino-admin-actionbar' )[0] ) );
+check( 'the state of the files stands first in the column, over the open tab - true whichever tab is open',
+	controls.children[0] === column.byId('design-state') && hasClass( controls.children[0], 'nino-admin-card' ) );
+check( '...then one eyebrow naming the group of controls under it, and the box the tab fills',
+	controls.children[1] === byClass( controls, 'design-eyebrow' )[0] && controls.children[1].textContent === 'Templates and page'
+	&& controls.children[2] === column.body() && controls.children.length === 3 );
+check( 'the frame and the summary stand in the preview, the summary under the frame',
+	column.byId('design-frame') !== null && descendants( previewBox ).indexOf( column.byId('design-summary') ) > descendants( previewBox ).indexOf( column.byId('design-frame') ) );
+check( '...the frame a sandbox that lets the page run and be reached by the panel, and no more',
+	column.byId('design-frame').getAttribute('sandbox') === 'allow-scripts allow-same-origin' );
+
+const stateBox = column.byId('design-state');
+
+check( 'the state card says when the file was last applied and that it answers to the selection - and nothing is marked while it does',
+	( byTag( stateBox, 'strong' )[0] || {} ).textContent === 'Applied file' && ( byTag( stateBox, 'small' )[0] || {} ).textContent === 'Last applied 2026-09-01 10:00'
+	&& byClass( stateBox, 'design-state--warn' ).length === 0 && byTag( stateBox, 'p' )[0].textContent === TEXT['/_admin/design/state/current'] );
+
+const drifted = panel( { current : false } );
+
+check( '...and a file that does not answer to it is marked, and the last row of the summary says it in one word',
+	byClass( drifted.byId('design-state'), 'design-state--warn' )[0].textContent === TEXT['/_admin/design/state/drifted']
+	&& JSON.stringify( drifted.summary().pop() ) === JSON.stringify( [ 'Applied file', 'Saved, not applied' ] ) );
+
+const told = panel( { notes : [ 'there is no part "nowhere" - dropped' ] } );
+
+check( 'what the server dropped or replaced on the way is told in the column, under the state of the files',
+	byClass( told.byId('design-controls'), 'nino-admin-error' ).map( function( line ) { return line.textContent } ).join() === 'there is no part "nowhere" - dropped'
+	&& told.byId('design-controls').children.indexOf( byClass( told.byId('design-controls'), 'nino-admin-error' )[0] ) === 1 );
+
+console.log('');
+
+// --- Global: the templates, the page and its animation ------------------------------
+
+console.log( 'Global' );
+
+const global = panel();
+const setSelect = function( name ) { return global.byId('design-set-'+ name) };
+
+check( 'the five templates are five selects, in the order the cascade wants them, each over its catalogue',
+	[ 'header', 'footer', 'content', 'buttons', 'components' ].every( function( name ) { return setSelect( name ) !== null } )
+	&& JSON.stringify( offered( setSelect('header') ) ) === JSON.stringify( [ [ 'v1', 'v1 - Plain bar' ], [ 'v2', 'v2 - Centred' ] ] )
+	&& JSON.stringify( offered( setSelect('buttons') ) ) === JSON.stringify( [ [ 'v1', 'v1 - Nino' ], [ 'v3', 'v3 - Square' ] ] )
+	&& [ 'header', 'footer', 'content', 'buttons', 'components' ].map( function( name ) { return shown( setSelect( name ) ) } ).join() === 'v1,v1,v1,v1,v1' );
+check( '...named in the words of the panel, with the description of the chosen one under it',
+	byTag( global.body(), 'label' ).map( function( label ) { return label.textContent } ).slice( 0, 5 ).join() === 'Header template,Footer template,Content template,Buttons template,Components template'
+	&& byTag( setSelect('header').parent, 'small' )[0].textContent === 'A bar with a rule under it' );
+
+choose( setSelect('header'), 'v2' );
+
+check( 'choosing another one is the selection on screen, and the note under it follows the choice',
+	global.design._edit.parts.header === 'v2' && byTag( setSelect('header').parent, 'small' )[0].textContent === 'The logo in the middle'
+	&& global.byId('design-reset').hidden === false );
+
+check( 'the size is one select - small, default, large - and the width of the page another: narrow, default, wide, as the numbers the model keeps',
+	JSON.stringify( offered( global.byId('design-size') ) ) === JSON.stringify( [ [ 's', 'small' ], [ 'm', 'default' ], [ 'l', 'large' ] ] ) && shown( global.byId('design-size') ) === 'm'
+	&& JSON.stringify( offered( global.byId('design-pagewidth') ) ) === JSON.stringify( [ [ '-1', 'narrow' ], [ '0', 'default' ], [ '1', 'wide' ] ] ) && shown( global.byId('design-pagewidth') ) === '0' );
+
+choose( global.byId('design-size'), 'l' );
+choose( global.byId('design-pagewidth'), '1' );
+
+check( 'choosing them stores a size and a number',
+	global.design._edit.size === 'l' && global.design._edit.width === 1 );
+
+const effect = global.byId('design-motion-effect');
+const strength = global.byId('design-motion-strength');
+const speed = global.byId('design-motion-speed');
+
+check( 'the animation is three selects: the effect - which starts on what Nino.css does by itself - the strength and the speed',
+	JSON.stringify( offered( effect ) ) === JSON.stringify( [ [ '', 'Nino\'s default' ], [ 'zoom', 'Zoom' ], [ 'zoom-out', 'Zoom out' ], [ 'slide-left', 'From the right' ], [ 'slide-right', 'From the left' ], [ 'blur', 'Blur' ], [ 'flip', 'Flip' ] ] )
+	&& JSON.stringify( offered( strength ) ) === JSON.stringify( [ [ '', 'Nino\'s default' ], [ 'soft', 'Soft' ], [ 'medium', 'Medium' ], [ 'hard', 'Hard' ] ] )
+	&& JSON.stringify( offered( speed ) ) === JSON.stringify( [ [ '', 'Nino\'s default' ], [ 'fast', 'Fast' ], [ 'medium', 'Medium' ], [ 'slow', 'Slow' ] ] )
+	&& shown( effect ) === '' );
+check( '...and the strength and the speed are switched off while there is no effect for them to belong to',
+	strength.disabled === true && speed.disabled === true && effect.disabled === false );
+
+choose( effect, 'blur' );
+
+check( '...an effect switches them on', strength.disabled === false && speed.disabled === false && global.design._edit.motion.effect === 'blur' );
+
+choose( strength, 'hard' );
+choose( speed, 'slow' );
+
+check( '...and what they are set to is the selection',
+	JSON.stringify( global.design._edit.motion ) === JSON.stringify( { effect : 'blur', strength : 'hard', speed : 'slow' } ) );
+check( 'the summary under the frame names every choice of the tab - the five templates, the size, the width and the animation',
+	JSON.stringify( global.summary() ) === JSON.stringify( [
+		[ 'Header template', 'v2 - Centred' ],
+		[ 'Footer template', 'v1 - Plain footer' ],
+		[ 'Content template', 'v1 - Nino' ],
+		[ 'Buttons template', 'v1 - Nino' ],
+		[ 'Components template', 'v1 - Nino' ],
+		[ 'Root size', 'large' ],
+		[ 'Page width', 'wide' ],
+		[ 'Animation', 'Blur, Hard, Slow' ],
+		[ 'Applied file', 'Up to date' ],
+	] ) );
+
+choose( effect, '' );
+
+check( 'no effect again is Nino\'s default again, and the other two are switched off with it',
+	strength.disabled === true && speed.disabled === true && global.summary()[7][1] === 'Nino\'s default' );
+
+console.log('');
+
+
+// --- The knob tabs ----------------------------------------------------------------
+//
+// A tab for each of the three templates that have knobs, one row for every knob
+// the tab has - each at less, the template as it is, or more, in the words that
+// knob has for them. A knob the chosen template does not answer to stands where
+// it always does, greyed out, with the line that says whose decision that is
+
+console.log( 'The knob tabs' );
+
+const moved = listing().knobs;
+moved.content.shadow = 1;
+moved.buttons.corners = -1;
+
+const rows = panel( { knobs : moved } );
+rows.tab('Content');
+
+const contentRows = byClass( rows.form, 'design-knob-row' );
+
+check( 'the Content tab has a row for each of its nine knobs, named in the panel\'s words and in the order of the tab',
+	eyebrow( rows ) === 'Hero, sections and cards' && contentRows.length === 9
+	&& contentRows.map( function( row ) { return ( byClass( row, 'design-knob-label' )[0] || {} ).textContent } ).join()
+		=== KNOBS.content.map( function( knob ) { return TEXT['/_admin/design/knob/content/'+ knob+ '/label'] } ).join()
+	&& contentRows.map( function( row ) { return row.dataset.knob } ).join() === KNOBS.content.join() );
+check( '...each with a note beside its name, and three positions in the words that knob has for them',
+	contentRows.every( function( row, at ) {
+		const knob = KNOBS.content[at];
+		return ( byTag( row, 'small' )[0] || {} ).textContent === TEXT['/_admin/design/knob/content/'+ knob+ '/note']
+			&& byTag( row, 'button' ).map( function( button ) { return button.textContent } ).join() === [ 'less', 'default', 'more' ].map( function( step ) {
+				return TEXT['/_admin/design/knob/content/'+ knob+ '/'+ step];
+			} ).join();
+	} ) );
+check( '...a group of three steps, not a tablist - the one it stands at is pressed and the other two are not',
+	contentRows.every( function( row ) { return byClass( row, 'design-knob-steps' )[0].getAttribute('role') === 'group' } )
+	&& byTag( rows.knobRow('Hero title'), 'button' ).map( function( button ) { return button.getAttribute('aria-pressed') } ).join() === 'false,true,false'
+	&& byTag( rows.knobRow('Shadow of a card'), 'button' ).map( function( button ) { return button.getAttribute('aria-pressed') } ).join() === 'false,false,true' );
+check( 'and the block over the rows says which template these knobs are the knobs of, and where that is chosen',
+	byClass( rows.form, 'design-section-label' ).filter( function( heading ) { return heading.parent === rows.byId('design-knobs') } ).length === 1
+	&& ( byTag( rows.byId('design-knobs'), 'strong' )[0] || {} ).textContent === 'Template: v1 - Nino'
+	&& ( byTag( rows.byId('design-knobs'), 'small' )[0] || {} ).textContent === TEXT['/_admin/design/hint/knobs'] );
+check( 'a template that answers to every knob greys none of them out',
+	byClass( rows.form, 'design-knob-row--off' ).length === 0
+	&& byTag( rows.byId('design-knobs'), 'button' ).every( function( button ) { return button.disabled === false } ) );
+
+rows.move( 'Hero title', 'more' );
+
+check( 'moving a knob is the selection on screen: the position is a number, the step it stands at is lit',
+	rows.design._edit.knobs.content['hero-title'] === 1
+	&& byTag( rows.knobRow('Hero title'), 'button' ).map( function( button ) { return button.getAttribute('aria-pressed') } ).join() === 'false,false,true'
+	&& rows.byId('design-reset').hidden === false );
+
+rows.move( 'Hero title', 'less' );
+rows.move( 'Hero text', 'more' );
+
+check( '...to less it is -1, and each knob keeps its own position',
+	rows.design._edit.knobs.content['hero-title'] === -1 && rows.design._edit.knobs.content['hero-text'] === 1 && rows.design._edit.knobs.content.quiet === 0 );
+/** The rows of the summary a knob tab gives, from the positions its knobs stand at: the label of each and the word of its step */
+function knobSummary( tab, positions ) {
+	return KNOBS[tab].filter( function( knob ) { return positions[knob] !== undefined } ).map( function( knob ) {
+		return [ TEXT['/_admin/design/knob/'+ tab+ '/'+ knob+ '/label'], TEXT['/_admin/design/knob/'+ tab+ '/'+ knob+ '/'+ [ 'less', 'default', 'more' ][positions[knob] + 1]] ];
+	} );
+}
+
+check( 'the summary names the template and, for every knob the template answers to, the word of the position it stands at',
+	JSON.stringify( rows.summary() ) === JSON.stringify( [ [ 'Content template', 'v1 - Nino' ] ].concat(
+		knobSummary( 'content', { 'hero-title' : -1, 'hero-text' : 1, quiet : 0, loud : 0, 'section-space' : 0, 'article-space' : 0, corners : 0, border : 0, shadow : 1 } ),
+		[ [ 'Applied file', 'Up to date' ] ] ) ) );
+
+/*	Another template brings its own knobs, and the ones the last one had are
+	not this one's: a position the new template does not answer to goes back to
+	the middle, the way the server holds it anyway - so the screen never shows a
+	setup the stored one could not be	*/
+rows.tab('Global');
+choose( rows.byId('design-set-content'), 'v2' );
+
+check( 'choosing a template that leaves a knob out puts the position of that knob back in the middle, and leaves the others where they were',
+	rows.design._edit.parts.content === 'v2' && rows.design._edit.knobs.content.shadow === 0
+	&& rows.design._edit.knobs.content['hero-title'] === -1 && rows.design._edit.knobs.content['hero-text'] === 1 );
+
+rows.tab('Content');
+
+const poster = byClass( rows.form, 'design-knob-row' );
+const shadow = rows.knobRow('Shadow of a card');
+
+check( 'on the tab the knob the template does not answer to is still a row, greyed out - not hidden, so the tab is the same screen for every template',
+	poster.length === 9 && shadow !== null && hasClass( shadow, 'design-knob-row--off' )
+	&& poster.filter( function( row ) { return hasClass( row, 'design-knob-row--off' ) } ).length === 1 );
+check( '...its three steps switched off and none of them pressed',
+	byTag( shadow, 'button' ).length === 3 && byTag( shadow, 'button' ).every( function( button ) { return button.disabled === true && button.getAttribute('aria-pressed') === 'false' } )
+	&& byTag( rows.knobRow('Hero title'), 'button' ).every( function( button ) { return button.disabled === false } ) );
+check( '...and the line under its name says whose decision that is, in place of its note',
+	( byTag( shadow, 'small' )[0] || {} ).textContent === 'This template does not answer to “Shadow of a card”.'
+	&& ( byTag( rows.knobRow('Hero title'), 'small' )[0] || {} ).textContent === TEXT['/_admin/design/knob/content/hero-title/note']
+	&& ( byTag( rows.byId('design-knobs'), 'strong' )[0] || {} ).textContent === 'Template: v2 - Poster' );
+check( 'the summary leaves the knob out, since it compiles nothing: eight knobs, the template and the file',
+	rows.summary().length === 10 && rows.summary().every( function( row ) { return row[0] !== 'Shadow of a card' } ) && rows.summary()[0][1] === 'v2 - Poster' );
+
+rows.tab('Global');
+choose( rows.byId('design-set-content'), 'v1' );
+rows.tab('Content');
+
+check( 'choosing the template that has it again takes the grey away, with the knob in the middle',
+	byClass( rows.form, 'design-knob-row--off' ).length === 0 && rows.design._edit.knobs.content.shadow === 0
+	&& byTag( rows.knobRow('Shadow of a card'), 'button' ).map( function( button ) { return button.getAttribute('aria-pressed') } ).join() === 'false,true,false' );
+
+// The other two tabs, and their own templates
+rows.tab('Buttons');
+check( 'the Buttons tab has its four knobs, and Square leaves the corners to the template - which the stored position cannot have been',
+	eyebrow( rows ) === 'Buttons' && byClass( rows.form, 'design-knob-row' ).length === 4 && byClass( rows.form, 'design-knob-row--off' ).length === 0
+	&& rows.design._edit.knobs.buttons.corners === -1 );
+
+rows.tab('Global');
+choose( rows.byId('design-set-buttons'), 'v3' );
+rows.tab('Buttons');
+
+check( '...it is back in the middle, and the row is grey',
+	rows.design._edit.knobs.buttons.corners === 0 && byClass( rows.form, 'design-knob-row--off' ).length === 1
+	&& rows.knobRow('Corners') !== null && hasClass( rows.knobRow('Corners'), 'design-knob-row--off' ) );
+
+rows.tab('Global');
+choose( rows.byId('design-set-components'), 'v4' );
+rows.tab('Components');
+
+check( 'the Components tab has six rows, two of them grey for Filled: the lines and where the labels stand',
+	eyebrow( rows ) === 'Forms, tables and blocks' && byClass( rows.form, 'design-knob-row' ).length === 6
+	&& byClass( rows.form, 'design-knob-row--off' ).map( function( row ) { return row.dataset.knob } ).join() === 'border,labels'
+	&& JSON.stringify( rows.summary().slice( 1, -1 ).map( function( row ) { return row[0] } ) ) === JSON.stringify( [ 'scale', 'space', 'corners', 'zebra' ].map( function( knob ) { return TEXT['/_admin/design/knob/components/'+ knob+ '/label'] } ) ) );
+
+console.log('');
+
+// --- Fonts: the five roles in a table ------------------------------------------------
+//
+// Five rows and four columns - the family, the weight, the case and the size.
+// The controls stand bare in the cells and the words are in the column heads;
+// each control still carries its role and its column as its accessible name
+
+console.log( 'Fonts' );
+
+const fonts = panel();
+fonts.tab('Fonts');
+
+const table = byTag( fonts.form, 'table' )[0] || element('table');
+const fontRows = byTag( table, 'tbody' )[0] ? byTag( byTag( table, 'tbody' )[0], 'tr' ) : [];
+
+check( 'the Fonts tab is one table, said to be one: a header of four columns over five rows, one for each role of Nino.css',
+	eyebrow( fonts ) === 'Font roles' && table.getAttribute('role') === 'table'
+	&& byTag( byTag( table, 'thead' )[0], 'th' ).map( function( th ) { return th.textContent } ).join() === ',Family,Weight,Uppercase,Size'
+	&& byTag( byTag( table, 'thead' )[0], 'th' ).every( function( th ) { return th.getAttribute('role') === 'columnheader' } )
+	&& fontRows.map( function( row ) { return row.dataset.role } ).join() === 'title,subtitle,text,button,code'
+	&& fontRows.map( function( row ) { return byTag( row, 'th' )[0].textContent } ).join() === 'Title,Subtitle,Text,Buttons,Code'
+	&& fontRows.every( function( row ) { return row.getAttribute('role') === 'row' && byTag( row, 'th' )[0].getAttribute('role') === 'rowheader' } ) );
+
+const family = function( role ) { return fonts.byId('design-font-'+ role+ '-family') };
+const weight = function( role ) { return fonts.byId('design-font-'+ role+ '-weight') };
+const size = function( role ) { return fonts.byId('design-font-'+ role+ '-size') };
+
+check( 'a family is a select of what the role may be given: the system\'s own first, a webface by its name, a system stack in the words of the panel',
+	JSON.stringify( offered( family('title') ) ) === JSON.stringify( [ [ '', 'System (default)' ], [ 'source-sans-3', 'Source Sans 3' ], [ 'league-spartan', 'League Spartan' ],
+		[ 'system-sans', 'System sans-serif' ], [ 'system-serif', 'System serif' ], [ 'system-mono', 'System monospace' ] ] )
+	&& shown( family('title') ) === 'league-spartan' && shown( family('text') ) === 'source-sans-3' );
+check( '...the code is offered the system\'s monospace and nothing else, by its own name',
+	JSON.stringify( offered( family('code') ) ) === JSON.stringify( [ [ '', 'System monospace' ] ] ) && shown( family('code') ) === '' );
+check( 'a weight is one of three words, the size starts on what Nino.css gives the role - named, value first so that a column too narrow for the word still shows it, and not one of the steps - and goes on in rem',
+	JSON.stringify( offered( weight('title') ) ) === JSON.stringify( [ [ 'light', 'Light' ], [ 'normal', 'Normal' ], [ 'bold', 'Bold' ] ] ) && shown( weight('title') ) === 'bold' && shown( weight('code') ) === 'normal'
+	&& JSON.stringify( offered( size('title') ) ) === JSON.stringify( [ [ '', '1.6 rem (default)' ], [ '1.6', '1.6 rem' ], [ '1.7', '1.7 rem' ], [ '2.4', '2.4 rem' ], [ '4', '4 rem' ] ] )
+	&& offered( size('subtitle') )[0][1] === '1.125 rem (default)' && offered( size('code') )[0][1] === '0.875 rem (default)' && shown( size('title') ) === '' );
+check( '...every control names itself by its role and its column, since the cells carry no words',
+	weight('title').getAttribute('aria-label') === 'Title - Weight' && family('code').getAttribute('aria-label') === 'Code - Family'
+	&& size('button').getAttribute('aria-label') === 'Buttons - Size' );
+check( 'the case is a switch for the four roles of running text, off to begin with - and the code has none, a dash in its place',
+	[ 'title', 'subtitle', 'text', 'button' ].every( function( role ) { return fonts.byId('design-font-'+ role+ '-uppercase') !== null && fonts.byId('design-font-'+ role+ '-uppercase').checked === false } )
+	&& fonts.byId('design-font-code-uppercase') === null && byClass( fontRows[4], 'design-fonts-none' )[0].textContent === '—' );
+
+/*	Changing one thing of one role: through _setFont(), which stores it and
+	asks for a preview - and the preview carries the role	*/
+const setFontCalls = [];
+const setFont = fonts.design._setFont;
+fonts.design._setFont = function( role, key, value ) { setFontCalls.push( [ role, key, value ] ); return setFont.call( fonts.design, role, key, value ) };
+
+choose( family('title'), 'system-serif' );
+choose( weight('title'), 'light' );
+choose( size('title'), '2.4' );
+
+const upper = fonts.byId('design-font-title-uppercase');
+upper.checked = true;
+upper.fire('change');
+
+choose( family('subtitle'), '' );
+
+check( 'a change goes through _setFont() with the role, the key and the value - the case as a boolean, the rest as the words the model keeps',
+	JSON.stringify( setFontCalls ) === JSON.stringify( [ [ 'title', 'family', 'system-serif' ], [ 'title', 'weight', 'light' ], [ 'title', 'size', '2.4' ], [ 'title', 'uppercase', true ], [ 'subtitle', 'family', '' ] ] )
+	&& JSON.stringify( fonts.design._edit.fonts.title ) === JSON.stringify( { family : 'system-serif', weight : 'light', uppercase : true, size : '2.4' } )
+	&& fonts.design._edit.fonts.subtitle.family === '' && fonts.byId('design-reset').hidden === false );
+check( 'the summary has a row for each role, in words: the family, the weight, the case where it is upper, the size',
+	JSON.stringify( fonts.summary() ) === JSON.stringify( [
+		[ 'Title', 'System serif, Light, Uppercase, 2.4 rem' ],
+		[ 'Subtitle', 'System (default), Normal, 1.125 rem (default)' ],
+		[ 'Text', 'Source Sans 3, Normal, 1 rem (default)' ],
+		[ 'Buttons', 'Source Sans 3, Bold, 1 rem (default)' ],
+		[ 'Code', 'System monospace, Normal, 0.875 rem (default)' ],
+		[ 'Applied file', 'Up to date' ],
+	] ) );
+
+fonts.design._previewNow();
+const fontPreview = fonts.requests[fonts.requests.length - 1];
+
+check( 'the preview asked for carries the role that was changed, with the rest of the selection beside it - the frame is the answer to every control',
+	fontPreview.endpoint === 'preview' && JSON.stringify( fontPreview.payload.fonts.title ) === JSON.stringify( { family : 'system-serif', weight : 'light', uppercase : true, size : '2.4' } )
+	&& Object.keys( fontPreview.payload ).sort().join() === 'colours,fonts,full,knobs,motion,parts,size,width' && fontPreview.payload.full === true );
+
+console.log('');
+
+
+// --- Colours: the palette and its mode ------------------------------------------------
+
+console.log( 'Colours' );
+
+const colours = panel();
+colours.tab('Colours');
+
+check( 'the Colours tab has the brand colour, the five knobs the rest of the palette is solved with - the second colour at the end of the first of them - and the mode',
+	eyebrow( colours ) === 'Palette' && colours.byId('design-colour-primary').value === '#4faae8'
+	&& byClass( colours.form, 'design-knob-row' ).map( function( row ) { return ( byClass( row, 'design-knob-label' )[0] || {} ).textContent } ).join() === 'Second colour,Temperature,Saturation,Contrast,Depth'
+	&& colours.byId('design-colour-secondary') !== null && colours.byId('design-colour-mode') !== null );
+check( '...four positions for Harmony and Temperature, three for the others, each in the words of the panel - and the one the knob starts on lit',
+	[ 4, 4, 3, 3, 3 ].join() === byClass( colours.form, 'design-knob-row' ).map( function( row ) { return byTag( row, 'button' ).length } ).filter( function( count, at ) { return at < 5 } ).join()
+	&& byTag( colours.knobRow('Temperature'), 'button' ).map( function( button ) { return button.textContent } ).join() === 'Neutral,Cool,Brand,Warm'
+	&& byTag( colours.knobRow('Temperature'), 'button' ).map( function( button ) { return button.getAttribute('aria-pressed') } ).join() === 'false,false,true,false' );
+check( 'the mode is a select of three words - automatic, light only, dark only - under a heading of its own, and starts on the first',
+	JSON.stringify( offered( colours.byId('design-colour-mode') ) ) === JSON.stringify( [ [ 'auto', 'automatic' ], [ 'light', 'light only' ], [ 'dark', 'dark only' ] ] )
+	&& shown( colours.byId('design-colour-mode') ) === 'auto' && colours.byId('design-colour-mode').getAttribute('aria-label') === 'Mode'
+	&& byClass( colours.form, 'design-colour-mode' ).length === 1 );
+
+choose( colours.byId('design-colour-mode'), 'dark' );
+
+check( 'choosing a mode is the selection on screen', colours.design._edit.colours.mode === 'dark' && colours.byId('design-reset').hidden === false );
+
+const brand = colours.byId('design-colour-primary');
+brand.value = '#8b1d3f';
+brand.fire('change');
+
+check( 'a new brand colour is the selection, read off the input that was changed, and the rows of the palette are drawn again from it',
+	colours.design._edit.colours.primary === '#8b1d3f' && descendants( colours.byId('design-controls') ).indexOf( brand ) === -1 && colours.byId('design-colour-primary') !== brand && colours.byId('design-colour-primary').value === '#8b1d3f' );
+
+byTag( colours.knobRow('Saturation'), 'button' )[2].fire('click');
+
+check( 'a position of a knob is a number', colours.design._edit.colours.saturation === 3 );
+check( 'the summary has the brand colour, the second colour - Monochrome while nobody chose one - every knob and the mode',
+	JSON.stringify( colours.summary() ) === JSON.stringify( [
+		[ 'Brand colour', '#8b1d3f' ], [ 'Second colour', 'Monochrome' ], [ 'Temperature', 'Brand' ], [ 'Saturation', 'Rich' ],
+		[ 'Contrast', 'Standard' ], [ 'Depth', 'Standard' ], [ 'Mode', 'dark only' ], [ 'Applied file', 'Up to date' ],
+	] ) );
+
+// A second colour somebody chose overrides the wheel; choosing a position on the wheel gives it up
+const second = colours.byId('design-colour-secondary');
+second.value = '#0f766e';
+second.fire('change');
+
+check( 'a second colour that was chosen is shown as chosen, and the summary says the hex where it said the place on the wheel',
+	colours.design._edit.colours.secondary === '#0f766e' && colours.summary()[1][1] === '#0f766e'
+	&& byClass( colours.form, 'design-knob-reset' ).length === 1
+	&& byTag( colours.knobRow('Second colour'), 'button' ).filter( function( button ) { return button.getAttribute('aria-pressed') === 'true' } ).length === 0 );
+
+byTag( colours.knobRow('Second colour'), 'button' )[2].fire('click');
+
+check( '...and a position on the wheel gives it up again', colours.design._edit.colours.secondary === '' && colours.design._edit.colours.harmony === 3
+	&& colours.summary()[1][1] === 'Triadic' && byClass( colours.form, 'design-knob-reset' ).length === 0 );
+
+const unsafe = panel( { brand : { light : { safe : false, ratio : 3.1, target : 4.5 } } } );
+unsafe.tab('Colours');
+
+check( 'a brand colour text does not survive on says so under the colour, with the numbers - and says nothing where it does',
+	unsafe.byId('design-brand-warning').hidden === false && unsafe.byId('design-brand-warning').textContent === say( '/_admin/design/msg/brand-unsafe', 3.1, 4.5 )
+	&& colours.byId('design-brand-warning').hidden === true );
+
+console.log('');
+
+
+// --- The frame follows the tab -------------------------------------------------------------
+//
+// One page with an anchor for each tab. The frame is of this very origin, so
+// the panel scrolls its window by hand: smoothly after a tab is opened and after
+// every change, at once after the page was rebuilt
+
+console.log( 'The anchors' );
+
+const anchors = panel();
+
+check( 'each tab has the id of an element on the specimen: global, type, content, buttons, components and colours - Fonts is the typography block, Colours the grounds',
+	JSON.stringify( anchors.design.ANCHORS ) === JSON.stringify( { global : 'global', fonts : 'type', content : 'content', buttons : 'buttons', components : 'components', colours : 'colours' } ) );
+
+const last = function() { return anchors.stage.scrolls[anchors.stage.scrolls.length - 1] };
+
+anchors.tab('Buttons');
+check( 'opening a tab asks the frame for the element of that tab and scrolls to it, smoothly, from where the page stands',
+	anchors.stage.asked[anchors.stage.asked.length - 1] === 'buttons' && anchors.stage.scrolls.length === 1
+	&& JSON.stringify( last() ) === JSON.stringify( { top : 1300, behavior : 'smooth' } ) );
+
+anchors.tab('Fonts');
+check( '...the typography block for Fonts', anchors.stage.asked[anchors.stage.asked.length - 1] === 'type' && JSON.stringify( last() ) === JSON.stringify( { top : 800, behavior : 'smooth' } ) );
+
+anchors.tab('Colours');
+check( '...the grounds for Colours', anchors.stage.asked[anchors.stage.asked.length - 1] === 'colours' && JSON.stringify( last() ) === JSON.stringify( { top : 550, behavior : 'smooth' } ) );
+
+anchors.tab('Global');
+check( 'Global is the top of the page, header and all, wherever the anchor stands',
+	JSON.stringify( last() ) === JSON.stringify( { top : 0, behavior : 'smooth' } ) && anchors.stage.scrolls.length === 4 );
+
+anchors.tab('Components');
+const before = anchors.stage.scrolls.length;
+
+// A change on the tab: the preview comes back as a stylesheet, which is swapped, and the page goes to the anchor again
+anchors.design._previewNow();
+anchors.answer( 200, { css : ':root{--x:1}', document : '', style : 'design-preview-css', accent : '#8ad0f5', brand : listing().brand, notes : [] } );
+
+check( 'after every change the preview\'s stylesheet is swapped inside the frame that stands, and the page goes to the anchor of the open tab',
+	anchors.stage.style.textContent === ':root{--x:1}' && anchors.stage.scrolls.length === before + 1
+	&& JSON.stringify( last() ) === JSON.stringify( { top : 1600, behavior : 'smooth' } ) );
+
+// A page that was rebuilt starts at its top by itself: the jump waits for it, and has nothing to scroll away from
+const frame = anchors.byId('design-frame');
+anchors.design._frames = null;
+anchors.design._previewNow();
+const loadsBefore = anchors.stage.scrolls.length;
+anchors.answer( 200, { css : ':root{}', document : '<!doctype html><html></html>', style : 'design-preview-css', accent : '#8ad0f5', brand : listing().brand, notes : [] } );
+
+check( 'a document that was rebuilt is set on the frame, and the jump waits for it to load', frame.srcdoc === '<!doctype html><html></html>'
+	&& anchors.stage.scrolls.length === loadsBefore && ( frame.listeners.load || [] ).length === 1 );
+
+frame.fire('load');
+
+check( '...and then scrolls at once, to the anchor of the tab - at once even where the page asks for smooth scrolling of its own - and once: the handler takes itself away',
+	anchors.stage.scrolls.length === loadsBefore + 1 && JSON.stringify( last() ) === JSON.stringify( { top : 1600, behavior : 'instant' } ) && ( frame.listeners.load || [] ).length === 0 );
+
+/*	A sheet that was swapped declares its webfaces again, and the page lays
+	out with the fallback faces until they are back: an anchor measured there
+	is not where it stands a moment later. The jump waits for the faces	*/
+let fontsAreIn = null;
+anchors.stage.fonts = { status : 'loading', ready : { then : function( fn ) { fontsAreIn = fn } } };
+const waiting = anchors.stage.scrolls.length;
+anchors.design._jump();
+
+check( 'where the page is still loading its webfaces the jump waits for them, and measures when they are in',
+	anchors.stage.scrolls.length === waiting && typeof fontsAreIn === 'function' );
+
+anchors.stage.tops.components = 1560;
+anchors.stage.fonts = { status : 'loaded', ready : { then : function() {} } };
+fontsAreIn();
+
+check( '...then scrolls to where the anchor stands now, once',
+	anchors.stage.scrolls.length === waiting + 1 && JSON.stringify( last() ) === JSON.stringify( { top : 1660, behavior : 'smooth' } ) );
+
+anchors.stage.fonts = { status : 'loading', ready : { then : function( fn ) { fn() } } };
+const looping = anchors.stage.scrolls.length;
+anchors.design._jump();
+
+check( '...and does not wait twice for faces that are still not in when it looks again', anchors.stage.scrolls.length === looping + 1 );
+anchors.stage.fonts = null;
+
+// A visitor who asked for less motion does not get a scroll across the page
+anchors.stage.document.defaultView.matchMedia = function( query ) { return { matches : query === '(prefers-reduced-motion: reduce)' } };
+anchors.design._jump();
+
+check( 'a visitor who asked for less motion is taken to the anchor at once, not across the page', JSON.stringify( last() ) === JSON.stringify( { top : 1660, behavior : 'instant' } ) );
+
+anchors.stage.document.defaultView.matchMedia = function() { return { matches : false } };
+anchors.design._jump();
+
+check( '...and one who did not is scrolled smoothly', JSON.stringify( last() ) === JSON.stringify( { top : 1660, behavior : 'smooth' } ) );
+delete anchors.stage.document.defaultView.matchMedia;
+anchors.stage.tops.components = 1500;
+
+/*	The header is fixed, and a page keeps room for it at the top of main - each
+	header template sets how much. An anchor stands that far from the top, where
+	the first section of a page does, and not under the bar: the bar folds away
+	when the page is scrolled down and is back when it is scrolled up, so its
+	own height is not a distance to scroll by	*/
+anchors.stage.clearance = 144;
+anchors.design._jump();
+
+check( 'an anchor stands as far from the top of the frame as main keeps room for the fixed header, and not under the bar', JSON.stringify( last() ) === JSON.stringify( { top : 1456, behavior : 'smooth' } ) );
+
+anchors.stage.tops.content = 20;
+anchors.tab('Content');
+
+check( '...and never above the top of the page: the hero, which stands where main\'s room ends, is the top', JSON.stringify( last() ) === JSON.stringify( { top : 0, behavior : 'smooth' } ) );
+
+anchors.tab('Global');
+
+check( '...while Global is the top of the page whatever room the header takes', JSON.stringify( last() ) === JSON.stringify( { top : 0, behavior : 'smooth' } ) );
+
+anchors.stage.clearance = 0;
+anchors.stage.tops.content = 300;
+anchors.tab('Components');
+
+/*	A viewport animation plays when an element comes into view, so one that
+	stands in view already shows nothing of a choice made while it is there:
+	after the animation was changed the ones in view go back to their start,
+	without a transition, and are let in again with the one the page has now -
+	with the classes put back as the page's own script believes them to be	*/
+const hero = animated();
+const card = animated('opacity .3s');
+anchors.stage.animated = [ hero, card ];
+
+anchors.tab('Global');
+anchors.design._setMotion( 'effect', 'flip' );
+check( 'choosing an animation asks for the page to play it again, and that is all it does until the preview answers', anchors.design._replays === true && hero.log.length === 0 && card.log.length === 0 );
+
+anchors.design._previewNow();
+anchors.answer( 200, { css : ':root{--x:2}', document : '', style : 'design-preview-css', accent : '#8ad0f5', brand : listing().brand, notes : [] } );
+
+check( 'the elements in view go back to where they start with no transition, and come in again with the one they had',
+	JSON.stringify( hero.log ) === JSON.stringify( [ [ 'remove', 'nino-vpa--visible,nino-vpa--visible-once', 'none' ], [ 'add', 'nino-vpa--visible,nino-vpa--visible-once', '' ] ] )
+	&& JSON.stringify( card.log ) === JSON.stringify( [ [ 'remove', 'nino-vpa--visible,nino-vpa--visible-once', 'none' ], [ 'add', 'nino-vpa--visible,nino-vpa--visible-once', 'opacity .3s' ] ] )
+	&& card.style.transition === 'opacity .3s' && anchors.design._replays === false );
+
+hero.log.length = 0;
+card.log.length = 0;
+anchors.design._edit.size = 's';
+anchors.design._previewNow();
+anchors.answer( 200, { css : ':root{--x:3}', document : '', style : 'design-preview-css', accent : '#8ad0f5', brand : listing().brand, notes : [] } );
+
+check( '...and a change that is no animation plays nothing again', hero.log.length === 0 && card.log.length === 0 );
+
+anchors.design._setMotion( 'speed', 'fast' );
+anchors.stage.reachable = false;
+anchors.design._frames = 'v1|v1';
+anchors.design._previewNow();
+anchors.answer( 200, { css : ':root{}', document : '', style : 'design-preview-css', accent : '#8ad0f5', brand : listing().brand, notes : [] } );
+
+check( '...nor does a frame that cannot be reached, which is built anew and plays on its own', hero.log.length === 0 && threw( function() { anchors.design._replay() } ) === false );
+
+anchors.stage.reachable = true;
+anchors.stage.animated = [];
+anchors.design._frames = 'v1|v1';
+anchors.design._edit.size = 'm';
+anchors.design._edit.motion = { effect : '', strength : '', speed : '' };
+anchors.design._replays = false;
+anchors.requests.length = 0;
+
+// A frame that cannot be reached: the panel asks for the whole page instead of showing a stale one
+anchors.stage.reachable = false;
+anchors.design._frames = 'v1|v1';
+anchors.design._previewNow();
+const unreachable = anchors.answer( 200, { css : ':root{}', document : '', style : 'design-preview-css', accent : '#8ad0f5', brand : listing().brand, notes : [] } );
+
+check( 'a frame the panel cannot reach is rebuilt, not trusted: the next preview asks for the whole document, and nothing throws',
+	anchors.design._frames === null && unreachable.payload.full === false && threw( function() { anchors.design._jump() } ) === false );
+
+console.log('');
+
+
+// --- What the preview carries ----------------------------------------------------------------
+
+console.log( 'The preview' );
+
+const asked = panel();
+asked.design._previewNow();
+const first = asked.requests[asked.requests.length - 1];
+
+check( 'the first preview of a visit asks for the whole document, with every key of the model: the templates, the knobs, the size, the width, the animation, the fonts and the palette',
+	first.endpoint === 'preview' && first.payload.full === true && Object.keys( first.payload ).sort().join() === 'colours,fonts,full,knobs,motion,parts,size,width'
+	&& first.payload.parts.header === 'v1' && first.payload.parts.components === 'v1' && first.payload.knobs.content['hero-title'] === 0
+	&& first.payload.motion.effect === '' && first.payload.colours.mode === 'auto' );
+
+asked.answer( 200, { css : ':root{}', document : '<!doctype html>', style : 'design-preview-css', accent : '#8ad0f5', brand : listing().brand, notes : [] } );
+asked.design._previewNow();
+
+check( '...the next one only a stylesheet, as long as the header and the footer are the ones the frame was built with', asked.requests[asked.requests.length - 1].payload.full === false );
+
+asked.answer( 200, { css : ':root{}', document : '', style : 'design-preview-css', accent : '#8ad0f5', brand : listing().brand, notes : [ 'there is no template "x" - using "v1"' ] } );
+
+check( 'what the server had to replace comes back beside the preview, in the line over the frame',
+	( asked.byId('design-preview-msg') || {} ).textContent === 'there is no template "x" - using "v1"' && hasClass( asked.byId('design-preview-msg'), 'nino-admin-error' ) );
+
+choose( asked.byId('design-set-footer'), 'v2' );
+asked.design._previewNow();
+
+check( '...and another header or footer is markup, so the document is asked for again', asked.requests[asked.requests.length - 1].payload.full === true );
+
+asked.answer( 500, { error : 'broken' } );
+
+check( 'a preview that failed says so in that line, as an error', hasClass( asked.byId('design-preview-msg'), 'nino-admin-error' ) && asked.byId('design-preview-msg').textContent === '(500) broken' );
+
+console.log('');
 
 // --- Applying asks first ---------------------------------------------------------
 //
@@ -753,7 +1413,7 @@ asking.answer( 200, {} );
 asking.answer( 200, listing( { exists : true } ) );
 
 check( 'what the screen says afterwards is that it applied, that files were replaced, and what to put back by hand',
-	( asking.byId('design-msg') || {} ).textContent === 'Applied. Files Design had not written were replaced. Not in the frame templates any more: [consent-settings].' );
+	( asking.byId('design-msg') || {} ).textContent === [ TEXT['/_admin/design/msg/applied'], TEXT['/_admin/design/msg/takenover'], say( '/_admin/design/msg/lost', '[consent-settings]' ) ].join(' ') );
 
 // Saying no leaves the draft saved and the website alone
 const declined = panel( {} );
@@ -767,7 +1427,7 @@ check( 'no in the confirmation sends no apply - it reloads the panel',
 
 declined.answer( 200, listing( {} ) );
 
-check( '...and says the draft is saved and not applied', ( declined.byId('design-msg') || {} ).textContent === 'Draft saved, not applied.' );
+check( '...and says the draft is saved and not applied', ( declined.byId('design-msg') || {} ).textContent === TEXT['/_admin/design/msg/cancelled'] );
 
 // Files that are all Design's: no force, nothing replaced, nothing lost
 const ours = panel( { previous : { at : '2026-09-02T08:30:00+00:00', files : [ '/assets/theme.css' ] } } );
@@ -827,7 +1487,7 @@ check( 'with one the state box dates it and offers to restore it',
 kept.willConfirm( false );
 restoreButton.fire('click');
 
-check( 'the button asks first, and a no sends nothing', kept.confirms.length === 1 && kept.confirms[0] === 'Restore the previous version?' && kept.requests.length === 0 );
+check( 'the button asks first, and a no sends nothing', kept.confirms.length === 1 && kept.confirms[0] === TEXT['/_admin/design/confirm/restore'] && kept.requests.length === 0 );
 
 kept.willConfirm( true );
 restoreButton.fire('click');
@@ -837,7 +1497,7 @@ check( 'a yes posts the restore', JSON.stringify( endpoints( kept ) ) === JSON.s
 kept.answer( 200, {} );
 kept.answer( 200, listing( {} ) );
 
-check( 'and the panel is drawn again from the new state, saying so', ( kept.byId('design-msg') || {} ).textContent === 'Previous version restored.' );
+check( 'and the panel is drawn again from the new state, saying so', ( kept.byId('design-msg') || {} ).textContent === TEXT['/_admin/design/msg/restored'] );
 
 const noted = panel( { previous : { at : '2026-09-02T08:30:00+00:00', files : [] } } );
 noted.willConfirm( true );
@@ -846,7 +1506,7 @@ noted.answer( 200, { notes : [ 'restored, but could not keep the version it repl
 noted.answer( 200, listing( {} ) );
 
 check( 'a restore that went through with a note says restored, and the note beside it',
-	( noted.byId('design-msg') || {} ).textContent === 'Previous version restored. restored, but could not keep the version it replaced in data/design-previous.php' );
+	( noted.byId('design-msg') || {} ).textContent === TEXT['/_admin/design/msg/restored']+ ' restored, but could not keep the version it replaced in data/design-previous.php' );
 
 const failing = panel( { previous : { at : '2026-09-02T08:30:00+00:00', files : [] } } );
 failing.byId('design-restore').fire('click');
@@ -879,7 +1539,7 @@ check( 'with it the panel hands the action \'design/<action>\' and the payload t
 
 check( 'a failure says "(status) message" as it always did where the shell has no errorText()',
 	noHelper.design._errorText( 503, { error : 'Busy' }, '/_admin/design/error/save' ) === '(503) Busy'
-	&& noHelper.design._errorText( 503, null, '/_admin/design/error/save' ) === '(503) /_admin/design/error/save' );
+	&& noHelper.design._errorText( 503, null, '/_admin/design/error/save' ) === '(503) '+ TEXT['/_admin/design/error/save'] );
 const helped = panel( {}, { raw : true, api : { errorText : function( status, response, key ) { return 'told '+ status+ ' ['+ key+ ']' } } } );
 check( '...and what errorText() makes of it where it has one', helped.design._errorText( 503, { error : 'Busy' }, '/_admin/design/error/save' ) === 'told 503 [/_admin/design/error/save]' );
 
@@ -902,17 +1562,22 @@ const registered = registry.entries['design'] || null;
 check( 'where the shell has the registry the panel registers under its own uri', registered !== null && typeof registered.isDirty === 'function' && typeof registered.save === 'function' && typeof registered.discard === 'function' );
 check( '...a screen drawn from what is stored holds nothing unsaved, and the shell is told when it is drawn', registered.isDirty() === false && registry.refreshed > 0 );
 
-tracked.move( 'Spacing', 'more' );
+tracked.tab('Content');
+check( '...opening a tab changes nothing that is unsaved', registered.isDirty() === false && tracked.byId('design-reset').hidden === true );
+
+tracked.move( 'Hero title', 'more' );
 check( '...a knob that was moved does - the same answer the way back is shown for', registered.isDirty() === true && tracked.byId('design-reset').hidden === false );
 
 tracked.byId('design-reset').fire('click');
 check( '...and the way back, which draws the stored selection again, makes it not', registered.isDirty() === false && tracked.byId('design-reset').hidden === true );
 
-tracked.move( 'Spacing', 'more' );
+tracked.tab('Content');
+tracked.move( 'Hero title', 'more' );
 registered.discard();
 check( 'discarding takes the stored selection for the screen\'s own', registered.isDirty() === false );
 
-tracked.move( 'Spacing', 'more' );
+tracked.tab('Content');
+tracked.move( 'Hero title', 'more' );
 let savedFor = [];
 registered.save( function( ok ) { savedFor.push( ok ) } );
 check( 'the shell\'s Save stores the draft - and asks nothing, since applying is a question of its own',
@@ -925,7 +1590,8 @@ tracked.answer( 200, {} );
 check( '...and the first says it did, once the draft is stored', savedFor.length === 2 && savedFor[1] === true );
 
 const refused = panel( {}, { dirty : registry } );
-refused.move( 'Spacing', 'more' );
+refused.tab('Content');
+refused.move( 'Hero title', 'more' );
 savedFor = [];
 registry.entries['design'].save( function( ok ) { savedFor.push( ok ) } );
 refused.answer( 500, { error : 'could not write data/design.php' } );
@@ -941,6 +1607,138 @@ check( '...and the shell showing the panel again does not wipe the reason, nor t
 registry.entries['design'].discard();
 check( '...while a discard draws the stored selection again, so a leave that does not happen shows the truth',
 	registry.entries['design'].isDirty() === false && refused.byId('design-reset').hidden === true );
+
+
+// --- The answer design/list really gives ---------------------------------------------------
+//
+// design-smoke.php writes down what the server answered for a project whose selection
+// was moved - another template for each of the three tabs, a font changed, the animation,
+// the width and the mode set - and hands the file to this run (DESIGN_LISTING). The
+// stand-in above is what the screen is drawn from in the checks before; this is the half
+// that keeps the stand-in honest: the same screen, drawn from the answer of the server
+
+console.log( 'The answer of design/list' );
+
+const listingFile = process.env.DESIGN_LISTING || '';
+
+if( listingFile === '' || fs.existsSync( listingFile ) === false )
+	console.log( '  --  no answer of design/list was handed to this run (DESIGN_LISTING), so the screen is not drawn from the real one' );
+else {
+
+	const real = JSON.parse( fs.readFileSync( listingFile, 'utf8' ) );
+	const whole = panel( real, { whole : true } );
+
+	/** Every text the screen shows that is a key nobody wrote: what the workbench shows for a fill that has no entry */
+	const unwritten = function( screen ) {
+		return descendants( screen.pane ).filter( function( el ) {
+			return [ el.textContent, el.getAttribute('title'), el.getAttribute('aria-label') ].some( function( text ) { return typeof text === 'string' && text.indexOf('/_admin/') === 0 } );
+		} ).map( function( el ) { return el.textContent || el.getAttribute('title') || el.getAttribute('aria-label') } );
+	};
+
+	let drawn = [];
+	let failed = [];
+	let blank = [];
+	let unsaid = [];
+
+	TABS.forEach( function( tab ) {
+
+		if( threw( function() { whole.tab( TEXT['/_admin/design/tab/'+ tab] ) } ) === true ) {
+			failed.push( tab );
+			return;
+		}
+
+		drawn.push( tab );
+
+		if( whole.body().children.length === 0 || whole.summary().length < 2 )
+			blank.push( tab );
+
+		unsaid = unsaid.concat( unwritten( whole ) );
+	} );
+
+	check( 'the server\'s answer draws all six tabs, each with controls in it and a summary under the frame'+ ( failed.length === 0 ? '' : ' - threw: '+ failed.join() ),
+		drawn.join() === TABS.join() && failed.length === 0 && blank.length === 0 );
+	check( '...and every word the screen shows for it is one the panel\'s texts carry - the effects, the families, the knobs, the modes'+ ( unsaid.length === 0 ? '' : ' - missing: '+ unsaid.slice( 0, 4 ).join() ), unsaid.length === 0 );
+
+	whole.tab('Global');
+
+	const rowOf = function( name ) { return real.parts.filter( function( row ) { return row.part === name } )[0] };
+
+	check( 'Global is drawn from the catalogue and the choices the server gave: each template a select over what the library has, on the one that is chosen',
+		real.parts.every( function( row ) {
+			const select = whole.byId('design-set-'+ row.part);
+			return select !== null && offered( select ).map( function( option ) { return option[0] } ).join() === Object.keys( row.catalogue ).join() && shown( select ) === row.set;
+		} ) );
+	check( '...the size, the width and the animation on the values stored',
+		shown( whole.byId('design-size') ) === real.size && shown( whole.byId('design-pagewidth') ) === String( real.width )
+		&& shown( whole.byId('design-motion-effect') ) === real.motion.effect && shown( whole.byId('design-motion-strength') ) === real.motion.strength
+		&& shown( whole.byId('design-motion-speed') ) === real.motion.speed
+		&& offered( whole.byId('design-motion-effect') ).map( function( option ) { return option[0] } ).join() === [ '' ].concat( real.effects ).join()
+		&& whole.byId('design-motion-strength').disabled === ( real.motion.effect === '' ) );
+
+	whole.tab('Fonts');
+
+	check( 'Fonts is drawn from the roles, the families each role is offered and the fonts that are stored: a row for each role, every control on the stored value',
+		byTag( whole.form, 'tr' ).filter( function( row ) { return row.dataset.role !== undefined } ).map( function( row ) { return row.dataset.role } ).join() === real.roles.join()
+		&& real.roles.every( function( role ) {
+			const chosen = real.fonts[role];
+			return offered( whole.byId('design-font-'+ role+ '-family') ).map( function( option ) { return option[0] } ).join() === real.options[role].join()
+				&& shown( whole.byId('design-font-'+ role+ '-family') ) === chosen.family && shown( whole.byId('design-font-'+ role+ '-weight') ) === chosen.weight
+				&& shown( whole.byId('design-font-'+ role+ '-size') ) === chosen.size
+				&& offered( whole.byId('design-font-'+ role+ '-size') ).map( function( option ) { return option[0] } ).join() === [ '' ].concat( real.fontsizes[role] ).join()
+				&& ( role === 'code' ? whole.byId('design-font-code-uppercase') === null : whole.byId('design-font-'+ role+ '-uppercase').checked === chosen.uppercase );
+		} ) );
+
+	let tabProblems = [];
+
+	Object.keys( real.tabs ).forEach( function( tab ) {
+
+		whole.tab( TEXT['/_admin/design/tab/'+ tab] );
+
+		const row = rowOf( tab );
+		const answered = ( row.catalogue[row.set] || {} ).knobs || [];
+		const drawnRows = byClass( whole.form, 'design-knob-row' );
+		const off = drawnRows.filter( function( one ) { return hasClass( one, 'design-knob-row--off' ) } ).map( function( one ) { return one.dataset.knob } );
+		const lit = drawnRows.filter( function( one ) { return hasClass( one, 'design-knob-row--off' ) === false } ).every( function( one ) {
+			const position = real.knobs[tab][one.dataset.knob];
+			return byTag( one, 'button' ).map( function( button ) { return button.getAttribute('aria-pressed') } ).join() === [ -1, 0, 1 ].map( function( at ) { return String( at === position ) } ).join();
+		} );
+
+		if( drawnRows.map( function( one ) { return one.dataset.knob } ).join() !== real.tabs[tab].join() )
+			tabProblems.push( tab+ ': rows '+ drawnRows.map( function( one ) { return one.dataset.knob } ).join() );
+		if( off.join() !== real.tabs[tab].filter( function( knob ) { return answered.indexOf( knob ) === -1 } ).join() )
+			tabProblems.push( tab+ ': grey rows '+ off.join() );
+		if( lit === false )
+			tabProblems.push( tab+ ': a step is lit that the knob does not stand at' );
+		if( whole.summary().length !== answered.length + 2 )
+			tabProblems.push( tab+ ': summary of '+ whole.summary().length );
+	} );
+
+	check( 'each knob tab is a row for every knob of the tab, grey where the chosen template does not answer to it, the others lit on the position stored, and a summary of the rest'
+		+ ( tabProblems.length === 0 ? '' : ' - '+ tabProblems.join(' | ') ), tabProblems.length === 0 && Object.keys( real.tabs ).join() === 'content,buttons,components' );
+	check( '...and the templates the server stored are the ones with something grey: a template that leaves a knob out is on show',
+		Object.keys( real.tabs ).some( function( tab ) { return ( ( rowOf( tab ).catalogue[ rowOf( tab ).set ] || {} ).knobs || [] ).length < real.tabs[tab].length } ) );
+
+	whole.tab('Colours');
+
+	check( 'Colours is drawn from the palette the server published: the five knobs, each over as many positions as it has, and the mode on the stored word',
+		byClass( whole.form, 'design-knob-row' ).length === Object.keys( real.palette ).length - 1
+		&& Object.keys( real.palette ).filter( function( key ) { return key !== 'mode' } ).every( function( key ) {
+			return byTag( whole.knobRow( TEXT['/_admin/design/colour/'+ key+ '/label'] ), 'button' ).length === real.palette[key].steps.length;
+		} )
+		&& offered( whole.byId('design-colour-mode') ).map( function( option ) { return option[0] } ).join() === real.palette.mode.steps.join()
+		&& shown( whole.byId('design-colour-mode') ) === real.colours.mode );
+
+	whole.design._previewNow();
+	const sent = whole.requests[whole.requests.length - 1];
+
+	check( 'the selection the screen posts is made of exactly the keys design/save and design/preview take, each of the shape the server answered it in',
+		sent.endpoint === 'preview' && Object.keys( sent.payload ).sort().join() === 'colours,fonts,full,knobs,motion,parts,size,width'
+		&& JSON.stringify( sent.payload.parts ) === JSON.stringify( ( function() { const parts = {}; real.parts.forEach( function( row ) { parts[row.part] = row.set } ); return parts } )() )
+		&& JSON.stringify( sent.payload.knobs ) === JSON.stringify( real.knobs ) && JSON.stringify( sent.payload.fonts ) === JSON.stringify( real.fonts )
+		&& JSON.stringify( sent.payload.motion ) === JSON.stringify( real.motion ) && sent.payload.size === real.size && sent.payload.width === real.width
+		&& JSON.stringify( sent.payload.colours ) === JSON.stringify( real.colours ) );
+	check( '...and a screen drawn from the answer holds nothing unsaved', whole.design._isDirty() === false );
+}
 
 console.log('');
 

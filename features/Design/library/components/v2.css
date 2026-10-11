@@ -1,0 +1,237 @@
+/*	Nino Design - components v2
+ *
+ *	@name			Ruled
+ *	@description	Bordered fields with room in them and a visible focus ring, a line between table rows instead of a stripe, and plans as hairline boxes. The safest of the four.
+ *
+ *	@knob	scale		Type size of the fields and the tables
+ *	@knob	space		Space inside a field, a cell, a block and between them
+ *	@knob	corners		Corner radius of a field and of everything boxed
+ *	@knob	border		Weight of the lines of a field, a table and a block
+ *	@knob	labels		Where the label of a field stands
+ *
+ *	What a form has to do before it looks like anything: say where a field
+ *	begins, say which one is being typed in, and stay legible on a phone - the
+ *	typing size starts at 1rem because anything under 16px makes a phone zoom
+ *	the page on focus. A table is read row by row, so one hairline per row and
+ *	a heavier one under the header; zebra stripes help the eye across a wide
+ *	table and get in the way of a narrow one, which is why this set has no
+ *	zebra knob. A pricing row where nothing floats: boxes of the same height,
+ *	and the one being recommended says so with a heavier line.
+ */
+
+:root {
+	--components-scale--less: 		.9375;
+	--components-scale--default: 	1;
+	--components-scale--more: 		1.125;
+
+	--components-space--less: 		var(--space-1);
+	--components-space--default: 	var(--space-2);
+	--components-space--more: 		var(--space-3);
+
+	--components-corners--less: 	0rem;
+	--components-corners--default: 	var(--radius);
+	--components-corners--more: 	var(--radius-large);
+
+	--components-border--less: 		0px;
+	--components-border--default: 	1px;
+	--components-border--more: 		2px;
+
+	/*	Where a label stands: in the row (the form is a grid of a column for the
+		labels and a column for the fields), above the field, or floating on its
+		top edge. The first triple is the gap between the columns, the rest are
+		aspects of the knob and move with it	*/
+	--components-labels--less: 			var(--space-2);
+	--components-labels--default: 		normal;
+	--components-labels--more: 			normal;
+
+	--components-labels-form--less: 		grid;
+	--components-labels-form--default: 		block;
+	--components-labels-form--more: 		block;
+
+	--components-labels-cols--less: 		max-content minmax(0, 1fr);
+	--components-labels-cols--default: 		none;
+	--components-labels-cols--more: 		none;
+
+	--components-labels-align--less: 		baseline;
+	--components-labels-align--default: 	normal;
+	--components-labels-align--more: 		normal;
+
+	--components-labels-wide--less: 		1 / -1;
+	--components-labels-wide--default: 		auto;
+	--components-labels-wide--more: 		auto;
+
+	--components-labels-start--less: 		start;
+	--components-labels-start--default: 		auto;
+	--components-labels-start--more: 		auto;
+
+	--components-labels-block--less: 		inline;
+	--components-labels-block--default: 	inline;
+	--components-labels-block--more: 		table;
+
+	--components-labels-pos--less: 			static;
+	--components-labels-pos--default: 		static;
+	--components-labels-pos--more: 			relative;
+
+	--components-labels-lift--less: 		0em;
+	--components-labels-lift--default: 		0em;
+	--components-labels-lift--more: 		.8em;
+
+	--components-labels-cut--less: 			transparent;
+	--components-labels-cut--default: 		transparent;
+	--components-labels-cut--more: 			var(--color-ground);
+}
+
+/* ---- fields ---- */
+
+.nino-form-input,
+.nino-form-textarea,
+.nino-form-select {
+	border: var(--components-border) solid var(--color-border);
+	border-radius: var(--components-corners);
+	font-size: calc( 1rem * var(--components-scale) );
+	line-height: 1.45;
+}
+.nino-form-input:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])),
+.nino-form-textarea:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])),
+.nino-form-select:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])) {
+	padding: calc( var(--components-space) / 1.6 ) calc( var(--components-space) / 1.2 );
+}
+.nino-form-select:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])) {
+	padding-right: 2.5rem;
+}
+.nino-form-input:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
+.nino-form-textarea:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
+.nino-form-select:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
+	margin-bottom: var(--components-space);
+}
+.nino-form-input:focus,
+.nino-form-textarea:focus,
+.nino-form-select:focus {
+	border-color: var(--color-focus);
+	outline: 2px solid var(--color-focus);
+	outline-offset: 1px;
+}
+
+.nino-form.nino-is-error .nino-form-message,
+.nino-form.nino-is-success .nino-form-message {
+	padding: calc( var(--components-space) / 1.4 ) var(--components-space);
+	border-radius: var(--components-corners);
+}
+
+/* ---- labels ---- */
+
+.nino-form:where(:not(.nino-form--inline, .nino-newsletter-inline)) {
+	display: var(--components-labels-form);
+	grid-template-columns: var(--components-labels-cols);
+	column-gap: var(--components-labels);
+	align-items: var(--components-labels-align);
+}
+.nino-form:where(:not(.nino-form--inline, .nino-newsletter-inline)) > :where(:not(
+	label:not(.nino-forms-check, .nino-sr-only),
+	label:not(.nino-forms-check, .nino-sr-only) + :is(.nino-form-input, .nino-form-select, .nino-form-textarea),
+	.nino-form-trap, .nino-sr-only
+)) {
+	grid-column: var(--components-labels-wide);
+}
+.nino-form:where(:not(.nino-form--inline, .nino-newsletter-inline)) > :is(.nino-btn, .nino-forms-check) {
+	justify-self: var(--components-labels-start);
+}
+.nino-form:where(:not(.nino-form--inline, .nino-newsletter-inline)) > label:where(:not(.nino-forms-check, .nino-sr-only)) {
+	display: var(--components-labels-block);
+	position: var(--components-labels-pos);
+	margin: 0 0 calc( var(--components-labels-lift) * -.55 ) var(--components-labels-lift);
+	padding: 0 calc( var(--components-labels-lift) / 4 );
+	background-color: var(--components-labels-cut);
+	font-size: calc( 1em - var(--components-labels-lift) * .25 );
+}
+
+/* ---- tables ---- */
+
+.nino-table {
+	font-size: calc( 1em * var(--components-scale) );
+}
+.nino-table th,
+.nino-table td {
+	padding: calc( var(--components-space) / 2 ) calc( var(--components-space) * .7 );
+	border-bottom: var(--components-border) solid var(--color-border);
+}
+.nino-table th {
+	border-bottom-width: calc( var(--components-border) * 2 );
+}
+.nino-table:not(.nino-table--bordered) tbody tr:last-child td {
+	border-bottom-width: 0;
+}
+.nino-table--bordered th,
+.nino-table--bordered td {
+	border-width: var(--components-border);
+}
+
+/*	A line instead of a stripe: a table that asks for stripes gets the same
+	rows as one that does not, and the ground and the ink of a stripe are
+	handed back to the ground round it	*/
+.nino-table--striped tbody tr:nth-child(even) {
+	background-color: transparent;
+	color: inherit;
+	--color-ground: inherit;
+	--color-ink: inherit;
+	--color-title: inherit;
+	--color-accent: inherit;
+}
+
+/* ---- lists, badges, alerts ---- */
+
+.nino-list:not(.nino-list--columns) {
+	gap: calc( var(--components-space) / 2 );
+}
+.nino-badge:not(.nino-badge--pill) {
+	border-radius: calc( var(--components-corners) / 2 );
+}
+.nino-alert {
+	border-width: var(--components-border);
+	border-radius: var(--components-corners);
+}
+.nino-alert:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])) {
+	padding: var(--components-space);
+}
+.nino-alert--content:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])) {
+	padding: calc( var(--components-space) * 2 );
+}
+
+/* ---- blocks ---- */
+
+.nino-pricing-row {
+	gap: var(--components-space);
+}
+.nino-pricing-item {
+	border-radius: var(--components-corners);
+	box-shadow: none;
+}
+.nino-pricing-item:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])) {
+	padding: calc( var(--components-space) * 1.5 );
+}
+.nino-pricing-item:not(.nino-pricing-item--featured) {
+	border-width: var(--components-border);
+}
+.nino-pricing-item--featured {
+	border-color: var(--color-primary);
+	border-width: calc( var(--components-border) * 2 );
+}
+.nino-pricing-title {
+	letter-spacing: .06em;
+	color: var(--color-subtitle);
+}
+.nino-pricing-features {
+	margin-bottom: var(--components-space);
+}
+.nino-accordion {
+	border-bottom-width: var(--components-border);
+}
+.nino-accordion-trigger {
+	padding: var(--components-space) 0;
+}
+.nino-accordion-panel {
+	padding: 0 0 var(--components-space) 1em;
+}
+.nino-timeline-number {
+	border-radius: var(--components-corners);
+}

@@ -19,13 +19,18 @@ namespace Nino\Modules {
 	 *
 	 *										Nino 1.2 delivers that file fixed, out of the setup
 	 *										wizard's base unit. This feature writes its own over it,
-	 *										from a set per part - ATF, Section, Article, Buttons,
-	 *										Forms, Lists & tables, Blocks - plus a header and a footer,
-	 *										which are the two parts that bring markup with them.
+	 *										from a template per part - Content (the hero, the
+	 *										sections and the cards), Buttons and Components (forms,
+	 *										lists, tables and blocks) - plus a header and a footer,
+	 *										which are the two parts that bring markup with them; from
+	 *										a knob for each thing a template lets go of; from the root
+	 *										size, the width and the animation of the page; from the
+	 *										five font roles; and from the palette.
 	 *
-	 *										Six pieces, and they are deliberately separable:
+	 *										Seven pieces, and they are deliberately separable:
 	 *
 	 *										  Setup			what was chosen (/data/design.php)
+	 *										  Fonts			the families the font roles can be given
 	 *										  Colours		the palette half, solved from two colours
 	 *										  Compiler	what that produces (assets/theme.css)
 	 *										  Previous	the one version before an apply (/data/design-previous.php)
@@ -85,7 +90,7 @@ namespace Nino\Modules {
 			$files = [];
 
 			foreach( array_keys( Design\Setup::PARTS ) as $part ) {
-				$set 					= (string) ( $setup['parts'][$part]['set'] ?? '' );
+				$set 					= (string) ( $setup['parts'][$part] ?? '' );
 				$file 				= Design\Setup::file( $library, $part, $set );
 				$files[$part]	= [ $set, ( $file === '' || is_file( $file ) === false ) ? '' : (string) hash_file( 'sha256', $file ) ];
 			}
@@ -373,6 +378,10 @@ namespace Nino\Modules {
 		 *	the draft as the version before would restore choices the files
 		 *	never answered to.
 		 *
+		 *	A setup of another format is none either: Setup::read() would read it as
+		 *	the defaults, and keeping it as the version before would restore
+		 *	choices nothing can read.
+		 *
 		 *	@param		array|null	$raw				What Previous::capture() read from data/design.php
 		 *	@param		string|null	$css				The stylesheet on disk, null where there is none
 		 *
@@ -380,7 +389,7 @@ namespace Nino\Modules {
 		 */
 		private static function _applied( ?array $raw, ?string $css ): ?array {
 
-			if( $raw === null || $css === null )
+			if( $raw === null || $css === null || ( $raw['format'] ?? null ) !== Design\Setup::FORMAT )
 				return null;
 
 			$record = is_array( $raw['compiled'] ?? null ) === true ? $raw['compiled'] : [];
@@ -421,7 +430,7 @@ namespace Nino\Modules {
 				if( $kind !== 'frame' )
 					continue;
 
-				$set 			= (string) ( $setup['parts'][$part]['set'] ?? '' );
+				$set 			= (string) ( $setup['parts'][$part] ?? '' );
 				$template = Design\Setup::file( $library, $part, $set, 'template' );
 
 				if( $template === '' ) {
@@ -489,9 +498,13 @@ namespace Nino\Modules {
 		 *	is then visible, and applying is a decision.
 		 *
 		 *	Reading and writing it back is also what brings the stored file to
-		 *	the shape this version keeps: an earlier one wrote a digest per part
-		 *	that nothing ever read, normalize() no longer carries it over, and
-		 *	the file stops holding it here. What was compiled from what is in
+		 *	the shape this version keeps: a key this version does not know is not
+		 *	carried over, and the file stops holding it here. It does not map a
+		 *	file of another format onto this one - and does not replace it
+		 *	either: Setup::read() would, and the note that says so is all the
+		 *	panel has to tell a person that the choices of the version before
+		 *	were not read, so the file stays as it is until the first save
+		 *	writes the new one. What was compiled from what is in
 		 *	'compiled'['input'] - the whole setup and the bytes of every library
 		 *	file it points at - which is what the panel compares.
 		 *
@@ -501,6 +514,11 @@ namespace Nino\Modules {
 		 *	@return 	bool
 		 */
 		public static function upgrade( array &$appData, string $from ): bool {
+
+			$stored = \Nino\Filesystem::getFileContent( $appData, Design\Setup::PATH, [] );
+
+			if( is_array( $stored ) === true && $stored !== [] && ( $stored['format'] ?? null ) !== Design\Setup::FORMAT )
+				return true;
 
 			$notes = [];
 			$setup = Design\Setup::read( $appData, self::libraryDir(), $notes );

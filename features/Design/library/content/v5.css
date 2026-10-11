@@ -1,0 +1,182 @@
+/*	Nino Design - content v5
+ *
+ *	@name			Panels
+ *	@description	The opening anchored left against a rule, every band inset and rounded against the page, and cards as compact rows. For editorial pages and long lists.
+ *
+ *	@knob	hero-title		Size of the title of a hero
+ *	@knob	hero-text		Size of the text of a hero
+ *	@knob	quiet			Size of a quiet title, subtitle and text
+ *	@knob	loud			Size of a loud title, subtitle and text
+ *	@knob	section-space	Padding of a band
+ *	@knob	article-space	Space inside a row and between its parts
+ *	@knob	corners			Corners of a band and of a picture
+ *	@knob	border			Line under a row
+ *
+ *	A band is a panel here rather than a stripe across the page, which is what
+ *	makes a run of them read as a stack of things instead of one long scroll.
+ *	The opening is the first article rather than a poster: text left, a rule
+ *	down its left edge, nothing centred. And a hundred entries is not a grid
+ *	but a list, so above the phone a card is turned on its side and the page
+ *	scrolls through them - below it the row stacks again, because a thumbnail
+ *	beside two lines of text on a narrow screen leaves room for neither.
+ *	There is no shadow knob: a panel is bounded by its ground, a row by its line.
+ */
+
+:root {
+	--content-hero-title--less: 		1.02;
+	--content-hero-title--default: 		1.2;
+	--content-hero-title--more: 		1.44;
+
+	--content-hero-text--less: 			1.02;
+	--content-hero-text--default: 		1.2;
+	--content-hero-text--more: 			1.44;
+
+	--content-quiet--less: 				.75;
+	--content-quiet--default: 			.85;
+	--content-quiet--more: 				.95;
+
+	--content-loud--less: 				1.1;
+	--content-loud--default: 			1.2;
+	--content-loud--more: 				1.35;
+
+	--content-section-space--less: 		var(--space-3);
+	--content-section-space--default: 	var(--space-4);
+	--content-section-space--more: 		var(--space-5);
+
+	--content-article-space--less: 		calc( var(--space-1) * .75 );
+	--content-article-space--default: 	var(--space-1);
+	--content-article-space--more: 		var(--space-2);
+
+	--content-corners--less: 			0rem;
+	--content-corners--default: 		var(--radius);
+	--content-corners--more: 			var(--radius-large);
+
+	--content-border--less: 			0px;
+	--content-border--default: 			1px;
+	--content-border--more: 			2px;
+}
+
+@media (min-width: 768px) {
+	:root {
+		--content-hero-title--less: 		1.0625;
+		--content-hero-title--default: 		1.25;
+		--content-hero-title--more: 		1.5;
+
+		--content-hero-text--less: 			calc(.85 * 10 / 9);
+		--content-hero-text--default: 		calc(10 / 9);
+		--content-hero-text--more: 			calc(1.2 * 10 / 9);
+	}
+}
+
+:root {
+	--hero-title-scale: var(--content-hero-title);
+	--hero-text-scale: var(--content-hero-text);
+	--scale-quiet: var(--content-quiet);
+	--scale-loud: var(--content-loud);
+}
+
+/* ---- the opening ---- */
+
+/*	The rail is the alignment, so an opening told to centre itself keeps the
+	text left and centres the block instead - two alignments in one hero is
+	neither	*/
+.nino-hero-title,
+.nino-hero-subtitle,
+.nino-text-center .nino-hero-title,
+.nino-text-center .nino-hero-subtitle {
+	max-width: 32rem;
+	margin-right: 0;
+	margin-left: 0;
+	text-align: left;
+}
+.nino-hero-title {
+	line-height: 1.1;
+	padding-left: var(--space-2);
+	border-left: 3px solid var(--color-primary);
+}
+.nino-hero-subtitle {
+	line-height: 1.5;
+	padding-left: calc( var(--space-2) + 3px );
+	opacity: 1;
+}
+.nino-hero-arrowdown {
+	margin-left: 0;
+}
+
+/* ---- bands ---- */
+
+/*	A band that is a panel: inset by the gutter, rounded, and padded on all
+	four sides. The opening, a band that runs the full width on purpose and one
+	at full height are left as the page has them	*/
+.nino-section:where(:not(.nino-hero, .nino-cover, .nino-section--fullwidth, .nino-section--fullheight)) {
+	width: calc( 100% - 2 * var(--grid-gutter) );
+	max-width: var(--grid-max-width);
+	margin-right: auto;
+	margin-left: auto;
+	border-radius: var(--content-corners);
+}
+.nino-section:where(:not(.nino-section--fullheight, [class*="nino-pt-"], [class*="nino-p-"])) {
+	padding-top: var(--content-section-space);
+}
+.nino-section:where(:not(.nino-section--fullheight, [class*="nino-pb-"], [class*="nino-p-"])) {
+	padding-bottom: var(--content-section-space);
+}
+
+/*	Two plain bands in a row would have nothing between them, so they get the
+	one hairline this set draws	*/
+.nino-section:where(:not([class*="nino-section--"])) + .nino-section:where(:not([class*="nino-section--"])) {
+	border-top: 1px solid var(--color-border);
+	border-radius: 0;
+}
+
+/* ---- cards: rows ---- */
+
+.nino-article:where(:not(.nino-article--borderless)) {
+	border-radius: 0;
+	border-width: 0 0 var(--content-border);
+	border-style: solid;
+	border-color: var(--color-border);
+}
+.nino-article:where(:not(.nino-article--alt, .nino-article--tint, .nino-article--dark, .nino-article--black, .nino-article--primary, .nino-article--brand-alt, .nino-article--counter)) {
+	padding-top: var(--content-article-space);
+	padding-bottom: var(--content-article-space);
+}
+.nino-article-content:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
+	padding: 0;
+}
+.nino-article-title:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
+.nino-article-subtitle:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
+.nino-article-descr:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
+	margin-bottom: calc( var(--content-article-space) / 3 );
+}
+.nino-article-img {
+	border-radius: var(--content-corners);
+}
+.nino-article-img:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
+	margin-bottom: var(--content-article-space);
+}
+
+/*	Only a card that has a picture is turned on its side: the cell of a stack
+	has its words straight in the card, and they would stand in a row	*/
+@media (min-width: 768px) {
+	.nino-article:has(> .nino-article-img) {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+	.nino-article > .nino-article-img {
+		flex: 0 0 auto;
+		width: 5.5rem;
+		height: 5.5rem;
+		margin-bottom: 0;
+		object-fit: cover;
+	}
+	.nino-article > .nino-article-content {
+		flex: 1 1 auto;
+		min-width: 0;
+	}
+	.nino-article > .nino-article-price {
+		flex: 0 0 auto;
+		margin-left: auto;
+	}
+}

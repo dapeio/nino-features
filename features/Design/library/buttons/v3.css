@@ -1,0 +1,63 @@
+/*	Nino Design - buttons v3
+ *
+ *	@name			Square
+ *	@description	No radius, spaced letters and a heavier border. For sites that want to look built rather than designed.
+ *
+ *	@knob	small		Size of a small button
+ *	@knob	big			Size of a big button
+ *	@knob	space		Space around the label
+ *
+ *	No corners knob on purpose: the square corner is the decision this set
+ *	is, and a knob that could round it away would be a knob that turns it
+ *	into another set. The panel greys it and says why. What is left to move
+ *	is the size of the variants and the room around the label.
+ */
+
+:root {
+	--buttons-small--less: 		.65;
+	--buttons-small--default: 	.75;
+	--buttons-small--more: 		.85;
+
+	--buttons-big--less: 		1.15;
+	--buttons-big--default: 	1.3;
+	--buttons-big--more: 		1.45;
+
+	--buttons-space--less: 		var(--space-1);
+	--buttons-space--default: 	var(--space-2);
+	--buttons-space--more: 		var(--space-3);
+}
+
+.nino-btn:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
+	padding: calc( var(--buttons-space) / 1.8 ) var(--buttons-space);
+}
+.nino-btn {
+	border-radius: 0;
+	letter-spacing: .08em;
+	line-height: 1.3;
+}
+.nino-btn--small:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
+	padding: calc( var(--buttons-space) / 1.8 * var(--buttons-small) ) calc( var(--buttons-space) * var(--buttons-small) );
+}
+.nino-btn--small {
+	font-size: calc( var(--font-button-size) * var(--buttons-small) );
+}
+.nino-btn--big:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
+	padding: calc( var(--buttons-space) / 1.8 * var(--buttons-big) ) calc( var(--buttons-space) * var(--buttons-big) );
+}
+.nino-btn--big {
+	font-size: calc( var(--font-button-size) * var(--buttons-big) );
+}
+
+.nino-btn--light,
+.nino-btn--outline,
+.nino-btn--primary,
+.nino-btn--brand-alt,
+.nino-btn--dark {
+	border-width: 2px;
+	border-style: solid;
+}
+
+.nino-filter-btn {
+	border-radius: 0;
+	letter-spacing: .08em;
+}

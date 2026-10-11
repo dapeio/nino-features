@@ -1,13 +1,17 @@
 /**
  *	Nino										A compact filesystembased php framework
- *	Modules\Design					The feature's /_admin panel, "Design": two tabs over one
- *													setup - Structure, with one variant per part of a page,
- *													the finetune knob and the root size, and Colours, with
- *													the two colours and the five knobs the palette is
- *													solved from - and the compile that turns all of it into
- *													assets/theme.css (see Modules\Design\Admin beside
- *													this file). Ships with the feature and is loaded
- *													exactly while it is active.
+ *	Modules\Design					The feature's /_admin panel, "Design": six tabs over one
+ *													setup - Global, with the five templates, the root size,
+ *													the width and the animation of the page; Fonts, with the
+ *													five font roles; Content, Buttons and Components, one
+ *													named knob for each thing the chosen template lets go
+ *													of; and Colours, with the two colours, the five knobs
+ *													and the mode the palette is solved from - and the
+ *													compile that turns all of it into assets/theme.css (see
+ *													Modules\Design\Admin beside this file). Beside the
+ *													controls is one specimen page of the selection, which
+ *													the frame scrolls to the open tab's anchor. Ships with
+ *													the feature and is loaded exactly while it is active.
  *
  *	@package								Dape/Nino
  *	@author									David Perchermeier <mail@dape.io>
@@ -27,6 +31,22 @@
 		// nothing on disk
 		_edit		: null,
 
+		// The six tabs, in the order they are shown in
+		TABS		: [ 'global', 'fonts', 'content', 'buttons', 'components', 'colours' ],
+
+		// The tabs that have named knobs, and the part each of them is the
+		// template of: a knob belongs to the tab, the tab to one template
+		KNOB_TABS	: [ 'content', 'buttons', 'components' ],
+
+		/*	The id of the element on the specimen page each tab scrolls the frame
+			to. The page is templates/preview-specimen.tpl, which carries the
+			same six ids; Global is the top of the page, Fonts the typography
+			block, Colours the grounds	*/
+		ANCHORS	: { global : 'global', fonts : 'type', content : 'content', buttons : 'buttons', components : 'components', colours : 'colours' },
+
+		// The three widths of the page, by the number the model keeps
+		PAGE_WIDTHS	: { '-1' : 'narrow', '0' : 'normal', '1' : 'wide' },
+
 		// The widths the preview can be looked at in. A header set is mostly a
 		// decision about where the menu goes when there is no room for it, and
 		// that decision is invisible at one width
@@ -39,17 +59,13 @@
 		// Which of them is on screen, and the debounce behind every select
 		_width	: 1280,
 		_timer	: null,
-		// The part being edited. 'global' is the tenth entry of the picker: the
-		// root size, and the knob position every part follows until it does not
-		_part		: 'global',
-		// Whether the frame follows the picker to the part that was opened
-		_follow	: true,
-		// Which half of a design is open: the structure - which set a part is
-		// on and where its knobs stand - or the palette everything is drawn in
-		_tab		: 'structure',
+		// The tab that is open
+		_tab		: 'global',
 		// The header and footer the frame was last built with. Everything else
 		// is a stylesheet, and a stylesheet can be swapped inside it
 		_frames	: null,
+		// Whether the animation of the page was changed since the frame last played it
+		_replays	: false,
 
 		/**
 		 *	Load the library and the stored setup, then draw
@@ -143,23 +159,35 @@
 		},
 
 		/**
-		 *	The posted shape, out of what design/list answered
+		 *	The posted shape, out of what design/list answered: every key of the
+		 *	model the screen can change, as a copy of its own
 		 *
 		 *	@param		{Object}	data
 		 *
-		 *	@return		{Object}					{ parts, knobs, size, colours }
+		 *	@return		{Object}					{ parts, knobs, size, width, motion, fonts, colours }
 		 */
 		_selection : function( data ) {
+
 			const parts = {};
-			( data.parts || [] ).forEach( function( row ) {
-				// knobs is only what this part was moved at on its own, so one
-				// still following the global position keeps following it
-				parts[row.part] = { set : row.set, knobs : Object.assign( {}, row.moved || {} ) };
+			( data.parts || [] ).forEach( function( row ) { parts[row.part] = row.set } );
+
+			const knobs = {};
+			Object.keys( data.tabs || {} ).forEach( function( tab ) {
+				knobs[tab] = Object.assign( {}, ( data.knobs || {} )[tab] || {} );
 			} );
+
+			const fonts = {};
+			Object.keys( data.fonts || {} ).forEach( function( role ) {
+				fonts[role] = Object.assign( {}, data.fonts[role] );
+			} );
+
 			return {
 				parts 	: parts,
-				knobs 	: Object.assign( {}, data.knobs || {} ),
+				knobs 	: knobs,
 				size 		: data.size,
+				width 	: data.width,
+				motion 	: Object.assign( {}, data.motion || {} ),
+				fonts 	: fonts,
 				colours	: Object.assign( {}, data.colours || {} ),
 			};
 		},
@@ -167,15 +195,43 @@
 		/**
 		 *	One part, as design/list answered it
 		 *
-		 *	@param		{string}	[part]		Defaults to the one on screen
+		 *	@param		{string}	part
 		 *
 		 *	@return		{Object}					{} where there is none
 		 */
 		_row : function( part ) {
-			const want = part || Nino.admin.design._part;
 			return ( ( Nino.admin.design._data || {} ).parts || [] ).filter( function( row ) {
-				return row.part === want;
+				return row.part === part;
 			} )[0] || {};
+		},
+
+		/**
+		 *	What a template is called in a list: the version, then its name
+		 *
+		 *	A part with five templates is a list somebody scans, and "v3" is what
+		 *	they say and type about it. A file with no @name is offered under its
+		 *	own name already, so prefixing that one would read "v3 - v3"
+		 *
+		 *	@param		{string}	set
+		 *	@param		{Object}	named			One entry of a part's catalogue
+		 *
+		 *	@return		{string}
+		 */
+		_setLabel : function( set, named ) {
+			return named && named.name && named.name !== set ? set+ ' - '+ named.name : set;
+		},
+
+		/**
+		 *	The knobs the template chosen for a tab answers to. The rest of the
+		 *	tab's knobs are drawn, greyed out
+		 *
+		 *	@param		{string}	tab				A key of KNOB_TABS
+		 *
+		 *	@return		{Array}
+		 */
+		_answered : function( tab ) {
+			const row = Nino.admin.design._row( tab );
+			return ( ( row.catalogue || {} )[ Nino.admin.design._edit.parts[tab] ] || {} ).knobs || [];
 		},
 
 		/**
@@ -281,13 +337,13 @@
 		},
 
 		/**
-		 *	The whole screen: one part at a time, what it can be given, and the
-		 *	knob under it - beside a preview of the lot.
+		 *	The whole screen: the open tab and the state of the files in one
+		 *	column, a preview of the lot in the other.
 		 *
-		 *	A part at a time rather than nine rows at once, because nine rows is
-		 *	a list to read and one part is a decision to make. The picker says
-		 *	which one is open; everything below it belongs to that one, and the
-		 *	preview beside it is the whole page either way
+		 *	A tab at a time rather than six blocks at once, because six blocks is
+		 *	a list to read and one tab is a decision to make. The strip in the
+		 *	pane's head says which one is open; the preview beside it is the
+		 *	whole page either way, scrolled to where the open tab is
 		 *
 		 *	@return		void
 		 */
@@ -372,10 +428,6 @@
 
 			Nino.admin.design._refreshDirty();
 
-			// Only the structure half has a part below the picker to fill
-			if( Nino.admin.design._tab !== 'colours' )
-				Nino.admin.design._renderCurrentPart();
-
 			/*	A rendered screen has an empty frame in it, and the frame is the
 				answer to what every select above it means - so it is filled
 				straight away rather than on a button somebody has to find */
@@ -389,288 +441,14 @@
 		},
 
 		/**
-		 *	Which part is open. Global is one of them rather than a section of
-		 *	its own: the root size and the knob everything follows are a part of
-		 *	the page like the others, and having them in the same picker is what
-		 *	keeps the screen one screen
-		 *
-		 *	@return		{Element}
-		 */
-		_renderPicker : function() {
-
-			const data = Nino.admin.design._data;
-
-			const options = ( data.parts || [] ).map( function( row ) {
-				return { value : row.part, label : Nino.content.getText('/_admin/design/part/'+ row.part ) };
-			} );
-
-			options.push( { value : 'global', label : Nino.content.getText('/_admin/design/label/global') } );
-
-			return Nino.admin.design._select(
-				'design-picker', Nino.content.getText('/_admin/design/label/picker'), options,
-				Nino.admin.design._part, function( value ) {
-					Nino.admin.design._part = value;
-					Nino.admin.design._renderCurrentPart();
-					// Only here, not in _renderCurrentPart(): that one runs on
-					// every knob move too, and a frame that jumps every time
-					// somebody presses +1 is a frame nobody can work in
-					Nino.admin.design._jump();
-				}
-			);
-		},
-
-		/**
-		 *	Everything the picker decides, redrawn for whichever part it names -
-		 *	the field beside it in the form card, and the knob block under it
-		 *
-		 *	@return		void
-		 */
-		_renderCurrentPart : function() {
-
-			const box 	= dc.getElementById('design-part');
-			const knobs	= dc.getElementById('design-knobs');
-
-			if( box === null || knobs === null )
-				return;
-
-			box.innerHTML = '';
-			knobs.innerHTML = '';
-
-			if( Nino.admin.design._part === 'global' )
-				Nino.admin.design._renderGlobal( box );
-			else
-				Nino.admin.design._renderVariant( box );
-
-			knobs.appendChild( Nino.admin.design._sectionLabel(
-				Nino.content.getText('/_admin/design/label/finetune'),
-				Nino.content.getText('/_admin/design/hint/finetune') ) );
-			knobs.appendChild( Nino.admin.design._renderKnob() );
-
-			// The list under the frame reads the knob rows back, so it is drawn
-			// again wherever they are
-			Nino.admin.design._paintSummary();
-		},
-
-		/**
-		 *	The global part: the one size the whole page is measured in
-		 *
-		 *	@param		{Element}	box		The grid cell it is written into
-		 *
-		 *	@return		void
-		 */
-		_renderGlobal : function( box ) {
-
-			const data = Nino.admin.design._data;
-			const edit = Nino.admin.design._edit;
-
-			box.appendChild( Nino.admin.design._select(
-				'design-size', Nino.content.getText('/_admin/design/label/size'),
-				( data.sizes || [] ).map( function( size ) {
-					return { value : size, label : Nino.content.getText('/_admin/design/size/'+ size ) };
-				} ), edit.size, function( value ) { edit.size = value; Nino.admin.design._preview() },
-				Nino.content.getText('/_admin/design/hint/size')
-			) );
-		},
-
-		/**
-		 *	A part: which variant it is given, and what that variant is
-		 *
-		 *	@param		{Element}	box		The grid cell it is written into
-		 *
-		 *	@return		void
-		 */
-		_renderVariant : function( box ) {
-
-			const row = Nino.admin.design._row();
-			const edit = Nino.admin.design._edit;
-			const chosen = edit.parts[row.part] || {};
-
-			box.appendChild( Nino.admin.design._select(
-				'design-set', Nino.content.getText('/_admin/design/label/variant'),
-				Object.keys( row.catalogue || {} ).map( function( set ) {
-					/*	The version in front of the name: a part with five variants is a
-						list somebody scans, and "v3" is what they say and type about it.
-						A file with no @name is offered under its own name already, so
-						prefixing that one would read "v3 - v3" */
-					const named = row.catalogue[set] || {};
-					return {
-						value : set,
-						label : named.name && named.name !== set ? set + ' - ' + named.name : set
-					};
-				} ), chosen.set, function( value ) {
-					chosen.set = value;
-					/*	A variant brings its own knob rows, and the ones the last
-						one had are not this one's - so the whole part is drawn
-						again rather than only the select that changed */
-					Nino.admin.design._renderCurrentPart();
-					Nino.admin.design._preview();
-				},
-				( ( row.catalogue || {} )[chosen.set] || {} ).description || ''
-			) );
-
-			/*	A frame brings markup rather than only a look, and the knob is
-				about a set's own triples - so there is nothing under this one.
-				Across both columns: it is a sentence about the whole card, not a
-				hint under the select beside it	*/
-			if( row.kind === 'frame' ) {
-				const note = dc.createElement('p');
-				note.className = 'nino-admin-hint design-note';
-				note.textContent = Nino.content.getText('/_admin/design/hint/frames');
-				box.appendChild( note );
-			}
-		},
-
-		/**
-		 *	The knob: one row per value the chosen variant declares three steps
-		 *	for, each at less / as it is / more.
-		 *
-		 *	A row follows the level above it until somebody moves it, and says
-		 *	so by being drawn quietly: what is on screen is the value that will
-		 *	compile either way, so a row nobody has touched is not a row with no
-		 *	answer - it is one whose answer is still somebody else's. Moving it
-		 *	makes it its own and puts the way back beside it
-		 *
-		 *	@return		{Element}
-		 */
-		_renderKnob : function() {
-
-			const box = dc.createElement('div');
-			box.id = 'design-knob';
-
-			const rows = Nino.admin.design._knobRows();
-
-			if( rows.length === 0 ) {
-				const empty = dc.createElement('p');
-				empty.className = 'nino-admin-hint';
-				empty.textContent = Nino.content.getText( Nino.admin.design._part === 'global'
-					? '/_admin/design/hint/knob'
-					: '/_admin/design/knob/empty' );
-				box.appendChild( empty );
-				return box;
-			}
-
-			rows.forEach( function( row ) { box.appendChild( Nino.admin.design._knobRow( row ) ) } );
-
-			return box;
-		},
-
-		/**
-		 *	What the knob has rows for: one per knob in data.global on the
-		 *	global tab, or one per knob the chosen variant answers to
-		 *
-		 *	@return		{Array}					{ key, value, inherited }
-		 */
-		_knobRows : function() {
-
-			const edit = Nino.admin.design._edit;
-
-			/*	Global lists the knobs any chosen set answers to at all - a
-				position nothing follows is a position worth not offering - and
-				a part lists the ones its own set answers to */
-			if( Nino.admin.design._part === 'global' )
-				return ( ( Nino.admin.design._data || {} ).global || [] ).map( function( knob ) {
-					return {
-						key 			: knob,
-						value 		: edit.knobs[knob] || 'default',
-						inherited	: false,
-					};
-				} );
-
-			const row = Nino.admin.design._row();
-			const chosen = edit.parts[row.part] || {};
-
-			return ( row.knobs || [] ).map( function( knob ) {
-				const own = ( chosen.knobs || {} )[knob];
-				return {
-					key 			: knob,
-					// What will compile: this part's own where it was moved
-					// here, else the global position. The screen shows the
-					// answer, not the gap
-					value 		: own || edit.knobs[knob] || 'default',
-					inherited	: ( own === undefined || own === null ),
-				};
-			} );
-		},
-
-		/**
-		 *	One of them: three steps and, once it is its own, the way back
-		 *
-		 *	@param		{Object}	row			{ key, value, inherited }
-		 *
-		 *	@return		{Element}
-		 */
-		_knobRow : function( row ) {
-
-			const field = dc.createElement('div');
-			field.className = 'design-knob-row'+ ( row.inherited === true ? ' design-knob-row--inherited' : '' );
-
-			/*	The knob's own name and the terse note beside it, both out of
-				the panel's text files: one knob is one key in every locale, so
-				"Spacing" reads the same on a section as on a form */
-			const label = dc.createElement('span');
-			label.className = 'design-knob-label';
-			label.textContent = Nino.content.getText('/_admin/design/knob/'+ row.key+ '/label');
-
-			const note = dc.createElement('small');
-			note.textContent = Nino.content.getText('/_admin/design/knob/'+ row.key+ '/note');
-			label.appendChild( note );
-
-			field.appendChild( label );
-
-			/*	The workbench's own segmented control, for its look: filled
-				where it is, flat where it is not. role=group and aria-pressed
-				rather than a tablist, because three steps of one value are a
-				choice and not two panels - buttonRow() defaults to exactly that
-				flag for exactly this case */
-			const group = dc.createElement('div');
-			group.className = 'nino-admin-tabs design-knob-steps';
-			group.setAttribute( 'role', 'group' );
-			group.setAttribute( 'aria-label', Nino.content.getText('/_admin/design/knob/'+ row.key+ '/label') );
-
-			const buttons = {};
-
-			( Nino.admin.design._data.steps || [] ).forEach( function( step ) {
-				const button = dc.createElement('button');
-				button.type = 'button';
-				button.className = 'nino-admin-tab';
-				button.dataset.step = step;
-				// The short label on the button, the word behind it: three
-				// buttons reading less/standard/more is a sentence per row
-				button.textContent = Nino.content.getText('/_admin/design/step/'+ step );
-				// Each knob names its own three positions - "tight, standard,
-				// airy" is not the same sentence as "sharp, standard, round"
-				button.title = Nino.content.getText('/_admin/design/knob/'+ row.key+ '/'+ step );
-				buttons[step] = button;
-				group.appendChild( button );
-			} );
-
-			Nino.adminUi.buttonRow( buttons, row.value, function( step ) {
-				Nino.admin.design._setStep( row.key, step );
-			} );
-
-			field.appendChild( group );
-
-			// Only where there is something to go back to - a row that follows
-			// has no reset, and the global position follows nothing
-			if( row.inherited === false && Nino.admin.design._part !== 'global' ) {
-				const reset = dc.createElement('button');
-				reset.type = 'button';
-				reset.className = 'design-knob-reset';
-				reset.textContent = '↺';
-				reset.title = Nino.content.getText('/_admin/design/label/follow');
-				reset.setAttribute( 'aria-label', Nino.content.getText('/_admin/design/label/follow') );
-				reset.addEventListener( 'click', function() { Nino.admin.design._setStep( row.key, null ) } );
-				field.appendChild( reset );
-			}
-
-			return field;
-		},
-
-		/**
 		 *	The controls column, on its own so a tab switch can redraw it
 		 *	without touching the frame beside it - or the strip in the pane's
 		 *	head, which is the element the switch was made on, and keeps the
 		 *	focus an arrow key put on it.
+		 *
+		 *	The state of the files stands first, over the open tab: it is true
+		 *	whichever tab is open, and what an apply is about to do to them is
+		 *	the question every tab ends in
 		 *
 		 *	@return		{HTMLElement}
 		 */
@@ -684,45 +462,7 @@
 			if( Nino.admin.design._head() === null )
 				controls.appendChild( Nino.admin.design._renderTabs() );
 
-			/*	One eyebrow over the card, labelling its group of fields. It
-				names what the card asks for rather than repeating the tab: the
-				strip already says which half of a design is open	*/
-			controls.appendChild( Nino.admin.design._eyebrow( Nino.content.getText( Nino.admin.design._tab === 'colours'
-				? '/_admin/design/group/palette'
-				: '/_admin/design/group/selection' ) ) );
-
-			if( Nino.admin.design._tab === 'colours' )
-				controls.appendChild( Nino.admin.design._renderColours() );
-			else {
-				/*	The part and what that part is given are two questions of the
-					same kind, so they stand side by side in one field grid -
-					instead of a select on its own above a card holding another	*/
-				const card = dc.createElement('div');
-				card.className = 'nino-admin-card design-form-section';
-
-				const grid = dc.createElement('div');
-				grid.className = 'design-form-grid';
-				grid.appendChild( Nino.admin.design._renderPicker() );
-
-				/*	Filled by _renderCurrentPart(). It is display:contents, so the
-					field it holds is a cell of the grid above rather than a box
-					inside one - which is what lets the note under a frame span both
-					columns	*/
-				const part = dc.createElement('div');
-				part.id = 'design-part';
-				grid.appendChild( part );
-
-				card.appendChild( grid );
-				controls.appendChild( card );
-
-				/*	The knob rows are a titled block: a panel of their own under
-					the form card, opened by the small heading and the hint line
-					that say what the rows in it decide	*/
-				const knobs = dc.createElement('div');
-				knobs.id = 'design-knobs';
-				knobs.className = 'nino-admin-card design-block';
-				controls.appendChild( knobs );
-			}
+			controls.appendChild( Nino.admin.design._renderState() );
 
 			( ( Nino.admin.design._data || {} ).notes || [] ).forEach( function( note ) {
 				const p = dc.createElement('p');
@@ -731,29 +471,53 @@
 				controls.appendChild( p );
 			} );
 
-			// What the file on disk is, at the bottom: true and worth saying,
-			// and not what somebody opening this screen came to find out
-			controls.appendChild( Nino.admin.design._renderState() );
+			/*	One eyebrow over the tab, naming the group of controls under it
+				rather than repeating the strip	*/
+			controls.appendChild( Nino.admin.design._eyebrow( Nino.content.getText('/_admin/design/group/'+ Nino.admin.design._tab ) ) );
+
+			const body = dc.createElement('div');
+			body.id = 'design-body';
+			controls.appendChild( body );
+
+			Nino.admin.design._fillBody( body );
 
 			return controls;
 		},
 
 		/**
-		 *	The two halves of a design. Structure is which set a part is on and
-		 *	where its knobs stand; colours is the palette every one of those
-		 *	sets draws in - one question about shape, one about colour, and
-		 *	nine parts' worth of rows between them if they share a column.
+		 *	What the open tab holds, into the box the column keeps for it
 		 *
-		 *	A tablist rather than a button group, because these really are two
-		 *	panels: aria-selected, not aria-pressed.
+		 *	@param		{Element}	body
+		 *
+		 *	@return		void
+		 */
+		_fillBody : function( body ) {
+
+			const tab = Nino.admin.design._tab;
+
+			if( tab === 'global' )
+				return Nino.admin.design._renderGlobal( body );
+
+			if( tab === 'fonts' )
+				return body.appendChild( Nino.admin.design._renderFonts() );
+
+			if( tab === 'colours' )
+				return body.appendChild( Nino.admin.design._renderColours() );
+
+			body.appendChild( Nino.admin.design._renderKnobs( tab ) );
+		},
+
+		/**
+		 *	The six tabs. A tablist rather than a button group, because these
+		 *	really are six panels: aria-selected, not aria-pressed.
 		 *
 		 *	@return		{HTMLElement}
 		 */
 		_renderTabs : function() {
 
 			const bar = dc.createElement('div');
-			// --bar: the underline strip every panel with two screens uses, the
-			// Users and Features panels among them - not the segmented row of
+			// --bar: the underline strip every panel with several screens uses,
+			// the Users and Features panels among them - not the segmented row of
 			// boxes, which is a control for a value, not for a screen
 			bar.className = 'nino-admin-tabs nino-admin-tabs--bar design-tabs';
 			bar.setAttribute( 'role', 'tablist' );
@@ -761,11 +525,12 @@
 
 			const buttons = {};
 
-			[ 'structure', 'colours' ].forEach( function( key ) {
+			Nino.admin.design.TABS.forEach( function( key ) {
 				const button = dc.createElement('button');
 				button.type = 'button';
 				button.className = 'nino-admin-tab';
 				button.setAttribute( 'role', 'tab' );
+				button.dataset.tab = key;
 				button.textContent = Nino.content.getText('/_admin/design/tab/'+ key);
 				buttons[key] = button;
 				bar.appendChild( button );
@@ -779,19 +544,20 @@
 		},
 
 		/**
-		 *	Open the other half.
+		 *	Open another tab.
 		 *
 		 *	Only the column is redrawn, never the frame beside it: the page in
-		 *	it is the same page under either tab, so rebuilding it would cost a
+		 *	it is the same page under every tab, so rebuilding it would cost a
 		 *	request and a flash for a click that changed which controls are on
-		 *	screen and nothing at all about the design.
+		 *	screen and nothing at all about the design. What the frame does is
+		 *	scroll, smoothly, to the anchor of the tab that was opened.
 		 *
 		 *	Nor the strip in the pane's head. The tab the switch was made on is
 		 *	the one the keyboard is on, and the strip used to be drawn again
-		 *	with the column: an arrow key opened the other half and dropped the
+		 *	with the column: an arrow key opened the next tab and dropped the
 		 *	focus onto the page, so the next arrow went nowhere.
 		 *
-		 *	@param		{string}	key			'structure' or 'colours'
+		 *	@param		{string}	key			A key of TABS
 		 *
 		 *	@return		void
 		 */
@@ -809,15 +575,540 @@
 
 			column.replaceWith( Nino.admin.design._renderControls() );
 
-			// ...and the part below the picker, which needs the new column to
-			// be in the document before it can find its own node in it
-			if( Nino.admin.design._tab !== 'colours' )
-				Nino.admin.design._renderCurrentPart();
-
-			/*	The list under the frame reads back whichever half is open, and
+			/*	The list under the frame reads back whichever tab is open, and
 				this is the one change on the screen that reaches no preview -
 				so it is drawn here rather than left to _preview()	*/
 			Nino.admin.design._paintSummary();
+			Nino.admin.design._jump();
+		},
+
+		/**
+		 *	The Global tab: the five templates, the one size the page is measured
+		 *	in, the width of the page and its animation.
+		 *
+		 *	Drawn once per visit of the tab and changed in place after that: a
+		 *	select that redrew its card when it was used would take the focus
+		 *	away from the control that was just operated
+		 *
+		 *	@param		{Element}	body		The box the column keeps for the open tab
+		 *
+		 *	@return		void
+		 */
+		_renderGlobal : function( body ) {
+
+			const data = Nino.admin.design._data;
+			const edit = Nino.admin.design._edit;
+
+			// The five templates
+			const templates = dc.createElement('div');
+			templates.className = 'nino-admin-card design-form-section';
+
+			( data.parts || [] ).forEach( function( row ) {
+
+				const field = Nino.admin.design._select(
+					'design-set-'+ row.part, Nino.content.getText('/_admin/design/part/'+ row.part ),
+					Object.keys( row.catalogue || {} ).map( function( set ) {
+						return { value : set, label : Nino.admin.design._setLabel( set, row.catalogue[set] ) };
+					} ), edit.parts[row.part], function( value ) {
+						Nino.admin.design._setPart( row.part, value, field );
+					},
+					( ( row.catalogue || {} )[ edit.parts[row.part] ] || {} ).description || ''
+				);
+
+				templates.appendChild( field );
+			} );
+
+			/*	A frame brings markup rather than only a look, and its knobs are the
+				three template tabs' business - the sentence says what the other
+				three are for	*/
+			const note = dc.createElement('p');
+			note.className = 'nino-admin-hint design-note';
+			note.textContent = Nino.content.getText('/_admin/design/hint/templates');
+			templates.appendChild( note );
+			body.appendChild( templates );
+
+			// The page
+			const page = dc.createElement('div');
+			page.className = 'nino-admin-card design-form-section';
+
+			const grid = dc.createElement('div');
+			grid.className = 'design-form-grid';
+
+			grid.appendChild( Nino.admin.design._select(
+				'design-size', Nino.content.getText('/_admin/design/label/size'),
+				( data.sizes || [] ).map( function( size ) {
+					return { value : size, label : Nino.content.getText('/_admin/design/size/'+ size ) };
+				} ), edit.size, function( value ) { edit.size = value; Nino.admin.design._preview() },
+				Nino.content.getText('/_admin/design/hint/size')
+			) );
+
+			grid.appendChild( Nino.admin.design._select(
+				'design-pagewidth', Nino.content.getText('/_admin/design/label/pagewidth'),
+				[ -1, 0, 1 ].map( function( width ) {
+					return { value : String( width ), label : Nino.content.getText('/_admin/design/pagewidth/'+ Nino.admin.design.PAGE_WIDTHS[String( width )] ) };
+				} ), String( edit.width ), function( value ) { edit.width = parseInt( value, 10 ); Nino.admin.design._preview() },
+				Nino.content.getText('/_admin/design/hint/pagewidth')
+			) );
+
+			page.appendChild( grid );
+			body.appendChild( page );
+
+			// The animation of the page
+			body.appendChild( Nino.admin.design._renderMotion() );
+		},
+
+		/**
+		 *	The animation of the page: what the Viewport animations of Nino.css do
+		 *	to everything that carries no animation of its own. Three selects, and
+		 *	the first decides whether the other two have anything to say
+		 *
+		 *	@return		{Element}
+		 */
+		_renderMotion : function() {
+
+			const data = Nino.admin.design._data;
+			const edit = Nino.admin.design._edit;
+
+			const card = dc.createElement('div');
+			card.className = 'nino-admin-card design-form-section';
+			card.appendChild( Nino.admin.design._sectionLabel(
+				Nino.content.getText('/_admin/design/label/motion'),
+				Nino.content.getText('/_admin/design/hint/motion') ) );
+
+			const grid = dc.createElement('div');
+			grid.className = 'design-form-grid';
+
+			// '' is what Nino.css does by itself, and is what a fresh setup has
+			const options = function( key, values ) {
+				return [ { value : '', label : Nino.content.getText('/_admin/design/motion/default') } ].concat( values.map( function( value ) {
+					return { value : value, label : Nino.content.getText('/_admin/design/motion/'+ key+ '/'+ value ) };
+				} ) );
+			};
+
+			const effect = Nino.admin.design._select(
+				'design-motion-effect', Nino.content.getText('/_admin/design/motion/effect/label'),
+				options( 'effect', data.effects || [] ), edit.motion.effect || '',
+				function( value ) { Nino.admin.design._setMotion( 'effect', value ) } );
+			const strength = Nino.admin.design._select(
+				'design-motion-strength', Nino.content.getText('/_admin/design/motion/strength/label'),
+				options( 'strength', data.strengths || [] ), edit.motion.strength || '',
+				function( value ) { Nino.admin.design._setMotion( 'strength', value ) } );
+			const speed = Nino.admin.design._select(
+				'design-motion-speed', Nino.content.getText('/_admin/design/motion/speed/label'),
+				options( 'speed', data.speeds || [] ), edit.motion.speed || '',
+				function( value ) { Nino.admin.design._setMotion( 'speed', value ) } );
+
+			grid.appendChild( effect );
+			grid.appendChild( strength );
+			grid.appendChild( speed );
+			card.appendChild( grid );
+
+			Nino.admin.design._motionOff( [ strength.querySelector('select'), speed.querySelector('select') ] );
+
+			return card;
+		},
+
+		/**
+		 *	Strength and speed only mean something once there is an effect: until
+		 *	then they are switched off rather than left to say nothing
+		 *
+		 *	@param		{Array}		selects			The two controls
+		 *
+		 *	@return		void
+		 */
+		_motionOff : function( selects ) {
+
+			const none = ( Nino.admin.design._edit.motion.effect || '' ) === '';
+
+			selects.forEach( function( select ) {
+				if( select !== null && select !== undefined )
+					select.disabled = none;
+			} );
+		},
+
+		/**
+		 *	Choose a template for a part.
+		 *
+		 *	A template brings its own knobs, and the ones the last one had are not
+		 *	this one's: a position the new template does not answer to goes back
+		 *	to the middle, the way the server holds it anyway - so the screen
+		 *	never shows a setup the stored one could not be
+		 *
+		 *	@param		{string}		part
+		 *	@param		{string}		set
+		 *	@param		{Element}		[field]		The select's field, whose note is the template's description
+		 *
+		 *	@return		void
+		 */
+		_setPart : function( part, set, field ) {
+
+			const edit = Nino.admin.design._edit;
+			const row = Nino.admin.design._row( part );
+
+			edit.parts[part] = set;
+
+			if( ( Nino.admin.design.KNOB_TABS.indexOf( part ) !== -1 ) ) {
+				const answered = ( ( row.catalogue || {} )[set] || {} ).knobs || [];
+				Object.keys( edit.knobs[part] || {} ).forEach( function( knob ) {
+					if( answered.indexOf( knob ) === -1 )
+						edit.knobs[part][knob] = 0;
+				} );
+			}
+
+			const note = field ? field.querySelector('small') : null;
+
+			if( note )
+				note.textContent = ( ( row.catalogue || {} )[set] || {} ).description || '';
+
+			Nino.admin.design._preview();
+		},
+
+		/**
+		 *	Choose one thing of the animation
+		 *
+		 *	@param		{string}	key				effect, strength or speed
+		 *	@param		{string}	value			'' is what Nino.css does by itself
+		 *
+		 *	@return		void
+		 */
+		_setMotion : function( key, value ) {
+
+			Nino.admin.design._edit.motion[key] = value;
+			Nino.admin.design._replays = true;
+			Nino.admin.design._motionOff( [ dc.getElementById('design-motion-strength'), dc.getElementById('design-motion-speed') ] );
+			Nino.admin.design._preview();
+		},
+
+		/**
+		 *	The Fonts tab: the five roles of Nino.css in a table of five rows and
+		 *	four columns - the family, the weight, the case and the size. The
+		 *	controls stand bare in the cells and the words are in the column heads,
+		 *	which is what keeps the table readable in a third of the screen; each
+		 *	control still carries its role and its column as its accessible name
+		 *
+		 *	@return		{Element}
+		 */
+		_renderFonts : function() {
+
+			const data = Nino.admin.design._data;
+
+			const card = dc.createElement('div');
+			card.className = 'nino-admin-card design-form-section';
+
+			card.appendChild( Nino.admin.design._sectionLabel(
+				Nino.content.getText('/_admin/design/label/fonts'),
+				Nino.content.getText('/_admin/design/hint/fonts') ) );
+
+			// The roles of a table are said out loud: the stylesheet lays the rows
+			// out as grids, and a display other than a table's takes the
+			// semantics of the element away
+			const table = dc.createElement('table');
+			table.className = 'design-fonts';
+			table.setAttribute( 'role', 'table' );
+
+			const thead = dc.createElement('thead');
+			thead.setAttribute( 'role', 'rowgroup' );
+			const heads = dc.createElement('tr');
+			heads.setAttribute( 'role', 'row' );
+
+			[ 'role', 'family', 'weight', 'uppercase', 'size' ].forEach( function( key ) {
+				const th = dc.createElement('th');
+				th.setAttribute( 'scope', 'col' );
+				th.setAttribute( 'role', 'columnheader' );
+				th.textContent = key === 'role' ? '' : Nino.content.getText('/_admin/design/font/head/'+ key );
+				heads.appendChild( th );
+			} );
+
+			thead.appendChild( heads );
+			table.appendChild( thead );
+
+			const tbody = dc.createElement('tbody');
+			tbody.setAttribute( 'role', 'rowgroup' );
+
+			( data.roles || [] ).forEach( function( role ) {
+				tbody.appendChild( Nino.admin.design._fontRow( role ) );
+			} );
+
+			table.appendChild( tbody );
+			card.appendChild( table );
+
+			return card;
+		},
+
+		/**
+		 *	One row of the table: a role, and the four things a role is given
+		 *
+		 *	@param		{string}	role			A key of data.roles
+		 *
+		 *	@return		{Element}
+		 */
+		_fontRow : function( role ) {
+
+			const data = Nino.admin.design._data;
+			const chosen = Nino.admin.design._edit.fonts[role] || {};
+			const name = Nino.content.getText('/_admin/design/font/role/'+ role );
+
+			const row = dc.createElement('tr');
+			row.dataset.role = role;
+			row.setAttribute( 'role', 'row' );
+
+			const head = dc.createElement('th');
+			head.setAttribute( 'scope', 'row' );
+			head.setAttribute( 'role', 'rowheader' );
+			head.textContent = name;
+			row.appendChild( head );
+
+			// A cell around a control that names itself: "Title - Weight"
+			const cell = function( control, column ) {
+				const td = dc.createElement('td');
+				td.setAttribute( 'role', 'cell' );
+				control.setAttribute( 'aria-label', name+ ' - '+ Nino.content.getText('/_admin/design/font/head/'+ column ) );
+				td.appendChild( control );
+				row.appendChild( td );
+				return control;
+			};
+
+			const select = function( key, options, current ) {
+				const control = dc.createElement('select');
+				control.id = 'design-font-'+ role+ '-'+ key;
+				control.dataset.role = role;
+				control.dataset.key = key;
+				options.forEach( function( option ) {
+					const node = dc.createElement('option');
+					node.value = option.value;
+					node.textContent = option.label;
+					if( option.value === current )
+						node.selected = true;
+					control.appendChild( node );
+				} );
+				control.addEventListener( 'change', function() { Nino.admin.design._setFont( role, key, control.value ) } );
+				return cell( control, key );
+			};
+
+			select( 'family', ( ( data.options || {} )[role] || [ '' ] ).map( function( slug ) {
+				return { value : slug, label : Nino.admin.design._familyLabel( role, slug ) };
+			} ), chosen.family || '' );
+
+			select( 'weight', ( data.weights || [] ).map( function( weight ) {
+				return { value : weight, label : Nino.content.getText('/_admin/design/weight/'+ weight ) };
+			} ), chosen.weight || 'normal' );
+
+			// The code has no case switch: capitals in a block of code are not a
+			// choice anybody makes. Its cell says so rather than staying empty
+			if( role === 'code' ) {
+				const none = dc.createElement('td');
+				none.setAttribute( 'role', 'cell' );
+				none.className = 'design-fonts-none';
+				none.textContent = '—';
+				row.appendChild( none );
+			}
+			else {
+				const field = Nino.adminUi.switchField( {
+					key 		: 'design-font-'+ role+ '-uppercase',
+					label 	: name+ ' - '+ Nino.content.getText('/_admin/design/font/head/uppercase'),
+					checked	: chosen.uppercase === true,
+				} );
+				const input = field.querySelector('input');
+				input.id = 'design-font-'+ role+ '-uppercase';
+				input.dataset.role = role;
+				input.dataset.key = 'uppercase';
+				input.addEventListener( 'change', function() { Nino.admin.design._setFont( role, 'uppercase', input.checked ) } );
+				const td = dc.createElement('td');
+				td.setAttribute( 'role', 'cell' );
+				td.className = 'design-fonts-switch';
+				td.appendChild( field );
+				row.appendChild( td );
+			}
+
+			select( 'size', [ { value : '', label : Nino.admin.design._text( '/_admin/design/fontsize/default',
+				Nino.admin.design._sizeLabel( ( data.inherited || {} )[role] ) ) } ].concat( ( ( data.fontsizes || {} )[role] || [] ).map( function( step ) {
+				return { value : step, label : Nino.admin.design._sizeLabel( step ) };
+			} ) ), chosen.size || '' );
+
+			return row;
+		},
+
+		/**
+		 *	A family as a select names it: a system stack in the words of the
+		 *	workbench, a webface by its own name
+		 *
+		 *	@param		{string}	role
+		 *	@param		{string}	slug				'' is the system's own, for the code the monospace
+		 *
+		 *	@return		{string}
+		 */
+		_familyLabel : function( role, slug ) {
+
+			if( slug === '' )
+				return Nino.content.getText('/_admin/design/family/'+ ( role === 'code' ? 'default-code' : 'default' ) );
+
+			const family = ( ( Nino.admin.design._data || {} ).families || {} )[slug] || {};
+
+			return family.system === true ? Nino.content.getText('/_admin/design/family/'+ slug ) : String( family.name || slug );
+		},
+
+		/**
+		 *	A size as the Size column says it: rem, with the decimal sign of the
+		 *	workbench's language
+		 *
+		 *	@param		{string}	step				'2.4'
+		 *
+		 *	@return		{string}							'2,4 rem'
+		 */
+		_sizeLabel : function( step ) {
+			return String( step ).replace( '.', Nino.content.getText('/_admin/design/fontsize/decimal') )+ ' '+ Nino.content.getText('/_admin/design/fontsize/unit');
+		},
+
+		/**
+		 *	Change one thing of one role
+		 *
+		 *	@param		{string}		role
+		 *	@param		{string}		key				family, weight, uppercase or size
+		 *	@param		{*}					value
+		 *
+		 *	@return		void
+		 */
+		_setFont : function( role, key, value ) {
+
+			Nino.admin.design._edit.fonts[role][key] = value;
+			Nino.admin.design._preview();
+		},
+
+		/**
+		 *	The knob tabs: one row per knob the tab has, each at less / as the
+		 *	template has it / more. A tab belongs to one template and the knobs
+		 *	are the tab's own, so there is nothing to follow and no way back to
+		 *	draw beside a row - the middle is the template as it is.
+		 *
+		 *	A knob the chosen template does not answer to is not hidden. It stands
+		 *	where it always does, greyed out, with a line that says whose
+		 *	decision that is: a row that comes and goes with the template would
+		 *	be a screen nobody could learn
+		 *
+		 *	@param		{string}	tab				A key of KNOB_TABS
+		 *
+		 *	@return		{Element}
+		 */
+		_renderKnobs : function( tab ) {
+
+			const data = Nino.admin.design._data;
+			const edit = Nino.admin.design._edit;
+			const row = Nino.admin.design._row( tab );
+			const set = edit.parts[tab];
+
+			const box = dc.createElement('div');
+			box.id = 'design-knobs';
+			box.className = 'nino-admin-card design-block';
+
+			// Which template these knobs are the knobs of, and where it was chosen
+			box.appendChild( Nino.admin.design._sectionLabel(
+				Nino.admin.design._text( '/_admin/design/label/template-of', Nino.admin.design._setLabel( set, ( row.catalogue || {} )[set] ) ),
+				Nino.content.getText('/_admin/design/hint/knobs') ) );
+
+			const answered = Nino.admin.design._answered( tab );
+
+			( ( data.tabs || {} )[tab] || [] ).forEach( function( knob ) {
+				box.appendChild( Nino.admin.design._knobRow( tab, knob, answered.indexOf( knob ) !== -1 ) );
+			} );
+
+			return box;
+		},
+
+		/**
+		 *	What the summary and the rows say a knob stands at
+		 *
+		 *	@param		{string}	tab
+		 *	@param		{string}	knob
+		 *
+		 *	@return		{string}					less, default or more
+		 */
+		_stepOf : function( tab, knob ) {
+			const steps = ( Nino.admin.design._data || {} ).steps || [ 'less', 'default', 'more' ];
+			return steps[ Math.max( 0, Math.min( steps.length - 1, ( ( Nino.admin.design._edit.knobs[tab] || {} )[knob] || 0 ) + 1 ) ) ];
+		},
+
+		/**
+		 *	One of them: three steps, each in the words that knob has for it
+		 *
+		 *	@param		{string}		tab
+		 *	@param		{string}		knob
+		 *	@param		{boolean}		answered		Whether the chosen template declares it
+		 *
+		 *	@return		{Element}
+		 */
+		_knobRow : function( tab, knob, answered ) {
+
+			const base = '/_admin/design/knob/'+ tab+ '/'+ knob;
+			const name = Nino.content.getText( base+ '/label' );
+
+			const field = dc.createElement('div');
+			field.className = 'design-knob-row'+ ( answered === false ? ' design-knob-row--off' : '' );
+			field.dataset.knob = knob;
+
+			/*	The knob's own name and the terse note beside it, both out of the
+				panel's text files: a knob is one key in every locale. Where the
+				template does not answer to it the note is the reason it is grey	*/
+			const label = dc.createElement('span');
+			label.className = 'design-knob-label';
+			label.textContent = name;
+
+			const note = dc.createElement('small');
+			note.textContent = answered === true ? Nino.content.getText( base+ '/note' ) : Nino.admin.design._text( '/_admin/design/hint/unanswered', name );
+			label.appendChild( note );
+
+			field.appendChild( label );
+
+			/*	The workbench's own segmented control, for its look: filled
+				where it is, flat where it is not. role=group and aria-pressed
+				rather than a tablist, because three steps of one value are a
+				choice and not two panels - buttonRow() defaults to exactly that
+				flag for exactly this case */
+			const group = dc.createElement('div');
+			group.className = 'nino-admin-tabs design-knob-steps';
+			group.setAttribute( 'role', 'group' );
+			group.setAttribute( 'aria-label', name );
+
+			const buttons = {};
+
+			( Nino.admin.design._data.steps || [] ).forEach( function( step ) {
+				const button = dc.createElement('button');
+				button.type = 'button';
+				button.className = 'nino-admin-tab';
+				button.dataset.step = step;
+				// Each knob names its own three positions - "tight, normal, airy"
+				// is not the same sentence as "sharp, normal, round"
+				button.textContent = Nino.content.getText( base+ '/'+ step );
+				button.title = button.textContent;
+				button.disabled = answered === false;
+				buttons[step] = button;
+				group.appendChild( button );
+			} );
+
+			Nino.adminUi.buttonRow( buttons, answered === true ? Nino.admin.design._stepOf( tab, knob ) : '', function( step ) {
+				Nino.admin.design._setStep( tab, knob, step );
+			} );
+
+			field.appendChild( group );
+
+			return field;
+		},
+
+		/**
+		 *	Move a knob
+		 *
+		 *	@param		{string}		tab				A key of KNOB_TABS
+		 *	@param		{string}		knob			A knob of that tab
+		 *	@param		{string}		step			less, default or more
+		 *
+		 *	@return		void
+		 */
+		_setStep : function( tab, knob, step ) {
+
+			const steps = Nino.admin.design._data.steps || [];
+
+			Nino.admin.design._edit.knobs[tab][knob] = Math.max( 0, steps.indexOf( step ) ) - 1;
+			Nino.admin.design._paintSummary();
+			Nino.admin.design._preview();
 		},
 
 		/**
@@ -861,6 +1152,12 @@
 			const palette = ( Nino.admin.design._data || {} ).palette || {};
 
 			Object.keys( palette ).forEach( function( key ) {
+
+				// The mode is a choice between words, not a position on a scale:
+				// it has a select of its own, after the knobs
+				if( key === 'mode' )
+					return;
+
 				/*	Harmony *is* the second colour: it is where that colour comes
 					from when nobody names one. Two rows a line apart - one asking
 					for a hex, one asking where to derive it - read as two
@@ -870,6 +1167,9 @@
 				wrap.appendChild( Nino.admin.design._colourKnobRow( key, palette[key],
 					key === 'harmony' ? Nino.admin.design._secondField() : null ) );
 			} );
+
+			if( palette.mode )
+				wrap.appendChild( Nino.admin.design._modeField( palette.mode ) );
 
 			// By the node, not by its id: this column is not in the document
 			// yet on the first render - _renderControls() appends it after
@@ -1026,6 +1326,42 @@
 				field.appendChild( extra );
 
 			return field;
+		},
+
+		/**
+		 *	The mode of the palette: follow the visitor's setting, or be light, or
+		 *	be dark - one select with the sentence about what it does to the
+		 *	mode switch under it
+		 *
+		 *	@param		{Object}	meta		The mode entry of Colours::choices()
+		 *
+		 *	@return		{HTMLElement}
+		 */
+		_modeField : function( meta ) {
+
+			const edit = Nino.admin.design._edit;
+			const mode = dc.createElement('div');
+			mode.className = 'design-colour-mode';
+
+			mode.appendChild( Nino.admin.design._sectionLabel(
+				Nino.content.getText('/_admin/design/colour/mode/label'),
+				Nino.content.getText('/_admin/design/colour/mode/note') ) );
+
+			const field = Nino.admin.design._select(
+				'design-colour-mode', '',
+				( meta.steps || [] ).map( function( name ) {
+					return { value : name, label : Nino.content.getText('/_admin/design/colour/mode/'+ name ) };
+				} ), String( ( edit.colours || {} ).mode || meta['default'] ),
+				function( value ) {
+					Nino.admin.design._edit.colours = Nino.admin.design._edit.colours || {};
+					Nino.admin.design._edit.colours.mode = value;
+					Nino.admin.design._preview();
+				} );
+
+			field.querySelector('select').setAttribute( 'aria-label', Nino.content.getText('/_admin/design/colour/mode/label') );
+			mode.appendChild( field );
+
+			return mode;
 		},
 
 		_setColour : function( key, value ) {
@@ -1206,37 +1542,9 @@
 		},
 
 		/**
-		 *	Move one - or let it follow again
-		 *
-		 *	@param		{string}				key			A knob key (a key of Setup::KNOBS), never a part
-		 *	@param		{string|null}		step		null puts it back to following
-		 *
-		 *	@return		void
-		 */
-		_setStep : function( key, step ) {
-
-			const edit = Nino.admin.design._edit;
-
-			if( Nino.admin.design._part === 'global' )
-				edit.knobs[key] = step;
-			else {
-				const chosen = edit.parts[ Nino.admin.design._part ] || {};
-				chosen.knobs = chosen.knobs || {};
-
-				if( step === null )
-					delete chosen.knobs[key];
-				else
-					chosen.knobs[key] = step;
-			}
-
-			Nino.admin.design._renderCurrentPart();
-			Nino.admin.design._preview();
-		},
-
-		/**
 		 *	What assets/theme.css is right now - true, worth saying, and not
-		 *	what somebody opening this screen came to find out, so it stands at
-		 *	the bottom rather than over the controls
+		 *	what somebody opening this screen came to find out, so it is a small
+		 *	card over the tab's controls rather than a heading of its own
 		 *
 		 *	@return		{Element}
 		 */
@@ -1306,7 +1614,7 @@
 		/**
 		 *	Which of the four things the files Design writes currently are.
 		 *
-		 *	Its own method because two places say it: the card at the foot of
+		 *	Its own method because two places say it: the card at the top of
 		 *	the column, in a whole sentence, and the last row of the summary
 		 *	under the frame, in one word. Foreign is any of the three files - the
 		 *	stylesheet and the two frames - not being Design's, since a header
@@ -1329,8 +1637,9 @@
 
 			return data.current === false ? 'drifted' : 'current';
 		},
+
 		/**
-		 *	The other half of the screen: the selection, as a page.
+		 *	The other half of the screen: the selection, as one page.
 		 *
 		 *	An iframe rather than a corner of this document, because a design
 		 *	brings its own :root, its own body rules and its own reset, and the
@@ -1401,24 +1710,6 @@
 			} );
 			bar.appendChild( reload );
 
-			/*	The frame follows the picker by default: opening "Blocks" and
-				then hunting for the pricing row is work the screen can do. A
-				switch rather than a setting, because it is a per-visit
-				convenience and nothing a project should have to store */
-			const follow = Nino.adminUi.switchField( {
-				key 		: 'design-follow',
-				label 	: Nino.content.getText('/_admin/design/label/jump'),
-				checked	: Nino.admin.design._follow,
-			} );
-
-			follow.className += ' design-preview-follow';
-			follow.querySelector('input').addEventListener( 'change', function() {
-				Nino.admin.design._follow = this.checked;
-				if( this.checked === true )
-					Nino.admin.design._jump();
-			} );
-
-			bar.appendChild( follow );
 			sticky.appendChild( bar );
 
 			const stage = dc.createElement('div');
@@ -1431,10 +1722,11 @@
 				when it scrolls, and the cover heights are set in js. Plus
 				allow-same-origin, or the frame gets an opaque origin and the
 				webfaces stop loading with it - a design shown in the wrong
-				typeface is worse than no preview. What stays denied is what a
-				preview has no business doing: submitting the specimen's form,
-				navigating the workbench away under itself, opening windows,
-				starting downloads */
+				typeface is worse than no preview - and the panel could not
+				scroll the page to the open tab's anchor. What stays denied is
+				what a preview has no business doing: submitting the specimen's
+				form, navigating the workbench away under itself, opening
+				windows, starting downloads */
 			frame.setAttribute( 'sandbox', 'allow-scripts allow-same-origin' );
 			stage.appendChild( frame );
 			sticky.appendChild( stage );
@@ -1445,25 +1737,29 @@
 			summary.className = 'design-summary';
 			sticky.appendChild( summary );
 
+			Nino.admin.design._paintSummary( summary );
+
 			return box;
 		},
 
 		/**
 		 *	The summary under the frame: label left, value right, one row per
-		 *	answer the screen currently gives.
+		 *	answer the open tab currently gives.
 		 *
 		 *	A preview shows what a design looks like and says nothing about
-		 *	which selection produced it - two sets a step apart are a picture
-		 *	somebody has to compare from memory. The list is the other half of
-		 *	the answer, and it is what makes the frame readable: every control on
-		 *	the left is in it, in the interface language, as the value that
-		 *	will compile
+		 *	which selection produced it - two templates a step apart are a
+		 *	picture somebody has to compare from memory. The list is the other
+		 *	half of the answer, and it is what makes the frame readable: every
+		 *	control of the open tab is in it, in the interface language, as the
+		 *	value that will compile
+		 *
+		 *	@param		{Element}		[list]		The list, for one that is built and not mounted yet
 		 *
 		 *	@return		void
 		 */
-		_paintSummary : function() {
+		_paintSummary : function( list ) {
 
-			const list = dc.getElementById('design-summary');
+			list = list || dc.getElementById('design-summary');
 
 			if( list === null || Nino.admin.design._data === null || Nino.admin.design._edit === null )
 				return;
@@ -1490,9 +1786,9 @@
 		/**
 		 *	What the summary says, as [ label, value ] pairs.
 		 *
-		 *	Whichever half of the design is open, because that is the half the
+		 *	The choices of the tab that is open, because that is the tab the
 		 *	controls beside it are about - and the file's state last, which is
-		 *	true under both
+		 *	true under every tab
 		 *
 		 *	@return		{Array}
 		 */
@@ -1500,9 +1796,47 @@
 
 			const data = Nino.admin.design._data;
 			const edit = Nino.admin.design._edit;
+			const tab = Nino.admin.design._tab;
 			const rows = [];
 
-			if( Nino.admin.design._tab === 'colours' ) {
+			if( tab === 'global' ) {
+
+				( data.parts || [] ).forEach( function( row ) {
+					rows.push( [
+						Nino.content.getText('/_admin/design/part/'+ row.part ),
+						Nino.admin.design._setLabel( edit.parts[row.part], ( row.catalogue || {} )[ edit.parts[row.part] ] ),
+					] );
+				} );
+
+				rows.push( [ Nino.content.getText('/_admin/design/label/size'), Nino.content.getText('/_admin/design/size/'+ edit.size ) ] );
+				rows.push( [ Nino.content.getText('/_admin/design/label/pagewidth'),
+					Nino.content.getText('/_admin/design/pagewidth/'+ Nino.admin.design.PAGE_WIDTHS[String( edit.width )] ) ] );
+
+				// Nothing chosen is what Nino.css does by itself, and says so
+				const motion = edit.motion || {};
+				rows.push( [ Nino.content.getText('/_admin/design/label/motion'), motion.effect
+					? [ Nino.content.getText('/_admin/design/motion/effect/'+ motion.effect ) ]
+						.concat( [ 'strength', 'speed' ].filter( function( key ) { return motion[key] } ).map( function( key ) {
+							return Nino.content.getText('/_admin/design/motion/'+ key+ '/'+ motion[key] );
+						} ) ).join(', ')
+					: Nino.content.getText('/_admin/design/motion/default') ] );
+			}
+			else if( tab === 'fonts' ) {
+
+				( data.roles || [] ).forEach( function( role ) {
+					const chosen = edit.fonts[role] || {};
+					rows.push( [
+						Nino.content.getText('/_admin/design/font/role/'+ role ),
+						[
+							Nino.admin.design._familyLabel( role, chosen.family || '' ),
+							Nino.content.getText('/_admin/design/weight/'+ ( chosen.weight || 'normal' ) ),
+						].concat( chosen.uppercase === true ? [ Nino.content.getText('/_admin/design/font/head/uppercase') ] : [] )
+							.concat( [ chosen.size ? Nino.admin.design._sizeLabel( chosen.size ) : Nino.admin.design._text( '/_admin/design/fontsize/default',
+								Nino.admin.design._sizeLabel( ( data.inherited || {} )[role] ) ) ] ).join(', '),
+					] );
+				} );
+			}
+			else if( tab === 'colours' ) {
 
 				const palette = data.palette || {};
 				const colours = edit.colours || {};
@@ -1529,32 +1863,30 @@
 					if( key === 'harmony' )
 						return;
 
-					rows.push( [
-						Nino.content.getText('/_admin/design/colour/'+ key+ '/label'),
-						Nino.content.getText('/_admin/design/colour/'+ key+ '/'+ position( key ) ),
-					] );
+					rows.push( key === 'mode'
+						? [ Nino.content.getText('/_admin/design/colour/mode/label'), Nino.content.getText('/_admin/design/colour/mode/'+ String( colours.mode || palette.mode['default'] ) ) ]
+						: [ Nino.content.getText('/_admin/design/colour/'+ key+ '/label'), Nino.content.getText('/_admin/design/colour/'+ key+ '/'+ position( key ) ) ] );
 				} );
 			}
 			else {
 
-				const part = Nino.admin.design._part;
+				const row = Nino.admin.design._row( tab );
+				const answered = Nino.admin.design._answered( tab );
 
-				rows.push( [ Nino.content.getText('/_admin/design/label/picker'), part === 'global'
-					? Nino.content.getText('/_admin/design/label/global')
-					: Nino.content.getText('/_admin/design/part/'+ part ) ] );
+				rows.push( [ Nino.content.getText('/_admin/design/part/'+ tab ),
+					Nino.admin.design._setLabel( edit.parts[tab], ( row.catalogue || {} )[ edit.parts[tab] ] ) ] );
 
-				if( part !== 'global' )
-					rows.push( [ Nino.content.getText('/_admin/design/label/variant'), String( ( edit.parts[part] || {} ).set || '' ) ] );
+				// The value that will compile, which is what the rows on the left
+				// show too. A knob the template does not answer to compiles
+				// nothing, and is not a choice
+				( ( data.tabs || {} )[tab] || [] ).forEach( function( knob ) {
 
-				rows.push( [ Nino.content.getText('/_admin/design/label/size'), Nino.content.getText('/_admin/design/size/'+ edit.size ) ] );
+					if( answered.indexOf( knob ) === -1 )
+						return;
 
-				// The value that will compile, which is what the rows on the
-				// left show too - a row that follows the global position says
-				// the position it follows, not that it is following one
-				Nino.admin.design._knobRows().forEach( function( row ) {
 					rows.push( [
-						Nino.content.getText('/_admin/design/knob/'+ row.key+ '/label'),
-						Nino.content.getText('/_admin/design/knob/'+ row.key+ '/'+ row.value ),
+						Nino.content.getText('/_admin/design/knob/'+ tab+ '/'+ knob+ '/label'),
+						Nino.content.getText('/_admin/design/knob/'+ tab+ '/'+ knob+ '/'+ Nino.admin.design._stepOf( tab, knob ) ),
 					] );
 				} );
 			}
@@ -1568,9 +1900,9 @@
 		},
 
 		/**
-		 *	Ask for a preview, once the clicking has stopped. Every select on
-		 *	the screen calls this, and a person trying three sets in a row wants
-		 *	the third one rendered, not all three
+		 *	Ask for a preview, once the clicking has stopped. Every control on
+		 *	the screen calls this, and a person trying three templates in a row
+		 *	wants the third one rendered, not all three
 		 *
 		 *	@param		{number}	[delay]		Milliseconds, 0 for now
 		 *
@@ -1606,7 +1938,7 @@
 			if( frame === null || edit === null )
 				return;
 
-			const frames = ( edit.parts.header || {} ).set + '|' + ( edit.parts.footer || {} ).set;
+			const frames = edit.parts.header + '|' + edit.parts.footer;
 			const full 	 = Nino.admin.design._frames !== frames;
 
 			if( msg !== null ) {
@@ -1614,9 +1946,7 @@
 				msg.textContent = Nino.content.getText('/_admin/design/msg/previewing');
 			}
 
-			Nino.admin.design._apiCall( 'preview', {
-				parts : edit.parts, knobs : edit.knobs, size : edit.size, colours : edit.colours, full : full
-			}, function( status, response ) {
+			Nino.admin.design._apiCall( 'preview', Object.assign( {}, edit, { full : full } ), function( status, response ) {
 
 				if( status !== 200 || response === null ) {
 					if( msg !== null ) {
@@ -1642,6 +1972,16 @@
 					Nino.admin.design._frames = null;
 					return Nino.admin.design._preview( 0 );
 				}
+				else {
+					// A change was made on this tab, and the tab's anchor is where
+					// it can be seen: the page goes there after every one
+					Nino.admin.design._jump();
+
+					if( Nino.admin.design._replays === true )
+						Nino.admin.design._replay();
+				}
+
+				Nino.admin.design._replays = false;
 
 				Nino.admin.design._fit();
 				Nino.admin.design._absorb( response );
@@ -1677,55 +2017,129 @@
 		},
 
 		/**
-		 *	Put the part that is open on screen inside the frame.
+		 *	Play the animation of the page again in the frame.
 		 *
-		 *	The seven sets have a section of their own in the specimen, named
-		 *	after the part; a frame is the <header> or the <footer> around it,
-		 *	which needs no id of ours in markup that is the project's. Global is
-		 *	the whole page, so it is the top of it
-		 *
-		 *	@param		{boolean}	[instant]		Without the smooth scroll - after a
-		 *															rebuild there is nothing to scroll away from
+		 *	A viewport animation plays when an element comes into view, so the ones
+		 *	that stand in view already - the hero, on the Global tab where the
+		 *	animation is chosen - would show nothing of a choice made while they are
+		 *	there. Each of them goes back to where it starts, without a transition,
+		 *	and is let in again with the one the page has now. The classes are put
+		 *	back as they were, which is what the page's own script believes they are
 		 *
 		 *	@return		void
 		 */
-		_jump : function( instant ) {
+		_replay : function() {
 
 			const frame = dc.getElementById('design-frame');
 
-			if( frame === null || Nino.admin.design._follow === false )
+			if( frame === null )
 				return;
 
 			try {
 
 				const doc = frame.contentDocument;
-				const part = Nino.admin.design._part;
 
 				if( doc === null || doc.body === null )
 					return;
 
-				const target = part === 'header' || part === 'global'
-					? doc.body
-					: ( part === 'footer' ? doc.querySelector('footer') : doc.getElementById( part ) );
+				const shown = Array.prototype.slice.call( doc.querySelectorAll('.nino-vpa--visible') );
+				const kept = shown.map( function( el ) { return el.style.transition } );
 
+				shown.forEach( function( el ) {
+					el.style.transition = 'none';
+					el.classList.remove( 'nino-vpa--visible', 'nino-vpa--visible-once' );
+				} );
+
+				// Measured, so that the start is laid out before it is left
+				void doc.body.offsetHeight;
+
+				shown.forEach( function( el, i ) {
+					el.style.transition = kept[i];
+					el.classList.add( 'nino-vpa--visible', 'nino-vpa--visible-once' );
+				} );
+			}
+			catch( e ) {
+				// A frame that cannot be reached has nothing to play
+			}
+		},
+
+		/**
+		 *	Scroll the page in the frame to the anchor of the open tab, smoothly.
+		 *
+		 *	The specimen is one page with an element for each tab (ids global,
+		 *	type, content, buttons, components and colours - see ANCHORS), and
+		 *	the frame is the page of this very origin: the panel scrolls the
+		 *	frame's own window by hand, which needs neither a message to the page
+		 *	nor a hash it would have to read. Done after a tab is opened and after
+		 *	every change, when the answer to the change is in the frame
+		 *
+		 *	@param		{boolean}	[instant]		Without the smooth scroll - after a
+		 *															rebuild there is nothing to scroll away from
+		 *	@param		{boolean}	[settled]		The webfonts are back; set by the call
+		 *															that waited for them
+		 *
+		 *	@return		void
+		 */
+		_jump : function( instant, settled ) {
+
+			const frame = dc.getElementById('design-frame');
+
+			if( frame === null )
+				return;
+
+			try {
+
+				const doc = frame.contentDocument;
+
+				if( doc === null || doc.body === null )
+					return;
+
+				const tab = Nino.admin.design._tab;
+				const target = doc.getElementById( Nino.admin.design.ANCHORS[tab] );
 				const view = doc.defaultView;
 
 				if( target === null || view === null )
 					return;
 
+				/*	A sheet that was swapped declares its webfaces again, and the
+					page lays out with the fallback faces until they are back - an
+					anchor measured there is not where it stands a moment later, and
+					the scroll would end that much too far. Measuring forces the
+					layout, which is what starts the loading, so the state is asked
+					for after it; the jump is made again when the faces are in	*/
+				void doc.body.offsetHeight;
+
+				if( settled !== true && doc.fonts && doc.fonts.status === 'loading' )
+					return doc.fonts.ready.then( function() { Nino.admin.design._jump( instant, true ) } );
+
 				/*	The frame's own window, scrolled by hand - not
 					scrollIntoView(). That one walks every scrollable ancestor of
 					the element, and an element inside a same-origin iframe has
 					the workbench's own pane among them: the frame jumped to the
-					part *and* the column beside it slid away under the selects
+					anchor *and* the column beside it slid away under the controls
 					that had just been used. This moves one scroller, which is the
 					one the switch is about	*/
-				const top = target.getBoundingClientRect().top
-					+ ( view.scrollY || doc.documentElement.scrollTop || 0 );
+
+				/*	The header is fixed, and a page keeps room for it: main's padding at
+					the top, which each header template sets for itself. An anchor stands
+					that far from the top, where the first section of a page does, and not
+					under the bar. The bar's own height is the wrong thing to ask for - it
+					folds away when the page is scrolled down and is back when it is
+					scrolled up, so the answer would be the state the last scroll left it in */
+				const main = doc.querySelector('main');
+				const clear = main === null ? 0 : parseFloat( view.getComputedStyle( main ).paddingTop ) || 0;
+
+				// Global is the top of the page, header included - the anchor
+				// stands right below it
+				const top = tab === 'global' ? 0 : target.getBoundingClientRect().top
+					+ ( view.scrollY || doc.documentElement.scrollTop || 0 ) - clear;
+
+				// Smooth unless there is nothing to scroll away from - and not for a visitor who asked for less motion
+				const calm = typeof view.matchMedia === 'function' && view.matchMedia('(prefers-reduced-motion: reduce)').matches === true;
 
 				view.scrollTo( {
 					top 			: Math.max( 0, Math.round( top ) ),
-					behavior	: instant === true ? 'auto' : 'smooth',
+					behavior	: instant === true || calm === true ? 'instant' : 'smooth',
 				} );
 			}
 			catch( e ) {

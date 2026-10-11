@@ -1,0 +1,173 @@
+/*	Nino Design - content v4
+ *
+ *	@name			Display
+ *	@description	Very large titles with tight leading and a short measure, a paragraph that stays small, and cards whose words come first. For sites that lead with a statement.
+ *
+ *	@knob	hero-title		Size of the title of a hero
+ *	@knob	hero-text		Size of the text of a hero
+ *	@knob	quiet			Size of a quiet title, subtitle and text
+ *	@knob	loud			Size of a loud title, subtitle and text
+ *	@knob	section-space	Height of a band
+ *	@knob	article-space	Space inside a card and between its parts
+ *	@knob	corners			Corners of the picture of a card
+ *
+ *	One decision: the heading is the page and the text is the footnote to it.
+ *	The leading tightens as the size grows, because a display line set at the
+ *	body's line height falls apart into separate lines, and the measure holds
+ *	a headline to the width it was written for. The card is the same idea in
+ *	small: every picture is cropped to one ratio so a row of unprepared
+ *	photographs lines up, and the words come first, because in a list of
+ *	articles the headline is what is being scanned. No border and no shadow
+ *	knob: the card has neither.
+ */
+
+:root {
+	--content-hero-title--less: 		1.36;
+	--content-hero-title--default: 		1.6;
+	--content-hero-title--more: 		1.92;
+
+	--content-hero-text--less: 			.85;
+	--content-hero-text--default: 		1;
+	--content-hero-text--more: 			1.2;
+
+	--content-quiet--less: 				.7;
+	--content-quiet--default: 			.8;
+	--content-quiet--more: 				.9;
+
+	--content-loud--less: 				1.15;
+	--content-loud--default: 			1.3;
+	--content-loud--more: 				1.5;
+
+	--content-section-space--less: 		var(--space-3);
+	--content-section-space--default: 	var(--space-4);
+	--content-section-space--more: 		var(--space-5);
+
+	--content-article-space--less: 		var(--space-1);
+	--content-article-space--default: 	var(--space-2);
+	--content-article-space--more: 		var(--space-3);
+
+	--content-corners--less: 			0rem;
+	--content-corners--default: 		var(--radius-small);
+	--content-corners--more: 			var(--radius-large);
+}
+
+@media (min-width: 768px) {
+	:root {
+		--content-hero-title--less: 		1.7;
+		--content-hero-title--default: 		2;
+		--content-hero-title--more: 		2.4;
+
+		--content-section-space--less: 		var(--space-4);
+		--content-section-space--default: 	var(--space-5);
+		--content-section-space--more: 		var(--space-6);
+	}
+}
+
+:root {
+	--hero-title-scale: var(--content-hero-title);
+	--hero-text-scale: var(--content-hero-text);
+	--scale-quiet: var(--content-quiet);
+	--scale-loud: var(--content-loud);
+}
+
+/* ---- the opening ---- */
+
+/*	Three things a display line needs and a body line does not: leading below
+	1.1, tracking pulled in, and somewhere to break. ch is the width of the
+	font's own zero, so the break follows whatever face the Fonts tab chose -
+	but only above the phone, where there is a width to hold back	*/
+.nino-hero-title {
+	line-height: 1.02;
+	letter-spacing: -.03em;
+}
+.nino-hero-subtitle {
+	line-height: 1.5;
+	opacity: 1;
+	max-width: 38rem;
+}
+.nino-text-center .nino-hero-title,
+.nino-text-center .nino-hero-subtitle {
+	margin-right: auto;
+	margin-left: auto;
+}
+@media (min-width: 768px) {
+	.nino-hero-title {
+		max-width: 18ch;
+	}
+}
+
+/* ---- bands ---- */
+
+.nino-section:where(:not(.nino-section--fullheight, [class*="nino-pt-"], [class*="nino-p-"])) {
+	padding-top: var(--content-section-space);
+}
+.nino-section:where(:not(.nino-section--fullheight, [class*="nino-pb-"], [class*="nino-p-"])) {
+	padding-bottom: var(--content-section-space);
+}
+
+.nino-section-title {
+	line-height: 1.05;
+	letter-spacing: -.02em;
+}
+.nino-section-title:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
+	margin-bottom: calc( var(--content-section-space) / 3 );
+}
+.nino-section-subtitle,
+.nino-section-text {
+	max-width: 40rem;
+}
+.nino-section-subtitle {
+	line-height: 1.5;
+}
+.nino-text-center .nino-section-subtitle,
+.nino-text-center .nino-section-text {
+	margin-right: auto;
+	margin-left: auto;
+}
+
+/* ---- cards ---- */
+
+/*	The words first and the picture after them: the picture goes to the end of
+	the card by its order, and what else is in the card keeps the order it has
+	- a card of a stack has no wrapper round its words, and a column that
+	reversed would turn its title under its text. A card that lays itself out
+	in columns stays as it is	*/
+.nino-article:where(:not(.nino-article-cols)) {
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-start;
+}
+.nino-article:where(:not(.nino-article-cols)) > .nino-article-img {
+	order: 1;
+}
+/*	A frame rather than a height: object-fit crops what does not fit the
+	ratio, which is the one way a row of photographs nobody prepared lines up	*/
+.nino-article-img {
+	display: block;
+	width: 100%;
+	max-width: 100%;
+	aspect-ratio: 3 / 2;
+	object-fit: cover;
+	border-radius: var(--content-corners);
+}
+.nino-article-img:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
+	margin: 0;
+}
+.nino-article-content:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
+	padding: 0;
+}
+.nino-article-title {
+	line-height: 1.2;
+}
+.nino-article-title:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
+.nino-article-subtitle:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
+.nino-article-descr:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
+	margin-bottom: calc( var(--content-article-space) / 2 );
+}
+.nino-article-subtitle {
+	letter-spacing: .06em;
+	color: var(--color-subtitle);
+}
+.nino-article-cols {
+	gap: calc( var(--content-article-space) * 2 );
+}

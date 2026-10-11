@@ -1,0 +1,175 @@
+/*	Nino Design - content v3
+ *
+ *	@name			Editorial
+ *	@description	A quiet opening, short bands whose heading has a rule under it, and soft cards that lift off the page. For pages with a lot to say.
+ *
+ *	@knob	hero-title		Size of the title of a hero
+ *	@knob	hero-text		Size of the text of a hero
+ *	@knob	quiet			Size of a quiet title, subtitle and text
+ *	@knob	loud			Size of a loud title, subtitle and text
+ *	@knob	section-space	Height of a band
+ *	@knob	article-space	Space inside a card and between its parts
+ *	@knob	corners			Corners of a card
+ *	@knob	shadow			Shadow of a card, and the lift under the pointer
+ *
+ *	The opposite decision to v2: many short bands rather than few tall ones,
+ *	so the heading has to mark a break the white space no longer makes. It does
+ *	it with a rule. The cards are few and each is a destination, so the shadow
+ *	is what makes one - and the lift on hover what makes it clickable before it
+ *	is clicked, switched off where the visitor asked for less motion. A card
+ *	here has no line round it, hence no border knob.
+ *
+ *	The shadow is two triples: the one at rest, which Nino.css reads by the
+ *	name --shadow-card, and the one under the pointer, an aspect of the first.
+ *	They move together.
+ */
+
+:root {
+	--content-hero-title--less: 		.8;
+	--content-hero-title--default: 		.95;
+	--content-hero-title--more: 		1.14;
+
+	--content-hero-text--less: 			.85;
+	--content-hero-text--default: 		1;
+	--content-hero-text--more: 			1.2;
+
+	--content-quiet--less: 				.75;
+	--content-quiet--default: 			.85;
+	--content-quiet--more: 				.95;
+
+	--content-loud--less: 				1.1;
+	--content-loud--default: 			1.2;
+	--content-loud--more: 				1.35;
+
+	--content-section-space--less: 		var(--space-2);
+	--content-section-space--default: 	var(--space-3);
+	--content-section-space--more: 		var(--space-4);
+
+	--content-article-space--less: 		var(--space-2);
+	--content-article-space--default: 	var(--space-3);
+	--content-article-space--more: 		var(--space-4);
+
+	--content-corners--less: 			var(--radius-small);
+	--content-corners--default: 		var(--radius-large);
+	--content-corners--more: 			2rem;
+
+	--content-shadow--less: 			none;
+	--content-shadow--default: 			0 .125rem .75rem var(--nino-default-shadow);
+	--content-shadow--more: 			0 .25rem 1.5rem var(--nino-default-shadow), 0 .0625rem .25rem var(--nino-default-shadow);
+
+	--content-shadow-lift--less: 		none;
+	--content-shadow-lift--default: 	0 .375rem 1.5rem var(--nino-default-shadow);
+	--content-shadow-lift--more: 		0 .75rem 2.5rem var(--nino-default-shadow), 0 .125rem .5rem var(--nino-default-shadow);
+}
+
+@media (min-width: 768px) {
+	:root {
+		--content-hero-title--less: 		.85;
+		--content-hero-title--default: 		1;
+		--content-hero-title--more: 		1.2;
+
+		--content-section-space--less: 		var(--space-3);
+		--content-section-space--default: 	var(--space-4);
+		--content-section-space--more: 		var(--space-5);
+	}
+}
+
+:root {
+	--hero-title-scale: var(--content-hero-title);
+	--hero-text-scale: var(--content-hero-text);
+	--scale-quiet: var(--content-quiet);
+	--scale-loud: var(--content-loud);
+	--shadow-card: var(--content-shadow);
+}
+
+/* ---- the opening ---- */
+
+.nino-hero-title {
+	line-height: 1.25;
+	max-width: 34rem;
+}
+.nino-hero-subtitle {
+	letter-spacing: .03em;
+	opacity: 1;
+}
+.nino-hero-arrowdown {
+	opacity: .55;
+}
+.nino-text-center .nino-hero-title {
+	margin-right: auto;
+	margin-left: auto;
+}
+
+/* ---- bands ---- */
+
+.nino-section:where(:not(.nino-section--fullheight, [class*="nino-pt-"], [class*="nino-p-"])) {
+	padding-top: var(--content-section-space);
+}
+.nino-section:where(:not(.nino-section--fullheight, [class*="nino-pb-"], [class*="nino-p-"])) {
+	padding-bottom: var(--content-section-space);
+}
+
+/*	The rule is the heading's: it stays inside the title, in the colour of
+	the line of the ground the title stands on	*/
+.nino-section-title {
+	padding-bottom: calc( var(--content-section-space) / 4 );
+	border-bottom: 1px solid var(--color-border);
+}
+.nino-section-title:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
+	margin-bottom: calc( var(--content-section-space) / 3 );
+}
+.nino-section-subtitle {
+	letter-spacing: .06em;
+}
+.nino-section-text {
+	max-width: 46rem;
+}
+.nino-text-center .nino-section-text {
+	margin-right: auto;
+	margin-left: auto;
+}
+
+/* ---- cards ---- */
+
+.nino-article:where(:not(.nino-article--borderless)) {
+	border-width: 0;
+	border-radius: var(--content-corners);
+	background-color: var(--color-ground);
+	overflow: hidden;
+	transition: transform .18s ease, box-shadow .18s ease;
+}
+.nino-article-img {
+	display: block;
+	width: 100%;
+	margin: 0;
+	border-radius: 0;
+}
+.nino-article-content:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
+	padding: var(--content-article-space);
+}
+.nino-article-title:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
+.nino-article-subtitle:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
+.nino-article-descr:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
+	margin-bottom: calc( var(--content-article-space) / 3 );
+}
+.nino-article-cols {
+	gap: var(--content-article-space);
+}
+
+/*	A card that does not link anywhere does not lift: only one with a link or
+	a button in it answers the pointer	*/
+.nino-article:has(a, button):hover,
+.nino-article:focus-within {
+	transform: translateY(-2px);
+	box-shadow: var(--content-shadow-lift);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.nino-article {
+		transition: none;
+	}
+	.nino-article:has(a, button):hover,
+	.nino-article:focus-within {
+		transform: none;
+	}
+}

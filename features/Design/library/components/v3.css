@@ -1,0 +1,244 @@
+/*	Nino Design - components v3
+ *
+ *	@name			Airy
+ *	@description	Fields that are a rule under the words, tables with room in the cells and no lines between rows, and plans that lift off the page on a soft shadow.
+ *
+ *	@knob	scale		Type size of the fields and the tables
+ *	@knob	space		Space inside a field, a cell, a block and between them
+ *	@knob	corners		Corner radius of a plan, an alert and a badge
+ *	@knob	border		Weight of the rule under a field and under a table head
+ *	@knob	labels		Where the label of a field stands
+ *
+ *	Worth knowing before choosing it: a field with no box has no visible
+ *	target before it is clicked, which is fine for three fields under a
+ *	heading and wrong for a checkout. There is no corner left to round on a
+ *	field, so the corners knob is for the blocks, and the focus rule is a pixel
+ *	heavier than the rule at rest, since it is the only thing that marks the
+ *	field being typed in. Five rows of prices on a landing page is not a
+ *	spreadsheet and setting it like one makes the page look like an export:
+ *	the cells get room and the lines go, so there is no zebra knob either.
+ */
+
+:root {
+	--components-scale--less: 		.9375;
+	--components-scale--default: 	1;
+	--components-scale--more: 		1.125;
+
+	--components-space--less: 		var(--space-1);
+	--components-space--default: 	var(--space-2);
+	--components-space--more: 		var(--space-3);
+
+	--components-corners--less: 	var(--radius);
+	--components-corners--default: 	var(--radius-large);
+	--components-corners--more: 	2rem;
+
+	--components-border--less: 		1px;
+	--components-border--default: 	2px;
+	--components-border--more: 		3px;
+
+	/*	Where a label stands: in the row (the form is a grid of a column for the
+		labels and a column for the fields), above the field, or floating on its
+		top edge. The first triple is the gap between the columns, the rest are
+		aspects of the knob and move with it	*/
+	--components-labels--less: 			var(--space-2);
+	--components-labels--default: 		normal;
+	--components-labels--more: 			normal;
+
+	--components-labels-form--less: 		grid;
+	--components-labels-form--default: 		block;
+	--components-labels-form--more: 		block;
+
+	--components-labels-cols--less: 		max-content minmax(0, 1fr);
+	--components-labels-cols--default: 		none;
+	--components-labels-cols--more: 		none;
+
+	--components-labels-align--less: 		baseline;
+	--components-labels-align--default: 	normal;
+	--components-labels-align--more: 		normal;
+
+	--components-labels-wide--less: 		1 / -1;
+	--components-labels-wide--default: 		auto;
+	--components-labels-wide--more: 		auto;
+
+	--components-labels-start--less: 		start;
+	--components-labels-start--default: 		auto;
+	--components-labels-start--more: 		auto;
+
+	--components-labels-block--less: 		inline;
+	--components-labels-block--default: 	inline;
+	--components-labels-block--more: 		table;
+
+	--components-labels-pos--less: 			static;
+	--components-labels-pos--default: 		static;
+	--components-labels-pos--more: 			relative;
+
+	--components-labels-lift--less: 		0em;
+	--components-labels-lift--default: 		0em;
+	--components-labels-lift--more: 		.4em;
+
+	--components-labels-cut--less: 			transparent;
+	--components-labels-cut--default: 		transparent;
+	--components-labels-cut--more: 			transparent;
+}
+
+/* ---- fields ---- */
+
+.nino-form-input,
+.nino-form-textarea,
+.nino-form-select {
+	border-width: 0 0 var(--components-border);
+	border-radius: 0;
+	background-color: transparent;
+	font-size: calc( 1rem * var(--components-scale) );
+	line-height: 1.5;
+}
+.nino-form-input:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])),
+.nino-form-textarea:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])),
+.nino-form-select:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])) {
+	padding: calc( var(--components-space) / 2 ) 0;
+}
+.nino-form-select:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])) {
+	padding-right: 2.5rem;
+}
+.nino-form-input:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
+.nino-form-textarea:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
+.nino-form-select:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
+	margin-bottom: var(--components-space);
+}
+
+/*	An outline is the accessible default and this set replaces it, so the
+	replacement has to be there for a visitor tabbing through too: the rule
+	doubles and takes the colour of the focus	*/
+.nino-form-input:focus,
+.nino-form-textarea:focus,
+.nino-form-select:focus {
+	border-bottom-color: var(--color-focus);
+	border-bottom-width: calc( var(--components-border) + 1px );
+	outline: none;
+}
+
+.nino-form.nino-is-error .nino-form-message,
+.nino-form.nino-is-success .nino-form-message {
+	padding: calc( var(--components-space) / 2 ) var(--components-space);
+	border-radius: 0;
+}
+
+/* ---- labels ---- */
+
+.nino-form:where(:not(.nino-form--inline, .nino-newsletter-inline)) {
+	display: var(--components-labels-form);
+	grid-template-columns: var(--components-labels-cols);
+	column-gap: var(--components-labels);
+	align-items: var(--components-labels-align);
+}
+.nino-form:where(:not(.nino-form--inline, .nino-newsletter-inline)) > :where(:not(
+	label:not(.nino-forms-check, .nino-sr-only),
+	label:not(.nino-forms-check, .nino-sr-only) + :is(.nino-form-input, .nino-form-select, .nino-form-textarea),
+	.nino-form-trap, .nino-sr-only
+)) {
+	grid-column: var(--components-labels-wide);
+}
+.nino-form:where(:not(.nino-form--inline, .nino-newsletter-inline)) > :is(.nino-btn, .nino-forms-check) {
+	justify-self: var(--components-labels-start);
+}
+.nino-form:where(:not(.nino-form--inline, .nino-newsletter-inline)) > label:where(:not(.nino-forms-check, .nino-sr-only)) {
+	display: var(--components-labels-block);
+	position: var(--components-labels-pos);
+	margin: 0 0 calc( var(--components-labels-lift) * -.55 ) var(--components-labels-lift);
+	padding: 0 calc( var(--components-labels-lift) / 4 );
+	background-color: var(--components-labels-cut);
+	font-size: calc( 1em - var(--components-labels-lift) * .25 );
+}
+
+/* ---- tables ---- */
+
+.nino-table {
+	font-size: calc( 1em * var(--components-scale) );
+}
+.nino-table th,
+.nino-table td {
+	padding: var(--components-space);
+	border-bottom-width: 0;
+}
+.nino-table th {
+	border-bottom: var(--components-border) solid var(--color-border);
+	letter-spacing: .08em;
+	color: var(--color-subtitle);
+}
+.nino-table--bordered th,
+.nino-table--bordered td {
+	border-width: var(--components-border);
+}
+
+/* ---- lists, badges, alerts ---- */
+
+.nino-list:not(.nino-list--columns) {
+	gap: var(--components-space);
+	line-height: 1.6;
+}
+.nino-badge {
+	padding: calc( var(--components-space) / 4 ) calc( var(--components-space) / 1.5 );
+}
+.nino-badge:not(.nino-badge--pill) {
+	border-radius: 999rem;
+}
+.nino-badge-cloud {
+	gap: calc( var(--components-space) / 2 );
+}
+.nino-alert {
+	border-width: var(--components-border);
+	border-radius: var(--components-corners);
+}
+.nino-alert:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])) {
+	padding: var(--components-space) calc( var(--components-space) * 1.5 );
+}
+.nino-alert--content:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])) {
+	padding: calc( var(--components-space) * 2 );
+}
+
+/* ---- blocks ---- */
+
+/*	The recommendation is made by the layout rather than by a border, which
+	works when there are three plans and one of them is meant to win. Below the
+	tablet the lift is dropped - a card scaled up on a phone is a card with its
+	edges off the screen	*/
+.nino-pricing-row {
+	gap: calc( var(--components-space) * 1.5 );
+}
+.nino-pricing-item {
+	border-width: 0;
+	border-radius: var(--components-corners);
+	box-shadow: 0 .125rem .375rem var(--nino-default-shadow), 0 1rem 2.5rem var(--nino-default-shadow);
+}
+.nino-pricing-item:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])) {
+	padding: calc( var(--components-space) * 2 );
+}
+.nino-pricing-price {
+	line-height: 1.05;
+	letter-spacing: -.02em;
+}
+@media (min-width: 768px) {
+	.nino-pricing-item--featured {
+		transform: scale(1.04);
+		box-shadow: 0 .25rem .625rem var(--nino-default-shadow), 0 1.5rem 3.75rem var(--nino-default-shadow);
+		z-index: 1;
+	}
+}
+.nino-accordion {
+	border-bottom-width: var(--components-border);
+}
+.nino-accordion-trigger {
+	padding: var(--components-space) 0;
+}
+.nino-accordion-panel {
+	padding: 0 0 var(--components-space) 1em;
+}
+.nino-timeline-number {
+	border-radius: 999rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.nino-pricing-item--featured {
+		transform: none;
+	}
+}

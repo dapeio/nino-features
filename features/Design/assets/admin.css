@@ -4,13 +4,15 @@
  *	Nino										A compact filesystembased php framework
  *	Modules\Design					What the feature's /_admin panel needs beyond the design
  *													system in _admin/assets/style.css: the field grid the
- *													part and its variant are chosen in, the titled blocks
+ *													templates and the page are chosen in, the titled blocks
  *													the knob rows and the file's state stand in, the row
- *													per knob and per colour, and the two columns the
- *													screen is - the controls on one side, a sticky preview
- *													pane with the frame and a summary of the selection on
- *													the other. Joins the workbench's style bundle while
- *													the feature is active (see the panel's assets()).
+ *													per knob and per colour, the table of the five font
+ *													roles, and the two columns the screen is - the
+ *													controls on one side (a third of the width, 24rem at
+ *													the least), a sticky preview pane with the frame and
+ *													a summary of the open tab on the other (two thirds).
+ *													Joins the workbench's style bundle while the feature
+ *													is active (see the panel's assets()).
  *
  *													The measures are those of a card of labelled fields in a
  *													grid - card, field grid, section label, summary list. No
@@ -33,9 +35,9 @@
 
 @layer nino.tool {
 
-/*	The two halves of a design. In the pane's head the strip stands beside the
-	panel's name and the head lays it out; this is the column it opens where
-	there is no head (see _head() in admin.js). A margin below rather than a
+/*	The six tabs. In the pane's head the strip stands beside the panel's name
+	and the head lays it out; this is the column it opens where there is no
+	head (see _head() in admin.js). A margin below rather than a
 	border: the card under it already draws one, and two lines a row apart
 	read as a box nobody meant to draw */
 .nino-admin .design-tabs {
@@ -62,17 +64,14 @@
 	padding: .95rem;
 }
 
-/*	Two columns of fields: four questions in the room one would take. Below the
-	breakpoint the column is too narrow for two */
+/*	Two columns of fields: four questions in the room one would take */
 .design-form-grid {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: .75rem;
 }
-/*	The box _renderCurrentPart() redraws is not a box: what it holds has to be a
-	cell of the grid above it, or a field that spans both columns cannot */
-#design-part {
-	display: contents;
+.design-form-section > .design-field + .design-field {
+	margin-top: .75rem;
 }
 
 /*	One field: the name above the control, the terse line about it below. The
@@ -108,10 +107,13 @@
 	font-weight: 450;
 	line-height: 1.45;
 }
-/*	The sentence about the whole card, across both columns */
+/*	The sentence about the whole card, in the size of the hints under a field */
 .nino-admin .design-note {
 	grid-column: 1 / -1;
-	margin: 0;
+	margin: .75rem 0 0;
+	color: var(--editor-text-secondary);
+	font-size: .72rem;
+	line-height: 1.45;
 }
 
 /*	The small heading and the hint line over a block of rows. The rule above it
@@ -133,7 +135,8 @@
 	font-size: .72rem;
 	line-height: 1.45;
 }
-.nino-admin .design-block > .design-section-label:first-child {
+.nino-admin .design-block > .design-section-label:first-child,
+.nino-admin .design-form-section > .design-section-label:first-child {
 	margin-top: 0;
 	padding-top: 0;
 	border-top: 0;
@@ -141,24 +144,23 @@
 
 /* ---- the knob ----
 
-   One row per value the variant declares three steps for: what it is called,
-   and where it stands. The steps are the workbench's own segmented control
-   (.nino-admin-tabs), narrowed to the three buttons' own width - splitting the
-   column between them would make a three-way choice look like a page of
-   navigation */
+   One row per knob the tab has: what it is called, and where it stands. The
+   steps are the workbench's own segmented control (.nino-admin-tabs), three
+   buttons in the words that knob has for them. The name and the note stand
+   over the steps rather than beside them: a column of a third of the screen
+   has no room for words on both sides of a control */
 .nino-admin .design-knob-row {
-	display: flex;
-	align-items: center;
-	gap: .6rem;
-	padding: .35rem 0;
+	display: grid;
+	gap: .4rem;
+	padding: .55rem 0;
 	border-bottom: 1px solid var(--editor-separator);
 }
 .nino-admin .design-knob-row:last-of-type {
 	border-bottom: 0;
 }
 .nino-admin .design-knob-label {
-	flex: 1 1 auto;
 	min-width: 0;
+	font-weight: 650;
 }
 /* The terse half of what a knob does, under its name - the same shape
    Nino.adminUi.selectField() gives a setting */
@@ -166,34 +168,49 @@
 	display: block;
 	color: var(--editor-text-secondary);
 	font-size: .75rem;
+	font-weight: 450;
 }
 .nino-admin .design-knob-steps {
-	flex: 0 0 auto;
+	display: flex;
 	margin: 0;
 }
 .nino-admin .design-knob-steps .nino-admin-tab {
-	flex: 0 0 auto;
-	min-width: 2.4rem;
-	padding: .3rem .5rem;
-	font-variant-numeric: tabular-nums;
+	flex: 1 1 0;
+	min-width: 0;
+	padding: .3rem .4rem;
+	overflow: hidden;
+	font-size: .74rem;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+/*	The divider between two steps is the workbench's, and so is the rule that
+	takes it off the last one - which the strip's own rule for a tab outweighs
+	(a :not() weighs as much as the class it names), so the last step carried
+	a line at the edge of the row. Taken off here	*/
+.nino-admin .design-knob-steps .nino-admin-tab:last-child {
+	border-right: 0;
+}
+/*	The lit step, in this layer rather than the workbench's: the segmented
+	strip's own rule for a tab outweighs the one for an active tab (a :not()
+	weighs as much as the class it names), and a layer later than the
+	workbench's wins over it whatever the weights are */
+.nino-admin .design-knob-steps .nino-admin-tab.is-active {
+	background-color: var(--editor-blue);
+	color: var(--nino-admin-active-text);
 }
 
-/*	A row nobody has moved is drawn quietly: what is on screen is the value
-	that will compile either way, so the row is not empty - its answer is just
-	still somebody else's. Opacity rather than a different colour, because the
-	difference is "whose decision", not "what state" */
-.design-knob-row--inherited .design-knob-label,
-.design-knob-row--inherited .design-knob-steps {
-	opacity: .55;
+/*	A knob the chosen template does not answer to stays where it is, greyed
+	out, and says so in the line under its name. Opacity rather than a
+	different colour: the difference is "not offered", not "what state" */
+.nino-admin .design-knob-row--off .design-knob-label,
+.nino-admin .design-knob-row--off .design-knob-steps {
+	opacity: .5;
 }
-.design-knob-row--inherited:focus-within .design-knob-label,
-.design-knob-row--inherited:hover .design-knob-label,
-.design-knob-row--inherited:focus-within .design-knob-steps,
-.design-knob-row--inherited:hover .design-knob-steps {
-	opacity: 1;
+.nino-admin .design-knob-row--off .design-knob-steps .nino-admin-tab {
+	cursor: not-allowed;
 }
 
-/* The way back to following, beside a row that no longer does */
+/* The way back to the colour the wheel derives, beside the second colour */
 .nino-admin .design-knob-reset {
 	flex: 0 0 auto;
 	width: 1.7rem;
@@ -210,6 +227,91 @@
 	color: var(--editor-text);
 }
 
+/* ---- the fonts ----
+
+   Five rows and four columns in a third of the screen. The controls stand bare
+   in the cells and the words are in the column heads, so the table stays
+   readable at the width of the column; each control carries its own accessible
+   name, which is the role and the column. A row is a grid of the four cells
+   with the role's name on a line above them - a row of five cells would give
+   a family and a size no more than a few letters each. The roles of a table
+   are set on the elements in the script, since a display other than a table's
+   takes the semantics away from them */
+.nino-admin .design-fonts,
+.nino-admin .design-fonts thead,
+.nino-admin .design-fonts tbody {
+	display: block;
+	width: 100%;
+}
+.nino-admin .design-fonts tr {
+	display: grid;
+	grid-template-columns: minmax(0, 1.5fr) 4rem 3.8rem minmax(0, 1fr);
+	column-gap: .3rem;
+	align-items: center;
+}
+.nino-admin .design-fonts thead th:first-child {
+	display: none;
+}
+.nino-admin .design-fonts thead th {
+	padding: 0 0 .3rem;
+	overflow: hidden;
+	color: var(--editor-text-secondary);
+	font-size: .68rem;
+	font-weight: 650;
+	text-align: left;
+	white-space: nowrap;
+}
+.nino-admin .design-fonts tbody tr {
+	row-gap: .25rem;
+	padding: .55rem 0;
+}
+.nino-admin .design-fonts tbody tr + tr {
+	border-top: 1px solid var(--editor-separator);
+}
+.nino-admin .design-fonts tbody th {
+	grid-column: 1 / -1;
+	padding: 0;
+	font-size: .8rem;
+	font-weight: 650;
+	text-align: left;
+}
+.nino-admin .design-fonts td {
+	min-width: 0;
+	padding: 0;
+}
+.nino-admin .design-fonts select {
+	width: 100%;
+	min-width: 0;
+	min-height: 2rem;
+	padding: .2rem 1.1rem .2rem .35rem;
+	background-color: var(--editor-bg);
+	background-position: right .3rem center;
+	box-shadow: none;
+	font-size: .72rem;
+	text-overflow: ellipsis;
+}
+/*	The case switch in a cell: the track alone - its label is the control's
+	accessible name and its word is what the track already says */
+.nino-admin .design-fonts .nino-admin-switch {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background: none;
+}
+.nino-admin .design-fonts .nino-admin-switch-copy,
+.nino-admin .design-fonts .nino-admin-switch-state {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+.nino-admin .design-fonts .design-fonts-none {
+	color: var(--editor-text-secondary);
+	text-align: center;
+}
+
 /*	What the file on disk is - and only when that is something to act on. The
 	ordinary case ("the file matches this selection") is a plain line: it used
 	to be a green panel, and a green panel is a thing the eye keeps checking,
@@ -222,6 +324,8 @@
 	margin: 0;
 	padding: .4rem .6rem;
 	border-radius: var(--editor-radius-sm);
+	font-size: .78rem;
+	line-height: 1.45;
 }
 .nino-admin .design-state--warn { background: var(--editor-bg-grouped); color: var(--editor-orange); }
 .nino-admin #design-state p {
@@ -265,7 +369,9 @@
    neither */
 #design-layout {
 	display: grid;
-	grid-template-columns: minmax(0, 33rem) minmax(0, 1fr);
+	/*	A third for the settings and not less than 24rem, the rest for the
+		preview: the preview is where the decisions show */
+	grid-template-columns: minmax(24rem, 1fr) minmax(0, 2fr);
 	gap: 1.5rem;
 	align-items: start;
 }
@@ -295,7 +401,7 @@
 		var(--editor-bg);
 	background-size: 1.5rem 1.5rem;
 }
-@media (max-width: 68rem) {
+@media (max-width: 64rem) {
 	#design-layout {
 		grid-template-columns: 1fr;
 	}
@@ -355,14 +461,6 @@
 .nino-admin .design-preview-bar .design-field {
 	flex: 0 0 9.5rem;
 }
-/*	The switch beside the buttons rather than under them: it belongs to the
-	frame, not to the screen, and the bar is where the frame's controls are */
-.nino-admin .design-preview-follow {
-	margin: 0 0 0 auto;
-	padding: 0;
-	border: 0;
-}
-
 /*	The port Nino.adminUi.scaleFrame() places the frame inside: it gives the
 	frame a width, a height solved back through the scale, and a position - so
 	the box owns the height and has to clip, and the frame is absolute in it */
@@ -461,9 +559,9 @@
 }
 
 /*	A second colour nobody chose is the one the wheel derived, and says so by
-	being quiet - the same way a knob that follows the global position does. It
-	is not disabled: opening it is how you stop deriving it, and what it shows
-	until then is the colour that will actually be compiled */
+	being quiet, the way a greyed knob is. It is not disabled: opening it is how
+	you stop deriving it, and what it shows until then is the colour that will
+	actually be compiled */
 .design-colour-row--derived .design-colour-input {
 	opacity: .55;
 }
@@ -483,28 +581,34 @@
 	border-radius: var(--editor-radius-sm);
 }
 
-/*	A choice has four positions where a scale has three, and "Complementary"
-	beside "Triadic" is wider than a column that also has to hold a label -
-	the label then breaks into three lines to make room for it. Wrapping the
-	row puts the control on its own line where it does not fit and changes
-	nothing where it does, which is also what a narrow pane wants */
-.nino-admin #design-colours .design-knob-row {
-	flex-wrap: wrap;
-}
-.nino-admin #design-colours .design-knob-label {
-	flex: 1 1 9rem;
+/*	The mode: a select under a small heading, across the whole card */
+.nino-admin .design-colour-mode .design-field {
+	margin-top: .4rem;
 }
 
-/*	The Harmony row carries the swatch too, so it is the widest of them: the
-	positions take what is left of the line and the colour ends it - on the far
-	side of the row where the row had to wrap, so the swatch still lines up with
-	the controls above and below it rather than starting a line of its own */
+/*	Four positions in a third of the screen: a little less room for each */
+.nino-admin #design-colours .design-knob-steps .nino-admin-tab {
+	padding: .3rem .2rem;
+	font-size: .7rem;
+}
+
+/*	The Harmony row carries the second colour's swatch: on the line of its name,
+	at the far end, where the steps take the whole line under them */
+.nino-admin #design-colours .design-knob-row:has(> .design-colour-second) {
+	grid-template-columns: minmax(0, 1fr) auto;
+}
+.nino-admin #design-colours .design-knob-row:has(> .design-colour-second) .design-knob-label {
+	grid-column: 1;
+	grid-row: 1;
+}
 .nino-admin #design-colours .design-knob-row:has(> .design-colour-second) .design-knob-steps {
-	flex: 0 1 auto;
-	flex-wrap: wrap;
+	grid-column: 1 / -1;
+	grid-row: 2;
 }
 .nino-admin #design-colours .design-colour-second {
-	margin-left: auto;
+	grid-column: 2;
+	grid-row: 1;
+	justify-self: end;
 }
 
 }

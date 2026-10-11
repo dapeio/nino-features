@@ -1,42 +1,32 @@
 /*	Nino Design							The token and role layer, shipped with the feature
  *
- *										Sections 1 and 2 of the theme.css the setup wizard's base unit
- *										delivers, byte for byte: the compiled design tokens and the
- *										roles they are assigned to. The feature carries its own copy
- *										because a project deletes _admin/install/ after setup - the
- *										installer library is gone by the time anything here recompiles.
+ *										The first two sections of the theme.css the setup wizard's
+ *										base unit delivers, reworked for what compiles over them.
+ *										The feature carries its own copy because a project deletes
+ *										_admin/install/ after setup - the installer library is gone
+ *										by the time anything here recompiles.
  *
- *										features/Design/tests/design-smoke.php holds the two to each
- *										other wherever a checkout still has the installer, so the two
- *										cannot drift into installing Design changing how a site looks.
- */
-
-/*	Nino						A compact filesystembased php framework
- *	theme.css				The look every Nino project starts from. Copied into the
- *									project by the base install unit, first of the two
- *									stylesheets in the css bundle - the project's own
- *									assets/style.css comes after it and overrules it.
+ *										  1. the tokens - the --nino-* palette and raster, as the
+ *										     static defaults the solved palette replaces. Eight
+ *										     values per surface (bg, on, on-muted, link, border,
+ *										     focus, disabled, shadow); the dark palette is not kept
+ *										     here, the palette section solves it
+ *										  2. the roles - which token goes in which role, for
+ *										     everything that does not depend on the setup
  *
- *									Four layers, in this order, and the order is the point:
+ *										What the setup decides is not here: the type (families,
+ *										weights, sizes - the compiler writes the five font roles
+ *										and the @font-face rules they need), the width and the
+ *										animation of the page, and the knob positions. Nino.css
+ *										derives the type scale from the text size now, so the
+ *										--text-n raster of the delivered file is gone too.
  *
- *									  1. the design tokens - the whole --nino-* palette and
- *									     raster, compiled once and frozen here
- *									  2. the theme - which token goes in which role, plus the
- *									     three webfaces (see the base manifest's `fonts`)
- *									  3. the header frame - the css for frame-header.tpl
- *									  4. the footer frame - the css for frame-footer.tpl
- *
- *									Up to Nino 1.1 the wizard asked four questions and wrote
- *									this file from the answers. It does not any more: this is
- *									one fixed look, edited by hand or replaced wholesale. The
- *									Design feature is what compiles a stylesheet of its own
- *									over it. The whole-page themes the wizard used to offer
- *									are gone: a project composes its look from the part sets,
- *									and a presets field that combines them may come later.
- *
- *	@package				Dape/Nino
- *	@author					David Perchermeier <mail@dape.io>
- *	@link						https://github.com/dapeio/nino
+ *										features/Design/tests/design-smoke.php holds this file to
+ *										the delivered one wherever a checkout still has the
+ *										installer: every token it keeps has the value the wizard
+ *										delivers, and the compiled sheet assigns every role the
+ *										delivered file assigns to the same token. A project that
+ *										applies the defaults keeps its look.
  */
 
 /* ---- 1. the design tokens ---- */
@@ -48,8 +38,6 @@
 	--nino-default-link: #387cab;
 	--nino-default-border: #949596;
 	--nino-default-focus: #469cd7;
-	--nino-default-hover: #f0f0f0;
-	--nino-default-active: #e0e0e0;
 	--nino-default-disabled: #aeaeaf;
 	--nino-default-shadow: rgb(15 23 42 / 12%);
 	--nino-alt: #eef4fa;
@@ -58,8 +46,6 @@
 	--nino-alt-link: #3075a4;
 	--nino-alt-border: #8c8d8e;
 	--nino-alt-focus: #3c94cd;
-	--nino-alt-hover: #dfe5eb;
-	--nino-alt-active: #cfd5db;
 	--nino-alt-disabled: #a5a6a7;
 	--nino-alt-shadow: rgb(15 23 42 / 12%);
 	--nino-tint: #e3f3ff;
@@ -68,8 +54,6 @@
 	--nino-tint-link: #2e73a2;
 	--nino-tint-border: #868c91;
 	--nino-tint-focus: #3b92cc;
-	--nino-tint-hover: #d4e4f0;
-	--nino-tint-active: #c4d4e0;
 	--nino-tint-disabled: #9fa4a9;
 	--nino-tint-shadow: rgb(15 23 42 / 12%);
 	--nino-dark: #2a2f32;
@@ -78,8 +62,6 @@
 	--nino-dark-link: #589ccc;
 	--nino-dark-border: #757777;
 	--nino-dark-focus: #207db5;
-	--nino-dark-hover: #383d40;
-	--nino-dark-active: #484d50;
 	--nino-dark-disabled: #616262;
 	--nino-dark-shadow: rgb(15 23 42 / 12%);
 	--nino-black: #0e1216;
@@ -88,8 +70,6 @@
 	--nino-black-link: #3d82b1;
 	--nino-black-border: #5f6161;
 	--nino-black-focus: #00669a;
-	--nino-black-hover: #1a1f23;
-	--nino-black-active: #292d32;
 	--nino-black-disabled: #4c4d4d;
 	--nino-black-shadow: rgb(15 23 42 / 12%);
 	--nino-brand: #4faae8;
@@ -98,8 +78,6 @@
 	--nino-brand-link: #003d5f;
 	--nino-brand-border: #475560;
 	--nino-brand-focus: #005887;
-	--nino-brand-hover: #409cd9;
-	--nino-brand-active: #2d8cc9;
 	--nino-brand-disabled: #5e6972;
 	--nino-brand-shadow: rgb(15 23 42 / 12%);
 	--nino-brand-safe: #147bb7;
@@ -108,28 +86,14 @@
 	--nino-brand-safe-link: #f9fdff;
 	--nino-brand-safe-border: #c2d3df;
 	--nino-brand-safe-focus: #a1d7ff;
-	--nino-brand-safe-hover: #2d8cc9;
-	--nino-brand-safe-active: #439fdd;
 	--nino-brand-safe-disabled: #a9b5be;
 	--nino-brand-safe-shadow: rgb(15 23 42 / 12%);
-	--nino-accent: #4faae8;
-	--nino-on-accent: #0b0e10;
-	--nino-on-accent-muted: #273b4b;
-	--nino-accent-link: #003d5f;
-	--nino-accent-border: #475560;
-	--nino-accent-focus: #005887;
-	--nino-accent-hover: #409cd9;
-	--nino-accent-active: #2d8cc9;
-	--nino-accent-disabled: #5e6972;
-	--nino-accent-shadow: rgb(15 23 42 / 12%);
 	--nino-accent-safe: #147bb7;
 	--nino-on-accent-safe: #fcfcfc;
 	--nino-on-accent-safe-muted: #fcfcfc;
 	--nino-accent-safe-link: #f9fdff;
 	--nino-accent-safe-border: #c2d3df;
 	--nino-accent-safe-focus: #a1d7ff;
-	--nino-accent-safe-hover: #2d8cc9;
-	--nino-accent-safe-active: #439fdd;
 	--nino-accent-safe-disabled: #a9b5be;
 	--nino-accent-safe-shadow: rgb(15 23 42 / 12%);
 	--nino-success: #438061;
@@ -138,8 +102,6 @@
 	--nino-success-link: #eefff5;
 	--nino-success-border: #c7d2cb;
 	--nino-success-focus: #7ee3b0;
-	--nino-success-hover: #549171;
-	--nino-success-active: #66a383;
 	--nino-success-disabled: #acb4af;
 	--nino-success-shadow: rgb(15 23 42 / 12%);
 	--nino-warning: #986d00;
@@ -148,8 +110,6 @@
 	--nino-warning-link: #fffbf4;
 	--nino-warning-border: #d9cfbd;
 	--nino-warning-focus: #fcc863;
-	--nino-warning-hover: #a97d21;
-	--nino-warning-active: #bc9038;
 	--nino-warning-disabled: #b9b2a5;
 	--nino-warning-shadow: rgb(15 23 42 / 12%);
 	--nino-danger: #cf4438;
@@ -158,8 +118,6 @@
 	--nino-danger-link: #fffbfa;
 	--nino-danger-border: #e8cac5;
 	--nino-danger-focus: #ffc2b8;
-	--nino-danger-hover: #e35648;
-	--nino-danger-active: #f86a5b;
 	--nino-danger-disabled: #c4aeaa;
 	--nino-danger-shadow: rgb(15 23 42 / 12%);
 	--nino-scrim: rgb(14 18 22 / 67%);
@@ -169,12 +127,6 @@
 	--nino-base-size: 100%;
 	--nino-line-height: 1.5;
 	--nino-measure: 120rem;
-	--nino-text-1: 1rem;
-	--nino-text-2: 1.125rem;
-	--nino-text-3: 1.25rem;
-	--nino-text-4: 1.5rem;
-	--nino-text-5: 1.8rem;
-	--nino-text-6: 2.5rem;
 	--nino-space-1: 0.5rem;
 	--nino-space-2: 1rem;
 	--nino-space-3: 2rem;
@@ -190,284 +142,10 @@
 @media (min-width: 768px) {
 	:root {
 		--nino-base-size: 112.5%;
-		--nino-text-4: 1.6rem;
-		--nino-text-5: 2rem;
-		--nino-text-6: 3rem;
 	}
-}
-
-@media (prefers-color-scheme: dark) {
-	:root:not([data-nino-mode="light"]) {
-		--nino-default: #101418;
-		--nino-on-default: #fcfcfc;
-		--nino-on-default-muted: #7c7e7f;
-		--nino-default-link: #3f83b3;
-		--nino-default-border: #606262;
-		--nino-default-focus: #00679b;
-		--nino-default-hover: #1c2125;
-		--nino-default-active: #2b2f34;
-		--nino-default-disabled: #4d4e4e;
-		--nino-default-shadow: rgb(0 0 0 / 55%);
-		--nino-alt: #1a1f22;
-		--nino-on-alt: #fcfcfc;
-		--nino-on-alt-muted: #848587;
-		--nino-alt-link: #478cbb;
-		--nino-alt-border: #676969;
-		--nino-alt-focus: #046fa6;
-		--nino-alt-hover: #272c2f;
-		--nino-alt-active: #363c3f;
-		--nino-alt-disabled: #545555;
-		--nino-alt-shadow: rgb(0 0 0 / 55%);
-		--nino-tint: #04253b;
-		--nino-on-tint: #fcfcfc;
-		--nino-on-tint-muted: #818b92;
-		--nino-tint-link: #4c90bf;
-		--nino-tint-border: #676d72;
-		--nino-tint-focus: #0d72aa;
-		--nino-tint-hover: #13334a;
-		--nino-tint-active: #23435b;
-		--nino-tint-disabled: #54595c;
-		--nino-tint-shadow: rgb(0 0 0 / 55%);
-		--nino-dark: #2a2f32;
-		--nino-on-dark: #fcfcfc;
-		--nino-on-dark-muted: #939597;
-		--nino-dark-link: #589ccc;
-		--nino-dark-border: #757777;
-		--nino-dark-focus: #207db5;
-		--nino-dark-hover: #383d40;
-		--nino-dark-active: #484d50;
-		--nino-dark-disabled: #616262;
-		--nino-dark-shadow: rgb(0 0 0 / 55%);
-		--nino-black: #05080b;
-		--nino-on-black: #fcfcfc;
-		--nino-on-black-muted: #767879;
-		--nino-black-link: #397eac;
-		--nino-black-border: #5b5d5d;
-		--nino-black-focus: #006294;
-		--nino-black-hover: #0f1417;
-		--nino-black-active: #1d2225;
-		--nino-black-disabled: #484949;
-		--nino-black-shadow: rgb(0 0 0 / 55%);
-		--nino-brand: #4faae8;
-		--nino-on-brand: #0b0e10;
-		--nino-on-brand-muted: #273b4b;
-		--nino-brand-link: #003d5f;
-		--nino-brand-border: #475560;
-		--nino-brand-focus: #005887;
-		--nino-brand-hover: #409cd9;
-		--nino-brand-active: #2d8cc9;
-		--nino-brand-disabled: #5e6972;
-		--nino-brand-shadow: rgb(0 0 0 / 55%);
-		--nino-brand-safe: #1d81bc;
-		--nino-on-brand-safe: #0b0e10;
-		--nino-on-brand-safe-muted: #00101d;
-		--nino-brand-safe-link: #00101e;
-		--nino-brand-safe-border: #26333d;
-		--nino-brand-safe-focus: #003554;
-		--nino-brand-safe-hover: #0073ad;
-		--nino-brand-safe-active: #006498;
-		--nino-brand-safe-disabled: #3d474f;
-		--nino-brand-safe-shadow: rgb(0 0 0 / 55%);
-		--nino-accent: #4faae8;
-		--nino-on-accent: #0b0e10;
-		--nino-on-accent-muted: #273b4b;
-		--nino-accent-link: #003d5f;
-		--nino-accent-border: #475560;
-		--nino-accent-focus: #005887;
-		--nino-accent-hover: #409cd9;
-		--nino-accent-active: #2d8cc9;
-		--nino-accent-disabled: #5e6972;
-		--nino-accent-shadow: rgb(0 0 0 / 55%);
-		--nino-accent-safe: #1d81bc;
-		--nino-on-accent-safe: #0b0e10;
-		--nino-on-accent-safe-muted: #00101d;
-		--nino-accent-safe-link: #00101e;
-		--nino-accent-safe-border: #26333d;
-		--nino-accent-safe-focus: #003554;
-		--nino-accent-safe-hover: #0073ad;
-		--nino-accent-safe-active: #006498;
-		--nino-accent-safe-disabled: #3d474f;
-		--nino-accent-safe-shadow: rgb(0 0 0 / 55%);
-		--nino-success: #488666;
-		--nino-on-success: #0b0e0c;
-		--nino-on-success-muted: #04100a;
-		--nino-success-link: #001107;
-		--nino-success-border: #2a332e;
-		--nino-success-focus: #003923;
-		--nino-success-hover: #3a7959;
-		--nino-success-active: #2b6a4c;
-		--nino-success-disabled: #404743;
-		--nino-success-shadow: rgb(0 0 0 / 55%);
-		--nino-warning: #b38100;
-		--nino-on-warning: #0f0d0a;
-		--nino-on-warning-muted: #2d220b;
-		--nino-warning-link: #312000;
-		--nino-warning-border: #473e30;
-		--nino-warning-focus: #553b00;
-		--nino-warning-hover: #a27400;
-		--nino-warning-active: #906700;
-		--nino-warning-disabled: #595347;
-		--nino-warning-shadow: rgb(0 0 0 / 55%);
-		--nino-danger: #d54a3d;
-		--nino-on-danger: #100c0c;
-		--nino-on-danger-muted: #210403;
-		--nino-danger-link: #260000;
-		--nino-danger-border: #432b28;
-		--nino-danger-focus: #6a0001;
-		--nino-danger-hover: #c53b2f;
-		--nino-danger-active: #b42820;
-		--nino-danger-disabled: #54413f;
-		--nino-danger-shadow: rgb(0 0 0 / 55%);
-		--nino-scrim: rgb(5 8 11 / 64%);
-	}
-}
-
-:root[data-nino-mode="dark"] {
-	--nino-default: #101418;
-	--nino-on-default: #fcfcfc;
-	--nino-on-default-muted: #7c7e7f;
-	--nino-default-link: #3f83b3;
-	--nino-default-border: #606262;
-	--nino-default-focus: #00679b;
-	--nino-default-hover: #1c2125;
-	--nino-default-active: #2b2f34;
-	--nino-default-disabled: #4d4e4e;
-	--nino-default-shadow: rgb(0 0 0 / 55%);
-	--nino-alt: #1a1f22;
-	--nino-on-alt: #fcfcfc;
-	--nino-on-alt-muted: #848587;
-	--nino-alt-link: #478cbb;
-	--nino-alt-border: #676969;
-	--nino-alt-focus: #046fa6;
-	--nino-alt-hover: #272c2f;
-	--nino-alt-active: #363c3f;
-	--nino-alt-disabled: #545555;
-	--nino-alt-shadow: rgb(0 0 0 / 55%);
-	--nino-tint: #04253b;
-	--nino-on-tint: #fcfcfc;
-	--nino-on-tint-muted: #818b92;
-	--nino-tint-link: #4c90bf;
-	--nino-tint-border: #676d72;
-	--nino-tint-focus: #0d72aa;
-	--nino-tint-hover: #13334a;
-	--nino-tint-active: #23435b;
-	--nino-tint-disabled: #54595c;
-	--nino-tint-shadow: rgb(0 0 0 / 55%);
-	--nino-dark: #2a2f32;
-	--nino-on-dark: #fcfcfc;
-	--nino-on-dark-muted: #939597;
-	--nino-dark-link: #589ccc;
-	--nino-dark-border: #757777;
-	--nino-dark-focus: #207db5;
-	--nino-dark-hover: #383d40;
-	--nino-dark-active: #484d50;
-	--nino-dark-disabled: #616262;
-	--nino-dark-shadow: rgb(0 0 0 / 55%);
-	--nino-black: #05080b;
-	--nino-on-black: #fcfcfc;
-	--nino-on-black-muted: #767879;
-	--nino-black-link: #397eac;
-	--nino-black-border: #5b5d5d;
-	--nino-black-focus: #006294;
-	--nino-black-hover: #0f1417;
-	--nino-black-active: #1d2225;
-	--nino-black-disabled: #484949;
-	--nino-black-shadow: rgb(0 0 0 / 55%);
-	--nino-brand: #4faae8;
-	--nino-on-brand: #0b0e10;
-	--nino-on-brand-muted: #273b4b;
-	--nino-brand-link: #003d5f;
-	--nino-brand-border: #475560;
-	--nino-brand-focus: #005887;
-	--nino-brand-hover: #409cd9;
-	--nino-brand-active: #2d8cc9;
-	--nino-brand-disabled: #5e6972;
-	--nino-brand-shadow: rgb(0 0 0 / 55%);
-	--nino-brand-safe: #1d81bc;
-	--nino-on-brand-safe: #0b0e10;
-	--nino-on-brand-safe-muted: #00101d;
-	--nino-brand-safe-link: #00101e;
-	--nino-brand-safe-border: #26333d;
-	--nino-brand-safe-focus: #003554;
-	--nino-brand-safe-hover: #0073ad;
-	--nino-brand-safe-active: #006498;
-	--nino-brand-safe-disabled: #3d474f;
-	--nino-brand-safe-shadow: rgb(0 0 0 / 55%);
-	--nino-accent: #4faae8;
-	--nino-on-accent: #0b0e10;
-	--nino-on-accent-muted: #273b4b;
-	--nino-accent-link: #003d5f;
-	--nino-accent-border: #475560;
-	--nino-accent-focus: #005887;
-	--nino-accent-hover: #409cd9;
-	--nino-accent-active: #2d8cc9;
-	--nino-accent-disabled: #5e6972;
-	--nino-accent-shadow: rgb(0 0 0 / 55%);
-	--nino-accent-safe: #1d81bc;
-	--nino-on-accent-safe: #0b0e10;
-	--nino-on-accent-safe-muted: #00101d;
-	--nino-accent-safe-link: #00101e;
-	--nino-accent-safe-border: #26333d;
-	--nino-accent-safe-focus: #003554;
-	--nino-accent-safe-hover: #0073ad;
-	--nino-accent-safe-active: #006498;
-	--nino-accent-safe-disabled: #3d474f;
-	--nino-accent-safe-shadow: rgb(0 0 0 / 55%);
-	--nino-success: #488666;
-	--nino-on-success: #0b0e0c;
-	--nino-on-success-muted: #04100a;
-	--nino-success-link: #001107;
-	--nino-success-border: #2a332e;
-	--nino-success-focus: #003923;
-	--nino-success-hover: #3a7959;
-	--nino-success-active: #2b6a4c;
-	--nino-success-disabled: #404743;
-	--nino-success-shadow: rgb(0 0 0 / 55%);
-	--nino-warning: #b38100;
-	--nino-on-warning: #0f0d0a;
-	--nino-on-warning-muted: #2d220b;
-	--nino-warning-link: #312000;
-	--nino-warning-border: #473e30;
-	--nino-warning-focus: #553b00;
-	--nino-warning-hover: #a27400;
-	--nino-warning-active: #906700;
-	--nino-warning-disabled: #595347;
-	--nino-warning-shadow: rgb(0 0 0 / 55%);
-	--nino-danger: #d54a3d;
-	--nino-on-danger: #100c0c;
-	--nino-on-danger-muted: #210403;
-	--nino-danger-link: #260000;
-	--nino-danger-border: #432b28;
-	--nino-danger-focus: #6a0001;
-	--nino-danger-hover: #c53b2f;
-	--nino-danger-active: #b42820;
-	--nino-danger-disabled: #54413f;
-	--nino-danger-shadow: rgb(0 0 0 / 55%);
-	--nino-scrim: rgb(5 8 11 / 64%);
 }
 
 /* ---- 2. the theme - which token goes in which role ---- */
-@font-face {
-	font-family: 'Text';
-	font-style: normal;
-	font-weight: normal;
-	font-display: swap;
-	src: local('Text Regular'), url('[[/nino/public]]/fonts/source-sans-3-regular.woff2') format('woff2');
-}
-@font-face {
-	font-family: 'Text';
-	font-style: normal;
-	font-weight: bold;
-	font-display: swap;
-	src: local('Text Bold'), url('[[/nino/public]]/fonts/source-sans-3-bold.woff2') format('woff2');
-}
-@font-face {
-	font-family: 'Title';
-	font-style: normal;
-	font-weight: bold;
-	font-display: swap;
-	src: local('Title Bold'), url('[[/nino/public]]/fonts/league-spartan.woff2') format('woff2');
-}
 
 /*	Basis.
 
@@ -475,28 +153,31 @@
 	every size straight off the framework scale.
 
 	Colours here are assignments, never values. The --nino-* tokens this file
-	reads are section 1's, compiled once with every background/text pair
-	measured and frozen there; what this section decides is which surface each
-	role sits on. A stylesheet that declares the tokens again - the palette the
-	Design feature compiles over this layer, say - recolours the site, and
-	nothing below has to change.
+	reads are section 1's, and the palette the Design feature compiles over
+	them solves every background/text pair against a contrast target; what
+	this section decides is which surface each role sits on. A stylesheet that
+	declares the tokens again recolours the site, and nothing below has to
+	change.
 
 	Three rules follow. Never write a literal colour into a role - a hex here
 	is a pair nobody measured. Never pair across surfaces, because
 	--color-section-alt-text belongs to --nino-on-alt and to nothing else. And
-	never put text on --nino-brand or --nino-accent: those are the two brand
-	colours exactly as they were picked, so they are the surfaces with no
-	contrast promise attached - --nino-brand-safe and --nino-accent-safe are the
-	same two colours made safe, and those are what carry ink.	*/
+	never put text on --nino-brand: it is the first brand colour exactly as it
+	was picked, so it is the surface with no contrast promise attached -
+	--nino-brand-safe and --nino-accent-safe are the two brand colours made
+	safe, and those are what carry ink. The second colour as it was picked is
+	no surface at all: nothing in Nino.css reads it.	*/
 :root {
 
-	/* Brand. Four roles from two questions - is it the first brand colour or the
-	   second, and is it the one that was picked or the one text survives on.
-	   --color-secondary is the primary exactly as it was picked and is only ever
-	   shown; --color-primary is that same colour with its lightness solved until
-	   the text on it clears the contrast target, and is what every button and
-	   filled surface uses. --color-brand-alt is the second colour playing the
-	   same part as --color-primary: filled with, written on, and safe.
+	/* Brand. Three roles from two questions - is it the first brand colour or the
+	   second, and is it the one that was picked or the one text survives on -
+	   and the second colour as it was picked is left out, because nothing may be
+	   written on it. --color-secondary is the primary exactly as it was picked
+	   and is only ever shown; --color-primary is that same colour with its
+	   lightness solved until the text on it clears the contrast target, and is
+	   what every button and filled surface uses. --color-brand-alt is the second
+	   colour playing the same part as --color-primary: filled with, written on,
+	   and safe.
 
 	   The palette used to publish one safe surface for whichever of the two
 	   colours had been settled on, so setting a Secondary quietly moved every
@@ -543,6 +224,12 @@
 	--color-border: var(--nino-default-border);
 	--color-header-bg: var(--nino-default);
 
+	/* The border of a ground, --color-border-<ground>, is not assigned here:
+	   Nino.css hands every ground the border of the page, as the delivered
+	   theme.css does, so a project that applies the defaults draws every
+	   line it drew. The surfaces solve a border of their own
+	   (--nino-<surface>-border) for the day both files assign it */
+
 	/* The scrim over a cover image. The palette solves it against the worst
 	   photograph it could be asked to cover - a white one - so this is the
 	   lightest scrim that still carries the ink on top of it, and the most
@@ -555,7 +242,6 @@
 	--color-footer-text-main: var(--nino-on-black-muted);
 	--color-footer-bg-legal: var(--nino-black);
 	--color-footer-text-legal: var(--nino-on-black-muted);
-	--color-footer-text: var(--nino-on-black-muted);
 
 	/* Sections - the four grounds a page alternates between */
 	--color-section-default-bg: var(--nino-default);
@@ -585,29 +271,19 @@
 	--color-warning: var(--nino-warning);
 	--color-warning-text: var(--nino-on-warning);
 
-	/* Typefaces are the one thing a theme cannot be handed: a webfont is a
-	   file this unit ships, not a value anything can generate */
-	--fontfamily-text: 'Text', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-	--fontfamily-title: 'Title', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-	--fontfamily-subtitle: 'Text', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-	--fontsize-small: .75em;
-	--fontsize-big: 1.25em;
-	--fontsize-btn: 1rem;
+	/* The type is the compiler's: the five font roles (--fontfamily-<role>,
+	   --font-<role>-weight, -transform and -size) and the @font-face rules
+	   behind them are written from the setup's fonts, a section of their own
+	   before this one. A webface is a file this unit ships, not a value
+	   anything can generate */
 
 	/* Sizes are assignments too. The raster is section 1's: the framework's
 	   own sizes, frozen there like the colours, where a hand-tuned block here
-	   used to spell them out one number at a time. The wide-screen half of the
-	   type scale is the raster's own media query; there is nothing to repeat
-	   for it here */
+	   used to spell them out one number at a time. The type scale is not in
+	   it: Nino.css derives --text-1 to --text-6 from the size of the text
+	   role, so a fixed size in the fonts table moves the whole ladder */
 	--base-size: var(--nino-base-size);
 	--line-height: var(--nino-line-height);
-
-	--text-1: var(--nino-text-1);
-	--text-2: var(--nino-text-2);
-	--text-3: var(--nino-text-3);
-	--text-4: var(--nino-text-4);
-	--text-5: var(--nino-text-5);
-	--text-6: var(--nino-text-6);
 
 	--space-1: var(--nino-space-1);
 	--space-2: var(--nino-space-2);
@@ -629,9 +305,3 @@
 	--article-img-max-height: 20vh;
 	--grid-max-width: var(--nino-measure);
 }
-
-
-/*	Everything below styles the two frame templates the base unit delivers
-	beside this file - frame-header.tpl and frame-footer.tpl. Replacing a
-	frame means replacing its template and this section together: neither
-	half is any use without the other.	*/

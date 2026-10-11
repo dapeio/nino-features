@@ -38,12 +38,17 @@ namespace Nino\Modules\Design {
 	 *										the size raster, which the library's part sets and their
 	 *										knobs now own (see Setup::KNOBS).
 	 *
-	 *										What it writes is what library/base.css already declares,
-	 *										surface for surface. base.css is the framework's palette
-	 *										as a static default, so a project that never opens the
-	 *										Colours tab keeps exactly the look it had, and one that
-	 *										does gets the same tokens with solved values - one block
-	 *										further down the same cascade.
+	 *										Eight values per surface - bg, on, on-muted, link,
+	 *										border, focus, disabled and shadow - and the scrim over
+	 *										a cover photograph. What it writes is what
+	 *										library/base.css already declares, surface for surface.
+	 *										base.css is the framework's palette as a static default,
+	 *										so a project that never opens the Colours tab keeps
+	 *										exactly the look it had, and one that does gets the same
+	 *										tokens with solved values - one block further down the
+	 *										same cascade. The mode decides how many blocks that is:
+	 *										the light and the dark one chosen by the visitor's
+	 *										system, or one of them alone.
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -57,22 +62,24 @@ namespace Nino\Modules\Design {
 			tint is the fifth ground: the page ground carrying the brand hue
 			rather than a near-grey.
 
-			Then the brand, as four roles rather than two. Every one of them is
-			one colour answering one of two questions - is it the brand or the
-			second colour, and is it the one that was picked or the one text
-			survives on:
+			Then the brand, as three roles. The first colour as it was picked
+			(brand) is never written on; of each of the two colours there is also
+			the one text survives on, with the lightness solved until it does:
 
 				brand         the primary exactly as picked, never written on
 				brand-safe    that same colour, lightness solved until it is
-				accent        the second colour exactly as picked or derived
-				accent-safe   that same colour, made safe the same way
+				accent-safe   the second colour, made safe the same way
 
 			Two used to do this work, and the pair broke the moment a Secondary
 			colour was set: the safe surface became the *accent* made safe, so a
 			theme's buttons quietly stopped being the brand and there was no
-			contrast-safe brand colour left anywhere in the palette. Four roles
-			is what it takes for "brand" and "second colour" to both exist and
-			both be usable.
+			contrast-safe brand colour left anywhere in the palette. The second
+			colour as it was picked is not a surface any more: no role of Nino.css
+			reads it - what is filled with and written on is accent-safe - and
+			what the panel shows of it is accent(). So a look that wants the
+			unsolved second colour has none to reach for, which is the point: a
+			colour nothing may be written on is a colour nothing should be built
+			out of.
 
 			The three status surfaces are the same idea applied to meaning
 			rather than brand - an alert is a surface with text on it like any
@@ -80,7 +87,7 @@ namespace Nino\Modules\Design {
 			promise.	*/
 		public const array SURFACES = [
 			'default', 'alt', 'tint', 'dark', 'black',
-			'brand', 'brand-safe', 'accent', 'accent-safe',
+			'brand', 'brand-safe', 'accent-safe',
 			'success', 'warning', 'danger',
 		];
 
@@ -123,8 +130,9 @@ namespace Nino\Modules\Design {
 			carries this number for the latter only: they read "saved, not
 			applied" once and apply again, and the others are not asked to.
 			Raise it whenever a table changes the sheet a non-default knob
-			produces. */
-		public const int REVISION = 1;
+			produces. 2: the shadow of a surface stopped following Depth, so a
+			project with Depth off 2 compiles another density than it did. */
+		public const int REVISION = 2;
 
 		/*	The knobs: where each starts and what its positions are called. The
 			panel draws whatever choices() hands it, so a knob added here needs no
@@ -167,6 +175,16 @@ namespace Nino\Modules\Design {
 			],
 
 		];
+
+		/*	The mode is a choice of another kind. The five knobs above are
+			positions on a track, a number each; this one says which of the two
+			palettes a visitor sees, and is kept as the word it is: auto follows
+			the visitor's system the way the framework always did (the light
+			palette, and the dark one under a media query and under the attribute
+			the mode switch sets), light and dark each write their palette alone.
+			The first of the three is the default, so it is the one choices()
+			publishes first.	*/
+		public const array MODES = [ 'auto', 'light', 'dark' ];
 
 		// Measured off the colours Nino ships today rather than picked by eye,
 		// so the generated status hues stay recognisably the project's own
@@ -289,16 +307,17 @@ namespace Nino\Modules\Design {
 		private const array TINT_L = [ 'light' => 0.955, 'dark' => 0.255 ];
 		private const float TINT_C = 0.055;
 
-		/*	Depth: how far a panel separates from the page. Three things say
-			that together, so one knob moves all three - the distance the alt
-			surface keeps from the ground, how firmly a border draws, and how
-			densely a shadow falls.
+		/*	Depth: how far a panel separates from the page. Two things say that
+			together, so one knob moves both - the distance the alt surface keeps
+			from the ground, and how firmly a border draws. How much shadow a card
+			or a block throws is the content template's knob and nothing of the
+			palette's: the shadow of a surface is one alpha per mode, and where it
+			is used is for the template to say.
 
 			The border target only ever rises. A border is load-bearing under
 			SC 1.4.11 wherever it identifies a control, and Nino.css spends one
 			--color-border on cards and form fields alike, so the floor stays
-			3:1 and 'Flat' says what it has to say through the surface and the
-			shadow instead.
+			3:1 and 'Flat' says what it has to say through the surface instead.
 
 			Flat keeps a trace of the band (0.008 is about 1.02:1 against the
 			page) and no more: with none at all the alternate sections
@@ -313,10 +332,12 @@ namespace Nino\Modules\Design {
 			'dark'	=> [ 1 => 0.008, 2 => 0.045, 3 => 0.13 ],
 		];
 		private const array DEPTH_BORDER = [ 1 => 3.0, 2 => 3.0, 3 => 7.0 ];
-		private const array DEPTH_SHADOW = [
-			'light'	=> [ 1 => 0.0, 2 => 0.12, 3 => 0.34 ],
-			'dark'	=> [ 1 => 0.15, 2 => 0.55, 3 => 0.95 ],
-		];
+
+		/*	Shadows are why a light-mode design collapses in dark mode: black at
+			12% over a dark surface is invisible, so the dark palette casts denser
+			instead of reusing the light value. One alpha per mode, whatever the
+			depth	*/
+		private const array SHADOW = [ 'light' => 0.12, 'dark' => 0.55 ];
 
 		/*	The weakest the framework ever paints the ink it puts on a scrim.
 			.nino-section-subtitle - the second line of every hero - carries
@@ -355,11 +376,15 @@ namespace Nino\Modules\Design {
 		 *	and a knob that publishes four names and three positions would be a
 		 *	knob with a name nobody can pick.
 		 *
+		 *	The mode is the last of them, and the one whose positions are words:
+		 *	its names are the values the setup keeps, and its default is one of
+		 *	them rather than a number.
+		 *
 		 *	@return 	array									knob => { default, steps }
 		 */
 		public static function choices(): array {
 
-			return self::KNOBS;
+			return self::KNOBS + [ 'mode' => [ 'default' => self::MODES[0], 'steps' => self::MODES ] ];
 		}
 
 		/**
@@ -383,7 +408,7 @@ namespace Nino\Modules\Design {
 		 *
 		 *	@param		array			$input				Raw posted settings
 		 *
-		 *	@return 	array									primary, secondary and one step per knob
+		 *	@return 	array									primary, secondary, one step per knob and the mode
 		 */
 		public static function normalize( array $input ): array {
 
@@ -398,7 +423,22 @@ namespace Nino\Modules\Design {
 			foreach( array_keys( self::KNOBS ) as $knob )
 				$out[$knob] = self::step( $input[$knob] ?? null, $knob );
 
+			$out['mode'] = self::mode( $input['mode'] ?? null );
+
 			return $out;
+		}
+
+		/**
+		 *	One posted mode: one of MODES, else auto. A word that is none of the
+		 *	three - or no word at all, an array say - is the default for the same
+		 *	reason a position outside its range is
+		 *
+		 *	@param		mixed			$value				Straight off the wire
+		 *
+		 *	@return 	string
+		 */
+		private static function mode( mixed $value ): string {
+			return is_string( $value ) === true && in_array( $value, self::MODES, true ) === true ? $value : self::MODES[0];
 		}
 
 		/**
@@ -454,7 +494,7 @@ namespace Nino\Modules\Design {
 		 *	@param		array			$settings			Design settings, normalized here if they are not already
 		 *	@param		string		$mode					'light' or 'dark'
 		 *
-		 *	@return 	array									surface => [ bg, on, on-muted, link, border, focus, hover, active, disabled, shadow ]
+		 *	@return 	array									surface => [ bg, on, on-muted, link, border, focus, disabled, shadow ]
 		 */
 		public static function palette( array $settings, string $mode = 'light' ): array {
 
@@ -496,40 +536,25 @@ namespace Nino\Modules\Design {
 			$tint = self::hex( self::TINT_L[$mode], $tintC, $primaryH );
 			$palette['tint'] = self::pair( $tint, $primaryH, $tintC, $settings, $mode );
 
-			/*	The second brand colour, before anything is done to it. An
-				explicit Secondary is that colour exactly; without one it is the
-				brand's own lightness and chroma carried round the wheel to
-				where Harmony puts it, which is what makes Monochrome mean "the
-				accent is the brand" rather than "there is no accent".	*/
-			$secondary = $settings['secondary'];
-
-			if( $secondary !== '' ) {
-				[ $secondL, $secondC, $secondH ] = self::oklch( $secondary );
-			} else {
-				$secondL = null;
-				$secondC = $primaryC;
-				$secondH = $primaryH + deg2rad( self::HARMONY[$settings['harmony']] );
-			}
-
-			$accent = $secondL === null ? self::hex( self::oklch( $primary )[0], $secondC, $secondH ) : $secondary;
-
-			/*	brand and accent are not solved values: they are the colours the
-				picker returned (or the wheel derived), byte for byte, in light
-				mode and in dark. Nothing here moves them - not the Saturation
-				knob, not the contrast solver, not the mode. An operator who
-				types their corporate hex has to find that hex in the
-				stylesheet, or the picker is lying about what it does.
+			/*	The second brand colour, before anything is done to it: the hue and
+				the chroma it is made safe with. brand is not a solved value: it is
+				the colour the picker returned, byte for byte, in light mode and in
+				dark. Nothing here moves it - not the Saturation knob, not the
+				contrast solver, not the mode. An operator who types their
+				corporate hex has to find that hex in the stylesheet, or the picker
+				is lying about what it does.
 
 				What that costs is the one promise every other surface keeps:
 				there is no lightness left to solve with, so --nino-on-brand is
 				only the better of the two inks, not a guaranteed ratio. A brand
 				colour sitting near the middle of the lightness range clears
-				neither ink by much. That is a real limit, and it is why the two
+				neither ink by much. That is a real limit, and it is why the
 				-safe roles exist rather than something a theme works around.	*/
-			$palette['brand']	= self::pair( $primary, $primaryH, $primaryC, $settings, $mode );
-			$palette['accent']	= self::pair( $accent, $secondH, $secondC, $settings, $mode );
+			[ , $secondC, $secondH ] = self::second( $settings );
 
-			/*	...and the same two colours made safe: hue and chroma kept, the
+			$palette['brand'] = self::pair( $primary, $primaryH, $primaryC, $settings, $mode );
+
+			/*	The same two colours made safe: hue and chroma kept, the
 				lightness solved until text on top clears the target. These are
 				the surfaces a theme reaches for the moment something has to be
 				legible on one - buttons, badges, filled sections - which is why
@@ -649,21 +674,49 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
+		 *	The second colour before anything is done to it: the colour itself and
+		 *	its chroma and hue in OKLCH.
+		 *
+		 *	An explicit Secondary is that colour exactly; without one it is the
+		 *	brand's own lightness and chroma carried round the wheel to where
+		 *	Harmony puts it, which is what makes Monochrome mean "the second colour
+		 *	is the brand" rather than "there is no second colour".
+		 *
+		 *	@param		array			$settings			Normalized design settings
+		 *
+		 *	@return 	array									[ '#rrggbb', chroma, hue in radians ]
+		 */
+		private static function second( array $settings ): array {
+
+			$secondary = $settings['secondary'];
+
+			if( $secondary !== '' ) {
+				[ , $chroma, $hue ] = self::oklch( $secondary );
+				return [ $secondary, $chroma, $hue ];
+			}
+
+			[ $lightness, $chroma, $hue ] = self::oklch( $settings['primary'] );
+			$hue += deg2rad( self::HARMONY[$settings['harmony']] );
+
+			return [ self::hex( $lightness, $chroma, $hue ), $chroma, $hue ];
+		}
+
+		/**
 		 *	The second colour as the palette uses it: the hex somebody named, or
 		 *	- where nobody did - the one Harmony carried round the wheel.
 		 *
 		 *	Published so the panel can show it. A Secondary nobody set is not a
 		 *	missing value, it is a derived one, and a swatch standing for it has
 		 *	to show the colour that will actually be compiled rather than the
-		 *	primary standing in for it. Light mode, because brand and accent are
-		 *	the two surfaces that are the same byte in both.
+		 *	primary standing in for it. The same in both modes: it is the colour
+		 *	as it was picked, and no mode moves that.
 		 *
 		 *	@param		array			$settings			Design settings
 		 *
 		 *	@return 	string								'#rrggbb'
 		 */
 		public static function accent( array $settings ): string {
-			return (string) self::palette( $settings, 'light' )['accent']['bg'];
+			return self::second( self::normalize( $settings ) )[0];
 		}
 
 		/**
@@ -746,28 +799,23 @@ namespace Nino\Modules\Design {
 				// firmly but never a ring less so - and carries full chroma so
 				// it never reads as just another border
 				'focus'		=> self::solve( $hue, max( $chroma, self::FOCUS_C[$saturation] ), $bg, self::TARGET_UI, $darker ),
-				// Hover and active are nudges, not contrast promises - they only
-				// have to be visible next to the resting surface, and active has
-				// to be visibly past hover
-				'hover'		=> self::nudge( $bg, self::luminance( $bg ) > 0.18, 1.0 ),
-				'active'		=> self::nudge( $bg, self::luminance( $bg ) > 0.18, 2.1 ),
 				// Disabled deliberately fails the text target: it is the one
 				// state that must not look actionable. Held at 2.2:1 - readable
 				// enough to identify, clearly not offered.
 				'disabled'	=> self::solve( $hue, $chroma * 0.15, $bg, 2.2, $darker ),
-				// Shadows are why a light-mode design collapses in dark mode:
-				// black at 12% over a dark surface is invisible, so the dark
-				// palette casts denser instead of reusing the light value
-				'shadow'		=> self::shadow( $settings['depth'], $mode ),
+				// The colour a shadow is drawn in. How much of one a card throws is
+				// not the palette's to say
+				'shadow'		=> self::shadow( $mode ),
 			];
 		}
 
 		/**
-		 *	One surface's shadow, at the density Depth asks for.
+		 *	One surface's shadow: the same alpha on every surface and at every
+		 *	Depth, denser in the dark palette (see SHADOW).
 		 */
-		private static function shadow( int $depth, string $mode ): string {
+		private static function shadow( string $mode ): string {
 
-			$alpha = (int) round( self::DEPTH_SHADOW[$mode][$depth] * 100 );
+			$alpha = (int) round( self::SHADOW[$mode] * 100 );
 
 			return $mode === 'dark' ? 'rgb(0 0 0 / '. $alpha. '%)' : 'rgb(15 23 42 / '. $alpha. '%)';
 		}
@@ -1057,31 +1105,35 @@ namespace Nino\Modules\Design {
 			return self::hex( $darker === true ? $lo : $hi, $chroma, $hue );
 		}
 
-		private static function nudge( string $hex, bool $lighter, float $steps ): string {
-			[ $l, $c, $h ] = self::oklch( $hex );
-			return self::hex( max( 0.0, min( 1.0, $l + ( $lighter ? -0.045 : 0.055 ) * $steps ) ), $c, $h );
-		}
-
 		/**
-		 *	The palette as css, in the shape library/base.css already declares
-		 *	it: the light block, then the dark one twice.
+		 *	The palette as css, in the shape the mode asks for.
 		 *
-		 *	Twice because the reader has three states and not two. An explicit
-		 *	choice stamps data-nino-mode on the root element, and the default
-		 *	"follow the system" setting stamps nothing at all - so the media
-		 *	query has to carry the unstamped case, while the attribute rule wins
-		 *	in both directions once somebody has chosen.
+		 *	Auto is the shape library/base.css declared before there was a mode:
+		 *	the light block, then the dark one twice. Twice because the reader has
+		 *	three states and not two. An explicit choice stamps data-nino-mode on
+		 *	the root element, and the default "follow the system" setting stamps
+		 *	nothing at all - so the media query has to carry the unstamped case,
+		 *	while the attribute rule wins in both directions once somebody has
+		 *	chosen.
+		 *
+		 *	Light and dark write their palette alone, in :root, with no media query
+		 *	and no attribute: the site is that palette whatever the visitor's system
+		 *	says. data-nino-mode then finds nothing to switch to, which is what
+		 *	"only light" and "only dark" mean.
 		 *
 		 *	No color-scheme here: base.css sets it, this block only ever
 		 *	replaces values base.css already published.
 		 *
 		 *	@param		array			$settings			Colour settings, normalized here if they are not
 		 *
-		 *	@return 	string									The three blocks, with no file header of their own
+		 *	@return 	string									The blocks, with no file header of their own
 		 */
 		public static function css( array $settings ): string {
 
 			$settings = self::normalize( $settings );
+
+			if( $settings['mode'] !== 'auto' )
+				return ":root {\n". self::block( $settings, $settings['mode'] ). '}';
 
 			return ":root {\n". self::block( $settings, 'light' ). "}\n"
 				. "\n@media (prefers-color-scheme: dark) {\n\t:root:not([data-nino-mode=\"light\"]) {\n"

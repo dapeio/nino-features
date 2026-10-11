@@ -14,9 +14,10 @@ namespace Nino\Modules\Design {
 	/**
 	 *	Nino							A compact filesystembased php framework
 	 *	Compiler					Turns a setup into the one stylesheet a project's look is,
-	 *										in the order the cascade needs it: the token and role
-	 *										layer the feature ships, the solved palette over it, the
-	 *										root size, the chosen frames, the chosen part sets, and
+	 *										in the order the cascade needs it: the tokens, the solved
+	 *										palette over them, the type, the roles those tokens are
+	 *										assigned to, the root size, the width and the animation of
+	 *										the page, the chosen frames, the three chosen sets, and
 	 *										last the block that says which step of every triple is
 	 *										live.
 	 *
@@ -63,8 +64,27 @@ namespace Nino\Modules\Design {
 			by the same stamp, when they are not ours */
 		public const string FRAME_TARGET = '/templates/frame-%s.tpl';
 
+		/*	The two lines base.css falls into its two halves by: the tokens follow
+			the first, the roles the second. What stands above the first - the
+			file's own description - is for whoever reads the library and does not
+			travel into a project's stylesheet	*/
+		private const array HALVES = [ '/* ---- 1. ', '/* ---- 2. ' ];
+
 		/**
-		 *	The stylesheet a setup produces
+		 *	The stylesheet a setup produces, in twelve numbered sections:
+		 *
+		 *	  1 the tokens          base.css, the --nino-* defaults
+		 *	  2 the palette         solved over them, in the shape the mode asks for
+		 *	  3 the type            @font-face and the five font roles
+		 *	  4 the roles           base.css, which token goes in which role
+		 *	  5 the root size
+		 *	  6 the page            the width, and the animation as a rule on main
+		 *	  7 header, 8 footer    the chosen frames
+		 *	  9 content, 10 buttons, 11 components    the chosen sets
+		 *	  12 the knob positions
+		 *
+		 *	A frame or a set the library does not have is left out and noted, and
+		 *	the sections after it take the numbers that are free.
 		 *
 		 *	@param		array 		$setup				A normalised setup (see Setup::normalize())
 		 *	@param		string		$libraryDir		The feature's library
@@ -77,38 +97,71 @@ namespace Nino\Modules\Design {
 			$libraryDir = rtrim( $libraryDir, '/' );
 			$parts 			= [];
 			$selection 	= [];
+			$answered 	= [];
 
-			// 1. the tokens and the roles they are assigned to. The feature's own
-			// copy: _admin/install/ is gone from a project by the time this runs
+			// 1. and 4. the tokens and the roles they are assigned to, which
+			// base.css holds as its two halves. The feature's own copy:
+			// _admin/install/ is gone from a project by the time this runs
 			$base = $libraryDir. '/base.css';
+			$tokens = '';
+			$roles = '';
 
 			if( is_file( $base ) === false )
 				$notes[] = 'the library has no base.css - the compiled sheet carries no tokens at all';
-			else
-				$parts[] = sprintf( self::SECTION, 1, 'the design tokens and their roles' ). "\n". self::_read( $base );
+			else {
+				$whole = self::_read( $base );
+				$first = strpos( $whole, self::HALVES[0] );
+				$second = strpos( $whole, self::HALVES[1] );
+
+				if( $first === false || $second === false || $second < $first )
+					$notes[] = 'base.css has not the two halves its sections are numbered by - the compiled sheet carries no tokens at all';
+				else {
+					$tokens = self::_after( $whole, $first, $second );
+					$roles = self::_after( $whole, $second, strlen( $whole ) );
+				}
+			}
+
+			if( $tokens !== '' )
+				$parts[] = sprintf( self::SECTION, 1, 'the design tokens' ). "\n". rtrim( $tokens, "\n" ). "\n";
 
 			/*	2. the palette, which is base.css's own surfaces with solved
 				values rather than a second vocabulary beside them. It has to
 				follow base.css and precede everything else: a part set may reach
 				for --nino-alt, and reading a value the block below is about to
 				replace is how a set ends up half in one palette and half in the
-				other */
-			$parts[] = sprintf( self::SECTION, 2, 'the palette' ). "\n"
-				. Colours::css( is_array( $setup['colours'] ?? null ) ? $setup['colours'] : [] );
+				other. One palette only is the browser's colour scheme as well, or
+				its form controls and scrollbars would stay in the other one	*/
+			$colours = is_array( $setup['colours'] ?? null ) ? $setup['colours'] : [];
+			$palette = Colours::css( $colours );
+			$mode = Colours::normalize( $colours )['mode'];
 
-			// 3. the root size, as the percentage pair Nino.css reads
+			if( $mode !== 'auto' )
+				$palette .= "\n\n:root {\n\tcolor-scheme: ". $mode. ";\n}";
+
+			$parts[] = sprintf( self::SECTION, 2, 'the palette' ). "\n". $palette;
+
+			// 3. the type: the faces the roles use, then the roles
+			$parts[] = sprintf( self::SECTION, 3, 'the type' ). "\n"
+				. Fonts::css( is_array( $setup['fonts'] ?? null ) ? $setup['fonts'] : [] );
+
+			if( $roles !== '' )
+				$parts[] = sprintf( self::SECTION, 4, 'the roles' ). "\n". rtrim( $roles, "\n" ). "\n";
+
+			// 5. the root size, as the percentage pair Nino.css reads
 			$size = Setup::SIZES[ $setup['size'] ?? 'm' ] ?? Setup::SIZES['m'];
-			$parts[] = sprintf( self::SECTION, 3, 'the root size' ). "\n"
+			$parts[] = sprintf( self::SECTION, 5, 'the root size' ). "\n"
 				. ":root { --nino-base-size: ". $size[0]. "; }\n"
 				. "@media (min-width: 768px) { :root { --nino-base-size: ". $size[1]. "; } }";
 
-			// 4. the frames, then 5. the sets - both in PARTS order, which is
-			// the order the cascade wants them in
-			$number = 4;
+			$parts[] = sprintf( self::SECTION, 6, 'the page' ). "\n". self::page( $setup );
+
+			// 7. and 8. the frames, then 9. to 11. the sets - both in PARTS
+			// order, which is the order the cascade wants them in
+			$number = 7;
 
 			foreach( Setup::PARTS as $part => $kind ) {
 
-				$set = (string) ( $setup['parts'][$part]['set'] ?? '' );
+				$set = (string) ( $setup['parts'][$part] ?? '' );
 
 				if( $set === '' )
 					continue;
@@ -124,8 +177,11 @@ namespace Nino\Modules\Design {
 				}
 
 				$css 		= self::_read( $file );
-				$knobs 	= Setup::knobs( $libraryDir, $part, $set );
+				$triples = Setup::triples( $libraryDir, $part, $set );
+				$knobs 	= array_keys( $triples );
 				$where 	= [];
+
+				$answered[$part] = $knobs;
 
 				foreach( $knobs as $knob )
 					$where[] = $knob. ' '. Setup::step( $setup, $part, $knob );
@@ -133,19 +189,19 @@ namespace Nino\Modules\Design {
 				$parts[] = sprintf( self::SECTION, $number++, $part. ': '. $set
 					. ( $where === [] ? '' : ' ('. implode( ', ', $where ). ')' ) ). "\n". $css;
 
-				/*	One selection line per knob the set answers to, asking that
-					knob where it stands for this part: the part's own position
-					where it was moved there, else the global one (see
-					Setup::step()).
+				/*	One selection line per triple of every knob the set answers to,
+					asking that knob where it stands: the position of the tab the
+					set belongs to (see Setup::step()).
 
-					Collected across parts rather than written beside each set, so
-					the whole knob state is one readable block - and a project
+					Collected across the tabs rather than written beside each set,
+					so the whole knob state is one readable block - and a project
 					that removed the feature can still move a knob by editing one
 					line */
-				foreach( $knobs as $knob ) {
-					$token = $part. '-'. $knob;
-					$selection[$token] = "\t--". $token. ': var(--'. $token. '--'. Setup::step( $setup, $part, $knob ). ');';
-				}
+				foreach( $triples as $knob => $names )
+					foreach( $names as $name ) {
+						$token = $part. '-'. $name;
+						$selection[$token] = "\t--". $token. ': var(--'. $token. '--'. Setup::step( $setup, $part, $knob ). ');';
+					}
 			}
 
 			if( $selection !== [] ) {
@@ -155,7 +211,56 @@ namespace Nino\Modules\Design {
 
 			$body = implode( "\n\n", $parts ). "\n";
 
-			return self::_header( $setup, $body ). $body;
+			return self::_header( $setup, $body, $answered ). $body;
+		}
+
+		/**
+		 *	What the page asks of Nino.css as a whole: how wide it is, and how its
+		 *	sections arrive.
+		 *
+		 *	A width of 0 is the kernel's own and writes nothing; the two steps to
+		 *	either side write the maximum width of a row and the space between the
+		 *	viewport and it, with the step it takes from 768px. An animation writes
+		 *	one rule on main with the custom properties the kernel sets for the
+		 *	effect, its strength and its speed, which every viewport animation
+		 *	below main inherits - and which the Builder overrides per template at
+		 *	its wrap, and a section with an animation class of its own overrides
+		 *	again. No effect writes nothing, whatever strength or speed stand
+		 *	beside it: they belong to an effect.
+		 *
+		 *	@param		array 		$setup				A normalised setup
+		 *
+		 *	@return 	string								The rules, or a comment saying there are none
+		 */
+		public static function page( array $setup ): string {
+
+			$rules 		= [];
+			$width 		= Setup::WIDTHS[ (int) ( $setup['width'] ?? 0 ) ] ?? null;
+			$motion 	= is_array( $setup['motion'] ?? null ) === true ? $setup['motion'] : [];
+			$effect 	= (string) ( $motion['effect'] ?? '' );
+
+			if( $width !== null ) {
+				$rules[] = ":root { --grid-max-width: ". $width[0]. "; --grid-gutter: ". $width[1]. "; }";
+				$rules[] = "@media (min-width: 768px) { :root { --grid-gutter: ". $width[2]. "; } }";
+			}
+
+			if( isset( Setup::EFFECTS[$effect] ) === true ) {
+
+				$declarations = Setup::EFFECTS[$effect][ (string) ( $motion['strength'] ?? '' ) ] ?? Setup::EFFECTS[$effect]['medium'];
+				$speed = (string) ( $motion['speed'] ?? '' );
+
+				if( isset( Setup::SPEEDS[$speed] ) === true )
+					$declarations['--vpa-duration'] = Setup::SPEEDS[$speed];
+
+				$lines = [];
+
+				foreach( $declarations as $property => $value )
+					$lines[] = "\t". $property. ': '. $value. ';';
+
+				$rules[] = "main {\n". implode( "\n", $lines ). "\n}";
+			}
+
+			return $rules === [] ? '/* a row of the width Nino.css gives it, and the animation Nino.css has */' : implode( "\n", $rules );
 		}
 
 		/**
@@ -330,34 +435,49 @@ namespace Nino\Modules\Design {
 		 *
 		 *	@param		array 		$setup				A normalised setup
 		 *	@param		string		$body					Everything below the header
+		 *	@param		array 		$answered			The knobs each chosen set answers to, by part
 		 *
 		 *	@return 	string
 		 */
-		private static function _header( array $setup, string $body ): string {
+		private static function _header( array $setup, string $body, array $answered ): string {
 
 			$lines = [];
 
 			foreach( Setup::PARTS as $part => $kind ) {
 
-				$set 		= (string) ( $setup['parts'][$part]['set'] ?? '' );
+				$set 		= (string) ( $setup['parts'][$part] ?? '' );
 				$moved 	= [];
 
-				// Only what this part was moved at on its own: the global
-				// positions are one line of their own below
-				foreach( Setup::KNOBS as $knob )
-					if( isset( $setup['parts'][$part]['knobs'][$knob] ) === true )
-						$moved[] = $knob. ' '. $setup['parts'][$part]['knobs'][$knob];
+				// Only the knobs the set answers to that stand off the middle: the
+				// rest is the template as it is
+				foreach( $answered[$part] ?? [] as $knob )
+					if( Setup::step( $setup, $part, $knob ) !== 'default' )
+						$moved[] = $knob. ' '. Setup::step( $setup, $part, $knob );
 
-				$lines[] = ' *   '. str_pad( $part, 9 ). ( $set !== '' ? $set : '-' )
+				$lines[] = ' *   '. str_pad( $part, 11 ). ( $set !== '' ? $set : '-' )
 					. ( $moved === [] ? '' : '  ('. implode( ', ', $moved ). ')' );
 			}
 
-			$global = [];
+			$lines[] = ' *';
 
-			foreach( Setup::KNOBS as $knob )
-				$global[] = $knob. ' '. Setup::step( $setup, '', $knob );
+			$families = Fonts::families();
 
-			$lines[] = ' *   '. str_pad( 'knobs', 9 ). implode( ', ', $global );
+			foreach( Fonts::ROLES as $role ) {
+
+				$chosen = (array) ( $setup['fonts'][$role] ?? Fonts::DEFAULTS[$role] );
+				$family = (string) ( $chosen['family'] ?? '' );
+				$size 	= (string) ( $chosen['size'] ?? '' );
+
+				$lines[] = ' *   '. str_pad( $role, 11 )
+					. ( isset( $families[$family] ) === true ? $families[$family]['name'] : 'the system stack' )
+					. ', '. (string) ( $chosen['weight'] ?? 'normal' )
+					. ( ( $chosen['uppercase'] ?? false ) === true ? ', uppercase' : '' )
+					. ( $size === '' ? '' : ', '. $size. 'rem' );
+			}
+
+			$width 		= (int) ( $setup['width'] ?? 0 );
+			$motion 	= (array) ( $setup['motion'] ?? [] );
+			$effect 	= (string) ( $motion['effect'] ?? '' );
 
 			return "/*\tGenerated by the Design feature. Do not edit - the next compile\n"
 				. " *\trewrites this file, and anything put here is gone.\n"
@@ -369,9 +489,29 @@ namespace Nino\Modules\Design {
 				. " *\t". self::STAMP. ": ". hash( 'sha256', $body ). "\n"
 				. " *\n"
 				. " *\troot size  ". (string) ( $setup['size'] ?? 'm' ). "\n"
+				. " *\twidth      ". ( $width < 0 ? 'narrow' : ( $width > 0 ? 'wide' : 'normal' ) ). "\n"
+				. " *\tanimation  ". ( isset( Setup::EFFECTS[$effect] ) === true
+					? $effect. ', '. ( (string) ( $motion['strength'] ?? '' ) ?: 'medium' ). ( (string) ( $motion['speed'] ?? '' ) === '' ? '' : ', '. $motion['speed'] )
+					: 'as Nino.css has it' ). "\n"
 				. " *\n"
 				. implode( "\n", $lines ). "\n"
 				. " */\n";
+		}
+
+		/**
+		 *	The text of a stretch of a file below the line it starts on
+		 *
+		 *	@param		string		$text
+		 *	@param		int				$from					Where the marker line starts
+		 *	@param		int				$to						Where the stretch ends
+		 *
+		 *	@return 	string
+		 */
+		private static function _after( string $text, int $from, int $to ): string {
+
+			$line = strpos( $text, "\n", $from );
+
+			return $line === false || $line >= $to ? '' : substr( $text, $line + 1, $to - $line - 1 );
 		}
 
 		/**

@@ -15,11 +15,15 @@ namespace Nino\Modules\Design {
 	 *	Nino							A compact filesystembased php framework
 	 *	Preview						What a setup looks like, before it is the site's.
 	 *
-	 *										One page that uses every class a part set can reach, in
-	 *										the markup a real page produces, with the chosen header
-	 *										and footer around it and the compiled stylesheet over it.
-	 *										Nothing here writes: a preview is a question, and the
-	 *										answer to it must not already be the answer on disk.
+	 *										One page that has something to show for every tab of the
+	 *										panel - the hero and the sections in every ground, the
+	 *										cards, the type, the buttons, the form and the table, the
+	 *										lists and the blocks - in the markup a real page produces,
+	 *										with the chosen header and footer around it and the compiled
+	 *										stylesheet over it. Each tab has an anchor on it, an element
+	 *										with an id the panel scrolls the frame to. Nothing here
+	 *										writes: a preview is a question, and the answer to it must
+	 *										not already be the answer on disk.
 	 *
 	 *										This class holds no markup. The page and the specimen are
 	 *										templates/preview-document.tpl and
@@ -94,7 +98,7 @@ namespace Nino\Modules\Design {
 		 */
 		public static function frame( string $libraryDir, array $setup, string $part, array &$notes = [] ): string {
 
-			$set 			= (string) ( $setup['parts'][$part]['set'] ?? '' );
+			$set 			= (string) ( $setup['parts'][$part] ?? '' );
 			$template = Setup::file( $libraryDir, $part, $set, 'template' );
 
 			if( $template === '' ) {
@@ -121,11 +125,12 @@ namespace Nino\Modules\Design {
 		 */
 		public static function css( array $setup, string $libraryDir, string $public, array &$notes = [] ): string {
 
-			/*	base.css's @font-face urls carry the fill every stylesheet in a
-				project carries, and a preview is not written through the asset
-				bundler that would resolve it (see Modules\Assets). Unresolved, the
-				three webfaces silently do not load - and a design shown in the
-				wrong typeface is worse than no preview at all */
+			/*	The @font-face urls of section 3 - Fonts::families() lists the
+				files, the compiler writes them - carry the fill every stylesheet
+				in a project carries, and a preview is not written through the
+				asset bundler that would resolve it (see Modules\Assets).
+				Unresolved, the three webfaces silently do not load - and a design
+				shown in the wrong typeface is worse than no preview at all */
 			return str_replace( '[[/nino/public]]', $public, Compiler::compile( $setup, $libraryDir, $notes ) );
 		}
 

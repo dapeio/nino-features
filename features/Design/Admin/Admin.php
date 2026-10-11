@@ -12,11 +12,13 @@ namespace Nino\Modules\Design {
 
 	/**
 	 *	Nino							A compact filesystembased php framework
-	 *	Design\Admin			The "Design" panel: two tabs over one setup - Structure,
-	 *										which chooses a variant per part of a page and sets the
-	 *										finetune knob and the root size, and Colours, which sets
-	 *										the two colours and the five knobs the palette is solved
-	 *										from - compiled together into assets/theme.css.
+	 *	Design\Admin			The "Design" panel: six tabs over one setup - Global, with the
+	 *										five templates, the root size, the width and the animation of
+	 *										the page; Fonts, with the five font roles; Content, Buttons
+	 *										and Components, one named knob for each thing the chosen
+	 *										template lets go of; and Colours, with the two colours, the
+	 *										five knobs and the mode the palette is solved from - compiled
+	 *										together into assets/theme.css.
 	 *
 	 *										Choosing and applying are two actions on purpose. A
 	 *										setup is a draft and lives in data/design.php whether
@@ -35,9 +37,10 @@ namespace Nino\Modules\Design {
 	 *										kept as the previous version (see Previous) and
 	 *										design/restore swaps it back.
 	 *
-	 *										Beside the selects is what they mean: a preview of the
-	 *										current selection, rendered against this project and never
-	 *										written anywhere. It is what makes the two-step honest -
+	 *										Beside the controls is what they mean: one specimen page
+	 *										of the selection, rendered against this project and never
+	 *										written anywhere, with an anchor for each tab that the
+	 *										frame scrolls to. It is what makes the two-step honest -
 	 *										nobody has to compile a design to find out what it is.
 	 *
 	 *	@package					Dape/Nino
@@ -144,32 +147,60 @@ namespace Nino\Modules\Design {
 
 			foreach( Setup::PARTS as $part => $kind ) {
 
-				$set = (string) ( $setup['parts'][$part]['set'] ?? '' );
+				$catalogue = Setup::catalogue( $library, $part );
+
+				/*	Which knobs each template answers to - out of the stylesheet rather
+					than out of a list here, so declaring a triple is what publishes a
+					knob. For every template and not only the chosen one: choosing
+					another changes which rows of its tab are greyed out, and the
+					screen does that before anything is asked of the server. A frame has
+					none	*/
+				if( $kind === 'set' )
+					foreach( array_keys( $catalogue ) as $set )
+						$catalogue[$set]['knobs'] = Setup::knobs( $library, $part, $set );
 
 				$parts[] = [
 					'part' 				=> $part,
 					'kind' 				=> $kind,
-					'catalogue' 	=> Setup::catalogue( $library, $part ),
-					'set' 				=> $set,
-					/*	Which knobs this part's set answers to - out of the
-						stylesheet rather than out of a list here, so declaring a
-						triple is what publishes a knob */
-					'knobs' 			=> Setup::knobs( $library, $part, $set ),
-					// ...and the ones this part was moved at on its own. A knob
-					// not named here follows the global position
-					'moved' 			=> (array) ( $setup['parts'][$part]['knobs'] ?? [] ),
+					'catalogue' 	=> $catalogue,
+					'set' 				=> (string) ( $setup['parts'][$part] ?? '' ),
 				];
 			}
 
+			$families = [];
+
+			foreach( Fonts::families() as $slug => $family )
+				$families[$slug] = [ 'name' => $family['name'], 'category' => $family['category'], 'system' => $family['files'] === [] ];
+
 			\Nino\Http::ok( $request, [
 				'parts' 	=> $parts,
-				// Where every knob stands for the whole design, and which of
-				// them any chosen set answers to at all
-				'knobs' 	=> (array) ( $setup['knobs'] ?? [] ),
-				'global' 	=> Setup::knobsInUse( $library, $setup ),
-				'size' 		=> (string) ( $setup['size'] ?? 'm' ),
+				// Where every knob stands, per tab, and which knobs a tab has: the
+				// screen draws a row for each of them, and the parts above say which
+				// of the rows its template answers to
+				'knobs' 	=> $setup['knobs'],
+				'tabs' 		=> Setup::KNOBS,
 				'steps' 	=> Setup::STEPS,
+				'size' 		=> (string) ( $setup['size'] ?? 'm' ),
 				'sizes' 	=> array_keys( Setup::SIZES ),
+				'width' 	=> (int) ( $setup['width'] ?? 0 ),
+				// The animation of the page, and what it can be: the effects and
+				// strengths and speeds of Nino.css's viewport animations
+				'motion' 	=> (array) ( $setup['motion'] ?? [] ),
+				'effects' => array_keys( Setup::EFFECTS ),
+				'strengths' => Setup::STRENGTHS,
+				'speeds' 	=> array_keys( Setup::SPEEDS ),
+				/*	The five font roles: what each has, the families to choose from
+					(and which of them each role may be given), the three weights
+					and the sizes a role can be fixed at - with the one Nino.css
+					gives it, which the "Default" option names. The frontend carries
+					none of these tables */
+				'roles' 		=> Fonts::ROLES,
+				'fonts' 		=> (array) ( $setup['fonts'] ?? [] ),
+				'families' 	=> $families,
+				'options' 	=> array_combine( Fonts::ROLES, array_map( Fonts::options( ... ), Fonts::ROLES ) ),
+				'weights' 	=> Fonts::WEIGHTS,
+				'fontsizes' => Fonts::SIZES,
+				'inherited' => Fonts::INHERITED,
 				/*	The palette half: where it stands, the vocabulary to draw it
 					with, and whether the picked brand colour is one text survives
 					on. The frontend carries no copy of the knob tables - it draws
@@ -287,30 +318,10 @@ namespace Nino\Modules\Design {
 			/*	Normalised against the library rather than trusted: the screen
 				offers what is there, but a request is a request. What cannot be
 				honoured comes back in `notes` instead of being written */
-			$setup = Setup::normalize( [
-				'parts' 	=> is_array( $posted['parts'] ?? null ) === true ? $posted['parts'] : [],
-				'knobs' 	=> is_array( $posted['knobs'] ?? null ) === true ? $posted['knobs'] : [],
-				// is_string() like its neighbours: the posted json is a
-				// request, and a cast of an array raises a warning the
-				// runtime treats as fatal
-				'size' 		=> is_string( $posted['size'] ?? null ) === true ? $posted['size'] : '',
-				'colours'	=> is_array( $posted['colours'] ?? null ) === true ? $posted['colours'] : [],
-				// Kept, so saving a choice does not lose what was last compiled
-				'compiled'=> Setup::read( $appData, $library )['compiled'] ?? [],
-			], $library, $notes );
+			$setup = self::_selection( $posted, $library, $notes );
 
-			/*	A part's own knob position belongs to the set that answers to it.
-				Dropping the ones the chosen set no longer has keeps a setup from
-				carrying the positions of a set somebody moved away from years
-				ago - normalize() cannot do this, since it holds no library file
-				open */
-			foreach( array_keys( Setup::PARTS ) as $part ) {
-
-				$known = Setup::knobs( $library, $part, (string) ( $setup['parts'][$part]['set'] ?? '' ) );
-
-				$setup['parts'][$part]['knobs'] = array_intersect_key(
-					(array) ( $setup['parts'][$part]['knobs'] ?? [] ), array_flip( $known ) );
-			}
+			// Kept, so saving a choice does not lose what was last compiled
+			$setup['compiled'] = Setup::read( $appData, $library )['compiled'] ?? [];
 
 			if( Setup::write( $appData, $setup ) === false ) {
 				\Nino\Http::fail( $request, 500, 'could not write '. Setup::PATH );
@@ -438,25 +449,18 @@ namespace Nino\Modules\Design {
 			// Same normalisation the save takes, for the same reason: a request
 			// is a request, and a set that is not in the library is not shown
 			// just because somebody asked for it
-			$setup = Setup::normalize( [
-				'parts' 	=> is_array( $posted['parts'] ?? null ) === true ? $posted['parts'] : [],
-				'knobs' 	=> is_array( $posted['knobs'] ?? null ) === true ? $posted['knobs'] : [],
-				// is_string() like its neighbours: the posted json is a
-				// request, and a cast of an array raises a warning the
-				// runtime treats as fatal
-				'size' 		=> is_string( $posted['size'] ?? null ) === true ? $posted['size'] : '',
-				'colours'	=> is_array( $posted['colours'] ?? null ) === true ? $posted['colours'] : [],
-			], $library, $notes );
+			$setup = self::_selection( $posted, $library, $notes );
 
 			$css 			= Preview::css( $setup, $library, \Nino\Filesystem::getPublicDir( $appData ), $notes );
 			$document = '';
 
-			/*	Seven of the nine parts are a stylesheet and nothing else, and so
-				are the knob and the size: for those the screen swaps one <style>
-				inside the frame it already has, and neither the markup nor the
-				framework below it has to travel again. The two that do bring
-				markup - header and footer - rebuild the document, and so does
-				the first preview of a visit */
+			/*	Three of the five parts are a stylesheet and nothing else, and so
+				are the knobs, the size, the width, the animation, the fonts and
+				the palette: for those the screen swaps one <style> inside the
+				frame it already has, and neither the markup nor the framework
+				below it has to travel again. The two that do bring markup -
+				header and footer - rebuild the document, and so does the first
+				preview of a visit */
 			if( ( $posted['full'] ?? false ) === true )
 				$document = self::document( $appData, $library, $setup, $css, $notes );
 
@@ -506,6 +510,47 @@ namespace Nino\Modules\Design {
 				$main,
 				self::_bundle( $appData, self::FRAMEWORK_JS, [ '/_nino/Nino.js', '/_nino/Nino.ui.js' ] )
 			);
+		}
+
+		/**
+		 *	The selection a request carries, normalised against the library.
+		 *
+		 *	Only the keys of the model are taken and each is held to the type it
+		 *	has - the posted json is a request, and a cast of an array raises a
+		 *	warning the runtime treats as fatal. A knob's position belongs to the
+		 *	template that answers to it: one the chosen template does not declare
+		 *	is back in the middle, so a setup does not carry the positions of a
+		 *	template somebody moved away from long ago - normalize() cannot do
+		 *	this, since it holds no library file open.
+		 *
+		 *	@param		array 		$posted				What the request carried
+		 *	@param		string		$library			The feature's library
+		 *	@param		array 		&$notes				(reference) What had to be replaced or dropped
+		 *
+		 *	@return 	array										A normalised setup, without a record of what was compiled
+		 */
+		private static function _selection( array $posted, string $library, array &$notes ): array {
+
+			$taken = [
+				'size' 		=> is_string( $posted['size'] ?? null ) === true ? $posted['size'] : '',
+				'width' 	=> $posted['width'] ?? 0,
+			];
+
+			foreach( [ 'motion', 'parts', 'knobs', 'fonts', 'colours' ] as $key )
+				$taken[$key] = is_array( $posted[$key] ?? null ) === true ? $posted[$key] : [];
+
+			$setup = Setup::normalize( $taken, $library, $notes );
+
+			foreach( Setup::KNOBS as $tab => $names ) {
+
+				$answered = Setup::knobs( $library, $tab, (string) ( $setup['parts'][$tab] ?? '' ) );
+
+				foreach( $names as $knob )
+					if( in_array( $knob, $answered, true ) === false )
+						$setup['knobs'][$tab][$knob] = 0;
+			}
+
+			return $setup;
 		}
 
 		/**
