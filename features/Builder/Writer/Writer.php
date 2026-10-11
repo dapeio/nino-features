@@ -20,7 +20,10 @@ namespace Nino\Modules\Builder {
 	 *
 	 *											What canonical means: tabs for the indentation (the section
 	 *											at the margin, the row one tab in, the columns two, their
-	 *											calls three - in a stack four, the stack's own tags three),
+	 *											calls three - in a stack four, the stack's own tags three;
+	 *											a component that holds components has its call on a line,
+	 *											each of its children one tab deeper on a line of its own, and
+	 *											its closing tag on a line of its own at its own depth),
 	 *											one call per line, the classes of every tag in a fixed
 	 *											order (see sectionClasses() and colClasses()) with the
 	 *											custom ones last, an attribute of a call only where it is
@@ -188,13 +191,13 @@ namespace Nino\Modules\Builder {
 					$lines[] = "\t\t\t". self::_call( (array) $col['stack'], $registry['stacks'][$col['stack']['name'] ?? ''] ?? [] );
 
 					foreach( (array) ( $col['components'] ?? [] ) as $component )
-						$lines[] = "\t\t\t\t". self::_call( (array) $component, $registry['components'][$component['name'] ?? ''] ?? [] );
+						array_push( $lines, ...self::_component( (array) $component, $registry, "\t\t\t\t" ) );
 
 					$lines[] = "\t\t\t[/". (string) ( $col['stack']['name'] ?? '' ). ']';
 				}
 				else
 					foreach( (array) ( $col['components'] ?? [] ) as $component )
-						$lines[] = "\t\t\t". self::_call( (array) $component, $registry['components'][$component['name'] ?? ''] ?? [] );
+						array_push( $lines, ...self::_component( (array) $component, $registry, "\t\t\t" ) );
 
 				$lines[] = "\t\t</div>";
 			}
@@ -346,6 +349,11 @@ namespace Nino\Modules\Builder {
 			if( (string) $col['text'] !== '' )
 				$class[] = 'nino-text-'. $col['text'];
 
+			// The padding, then the margin above and the margin below
+			foreach( Reader::COL_SPACING as $space )
+				if( (string) $col[$space] !== '' )
+					$class[] = 'nino-'. $space. '-'. $col[$space];
+
 			return array_merge( $class, self::_animationClasses( $col ), self::_custom( (string) $col['custom'] ) );
 		}
 
@@ -468,6 +476,34 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
+		 *	One component as the lines it is written in, at an indent: its call on a line of its own
+		 *	and - for a component that holds components - each of its children one indent deeper on a
+		 *	line of their own and its closing tag on a line of its own, at the indent of the call
+		 *
+		 *	@param		array			$node					The component of the model
+		 *	@param		array			$registry
+		 *	@param		string		$indent				The tabs in front of the call
+		 *
+		 *	@return 	array										The lines
+		 */
+		private static function _component( array $node, array $registry, string $indent ): array {
+
+			$name		= (string) ( $node['name'] ?? '' );
+			$schema	= (array) ( $registry['components'][$name] ?? [] );
+			$lines	= [ $indent. self::_call( $node, $schema ) ];
+
+			if( Reader::holds( $schema ) === false )
+				return $lines;
+
+			foreach( (array) ( $node['components'] ?? [] ) as $child )
+				array_push( $lines, ...self::_component( (array) $child, $registry, $indent. "\t" ) );
+
+			$lines[] = $indent. '[/'. $name. ']';
+
+			return $lines;
+		}
+
+		/**
 		 *	One call: [name source text="..." attribute="..."], and for a
 		 *	component with content its closing tag after the content. An
 		 *	attribute is written where it is not the schema's default
@@ -505,7 +541,8 @@ namespace Nino\Modules\Builder {
 
 			$call .= ']';
 
-			if( array_key_exists( 'content', $node ) === true )
+			// The content of a component that holds components is its children, which _component() writes
+			if( array_key_exists( 'content', $node ) === true && Reader::holds( $schema ) === false )
 				$call .= (string) $node['content']. '[/'. $name. ']';
 
 			return $call;

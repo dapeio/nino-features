@@ -1,0 +1,261 @@
+{
+    "file": "page-home-card",
+    "name": "Cards",
+    "animate": false,
+    "vpa": "",
+    "vpaSpeed": "",
+    "wrapClass": "",
+    "header": "html-header",
+    "footer": "html-footer",
+    "blocks": [
+        {
+            "kind": "section",
+            "id": "story",
+            "settings": {
+                "row": "",
+                "rowAlign": "middle",
+                "rowCustom": "",
+                "fullwidth": false,
+                "fullheight": false,
+                "color": "",
+                "border": "",
+                "borderPrimary": false,
+                "image": "",
+                "dim": false,
+                "imagePos": "",
+                "cover": null,
+                "mt": "",
+                "mb": "",
+                "pt": "",
+                "pb": "",
+                "text": "",
+                "vpa": null,
+                "vpaSpeed": "",
+                "vpaMode": "",
+                "vpaDelay": "",
+                "vpaDuration": "",
+                "custom": ""
+            },
+            "background": null,
+            "cols": [
+                {
+                    "width": {
+                        "s": 100,
+                        "m": 33,
+                        "l": 33
+                    },
+                    "hidden": [],
+                    "color": "",
+                    "dim": false,
+                    "background": null,
+                    "text": "",
+                    "stackAlign": "",
+                    "stackGap": "",
+                    "p": "",
+                    "mt": "",
+                    "mb": "",
+                    "vpa": null,
+                    "vpaSpeed": "",
+                    "vpaMode": "",
+                    "vpaDelay": "",
+                    "vpaDuration": "",
+                    "custom": "",
+                    "stack": null,
+                    "components": [
+                        {
+                            "name": "image",
+                            "source": "/template/page-home-card/story/photo",
+                            "text": null,
+                            "attributes": {
+                                "alt": "",
+                                "focus": "",
+                                "ratio": "4-3",
+                                "class": ""
+                            }
+                        }
+                    ]
+                },
+                {
+                    "width": {
+                        "s": 100,
+                        "m": 66,
+                        "l": 66
+                    },
+                    "hidden": [],
+                    "color": "",
+                    "dim": false,
+                    "background": null,
+                    "text": "",
+                    "stackAlign": "",
+                    "stackGap": "",
+                    "p": "2",
+                    "mt": "1",
+                    "mb": "1",
+                    "vpa": null,
+                    "vpaSpeed": "",
+                    "vpaMode": "",
+                    "vpaDelay": "",
+                    "vpaDuration": "",
+                    "custom": "",
+                    "stack": null,
+                    "components": [
+                        {
+                            "name": "article",
+                            "source": "",
+                            "text": null,
+                            "attributes": {
+                                "ground": "counter",
+                                "padding": "3",
+                                "fill": "0",
+                                "vertical": "",
+                                "align": "",
+                                "background": "",
+                                "focus": "",
+                                "dim": "0",
+                                "borderless": "0",
+                                "class": ""
+                            },
+                            "components": [
+                                {
+                                    "name": "article-title",
+                                    "source": "/template/page-home-card/story/title",
+                                    "text": null,
+                                    "attributes": {
+                                        "level": "3",
+                                        "style": "",
+                                        "class": ""
+                                    }
+                                },
+                                {
+                                    "name": "text",
+                                    "source": "/template/page-home-card/story/text",
+                                    "text": null,
+                                    "attributes": {
+                                        "format": "blocks",
+                                        "style": "",
+                                        "class": ""
+                                    }
+                                },
+                                {
+                                    "name": "button",
+                                    "source": "/template/page-home-card/story/button",
+                                    "text": null,
+                                    "attributes": {
+                                        "href": "/contact",
+                                        "style": "",
+                                        "size": "",
+                                        "target": "",
+                                        "class": ""
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "kind": "section",
+            "id": "services",
+            "settings": {
+                "row": "",
+                "rowAlign": "",
+                "rowCustom": "",
+                "fullwidth": false,
+                "fullheight": false,
+                "color": "alt",
+                "border": "",
+                "borderPrimary": false,
+                "image": "",
+                "dim": false,
+                "imagePos": "",
+                "cover": null,
+                "mt": "",
+                "mb": "",
+                "pt": "",
+                "pb": "",
+                "text": "",
+                "vpa": null,
+                "vpaSpeed": "",
+                "vpaMode": "",
+                "vpaDelay": "",
+                "vpaDuration": "",
+                "custom": ""
+            },
+            "background": null,
+            "cols": [
+                {
+                    "width": {
+                        "s": 100,
+                        "m": 100,
+                        "l": 100
+                    },
+                    "hidden": [],
+                    "color": "",
+                    "dim": false,
+                    "background": null,
+                    "text": "",
+                    "stackAlign": "",
+                    "stackGap": "",
+                    "p": "",
+                    "mt": "",
+                    "mb": "",
+                    "vpa": null,
+                    "vpaSpeed": "",
+                    "vpaMode": "",
+                    "vpaDelay": "",
+                    "vpaDuration": "",
+                    "custom": "",
+                    "stack": {
+                        "name": "stack",
+                        "source": "/services",
+                        "attributes": {
+                            "sort": "title",
+                            "offset": "0",
+                            "limit": "3",
+                            "query": "",
+                            "callback": "",
+                            "locale": "",
+                            "id": "",
+                            "cols": "100 50 50",
+                            "gap": "2",
+                            "autoheight": "1",
+                            "class": ""
+                        }
+                    },
+                    "components": [
+                        {
+                            "name": "article",
+                            "source": "",
+                            "text": null,
+                            "attributes": {
+                                "ground": "",
+                                "padding": "",
+                                "fill": "1",
+                                "vertical": "",
+                                "align": "",
+                                "background": "image",
+                                "focus": "5",
+                                "dim": "1",
+                                "borderless": "0",
+                                "class": ""
+                            },
+                            "components": [
+                                {
+                                    "name": "article-title",
+                                    "source": "title",
+                                    "text": null,
+                                    "attributes": {
+                                        "level": "3",
+                                        "style": "",
+                                        "class": ""
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

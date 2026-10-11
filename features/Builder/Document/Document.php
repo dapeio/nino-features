@@ -109,8 +109,10 @@ namespace Nino\Modules\Builder {
 
 		/**
 		 *	Everything the panel builds its forms from: the components and
-		 *	the stacks with their labels in the language of the workbench, the
-		 *	types of the Elements panel with their fields, the image slots (each
+		 *	the stacks with their labels in the language of the workbench - and
+		 *	the rest of the schema as the kernel registered it, where a component
+		 *	belongs (in), what it draws (draws) and what it holds (holds) among it -,
+		 *	the types of the Elements panel with their fields, the image slots (each
 		 *	with the url of its picture, null where it has none, and its alt
 		 *	texts by language), the frames a page may name - and the languages
 		 *	of the site, by the name the project gives them, with the native
@@ -299,7 +301,8 @@ namespace Nino\Modules\Builder {
 		 *	The model also carries what the file does not: the texts typed for
 		 *	the key of a component (values, by language - for a key that is
 		 *	new and for one that is there alike) and the alt texts a new slot
-		 *	is made with (in its create). The texts are written with the Text
+		 *	is made with (in its create - or, for the slot an image attribute
+		 *	of a component names, in its slots). The texts are written with the Text
 		 *	Keys' own action, each in the language it is for, once the keys are
 		 *	there - made, or moved to their new name - and every one is read
 		 *	again to see that the language files took it. A model that is the
@@ -346,7 +349,7 @@ namespace Nino\Modules\Builder {
 				return self::_error( 409, 'the page template changed since it was loaded', 'conflict' );
 
 			$schemas	= self::schemas( $appData );
-			$problems	= self::_shape( $model );
+			$problems	= self::_shape( $model, $schemas );
 
 			if( $problems !== [] )
 				return self::_error( 400, 'the page template is not valid', 'invalid', $problems );
@@ -462,12 +465,12 @@ namespace Nino\Modules\Builder {
 		 */
 		public static function source( array &$appData, array $model ): array {
 
-			$problems = self::_shape( $model );
+			$schemas	= self::schemas( $appData );
+			$problems	= self::_shape( $model, $schemas );
 
 			if( $problems !== [] )
 				return self::_error( 400, 'the page template is not valid', 'invalid', $problems );
 
-			$schemas	= self::schemas( $appData );
 			$model		= self::_again( $model, $schemas );
 			$parts		= [];
 
@@ -1053,7 +1056,7 @@ namespace Nino\Modules\Builder {
 					if( $unsafe( $col['custom'] ?? null ) === true )
 						$problems[] = $at. ': the custom classes of column '. ( (int) $c + 1 ). ' hold a quote, a bracket or a line break, which a call cannot carry';
 
-					$calls = array_values( (array) ( $col['components'] ?? [] ) );
+					$calls = self::_flat( (array) ( $col['components'] ?? [] ) );
 
 					if( is_array( $col['stack'] ?? null ) === true )
 						$calls[] = $col['stack'];
@@ -1112,10 +1115,21 @@ namespace Nino\Modules\Builder {
 						$fields = (array) ( \Nino\Filesystem::getFileContent( $appData, '/elements/'. $type. '.php', [] )['model'] ?? [] );
 				}
 
-				foreach( (array) ( $col['components'] ?? [] ) as $component ) {
+				foreach( self::_flat( (array) ( $col['components'] ?? [] ) ) as $component ) {
 
 					$kind		= (string) ( $schemas['components'][$component['name'] ?? '']['source'] ?? 'text' );
 					$source	= (string) ( $component['source'] ?? '' );
+
+					// The picture an image attribute names stands where the source of a picture does: a slot, or in a loop a field of the type
+					foreach( self::_pictures( $schemas, (string) ( $component['name'] ?? '' ) ) as $attribute ) {
+
+						$picture = (string) ( $component['attributes'][$attribute] ?? '' );
+
+						if( $picture === '' || ( $picture[0] === '/' ? preg_match( self::SLOT, $picture ) === 1 : ( $fields !== null && isset( $fields[$picture] ) === true ) ) )
+							continue;
+
+						$problems[] = 'the picture "'. $picture. '" of '. ( $component['name'] ?? '' ). ( $picture[0] === '/' ? ' is no image slot' : ( $fields === null ? ' means nothing in a column without a loop: it is an image slot' : ' is no field of the loop\'s type' ) );
+					}
 
 					if( $source === '' || in_array( $kind, [ 'none', 'content' ], true ) === true )
 						continue;
@@ -1220,10 +1234,28 @@ namespace Nino\Modules\Builder {
 					if( is_array( $col['background'] ?? null ) === true )
 						$model['blocks'][$index]['cols'][$c]['background']['slot'] = $move( (string) $col['background']['slot'], 'slot' );
 
-				foreach( (array) ( $block['cols'] ?? [] ) as $c => $col )
-					foreach( (array) ( $col['components'] ?? [] ) as $k => $component )
+				// A source follows the section, and so does the picture an image attribute names - in the children of a component that holds components as well
+				$follow = static function( array &$components ) use ( &$follow, $move, $schemas ): void {
+
+					foreach( $components as $k => $component ) {
+
+						$name = (string) ( $component['name'] ?? '' );
+
 						if( (string) ( $component['source'] ?? '' ) !== '' )
-							$model['blocks'][$index]['cols'][$c]['components'][$k]['source'] = $move( (string) $component['source'], self::_kind( $schemas, (string) ( $component['name'] ?? '' ) ) === 'image' ? 'slot' : 'key' );
+							$components[$k]['source'] = $move( (string) $component['source'], self::_kind( $schemas, $name ) === 'image' ? 'slot' : 'key' );
+
+						foreach( self::_pictures( $schemas, $name ) as $attribute )
+							if( (string) ( $component['attributes'][$attribute] ?? '' ) !== '' )
+								$components[$k]['attributes'][$attribute] = $move( (string) $component['attributes'][$attribute], 'slot' );
+
+						if( is_array( $component['components'] ?? null ) === true )
+							$follow( $components[$k]['components'] );
+					}
+				};
+
+				foreach( (array) ( $block['cols'] ?? [] ) as $c => $col )
+					if( is_array( $col['components'] ?? null ) === true )
+						$follow( $model['blocks'][$index]['cols'][$c]['components'] );
 
 				unset( $model['blocks'][$index]['renamedFrom'] );
 			}
@@ -1270,12 +1302,15 @@ namespace Nino\Modules\Builder {
 					$given[] = [ 'the alt text of the background of column '. ( (int) $c + 1 ), $col['background']['create']['alt'] ?? null ];
 
 				foreach( (array) ( $block['cols'] ?? [] ) as $col )
-					foreach( (array) ( $col['components'] ?? [] ) as $component ) {
+					foreach( self::_flat( (array) ( $col['components'] ?? [] ) ) as $component ) {
 
 						$name = (string) ( $component['name'] ?? '' );
 
 						$given[] = [ 'the text of the component "'. $name. '"', $component['values'] ?? null ];
 						$given[] = [ 'the alt text of the component "'. $name. '"', is_array( $component['create'] ?? null ) === true ? ( $component['create']['alt'] ?? null ) : null ];
+
+						foreach( (array) ( $component['slots'] ?? [] ) as $attribute => $mark )
+							$given[] = [ 'the alt text of the picture "'. $attribute. '" of the component "'. $name. '"', is_array( $mark ) === true ? ( $mark['alt'] ?? null ) : null ];
 					}
 
 				foreach( $given as [ $what, $texts ] )
@@ -1311,7 +1346,7 @@ namespace Nino\Modules\Builder {
 					continue;
 
 				foreach( (array) ( $block['cols'] ?? [] ) as $col )
-					foreach( (array) ( $col['components'] ?? [] ) as $component ) {
+					foreach( self::_flat( (array) ( $col['components'] ?? [] ) ) as $component ) {
 
 						$given = (array) ( $component['values'] ?? [] );
 
@@ -1346,10 +1381,31 @@ namespace Nino\Modules\Builder {
 
 			foreach( (array) ( $model['blocks'] ?? [] ) as $b => $block )
 				foreach( (array) ( $block['cols'] ?? [] ) as $c => $col )
-					foreach( array_keys( (array) ( $col['components'] ?? [] ) ) as $k )
-						unset( $model['blocks'][$b]['cols'][$c]['components'][$k]['values'] );
+					if( is_array( $col['components'] ?? null ) === true )
+						$model['blocks'][$b]['cols'][$c]['components'] = self::_unstage( $col['components'] );
 
 			return $model;
+		}
+
+		/**
+		 *	Components without the texts they carry for their keys, the children of a component that holds
+		 *	components among them
+		 *
+		 *	@param		array			$components
+		 *
+		 *	@return 	array
+		 */
+		private static function _unstage( array $components ): array {
+
+			foreach( $components as $k => $component ) {
+
+				unset( $components[$k]['values'] );
+
+				if( is_array( $component['components'] ?? null ) === true )
+					$components[$k]['components'] = self::_unstage( $component['components'] );
+			}
+
+			return $components;
 		}
 
 		/**
@@ -1418,9 +1474,14 @@ namespace Nino\Modules\Builder {
 						$plan['slots'][(string) $col['background']['slot']] = $col['background']['create'];
 
 				foreach( (array) ( $block['cols'] ?? [] ) as $col )
-					foreach( (array) ( $col['components'] ?? [] ) as $component ) {
+					foreach( self::_flat( (array) ( $col['components'] ?? [] ) ) as $component ) {
 
 						$source = (string) ( $component['source'] ?? '' );
+
+						// The slot an image attribute names is made like the one behind a column, from the mark the panel sent for the attribute
+						foreach( self::_pictures( $schemas, (string) ( $component['name'] ?? '' ) ) as $attribute )
+							if( (string) ( $component['attributes'][$attribute] ?? '' ) !== '' && is_array( $component['slots'][$attribute] ?? null ) === true )
+								$plan['slots'][(string) $component['attributes'][$attribute]] = $component['slots'][$attribute];
 
 						if( is_array( $component['create'] ?? null ) === false || $source === '' )
 							continue;
@@ -1915,14 +1976,36 @@ namespace Nino\Modules\Builder {
 				if( is_array( $stack ) === true && ( (string) ( $stack['name'] ?? '' ) !== $other['stack']['name'] || (string) ( $stack['source'] ?? '' ) !== $other['stack']['source'] ) )
 					return false;
 
-				$components = array_values( (array) ( $col['components'] ?? [] ) );
+				if( self::_sameCalls( (array) ( $col['components'] ?? [] ), $other['components'] ) === false )
+					return false;
+			}
 
-				if( count( $components ) !== count( $other['components'] ) )
+			return true;
+		}
+
+		/**
+		 *	Whether the components that were written and read again are the ones that were written: the
+		 *	same names with the same sources, and in a component that holds components the same children
+		 *
+		 *	@param		array			$posted				The components of the model
+		 *	@param		array			$read					The components the Reader made of what the Writer wrote
+		 *
+		 *	@return 	bool
+		 */
+		private static function _sameCalls( array $posted, array $read ): bool {
+
+			$posted = array_values( $posted );
+
+			if( count( $posted ) !== count( $read ) )
+				return false;
+
+			foreach( $posted as $at => $component ) {
+
+				if( (string) ( $component['name'] ?? '' ) !== $read[$at]['name'] || (string) ( $component['source'] ?? '' ) !== $read[$at]['source'] )
 					return false;
 
-				foreach( $components as $at => $component )
-					if( (string) ( $component['name'] ?? '' ) !== $other['components'][$at]['name'] || (string) ( $component['source'] ?? '' ) !== $other['components'][$at]['source'] )
-						return false;
+				if( self::_sameCalls( (array) ( $component['components'] ?? [] ), (array) ( $read[$at]['components'] ?? [] ) ) === false )
+					return false;
 			}
 
 			return true;
@@ -1937,14 +2020,18 @@ namespace Nino\Modules\Builder {
 		 *	border that is no strength, the ground of a column that is none
 		 *	of Nino.css's, a background that is no slot or whose focus is none
 		 *	of the nine places, a call that is no call, texts that are no text
-		 *	for each language - what the Writer would take for something else
-		 *	or stumble over
+		 *	for each language, the padding and the margins of a column that
+		 *	are none of the steps 0 to 6, a component that holds components
+		 *	with a content or with children that are no calls - or inside
+		 *	another -, and children of a component that holds none or of a loop -
+		 *	what the Writer would take for something else or stumble over
 		 *
 		 *	@param		array			$model
+		 *	@param		array			$schemas			As schemas() answers
 		 *
 		 *	@return 	array										Sentences, in English
 		 */
-		private static function _shape( array $model ): array {
+		private static function _shape( array $model, array $schemas ): array {
 
 			$problems	= [];
 			$text			= static fn( mixed $value ): bool => $value === null || is_string( $value ) === true;
@@ -2025,6 +2112,11 @@ namespace Nino\Modules\Builder {
 					if( is_bool( $col['dim'] ?? false ) === false )
 						$problems[] = 'the dim of '. $of. ' is neither on nor off';
 
+					// The padding and the margins are steps of the space scale: what is none of them would be a class of nothing
+					foreach( Reader::COL_SPACING as $key )
+						if( in_array( $col[$key] ?? '', array_merge( [ '' ], Reader::STEPS ), true ) === false )
+							$problems[] = 'the '. $key. ' of '. $of. ' is none of the steps 0 to 6';
+
 					if( ( $col['background'] ?? null ) !== null && ( is_array( $col['background'] ) === false || $text( $col['background']['slot'] ?? null ) === false ) )
 						$problems[] = $of. ' has a background that is no image slot';
 
@@ -2041,12 +2133,19 @@ namespace Nino\Modules\Builder {
 
 					foreach( $calls as $call ) {
 
-						if( is_array( $call ) === false || $text( $call['name'] ?? null ) === false || $text( $call['source'] ?? null ) === false || $text( $call['text'] ?? null ) === false
-							|| is_array( $call['attributes'] ?? [] ) === false || array_filter( (array) ( $call['attributes'] ?? [] ), static fn( mixed $value ): bool => $value !== null && is_scalar( $value ) === false ) !== [] )
-							$problems[] = $at. ' has a call that is none';
-						elseif( self::_texted( $call ) === false )
-							$problems[] = $at. ' has a text that is none';
+						$wrong = self::_callWrong( $call );
+
+						if( $wrong !== '' )
+							$problems[] = $at. ' has '. $wrong;
 					}
+
+					// What a component holds: the calls of its children, in a list, and no content - and a component that holds none has no list
+					foreach( $col['components'] ?? [] as $component )
+						$problems = array_merge( $problems, self::_shapeHeld( $component, $schemas, $at, false ) );
+
+					// A loop holds none: its cells are the components of its column, and the Writer would leave a list of its own out
+					if( is_array( $col['stack'] ?? null ) === true && self::_callWrong( $col['stack'] ) === '' && array_key_exists( 'components', $col['stack'] ) === true )
+						$problems[] = $at. ' has the loop "'. (string) ( $col['stack']['name'] ?? '' ). '" with components, and it holds none';
 				}
 			}
 
@@ -2054,10 +2153,119 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
+		 *	What is wrong with a call of the model - a component or a loop - in its shape alone
+		 *
+		 *	@param		mixed			$call
+		 *
+		 *	@return 	string										'' for a call that will do, else what the block has: a call that is none, or a text that is none
+		 */
+		private static function _callWrong( mixed $call ): string {
+
+			$text = static fn( mixed $value ): bool => $value === null || is_string( $value ) === true;
+
+			// The marks the panel sends for the image attributes are a map of maps
+			if( is_array( $call ) === false || $text( $call['name'] ?? null ) === false || $text( $call['source'] ?? null ) === false || $text( $call['text'] ?? null ) === false
+				|| is_array( $call['attributes'] ?? [] ) === false || array_filter( (array) ( $call['attributes'] ?? [] ), static fn( mixed $value ): bool => $value !== null && is_scalar( $value ) === false ) !== []
+				|| is_array( $call['slots'] ?? [] ) === false || array_filter( (array) ( $call['slots'] ?? [] ), static fn( mixed $mark ): bool => is_array( $mark ) === false ) !== [] )
+				return 'a call that is none';
+
+			return self::_texted( $call ) === false ? 'a text that is none' : '';
+		}
+
+		/**
+		 *	What is wrong with the way a component holds components. One that does holds the calls of its
+		 *	children in a list and has no content, and is not itself held by another; one that does not
+		 *	has no list of children
+		 *
+		 *	@param		mixed			$call					A component of a column, or a child of one
+		 *	@param		array			$schemas
+		 *	@param		string		$at						The block, as the sentences name it: block 2
+		 *	@param		bool			$inside				Whether the call is a child of a component that holds components
+		 *
+		 *	@return 	array										Sentences, in English
+		 */
+		private static function _shapeHeld( mixed $call, array $schemas, string $at, bool $inside ): array {
+
+			// A call that is none has been told already
+			if( is_array( $call ) === false || self::_callWrong( $call ) !== '' )
+				return [];
+
+			$name = (string) ( $call['name'] ?? '' );
+
+			if( Reader::holds( (array) ( $schemas['components'][$name] ?? [] ) ) === false )
+				return array_key_exists( 'components', $call ) === true ? [ $at. ' has the component "'. $name. '" with components, and it holds none' ] : [];
+
+			if( $inside === true )
+				return [ $at. ' has the component "'. $name. '" inside another that holds components' ];
+
+			$problems = [];
+
+			if( array_key_exists( 'content', $call ) === true )
+				$problems[] = $at. ' has the component "'. $name. '" with a content, and it holds components';
+
+			if( is_array( $call['components'] ?? [] ) === false || array_is_list( (array) ( $call['components'] ?? [] ) ) === false )
+				return array_merge( $problems, [ $at. ' has the component "'. $name. '" with children that are no list' ] );
+
+			foreach( (array) ( $call['components'] ?? [] ) as $child ) {
+
+				$wrong = self::_callWrong( $child );
+
+				if( $wrong !== '' )
+					$problems[] = $at. ' has '. $wrong;
+				else
+					$problems = array_merge( $problems, self::_shapeHeld( $child, $schemas, $at, true ) );
+			}
+
+			return $problems;
+		}
+
+		/**
+		 *	The components of a column in the order of the file, each followed by the children it holds
+		 *
+		 *	@param		array			$components
+		 *
+		 *	@return 	array
+		 */
+		private static function _flat( array $components ): array {
+
+			$flat = [];
+
+			foreach( array_values( $components ) as $component ) {
+
+				$flat[] = $component;
+
+				if( is_array( $component ) === true && is_array( $component['components'] ?? null ) === true )
+					$flat = array_merge( $flat, self::_flat( $component['components'] ) );
+			}
+
+			return $flat;
+		}
+
+		/**
+		 *	The attributes of a component whose type is image: each names a slot, or in a loop a field of the
+		 *	element. The schema says so, whatever the component is
+		 *
+		 *	@param		array			$schemas
+		 *	@param		string		$name					The component
+		 *
+		 *	@return 	array										Their names, in the order of the schema
+		 */
+		private static function _pictures( array $schemas, string $name ): array {
+
+			$pictures = [];
+
+			foreach( (array) ( $schemas['components'][$name]['attributes'] ?? [] ) as $attribute => $declared )
+				if( is_array( $declared ) === true && ( $declared['type'] ?? '' ) === 'image' )
+					$pictures[] = (string) $attribute;
+
+			return $pictures;
+		}
+
+		/**
 		 *	Whether the texts a call carries are a text for each language: those
 		 *	typed for its key (values) and the alt texts of the slot its create
-		 *	makes. What a language is is looked at by _languages(), which asks
-		 *	the site
+		 *	makes, and of the slots its marks for the image attributes make. What
+		 *	a language is is looked at by _languages(), which asks the site
 		 *
 		 *	@param		array			$call
 		 *
@@ -2066,6 +2274,9 @@ namespace Nino\Modules\Builder {
 		private static function _texted( array $call ): bool {
 
 			$given = [ $call['values'] ?? null, is_array( $call['create'] ?? null ) === true ? ( $call['create']['alt'] ?? null ) : null ];
+
+			foreach( (array) ( $call['slots'] ?? [] ) as $mark )
+				$given[] = is_array( $mark ) === true ? ( $mark['alt'] ?? null ) : null;
 
 			foreach( $given as $texts )
 				if( $texts !== null && ( is_array( $texts ) === false || array_filter( $texts, static fn( mixed $text ): bool => is_string( $text ) === false ) !== [] ) )

@@ -23,12 +23,18 @@ namespace Nino\Modules\Builder {
 	 *											is a section (a <section>, an optional background, exactly
 	 *											one row, columns, and in each column an optional background
 	 *											of its own and either component calls or one stack call) or
-	 *											a foreign block. A section is
+	 *											a foreign block. A component whose schema says it holds
+	 *											components ('holds', the place of the ones it holds: the
+	 *											kernel's card) is a container: its call has the calls of its
+	 *											children between its tags, one level deep, in a column and
+	 *											inside a stack. A section is
 	 *											read whole or not at all - whatever it holds that the model
 	 *											cannot keep (a second row, a column without a width, a
-	 *											shortcode that is no component, markup next to a stack,
-	 *											a background that is not the first thing in its column,
-	 *											a nested call, an attribute the schema does not know) makes
+	 *											shortcode that is no component, markup next to a stack or
+	 *											next to the calls of a container, a loop or a container
+	 *											inside a container, a background that is not the first thing
+	 *											in its column, a nested call, an attribute the schema does
+	 *											not know) makes
 	 *											the whole section a foreign block, with the line and the
 	 *											reason it failed at. A foreign block runs from where the
 	 *											reading failed to the next section that is read, and is
@@ -88,8 +94,9 @@ namespace Nino\Modules\Builder {
 	 *											  reason    null    wrapped in the markers - written back with them -
 	 *											            array   read as a section and failed: line (int, the first
 	 *											                    line of the attempt), code (see REASONS), detail
-	 *											                    (a name where the text has one, else ''), text
-	 *											                    (the sentence, in English) - written back as it was
+	 *											                    (a name where the text has one, else ''; for a
+	 *											                    sentence with two places the two, a line feed between),
+	 *											                    text (the sentence, in English) - written back as it was
 	 *											  edited    bool    only ever sent by the panel, never read: the source
 	 *											                    was changed, so a save reads it as a section again
 	 *
@@ -143,6 +150,10 @@ namespace Nino\Modules\Builder {
 	 *											  text      ''|left|center|right
 	 *											  stackAlign ''|start|center|end   nino-stack-<x>
 	 *											  stackGap  ''|0..6                nino-stack-gap-<n>
+	 *											  p, mt, mb ''|0..6                nino-p-<n>, nino-mt-<n>, nino-mb-<n>: the
+	 *											                    padding of the column and the margin above and below it,
+	 *											                    each a step of the space scale; the first of a kind is the
+	 *											                    setting, a second is a class of its own, as in a section
 	 *											  vpa, vpaSpeed, vpaMode   as in settings
 	 *											  vpaDelay, vpaDuration   always ''; a column is written with its classes
 	 *											                    alone, and has no data-vpa-delay or data-vpa-duration
@@ -160,7 +171,12 @@ namespace Nino\Modules\Builder {
 	 *											  text      null|string   the fixed value, text="..."
 	 *											  attributes map    every attribute of the schema, a string each - the
 	 *											                    default where the call does not set it
-	 *											  content   string  only for a component whose source is 'content'
+	 *											  content   string  only for a component whose source is 'content' and whose
+	 *											                    schema does not say 'holds'
+	 *											  components list  only for a component whose schema says 'holds' (a container):
+	 *											                    the component nodes between its tags, in order, one level
+	 *											                    deep - none of them has 'components' - and never a
+	 *											                    'content'
 	 *											  create    map     only ever sent by the panel: what the key or the slot
 	 *											                    this source names is made with at save - for a key
 	 *											                    value (its text in every language), format (that of
@@ -172,6 +188,13 @@ namespace Nino\Modules\Builder {
 	 *											                    text), only those that were changed. They are the
 	 *											                    key's and not the file's, so the file never has them:
 	 *											                    a save writes them to the key, in their language
+	 *											  slots     map     only ever sent by the panel, as create is, for the image
+	 *											                    attributes of the schema (the kernel's card has one, its
+	 *											                    picture): attribute => what the slot the attribute names
+	 *											                    is made with at save, label, width, height and alt (a text
+	 *											                    by language), as the create of a source for a slot. The
+	 *											                    file never has it; the save reads it for the attributes
+	 *											                    that name a slot and are not empty
 	 *
 	 *	@package						Dape/Nino
 	 *	@author							David Perchermeier <mail@dape.io>
@@ -193,6 +216,9 @@ namespace Nino\Modules\Builder {
 		public const array IMAGE = [ 'cover' => 'nino-cover', 'parallax' => 'nino-parallex' ];
 		public const array IMAGE_POS = [ 'top', 'center', 'bottom' ];
 		public const array SPACING = [ 'mt', 'mb', 'pt', 'pb' ];
+		// A column has its padding and the margin above and below it, each one of the steps of the space scale
+		public const array COL_SPACING = [ 'p', 'mt', 'mb' ];
+		public const array STEPS = [ '0', '1', '2', '3', '4', '5', '6' ];
 		public const array TEXT = [ 'left', 'center', 'right' ];
 		public const array EFFECTS = [
 			'blur-soft', 'blur-medium', 'blur-hard', 'flip-soft', 'flip-medium', 'flip-hard',
@@ -246,6 +272,9 @@ namespace Nino\Modules\Builder {
 			'stack-neighbour'			=> 'a loop with other components in its column',
 			'stack-in-stack'			=> 'a loop inside a loop',
 			'stack-content'				=> 'the loop holds markup next to its component calls: %s',
+			'holder-stack'				=> 'a loop inside a component that holds components',
+			'holder-in-holder'		=> 'a component that holds components inside another',
+			'holder-content'			=> 'the component %s holds markup next to its component calls: %s',
 		];
 
 		// The marker the builder wraps a foreign block in, and its end
@@ -273,7 +302,7 @@ namespace Nino\Modules\Builder {
 		 *	@return 	array
 		 */
 		public static function colDefaults(): array {
-			return [ 'color' => '', 'dim' => false, 'background' => null, 'text' => '', 'stackAlign' => '', 'stackGap' => '' ] + self::animationDefaults() + [ 'custom' => '' ];
+			return [ 'color' => '', 'dim' => false, 'background' => null, 'text' => '', 'stackAlign' => '', 'stackGap' => '', 'p' => '', 'mt' => '', 'mb' => '' ] + self::animationDefaults() + [ 'custom' => '' ];
 		}
 
 		/**
@@ -314,6 +343,18 @@ namespace Nino\Modules\Builder {
 			}
 
 			return $defaults + [ 'class' => '' ];
+		}
+
+		/**
+		 *	Whether a component holds components: its schema says 'holds', the place of the ones it
+		 *	holds. The Builder knows no component by name, and this is what makes one a container
+		 *
+		 *	@param		array			$schema				One entry of the registry
+		 *
+		 *	@return 	bool
+		 */
+		public static function holds( array $schema ): bool {
+			return is_string( $schema['holds'] ?? null ) === true && $schema['holds'] !== '';
 		}
 
 		/**
@@ -550,13 +591,16 @@ namespace Nino\Modules\Builder {
 
 			[ $code, $detail ] = array_pad( explode( ':', $e->getMessage(), 2 ), 2, '' );
 
-			$offset = min( strlen( $text ), $e->getCode() );
+			$offset		= min( strlen( $text ), $e->getCode() );
+			$sentence	= self::REASONS[$code] ?? '%s';
+			$places		= substr_count( $sentence, '%s' );
 
 			return [
 				'line'		=> substr_count( $text, "\n", 0, $offset ) + 1,
 				'code'		=> $code,
 				'detail'	=> $detail,
-				'text'		=> sprintf( self::REASONS[$code] ?? '%s', $detail ),
+				// A sentence with two places is told two things, which the detail holds with a line feed between
+				'text'		=> vsprintf( $sentence, $places < 2 ? [ $detail ] : array_pad( explode( "\n", $detail, $places ), $places, '' ) ),
 			];
 		}
 
@@ -1189,6 +1233,8 @@ namespace Nino\Modules\Builder {
 					$col['stackGap'] = $m[1];
 				elseif( preg_match( '/^nino-text-(left|center|right)$/D', $token, $m ) === 1 && $col['text'] === '' )
 					$col['text'] = $m[1];
+				elseif( preg_match( '/^nino-(p|mt|mb)-([0-6])$/D', $token, $m ) === 1 && $col[$m[1]] === '' )
+					$col[$m[1]] = $m[2];
 				elseif( self::_animation( $token, $col ) === false )
 					$custom[] = $token;
 			}
@@ -1263,15 +1309,18 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	The calls of a stack's content, and nothing else
+		 *	The calls of a stack's content, or of the content of a component that holds components,
+		 *	and nothing else. A loop and a second container in the content of a container are no calls
+		 *	that it holds (see _call())
 		 *
-		 *	@param		string		$content			The text between [stack] and [/stack]
+		 *	@param		string		$content			The text between [stack] and [/stack], or between the tags of the container
 		 *	@param		int				$base					Where it starts in the source, for the line of a failure
 		 *	@param		array			$registry
+		 *	@param		string		$holder				The name of the container whose content it is, '' for a stack's
 		 *
 		 *	@return 	array										The components
 		 */
-		private static function _sequence( string $content, int $base, array $registry ): array {
+		private static function _sequence( string $content, int $base, array $registry, string $holder = '' ): array {
 
 			$components	= [];
 			$pos				= 0;
@@ -1283,7 +1332,7 @@ namespace Nino\Modules\Builder {
 				if( $pos >= strlen( $content ) )
 					return $components;
 
-				[ $call, $pos ] = self::_call( $content, $pos, $base, $registry, 'stack-content' );
+				[ $call, $pos ] = self::_call( $content, $pos, $base, $registry, $holder === '' ? 'stack-content' : 'holder-content', $holder );
 
 				if( $call['stack'] === true )
 					throw self::_fail( 'stack-in-stack', '', $base + $pos );
@@ -1300,13 +1349,14 @@ namespace Nino\Modules\Builder {
 		 *	@param		int				$base					What to add to a position to get one of the source
 		 *	@param		array			$registry
 		 *	@param		string		$other				What fails where the text at $pos is no call
+		 *	@param		string		$holder				The name of the container whose content this is, '' elsewhere: a loop and a container are no calls it holds
 		 *
 		 *	@return 	array										[ [ stack, node, content, contentAt ], the position after the call ]
 		 */
-		private static function _call( string $text, int $pos, int $base, array $registry, string $other = 'background-image' ): array {
+		private static function _call( string $text, int $pos, int $base, array $registry, string $other = 'background-image', string $holder = '' ): array {
 
 			if( preg_match( '~\G\[([a-z][a-z0-9-]*)(?: ([^\]]*))?\]~', $text, $head, 0, $pos ) !== 1 )
-				throw self::_fail( $other, trim( substr( $text, $pos, 24 ) ), $base + $pos );
+				throw self::_fail( $other, $holder === '' ? trim( substr( $text, $pos, 24 ) ) : $holder. "\n". (string) preg_replace( '/\s+/', ' ', trim( substr( $text, $pos, 24 ) ) ), $base + $pos );
 
 			$name			= $head[1];
 			$isStack	= isset( $registry['stacks'][$name] ) === true;
@@ -1315,6 +1365,10 @@ namespace Nino\Modules\Builder {
 				throw self::_fail( 'unknown-shortcode', $name, $base + $pos );
 
 			$schema = $isStack === true ? $registry['stacks'][$name] : $registry['components'][$name];
+
+			// A container holds the calls of components that hold none: not a loop, not a second container
+			if( $holder !== '' && ( $isStack === true || self::holds( $schema ) === true ) )
+				throw self::_fail( $isStack === true ? 'holder-stack' : 'holder-in-holder', '', $base + $pos );
 
 			// The expression the kernel finds a call and its content with
 			preg_match( '~\G\[('. preg_quote( $name, '~' ). ')(?: ([^\]]*))?\](?:([^\[]*+(?:\[(?!\/\1\])[^\[]*+)*+)(?:\[\/\1\]))?~', $text, $match, PREG_OFFSET_CAPTURE | PREG_UNMATCHED_AS_NULL, $pos );
@@ -1359,7 +1413,10 @@ namespace Nino\Modules\Builder {
 				return [ [ 'stack' => true, 'node' => $node, 'content' => (string) $content, 'contentAt' => $base + $contentAt ], $end ];
 			}
 
-			if( $kind === 'content' ) {
+			// What stands between the tags of a container is the calls of its children
+			if( $kind === 'content' && self::holds( $schema ) === true )
+				$node['components'] = self::_sequence( (string) $content, $base + $contentAt, $registry, $name );
+			elseif( $kind === 'content' ) {
 
 				$names = array_merge( array_keys( (array) ( $registry['components'] ?? [] ) ), array_keys( (array) ( $registry['stacks'] ?? [] ) ) );
 

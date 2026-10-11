@@ -169,6 +169,18 @@
 		</div>
 	</template>
 
+	<!-- A component that holds components, in the preview: a frame of its own in its column, lighter than the column's, with a head of the
+	     same three parts - its label, what is said of it, its tools, which the script puts in last - and its children in the body -->
+	<template id="builder-tpl-card">
+		<div class="builder-card">
+			<header class="builder-card-head">
+				<span class="builder-head-title"><span class="builder-card-name"></span></span>
+				<span class="builder-head-status"></span>
+			</header>
+			<div class="builder-card-body"></div>
+		</div>
+	</template>
+
 	<!-- A component in the preview: the image its schema names, or - where its slot has a picture - the picture; its label, or - where its
 	     key has a text - the first line of the text -->
 	<template id="builder-tpl-ph">

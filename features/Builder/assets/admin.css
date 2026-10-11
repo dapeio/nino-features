@@ -349,37 +349,45 @@
 	color: var(--editor-text);
 }
 /* The colour of a section is a grey level: the preview knows no palette, and none of the workbench's accent colours is the site's.
-   A column that paints a ground of its own is tinted the same way - with the colour alone, so that the stripes of a hidden column stay */
+   A column that paints a ground of its own is tinted the same way - with the colour alone, so that the stripes of a hidden column stay -,
+   and so is a component that holds components and paints one */
 .builder-frame.builder-color-alt,
-.builder-pcol.builder-color-alt {
+.builder-pcol.builder-color-alt,
+.builder-card.builder-color-alt {
 	background-color: var(--builder-ground-alt);
 }
 .builder-frame.builder-color-tint,
-.builder-pcol.builder-color-tint {
+.builder-pcol.builder-color-tint,
+.builder-card.builder-color-tint {
 	background-color: var(--builder-ground-tint);
 }
 .builder-frame.builder-color-dark,
-.builder-pcol.builder-color-dark {
+.builder-pcol.builder-color-dark,
+.builder-card.builder-color-dark {
 	background-color: var(--builder-ground-dark);
 	color: #f1f1f1;
 }
 .builder-frame.builder-color-black,
-.builder-pcol.builder-color-black {
+.builder-pcol.builder-color-black,
+.builder-card.builder-color-black {
 	background-color: var(--builder-ground-black);
 	color: #f1f1f1;
 }
 .builder-frame.builder-color-primary,
-.builder-pcol.builder-color-primary {
+.builder-pcol.builder-color-primary,
+.builder-card.builder-color-primary {
 	background-color: var(--builder-ground-primary);
 	color: #fff;
 }
 .builder-frame.builder-color-brand-alt,
-.builder-pcol.builder-color-brand-alt {
+.builder-pcol.builder-color-brand-alt,
+.builder-card.builder-color-brand-alt {
 	background-color: var(--builder-ground-brand-alt);
 	color: #111;
 }
 /* The counter of a section that is alt or tint is the plain ground: a column of it is drawn, in the ground the frames have */
-.builder-pcol.builder-color-plain {
+.builder-pcol.builder-color-plain,
+.builder-card.builder-color-plain {
 	background-color: var(--builder-ground-plain);
 	color: var(--editor-text);
 }
@@ -544,6 +552,27 @@ button.builder-status-item:hover {
 	opacity: .8;
 }
 .builder-col-body {
+	display: grid;
+	gap: .3rem;
+	padding: .3rem;
+}
+/* A component that holds components has a frame of its own in its column, lighter than the column's: a thin solid line in the
+   colour of the frame it stands in, and a smaller head */
+.builder-card {
+	min-width: 0;
+	border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+	border-radius: var(--editor-radius-sm);
+}
+.builder-card-head {
+	display: flex;
+	align-items: center;
+	gap: .5rem;
+	min-width: 0;
+	padding: .05rem .15rem .05rem .4rem;
+	font-size: .62rem;
+	opacity: .8;
+}
+.builder-card-body {
 	display: grid;
 	gap: .3rem;
 	padding: .3rem;
@@ -1023,6 +1052,11 @@ button.builder-status-item:hover {
 	grid-template-columns: minmax(0, 1fr) auto;
 	align-items: end;
 	gap: .5rem;
+}
+/* A colour select that has a hint: the hint stands under the select and the patch, closer to them than a field's own margin */
+.builder-with-hint > .nino-admin-hint {
+	display: block;
+	margin: -.4rem 0 .72rem;
 }
 .builder-swatch {
 	--builder-ground: var(--builder-ground-plain);

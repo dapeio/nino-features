@@ -71,7 +71,7 @@
                 }
             },
             "in": [
-                "cell"
+                "card"
             ],
             "draws": "h{level} .nino-article-title",
             "defaults": {
@@ -166,7 +166,7 @@
                 }
             },
             "in": [
-                "cell"
+                "card"
             ],
             "draws": "p .nino-article-subtitle",
             "defaults": {
@@ -380,6 +380,130 @@
                 "size": "2",
                 "class": ""
             }
+        },
+        "article": {
+            "label": "Card",
+            "source": "content",
+            "loop": true,
+            "preview": "block",
+            "attributes": {
+                "ground": {
+                    "type": "select",
+                    "label": "Ground",
+                    "hint": "The surface the card paints: none, the counter of the ground it sits on, or one of the six.",
+                    "options": [
+                        "",
+                        "counter",
+                        "alt",
+                        "tint",
+                        "dark",
+                        "black",
+                        "primary",
+                        "brand-alt"
+                    ],
+                    "default": ""
+                },
+                "padding": {
+                    "type": "select",
+                    "label": "Padding",
+                    "hint": "The room between the edge of the card and its content, as a step of the space scale; empty is what the ground gives.",
+                    "options": [
+                        "",
+                        "0",
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6"
+                    ],
+                    "default": ""
+                },
+                "fill": {
+                    "type": "bool",
+                    "label": "Full height",
+                    "hint": "The card takes the whole height of its column or cell, so the cards of one row end on one line.",
+                    "default": false
+                },
+                "vertical": {
+                    "type": "select",
+                    "label": "Vertical",
+                    "hint": "Where the content stands in a card taller than it: at the top, in the middle, at the bottom, or spread so that the last element stands at the bottom.",
+                    "options": [
+                        "",
+                        "middle",
+                        "bottom",
+                        "last-bottom"
+                    ],
+                    "default": ""
+                },
+                "align": {
+                    "type": "select",
+                    "label": "Horizontal",
+                    "hint": "How the text and the buttons are aligned.",
+                    "options": [
+                        "",
+                        "left",
+                        "center",
+                        "right"
+                    ],
+                    "default": ""
+                },
+                "background": {
+                    "type": "image",
+                    "label": "Picture",
+                    "hint": "A slot, or in a stack an image field of the element, laid behind the content.",
+                    "default": ""
+                },
+                "focus": {
+                    "type": "select",
+                    "label": "Focus",
+                    "hint": "Which part of the picture survives a crop, as one of nine positions.",
+                    "options": [
+                        "",
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9"
+                    ],
+                    "default": ""
+                },
+                "dim": {
+                    "type": "bool",
+                    "label": "Dim the picture",
+                    "hint": "A scrim over the picture, and the card writes in the ink of the dark ground.",
+                    "default": false
+                },
+                "borderless": {
+                    "type": "bool",
+                    "label": "Without border",
+                    "hint": "No line and no shadow; a ground keeps its fill.",
+                    "default": false
+                }
+            },
+            "in": [
+                "section",
+                "hero"
+            ],
+            "draws": "article .nino-article",
+            "holds": "card",
+            "defaults": {
+                "ground": "",
+                "padding": "",
+                "fill": "0",
+                "vertical": "",
+                "align": "",
+                "background": "",
+                "focus": "",
+                "dim": "0",
+                "borderless": "0",
+                "class": ""
+            }
         }
     },
     "stacks": {
@@ -399,7 +523,6 @@
                 "cols": "100 50 33",
                 "gap": "2",
                 "autoheight": "0",
-                "article": "",
                 "class": ""
             }
         },
@@ -463,7 +586,6 @@
                 "cols": "100 50 33",
                 "gap": "2",
                 "autoheight": "0",
-                "article": "",
                 "by": "",
                 "all": "",
                 "class": ""

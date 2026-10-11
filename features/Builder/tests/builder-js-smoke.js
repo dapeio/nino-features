@@ -60,9 +60,22 @@
  *												section as a strength and a switch that waits for one, the
  *												frame of a column in the ground it paints - dark where its
  *												picture is dimmed -, the alignment of a column in one line and
- *												as an icon in its head, the cards of a loop, the picker that
+ *												as an icon in its head, the picker that
  *												offers the components of its place, and the second line of a
  *												placeholder that says what a component draws.
+ *
+ *												The card, a component that holds components, over the page of
+ *												the fixtures that has two (fixtures/page-home-card.json): a path
+ *												one level deeper and the moving, copying and deleting that work
+ *												at it, the keys and slots of a copy, the sources that are red in
+ *												it, the picker by place - the card in a column and in the bare
+ *												cell of a loop, its children inside it, nothing a loop does not
+ *												take -, its frame in the preview with the tint it has by the
+ *												pairs and the mark of its picture, its tools at depth four, its
+ *												form - the ground as the colour select, the words of the Builder
+ *												for the values, the focus and the dimming that wait for the
+ *												picture, the picture from a slot, from a field or from an upload
+ *												- and the spacing of a column, which is a line of its Layout tab.
  *
  *	Usage: node features/Builder/tests/builder-js-smoke.js
  */
@@ -1247,13 +1260,13 @@ check( '...the end of a column is a button for a component and nothing else - wh
 	const looped = builder._addsRow( [ 1, 1 ] );
 	return plain.children.length === 1 && looped.children.length === 1 && plain.children[0].textContent === '+ Component' && looped.children[0].textContent === '+ Component';
 } )() );
-check( '...and a component is chosen from the registry\'s, those that belong where the column is: the first section when it has a picture is the hero, a column that runs a loop is a cell - and there it is the ones a loop takes -, anywhere else is a section - and what names no place is offered in all of them', ( function() {
+check( '...and a component is chosen from the registry\'s, those that belong where the column is: the first section when it has a picture is the hero, anywhere else is a section - the cell of a loop among it, which holds no place of its own - and what names no place is offered in all of them; the card is for the hero and for a section, and a loop takes it as it takes the rest', ( function() {
 	const menu = screen.getElementById('builder-menu');
 	const offered = function( path ) { builder._pickComponent( path, made('button') ); return texts( menu.children ) };
-	return offered( [ 0, 0 ] ) === 'Button,Hero subtitle,Hero title,HTML,Image,Spacer,Text' && offered( [ 1, 0 ] ) === 'Button,HTML,Image,Spacer,Subtitle,Text,Title'
-		&& offered( [ 1, 1 ] ) === 'Article subtitle,Article title,Button,HTML,Image,Spacer,Text' && offered( [ 3, 0 ] ) === offered( [ 1, 0 ] );
+	return offered( [ 0, 0 ] ) === 'Button,Card,Hero subtitle,Hero title,HTML,Image,Spacer,Text' && offered( [ 1, 0 ] ) === 'Button,Card,HTML,Image,Spacer,Subtitle,Text,Title'
+		&& offered( [ 1, 1 ] ) === offered( [ 1, 0 ] ) && offered( [ 3, 0 ] ) === offered( [ 1, 0 ] );
 } )() );
-check( '...a component that says where it belongs (its "in") is offered there and nowhere else - the hero is the first block when it has a picture, a cell is a column with a loop -, one that says nothing is offered everywhere, and one a loop does not take is offered in no cell: the script names no component', ( function() {
+check( '...a component that says where it belongs (its "in") is offered there and nowhere else - the hero is the first block when it has a picture, a section is any other column, the cell of a loop included -, one that says nothing is offered everywhere, and one a loop does not take is offered in no column that runs one: the script names no component', ( function() {
 
 	const menu = screen.getElementById('builder-menu');
 	const components = builder._registry.components;
@@ -1263,9 +1276,9 @@ check( '...a component that says where it belongs (its "in") is offered there an
 		return menu.children.filter( function( item ) { return /^Stub/.test( item.textContent ) } ).map( function( item ) { return item.textContent } ).join();
 	};
 
-	components['stub-cell'] = { label : 'Stub cell', preview : 'block', in : [ 'cell' ] };
+	components['stub-card'] = { label : 'Stub card', preview : 'block', in : [ 'card' ] };
 	components['stub-hero'] = { label : 'Stub hero', preview : 'block', in : [ 'hero' ] };
-	components['stub-two'] = { label : 'Stub two', preview : 'block', in : [ 'section', 'cell' ] };
+	components['stub-two'] = { label : 'Stub two', preview : 'block', in : [ 'section', 'card' ] };
 	components['stub-any'] = { label : 'Stub any', preview : 'block' };
 	components['stub-alone'] = { label : 'Stub alone', preview : 'block', loop : false };
 
@@ -1275,8 +1288,8 @@ check( '...a component that says where it belongs (its "in") is offered there an
 	blocks[0].settings.image = '';
 	blocks[1].settings.image = 'cover';
 
-	return found === 'Stub alone,Stub any,Stub hero | Stub alone,Stub any,Stub two | Stub any,Stub cell,Stub two | Stub alone,Stub any,Stub two'
-		&& offered( [ 0, 0 ] ) === 'Stub alone,Stub any,Stub two' && offered( [ 1, 0 ] ) === 'Stub alone,Stub any,Stub two' && offered( [ 1, 1 ] ) === 'Stub any,Stub cell,Stub two';
+	return found === 'Stub alone,Stub any,Stub hero | Stub alone,Stub any,Stub two | Stub any,Stub two | Stub alone,Stub any,Stub two'
+		&& offered( [ 0, 0 ] ) === 'Stub alone,Stub any,Stub two' && offered( [ 1, 0 ] ) === 'Stub alone,Stub any,Stub two' && offered( [ 1, 1 ] ) === 'Stub any,Stub two';
 } )() );
 
 doc = open();
@@ -1359,9 +1372,9 @@ check( '...a column whose picture is dimmed is tinted dark, whatever colour it n
 	&& dimTintOf( 'tint', 'counter', true, true ) === 'builder-color-dark' && dimTintOf( 'dark', 'black', true, true ) === 'builder-color-dark' && dimTintOf( 'primary', 'primary', true, true ) === 'builder-color-dark' && dimTintOf( 'dark', 'counter', true, true ) === 'builder-color-dark' );
 check( '...a dimming without a picture is no ground, and a picture that is not dimmed paints nothing: the frame is tinted by the colour the column names, or by none', dimTintOf( '', '', true, false ) === '' && dimTintOf( '', 'alt', true, false ) === 'builder-color-alt'
 	&& dimTintOf( 'dark', 'counter', true, false ) === 'builder-color-black' && dimTintOf( '', '', false, true ) === '' && dimTintOf( '', 'alt', false, true ) === 'builder-color-alt' && dimTintOf( 'dark', 'counter', false, true ) === 'builder-color-black' );
-check( '...the stylesheet tints the frame of a column as it tints the frame of a section: the same ground for each colour, painted as a colour alone so that the stripes of a hidden column stay, and the plain ground for the counter of a light one', [ 'alt', 'tint', 'dark', 'black', 'primary', 'brand-alt' ].every( function( color ) {
-	return stylesheet.indexOf( '.builder-frame.builder-color-'+ color+ ',\n.builder-pcol.builder-color-'+ color+ ' {\n\tbackground-color: var(--builder-ground-'+ color+ ');' ) !== -1;
-} ) && stylesheet.indexOf( '.builder-pcol.builder-color-plain {\n\tbackground-color: var(--builder-ground-plain);' ) !== -1 && /\.builder-pcol\.is-hidden \{[^}]*background-image/.test( stylesheet ) );
+check( '...the stylesheet tints the frame of a column as it tints the frame of a section, and the frame of a card the same: the same ground for each colour, painted as a colour alone so that the stripes of a hidden column stay, and the plain ground for the counter of a light one', [ 'alt', 'tint', 'dark', 'black', 'primary', 'brand-alt' ].every( function( color ) {
+	return stylesheet.indexOf( '.builder-frame.builder-color-'+ color+ ',\n.builder-pcol.builder-color-'+ color+ ',\n.builder-card.builder-color-'+ color+ ' {\n\tbackground-color: var(--builder-ground-'+ color+ ');' ) !== -1;
+} ) && stylesheet.indexOf( '.builder-pcol.builder-color-plain,\n.builder-card.builder-color-plain {\n\tbackground-color: var(--builder-ground-plain);' ) !== -1 && /\.builder-pcol\.is-hidden \{[^}]*background-image/.test( stylesheet ) );
 
 check( 'the preview is shown in four views: Mobile, Tablet, Desktop and Global, each a button with its icon from the sprite and its word', ( function() {
 	const buttons = builder.VIEWS.map( function( view ) { return screen.getElementById( 'builder-viewport-'+ view ) } );
@@ -1865,13 +1878,13 @@ check( 'in a viewport the table of the widths has the row of that viewport only 
 		&& controlOf( paneOf('layout'), 'Width, Desktop' ).el.children.map( function( option ) { return option.value } ).join() === '25,33,50,66,75,100' && paneOf('layout').querySelectorAll('.builder-link-btn').map( function( link ) { return link.textContent } ).join() === 'All viewports'
 		&& widths().nextSibling === paneOf('layout').querySelector('.builder-link-btn');
 } )() );
-check( '...and the rest of the tab: one line with the vertical alignment of the components and the horizontal alignment, in this order, both as icons - the vertical one with Off as a word, and with its hint -, and the gap on a line of its own below', JSON.stringify( labelList( paneOf('layout') ) ) === JSON.stringify( [ 'Width, Desktop', 'Hidden, Desktop', 'Vertical alignment', 'Horizontal alignment', 'Gap (--space-*)' ] )
+check( '...and the rest of the tab: one line with the vertical alignment of the components and the horizontal alignment, in this order, both as icons - the vertical one with Off as a word, and with its hint -, the gap on a line of its own below, and under it the spacing', JSON.stringify( labelList( paneOf('layout') ) ) === JSON.stringify( [ 'Width, Desktop', 'Hidden, Desktop', 'Vertical alignment', 'Horizontal alignment', 'Gap (--space-*)', 'Inside', 'Top', 'Bottom' ] )
 	&& valueAt( paneOf('layout'), 'Horizontal alignment' ) === 'left' && valueAt( paneOf('layout'), 'Vertical alignment' ) === '' && controlOf( paneOf('layout'), 'Vertical alignment' ).el.querySelectorAll('.builder-segment-option').map( function( option ) { return option.querySelector('input').value+ ':'+ ( iconOf( option ) ?? option.textContent ) } ).join()
 		=== ':Off,start:stack-start,center:stack-center,end:stack-end' && controlOf( paneOf('layout'), 'Gap (--space-*)' ).el.children.map( function( option ) { return option.value } ).join() === ',0,1,2,3,4,5,6'
 	&& ( function() {
 		const lines = paneOf('layout').querySelectorAll('.builder-line');
 		const gap = controlOf( paneOf('layout'), 'Gap (--space-*)' ).el;
-		return lines.length === 1 && lines[0].children.length === 2 && lines[0].children[0].contains( controlOf( paneOf('layout'), 'Vertical alignment' ).el ) && lines[0].children[1].contains( controlOf( paneOf('layout'), 'Horizontal alignment' ).el )
+		return lines.length === 2 && lines[0].children.length === 2 && lines[0].children[0].contains( controlOf( paneOf('layout'), 'Vertical alignment' ).el ) && lines[0].children[1].contains( controlOf( paneOf('layout'), 'Horizontal alignment' ).el )
 			&& lines[0].children[0].querySelector('.nino-admin-hint').textContent === words['/_admin/builder/hint/stack-align'] && lines[0].nextSibling.contains( gap ) && lines[0].contains( gap ) === false;
 	} )() );
 change( paneOf('layout'), 'Width, Desktop', '33' );
@@ -1879,6 +1892,25 @@ change( paneOf('layout'), 'Horizontal alignment', 'right' );
 change( paneOf('layout'), 'Vertical alignment', 'center' );
 change( paneOf('layout'), 'Gap (--space-*)', '3' );
 check( '...what the tab writes is the width of the viewport, the alignments and the gap', colOf().width.l === 33 && colOf().text === 'right' && colOf().stackAlign === 'center' && colOf().stackGap === '3' && JSON.stringify( colOf().width ) === '{"s":100,"m":100,"l":33}' );
+check( '...the spacing is one line under the gap with its caption in front: Inside, Top and Bottom, a select of the steps 0 to 6 each, in the words the section has for them - none is the default - and none set to begin with', ( function() {
+	const lines = paneOf('layout').querySelectorAll('.builder-line');
+	const spacing = lines[1];
+	return spacing.classList.contains('has-caption') && spacing.children[0].className === 'builder-line-caption' && spacing.children[0].textContent === 'Spacing' && spacing.children.length === 4
+		&& lines[0].nextSibling.contains( controlOf( paneOf('layout'), 'Gap (--space-*)' ).el ) && lines[0].nextSibling.nextSibling === spacing
+		&& [ 'Inside', 'Top', 'Bottom' ].every( function( label ) {
+			const control = controlOf( paneOf('layout'), label );
+			return control.kind === 'select' && spacing.contains( control.el ) && control.el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Default,0=0,1=1,2=2,3=3,4=4,5=5,6=6' && valueAt( paneOf('layout'), label ) === '';
+		} ) && colOf().p === '' && colOf().mt === '' && colOf().mb === '';
+} )() );
+change( paneOf('layout'), 'Inside', '3' );
+change( paneOf('layout'), 'Top', '1' );
+change( paneOf('layout'), 'Bottom', '0' );
+check( '...what the line writes is the padding, the margin above and the margin below of the column, each a step as text - 0 is a step of its own and is not none - and into nothing else', colOf().p === '3' && colOf().mt === '1' && colOf().mb === '0' && colOf().stackGap === '3'
+	&& valueAt( paneOf('layout'), 'Inside' ) === '3' && valueAt( paneOf('layout'), 'Bottom' ) === '0' && builder._doc.model.blocks[0].settings.mt === '' && builder._doc.model.blocks[0].settings.pt === '' );
+change( paneOf('layout'), 'Top', '' );
+check( '...none puts the step away again', colOf().mt === '' && colOf().p === '3' );
+change( paneOf('layout'), 'Inside', '' );
+change( paneOf('layout'), 'Bottom', '' );
 
 buttonOf( paneOf('layout'), 'All viewports' ).click();
 check( 'the link shows all the viewports: the preview is in the view of all of them (and its button the pressed one), and the tables of the dialog have a row for each - the link is gone, the tab is where it was', builder._viewport === 'g' && preview().dataset.viewport === 'g' && screen.getElementById('builder-viewport-g').getAttribute('aria-pressed') === 'true'
@@ -2007,43 +2039,25 @@ builder._renderEditor();
 builder._setView('g');
 builder._openSettings( [ 1, 1, 'x' ] );
 check( 'the loop of a column opens the form of the column on its Loop tab (the loop is no frame, but the column\'s own settings)', dialogText('builder-dialog-kind') === 'Column of "services"' && shownTab( screen.getElementById('builder-dialog-tabs'), 'builder' ) === 'loop' );
-check( 'the form of the loop: the kind, then the groups - Data (the type, a note, the query), Order (the field and the direction, the limit and the offset), Grid (the cells of each viewport, the gap and the equal height, the cards, the id)', titlesIn( loopPane() ) === 'Data,Order,Grid'
-	&& JSON.stringify( labelList( loopPane() ) ) === JSON.stringify( [ 'Loop', 'Type', 'Query', 'Sort by', 'Direction', 'Limit', 'Offset', 'Cell width, Mobile', 'Cell width, Tablet', 'Cell width, Desktop', 'Gap between the cells', 'Cells of equal height', 'Cards', 'Id of the loop' ] ) );
-check( '...the groups hold what they are called after: the type and the query in Data, the order in Order - the limit and the offset on a line -, the cells in Grid with the gap and the equal height on a line and the cards and the id below', ( function() {
+check( 'the form of the loop: the kind, then the groups - Data (the type, a note, the query), Order (the field and the direction, the limit and the offset), Grid (the cells of each viewport, the gap and the equal height, the id) - and no field for the cards of the cells: the loop is the grid alone', titlesIn( loopPane() ) === 'Data,Order,Grid'
+	&& JSON.stringify( labelList( loopPane() ) ) === JSON.stringify( [ 'Loop', 'Type', 'Query', 'Sort by', 'Direction', 'Limit', 'Offset', 'Cell width, Mobile', 'Cell width, Tablet', 'Cell width, Desktop', 'Gap between the cells', 'Cells of equal height', 'Id of the loop' ] ) );
+check( '...the groups hold what they are called after: the type and the query in Data, the order in Order - the limit and the offset on a line -, the cells in Grid with the gap and the equal height on a line and the id below', ( function() {
 	const groups = loopPane().querySelectorAll('.builder-group');
-	return groups.map( function( group ) { return labelList( group ).join('|') } ).join('~') === 'Type|Query~Sort by|Direction|Limit|Offset~Cell width, Mobile|Cell width, Tablet|Cell width, Desktop|Gap between the cells|Cells of equal height|Cards|Id of the loop'
+	return groups.map( function( group ) { return labelList( group ).join('|') } ).join('~') === 'Type|Query~Sort by|Direction|Limit|Offset~Cell width, Mobile|Cell width, Tablet|Cell width, Desktop|Gap between the cells|Cells of equal height|Id of the loop'
 		&& groups[1].querySelectorAll('.builder-line').map( function( line ) { return line.children.length } ).join() === '2' && groups[2].querySelectorAll('.builder-line').map( function( line ) { return line.children.length } ).join() === '2';
 } )() );
 const stackNow = function() { return builder._doc.model.blocks[1].cols[1].stack };
-check( '...the grid ends with the cards of the cells for a loop whose defaults have the attribute "article" - the stacks of the kernel -, a select of the Builder\'s own list: none, a card, counter, and the grounds of a column in the words of the grounds, after the equal height and before the id', ( function() {
-
-	const cards = controlOf( loopPane(), 'Cards' );
-	const group = loopPane().querySelectorAll('.builder-group')[2];
-	const labels = labelList( group );
-
-	return cards.kind === 'select' && cards.el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=None,card=Card,counter=Counter,alt=Alternate,tint=Tinted,dark=Dark,black=Black,primary=Brand colour,brand-alt=Second colour'
-		&& group.contains( cards.el ) && labels.indexOf('Cards') === labels.indexOf('Cells of equal height') + 1 && labels.indexOf('Id of the loop') === labels.indexOf('Cards') + 1 && valueAt( loopPane(), 'Cards' ) === '' && cards.el.closest('.builder-line') === null;
+check( '...the stacks of the kernel carry no attribute for the cards of the cells any more - the cell is a div, and what stands in it is the cell\'s components -, so the loop has none to set and writes none: the grid is all it brings', ( function() {
+	const kernel = Object.keys( builder._registry.stacks ).every( function( name ) { return Object.prototype.hasOwnProperty.call( builder._registry.stacks[name].defaults, 'article' ) === false } );
+	change( loopPane(), 'Gap between the cells', '4' );
+	const written = Object.prototype.hasOwnProperty.call( stackNow().attributes, 'article' ) === false;
+	change( loopPane(), 'Gap between the cells', '2' );
+	return kernel === true && written === true && loopPane().querySelector('.builder-group') !== null && labelList( loopPane() ).indexOf('Cards') === -1;
 } )() );
-check( '...it writes the attribute of the loop, which is an attribute like the others: nothing else of the loop is touched', ( function() {
-
-	const before = JSON.parse( JSON.stringify( stackNow().attributes ) );
-
-	change( loopPane(), 'Cards', 'counter' );
-
-	return stackNow().attributes.article === 'counter' && valueAt( loopPane(), 'Cards' ) === 'counter' && JSON.stringify( Object.assign( before, { article : 'counter' } ) ) === JSON.stringify( stackNow().attributes ) && stackNow().name === 'stack';
-} )() );
-check( '...a word a file written by hand has, that the select has no word for, is shown as it is and kept until another is chosen', ( function() {
-
-	stackNow().attributes.article = 'sparkle';
-	builder._refreshTab('loop');
-
-	const kept = valueAt( loopPane(), 'Cards' ) === 'sparkle' && controlOf( loopPane(), 'Cards' ).el.children.map( function( option ) { return option.value } ).pop() === 'sparkle' && stackNow().attributes.article === 'sparkle';
-
-	change( loopPane(), 'Cards', 'card' );
-
-	return kept && stackNow().attributes.article === 'card';
-} )() );
-change( loopPane(), 'Cards', '' );
+check( '...and the words of the cards are gone from both languages: the field of the loop and the words of its options', [ 'en_US.php', 'de_DE.php' ].every( function( file ) {
+	const texts = fs.readFileSync( path.join( __dirname, '../text/'+ file ), 'utf8' );
+	return texts.indexOf('/_admin/builder/stack/article') === -1 && texts.indexOf('/_admin/builder/option/article-') === -1;
+} ) && words['/_admin/builder/stack/article'] === undefined );
 check( '...the type is one of the Elements panel\'s, with the title it has there', controlOf( loopPane(), 'Type' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '/services=Services (/services),/team=Team (/team)' );
 check( '...the cells are a table with a row for each viewport - the device with its icon -, in the view of all of them', loopPane().querySelectorAll('tbody tr').map( function( row ) { return row.querySelector('th').textContent+ ':'+ iconOf( row ) } ).join() === 'Mobile:smartphone,Tablet:tablet,Desktop:monitor'
 	&& loopPane().querySelector('table').querySelectorAll('thead th').length === 2 && texts( loopPane().querySelector('table').querySelectorAll('thead th') ) === 'Device,Cell width' );
@@ -2115,16 +2129,10 @@ check( '...a loop with a grid and attributes of its own has all four groups', ti
 
 doc = open();
 builder._renderEditor();
-builder._registry.stacks.bare = JSON.parse( JSON.stringify( builder._registry.stacks.stack ) );
-delete builder._registry.stacks.bare.defaults.article;
 builder._openSettings( [ 1, 1, 'x' ] );
-change( loopPane(), 'Loop', 'bare' );
-check( 'a loop whose defaults do not carry "article" has no row for the cards: a stack of a feature with a grid of its own - and the attribute is not carried over to it', labelList( loopPane() ).indexOf('Cards') === -1 && labelList( loopPane() ).indexOf('Id of the loop') !== -1 && stackNow().name === 'bare'
-	&& Object.prototype.hasOwnProperty.call( stackNow().attributes, 'article' ) === false && stackNow().attributes.gap === '2' );
-change( loopPane(), 'Loop', 'slider' );
-check( '...nor has a loop with no grid at all', labelList( loopPane() ).indexOf('Cards') === -1 && Object.prototype.hasOwnProperty.call( stackNow().attributes, 'article' ) === false );
 change( loopPane(), 'Loop', 'filter' );
-check( '...and the stacks of the kernel that have a grid have it, empty to begin with', labelList( loopPane() ).indexOf('Cards') !== -1 && valueAt( loopPane(), 'Cards' ) === '' && stackNow().attributes.article === '' );
+check( 'the kernel\'s filter stack has the grid and its id like the plain one, and no row for cards: the attribute is not carried over to it', labelList( loopPane() ).indexOf('Id of the loop') !== -1 && labelList( loopPane() ).indexOf('Cards') === -1 && stackNow().name === 'filter'
+	&& Object.prototype.hasOwnProperty.call( stackNow().attributes, 'article' ) === false && stackNow().attributes.gap === '2' );
 
 console.log( '\nThe animation and the classes of a column' );
 
@@ -2194,13 +2202,14 @@ check( 'a link is a source of its own, a line of its own - the other attributes 
 	&& paneOf('properties').children[0].querySelector('.builder-source-name').textContent === 'Link' && paneOf('properties').children[0].querySelector('.builder-source-current').textContent === '/_nino/webpage/contact/uri'
 	&& paneOf('properties').children[0].querySelector('.builder-source-caption').hidden === true );
 builder._openSettings( [ 1, 1, 0 ] );
-check( '...a text of its own and a select go together, the select that is left over is alone: alt and focus, then ratio', dialogText('builder-dialog-kind') === 'Component "Image"' && classes( paneOf('properties').children ) === 'builder-line,nino-admin-field' && JSON.stringify( labelList( paneOf('properties') ) ) === JSON.stringify( [ 'Alternative text', 'Focus', 'Ratio' ] )
-	&& controlsIn( paneOf('properties') ).map( function( control ) { return control.kind } ).join() === 'text,select,select' );
+check( '...a text of its own is alone when the select after it is a focus, which is a grid and has a line to itself - the switch for none and the nine places -, and the select after that is alone: alt, focus, ratio', dialogText('builder-dialog-kind') === 'Component "Image"' && classes( paneOf('properties').children ) === 'nino-admin-field,builder-focus,nino-admin-field' && JSON.stringify( labelList( paneOf('properties') ) ) === JSON.stringify( [ 'Alternative text', 'No focus', 'Focus', 'Ratio' ] )
+	&& controlsIn( paneOf('properties') ).map( function( control ) { return control.kind } ).join() === 'text,switch,group,select' );
 
-check( 'the attributes of a schema are paired in the order of the schema: a select, a switch, a number or a line of text goes with the next of them; a lines field, a link, a picture or a key has a line to itself', ( function() {
-	const declared = { a : { type : 'select' }, b : { type : 'bool' }, c : { type : 'lines' }, d : { type : 'int' }, e : { type : 'string' }, f : { type : 'href' }, g : { type : 'select' }, h : { type : 'image' }, i : { type : 'key' }, j : { type : 'select' }, k : { type : 'select' }, l : { type : 'select' } };
-	return JSON.stringify( builder._attributeLines( declared ) ) === '[["a","b"],["c"],["d","e"],["f"],["g"],["h"],["i"],["j","k"],["l"]]' && JSON.stringify( builder._attributeLines( {} ) ) === '[]'
-		&& JSON.stringify( builder._attributeLines( registry().components.button.attributes ) ) === '[["href"],["style","size"],["target"]]' && JSON.stringify( builder._attributeLines( registry().components.image.attributes ) ) === '[["alt","focus"],["ratio"]]'
+check( 'the attributes of a schema are paired in the order of the schema: a select, a switch, a number or a line of text goes with the next of them; a lines field, a link, a picture, a key or the focus of a picture - a select over none and the nine places - has a line to itself', ( function() {
+	const places = [ '', '1', '2', '3', '4', '5', '6', '7', '8', '9' ];
+	const declared = { a : { type : 'select' }, b : { type : 'bool' }, c : { type : 'lines' }, d : { type : 'int' }, e : { type : 'string' }, f : { type : 'href' }, g : { type : 'select' }, h : { type : 'image' }, i : { type : 'key' }, j : { type : 'select' }, k : { type : 'select' }, l : { type : 'select' }, m : { type : 'select', options : places }, n : { type : 'bool' }, o : { type : 'select', options : [ '', 'left' ] } };
+	return JSON.stringify( builder._attributeLines( declared ) ) === '[["a","b"],["c"],["d","e"],["f"],["g"],["h"],["i"],["j","k"],["l"],["m"],["n","o"]]' && JSON.stringify( builder._attributeLines( {} ) ) === '[]'
+		&& JSON.stringify( builder._attributeLines( registry().components.button.attributes ) ) === '[["href"],["style","size"],["target"]]' && JSON.stringify( builder._attributeLines( registry().components.image.attributes ) ) === '[["alt"],["focus"],["ratio"]]'
 		&& JSON.stringify( builder._attributeLines( registry().components.title.attributes ) ) === '[["level","style"]]';
 } )() );
 
@@ -2712,7 +2721,7 @@ check( '...the buttons of the preview do the same: a section, a column - and a c
 	preview().children[0].querySelector('.builder-add-col').click();
 	preview().children[0].querySelector('.builder-adds .builder-add-button').click();
 	const menu = screen.getElementById('builder-menu');
-	const opened = menu.hidden === false && menu.getAttribute('role') === 'menu' && menu.children.length === 7 && menu.children.every( function( item ) { return item.getAttribute('role') === 'menuitem' } );
+	const opened = menu.hidden === false && menu.getAttribute('role') === 'menu' && menu.children.length === 8 && menu.children.every( function( item ) { return item.getAttribute('role') === 'menuitem' } );
 	buttonOf( menu, 'Button' ).click();
 	return opened && menu.hidden === true && builder._doc.model.blocks.length === 5 && builder._doc.model.blocks[0].cols.length === 2 && builder._doc.model.blocks[0].cols[0].components.length === 4 && builder._doc.model.blocks[0].cols[0].components[3].name === 'button'
 		&& preview().children.length === 5 && changes === 3;
@@ -3699,6 +3708,861 @@ check( '...in a section that was saved nothing is moved here: the server moves w
 
 delete sandbox.Nino.admin.htmlEditor;
 
+console.log( '\nA component that holds components' );
+
+// The page of the card fixture, as the editor has it: a card beside a picture, and a loop whose cell holds a card
+const cardPage = function() { return builder._normalise( fixture('page-home-card.json') ) };
+const cardAt = [ 0, 1, 0 ];
+const cardIn = function( model ) { return builder._get( model, cardAt ) };
+// ...opened in the editor, as the file it was read from
+const openCard = function() {
+	const opened = open( cardPage() );
+	opened.file = 'page-home-card';
+	return opened;
+};
+
+check( 'a component whose schema has "holds" is a container, and the place it holds is read from the registry - the script names no component: the card of the kernel holds the place card, every other component holds none', builder._holds( registry(), 'article' ) === 'card'
+	&& builder._holds( registry(), 'text' ) === '' && builder._holds( registry(), 'nothing-like-it' ) === '' && ( function() {
+		const own = registry();
+		own.components.stub = { label : 'Stub', source : 'content', preview : 'block', holds : 'tile' };
+		own.components.broken = { label : 'Broken', source : 'content', preview : 'block', holds : 5 };
+		return builder._holds( own, 'stub' ) === 'tile' && builder._holds( own, 'broken' ) === '';
+	} )() );
+
+const cardModel = cardPage();
+check( 'a path into a container is one deeper - block, column, component, child: the child is a node, the container is one, and a path that leads nowhere is null', builder._get( cardModel, [ 0, 1, 0, 1 ] ).name === 'text' && builder._get( cardModel, cardAt ).name === 'article'
+	&& builder._get( cardModel, [ 0, 1, 0, 3 ] ) === null && builder._get( cardModel, [ 0, 1, 0, 0, 0 ] ) === null && builder._get( cardModel, [ 0, 0, 0, 0 ] ) === null && builder._get( cardModel, [ 1, 0, 'x', 0 ] ) === null
+	&& builder._get( cardModel, [ 1, 0, 'x' ] ) === cardModel.blocks[1].cols[0].stack && builder._get( cardModel, [ 1, 0, 0, 0 ] ).source === 'title' );
+check( '...a child stands in the list of its container, a container in the list of its column; both are components, and a container holds its children as work', builder._place( cardModel, [ 0, 1, 0, 2 ] ).list === cardIn( cardModel ).components && builder._place( cardModel, [ 0, 1, 0, 2 ] ).index === 2
+	&& builder._place( cardModel, cardAt ).list === cardModel.blocks[0].cols[1].components && builder._place( cardModel, [ 0, 1, 0, 9 ] ) === null && builder._kind( cardModel, [ 0, 1, 0, 2 ] ) === 'component' && builder._kind( cardModel, cardAt ) === 'component'
+	&& builder._children( cardModel, cardAt ) === 3 && builder._children( cardModel, [ 0, 1, 0, 2 ] ) === 0 && builder._children( cardModel, [ 0, 0, 0 ] ) === 0 );
+
+const movable = cardPage();
+check( 'a child is moved within the list of its container and nowhere else: not to another level, not to another container, and a component does not enter a container by moving', ( function() {
+
+	const holder = builder._get( movable, cardAt );
+	const second = JSON.parse( JSON.stringify( holder ) );
+	const names = function() { return holder.components.map( function( child ) { return child.name } ).join() };
+
+	movable.blocks[0].cols[1].components.push( second );
+
+	const before = names();
+	const moved = builder._move( movable, [ 0, 1, 0, 0 ], [ 0, 1, 0, 2 ] );
+	const after = names();
+	const refused = [ builder._move( movable, [ 0, 1, 0, 0 ], [ 0, 1, 1, 0 ] ), builder._move( movable, [ 0, 1, 0, 1 ], [ 0, 1, 1, 2 ] ), builder._move( movable, [ 0, 1, 0, 0 ], [ 0, 1, 1 ] ), builder._move( movable, [ 0, 1, 1 ], [ 0, 1, 0, 1 ] ), builder._move( movable, [ 0, 1, 0, 0 ], [ 0, 1, 0, 7 ] ) ];
+
+	return before === 'article-title,text,button' && moved === true && after === 'text,button,article-title' && refused.every( function( answer ) { return answer === false } ) && names() === after && second.components.map( function( child ) { return child.name } ).join() === before;
+} )() );
+check( '...a step is one place up or down in the same list: the path of the child follows it, and the first has no step up as the last has none down', ( function() {
+
+	const model = cardPage();
+
+	return JSON.stringify( builder._step( model, [ 0, 1, 0, 1 ], -1 ) ) === '[0,1,0,0]' && builder._get( model, [ 0, 1, 0, 0 ] ).name === 'text' && builder._step( model, [ 0, 1, 0, 0 ], -1 ) === null && builder._step( model, [ 0, 1, 0, 2 ], 1 ) === null
+		&& JSON.stringify( builder._step( model, [ 0, 1, 0, 0 ], 1 ) ) === '[0,1,0,1]';
+} )() );
+check( '...the tools of a child are those of a component: settings, up and down where it has a neighbour, duplicate and delete - and the container has its own place in its column', ( function() {
+
+	const model = cardPage();
+	const tools = function( path ) { return JSON.stringify( builder._toolbar( model, path ) ) };
+
+	return tools( [ 0, 1, 0, 0 ] ) === '{"settings":true,"html":null,"up":false,"down":true,"duplicate":true,"delete":true}' && tools( [ 0, 1, 0, 2 ] ) === '{"settings":true,"html":null,"up":true,"down":false,"duplicate":true,"delete":true}'
+		&& tools( [ 0, 1, 0, 1 ] ) === '{"settings":true,"html":null,"up":true,"down":true,"duplicate":true,"delete":true}' && tools( cardAt ) === '{"settings":true,"html":null,"up":false,"down":false,"duplicate":true,"delete":true}';
+} )() );
+check( '...a child is taken out of its container, a container with its children out of its column - and the first is the end of the level it stood in', ( function() {
+
+	const model = cardPage();
+	const removed = builder._remove( model, [ 0, 1, 0, 1 ] );
+	const left = builder._get( model, cardAt ).components.map( function( child ) { return child.name } ).join();
+	const gone = builder._remove( model, cardAt );
+
+	return removed === true && left === 'article-title,button' && gone === true && model.blocks[0].cols[1].components.length === 0 && builder._remove( model, [ 0, 1, 0, 0 ] ) === false;
+} )() );
+
+check( 'a new container starts with no children and no content, and the defaults of its attributes; a new child gets a key of its own in the section, as every component of a static column does', ( function() {
+
+	const model = cardPage();
+	const holder = builder._newComponent( model, registry(), 'page-home-card', [ 0, 1 ], 'article', [] );
+	const child = builder._newComponent( model, registry(), 'page-home-card', cardAt, 'article-title', [] );
+	const loopChild = builder._newComponent( model, registry(), 'page-home-card', [ 1, 0, 0 ], 'article-title', [] );
+
+	return JSON.stringify( holder.components ) === '[]' && Object.prototype.hasOwnProperty.call( holder, 'content' ) === false && holder.source === '' && holder.create === undefined && holder.attributes.fill === '0' && holder.attributes.background === '' && holder.attributes.padding === ''
+		&& child.source === '/template/page-home-card/story/article-title' && child.create.value === 'Article title' && Object.prototype.hasOwnProperty.call( child, 'components' ) === false
+		&& loopChild.source === '' && loopChild.create === undefined;
+} )() );
+check( '...the content of the other component that takes one - [html] - stays a content: it has no children', ( function() {
+	const html = builder._newComponent( cardPage(), registry(), 'page-home-card', [ 0, 1 ], 'html', [] );
+	return html.content === '' && Object.prototype.hasOwnProperty.call( html, 'components' ) === false;
+} )() );
+
+console.log( '\nCopies, names, sources and the look of a component that holds components' );
+
+check( 'a copy of a container is a deep one, with its children: the keys they read their texts from and the picture an attribute names are new ones in the section - made when the document is saved - and the original keeps what it had', ( function() {
+
+	const model = cardPage();
+	const holder = cardIn( model );
+
+	holder.attributes.background = '/template/page-home-card/story/card-picture';
+	holder.slots = { background : { label : 'Card - Picture', width : 800, height : 400 } };
+
+	const to = builder._duplicate( model, registry(), 'page-home-card', cardAt, function( source ) { return 'text of '+ source.split('/').pop() } );
+	const copy = builder._get( model, to );
+
+	return JSON.stringify( to ) === '[0,1,1]' && model.blocks[0].cols[1].components.length === 2 && copy !== holder && copy.components !== holder.components && copy.components.length === 3
+		&& copy.components.map( function( child ) { return child.source } ).join() === '/template/page-home-card/story/title-2,/template/page-home-card/story/text-2,/template/page-home-card/story/button-2'
+		&& JSON.stringify( copy.components.map( function( child ) { return child.create } ) ) === '[{"value":"text of title"},{"value":"text of text"},{"value":"text of button"}]'
+		&& copy.attributes.background === '/template/page-home-card/story/card-picture-2' && JSON.stringify( copy.slots ) === '{"background":{"label":"Card - Picture","width":1600,"height":900}}'
+		&& holder.components.map( function( child ) { return child.source } ).join() === '/template/page-home-card/story/title,/template/page-home-card/story/text,/template/page-home-card/story/button' && holder.components[0].create === undefined
+		&& holder.attributes.background === '/template/page-home-card/story/card-picture' && holder.slots.background.width === 800;
+} )() );
+check( '...a copy of a child stands right after it in its container, with a key of its own', ( function() {
+
+	const model = cardPage();
+	const to = builder._duplicate( model, registry(), 'page-home-card', [ 0, 1, 0, 0 ], function() { return 'Hello' } );
+
+	return JSON.stringify( to ) === '[0,1,0,1]' && cardIn( model ).components.length === 4 && builder._get( model, to ).name === 'article-title' && builder._get( model, to ).source === '/template/page-home-card/story/title-2'
+		&& builder._get( model, to ).create.value === 'Hello' && builder._get( model, [ 0, 1, 0, 0 ] ).source === '/template/page-home-card/story/title';
+} )() );
+check( '...a copy of a section takes everything it owns under its new id: the keys of the children and the picture behind a card', ( function() {
+
+	const model = cardPage();
+
+	cardIn( model ).attributes.background = '/template/page-home-card/story/card-picture';
+	builder._duplicate( model, registry(), 'page-home-card', [ 0 ], function() { return 'Hello' } );
+
+	const copy = model.blocks[1];
+	const holder = builder._get( model, [ 1, 1, 0 ] );
+
+	return copy.id === 'story-2' && holder.components.map( function( child ) { return child.source } ).join() === '/template/page-home-card/story-2/title,/template/page-home-card/story-2/text,/template/page-home-card/story-2/button'
+		&& holder.attributes.background === '/template/page-home-card/story-2/card-picture' && JSON.stringify( holder.slots ) === '{"background":{"label":"Card - Picture","width":1600,"height":900}}' && cardIn( model ).attributes.background === '/template/page-home-card/story/card-picture'
+		&& cardIn( model ).slots === undefined;
+} )() );
+check( 'a name for a new key or slot is free among the sources of the whole section: the children of a container and the pictures its attributes name count', ( function() {
+
+	const model = cardPage();
+	const section = model.blocks[0];
+
+	cardIn( model ).attributes.background = '/template/page-home-card/story/card-picture';
+
+	const names = builder._names( section, 'page-home-card', [] );
+
+	return Object.keys( names ).sort().join() === 'button,card-picture,photo,text,title' && builder._keyName( section, 'page-home-card', 'article-title', [] ) === 'article-title' && builder._keyName( section, 'page-home-card', 'title', [] ) === 'title-2'
+		&& builder._keyName( section, 'page-home-card', 'card-picture', [] ) === 'card-picture-2' && builder._nameProblem( section, 'page-home-card', 'text', [] ) === 'taken' && builder._nameProblem( section, 'page-home-card', 'card-picture', [] ) === 'taken';
+} )() );
+
+const redOf = function( model ) { return builder._red( model, registry() ).map( function( entry ) { return entry.path.join('.')+ ':'+ entry.why+ ':'+ entry.source } ).join() };
+check( 'what a source means where it stands is told in a container as in a column: the children of a card in a loop read the fields of the element, those of a card in a static column read keys only - and the page of the fixture is clean', ( function() {
+
+	const model = cardPage();
+	const clean = redOf( model );
+
+	cardIn( model ).components[0].source = 'title';
+	builder._get( model, [ 1, 0, 0, 0 ] ).source = 'nothing-like-it';
+
+	return clean === '' && redOf( model ) === '0.1.0.0:static:title,1.0.0.0:field:nothing-like-it';
+} )() );
+check( '...and so does the picture an attribute names: in a loop an image field of the element or a slot, in a static column a slot only - a field that is none, or a special source of a text, is red on the container', ( function() {
+
+	const model = cardPage();
+	const loopCard = function() { return builder._get( model, [ 1, 0, 0 ] ) };
+	const states = [];
+
+	// A field of the element
+	states.push( redOf( model ) );
+
+	// ...a name the type has no field for, and the sources of a text, which are no picture
+	loopCard().attributes.background = 'photo';
+	states.push( redOf( model ) );
+	loopCard().attributes.background = '.id';
+	states.push( redOf( model ) );
+
+	// ...a slot is fine, wherever it is
+	loopCard().attributes.background = '/template/page-home-card/services/card-picture';
+	states.push( redOf( model ) );
+
+	// ...a static column has no element to read a field of
+	cardIn( model ).attributes.background = 'image';
+	states.push( redOf( model ) );
+	cardIn( model ).attributes.background = '/template/page-home-card/story/card-picture';
+	states.push( redOf( model ) );
+
+	return states.join(' | ') === ' | 1.0.0:field:photo | 1.0.0:field:.id |  | 0.1.0:static:image | ';
+} )() );
+
+doc = openCard();
+check( 'where a component would stand: inside a container the place it holds, in a column the hero where the first block has a picture and a section otherwise - the cell of a loop is a column\'s place, since it holds none of its own', ( function() {
+
+	const model = builder._doc.model;
+	const before = [ builder._where( model, [ 0, 1 ] ), builder._where( model, cardAt ), builder._where( model, [ 1, 0 ] ), builder._where( model, [ 1, 0, 0 ] ) ].join();
+
+	model.blocks[0].settings.image = 'cover';
+
+	const own = registry();
+
+	own.components.article.holds = 'tile';
+
+	return before === 'section,card,section,card' && [ builder._where( model, [ 0, 0 ] ), builder._where( model, [ 0, 1 ] ), builder._where( model, cardAt ), builder._where( model, [ 1, 0 ] ) ].join() === 'hero,hero,card,section'
+		&& builder._where( model, cardAt, own ) === 'tile';
+} )() );
+
+check( 'what the schema says of a picture is known by type and place and never by name: the focus is a select over none and the nine places, the dimming a switch that follows a picture - or the focus that follows it -, a ground a select over the grounds of a column', ( function() {
+
+	const places = [ '', '1', '2', '3', '4', '5', '6', '7', '8', '9' ];
+	const declared = builder._declared( registry().components.article );
+	const roles = builder._roles( declared );
+	const own = {
+		a : { type : 'image' }, b : { type : 'bool' }, c : { type : 'image' }, d : { type : 'select', options : places }, e : { type : 'bool' }, f : { type : 'string' }, g : { type : 'bool' },
+		h : { type : 'select', options : places.slice().reverse() }, i : { type : 'bool' }, j : { type : 'select', options : [ '', '1' ] },
+	};
+
+	return JSON.stringify( roles ) === '{"focus":{"role":"focus","picture":"background"},"dim":{"role":"dim","picture":"background"}}' && JSON.stringify( builder._pictures( declared ) ) === '["background"]'
+		&& JSON.stringify( builder._roles( own ) ) === '{"b":{"role":"dim","picture":"a"},"d":{"role":"focus","picture":"c"},"e":{"role":"dim","picture":"c"},"h":{"role":"focus","picture":"c"}}' && JSON.stringify( builder._roles( registry().components.image.attributes ) ) === '{"focus":{"role":"focus","picture":""}}'
+		&& builder._isFocus( declared.focus ) === true && builder._isFocus( own.j ) === false && builder._isFocus( declared.padding ) === false && builder._isGround( declared.ground ) === true && builder._isGround( declared.align ) === false
+		&& builder._isGround( { type : 'select', options : builder.COLORS } ) === false && builder._isGround( { type : 'select', options : builder.COL_COLORS.slice().reverse() } ) === true && builder._isGround( { type : 'string', options : builder.COL_COLORS } ) === false;
+} )() );
+
+check( 'the ground the content of a column stands on is the one the column paints - dark where its picture is dimmed - and else its section\'s: counter is the counter of that, by the pairs', ( function() {
+
+	const section = function( color ) { return { settings : { color : color } } };
+	const surface = function( around, color, dim, picture ) { return builder._surface( section( around ), { color : color, dim : dim, background : picture === true ? { slot : '/s' } : null } ) };
+
+	return surface( '', '', false, false ) === '' && surface( 'alt', '', false, false ) === 'alt' && surface( 'alt', 'dark', false, false ) === 'dark' && surface( 'dark', 'counter', false, false ) === 'black' && surface( '', 'counter', false, false ) === 'alt'
+		&& surface( 'alt', 'counter', false, false ) === '' && surface( 'alt', '', true, true ) === 'dark' && surface( 'tint', 'primary', true, true ) === 'dark' && surface( 'alt', '', true, false ) === 'alt' && surface( 'alt', '', false, true ) === 'alt';
+} )() );
+check( '...a component that holds components looks as its attributes say: the ground it paints - none, one, the counter of the ground it stands on - and dark where its picture is dimmed, whatever ground it names; a dimming without a picture is nothing', ( function() {
+
+	const schema = registry().components.article;
+	const look = function( ground, picture, dim, surface ) {
+		return builder._look( schema, { attributes : { ground : ground, background : picture, dim : dim } }, surface );
+	};
+	const flat = function( found ) { return found.color+ ':'+ found.picture };
+
+	return flat( look( '', '', '0', '' ) ) === ':false' && flat( look( 'tint', '', '0', 'dark' ) ) === 'tint:false' && flat( look( 'counter', '', '0', '' ) ) === 'alt:false' && flat( look( 'counter', '', '0', 'dark' ) ) === 'black:false'
+		&& flat( look( 'counter', '', '0', 'alt' ) ) === 'plain:false' && flat( look( 'counter', '', '0', 'tint' ) ) === 'plain:false' && flat( look( 'counter', '', '0', 'primary' ) ) === 'brand-alt:false'
+		&& flat( look( '', '/s', '0', '' ) ) === ':true' && flat( look( 'alt', '/s', '1', '' ) ) === 'dark:true' && flat( look( '', '/s', '1', '' ) ) === 'dark:true' && flat( look( 'counter', 'image', '1', 'alt' ) ) === 'dark:true'
+		&& flat( look( 'alt', '', '1', '' ) ) === 'alt:false' && flat( builder._look( registry().components.text, { attributes : {} }, 'alt' ) ) === ':false';
+} )() );
+
+check( 'the preview of a container is its label, the ground it paints, whether it has a picture behind it and its children as placeholders with their own path, label and line: a column without one has components as it had', ( function() {
+
+	const plan = builder._preview( cardPage(), registry(), 'l', { locale : 'en_US', keys : [] } );
+	const card = plan[0].cols[1].components[0];
+	const loopCard = plan[1].cols[0].components[0];
+
+	return card.holds === true && card.label === 'Card' && card.color === 'alt' && card.background === false && JSON.stringify( card.path ) === '[0,1,0]' && card.children.length === 3
+		&& card.children.map( function( child ) { return child.path.join('.')+ ':'+ child.label+ ':'+ child.draws } ).join() === '0.1.0.0:Article title:H3 .nino-article-title,0.1.0.1:Text:,0.1.0.2:Button:A .nino-btn' && card.children.every( function( child ) { return child.holds === undefined } )
+		&& loopCard.holds === true && loopCard.color === 'dark' && loopCard.background === true && loopCard.children.length === 1 && plan[0].cols[0].components[0].holds === undefined && plan[0].cols[0].components[0].children === undefined;
+} )() );
+check( '...the tint of a container follows the ground of its column or, where the column has none, of its section', ( function() {
+
+	const model = cardPage();
+	const tint = function( around, color, ground ) {
+		model.blocks[0].settings.color = around;
+		model.blocks[0].cols[1].color = color;
+		cardIn( model ).attributes.ground = ground;
+		return builder._preview( model, registry(), 'l' )[0].cols[1].components[0].color;
+	};
+
+	return tint( '', '', '' ) === '' && tint( '', '', 'alt' ) === 'alt' && tint( 'dark', '', 'counter' ) === 'black' && tint( '', 'alt', 'counter' ) === 'plain' && tint( 'alt', 'dark', 'counter' ) === 'black' && tint( 'tint', 'counter', 'counter' ) === 'alt'
+		&& tint( 'dark', 'counter', 'counter' ) === 'dark' && tint( '', 'primary', 'counter' ) === 'brand-alt' && tint( 'primary', 'counter', 'tint' ) === 'tint';
+} )() );
+
+console.log( '\nThe picker of a card, and what it adds' );
+
+doc = openCard();
+builder._renderEditor();
+
+const menuOf = function( path ) { builder._pickComponent( path, made('button') ); return texts( screen.getElementById('builder-menu').children ) };
+const inCard = 'Article subtitle,Article title,Button,HTML,Image,Spacer,Text';
+const inSection = 'Button,Card,HTML,Image,Spacer,Subtitle,Text,Title';
+
+check( 'the picker offers the card where the card says it belongs - a column of a section, and the bare cell of a loop, which holds no place of its own - and what a column is offered besides', menuOf( [ 0, 1 ] ) === inSection && menuOf( [ 1, 0 ] ) === inSection && menuOf( [ 0, 0 ] ) === inSection );
+check( '...in the first section when it has a picture it is offered as well: the hero is a place the card belongs in', ( function() {
+	builder._doc.model.blocks[0].settings.image = 'cover';
+	const offered = menuOf( [ 0, 0 ] );
+	builder._doc.model.blocks[0].settings.image = '';
+	return offered === 'Button,Card,Hero subtitle,Hero title,HTML,Image,Spacer,Text';
+} )() );
+check( '...inside a card it offers what belongs to the place the card holds - the title and the subtitle of an article - and not the card itself, and not the title of a section nor the title of a hero, whose places are others', menuOf( cardAt ) === inCard && menuOf( [ 1, 0, 0 ] ) === inCard
+	&& menuOf( cardAt ).split(',').indexOf('Card') === -1 && menuOf( [ 0, 1 ] ).split(',').indexOf('Article title') === -1 && menuOf( [ 1, 0 ] ).split(',').indexOf('Article title') === -1 );
+check( '...the button of the card in the preview opens the same menu, and the button of its column the column\'s', ( function() {
+
+	const menu = screen.getElementById('builder-menu');
+
+	preview().querySelector('[data-path="0.1.0"] .builder-adds .builder-add-button').click();
+
+	const own = texts( menu.children );
+
+	const adds = preview().querySelector('[data-path="0.1"]').querySelectorAll('.builder-adds');
+
+	adds[adds.length - 1].querySelector('.builder-add-button').click();
+
+	return adds.length === 2 && own === inCard && texts( menu.children ) === inSection;
+} )() );
+
+check( '...a component a loop does not take is offered in no column that runs one, and in no card inside it - at depth three and at depth four alike - and everywhere else; a container that says it belongs in a card is offered in none', ( function() {
+
+	const components = builder._registry.components;
+
+	components['stub-alone'] = { label : 'Stub alone', preview : 'block', loop : false };
+	components['stub-holder'] = { label : 'Stub holder', source : 'content', preview : 'block', in : [ 'section', 'card' ], holds : 'card' };
+
+	const stub = function( path ) {
+		builder._pickComponent( path, made('button') );
+		return screen.getElementById('builder-menu').children.filter( function( item ) { return /^Stub/.test( item.textContent ) } ).map( function( item ) { return item.textContent } ).join();
+	};
+	const found = [ stub( [ 0, 1 ] ), stub( cardAt ), stub( [ 1, 0 ] ), stub( [ 1, 0, 0 ] ) ].join(' | ');
+
+	delete components['stub-alone'];
+	delete components['stub-holder'];
+
+	return found === 'Stub alone,Stub holder | Stub alone | Stub holder | ';
+} )() );
+
+check( 'a card added to a column is its last component, with no children, selected - and drawn as a frame of its own with a button that adds to it', ( function() {
+
+	const col = builder._doc.model.blocks[0].cols[1];
+
+	builder._addComponent( [ 0, 1 ], 'article' );
+
+	const added = col.components[col.components.length - 1];
+
+	return col.components.length === 2 && added.name === 'article' && JSON.stringify( added.components ) === '[]' && added.content === undefined && builder._same( builder._sel, [ 0, 1, 1 ] )
+		&& preview().querySelectorAll('[data-path="0.1"] .builder-card').length === 2 && preview().querySelector('[data-path="0.1.1"]').classList.contains('is-selected') && preview().querySelector('[data-path="0.1.1"] .builder-adds') !== null
+		&& preview().querySelector('[data-path="0.1.1"]').querySelectorAll('.builder-ph').length === 0;
+} )() );
+check( '...a component added to a card is its last child, with a key of its own in the section, selected; the same in the card of a loop, where it reads a field of the element and needs no key', ( function() {
+
+	const card = cardIn( builder._doc.model );
+
+	builder._addComponent( cardAt, 'article-subtitle' );
+	builder._addComponent( [ 1, 0, 0 ], 'article-subtitle' );
+
+	const added = card.components[card.components.length - 1];
+	const looped = builder._get( builder._doc.model, [ 1, 0, 0, 1 ] );
+
+	return card.components.length === 4 && added.name === 'article-subtitle' && added.source === '/template/page-home-card/story/article-subtitle' && added.create.value === 'Article subtitle'
+		&& looped.name === 'article-subtitle' && looped.source === '' && looped.create === undefined && builder._same( builder._sel, [ 1, 0, 0, 1 ] ) && preview().querySelector('[data-path="0.1.0"]').querySelectorAll('.builder-ph').length === 4
+		&& preview().querySelector('[data-path="1.0.0.1"]').classList.contains('is-selected') && builder._doc.model.blocks[1].cols[0].components.length === 1;
+} )() );
+check( '...and the document that came of it is unsaved, with the children where the Reader puts them and the marks the panel keeps', builder._unsaved( builder._doc ) === true && builder._saveRequest( builder._doc, false ).model.blocks[0].cols[1].components[0].components.length === 4
+	&& builder._saveRequest( builder._doc, false ).model.blocks[0].cols[1].components[0].components[3].create.value === 'Article subtitle' );
+
+console.log( '\nThe form of a card' );
+
+openCard();
+builder._renderEditor();
+builder._openSettings( cardAt );
+
+const holderPane = function() { return paneOf('properties') };
+const holderNow = function() { return cardIn( builder._doc.model ) };
+const optionsOf = function( pane, label ) { return controlOf( pane, label ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() };
+
+check( 'the form of a card has the label of the component for its title and two tabs: Properties and CSS classes - the attributes the schema declares, and the classes of its own; the form of a column or a plain component is not it, and the card has no tab for a content', dialogText('builder-dialog-kind') === 'Card'
+	&& JSON.stringify( dialogTabs() ) === '[["properties","Properties"],["custom","CSS classes"]]' && shownTab( screen.getElementById('builder-dialog-tabs'), 'builder' ) === 'properties' && screen.getElementById('builder-dialog-name').hidden === true && paneOf('content') === null );
+check( '...Properties: a field for each attribute in the order of the schema - the ground, the padding, the full height, the vertical and the horizontal alignment, the picture with its focus and its dimming, the border - by the type the schema gives', JSON.stringify( labelList( holderPane() ) )
+	=== JSON.stringify( [ 'Ground', 'Padding', 'Full height', 'Vertical', 'Horizontal', 'Upload a picture', 'No focus', 'Focus', 'Dim the picture', 'Without border' ] ) && controlOf( holderPane(), 'Full height' ).kind === 'switch' && controlOf( holderPane(), 'Dim the picture' ).kind === 'switch'
+	&& controlOf( holderPane(), 'Without border' ).kind === 'switch' && controlOf( holderPane(), 'Focus' ).kind === 'group' );
+check( '...two to a line where both are short, a line of its own for the picture and for the focus: the ground and the padding, the full height and the vertical alignment, the horizontal alignment alone, then the picture, the focus, and the dimming with the border', classes( holderPane().children )
+	=== 'builder-line,builder-line,nino-admin-field,builder-background,builder-focus,builder-line' && holderPane().children.map( function( el ) { return labelList( el ).join('|') } ).join('~') === 'Ground|Padding~Full height|Vertical~Horizontal~Upload a picture~No focus|Focus~Dim the picture|Without border' );
+check( '...the ground is the colour select of a column - none of its own, which is the surroundings, counter and the six - with the patch of the colour it ends up in beside it, in the words of the grounds of a column', optionsOf( holderPane(), 'Ground' )
+	=== '=Like the surroundings,counter=Counter,alt=Alternate,tint=Tinted,dark=Dark,black=Black,primary=Brand colour,brand-alt=Second colour' && holderPane().querySelector('.builder-with-swatch').contains( controlOf( holderPane(), 'Ground' ).el ) && holderPane().querySelector('.builder-with-swatch').contains( holderPane().querySelector('.builder-swatch') )
+	&& holderPane().querySelector('.builder-swatch').getAttribute('aria-hidden') === 'true' && valueAt( holderPane(), 'Ground' ) === 'counter' );
+check( '...the hint of the ground stands under the select and the patch, not between them: the patch is level with the select', holderPane().querySelector('.builder-with-swatch').parentNode.className === 'builder-with-hint' && holderPane().querySelector('.builder-with-swatch').nextSibling.className === 'nino-admin-hint'
+	&& holderPane().querySelector('.builder-with-swatch').nextSibling.textContent === registry().components.article.attributes.ground.hint && holderPane().querySelector('.builder-with-swatch').querySelector('.nino-admin-hint') === null && stylesheet.indexOf( '.builder-with-hint > .nino-admin-hint' ) !== -1 );
+check( '...the padding has the steps of the section\'s spacing, the vertical alignment its own words - top, middle, bottom, last element at the bottom - and the horizontal alignment the words of the alignment of a text; each attribute has the words of the Builder, and the values the file has', optionsOf( holderPane(), 'Padding' ) === '=Default,0=0,1=1,2=2,3=3,4=4,5=5,6=6'
+	&& optionsOf( holderPane(), 'Vertical' ) === '=Top,middle=Middle,bottom=Bottom,last-bottom=Last element at the bottom' && optionsOf( holderPane(), 'Horizontal' ) === '=Inherited,left=Left,center=Centre,right=Right' && valueAt( holderPane(), 'Padding' ) === '3' && valueAt( holderPane(), 'Vertical' ) === '' );
+
+const swatchOf = function() { return holderPane().querySelector('.builder-swatch').dataset.color };
+check( '...the patch is the ground the card ends up with: the ground of its column - or of its section where the column has none - for none of its own, the counter of that, by the pairs of Nino.css, for counter, and the ground itself for the rest', ( function() {
+
+	const pairs = { '' : 'alt', alt : 'plain', tint : 'plain', dark : 'black', black : 'dark', primary : 'brand-alt', 'brand-alt' : 'primary' };
+
+	return Object.keys( pairs ).every( function( around ) {
+
+		builder._closeDialog();
+		builder._doc.model.blocks[0].settings.color = around;
+		builder._openSettings( cardAt );
+
+		const counter = swatchOf();
+
+		change( holderPane(), 'Ground', '' );
+
+		const none = swatchOf();
+
+		change( holderPane(), 'Ground', 'tint' );
+
+		const own = swatchOf();
+
+		change( holderPane(), 'Ground', 'counter' );
+
+		return counter === pairs[around] && none === ( around === '' ? 'plain' : around ) && own === 'tint' && holderNow().attributes.ground === 'counter';
+	} );
+} )() );
+check( '...a column that paints a ground of its own is what the card stands on - counter is the counter of that, none is that -, and a column whose picture is dimmed is dark, whatever it paints', ( function() {
+
+	builder._closeDialog();
+	builder._doc.model.blocks[0].settings.color = 'primary';
+	builder._doc.model.blocks[0].cols[1].color = 'alt';
+	builder._openSettings( cardAt );
+
+	const own = swatchOf();
+
+	change( holderPane(), 'Ground', '' );
+
+	const none = swatchOf();
+
+	builder._closeDialog();
+	builder._doc.model.blocks[0].cols[1].color = 'counter';
+	builder._openSettings( cardAt );
+
+	const counter = swatchOf();
+
+	builder._closeDialog();
+	builder._doc.model.blocks[0].cols[1].color = '';
+	builder._doc.model.blocks[0].cols[1].background = { slot : '/template/page-home-card/story/column-picture', focus : null };
+	builder._doc.model.blocks[0].cols[1].dim = true;
+	builder._doc.model.blocks[0].settings.color = '';
+	builder._openSettings( cardAt );
+
+	const dimmed = swatchOf();
+
+	builder._closeDialog();
+	builder._doc.model.blocks[0].cols[1].background = null;
+	builder._doc.model.blocks[0].cols[1].dim = false;
+	builder._doc.model.blocks[0].settings.color = '';
+	holderNow().attributes.ground = 'counter';
+	builder._openSettings( cardAt );
+
+	return own === 'plain' && none === 'alt' && counter === 'brand-alt' && dimmed === 'dark';
+} )() );
+
+check( '...what the fields write is the attributes of the card, as the call writes them - a switch is 1 or 0 -, into the card and into nothing else', ( function() {
+
+	const column = JSON.stringify( builder._doc.model.blocks[0].cols[1].components.slice( 1 ) )+ JSON.stringify( builder._doc.model.blocks[0].cols[0] );
+
+	change( holderPane(), 'Ground', 'dark' );
+	change( holderPane(), 'Padding', '5' );
+	change( holderPane(), 'Full height', true );
+	change( holderPane(), 'Vertical', 'last-bottom' );
+	change( holderPane(), 'Horizontal', 'center' );
+	change( holderPane(), 'Without border', true );
+
+	return JSON.stringify( holderNow().attributes ) === '{"ground":"dark","padding":"5","fill":"1","vertical":"last-bottom","align":"center","background":"","focus":"","dim":"0","borderless":"1","class":""}'
+		&& column === JSON.stringify( builder._doc.model.blocks[0].cols[1].components.slice( 1 ) )+ JSON.stringify( builder._doc.model.blocks[0].cols[0] ) && holderNow().components.length === 3 && Object.prototype.hasOwnProperty.call( holderNow(), 'content' ) === false
+		&& valueAt( holderPane(), 'Vertical' ) === 'last-bottom' && valueAt( holderPane(), 'Full height' ) === true;
+} )() );
+change( holderPane(), 'Full height', false );
+change( holderPane(), 'Without border', false );
+change( holderPane(), 'Vertical', '' );
+change( holderPane(), 'Horizontal', '' );
+check( '...switched off, a switch is 0 again, and an empty choice is the empty word', holderNow().attributes.fill === '0' && holderNow().attributes.borderless === '0' && holderNow().attributes.vertical === '' && holderNow().attributes.align === '' );
+
+check( 'the focus of the picture is the grid of the one behind a section - a switch for none and nine places - and waits for a picture: while the card has none the switch and the grid are off, and so is the dimming', ( function() {
+
+	const grid = controlOf( holderPane(), 'Focus' ).el;
+
+	return grid.getAttribute('role') === 'radiogroup' && radiosOf( grid ).length === 9 && radiosOf( grid ).every( function( radio ) { return radio.disabled === true && radio.checked === false } ) && grid.classList.contains('is-disabled') === true
+		&& controlOf( holderPane(), 'No focus' ).el.disabled === true && valueAt( holderPane(), 'No focus' ) === true && controlOf( holderPane(), 'Dim the picture' ).el.disabled === true && valueAt( holderPane(), 'Dim the picture' ) === false;
+} )() );
+
+holderNow().attributes.background = '/template/page-home-card/story/card-picture';
+holderNow().attributes.focus = '';
+builder._refreshTab('properties');
+check( '...with a picture the switch for none is on, as the focus is none, and turning it off starts in the middle, as the picture of a section does; the grid chooses a place, written as its number - and none is empty', ( function() {
+
+	const none = controlOf( holderPane(), 'No focus' ).el;
+	const before = [ none.disabled, valueAt( holderPane(), 'No focus' ), holderNow().attributes.focus ].join();
+
+	change( holderPane(), 'No focus', false );
+
+	const middle = holderNow().attributes.focus;
+	const checkedAfter = valueAt( holderPane(), 'Focus' );
+
+	change( holderPane(), 'Focus', '9' );
+
+	const corner = holderNow().attributes.focus;
+
+	change( holderPane(), 'Focus', '1' );
+
+	const other = holderNow().attributes.focus;
+
+	change( holderPane(), 'No focus', true );
+
+	return before === 'false,true,' && middle === '5' && checkedAfter === '5' && corner === '9' && other === '1' && holderNow().attributes.focus === '' && valueAt( holderPane(), 'No focus' ) === true
+		&& radiosOf( controlOf( holderPane(), 'Focus' ).el ).every( function( radio ) { return radio.checked === false } );
+} )() );
+check( '...the grid names its places to whoever does not see it, in the words of the picture of a section', controlOf( holderPane(), 'Focus' ).el.getAttribute('aria-label') === 'Focus' && radiosOf( controlOf( holderPane(), 'Focus' ).el ).map( function( radio ) { return radio.getAttribute('aria-label') } ).join()
+	=== 'Top left,Top centre,Top right,Centre left,Centre,Centre right,Bottom left,Bottom centre,Bottom right' );
+check( '...the dimming is a switch that is on for a picture, and writes 1 or 0 - and a picture taken away takes the dimming with it: the card has no picture, the attribute is 0, and the switch is off and greyed out', ( function() {
+
+	const dim = controlOf( holderPane(), 'Dim the picture' ).el;
+	const enabled = dim.disabled === false;
+
+	change( holderPane(), 'Dim the picture', true );
+
+	const on = holderNow().attributes.dim;
+
+	buttonOf( holderPane(), 'Remove the picture' ).click();
+
+	return enabled === true && on === '1' && holderNow().attributes.background === '' && holderNow().attributes.dim === '0' && controlOf( holderPane(), 'Dim the picture' ).el.disabled === true && valueAt( holderPane(), 'Dim the picture' ) === false
+		&& controlOf( holderPane(), 'No focus' ).el.disabled === true && buttonOf( holderPane(), 'Remove the picture' ).disabled === true && holderNow().slots === undefined;
+} )() );
+check( '...and the focus goes with it: a place chosen for the picture is none again, the attribute is empty, and the switch for none is on and greyed out with no place of the grid chosen', ( function() {
+
+	holderNow().attributes.background = '/template/page-home-card/story/card-picture';
+	builder._refreshTab('properties');
+	change( holderPane(), 'No focus', false );
+	change( holderPane(), 'Focus', '9' );
+
+	const placed = holderNow().attributes.focus;
+
+	buttonOf( holderPane(), 'Remove the picture' ).click();
+
+	return placed === '9' && holderNow().attributes.background === '' && holderNow().attributes.focus === '' && valueAt( holderPane(), 'No focus' ) === true && controlOf( holderPane(), 'No focus' ).el.disabled === true
+		&& radiosOf( controlOf( holderPane(), 'Focus' ).el ).every( function( radio ) { return radio.checked === false && radio.disabled === true } );
+} )() );
+
+openCard();
+builder._renderEditor();
+builder._openSettings( [ 0, 0, 0 ] );
+check( 'the focus of a component that is a picture itself - [image], whose picture is its source - is the grid as well, and is on from the start: no attribute of the type image comes before it, so there is no picture it would wait for', controlOf( paneOf('properties'), 'Focus' ).kind === 'group'
+	&& controlOf( paneOf('properties'), 'No focus' ).el.disabled === false && valueAt( paneOf('properties'), 'No focus' ) === true && radiosOf( controlOf( paneOf('properties'), 'Focus' ).el ).every( function( radio ) { return radio.disabled === true } )
+	&& ( change( paneOf('properties'), 'No focus', false ), builder._get( builder._doc.model, [ 0, 0, 0 ] ).attributes.focus === '5' ) && ( change( paneOf('properties'), 'Focus', '3' ), builder._get( builder._doc.model, [ 0, 0, 0 ] ).attributes.focus === '3' )
+	&& ( change( paneOf('properties'), 'No focus', true ), builder._get( builder._doc.model, [ 0, 0, 0 ] ).attributes.focus === '' ) );
+builder._closeDialog();
+
+console.log( '\nThe picture behind a card' );
+
+openCard();
+builder._renderEditor();
+builder._openSettings( cardAt );
+
+check( 'the picture behind a card is a source row - the label of the attribute over it, what it is now below it, the button of the dialog of the sources beside it - and under it the upload and the way to take it away; it has no alt text: the picture behind a content is decoration', ( function() {
+
+	const row = holderPane().querySelector('.builder-source');
+
+	return row !== null && row.querySelector('.builder-source-name').hidden === false && row.querySelector('.builder-source-name').textContent === 'Picture' && row.querySelector('.builder-source-current').textContent === 'none'
+		&& row.querySelector('.builder-source-caption').textContent === 'Current picture:' && iconOf( row.querySelector('button') ) === 'source' && fileField( holderPane() ) !== null && thumbOf( holderPane() ).hidden === true
+		&& labelList( holderPane() ).filter( function( label ) { return /^Alternative text/.test( label ) } ).length === 0 && buttonOf( holderPane(), 'Remove the picture' ).disabled === true && holderPane().querySelector('.builder-source-red').hidden === true;
+} )() );
+
+requests = [];
+changes = 0;
+choose( holderPane(), house );
+check( '...a picture chosen for a card that has none makes a slot of the kind of a new one - named after the component and the attribute, free in the section, the size a new slot starts with, and for its label the section, the component and the attribute', actionsOf() === 'slots/create'
+	&& JSON.stringify( requests[0].payload ) === '{"uri":"/template/page-home-card/story/article-background","label":"story: Card - Picture","width":1600,"height":900}' );
+requests[0].callback( 200, { ok : true } );
+check( '...the picture of the card is that slot, with nothing left to make - the slot is there - and the document is changed', holderNow().attributes.background === '/template/page-home-card/story/article-background' && holderNow().slots === undefined && actionsOf() === 'slots/create,images/upload' && changes === 1 );
+requests[1].callback( 200, { filename : 'f', url : '/uploads/card.jpg', source : { width : 2000, height : 1000 }, belowTarget : false } );
+check( '...and the form is drawn again with it: the thumbnail, the focus and the dimming are on, the picture can be taken away, and the preview says that a picture is behind the card, not behind the column or the section', thumbOf( holderPane() ).hidden === false && thumbOf( holderPane() ).src.indexOf('/uploads/card.jpg') === 0
+	&& controlOf( holderPane(), 'No focus' ).el.disabled === false && controlOf( holderPane(), 'Dim the picture' ).el.disabled === false && buttonOf( holderPane(), 'Remove the picture' ).disabled === false && noteOf( holderPane() ).textContent === 'The picture is stored.'
+	&& preview().querySelector('[data-path="0.1.0"] .is-background') !== null && preview().querySelector('[data-path="0.1.0"] .is-background').title === 'Picture behind the card' && preview().querySelector('[data-path="0.1"] .builder-pcol-head .is-background') === null
+	&& preview().children[0].querySelector('.builder-frame-head .is-background') === null && shownTab( stripOf(), 'builder' ) === 'properties' );
+builder._closeDialog();
+
+openCard();
+builder._renderEditor();
+builder._openSettings( cardAt );
+buttonOf( holderPane(), 'Source' ).click();
+check( 'the picture behind a card is chosen in the dialog of the sources, with the tabs of a picture - Choose a value and Create new, no Static -, and a card in a static column offers the slots of the project and no field of an element', JSON.stringify( tabsOf( pickerStrip(), 'builder-picker' ) ) === '[["pick","Choose a value"],["new","Create new"]]'
+	&& pickerPane('pick').querySelector('.builder-label').textContent === 'Image slot' && labelList( pickerPane('pick') ).indexOf('Field of the element') === -1 && pickerPane('pick').querySelector('.builder-source-current').textContent === 'none' );
+( function() {
+	const search = pickerPane('pick').querySelector('input[type="search"]');
+	search.value = '';
+	search.dispatch('input');
+} )();
+pickItems()[1].click();
+check( '...a slot that is chosen is the picture: the attribute holds it, there is nothing to make, and the form follows - the row, the thumbnail of a slot that has none is out of sight, the dimming and the focus wait no more', holderNow().attributes.background === '/project/logo/header/image' && holderNow().slots === undefined && pickerBox().open === false
+	&& holderPane().querySelector('.builder-source-current').textContent === '/project/logo/header/image' && controlOf( holderPane(), 'Dim the picture' ).el.disabled === false && buttonOf( holderPane(), 'Remove the picture' ).disabled === false );
+buttonOf( holderPane(), 'Source' ).click();
+buttonOf( pickerStrip(), 'Create new' ).click();
+check( 'Create new: a new slot is named after the component and the attribute, in the section, and has the size a new slot starts with', fresh('.builder-new-title').textContent === 'New image slot' && fresh('.builder-new-name').value === 'article-background' && fresh('.builder-new-uri').textContent === '/template/page-home-card/story/article-background'
+	&& fresh('.builder-new-size').hidden === false && fresh('.builder-new-width').value === '1600' && fresh('.builder-new-height').value === '900' );
+fresh('.builder-new-width').value = '800';
+fresh('.builder-new-width').dispatch('input');
+fresh('.builder-new-use').click();
+check( '...using it makes the slot the picture of the card, and the mark that makes it when the document is saved stays on the card - under the name of the attribute, with the label and the size - and on nothing else', holderNow().attributes.background === '/template/page-home-card/story/article-background'
+	&& JSON.stringify( holderNow().slots ) === '{"background":{"label":"Card - Picture","width":800,"height":900}}' && holderNow().create === undefined && pickerBox().open === false && preview().querySelector('[data-path="0.1.0"] .is-background') !== null
+	&& holderPane().querySelector('.builder-source-current').textContent === '/template/page-home-card/story/article-background' );
+check( '...a slot that is yet to be made has an upload: the first picture makes it from the mark, the size it says, and the mark is gone once it is there', ( function() {
+
+	requests = [];
+	choose( holderPane(), house );
+
+	const first = actionsOf() === 'slots/create' && JSON.stringify( requests[0].payload ) === '{"uri":"/template/page-home-card/story/article-background","label":"Card - Picture","width":800,"height":900}';
+
+	requests[0].callback( 200, { ok : true } );
+
+	return first && holderNow().slots === undefined && holderNow().attributes.background === '/template/page-home-card/story/article-background' && actionsOf() === 'slots/create,images/upload';
+} )() );
+requests[1].callback( 200, { filename : 'f', url : '/uploads/made.jpg', source : { width : 2000, height : 1000 }, belowTarget : false } );
+buttonOf( holderPane(), 'Remove the picture' ).click();
+check( '...taking the picture away empties the attribute and puts the mark away with it: nothing is left to make, and the preview says no picture is behind the card', holderNow().attributes.background === '' && holderNow().slots === undefined && preview().querySelector('[data-path="0.1.0"] .is-background') === null
+	&& holderPane().querySelector('.builder-source-current').textContent === 'none' && buttonOf( holderPane(), 'Remove the picture' ).disabled === true );
+builder._closeDialog();
+
+holderNow().attributes.background = '/template/page-home-card/story/card-picture';
+holderNow().slots = { background : { label : 'Card - Picture', width : 800, height : 400, alt : { en_US : 'Waves' } } };
+builder._openSettings( cardAt );
+check( 'the mark of a slot that is made later holds an alt text the card does not show or edit: the picture behind a card has none to give, and the mark is kept as it is', holderNow().slots.background.alt.en_US === 'Waves' && labelList( holderPane() ).filter( function( label ) { return /^Alternative text/.test( label ) } ).length === 0 );
+builder._closeDialog();
+
+openCard();
+builder._renderEditor();
+builder._openSettings( [ 1, 0, 0 ] );
+check( 'the picture behind a card in a loop is a field of the element or a slot: the dialog of the sources offers the image fields of the type next to the slots, and the card of the page reads the field "image"', holderPane().querySelector('.builder-source-current').textContent === 'image' && fileField( holderPane() ) === null
+	&& buttonOf( holderPane(), 'Remove the picture' ).disabled === false && controlOf( holderPane(), 'Dim the picture' ).el.disabled === false && valueAt( holderPane(), 'Dim the picture' ) === true && valueAt( holderPane(), 'Focus' ) === '5' );
+buttonOf( holderPane(), 'Source' ).click();
+check( '...Choose a value: the field of the element - the fields of the type that hold a picture, and none - above the slots', labelList( pickerPane('pick') )[0] === 'Field of the element' && controlOf( pickerPane('pick'), 'Field of the element' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=none,image=image'
+	&& valueAt( pickerPane('pick'), 'Field of the element' ) === 'image' );
+change( pickerPane('pick'), 'Field of the element', '' );
+check( '...none empties the attribute, which takes the dimming with it and leaves nothing to upload to: the upload is there for a slot that is yet to be, and the form is drawn again', builder._get( builder._doc.model, [ 1, 0, 0 ] ).attributes.background === '' && builder._get( builder._doc.model, [ 1, 0, 0 ] ).attributes.dim === '0'
+	&& fileField( holderPane() ) !== null && controlOf( holderPane(), 'Dim the picture' ).el.disabled === true && valueAt( holderPane(), 'Dim the picture' ) === false && pickerBox().open === false );
+builder._closeDialog();
+
+builder._get( builder._doc.model, [ 1, 0, 0 ] ).attributes.background = 'photo';
+builder._repaint();
+builder._openSettings( [ 1, 0, 0 ] );
+check( '...a field the type has no such field of is red where the source stands, in the form and on the card in the preview, and the document is not saved with it', holderPane().querySelector('.builder-source-red').hidden === false && holderPane().querySelector('.builder-source-red').textContent === words['/_admin/builder/tree/red-field']
+	&& preview().querySelector('[data-path="1.0.0"]').classList.contains('is-red') === true && ( function() { requests = []; builder._save(); return requests.length === 0 && builder._status.state === 'error' } )() );
+builder._closeDialog();
+
+console.log( '\nThe card in the preview' );
+
+openCard();
+builder._renderEditor();
+
+const frameOf = function( at ) { return preview().querySelector('[data-path="'+ at+ '"]') };
+const colBody = function( at ) { return frameOf( at ).querySelector('.builder-col-body') };
+check( 'a component that holds components is a frame of its own in the body of its column - lighter than the frame of a column, a card with a head of the same three parts - and the column ends in its own button, as it did', classes( colBody('0.1').children ) === 'builder-card builder-pick builder-color-alt,builder-adds'
+	&& classes( frameOf('0.1.0').children ) === 'builder-card-head,builder-card-body' && classes( frameOf('0.1.0').querySelector('.builder-card-head').children ) === 'builder-head-title,builder-head-status,builder-tools' && frameOf('0.1.0').localName === 'div'
+	&& texts( frameOf('0.1.0').querySelectorAll('.builder-card-name') ) === 'Card' );
+check( '...its body has its children as placeholders, in order, each a frame of its own with its tools, and ends in a button that adds a child; the placeholders say what the components draw', classes( frameOf('0.1.0').querySelector('.builder-card-body').children ) === 'builder-ph has-draws builder-pick,builder-ph builder-pick,builder-ph has-draws builder-pick,builder-adds'
+	&& frameOf('0.1.0').querySelectorAll('.builder-ph').map( function( ph ) { return ph.dataset.path } ).join() === '0.1.0.0,0.1.0.1,0.1.0.2' && frameOf('0.1.0.0').querySelector('.builder-ph-draws').textContent === 'H3 .nino-article-title'
+	&& frameOf('0.1.0.0').querySelectorAll('button').map( function( button ) { return button.dataset.tool } ).join() === 'settings,html,up,down,duplicate,delete' && frameOf('0.1.0').querySelector('.builder-adds .builder-add-button').textContent === '+ Component' );
+check( '...a card with no picture behind it says nothing in its head; the head of the column and the head of the section say nothing of the card', frameOf('0.1.0').querySelector('.builder-head-status').children.length === 0 && frameOf('0.1').querySelector('.builder-pcol-head .builder-head-status').children.length === 0
+	&& frameOf('0.1.0').querySelector('.builder-card-head .builder-rename') === null );
+check( '...a card in a loop is drawn once, in the cell of each element as the components of the column are - and the loop is in the head of its column, not in the card', preview().querySelectorAll('[data-path="1.0"] .builder-card').length === 1 && frameOf('1.0.0').querySelectorAll('.builder-ph').length === 1
+	&& frameOf('1.0').querySelector('.builder-pcol-head .is-loop') !== null && frameOf('1.0.0').querySelector('.is-loop') === null );
+
+const cardTintOf = function( around, color, ground, picture, dim ) {
+	openCard();
+	builder._doc.model.blocks[0].settings.color = around;
+	builder._doc.model.blocks[0].cols[1].color = color;
+	cardIn( builder._doc.model ).attributes.ground = ground;
+	cardIn( builder._doc.model ).attributes.background = picture === true ? '/template/page-home-card/story/card-picture' : '';
+	cardIn( builder._doc.model ).attributes.dim = dim === true ? '1' : '0';
+	builder._renderEditor();
+	return frameOf('0.1.0').className.split(' ').filter( function( name ) { return name.indexOf('builder-color-') === 0 } ).join();
+};
+check( 'a card that paints a ground is tinted as a column is - builder-color-<ground> - and one that paints none has no tint of its own', cardTintOf( '', '', '', false, false ) === '' && cardTintOf( '', '', 'alt', false, false ) === 'builder-color-alt' && cardTintOf( '', '', 'tint', false, false ) === 'builder-color-tint'
+	&& cardTintOf( '', '', 'dark', false, false ) === 'builder-color-dark' && cardTintOf( 'dark', 'black', 'primary', false, false ) === 'builder-color-primary' && cardTintOf( '', '', 'brand-alt', false, false ) === 'builder-color-brand-alt' && cardTintOf( 'tint', '', '', false, false ) === '' );
+check( '...counter is the counter of the ground of the column - or of the section where the column has none - by the pairs of Nino.css: default and alt, tint to default, dark and black, primary and brand-alt - and the default is the plain frame', cardTintOf( '', '', 'counter', false, false ) === 'builder-color-alt'
+	&& cardTintOf( 'alt', '', 'counter', false, false ) === 'builder-color-plain' && cardTintOf( 'tint', '', 'counter', false, false ) === 'builder-color-plain' && cardTintOf( 'dark', '', 'counter', false, false ) === 'builder-color-black' && cardTintOf( 'black', '', 'counter', false, false ) === 'builder-color-dark'
+	&& cardTintOf( 'primary', '', 'counter', false, false ) === 'builder-color-brand-alt' && cardTintOf( 'brand-alt', '', 'counter', false, false ) === 'builder-color-primary'
+	&& cardTintOf( 'primary', 'alt', 'counter', false, false ) === 'builder-color-plain' && cardTintOf( 'alt', 'dark', 'counter', false, false ) === 'builder-color-black' && cardTintOf( 'dark', 'counter', 'counter', false, false ) === 'builder-color-dark' );
+check( '...a card whose picture is dimmed is tinted dark, whatever ground it names, and whatever its column is; a dimming without a picture is no ground, and a picture that is not dimmed paints nothing', cardTintOf( '', '', '', true, true ) === 'builder-color-dark' && cardTintOf( 'tint', 'alt', 'counter', true, true ) === 'builder-color-dark'
+	&& cardTintOf( '', '', 'alt', true, true ) === 'builder-color-dark' && cardTintOf( '', '', '', false, true ) === '' && cardTintOf( '', '', 'alt', false, true ) === 'builder-color-alt' && cardTintOf( '', '', '', true, false ) === '' && cardTintOf( '', '', 'alt', true, false ) === 'builder-color-alt' );
+check( '...the section and the column keep their own ground, whatever the card paints', ( cardTintOf( 'dark', '', 'counter', false, false ), frameOf('0.1').classList.contains('builder-color-black') === false && frameOf('0.1').classList.contains('builder-color-dark') === false && preview().children[0].classList.contains('builder-color-dark') ) );
+check( '...a picture behind the card is said in its head with the item the section and the column have for it - an icon of an image and the word for a card - and nowhere else: a card with one, in a column that has its own', ( function() {
+
+	cardTintOf( '', '', '', true, false );
+
+	const item = frameOf('0.1.0').querySelector('.builder-card-head .is-background');
+
+	return item !== null && item.localName === 'span' && item.title === 'Picture behind the card' && item.title !== words['/_admin/builder/preview/background'] && item.title !== words['/_admin/builder/preview/column-background'] && item.getAttribute('role') === 'img'
+		&& item.getAttribute('aria-label') === item.title && iconOf( item ) === 'image' && frameOf('0.1').querySelector('.builder-pcol-head .is-background') === null && frameOf('0.1.0').querySelectorAll('.is-background').length === 1;
+} )() );
+check( '...and the German file has the word, one of its own', ( function() {
+	const german = fs.readFileSync( path.join( __dirname, '../text/de_DE.php' ), 'utf8' );
+	const card = /^\s*'\[\[\/_admin\/builder\/preview\/card-background\]\]'\s*=>\s*'(.*)',\s*$/m.exec( german );
+	return card !== null && card[1] === 'Bild hinter der Karte' && words['/_admin/builder/preview/card-background'] === 'Picture behind the card';
+} )() );
+
+openCard();
+builder._renderEditor();
+const toolOf = function( at, tool ) { return frameOf( at ).querySelectorAll('button').find( function( button ) { return button.dataset.tool === tool } ) };
+const namesOf = function() { return cardIn( builder._doc.model ).components.map( function( child ) { return child.name } ).join() };
+check( 'the tools of a frame at depth four: a child can go up and down in its card, and the first has no step up as the last has none down - both are greyed out', toolOf( '0.1.0.0', 'up' ).disabled === true && toolOf( '0.1.0.0', 'down' ).disabled === false && toolOf( '0.1.0.2', 'down' ).disabled === true
+	&& toolOf( '0.1.0.2', 'up' ).disabled === false && toolOf( '0.1.0.1', 'up' ).disabled === false && toolOf( '0.1.0.1', 'down' ).disabled === false );
+toolOf( '0.1.0.1', 'up' ).click();
+check( '...up moves the child one place up in the list of its card and keeps it selected, at its new path', namesOf() === 'text,article-title,button' && builder._same( builder._sel, [ 0, 1, 0, 0 ] ) && frameOf('0.1.0.0').classList.contains('is-selected') && frameOf('0.1.0.0').querySelector('.builder-ph-label').textContent === 'Text' && changes === 1 );
+toolOf( '0.1.0.0', 'down' ).click();
+toolOf( '0.1.0.1', 'down' ).click();
+check( '...down one place down; a card has the order its children have in the model', namesOf() === 'article-title,button,text' && builder._same( builder._sel, [ 0, 1, 0, 2 ] ) );
+toolOf( '0.1.0.2', 'duplicate' ).click();
+check( '...duplicate puts a copy right after the child, with a key of its own, and selects the copy', namesOf() === 'article-title,button,text,text' && builder._same( builder._sel, [ 0, 1, 0, 3 ] ) && builder._get( builder._doc.model, [ 0, 1, 0, 3 ] ).source === '/template/page-home-card/story/text-2'
+	&& builder._get( builder._doc.model, [ 0, 1, 0, 3 ] ).create.value === 'Text' && frameOf('0.1.0.3').classList.contains('is-selected') && builder._fresh.story === undefined );
+questions = [];
+toolOf( '0.1.0.3', 'delete' ).click();
+check( '...delete takes a child out without a question, since it holds nothing, and selects the card it stood in', namesOf() === 'article-title,button,text' && questions.length === 0 && builder._same( builder._sel, cardAt ) && frameOf('0.1.0').classList.contains('is-selected') );
+
+toolOf( '0.1.0', 'duplicate' ).click();
+check( 'the tools of the card are those of a component of a column: duplicate copies it with its children, right after it, and selects the copy; the card has no step up or down in a column that holds nothing else, and has them next to another', builder._doc.model.blocks[0].cols[1].components.length === 2
+	&& builder._get( builder._doc.model, [ 0, 1, 1 ] ).components.length === 3 && builder._same( builder._sel, [ 0, 1, 1 ] ) && toolOf( '0.1.0', 'up' ).disabled === true && toolOf( '0.1.0', 'down' ).disabled === false && toolOf( '0.1.1', 'up' ).disabled === false && toolOf( '0.1.1', 'down' ).disabled === true );
+toolOf( '0.1.1', 'up' ).click();
+check( '...moving a card moves its children with it', builder._same( builder._sel, [ 0, 1, 0 ] ) && builder._get( builder._doc.model, [ 0, 1, 0 ] ).components[0].source === '/template/page-home-card/story/title-2' && frameOf('0.1.0.0').dataset.path === '0.1.0.0' && frameOf('0.1.0').classList.contains('is-selected') );
+questions = [];
+toolOf( '0.1.0', 'delete' ).click();
+check( '...deleting a card that holds children asks first, as a frame that holds work does - and the question names a component; the answer decides', questions.length === 1 && questions[0].title === 'Component' && builder._doc.model.blocks[0].cols[1].components.length === 2 );
+questions[0].onChoose('cancel');
+check( '...Cancel leaves it where it is', builder._doc.model.blocks[0].cols[1].components.length === 2 );
+questions[0].onChoose('delete');
+check( '...Delete takes the card with its children out of the column, and selects the column', builder._doc.model.blocks[0].cols[1].components.length === 1 && builder._same( builder._sel, [ 0, 1 ] ) && preview().querySelectorAll('[data-path="0.1"] .builder-card').length === 1 );
+
+openCard();
+builder._renderEditor();
+builder._doc.model.blocks[0].cols[1].components[0].components = [];
+builder._renderEditor();
+questions = [];
+toolOf( '0.1.0', 'delete' ).click();
+check( '...a card with no children is deleted without a question, like an empty column', questions.length === 0 && builder._doc.model.blocks[0].cols[1].components.length === 0 );
+
+openCard();
+builder._renderEditor();
+frameOf('0.1.0.1').click();
+check( 'a click on a child selects the child and not the card it stands in, nor the column; a click on the card selects the card, and on the head of a column the column', builder._same( builder._sel, [ 0, 1, 0, 1 ] ) && frameOf('0.1.0.1').classList.contains('is-selected') && frameOf('0.1.0').classList.contains('is-selected') === false && frameOf('0.1').classList.contains('is-selected') === false );
+frameOf('0.1.0').querySelector('.builder-card-head').click();
+check( '...the head of the card selects the card', builder._same( builder._sel, cardAt ) && frameOf('0.1.0').classList.contains('is-selected') && frameOf('0.1.0.1').classList.contains('is-selected') === false );
+frameOf('0.1').querySelector('.builder-pcol-head').click();
+check( '...and the head of the column the column', builder._same( builder._sel, [ 0, 1 ] ) && frameOf('0.1').classList.contains('is-selected') === true && frameOf('0.1.0').classList.contains('is-selected') === false );
+frameOf('0.1.0').dispatch('dblclick');
+check( 'a double click on the card opens the form of the card, one on a child the form of that component', dialogBox().open === true && dialogText('builder-dialog-kind') === 'Card' && JSON.stringify( dialogTabs() ) === '[["properties","Properties"],["custom","CSS classes"]]' );
+frameOf('0.1.0.1').dispatch('dblclick');
+check( '...the form of a component at depth four is the form every component has: Content, Properties and CSS classes', dialogBox().open === true && dialogText('builder-dialog-kind') === 'Component "Text"' && JSON.stringify( dialogTabs().map( function( tab ) { return tab[0] } ) ) === '["content","properties","custom"]' );
+builder._closeDialog();
+toolOf( '0.1.0', 'settings' ).click();
+check( 'the tool for the settings selects the frame and opens its form: the card\'s', dialogText('builder-dialog-kind') === 'Card' && builder._same( builder._sel, cardAt ) );
+toolOf( '0.1.0.2', 'settings' ).click();
+check( '...and a child\'s', dialogText('builder-dialog-kind') === 'Component "Button"' && builder._same( builder._sel, [ 0, 1, 0, 2 ] ) && dialogBox().open === true );
+builder._closeDialog();
+
+check( 'the pointer is over the innermost frame: a child of a card, not the card nor the column - the tools of the frame it is over are seen', ( function() {
+
+	frameOf('0.1.0.1').querySelector('.builder-ph-label').dispatch('mouseover');
+
+	const child = frameOf('0.1.0.1').classList.contains('is-hover') && frameOf('0.1.0').classList.contains('is-hover') === false && frameOf('0.1').classList.contains('is-hover') === false;
+
+	frameOf('0.1.0').querySelector('.builder-card-name').dispatch('mouseover');
+
+	return child && frameOf('0.1.0').classList.contains('is-hover') && frameOf('0.1.0.1').classList.contains('is-hover') === false;
+} )() );
+
+console.log( '\nEvery form of a card, what it says when it is not read, and what a section keeps when it is renamed or read again' );
+
+openCard();
+builder._renderEditor();
+builder._doc.model.blocks[1].cols[0].components[0].attributes.background = '';
+cardIn( builder._doc.model ).attributes.background = '/project/logo/header/image';
+
+const cardPaths = [];
+builder._doc.model.blocks.forEach( function( block, b ) {
+	cardPaths.push( [ b ] );
+	( block.cols || [] ).forEach( function( col, c ) {
+		cardPaths.push( [ b, c ] );
+		if( col.stack !== null )
+			cardPaths.push( [ b, c, 'x' ] );
+		col.components.forEach( function( component, k ) {
+			cardPaths.push( [ b, c, k ] );
+			( component.components || [] ).forEach( function( child, j ) { cardPaths.push( [ b, c, k, j ] ) } );
+		} );
+	} );
+} );
+cardPaths.push( [] );
+
+faults.length = 0;
+check( 'the form of every node of a page with cards can be drawn: '+ cardPaths.length+ ' of them, the cards and their children among them, in each view of the preview - and so can their tools and the buttons that add to them', builder.VIEWS.every( function( view ) {
+	builder._setView( view );
+	return cardPaths.filter( function( at ) {
+		return drawn( 'settings '+ at.join('.')+ ' in '+ view, function() {
+			builder._openSettings( at );
+			inspect( 'settings '+ at.join('.')+ ' in '+ view, dialogBox() );
+			if( at[at.length - 1] !== 'x' && at.length > 0 )
+				builder._tools( at );
+		} ) === false;
+	} ).length === 0 && drawn( 'preview '+ view, function() {
+		builder._pickComponent( cardAt, made('button') );
+		builder._addsRow( cardAt );
+		inspect( 'preview '+ view, preview() );
+	} );
+} ) && cardPaths.length === 14 );
+builder._setView('l');
+builder._closeDialog();
+check( '...every icon of them has a title and a label that say the same, every group of choices - the grid of the focus among them - is a radio group a screen reader reads as a field, every tab has its pane', faults.length === 0 );
+if( faults.length > 0 )
+	console.log( '      '+ faults.slice( 0, 6 ).join( '\n      ' ) );
+
+check( 'a model that php sent with empty lists for maps has them as maps in the children of a container as well', ( function() {
+
+	const model = builder._normalise( { blocks : [ { kind : 'section', settings : [], cols : [ { hidden : [], width : [], components : [ { name : 'article', attributes : [], components : [ { name : 'text', attributes : [] }, { name : 'button' } ] } ] } ] } ] } );
+	const holder = model.blocks[0].cols[0].components[0];
+
+	return Array.isArray( holder.attributes ) === false && holder.components.every( function( child ) { return Array.isArray( child.attributes ) === false && typeof child.attributes === 'object' } ) && JSON.stringify( holder.components[0].attributes ) === '{}';
+} )() );
+
+const reasonWords = function( code, language ) {
+	const file = fs.readFileSync( path.join( __dirname, '../text/'+ language+ '.php' ), 'utf8' );
+	const found = new RegExp( "^\\s*'\\[\\[/_admin/builder/reason/"+ code+ "\\]\\]'\\s*=>\\s*'(.*)',\\s*$", 'm' ).exec( file );
+	return found === null ? null : found[1];
+};
+check( 'what the Reader does not take of a container is said in the words of the panel, in both languages: a loop inside it, another container inside it, and markup next to its component calls - with the name of the component and the markup, the two places of the sentence, which the Reader puts together with a line break', builder._reasonText( { line : 2, code : 'holder-stack', detail : '', text : 'x' } ) === 'Line 2: A loop inside a component that holds components'
+	&& builder._reasonText( { line : 3, code : 'holder-in-holder', detail : '', text : 'x' } ) === 'Line 3: A component that holds components inside another'
+	&& builder._reasonText( { line : 5, code : 'holder-content', detail : 'article\n<p>Hello there, a', text : 'x' } ) === 'Line 5: The component article holds markup next to its component calls: <p>Hello there, a'
+	&& builder._reasonText( { line : 0, code : 'holder-content', detail : 'article\nx\ny', text : 'x' } ) === 'The component article holds markup next to its component calls: x\ny'
+	&& [ 'holder-stack', 'holder-in-holder', 'holder-content' ].every( function( code ) {
+		const places = code === 'holder-content' ? 2 : 0;
+		return [ 'en_US', 'de_DE' ].every( function( language ) { const sentence = reasonWords( code, language ); return sentence !== null && sentence.split('%s').length === places + 1 } );
+	} ) && reasonWords( 'holder-content', 'de_DE' ) === 'In der Komponente %s steht Markup neben den Komponentenaufrufen: %s' );
+
+openCard();
+builder._renderEditor();
+builder._registry.slots.push( { uri : '/template/page-home-card/story/card-stored', label : 'Stored', width : 1600, height : 900, hasImage : true, url : '/uploads/s.jpg', alt : {} } );
+cardIn( builder._doc.model ).attributes.background = '/template/page-home-card/story/card-picture';
+cardIn( builder._doc.model ).slots = { background : { label : 'Card - Picture', width : 800, height : 400 } };
+builder._fresh.story = true;
+builder._rename( [ 0 ], 'tale' );
+check( 'a section made here is renamed by writing the sources of the children of its cards and the pictures the cards name new, since nothing of it was made', builder._doc.model.blocks[0].id === 'tale' && builder._doc.model.blocks[0].renamedFrom === undefined && builder._fresh.tale === true
+	&& cardIn( builder._doc.model ).components.map( function( child ) { return child.source } ).join() === '/template/page-home-card/tale/title,/template/page-home-card/tale/text,/template/page-home-card/tale/button'
+	&& cardIn( builder._doc.model ).attributes.background === '/template/page-home-card/tale/card-picture' && cardIn( builder._doc.model ).slots.background.width === 800 && builder._doc.model.blocks[0].cols[0].components[0].source === '/template/page-home-card/tale/photo' );
+cardIn( builder._doc.model ).attributes.background = '/template/page-home-card/tale/card-stored';
+builder._registry.slots.push( { uri : '/template/page-home-card/tale/card-stored', label : 'Stored', width : 1600, height : 900, hasImage : true, url : '/uploads/s.jpg', alt : {} } );
+builder._rename( [ 0 ], 'story' );
+check( '...but for a slot that is there already: a picture was stored for it, and it stays what the attribute names, whatever the section is called', cardIn( builder._doc.model ).attributes.background === '/template/page-home-card/tale/card-stored' && cardIn( builder._doc.model ).components[0].source === '/template/page-home-card/story/title' );
+openCard();
+builder._rename( [ 0 ], 'tale' );
+check( '...in a section that was saved nothing is moved here: the server moves what it has under the old name', builder._doc.model.blocks[0].id === 'tale' && builder._doc.model.blocks[0].renamedFrom === 'story' && cardIn( builder._doc.model ).components[0].source === '/template/page-home-card/story/title' );
+
+check( 'a section read again by the server has its marks put back where they stood: the instruction to make the slot a card names, the key a child is made with and the texts typed for it - in the card as in the column', ( function() {
+
+	const old = cardPage().blocks[0];
+	const again = cardPage().blocks[0];
+	const oldCard = old.cols[1].components[0];
+	const newCard = again.cols[1].components[0];
+
+	oldCard.attributes.background = '/template/page-home-card/story/card-picture';
+	oldCard.slots = { background : { label : 'Card - Picture', width : 800, height : 400, alt : { en_US : 'Waves' } } };
+	oldCard.components[0].create = { value : 'Hello' };
+	oldCard.components[1].values = { de_DE : 'Hallo' };
+	newCard.attributes.background = '/template/page-home-card/story/card-picture';
+
+	builder._carry( old, again );
+
+	return JSON.stringify( newCard.slots ) === JSON.stringify( oldCard.slots ) && newCard.slots !== oldCard.slots && newCard.slots.background !== oldCard.slots.background && JSON.stringify( newCard.components[0].create ) === '{"value":"Hello"}'
+		&& JSON.stringify( newCard.components[1].values ) === '{"de_DE":"Hallo"}' && newCard.components[2].create === undefined && again.cols[0].components[0].create === undefined;
+} )() );
+check( '...and not where the card was given another picture, or the mark has none to belong to', ( function() {
+
+	const old = cardPage().blocks[0];
+	const again = cardPage().blocks[0];
+
+	old.cols[1].components[0].attributes.background = '/template/page-home-card/story/card-picture';
+	old.cols[1].components[0].slots = { background : { label : 'Card - Picture', width : 800, height : 400 } };
+	again.cols[1].components[0].attributes.background = '/template/page-home-card/story/other-picture';
+
+	builder._carry( old, again );
+
+	return again.cols[1].components[0].slots === undefined;
+} )() );
 
 console.log( '\nThe screens' );
 
