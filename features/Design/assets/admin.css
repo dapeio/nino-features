@@ -201,15 +201,18 @@
 .nino-admin .design-knob-steps {
 	display: flex;
 	margin: 0;
+	border: 1px solid var(--editor-border);
 }
 .nino-admin .design-knob-steps .nino-admin-tab {
 	flex: 1 1 0;
 	min-width: 0;
-	padding: .3rem .4rem;
+	padding: .2rem .4rem;
 	overflow: hidden;
-	font-size: .74rem;
+	font-size: .64rem;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+  min-height: auto;
+  margin-bottom: 0;
 }
 /*	The divider between two steps is the workbench's, and so is the rule that
 	takes it off the last one - which the strip's own rule for a tab outweighs
