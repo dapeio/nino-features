@@ -40,6 +40,9 @@ declare(strict_types=1);
  *										   failure
  *
  *									Where Part 2 cannot run, it says so in a line starting "note".
+ *									So does a check whose feature does not run on that checkout:
+ *									Design's frames and Newsletter's mail templates are looked for
+ *									where those features run, and a note says what was left out.
  *
  *	Usage: php tests/keys-smoke.php
  *	       NINO_ROOT=/path/to/nino php tests/keys-smoke.php
@@ -474,6 +477,11 @@ if( $part2 === true ) {
 	// Which features this checkout can run: bin/applicable.php says, the same answer the CI copies by
 	$applicable = trim( (string) shell_exec( escapeshellarg( PHP_BINARY ). ' '. escapeshellarg( $repo. '/bin/applicable.php' ). ' '. escapeshellarg( $root ). ' 2>/dev/null' ) );
 	$applicable = $applicable === '' ? [] : explode( "\n", $applicable );
+	// Design and Newsletter ask for a Nino of 1.6, the one whose hero classes they are written for. The checks
+	// that look for what only they bring - Design's frames, Newsletter's mail templates - have nothing to look
+	// for on an older one, and say so
+	$designRuns = in_array( 'Design', $applicable, true ) === true;
+	$newsletterRuns = in_array( 'Newsletter', $applicable, true ) === true;
 
 	echo "Part 2: against Nino ". \Nino\VERSION. " - ". count( $applicable ). " of ". count( $features ). " features run on it\n\n";
 
@@ -549,8 +557,11 @@ if( $part2 === true ) {
 
 	keysCheck( 'the kernel\'s base unit delivers the words the frames read: /template/frame-header/navigation/label, /template/frame-footer/contact/title, /template/common/navigation/footer',
 		isset( $kernelBaseKeys['/template/frame-header/navigation/label'], $kernelBaseKeys['/template/frame-footer/contact/title'], $kernelBaseKeys['/template/common/navigation/footer'] ) === true );
-	keysCheck( 'the Design frames were found: headers and footers, each with the category of the template it becomes', count( array_filter( $templateFiles, static fn( array $template ): bool => $template['category'] === 'frame-header' ) ) > 0
-		&& count( array_filter( $templateFiles, static fn( array $template ): bool => $template['category'] === 'frame-footer' ) ) > 0 );
+	if( $designRuns === true )
+		keysCheck( 'the Design frames were found: headers and footers, each with the category of the template it becomes', count( array_filter( $templateFiles, static fn( array $template ): bool => $template['category'] === 'frame-header' ) ) > 0
+			&& count( array_filter( $templateFiles, static fn( array $template ): bool => $template['category'] === 'frame-footer' ) ) > 0 );
+	else
+		echo "note - Design does not run on this Nino: its frames are not read\n";
 
 	// Where a key of the grammar is delivered: /template/common, /project and the words of the frames by the
 	// kernel's base unit, /module by a module's unit, /template/<a category> and /feature/<k> by a feature's
@@ -616,8 +627,9 @@ if( $part2 === true ) {
 				$unknown[] = $template['name']. ' reads '. $key. ', which nothing it may use delivers';
 		}
 	}
+	// Design's templates are most of what there is to read: on a Nino without it, far fewer are enough
 	keysCheck( 'the templates read keys ('. $reads. ' reads): every one is a runtime fill, a key of the system, a placeholder put together in a shape that is allowed, a slot a unit declares, or a key that the feature, the kernel\'s base unit or a module, or the feature it belongs to delivers'
-		. ( $unknown === [] ? '' : ' - '. implode( '; ', array_slice( array_unique( $unknown ), 0, 6 ) ) ), $unknown === [] && $reads > 200 );
+		. ( $unknown === [] ? '' : ' - '. implode( '; ', array_slice( array_unique( $unknown ), 0, 6 ) ) ), $unknown === [] && $reads > ( $designRuns === true ? 200 : 20 ) );
 	keysCheck( 'a template reads template keys of its own category or of /template/common only - the templates inside a feature and the files of a feature\'s library have no category, so only common'
 		. ( $strangers === [] ? '' : ' - '. implode( '; ', array_slice( array_unique( $strangers ), 0, 6 ) ) ), $strangers === [] );
 
@@ -712,7 +724,9 @@ if( $part2 === true ) {
 			$different[] = $name;
 	}
 	keysCheck( 'a template that two units deliver by the same file name - mail-header.tpl and mail-footer.tpl, the kernel\'s and the Newsletter\'s - is one template, byte for byte'
-		. ( $different === [] ? '' : ' - '. implode( ', ', $different ) ), $different === [] && isset( $byName['mail-header.tpl'], $kernelTemplates['mail-header.tpl'] ) === true );
+		. ( $different === [] ? '' : ' - '. implode( ', ', $different ) ), $different === [] && ( $newsletterRuns === false || isset( $byName['mail-header.tpl'], $kernelTemplates['mail-header.tpl'] ) === true ) );
+	if( $newsletterRuns === false )
+		echo "note - Newsletter does not run on this Nino: its mail-header.tpl and mail-footer.tpl are not compared with the kernel's\n";
 
 	// A template that carries keys of its own is a template with a category, which the kernel's own function says
 	$noCategory = [];

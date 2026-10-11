@@ -36,15 +36,20 @@ $feature = \Nino\Features::manifest( dirname( __DIR__ ) );
 
 check( 'the manifest reads, with the key and the class the directory implies', is_array( $feature ) === true
 	&& $feature['key'] === 'design' && $feature['module'] === '\\Nino\\Modules\\Design' );
-// ^1.4: the frames read words of the kernel's - /project/company/..., the
-// words of /template/frame-header and /template/frame-footer, the page
-// details after /_nino/webpage - and writes the project's frame-header.tpl
-// and frame-footer.tpl, which are named so from 1.4 on. A kernel before it
-// has neither the words nor the files. A pre-release of 1.4 counts as 1.4
-check( 'it names ^1.4 - the kernel that has the words its frames read', ( $feature['nino'] ?? '' ) === '^1.4' );
-check( '...and no 1.3 can run it, a 1.4 pre-release can', \Nino\Features::satisfies( (string) $feature['nino'], '1.3.2' ) === false
+// ^1.6: the hero. Nino 1.6 renamed the classes of the hero - nino-hero,
+// nino-hero--fullscreen, nino-hero-arrowdown, nino-hero-title and
+// nino-hero-subtitle - and kept no alias, and the five sets of the hero, the
+// phone rule of header v5 and the specimen's hero are written with the new
+// names: on a 1.5 they style nothing. The floor before it was 1.4: the frames
+// read words of the kernel's - /project/company/..., the words of
+// /template/frame-header and /template/frame-footer, the page details after
+// /_nino/webpage - and write the project's frame-header.tpl and
+// frame-footer.tpl, which are named so from 1.4 on, and 1.6 has them all. A
+// pre-release of 1.6 counts as 1.6
+check( 'it names ^1.6 - the kernel whose hero has the classes its sets and its specimen style', ( $feature['nino'] ?? '' ) === '^1.6' );
+check( '...and no 1.5 can run it, a 1.6 pre-release can', \Nino\Features::satisfies( (string) $feature['nino'], '1.5.0' ) === false
 	&& \Nino\Features::satisfies( (string) $feature['nino'], '1.2.0-beta' ) === false
-	&& \Nino\Features::satisfies( (string) $feature['nino'], '1.4.0-dev' ) === true );
+	&& \Nino\Features::satisfies( (string) $feature['nino'], '1.6.0-dev' ) === true );
 check( 'the setup file is declared under data, so a backup carries it', in_array( \Nino\Modules\Design\Setup::PATH, (array) ( $feature['data'] ?? [] ), true ) === true );
 
 echo "\nThe library it ships\n";

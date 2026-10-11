@@ -56,8 +56,12 @@ return [
 		read by a kernel newer than the v1.2.0-beta tag - on that one
 		Features::manifest() refuses this file outright - so a constraint
 		admitting 1.2 offered a feature that could not be installed. ^1.3 is
-		the first that names only a kernel which does both. */
-	'nino'				=> '^1.4',
+		the first that names only a kernel which does both. A higher one came
+		with 1.6, which renamed the classes of the hero to nino-hero and kept
+		no alias: the five sets of the hero, the phone rule of header v5 and
+		the specimen's hero are written with the new names, so on a 1.5 they
+		style nothing. */
+	'nino'				=> '^1.6',
 	'requires'		=> [],
 	// The whole setup: which set per part, the knob positions, the deviations,
 	// the palette's colours and knobs, and the fingerprint of what was last
