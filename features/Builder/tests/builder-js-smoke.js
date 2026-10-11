@@ -2386,7 +2386,7 @@ check( '...the buttons of the preview do the same: a section, a column - and a c
 	preview().children[0].querySelector('.builder-add-col').click();
 	preview().children[0].querySelector('.builder-adds .builder-add-button').click();
 	const menu = screen.getElementById('builder-menu');
-	const opened = menu.hidden === false && menu.getAttribute('role') === 'menu' && menu.children.length === 7 && menu.children.every( function( item ) { return item.getAttribute('role') === 'menuitem' } );
+	const opened = menu.hidden === false && menu.getAttribute('role') === 'menu' && menu.children.length === 11 && menu.children.every( function( item ) { return item.getAttribute('role') === 'menuitem' } );
 	buttonOf( menu, 'Button' ).click();
 	return opened && menu.hidden === true && builder._doc.model.blocks.length === 5 && builder._doc.model.blocks[0].cols.length === 2 && builder._doc.model.blocks[0].cols[0].components.length === 4 && builder._doc.model.blocks[0].cols[0].components[3].name === 'button'
 		&& preview().children.length === 5 && changes === 3;

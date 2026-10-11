@@ -94,7 +94,7 @@ echo "The registry of the Components module\n";
 \Nino\Modules\Components::init( $appData );
 $registry = \Nino\Modules\Builder\Document::schemas( $appData );
 
-check( 'the components and the stacks of the kernel are in it, each with the defaults of its attributes', array_keys( $registry['components'] ) === [ 'title', 'subtitle', 'text', 'image', 'button', 'html', 'spacer' ]
+check( 'the components and the stacks of the kernel are in it, each with the defaults of its attributes', array_keys( $registry['components'] ) === [ 'title', 'article-title', 'hero-title', 'subtitle', 'article-subtitle', 'hero-subtitle', 'text', 'image', 'button', 'html', 'spacer' ]
 	&& array_keys( $registry['stacks'] ) === [ 'stack', 'slider', 'filter', 'list' ]
 	&& $registry['components']['title']['defaults'] === [ 'level' => '2', 'style' => '', 'class' => '' ]
 	&& $registry['stacks']['stack']['defaults']['gap'] === '2' );

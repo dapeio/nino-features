@@ -21,7 +21,7 @@
                 "style": {
                     "type": "select",
                     "label": "Style",
-                    "hint": "A step up or down the type scale.",
+                    "hint": "Quieter or louder than the role: the size times the quiet or the loud factor.",
                     "options": [
                         "",
                         "loud",
@@ -30,6 +30,90 @@
                     "default": ""
                 }
             },
+            "in": [
+                "section"
+            ],
+            "draws": "h{level} .nino-section-title",
+            "defaults": {
+                "level": "2",
+                "style": "",
+                "class": ""
+            }
+        },
+        "article-title": {
+            "label": "Article title",
+            "source": "text",
+            "loop": true,
+            "preview": "title",
+            "attributes": {
+                "level": {
+                    "type": "select",
+                    "label": "Level",
+                    "hint": "",
+                    "options": [
+                        "1",
+                        "2",
+                        "3",
+                        "4"
+                    ],
+                    "default": "2"
+                },
+                "style": {
+                    "type": "select",
+                    "label": "Style",
+                    "hint": "Quieter or louder than the role: the size times the quiet or the loud factor.",
+                    "options": [
+                        "",
+                        "loud",
+                        "quiet"
+                    ],
+                    "default": ""
+                }
+            },
+            "in": [
+                "cell"
+            ],
+            "draws": "h{level} .nino-article-title",
+            "defaults": {
+                "level": "2",
+                "style": "",
+                "class": ""
+            }
+        },
+        "hero-title": {
+            "label": "Hero title",
+            "source": "text",
+            "loop": true,
+            "preview": "title",
+            "attributes": {
+                "level": {
+                    "type": "select",
+                    "label": "Level",
+                    "hint": "",
+                    "options": [
+                        "1",
+                        "2",
+                        "3",
+                        "4"
+                    ],
+                    "default": "2"
+                },
+                "style": {
+                    "type": "select",
+                    "label": "Style",
+                    "hint": "Quieter or louder than the role: the size times the quiet or the loud factor.",
+                    "options": [
+                        "",
+                        "loud",
+                        "quiet"
+                    ],
+                    "default": ""
+                }
+            },
+            "in": [
+                "hero"
+            ],
+            "draws": "h{level} .nino-hero-title",
             "defaults": {
                 "level": "2",
                 "style": "",
@@ -45,7 +129,7 @@
                 "style": {
                     "type": "select",
                     "label": "Style",
-                    "hint": "A step up or down the type scale.",
+                    "hint": "Quieter or louder than the role: the size times the quiet or the loud factor.",
                     "options": [
                         "",
                         "loud",
@@ -54,6 +138,64 @@
                     "default": ""
                 }
             },
+            "in": [
+                "section"
+            ],
+            "draws": "p .nino-section-subtitle",
+            "defaults": {
+                "style": "",
+                "class": ""
+            }
+        },
+        "article-subtitle": {
+            "label": "Article subtitle",
+            "source": "text",
+            "loop": true,
+            "preview": "title",
+            "attributes": {
+                "style": {
+                    "type": "select",
+                    "label": "Style",
+                    "hint": "Quieter or louder than the role: the size times the quiet or the loud factor.",
+                    "options": [
+                        "",
+                        "loud",
+                        "quiet"
+                    ],
+                    "default": ""
+                }
+            },
+            "in": [
+                "cell"
+            ],
+            "draws": "p .nino-article-subtitle",
+            "defaults": {
+                "style": "",
+                "class": ""
+            }
+        },
+        "hero-subtitle": {
+            "label": "Hero subtitle",
+            "source": "text",
+            "loop": true,
+            "preview": "title",
+            "attributes": {
+                "style": {
+                    "type": "select",
+                    "label": "Style",
+                    "hint": "Quieter or louder than the role: the size times the quiet or the loud factor.",
+                    "options": [
+                        "",
+                        "loud",
+                        "quiet"
+                    ],
+                    "default": ""
+                }
+            },
+            "in": [
+                "hero"
+            ],
+            "draws": "p .nino-hero-subtitle",
             "defaults": {
                 "style": "",
                 "class": ""
@@ -79,7 +221,7 @@
                 "style": {
                     "type": "select",
                     "label": "Style",
-                    "hint": "A step up or down the type scale.",
+                    "hint": "Quieter or louder than the role: the size times the quiet or the loud factor.",
                     "options": [
                         "",
                         "loud",
@@ -194,6 +336,7 @@
                     "default": ""
                 }
             },
+            "draws": "a .nino-btn",
             "defaults": {
                 "href": "",
                 "style": "",
@@ -256,6 +399,7 @@
                 "cols": "100 50 33",
                 "gap": "2",
                 "autoheight": "0",
+                "article": "",
                 "class": ""
             }
         },
@@ -319,6 +463,7 @@
                 "cols": "100 50 33",
                 "gap": "2",
                 "autoheight": "0",
+                "article": "",
                 "by": "",
                 "all": "",
                 "class": ""

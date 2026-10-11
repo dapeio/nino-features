@@ -192,6 +192,7 @@
                             "cols": "100 50 50",
                             "gap": "2",
                             "autoheight": "1",
+                            "article": "",
                             "class": ""
                         }
                     },
