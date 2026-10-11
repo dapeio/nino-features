@@ -320,6 +320,32 @@ check( '...it names who brings the borders of the grounds - the kernel regenerat
 	&& str_contains( \Nino\Features::localized( $feature['manual']['panel']['Preview'] ?? [], 'en_US' ), 'own window' ) === true
 	&& str_contains( \Nino\Features::localized( $feature['manual']['panel']['Preview'] ?? [], 'de_DE' ), 'eigene Fenster' ) === true );
 
+$says = static fn( string $entry, string $locale ): string => \Nino\Features::localized( $feature['manual']['panel'][$entry] ?? [], $locale );
+$sizesSaid = static function( string $locale ) use ( $says ): bool {
+
+	foreach( Fonts::BOUNDS as [ $least, $most ] )
+		if( str_contains( $says( 'Fonts', $locale ), $locale === 'de_DE' ? str_replace( '.', ',', $least. ' bis '. $most ) : 'from '. $least. ' to '. $most ) === false )
+			return false;
+
+	return true;
+};
+
+check( 'the manual says that Global keeps the two frames and that the templates of the content, the buttons and the components are chosen on their own tabs - in both languages, with no five templates on Global any more',
+	str_contains( $says( 'Global', 'en_US' ), 'The two frames' ) === true && str_contains( $says( 'Global', 'en_US' ), 'are chosen on their own tabs' ) === true
+	&& str_contains( $says( 'Global', 'en_US' ), 'The five templates' ) === false
+	&& str_contains( $says( 'Global', 'de_DE' ), 'Die beiden Rahmen' ) === true && str_contains( $says( 'Global', 'de_DE' ), 'werden auf ihren eigenen Tabs gewählt' ) === true
+	&& str_contains( $says( 'Global', 'de_DE' ), 'Die fünf Vorlagen' ) === false );
+check( '...that each of those tabs begins with the select of its template and keeps the focus on it when another is chosen',
+	str_contains( $says( 'Template of a tab', 'en_US' ), 'each begin with the select of their template' ) === true && str_contains( $says( 'Template of a tab', 'en_US' ), 'with the focus still on the select' ) === true
+	&& str_contains( $says( 'Template of a tab', 'de_DE' ), 'beginnen je mit der Auswahl ihrer Vorlage' ) === true && str_contains( $says( 'Template of a tab', 'de_DE' ), 'der Fokus bleibt dabei auf der Auswahl' ) === true );
+check( '...that a size is typed in rem within the bounds of its role - the numbers are those of Fonts::BOUNDS - and that an empty field is the size Nino.css gives the role',
+	str_contains( $says( 'Fonts', 'en_US' ), 'typed in rem, within the bounds of the role' ) === true && str_contains( $says( 'Fonts', 'en_US' ), 'an empty field is the size Nino.css gives the role' ) === true
+	&& str_contains( $says( 'Fonts', 'de_DE' ), 'in rem getippt, innerhalb der Grenzen der Rolle' ) === true && str_contains( $says( 'Fonts', 'de_DE' ), 'ein leeres Feld ist die Größe, die Nino.css der Rolle gibt' ) === true
+	&& $sizesSaid( 'en_US' ) === true && $sizesSaid( 'de_DE' ) === true );
+check( '...and that the way back to the previous version is a button of the action bar beside Reset, there only while there is such a version',
+	str_contains( $says( 'Restore previous version', 'en_US' ), 'in the action bar beside Reset, and only while there is such a version' ) === true
+	&& str_contains( $says( 'Restore previous version', 'de_DE' ), 'in der Aktionsleiste neben Zurücksetzen, und nur, solange es eine solche Version gibt' ) === true );
+
 echo "\nThe library it ships\n";
 
 check( 'five parts: the header and the footer bring markup, the content, the buttons and the components are a stylesheet each',
@@ -617,19 +643,24 @@ check( '...and the record of what was compiled is carried when it is one', Setup
 $notes = [];
 $setup = Setup::normalize( [ 'fonts' => [
 	'title' => [ 'family' => 'system-serif', 'weight' => 'light', 'uppercase' => true, 'size' => '2.40' ],
-	'subtitle' => [ 'family' => 'nowhere', 'weight' => 'heavy', 'size' => 99, 'colour' => 'red' ],
+	'subtitle' => [ 'family' => 'nowhere', 'weight' => 'heavy', 'size' => 'big', 'colour' => 'red' ],
 	'text' => [ 'family' => '', 'size' => 1.125 ],
-	'code' => [ 'family' => 'system-mono', 'weight' => 'bold', 'uppercase' => true, 'size' => '0.8125' ],
+	'code' => [ 'family' => 'system-mono', 'weight' => 'bold', 'uppercase' => true, 'size' => '0.9' ],
 	'button' => 'bold',
 	'heading' => [ 'family' => 'system-sans' ],
 ] ], $library, $notes );
 
-check( 'a font role keeps a family its select offers, a weight word, the case and a size that is one of its steps - a step spelled 2.40 is the step 2.4',
+check( 'a font role keeps a family its select offers, a weight word, the case and a size that is a number inside its bounds - spelled 2.40 it is 2.4',
 	$setup['fonts']['title'] === [ 'family' => 'system-serif', 'weight' => 'light', 'uppercase' => true, 'size' => '2.4' ]
 	&& $setup['fonts']['text'] === [ 'family' => '', 'weight' => 'normal', 'uppercase' => false, 'size' => '1.125' ] );
 check( '...a family, a weight or a size that is none starts from what the role has, and the code has no case to choose',
 	$setup['fonts']['subtitle'] === Fonts::DEFAULTS['subtitle'] && $setup['fonts']['button'] === Fonts::DEFAULTS['button']
-	&& $setup['fonts']['code']['weight'] === 'bold' && $setup['fonts']['code']['uppercase'] === false && $setup['fonts']['code']['size'] === '0.8125' );
+	&& $setup['fonts']['code']['weight'] === 'bold' && $setup['fonts']['code']['uppercase'] === false && $setup['fonts']['code']['size'] === '0.9' );
+check( '...a size outside the bounds of its role is held at the nearer bound, and one with more than three decimals is rounded to three: the setup keeps what the compiler can write',
+	array_map( static fn( string $role ): string => Setup::normalize( [ 'fonts' => [ $role => [ 'size' => 99 ] ] ], $library )['fonts'][$role]['size'], Fonts::ROLES ) === [ '4', '2.5', '1.5', '1.5', '1.25' ]
+	&& array_map( static fn( string $role ): string => Setup::normalize( [ 'fonts' => [ $role => [ 'size' => '0.1' ] ] ], $library )['fonts'][$role]['size'], Fonts::ROLES ) === [ '1', '0.75', '0.75', '0.625', '0.625' ]
+	&& Setup::normalize( [ 'fonts' => [ 'text' => [ 'size' => '1.23456' ] ] ], $library )['fonts']['text']['size'] === '1.235'
+	&& Setup::normalize( [ 'fonts' => [ 'text' => [ 'size' => [ 1 ] ] ] ], $library )['fonts']['text']['size'] === '' );
 check( '...and a family the role\'s select does not offer is none: the code is given the monospace ones, of which there are none with files yet - the system stack is its empty family - while the other roles keep a system stack',
 	$setup['fonts']['code']['family'] === '' && Setup::normalize( [ 'fonts' => [ 'code' => [ 'family' => 'league-spartan' ] ] ], $library )['fonts']['code']['family'] === ''
 	&& Setup::normalize( [ 'fonts' => [ 'title' => [ 'family' => 'system-mono' ] ] ], $library )['fonts']['title']['family'] === 'system-mono'
@@ -684,7 +715,7 @@ $sans = Fonts::STACK_SANS;
 $mono = Fonts::STACK_MONO;
 
 check( 'the five roles, in the order they are shown and written in', Fonts::ROLES === [ 'title', 'subtitle', 'text', 'button', 'code' ]
-	&& array_keys( Fonts::DEFAULTS ) === Fonts::ROLES && array_keys( Fonts::SIZES ) === Fonts::ROLES && array_keys( Fonts::INHERITED ) === Fonts::ROLES );
+	&& array_keys( Fonts::DEFAULTS ) === Fonts::ROLES && array_keys( Fonts::BOUNDS ) === Fonts::ROLES && array_keys( Fonts::INHERITED ) === Fonts::ROLES );
 check( 'a family is a name, a category and the files it comes in - the three system stacks have none',
 	array_keys( Fonts::families() ) === [ 'source-sans-3', 'league-spartan', 'system-sans', 'system-serif', 'system-mono' ]
 	&& array_filter( Fonts::families(), static fn( array $family ): bool => isset( $family['name'], $family['category'], $family['weights'], $family['files'] ) === false ) === []
@@ -706,10 +737,27 @@ $nearest = new ReflectionMethod( Fonts::class, 'nearest' );
 check( 'of two weights as near as each other a word gets the lighter - the list is sorted first, and only a nearer weight takes the place of the one held',
 	$nearest->invoke( null, [ 400, 600 ], 500 ) === 400 && $nearest->invoke( null, [ 700, 300 ], 500 ) === 300 && $nearest->invoke( null, [ 300, 400, 500, 700, 900 ], 800 ) === 700
 	&& $nearest->invoke( null, [ 400, 700 ], 500 ) === 400 && $nearest->invoke( null, [ 400, 700 ], 800 ) === 700 && $nearest->invoke( null, [ 500 ], 300 ) === 500 );
-check( 'a size is one of the role\'s steps as a string, and the default for anything else',
+check( 'every role has bounds in rem, from the least to the most: the five of them, in the order of the roles',
+	array_keys( Fonts::BOUNDS ) === Fonts::ROLES && array_filter( Fonts::BOUNDS, static fn( array $bounds ): bool => count( $bounds ) !== 2 || $bounds[0] <= 0 || $bounds[0] >= $bounds[1] ) === []
+	&& Fonts::BOUNDS === [ 'title' => [ 1, 4 ], 'subtitle' => [ 0.75, 2.5 ], 'text' => [ 0.75, 1.5 ], 'button' => [ 0.625, 1.5 ], 'code' => [ 0.625, 1.25 ] ] );
+check( 'a size is a number inside the bounds of its role as the shortest string it can be written as: 2.4 however it is spelled, 1.1250 as 1.125, 2.0 as 2',
 	Fonts::size( 'title', '2.4' ) === '2.4' && Fonts::size( 'title', 2.4 ) === '2.4' && Fonts::size( 'title', '2.40' ) === '2.4' && Fonts::size( 'title', 2 ) === '2'
-	&& Fonts::size( 'title', '2.45' ) === '' && Fonts::size( 'title', '' ) === '' && Fonts::size( 'title', 'big' ) === '' && Fonts::size( 'title', [ 2 ] ) === ''
-	&& Fonts::size( 'code', '0.9375' ) === '0.9375' && Fonts::size( 'nothing', '1' ) === '' );
+	&& Fonts::size( 'title', '1.1250' ) === '1.125' && Fonts::size( 'title', '2.0' ) === '2' && Fonts::size( 'text', 0.875 ) === '0.875' && Fonts::size( 'title', '  1.5 ' ) === '1.5' );
+check( '...a value is held at the nearer bound - below the least it is the least, above the most the most - and rounded to three decimals, which is what a number that is no step of any list is',
+	Fonts::size( 'title', 0.5 ) === '1' && Fonts::size( 'title', '9' ) === '4' && Fonts::size( 'title', -3 ) === '1' && Fonts::size( 'title', 1e9 ) === '4'
+	&& Fonts::size( 'subtitle', 0.7 ) === '0.75' && Fonts::size( 'subtitle', 2.51 ) === '2.5' && Fonts::size( 'button', 0.6 ) === '0.625' && Fonts::size( 'code', 1.3 ) === '1.25'
+	&& Fonts::size( 'title', '2.45' ) === '2.45' && Fonts::size( 'code', '0.9375' ) === '0.938' && Fonts::size( 'title', 1.00049 ) === '1' );
+check( '...whatever is no number is the default - nothing, null, text, an array, a bool, a comma for the point - and so is a size for a role there is none of',
+	Fonts::size( 'title', '' ) === '' && Fonts::size( 'title', null ) === '' && Fonts::size( 'title', 'big' ) === '' && Fonts::size( 'title', [ 2 ] ) === ''
+	&& Fonts::size( 'title', true ) === '' && Fonts::size( 'title', '2,4' ) === '' && Fonts::size( 'nothing', '1' ) === '' );
+// NAN is a float, and neither below a bound nor above one: held between them it was the most, a title of 4 rem that nobody typed
+check( '...and so is a float that is not a number: NAN in, the default out, for every role - not the most of the role, which is what holding it between the bounds made of it',
+	Fonts::size( 'title', NAN ) === '' && array_filter( Fonts::ROLES, static fn( string $role ): bool => Fonts::size( $role, NAN ) !== '' ) === [] );
+check( '...and it answers a size it answers to again: the bounds are sizes of their own, and so is the one Nino.css gives each role',
+	array_map( static fn( string $role ): string => Fonts::size( $role, Fonts::BOUNDS[$role][0] ), Fonts::ROLES ) === [ '1', '0.75', '0.75', '0.625', '0.625' ]
+	&& array_map( static fn( string $role ): string => Fonts::size( $role, Fonts::BOUNDS[$role][1] ), Fonts::ROLES ) === [ '4', '2.5', '1.5', '1.5', '1.25' ]
+	&& array_filter( Fonts::ROLES, static fn( string $role ): bool => Fonts::size( $role, Fonts::INHERITED[$role] ) !== Fonts::INHERITED[$role]
+		|| Fonts::size( $role, Fonts::size( $role, 1.23456 ) ) !== Fonts::size( $role, 1.23456 ) ) === [] );
 
 echo "\nWhat the compiler produces\n";
 
@@ -773,7 +821,7 @@ $richRaw = [
 	'size' => 'l', 'width' => -1, 'motion' => [ 'effect' => 'flip', 'strength' => 'hard', 'speed' => 'slow' ],
 	'parts' => [ 'header' => 'v2', 'footer' => 'v3', 'content' => 'v3', 'buttons' => 'v2', 'components' => 'v5' ],
 	'knobs' => [ 'content' => [ 'hero-title' => -1, 'shadow' => 1, 'border' => 1 ], 'buttons' => [ 'small' => 1 ], 'components' => [ 'zebra' => 1, 'scale' => -1 ] ],
-	'fonts' => [ 'title' => [ 'family' => 'system-serif', 'weight' => 'light', 'uppercase' => true, 'size' => '2.4' ], 'code' => [ 'weight' => 'bold', 'size' => '0.9375' ] ],
+	'fonts' => [ 'title' => [ 'family' => 'system-serif', 'weight' => 'light', 'uppercase' => true, 'size' => '2.4' ], 'code' => [ 'weight' => 'bold', 'size' => '0.9' ] ],
 	'colours' => [ 'mode' => 'dark', 'primary' => '#8b1d3f' ],
 ];
 $notes	= [];
@@ -788,7 +836,7 @@ check( 'the header says what stands off the defaults: the size, the width, the a
 	&& str_contains( $header, " *   content    v3  (hero-title less, shadow more)\n" ) === true
 	&& str_contains( $header, " *   buttons    v2  (small more)\n" ) === true && str_contains( $header, " *   components v5  (zebra more)\n" ) === true
 	&& str_contains( $header, " *   title      System serif, light, uppercase, 2.4rem\n" ) === true
-	&& str_contains( $header, " *   code       the system stack, bold, 0.9375rem\n" ) === true );
+	&& str_contains( $header, " *   code       the system stack, bold, 0.9rem\n" ) === true );
 check( '...a knob the chosen template does not answer to is not in the sheet at all, whatever position the model keeps for it',
 	str_contains( $rich, '--content-border:' ) === false && str_contains( $rich, '--components-scale:' ) === false
 	&& str_contains( $rich, '--content-hero-title: var(--content-hero-title--less);' ) === true );
@@ -818,10 +866,17 @@ $chosen = $rolesIn( $typeOf( $richRaw ) );
 check( 'a role that was chosen is written as chosen: the stack of a system family, the weight as a number or a keyword, the case where it is upper, the size in rem',
 	( $chosen['--fontfamily-title'] ?? '' ) === 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif' && ( $chosen['--font-title-weight'] ?? '' ) === '300'
 	&& ( $chosen['--font-title-transform'] ?? '' ) === 'uppercase' && ( $chosen['--font-title-size'] ?? '' ) === '2.4rem'
-	&& isset( $chosen['--fontfamily-code'] ) === false && ( $chosen['--font-code-weight'] ?? '' ) === 'bold' && ( $chosen['--font-code-size'] ?? '' ) === '0.9375rem'
+	&& isset( $chosen['--fontfamily-code'] ) === false && ( $chosen['--font-code-weight'] ?? '' ) === 'bold' && ( $chosen['--font-code-size'] ?? '' ) === '0.9rem'
 	&& isset( $chosen['--font-code-transform'] ) === false );
 check( '...a title with a size of its own fixes the article title as well, because Nino.css multiplies the role by a factor that only gives the size it had on a step of the scale',
 	( $chosen['--article-title-scale'] ?? '' ) === '.8' && isset( $rolesIn( $typeOf( [ 'fonts' => [ 'subtitle' => [ 'size' => '1.5' ] ] ] ) )['--article-title-scale'] ) === false );
+$typed = $rolesIn( $typeOf( [ 'fonts' => [ 'title' => [ 'size' => '2.45' ], 'text' => [ 'size' => 1.35 ], 'subtitle' => [ 'size' => 9 ], 'code' => [ 'size' => '0.1' ] ] ] ) );
+check( '...a size that was typed, and is no step of any list, is written in rem as it is - and one outside the bounds at the bound: 2.45 for the title, 1.35 for the text, 9 for the subtitle, 0.1 for the code',
+	( $typed['--font-title-size'] ?? '' ) === '2.45rem' && ( $typed['--font-text-size'] ?? '' ) === '1.35rem'
+	&& ( $typed['--font-subtitle-size'] ?? '' ) === '2.5rem' && ( $typed['--font-code-size'] ?? '' ) === '0.625rem' && isset( $typed['--font-button-size'] ) === false
+	&& ( $typed['--article-title-scale'] ?? '' ) === '.8' );
+check( '...and an empty size, or one that is no number, writes no size line at all',
+	preg_grep( '/-size$/', array_keys( $rolesIn( $typeOf( [ 'fonts' => [ 'title' => [ 'size' => 'big' ], 'text' => [ 'size' => '' ], 'code' => [ 'size' => null ] ] ] ) ) ) ) === [] );
 check( '...and the Source Sans 3 the other three roles still use is declared once, with the League Spartan nobody uses any more gone',
 	substr_count( $typeOf( $richRaw ), "font-family: 'Source Sans 3'" ) === 2 && str_contains( $typeOf( $richRaw ), 'League Spartan' ) === false );
 
@@ -841,9 +896,8 @@ else {
 		&& ( $ninoRootDecls['--font-text-size'] ?? '' ) === Fonts::INHERITED['text']. 'rem'
 		&& ( $ninoRootDecls['--font-button-size'] ?? '' ) === 'var(--fontsize-btn)' && ( $ninoRootDecls['--fontsize-btn'] ?? '' ) === Fonts::INHERITED['button']. 'rem'
 		&& ( $ninoRootDecls['--font-code-size'] ?? '' ) === '.875rem' && Fonts::INHERITED['code'] === '0.875' );
-	check( '...and the steps of a role run over that size, from below it to above it - "Default" is the position between them, and the subtitle\'s 1.125 stands between two of its tenths',
-		array_filter( Fonts::ROLES, static fn( string $role ): bool => (float) Fonts::SIZES[$role][0] > (float) Fonts::INHERITED[$role] || (float) Fonts::SIZES[$role][ array_key_last( Fonts::SIZES[$role] ) ] < (float) Fonts::INHERITED[$role] ) === []
-		&& in_array( Fonts::INHERITED['subtitle'], Fonts::SIZES['subtitle'], true ) === false );
+	check( '...and the bounds of a role run over that size, from below it to above it - what is typed can be smaller than the default and larger, and the default is a size the role may be given',
+		array_filter( Fonts::ROLES, static fn( string $role ): bool => Fonts::BOUNDS[$role][0] >= (float) Fonts::INHERITED[$role] || Fonts::BOUNDS[$role][1] <= (float) Fonts::INHERITED[$role] ) === [] );
 }
 
 echo "\nThe page: the width, and how its sections arrive\n";
@@ -1635,10 +1689,11 @@ check( 'and the screen is handed the vocabulary it draws: the tabs with their kn
 	&& ( $listed['motion'] ?? null ) === [ 'effect' => '', 'strength' => '', 'speed' => '' ]
 	&& ( $listed['effects'] ?? null ) === array_keys( Setup::EFFECTS ) && ( $listed['strengths'] ?? null ) === Setup::STRENGTHS
 	&& ( $listed['speeds'] ?? null ) === array_keys( Setup::SPEEDS ) );
-check( '...where every knob stands, the five font roles with what each has and what each can be given, and the sizes with the one Nino.css gives a role',
+check( '...where every knob stands, the five font roles with what each has and what each can be given, and the bounds of a typed size with the one Nino.css gives a role - no list of steps',
 	( $listed['knobs'] ?? null ) === $onFile['knobs'] && $onFile['knobs'] === Setup::defaults( $library )['knobs']
 	&& ( $listed['roles'] ?? null ) === Fonts::ROLES && ( $listed['fonts'] ?? null ) === Fonts::DEFAULTS
-	&& ( $listed['weights'] ?? null ) === Fonts::WEIGHTS && ( $listed['fontsizes'] ?? null ) === Fonts::SIZES && ( $listed['inherited'] ?? null ) === Fonts::INHERITED
+	&& ( $listed['weights'] ?? null ) === Fonts::WEIGHTS && ( $listed['bounds'] ?? null ) === Fonts::BOUNDS && array_key_exists( 'fontsizes', $listed ) === false
+	&& ( $listed['inherited'] ?? null ) === Fonts::INHERITED
 	&& ( $listed['options']['title'] ?? null ) === Fonts::options( 'title' ) && ( $listed['options']['code'] ?? null ) === [ '' ] );
 check( '...and the families with their names, their category and whether they are a system stack - and not one file name or url',
 	array_keys( (array) ( $listed['families'] ?? [] ) ) === array_keys( Fonts::families() )
@@ -2554,17 +2609,15 @@ $unwritten = array_filter( array_unique( $scriptKeys[1] ), static fn( string $ke
 check( '...and every text the script names literally is one of them'. ( $unwritten === [] ? '' : ' - missing: '. implode( ', ', $unwritten ) ), $unwritten === [] );
 
 /*	The words the model needs, one for each thing the script draws by name: a
-	tab and its group, a template and a size and a width, an effect with its
+	tab, a template and a size and a width, an effect with its
 	strength and speed, a font role with its columns and its families, and
 	three words and a note for every knob of every tab. The model is the list,
 	so a tab, a knob or a family added to it without its words fails here and
 	not as a blank row on a screen - and a word that no longer belongs to
 	anything fails as well	*/
 $wanted = [];
-foreach( [ 'global', 'fonts', 'content', 'buttons', 'components', 'colours' ] as $tab ) {
+foreach( [ 'global', 'fonts', 'content', 'buttons', 'components', 'colours' ] as $tab )
 	$wanted[] = 'tab/'. $tab;
-	$wanted[] = 'group/'. $tab;
-}
 foreach( array_keys( Setup::PARTS ) as $part )
 	$wanted[] = 'part/'. $part;
 foreach( array_keys( Setup::SIZES ) as $size )
@@ -2573,10 +2626,8 @@ foreach( [ 'narrow', 'normal', 'wide' ] as $word )
 	$wanted[] = 'pagewidth/'. $word;
 foreach( [ 'phone', 'tablet', 'desktop' ] as $word )
 	$wanted[] = 'width/'. $word;
-foreach( [ 'current', 'drifted', 'missing', 'foreign' ] as $word ) {
-	$wanted[] = 'state/'. $word;
+foreach( [ 'current', 'drifted', 'missing', 'foreign' ] as $word )
 	$wanted[] = 'state/short/'. $word;
-}
 array_push( $wanted, 'motion/default', 'motion/effect/label', 'motion/strength/label', 'motion/speed/label' );
 foreach( array_keys( Setup::EFFECTS ) as $effect )
 	$wanted[] = 'motion/effect/'. $effect;
@@ -2620,6 +2671,71 @@ $leftover = array_filter( $textEn, static fn( string $key ): bool => str_starts_
 
 check( '...and no word is left over that nothing draws: every key is one of those, a literal the script names, or the page title of the preview'
 	. ( $leftover === [] ? '' : ' - left over: '. implode( ', ', array_slice( $leftover, 0, 6 ) ) ), $leftover === [] );
+
+/*	What the screen stopped drawing took its words with it: the card of the state
+	- how the files stand, and when they were last applied - the eyebrow over the
+	tab, the note under the templates of Global and the heading over the knobs.
+	The one word a state still has is the short one of the summary, and the date
+	of the previous version is the title of the button that restores it	*/
+$gone = [ 'group/', 'hint/templates', 'label/template-of', 'hint/knobs', 'state/compiled', 'state/current', 'state/drifted', 'state/missing', 'state/foreign' ];
+$stillThere = array_filter( array_merge( $textEn, $textDe ), static fn( string $key ): bool => array_filter( $gone, static fn( string $part ): bool => str_contains( $key, '[[/_admin/design/'. $part ) === true ) !== [] );
+check( 'the words of the state card, of the eyebrow over a tab, of the note under the templates and of the heading over the knobs are gone from both files'
+	. ( $stillThere === [] ? '' : ' - still there: '. implode( ', ', array_slice( $stillThere, 0, 4 ) ) ), $stillThere === []
+	&& in_array( '[[/_admin/design/state/previous]]', $textEn, true ) === true && in_array( '[[/_admin/design/label/state]]', $textEn, true ) === true );
+
+/*	The stylesheet of the panel is no test's business as a rule - what it looks
+	like is for a browser to say - but the owner's list asked for measures, and a
+	measure that goes back to what it was is a change nothing else would see. The
+	rules are read with their comments out and their white space squeezed, and a
+	declaration is looked for by its words	*/
+echo "\nThe panel's stylesheet: what the owner's list asked of it\n";
+
+$panelCss = (string) preg_replace( '/\s+/', ' ', (string) preg_replace( '~/\*.*?\*/~s', '', (string) file_get_contents( __DIR__. '/../assets/admin.css' ) ) );
+$cssRule = static fn( string $selector ): string
+	=> preg_match( '/(?:^|[{}] )'. preg_quote( $selector, '/' ). ' \{ ([^}]*) \}/', $panelCss, $found ) === 1 ? $found[1] : '';
+$cssHas = static fn( string $selector, array $declarations ): bool
+	=> array_filter( $declarations, static fn( string $declaration ): bool => str_contains( ' '. $cssRule( $selector ), ' '. $declaration ) === false ) === [];
+
+check( 'the case switch of the fonts table stands in the middle of its cell - the owner\'s rule, word for word',
+	$cssRule( '.design-fonts-switch > .nino-admin-switch' ) === 'align-items: center; justify-content: center;' );
+check( 'the label of a knob is a row of the icon and the box beside it, centred, a gap of .4rem - and smaller and lighter than it was: .8rem at weight 500, with the note under it at .75rem in the secondary colour',
+	$cssHas( '.nino-admin .design-knob-label', [ 'display: flex;', 'align-items: center;', 'gap: .4rem;', 'font-size: .8rem;', 'font-weight: 500;' ] ) === true
+	&& $cssHas( '.nino-admin .design-knob-label small', [ 'display: block;', 'font-size: .75rem;', 'color: var(--editor-text-secondary);' ] ) === true
+	&& str_contains( $cssRule( '.nino-admin .design-knob-label' ), 'font-weight: 650' ) === false );
+check( '...the icon is a square of a rem, drawn with a stroke of 2 in the colour of the text round it, rounded, unfilled, in the secondary colour',
+	$cssHas( '.nino-admin .design-icon', [ 'width: 1rem;', 'height: 1rem;', 'fill: none;', 'stroke: currentColor;', 'stroke-width: 2;', 'stroke-linecap: round;', 'stroke-linejoin: round;', 'color: var(--editor-text-secondary);' ] ) === true );
+check( 'the rows stand closer: a knob row has .35rem above and below and .25rem between its parts, a card .55rem under it, a font role .35rem above and below',
+	$cssHas( '.nino-admin .design-knob-row', [ 'gap: .25rem;', 'padding: .35rem 0;' ] ) === true
+	&& $cssHas( '.nino-admin .design-form-section, .nino-admin .design-block', [ 'margin: 0 0 .55rem;' ] ) === true
+	&& $cssHas( '.nino-admin .design-fonts tbody tr', [ 'padding: .35rem 0;' ] ) === true );
+check( '...and so do the blocks of a card: the grid of fields, the label over a block of rows',
+	$cssHas( '.design-form-grid', [ 'gap: .5rem .75rem;' ] ) === true && $cssHas( '.design-form-section > .design-field + .design-field', [ 'margin-top: .5rem;' ] ) === true
+	&& $cssHas( '.nino-admin .design-section-label', [ 'margin: .65rem 0 .35rem;', 'padding-top: .55rem;' ] ) === true );
+check( 'the way back to the previous version stands beside Reset in the same quiet look and on the same side of the bar: the two take the start of the bar, the button that saves takes the rest of the room',
+	$cssHas( '.nino-admin .nino-admin-actionbar :is(.design-reset-all, #design-restore)', [ 'order: -3;', 'background: none;', 'color: var(--editor-text-secondary);' ] ) === true
+	&& str_contains( $cssRule( '.nino-admin .nino-admin-actionbar :is(.design-reset-all, #design-restore)' ), 'margin-right' ) === false
+	&& $cssHas( '.nino-admin .nino-admin-actionbar #design-save', [ 'margin-left: auto;' ] ) === true );
+
+/*	On a phone - the rules inside the media query of 38rem - the way back to the previous version takes the first row
+	of the bar: alone while Reset is hidden, and while Reset is shown the two share that row, Restore at its own width
+	and Reset taking the room that is left, which puts the pair at the start of the row. The bar is then the row of
+	the quiet ones, the row of the kernel's mark of unsaved input and the row of Save and Apply - never a fourth	*/
+$phoneCss = preg_match( '/@media \(max-width: 38rem\) \{ ((?:[^{}]+\{[^}]*\} )*)\}/', $panelCss, $phoneRules ) === 1 ? $phoneRules[1] : '';
+$onPhone = static fn( string $selector, array $declarations ): bool
+	=> str_contains( $phoneCss, $selector. ' { ' ) === true && $cssHas( $selector, $declarations ) === true;
+
+check( 'on a phone the way back to the previous version takes the first row of the bar - alone while Reset is hidden, and beside Reset at its own width while that is shown, Reset taking the room left over so that the pair stands at the start: the bar is three rows at the most',
+	$onPhone( '.nino-admin .nino-admin-actionbar:has(> #design-restore)', [ 'flex-wrap: wrap;' ] ) === true
+	&& $onPhone( '.nino-admin .nino-admin-actionbar > #design-restore', [ 'flex: 1 0 100%;' ] ) === true
+	&& $onPhone( '.nino-admin .nino-admin-actionbar > #design-restore:has(~ #design-reset:not([hidden]))', [ 'flex: 0 0 auto;' ] ) === true
+	&& $onPhone( '.nino-admin .nino-admin-actionbar > .design-reset-all', [ 'margin-right: auto;' ] ) === true );
+$outsidePhone = str_replace( $phoneRules[0] ?? "\0", '', $panelCss );
+check( '...and only on a phone: nothing of it stands outside the media query, where the bar is one line and Save takes the free room',
+	$phoneCss !== '' && str_contains( $outsidePhone, ':has(> #design-restore)' ) === false && str_contains( $outsidePhone, '> #design-restore' ) === false
+	&& str_contains( $outsidePhone, '> .design-reset-all' ) === false && str_contains( $outsidePhone, '~ #design-reset' ) === false );
+check( 'the rules of what the screen stopped drawing are gone: the state card and its warning, the line that dated the previous version, the sentence under the templates - and the eyebrow rule stays, the preview\'s title has one',
+	str_contains( $panelCss, 'design-state' ) === false && str_contains( $panelCss, 'design-previous' ) === false && str_contains( $panelCss, 'design-note' ) === false
+	&& $cssHas( '.nino-admin .design-eyebrow', [ 'display: block;' ] ) === true );
 
 // --- The panel's script, where node is on the path ------------------------------
 //

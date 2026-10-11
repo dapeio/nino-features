@@ -428,10 +428,11 @@ namespace Nino\Modules\Design {
 					$setup['knobs'][$tab][$knob] = self::position( is_array( $given[$tab] ?? null ) === true ? ( $given[$tab][$knob] ?? 0 ) : 0 );
 
 			/*	The five font roles. A family has to be one the role's select offers -
-				the code is given the monospace ones only - a weight one of the three
-				words and a size one of the role's steps; anything else is what the role
-				starts from. The code has no case switch: capitals in a block of code are
-				not a choice anybody makes	*/
+				the code is given the monospace ones only - and a weight one of the three
+				words; anything else is what the role starts from. A size is a number of
+				rem held inside the bounds of the role, and what is no number is the
+				default (see Fonts::size()). The code has no case switch: capitals in a
+				block of code are not a choice anybody makes	*/
 			$given = is_array( $raw['fonts'] ?? null ) === true ? $raw['fonts'] : [];
 
 			foreach( array_keys( $given ) as $role )

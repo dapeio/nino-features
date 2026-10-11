@@ -13,12 +13,12 @@ namespace Nino\Modules\Design {
 	/**
 	 *	Nino							A compact filesystembased php framework
 	 *	Design\Admin			The "Design" panel: six tabs over one setup - Global, with the
-	 *										five templates, the root size, the width and the animation of
-	 *										the page; Fonts, with the five font roles; Content, Buttons
-	 *										and Components, one named knob for each thing the chosen
-	 *										template lets go of; and Colours, with the two colours, the
-	 *										five knobs and the mode the palette is solved from - compiled
-	 *										together into assets/theme.css.
+	 *										two frames, the root size, the width and the animation of the
+	 *										page; Fonts, with the five font roles; Content, Buttons and
+	 *										Components, each with the choice of its template and one named
+	 *										knob for each thing the template lets go of; and Colours, with
+	 *										the two colours, the five knobs and the mode the palette is
+	 *										solved from - compiled together into assets/theme.css.
 	 *
 	 *										Choosing and applying are two actions on purpose. A
 	 *										setup is a draft and lives in data/design.php whether
@@ -191,15 +191,15 @@ namespace Nino\Modules\Design {
 				'speeds' 	=> array_keys( Setup::SPEEDS ),
 				/*	The five font roles: what each has, the families to choose from
 					(and which of them each role may be given), the three weights
-					and the sizes a role can be fixed at - with the one Nino.css
-					gives it, which the "Default" option names. The frontend carries
-					none of these tables */
+					and the bounds a typed size is held inside of - with the size
+					Nino.css gives each role, which an empty field shows as its
+					placeholder. The frontend carries none of these tables */
 				'roles' 		=> Fonts::ROLES,
 				'fonts' 		=> (array) ( $setup['fonts'] ?? [] ),
 				'families' 	=> $families,
 				'options' 	=> array_combine( Fonts::ROLES, array_map( Fonts::options( ... ), Fonts::ROLES ) ),
 				'weights' 	=> Fonts::WEIGHTS,
-				'fontsizes' => Fonts::SIZES,
+				'bounds' 		=> Fonts::BOUNDS,
 				'inherited' => Fonts::INHERITED,
 				/*	The palette half: where it stands, the vocabulary to draw it
 					with, and whether the picked brand colour is one text survives

@@ -68,20 +68,20 @@ namespace Nino\Modules\Design {
 		/*	The size Nino.css gives each role from 768px, in rem: --font-title-size
 			is the --text-4 step of its scale (1.6 times the text size), the subtitle
 			--text-2 (1.125), the text 1rem, the button --fontsize-btn (1rem) and the
-			code .875rem. The panel names it beside "Default" in the size column. It
-			is a position of its own: the steps below run over it, and the subtitle's
-			1.125 stands between two of its tenths	*/
+			code .875rem. The panel shows it as the placeholder of the size column,
+			where an empty field is this size, and beside "default" in the summary. The
+			bounds below run over it: a role can be made smaller than it, and larger	*/
 		public const array INHERITED = [ 'title' => '1.6', 'subtitle' => '1.125', 'text' => '1', 'button' => '1', 'code' => '0.875' ];
 
-		/*	The sizes a role can be fixed at, in rem. Tenths for the two large roles,
-			and for the small ones the steps a pixel makes at a root of 16px: two for
-			text and button, one for code	*/
-		public const array SIZES = [
-			'title' 		=> [ '1.6', '1.7', '1.8', '1.9', '2', '2.1', '2.2', '2.3', '2.4', '2.5', '2.6', '2.7', '2.8', '2.9', '3', '3.1', '3.2', '3.3', '3.4', '3.5', '3.6', '3.7', '3.8', '3.9', '4' ],
-			'subtitle' 	=> [ '1', '1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8', '1.9', '2' ],
-			'text' 			=> [ '0.875', '1', '1.125', '1.25' ],
-			'button' 		=> [ '0.75', '0.875', '1', '1.125', '1.25' ],
-			'code' 			=> [ '0.75', '0.8125', '0.875', '0.9375', '1' ],
+		/*	What a size can be fixed at, in rem, as [ least, most ] for each role. A
+			size typed outside it is held at the nearer end (see size()), so that no
+			role can be typed into a line nobody can read, or one that fills the page	*/
+		public const array BOUNDS = [
+			'title' 		=> [ 1, 4 ],
+			'subtitle' 	=> [ 0.75, 2.5 ],
+			'text' 			=> [ 0.75, 1.5 ],
+			'button' 		=> [ 0.625, 1.5 ],
+			'code' 			=> [ 0.625, 1.25 ],
 		];
 
 		/*	The stacks Nino.css puts after nothing: the system fonts a role has until
@@ -253,12 +253,14 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	A size as the setup keeps it: one of the role's steps in rem as a
-		 *	string, '' for the default.
+		 *	A size as the setup keeps it: a number of rem written as short as it
+		 *	can be, '' for the default.
 		 *
-		 *	The comparison is numeric, so 2.4, '2.40' and '2.4' are one step, and
-		 *	whatever is not a step - text, an array, a size the role has no step
-		 *	for - is the default rather than a number the page would show.
+		 *	A number is held inside the bounds of the role - below them it is the
+		 *	least, above them the most - and rounded to three decimals, so 2.4,
+		 *	'2.40' and '2.4' are one size, and '1.1250' is '1.125'. Whatever is not
+		 *	a number - '', null, text, an array, NAN - is the default rather than a
+		 *	size the page would show.
 		 *
 		 *	@param		string		$role					A key of ROLES
 		 *	@param		mixed			$value				Straight off the wire
@@ -267,14 +269,17 @@ namespace Nino\Modules\Design {
 		 */
 		public static function size( string $role, mixed $value ): string {
 
-			if( is_int( $value ) === false && is_float( $value ) === false && ( is_string( $value ) === false || is_numeric( $value ) === false ) )
+			$bounds = self::BOUNDS[$role] ?? null;
+
+			if( $bounds === null || ( is_int( $value ) === false && is_float( $value ) === false && ( is_string( $value ) === false || is_numeric( $value ) === false ) ) )
 				return '';
 
-			foreach( self::SIZES[$role] ?? [] as $step )
-				if( abs( (float) $step - (float) $value ) < 0.0001 )
-					return $step;
+			// A float can be NAN, which is neither below a bound nor above one: it
+			// would come out as the most. It is no number at all
+			if( is_float( $value ) === true && is_nan( $value ) === true )
+				return '';
 
-			return '';
+			return rtrim( rtrim( number_format( max( $bounds[0], min( $bounds[1], (float) $value ) ), 3, '.', '' ), '0' ), '.' );
 		}
 
 		/**

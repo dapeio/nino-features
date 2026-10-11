@@ -12,27 +12,20 @@ return [
 	'[[/_admin/design/label/restore]]'							=> 'Vorversion wiederherstellen',
 	'[[/_admin/design/label/state]]'								=> 'Angewendete Datei',
 
-	// Die sechs Tabs und die Überschrift über dem Inhalt eines jeden
+	// Die sechs Tabs
 	'[[/_admin/design/tab/global]]'								=> 'Global',
 	'[[/_admin/design/tab/fonts]]'								=> 'Schriften',
 	'[[/_admin/design/tab/content]]'								=> 'Inhalte',
 	'[[/_admin/design/tab/buttons]]'								=> 'Buttons',
 	'[[/_admin/design/tab/components]]'							=> 'Komponenten',
 	'[[/_admin/design/tab/colours]]'								=> 'Farben',
-	'[[/_admin/design/group/global]]'							=> 'Vorlagen und Seite',
-	'[[/_admin/design/group/fonts]]'								=> 'Schriftrollen',
-	'[[/_admin/design/group/content]]'							=> 'Hero, Sections und Karten',
-	'[[/_admin/design/group/buttons]]'							=> 'Buttons',
-	'[[/_admin/design/group/components]]'						=> 'Formulare, Tabellen und Bausteine',
-	'[[/_admin/design/group/colours]]'							=> 'Palette',
 
-	// Global: die fünf Vorlagen, die Grundgröße, die Breite und die Animation der Seite
+	// Global: die zwei Rahmen werden hier gewählt, die anderen drei Vorlagen auf ihren eigenen Tabs; dazu die Grundgröße, die Breite und die Animation der Seite
 	'[[/_admin/design/part/header]]'								=> 'Vorlage Header',
 	'[[/_admin/design/part/footer]]'								=> 'Vorlage Footer',
 	'[[/_admin/design/part/content]]'							=> 'Vorlage Inhalte',
 	'[[/_admin/design/part/buttons]]'							=> 'Vorlage Buttons',
 	'[[/_admin/design/part/components]]'							=> 'Vorlage Komponenten',
-	'[[/_admin/design/hint/templates]]'							=> 'Header und Footer bringen ihr eigenes Markup mit: Beim Anwenden werden die beiden Templates des Projekts überschrieben – der bisherige Stand wird vorher als Vorversion abgelegt. Welche Regler eine Vorlage für Inhalte, Buttons und Komponenten hat, siehst Du in den gleichnamigen Tabs.',
 	'[[/_admin/design/label/size]]'								=> 'Grundgröße',
 	'[[/_admin/design/size/s]]'									=> 'klein',
 	'[[/_admin/design/size/m]]'									=> 'normal',
@@ -88,9 +81,7 @@ return [
 	'[[/_admin/design/fontsize/decimal]]'						=> ',',
 	'[[/_admin/design/fontsize/unit]]'							=> 'rem',
 
-	// Inhalte, Buttons, Komponenten: eine Zeile je Regler
-	'[[/_admin/design/label/template-of]]'						=> 'Vorlage: %s',
-	'[[/_admin/design/hint/knobs]]'								=> 'Eine Stufe unter dem, was die Vorlage erklärt, die Vorlage selbst, oder eine Stufe darüber. Welche Vorlage gilt, wählst Du unter Global.',
+	// Inhalte, Buttons, Komponenten: die Vorlage und eine Zeile je Regler
 	'[[/_admin/design/hint/unanswered]]'							=> 'Diese Vorlage hört nicht auf „%s“.',
 
 	'[[/_admin/design/knob/content/hero-title/label]]'			=> 'Hero-Titel',
@@ -200,14 +191,10 @@ return [
 	'[[/_admin/design/confirm/replaces]]'						=> 'Das ersetzt die Vorversion vom %s.',
 	'[[/_admin/design/confirm/restore]]'							=> 'Vorversion wiederherstellen? Das Setup der Vorversion wird mitgeladen, ungespeicherte Änderungen auf dem Bildschirm gehen dabei verloren. Der jetzige Stand tritt an ihre Stelle, Du kannst das also wieder rückgängig machen.',
 
-	'[[/_admin/design/state/current]]'							=> 'Die Datei entspricht dieser Auswahl.',
-	'[[/_admin/design/state/drifted]]'							=> 'Der Entwurf ist gespeichert, aber noch nicht angewendet – auf der Website steht noch der vorige Stand.',
-	'[[/_admin/design/state/missing]]'							=> 'Noch nie angewendet.',
-	'[[/_admin/design/state/foreign]]'							=> 'Nicht von Design geschrieben: %s – ausgeliefert oder von Hand bearbeitet. Beim Anwenden fragt Design vorher nach.',
-	'[[/_admin/design/state/compiled]]'							=> 'Zuletzt angewendet: %s',
+	// Der Titel des Knopfs, der die Vorversion wiederherstellt: Er nennt das Datum dieser Version
 	'[[/_admin/design/state/previous]]'							=> 'Vorversion vom %s',
 
-	// Dieselben vier Zustände in einem Wort, für die Zusammenfassung unter der Vorschau
+	// Der Zustand der angewendeten Datei in einem Wort, für die Zusammenfassung unter der Vorschau
 	'[[/_admin/design/state/short/current]]'						=> 'Aktuell',
 	'[[/_admin/design/state/short/drifted]]'						=> 'Gespeichert, nicht angewendet',
 	'[[/_admin/design/state/short/missing]]'						=> 'Nie angewendet',

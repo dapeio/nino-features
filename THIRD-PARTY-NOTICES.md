@@ -2,8 +2,9 @@
 
 The catalogue's own code is released under the [MIT License](LICENSE). It
 bundles no third-party library, but its features draw icons from one: the
-`icon()` of every feature's workbench panel (`features/*/Admin/Admin.php`)
-and the Builder's panel (`features/Builder/templates/panel.tpl`) inline SVG icons
+`icon()` of every feature's workbench panel (`features/*/Admin/Admin.php`),
+the Builder's panel (`features/Builder/templates/panel.tpl`) and the `ICONS` of
+Design's panel script (`features/Design/assets/admin.js`) carry inline SVG icons
 from [Lucide](https://lucide.dev). Lucide is released under the ISC License; the
 icons it took over from Feather, the project it grew out of, are under the
 MIT License as well. Both licenses ask for their notice to travel with every

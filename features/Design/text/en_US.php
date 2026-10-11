@@ -12,27 +12,20 @@ return [
 	'[[/_admin/design/label/restore]]'							=> 'Restore previous version',
 	'[[/_admin/design/label/state]]'								=> 'Applied file',
 
-	// The six tabs, and the heading over the content of each
+	// The six tabs
 	'[[/_admin/design/tab/global]]'								=> 'Global',
 	'[[/_admin/design/tab/fonts]]'								=> 'Fonts',
 	'[[/_admin/design/tab/content]]'								=> 'Content',
 	'[[/_admin/design/tab/buttons]]'								=> 'Buttons',
 	'[[/_admin/design/tab/components]]'							=> 'Components',
 	'[[/_admin/design/tab/colours]]'								=> 'Colours',
-	'[[/_admin/design/group/global]]'							=> 'Templates and page',
-	'[[/_admin/design/group/fonts]]'								=> 'Font roles',
-	'[[/_admin/design/group/content]]'							=> 'Hero, sections and cards',
-	'[[/_admin/design/group/buttons]]'							=> 'Buttons',
-	'[[/_admin/design/group/components]]'						=> 'Forms, tables and blocks',
-	'[[/_admin/design/group/colours]]'							=> 'Palette',
 
-	// Global: the five templates, the root size, the width and the animation of the page
+	// Global: the two frames are chosen here, the other three templates on their own tabs; and the root size, the width and the animation of the page
 	'[[/_admin/design/part/header]]'								=> 'Header template',
 	'[[/_admin/design/part/footer]]'								=> 'Footer template',
 	'[[/_admin/design/part/content]]'							=> 'Content template',
 	'[[/_admin/design/part/buttons]]'							=> 'Buttons template',
 	'[[/_admin/design/part/components]]'							=> 'Components template',
-	'[[/_admin/design/hint/templates]]'							=> 'The header and the footer bring their own markup: applying overwrites the project\'s two frame templates, after keeping what is there as the previous version. Which knobs a template has for content, buttons and components you see in the tabs of the same names.',
 	'[[/_admin/design/label/size]]'								=> 'Root size',
 	'[[/_admin/design/size/s]]'									=> 'small',
 	'[[/_admin/design/size/m]]'									=> 'default',
@@ -88,9 +81,7 @@ return [
 	'[[/_admin/design/fontsize/decimal]]'						=> '.',
 	'[[/_admin/design/fontsize/unit]]'							=> 'rem',
 
-	// Content, Buttons, Components: one row for each knob
-	'[[/_admin/design/label/template-of]]'						=> 'Template: %s',
-	'[[/_admin/design/hint/knobs]]'								=> 'One step below what the template declares, the template as it is, or one step above. Which template applies is chosen under Global.',
+	// Content, Buttons, Components: the template, and one row for each knob
 	'[[/_admin/design/hint/unanswered]]'							=> 'This template does not answer to “%s”.',
 
 	'[[/_admin/design/knob/content/hero-title/label]]'			=> 'Hero title',
@@ -200,14 +191,10 @@ return [
 	'[[/_admin/design/confirm/replaces]]'						=> 'That replaces the previous version from %s.',
 	'[[/_admin/design/confirm/restore]]'							=> 'Restore the previous version? Its setup is loaded with it, so unsaved changes on screen are lost. What is there now takes its place, so this can be undone.',
 
-	'[[/_admin/design/state/current]]'							=> 'The file answers to this selection.',
-	'[[/_admin/design/state/drifted]]'							=> 'The draft is saved but not applied - the site still shows the previous one.',
-	'[[/_admin/design/state/missing]]'							=> 'Never applied.',
-	'[[/_admin/design/state/foreign]]'							=> 'Not written by Design: %s - delivered with the project or edited by hand. Applying asks first.',
-	'[[/_admin/design/state/compiled]]'							=> 'Last applied %s',
+	// The title of the button that restores the version before the last apply: it dates that version
 	'[[/_admin/design/state/previous]]'							=> 'Previous version from %s',
 
-	// The same four states in one word, for the summary under the preview
+	// The state of the applied file in one word, for the summary under the preview
 	'[[/_admin/design/state/short/current]]'						=> 'Up to date',
 	'[[/_admin/design/state/short/drifted]]'						=> 'Saved, not applied',
 	'[[/_admin/design/state/short/missing]]'						=> 'Never applied',

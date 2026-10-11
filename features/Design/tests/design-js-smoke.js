@@ -3,13 +3,14 @@
  *	design-js-smoke.js		What the Design panel's screen is, over a dom
  *												stand-in: the strip of six tabs in the head of the
  *												pane, and under it the controls of the tab that is open
- *												- the five templates, the page and its animation; the
- *												five font roles; the named knobs of content, buttons
- *												and components, greyed where the chosen template does
- *												not answer to them; the palette and its mode - the
- *												state of the files over them, the summary under the
- *												preview frame, and the scroll of the frame to the
- *												anchor of the tab.
+ *												- the two frames, the page and its animation; the five
+ *												font roles, with a size that is typed; the template of
+ *												content, buttons and components over its named knobs,
+ *												each row with its icon, greyed where the chosen template
+ *												does not answer to them; the palette and its mode - the
+ *												summary under the preview frame, the action bar with
+ *												the way back to the previous version, and the scroll of
+ *												the frame to the anchor of the tab.
  *
  *												The summary is the half a picture cannot give: a
  *												preview says what a design looks like and nothing
@@ -216,6 +217,17 @@ function choose( select, value ) {
 	select.fire('change');
 }
 
+/** Type a value into a field, the way a hand does: the field has it, and says that it changed */
+function type( input, text ) {
+	input.value = text;
+	input.fire('change');
+}
+
+/** The name a knob row carries: the first line of the box that stands beside its icon */
+function rowName( row ) {
+	return ( byClass( row, 'design-knob-text' )[0] || {} ).textContent;
+}
+
 /** Run a function and say whether it threw */
 function threw( fn ) {
 	try {
@@ -315,13 +327,7 @@ function listing( over ) {
 			code 			: [ '' ],
 		},
 		weights 	: [ 'light', 'normal', 'bold' ],
-		fontsizes : {
-			title 		: [ '1.6', '1.7', '2.4', '4' ],
-			subtitle 	: [ '1', '1.5', '2' ],
-			text 			: [ '0.875', '1', '1.125', '1.25' ],
-			button 		: [ '0.75', '1', '1.25' ],
-			code 			: [ '0.75', '0.875', '1' ],
-		},
+		bounds 		: { title : [ 1, 4 ], subtitle : [ 0.75, 2.5 ], text : [ 0.75, 1.5 ], button : [ 0.625, 1.5 ], code : [ 0.625, 1.25 ] },
 		inherited : { title : '1.6', subtitle : '1.125', text : '1', button : '1', code : '0.875' },
 		colours		: { primary : '#4faae8', secondary : '', mode : 'auto' },
 		palette		: {
@@ -474,6 +480,12 @@ function panel( over, shell ) {
 				} } );
 			return el;
 		},
+		// The elements of an icon: the same stand-in, which says in which namespace it was made
+		createElementNS	: function( namespace, tag ) {
+			const el = element( tag );
+			el.namespaceURI = namespace;
+			return el;
+		},
 		getElementById	: function( id ) { return byId( id ) },
 	};
 
@@ -621,7 +633,7 @@ function panel( over, shell ) {
 		/** One knob row of the open tab, by the name it carries */
 		knobRow : function( label ) {
 			return byClass( form, 'design-knob-row' ).filter( function( row ) {
-				return ( byClass( row, 'design-knob-label' )[0] || {} ).textContent === label;
+				return rowName( row ) === label;
 			} )[0] || null;
 		},
 		/** The step buttons of a knob row, by the step they stand for */
@@ -654,9 +666,19 @@ function say( key ) {
 	return out;
 }
 
-/** The word over the controls - which group of the design the column is showing */
-function eyebrow( screen ) {
-	return ( byClass( screen.form, 'design-eyebrow' )[0] || {} ).textContent;
+/** Which tab the controls are those of, read off what is drawn rather than off the panel's own idea of it */
+function tabOf( screen ) {
+
+	if( screen.byId('design-colours') !== null )
+		return 'colours';
+
+	if( byTag( screen.form, 'table' ).length === 1 )
+		return 'fonts';
+
+	if( screen.byId('design-set-header') !== null )
+		return 'global';
+
+	return [ 'content', 'buttons', 'components' ].filter( function( tab ) { return screen.byId('design-set-'+ tab) !== null } )[0] || null;
 }
 
 /** A key pressed on a tab, the way the kernel's tabKeys() hears it */
@@ -706,7 +728,7 @@ headed.tab('Colours');
 check( 'another tab redraws the column under the head and leaves the strip standing - the same element, its tab lit',
 	shownStrip !== null && headed.headStrips()[0] === shownStrip && headed.headStrips().length === 1
 	&& byTag( shownStrip, 'button' )[5].getAttribute('aria-selected') === 'true' && byTag( shownStrip, 'button' )[0].getAttribute('aria-selected') === 'false'
-	&& eyebrow( headed ) === 'Palette' && headed.byId('design-frame') !== null );
+	&& tabOf( headed ) === 'colours' && headed.byId('design-frame') !== null );
 
 /*	The keyboard is the reason the strip is not drawn again on a switch. An
 	arrow key moves the focus to the next tab and opens it; a strip drawn anew
@@ -721,19 +743,19 @@ if( keyTabs.length === 6 )
 
 check( 'an arrow key on the strip opens the next tab and the focus stays on the tab it moved to, in the head',
 	keyTabs.length === 6 && focused === keyTabs[1] && keyTabs[1].parent === keyed.headStrips()[0]
-	&& keyTabs[1].getAttribute('aria-selected') === 'true' && eyebrow( keyed ) === 'Font roles' );
+	&& keyTabs[1].getAttribute('aria-selected') === 'true' && tabOf( keyed ) === 'fonts' );
 
 if( keyTabs.length === 6 )
 	press( keyTabs[1], 'ArrowLeft' );
 
 check( '...so the next one has a tab to start from, and walks back',
 	keyTabs.length === 6 && focused === keyTabs[0] && keyTabs[0].parent === keyed.headStrips()[0]
-	&& keyTabs[0].getAttribute('aria-selected') === 'true' && eyebrow( keyed ) === 'Templates and page' );
+	&& keyTabs[0].getAttribute('aria-selected') === 'true' && tabOf( keyed ) === 'global' );
 
 if( keyTabs.length === 6 )
 	press( keyTabs[0], 'ArrowLeft' );
 
-check( '...and from the first tab the arrow key wraps round to the last', keyTabs.length === 6 && focused === keyTabs[5] && eyebrow( keyed ) === 'Palette' );
+check( '...and from the first tab the arrow key wraps round to the last', keyTabs.length === 6 && focused === keyTabs[5] && tabOf( keyed ) === 'colours' );
 
 /*	A kernel from before the head, or the script drawn outside its pane: the
 	strip has nowhere else to go, so it opens the column the way it did - and
@@ -744,16 +766,15 @@ bare.tab('Colours');
 
 check( 'where the pane has no head, the strip opens the column and comes back with it on a switch - with no heading over it',
 	opened === true && hasClass( bare.byId('design-controls').children[0], 'design-tabs' ) && byClass( bare.pane, 'design-tabs' ).length === 1
-	&& eyebrow( bare ) === 'Palette' && byTag( bare.form, 'h2' ).length === 0 );
+	&& tabOf( bare ) === 'colours' && byTag( bare.form, 'h2' ).length === 0 );
 
 console.log('');
 
 
 // --- The shape of the column -----------------------------------------------------
 //
-// Controls on one side and the page on the other: the state of the files and
-// the open tab in the column, the frame and the summary in the preview, the
-// two buttons under both
+// Controls on one side and the page on the other: the open tab in the column,
+// the frame and the summary in the preview, the action bar under both
 
 console.log( 'The column' );
 
@@ -765,33 +786,36 @@ const previewBox = column.byId('design-preview');
 check( 'the screen is a layout of two columns - the controls and the preview - with the bar of actions under it',
 	layout !== null && layout.children.length === 2 && layout.children[0] === controls && layout.children[1] === previewBox
 	&& column.form.children.indexOf( layout ) < column.form.children.indexOf( byClass( column.form, 'nino-admin-actionbar' )[0] ) );
-check( 'the state of the files stands first in the column, over the open tab - true whichever tab is open',
-	controls.children[0] === column.byId('design-state') && hasClass( controls.children[0], 'nino-admin-card' ) );
-check( '...then one eyebrow naming the group of controls under it, and the box the tab fills',
-	controls.children[1] === byClass( controls, 'design-eyebrow' )[0] && controls.children[1].textContent === 'Templates and page'
-	&& controls.children[2] === column.body() && controls.children.length === 3 );
+check( 'the column holds the box the open tab fills and nothing over it: no card for the state of the files, no eyebrow naming the group of controls',
+	controls.children.length === 1 && controls.children[0] === column.body()
+	&& column.byId('design-state') === null && byClass( column.form, 'design-state' ).length === 0 && byClass( controls, 'design-eyebrow' ).length === 0 );
+check( '...the one eyebrow the screen has is the preview\'s, over the title of the frame',
+	byClass( column.form, 'design-eyebrow' ).length === 1 && byClass( previewBox, 'design-eyebrow' )[0].textContent === TEXT['/_admin/design/preview/eyebrow']
+	&& byClass( previewBox, 'design-eyebrow' )[0].textContent === 'This selection' );
 check( 'the frame and the summary stand in the preview, the summary under the frame',
 	column.byId('design-frame') !== null && descendants( previewBox ).indexOf( column.byId('design-summary') ) > descendants( previewBox ).indexOf( column.byId('design-frame') ) );
 check( '...the frame a sandbox that lets the page run and be reached by the panel, and no more',
 	column.byId('design-frame').getAttribute('sandbox') === 'allow-scripts allow-same-origin' );
 
-const stateBox = column.byId('design-state');
+/*	What the state card said is the last row of the summary now, in one word, and it
+	is the same under every tab: the file answers to the selection, the draft is
+	not applied, a file is not Design's, or it was never applied	*/
+const stateWord = function( over ) { return panel( over ).summary().pop() };
+const foreignFiles = [ { target : '/assets/theme.css', exists : true, state : 'foreign' }, { target : '/templates/frame-header.tpl', exists : true, state : 'ours' }, { target : '/templates/frame-footer.tpl', exists : true, state : 'ours' } ];
 
-check( 'the state card says when the file was last applied and that it answers to the selection - and nothing is marked while it does',
-	( byTag( stateBox, 'strong' )[0] || {} ).textContent === 'Applied file' && ( byTag( stateBox, 'small' )[0] || {} ).textContent === 'Last applied 2026-09-01 10:00'
-	&& byClass( stateBox, 'design-state--warn' ).length === 0 && byTag( stateBox, 'p' )[0].textContent === TEXT['/_admin/design/state/current'] );
-
-const drifted = panel( { current : false } );
-
-check( '...and a file that does not answer to it is marked, and the last row of the summary says it in one word',
-	byClass( drifted.byId('design-state'), 'design-state--warn' )[0].textContent === TEXT['/_admin/design/state/drifted']
-	&& JSON.stringify( drifted.summary().pop() ) === JSON.stringify( [ 'Applied file', 'Saved, not applied' ] ) );
+check( 'the state of the files is the last row of the summary under the frame, in one word: up to date while the file answers to the selection',
+	JSON.stringify( column.summary().pop() ) === JSON.stringify( [ 'Applied file', 'Up to date' ] ) && column.design._stateKey() === 'current' );
+check( '...saved and not applied once the file does not, a file Design did not write named as such, and a file never applied as that',
+	JSON.stringify( stateWord( { current : false } ) ) === JSON.stringify( [ 'Applied file', 'Saved, not applied' ] )
+	&& JSON.stringify( stateWord( { files : foreignFiles } ) ) === JSON.stringify( [ 'Applied file', 'Not written by Design' ] )
+	&& JSON.stringify( stateWord( { exists : false, compiled : '', current : false } ) ) === JSON.stringify( [ 'Applied file', 'Never applied' ] ) );
 
 const told = panel( { notes : [ 'there is no part "nowhere" - dropped' ] } );
 
-check( 'what the server dropped or replaced on the way is told in the column, under the state of the files',
+check( 'what the server dropped or replaced on the way is told at the top of the column, over the open tab',
 	byClass( told.byId('design-controls'), 'nino-admin-error' ).map( function( line ) { return line.textContent } ).join() === 'there is no part "nowhere" - dropped'
-	&& told.byId('design-controls').children.indexOf( byClass( told.byId('design-controls'), 'nino-admin-error' )[0] ) === 1 );
+	&& told.byId('design-controls').children.indexOf( byClass( told.byId('design-controls'), 'nino-admin-error' )[0] ) === 0
+	&& told.byId('design-controls').children[1] === told.body() );
 
 console.log('');
 
@@ -802,20 +826,27 @@ console.log( 'Global' );
 const global = panel();
 const setSelect = function( name ) { return global.byId('design-set-'+ name) };
 
-check( 'the five templates are five selects, in the order the cascade wants them, each over its catalogue',
-	[ 'header', 'footer', 'content', 'buttons', 'components' ].every( function( name ) { return setSelect( name ) !== null } )
+check( 'the Global tab offers the two frames as two selects - the header and the footer, each over its catalogue, on the one that is chosen - and none of the three templates of the knob tabs',
+	setSelect('header') !== null && setSelect('footer') !== null
 	&& JSON.stringify( offered( setSelect('header') ) ) === JSON.stringify( [ [ 'v1', 'v1 - Plain bar' ], [ 'v2', 'v2 - Centred' ] ] )
-	&& JSON.stringify( offered( setSelect('buttons') ) ) === JSON.stringify( [ [ 'v1', 'v1 - Nino' ], [ 'v3', 'v3 - Square' ] ] )
-	&& [ 'header', 'footer', 'content', 'buttons', 'components' ].map( function( name ) { return shown( setSelect( name ) ) } ).join() === 'v1,v1,v1,v1,v1' );
-check( '...named in the words of the panel, with the description of the chosen one under it',
-	byTag( global.body(), 'label' ).map( function( label ) { return label.textContent } ).slice( 0, 5 ).join() === 'Header template,Footer template,Content template,Buttons template,Components template'
-	&& byTag( setSelect('header').parent, 'small' )[0].textContent === 'A bar with a rule under it' );
+	&& JSON.stringify( offered( setSelect('footer') ) ) === JSON.stringify( [ [ 'v1', 'v1 - Plain footer' ], [ 'v2', 'v2 - Dark footer' ] ] )
+	&& [ 'header', 'footer' ].map( function( name ) { return shown( setSelect( name ) ) } ).join() === 'v1,v1'
+	&& setSelect('content') === null && setSelect('buttons') === null && setSelect('components') === null
+	&& byTag( global.body(), 'select' ).filter( function( select ) { return /^design-set-/.test( select.id ) } ).length === 2 );
+check( '...named in the words of the panel, with the description of the chosen one under it - and no sentence under them about the templates that are chosen elsewhere',
+	byTag( global.body(), 'label' ).map( function( label ) { return label.textContent } ).slice( 0, 2 ).join() === 'Header template,Footer template'
+	&& byTag( setSelect('header').parent, 'small' )[0].textContent === 'A bar with a rule under it'
+	&& byTag( setSelect('header').parent.parent, 'p' ).length === 0 && byClass( global.body(), 'design-note' ).length === 0 );
 
+const headerField = setSelect('header').parent;
+focused = null;
 choose( setSelect('header'), 'v2' );
 
 check( 'choosing another one is the selection on screen, and the note under it follows the choice',
 	global.design._edit.parts.header === 'v2' && byTag( setSelect('header').parent, 'small' )[0].textContent === 'The logo in the middle'
 	&& global.byId('design-reset').hidden === false );
+check( '...a frame changes the document and not the card: the field and its select stand where they were, and the focus is not moved',
+	setSelect('header').parent === headerField && descendants( global.pane ).indexOf( setSelect('header') ) !== -1 && focused === null );
 
 check( 'the size is one select - small, default, large - and the width of the page another: narrow, default, wide, as the numbers the model keeps',
 	JSON.stringify( offered( global.byId('design-size') ) ) === JSON.stringify( [ [ 's', 'small' ], [ 'm', 'default' ], [ 'l', 'large' ] ] ) && shown( global.byId('design-size') ) === 'm'
@@ -871,10 +902,12 @@ console.log('');
 
 // --- The knob tabs ----------------------------------------------------------------
 //
-// A tab for each of the three templates that have knobs, one row for every knob
-// the tab has - each at less, the template as it is, or more, in the words that
-// knob has for them. A knob the chosen template does not answer to stands where
-// it always does, greyed out, with the line that says whose decision that is
+// A tab for each of the three templates that have knobs: the select the template
+// is chosen in at the top of the card, and one row for every knob the tab has
+// under it - each at less, the template as it is, or more, in the words that knob
+// has for them, and with the icon of what it sets. A knob the chosen template does
+// not answer to stands where it always does, greyed out, with the line that says
+// whose decision that is
 
 console.log( 'The knob tabs' );
 
@@ -888,10 +921,29 @@ rows.tab('Content');
 const contentRows = byClass( rows.form, 'design-knob-row' );
 
 check( 'the Content tab has a row for each of its nine knobs, named in the panel\'s words and in the order of the tab',
-	eyebrow( rows ) === 'Hero, sections and cards' && contentRows.length === 9
-	&& contentRows.map( function( row ) { return ( byClass( row, 'design-knob-label' )[0] || {} ).textContent } ).join()
+	tabOf( rows ) === 'content' && contentRows.length === 9
+	&& contentRows.map( rowName ).join()
 		=== KNOBS.content.map( function( knob ) { return TEXT['/_admin/design/knob/content/'+ knob+ '/label'] } ).join()
 	&& contentRows.map( function( row ) { return row.dataset.knob } ).join() === KNOBS.content.join() );
+
+/*	The template of a tab is chosen on the tab: the same select as it was on
+	Global, with the same id, at the top of the card - and the rows after it	*/
+const templateFirst = [ [ 'Content', 'content', 9 ], [ 'Buttons', 'buttons', 4 ], [ 'Components', 'components', 6 ] ].every( function( entry ) {
+
+	rows.tab( entry[0] );
+
+	const card = rows.byId('design-knobs');
+	const select = rows.byId('design-set-'+ entry[1]);
+
+	return select !== null && card.children[0] === select.parent && hasClass( card.children[0], 'design-field' ) && card.children.length === entry[2] + 1
+		&& card.children.slice( 1 ).every( function( row, at ) { return hasClass( row, 'design-knob-row' ) && row.dataset.knob === KNOBS[entry[1]][at] } )
+		&& byTag( card.children[0], 'label' )[0].textContent === TEXT['/_admin/design/part/'+ entry[1]] && tabOf( rows ) === entry[1]
+		&& shown( select ) === 'v1' && byTag( card.children[0], 'small' )[0].textContent === 'The framework as it is';
+} );
+rows.tab('Content');
+
+check( 'each of the three knob tabs offers its template first, in a select named in the panel\'s words with the description of the chosen one under it, and the rows of its knobs after it',
+	templateFirst === true && JSON.stringify( offered( rows.byId('design-set-content') ) ) === JSON.stringify( [ [ 'v1', 'v1 - Nino' ], [ 'v2', 'v2 - Poster' ] ] ) );
 check( '...each with a note beside its name, and three positions in the words that knob has for them',
 	contentRows.every( function( row, at ) {
 		const knob = KNOBS.content[at];
@@ -904,10 +956,9 @@ check( '...a group of three steps, not a tablist - the one it stands at is press
 	contentRows.every( function( row ) { return byClass( row, 'design-knob-steps' )[0].getAttribute('role') === 'group' } )
 	&& byTag( rows.knobRow('Hero title'), 'button' ).map( function( button ) { return button.getAttribute('aria-pressed') } ).join() === 'false,true,false'
 	&& byTag( rows.knobRow('Shadow of a card'), 'button' ).map( function( button ) { return button.getAttribute('aria-pressed') } ).join() === 'false,false,true' );
-check( 'and the block over the rows says which template these knobs are the knobs of, and where that is chosen',
-	byClass( rows.form, 'design-section-label' ).filter( function( heading ) { return heading.parent === rows.byId('design-knobs') } ).length === 1
-	&& ( byTag( rows.byId('design-knobs'), 'strong' )[0] || {} ).textContent === 'Template: v1 - Nino'
-	&& ( byTag( rows.byId('design-knobs'), 'small' )[0] || {} ).textContent === TEXT['/_admin/design/hint/knobs'] );
+check( 'there is no heading and no hint over the rows any more: the select says which template these knobs are the knobs of',
+	byClass( rows.byId('design-knobs'), 'design-section-label' ).length === 0 && byTag( rows.byId('design-knobs'), 'strong' ).length === 0
+	&& byTag( rows.byId('design-knobs'), 'small' ).filter( function( small ) { return small.parent === rows.byId('design-knobs').children[0] } ).length === 1 );
 check( 'a template that answers to every knob greys none of them out',
 	byClass( rows.form, 'design-knob-row--off' ).length === 0
 	&& byTag( rows.byId('design-knobs'), 'button' ).every( function( button ) { return button.disabled === false } ) );
@@ -940,14 +991,21 @@ check( 'the summary names the template and, for every knob the template answers 
 	not this one's: a position the new template does not answer to goes back to
 	the middle, the way the server holds it anyway - so the screen never shows a
 	setup the stored one could not be	*/
-rows.tab('Global');
-choose( rows.byId('design-set-content'), 'v2' );
+const oldSelect = rows.byId('design-set-content');
+const oldRows = byClass( rows.form, 'design-knob-row' );
+focused = null;
+choose( oldSelect, 'v2' );
 
 check( 'choosing a template that leaves a knob out puts the position of that knob back in the middle, and leaves the others where they were',
 	rows.design._edit.parts.content === 'v2' && rows.design._edit.knobs.content.shadow === 0
 	&& rows.design._edit.knobs.content['hero-title'] === -1 && rows.design._edit.knobs.content['hero-text'] === 1 );
-
-rows.tab('Content');
+check( '...the rows of the tab are drawn again - nine new ones for the nine knobs - and the select is a new one on the template that was chosen, which has the focus afterwards',
+	oldRows.length === 9 && oldRows.every( function( row ) { return descendants( rows.pane ).indexOf( row ) === -1 } )
+	&& byClass( rows.form, 'design-knob-row' ).length === 9 && descendants( rows.pane ).indexOf( oldSelect ) === -1
+	&& rows.byId('design-set-content') !== null && rows.byId('design-set-content') !== oldSelect && shown( rows.byId('design-set-content') ) === 'v2'
+	&& focused === rows.byId('design-set-content') && tabOf( rows ) === 'content' );
+check( '...and the line under the select describes the template that was chosen, the summary names it',
+	byTag( rows.byId('design-set-content').parent, 'small' )[0].textContent === 'Large type, no shadow' && rows.summary()[0][1] === 'v2 - Poster' );
 
 const poster = byClass( rows.form, 'design-knob-row' );
 const shadow = rows.knobRow('Shadow of a card');
@@ -961,13 +1019,11 @@ check( '...its three steps switched off and none of them pressed',
 check( '...and the line under its name says whose decision that is, in place of its note',
 	( byTag( shadow, 'small' )[0] || {} ).textContent === 'This template does not answer to “Shadow of a card”.'
 	&& ( byTag( rows.knobRow('Hero title'), 'small' )[0] || {} ).textContent === TEXT['/_admin/design/knob/content/hero-title/note']
-	&& ( byTag( rows.byId('design-knobs'), 'strong' )[0] || {} ).textContent === 'Template: v2 - Poster' );
+	&& shown( rows.byId('design-set-content') ) === 'v2' );
 check( 'the summary leaves the knob out, since it compiles nothing: eight knobs, the template and the file',
 	rows.summary().length === 10 && rows.summary().every( function( row ) { return row[0] !== 'Shadow of a card' } ) && rows.summary()[0][1] === 'v2 - Poster' );
 
-rows.tab('Global');
 choose( rows.byId('design-set-content'), 'v1' );
-rows.tab('Content');
 
 check( 'choosing the template that has it again takes the grey away, with the knob in the middle',
 	byClass( rows.form, 'design-knob-row--off' ).length === 0 && rows.design._edit.knobs.content.shadow === 0
@@ -976,23 +1032,20 @@ check( 'choosing the template that has it again takes the grey away, with the kn
 // The other two tabs, and their own templates
 rows.tab('Buttons');
 check( 'the Buttons tab has its four knobs, and Square leaves the corners to the template - which the stored position cannot have been',
-	eyebrow( rows ) === 'Buttons' && byClass( rows.form, 'design-knob-row' ).length === 4 && byClass( rows.form, 'design-knob-row--off' ).length === 0
+	tabOf( rows ) === 'buttons' && byClass( rows.form, 'design-knob-row' ).length === 4 && byClass( rows.form, 'design-knob-row--off' ).length === 0
 	&& rows.design._edit.knobs.buttons.corners === -1 );
 
-rows.tab('Global');
 choose( rows.byId('design-set-buttons'), 'v3' );
-rows.tab('Buttons');
 
 check( '...it is back in the middle, and the row is grey',
 	rows.design._edit.knobs.buttons.corners === 0 && byClass( rows.form, 'design-knob-row--off' ).length === 1
 	&& rows.knobRow('Corners') !== null && hasClass( rows.knobRow('Corners'), 'design-knob-row--off' ) );
 
-rows.tab('Global');
-choose( rows.byId('design-set-components'), 'v4' );
 rows.tab('Components');
+choose( rows.byId('design-set-components'), 'v4' );
 
 check( 'the Components tab has six rows, two of them grey for Filled: the lines and where the labels stand',
-	eyebrow( rows ) === 'Forms, tables and blocks' && byClass( rows.form, 'design-knob-row' ).length === 6
+	tabOf( rows ) === 'components' && byClass( rows.form, 'design-knob-row' ).length === 6
 	&& byClass( rows.form, 'design-knob-row--off' ).map( function( row ) { return row.dataset.knob } ).join() === 'border,labels'
 	&& JSON.stringify( rows.summary().slice( 1, -1 ).map( function( row ) { return row[0] } ) ) === JSON.stringify( [ 'scale', 'space', 'corners', 'zebra' ].map( function( knob ) { return TEXT['/_admin/design/knob/components/'+ knob+ '/label'] } ) ) );
 
@@ -1013,7 +1066,7 @@ const table = byTag( fonts.form, 'table' )[0] || element('table');
 const fontRows = byTag( table, 'tbody' )[0] ? byTag( byTag( table, 'tbody' )[0], 'tr' ) : [];
 
 check( 'the Fonts tab is one table, said to be one: a header of four columns over five rows, one for each role of Nino.css',
-	eyebrow( fonts ) === 'Font roles' && table.getAttribute('role') === 'table'
+	tabOf( fonts ) === 'fonts' && table.getAttribute('role') === 'table'
 	&& byTag( byTag( table, 'thead' )[0], 'th' ).map( function( th ) { return th.textContent } ).join() === ',Family,Weight,Uppercase,Size'
 	&& byTag( byTag( table, 'thead' )[0], 'th' ).every( function( th ) { return th.getAttribute('role') === 'columnheader' } )
 	&& fontRows.map( function( row ) { return row.dataset.role } ).join() === 'title,subtitle,text,button,code'
@@ -1030,10 +1083,24 @@ check( 'a family is a select of what the role may be given: the system\'s own fi
 	&& shown( family('title') ) === 'league-spartan' && shown( family('text') ) === 'source-sans-3' );
 check( '...the code is offered the system\'s monospace and nothing else, by its own name',
 	JSON.stringify( offered( family('code') ) ) === JSON.stringify( [ [ '', 'System monospace' ] ] ) && shown( family('code') ) === '' );
-check( 'a weight is one of three words, the size starts on what Nino.css gives the role - named, value first so that a column too narrow for the word still shows it, and not one of the steps - and goes on in rem',
-	JSON.stringify( offered( weight('title') ) ) === JSON.stringify( [ [ 'light', 'Light' ], [ 'normal', 'Normal' ], [ 'bold', 'Bold' ] ] ) && shown( weight('title') ) === 'bold' && shown( weight('code') ) === 'normal'
-	&& JSON.stringify( offered( size('title') ) ) === JSON.stringify( [ [ '', '1.6 rem (default)' ], [ '1.6', '1.6 rem' ], [ '1.7', '1.7 rem' ], [ '2.4', '2.4 rem' ], [ '4', '4 rem' ] ] )
-	&& offered( size('subtitle') )[0][1] === '1.125 rem (default)' && offered( size('code') )[0][1] === '0.875 rem (default)' && shown( size('title') ) === '' );
+check( 'a weight is one of three words',
+	JSON.stringify( offered( weight('title') ) ) === JSON.stringify( [ [ 'light', 'Light' ], [ 'normal', 'Normal' ], [ 'bold', 'Bold' ] ] ) && shown( weight('title') ) === 'bold' && shown( weight('code') ) === 'normal' );
+check( 'a size is typed and not picked: a number field in each row - empty to begin with, any decimal allowed - with the size Nino.css gives the role as its placeholder, the number alone, and the limits of the role',
+	fontRows.every( function( row ) {
+		const input = size( row.dataset.role );
+		return input !== null && input.tagName === 'INPUT' && input.type === 'number' && input.getAttribute('step') === 'any' && input.getAttribute('inputmode') === 'decimal'
+			&& input.dataset.role === row.dataset.role && input.dataset.key === 'size' && input.value === '';
+	} )
+	&& fonts.design.TABS.length === 6 && [ 'title', 'subtitle', 'text', 'button', 'code' ].map( function( role ) { return size( role ).getAttribute('placeholder') } ).join() === '1.6,1.125,1,1,0.875'
+	&& [ 'title', 'subtitle', 'text', 'button', 'code' ].map( function( role ) { return size( role ).getAttribute('min')+ '-'+ size( role ).getAttribute('max') } ).join() === '1-4,0.75-2.5,0.75-1.5,0.625-1.5,0.625-1.25'
+	&& byTag( table, 'select' ).filter( function( select ) { return select.dataset.key === 'size' } ).length === 0 );
+check( '...and the unit stands after it as a small word of its own, in the same cell',
+	fontRows.every( function( row ) {
+		const cell = size( row.dataset.role ).parent;
+		const unit = byClass( cell, 'design-fonts-unit' )[0];
+		return cell.tagName === 'TD' && hasClass( cell, 'design-fonts-size' ) && unit !== undefined && unit.textContent === 'rem'
+			&& cell.children.indexOf( unit ) === cell.children.indexOf( size( row.dataset.role ) ) + 1;
+	} ) );
 check( '...every control names itself by its role and its column, since the cells carry no words',
 	weight('title').getAttribute('aria-label') === 'Title - Weight' && family('code').getAttribute('aria-label') === 'Code - Family'
 	&& size('button').getAttribute('aria-label') === 'Buttons - Size' );
@@ -1049,7 +1116,7 @@ fonts.design._setFont = function( role, key, value ) { setFontCalls.push( [ role
 
 choose( family('title'), 'system-serif' );
 choose( weight('title'), 'light' );
-choose( size('title'), '2.4' );
+type( size('title'), '2.4' );
 
 const upper = fonts.byId('design-font-title-uppercase');
 upper.checked = true;
@@ -1078,6 +1145,45 @@ check( 'the preview asked for carries the role that was changed, with the rest o
 	fontPreview.endpoint === 'preview' && JSON.stringify( fontPreview.payload.fonts.title ) === JSON.stringify( { family : 'system-serif', weight : 'light', uppercase : true, size : '2.4' } )
 	&& Object.keys( fontPreview.payload ).sort().join() === 'colours,fonts,full,knobs,motion,parts,size,width' && fontPreview.payload.full === true );
 
+/*	A size is held inside the bounds of its role the way the server holds it
+	(Fonts::size()): in the model, and in the field, which shows what was kept	*/
+type( size('title'), '9' );
+type( size('subtitle'), '0.2' );
+type( size('text'), '1.1250' );
+type( size('button'), '1.23456' );
+type( size('code'), '2' );
+
+check( 'a size beyond the bounds of its role is held at the nearer one - in the model, and in the field, which shows what was kept: 9 for the title is 4, 0.2 for the subtitle is 0.75, 2 for the code is 1.25',
+	fonts.design._edit.fonts.title.size === '4' && size('title').value === '4' && fonts.design._edit.fonts.subtitle.size === '0.75' && size('subtitle').value === '0.75'
+	&& fonts.design._edit.fonts.code.size === '1.25' && size('code').value === '1.25' );
+check( '...a number is kept to three decimals and written as short as it can be: 1.1250 is 1.125, 1.23456 is 1.235 - and the summary says it in rem',
+	fonts.design._edit.fonts.text.size === '1.125' && size('text').value === '1.125' && fonts.design._edit.fonts.button.size === '1.235' && size('button').value === '1.235'
+	&& fonts.summary()[2][1] === 'Source Sans 3, Normal, 1.125 rem' && fonts.summary()[0][1] === 'System serif, Light, Uppercase, 4 rem' );
+
+type( size('title'), '2.0' );
+type( size('subtitle'), '' );
+type( size('text'), 'abc' );
+
+check( '...2.0 is 2; empty is the default again, and a text that is no number is the default too, with the field emptied',
+	fonts.design._edit.fonts.title.size === '2' && size('title').value === '2' && fonts.design._edit.fonts.subtitle.size === '' && size('subtitle').value === ''
+	&& fonts.design._edit.fonts.text.size === '' && size('text').value === '' && fonts.summary()[1][1] === 'System (default), Normal, 1.125 rem (default)' );
+
+/*	The decimal sign is the workbench's language's, and it dresses the summary: 1,125 rem in German. The field does not
+	take it - a number field drops a typed comma - so its placeholder is the number as the field shows and takes it, with
+	the point, in every language	*/
+TEXT['/_admin/design/fontsize/decimal'] = ',';
+const german = panel();
+german.tab('Fonts');
+
+check( 'the summary uses the decimal sign of the language, 1,125 rem in German - the placeholder of a size does not: it is the number as the field shows and takes it, 1.6 and 1.125',
+	german.summary()[1][1] === 'Source Sans 3, Normal, 1,125 rem (default)' && german.byId('design-font-title-size').getAttribute('placeholder') === '1.6'
+	&& german.byId('design-font-subtitle-size').getAttribute('placeholder') === '1.125' && german.byId('design-font-title-size').getAttribute('min') === '1' );
+check( '...and the field is still the number field it was, the unit after it: the language changes the words round it, not the field',
+	german.byId('design-font-title-size').type === 'number' && german.byId('design-font-title-size').getAttribute('step') === 'any'
+	&& german.byId('design-font-title-size').value === '' && byClass( german.byId('design-font-title-size').parent, 'design-fonts-unit' )[0].textContent === 'rem' );
+
+TEXT['/_admin/design/fontsize/decimal'] = '.';
+
 console.log('');
 
 
@@ -1089,8 +1195,8 @@ const colours = panel();
 colours.tab('Colours');
 
 check( 'the Colours tab has the brand colour, the five knobs the rest of the palette is solved with - the second colour at the end of the first of them - and the mode',
-	eyebrow( colours ) === 'Palette' && colours.byId('design-colour-primary').value === '#4faae8'
-	&& byClass( colours.form, 'design-knob-row' ).map( function( row ) { return ( byClass( row, 'design-knob-label' )[0] || {} ).textContent } ).join() === 'Second colour,Temperature,Saturation,Contrast,Depth'
+	tabOf( colours ) === 'colours' && colours.byId('design-colour-primary').value === '#4faae8'
+	&& byClass( colours.form, 'design-knob-row' ).map( rowName ).join() === 'Second colour,Temperature,Saturation,Contrast,Depth'
 	&& colours.byId('design-colour-secondary') !== null && colours.byId('design-colour-mode') !== null );
 check( '...four positions for Harmony and Temperature, three for the others, each in the words of the panel - and the one the knob starts on lit',
 	[ 4, 4, 3, 3, 3 ].join() === byClass( colours.form, 'design-knob-row' ).map( function( row ) { return byTag( row, 'button' ).length } ).filter( function( count, at ) { return at < 5 } ).join()
@@ -1142,6 +1248,164 @@ unsafe.tab('Colours');
 check( 'a brand colour text does not survive on says so under the colour, with the numbers - and says nothing where it does',
 	unsafe.byId('design-brand-warning').hidden === false && unsafe.byId('design-brand-warning').textContent === say( '/_admin/design/msg/brand-unsafe', 3.1, 4.5 )
 	&& colours.byId('design-brand-warning').hidden === true );
+
+console.log('');
+
+
+// --- The icons ----------------------------------------------------------------------------------
+//
+// A row of the three knob tabs, and every row of the Colours tab, open with an icon, so that a
+// person feels what a knob sets before reading it - and the names of the Colours tab start at
+// one left edge, none of them a row without. The shapes are Lucide's;
+// the two tables below are the other copy of them - which icon a knob takes, and the shapes
+// as the markup they were given in - and the script's own maps are held to them, so that
+// neither can drift from the other. A knob with no entry has no icon, and no shape stands in
+
+console.log( 'The icons' );
+
+/** Lucide's shapes the rows use, by their Lucide name, as the markup the parts of each are made of - verbatim */
+const LUCIDE = {
+	'a-large-small' : '<path d="m15 16 2.536-7.328a1.02 1.02 1 0 1 1.928 0L22 16"/><path d="M15.697 14h5.606"/><path d="m2 16 4.039-9.69a.5.5 0 0 1 .923 0L11 16"/><path d="M3.304 13h6.392"/>',
+	'scaling' : '<path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M14 15H9v-5"/><path d="M16 3h5v5"/><path d="M21 3 9 15"/>',
+	'align-vertical-space-around' : '<rect width="10" height="6" x="7" y="9" rx="2"/><path d="M22 20H2"/><path d="M22 4H2"/>',
+	'square-round-corner' : '<path d="M21 11a8 8 0 0 0-8-8"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>',
+	'square' : '<rect width="18" height="18" x="3" y="3" rx="2"/>',
+	'square-stack' : '<path d="M4 10c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h4c1.1 0 2 .9 2 2"/><path d="M10 16c-1.1 0-2-.9-2-2v-4c0-1.1.9-2 2-2h4c1.1 0 2 .9 2 2"/><rect width="8" height="8" x="14" y="14" rx="2"/>',
+	'rows-3' : '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M21 9H3"/><path d="M21 15H3"/>',
+	'text-cursor-input' : '<path d="M12 20h-1a2 2 0 0 1-2-2 2 2 0 0 1-2 2H6"/><path d="M13 8h7a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-7"/><path d="M5 16H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h1"/><path d="M6 4h1a2 2 0 0 1 2 2 2 2 0 0 1 2-2h1"/><path d="M9 6v12"/>',
+	'palette' : '<path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"/><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/>',
+	'thermometer' : '<path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/>',
+	'droplet' : '<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>',
+	'contrast' : '<circle cx="12" cy="12" r="10"/><path d="M12 18a6 6 0 0 0 0-12v12z"/>',
+	'sun-moon' : '<path d="M12 2v2"/><path d="M14.837 16.385a6 6 0 1 1-7.223-7.222c.624-.147.97.66.715 1.248a4 4 0 0 0 5.26 5.259c.589-.255 1.396.09 1.248.715"/><path d="M16 12a4 4 0 0 0-4-4"/><path d="m19 5-1.256 1.256"/><path d="M20 12h2"/>',
+};
+
+/** Which icon each row takes: the knobs of the three tabs, and the rows of the Colours tab */
+const ICON_OF = {
+	'content/hero-title' : 'a-large-small', 'content/hero-text' : 'a-large-small', 'content/quiet' : 'a-large-small', 'content/loud' : 'a-large-small',
+	'content/section-space' : 'scaling', 'content/article-space' : 'align-vertical-space-around', 'content/corners' : 'square-round-corner',
+	'content/border' : 'square', 'content/shadow' : 'square-stack',
+	'buttons/small' : 'a-large-small', 'buttons/big' : 'a-large-small', 'buttons/space' : 'align-vertical-space-around', 'buttons/corners' : 'square-round-corner',
+	'components/scale' : 'a-large-small', 'components/space' : 'align-vertical-space-around', 'components/corners' : 'square-round-corner',
+	'components/border' : 'square', 'components/zebra' : 'rows-3', 'components/labels' : 'text-cursor-input',
+	'colours/primary' : 'palette', 'colours/harmony' : 'palette', 'colours/temperature' : 'thermometer', 'colours/saturation' : 'droplet',
+	'colours/contrast' : 'contrast', 'colours/depth' : 'square-stack', 'colours/mode' : 'sun-moon',
+};
+
+/** The parts of an svg as markup, in the order they were made in and with their attributes in the order they were given in */
+function markupOf( svg ) {
+	return svg.children.map( function( part ) {
+		return '<'+ part.tagName.toLowerCase()+ Object.keys( part.attributes ).map( function( name ) { return ' '+ name+ '="'+ part.attributes[name]+ '"' } ).join('')+ '/>';
+	} ).join('');
+}
+
+const icons = panel();
+const iconProblems = [];
+let iconRows = 0;
+
+[ [ 'Content', 'content' ], [ 'Buttons', 'buttons' ], [ 'Components', 'components' ] ].forEach( function( entry ) {
+
+	icons.tab( entry[0] );
+
+	byClass( icons.form, 'design-knob-row' ).forEach( function( row ) {
+
+		const key = entry[1]+ '/'+ row.dataset.knob;
+		const label = byClass( row, 'design-knob-label' )[0];
+		const svg = byTag( label, 'svg' )[0];
+		const box = byClass( label, 'design-knob-text' )[0];
+
+		iconRows++;
+
+		if( svg === undefined || box === undefined || label.children[0] !== svg || label.children[1] !== box || svg.dataset.icon !== ICON_OF[key]
+			|| byTag( label, 'svg' ).length !== 1 || hasClass( svg, 'design-icon' ) === false || markupOf( svg ) !== LUCIDE[ICON_OF[key]] )
+			iconProblems.push( key );
+	} );
+} );
+
+check( 'every row of the three knob tabs - nineteen of them - carries an svg.design-icon before its name, with the data-icon of the table, and the shape of Lucide\'s that name has, verbatim'
+	+ ( iconProblems.length === 0 ? '' : ' - not so for '+ iconProblems.join() ), iconRows === 19 && iconProblems.length === 0 );
+
+icons.tab('Content');
+const iconRow = icons.knobRow('Hero title');
+const iconLabel = byClass( iconRow, 'design-knob-label' )[0];
+const iconSvg = byTag( iconLabel, 'svg' )[0];
+
+check( '...the icon is decoration, drawn on a 24 by 24 grid in the svg namespace: hidden from assistive technology, out of the tab order, and the class that carries the stroke and the size',
+	iconSvg.namespaceURI === 'http://www.w3.org/2000/svg' && iconSvg.getAttribute('viewBox') === '0 0 24 24' && iconSvg.getAttribute('aria-hidden') === 'true'
+	&& iconSvg.getAttribute('focusable') === 'false' && hasClass( iconSvg, 'design-icon' ) && iconSvg.children.every( function( part ) { return part.namespaceURI === 'http://www.w3.org/2000/svg' } )
+	&& iconSvg.children.length === 4 && iconSvg.children.every( function( part ) { return part.tagName === 'PATH' } ) );
+check( '...and the label is the row of the two: the icon, then a box that holds the name with its note under it - the name is the box\'s own text, the note a small in it',
+	iconLabel.children.length === 2 && iconLabel.children[1].tagName === 'SPAN' && hasClass( iconLabel.children[1], 'design-knob-text' )
+	&& iconLabel.children[1].textContent === 'Hero title' && byTag( iconLabel.children[1], 'small' ).length === 1
+	&& byTag( iconLabel.children[1], 'small' )[0].textContent === TEXT['/_admin/design/knob/content/hero-title/note'] && byTag( iconLabel, 'button' ).length === 0 );
+
+// A row the template does not answer to is grey, and keeps its icon: what it sets is not a thing that depends on the template
+choose( icons.byId('design-set-content'), 'v2' );
+
+check( '...a row that is greyed out keeps its icon, with the line that says whose decision that is in the box beside it',
+	hasClass( icons.knobRow('Shadow of a card'), 'design-knob-row--off' ) && byTag( icons.knobRow('Shadow of a card'), 'svg' )[0].dataset.icon === 'square-stack'
+	&& byTag( icons.knobRow('Shadow of a card'), 'small' )[0].textContent === 'This template does not answer to “Shadow of a card”.' );
+
+icons.tab('Colours');
+
+const colourIcon = function( row ) { return ( byTag( row, 'svg' )[0] || { dataset : {} } ).dataset.icon };
+const brandLabel = byClass( icons.form, 'design-colour-label' )[0];
+
+check( 'the rows of the Colours tab that are a colour get theirs by the same mechanism: the brand colour and the second colour - the row of Harmony - the palette',
+	hasClass( brandLabel, 'design-knob-label' ) && brandLabel.getAttribute('for') === 'design-colour-primary' && byTag( brandLabel, 'svg' )[0].dataset.icon === 'palette'
+	&& brandLabel.children[1].textContent === 'Brand colour' && markupOf( byTag( brandLabel, 'svg' )[0] ) === LUCIDE['palette']
+	&& colourIcon( icons.knobRow('Second colour') ) === 'palette' && markupOf( byTag( icons.knobRow('Second colour'), 'svg' )[0] ) === LUCIDE['palette'] );
+check( '...temperature takes the thermometer, saturation the drop, contrast the circle with one half filled and depth the stack, each with the shape of Lucide\'s that name has, verbatim',
+	[ [ 'Temperature', 'thermometer' ], [ 'Saturation', 'droplet' ], [ 'Contrast', 'contrast' ], [ 'Depth', 'square-stack' ] ].every( function( entry ) {
+		const svg = byTag( icons.knobRow( entry[0] ), 'svg' );
+		return svg.length === 1 && svg[0].dataset.icon === entry[1] && markupOf( svg[0] ) === LUCIDE[entry[1]];
+	} ) );
+check( '...and the mode the sun and the moon - before the title of its block, which has no label of its own to put it in',
+	byTag( byClass( icons.form, 'design-colour-mode' )[0], 'svg' ).length === 1 && byTag( byClass( icons.form, 'design-colour-mode' )[0], 'svg' )[0].dataset.icon === 'sun-moon'
+	&& markupOf( byTag( byClass( icons.form, 'design-colour-mode' )[0], 'svg' )[0] ) === LUCIDE['sun-moon'] && byTag( byClass( icons.form, 'design-colour-mode' )[0], 'strong' )[0].children[0] === byTag( byClass( icons.form, 'design-colour-mode' )[0], 'svg' )[0] );
+
+// Every label of the tab - the brand colour and the five knobs - opens with an icon and has the name right after it, so that the names stand at one left edge
+const colourLabels = byClass( icons.form, 'design-knob-label' );
+
+check( '...so that every row of the Colours tab starts with its icon, the name right after it, and none is left to start at the edge: the brand colour, Harmony, temperature, saturation, contrast and depth',
+	colourLabels.length === 6 && colourLabels.every( function( label ) {
+		return label.children.length === 2 && label.children[0].tagName === 'SVG' && hasClass( label.children[0], 'design-icon' ) && hasClass( label.children[1], 'design-knob-text' );
+	} ) && colourLabels.map( function( label ) { return label.children[0].dataset.icon } ).join() === 'palette,palette,thermometer,droplet,contrast,square-stack' );
+
+const mapped = icons.design.KNOB_ICONS;
+
+// A row whose entry is taken away is drawn without its icon, and nothing takes the place: the label is the box of the name alone
+const thermometer = mapped['colours/temperature'];
+delete mapped['colours/temperature'];
+icons.design._redrawColours();
+
+check( 'a knob with no entry in the map has no icon, and nothing stands in for it: not a row, not a fallback shape',
+	icons.design._icon('content/nothing') === null && icons.design._icon('') === null && icons.design._icon('constructor') === null
+	&& byTag( icons.knobRow('Temperature'), 'svg' ).length === 0 && byClass( icons.knobRow('Temperature'), 'design-knob-label' )[0].children.length === 1
+	&& hasClass( byClass( icons.knobRow('Temperature'), 'design-knob-label' )[0].children[0], 'design-knob-text' )
+	&& colourIcon( icons.knobRow('Saturation') ) === 'droplet' );
+
+mapped['colours/temperature'] = thermometer;
+icons.design._redrawColours();
+
+check( '...and the row has it again when the entry is back', colourIcon( icons.knobRow('Temperature') ) === 'thermometer' );
+
+mapped['content/nowhere'] = 'no-such-icon';
+
+check( '...nor has a knob whose icon the script has no shape for',
+	icons.design._icon('content/nowhere') === null );
+
+delete mapped['content/nowhere'];
+
+check( 'the script\'s two maps are the tables above: the same knobs with the same icons, and a shape for each icon that is used - no more, no fewer, verbatim',
+	JSON.stringify( Object.keys( mapped ).sort() ) === JSON.stringify( Object.keys( ICON_OF ).sort() ) && Object.keys( ICON_OF ).every( function( key ) { return mapped[key] === ICON_OF[key] } )
+	&& JSON.stringify( Object.keys( icons.design.ICONS ).sort() ) === JSON.stringify( Object.keys( LUCIDE ).sort() )
+	&& Object.keys( ICON_OF ).every( function( key ) { return markupOf( icons.design._icon( key ) ) === LUCIDE[ICON_OF[key]] } ) );
+
+icons.tab('Fonts');
+
+check( 'the Fonts table is a table with row headers and no knob rows: it has no icon',
+	byTag( icons.form, 'table' ).length === 1 && byTag( byTag( icons.form, 'table' )[0], 'svg' ).length === 0 && byClass( icons.form, 'design-knob-row' ).length === 0 );
 
 console.log('');
 
@@ -1378,15 +1642,15 @@ function endpoints( screen ) {
 const asking = panel( { files : delivered.map( function( file ) { return Object.assign( {}, file ) } ) } );
 const buttons = byTag( byClass( asking.form, 'nino-admin-actionbar' )[0], 'button' ).map( function( button ) { return button.textContent } );
 
-check( 'the two buttons say what they do: save a draft, apply to the website - and there is no take-over button',
-	buttons.indexOf('Save draft') !== -1 && buttons.indexOf('Apply to website') !== -1 && buttons.length === 3 );
+check( 'the two buttons say what they do: save a draft, apply to the website - and there is no take-over button, and no way back to a version that is not there',
+	buttons.indexOf('Save draft') !== -1 && buttons.indexOf('Apply to website') !== -1 && buttons.length === 3 && asking.byId('design-restore') === null );
 check( 'a line under the bar says which of the two does what',
 	( asking.byId('design-actions-hint') || {} ).textContent === TEXT['/_admin/design/hint/actions']
 	&& hasClass( asking.byId('design-actions-hint') || element('p'), 'nino-admin-hint' ) );
 check( '...and it stands after the bar, not in it', asking.form.children.indexOf( asking.byId('design-actions-hint') ) > asking.form.children.indexOf( byClass( asking.form, 'nino-admin-actionbar' )[0] ) );
-check( 'with files that are not Design\'s the state line says so and names them, rather than only the stylesheet',
-	asking.design._stateKey() === 'foreign'
-	&& byClass( asking.form, 'design-state--warn' )[0].textContent.indexOf('assets/theme.css, templates/frame-header.tpl, templates/frame-footer.tpl') !== -1 );
+check( 'with files that are not Design\'s the state is foreign, and the summary says so in one word - the files are named where the question is asked, in the confirmation below',
+	asking.design._stateKey() === 'foreign' && JSON.stringify( asking.summary().pop() ) === JSON.stringify( [ 'Applied file', 'Not written by Design' ] )
+	&& byClass( asking.form, 'design-state--warn' ).length === 0 && asking.byId('design-state') === null );
 
 asking.byId('design-apply').fire('click');
 
@@ -1475,19 +1739,31 @@ console.log( 'Restoring' );
 
 const empty = panel( {} );
 
-check( 'with no previous version there is nothing to restore', empty.byId('design-restore') === null );
+check( 'with no previous version there is nothing to restore: no button, and the action bar holds the three it always did',
+	empty.byId('design-restore') === null
+	&& byClass( empty.form, 'nino-admin-actionbar' )[0].children.map( function( button ) { return button.id } ).join() === 'design-reset,design-save,design-apply' );
 
 const kept = panel( { previous : { at : '2026-09-02T08:30:00+00:00', files : [ '/assets/theme.css' ] } } );
 const restoreButton = kept.byId('design-restore');
+const keptBar = byClass( kept.form, 'nino-admin-actionbar' )[0];
+const restoreCalls = [];
+const restoreWay = kept.design._restore;
+kept.design._restore = function( button ) { restoreCalls.push( button ); return restoreWay.call( kept.design, button ) };
 
-check( 'with one the state box dates it and offers to restore it',
-	restoreButton !== null && restoreButton.textContent === 'Restore previous version'
-	&& byClass( kept.byId('design-state'), 'design-previous' )[0].textContent === 'Previous version from 2026-09-02 08:30' );
+check( 'with one the action bar has a second quiet button, before Reset: the label of the way back and, for its title, the sentence with the date of that version',
+	restoreButton !== null && restoreButton.tagName === 'BUTTON' && restoreButton.type === 'button' && restoreButton.parent === keptBar
+	&& restoreButton.textContent === 'Restore previous version' && restoreButton.title === 'Previous version from 2026-09-02 08:30'
+	&& keptBar.children.map( function( button ) { return button.id } ).join() === 'design-restore,design-reset,design-save,design-apply'
+	&& restoreButton.hidden === false && kept.byId('design-reset').hidden === true );
+check( '...and the card that used to hold the button, and the line that dated the version, are gone',
+	kept.byId('design-state') === null && byClass( kept.form, 'design-previous' ).length === 0 && byClass( kept.byId('design-controls'), 'nino-admin-hint' ).length === 0 );
 
 kept.willConfirm( false );
 restoreButton.fire('click');
 
-check( 'the button asks first, and a no sends nothing', kept.confirms.length === 1 && kept.confirms[0] === TEXT['/_admin/design/confirm/restore'] && kept.requests.length === 0 );
+check( 'the button asks first, and a no sends nothing - it is the restore of the screen that is called, with the button itself',
+	kept.confirms.length === 1 && kept.confirms[0] === TEXT['/_admin/design/confirm/restore'] && kept.requests.length === 0
+	&& restoreCalls.length === 1 && restoreCalls[0] === restoreButton );
 
 kept.willConfirm( true );
 restoreButton.fire('click');
@@ -1663,11 +1939,15 @@ else {
 
 	const rowOf = function( name ) { return real.parts.filter( function( row ) { return row.part === name } )[0] };
 
-	check( 'Global is drawn from the catalogue and the choices the server gave: each template a select over what the library has, on the one that is chosen',
-		real.parts.every( function( row ) {
-			const select = whole.byId('design-set-'+ row.part);
-			return select !== null && offered( select ).map( function( option ) { return option[0] } ).join() === Object.keys( row.catalogue ).join() && shown( select ) === row.set;
-		} ) );
+	/** Whether the select of a part is drawn on the tab that is open, over what the library has, on the template that is chosen */
+	const selectOf = function( row ) {
+		const select = whole.byId('design-set-'+ row.part);
+		return select !== null && offered( select ).map( function( option ) { return option[0] } ).join() === Object.keys( row.catalogue ).join() && shown( select ) === row.set;
+	};
+
+	check( 'Global is drawn from the catalogue and the choices the server gave: each frame a select over what the library has, on the one that is chosen - and none of the three templates of the knob tabs',
+		real.parts.filter( function( row ) { return row.kind === 'frame' } ).length === 2 && real.parts.filter( function( row ) { return row.kind === 'frame' } ).every( selectOf )
+		&& real.parts.filter( function( row ) { return row.kind === 'set' } ).every( function( row ) { return whole.byId('design-set-'+ row.part) === null } ) );
 	check( '...the size, the width and the animation on the values stored',
 		shown( whole.byId('design-size') ) === real.size && shown( whole.byId('design-pagewidth') ) === String( real.width )
 		&& shown( whole.byId('design-motion-effect') ) === real.motion.effect && shown( whole.byId('design-motion-strength') ) === real.motion.strength
@@ -1677,14 +1957,15 @@ else {
 
 	whole.tab('Fonts');
 
-	check( 'Fonts is drawn from the roles, the families each role is offered and the fonts that are stored: a row for each role, every control on the stored value',
+	check( 'Fonts is drawn from the roles, the families each role is offered, the bounds of a size and the fonts that are stored: a row for each role, every control on the stored value',
 		byTag( whole.form, 'tr' ).filter( function( row ) { return row.dataset.role !== undefined } ).map( function( row ) { return row.dataset.role } ).join() === real.roles.join()
 		&& real.roles.every( function( role ) {
 			const chosen = real.fonts[role];
 			return offered( whole.byId('design-font-'+ role+ '-family') ).map( function( option ) { return option[0] } ).join() === real.options[role].join()
 				&& shown( whole.byId('design-font-'+ role+ '-family') ) === chosen.family && shown( whole.byId('design-font-'+ role+ '-weight') ) === chosen.weight
-				&& shown( whole.byId('design-font-'+ role+ '-size') ) === chosen.size
-				&& offered( whole.byId('design-font-'+ role+ '-size') ).map( function( option ) { return option[0] } ).join() === [ '' ].concat( real.fontsizes[role] ).join()
+				&& whole.byId('design-font-'+ role+ '-size').value === chosen.size
+				&& whole.byId('design-font-'+ role+ '-size').getAttribute('min') === String( real.bounds[role][0] ) && whole.byId('design-font-'+ role+ '-size').getAttribute('max') === String( real.bounds[role][1] )
+				&& whole.byId('design-font-'+ role+ '-size').getAttribute('placeholder') === real.inherited[role]
 				&& ( role === 'code' ? whole.byId('design-font-code-uppercase') === null : whole.byId('design-font-'+ role+ '-uppercase').checked === chosen.uppercase );
 		} ) );
 
@@ -1697,6 +1978,9 @@ else {
 		const row = rowOf( tab );
 		const answered = ( row.catalogue[row.set] || {} ).knobs || [];
 		const drawnRows = byClass( whole.form, 'design-knob-row' );
+
+		if( selectOf( row ) === false || whole.byId('design-knobs').children[0] !== whole.byId('design-set-'+ tab).parent )
+			tabProblems.push( tab+ ': the select of its template, first in the card' );
 		const off = drawnRows.filter( function( one ) { return hasClass( one, 'design-knob-row--off' ) } ).map( function( one ) { return one.dataset.knob } );
 		const lit = drawnRows.filter( function( one ) { return hasClass( one, 'design-knob-row--off' ) === false } ).every( function( one ) {
 			const position = real.knobs[tab][one.dataset.knob];
@@ -1713,7 +1997,7 @@ else {
 			tabProblems.push( tab+ ': summary of '+ whole.summary().length );
 	} );
 
-	check( 'each knob tab is a row for every knob of the tab, grey where the chosen template does not answer to it, the others lit on the position stored, and a summary of the rest'
+	check( 'each knob tab is the select of its template over a row for every knob of the tab, grey where the chosen template does not answer to it, the others lit on the position stored, and a summary of the rest'
 		+ ( tabProblems.length === 0 ? '' : ' - '+ tabProblems.join(' | ') ), tabProblems.length === 0 && Object.keys( real.tabs ).join() === 'content,buttons,components' );
 	check( '...and the templates the server stored are the ones with something grey: a template that leaves a knob out is on show',
 		Object.keys( real.tabs ).some( function( tab ) { return ( ( rowOf( tab ).catalogue[ rowOf( tab ).set ] || {} ).knobs || [] ).length < real.tabs[tab].length } ) );

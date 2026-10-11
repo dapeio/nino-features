@@ -1,13 +1,14 @@
 /**
  *	Nino										A compact filesystembased php framework
  *	Modules\Design					The feature's /_admin panel, "Design": six tabs over one
- *													setup - Global, with the five templates, the root size,
- *													the width and the animation of the page; Fonts, with the
- *													five font roles; Content, Buttons and Components, one
- *													named knob for each thing the chosen template lets go
- *													of; and Colours, with the two colours, the five knobs
- *													and the mode the palette is solved from - and the
- *													compile that turns all of it into assets/theme.css (see
+ *													setup - Global, with the header and footer templates,
+ *													the root size, the width and the animation of the page;
+ *													Fonts, with the five font roles; Content, Buttons and
+ *													Components, each with the choice of its template and one
+ *													named knob for each thing the template lets go of; and
+ *													Colours, with the two colours, the five knobs and the
+ *													mode the palette is solved from - and the compile that
+ *													turns all of it into assets/theme.css (see
  *													Modules\Design\Admin beside this file). Beside the
  *													controls is one specimen page of the selection, which
  *													the frame scrolls to the open tab's anchor. Ships with
@@ -46,6 +47,120 @@
 
 		// The three widths of the page, by the number the model keeps
 		PAGE_WIDTHS	: { '-1' : 'narrow', '0' : 'normal', '1' : 'wide' },
+
+		// The namespace the elements of an icon are made in
+		SVG			: 'http://www.w3.org/2000/svg',
+
+		/*	The icons in front of the names of the rows: Lucide's (lucide.dev, ISC - the
+			notice is THIRD-PARTY-NOTICES.md), 24 by 24 and drawn with a stroke, as the
+			parts each of them is made of - an element and its attributes, in the order
+			the shape is given in. Built as elements rather than written as markup, the
+			way the rest of the panel is. The class of the svg carries the stroke and the
+			size (see .design-icon in admin.css)	*/
+		ICONS	: {
+			'a-large-small' : [
+				[ 'path', { d : 'm15 16 2.536-7.328a1.02 1.02 1 0 1 1.928 0L22 16' } ],
+				[ 'path', { d : 'M15.697 14h5.606' } ],
+				[ 'path', { d : 'm2 16 4.039-9.69a.5.5 0 0 1 .923 0L11 16' } ],
+				[ 'path', { d : 'M3.304 13h6.392' } ],
+			],
+			'scaling' : [
+				[ 'path', { d : 'M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7' } ],
+				[ 'path', { d : 'M14 15H9v-5' } ],
+				[ 'path', { d : 'M16 3h5v5' } ],
+				[ 'path', { d : 'M21 3 9 15' } ],
+			],
+			'align-vertical-space-around' : [
+				[ 'rect', { width : '10', height : '6', x : '7', y : '9', rx : '2' } ],
+				[ 'path', { d : 'M22 20H2' } ],
+				[ 'path', { d : 'M22 4H2' } ],
+			],
+			'square-round-corner' : [
+				[ 'path', { d : 'M21 11a8 8 0 0 0-8-8' } ],
+				[ 'path', { d : 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4' } ],
+			],
+			'square' : [
+				[ 'rect', { width : '18', height : '18', x : '3', y : '3', rx : '2' } ],
+			],
+			'square-stack' : [
+				[ 'path', { d : 'M4 10c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h4c1.1 0 2 .9 2 2' } ],
+				[ 'path', { d : 'M10 16c-1.1 0-2-.9-2-2v-4c0-1.1.9-2 2-2h4c1.1 0 2 .9 2 2' } ],
+				[ 'rect', { width : '8', height : '8', x : '14', y : '14', rx : '2' } ],
+			],
+			'rows-3' : [
+				[ 'rect', { width : '18', height : '18', x : '3', y : '3', rx : '2' } ],
+				[ 'path', { d : 'M21 9H3' } ],
+				[ 'path', { d : 'M21 15H3' } ],
+			],
+			'text-cursor-input' : [
+				[ 'path', { d : 'M12 20h-1a2 2 0 0 1-2-2 2 2 0 0 1-2 2H6' } ],
+				[ 'path', { d : 'M13 8h7a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-7' } ],
+				[ 'path', { d : 'M5 16H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h1' } ],
+				[ 'path', { d : 'M6 4h1a2 2 0 0 1 2 2 2 2 0 0 1 2-2h1' } ],
+				[ 'path', { d : 'M9 6v12' } ],
+			],
+			'palette' : [
+				[ 'path', { d : 'M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z' } ],
+				[ 'circle', { cx : '13.5', cy : '6.5', r : '.5', fill : 'currentColor' } ],
+				[ 'circle', { cx : '17.5', cy : '10.5', r : '.5', fill : 'currentColor' } ],
+				[ 'circle', { cx : '6.5', cy : '12.5', r : '.5', fill : 'currentColor' } ],
+				[ 'circle', { cx : '8.5', cy : '7.5', r : '.5', fill : 'currentColor' } ],
+			],
+			'thermometer' : [
+				[ 'path', { d : 'M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z' } ],
+			],
+			'droplet' : [
+				[ 'path', { d : 'M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z' } ],
+			],
+			'contrast' : [
+				[ 'circle', { cx : '12', cy : '12', r : '10' } ],
+				[ 'path', { d : 'M12 18a6 6 0 0 0 0-12v12z' } ],
+			],
+			'sun-moon' : [
+				[ 'path', { d : 'M12 2v2' } ],
+				[ 'path', { d : 'M14.837 16.385a6 6 0 1 1-7.223-7.222c.624-.147.97.66.715 1.248a4 4 0 0 0 5.26 5.259c.589-.255 1.396.09 1.248.715' } ],
+				[ 'path', { d : 'M16 12a4 4 0 0 0-4-4' } ],
+				[ 'path', { d : 'm19 5-1.256 1.256' } ],
+				[ 'path', { d : 'M20 12h2' } ],
+			],
+		},
+
+		/*	Which icon a row opens with, by the tab and the knob it sets - so that what
+			is being set is felt before it is read: the size of a text, of a surface, a
+			space, the corners, a line, a shadow. The knobs are the feature's own (see
+			Setup::KNOBS), and so are the rows of the palette - the brand colour, the
+			second colour, which is the row of Harmony, temperature, saturation,
+			contrast, depth and the mode: all of them have one, so that every name of
+			the Colours tab starts at the same left edge. A row with no entry has no
+			icon, and no stand-in shape takes its place	*/
+		KNOB_ICONS	: {
+			'content/hero-title' : 'a-large-small',
+			'content/hero-text' : 'a-large-small',
+			'content/quiet' : 'a-large-small',
+			'content/loud' : 'a-large-small',
+			'content/section-space' : 'scaling',
+			'content/article-space' : 'align-vertical-space-around',
+			'content/corners' : 'square-round-corner',
+			'content/border' : 'square',
+			'content/shadow' : 'square-stack',
+			'buttons/small' : 'a-large-small',
+			'buttons/big' : 'a-large-small',
+			'buttons/space' : 'align-vertical-space-around',
+			'buttons/corners' : 'square-round-corner',
+			'components/scale' : 'a-large-small',
+			'components/space' : 'align-vertical-space-around',
+			'components/corners' : 'square-round-corner',
+			'components/border' : 'square',
+			'components/zebra' : 'rows-3',
+			'components/labels' : 'text-cursor-input',
+			'colours/primary' : 'palette',
+			'colours/harmony' : 'palette',
+			'colours/temperature' : 'thermometer',
+			'colours/saturation' : 'droplet',
+			'colours/contrast' : 'contrast',
+			'colours/depth' : 'square-stack',
+			'colours/mode' : 'sun-moon',
+		},
 
 		// The widths the preview can be looked at in. A header set is mostly a
 		// decision about where the menu goes when there is no room for it, and
@@ -275,7 +390,7 @@
 		},
 
 		/**
-		 *	A group's eyebrow, over the card it labels.
+		 *	The eyebrow over the title of the preview.
 		 *
 		 *	The workbench owns the type - .nino-admin-eyebrow is its own - and
 		 *	this file owns where the line sits
@@ -298,16 +413,21 @@
 		 *
 		 *	@param		{string}	title
 		 *	@param		{string}	[note]		'' draws no second line
+		 *	@param		{?Element}	[icon]		Before the title, where the block has one (see _icon())
 		 *
 		 *	@return		{Element}
 		 */
-		_sectionLabel : function( title, note ) {
+		_sectionLabel : function( title, note, icon ) {
 
 			const heading = dc.createElement('div');
 			heading.className = 'design-section-label';
 
 			const strong = dc.createElement('strong');
 			strong.textContent = title;
+
+			if( icon )
+				strong.insertBefore( icon, strong.firstChild );
+
 			heading.appendChild( strong );
 
 			if( note ) {
@@ -317,6 +437,69 @@
 			}
 
 			return heading;
+		},
+
+		/**
+		 *	The icon of a row, drawn from the shapes in ICONS: an svg that is
+		 *	decoration - out of reach of assistive technology and of the tab key -
+		 *	and says in data-icon which of them it is
+		 *
+		 *	@param		{string}	key				'<tab>/<knob>', as KNOB_ICONS has it
+		 *
+		 *	@return		{?Element}				null where the row has none
+		 */
+		_icon : function( key ) {
+
+			const name = Nino.admin.design.KNOB_ICONS[key];
+			const shapes = Nino.admin.design.ICONS[name];
+
+			if( shapes === undefined )
+				return null;
+
+			const svg = dc.createElementNS( Nino.admin.design.SVG, 'svg' );
+			svg.classList.add('design-icon');
+			svg.setAttribute( 'viewBox', '0 0 24 24' );
+			svg.setAttribute( 'aria-hidden', 'true' );
+			svg.setAttribute( 'focusable', 'false' );
+			svg.dataset.icon = name;
+
+			shapes.forEach( function( shape ) {
+				const part = dc.createElementNS( Nino.admin.design.SVG, shape[0] );
+				Object.keys( shape[1] ).forEach( function( attribute ) { part.setAttribute( attribute, shape[1][attribute] ) } );
+				svg.appendChild( part );
+			} );
+
+			return svg;
+		},
+
+		/**
+		 *	What the label of a row is made of: the icon of the row where it has
+		 *	one, and a box that holds the name with its note under it. The label
+		 *	itself is the row of the two (see .design-knob-label in admin.css)
+		 *
+		 *	@param		{Element}	label
+		 *	@param		{string}	key				'<tab>/<knob>', for the icon
+		 *	@param		{string}	name
+		 *	@param		{string}	note
+		 *
+		 *	@return		void
+		 */
+		_labelContent : function( label, key, name, note ) {
+
+			const icon = Nino.admin.design._icon( key );
+
+			if( icon !== null )
+				label.appendChild( icon );
+
+			const box = dc.createElement('span');
+			box.className = 'design-knob-text';
+			box.textContent = name;
+
+			const small = dc.createElement('small');
+			small.textContent = note;
+			box.appendChild( small );
+
+			label.appendChild( box );
 		},
 
 		/**
@@ -337,8 +520,8 @@
 		},
 
 		/**
-		 *	The whole screen: the open tab and the state of the files in one
-		 *	column, a preview of the lot in the other.
+		 *	The whole screen: the open tab in one column, a preview of the lot in
+		 *	the other.
 		 *
 		 *	A tab at a time rather than six blocks at once, because six blocks is
 		 *	a list to read and one tab is a decision to make. The strip in the
@@ -401,10 +584,7 @@
 
 			/*	The way back, on the far side of the bar from the two buttons
 				that commit: it appears the moment the selection on screen stops
-				being the stored one and goes again when it is back. Which is
-				also the honest version of what the green state panel used to
-				imply - that one spoke about the last compile and was read as
-				speaking about the screen	*/
+				being the stored one and goes again when it is back	*/
 			const reset = dc.createElement('button');
 			reset.type = 'button';
 			reset.id = 'design-reset';
@@ -413,6 +593,23 @@
 			reset.addEventListener( 'click', function() { Nino.admin.design._revert() } );
 
 			const actions = dc.createElement('div');
+
+			/*	The other way back, before it: to the three files as they were
+				before the last apply - which is neither what is on screen nor what
+				is stored, so a button of its own, there only while there is a
+				version to go back to. Its title dates that version. Restoring swaps
+				it with the present one, so the same button is there afterwards (see
+				_restore())	*/
+			if( data.previous ) {
+				const restore = dc.createElement('button');
+				restore.type = 'button';
+				restore.id = 'design-restore';
+				restore.textContent = Nino.content.getText('/_admin/design/label/restore');
+				restore.title = Nino.admin.design._text( '/_admin/design/state/previous', Nino.admin.design._when( data.previous.at ) );
+				restore.addEventListener( 'click', function() { Nino.admin.design._restore( restore ) } );
+				actions.appendChild( restore );
+			}
+
 			actions.appendChild( reset );
 			actions.appendChild( save );
 			actions.appendChild( apply );
@@ -446,9 +643,9 @@
 		 *	head, which is the element the switch was made on, and keeps the
 		 *	focus an arrow key put on it.
 		 *
-		 *	The state of the files stands first, over the open tab: it is true
-		 *	whichever tab is open, and what an apply is about to do to them is
-		 *	the question every tab ends in
+		 *	What the server dropped or replaced on the way stands first, over the
+		 *	open tab: it is true whichever tab is open. The state of the files is
+		 *	not here, it is the last row of the summary under the frame
 		 *
 		 *	@return		{HTMLElement}
 		 */
@@ -462,18 +659,12 @@
 			if( Nino.admin.design._head() === null )
 				controls.appendChild( Nino.admin.design._renderTabs() );
 
-			controls.appendChild( Nino.admin.design._renderState() );
-
 			( ( Nino.admin.design._data || {} ).notes || [] ).forEach( function( note ) {
 				const p = dc.createElement('p');
 				p.className = 'nino-admin-error';
 				p.textContent = note;
 				controls.appendChild( p );
 			} );
-
-			/*	One eyebrow over the tab, naming the group of controls under it
-				rather than repeating the strip	*/
-			controls.appendChild( Nino.admin.design._eyebrow( Nino.content.getText('/_admin/design/group/'+ Nino.admin.design._tab ) ) );
 
 			const body = dc.createElement('div');
 			body.id = 'design-body';
@@ -583,12 +774,14 @@
 		},
 
 		/**
-		 *	The Global tab: the five templates, the one size the page is measured
-		 *	in, the width of the page and its animation.
+		 *	The Global tab: the two frames, the one size the page is measured in,
+		 *	the width of the page and its animation.
 		 *
 		 *	Drawn once per visit of the tab and changed in place after that: a
 		 *	select that redrew its card when it was used would take the focus
-		 *	away from the control that was just operated
+		 *	away from the control that was just operated. The other three
+		 *	templates are chosen on the tabs they belong to (see _renderKnobs()),
+		 *	where the choice does redraw the tab - and gives the focus back
 		 *
 		 *	@param		{Element}	body		The box the column keeps for the open tab
 		 *
@@ -599,32 +792,14 @@
 			const data = Nino.admin.design._data;
 			const edit = Nino.admin.design._edit;
 
-			// The five templates
+			// The two frames, which bring markup and have no knobs
 			const templates = dc.createElement('div');
 			templates.className = 'nino-admin-card design-form-section';
 
-			( data.parts || [] ).forEach( function( row ) {
-
-				const field = Nino.admin.design._select(
-					'design-set-'+ row.part, Nino.content.getText('/_admin/design/part/'+ row.part ),
-					Object.keys( row.catalogue || {} ).map( function( set ) {
-						return { value : set, label : Nino.admin.design._setLabel( set, row.catalogue[set] ) };
-					} ), edit.parts[row.part], function( value ) {
-						Nino.admin.design._setPart( row.part, value, field );
-					},
-					( ( row.catalogue || {} )[ edit.parts[row.part] ] || {} ).description || ''
-				);
-
-				templates.appendChild( field );
+			( data.parts || [] ).filter( function( row ) { return row.kind === 'frame' } ).forEach( function( row ) {
+				templates.appendChild( Nino.admin.design._partField( row ) );
 			} );
 
-			/*	A frame brings markup rather than only a look, and its knobs are the
-				three template tabs' business - the sentence says what the other
-				three are for	*/
-			const note = dc.createElement('p');
-			note.className = 'nino-admin-hint design-note';
-			note.textContent = Nino.content.getText('/_admin/design/hint/templates');
-			templates.appendChild( note );
 			body.appendChild( templates );
 
 			// The page
@@ -727,16 +902,49 @@
 		},
 
 		/**
+		 *	The select a template is chosen in: the name of the part over it, the
+		 *	catalogue as its options and the description of the chosen one as the
+		 *	line under it. The same for a frame on Global and for the template of
+		 *	a knob tab
+		 *
+		 *	@param		{Object}	row			One part, as design/list answered it
+		 *
+		 *	@return		{Element}
+		 */
+		_partField : function( row ) {
+
+			const field = Nino.admin.design._select(
+				'design-set-'+ row.part, Nino.content.getText('/_admin/design/part/'+ row.part ),
+				Object.keys( row.catalogue || {} ).map( function( set ) {
+					return { value : set, label : Nino.admin.design._setLabel( set, row.catalogue[set] ) };
+				} ), Nino.admin.design._edit.parts[row.part], function( value ) {
+					Nino.admin.design._setPart( row.part, value, field );
+				},
+				( ( row.catalogue || {} )[ Nino.admin.design._edit.parts[row.part] ] || {} ).description || ''
+			);
+
+			return field;
+		},
+
+		/**
 		 *	Choose a template for a part.
 		 *
 		 *	A template brings its own knobs, and the ones the last one had are not
 		 *	this one's: a position the new template does not answer to goes back
 		 *	to the middle, the way the server holds it anyway - so the screen
-		 *	never shows a setup the stored one could not be
+		 *	never shows a setup the stored one could not be.
+		 *
+		 *	A frame changes the document and nothing else on its tab, so the line
+		 *	under its select is written in place and the card stays as it is. The
+		 *	template of a knob tab decides which of the rows under it are greyed
+		 *	out, so the box of the tab is drawn again - which takes the select that
+		 *	was just used out of the document. It is found again by its id and given
+		 *	the focus back, or the keyboard that chose the template would have
+		 *	nothing to choose the next one with
 		 *
 		 *	@param		{string}		part
 		 *	@param		{string}		set
-		 *	@param		{Element}		[field]		The select's field, whose note is the template's description
+		 *	@param		{Element}		[field]		A frame's select field, whose note is the template's description
 		 *
 		 *	@return		void
 		 */
@@ -747,18 +955,34 @@
 
 			edit.parts[part] = set;
 
-			if( ( Nino.admin.design.KNOB_TABS.indexOf( part ) !== -1 ) ) {
+			if( Nino.admin.design.KNOB_TABS.indexOf( part ) === -1 ) {
+
+				const note = field ? field.querySelector('small') : null;
+
+				if( note )
+					note.textContent = ( ( row.catalogue || {} )[set] || {} ).description || '';
+			}
+			else {
+
 				const answered = ( ( row.catalogue || {} )[set] || {} ).knobs || [];
+
 				Object.keys( edit.knobs[part] || {} ).forEach( function( knob ) {
 					if( answered.indexOf( knob ) === -1 )
 						edit.knobs[part][knob] = 0;
 				} );
+
+				const body = dc.getElementById('design-body');
+
+				if( body !== null ) {
+					body.innerHTML = '';
+					Nino.admin.design._fillBody( body );
+				}
+
+				const again = dc.getElementById('design-set-'+ part);
+
+				if( again !== null )
+					again.focus();
 			}
-
-			const note = field ? field.querySelector('small') : null;
-
-			if( note )
-				note.textContent = ( ( row.catalogue || {} )[set] || {} ).description || '';
 
 			Nino.admin.design._preview();
 		},
@@ -865,7 +1089,7 @@
 				control.setAttribute( 'aria-label', name+ ' - '+ Nino.content.getText('/_admin/design/font/head/'+ column ) );
 				td.appendChild( control );
 				row.appendChild( td );
-				return control;
+				return td;
 			};
 
 			const select = function( key, options, current ) {
@@ -920,10 +1144,37 @@
 				row.appendChild( td );
 			}
 
-			select( 'size', [ { value : '', label : Nino.admin.design._text( '/_admin/design/fontsize/default',
-				Nino.admin.design._sizeLabel( ( data.inherited || {} )[role] ) ) } ].concat( ( ( data.fontsizes || {} )[role] || [] ).map( function( step ) {
-				return { value : step, label : Nino.admin.design._sizeLabel( step ) };
-			} ) ), chosen.size || '' );
+			/*	The size is typed, in rem. Empty is what Nino.css gives the role, and
+				the field says what that is where it would show a number - the number
+				as the field shows and takes it, with the point: a number field drops a
+				typed comma, so the decimal sign of the language is for the summary
+				only (see _sizeLabel()). What is typed is held inside the bounds of the
+				role the way the server holds it, and the field then shows what was
+				kept	*/
+			const bounds = ( data.bounds || {} )[role] || [];
+			const size = dc.createElement('input');
+			size.type = 'number';
+			size.id = 'design-font-'+ role+ '-size';
+			size.dataset.role = role;
+			size.dataset.key = 'size';
+			size.setAttribute( 'inputmode', 'decimal' );
+			size.setAttribute( 'step', 'any' );
+			size.setAttribute( 'min', String( bounds[0] ) );
+			size.setAttribute( 'max', String( bounds[1] ) );
+			size.setAttribute( 'placeholder', String( ( data.inherited || {} )[role] ) );
+			size.value = chosen.size || '';
+			size.addEventListener( 'change', function() {
+				size.value = Nino.admin.design._clampSize( role, size.value );
+				Nino.admin.design._setFont( role, 'size', size.value );
+			} );
+
+			const td = cell( size, 'size' );
+			td.className = 'design-fonts-size';
+
+			const unit = dc.createElement('span');
+			unit.className = 'design-fonts-unit';
+			unit.textContent = Nino.content.getText('/_admin/design/fontsize/unit');
+			td.appendChild( unit );
 
 			return row;
 		},
@@ -948,15 +1199,50 @@
 		},
 
 		/**
-		 *	A size as the Size column says it: rem, with the decimal sign of the
+		 *	A size as a number, with the decimal sign of the workbench's language:
+		 *	for the words of the summary. The field does not use it - a number field
+		 *	takes and shows the point, whatever the language
+		 *
+		 *	@param		{string}	size				'1.6'
+		 *
+		 *	@return		{string}							'1,6'
+		 */
+		_sizeNumber : function( size ) {
+			return String( size ).replace( '.', Nino.content.getText('/_admin/design/fontsize/decimal') );
+		},
+
+		/**
+		 *	A size as the summary says it: rem, with the decimal sign of the
 		 *	workbench's language
 		 *
-		 *	@param		{string}	step				'2.4'
+		 *	@param		{string}	size				'2.4'
 		 *
 		 *	@return		{string}							'2,4 rem'
 		 */
-		_sizeLabel : function( step ) {
-			return String( step ).replace( '.', Nino.content.getText('/_admin/design/fontsize/decimal') )+ ' '+ Nino.content.getText('/_admin/design/fontsize/unit');
+		_sizeLabel : function( size ) {
+			return Nino.admin.design._sizeNumber( size )+ ' '+ Nino.content.getText('/_admin/design/fontsize/unit');
+		},
+
+		/**
+		 *	What was typed in a size, as the model keeps it: a number of rem held
+		 *	inside the bounds of the role, rounded to three decimals and written
+		 *	as short as it can be - what Fonts::size() answers to the same input.
+		 *	'' is the default, and so is whatever is no number
+		 *
+		 *	@param		{string}	role
+		 *	@param		{string}	typed				The value of the field
+		 *
+		 *	@return		{string}							'2.4', or '' for the default
+		 */
+		_clampSize : function( role, typed ) {
+
+			const bounds = ( ( Nino.admin.design._data || {} ).bounds || {} )[role];
+			const number = String( typed ).trim() === '' ? NaN : Number( typed );
+
+			if( bounds === undefined || isFinite( number ) === false )
+				return '';
+
+			return String( Math.round( Math.max( bounds[0], Math.min( bounds[1], number ) ) * 1000 ) / 1000 );
 		},
 
 		/**
@@ -975,10 +1261,11 @@
 		},
 
 		/**
-		 *	The knob tabs: one row per knob the tab has, each at less / as the
-		 *	template has it / more. A tab belongs to one template and the knobs
-		 *	are the tab's own, so there is nothing to follow and no way back to
-		 *	draw beside a row - the middle is the template as it is.
+		 *	The knob tabs: the select the template of the tab is chosen in, at the
+		 *	top of the card, and one row per knob the tab has under it, each at
+		 *	less / as the template has it / more. A tab belongs to one template
+		 *	and the knobs are the tab's own, so there is nothing to follow and no
+		 *	way back to draw beside a row - the middle is the template as it is.
 		 *
 		 *	A knob the chosen template does not answer to is not hidden. It stands
 		 *	where it always does, greyed out, with a line that says whose
@@ -992,18 +1279,14 @@
 		_renderKnobs : function( tab ) {
 
 			const data = Nino.admin.design._data;
-			const edit = Nino.admin.design._edit;
 			const row = Nino.admin.design._row( tab );
-			const set = edit.parts[tab];
 
 			const box = dc.createElement('div');
 			box.id = 'design-knobs';
 			box.className = 'nino-admin-card design-block';
 
-			// Which template these knobs are the knobs of, and where it was chosen
-			box.appendChild( Nino.admin.design._sectionLabel(
-				Nino.admin.design._text( '/_admin/design/label/template-of', Nino.admin.design._setLabel( set, ( row.catalogue || {} )[set] ) ),
-				Nino.content.getText('/_admin/design/hint/knobs') ) );
+			// The template these knobs are the knobs of, chosen where they are: the select is what names it
+			box.appendChild( Nino.admin.design._partField( row ) );
 
 			const answered = Nino.admin.design._answered( tab );
 
@@ -1045,16 +1328,14 @@
 			field.className = 'design-knob-row'+ ( answered === false ? ' design-knob-row--off' : '' );
 			field.dataset.knob = knob;
 
-			/*	The knob's own name and the terse note beside it, both out of the
+			/*	The knob's own name and the terse note under it, both out of the
 				panel's text files: a knob is one key in every locale. Where the
-				template does not answer to it the note is the reason it is grey	*/
+				template does not answer to it the note is the reason it is grey.
+				An icon stands before them, for what the knob sets	*/
 			const label = dc.createElement('span');
 			label.className = 'design-knob-label';
-			label.textContent = name;
-
-			const note = dc.createElement('small');
-			note.textContent = answered === true ? Nino.content.getText( base+ '/note' ) : Nino.admin.design._text( '/_admin/design/hint/unanswered', name );
-			label.appendChild( note );
+			Nino.admin.design._labelContent( label, tab+ '/'+ knob, name,
+				answered === true ? Nino.content.getText( base+ '/note' ) : Nino.admin.design._text( '/_admin/design/hint/unanswered', name ) );
 
 			field.appendChild( label );
 
@@ -1192,13 +1473,10 @@
 			field.className = 'design-colour-row';
 
 			const label = dc.createElement('label');
-			label.className = 'design-colour-label';
+			label.className = 'design-colour-label design-knob-label';
 			label.setAttribute( 'for', 'design-colour-primary' );
-			label.textContent = Nino.content.getText('/_admin/design/label/primary');
-
-			const note = dc.createElement('small');
-			note.textContent = Nino.content.getText('/_admin/design/hint/primary');
-			label.appendChild( note );
+			Nino.admin.design._labelContent( label, 'colours/primary', Nino.content.getText('/_admin/design/label/primary'),
+				Nino.content.getText('/_admin/design/hint/primary') );
 
 			field.appendChild( label );
 
@@ -1281,11 +1559,8 @@
 
 			const label = dc.createElement('span');
 			label.className = 'design-knob-label';
-			label.textContent = Nino.content.getText('/_admin/design/colour/'+ key+ '/label');
-
-			const note = dc.createElement('small');
-			note.textContent = Nino.content.getText('/_admin/design/colour/'+ key+ '/note');
-			label.appendChild( note );
+			Nino.admin.design._labelContent( label, 'colours/'+ key, Nino.content.getText('/_admin/design/colour/'+ key+ '/label'),
+				Nino.content.getText('/_admin/design/colour/'+ key+ '/note') );
 
 			field.appendChild( label );
 
@@ -1345,7 +1620,8 @@
 
 			mode.appendChild( Nino.admin.design._sectionLabel(
 				Nino.content.getText('/_admin/design/colour/mode/label'),
-				Nino.content.getText('/_admin/design/colour/mode/note') ) );
+				Nino.content.getText('/_admin/design/colour/mode/note'),
+				Nino.admin.design._icon('colours/mode') ) );
 
 			const field = Nino.admin.design._select(
 				'design-colour-mode', '',
@@ -1542,63 +1818,6 @@
 		},
 
 		/**
-		 *	What assets/theme.css is right now - true, worth saying, and not
-		 *	what somebody opening this screen came to find out, so it is a small
-		 *	card over the tab's controls rather than a heading of its own
-		 *
-		 *	@return		{Element}
-		 */
-		_renderState : function() {
-
-			const data = Nino.admin.design._data;
-			const box = dc.createElement('div');
-			box.id = 'design-state';
-			box.className = 'nino-admin-card design-block';
-
-			/*	A section label rather than a heading of its own: the same small
-				title a block of rows carries, with when the file was last
-				written on the line under it	*/
-			box.appendChild( Nino.admin.design._sectionLabel(
-				Nino.content.getText('/_admin/design/label/state'),
-				data.compiled === '' ? '' : Nino.admin.design._text( '/_admin/design/state/compiled', Nino.admin.design._when( data.compiled ) ) ) );
-
-			const key = Nino.admin.design._stateKey();
-
-			/*	Only a warning is marked. "The file matches this selection" used
-				to be a green panel, and a green panel is a thing the eye keeps
-				checking - while this one says nothing about the selection on
-				screen, only about the last compile, so it stayed green through
-				every change somebody made after it. What is unsaved is the
-				action bar's job now: see _refreshDirty()	*/
-			const line = dc.createElement('p');
-			line.className = key === 'current' ? 'nino-admin-hint' : 'design-state design-state--warn';
-			line.textContent = Nino.admin.design._text( '/_admin/design/state/'+ key,
-				Nino.admin.design._foreign().map( Nino.admin.design._name ).join(', ') );
-			box.appendChild( line );
-
-			/*	The one version before the last apply, and the way back to it.
-				Restoring swaps the two, so the line says which version this is
-				and the button is the same one again afterwards	*/
-			if( data.previous ) {
-
-				const kept = dc.createElement('p');
-				kept.className = 'nino-admin-hint design-previous';
-				kept.textContent = Nino.admin.design._text( '/_admin/design/state/previous', Nino.admin.design._when( data.previous.at ) );
-				box.appendChild( kept );
-
-				const restore = dc.createElement('button');
-				restore.type = 'button';
-				restore.id = 'design-restore';
-				restore.className = 'nino-admin-btn-secondary';
-				restore.textContent = Nino.content.getText('/_admin/design/label/restore');
-				restore.addEventListener( 'click', function() { Nino.admin.design._restore( restore ) } );
-				box.appendChild( restore );
-			}
-
-			return box;
-		},
-
-		/**
 		 *	The files Design writes that it did not write itself, as design/list
 		 *	answered them: the delivered stylesheet or template, or one somebody
 		 *	edited. Both are somebody else's as far as an apply is concerned
@@ -1612,13 +1831,11 @@
 		},
 
 		/**
-		 *	Which of the four things the files Design writes currently are.
-		 *
-		 *	Its own method because two places say it: the card at the top of
-		 *	the column, in a whole sentence, and the last row of the summary
-		 *	under the frame, in one word. Foreign is any of the three files - the
-		 *	stylesheet and the two frames - not being Design's, since a header
-		 *	somebody edited is not an up to date design either
+		 *	Which of the four things the files Design writes currently are, as the
+		 *	last row of the summary under the frame says it in one word. Foreign is
+		 *	any of the three files - the stylesheet and the two frames - not being
+		 *	Design's, since a header somebody edited is not an up to date design
+		 *	either
 		 *
 		 *	@return		{string}					'current', 'drifted', 'missing' or 'foreign'
 		 */
