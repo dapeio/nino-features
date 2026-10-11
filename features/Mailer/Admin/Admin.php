@@ -42,7 +42,7 @@ namespace Nino\Modules\Mailer {
 		}
 
 		public static function nav(): array {
-			return [ 'mailer', '/_admin/nav/mailer', 35, 'system' ];
+			return [ 'mailer', '/_admin/nav/mailer', 35 ];
 		}
 
 		public static function icon(): string {

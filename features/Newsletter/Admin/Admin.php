@@ -38,7 +38,7 @@ namespace Nino\Modules\Newsletter {
 		}
 
 		public static function nav(): array {
-			return [ 'newsletter', '/_admin/nav/newsletter', 65, 'content' ];
+			return [ 'newsletter', '/_admin/nav/newsletter', 65 ];
 		}
 
 		public static function icon(): string {

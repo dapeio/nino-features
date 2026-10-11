@@ -68,12 +68,11 @@ namespace Nino\Modules\Search {
 			];
 		}
 
-		/*	The group named here is decorative: \Nino\Admin\Panels::_entry() puts
-			every panel a feature brought into 'features' regardless, so that
-			granting that one group is a bounded grant. Kept meaningful anyway,
-			for the day a panel like this one is not a feature's */
+		/*	No group is named here: \Nino\Admin\Panels puts every panel a feature
+			brought into 'features' whatever it would name, so granting that one
+			group stays a bounded grant */
 		public static function nav(): array {
-			return [ 'search', '/_admin/nav/search', 30, 'system' ];
+			return [ 'search', '/_admin/nav/search', 30 ];
 		}
 
 		/**

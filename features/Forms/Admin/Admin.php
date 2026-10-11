@@ -79,12 +79,10 @@ namespace Nino\Modules\Forms {
 			];
 		}
 
-		// The group is named the way every catalogue feature names one, and
-		// the workbench overrides it: a panel whose class lies below
-		// \Nino\Features::dir() always lands in the rail's own "features"
-		// group, whatever this says (see \Nino\Admin\Panels)
+		// No group is named here: a panel a feature brought always lands in
+		// the rail's own "features" group (see \Nino\Admin\Panels)
 		public static function nav(): array {
-			return [ 'forms', '/_admin/nav/forms', 60, 'content' ];
+			return [ 'forms', '/_admin/nav/forms', 60 ];
 		}
 
 		public static function icon(): string {

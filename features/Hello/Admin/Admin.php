@@ -59,12 +59,12 @@ namespace Nino\Modules\Hello {
 			];
 		}
 
-		/*	The menu entry: uri fragment, the text fill for its label, where it
-			sorts, and a group. The group is decorative for a feature's panel -
-			every one of them lands under "features" regardless, so that
+		/*	The menu entry: uri fragment, the text fill for its label, and where
+			it sorts. It names no group: the workbench puts the panel of a
+			feature into the rail's Features group whatever it would name, so
 			granting that group stays a bounded grant	*/
 		public static function nav(): array {
-			return [ 'hello', '/_admin/hello/nav', 90, 'features' ];
+			return [ 'hello', '/_admin/hello/nav', 90 ];
 		}
 
 		// The menu icon, inline. 24x24, currentColor, no fill - the workbench

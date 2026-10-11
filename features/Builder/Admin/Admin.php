@@ -53,11 +53,10 @@ namespace Nino\Modules\Builder {
 			];
 		}
 
-		// A feature's panel sits in the group its nav() names, and in the
-		// features group only where it names none (see \Nino\Admin\Panels):
-		// the Builder names structure, beside Routes
+		// No group is named here: a panel a feature brought always lands in
+		// the rail's own "features" group (see \Nino\Admin\Panels)
 		public static function nav(): array {
-			return [ 'builder', '/_admin/builder/label/nav', 2, 'structure' ];
+			return [ 'builder', '/_admin/builder/label/nav', 2 ];
 		}
 
 		// The panel renders its own regions (see templates/panel.tpl) rather

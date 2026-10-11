@@ -43,7 +43,7 @@ namespace Nino\Modules\Stats {
 		}
 
 		public static function nav(): array {
-			return [ 'stats', '/_admin/nav/stats', 70, 'content' ];
+			return [ 'stats', '/_admin/nav/stats', 70 ];
 		}
 
 		public static function icon(): string {

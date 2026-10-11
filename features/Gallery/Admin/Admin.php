@@ -64,11 +64,10 @@ namespace Nino\Modules\Gallery {
 			];
 		}
 
-		// The group is named the way every catalogue feature names one, and
-		// the workbench overrides it: a panel below \Nino\Features::dir()
-		// always lands in the rail's own "features" group
+		// No group is named here: a panel a feature brought always lands in
+		// the rail's own "features" group (see \Nino\Admin\Panels)
 		public static function nav(): array {
-			return [ 'gallery', '/_admin/nav/gallery', 55, 'content' ];
+			return [ 'gallery', '/_admin/nav/gallery', 55 ];
 		}
 
 		public static function icon(): string {

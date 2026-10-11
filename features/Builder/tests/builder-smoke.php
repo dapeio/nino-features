@@ -85,8 +85,8 @@ check( 'the feature brings its panel along, and registers nothing on the site', 
 } )() );
 
 check( 'the panel names every action it answers', array_keys( \Nino\Modules\Builder\Admin::actions() ) === [ 'builder/list', 'builder/create', 'builder/duplicate', 'builder/load', 'builder/save', 'builder/delete', 'builder/source', 'builder/registry' ] );
-check( '...asks for its own permission, names the structure group in its nav() (a feature\'s panel sits in the group its nav() names) and is a workspace', \Nino\Modules\Builder\Admin::perm() === '/_admin/builder/manage'
-	&& \Nino\Modules\Builder\Admin::nav()[3] === 'structure' && \Nino\Modules\Builder\Admin::layout() === 'workspace' );
+check( '...asks for its own permission, names no group in its nav() - three entries, since a feature\'s panel sits in the Features group whatever it would name - and is a workspace', \Nino\Modules\Builder\Admin::perm() === '/_admin/builder/manage'
+	&& count( \Nino\Modules\Builder\Admin::nav() ) === 3 && \Nino\Modules\Builder\Admin::layout() === 'workspace' );
 check( '...and brings the HTML editor of the workbench, its own script and its stylesheet, which are there', count( \Nino\Modules\Builder\Admin::assets() ) === 3 && in_array( '/_admin/assets/html-editor.js', \Nino\Modules\Builder\Admin::assets(), true ) === true
 	&& array_filter( [ 'assets/admin.js', 'assets/admin.css', 'templates/panel.tpl', 'text/en_US.php', 'text/de_DE.php' ], static fn( string $file ): bool => is_file( dirname( __DIR__ ). '/'. $file ) === false ) === [] );
 check( '...whose words are the same keys in both languages', array_keys( (array) include $dir. '/text/en_US.php' ) === array_keys( (array) include $dir. '/text/de_DE.php' ) );

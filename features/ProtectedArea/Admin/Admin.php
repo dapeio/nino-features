@@ -62,7 +62,7 @@ namespace Nino\Modules\ProtectedArea {
 		}
 
 		public static function nav(): array {
-			return [ 'protected', '/_admin/nav/protected', 40, 'system' ];
+			return [ 'protected', '/_admin/nav/protected', 40 ];
 		}
 
 		public static function icon(): string {

@@ -48,11 +48,11 @@ namespace Nino\Modules\Redirects {
 			];
 		}
 
-		/*	The group named here is decorative: \Nino\Admin\Panels::_entry() puts
-			every panel a feature brought into 'features' regardless, so granting
-			that one group stays a bounded grant	*/
+		/*	No group is named here: \Nino\Admin\Panels puts every panel a feature
+			brought into 'features' whatever it would name, so granting that one
+			group stays a bounded grant	*/
 		public static function nav(): array {
-			return [ 'redirects', '/_admin/nav/redirects', 40, 'system' ];
+			return [ 'redirects', '/_admin/nav/redirects', 40 ];
 		}
 
 		/**
