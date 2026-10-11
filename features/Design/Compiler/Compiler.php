@@ -43,8 +43,8 @@ namespace Nino\Modules\Design {
 		/*	The compiled sheet marks its own sections. "====" rather than the
 			"----" the hand-written stylesheets use, because everything below is
 			concatenated library css that may contain anything - base.css carries
-			the two section markers the delivered theme.css has, and a marker that
-			cannot be told from its content is not a marker */
+			the two dashed markers it falls into its halves by (see HALVES), and a
+			marker that cannot be told from its content is not a marker */
 		public const string SECTION = '/* ==== %d. %s ==== */';
 
 		// The file a project's look is. Named by the css bundle the wizard

@@ -137,7 +137,7 @@
 	border-style: solid;
 	border-color: var(--color-border);
 }
-.nino-article:where(:not(.nino-article--alt, .nino-article--tint, .nino-article--dark, .nino-article--black, .nino-article--primary, .nino-article--brand-alt, .nino-article--counter)) {
+.nino-article:where(:not(.nino-article--alt, .nino-article--tint, .nino-article--dark, .nino-article--black, .nino-article--primary, .nino-article--brand-alt, .nino-article--counter, .nino-article--dim)) {
 	padding-top: var(--content-article-space);
 	padding-bottom: var(--content-article-space);
 }

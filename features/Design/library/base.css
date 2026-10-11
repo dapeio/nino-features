@@ -1,10 +1,12 @@
 /*	Nino Design							The token and role layer, shipped with the feature
  *
- *										The first two sections of the theme.css the setup wizard's
- *										base unit delivers, reworked for what compiles over them.
- *										The feature carries its own copy because a project deletes
- *										_admin/install/ after setup - the installer library is gone
- *										by the time anything here recompiles.
+ *										The first two sections of what the compiler writes - and
+ *										so of the theme.css the setup wizard's base unit delivers,
+ *										which is the compiler's body at the defaults under the
+ *										kernel's own header. The feature carries its own copy
+ *										because a project deletes _admin/install/ after setup - the
+ *										installer library is gone by the time anything here
+ *										recompiles.
  *
  *										  1. the tokens - the --nino-* palette and raster, as the
  *										     static defaults the solved palette replaces. Eight
@@ -21,12 +23,14 @@
  *										derives the type scale from the text size now, so the
  *										--text-n raster of the delivered file is gone too.
  *
- *										features/Design/tests/design-smoke.php holds this file to
- *										the delivered one wherever a checkout still has the
- *										installer: every token it keeps has the value the wizard
- *										delivers, and the compiled sheet assigns every role the
- *										delivered file assigns to the same token. A project that
- *										applies the defaults keeps its look.
+ *										features/Design/tests/design-smoke.php holds the compiler
+ *										to the delivered file wherever a checkout still has the
+ *										installer: compiled at the defaults, the body of the sheet
+ *										is the body of the delivered file, byte for byte - this
+ *										file is where both begin. A project that applies the
+ *										defaults keeps its look. Only what stands below the first
+ *										dashed marker reaches the compiled sheet; this comment
+ *										does not.
  */
 
 /* ---- 1. the design tokens ---- */
@@ -224,11 +228,19 @@
 	--color-border: var(--nino-default-border);
 	--color-header-bg: var(--nino-default);
 
-	/* The border of a ground, --color-border-<ground>, is not assigned here:
-	   Nino.css hands every ground the border of the page, as the delivered
-	   theme.css does, so a project that applies the defaults draws every
-	   line it drew. The surfaces solve a border of their own
-	   (--nino-<surface>-border) for the day both files assign it */
+	/* The border of each ground, handed down with the roles that follow it:
+	   inside a section, a column or a card of a ground, --color-border is the
+	   one solved for that surface. The two brand grounds are filled with the
+	   safe colours, so their line is solved against those. Nino.css declares
+	   the seven as the border of the page; the delivered theme.css is this
+	   file compiled at the defaults, so both assign them */
+	--color-border-default: var(--nino-default-border);
+	--color-border-alt: var(--nino-alt-border);
+	--color-border-tint: var(--nino-tint-border);
+	--color-border-dark: var(--nino-dark-border);
+	--color-border-black: var(--nino-black-border);
+	--color-border-primary: var(--nino-brand-safe-border);
+	--color-border-brand-alt: var(--nino-accent-safe-border);
 
 	/* The scrim over a cover image. The palette solves it against the worst
 	   photograph it could be asked to cover - a white one - so this is the

@@ -152,6 +152,6 @@
 	border-radius: calc( var(--content-corners) * 2 );
 }
 
-.nino-article--alt, .nino-article--tint, .nino-article--dark, .nino-article--black, .nino-article--primary, .nino-article--brand-alt, .nino-article--counter {
+.nino-article--alt, .nino-article--tint, .nino-article--dark, .nino-article--black, .nino-article--primary, .nino-article--brand-alt, .nino-article--counter, .nino-article--dim {
 	border-width: var(--content-border);
 }

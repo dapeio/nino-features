@@ -12,9 +12,9 @@ declare(strict_types=1);
  *											the animation of the page, the knob positions - the
  *											palette and its mode, the roles base.css assigns against
  *											the kernel's Nino.css, the refusal to overwrite a file
- *											Design did not write, and that a project which applies the
- *											defaults keeps the look of the theme.css the setup wizard
- *											delivers. Travels with the feature and runs against the
+ *											Design did not write, and that the theme.css the setup wizard
+ *											delivers is the body the compiler writes at the defaults, byte
+ *											for byte. Travels with the feature and runs against the
  *											checkout three levels up, or the one NINO_ROOT names (see
  *											tests/harness.php there). What the panel's own script
  *											draws is design-js-smoke.js beside this file, which this
@@ -125,6 +125,22 @@ function designSection( string $css, int $number, string $marker ): string {
 		return substr( $css, $start, (int) $after[0][1] - $start );
 
 	return substr( $css, $start );
+}
+
+/**
+ *	A stylesheet without its header: everything after the first closing mark
+ *	of a comment and the line break that follows it, the way
+ *	Compiler::stamped() reads the body a header's digest is taken of
+ *
+ *	@param		string		$css
+ *
+ *	@return 	string										'' where there is no header
+ */
+function designBody( string $css ): string {
+
+	$at = strpos( $css, "*/\n" );
+
+	return $at === false ? '' : substr( $css, $at + 3 );
 }
 
 /**
@@ -280,10 +296,10 @@ function designKnobProblems( string $library, string $part, string $set ): array
 	return $problems;
 }
 
-// The two markers: the delivered theme.css numbers its sections with dashes, the compiler with equals signs
-const DESIGN_DELIVERED_MARKER = '/* ---- %d. %s ---- */';
+// The two markers: base.css numbers its two halves with dashes, the compiled sheet its sections with equals signs
+const DESIGN_BASE_MARKER = '/* ---- %d. %s ---- */';
 
-// The kernel's own stylesheet and the token layer the setup wizard delivers, where this checkout has them
+// The kernel's own stylesheet and the theme.css the setup wizard delivers, where this checkout has them
 $deliveredFile	= $root. '/_admin/install/library/base/assets/theme.css';
 $ninoCss				= designPlain( (string) @file_get_contents( $root. '/_nino/Nino.css' ) );
 
@@ -311,16 +327,34 @@ check( '...and no 1.5 can run it, a 1.6 pre-release can', \Nino\Features::satisf
 	&& \Nino\Features::satisfies( (string) $feature['nino'], '1.6.0-dev' ) === true );
 check( 'it is Design 2.0: the model is another one, and the version says so', ( $feature['version'] ?? '' ) === '2.0.0' );
 check( 'the setup file is declared under data, so a backup carries it', in_array( Setup::PATH, (array) ( $feature['data'] ?? [] ), true ) === true );
-check( 'the manual describes the tabs, the preview and the look the wizard delivers',
-	array_diff( [ 'Design', 'Global', 'Fonts', 'Content, Buttons, Components', 'Colours', 'Preview', 'The delivered look' ], array_keys( (array) ( $feature['manual']['panel'] ?? [] ) ) ) === []
-	&& str_contains( (string) ( $feature['manual']['panel']['The delivered look']['en_US'] ?? '' ), 'regenerates it' ) === true );
-check( '...it names who brings the borders of the grounds - the kernel regenerates the delivered file, an update of this feature assigns them in base.css - and the window the preview jumps in, in both languages',
-	str_contains( \Nino\Features::localized( $feature['manual']['panel']['The delivered look'] ?? [], 'en_US' ), 'in base.css (--color-border-<ground>)' ) === true
-	&& str_contains( \Nino\Features::localized( $feature['manual']['panel']['The delivered look'] ?? [], 'de_DE' ), 'in der base.css zu (--color-border-<fläche>)' ) === true
-	&& str_contains( \Nino\Features::localized( $feature['manual']['panel']['Preview'] ?? [], 'en_US' ), 'own window' ) === true
-	&& str_contains( \Nino\Features::localized( $feature['manual']['panel']['Preview'] ?? [], 'de_DE' ), 'eigene Fenster' ) === true );
-
 $says = static fn( string $entry, string $locale ): string => \Nino\Features::localized( $feature['manual']['panel'][$entry] ?? [], $locale );
+
+// The panel's own word for a file Design never wrote, which the manual quotes
+$foreignWord = static fn( string $locale ): string => (string) ( ( (array) include __DIR__. '/../text/'. $locale. '.php' )['[[/_admin/design/state/short/foreign]]'] ?? '' );
+
+check( 'the manual describes the tabs, the preview and the look the wizard delivers',
+	array_diff( [ 'Design', 'Global', 'Fonts', 'Content, Buttons, Components', 'Colours', 'Preview', 'The delivered look' ], array_keys( (array) ( $feature['manual']['panel'] ?? [] ) ) ) === [] );
+check( '...it says that the delivered theme.css is what the compiler writes at its defaults, from the end of its header on and byte for byte, and that the kernel regenerates it with each release - in both languages',
+	str_contains( $says( 'The delivered look', 'en_US' ), 'is what this compiler writes at its defaults' ) === true
+	&& str_contains( $says( 'The delivered look', 'en_US' ), 'from the end of its header on, byte for byte' ) === true
+	&& str_contains( $says( 'The delivered look', 'en_US' ), 'the kernel regenerates the file with each release' ) === true
+	&& str_contains( $says( 'The delivered look', 'de_DE' ), 'ist das, was dieser Compiler an den Vorgaben schreibt' ) === true
+	&& str_contains( $says( 'The delivered look', 'de_DE' ), 'vom Ende ihres Kopfes an Byte für Byte' ) === true
+	&& str_contains( $says( 'The delivered look', 'de_DE' ), 'der Kernel erzeugt die Datei mit jeder Version neu' ) === true );
+check( '...that the border of each ground is assigned in base.css, and so in the delivered file, and that the faces are named Source Sans 3 and League Spartan in both files - in both languages',
+	str_contains( $says( 'The delivered look', 'en_US' ), 'assigned in base.css (--color-border-<ground>), and so in the delivered file' ) === true
+	&& str_contains( $says( 'The delivered look', 'en_US' ), 'named Source Sans 3 and League Spartan in both files' ) === true
+	&& str_contains( $says( 'The delivered look', 'de_DE' ), 'in der base.css (--color-border-<fläche>) und damit in der ausgelieferten Datei' ) === true
+	&& str_contains( $says( 'The delivered look', 'de_DE' ), 'in beiden Dateien Source Sans 3 und League Spartan' ) === true );
+check( '...that the delivered file has no stamp of the compiler\'s, so the panel calls it by its own word for a file Design never wrote and the first apply asks before it writes over it - and no longer that the file is not made by this compiler yet, or that an update of this feature will assign the borders',
+	str_contains( $says( 'The delivered look', 'en_US' ), 'has no stamp of the compiler\'s, so the panel calls it "'. $foreignWord( 'en_US' ). '" and the first apply asks before it writes over it' ) === true
+	&& str_contains( $says( 'The delivered look', 'de_DE' ), 'hat keinen Stempel des Compilers, deshalb nennt das Panel sie „'. $foreignWord( 'de_DE' ). '“, und das erste Anwenden fragt nach, bevor es sie überschreibt' ) === true
+	&& $foreignWord( 'en_US' ) !== '' && $foreignWord( 'de_DE' ) !== ''
+	&& str_contains( $says( 'The delivered look', 'en_US' ), 'not made by this compiler yet' ) === false && str_contains( $says( 'The delivered look', 'en_US' ), 'an update of this feature' ) === false
+	&& str_contains( $says( 'The delivered look', 'de_DE' ), 'noch nicht aus diesem Compiler' ) === false && str_contains( $says( 'The delivered look', 'de_DE' ), 'Aktualisierung dieses Features' ) === false );
+check( '...and the window the preview jumps in, in both languages',
+	str_contains( $says( 'Preview', 'en_US' ), 'own window' ) === true && str_contains( $says( 'Preview', 'de_DE' ), 'eigene Fenster' ) === true );
+
 $sizesSaid = static function( string $locale ) use ( $says ): bool {
 
 	foreach( Fonts::BOUNDS as [ $least, $most ] )
@@ -1132,22 +1166,21 @@ check( '...and one with Saturation, Contrast or Depth anywhere else does not',
 
 echo "\nThe token layer and the roles, held to the delivered theme.css and to the kernel's Nino.css\n";
 
-/*	The token layer is shipped twice on purpose - the wizard's base unit
-	delivers it, and this feature carries its own copy because _admin/install/
-	is gone from a project by the time anything here recompiles. The two used
-	to be one file, byte for byte. They are not any more: the feature drops
-	what nothing reads and lets the compiler write what the model decides, and
-	a kernel release will generate the delivered file from this compiler at the
-	defaults. Until then they are held to each other where a checkout still has
-	the installer: what this feature keeps has the value the wizard delivers,
-	and a project that applies the defaults assigns every role the way the
-	delivered file does - so it keeps its look.	*/
+/*	The token layer and the roles are shipped twice on purpose - the wizard's
+	base unit delivers them, and this feature carries its own copy because
+	_admin/install/ is gone from a project by the time anything here
+	recompiles. They are one source since Nino 1.6: the kernel generates the
+	delivered theme.css from this feature's library at the defaults with each
+	release, under a header of its own. Where a checkout still has the
+	installer the two are held to each other as a whole - everything after the
+	header, byte for byte - and no longer token by token and role by role. A
+	project that applies the defaults keeps its look because the file it is
+	given is the file this compiler writes.	*/
 $baseRaw				= (string) file_get_contents( $library. '/base.css' );
 $baseCss				= designPlain( $baseRaw );
-$baseTokens			= designDeclarations( designBlock( designPlain( designSection( $baseRaw, 1, DESIGN_DELIVERED_MARKER ) ), ':root {' ) );
-$baseRoles			= designDeclarations( designPlain( designSection( $baseRaw, 2, DESIGN_DELIVERED_MARKER ) ) );
+$baseTokens			= designDeclarations( designBlock( designPlain( designSection( $baseRaw, 1, DESIGN_BASE_MARKER ) ), ':root {' ) );
+$baseRoles			= designDeclarations( designPlain( designSection( $baseRaw, 2, DESIGN_BASE_MARKER ) ) );
 $defaultSheet		= Compiler::compile( Setup::normalize( [], $library ), $library );
-$compiledRoles	= designDeclarations( designBlock( designPlain( designSection( $defaultSheet, 4, Compiler::SECTION ) ), ':root {' ) );
 
 check( 'base.css has its two sections, the tokens and the roles, and nothing of the type: no font-face, no family, no size, no raster',
 	$baseTokens !== [] && $baseRoles !== []
@@ -1155,69 +1188,35 @@ check( 'base.css has its two sections, the tokens and the roles, and nothing of 
 	&& preg_match( '/--(?:fontfamily|fontsize|font-|nino-text-|text-[1-6])/', $baseCss ) !== 1 );
 
 if( is_file( $deliveredFile ) === false )
-	echo "  --  this checkout has no installer library, so the token layer and the roles are not compared\n";
+	echo "  --  this checkout has no installer library, so the delivered theme.css is not compared with the compiler's\n";
 else {
 
-	$theirsRaw		= (string) file_get_contents( $deliveredFile );
-	$theirTokens	= designDeclarations( designBlock( designPlain( designSection( $theirsRaw, 1, DESIGN_DELIVERED_MARKER ) ), ':root {' ) );
-	$theirRoles		= designDeclarations( designBlock( designPlain( designSection( $theirsRaw, 2, DESIGN_DELIVERED_MARKER ) ), ':root {' ) );
+	$theirsRaw	= (string) file_get_contents( $deliveredFile );
+	$theirBody	= designBody( $theirsRaw );
+	$ownBody	= designBody( $defaultSheet );
+	$limit		= min( strlen( $theirBody ), strlen( $ownBody ) );
+	$differAt	= 0;
 
-	// What the feature no longer has, by rule: the interaction values nothing reads (a rule derives them),
-	// the unsafe second colour (its -safe variant is the ink), and the raster of the text sizes (Nino.css derives its ladder)
-	$droppedToken = static fn( string $token ): bool => preg_match( '/^--nino-[a-z-]+-(?:hover|active)$/', $token ) === 1
-		|| preg_match( '/^--nino-text-[1-6]$/', $token ) === 1
-		|| in_array( $token, [ '--nino-accent', '--nino-on-accent', '--nino-on-accent-muted', '--nino-accent-link', '--nino-accent-border', '--nino-accent-focus', '--nino-accent-disabled', '--nino-accent-shadow' ], true );
+	// Where the two bodies part, for a failure that says where
+	while( $differAt < $limit && $theirBody[$differAt] === $ownBody[$differAt] )
+		$differAt++;
 
-	$differing	= array_filter( array_intersect_key( $theirTokens, $baseTokens ), static fn( string $value, string $token ) => $baseTokens[$token] !== $value, ARRAY_FILTER_USE_BOTH );
-	$dropped		= array_keys( array_diff_key( $theirTokens, $baseTokens ) );
+	check( 'the body of the delivered theme.css - everything after its header - is the body of the sheet this compiler writes at the defaults, byte for byte ('. strlen( $ownBody ). ' bytes)'
+		. ( $theirBody === $ownBody ? '' : ' - they part at byte '. $differAt. ', the delivered body has '. strlen( $theirBody ). ' bytes' ), $ownBody !== '' && $theirBody === $ownBody );
 
-	check( 'every --nino-* token of the delivered section 1 that base.css still declares has the delivered value ('. count( array_intersect_key( $theirTokens, $baseTokens ) ). ' of them)'
-		. ( $differing === [] ? '' : ' - differing: '. implode( ', ', array_keys( $differing ) ) ), $differing === [] && $baseTokens !== [] );
-	check( '...base.css declares nothing the delivered file does not', array_diff_key( $baseTokens, $theirTokens ) === [] );
-	check( '...and the tokens it dropped are exactly the hover and active values, the unsafe second colour and the raster of the text sizes ('. count( $dropped ). ' of them)',
-		$dropped === array_values( array_filter( array_keys( $theirTokens ), $droppedToken ) ) && count( $dropped ) === 38 );
-	echo "  --  dropped from the delivered section 1: ". implode( ', ', array_map( static fn( string $token ): string => substr( $token, 7 ), $dropped ) ). "\n";
-
-	// The delivered raster against the kernel's ladder: the ladder derives from the text size, and at the defaults the text size is 1rem
-	preg_match_all( '/--nino-text-([1-6])\s*:\s*([0-9.]+)rem/', designPlain( designSection( $theirsRaw, 1, DESIGN_DELIVERED_MARKER ) ), $raster, PREG_SET_ORDER );
-	preg_match_all( '/--text-([1-6])\s*:\s*(?:var\(--font-text-size\)|calc\(var\(--font-text-size\) \* ([0-9.]+)\))\s*;/', $ninoCss, $ladder, PREG_SET_ORDER );
-	$rasterAt = array_map( static fn( array $row ): float => (float) $row[2], $raster );
-	$ladderAt = array_map( static fn( array $row ): float => ( $row[2] ?? '' ) === '' ? 1.0 : (float) $row[2], $ladder );
-
-	check( 'the delivered --nino-text raster is the kernel\'s ladder at the defaults, below 768px and from it: the compiled sheet does not write --text-1 to --text-6',
-		count( $rasterAt ) === 9 && $rasterAt === $ladderAt
-		&& array_intersect_key( $compiledRoles, array_flip( [ '--text-1', '--text-2', '--text-3', '--text-4', '--text-5', '--text-6' ] ) ) === [] );
-
-	$missing	= array_keys( array_diff_key( $theirRoles, $compiledRoles ) );
-	$changed	= array_keys( array_filter( array_intersect_key( $theirRoles, $compiledRoles ), static fn( string $value, string $role ): bool => $compiledRoles[$role] !== $value, ARRAY_FILTER_USE_BOTH ) );
-	$added		= array_keys( array_diff_key( $compiledRoles, $theirRoles ) );
-
-	check( 'the compiled sheet at the defaults assigns every role the delivered section 2 assigns to the same token ('. count( array_intersect_key( $theirRoles, $compiledRoles ) ). ' of them)'
-		. ( $changed === [] ? '' : ' - assigned differently: '. implode( ', ', $changed ) ), $changed === [] && count( $theirRoles ) > 60 );
-
-	/*	...but for the thirteen it does not assign, and why: --color-footer-text
-		is read by nothing; the three font families are the type section's now
-		(its names are the families', no longer Text and Title); and the three
-		--fontsize-* and the six --text-* are Nino.css's own, with the values the
-		delivered file gives them - held below	*/
-	check( 'the roles it leaves out are --color-footer-text (nothing reads it), the three families (section 3 writes the roles), the --fontsize-* and the --text ladder (Nino.css has them)',
-		$missing === [ '--color-footer-text', '--fontfamily-text', '--fontfamily-title', '--fontfamily-subtitle', '--fontsize-small', '--fontsize-big', '--fontsize-btn', '--text-1', '--text-2', '--text-3', '--text-4', '--text-5', '--text-6' ] );
-
-	$ninoRoot = designDeclarations( designBlock( $ninoCss, ':root {' ) );
-
-	check( '...and the three sizes Nino.css has are the delivered ones', ( $ninoRoot['--fontsize-small'] ?? '' ) === $theirRoles['--fontsize-small']
-		&& ( $ninoRoot['--fontsize-big'] ?? '' ) === $theirRoles['--fontsize-big'] && ( $ninoRoot['--fontsize-btn'] ?? '' ) === $theirRoles['--fontsize-btn'] );
-
-	check( 'the compiled roles add nothing to the delivered ones: every role of section 4 is one the delivered section 2 assigns'. ( $added === [] ? '' : ' - added: '. implode( ', ', $added ) ), $added === [] );
+	/*	The header is the kernel's own, so the file carries no stamp of the
+		compiler's: ownership() calls it foreign, the panel's word for a file
+		Design never wrote, and an apply asks before it writes over it. The
+		file stays one that may be edited by hand or replaced wholesale	*/
+	check( '...and the delivered file carries no stamp of the compiler\'s, since its header is the kernel\'s own - so it is foreign, and Design asks before it writes over it',
+		Compiler::stamped( $theirsRaw ) === false && Compiler::ownership( $theirsRaw, false ) === 'foreign' );
 }
 
 /*	The roles are held to the kernel as well, wherever the checkout has one:
 	every --color-* role Nino.css reads without a fallback is assigned by
 	base.css - but for the five Nino.css derives itself, in its own :root and
 	per ground (--color-ground and --color-ink are the ground's, --color-accent,
-	--color-focus and --color-title-default follow from the roles around them),
-	and the border of each of the seven grounds, which it leaves at the border
-	of the page as the delivered theme.css does.
+	--color-focus and --color-title-default follow from the roles around them).
 	A role the stylesheet reads and nobody assigns is the kernel's default
 	wearing the theme's name	*/
 if( $ninoCss === '' )
@@ -1228,29 +1227,40 @@ else {
 
 	$read				= array_values( array_unique( $read[1] ) );
 	$derived		= [ '--color-accent', '--color-focus', '--color-ground', '--color-ink', '--color-title-default' ];
-	$grounds		= [ 'default', 'alt', 'tint', 'dark', 'black', 'primary', 'brand-alt' ];
-	$followed		= array_map( static fn( string $ground ): string => '--color-border-'. $ground, $grounds );
-	$unassigned	= array_values( array_diff( $read, array_keys( $baseRoles ), $derived, $followed ) );
+	$unassigned	= array_values( array_diff( $read, array_keys( $baseRoles ), $derived ) );
 	$ninoDeclared = designDeclarations( designBlock( $ninoCss, ':root {' ) );
 
-	check( 'every --color-* role the kernel\'s Nino.css reads without a fallback is assigned by base.css, but for the five it derives itself and the border of each ground'
+	check( 'every --color-* role the kernel\'s Nino.css reads without a fallback is assigned by base.css, but for the five it derives itself'
 		. ( $unassigned === [] ? '' : ' - unassigned: '. implode( ', ', $unassigned ) ), $unassigned === [] && count( $read ) > 50 );
 	check( '...and those five are roles its own :root declares', array_diff( $derived, array_keys( $ninoDeclared ) ) === [] );
 	check( '...and base.css assigns no role Nino.css does not know', array_diff( array_keys( $baseRoles ), array_keys( $ninoDeclared ) ) === [] );
 
-	/*	The border of every ground is Nino.css's: the seven roles it bends per
-		ground default to the border of the page, which is what the delivered
-		theme.css leaves them at too. Assigning them from the border of each
-		surface would draw a line on an alt, tint, dark, black or brand ground
-		in another colour than the delivered file does - a badge fill and a
-		timeline marker with it - and the defaults would not look as they did	*/
-	$borders = [];
+	/*	The border of every ground is base.css's, and so the delivered file's:
+		each of the seven roles is the border solved for the surface the
+		ground is drawn on, so a line, a badge fill and a marker on an alt,
+		tint, dark, black or brand ground are in the colour that was solved
+		against it. The two brand grounds are filled with the safe colours
+		(--color-primary is --nino-brand-safe, --color-brand-alt is
+		--nino-accent-safe), so their line is the border solved for those.
+		Nino.css declares the same seven as the border of the page, which is
+		what a page without the theme draws	*/
+	$borders	= [ 'default' => 'default', 'alt' => 'alt', 'tint' => 'tint', 'dark' => 'dark', 'black' => 'black', 'primary' => 'brand-safe', 'brand-alt' => 'accent-safe' ];
+	$assigned	= [];
+	$ofThePage	= [];
 
-	foreach( $followed as $role )
-		if( isset( $baseRoles[$role] ) === true || ( $ninoDeclared[$role] ?? '' ) !== 'var(--color-border)' )
-			$borders[] = $role;
+	foreach( $borders as $ground => $surface ) {
 
-	check( 'base.css leaves --color-border-<ground> to Nino.css, which gives each of the seven grounds the border of the page'. ( $borders === [] ? '' : ' - wrong: '. implode( ', ', $borders ) ), $borders === [] );
+		if( ( $baseRoles['--color-border-'. $ground] ?? '' ) !== 'var(--nino-'. $surface. '-border)' || isset( $baseTokens['--nino-'. $surface. '-border'] ) === false )
+			$assigned[] = '--color-border-'. $ground;
+
+		if( ( $ninoDeclared['--color-border-'. $ground] ?? '' ) !== 'var(--color-border)' )
+			$ofThePage[] = '--color-border-'. $ground;
+	}
+
+	check( 'base.css assigns the border of each of the seven grounds from the border of its surface: --color-border-default from --nino-default-border ... --color-border-primary from --nino-brand-safe-border, --color-border-brand-alt from --nino-accent-safe-border'
+		. ( $assigned === [] ? '' : ' - wrong: '. implode( ', ', $assigned ) ), $assigned === [] );
+	check( '...and Nino.css still declares the seven as var(--color-border), the border of the page, for a page without the theme'
+		. ( $ofThePage === [] ? '' : ' - wrong: '. implode( ', ', $ofThePage ) ), $ofThePage === [] );
 	check( '...and the roles the model never writes stay out of the compiled roles: the font families and the sizes are the type\'s',
 		preg_match( '/--fontfamily|--font-|--text-/', designBlock( designPlain( designSection( $defaultSheet, 4, Compiler::SECTION ) ), ':root {' ) ) !== 1 );
 }
@@ -1268,19 +1278,12 @@ $genDark		= $blocks['chosen'];
 	lands on the framework's own palette to the byte. A project that never
 	opens this tab therefore compiles to the colours the token layer already
 	declares, and one that does gets the same tokens one block further down the
-	same cascade. The light palette is base.css's own section 1; the dark one is
-	held to the delivered theme.css, which is the only file that still has it	*/
+	same cascade. The light palette is base.css's own section 1; the dark one has
+	no section of its own, it is written into the compiled sheet, which the
+	delivered theme.css is held to byte for byte above	*/
 $onlyLight = array_intersect_key( $baseTokens, $genLight );
 
 check( 'the untouched palette reproduces the token layer of base.css exactly, light - every value of it', $genLight !== [] && $onlyLight === $genLight );
-
-if( is_file( $deliveredFile ) === false )
-	echo "  --  this checkout has no installer library, so the dark palette is not compared with the delivered one\n";
-else {
-	$deliveredDark = designDeclarations( designBlock( designPlain( (string) file_get_contents( $deliveredFile ) ), ':root[data-nino-mode="dark"] {' ) );
-	check( '...and dark, against the delivered theme.css', $genDark !== [] && array_intersect_key( $deliveredDark, $genDark ) === $genDark );
-}
-
 check( 'the dark palette is the same set of tokens, under the media query as under the attribute', array_keys( $blocks['system'] ) === array_keys( $genDark ) && $blocks['system'] === $genDark );
 check( 'every block publishes the full surface vocabulary: eight values for each of the surfaces, and the scrim - and none for a state nothing reads',
 	count( $genLight ) === count( $genDark ) && count( $genLight ) === count( Colours::SURFACES ) * 8 + 1
@@ -2352,6 +2355,23 @@ check( 'every section of the specimen holds exactly one grid row of its own - a 
 	$sections !== [] && array_unique( $rowCounts ) === [ 1 ] );
 check( 'and every child of a row is a grid cell, so nothing sits in the row without a width',
 	$strayCells === [] );
+
+/*	A stack of cards is drawn the way Nino 1.6 draws one: a row of cells, each
+	of them a div with the classes of the grid, and the card in it. The card is
+	no longer the cell - it would keep the margins of a card that stands in a
+	column on top of its slot, so the row overflows its column: at 1280px the
+	third card wraps under the first two, and on a phone the cards stand
+	outside the column (measured)	*/
+$stacks = $byClass( $xpath, 'nino-stack' );
+$bareCells = [];
+
+foreach( $stacks as $stack )
+	foreach( $stack->childNodes as $child )
+		if( $child instanceof DOMElement && ( $child->tagName !== 'div' || count( $byClass( $xpath, 'nino-article', $child ) ) !== 1 ) )
+			$bareCells[] = $child->tagName. '.'. $child->getAttribute( 'class' );
+
+check( 'the stack of cards is drawn as Nino 1.6 draws one: every cell of a stack is a div that holds one card, and no card is a cell'. ( $bareCells === [] ? '' : ' - '. implode( ', ', $bareCells ) ),
+	$stacks !== [] && $bareCells === [] );
 
 /*	The animation of the page is a choice of the Global tab, and a page that
 	carries no viewport animation shows none of it: the cell of the hero, the

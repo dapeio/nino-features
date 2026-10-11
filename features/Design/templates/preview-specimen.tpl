@@ -97,9 +97,9 @@
 		</article>
 		<div class="nino-grid-100">
 			<div class="nino-grid-row nino-stack nino-stack-gap-2">
-				<article class="nino-article nino-article--counter nino-grid-s-100 nino-grid-m-50 nino-grid-l-33"><h4 class="nino-article-title">A stack of cards</h4><p class="nino-article-subtitle nino-article-subtitle--quiet">A quiet subtitle</p><p>Each cell of the stack is a card.</p></article>
-				<article class="nino-article nino-article--counter nino-grid-s-100 nino-grid-m-50 nino-grid-l-33"><h4 class="nino-article-title">The next</h4><p class="nino-article-subtitle">A subtitle</p><p>Neighbours are one gap apart.</p></article>
-				<article class="nino-article nino-article--counter nino-grid-s-100 nino-grid-m-50 nino-grid-l-33"><h4 class="nino-article-title">And a third</h4><p class="nino-article-subtitle nino-article-subtitle--loud">A loud subtitle</p><p>The edges of the stack are the column's.</p></article>
+				<div class="nino-grid-s-100 nino-grid-m-50 nino-grid-l-33"><article class="nino-article nino-article--counter"><h4 class="nino-article-title">A stack of cards</h4><p class="nino-article-subtitle nino-article-subtitle--quiet">A quiet subtitle</p><p>Each cell of the stack holds a card.</p></article></div>
+				<div class="nino-grid-s-100 nino-grid-m-50 nino-grid-l-33"><article class="nino-article nino-article--counter"><h4 class="nino-article-title">The next</h4><p class="nino-article-subtitle">A subtitle</p><p>Neighbours are one gap apart.</p></article></div>
+				<div class="nino-grid-s-100 nino-grid-m-50 nino-grid-l-33"><article class="nino-article nino-article--counter"><h4 class="nino-article-title">And a third</h4><p class="nino-article-subtitle nino-article-subtitle--loud">A loud subtitle</p><p>The edges of the stack are the column's.</p></article></div>
 			</div>
 		</div>
 	</div>
