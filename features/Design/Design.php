@@ -74,11 +74,12 @@ namespace Nino\Modules {
 		 *
 		 *	The colour tables are not hashed - they are code - but what they
 		 *	produce can change under a setup that did not. Colours::REVISION
-		 *	joins the input where Saturation, Contrast or Depth stands off
-		 *	position 2, the only place the tables moved: such a project reads
-		 *	"saved, not applied" once after the update and applies again, and a
-		 *	project with all three at 2 compiles the same bytes as before and
-		 *	keeps reading "current".
+		 *	joins the input where Saturation, Contrast or Depth stands off its
+		 *	default, which is the framework's own and the one position no table
+		 *	has moved: such a project reads "saved, not applied" once after the
+		 *	update and applies again, and a project with all three on their
+		 *	default compiles the same bytes as before and keeps reading
+		 *	"current".
 		 *
 		 *	@param		array 		$setup				A normalized setup
 		 *	@param		string		$library			The library directory its parts are chosen from
@@ -99,10 +100,12 @@ namespace Nino\Modules {
 
 			$input = [ $setup, $files ];
 
-			// Position 2 is the framework's own, and the one every table in
-			// Colours is anchored on
+			// The default position is the framework's own, and the one every table
+			// in Colours is anchored on
+			$knobs = Design\Colours::choices();
+
 			foreach( [ 'saturation', 'contrast', 'depth' ] as $knob )
-				if( ( $setup['colours'][$knob] ?? 2 ) !== 2 ) {
+				if( ( $setup['colours'][$knob] ?? $knobs[$knob]['default'] ) !== $knobs[$knob]['default'] ) {
 					$input[] = Design\Colours::REVISION;
 					break;
 				}

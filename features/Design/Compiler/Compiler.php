@@ -18,11 +18,12 @@ namespace Nino\Modules\Design {
 	 *										palette over them, the type, the roles those tokens are
 	 *										assigned to, the root size, the width and the animation of
 	 *										the page, the chosen frames, the three chosen sets, and
-	 *										last the block that says which step of every triple is
+	 *										last the block that says which step of every ladder is
 	 *										live.
 	 *
-	 *										A set declares what its three steps *are* rather than a
-	 *										value a knob then modifies - +1rem behaves differently on
+	 *										A set declares what the steps of a knob *are* - the five
+	 *										values of a scale, the three of a choice - rather than a
+	 *										value a knob then modifies: +1rem behaves differently on
 	 *										a default of 5rem than on 2rem, and some scales are not
 	 *										linear at all. So the knob never computes: it picks, and
 	 *										what it picks is one selection line per token, gathered
@@ -148,7 +149,7 @@ namespace Nino\Modules\Design {
 				$parts[] = sprintf( self::SECTION, 4, 'the roles' ). "\n". rtrim( $roles, "\n" ). "\n";
 
 			// 5. the root size, as the percentage pair Nino.css reads
-			$size = Setup::SIZES[ $setup['size'] ?? 'm' ] ?? Setup::SIZES['m'];
+			$size = Setup::SIZES[ (int) ( $setup['size'] ?? 0 ) ] ?? Setup::SIZES[0];
 			$parts[] = sprintf( self::SECTION, 5, 'the root size' ). "\n"
 				. ":root { --nino-base-size: ". $size[0]. "; }\n"
 				. "@media (min-width: 768px) { :root { --nino-base-size: ". $size[1]. "; } }";
@@ -177,8 +178,8 @@ namespace Nino\Modules\Design {
 				}
 
 				$css 		= self::_read( $file );
-				$triples = Setup::triples( $libraryDir, $part, $set );
-				$knobs 	= array_keys( $triples );
+				$ladders = Setup::ladders( $libraryDir, $part, $set );
+				$knobs 	= array_keys( $ladders );
 				$where 	= [];
 
 				$answered[$part] = $knobs;
@@ -189,7 +190,7 @@ namespace Nino\Modules\Design {
 				$parts[] = sprintf( self::SECTION, $number++, $part. ': '. $set
 					. ( $where === [] ? '' : ' ('. implode( ', ', $where ). ')' ) ). "\n". $css;
 
-				/*	One selection line per triple of every knob the set answers to,
+				/*	One selection line per ladder of every knob the set answers to,
 					asking that knob where it stands: the position of the tab the
 					set belongs to (see Setup::step()).
 
@@ -197,7 +198,7 @@ namespace Nino\Modules\Design {
 					so the whole knob state is one readable block - and a project
 					that removed the feature can still move a knob by editing one
 					line */
-				foreach( $triples as $knob => $names )
+				foreach( $ladders as $knob => $names )
 					foreach( $names as $name ) {
 						$token = $part. '-'. $name;
 						$selection[$token] = "\t--". $token. ': var(--'. $token. '--'. Setup::step( $setup, $part, $knob ). ');';
@@ -218,15 +219,16 @@ namespace Nino\Modules\Design {
 		 *	What the page asks of Nino.css as a whole: how wide it is, and how its
 		 *	sections arrive.
 		 *
-		 *	A width of 0 is the kernel's own and writes nothing; the two to either
-		 *	side write the maximum width of a row and the space between the viewport
-		 *	and it, with the step it takes from 768px - the wide one no maximum
-		 *	(none) and no space (0) at all. An animation writes one rule on main
-		 *	with the custom properties the kernel sets for the effect, its strength
-		 *	and its speed, which every viewport animation below main inherits - and
-		 *	which the Builder overrides per template at its wrap, and a section with
-		 *	an animation class of its own overrides again. No effect writes nothing,
-		 *	whatever strength or speed stand beside it: they belong to an effect.
+		 *	A width of 0 is the kernel's own and writes nothing; the four around it
+		 *	write the maximum width of a row and the space between the viewport
+		 *	and it, with the step it takes from 768px - the two widest no maximum
+		 *	(none), and the widest of them no space (0) from there. An animation
+		 *	writes one rule on main with the custom properties the kernel sets for
+		 *	the effect, its strength and its speed, which every viewport animation
+		 *	below main inherits - and which the Builder overrides per template at
+		 *	its wrap, and a section with an animation class of its own overrides
+		 *	again. No effect writes nothing, whatever strength or speed stand
+		 *	beside it: they belong to an effect.
 		 *
 		 *	@param		array 		$setup				A normalised setup
 		 *
@@ -488,8 +490,8 @@ namespace Nino\Modules\Design {
 				. " *\n"
 				. " *\t". self::STAMP. ": ". hash( 'sha256', $body ). "\n"
 				. " *\n"
-				. " *\troot size  ". (string) ( $setup['size'] ?? 'm' ). "\n"
-				. " *\twidth      ". ( $width < 0 ? 'narrow' : ( $width > 0 ? 'wide' : 'normal' ) ). "\n"
+				. " *\troot size  ". Setup::word( (int) ( $setup['size'] ?? 0 ) ). "\n"
+				. " *\twidth      ". Setup::word( $width ). "\n"
 				. " *\tanimation  ". ( isset( Setup::EFFECTS[$effect] ) === true
 					? $effect. ', '. ( (string) ( $motion['strength'] ?? '' ) ?: 'medium' ). ( (string) ( $motion['speed'] ?? '' ) === '' ? '' : ', '. $motion['speed'] )
 					: 'as Nino.css has it' ). "\n"

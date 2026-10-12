@@ -20,26 +20,38 @@
  */
 
 :root {
-	--components-scale--less: 		.9375;
+	--components-scale--least: 		.75;
+	--components-scale--less: 		.87;
 	--components-scale--default: 	1;
-	--components-scale--more: 		1.125;
+	--components-scale--more: 		1.15;
+	--components-scale--most: 		1.32;
 
-	--components-space--less: 		var(--space-1);
+	--components-space--least: 		calc( var(--space-2) * .4 );
+	--components-space--less: 		calc( var(--space-2) * .7 );
 	--components-space--default: 	var(--space-2);
-	--components-space--more: 		var(--space-3);
+	--components-space--more: 		calc( var(--space-2) * 1.5 );
+	--components-space--most: 		calc( var(--space-2) * 2.2 );
 
-	--components-corners--less: 	var(--radius);
+	--components-corners--least: 	0rem;
+	--components-corners--less: 	var(--radius-small);
 	--components-corners--default: 	var(--radius-large);
-	--components-corners--more: 	2rem;
+	--components-corners--more: 	1rem;
+	--components-corners--most: 	2rem;
 
+	/*	The rule under a field is the only thing that marks it, so the least of it
+		is a hairline - where the screen can draw one, and 1px where it cannot -
+		and not none	*/
+	--components-border--least: 	.5px;
 	--components-border--less: 		1px;
 	--components-border--default: 	2px;
 	--components-border--more: 		3px;
+	--components-border--most: 		4px;
 
 	/*	Where a label stands: in the row (the form is a grid of a column for the
 		labels and a column for the fields), above the field, or floating on its
-		top edge. The first triple is the gap between the columns, the rest are
-		aspects of the knob and move with it	*/
+		top edge. The first ladder is the gap between the columns, the rest are
+		aspects of the knob and move with it. A choice has three, under less,
+		default and more	*/
 	--components-labels--less: 			var(--space-2);
 	--components-labels--default: 		normal;
 	--components-labels--more: 			normal;

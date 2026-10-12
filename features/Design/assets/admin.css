@@ -4,8 +4,8 @@
  *	Nino										A compact filesystembased php framework
  *	Modules\Design					What the feature's /_admin panel needs beyond the design
  *													system in _admin/assets/style.css: the field grid the
- *													templates and the page are chosen in, the titled blocks
- *													the knob rows stand in, the row per knob and per
+ *													animation is chosen in, the blocks the knob rows and the
+ *													two strips of Global stand in, the row per knob and per
  *													colour with the icon before its name, the table of the
  *													five font roles, and the two columns the screen is - the
  *													controls on one side (a third of the width, 24rem at
@@ -68,9 +68,9 @@
 	padding: .95rem;
 }
 
-/*	Two columns of fields: four questions in the room one would take. The gap
-	between the rows is smaller than the one between the columns, which keep the
-	room two controls side by side need */
+/*	Two columns of fields: the three questions of the animation in the room two
+	would take. The gap between the rows is smaller than the one between the
+	columns, which keep the room two controls side by side need */
 .design-form-grid {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -137,11 +137,13 @@
 
 /* ---- the knob ----
 
-   One row per knob the tab has: what it is called, and where it stands. The
-   steps are the workbench's own segmented control (.nino-admin-tabs), three
-   buttons in the words that knob has for them. The name and the note stand
-   over the steps rather than beside them: a column of a third of the screen
-   has no room for words on both sides of a control */
+   One row per knob the tab has, per setting of the page (the root size and the
+   width) and per knob of the palette: what it is called, and where it stands.
+   The steps are the workbench's own segmented control (.nino-admin-tabs), five
+   buttons with the numbers -2 to +2, or three in the words that knob has for
+   them. The name and the note stand over the steps rather than beside them: a
+   column of a third of the screen has no room for words on both sides of a
+   control */
 .nino-admin .design-knob-row {
 	display: grid;
 	gap: .25rem;
@@ -743,7 +745,8 @@
 	margin-top: .3rem;
 }
 
-/*	Four positions in a third of the screen: a little less room for each */
+/*	Four names or five numbers in a third of the screen: a little less room for
+	each */
 .nino-admin #design-colours .design-knob-steps .nino-admin-tab {
 	padding: .3rem .2rem;
 	font-size: .7rem;

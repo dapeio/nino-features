@@ -19,17 +19,26 @@
  */
 
 :root {
-	--components-space--less: 		calc( var(--space-1) * .5 );
+	/*	Fractions of the middle, which is .8 of the first step of the scale	*/
+	--components-space--least: 		calc( var(--space-1) * .32 );
+	--components-space--less: 		calc( var(--space-1) * .56 );
 	--components-space--default: 	calc( var(--space-1) * .8 );
-	--components-space--more: 		var(--space-1);
+	--components-space--more: 		calc( var(--space-1) * 1.2 );
+	--components-space--most: 		calc( var(--space-1) * 1.76 );
 
+	/*	Nothing between square and .1rem is worth a position, so the sharp end is a plateau	*/
+	--components-corners--least: 	0rem;
 	--components-corners--less: 	0rem;
 	--components-corners--default: 	var(--radius-small);
 	--components-corners--more: 	var(--radius);
+	--components-corners--most: 	var(--radius-large);
 
-	--components-border--less: 		0px;
+	/*	The half pixel is a hairline where the screen can draw one, and 1px where it cannot	*/
+	--components-border--least: 	0px;
+	--components-border--less: 		.5px;
 	--components-border--default: 	1px;
 	--components-border--more: 		2px;
+	--components-border--most: 		3px;
 
 	--components-zebra--less: 		transparent;
 	--components-zebra--default: 	var(--color-section-alt-bg);
@@ -41,8 +50,9 @@
 
 	/*	Where a label stands: in the row (the form is a grid of a column for the
 		labels and a column for the fields), above the field, or floating on its
-		top edge. The first triple is the gap between the columns, the rest are
-		aspects of the knob and move with it	*/
+		top edge. The first ladder is the gap between the columns, the rest are
+		aspects of the knob and move with it. A choice has three, under less,
+		default and more	*/
 	--components-labels--less: 			var(--space-2);
 	--components-labels--default: 		normal;
 	--components-labels--more: 			normal;

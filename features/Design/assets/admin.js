@@ -2,13 +2,14 @@
  *	Nino										A compact filesystembased php framework
  *	Modules\Design					The feature's /_admin panel, "Design": six tabs over one
  *													setup - Global, with the header and footer templates,
- *													the root size, the width and the animation of the page;
- *													Fonts, with the five font roles; Content, Buttons and
- *													Components, each with the choice of its template and one
- *													named knob for each thing the template lets go of; and
- *													Colours, with the two colours, the five knobs and the
- *													mode the palette is solved from - and the compile that
- *													turns all of it into assets/theme.css (see
+ *													the root size and the width, a strip of five positions
+ *													each, and the animation of the page; Fonts, with the five
+ *													font roles; Content, Buttons and Components, each with the
+ *													choice of its template and one named knob for each thing
+ *													the template lets go of, a strip of five positions or of
+ *													three words; and Colours, with the two colours, the five
+ *													knobs and the mode the palette is solved from - and the
+ *													compile that turns all of it into assets/theme.css (see
  *													Modules\Design\Admin beside this file). Beside the
  *													controls is one specimen page of the selection, under a
  *													head with the viewport switch, the switch that lets the
@@ -60,8 +61,10 @@
 			are told together in the docblock of _jump()	*/
 		KNOB_ANCHORS	: { content : { 'hero-title' : 'content', 'hero-text' : 'content', '*' : 'cards' } },
 
-		// The three widths of the page, by the number the model keeps
-		PAGE_WIDTHS	: { '-1' : 'narrow', '0' : 'normal', '1' : 'wide' },
+		/*	How far from the middle a position of a knob can be, by the kind of the knob:
+			a scale has the five positions -2 to +2, a choice the three -1 to +1 (see
+			Setup::range()). The root size and the width of the page are scales	*/
+		RANGE		: { scale : 2, choice : 1 },
 
 		// The namespace the elements of an icon are made in
 		SVG			: 'http://www.w3.org/2000/svg',
@@ -139,6 +142,16 @@
 				[ 'path', { d : 'm19 5-1.256 1.256' } ],
 				[ 'path', { d : 'M20 12h2' } ],
 			],
+			// How far the small and the big button stand from the normal one, and how wide the page is
+			'chevrons-left-right' : [
+				[ 'path', { d : 'm9 7-5 5 5 5' } ],
+				[ 'path', { d : 'm15 7 5 5-5 5' } ],
+			],
+			'move-horizontal' : [
+				[ 'path', { d : 'm18 8 4 4-4 4' } ],
+				[ 'path', { d : 'M2 12h20' } ],
+				[ 'path', { d : 'm6 8-4 4 4 4' } ],
+			],
 			// The three devices of the viewport switch: the shapes the Builder's symbols carry
 			'smartphone' : [
 				[ 'rect', { width : '14', height : '20', x : '5', y : '2', rx : '2', ry : '2' } ],
@@ -165,12 +178,15 @@
 		/*	Which icon a row opens with, by the tab and the knob it sets - so that what
 			is being set is felt before it is read: the size of a text, of a surface, a
 			space, the corners, a line, a shadow. The knobs are the feature's own (see
-			Setup::KNOBS), and so are the rows of the palette - the brand colour, the
+			Setup::KNOBS), and so are the two rows of Global, the root size and the
+			width of the page, and the rows of the palette - the brand colour, the
 			second colour, which is the row of Harmony, temperature, saturation,
 			contrast, depth and the mode: all of them have one, so that every name of
 			the Colours tab starts at the same left edge. A row with no entry has no
 			icon, and no stand-in shape takes its place	*/
 		KNOB_ICONS	: {
+			'global/size' : 'a-large-small',
+			'global/width' : 'move-horizontal',
 			'content/hero-title' : 'a-large-small',
 			'content/hero-text' : 'a-large-small',
 			'content/quiet' : 'a-large-small',
@@ -180,8 +196,8 @@
 			'content/corners' : 'square-round-corner',
 			'content/border' : 'square',
 			'content/shadow' : 'square-stack',
-			'buttons/small' : 'a-large-small',
-			'buttons/big' : 'a-large-small',
+			'buttons/size' : 'a-large-small',
+			'buttons/spread' : 'chevrons-left-right',
 			'buttons/space' : 'align-vertical-space-around',
 			'buttons/corners' : 'square-round-corner',
 			'components/scale' : 'a-large-small',
@@ -556,6 +572,129 @@
 		},
 
 		/**
+		 *	One strip: the row of a setting that is chosen by pressing one of a few
+		 *	buttons - a knob of the three tabs, the root size and the width of the page,
+		 *	a knob of the palette. The label with the icon of the key, the name and the
+		 *	note under it (see _labelContent()), and the workbench's own segmented
+		 *	control for the options: filled where it is, flat where it is not, the
+		 *	active one lit by Nino.adminUi.buttonRow().
+		 *
+		 *	role=group and aria-pressed rather than a tablist, because the buttons are
+		 *	the values of one setting and not panels - buttonRow() defaults to exactly
+		 *	that flag for exactly this case
+		 *
+		 *	@param		{string}		key					'<tab>/<knob>', for the icon (see KNOB_ICONS)
+		 *	@param		{string}		name
+		 *	@param		{string}		note				The line under the name
+		 *	@param		{Array}			options			{ value, label, title }, from the least to the most
+		 *	@param		{*}					active			The value of the option that is lit; a value no option
+		 *																	has lights none
+		 *	@param		{Function}	onChange		Called with the value of the option that was pressed
+		 *	@param		{boolean}		[disabled]	Greys the row out, switches the buttons off and lights none
+		 *
+		 *	@return		{Element}
+		 */
+		_stripRow : function( key, name, note, options, active, onChange, disabled ) {
+
+			const field = dc.createElement('div');
+			field.className = 'design-knob-row'+ ( disabled === true ? ' design-knob-row--off' : '' );
+
+			const label = dc.createElement('span');
+			label.className = 'design-knob-label';
+			Nino.admin.design._labelContent( label, key, name, note );
+
+			field.appendChild( label );
+
+			const group = dc.createElement('div');
+			group.className = 'nino-admin-tabs design-knob-steps';
+			group.setAttribute( 'role', 'group' );
+			group.setAttribute( 'aria-label', name );
+
+			/*	The buttons are keyed by their place in the list, as the string of it: a
+				key that is a number is kept in the order of the numbers, and the position
+				-2 would come after +2	*/
+			const buttons = {};
+			let lit = '';
+
+			options.forEach( function( option, index ) {
+				const button = dc.createElement('button');
+				button.type = 'button';
+				button.className = 'nino-admin-tab';
+				button.dataset.value = String( option.value );
+				button.textContent = option.label;
+				button.title = option.title || option.label;
+				button.disabled = disabled === true;
+				buttons[String( index )] = button;
+				group.appendChild( button );
+
+				if( String( option.value ) === String( active ) )
+					lit = String( index );
+			} );
+
+			Nino.adminUi.buttonRow( buttons, disabled === true ? '' : lit, function( index ) {
+				onChange( options[parseInt( index, 10 )].value );
+			} );
+
+			field.appendChild( group );
+
+			return field;
+		},
+
+		/**
+		 *	The options of a strip of numbers: one for each value, written as its
+		 *	distance from the middle - "−2", "−1", "0", "+1", "+2". The minus is U+2212, the
+		 *	one a number is set with, and not the hyphen; the title is the label
+		 *
+		 *	@param		{Array}			values			From the least to the most
+		 *	@param		{number}		middle			The value that is 0
+		 *
+		 *	@return		{Array}								{ value, label, title }
+		 */
+		_numbered : function( values, middle ) {
+
+			return values.map( function( value ) {
+				const distance = value - middle;
+				const label = distance === 0 ? '0' : ( distance < 0 ? '\u2212' : '+' )+ String( Math.abs( distance ) );
+				return { value : value, label : label, title : label };
+			} );
+		},
+
+		/**
+		 *	The positions of a kind of knob, from the least to the most: -2 to +2 for a
+		 *	scale, -1 to +1 for a choice (see RANGE)
+		 *
+		 *	@param		{string}	kind				'scale' or 'choice'
+		 *
+		 *	@return		{Array}
+		 */
+		_positions : function( kind ) {
+
+			const range = Nino.admin.design.RANGE[kind] || 0;
+			const positions = [];
+
+			for( let position = -range; position <= range; position++ )
+				positions.push( position );
+
+			return positions;
+		},
+
+		/**
+		 *	The word a position is declared under in a stylesheet - the middle one of
+		 *	the five design/list handed over is the position 0 (see Setup::word()). A
+		 *	choice knob names its three positions by these words
+		 *
+		 *	@param		{number}	position
+		 *
+		 *	@return		{string}					least, less, default, more or most
+		 */
+		_word : function( position ) {
+
+			const steps = ( Nino.admin.design._data || {} ).steps || [];
+
+			return steps[ Math.max( 0, Math.min( steps.length - 1, position + Nino.admin.design.RANGE.scale ) ) ];
+		},
+
+		/**
 		 *	The head of the pane the screen stands in: the row the shell
 		 *	renders over every panel, with the panel's name in it (see
 		 *	Nino.adminUi.panelHead()).
@@ -906,8 +1045,9 @@
 		},
 
 		/**
-		 *	The Global tab: the two frames, the one size the page is measured in,
-		 *	the width of the page and its animation.
+		 *	The Global tab: the two frames, the root size and the width of the page -
+		 *	two strips of five positions, in a card of their own the way the knob rows of
+		 *	a tab stand in theirs - and the animation.
 		 *
 		 *	Drawn once per visit of the tab and changed in place after that: a
 		 *	select that redrew its card when it was used would take the focus
@@ -934,30 +1074,21 @@
 
 			body.appendChild( templates );
 
-			// The page
+			/*	The page: its root size and its width, the same five positions each. What
+				the ends of a strip are is the line under its name	*/
 			const page = dc.createElement('div');
-			page.className = 'nino-admin-card design-form-section';
+			page.className = 'nino-admin-card design-block';
 
-			const grid = dc.createElement('div');
-			grid.className = 'design-form-grid';
+			const numbers = Nino.admin.design._numbered( Nino.admin.design._positions('scale'), 0 );
 
-			grid.appendChild( Nino.admin.design._select(
-				'design-size', Nino.content.getText('/_admin/design/label/size'),
-				( data.sizes || [] ).map( function( size ) {
-					return { value : size, label : Nino.content.getText('/_admin/design/size/'+ size ) };
-				} ), edit.size, function( value ) { edit.size = value; Nino.admin.design._preview() },
-				Nino.content.getText('/_admin/design/hint/size')
-			) );
+			page.appendChild( Nino.admin.design._stripRow(
+				'global/size', Nino.content.getText('/_admin/design/label/size'), Nino.content.getText('/_admin/design/hint/size'),
+				numbers, edit.size, function( position ) { edit.size = position; Nino.admin.design._preview() } ) );
 
-			grid.appendChild( Nino.admin.design._select(
-				'design-pagewidth', Nino.content.getText('/_admin/design/label/pagewidth'),
-				[ -1, 0, 1 ].map( function( width ) {
-					return { value : String( width ), label : Nino.content.getText('/_admin/design/pagewidth/'+ Nino.admin.design.PAGE_WIDTHS[String( width )] ) };
-				} ), String( edit.width ), function( value ) { edit.width = parseInt( value, 10 ); Nino.admin.design._preview() },
-				Nino.content.getText('/_admin/design/hint/pagewidth')
-			) );
+			page.appendChild( Nino.admin.design._stripRow(
+				'global/width', Nino.content.getText('/_admin/design/label/pagewidth'), Nino.content.getText('/_admin/design/hint/pagewidth'),
+				numbers, edit.width, function( position ) { edit.width = position; Nino.admin.design._preview() } ) );
 
-			page.appendChild( grid );
 			body.appendChild( page );
 
 			// The animation of the page
@@ -1407,10 +1538,11 @@
 
 		/**
 		 *	The knob tabs: the select the template of the tab is chosen in, at the
-		 *	top of the card, and one row per knob the tab has under it, each at
-		 *	less / as the template has it / more. A tab belongs to one template
-		 *	and the knobs are the tab's own, so there is nothing to follow and no
-		 *	way back to draw beside a row - the middle is the template as it is.
+		 *	top of the card, and one strip per knob the tab has under it - the five
+		 *	positions of a scale, the three of a choice (see _knobRow()). A tab
+		 *	belongs to one template and the knobs are the tab's own, so there is
+		 *	nothing to follow and no way back to draw beside a row - the middle is
+		 *	the template as it is.
 		 *
 		 *	A knob the chosen template does not answer to is not hidden. It stands
 		 *	where it always does, greyed out, with a line that says whose
@@ -1435,7 +1567,7 @@
 
 			const answered = Nino.admin.design._answered( tab );
 
-			( ( data.tabs || {} )[tab] || [] ).forEach( function( knob ) {
+			Object.keys( ( data.tabs || {} )[tab] || {} ).forEach( function( knob ) {
 				box.appendChild( Nino.admin.design._knobRow( tab, knob, answered.indexOf( knob ) !== -1 ) );
 			} );
 
@@ -1443,20 +1575,11 @@
 		},
 
 		/**
-		 *	The step a knob stands at, for its row to light
-		 *
-		 *	@param		{string}	tab
-		 *	@param		{string}	knob
-		 *
-		 *	@return		{string}					less, default or more
-		 */
-		_stepOf : function( tab, knob ) {
-			const steps = ( Nino.admin.design._data || {} ).steps || [ 'less', 'default', 'more' ];
-			return steps[ Math.max( 0, Math.min( steps.length - 1, ( ( Nino.admin.design._edit.knobs[tab] || {} )[knob] || 0 ) + 1 ) ) ];
-		},
-
-		/**
-		 *	One of them: three steps, each in the words that knob has for it
+		 *	One knob, as a strip. A scale is five numbers, -2 to +2, and the note under
+		 *	its name says which way they go; a choice is three alternatives, each in the
+		 *	words that knob has for it - "tight, normal, airy" is not the same sentence
+		 *	as "sharp, normal, round". The kind is what design/list says of the knob
+		 *	in its tab
 		 *
 		 *	@param		{string}		tab
 		 *	@param		{string}		knob
@@ -1468,53 +1591,27 @@
 
 			const base = '/_admin/design/knob/'+ tab+ '/'+ knob;
 			const name = Nino.content.getText( base+ '/label' );
+			const kind = ( ( Nino.admin.design._data.tabs || {} )[tab] || {} )[knob];
+			const positions = Nino.admin.design._positions( kind );
 
-			const field = dc.createElement('div');
-			field.className = 'design-knob-row'+ ( answered === false ? ' design-knob-row--off' : '' );
-			field.dataset.knob = knob;
+			const options = kind === 'choice'
+				? positions.map( function( position ) {
+					const label = Nino.content.getText( base+ '/'+ Nino.admin.design._word( position ) );
+					return { value : position, label : label, title : label };
+				} )
+				: Nino.admin.design._numbered( positions, 0 );
 
 			/*	The knob's own name and the terse note under it, both out of the
 				panel's text files: a knob is one key in every locale. Where the
 				template does not answer to it the note is the reason it is grey.
 				An icon stands before them, for what the knob sets	*/
-			const label = dc.createElement('span');
-			label.className = 'design-knob-label';
-			Nino.admin.design._labelContent( label, tab+ '/'+ knob, name,
-				answered === true ? Nino.content.getText( base+ '/note' ) : Nino.admin.design._text( '/_admin/design/hint/unanswered', name ) );
+			const field = Nino.admin.design._stripRow( tab+ '/'+ knob, name,
+				answered === true ? Nino.content.getText( base+ '/note' ) : Nino.admin.design._text( '/_admin/design/hint/unanswered', name ),
+				options, ( Nino.admin.design._edit.knobs[tab] || {} )[knob] || 0, function( position ) {
+					Nino.admin.design._setStep( tab, knob, position );
+				}, answered === false );
 
-			field.appendChild( label );
-
-			/*	The workbench's own segmented control, for its look: filled
-				where it is, flat where it is not. role=group and aria-pressed
-				rather than a tablist, because three steps of one value are a
-				choice and not two panels - buttonRow() defaults to exactly that
-				flag for exactly this case */
-			const group = dc.createElement('div');
-			group.className = 'nino-admin-tabs design-knob-steps';
-			group.setAttribute( 'role', 'group' );
-			group.setAttribute( 'aria-label', name );
-
-			const buttons = {};
-
-			( Nino.admin.design._data.steps || [] ).forEach( function( step ) {
-				const button = dc.createElement('button');
-				button.type = 'button';
-				button.className = 'nino-admin-tab';
-				button.dataset.step = step;
-				// Each knob names its own three positions - "tight, normal, airy"
-				// is not the same sentence as "sharp, normal, round"
-				button.textContent = Nino.content.getText( base+ '/'+ step );
-				button.title = button.textContent;
-				button.disabled = answered === false;
-				buttons[step] = button;
-				group.appendChild( button );
-			} );
-
-			Nino.adminUi.buttonRow( buttons, answered === true ? Nino.admin.design._stepOf( tab, knob ) : '', function( step ) {
-				Nino.admin.design._setStep( tab, knob, step );
-			} );
-
-			field.appendChild( group );
+			field.dataset.knob = knob;
 
 			return field;
 		},
@@ -1524,15 +1621,13 @@
 		 *
 		 *	@param		{string}		tab				A key of KNOB_TABS
 		 *	@param		{string}		knob			A knob of that tab
-		 *	@param		{string}		step			less, default or more
+		 *	@param		{number}		position	-2 to +2 for a scale, -1 to +1 for a choice
 		 *
 		 *	@return		void
 		 */
-		_setStep : function( tab, knob, step ) {
+		_setStep : function( tab, knob, position ) {
 
-			const steps = Nino.admin.design._data.steps || [];
-
-			Nino.admin.design._edit.knobs[tab][knob] = Math.max( 0, steps.indexOf( step ) ) - 1;
+			Nino.admin.design._edit.knobs[tab][knob] = position;
 			// A change is looked at where it shows: one target for it, which the jump
 			// that follows the preview goes to
 			Nino.admin.design._target = Nino.admin.design._anchorOf( tab, knob );
@@ -1702,9 +1797,10 @@
 		},
 
 		/**
-		 *	One colour knob. Same row as a part's knob, over as many positions
-		 *	as the knob publishes - three for a scale, four for a choice like
-		 *	Harmony, where the positions are alternatives rather than a track
+		 *	One colour knob. The same strip as a part's knob, over as many positions as
+		 *	the knob publishes: a scale (saturation, contrast, depth) is five numbers,
+		 *	distance from where it starts, so that the framework's own is the 0; a choice
+		 *	like Harmony has the names of its alternatives, which are not a track
 		 *
 		 *	@param		{string}	key
 		 *	@param		{Object}	meta		One entry of Colours::choices()
@@ -1716,48 +1812,37 @@
 		 */
 		_colourKnobRow : function( key, meta, extra ) {
 
-			const field = dc.createElement('div');
-			field.className = 'design-knob-row';
+			const base = '/_admin/design/colour/'+ key;
+			const colours = Nino.admin.design._edit.colours || {};
 
-			const label = dc.createElement('span');
-			label.className = 'design-knob-label';
-			Nino.admin.design._labelContent( label, 'colours/'+ key, Nino.content.getText('/_admin/design/colour/'+ key+ '/label'),
-				Nino.content.getText('/_admin/design/colour/'+ key+ '/note') );
+			let options;
 
-			field.appendChild( label );
+			if( meta.kind === 'scale' ) {
+				const positions = [];
 
-			const group = dc.createElement('div');
-			group.className = 'nino-admin-tabs design-knob-steps';
-			group.setAttribute( 'role', 'group' );
-			group.setAttribute( 'aria-label', Nino.content.getText('/_admin/design/colour/'+ key+ '/label') );
+				for( let position = 1; position <= meta.steps; position++ )
+					positions.push( position );
 
-			const buttons = {};
-
-			( meta.steps || [] ).forEach( function( name, index ) {
-				const position = String( index + 1 );
-				const button = dc.createElement('button');
-				button.type = 'button';
-				button.className = 'nino-admin-tab';
+				options = Nino.admin.design._numbered( positions, meta['default'] );
+			}
+			else
 				// The position's own name is the label here, not a step word:
 				// "Monochrom" and "Triadisch" are not less and more of anything
-				button.textContent = Nino.content.getText('/_admin/design/colour/'+ key+ '/'+ position) || name;
-				buttons[position] = button;
-				group.appendChild( button );
-			} );
+				options = ( meta.steps || [] ).map( function( name, index ) {
+					const label = Nino.content.getText( base+ '/'+ ( index + 1 ) ) || name;
+					return { value : index + 1, label : label, title : label };
+				} );
 
 			/*	A hex somebody typed overrides the whole knob - Colours::palette()
 				takes the Secondary as given and never reaches for Harmony at all.
 				So no position is lit while one is set: an active button there
 				would claim a derivation that is not happening	*/
-			const active = key === 'harmony' && String( ( Nino.admin.design._edit.colours || {} ).secondary || '' ) !== ''
-				? ''
-				: String( ( Nino.admin.design._edit.colours || {} )[key] || meta['default'] );
+			const active = key === 'harmony' && String( colours.secondary || '' ) !== ''
+				? null
+				: ( colours[key] || meta['default'] );
 
-			Nino.adminUi.buttonRow( buttons, active, function( position ) {
-				Nino.admin.design._setColourKnob( key, position );
-			} );
-
-			field.appendChild( group );
+			const field = Nino.admin.design._stripRow( 'colours/'+ key, Nino.content.getText( base+ '/label' ), Nino.content.getText( base+ '/note' ),
+				options, active, function( position ) { Nino.admin.design._setColourKnob( key, position ) } );
 
 			if( extra )
 				field.appendChild( extra );

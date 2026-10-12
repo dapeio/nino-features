@@ -41,7 +41,10 @@ namespace Nino\Modules\Design {
 
 		/*	The shape's own version. A file of another one is not read and not
 			mapped: Design 2.0 was the first version to be used, so read() replaces
-			it with the defaults and says so	*/
+			it with the defaults and says so. A file written while the scales had
+			three positions has this format and is read by the rules of normalize()
+			as it is: a size that is a letter is the middle, a knob that is gone is
+			dropped and named, and a position is a position of five	*/
 		public const int FORMAT = 2;
 
 		// The keys of the file, in the order they are written
@@ -58,72 +61,83 @@ namespace Nino\Modules\Design {
 			'components' 	=> 'set',
 		];
 
-		/*	What a knob can be set to, as the words a stylesheet declares its three
-			values under. The model keeps -1, 0 and +1; word() is the one place
-			that maps one to the other	*/
-		public const array STEPS = [ 'less', 'default', 'more' ];
+		/*	What a knob can be set to, as the words a stylesheet declares its values
+			under. The model keeps -2 to +2 and the library keeps these five words;
+			word() is the one place that maps one to the other. A choice has three
+			alternatives and declares them under the inner three - less, default, more -
+			so that there is one vocabulary and no word of its own	*/
+		public const array STEPS = [ 'least', 'less', 'default', 'more', 'most' ];
 
-		/*	The knobs, per tab, and nothing else. A knob belongs to one tab and has
-			a name: what it is called, what the terse note beside it says and what
-			its three steps are called live in the panel's text files, one key each
-			in every locale. The meaning of each is fixed here and not per set, so
-			that the templates of a tab stay exchangeable - what a set decides is
-			the three values behind a knob, and whether it answers to it at all:
+		/*	The knobs, per tab, and the kind of each - and nothing else. A knob belongs
+			to one tab and has a name: what it is called and what the terse note beside
+			it says live in the panel's text files, one key each in every locale, and so
+			do the three alternatives of a choice. The meaning of each is fixed here and
+			not per set, so that the templates of a tab stay exchangeable - what a set
+			decides is the values behind a knob, and whether it answers to it at all.
+
+			A scale is a track of five positions, -2 to +2, the middle the template as it
+			is: a size, a space, a corner, a line. A choice is a few alternatives that
+			are no more or less of anything - the stripes of a table, the place of a
+			label - and has three, which the panel names by words:
 
 				content		hero-title, hero-text	the size of the hero's title and text
 							quiet, loud				the size of the --quiet and --loud variants
 							section-space			the vertical space of a section
 							card-space				the space inside and between the parts of a card
 							corners, border, shadow	the corners, the line and the shadow of a card
-				buttons		small, big				the size of .nino-btn--small and --big
+				buttons		size					the size of .nino-btn
+							spread					how far .nino-btn--small and --big stand from it
 							space, corners			the padding and the radius
 				components	scale					the type size of fields and tables
 							space, corners, border	the space, the corners and the lines
-							zebra					the stripes of a table
-							labels					where the label of a field stands	*/
+							zebra					the stripes of a table (a choice)
+							labels					where the label of a field stands (a choice)	*/
 		public const array KNOBS = [
-			'content' 		=> [ 'hero-title', 'hero-text', 'quiet', 'loud', 'section-space', 'card-space', 'corners', 'border', 'shadow' ],
-			'buttons' 		=> [ 'small', 'big', 'space', 'corners' ],
-			'components' 	=> [ 'scale', 'space', 'corners', 'border', 'zebra', 'labels' ],
+			'content' 		=> [ 'hero-title' => 'scale', 'hero-text' => 'scale', 'quiet' => 'scale', 'loud' => 'scale', 'section-space' => 'scale', 'card-space' => 'scale', 'corners' => 'scale', 'border' => 'scale', 'shadow' => 'scale' ],
+			'buttons' 		=> [ 'size' => 'scale', 'spread' => 'scale', 'space' => 'scale', 'corners' => 'scale' ],
+			'components' 	=> [ 'scale' => 'scale', 'space' => 'scale', 'corners' => 'scale', 'border' => 'scale', 'zebra' => 'choice', 'labels' => 'choice' ],
 		];
 
-		/*	How a set says which knobs it answers to: one triple per knob, named
+		/*	How a set says which knobs it answers to: one ladder per knob, named
 			after the tab and the knob and nothing else.
 
-			  --content-section-space--less / --default / --more
+			  --content-section-space--least / --less / --default / --more / --most
 
-			Declaring the triple *is* publishing the knob - the panel offers
-			exactly what a set declares and greys out what it does not, so a handle
-			the stylesheet does not answer to can never be offered. The @knob line
-			in a set's own opening comment is documentation for whoever reads the
-			file; the panel reads the declarations.
+			A ladder is the five values of a scale, the middle of them the template as it
+			is, or the three of a choice, which are declared under less, default and more.
+			Declaring the ladder *is* publishing the knob - the panel offers exactly what
+			a set declares and greys out what it does not, so a handle the stylesheet
+			does not answer to can never be offered. A scale with three of its five, and a
+			choice with five of its three, have published nothing. The @knob line in a
+			set's own opening comment is documentation for whoever reads the file; the
+			panel reads the declarations.
 
 			A value that cannot say all a knob means - the stripes of a table are a
-			background and a text colour - may be declared in more triples, named
-			after the knob and an aspect of it (--components-zebra-ink--less ...).
-			They are the knob's too: they are selected where it stands, and a
-			stylesheet that declares one without the triple of the knob itself has
-			published nothing */
+			background and a text colour - may be declared in more ladders, named after
+			the knob and an aspect of it (--components-zebra-ink--less ...). They are the
+			knob's too: they are selected where it stands, and are as long as it is. A
+			stylesheet that declares one without the ladder of the knob itself has
+			published nothing, and one with another length than its knob's has not
+			published the knob */
 		public const string KNOB_TOKEN = '--%s-%s--%s';
 
 		/*	The root size, as the percentage pair Nino.css wants: below the 768px
 			breakpoint, and from it. Relative, never a length - see
 			--base-size in Nino.css.
 
-			Five positions, each a choice somebody can see on the page rather than
-			one they have to measure. Below the breakpoint they are 15% apart: at a
+			Five positions, -2 to +2, each a choice somebody can see on the page rather
+			than one they have to measure. Below the breakpoint they are 15% apart: at a
 			browser default of 16px that is 11.2, 13.6, 16, 18.4 and 20.8px. From it
 			each is 1.125 times its own, the ratio of the kernel's pair of 100% and
 			112.5%: 12.6, 15.3, 18, 20.7 and 23.4px. The middle position is the
 			delivered size and does not move, so nothing compiled before this reads
-			differently, and a setup that stored s or l still reads as one of the
-			five.	*/
+			differently. The model keeps the position, a number, and not the pair	*/
 		public const array SIZES = [
-			'xs' 	=> [ '70%', '78.75%' ],
-			's' 	=> [ '85%', '95.625%' ],
-			'm' 	=> [ '100%', '112.5%' ],
-			'l' 	=> [ '115%', '129.375%' ],
-			'xl' 	=> [ '130%', '146.25%' ],
+			-2 	=> [ '70%', '78.75%' ],
+			-1 	=> [ '85%', '95.625%' ],
+			0 	=> [ '100%', '112.5%' ],
+			1 	=> [ '115%', '129.375%' ],
+			2 	=> [ '130%', '146.25%' ],
 		];
 
 		/*	The width of the page, as the maximum width of a row and the space
@@ -131,20 +145,29 @@ namespace Nino\Modules\Design {
 			it is and writes nothing: a row of at most 120rem, with the kernel's own
 			space to the sides (--space-2, from 768px --space-3).
 
-			The two sides are what can be seen in a preview of 1280px, where 96, 120
-			and 144rem were all as wide as the frame. Narrow keeps a row at 56rem -
-			1008px at the root size the kernel has from 768px, 18px, and 896px at
-			16px, two hundred pixels inside a frame of 1280px - with the kernel's
-			own space to the sides. Wide takes the maximum
-			and, from 768px, the space away: the row runs to the edge of the section,
-			which keeps the padding of its own from there. Below 768px a section has
-			no padding to the sides, so wide keeps the kernel's space there - a phone
-			is as wide as it gets, and the text stays off the edge of the screen. Nino.css reads --grid-max-width as a
-			max-width, of which none is a value, and --grid-gutter as the padding of
-			a row, of which 0 is one.	*/
+			The four others run from a reading column to the edge, and every one of the
+			five is another row in a preview of 1280px, which is the width the panel
+			shows. At the root size the kernel has from 768px, 18px, the frame is 1280px
+			and a section keeps 36px of padding of its own at both sides, so a row has
+			1208px at the most, and its text 1208px less the space to the sides, twice:
+
+				-2	48rem, 864px	with 36px to each side: a text of 792px. A reading column
+				-1	64rem, 1152px	with 36px to each side: 1080px. A page that is contained
+				 0	120rem, 2160px	more than there is: the row is 1208px, 1136px of text
+				 1	none			1208px, the kernel's small space to the sides at every
+								width, 18px: 1172px of text
+				 2	none			1208px and from 768px no space to the sides: 1208px of
+								text, to the edge of the section's own padding. Below 768px
+								the space stays - a phone is as wide as it gets, and the text
+								stays off the edge of the screen
+
+			Nino.css reads --grid-max-width as a max-width, of which none is a value,
+			and --grid-gutter as the padding of a row, of which 0 is one.	*/
 		public const array WIDTHS = [
-			-1 => [ '56rem', 'var(--space-2)', 'var(--space-3)' ],
-			1 	=> [ 'none', 'var(--space-2)', '0' ],
+			-2 	=> [ '48rem', 'var(--space-2)', 'var(--space-3)' ],
+			-1 	=> [ '64rem', 'var(--space-2)', 'var(--space-3)' ],
+			1 	=> [ 'none', 'var(--space-2)', 'var(--space-2)' ],
+			2 	=> [ 'none', 'var(--space-2)', '0' ],
 		];
 
 		/*	The animation of the page: what Nino.css sets for nino-vpa--<effect>-<strength>
@@ -208,12 +231,12 @@ namespace Nino\Modules\Design {
 
 			$knobs = [];
 
-			foreach( self::KNOBS as $tab => $names )
-				$knobs[$tab] = array_fill_keys( $names, 0 );
+			foreach( self::KNOBS as $tab => $kinds )
+				$knobs[$tab] = array_fill_keys( array_keys( $kinds ), 0 );
 
 			return [
 				'format' 	=> self::FORMAT,
-				'size' 		=> 'm',
+				'size' 		=> 0,
 				'width' 	=> 0,
 				// '' is what Nino.css does by itself: a fade and a rise, as fast as it is
 				'motion' 	=> [ 'effect' => '', 'strength' => '', 'speed' => '' ],
@@ -230,16 +253,60 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	The word a stylesheet declares a knob position under: -1 is less, 0 is
-		 *	default and +1 is more. The model keeps numbers, the library keeps
-		 *	words, and this is the only place that knows both
+		 *	The word a stylesheet declares a knob position under: -2 is least, -1
+		 *	less, 0 default, +1 more and +2 most. The model keeps numbers, the
+		 *	library keeps words, and this is the only place that knows both
 		 *
-		 *	@param		int				$position			-1, 0 or 1
+		 *	@param		int				$position			-2 to 2; a number past the ends is the end
 		 *
 		 *	@return 	string
 		 */
 		public static function word( int $position ): string {
-			return self::STEPS[ max( 0, min( 2, $position + 1 ) ) ];
+			return self::STEPS[ max( 0, min( count( self::STEPS ) - 1, $position + 2 ) ) ];
+		}
+
+		/**
+		 *	What a knob is: 'scale' or 'choice' (see KNOBS)
+		 *
+		 *	@param		string		$tab					A key of KNOBS
+		 *	@param		string		$knob					A name in KNOBS[$tab]
+		 *
+		 *	@return 	string								'' for a knob there is none of
+		 */
+		public static function kind( string $tab, string $knob ): string {
+			return self::KNOBS[$tab][$knob] ?? '';
+		}
+
+		/**
+		 *	How far a kind of knob reaches from the middle: two positions to each side
+		 *	for a scale, one for a choice. A kind there is none of reaches nowhere
+		 *
+		 *	@param		string		$kind					'scale' or 'choice'
+		 *
+		 *	@return 	int
+		 */
+		public static function range( string $kind ): int {
+
+			return match( $kind ) {
+				'scale' 	=> 2,
+				'choice' 	=> 1,
+				default 	=> 0,
+			};
+		}
+
+		/**
+		 *	The words a ladder of that kind is declared under: all five of STEPS for a
+		 *	scale, the inner three for a choice
+		 *
+		 *	@param		string		$kind					'scale' or 'choice'
+		 *
+		 *	@return 	array
+		 */
+		public static function words( string $kind ): array {
+
+			$range = self::range( $kind );
+
+			return array_slice( self::STEPS, 2 - $range, 2 * $range + 1 );
 		}
 
 		/**
@@ -379,10 +446,7 @@ namespace Nino\Modules\Design {
 				if( in_array( $key, self::KEYS, true ) === false )
 					$notes[] = 'the key "'. self::shown( $key ). '" is none of this version\'s - dropped';
 
-			$size = (string) ( is_string( $raw['size'] ?? null ) === true ? $raw['size'] : '' );
-			if( isset( self::SIZES[$size] ) === true )
-				$setup['size'] = $size;
-
+			$setup['size'] = self::position( $raw['size'] ?? 0 );
 			$setup['width'] = self::position( $raw['width'] ?? 0 );
 
 			$motion = is_array( $raw['motion'] ?? null ) === true ? $raw['motion'] : [];
@@ -422,10 +486,11 @@ namespace Nino\Modules\Design {
 					$notes[] = '"'. $part. '" names the set "'. self::shown( $wanted ). '", which is not in the library - using "'. $available[0]. '"';
 			}
 
-			/*	Where every knob stands. A knob is a position of its own tab, and a
-				name that is none of the tab's - or a tab that is none of the three -
-				is dropped with a note rather than carried: a position nothing reads
-				is a position nobody can find again. One that is missing is 0	*/
+			/*	Where every knob stands. A knob is a position of its own tab, held to
+				the range of its kind, and a name that is none of the tab's - or a tab that
+				is none of the three - is dropped with a note rather than carried: a
+				position nothing reads is a position nobody can find again. One that is
+				missing is 0	*/
 			$given = is_array( $raw['knobs'] ?? null ) === true ? $raw['knobs'] : [];
 
 			foreach( $given as $tab => $values ) {
@@ -436,13 +501,13 @@ namespace Nino\Modules\Design {
 				}
 
 				foreach( array_keys( is_array( $values ) === true ? $values : [] ) as $knob )
-					if( in_array( $knob, self::KNOBS[$tab], true ) === false )
+					if( isset( self::KNOBS[$tab][$knob] ) === false )
 						$notes[] = 'the tab "'. $tab. '" has no knob "'. self::shown( $knob ). '" - dropped';
 			}
 
-			foreach( self::KNOBS as $tab => $names )
-				foreach( $names as $knob )
-					$setup['knobs'][$tab][$knob] = self::position( is_array( $given[$tab] ?? null ) === true ? ( $given[$tab][$knob] ?? 0 ) : 0 );
+			foreach( self::KNOBS as $tab => $kinds )
+				foreach( $kinds as $knob => $kind )
+					$setup['knobs'][$tab][$knob] = self::position( is_array( $given[$tab] ?? null ) === true ? ( $given[$tab][$knob] ?? 0 ) : 0, $kind );
 
 			/*	The five font roles. A family has to be one the role's select offers -
 				the code is given the monospace ones only - and a weight one of the three
@@ -487,14 +552,17 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	One knob position, as a number: -1, 0 or 1. Anything else - a word, an
-		 *	array, 2 - is the middle, which is the template as it is
+		 *	One position, as a number inside the range of its kind: -2 to 2 for a scale
+		 *	(the default kind - the root size and the width are scales as well), -1 to 1
+		 *	for a choice. Anything else - a word, an array, and a number past the ends -
+		 *	is the middle, which is the template as it is
 		 *
 		 *	@param		mixed			$value				Straight off the wire
+		 *	@param		string		$kind					'scale' or 'choice'
 		 *
 		 *	@return 	int
 		 */
-		public static function position( mixed $value ): int {
+		public static function position( mixed $value, string $kind = 'scale' ): int {
 
 			if( is_string( $value ) === true )
 				$value = is_numeric( $value ) === true ? (float) $value : null;
@@ -503,8 +571,9 @@ namespace Nino\Modules\Design {
 				return 0;
 
 			$position = (int) round( (float) $value );
+			$range = self::range( $kind );
 
-			return $position >= -1 && $position <= 1 ? $position : 0;
+			return $position >= -$range && $position <= $range ? $position : 0;
 		}
 
 		/**
@@ -518,7 +587,7 @@ namespace Nino\Modules\Design {
 		 *	@return 	string								One of STEPS
 		 */
 		public static function step( array $setup, string $tab, string $knob ): string {
-			return self::word( self::position( $setup['knobs'][$tab][$knob] ?? 0 ) );
+			return self::word( self::position( $setup['knobs'][$tab][$knob] ?? 0, self::kind( $tab, $knob ) ) );
 		}
 
 		/**
@@ -527,9 +596,9 @@ namespace Nino\Modules\Design {
 		 *	Read out of the stylesheet itself rather than out of a manifest
 		 *	beside it, the same bargain @name makes: a set is one file, and the
 		 *	person writing sets is going to write a lot of them. A set that
-		 *	declares --content-section-space--less / --default / --more answers to
-		 *	Section space; one that does not, does not, and the panel greys that
-		 *	knob out for it.
+		 *	declares --content-section-space--least / --less / --default / --more /
+		 *	--most answers to Section space; one that does not, does not, and the
+		 *	panel greys that knob out for it.
 		 *
 		 *	@param		string		$libraryDir		The feature's library
 		 *	@param		string		$part					A key of PARTS
@@ -538,21 +607,27 @@ namespace Nino\Modules\Design {
 		 *	@return 	array										Knob names, in KNOBS order
 		 */
 		public static function knobs( string $libraryDir, string $part, string $set ): array {
-			return array_keys( self::triples( $libraryDir, $part, $set ) );
+			return array_keys( self::ladders( $libraryDir, $part, $set ) );
 		}
 
 		/**
-		 *	The triples a set declares for each knob it answers to: the one named
+		 *	The ladders a set declares for each knob it answers to: the one named
 		 *	after the knob and, where it has them, those named after an aspect of
 		 *	it (see KNOB_TOKEN). What the compiler writes a selection line for.
+		 *
+		 *	A ladder is complete when it is declared under every word of its kind - the
+		 *	five of a scale, the three of a choice (see words()) - and a knob is
+		 *	published when its own ladder is and so is each of its aspects. A knob with
+		 *	less or more words than its kind has, or with an aspect that has, is not in
+		 *	the answer: the panel greys it out
 		 *
 		 *	@param		string		$libraryDir		The feature's library
 		 *	@param		string		$part					A key of PARTS
 		 *	@param		string		$set					A set name
 		 *
-		 *	@return 	array										knob => [ name, ... ], the knob's own first and the others as they are declared; a name is the triple without its step
+		 *	@return 	array										knob => [ name, ... ], the knob's own first and the others as they are declared; a name is the ladder without its step
 		 */
-		public static function triples( string $libraryDir, string $part, string $set ): array {
+		public static function ladders( string $libraryDir, string $part, string $set ): array {
 
 			$file = self::file( $libraryDir, $part, $set );
 
@@ -561,29 +636,56 @@ namespace Nino\Modules\Design {
 
 			$css = self::uncomment( (string) @file_get_contents( $file ) );
 
-			preg_match_all( '/--'. preg_quote( $part, '/' ). '-([a-z0-9]+(?:-[a-z0-9]+)*)--(?:less|default|more)\s*:/', $css, $found );
+			preg_match_all( '/--'. preg_quote( $part, '/' ). '-([a-z0-9]+(?:-[a-z0-9]+)*)--('. implode( '|', self::STEPS ). ')\s*:/', $css, $found, PREG_SET_ORDER );
 
-			$names = array_values( array_unique( $found[1] ) );
+			// The words each name is declared under - once each, however often a media query says it again
+			$declared = [];
+
+			foreach( $found as $hit )
+				$declared[ $hit[1] ][ $hit[2] ] = true;
+
 			$out = [];
 
-			foreach( self::KNOBS[$part] as $knob ) {
+			foreach( self::KNOBS[$part] as $knob => $kind ) {
 
-				if( in_array( $knob, $names, true ) === false )
+				if( self::complete( $declared[$knob] ?? [], $kind ) === false )
 					continue;
 
-				$out[$knob] = [ $knob ];
+				$names = [ $knob ];
+
+				foreach( array_keys( $declared ) as $name )
+					if( str_starts_with( $name, $knob. '-' ) === true )
+						$names[] = $name;
 
 				foreach( $names as $name )
-					if( str_starts_with( $name, $knob. '-' ) === true && in_array( $name, $out[$knob], true ) === false )
-						$out[$knob][] = $name;
+					if( self::complete( $declared[$name], $kind ) === false )
+						continue 2;
+
+				$out[$knob] = $names;
 			}
 
 			return $out;
 		}
 
 		/**
+		 *	Whether the words a name is declared under are those of a ladder of that
+		 *	kind: every one of them and no other
+		 *
+		 *	@param		array 		$declared			word => true
+		 *	@param		string		$kind					'scale' or 'choice'
+		 *
+		 *	@return 	bool
+		 */
+		private static function complete( array $declared, string $kind ): bool {
+
+			$words = self::words( $kind );
+
+			return count( $declared ) === count( $words ) && array_diff( $words, array_keys( $declared ) ) === [];
+		}
+
+		/**
 		 *	A stylesheet without its comments - shared with the compiler, which
-		 *	scans the same triples for the same reason
+		 *	scans the same ladders for the same reason
 		 *
 		 *	@param		string		$css
 		 *

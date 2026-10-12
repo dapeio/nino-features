@@ -150,7 +150,7 @@ namespace Nino\Modules\Design {
 				$catalogue = Setup::catalogue( $library, $part );
 
 				/*	Which knobs each template answers to - out of the stylesheet rather
-					than out of a list here, so declaring a triple is what publishes a
+					than out of a list here, so declaring a ladder is what publishes a
 					knob. For every template and not only the chosen one: choosing
 					another changes which rows of its tab are greyed out, and the
 					screen does that before anything is asked of the server. A frame has
@@ -174,14 +174,15 @@ namespace Nino\Modules\Design {
 
 			\Nino\Http::ok( $request, [
 				'parts' 	=> $parts,
-				// Where every knob stands, per tab, and which knobs a tab has: the
+				// Where every knob stands, per tab, and which knobs a tab has and of what
+				// kind - a scale of five positions or a choice of three, by name: the
 				// screen draws a row for each of them, and the parts above say which
-				// of the rows its template answers to
+				// of the rows its template answers to. The five words are the steps a
+				// choice is named by, and the size and the width are positions as well
 				'knobs' 	=> $setup['knobs'],
 				'tabs' 		=> Setup::KNOBS,
 				'steps' 	=> Setup::STEPS,
-				'size' 		=> (string) ( $setup['size'] ?? 'm' ),
-				'sizes' 	=> array_keys( Setup::SIZES ),
+				'size' 		=> (int) ( $setup['size'] ?? 0 ),
 				'width' 	=> (int) ( $setup['width'] ?? 0 ),
 				// The animation of the page, and what it can be: the effects and
 				// strengths and speeds of Nino.css's viewport animations
@@ -532,7 +533,7 @@ namespace Nino\Modules\Design {
 		private static function _selection( array $posted, string $library, array &$notes ): array {
 
 			$taken = [
-				'size' 		=> is_string( $posted['size'] ?? null ) === true ? $posted['size'] : '',
+				'size' 		=> $posted['size'] ?? 0,
 				'width' 	=> $posted['width'] ?? 0,
 			];
 
@@ -541,11 +542,11 @@ namespace Nino\Modules\Design {
 
 			$setup = Setup::normalize( $taken, $library, $notes );
 
-			foreach( Setup::KNOBS as $tab => $names ) {
+			foreach( Setup::KNOBS as $tab => $kinds ) {
 
 				$answered = Setup::knobs( $library, $tab, (string) ( $setup['parts'][$tab] ?? '' ) );
 
-				foreach( $names as $knob )
+				foreach( array_keys( $kinds ) as $knob )
 					if( in_array( $knob, $answered, true ) === false )
 						$setup['knobs'][$tab][$knob] = 0;
 			}

@@ -21,17 +21,23 @@
  */
 
 :root {
-	--components-scale--less: 		.875;
+	--components-scale--least: 		.703;
+	--components-scale--less: 		.816;
 	--components-scale--default: 	.9375;
-	--components-scale--more: 		1;
+	--components-scale--more: 		1.078;
+	--components-scale--most: 		1.2375;
 
-	--components-space--less: 		var(--space-1);
+	--components-space--least: 		calc( var(--space-2) * .4 );
+	--components-space--less: 		calc( var(--space-2) * .7 );
 	--components-space--default: 	var(--space-2);
-	--components-space--more: 		var(--space-3);
+	--components-space--more: 		calc( var(--space-2) * 1.5 );
+	--components-space--most: 		calc( var(--space-2) * 2.2 );
 
+	--components-corners--least: 	0rem;
 	--components-corners--less: 	var(--radius-small);
 	--components-corners--default: 	var(--radius);
 	--components-corners--more: 	var(--radius-large);
+	--components-corners--most: 	1rem;
 
 	--components-zebra--less: 		transparent;
 	--components-zebra--default: 	var(--color-section-alt-bg);

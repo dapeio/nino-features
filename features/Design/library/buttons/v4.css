@@ -3,54 +3,64 @@
  *	@name			Soft keys
  *	@description	A small radius, a light shadow and a press that actually moves. For interfaces more than for pages.
  *
- *	@knob	small		Size of a small button
- *	@knob	big			Size of a big button
+ *	@knob	size		Size of a button
+ *	@knob	spread		How far a small and a big button stand from it
  *	@knob	space		Space around the label
  *	@knob	corners		Corner radius
  *
  *	The one set here that answers :active, because a key that does not move
  *	under the finger is the thing people press twice. The shadow is what makes
- *	the movement visible, so the two are one decision.
+ *	the movement visible, so the two are one decision. A small key is the size
+ *	times 1 less the spread, .25 here, and a big one the size times 1 plus it.
  */
 
 :root {
-	--buttons-small--less: 		.65;
-	--buttons-small--default: 	.75;
-	--buttons-small--more: 		.85;
+	--buttons-size--least: 		.8;
+	--buttons-size--less: 		.9;
+	--buttons-size--default: 	1;
+	--buttons-size--more: 		1.12;
+	--buttons-size--most: 		1.25;
 
-	--buttons-big--less: 		1.15;
-	--buttons-big--default: 	1.25;
-	--buttons-big--more: 		1.4;
+	--buttons-spread--least: 	.08;
+	--buttons-spread--less: 	.17;
+	--buttons-spread--default: 	.25;
+	--buttons-spread--more: 	.33;
+	--buttons-spread--most: 	.42;
 
+	--buttons-space--least: 	calc( var(--space-1) * .5 );
 	--buttons-space--less: 		var(--space-1);
 	--buttons-space--default: 	var(--space-2);
 	--buttons-space--more: 		var(--space-3);
+	--buttons-space--most: 		var(--space-4);
 
+	--buttons-corners--least: 	0rem;
 	--buttons-corners--less: 	var(--radius-small);
 	--buttons-corners--default: var(--radius);
 	--buttons-corners--more: 	var(--radius-large);
+	--buttons-corners--most: 	1rem;
 }
 
 .nino-btn:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
-	padding: calc( var(--buttons-space) / 2 ) var(--buttons-space);
+	padding: calc( var(--buttons-space) / 2 * var(--buttons-size) ) calc( var(--buttons-space) * var(--buttons-size) );
 }
 .nino-btn {
-	border-radius: var(--buttons-corners);
+	font-size: calc( var(--font-button-size) * var(--buttons-size) );
+	border-radius: calc( var(--buttons-corners) * var(--buttons-size) );
 	box-shadow: 0 1px 2px var(--nino-default-shadow);
 }
 .nino-btn--small:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
-	padding: calc( var(--buttons-space) / 2 * var(--buttons-small) ) calc( var(--buttons-space) * var(--buttons-small) );
+	padding: calc( var(--buttons-space) / 2 * var(--buttons-size) * ( 1 - var(--buttons-spread) ) ) calc( var(--buttons-space) * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );
 }
 .nino-btn--small {
-	font-size: calc( var(--font-button-size) * var(--buttons-small) );
-	border-radius: calc( var(--buttons-corners) * var(--buttons-small) );
+	font-size: calc( var(--font-button-size) * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );
+	border-radius: calc( var(--buttons-corners) * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );
 }
 .nino-btn--big:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
-	padding: calc( var(--buttons-space) / 2 * var(--buttons-big) ) calc( var(--buttons-space) * var(--buttons-big) );
+	padding: calc( var(--buttons-space) / 2 * var(--buttons-size) * ( 1 + var(--buttons-spread) ) ) calc( var(--buttons-space) * var(--buttons-size) * ( 1 + var(--buttons-spread) ) );
 }
 .nino-btn--big {
-	font-size: calc( var(--font-button-size) * var(--buttons-big) );
-	border-radius: calc( var(--buttons-corners) * var(--buttons-big) );
+	font-size: calc( var(--font-button-size) * var(--buttons-size) * ( 1 + var(--buttons-spread) ) );
+	border-radius: calc( var(--buttons-corners) * var(--buttons-size) * ( 1 + var(--buttons-spread) ) );
 }
 
 .nino-btn:active {

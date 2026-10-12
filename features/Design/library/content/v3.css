@@ -19,58 +19,82 @@
  *	is clicked, switched off where the visitor asked for less motion. A card
  *	here has no line round it, hence no border knob.
  *
- *	The shadow is two triples: the one at rest, which Nino.css reads by the
+ *	The shadow is two ladders: the one at rest, which Nino.css reads by the
  *	name --shadow-card, and the one under the pointer, an aspect of the first.
- *	They move together.
+ *	They move together, and both are none at the two least positions.
  */
 
 :root {
-	--content-hero-title--less: 		.8;
+	--content-hero-title--least: 		.608;
+	--content-hero-title--less: 		.76;
 	--content-hero-title--default: 		.95;
-	--content-hero-title--more: 		1.14;
+	--content-hero-title--more: 		1.1875;
+	--content-hero-title--most: 		1.484;
 
-	--content-hero-text--less: 			.85;
+	--content-hero-text--least: 		.64;
+	--content-hero-text--less: 			.8;
 	--content-hero-text--default: 		1;
-	--content-hero-text--more: 			1.2;
+	--content-hero-text--more: 			1.25;
+	--content-hero-text--most: 			1.5625;
 
+	--content-quiet--least: 			.6;
 	--content-quiet--less: 				.75;
 	--content-quiet--default: 			.85;
-	--content-quiet--more: 				.95;
+	--content-quiet--more: 				.92;
+	--content-quiet--most: 				.97;
 
+	--content-loud--least: 				1.05;
 	--content-loud--less: 				1.1;
 	--content-loud--default: 			1.2;
 	--content-loud--more: 				1.35;
+	--content-loud--most: 				1.6;
 
+	--content-section-space--least: 	var(--space-1);
 	--content-section-space--less: 		var(--space-2);
 	--content-section-space--default: 	var(--space-3);
 	--content-section-space--more: 		var(--space-4);
+	--content-section-space--most: 		var(--space-5);
 
+	--content-card-space--least: 		var(--space-1);
 	--content-card-space--less: 		var(--space-2);
 	--content-card-space--default: 	var(--space-3);
 	--content-card-space--more: 		var(--space-4);
+	--content-card-space--most: 		var(--space-5);
 
+	--content-corners--least: 			0rem;
 	--content-corners--less: 			var(--radius-small);
 	--content-corners--default: 		var(--radius-large);
-	--content-corners--more: 			2rem;
+	--content-corners--more: 			1rem;
+	--content-corners--most: 			2rem;
 
+	/*	Soft cards lift off the page on a shadow: none up to the card as it is,
+		a second layer for the next, and a third, longer one for the last	*/
+	--content-shadow--least: 			none;
 	--content-shadow--less: 			none;
 	--content-shadow--default: 			0 .125rem .75rem var(--nino-default-shadow);
 	--content-shadow--more: 			0 .25rem 1.5rem var(--nino-default-shadow), 0 .0625rem .25rem var(--nino-default-shadow);
+	--content-shadow--most: 			0 .5rem 2.5rem var(--nino-default-shadow), 0 .25rem 1.5rem var(--nino-default-shadow), 0 .0625rem .25rem var(--nino-default-shadow);
 
+	--content-shadow-lift--least: 		none;
 	--content-shadow-lift--less: 		none;
 	--content-shadow-lift--default: 	0 .375rem 1.5rem var(--nino-default-shadow);
 	--content-shadow-lift--more: 		0 .75rem 2.5rem var(--nino-default-shadow), 0 .125rem .5rem var(--nino-default-shadow);
+	--content-shadow-lift--most: 		0 1.25rem 3.5rem var(--nino-default-shadow), 0 .375rem 1rem var(--nino-default-shadow), 0 .125rem .5rem var(--nino-default-shadow);
 }
 
 @media (min-width: 768px) {
 	:root {
-		--content-hero-title--less: 		.85;
+		--content-hero-title--least: 		.64;
+		--content-hero-title--less: 		.8;
 		--content-hero-title--default: 		1;
-		--content-hero-title--more: 		1.2;
+		--content-hero-title--more: 		1.25;
+		--content-hero-title--most: 		1.5625;
 
+		--content-section-space--least: 	var(--space-2);
 		--content-section-space--less: 		var(--space-3);
 		--content-section-space--default: 	var(--space-4);
 		--content-section-space--more: 		var(--space-5);
+		--content-section-space--most: 		var(--space-6);
 	}
 }
 

@@ -15,10 +15,10 @@
  *
  *	v1 is the starting point, not a design. Every value it declares is the
  *	framework's own, so a page under it looks as it does under Nino.css alone -
- *	and every one of them is a triple, so each knob has something to reach.
- *	The middle of a triple is Nino.css, the other two are one step to each
- *	side. Where Nino.css changes a number at 768px the triple does the same,
- *	in a media query of its own.
+ *	and every one of them is a ladder of five, so each knob has something to
+ *	reach. The middle of a ladder is Nino.css, the others are two steps to
+ *	each side. Where Nino.css changes a number at 768px the ladder does the
+ *	same, in a media query of its own.
  *
  *	Two rules for a set:
  *
@@ -31,76 +31,109 @@
  *	    sets the pair and the roles solved against it; a set never paints
  *	    one, and never compares one ground with another.
  *
- *	A value a knob should reach declares its three steps instead of one
- *	value, named after the tab and the knob (--content-section-space--less,
- *	--default, --more), and the rule reads the knob (var(--content-section-space)).
- *	The knobs of Nino.css itself - the factors of the hero and of the variants,
- *	the shadow of a card - need no rule: the set only points them at the
- *	triple. Copy this file to v2.css and start there.
+ *	A value a knob should reach declares its five steps instead of one
+ *	value, named after the tab and the knob (--content-section-space--least,
+ *	--less, --default, --more, --most), and the rule reads the knob
+ *	(var(--content-section-space)). The knobs of Nino.css itself - the factors
+ *	of the hero and of the variants, the shadow of a card - need no rule: the
+ *	set only points them at the ladder. Copy this file to v2.css and start there.
  */
 
 :root {
 	/*	The factors Nino.css multiplies the size of the title role and of the
 		subtitle role by, in a hero: 1.2 and 1.2, from 768px 1.25 and 10 / 9.
-		A step to either side is .85 and 1.2 times that	*/
-	--content-hero-title--less: 		1.02;
+		A step is the ratio 1.25 to either side of the middle, twice: times .64,
+		.8, 1, 1.25 and 1.5625	*/
+	--content-hero-title--least: 		.768;
+	--content-hero-title--less: 		.96;
 	--content-hero-title--default: 	1.2;
-	--content-hero-title--more: 		1.44;
+	--content-hero-title--more: 		1.5;
+	--content-hero-title--most: 		1.875;
 
-	--content-hero-text--less: 			1.02;
+	--content-hero-text--least: 		.768;
+	--content-hero-text--less: 			.96;
 	--content-hero-text--default: 	1.2;
-	--content-hero-text--more: 			1.44;
+	--content-hero-text--more: 			1.5;
+	--content-hero-text--most: 			1.875;
 
 	/*	How much smaller a --quiet variant is than the class it varies, and how
-		much larger a --loud one: .85 and 1.2	*/
+		much larger a --loud one: .85 and 1.2. The quiet ones stay under 1 and
+		the loud ones over it, whatever the position	*/
+	--content-quiet--least: 				.6;
 	--content-quiet--less: 					.75;
 	--content-quiet--default: 			.85;
-	--content-quiet--more: 					.95;
+	--content-quiet--more: 					.92;
+	--content-quiet--most: 					.97;
 
+	--content-loud--least: 					1.05;
 	--content-loud--less: 					1.1;
 	--content-loud--default: 				1.2;
 	--content-loud--more: 					1.35;
+	--content-loud--most: 					1.6;
 
 	/*	The space above and below what is in a section: --space-4, and --space-5
-		from 768px	*/
+		from 768px. Two steps of the scale to either side	*/
+	--content-section-space--least: 	var(--space-2);
 	--content-section-space--less: 		var(--space-3);
 	--content-section-space--default: var(--space-4);
 	--content-section-space--more: 		var(--space-5);
+	--content-section-space--most: 		var(--space-6);
 
 	/*	Twice the padding of a card's content, and the space under its title,
-		subtitle and description. The picture above them has half of it	*/
+		subtitle and description. The picture above them has half of it. The
+		scale ends below --space-1, so the least is half of that	*/
+	--content-card-space--least: 		calc( var(--space-1) * .5 );
 	--content-card-space--less: 		var(--space-1);
 	--content-card-space--default: var(--space-2);
 	--content-card-space--more: 		var(--space-3);
+	--content-card-space--most: 		var(--space-4);
 
+	/*	The kernel's radii are .1rem, .2rem and .4rem. Between 0 and .1rem there
+		is nothing worth a position, so the sharp end is a plateau: the two least
+		are square. The ends are well apart, a corner and a curve	*/
+	--content-corners--least: 				0rem;
 	--content-corners--less: 					0rem;
 	--content-corners--default: 			var(--radius-small);
 	--content-corners--more: 					var(--radius-large);
+	--content-corners--most: 					1rem;
 
-	/*	The line round a card that names a ground - a plain card has none	*/
-	--content-border--less: 					0px;
+	/*	The line round a card that names a ground - a plain card has none. The
+		half pixel is a hairline where the screen can draw one, and a line of
+		1px where it cannot	*/
+	--content-border--least: 					0px;
+	--content-border--less: 					.5px;
 	--content-border--default: 				1px;
 	--content-border--more: 					2px;
+	--content-border--most: 					3px;
 
-	/*	A card casts none until a design layer gives it one	*/
+	/*	A card casts none until a design layer gives it one: none up to the middle,
+		then the shadow of a card that is lifted, and one that is lifted high	*/
+	--content-shadow--least: 					none;
 	--content-shadow--less: 					none;
 	--content-shadow--default: 				none;
 	--content-shadow--more: 					0 .125rem .75rem var(--nino-default-shadow);
+	--content-shadow--most: 					0 .25rem 1.5rem var(--nino-default-shadow), 0 .0625rem .25rem var(--nino-default-shadow);
 }
 
 @media (min-width: 768px) {
 	:root {
-		--content-hero-title--less: 		1.0625;
+		--content-hero-title--least: 		.8;
+		--content-hero-title--less: 		1;
 		--content-hero-title--default: 	1.25;
-		--content-hero-title--more: 		1.5;
+		--content-hero-title--more: 		1.5625;
+		--content-hero-title--most: 		1.953;
 
-		--content-hero-text--less: 			calc(.85 * 10 / 9);
+		--content-hero-text--least: 		calc(.64 * 10 / 9);
+		--content-hero-text--less: 			calc(.8 * 10 / 9);
 		--content-hero-text--default: 	calc(10 / 9);
-		--content-hero-text--more: 			calc(1.2 * 10 / 9);
+		--content-hero-text--more: 			calc(1.25 * 10 / 9);
+		--content-hero-text--most: 			calc(1.5625 * 10 / 9);
 
+		--content-section-space--least: 	var(--space-3);
 		--content-section-space--less: 		var(--space-4);
 		--content-section-space--default: var(--space-5);
 		--content-section-space--more: 		var(--space-6);
+		--content-section-space--most: 		calc( var(--space-6) * 1.25 );
 	}
 }
 

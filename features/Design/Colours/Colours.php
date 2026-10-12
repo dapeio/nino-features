@@ -91,26 +91,24 @@ namespace Nino\Modules\Design {
 			'success', 'warning', 'danger',
 		];
 
-		/*	A scale is a step from 1 to 3, and step 2 is the framework
-			itself: with every knob at its default - 2 for each scale - the
+		/*	A scale is a step from 1 to 5, and step 3 is the framework
+			itself: with every knob at its default - 3 for each scale - the
 			generated stylesheet reproduces Nino.css's own values exactly.
 			That is what makes the layer adoptable - turning it on must not
 			move a project that has not asked for anything - and it is why the
-			tables below are anchored on 2 rather than on their midpoint by
+			tables below are anchored on 3 rather than on their midpoint by
 			accident.
 
-			Three rather than five because the in-between positions were not
-			decisions anybody made. A setting that reads "less, as it is, more"
-			is one an operator can hold in their head; asking them to choose
-			between "Restrained" and "Even" is asking them to have an opinion
-			they do not have. Where a knob replaces one that shipped with three
-			named values, the three positions are those exact values - so a
-			theme drawn against the old vocabulary looks identical under the new.
+			Five rather than three because three left no place between the
+			framework and the end of a knob: a step is a nudge or a leap. The ends,
+			1 and 5, are the outer positions the knobs had when they had three - where
+			they reach furthest - and 2 and 4 stand between them and the framework.
 
 			Numbers rather than names because these are positions on a scale,
 			not a vocabulary: "airy" invites the question what lies past it,
-			where 3 of 3 does not. The name each position carries is a label
-			for the operator, published in KNOBS, never a stored value.
+			where 5 of 5 does not. The panel shows a position as its distance from
+			the middle, -2 to +2, and says in a note under the name of the knob
+			which way it goes; a scale publishes how many positions it has, no names.
 
 			Not every decision is a scale, though. Harmony and Temperature are
 			choices: a named list of alternatives with no more and no less
@@ -122,56 +120,66 @@ namespace Nino\Modules\Design {
 			positions as it has names for.	*/
 
 		/*	Which generation of the tables below a compiled sheet came out of.
-			The positions 1 and 3 of Saturation, Contrast and Depth moved
-			further out in the release after 0.1.0 while 2 stayed exactly
-			where the framework is, so a project with those three knobs at 2
-			compiles to the same bytes it did and a project with one of them
+			The framework's own is the middle position of Saturation, Contrast
+			and Depth and does not move, so a project with those three knobs
+			there compiles to the same bytes it did and a project with one of them
 			elsewhere does not. That is the whole reason Design::fingerprint()
 			carries this number for the latter only: they read "saved, not
 			applied" once and apply again, and the others are not asked to.
 			Raise it whenever a table changes the sheet a non-default knob
 			produces. 2: the shadow of a surface stopped following Depth, so a
-			project with Depth off 2 compiles another density than it did. */
-		public const int REVISION = 2;
+			project with Depth off the middle compiles another density than it
+			did. 3: the three knobs have five positions, the framework's own is
+			the third, and the second and the fourth are new values. */
+		public const int REVISION = 3;
 
-		/*	The knobs: where each starts and what its positions are called. The
+		/*	The knobs: what each is, where it starts and what its positions are. The
 			panel draws whatever choices() hands it, so a knob added here needs no
 			line in the panel's script - but it does need its words, which are text
 			keys and not strings here: '/_admin/design/colour/<knob>/label',
-			'/note', and one per position, in every locale under text/.
+			'/note', and for a choice one per position, in every locale under text/.
 			tests/design-smoke.php checks that a published knob has all of them.
+
+			A scale ('kind') has a number of 'steps' and the panel numbers them; a
+			choice has the names of its alternatives, and the count of those is its
+			count.
 
 			This list used to carry a 'label', a 'note' and a long 'hint' as
 			well, none of which anything ever drew - and they had drifted from
 			what the panel shows: 'harmony' read "Harmony" here while the screen
-			said "Second colour". The position names stay, because they are the
+			said "Second colour". The names of a choice stay, because they are the
 			count as well as the last fallback the panel has if a key is
 			missing.	*/
 		private const array KNOBS = [
 
 			'harmony' => [
+				'kind'		=> 'choice',
 				'default'	=> 1,
 				'steps'		=> [ 'Monochrome', 'Analogous', 'Triadic', 'Complementary' ],
 			],
 
 			'temperature' => [
+				'kind'		=> 'choice',
 				'default'	=> 3,
 				'steps'		=> [ 'Neutral', 'Cool', 'Brand', 'Warm' ],
 			],
 
 			'saturation' => [
-				'default'	=> 2,
-				'steps'		=> [ 'Muted', 'Default', 'Rich' ],
+				'kind'		=> 'scale',
+				'default'	=> 3,
+				'steps'		=> 5,
 			],
 
 			'contrast' => [
-				'default'	=> 2,
-				'steps'		=> [ 'Soft', 'Default', 'Strong' ],
+				'kind'		=> 'scale',
+				'default'	=> 3,
+				'steps'		=> 5,
 			],
 
 			'depth' => [
-				'default'	=> 2,
-				'steps'		=> [ 'Flat', 'Default', 'Raised' ],
+				'kind'		=> 'scale',
+				'default'	=> 3,
+				'steps'		=> 5,
 			],
 
 		];
@@ -205,35 +213,37 @@ namespace Nino\Modules\Design {
 			target - solving it would put grey body copy on white at exactly
 			4.5:1, legal and visibly washed out - so it is a lightness, and
 			that lightness is what a reader actually feels. At 1 the dark ink
-			is a soft near-black - about 10:1 on white - and at 3 it is black.
+			is a soft near-black - about 10:1 on white - and at 5 it is black.
 
-			The outer positions are far apart on purpose: Soft has to be
-			visibly softer than Default and Strong visibly harder, and a step
-			of a few hundredths of lightness was neither. Only 1 and 3 move,
-			because 2 is pinned to the framework's own palette (see the check
-			against base.css in tests/design-smoke.php).	*/
-		private const array INK_DARK	= [ 1 => 0.38, 2 => 0.16, 3 => 0.0 ];
-		private const array INK_LIGHT	= [ 1 => 0.80, 2 => 0.99, 3 => 1.00 ];
+			The outer positions are far apart on purpose: the softest has to be
+			visibly softer than the framework and the strongest visibly harder, and a
+			step of a few hundredths of lightness was neither. Only 1, 2, 4 and 5
+			move, because 3 is pinned to the framework's own palette (see the check
+			against base.css in tests/design-smoke.php); 2 and 4 stand between it and
+			the ends.	*/
+		private const array INK_DARK	= [ 1 => 0.38, 2 => 0.27, 3 => 0.16, 4 => 0.08, 5 => 0.0 ];
+		private const array INK_LIGHT	= [ 1 => 0.80, 2 => 0.90, 3 => 0.99, 4 => 1.00, 5 => 1.00 ];
 
 		/*	Solved values - links, and the lightness a brand surface is moved to
-			so text survives on it. Never below AA, and 10:1 at Strong, which
-			is what the position says: text that reads harder than AAA asks.
-			On a brand colour that is more than most of them can give, so at
-			Strong most brands are reported as not safe (see brand()) and the
-			solved -safe roles carry the text instead.	*/
-		private const array TARGET_TEXT	= [ 1 => 4.5, 2 => 4.5, 3 => 10.0 ];
+			so text survives on it. Never below AA, and 10:1 at the strongest, which
+			is what the position says: text that reads harder than AAA asks. The
+			softest three are all the floor - 4.5:1 is what the framework asks - and
+			the fourth is halfway to AAA. On a brand colour that is more than most of
+			them can give, so at the strongest positions most brands are reported as
+			not safe (see brand()) and the solved -safe roles carry the text instead.	*/
+		private const array TARGET_TEXT	= [ 1 => 4.5, 2 => 4.5, 3 => 4.5, 4 => 7.0, 5 => 10.0 ];
 
 		// The secondary text tier is text. It used to be allowed down to 3.0,
 		// which only passes for large type - a muted paragraph is not large
 		// type, so the floor is the same 4.5 the body gets.
-		private const array TARGET_MUTED = [ 1 => 4.5, 2 => 4.5, 3 => 9.0 ];
+		private const array TARGET_MUTED = [ 1 => 4.5, 2 => 4.5, 3 => 4.5, 4 => 6.5, 5 => 9.0 ];
 
 		/*	What the scrim over a cover photograph has to carry its ink to. Its
 			own table rather than TARGET_TEXT: the scrim is bisected for the
 			quieter ink on a white frame, so a 10:1 target there would take
 			a photograph from 80% dark to about 91% - almost black - for
 			a headline that is already well above AAA at 7:1.	*/
-		private const array TARGET_SCRIM = [ 1 => 4.5, 2 => 4.5, 3 => 7.0 ];
+		private const array TARGET_SCRIM = [ 1 => 4.5, 2 => 4.5, 3 => 4.5, 4 => 5.5, 5 => 7.0 ];
 
 		// UI parts - WCAG 2.2 SC 1.4.11 asks 3:1 for them, and holding those
 		// to the text target makes every border a heavy line. The focus ring
@@ -243,24 +253,24 @@ namespace Nino\Modules\Design {
 		/*	Saturation scales chroma only. Lightness stays with Contrast, or
 			the two knobs fight over the same axis and neither is predictable.
 
-			Rich is limited by the sRGB gamut rather than by this number: a
-			surface solved to 4.5:1 against its ink has little room for
-			chroma, so going from 1.5 to 2.2 moves the average brand-safe
+			The richest position is limited by the sRGB gamut rather than by this
+			number: a surface solved to 4.5:1 against its ink has little room for
+			chroma, so going from 1.6 to 2.2 moves the average brand-safe
 			chroma only a little, and what widens is the links, the focus
-			ring and the tint of the greys. Muted is where the knob reaches
+			ring and the tint of the greys. The mutest is where the knob reaches
 			furthest, and it is the position that was too timid before.
 
 			It reaches the neutral surfaces now. Scaling only the brand left
 			the knob invisible on everything a page is actually made of: the
 			page ground, the alternate band, the borders and the links came out
 			byte-identical at all three of its old positions.	*/
-		private const array CHROMA = [ 1 => 0.15, 2 => 1.00, 3 => 2.20 ];
+		private const array CHROMA = [ 1 => 0.15, 2 => 0.5, 3 => 1.00, 4 => 1.6, 5 => 2.20 ];
 
 		// A link carries more chroma than the body text it sits in - that is
 		// what marks it as a link beyond the underline - so it has a floor of
 		// its own rather than inheriting the surface's near-grey
-		private const array LINK_C	= [ 1 => 0.03, 2 => 0.10, 3 => 0.22 ];
-		private const array FOCUS_C	= [ 1 => 0.06, 2 => 0.12, 3 => 0.22 ];
+		private const array LINK_C	= [ 1 => 0.03, 2 => 0.06, 3 => 0.10, 4 => 0.16, 5 => 0.22 ];
+		private const array FOCUS_C	= [ 1 => 0.06, 2 => 0.09, 3 => 0.12, 4 => 0.17, 5 => 0.22 ];
 
 		// How far the brand hue may tint a grey before it stops reading as a
 		// grey. Scaled by Saturation, so the knob is visible on the page ground
@@ -322,16 +332,18 @@ namespace Nino\Modules\Design {
 			Flat keeps a trace of the band (0.008 is about 1.02:1 against the
 			page) and no more: with none at all the alternate sections
 			disappear into the page, which is a different design rather than a
-			flatter one. Raised asks 7:1 of a border, and that is reached on
+			flatter one. The most raised asks 7:1 of a border, and that is reached on
 			the neutral grounds only - default, alt, tint, dark and black. A
 			brand, accent or status surface is solved to about 4.5:1 against
 			its ink and has no room left for a line at 7:1, so there the
-			border stops near 4.6:1 however high the target is set.	*/
+			border stops near 4.6:1 however high the target is set. The border
+			stays at the floor for the first three positions: it is the band that
+			moves them.	*/
 		private const array DEPTH_ALT = [
-			'light'	=> [ 1 => 0.008, 2 => 0.035, 3 => 0.11 ],
-			'dark'	=> [ 1 => 0.008, 2 => 0.045, 3 => 0.13 ],
+			'light'	=> [ 1 => 0.008, 2 => 0.02, 3 => 0.035, 4 => 0.07, 5 => 0.11 ],
+			'dark'	=> [ 1 => 0.008, 2 => 0.025, 3 => 0.045, 4 => 0.085, 5 => 0.13 ],
 		];
-		private const array DEPTH_BORDER = [ 1 => 3.0, 2 => 3.0, 3 => 7.0 ];
+		private const array DEPTH_BORDER = [ 1 => 3.0, 2 => 3.0, 3 => 3.0, 4 => 5.0, 5 => 7.0 ];
 
 		/*	Shadows are why a light-mode design collapses in dark mode: black at
 			12% over a dark surface is invisible, so the dark palette casts denser
@@ -367,35 +379,39 @@ namespace Nino\Modules\Design {
 		/**
 		 *	The vocabulary a UI renders its controls from, so the frontend
 		 *	never carries a second copy of these lists. Every knob is the same
-		 *	shape - a name per position and the position it starts on - which
+		 *	shape - its kind, the position it starts on and its steps - which
 		 *	is what lets one control render all of them however many positions
 		 *	they have.
 		 *
-		 *	How many that is comes from the names rather than from a constant:
-		 *	a scale has three and a choice has as many alternatives as it has,
-		 *	and a knob that publishes four names and three positions would be a
-		 *	knob with a name nobody can pick.
+		 *	How many that is comes from the steps rather than from a constant:
+		 *	a scale publishes the number of its positions, five, a choice the
+		 *	names of its alternatives, and a knob that publishes four names and
+		 *	three positions would be a knob with a name nobody can pick.
 		 *
 		 *	The mode is the last of them, and the one whose positions are words:
 		 *	its names are the values the setup keeps, and its default is one of
 		 *	them rather than a number.
 		 *
-		 *	@return 	array									knob => { default, steps }
+		 *	@return 	array									knob => { kind, default, steps }
 		 */
 		public static function choices(): array {
 
-			return self::KNOBS + [ 'mode' => [ 'default' => self::MODES[0], 'steps' => self::MODES ] ];
+			return self::KNOBS + [ 'mode' => [ 'kind' => 'choice', 'default' => self::MODES[0], 'steps' => self::MODES ] ];
 		}
 
 		/**
-		 *	How many positions one knob has.
+		 *	How many positions one knob has: its steps counted, whether they are
+		 *	a number or a list of names.
 		 *
 		 *	@param		string		$knob					Knob key
 		 *
 		 *	@return 	int
 		 */
 		private static function positions( string $knob ): int {
-			return count( self::KNOBS[$knob]['steps'] );
+
+			$steps = self::KNOBS[$knob]['steps'];
+
+			return is_int( $steps ) === true ? $steps : count( $steps );
 		}
 
 		/**
@@ -829,9 +845,9 @@ namespace Nino\Modules\Design {
 		 *	is as light as it will ever get, so an alpha that carries the ink
 		 *	there carries it over any picture. The alpha is bisected rather
 		 *	than tabled because what it has to clear moves with Contrast (its own
-		 *	table, TARGET_SCRIM, which holds Strong at 7:1 rather than the 10:1
-		 *	the text asks), with the mode, and with how deep this design's own
-		 *	black sits.
+		 *	table, TARGET_SCRIM, which holds the strongest position at 7:1 rather
+		 *	than the 10:1 the text asks), with the mode, and with how deep this
+		 *	design's own black sits.
 		 *
 		 *	Tinted rather than pure black: it is this design's deepest surface
 		 *	at an alpha, so a warm page dims warm and a cool one cool, and the

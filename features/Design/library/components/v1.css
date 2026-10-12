@@ -12,9 +12,9 @@
  *
  *	v1 is the starting point, not a design. Every value it declares is the
  *	framework's own, so a form, a table or a block under it looks as it does
- *	under Nino.css alone - and every one of them is a triple, so each knob has
- *	something to reach: the middle of a triple is Nino.css, the other two
- *	are one step to each side.
+ *	under Nino.css alone - and every one of them is a ladder, so each knob has
+ *	something to reach: the five values of a scale, the middle of them Nino.css
+ *	and the others two steps to each side, or the three of a choice.
  *
  *	Two rules for a set:
  *
@@ -26,11 +26,13 @@
  *
  *	A knob that is more than one value - the stripes of a table are a
  *	background and a colour of text, the place of a label is a layout and a
- *	lift - declares one more triple for each, named after the knob and an
- *	aspect of it (--components-zebra-ink--less ...). They move together: the
- *	compiler selects every triple of a knob where it stands. An aspect at its
- *	middle step names the value the property has anyway, so a rule that reads
- *	it changes nothing there.
+ *	lift - declares one more ladder for each, named after the knob and an
+ *	aspect of it (--components-zebra-ink--less ...), as long as the knob's own.
+ *	They move together: the compiler selects every ladder of a knob where it
+ *	stands. An aspect at its middle step names the value the property has
+ *	anyway, so a rule that reads it changes nothing there. The stripes and the
+ *	label are a choice of three, declared under less, default and more; the
+ *	rest are scales of five.
  *
  *	The spacing classes of Nino.css (nino-p-2, nino-mb-3 ...) come last in its
  *	stylesheet so that they win. A rule of a design layer would beat them, so
@@ -41,24 +43,36 @@
 :root {
 	/*	The type size of a field is 1rem and of a table is the size of the text
 		around it, times this	*/
-	--components-scale--less: 		.875;
+	--components-scale--least: 		.75;
+	--components-scale--less: 		.87;
 	--components-scale--default: 	1;
-	--components-scale--more: 		1.125;
+	--components-scale--more: 		1.15;
+	--components-scale--most: 		1.32;
 
 	/*	Half the padding of a cell, the padding of a field and the space under
-		it, and a quarter of the padding of a block	*/
-	--components-space--less: 		calc( var(--space-1) * .6 );
+		it, and a quarter of the padding of a block. A field's space is finer than
+		a card's, so the steps are fractions of the middle and not steps of the scale	*/
+	--components-space--least: 		calc( var(--space-1) * .4 );
+	--components-space--less: 		calc( var(--space-1) * .7 );
 	--components-space--default: 	var(--space-1);
-	--components-space--more: 		var(--space-2);
+	--components-space--more: 		calc( var(--space-1) * 1.5 );
+	--components-space--most: 		calc( var(--space-1) * 2.2 );
 
-	/*	The radius of a field. A badge, an alert and a block are twice it	*/
+	/*	The radius of a field. A badge, an alert and a block are twice it. Nothing
+		between square and .1rem is worth a position, so the sharp end is a plateau
+		- the two least are square	*/
+	--components-corners--least: 	0rem;
 	--components-corners--less: 	0rem;
 	--components-corners--default: 	var(--radius-small);
 	--components-corners--more: 	var(--radius-large);
+	--components-corners--most: 	1rem;
 
-	--components-border--less: 		0px;
+	/*	The half pixel is a hairline where the screen can draw one, and 1px where it cannot	*/
+	--components-border--least: 	0px;
+	--components-border--less: 		.5px;
 	--components-border--default: 	1px;
 	--components-border--more: 		2px;
+	--components-border--most: 		3px;
 
 	/*	The even rows of a table that has the class: none, the second ground of
 		the page, or that with a line over it. The text on them is the ink of

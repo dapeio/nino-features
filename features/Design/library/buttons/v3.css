@@ -3,49 +3,59 @@
  *	@name			Square
  *	@description	No radius, spaced letters and a heavier border. For sites that want to look built rather than designed.
  *
- *	@knob	small		Size of a small button
- *	@knob	big			Size of a big button
+ *	@knob	size		Size of a button
+ *	@knob	spread		How far a small and a big button stand from it
  *	@knob	space		Space around the label
  *
  *	No corners knob on purpose: the square corner is the decision this set
  *	is, and a knob that could round it away would be a knob that turns it
  *	into another set. The panel greys it and says why. What is left to move
- *	is the size of the variants and the room around the label.
+ *	is the size of the button, how far the variants stand from it and the room
+ *	around the label. A small button is the size times 1 less the spread, .25
+ *	here; a big one times 1 plus 1.2 times the spread, which is the 1.3 it has
+ *	always been.
  */
 
 :root {
-	--buttons-small--less: 		.65;
-	--buttons-small--default: 	.75;
-	--buttons-small--more: 		.85;
+	--buttons-size--least: 		.8;
+	--buttons-size--less: 		.9;
+	--buttons-size--default: 	1;
+	--buttons-size--more: 		1.12;
+	--buttons-size--most: 		1.25;
 
-	--buttons-big--less: 		1.15;
-	--buttons-big--default: 	1.3;
-	--buttons-big--more: 		1.45;
+	--buttons-spread--least: 	.08;
+	--buttons-spread--less: 	.17;
+	--buttons-spread--default: 	.25;
+	--buttons-spread--more: 	.33;
+	--buttons-spread--most: 	.42;
 
+	--buttons-space--least: 	calc( var(--space-1) * .5 );
 	--buttons-space--less: 		var(--space-1);
 	--buttons-space--default: 	var(--space-2);
 	--buttons-space--more: 		var(--space-3);
+	--buttons-space--most: 		var(--space-4);
 }
 
 .nino-btn:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
-	padding: calc( var(--buttons-space) / 1.8 ) var(--buttons-space);
+	padding: calc( var(--buttons-space) / 1.8 * var(--buttons-size) ) calc( var(--buttons-space) * var(--buttons-size) );
 }
 .nino-btn {
+	font-size: calc( var(--font-button-size) * var(--buttons-size) );
 	border-radius: 0;
 	letter-spacing: .08em;
 	line-height: 1.3;
 }
 .nino-btn--small:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
-	padding: calc( var(--buttons-space) / 1.8 * var(--buttons-small) ) calc( var(--buttons-space) * var(--buttons-small) );
+	padding: calc( var(--buttons-space) / 1.8 * var(--buttons-size) * ( 1 - var(--buttons-spread) ) ) calc( var(--buttons-space) * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );
 }
 .nino-btn--small {
-	font-size: calc( var(--font-button-size) * var(--buttons-small) );
+	font-size: calc( var(--font-button-size) * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );
 }
 .nino-btn--big:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
-	padding: calc( var(--buttons-space) / 1.8 * var(--buttons-big) ) calc( var(--buttons-space) * var(--buttons-big) );
+	padding: calc( var(--buttons-space) / 1.8 * var(--buttons-size) * ( 1 + var(--buttons-spread) * 1.2 ) ) calc( var(--buttons-space) * var(--buttons-size) * ( 1 + var(--buttons-spread) * 1.2 ) );
 }
 .nino-btn--big {
-	font-size: calc( var(--font-button-size) * var(--buttons-big) );
+	font-size: calc( var(--font-button-size) * var(--buttons-size) * ( 1 + var(--buttons-spread) * 1.2 ) );
 }
 
 .nino-btn--light,

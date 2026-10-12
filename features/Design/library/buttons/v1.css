@@ -3,16 +3,16 @@
  *	@name			Nino
  *	@description	The framework as it is, with its own values on every knob. Every .nino-btn variant, and the link that looks like one.
  *
- *	@knob	small		Size of a small button
- *	@knob	big			Size of a big button
+ *	@knob	size		Size of a button
+ *	@knob	spread		How far a small and a big button stand from it
  *	@knob	space		Space around the label
  *	@knob	corners		Corner radius
  *
  *	v1 is the starting point, not a design. Every value it declares is the
  *	framework's own, so a button under it looks as it does under Nino.css
- *	alone, and every one of them is a triple, so each knob has something to
- *	reach: the middle of a triple is Nino.css, the other two are one step to
- *	each side.
+ *	alone, and every one of them is a ladder of five, so each knob has
+ *	something to reach: the middle of a ladder is Nino.css, the others are
+ *	two steps to each side.
  *
  *	Two rules for a set:
  *
@@ -23,52 +23,64 @@
  *	    tab (--font-button-*), and a set that wrote its own would contradict
  *	    the panel.
  *
- *	The variants are the size of the button times a number, in Nino.css as
- *	here: the padding, the type and the radius of a small button are the
- *	button's own times the small knob. Copy this file to v2.css and start
- *	there.
+ *	The size is what the padding, the type and the radius of a button are
+ *	multiplied by. The variants are that size times a number, in Nino.css as
+ *	here: a small button is the size times 1 less the spread, a big one the
+ *	size times 1 plus it. Copy this file to v2.css and start there.
  */
 
 :root {
-	/*	The number a small and a big button are scaled by: .7 and 1.3	*/
-	--buttons-small--less: 		.6;
-	--buttons-small--default: .7;
-	--buttons-small--more: 		.8;
+	/*	What a button is multiplied by: 1 is Nino.css as it is	*/
+	--buttons-size--least: 		.8;
+	--buttons-size--less: 		.9;
+	--buttons-size--default: 	1;
+	--buttons-size--more: 		1.12;
+	--buttons-size--most: 		1.25;
 
-	--buttons-big--less: 			1.15;
-	--buttons-big--default: 	1.3;
-	--buttons-big--more: 			1.5;
+	/*	How far the variants stand from the size, as a part of it: .3 is the
+		.7 of a small button and the 1.3 of a big one	*/
+	--buttons-spread--least: 		.1;
+	--buttons-spread--less: 		.2;
+	--buttons-spread--default: 	.3;
+	--buttons-spread--more: 		.4;
+	--buttons-spread--most: 		.5;
 
-	/*	Twice the padding above and below the label, and the padding beside it	*/
-	--buttons-space--less: 		var(--space-1);
+	/*	Twice the padding above and below the label, and the padding beside it.
+		The scale ends below --space-1, so the least is half of that	*/
+	--buttons-space--least: 		calc( var(--space-1) * .5 );
+	--buttons-space--less: 			var(--space-1);
 	--buttons-space--default: var(--space-2);
-	--buttons-space--more: 		var(--space-3);
+	--buttons-space--more: 			var(--space-3);
+	--buttons-space--most: 			var(--space-4);
 
 	/*	A pill is no large number but a radius past half the height, where it stops growing	*/
-	--buttons-corners--less: 		0rem;
+	--buttons-corners--least: 		0rem;
+	--buttons-corners--less: 		var(--radius-small);
 	--buttons-corners--default: var(--radius);
-	--buttons-corners--more: 		999rem;
+	--buttons-corners--more: 		var(--radius-large);
+	--buttons-corners--most: 		999rem;
 }
 
 /*	Not where the button names a padding of its own: the spacing classes of
 	Nino.css come last in its stylesheet so that they win	*/
 .nino-btn:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
-	padding: calc( var(--buttons-space) / 2 ) var(--buttons-space);
+	padding: calc( var(--buttons-space) / 2 * var(--buttons-size) ) calc( var(--buttons-space) * var(--buttons-size) );
 }
 .nino-btn {
-	border-radius: var(--buttons-corners);
+	font-size: calc( var(--font-button-size) * var(--buttons-size) );
+	border-radius: calc( var(--buttons-corners) * var(--buttons-size) );
 }
 .nino-btn--small:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
-	padding: calc( var(--buttons-space) / 2 * var(--buttons-small) ) calc( var(--buttons-space) * var(--buttons-small) );
+	padding: calc( var(--buttons-space) / 2 * var(--buttons-size) * ( 1 - var(--buttons-spread) ) ) calc( var(--buttons-space) * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );
 }
 .nino-btn--small {
-	font-size: calc( var(--font-button-size) * var(--buttons-small) );
-	border-radius: calc( var(--buttons-corners) * var(--buttons-small) );
+	font-size: calc( var(--font-button-size) * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );
+	border-radius: calc( var(--buttons-corners) * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );
 }
 .nino-btn--big:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
-	padding: calc( var(--buttons-space) / 2 * var(--buttons-big) ) calc( var(--buttons-space) * var(--buttons-big) );
+	padding: calc( var(--buttons-space) / 2 * var(--buttons-size) * ( 1 + var(--buttons-spread) ) ) calc( var(--buttons-space) * var(--buttons-size) * ( 1 + var(--buttons-spread) ) );
 }
 .nino-btn--big {
-	font-size: calc( var(--font-button-size) * var(--buttons-big) );
-	border-radius: calc( var(--buttons-corners) * var(--buttons-big) );
+	font-size: calc( var(--font-button-size) * var(--buttons-size) * ( 1 + var(--buttons-spread) ) );
+	border-radius: calc( var(--buttons-corners) * var(--buttons-size) * ( 1 + var(--buttons-spread) ) );
 }

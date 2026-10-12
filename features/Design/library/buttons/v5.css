@@ -3,56 +3,70 @@
  *	@name			Compact
  *	@description	Small, tight and quiet, so a page can carry a lot of them without looking like a control panel.
  *
- *	@knob	small		Size of a small button
- *	@knob	big			Size of a big button
+ *	@knob	size		Size of a button
+ *	@knob	spread		How far a small and a big button stand from it
  *	@knob	space		Space around the label
  *	@knob	corners		Corner radius
  *
  *	For pages where a button is an option rather than the point: filter rows,
  *	tables with an action per line, a form with three ways out. Everything is a
  *	step down from the framework's own, and the outline variant keeps a hairline
- *	so a row of them reads as a row rather than as a fence.
+ *	so a row of them reads as a row rather than as a fence. A small button is
+ *	the size times 1 less the spread, .15 here; a big one times 1 plus 4 / 3 times
+ *	the spread, which is the 1.2 it has always been. The size multiplies the type
+ *	and the padding and not the radius, which the variants do not scale either.
  */
 
 :root {
-	--buttons-small--less: 		.75;
-	--buttons-small--default: 	.85;
-	--buttons-small--more: 		.95;
+	--buttons-size--least: 		.8;
+	--buttons-size--less: 		.9;
+	--buttons-size--default: 	1;
+	--buttons-size--more: 		1.12;
+	--buttons-size--most: 		1.25;
 
-	--buttons-big--less: 		1.1;
-	--buttons-big--default: 	1.2;
-	--buttons-big--more: 		1.3;
+	--buttons-spread--least: 	.05;
+	--buttons-spread--less: 	.1;
+	--buttons-spread--default: 	.15;
+	--buttons-spread--more: 	.2;
+	--buttons-spread--most: 	.25;
 
-	--buttons-space--less: 		calc( var(--space-1) * .7 );
+	/*	The scale ends below --space-1, so what is under the middle is a half and
+		a quarter of it	*/
+	--buttons-space--least: 	calc( var(--space-1) * .25 );
+	--buttons-space--less: 		calc( var(--space-1) * .5 );
 	--buttons-space--default: 	var(--space-1);
 	--buttons-space--more: 		var(--space-2);
+	--buttons-space--most: 		var(--space-3);
 
+	/*	Nothing between square and .1rem is worth a position, so the sharp end is a plateau	*/
+	--buttons-corners--least: 	0rem;
 	--buttons-corners--less: 	0rem;
 	--buttons-corners--default: var(--radius-small);
 	--buttons-corners--more: 	var(--radius);
+	--buttons-corners--most: 	var(--radius-large);
 }
 
 .nino-btn:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
-	padding: calc( var(--buttons-space) / 2 ) var(--buttons-space);
+	padding: calc( var(--buttons-space) / 2 * var(--buttons-size) ) calc( var(--buttons-space) * var(--buttons-size) );
 }
 .nino-btn {
 	border-radius: var(--buttons-corners);
-	font-size: calc( var(--font-button-size) * .9 );
+	font-size: calc( var(--font-button-size) * .9 * var(--buttons-size) );
 	line-height: 1.4;
 }
 .nino-btn--small:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
-	padding: calc( var(--buttons-space) / 2 * var(--buttons-small) ) calc( var(--buttons-space) * var(--buttons-small) );
+	padding: calc( var(--buttons-space) / 2 * var(--buttons-size) * ( 1 - var(--buttons-spread) ) ) calc( var(--buttons-space) * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );
 }
 .nino-btn--small {
-	font-size: calc( var(--font-button-size) * .9 * var(--buttons-small) );
+	font-size: calc( var(--font-button-size) * .9 * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );
 	border-radius: var(--buttons-corners);
 	min-height: 0;
 }
 .nino-btn--big:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
-	padding: calc( var(--buttons-space) / 2 * var(--buttons-big) ) calc( var(--buttons-space) * var(--buttons-big) );
+	padding: calc( var(--buttons-space) / 2 * var(--buttons-size) * ( 1 + var(--buttons-spread) * 4 / 3 ) ) calc( var(--buttons-space) * var(--buttons-size) * ( 1 + var(--buttons-spread) * 4 / 3 ) );
 }
 .nino-btn--big {
-	font-size: calc( var(--font-button-size) * .9 * var(--buttons-big) );
+	font-size: calc( var(--font-button-size) * .9 * var(--buttons-size) * ( 1 + var(--buttons-spread) * 4 / 3 ) );
 	border-radius: var(--buttons-corners);
 }
 

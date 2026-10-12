@@ -3,54 +3,66 @@
  *	@name			Pills
  *	@description	Fully rounded and wide, with a heavier outline. The friendliest of the five.
  *
- *	@knob	small		Size of a small button
- *	@knob	big			Size of a big button
+ *	@knob	size		Size of a button
+ *	@knob	spread		How far a small and a big button stand from it
  *	@knob	space		Space around the label
  *	@knob	corners		Corner radius
  *
  *	The shape only works when the label has room on both axes, so the padding
  *	here is a good deal wider than the framework's own, and the variants keep
- *	their ratio to it. The corners knob goes from a rounded box to a pill and
- *	stops there: past half the height a radius grows nothing.
+ *	their ratio to it. The size multiplies the padding and the type, and not
+ *	the radius: a pill stays a pill. The variants are the size times 1 less
+ *	and 1 plus the spread, .2 here. The corners knob goes from a rounded box
+ *	to a pill and stops there: past half the height a radius grows nothing, so
+ *	the pill is a plateau of three.
  */
 
 :root {
-	--buttons-small--less: 		.7;
-	--buttons-small--default: 	.8;
-	--buttons-small--more: 		.9;
+	--buttons-size--least: 		.8;
+	--buttons-size--less: 		.9;
+	--buttons-size--default: 	1;
+	--buttons-size--more: 		1.12;
+	--buttons-size--most: 		1.25;
 
-	--buttons-big--less: 		1.1;
-	--buttons-big--default: 	1.2;
-	--buttons-big--more: 		1.35;
+	--buttons-spread--least: 	.07;
+	--buttons-spread--less: 	.13;
+	--buttons-spread--default: 	.2;
+	--buttons-spread--more: 	.27;
+	--buttons-spread--most: 	.33;
 
+	--buttons-space--least: 	var(--space-1);
 	--buttons-space--less: 		var(--space-2);
 	--buttons-space--default: 	calc( var(--space-2) * 1.5 );
 	--buttons-space--more: 		var(--space-3);
+	--buttons-space--most: 		var(--space-4);
 
+	--buttons-corners--least: 	var(--radius);
 	--buttons-corners--less: 	var(--radius-large);
 	--buttons-corners--default: 999rem;
 	--buttons-corners--more: 	999rem;
+	--buttons-corners--most: 	999rem;
 }
 
 .nino-btn:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
-	padding: calc( var(--buttons-space) / 2.6 ) var(--buttons-space);
+	padding: calc( var(--buttons-space) / 2.6 * var(--buttons-size) ) calc( var(--buttons-space) * var(--buttons-size) );
 }
 .nino-btn {
+	font-size: calc( var(--font-button-size) * var(--buttons-size) );
 	border-radius: var(--buttons-corners);
 	line-height: 1.35;
 }
 .nino-btn--small:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
-	padding: calc( var(--buttons-space) / 2.6 * var(--buttons-small) ) calc( var(--buttons-space) * var(--buttons-small) );
+	padding: calc( var(--buttons-space) / 2.6 * var(--buttons-size) * ( 1 - var(--buttons-spread) ) ) calc( var(--buttons-space) * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );
 }
 .nino-btn--small {
-	font-size: calc( var(--font-button-size) * var(--buttons-small) );
+	font-size: calc( var(--font-button-size) * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );
 	border-radius: var(--buttons-corners);
 }
 .nino-btn--big:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
-	padding: calc( var(--buttons-space) / 2.6 * var(--buttons-big) ) calc( var(--buttons-space) * var(--buttons-big) );
+	padding: calc( var(--buttons-space) / 2.6 * var(--buttons-size) * ( 1 + var(--buttons-spread) ) ) calc( var(--buttons-space) * var(--buttons-size) * ( 1 + var(--buttons-spread) ) );
 }
 .nino-btn--big {
-	font-size: calc( var(--font-button-size) * var(--buttons-big) );
+	font-size: calc( var(--font-button-size) * var(--buttons-size) * ( 1 + var(--buttons-spread) ) );
 	border-radius: var(--buttons-corners);
 }
 
