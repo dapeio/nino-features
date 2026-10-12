@@ -6,17 +6,16 @@
             "loop": true,
             "preview": "title",
             "attributes": {
-                "level": {
+                "tag": {
                     "type": "select",
-                    "label": "Level",
+                    "label": "Tag",
                     "hint": "",
                     "options": [
-                        "1",
-                        "2",
-                        "3",
-                        "4"
+                        "div",
+                        "h3",
+                        "h4"
                     ],
-                    "default": "2"
+                    "default": "h3"
                 },
                 "style": {
                     "type": "select",
@@ -33,9 +32,9 @@
             "in": [
                 "section"
             ],
-            "draws": "h{level} .nino-section-title",
+            "draws": "{tag} .nino-section-title",
             "defaults": {
-                "level": "2",
+                "tag": "h3",
                 "style": "",
                 "class": ""
             }
@@ -46,6 +45,18 @@
             "loop": true,
             "preview": "title",
             "attributes": {
+                "tag": {
+                    "type": "select",
+                    "label": "Tag",
+                    "hint": "",
+                    "options": [
+                        "div",
+                        "p",
+                        "h4",
+                        "h5"
+                    ],
+                    "default": "div"
+                },
                 "style": {
                     "type": "select",
                     "label": "Style",
@@ -61,8 +72,9 @@
             "in": [
                 "section"
             ],
-            "draws": "p .nino-section-subtitle",
+            "draws": "{tag} .nino-section-subtitle",
             "defaults": {
+                "tag": "div",
                 "style": "",
                 "class": ""
             }
@@ -73,17 +85,16 @@
             "loop": true,
             "preview": "title",
             "attributes": {
-                "level": {
+                "tag": {
                     "type": "select",
-                    "label": "Level",
+                    "label": "Tag",
                     "hint": "",
                     "options": [
-                        "1",
-                        "2",
-                        "3",
-                        "4"
+                        "div",
+                        "h3",
+                        "h4"
                     ],
-                    "default": "2"
+                    "default": "h4"
                 },
                 "style": {
                     "type": "select",
@@ -100,9 +111,9 @@
             "in": [
                 "card"
             ],
-            "draws": "h{level} .nino-card-title",
+            "draws": "{tag} .nino-card-title",
             "defaults": {
-                "level": "2",
+                "tag": "h4",
                 "style": "",
                 "class": ""
             }
@@ -113,6 +124,18 @@
             "loop": true,
             "preview": "title",
             "attributes": {
+                "tag": {
+                    "type": "select",
+                    "label": "Tag",
+                    "hint": "",
+                    "options": [
+                        "div",
+                        "p",
+                        "h5",
+                        "h6"
+                    ],
+                    "default": "p"
+                },
                 "style": {
                     "type": "select",
                     "label": "Style",
@@ -128,8 +151,9 @@
             "in": [
                 "card"
             ],
-            "draws": "p .nino-card-subtitle",
+            "draws": "{tag} .nino-card-subtitle",
             "defaults": {
+                "tag": "p",
                 "style": "",
                 "class": ""
             }
@@ -140,17 +164,16 @@
             "loop": true,
             "preview": "title",
             "attributes": {
-                "level": {
+                "tag": {
                     "type": "select",
-                    "label": "Level",
+                    "label": "Tag",
                     "hint": "",
                     "options": [
-                        "1",
-                        "2",
-                        "3",
-                        "4"
+                        "div",
+                        "h2",
+                        "h3"
                     ],
-                    "default": "2"
+                    "default": "h2"
                 },
                 "style": {
                     "type": "select",
@@ -167,9 +190,9 @@
             "in": [
                 "hero"
             ],
-            "draws": "h{level} .nino-hero-title",
+            "draws": "{tag} .nino-hero-title",
             "defaults": {
-                "level": "2",
+                "tag": "h2",
                 "style": "",
                 "class": ""
             }
@@ -180,6 +203,18 @@
             "loop": true,
             "preview": "title",
             "attributes": {
+                "tag": {
+                    "type": "select",
+                    "label": "Tag",
+                    "hint": "",
+                    "options": [
+                        "div",
+                        "p",
+                        "h3",
+                        "h4"
+                    ],
+                    "default": "p"
+                },
                 "style": {
                     "type": "select",
                     "label": "Style",
@@ -195,8 +230,9 @@
             "in": [
                 "hero"
             ],
-            "draws": "p .nino-hero-subtitle",
+            "draws": "{tag} .nino-hero-subtitle",
             "defaults": {
+                "tag": "p",
                 "style": "",
                 "class": ""
             }
@@ -233,151 +269,6 @@
             "defaults": {
                 "format": "blocks",
                 "style": "",
-                "class": ""
-            }
-        },
-        "image": {
-            "label": "Image",
-            "source": "image",
-            "loop": true,
-            "preview": "image",
-            "attributes": {
-                "alt": {
-                    "type": "string",
-                    "label": "Alternative text",
-                    "hint": "Used where the slot has no text of its own. Empty marks the picture as decoration.",
-                    "default": ""
-                },
-                "focus": {
-                    "type": "select",
-                    "label": "Focus",
-                    "hint": "Which part of the picture survives a crop, as one of nine positions.",
-                    "options": [
-                        "",
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "6",
-                        "7",
-                        "8",
-                        "9"
-                    ],
-                    "default": ""
-                },
-                "ratio": {
-                    "type": "select",
-                    "label": "Ratio",
-                    "hint": "",
-                    "options": [
-                        "",
-                        "1-1",
-                        "4-3",
-                        "3-2",
-                        "16-9",
-                        "21-9"
-                    ],
-                    "default": ""
-                }
-            },
-            "defaults": {
-                "alt": "",
-                "focus": "",
-                "ratio": "",
-                "class": ""
-            }
-        },
-        "button": {
-            "label": "Button",
-            "source": "text",
-            "loop": true,
-            "preview": "button",
-            "attributes": {
-                "href": {
-                    "type": "href",
-                    "label": "Link",
-                    "hint": "A text key, an address, or in a stack a field of the element.",
-                    "default": ""
-                },
-                "style": {
-                    "type": "select",
-                    "label": "Style",
-                    "hint": "",
-                    "options": [
-                        "",
-                        "primary",
-                        "outline",
-                        "light",
-                        "dark",
-                        "brand-alt"
-                    ],
-                    "default": ""
-                },
-                "size": {
-                    "type": "select",
-                    "label": "Size",
-                    "hint": "",
-                    "options": [
-                        "",
-                        "small",
-                        "big"
-                    ],
-                    "default": ""
-                },
-                "target": {
-                    "type": "select",
-                    "label": "Opens in",
-                    "hint": "",
-                    "options": [
-                        "",
-                        "_blank"
-                    ],
-                    "default": ""
-                }
-            },
-            "draws": "a .nino-btn",
-            "defaults": {
-                "href": "",
-                "style": "",
-                "size": "",
-                "target": "",
-                "class": ""
-            }
-        },
-        "html": {
-            "label": "HTML",
-            "source": "content",
-            "loop": true,
-            "preview": "block",
-            "attributes": [],
-            "defaults": {
-                "class": ""
-            }
-        },
-        "spacer": {
-            "label": "Spacer",
-            "source": "none",
-            "loop": true,
-            "preview": "block",
-            "attributes": {
-                "size": {
-                    "type": "select",
-                    "label": "Size",
-                    "hint": "",
-                    "options": [
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "6"
-                    ],
-                    "default": "2"
-                }
-            },
-            "defaults": {
-                "size": "2",
                 "class": ""
             }
         },
@@ -502,6 +393,151 @@
                 "focus": "",
                 "dim": "0",
                 "borderless": "0",
+                "class": ""
+            }
+        },
+        "button": {
+            "label": "Button",
+            "source": "text",
+            "loop": true,
+            "preview": "button",
+            "attributes": {
+                "href": {
+                    "type": "href",
+                    "label": "Link",
+                    "hint": "A text key, an address, or in a stack a field of the element.",
+                    "default": ""
+                },
+                "style": {
+                    "type": "select",
+                    "label": "Style",
+                    "hint": "",
+                    "options": [
+                        "",
+                        "primary",
+                        "outline",
+                        "light",
+                        "dark",
+                        "brand-alt"
+                    ],
+                    "default": ""
+                },
+                "size": {
+                    "type": "select",
+                    "label": "Size",
+                    "hint": "",
+                    "options": [
+                        "",
+                        "small",
+                        "big"
+                    ],
+                    "default": ""
+                },
+                "target": {
+                    "type": "select",
+                    "label": "Opens in",
+                    "hint": "",
+                    "options": [
+                        "",
+                        "_blank"
+                    ],
+                    "default": ""
+                }
+            },
+            "draws": "a .nino-btn",
+            "defaults": {
+                "href": "",
+                "style": "",
+                "size": "",
+                "target": "",
+                "class": ""
+            }
+        },
+        "image": {
+            "label": "Image",
+            "source": "image",
+            "loop": true,
+            "preview": "image",
+            "attributes": {
+                "alt": {
+                    "type": "string",
+                    "label": "Alternative text",
+                    "hint": "Used where the slot has no text of its own. Empty marks the picture as decoration.",
+                    "default": ""
+                },
+                "focus": {
+                    "type": "select",
+                    "label": "Focus",
+                    "hint": "Which part of the picture survives a crop, as one of nine positions.",
+                    "options": [
+                        "",
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9"
+                    ],
+                    "default": ""
+                },
+                "ratio": {
+                    "type": "select",
+                    "label": "Ratio",
+                    "hint": "",
+                    "options": [
+                        "",
+                        "1-1",
+                        "4-3",
+                        "3-2",
+                        "16-9",
+                        "21-9"
+                    ],
+                    "default": ""
+                }
+            },
+            "defaults": {
+                "alt": "",
+                "focus": "",
+                "ratio": "",
+                "class": ""
+            }
+        },
+        "html": {
+            "label": "HTML",
+            "source": "content",
+            "loop": true,
+            "preview": "block",
+            "attributes": [],
+            "defaults": {
+                "class": ""
+            }
+        },
+        "spacer": {
+            "label": "Spacer",
+            "source": "none",
+            "loop": true,
+            "preview": "block",
+            "attributes": {
+                "size": {
+                    "type": "select",
+                    "label": "Size",
+                    "hint": "",
+                    "options": [
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6"
+                    ],
+                    "default": "2"
+                }
+            },
+            "defaults": {
+                "size": "2",
                 "class": ""
             }
         }

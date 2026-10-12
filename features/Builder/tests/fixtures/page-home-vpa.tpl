@@ -6,7 +6,7 @@
 	<div class="nino-section-bg nino-img-focus--5">[image /template/page-home/hero/background alt=""]</div>
 	<div class="nino-grid-row nino-grid-row--wide nino-grid-middle">
 		<div class="nino-grid-s-100 nino-grid-m-100 nino-grid-l-66 nino-text-left">
-			[title /template/page-home/hero/title level="1" style="loud"]
+			[title /template/page-home/hero/title style="loud"]
 			[subtitle /template/page-home/hero/subtitle]
 			[button /_nino/webpage/contact/name href="/_nino/webpage/contact/uri" style="primary"]
 		</div>
@@ -22,7 +22,7 @@
 		<div class="nino-grid-s-100 nino-grid-m-100 nino-grid-l-50">
 			[stack /services sort="title" limit="6" cols="100 50 50" autoheight="1"]
 				[image image focus="5"]
-				[title title level="3"]
+				[title title]
 				[text summary]
 				[button .uri text="Mehr"]
 			[/stack]

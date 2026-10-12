@@ -121,7 +121,7 @@
                                     "source": "/template/page-home-card/story/title",
                                     "text": null,
                                     "attributes": {
-                                        "level": "3",
+                                        "tag": "h3",
                                         "style": "",
                                         "class": ""
                                     }
@@ -246,7 +246,7 @@
                                     "source": "title",
                                     "text": null,
                                     "attributes": {
-                                        "level": "3",
+                                        "tag": "h3",
                                         "style": "",
                                         "class": ""
                                     }

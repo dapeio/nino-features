@@ -70,7 +70,7 @@
                             "source": "/template/page-home/hero/title",
                             "text": null,
                             "attributes": {
-                                "level": "1",
+                                "tag": "h3",
                                 "style": "loud",
                                 "class": ""
                             }
@@ -80,6 +80,7 @@
                             "source": "/template/page-home/hero/subtitle",
                             "text": null,
                             "attributes": {
+                                "tag": "div",
                                 "style": "",
                                 "class": ""
                             }
@@ -159,7 +160,7 @@
                             "source": "/template/page-home/services/title",
                             "text": null,
                             "attributes": {
-                                "level": "2",
+                                "tag": "h3",
                                 "style": "",
                                 "class": ""
                             }
@@ -232,7 +233,7 @@
                             "source": "title",
                             "text": null,
                             "attributes": {
-                                "level": "3",
+                                "tag": "h3",
                                 "style": "",
                                 "class": ""
                             }
@@ -327,7 +328,7 @@
                             "source": "/template/page-home/contact/title",
                             "text": null,
                             "attributes": {
-                                "level": "2",
+                                "tag": "h3",
                                 "style": "",
                                 "class": ""
                             }

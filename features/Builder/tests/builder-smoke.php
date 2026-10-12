@@ -8,7 +8,7 @@ declare(strict_types=1);
  *											example page of the concept (tests/fixtures/page-home.tpl,
  *											the example in its canonical form but for the wrap, which a
  *											file the builder did not write has not: the concept's own,
- *											page-home-concept.tpl, says level="2" twice and gap="2"
+ *											page-home-concept.tpl, says tag="h3" twice and gap="2"
  *											aloud, which are the defaults the Writer leaves out;
  *											page-home-wrap.tpl is the same in the wrap the builder
  *											writes, with a kind of animation, and page-home-vpa.tpl
@@ -113,13 +113,19 @@ echo "The registry of the Components module\n";
 \Nino\Modules\Components::init( $appData );
 $registry = \Nino\Modules\Builder\Document::schemas( $appData );
 
-check( 'the components and the stacks of the kernel are in it, each with the defaults of its attributes - the card, which holds components, among the components', array_keys( $registry['components'] ) === [ 'title', 'subtitle', 'card-title', 'card-subtitle', 'hero-title', 'hero-subtitle', 'text', 'image', 'button', 'html', 'spacer', 'card' ]
+check( 'the components and the stacks of the kernel are in it, each with the defaults of its attributes - in the order a column offers the components, the card, which holds components, between the text and the button', array_keys( $registry['components'] ) === [ 'title', 'subtitle', 'card-title', 'card-subtitle', 'hero-title', 'hero-subtitle', 'text', 'card', 'button', 'image', 'html', 'spacer' ]
 	&& array_keys( $registry['stacks'] ) === [ 'stack', 'slider', 'filter', 'list' ]
-	&& $registry['components']['title']['defaults'] === [ 'level' => '2', 'style' => '', 'class' => '' ]
+	&& $registry['components']['title']['defaults'] === [ 'tag' => 'h3', 'style' => '', 'class' => '' ]
 	&& $registry['stacks']['stack']['defaults']['gap'] === '2' );
 check( '...the card says what it holds, and is the one that does: a component whose schema has holds is a container, and nothing else is - the Builder asks the schema and names none', \Nino\Modules\Builder\Reader::holds( $registry['components']['card'] ) === true && $registry['components']['card']['holds'] === 'card'
 	&& array_filter( $registry['components'], static fn( array $schema ): bool => \Nino\Modules\Builder\Reader::holds( $schema ) === true ) === [ 'card' => $registry['components']['card'] ] && \Nino\Modules\Builder\Reader::holds( [ 'holds' => '' ] ) === false && \Nino\Modules\Builder\Reader::holds( [] ) === false );
 check( '...and a loop is a grid and nothing more: its defaults carry no card, the cell is a div', array_filter( $registry['stacks'], static fn( array $schema ): bool => array_key_exists( 'card', $schema['defaults'] ) === true ) === [] );
+check( '...the six titles name their tag and no level: one select of the tags their place takes, the default among them, then the style - a hero is an h2, a section an h3, a card an h4, and the subtitles a p, a div and a p', array_filter(
+	[ 'hero-title' => 'h2', 'hero-subtitle' => 'p', 'title' => 'h3', 'subtitle' => 'div', 'card-title' => 'h4', 'card-subtitle' => 'p' ],
+	static fn( string $default, string $name ): bool => array_keys( $registry['components'][$name]['attributes'] ) !== [ 'tag', 'style' ] || $registry['components'][$name]['attributes']['tag']['type'] !== 'select'
+		|| in_array( $default, $registry['components'][$name]['attributes']['tag']['options'], true ) === false || $registry['components'][$name]['defaults']['tag'] !== $default || array_key_exists( 'level', $registry['components'][$name]['defaults'] ) === true,
+	ARRAY_FILTER_USE_BOTH
+) === [] );
 
 $page = static function( string ...$blocks ) use ( &$page ): string {
 	return implode( "\n\n", $blocks ). "\n";
@@ -155,7 +161,7 @@ check( '...its background is a slot with a focus', $hero['background'] === [ 'sl
 check( '...its column is 100, 100 and 66 wide, aligned left, and holds three components', $hero['cols'][0]['width'] === [ 's' => 100, 'm' => 100, 'l' => 66 ] && $hero['cols'][0]['text'] === 'left'
 	&& $hero['cols'][0]['stack'] === null && array_column( $hero['cols'][0]['components'], 'name' ) === [ 'title', 'subtitle', 'button' ] );
 check( '...a call carries its source and its attributes, every one of the schema, the default where the call is silent',
-	$hero['cols'][0]['components'][0] === [ 'name' => 'title', 'source' => '/template/page-home/hero/title', 'text' => null, 'attributes' => [ 'level' => '1', 'style' => 'loud', 'class' => '' ] ] );
+	$hero['cols'][0]['components'][0] === [ 'name' => 'title', 'source' => '/template/page-home/hero/title', 'text' => null, 'attributes' => [ 'tag' => 'h3', 'style' => 'loud', 'class' => '' ] ] );
 
 $services = $model['blocks'][1];
 check( 'the services: a column with a stack names its type, its loop and its cells', $services['cols'][1]['stack']['name'] === 'stack' && $services['cols'][1]['stack']['source'] === '/services'
@@ -198,8 +204,8 @@ check( 'a load and a save without a change is the same file: Reader( Writer( Rea
 
 // A page the builder did not write the way it would: the order of the attributes, a default said aloud, the short class, an empty alt
 $hand = str_replace(
-	[ '[title /template/page-home/hero/title level="1" style="loud"]', '[title /template/page-home/contact/title]', "\t\t<div class=\"nino-grid-100\">\n\t\t\t[title" ],
-	[ '[title /template/page-home/hero/title style="loud" class="" level="1"]', '[title /template/page-home/contact/title level="2" style=""]', "\t\t<div class=\"nino-grid-s-100 nino-grid-m-100 nino-grid-l-100\">\n\t\t\t[title" ],
+	[ '[title /template/page-home/hero/title style="loud"]', '[title /template/page-home/contact/title]', "\t\t<div class=\"nino-grid-100\">\n\t\t\t[title" ],
+	[ '[title /template/page-home/hero/title class="" tag="h3" style="loud"]', '[title /template/page-home/contact/title tag="h3" style=""]', "\t\t<div class=\"nino-grid-s-100 nino-grid-m-100 nino-grid-l-100\">\n\t\t\t[title" ],
 	$fixture
 );
 check( 'a page written by hand is read all the same, and written back in the canonical form, wrapped', $hand !== $fixture && $read( $hand ) === $model && $write( $read( $hand ) ) === $wrapped( $fixture ) );
@@ -335,7 +341,7 @@ check( '...the card is a component node that carries its children, in order, as 
 	&& $cardNode['source'] === '' && $cardNode['text'] === null && array_column( $cardNode['components'], 'name' ) === [ 'card-title', 'text', 'button' ]
 	&& array_column( $cardNode['components'], 'source' ) === [ '/template/page-home-card/story/title', '/template/page-home-card/story/text', '/template/page-home-card/story/button' ] && array_key_exists( 'content', $cardNode ) === false );
 check( '...it has every attribute of its schema, in the order of the schema, the default where the call is silent - the ground and the padding are the two the file sets - and its children theirs', $cardNode['attributes'] === [ 'ground' => 'counter', 'padding' => '3', 'fill' => '0', 'vertical' => '', 'align' => '', 'background' => '', 'focus' => '', 'dim' => '0', 'borderless' => '0', 'class' => '' ]
-	&& array_keys( $cardNode['attributes'] ) === array_keys( $registry['components']['card']['defaults'] ) && $cardNode['components'][0]['attributes'] === [ 'level' => '3', 'style' => '', 'class' => '' ] && array_key_exists( 'components', $cardNode['components'][0] ) === false );
+	&& array_keys( $cardNode['attributes'] ) === array_keys( $registry['components']['card']['defaults'] ) && $cardNode['components'][0]['attributes'] === [ 'tag' => 'h3', 'style' => '', 'class' => '' ] && array_key_exists( 'components', $cardNode['components'][0] ) === false );
 check( '...a plain component carries no list of children, whatever it is: only a component that holds components does', array_filter( array_merge( $story['cols'][0]['components'], $cardNode['components'], $cell['components'][0]['components'] ), static fn( array $node ): bool => array_key_exists( 'components', $node ) === true ) === [] );
 check( '...in a loop the card stands in the content of the stack, once for each element: its picture is a field of the element, so is its title, and the stack holds the card and nothing else', $cell['components'][0]['attributes']['background'] === 'image' && $cell['components'][0]['attributes']['focus'] === '5' && $cell['components'][0]['attributes']['dim'] === '1' && $cell['components'][0]['attributes']['fill'] === '1'
 	&& $cell['components'][0]['components'][0]['source'] === 'title' && $cell['stack']['source'] === '/services' && array_key_exists( 'components', $cell['stack'] ) === false );
@@ -429,9 +435,9 @@ $failures = [
 	'a source on a card'						=> [ $section( '[card /template/page-x/a/title]' ), 'call-arguments' ],
 	'a card next to a loop'					=> [ $section( "[card]\n\t\t\t\t[card-title /template/page-x/a/title]\n\t\t\t[/card]\n\t\t\t[stack /services]\n\t\t\t\t[title title]\n\t\t\t[/stack]" ), 'stack-neighbour' ],
 	// What a call is made of
-	'a value outside its options'					=> [ $section( '[title /template/page-x/a/title level="9"]' ), 'attribute-value', null, 'level' ],
+	'a value outside its options'					=> [ $section( '[title /template/page-x/a/title tag="h9"]' ), 'attribute-value', null, 'tag' ],
 	'an attribute the component has not'	=> [ $section( '[title /template/page-x/a/title colour="red"]' ), 'unknown-attribute', null, 'colour' ],
-	'two spaces between the arguments'		=> [ $section( '[title /template/page-x/a/title  level="1"]' ), 'call-arguments' ],
+	'two spaces between the arguments'		=> [ $section( '[title /template/page-x/a/title  tag="h4"]' ), 'call-arguments' ],
 	'a second source'											=> [ $section( '[title /template/page-x/a/title /template/page-x/a/other]' ), 'call-arguments' ],
 	'a quote of the other kind'						=> [ $section( '[button /template/page-x/a/button href=\'/x\']' ), 'call-arguments' ],
 ];
@@ -552,8 +558,8 @@ $blank = $read( $page( $section( '[title /template/page-x/a/title]' ) ) )['block
 
 $changed = $blank;
 $changed['cols'][0]['components'] = [
-	[ 'name' => 'title', 'source' => '/template/page-x/a/title', 'text' => null, 'attributes' => [ 'level' => '2', 'style' => '', 'class' => '' ] ],
-	[ 'name' => 'title', 'source' => '/template/page-x/a/other', 'text' => null, 'attributes' => [ 'level' => '3', 'style' => 'quiet', 'class' => 'big' ] ],
+	[ 'name' => 'title', 'source' => '/template/page-x/a/title', 'text' => null, 'attributes' => [ 'tag' => 'h3', 'style' => '', 'class' => '' ] ],
+	[ 'name' => 'title', 'source' => '/template/page-x/a/other', 'text' => null, 'attributes' => [ 'tag' => 'h4', 'style' => 'quiet', 'class' => 'big' ] ],
 	[ 'name' => 'button', 'source' => '', 'text' => 'Go', 'attributes' => [ 'href' => '#top' ] ],
 	[ 'name' => 'html', 'source' => '', 'text' => null, 'attributes' => [], 'content' => '<p>Free</p>' ],
 	[ 'name' => 'spacer', 'source' => '', 'text' => null, 'attributes' => [ 'size' => 2 ] ],
@@ -561,12 +567,12 @@ $changed['cols'][0]['components'] = [
 $written = $write( [ 'blocks' => [ $changed ] ] );
 
 check( 'an attribute is written where it differs from the schema, and only there - not a default, not an empty one, an int or a bool as its string', str_contains( $written, "\t\t\t[title /template/page-x/a/title]\n" ) === true
-	&& str_contains( $written, '[title /template/page-x/a/other level="3" style="quiet" class="big"]' ) === true
+	&& str_contains( $written, '[title /template/page-x/a/other tag="h4" style="quiet" class="big"]' ) === true
 	&& str_contains( $written, '[button text="Go" href="#top"]' ) === true && str_contains( $written, '[spacer]' ) === true && str_contains( $written, 'size=' ) === false );
 check( 'a component with a content is its call, the content and its closing call, on one line', str_contains( $written, "\t\t\t[html]<p>Free</p>[/html]\n" ) === true );
 check( '...and what is written reads back as what was meant', ( static function() use ( $read, $written ): bool {
 	$col = $read( $written )['blocks'][0]['cols'][0]['components'];
-	return $col[1]['attributes']['level'] === '3' && $col[2]['text'] === 'Go' && $col[3]['content'] === '<p>Free</p>' && $col[4]['attributes']['size'] === '2';
+	return $col[1]['attributes']['tag'] === 'h4' && $col[2]['text'] === 'Go' && $col[3]['content'] === '<p>Free</p>' && $col[4]['attributes']['size'] === '2';
 } )() );
 
 $styled = $blank;
@@ -806,7 +812,7 @@ check( 'a column with none of the three is written as it always was: a model wit
 // A card as the Writer writes it: every attribute, in the order of the schema and only where it differs from the default
 $allSet = [ 'name' => 'card', 'source' => '', 'text' => null, 'attributes' => [ 'ground' => 'dark', 'padding' => '0', 'fill' => '1', 'vertical' => 'last-bottom', 'align' => 'center', 'background' => '/template/page-x/a/backdrop', 'focus' => '3', 'dim' => '1', 'borderless' => '1', 'class' => 'my-card' ],
 	'components' => [
-		[ 'name' => 'card-title', 'source' => '/template/page-x/a/title', 'text' => null, 'attributes' => [ 'level' => '3', 'style' => 'quiet', 'class' => '' ] ],
+		[ 'name' => 'card-title', 'source' => '/template/page-x/a/title', 'text' => null, 'attributes' => [ 'tag' => 'h3', 'style' => 'quiet', 'class' => '' ] ],
 		[ 'name' => 'button', 'source' => '', 'text' => 'Go', 'attributes' => [ 'href' => '#top', 'style' => '', 'size' => '', 'target' => '', 'class' => '' ] ],
 	] ];
 $cardBlock = $blank;
@@ -814,7 +820,7 @@ $cardBlock['cols'][0]['components'] = [ $allSet ];
 $cardText = $write( [ 'blocks' => [ $cardBlock ] ] );
 check( 'a card with every attribute set is its call with the attributes in the order of the schema - ground, padding, full height, vertical, horizontal, picture, focus, dimming, border, class -, its children one tab deeper on a line each and its closing tag at the depth of its call',
 	str_contains( $cardText, "\t\t\t[card ground=\"dark\" padding=\"0\" fill=\"1\" vertical=\"last-bottom\" align=\"center\" background=\"/template/page-x/a/backdrop\" focus=\"3\" dim=\"1\" borderless=\"1\" class=\"my-card\"]\n"
-		. "\t\t\t\t[card-title /template/page-x/a/title level=\"3\" style=\"quiet\"]\n\t\t\t\t[button text=\"Go\" href=\"#top\"]\n\t\t\t[/card]\n\t\t</div>\n" ) === true );
+		. "\t\t\t\t[card-title /template/page-x/a/title tag=\"h3\" style=\"quiet\"]\n\t\t\t\t[button text=\"Go\" href=\"#top\"]\n\t\t\t[/card]\n\t\t</div>\n" ) === true );
 check( '...and what is written reads back as what was meant: the card with its attributes and its children, node for node', $read( $cardText )['blocks'][0]['cols'][0]['components'][0] === $allSet );
 
 // In the content of a loop the card is one level deeper, and so are its children
@@ -836,7 +842,7 @@ check( 'a card whose model has no list of children, or an empty one, is written 
 	substr_count( $write( [ 'blocks' => [ $bareBlock ] ] ), "[card ground=\"alt\"]\n\t\t\t[/card]\n" ) === 2 && str_contains( $write( [ 'blocks' => [ $bareBlock ] ] ), 'Not a card' ) === false );
 
 // A component that holds nothing is written as a call, whatever the model hands it
-$plain = [ 'name' => 'title', 'source' => '/template/page-x/a/title', 'text' => null, 'attributes' => [ 'level' => '2' ], 'components' => [ [ 'name' => 'text', 'source' => '/template/page-x/a/text', 'text' => null, 'attributes' => [] ] ] ];
+$plain = [ 'name' => 'title', 'source' => '/template/page-x/a/title', 'text' => null, 'attributes' => [ 'tag' => 'h3' ], 'components' => [ [ 'name' => 'text', 'source' => '/template/page-x/a/text', 'text' => null, 'attributes' => [] ] ] ];
 $plainBlock = $blank;
 $plainBlock['cols'][0]['components'] = [ $plain ];
 check( 'a component whose schema does not say that it holds components is one line, a list of children or not: the Writer does not make a container of what is none', str_contains( $write( [ 'blocks' => [ $plainBlock ] ] ), "\t\t\t[title /template/page-x/a/title]\n\t\t</div>\n" ) === true && str_contains( $write( [ 'blocks' => [ $plainBlock ] ] ), '[/title]' ) === false );
@@ -884,8 +890,8 @@ $appData['/nino/http/routes']['GET://about'] = [ 'uri' => '/about', 'body' => '[
 $registryAnswer = \Nino\Modules\Builder\Document::registry( $appData );
 
 check( 'the registry hands the panel the components and the stacks with their labels in the language of the workbench, and the defaults of their attributes', $registryAnswer['status'] === 200
-	&& $registryAnswer['components']['title']['label'] === 'Title (Section)' && $registryAnswer['components']['title']['attributes']['level']['label'] === 'Level'
-	&& $registryAnswer['components']['title']['defaults']['level'] === '2' && $registryAnswer['stacks']['stack']['label'] === 'Stack' && $registryAnswer['stacks']['stack']['defaults']['cols'] === '100 50 33' );
+	&& $registryAnswer['components']['title']['label'] === 'Title (Section)' && $registryAnswer['components']['title']['attributes']['tag']['label'] === 'Tag'
+	&& $registryAnswer['components']['title']['defaults']['tag'] === 'h3' && $registryAnswer['stacks']['stack']['label'] === 'Stack' && $registryAnswer['stacks']['stack']['defaults']['cols'] === '100 50 33' );
 check( '...the element types of the project with their fields and the field types there are', array_column( $registryAnswer['types'], 'uri' ) === [ '/services' ]
 	&& array_keys( $registryAnswer['types'][0]['fields'] ) === [ 'title', 'summary', 'image' ] && $registryAnswer['types'][0]['fields']['image']['type'] === 'image'
 	&& $registryAnswer['fieldTypes'] === \Nino\Elements::FIELD_TYPES );
@@ -897,8 +903,8 @@ unset( $appData['/nino/html/images']['/project/logo/header/image'] );
 check( '...a slot with a picture says where it is (the Images panel\'s url) for the thumbnail of the source field, one without says null', $registryAnswer['slots'][0]['url'] === \Nino\Images::getUrl( $appData, 'hero.1600x900.jpg' )
 	&& $withEmpty['/project/logo/header/image']['hasImage'] === false && $withEmpty['/project/logo/header/image']['url'] === null );
 check( '...a component says where it belongs (in) and what it draws (draws), as the kernel registered it: the title for a section, the title of a card for a card, the title of a hero for a hero, the button everywhere - and one that says neither carries neither',
-	$registryAnswer['components']['title']['in'] === [ 'section' ] && $registryAnswer['components']['title']['draws'] === 'h{level} .nino-section-title' && $registryAnswer['components']['card-title']['in'] === [ 'card' ]
-	&& $registryAnswer['components']['hero-title']['in'] === [ 'hero' ] && $registryAnswer['components']['hero-subtitle']['draws'] === 'p .nino-hero-subtitle' && $registryAnswer['components']['button']['draws'] === 'a .nino-btn'
+	$registryAnswer['components']['title']['in'] === [ 'section' ] && $registryAnswer['components']['title']['draws'] === '{tag} .nino-section-title' && $registryAnswer['components']['card-title']['in'] === [ 'card' ]
+	&& $registryAnswer['components']['hero-title']['in'] === [ 'hero' ] && $registryAnswer['components']['hero-subtitle']['draws'] === '{tag} .nino-hero-subtitle' && $registryAnswer['components']['button']['draws'] === 'a .nino-btn'
 	&& array_key_exists( 'in', $registryAnswer['components']['button'] ) === false && array_key_exists( 'in', $registryAnswer['components']['text'] ) === false && array_key_exists( 'draws', $registryAnswer['components']['text'] ) === false
 	&& array_key_exists( 'draws', $registryAnswer['stacks']['stack'] ) === false && $registryAnswer['components']['card-title']['label'] === 'Title (Card)' );
 check( '...a component says what it holds (holds), the place of the components it takes as its children: the card holds the place card, is offered in a section and in a hero, and draws an article element - all three arrive as the kernel has them, and no other component carries holds, nor does a loop',
@@ -909,6 +915,13 @@ check( '...a component says what it holds (holds), the place of the components i
 check( '...and the entry of the card is the entry of the registry of the Components module but for its words, which are in the language of the workbench: the panel is handed nothing of its own making',
 	array_diff_key( $registryAnswer['components']['card'], [ 'label' => 1, 'attributes' => 1 ] ) === array_diff_key( \Nino\Modules\Builder\Document::schemas( $appData )['components']['card'], [ 'label' => 1, 'attributes' => 1 ] ) );
 check( '...the components and the stacks the panel\'s script test reads (fixtures/registry.json) are what the registry says', json_decode( (string) file_get_contents( __DIR__. '/fixtures/registry.json' ), true ) === json_decode( (string) json_encode( [ 'components' => $registryAnswer['components'], 'stacks' => $registryAnswer['stacks'] ] ), true ) );
+check( '...the components stand in the order the kernel registers them, which is the order a column offers them, and the answer keeps it the way the panel reads it: the titles of each place first, then the text, the card, the button, the picture, HTML and the spacer',
+	array_keys( (array) json_decode( (string) json_encode( $registryAnswer['components'] ), true ) ) === [ 'title', 'subtitle', 'card-title', 'card-subtitle', 'hero-title', 'hero-subtitle', 'text', 'card', 'button', 'image', 'html', 'spacer' ] );
+$featured = $appData;
+foreach( [ 'zulu', 'alpha' ] as $feature )
+	\Nino\Modules\Components::addComponent( $featured, $feature, static fn( array &$appData, array $args ): string => '', [ 'label' => [ 'en_US' => ucfirst( $feature ) ], 'source' => 'none' ] );
+check( '...a component a feature registers stands after the kernel\'s, in the order it registered them and not in the alphabet\'s', array_slice( array_keys( (array) json_decode( (string) json_encode( \Nino\Modules\Builder\Document::registry( $featured )['components'] ), true ) ), -3 ) === [ 'spacer', 'zulu', 'alpha' ]
+	&& array_keys( $registryAnswer['components'] ) === array_keys( \Nino\Modules\Builder\Document::registry( $appData )['components'] ) );
 
 $listed = \Nino\Modules\Builder\Document::list( $appData );
 $byFile = array_column( $listed['templates'], null, 'file' );
@@ -1014,7 +1027,7 @@ $rename['blocks'][1]['renamedFrom'] = 'services';
 $renamed = \Nino\Modules\Builder\Document::save( $appData, 'page-home', $rename, $loaded['hash'] );
 $source = (string) file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-home.tpl' ) );
 
-check( 'renaming a section rewrites the sources of its components and of its background in the file', $renamed['status'] === 200 && str_contains( $source, '[title /template/page-home/start/title level="1" style="loud"]' ) === true
+check( 'renaming a section rewrites the sources of its components and of its background in the file', $renamed['status'] === 200 && str_contains( $source, '[title /template/page-home/start/title style="loud"]' ) === true
 	&& str_contains( $source, '[image /template/page-home/start/background alt=""]' ) === true && str_contains( $source, '[title /template/page-home/leistungen/title]' ) === true
 	&& str_contains( $source, '/template/page-home/hero/' ) === false && str_contains( $source, '/template/page-home/services/' ) === false );
 check( '...and the text keys follow: the value is under the new name, and the old name is gone', ( \Nino\Text::entry( $appData, '/template/page-home/start/title' )['values']['en_US'] ?? null ) === 'Hello'
@@ -1221,7 +1234,7 @@ $loaded = \Nino\Modules\Builder\Document::load( $appData, 'page-home' );
 
 $bad = $loaded['model'];
 $bad['blocks'][1]['cols'][0]['components'][0]['name'] = 'osm';
-$bad['blocks'][3]['cols'][0]['components'][] = [ 'name' => 'title', 'source' => '/template/page-home/contact/never', 'text' => null, 'attributes' => [ 'level' => '2', 'style' => '', 'class' => '' ], 'create' => [ 'value' => 'Never' ] ];
+$bad['blocks'][3]['cols'][0]['components'][] = [ 'name' => 'title', 'source' => '/template/page-home/contact/never', 'text' => null, 'attributes' => [ 'tag' => 'h3', 'style' => '', 'class' => '' ], 'create' => [ 'value' => 'Never' ] ];
 $refusal = \Nino\Modules\Builder\Document::save( $appData, 'page-home', $bad, $loaded['hash'] );
 check( 'a section that does not read back is refused with 400, the reason of the Reader in the problems, and nothing is written or made', $refusal['status'] === 400 && $refusal['code'] === 'invalid'
 	&& count( $refusal['problems'] ) === 1 && str_contains( $refusal['problems'][0], 'leistungen' ) === true && str_contains( $refusal['problems'][0], 'osm' ) === true
@@ -1266,7 +1279,7 @@ $unsafe = [
 $accepted = [];
 
 foreach( $unsafe as $label => $set )
-	foreach( [ 'a" level="1' => 'a double quote', "it's" => 'a single quote', 'a]b' => 'a closing bracket', 'a[b' => 'an opening bracket', "a\nb" => 'a line feed', "a\rb" => 'a carriage return' ] as $value => $name ) {
+	foreach( [ 'a" tag="h4' => 'a double quote', "it's" => 'a single quote', 'a]b' => 'a closing bracket', 'a[b' => 'an opening bracket', "a\nb" => 'a line feed', "a\rb" => 'a carriage return' ] as $value => $name ) {
 
 		$model = $loaded['model'];
 		$set( $model, (string) $value );
@@ -1280,7 +1293,7 @@ foreach( $unsafe as $label => $set )
 check( 'a double quote, a single quote, a bracket or a line break in a class, a fixed text, a stack attribute or a custom class is refused with 400 (code value), and the file is as it was: '. count( $unsafe ) * 6 .' cases', $accepted === [] );
 
 $named = $loaded['model'];
-$named['blocks'][3]['cols'][0]['components'][0]['attributes']['class'] = 'a" level="1';
+$named['blocks'][3]['cols'][0]['components'][0]['attributes']['class'] = 'a" tag="h4';
 check( '...the problem names the block, the component and the attribute, and problems() says the same to a caller that is not a save',
 	\Nino\Modules\Builder\Document::save( $appData, 'page-home', $named, $loaded['hash'] )['problems'] === \Nino\Modules\Builder\Document::problems( $appData, $named, $registry )
 	&& str_contains( \Nino\Modules\Builder\Document::problems( $appData, $named, $registry )[0], 'the section "contact" (block 4)' ) === true
@@ -1293,7 +1306,7 @@ foreach( [ 'class', 'text' ] as $where ) {
 	$model = $loaded['model'];
 
 	if( $where === 'class' )
-		$model['blocks'][3]['cols'][0]['components'][0]['attributes']['class'] = 'a" level="1';
+		$model['blocks'][3]['cols'][0]['components'][0]['attributes']['class'] = 'a" tag="h4';
 	else
 		$model['blocks'][3]['cols'][0]['components'][0]['text'] = "it's";
 
@@ -1563,7 +1576,7 @@ check( 'a component called stack in a static column reads back as a stack: it is
 // The conflict
 $loaded = \Nino\Modules\Builder\Document::load( $appData, 'page-home' );
 $mine = $loaded['model'];
-$mine['blocks'][3]['cols'][0]['components'][] = [ 'name' => 'title', 'source' => '/template/page-home/contact/late', 'text' => null, 'attributes' => [ 'level' => '2', 'style' => '', 'class' => '' ], 'create' => [ 'value' => 'Late' ] ];
+$mine['blocks'][3]['cols'][0]['components'][] = [ 'name' => 'title', 'source' => '/template/page-home/contact/late', 'text' => null, 'attributes' => [ 'tag' => 'h3', 'style' => '', 'class' => '' ], 'create' => [ 'value' => 'Late' ] ];
 $theirs = $before. "\n<p>Edited elsewhere</p>\n";
 \Nino\Filesystem::putFileContent( $appData, '/templates/page-home.tpl', $theirs );
 
@@ -1583,7 +1596,7 @@ check( 'a hash of nothing is no hash: it is a conflict too', \Nino\Modules\Build
 \Nino\Auth::insertUser( $appData, 'editor@example.com', 'correct horse battery staple', [ '/_admin/builder/manage' ] );
 \Nino\Auth::loginUser( $appData, 'editor@example.com', 'correct horse battery staple' );
 $limited = $loaded['model'];
-$limited['blocks'][3]['cols'][0]['components'][] = [ 'name' => 'title', 'source' => '/template/page-home/contact/forbidden', 'text' => null, 'attributes' => [ 'level' => '2', 'style' => '', 'class' => '' ], 'create' => [ 'value' => 'No' ] ];
+$limited['blocks'][3]['cols'][0]['components'][] = [ 'name' => 'title', 'source' => '/template/page-home/contact/forbidden', 'text' => null, 'attributes' => [ 'tag' => 'h3', 'style' => '', 'class' => '' ], 'create' => [ 'value' => 'No' ] ];
 $limitedAnswer = \Nino\Modules\Builder\Document::save( $appData, 'page-home', $limited, $loaded['hash'] );
 check( 'an account that may not make text keys cannot make them through the builder: the builder answers 403 before it makes anything, and the file is not written', $limitedAnswer['status'] === 403
 	&& \Nino\Text::entry( $appData, '/template/page-home/contact/forbidden' ) === null && file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-home.tpl' ) ) === $write( $mine ) );
@@ -1698,14 +1711,14 @@ foreach( $shapes as $label => $break ) {
 
 check( 'texts that are not a text for each language - not a map, a text that is not text, an alt text of either kind - are refused with 400 (invalid) before anything is read: '. count( $shapes ). ' cases'. ( $misshapen === [] ? '' : ' - '. implode( ', ', $misshapen ) ), $misshapen === [] );
 
-$fixed = $refused( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['components'][0] = [ 'name' => 'title', 'source' => '', 'text' => 'Fixed', 'attributes' => [ 'level' => '2', 'style' => '', 'class' => '' ], 'values' => [ 'en_US' => 'Typed' ] ]; } );
+$fixed = $refused( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['components'][0] = [ 'name' => 'title', 'source' => '', 'text' => 'Fixed', 'attributes' => [ 'tag' => 'h3', 'style' => '', 'class' => '' ], 'values' => [ 'en_US' => 'Typed' ] ]; } );
 $field = $refused( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['components'][0]['source'] = 'title'; $model['blocks'][0]['cols'][0]['components'][0]['values'] = [ 'en_US' => 'Typed' ]; } );
 $picture = $refused( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'image', 'source' => '/template/page-home/hero/background', 'text' => null, 'attributes' => [ 'alt' => '', 'focus' => '', 'ratio' => '', 'class' => '' ], 'values' => [ 'en_US' => 'Typed' ] ]; } );
 check( 'a text for a component that has no text key - a fixed text, a picture - is a problem of the section and the component, and nothing is written', $fixed['status'] === 400 && $fixed['code'] === 'invalid' && $picture['status'] === 400 && $picture['code'] === 'invalid'
 	&& str_contains( implode( ' ', $fixed['problems'] ), 'the component "title" has a text, and its source is no text key' ) === true && str_contains( implode( ' ', $picture['problems'] ), 'the component "image" has a text' ) === true && $fixed['unchanged'] === true && $picture['unchanged'] === true );
 check( '...and so is one for the field of a loop, which is the element\'s to change: a field name in a column that has no loop is no source', $field['status'] === 400 && $field['unchanged'] === true );
 
-$nokey = $refused( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'title', 'source' => '/template/page-texts/a/nothing', 'text' => null, 'attributes' => [ 'level' => '2', 'style' => '', 'class' => '' ], 'values' => [ 'en_US' => 'Typed' ] ]; } );
+$nokey = $refused( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'title', 'source' => '/template/page-texts/a/nothing', 'text' => null, 'attributes' => [ 'tag' => 'h3', 'style' => '', 'class' => '' ], 'values' => [ 'en_US' => 'Typed' ] ]; } );
 check( 'a text for a key that is not there and is not made by the save is refused with 400 (invalid), the key named, and the key is not made', $nokey['status'] === 400 && $nokey['code'] === 'invalid' && str_contains( implode( ' ', $nokey['problems'] ), '"/template/page-texts/a/nothing"' ) === true
 	&& $nokey['unchanged'] === true && \Nino\Text::entry( $appData, '/template/page-texts/a/nothing' ) === null );
 
@@ -2076,7 +2089,7 @@ $taleAnswer = \Nino\Modules\Builder\Document::save( $appData, 'page-home-card', 
 $taleSource = (string) file_get_contents( $cardPath );
 $taleSlot = \Nino\Images::getSlot( $appData, '/template/page-home-card/tale/card-picture' ) ?: [];
 check( 'renaming a section rewrites the sources of the children of its cards and the picture a card names - in the file, in the keys and in the slots: the keys are under the new name, the slot is made again under it with the alt texts of the old one, which is left',
-	$taleAnswer['status'] === 200 && str_contains( $taleSource, '[card-title /template/page-home-card/tale/title level="3"]' ) === true && str_contains( $taleSource, 'background="/template/page-home-card/tale/card-picture"' ) === true && str_contains( $taleSource, '/template/page-home-card/story/' ) === false
+	$taleAnswer['status'] === 200 && str_contains( $taleSource, '[card-title /template/page-home-card/tale/title tag="h3"]' ) === true && str_contains( $taleSource, 'background="/template/page-home-card/tale/card-picture"' ) === true && str_contains( $taleSource, '/template/page-home-card/story/' ) === false
 	&& $stored( '/template/page-home-card/tale/title' ) === 'Our story' && $stored( '/template/page-home-card/tale/note' ) === '<p>A note.</p>' && \Nino\Text::entry( $appData, '/template/page-home-card/story/title' ) === null
 	&& ( $taleSlot['label'] ?? '' ) === 'Card picture' && ( $taleSlot['alt'] ?? [] ) === [ 'en_US' => 'A card' ] && \Nino\Images::getSlot( $appData, '/template/page-home-card/story/card-picture' ) !== false );
 
@@ -2494,8 +2507,14 @@ $page = \Nino\Html::renderHtml( $appData, '[template /templates/page-home]' );
 check( 'the page renders through the kernel with no call of a component, a stack or a template left in it', preg_match( '/\[\/?(?:title|subtitle|text|image|button|html|spacer|stack|slider|filter|list|template|osm)[ \]]/', $page ) === 0
 	&& preg_match( '/\[\[/', $page ) === 0 && $page !== '' );
 check( '...the head and the foot are the frames it names', str_contains( $page, "\n<header>Short</header>\n" ) === true && str_ends_with( trim( $page ), '<footer>Footer</footer>' ) === true );
-check( '...the components are the kernel\'s: the heading with its level and style, the button with its address, the texts of the keys', str_contains( $page, '<h1 class="nino-section-title nino-section-title--loud">Hello</h1>' ) === true
-	&& str_contains( $page, '<a class="nino-btn nino-btn--primary" href="/contact">Contact us</a>' ) === true && str_contains( $page, '<h2 class="nino-section-title">Services</h2>' ) === true );
+check( '...the components are the kernel\'s: the heading with its tag and style, the button with its address, the texts of the keys', str_contains( $page, '<h3 class="nino-section-title nino-section-title--loud">Hello</h3>' ) === true
+	&& str_contains( $page, '<a class="nino-btn nino-btn--primary" href="/contact">Contact us</a>' ) === true && str_contains( $page, '<h3 class="nino-section-title">Services</h3>' ) === true );
+$tagged = $write( $read( $section( "[title /template/page-home/contact/title tag=\"h4\" style=\"loud\"]\n\t\t\t[subtitle /template/page-home/contact/title]\n\t\t\t[subtitle /template/page-home/contact/title tag=\"h5\"]\n\t\t\t[card-title /template/page-home/contact/title]" ). "\n" ) );
+$drawn = \Nino\Html::renderHtml( $appData, $tagged );
+check( '...the tag the builder writes is the tag the kernel draws: a title is an h4 where the call names h4, a subtitle a div where it names none and an h5 where it names h5, a title of a card an h4 where it names none - and the call of a default says nothing', str_contains( $tagged, '[title /template/page-home/contact/title tag="h4" style="loud"]' ) === true
+	&& str_contains( $tagged, "[subtitle /template/page-home/contact/title]\n" ) === true && str_contains( $tagged, '[subtitle /template/page-home/contact/title tag="h5"]' ) === true && str_contains( $tagged, "[card-title /template/page-home/contact/title]\n" ) === true
+	&& str_contains( $drawn, '<h4 class="nino-section-title nino-section-title--loud">Contact</h4>' ) === true && str_contains( $drawn, '<div class="nino-section-subtitle">Contact</div>' ) === true
+	&& str_contains( $drawn, '<h5 class="nino-section-subtitle">Contact</h5>' ) === true && str_contains( $drawn, '<h4 class="nino-card-title">Contact</h4>' ) === true );
 check( '...the stack is a loop of the elements, one cell each, in the order it names', preg_match_all( '/nino-grid-s-100 nino-grid-m-50 nino-grid-l-50 nino-autoheight/', $page ) === 2
 	&& strpos( $page, 'App' ) < strpos( $page, 'Web' ) && str_contains( $page, 'Mehr</a>' ) === true );
 check( '...and the sections are what Nino.css knows: the cover with its height, the background block, the row and its columns',

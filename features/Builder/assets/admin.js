@@ -1351,10 +1351,10 @@
 
 		/**
 		 *	Where a component would stand, as a component says where it belongs (its 'in'): inside a component that holds
-		 *	components the place its 'holds' names; in a column the hero where the column is in the first block of the page and
-		 *	that has a picture behind it - the cover or the parallax, which is when Nino.css takes a section for the hero -, else
-		 *	a section. That is so in the cell of a loop as well: it holds no place of its own, a cell that has no card is a column
-		 *	of the page. Whether a loop takes the component is another matter (its 'loop'), and is not asked here
+		 *	components the place its 'holds' names; in a column the hero where the column is in the first section of the page
+		 *	(the hero, with a picture behind it or without), else a section. That is so in the cell of a loop as well: it holds
+		 *	no place of its own, a cell that has no card is a column of the page. Whether a loop takes the component is another
+		 *	matter (its 'loop'), and is not asked here
 		 *
 		 *	@param		{Object}		model
 		 *	@param		{Array}			path							The column, or the component that holds components
@@ -1369,7 +1369,7 @@
 			if( path.length > 2 )
 				return builder._holds( registry ?? builder._registry, builder._get( model, path ).name );
 
-			return path[0] === 0 && model.blocks[0].settings.image !== '' ? 'hero' : 'section';
+			return path[0] === 0 ? 'hero' : 'section';
 		},
 
 		/**
@@ -2715,6 +2715,12 @@
 
 			const builder = Nino.admin.builder;
 
+			// The browser selects the word under the pointer on the second mousedown of a double click; prevented there,
+			// the dblclick still fires and the dialog opens
+			el.addEventListener( 'mousedown', function( ev ) {
+				if( ev.detail > 1 )
+					ev.preventDefault();
+			} );
 			el.addEventListener( 'click', function( ev ) {
 				if( ev.target.closest('.builder-pick') === el )
 					builder._select( path );
@@ -3233,7 +3239,10 @@
 		 *	components of the registry that belong where the list is (see _where()) - one that
 		 *	names the places it belongs in (its 'in') only where the list holds this one, one that
 		 *	names none anywhere - and, where the column runs a loop, those a loop takes, in the
-		 *	components it holds as well. What holds components is not offered in another
+		 *	components it holds as well. What holds components is not offered in another. They
+		 *	stand in the order of the registry - the components of the kernel as it registers
+		 *	them, then those of the features as they were registered: the order is the
+		 *	registry's, and the Builder knows no component by name
 		 *
 		 *	@param		{Array}			path					The column, or the component that holds components
 		 *	@param		{Element}		anchor
@@ -3258,7 +3267,7 @@
 					&& ( Array.isArray( schema.in ) === false || schema.in.indexOf( place ) !== -1 );
 			} ).map( function( name ) {
 				return { label : registry.components[name].label || name, run : function() { builder._addComponent( path, name ) } };
-			} ).sort( function( a, b ) { return a.label.localeCompare( b.label ) } );
+			} );
 
 			builder._showMenu( items, anchor );
 		},
@@ -4666,8 +4675,9 @@
 			} );
 			field.addEventListener( 'blur', function() { end( true, false ) } );
 
-			// A click in the field is not one on the frame it is in
-			[ 'click', 'dblclick' ].forEach( function( type ) { field.addEventListener( type, function( ev ) { ev.stopPropagation() } ) } );
+			// A click in the field is not one on the frame it is in, and neither is the mousedown of its double click: the frame keeps
+			// that one from selecting a word, and a word of the name is what a double click in the field is for
+			[ 'mousedown', 'click', 'dblclick' ].forEach( function( type ) { field.addEventListener( type, function( ev ) { ev.stopPropagation() } ) } );
 
 			text.hidden = true;
 			button.hidden = true;

@@ -81,7 +81,12 @@ namespace Nino\Modules\Design {
 		// the key pair of webfonts.getnino.dev: paste the public half here, or name it in the
 		// setting 'webfontsKey' for a repository of your own. An empty key refuses the list - there
 		// is no unsigned fallback
-		public const string PUBLIC_KEY = '';
+		public const string PUBLIC_KEY = <<<'PEM'
+-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE6CoCfpg9S1duMrigHnxDBKq5md/U
+MewISxkh026g8EmCieoyDZanhJ/ZD326y0DuaDbSTCXc4Ma8CrZTEP813w==
+-----END PUBLIC KEY-----
+PEM;
 
 		public const int FORMAT = 1;
 

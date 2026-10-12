@@ -403,7 +403,7 @@
 	min-width: 0;
 }
 .builder-frame-head {
-	padding: .25rem .4rem .25rem .6rem;
+	padding: .45rem .6rem .45rem .8rem;
 	border-bottom: 1px solid color-mix(in srgb, currentColor 15%, transparent);
 	font-size: .72rem;
 	font-weight: 700;
@@ -533,7 +533,7 @@ button.builder-status-item:hover {
 	flex-wrap: wrap;
 	gap: var(--builder-gap);
 	min-height: 2rem;
-	padding: .5rem;
+	padding: .7rem;
 	justify-content: center;
 }
 .builder-pcol {
@@ -547,14 +547,14 @@ button.builder-status-item:hover {
 	background-image: repeating-linear-gradient(45deg, transparent 0 6px, color-mix(in srgb, currentColor 10%, transparent) 6px 12px);
 }
 .builder-pcol-head {
-	padding: .1rem .15rem .1rem .4rem;
+	padding: .3rem .35rem .3rem .6rem;
 	font-size: .66rem;
 	opacity: .8;
 }
 .builder-col-body {
 	display: grid;
 	gap: .3rem;
-	padding: .3rem;
+	padding: .5rem;
 }
 /* A component that holds components has a frame of its own in its column, lighter than the column's: a thin solid line in the
    colour of the frame it stands in, and a smaller head */
@@ -568,21 +568,21 @@ button.builder-status-item:hover {
 	align-items: center;
 	gap: .5rem;
 	min-width: 0;
-	padding: .05rem .15rem .05rem .4rem;
+	padding: .25rem .35rem .25rem .6rem;
 	font-size: .62rem;
 	opacity: .8;
 }
 .builder-card-body {
 	display: grid;
 	gap: .3rem;
-	padding: .3rem;
+	padding: .5rem;
 }
 .builder-ph {
 	display: flex;
 	align-items: center;
 	gap: .4rem;
 	min-width: 0;
-	padding: .25rem .4rem;
+	padding: .5rem;
 	border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
 	border-radius: var(--editor-radius-sm);
 	background: color-mix(in srgb, currentColor 6%, transparent);
@@ -983,7 +983,8 @@ button.builder-status-item:hover {
 
 /* ---------------------------------------------------- The controls of a form */
 
-/* A choice of a few as buttons that are one field: radio buttons, each a word or an icon */
+/* A choice of a few as buttons that are one field: radio buttons, each a word or an icon, in the colours of the knob strips
+   of the Design feature */
 .builder-segment-field {
 	min-width: 0;
 	margin-bottom: .72rem;
@@ -1026,14 +1027,22 @@ button.builder-status-item:hover {
 	opacity: 0;
 	cursor: pointer;
 }
-.builder-segment-option:has(input:checked) {
-	background: var(--editor-blue-soft);
-	box-shadow: inset 0 0 0 1px var(--editor-blue);
+.builder-segment:not(.is-disabled) .builder-segment-option:hover:not(:has(input:checked)) {
 	color: var(--editor-text);
+}
+.builder-segment-option:has(input:checked) {
+	background: var(--editor-blue);
+	color: var(--nino-admin-active-text);
 }
 .builder-segment-option:has(input:focus-visible) {
 	outline: 2px solid var(--editor-blue);
 	outline-offset: -2px;
+}
+/* The ring of a chosen option is the ink of an active tab, inside the blue:
+   blue on blue would hide the keyboard's focus */
+.builder-segment-option:has(input:checked:focus-visible) {
+	outline-color: var(--nino-admin-active-text);
+	outline-offset: -4px;
 }
 .builder-segment.is-disabled {
 	opacity: .45;

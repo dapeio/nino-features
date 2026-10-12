@@ -829,7 +829,7 @@ console.log( 'The model' );
 let model = page();
 
 check( 'the model php sends has its empty maps as lists, and they are maps here', Array.isArray( fixture('page-home.json').blocks[0].cols[0].hidden ) === true
-	&& JSON.stringify( model.blocks[0].cols[0].hidden ) === '{}' && model.blocks[0].cols[0].components[0].attributes.level === '1' );
+	&& JSON.stringify( model.blocks[0].cols[0].hidden ) === '{}' && model.blocks[0].cols[0].components[0].attributes.tag === 'h3' );
 check( 'a path names its node: the template, a section, a column, a component, a stack', builder._get( model, [] ) === model && builder._get( model, [ 0 ] ).id === 'hero' && builder._get( model, [ 1, 1 ] ).stack.name === 'stack'
 	&& builder._get( model, [ 0, 0, 2 ] ).name === 'button' && builder._get( model, [ 1, 1, 'x' ] ).source === '/services' && builder._get( model, [ 1, 0, 'x' ] ) === null && builder._get( model, [ 9 ] ) === null && builder._get( model, [ 2, 0 ] ) === null );
 check( 'what a node is: template, section, a block of html, column, stack, component', [ [], [ 0 ], [ 2 ], [ 0, 0 ], [ 1, 1, 'x' ], [ 0, 0, 1 ] ].map( function( at ) { return builder._kind( model, at ) } ).join() === 'template,section,html,col,stack,component' );
@@ -883,8 +883,8 @@ model = page();
 check( 'a copy of a column takes new keys beside the original for every component, and the copy shares nothing with it', ( function() {
 	builder._duplicate( model, registry(), 'page-home', [ 0, 0 ], function() { return '' } );
 	const copy = model.blocks[0].cols[1];
-	copy.components[0].attributes.level = '3';
-	return copy.components[0].source === '/template/page-home/hero/title-2' && copy.components[1].source === '/template/page-home/hero/subtitle-2' && model.blocks[0].cols[0].components[0].attributes.level === '1' && model.blocks[0].cols.length === 2;
+	copy.components[0].attributes.tag = 'h4';
+	return copy.components[0].source === '/template/page-home/hero/title-2' && copy.components[1].source === '/template/page-home/hero/subtitle-2' && model.blocks[0].cols[0].components[0].attributes.tag === 'h3' && model.blocks[0].cols.length === 2;
 } )() );
 model = page();
 model.blocks[1].cols[0].background = { slot : '/template/page-home/services/column-background', focus : 3 };
@@ -1081,7 +1081,7 @@ check( 'a new component has the attributes of its schema, and in a static column
 	const image = builder._newComponent( model, reg, 'page-home', [ 0, 0 ], 'image', [] );
 	const html = builder._newComponent( model, reg, 'page-home', [ 0, 0 ], 'html', [] );
 	const spacer = builder._newComponent( model, reg, 'page-home', [ 0, 0 ], 'spacer', [] );
-	return title.source === '/template/page-home/hero/title-2' && title.create.value === 'Title (Section)' && title.attributes.level === '2' && title.text === null
+	return title.source === '/template/page-home/hero/title-2' && title.create.value === 'Title (Section)' && title.attributes.tag === 'h3' && title.text === null
 		&& image.source === '/template/page-home/hero/image' && image.create.label === 'Image' && image.create.width === 1600 && html.content === '' && html.source === '' && html.create === undefined && spacer.source === '' && spacer.create === undefined;
 } )() );
 check( '...and in a stack none: its source is a field, chosen in the form', builder._newComponent( model, reg, 'page-home', [ 1, 1 ], 'title', [] ).source === '' && builder._newComponent( model, reg, 'page-home', [ 1, 1 ], 'title', [] ).create === undefined );
@@ -1260,13 +1260,33 @@ check( '...the end of a column is a button for a component and nothing else - wh
 	const looped = builder._addsRow( [ 1, 1 ] );
 	return plain.children.length === 1 && looped.children.length === 1 && plain.children[0].textContent === '+ Component' && looped.children[0].textContent === '+ Component';
 } )() );
-check( '...and a component is chosen from the registry\'s, those that belong where the column is: the first section when it has a picture is the hero, anywhere else is a section - the cell of a loop among it, which holds no place of its own - and what names no place is offered in all of them; the card is for the hero and for a section, and a loop takes it as it takes the rest', ( function() {
+check( '...and a component is chosen from the registry\'s, those that belong where the column is: the first section is the hero, anywhere else is a section - the cell of a loop among it, which holds no place of its own - and what names no place is offered in all of them; the card is for the hero and for a section, and a loop takes it as it takes the rest', ( function() {
 	const menu = screen.getElementById('builder-menu');
 	const offered = function( path ) { builder._pickComponent( path, made('button') ); return texts( menu.children ) };
-	return offered( [ 0, 0 ] ) === 'Button,Card,HTML,Image,Spacer,Subtitle (Hero),Text,Title (Hero)' && offered( [ 1, 0 ] ) === 'Button,Card,HTML,Image,Spacer,Subtitle (Section),Text,Title (Section)'
+	return offered( [ 0, 0 ] ) === 'Title (Hero),Subtitle (Hero),Text,Card,Button,Image,HTML,Spacer' && offered( [ 1, 0 ] ) === 'Title (Section),Subtitle (Section),Text,Card,Button,Image,HTML,Spacer'
 		&& offered( [ 1, 1 ] ) === offered( [ 1, 0 ] ) && offered( [ 3, 0 ] ) === offered( [ 1, 0 ] );
 } )() );
-check( '...a component that says where it belongs (its "in") is offered there and nowhere else - the hero is the first block when it has a picture, a section is any other column, the cell of a loop included -, one that says nothing is offered everywhere, and one a loop does not take is offered in no column that runs one: the script names no component', ( function() {
+check( '...they stand in the order of the registry and in none of the script\'s own: the components as the kernel registers them, then those of a feature in the order it registered them - and a registry in another order is offered in that order, not in the alphabet\'s', ( function() {
+
+	const kept = builder._registry;
+	const offered = function( path ) { builder._pickComponent( path, made('button') ); return texts( screen.getElementById('builder-menu').children ) };
+	const kernel = offered( [ 1, 0 ] );
+	const flipped = {};
+
+	builder._registry = Object.assign( {}, kept, { components : Object.assign( {}, kept.components, { zulu : { label : 'Zulu', preview : 'block' }, alpha : { label : 'Alpha', preview : 'block' } } ) } );
+
+	const featured = offered( [ 1, 0 ] );
+
+	Object.keys( kept.components ).reverse().forEach( function( name ) { flipped[name] = kept.components[name] } );
+	builder._registry = Object.assign( {}, kept, { components : flipped } );
+
+	const other = offered( [ 1, 0 ] );
+
+	builder._registry = kept;
+
+	return kernel === 'Title (Section),Subtitle (Section),Text,Card,Button,Image,HTML,Spacer' && featured === kernel+ ',Zulu,Alpha' && other === 'Spacer,HTML,Image,Button,Card,Text,Subtitle (Section),Title (Section)';
+} )() );
+check( '...a component that says where it belongs (its "in") is offered there and nowhere else - the hero is the first section, whether or not it has a picture, a section is any other column, the cell of a loop included -, one that says nothing is offered everywhere, and one a loop does not take is offered in no column that runs one: the script names no component', ( function() {
 
 	const menu = screen.getElementById('builder-menu');
 	const components = builder._registry.components;
@@ -1284,12 +1304,12 @@ check( '...a component that says where it belongs (its "in") is offered there an
 
 	const found = [ offered( [ 0, 0 ] ), offered( [ 1, 0 ] ), offered( [ 1, 1 ] ), offered( [ 3, 0 ] ) ].join(' | ');
 
-	// The first section has no picture: it is a section; the second has one, and is no hero for that
+	// The first section has no picture: it is the hero all the same; the second has one, and is no hero for that
 	blocks[0].settings.image = '';
 	blocks[1].settings.image = 'cover';
 
-	return found === 'Stub alone,Stub any,Stub hero | Stub alone,Stub any,Stub two | Stub any,Stub two | Stub alone,Stub any,Stub two'
-		&& offered( [ 0, 0 ] ) === 'Stub alone,Stub any,Stub two' && offered( [ 1, 0 ] ) === 'Stub alone,Stub any,Stub two' && offered( [ 1, 1 ] ) === 'Stub any,Stub two';
+	return found === 'Stub hero,Stub any,Stub alone | Stub two,Stub any,Stub alone | Stub two,Stub any | Stub two,Stub any,Stub alone'
+		&& offered( [ 0, 0 ] ) === 'Stub hero,Stub any,Stub alone' && offered( [ 1, 0 ] ) === 'Stub two,Stub any,Stub alone' && offered( [ 1, 1 ] ) === 'Stub two,Stub any';
 } )() );
 
 doc = open();
@@ -1388,6 +1408,20 @@ check( '...pressing one shows the preview in it: the button is the one that is p
 	screen.getElementById('builder-viewport-s').click();
 	return start === 'false,false,true,false' && global && builder._viewport === 's' && preview().dataset.viewport === 's' && pressed() === 'true,false,false,false';
 } )() );
+check( 'a double click selects no text: the second mousedown of it is prevented on every frame that can be picked - a section, a column, a component - where the browser would select the word under the pointer, and so is the third; the first and a plain one are not, so that a click and a drag select as they did - and the double click goes on to open the form', ( function() {
+
+	doc = open();
+	builder._renderEditor();
+
+	const frames = preview().all().filter( function( el ) { return el.classList.contains('builder-pick') } );
+	const prevented = function( detail ) { return frames.filter( function( el ) { return el.dispatch( 'mousedown', detail === undefined ? {} : { detail : detail } ).defaultPrevented === true } ).length };
+	const counted = [ prevented( 1 ), prevented( 2 ), prevented( 3 ), prevented() ].join();
+
+	preview().querySelector('[data-path="0.0.0"] .builder-ph-label').dispatch('dblclick');
+
+	return frames.length === 20 && counted === '0,20,20,0' && dialogBox().open === true && dialogText('builder-dialog-kind') === 'Component "Title (Section)"';
+} )() );
+builder._closeDialog();
 console.log( '\nRenaming a section where its name stands' );
 
 doc = open();
@@ -1404,6 +1438,8 @@ check( '...a click in the field is not a click on the frame', ( function() {
 	fieldOf( 0 ).click();
 	return builder._same( builder._sel, [] );
 } )() );
+check( '...nor is the mousedown of a double click in it: the frame keeps that one from selecting a word, and a word of the name is what a double click in the field is for', fieldOf( 0 ).dispatch( 'mousedown', { detail : 2 } ).defaultPrevented === false
+	&& fieldOf( 0 ).parentNode.dispatch( 'mousedown', { detail : 2 } ).defaultPrevented === true );
 fieldOf( 0 ).value = 'start';
 const enter = pressKey( fieldOf( 0 ), 'Enter' );
 check( 'Enter takes the name: the field is gone, the name and the pencil are back, the pencil has the focus - and a section with keys under its name is asked first, since they move with it', enter.defaultPrevented === true && fieldOf( 0 ) === null && frameName( 0 ).hidden === false && pencilOf( 0 ).hidden === false
@@ -2187,13 +2223,13 @@ check( '...Content: the source as text, with an icon button beside it that opens
 		&& row.querySelector('.builder-source-current').textContent === '/template/page-home/hero/title' && row.querySelector('.builder-source-name').hidden === true
 		&& button.className === 'builder-icon-btn' && button.title === 'Source' && button.getAttribute('aria-label') === 'Source' && iconOf( button ) === 'source' && JSON.stringify( labelList( paneOf('content') ) ) === '["Text (English (US))"]';
 } )() );
-check( '...Properties: the attributes of the schema in the order of the schema, the two of them on a line', JSON.stringify( labelList( paneOf('properties') ) ) === JSON.stringify( [ 'Level', 'Style' ] ) && paneOf('properties').children.length === 1 && paneOf('properties').children[0].className === 'builder-line' && paneOf('properties').children[0].children.length === 2
-	&& controlOf( paneOf('properties'), 'Level' ).el.children.map( function( option ) { return option.value } ).join() === '1,2,3,4' && controlOf( paneOf('properties'), 'Style' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=none,loud=loud,quiet=quiet'
-	&& valueAt( paneOf('properties'), 'Level' ) === '1' && valueAt( paneOf('properties'), 'Style' ) === 'loud' );
-change( paneOf('properties'), 'Level', '3' );
+check( '...Properties: the attributes of the schema in the order of the schema, the two of them on a line', JSON.stringify( labelList( paneOf('properties') ) ) === JSON.stringify( [ 'Tag', 'Style' ] ) && paneOf('properties').children.length === 1 && paneOf('properties').children[0].className === 'builder-line' && paneOf('properties').children[0].children.length === 2
+	&& controlOf( paneOf('properties'), 'Tag' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === 'div=div,h3=h3,h4=h4' && controlOf( paneOf('properties'), 'Style' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=none,loud=loud,quiet=quiet'
+	&& valueAt( paneOf('properties'), 'Tag' ) === 'h3' && valueAt( paneOf('properties'), 'Style' ) === 'loud' );
+change( paneOf('properties'), 'Tag', 'h4' );
 change( paneOf('properties'), 'Style', '' );
 change( paneOf('custom'), 'Class of the component', 'big' );
-check( '...and write the attributes, CSS classes the class of the component', componentAt( [ 0, 0, 0 ] ).attributes.level === '3' && componentAt( [ 0, 0, 0 ] ).attributes.style === '' && componentAt( [ 0, 0, 0 ] ).attributes['class'] === 'big' && JSON.stringify( labelList( paneOf('custom') ) ) === JSON.stringify( [ 'Class of the component' ] )
+check( '...and write the attributes, CSS classes the class of the component', componentAt( [ 0, 0, 0 ] ).attributes.tag === 'h4' && componentAt( [ 0, 0, 0 ] ).attributes.style === '' && componentAt( [ 0, 0, 0 ] ).attributes['class'] === 'big' && JSON.stringify( labelList( paneOf('custom') ) ) === JSON.stringify( [ 'Class of the component' ] )
 	&& paneOf('custom').querySelector('.nino-admin-hint').textContent === words['/_admin/builder/hint/custom'] && changes === 3 );
 
 builder._openSettings( [ 0, 0, 2 ] );
@@ -2210,7 +2246,7 @@ check( 'the attributes of a schema are paired in the order of the schema: a sele
 	const declared = { a : { type : 'select' }, b : { type : 'bool' }, c : { type : 'lines' }, d : { type : 'int' }, e : { type : 'string' }, f : { type : 'href' }, g : { type : 'select' }, h : { type : 'image' }, i : { type : 'key' }, j : { type : 'select' }, k : { type : 'select' }, l : { type : 'select' }, m : { type : 'select', options : places }, n : { type : 'bool' }, o : { type : 'select', options : [ '', 'left' ] } };
 	return JSON.stringify( builder._attributeLines( declared ) ) === '[["a","b"],["c"],["d","e"],["f"],["g"],["h"],["i"],["j","k"],["l"],["m"],["n","o"]]' && JSON.stringify( builder._attributeLines( {} ) ) === '[]'
 		&& JSON.stringify( builder._attributeLines( registry().components.button.attributes ) ) === '[["href"],["style","size"],["target"]]' && JSON.stringify( builder._attributeLines( registry().components.image.attributes ) ) === '[["alt"],["focus"],["ratio"]]'
-		&& JSON.stringify( builder._attributeLines( registry().components.title.attributes ) ) === '[["level","style"]]';
+		&& JSON.stringify( builder._attributeLines( registry().components.title.attributes ) ) === '[["tag","style"]]';
 } )() );
 
 builder._doc.model.blocks[0].cols[0].components.push( { name : 'spacer', source : '', text : null, attributes : { size : '2', 'class' : '' } } );
@@ -3282,7 +3318,7 @@ heroTitle().values = { en_US : 'Typed, not saved' };
 builder._renderPreview();
 check( '...the text that was typed and not saved is the one it says, before the one the key holds', lines()[0] === 'Typed, not saved' );
 delete heroTitle().values;
-builder._doc.model.blocks[0].cols[0].components.push( { name : 'title', source : '/template/page-home/hero/new', text : null, attributes : { level : '2', style : '', 'class' : '' }, create : { value : 'Made when saved' } } );
+builder._doc.model.blocks[0].cols[0].components.push( { name : 'title', source : '/template/page-home/hero/new', text : null, attributes : { tag : 'h3', style : '', 'class' : '' }, create : { value : 'Made when saved' } } );
 builder._renderPreview();
 check( '...and so is the text a key is going to be made with', lines()[3] === 'Made when saved' );
 check( 'the preview that is told no language and no keys says what a component is, as it did: no line, no picture', builder._preview( builder._doc.model, builder._registry, 'l' )[0].cols[0].components.every( function( component ) { return component.line === '' && component.picture === '' } )
@@ -3306,25 +3342,59 @@ doc = open();
 builder._renderEditor();
 const phOf = function( path ) { return preview().querySelector('[data-path="'+ path+ '"]') };
 const drawsOf = function( path ) { return phOf( path ).querySelector('.builder-ph-draws') };
-check( 'a component that says what it draws has a second line in its placeholder, under the first and in a block of its own with it: the tag in upper case, the class as it is, the attribute of the component put in for its name - a title of level 1 draws H1 .nino-section-title', drawsOf('0.0.0').textContent === 'H1 .nino-section-title' && drawsOf('0.0.0').hidden === false
-	&& drawsOf('0.0.0').parentNode.className === 'builder-ph-text' && classes( drawsOf('0.0.0').parentNode.children ) === 'builder-ph-label,builder-ph-draws' && phOf('0.0.0').classList.contains('has-draws') && drawsOf('0.0.1').textContent === 'P .nino-section-subtitle' && drawsOf('0.0.2').textContent === 'A .nino-btn' );
+check( 'a component that says what it draws has a second line in its placeholder, under the first and in a block of its own with it: the tag in upper case, the class as it is, the attribute of the component put in for its name - a title at its default tag draws H3 .nino-section-title, a subtitle DIV .nino-section-subtitle', drawsOf('0.0.0').textContent === 'H3 .nino-section-title' && drawsOf('0.0.0').hidden === false
+	&& drawsOf('0.0.0').parentNode.className === 'builder-ph-text' && classes( drawsOf('0.0.0').parentNode.children ) === 'builder-ph-label,builder-ph-draws' && phOf('0.0.0').classList.contains('has-draws') && drawsOf('0.0.1').textContent === 'DIV .nino-section-subtitle' && drawsOf('0.0.2').textContent === 'A .nino-btn' );
 builder._keys = known();
 builder._renderEditor();
 check( '...the first line is what it was: the label of the component, or the first line of its text - and the second goes under that, while the title is still the label', phOf('0.0.0').querySelector('.builder-ph-label').textContent === 'Welcome' && phOf('0.0.0').title === 'Title (Section)'
-	&& drawsOf('0.0.0').textContent === 'H1 .nino-section-title' && phOf('0.0.2').querySelector('.builder-ph-label').textContent === 'Button' && phOf('0.0.2').title === '' );
-builder._doc.model.blocks[0].cols[0].components[0].attributes.level = '3';
+	&& drawsOf('0.0.0').textContent === 'H3 .nino-section-title' && phOf('0.0.2').querySelector('.builder-ph-label').textContent === 'Button' && phOf('0.0.2').title === '' );
+builder._doc.model.blocks[0].cols[0].components[0].attributes.tag = 'h4';
 builder._renderEditor();
-check( '...a title of level 3 draws H3 .nino-section-title; where the component has no value for the name, the default of the schema is put in', drawsOf('0.0.0').textContent === 'H3 .nino-section-title'
-	&& ( delete builder._doc.model.blocks[0].cols[0].components[0].attributes.level, builder._renderEditor(), drawsOf('0.0.0').textContent === 'H2 .nino-section-title' ) );
+check( '...a title with the tag h4 draws H4 .nino-section-title; where the component has no value for the name, the default of the schema is put in', drawsOf('0.0.0').textContent === 'H4 .nino-section-title'
+	&& ( delete builder._doc.model.blocks[0].cols[0].components[0].attributes.tag, builder._renderEditor(), drawsOf('0.0.0').textContent === 'H3 .nino-section-title' ) );
 check( 'a component that does not say what it draws is as it was: one line, the mark is not set - and the block of the second line is there, out of sight and empty', drawsOf('1.0.1') !== null && drawsOf('1.0.1').hidden === true && drawsOf('1.0.1').textContent === '' && phOf('1.0.1').classList.contains('has-draws') === false
 	&& phOf('1.0.1').querySelector('.builder-ph-label').textContent === 'Text' && phOf('0.0.1').classList.contains('has-draws') === true );
-check( '...what a schema says is put in as it is said: the tag is the first word and in upper case, a name in braces is the attribute of the component - the default of the schema where it has none, nothing where the schema has none either -, a word alone is a tag alone, and a schema that says nothing, or something that is no text, says no line',
-	builder._draws( { draws : 'h{level} .nino-x' }, { attributes : { level : '4' } } ) === 'H4 .nino-x' && builder._draws( { draws : 'h{level} .nino-x', defaults : { level : '2' } }, { attributes : {} } ) === 'H2 .nino-x'
+check( '...what a schema says is put in as it is said: the tag is the first word and in upper case, a name in braces is the attribute of the component - the default of the schema where it has none, nothing where the schema has none either -, a word alone is a tag alone, the whole tag may be a name in braces - as it is in the kernel\'s titles -, and a schema that says nothing, or something that is no text, says no line',
+	builder._draws( { draws : '{tag} .nino-x', defaults : { tag : 'div' } }, { attributes : { tag : 'h3' } } ) === 'H3 .nino-x' && builder._draws( { draws : '{tag} .nino-x', defaults : { tag : 'div' } }, { attributes : {} } ) === 'DIV .nino-x'
+	&& builder._draws( { draws : 'h{level} .nino-x' }, { attributes : { level : '4' } } ) === 'H4 .nino-x' && builder._draws( { draws : 'h{level} .nino-x', defaults : { level : '2' } }, { attributes : {} } ) === 'H2 .nino-x'
 	&& builder._draws( { draws : 'h{level} .nino-x' }, { attributes : {} } ) === 'H .nino-x' && builder._draws( { draws : 'hr' }, {} ) === 'HR' && builder._draws( { draws : 'p .a-{style}' }, { attributes : { style : 'loud' } } ) === 'P .a-loud'
 	&& builder._draws( {}, { attributes : {} } ) === '' && builder._draws( { draws : '' }, {} ) === '' && builder._draws( { draws : 5 }, {} ) === '' );
 check( '...the stylesheet sets the image of a placeholder with a second line at the top and leaves the one-line placeholder centred, as it was; the line is in the code font of the workbench, at half strength, on one line cut off with an ellipsis - and out of sight while it has nothing to say', stylesheet.indexOf( '.builder-ph.has-draws {\n\talign-items: flex-start;' ) !== -1
 	&& /\.builder-ph \{[^}]*align-items: center;/.test( stylesheet ) && /\.builder-ph-draws \{[^}]*font-family: var\(--nino-admin-mono\);[^}]*opacity: \.5;/.test( stylesheet ) && stylesheet.indexOf( '.builder-ph-draws[hidden] {\n\tdisplay: none;' ) !== -1
 	&& stylesheet.indexOf( '.builder-ph-label,\n.builder-ph-draws {\n\tdisplay: block;\n\toverflow: hidden;\n\ttext-overflow: ellipsis;\n\twhite-space: nowrap;' ) !== -1 );
+
+console.log( '\nThe colours of a choice and the room in the frames' );
+
+// A rule of the stylesheet by its selector, as the selector stands on a line of its own with nothing after it but the brace - the
+// last of a list of selectors is that line as well, and its rule is the list's: the one that has the comma before it is passed over
+const ruleOf = function( selector ) {
+
+	for( let at = stylesheet.indexOf( '\n'+ selector+ ' {\n' ); at !== -1; at = stylesheet.indexOf( '\n'+ selector+ ' {\n', at + 1 ) )
+		if( stylesheet.charAt( at - 1 ) !== ',' )
+			return stylesheet.slice( at, stylesheet.indexOf( '\n}', at ) );
+
+	return '';
+};
+
+check( 'the options of a choice wear the colours of the knob strips of the Design feature: the elevated ground and the quiet ink, the ink of the text for one that is pointed at and not chosen - in a segment that takes a choice, not in a disabled one - and for the one that is chosen the blue and the ink of an active tab - without the ring and the soft blue it had', ( function() {
+
+	const option = ruleOf('.builder-segment-option');
+	const hover = ruleOf('.builder-segment:not(.is-disabled) .builder-segment-option:hover:not(:has(input:checked))');
+	const chosen = ruleOf('.builder-segment-option:has(input:checked)');
+
+	return option.indexOf( '\tbackground: var(--editor-bg-elevated);\n\tcolor: var(--editor-text-secondary);\n' ) !== -1 && hover === '\n.builder-segment:not(.is-disabled) .builder-segment-option:hover:not(:has(input:checked)) {\n\tcolor: var(--editor-text);'
+		&& chosen === '\n.builder-segment-option:has(input:checked) {\n\tbackground: var(--editor-blue);\n\tcolor: var(--nino-admin-active-text);' && stylesheet.indexOf( 'editor-blue-soft);\n\tbox-shadow: inset' ) === -1;
+} )() );
+check( '...their sizes, their borders and the disabled rule are as they were, the focus is the outline it was, and on a chosen option the ring is the ink of an active tab inside the blue, so that the keyboard\'s focus is seen on the fill', ruleOf('.builder-segment-option').indexOf( '\tmin-width: 2.5rem;\n\theight: calc(var(--nino-admin-control-height) - 2px);\n\tpadding: 0 .7rem;\n\tborder-right: 1px solid var(--editor-border);\n' ) !== -1
+	&& ruleOf('.builder-segment') === '\n.builder-segment {\n\tdisplay: flex;\n\twidth: fit-content;\n\tmax-width: 100%;\n\toverflow: hidden;\n\tborder: 1px solid var(--editor-border);\n\tborder-radius: var(--editor-radius-sm);'
+	&& ruleOf('.builder-segment.is-disabled') === '\n.builder-segment.is-disabled {\n\topacity: .45;' && ruleOf('.builder-segment-option:has(input:focus-visible)') === '\n.builder-segment-option:has(input:focus-visible) {\n\toutline: 2px solid var(--editor-blue);\n\toutline-offset: -2px;'
+	&& ruleOf('.builder-segment-option:has(input:checked:focus-visible)') === '\n.builder-segment-option:has(input:checked:focus-visible) {\n\toutline-color: var(--nino-admin-active-text);\n\toutline-offset: -4px;' );
+check( 'every frame of the preview has .2rem more room on each side than it had, and the placeholder .5rem all round: the head of a section .45 .6 .45 .8, its body .7, the head of a column .3 .35 .3 .6, its body .5, the head of a card .25 .35 .25 .6, its body .5 - the gaps are as they were', [
+	[ '.builder-frame-head', '.45rem .6rem .45rem .8rem' ], [ '.builder-frame-body', '.7rem' ], [ '.builder-pcol-head', '.3rem .35rem .3rem .6rem' ], [ '.builder-col-body', '.5rem' ],
+	[ '.builder-card-head', '.25rem .35rem .25rem .6rem' ], [ '.builder-card-body', '.5rem' ], [ '.builder-ph', '.5rem' ],
+].every( function( entry ) { return ruleOf( entry[0] ).split('\n').indexOf( '\tpadding: '+ entry[1]+ ';' ) !== -1 } )
+	&& ruleOf('.builder-frame-body').indexOf( '\tgap: var(--builder-gap);\n' ) !== -1 && ruleOf('.builder-col-body').indexOf( '\tgap: .3rem;\n' ) !== -1 && ruleOf('.builder-card-body').indexOf( '\tgap: .3rem;\n' ) !== -1 && ruleOf('.builder-ph').indexOf( '\tgap: .4rem;\n' ) !== -1
+	&& ruleOf('.builder-preview').split('\n').indexOf( '\tpadding: 1rem;' ) !== -1 );
 
 console.log( '\nThe picture of a slot' );
 
@@ -3889,7 +3959,7 @@ check( '...and so does the picture an attribute names: in a loop an image field 
 } )() );
 
 doc = openCard();
-check( 'where a component would stand: inside a container the place it holds, in a column the hero where the first block has a picture and a section otherwise - the cell of a loop is a column\'s place, since it holds none of its own', ( function() {
+check( 'where a component would stand: inside a container the place it holds, in a column the hero where the column is in the first section - with a picture behind it or without - and a section otherwise - the cell of a loop is a column\'s place, since it holds none of its own', ( function() {
 
 	const model = builder._doc.model;
 	const before = [ builder._where( model, [ 0, 1 ] ), builder._where( model, cardAt ), builder._where( model, [ 1, 0 ] ), builder._where( model, [ 1, 0, 0 ] ) ].join();
@@ -3900,7 +3970,7 @@ check( 'where a component would stand: inside a container the place it holds, in
 
 	own.components.card.holds = 'tile';
 
-	return before === 'section,card,section,card' && [ builder._where( model, [ 0, 0 ] ), builder._where( model, [ 0, 1 ] ), builder._where( model, cardAt ), builder._where( model, [ 1, 0 ] ) ].join() === 'hero,hero,card,section'
+	return before === 'hero,card,section,card' && [ builder._where( model, [ 0, 0 ] ), builder._where( model, [ 0, 1 ] ), builder._where( model, cardAt ), builder._where( model, [ 1, 0 ] ) ].join() === 'hero,hero,card,section'
 		&& builder._where( model, cardAt, own ) === 'tile';
 } )() );
 
@@ -3972,15 +4042,17 @@ doc = openCard();
 builder._renderEditor();
 
 const menuOf = function( path ) { builder._pickComponent( path, made('button') ); return texts( screen.getElementById('builder-menu').children ) };
-const inCard = 'Button,HTML,Image,Spacer,Subtitle (Card),Text,Title (Card)';
-const inSection = 'Button,Card,HTML,Image,Spacer,Subtitle (Section),Text,Title (Section)';
+const inCard = 'Title (Card),Subtitle (Card),Text,Button,Image,HTML,Spacer';
+const inSection = 'Title (Section),Subtitle (Section),Text,Card,Button,Image,HTML,Spacer';
+const inHero = 'Title (Hero),Subtitle (Hero),Text,Card,Button,Image,HTML,Spacer';
 
-check( 'the picker offers the card where the card says it belongs - a column of a section, and the bare cell of a loop, which holds no place of its own - and what a column is offered besides', menuOf( [ 0, 1 ] ) === inSection && menuOf( [ 1, 0 ] ) === inSection && menuOf( [ 0, 0 ] ) === inSection );
-check( '...in the first section when it has a picture it is offered as well: the hero is a place the card belongs in', ( function() {
+check( 'the picker offers the card where the card says it belongs - a column of a section, and the bare cell of a loop, which holds no place of its own - and what a column is offered besides', menuOf( [ 1, 0 ] ) === inSection );
+check( '...in the first section it is offered as well, with a picture behind it and without: the hero is a place the card belongs in, and the picture does not make it one', ( function() {
+	const without = [ menuOf( [ 0, 0 ] ), menuOf( [ 0, 1 ] ) ];
 	builder._doc.model.blocks[0].settings.image = 'cover';
 	const offered = menuOf( [ 0, 0 ] );
 	builder._doc.model.blocks[0].settings.image = '';
-	return offered === 'Button,Card,HTML,Image,Spacer,Subtitle (Hero),Text,Title (Hero)';
+	return without.join() === [ inHero, inHero ].join() && offered === inHero;
 } )() );
 check( '...inside a card it offers what belongs to the place the card holds - the title and the subtitle of a card - and not the card itself, and not the title of a section nor the title of a hero, whose places are others', menuOf( cardAt ) === inCard && menuOf( [ 1, 0, 0 ] ) === inCard
 	&& menuOf( cardAt ).split(',').indexOf('Card') === -1 && menuOf( [ 0, 1 ] ).split(',').indexOf('Title (Card)') === -1 && menuOf( [ 1, 0 ] ).split(',').indexOf('Title (Card)') === -1 );
@@ -3996,7 +4068,7 @@ check( '...the button of the card in the preview opens the same menu, and the bu
 
 	adds[adds.length - 1].querySelector('.builder-add-button').click();
 
-	return adds.length === 2 && own === inCard && texts( menu.children ) === inSection;
+	return adds.length === 2 && own === inCard && texts( menu.children ) === inHero;
 } )() );
 
 check( '...a component a loop does not take is offered in no column that runs one, and in no card inside it - at depth three and at depth four alike - and everywhere else; a container that says it belongs in a card is offered in none', ( function() {
@@ -4004,7 +4076,7 @@ check( '...a component a loop does not take is offered in no column that runs on
 	const components = builder._registry.components;
 
 	components['stub-alone'] = { label : 'Stub alone', preview : 'block', loop : false };
-	components['stub-holder'] = { label : 'Stub holder', source : 'content', preview : 'block', in : [ 'section', 'card' ], holds : 'card' };
+	components['stub-holder'] = { label : 'Stub holder', source : 'content', preview : 'block', in : [ 'hero', 'section', 'card' ], holds : 'card' };
 
 	const stub = function( path ) {
 		builder._pickComponent( path, made('button') );
