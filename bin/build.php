@@ -21,8 +21,9 @@ declare(strict_types=1);
  *								entry names is removed.
  *
  *								The catalogue.json already in the output directory (bin/
- *								release.sh fetches the published one there first) is read for
- *								two things only: an entry's 'released' stays the day of the
+ *								release.sh builds into public/, the directory the web server
+ *								delivers, so it is the published one) is read for two
+ *								things only: an entry's 'released' stays the day of the
  *								previous entry while its sha256 is the same, and 'generated'
  *								stays while the rest of the document is. A run that changes
  *								nothing leaves catalogue.json and its signature untouched.

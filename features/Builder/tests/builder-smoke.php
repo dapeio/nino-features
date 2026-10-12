@@ -1493,6 +1493,68 @@ unset( $borderLeft['blocks'][0]['settings']['borderPrimary'] );
 check( '...a strength with the brand colour is written, and a switch left out is off: no class', str_contains( \Nino\Modules\Builder\Document::source( $appData, $borderGood )['parts'][1]['source'], ' nino-section--border-1 nino-section--border-primary ' ) === true
 	&& str_contains( \Nino\Modules\Builder\Document::source( $appData, $borderLeft )['parts'][1]['source'], 'nino-section--border-primary' ) === false );
 
+// The width and the alignment of a row, the place of a picture and the alignment of a text or of a stack: a word of Nino.css or none - what is none of them would be a class of nothing
+$wordBad = [
+	'a row that is no width'										=> [ 'section', 'row', 'narrower', 'the row of block %d is none that Nino.css has' ],
+	'a row alignment that is none'							=> [ 'section', 'rowAlign', 'top', 'the rowAlign of block %d is none that Nino.css has' ],
+	'a place of the picture in capitals'				=> [ 'section', 'imagePos', 'Top', 'the imagePos of block %d is none that Nino.css has' ],
+	'an alignment of the text that is a number'	=> [ 'section', 'text', 0, 'the text of block %d is none that Nino.css has' ],
+	'an alignment of a column that is a list'		=> [ 'column', 'text', [ 'left' ], 'the text of column 1 of block %d is none that Nino.css has' ],
+	'an alignment of a column with a space'			=> [ 'column', 'text', 'left ', 'the text of column 1 of block %d is none that Nino.css has' ],
+	'an alignment of a stack that is none'			=> [ 'column', 'stackAlign', 'middle', 'the stackAlign of column 1 of block %d is none that Nino.css has' ],
+];
+$wordRefused	= [];
+
+foreach( [ 0, 3 ] as $at )
+	foreach( $wordBad as $what => [ $owner, $key, $value, $sentence ] ) {
+
+		$model = $loaded['model'];
+
+		if( $owner === 'section' )
+			$model['blocks'][$at]['settings'][$key] = $value;
+		else
+			$model['blocks'][$at]['cols'][0][$key] = $value;
+
+		$answer = \Nino\Modules\Builder\Document::save( $appData, 'page-home', $model, $loaded['hash'] );
+
+		if( $answer['status'] !== 400 || $answer['code'] !== 'invalid' || $answer['problems'] !== [ sprintf( $sentence, $at + 1 ) ]
+			|| \Nino\Modules\Builder\Document::source( $appData, $model )['status'] !== 400 || file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-home.tpl' ) ) !== $before )
+			$wordRefused[] = $what. ' of block '. ( $at + 1 );
+	}
+
+check( 'a row that is no width, an alignment of a row, a place of a picture and an alignment of a text or of a stack that Nino.css has none of are refused the same way, the setting and the block named: '. count( $wordBad ) * 2 . ' cases'. ( $wordRefused === [] ? '' : ' - '. implode( ', ', $wordRefused ) ), $wordRefused === [] );
+
+$wordWrong = [];
+
+foreach( [
+	[ 'section', 'row', [ 'narrow', 'wide' ], 'nino-grid-row--%s' ],
+	[ 'section', 'rowAlign', [ 'center', 'middle', 'bottom' ], 'nino-grid-%s' ],
+	[ 'section', 'imagePos', [ 'top', 'center', 'bottom' ], 'nino-cover-%s' ],
+	[ 'section', 'text', [ 'left', 'center', 'right' ], 'nino-text-%s' ],
+	[ 'column', 'text', [ 'left', 'center', 'right' ], 'nino-text-%s' ],
+	[ 'column', 'stackAlign', [ 'start', 'center', 'end' ], 'nino-stack-%s' ],
+] as [ $owner, $key, $words, $class ] )
+	foreach( $words as $word ) {
+
+		$model = $loaded['model'];
+
+		if( $owner === 'section' )
+			$model['blocks'][0]['settings'][$key] = $word;
+		else
+			$model['blocks'][0]['cols'][0][$key] = $word;
+
+		$answer = \Nino\Modules\Builder\Document::source( $appData, $model );
+
+		if( $answer['status'] !== 200 || str_contains( $answer['parts'][1]['source'], sprintf( $class, $word ) ) === false )
+			$wordWrong[] = $owner. ' '. $key. ' '. $word;
+	}
+
+check( 'the five vocabularies the Reader keeps are the words the Builder writes, no more and no fewer - a word dropped from one of them would become a custom class without a sound',
+	\Nino\Modules\Builder\Reader::ROW === [ 'narrow', 'wide' ] && \Nino\Modules\Builder\Reader::ROW_ALIGN === [ 'center', 'middle', 'bottom' ]
+	&& \Nino\Modules\Builder\Reader::IMAGE_POS === [ 'top', 'center', 'bottom' ] && \Nino\Modules\Builder\Reader::TEXT === [ 'left', 'center', 'right' ]
+	&& \Nino\Modules\Builder\Reader::STACK_ALIGN === [ 'start', 'center', 'end' ] );
+check( '...and every word the Reader keeps in a setting of its own is none of that: the source view writes it as the class it is read from'. ( $wordWrong === [] ? '' : ' - '. implode( ', ', $wordWrong ) ), $wordWrong === [] );
+
 $stackWrong = \Nino\Modules\Builder\Document::load( $appData, 'page-home' );
 $stackWrong['model']['blocks'][3]['cols'][0]['components'] = [ [ 'name' => 'stack', 'source' => '/services', 'text' => null, 'attributes' => [], 'content' => '' ] ];
 $stackAnswer = \Nino\Modules\Builder\Document::save( $appData, 'page-home', $stackWrong['model'], $stackWrong['hash'] );

@@ -2018,7 +2018,9 @@ namespace Nino\Modules\Builder {
 		 *	full width, the full height and the brand colour of the border of
 		 *	a section, the dimming of a column - one left out is off), a
 		 *	border that is no strength, the ground of a column that is none
-		 *	of Nino.css's, a background that is no slot or whose focus is none
+		 *	of Nino.css's, the width and the alignment of a row, the place of a
+		 *	picture and the alignment of a text or of a stack that are none of
+		 *	its words, a background that is no slot or whose focus is none
 		 *	of the nine places, a call that is no call, texts that are no text
 		 *	for each language, the padding and the margins of a column that
 		 *	are none of the steps 0 to 6, a component that holds components
@@ -2088,6 +2090,11 @@ namespace Nino\Modules\Builder {
 				if( in_array( $block['settings']['border'] ?? '', array_merge( [ '' ], Reader::BORDER ), true ) === false )
 					$problems[] = 'the border of '. $at. ' is none of the strengths';
 
+				// The width of the row, where it puts its columns, where the picture sits and how the text is aligned: a word of Nino.css or none
+				foreach( [ 'row' => Reader::ROW, 'rowAlign' => Reader::ROW_ALIGN, 'imagePos' => Reader::IMAGE_POS, 'text' => Reader::TEXT ] as $key => $words )
+					if( in_array( $block['settings'][$key] ?? '', array_merge( [ '' ], $words ), true ) === false )
+						$problems[] = 'the '. $key. ' of '. $at. ' is none that Nino.css has';
+
 				if( ( $block['background'] ?? null ) !== null && ( is_array( $block['background'] ) === false || $text( $block['background']['slot'] ?? null ) === false ) )
 					$problems[] = $at. ' has a background that is no image slot';
 
@@ -2108,6 +2115,11 @@ namespace Nino\Modules\Builder {
 
 					if( in_array( $col['color'] ?? '', array_merge( [ '' ], Reader::COL_COLOR ), true ) === false )
 						$problems[] = 'the color of '. $of. ' is none that Nino.css has';
+
+					// How the text of the column and the components of its stack are aligned: a word of Nino.css or none
+					foreach( [ 'text' => Reader::TEXT, 'stackAlign' => Reader::STACK_ALIGN ] as $key => $words )
+						if( in_array( $col[$key] ?? '', array_merge( [ '' ], $words ), true ) === false )
+							$problems[] = 'the '. $key. ' of '. $of. ' is none that Nino.css has';
 
 					if( is_bool( $col['dim'] ?? false ) === false )
 						$problems[] = 'the dim of '. $of. ' is neither on nor off';

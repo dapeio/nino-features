@@ -323,9 +323,7 @@ $appData['./nino/locales/current'] = 'de_DE';
 
 echo "Components - [posts-pager] as the Builder offers it, the record shortcodes as they were\n";
 
-if( class_exists( '\\Nino\\Modules\\Components' ) === false )
-	echo "  --  this Nino has no \\Nino\\Modules\\Components: the manifest's components are not read here, and the shortcodes register themselves\n";
-else ( static function( array $appData ): void {
+( static function( array $appData ): void {
 
 	$declared = \Nino\Features::manifest( dirname( __DIR__ ) )['components'] ?? [];
 
@@ -486,24 +484,32 @@ check( 'an empty body is nothing rather than an empty paragraph',
 
 echo "\nA field the model gives a format\n";
 
-/*	A field is the kernel's to render where it has \Nino\Html::fieldValue() -
-	the paragraphs and lists of a field that holds them, the line breaks of one
-	that keeps them - and a Nino from before it keeps what it always did. Both
-	are held to what they promise, so this runs on either	*/
-$formatted 		= is_callable( [ \Nino\Html::class, 'fieldValue' ] ) === true;
-$renderValue 	= new ReflectionMethod( \Nino\Modules\Posts\Shortcodes::class, '_value' );
-$fieldValue 	= static fn( string $value, array $field ): string => (string) $renderValue->invoke( null, $value, $field );
+/*	A field is the kernel's to render - \Nino\Html::fieldValue() - by the entry the
+	model has for it: the paragraphs and lists of a field that holds them, the line
+	breaks of one that keeps them, the inline tags of one released for html, the
+	escape for the rest. The type gets a field of each of the two it has none of	*/
+\Nino\Filesystem::mutate( $appData, '/elements/posts.php', static function( mixed $state ): array {
+	$state = is_array( $state ) === true ? $state : [];
+	$state['model']['lead'] = [ 'type' => 'string', 'locale' => true, 'html' => true, 'blocks' => true ];
+	$state['model']['note'] = [ 'type' => 'string', 'locale' => true, 'breaks' => true ];
+	return $state;
+}, [] );
+unset( $appData['./nino/elements/cache'] );
+\Nino\Elements::updateElement( $appData, '/posts/second-wind', [
+	'title'	=> '<b>[x]</b>',
+	'body'	=> '<strong>Bold</strong> [x]',
+	'lead'	=> '<p>Alpha</p><ul><li>Beta</li></ul>',
+	'note'	=> "Gamma\nDelta <b>",
+], 'de_DE' );
+unset( $appData['./nino/elements/cache'] );
+postsResolve( $appData, '/blog/second-wind' );
 
-check( 'a plain field is escaped, and a bracket in it is not a shortcode',
-	$fieldValue( '<b>[x]</b>', [ 'type' => 'string' ] ) === '&lt;b&gt;&#91;x]&lt;/b&gt;' && $fieldValue( '[x]', [] ) === '&#91;x]' );
-check( 'a field released for html keeps its inline tags and neutralises a bracket',
-	$fieldValue( '<strong>Bold</strong> [x]', [ 'type' => 'string', 'html' => true ] ) === '<strong>Bold</strong> &#91;x]' );
-$blocks = $fieldValue( '<p>Alpha</p><ul><li>Beta</li></ul>', [ 'type' => 'string', 'html' => true, 'blocks' => true ] );
-check( 'a field that holds paragraphs and lists keeps them where the kernel renders it, and flattens them where it does not',
-	$formatted === true ? $blocks === '<p>Alpha</p><ul><li>Beta</li></ul>' : str_contains( $blocks, '<p>' ) === false );
-$breaks = $fieldValue( "Gamma\nDelta <b>", [ 'type' => 'string', 'breaks' => true ] );
-check( 'a field that keeps its line breaks draws them as <br>, escaped, where the kernel renders it',
-	$formatted === true ? $breaks === "Gamma<br>\nDelta &lt;b&gt;" : str_contains( $breaks, '<br>' ) === false && str_contains( $breaks, '&lt;b&gt;' ) === true );
+$formats = explode( '|', postsRender( $appData, '[post][[title]]|[[body]]|[[lead]]|[[note]][/post]' ) );
+
+check( 'a plain field is escaped, and a bracket in it is not a shortcode', ( $formats[0] ?? '' ) === '&lt;b&gt;&#91;x]&lt;/b&gt;' );
+check( 'a field released for html keeps its inline tags and neutralises a bracket', ( $formats[1] ?? '' ) === '<strong>Bold</strong> &#91;x]' );
+check( 'a field that holds paragraphs and lists keeps them', ( $formats[2] ?? '' ) === '<p>Alpha</p><ul><li>Beta</li></ul>' );
+check( 'a field that keeps its line breaks draws them as <br>, escaped', ( $formats[3] ?? '' ) === "Gamma<br>\nDelta &lt;b&gt;" );
 
 echo "\nThe pages the SEO feature cannot find on its own\n";
 

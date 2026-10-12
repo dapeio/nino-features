@@ -857,11 +857,11 @@ namespace Nino\Modules\Builder {
 					$set( 'image', $token === 'nino-cover' ? 'cover' : 'parallax', $token );
 				elseif( $token === 'nino-cover--dim' || $token === 'nino-parallex--dim' )
 					$dim[] = $token;
-				elseif( preg_match( '/^nino-cover-(top|center|bottom)$/D', $token, $m ) === 1 )
+				elseif( preg_match( '/^nino-cover-('. implode( '|', self::IMAGE_POS ). ')$/D', $token, $m ) === 1 )
 					$set( 'imagePos', $m[1], $token );
 				elseif( preg_match( '/^nino-(mt|mb|pt|pb)-([0-6])$/D', $token, $m ) === 1 )
 					$set( $m[1], $m[2], $token );
-				elseif( preg_match( '/^nino-text-(left|center|right)$/D', $token, $m ) === 1 )
+				elseif( preg_match( '/^nino-text-('. implode( '|', self::TEXT ). ')$/D', $token, $m ) === 1 )
 					$set( 'text', $m[1], $token );
 				elseif( self::_animation( $token, $s ) === false )
 					$custom[] = $token;
@@ -906,9 +906,9 @@ namespace Nino\Modules\Builder {
 				if( $token === 'nino-grid-row' )
 					continue;
 
-				if( preg_match( '/^nino-grid-row--(narrow|wide)$/D', $token, $m ) === 1 && $settings['row'] === '' )
+				if( preg_match( '/^nino-grid-row--('. implode( '|', self::ROW ). ')$/D', $token, $m ) === 1 && $settings['row'] === '' )
 					$settings['row'] = $m[1];
-				elseif( preg_match( '/^nino-grid-(center|middle|bottom)$/D', $token, $m ) === 1 && $settings['rowAlign'] === '' )
+				elseif( preg_match( '/^nino-grid-('. implode( '|', self::ROW_ALIGN ). ')$/D', $token, $m ) === 1 && $settings['rowAlign'] === '' )
 					$settings['rowAlign'] = $m[1];
 				else
 					$custom[] = $token;
@@ -1227,11 +1227,11 @@ namespace Nino\Modules\Builder {
 					$dim = true;
 					$custom[] = $token;
 				}
-				elseif( preg_match( '/^nino-stack-(start|center|end)$/D', $token, $m ) === 1 && $col['stackAlign'] === '' )
+				elseif( preg_match( '/^nino-stack-('. implode( '|', self::STACK_ALIGN ). ')$/D', $token, $m ) === 1 && $col['stackAlign'] === '' )
 					$col['stackAlign'] = $m[1];
 				elseif( preg_match( '/^nino-stack-gap-([0-6])$/D', $token, $m ) === 1 && $col['stackGap'] === '' )
 					$col['stackGap'] = $m[1];
-				elseif( preg_match( '/^nino-text-(left|center|right)$/D', $token, $m ) === 1 && $col['text'] === '' )
+				elseif( preg_match( '/^nino-text-('. implode( '|', self::TEXT ). ')$/D', $token, $m ) === 1 && $col['text'] === '' )
 					$col['text'] = $m[1];
 				elseif( preg_match( '/^nino-(p|mt|mb)-([0-6])$/D', $token, $m ) === 1 && $col[$m[1]] === '' )
 					$col[$m[1]] = $m[2];

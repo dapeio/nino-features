@@ -220,9 +220,6 @@ file_put_contents( $work. '/not-a-key.pem', "this is not a key\n" );
 [ $status, , $stderr ] = runScript( $build, [ $root, $out, '--key', $work. '/not-a-key.pem' ] );
 check( 'a key file that holds no private key: exit 1', $status === 1 && str_contains( $stderr, 'not a PEM private key' ) === true );
 
-[ $status, , $stderr ] = runScript( $build, [ $root, $out, '--only', 'search' ] );
-check( '--only is gone: exit 2, an unknown option', $status === 2 && str_contains( $stderr, '--only' ) === true );
-
 // A checkout whose \Nino\Features has no vocabulary of categories - what
 // Nino was before 1.2 - is refused before anything is read, with a reason
 $bare = $work. '/bare';

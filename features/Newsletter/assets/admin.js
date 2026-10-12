@@ -66,49 +66,23 @@
 		},
 
 		/**
-		 *	Call a newsletter/* admin action. The workbench's own request helper
-		 *	posts where this Nino has one - it knows the project's directory
-		 *	and what to do when the page has outlived its session; the post
-		 *	below is what every panel did before it, with the base the asset
-		 *	bundle fills in, because Nino.dir does not exist before Nino 1.3.2
+		 *	Call a newsletter/* admin action through the workbench's request
+		 *	helper - it knows the project's directory and what to do when the
+		 *	page has outlived its session
 		 *
 		 *	@param		{string}		endpoint			Action name (eg. "list", becomes "newsletter/list")
 		 *	@param		{Object}		payload				Request payload, sent json-encoded as "data"
-		 *	@param		{Function}	callback			Called with ( xhr.status, xhr.responseJSON )
+		 *	@param		{Function}	callback			Called with ( status, parsed json or null )
 		 *
 		 *	@return		void
 		 */
 		_apiCall : function( endpoint, payload, callback ) {
-
-			if( Nino.adminUi && Nino.adminUi.api )
-				return Nino.adminUi.api.call( 'newsletter/'+ endpoint, payload, callback );
-
-			Nino.http.sendRequest( '[[/nino/dir]]/_admin/', 'POST', function( xhr ) {
-				callback( xhr.status, xhr.responseJSON );
-			}, { action : 'newsletter/'+ endpoint, data : JSON.stringify( payload ) } );
+			Nino.adminUi.api.call( 'newsletter/'+ endpoint, payload, callback );
 		},
 
 		/**
-		 *	What a failed request says: the server's code in the workbench's
-		 *	language, then its own message, then this panel's sentence - where
-		 *	this Nino has errorText(). Before it, "(status) message"
-		 *
-		 *	@param		{number}		status
-		 *	@param		{*}					response
-		 *	@param		{string}		key					Fill key of the panel's own sentence
-		 *
-		 *	@return		{string}
-		 */
-		_errorText : function( status, response, key ) {
-
-			if( Nino.adminUi && Nino.adminUi.api && typeof Nino.adminUi.api.errorText === 'function' )
-				return Nino.adminUi.api.errorText( status, response, key );
-
-			return '('+ status+ ') '+ ( ( response && response.error ) ? response.error : Nino.content.getText( key ) );
-		},
-
-		/**
-		 *	Show a failed request's status/error
+		 *	Show a failed request: the server's code in the workbench's language,
+		 *	then its own message, then this panel's sentence
 		 *
 		 *	@param		{number}		status
 		 *	@param		{*}					response
@@ -120,7 +94,7 @@
 			wrap.innerHTML = '';
 			const p = dc.createElement('p');
 			p.className = 'nino-admin-error';
-			p.textContent = Nino.admin.newsletter._errorText( status, response, '/_admin/newsletter/error/load' );
+			p.textContent = Nino.adminUi.api.errorText( status, response, '/_admin/newsletter/error/load' );
 			wrap.appendChild( p );
 		},
 

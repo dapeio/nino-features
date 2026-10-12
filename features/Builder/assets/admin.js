@@ -1622,14 +1622,12 @@
 		// ----------------------------------------------------------- Requests
 
 		/**
-		 *	Call an action. The workbench's own request helper posts where this
-		 *	Nino has one - it knows the project's directory and what to do when the
-		 *	page has outlived its session; the post below is what a panel did
-		 *	before it, with the base the asset bundle fills in
+		 *	Call an action through the workbench's request helper - it knows the
+		 *	project's directory and what to do when the page has outlived its session
 		 *
 		 *	@param		{string}		action				builder/<name> - or only the name - or the action of another panel
 		 *	@param		{Object}		payload				Sent json-encoded as "data"
-		 *	@param		{Function}	callback			Called with ( xhr.status, xhr.responseJSON )
+		 *	@param		{Function}	callback			Called with ( status, parsed json or null )
 		 *	@param		{Object}		[extra]				Extra multipart fields (eg. { file : File }), as the Images panel posts a picture
 		 *
 		 *	@return		void
@@ -1638,12 +1636,7 @@
 
 			const name = action.indexOf('/') === -1 ? 'builder/'+ action : action;
 
-			if( Nino.adminUi && Nino.adminUi.api )
-				return Nino.adminUi.api.call( name, payload, callback, extra );
-
-			Nino.http.sendRequest( '[[/nino/dir]]/_admin/', 'POST', function( xhr ) {
-				callback( xhr.status, xhr.responseJSON );
-			}, Object.assign( { action : name, data : JSON.stringify( payload ) }, extra || {} ) );
+			Nino.adminUi.api.call( name, payload, callback, extra );
 		},
 
 		/**
@@ -1669,10 +1662,7 @@
 					return own;
 			}
 
-			if( Nino.adminUi && Nino.adminUi.api && typeof Nino.adminUi.api.errorText === 'function' )
-				return Nino.adminUi.api.errorText( status, response, key );
-
-			return '('+ status+ ') '+ ( ( body.error ?? '' ) || Nino.content.getText( key ) );
+			return Nino.adminUi.api.errorText( status, response, key );
 		},
 
 		/**
@@ -2482,8 +2472,7 @@
 			builder._problems = [];
 			builder._repaint();
 
-			if( typeof Nino.admin.dirty === 'object' )
-				Nino.admin.dirty.refresh();
+			Nino.admin.dirty.refresh();
 		},
 
 		/**
@@ -7058,8 +7047,7 @@
 					builder._refreshStores();
 					dc.getElementById('builder-save').disabled = false;
 
-					if( typeof Nino.admin.dirty === 'object' )
-						Nino.admin.dirty.refresh();
+					Nino.admin.dirty.refresh();
 
 					return report( true );
 				}
@@ -7190,14 +7178,13 @@
 
 	/*	The shell asks Save, Discard or Cancel before anything throws the document
 		away - a back link, a log out, a change of language - and the browser asks
-		when the page is closed. A shell without the registry is simply not asking	*/
-	if( typeof Nino.admin.dirty === 'object' )
-		Nino.admin.dirty.register( 'builder', {
-			isDirty	: Nino.admin.builder.isDirty,
-			save		: function( done ) { Nino.admin.builder._save( done ) },
-			discard	: Nino.admin.builder.discard,
-			bar			: function() { return dc.getElementById('builder-bar') },
-		} );
+		when the page is closed	*/
+	Nino.admin.dirty.register( 'builder', {
+		isDirty	: Nino.admin.builder.isDirty,
+		save		: function( done ) { Nino.admin.builder._save( done ) },
+		discard	: Nino.admin.builder.discard,
+		bar			: function() { return dc.getElementById('builder-bar') },
+	} );
 
 	Nino.events.bindCallback( 'ready', Nino.admin.builder.init );
 

@@ -66,12 +66,6 @@ namespace Nino\Modules\Stats {
 			return \Nino\Modules\Stats::summary( $appData );
 		}
 
-		// Read-only: opening the panel and looking at a chart is not
-		// something the activity log has any use recording
-		public static function log( string $action, array $data ): string {
-			return '';
-		}
-
 		/**
 		 *	Every month that has a stats file, newest first
 		 *

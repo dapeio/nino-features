@@ -283,18 +283,16 @@
 			// The shell brings the panel on screen again after a Save it asked
 			// for failed: drawn anew, the reason the save gave would be gone,
 			// and so would the selection nobody has stored
-			if( typeof Nino.admin.dirty === 'object' && Nino.admin.dirty.isDirty( [ 'design' ] ) === true )
+			if( Nino.admin.dirty.isDirty( [ 'design' ] ) === true )
 				return;
 
 			Nino.admin.design._render();
 		},
 
 		/**
-		 *	One action of this panel. The workbench's own request helper posts
-		 *	where this Nino has one - it knows the project's directory and what
-		 *	to do when the page has outlived its session; the post below is
-		 *	what every panel did before it, with the base the asset bundle
-		 *	fills in, because Nino.dir does not exist before Nino 1.3.2
+		 *	One action of this panel, through the workbench's request helper - it
+		 *	knows the project's directory and what to do when the page has
+		 *	outlived its session
 		 *
 		 *	@param		{string}		endpoint
 		 *	@param		{Object}		payload
@@ -303,39 +301,14 @@
 		 *	@return		void
 		 */
 		_apiCall : function( endpoint, payload, callback ) {
-
-			if( Nino.adminUi && Nino.adminUi.api )
-				return Nino.adminUi.api.call( 'design/'+ endpoint, payload, callback );
-
-			Nino.http.sendRequest( '[[/nino/dir]]/_admin/', 'POST', function( xhr ) {
-				callback( xhr.status, xhr.responseJSON );
-			}, { action : 'design/'+ endpoint, data : JSON.stringify( payload ) } );
-		},
-
-		/**
-		 *	What a failed request says: the server's code in the workbench's
-		 *	language, then its own message, then this panel's sentence - where
-		 *	this Nino has errorText(). Before it, "(status) message"
-		 *
-		 *	@param		{number}		status
-		 *	@param		{*}					response
-		 *	@param		{string}		key					Fill key of the panel's own sentence
-		 *
-		 *	@return		{string}
-		 */
-		_errorText : function( status, response, key ) {
-
-			if( Nino.adminUi && Nino.adminUi.api && typeof Nino.adminUi.api.errorText === 'function' )
-				return Nino.adminUi.api.errorText( status, response, key );
-
-			return '('+ status+ ') '+ ( ( response && response.error ) ? response.error : Nino.content.getText( key ) );
+			Nino.adminUi.api.call( 'design/'+ endpoint, payload, callback );
 		},
 
 		_showError : function( container, status, response ) {
 			container.innerHTML = '';
 			const p = dc.createElement('p');
 			p.className = 'nino-admin-error';
-			p.textContent = Nino.admin.design._errorText( status, response, '/_admin/common/error/load' );
+			p.textContent = Nino.adminUi.api.errorText( status, response, '/_admin/common/error/load' );
 			container.appendChild( p );
 		},
 
@@ -699,16 +672,15 @@
 		 *	renders over every panel, with the panel's name in it (see
 		 *	Nino.adminUi.panelHead()).
 		 *
-		 *	null where there is none - a kernel from before the head, or the
-		 *	script drawn somewhere other than its pane - and the strip then
-		 *	opens the column of controls, where it stood before there was a
-		 *	head to put it in
+		 *	null where there is none - the script drawn somewhere other than its
+		 *	pane - and the strip then opens the column of controls, where it
+		 *	stood before there was a head to put it in
 		 *
 		 *	@return		{Object|null}			{ element, title, actions, tabs( strip ) }
 		 */
 		_head : function() {
 			const wrap = dc.getElementById('design-form');
-			return wrap !== null && typeof Nino.adminUi.panelHead === 'function' ? Nino.adminUi.panelHead( wrap ) : null;
+			return wrap !== null ? Nino.adminUi.panelHead( wrap ) : null;
 		},
 
 		/**
@@ -835,8 +807,7 @@
 
 			// A screen drawn from the stored selection has nothing unsaved
 			// to mark any more
-			if( typeof Nino.admin.dirty === 'object' )
-				Nino.admin.dirty.refresh();
+			Nino.admin.dirty.refresh();
 		},
 
 		/**
@@ -2372,7 +2343,7 @@
 				if( status !== 200 || response === null ) {
 					if( msg !== null ) {
 						msg.className = 'nino-admin-error';
-						msg.textContent = Nino.admin.design._errorText( status, response, '/_admin/design/error/preview' );
+						msg.textContent = Nino.adminUi.api.errorText( status, response, '/_admin/design/error/preview' );
 						msg.title = msg.textContent;
 					}
 					return;
@@ -2869,7 +2840,7 @@
 
 				if( status !== 200 || response === null ) {
 					btn.disabled = false;
-					Nino.admin.design._say( msg, Nino.admin.design._errorText( status, response, '/_admin/design/error/save' ), 'nino-admin-error' );
+					Nino.admin.design._say( msg, Nino.adminUi.api.errorText( status, response, '/_admin/design/error/save' ), 'nino-admin-error' );
 					return finish( false );
 				}
 
@@ -2888,7 +2859,7 @@
 
 					if( planStatus !== 200 || planned === null ) {
 						btn.disabled = false;
-						Nino.admin.design._say( msg, Nino.admin.design._errorText( planStatus, planned, '/_admin/design/error/apply' ), 'nino-admin-error' );
+						Nino.admin.design._say( msg, Nino.adminUi.api.errorText( planStatus, planned, '/_admin/design/error/apply' ), 'nino-admin-error' );
 						return;
 					}
 
@@ -2909,7 +2880,7 @@
 						btn.disabled = false;
 
 						if( applyStatus !== 200 ) {
-							Nino.admin.design._say( msg, Nino.admin.design._errorText( applyStatus, applied, '/_admin/design/error/apply' ), 'nino-admin-error' );
+							Nino.admin.design._say( msg, Nino.adminUi.api.errorText( applyStatus, applied, '/_admin/design/error/apply' ), 'nino-admin-error' );
 							return;
 						}
 
@@ -2998,7 +2969,7 @@
 				btn.disabled = false;
 
 				if( status !== 200 || response === null ) {
-					Nino.admin.design._say( dc.getElementById('design-msg'), Nino.admin.design._errorText( status, response, '/_admin/design/error/restore' ), 'nino-admin-error' );
+					Nino.admin.design._say( dc.getElementById('design-msg'), Nino.adminUi.api.errorText( status, response, '/_admin/design/error/restore' ), 'nino-admin-error' );
 					return;
 				}
 
@@ -3016,33 +2987,30 @@
 	/*	The shell asks Save, Discard or Cancel before a log out or a language
 		change would lose a selection nobody has stored, and a reload gets
 		the browser's own question. Save stores the draft - applying it is its
-		own question. A panel registers where this Nino has the registry and
-		does without where it has not - panel scripts run on older
-		workbenches too	*/
-	if( typeof Nino.admin.dirty === 'object' )
-		Nino.admin.dirty.register( 'design', {
-			isDirty : function() { return Nino.admin.design._isDirty() },
-			save : function( done ) {
+		own question	*/
+	Nino.admin.dirty.register( 'design', {
+		isDirty : function() { return Nino.admin.design._isDirty() },
+		save : function( done ) {
 
-				const btn = dc.getElementById('design-save');
-				const msg = dc.getElementById('design-msg');
+			const btn = dc.getElementById('design-save');
+			const msg = dc.getElementById('design-msg');
 
-				if( btn === null || msg === null )
-					return done( false );
+			if( btn === null || msg === null )
+				return done( false );
 
-				Nino.admin.design._save( false, btn, msg, done );
-			},
-			// Drawn again with the stored selection: if the exit then does not
-			// leave the page, the controls show what the model holds
-			discard : function() {
+			Nino.admin.design._save( false, btn, msg, done );
+		},
+		// Drawn again with the stored selection: if the exit then does not
+		// leave the page, the controls show what the model holds
+		discard : function() {
 
-				if( Nino.admin.design._data === null )
-					return;
+			if( Nino.admin.design._data === null )
+				return;
 
-				Nino.admin.design._edit = Nino.admin.design._selection( Nino.admin.design._data );
-				Nino.admin.design._render();
-			},
-		} );
+			Nino.admin.design._edit = Nino.admin.design._selection( Nino.admin.design._data );
+			Nino.admin.design._render();
+		},
+	} );
 
 	Nino.events.bindCallback( 'ready', Nino.admin.design.init );
 

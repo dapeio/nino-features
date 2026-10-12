@@ -1,5 +1,4 @@
 <!-- nino:template-name Hello World -->
-<!-- nino:template-slot header -->
 [template /templates/html-header]
 
 <section class="nino-section">
@@ -15,5 +14,4 @@
 	</div>
 </section>
 
-<!-- nino:template-slot footer -->
 [template /templates/html-footer]

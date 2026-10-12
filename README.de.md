@@ -69,10 +69,10 @@ Ein Release ist `bin/release.sh`, vom Owner im Checkout auf dem Server ausgefüh
 
 ```bash
 git pull
-NINO_CATALOGUE_KEY=/sicherer/ort/catalogue-key.pem bin/release.sh
+NINO_CATALOGUE_KEY=/safe/place/catalogue-key.pem bin/release.sh
 ```
 
-Es führt zuerst `bin/check.sh` aus (`--quick` überspringt das), dann baut `bin/build.php` jedes Archiv nach `public/`, schreibt `catalogue.json` und signiert es; jede Datei landet ganz, per Umbenennen. `NINO_ROOT` nennt den Nino-Checkout (Standard `../nino`), `NINO_CATALOGUE_URL`, wo `public/` ausgeliefert wird (Standard `https://catalogue.getnino.dev`). Eine Probe ist der Build in ein anderes Verzeichnis: `php bin/build.php ../nino /tmp/probe`.
+Es führt zuerst `bin/check.sh` aus (`--quick` überspringt das), dann baut `bin/build.php` jedes Archiv nach `public/`, schreibt `catalogue.json` und signiert es; jede Datei landet ganz, per Umbenennen. `NINO_ROOT` nennt den Nino-Checkout (Standard `../nino`), `NINO_CATALOGUE_URL`, wo `public/` ausgeliefert wird (Standard `https://catalogue.getnino.dev`). Eine Probe ist der Build in ein anderes Verzeichnis: `php bin/build.php ../nino /tmp/rehearsal`.
 
 Es gibt einen Eintrag je Feature, die Version seines Manifests, und kein Tag. Eine Änderung ohne neue `version` erreicht neue Installationen, bestehende nicht: Das Features-Panel bietet ein Update aus dem Katalog nur für eine höhere Version an. Die `version` wird also erhöht, wenn installierte Projekte das Update angeboten bekommen sollen.
 

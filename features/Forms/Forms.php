@@ -183,7 +183,7 @@ namespace Nino\Modules {
 			if( (int) ( $request['/nino/http/response']['statusCode'] ?? 0 ) !== 200 )
 				return;
 
-			if( (int) \Nino\Features::setting( $appData, 'forms', 'rateLimit', 0 ) <= 0 )
+			if( (int) \Nino\Features::setting( $appData, 'forms', 'rateLimit', 10 ) <= 0 )
 				return;
 
 			$now = time();
@@ -388,7 +388,7 @@ namespace Nino\Modules {
 		 */
 		private static function _tooFast( array &$appData, string $stamp ): bool {
 
-			$min = (int) \Nino\Features::setting( $appData, 'forms', 'minSeconds', 0 );
+			$min = (int) \Nino\Features::setting( $appData, 'forms', 'minSeconds', 3 );
 
 			if( $min <= 0 || preg_match( '/^\d{1,10}$/D', $stamp ) !== 1 )
 				return false;
@@ -450,7 +450,7 @@ namespace Nino\Modules {
 		 */
 		private static function _rateExceeded( array &$appData ): bool {
 
-			$max = (int) \Nino\Features::setting( $appData, 'forms', 'rateLimit', 0 );
+			$max = (int) \Nino\Features::setting( $appData, 'forms', 'rateLimit', 10 );
 
 			if( $max <= 0 )
 				return false;

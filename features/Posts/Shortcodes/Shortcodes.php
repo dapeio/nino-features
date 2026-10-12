@@ -46,23 +46,19 @@ namespace Nino\Modules\Posts {
 			of our own */
 		public const string BODY_CLASS = 'nino-section-text';
 
-		// The kernel's escape for a field value, where it has one. A property
-		// rather than a literal, so a static analysis of a kernel that has the
-		// method does not fold the check away
-		private static array $fieldValue = [ \Nino\Html::class, 'fieldValue' ];
-
 		public static function init( array &$appData ): void {
 
 			\Nino\Html::addShortcode( $appData, 'posts', 			[ self::class, 'doPosts' ] );
 			\Nino\Html::addShortcode( $appData, 'post', 			[ self::class, 'doPost' ] );
 			\Nino\Html::addShortcode( $appData, 'post-nav', 	[ self::class, 'doNav' ] );
 
-			/*	Nino 1.6 has registered [posts-pager] as a component from the manifest
-				before this runs (\Nino\Features::registerComponents()), and a second
+			/*	The Components module registers [posts-pager] from the manifest before
+				this runs (\Nino\Features::registerComponents()), and a second
 				registration here would take it back from the wrapper that fills in
-				the defaults. Nino 1.5 ignores the manifest key and needs it. The other
-				three are shortcodes: the Builder cannot carry a record template	*/
-			$components = class_exists( '\\Nino\\Modules\\Components' ) === true ? \Nino\Modules\Components::components( $appData ) : [];
+				the defaults. Where the module is switched off nothing was registered
+				and the shortcode is added here. The other three are shortcodes: the
+				Builder cannot carry a record template	*/
+			$components = \Nino\Modules\Components::components( $appData );
 
 			if( isset( $components['posts-pager'] ) === false )
 				\Nino\Html::addShortcode( $appData, 'posts-pager', [ self::class, 'doPager' ] );
@@ -297,7 +293,7 @@ namespace Nino\Modules\Posts {
 					continue;
 
 				$search[] 	= '[['. $key. ']]';
-				$replace[] 	= self::_value( (string) $value, is_array( $model[$key] ?? null ) === true ? $model[$key] : [] );
+				$replace[] 	= \Nino\Html::fieldValue( $value, is_array( $model[$key] ?? null ) === true ? $model[$key] : [] );
 			}
 
 			return str_replace( $search, $replace, $content );
@@ -342,10 +338,10 @@ namespace Nino\Modules\Posts {
 				if( $clean === '' )
 					continue;
 
-				// The '[' swap _value() makes belongs here too: the paragraphs
-				// are the same editor content, and the block is rendered again
-				// after this - so a body was the one place a '[shortcode]' an
-				// editor typed was still run
+				// The '[' swap \Nino\Html::fieldValue() makes belongs here too:
+				// the paragraphs are the same editor content, and the block is
+				// rendered again after this - so a body was the one place a
+				// '[shortcode]' an editor typed was still run
 				$out .= str_replace(
 					[ '[[class]]', '[[text]]' ],
 					[ self::BODY_CLASS, str_replace( [ "\n", '[' ], [ '<br>', '&#91;' ], $clean ) ],
@@ -392,39 +388,11 @@ namespace Nino\Modules\Posts {
 				[
 					htmlspecialchars( \Nino\Images::getUrl( $appData, $filename ), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ),
 					$size,
-					// The alt is an element field like any other - see _value()
-					self::_value( $alt, [] ),
+					// The alt is an element field like any other, and takes the same rule
+					\Nino\Html::fieldValue( $alt, [] ),
 				],
 				self::template( $appData, 'post-image' )
 			);
-		}
-
-		/**
-		 *	A field value on its way into a template. The same two steps
-		 *	Modules\Elements takes, and for the same reason: the value is
-		 *	editor content, and the block is rendered again after this
-		 *
-		 *	The kernel has the one rule for it where it has \Nino\Html::fieldValue():
-		 *	the paragraphs and lists of a field that holds them, the line breaks
-		 *	of one that keeps them, the inline tags of a field released for html,
-		 *	the escape for the rest. A Nino from before it is asked for what it
-		 *	has always been asked for here
-		 *
-		 *	@param		string		$value
-		 *	@param		array			$field				The model's entry for the field, [] for a value that is not one
-		 *
-		 *	@return 	string
-		 */
-		private static function _value( string $value, array $field ): string {
-
-			if( is_callable( self::$fieldValue ) === true )
-				return (string) ( self::$fieldValue )( $value, $field );
-
-			$safe = ( $field['html'] ?? false ) === true
-				? \Nino\Html::sanitizeHtml( $value )
-				: htmlspecialchars( $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
-
-			return str_replace( '[', '&#91;', $safe );
 		}
 
 		/**

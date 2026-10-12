@@ -100,30 +100,23 @@
 		},
 
 		/**
-		 *	Call a protected/* admin action. The workbench's own request helper
-		 *	posts where this Nino has one - it knows the project's directory
-		 *	and what to do when the page has outlived its session; the post
-		 *	below is what every panel did before it, with the base the asset
-		 *	bundle fills in, because Nino.dir does not exist before Nino 1.3.2
+		 *	Call a protected/* admin action through the workbench's request
+		 *	helper - it knows the project's directory and what to do when the
+		 *	page has outlived its session
 		 *
 		 *	@param		{string}		endpoint			Action name (eg. "pages", becomes "protected/pages")
 		 *	@param		{Object}		payload				Request payload, sent json-encoded as "data"
-		 *	@param		{Function}	callback			Called with ( xhr.status, xhr.responseJSON )
+		 *	@param		{Function}	callback			Called with ( status, parsed json or null )
 		 *
 		 *	@return		void
 		 */
 		_apiCall : function( endpoint, payload, callback ) {
-
-			if( Nino.adminUi && Nino.adminUi.api )
-				return Nino.adminUi.api.call( 'protected/'+ endpoint, payload, callback );
-
-			Nino.http.sendRequest( '[[/nino/dir]]/_admin/', 'POST', function( xhr ) {
-				callback( xhr.status, xhr.responseJSON );
-			}, { action : 'protected/'+ endpoint, data : JSON.stringify( payload ) } );
+			Nino.adminUi.api.call( 'protected/'+ endpoint, payload, callback );
 		},
 
 		/**
-		 *	Show a failed request's status/error in a container
+		 *	Show a failed request in a container: the server's code in the
+		 *	workbench's language, then its own message, then the fill
 		 *
 		 *	@param		{Element}		container
 		 *	@param		{number}		status
@@ -135,28 +128,8 @@
 			container.innerHTML = '';
 			const p = dc.createElement('p');
 			p.className = 'nino-admin-error';
-			p.textContent = Nino.admin.protected._failure( status, response, '/_admin/common/error/load' );
+			p.textContent = Nino.adminUi.api.errorText( status, response, '/_admin/common/error/load' );
 			container.appendChild( p );
-		},
-
-		/**
-		 *	What a failed request says: the server's code in the workbench's
-		 *	language, then its own message, then the fill - where this Nino has
-		 *	errorText(). Before it, "(status) what the server said", or the fill
-		 *	when it said nothing
-		 *
-		 *	@param		{number}		status
-		 *	@param		{*}					response
-		 *	@param		{string}		fallback			Fill key
-		 *
-		 *	@return		{string}
-		 */
-		_failure : function( status, response, fallback ) {
-
-			if( Nino.adminUi && Nino.adminUi.api && typeof Nino.adminUi.api.errorText === 'function' )
-				return Nino.adminUi.api.errorText( status, response, fallback );
-
-			return '('+ status+ ') '+ ( ( response && response.error ) ? response.error : Nino.content.getText( fallback ) );
 		},
 
 		/**
@@ -435,7 +408,7 @@
 				save.disabled = false;
 
 				if( status !== 200 || response === null )
-					return Nino.admin.protected._report( 'protected-pw-msg', Nino.admin.protected._failure( status, response, '/_admin/common/error/save' ), true );
+					return Nino.admin.protected._report( 'protected-pw-msg', Nino.adminUi.api.errorText( status, response, '/_admin/common/error/save' ), true );
 
 				// A new password changes nothing about the pages: what was ticked
 				// and not yet saved is still ticked
@@ -544,7 +517,7 @@
 				save.disabled = false;
 
 				if( status !== 200 || response === null )
-					return Nino.admin.protected._report( 'protected-pages-msg', Nino.admin.protected._failure( status, response, '/_admin/common/error/save' ), true );
+					return Nino.admin.protected._report( 'protected-pages-msg', Nino.adminUi.api.errorText( status, response, '/_admin/common/error/save' ), true );
 
 				Nino.admin.protected._take( response );
 				Nino.admin.protected._render();
@@ -579,7 +552,7 @@
 					out.disabled = false;
 
 					if( status !== 200 || response === null )
-						return Nino.admin.protected._report( 'protected-signout-msg', Nino.admin.protected._failure( status, response, '/_admin/common/error/save' ), true );
+						return Nino.admin.protected._report( 'protected-signout-msg', Nino.adminUi.api.errorText( status, response, '/_admin/common/error/save' ), true );
 
 					Nino.admin.protected._report( 'protected-signout-msg', Nino.content.getText('/_admin/protected/msg/signedout'), false );
 				} );

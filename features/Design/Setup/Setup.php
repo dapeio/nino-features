@@ -118,7 +118,11 @@ namespace Nino\Modules\Design {
 			knob's too: they are selected where it stands, and are as long as it is. A
 			stylesheet that declares one without the ladder of the knob itself has
 			published nothing, and one with another length than its knob's has not
-			published the knob */
+			published the knob.
+
+			The name of a rung is KNOB_TOKEN filled with the tab, the name and the
+			word: ladders() reads the declarations with it, and the compiler asks
+			the rung of the position with it */
 		public const string KNOB_TOKEN = '--%s-%s--%s';
 
 		/*	The root size, as the percentage pair Nino.css wants: below the 768px
@@ -636,7 +640,7 @@ namespace Nino\Modules\Design {
 
 			$css = self::uncomment( (string) @file_get_contents( $file ) );
 
-			preg_match_all( '/--'. preg_quote( $part, '/' ). '-([a-z0-9]+(?:-[a-z0-9]+)*)--('. implode( '|', self::STEPS ). ')\s*:/', $css, $found, PREG_SET_ORDER );
+			preg_match_all( '/'. sprintf( preg_quote( self::KNOB_TOKEN, '/' ), preg_quote( $part, '/' ), '([a-z0-9]+(?:-[a-z0-9]+)*)', '('. implode( '|', self::STEPS ). ')' ). '\s*:/', $css, $found, PREG_SET_ORDER );
 
 			// The words each name is declared under - once each, however often a media query says it again
 			$declared = [];

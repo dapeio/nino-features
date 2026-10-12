@@ -473,6 +473,10 @@ echo "Modules\\Stats\\Admin - months, one month's numbers, and the permission\n"
 check( 'stats/months succeeds', $status === 200 );
 check( '...and lists the current month, newest first', ( $body['months'][0] ?? null ) === $month );
 
+// The first action of a session writes its "Login" line; what the panel's own
+// actions add to the activity log is counted from here
+$logged = count( \Nino\Modules\Logs\Admin::recentLines( $appData, 1000 ) );
+
 $expectedTotal = dayTotal( $appData, $month, $today );
 
 [ $status, $body ] = callAdminPost( $appData, 'stats/month', [ 'month' => $month ] );
@@ -491,7 +495,7 @@ check( 'a well-formed but empty month is a 200 with zero totals, not an error', 
 
 check( 'summary() gives the dashboard tile - here, the 7-day total equals today\'s, since everything happened today', \Nino\Modules\Stats::summary( $appData ) === [ 'value' => (string) $expectedTotal, 'label' => '/_admin/stats/label/tile' ] );
 check( 'the panel\'s own summary() delegates to it', \Nino\Modules\Stats\Admin::summary( $appData ) === \Nino\Modules\Stats::summary( $appData ) );
-check( 'log() never writes an activity-log line - the panel is read-only', \Nino\Modules\Stats\Admin::log( 'stats/month', [] ) === '' );
+check( 'the panel is read-only: none of its actions writes a line to the activity log', count( \Nino\Modules\Logs\Admin::recentLines( $appData, 1000 ) ) === $logged );
 
 /*	What was counted before files were left out is still in the month files, and
 	has to stay out of what is shown. Seeded by hand in an old month and in

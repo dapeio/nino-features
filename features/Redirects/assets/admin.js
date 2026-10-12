@@ -95,52 +95,25 @@
 			// The shell brings the panel on screen again after a Save it asked
 			// for failed: drawn anew, the reason the save gave would be gone,
 			// and so would the rule nobody has saved
-			if( typeof Nino.admin.dirty === 'object' && Nino.admin.dirty.isDirty( [ 'redirects' ] ) === true )
+			if( Nino.admin.dirty.isDirty( [ 'redirects' ] ) === true )
 				return;
 
 			Nino.admin.redirects._render();
 		},
 
 		/**
-		 *	Call a redirects/* action. The workbench's own request helper posts
-		 *	where this Nino has one - it knows the project's directory and what
-		 *	to do when the page has outlived its session; the post below is
-		 *	what every panel did before it, with the base the asset bundle
-		 *	fills in, because Nino.dir does not exist before Nino 1.3.2
+		 *	Call a redirects/* action through the workbench's request helper - it
+		 *	knows the project's directory and what to do when the page has
+		 *	outlived its session
 		 *
 		 *	@param		{string}		endpoint	Action name, eg. "list" -> "redirects/list"
 		 *	@param		{Object}		payload		Request payload, sent json-encoded as "data"
-		 *	@param		{Function}	callback	Called with ( xhr.status, xhr.responseJSON )
+		 *	@param		{Function}	callback	Called with ( status, parsed json or null )
 		 *
 		 *	@return		void
 		 */
 		_apiCall : function( endpoint, payload, callback ) {
-
-			if( Nino.adminUi && Nino.adminUi.api )
-				return Nino.adminUi.api.call( 'redirects/'+ endpoint, payload, callback );
-
-			Nino.http.sendRequest( '[[/nino/dir]]/_admin/', 'POST', function( xhr ) {
-				callback( xhr.status, xhr.responseJSON );
-			}, { action : 'redirects/'+ endpoint, data : JSON.stringify( payload ) } );
-		},
-
-		/**
-		 *	What a failed request says: the server's code in the workbench's
-		 *	language, then its own message, then this panel's sentence - where
-		 *	this Nino has errorText(). Before it, "(status) message"
-		 *
-		 *	@param		{number}		status
-		 *	@param		{*}					response
-		 *	@param		{string}		key				Fill key of the panel's own sentence, '' for none
-		 *
-		 *	@return		{string}
-		 */
-		_errorText : function( status, response, key ) {
-
-			if( Nino.adminUi && Nino.adminUi.api && typeof Nino.adminUi.api.errorText === 'function' )
-				return Nino.adminUi.api.errorText( status, response, key );
-
-			return '('+ status+ ') '+ ( ( response && response.error ) ? response.error : ( key === '' ? '' : Nino.content.getText( key ) ) );
+			Nino.adminUi.api.call( 'redirects/'+ endpoint, payload, callback );
 		},
 
 		/**
@@ -167,8 +140,8 @@
 		},
 
 		/**
-		 *	Leave the editor - after asking, where this Nino can, when it holds
-		 *	something nobody has saved
+		 *	Leave the editor - after asking, when it holds something nobody has
+		 *	saved
 		 *
 		 *	@param		{Function}	proceed
 		 *	@param		{Function}	[onCancel]		What puts the screen back as it was, when whoever asked says no
@@ -176,11 +149,7 @@
 		 *	@return		void
 		 */
 		_leave : function( proceed, onCancel ) {
-
-			if( typeof Nino.admin.dirty === 'object' )
-				return Nino.admin.dirty.guard( [ 'redirects' ], proceed, onCancel );
-
-			proceed();
+			Nino.admin.dirty.guard( [ 'redirects' ], proceed, onCancel );
 		},
 
 		/**
@@ -229,13 +198,13 @@
 				panel with screens of its own puts its strip in. It is handed
 				over on every draw, since the counts in it change with the
 				lists, and tabs() takes the place of the one drawn before rather
-				than standing beside it. Where there is no head - a kernel from
-				before it, or the script drawn somewhere other than its pane -
-				the strip stands at the top of whichever mount is on rather than
-				in the rules mount: it is the way back, and a way back drawn into
-				a mount that is off the screen is no way back at all	*/
+				than standing beside it. Where there is no head - the script
+				drawn somewhere other than its pane - the strip stands at the top
+				of whichever mount is on rather than in the rules mount: it is the
+				way back, and a way back drawn into a mount that is off the screen
+				is no way back at all	*/
 			const strip	= Nino.admin.redirects._tabs();
-			const head	= typeof Nino.adminUi.panelHead === 'function' ? Nino.adminUi.panelHead( rules ) : null;
+			const head	= Nino.adminUi.panelHead( rules );
 
 			if( head === null )
 				pane.appendChild( strip );
@@ -655,7 +624,7 @@
 
 					if( status !== 200 || response === null ) {
 						out.classList.add('nino-admin-error');
-						out.textContent = Nino.admin.redirects._errorText( status, response, '' );
+						out.textContent = Nino.adminUi.api.errorText( status, response, '' );
 						return;
 					}
 
@@ -839,7 +808,7 @@
 			}
 
 			line.classList.add('nino-admin-error');
-			line.textContent = Nino.admin.redirects._errorText( status, response, '/_admin/redirects/error/load' );
+			line.textContent = Nino.adminUi.api.errorText( status, response, '/_admin/redirects/error/load' );
 		},
 
 		/**
@@ -877,7 +846,7 @@
 
 			const line = dc.createElement('p');
 			line.className = 'nino-admin-hint nino-admin-error';
-			line.textContent = Nino.admin.redirects._errorText( status, response, '/_admin/redirects/error/load' );
+			line.textContent = Nino.adminUi.api.errorText( status, response, '/_admin/redirects/error/load' );
 
 			wrap.appendChild( line );
 		},
@@ -885,23 +854,20 @@
 
 	/*	The shell asks Save, Discard or Cancel before a log out or a language
 		change would lose a rule nobody has saved, and a reload gets the
-		browser's own question. A panel registers where this Nino has the
-		registry and does without where it has not - panel scripts run on
-		older workbenches too	*/
-	if( typeof Nino.admin.dirty === 'object' )
-		Nino.admin.dirty.register( 'redirects', {
-			isDirty : function() { return Nino.admin.redirects._isDirty() },
-			save : function( done ) {
+		browser's own question	*/
+	Nino.admin.dirty.register( 'redirects', {
+		isDirty : function() { return Nino.admin.redirects._isDirty() },
+		save : function( done ) {
 
-				const save = Nino.admin.redirects._saveButton;
+			const save = Nino.admin.redirects._saveButton;
 
-				if( Nino.admin.redirects._editing === null || save === null )
-					return done( false );
+			if( Nino.admin.redirects._editing === null || save === null )
+				return done( false );
 
-				Nino.admin.redirects._save( Nino.admin.redirects._editing, save, done );
-			},
-			// What the shell is about to leave takes the editor with it
-			discard : function() { Nino.admin.redirects._opened = JSON.stringify( Nino.admin.redirects._editing ) },
-		} );
+			Nino.admin.redirects._save( Nino.admin.redirects._editing, save, done );
+		},
+		// What the shell is about to leave takes the editor with it
+		discard : function() { Nino.admin.redirects._opened = JSON.stringify( Nino.admin.redirects._editing ) },
+	} );
 
 } )( window, document );

@@ -98,15 +98,19 @@ const nino = {
 	adminUi	: {
 		emptyState	: function( text ) { const p = element('p'); p.className = 'nino-admin-empty'; p.textContent = text; return p },
 		actionBar		: function( bar ) { bar.className = ( bar.className+ ' nino-admin-actionbar' ).trim(); return bar },
+		// The workbench's request helper and its sentence for a failure, in miniature
+		api : {
+			call : function( action, payload, callback ) {
+				asked.push( { action : action, data : JSON.parse( JSON.stringify( payload ) ) } );
+				const result = answer( action );
+				callback( result[0], result[1] );
+			},
+			errorText : function( status, response, key ) { return '('+ status+ ') '+ ( ( response && response.error ) ? response.error : key ) },
+		},
 	},
 	// The key with the placeholder it would carry, so what is filled in shows
 	content	: { getText : function( key ) { return key+ ' %s' } },
 	events	: { bindCallback : function() {} },
-	http		: { sendRequest : function( url, method, callback, payload ) {
-		asked.push( { action : payload.action, data : JSON.parse( payload.data ) } );
-		const result = answer( payload.action );
-		callback( { status : result[0], responseJSON : result[1] } );
-	} },
 };
 
 function find( id ) {
@@ -326,30 +330,17 @@ check( 'a refused state is shown where the screen would be', mount.children.leng
 
 // --- Asking the workbench ------------------------------------------------------------
 
-/*	Where the shell has a request helper the panel asks it; where it has not it
-	posts from the project's own directory - the literal the asset bundle fills
-	in, as Nino.dir does not exist before Nino 1.3.2	*/
-const keepSend = nino.http.sendRequest;
-const wasPosted = [];
-nino.http.sendRequest = function( url, method, callback, payload ) { wasPosted.push( [ url, method, payload ] ); callback( { status : 200, responseJSON : { ok : true } } ) };
+asked.length = 0;
+answer = function() { return [ 200, { via : 'api' } ] };
 let gotAnswer = null;
-panel._apiCall( 'pages', { paths : [ '/a' ] }, function( status, response ) { gotAnswer = [ status, response ] } );
-check( 'without the shell\'s request helper the panel posts to the project\'s own _admin, with the action and the json',
-	wasPosted.length === 1 && wasPosted[0][0] === '[[/nino/dir]]/_admin/' && wasPosted[0][1] === 'POST'
-	&& wasPosted[0][2].action === 'protected/pages' && wasPosted[0][2].data === '{"paths":["/a"]}' && JSON.stringify( gotAnswer ) === '[200,{"ok":true}]' );
-
-const wasRouted = [];
-nino.adminUi.api = { call : function( action, payload, callback ) { wasRouted.push( [ action, payload ] ); callback( 200, { via : 'api' } ) } };
-gotAnswer = null;
 panel._apiCall( 'pages', { paths : [ '/b' ] }, function( status, response ) { gotAnswer = [ status, response ] } );
-check( 'with it the action \'protected/<action>\' and the payload go to the helper, and nothing is posted by hand',
-	wasRouted.length === 1 && wasRouted[0][0] === 'protected/pages' && wasRouted[0][1].paths[0] === '/b' && wasPosted.length === 1 && gotAnswer[1].via === 'api' );
+check( 'the action \'protected/<action>\' and the payload go to the workbench\'s request helper',
+	asked.length === 1 && asked[0].action === 'protected/pages' && asked[0].data.paths[0] === '/b' && gotAnswer[1].via === 'api' );
 
-check( 'a failure says "(status) message" as it always did where the shell has no errorText()', panel._failure( 503, { error : 'Busy' }, '/_admin/common/error/save' ) === '(503) Busy' );
-nino.adminUi.api.errorText = function( status, response, key ) { return 'told '+ status+ ' '+ response.error+ ' ['+ key+ ']' };
-check( '...and what errorText() makes of it where it has one', panel._failure( 503, { error : 'Busy' }, '/_admin/common/error/save' ) === 'told 503 Busy [/_admin/common/error/save]' );
-delete nino.adminUi.api;
-nino.http.sendRequest = keepSend;
+const failed = element('div');
+panel._showError( failed, 503, null );
+check( 'a failed request that says nothing of itself is said in the panel\'s own sentence for what it was doing',
+	failed.children.length === 1 && failed.children[0].textContent === '(503) /_admin/common/error/load' );
 
 console.log( '\n'+ checks+ ' checks, '+ failures+ ' failed' );
 process.exit( failures === 0 ? 0 : 1 );

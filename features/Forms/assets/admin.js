@@ -102,8 +102,8 @@
 
 				// The editor reads its fields back from the copy, and what was
 				// typed since is only in the boxes - drawn again, it would
-				// be gone. Where this Nino keeps count of that, it stays as it is
-				if( typeof Nino.admin.dirty === 'object' && Nino.admin.dirty.isDirty( [ 'forms' ] ) === true )
+				// be gone. The shell keeps count of that, and it stays as it is
+				if( Nino.admin.dirty.isDirty( [ 'forms' ] ) === true )
 					return;
 
 				return Nino.admin.forms._showForm( Nino.admin.forms._editing, Nino.admin.forms._was );
@@ -113,49 +113,23 @@
 		},
 
 		/**
-		 *	Call a forms/* action. The workbench's own request helper posts
-		 *	where this Nino has one - it knows the project's directory and what
-		 *	to do when the page has outlived its session; the post below is
-		 *	what every panel did before it, with the base the asset bundle
-		 *	fills in, because Nino.dir does not exist before Nino 1.3.2
+		 *	Call a forms/* action through the workbench's request helper - it
+		 *	knows the project's directory and what to do when the page has
+		 *	outlived its session
 		 *
 		 *	@param		{string}		endpoint			Action name (eg. "list", becomes "forms/list")
 		 *	@param		{Object}		payload				Request payload, sent json-encoded as "data"
-		 *	@param		{Function}	callback			Called with ( xhr.status, xhr.responseJSON )
+		 *	@param		{Function}	callback			Called with ( status, parsed json or null )
 		 *
 		 *	@return		void
 		 */
 		_apiCall : function( endpoint, payload, callback ) {
-
-			if( Nino.adminUi && Nino.adminUi.api )
-				return Nino.adminUi.api.call( 'forms/'+ endpoint, payload, callback );
-
-			Nino.http.sendRequest( '[[/nino/dir]]/_admin/', 'POST', function( xhr ) {
-				callback( xhr.status, xhr.responseJSON );
-			}, { action : 'forms/'+ endpoint, data : JSON.stringify( payload ) } );
+			Nino.adminUi.api.call( 'forms/'+ endpoint, payload, callback );
 		},
 
 		/**
-		 *	What a failed request says: the server's code in the workbench's
-		 *	language, then its own message, then this panel's sentence - where
-		 *	this Nino has errorText(). Before it, "(status) message"
-		 *
-		 *	@param		{number}		status
-		 *	@param		{*}					response
-		 *	@param		{string}		key					Fill key of the panel's own sentence
-		 *
-		 *	@return		{string}
-		 */
-		_errorText : function( status, response, key ) {
-
-			if( Nino.adminUi && Nino.adminUi.api && typeof Nino.adminUi.api.errorText === 'function' )
-				return Nino.adminUi.api.errorText( status, response, key );
-
-			return '('+ status+ ') '+ ( ( response && response.error ) ? response.error : Nino.content.getText( key ) );
-		},
-
-		/**
-		 *	Show a failed request's status/error in a container
+		 *	Show a failed request in a container: the server's code in the
+		 *	workbench's language, then its own message, then this panel's sentence
 		 *
 		 *	@param		{Element}		container
 		 *	@param		{number}		status
@@ -167,16 +141,15 @@
 			container.innerHTML = '';
 			const p = dc.createElement('p');
 			p.className = 'nino-admin-error';
-			p.textContent = Nino.admin.forms._errorText( status, response, '/_admin/common/error/load' );
+			p.textContent = Nino.adminUi.api.errorText( status, response, '/_admin/common/error/load' );
 			container.appendChild( p );
 		},
 
 		/**
-		 *	The line that says whether a form is saved. Where this Nino has
-		 *	Nino.adminUi.status() it is that: "saving", "saved at 09:41", the
-		 *	"unsaved changes" a keystroke brings, or why it failed with the
-		 *	field the server named marked. Before it, the same calls write
-		 *	this panel's sentences into the paragraph
+		 *	The line that says whether a form is saved: Nino.adminUi.status(),
+		 *	following the form - "saving", "saved at 09:41", the "unsaved
+		 *	changes" a keystroke brings, or why it failed with the field the
+		 *	server named marked
 		 *
 		 *	@param		{Element}		msg
 		 *	@param		{Element}		form
@@ -185,17 +158,9 @@
 		 */
 		_status : function( msg, form ) {
 
-			if( Nino.adminUi && typeof Nino.adminUi.status === 'function' ) {
-				const line = Nino.adminUi.status( msg );
-				line.bind( form );
-				return line;
-			}
-
-			return {
-				saving : function() { msg.classList.remove('nino-admin-error'); msg.textContent = Nino.content.getText('/_admin/common/msg/saving') },
-				saved	 : function() { msg.textContent = Nino.content.getText('/_admin/common/msg/saved') },
-				error	 : function( status, response, key ) { msg.classList.add('nino-admin-error'); msg.textContent = Nino.admin.forms._errorText( status, response, key ) },
-			};
+			const line = Nino.adminUi.status( msg );
+			line.bind( form );
+			return line;
 		},
 
 		/**
@@ -470,8 +435,7 @@
 			Nino.admin.forms._renderForm();
 
 			// What is on screen now is what is saved
-			if( typeof Nino.admin.dirty === 'object' )
-				Nino.admin.dirty.snapshot('forms');
+			Nino.admin.dirty.snapshot('forms');
 		},
 
 		/**
@@ -994,7 +958,7 @@
 				const failed = dc.getElementById('forms-summary');
 
 				if( failed !== null ) {
-					failed.textContent = Nino.admin.forms._errorText( status, response, '/_admin/common/error/save' );
+					failed.textContent = Nino.adminUi.api.errorText( status, response, '/_admin/common/error/save' );
 					failed.hidden = false;
 				}
 
@@ -1206,13 +1170,10 @@
 	};
 
 	/*	The shell asks Save, Discard or Cancel before the form's back link, a
-		log out or a language change would lose what is typed into it. A panel
-		registers where this Nino has the registry and does without where it
-		has not - panel scripts run on older workbenches too	*/
-	if( typeof Nino.admin.dirty === 'object' )
-		Nino.admin.dirty.watchForm( 'forms', function() { return dc.getElementById('forms-form') }, function( done ) {
-			Nino.admin.forms._submit( done );
-		} );
+		log out or a language change would lose what is typed into it	*/
+	Nino.admin.dirty.watchForm( 'forms', function() { return dc.getElementById('forms-form') }, function( done ) {
+		Nino.admin.forms._submit( done );
+	} );
 
 	Nino.events.bindCallback( 'ready', Nino.admin.forms.init );
 
