@@ -65,7 +65,7 @@
 	--content-corners--less: 			var(--radius-small);
 	--content-corners--default: 		var(--radius-large);
 	--content-corners--more: 			1rem;
-	--content-corners--most: 			2rem;
+	--content-corners--most: 			999rem;
 
 	/*	Soft cards lift off the page on a shadow: none up to the card as it is,
 		a second layer for the next, and a third, longer one for the last	*/
