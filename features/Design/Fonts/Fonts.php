@@ -27,13 +27,17 @@ namespace Nino\Modules\Design {
 	 *										role with no family writes no family line, and Nino.css
 	 *										keeps the system stack it has for it.
 	 *
-	 *										The families are a table in code: the two the setup
-	 *										wizard's base unit delivers as woff2 files and three
-	 *										system stacks that need no file at all. families() is the
-	 *										one place that lists them, so that a family which comes
-	 *										from somewhere else later - a webfont a project installed
-	 *										- joins the same list and the same select without a line
-	 *										of the compiler or the panel changing.
+	 *										The families are the two the setup wizard's base unit
+	 *										delivers as woff2 files and three system stacks that
+	 *										need no file at all - a table in code - and, after them,
+	 *										every family the project installed: a directory below
+	 *										assets/fonts/ of its public root, <slug>/, holding the
+	 *										font.json, the LICENSE and the woff2 files the archive of
+	 *										webfonts.getnino.dev brought (see Webfonts). families() is
+	 *										the one place that lists them, so that an installed
+	 *										family joins the same list and the same select without a
+	 *										line of the compiler or the panel changing. It reads the
+	 *										project, and so takes the app data.
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -98,8 +102,28 @@ namespace Nino\Modules\Design {
 
 		private const string STACK_SERIF = 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif';
 
+		// Where the families a project installed live, one directory each, named by the slug: below
+		// the public root of the project, because a browser loads the files from there. The url
+		// of a file is the same path below the fill every stylesheet of a project writes for it
+		public const string DIR = '/assets/fonts';
+		public const string URL = '[[/nino/public]]/assets/fonts';
+
 		/**
-		 *	Every family a role can be given, by slug.
+		 *	The directory the installed families live in
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	string									Absolute, existing or not: assets/fonts below the public root
+		 */
+		public static function dir( array &$appData ): string {
+
+			return rtrim( \Nino\Filesystem::getPublicPath( $appData ), '/' ). self::DIR;
+		}
+
+		/**
+		 *	Every family a role can be given, by slug: the ones the feature brings
+		 *	(see builtin()) and after them the ones the project installed (see
+		 *	installed()).
 		 *
 		 *	A family has a name (what font-family calls it), a category (the
 		 *	grouping of Google Fonts: sans, serif, display, handwriting, mono,
@@ -108,9 +132,27 @@ namespace Nino\Modules\Design {
 		 *	The url of a file is written into the stylesheet as it stands, so a
 		 *	family carries the fill or the path its files are served from.
 		 *
+		 *	A file that carries a weight axis - one file for all the weights from 100
+		 *	to 900, say - has the two numbers as its weight, '100 900'; the family
+		 *	lists nothing of it under 'weights' and says [ 100, 900 ] under 'axis'.
+		 *	An installed family says under 'installed' where it came from.
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	array										slug => [ name, category, weights, files ] (and stack, for a system family; axis and installed, for an installed one)
+		 */
+		public static function families( array &$appData ): array {
+
+			return self::builtin() + self::installed( $appData );
+		}
+
+		/**
+		 *	The families the feature brings: the two the setup wizard's base unit
+		 *	delivers as woff2 files, and three system stacks
+		 *
 		 *	@return 	array										slug => [ name, category, weights, files ] (and stack, for a system family)
 		 */
-		public static function families(): array {
+		public static function builtin(): array {
 
 			return [
 				'source-sans-3' => [
@@ -155,6 +197,119 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
+		 *	The families the project installed: every directory below assets/fonts/
+		 *	that holds a font.json of the archive's shape (see Webfonts::manifest())
+		 *	whose slug is the name of the directory, sorted by slug. A directory that
+		 *	does not is left out, and broken() says why
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	array										slug => the family, as families() has it
+		 */
+		public static function installed( array &$appData ): array {
+
+			return array_filter( self::_scan( $appData ), static fn( array|string $found ): bool => is_array( $found ) );
+		}
+
+		/**
+		 *	The directories below assets/fonts/ that are no installed family, each
+		 *	with the reason: an interrupted copy, a font.json that is not one, a
+		 *	slug that is not the directory's, a slug that is one of the families
+		 *	the feature brings. Only a directory with the name of a slug counts -
+		 *	whatever else lies there is not this feature's to list or to remove
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	array										slug => why it is not listed
+		 */
+		public static function broken( array &$appData ): array {
+
+			return array_filter( self::_scan( $appData ), static fn( array|string $found ): bool => is_string( $found ) );
+		}
+
+		/**
+		 *	Look at every directory below assets/fonts/
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	array										slug => the family, or why the directory is none
+		 */
+		private static function _scan( array &$appData ): array {
+
+			$dir 		= self::dir( $appData );
+			$found 	= [];
+
+			if( is_dir( $dir ) === false )
+				return $found;
+
+			foreach( @scandir( $dir ) ?: [] as $name )
+				if( preg_match( Webfonts::SLUG, $name ) === 1 && is_dir( $dir. '/'. $name ) === true && is_link( $dir. '/'. $name ) === false )
+					$found[$name] = self::_read( $dir. '/'. $name, $name );
+
+			return $found;
+		}
+
+		/**
+		 *	One directory, as the family it is - or the reason it is none
+		 *
+		 *	@param		string		$path					The directory
+		 *	@param		string		$slug					Its name
+		 *
+		 *	@return 	array|string
+		 */
+		private static function _read( string $path, string $slug ): array|string {
+
+			// A slug the feature brings is taken: an installed family of that name could only
+			// stand in the select under the one that is there already
+			if( isset( self::builtin()[$slug] ) === true )
+				return 'the slug is one of the families the feature brings';
+
+			// A manifest is a few hundred bytes. More than a megabyte is none
+			$raw = @file_get_contents( $path. '/font.json', false, null, 0, Webfonts::MAX_LIST_BYTES );
+
+			if( $raw === false )
+				return 'there is no font.json';
+
+			$data = json_decode( $raw, true );
+
+			if( is_array( $data ) === false )
+				return 'font.json is not valid json';
+
+			$manifest = Webfonts::manifest( $data );
+
+			if( is_string( $manifest ) === true )
+				return 'font.json: '. $manifest;
+
+			if( $manifest['slug'] !== $slug )
+				return 'font.json names the slug "'. $manifest['slug']. '", the directory is "'. $slug. '"';
+
+			$weights 	= [];
+			$axis 		= [];
+			$files 		= [];
+
+			foreach( $manifest['files'] as $file ) {
+
+				if( is_int( $file['weight'] ) === true )
+					$weights[ $file['weight'] ] = $file['weight'];
+				else if( $axis === [] )
+					$axis = array_map( 'intval', explode( ' ', $file['weight'] ) );
+
+				$files[] = [ 'weight' => $file['weight'], 'style' => $file['style'], 'url' => self::URL. '/'. $slug. '/'. $file['file'] ];
+			}
+
+			ksort( $weights );
+
+			return [
+				'name' 			=> $manifest['family'],
+				'category' 	=> $manifest['category'],
+				'weights' 	=> array_values( $weights ),
+				'axis' 			=> $axis,
+				'files' 		=> $files,
+				'installed' => [ 'version' => $manifest['version'], 'license' => $manifest['license'], 'source' => $manifest['source'] ],
+			];
+		}
+
+		/**
 		 *	The slugs a role's select offers, in the order it shows them.
 		 *
 		 *	Every family for the four roles of running text, and for the code the
@@ -163,15 +318,16 @@ namespace Nino\Modules\Design {
 		 *	'' is the first of them and always allowed: it leaves the role to
 		 *	Nino.css.
 		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$role					A key of ROLES
 		 *
 		 *	@return 	array										Slugs, '' first
 		 */
-		public static function options( string $role ): array {
+		public static function options( array &$appData, string $role ): array {
 
 			$slugs = [ '' ];
 
-			foreach( self::families() as $slug => $family ) {
+			foreach( self::families( $appData ) as $slug => $family ) {
 
 				if( $role === 'code' && ( $family['category'] !== 'mono' || $family['files'] === [] ) )
 					continue;
@@ -191,14 +347,24 @@ namespace Nino\Modules\Design {
 		 *	after it stays bare (a stack quoted whole is one family called by that
 		 *	name, which no system has). A system family is its stack alone.
 		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$role					A key of ROLES
 		 *	@param		string		$slug					A family, '' for none
 		 *
 		 *	@return 	string
 		 */
-		public static function line( string $role, string $slug ): string {
+		public static function line( array &$appData, string $role, string $slug ): string {
 
-			$family = self::families()[$slug] ?? null;
+			return self::_line( $role, self::families( $appData )[$slug] ?? null );
+		}
+
+		/**
+		 *	@param		string		$role					A key of ROLES
+		 *	@param		array|null	$family				One entry of families(), null for none
+		 *
+		 *	@return 	string
+		 */
+		private static function _line( string $role, ?array $family ): string {
 
 			if( $family === null )
 				return '';
@@ -214,18 +380,36 @@ namespace Nino\Modules\Design {
 		 *
 		 *	A family answers with the weight it has nearest to what the word aims
 		 *	at - 300, 500 or 800 - and the lighter of two that are as near. One
-		 *	with no weights to choose from, which is a system stack, gets the word
-		 *	as a browser reads it.
+		 *	that has a weight axis answers with the weight itself where it lies on
+		 *	the axis, and with the end of the axis it is nearer to where it does
+		 *	not. One with no weights to choose from, which is a system stack, gets
+		 *	the word as a browser reads it.
 		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$slug					A family, '' for none
 		 *	@param		string		$word					One of WEIGHTS
 		 *
 		 *	@return 	string
 		 */
-		public static function weight( string $slug, string $word ): string {
+		public static function weight( array &$appData, string $slug, string $word ): string {
+
+			return self::_weight( self::families( $appData )[$slug] ?? null, $word );
+		}
+
+		/**
+		 *	@param		array|null	$family				One entry of families(), null for none
+		 *	@param		string		$word					One of WEIGHTS
+		 *
+		 *	@return 	string
+		 */
+		private static function _weight( ?array $family, string $word ): string {
 
 			$word 		= isset( self::TARGETS[$word] ) === true ? $word : 'normal';
-			$weights 	= (array) ( self::families()[$slug]['weights'] ?? [] );
+			$axis 		= (array) ( $family['axis'] ?? [] );
+			$weights 	= (array) ( $family['weights'] ?? [] );
+
+			if( $axis !== [] )
+				return (string) max( $axis[0], min( $axis[1], self::TARGETS[$word] ) );
 
 			if( $weights === [] )
 				return self::KEYWORDS[$word];
@@ -303,13 +487,14 @@ namespace Nino\Modules\Design {
 		 *	factor between the two stands in for both (see "The hero, the card
 		 *	title and the variants" in Nino's design manual).
 		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		$fonts				The setup's fonts, a role => [ family, weight, uppercase, size ]
 		 *
 		 *	@return 	string
 		 */
-		public static function css( array $fonts ): string {
+		public static function css( array &$appData, array $fonts ): string {
 
-			$families = self::families();
+			$families = self::families( $appData );
 			$faces 		= [];
 			$lines 		= [];
 
@@ -322,12 +507,12 @@ namespace Nino\Modules\Design {
 				if( $family !== null && $family['files'] !== [] && isset( $faces[$slug] ) === false )
 					$faces[$slug] = self::faces( $family );
 
-				$line = self::line( $role, $slug );
+				$line = self::_line( $role, $family );
 
 				if( $line !== '' )
 					$lines[] = "\t--fontfamily-". $role. ': '. $line. ';';
 
-				$lines[] = "\t--font-". $role. '-weight: '. self::weight( $slug, (string) ( $chosen['weight'] ?? 'normal' ) ). ';';
+				$lines[] = "\t--font-". $role. '-weight: '. self::_weight( $family, (string) ( $chosen['weight'] ?? 'normal' ) ). ';';
 
 				if( ( $chosen['uppercase'] ?? false ) === true )
 					$lines[] = "\t--font-". $role. '-transform: uppercase;';
@@ -346,7 +531,9 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	The @font-face rules of one family, a rule per file
+		 *	The @font-face rules of one family, a rule per file. The weight of a file
+		 *	that carries a weight axis is the two numbers it runs between ('100 900'),
+		 *	as css writes a range of weights: font-weight: 100 900
 		 *
 		 *	@param		array 		$family				One entry of families()
 		 *

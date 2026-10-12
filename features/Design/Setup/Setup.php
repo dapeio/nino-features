@@ -18,12 +18,13 @@ namespace Nino\Modules\Design {
 	 *										feature.php so a backup carries it - it is the one thing
 	 *										here that cannot be worked out again from what is on disk.
 	 *
-	 *										One model for the six tabs of the panel: the five
-	 *										templates (header and footer bring markup, content,
-	 *										buttons and components are one stylesheet each), the root
-	 *										size, the width of the page and its animation, a position
-	 *										for every named knob of the three template tabs, the five
-	 *										font roles and the palette.
+	 *										One model for the six tabs of the panel that choose
+	 *										something (the seventh, Typefaces, installs families and
+	 *										keeps nothing here): the five templates (header and footer
+	 *										bring markup, content, buttons and components are one
+	 *										stylesheet each), the root size, the width of the page and
+	 *										its animation, a position for every named knob of the
+	 *										three template tabs, the five font roles and the palette.
 	 *
 	 *										Every value is normalised against the library that is
 	 *										actually present: a part naming a set that is not there
@@ -436,13 +437,14 @@ namespace Nino\Modules\Design {
 		 *	The format is not looked at here: a request names none, and read() is
 		 *	the one place a file is held to it.
 		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data - the families a project installed are read off its disk
 		 *	@param		array 		$raw					Whatever the file held, or the screen posted
 		 *	@param		string		$libraryDir		The feature's library
 		 *	@param		array 		&$notes				(reference) What had to be replaced or dropped
 		 *
 		 *	@return 	array										A setup safe to compile
 		 */
-		public static function normalize( array $raw, string $libraryDir, array &$notes = [] ): array {
+		public static function normalize( array &$appData, array $raw, string $libraryDir, array &$notes = [] ): array {
 
 			$setup = self::defaults( $libraryDir );
 
@@ -514,11 +516,12 @@ namespace Nino\Modules\Design {
 					$setup['knobs'][$tab][$knob] = self::position( is_array( $given[$tab] ?? null ) === true ? ( $given[$tab][$knob] ?? 0 ) : 0, $kind );
 
 			/*	The five font roles. A family has to be one the role's select offers -
-				the code is given the monospace ones only - and a weight one of the three
-				words; anything else is what the role starts from. A size is a number of
-				rem held inside the bounds of the role, and what is no number is the
-				default (see Fonts::size()). The code has no case switch: capitals in a
-				block of code are not a choice anybody makes	*/
+				the code is given the monospace ones only, and the families the project
+				installed are among them - and a weight one of the three words;
+				anything else is what the role starts from. A size is a number of rem
+				held inside the bounds of the role, and what is no number is the default
+				(see Fonts::size()). The code has no case switch: capitals in a block of
+				code are not a choice anybody makes	*/
 			$given = is_array( $raw['fonts'] ?? null ) === true ? $raw['fonts'] : [];
 
 			foreach( array_keys( $given ) as $role )
@@ -537,7 +540,7 @@ namespace Nino\Modules\Design {
 				$weight = $stored['weight'] ?? null;
 
 				$setup['fonts'][$role] = [
-					'family' 		=> is_string( $family ) === true && in_array( $family, Fonts::options( $role ), true ) === true ? $family : Fonts::DEFAULTS[$role]['family'],
+					'family' 		=> is_string( $family ) === true && in_array( $family, Fonts::options( $appData, $role ), true ) === true ? $family : Fonts::DEFAULTS[$role]['family'],
 					'weight' 		=> is_string( $weight ) === true && in_array( $weight, Fonts::WEIGHTS, true ) === true ? $weight : Fonts::DEFAULTS[$role]['weight'],
 					'uppercase' => $role !== 'code' && ( $stored['uppercase'] ?? false ) === true,
 					'size' 			=> Fonts::size( $role, $stored['size'] ?? '' ),
@@ -725,7 +728,7 @@ namespace Nino\Modules\Design {
 				$raw = [];
 			}
 
-			return self::normalize( $raw, $libraryDir, $notes );
+			return self::normalize( $appData, $raw, $libraryDir, $notes );
 		}
 
 		/**

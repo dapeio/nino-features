@@ -1,16 +1,21 @@
 /**
  *	Nino										A compact filesystembased php framework
- *	Modules\Design					The feature's /_admin panel, "Design": six tabs over one
- *													setup - Global, with the header and footer templates,
- *													the root size and the width, a strip of five positions
- *													each, and the animation of the page; Fonts, with the five
- *													font roles; Content, Buttons and Components, each with the
- *													choice of its template and one named knob for each thing
- *													the template lets go of, a strip of five positions or of
- *													three words; and Colours, with the two colours, the five
- *													knobs and the mode the palette is solved from - and the
- *													compile that turns all of it into assets/theme.css (see
- *													Modules\Design\Admin beside this file). Beside the
+ *	Modules\Design					The feature's /_admin panel, "Design": seven tabs, six of
+ *													them over one setup - Global, with the header and footer
+ *													templates, the root size and the width, a strip of five
+ *													positions each, and the animation of the page; Fonts,
+ *													with the five font roles; Content, Buttons and Components,
+ *													each with the choice of its template and one named knob
+ *													for each thing the template lets go of, a strip of five
+ *													positions or of three words; and Colours, with the two
+ *													colours, the five knobs and the mode the palette is
+ *													solved from - and the compile that turns all of it into
+ *													assets/theme.css (see Modules\Design\Admin beside this
+ *													file). The seventh, Typefaces, is the loader: the
+ *													families the project has installed, and the signed list
+ *													of those it can install, which is read when its button is
+ *													pressed - an install or a removal happens when it is
+ *													pressed, and is no part of the draft. Beside the
  *													controls is one specimen page of the selection, under a
  *													head with the viewport switch, the switch that lets the
  *													frame follow and the reload; the frame fills the window
@@ -39,8 +44,8 @@
 		// nothing on disk
 		_edit		: null,
 
-		// The six tabs, in the order they are shown in
-		TABS		: [ 'global', 'fonts', 'content', 'buttons', 'components', 'colours' ],
+		// The seven tabs, in the order they are shown in
+		TABS		: [ 'global', 'fonts', 'typefaces', 'content', 'buttons', 'components', 'colours' ],
 
 		// The tabs that have named knobs, and the part each of them is the
 		// template of: a knob belongs to the tab, the tab to one template
@@ -48,9 +53,10 @@
 
 		/*	The id of the element on the specimen page each tab scrolls the frame
 			to. The page is templates/preview-specimen.tpl, which carries the
-			same six ids; Global is the top of the page, Fonts the typography
-			block, Colours the grounds	*/
-		ANCHORS	: { global : 'global', fonts : 'type', content : 'content', buttons : 'buttons', components : 'components', colours : 'colours' },
+			same six ids; Global is the top of the page, Fonts and Typefaces the
+			typography block - a typeface shows where the type is -, Colours the
+			grounds	*/
+		ANCHORS	: { global : 'global', fonts : 'type', typefaces : 'type', content : 'content', buttons : 'buttons', components : 'components', colours : 'colours' },
 
 		/*	Where a change of one knob is looked at, by the tab: the id of the element
 			on the specimen the frame jumps to in place of the tab's anchor, which is
@@ -182,11 +188,14 @@
 			width of the page, and the rows of the palette - the brand colour, the
 			second colour, which is the row of Harmony, temperature, saturation,
 			contrast, depth and the mode: all of them have one, so that every name of
-			the Colours tab starts at the same left edge. A row with no entry has no
-			icon, and no stand-in shape takes its place	*/
+			the Colours tab starts at the same left edge. A row of the Typefaces tab,
+			an installed family and an available one, opens with the text size as
+			well. A row with no entry has no icon, and no stand-in shape takes its
+			place	*/
 		KNOB_ICONS	: {
 			'global/size' : 'a-large-small',
 			'global/width' : 'move-horizontal',
+			'typefaces/family' : 'a-large-small',
 			'content/hero-title' : 'a-large-small',
 			'content/hero-text' : 'a-large-small',
 			'content/quiet' : 'a-large-small',
@@ -247,6 +256,28 @@
 		// for it to stop (see _fitLater())
 		_bound	: false,
 		_fitTimer	: null,
+
+		// The categories of the typefaces the Available half is told apart by, as the chips
+		// of its strip, and how many families a page of it holds
+		FACE_CATEGORIES	: [ 'all', 'sans', 'serif', 'display', 'handwriting', 'mono', 'other' ],
+		FACES_PER_PAGE	: 24,
+
+		/*	The Typefaces tab. The last answer of design/webfonts/* - families (the list),
+			fetched, url, key, builtin, installed, broken, uses, refusal, refusalKind - from
+			which both halves are drawn; null until the first has come. Beside it what the
+			Available half looks at, the counter that tells which of the requests asked is
+			the latest, whether an action of the tab is on its way, and the faces the names
+			have been set in: the FontFace of every family by the font-family it was added to
+			the document under, and the observer that loads those of the rows that come into
+			view	*/
+		_faces			: null,
+		_facesQuery		: '',
+		_facesCategory	: 'all',
+		_facesPage		: 0,
+		_facesStamp		: 0,
+		_facesBusy		: false,
+		_facesLoaded	: {},
+		_facesObserver	: null,
 
 		/**
 		 *	Load the library and the stored setup, then draw
@@ -865,6 +896,9 @@
 			if( tab === 'fonts' )
 				return body.appendChild( Nino.admin.design._renderFonts() );
 
+			if( tab === 'typefaces' )
+				return Nino.admin.design._renderTypefaces( body );
+
 			if( tab === 'colours' )
 				return body.appendChild( Nino.admin.design._renderColours() );
 
@@ -872,8 +906,8 @@
 		},
 
 		/**
-		 *	The six tabs. A tablist rather than a button group, because these
-		 *	really are six panels: aria-selected, not aria-pressed.
+		 *	The seven tabs. A tablist rather than a button group, because these
+		 *	really are seven panels: aria-selected, not aria-pressed.
 		 *
 		 *	@return		{HTMLElement}
 		 */
@@ -930,6 +964,10 @@
 
 			if( key === Nino.admin.design._tab )
 				return;
+
+			// The faces the names of the typefaces were set in are the tab's: gone with it
+			if( Nino.admin.design._tab === 'typefaces' )
+				Nino.admin.design._dropFaces();
 
 			Nino.admin.design._tab = key;
 
@@ -1505,6 +1543,770 @@
 
 			Nino.admin.design._edit.fonts[role][key] = value;
 			Nino.admin.design._preview();
+		},
+
+		/**
+		 *	The Typefaces tab, the loader: two cards. The first holds the families the
+		 *	project has installed, each with its name set in its own face, its weights, its
+		 *	version and licence, and the button that removes it; the second the list of those
+		 *	the repository offers, read when its button is pressed, with a search field, the
+		 *	categories as a strip and pages of FACES_PER_PAGE.
+		 *
+		 *	Both halves are drawn from the answer the server gives after each action of the
+		 *	tab, kept in _faces. The cached list is asked for whenever the tab is opened -
+		 *	design/webfonts/list answers from data/ without a request of its own, and not
+		 *	while an action is on its way, whose answer is the state - and the repository
+		 *	only by the button. An install and a removal are made when their button is
+		 *	pressed, and are no part of the draft: the line of the action bar says what they
+		 *	did, and Reset has nothing to bring back.
+		 *
+		 *	@param		{Element}	body		The box the column keeps for the open tab
+		 *
+		 *	@return		void
+		 */
+		_renderTypefaces : function( body ) {
+
+			const installed = dc.createElement('div');
+			installed.id = 'design-faces-installed';
+			installed.className = 'nino-admin-card design-block';
+
+			const available = dc.createElement('div');
+			available.id = 'design-faces-available';
+			available.className = 'nino-admin-card design-block';
+
+			body.appendChild( installed );
+			body.appendChild( available );
+
+			// By the node, not by its id: this column is not in the document yet on the first render
+			Nino.admin.design._paintInstalled( installed );
+			Nino.admin.design._paintAvailable( available );
+
+			// An action that is on its way answers with the state it leaves, and that answer draws the tab: a list read now could be older than it
+			if( Nino.admin.design._facesBusy === false )
+				Nino.admin.design._loadFaces( false );
+		},
+
+		/**
+		 *	Draw both halves of the tab again, where the tab is on screen
+		 *
+		 *	@return		void
+		 */
+		_paintFaces : function() {
+
+			const installed = dc.getElementById('design-faces-installed');
+			const available = dc.getElementById('design-faces-available');
+
+			if( installed !== null )
+				Nino.admin.design._paintInstalled( installed );
+
+			if( available !== null )
+				Nino.admin.design._paintAvailable( available );
+		},
+
+		/**
+		 *	Ask for the list. Without `refresh` the server answers with the list it kept, which is what
+		 *	opening the tab does; with it the repository is asked, which only the button does
+		 *
+		 *	@param		{boolean}	refresh
+		 *
+		 *	@return		void
+		 */
+		_loadFaces : function( refresh ) {
+
+			const design = Nino.admin.design;
+			const stamp = ++design._facesStamp;
+
+			if( refresh === true ) {
+				design._facesBusy = true;
+				design._say( dc.getElementById('design-msg'), '' );
+				design._paintFaces();
+			}
+
+			design._apiCall( 'webfonts/list', { refresh : refresh }, function( status, response ) {
+
+				const line = dc.getElementById('design-msg');
+
+				if( refresh === true )
+					design._facesBusy = false;
+
+				if( status !== 200 || response === null ) {
+					design._paintFaces();
+					return design._say( line, Nino.adminUi.api.errorText( status, response, '/_admin/design/typefaces/error/list' ), 'nino-admin-error' );
+				}
+
+				// Only the latest answer is the state: one asked for before an install is the state before it
+				if( stamp === design._facesStamp ) {
+					design._faces = response;
+					design._facesPage = 0;
+				}
+
+				design._paintFaces();
+
+				if( refresh === true )
+					design._say( line, response.refusal !== ''
+						? design._refusal( response )
+						: design._text( '/_admin/design/typefaces/msg/loaded', response.families.length ), response.refusal !== '' ? 'nino-admin-error' : '', response.refusal );
+			} );
+		},
+
+		/**
+		 *	Install a family of the list, or update it
+		 *
+		 *	@param		{string}	slug
+		 *
+		 *	@return		void
+		 */
+		_installFace : function( slug ) {
+			Nino.admin.design._faceAction( 'webfonts/install', slug, '/_admin/design/typefaces/error/install' );
+		},
+
+		/**
+		 *	Remove an installed family
+		 *
+		 *	@param		{string}	slug
+		 *
+		 *	@return		void
+		 */
+		_removeFace : function( slug ) {
+			Nino.admin.design._faceAction( 'webfonts/remove', slug, '/_admin/design/typefaces/error/remove' );
+		},
+
+		/**
+		 *	One action of the tab on one family. The buttons are switched off while it is on
+		 *	its way, and the server's answer - the same as the list gives, after the change -
+		 *	draws both halves again; the line of the action bar says what happened, or why not.
+		 *	The selects of the Fonts tab list the families too, so design/list is asked again
+		 *
+		 *	@param		{string}	endpoint		webfonts/install or webfonts/remove
+		 *	@param		{string}	slug
+		 *	@param		{string}	failure			The text of what a refusal is told as: the reason is its %s
+		 *
+		 *	@return		void
+		 */
+		_faceAction : function( endpoint, slug, failure ) {
+
+			const design = Nino.admin.design;
+
+			if( design._facesBusy === true )
+				return;
+
+			const stamp = ++design._facesStamp;
+
+			design._facesBusy = true;
+			design._say( dc.getElementById('design-msg'), '' );
+			design._paintFaces();
+
+			design._apiCall( endpoint, { slug : slug }, function( status, response ) {
+
+				const line = dc.getElementById('design-msg');
+
+				design._facesBusy = false;
+
+				if( status !== 200 || response === null ) {
+					design._paintFaces();
+
+					// A family a role still uses is told with the roles, in the words of the workbench (the
+					// server names them as the params of the code); what else the server refused for, in its
+					// own words; a failure that has none is told the way the workbench tells one
+					const roles = response !== null && response.code === 'used' && Array.isArray( response.params )
+						? response.params.map( function( role ) { return Nino.content.getText( '/_admin/design/font/role/'+ role ) } ).join( ', ' ) : null;
+					const reason = response !== null && typeof response.error === 'string' && response.error !== ''
+						? response.error : Nino.adminUi.api.errorText( status, response, '' );
+
+					return design._say( line, roles !== null ? design._text( '/_admin/design/typefaces/error/used', roles ) : design._text( failure, reason ), 'nino-admin-error' );
+				}
+
+				if( stamp === design._facesStamp )
+					design._faces = response;
+
+				design._paintFaces();
+				design._say( line, response.msg );
+				design._relist();
+			} );
+		},
+
+		/**
+		 *	Take over what design/list says now of the families - after an install or a removal
+		 *	the selects of the Fonts tab have one more or one less, and the state of the files
+		 *	may be another one, since a family a role uses can have been updated. The selection
+		 *	being edited is not touched; the tab of the typefaces, where it is open, is drawn
+		 *	again, since the roles and the settings of the repository it reads are what
+		 *	design/list says
+		 *
+		 *	@return		void
+		 */
+		_relist : function() {
+
+			Nino.admin.design._apiCall( 'list', {}, function( status, response ) {
+
+				if( status !== 200 || response === null || Nino.admin.design._data === null )
+					return;
+
+				Nino.admin.design._data = response;
+				Nino.admin.design._paintState();
+				Nino.admin.design._paintFaces();
+			} );
+		},
+
+		/**
+		 *	The roles that have a family: those of the saved setup, as the server says, and those the selection
+		 *	being edited gives it - a family one has been chosen for and not yet saved is as little to be removed
+		 *
+		 *	@param		{string}	slug
+		 *
+		 *	@return		{Array}						Keys of data.roles, in their order
+		 */
+		_rolesOf : function( slug ) {
+
+			const saved = ( ( Nino.admin.design._faces || {} ).uses || {} )[slug] || [];
+			const edit = ( Nino.admin.design._edit || {} ).fonts || {};
+
+			return ( ( Nino.admin.design._data || {} ).roles || [] ).filter( function( role ) {
+				return saved.indexOf( role ) !== -1 || ( edit[role] || {} ).family === slug;
+			} );
+		},
+
+		/**
+		 *	The first half: the families the project has installed, one row each, then the
+		 *	directories that are none - greyed, with the reason, and a button that removes them
+		 *
+		 *	@param		{Element}	card
+		 *
+		 *	@return		void
+		 */
+		_paintInstalled : function( card ) {
+
+			const design = Nino.admin.design;
+			const faces = design._faces;
+
+			card.innerHTML = '';
+			card.appendChild( design._sectionLabel( Nino.content.getText('/_admin/design/typefaces/installed/title') ) );
+
+			if( faces === null )
+				return;
+
+			const slugs = Object.keys( faces.installed || {} );
+			const broken = Object.keys( faces.broken || {} );
+
+			if( slugs.length === 0 && broken.length === 0 )
+				return card.appendChild( design._hint( Nino.content.getText('/_admin/design/typefaces/installed/empty') ) );
+
+			slugs.forEach( function( slug ) {
+				card.appendChild( design._installedRow( slug, faces.installed[slug] ) );
+			} );
+
+			broken.forEach( function( slug ) {
+				card.appendChild( design._brokenRow( slug, faces.broken[slug] ) );
+			} );
+		},
+
+		/**
+		 *	One installed family. Its name is set in the face of its first normal file, which
+		 *	the project serves itself and so is loaded as the row is drawn. The button that removes
+		 *	it is off while a role uses it, and its title names the roles - and so does the line
+		 *	under the name
+		 *
+		 *	@param		{string}	slug
+		 *	@param		{Object}	family			One entry of the answer's `installed`
+		 *
+		 *	@return		{Element}
+		 */
+		_installedRow : function( slug, family ) {
+
+			const design = Nino.admin.design;
+			const roles = design._rolesOf( slug );
+			const used = design._text( '/_admin/design/typefaces/installed/used', roles.map( function( role ) {
+				return Nino.content.getText('/_admin/design/font/role/'+ role );
+			} ).join(', ') );
+
+			const notes = [ design._note( [ design._weights( family.weights, family.axis ), family.version, family.license ].join(' · ') ) ];
+
+			if( roles.length > 0 )
+				notes.push( design._note( used ) );
+
+			const row = design._faceRow( slug, family.name, notes );
+
+			design._setFace( 'installed', slug, family.face, row.name );
+
+			const remove = dc.createElement('button');
+			remove.type = 'button';
+			remove.className = 'nino-admin-btn-danger';
+			remove.textContent = Nino.content.getText('/_admin/design/typefaces/installed/remove');
+			remove.title = roles.length > 0 ? used : remove.textContent;
+			// A row of buttons that all say Remove is read out with the name of its family
+			remove.setAttribute( 'aria-label', remove.textContent+ ' - '+ family.name );
+			remove.disabled = roles.length > 0 || design._facesBusy === true;
+			remove.addEventListener( 'click', function() { design._removeFace( slug ) } );
+			row.element.appendChild( remove );
+
+			return row.element;
+		},
+
+		/**
+		 *	A directory below assets/fonts/ that is no family: greyed out, with the reason - and the
+		 *	button that removes it, which works whatever the reason is
+		 *
+		 *	@param		{string}	slug				The name of the directory
+		 *	@param		{string}	reason
+		 *
+		 *	@return		{Element}
+		 */
+		_brokenRow : function( slug, reason ) {
+
+			const design = Nino.admin.design;
+			const row = design._faceRow( slug, slug, [ design._note( design._text( '/_admin/design/typefaces/installed/broken', reason ) ) ] );
+
+			row.element.classList.add('design-face-row--off');
+
+			const remove = dc.createElement('button');
+			remove.type = 'button';
+			remove.className = 'nino-admin-btn-danger';
+			remove.textContent = Nino.content.getText('/_admin/design/typefaces/installed/remove');
+			remove.setAttribute( 'aria-label', remove.textContent+ ' - '+ slug );
+			remove.disabled = design._facesBusy === true;
+			remove.addEventListener( 'click', function() { design._removeFace( slug ) } );
+			row.element.appendChild( remove );
+
+			return row.element;
+		},
+
+		/**
+		 *	The weights of a family as a row says them: the numbers, or 'variable 100-900' for a weight axis
+		 *
+		 *	@param		{Array}		weights			Numbers, and the axis of a file as '100 900'
+		 *	@param		{Array}		[axis]			[ from, to ], where the family has one
+		 *
+		 *	@return		{string}
+		 */
+		_weights : function( weights, axis ) {
+
+			if( Array.isArray( axis ) === true && axis.length === 2 )
+				return Nino.admin.design._text( '/_admin/design/typefaces/weights/variable', axis[0]+ '-'+ axis[1] );
+
+			return ( weights || [] ).map( function( weight ) {
+				return String( weight ).indexOf(' ') === -1 ? String( weight )
+					: Nino.admin.design._text( '/_admin/design/typefaces/weights/variable', String( weight ).replace( ' ', '-' ) );
+			} ).join(', ');
+		},
+
+		/**
+		 *	A row of the tab: the label a knob row has - the icon, and a box with the name over its
+		 *	notes - and, on its far side, whatever button the caller puts there
+		 *
+		 *	@param		{string}	slug
+		 *	@param		{string}	name
+		 *	@param		{Array}		notes			Elements, see _note()
+		 *
+		 *	@return		{{element: Element, name: Element}}		The row, and the element the name is in: the one that is set in the face
+		 */
+		_faceRow : function( slug, name, notes ) {
+
+			const row = dc.createElement('div');
+			row.className = 'design-face-row';
+			row.dataset.slug = slug;
+
+			const label = dc.createElement('span');
+			label.className = 'design-knob-label design-face-label';
+
+			const icon = Nino.admin.design._icon('typefaces/family');
+
+			if( icon !== null )
+				label.appendChild( icon );
+
+			const box = dc.createElement('span');
+			box.className = 'design-knob-text';
+
+			const title = dc.createElement('span');
+			title.className = 'design-face-name';
+			title.textContent = name;
+			box.appendChild( title );
+
+			notes.forEach( function( note ) { box.appendChild( note ) } );
+
+			label.appendChild( box );
+			row.appendChild( label );
+
+			return { element : row, name : title };
+		},
+
+		/**
+		 *	The line under the name of a row
+		 *
+		 *	@param		{string}	text
+		 *
+		 *	@return		{Element}
+		 */
+		_note : function( text ) {
+
+			const small = dc.createElement('small');
+			small.className = 'design-face-note';
+			small.textContent = text;
+
+			return small;
+		},
+
+		/**
+		 *	A sentence where there is nothing to draw
+		 *
+		 *	@param		{string}	text
+		 *	@param		{boolean}	[failure]		The sentence is why there is nothing
+		 *
+		 *	@return		{Element}
+		 */
+		_hint : function( text, failure ) {
+
+			const p = dc.createElement('p');
+			p.className = failure === true ? 'nino-admin-error' : 'nino-admin-hint';
+			p.textContent = text;
+
+			return p;
+		},
+
+		/**
+		 *	The second half: the button that loads the list, and what the list is. Where the repository is switched
+		 *	off, or has no key to be read with, it is one sentence; where it could not be read, a sentence of the
+		 *	kind of refusal stands in the place of the list, and the reason is its title. With a list there are a
+		 *	search field, the categories as a strip and the families, a page at a time
+		 *
+		 *	@param		{Element}	card
+		 *
+		 *	@return		void
+		 */
+		_paintAvailable : function( card ) {
+
+			const design = Nino.admin.design;
+			const faces = design._faces;
+
+			/*	What design/list said when the panel was opened, until the tab has an answer of its own: the settings
+				of the repository are changed in another panel of the same page, and the answer is read on every visit	*/
+			const web = faces === null ? ( ( design._data || {} ).webfonts || {} ) : { url : faces.url !== '', key : faces.key === true };
+
+			card.innerHTML = '';
+			card.appendChild( design._sectionLabel( Nino.content.getText('/_admin/design/typefaces/available/title') ) );
+
+			if( web.url !== true )
+				return card.appendChild( design._hint( Nino.content.getText('/_admin/design/typefaces/available/off') ) );
+
+			if( web.key !== true )
+				return card.appendChild( design._hint( Nino.content.getText('/_admin/design/typefaces/available/nokey') ) );
+
+			const bar = dc.createElement('div');
+			bar.className = 'design-faces-load';
+
+			const load = dc.createElement('button');
+			load.type = 'button';
+			load.id = 'design-faces-load';
+			load.className = 'nino-admin-btn-secondary';
+			load.textContent = Nino.content.getText('/_admin/design/typefaces/available/load');
+			load.disabled = design._facesBusy === true;
+			load.addEventListener( 'click', function() { design._loadFaces( true ) } );
+			bar.appendChild( load );
+
+			if( faces !== null && faces.fetched > 0 ) {
+				const when = dc.createElement('span');
+				when.className = 'design-faces-when';
+				when.textContent = design._text( '/_admin/design/typefaces/available/loaded', design._when( new Date( faces.fetched * 1000 ).toISOString() ) );
+				// Where the list came from
+				when.title = faces.url;
+				bar.appendChild( when );
+			}
+
+			card.appendChild( bar );
+
+			if( faces === null )
+				return;
+
+			if( faces.refusal !== '' ) {
+
+				const refusal = design._hint( design._refusal( faces ), true );
+
+				// The reason is the server's, in English: what stands behind the sentence
+				refusal.title = faces.refusal;
+
+				return card.appendChild( refusal );
+			}
+
+			if( faces.fetched === 0 )
+				return card.appendChild( design._hint( Nino.content.getText('/_admin/design/typefaces/available/unloaded') ) );
+
+			if( ( faces.families || [] ).length === 0 )
+				return card.appendChild( design._hint( Nino.content.getText('/_admin/design/typefaces/available/none') ) );
+
+			const search = dc.createElement('input');
+			search.type = 'search';
+			search.id = 'design-faces-search';
+			search.className = 'design-faces-search';
+			search.placeholder = Nino.content.getText('/_admin/design/typefaces/available/search');
+			search.setAttribute( 'aria-label', search.placeholder );
+			search.value = design._facesQuery;
+			search.addEventListener( 'input', function() {
+				design._facesQuery = search.value;
+				design._facesPage = 0;
+				design._paintResults();
+			} );
+			card.appendChild( search );
+
+			const categories = design._stripRow( 'typefaces/category', Nino.content.getText('/_admin/design/typefaces/available/category'), '',
+				design.FACE_CATEGORIES.map( function( key ) {
+					return { value : key, label : Nino.content.getText('/_admin/design/typefaces/category/'+ key ) };
+				} ), design._facesCategory, function( key ) {
+					design._facesCategory = key;
+					design._facesPage = 0;
+					design._paintResults();
+				} );
+
+			// Seven names are two rows of the strip in a third of the screen (see .design-faces-categories)
+			categories.classList.add('design-faces-categories');
+			card.appendChild( categories );
+
+			const results = dc.createElement('div');
+			results.id = 'design-faces-results';
+			card.appendChild( results );
+
+			design._paintResults( results );
+		},
+
+		/**
+		 *	The sentence for a list that could not be loaded, in the words of the workbench: one for
+		 *	each thing a refusal can be about (see Webfonts::REFUSALS in the feature's class). The
+		 *	reason the server gives is English and goes beside it, as the title of what says it
+		 *
+		 *	@param		{Object}	faces			An answer of design/webfonts/list with a refusal
+		 *
+		 *	@return		{string}
+		 */
+		_refusal : function( faces ) {
+			return Nino.content.getText('/_admin/design/typefaces/available/'+ faces.refusalKind );
+		},
+
+		/**
+		 *	The families of the list that the search and the category let through, a page of them,
+		 *	and the pager under it. Drawn alone as the words are typed, so that the field keeps its focus
+		 *
+		 *	@param		{Element}	[results]		The box, for one that is built and not mounted yet
+		 *
+		 *	@return		void
+		 */
+		_paintResults : function( results ) {
+
+			const design = Nino.admin.design;
+
+			results = results || dc.getElementById('design-faces-results');
+
+			if( results === null || results === undefined || design._faces === null )
+				return;
+
+			results.innerHTML = '';
+
+			// The rows of the page before are gone: what watched them has nothing left to watch
+			if( design._facesObserver !== null )
+				design._facesObserver.disconnect();
+
+			const query = design._facesQuery.trim().toLowerCase();
+
+			const found = ( design._faces.families || [] ).filter( function( entry ) {
+				return ( design._facesCategory === 'all' || entry.category === design._facesCategory )
+					&& ( query === '' || entry.family.toLowerCase().indexOf( query ) !== -1 );
+			} );
+
+			if( found.length === 0 )
+				return results.appendChild( design._hint( Nino.content.getText('/_admin/design/typefaces/available/nomatch') ) );
+
+			const pages = Math.ceil( found.length / design.FACES_PER_PAGE );
+
+			design._facesPage = Math.max( 0, Math.min( pages - 1, design._facesPage ) );
+
+			found.slice( design._facesPage * design.FACES_PER_PAGE, ( design._facesPage + 1 ) * design.FACES_PER_PAGE ).forEach( function( entry ) {
+				results.appendChild( design._availableRow( entry ) );
+			} );
+
+			if( pages > 1 )
+				results.appendChild( design._pager( pages ) );
+		},
+
+		/**
+		 *	One family the repository offers: its name, which is set in its own face once the row is in
+		 *	view, its weights and its licence - a link to where the files came from -, and on the far side
+		 *	what can be done about it: install it; or, where the same version is there, that it is
+		 *	installed; or, where another version is, update to the one of the list. A family the feature
+		 *	brings itself is installed, in a way - the answer names those, and design/list does not: what
+		 *	it says of the families has the installed ones among them
+		 *
+		 *	@param		{Object}	entry				One family of the list
+		 *
+		 *	@return		{Element}
+		 */
+		_availableRow : function( entry ) {
+
+			const design = Nino.admin.design;
+			const installed = ( ( design._faces || {} ).installed || {} )[entry.slug] || null;
+			const brought = ( ( design._faces || {} ).builtin || [] ).indexOf( entry.slug ) !== -1;
+
+			const licence = dc.createElement('a');
+			licence.href = entry.source;
+			licence.target = '_blank';
+			licence.rel = 'noopener noreferrer';
+			licence.title = entry.source;
+			licence.textContent = entry.license;
+
+			const separator = dc.createElement('span');
+			separator.textContent = ' · ';
+
+			const weights = dc.createElement('span');
+			weights.textContent = design._weights( entry.weights );
+
+			const note = dc.createElement('small');
+			note.className = 'design-face-note';
+			note.appendChild( weights );
+			note.appendChild( separator );
+			note.appendChild( licence );
+
+			const row = design._faceRow( entry.slug, entry.family, [ note ] );
+
+			// Set in its own face when the row comes into view: one file for a family, the preview the repository publishes
+			row.element.dataset.preview = entry.preview;
+			design._observe().observe( row.element );
+
+			if( installed !== null && installed.version === entry.version || brought === true ) {
+				const state = dc.createElement('span');
+				state.className = 'design-face-state';
+				state.textContent = Nino.content.getText('/_admin/design/typefaces/available/installed');
+				row.element.appendChild( state );
+
+				return row.element;
+			}
+
+			const install = dc.createElement('button');
+			install.type = 'button';
+			install.className = 'nino-admin-btn-primary';
+			install.textContent = installed === null ? Nino.content.getText('/_admin/design/typefaces/available/install')
+				: design._text( '/_admin/design/typefaces/available/update', entry.version );
+			install.setAttribute( 'aria-label', install.textContent+ ' - '+ entry.family );
+			install.disabled = design._facesBusy === true;
+			install.addEventListener( 'click', function() { design._installFace( entry.slug ) } );
+			row.element.appendChild( install );
+
+			return row.element;
+		},
+
+		/**
+		 *	Previous, the place in the pages, Next
+		 *
+		 *	@param		{number}	pages
+		 *
+		 *	@return		{Element}
+		 */
+		_pager : function( pages ) {
+
+			const design = Nino.admin.design;
+
+			const pager = dc.createElement('div');
+			pager.className = 'design-faces-pager';
+
+			const step = function( label, towards ) {
+				const button = dc.createElement('button');
+				button.type = 'button';
+				button.className = 'nino-admin-btn-secondary';
+				button.textContent = Nino.content.getText('/_admin/design/typefaces/page/'+ label );
+				button.disabled = design._facesPage + towards < 0 || design._facesPage + towards > pages - 1;
+				button.addEventListener( 'click', function() {
+					design._facesPage += towards;
+					design._paintResults();
+				} );
+				return button;
+			};
+
+			const place = dc.createElement('span');
+			place.className = 'design-faces-place';
+			place.textContent = design._text( '/_admin/design/typefaces/page/of', design._facesPage + 1, pages );
+
+			pager.appendChild( step( 'previous', -1 ) );
+			pager.appendChild( place );
+			pager.appendChild( step( 'next', 1 ) );
+
+			return pager;
+		},
+
+		/**
+		 *	What loads the face of a row of the list when the row comes into view: one observer for the visit,
+		 *	made when the first row is drawn. A row that enters the view is not watched any more, and sets
+		 *	its name in the preview of its family
+		 *
+		 *	@return		{IntersectionObserver}
+		 */
+		_observe : function() {
+
+			const design = Nino.admin.design;
+
+			if( design._facesObserver === null )
+				design._facesObserver = new wn.IntersectionObserver( function( entries ) {
+
+					entries.forEach( function( seen ) {
+
+						if( seen.isIntersecting !== true )
+							return;
+
+						design._facesObserver.unobserve( seen.target );
+
+						design._setFace( 'available', seen.target.dataset.slug, seen.target.dataset.preview, seen.target.querySelector('.design-face-name') );
+					} );
+				} );
+
+			return design._facesObserver;
+		},
+
+		/**
+		 *	Set a name in the face of the family it is the name of. The face is a FontFace the document gets
+		 *	once for each family of a kind, however often the row is drawn again - a page turned back
+		 *	to, a search emptied - and it loads from the url it is given: the project's own file for an
+		 *	installed family, the preview the repository publishes for one on offer
+		 *
+		 *	@param		{string}	kind				installed or available: the same family is two faces
+		 *	@param		{string}	slug
+		 *	@param		{string}	url
+		 *	@param		{Element}	name				The element the name stands in
+		 *
+		 *	@return		void
+		 */
+		_setFace : function( kind, slug, url, name ) {
+
+			const design = Nino.admin.design;
+			const family = 'design-'+ kind+ '-'+ slug;
+
+			if( design._facesLoaded[family] === undefined ) {
+
+				const face = new wn.FontFace( family, 'url('+ JSON.stringify( url )+ ')' );
+
+				design._facesLoaded[family] = face;
+				dc.fonts.add( face );
+
+				// A file that is not there, or not to be read from here, leaves the name in the face of the page
+				face.load().catch( function() {} );
+			}
+
+			name.style.fontFamily = '"'+ family+ '", system-ui, sans-serif';
+		},
+
+		/**
+		 *	Let go of the faces the names were set in, and of what watched the rows: the tab is left, and
+		 *	a face is a file the browser holds
+		 *
+		 *	@return		void
+		 */
+		_dropFaces : function() {
+
+			const design = Nino.admin.design;
+
+			if( design._facesObserver !== null ) {
+				design._facesObserver.disconnect();
+				design._facesObserver = null;
+			}
+
+			Object.keys( design._facesLoaded ).forEach( function( family ) {
+				dc.fonts.delete( design._facesLoaded[family] );
+			} );
+
+			design._facesLoaded = {};
 		},
 
 		/**
@@ -2788,17 +3590,18 @@
 		 *	@param		{string}		[kind]		The class it takes: nino-admin-error for a failure,
 		 *															nino-admin-hint for a note beside an answer,
 		 *															none for the answer itself
+		 *	@param		{string}		[detail]	What stands behind the sentence, the server's words: in brackets after it, in the title
 		 *
 		 *	@return		void
 		 */
-		_say : function( line, text, kind ) {
+		_say : function( line, text, kind, detail ) {
 
 			if( line === null )
 				return;
 
 			line.className = kind || '';
 			line.textContent = text;
-			line.title = text;
+			line.title = detail ? text+ ' ('+ detail+ ')' : text;
 		},
 
 		/**

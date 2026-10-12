@@ -87,13 +87,14 @@ namespace Nino\Modules\Design {
 		 *	A frame or a set the library does not have is left out and noted, and
 		 *	the sections after it take the numbers that are free.
 		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data - the families a project installed are read off its disk
 		 *	@param		array 		$setup				A normalised setup (see Setup::normalize())
 		 *	@param		string		$libraryDir		The feature's library
 		 *	@param		array 		&$notes				(reference) What was missing on the way
 		 *
 		 *	@return 	string								The complete css, header and all
 		 */
-		public static function compile( array $setup, string $libraryDir, array &$notes = [] ): string {
+		public static function compile( array &$appData, array $setup, string $libraryDir, array &$notes = [] ): string {
 
 			$libraryDir = rtrim( $libraryDir, '/' );
 			$parts 			= [];
@@ -143,7 +144,7 @@ namespace Nino\Modules\Design {
 
 			// 3. the type: the faces the roles use, then the roles
 			$parts[] = sprintf( self::SECTION, 3, 'the type' ). "\n"
-				. Fonts::css( is_array( $setup['fonts'] ?? null ) ? $setup['fonts'] : [] );
+				. Fonts::css( $appData, is_array( $setup['fonts'] ?? null ) ? $setup['fonts'] : [] );
 
 			if( $roles !== '' )
 				$parts[] = sprintf( self::SECTION, 4, 'the roles' ). "\n". rtrim( $roles, "\n" ). "\n";
@@ -212,7 +213,7 @@ namespace Nino\Modules\Design {
 
 			$body = implode( "\n\n", $parts ). "\n";
 
-			return self::_header( $setup, $body, $answered ). $body;
+			return self::_header( $appData, $setup, $body, $answered ). $body;
 		}
 
 		/**
@@ -435,13 +436,14 @@ namespace Nino\Modules\Design {
 		 *	The header the written file carries: what made it, out of what, and
 		 *	the digest that tells a later run whether it is still untouched
 		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		$setup				A normalised setup
 		 *	@param		string		$body					Everything below the header
 		 *	@param		array 		$answered			The knobs each chosen set answers to, by part
 		 *
 		 *	@return 	string
 		 */
-		private static function _header( array $setup, string $body, array $answered ): string {
+		private static function _header( array &$appData, array $setup, string $body, array $answered ): string {
 
 			$lines = [];
 
@@ -462,7 +464,7 @@ namespace Nino\Modules\Design {
 
 			$lines[] = ' *';
 
-			$families = Fonts::families();
+			$families = Fonts::families( $appData );
 
 			foreach( Fonts::ROLES as $role ) {
 

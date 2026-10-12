@@ -117,6 +117,7 @@ namespace Nino\Modules\Design {
 		 *	every time somebody looks at a design rather than only when its test
 		 *	runs
 		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		$setup				A normalised setup
 		 *	@param		string		$libraryDir		The feature's library
 		 *	@param		string		$public				What [[/nino/public]] resolves to here
@@ -124,15 +125,16 @@ namespace Nino\Modules\Design {
 		 *
 		 *	@return 	string								The compiled css
 		 */
-		public static function css( array $setup, string $libraryDir, string $public, array &$notes = [] ): string {
+		public static function css( array &$appData, array $setup, string $libraryDir, string $public, array &$notes = [] ): string {
 
 			/*	The @font-face urls of section 3 - Fonts::families() lists the
 				files, the compiler writes them - carry the fill every stylesheet
 				in a project carries, and a preview is not written through the
 				asset bundler that would resolve it (see Modules\Assets).
-				Unresolved, the three webfaces silently do not load - and a design
-				shown in the wrong typeface is worse than no preview at all */
-			return str_replace( '[[/nino/public]]', $public, Compiler::compile( $setup, $libraryDir, $notes ) );
+				Unresolved, the webfaces silently do not load - the two the
+				wizard delivers and the ones a project installed alike - and a
+				design shown in the wrong typeface is worse than no preview at all */
+			return str_replace( '[[/nino/public]]', $public, Compiler::compile( $appData, $setup, $libraryDir, $notes ) );
 		}
 
 		/**

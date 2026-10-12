@@ -1,12 +1,18 @@
 /**
  *	Nino
  *	design-js-smoke.js		What the Design panel's screen is, over a dom
- *												stand-in: the strip of six tabs in the head of the
+ *												stand-in: the strip of seven tabs in the head of the
  *												pane, and under it the controls of the tab that is open
  *												- the two frames, the root size and the width of the
  *												page as two strips of five, and the animation; the five
- *												font roles, with a size that is typed; the template of
- *												content, buttons and components over its named knobs,
+ *												font roles, with a size that is typed; the two cards
+ *												of the Typefaces tab - the families that are installed
+ *												and the list of those on offer, searched, told apart
+ *												by category and paged, with an install and a removal
+ *												made at once, the names set in their own faces and a
+ *												sentence of its own for each thing a refusal of the
+ *												list can be about; the template of content, buttons and
+ *												components over its named knobs,
  *												each a strip with its icon - five numbers, or the three
  *												words of a choice - greyed where the chosen template
  *												does not answer to them; the palette and its mode - the
@@ -33,8 +39,9 @@
  *												the other feature tests build, so this runs with
  *												nothing but node. design-smoke.php runs it through
  *												node when node is on the path, so bin/check.sh and
- *												CI cover it - and hands it the answer design/list
- *												really gave (DESIGN_LISTING), which the screen is
+ *												CI cover it - and hands it the answers design/list
+ *												(DESIGN_LISTING) and design/webfonts/list
+ *												(DESIGN_WEBFONTS) really gave, which the screen is
  *												then drawn from as well; it also runs on its own.
  *
  *	Usage: node features/Design/tests/design-js-smoke.js
@@ -131,6 +138,9 @@ function element( tag ) {
 		querySelector		: function( selector ) {
 			if( selector.indexOf( ':scope > .' ) === 0 )
 				return this.children.filter( function( child ) { return hasClass( child, selector.slice( 10 ) ) } )[0] || null;
+			// A row of the Typefaces tab is asked for the element its name is in
+			if( selector.charAt(0) === '.' )
+				return byClass( this, selector.slice(1) )[0] || null;
 			return byTag( this, selector )[0] || null;
 		},
 		// The pane is what carries data-panel, which is all closest() is asked for
@@ -263,7 +273,7 @@ function threw( fn ) {
 	}
 }
 
-const TABS = [ 'global', 'fonts', 'content', 'buttons', 'components', 'colours' ];
+const TABS = [ 'global', 'fonts', 'typefaces', 'content', 'buttons', 'components', 'colours' ];
 
 /** The kind of every knob, by tab, as design/list gives them: a scale has five positions, -2 to +2, a choice three, -1 to +1 */
 const KINDS = {
@@ -369,6 +379,8 @@ function listing( over ) {
 			depth				: { kind : 'scale', 'default' : 3, steps : 5 },
 			mode				: { kind : 'choice', 'default' : 'auto', steps : [ 'auto', 'light', 'dark' ] },
 		},
+		// The repository of typefaces has an address and a key, so that the Available half of the Typefaces tab is offered
+		webfonts: { url : true, key : true },
 		brand		: { light : { safe : true, ratio : 5.4, target : 4.5 } },
 		accent	: '#8ad0f5',
 		notes		: [],
@@ -529,9 +541,18 @@ function panel( over, shell ) {
 			return el;
 		},
 		getElementById	: function( id ) { return byId( id ) },
+		fonts						: {
+			add			: function( face ) { typeset.set.push( face ) },
+			delete	: function( face ) { typeset.set = typeset.set.filter( function( one ) { return one !== face } ) },
+		},
 	};
 
 	const requests = [];
+
+	/*	The fonts of the document the panel is in, and what the Typefaces tab sets names in them with: a FontFace is kept
+		as it was made and as often as it was asked to load, the FontFaceSet as it was added to and taken from, and an
+		observer as it was told what to watch. A test says how a load ends (fails) and lets the observer see a row	*/
+	const typeset = { made : [], set : [], fails : false, observers : [] };
 
 	/*	The timers the script sets, in order, as [ function, delay ] - one that was cleared is null.
 		None of them fires by itself: what the clicking asks for is what is asserted on, and a
@@ -668,6 +689,38 @@ function panel( over, shell ) {
 	Object.defineProperty( sandbox, 'innerHeight', { get : function() { return view.innerHeight } } );
 	sandbox.window = sandbox;
 
+	sandbox.FontFace = function( family, source ) {
+		this.family = family;
+		this.source = source;
+		this.loads = 0;
+		this.caught = 0;
+		typeset.made.push( this );
+	};
+	/*	A load that fails is a promise that is rejected, and one nobody has a hand on is an error that ends a run of node: the
+		hands put on it are counted (caught), and a test says that every load was given one	*/
+	sandbox.FontFace.prototype.load = function() {
+		const face = this;
+		const outcome = typeset.fails === true ? Promise.reject( new Error('NetworkError') ) : Promise.resolve( face );
+		const catcher = outcome.catch;
+		face.loads++;
+		outcome.catch = function() { face.caught++; return catcher.apply( outcome, arguments ) };
+		return outcome;
+	};
+
+	sandbox.IntersectionObserver = function( callback ) {
+		this.callback = callback;
+		this.watched = [];
+		this.unwatched = [];
+		this.ended = 0;
+		typeset.observers.push( this );
+	};
+	sandbox.IntersectionObserver.prototype.observe = function( el ) { this.watched.push( el ) };
+	sandbox.IntersectionObserver.prototype.unobserve = function( el ) {
+		this.watched = this.watched.filter( function( one ) { return one !== el } );
+		this.unwatched.push( el );
+	};
+	sandbox.IntersectionObserver.prototype.disconnect = function() { this.watched = []; this.ended++ };
+
 	vm.runInContext( source, vm.createContext( sandbox ), { filename : 'admin.js' } );
 
 	const design = Nino.admin.design;
@@ -699,6 +752,13 @@ function panel( over, shell ) {
 		},
 		confirms: confirms,
 		stage		: stage,
+		/** The fonts of the document: the faces that were made, those in its set, the observers, and whether a load fails */
+		typeset	: typeset,
+		/** The row comes into view: the observer is told so, the way the browser tells it */
+		see			: function( row ) {
+			const observer = typeset.observers[typeset.observers.length - 1];
+			observer.callback( [ { isIntersecting : true, target : row } ] );
+		},
 		/** What the next confirm() answers */
 		willConfirm	: function( answer ) { confirmAnswer = answer },
 		/** The oldest request not yet answered, answered - the way the server would */
@@ -770,6 +830,9 @@ function tabOf( screen ) {
 	if( screen.byId('design-colours') !== null )
 		return 'colours';
 
+	if( screen.byId('design-faces-installed') !== null )
+		return 'typefaces';
+
 	if( byTag( screen.form, 'table' ).length === 1 )
 		return 'fonts';
 
@@ -791,7 +854,7 @@ check( 'the stand-in reads the panel\'s words out of text/en_US.php', Object.key
 // --- The pane's head -------------------------------------------------------------
 //
 // The panel's name is the head's - the row the shell renders over every pane -
-// so the screen under it draws no heading of its own. The strip of the six tabs
+// so the screen under it draws no heading of its own. The strip of the seven tabs
 // stands in that row beside the name, where the Features panel's does: it
 // switches the column of controls and nothing else, and the frame beside the
 // column stays on every tab
@@ -802,11 +865,11 @@ const headed = panel();
 const strip = headed.headStrips()[0] || null;
 const tabs = strip === null ? [] : byTag( strip, 'button' );
 
-check( 'the strip has six tabs - Global, Fonts, Content, Buttons, Components and Colours, in that order',
-	headed.design.TABS.join() === TABS.join() && tabs.map( function( tab ) { return tab.textContent } ).join() === 'Global,Fonts,Content,Buttons,Components,Colours' );
+check( 'the strip has seven tabs - Global, Fonts, Typefaces, Content, Buttons, Components and Colours, in that order: the loader stands after the Fonts it lists its families in',
+	headed.design.TABS.join() === TABS.join() && tabs.map( function( tab ) { return tab.textContent } ).join() === 'Global,Fonts,Typefaces,Content,Buttons,Components,Colours' );
 check( '...a tablist of tabs, the first of them selected and the others not',
 	strip !== null && strip.getAttribute('role') === 'tablist' && tabs.every( function( tab ) { return tab.getAttribute('role') === 'tab' } )
-	&& tabs.map( function( tab ) { return tab.getAttribute('aria-selected') } ).join() === 'true,false,false,false,false,false' );
+	&& tabs.map( function( tab ) { return tab.getAttribute('aria-selected') } ).join() === 'true,false,false,false,false,false,false' );
 check( 'the screen draws no heading of its own - the head names the panel',
 	byTag( headed.form, 'h1' ).concat( byTag( headed.form, 'h2' ), byTag( headed.form, 'h3' ) ).length === 0 );
 check( 'the strip is handed to the pane\'s head and stands right after the name, not over the column',
@@ -825,7 +888,7 @@ headed.tab('Colours');
 
 check( 'another tab redraws the column under the head and leaves the strip standing - the same element, its tab lit',
 	shownStrip !== null && headed.headStrips()[0] === shownStrip && headed.headStrips().length === 1
-	&& byTag( shownStrip, 'button' )[5].getAttribute('aria-selected') === 'true' && byTag( shownStrip, 'button' )[0].getAttribute('aria-selected') === 'false'
+	&& byTag( shownStrip, 'button' )[6].getAttribute('aria-selected') === 'true' && byTag( shownStrip, 'button' )[0].getAttribute('aria-selected') === 'false'
 	&& tabOf( headed ) === 'colours' && headed.byId('design-frame') !== null );
 
 /*	The keyboard is the reason the strip is not drawn again on a switch. An
@@ -836,24 +899,24 @@ const keyed = panel();
 const keyTabs = byTag( keyed.headStrips()[0] || element('div'), 'button' );
 
 focused = null;
-if( keyTabs.length === 6 )
+if( keyTabs.length === 7 )
 	press( keyTabs[0], 'ArrowRight' );
 
 check( 'an arrow key on the strip opens the next tab and the focus stays on the tab it moved to, in the head',
-	keyTabs.length === 6 && focused === keyTabs[1] && keyTabs[1].parent === keyed.headStrips()[0]
+	keyTabs.length === 7 && focused === keyTabs[1] && keyTabs[1].parent === keyed.headStrips()[0]
 	&& keyTabs[1].getAttribute('aria-selected') === 'true' && tabOf( keyed ) === 'fonts' );
 
-if( keyTabs.length === 6 )
+if( keyTabs.length === 7 )
 	press( keyTabs[1], 'ArrowLeft' );
 
 check( '...so the next one has a tab to start from, and walks back',
-	keyTabs.length === 6 && focused === keyTabs[0] && keyTabs[0].parent === keyed.headStrips()[0]
+	keyTabs.length === 7 && focused === keyTabs[0] && keyTabs[0].parent === keyed.headStrips()[0]
 	&& keyTabs[0].getAttribute('aria-selected') === 'true' && tabOf( keyed ) === 'global' );
 
-if( keyTabs.length === 6 )
+if( keyTabs.length === 7 )
 	press( keyTabs[0], 'ArrowLeft' );
 
-check( '...and from the first tab the arrow key wraps round to the last', keyTabs.length === 6 && focused === keyTabs[5] && tabOf( keyed ) === 'colours' );
+check( '...and from the first tab the arrow key wraps round to the last', keyTabs.length === 7 && focused === keyTabs[6] && tabOf( keyed ) === 'colours' );
 
 /*	The script drawn outside its pane: the strip has nowhere else to go, so it
 	opens the column the way it did - and the heading stays gone there as well	*/
@@ -1319,7 +1382,7 @@ check( 'a size is typed and not picked: a number field in each row, stepping by 
 		return input !== null && input.tagName === 'INPUT' && input.type === 'number' && input.getAttribute('step') === '.1' && input.getAttribute('inputmode') === 'decimal'
 			&& input.dataset.role === row.dataset.role && input.dataset.key === 'size';
 	} )
-	&& fonts.design.TABS.length === 6
+	&& fonts.design.TABS.length === 7
 	&& [ 'title', 'subtitle', 'text', 'button', 'code' ].map( function( role ) { return size( role ).getAttribute('min')+ '-'+ size( role ).getAttribute('max') } ).join() === '1-4,0.8-2.5,0.8-1.5,0.6-1.5,0.6-1.3'
 	&& byTag( table, 'select' ).filter( function( select ) { return select.dataset.key === 'size' } ).length === 0 );
 check( '...and its value is the size that is in force: the one Nino.css gives the role while none is chosen - 1.6, 1.125, 1, 1 and 0.875 - as the value and not as a placeholder, so that the spinner has a number to count from; the model keeps the empty size it had',
@@ -1471,6 +1534,711 @@ check( 'the spinner counts from the size in force: from 1.6 it goes up to 1.7 - 
 console.log('');
 
 
+// --- Typefaces: what the project has, and what the repository offers -----------------------------
+//
+// Two cards. The first holds the families that are installed, each name set in its own face, with its
+// weights, its version, its licence and the button that removes it; the second the list of those the
+// repository offers, which is read when its button is pressed - searched, told apart by category, a page
+// of 24 at a time. An install and a removal are made at once and are no part of the draft: the line of
+// the bar says what they did, or why not
+
+console.log( 'Typefaces' );
+
+/** One family of the list the repository offers, as design/webfonts/list gives it */
+function offerOf( slug, family, category, over ) {
+	return Object.assign( {
+		slug 			: slug,
+		family 		: family,
+		category 	: category,
+		version 	: '1.0',
+		license 	: 'OFL-1.1',
+		source 		: 'https://fonts.test/'+ slug,
+		weights 	: [ 400, 700 ],
+		styles 		: [ 'normal' ],
+		files 		: [ { weight : 400, style : 'normal', file : '400.woff2' }, { weight : 700, style : 'normal', file : '700.woff2' } ],
+		archive 	: 'https://webfonts.test/'+ slug+ '-1.0.tar.gz',
+		sha256 		: 'a'.repeat( 64 ),
+		size 			: 1000,
+		preview 	: 'https://webfonts.test/'+ slug+ '-1.0-preview.woff2',
+		released 	: '2026-10-12',
+	}, over || {} );
+}
+
+/** One family the project has installed, as the same answer gives it: the file its name is set in is the project's own */
+function installedOf( slug, name, version, over ) {
+	return Object.assign( {
+		name 			: name,
+		category 	: 'sans',
+		version 	: version,
+		license 	: 'OFL-1.1',
+		source 		: 'https://fonts.test/'+ slug,
+		weights 	: [ 400, 700 ],
+		axis 			: [],
+		face 			: '/public/assets/fonts/'+ slug+ '/400.woff2',
+	}, over || {} );
+}
+
+/** The slugs of the families the feature brings itself, as the answer of the tab names them: the families of design/list have them, and the installed ones as well */
+const BROUGHT = [ 'source-sans-3', 'league-spartan', 'system-sans', 'system-serif', 'system-mono' ];
+
+/** The whole answer of design/webfonts/list, and - with a msg - of the install and the removal after it */
+function shelfOf( over ) {
+	return Object.assign( { families : [], fetched : 0, url : 'https://webfonts.test/webfonts.json', key : true, builtin : BROUGHT, installed : {}, broken : {}, uses : {}, refusal : '', refusalKind : '' }, over || {} );
+}
+
+/**
+ *	The answer of design/list once families are installed, as the server gives it: they stand among the families after the
+ *	five the feature brings, and in the options of the roles but the code - which is offered the monospace ones only
+ *
+ *	@param		{Object}	installed		slug => name
+ *
+ *	@return		{Object}
+ */
+function listingOf( installed ) {
+
+	const base = listing();
+	const families = Object.assign( {}, base.families );
+	const options = {};
+
+	Object.keys( base.options ).forEach( function( role ) { options[role] = base.options[role].slice() } );
+
+	Object.keys( installed ).forEach( function( slug ) {
+
+		families[slug] = { name : installed[slug], category : 'sans', system : false };
+
+		Object.keys( options ).filter( function( role ) { return role !== 'code' } ).forEach( function( role ) { options[role].push( slug ) } );
+	} );
+
+	return listing( { families : families, options : options } );
+}
+
+/** When the list of these tests was loaded, and what the panel makes of it */
+const LOADED_AT = 1791806400;
+const LOADED_WORDS = 'loaded 2026-10-12 12:00 UTC';
+
+const installedCard = function( screen ) { return screen.byId('design-faces-installed') };
+const availableCard = function( screen ) { return screen.byId('design-faces-available') };
+const faceRows = function( card ) { return byClass( card, 'design-face-row' ) };
+const faceName = function( row ) { return byClass( row, 'design-face-name' )[0] };
+const faceSlugs = function( card ) { return faceRows( card ).map( function( row ) { return row.dataset.slug } ).join() };
+const noteWords = function( note ) { return note.children.length === 0 ? note.textContent : note.children.map( function( part ) { return part.textContent } ).join('') };
+const faceNotes = function( row ) { return byClass( row, 'design-face-note' ).map( noteWords ) };
+const hints = function( card ) { return byClass( card, 'nino-admin-hint' ).map( function( p ) { return p.textContent } ) };
+const askedOf = function( screen ) { return screen.requests.map( function( request ) { return request.endpoint } ).join() };
+const faceButton = function( row ) { return byTag( row, 'button' )[0] || null };
+// What the button of a row says, and a word that no button says where there is none: a row that lost its button fails a check and does not end the run
+const faceWord = function( row ) { return faceButton( row ) === null ? '(no button)' : faceButton( row ).textContent };
+const faceRowOf = function( card, slug ) { return faceRows( card ).filter( function( row ) { return row.dataset.slug === slug } )[0] || null };
+
+/** The buttons of the tab that do something to a family or to the list: install, update, remove and load */
+const faceActions = function( screen ) {
+	return byTag( screen.body(), 'button' ).filter( function( button ) {
+		return hasClass( button, 'nino-admin-btn-primary' ) || hasClass( button, 'nino-admin-btn-danger' ) || button.id === 'design-faces-load';
+	} );
+};
+
+const shelves = panel();
+shelves.tab('Typefaces');
+
+check( 'the Typefaces tab stands after Fonts and is two cards in the box under the strip: the families that are installed and those that are on offer, each a block with its title and nothing under it',
+	shelves.design.TABS.indexOf('typefaces') === shelves.design.TABS.indexOf('fonts') + 1 && tabOf( shelves ) === 'typefaces' && shelves.design._tab === 'typefaces'
+	&& shelves.body().children.length === 2 && shelves.body().children[0] === installedCard( shelves ) && shelves.body().children[1] === availableCard( shelves )
+	&& [ installedCard( shelves ), availableCard( shelves ) ].every( function( card ) { return hasClass( card, 'nino-admin-card' ) && hasClass( card, 'design-block' ) && byTag( card, 'small' ).length === 0 } )
+	&& byTag( installedCard( shelves ), 'strong' )[0].textContent === 'Installed' && byTag( availableCard( shelves ), 'strong' )[0].textContent === 'Available' );
+check( 'opening the tab asks for the list the server kept and not for the repository: one request, design/webfonts/list with refresh off - nothing leaves the server on its own',
+	shelves.requests.length === 1 && shelves.requests[0].endpoint === 'webfonts/list' && JSON.stringify( shelves.requests[0].payload ) === '{"refresh":false}' );
+check( '...and until it is answered the first card is its title and the second its title and the button that loads the list - no search field, no row',
+	installedCard( shelves ).children.length === 1 && availableCard( shelves ).children.length === 2
+	&& shelves.byId('design-faces-load') !== null && shelves.byId('design-faces-load').textContent === 'Load available typefaces' && shelves.byId('design-faces-load').disabled === false
+	&& shelves.byId('design-faces-search') === null && faceRows( shelves.body() ).length === 0 );
+
+shelves.answer( 200, shelfOf() );
+
+check( 'nothing installed and nothing loaded: the first card says how a typeface comes, the second that the list is fetched when the button is pressed and not before - and no time stands beside the button',
+	JSON.stringify( hints( installedCard( shelves ) ) ) === JSON.stringify( [ TEXT['/_admin/design/typefaces/installed/empty'] ] )
+	&& JSON.stringify( hints( availableCard( shelves ) ) ) === JSON.stringify( [ TEXT['/_admin/design/typefaces/available/unloaded'] ] )
+	&& byClass( shelves.body(), 'design-faces-when' ).length === 0 && shelves.byId('design-faces-search') === null );
+
+// ---- Without an address, and without a key
+
+const switchedOff = panel( { webfonts : { url : false, key : false } } );
+switchedOff.tab('Typefaces');
+switchedOff.answer( 200, shelfOf( { url : '', key : false, installed : { inter : installedOf( 'inter', 'Inter', '4.0' ) } } ) );
+
+const noKey = panel( { webfonts : { url : true, key : false } } );
+noKey.tab('Typefaces');
+noKey.answer( 200, shelfOf( { key : false, installed : { inter : installedOf( 'inter', 'Inter', '4.0' ) } } ) );
+
+check( 'with no address the second card is one sentence - the repository is switched off - and has no button, and the families that are installed stay where they are',
+	JSON.stringify( hints( availableCard( switchedOff ) ) ) === JSON.stringify( [ TEXT['/_admin/design/typefaces/available/off'] ] ) && switchedOff.byId('design-faces-load') === null
+	&& availableCard( switchedOff ).children.length === 2 && faceSlugs( installedCard( switchedOff ) ) === 'inter' );
+check( 'with an address and no key it is one sentence as well - the list cannot be checked - and has no button either: nothing would be fetched that could not be believed',
+	JSON.stringify( hints( availableCard( noKey ) ) ) === JSON.stringify( [ TEXT['/_admin/design/typefaces/available/nokey'] ] ) && noKey.byId('design-faces-load') === null
+	&& faceSlugs( installedCard( noKey ) ) === 'inter' );
+
+// ---- The settings of the repository are another panel's: the tab follows what the server says now, not what design/list said when the panel was opened
+
+const changed = panel();
+changed.tab('Typefaces');
+changed.answer( 200, shelfOf( { url : '', key : true } ) );
+
+const changedBack = panel( { webfonts : { url : false, key : false } } );
+changedBack.tab('Typefaces');
+changedBack.answer( 200, shelfOf( { url : 'https://webfonts.test/webfonts.json', key : true } ) );
+
+const keyLost = panel();
+keyLost.tab('Typefaces');
+keyLost.answer( 200, shelfOf( { key : false } ) );
+
+check( 'the repository was switched off after the panel was opened: the second card says so as soon as the tab has its answer, and the button is gone',
+	JSON.stringify( hints( availableCard( changed ) ) ) === JSON.stringify( [ TEXT['/_admin/design/typefaces/available/off'] ] ) && changed.byId('design-faces-load') === null );
+check( '...and the key that was lost says that, with no button either',
+	JSON.stringify( hints( availableCard( keyLost ) ) ) === JSON.stringify( [ TEXT['/_admin/design/typefaces/available/nokey'] ] ) && keyLost.byId('design-faces-load') === null );
+check( '...and an address and a key put in after the panel was opened give the button, where design/list said there was neither',
+	changedBack.byId('design-faces-load') !== null && hints( availableCard( changedBack ) ).length === 1 && hints( availableCard( changedBack ) )[0] === TEXT['/_admin/design/typefaces/available/unloaded'] );
+
+// ---- The list is loaded: a refusal, a list that is empty, a request that fails
+
+shelves.byId('design-faces-load').fire('click');
+
+check( 'the button asks the repository: design/webfonts/list with refresh on, the button switched off while the request is on its way, and the line of the bar empty',
+	shelves.requests.length === 1 && shelves.requests[0].endpoint === 'webfonts/list' && JSON.stringify( shelves.requests[0].payload ) === '{"refresh":true}'
+	&& shelves.byId('design-faces-load').disabled === true && shelves.line().textContent === '' );
+
+shelves.answer( 200, shelfOf( { refusal : 'the typeface list could not be fetched: timeout', refusalKind : 'unreachable' } ) );
+
+check( 'a list that could not be loaded is one sentence where the list would be, in the colour of an error, and the same in the line of the bar - the sentence of what the refusal is about, in the words of the workbench - and the button works again',
+	byClass( availableCard( shelves ), 'nino-admin-error' ).length === 1
+	&& byClass( availableCard( shelves ), 'nino-admin-error' )[0].textContent === TEXT['/_admin/design/typefaces/available/unreachable']
+	&& shelves.line().textContent === TEXT['/_admin/design/typefaces/available/unreachable'] && shelves.line().className === 'nino-admin-error'
+	&& shelves.byId('design-faces-load').disabled === false && shelves.byId('design-faces-search') === null );
+check( '...the reason the server gives is English and is on screen nowhere: it is the title of the sentence in the card, and in the bar it follows the sentence in the title, in brackets',
+	byClass( availableCard( shelves ), 'nino-admin-error' )[0].title === 'the typeface list could not be fetched: timeout'
+	&& shelves.line().title === TEXT['/_admin/design/typefaces/available/unreachable']+ ' (the typeface list could not be fetched: timeout)'
+	&& descendants( shelves.pane ).every( function( el ) { return String( el.textContent ).indexOf('timeout') === -1 } ) );
+
+// ---- What a refusal is about: a sentence of its own for each, the reason of the server behind it
+
+/** kind => [ the reason the server gives, what else the answer says ] - the answer of an address that is none says so in `url`, of a key that is none in `key` */
+const REFUSED = {
+	off 				: [ 'the typeface repository is switched off', { url : '' } ],
+	nokey 			: [ 'no public key for the repository - set it in the feature\'s settings or in Webfonts::PUBLIC_KEY', { key : false } ],
+	unreachable	: [ 'the typeface list signature could not be fetched: http 404', {} ],
+	signature 	: [ 'the typeface list signature does not verify', {} ],
+	parse 			: [ 'typeface list entry 1: "license" must be one of OFL-1.1, Apache-2.0, UFL-1.0', {} ],
+};
+
+const refusalProblems = [];
+
+Object.keys( REFUSED ).forEach( function( kind ) {
+
+	const refused = panel();
+	const sentence = TEXT['/_admin/design/typefaces/available/'+ kind];
+	const reason = REFUSED[kind][0];
+
+	refused.tab('Typefaces');
+	refused.answer( 200, shelfOf() );
+	refused.byId('design-faces-load').fire('click');
+	refused.answer( 200, shelfOf( Object.assign( { refusal : reason, refusalKind : kind }, REFUSED[kind][1] ) ) );
+
+	const card = byClass( availableCard( refused ), 'nino-admin-error' )[0] || null;
+
+	if( sentence === undefined )
+		refusalProblems.push( kind+ ' has no words' );
+	else {
+		if( refused.line().textContent !== sentence || refused.line().className !== 'nino-admin-error' )
+			refusalProblems.push( kind+ ': the bar says "'+ refused.line().textContent+ '"' );
+		if( refused.line().title !== sentence+ ' ('+ reason+ ')' )
+			refusalProblems.push( kind+ ': the title of the bar' );
+		// The address that is none and the key that is none have the sentence in the card as they always had: a note, not an error
+		if( [ 'unreachable', 'signature', 'parse' ].indexOf( kind ) !== -1 && ( card === null || card.textContent !== sentence || card.title !== reason ) )
+			refusalProblems.push( kind+ ': the card' );
+		if( [ 'off', 'nokey' ].indexOf( kind ) !== -1 && hints( availableCard( refused ) ).join() !== sentence )
+			refusalProblems.push( kind+ ': the note in the card' );
+	}
+
+	if( descendants( refused.pane ).some( function( el ) { return String( el.textContent ).indexOf( reason ) !== -1 } ) )
+		refusalProblems.push( kind+ ': the reason is on screen' );
+} );
+
+check( 'each thing a refusal can be about has a sentence of its own, in the card and in the bar - the repository switched off, no key to check it with, not reached, a signature that does not hold, a list that is no list - and the English reason of the server on screen nowhere'
+	+ ( refusalProblems.length === 0 ? '' : ' - '+ refusalProblems.join(' | ') ), refusalProblems.length === 0 && Object.keys( REFUSED ).length === 5 );
+
+shelves.byId('design-faces-load').fire('click');
+shelves.answer( 200, shelfOf( { fetched : LOADED_AT } ) );
+
+check( 'a list that names no typeface says so, with the time it was loaded beside the button - and the address it came from as its title; the line of the bar says it was loaded, with how many there are',
+	JSON.stringify( hints( availableCard( shelves ) ) ) === JSON.stringify( [ TEXT['/_admin/design/typefaces/available/none'] ] )
+	&& byClass( availableCard( shelves ), 'design-faces-when' ).map( function( when ) { return when.textContent } ).join() === LOADED_WORDS
+	&& byClass( availableCard( shelves ), 'design-faces-when' )[0].title === 'https://webfonts.test/webfonts.json'
+	&& shelves.line().textContent === 'The list of typefaces is loaded (0 available).' && shelves.line().className === '' && shelves.byId('design-faces-search') === null );
+
+shelves.byId('design-faces-load').fire('click');
+shelves.answer( 500, null );
+
+check( 'a request that fails says so in the line of the bar, and the screen stays as it was',
+	shelves.line().textContent === '(500) The list of typefaces could not be loaded.' && shelves.line().className === 'nino-admin-error'
+	&& shelves.byId('design-faces-load').disabled === false && hints( availableCard( shelves ) ).length === 1 );
+
+// ---- A list of thirty over two pages
+
+const CATEGORIES_IN_TURN = [ 'sans', 'serif', 'display', 'handwriting', 'mono', 'other' ];
+const thirty = [];
+
+for( let at = 1; at <= 30; at++ ) {
+	const number = ( at < 10 ? '0' : '' )+ at;
+	thirty.push( offerOf( 'face-'+ number, 'Face '+ number, CATEGORIES_IN_TURN[( at - 1 ) % 6] ) );
+}
+
+shelves.byId('design-faces-load').fire('click');
+shelves.answer( 200, shelfOf( { families : thirty, fetched : LOADED_AT } ) );
+
+const results = function( screen ) { return ( screen || shelves ).byId('design-faces-results') };
+const pager = function( screen ) { return byClass( results( screen ), 'design-faces-pager' )[0] || null };
+const pageOf = function( screen ) { return pager( screen ) === null ? null : byClass( pager( screen ), 'design-faces-place' )[0].textContent };
+const pagerButtons = function( screen ) { return pager( screen ) === null ? [] : byTag( pager( screen ), 'button' ) };
+
+check( 'thirty families are a page of 24 and a page of 6: the first twenty-four rows, in the order of the list, and under them Previous - off -, "1 of 2" and Next',
+	faceRows( results() ).length === 24 && faceSlugs( results() ) === thirty.slice( 0, 24 ).map( function( entry ) { return entry.slug } ).join()
+	&& pageOf() === '1 of 2' && pagerButtons().map( function( button ) { return button.textContent+ ':'+ button.disabled } ).join() === 'Previous:true,Next:false'
+	&& shelves.design.FACES_PER_PAGE === 24 );
+
+pagerButtons()[1].fire('click');
+
+check( '...Next shows the six that are left, and is off itself',
+	faceSlugs( results() ) === 'face-25,face-26,face-27,face-28,face-29,face-30' && pageOf() === '2 of 2'
+	&& pagerButtons().map( function( button ) { return button.disabled } ).join() === 'false,true' );
+
+pagerButtons()[0].fire('click');
+
+check( '...and Previous the page before',
+	faceRows( results() ).length === 24 && faceRows( results() )[0].dataset.slug === 'face-01' && pageOf() === '1 of 2' );
+
+check( 'a row is the icon the other rows of the panel have, the name, and under it the weights and the licence - a link to where the files came from, opened in a tab of its own that knows nothing of this one - and Install',
+	( function() {
+		const row = faceRowOf( results(), 'face-01' );
+		const link = byTag( row, 'a' )[0];
+		const label = byClass( row, 'design-face-label' )[0];
+		return faceName( row ).textContent === 'Face 01' && faceNotes( row ).join() === '400, 700 · OFL-1.1'
+			&& label.children[0].tagName === 'SVG' && label.children[0].dataset.icon === 'a-large-small' && hasClass( label, 'design-knob-label' )
+			&& link.textContent === 'OFL-1.1' && link.href === 'https://fonts.test/face-01' && link.target === '_blank' && link.rel === 'noopener noreferrer'
+			&& byTag( row, 'button' ).length === 1 && faceButton( row ).textContent === 'Install' && hasClass( faceButton( row ), 'nino-admin-btn-primary' ) && faceButton( row ).disabled === false
+			&& faceButton( row ).getAttribute('aria-label') === 'Install - Face 01';
+	} )() );
+
+// ---- The search and the categories
+
+const search = function() { return shelves.byId('design-faces-search') };
+const chips = function() { return byTag( byClass( availableCard( shelves ), 'design-knob-row' )[0], 'button' ) };
+const chip = function( label ) { return chips().filter( function( button ) { return button.textContent === label } )[0] };
+const litChips = function() { return chips().map( function( button ) { return button.getAttribute('aria-pressed') } ).join() };
+
+check( 'over the rows are a search field - named by its placeholder - and the categories as a strip of the kind the knobs have: All lit, then Sans, Serif, Display, Handwriting, Mono and Other',
+	search() !== null && search().type === 'search' && search().placeholder === 'Search typefaces' && search().getAttribute('aria-label') === 'Search typefaces'
+	&& byClass( availableCard( shelves ), 'design-knob-row' ).length === 1 && rowName( byClass( availableCard( shelves ), 'design-knob-row' )[0] ) === 'Category'
+	&& chips().map( function( button ) { return button.textContent } ).join() === 'All,Sans,Serif,Display,Handwriting,Mono,Other'
+	&& chips().map( function( button ) { return button.dataset.value } ).join() === 'all,sans,serif,display,handwriting,mono,other'
+	&& litChips() === 'true,false,false,false,false,false,false' && shelves.design.FACE_CATEGORIES.join() === 'all,sans,serif,display,handwriting,mono,other' );
+
+const field = search();
+field.value = 'FACE 2';
+field.fire('input');
+
+check( 'a word typed in the search narrows the list by name, whatever its case, to the first page of what is left - and the field is the one that was typed in, so that it keeps the focus',
+	search() === field && faceSlugs( results() ) === 'face-20,face-21,face-22,face-23,face-24,face-25,face-26,face-27,face-28,face-29' && pager() === null );
+
+chip('Serif').fire('click');
+
+check( '...a category narrows it again: the serif families of those, and its chip is the lit one',
+	faceSlugs( results() ) === 'face-20,face-26' && litChips() === 'false,false,true,false,false,false,false' && search() === field );
+
+field.value = 'nothing of this name';
+field.fire('input');
+
+check( '...and what nothing matches is a sentence, with no pager under it',
+	JSON.stringify( hints( results() ) ) === JSON.stringify( [ TEXT['/_admin/design/typefaces/available/nomatch'] ] ) && faceRows( results() ).length === 0 && pager() === null );
+
+field.value = '';
+field.fire('input');
+chip('All').fire('click');
+
+check( 'the search emptied and All pressed give the thirty back, from the first page',
+	faceRows( results() ).length === 24 && pageOf() === '1 of 2' && litChips() === 'true,false,false,false,false,false,false' );
+
+pagerButtons()[1].fire('click');
+chip('Mono').fire('click');
+
+check( 'a category chosen while the second page is open starts from the first page of what it lets through',
+	faceSlugs( results() ) === 'face-05,face-11,face-17,face-23,face-29' && pager() === null );
+
+chip('All').fire('click');
+pagerButtons()[1].fire('click');
+field.value = 'face';
+field.fire('input');
+
+check( '...and so does a word typed while it is open',
+	faceRows( results() ).length === 24 && faceRows( results() )[0].dataset.slug === 'face-01' && pageOf() === '1 of 2' );
+
+field.value = '';
+field.fire('input');
+
+// ---- What a row says of a family that is installed
+
+const offering = panel();
+offering.tab('Typefaces');
+offering.answer( 200, shelfOf( {
+	families 	: [
+		offerOf( 'inter', 'Inter', 'sans', { version : '4.0' } ),
+		offerOf( 'lora', 'Lora', 'serif', { version : '2.0' } ),
+		offerOf( 'fresh', 'Fresh', 'display' ),
+		offerOf( 'source-sans-3', 'Source Sans 3', 'sans' ),
+		offerOf( 'axis', 'Axis', 'sans', { weights : [ '100 900' ] } ),
+	],
+	fetched 	: LOADED_AT,
+	installed : { inter : installedOf( 'inter', 'Inter', '4.0' ), lora : installedOf( 'lora', 'Lora', '1.0', { category : 'serif' } ) },
+} ) );
+
+check( 'a family of the list that is installed in the version the list has says "installed" where the button was; one installed in another version offers to update to the version of the list; one that is not installed offers to install',
+	( function() {
+		const same = faceRowOf( availableCard( offering ), 'inter' );
+		const state = byClass( same, 'design-face-state' )[0];
+		const update = faceButton( faceRowOf( availableCard( offering ), 'lora' ) );
+		const install = faceButton( faceRowOf( availableCard( offering ), 'fresh' ) );
+		return state !== undefined && state.textContent === 'installed' && byTag( same, 'button' ).length === 0
+			&& update.textContent === 'update to 2.0' && hasClass( update, 'nino-admin-btn-primary' ) && install.textContent === 'Install'
+			&& update.getAttribute('aria-label') === 'update to 2.0 - Lora' && install.getAttribute('aria-label') === 'Install - Fresh';
+	} )() );
+check( '...a family the feature brings itself is installed in a way, and has no button; a weight axis is told as one',
+	( function() {
+		const own = faceRowOf( availableCard( offering ), 'source-sans-3' );
+		return byClass( own, 'design-face-state' ).length === 1 && byTag( own, 'button' ).length === 0
+			&& faceNotes( faceRowOf( availableCard( offering ), 'axis' ) ).join() === 'variable 100-900 · OFL-1.1';
+	} )() );
+
+// ---- The families that are installed
+
+const owning = panel();
+owning.tab('Typefaces');
+owning.answer( 200, shelfOf( {
+	installed : {
+		inter 	: installedOf( 'inter', 'Inter', '4.0' ),
+		lora 		: installedOf( 'lora', 'Lora', '1.0', { category : 'serif' } ),
+		roboto 	: installedOf( 'roboto', 'Roboto Flex', '3.2', { weights : [ 100, 900 ], axis : [ 100, 900 ] } ),
+	},
+	uses 			: { inter : [ 'title', 'text' ], lora : [], roboto : [] },
+	broken 		: { 'odd-one' : 'there is no font.json' },
+	families 	: [ offerOf( 'inter', 'Inter', 'sans', { version : '4.0' } ) ],
+	fetched 	: LOADED_AT,
+} ) );
+
+check( 'each installed family is a row, in the order the server gives them, and after them the directories that are none',
+	faceSlugs( installedCard( owning ) ) === 'inter,lora,roboto,odd-one' && hints( installedCard( owning ) ).length === 0 );
+check( '...with its name, and under it its weights, its version and its licence - "variable 100-900" where the family has an axis -, and the icon the other rows have',
+	faceNotes( faceRowOf( installedCard( owning ), 'inter' ) )[0] === '400, 700 · 4.0 · OFL-1.1' && faceNotes( faceRowOf( installedCard( owning ), 'roboto' ) )[0] === 'variable 100-900 · 3.2 · OFL-1.1'
+	&& faceName( faceRowOf( installedCard( owning ), 'roboto' ) ).textContent === 'Roboto Flex'
+	&& faceRows( installedCard( owning ) ).slice( 0, 3 ).every( function( row ) { return byClass( row, 'design-face-label' )[0].children[0].dataset.icon === 'a-large-small' } ) );
+check( 'a family a role of the saved setup uses cannot be removed: its button is off, its title names the roles and so does a second line under the name - in the words of the Fonts tab',
+	( function() {
+		const row = faceRowOf( installedCard( owning ), 'inter' );
+		const remove = faceButton( row );
+		return remove.disabled === true && remove.title === 'used by Title, Text' && remove.textContent === 'Remove' && hasClass( remove, 'nino-admin-btn-danger' )
+			&& remove.getAttribute('aria-label') === 'Remove - Inter'
+			&& JSON.stringify( faceNotes( row ) ) === JSON.stringify( [ '400, 700 · 4.0 · OFL-1.1', 'used by Title, Text' ] );
+	} )() );
+check( '...and one that no role uses has the button, working, with no second line',
+	( function() {
+		const row = faceRowOf( installedCard( owning ), 'lora' );
+		return faceButton( row ).disabled === false && faceButton( row ).title === 'Remove' && faceNotes( row ).length === 1;
+	} )() );
+
+owning.design._edit.fonts.subtitle.family = 'lora';
+owning.design._paintFaces();
+
+check( 'a family chosen for a role in the selection being edited is as little to be removed as one the saved setup gives it, before anything is saved',
+	faceButton( faceRowOf( installedCard( owning ), 'lora' ) ).disabled === true && faceButton( faceRowOf( installedCard( owning ), 'lora' ) ).title === 'used by Subtitle'
+	&& faceNotes( faceRowOf( installedCard( owning ), 'lora' ) )[1] === 'used by Subtitle' && faceButton( faceRowOf( installedCard( owning ), 'roboto' ) ).disabled === false );
+
+owning.design._edit.fonts.subtitle.family = 'inter';
+owning.design._paintFaces();
+
+check( '...and both give a family their roles together, in the order of the roles of the Fonts tab',
+	faceButton( faceRowOf( installedCard( owning ), 'inter' ) ).title === 'used by Title, Subtitle, Text' && faceButton( faceRowOf( installedCard( owning ), 'lora' ) ).disabled === false );
+
+owning.design._edit.fonts.subtitle.family = 'source-sans-3';
+owning.design._paintFaces();
+
+check( 'a directory that is no family is listed greyed, under its own name, with the reason - and a Remove that works whatever the reason is',
+	( function() {
+		const row = faceRowOf( installedCard( owning ), 'odd-one' );
+		return hasClass( row, 'design-face-row--off' ) && faceName( row ).textContent === 'odd-one' && faceNotes( row ).join() === 'Not a typeface: there is no font.json'
+			&& faceButton( row ).disabled === false && faceButton( row ).textContent === 'Remove' && hasClass( faceButton( row ), 'nino-admin-btn-danger' ) && faceButton( row ).getAttribute('aria-label') === 'Remove - odd-one'
+			&& hasClass( faceRowOf( installedCard( owning ), 'lora' ), 'design-face-row--off' ) === false;
+	} )() );
+
+check( 'the tab asked for the list that was kept when it was opened, and for nothing more: no row, no search and no chip asks the server anything',
+	askedOf( owning ) === '' && askedOf( offering ) === '' && askedOf( shelves ) === '' );
+
+faceButton( faceRowOf( installedCard( owning ), 'odd-one' ) ).fire('click');
+
+check( 'the Remove of a directory that is no family asks for that name, as it is: the server decides what it is',
+	owning.requests.length === 1 && owning.requests[0].endpoint === 'webfonts/remove' && JSON.stringify( owning.requests[0].payload ) === '{"slug":"odd-one"}' );
+
+// ---- An install, a refusal, a removal
+
+const doing = panel();
+doing.tab('Typefaces');
+
+const listed = [ offerOf( 'inter', 'Inter', 'sans', { version : '4.0' } ), offerOf( 'lora', 'Lora', 'serif', { version : '2.0' } ), offerOf( 'fresh', 'Fresh', 'display' ) ];
+const listedAnswer = function( over ) { return shelfOf( Object.assign( { families : listed, fetched : LOADED_AT }, over || {} ) ) };
+const plain = { inter : installedOf( 'inter', 'Inter', '4.0' ), lora : installedOf( 'lora', 'Lora', '1.0', { category : 'serif' } ) };
+const withFresh = Object.assign( {}, plain, { fresh : installedOf( 'fresh', 'Fresh', '1.0', { category : 'display' } ) } );
+
+doing.answer( 200, listedAnswer( { installed : plain, uses : { inter : [ 'text' ], lora : [] } } ) );
+
+const draftBefore = JSON.stringify( doing.design._edit );
+const enabledBefore = faceActions( doing ).filter( function( button ) { return button.disabled === false } ).length;
+
+faceButton( faceRowOf( availableCard( doing ), 'fresh' ) ).fire('click');
+
+check( 'Install asks the server for that family and for nothing else: design/webfonts/install with the slug - and the buttons of the tab are off while it is on its way, the line of the bar empty',
+	doing.requests.length === 1 && doing.requests[0].endpoint === 'webfonts/install' && JSON.stringify( doing.requests[0].payload ) === '{"slug":"fresh"}'
+	&& enabledBefore === 4 && faceActions( doing ).length === 5 && faceActions( doing ).every( function( button ) { return button.disabled === true } ) && doing.line().textContent === '' );
+
+doing.design._installFace('lora');
+doing.design._removeFace('lora');
+
+check( '...and a second action asked for while the first is on its way is not sent', doing.requests.length === 1 );
+
+doing.answer( 409, { error : 'the archive does not match its checksum' } );
+
+check( 'a refusal is told in the line of the bar with the reason, as an error, and the buttons work again; nothing is read again and nothing changed on the screen',
+	doing.line().textContent === 'Not installed: the archive does not match its checksum' && doing.line().className === 'nino-admin-error'
+	&& doing.requests.length === 0 && faceSlugs( installedCard( doing ) ) === 'inter,lora'
+	&& faceActions( doing ).filter( function( button ) { return button.disabled === false } ).length === enabledBefore );
+
+faceButton( faceRowOf( availableCard( doing ), 'fresh' ) ).fire('click');
+doing.answer( 500, null );
+
+check( 'a failure that has no words of its own is told the way the workbench tells one, after what failed - and no %s is left in it',
+	doing.line().textContent.indexOf('Not installed: (500)') === 0 && doing.line().textContent.indexOf('%s') === -1 && doing.line().className === 'nino-admin-error' );
+
+faceButton( faceRowOf( availableCard( doing ), 'fresh' ) ).fire('click');
+doing.answer( 200, listedAnswer( { msg : 'Fresh 1.0 is installed.', installed : withFresh, uses : { inter : [ 'text' ], lora : [], fresh : [] } } ) );
+
+check( 'an install that went through is the new state of both cards, from the one answer: the family stands among the installed, the row of the list says "installed" - and the line of the bar says it, as the server wrote it',
+	faceSlugs( installedCard( doing ) ) === 'inter,lora,fresh' && byClass( faceRowOf( availableCard( doing ), 'fresh' ), 'design-face-state' ).length === 1
+	&& byTag( faceRowOf( availableCard( doing ), 'fresh' ), 'button' ).length === 0
+	&& doing.line().textContent === 'Fresh 1.0 is installed.' && doing.line().className === '' );
+check( '...then design/list is asked again, for the selects of the Fonts tab: and nothing else is sent, no save and no preview - the draft is the one it was',
+	askedOf( doing ) === 'list' && JSON.stringify( doing.requests[0].payload ) === '{}' && JSON.stringify( doing.design._edit ) === draftBefore && doing.design._isDirty() === false );
+
+doing.answer( 200, listingOf( { inter : 'Inter', lora : 'Lora', fresh : 'Fresh' } ) );
+doing.tab('Fonts');
+
+check( '...and the family is offered in the select of the Fonts tab, under the name it has',
+	offered( doing.byId('design-font-title-family') ).some( function( option ) { return option[0] === 'fresh' && option[1] === 'Fresh' } ) );
+
+doing.tab('Typefaces');
+doing.answer( 200, listedAnswer( { installed : withFresh, uses : { inter : [ 'text' ], lora : [], fresh : [] } } ) );
+
+faceButton( faceRowOf( availableCard( doing ), 'lora' ) ).fire('click');
+doing.answer( 200, listedAnswer( {
+	msg 			: 'Lora is updated to 2.0.',
+	installed : Object.assign( {}, withFresh, { lora : installedOf( 'lora', 'Lora', '2.0', { category : 'serif' } ) } ),
+	uses 			: { inter : [ 'text' ], lora : [], fresh : [] },
+} ) );
+
+check( 'an update is the same: the family that was there is the new version, and the row of the list says "installed" where the button said "update to 2.0"',
+	doing.line().textContent === 'Lora is updated to 2.0.' && faceNotes( faceRowOf( installedCard( doing ), 'lora' ) )[0] === '400, 700 · 2.0 · OFL-1.1'
+	&& byClass( faceRowOf( availableCard( doing ), 'lora' ), 'design-face-state' ).length === 1 && askedOf( doing ) === 'list' );
+
+doing.answer( 200, listingOf( { inter : 'Inter', lora : 'Lora', fresh : 'Fresh' } ) );
+faceButton( faceRowOf( installedCard( doing ), 'fresh' ) ).fire('click');
+
+check( 'Remove asks for that family: design/webfonts/remove with the slug',
+	doing.requests.length === 1 && doing.requests[0].endpoint === 'webfonts/remove' && JSON.stringify( doing.requests[0].payload ) === '{"slug":"fresh"}' );
+
+doing.answer( 409, { error : 'the typeface "fresh" is used by title' } );
+
+check( 'a removal the server refuses says why in the line of the bar, as an error, and the family stays',
+	doing.line().textContent === 'Not removed: the typeface "fresh" is used by title' && doing.line().className === 'nino-admin-error' && faceSlugs( installedCard( doing ) ) === 'inter,lora,fresh' );
+
+faceButton( faceRowOf( installedCard( doing ), 'fresh' ) ).fire('click');
+doing.answer( 409, { error : 'used by title, text', code : 'used', params : [ 'title', 'text' ] } );
+
+check( 'a family a role still uses is refused with the roles in the words of the workbench, not in the server\'s',
+	doing.line().textContent === 'Not removed: a role of the setup uses it - Title, Text' && doing.line().className === 'nino-admin-error' && faceSlugs( installedCard( doing ) ) === 'inter,lora,fresh' );
+
+faceButton( faceRowOf( installedCard( doing ), 'fresh' ) ).fire('click');
+doing.answer( 200, listedAnswer( {
+	msg 			: 'Fresh is removed.',
+	installed : { inter : plain.inter, lora : installedOf( 'lora', 'Lora', '2.0', { category : 'serif' } ) },
+	uses 			: { inter : [ 'text' ], lora : [] },
+} ) );
+
+check( 'a removal that went through takes the family out of the first card; the row of the list offers to install it again, right then - design/list still says what it said before, with the family among its families, as the server\'s does for what is installed; the line of the bar says it, and design/list is read again',
+	faceSlugs( installedCard( doing ) ) === 'inter,lora' && faceWord( faceRowOf( availableCard( doing ), 'fresh' ) ) === 'Install'
+	&& byClass( faceRowOf( availableCard( doing ), 'fresh' ), 'design-face-state' ).length === 0 && doing.design._data.families.fresh !== undefined
+	&& doing.line().textContent === 'Fresh is removed.' && askedOf( doing ) === 'list' );
+
+// The families the feature brings are named by the answer of the tab, and by nothing else: design/list has them, and has the installed ones too
+const owned = panel();
+owned.tab('Typefaces');
+owned.answer( 200, shelfOf( { families : [ offerOf( 'source-sans-3', 'Source Sans 3', 'sans' ) ], fetched : LOADED_AT, builtin : [] } ) );
+
+check( 'a row of the list for a family the feature brings says "installed" because the answer of the tab names it, and not because design/list has it among its families: with the answer naming none, the row offers to install',
+	owned.design._data.families['source-sans-3'] !== undefined && byClass( faceRowOf( availableCard( owned ), 'source-sans-3' ), 'design-face-state' ).length === 0
+	&& faceWord( faceRowOf( availableCard( owned ), 'source-sans-3' ) ) === 'Install'
+	&& doing.design._faces.builtin.join() === BROUGHT.join() );
+
+doing.answer( 500, null );
+
+check( 'when design/list cannot be read again the screen stays as it is: the line of the bar keeps what the action said, and the row of the list still offers to install',
+	doing.line().textContent === 'Fresh is removed.' && faceSlugs( installedCard( doing ) ) === 'inter,lora' && faceWord( faceRowOf( availableCard( doing ), 'fresh' ) ) === 'Install' );
+
+const rowBefore = faceRowOf( availableCard( doing ), 'fresh' );
+
+doing.design._relist();
+doing.answer( 200, listingOf( { inter : 'Inter', lora : 'Lora' } ) );
+
+check( '...and when it is read again the open tab is drawn again, from what it knows, and the row of the list offers to install it still: the selects of the Fonts tab have lost the family and the tab has not been told twice',
+	faceRowOf( availableCard( doing ), 'fresh' ) !== rowBefore && faceWord( faceRowOf( availableCard( doing ), 'fresh' ) ) === 'Install'
+	&& doing.design._data.families.fresh === undefined && faceSlugs( installedCard( doing ) ) === 'inter,lora' && doing.line().textContent === 'Fresh is removed.' && askedOf( doing ) === '' );
+
+// ---- Only the last answer is the state, and an action that is on its way answers for the tab
+
+const racing = panel();
+racing.tab('Typefaces');
+racing.byId('design-faces-load').fire('click');
+
+check( 'the list that was kept and the list loaded were asked for in turn',
+	askedOf( racing ) === 'webfonts/list,webfonts/list' && racing.requests[0].payload.refresh === false && racing.requests[1].payload.refresh === true );
+
+racing.requests[1].answer( 200, shelfOf( { families : listed, fetched : LOADED_AT } ) );
+racing.requests[0].answer( 200, shelfOf() );
+
+check( 'an answer that comes after a later one is not the state: the older request answering last does not take the list away',
+	racing.design._faces.families.length === 3 && faceRows( availableCard( racing ) ).length === 3 );
+
+const busy = panel();
+busy.tab('Typefaces');
+busy.answer( 200, listedAnswer( { installed : plain, uses : { inter : [ 'text' ], lora : [] } } ) );
+faceButton( faceRowOf( availableCard( busy ), 'fresh' ) ).fire('click');
+busy.tab('Fonts');
+busy.tab('Typefaces');
+
+check( 'a tab that is opened while an action is on its way does not ask for the list: the answer of the action is the state, and the buttons are off until it comes',
+	askedOf( busy ) === 'webfonts/install' && faceActions( busy ).length === 5 && faceActions( busy ).every( function( button ) { return button.disabled === true } ) );
+
+busy.answer( 200, listedAnswer( { msg : 'Fresh 1.0 is installed.', installed : withFresh, uses : { inter : [ 'text' ], lora : [], fresh : [] } } ) );
+
+check( '...and it draws the tab it finds',
+	faceSlugs( installedCard( busy ) ) === 'inter,lora,fresh' && busy.line().textContent === 'Fresh 1.0 is installed.' && askedOf( busy ) === 'list' );
+
+const leaving = panel();
+leaving.tab('Typefaces');
+leaving.tab('Global');
+
+check( 'the answer of a request that outlived the tab is kept and draws nothing, and does not fail',
+	threw( function() { leaving.answer( 200, shelfOf( { installed : { inter : installedOf( 'inter', 'Inter', '4.0' ) }, uses : { inter : [] } } ) ) } ) === false
+	&& leaving.design._faces !== null && leaving.byId('design-faces-installed') === null );
+
+leaving.tab('Typefaces');
+
+check( '...the next time the tab is opened it is drawn from what is known at once, and the server is asked again',
+	faceSlugs( installedCard( leaving ) ) === 'inter' && askedOf( leaving ) === 'webfonts/list' );
+
+// ---- The names are set in their own faces
+
+const painted = panel();
+painted.tab('Typefaces');
+
+const paintedAnswer = shelfOf( {
+	installed 	: { inter : installedOf( 'inter', 'Inter', '4.0' ), quote : installedOf( 'quote', 'Quote', '1.0', { face : '/public/assets/fonts/quote/a"b\\c.woff2' } ) },
+	uses 				: { inter : [], quote : [] },
+	families 		: thirty,
+	fetched 		: LOADED_AT,
+} );
+
+painted.answer( 200, paintedAnswer );
+
+check( 'the name of an installed family is set in its own face as the row is drawn - the project serves the file itself: one FontFace for the family, made from the url of its file, added to the fonts of the document and asked to load',
+	painted.typeset.made.length === 2 && painted.typeset.made[0].family === 'design-installed-inter' && painted.typeset.made[0].source === 'url("/public/assets/fonts/inter/400.woff2")'
+	&& painted.typeset.set.length === 2 && painted.typeset.made.every( function( face ) { return face.loads === 1 } )
+	&& faceName( faceRowOf( installedCard( painted ), 'inter' ) ).style.fontFamily === '"design-installed-inter", system-ui, sans-serif' );
+check( '...a url is written as a string: a quote or a backslash in it stays in the string',
+	painted.typeset.made[1].source === 'url("/public/assets/fonts/quote/a\\"b\\\\c.woff2")' );
+
+const observer = painted.typeset.observers[painted.typeset.observers.length - 1];
+
+check( 'the names of the list are set in nothing yet: the rows of the page are watched, and a face is made for none of them until it is in view',
+	painted.typeset.observers.length === 1 && observer.watched.length === 24 && observer.watched.every( function( row ) { return hasClass( row, 'design-face-row' ) } )
+	&& painted.typeset.made.length === 2 && faceName( faceRowOf( availableCard( painted ), 'face-01' ) ).style.fontFamily === undefined );
+
+painted.see( faceRowOf( availableCard( painted ), 'face-03' ) );
+
+check( 'a row that comes into view sets its name in the preview its family publishes - a FontFace of its own, added to the fonts of the document, asked to load once - and is not watched any more',
+	painted.typeset.made.length === 3 && painted.typeset.made[2].family === 'design-available-face-03' && painted.typeset.made[2].source === 'url("https://webfonts.test/face-03-1.0-preview.woff2")'
+	&& painted.typeset.set.length === 3 && painted.typeset.made[2].loads === 1
+	&& faceName( faceRowOf( availableCard( painted ), 'face-03' ) ).style.fontFamily === '"design-available-face-03", system-ui, sans-serif'
+	&& observer.watched.length === 23 && observer.unwatched.length === 1 && observer.unwatched[0] === faceRowOf( availableCard( painted ), 'face-03' ) );
+
+pagerButtons( painted )[1].fire('click');
+pagerButtons( painted )[0].fire('click');
+
+check( 'a page turned and turned back draws the rows again and watches them again - the rows of the page that was left are not watched any more',
+	painted.typeset.observers.length === 1 && observer.watched.length === 24 && painted.typeset.made.length === 3
+	&& faceName( faceRowOf( availableCard( painted ), 'face-03' ) ).style.fontFamily === undefined );
+
+painted.see( faceRowOf( availableCard( painted ), 'face-03' ) );
+
+check( '...and the row of the family that was seen before is set in the face the document has: none is made twice',
+	painted.typeset.made.length === 3 && painted.typeset.set.length === 3 && painted.typeset.made[2].loads === 1
+	&& faceName( faceRowOf( availableCard( painted ), 'face-03' ) ).style.fontFamily === '"design-available-face-03", system-ui, sans-serif' );
+
+painted.typeset.fails = true;
+painted.see( faceRowOf( availableCard( painted ), 'face-04' ) );
+painted.typeset.fails = false;
+
+check( 'a file that cannot be loaded leaves nothing undone: the load is given a hand to catch it with, and the name stays in the face of the page',
+	painted.typeset.made.length === 4 && painted.typeset.made[3].loads === 1 && painted.typeset.made[3].caught === 1 && painted.typeset.made.every( function( face ) { return face.caught === face.loads } ) );
+
+painted.tab('Global');
+
+check( 'leaving the tab lets go of what it held: the faces are out of the fonts of the document, the observer has stopped watching and is let go - a face is a file the browser keeps',
+	painted.typeset.set.length === 0 && observer.watched.length === 0 && observer.ended >= 1 && painted.design._facesObserver === null && Object.keys( painted.design._facesLoaded ).length === 0 );
+
+painted.tab('Typefaces');
+
+check( 'coming back to the tab draws it from what is known and sets the installed names again, with faces made again - and a new observer watches the rows for the visit',
+	painted.typeset.made.length === 6 && painted.typeset.made[4].family === 'design-installed-inter' && painted.typeset.made[5].family === 'design-installed-quote'
+	&& painted.typeset.set.length === 2 && painted.typeset.observers.length === 2 && painted.typeset.observers[1].watched.length === 24 );
+
+painted.answer( 200, paintedAnswer );
+
+check( 'the answer to the second visit draws the same rows again and makes no face twice; every load the tab asked of a face was given its catch',
+	painted.typeset.made.length === 6 && painted.typeset.set.length === 2 && painted.typeset.made.every( function( face ) { return face.caught === face.loads } ) );
+
+console.log('');
+
+
+// ---- The screen drawn again over the open tab: Reset puts the stored selection back and draws everything, the tab included
+
+const redrawn = panel();
+redrawn.tab('Typefaces');
+redrawn.answer( 200, shelfOf( { installed : { inter : installedOf( 'inter', 'Inter', '4.0' ) }, uses : { inter : [] }, families : thirty, fetched : LOADED_AT } ) );
+redrawn.design._edit.fonts.title.family = 'inter';
+
+const redrawnNote = faceNotes( faceRowOf( installedCard( redrawn ), 'inter' ) ).length;
+
+redrawn.design._revert();
+
+check( 'Reset over the open Typefaces tab draws the screen again, the tab with it: the two cards stand from what is known, the list that was kept is asked for again, the selection is the stored one - and no face is made twice, one observer watches the rows',
+	threw( function() { redrawn.design._revert() } ) === false && redrawn.design._tab === 'typefaces' && redrawn.design._isDirty() === false && redrawnNote === 1
+	&& faceSlugs( installedCard( redrawn ) ) === 'inter' && faceRows( availableCard( redrawn ) ).length === 24 && askedOf( redrawn ) === 'webfonts/list,webfonts/list'
+	&& redrawn.typeset.made.filter( function( face ) { return face.family === 'design-installed-inter' } ).length === 1
+	&& redrawn.typeset.observers.length === 1 && redrawn.typeset.observers[0].watched.length === 24 );
+
 // --- Colours: the palette and its mode ------------------------------------------------
 
 console.log( 'Colours' );
@@ -1568,8 +2336,8 @@ TABS.forEach( function( name ) {
 	} ).join();
 } );
 
-check( 'a block of rows has its title and nothing under it, on every tab: the animation of Global, the table of the fonts, the tuning and the mode of the palette carry a heading of one title each - no small under it',
-	JSON.stringify( headings ) === JSON.stringify( { global : 'Animation:1:0', fonts : 'Fonts:1:0', content : '', buttons : '', components : '', colours : 'Tuning:1:0,Mode:1:0' } ) );
+check( 'a block of rows has its title and nothing under it, on every tab: the animation of Global, the table of the fonts, the two cards of the typefaces, the tuning and the mode of the palette carry a heading of one title each - no small under it',
+	JSON.stringify( headings ) === JSON.stringify( { global : 'Animation:1:0', fonts : 'Fonts:1:0', typefaces : 'Installed:1:0,Available:1:0', content : '', buttons : '', components : '', colours : 'Tuning:1:0,Mode:1:0' } ) );
 
 const titled = heads.design._sectionLabel( 'A title' );
 const iconed = heads.design._sectionLabel( 'Another', heads.design._icon('colours/mode') );
@@ -1624,9 +2392,10 @@ const LUCIDE = {
 /** Which icon each button of the viewport switch takes */
 const VIEWPORT_ICON = { phone : 'smartphone', tablet : 'tablet', desktop : 'monitor' };
 
-/** Which icon each row takes: the two strips of Global, the knobs of the three tabs, and the rows of the Colours tab */
+/** Which icon each row takes: the two strips of Global, the rows of the Typefaces tab, the knobs of the three tabs, and the rows of the Colours tab */
 const ICON_OF = {
 	'global/size' : 'a-large-small', 'global/width' : 'move-horizontal',
+	'typefaces/family' : 'a-large-small',
 	'content/hero-title' : 'a-large-small', 'content/hero-text' : 'a-large-small', 'content/quiet' : 'a-large-small', 'content/loud' : 'a-large-small',
 	'content/section-space' : 'scaling', 'content/card-space' : 'align-vertical-space-around', 'content/corners' : 'square-round-corner',
 	'content/border' : 'square', 'content/shadow' : 'square-stack',
@@ -2204,8 +2973,8 @@ console.log( 'The anchors' );
 
 const anchors = panel();
 
-check( 'each tab has the id of an element on the specimen: global, type, content, buttons, components and colours - Fonts is the typography block, Colours the grounds',
-	JSON.stringify( anchors.design.ANCHORS ) === JSON.stringify( { global : 'global', fonts : 'type', content : 'content', buttons : 'buttons', components : 'components', colours : 'colours' } ) );
+check( 'each tab has the id of an element on the specimen: global, type, type, content, buttons, components and colours - Fonts and Typefaces are the typography block, Colours the grounds',
+	JSON.stringify( anchors.design.ANCHORS ) === JSON.stringify( { global : 'global', fonts : 'type', typefaces : 'type', content : 'content', buttons : 'buttons', components : 'components', colours : 'colours' } ) );
 
 const last = function() { return anchors.stage.scrolls[anchors.stage.scrolls.length - 1] };
 
@@ -2603,8 +3372,8 @@ const specimenIds = {};
 const jumpedTo = Object.keys( jp.design.ANCHORS ).map( function( tab ) { return jp.design.ANCHORS[tab] } )
 	.concat( Object.keys( jp.design.KNOB_ANCHORS ).reduce( function( ids, tab ) { return ids.concat( Object.keys( jp.design.KNOB_ANCHORS[tab] ).map( function( knob ) { return jp.design.KNOB_ANCHORS[tab][knob] } ) ) }, [] ) );
 
-check( 'every id the script jumps to is on the specimen exactly once: the six of the tabs and the cards',
-	jumpedTo.length === 9 && jumpedTo.every( function( id ) { return specimenIds[id] === 1 } ) && specimenIds.cards === 1 );
+check( 'every id the script jumps to is on the specimen exactly once: the seven of the tabs and the cards',
+	jumpedTo.length === 10 && jumpedTo.every( function( id ) { return specimenIds[id] === 1 } ) && specimenIds.cards === 1 );
 check( '...and the Cards section is the element that has the id: the second section of the page, after the hero and before the grounds',
 	specimen.indexOf('<section id="cards" class="nino-section" aria-label="Cards">') !== -1 && specimen.indexOf('id="content"') < specimen.indexOf('id="cards"')
 	&& specimen.indexOf('id="cards"') < specimen.indexOf('id="colours"') );
@@ -2980,7 +3749,7 @@ else {
 		unsaid = unsaid.concat( unwritten( whole ) );
 	} );
 
-	check( 'the server\'s answer draws all six tabs, each with controls in it and the state of the files on the chip in the bar'+ ( failed.length === 0 ? '' : ' - threw: '+ failed.join() ),
+	check( 'the server\'s answer draws all seven tabs, each with controls in it and the state of the files on the chip in the bar'+ ( failed.length === 0 ? '' : ' - threw: '+ failed.join() ),
 		drawn.join() === TABS.join() && failed.length === 0 && blank.length === 0 );
 	check( '...and every word the screen shows for it is one the panel\'s texts carry - the effects, the families, the knobs, the modes'+ ( unsaid.length === 0 ? '' : ' - missing: '+ unsaid.slice( 0, 4 ).join() ), unsaid.length === 0 );
 
@@ -3073,6 +3842,40 @@ else {
 		&& JSON.stringify( sent.payload.motion ) === JSON.stringify( real.motion ) && sent.payload.size === real.size && sent.payload.width === real.width
 		&& JSON.stringify( sent.payload.colours ) === JSON.stringify( real.colours ) );
 	check( '...and a screen drawn from the answer holds nothing unsaved', whole.design._isDirty() === false );
+
+	check( 'design/list says what the Typefaces tab needs to know before it asks for anything: whether the repository has an address and whether it has a key, two booleans and nothing else',
+		Object.keys( real.webfonts || {} ).join() === 'url,key' && typeof real.webfonts.url === 'boolean' && typeof real.webfonts.key === 'boolean' );
+
+	const webfontsFile = process.env.DESIGN_WEBFONTS || '';
+
+	if( webfontsFile === '' || fs.existsSync( webfontsFile ) === false )
+		console.log( '  --  no answer of design/webfonts/list was handed to this run (DESIGN_WEBFONTS), so the Typefaces tab is not drawn from the real one' );
+	else {
+
+		const shelved = JSON.parse( fs.readFileSync( webfontsFile, 'utf8' ) );
+		const typed = panel( Object.assign( {}, real, { webfonts : { url : true, key : true } } ), { whole : true } );
+
+		typed.tab('Typefaces');
+		typed.answer( 200, shelved );
+
+		const slugs = Object.keys( shelved.installed );
+		const installedNow = faceRows( installedCard( typed ) );
+
+		check( 'the answer of design/webfonts/list is in the shape the Typefaces tab draws: the halves of the tab are keyed as the stand-in has them, and the families, the installed ones and the directories that are none are what the server gave',
+			Object.keys( shelved ).join() === Object.keys( shelfOf() ).join() && slugs.length > 0 && Object.keys( shelved.broken ).length > 0 && shelved.families.length > 0 && shelved.fetched > 0 && shelved.refusal === ''
+			&& slugs.every( function( slug ) { return Object.keys( shelved.installed[slug] ).join() === Object.keys( installedOf( slug, 'x', '1' ) ).join() } )
+			&& shelved.families.every( function( entry ) { return Object.keys( entry ).join() === Object.keys( offerOf( 'x', 'X', 'sans' ) ).join() } ) );
+		check( '...and the tab draws a row for each of them: the installed families by their names, then the directories that are none - and a row of the list for each family on the first page',
+			installedNow.map( function( row ) { return row.dataset.slug } ).join() === slugs.concat( Object.keys( shelved.broken ) ).join()
+			&& slugs.every( function( slug ) { return faceName( faceRowOf( installedCard( typed ), slug ) ).textContent === shelved.installed[slug].name } )
+			&& faceRows( availableCard( typed ) ).length === Math.min( shelved.families.length, typed.design.FACES_PER_PAGE ) );
+		check( '...with who uses what: a family a role of the saved setup uses has its Remove off, and the others have it on',
+			slugs.every( function( slug ) { return faceButton( faceRowOf( installedCard( typed ), slug ) ).disabled === ( ( shelved.uses[slug] || [] ).length > 0 ) } )
+			&& slugs.some( function( slug ) { return ( shelved.uses[slug] || [] ).length > 0 } ) );
+		check( '...the name of an installed family is set in the file the server named for it - a url of the project\'s own - and every word on the screen is one the panel\'s texts carry',
+			slugs.every( function( slug, at ) { return typed.typeset.made[at].source === 'url("'+ shelved.installed[slug].face+ '")' && shelved.installed[slug].face.indexOf('[[') === -1 } )
+			&& unwritten( typed ).length === 0 );
+	}
 }
 
 console.log('');

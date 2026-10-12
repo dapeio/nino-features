@@ -5,8 +5,8 @@ return [
 	'key'					=> 'design',
 	'name'				=> [ 'en_US' => 'Design', 'de_DE' => 'Design' ],
 	'description'	=> [
-		'en_US' => 'The look of the whole site over one model: five templates (header, footer, content, buttons, components), a root size, the width and the animation of the page, the five font roles, named knobs for each template and the palette - six tabs, one preview page, compiled into one stylesheet.',
-		'de_DE' => 'Das Aussehen der ganzen Website über ein Modell: fünf Vorlagen (Header, Footer, Inhalte, Buttons, Komponenten), eine Grundgröße, Breite und Animation der Seite, die fünf Schriftrollen, benannte Regler je Vorlage und die Palette – sechs Tabs, eine Vorschauseite, in ein Stylesheet kompiliert.',
+		'en_US' => 'The look of the whole site over one model: five templates (header, footer, content, buttons, components), a root size, the width and the animation of the page, the five font roles, named knobs for each template and the palette - six tabs, one preview page, compiled into one stylesheet - and a seventh tab that installs typefaces from a signed list, to be served by the project itself.',
+		'de_DE' => 'Das Aussehen der ganzen Website über ein Modell: fünf Vorlagen (Header, Footer, Inhalte, Buttons, Komponenten), eine Grundgröße, Breite und Animation der Seite, die fünf Schriftrollen, benannte Regler je Vorlage und die Palette – sechs Tabs, eine Vorschauseite, in ein Stylesheet kompiliert – dazu ein siebter Tab, der Schriftarten aus einer signierten Liste installiert, damit das Projekt sie selbst ausliefert.',
 	],
 	'manual'			=> [
 		'shortcodes' => [],
@@ -14,8 +14,8 @@ return [
 		'routes' => [],
 		'panel' => [
 			'Design' => [
-				'en_US' => 'Six tabs over one setup - Global, Fonts, Content, Buttons, Components, Colours - and a preview beside them that scrolls to the open tab. An apply that asks first writes assets/theme.css and the two frame templates, and keeps the previous version to restore.',
-				'de_DE' => 'Sechs Tabs über einem Setup – Global, Schriften, Inhalte, Buttons, Komponenten, Farben – und eine Vorschau daneben, die zum offenen Tab scrollt. Ein Anwenden, das vorher nachfragt, schreibt assets/theme.css und die beiden Rahmen-Templates und hebt die Vorversion zum Wiederherstellen auf.',
+				'en_US' => 'Seven tabs - Global, Fonts, Typefaces, Content, Buttons, Components and Colours - and a preview beside them that scrolls to the open tab. Six of the tabs are views of one setup; Typefaces is the loader of typefaces and keeps nothing in it (see the entries on it). An apply that asks first writes assets/theme.css and the two frame templates, and keeps the previous version to restore.',
+				'de_DE' => 'Sieben Tabs – Global, Schriften, Schriftarten, Inhalte, Buttons, Komponenten und Farben – und eine Vorschau daneben, die zum offenen Tab scrollt. Sechs der Tabs sind Ansichten eines Setups; Schriftarten ist der Loader für Schriftarten und hält nichts darin (siehe die Einträge dazu). Ein Anwenden, das vorher nachfragt, schreibt assets/theme.css und die beiden Rahmen-Templates und hebt die Vorversion zum Wiederherstellen auf.',
 			],
 			'Global' => [
 				'en_US' => 'The two frames (the header and the footer bring markup of their own) and the animation of the page - effect, strength and speed of the viewport animations, written as one rule on main. Empty means what Nino.css does by itself. The root size and the width of the page are two strips of five positions, -2 to +2, the middle the delivered one (see the next entry). The templates of the content, the buttons and the components, one stylesheet each, are chosen on their own tabs.',
@@ -26,12 +26,28 @@ return [
 				'de_DE' => 'Die Grundgröße ist 70, 85, 100, 115 oder 130 % der Browser-Größe unter 768 px und das 1,125-Fache davon ab dort, nie als feste Pixelzahl; die Mitte ist die gelieferte Größe. Die Breite ist das Maximum der Inhaltsbreite und der Abstand zu den Seiten: -2 eine Lesespalte von 48 rem, -1 eine eingefasste Seite von 64 rem, 0 die 120 rem, die Nino.css hat, +1 ohne Maximum und mit dem kleinen Abstand des Kernels zu den Seiten bei jeder Breite, +2 ohne Maximum und ab 768 px ohne Abstand zu den Seiten außer dem Padding, das eine Section selbst behält (ein Handy behält seinen Abstand). In einer Vorschau von 1280 px ist jede der fünf eine andere Zeile: 792, 1080, 1136, 1172 und 1208 px Text.',
 			],
 			'Fonts' => [
-				'en_US' => 'A table of the five roles Nino.css reads - title, subtitle, text, button, code - with a family, a weight (light, normal, bold, mapped to the nearest weight the family has), an uppercase switch and a size. The size is typed in rem, within the bounds of the role - the title from 1 to 4, the subtitle from 0.8 to 2.5, the text from 0.8 to 1.5, the buttons from 0.6 to 1.5 and the code from 0.6 to 1.3 - and a value outside them is set to the nearer bound. Only what is set is written; the families are the two the setup wizard delivers and three system stacks. The code has no case switch.',
-				'de_DE' => 'Eine Tabelle der fünf Rollen, die Nino.css liest – Titel, Untertitel, Text, Buttons, Code – mit Schriftart, Gewicht (leicht, normal, fett, auf das nächstliegende Gewicht der Familie abgebildet), einem Uppercase-Schalter und einer Größe. Die Größe wird in rem getippt, innerhalb der Grenzen der Rolle – Titel 1 bis 4, Untertitel 0,8 bis 2,5, Text 0,8 bis 1,5, Buttons 0,6 bis 1,5 und Code 0,6 bis 1,3 –, ein Wert außerhalb wird auf die nähere Grenze gesetzt. Geschrieben wird nur, was gesetzt ist; die Familien sind die beiden, die der Einrichtungsassistent mitbringt, und drei Systemschriften. Der Code hat keinen Schalter für die Schreibung.',
+				'en_US' => 'A table of the five roles Nino.css reads - title, subtitle, text, button, code - with a family, a weight (light, normal, bold, mapped to the nearest weight the family has), an uppercase switch and a size. The size is typed in rem, within the bounds of the role - the title from 1 to 4, the subtitle from 0.8 to 2.5, the text from 0.8 to 1.5, the buttons from 0.6 to 1.5 and the code from 0.6 to 1.3 - and a value outside them is set to the nearer bound. Only what is set is written; the families are the two the setup wizard delivers, three system stacks and every typeface installed on the Typefaces tab, which the selects list as well. The code has no case switch.',
+				'de_DE' => 'Eine Tabelle der fünf Rollen, die Nino.css liest – Titel, Untertitel, Text, Buttons, Code – mit Schriftart, Gewicht (leicht, normal, fett, auf das nächstliegende Gewicht der Familie abgebildet), einem Uppercase-Schalter und einer Größe. Die Größe wird in rem getippt, innerhalb der Grenzen der Rolle – Titel 1 bis 4, Untertitel 0,8 bis 2,5, Text 0,8 bis 1,5, Buttons 0,6 bis 1,5 und Code 0,6 bis 1,3 –, ein Wert außerhalb wird auf die nähere Grenze gesetzt. Geschrieben wird nur, was gesetzt ist; die Familien sind die beiden, die der Einrichtungsassistent mitbringt, drei Systemschriften und jede Schriftart, die im Tab Schriftarten installiert wurde und die die Auswahlen ebenfalls auflisten. Der Code hat keinen Schalter für die Schreibung.',
 			],
 			'Size of a role' => [
 				'en_US' => 'The number is rounded to three decimals (a typed 1.25 stays 1.25). The field steps by a tenth, which every bound is on, and shows and takes the decimal sign of the browser\'s language (a German one shows 1,6) while the setup keeps 1.6. It shows the size in force as its value - the one that was chosen, else the one Nino.css gives the role - so that the spinner counts from it, and a size equal to the one Nino.css gives is stored empty, so that the role goes on following its default.',
 				'de_DE' => 'Die Zahl wird auf drei Dezimalstellen gerundet (ein getipptes 1,25 bleibt 1,25). Das Feld zählt in Zehnteln, auf denen jede Grenze liegt, und zeigt und nimmt das Dezimalzeichen der Browsersprache (deutsch: 1,6), das Setup behält 1.6. Es zeigt die wirksame Größe als Wert – die gewählte, sonst die, die Nino.css der Rolle gibt –, damit der Spinner von ihr aus zählt, und eine Größe, die der von Nino.css entspricht, wird leer gespeichert, damit die Rolle weiter ihrer Vorgabe folgt.',
+			],
+			'Typefaces' => [
+				'en_US' => 'The loader. Installed lists the families this project has - each name set in its own face, with its weights (or "variable 100-900"), version and licence - and a button that removes one, which is off while a role of the saved setup or of the selection being edited uses the family (the roles are named). Available is the list of webfonts.getnino.dev, loaded only when its button is pressed: a search field, the categories as a strip, pages of 24 and, for each family, Install, or "installed", or "update to" the version of the list. Installing and removing happen at once and are no part of the draft; the line of the action bar says what was done, or why not.',
+				'de_DE' => 'Der Loader. Installiert nennt die Familien, die dieses Projekt hat – jeder Name in seiner eigenen Schrift gesetzt, mit Gewichten (oder „variabel 100-900“), Version und Lizenz – und einen Knopf, der eine entfernt und aus ist, solange eine Rolle des gespeicherten Setups oder der Auswahl, die gerade bearbeitet wird, die Familie nutzt (die Rollen werden genannt). Verfügbar ist die Liste von webfonts.getnino.dev, die erst geladen wird, wenn ihr Knopf gedrückt wird: ein Suchfeld, die Kategorien als Leiste, Seiten zu 24 und je Familie Installieren, „installiert“ oder „aktualisieren auf“ die Version der Liste. Installieren und Löschen geschehen sofort und gehören nicht zum Entwurf; die Zeile der Aktionsleiste sagt, was getan wurde oder warum nicht.',
+			],
+			'Where a typeface lands' => [
+				'en_US' => 'A family is installed whole - every weight and style it has - into assets/fonts/<slug>/ below the public root, with its font.json and its LICENSE and nothing else; an update replaces the whole directory. The selects of the Fonts tab list it from then on, for every role but the code, which is offered the monospace families only. A family with a weight axis answers light, normal and bold with 300, 500 and 800 where the axis has them, else with the nearer end. A family a role uses can be updated and not removed; a directory below assets/fonts/ that is no family is listed greyed, with the reason, and can be removed.',
+				'de_DE' => 'Eine Familie wird ganz installiert – jedes Gewicht und jeder Stil, den sie hat – nach assets/fonts/<slug>/ unterhalb des öffentlichen Verzeichnisses, mit ihrer font.json und ihrer LICENSE und sonst nichts; eine Aktualisierung ersetzt das ganze Verzeichnis. Die Auswahlen des Tabs Schriften führen sie von da an auf, für jede Rolle außer dem Code, dem nur die Monospace-Familien angeboten werden. Eine Familie mit Gewichtsachse antwortet auf leicht, normal und fett mit 300, 500 und 800, wo die Achse sie hat, sonst mit dem näheren Ende. Eine Familie, die eine Rolle nutzt, kann aktualisiert, aber nicht entfernt werden; ein Verzeichnis unter assets/fonts/, das keine Familie ist, steht ausgegraut mit dem Grund da und lässt sich entfernen.',
+			],
+			'Self-hosting and the licence' => [
+				'en_US' => 'The files are served by the project itself, so that no request to a third-party CDN leaves a visitor\'s browser. Only fonts whose licence allows redistribution and self-hosting are offered - OFL 1.1, Apache 2.0 and the Ubuntu Font Licence - and the licence text travels with the files and lies beside them. Each row of the list shows the licence with a link to where the font comes from. Only the workbench of whoever installs a family talks to the repository: the project\'s server fetches the list and an archive when a button is pressed, and the browser loads the preview of a family - a small font file - when its row comes into view. To let it, the feature adds the origin of the list\'s address to the font-src of the workbench\'s Content-Security-Policy (see the callback) and to nothing else; a preview from another origin stays in the face of the page, and everything else works.',
+				'de_DE' => 'Die Dateien liefert das Projekt selbst aus, damit aus dem Browser eines Besuchers keine Anfrage an ein fremdes CDN geht. Angeboten werden nur Schriften, deren Lizenz Weitergabe und Selbsthosting erlaubt – OFL 1.1, Apache 2.0 und die Ubuntu Font Licence –, und der Lizenztext reist mit den Dateien und liegt neben ihnen. Jede Zeile der Liste zeigt die Lizenz mit einem Link dorthin, woher die Schrift stammt. Nur die Workbench derjenigen, die eine Familie installiert, spricht mit dem Repository: Der Server des Projekts holt die Liste und ein Archiv, wenn ein Knopf gedrückt wird, und der Browser lädt die Vorschau einer Familie – eine kleine Schriftdatei –, wenn ihre Zeile ins Bild kommt. Dafür ergänzt das Feature die font-src der Content-Security-Policy der Workbench um die Herkunft der Adresse der Liste und um nichts sonst (siehe den Callback); eine Vorschau von einer anderen Herkunft bleibt in der Schrift der Seite, und alles andere funktioniert.',
+			],
+			'Typeface repository' => [
+				'en_US' => 'The list is a webfonts.json with a detached signature, checked with the repository\'s public key before anything in it is believed; an archive is checked against the size and the sha256 the signed list names and unpacked by the kernel\'s rules for an archive. Two settings: Typeface repository names the list (empty, or an address that is not https, switches Available off) and Repository public key the PEM key that signed it - empty means the key the feature carries, and as long as there is none, Available says that the repository has no key.',
+				'de_DE' => 'Die Liste ist eine webfonts.json mit abgetrennter Signatur, die mit dem öffentlichen Schlüssel des Repositorys geprüft wird, bevor irgendetwas darin geglaubt wird; ein Archiv wird gegen die Größe und den sha256 geprüft, die die signierte Liste nennt, und nach den Regeln des Kernels für ein Archiv entpackt. Zwei Einstellungen: Schrift-Repository nennt die Liste (leer oder keine https-Adresse schaltet Verfügbar ab) und Öffentlicher Schlüssel des Repositorys den PEM-Schlüssel, mit dem sie signiert ist – leer heißt: der Schlüssel, den das Feature mitbringt, und solange es keinen gibt, sagt Verfügbar, dass das Repository keinen Schlüssel hat.',
 			],
 			'Template of a tab' => [
 				'en_US' => 'Content, Buttons and Components each begin with the select of their template; the header and the footer are chosen on Global. The description of the chosen template stands under the select, and choosing another one draws the rows of the tab again - with the focus still on the select, so the arrow keys go on through the list.',
@@ -70,7 +86,12 @@ return [
 				'de_DE' => 'Die theme.css, die der Einrichtungsassistent mitbringt, ist das, was dieser Compiler an den Vorgaben schreibt – zwölf Abschnitte, jede Vorlage die erste, jeder Regler in der Mitte –, vom Ende ihres Kopfes an Byte für Byte. Der Kopf ist der des Kernels, und der Kernel erzeugt die Datei mit jeder Version neu (die nächste bringt die fünf Werte je Regler mit), damit das Aussehen, mit dem ein Projekt beginnt, und das, was Design kompiliert, eine Quelle haben. Der Rahmen jeder Fläche wird in der base.css (--color-border-<fläche>) und damit in der ausgelieferten Datei aus dem für diese Fläche gelösten zugewiesen: Linie, Badge und Markierung auf einer Alt-, Tint-, Dunkel-, Schwarz- oder Markenfläche übernehmen ihn. Die Schriften heißen in beiden Dateien Source Sans 3 und League Spartan. Die ausgelieferte Datei hat keinen Stempel des Compilers, deshalb nennt das Panel sie „Nicht von Design geschrieben“, und das erste Anwenden fragt nach, bevor es sie überschreibt.',
 			],
 		],
-		'callbacks' => [],
+		'callbacks' => [
+			'/nino/http/output' => [
+				'en_US' => 'Adds the origin of the typeface repository\'s address to the font-src of the workbench\'s Content-Security-Policy, so that the Typefaces tab can load the previews of the list. For the responses of /_admin only, and only while the setting Typeface repository names an https address; a page of the website keeps its policy as it is.',
+				'de_DE' => 'Ergänzt die font-src der Content-Security-Policy der Workbench um die Herkunft der Adresse des Schrift-Repositorys, damit der Tab Schriftarten die Vorschauen der Liste laden kann. Nur für Antworten von /_admin und nur, solange die Einstellung Schrift-Repository eine https-Adresse nennt; eine Seite der Website behält ihre Policy, wie sie ist.',
+			],
+		],
 		'install' => [],
 	],
 	'category'		=> 'ui',
@@ -104,5 +125,27 @@ return [
 	// replaced and the setup that went with them - which a backup carries too
 	// and a restore of one may simply replace
 	'data'				=> [ '/data/design.php', '/data/design-previous.php' ],
-	'settings'		=> [],
+	// Where the Typefaces tab reads the signed list of typefaces from, and the key that
+	// list has to be signed with. The two are the feature's own repository by default; a
+	// project that publishes typefaces of its own changes both
+	'settings'		=> [
+		'webfontsUrl' => [
+			'type'		=> 'url',
+			'label'		=> [ 'en_US' => 'Typeface repository', 'de_DE' => 'Schrift-Repository' ],
+			'hint'		=> [
+				'en_US' => 'Where the signed list of typefaces is published. The Typefaces tab loads it when asked and never on its own. Empty, or an address that is not https, switches the Available half of the tab off. A changed address reaches the previews after the page is reloaded.',
+				'de_DE' => 'Wo die signierte Liste der Schriftarten veröffentlicht ist. Der Tab Schriftarten lädt sie auf Knopfdruck und nie von selbst. Leer oder keine https-Adresse schaltet die Hälfte „Verfügbar“ des Tabs ab. Eine geänderte Adresse erreicht die Vorschauen nach dem Neuladen der Seite.',
+			],
+			'default'	=> 'https://webfonts.getnino.dev/webfonts.json',
+		],
+		'webfontsKey' => [
+			'type'		=> 'text',
+			'label'		=> [ 'en_US' => 'Repository public key', 'de_DE' => 'Öffentlicher Schlüssel des Repositorys' ],
+			'hint'		=> [
+				'en_US' => 'The PEM public key that signed the list, for a repository of your own. Empty means the feature\'s own.',
+				'de_DE' => 'Der öffentliche Schlüssel im PEM-Format, mit dem die Liste signiert ist, für ein eigenes Repository. Leer heißt: der des Features.',
+			],
+			'default'	=> '',
+		],
+	],
 ];

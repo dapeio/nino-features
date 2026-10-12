@@ -16,7 +16,16 @@ declare(strict_types=1);
  *											of the selects in both languages, the refusal to
  *											overwrite a file Design did not write, and that the theme.css
  *											the setup wizard delivers is the body the compiler writes at
- *											the defaults, byte for byte. Travels with the feature and
+ *											the defaults, byte for byte - and the typefaces: the signed
+ *											list of a repository read, checked against a key pair this
+ *											run makes and kept, a family installed whole from an archive
+ *											the test builds byte by byte (and each way an archive is
+ *											refused, by name), listed by Fonts, written into the sheet
+ *											with its files, removed while no role of the saved setup
+ *											uses it, the panel's three actions over all of it, and
+ *											the font-src the workbench's policy gets, for the
+ *											previews of the list.
+ *											Travels with the feature and
  *											runs against the checkout three levels up, or the one
  *											NINO_ROOT names (see tests/harness.php there). What the
  *											panel's own script draws is design-js-smoke.js beside this
@@ -43,6 +52,7 @@ use Nino\Modules\Design\Fonts;
 use Nino\Modules\Design\Preview;
 use Nino\Modules\Design\Previous;
 use Nino\Modules\Design\Setup;
+use Nino\Modules\Design\Webfonts;
 
 /**
  *	A stylesheet without its comments - the declarations of a file read the
@@ -311,6 +321,181 @@ function designKnobProblems( string $library, string $part, string $set ): array
 	return $problems;
 }
 
+/**
+ *	One ustar header - enough tar to build an archive PharData reads, and enough
+ *	to name what a real build never would: a "../", a link
+ *
+ *	@param		string		$name
+ *	@param		int				$size
+ *	@param		string		$type					'0' a file, '5' a directory, '2' a symbolic link, '1' a hard link
+ *	@param		string		$link					Where a link points
+ *
+ *	@return 	string
+ */
+function designTarHeader( string $name, int $size, string $type, string $link = '' ): string {
+
+	$header  = str_pad( $name, 100, "\0" );
+	$header .= "0000644\0". "0000000\0". "0000000\0";
+	$header .= str_pad( decoct( $size ), 11, '0', STR_PAD_LEFT ). "\0";
+	$header .= str_pad( decoct( 1767225600 ), 11, '0', STR_PAD_LEFT ). "\0";
+	$header .= '        '. $type. str_pad( $link, 100, "\0" ). "ustar\0". '00';
+	$header  = str_pad( $header, 512, "\0" );
+
+	$sum = 0;
+
+	for( $i = 0; $i < 512; $i++ )
+		$sum += ord( $header[$i] );
+
+	return substr( $header, 0, 148 ). str_pad( decoct( $sum ), 6, '0', STR_PAD_LEFT ). "\0 ". substr( $header, 156 );
+}
+
+/**
+ *	A .tar.gz out of name => content: a string is a file, null a directory,
+ *	[ 'link' => target ] a symbolic link, [ 'hardlink' => target ] a hard link
+ *
+ *	@param		array 		$entries
+ *
+ *	@return 	string
+ */
+function designTarGz( array $entries ): string {
+
+	$out = '';
+
+	foreach( $entries as $name => $content ) {
+
+		if( $content === null )
+			$out .= designTarHeader( (string) $name, 0, '5' );
+		else if( is_array( $content ) === true )
+			$out .= designTarHeader( (string) $name, 0, isset( $content['hardlink'] ) === true ? '1' : '2', (string) ( $content['link'] ?? $content['hardlink'] ) );
+		else
+			$out .= designTarHeader( (string) $name, strlen( $content ), '0' ). str_pad( $content, (int) ( ceil( strlen( $content ) / 512 ) * 512 ), "\0" );
+	}
+
+	return (string) gzencode( $out. str_repeat( "\0", 1024 ), 6 );
+}
+
+/**
+ *	The manifest of a family out of the files it has - a weight and a style each
+ *  (a weight is a number, or '100 900' for an axis) -, with the file names W1 gives
+ *	them: 400.woff2, 700-italic.woff2, 100-900.woff2
+ *
+ *	@param		string		$slug
+ *	@param		string		$family
+ *	@param		array 		$files				[ [ weight, style ], ... ]
+ *	@param		array 		$more					Fields that are not these (the version, the category, ...)
+ *
+ *	@return 	array
+ */
+function designManifest( string $slug, string $family, array $files, array $more = [] ): array {
+
+	$list 		= [];
+	$weights 	= [];
+	$styles 	= [];
+
+	foreach( $files as [ $weight, $style ] ) {
+		$list[] 									= [ 'weight' => $weight, 'style' => $style, 'file' => str_replace( ' ', '-', (string) $weight ). ( $style === 'italic' ? '-italic' : '' ). '.woff2' ];
+		$weights[(string) $weight] = $weight;
+		$styles[$style] 					= $style;
+	}
+
+	return array_replace( [
+		'slug' 			=> $slug,
+		'family' 		=> $family,
+		'category' 	=> 'sans',
+		'version' 	=> '1.0',
+		'license' 	=> 'OFL-1.1',
+		'source' 		=> 'https://fonts.test/'. $slug,
+		'weights' 	=> array_values( $weights ),
+		'styles' 		=> array_values( array_intersect( [ 'normal', 'italic' ], $styles ) ),
+		'files' 		=> $list,
+	], $more );
+}
+
+/**
+ *	What an archive of a family holds: the directory <slug>/, its font.json and LICENSE, and a woff2 file for
+ *	each file the manifest names - bytes of this run's own, beginning the way a woff2 file does
+ *
+ *	@param		array 		$manifest
+ *
+ *	@return 	array											name => content, for designTarGz()
+ */
+function designArchiveFiles( array $manifest ): array {
+
+	$slug = $manifest['slug'];
+
+	$entries = [
+		$slug. '/' 						=> null,
+		$slug. '/font.json' 	=> json_encode( $manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ). "\n",
+		$slug. '/LICENSE' 		=> 'The licence text of '. $manifest['family']. "\n",
+	];
+
+	foreach( $manifest['files'] as $file )
+		$entries[ $slug. '/'. $file['file'] ] = 'wOF2'. $slug. '/'. $file['file'];
+
+	return $entries;
+}
+
+/**
+ *	The entry of the list for an archive: the manifest, then where the archive and its preview are and
+ *	what the archive is
+ *
+ *	@param		array 		$manifest
+ *	@param		string		$archive			The bytes
+ *	@param		array 		$more					What is not this
+ *
+ *	@return 	array
+ */
+function designListEntry( array $manifest, string $archive, array $more = [] ): array {
+
+	return array_replace( $manifest + [
+		'archive' 	=> 'https://webfonts.test/'. $manifest['slug']. '-'. $manifest['version']. '.tar.gz',
+		'sha256' 		=> hash( 'sha256', $archive ),
+		'size' 			=> strlen( $archive ),
+		'preview' 	=> 'https://webfonts.test/'. $manifest['slug']. '-'. $manifest['version']. '-preview.woff2',
+		'released' 	=> '2026-10-12',
+	], $more );
+}
+
+/**
+ *	The list document, as webfonts.json is written
+ *
+ *	@param		array 		$entries
+ *	@param		array 		$over					Keys of the document
+ *
+ *	@return 	string
+ */
+function designList( array $entries, array $over = [] ): string {
+
+	return (string) json_encode( $over + [ 'format' => 1, 'generated' => '2026-10-12T09:30:00Z', 'families' => $entries ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
+}
+
+/**
+ *	A signature the way bin/build.php of the repository and `openssl dgst -sha256 -sign` write it: DER, base64
+ *
+ *	@param		string		$data
+ *	@param		mixed			$privateKey		A key, or PEM
+ *
+ *	@return 	string
+ */
+function designSign( string $data, mixed $privateKey ): string {
+
+	openssl_sign( $data, $signature, $privateKey, OPENSSL_ALGO_SHA256 );
+
+	return base64_encode( $signature );
+}
+
+/**
+ *	Whether the staging directory of an install holds nothing
+ *
+ *	@param		string		$staging
+ *
+ *	@return 	bool
+ */
+function designStagingClean( string $staging ): bool {
+
+	return is_dir( $staging ) === false || ( scandir( $staging ) ?: [] ) === [ '.', '..' ];
+}
+
 // The two markers: base.css numbers its two halves with dashes, the compiled sheet its sections with equals signs
 const DESIGN_BASE_MARKER = '/* ---- %d. %s ---- */';
 
@@ -351,7 +536,8 @@ $says = static fn( string $entry, string $locale ): string => \Nino\Features::lo
 $foreignWord = static fn( string $locale ): string => (string) ( ( (array) include __DIR__. '/../text/'. $locale. '.php' )['[[/_admin/design/state/short/foreign]]'] ?? '' );
 
 check( 'the manual describes the tabs, the size of a role, the preview, its frame and the action bar, and the look the wizard delivers',
-	array_diff( [ 'Design', 'Global', 'Root size and width', 'Fonts', 'Size of a role', 'Content, Buttons, Components', 'Knobs of a template', 'Colours', 'Preview', 'Frame and action bar', 'The delivered look' ], array_keys( (array) ( $feature['manual']['panel'] ?? [] ) ) ) === [] );
+	array_diff( [ 'Design', 'Global', 'Root size and width', 'Fonts', 'Size of a role', 'Content, Buttons, Components', 'Knobs of a template', 'Colours', 'Preview', 'Frame and action bar', 'The delivered look',
+		'Typefaces', 'Where a typeface lands', 'Self-hosting and the licence', 'Typeface repository' ], array_keys( (array) ( $feature['manual']['panel'] ?? [] ) ) ) === [] );
 // Features::manifest() holds a line of the manual to 1000 characters; it would refuse the whole file, and the first check of this suite says so
 check( '...every line of it a line and not a paragraph: at most 1000 bytes in either language, as the kernel reads a manifest',
 	array_filter( (array) ( $feature['manual']['panel'] ?? [] ), static fn( array $lines ): bool => array_filter( $lines, static fn( string $line ): bool => strlen( $line ) > 1000 ) !== [] ) === [] );
@@ -477,6 +663,44 @@ check( '...and that the field of a size rounds to three decimals, steps by a ten
 	&& str_contains( $says( 'Fonts', 'en_US' ). $says( 'Size of a role', 'en_US' ), '0.75' ) === false && str_contains( $says( 'Fonts', 'en_US' ). $says( 'Size of a role', 'en_US' ), '0.625' ) === false
 	&& str_contains( $says( 'Fonts', 'de_DE' ). $says( 'Size of a role', 'de_DE' ), '0,75' ) === false && str_contains( $says( 'Fonts', 'de_DE' ). $says( 'Size of a role', 'de_DE' ), '0,625' ) === false );
 
+// The Typefaces tab: its entries quote the panel's own words for the halves and the buttons, so that the manual cannot name what the panel does not
+check( 'the manual says what the Typefaces tab is: the loader, with the installed families and the list of the repository - the halves and the buttons by the words the panel draws them with - the list loaded only when its button is pressed, and an install and a removal made at once and no part of the draft - in both languages',
+	str_contains( $says( 'Typefaces', 'en_US' ), 'The loader. '. $panelWord( 'typefaces/installed/title', 'en_US' ). ' lists the families this project has' ) === true
+	&& str_contains( $says( 'Typefaces', 'en_US' ), $panelWord( 'typefaces/available/title', 'en_US' ). ' is the list of webfonts.getnino.dev, loaded only when its button is pressed' ) === true
+	&& str_contains( $says( 'Typefaces', 'en_US' ), 'which is off while a role of the saved setup or of the selection being edited uses the family (the roles are named)' ) === true
+	&& str_contains( $says( 'Typefaces', 'en_US' ), 'pages of 24 and, for each family, '. $panelWord( 'typefaces/available/install', 'en_US' ). ', or "'. $panelWord( 'typefaces/available/installed', 'en_US' ). '", or "'. strstr( $panelWord( 'typefaces/available/update', 'en_US' ), ' %s', true ). '" the version of the list' ) === true
+	&& str_contains( $says( 'Typefaces', 'en_US' ), 'happen at once and are no part of the draft' ) === true
+	&& str_contains( $says( 'Typefaces', 'de_DE' ), 'Der Loader. '. $panelWord( 'typefaces/installed/title', 'de_DE' ). ' nennt die Familien, die dieses Projekt hat' ) === true
+	&& str_contains( $says( 'Typefaces', 'de_DE' ), $panelWord( 'typefaces/available/title', 'de_DE' ). ' ist die Liste von webfonts.getnino.dev, die erst geladen wird, wenn ihr Knopf gedrückt wird' ) === true
+	&& str_contains( $says( 'Typefaces', 'de_DE' ), 'aus ist, solange eine Rolle des gespeicherten Setups oder der Auswahl, die gerade bearbeitet wird, die Familie nutzt (die Rollen werden genannt)' ) === true
+	&& str_contains( $says( 'Typefaces', 'de_DE' ), 'Seiten zu 24 und je Familie '. $panelWord( 'typefaces/available/install', 'de_DE' ). ', „'. $panelWord( 'typefaces/available/installed', 'de_DE' ). '“ oder „'. strstr( $panelWord( 'typefaces/available/update', 'de_DE' ), ' %s', true ). '“ die Version der Liste' ) === true
+	&& str_contains( $says( 'Typefaces', 'de_DE' ), $panelWord( 'typefaces/available/install', 'de_DE' ). ' und '. $panelWord( 'typefaces/installed/remove', 'de_DE' ). ' geschehen sofort und gehören nicht zum Entwurf' ) === true );
+check( '...where a typeface lands: the whole family into assets/fonts/<slug>/ with its font.json and its LICENSE, an update replacing the directory, a family a role uses updated and not removed, a weight axis answering 300, 500 and 800 - and the Fonts entry that the selects list what is installed - in both languages',
+	str_contains( $says( 'Where a typeface lands', 'en_US' ), 'A family is installed whole - every weight and style it has - into assets/fonts/<slug>/ below the public root, with its font.json and its LICENSE and nothing else; an update replaces the whole directory' ) === true
+	&& str_contains( $says( 'Where a typeface lands', 'en_US' ), 'answers light, normal and bold with 300, 500 and 800 where the axis has them' ) === true
+	&& str_contains( $says( 'Where a typeface lands', 'en_US' ), 'A family a role uses can be updated and not removed' ) === true
+	&& str_contains( $says( 'Where a typeface lands', 'de_DE' ), 'Eine Familie wird ganz installiert – jedes Gewicht und jeder Stil, den sie hat – nach assets/fonts/<slug>/ unterhalb des öffentlichen Verzeichnisses, mit ihrer font.json und ihrer LICENSE und sonst nichts; eine Aktualisierung ersetzt das ganze Verzeichnis' ) === true
+	&& str_contains( $says( 'Where a typeface lands', 'de_DE' ), 'antwortet auf leicht, normal und fett mit 300, 500 und 800, wo die Achse sie hat' ) === true
+	&& str_contains( $says( 'Where a typeface lands', 'de_DE' ), 'Eine Familie, die eine Rolle nutzt, kann aktualisiert, aber nicht entfernt werden' ) === true
+	&& str_contains( $says( 'Fonts', 'en_US' ), 'every typeface installed on the Typefaces tab, which the selects list as well' ) === true
+	&& str_contains( $says( 'Fonts', 'de_DE' ), 'jede Schriftart, die im Tab Schriftarten installiert wurde und die die Auswahlen ebenfalls auflisten' ) === true );
+
+check( '...the self-hosting and the licence: the project serves the files, so no visitor\'s browser asks a third party; only the workbench of whoever installs talks to the repository - the server for the list and an archive, when a button is pressed; the browser for the previews - and the workbench\'s policy has to allow its fonts for the previews to show, else the names stay in the face of the page and the rest works - in both languages',
+	str_contains( $says( 'Self-hosting and the licence', 'en_US' ), 'so that no request to a third-party CDN leaves a visitor\'s browser' ) === true
+	&& str_contains( $says( 'Self-hosting and the licence', 'en_US' ), 'Only the workbench of whoever installs a family talks to the repository: the project\'s server fetches the list and an archive when a button is pressed, and the browser loads the preview of a family - a small font file - when its row comes into view' ) === true
+	&& str_contains( $says( 'Self-hosting and the licence', 'en_US' ), 'To let it, the feature adds the origin of the list\'s address to the font-src of the workbench\'s Content-Security-Policy (see the callback) and to nothing else; a preview from another origin stays in the face of the page, and everything else works' ) === true
+	&& str_contains( $says( 'Self-hosting and the licence', 'en_US' ), 'must allow' ) === false && str_contains( $says( 'Self-hosting and the licence', 'de_DE' ), 'muss' ) === false
+	&& str_contains( $says( 'Self-hosting and the licence', 'de_DE' ), 'damit aus dem Browser eines Besuchers keine Anfrage an ein fremdes CDN geht' ) === true
+	&& str_contains( $says( 'Self-hosting and the licence', 'de_DE' ), 'Nur die Workbench derjenigen, die eine Familie installiert, spricht mit dem Repository: Der Server des Projekts holt die Liste und ein Archiv, wenn ein Knopf gedrückt wird, und der Browser lädt die Vorschau einer Familie – eine kleine Schriftdatei –, wenn ihre Zeile ins Bild kommt' ) === true
+	&& str_contains( $says( 'Self-hosting and the licence', 'de_DE' ), 'Dafür ergänzt das Feature die font-src der Content-Security-Policy der Workbench um die Herkunft der Adresse der Liste und um nichts sonst (siehe den Callback); eine Vorschau von einer anderen Herkunft bleibt in der Schrift der Seite, und alles andere funktioniert' ) === true );
+check( '...and the callback: the one on /nino/http/output, which adds the origin of the repository\'s address to the font-src of the workbench\'s policy - for the responses of /_admin only, and only while the setting names an https address - in both languages',
+	array_keys( (array) ( $feature['manual']['callbacks'] ?? [] ) ) === [ '/nino/http/output' ]
+	&& str_contains( \Nino\Features::localized( $feature['manual']['callbacks']['/nino/http/output'], 'en_US' ), 'Adds the origin of the typeface repository\'s address to the font-src of the workbench\'s Content-Security-Policy' ) === true
+	&& str_contains( \Nino\Features::localized( $feature['manual']['callbacks']['/nino/http/output'], 'en_US' ), 'For the responses of /_admin only, and only while the setting Typeface repository names an https address' ) === true
+	&& str_contains( \Nino\Features::localized( $feature['manual']['callbacks']['/nino/http/output'], 'de_DE' ), 'Ergänzt die font-src der Content-Security-Policy der Workbench um die Herkunft der Adresse des Schrift-Repositorys' ) === true
+	&& str_contains( \Nino\Features::localized( $feature['manual']['callbacks']['/nino/http/output'], 'de_DE' ), 'Nur für Antworten von /_admin und nur, solange die Einstellung Schrift-Repository eine https-Adresse nennt' ) === true
+	&& $feature['settings']['webfontsUrl']['label']['en_US'] === 'Typeface repository' && $feature['settings']['webfontsUrl']['label']['de_DE'] === 'Schrift-Repository' );
+
 echo "\nThe library it ships\n";
 
 check( 'five parts: the header and the footer bring markup, the content, the buttons and the components are a stylesheet each',
@@ -601,7 +825,7 @@ $compileProblems = [];
 foreach( Setup::PARTS as $part => $kind )
 	foreach( Setup::available( $library, $part ) as $set ) {
 
-		$sheet = Compiler::compile( Setup::normalize( [ 'parts' => [ $part => $set ] ], $library ), $library );
+		$sheet = Compiler::compile( $appData, Setup::normalize( $appData, [ 'parts' => [ $part => $set ] ], $library ), $library );
 
 		if( str_contains( $sheet, $part. ': '. $set ) === false )
 			$compileProblems[] = $part. '/'. $set;
@@ -677,7 +901,7 @@ else {
 echo "\nThe setup, held against the library that is there\n";
 
 $notes = [];
-$setup = Setup::normalize( [], $library, $notes );
+$setup = Setup::normalize( $appData, [], $library, $notes );
 
 check( 'a setup out of nothing is every part on its first set, the delivered size, the width and the animation Nino.css has, and no note',
 	$notes === [] && array_keys( $setup ) === Setup::KEYS
@@ -690,7 +914,7 @@ check( '...every named knob of the three tabs in the middle, the fonts the wizar
 	&& $setup['fonts'] === Fonts::DEFAULTS && $setup['colours'] === Colours::normalize( [] ) && $setup['colours']['mode'] === 'auto' );
 
 $notes = [];
-$setup = Setup::normalize( [ 'parts' => [ 'content' => 'v99', 'header' => 'v3', 'buttons' => [ 'set' => 'v2' ], 'atf' => 'v1' ] ], $library, $notes );
+$setup = Setup::normalize( $appData, [ 'parts' => [ 'content' => 'v99', 'header' => 'v3', 'buttons' => [ 'set' => 'v2' ], 'atf' => 'v1' ] ], $library, $notes );
 
 check( 'a part naming a set the library does not have falls back to the first one, and says which',
 	$setup['parts']['content'] === 'v1' && $setup['parts']['header'] === 'v3'
@@ -700,7 +924,7 @@ check( '...a part that is none is dropped and named, and a set given in the shap
 	&& $setup['parts']['buttons'] === 'v1' && count( $notes ) === 2 );
 
 $notes = [];
-$setup = Setup::normalize( [ 'step' => 'more', 'knobs' => [ 'spacing' => 'more' ], 'future' => true ], $library, $notes );
+$setup = Setup::normalize( $appData, [ 'step' => 'more', 'knobs' => [ 'spacing' => 'more' ], 'future' => true ], $library, $notes );
 
 check( 'what the model before this one stored is dropped and named, and nothing of it is carried: a global position is no tab, a step is no key',
 	count( $notes ) === 3 && str_contains( implode( ' ', $notes ), '"step"' ) === true && str_contains( implode( ' ', $notes ), '"future"' ) === true
@@ -710,7 +934,7 @@ check( 'what the model before this one stored is dropped and named, and nothing 
 $empty = ninoSandboxDir( $appData ). '/nothing';
 mkdir( $empty, 0755, true );
 $notes = [];
-$setup = Setup::normalize( [], $empty, $notes );
+$setup = Setup::normalize( $appData, [], $empty, $notes );
 
 check( 'a library with nothing in it answers every part with none, and says so for each',
 	array_values( $setup['parts'] ) === array_fill( 0, count( Setup::PARTS ), '' ) && count( $notes ) === count( Setup::PARTS ) );
@@ -739,7 +963,7 @@ check( '...kind() says which, and a knob there is none of is of no kind; range()
 /*	A knob is a position of its own tab, held to the range of its kind: -2 to +2 for a scale, -1 to +1 for a choice.
 	Whatever else arrives - a word, an array, a number beyond the ends - is the middle, which is the template as it is	*/
 $notes = [];
-$setup = Setup::normalize( [ 'knobs' => [
+$setup = Setup::normalize( $appData, [ 'knobs' => [
 	'content' => [ 'hero-title' => -2, 'hero-text' => '1', 'quiet' => 1.4, 'loud' => 2, 'section-space' => 'more', 'card-space' => [ 1 ], 'corners' => null, 'shadow' => true, 'border' => 3, 'nonsense' => 1 ],
 	'components' => [ 'scale' => -2, 'zebra' => 2, 'labels' => -1 ],
 	'buttons' => 'more',
@@ -776,7 +1000,7 @@ check( 'the model keeps numbers and the library keeps words, and word() is the o
 	[ Setup::word( -2 ), Setup::word( -1 ), Setup::word( 0 ), Setup::word( 1 ), Setup::word( 2 ), Setup::word( 7 ), Setup::word( -7 ) ] === [ 'least', 'less', 'default', 'more', 'most', 'most', 'least' ]
 	&& Setup::STEPS === [ 'least', 'less', 'default', 'more', 'most' ] );
 
-$setup = Setup::normalize( [ 'knobs' => [ 'content' => [ 'corners' => 2, 'border' => -2, 'shadow' => 1 ], 'components' => [ 'zebra' => 1, 'labels' => -1 ] ] ], $library );
+$setup = Setup::normalize( $appData, [ 'knobs' => [ 'content' => [ 'corners' => 2, 'border' => -2, 'shadow' => 1 ], 'components' => [ 'zebra' => 1, 'labels' => -1 ] ] ], $library );
 
 check( 'step() says where a knob stands, as the word its stylesheet declares it under - one of five for a scale, one of the inner three for a choice',
 	Setup::step( $setup, 'content', 'corners' ) === 'most' && Setup::step( $setup, 'content', 'border' ) === 'least'
@@ -788,36 +1012,36 @@ check( '...and passes the kind of the knob on, so that a choice at 2, which a se
 	&& Setup::step( [ 'knobs' => [ 'components' => [ 'zebra' => 2, 'scale' => 2 ] ] ], 'components', 'scale' ) === 'most' );
 
 // The root size, the width and the animation of the page
-$setup = Setup::normalize( [ 'size' => 1, 'width' => '2', 'motion' => [ 'effect' => 'flip', 'strength' => 'hard', 'speed' => 'slow' ] ], $library );
+$setup = Setup::normalize( $appData, [ 'size' => 1, 'width' => '2', 'motion' => [ 'effect' => 'flip', 'strength' => 'hard', 'speed' => 'slow' ] ], $library );
 
 check( 'the size, the width and the animation are kept as they were chosen', $setup['size'] === 1 && $setup['width'] === 2
 	&& $setup['motion'] === [ 'effect' => 'flip', 'strength' => 'hard', 'speed' => 'slow' ] );
-check( '...width -2, -1, 0, 1 and 2 are the five widths', array_map( static fn( int $width ): int => Setup::normalize( [ 'width' => $width ], $library )['width'], [ -2, -1, 0, 1, 2 ] ) === [ -2, -1, 0, 1, 2 ] );
+check( '...width -2, -1, 0, 1 and 2 are the five widths', array_map( static fn( int $width ): int => Setup::normalize( $appData, [ 'width' => $width ], $library )['width'], [ -2, -1, 0, 1, 2 ] ) === [ -2, -1, 0, 1, 2 ] );
 check( '...the size is one of five, -2 to +2, each kept as it was chosen - and the middle one is what a setup out of nothing has; Setup::SIZES is keyed by them, with the five pairs',
 	Setup::SIZES === [ -2 => [ '70%', '78.75%' ], -1 => [ '85%', '95.625%' ], 0 => [ '100%', '112.5%' ], 1 => [ '115%', '129.375%' ], 2 => [ '130%', '146.25%' ] ]
-	&& array_map( static fn( int $size ): int => Setup::normalize( [ 'size' => $size ], $library )['size'], array_keys( Setup::SIZES ) ) === [ -2, -1, 0, 1, 2 ]
-	&& Setup::normalize( [], $library )['size'] === 0 );
+	&& array_map( static fn( int $size ): int => Setup::normalize( $appData, [ 'size' => $size ], $library )['size'], array_keys( Setup::SIZES ) ) === [ -2, -1, 0, 1, 2 ]
+	&& Setup::normalize( $appData, [], $library )['size'] === 0 );
 
 $notes = [];
-$setup = Setup::normalize( [ 'size' => 3, 'width' => 3, 'motion' => [ 'effect' => 'spin', 'strength' => 'loud', 'speed' => 'warp', 'delay' => 1 ] ], $library, $notes );
+$setup = Setup::normalize( $appData, [ 'size' => 3, 'width' => 3, 'motion' => [ 'effect' => 'spin', 'strength' => 'loud', 'speed' => 'warp', 'delay' => 1 ] ], $library, $notes );
 
 check( 'a size, a width, an effect, a strength or a speed that is none of the choices is the default, not an error - 3 is no size or width, and neither is a word: the xs to xl of the model before are mapped to nothing',
 	$setup['size'] === 0 && $setup['width'] === 0 && $setup['motion'] === [ 'effect' => '', 'strength' => '', 'speed' => '' ]
-	&& array_filter( [ 'XL', 'xxl', 'xxs', 'xs', 's', 'm', 'l', 'xl', 'medium', '', ' s' ], static fn( string $size ): bool => Setup::normalize( [ 'size' => $size, 'width' => $size ], $library )['size'] !== 0 ) === []
-	&& array_filter( [ 3, -3, 2.6, -2.6, 99 ], static fn( int|float $size ): bool => Setup::normalize( [ 'size' => $size, 'width' => $size ], $library )['size'] !== 0 || Setup::normalize( [ 'width' => $size ], $library )['width'] !== 0 ) === [] );
+	&& array_filter( [ 'XL', 'xxl', 'xxs', 'xs', 's', 'm', 'l', 'xl', 'medium', '', ' s' ], static fn( string $size ): bool => Setup::normalize( $appData, [ 'size' => $size, 'width' => $size ], $library )['size'] !== 0 ) === []
+	&& array_filter( [ 3, -3, 2.6, -2.6, 99 ], static fn( int|float $size ): bool => Setup::normalize( $appData, [ 'size' => $size, 'width' => $size ], $library )['size'] !== 0 || Setup::normalize( $appData, [ 'width' => $size ], $library )['width'] !== 0 ) === [] );
 check( '...and a key of the animation that is none of its three is dropped and named', count( $notes ) === 1 && str_contains( $notes[0], '"delay"' ) === true );
 
 // None of what comes off the wire may raise: an array cast to a string is a warning the kernel treats as fatal
 ninoWarnings();
-$setup = Setup::normalize( [ 'size' => [ 'l' ], 'width' => [ 1 ], 'motion' => 'flip', 'parts' => 'v1', 'knobs' => 'more', 'fonts' => 'bold', 'colours' => 'dark', 'compiled' => 'yes' ], $library );
+$setup = Setup::normalize( $appData, [ 'size' => [ 'l' ], 'width' => [ 1 ], 'motion' => 'flip', 'parts' => 'v1', 'knobs' => 'more', 'fonts' => 'bold', 'colours' => 'dark', 'compiled' => 'yes' ], $library );
 
 check( 'every key of the model, posted as the wrong type, is its default and raises nothing', ninoWarnings() === []
 	&& array_diff_key( $setup, [ 'compiled' => 1 ] ) === array_diff_key( Setup::defaults( $library ), [ 'compiled' => 1 ] ) && $setup['compiled'] === [] );
-check( '...and the record of what was compiled is carried when it is one', Setup::normalize( [ 'compiled' => [ 'at' => 'then' ] ], $library )['compiled'] === [ 'at' => 'then' ] );
+check( '...and the record of what was compiled is carried when it is one', Setup::normalize( $appData, [ 'compiled' => [ 'at' => 'then' ] ], $library )['compiled'] === [ 'at' => 'then' ] );
 
 // The five font roles
 $notes = [];
-$setup = Setup::normalize( [ 'fonts' => [
+$setup = Setup::normalize( $appData, [ 'fonts' => [
 	'title' => [ 'family' => 'system-serif', 'weight' => 'light', 'uppercase' => true, 'size' => '2.40' ],
 	'subtitle' => [ 'family' => 'nowhere', 'weight' => 'heavy', 'size' => 'big', 'colour' => 'red' ],
 	'text' => [ 'family' => '', 'size' => 1.125 ],
@@ -833,20 +1057,20 @@ check( '...a family, a weight or a size that is none starts from what the role h
 	$setup['fonts']['subtitle'] === Fonts::DEFAULTS['subtitle'] && $setup['fonts']['button'] === Fonts::DEFAULTS['button']
 	&& $setup['fonts']['code']['weight'] === 'bold' && $setup['fonts']['code']['uppercase'] === false && $setup['fonts']['code']['size'] === '0.9' );
 check( '...a size outside the bounds of its role is held at the nearer bound, and one with more than three decimals is rounded to three: the setup keeps what the compiler can write',
-	array_map( static fn( string $role ): string => Setup::normalize( [ 'fonts' => [ $role => [ 'size' => 99 ] ] ], $library )['fonts'][$role]['size'], Fonts::ROLES ) === [ '4', '2.5', '1.5', '1.5', '1.3' ]
-	&& array_map( static fn( string $role ): string => Setup::normalize( [ 'fonts' => [ $role => [ 'size' => '0.1' ] ] ], $library )['fonts'][$role]['size'], Fonts::ROLES ) === [ '1', '0.8', '0.8', '0.6', '0.6' ]
-	&& Setup::normalize( [ 'fonts' => [ 'text' => [ 'size' => '1.23456' ] ] ], $library )['fonts']['text']['size'] === '1.235'
-	&& Setup::normalize( [ 'fonts' => [ 'text' => [ 'size' => [ 1 ] ] ] ], $library )['fonts']['text']['size'] === '' );
+	array_map( static fn( string $role ): string => Setup::normalize( $appData, [ 'fonts' => [ $role => [ 'size' => 99 ] ] ], $library )['fonts'][$role]['size'], Fonts::ROLES ) === [ '4', '2.5', '1.5', '1.5', '1.3' ]
+	&& array_map( static fn( string $role ): string => Setup::normalize( $appData, [ 'fonts' => [ $role => [ 'size' => '0.1' ] ] ], $library )['fonts'][$role]['size'], Fonts::ROLES ) === [ '1', '0.8', '0.8', '0.6', '0.6' ]
+	&& Setup::normalize( $appData, [ 'fonts' => [ 'text' => [ 'size' => '1.23456' ] ] ], $library )['fonts']['text']['size'] === '1.235'
+	&& Setup::normalize( $appData, [ 'fonts' => [ 'text' => [ 'size' => [ 1 ] ] ] ], $library )['fonts']['text']['size'] === '' );
 check( '...and a family the role\'s select does not offer is none: the code is given the monospace ones, of which there are none with files yet - the system stack is its empty family - while the other roles keep a system stack',
-	$setup['fonts']['code']['family'] === '' && Setup::normalize( [ 'fonts' => [ 'code' => [ 'family' => 'league-spartan' ] ] ], $library )['fonts']['code']['family'] === ''
-	&& Setup::normalize( [ 'fonts' => [ 'title' => [ 'family' => 'system-mono' ] ] ], $library )['fonts']['title']['family'] === 'system-mono'
-	&& array_filter( Fonts::ROLES, static fn( string $role ): bool => in_array( Setup::normalize( [ 'fonts' => [ $role => [ 'family' => 'source-sans-3' ] ] ], $library )['fonts'][$role]['family'], Fonts::options( $role ), true ) === false ) === [] );
+	$setup['fonts']['code']['family'] === '' && Setup::normalize( $appData, [ 'fonts' => [ 'code' => [ 'family' => 'league-spartan' ] ] ], $library )['fonts']['code']['family'] === ''
+	&& Setup::normalize( $appData, [ 'fonts' => [ 'title' => [ 'family' => 'system-mono' ] ] ], $library )['fonts']['title']['family'] === 'system-mono'
+	&& array_filter( Fonts::ROLES, static fn( string $role ): bool => in_array( Setup::normalize( $appData, [ 'fonts' => [ $role => [ 'family' => 'source-sans-3' ] ] ], $library )['fonts'][$role]['family'], Fonts::options( $appData, $role ), true ) === false ) === [] );
 check( '...and a role that is none, or a key of a role that is none of its four, is dropped and named',
 	count( $notes ) === 2 && str_contains( implode( ' ', $notes ), 'no font role "heading"' ) === true && str_contains( implode( ' ', $notes ), '"colour"' ) === true
 	&& array_keys( $setup['fonts'] ) === Fonts::ROLES );
 
 // The palette is the Colours class's to normalise, the mode with it
-$setup = Setup::normalize( [ 'colours' => [ 'primary' => '#8b1d3f', 'mode' => 'dark', 'contrast' => 5 ] ], $library );
+$setup = Setup::normalize( $appData, [ 'colours' => [ 'primary' => '#8b1d3f', 'mode' => 'dark', 'contrast' => 5 ] ], $library );
 
 check( 'the palette is Colours\' to normalise, and the mode is one of its words', $setup['colours'] === Colours::normalize( [ 'primary' => '#8b1d3f', 'mode' => 'dark', 'contrast' => 5 ] )
 	&& $setup['colours']['mode'] === 'dark' && $setup['colours']['contrast'] === 5 );
@@ -856,8 +1080,8 @@ check( '...a scale of the palette has five positions, 1 to 5, the third the fram
 	&& Colours::normalize( [ 'saturation' => 6, 'contrast' => 0, 'depth' => -1, 'harmony' => 5, 'temperature' => 5 ] ) === Colours::normalize( [] )
 	&& Colours::normalize( [] )['saturation'] === 3 && Colours::normalize( [] )['contrast'] === 3 && Colours::normalize( [] )['depth'] === 3 );
 check( '...a mode that is none of the three, or not a word at all, is Auto',
-	Setup::normalize( [ 'colours' => [ 'mode' => 'twilight' ] ], $library )['colours']['mode'] === 'auto'
-	&& Setup::normalize( [ 'colours' => [ 'mode' => [ 'dark' ] ] ], $library )['colours']['mode'] === 'auto'
+	Setup::normalize( $appData, [ 'colours' => [ 'mode' => 'twilight' ] ], $library )['colours']['mode'] === 'auto'
+	&& Setup::normalize( $appData, [ 'colours' => [ 'mode' => [ 'dark' ] ] ], $library )['colours']['mode'] === 'auto'
 	&& Colours::MODES === [ 'auto', 'light', 'dark' ] );
 
 /*	The first version that was used is this one: a file of another format is
@@ -867,7 +1091,7 @@ check( '...a mode that is none of the three, or not a word at all, is Auto',
 	size are no numbers, a knob it had is dropped with the note, and a position of the
 	palette is read as the position of five it now is	*/
 $notes = [];
-$former = Setup::normalize( [ 'size' => 'm', 'knobs' => [ 'buttons' => [ 'small' => 1 ] ], 'colours' => [ 'contrast' => 2 ] ], $library, $notes );
+$former = Setup::normalize( $appData, [ 'size' => 'm', 'knobs' => [ 'buttons' => [ 'small' => 1 ] ], 'colours' => [ 'contrast' => 2 ] ], $library, $notes );
 
 check( 'a setup written by Design 2.0.0 is read by the rules of this version and mapped to nothing - no stored setup of it exists: its size "m" is the middle, its buttons knob "small" is dropped and named, and its contrast 2 is position 2 of 5 now, kept as that',
 	$former['size'] === 0 && isset( $former['knobs']['buttons']['small'] ) === false && $former['knobs']['buttons'] === array_fill_keys( array_keys( Setup::KNOBS['buttons'] ), 0 )
@@ -879,16 +1103,16 @@ $setupFile = \Nino\Filesystem::path( $appData, Setup::PATH );
 $notes = [];
 $read = Setup::read( $appData, $library, $notes );
 
-check( 'a file written in another format is read as the defaults, and the note says it is not read and the defaults stand in until the next save', $read === Setup::normalize( [], $library )
+check( 'a file written in another format is read as the defaults, and the note says it is not read and the defaults stand in until the next save', $read === Setup::normalize( $appData, [], $library )
 	&& count( $notes ) === 1 && str_contains( $notes[0], 'another format' ) === true && str_contains( $notes[0], 'data/design.php' ) === true
 	&& str_contains( $notes[0], 'it is not read' ) === true && str_contains( $notes[0], 'until the next save' ) === true );
 
 \Nino\Filesystem::putFileContent( $appData, Setup::PATH, [ 'size' => 'l' ] );
 $notes = [];
 
-check( '...so is one that names no format at all', Setup::read( $appData, $library, $notes ) === Setup::normalize( [], $library ) && count( $notes ) === 1 );
+check( '...so is one that names no format at all', Setup::read( $appData, $library, $notes ) === Setup::normalize( $appData, [], $library ) && count( $notes ) === 1 );
 
-$written = Setup::normalize( [ 'size' => 1, 'width' => -2, 'parts' => [ 'header' => 'v3' ], 'knobs' => [ 'buttons' => [ 'space' => 2 ] ] ], $library );
+$written = Setup::normalize( $appData, [ 'size' => 1, 'width' => -2, 'parts' => [ 'header' => 'v3' ], 'knobs' => [ 'buttons' => [ 'space' => 2 ] ] ], $library );
 $notes = [];
 
 check( 'a file in this format is read as it was written, without a note', Setup::write( $appData, $written ) === true
@@ -898,7 +1122,7 @@ check( 'a file in this format is read as it was written, without a note', Setup:
 @unlink( $setupFile );
 $notes = [];
 
-check( 'and with no file at all it is the defaults, without a note', Setup::read( $appData, $library, $notes ) === Setup::normalize( [], $library ) && $notes === [] );
+check( 'and with no file at all it is the defaults, without a note', Setup::read( $appData, $library, $notes ) === Setup::normalize( $appData, [], $library ) && $notes === [] );
 
 echo "\nThe fonts: what each role can be, and what is written for it\n";
 
@@ -908,20 +1132,20 @@ $mono = Fonts::STACK_MONO;
 check( 'the five roles, in the order they are shown and written in', Fonts::ROLES === [ 'title', 'subtitle', 'text', 'button', 'code' ]
 	&& array_keys( Fonts::DEFAULTS ) === Fonts::ROLES && array_keys( Fonts::BOUNDS ) === Fonts::ROLES && array_keys( Fonts::INHERITED ) === Fonts::ROLES );
 check( 'a family is a name, a category and the files it comes in - the three system stacks have none',
-	array_keys( Fonts::families() ) === [ 'source-sans-3', 'league-spartan', 'system-sans', 'system-serif', 'system-mono' ]
-	&& array_filter( Fonts::families(), static fn( array $family ): bool => isset( $family['name'], $family['category'], $family['weights'], $family['files'] ) === false ) === []
-	&& array_keys( array_filter( Fonts::families(), static fn( array $family ): bool => $family['files'] === [] ) ) === [ 'system-sans', 'system-serif', 'system-mono' ] );
+	array_keys( Fonts::families( $appData ) ) === [ 'source-sans-3', 'league-spartan', 'system-sans', 'system-serif', 'system-mono' ]
+	&& array_filter( Fonts::families( $appData ), static fn( array $family ): bool => isset( $family['name'], $family['category'], $family['weights'], $family['files'] ) === false ) === []
+	&& array_keys( array_filter( Fonts::families( $appData ), static fn( array $family ): bool => $family['files'] === [] ) ) === [ 'system-sans', 'system-serif', 'system-mono' ] );
 check( 'each role is offered the families that suit it, the empty one first - the code only a monospace that has files, which no system stack has',
-	Fonts::options( 'title' ) === [ '', 'source-sans-3', 'league-spartan', 'system-sans', 'system-serif', 'system-mono' ]
-	&& Fonts::options( 'text' ) === Fonts::options( 'title' ) && Fonts::options( 'code' ) === [ '' ] );
+	Fonts::options( $appData, 'title' ) === [ '', 'source-sans-3', 'league-spartan', 'system-sans', 'system-serif', 'system-mono' ]
+	&& Fonts::options( $appData, 'text' ) === Fonts::options( $appData, 'title' ) && Fonts::options( $appData, 'code' ) === [ '' ] );
 check( 'a webface is its name in quotes and then the stack of its role, a system family its own stack, and no family nothing',
-	Fonts::line( 'title', 'league-spartan' ) === '"League Spartan", '. $sans && Fonts::line( 'code', 'league-spartan' ) === '"League Spartan", '. $mono
-	&& Fonts::line( 'text', 'system-mono' ) === $mono && Fonts::line( 'text', 'system-serif' ) === 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif'
-	&& Fonts::line( 'text', '' ) === '' && Fonts::line( 'text', 'nowhere' ) === '' );
+	Fonts::line( $appData, 'title', 'league-spartan' ) === '"League Spartan", '. $sans && Fonts::line( $appData, 'code', 'league-spartan' ) === '"League Spartan", '. $mono
+	&& Fonts::line( $appData, 'text', 'system-mono' ) === $mono && Fonts::line( $appData, 'text', 'system-serif' ) === 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif'
+	&& Fonts::line( $appData, 'text', '' ) === '' && Fonts::line( $appData, 'text', 'nowhere' ) === '' );
 check( 'a weight word is the weight a family has nearest to it, and as a keyword where it has none to choose from',
-	[ Fonts::weight( 'source-sans-3', 'light' ), Fonts::weight( 'source-sans-3', 'normal' ), Fonts::weight( 'source-sans-3', 'bold' ) ] === [ '400', '400', '700' ]
-	&& [ Fonts::weight( 'league-spartan', 'light' ), Fonts::weight( 'league-spartan', 'normal' ), Fonts::weight( 'league-spartan', 'bold' ) ] === [ '700', '700', '700' ]
-	&& [ Fonts::weight( 'system-sans', 'light' ), Fonts::weight( 'system-sans', 'normal' ), Fonts::weight( '', 'bold' ), Fonts::weight( '', 'heavy' ) ] === [ '300', 'normal', 'bold', 'normal' ] );
+	[ Fonts::weight( $appData, 'source-sans-3', 'light' ), Fonts::weight( $appData, 'source-sans-3', 'normal' ), Fonts::weight( $appData, 'source-sans-3', 'bold' ) ] === [ '400', '400', '700' ]
+	&& [ Fonts::weight( $appData, 'league-spartan', 'light' ), Fonts::weight( $appData, 'league-spartan', 'normal' ), Fonts::weight( $appData, 'league-spartan', 'bold' ) ] === [ '700', '700', '700' ]
+	&& [ Fonts::weight( $appData, 'system-sans', 'light' ), Fonts::weight( $appData, 'system-sans', 'normal' ), Fonts::weight( $appData, '', 'bold' ), Fonts::weight( $appData, '', 'heavy' ) ] === [ '300', 'normal', 'bold', 'normal' ] );
 
 // No family has a tie today - a webface that brings 400 and 600 would - so the choice is held where it can be: of two weights as near as each other the lighter wins
 $nearest = new ReflectionMethod( Fonts::class, 'nearest' );
@@ -964,8 +1188,8 @@ check( '...and it answers a size it answers to again: the bounds are sizes of th
 echo "\nWhat the compiler produces\n";
 
 $notes	= [];
-$setup	= Setup::normalize( [], $library );
-$css		= Compiler::compile( $setup, $library, $notes );
+$setup	= Setup::normalize( $appData, [], $library );
+$css		= Compiler::compile( $appData, $setup, $library, $notes );
 
 check( 'compiling a default setup reports nothing missing', $notes === [] );
 check( 'the sheet opens with a header naming what made it and forbidding hand edits', str_starts_with( $css, '/*' ) === true
@@ -1011,7 +1235,7 @@ $pairProblems = [];
 
 foreach( Setup::SIZES as $size => $pair ) {
 
-	$sized = Compiler::compile( Setup::normalize( [ 'size' => $size ], $library ), $library );
+	$sized = Compiler::compile( $appData, Setup::normalize( $appData, [ 'size' => $size ], $library ), $library );
 
 	if( designSection( $sized, 5, Compiler::SECTION ) !== sprintf( Compiler::SECTION, 5, 'the root size' ). "\n:root { --nino-base-size: ". $pair[0]. "; }\n@media (min-width: 768px) { :root { --nino-base-size: ". $pair[1]. "; } }\n\n"
 		|| str_contains( designSection( $sized, 1, Compiler::SECTION ), '--nino-base-size: 100%;' ) === false )
@@ -1021,8 +1245,8 @@ foreach( Setup::SIZES as $size => $pair ) {
 check( 'the size knob moves the pair, not one half of it: for each of the five, section 5 has its pair and the tokens above it the delivered one'
 	. ( $pairProblems === [] ? '' : ' - not so for '. implode( ', ', $pairProblems ) ), $pairProblems === [] );
 
-$xsSheet = designSection( Compiler::compile( Setup::normalize( [ 'size' => -2 ], $library ), $library ), 5, Compiler::SECTION );
-$xlSheet = designSection( Compiler::compile( Setup::normalize( [ 'size' => 2 ], $library ), $library ), 5, Compiler::SECTION );
+$xsSheet = designSection( Compiler::compile( $appData, Setup::normalize( $appData, [ 'size' => -2 ], $library ), $library ), 5, Compiler::SECTION );
+$xlSheet = designSection( Compiler::compile( $appData, Setup::normalize( $appData, [ 'size' => 2 ], $library ), $library ), 5, Compiler::SECTION );
 
 check( '...-2 is 70% below the breakpoint and 78.75% from it, +2 130% and 146.25% - and nothing of the delivered 100% and 112.5% stays in section 5',
 	str_contains( $xsSheet, '--nino-base-size: 70%;' ) === true && str_contains( $xsSheet, '--nino-base-size: 78.75%;' ) === true
@@ -1041,7 +1265,7 @@ check( '...the steps are 15% of the default apart below the breakpoint and 1.125
 
 // A library that is not complete is compiled around, and the notes say what is not in the sheet
 $notes = [];
-$partial = Compiler::compile( Setup::normalize( [], $empty ), $empty, $notes );
+$partial = Compiler::compile( $appData, Setup::normalize( $appData, [], $empty ), $empty, $notes );
 check( 'a library with no base.css and no templates compiles to the sections it can, and says what it lacks: the tokens, and each template',
 	array_keys( array_map( 'trim', ( static function( string $sheet ): array {
 		preg_match_all( '/\/\* ==== (\d+)\. (.+?) ==== \*\//', $sheet, $found, PREG_SET_ORDER );
@@ -1057,7 +1281,7 @@ $richRaw = [
 	'colours' => [ 'mode' => 'dark', 'primary' => '#8b1d3f' ],
 ];
 $notes	= [];
-$rich		= Compiler::compile( Setup::normalize( $richRaw, $library ), $library, $notes );
+$rich		= Compiler::compile( $appData, Setup::normalize( $appData, $richRaw, $library ), $library, $notes );
 $header	= substr( $rich, 0, (int) strpos( $rich, '*/' ) );
 
 check( 'a setup that stands off the defaults compiles all the same, and reports nothing', $notes === [] );
@@ -1075,7 +1299,7 @@ check( '...a knob the chosen template does not answer to is not in the sheet at 
 
 echo "\nThe type: the five font roles, written where they were chosen\n";
 
-$typeOf = static fn( array $raw ): string => designPlain( designSection( Compiler::compile( Setup::normalize( $raw, $library ), $library ), 3, Compiler::SECTION ) );
+$typeOf = static fn( array $raw ): string => designPlain( designSection( Compiler::compile( $appData, Setup::normalize( $appData, $raw, $library ), $library ), 3, Compiler::SECTION ) );
 $rolesIn = static fn( string $type ): array => designDeclarations( designBlock( $type, ':root {' ) );
 
 $type		= $typeOf( [] );
@@ -1132,9 +1356,796 @@ else {
 		array_filter( Fonts::ROLES, static fn( string $role ): bool => Fonts::BOUNDS[$role][0] >= (float) Fonts::INHERITED[$role] || Fonts::BOUNDS[$role][1] <= (float) Fonts::INHERITED[$role] ) === [] );
 }
 
+echo "\nThe typefaces: the signed list, a family installed whole, and what lists it\n";
+
+/*	No network, no key of the owner's, no real fonts: the stub of \Nino\Fetch answers from a map of
+	urls, a key pair is made for this run, and the archives are built here byte by byte - so that a
+	hostile one can be built as well. Everything lands in the public root of the sandbox	*/
+$webKeys = openssl_pkey_new( [ 'private_key_type' => OPENSSL_KEYTYPE_EC, 'curve_name' => 'prime256v1' ] );
+openssl_pkey_export( $webKeys, $webPrivate );
+$webPublic = openssl_pkey_get_details( $webKeys )['key'];
+
+$strangerKeys = openssl_pkey_new( [ 'private_key_type' => OPENSSL_KEYTYPE_EC, 'curve_name' => 'prime256v1' ] );
+openssl_pkey_export( $strangerKeys, $strangerPrivate );
+
+$remote 		= [];
+$requests 	= [];
+
+$appData['./nino/fetch/stub'] = static function( string $url, array $options ) use ( &$remote, &$requests ): array {
+
+	$requests[] = [ 'url' => $url, 'options' => $options ];
+
+	if( isset( $remote[$url] ) === false )
+		return [ 'ok' => false, 'status' => 404, 'error' => 'http 404' ];
+
+	if( strlen( $remote[$url] ) > $options['maxBytes'] )
+		return [ 'ok' => false, 'status' => 200, 'error' => 'the answer exceeds '. $options['maxBytes']. ' bytes' ];
+
+	return [ 'ok' => true, 'status' => 200, 'body' => $remote[$url] ];
+};
+
+/*	A list under the default url, signed with the key of this run unless it is told otherwise */
+$publish = static function( array $entries, ?string $signWith = null ) use ( &$remote, $webPrivate ): string {
+
+	$json 												= designList( $entries );
+	$remote[Webfonts::DEFAULT_URL] 				= $json;
+	$remote[Webfonts::DEFAULT_URL. '.sig'] = $signWith ?? designSign( $json, $webPrivate );
+
+	return $json;
+};
+
+$inter 		= designManifest( 'inter', 'Inter', [ [ 400, 'normal' ], [ 700, 'normal' ], [ 400, 'italic' ], [ 700, 'italic' ] ], [ 'version' => '4.1', 'source' => 'https://github.com/rsms/inter' ] );
+$flex 		= designManifest( 'roboto-flex', 'Roboto Flex', [ [ '100 900', 'normal' ], [ '100 900', 'italic' ] ], [ 'version' => '3.0' ] );
+$firaCode = designManifest( 'fira-code', 'Fira Code', [ [ 400, 'normal' ] ], [ 'category' => 'mono', 'license' => 'Apache-2.0' ] );
+
+$archiveInter 	= designTarGz( designArchiveFiles( $inter ) );
+$archiveFlex 		= designTarGz( designArchiveFiles( $flex ) );
+$archiveFira 		= designTarGz( designArchiveFiles( $firaCode ) );
+
+$entryInter 	= designListEntry( $inter, $archiveInter );
+$entryFlex 		= designListEntry( $flex, $archiveFlex );
+$entryFira 		= designListEntry( $firaCode, $archiveFira );
+
+$remote[$entryInter['archive']] = $archiveInter;
+$remote[$entryFlex['archive']] 	= $archiveFlex;
+$remote[$entryFira['archive']] 	= $archiveFira;
+
+$staging 	= \Nino\Filesystem::path( $appData, Webfonts::STAGING );
+$cacheFile = \Nino\Filesystem::path( $appData, Webfonts::CACHE );
+$fontsDir = Fonts::dir( $appData );
+
+// --- The settings -----------------------------------------------------------------
+
+check( 'the manifest declares the two settings of the repository - its address, a url, which is Nino\'s own by default, and the public key that signs it, a text, empty by default',
+	( $feature['settings']['webfontsUrl']['type'] ?? '' ) === 'url' && ( $feature['settings']['webfontsUrl']['default'] ?? '' ) === 'https://webfonts.getnino.dev/webfonts.json'
+	&& ( $feature['settings']['webfontsKey']['type'] ?? '' ) === 'text' && ( $feature['settings']['webfontsKey']['default'] ?? null ) === ''
+	&& array_keys( $feature['settings'] ) === [ 'webfontsUrl', 'webfontsKey' ] );
+check( '...Features::setting() answers them with those defaults, and Webfonts reads the address from the first',
+	\Nino\Features::setting( $appData, 'design', 'webfontsUrl' ) === 'https://webfonts.getnino.dev/webfonts.json' && \Nino\Features::setting( $appData, 'design', 'webfontsKey' ) === ''
+	&& Webfonts::DEFAULT_URL === 'https://webfonts.getnino.dev/webfonts.json' && Webfonts::url( $appData ) === Webfonts::DEFAULT_URL );
+check( '...an address that is not https is none that can be fetched - the setting takes it, the repository answers with none - and an empty one switches the repository off',
+	\Nino\Features::saveSettings( $appData, 'design', [ 'webfontsUrl' => 'http://webfonts.test/webfonts.json' ] ) === [] && Webfonts::url( $appData ) === ''
+	&& \Nino\Features::saveSettings( $appData, 'design', [ 'webfontsUrl' => '' ] ) === [] && Webfonts::url( $appData ) === ''
+	&& \Nino\Features::saveSettings( $appData, 'design', [ 'webfontsUrl' => 'https://elsewhere.test/list.json' ] ) === [] && Webfonts::url( $appData ) === 'https://elsewhere.test/list.json'
+	&& \Nino\Features::saveSettings( $appData, 'design', [ 'webfontsUrl' => Webfonts::DEFAULT_URL ] ) === [] );
+check( '...and the key is the setting\'s, trimmed, else the one in the class', \Nino\Features::saveSettings( $appData, 'design', [ 'webfontsKey' => "\n". $webPublic. "\n  " ] ) === []
+	&& Webfonts::key( $appData ) === trim( $webPublic ) && \Nino\Features::saveSettings( $appData, 'design', [ 'webfontsKey' => '' ] ) === [] && Webfonts::key( $appData ) === Webfonts::PUBLIC_KEY );
+
+// The key the owner pastes in is theirs to make: while there is none, nothing is believed, and the refusal says where to put it
+if( Webfonts::PUBLIC_KEY === '' ) {
+
+	$requests = [];
+
+	check( 'with no key in the class and none in the setting the list is refused before a request is made, and the reason says where the key goes - the refusal is about the key',
+		Webfonts::fetch( $appData, $kind ) === 'no public key for the repository - set it in the feature\'s settings or in Webfonts::PUBLIC_KEY' && $requests === [] && $kind === 'nokey' );
+}
+else
+	echo "  --  the class carries a public key, so the refusal for a missing key is not tried\n";
+
+check( 'a repository switched off is not asked, and the refusal is about that',
+	\Nino\Features::saveSettings( $appData, 'design', [ 'webfontsUrl' => '', 'webfontsKey' => $webPublic ] ) === [] && Webfonts::fetch( $appData, $kind ) === 'the typeface repository is switched off' && $requests === [] && $kind === 'off'
+	&& \Nino\Features::saveSettings( $appData, 'design', [ 'webfontsUrl' => Webfonts::DEFAULT_URL ] ) === [] );
+
+// --- The workbench's policy: the previews of the list ------------------------------------
+
+/*	The Typefaces tab sets each name of the list in the preview its family publishes, loaded by the browser from the
+	repository - and the policy the workbench is sent has no font-src, so default-src 'self' refuses it. The feature
+	widens font-src by the origin of the list's address, in the output phase, for the workbench's own responses	*/
+$workbench = [ 'REQUEST_METHOD' => 'GET', 'REQUEST_URI' => '/_admin' ];
+\Nino\Http::request( $appData, $workbench );
+$sentPolicy = (string) $workbench['/nino/http/response']['header']['Content-Security-Policy'];
+
+$appData['/nino/modules'] = [ '\\Nino\\Modules\\Design' ];
+\Nino\Modules::callModules( $appData, 'init' );
+
+/**
+ *	The policy a response of $uri ends up with: the output callbacks run over a response that carries $policy
+ *
+ *	@param		string		$uri
+ *	@param		mixed			$policy				The header value the response carries before the callbacks
+ *
+ *	@return 	mixed											The header value after them
+ */
+$policyOf = static function( string $uri, mixed $policy ) use ( &$appData, $workbench ): mixed {
+
+	$request = $workbench;
+	$request['/nino/http/request']['uri'] = $uri;
+	$request['/nino/http/response']['uri'] = $uri;
+	$request['/nino/http/response']['header']['Content-Security-Policy'] = $policy;
+	\Nino\Callbacks::doCallbacks( $appData, '/nino/http/output', $request );
+
+	return $request['/nino/http/response']['header']['Content-Security-Policy'];
+};
+
+check( 'the feature hooks the output phase, where the policy is final: init() registers one callback, on /nino/http/output',
+	in_array( [ \Nino\Modules\Design::class, 'callbackOutput' ], array_merge( ...( $appData['./nino/callbacks']['/nino/http/output'] ?? [ [] ] ) ), true ) === true
+	&& count( array_merge( ...( $appData['./nino/callbacks']['/nino/http/output'] ?? [ [] ] ) ) ) === 1 );
+check( 'the policy the workbench is sent has a default-src and no font-src - the case this exists for',
+	str_contains( $sentPolicy, "default-src 'self'" ) === true && str_contains( $sentPolicy, 'font-src' ) === false );
+check( 'a response of /_admin, and of what is below it, names the origin of the list\'s address in a font-src of its own, built from the default-src - and nothing else of the policy is touched',
+	$policyOf( '/_admin', $sentPolicy ) === $sentPolicy. "; font-src 'self' https://webfonts.getnino.dev" && $policyOf( '/_admin/design/webfonts/list', $sentPolicy ) === $sentPolicy. "; font-src 'self' https://webfonts.getnino.dev"
+	&& $policyOf( '/_admin/', $sentPolicy ) === $sentPolicy. "; font-src 'self' https://webfonts.getnino.dev" );
+check( '...a page of the website keeps its policy byte for byte - and so does one that only begins with the same letters',
+	$policyOf( '/', $sentPolicy ) === $sentPolicy && $policyOf( '/about', $sentPolicy ) === $sentPolicy && $policyOf( '/_administrator', $sentPolicy ) === $sentPolicy && $policyOf( '/blog/_admin', $sentPolicy ) === $sentPolicy );
+
+\Nino\Features::saveSettings( $appData, 'design', [ 'webfontsUrl' => '' ] );
+$off = $policyOf( '/_admin', $sentPolicy );
+\Nino\Features::saveSettings( $appData, 'design', [ 'webfontsUrl' => 'http://webfonts.test/webfonts.json' ] );
+$notHttps = $policyOf( '/_admin', $sentPolicy );
+\Nino\Features::saveSettings( $appData, 'design', [ 'webfontsUrl' => 'https://203.0.113.5/webfonts.json' ] );
+$byNumber = $policyOf( '/_admin', $sentPolicy );
+
+check( 'a repository switched off adds nothing - no address, an address that is not https, an address that is a number and no name',
+	$off === $sentPolicy && $notHttps === $sentPolicy && $byNumber === $sentPolicy );
+
+\Nino\Features::saveSettings( $appData, 'design', [ 'webfontsUrl' => 'HTTPS://Fonts.Example.org:8443/lists/webfonts.json?token=abc' ] );
+
+check( '...the repository of a project\'s own is the origin that is named, as the setting says it: the scheme and the host in lower case, the port kept, no path and no query',
+	$policyOf( '/_admin', $sentPolicy ) === $sentPolicy. "; font-src 'self' https://fonts.example.org:8443" );
+
+\Nino\Features::saveSettings( $appData, 'design', [ 'webfontsUrl' => Webfonts::DEFAULT_URL ] );
+
+$withFontSrc = "default-src 'self'; font-src https://cdn.example; img-src *";
+
+check( 'an existing font-src is extended in place, never given a second directive - and an origin it lists already is not added again, in whatever case',
+	$policyOf( '/_admin', $withFontSrc ) === "default-src 'self'; font-src https://cdn.example https://webfonts.getnino.dev; img-src *"
+	&& $policyOf( '/_admin', "default-src 'self'; font-src HTTPS://WEBFONTS.GETNINO.DEV" ) === "default-src 'self'; font-src HTTPS://WEBFONTS.GETNINO.DEV" );
+check( '...a default-src that lists more than \'self\' is carried over rather than narrowed to \'self\', and one that has the origin already gives a policy that stays',
+	$policyOf( '/_admin', "default-src 'self' https://cdn.example" ) === "default-src 'self' https://cdn.example; font-src 'self' https://cdn.example https://webfonts.getnino.dev"
+	&& $policyOf( '/_admin', "default-src 'self' https://webfonts.getnino.dev" ) === "default-src 'self' https://webfonts.getnino.dev" );
+check( '...a font-src of \'none\' or with no source at all, and a default-src of \'none\' or with none, is the project\'s decision and stays - and a policy with no default-src is unrestricted already, and creating a font-src would restrict it',
+	$policyOf( '/_admin', "default-src 'self'; font-src 'none'" ) === "default-src 'self'; font-src 'none'" && $policyOf( '/_admin', "default-src 'self'; font-src; img-src *" ) === "default-src 'self'; font-src; img-src *"
+	&& $policyOf( '/_admin', "default-src 'none'; img-src *" ) === "default-src 'none'; img-src *" && $policyOf( '/_admin', "default-src; img-src *" ) === "default-src; img-src *"
+	&& $policyOf( '/_admin', "img-src *; style-src 'self'" ) === "img-src *; style-src 'self'" );
+check( '...a response with no policy, or one that is not a string, is left alone',
+	$policyOf( '/_admin', '' ) === '' && $policyOf( '/_admin', [ 'not' => 'a policy' ] ) === [ 'not' => 'a policy' ] );
+
+unset( $appData['./nino/callbacks']['/nino/http/output'], $appData['/nino/modules'] );
+
+// --- The list: what it is made of ---------------------------------------------------
+
+$parsed = Webfonts::parse( designList( [ $entryInter, $entryFlex, $entryFira ] ) );
+
+check( 'a list in the shape the repository writes is read: format 1, when it was made, and every family with its fourteen fields - the nine of the manifest, the archive with its digest and size, the preview and the day',
+	is_array( $parsed ) === true && $parsed['format'] === 1 && $parsed['generated'] === '2026-10-12T09:30:00Z' && $parsed['families'] === [ $entryInter, $entryFlex, $entryFira ]
+	&& array_keys( $entryInter ) === [ 'slug', 'family', 'category', 'version', 'license', 'source', 'weights', 'styles', 'files', 'archive', 'sha256', 'size', 'preview', 'released' ]
+	&& array_slice( array_keys( $entryInter ), 0, 9 ) === Webfonts::MANIFEST );
+check( '...a key it does not know is ignored, in an entry and in the document, so that a feature written before a field reads a list that has it - and a digest in capitals is the digest',
+	Webfonts::parse( designList( [ $entryInter + [ 'tags' => [ 'ui' ] ], array_replace( $entryFlex, [ 'sha256' => strtoupper( $entryFlex['sha256'] ) ] ) ], [ 'next' => true ] ) )['families'] === [ $entryInter, $entryFlex ] );
+check( '...a list with no family in it is a list', Webfonts::parse( designList( [] ) )['families'] === [] );
+
+$cases = [
+	'a licence that is none of the three'												=> [ 'license' => 'GPL-3.0' ],
+	'a licence in lower case'																		=> [ 'license' => 'ofl-1.1' ],
+	'a name with a "<" in it'																		=> [ 'family' => 'In<ter' ],
+	'a name with a quote in it'																	=> [ 'family' => 'Inter\' }' ],
+	'a name with a space at its end'														=> [ 'family' => 'Inter ' ],
+	'a name that begins with a dot'															=> [ 'family' => '.Inter' ],
+	'a name that begins with a hyphen'														=> [ 'family' => '-Inter' ],
+	'a name that begins with a space'														=> [ 'family' => ' Inter' ],
+	'a name that is nothing'																		=> [ 'family' => '' ],
+	'a name of 65 characters'																		=> [ 'family' => str_repeat( 'n', 65 ) ],
+	'a name that is no string'																	=> [ 'family' => [ 'Inter' ] ],
+	'a slug with a capital'																			=> [ 'slug' => 'Inter' ],
+	'a slug with two hyphens in a row'													=> [ 'slug' => 'in--ter' ],
+	'a slug of 65 characters'																		=> [ 'slug' => str_repeat( 's', 65 ) ],
+	'a slug that climbs'																				=> [ 'slug' => '../inter' ],
+	'a size over the limit'																			=> [ 'size' => Webfonts::MAX_ARCHIVE_BYTES + 1 ],
+	'a size of nothing'																					=> [ 'size' => 0 ],
+	'a size that is a string'																		=> [ 'size' => '1000' ],
+	'a category that is none of the six'												=> [ 'category' => 'script' ],
+	'a version with a slash'																		=> [ 'version' => '4/1' ],
+	'a version of 33 characters'																=> [ 'version' => str_repeat( '1', 33 ) ],
+	'a source that is not https'																=> [ 'source' => 'http://github.com/rsms/inter' ],
+	'an archive that is not https'															=> [ 'archive' => 'http://webfonts.test/inter-4.1.tar.gz' ],
+	'an archive with credentials in its address'								=> [ 'archive' => 'https://user:pw@webfonts.test/inter-4.1.tar.gz' ],
+	'a preview that is not an address'													=> [ 'preview' => 'inter-4.1-preview.woff2' ],
+	'a digest that is no digest'																=> [ 'sha256' => 'abc' ],
+	'a digest of 64 characters that are not hex'								=> [ 'sha256' => str_repeat( 'g', 64 ) ],
+	'a day that is none'																				=> [ 'released' => '2026-13-45' ],
+	'a day that is not a day'																		=> [ 'released' => 'yesterday' ],
+	'a weight of 950'																						=> [ 'files' => [ [ 'weight' => 950, 'style' => 'normal', 'file' => '950.woff2' ] ], 'weights' => [ 950 ], 'styles' => [ 'normal' ] ],
+	'a weight of 50'																						=> [ 'files' => [ [ 'weight' => 50, 'style' => 'normal', 'file' => '50.woff2' ] ], 'weights' => [ 50 ], 'styles' => [ 'normal' ] ],
+	'an axis that runs backwards'																=> [ 'files' => [ [ 'weight' => '900 100', 'style' => 'normal', 'file' => '900-100.woff2' ] ], 'weights' => [ '900 100' ], 'styles' => [ 'normal' ] ],
+	'an axis that is no range'																	=> [ 'files' => [ [ 'weight' => '400 400', 'style' => 'normal', 'file' => '400-400.woff2' ] ], 'weights' => [ '400 400' ], 'styles' => [ 'normal' ] ],
+	'a weight that is a string of one number'										=> [ 'files' => [ [ 'weight' => '400', 'style' => 'normal', 'file' => '400.woff2' ] ], 'weights' => [ '400' ], 'styles' => [ 'normal' ] ],
+	'a file named after another weight'													=> [ 'files' => [ [ 'weight' => 400, 'style' => 'normal', 'file' => '700.woff2' ] ], 'weights' => [ 400 ], 'styles' => [ 'normal' ] ],
+	'a file that is no name W1 gives'														=> [ 'files' => [ [ 'weight' => 400, 'style' => 'normal', 'file' => 'regular.woff2' ] ], 'weights' => [ 400 ], 'styles' => [ 'normal' ] ],
+	'a file that climbs'																				=> [ 'files' => [ [ 'weight' => 400, 'style' => 'normal', 'file' => '../400.woff2' ] ], 'weights' => [ 400 ], 'styles' => [ 'normal' ] ],
+	'a style that is none'																			=> [ 'files' => [ [ 'weight' => 400, 'style' => 'oblique', 'file' => '400-oblique.woff2' ] ], 'weights' => [ 400 ], 'styles' => [ 'oblique' ] ],
+	'one file twice'																						=> [ 'files' => [ [ 'weight' => 400, 'style' => 'normal', 'file' => '400.woff2' ], [ 'weight' => 400, 'style' => 'normal', 'file' => '400.woff2' ] ], 'weights' => [ 400 ], 'styles' => [ 'normal' ] ],
+	'weights that are not those of the files'										=> [ 'weights' => [ 400 ] ],
+	'a weight twice in the weights'															=> [ 'weights' => [ 400, 400, 700 ] ],
+	'styles that are not those of the files'										=> [ 'styles' => [ 'normal' ] ],
+	'no files'																									=> [ 'files' => [] ],
+	'files that are an object'																	=> [ 'files' => [ 'a' => [ 'weight' => 400, 'style' => 'normal', 'file' => '400.woff2' ] ] ],
+	'weights that are no list'																	=> [ 'weights' => 400 ],
+];
+
+$unread = [];
+
+foreach( $cases as $why => $change )
+	if( is_string( Webfonts::parse( designList( [ array_replace( $entryInter, $change ) ] ) ) ) === false )
+		$unread[] = $why;
+
+check( 'a list with one bad entry is refused whole, whatever is wrong with it - each of these '. count( $cases ). ' ways an entry can be wrong'. ( $unread === [] ? '' : ' - not so for: '. implode( ', ', $unread ) ), $unread === [] );
+
+$unnamed = [];
+
+foreach( array_keys( $entryInter ) as $field ) {
+
+	$bad = Webfonts::parse( designList( [ array_diff_key( $entryInter, [ $field => 1 ] ) ] ) );
+
+	if( is_string( $bad ) === false )
+		$unnamed[] = $field;
+}
+
+check( '...a missing field is one of them, for each of the fourteen'. ( $unnamed === [] ? '' : ' - not so for: '. implode( ', ', $unnamed ) ), $unnamed === [] );
+
+$twice = Webfonts::parse( designList( [ $entryInter, $entryFlex, array_replace( $entryFira, [ 'slug' => 'inter', 'files' => $entryInter['files'], 'weights' => $entryInter['weights'], 'styles' => $entryInter['styles'] ] ) ] ) );
+
+check( '...so are two entries of one slug, and the reason names the entry and the slug', is_string( $twice ) === true && str_contains( $twice, 'entry 2' ) === true && str_contains( $twice, '"inter"' ) === true );
+check( '...a reason names the entry and the field, so that the owner who made the list can find it',
+	str_contains( (string) Webfonts::parse( designList( [ $entryFlex, array_replace( $entryInter, [ 'license' => 'MIT' ] ) ] ) ), 'typeface list entry 1: "license" must be one of OFL-1.1, Apache-2.0, UFL-1.0' ) === true );
+check( '...a document of another format, one that is no json, one with no list of families and one whose families are an object are none',
+	Webfonts::parse( designList( [ $entryInter ], [ 'format' => 2 ] ) ) === 'the typeface list has format 2, this feature reads format 1'
+	&& Webfonts::parse( 'families: none' ) === 'the typeface list is not valid json'
+	&& Webfonts::parse( (string) json_encode( [ 'format' => 1 ] ) ) === 'the typeface list names no families'
+	&& is_string( Webfonts::parse( (string) json_encode( [ 'format' => 1, 'families' => [ 'inter' => $entryInter ] ] ) ) ) === true
+	&& is_string( Webfonts::parse( '[]' ) ) === true && is_string( Webfonts::parse( '"inter"' ) ) === true );
+
+// --- The list: fetched, verified, kept ---------------------------------------------------
+
+\Nino\Features::saveSettings( $appData, 'design', [ 'webfontsKey' => $webPublic ] );
+
+$json 			= $publish( [ $entryInter, $entryFlex, $entryFira ] );
+$requests 	= [];
+$kind 			= 'left over from a refusal';
+$fetched 		= Webfonts::fetch( $appData, $kind );
+
+check( 'fetch() makes two requests - the list, and its signature at the same address with .sig on the end - and answers the families, and a refusal of none',
+	is_array( $fetched ) === true && $fetched === [ $entryInter, $entryFlex, $entryFira ] && $kind === ''
+	&& array_column( $requests, 'url' ) === [ Webfonts::DEFAULT_URL, Webfonts::DEFAULT_URL. '.sig' ] );
+check( '...the list may be a megabyte, the signature a few bytes, and nobody waits the default for either longer than it asks for',
+	$requests[0]['options']['maxBytes'] === 1024 * 1024 && $requests[1]['options']['maxBytes'] === 4096 && Webfonts::MAX_LIST_BYTES === 1024 * 1024 );
+check( '...the limits of the catalogue are the limits here: 20 MB packed, 50 MB unpacked, 5000 entries',
+	Webfonts::MAX_ARCHIVE_BYTES === 20 * 1024 * 1024 && Webfonts::MAX_UNPACKED_BYTES === 50 * 1024 * 1024 && Webfonts::MAX_ENTRIES === 5000 );
+
+$cached = Webfonts::cached( $appData );
+
+check( '...and keeps what it read in data/design-webfonts.php, which cached() reads back without a request: when it was fetched, under which address, the families',
+	is_file( $cacheFile ) === true && str_ends_with( $cacheFile, '/data/design-webfonts.php' ) === true && is_array( $cached ) === true && $cached['families'] === $fetched
+	&& $cached['url'] === Webfonts::DEFAULT_URL && abs( $cached['fetched'] - time() ) < 5 && array_keys( $cached ) === [ 'fetched', 'url', 'families' ] );
+
+$requests = [];
+Webfonts::cached( $appData );
+
+check( '...reading the cache asks nobody for anything, and with no cache there is nothing: null', $requests === [] && ( static function( array $appData ): bool {
+	@unlink( \Nino\Filesystem::path( $appData, Webfonts::CACHE ) );
+	unset( $appData['./nino/filesystem/cache'] );
+	return Webfonts::cached( $appData ) === null;
+} )( $appData ) );
+
+// A byte that is not the signed one
+Webfonts::fetch( $appData );
+$remote[Webfonts::DEFAULT_URL] = str_replace( '"version": "4.1"', '"version": "9.9"', $json );
+
+check( 'a byte of the list that is not the one that was signed is refused, the refusal is about the signature, and the list that was kept stays',
+	Webfonts::fetch( $appData, $kind ) === 'the typeface list signature does not verify' && $kind === 'signature' && ( Webfonts::cached( $appData )['families'] ?? [] ) === $fetched );
+
+$publish( [ $entryInter ], designSign( $json, $strangerPrivate ) );
+
+check( '...a list signed with another key is refused, and so is a signature that is none - both about the signature', Webfonts::fetch( $appData, $kind ) === 'the typeface list signature does not verify' && $kind === 'signature'
+	&& ( $publish( [ $entryInter ], '!!not a signature!!' ) !== '' && Webfonts::fetch( $appData, $kind ) === 'the typeface list signature does not verify' && $kind === 'signature' ) );
+
+$publish( [ $entryInter, $entryFlex, $entryFira ] );
+unset( $remote[Webfonts::DEFAULT_URL. '.sig'] );
+
+check( '...a signature that cannot be fetched is the reason when it is not there, and the repository could not be reached', Webfonts::fetch( $appData, $kind ) === 'the typeface list signature could not be fetched: http 404' && $kind === 'unreachable' );
+
+$publish( [ $entryInter, $entryFlex, $entryFira ] );
+unset( $remote[Webfonts::DEFAULT_URL] );
+
+check( '...and so is a list that cannot be', Webfonts::fetch( $appData, $kind ) === 'the typeface list could not be fetched: http 404' && $kind === 'unreachable' );
+
+$remote[Webfonts::DEFAULT_URL] 					= str_repeat( ' ', 1024 * 1024 ). $json;
+$remote[Webfonts::DEFAULT_URL. '.sig'] 	= designSign( $remote[Webfonts::DEFAULT_URL], $webPrivate );
+
+check( '...a list over a megabyte is not read', str_contains( (string) Webfonts::fetch( $appData, $kind ), 'the typeface list could not be fetched: the answer exceeds 1048576 bytes' ) === true && $kind === 'unreachable' );
+
+$remote[Webfonts::DEFAULT_URL] 					= designList( [ $entryInter, array_replace( $entryFlex, [ 'license' => 'MIT' ] ) ] );
+$remote[Webfonts::DEFAULT_URL. '.sig'] 	= designSign( $remote[Webfonts::DEFAULT_URL], $webPrivate );
+
+check( '...a signed list that is not what format 1 says is refused with the reason, about its format, and the list that was kept stays', str_contains( (string) Webfonts::fetch( $appData, $kind ), 'typeface list entry 1: "license"' ) === true && $kind === 'parse'
+	&& ( Webfonts::cached( $appData )['families'] ?? [] ) === $fetched );
+check( '...the kinds of refusal are the five the panel has words for',
+	Webfonts::REFUSALS === [ 'off', 'nokey', 'unreachable', 'signature', 'parse' ] );
+
+// An address with a token in it keeps its query: the signature is at the end of the path
+\Nino\Features::saveSettings( $appData, 'design', [ 'webfontsUrl' => 'https://webfonts.test/list.json?token=abc' ] );
+$remote['https://webfonts.test/list.json?token=abc'] 				= $json;
+$remote['https://webfonts.test/list.json.sig?token=abc'] 		= designSign( $json, $webPrivate );
+$requests = [];
+
+check( 'a list behind a token is fetched, and its signature is looked for at the end of the path and not of the address',
+	is_array( Webfonts::fetch( $appData ) ) === true && array_column( $requests, 'url' ) === [ 'https://webfonts.test/list.json?token=abc', 'https://webfonts.test/list.json.sig?token=abc' ] );
+check( '...what was fetched under one address is not the list of another: the cache reads null once the address is changed, and again when it is back',
+	Webfonts::cached( $appData ) !== null && \Nino\Features::saveSettings( $appData, 'design', [ 'webfontsUrl' => Webfonts::DEFAULT_URL ] ) === [] && Webfonts::cached( $appData ) === null
+	&& \Nino\Features::saveSettings( $appData, 'design', [ 'webfontsUrl' => 'https://webfonts.test/list.json?token=abc' ] ) === [] && Webfonts::cached( $appData ) !== null
+	&& \Nino\Features::saveSettings( $appData, 'design', [ 'webfontsUrl' => '' ] ) === [] && Webfonts::cached( $appData ) === null
+	&& \Nino\Features::saveSettings( $appData, 'design', [ 'webfontsUrl' => Webfonts::DEFAULT_URL ] ) === [] );
+
+$publish( [ $entryInter, $entryFlex, $entryFira ] );
+Webfonts::fetch( $appData );
+$stored = \Nino\Filesystem::getFileContent( $appData, Webfonts::CACHE, [] );
+$stored['families'][1]['slug'] = '../roboto-flex';
+\Nino\Filesystem::putFileContent( $appData, Webfonts::CACHE, $stored );
+
+check( 'a cache somebody wrote by hand is held to the rules of the list as well: an entry with a slug that climbs is no cache', Webfonts::cached( $appData ) === null );
+
+Webfonts::fetch( $appData );
+
+// --- A family installed whole ------------------------------------------------------------
+
+check( 'before anything is installed the families are the five the feature brings, and nothing is listed as installed or as broken',
+	array_keys( Fonts::families( $appData ) ) === [ 'source-sans-3', 'league-spartan', 'system-sans', 'system-serif', 'system-mono' ] && Fonts::installed( $appData ) === [] && Fonts::broken( $appData ) === []
+	&& is_dir( $fontsDir ) === false && str_ends_with( $fontsDir, '/public/assets/fonts' ) === true );
+
+$requests 	= [];
+$done 			= Webfonts::install( $appData, 'inter' );
+
+check( 'install() downloads the archive of the entry - with a cap of one byte more than the entry says, so that a larger body is seen - and puts the family below assets/fonts/ of the public root', $done === true
+	&& array_column( $requests, 'url' ) === [ $entryInter['archive'] ] && $requests[0]['options']['maxBytes'] === $entryInter['size'] + 1 && is_dir( $fontsDir. '/inter' ) === true );
+
+$found = array_values( array_diff( scandir( $fontsDir. '/inter' ) ?: [], [ '.', '..' ] ) );
+sort( $found );
+
+check( '...exactly the files of the archive and no others: its font.json, its LICENSE and the four woff2 files, every one as the archive had it',
+	$found === [ '400-italic.woff2', '400.woff2', '700-italic.woff2', '700.woff2', 'LICENSE', 'font.json' ]
+	&& file_get_contents( $fontsDir. '/inter/400.woff2' ) === 'wOF2inter/400.woff2' && file_get_contents( $fontsDir. '/inter/700-italic.woff2' ) === 'wOF2inter/700-italic.woff2'
+	&& json_decode( (string) file_get_contents( $fontsDir. '/inter/font.json' ), true ) === $inter && trim( (string) file_get_contents( $fontsDir. '/inter/LICENSE' ) ) === 'The licence text of Inter'
+	&& decoct( fileperms( $fontsDir. '/inter/400.woff2' ) & 0777 ) === '644' && decoct( fileperms( $fontsDir. '/inter' ) & 0777 ) === '755' );
+check( '...the staging directory below data/ is empty again, and nothing of the archive stays in the private root', designStagingClean( $staging ) === true && is_dir( $staging. '/inter' ) === false );
+
+$families = Fonts::families( $appData );
+
+check( 'Fonts::families() lists it after the five it brings, with the name, the category, the weights, the files with their urls, and where it came from',
+	array_keys( $families ) === [ 'source-sans-3', 'league-spartan', 'system-sans', 'system-serif', 'system-mono', 'inter' ]
+	&& $families['inter'] === [
+		'name' => 'Inter', 'category' => 'sans', 'weights' => [ 400, 700 ], 'axis' => [],
+		'files' => [
+			[ 'weight' => 400, 'style' => 'normal', 'url' => '[[/nino/public]]/assets/fonts/inter/400.woff2' ],
+			[ 'weight' => 700, 'style' => 'normal', 'url' => '[[/nino/public]]/assets/fonts/inter/700.woff2' ],
+			[ 'weight' => 400, 'style' => 'italic', 'url' => '[[/nino/public]]/assets/fonts/inter/400-italic.woff2' ],
+			[ 'weight' => 700, 'style' => 'italic', 'url' => '[[/nino/public]]/assets/fonts/inter/700-italic.woff2' ],
+		],
+		'installed' => [ 'version' => '4.1', 'license' => 'OFL-1.1', 'source' => 'https://github.com/rsms/inter' ],
+	] && array_keys( Fonts::installed( $appData ) ) === [ 'inter' ] );
+
+// The fill is what every stylesheet of a project carries for its public directory, and the bundle writes the directory in for it
+$urlOf = str_replace( '[[/nino/public]]', \Nino\Filesystem::getPublicDir( $appData ), $families['inter']['files'][1]['url'] );
+
+check( '...and the url it writes into the stylesheet, once the bundle has put the public directory for the fill - as it does for the two families the wizard delivers - is a file of the public root',
+	$urlOf === '/public/assets/fonts/inter/700.woff2' && is_file( \Nino\Filesystem::getPublicPath( $appData ). substr( $urlOf, strlen( '/public' ) ) ) === true
+	&& str_replace( '[[/nino/public]]', '/public', $families['league-spartan']['files'][0]['url'] ) === '/public/fonts/league-spartan.woff2' );
+check( '...every role may be given it but the code, which is given the monospace ones; a role that is given it keeps it',
+	in_array( 'inter', Fonts::options( $appData, 'title' ), true ) === true && in_array( 'inter', Fonts::options( $appData, 'button' ), true ) === true
+	&& in_array( 'inter', Fonts::options( $appData, 'code' ), true ) === false
+	&& Setup::normalize( $appData, [ 'fonts' => [ 'title' => [ 'family' => 'inter' ], 'code' => [ 'family' => 'inter' ] ] ], $library )['fonts']['title']['family'] === 'inter'
+	&& Setup::normalize( $appData, [ 'fonts' => [ 'code' => [ 'family' => 'inter' ] ] ], $library )['fonts']['code']['family'] === '' );
+
+$rolesOfInter = static fn( array $raw ): array => designDeclarations( designBlock( designPlain( Fonts::css( $appData, Setup::normalize( $appData, $raw, $library )['fonts'] ) ), ':root {' ) );
+
+$typeOfInter = designPlain( Fonts::css( $appData, Setup::normalize( $appData, [ 'fonts' => [ 'title' => [ 'family' => 'inter', 'weight' => 'bold' ], 'text' => [ 'family' => 'inter', 'weight' => 'light' ] ] ], $library )['fonts'] ) );
+
+check( 'Fonts::css() writes a rule for each of its files - four, once, for the two roles that use it, beside the two of the Source Sans 3 the others still have - and names it between quotes with the stack of the role behind it',
+	substr_count( $typeOfInter, "font-family: 'Inter'" ) === 4 && substr_count( $typeOfInter, '@font-face' ) === 6
+	&& str_contains( $typeOfInter, "font-style: italic;\n\tfont-weight: 700;\n\tfont-display: swap;\n\tsrc: url('[[/nino/public]]/assets/fonts/inter/700-italic.woff2') format('woff2');" ) === true
+	&& ( $rolesOfInter( [ 'fonts' => [ 'title' => [ 'family' => 'inter' ] ] ] )['--fontfamily-title'] ?? '' ) === '"Inter", '. $sans
+	&& Fonts::line( $appData, 'title', 'inter' ) === '"Inter", '. $sans && Fonts::line( $appData, 'code', 'inter' ) === '"Inter", '. $mono );
+check( '...and the weight of a word is the weight it has nearest: light the 400, normal the 400, bold the 700',
+	[ Fonts::weight( $appData, 'inter', 'light' ), Fonts::weight( $appData, 'inter', 'normal' ), Fonts::weight( $appData, 'inter', 'bold' ) ] === [ '400', '400', '700' ]
+	&& ( $rolesOfInter( [ 'fonts' => [ 'title' => [ 'family' => 'inter', 'weight' => 'bold' ], 'text' => [ 'family' => 'inter', 'weight' => 'light' ] ] ] )['--font-title-weight'] ?? '' ) === '700' );
+
+$sheetWithInter = Compiler::compile( $appData, Setup::normalize( $appData, [ 'fonts' => [ 'title' => [ 'family' => 'inter' ] ] ], $library ), $library );
+
+check( 'a compiled sheet that has a role set in it carries its rules in the type section, and names it in the header - the sheet at the defaults is not changed by any of this',
+	str_contains( designSection( $sheetWithInter, 3, Compiler::SECTION ), "src: url('[[/nino/public]]/assets/fonts/inter/400.woff2') format('woff2');" ) === true
+	&& preg_match( '/^ \*   title      Inter, bold$/m', $sheetWithInter ) === 1
+	&& str_contains( Compiler::compile( $appData, Setup::normalize( $appData, [], $library ), $library ), 'assets/fonts' ) === false );
+
+// A family with a weight axis: one file for all the weights
+$requests = [];
+
+check( 'a family whose files carry a weight axis installs the same way', Webfonts::install( $appData, 'roboto-flex' ) === true && is_file( $fontsDir. '/roboto-flex/100-900.woff2' ) === true
+	&& is_file( $fontsDir. '/roboto-flex/100-900-italic.woff2' ) === true );
+
+$flexFamily = Fonts::families( $appData )['roboto-flex'];
+$typeOfFlex = designPlain( Fonts::css( $appData, Setup::normalize( $appData, [ 'fonts' => [ 'title' => [ 'family' => 'roboto-flex', 'weight' => 'bold' ] ] ], $library )['fonts'] ) );
+
+check( '...lists no weight of its own and remembers the axis, and its files carry the two numbers as their weight', $flexFamily['weights'] === [] && $flexFamily['axis'] === [ 100, 900 ]
+	&& $flexFamily['files'][0]['weight'] === '100 900' && $flexFamily['files'][0]['url'] === '[[/nino/public]]/assets/fonts/roboto-flex/100-900.woff2' );
+check( '...and the rule of a file that carries the axis writes the two numbers, font-weight: 100 900, for the normal style and the italic alike - and no rule has a weight of a single number',
+	substr_count( $typeOfFlex, "font-family: 'Roboto Flex'" ) === 2 && substr_count( $typeOfFlex, "font-weight: 100 900;" ) === 2 && str_contains( $typeOfFlex, "font-style: italic;\n\tfont-weight: 100 900;" ) === true );
+check( '...a word is the weight it aims at - 300, 500, 800 - because the axis has it; and a word the axis does not reach is the nearer end of it',
+	[ Fonts::weight( $appData, 'roboto-flex', 'light' ), Fonts::weight( $appData, 'roboto-flex', 'normal' ), Fonts::weight( $appData, 'roboto-flex', 'bold' ) ] === [ '300', '500', '800' ]
+	&& ( designDeclarations( designBlock( $typeOfFlex, ':root {' ) )['--font-title-weight'] ?? '' ) === '800' );
+
+// Directories as a hand leaves them: an axis that stops short of the words, and one that begins after them
+foreach( [ 'axis-narrow' => '400 700', 'axis-heavy' => '600 900', 'axis-light' => '100 250' ] as $slug => $axis ) {
+	mkdir( $fontsDir. '/'. $slug, 0755, true );
+	file_put_contents( $fontsDir. '/'. $slug. '/font.json', json_encode( designManifest( $slug, ucwords( str_replace( '-', ' ', $slug ) ), [ [ $axis, 'normal' ] ] ) ) );
+}
+
+check( '...400 to 700 gives light 400 and bold 700; 600 to 900 gives light and normal the 600; 100 to 250 gives every word the 250',
+	[ Fonts::weight( $appData, 'axis-narrow', 'light' ), Fonts::weight( $appData, 'axis-narrow', 'normal' ), Fonts::weight( $appData, 'axis-narrow', 'bold' ) ] === [ '400', '500', '700' ]
+	&& [ Fonts::weight( $appData, 'axis-heavy', 'light' ), Fonts::weight( $appData, 'axis-heavy', 'normal' ), Fonts::weight( $appData, 'axis-heavy', 'bold' ) ] === [ '600', '600', '800' ]
+	&& [ Fonts::weight( $appData, 'axis-light', 'light' ), Fonts::weight( $appData, 'axis-light', 'normal' ), Fonts::weight( $appData, 'axis-light', 'bold' ) ] === [ '250', '250', '250' ] );
+
+Webfonts::remove( $appData, 'axis-narrow' );
+Webfonts::remove( $appData, 'axis-heavy' );
+Webfonts::remove( $appData, 'axis-light' );
+
+check( 'a monospace family is given to the code, and only a monospace one', Webfonts::install( $appData, 'fira-code' ) === true
+	&& in_array( 'fira-code', Fonts::options( $appData, 'code' ), true ) === true && in_array( 'fira-code', Fonts::options( $appData, 'title' ), true ) === true
+	&& Setup::normalize( $appData, [ 'fonts' => [ 'code' => [ 'family' => 'fira-code' ] ] ], $library )['fonts']['code']['family'] === 'fira-code'
+	&& Fonts::line( $appData, 'code', 'fira-code' ) === '"Fira Code", '. $mono );
+
+// --- What an archive is refused for ----------------------------------------------------------------
+
+/**
+ *	Publish a list of one entry for an archive that is not what it says, and install it: the answer, and whether
+ *	anything of it is where a family goes
+ */
+$attempt = static function( string $slug, string $archive, array $entryMore = [], ?array $manifest = null ) use ( &$remote, $publish, &$appData, $staging, $fontsDir ): array {
+
+	$manifest = $manifest ?? designManifest( $slug, ucfirst( $slug ), [ [ 400, 'normal' ] ] );
+	$entry 		= designListEntry( $manifest, $archive, $entryMore );
+
+	$remote[$entry['archive']] = $archive;
+	$publish( [ $entry ] );
+	Webfonts::fetch( $appData );
+
+	$answer = Webfonts::install( $appData, $slug );
+
+	return [ $answer, is_dir( $fontsDir. '/'. $slug ) === true, designStagingClean( $staging ) ];
+};
+
+$good 		= designManifest( 'sample', 'Sample', [ [ 400, 'normal' ], [ 700, 'normal' ] ] );
+$goodFiles = designArchiveFiles( $good );
+$refusals = [];
+
+ninoWarnings();
+
+$digest = designTarGz( $goodFiles );
+[ $answer, $there, $clean ] = $attempt( 'sample', $digest, [ 'sha256' => str_repeat( 'a', 64 ) ], $good );
+$refusals['a digest that is not the archive\'s'] = [ $answer === 'the archive does not match what the list promised', $there, $clean ];
+
+[ $answer, $there, $clean ] = $attempt( 'sample', $digest, [ 'size' => strlen( $digest ) - 1 ], $good );
+$refusals['a size that is not the archive\'s'] = [ $answer === 'the archive does not match what the list promised', $there, $clean ];
+
+[ $answer, $there, $clean ] = $attempt( 'sample', $digest . 'x', [ 'sha256' => hash( 'sha256', $digest ), 'size' => strlen( $digest ) ], $good );
+$refusals['a body one byte longer than the size says'] = [ $answer === 'the archive does not match what the list promised', $there, $clean ];
+
+[ $answer, $there, $clean ] = $attempt( 'sample', 'this is not an archive', [], $good );
+$refusals['bytes that are no archive'] = [ str_starts_with( $answer, 'the archive could not be read' ), $there, $clean ];
+
+[ $answer, $there, $clean ] = $attempt( 'sample', designTarGz( $goodFiles + [ 'evil/' => null, 'evil/x.woff2' => 'wOF2' ] ), [], $good );
+$refusals['a second directory beside the family'] = [ str_contains( (string) $answer, 'outside "sample/"' ), $there, $clean ];
+
+[ $answer, $there, $clean ] = $attempt( 'sample', designTarGz( $goodFiles + [ 'sample/../evil.txt' => 'x' ] ), [], $good );
+$refusals['a path that climbs'] = [ $answer === 'the archive unpacked to more than the directory "sample"', $there, $clean && is_file( $fontsDir. '/evil.txt' ) === false && is_file( dirname( $fontsDir ). '/evil.txt' ) === false ];
+
+[ $answer, $there, $clean ] = $attempt( 'sample', designTarGz( $goodFiles + [ 'sample/a\\b.woff2' => 'wOF2' ] ), [], $good );
+$refusals['a name with a backslash'] = [ str_starts_with( (string) $answer, 'the archive could not be read' ), $there, $clean ];
+
+// PharData folds a dot into the directory it is in, and the file that is then there is one font.json does not name
+[ $answer, $there, $clean ] = $attempt( 'sample', designTarGz( $goodFiles + [ 'sample/./extra.woff2' => 'wOF2' ] ), [], $good );
+$refusals['a dot in a path'] = [ $answer === 'the archive holds "extra.woff2", which font.json does not name', $there, $clean ];
+
+[ $answer, $there, $clean ] = $attempt( 'sample', designTarGz( $goodFiles + [ 'sample/link.woff2' => [ 'link' => '/etc/passwd' ] ] ), [], $good );
+$refusals['a link'] = [ str_contains( (string) $answer, 'which is neither a file nor a directory' ), $there, $clean ];
+
+[ $answer, $there, $clean ] = $attempt( 'sample', designTarGz( $goodFiles + [ 'sample/hard.woff2' => [ 'hardlink' => 'sample/400.woff2' ] ] ), [], $good );
+$refusals['a hard link'] = [ str_starts_with( (string) $answer, 'the archive could not be read' ), $there, $clean ];
+
+[ $answer, $there, $clean ] = $attempt( 'sample', designTarGz( [ 'sample' => 'a file where the directory should be' ] ), [], $good );
+$refusals['a file where the directory should be'] = [ $answer === 'the archive holds "sample" as a file, not a directory', $there, $clean ];
+
+[ $answer, $there, $clean ] = $attempt( 'sample', designTarGz( [ 'sample/font.json' => '{}' ] ), [], $good );
+$refusals['a family with no directory entry and no files - a font.json that says nothing'] = [ str_contains( (string) $answer, 'the font.json of the archive:' ), $there, $clean ];
+
+[ $answer, $there, $clean ] = $attempt( 'sample', designTarGz( array_replace( $goodFiles, [ 'sample/400.woff2' => 'RIFF not a font' ] ) ), [], $good );
+$refusals['a file that is not a woff2 file'] = [ $answer === '"400.woff2" is no woff2 file - it does not begin with wOF2', $there, $clean ];
+
+[ $answer, $there, $clean ] = $attempt( 'sample', designTarGz( array_diff_key( $goodFiles, [ 'sample/700.woff2' => 1 ] ) ), [], $good );
+$refusals['a font.json that names a file that is not there'] = [ $answer === 'font.json names "700.woff2", which the archive does not hold', $there, $clean ];
+
+[ $answer, $there, $clean ] = $attempt( 'sample', designTarGz( $goodFiles + [ 'sample/extra.txt' => 'more' ] ), [], $good );
+$refusals['a file font.json does not name'] = [ $answer === 'the archive holds "extra.txt", which font.json does not name', $there, $clean ];
+
+[ $answer, $there, $clean ] = $attempt( 'sample', designTarGz( $goodFiles + [ 'sample/sub/' => null, 'sample/sub/x.txt' => 'x' ] ), [], $good );
+$refusals['a directory inside the family'] = [ $answer === 'the archive holds "sub", which font.json does not name', $there, $clean ];
+
+[ $answer, $there, $clean ] = $attempt( 'sample', designTarGz( array_diff_key( $goodFiles, [ 'sample/LICENSE' => 1 ] ) ), [], $good );
+$refusals['no LICENSE'] = [ $answer === 'the archive holds no LICENSE', $there, $clean ];
+
+[ $answer, $there, $clean ] = $attempt( 'sample', designTarGz( array_replace( $goodFiles, [ 'sample/LICENSE' => "  \n\t" ] ) ), [], $good );
+$refusals['a LICENSE that says nothing'] = [ $answer === 'the LICENSE of the archive is empty', $there, $clean ];
+
+[ $answer, $there, $clean ] = $attempt( 'sample', designTarGz( array_replace( $goodFiles, [ 'sample/font.json' => json_encode( array_replace( $good, [ 'version' => '9.9' ] ) ) ] ) ), [], $good );
+$refusals['a font.json that is another version than the list promised'] = [ $answer === 'the font.json of the archive says another "version" than the list promised', $there, $clean ];
+
+[ $answer, $there, $clean ] = $attempt( 'sample', designTarGz( array_replace( $goodFiles, [ 'sample/font.json' => json_encode( array_replace( $good, [ 'license' => 'MIT' ] ) ) ] ) ), [], $good );
+$refusals['a font.json with a licence the list does not know'] = [ str_starts_with( (string) $answer, 'the font.json of the archive: "license"' ), $there, $clean ];
+
+[ $answer, $there, $clean ] = $attempt( 'sample', designTarGz( array_replace( $goodFiles, [ 'sample/font.json' => 'not json' ] ) ), [], $good );
+$refusals['a font.json that is no json'] = [ $answer === 'the font.json of the archive is not valid json', $there, $clean ];
+
+[ $answer, $there, $clean ] = $attempt( 'sample', designTarGz( array_diff_key( $goodFiles, [ 'sample/font.json' => 1 ] ) ), [], $good );
+$refusals['no font.json'] = [ $answer === 'the archive holds no font.json', $there, $clean ];
+
+$notRefused = array_keys( array_filter( $refusals, static fn( array $result ): bool => $result[0] !== true ) );
+$left 			= array_keys( array_filter( $refusals, static fn( array $result ): bool => $result[1] !== false ) );
+$unclean 		= array_keys( array_filter( $refusals, static fn( array $result ): bool => $result[2] !== true ) );
+
+check( 'an archive is refused for each of these, and the answer says which: '. count( $refusals ). ' of them'. ( $notRefused === [] ? '' : ' - not so for: '. implode( ', ', $notRefused ) ), $notRefused === [] );
+check( '...and nothing of any of them is where a family goes'. ( $left === [] ? '' : ' - there is something for: '. implode( ', ', $left ) ), $left === [] );
+check( '...and the staging directory is empty after every one of them'. ( $unclean === [] ? '' : ' - not so for: '. implode( ', ', $unclean ) ), $unclean === [] );
+check( '...none of them raised a warning, and none of them touched the families that were there', ninoWarnings() === [] && is_file( $fontsDir. '/inter/400.woff2' ) === true && is_file( $fontsDir. '/fira-code/400.woff2' ) === true );
+
+$publish( [ $entryInter, $entryFlex, $entryFira ] );
+Webfonts::fetch( $appData );
+
+check( 'a slug the list does not have is not installed, and neither is one that is none, or one of the families the feature brings',
+	Webfonts::install( $appData, 'nowhere' ) === 'the typeface "nowhere" is not in the list - load the list first'
+	&& Webfonts::install( $appData, '../inter' ) === 'that is no slug of a typeface' && Webfonts::install( $appData, '' ) === 'that is no slug of a typeface'
+	&& Webfonts::install( $appData, 'Inter' ) === 'that is no slug of a typeface' && is_dir( $fontsDir. '/nowhere' ) === false );
+
+$bringing = designManifest( 'league-spartan', 'League Spartan', [ [ 700, 'normal' ] ] );
+$bringingArchive = designTarGz( designArchiveFiles( $bringing ) );
+$remote['https://webfonts.test/league-spartan-1.0.tar.gz'] = $bringingArchive;
+$publish( [ designListEntry( $bringing, $bringingArchive ) ] );
+Webfonts::fetch( $appData );
+
+check( '...a family of the slug of one the feature brings is not installed: it would stand in the select under the one that is there already',
+	Webfonts::install( $appData, 'league-spartan' ) === 'the slug "league-spartan" is one of the families the feature brings' && is_dir( $fontsDir. '/league-spartan' ) === false );
+
+// An update replaces the whole family
+$inter2 		= designManifest( 'inter', 'Inter', [ [ 400, 'normal' ], [ 700, 'normal' ] ], [ 'version' => '4.2', 'source' => 'https://github.com/rsms/inter' ] );
+$archive2 	= designTarGz( designArchiveFiles( $inter2 ) );
+$entry2 		= designListEntry( $inter2, $archive2 );
+
+$remote[$entry2['archive']] = $archive2;
+$publish( [ $entry2, $entryFlex, $entryFira ] );
+Webfonts::fetch( $appData );
+
+check( 'an update replaces the whole family: the version of the list is installed, and the files of the version before that it does not have - the italics - are gone with its directory', Webfonts::install( $appData, 'inter' ) === true
+	&& array_values( array_diff( scandir( $fontsDir. '/inter' ) ?: [], [ '.', '..' ] ) ) === [ '400.woff2', '700.woff2', 'LICENSE', 'font.json' ]
+	&& Fonts::installed( $appData )['inter']['installed']['version'] === '4.2' && count( Fonts::installed( $appData )['inter']['files'] ) === 2
+	&& designStagingClean( $staging ) === true );
+
+// Another run of the same family, at work in a staging directory: an install has one of its own and leaves that one alone
+mkdir( $staging. '/inter', 0755, true );
+file_put_contents( $staging. '/inter/archive-0123456789ab.tar.gz', 'the archive of a run that is not over' );
+
+check( 'an install leaves the staging directory of another run of the same family as it is - its own has a name of its own, and is gone again',
+	Webfonts::install( $appData, 'inter' ) === true && is_file( $staging. '/inter/archive-0123456789ab.tar.gz' ) === true && ( scandir( $staging ) ?: [] ) === [ '.', '..', 'inter' ] );
+
+\Nino\Filesystem::removeDir( $staging. '/inter' );
+
+// An update that does not hold leaves the version that was installed
+$broken2 = designTarGz( array_replace( designArchiveFiles( designManifest( 'inter', 'Inter', [ [ 400, 'normal' ] ], [ 'version' => '4.3' ] ) ), [ 'inter/400.woff2' => 'not a font' ] ) );
+$entry3 	= designListEntry( designManifest( 'inter', 'Inter', [ [ 400, 'normal' ] ], [ 'version' => '4.3' ] ), $broken2 );
+
+$remote[$entry3['archive']] = $broken2;
+$publish( [ $entry3, $entryFlex, $entryFira ] );
+Webfonts::fetch( $appData );
+
+check( '...and one that is refused leaves the family as it was: the version before still there, whole', is_string( Webfonts::install( $appData, 'inter' ) ) === true
+	&& Fonts::installed( $appData )['inter']['installed']['version'] === '4.2' && is_file( $fontsDir. '/inter/700.woff2' ) === true && designStagingClean( $staging ) === true );
+
+$publish( [ $entry2, $entryFlex, $entryFira ] );
+Webfonts::fetch( $appData );
+
+// --- A family nothing uses may go, one a role uses may not ----------------------------------------
+
+$usedBy = static function( array $roles ) use ( &$appData, $library ): void {
+
+	$fonts = [];
+
+	foreach( $roles as $role )
+		$fonts[$role] = [ 'family' => 'inter' ];
+
+	Setup::write( $appData, Setup::normalize( $appData, [ 'fonts' => $fonts ], $library ) );
+};
+
+check( 'nothing uses it, so far: no role has it, and uses() says so', Webfonts::uses( $appData, 'inter' ) === [] && Webfonts::usage( $appData ) === [ 'league-spartan' => [ 'title' ], 'source-sans-3' => [ 'subtitle', 'text', 'button' ] ] );
+
+$usedBy( [ 'title' ] );
+
+check( 'remove() refuses a family while a role of the saved setup uses it, and names the role', Webfonts::uses( $appData, 'inter' ) === [ 'title' ] && Webfonts::remove( $appData, 'inter' ) === 'used by title'
+	&& is_file( $fontsDir. '/inter/400.woff2' ) === true );
+
+$usedBy( [ 'text', 'title', 'button' ] );
+
+check( '...every role that does, in the order of the roles', Webfonts::uses( $appData, 'inter' ) === [ 'title', 'text', 'button' ] && Webfonts::remove( $appData, 'inter' ) === 'used by title, text, button' );
+
+$usedBy( [] );
+
+check( '...and not a role that has another family, or a family that is not one - the setup is read the way the panel reads it',
+	Webfonts::uses( $appData, 'inter' ) === [] && Webfonts::uses( $appData, 'nowhere' ) === [] && Webfonts::uses( $appData, '' ) === [] );
+
+check( 'an update is allowed for a family a role uses: the files follow - the role keeps the family', ( static function() use ( $usedBy, &$appData, $entryFlex, $entryFira, $publish, &$remote ): bool {
+
+	$usedBy( [ 'title' ] );
+
+	$next 		= designManifest( 'inter', 'Inter', [ [ 400, 'normal' ], [ 600, 'normal' ], [ 700, 'normal' ] ], [ 'version' => '4.4', 'source' => 'https://github.com/rsms/inter' ] );
+	$archive 	= designTarGz( designArchiveFiles( $next ) );
+	$entry 		= designListEntry( $next, $archive );
+
+	$remote[$entry['archive']] = $archive;
+	$publish( [ $entry, $entryFlex, $entryFira ] );
+	Webfonts::fetch( $appData );
+
+	$done = Webfonts::install( $appData, 'inter' );
+	$kept = Setup::read( $appData, \Nino\Modules\Design::libraryDir() )['fonts']['title']['family'] === 'inter';
+
+	return $done === true && $kept === true && Fonts::installed( $appData )['inter']['installed']['version'] === '4.4' && Fonts::installed( $appData )['inter']['weights'] === [ 400, 600, 700 ];
+} )() );
+
+$usedBy( [] );
+
+check( 'a family no role uses is removed, with its directory and everything in it; the families that are installed are what is left', Webfonts::remove( $appData, 'inter' ) === true
+	&& is_dir( $fontsDir. '/inter' ) === false && array_keys( Fonts::installed( $appData ) ) === [ 'fira-code', 'roboto-flex' ]
+	&& in_array( 'inter', Fonts::options( $appData, 'title' ), true ) === false );
+check( '...a second time there is nothing to remove, and neither for a name that is none, or one that climbs',
+	Webfonts::remove( $appData, 'inter' ) === 'the typeface "inter" is not installed' && Webfonts::remove( $appData, 'nowhere' ) === 'the typeface "nowhere" is not installed'
+	&& Webfonts::remove( $appData, '../fonts' ) === 'that is no slug of a typeface' && Webfonts::remove( $appData, '' ) === 'that is no slug of a typeface'
+	&& is_dir( $fontsDir ) === true );
+check( '...a role whose family is gone is its default again - the setup is normalised against what is installed', ( static function() use ( $usedBy, &$appData, $library ): bool {
+
+	Webfonts::install( $appData, 'inter' );
+	$usedBy( [ 'subtitle' ] );
+	$was = Setup::read( $appData, $library )['fonts']['subtitle']['family'];
+	\Nino\Filesystem::removeDir( Fonts::dir( $appData ). '/inter' );
+	$now = Setup::read( $appData, $library )['fonts']['subtitle']['family'];
+	$usedBy( [] );
+
+	return $was === 'inter' && $now === Fonts::DEFAULTS['subtitle']['family'];
+} )() );
+
+// --- A directory that is none ----------------------------------------------------------------
+
+foreach( [ 'empty-one', 'no-json', 'strange', 'other-name', 'source-sans-3', 'wrong-shape' ] as $slug )
+	mkdir( $fontsDir. '/'. $slug, 0755, true );
+
+file_put_contents( $fontsDir. '/no-json/font.json', 'not json' );
+file_put_contents( $fontsDir. '/strange/font.json', json_encode( designManifest( 'strange', 'Str<ange', [ [ 400, 'normal' ] ] ) ) );
+file_put_contents( $fontsDir. '/other-name/font.json', json_encode( designManifest( 'another-name', 'Other', [ [ 400, 'normal' ] ] ) ) );
+file_put_contents( $fontsDir. '/source-sans-3/font.json', json_encode( designManifest( 'source-sans-3', 'Source Sans 3', [ [ 400, 'normal' ] ] ) ) );
+file_put_contents( $fontsDir. '/wrong-shape/font.json', json_encode( [ 'family' => 'Wrong' ] ) );
+mkdir( $fontsDir. '/Not A Slug', 0755, true );
+file_put_contents( $fontsDir. '/a-file', 'not a directory' );
+
+check( 'a directory that is no family is not listed, and broken() says why - for each one with the name of a slug: no font.json, one that is no json, a name that could reach a stylesheet, a slug that is not the directory\'s, one of the five, a manifest of no shape',
+	array_keys( Fonts::installed( $appData ) ) === [ 'fira-code', 'roboto-flex' ] && array_keys( Fonts::families( $appData ) ) === [ 'source-sans-3', 'league-spartan', 'system-sans', 'system-serif', 'system-mono', 'fira-code', 'roboto-flex' ]
+	&& Fonts::broken( $appData ) === [
+		'empty-one' => 'there is no font.json', 'no-json' => 'font.json is not valid json', 'other-name' => 'font.json names the slug "another-name", the directory is "other-name"',
+		'source-sans-3' => 'the slug is one of the families the feature brings', 'strange' => 'font.json: "family" must be a name of 1 to 64 letters, digits, spaces, dots and hyphens, beginning with a letter or a digit and with no space at its end',
+		'wrong-shape' => 'font.json: "slug" must be lower-case ascii letters, digits and single hyphens, at most 64 characters',
+	] );
+check( '...what else lies there is nobody\'s business: a name that is no slug, a file, a link - not listed as a family, not listed as broken, not removed',
+	array_keys( Fonts::broken( $appData ) ) === [ 'empty-one', 'no-json', 'other-name', 'source-sans-3', 'strange', 'wrong-shape' ] && Webfonts::remove( $appData, 'a-file' ) === 'the typeface "a-file" is not installed'
+	&& is_dir( $fontsDir. '/Not A Slug' ) === true && is_file( $fontsDir. '/a-file' ) === true );
+
+$outside = ninoSandboxDir( $appData ). '/outside-of-fonts';
+mkdir( $outside, 0755, true );
+file_put_contents( $outside. '/keep.txt', 'mine' );
+symlink( $outside, $fontsDir. '/a-link' );
+
+check( '...and a link to a directory is neither, and removing it by name removes nothing: the directory it points to is not followed', isset( Fonts::broken( $appData )['a-link'] ) === false && isset( Fonts::installed( $appData )['a-link'] ) === false
+	&& Webfonts::remove( $appData, 'a-link' ) === 'the typeface "a-link" is not installed' && is_file( $outside. '/keep.txt' ) === true );
+
+check( 'a directory that is none can be removed all the same - it uses nothing - and so can the one with a slug of the five', Webfonts::remove( $appData, 'empty-one' ) === true && Webfonts::remove( $appData, 'source-sans-3' ) === true
+	&& is_dir( $fontsDir. '/empty-one' ) === false && is_dir( $fontsDir. '/source-sans-3' ) === false && is_file( $fontsDir. '/fira-code/400.woff2' ) === true );
+
+foreach( [ 'no-json', 'strange', 'other-name', 'wrong-shape' ] as $slug )
+	Webfonts::remove( $appData, $slug );
+
+unlink( $fontsDir. '/a-link' );
+unlink( $fontsDir. '/a-file' );
+\Nino\Filesystem::removeDir( $fontsDir. '/Not A Slug' );
+
+// --- The fingerprint ----------------------------------------------------------------
+
+/*	What the fingerprint was before an installed family joined it: the setup and the bytes of the sets it names	*/
+$beforeFamilies = static function( array $setup ) use ( $library ): string {
+
+	$files = [];
+
+	foreach( array_keys( Setup::PARTS ) as $printPart ) {
+		$printFile 					= Setup::file( $library, $printPart, (string) ( $setup['parts'][$printPart] ?? '' ) );
+		$files[$printPart] 	= [ (string) ( $setup['parts'][$printPart] ?? '' ), ( $printFile === '' || is_file( $printFile ) === false ) ? '' : (string) hash_file( 'sha256', $printFile ) ];
+	}
+
+	unset( $setup['compiled'] );
+
+	return hash( 'sha256', serialize( [ $setup, $files ] ) );
+};
+
+$sandboxPlain = Setup::normalize( $appData, [], $library );
+$usesFira = Setup::normalize( $appData, [ 'fonts' => [ 'code' => [ 'family' => 'fira-code' ] ] ], $library );
+$usesFlex = Setup::normalize( $appData, [ 'fonts' => [ 'title' => [ 'family' => 'roboto-flex' ] ] ], $library );
+$before = [ \Nino\Modules\Design::fingerprint( $appData, $sandboxPlain, $library ), \Nino\Modules\Design::fingerprint( $appData, $usesFira, $library ), \Nino\Modules\Design::fingerprint( $appData, $usesFlex, $library ) ];
+
+check( 'a project that uses no family it installed fingerprints as it did - the installed families do not join the input of one that uses none', $before[0] === $beforeFamilies( $sandboxPlain )
+	&& $before[1] !== $beforeFamilies( $usesFira ) && $before[2] !== $beforeFamilies( $usesFlex ) && $before[1] !== $before[2] );
+
+// A family a role uses is updated: what the type section writes of it changes, and so does the fingerprint; a version alone does not
+$firaNext 		= designManifest( 'fira-code', 'Fira Code', [ [ 400, 'normal' ], [ 700, 'normal' ] ], [ 'category' => 'mono', 'license' => 'Apache-2.0', 'version' => '2.0' ] );
+$firaArchive 	= designTarGz( designArchiveFiles( $firaNext ) );
+$firaEntry 		= designListEntry( $firaNext, $firaArchive );
+
+$remote[$firaEntry['archive']] = $firaArchive;
+$publish( [ $entry2, $entryFlex, $firaEntry ] );
+Webfonts::fetch( $appData );
+Webfonts::install( $appData, 'fira-code' );
+
+check( '...and an update of a family a role uses that changes its files changes the fingerprint, so that the panel reads "saved, not applied" for it - the one of a family that is not used does not',
+	\Nino\Modules\Design::fingerprint( $appData, $usesFira, $library ) !== $before[1] && \Nino\Modules\Design::fingerprint( $appData, $usesFlex, $library ) === $before[2]
+	&& \Nino\Modules\Design::fingerprint( $appData, $sandboxPlain, $library ) === $before[0] );
+
+$firaSame 		= designManifest( 'fira-code', 'Fira Code', [ [ 400, 'normal' ], [ 700, 'normal' ] ], [ 'category' => 'mono', 'license' => 'Apache-2.0', 'version' => '2.1' ] );
+$firaArchive 	= designTarGz( designArchiveFiles( $firaSame ) );
+$firaEntry2 	= designListEntry( $firaSame, $firaArchive );
+$sheetBefore 	= \Nino\Modules\Design::fingerprint( $appData, $usesFira, $library );
+
+$remote[$firaEntry2['archive']] = $firaArchive;
+$publish( [ $entry2, $entryFlex, $firaEntry2 ] );
+Webfonts::fetch( $appData );
+Webfonts::install( $appData, 'fira-code' );
+
+check( '...a version alone changes nothing a stylesheet says, and so nothing the fingerprint hashes', \Nino\Modules\Design::fingerprint( $appData, $usesFira, $library ) === $sheetBefore
+	&& Fonts::installed( $appData )['fira-code']['installed']['version'] === '2.1' );
+
+// Put the sandbox back as the sections after this one found it
+foreach( array_keys( Fonts::installed( $appData ) ) as $slug )
+	Webfonts::remove( $appData, $slug );
+
+\Nino\Filesystem::removeDir( dirname( $fontsDir ) );
+@unlink( $cacheFile );
+@unlink( \Nino\Filesystem::path( $appData, Setup::PATH ) );
+\Nino\Features::saveSettings( $appData, 'design', [ 'webfontsUrl' => Webfonts::DEFAULT_URL, 'webfontsKey' => '' ] );
+unset( $appData['./nino/filesystem/cache'] );
+
+check( 'and the sandbox is as it was: no family, no directory for them, no cache, no staging - and the settings are the defaults again',
+	Fonts::installed( $appData ) === [] && Fonts::broken( $appData ) === [] && is_dir( dirname( $fontsDir ) ) === false && is_file( $cacheFile ) === false && designStagingClean( $staging ) === true
+	&& Webfonts::url( $appData ) === Webfonts::DEFAULT_URL && Webfonts::key( $appData ) === Webfonts::PUBLIC_KEY );
+
 echo "\nThe page: the width, and how its sections arrive\n";
 
-$pageOf = static fn( array $raw ): string => Compiler::page( Setup::normalize( $raw, $library ) );
+$pageOf = static fn( array $raw ): string => Compiler::page( Setup::normalize( $appData, $raw, $library ) );
 $nothing = '/* a row of the width Nino.css gives it, and the animation Nino.css has */';
 
 check( 'a width of 0 and no animation write nothing but a comment saying so, and that is the whole of section 6',
@@ -1145,7 +2156,7 @@ check( 'the four widths around the kernel\'s own are rules exactly: a reading co
 	&& $pageOf( [ 'width' => 1 ] ) === ":root { --grid-max-width: none; --grid-gutter: var(--space-2); }\n@media (min-width: 768px) { :root { --grid-gutter: var(--space-2); } }"
 	&& $pageOf( [ 'width' => 2 ] ) === ":root { --grid-max-width: none; --grid-gutter: var(--space-2); }\n@media (min-width: 768px) { :root { --grid-gutter: 0; } }" );
 check( '...and they are all of section 6, in the sheet: the page of the width, under its marker, and nothing after it but the next section',
-	array_filter( [ -2, -1, 1, 2 ], static fn( int $width ): bool => designSection( Compiler::compile( Setup::normalize( [ 'width' => $width ], $library ), $library ), 6, Compiler::SECTION )
+	array_filter( [ -2, -1, 1, 2 ], static fn( int $width ): bool => designSection( Compiler::compile( $appData, Setup::normalize( $appData, [ 'width' => $width ], $library ), $library ), 6, Compiler::SECTION )
 		!== sprintf( Compiler::SECTION, 6, 'the page' ). "\n". $pageOf( [ 'width' => $width ] ). "\n\n" ) === [] );
 
 if( $ninoCss === '' )
@@ -1256,8 +2267,8 @@ check( 'the compiled sheet carries the page where it was asked for: the width an
 	str_contains( designSection( $rich, 6, Compiler::SECTION ), '--grid-max-width: 48rem;' ) === true && str_contains( designSection( $rich, 6, Compiler::SECTION ), '--vpa-duration: 2s;' ) === true
 	&& strpos( $rich, '--grid-max-width: 48rem;' ) > strpos( $rich, '--grid-max-width: var(--nino-measure);' )
 	&& substr_count( $rich, '--grid-max-width: 48rem;' ) === 1 && substr_count( $rich, "\nmain {\n" ) === 1 );
-$wideSheet = Compiler::compile( Setup::normalize( [ 'width' => 2 ], $library ), $library );
-$openSheet = Compiler::compile( Setup::normalize( [ 'width' => 1 ], $library ), $library );
+$wideSheet = Compiler::compile( $appData, Setup::normalize( $appData, [ 'width' => 2 ], $library ), $library );
+$openSheet = Compiler::compile( $appData, Setup::normalize( $appData, [ 'width' => 1 ], $library ), $library );
 check( '...and a wide page the same way: no maximum and no gutter, written after the role base.css assigns the maximum to, at both sizes - and one with no maximum and the small gutter at both',
 	str_contains( designSection( $wideSheet, 6, Compiler::SECTION ), ":root { --grid-max-width: none; --grid-gutter: var(--space-2); }\n@media (min-width: 768px) { :root { --grid-gutter: 0; } }" ) === true
 	&& strpos( $wideSheet, '--grid-max-width: none;' ) > strpos( $wideSheet, '--grid-max-width: var(--nino-measure);' )
@@ -1362,7 +2373,7 @@ check( '...and one that declares a buttons knob again in a nested selector as de
 check( '...and a set the library does not have is reported rather than read', designKnobProblems( $stray, 'components', 'v9' ) === [ 'v9: has no stylesheet' ] );
 
 $notes	= [];
-$picked	= Compiler::compile( Setup::normalize( [ 'knobs' => $every( 1 ) ], $sandbox, $notes ), $sandbox );
+$picked	= Compiler::compile( $appData, Setup::normalize( $appData, [ 'knobs' => $every( 1 ) ], $sandbox, $notes ), $sandbox );
 
 check( 'every knob a set answers to becomes one selection line, the aspects of a knob included', str_contains( $picked, '--content-corners: var(--content-corners--more);' ) === true
 	&& str_contains( $picked, '--content-shadow: var(--content-shadow--more);' ) === true && str_contains( $picked, '--content-shadow-lift: var(--content-shadow-lift--more);' ) === true
@@ -1389,7 +2400,7 @@ check( 'a template the library does not have is left out and the sections after 
 	array_slice( $titles, 6, null, true ) === [ 7 => 'content: v1 (corners more, shadow more)', 8 => 'buttons: v1 (space more)', 9 => 'the knob positions' ]
 	&& count( array_filter( $notes, static fn( string $note ): bool => str_contains( $note, 'holds no set for "header"' ) ) ) === 1 );
 
-$moved = Compiler::compile( Setup::normalize( [ 'knobs' => [ 'content' => [ 'corners' => -1, 'shadow' => -1, 'border' => 1 ], 'buttons' => [ 'size' => 1 ] ] ], $sandbox ), $sandbox );
+$moved = Compiler::compile( $appData, Setup::normalize( $appData, [ 'knobs' => [ 'content' => [ 'corners' => -1, 'shadow' => -1, 'border' => 1 ], 'buttons' => [ 'size' => 1 ] ] ], $sandbox ), $sandbox );
 
 check( 'each knob is asked for its own tab: the content\'s position does not reach the buttons, and the aspect of a knob stands where the knob does',
 	str_contains( $moved, '--content-corners: var(--content-corners--less);' ) === true && str_contains( $moved, '--content-shadow-lift: var(--content-shadow-lift--less);' ) === true
@@ -1397,14 +2408,14 @@ check( 'each knob is asked for its own tab: the content\'s position does not rea
 
 /*	The two outer positions of a scale select the outer words - and a choice, which has three, does not reach them:
 	a position past its ends is the middle, never the fifth word	*/
-$ends = Compiler::compile( Setup::normalize( [ 'knobs' => [ 'content' => [ 'corners' => 2, 'shadow' => -2 ], 'buttons' => [ 'space' => -1 ] ] ], $sandbox ), $sandbox );
+$ends = Compiler::compile( $appData, Setup::normalize( $appData, [ 'knobs' => [ 'content' => [ 'corners' => 2, 'shadow' => -2 ], 'buttons' => [ 'space' => -1 ] ] ], $sandbox ), $sandbox );
 
 check( 'a knob at +2 selects --most and at -2 --least, the aspects of a knob with it, and the positions between them --more and --less',
 	str_contains( $ends, '--content-corners: var(--content-corners--most);' ) === true && str_contains( $ends, '--content-shadow: var(--content-shadow--least);' ) === true
 	&& str_contains( $ends, '--content-shadow-lift: var(--content-shadow-lift--least);' ) === true && str_contains( $ends, '--buttons-space: var(--buttons-space--less);' ) === true );
 
-$choiceSheet	= Compiler::compile( Setup::normalize( [ 'parts' => [ 'components' => 'v1' ], 'knobs' => [ 'components' => [ 'scale' => 2, 'zebra' => -1 ] ] ], $kindsLibrary ), $kindsLibrary );
-$pastTheEnds	= Compiler::compile( Setup::normalize( [ 'parts' => [ 'components' => 'v1' ], 'knobs' => [ 'components' => [ 'scale' => -2, 'zebra' => 2 ] ] ], $kindsLibrary ), $kindsLibrary );
+$choiceSheet	= Compiler::compile( $appData, Setup::normalize( $appData, [ 'parts' => [ 'components' => 'v1' ], 'knobs' => [ 'components' => [ 'scale' => 2, 'zebra' => -1 ] ] ], $kindsLibrary ), $kindsLibrary );
+$pastTheEnds	= Compiler::compile( $appData, Setup::normalize( $appData, [ 'parts' => [ 'components' => 'v1' ], 'knobs' => [ 'components' => [ 'scale' => -2, 'zebra' => 2 ] ] ], $kindsLibrary ), $kindsLibrary );
 
 check( 'a choice is selected under its three words - -1 is --less, with its aspect - and a position past its ends is the middle, not the fifth word, while the scale beside it goes to the end',
 	str_contains( $choiceSheet, '--components-zebra: var(--components-zebra--less);' ) === true && str_contains( $choiceSheet, '--components-zebra-ink: var(--components-zebra-ink--less);' ) === true
@@ -1412,7 +2423,7 @@ check( 'a choice is selected under its three words - -1 is --less, with its aspe
 	&& str_contains( $pastTheEnds, '--components-zebra: var(--components-zebra--default);' ) === true && str_contains( $pastTheEnds, '--components-zebra-ink: var(--components-zebra-ink--default);' ) === true
 	&& str_contains( $pastTheEnds, '--components-scale: var(--components-scale--least);' ) === true );
 
-$withoutKnob = Compiler::compile( Setup::normalize( [ 'parts' => [ 'content' => 'v2' ], 'knobs' => $every( 1 ) ], $sandbox ), $sandbox );
+$withoutKnob = Compiler::compile( $appData, Setup::normalize( $appData, [ 'parts' => [ 'content' => 'v2' ], 'knobs' => $every( 1 ) ], $sandbox ), $sandbox );
 check( 'an aspect declared without its knob is not selected either - nothing was published', str_contains( $withoutKnob, '--content-shadow-lift:' ) === false
 	&& str_contains( $withoutKnob, '--content-nonsense:' ) === false && str_contains( $withoutKnob, '--buttons-space: var(--buttons-space--more);' ) === true );
 
@@ -1420,13 +2431,13 @@ check( 'an aspect declared without its knob is not selected either - nothing was
 	screen: the setup's own choices AND the bytes of every library file they
 	point at, so a set that changed under a project - a reinstall, an edited
 	library - is visible rather than silent. This is the whole of it	*/
-$sandboxSetup 	= Setup::normalize( [ 'parts' => [ 'content' => 'v1' ] ], $sandbox );
-$beforeSetEdit 	= \Nino\Modules\Design::fingerprint( $sandboxSetup, $sandbox );
+$sandboxSetup 	= Setup::normalize( $appData, [ 'parts' => [ 'content' => 'v1' ] ], $sandbox );
+$beforeSetEdit 	= \Nino\Modules\Design::fingerprint( $appData, $sandboxSetup, $sandbox );
 $contentSet 		= $sandbox. '/content/v1.css';
 $contentSource 	= (string) file_get_contents( $contentSet );
 file_put_contents( $contentSet, $contentSource. "\n/* a set the project got from somewhere else */\n" );
 
-check( 'the fingerprint follows the bytes of the sets it names, not only the names', \Nino\Modules\Design::fingerprint( $sandboxSetup, $sandbox ) !== $beforeSetEdit );
+check( 'the fingerprint follows the bytes of the sets it names, not only the names', \Nino\Modules\Design::fingerprint( $appData, $sandboxSetup, $sandbox ) !== $beforeSetEdit );
 
 file_put_contents( $contentSet, $contentSource );
 
@@ -1434,7 +2445,7 @@ $recorded = $sandboxSetup;
 $recorded['compiled'] = [ 'at' => 'then', 'sha' => 'a', 'input' => 'b', 'setup' => [ 'size' => 1 ] ];
 
 check( '...and what an earlier apply recorded decides nothing: the record is the answer to the fingerprint, not a question to it',
-	\Nino\Modules\Design::fingerprint( $recorded, $sandbox ) === $beforeSetEdit );
+	\Nino\Modules\Design::fingerprint( $appData, $recorded, $sandbox ) === $beforeSetEdit );
 
 $changes = [
 	'a knob' 				=> [ 'knobs' => [ 'content' => [ 'corners' => 1 ] ] ],
@@ -1446,7 +2457,7 @@ $changes = [
 	'a colour' 			=> [ 'colours' => [ 'primary' => '#8b1d3f' ] ],
 	'the mode' 			=> [ 'colours' => [ 'mode' => 'dark' ] ],
 ];
-$unmoved = array_filter( $changes, static fn( array $raw ): bool => \Nino\Modules\Design::fingerprint( Setup::normalize( $raw + [ 'parts' => [ 'content' => 'v1' ] ], $sandbox ), $sandbox ) === $beforeSetEdit );
+$unmoved = array_filter( $changes, static fn( array $raw ): bool => \Nino\Modules\Design::fingerprint( $appData, Setup::normalize( $appData, $raw + [ 'parts' => [ 'content' => 'v1' ] ], $sandbox ), $sandbox ) === $beforeSetEdit );
 
 check( 'and every choice of the six tabs moves it: '. implode( ', ', array_keys( $changes ) ). ( $unmoved === [] ? '' : ' - unmoved: '. implode( ', ', array_keys( $unmoved ) ) ), $unmoved === [] );
 
@@ -1471,11 +2482,11 @@ $movedDown = $sandboxSetup;
 $movedDown['colours']['depth'] = 2;
 
 check( 'a setup with every colour knob at 3 fingerprints exactly as it did before the tables moved',
-	\Nino\Modules\Design::fingerprint( $sandboxSetup, $sandbox ) === $beforeRevision( $sandboxSetup, $sandbox ) && $sandboxSetup['colours']['saturation'] === 3
+	\Nino\Modules\Design::fingerprint( $appData, $sandboxSetup, $sandbox ) === $beforeRevision( $sandboxSetup, $sandbox ) && $sandboxSetup['colours']['saturation'] === 3
 	&& $sandboxSetup['colours']['contrast'] === 3 && $sandboxSetup['colours']['depth'] === 3 );
 check( '...and one with Saturation, Contrast or Depth anywhere else does not, on either side of the middle',
-	\Nino\Modules\Design::fingerprint( $moved, $sandbox ) !== $beforeRevision( $moved, $sandbox )
-	&& \Nino\Modules\Design::fingerprint( $movedDown, $sandbox ) !== $beforeRevision( $movedDown, $sandbox ) );
+	\Nino\Modules\Design::fingerprint( $appData, $moved, $sandbox ) !== $beforeRevision( $moved, $sandbox )
+	&& \Nino\Modules\Design::fingerprint( $appData, $movedDown, $sandbox ) !== $beforeRevision( $movedDown, $sandbox ) );
 
 echo "\nThe token layer and the roles, held to the delivered theme.css and to the kernel's Nino.css\n";
 
@@ -1493,7 +2504,7 @@ $baseRaw				= (string) file_get_contents( $library. '/base.css' );
 $baseCss				= designPlain( $baseRaw );
 $baseTokens			= designDeclarations( designBlock( designPlain( designSection( $baseRaw, 1, DESIGN_BASE_MARKER ) ), ':root {' ) );
 $baseRoles			= designDeclarations( designPlain( designSection( $baseRaw, 2, DESIGN_BASE_MARKER ) ) );
-$defaultSheet		= Compiler::compile( Setup::normalize( [], $library ), $library );
+$defaultSheet		= Compiler::compile( $appData, Setup::normalize( $appData, [], $library ), $library );
 
 check( 'base.css has its two sections, the tokens and the roles, and nothing of the type: no font-face, no family, no size, no raster',
 	$baseTokens !== [] && $baseRoles !== []
@@ -1639,7 +2650,7 @@ foreach( [ 'light', 'dark' ] as $only ) {
 		&& designDeclarations( $alone ) === ( $only === 'light' ? $genLight : $genDark ) && substr_count( $alone, '--nino-default:' ) === 1 );
 }
 
-$inSheet = static fn( string $mode ): string => designPlain( designSection( Compiler::compile( Setup::normalize( [ 'colours' => [ 'mode' => $mode ] ], $library ), $library ), 2, Compiler::SECTION ) );
+$inSheet = static fn( string $mode ): string => designPlain( designSection( Compiler::compile( $appData, Setup::normalize( $appData, [ 'colours' => [ 'mode' => $mode ] ], $library ), $library ), 2, Compiler::SECTION ) );
 
 check( 'the compiled sheet carries the palette in the shape of the mode - three blocks for Auto, one for light and one for dark - and the colour scheme of the page with it',
 	substr_count( $inSheet( 'auto' ), '--nino-default:' ) === 3 && preg_match( '/^\s*color-scheme\s*:/m', $inSheet( 'auto' ) ) !== 1
@@ -1878,7 +2889,7 @@ check( '...and produces the file the css bundle already names', is_file( ninoSan
 $onDisk = (string) file_get_contents( ninoSandboxDir( $appData ). '/private/assets/theme.css' );
 check( 'a sheet Design wrote knows itself', Compiler::stamped( $onDisk ) === true );
 
-$second = Compiler::write( $appData, Compiler::compile( Setup::normalize( [ 'size' => 1 ], $library ), $library ) );
+$second = Compiler::write( $appData, Compiler::compile( $appData, Setup::normalize( $appData, [ 'size' => 1 ], $library ), $library ) );
 check( 'compiling again writes over its own file without being asked twice', $second === true
 	&& str_contains( (string) file_get_contents( ninoSandboxDir( $appData ). '/private/assets/theme.css' ), '--nino-base-size: 129.375%;' ) === true );
 
@@ -2056,9 +3067,9 @@ check( '...where every knob stands, the five font roles with what each has and w
 	&& ( $listed['roles'] ?? null ) === Fonts::ROLES && ( $listed['fonts'] ?? null ) === Fonts::DEFAULTS
 	&& ( $listed['weights'] ?? null ) === Fonts::WEIGHTS && ( $listed['bounds'] ?? null ) === Fonts::BOUNDS && array_key_exists( 'fontsizes', $listed ) === false
 	&& ( $listed['inherited'] ?? null ) === Fonts::INHERITED
-	&& ( $listed['options']['title'] ?? null ) === Fonts::options( 'title' ) && ( $listed['options']['code'] ?? null ) === [ '' ] );
+	&& ( $listed['options']['title'] ?? null ) === Fonts::options( $appData, 'title' ) && ( $listed['options']['code'] ?? null ) === [ '' ] );
 check( '...and the families with their names, their category and whether they are a system stack - and not one file name or url',
-	array_keys( (array) ( $listed['families'] ?? [] ) ) === array_keys( Fonts::families() )
+	array_keys( (array) ( $listed['families'] ?? [] ) ) === array_keys( Fonts::families( $appData ) )
 	&& ( $listed['families']['league-spartan'] ?? null ) === [ 'name' => 'League Spartan', 'category' => 'sans', 'system' => false ]
 	&& ( $listed['families']['system-mono']['system'] ?? null ) === true && str_contains( json_encode( $listed['families'] ), 'woff2' ) === false );
 check( 'the file on disk is ours and answers to the setup', ( $listed['exists'] ?? null ) === true
@@ -2556,7 +3567,7 @@ foreach( Setup::PARTS as $part => $kind ) {
 	foreach( Setup::available( $library, $part ) as $set )
 		foreach( [ -2, -1, 0, 1, 2 ] as $position ) {
 
-			$sheet = Compiler::compile( Setup::normalize( [ 'parts' => [ $part => $set ], 'knobs' => [ $part => array_fill_keys( $knobNames[$part], $position ) ] ], $library ), $library );
+			$sheet = Compiler::compile( $appData, Setup::normalize( $appData, [ 'parts' => [ $part => $set ], 'knobs' => [ $part => array_fill_keys( $knobNames[$part], $position ) ] ], $library ), $library );
 			$block = designPlain( substr( $sheet, (int) strrpos( $sheet, 'the knob positions' ) ) );
 			$plain = designPlain( $sheet );
 
@@ -2829,7 +3840,7 @@ check( 'a row with more than one cell spaces them - every cell but the last carr
 	$multi > 0 && $spaced === $multi );
 
 $notes 		= [];
-$chosen 	= Setup::normalize( [ 'parts' => [ 'header' => 'v3', 'footer' => 'v5' ] ], $library );
+$chosen 	= Setup::normalize( $appData, [ 'parts' => [ 'header' => 'v3', 'footer' => 'v5' ] ], $library );
 $markup 	= Preview::markup( $appData, $library, $chosen, $notes );
 
 check( 'markup() reads the chosen frames out of the library rather than off disk', $notes === []
@@ -2842,7 +3853,7 @@ check( 'a frame with no template is named rather than quietly left out',
 	&& count( $notes ) === 1 && str_contains( $notes[0], '"header"' ) === true );
 
 $notes = [];
-$shown = Preview::css( $chosen, $library, '/somewhere/public', $notes );
+$shown = Preview::css( $appData, $chosen, $library, '/somewhere/public', $notes );
 check( 'the sheet a preview is shown under resolves the public prefix, or the webfaces never load',
 	str_contains( $shown, "url('/somewhere/public/fonts/" ) === true && str_contains( $shown, '[[/nino/public]]' ) === false );
 
@@ -2990,7 +4001,7 @@ check( 'a save keeps the palette, normalized', $status === 200
 	&& ( $saved['colours']['contrast'] ?? 0 ) === 3
 	&& ( $saved['colours']['mode'] ?? '' ) === 'light' );
 check( '...and the compiled sheet carries that colour, exactly as it was typed',
-	str_contains( Compiler::compile( $saved, $library ), '--nino-brand: #8b1d3f;' ) === true );
+	str_contains( Compiler::compile( $appData, $saved, $library ), '--nino-brand: #8b1d3f;' ) === true );
 
 [ $status, $coloured ] = callDesignAction( $appData, 'apiPreview', [
 	'parts' => [], 'size' => 0, 'colours' => [ 'primary' => '#2e7d32' ], 'full' => false,
@@ -2999,6 +4010,243 @@ check( 'a preview shows the colour that was posted rather than the one on disk',
 	&& str_contains( (string) ( $coloured['css'] ?? '' ), '--nino-brand: #2e7d32;' ) === true
 	&& ( Setup::read( $appData, $library )['colours']['primary'] ?? '' ) === '#8b1d3f' );
 
+echo "\nThe panel: the typefaces - the list, an install, a removal\n";
+
+/*	The panel's own words are what a request has loaded when it gets here (see \Nino\Admin\Admin::init()), and the
+	sentence an install or a removal answers with is made of them. The setup file is put back as it was at the end:
+	the roles below are given a family to see it refused for removal	*/
+$fillsBefore 	= $appData['./nino/html/fills'] ?? null;
+$setupFile 		= \Nino\Filesystem::path( $appData, Setup::PATH );
+$setupKept 		= is_file( $setupFile ) === true ? (string) file_get_contents( $setupFile ) : null;
+
+\Nino\Html::addFills( $appData, (array) include __DIR__. '/../text/en_US.php', '*' );
+\Nino\Features::saveSettings( $appData, 'design', [ 'webfontsUrl' => Webfonts::DEFAULT_URL, 'webfontsKey' => $webPublic ] );
+$publish( [ $entryInter, $entryFlex, $entryFira ] );
+@unlink( $cacheFile );
+
+$shelfKeys = [ 'families', 'fetched', 'url', 'key', 'builtin', 'installed', 'broken', 'uses', 'refusal', 'refusalKind' ];
+$requests = [];
+
+[ $status, $shelf ] = callDesignAction( $appData, 'apiWebfontsList', [] );
+
+check( 'the list of typefaces is asked for with nothing kept: what the screen draws both halves from - the families on offer and when they were loaded, the address, whether there is a key, the families the feature brings, what is installed, what lies in the fonts directory that is none, who uses what, and why the list is missing and what that is about',
+	$status === 200 && array_keys( $shelf ) === $shelfKeys && $shelf['families'] === [] && $shelf['fetched'] === 0 && $shelf['url'] === Webfonts::DEFAULT_URL && $shelf['key'] === true
+	&& $shelf['builtin'] === array_keys( Fonts::builtin() ) && $shelf['installed'] === [] && $shelf['broken'] === [] && $shelf['uses'] === [] && $shelf['refusal'] === '' && $shelf['refusalKind'] === '' );
+check( '...and nothing was fetched for it: the panel reads what it kept, and the repository is asked when the button says so', $requests === [] );
+
+[ $status, $shelf ] = callDesignAction( $appData, 'apiWebfontsList', [ 'refresh' => 'yes' ] );
+
+check( '...a refresh that is not the boolean true is no refresh', $status === 200 && $shelf['families'] === [] && $requests === [] );
+
+[ $status, $shelf ] = callDesignAction( $appData, 'apiWebfontsList', [ 'refresh' => true ] );
+
+check( 'with refresh it asks the repository - the list and its signature, two requests - and answers what the list names, when it was loaded, and no refusal',
+	$status === 200 && $shelf['families'] === [ $entryInter, $entryFlex, $entryFira ] && $shelf['refusal'] === '' && abs( $shelf['fetched'] - time() ) < 30
+	&& array_column( $requests, 'url' ) === [ Webfonts::DEFAULT_URL, Webfonts::DEFAULT_URL. '.sig' ] );
+
+$requests = [];
+[ $status, $again ] = callDesignAction( $appData, 'apiWebfontsList', [ 'refresh' => false ] );
+
+check( '...and the next time it answers from what it kept, the same, without a request', $status === 200 && $again === $shelf && $requests === [] );
+
+\Nino\Features::saveSettings( $appData, 'design', [ 'webfontsKey' => '' ] );
+
+if( Webfonts::PUBLIC_KEY === '' ) {
+
+	$requests = [];
+	[ $status, $refused ] = callDesignAction( $appData, 'apiWebfontsList', [ 'refresh' => true ] );
+
+	check( 'a list that cannot be believed is an answer and not an error: the reason where the list was, and what it is about, none of the list, nothing fetched - with no key the sentence that says where to put one',
+		$status === 200 && array_keys( $refused ) === $shelfKeys && $refused['families'] === [] && $refused['fetched'] === 0 && $requests === []
+		&& $refused['refusal'] === 'no public key for the repository - set it in the feature\'s settings or in Webfonts::PUBLIC_KEY' && $refused['refusalKind'] === 'nokey' );
+}
+else
+	echo "  --  the class carries a public key, so the refusal for a missing key is not tried here\n";
+
+\Nino\Features::saveSettings( $appData, 'design', [ 'webfontsKey' => $webPublic, 'webfontsUrl' => '' ] );
+
+check( '...and a repository that is switched off says that, in the refusal and in the address that is none - the screen is told what the settings are now, and not only when the panel was opened',
+	callDesignAction( $appData, 'apiWebfontsList', [ 'refresh' => true ] )[1]['refusal'] === 'the typeface repository is switched off'
+	&& callDesignAction( $appData, 'apiWebfontsList', [] )[1]['url'] === '' );
+check( '...the refusal of a repository that is switched off is about that, and a read that refuses nothing is about nothing',
+	callDesignAction( $appData, 'apiWebfontsList', [ 'refresh' => true ] )[1]['refusalKind'] === 'off' && callDesignAction( $appData, 'apiWebfontsList', [] )[1]['refusalKind'] === '' );
+\Nino\Features::saveSettings( $appData, 'design', [ 'webfontsUrl' => Webfonts::DEFAULT_URL, 'webfontsKey' => $webPublic ] );
+
+$served = $remote;
+unset( $remote[Webfonts::DEFAULT_URL] );
+[ , $unreachable ] = callDesignAction( $appData, 'apiWebfontsList', [ 'refresh' => true ] );
+
+$remote = $served;
+$remote[Webfonts::DEFAULT_URL] = str_replace( '"version": "4.1"', '"version": "9.9"', $remote[Webfonts::DEFAULT_URL] );
+[ , $forged ] = callDesignAction( $appData, 'apiWebfontsList', [ 'refresh' => true ] );
+
+$remote = $served;
+$remote[Webfonts::DEFAULT_URL] = designList( [ array_replace( $entryInter, [ 'license' => 'MIT' ] ) ] );
+$remote[Webfonts::DEFAULT_URL. '.sig'] = designSign( $remote[Webfonts::DEFAULT_URL], $webPrivate );
+[ , $unreadable ] = callDesignAction( $appData, 'apiWebfontsList', [ 'refresh' => true ] );
+
+$remote = $served;
+
+check( 'the other things a refusal can be about are told as well, each with its reason: a repository that cannot be reached, a list that was changed after it was signed, a signed list that is no list this reads',
+	$unreachable['refusalKind'] === 'unreachable' && $unreachable['refusal'] === 'the typeface list could not be fetched: http 404'
+	&& $forged['refusalKind'] === 'signature' && $forged['refusal'] === 'the typeface list signature does not verify'
+	&& $unreadable['refusalKind'] === 'parse' && str_contains( $unreadable['refusal'], 'typeface list entry 0: "license"' ) === true
+	&& array_keys( $unreachable ) === $shelfKeys && array_keys( $forged ) === $shelfKeys && array_keys( $unreadable ) === $shelfKeys
+	&& in_array( $unreachable['refusalKind'], Webfonts::REFUSALS, true ) === true && in_array( $forged['refusalKind'], Webfonts::REFUSALS, true ) === true && in_array( $unreadable['refusalKind'], Webfonts::REFUSALS, true ) === true );
+
+\Nino\Features::saveSettings( $appData, 'design', [ 'webfontsUrl' => Webfonts::DEFAULT_URL, 'webfontsKey' => '' ] );
+check( '...and so is a key that is missing: the list answers that there is none',
+	callDesignAction( $appData, 'apiWebfontsList', [] )[1]['key'] === ( Webfonts::PUBLIC_KEY !== '' ) );
+\Nino\Features::saveSettings( $appData, 'design', [ 'webfontsUrl' => '', 'webfontsKey' => $webPublic ] );
+
+[ , $offList ] = callDesignAction( $appData, 'apiList' );
+
+check( 'design/list says whether the second half of the tab can be offered: an address, a key - one without the other is none',
+	( $offList['webfonts'] ?? null ) === [ 'url' => false, 'key' => true ] );
+
+\Nino\Features::saveSettings( $appData, 'design', [ 'webfontsUrl' => Webfonts::DEFAULT_URL, 'webfontsKey' => '' ] );
+[ , $keyless ] = callDesignAction( $appData, 'apiList' );
+\Nino\Features::saveSettings( $appData, 'design', [ 'webfontsKey' => $webPublic ] );
+[ , $both ] = callDesignAction( $appData, 'apiList' );
+
+check( '...the key being the class\'s own where the setting is empty',
+	( $keyless['webfonts'] ?? null ) === [ 'url' => true, 'key' => Webfonts::PUBLIC_KEY !== '' ] && ( $both['webfonts'] ?? null ) === [ 'url' => true, 'key' => true ] );
+
+\Nino\Features::saveSettings( $appData, 'design', [ 'webfontsUrl' => Webfonts::DEFAULT_URL, 'webfontsKey' => $webPublic ] );
+callDesignAction( $appData, 'apiWebfontsList', [ 'refresh' => true ] );
+
+// --- An install
+
+[ $status, $done ] = callDesignAction( $appData, 'apiWebfontsInstall', [ 'slug' => 'inter' ] );
+$face = $done['installed']['inter']['face'] ?? '';
+
+check( 'an install answers with the sentence for the bar and the state after it - the same shape the list has, the sentence in front, the families the feature brings among them',
+	$status === 200 && array_keys( $done ) === array_merge( [ 'msg' ], $shelfKeys ) && $done['msg'] === 'Inter 4.1 is installed.' && $done['refusal'] === '' && $done['refusalKind'] === ''
+	&& $done['builtin'] === array_keys( Fonts::builtin() ) && $done['families'] === [ $entryInter, $entryFlex, $entryFira ] && $done['fetched'] === ( Webfonts::cached( $appData )['fetched'] ?? 0 ) );
+check( '...the family is installed whole, with what the screen draws of it: the name, its category, version, licence and where the files came from, the weights, and the file its name is set in - a url of the project\'s own, the first normal file',
+	is_dir( $fontsDir. '/inter' ) === true && is_file( $fontsDir. '/inter/700-italic.woff2' ) === true
+	&& ( $done['installed']['inter'] ?? null ) === [
+		'name' => 'Inter', 'category' => 'sans', 'version' => '4.1', 'license' => 'OFL-1.1', 'source' => 'https://github.com/rsms/inter',
+		'weights' => [ 400, 700 ], 'axis' => [], 'face' => $face,
+	] && str_ends_with( $face, '/assets/fonts/inter/400.woff2' ) === true && str_contains( $face, '[[' ) === false && str_starts_with( $face, 'http' ) === false );
+check( '...and nobody uses it yet', $done['uses'] === [ 'inter' => [] ] && $done['broken'] === [] );
+
+[ , $relisted ] = callDesignAction( $appData, 'apiList' );
+
+check( 'design/list has it after an install: among the families the Fonts tab chooses from, by its name, and in the options of the roles - the code is offered the monospace ones only',
+	( $relisted['families']['inter'] ?? null ) === [ 'name' => 'Inter', 'category' => 'sans', 'system' => false ] && in_array( 'inter', $relisted['options']['title'], true ) === true
+	&& in_array( 'inter', $relisted['options']['code'], true ) === false );
+
+[ $status, $flexDone ] = callDesignAction( $appData, 'apiWebfontsInstall', [ 'slug' => 'roboto-flex' ] );
+
+check( 'a family with a weight axis is told as one: the range, and the file with the axis as the file its name is set in',
+	$status === 200 && $flexDone['msg'] === 'Roboto Flex 3.0 is installed.' && ( $flexDone['installed']['roboto-flex']['axis'] ?? null ) === [ 100, 900 ]
+	&& str_ends_with( (string) ( $flexDone['installed']['roboto-flex']['face'] ?? '' ), '/assets/fonts/roboto-flex/100-900.woff2' ) === true
+	&& array_keys( $flexDone['installed'] ) === [ 'inter', 'roboto-flex' ] );
+
+$next 		= designManifest( 'inter', 'Inter', [ [ 400, 'normal' ], [ 600, 'normal' ], [ 700, 'normal' ] ], [ 'version' => '4.2', 'source' => 'https://github.com/rsms/inter' ] );
+$archive 	= designTarGz( designArchiveFiles( $next ) );
+$entryNext = designListEntry( $next, $archive );
+
+$remote[$entryNext['archive']] = $archive;
+$publish( [ $entryNext, $entryFlex, $entryFira ] );
+callDesignAction( $appData, 'apiWebfontsList', [ 'refresh' => true ] );
+[ $status, $updated ] = callDesignAction( $appData, 'apiWebfontsInstall', [ 'slug' => 'inter' ] );
+
+check( 'an update says so: the family that was there is the version of the list now, with the weights it has, and the sentence is the one for an update',
+	$status === 200 && $updated['msg'] === 'Inter is updated to 4.2.' && ( $updated['installed']['inter']['version'] ?? null ) === '4.2' && ( $updated['installed']['inter']['weights'] ?? null ) === [ 400, 600, 700 ]
+	&& is_file( $fontsDir. '/inter/600.woff2' ) === true && is_file( $fontsDir. '/inter/700-italic.woff2' ) === false );
+
+// ...refused, with the reason, and a conflict rather than a failure of the server: the request was understood and the answer is no
+$wrongSum = designListEntry( $firaCode, $archiveFira, [ 'sha256' => str_repeat( 'b', 64 ) ] );
+
+$publish( [ $entryNext, $entryFlex, $wrongSum ] );
+callDesignAction( $appData, 'apiWebfontsList', [ 'refresh' => true ] );
+
+check( 'an archive the list does not vouch for is refused as a conflict, with the reason, and nothing is installed or left behind',
+	callDesignAction( $appData, 'apiWebfontsInstall', [ 'slug' => 'fira-code' ] ) === [ 409, [ 'error' => 'the archive does not match what the list promised' ] ]
+	&& is_dir( $fontsDir. '/fira-code' ) === false && designStagingClean( $staging ) === true );
+check( '...so is a family that is not in the list, and so is a slug that is none - which never reaches a path, a message or a line of the log as posted',
+	callDesignAction( $appData, 'apiWebfontsInstall', [ 'slug' => 'nowhere' ] ) === [ 409, [ 'error' => 'the typeface "nowhere" is not in the list - load the list first' ] ]
+	&& callDesignAction( $appData, 'apiWebfontsInstall', [ 'slug' => '../inter' ] ) === [ 409, [ 'error' => 'that is no slug of a typeface' ] ]
+	&& callDesignAction( $appData, 'apiWebfontsInstall', [ 'slug' => [ 'inter' ] ] ) === [ 409, [ 'error' => 'that is no slug of a typeface' ] ]
+	&& callDesignAction( $appData, 'apiWebfontsInstall', [] ) === [ 409, [ 'error' => 'that is no slug of a typeface' ] ]
+	&& callDesignAction( $appData, 'apiWebfontsInstall', [ 'slug' => 'source-sans-3' ] )[0] === 409 );
+
+// --- A removal
+
+$usedBy( [ 'title', 'text' ] );
+[ , $used ] = callDesignAction( $appData, 'apiWebfontsList', [] );
+
+check( 'the list says who uses a family: the roles of the saved setup, in the order of the roles', $used['uses'] === [ 'inter' => [ 'title', 'text' ], 'roboto-flex' => [] ] );
+check( 'a removal of a family a role uses is refused as a conflict, and says which roles, and the family stays',
+	callDesignAction( $appData, 'apiWebfontsRemove', [ 'slug' => 'inter' ] ) === [ 409, [ 'error' => 'used by title, text', 'code' => 'used', 'params' => [ 'title', 'text' ] ] ] && is_file( $fontsDir. '/inter/400.woff2' ) === true );
+
+$usedBy( [] );
+[ $status, $removed ] = callDesignAction( $appData, 'apiWebfontsRemove', [ 'slug' => 'inter' ] );
+
+check( 'one that nothing uses is removed: the sentence for the bar and the state after it - the family is gone from the installed ones, with its directory, and from what the Fonts tab chooses from',
+	$status === 200 && array_keys( $removed ) === array_merge( [ 'msg' ], $shelfKeys ) && $removed['msg'] === 'Inter is removed.' && isset( $removed['installed']['inter'] ) === false
+	&& isset( $removed['installed']['roboto-flex'] ) === true && is_dir( $fontsDir. '/inter' ) === false
+	&& isset( callDesignAction( $appData, 'apiList' )[1]['families']['inter'] ) === false );
+check( '...a second time it is a conflict - there is nothing to remove - and so is a slug that is none',
+	callDesignAction( $appData, 'apiWebfontsRemove', [ 'slug' => 'inter' ] ) === [ 409, [ 'error' => 'the typeface "inter" is not installed' ] ]
+	&& callDesignAction( $appData, 'apiWebfontsRemove', [ 'slug' => '../' ] ) === [ 409, [ 'error' => 'that is no slug of a typeface' ] ]
+	&& callDesignAction( $appData, 'apiWebfontsRemove', [] ) === [ 409, [ 'error' => 'that is no slug of a typeface' ] ] );
+
+mkdir( $fontsDir. '/odd-one', 0755, true );
+[ , $odd ] = callDesignAction( $appData, 'apiWebfontsList', [] );
+[ $status, $oddGone ] = callDesignAction( $appData, 'apiWebfontsRemove', [ 'slug' => 'odd-one' ] );
+
+check( 'a directory that is no family is listed with the reason, and removed by its name - the sentence has the name it has',
+	$odd['broken'] === [ 'odd-one' => 'there is no font.json' ] && $status === 200 && $oddGone['msg'] === 'odd-one is removed.' && $oddGone['broken'] === [] && is_dir( $fontsDir. '/odd-one' ) === false );
+
+check( 'the log says what was done to a typeface and by which name - and nothing of what was only read; a name that is none is not written as it came',
+	Admin::log( 'design/webfonts/install', [ 'slug' => 'inter' ] ) === 'Install webfont inter' && Admin::log( 'design/webfonts/remove', [ 'slug' => 'inter' ] ) === 'Remove webfont inter'
+	&& Admin::log( 'design/webfonts/list', [ 'refresh' => true ] ) === ''
+	&& Admin::log( 'design/webfonts/install', [ 'slug' => "inter\nforged line" ] ) === 'Install webfont ' && Admin::log( 'design/webfonts/remove', [ 'slug' => [ 'x' ] ] ) === 'Remove webfont '
+	&& Admin::log( 'design/webfonts/install', [] ) === 'Install webfont ' );
+
+// What the screen is drawn from, for design-js-smoke.js: the answer the server gives for a project with two families, one of them used, and a directory that is none
+callDesignAction( $appData, 'apiWebfontsInstall', [ 'slug' => 'inter' ] );
+$usedBy( [ 'subtitle' ] );
+mkdir( $fontsDir. '/odd-one', 0755, true );
+[ , $forTab ] = callDesignAction( $appData, 'apiWebfontsList', [] );
+$webfontsFile = ninoSandboxDir( $appData ). '/design-webfonts.json';
+file_put_contents( $webfontsFile, json_encode( $forTab, JSON_THROW_ON_ERROR ) );
+
+check( 'the answer that is written down for the screen has what the screen reads: the installed with a face to set the name in, the uses, the directory that is none, and the list that was loaded',
+	array_keys( $forTab['installed'] ) !== [] && ( $forTab['uses']['inter'] ?? null ) === [ 'subtitle' ] && array_keys( $forTab['broken'] ) === [ 'odd-one' ] && count( $forTab['families'] ) === 3 && $forTab['fetched'] > 0 );
+
+// Put the sandbox back as the sections after this one found it
+$usedBy( [] );
+
+foreach( array_keys( Fonts::installed( $appData ) ) as $slug )
+	Webfonts::remove( $appData, $slug );
+
+Webfonts::remove( $appData, 'odd-one' );
+\Nino\Filesystem::removeDir( dirname( $fontsDir ) );
+@unlink( $cacheFile );
+unset( $appData['./nino/filesystem/cache'] );
+
+if( $setupKept === null )
+	@unlink( $setupFile );
+else
+	file_put_contents( $setupFile, $setupKept );
+
+\Nino\Features::saveSettings( $appData, 'design', [ 'webfontsUrl' => Webfonts::DEFAULT_URL, 'webfontsKey' => '' ] );
+
+if( $fillsBefore === null )
+	unset( $appData['./nino/html/fills'] );
+else
+	$appData['./nino/html/fills'] = $fillsBefore;
+
+check( 'and the sandbox is as it was: no family, no directory for them, no cache, no staging, the setup as the sections before left it, and the settings the defaults again',
+	Fonts::installed( $appData ) === [] && Fonts::broken( $appData ) === [] && is_dir( dirname( $fontsDir ) ) === false && is_file( $cacheFile ) === false && designStagingClean( $staging ) === true
+	&& Webfonts::url( $appData ) === Webfonts::DEFAULT_URL && Webfonts::key( $appData ) === Webfonts::PUBLIC_KEY
+	&& ( $setupKept === null ? is_file( $setupFile ) === false : (string) file_get_contents( $setupFile ) === $setupKept ) );
+
+
 \Nino\Auth::logoutUser( $appData );
 check( 'every action of the panel refuses a request with no session',
 	callDesignAction( $appData, 'apiList' )[0] === 401
@@ -3006,7 +4254,10 @@ check( 'every action of the panel refuses a request with no session',
 	&& callDesignAction( $appData, 'apiApply' )[0] === 401
 	&& callDesignAction( $appData, 'apiPlan' )[0] === 401
 	&& callDesignAction( $appData, 'apiRestore' )[0] === 401
-	&& callDesignAction( $appData, 'apiPreview', [] )[0] === 401 );
+	&& callDesignAction( $appData, 'apiPreview', [] )[0] === 401
+	&& callDesignAction( $appData, 'apiWebfontsList', [] )[0] === 401
+	&& callDesignAction( $appData, 'apiWebfontsInstall', [ 'slug' => 'inter' ] )[0] === 401
+	&& callDesignAction( $appData, 'apiWebfontsRemove', [ 'slug' => 'inter' ] )[0] === 401 );
 
 \Nino\Auth::insertUser( $appData, 'editor@example.com', 'correct horse battery staple', [ '/_admin/elements/manage' ] );
 \Nino\Auth::loginUser( $appData, 'editor@example.com', 'correct horse battery staple' );
@@ -3014,9 +4265,13 @@ check( '...and an account without /_admin/design/manage with a 403',
 	callDesignAction( $appData, 'apiList' )[0] === 403 && callDesignAction( $appData, 'apiApply' )[0] === 403
 	&& callDesignAction( $appData, 'apiPlan' )[0] === 403 && callDesignAction( $appData, 'apiRestore' )[0] === 403
 	&& callDesignAction( $appData, 'apiPreview', [] )[0] === 403
-	&& callDesignAction( $appData, 'apiSave', [] )[0] === 403 );
+	&& callDesignAction( $appData, 'apiSave', [] )[0] === 403
+	&& callDesignAction( $appData, 'apiWebfontsList', [] )[0] === 403
+	&& callDesignAction( $appData, 'apiWebfontsInstall', [ 'slug' => 'inter' ] )[0] === 403
+	&& callDesignAction( $appData, 'apiWebfontsRemove', [ 'slug' => 'inter' ] )[0] === 403 );
 
-check( 'the panel names every action it answers', array_keys( Admin::actions() ) === [ 'design/list', 'design/save', 'design/apply', 'design/plan', 'design/restore', 'design/preview' ] );
+check( 'the panel names every action it answers', array_keys( Admin::actions() ) === [ 'design/list', 'design/save', 'design/apply', 'design/plan', 'design/restore', 'design/preview',
+	'design/webfonts/list', 'design/webfonts/install', 'design/webfonts/remove' ] );
 check( 'and previewing is not written to the activity log - it happens on every select and changes nothing',
 	Admin::log( 'design/preview', [] ) === '' );
 check( 'and ships the pane and the two assets it is drawn with',
@@ -3048,7 +4303,7 @@ check( '...and every text the script names literally is one of them'. ( $unwritt
 	and not as a blank row on a screen - and a word that no longer belongs to anything
 	fails as well	*/
 $wanted = [];
-foreach( [ 'global', 'fonts', 'content', 'buttons', 'components', 'colours' ] as $tab )
+foreach( [ 'global', 'fonts', 'typefaces', 'content', 'buttons', 'components', 'colours' ] as $tab )
 	$wanted[] = 'tab/'. $tab;
 foreach( array_keys( Setup::PARTS ) as $part )
 	$wanted[] = 'part/'. $part;
@@ -3068,12 +4323,27 @@ foreach( Fonts::ROLES as $role )
 	$wanted[] = 'font/role/'. $role;
 foreach( [ 'family', 'weight', 'uppercase', 'size' ] as $head )
 	$wanted[] = 'font/head/'. $head;
-foreach( Fonts::families() as $slug => $family )
+foreach( Fonts::families( $appData ) as $slug => $family )
 	if( $family['files'] === [] )
 		$wanted[] = 'family/'. $slug;
 array_push( $wanted, 'family/default', 'family/default-code', 'fontsize/unit' );
 foreach( Fonts::WEIGHTS as $weight )
 	$wanted[] = 'weight/'. $weight;
+
+/*	The Typefaces tab names a category chip after each category the list accepts and an All, a step of the pager and
+	a sentence for each thing a refusal of the list can be about (see Webfonts::REFUSALS); the sentences of an install,
+	an update and a removal are the server's (see Admin::apiWebfontsInstall())	*/
+foreach( array_merge( [ 'all' ], Webfonts::CATEGORIES ) as $category )
+	$wanted[] = 'typefaces/category/'. $category;
+foreach( [ 'previous', 'next' ] as $step )
+	$wanted[] = 'typefaces/page/'. $step;
+foreach( Webfonts::REFUSALS as $refusal )
+	$wanted[] = 'typefaces/available/'. $refusal;
+array_push( $wanted, 'typefaces/msg/installed', 'typefaces/msg/updated', 'typefaces/msg/removed' );
+
+preg_match( '/FACE_CATEGORIES\s*:\s*\[([^\]]*)\]/', (string) file_get_contents( __DIR__. '/../assets/admin.js' ), $chips );
+check( 'the chips of the Typefaces tab are an All and the categories the list accepts, in the order the list names them',
+	array_map( static fn( string $chip ): string => trim( $chip, " '" ), explode( ',', $chips[1] ?? '' ) ) === array_merge( [ 'all' ], Webfonts::CATEGORIES ) );
 
 $choiceKnobs = [];
 
@@ -3433,8 +4703,13 @@ if( $node === '' || function_exists( 'exec' ) === false ) {
 	echo "  --  - node is not available here: design-js-smoke.js was NOT run\n";
 } else {
 	$output = []; $status = 1;
-	exec( 'DESIGN_LISTING='. escapeshellarg( $listingFile ). ' '. escapeshellarg( $node ). ' '. escapeshellarg( $jsTest ). ' 2>&1', $output, $status );
+	exec( 'DESIGN_LISTING='. escapeshellarg( $listingFile ). ' DESIGN_WEBFONTS='. escapeshellarg( $webfontsFile ). ' '. escapeshellarg( $node ). ' '. escapeshellarg( $jsTest ). ' 2>&1', $output, $status );
 	$summary = (string) end( $output );
+
+	// A run that failed says what failed: the checks that did not hold, or what node stopped on
+	if( $status !== 0 )
+		$summary = implode( ' | ', array_slice( array_values( array_filter( $output, static fn( string $line ): bool => str_starts_with( $line, 'FAIL' ) === true || preg_match( '/Error|at .*\(/', $line ) === 1 ) ) ?: $output, 0, 4 ) );
+
 	check( 'design-js-smoke.js passes - '. ( $summary === '' ? 'no output' : $summary ), $status === 0 );
 }
 

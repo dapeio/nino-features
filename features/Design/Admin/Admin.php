@@ -12,13 +12,19 @@ namespace Nino\Modules\Design {
 
 	/**
 	 *	Nino							A compact filesystembased php framework
-	 *	Design\Admin			The "Design" panel: six tabs over one setup - Global, with the
-	 *										two frames, the root size, the width and the animation of the
-	 *										page; Fonts, with the five font roles; Content, Buttons and
-	 *										Components, each with the choice of its template and one named
-	 *										knob for each thing the template lets go of; and Colours, with
-	 *										the two colours, the five knobs and the mode the palette is
-	 *										solved from - compiled together into assets/theme.css.
+	 *	Design\Admin			The "Design" panel: seven tabs, six of them over one setup -
+	 *										Global, with the two frames, the root size, the width and the
+	 *										animation of the page; Fonts, with the five font roles;
+	 *										Content, Buttons and Components, each with the choice of its
+	 *										template and one named knob for each thing the template lets
+	 *										go of; and Colours, with the two colours, the five knobs and
+	 *										the mode the palette is solved from - compiled together into
+	 *										assets/theme.css. The seventh, Typefaces, is the loader: the
+	 *										typefaces a project has installed and the signed list of
+	 *										those it can install (see Webfonts), which belongs to the
+	 *										setup only as far as the selects of Fonts list what is
+	 *										installed. Installing and removing happen when they are
+	 *										pressed - they are not a draft.
 	 *
 	 *										Choosing and applying are two actions on purpose. A
 	 *										setup is a draft and lives in data/design.php whether
@@ -85,6 +91,9 @@ namespace Nino\Modules\Design {
 				'design/plan' 	=> [ self::class, 'apiPlan' ],
 				'design/restore'=> [ self::class, 'apiRestore' ],
 				'design/preview'=> [ self::class, 'apiPreview' ],
+				'design/webfonts/list' 		=> [ self::class, 'apiWebfontsList' ],
+				'design/webfonts/install' => [ self::class, 'apiWebfontsInstall' ],
+				'design/webfonts/remove' 	=> [ self::class, 'apiWebfontsRemove' ],
 			];
 		}
 
@@ -119,9 +128,13 @@ namespace Nino\Modules\Design {
 				'design/save' 	=> 'Save Design Setup',
 				'design/apply' 	=> 'Apply Design'. ( ( $data['force'] ?? false ) === true ? ' (took over files Design had not written)' : '' ),
 				'design/restore'=> 'Restore previous Design version',
+				'design/webfonts/install' => 'Install webfont '. self::_slug( $data ),
+				'design/webfonts/remove' 	=> 'Remove webfont '. self::_slug( $data ),
 				// design/preview writes nothing and happens on every change of
 				// a select - a log line per keystroke is noise, not a record.
-				// design/plan is the same: it only reads
+				// design/plan is the same: it only reads. The list of typefaces
+				// is what a repository answered, kept as a cache: no change to
+				// the project, and a log line for it would be noise as well
 				default	=> '',
 			};
 		}
@@ -169,8 +182,13 @@ namespace Nino\Modules\Design {
 
 			$families = [];
 
-			foreach( Fonts::families() as $slug => $family )
+			foreach( Fonts::families( $appData ) as $slug => $family )
 				$families[$slug] = [ 'name' => $family['name'], 'category' => $family['category'], 'system' => $family['files'] === [] ];
+
+			$options = [];
+
+			foreach( Fonts::ROLES as $role )
+				$options[$role] = Fonts::options( $appData, $role );
 
 			\Nino\Http::ok( $request, [
 				'parts' 	=> $parts,
@@ -191,14 +209,15 @@ namespace Nino\Modules\Design {
 				'strengths' => Setup::STRENGTHS,
 				'speeds' 	=> array_keys( Setup::SPEEDS ),
 				/*	The five font roles: what each has, the families to choose from
-					(and which of them each role may be given), the three weights
-					and the bounds a typed size is held inside of - with the size
-					Nino.css gives each role, which the field of a role that chose
-					none shows as its value. The frontend carries none of these tables */
+					(the ones the project installed among them, and which of them each
+					role may be given), the three weights and the bounds a typed size is
+					held inside of - with the size Nino.css gives each role, which the
+					field of a role that chose none shows as its value. The frontend
+					carries none of these tables */
 				'roles' 		=> Fonts::ROLES,
 				'fonts' 		=> (array) ( $setup['fonts'] ?? [] ),
 				'families' 	=> $families,
-				'options' 	=> array_combine( Fonts::ROLES, array_map( Fonts::options( ... ), Fonts::ROLES ) ),
+				'options' 	=> $options,
 				'weights' 	=> Fonts::WEIGHTS,
 				'bounds' 		=> Fonts::BOUNDS,
 				'inherited' => Fonts::INHERITED,
@@ -216,6 +235,9 @@ namespace Nino\Modules\Design {
 				// named, or the one Harmony derived. The swatch standing for it
 				// shows this rather than the primary standing in for it
 				'accent'	=> Colours::accent( (array) ( $setup['colours'] ?? [] ) ),
+				// Whether the repository of typefaces has an address and a key to be read with:
+				// the tab offers the list only where both are set
+				'webfonts'	=> [ 'url' => Webfonts::url( $appData ) !== '', 'key' => Webfonts::key( $appData ) !== '' ],
 				'notes' 	=> $notes,
 				'target' 	=> Compiler::TARGET,
 			] + self::state( $appData, $setup, $library ) );
@@ -256,10 +278,10 @@ namespace Nino\Modules\Design {
 			$recorded = (string) ( $setup['compiled']['input'] ?? '' );
 
 			if( $recorded !== '' )
-				$current = $recorded === \Nino\Modules\Design::fingerprint( $setup, $library );
+				$current = $recorded === \Nino\Modules\Design::fingerprint( $appData, $setup, $library );
 			else {
 				$notes		= [];
-				$current	= (string) ( $setup['compiled']['sha'] ?? '' ) === hash( 'sha256', Compiler::compile( $setup, $library, $notes ) );
+				$current	= (string) ( $setup['compiled']['sha'] ?? '' ) === hash( 'sha256', Compiler::compile( $appData, $setup, $library, $notes ) );
 			}
 
 			/*	Whose every file Design writes is - the stylesheet above says it
@@ -319,7 +341,7 @@ namespace Nino\Modules\Design {
 			/*	Normalised against the library rather than trusted: the screen
 				offers what is there, but a request is a request. What cannot be
 				honoured comes back in `notes` instead of being written */
-			$setup = self::_selection( $posted, $library, $notes );
+			$setup = self::_selection( $appData, $posted, $library, $notes );
 
 			// Kept, so saving a choice does not lose what was last compiled
 			$setup['compiled'] = Setup::read( $appData, $library )['compiled'] ?? [];
@@ -450,9 +472,9 @@ namespace Nino\Modules\Design {
 			// Same normalisation the save takes, for the same reason: a request
 			// is a request, and a set that is not in the library is not shown
 			// just because somebody asked for it
-			$setup = self::_selection( $posted, $library, $notes );
+			$setup = self::_selection( $appData, $posted, $library, $notes );
 
-			$css 			= Preview::css( $setup, $library, \Nino\Filesystem::getPublicDir( $appData ), $notes );
+			$css 			= Preview::css( $appData, $setup, $library, \Nino\Filesystem::getPublicDir( $appData ), $notes );
 			$document = '';
 
 			/*	Three of the five parts are a stylesheet and nothing else, and so
@@ -480,6 +502,111 @@ namespace Nino\Modules\Design {
 				'brand' 		=> Colours::brand( $colours ),
 				'notes' 		=> $notes,
 			] );
+		}
+
+		/**
+		 *	The typefaces: what the repository offers, as far as it has been loaded,
+		 *	and what the project has installed - both halves of the tab from one
+		 *	answer. It reads the list that was kept (see Webfonts::cached()) and
+		 *	asks the repository only where the screen says `refresh`, which is the
+		 *	button of the tab and nothing else: no request leaves the server on
+		 *	its own.
+		 *
+		 *	The list that could not be loaded is a refusal in the answer, with its
+		 *	reason and what it is about (see Webfonts::REFUSALS), and not an error of
+		 *	the request: the tab says it where the list would be, in its own words, and
+		 *	the installed half stays.
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		&$request			(reference) Current server request
+		 *
+		 *	@return 	void
+		 */
+		public static function apiWebfontsList( array &$appData, array &$request ): void {
+
+			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::MANAGE_PERM ) === false )
+				return;
+
+			$refusal 	= '';
+			$kind 		= '';
+			$list 		= null;
+
+			if( ( \Nino\Admin\Admin::postData()['refresh'] ?? false ) === true ) {
+
+				$fetched = Webfonts::fetch( $appData, $kind );
+
+				// The time that is kept with the list is the time the screen shows: the next read says the same
+				if( is_string( $fetched ) === true )
+					$refusal = $fetched;
+				else
+					$list = Webfonts::cached( $appData ) ?? [ 'fetched' => time(), 'families' => $fetched ];
+			}
+			else
+				$list = Webfonts::cached( $appData );
+
+			\Nino\Http::ok( $request, self::_webfonts( $appData, $list, $refusal, $kind ) );
+		}
+
+		/**
+		 *	Install a family of the list, or update it: the whole family, from the
+		 *	archive the signed list names. The answer is the one the list gives, after
+		 *	the change, with the sentence for the action bar. The screen asks design/list
+		 *	again, for the selects of the Fonts tab
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		&$request			(reference) Current server request
+		 *
+		 *	@return 	void
+		 */
+		public static function apiWebfontsInstall( array &$appData, array &$request ): void {
+
+			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::MANAGE_PERM ) === false )
+				return;
+
+			$slug = self::_slug( \Nino\Admin\Admin::postData() );
+			$was 	= Fonts::installed( $appData )[$slug]['installed']['version'] ?? null;
+			$done = Webfonts::install( $appData, $slug );
+
+			if( $done !== true ) {
+				\Nino\Http::fail( $request, str_starts_with( $done, 'could not' ) === true ? 500 : 409, $done );
+				return;
+			}
+
+			$family = Fonts::installed( $appData )[$slug] ?? [ 'name' => $slug, 'installed' => [ 'version' => '' ] ];
+
+			\Nino\Http::ok( $request, [
+				'msg' => self::_text( $appData, $was === null ? 'typefaces/msg/installed' : 'typefaces/msg/updated', $family['name'], $family['installed']['version'] ),
+			] + self::_webfonts( $appData, Webfonts::cached( $appData ), '' ) );
+		}
+
+		/**
+		 *	Remove an installed family - not while a role of the saved setup uses it
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		&$request			(reference) Current server request
+		 *
+		 *	@return 	void
+		 */
+		public static function apiWebfontsRemove( array &$appData, array &$request ): void {
+
+			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::MANAGE_PERM ) === false )
+				return;
+
+			$slug = self::_slug( \Nino\Admin\Admin::postData() );
+			$name = Fonts::installed( $appData )[$slug]['name'] ?? $slug;
+			$done = Webfonts::remove( $appData, $slug );
+
+			if( $done !== true ) {
+				// A family a role still uses is refused with the roles as a code and its params, so the tab can say
+				// it in the words of the workbench; any other refusal is told in the server's own words
+				$roles = str_starts_with( $done, 'used by ' ) === true ? Webfonts::uses( $appData, $slug ) : [];
+				\Nino\Http::fail( $request, str_starts_with( $done, 'could not' ) === true ? 500 : 409, $done, $roles !== [] ? 'used' : '', $roles );
+				return;
+			}
+
+			\Nino\Http::ok( $request, [
+				'msg' => self::_text( $appData, 'typefaces/msg/removed', $name ),
+			] + self::_webfonts( $appData, Webfonts::cached( $appData ), '' ) );
 		}
 
 		/**
@@ -524,13 +651,14 @@ namespace Nino\Modules\Design {
 		 *	template somebody moved away from long ago - normalize() cannot do
 		 *	this, since it holds no library file open.
 		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		$posted				What the request carried
 		 *	@param		string		$library			The feature's library
 		 *	@param		array 		&$notes				(reference) What had to be replaced or dropped
 		 *
 		 *	@return 	array										A normalised setup, without a record of what was compiled
 		 */
-		private static function _selection( array $posted, string $library, array &$notes ): array {
+		private static function _selection( array &$appData, array $posted, string $library, array &$notes ): array {
 
 			$taken = [
 				'size' 		=> $posted['size'] ?? 0,
@@ -540,7 +668,7 @@ namespace Nino\Modules\Design {
 			foreach( [ 'motion', 'parts', 'knobs', 'fonts', 'colours' ] as $key )
 				$taken[$key] = is_array( $posted[$key] ?? null ) === true ? $posted[$key] : [];
 
-			$setup = Setup::normalize( $taken, $library, $notes );
+			$setup = Setup::normalize( $appData, $taken, $library, $notes );
 
 			foreach( Setup::KNOBS as $tab => $kinds ) {
 
@@ -603,6 +731,103 @@ namespace Nino\Modules\Design {
 			\Nino\Html::addFills( $appData, self::_previewFills( $appData ), '*' );
 
 			return \Nino\Html::renderHtml( $appData, Preview::markup( $appData, $library, $setup, $notes ) );
+		}
+
+		/**
+		 *	What the tab of the typefaces is drawn from, the same after every action
+		 *	of it: the list as far as there is one, and the families the project has
+		 *	installed - with what each is set in its own face from, who uses it, and
+		 *	the directories that are none. The slugs of the families the feature brings
+		 *	are in it as well, so that a row of the list can say that it is one: what
+		 *	design/list says of the families has the installed ones among them, and says
+		 *	it as long as the screen has not asked again.
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array|null	$list					{ fetched, families } - the cached list or the one just fetched; null for none
+		 *	@param		string		$refusal			Why the list could not be loaded, '' where it could
+		 *	@param		string		$kind					What the refusal is about, one of Webfonts::REFUSALS; '' where there is none
+		 *
+		 *	@return 	array										families (the list's entries), fetched (unix time, 0 for none), url ('' for none), key (whether there is one), builtin, installed, broken, uses, refusal, refusalKind
+		 */
+		private static function _webfonts( array &$appData, ?array $list, string $refusal, string $kind = '' ): array {
+
+			$public 	= \Nino\Filesystem::getPublicDir( $appData );
+			$usage 		= Webfonts::usage( $appData );
+			$installed = [];
+			$uses 		= [];
+
+			foreach( Fonts::installed( $appData ) as $slug => $family ) {
+
+				// The name is set in the first file of the normal style, the one the preview of the
+				// list draws it from: the files are listed with the normal style first
+				$face = $family['files'][0];
+
+				foreach( $family['files'] as $file )
+					if( $file['style'] === 'normal' ) {
+						$face = $file;
+						break;
+					}
+
+				$installed[$slug] = [
+					'name' 			=> $family['name'],
+					'category' 	=> $family['category'],
+					'version' 	=> $family['installed']['version'],
+					'license' 	=> $family['installed']['license'],
+					'source' 		=> $family['installed']['source'],
+					'weights' 	=> $family['weights'],
+					'axis' 			=> $family['axis'],
+					'face' 			=> str_replace( '[[/nino/public]]', $public, $face['url'] ),
+				];
+				$uses[$slug] = $usage[$slug] ?? [];
+			}
+
+			return [
+				'families' 		=> $list['families'] ?? [],
+				'fetched' 		=> $list['fetched'] ?? 0,
+				'url' 			=> Webfonts::url( $appData ),
+				'key' 			=> Webfonts::key( $appData ) !== '',
+				'builtin' 		=> array_keys( Fonts::builtin() ),
+				'installed' 	=> $installed,
+				'broken' 		=> Fonts::broken( $appData ),
+				'uses' 			=> $uses,
+				'refusal' 		=> $refusal,
+				'refusalKind' 	=> $kind,
+			];
+		}
+
+		/**
+		 *	The slug a request names: one that can be the name of a family's directory,
+		 *	else nothing - so that what is posted never reaches a path, a message or a line of the log as it is
+		 *
+		 *	@param		array 		$data					What the request posted
+		 *
+		 *	@return 	string
+		 */
+		private static function _slug( array $data ): string {
+
+			$slug = $data['slug'] ?? '';
+
+			return is_string( $slug ) === true && preg_match( Webfonts::SLUG, $slug ) === 1 ? $slug : '';
+		}
+
+		/**
+		 *	A sentence of the panel's texts, as the screen's own _text() fills it: the
+		 *	%s of it, in turn, with the values
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$key					Under /_admin/design/, eg. 'typefaces/msg/removed'
+		 *	@param		string		...$values
+		 *
+		 *	@return 	string
+		 */
+		private static function _text( array &$appData, string $key, string ...$values ): string {
+
+			$text = \Nino\Html::renderTextfill( $appData, '/_admin/design/'. $key );
+
+			foreach( $values as $value )
+				$text = (string) preg_replace_callback( '/%s/', static fn(): string => $value, $text, 1 );
+
+			return $text;
 		}
 
 		/**

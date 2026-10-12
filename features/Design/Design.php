@@ -27,10 +27,11 @@ namespace Nino\Modules {
 	 *										size, the width and the animation of the page; from the
 	 *										five font roles; and from the palette.
 	 *
-	 *										Seven pieces, and they are deliberately separable:
+	 *										Eight pieces, and they are deliberately separable:
 	 *
 	 *										  Setup			what was chosen (/data/design.php)
 	 *										  Fonts			the families the font roles can be given
+	 *										  Webfonts	the typefaces a project can install (assets/fonts/)
 	 *										  Colours		the palette half, solved from two colours
 	 *										  Compiler	what that produces (assets/theme.css)
 	 *										  Previous	the one version before an apply (/data/design-previous.php)
@@ -41,7 +42,11 @@ namespace Nino\Modules {
 	 *										stylesheet is an ordinary file the bundle picks up, so a
 	 *										site keeps working with the feature removed - and keeps
 	 *										its setup, so installing it again carries on where it
-	 *										left off rather than starting over.
+	 *										left off rather than starting over. The same goes for
+	 *										the typefaces: they are installed once, from the panel,
+	 *										and served by the project itself. The one callback
+	 *										init() registers answers for the workbench's own
+	 *										responses and for nothing else (see callbackOutput()).
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -81,12 +86,20 @@ namespace Nino\Modules {
 		 *	default compiles the same bytes as before and keeps reading
 		 *	"current".
 		 *
+		 *	An installed family is not code but a directory of the project, and
+		 *	what the type section writes of it - its name, its weight axis and
+		 *	its files - is read off that directory. Those join the input for every
+		 *	installed family a role uses, so that an update of one that changes
+		 *	them reads "saved, not applied" as well; a project that uses none
+		 *	compiles, and hashes, as it did.
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		$setup				A normalized setup
 		 *	@param		string		$library			The library directory its parts are chosen from
 		 *
 		 *	@return 	string
 		 */
-		public static function fingerprint( array $setup, string $library ): string {
+		public static function fingerprint( array &$appData, array $setup, string $library ): string {
 
 			$files = [];
 
@@ -110,6 +123,22 @@ namespace Nino\Modules {
 					break;
 				}
 
+			$installed	= Design\Fonts::installed( $appData );
+			$used				= [];
+
+			foreach( Design\Fonts::ROLES as $role ) {
+
+				$slug = (string) ( $setup['fonts'][$role]['family'] ?? '' );
+
+				if( isset( $installed[$slug] ) === true )
+					$used[$slug] = [ $installed[$slug]['name'], $installed[$slug]['axis'], $installed[$slug]['files'] ];
+			}
+
+			if( $used !== [] ) {
+				ksort( $used );
+				$input[] = $used;
+			}
+
 			return hash( 'sha256', serialize( $input ) );
 		}
 
@@ -124,6 +153,156 @@ namespace Nino\Modules {
 		 */
 		public static function adminPanels( array &$appData ): array {
 			return [ \Nino\Modules\Design\Admin::class ];
+		}
+
+		/**
+		 *	Register the one callback this feature has, on the output phase, where the
+		 *	finished response is in hand - see callbackOutput()
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *
+		 *	@return 	void
+		 */
+		public static function init( array &$appData ): void {
+
+			\Nino\Callbacks::registerCallback( $appData, '/nino/http/output', [ self::class, 'callbackOutput' ] );
+		}
+
+		/**
+		 *	Let the workbench load the previews of the typeface list. The Typefaces tab
+		 *	sets each name of the list in its own face by loading, in the browser of whoever
+		 *	has the tab open, the small font file the repository publishes for the family;
+		 *	and the policy the workbench is sent has no font-src, so its default-src 'self'
+		 *	refuses the file and every name stays in the face of the page. The origin of the
+		 *	list's address is added to font-src, and to no other directive.
+		 *
+		 *	It stands on /nino/http/output and not on /nino/http/response, which runs before
+		 *	the policy is final, and on the responses of /_admin and below alone: a page of the
+		 *	website loads no font from the repository and keeps its policy byte for byte, and
+		 *	so does every response while the setting 'webfontsUrl' is empty or none that can
+		 *	be fetched, the repository being off. The directive is extended where it exists
+		 *	and built from default-src where it does not; 'none' is left as the project decided
+		 *	it - see _allowFonts().
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			&$request			(reference) Current request and its response
+		 *
+		 *	@return 	void
+		 */
+		public static function callbackOutput( array &$appData, array &$request ): void {
+
+			$workbench = false;
+
+			foreach( [ $request['/nino/http/request']['uri'] ?? '', $request['/nino/http/response']['uri'] ?? '' ] as $uri )
+				if( is_string( $uri ) === true && ( $uri === '/_admin' || str_starts_with( $uri, '/_admin/' ) === true ) )
+					$workbench = true;
+
+			if( $workbench === false )
+				return;
+
+			$origin = self::_origin( Design\Webfonts::url( $appData ) );
+			$policy = $request['/nino/http/response']['header']['Content-Security-Policy'] ?? '';
+
+			if( $origin === '' || is_string( $policy ) === false || $policy === '' )
+				return;
+
+			$request['/nino/http/response']['header']['Content-Security-Policy'] = self::_allowFonts( $policy, $origin );
+		}
+
+		/**
+		 *	The origin of an address as a Content-Security-Policy source, or ''
+		 *	where it cannot safely be one: https only, no credentials, and a host
+		 *	that is a plain ascii name - no ip literal (a name whose last label is a
+		 *	number or a hex number is one, written in a form php does not call one),
+		 *	no '*', no whitespace, no ';' or ',' that would end the directive. A
+		 *	non-ascii host would have to be written as punycode; it is refused rather
+		 *	than converted. The port is kept, since a source without one means 443 only.
+		 *
+		 *	The routine Embed and Consent carry, since a feature uses nothing outside
+		 *	\Nino\*'s public API and its own directory.
+		 *
+		 *	@param		string		$url
+		 *
+		 *	@return 	string								'https://host' or 'https://host:port', or ''
+		 */
+		private static function _origin( string $url ): string {
+
+			$parts = parse_url( $url );
+
+			// The scheme in any case: the address of the setting has been through \Nino\Fetch::isHttpsUrl(), which reads it so
+			if( is_array( $parts ) === false || strtolower( (string) ( $parts['scheme'] ?? '' ) ) !== 'https' || isset( $parts['user'] ) === true || isset( $parts['pass'] ) === true )
+				return '';
+
+			$host = strtolower( (string) ( $parts['host'] ?? '' ) );
+
+			// The last label of a name is never all digits or a hex number (0x7f000001),
+			// and one that is is an ip address written in a form php does not call one.
+			// The D: without it '$' also matches before a trailing newline, which would
+			// end up in a header
+			if( $host === '' || strlen( $host ) > 253 || preg_match( '/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/D', $host ) !== 1
+				|| preg_match( '/(?:^|\.)(?:[0-9]+|0x[0-9a-f]*)$/iD', $host ) === 1 )
+				return '';
+
+			return 'https://'. $host. ( isset( $parts['port'] ) === true ? ':'. (int) $parts['port'] : '' );
+		}
+
+		/**
+		 *	The font-src of a Content-Security-Policy, widened by one origin.
+		 *	The merge Embed makes for frame-src and Consent for script-src, for the one
+		 *	directive and the one source this needs.
+		 *
+		 *	Where font-src exists, the origin is appended to its first occurrence (a
+		 *	second occurrence is ignored by a browser, so adding one would widen
+		 *	nothing). Where it does not, it is built from default-src, since that is the
+		 *	list a browser would have used: naming 'self' by hand would narrow a policy
+		 *	whose default-src lists more. A policy with no default-src is unrestricted
+		 *	already and is left alone, and so is a directive - or a default-src - that
+		 *	says 'none' or lists no source at all (the same thing to a browser): that is
+		 *	the project having decided.
+		 *
+		 *	@param		string		$policy				The header value
+		 *	@param		string		$origin				A source, see _origin()
+		 *
+		 *	@return 	string								The widened policy, or $policy itself where nothing is added
+		 */
+		private static function _allowFonts( string $policy, string $origin ): string {
+
+			$directives = array_values( array_filter( array_map( 'trim', explode( ';', $policy ) ), static fn( string $part ): bool => $part !== '' ) );
+
+			$find = static function( string $name ) use ( $directives ): ?int {
+				foreach( $directives as $index => $part )
+					if( preg_match( '/^'. preg_quote( $name, '/' ). '(?:\s|$)/i', $part ) === 1 )
+						return $index;
+				return null;
+			};
+			// Closed: 'none', or a name with no source at all - which blocks everything
+			// just the same, and is the project having decided too
+			$none = static fn( string $part ): bool => preg_match( "/(?:^|\s)'none'(?:\s|\$)/i", $part ) === 1 || preg_match( '/^\S+$/D', $part ) === 1;
+
+			$index = $find( 'font-src' );
+
+			if( $index === null ) {
+
+				$from = $find( 'default-src' );
+
+				if( $from === null || $none( $directives[$from] ) === true )
+					return $policy;
+
+				// The list of default-src, under the name of this directive
+				$directives[] = 'font-src'. substr( $directives[$from], strlen( 'default-src' ) );
+				$index = array_key_last( $directives );
+			}
+			elseif( $none( $directives[$index] ) === true )
+				return $policy;
+
+			// An origin the list has already, in whatever case, is not added again - and a directive
+			// built from default-src that has it changes nothing, so it is not written either
+			if( in_array( strtolower( $origin ), array_map( 'strtolower', preg_split( '/\s+/', $directives[$index] ) ?: [] ), true ) === true )
+				return $policy;
+
+			$directives[$index] .= ' '. $origin;
+
+			return implode( '; ', $directives );
 		}
 
 		/**
@@ -158,7 +337,7 @@ namespace Nino\Modules {
 
 			$library 	= self::libraryDir();
 			$setup 		= Design\Setup::read( $appData, $library, $notes );
-			$outputs 	= self::_outputs( $setup, $library, $notes );
+			$outputs 	= self::_outputs( $appData, $setup, $library, $notes );
 
 			/*	Every file this would write is asked first, before any of them is
 				written. The refusal says "Nothing was overwritten", and the
@@ -238,7 +417,7 @@ namespace Nino\Modules {
 			$setup['compiled'] = [
 				'at' 		=> gmdate( 'c' ),
 				'sha'		=> hash( 'sha256', $outputs[Design\Compiler::TARGET]['bytes'] ),
-				'input'	=> self::fingerprint( $setup, $library ),
+				'input'	=> self::fingerprint( $appData, $setup, $library ),
 				'setup'	=> $applied,
 			];
 
@@ -268,7 +447,7 @@ namespace Nino\Modules {
 			$setup 		= Design\Setup::read( $appData, $library, $notes );
 			$plan 		= [];
 
-			foreach( self::_outputs( $setup, $library, $notes ) as $target => $output ) {
+			foreach( self::_outputs( $appData, $setup, $library, $notes ) as $target => $output ) {
 
 				$path 		= \Nino\Filesystem::path( $appData, $target );
 				$exists 	= $path !== '' && is_file( $path ) === true;
@@ -411,15 +590,16 @@ namespace Nino\Modules {
 		 *	and each frame that has a template - so that apply() compares and
 		 *	writes the same thing plan() reports on
 		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		$setup				A normalized setup
 		 *	@param		string		$library			The library directory
 		 *	@param		array 		&$notes				(reference) What was missing on the way
 		 *
 		 *	@return 	array										target => [ bytes, part ('' for the stylesheet), set, markup (the template.tpl) ]
 		 */
-		private static function _outputs( array $setup, string $library, array &$notes ): array {
+		private static function _outputs( array &$appData, array $setup, string $library, array &$notes ): array {
 
-			$css = Design\Compiler::compile( $setup, $library, $notes );
+			$css = Design\Compiler::compile( $appData, $setup, $library, $notes );
 
 			$outputs = [
 				Design\Compiler::TARGET => [ 'bytes' => $css, 'part' => '', 'set' => '', 'markup' => '' ],

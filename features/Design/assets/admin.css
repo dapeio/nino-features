@@ -7,14 +7,15 @@
  *													animation is chosen in, the blocks the knob rows and the
  *													two strips of Global stand in, the row per knob and per
  *													colour with the icon before its name, the table of the
- *													five font roles, and the two columns the screen is - the
- *													controls on one side (a third of the width, 24rem at
- *													the least), a sticky preview pane on the other (two
- *													thirds) - a head of one row with the heading and the
- *													bar of the frame's controls, the viewport switch among
- *													them, then the frame, which fills the window down to the
- *													action bar. The bar holds the line the panel says things in
- *													and a chip for the state of the files.
+ *													five font roles, the two cards of the typeface loader, and
+ *													the two columns the screen is - the controls on one side
+ *													(a third of the width, 24rem at the least), a sticky
+ *													preview pane on the other (two thirds) - a head of one
+ *													row with the heading and the bar of the frame's controls,
+ *													the viewport switch among them, then the frame, which
+ *													fills the window down to the action bar. The bar holds
+ *													the line the panel says things in and a chip for the state
+ *													of the files.
  *													Joins the workbench's style bundle while the feature
  *													is active (see the panel's assets()).
  *
@@ -39,13 +40,16 @@
 
 @layer nino.tool {
 
-/*	The six tabs. In the pane's head the strip stands beside the panel's name
+/*	The seven tabs. In the pane's head the strip stands beside the panel's name
 	and the head lays it out; this is the column it opens where there is no
 	head (see _head() in admin.js). A margin below rather than a
 	border: the card under it already draws one, and two lines a row apart
-	read as a box nobody meant to draw */
+	read as a box nobody meant to draw. Seven tabs side by side are wider than a
+	phone: the strip scrolls in its own box, and the page does not scroll with it */
 .nino-admin .design-tabs {
 	margin: 0 0 1rem;
+	overflow-x: auto;
+	scrollbar-width: none;
 }
 
 /*	The word over the title of the preview. The workbench owns the type
@@ -363,6 +367,111 @@
 .nino-admin .design-fonts .design-fonts-none {
 	color: var(--editor-text-secondary);
 	text-align: center;
+}
+
+/* ---- the typefaces ----
+
+   The loader: two cards, the families the project has installed and the list
+   the repository offers. A row is the label a knob row has - the icon, and the
+   name over its notes - with the one thing that can be done about it at its far
+   end; the name is set in the face it names, a little larger than a label, since
+   showing it is what the row is for. The card opens with its title, so the rule
+   a title carries to part it from the block above is not wanted on the first */
+.nino-admin .design-block > .design-section-label:first-child {
+	margin-top: 0;
+	padding-top: 0;
+	border-top: 0;
+}
+.nino-admin .design-face-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: .6rem;
+	padding: .4rem 0;
+}
+.nino-admin .design-face-row + .design-face-row {
+	border-top: 1px solid var(--editor-separator);
+}
+.nino-admin .design-face-label {
+	flex: 1 1 auto;
+}
+.nino-admin .design-face-name {
+	display: block;
+	overflow: hidden;
+	font-size: 1.05rem;
+	font-weight: 400;
+	line-height: 1.3;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.nino-admin .design-face-row > button {
+	flex: none;
+	min-height: 0;
+	padding: .3rem .7rem;
+	font-size: .74rem;
+}
+.nino-admin .design-face-state {
+	flex: none;
+	color: var(--editor-text-secondary);
+	font-size: .74rem;
+}
+/*	A directory that is no family: its name and why, held back, while the button
+	that removes it is as sharp as any */
+.nino-admin .design-face-row--off .design-face-label {
+	opacity: .5;
+}
+.nino-admin .design-faces-load {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: .4rem .75rem;
+	margin: 0 0 .6rem;
+}
+.nino-admin .design-faces-when {
+	color: var(--editor-text-secondary);
+	font-size: .72rem;
+}
+/*	Seven names do not fit one row of a column a third of the screen wide with every word whole - Handwriting is
+	the one that was cut -: four to a row, and the three of the second fill it. The strip is the knobs', its
+	dividers drawn for two rows */
+.nino-admin .design-faces-categories .design-knob-steps {
+	flex-wrap: wrap;
+}
+.nino-admin .design-faces-categories .design-knob-steps .nino-admin-tab {
+	flex: 1 0 24%;
+	padding: .3rem .2rem;
+	font-size: .7rem;
+}
+.nino-admin .design-faces-categories .design-knob-steps .nino-admin-tab:nth-child(4) {
+	border-right: 0;
+}
+.nino-admin .design-faces-categories .design-knob-steps .nino-admin-tab:nth-child(n+5) {
+	border-top: 1px solid var(--editor-border);
+}
+/*	The search sits inset on the card like the selects of a field do, and is as high as they are */
+.nino-admin .design-faces-search {
+	min-height: 2.35rem;
+	margin: 0 0 .35rem;
+	background-color: var(--editor-bg);
+	box-shadow: none;
+	font-size: .8rem;
+}
+.nino-admin .design-faces-pager {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: .5rem;
+	padding-top: .55rem;
+	border-top: 1px solid var(--editor-separator);
+}
+.nino-admin .design-faces-pager > button {
+	min-height: 0;
+	padding: .3rem .7rem;
+	font-size: .74rem;
+}
+.nino-admin .design-faces-place {
+	color: var(--editor-text-secondary);
+	font-size: .74rem;
 }
 
 /*	The ways back, pinned to the far side of the bar from the two buttons that
