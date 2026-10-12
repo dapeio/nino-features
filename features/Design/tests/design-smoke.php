@@ -548,11 +548,11 @@ check( '...it says that the delivered theme.css is what the compiler writes at i
 	&& str_contains( $says( 'The delivered look', 'de_DE' ), 'ist das, was dieser Compiler an den Vorgaben schreibt' ) === true
 	&& str_contains( $says( 'The delivered look', 'de_DE' ), 'vom Ende ihres Kopfes an Byte für Byte' ) === true
 	&& str_contains( $says( 'The delivered look', 'de_DE' ), 'der Kernel erzeugt die Datei mit jeder Version neu' ) === true );
-check( '...that the border of each ground is assigned in base.css, and so in the delivered file, and that the faces are named Source Sans 3 and League Spartan in both files - in both languages',
+check( '...that the border of each ground is assigned in base.css, and so in the delivered file, and that the face is named Open Sans in both files - in both languages',
 	str_contains( $says( 'The delivered look', 'en_US' ), 'assigned in base.css (--color-border-<ground>), and so in the delivered file' ) === true
-	&& str_contains( $says( 'The delivered look', 'en_US' ), 'named Source Sans 3 and League Spartan in both files' ) === true
+	&& str_contains( $says( 'The delivered look', 'en_US' ), 'named Open Sans in both files' ) === true
 	&& str_contains( $says( 'The delivered look', 'de_DE' ), 'in der base.css (--color-border-<fläche>) und damit in der ausgelieferten Datei' ) === true
-	&& str_contains( $says( 'The delivered look', 'de_DE' ), 'in beiden Dateien Source Sans 3 und League Spartan' ) === true );
+	&& str_contains( $says( 'The delivered look', 'de_DE' ), 'in beiden Dateien Open Sans' ) === true );
 check( '...that the delivered file has no stamp of the compiler\'s, so the panel calls it by its own word for a file Design never wrote and the first apply asks before it writes over it - and no longer that the file is not made by this compiler yet, or that an update of this feature will assign the borders',
 	str_contains( $says( 'The delivered look', 'en_US' ), 'has no stamp of the compiler\'s, so the panel calls it "'. $foreignWord( 'en_US' ). '" and the first apply asks before it writes over it' ) === true
 	&& str_contains( $says( 'The delivered look', 'de_DE' ), 'hat keinen Stempel des Compilers, deshalb nennt das Panel sie „'. $foreignWord( 'de_DE' ). '“, und das erste Anwenden fragt nach, bevor es sie überschreibt' ) === true
@@ -690,15 +690,15 @@ check( 'the manual says what the Typefaces tab is: the loader, with the installe
 	&& str_contains( $says( 'Typefaces', 'de_DE' ), 'aus ist, solange eine Rolle des gespeicherten Setups oder der Auswahl, die gerade bearbeitet wird, die Familie nutzt (die Rollen werden genannt)' ) === true
 	&& str_contains( $says( 'Typefaces', 'de_DE' ), 'Seiten zu 24 und je Familie '. $panelWord( 'typefaces/available/install', 'de_DE' ). ', „'. $panelWord( 'typefaces/available/installed', 'de_DE' ). '“ oder „'. strstr( $panelWord( 'typefaces/available/update', 'de_DE' ), ' %s', true ). '“ die Version der Liste' ) === true
 	&& str_contains( $says( 'Typefaces', 'de_DE' ), $panelWord( 'typefaces/available/install', 'de_DE' ). ' und '. $panelWord( 'typefaces/installed/remove', 'de_DE' ). ' geschehen sofort und gehören nicht zum Entwurf' ) === true );
-check( '...where a typeface lands: the whole family into assets/fonts/<slug>/ with its font.json and its LICENSE, an update replacing the directory, a family a role uses updated and not removed, a weight axis answering 300, 500 and 800 - and the Fonts entry that the selects list what is installed - in both languages',
+check( '...where a typeface lands: the whole family into assets/fonts/<slug>/ with its font.json and its LICENSE, an update replacing the directory, a family a role uses updated and not removed, a weight axis answering 300, 500 and 800 - and the Fonts entry that names the Open Sans the wizard delivers, in 300, 400 and 700, and that the selects list what is installed - in both languages',
 	str_contains( $says( 'Where a typeface lands', 'en_US' ), 'A family is installed whole - every weight and style it has - into assets/fonts/<slug>/ below the public root, with its font.json and its LICENSE and nothing else; an update replaces the whole directory' ) === true
 	&& str_contains( $says( 'Where a typeface lands', 'en_US' ), 'answers light, normal and bold with 300, 500 and 800 where the axis has them' ) === true
 	&& str_contains( $says( 'Where a typeface lands', 'en_US' ), 'A family a role uses can be updated and not removed' ) === true
 	&& str_contains( $says( 'Where a typeface lands', 'de_DE' ), 'Eine Familie wird ganz installiert – jedes Gewicht und jeder Stil, den sie hat – nach assets/fonts/<slug>/ unterhalb des öffentlichen Verzeichnisses, mit ihrer font.json und ihrer LICENSE und sonst nichts; eine Aktualisierung ersetzt das ganze Verzeichnis' ) === true
 	&& str_contains( $says( 'Where a typeface lands', 'de_DE' ), 'antwortet auf leicht, normal und fett mit 300, 500 und 800, wo die Achse sie hat' ) === true
 	&& str_contains( $says( 'Where a typeface lands', 'de_DE' ), 'Eine Familie, die eine Rolle nutzt, kann aktualisiert, aber nicht entfernt werden' ) === true
-	&& str_contains( $says( 'Fonts', 'en_US' ), 'every typeface installed on the Typefaces tab, which the selects list as well' ) === true
-	&& str_contains( $says( 'Fonts', 'de_DE' ), 'jede Schriftart, die im Tab Schriftarten installiert wurde und die die Auswahlen ebenfalls auflisten' ) === true );
+	&& str_contains( $says( 'Fonts', 'en_US' ), 'the families are Open Sans (the setup wizard delivers it in 300, 400 and 700), three system stacks and every typeface installed on the Typefaces tab, which the selects list as well' ) === true
+	&& str_contains( $says( 'Fonts', 'de_DE' ), 'die Familien sind Open Sans (der Einrichtungsassistent bringt sie in 300, 400 und 700 mit), drei Systemschriften und jede Schriftart, die im Tab Schriftarten installiert wurde und die die Auswahlen ebenfalls auflisten' ) === true );
 
 check( '...the self-hosting and the licence: the project serves the files, so no visitor\'s browser asks a third party; only the workbench of whoever installs talks to the repository - the server for the list and an archive, when a button is pressed; the browser for the previews - and the workbench\'s policy has to allow its fonts for the previews to show, else the names stay in the face of the page and the rest works - in both languages',
 	str_contains( $says( 'Self-hosting and the licence', 'en_US' ), 'so that no request to a third-party CDN leaves a visitor\'s browser' ) === true
@@ -923,7 +923,7 @@ check( 'a setup out of nothing is every part on its first set, the delivered siz
 	&& $setup['parts'] === array_fill_keys( array_keys( Setup::PARTS ), 'v1' )
 	&& $setup['size'] === 0 && $setup['width'] === 0
 	&& $setup['motion'] === [ 'effect' => '', 'strength' => '', 'speed' => '' ] );
-check( '...every named knob of the three tabs in the middle, the fonts the wizard delivers and the palette the framework has',
+check( '...every named knob of the three tabs in the middle, the font roles in the face the wizard delivers and the palette the framework has',
 	$setup['knobs'] === array_map( static fn( array $kinds ): array => array_fill_keys( array_keys( $kinds ), 0 ), Setup::KNOBS )
 	&& array_keys( $setup['knobs'] ) === [ 'content', 'buttons', 'components' ]
 	&& $setup['fonts'] === Fonts::DEFAULTS && $setup['colours'] === Colours::normalize( [] ) && $setup['colours']['mode'] === 'auto' );
@@ -1113,9 +1113,9 @@ check( '...a size outside the bounds of its role is held at the nearer bound, an
 	&& Setup::normalize( $appData, [ 'fonts' => [ 'text' => [ 'size' => '1.23456' ] ] ], $library )['fonts']['text']['size'] === '1.235'
 	&& Setup::normalize( $appData, [ 'fonts' => [ 'text' => [ 'size' => [ 1 ] ] ] ], $library )['fonts']['text']['size'] === '' );
 check( '...and a family the role\'s select does not offer is none: the code is given the monospace ones, of which there are none with files yet - the system stack is its empty family - while the other roles keep a system stack',
-	$setup['fonts']['code']['family'] === '' && Setup::normalize( $appData, [ 'fonts' => [ 'code' => [ 'family' => 'league-spartan' ] ] ], $library )['fonts']['code']['family'] === ''
+	$setup['fonts']['code']['family'] === '' && Setup::normalize( $appData, [ 'fonts' => [ 'code' => [ 'family' => 'open-sans' ] ] ], $library )['fonts']['code']['family'] === ''
 	&& Setup::normalize( $appData, [ 'fonts' => [ 'title' => [ 'family' => 'system-mono' ] ] ], $library )['fonts']['title']['family'] === 'system-mono'
-	&& array_filter( Fonts::ROLES, static fn( string $role ): bool => in_array( Setup::normalize( $appData, [ 'fonts' => [ $role => [ 'family' => 'source-sans-3' ] ] ], $library )['fonts'][$role]['family'], Fonts::options( $appData, $role ), true ) === false ) === [] );
+	&& array_filter( Fonts::ROLES, static fn( string $role ): bool => in_array( Setup::normalize( $appData, [ 'fonts' => [ $role => [ 'family' => 'open-sans' ] ] ], $library )['fonts'][$role]['family'], Fonts::options( $appData, $role ), true ) === false ) === [] );
 check( '...and a role that is none, or a key of a role that is none of its four, is dropped and named',
 	count( $notes ) === 2 && str_contains( implode( ' ', $notes ), 'no font role "heading"' ) === true && str_contains( implode( ' ', $notes ), '"colour"' ) === true
 	&& array_keys( $setup['fonts'] ) === Fonts::ROLES );
@@ -1183,19 +1183,18 @@ $mono = Fonts::STACK_MONO;
 check( 'the five roles, in the order they are shown and written in', Fonts::ROLES === [ 'title', 'subtitle', 'text', 'button', 'code' ]
 	&& array_keys( Fonts::DEFAULTS ) === Fonts::ROLES && array_keys( Fonts::BOUNDS ) === Fonts::ROLES && array_keys( Fonts::INHERITED ) === Fonts::ROLES );
 check( 'a family is a name, a category and the files it comes in - the three system stacks have none',
-	array_keys( Fonts::families( $appData ) ) === [ 'source-sans-3', 'league-spartan', 'system-sans', 'system-serif', 'system-mono' ]
+	array_keys( Fonts::families( $appData ) ) === [ 'open-sans', 'system-sans', 'system-serif', 'system-mono' ]
 	&& array_filter( Fonts::families( $appData ), static fn( array $family ): bool => isset( $family['name'], $family['category'], $family['weights'], $family['files'] ) === false ) === []
 	&& array_keys( array_filter( Fonts::families( $appData ), static fn( array $family ): bool => $family['files'] === [] ) ) === [ 'system-sans', 'system-serif', 'system-mono' ] );
 check( 'each role is offered the families that suit it, the empty one first - the code only a monospace that has files, which no system stack has',
-	Fonts::options( $appData, 'title' ) === [ '', 'source-sans-3', 'league-spartan', 'system-sans', 'system-serif', 'system-mono' ]
+	Fonts::options( $appData, 'title' ) === [ '', 'open-sans', 'system-sans', 'system-serif', 'system-mono' ]
 	&& Fonts::options( $appData, 'text' ) === Fonts::options( $appData, 'title' ) && Fonts::options( $appData, 'code' ) === [ '' ] );
 check( 'a webface is its name in quotes and then the stack of its role, a system family its own stack, and no family nothing',
-	Fonts::line( $appData, 'title', 'league-spartan' ) === '"League Spartan", '. $sans && Fonts::line( $appData, 'code', 'league-spartan' ) === '"League Spartan", '. $mono
+	Fonts::line( $appData, 'title', 'open-sans' ) === '"Open Sans", '. $sans && Fonts::line( $appData, 'code', 'open-sans' ) === '"Open Sans", '. $mono
 	&& Fonts::line( $appData, 'text', 'system-mono' ) === $mono && Fonts::line( $appData, 'text', 'system-serif' ) === 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif'
 	&& Fonts::line( $appData, 'text', '' ) === '' && Fonts::line( $appData, 'text', 'nowhere' ) === '' );
-check( 'a weight word is the weight a family has nearest to it, and as a keyword where it has none to choose from',
-	[ Fonts::weight( $appData, 'source-sans-3', 'light' ), Fonts::weight( $appData, 'source-sans-3', 'normal' ), Fonts::weight( $appData, 'source-sans-3', 'bold' ) ] === [ '400', '400', '700' ]
-	&& [ Fonts::weight( $appData, 'league-spartan', 'light' ), Fonts::weight( $appData, 'league-spartan', 'normal' ), Fonts::weight( $appData, 'league-spartan', 'bold' ) ] === [ '700', '700', '700' ]
+check( 'a weight word is the weight a family has nearest to it - the Open Sans, which has 300, 400 and 700, gives light 300, normal 400 and bold 700 - and as a keyword where it has none to choose from',
+	[ Fonts::weight( $appData, 'open-sans', 'light' ), Fonts::weight( $appData, 'open-sans', 'normal' ), Fonts::weight( $appData, 'open-sans', 'bold' ) ] === [ '300', '400', '700' ]
 	&& [ Fonts::weight( $appData, 'system-sans', 'light' ), Fonts::weight( $appData, 'system-sans', 'normal' ), Fonts::weight( $appData, '', 'bold' ), Fonts::weight( $appData, '', 'heavy' ) ] === [ '300', 'normal', 'bold', 'normal' ] );
 
 // No family has a tie today - a webface that brings 400 and 600 would - so the choice is held where it can be: of two weights as near as each other the lighter wins
@@ -1356,17 +1355,19 @@ $rolesIn = static fn( string $type ): array => designDeclarations( designBlock( 
 $type		= $typeOf( [] );
 $roles	= $rolesIn( $type );
 
-check( 'the defaults are the faces the wizard delivers: the title in League Spartan, the rest in Source Sans 3, each with its weight',
-	( $roles['--fontfamily-title'] ?? '' ) === '"League Spartan", '. $sans && ( $roles['--font-title-weight'] ?? '' ) === '700'
-	&& ( $roles['--fontfamily-subtitle'] ?? '' ) === '"Source Sans 3", '. $sans && ( $roles['--font-subtitle-weight'] ?? '' ) === '400'
-	&& ( $roles['--fontfamily-text'] ?? '' ) === '"Source Sans 3", '. $sans && ( $roles['--font-text-weight'] ?? '' ) === '400'
-	&& ( $roles['--fontfamily-button'] ?? '' ) === '"Source Sans 3", '. $sans && ( $roles['--font-button-weight'] ?? '' ) === '700' );
+check( 'the defaults are the face the wizard delivers: the four roles of running text in Open Sans, the title and the buttons in its 700, the subtitle and the text in its 400',
+	( $roles['--fontfamily-title'] ?? '' ) === '"Open Sans", '. $sans && ( $roles['--font-title-weight'] ?? '' ) === '700'
+	&& ( $roles['--fontfamily-subtitle'] ?? '' ) === '"Open Sans", '. $sans && ( $roles['--font-subtitle-weight'] ?? '' ) === '400'
+	&& ( $roles['--fontfamily-text'] ?? '' ) === '"Open Sans", '. $sans && ( $roles['--font-text-weight'] ?? '' ) === '400'
+	&& ( $roles['--fontfamily-button'] ?? '' ) === '"Open Sans", '. $sans && ( $roles['--font-button-weight'] ?? '' ) === '700' );
 check( '...a role with no family writes none and keeps the system stack Nino.css has for it, and no case and no size is written where nobody chose one',
 	isset( $roles['--fontfamily-code'] ) === false && ( $roles['--font-code-weight'] ?? '' ) === 'normal'
 	&& preg_grep( '/-(transform|size)$/', array_keys( $roles ) ) === [] && isset( $roles['--card-title-scale'] ) === false );
-check( '...and a family two roles use is declared once, one @font-face for each file it comes in',
-	substr_count( $type, "font-family: 'Source Sans 3'" ) === 2 && substr_count( $type, "font-family: 'League Spartan'" ) === 1
-	&& substr_count( $type, '@font-face' ) === 3 && str_contains( $type, "url('[[/nino/public]]/fonts/league-spartan.woff2')" ) === true );
+check( '...and the family the four roles share is declared once, one @font-face for each file it comes in - the 300, the 400 and the 700',
+	substr_count( $type, "font-family: 'Open Sans'" ) === 3 && substr_count( $type, '@font-face' ) === 3
+	&& str_contains( $type, "font-weight: 300;\n\tfont-display: swap;\n\tsrc: url('[[/nino/public]]/fonts/open-sans-light.woff2') format('woff2');" ) === true
+	&& str_contains( $type, "font-weight: 400;\n\tfont-display: swap;\n\tsrc: url('[[/nino/public]]/fonts/open-sans-regular.woff2') format('woff2');" ) === true
+	&& str_contains( $type, "font-weight: 700;\n\tfont-display: swap;\n\tsrc: url('[[/nino/public]]/fonts/open-sans-bold.woff2') format('woff2');" ) === true );
 
 $chosen = $rolesIn( $typeOf( $richRaw ) );
 
@@ -1384,8 +1385,9 @@ check( '...a size that was typed, and is no step of any list, is written in rem 
 	&& ( $typed['--card-title-scale'] ?? '' ) === '.8' );
 check( '...and an empty size, or one that is no number, writes no size line at all',
 	preg_grep( '/-size$/', array_keys( $rolesIn( $typeOf( [ 'fonts' => [ 'title' => [ 'size' => 'big' ], 'text' => [ 'size' => '' ], 'code' => [ 'size' => null ] ] ] ) ) ) ) === [] );
-check( '...and the Source Sans 3 the other three roles still use is declared once, with the League Spartan nobody uses any more gone',
-	substr_count( $typeOf( $richRaw ), "font-family: 'Source Sans 3'" ) === 2 && str_contains( $typeOf( $richRaw ), 'League Spartan' ) === false );
+check( '...and the Open Sans the other three roles still use is declared once, a rule for each of its three files - and not at all once no role uses it any more',
+	substr_count( $typeOf( $richRaw ), "font-family: 'Open Sans'" ) === 3 && substr_count( $typeOf( $richRaw ), '@font-face' ) === 3
+	&& str_contains( $typeOf( [ 'fonts' => [ 'title' => [ 'family' => 'system-serif' ], 'subtitle' => [ 'family' => 'system-sans' ], 'text' => [ 'family' => '' ], 'button' => [ 'family' => 'system-mono' ] ] ] ), '@font-face' ) === false );
 
 // The stacks are the kernel's own, and the step a role starts from is the one Nino.css gives it
 if( $ninoCss === '' )
@@ -1758,8 +1760,8 @@ Webfonts::fetch( $appData );
 
 // --- A family installed whole ------------------------------------------------------------
 
-check( 'before anything is installed the families are the five the feature brings, and nothing is listed as installed or as broken',
-	array_keys( Fonts::families( $appData ) ) === [ 'source-sans-3', 'league-spartan', 'system-sans', 'system-serif', 'system-mono' ] && Fonts::installed( $appData ) === [] && Fonts::broken( $appData ) === []
+check( 'before anything is installed the families are the four the feature brings, and nothing is listed as installed or as broken',
+	array_keys( Fonts::families( $appData ) ) === [ 'open-sans', 'system-sans', 'system-serif', 'system-mono' ] && Fonts::installed( $appData ) === [] && Fonts::broken( $appData ) === []
 	&& is_dir( $fontsDir ) === false && str_ends_with( $fontsDir, '/public/assets/fonts' ) === true );
 
 $requests 	= [];
@@ -1780,8 +1782,8 @@ check( '...the staging directory below data/ is empty again, and nothing of the 
 
 $families = Fonts::families( $appData );
 
-check( 'Fonts::families() lists it after the five it brings, with the name, the category, the weights, the files with their urls, and where it came from',
-	array_keys( $families ) === [ 'source-sans-3', 'league-spartan', 'system-sans', 'system-serif', 'system-mono', 'inter' ]
+check( 'Fonts::families() lists it after the four it brings, with the name, the category, the weights, the files with their urls, and where it came from',
+	array_keys( $families ) === [ 'open-sans', 'system-sans', 'system-serif', 'system-mono', 'inter' ]
 	&& $families['inter'] === [
 		'name' => 'Inter', 'category' => 'sans', 'weights' => [ 400, 700 ], 'axis' => [],
 		'files' => [
@@ -1796,9 +1798,12 @@ check( 'Fonts::families() lists it after the five it brings, with the name, the 
 // The fill is what every stylesheet of a project carries for its public directory, and the bundle writes the directory in for it
 $urlOf = str_replace( '[[/nino/public]]', \Nino\Filesystem::getPublicDir( $appData ), $families['inter']['files'][1]['url'] );
 
-check( '...and the url it writes into the stylesheet, once the bundle has put the public directory for the fill - as it does for the two families the wizard delivers - is a file of the public root',
+check( '...and the url it writes into the stylesheet, once the bundle has put the public directory for the fill - as it does for the family the wizard delivers - is a file of the public root',
 	$urlOf === '/public/assets/fonts/inter/700.woff2' && is_file( \Nino\Filesystem::getPublicPath( $appData ). substr( $urlOf, strlen( '/public' ) ) ) === true
-	&& str_replace( '[[/nino/public]]', '/public', $families['league-spartan']['files'][0]['url'] ) === '/public/fonts/league-spartan.woff2' );
+	&& $families['open-sans']['weights'] === [ 300, 400, 700 ]
+	&& array_map( static fn( array $file ): array => [ $file['weight'], $file['style'], str_replace( '[[/nino/public]]', '/public', $file['url'] ) ], $families['open-sans']['files'] ) === [
+		[ 300, 'normal', '/public/fonts/open-sans-light.woff2' ], [ 400, 'normal', '/public/fonts/open-sans-regular.woff2' ], [ 700, 'normal', '/public/fonts/open-sans-bold.woff2' ],
+	] );
 check( '...every role may be given it but the code, which is given the monospace ones; a role that is given it keeps it',
 	in_array( 'inter', Fonts::options( $appData, 'title' ), true ) === true && in_array( 'inter', Fonts::options( $appData, 'button' ), true ) === true
 	&& in_array( 'inter', Fonts::options( $appData, 'code' ), true ) === false
@@ -1809,8 +1814,8 @@ $rolesOfInter = static fn( array $raw ): array => designDeclarations( designBloc
 
 $typeOfInter = designPlain( Fonts::css( $appData, Setup::normalize( $appData, [ 'fonts' => [ 'title' => [ 'family' => 'inter', 'weight' => 'bold' ], 'text' => [ 'family' => 'inter', 'weight' => 'light' ] ] ], $library )['fonts'] ) );
 
-check( 'Fonts::css() writes a rule for each of its files - four, once, for the two roles that use it, beside the two of the Source Sans 3 the others still have - and names it between quotes with the stack of the role behind it',
-	substr_count( $typeOfInter, "font-family: 'Inter'" ) === 4 && substr_count( $typeOfInter, '@font-face' ) === 6
+check( 'Fonts::css() writes a rule for each of its files - four, once, for the two roles that use it, beside the three of the Open Sans the others still have - and names it between quotes with the stack of the role behind it',
+	substr_count( $typeOfInter, "font-family: 'Inter'" ) === 4 && substr_count( $typeOfInter, '@font-face' ) === 7
 	&& str_contains( $typeOfInter, "font-style: italic;\n\tfont-weight: 700;\n\tfont-display: swap;\n\tsrc: url('[[/nino/public]]/assets/fonts/inter/700-italic.woff2') format('woff2');" ) === true
 	&& ( $rolesOfInter( [ 'fonts' => [ 'title' => [ 'family' => 'inter' ] ] ] )['--fontfamily-title'] ?? '' ) === '"Inter", '. $sans
 	&& Fonts::line( $appData, 'title', 'inter' ) === '"Inter", '. $sans && Fonts::line( $appData, 'code', 'inter' ) === '"Inter", '. $mono );
@@ -1973,14 +1978,14 @@ check( 'a slug the list does not have is not installed, and neither is one that 
 	&& Webfonts::install( $appData, '../inter' ) === 'that is no slug of a typeface' && Webfonts::install( $appData, '' ) === 'that is no slug of a typeface'
 	&& Webfonts::install( $appData, 'Inter' ) === 'that is no slug of a typeface' && is_dir( $fontsDir. '/nowhere' ) === false );
 
-$bringing = designManifest( 'league-spartan', 'League Spartan', [ [ 700, 'normal' ] ] );
+$bringing = designManifest( 'open-sans', 'Open Sans', [ [ 700, 'normal' ] ] );
 $bringingArchive = designTarGz( designArchiveFiles( $bringing ) );
-$remote['https://webfonts.test/league-spartan-1.0.tar.gz'] = $bringingArchive;
+$remote['https://webfonts.test/open-sans-1.0.tar.gz'] = $bringingArchive;
 $publish( [ designListEntry( $bringing, $bringingArchive ) ] );
 Webfonts::fetch( $appData );
 
 check( '...a family of the slug of one the feature brings is not installed: it would stand in the select under the one that is there already',
-	Webfonts::install( $appData, 'league-spartan' ) === 'the slug "league-spartan" is one of the families the feature brings' && is_dir( $fontsDir. '/league-spartan' ) === false );
+	Webfonts::install( $appData, 'open-sans' ) === 'the slug "open-sans" is one of the families the feature brings' && is_dir( $fontsDir. '/open-sans' ) === false );
 
 // An update replaces the whole family
 $inter2 		= designManifest( 'inter', 'Inter', [ [ 400, 'normal' ], [ 700, 'normal' ] ], [ 'version' => '4.2', 'source' => 'https://github.com/rsms/inter' ] );
@@ -2031,7 +2036,7 @@ $usedBy = static function( array $roles ) use ( &$appData, $library ): void {
 	Setup::write( $appData, Setup::normalize( $appData, [ 'fonts' => $fonts ], $library ) );
 };
 
-check( 'nothing uses it, so far: no role has it, and uses() says so', Webfonts::uses( $appData, 'inter' ) === [] && Webfonts::usage( $appData ) === [ 'league-spartan' => [ 'title' ], 'source-sans-3' => [ 'subtitle', 'text', 'button' ] ] );
+check( 'nothing uses it, so far: no role has it, and uses() says so', Webfonts::uses( $appData, 'inter' ) === [] && Webfonts::usage( $appData ) === [ 'open-sans' => [ 'title', 'subtitle', 'text', 'button' ] ] );
 
 $usedBy( [ 'title' ] );
 
@@ -2088,26 +2093,26 @@ check( '...a role whose family is gone is its default again - the setup is norma
 
 // --- A directory that is none ----------------------------------------------------------------
 
-foreach( [ 'empty-one', 'no-json', 'strange', 'other-name', 'source-sans-3', 'wrong-shape' ] as $slug )
+foreach( [ 'empty-one', 'no-json', 'strange', 'other-name', 'open-sans', 'wrong-shape' ] as $slug )
 	mkdir( $fontsDir. '/'. $slug, 0755, true );
 
 file_put_contents( $fontsDir. '/no-json/font.json', 'not json' );
 file_put_contents( $fontsDir. '/strange/font.json', json_encode( designManifest( 'strange', 'Str<ange', [ [ 400, 'normal' ] ] ) ) );
 file_put_contents( $fontsDir. '/other-name/font.json', json_encode( designManifest( 'another-name', 'Other', [ [ 400, 'normal' ] ] ) ) );
-file_put_contents( $fontsDir. '/source-sans-3/font.json', json_encode( designManifest( 'source-sans-3', 'Source Sans 3', [ [ 400, 'normal' ] ] ) ) );
+file_put_contents( $fontsDir. '/open-sans/font.json', json_encode( designManifest( 'open-sans', 'Open Sans', [ [ 400, 'normal' ] ] ) ) );
 file_put_contents( $fontsDir. '/wrong-shape/font.json', json_encode( [ 'family' => 'Wrong' ] ) );
 mkdir( $fontsDir. '/Not A Slug', 0755, true );
 file_put_contents( $fontsDir. '/a-file', 'not a directory' );
 
-check( 'a directory that is no family is not listed, and broken() says why - for each one with the name of a slug: no font.json, one that is no json, a name that could reach a stylesheet, a slug that is not the directory\'s, one of the five, a manifest of no shape',
-	array_keys( Fonts::installed( $appData ) ) === [ 'fira-code', 'roboto-flex' ] && array_keys( Fonts::families( $appData ) ) === [ 'source-sans-3', 'league-spartan', 'system-sans', 'system-serif', 'system-mono', 'fira-code', 'roboto-flex' ]
+check( 'a directory that is no family is not listed, and broken() says why - for each one with the name of a slug: no font.json, one that is no json, a name that could reach a stylesheet, a slug that is not the directory\'s, one of the four, a manifest of no shape',
+	array_keys( Fonts::installed( $appData ) ) === [ 'fira-code', 'roboto-flex' ] && array_keys( Fonts::families( $appData ) ) === [ 'open-sans', 'system-sans', 'system-serif', 'system-mono', 'fira-code', 'roboto-flex' ]
 	&& Fonts::broken( $appData ) === [
-		'empty-one' => 'there is no font.json', 'no-json' => 'font.json is not valid json', 'other-name' => 'font.json names the slug "another-name", the directory is "other-name"',
-		'source-sans-3' => 'the slug is one of the families the feature brings', 'strange' => 'font.json: "family" must be a name of 1 to 64 letters, digits, spaces, dots and hyphens, beginning with a letter or a digit and with no space at its end',
+		'empty-one' => 'there is no font.json', 'no-json' => 'font.json is not valid json', 'open-sans' => 'the slug is one of the families the feature brings',
+		'other-name' => 'font.json names the slug "another-name", the directory is "other-name"', 'strange' => 'font.json: "family" must be a name of 1 to 64 letters, digits, spaces, dots and hyphens, beginning with a letter or a digit and with no space at its end',
 		'wrong-shape' => 'font.json: "slug" must be lower-case ascii letters, digits and single hyphens, at most 64 characters',
 	] );
 check( '...what else lies there is nobody\'s business: a name that is no slug, a file, a link - not listed as a family, not listed as broken, not removed',
-	array_keys( Fonts::broken( $appData ) ) === [ 'empty-one', 'no-json', 'other-name', 'source-sans-3', 'strange', 'wrong-shape' ] && Webfonts::remove( $appData, 'a-file' ) === 'the typeface "a-file" is not installed'
+	array_keys( Fonts::broken( $appData ) ) === [ 'empty-one', 'no-json', 'open-sans', 'other-name', 'strange', 'wrong-shape' ] && Webfonts::remove( $appData, 'a-file' ) === 'the typeface "a-file" is not installed'
 	&& is_dir( $fontsDir. '/Not A Slug' ) === true && is_file( $fontsDir. '/a-file' ) === true );
 
 $outside = ninoSandboxDir( $appData ). '/outside-of-fonts';
@@ -2118,8 +2123,8 @@ symlink( $outside, $fontsDir. '/a-link' );
 check( '...and a link to a directory is neither, and removing it by name removes nothing: the directory it points to is not followed', isset( Fonts::broken( $appData )['a-link'] ) === false && isset( Fonts::installed( $appData )['a-link'] ) === false
 	&& Webfonts::remove( $appData, 'a-link' ) === 'the typeface "a-link" is not installed' && is_file( $outside. '/keep.txt' ) === true );
 
-check( 'a directory that is none can be removed all the same - it uses nothing - and so can the one with a slug of the five', Webfonts::remove( $appData, 'empty-one' ) === true && Webfonts::remove( $appData, 'source-sans-3' ) === true
-	&& is_dir( $fontsDir. '/empty-one' ) === false && is_dir( $fontsDir. '/source-sans-3' ) === false && is_file( $fontsDir. '/fira-code/400.woff2' ) === true );
+check( 'a directory that is none can be removed all the same - it uses nothing - and so can the one with a slug of the four', Webfonts::remove( $appData, 'empty-one' ) === true && Webfonts::remove( $appData, 'open-sans' ) === true
+	&& is_dir( $fontsDir. '/empty-one' ) === false && is_dir( $fontsDir. '/open-sans' ) === false && is_file( $fontsDir. '/fira-code/400.woff2' ) === true );
 
 foreach( [ 'no-json', 'strange', 'other-name', 'wrong-shape' ] as $slug )
 	Webfonts::remove( $appData, $slug );
@@ -3123,7 +3128,7 @@ check( '...where every knob stands, the five font roles with what each has and w
 	&& ( $listed['options']['title'] ?? null ) === Fonts::options( $appData, 'title' ) && ( $listed['options']['code'] ?? null ) === [ '' ] );
 check( '...and the families with their names, their category and whether they are a system stack - and not one file name or url',
 	array_keys( (array) ( $listed['families'] ?? [] ) ) === array_keys( Fonts::families( $appData ) )
-	&& ( $listed['families']['league-spartan'] ?? null ) === [ 'name' => 'League Spartan', 'category' => 'sans', 'system' => false ]
+	&& ( $listed['families']['open-sans'] ?? null ) === [ 'name' => 'Open Sans', 'category' => 'sans', 'system' => false ]
 	&& ( $listed['families']['system-mono']['system'] ?? null ) === true && str_contains( json_encode( $listed['families'] ), 'woff2' ) === false );
 check( 'the file on disk is ours and answers to the setup', ( $listed['exists'] ?? null ) === true
 	&& ( $listed['ours'] ?? null ) === true && ( $listed['current'] ?? null ) === true );
@@ -4308,7 +4313,7 @@ check( '...so is a family that is not in the list, and so is a slug that is none
 	&& callDesignAction( $appData, 'apiWebfontsInstall', [ 'slug' => '../inter' ] ) === [ 409, [ 'error' => 'that is no slug of a typeface' ] ]
 	&& callDesignAction( $appData, 'apiWebfontsInstall', [ 'slug' => [ 'inter' ] ] ) === [ 409, [ 'error' => 'that is no slug of a typeface' ] ]
 	&& callDesignAction( $appData, 'apiWebfontsInstall', [] ) === [ 409, [ 'error' => 'that is no slug of a typeface' ] ]
-	&& callDesignAction( $appData, 'apiWebfontsInstall', [ 'slug' => 'source-sans-3' ] )[0] === 409 );
+	&& callDesignAction( $appData, 'apiWebfontsInstall', [ 'slug' => 'open-sans' ] )[0] === 409 );
 
 // --- A removal
 

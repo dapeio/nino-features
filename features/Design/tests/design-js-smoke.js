@@ -319,10 +319,10 @@ function listing( over ) {
 	const roles = [ 'title', 'subtitle', 'text', 'button', 'code' ];
 	const fonts = {};
 	const defaults = {
-		title 		: { family : 'league-spartan', weight : 'bold', uppercase : false, size : '' },
-		subtitle 	: { family : 'source-sans-3', weight : 'normal', uppercase : false, size : '' },
-		text 			: { family : 'source-sans-3', weight : 'normal', uppercase : false, size : '' },
-		button 		: { family : 'source-sans-3', weight : 'bold', uppercase : false, size : '' },
+		title 		: { family : 'open-sans', weight : 'bold', uppercase : false, size : '' },
+		subtitle 	: { family : 'open-sans', weight : 'normal', uppercase : false, size : '' },
+		text 			: { family : 'open-sans', weight : 'normal', uppercase : false, size : '' },
+		button 		: { family : 'open-sans', weight : 'bold', uppercase : false, size : '' },
 		code 			: { family : '', weight : 'normal', uppercase : false, size : '' },
 	};
 	roles.forEach( function( role ) { fonts[role] = Object.assign( {}, defaults[role] ) } );
@@ -369,17 +369,16 @@ function listing( over ) {
 		roles 		: roles,
 		fonts 		: fonts,
 		families 	: {
-			'source-sans-3' 	: { name : 'Source Sans 3', category : 'sans', system : false },
-			'league-spartan' 	: { name : 'League Spartan', category : 'sans', system : false },
+			'open-sans' 		: { name : 'Open Sans', category : 'sans', system : false },
 			'system-sans' 		: { name : 'System sans-serif', category : 'sans', system : true },
 			'system-serif' 		: { name : 'System serif', category : 'serif', system : true },
 			'system-mono' 		: { name : 'System monospace', category : 'mono', system : true },
 		},
 		options 	: {
-			title 		: [ '', 'source-sans-3', 'league-spartan', 'system-sans', 'system-serif', 'system-mono' ],
-			subtitle 	: [ '', 'source-sans-3', 'league-spartan', 'system-sans', 'system-serif', 'system-mono' ],
-			text 			: [ '', 'source-sans-3', 'league-spartan', 'system-sans', 'system-serif', 'system-mono' ],
-			button 		: [ '', 'source-sans-3', 'league-spartan', 'system-sans', 'system-serif', 'system-mono' ],
+			title 		: [ '', 'open-sans', 'system-sans', 'system-serif', 'system-mono' ],
+			subtitle 	: [ '', 'open-sans', 'system-sans', 'system-serif', 'system-mono' ],
+			text 			: [ '', 'open-sans', 'system-sans', 'system-serif', 'system-mono' ],
+			button 		: [ '', 'open-sans', 'system-sans', 'system-serif', 'system-mono' ],
 			code 			: [ '' ],
 		},
 		weights 	: [ 'light', 'normal', 'bold' ],
@@ -1610,9 +1609,9 @@ const weight = function( role ) { return fonts.byId('design-font-'+ role+ '-weig
 const size = function( role ) { return fonts.byId('design-font-'+ role+ '-size') };
 
 check( 'a family is a select of what the role may be given: the system\'s own first, a webface by its name, a system stack in the words of the panel',
-	JSON.stringify( offered( family('title') ) ) === JSON.stringify( [ [ '', 'System (default)' ], [ 'source-sans-3', 'Source Sans 3' ], [ 'league-spartan', 'League Spartan' ],
+	JSON.stringify( offered( family('title') ) ) === JSON.stringify( [ [ '', 'System (default)' ], [ 'open-sans', 'Open Sans' ],
 		[ 'system-sans', 'System sans-serif' ], [ 'system-serif', 'System serif' ], [ 'system-mono', 'System monospace' ] ] )
-	&& shown( family('title') ) === 'league-spartan' && shown( family('text') ) === 'source-sans-3' );
+	&& shown( family('title') ) === 'open-sans' && shown( family('text') ) === 'open-sans' );
 check( '...the code is offered the system\'s monospace and nothing else, by its own name',
 	JSON.stringify( offered( family('code') ) ) === JSON.stringify( [ [ '', 'System monospace' ] ] ) && shown( family('code') ) === '' );
 check( 'a weight is one of three words',
@@ -1671,7 +1670,7 @@ check( 'the table drawn again shows each role as it was set, in words: the famil
 		const upperCase = fonts.byId('design-font-'+ role+ '-uppercase');
 		return [ wordOf( family( role ) ), wordOf( weight( role ) ), upperCase === null ? null : upperCase.checked, size( role ).value ].join(', ');
 	} ).join(' | ')
-		=== 'System serif, Light, true, 2.4 | System (default), Normal, false, 1.125 | Source Sans 3, Normal, false, 1 | Source Sans 3, Bold, false, 1 | System monospace, Normal, , 0.875'
+		=== 'System serif, Light, true, 2.4 | System (default), Normal, false, 1.125 | Open Sans, Normal, false, 1 | Open Sans, Bold, false, 1 | System monospace, Normal, , 0.875'
 	&& fonts.byId('design-summary') === null );
 
 fonts.design._previewNow();
@@ -1820,7 +1819,7 @@ function installedOf( slug, name, version, over ) {
 }
 
 /** The slugs of the families the feature brings itself, as the answer of the tab names them: the families of design/list have them, and the installed ones as well */
-const BROUGHT = [ 'source-sans-3', 'league-spartan', 'system-sans', 'system-serif', 'system-mono' ];
+const BROUGHT = [ 'open-sans', 'system-sans', 'system-serif', 'system-mono' ];
 
 /** The whole answer of design/webfonts/list, and - with a msg - of the install and the removal after it */
 function shelfOf( over ) {
@@ -1829,7 +1828,7 @@ function shelfOf( over ) {
 
 /**
  *	The answer of design/list once families are installed, as the server gives it: they stand among the families after the
- *	five the feature brings, and in the options of the roles but the code - which is offered the monospace ones only
+ *	four the feature brings, and in the options of the roles but the code - which is offered the monospace ones only
  *
  *	@param		{Object}	installed		slug => name
  *
@@ -2132,7 +2131,7 @@ offering.answer( 200, shelfOf( {
 		offerOf( 'inter', 'Inter', 'sans', { version : '4.0' } ),
 		offerOf( 'lora', 'Lora', 'serif', { version : '2.0' } ),
 		offerOf( 'fresh', 'Fresh', 'display' ),
-		offerOf( 'source-sans-3', 'Source Sans 3', 'sans' ),
+		offerOf( 'open-sans', 'Open Sans', 'sans' ),
 		offerOf( 'axis', 'Axis', 'sans', { weights : [ '100 900' ] } ),
 	],
 	fetched 	: LOADED_AT,
@@ -2151,7 +2150,7 @@ check( 'a family of the list that is installed in the version the list has says 
 	} )() );
 check( '...a family the feature brings itself is installed in a way, and has no button; a weight axis is told as one',
 	( function() {
-		const own = faceRowOf( availableCard( offering ), 'source-sans-3' );
+		const own = faceRowOf( availableCard( offering ), 'open-sans' );
 		return byClass( own, 'design-face-state' ).length === 1 && byTag( own, 'button' ).length === 0
 			&& faceNotes( faceRowOf( availableCard( offering ), 'axis' ) ).join() === 'variable 100-900 · OFL-1.1';
 	} )() );
@@ -2205,7 +2204,7 @@ owning.design._paintFaces();
 check( '...and both give a family their roles together, in the order of the roles of the Fonts tab',
 	faceButton( faceRowOf( installedCard( owning ), 'inter' ) ).title === 'used by Title, Subtitle, Text' && faceButton( faceRowOf( installedCard( owning ), 'lora' ) ).disabled === false );
 
-owning.design._edit.fonts.subtitle.family = 'source-sans-3';
+owning.design._edit.fonts.subtitle.family = 'open-sans';
 owning.design._paintFaces();
 
 check( 'a directory that is no family is listed greyed, under its own name, with the reason - and a Remove that works whatever the reason is',
@@ -2325,11 +2324,11 @@ check( 'a removal that went through takes the family out of the first card; the 
 // The families the feature brings are named by the answer of the tab, and by nothing else: design/list has them, and has the installed ones too
 const owned = panel();
 owned.tab('Typefaces');
-owned.answer( 200, shelfOf( { families : [ offerOf( 'source-sans-3', 'Source Sans 3', 'sans' ) ], fetched : LOADED_AT, builtin : [] } ) );
+owned.answer( 200, shelfOf( { families : [ offerOf( 'open-sans', 'Open Sans', 'sans' ) ], fetched : LOADED_AT, builtin : [] } ) );
 
 check( 'a row of the list for a family the feature brings says "installed" because the answer of the tab names it, and not because design/list has it among its families: with the answer naming none, the row offers to install',
-	owned.design._data.families['source-sans-3'] !== undefined && byClass( faceRowOf( availableCard( owned ), 'source-sans-3' ), 'design-face-state' ).length === 0
-	&& faceWord( faceRowOf( availableCard( owned ), 'source-sans-3' ) ) === 'Install'
+	owned.design._data.families['open-sans'] !== undefined && byClass( faceRowOf( availableCard( owned ), 'open-sans' ), 'design-face-state' ).length === 0
+	&& faceWord( faceRowOf( availableCard( owned ), 'open-sans' ) ) === 'Install'
 	&& doing.design._faces.builtin.join() === BROUGHT.join() );
 
 doing.answer( 500, null );

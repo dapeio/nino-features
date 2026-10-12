@@ -27,17 +27,18 @@ namespace Nino\Modules\Design {
 	 *										role with no family writes no family line, and Nino.css
 	 *										keeps the system stack it has for it.
 	 *
-	 *										The families are the two the setup wizard's base unit
-	 *										delivers as woff2 files and three system stacks that
-	 *										need no file at all - a table in code - and, after them,
-	 *										every family the project installed: a directory below
-	 *										assets/fonts/ of its public root, <slug>/, holding the
-	 *										font.json, the LICENSE and the woff2 files the archive of
-	 *										webfonts.getnino.dev brought (see Webfonts). families() is
-	 *										the one place that lists them, so that an installed
-	 *										family joins the same list and the same select without a
-	 *										line of the compiler or the panel changing. It reads the
-	 *										project, and so takes the app data.
+	 *										The families are Open Sans, which the setup wizard's base
+	 *										unit delivers as woff2 files in 300, 400 and 700, and
+	 *										three system stacks that need no file at all - a table in
+	 *										code - and, after them, every family the project
+	 *										installed: a directory below assets/fonts/ of its public
+	 *										root, <slug>/, holding the font.json, the LICENSE and the
+	 *										woff2 files the archive of webfonts.getnino.dev brought
+	 *										(see Webfonts). families() is the one place that lists
+	 *										them, so that an installed family joins the same list and
+	 *										the same select without a line of the compiler or the
+	 *										panel changing. It reads the project, and so takes the
+	 *										app data.
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -58,14 +59,14 @@ namespace Nino\Modules\Design {
 			written as what it means to a browser: 300, the keyword, the keyword	*/
 		private const array KEYWORDS = [ 'light' => '300', 'normal' => 'normal', 'bold' => 'bold' ];
 
-		/*	What a fresh setup gives each role - the faces the base unit delivers: the
-			title in League Spartan, the rest in Source Sans 3, and the code in the
-			system's monospace, which is the empty family	*/
+		/*	What a fresh setup gives each role - the face the base unit delivers, Open
+			Sans: the title and the button in bold, the rest in normal, and the code
+			in the system's monospace, which is the empty family	*/
 		public const array DEFAULTS = [
-			'title' 		=> [ 'family' => 'league-spartan', 'weight' => 'bold', 'uppercase' => false, 'size' => '' ],
-			'subtitle' 	=> [ 'family' => 'source-sans-3', 'weight' => 'normal', 'uppercase' => false, 'size' => '' ],
-			'text' 			=> [ 'family' => 'source-sans-3', 'weight' => 'normal', 'uppercase' => false, 'size' => '' ],
-			'button' 		=> [ 'family' => 'source-sans-3', 'weight' => 'bold', 'uppercase' => false, 'size' => '' ],
+			'title' 		=> [ 'family' => 'open-sans', 'weight' => 'bold', 'uppercase' => false, 'size' => '' ],
+			'subtitle' 	=> [ 'family' => 'open-sans', 'weight' => 'normal', 'uppercase' => false, 'size' => '' ],
+			'text' 			=> [ 'family' => 'open-sans', 'weight' => 'normal', 'uppercase' => false, 'size' => '' ],
+			'button' 		=> [ 'family' => 'open-sans', 'weight' => 'bold', 'uppercase' => false, 'size' => '' ],
 			'code' 			=> [ 'family' => '', 'weight' => 'normal', 'uppercase' => false, 'size' => '' ],
 		];
 
@@ -147,29 +148,22 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	The families the feature brings: the two the setup wizard's base unit
-		 *	delivers as woff2 files, and three system stacks
+		 *	The families the feature brings: the one the setup wizard's base unit
+		 *	delivers as woff2 files, Open Sans, and three system stacks
 		 *
 		 *	@return 	array										slug => [ name, category, weights, files ] (and stack, for a system family)
 		 */
 		public static function builtin(): array {
 
 			return [
-				'source-sans-3' => [
-					'name' 			=> 'Source Sans 3',
+				'open-sans' => [
+					'name' 			=> 'Open Sans',
 					'category' 	=> 'sans',
-					'weights' 	=> [ 400, 700 ],
+					'weights' 	=> [ 300, 400, 700 ],
 					'files' 		=> [
-						[ 'weight' => 400, 'style' => 'normal', 'url' => '[[/nino/public]]/fonts/source-sans-3-regular.woff2' ],
-						[ 'weight' => 700, 'style' => 'normal', 'url' => '[[/nino/public]]/fonts/source-sans-3-bold.woff2' ],
-					],
-				],
-				'league-spartan' => [
-					'name' 			=> 'League Spartan',
-					'category' 	=> 'sans',
-					'weights' 	=> [ 700 ],
-					'files' 		=> [
-						[ 'weight' => 700, 'style' => 'normal', 'url' => '[[/nino/public]]/fonts/league-spartan.woff2' ],
+						[ 'weight' => 300, 'style' => 'normal', 'url' => '[[/nino/public]]/fonts/open-sans-light.woff2' ],
+						[ 'weight' => 400, 'style' => 'normal', 'url' => '[[/nino/public]]/fonts/open-sans-regular.woff2' ],
+						[ 'weight' => 700, 'style' => 'normal', 'url' => '[[/nino/public]]/fonts/open-sans-bold.woff2' ],
 					],
 				],
 				'system-sans' => [

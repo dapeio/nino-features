@@ -244,7 +244,7 @@ namespace Nino\Modules\Design {
 		/**
 		 *	Everything a fresh install starts from: the first set of every part,
 		 *	every knob in the middle, the delivered root size, the width and the
-		 *	animation of Nino.css, the faces the base unit delivers and the
+		 *	animation of Nino.css, the face the base unit delivers and the
 		 *	framework's own colours
 		 *
 		 *	@param		string		$libraryDir		The feature's library

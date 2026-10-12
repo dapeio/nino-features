@@ -131,7 +131,7 @@ namespace Nino\Modules\Design {
 				files, the compiler writes them - carry the fill every stylesheet
 				in a project carries, and a preview is not written through the
 				asset bundler that would resolve it (see Modules\Assets).
-				Unresolved, the webfaces silently do not load - the two the
+				Unresolved, the webfaces silently do not load - the one the
 				wizard delivers and the ones a project installed alike - and a
 				design shown in the wrong typeface is worse than no preview at all */
 			return str_replace( '[[/nino/public]]', $public, Compiler::compile( $appData, $setup, $libraryDir, $notes ) );
