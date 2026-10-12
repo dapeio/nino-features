@@ -7,8 +7,9 @@
  *													with the five font roles; Content, Buttons and Components,
  *													each with the choice of its template and one named knob
  *													for each thing the template lets go of, a strip of five
- *													positions or of three words; and Colours, with the two
- *													colours, the five knobs and the mode the palette is
+ *													positions or of three words - the Content in four groups,
+ *													a strip of tabs over the rows of one; and Colours, with
+ *													the two colours, the five knobs and the mode the palette is
  *													solved from - and the compile that turns all of it into
  *													assets/theme.css (see Modules\Design\Admin beside this
  *													file). The seventh, Typefaces, is the loader: the
@@ -61,11 +62,17 @@
 		/*	Where a change of one knob is looked at, by the tab: the id of the element
 			on the specimen the frame jumps to in place of the tab's anchor, which is
 			where opening the tab goes. For Content the two knobs of the hero go to the
-			hero (#content) and every other knob of the tab ('*') to the cards, which
-			the specimen's Cards section carries the id of (#cards). A tab with no entry
-			and a knob with neither its own nor a '*' use the tab's anchor. The two maps
-			are told together in the docblock of _jump()	*/
-		KNOB_ANCHORS	: { content : { 'hero-title' : 'content', 'hero-text' : 'content', '*' : 'cards' } },
+			hero (#content), and so do the title and the rule of a section, whose first
+			title - the one of the Cards section - stands right below it. The subtitle of
+			a section goes to the section the specimen shows plain (#colours): its plain
+			subtitle is in view wherever the frame stands, while the one under that first
+			title is a quiet one, small and easy to miss. The title and the subtitle of
+			a card go to the cards, which the specimen's Cards section carries the id of
+			(#cards), as does every other knob of the tab ('*'). The five are named so
+			that none of them is left to the '*'. A tab with no entry and a knob with
+			neither its own nor a '*' use the tab's anchor. The two maps are told
+			together in the docblock of _jump()	*/
+		KNOB_ANCHORS	: { content : { 'hero-title' : 'content', 'hero-text' : 'content', 'section-title' : 'content', 'section-subtitle' : 'colours', 'section-line' : 'content', 'card-title' : 'cards', 'card-subtitle' : 'cards', '*' : 'cards' } },
 
 		/*	How far from the middle a position of a knob can be, by the kind of the knob:
 			a scale has the five positions -2 to +2, a choice the three -1 to +1 (see
@@ -94,6 +101,10 @@
 				[ 'path', { d : 'M14 15H9v-5' } ],
 				[ 'path', { d : 'M16 3h5v5' } ],
 				[ 'path', { d : 'M21 3 9 15' } ],
+			],
+			// The rule under the title of a section
+			'minus' : [
+				[ 'path', { d : 'M5 12h14' } ],
 			],
 			'align-vertical-space-around' : [
 				[ 'rect', { width : '10', height : '6', x : '7', y : '9', rx : '2' } ],
@@ -200,7 +211,12 @@
 			'content/hero-text' : 'a-large-small',
 			'content/quiet' : 'a-large-small',
 			'content/loud' : 'a-large-small',
+			'content/section-title' : 'a-large-small',
+			'content/section-subtitle' : 'a-large-small',
 			'content/section-space' : 'scaling',
+			'content/section-line' : 'minus',
+			'content/card-title' : 'a-large-small',
+			'content/card-subtitle' : 'a-large-small',
 			'content/card-space' : 'align-vertical-space-around',
 			'content/corners' : 'square-round-corner',
 			'content/border' : 'square',
@@ -247,6 +263,10 @@
 		_target	: null,
 		// The tab that is open
 		_tab		: 'global',
+		// The group of its knobs that a tab with groups shows, by the tab; a tab with no entry shows its
+		// first. Kept while the panel lives and no part of the selection: another group changes nothing but
+		// the rows on screen
+		_group	: {},
 		// The header and footer the frame was last built with. Everything else
 		// is a stylesheet, and a stylesheet can be swapped inside it
 		_frames	: null,
@@ -913,30 +933,52 @@
 		 */
 		_renderTabs : function() {
 
+			return Nino.admin.design._tabs( Nino.content.getText('/_admin/design/label/title'), 'design-tabs', 'tab',
+				Nino.admin.design.TABS.map( function( key ) {
+					return { key : key, label : Nino.content.getText('/_admin/design/tab/'+ key) };
+				} ), Nino.admin.design._tab, function( key ) {
+					Nino.admin.design._switchTab( key );
+				} );
+		},
+
+		/**
+		 *	A strip of tabs: a tablist of buttons, one of them selected. Nino.adminUi.buttonRow()
+		 *	keeps that, with the arrow keys and the one tab stop of a strip. The seven tabs of the
+		 *	panel are drawn with it, and so are the groups of the knobs of a tab (see _renderKnobs())
+		 *
+		 *	@param		{string}		name				What the strip is called by assistive technology
+		 *	@param		{string}		className		The class the strip has beside the workbench's own
+		 *	@param		{string}		attribute		The data attribute a tab carries its key in: 'tab' for data-tab
+		 *	@param		{Array}			tabs				{ key, label }, in the order they stand in
+		 *	@param		{string}		active			The key of the tab that is selected
+		 *	@param		{Function}	onSwitch		Called with the key of the tab that was pressed
+		 *
+		 *	@return		{HTMLElement}
+		 */
+		_tabs : function( name, className, attribute, tabs, active, onSwitch ) {
+
 			const bar = dc.createElement('div');
 			// --bar: the underline strip every panel with several screens uses,
 			// the Users and Features panels among them - not the segmented row of
 			// boxes, which is a control for a value, not for a screen
-			bar.className = 'nino-admin-tabs nino-admin-tabs--bar design-tabs';
+			bar.className = 'nino-admin-tabs nino-admin-tabs--bar '+ className;
 			bar.setAttribute( 'role', 'tablist' );
-			bar.setAttribute( 'aria-label', Nino.content.getText('/_admin/design/label/title') );
+			bar.setAttribute( 'aria-label', name );
 
 			const buttons = {};
 
-			Nino.admin.design.TABS.forEach( function( key ) {
+			tabs.forEach( function( tab ) {
 				const button = dc.createElement('button');
 				button.type = 'button';
 				button.className = 'nino-admin-tab';
 				button.setAttribute( 'role', 'tab' );
-				button.dataset.tab = key;
-				button.textContent = Nino.content.getText('/_admin/design/tab/'+ key);
-				buttons[key] = button;
+				button.dataset[attribute] = tab.key;
+				button.textContent = tab.label;
+				buttons[tab.key] = button;
 				bar.appendChild( button );
 			} );
 
-			Nino.adminUi.buttonRow( buttons, Nino.admin.design._tab, function( key ) {
-				Nino.admin.design._switchTab( key );
-			}, 'aria-selected' );
+			Nino.adminUi.buttonRow( buttons, active, onSwitch, 'aria-selected' );
 
 			return bar;
 		},
@@ -997,21 +1039,23 @@
 		 *	height the stage was just fitted to.
 		 *
 		 *	In one column the stage stands under the controls, so a column of another
-		 *	height moves it - another tab, the brand warning of the colours - and the fit
-		 *	gives the frame another height. The page in it lays itself out again only
-		 *	after its window has heard the resize: the covers take their height from the
-		 *	window's, in an animation frame that follows it (Nino.js, Nino.ui.js). An
-		 *	anchor measured at once is where it stood at the old height - a tab opened
-		 *	after a taller one ended hundreds of pixels off, and so did an answer that
-		 *	took the brand warning away. So where the fit changed the height the jump
-		 *	waits for that resize and is made in the animation frame after it, which is
-		 *	queued after the page's own; a timer takes it there should the frame not be
-		 *	resized after all. Where the fit left the height as it was, or the frame
-		 *	cannot be reached, the jump is made at once
+		 *	height moves it - another tab, another group of the knobs, the brand warning
+		 *	of the colours - and the fit gives the frame another height. The page in it
+		 *	lays itself out again only after its window has heard the resize: the covers
+		 *	take their height from the window's, in an animation frame that follows it
+		 *	(Nino.js, Nino.ui.js). An anchor measured at once is where it stood at the
+		 *	old height - a tab opened after a taller one ended hundreds of pixels off,
+		 *	and so did an answer that took the brand warning away. So where the fit
+		 *	changed the height the jump waits for that resize and is made in the
+		 *	animation frame after it, which is queued after the page's own; a timer takes
+		 *	it there should the frame not be resized after all. Where the fit left the
+		 *	height as it was, or the frame cannot be reached, the jump is made at once
 		 *
 		 *	Asked for by whatever fits the stage and then jumps: a tab that is opened
-		 *	(_switchTab()) and the answer of a preview whose stylesheet was swapped in
-		 *	(_previewNow())
+		 *	(_switchTab()), another group of the knobs (_switchGroup(), which asks only
+		 *	where the fit changed the height: the page is the same under every group, and
+		 *	a stage as tall as it was leaves nothing to put back) and the answer of a
+		 *	preview whose stylesheet was swapped in (_previewNow())
 		 *
 		 *	@param		{?Element}	frame		The frame, as found before the fit; null where there is none
 		 *	@param		{string}		was			The height of its stage before the fit
@@ -2317,6 +2361,12 @@
 		 *	nothing to follow and no way back to draw beside a row - the middle is
 		 *	the template as it is.
 		 *
+		 *	A tab with groups (design/list says which, see Setup::GROUPS) puts a strip of
+		 *	tabs under the select, one for each group, and under it the rows of the group
+		 *	that is chosen and of no other: the Content has fourteen knobs, which are
+		 *	more than a column shows at once. The group is kept for the tab while the
+		 *	panel lives (see _groupOf()) and changes the rows only (see _switchGroup())
+		 *
 		 *	A knob the chosen template does not answer to is not hidden. It stands
 		 *	where it always does, greyed out, with a line that says whose
 		 *	decision that is: a row that comes and goes with the template would
@@ -2330,6 +2380,7 @@
 
 			const data = Nino.admin.design._data;
 			const row = Nino.admin.design._row( tab );
+			const groups = ( data.groups || {} )[tab] || {};
 
 			const box = dc.createElement('div');
 			box.id = 'design-knobs';
@@ -2338,13 +2389,108 @@
 			// The template these knobs are the knobs of, chosen where they are: the select is what names it
 			box.appendChild( Nino.admin.design._partField( row ) );
 
-			const answered = Nino.admin.design._answered( tab );
+			if( Object.keys( groups ).length === 0 ) {
+				Nino.admin.design._fillKnobs( box, tab, Object.keys( ( data.tabs || {} )[tab] || {} ) );
+				return box;
+			}
 
-			Object.keys( ( data.tabs || {} )[tab] || {} ).forEach( function( knob ) {
-				box.appendChild( Nino.admin.design._knobRow( tab, knob, answered.indexOf( knob ) !== -1 ) );
-			} );
+			// Named by the tab it belongs to, as the strip in the head is by the panel
+			box.appendChild( Nino.admin.design._tabs( Nino.content.getText('/_admin/design/tab/'+ tab), 'design-groups', 'group',
+				Object.keys( groups ).map( function( key ) {
+					return { key : key, label : Nino.content.getText('/_admin/design/group/'+ tab+ '/'+ key+ '/label') };
+				} ), Nino.admin.design._groupOf( tab ), function( key ) {
+					Nino.admin.design._switchGroup( tab, key );
+				} ) );
+
+			const rows = dc.createElement('div');
+			rows.id = 'design-knob-rows';
+			box.appendChild( rows );
+
+			Nino.admin.design._fillKnobs( rows, tab, groups[ Nino.admin.design._groupOf( tab ) ] );
 
 			return box;
+		},
+
+		/**
+		 *	The rows of some knobs of a tab into the box they stand in, in the order given
+		 *
+		 *	@param		{Element}	box
+		 *	@param		{string}	tab				A key of KNOB_TABS
+		 *	@param		{Array}		knobs			Names of the tab's knobs
+		 *
+		 *	@return		void
+		 */
+		_fillKnobs : function( box, tab, knobs ) {
+
+			const answered = Nino.admin.design._answered( tab );
+
+			knobs.forEach( function( knob ) {
+				box.appendChild( Nino.admin.design._knobRow( tab, knob, answered.indexOf( knob ) !== -1 ) );
+			} );
+		},
+
+		/**
+		 *	The group of the knobs of a tab that is shown: the one chosen since the panel was
+		 *	opened, else the first of the tab's groups - the order design/list gives them in
+		 *
+		 *	@param		{string}	tab				A key of KNOB_TABS
+		 *
+		 *	@return		{string}						'' for a tab that has no groups
+		 */
+		_groupOf : function( tab ) {
+
+			const keys = Object.keys( ( ( Nino.admin.design._data || {} ).groups || {} )[tab] || {} );
+			const chosen = Nino.admin.design._group[tab];
+
+			return keys.indexOf( chosen ) !== -1 ? chosen : ( keys[0] || '' );
+		},
+
+		/**
+		 *	Show another group of the knobs of a tab. Only the rows under the strip are drawn
+		 *	again: the strip is the element the switch was made on, and the focus an arrow
+		 *	key put on a tab of it stays there (see _switchTab() for the strip in the head).
+		 *
+		 *	A group belongs to the screen and not to the selection, so nothing is marked as
+		 *	changed and no preview is asked for - the page in the frame is the same under
+		 *	every group, and the frame stays on the place it showed. The rows are another height, which in
+		 *	one column moves the stage that stands under them: the stage is fitted again.
+		 *	Where that gave the frame another height the page in it lays itself out again
+		 *	and the place it showed moves, so it is put back there - the place of the last
+		 *	change, else the anchor of the tab - once the page has heard the resize, as it
+		 *	is after a tab (see _jumpFitted()). A group that leaves the stage as tall as it
+		 *	was has nothing to put back and scrolls nothing. The group that is open already
+		 *	is not opened again, as the tab that is open is not (see _switchTab())
+		 *
+		 *	@param		{string}	tab				A key of KNOB_TABS
+		 *	@param		{string}	group			A key of the groups of that tab
+		 *
+		 *	@return		void
+		 */
+		_switchGroup : function( tab, group ) {
+
+			if( group === Nino.admin.design._groupOf( tab ) )
+				return;
+
+			Nino.admin.design._group[tab] = group;
+
+			const rows = dc.getElementById('design-knob-rows');
+
+			if( rows === null )
+				return;
+
+			rows.innerHTML = '';
+			Nino.admin.design._fillKnobs( rows, tab, Nino.admin.design._data.groups[tab][group] );
+
+			// The stage stands under the rows in one column, so rows of another height move it: fitted
+			// again, and the page in the frame is put back once it has laid itself out at the height
+			// the fit gave it (see _jumpFitted())
+			const frame = dc.getElementById('design-frame');
+			const was = frame === null ? '' : frame.parentNode.style.height;
+
+			Nino.admin.design._fit();
+
+			if( frame !== null && frame.parentNode !== null && frame.parentNode.style.height !== was )
+				Nino.admin.design._jumpFitted( frame, was );
 		},
 
 		/**
@@ -3285,8 +3431,10 @@
 		 *
 		 *	Two maps say where. Opening a tab goes to the anchor of the tab
 		 *	(ANCHORS). A change of one knob goes to the place that knob is looked
-		 *	at in (KNOB_ANCHORS): on Content the hero's two knobs to the hero, which
-		 *	is also the anchor of the tab (#content), and every other knob to the
+		 *	at in (KNOB_ANCHORS): on Content the hero's two knobs and the title and the
+		 *	rule of a section to the hero, which is also the anchor of the tab
+		 *	(#content), the subtitle of a section to the plain section (#colours) and
+		 *	every other knob, the title and the subtitle of a card among them, to the
 		 *	Cards section (#cards); a tab or a knob with no entry there keeps the
 		 *	anchor of the tab. The place of a change is _target, one for each
 		 *	change - it is put back to the tab's own when a tab is opened and when a
@@ -3386,9 +3534,10 @@
 		 *
 		 *	It is asked for wherever the stage may have moved or the window changed: as
 		 *	the screen is drawn, when the window is resized (see _fitLater()), when a
-		 *	viewport is chosen, when a tab is opened and when a preview has come back.
-		 *	The last two are for one column, where the controls stand over the stage and
-		 *	a column of another height - another tab, the brand warning of the colours -
+		 *	viewport is chosen, when a tab is opened, when another group of the knobs is
+		 *	shown and when a preview has come back. The last three are for one column,
+		 *	where the controls stand over the stage and a column of another height -
+		 *	another tab, another group of the knobs, the brand warning of the colours -
 		 *	moves it; beside the controls the pane sticks, and the stage stays where it is
 		 *
 		 *	The frame is the last thing on the page, and the page clears its foot for

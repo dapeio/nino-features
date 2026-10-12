@@ -3,14 +3,19 @@
  *	@name			Poster
  *	@description	A big, tightly set opening, tall bands with a narrow column to read in, and flat cards in a hairline box. For sites of a few long sections.
  *
- *	@knob	hero-title		Size of the title of a hero
- *	@knob	hero-text		Size of the text of a hero
- *	@knob	quiet			Size of a quiet title, subtitle and text
- *	@knob	loud			Size of a loud title, subtitle and text
- *	@knob	section-space	Height of a band
- *	@knob	card-space		Space inside a card and between its parts
- *	@knob	corners			Corners of a card
- *	@knob	border			Line round a card
+ *	@knob	hero-title			Size of the title of a hero
+ *	@knob	hero-text			Size of the text of a hero
+ *	@knob	quiet				Size of a quiet title, subtitle and text
+ *	@knob	loud				Size of a loud title, subtitle and text
+ *	@knob	section-title		Size of the title of a band
+ *	@knob	section-subtitle	Size of the subtitle of a band
+ *	@knob	section-space		Height of a band
+ *	@knob	section-line		Rule under the title of a band
+ *	@knob	card-title			Size of the title of a card
+ *	@knob	card-subtitle		Size of the subtitle of a card
+ *	@knob	card-space			Space inside a card and between its parts
+ *	@knob	corners				Corners of a card
+ *	@knob	border				Line round a card
  *
  *	The band is the unit here: it is tall, and what stands in it is held to a
  *	column narrower than the grid so a paragraph is read rather than scanned.
@@ -47,11 +52,41 @@
 	--content-loud--more: 				1.35;
 	--content-loud--most: 				1.6;
 
+	--content-section-title--least: 	.8;
+	--content-section-title--less: 		.9;
+	--content-section-title--default: 	1;
+	--content-section-title--more: 		1.15;
+	--content-section-title--most: 		1.3;
+
+	--content-section-subtitle--least: 		.85;
+	--content-section-subtitle--less: 		.92;
+	--content-section-subtitle--default: 	1;
+	--content-section-subtitle--more: 		1.1;
+	--content-section-subtitle--most: 		1.2;
+
 	--content-section-space--least: 	var(--space-3);
 	--content-section-space--less: 		var(--space-4);
 	--content-section-space--default: 	var(--space-5);
 	--content-section-space--more: 		var(--space-6);
 	--content-section-space--most: 		calc( var(--space-6) * 1.25 );
+
+	--content-section-line--least: 		0px;
+	--content-section-line--less: 		0px;
+	--content-section-line--default: 	0px;
+	--content-section-line--more: 		1px;
+	--content-section-line--most: 		2px;
+
+	--content-card-title--least: 	calc(.8 * 5 / 6);
+	--content-card-title--less: 	calc(.9 * 5 / 6);
+	--content-card-title--default: 	calc(5 / 6);
+	--content-card-title--more: 	calc(1.15 * 5 / 6);
+	--content-card-title--most: 	calc(1.3 * 5 / 6);
+
+	--content-card-subtitle--least: 	.85;
+	--content-card-subtitle--less: 		.92;
+	--content-card-subtitle--default: 	1;
+	--content-card-subtitle--more: 		1.1;
+	--content-card-subtitle--most: 		1.2;
 
 	--content-card-space--least: 		calc( var(--space-1) * .5 );
 	--content-card-space--less: 		var(--space-1);
@@ -94,12 +129,23 @@
 		--content-section-space--default: 	var(--space-6);
 		--content-section-space--more: 		calc( var(--space-6) * 1.25 );
 		--content-section-space--most: 		calc( var(--space-6) * 1.5625 );
+
+		--content-card-title--least: 	calc(.8 * 25 / 32);
+		--content-card-title--less: 	calc(.9 * 25 / 32);
+		--content-card-title--default: 	calc(25 / 32);
+		--content-card-title--more: 	calc(1.15 * 25 / 32);
+		--content-card-title--most: 	calc(1.3 * 25 / 32);
 	}
 }
 
 :root {
 	--hero-title-scale: var(--content-hero-title);
 	--hero-text-scale: var(--content-hero-text);
+	--section-title-scale: var(--content-section-title);
+	--section-subtitle-scale: var(--content-section-subtitle);
+	--card-title-scale: var(--content-card-title);
+	--card-subtitle-scale: var(--content-card-subtitle);
+	--section-line: var(--content-section-line);
 	--scale-quiet: var(--content-quiet);
 	--scale-loud: var(--content-loud);
 }

@@ -199,6 +199,9 @@ namespace Nino\Modules\Design {
 				// choice is named by, and the size and the width are positions as well
 				'knobs' 	=> $setup['knobs'],
 				'tabs' 		=> Setup::KNOBS,
+				// How a tab shows its rows where it shows them in groups: a strip of tabs
+				// with the rows of the chosen group under it - the content has four
+				'groups' 	=> Setup::GROUPS,
 				'steps' 	=> Setup::STEPS,
 				'size' 		=> (int) ( $setup['size'] ?? 0 ),
 				'width' 	=> (int) ( $setup['width'] ?? 0 ),

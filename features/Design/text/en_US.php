@@ -28,7 +28,7 @@ return [
 	'[[/_admin/design/part/buttons]]'							=> 'Buttons template',
 	'[[/_admin/design/part/components]]'							=> 'Components template',
 	'[[/_admin/design/label/size]]'								=> 'Page, root size',
-	'[[/_admin/design/hint/size]]'								=> '70 % ↔ 130 % of the browser\'s own size, never a fixed number of pixels',
+	'[[/_admin/design/hint/size]]'								=> '85 % ↔ 145 % of the browser\'s own size, never a fixed number of pixels',
 	'[[/_admin/design/label/pagewidth]]'							=> 'Page, width',
 	'[[/_admin/design/hint/pagewidth]]'							=> '48 rem ↔ to the edge',
 
@@ -117,6 +117,12 @@ return [
 	// Content, Buttons, Components: the template, and one strip for each knob - a label and a note that says which way it goes, and for a choice the words of its three positions
 	'[[/_admin/design/hint/unanswered]]'							=> 'This template does not answer to “%s”.',
 
+	// The groups the knobs of the Content stand in: a strip of tabs, and the rows of the one that is open under it
+	'[[/_admin/design/group/content/hero/label]]'				=> 'Hero',
+	'[[/_admin/design/group/content/section/label]]'			=> 'Section',
+	'[[/_admin/design/group/content/card/label]]'				=> 'Card',
+	'[[/_admin/design/group/content/variants/label]]'			=> 'Variants',
+
 	'[[/_admin/design/knob/content/hero-title/label]]'			=> 'Title (Hero), text size',
 	'[[/_admin/design/knob/content/hero-title/note]]'			=> 'smaller ↔ larger',
 	'[[/_admin/design/knob/content/hero-text/label]]'			=> 'Subtitle (Hero), text size',
@@ -125,8 +131,18 @@ return [
 	'[[/_admin/design/knob/content/quiet/note]]'					=> 'smaller ↔ larger',
 	'[[/_admin/design/knob/content/loud/label]]'					=> 'Loud variant, text size',
 	'[[/_admin/design/knob/content/loud/note]]'					=> 'smaller ↔ larger',
+	'[[/_admin/design/knob/content/section-title/label]]'		=> 'Title (Section), text size',
+	'[[/_admin/design/knob/content/section-title/note]]'		=> 'smaller ↔ larger',
+	'[[/_admin/design/knob/content/section-subtitle/label]]'	=> 'Subtitle (Section), text size',
+	'[[/_admin/design/knob/content/section-subtitle/note]]'		=> 'smaller ↔ larger',
 	'[[/_admin/design/knob/content/section-space/label]]'		=> 'Section, space',
 	'[[/_admin/design/knob/content/section-space/note]]'			=> 'tighter ↔ wider',
+	'[[/_admin/design/knob/content/section-line/label]]'		=> 'Section, rule',
+	'[[/_admin/design/knob/content/section-line/note]]'			=> 'none ↔ strong',
+	'[[/_admin/design/knob/content/card-title/label]]'			=> 'Title (Card), text size',
+	'[[/_admin/design/knob/content/card-title/note]]'			=> 'smaller ↔ larger',
+	'[[/_admin/design/knob/content/card-subtitle/label]]'		=> 'Subtitle (Card), text size',
+	'[[/_admin/design/knob/content/card-subtitle/note]]'		=> 'smaller ↔ larger',
 	'[[/_admin/design/knob/content/card-space/label]]'			=> 'Card, space',
 	'[[/_admin/design/knob/content/card-space/note]]'			=> 'tighter ↔ wider',
 	'[[/_admin/design/knob/content/corners/label]]'				=> 'Card, corners',

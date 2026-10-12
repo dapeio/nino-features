@@ -52,6 +52,22 @@
 	scrollbar-width: none;
 }
 
+/*	The groups of the knobs of a tab: the same strip, in the card between the select
+	of the template and the rows of the group that is open. Four short words are one
+	line of the column - with a little less air round each than the seven tabs have,
+	so that the German ones are too at the width of a phone; where they are not, the
+	strip scrolls in its own box like the seven tabs do, and the card does not scroll
+	with it */
+.nino-admin .design-groups {
+	margin: .55rem 0 .3rem;
+	overflow-x: auto;
+	scrollbar-width: none;
+}
+.nino-admin .design-groups .nino-admin-tab {
+	padding-left: 1rem;
+	padding-right: 1rem;
+}
+
 /*	The word over the title of the preview. The workbench owns the type
 	(.nino-admin-eyebrow); what belongs here is where the line sits */
 .nino-admin .design-eyebrow {

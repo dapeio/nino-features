@@ -83,7 +83,12 @@ namespace Nino\Modules\Design {
 
 				content		hero-title, hero-text	the size of the hero's title and text
 							quiet, loud				the size of the --quiet and --loud variants
+							section-title			the size of the title of a section
+							section-subtitle		the size of the subtitle of a section
 							section-space			the vertical space of a section
+							section-line			the rule under the title of a section
+							card-title				the size of the title of a card
+							card-subtitle			the size of the subtitle of a card
 							card-space				the space inside and between the parts of a card
 							corners, border, shadow	the corners, the line and the shadow of a card
 				buttons		size					the size of .nino-btn
@@ -94,9 +99,26 @@ namespace Nino\Modules\Design {
 							zebra					the stripes of a table (a choice)
 							labels					where the label of a field stands (a choice)	*/
 		public const array KNOBS = [
-			'content' 		=> [ 'hero-title' => 'scale', 'hero-text' => 'scale', 'quiet' => 'scale', 'loud' => 'scale', 'section-space' => 'scale', 'card-space' => 'scale', 'corners' => 'scale', 'border' => 'scale', 'shadow' => 'scale' ],
+			'content' 		=> [ 'hero-title' => 'scale', 'hero-text' => 'scale', 'quiet' => 'scale', 'loud' => 'scale', 'section-title' => 'scale', 'section-subtitle' => 'scale', 'section-space' => 'scale', 'section-line' => 'scale', 'card-title' => 'scale', 'card-subtitle' => 'scale', 'card-space' => 'scale', 'corners' => 'scale', 'border' => 'scale', 'shadow' => 'scale' ],
 			'buttons' 		=> [ 'size' => 'scale', 'spread' => 'scale', 'space' => 'scale', 'corners' => 'scale' ],
 			'components' 	=> [ 'scale' => 'scale', 'space' => 'scale', 'corners' => 'scale', 'border' => 'scale', 'zebra' => 'choice', 'labels' => 'choice' ],
+		];
+
+		/*	How the screen shows the knobs of a tab: in groups, a strip of tabs and under it
+			the rows of the group that is chosen. The groups and the knobs of each are in
+			the order they are shown in. Only the content has groups - the buttons and the
+			components are one list of rows and have no entry here - and every knob of
+			such a tab stands in exactly one of them. A group belongs to the screen and
+			nothing is stored under it: a setup keeps the position of a knob by its tab
+			and its name, as before. The panel's words for a group are
+			/_admin/design/group/<tab>/<group>/label	*/
+		public const array GROUPS = [
+			'content' => [
+				'hero' 		=> [ 'hero-title', 'hero-text' ],
+				'section' 	=> [ 'section-title', 'section-subtitle', 'section-space', 'section-line' ],
+				'card' 		=> [ 'card-title', 'card-subtitle', 'card-space', 'corners', 'border', 'shadow' ],
+				'variants' 	=> [ 'quiet', 'loud' ],
+			],
 		];
 
 		/*	How a set says which knobs it answers to: one ladder per knob, named
@@ -131,18 +153,20 @@ namespace Nino\Modules\Design {
 			--base-size in Nino.css.
 
 			Five positions, -2 to +2, each a choice somebody can see on the page rather
-			than one they have to measure. Below the breakpoint they are 15% apart: at a
-			browser default of 16px that is 11.2, 13.6, 16, 18.4 and 20.8px. From it
+			than one they have to measure. Below the breakpoint they are 85, 92.5, 100,
+			115 and 145%: the two steps under the middle 7.5% each, the two over it 15%
+			and 30%, so that the small end is close and the large end reaches far. At a
+			browser default of 16px that is 13.6, 14.8, 16, 18.4 and 23.2px. From it
 			each is 1.125 times its own, the ratio of the kernel's pair of 100% and
-			112.5%: 12.6, 15.3, 18, 20.7 and 23.4px. The middle position is the
+			112.5%: 15.3, 16.65, 18, 20.7 and 26.1px. The middle position is the
 			delivered size and does not move, so nothing compiled before this reads
 			differently. The model keeps the position, a number, and not the pair	*/
 		public const array SIZES = [
-			-2 	=> [ '70%', '78.75%' ],
-			-1 	=> [ '85%', '95.625%' ],
+			-2 	=> [ '85%', '95.625%' ],
+			-1 	=> [ '92.5%', '104.0625%' ],
 			0 	=> [ '100%', '112.5%' ],
 			1 	=> [ '115%', '129.375%' ],
-			2 	=> [ '130%', '146.25%' ],
+			2 	=> [ '145%', '163.125%' ],
 		];
 
 		/*	The width of the page, as the maximum width of a row and the space

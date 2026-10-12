@@ -528,7 +528,7 @@ check( '...and no 1.6 can run it, a 1.7 pre-release can', \Nino\Features::satisf
 	&& \Nino\Features::satisfies( (string) $feature['nino'], '1.2.0-beta' ) === false
 	&& \Nino\Features::satisfies( (string) $feature['nino'], '1.6.0' ) === false
 	&& \Nino\Features::satisfies( (string) $feature['nino'], '1.7.0-dev' ) === true );
-check( 'it is Design 2.0: the model is another one, and the version says so', ( $feature['version'] ?? '' ) === '2.0.0' );
+check( 'it is Design 2.1: the model of 2.0 with the typefaces, the groups and the five knobs of round 4, and the version says so', ( $feature['version'] ?? '' ) === '2.1.0' );
 check( 'the setup file is declared under data, so a backup carries it', in_array( Setup::PATH, (array) ( $feature['data'] ?? [] ), true ) === true );
 $says = static fn( string $entry, string $locale ): string => \Nino\Features::localized( $feature['manual']['panel'][$entry] ?? [], $locale );
 
@@ -536,7 +536,7 @@ $says = static fn( string $entry, string $locale ): string => \Nino\Features::lo
 $foreignWord = static fn( string $locale ): string => (string) ( ( (array) include __DIR__. '/../text/'. $locale. '.php' )['[[/_admin/design/state/short/foreign]]'] ?? '' );
 
 check( 'the manual describes the tabs, the size of a role, the preview, its frame and the action bar, and the look the wizard delivers',
-	array_diff( [ 'Design', 'Global', 'Root size and width', 'Fonts', 'Size of a role', 'Content, Buttons, Components', 'Knobs of a template', 'Colours', 'Preview', 'Frame and action bar', 'The delivered look',
+	array_diff( [ 'Design', 'Global', 'Root size and width', 'Fonts', 'Size of a role', 'Content, Buttons, Components', 'Groups of the Content', 'Knobs of a template', 'Colours', 'Preview', 'Frame and action bar', 'The delivered look',
 		'Typefaces', 'Where a typeface lands', 'Self-hosting and the licence', 'Typeface repository' ], array_keys( (array) ( $feature['manual']['panel'] ?? [] ) ) ) === [] );
 // Features::manifest() holds a line of the manual to 1000 characters; it would refuse the whole file, and the first check of this suite says so
 check( '...every line of it a line and not a paragraph: at most 1000 bytes in either language, as the kernel reads a manifest',
@@ -561,14 +561,14 @@ check( '...that the delivered file has no stamp of the compiler\'s, so the panel
 	&& str_contains( $says( 'The delivered look', 'de_DE' ), 'noch nicht aus diesem Compiler' ) === false && str_contains( $says( 'The delivered look', 'de_DE' ), 'Aktualisierung dieses Features' ) === false );
 check( '...and the window the preview jumps in, in both languages',
 	str_contains( $says( 'Preview', 'en_US' ), 'own window' ) === true && str_contains( $says( 'Preview', 'de_DE' ), 'eigene Fenster' ) === true );
-check( '...that the frame fills the window down to the action bar - as tall as the window is from the top of the frame to the bar, less a gap, never under 16 rem, and again when the window is resized or another tab is opened - and, wherever the preview stands under the controls and not only on a phone, as tall as it would be with the preview scrolled to the top of the window, in both languages',
+check( '...that the frame fills the window down to the action bar - as tall as the window is from the top of the frame to the bar, less a gap, never under 16 rem, and again when the window is resized, another tab is opened or another group of its knobs is shown - and, wherever the preview stands under the controls and not only on a phone, as tall as it would be with the preview scrolled to the top of the window, in both languages',
 	str_contains( $says( 'Frame and action bar', 'en_US' ), 'The frame fills the window down to the action bar' ) === true
-	&& str_contains( $says( 'Frame and action bar', 'en_US' ), 'from the top of the frame to the bar, less a gap, never under 16 rem, and fitted again when the window is resized or another tab is opened' ) === true
+	&& str_contains( $says( 'Frame and action bar', 'en_US' ), 'from the top of the frame to the bar, less a gap, never under 16 rem, and fitted again when the window is resized, another tab is opened or another group of its knobs is shown' ) === true
 	&& str_contains( $says( 'Frame and action bar', 'en_US' ), 'Where the preview stands under the controls and the window leaves less than that below it' ) === true
 	&& str_contains( $says( 'Frame and action bar', 'en_US' ), 'On a phone' ) === false
 	&& str_contains( $says( 'Frame and action bar', 'en_US' ), 'with the preview scrolled to the top of the window' ) === true
 	&& str_contains( $says( 'Frame and action bar', 'de_DE' ), 'Der Frame füllt das Fenster bis zur Aktionsleiste' ) === true
-	&& str_contains( $says( 'Frame and action bar', 'de_DE' ), 'von seiner Oberkante bis zur Leiste misst, abzüglich eines Abstands, nie unter 16 rem, und wird bei jeder Größenänderung des Fensters und beim Öffnen eines anderen Tabs neu eingepasst' ) === true
+	&& str_contains( $says( 'Frame and action bar', 'de_DE' ), 'von seiner Oberkante bis zur Leiste misst, abzüglich eines Abstands, nie unter 16 rem, und wird bei jeder Größenänderung des Fensters, beim Öffnen eines anderen Tabs und beim Wechsel der Gruppe seiner Regler neu eingepasst' ) === true
 	&& str_contains( $says( 'Frame and action bar', 'de_DE' ), 'Wo die Vorschau unter den Reglern steht und das Fenster darunter weniger Platz lässt' ) === true
 	&& str_contains( $says( 'Frame and action bar', 'de_DE' ), 'Auf einem Handy' ) === false
 	&& str_contains( $says( 'Frame and action bar', 'de_DE' ), 'wenn die Vorschau an den oberen Rand des Fensters gescrollt wäre' ) === true );
@@ -628,10 +628,10 @@ $remOf		= static fn( string $width ): string => (string) preg_replace( '/rem$/',
 check( 'the manual says that the root size and the width of the page are two strips of five positions, -2 to +2, the middle the delivered one, and where they are told - in both languages',
 	str_contains( $says( 'Global', 'en_US' ), 'two strips of five positions, -2 to +2, the middle the delivered one (see the next entry)' ) === true
 	&& str_contains( $says( 'Global', 'de_DE' ), 'zwei Leisten mit fünf Stellungen, -2 bis +2, die Mitte die gelieferte (siehe den nächsten Eintrag)' ) === true );
-check( '...the five root sizes with what they come to, taken from Setup::SIZES - 70, 85, 100, 115 or 130 % below 768 px and 1.125 times that from it - and that the middle one is the delivered size, in both languages',
+check( '...the five root sizes with what they come to, taken from Setup::SIZES - 85, 92.5, 100, 115 or 145 % below 768 px and 1.125 times that from it - and that the middle one is the delivered size, in both languages (the German with the decimal comma, and a semicolon between the numbers, which a comma would run into)',
 	str_contains( $says( 'Root size and width', 'en_US' ), implode( ', ', array_slice( $percents, 0, 4 ) ). ' or '. $percents[4]. ' % of the browser\'s own size below 768 px and 1.125 times that from it' ) === true
 	&& str_contains( $says( 'Root size and width', 'en_US' ), 'the middle is the delivered size' ) === true
-	&& str_contains( $says( 'Root size and width', 'de_DE' ), implode( ', ', array_slice( $percents, 0, 4 ) ). ' oder '. $percents[4]. ' % der Browser-Größe unter 768 px und das 1,125-Fache davon ab dort' ) === true
+	&& str_contains( $says( 'Root size and width', 'de_DE' ), str_replace( '.', ',', implode( '; ', array_slice( $percents, 0, 4 ) ). ' oder '. $percents[4] ). ' % der Browser-Größe unter 768 px und das 1,125-Fache davon ab dort' ) === true
 	&& str_contains( $says( 'Root size and width', 'de_DE' ), 'die Mitte ist die gelieferte Größe' ) === true );
 check( '...and the five widths with what each is, the rem of them taken from Setup::WIDTHS: a reading column of 48 rem, a contained page of 64 rem, the 120 rem Nino.css has, and the two with no maximum, the last with no space at the sides from 768 px - and not the 56 rem, nor the 96 and 144 rem, of the models before',
 	str_contains( $says( 'Root size and width', 'en_US' ), '-2 a reading column of '. $remOf( Setup::WIDTHS[-2][0] ) ) === true
@@ -645,11 +645,26 @@ check( '...and the five widths with what each is, the rem of them taken from Set
 	&& str_contains( $says( 'Root size and width', 'de_DE' ), '+1 ohne Maximum und mit dem kleinen Abstand des Kernels zu den Seiten bei jeder Breite' ) === true
 	&& str_contains( $says( 'Root size and width', 'de_DE' ), '+2 ohne Maximum und ab 768 px ohne Abstand zu den Seiten außer dem Padding, das eine Section selbst behält (ein Handy behält seinen Abstand)' ) === true
 	&& array_filter( [ '56 rem', '96 rem', '144 rem' ], static fn( string $old ): bool => str_contains( $says( 'Global', 'en_US' ). $says( 'Root size and width', 'en_US' ). $says( 'Global', 'de_DE' ). $says( 'Root size and width', 'de_DE' ), $old ) ) === [] );
-check( 'the manual names the viewport buttons, the switch by the words the panel draws it with, and where the frame jumps: the hero for the hero\'s knobs, the cards for the other knobs of Content - in both languages',
+check( 'the manual names the viewport buttons, the switch by the words the panel draws it with, and that the frame jumps to where a knob of Content shows, which the groups tell - in both languages',
 	str_contains( $says( 'Preview', 'en_US' ), 'Three icon buttons' ) === true && str_contains( $says( 'Preview', 'en_US' ), 'as in the Builder' ) === true
-	&& str_contains( $says( 'Preview', 'en_US' ), '"'. $panelWord( 'label/follow', 'en_US' ). '"' ) === true && str_contains( $says( 'Preview', 'en_US' ), 'the hero for the title and the text of the hero and to the cards for the other knobs' ) === true
+	&& str_contains( $says( 'Preview', 'en_US' ), '"'. $panelWord( 'label/follow', 'en_US' ). '"' ) === true && str_contains( $says( 'Preview', 'en_US' ), 'for a knob of Content it goes to where the knob shows (see the groups of the Content)' ) === true
 	&& str_contains( $says( 'Preview', 'de_DE' ), 'Drei Icon-Knöpfe' ) === true && str_contains( $says( 'Preview', 'de_DE' ), 'wie im Builder' ) === true
-	&& str_contains( $says( 'Preview', 'de_DE' ), '„'. $panelWord( 'label/follow', 'de_DE' ). '“' ) === true && str_contains( $says( 'Preview', 'de_DE' ), 'zum Hero für Titel und Text des Heros, zu den Karten für die übrigen Regler' ) === true );
+	&& str_contains( $says( 'Preview', 'de_DE' ), '„'. $panelWord( 'label/follow', 'de_DE' ). '“' ) === true && str_contains( $says( 'Preview', 'de_DE' ), 'bei einem Regler von Inhalte geht sie dahin, wo er wirkt (siehe die Gruppen der Inhalte)' ) === true );
+
+check( 'the manual tells the four groups of the Content by the words the panel draws them with and the knobs of each, that the text size of a section\'s and a card\'s title and subtitle and the rule under a section title are knobs of their own, that the open group is no part of the selection, and where the frame jumps for each knob - in both languages',
+	str_contains( $says( 'Groups of the Content', 'en_US' ), 'The Content shows its fourteen knobs in four groups: a strip of tabs under the select of the template, and under it the rows of the group that is open - '
+		. $panelWord( 'group/content/hero/label', 'en_US' ). ' (title and text), '. $panelWord( 'group/content/section/label', 'en_US' ). ' (title, subtitle, space and the rule under the title), '
+		. $panelWord( 'group/content/card/label', 'en_US' ). ' (title, subtitle, space, corners, line and shadow) and '. $panelWord( 'group/content/variants/label', 'en_US' ). ' (quiet and loud)' ) === true
+	&& str_contains( $says( 'Groups of the Content', 'en_US' ), 'The text size of a section\'s title and subtitle and of a card\'s title and subtitle, and the rule under the title of a section, are knobs of their own' ) === true
+	&& str_contains( $says( 'Groups of the Content', 'en_US' ), 'is no part of the selection and changes nothing in the preview' ) === true
+	&& str_contains( $says( 'Groups of the Content', 'en_US' ), 'to the hero for the title and the text of the hero and for the title and the rule of a section, to the plain section of the page for the subtitle of a section, and to the cards for the other knobs' ) === true
+	&& str_contains( $says( 'Groups of the Content', 'de_DE' ), 'Die Inhalte zeigen ihre vierzehn Regler in vier Gruppen: eine Leiste von Tabs unter der Auswahl der Vorlage und darunter die Zeilen der geöffneten Gruppe – '
+		. $panelWord( 'group/content/hero/label', 'de_DE' ). ' (Titel und Text), '. $panelWord( 'group/content/section/label', 'de_DE' ). ' (Titel, Untertitel, Abstand und die Linie unter dem Titel), '
+		. $panelWord( 'group/content/card/label', 'de_DE' ). ' (Titel, Untertitel, Abstand, Ecken, Linie und Schatten) und '. $panelWord( 'group/content/variants/label', 'de_DE' ). ' (leise und laut)' ) === true
+	&& str_contains( $says( 'Groups of the Content', 'de_DE' ), 'Die Textgröße von Titel und Untertitel einer Sektion und einer Karte und die Linie unter dem Titel einer Sektion sind Regler für sich' ) === true
+	&& str_contains( $says( 'Groups of the Content', 'de_DE' ), 'gehört nicht zur Auswahl und ändert nichts an der Vorschau' ) === true
+	&& str_contains( $says( 'Groups of the Content', 'de_DE' ), 'zum Hero für Titel und Text des Heros sowie für Titel und Linie einer Sektion, zur schlichten Sektion der Seite für den Untertitel einer Sektion, zu den Karten für die übrigen Regler' ) === true
+	&& count( Setup::KNOBS['content'] ) === 14 && count( Setup::GROUPS['content'] ) === 4 );
 check( '...and that the switch is on at every visit, stored nowhere, and with it off the frame never scrolls by itself - in both languages',
 	str_contains( $says( 'Preview', 'en_US' ), 'it is on at every visit and stored nowhere' ) === true && str_contains( $says( 'Preview', 'en_US' ), 'the frame never scrolls by itself' ) === true
 	&& str_contains( $says( 'Preview', 'de_DE' ), 'er ist bei jedem Besuch an und nirgends gespeichert' ) === true && str_contains( $says( 'Preview', 'de_DE' ), 'scrollt der Frame nie von sich aus' ) === true );
@@ -946,14 +961,50 @@ $scales = 0;
 foreach( Setup::KNOBS as $tab => $kinds )
 	$scales += count( array_filter( $kinds, static fn( string $kind ): bool => $kind === 'scale' ) );
 
-check( 'the three tabs and their knobs, in the order they are shown in, each a scale but the stripes and the labels, which are choices - seventeen scales and two choices',
+check( 'the three tabs and their knobs, in the order of the model, each a scale but the stripes and the labels, which are choices - twenty-two scales and two choices',
 	array_map( 'array_keys', Setup::KNOBS ) === [
-		'content' => [ 'hero-title', 'hero-text', 'quiet', 'loud', 'section-space', 'card-space', 'corners', 'border', 'shadow' ],
+		'content' => [ 'hero-title', 'hero-text', 'quiet', 'loud', 'section-title', 'section-subtitle', 'section-space', 'section-line', 'card-title', 'card-subtitle', 'card-space', 'corners', 'border', 'shadow' ],
 		'buttons' => [ 'size', 'spread', 'space', 'corners' ],
 		'components' => [ 'scale', 'space', 'corners', 'border', 'zebra', 'labels' ],
 	]
-	&& Setup::KNOBS['components']['zebra'] === 'choice' && Setup::KNOBS['components']['labels'] === 'choice' && $scales === 17
-	&& array_sum( array_map( 'count', Setup::KNOBS ) ) === 19 );
+	&& Setup::KNOBS['components']['zebra'] === 'choice' && Setup::KNOBS['components']['labels'] === 'choice' && $scales === 22
+	&& array_sum( array_map( 'count', Setup::KNOBS ) ) === 24 );
+
+/*	The content shows its fourteen knobs in groups - a strip of tabs, and the rows of the one that is open: the two of the hero, the four of a
+	section, the six of a card and the two variants, in the order they are shown in. Only the content has groups; the buttons and the components are
+	a list of rows. A group is of the screen and nothing of it is stored, so the one rule it is held to is that every knob of its tab stands in exactly
+	one of them and every name in one is a knob of the tab	*/
+$groupProblems = [];
+
+foreach( Setup::GROUPS as $tab => $groups ) {
+
+	$grouped = array_merge( [], ...array_values( $groups ) );
+
+	if( isset( Setup::KNOBS[$tab] ) === false )
+		$groupProblems[] = $tab. ' is no tab with knobs';
+
+	foreach( array_count_values( $grouped ) as $name => $times )
+		if( $times !== 1 )
+			$groupProblems[] = $tab. '/'. $name. ' stands in '. $times. ' groups';
+
+	foreach( array_diff( $grouped, array_keys( Setup::KNOBS[$tab] ?? [] ) ) as $name )
+		$groupProblems[] = $tab. '/'. $name. ' is no knob of the tab';
+
+	foreach( array_diff( array_keys( Setup::KNOBS[$tab] ?? [] ), $grouped ) as $name )
+		$groupProblems[] = $tab. '/'. $name. ' stands in no group';
+}
+
+check( 'the content shows its knobs in four groups - hero, section, card and variants, in that order, the knobs of each in the order they are shown in - and the buttons and the components in none',
+	array_keys( Setup::GROUPS ) === [ 'content' ] && array_keys( Setup::GROUPS['content'] ) === [ 'hero', 'section', 'card', 'variants' ]
+	&& Setup::GROUPS['content'] === [
+		'hero' => [ 'hero-title', 'hero-text' ],
+		'section' => [ 'section-title', 'section-subtitle', 'section-space', 'section-line' ],
+		'card' => [ 'card-title', 'card-subtitle', 'card-space', 'corners', 'border', 'shadow' ],
+		'variants' => [ 'quiet', 'loud' ],
+	]
+	&& isset( Setup::GROUPS['buttons'] ) === false && isset( Setup::GROUPS['components'] ) === false );
+check( '...every knob of a tab with groups stands in exactly one of them, and every name in a group is a knob of its tab'
+	. ( $groupProblems === [] ? '' : ' - '. implode( ', ', array_slice( $groupProblems, 0, 4 ) ) ), $groupProblems === [] && count( array_merge( ...array_values( Setup::GROUPS['content'] ) ) ) === 14 );
 check( '...kind() says which, and a knob there is none of is of no kind; range() says how far a kind reaches, and words() the words it is declared under - all five for a scale, the inner three for a choice',
 	Setup::kind( 'content', 'corners' ) === 'scale' && Setup::kind( 'buttons', 'size' ) === 'scale' && Setup::kind( 'components', 'zebra' ) === 'choice'
 	&& Setup::kind( 'content', 'nonsense' ) === '' && Setup::kind( 'nowhere', 'corners' ) === ''
@@ -1018,7 +1069,7 @@ check( 'the size, the width and the animation are kept as they were chosen', $se
 	&& $setup['motion'] === [ 'effect' => 'flip', 'strength' => 'hard', 'speed' => 'slow' ] );
 check( '...width -2, -1, 0, 1 and 2 are the five widths', array_map( static fn( int $width ): int => Setup::normalize( $appData, [ 'width' => $width ], $library )['width'], [ -2, -1, 0, 1, 2 ] ) === [ -2, -1, 0, 1, 2 ] );
 check( '...the size is one of five, -2 to +2, each kept as it was chosen - and the middle one is what a setup out of nothing has; Setup::SIZES is keyed by them, with the five pairs',
-	Setup::SIZES === [ -2 => [ '70%', '78.75%' ], -1 => [ '85%', '95.625%' ], 0 => [ '100%', '112.5%' ], 1 => [ '115%', '129.375%' ], 2 => [ '130%', '146.25%' ] ]
+	Setup::SIZES === [ -2 => [ '85%', '95.625%' ], -1 => [ '92.5%', '104.0625%' ], 0 => [ '100%', '112.5%' ], 1 => [ '115%', '129.375%' ], 2 => [ '145%', '163.125%' ] ]
 	&& array_map( static fn( int $size ): int => Setup::normalize( $appData, [ 'size' => $size ], $library )['size'], array_keys( Setup::SIZES ) ) === [ -2, -1, 0, 1, 2 ]
 	&& Setup::normalize( $appData, [], $library )['size'] === 0 );
 
@@ -1212,7 +1263,7 @@ check( 'twelve numbered sections - the tokens, the palette, the type, the roles,
 	&& array_slice( $order, 0, 6 ) === [ 'the design tokens', 'the palette', 'the type', 'the roles', 'the root size', 'the page' ] );
 check( '...then the frames, then the three sets in the order the parts are declared in, each saying where its knobs stand, and the knob positions last', array_slice( $order, 6 ) === [
 	'header: v1', 'footer: v1',
-	'content: v1 (hero-title default, hero-text default, quiet default, loud default, section-space default, card-space default, corners default, border default, shadow default)',
+	'content: v1 (hero-title default, hero-text default, quiet default, loud default, section-title default, section-subtitle default, section-space default, section-line default, card-title default, card-subtitle default, card-space default, corners default, border default, shadow default)',
 	'buttons: v1 (size default, spread default, space default, corners default)',
 	'components: v1 (scale default, space default, corners default, border default, zebra default, labels default)',
 	'the knob positions',
@@ -1248,18 +1299,18 @@ check( 'the size knob moves the pair, not one half of it: for each of the five, 
 $xsSheet = designSection( Compiler::compile( $appData, Setup::normalize( $appData, [ 'size' => -2 ], $library ), $library ), 5, Compiler::SECTION );
 $xlSheet = designSection( Compiler::compile( $appData, Setup::normalize( $appData, [ 'size' => 2 ], $library ), $library ), 5, Compiler::SECTION );
 
-check( '...-2 is 70% below the breakpoint and 78.75% from it, +2 130% and 146.25% - and nothing of the delivered 100% and 112.5% stays in section 5',
-	str_contains( $xsSheet, '--nino-base-size: 70%;' ) === true && str_contains( $xsSheet, '--nino-base-size: 78.75%;' ) === true
-	&& str_contains( $xlSheet, '--nino-base-size: 130%;' ) === true && str_contains( $xlSheet, '--nino-base-size: 146.25%;' ) === true
+check( '...-2 is 85% below the breakpoint and 95.625% from it, +2 145% and 163.125% - and nothing of the delivered 100% and 112.5% stays in section 5',
+	str_contains( $xsSheet, '--nino-base-size: 85%;' ) === true && str_contains( $xsSheet, '--nino-base-size: 95.625%;' ) === true
+	&& str_contains( $xlSheet, '--nino-base-size: 145%;' ) === true && str_contains( $xlSheet, '--nino-base-size: 163.125%;' ) === true
 	&& str_contains( $xsSheet. $xlSheet, '--nino-base-size: 100%;' ) === false && str_contains( $xsSheet. $xlSheet, '--nino-base-size: 112.5%;' ) === false );
 
-/*	What a person sees: at a browser default of 16px the five are 11.2, 13.6, 16, 18.4 and 20.8px below the breakpoint,
-	15% of it apart, and the kernel's own ratio of 1.125 more from it - 12.6, 15.3, 18, 20.7 and 23.4px	*/
+/*	What a person sees: at a browser default of 16px the five are 13.6, 14.8, 16, 18.4 and 23.2px below the breakpoint - the two under the
+	middle 7.5% of it apart, the two over it 15% and 30% - and the kernel's own ratio of 1.125 more from it: 15.3, 16.65, 18, 20.7 and 26.1px	*/
 $pixels = static fn( string $percent ): float => round( (float) $percent * 16 / 100, 3 );
 
-check( '...the steps are 15% of the default apart below the breakpoint and 1.125 times that from it: 11.2, 13.6, 16, 18.4, 20.8px and 12.6, 15.3, 18, 20.7, 23.4px at 16px',
-	array_map( static fn( array $pair ): float => $pixels( $pair[0] ), array_values( Setup::SIZES ) ) === [ 11.2, 13.6, 16.0, 18.4, 20.8 ]
-	&& array_map( static fn( array $pair ): float => $pixels( $pair[1] ), array_values( Setup::SIZES ) ) === [ 12.6, 15.3, 18.0, 20.7, 23.4 ]
+check( '...the steps are 7.5% of the default apart under the middle and 15% and 30% over it below the breakpoint, and 1.125 times that from it: 13.6, 14.8, 16, 18.4, 23.2px and 15.3, 16.65, 18, 20.7, 26.1px at 16px',
+	array_map( static fn( array $pair ): float => $pixels( $pair[0] ), array_values( Setup::SIZES ) ) === [ 13.6, 14.8, 16.0, 18.4, 23.2 ]
+	&& array_map( static fn( array $pair ): float => $pixels( $pair[1] ), array_values( Setup::SIZES ) ) === [ 15.3, 16.65, 18.0, 20.7, 26.1 ]
 	&& array_filter( Setup::SIZES, static fn( array $pair ): bool => abs( (float) $pair[1] / (float) $pair[0] - 1.125 ) > 1e-9 ) === []
 	&& Setup::SIZES[0] === [ '100%', '112.5%' ] );
 
@@ -3062,6 +3113,8 @@ check( 'and the screen is handed the vocabulary it draws: the tabs with the kind
 	&& ( $listed['motion'] ?? null ) === [ 'effect' => '', 'strength' => '', 'speed' => '' ]
 	&& ( $listed['effects'] ?? null ) === array_keys( Setup::EFFECTS ) && ( $listed['strengths'] ?? null ) === Setup::STRENGTHS
 	&& ( $listed['speeds'] ?? null ) === array_keys( Setup::SPEEDS ) );
+check( '...and how a tab shows its knobs: the groups of the content, by the key of the tab, as the model has them - and none for the buttons and the components',
+	( $listed['groups'] ?? null ) === Setup::GROUPS && array_keys( (array) ( $listed['groups'] ?? [] ) ) === [ 'content' ] );
 check( '...where every knob stands, the five font roles with what each has and what each can be given, and the bounds of a typed size with the one Nino.css gives a role - no list of steps',
 	( $listed['knobs'] ?? null ) === $onFile['knobs'] && $onFile['knobs'] === Setup::defaults( $library )['knobs']
 	&& ( $listed['roles'] ?? null ) === Fonts::ROLES && ( $listed['fonts'] ?? null ) === Fonts::DEFAULTS
@@ -3626,6 +3679,90 @@ foreach( Setup::PARTS as $part => $kind ) {
 }
 
 check( 'no scale of a shipped set stands still: the least and the most of every ladder differ'. ( $flatLadders === [] ? '' : ' - '. implode( ', ', array_slice( $flatLadders, 0, 4 ) ) ), $flatLadders === [] );
+
+/*	The five knobs of the groups: the text size of the title and of the subtitle of a section and of a card, and the rule under the title of
+	a section. Every content set declares each as a ladder of five, answers to it, and points the name Nino.css reads at the ladder. The middle
+	is what the page was: the factor the kernel has - 1, and for a card title 5 / 6 and from 768px 25 / 32 - and for the rule none, but for
+	Editorial's own hairline, which the set drew itself before and now draws from the ladder. A scale rises from step to step; the rule never
+	falls, and is none up to the middle in four of the five sets. The measure of what the page does is the Playwright pass's	*/
+$groupKnobs = [
+	'section-title' => [ '--section-title-scale', 1.0 ], 'section-subtitle' => [ '--section-subtitle-scale', 1.0 ],
+	'card-title' => [ '--card-title-scale', 5 / 6 ], 'card-subtitle' => [ '--card-subtitle-scale', 1.0 ],
+	'section-line' => [ '--section-line', 0.0 ],
+];
+
+// What a value of a ladder comes to: a number, a length, or a factor times the number Nino.css has - calc(.8 * 5 / 6)
+$evaluate = static function( string $value ): float {
+
+	if( preg_match( '/^calc\(\s*(?:([\d.]+)\s*\*\s*)?(\d+)\s*\/\s*(\d+)\s*\)$/', $value, $found ) === 1 )
+		return ( $found[1] === '' ? 1.0 : (float) $found[1] ) * (int) $found[2] / (int) $found[3];
+
+	return (float) $value;
+};
+
+$newLadderProblems = [];
+$ruleFirst = [];
+
+foreach( Setup::available( $library, 'content' ) as $set ) {
+
+	$css 		= designPlain( (string) file_get_contents( Setup::file( $library, 'content', $set ) ) );
+	$ladders = Setup::ladders( $library, 'content', $set );
+	$base 		= designDeclarations( designBlock( $css, ':root {' ) );
+	$wide 		= designDeclarations( designBlock( designBlock( $css, '@media (min-width: 768px) {' ), ':root {' ) );
+
+	foreach( $groupKnobs as $knob => [ $name, $middle ] ) {
+
+		$values = array_map( static fn( string $word ): ?string => $base['--content-'. $knob. '--'. $word] ?? null, Setup::STEPS );
+
+		if( ( $ladders[$knob] ?? null ) !== [ $knob ] || in_array( null, $values, true ) === true ) {
+			$newLadderProblems[] = $set. ': '. $knob. ' is not a ladder of five';
+			continue;
+		}
+
+		$numbers = array_map( $evaluate, $values );
+		$was 			= $knob === 'section-line' && $set === 'v3' ? 1.0 : $middle;
+
+		if( abs( $numbers[2] - $was ) > 1e-9 )
+			$newLadderProblems[] = $set. ': the middle of '. $knob. ' is '. $values[2];
+
+		for( $at = 1; $at < 5; $at++ )
+			if( $numbers[$at] < $numbers[$at - 1] - 1e-9 || ( $knob !== 'section-line' && $numbers[$at] < $numbers[$at - 1] + 1e-9 ) )
+				$newLadderProblems[] = $set. ': '. $knob. ' does not rise at '. Setup::STEPS[$at];
+
+		if( $numbers[4] <= $numbers[0] )
+			$newLadderProblems[] = $set. ': '. $knob. ' ends where it starts';
+
+		if( preg_match( '/'. preg_quote( $name, '/' ). '\s*:\s*var\(--content-'. preg_quote( $knob, '/' ). '\)\s*;/', $css ) !== 1 )
+			$newLadderProblems[] = $set. ': '. $name. ' is not pointed at the ladder';
+
+		if( $knob === 'section-line' )
+			$ruleFirst[$set] = [ $numbers[0], $numbers[1], $numbers[2], $numbers[3], $numbers[4] ];
+	}
+
+	// Nino.css changes the number of a card title at 768px, and so does the ladder: the same steps of the number it has from there
+	$small = array_map( $evaluate, array_map( static fn( string $word ): string => $base['--content-card-title--'. $word] ?? '0', Setup::STEPS ) );
+	$large = array_map( $evaluate, array_map( static fn( string $word ): string => $wide['--content-card-title--'. $word] ?? '0', Setup::STEPS ) );
+
+	foreach( $small as $at => $number )
+		if( $number <= 0 || abs( $large[$at] / $number - ( 25 / 32 ) / ( 5 / 6 ) ) > 1e-9 )
+			$newLadderProblems[] = $set. ': the card title is not the same step of 25 / 32 from 768px at '. Setup::STEPS[$at];
+
+	// The rule is drawn by the ladder and by nothing else: a set that gives the title a border of its own would draw it twice
+	if( preg_match( '/\.nino-section-title\b[^{}]*\{[^}]*border/', $css ) === 1 )
+		$newLadderProblems[] = $set. ': draws a border on the section title itself';
+}
+
+check( 'every content set declares the five knobs of the groups as ladders of five it answers to and points the names Nino.css reads at - the text size of the title and of the subtitle of a section and of a card, the rule under a section title - the middle the number the kernel has, a scale rising, the rule never falling'
+	. ( $newLadderProblems === [] ? '' : ' - '. implode( ' | ', array_slice( $newLadderProblems, 0, 4 ) ) ), $newLadderProblems === [] );
+check( '...the rule is none up to the middle in four of the five sets and a hairline in Editorial, whose own border on the title is gone: 0, 0, 0, 1px, 2px and 0, .5px, 1px, 2px, 3px',
+	$ruleFirst === [ 'v1' => [ 0.0, 0.0, 0.0, 1.0, 2.0 ], 'v2' => [ 0.0, 0.0, 0.0, 1.0, 2.0 ], 'v3' => [ 0.0, 0.5, 1.0, 2.0, 3.0 ], 'v4' => [ 0.0, 0.0, 0.0, 1.0, 2.0 ], 'v5' => [ 0.0, 0.0, 0.0, 1.0, 2.0 ] ] );
+
+$defaultSheet 	= Compiler::compile( $appData, Setup::normalize( $appData, [], $library ), $library );
+$defaultLines 	= designPlain( substr( $defaultSheet, (int) strrpos( $defaultSheet, 'the knob positions' ) ) );
+
+check( 'at the defaults the sheet selects the middle of the five as it does of the others: a line for each of the fourteen knobs of the content, five more than the nine before',
+	preg_match_all( '/^\t--content-[a-z-]+: var\(--content-[a-z-]+--default\);$/m', $defaultLines ) === 14
+	&& count( array_filter( array_keys( $groupKnobs ), static fn( string $knob ): bool => str_contains( $defaultLines, "\t--content-". $knob. ': var(--content-'. $knob. "--default);\n" ) === true ) ) === 5 );
 echo "\nThe preview: a selection, before it is one\n";
 
 /*	The framework's own halves are read out of the checkout and bundled, and a
@@ -3878,7 +4015,7 @@ check( 'the preview answers with a whole document and the id of the sheet inside
 	&& ( $preview['style'] ?? '' ) === Admin::PREVIEW_STYLE
 	&& str_contains( (string) $preview['document'], 'id="'. Admin::PREVIEW_STYLE. '"' ) === true );
 check( 'it shows what was posted and not what is stored - looking is what you do while deciding',
-	str_contains( (string) ( $preview['css'] ?? '' ), '--nino-base-size: 85%;' ) === true && str_contains( (string) ( $preview['css'] ?? '' ), '--nino-base-size: 95.625%;' ) === true
+	str_contains( (string) ( $preview['css'] ?? '' ), '--nino-base-size: 92.5%;' ) === true && str_contains( (string) ( $preview['css'] ?? '' ), '--nino-base-size: 104.0625%;' ) === true
 	&& ( $stored['size'] ?? '' ) === 0
 	&& str_contains( (string) $preview['document'], 'nino-grid-row nino-grid-row--wide' ) === true );
 // The '?v=' is the bundle's own hash, which \Nino\Modules\Assets puts on the
@@ -4295,7 +4432,8 @@ check( '...and every text the script names literally is one of them'. ( $unwritt
 /*	The words the model needs, one for each thing the script draws by name: a
 	tab, a template and a viewport, an effect with its strength and speed, a font
 	role with its columns and its families, and the name of every knob of every tab
-	with the note under it, which says which way the strip goes. The words of the
+	with the note under it, which says which way the strip goes, and the name of every
+	group of the knobs of a tab. The words of the
 	positions are a choice's alone - the three of the stripes of a table and of the
 	labels of a form - because a scale shows numbers, -2 to +2, and the root size and
 	the width of the page are scales: a name and a note, nothing else. The model is
@@ -4359,6 +4497,10 @@ foreach( Setup::KNOBS as $tab => $kinds )
 				$wanted[] = 'knob/'. $tab. '/'. $knob. '/'. $word;
 		}
 	}
+
+foreach( Setup::GROUPS as $tab => $groups )
+	foreach( array_keys( $groups ) as $group )
+		$wanted[] = 'group/'. $tab. '/'. $group. '/label';
 
 foreach( Colours::choices() as $knob => $meta ) {
 	// A scale or a choice has a note under its name; the mode is a select under a heading, which has none
@@ -4447,10 +4589,22 @@ check( '...the labels as the owner wrote them: the hero\'s title and subtitle, t
 	&& $panelWord( 'knob/components/zebra/label', 'en_US' ) === 'Table, stripes' && $panelWord( 'knob/components/labels/label', 'en_US' ) === 'Field, labels'
 	&& $panelWord( 'knob/buttons/spread/note', 'de_DE' ) === 'nah beieinander '. $arrow. ' weit auseinander' && $panelWord( 'knob/buttons/spread/note', 'en_US' ) === 'close together '. $arrow. ' far apart'
 	&& $panelWord( 'knob/content/corners/note', 'de_DE' ) === 'scharf '. $arrow. ' rund' && $panelWord( 'knob/content/shadow/note', 'en_US' ) === 'none '. $arrow. ' strong' );
-check( '...and the four texts of the strips of Global are the owner\'s as well: Page, root size - 70 % ↔ 130 % of the browser\'s own size, never a fixed number of pixels - and Page, width - 48 rem ↔ to the edge; and in German Seite, Grundgröße - 70 % ↔ 130 % der Browser-Größe, nie eine feste Pixelzahl - and Seite, Breite - 48 rem ↔ bis an den Rand',
-	$panelWord( 'label/size', 'en_US' ) === 'Page, root size' && $panelWord( 'hint/size', 'en_US' ) === '70 % '. $arrow. ' 130 % of the browser\'s own size, never a fixed number of pixels'
+check( '...the five knobs of the groups as the owner worded them: the title and the subtitle of a section and of a card, a text size each, and the rule under the title of a section - Titel (Sektion), Textgröße; Sektion, Linie; Section, rule - with the notes smaller ↔ larger and none ↔ strong',
+	$panelWord( 'knob/content/section-title/label', 'de_DE' ) === 'Titel (Sektion), Textgröße' && $panelWord( 'knob/content/section-subtitle/label', 'de_DE' ) === 'Untertitel (Sektion), Textgröße'
+	&& $panelWord( 'knob/content/section-line/label', 'de_DE' ) === 'Sektion, Linie'
+	&& $panelWord( 'knob/content/card-title/label', 'de_DE' ) === 'Titel (Karte), Textgröße' && $panelWord( 'knob/content/card-subtitle/label', 'de_DE' ) === 'Untertitel (Karte), Textgröße'
+	&& $panelWord( 'knob/content/section-title/label', 'en_US' ) === 'Title (Section), text size' && $panelWord( 'knob/content/section-subtitle/label', 'en_US' ) === 'Subtitle (Section), text size'
+	&& $panelWord( 'knob/content/section-line/label', 'en_US' ) === 'Section, rule'
+	&& $panelWord( 'knob/content/card-title/label', 'en_US' ) === 'Title (Card), text size' && $panelWord( 'knob/content/card-subtitle/label', 'en_US' ) === 'Subtitle (Card), text size'
+	&& array_filter( [ 'section-title', 'section-subtitle', 'card-title', 'card-subtitle' ], static fn( string $knob ): bool => $panelWord( 'knob/content/'. $knob. '/note', 'de_DE' ) !== 'kleiner '. $arrow. ' größer' || $panelWord( 'knob/content/'. $knob. '/note', 'en_US' ) !== 'smaller '. $arrow. ' larger' ) === []
+	&& $panelWord( 'knob/content/section-line/note', 'de_DE' ) === 'keine '. $arrow. ' kräftig' && $panelWord( 'knob/content/section-line/note', 'en_US' ) === 'none '. $arrow. ' strong' );
+check( '...and the four groups of the Content: Hero, Sektion, Karte, Varianten and Hero, Section, Card, Variants',
+	array_map( static fn( string $group ): string => $panelWord( 'group/content/'. $group. '/label', 'de_DE' ), array_keys( Setup::GROUPS['content'] ) ) === [ 'Hero', 'Sektion', 'Karte', 'Varianten' ]
+	&& array_map( static fn( string $group ): string => $panelWord( 'group/content/'. $group. '/label', 'en_US' ), array_keys( Setup::GROUPS['content'] ) ) === [ 'Hero', 'Section', 'Card', 'Variants' ] );
+check( '...and the four texts of the strips of Global are the owner\'s as well: Page, root size - 85 % ↔ 145 % of the browser\'s own size, never a fixed number of pixels - and Page, width - 48 rem ↔ to the edge; and in German Seite, Grundgröße - 85 % ↔ 145 % der Browser-Größe, nie eine feste Pixelzahl - and Seite, Breite - 48 rem ↔ bis an den Rand',
+	$panelWord( 'label/size', 'en_US' ) === 'Page, root size' && $panelWord( 'hint/size', 'en_US' ) === '85 % '. $arrow. ' 145 % of the browser\'s own size, never a fixed number of pixels'
 	&& $panelWord( 'label/pagewidth', 'en_US' ) === 'Page, width' && $panelWord( 'hint/pagewidth', 'en_US' ) === '48 rem '. $arrow. ' to the edge'
-	&& $panelWord( 'label/size', 'de_DE' ) === 'Seite, Grundgröße' && $panelWord( 'hint/size', 'de_DE' ) === '70 % '. $arrow. ' 130 % der Browser-Größe, nie eine feste Pixelzahl'
+	&& $panelWord( 'label/size', 'de_DE' ) === 'Seite, Grundgröße' && $panelWord( 'hint/size', 'de_DE' ) === '85 % '. $arrow. ' 145 % der Browser-Größe, nie eine feste Pixelzahl'
 	&& $panelWord( 'label/pagewidth', 'de_DE' ) === 'Seite, Breite' && $panelWord( 'hint/pagewidth', 'de_DE' ) === '48 rem '. $arrow. ' bis an den Rand' );
 
 /*	The words of the choices. The three words of a choice knob - the keys under /_admin/design/knob/<tab>/<knob>/ that are
@@ -4504,8 +4658,8 @@ foreach( Setup::KNOBS as $tab => $kinds )
 					if( $panelWord( 'knob/'. $tab. '/'. $knob. '/'. $step, $stepLocale ) !== '' )
 						$scaleWords[] = $stepLocale. ' '. $tab. '/'. $knob. '/'. $step;
 
-check( 'a scale has no word for a position in either language: seventeen knobs with a name and a note, and none of the 51 words of three steps left - a strip of five shows -2 to +2'
-	. ( $scaleWords === [] ? '' : ' - still there: '. implode( ', ', array_slice( $scaleWords, 0, 4 ) ) ), $scaleWords === [] && $scales === 17 );
+check( 'a scale has no word for a position in either language: twenty-two knobs with a name and a note, and none of the 66 words of three steps left - a strip of five shows -2 to +2'
+	. ( $scaleWords === [] ? '' : ' - still there: '. implode( ', ', array_slice( $scaleWords, 0, 4 ) ) ), $scaleWords === [] && $scales === 22 );
 
 /*	The Colours tab: the choices say their names, and the three scales say nothing of their positions - a strip of five shows
 	numbers, the 0 the framework's own. The names the server publishes for the choices (Colours::choices(), the last fallback of
@@ -4560,8 +4714,11 @@ check( '...the automatic, light only and dark only of the English panel and the 
 	palette - with the two words only the summary under the frame said a size with, its
 	"default" and its decimal sign. The one word a state still has is the short one,
 	on the chip in the action bar, and the label of it is the chip's title; the date of
-	the previous version is the title of the button that restores it	*/
-$gone = [ 'group/', 'hint/templates', 'label/template-of', 'hint/knobs', 'state/compiled', 'state/current', 'state/drifted', 'state/missing', 'state/foreign',
+	the previous version is the title of the button that restores it. The six words of
+	the eyebrow are named whole, to the closing brackets: the groups of the knobs of the
+	Content are words under group/content/<group>/label now	*/
+$gone = [ 'group/global]]', 'group/fonts]]', 'group/content]]', 'group/buttons]]', 'group/components]]', 'group/colours]]',
+	'hint/templates', 'label/template-of', 'hint/knobs', 'state/compiled', 'state/current', 'state/drifted', 'state/missing', 'state/foreign',
 	'hint/actions', 'hint/fonts', 'hint/motion', 'hint/tuning', 'colour/mode/note', 'fontsize/default', 'fontsize/decimal',
 	'size/', 'pagewidth/', 'knob/buttons/small', 'knob/buttons/big' ];
 $stillThere = array_filter( array_merge( $textEn, $textDe ), static fn( string $key ): bool => array_filter( $gone, static fn( string $part ): bool => str_contains( $key, '[[/_admin/design/'. $part ) === true ) !== [] );

@@ -28,7 +28,7 @@ return [
 	'[[/_admin/design/part/buttons]]'							=> 'Vorlage Buttons',
 	'[[/_admin/design/part/components]]'							=> 'Vorlage Komponenten',
 	'[[/_admin/design/label/size]]'								=> 'Seite, Grundgröße',
-	'[[/_admin/design/hint/size]]'								=> '70 % ↔ 130 % der Browser-Größe, nie eine feste Pixelzahl',
+	'[[/_admin/design/hint/size]]'								=> '85 % ↔ 145 % der Browser-Größe, nie eine feste Pixelzahl',
 	'[[/_admin/design/label/pagewidth]]'							=> 'Seite, Breite',
 	'[[/_admin/design/hint/pagewidth]]'							=> '48 rem ↔ bis an den Rand',
 
@@ -117,6 +117,12 @@ return [
 	// Inhalte, Buttons, Komponenten: die Vorlage und eine Zeile je Regler – ein Name und eine Notiz, die die Richtung sagt, bei einer Auswahl dazu die Wörter ihrer drei Stellungen
 	'[[/_admin/design/hint/unanswered]]'							=> 'Diese Vorlage hört nicht auf „%s“.',
 
+	// Die Gruppen, in denen die Regler der Inhalte stehen: eine Leiste von Tabs, und darunter die Zeilen des geöffneten
+	'[[/_admin/design/group/content/hero/label]]'				=> 'Hero',
+	'[[/_admin/design/group/content/section/label]]'			=> 'Sektion',
+	'[[/_admin/design/group/content/card/label]]'				=> 'Karte',
+	'[[/_admin/design/group/content/variants/label]]'			=> 'Varianten',
+
 	'[[/_admin/design/knob/content/hero-title/label]]'			=> 'Titel (Hero), Textgröße',
 	'[[/_admin/design/knob/content/hero-title/note]]'			=> 'kleiner ↔ größer',
 	'[[/_admin/design/knob/content/hero-text/label]]'			=> 'Untertitel (Hero), Textgröße',
@@ -125,8 +131,18 @@ return [
 	'[[/_admin/design/knob/content/quiet/note]]'					=> 'kleiner ↔ größer',
 	'[[/_admin/design/knob/content/loud/label]]'					=> 'Laute Variante, Textgröße',
 	'[[/_admin/design/knob/content/loud/note]]'					=> 'kleiner ↔ größer',
+	'[[/_admin/design/knob/content/section-title/label]]'		=> 'Titel (Sektion), Textgröße',
+	'[[/_admin/design/knob/content/section-title/note]]'		=> 'kleiner ↔ größer',
+	'[[/_admin/design/knob/content/section-subtitle/label]]'	=> 'Untertitel (Sektion), Textgröße',
+	'[[/_admin/design/knob/content/section-subtitle/note]]'		=> 'kleiner ↔ größer',
 	'[[/_admin/design/knob/content/section-space/label]]'		=> 'Sektion, Abstand',
 	'[[/_admin/design/knob/content/section-space/note]]'			=> 'enger ↔ weiter',
+	'[[/_admin/design/knob/content/section-line/label]]'		=> 'Sektion, Linie',
+	'[[/_admin/design/knob/content/section-line/note]]'			=> 'keine ↔ kräftig',
+	'[[/_admin/design/knob/content/card-title/label]]'			=> 'Titel (Karte), Textgröße',
+	'[[/_admin/design/knob/content/card-title/note]]'			=> 'kleiner ↔ größer',
+	'[[/_admin/design/knob/content/card-subtitle/label]]'		=> 'Untertitel (Karte), Textgröße',
+	'[[/_admin/design/knob/content/card-subtitle/note]]'		=> 'kleiner ↔ größer',
 	'[[/_admin/design/knob/content/card-space/label]]'			=> 'Karte, Abstand',
 	'[[/_admin/design/knob/content/card-space/note]]'			=> 'enger ↔ weiter',
 	'[[/_admin/design/knob/content/corners/label]]'				=> 'Karte, Ecken',
