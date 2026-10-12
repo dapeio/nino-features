@@ -32,7 +32,7 @@ return [
 		],
 	],
 	'category'		=> 'system',
-	'version'			=> '1.0.0',
+	'version'			=> '1.0.1',
 	'nino'				=> '^1.4',
 	'requires'		=> [],
 	// The last five failures, newest first (no password, never): what the
