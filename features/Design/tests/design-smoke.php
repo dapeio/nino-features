@@ -336,8 +336,8 @@ $says = static fn( string $entry, string $locale ): string => \Nino\Features::lo
 // The panel's own word for a file Design never wrote, which the manual quotes
 $foreignWord = static fn( string $locale ): string => (string) ( ( (array) include __DIR__. '/../text/'. $locale. '.php' )['[[/_admin/design/state/short/foreign]]'] ?? '' );
 
-check( 'the manual describes the tabs, the preview and the look the wizard delivers',
-	array_diff( [ 'Design', 'Global', 'Fonts', 'Content, Buttons, Components', 'Colours', 'Preview', 'The delivered look' ], array_keys( (array) ( $feature['manual']['panel'] ?? [] ) ) ) === [] );
+check( 'the manual describes the tabs, the size of a role, the preview, its frame and the action bar, and the look the wizard delivers',
+	array_diff( [ 'Design', 'Global', 'Fonts', 'Size of a role', 'Content, Buttons, Components', 'Colours', 'Preview', 'Frame and action bar', 'The delivered look' ], array_keys( (array) ( $feature['manual']['panel'] ?? [] ) ) ) === [] );
 check( '...it says that the delivered theme.css is what the compiler writes at its defaults, from the end of its header on and byte for byte, and that the kernel regenerates it with each release - in both languages',
 	str_contains( $says( 'The delivered look', 'en_US' ), 'is what this compiler writes at its defaults' ) === true
 	&& str_contains( $says( 'The delivered look', 'en_US' ), 'from the end of its header on, byte for byte' ) === true
@@ -358,6 +358,26 @@ check( '...that the delivered file has no stamp of the compiler\'s, so the panel
 	&& str_contains( $says( 'The delivered look', 'de_DE' ), 'noch nicht aus diesem Compiler' ) === false && str_contains( $says( 'The delivered look', 'de_DE' ), 'Aktualisierung dieses Features' ) === false );
 check( '...and the window the preview jumps in, in both languages',
 	str_contains( $says( 'Preview', 'en_US' ), 'own window' ) === true && str_contains( $says( 'Preview', 'de_DE' ), 'eigene Fenster' ) === true );
+check( '...that the frame fills the window down to the action bar - as tall as the window is from the top of the frame to the bar, less a gap, never under 16 rem, and again when the window is resized or another tab is opened - and, wherever the preview stands under the controls and not only on a phone, as tall as it would be with the preview scrolled to the top of the window, in both languages',
+	str_contains( $says( 'Frame and action bar', 'en_US' ), 'The frame fills the window down to the action bar' ) === true
+	&& str_contains( $says( 'Frame and action bar', 'en_US' ), 'from the top of the frame to the bar, less a gap, never under 16 rem, and fitted again when the window is resized or another tab is opened' ) === true
+	&& str_contains( $says( 'Frame and action bar', 'en_US' ), 'Where the preview stands under the controls and the window leaves less than that below it' ) === true
+	&& str_contains( $says( 'Frame and action bar', 'en_US' ), 'On a phone' ) === false
+	&& str_contains( $says( 'Frame and action bar', 'en_US' ), 'with the preview scrolled to the top of the window' ) === true
+	&& str_contains( $says( 'Frame and action bar', 'de_DE' ), 'Der Frame füllt das Fenster bis zur Aktionsleiste' ) === true
+	&& str_contains( $says( 'Frame and action bar', 'de_DE' ), 'von seiner Oberkante bis zur Leiste misst, abzüglich eines Abstands, nie unter 16 rem, und wird bei jeder Größenänderung des Fensters und beim Öffnen eines anderen Tabs neu eingepasst' ) === true
+	&& str_contains( $says( 'Frame and action bar', 'de_DE' ), 'Wo die Vorschau unter den Reglern steht und das Fenster darunter weniger Platz lässt' ) === true
+	&& str_contains( $says( 'Frame and action bar', 'de_DE' ), 'Auf einem Handy' ) === false
+	&& str_contains( $says( 'Frame and action bar', 'de_DE' ), 'wenn die Vorschau an den oberen Rand des Fensters gescrollt wäre' ) === true );
+check( '...that nothing stands under the frame, that what a save, an apply, a restore or a reset did is said in the line of the action bar - one line, cut off with dots, its full text the title - and that the state of the applied file stands in one word on the chip beside it - in both languages, and no word of a summary anywhere in the manual',
+	str_contains( $says( 'Frame and action bar', 'en_US' ), 'Nothing stands under the frame' ) === true
+	&& str_contains( $says( 'Frame and action bar', 'en_US' ), 'is said in the line of the action bar - one line, cut off with dots where it is longer than the room, its full text the title' ) === true
+	&& str_contains( $says( 'Frame and action bar', 'en_US' ), 'and the state of the applied file in one word on the chip beside it' ) === true
+	&& str_contains( $says( 'Frame and action bar', 'de_DE' ), 'Unter dem Frame steht nichts' ) === true
+	&& str_contains( $says( 'Frame and action bar', 'de_DE' ), 'steht in der Zeile der Aktionsleiste – eine Zeile, mit Punkten abgeschnitten, wo sie länger ist als der Platz, ihr voller Text der Titel' ) === true
+	&& str_contains( $says( 'Frame and action bar', 'de_DE' ), 'der Zustand der angewendeten Datei in einem Wort auf dem Chip daneben' ) === true
+	&& array_reduce( array_keys( (array) $feature['manual']['panel'] ), static fn( bool $clean, string $entry ): bool => $clean === true
+		&& str_contains( strtolower( $says( $entry, 'en_US' ) ), 'summary' ) === false && str_contains( $says( $entry, 'de_DE' ), 'Zusammenfassung' ) === false, true ) === true );
 
 $sizesSaid = static function( string $locale ) use ( $says ): bool {
 
@@ -376,10 +396,19 @@ check( 'the manual says that Global keeps the two frames and that the templates 
 check( '...that each of those tabs begins with the select of its template and keeps the focus on it when another is chosen',
 	str_contains( $says( 'Template of a tab', 'en_US' ), 'each begin with the select of their template' ) === true && str_contains( $says( 'Template of a tab', 'en_US' ), 'with the focus still on the select' ) === true
 	&& str_contains( $says( 'Template of a tab', 'de_DE' ), 'beginnen je mit der Auswahl ihrer Vorlage' ) === true && str_contains( $says( 'Template of a tab', 'de_DE' ), 'der Fokus bleibt dabei auf der Auswahl' ) === true );
-check( '...that a size is typed in rem within the bounds of its role - the numbers are those of Fonts::BOUNDS - and that an empty field is the size Nino.css gives the role',
-	str_contains( $says( 'Fonts', 'en_US' ), 'typed in rem, within the bounds of the role' ) === true && str_contains( $says( 'Fonts', 'en_US' ), 'an empty field is the size Nino.css gives the role' ) === true
-	&& str_contains( $says( 'Fonts', 'de_DE' ), 'in rem getippt, innerhalb der Grenzen der Rolle' ) === true && str_contains( $says( 'Fonts', 'de_DE' ), 'ein leeres Feld ist die Größe, die Nino.css der Rolle gibt' ) === true
+check( '...that a size is typed in rem within the bounds of its role - the numbers are those of Fonts::BOUNDS - and that a value outside them is set to the nearer bound, in both languages',
+	str_contains( $says( 'Fonts', 'en_US' ), 'typed in rem, within the bounds of the role' ) === true
+	&& str_contains( $says( 'Fonts', 'en_US' ), 'a value outside them is set to the nearer bound' ) === true
+	&& str_contains( $says( 'Fonts', 'de_DE' ), 'in rem getippt, innerhalb der Grenzen der Rolle' ) === true
+	&& str_contains( $says( 'Fonts', 'de_DE' ), 'ein Wert außerhalb wird auf die nähere Grenze gesetzt' ) === true
 	&& $sizesSaid( 'en_US' ) === true && $sizesSaid( 'de_DE' ) === true );
+check( '...that the field of a size shows the size in force as its value - the one that was chosen, else the one Nino.css gives the role - so that the spinner counts from it, and that a size equal to that one is stored empty, so that the role goes on following its default - and no longer that an empty field is that size, or that it is a placeholder',
+	str_contains( $says( 'Size of a role', 'en_US' ), 'It shows the size in force as its value - the one that was chosen, else the one Nino.css gives the role - so that the spinner counts from it' ) === true
+	&& str_contains( $says( 'Size of a role', 'en_US' ), 'a size equal to the one Nino.css gives is stored empty, so that the role goes on following its default' ) === true
+	&& str_contains( $says( 'Size of a role', 'de_DE' ), 'Es zeigt die wirksame Größe als Wert – die gewählte, sonst die, die Nino.css der Rolle gibt –, damit der Spinner von ihr aus zählt' ) === true
+	&& str_contains( $says( 'Size of a role', 'de_DE' ), 'eine Größe, die der von Nino.css entspricht, wird leer gespeichert, damit die Rolle weiter ihrer Vorgabe folgt' ) === true
+	&& str_contains( $says( 'Fonts', 'en_US' ). $says( 'Size of a role', 'en_US' ), 'an empty field is' ) === false && str_contains( strtolower( $says( 'Fonts', 'en_US' ). $says( 'Size of a role', 'en_US' ) ), 'placeholder' ) === false
+	&& str_contains( $says( 'Fonts', 'de_DE' ). $says( 'Size of a role', 'de_DE' ), 'ein leeres Feld ist' ) === false && str_contains( strtolower( $says( 'Fonts', 'de_DE' ). $says( 'Size of a role', 'de_DE' ) ), 'platzhalter' ) === false );
 check( '...and that the way back to the previous version is a button of the action bar beside Reset, there only while there is such a version',
 	str_contains( $says( 'Restore previous version', 'en_US' ), 'in the action bar beside Reset, and only while there is such a version' ) === true
 	&& str_contains( $says( 'Restore previous version', 'de_DE' ), 'in der Aktionsleiste neben Zurücksetzen, und nur, solange es eine solche Version gibt' ) === true );
@@ -408,12 +437,15 @@ check( 'the manual names the viewport buttons, the switch by the words the panel
 check( '...and that the switch is on at every visit, stored nowhere, and with it off the frame never scrolls by itself - in both languages',
 	str_contains( $says( 'Preview', 'en_US' ), 'it is on at every visit and stored nowhere' ) === true && str_contains( $says( 'Preview', 'en_US' ), 'the frame never scrolls by itself' ) === true
 	&& str_contains( $says( 'Preview', 'de_DE' ), 'er ist bei jedem Besuch an und nirgends gespeichert' ) === true && str_contains( $says( 'Preview', 'de_DE' ), 'scrollt der Frame nie von sich aus' ) === true );
-check( '...and that the field of a size steps by a tenth, which every bound is on, and keeps the point whatever decimal sign the browser shows - in both languages, with the bounds of the tenths',
-	str_contains( $says( 'Fonts', 'en_US' ), 'the field steps by a tenth, which every bound is on' ) === true && str_contains( $says( 'Fonts', 'en_US' ), 'a typed 1.25 stays 1.25' ) === true
-	&& str_contains( $says( 'Fonts', 'en_US' ), 'the setup keeps 1.6' ) === true
-	&& str_contains( $says( 'Fonts', 'de_DE' ), 'das Feld zählt in Zehnteln, auf denen jede Grenze liegt' ) === true && str_contains( $says( 'Fonts', 'de_DE' ), 'ein getipptes 1,25 bleibt 1,25' ) === true
-	&& str_contains( $says( 'Fonts', 'de_DE' ), 'das Setup behält 1.6' ) === true
-	&& str_contains( $says( 'Fonts', 'en_US' ), '0.75' ) === false && str_contains( $says( 'Fonts', 'en_US' ), '0.625' ) === false && str_contains( $says( 'Fonts', 'de_DE' ), '0,75' ) === false && str_contains( $says( 'Fonts', 'de_DE' ), '0,625' ) === false );
+check( '...and that the field of a size rounds to three decimals, steps by a tenth, which every bound is on, and keeps the point whatever decimal sign the browser shows - in both languages, with the bounds of the tenths',
+	str_contains( $says( 'Size of a role', 'en_US' ), 'The number is rounded to three decimals' ) === true && str_contains( $says( 'Size of a role', 'en_US' ), 'a typed 1.25 stays 1.25' ) === true
+	&& str_contains( $says( 'Size of a role', 'en_US' ), 'The field steps by a tenth, which every bound is on' ) === true
+	&& str_contains( $says( 'Size of a role', 'en_US' ), 'the setup keeps 1.6' ) === true
+	&& str_contains( $says( 'Size of a role', 'de_DE' ), 'Die Zahl wird auf drei Dezimalstellen gerundet' ) === true && str_contains( $says( 'Size of a role', 'de_DE' ), 'ein getipptes 1,25 bleibt 1,25' ) === true
+	&& str_contains( $says( 'Size of a role', 'de_DE' ), 'Das Feld zählt in Zehnteln, auf denen jede Grenze liegt' ) === true
+	&& str_contains( $says( 'Size of a role', 'de_DE' ), 'das Setup behält 1.6' ) === true
+	&& str_contains( $says( 'Fonts', 'en_US' ). $says( 'Size of a role', 'en_US' ), '0.75' ) === false && str_contains( $says( 'Fonts', 'en_US' ). $says( 'Size of a role', 'en_US' ), '0.625' ) === false
+	&& str_contains( $says( 'Fonts', 'de_DE' ). $says( 'Size of a role', 'de_DE' ), '0,75' ) === false && str_contains( $says( 'Fonts', 'de_DE' ). $says( 'Size of a role', 'de_DE' ), '0,625' ) === false );
 
 echo "\nThe library it ships\n";
 
@@ -2660,8 +2692,8 @@ foreach( [ 'en_US', 'de_DE' ] as $knobLocale ) {
 
 	foreach( (array) ( $listed['palette'] ?? [] ) as $knobKey => $knobMeta ) {
 
-		// A scale's positions are numbered and the mode's are its words
-		$wanted = [ 'label', 'note' ];
+		// A scale's positions are numbered and the mode's are its words, and the mode, a select under a heading, has no note
+		$wanted = $knobKey === 'mode' ? [ 'label' ] : [ 'label', 'note' ];
 		foreach( (array) ( $knobMeta['steps'] ?? [] ) as $position => $step )
 			$wanted[] = $knobKey === 'mode' ? (string) $step : (string) ( $position + 1 );
 
@@ -2670,7 +2702,7 @@ foreach( [ 'en_US', 'de_DE' ] as $knobLocale ) {
 				$knobWords[] = $knobLocale. ' '. $knobKey. '/'. $suffix;
 	}
 }
-check( 'every knob the panel is handed has its name, its note and a word per position, in both locales'. ( $knobWords === [] ? '' : ' - missing: '. implode( ', ', $knobWords ) ), $knobWords === [] );
+check( 'every knob the panel is handed has its name, its note - the mode has none - and a word per position, in both locales'. ( $knobWords === [] ? '' : ' - missing: '. implode( ', ', $knobWords ) ), $knobWords === [] );
 check( '...and the table itself carries no second copy of those words', ( $listed['palette']['harmony']['label'] ?? null ) === null
 	&& ( $listed['palette']['harmony']['note'] ?? null ) === null
 	&& ( $listed['palette']['harmony']['hint'] ?? null ) === null );
@@ -2769,7 +2801,7 @@ foreach( [ 'family', 'weight', 'uppercase', 'size' ] as $head )
 foreach( Fonts::families() as $slug => $family )
 	if( $family['files'] === [] )
 		$wanted[] = 'family/'. $slug;
-array_push( $wanted, 'family/default', 'family/default-code', 'fontsize/default', 'fontsize/decimal', 'fontsize/unit' );
+array_push( $wanted, 'family/default', 'family/default-code', 'fontsize/unit' );
 foreach( Fonts::WEIGHTS as $weight )
 	$wanted[] = 'weight/'. $weight;
 foreach( Setup::KNOBS as $tab => $names )
@@ -2777,7 +2809,12 @@ foreach( Setup::KNOBS as $tab => $names )
 		foreach( [ 'label', 'note', 'less', 'default', 'more' ] as $word )
 			$wanted[] = 'knob/'. $tab. '/'. $knob. '/'. $word;
 foreach( Colours::choices() as $knob => $meta ) {
-	array_push( $wanted, 'colour/'. $knob. '/label', 'colour/'. $knob. '/note' );
+	// A scale or a choice has a note under its name; the mode is a select under a heading, which has none
+	$wanted[] = 'colour/'. $knob. '/label';
+
+	if( $knob !== 'mode' )
+		$wanted[] = 'colour/'. $knob. '/note';
+
 	foreach( $meta['steps'] as $position => $step )
 		$wanted[] = 'colour/'. $knob. '/'. ( $knob === 'mode' ? $step : $position + 1 );
 }
@@ -2912,14 +2949,20 @@ check( '...and the hint under the size is exact about where the five percentages
 
 /*	What the screen stopped drawing took its words with it: the card of the state
 	- how the files stand, and when they were last applied - the eyebrow over the
-	tab, the note under the templates of Global and the heading over the knobs.
-	The one word a state still has is the short one of the summary, and the date
-	of the previous version is the title of the button that restores it	*/
-$gone = [ 'group/', 'hint/templates', 'label/template-of', 'hint/knobs', 'state/compiled', 'state/current', 'state/drifted', 'state/missing', 'state/foreign' ];
+	tab, the note under the templates of Global and the heading over the knobs; and
+	the sentences nobody read: the one under the two buttons, and the ones under the
+	headings of the blocks - the fonts, the animation, the tuning and the mode of the
+	palette - with the two words only the summary under the frame said a size with, its
+	"default" and its decimal sign. The one word a state still has is the short one,
+	on the chip in the action bar, and the label of it is the chip's title; the date of
+	the previous version is the title of the button that restores it	*/
+$gone = [ 'group/', 'hint/templates', 'label/template-of', 'hint/knobs', 'state/compiled', 'state/current', 'state/drifted', 'state/missing', 'state/foreign',
+	'hint/actions', 'hint/fonts', 'hint/motion', 'hint/tuning', 'colour/mode/note', 'fontsize/default', 'fontsize/decimal' ];
 $stillThere = array_filter( array_merge( $textEn, $textDe ), static fn( string $key ): bool => array_filter( $gone, static fn( string $part ): bool => str_contains( $key, '[[/_admin/design/'. $part ) === true ) !== [] );
-check( 'the words of the state card, of the eyebrow over a tab, of the note under the templates and of the heading over the knobs are gone from both files'
+check( 'the words of the state card, of the eyebrow over a tab, of the note under the templates and of the heading over the knobs are gone from both files - and so are those of the hint under the two buttons, of the sentences under the headings of the blocks and of the summary'
 	. ( $stillThere === [] ? '' : ' - still there: '. implode( ', ', array_slice( $stillThere, 0, 4 ) ) ), $stillThere === []
-	&& in_array( '[[/_admin/design/state/previous]]', $textEn, true ) === true && in_array( '[[/_admin/design/label/state]]', $textEn, true ) === true );
+	&& in_array( '[[/_admin/design/state/previous]]', $textEn, true ) === true && in_array( '[[/_admin/design/label/state]]', $textEn, true ) === true
+	&& in_array( '[[/_admin/design/fontsize/unit]]', $textEn, true ) === true && in_array( '[[/_admin/design/hint/size]]', $textEn, true ) === true && in_array( '[[/_admin/design/hint/pagewidth]]', $textEn, true ) === true );
 
 /*	The stylesheet of the panel is no test's business as a rule - what it looks
 	like is for a browser to say - but the owner's list asked for measures, and a
@@ -2954,26 +2997,61 @@ check( 'the way back to the previous version stands beside Reset in the same qui
 	&& str_contains( $cssRule( '.nino-admin .nino-admin-actionbar :is(.design-reset-all, #design-restore)' ), 'margin-right' ) === false
 	&& $cssHas( '.nino-admin .nino-admin-actionbar #design-save', [ 'margin-left: auto;' ] ) === true );
 
-/*	On a phone - the rules inside the media query of 38rem - the way back to the previous version takes the first row
-	of the bar: alone while Reset is hidden, and while Reset is shown the two share that row, Restore at its own width
-	and Reset taking the room that is left, which puts the pair at the start of the row. The bar is then the row of
-	the quiet ones, the row of the kernel's mark of unsaved input and the row of Save and Apply - never a fourth	*/
+/*	What the panel says stands in the bar with the buttons that say it: the line of what was done, which the
+	workbench's bar takes for its status line - and the chip for the state of the files beside it. The line is one
+	line, and the room it has is what the chip, the mark of unsaved input and the buttons leave	*/
+check( 'the line the panel says things in is one line that gives its room up first: it grows from nothing, is cut by an ellipsis where the bar has less room than it has words, and a failure in it is red - the workbench\'s rule for the status line is the more specific, so the red is said again',
+	$cssHas( '.nino-admin .nino-admin-actionbar > #design-msg', [ 'flex: 1 1 0;', 'overflow: hidden;', 'text-overflow: ellipsis;', 'white-space: nowrap;' ] ) === true
+	&& $cssHas( '.nino-admin .nino-admin-actionbar > #design-msg.nino-admin-error', [ 'color: var(--editor-red);' ] ) === true );
+check( '...a bar that has no room for all of it is rows and not an overflow, and the chip is a pill that keeps its word - ordered as the line is, so that the mark of unsaved input the workbench adds at the end of the bar does not part the two, a line, a round border, small type in the secondary colour and no shrinking, which the line is there for - green while the files are up to date and orange while a saved draft waits for an apply',
+	$cssHas( '.nino-admin .nino-admin-actionbar:has(> #design-msg)', [ 'flex-wrap: wrap;' ] ) === true
+	&& $cssHas( '.nino-admin .nino-admin-actionbar > .design-state-word', [ 'order: -1;', 'flex: none;', 'border: 1px solid var(--editor-border);', 'border-radius: 999px;', 'color: var(--editor-text-secondary);', 'font-size: .72rem;', 'white-space: nowrap;' ] ) === true
+	&& $cssHas( '.nino-admin .nino-admin-actionbar > .design-state-word[data-state="current"]', [ 'color: var(--editor-green);' ] ) === true
+	&& $cssHas( '.nino-admin .nino-admin-actionbar > .design-state-word[data-state="drifted"]', [ 'color: var(--editor-orange);' ] ) === true );
+check( '...and the mark of unsaved input the workbench writes into the bar keeps its words on one line, where it is not a row of its own: from the width the workbench\'s phone rule ends at',
+	preg_match( '/@media \(min-width: 38\.001rem\) \{ ([^{}]+\{[^}]*\} )\}/', $panelCss, $markRules ) === 1
+	&& str_contains( $markRules[1], '.nino-admin .nino-admin-actionbar:has(> #design-msg) > .nino-admin-actionbar-dirty { flex: none; white-space: nowrap; }' ) === true );
+
+/*	On a phone - the rules inside the media query of 38rem - the bar is rows. The first is the line and the chip: the
+	workbench hides its status line there, and this one is shown, the line taking the room the chip leaves and the chip
+	cut by an ellipsis like the line is. The way back to the previous version takes a row above the buttons: alone while Reset
+	is hidden, and while Reset is shown the two share that row, Restore at its own width and Reset taking the room that is
+	left, which puts the pair at the start of the row. The bar is then the row of the line, the row of the quiet ones, the
+	row of the kernel's mark of unsaved input and the row of Save and Apply - never a fifth	*/
 $phoneCss = preg_match( '/@media \(max-width: 38rem\) \{ ((?:[^{}]+\{[^}]*\} )*)\}/', $panelCss, $phoneRules ) === 1 ? $phoneRules[1] : '';
 $onPhone = static fn( string $selector, array $declarations ): bool
 	=> str_contains( $phoneCss, $selector. ' { ' ) === true && $cssHas( $selector, $declarations ) === true;
+// A selector the stylesheet has outside the media query as well: the rule that is inside it, and no other
+$phoneRule = static fn( string $selector ): string
+	=> preg_match( '/(?:^|[{}] )'. preg_quote( $selector, '/' ). ' \{ ([^}]*) \}/', $phoneCss, $found ) === 1 ? $found[1] : '';
+$phoneHas = static fn( string $selector, array $declarations ): bool
+	=> array_filter( $declarations, static fn( string $declaration ): bool => str_contains( ' '. $phoneRule( $selector ), ' '. $declaration ) === false ) === [];
 
-check( 'on a phone the way back to the previous version takes the first row of the bar - alone while Reset is hidden, and beside Reset at its own width while that is shown, Reset taking the room left over so that the pair stands at the start: the bar is three rows at the most',
-	$onPhone( '.nino-admin .nino-admin-actionbar:has(> #design-restore)', [ 'flex-wrap: wrap;' ] ) === true
-	&& $onPhone( '.nino-admin .nino-admin-actionbar > #design-restore', [ 'flex: 1 0 100%;' ] ) === true
+check( 'on a phone the line and the chip are the first row of the bar: the line, shown where the workbench hides its status line, takes the room the chip leaves, and the chip is cut by an ellipsis like the line is - both before everything else',
+	$phoneHas( '.nino-admin .nino-admin-actionbar > #design-msg', [ 'display: block;', 'order: -4;', 'flex: 1 1 calc(100% - 10.4rem);' ] ) === true
+	&& $phoneHas( '.nino-admin .nino-admin-actionbar > .design-state-word', [ 'order: -4;', 'flex: 0 1 auto;', 'max-width: 10rem;', 'overflow: hidden;', 'text-overflow: ellipsis;' ] ) === true );
+check( 'on a phone the way back to the previous version takes a row above the buttons - alone while Reset is hidden, and beside Reset at its own width while that is shown, Reset taking the room left over so that the pair stands at the start: the bar is four rows at the most',
+	$onPhone( '.nino-admin .nino-admin-actionbar > #design-restore', [ 'flex: 1 0 100%;' ] ) === true
 	&& $onPhone( '.nino-admin .nino-admin-actionbar > #design-restore:has(~ #design-reset:not([hidden]))', [ 'flex: 0 0 auto;' ] ) === true
 	&& $onPhone( '.nino-admin .nino-admin-actionbar > .design-reset-all', [ 'margin-right: auto;' ] ) === true );
 $outsidePhone = str_replace( $phoneRules[0] ?? "\0", '', $panelCss );
 check( '...and only on a phone: nothing of it stands outside the media query, where the bar is one line and Save takes the free room',
 	$phoneCss !== '' && str_contains( $outsidePhone, ':has(> #design-restore)' ) === false && str_contains( $outsidePhone, '> #design-restore' ) === false
 	&& str_contains( $outsidePhone, '> .design-reset-all' ) === false && str_contains( $outsidePhone, '~ #design-reset' ) === false );
-check( 'the rules of what the screen stopped drawing are gone: the state card and its warning, the line that dated the previous version, the sentence under the templates - and the eyebrow rule stays, the preview\'s title has one',
-	str_contains( $panelCss, 'design-state' ) === false && str_contains( $panelCss, 'design-previous' ) === false && str_contains( $panelCss, 'design-note' ) === false
+check( 'the rules of what the screen stopped drawing are gone: the state card and its warning - not the chip for the state of the files, which is a rule of its own - the line that dated the previous version, the sentence under the templates - and the eyebrow rule stays, the preview\'s title has one',
+	preg_match( '/design-state(?!-word)/', $panelCss ) !== 1 && str_contains( $panelCss, 'design-previous' ) === false && str_contains( $panelCss, 'design-note' ) === false
 	&& $cssHas( '.nino-admin .design-eyebrow', [ 'display: block;' ] ) === true );
+check( 'nothing is left of what stood under the frame and over the bar: no rule for the summary - the list, a row of it, its label or its value - none for the hint under the two buttons, and none for the small under the title of a block, which has the rest of its measures',
+	str_contains( $panelCss, 'design-summary' ) === false && str_contains( $panelCss, 'design-actions-hint' ) === false && str_contains( $panelCss, '.design-section-label small' ) === false
+	&& $cssHas( '.nino-admin .design-section-label', [ 'margin: .65rem 0 .35rem;', 'padding-top: .55rem;', 'border-top: 1px solid var(--editor-separator);' ] ) === true
+	&& $cssHas( '.nino-admin .design-section-label strong', [ 'display: flex;', 'align-items: center;', 'gap: .4rem;', 'font-size: .82rem;', 'font-weight: 650;' ] ) === true
+	&& str_contains( $cssRule( '.nino-admin .design-section-label' ), 'display: grid' ) === false );
+check( 'the stage has no height of its own in the stylesheet - the window gives it, and admin.js sets it - and no clamp on the box: what it keeps is the rest of its rules, the port the frame is scaled into, clipped, a line round it and the radius',
+	str_contains( $cssRule( '.design-stage' ), 'height' ) === false && str_contains( $panelCss, 'clamp(' ) === false && str_contains( $panelCss, '44vh' ) === false
+	&& $cssHas( '.design-stage', [ 'position: relative;', 'overflow: hidden;', 'border: 1px solid var(--editor-border);', 'border-radius: var(--editor-radius-sm);' ] ) === true );
+check( '...and the pane it is in is the height of the window less the bar - 100vh less the declared height of the action bar, and the half rem the bottom of its padding goes under it by - where it sticks, no room of the summary that stood under the frame reckoned in it',
+	$cssHas( '#design-preview', [ 'position: sticky;', 'top: 0;', 'max-height: calc(100vh - var(--nino-admin-actionbar-height) + .5rem);', 'overflow-y: auto;' ] ) === true
+	&& str_contains( $panelCss, '5.5rem' ) === false );
 
 /*	The head of the preview: the heading and the bar are the two sides of one row, and the bar goes under
 	the heading only where the pane has no room for both - nothing in the stylesheet is a width. What the
@@ -3009,9 +3087,9 @@ check( '...its icon is the icon of the rows, taking the colour of the button it 
 // --- The panel's script, where node is on the path ------------------------------
 //
 // design-js-smoke.js beside this file draws the screen over a dom stand-in and
-// reads the summary back off it; this suite runs it too where node is on the
-// path, the way gallery-smoke.php and stats-smoke.php run theirs, so
-// bin/check.sh and CI cover both halves in one go
+// reads the controls, the line and the chip of the bar back off it; this suite
+// runs it too where node is on the path, the way gallery-smoke.php and
+// stats-smoke.php run theirs, so bin/check.sh and CI cover both halves in one go
 $jsTest	= __DIR__. '/design-js-smoke.js';
 $node		= function_exists( 'shell_exec' ) === true ? trim( (string) @shell_exec( 'command -v node 2>/dev/null' ) ) : '';
 

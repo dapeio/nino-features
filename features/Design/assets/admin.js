@@ -12,8 +12,11 @@
  *													Modules\Design\Admin beside this file). Beside the
  *													controls is one specimen page of the selection, under a
  *													head with the viewport switch, the switch that lets the
- *													frame follow and the reload; the frame scrolls to the
- *													open tab's anchor, or to where a change of a knob shows.
+ *													frame follow and the reload; the frame fills the window
+ *													down to the action bar and scrolls to the open tab's
+ *													anchor, or to where a change of a knob shows. The bar
+ *													holds what the panel says - what a save or an apply did,
+ *													or why not - and the state of the files in a word.
  *													Ships with the feature and is loaded exactly while it
  *													is active.
  *
@@ -224,6 +227,10 @@
 		_frames	: null,
 		// Whether the animation of the page was changed since the frame last played it
 		_replays	: false,
+		// Whether the window's resizing is listened to yet, and the timer that waits
+		// for it to stop (see _fitLater())
+		_bound	: false,
+		_fitTimer	: null,
 
 		/**
 		 *	Load the library and the stored setup, then draw
@@ -450,17 +457,15 @@
 		},
 
 		/**
-		 *	The small heading and the hint line over a block of rows - what a block
-		 *	of knob rows needs: the rows are a list of values, and a list of
-		 *	values needs a sentence saying what they are
+		 *	The small heading over a block of rows: the title, and nothing under it -
+		 *	the rows say the rest
 		 *
 		 *	@param		{string}	title
-		 *	@param		{string}	[note]		'' draws no second line
 		 *	@param		{?Element}	[icon]		Before the title, where the block has one (see _icon())
 		 *
 		 *	@return		{Element}
 		 */
-		_sectionLabel : function( title, note, icon ) {
+		_sectionLabel : function( title, icon ) {
 
 			const heading = dc.createElement('div');
 			heading.className = 'design-section-label';
@@ -472,12 +477,6 @@
 				strong.insertBefore( icon, strong.firstChild );
 
 			heading.appendChild( strong );
-
-			if( note ) {
-				const small = dc.createElement('small');
-				small.textContent = note;
-				heading.appendChild( small );
-			}
 
 			return heading;
 		},
@@ -616,9 +615,21 @@
 			layout.appendChild( Nino.admin.design._renderPreview() );
 			wrap.appendChild( layout );
 
+			/*	What the panel says stands in the action bar, where the eyes are when
+				a button has just been pressed: the line that tells what a save, an
+				apply, a restore or a reset did - or why it did not - and beside it, as
+				a chip, what the files Design writes are, in a word. The bar takes a
+				paragraph for its status line (see the rule for the children of
+				.nino-admin-actionbar in the workbench's style.css), and both come
+				before the buttons in the document as they do on the screen	*/
 			const msg = dc.createElement('p');
 			msg.id = 'design-msg';
 			msg.setAttribute( 'aria-live', 'polite' );
+
+			const state = dc.createElement('span');
+			state.id = 'design-state-word';
+			state.className = 'design-state-word';
+			Nino.admin.design._paintState( state );
 
 			const save = dc.createElement('button');
 			save.type = 'button';
@@ -647,6 +658,8 @@
 			reset.addEventListener( 'click', function() { Nino.admin.design._revert() } );
 
 			const actions = dc.createElement('div');
+			actions.appendChild( msg );
+			actions.appendChild( state );
 
 			/*	The other way back, before it: to the three files as they were
 				before the last apply - which is neither what is on screen nor what
@@ -669,15 +682,11 @@
 			actions.appendChild( apply );
 			wrap.appendChild( Nino.adminUi.actionBar( actions ) );
 
-			// What the two buttons are, under them: a draft is not the website
-			const hint = dc.createElement('p');
-			hint.id = 'design-actions-hint';
-			hint.className = 'nino-admin-hint';
-			hint.textContent = Nino.content.getText('/_admin/design/hint/actions');
-			wrap.appendChild( hint );
-			wrap.appendChild( msg );
-
 			Nino.admin.design._refreshDirty();
+
+			// The stage takes the room the window has left under it as soon as it
+			// stands there, not when the first preview has come back
+			Nino.admin.design._fit();
 
 			/*	A rendered screen has an empty frame in it, and the frame is the
 				answer to what every select above it means - so it is filled
@@ -699,7 +708,7 @@
 		 *
 		 *	What the server dropped or replaced on the way stands first, over the
 		 *	open tab: it is true whichever tab is open. The state of the files is
-		 *	not here, it is the last row of the summary under the frame
+		 *	not here, it is the chip in the action bar
 		 *
 		 *	@return		{HTMLElement}
 		 */
@@ -795,7 +804,8 @@
 		 *	it is the same page under every tab, so rebuilding it would cost a
 		 *	request and a flash for a click that changed which controls are on
 		 *	screen and nothing at all about the design. What the frame does is
-		 *	scroll, smoothly, to the anchor of the tab that was opened.
+		 *	scroll, smoothly, to the anchor of the tab that was opened - once the
+		 *	page in it stands at the height the stage has for that tab.
 		 *
 		 *	Nor the strip in the pane's head. The tab the switch was made on is
 		 *	the one the keyboard is on, and the strip used to be drawn again
@@ -824,11 +834,75 @@
 
 			column.replaceWith( Nino.admin.design._renderControls() );
 
-			/*	The list under the frame reads back whichever tab is open, and
-				this is the one change on the screen that reaches no preview -
-				so it is drawn here rather than left to _preview()	*/
-			Nino.admin.design._paintSummary();
-			Nino.admin.design._jump();
+			// In one column the stage stands under the controls, so a column of another
+			// height moves it: fitted again, and the jump waits for the page in the frame
+			// (see _jumpFitted())
+			const frame = dc.getElementById('design-frame');
+			const was = frame === null ? '' : frame.parentNode.style.height;
+
+			Nino.admin.design._fit();
+			Nino.admin.design._jumpFitted( frame, was );
+		},
+
+		/**
+		 *	Scroll the page in the frame to where it is looked at, once it stands at the
+		 *	height the stage was just fitted to.
+		 *
+		 *	In one column the stage stands under the controls, so a column of another
+		 *	height moves it - another tab, the brand warning of the colours - and the fit
+		 *	gives the frame another height. The page in it lays itself out again only
+		 *	after its window has heard the resize: the covers take their height from the
+		 *	window's, in an animation frame that follows it (Nino.js, Nino.ui.js). An
+		 *	anchor measured at once is where it stood at the old height - a tab opened
+		 *	after a taller one ended hundreds of pixels off, and so did an answer that
+		 *	took the brand warning away. So where the fit changed the height the jump
+		 *	waits for that resize and is made in the animation frame after it, which is
+		 *	queued after the page's own; a timer takes it there should the frame not be
+		 *	resized after all. Where the fit left the height as it was, or the frame
+		 *	cannot be reached, the jump is made at once
+		 *
+		 *	Asked for by whatever fits the stage and then jumps: a tab that is opened
+		 *	(_switchTab()) and the answer of a preview whose stylesheet was swapped in
+		 *	(_previewNow())
+		 *
+		 *	@param		{?Element}	frame		The frame, as found before the fit; null where there is none
+		 *	@param		{string}		was			The height of its stage before the fit
+		 *
+		 *	@return		void
+		 */
+		_jumpFitted : function( frame, was ) {
+
+			if( frame === null || frame.parentNode === null || frame.parentNode.style.height === was )
+				return Nino.admin.design._jump();
+
+			let view = null;
+
+			try {
+				view = frame.contentDocument.defaultView;
+			}
+			catch( e ) {
+				// A frame that cannot be reached has no page to wait for
+			}
+
+			if( view === null || typeof view.addEventListener !== 'function' )
+				return Nino.admin.design._jump();
+
+			let done = false;
+
+			const settled = function() {
+
+				if( done === true )
+					return;
+
+				done = true;
+				view.removeEventListener( 'resize', resized );
+				Nino.admin.design._jump();
+			};
+
+			const resized = function() { view.requestAnimationFrame( settled ) };
+
+			view.addEventListener( 'resize', resized );
+			wn.setTimeout( settled, 300 );
 		},
 
 		/**
@@ -904,9 +978,7 @@
 
 			const card = dc.createElement('div');
 			card.className = 'nino-admin-card design-form-section';
-			card.appendChild( Nino.admin.design._sectionLabel(
-				Nino.content.getText('/_admin/design/label/motion'),
-				Nino.content.getText('/_admin/design/hint/motion') ) );
+			card.appendChild( Nino.admin.design._sectionLabel( Nino.content.getText('/_admin/design/label/motion') ) );
 
 			const grid = dc.createElement('div');
 			grid.className = 'design-form-grid';
@@ -1081,9 +1153,7 @@
 			const card = dc.createElement('div');
 			card.className = 'nino-admin-card design-form-section';
 
-			card.appendChild( Nino.admin.design._sectionLabel(
-				Nino.content.getText('/_admin/design/label/fonts'),
-				Nino.content.getText('/_admin/design/hint/fonts') ) );
+			card.appendChild( Nino.admin.design._sectionLabel( Nino.content.getText('/_admin/design/label/fonts') ) );
 
 			// The roles of a table are said out loud: the stylesheet lays the rows
 			// out as grids, and a display other than a table's takes the
@@ -1206,15 +1276,18 @@
 				row.appendChild( td );
 			}
 
-			/*	The size is typed, in rem. Empty is what Nino.css gives the role, and
-				the field says what that is where it would show a number - the number
-				as the field shows and takes it, with the point: a number field drops a
-				typed comma, so the decimal sign of the language is for the summary
-				only (see _sizeLabel()). What is typed is held inside the bounds of the
-				role the way the server holds it, and the field then shows what was
-				kept. The field steps by a tenth, which every bound is on: that is the
-				spinner's step and the browser's own hint of what is valid, and not the
-				model's - a typed 1.25 stays 1.25	*/
+			/*	The size is typed, in rem, and the field shows the size that is in
+				force: the one that was chosen, else the one Nino.css gives the role.
+				It is the field's value and not its placeholder, so that the spinner
+				counts from the size the page has - from an empty field it begins at
+				the least of the role. The number is the one the field shows and
+				takes, with the point: a number field drops a typed comma. What is typed
+				is held inside the bounds of the role the way the server holds it, and
+				the field then shows what was kept; a size that comes to the one
+				Nino.css gives the role is kept as empty, and the role goes on following
+				its default. The field steps by a tenth, which every bound is on: that
+				is the spinner's step and the browser's own hint of what is valid, and
+				not the model's - a typed 1.25 stays 1.25	*/
 			const bounds = ( data.bounds || {} )[role] || [];
 			const size = dc.createElement('input');
 			size.type = 'number';
@@ -1225,11 +1298,10 @@
 			size.setAttribute( 'step', '.1' );
 			size.setAttribute( 'min', String( bounds[0] ) );
 			size.setAttribute( 'max', String( bounds[1] ) );
-			size.setAttribute( 'placeholder', String( ( data.inherited || {} )[role] ) );
-			size.value = chosen.size || '';
+			size.value = Nino.admin.design._sizeInForce( role );
 			size.addEventListener( 'change', function() {
-				size.value = Nino.admin.design._clampSize( role, size.value );
-				Nino.admin.design._setFont( role, 'size', size.value );
+				Nino.admin.design._setFont( role, 'size', Nino.admin.design._keepSize( role, size.value ) );
+				size.value = Nino.admin.design._sizeInForce( role );
 			} );
 
 			const td = cell( size, 'size' );
@@ -1263,31 +1335,6 @@
 		},
 
 		/**
-		 *	A size as a number, with the decimal sign of the workbench's language:
-		 *	for the words of the summary. The field does not use it - a number field
-		 *	takes and shows the point, whatever the language
-		 *
-		 *	@param		{string}	size				'1.6'
-		 *
-		 *	@return		{string}							'1,6'
-		 */
-		_sizeNumber : function( size ) {
-			return String( size ).replace( '.', Nino.content.getText('/_admin/design/fontsize/decimal') );
-		},
-
-		/**
-		 *	A size as the summary says it: rem, with the decimal sign of the
-		 *	workbench's language
-		 *
-		 *	@param		{string}	size				'2.4'
-		 *
-		 *	@return		{string}							'2,4 rem'
-		 */
-		_sizeLabel : function( size ) {
-			return Nino.admin.design._sizeNumber( size )+ ' '+ Nino.content.getText('/_admin/design/fontsize/unit');
-		},
-
-		/**
 		 *	What was typed in a size, as the model keeps it: a number of rem held
 		 *	inside the bounds of the role, rounded to three decimals and written
 		 *	as short as it can be - what Fonts::size() answers to the same input.
@@ -1307,6 +1354,40 @@
 				return '';
 
 			return String( Math.round( Math.max( bounds[0], Math.min( bounds[1], number ) ) * 1000 ) / 1000 );
+		},
+
+		/**
+		 *	What was typed in a size, as the model keeps it: what _clampSize() makes
+		 *	of it, and '' where that comes to the size Nino.css gives the role. A role
+		 *	set to its default and a role left alone are one thing, and the model has
+		 *	one word for it
+		 *
+		 *	@param		{string}	role
+		 *	@param		{string}	typed				The value of the field
+		 *
+		 *	@return		{string}							'2.4', or '' for the default
+		 */
+		_keepSize : function( role, typed ) {
+
+			const kept = Nino.admin.design._clampSize( role, typed );
+			const given = ( ( Nino.admin.design._data || {} ).inherited || {} )[role];
+
+			return kept !== '' && Number( kept ) === Number( given ) ? '' : kept;
+		},
+
+		/**
+		 *	The size of a role that is in force: the one that was chosen, else the one
+		 *	Nino.css gives the role. What its field shows
+		 *
+		 *	@param		{string}	role
+		 *
+		 *	@return		{string}							'1.6'
+		 */
+		_sizeInForce : function( role ) {
+
+			const given = ( ( Nino.admin.design._data || {} ).inherited || {} )[role];
+
+			return ( Nino.admin.design._edit.fonts[role] || {} ).size || ( given === undefined ? '' : String( given ) );
 		},
 
 		/**
@@ -1362,7 +1443,7 @@
 		},
 
 		/**
-		 *	What the summary and the rows say a knob stands at
+		 *	The step a knob stands at, for its row to light
 		 *
 		 *	@param		{string}	tab
 		 *	@param		{string}	knob
@@ -1455,7 +1536,6 @@
 			// A change is looked at where it shows: one target for it, which the jump
 			// that follows the preview goes to
 			Nino.admin.design._target = Nino.admin.design._anchorOf( tab, knob );
-			Nino.admin.design._paintSummary();
 			Nino.admin.design._preview();
 		},
 
@@ -1508,9 +1588,7 @@
 			/*	The knobs under the colour the palette is solved from, opened by
 				the same small heading a block of rows carries in the other half
 				of the screen	*/
-			wrap.appendChild( Nino.admin.design._sectionLabel(
-				Nino.content.getText('/_admin/design/label/tuning'),
-				Nino.content.getText('/_admin/design/hint/tuning') ) );
+			wrap.appendChild( Nino.admin.design._sectionLabel( Nino.content.getText('/_admin/design/label/tuning') ) );
 
 			// Drawn out of what design/list handed over, so a knob added in
 			// Colours appears here without this file gaining a line
@@ -1689,8 +1767,7 @@
 
 		/**
 		 *	The mode of the palette: follow the visitor's setting, or be light, or
-		 *	be dark - one select with the sentence about what it does to the
-		 *	mode switch under it
+		 *	be dark - one select under a heading with its icon
 		 *
 		 *	@param		{Object}	meta		The mode entry of Colours::choices()
 		 *
@@ -1704,7 +1781,6 @@
 
 			mode.appendChild( Nino.admin.design._sectionLabel(
 				Nino.content.getText('/_admin/design/colour/mode/label'),
-				Nino.content.getText('/_admin/design/colour/mode/note'),
 				Nino.admin.design._icon('colours/mode') ) );
 
 			const field = Nino.admin.design._select(
@@ -1892,13 +1968,7 @@
 
 			Nino.admin.design._edit = Nino.admin.design._selection( data );
 			Nino.admin.design._render();
-
-			const msg = dc.getElementById('design-msg');
-
-			if( msg !== null ) {
-				msg.className = '';
-				msg.textContent = Nino.content.getText('/_admin/design/msg/reverted');
-			}
+			Nino.admin.design._say( dc.getElementById('design-msg'), Nino.content.getText('/_admin/design/msg/reverted') );
 		},
 
 		/**
@@ -1916,10 +1986,9 @@
 
 		/**
 		 *	Which of the four things the files Design writes currently are, as the
-		 *	last row of the summary under the frame says it in one word. Foreign is
-		 *	any of the three files - the stylesheet and the two frames - not being
-		 *	Design's, since a header somebody edited is not an up to date design
-		 *	either
+		 *	chip in the action bar says it in one word. Foreign is any of the three
+		 *	files - the stylesheet and the two frames - not being Design's, since a
+		 *	header somebody edited is not an up to date design either
 		 *
 		 *	@return		{string}					'current', 'drifted', 'missing' or 'foreign'
 		 */
@@ -1940,6 +2009,31 @@
 		},
 
 		/**
+		 *	The chip in the action bar: the state of the files Design writes in one
+		 *	word (see _stateKey()), and as its title what that word is about. It is
+		 *	drawn with the screen, so it is drawn again by everything that draws the
+		 *	screen again - a load, a save, an apply, a restore, a reset - and by
+		 *	nothing else: a tab or a change on the screen touches no file
+		 *
+		 *	@param		{Element}		[chip]		The chip, for one that is built and not mounted yet
+		 *
+		 *	@return		void
+		 */
+		_paintState : function( chip ) {
+
+			chip = chip || dc.getElementById('design-state-word');
+
+			if( chip === null )
+				return;
+
+			const key = Nino.admin.design._stateKey();
+
+			chip.dataset.state = key;
+			chip.textContent = Nino.content.getText('/_admin/design/state/short/'+ key );
+			chip.title = Nino.content.getText('/_admin/design/label/state')+ ': '+ chip.textContent;
+		},
+
+		/**
 		 *	The other half of the screen: the selection, as one page.
 		 *
 		 *	An iframe rather than a corner of this document, because a design
@@ -1955,8 +2049,8 @@
 			box.id = 'design-preview';
 
 			/*	One stack inside the pane, so the pane owns the surface and the
-				padding and this owns the rhythm between heading, toolbar, frame
-				and summary	*/
+				padding and this owns the rhythm between heading, toolbar and
+				frame - and the gap the frame keeps from the action bar (see _room())	*/
 			const sticky = dc.createElement('div');
 			sticky.className = 'design-preview-sticky';
 			box.appendChild( sticky );
@@ -2042,13 +2136,13 @@
 			stage.appendChild( msg );
 			sticky.appendChild( stage );
 
-			// What the frame shows, in words, under the frame itself
-			const summary = dc.createElement('div');
-			summary.id = 'design-summary';
-			summary.className = 'design-summary';
-			sticky.appendChild( summary );
-
-			Nino.admin.design._paintSummary( summary );
+			/*	The stage is as tall as the window has room for under it (see _fit()),
+				so a window that is resized asks for it again. Once for the visit,
+				however often the screen is built	*/
+			if( Nino.admin.design._bound === false ) {
+				Nino.admin.design._bound = true;
+				wn.addEventListener( 'resize', Nino.admin.design._fitLater );
+			}
 
 			return box;
 		},
@@ -2139,163 +2233,6 @@
 		},
 
 		/**
-		 *	The summary under the frame: label left, value right, one row per
-		 *	answer the open tab currently gives.
-		 *
-		 *	A preview shows what a design looks like and says nothing about
-		 *	which selection produced it - two templates a step apart are a
-		 *	picture somebody has to compare from memory. The list is the other
-		 *	half of the answer, and it is what makes the frame readable: every
-		 *	control of the open tab is in it, in the interface language, as the
-		 *	value that will compile
-		 *
-		 *	@param		{Element}		[list]		The list, for one that is built and not mounted yet
-		 *
-		 *	@return		void
-		 */
-		_paintSummary : function( list ) {
-
-			list = list || dc.getElementById('design-summary');
-
-			if( list === null || Nino.admin.design._data === null || Nino.admin.design._edit === null )
-				return;
-
-			list.innerHTML = '';
-
-			Nino.admin.design._summaryRows().forEach( function( entry ) {
-
-				const row = dc.createElement('div');
-				row.className = 'design-summary-row';
-
-				const label = dc.createElement('span');
-				label.textContent = entry[0];
-				row.appendChild( label );
-
-				const value = dc.createElement('strong');
-				value.textContent = entry[1];
-				row.appendChild( value );
-
-				list.appendChild( row );
-			} );
-		},
-
-		/**
-		 *	What the summary says, as [ label, value ] pairs.
-		 *
-		 *	The choices of the tab that is open, because that is the tab the
-		 *	controls beside it are about - and the file's state last, which is
-		 *	true under every tab
-		 *
-		 *	@return		{Array}
-		 */
-		_summaryRows : function() {
-
-			const data = Nino.admin.design._data;
-			const edit = Nino.admin.design._edit;
-			const tab = Nino.admin.design._tab;
-			const rows = [];
-
-			if( tab === 'global' ) {
-
-				( data.parts || [] ).forEach( function( row ) {
-					rows.push( [
-						Nino.content.getText('/_admin/design/part/'+ row.part ),
-						Nino.admin.design._setLabel( edit.parts[row.part], ( row.catalogue || {} )[ edit.parts[row.part] ] ),
-					] );
-				} );
-
-				rows.push( [ Nino.content.getText('/_admin/design/label/size'), Nino.content.getText('/_admin/design/size/'+ edit.size ) ] );
-				rows.push( [ Nino.content.getText('/_admin/design/label/pagewidth'),
-					Nino.content.getText('/_admin/design/pagewidth/'+ Nino.admin.design.PAGE_WIDTHS[String( edit.width )] ) ] );
-
-				// Nothing chosen is what Nino.css does by itself, and says so
-				const motion = edit.motion || {};
-				rows.push( [ Nino.content.getText('/_admin/design/label/motion'), motion.effect
-					? [ Nino.content.getText('/_admin/design/motion/effect/'+ motion.effect ) ]
-						.concat( [ 'strength', 'speed' ].filter( function( key ) { return motion[key] } ).map( function( key ) {
-							return Nino.content.getText('/_admin/design/motion/'+ key+ '/'+ motion[key] );
-						} ) ).join(', ')
-					: Nino.content.getText('/_admin/design/motion/default') ] );
-			}
-			else if( tab === 'fonts' ) {
-
-				( data.roles || [] ).forEach( function( role ) {
-					const chosen = edit.fonts[role] || {};
-					rows.push( [
-						Nino.content.getText('/_admin/design/font/role/'+ role ),
-						[
-							Nino.admin.design._familyLabel( role, chosen.family || '' ),
-							Nino.content.getText('/_admin/design/weight/'+ ( chosen.weight || 'normal' ) ),
-						].concat( chosen.uppercase === true ? [ Nino.content.getText('/_admin/design/font/head/uppercase') ] : [] )
-							.concat( [ chosen.size ? Nino.admin.design._sizeLabel( chosen.size ) : Nino.admin.design._text( '/_admin/design/fontsize/default',
-								Nino.admin.design._sizeLabel( ( data.inherited || {} )[role] ) ) ] ).join(', '),
-					] );
-				} );
-			}
-			else if( tab === 'colours' ) {
-
-				const palette = data.palette || {};
-				const colours = edit.colours || {};
-				const second 	= String( colours.secondary || '' );
-
-				/*	One position per knob: the one that was chosen, else the one
-					the knob publishes as its own default - which is what the row
-					on the left lights up and what the solver reads	*/
-				const position = function( key ) {
-					return String( colours[key] || ( palette[key] || {} )['default'] || '1' );
-				};
-
-				rows.push( [ Nino.content.getText('/_admin/design/label/primary'), String( colours.primary || '' ) ] );
-
-				/*	The second colour is a hex when somebody picked one and the
-					place on the wheel when nobody did - which is exactly what the
-					row it belongs to offers, and what compiles either way	*/
-				rows.push( [ Nino.content.getText('/_admin/design/label/secondary'), second !== ''
-					? second
-					: Nino.content.getText('/_admin/design/colour/harmony/'+ position('harmony') ) ] );
-
-				Object.keys( palette ).forEach( function( key ) {
-
-					if( key === 'harmony' )
-						return;
-
-					rows.push( key === 'mode'
-						? [ Nino.content.getText('/_admin/design/colour/mode/label'), Nino.content.getText('/_admin/design/colour/mode/'+ String( colours.mode || palette.mode['default'] ) ) ]
-						: [ Nino.content.getText('/_admin/design/colour/'+ key+ '/label'), Nino.content.getText('/_admin/design/colour/'+ key+ '/'+ position( key ) ) ] );
-				} );
-			}
-			else {
-
-				const row = Nino.admin.design._row( tab );
-				const answered = Nino.admin.design._answered( tab );
-
-				rows.push( [ Nino.content.getText('/_admin/design/part/'+ tab ),
-					Nino.admin.design._setLabel( edit.parts[tab], ( row.catalogue || {} )[ edit.parts[tab] ] ) ] );
-
-				// The value that will compile, which is what the rows on the left
-				// show too. A knob the template does not answer to compiles
-				// nothing, and is not a choice
-				( ( data.tabs || {} )[tab] || [] ).forEach( function( knob ) {
-
-					if( answered.indexOf( knob ) === -1 )
-						return;
-
-					rows.push( [
-						Nino.content.getText('/_admin/design/knob/'+ tab+ '/'+ knob+ '/label'),
-						Nino.content.getText('/_admin/design/knob/'+ tab+ '/'+ knob+ '/'+ Nino.admin.design._stepOf( tab, knob ) ),
-					] );
-				} );
-			}
-
-			rows.push( [
-				Nino.content.getText('/_admin/design/label/state'),
-				Nino.content.getText('/_admin/design/state/short/'+ Nino.admin.design._stateKey() ),
-			] );
-
-			return rows;
-		},
-
-		/**
 		 *	Ask for a preview, once the clicking has stopped. Every control on
 		 *	the screen calls this, and a person trying three templates in a row
 		 *	wants the third one rendered, not all three
@@ -2310,7 +2247,6 @@
 			// _previewNow(): that one is debounced, and a button appearing a
 			// third of a second after the click that caused it reads as a glitch
 			Nino.admin.design._refreshDirty();
-			Nino.admin.design._paintSummary();
 			wn.clearTimeout( Nino.admin.design._timer );
 			Nino.admin.design._timer = wn.setTimeout( Nino.admin.design._previewNow, delay === undefined ? 350 : delay );
 		},
@@ -2357,6 +2293,11 @@
 					return;
 				}
 
+				// The stage's height before the answer is taken over, for the jump to tell
+				// whether the fit moved it
+				const was = frame.parentNode === null ? '' : frame.parentNode.style.height;
+				let swapped = false;
+
 				if( typeof response.document === 'string' && response.document !== '' ) {
 					Nino.admin.design._frames = frames;
 					// A fresh document scrolls to the top of itself, so the jump
@@ -2374,19 +2315,27 @@
 					return Nino.admin.design._preview( 0 );
 				}
 				else {
-					// A change was made on this tab, and where it can be seen - the
-					// tab's anchor, or the place of the knob that was moved - is where
-					// the page goes after every one
-					Nino.admin.design._jump();
+					// The stylesheet was swapped inside the frame that stands
+					swapped = true;
+				}
+
+				// Fitted once the answer is taken over: the brand warning of the colours comes
+				// and goes with it, and in one column that moves the stage
+				Nino.admin.design._absorb( response );
+				Nino.admin.design._fit();
+
+				// A change was made on this tab, and where it can be seen - the tab's
+				// anchor, or the place of the knob that was moved - is where the page goes
+				// after every one: once it stands at the height the fit gave the stage
+				// (see _jumpFitted())
+				if( swapped === true ) {
+					Nino.admin.design._jumpFitted( frame, was );
 
 					if( Nino.admin.design._replays === true )
 						Nino.admin.design._replay();
 				}
 
 				Nino.admin.design._replays = false;
-
-				Nino.admin.design._fit();
-				Nino.admin.design._absorb( response );
 
 				if( msg === null )
 					return;
@@ -2570,10 +2519,24 @@
 		 *	is still a desktop layout, and a frame simply made narrow would be
 		 *	the phone view with a lie on the label.
 		 *
-		 *	The workbench owns that arithmetic (Nino.adminUi.scaleFrame): it
+		 *	The stage takes its room first: it is as tall as the window has left
+		 *	under it (see _room()), and is that tall when the port is measured. The
+		 *	workbench owns the rest of the arithmetic (Nino.adminUi.scaleFrame): it
 		 *	solves the height back through the scale, never magnifies past 1:1,
 		 *	and watches the port with a ResizeObserver - so the frame follows
 		 *	the rail folding away without anything here having to hear about it
+		 *
+		 *	It is asked for wherever the stage may have moved or the window changed: as
+		 *	the screen is drawn, when the window is resized (see _fitLater()), when a
+		 *	viewport is chosen, when a tab is opened and when a preview has come back.
+		 *	The last two are for one column, where the controls stand over the stage and
+		 *	a column of another height - another tab, the brand warning of the colours -
+		 *	moves it; beside the controls the pane sticks, and the stage stays where it is
+		 *
+		 *	The frame is the last thing on the page, and the page clears its foot for
+		 *	the action bar at the height the workbench declares for it. A bar that
+		 *	wraps, as it does on a phone, is taller, and would cover the foot of the
+		 *	frame at the end of the page: the layout takes the difference
 		 *
 		 *	@return		void
 		 */
@@ -2584,9 +2547,116 @@
 			if( frame === null || frame.parentNode === null )
 				return;
 
+			const room = Nino.admin.design._room( frame.parentNode );
+
+			if( room !== null )
+				frame.parentNode.style.height = room+ 'px';
+
+			const layout = dc.getElementById('design-layout');
+
+			if( layout !== null ) {
+				const bar = Nino.admin.design._bar();
+				const over = Math.round( bar.height - bar.declared );
+				layout.style.paddingBottom = over > 0 ? over+ 'px' : '';
+			}
+
 			// Asked afresh every time: the width is a choice, and scaleFrame
 			// closes over the one it was given
 			Nino.adminUi.scaleFrame( frame, frame.parentNode, Nino.admin.design._width );
+		},
+
+		/**
+		 *	How tall the action bar is, in pixels: the height the workbench declares
+		 *	for it (--nino-admin-actionbar-height, 4.25 rem as shipped), which is what
+		 *	the page clears the foot of its content by, and the height it has - more
+		 *	where it wraps, as it does on a phone
+		 *
+		 *	@return		{{declared: number, height: number}}
+		 */
+		_bar : function() {
+
+			const root = wn.getComputedStyle( dE );
+			const value = String( root.getPropertyValue('--nino-admin-actionbar-height') );
+			const declared = ( parseFloat( value ) || 4.25 ) * ( /px\s*$/.test( value ) === true ? 1 : parseFloat( root.fontSize ) || 16 );
+			const line = dc.getElementById('design-msg');
+			let height = declared;
+
+			if( line !== null && line.parentNode !== null && typeof line.parentNode.getBoundingClientRect === 'function' )
+				height = Math.max( height, line.parentNode.getBoundingClientRect().height );
+
+			return { declared : declared, height : height };
+		},
+
+		/**
+		 *	How tall the stage can be: the height of the window less the top of the
+		 *	stage, less the action bar, which stands over the foot of the window, and
+		 *	less the gap the stack keeps between its parts - so the frame ends that gap
+		 *	above the bar (see _bar() for how tall that is). Never under 16 rem: a
+		 *	window too low for that is scrolled.
+		 *
+		 *	The top of the stage is where it stands with the page scrolled to the top.
+		 *	The preview of a wide window sticks to the top of its pane once the controls
+		 *	are scrolled, and a narrow one moves up the window with the page, so a stage
+		 *	measured where it happens to be would have another height with every step of
+		 *	that. Where this leaves less than the least - on a phone the preview is
+		 *	under the controls, below the foot of the window - the stage is made for the
+		 *	window it fills when the page is scrolled to it, with the top of its pane at
+		 *	the top of the window
+		 *
+		 *	@param		{Element}		stage
+		 *
+		 *	@return		{?number}					Pixels; null where the stage is not on screen
+		 */
+		_room : function( stage ) {
+
+			const rect = stage.getBoundingClientRect();
+
+			// A pane that is not shown has no stage to give room to
+			if( rect.width === 0 && rect.height === 0 )
+				return null;
+
+			const rem = parseFloat( wn.getComputedStyle( dE ).fontSize ) || 16;
+			const bar = Nino.admin.design._bar().height;
+			const gap = parseFloat( wn.getComputedStyle( stage.parentNode ).rowGap ) || 0;
+			const pane = dc.getElementById('design-preview');
+			const layout = dc.getElementById('design-layout');
+			const least = 16 * rem;
+
+			let top = rect.top;
+			let inside = null;
+
+			if( pane !== null && layout !== null && typeof pane.getBoundingClientRect === 'function' && typeof layout.getBoundingClientRect === 'function' ) {
+
+				// The pane has the top of its row - the layout's - while the page is not scrolled,
+				// and sticks to the top of the scroller once it is, in a wide window; in a narrow
+				// one it is under the controls and has no other top than its own
+				const paneRect = pane.getBoundingClientRect();
+				const sticks = wn.getComputedStyle( pane ).position === 'sticky';
+
+				inside = rect.top - paneRect.top;
+				top = ( sticks === true ? layout.getBoundingClientRect().top : paneRect.top ) + inside;
+
+				// ...less how far the page has been scrolled, by the pane that scrolls in a wide
+				// window or by the window itself
+				for( let up = stage.parentNode; up !== null && up !== undefined; up = up.parentNode )
+					top += up.scrollTop || 0;
+			}
+
+			const room = wn.innerHeight - top - bar - gap;
+
+			return Math.max( least, room >= least || inside === null ? room : wn.innerHeight - inside - bar - gap );
+		},
+
+		/**
+		 *	Fit the stage again once the window has stopped being resized. The wait is
+		 *	the previews' own, for the same reason: one answer to the end of the
+		 *	movement and not one to every step of it
+		 *
+		 *	@return		void
+		 */
+		_fitLater : function() {
+			wn.clearTimeout( Nino.admin.design._fitTimer );
+			Nino.admin.design._fitTimer = wn.setTimeout( Nino.admin.design._fit, 150 );
 		},
 
 		/**
@@ -2654,6 +2724,28 @@
 		},
 
 		/**
+		 *	Say something in the line of the action bar. It is one line, cut where
+		 *	the bar has no more room for it, so all of it is its title as well
+		 *
+		 *	@param		{?Element}	line			#design-msg; nothing is said where there is none
+		 *	@param		{string}		text			'' empties the line
+		 *	@param		{string}		[kind]		The class it takes: nino-admin-error for a failure,
+		 *															nino-admin-hint for a note beside an answer,
+		 *															none for the answer itself
+		 *
+		 *	@return		void
+		 */
+		_say : function( line, text, kind ) {
+
+			if( line === null )
+				return;
+
+			line.className = kind || '';
+			line.textContent = text;
+			line.title = text;
+		},
+
+		/**
 		 *	Store the selection, and - when asked - apply it afterwards.
 		 *	Two steps rather than one: a draft is not a website, and the
 		 *	screen stays honest about which of the two just happened.
@@ -2686,15 +2778,13 @@
 				return finish( false );
 
 			btn.disabled = true;
-			msg.className = '';
-			msg.textContent = '';
+			Nino.admin.design._say( msg, '' );
 
 			Nino.admin.design._apiCall( 'save', edit, function( status, response ) {
 
 				if( status !== 200 || response === null ) {
 					btn.disabled = false;
-					msg.className = 'nino-admin-error';
-					msg.textContent = Nino.admin.design._errorText( status, response, '/_admin/design/error/save' );
+					Nino.admin.design._say( msg, Nino.admin.design._errorText( status, response, '/_admin/design/error/save' ), 'nino-admin-error' );
 					return finish( false );
 				}
 
@@ -2705,9 +2795,7 @@
 				if( apply === false ) {
 					btn.disabled = false;
 					return Nino.admin.design.init( function() {
-						const back = dc.getElementById('design-msg');
-						if( back !== null )
-							back.textContent = Nino.content.getText('/_admin/design/msg/saved');
+						Nino.admin.design._say( dc.getElementById('design-msg'), Nino.content.getText('/_admin/design/msg/saved') );
 					} );
 				}
 
@@ -2715,8 +2803,7 @@
 
 					if( planStatus !== 200 || planned === null ) {
 						btn.disabled = false;
-						msg.className = 'nino-admin-error';
-						msg.textContent = Nino.admin.design._errorText( planStatus, planned, '/_admin/design/error/apply' );
+						Nino.admin.design._say( msg, Nino.admin.design._errorText( planStatus, planned, '/_admin/design/error/apply' ), 'nino-admin-error' );
 						return;
 					}
 
@@ -2726,9 +2813,7 @@
 					if( wn.confirm( Nino.admin.design._confirmText( files ) ) === false ) {
 						btn.disabled = false;
 						return Nino.admin.design.init( function() {
-							const back = dc.getElementById('design-msg');
-							if( back !== null )
-								back.textContent = Nino.content.getText('/_admin/design/msg/cancelled');
+							Nino.admin.design._say( dc.getElementById('design-msg'), Nino.content.getText('/_admin/design/msg/cancelled') );
 						} );
 					}
 
@@ -2739,8 +2824,7 @@
 						btn.disabled = false;
 
 						if( applyStatus !== 200 ) {
-							msg.className = 'nino-admin-error';
-							msg.textContent = Nino.admin.design._errorText( applyStatus, applied, '/_admin/design/error/apply' );
+							Nino.admin.design._say( msg, Nino.admin.design._errorText( applyStatus, applied, '/_admin/design/error/apply' ), 'nino-admin-error' );
 							return;
 						}
 
@@ -2749,21 +2833,16 @@
 							( file.lost || [] ).forEach( function( token ) { lost.push( token ) } );
 						} );
 
+						const said = [ Nino.content.getText('/_admin/design/msg/applied') ];
+
+						if( force === true )
+							said.push( Nino.content.getText('/_admin/design/msg/takenover') );
+
+						if( lost.length > 0 )
+							said.push( Nino.admin.design._text( '/_admin/design/msg/lost', lost.join(', ') ) );
+
 						Nino.admin.design.init( function() {
-							const back = dc.getElementById('design-msg');
-
-							if( back === null )
-								return;
-
-							const said = [ Nino.content.getText('/_admin/design/msg/applied') ];
-
-							if( force === true )
-								said.push( Nino.content.getText('/_admin/design/msg/takenover') );
-
-							if( lost.length > 0 )
-								said.push( Nino.admin.design._text( '/_admin/design/msg/lost', lost.join(', ') ) );
-
-							back.textContent = said.join(' ');
+							Nino.admin.design._say( dc.getElementById('design-msg'), said.join(' ') );
 						} );
 					} );
 				} );
@@ -2834,26 +2913,16 @@
 				btn.disabled = false;
 
 				if( status !== 200 || response === null ) {
-					const msg = dc.getElementById('design-msg');
-
-					if( msg !== null ) {
-						msg.className = 'nino-admin-error';
-						msg.textContent = Nino.admin.design._errorText( status, response, '/_admin/design/error/restore' );
-					}
+					Nino.admin.design._say( dc.getElementById('design-msg'), Nino.admin.design._errorText( status, response, '/_admin/design/error/restore' ), 'nino-admin-error' );
 					return;
 				}
 
 				Nino.admin.design.init( function() {
-					const back = dc.getElementById('design-msg');
-					if( back === null )
-						return;
-
 					// What the slot did not hold, or could not keep, is told
 					// beside the answer: the site has changed either way
 					const notes = response.notes || [];
-					back.textContent = [ Nino.content.getText('/_admin/design/msg/restored') ].concat( notes ).join(' ');
-					if( notes.length > 0 )
-						back.className = 'nino-admin-hint';
+					Nino.admin.design._say( dc.getElementById('design-msg'),
+						[ Nino.content.getText('/_admin/design/msg/restored') ].concat( notes ).join(' '), notes.length > 0 ? 'nino-admin-hint' : '' );
 				} );
 			} );
 		},

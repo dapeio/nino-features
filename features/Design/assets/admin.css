@@ -12,12 +12,14 @@
  *													the least), a sticky preview pane on the other (two
  *													thirds) - a head of one row with the heading and the
  *													bar of the frame's controls, the viewport switch among
- *													them, then the frame and a summary of the open tab.
+ *													them, then the frame, which fills the window down to the
+ *													action bar. The bar holds the line the panel says things in
+ *													and a chip for the state of the files.
  *													Joins the workbench's style bundle while the feature
  *													is active (see the panel's assets()).
  *
  *													The measures are those of a card of labelled fields in a
- *													grid - card, field grid, section label, summary list. No
+ *													grid - card, field grid, section label. No
  *													stylesheet is shared with the panel of another feature:
  *													the surfaces, radii and hairlines here are built out of
  *													the design system's own tokens. The type scale is the
@@ -112,12 +114,10 @@
 	line-height: 1.45;
 }
 
-/*	The small heading and the hint line over a block of rows. The rule above it
-	is what separates two blocks inside one card; the first in a card opens it
-	and needs none. A title may open with an icon (the mode of the palette does) */
+/*	The small heading over a block of rows. The rule above it is what separates
+	two blocks inside one card; the first in a card opens it and needs none. A
+	title may open with an icon (the mode of the palette does) */
 .nino-admin .design-section-label {
-	display: grid;
-	gap: .1rem;
 	margin: .65rem 0 .35rem;
 	padding-top: .55rem;
 	border-top: 1px solid var(--editor-separator);
@@ -128,11 +128,6 @@
 	gap: .4rem;
 	font-size: .82rem;
 	font-weight: 650;
-}
-.nino-admin .design-section-label small {
-	color: var(--editor-text-secondary);
-	font-size: .72rem;
-	line-height: 1.45;
 }
 .nino-admin .design-form-section > .design-section-label:first-child {
 	margin-top: 0;
@@ -368,11 +363,6 @@
 	text-align: center;
 }
 
-/*	What the two buttons in the bar are, in a line under it */
-.nino-admin #design-actions-hint {
-	margin: .6rem 0 0;
-}
-
 /*	The ways back, pinned to the far side of the bar from the two buttons that
 	commit: the one to the stored selection and, while there is a version before
 	the last apply, the one to that. The bar itself is justified to the end, so
@@ -391,16 +381,87 @@
 .nino-admin .nino-admin-actionbar #design-save {
 	margin-left: auto;
 }
-/*	On a phone the way back to the previous version is too long a word to stand
-	beside the buttons that commit, and the bar is one line of fixed width - they
-	would run off its edge. It takes a row above them instead, the way the
-	workbench's bars give the mark of unsaved input one. The row is its own while
-	Reset is hidden; while Reset is shown the two share it, at its start, Reset
-	taking the room that is left over. The bar is then the row of the quiet
-	buttons, the row of the mark and the row of Save and Apply - never a fourth */
+
+/*	What the panel says, in the bar with the buttons that say it. The workbench
+	takes a paragraph in its bar for the status line - first, the room that is
+	left, its words at the end of it (see .nino-admin-actionbar in style.css) - and
+	this one is one line: the room it has is what the chip, the mark of unsaved
+	input and the buttons leave, and where that is less than the line has words it
+	is cut by an ellipsis, the whole of it the line's title (see _say() in
+	admin.js). It stays where it is when it is empty, as the room that sets the
+	rest at the end of the bar. The workbench colours a failure red, but its rule for
+	the status line of a bar is the more specific of the two and wins in the bar, so
+	the red is said again here. A bar too narrow for all of it is rows, not an overflow */
+.nino-admin .nino-admin-actionbar:has(> #design-msg) {
+	flex-wrap: wrap;
+}
+.nino-admin .nino-admin-actionbar > #design-msg {
+	flex: 1 1 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.nino-admin .nino-admin-actionbar > #design-msg.nino-admin-error {
+	color: var(--editor-red);
+}
+/*	The state of the files in a word, as a chip beside the line and before the
+	buttons. It is ordered as the line is (-1), so that the mark of unsaved input,
+	which the workbench adds at the end of the bar, comes after the chip and does not
+	stand between it and the line. The word says it; the colour of the one that is
+	up to date and of the one that waits for an apply says it a second time */
+.nino-admin .nino-admin-actionbar > .design-state-word {
+	order: -1;
+	flex: none;
+	padding: .2rem .65rem;
+	border: 1px solid var(--editor-border);
+	border-radius: 999px;
+	color: var(--editor-text-secondary);
+	font-size: .72rem;
+	white-space: nowrap;
+}
+.nino-admin .nino-admin-actionbar > .design-state-word[data-state="current"] {
+	border-color: transparent;
+	background: color-mix(in srgb, var(--editor-green) 14%, transparent);
+	color: var(--editor-green);
+}
+.nino-admin .nino-admin-actionbar > .design-state-word[data-state="drifted"] {
+	border-color: transparent;
+	background: color-mix(in srgb, var(--editor-orange) 14%, transparent);
+	color: var(--editor-orange);
+}
+/*	The line is what gives way, so the mark of unsaved input the workbench writes
+	into the bar - first of the end of it, after the line - keeps its words on one
+	line. Not on a phone: there it is a row of its own, and the workbench's rule says so */
+@media (min-width: 38.001rem) {
+	.nino-admin .nino-admin-actionbar:has(> #design-msg) > .nino-admin-actionbar-dirty {
+		flex: none;
+		white-space: nowrap;
+	}
+}
+/*	On a phone the bar is rows. The workbench hides the status line of a bar there;
+	this one is shown, because a failure to save is said in it, and it is the first
+	row with the chip: the line takes the room the chip leaves, which fills the
+	row, so that everything after them starts the next. The chip is cut by an
+	ellipsis there, as it is not elsewhere. The way back to the previous version
+	is too long a word to stand beside the buttons that commit, and the bar is one
+	line of fixed width - they would run off its edge. It takes a row above them
+	instead, the way the workbench's bars give the mark of unsaved input one. The
+	row is its own while Reset is hidden; while Reset is shown the two share it,
+	at its start, Reset taking the room that is left over. The bar is then the row
+	of the line, the row of the quiet buttons, the row of the mark and the row of
+	Save and Apply - never a fifth */
 @media (max-width: 38rem) {
-	.nino-admin .nino-admin-actionbar:has(> #design-restore) {
-		flex-wrap: wrap;
+	.nino-admin .nino-admin-actionbar > #design-msg {
+		display: block;
+		order: -4;
+		flex: 1 1 calc(100% - 10.4rem);
+	}
+	.nino-admin .nino-admin-actionbar > .design-state-word {
+		order: -4;
+		flex: 0 1 auto;
+		max-width: 10rem;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 	.nino-admin .nino-admin-actionbar > #design-restore {
 		flex: 1 0 100%;
@@ -430,8 +491,8 @@
 #design-preview {
 	min-width: 0;
 }
-/*	A pane rather than a column: the frame, its toolbar and the list under it
-	belong together and say so by standing on one surface. The ruled ground
+/*	A pane rather than a column: the frame and its toolbar belong together and
+	say so by standing on one surface. The ruled ground
 	reads as a canvas something is being put on, which is what a preview of a
 	design is. The pane is the sticky one (the workbench's own pane carries
 	overflow-y), so the frame follows the selects down the column instead of
@@ -440,8 +501,10 @@
 	position: sticky;
 	top: 0;
 	/*	And its own scroller while it does stick: a pinned box taller than the
-		window has a bottom nothing can reach, and the summary is at the bottom */
-	max-height: calc(100vh - 5.5rem);
+		window has a bottom nothing can reach. The frame is kept to the room the
+		window has (see _room() in admin.js), so the pane is the height of the window
+		less the action bar, and the bottom of its padding, which goes under the bar */
+	max-height: calc(100vh - var(--nino-admin-actionbar-height) + .5rem);
 	overflow-y: auto;
 	padding: .95rem;
 	border: 1px solid var(--editor-border);
@@ -464,7 +527,8 @@
 }
 
 /*	One stack inside the pane, so the pane owns the surface and this owns the
-	rhythm between heading, toolbar, frame and summary */
+	rhythm between heading, toolbar and frame - and the gap between the frame and
+	the action bar, which admin.js reads off its row-gap */
 .design-preview-sticky {
 	display: grid;
 	gap: .7rem;
@@ -586,11 +650,11 @@
 }
 /*	The port Nino.adminUi.scaleFrame() places the frame inside: it gives the
 	frame a width, a height solved back through the scale, and a position - so
-	the box owns the height and has to clip, and the frame is absolute in it */
+	the box owns the height and has to clip, and the frame is absolute in it.
+	The height is the window's to give, and admin.js sets it (see _fit()) */
 .design-stage {
 	position: relative;
 	overflow: hidden;
-	height: clamp(20rem, 44vh, 36rem);
 	border: 1px solid var(--editor-border);
 	border-radius: var(--editor-radius-sm);
 	background: var(--editor-bg-grouped);
@@ -604,36 +668,6 @@
 	/* A design that sets no page background must not inherit the workbench's -
 	   least of all in dark mode, where it would read as a black design */
 	background: #fff;
-}
-
-/*	What the frame shows, in words. A preview says what a design looks like and
-	nothing about which selection produced it - two sets a step apart are a
-	picture somebody has to compare from memory. Label left, value right, a
-	hairline between rows - the other half of the answer */
-.design-summary {
-	display: grid;
-	margin: 0;
-}
-.nino-admin .design-summary-row {
-	display: flex;
-	align-items: flex-start;
-	justify-content: space-between;
-	gap: .75rem;
-	padding: .42rem .15rem;
-	font-size: .78rem;
-	line-height: 1.4;
-}
-.nino-admin .design-summary-row + .design-summary-row {
-	border-top: 1px solid var(--editor-separator);
-}
-.nino-admin .design-summary-row span {
-	color: var(--editor-text-secondary);
-}
-.nino-admin .design-summary-row strong {
-	max-width: 62%;
-	font-weight: 650;
-	overflow-wrap: anywhere;
-	text-align: right;
 }
 
 /* ---- the colours ----

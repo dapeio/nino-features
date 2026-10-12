@@ -41,7 +41,6 @@ return [
 
 	// Die Animation der Seite: was Nino.css beim Einblenden tut, als Vorgabe für alles, was keine eigene hat
 	'[[/_admin/design/label/motion]]'							=> 'Animation',
-	'[[/_admin/design/hint/motion]]'								=> 'Wie Inhalte erscheinen, wenn sie ins Bild kommen – als Vorgabe der Seite. Ein Template im Builder und eine Section mit eigener Klasse übersteuern sie.',
 	'[[/_admin/design/motion/default]]'							=> 'Vorgabe von Nino',
 	'[[/_admin/design/motion/effect/label]]'						=> 'Effekt',
 	'[[/_admin/design/motion/effect/zoom]]'						=> 'Zoom',
@@ -61,7 +60,6 @@ return [
 
 	// Schriften: die fünf Rollen von Nino.css als Tabelle
 	'[[/_admin/design/label/fonts]]'								=> 'Schriften',
-	'[[/_admin/design/hint/fonts]]'								=> 'Jede Rolle hat eine Schriftart, ein Gewicht, eine Schreibung und eine Größe. Die Größe überschreibt, was die Grundgröße vorschlägt; die Skalierungen unter Inhalte, Buttons und Komponenten verändern sie an ihrem Ort.',
 	'[[/_admin/design/font/role/title]]'							=> 'Titel',
 	'[[/_admin/design/font/role/subtitle]]'						=> 'Untertitel',
 	'[[/_admin/design/font/role/text]]'							=> 'Text',
@@ -79,8 +77,6 @@ return [
 	'[[/_admin/design/weight/light]]'							=> 'Leicht',
 	'[[/_admin/design/weight/normal]]'							=> 'Normal',
 	'[[/_admin/design/weight/bold]]'								=> 'Fett',
-	'[[/_admin/design/fontsize/default]]'						=> '%s (Vorgabe)',
-	'[[/_admin/design/fontsize/decimal]]'						=> ',',
 	'[[/_admin/design/fontsize/unit]]'							=> 'rem',
 
 	// Inhalte, Buttons, Komponenten: die Vorlage und eine Zeile je Regler
@@ -185,7 +181,6 @@ return [
 	'[[/_admin/design/knob/components/labels/more]]'				=> 'Schwebend',
 
 	// Was die Rückfrage vor dem Anwenden sagt, eine Zeile je Tatsache – im Skript des Panels gebaut und mit Zeilenumbrüchen verbunden, deshalb trägt hier kein Wert einen
-	'[[/_admin/design/hint/actions]]'							=> '„Entwurf speichern“ merkt sich Deine Auswahl, die Website bleibt, wie sie ist. „Auf Website anwenden“ schreibt assets/theme.css und die beiden Rahmen-Templates neu und legt den bisherigen Stand vorher unter data/design-previous.php ab.',
 	'[[/_admin/design/confirm/apply]]'							=> 'Neu geschrieben werden: %s.',
 	'[[/_admin/design/confirm/foreign]]'							=> 'Nicht von Design geschrieben, aber ersetzt: %s.',
 	'[[/_admin/design/confirm/lost]]'							=> 'Steht in Deiner Datei, aber nicht in der neuen Variante: %s – füge es danach bei Bedarf von Hand wieder ein.',
@@ -196,7 +191,7 @@ return [
 	// Der Titel des Knopfs, der die Vorversion wiederherstellt: Er nennt das Datum dieser Version
 	'[[/_admin/design/state/previous]]'							=> 'Vorversion vom %s',
 
-	// Der Zustand der angewendeten Datei in einem Wort, für die Zusammenfassung unter der Vorschau
+	// Der Zustand der angewendeten Datei in einem Wort, für den Chip in der Aktionsleiste
 	'[[/_admin/design/state/short/current]]'						=> 'Aktuell',
 	'[[/_admin/design/state/short/drifted]]'						=> 'Gespeichert, nicht angewendet',
 	'[[/_admin/design/state/short/missing]]'						=> 'Nie angewendet',
@@ -227,7 +222,6 @@ return [
 
 	// Farben: die zwei Farben, die fünf Regler und der Modus
 	'[[/_admin/design/label/tuning]]'							=> 'Abstimmung',
-	'[[/_admin/design/hint/tuning]]'								=> 'Wie die übrige Palette aus der Markenfarbe gelöst wird.',
 	'[[/_admin/design/label/primary]]'							=> 'Markenfarbe',
 	'[[/_admin/design/hint/primary]]'							=> 'wird genau so übernommen',
 	'[[/_admin/design/label/secondary]]'							=> 'Zweite Farbe',
@@ -267,7 +261,6 @@ return [
 	'[[/_admin/design/colour/depth/3]]'							=> 'Erhaben',
 
 	'[[/_admin/design/colour/mode/label]]'						=> 'Modus',
-	'[[/_admin/design/colour/mode/note]]'						=> 'Automatisch folgt der Einstellung der Besucherin. „Nur hell“ und „nur dunkel“ schreiben die Palette eines Modus ohne Media Query; das Feature Modeswitch wirkt dann nicht mehr.',
 	'[[/_admin/design/colour/mode/auto]]'						=> 'automatisch',
 	'[[/_admin/design/colour/mode/light]]'						=> 'nur hell',
 	'[[/_admin/design/colour/mode/dark]]'						=> 'nur dunkel',

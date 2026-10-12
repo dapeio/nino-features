@@ -68,9 +68,10 @@ namespace Nino\Modules\Design {
 		/*	The size Nino.css gives each role from 768px, in rem: --font-title-size
 			is the --text-4 step of its scale (1.6 times the text size), the subtitle
 			--text-2 (1.125), the text 1rem, the button --fontsize-btn (1rem) and the
-			code .875rem. The panel shows it as the placeholder of the size column,
-			where an empty field is this size, and beside "default" in the summary. The
-			bounds below run over it: a role can be made smaller than it, and larger	*/
+			code .875rem. The panel shows it as the value of the size field of a role
+			that chose none, and keeps a size typed that comes to it as the empty one,
+			which is this size. The bounds below run over it: a role can be made
+			smaller than it, and larger	*/
 		public const array INHERITED = [ 'title' => '1.6', 'subtitle' => '1.125', 'text' => '1', 'button' => '1', 'code' => '0.875' ];
 
 		/*	What a size can be fixed at, in rem, as [ least, most ] for each role. A

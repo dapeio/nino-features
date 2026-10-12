@@ -41,7 +41,6 @@ return [
 
 	// The animation of the page: what Nino.css does as things come into view, for everything that has none of its own
 	'[[/_admin/design/label/motion]]'							=> 'Animation',
-	'[[/_admin/design/hint/motion]]'								=> 'How content appears as it comes into view - the default of the page. A template in the Builder and a section with a class of its own override it.',
 	'[[/_admin/design/motion/default]]'							=> 'Nino\'s default',
 	'[[/_admin/design/motion/effect/label]]'						=> 'Effect',
 	'[[/_admin/design/motion/effect/zoom]]'						=> 'Zoom',
@@ -61,7 +60,6 @@ return [
 
 	// Fonts: the five roles of Nino.css, as a table
 	'[[/_admin/design/label/fonts]]'								=> 'Fonts',
-	'[[/_admin/design/hint/fonts]]'								=> 'Every role has a family, a weight, a case and a size. The size overrides what the root size suggests; the scalings under Content, Buttons and Components change it where it is used.',
 	'[[/_admin/design/font/role/title]]'							=> 'Title',
 	'[[/_admin/design/font/role/subtitle]]'						=> 'Subtitle',
 	'[[/_admin/design/font/role/text]]'							=> 'Text',
@@ -79,8 +77,6 @@ return [
 	'[[/_admin/design/weight/light]]'							=> 'Light',
 	'[[/_admin/design/weight/normal]]'							=> 'Normal',
 	'[[/_admin/design/weight/bold]]'								=> 'Bold',
-	'[[/_admin/design/fontsize/default]]'						=> '%s (default)',
-	'[[/_admin/design/fontsize/decimal]]'						=> '.',
 	'[[/_admin/design/fontsize/unit]]'							=> 'rem',
 
 	// Content, Buttons, Components: the template, and one row for each knob
@@ -185,7 +181,6 @@ return [
 	'[[/_admin/design/knob/components/labels/more]]'				=> 'Floating',
 
 	// What the confirmation before an apply says, one line per fact - built in the panel's script and joined with line breaks, so no value here carries one
-	'[[/_admin/design/hint/actions]]'							=> '"Save draft" remembers your selection and leaves the website as it is. "Apply to website" rewrites assets/theme.css and the two frame templates, and keeps what is there now as the previous version in data/design-previous.php first.',
 	'[[/_admin/design/confirm/apply]]'							=> 'Applying rewrites: %s.',
 	'[[/_admin/design/confirm/foreign]]'							=> 'Not written by Design, and replaced: %s.',
 	'[[/_admin/design/confirm/lost]]'							=> 'In your file, but not in the new variant: %s - add it again by hand afterwards if you still need it.',
@@ -196,7 +191,7 @@ return [
 	// The title of the button that restores the version before the last apply: it dates that version
 	'[[/_admin/design/state/previous]]'							=> 'Previous version from %s',
 
-	// The state of the applied file in one word, for the summary under the preview
+	// The state of the applied file in one word, for the chip in the action bar
 	'[[/_admin/design/state/short/current]]'						=> 'Up to date',
 	'[[/_admin/design/state/short/drifted]]'						=> 'Saved, not applied',
 	'[[/_admin/design/state/short/missing]]'						=> 'Never applied',
@@ -227,7 +222,6 @@ return [
 
 	// Colours: the two colours, the five knobs and the mode
 	'[[/_admin/design/label/tuning]]'							=> 'Tuning',
-	'[[/_admin/design/hint/tuning]]'								=> 'How the rest of the palette is solved out of the brand colour.',
 	'[[/_admin/design/label/primary]]'							=> 'Brand colour',
 	'[[/_admin/design/hint/primary]]'							=> 'taken exactly as it is',
 	'[[/_admin/design/label/secondary]]'							=> 'Second colour',
@@ -267,7 +261,6 @@ return [
 	'[[/_admin/design/colour/depth/3]]'							=> 'Raised',
 
 	'[[/_admin/design/colour/mode/label]]'						=> 'Mode',
-	'[[/_admin/design/colour/mode/note]]'						=> 'Automatic follows the visitor\'s own setting. “Light only” and “dark only” write the palette of one mode and no media query; the Modeswitch feature then has no effect.',
 	'[[/_admin/design/colour/mode/auto]]'						=> 'automatic',
 	'[[/_admin/design/colour/mode/light]]'						=> 'light only',
 	'[[/_admin/design/colour/mode/dark]]'						=> 'dark only',

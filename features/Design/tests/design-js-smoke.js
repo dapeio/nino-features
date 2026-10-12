@@ -8,20 +8,24 @@
  *												content, buttons and components over its named knobs,
  *												each row with its icon, greyed where the chosen template
  *												does not answer to them; the palette and its mode - the
- *												summary under the preview frame, the action bar with
- *												the way back to the previous version, the head of the
- *												preview - one row, with the viewport switch of three
- *												icon buttons and the switch that lets the frame follow
- *												- and the scroll of the frame to the anchor of the tab,
- *												or to where the change of a knob shows.
+ *												action bar, with the line the panel says things in, the
+ *												chip for the state of the files and the way back to the
+ *												previous version, the head of the preview - one row,
+ *												with the viewport switch of three icon buttons and the
+ *												switch that lets the frame follow - the room the frame
+ *												takes under it, down to the bar, and the scroll of the
+ *												frame to the anchor of the tab - which waits for the
+ *												page in it where the tab, or the answer to a change,
+ *												changed the stage's height - or to where the change
+ *												of a knob shows.
  *
- *												The summary is the half a picture cannot give: a
- *												preview says what a design looks like and nothing
- *												about which selection produced it, so the checks here
- *												read it back after every kind of change the screen
- *												allows - a knob moved, another template chosen, a font
- *												changed, another tab opened. The words of the steps are
- *												read off the buttons that are drawn.
+ *												A preview says what a design looks like and nothing
+ *												about which selection produced it, and nothing stands
+ *												under the frame to say it: the checks here read what the
+ *												screen says off the controls that are drawn, after every
+ *												kind of change it allows - a knob moved, another template
+ *												chosen, a font changed, another tab opened. The words of
+ *												the steps are read off the buttons that are drawn.
  *
  *												No jsdom, no dependency: the same element stand-in
  *												the other feature tests build, so this runs with
@@ -93,6 +97,12 @@ function element( tag ) {
 		value				: '',
 		hidden			: false,
 		disabled		: false,
+		style				: {},
+		// Where the element stands in the window - nowhere, which is where one is that is not on screen - for a test to place the ones that are measured
+		rect				: { top : 0, left : 0, width : 0, height : 0 },
+		// Which of its computed style a test says: what getComputedStyle() answers for it
+		computed		: {},
+		getBoundingClientRect	: function() { return this.rect },
 		getAttribute		: function( name ) { return Object.prototype.hasOwnProperty.call( this.attributes, name ) ? this.attributes[name] : null },
 		setAttribute		: function( name, value ) { this.attributes[name] = String( value ) },
 		appendChild			: function( child ) { child.parent = this; this.children.push( child ); return child },
@@ -210,6 +220,12 @@ function byTag( root, tag ) {
 function shown( select ) {
 	const on = byTag( select, 'option' ).filter( function( option ) { return option.selected === true } )[0];
 	return on === undefined ? null : on.value;
+}
+
+/** The word a select shows - the label of the option marked selected */
+function wordOf( select ) {
+	const on = byTag( select, 'option' ).filter( function( option ) { return option.selected === true } )[0];
+	return on === undefined ? null : on.textContent;
 }
 
 /** What a select offers, as [ value, label ] pairs */
@@ -365,11 +381,14 @@ function listing( over ) {
 /**
  *	The page in the frame, as far as the panel reaches into it: the elements
  *	it asks for by id - the sheet it swaps and the anchors it scrolls to - and
- *	the window it scrolls. Where each anchor stands is the test's to say.
+ *	the window it scrolls and waits on: what it listens to and the animation
+ *	frames it asks for are recorded, and the test lets them come (resize(),
+ *	animate()) as it lets the timers elapse. Where each anchor stands is the
+ *	test's to say.
  */
 function frameStage() {
 
-	const stage = { scrolls : [], asked : [], reachable : true, scrollY : 100, clearance : 0, tops : { type : 700, content : 300, cards : 900, buttons : 1200, components : 1500, colours : 450 } };
+	const stage = { scrolls : [], asked : [], listeners : [], frames : [], reachable : true, scrollY : 100, clearance : 0, tops : { type : 700, content : 300, cards : 900, buttons : 1200, components : 1500, colours : 450 } };
 
 	stage.style = element('style');
 	// The room main keeps at its top for the fixed header, which the header template of the page sets: none until a test says
@@ -391,11 +410,20 @@ function frameStage() {
 		},
 		defaultView : {
 			scrollTo : function( options ) { stage.scrolls.push( options ) },
+			// [ type, function ] of what the panel listens to, and the functions it asked an animation frame for
+			addEventListener : function( type, fn ) { stage.listeners.push( [ type, fn ] ) },
+			removeEventListener : function( type, fn ) { stage.listeners = stage.listeners.filter( function( one ) { return one[0] !== type || one[1] !== fn } ) },
+			requestAnimationFrame : function( fn ) { stage.frames.push( fn ); return stage.frames.length },
 			getComputedStyle : function( node ) { return node === stage.main ? { paddingTop : stage.clearance+ 'px' } : {} },
 		},
 	};
 	Object.defineProperty( stage.document, 'fonts', { get : function() { return stage.fonts } } );
 	Object.defineProperty( stage.document.defaultView, 'scrollY', { get : function() { return stage.scrollY } } );
+
+	// The window hears a resize: whatever listens to it is called, the way the browser does it
+	stage.resize = function() { stage.listeners.slice().forEach( function( one ) { if( one[0] === 'resize' ) one[1]() } ) };
+	// The animation frames that were asked for come: each runs once
+	stage.animate = function() { stage.frames.splice( 0 ).forEach( function( fn ) { fn() } ) };
 
 	return stage;
 }
@@ -497,7 +525,25 @@ function panel( over, shell ) {
 
 	const requests = [];
 
-	// The widths the frame was asked to be fitted at, in order - what the stand-in of scaleFrame() records
+	/*	The timers the script sets, in order, as [ function, delay ] - one that was cleared is null.
+		None of them fires by itself: what the clicking asks for is what is asserted on, and a
+		test runs the one it wants (see timer())	*/
+	const timers = [];
+
+	// What the script listens to on the window, as [ type, function, capture ]
+	const heard = [];
+
+	/*	What the window says of itself, and a test changes: the height of the room the frame takes
+		the stage's from, the font size of the root and the bar's height as the workbench declares
+		it - a length in rem, which the root's font size turns into pixels	*/
+	const view = { innerHeight : 800, fontSize : '16px', bar : '4.25rem' };
+
+	const rootStyle = {
+		get fontSize() { return view.fontSize },
+		getPropertyValue : function( name ) { return name === '--nino-admin-actionbar-height' ? view.bar : '' },
+	};
+
+	// The widths the frame was asked to be fitted at, in order - and how tall the port was then, which is what the stand-in of scaleFrame() records
 	const fitted = [];
 
 	/*	What the browser's own question does here: the text it was asked with is
@@ -509,7 +555,7 @@ function panel( over, shell ) {
 		adminUi : {
 			actionBar		: function( bar ) { bar.classList.add('nino-admin-actionbar'); return bar },
 			// Records what it was asked to fit: the frame, the port and the layout width
-			scaleFrame	: function( frame, port, width ) { fitted.push( { frame : frame, port : port, width : width } ); return function() {} },
+			scaleFrame	: function( frame, port, width ) { fitted.push( { frame : frame, port : port, width : width, height : port.style.height } ); return function() {} },
 			/* The workbench's own painter: one button lit, every button flagged -
 			   and on a tablist the arrow keys its tabKeys() adds: the focus
 			   moves to the next tab, and that tab is opened */
@@ -601,9 +647,12 @@ function panel( over, shell ) {
 		document		: dc,
 		Nino				: Nino,
 		confirm			: function( text ) { confirms.push( text ); return confirmAnswer },
-		setTimeout	: function() { return 0 },
-		clearTimeout: function() {},
+		setTimeout	: function( fn, delay ) { timers.push( [ fn, delay ] ); return timers.length },
+		clearTimeout: function( id ) { if( id > 0 ) timers[id - 1] = null },
+		addEventListener	: function( type, fn, capture ) { heard.push( [ type, fn, capture ] ) },
+		getComputedStyle	: function( node ) { return node === dc.documentElement ? rootStyle : node.computed },
 	};
+	Object.defineProperty( sandbox, 'innerHeight', { get : function() { return view.innerHeight } } );
 	sandbox.window = sandbox;
 
 	vm.runInContext( source, vm.createContext( sandbox ), { filename : 'admin.js' } );
@@ -620,10 +669,21 @@ function panel( over, shell ) {
 	design._ready	= true;
 	design._render();
 
+	// What the first drawing fitted - the stage takes its room as the screen is drawn - is told apart from what a test then does
+	const drawn = { fits : fitted.splice( 0 ).length };
+
 	return {
 		design 	: design,
 		requests: requests,
 		fitted	: fitted,
+		drawn		: drawn,
+		timers	: timers,
+		heard		: heard,
+		view		: view,
+		/** The delay and the function of the timers that are set and not cleared, the one that waits for the window to stop first */
+		waiting	: function( delay ) {
+			return timers.filter( function( timer ) { return timer !== null && timer[1] === delay } );
+		},
 		confirms: confirms,
 		stage		: stage,
 		/** What the next confirm() answers */
@@ -641,11 +701,14 @@ function panel( over, shell ) {
 		headStrips : function() {
 			return head.children.filter( function( child ) { return hasClass( child, 'design-tabs' ) } );
 		},
-		/** The summary under the frame, as [ label, value ] pairs */
-		summary : function() {
-			const list = byId('design-summary');
-			return list === null ? [] : list.children.map( function( row ) {
-				return [ ( byTag( row, 'span' )[0] || {} ).textContent, ( byTag( row, 'strong' )[0] || {} ).textContent ];
+		/** The action bar, and what the panel says in it: the line, and the chip for the state of the files */
+		bar			: function() { return byClass( form, 'nino-admin-actionbar' )[0] || null },
+		line		: function() { return byId('design-msg') },
+		chip		: function() { return byId('design-state-word') },
+		/** What the knob rows of the open tab say, as [ label, word of the step that is lit ] - a row that is greyed out says nothing */
+		lit			: function() {
+			return byClass( form, 'design-knob-row' ).filter( function( row ) { return hasClass( row, 'design-knob-row--off' ) === false } ).map( function( row ) {
+				return [ rowName( row ), byTag( row, 'button' ).filter( function( button ) { return button.getAttribute('aria-pressed') === 'true' } ).map( function( button ) { return button.textContent } ).join() ];
 			} );
 		},
 		/** One knob row of the open tab, by the name it carries */
@@ -792,7 +855,8 @@ console.log('');
 // --- The shape of the column -----------------------------------------------------
 //
 // Controls on one side and the page on the other: the open tab in the column,
-// the frame and the summary in the preview, the action bar under both
+// the frame in the preview with nothing under it, the action bar under both - and
+// what the panel says in it: the line of what was done, the chip for the state of the files
 
 console.log( 'The column' );
 
@@ -810,23 +874,67 @@ check( 'the column holds the box the open tab fills and nothing over it: no card
 check( '...the one eyebrow the screen has is the preview\'s, over the title of the frame',
 	byClass( column.form, 'design-eyebrow' ).length === 1 && byClass( previewBox, 'design-eyebrow' )[0].textContent === TEXT['/_admin/design/preview/eyebrow']
 	&& byClass( previewBox, 'design-eyebrow' )[0].textContent === 'This selection' );
-check( 'the frame and the summary stand in the preview, the summary under the frame',
-	column.byId('design-frame') !== null && descendants( previewBox ).indexOf( column.byId('design-summary') ) > descendants( previewBox ).indexOf( column.byId('design-frame') ) );
+check( 'the frame stands in the preview and nothing stands under it: no summary - not the list of what the tab chose, not a row for the state of the files - anywhere on the screen',
+	column.byId('design-frame') !== null && column.byId('design-summary') === null && byClass( column.form, 'design-summary' ).length === 0
+	&& byClass( column.form, 'design-summary-row' ).length === 0
+	&& byClass( previewBox, 'design-preview-sticky' )[0].children.length === 2 && hasClass( byClass( previewBox, 'design-preview-sticky' )[0].children[1], 'design-stage' ) );
 check( '...the frame a sandbox that lets the page run and be reached by the panel, and no more',
 	column.byId('design-frame').getAttribute('sandbox') === 'allow-scripts allow-same-origin' );
 
-/*	What the state card said is the last row of the summary now, in one word, and it
-	is the same under every tab: the file answers to the selection, the draft is
-	not applied, a file is not Design's, or it was never applied	*/
-const stateWord = function( over ) { return panel( over ).summary().pop() };
+/*	What the panel says stands in the action bar, before the buttons: the line - a paragraph the
+	workbench's bar takes for its status line, a polite live region - and beside it a chip with the
+	state of the files in one word, which is the same under every tab: the file answers to the
+	selection, the draft is not applied, a file is not Design's, or it was never applied	*/
+const bar = column.bar();
+
+check( 'what the panel says stands in the action bar, before the buttons: the line first - #design-msg, a paragraph and a polite live region, empty to begin with - and the chip beside it, #design-state-word',
+	bar !== null && bar.children[0] === column.line() && bar.children[1] === column.chip()
+	&& column.line().tagName === 'P' && column.line().getAttribute('aria-live') === 'polite' && column.line().textContent === ''
+	&& column.chip().tagName === 'SPAN' && hasClass( column.chip(), 'design-state-word' )
+	&& bar.children.slice( 2 ).every( function( child ) { return child.tagName === 'BUTTON' } ) && bar.children.map( function( child ) { return child.id } ).join() === 'design-msg,design-state-word,design-reset,design-save,design-apply' );
+check( '...and nothing stands under the bar: the line that told what the two buttons are is gone, and so is the line of what was done that stood after it - the bar is the last thing of the screen',
+	column.byId('design-actions-hint') === null && column.form.children.length === 2 && column.form.children[1] === bar
+	&& column.form.children.indexOf( column.line() ) === -1 && descendants( column.form ).filter( function( el ) { return el.id === 'design-msg' } ).length === 1 );
+
+const stateWord = function( over ) { const screen = panel( over ); return [ screen.chip().textContent, screen.chip().dataset.state ] };
 const foreignFiles = [ { target : '/assets/theme.css', exists : true, state : 'foreign' }, { target : '/templates/frame-header.tpl', exists : true, state : 'ours' }, { target : '/templates/frame-footer.tpl', exists : true, state : 'ours' } ];
 
-check( 'the state of the files is the last row of the summary under the frame, in one word: up to date while the file answers to the selection',
-	JSON.stringify( column.summary().pop() ) === JSON.stringify( [ 'Applied file', 'Up to date' ] ) && column.design._stateKey() === 'current' );
+check( 'the chip says the state of the files in one word: up to date while the file answers to the selection',
+	column.chip().textContent === 'Up to date' && column.chip().dataset.state === 'current' && column.design._stateKey() === 'current' );
 check( '...saved and not applied once the file does not, a file Design did not write named as such, and a file never applied as that',
-	JSON.stringify( stateWord( { current : false } ) ) === JSON.stringify( [ 'Applied file', 'Saved, not applied' ] )
-	&& JSON.stringify( stateWord( { files : foreignFiles } ) ) === JSON.stringify( [ 'Applied file', 'Not written by Design' ] )
-	&& JSON.stringify( stateWord( { exists : false, compiled : '', current : false } ) ) === JSON.stringify( [ 'Applied file', 'Never applied' ] ) );
+	JSON.stringify( stateWord( { current : false } ) ) === JSON.stringify( [ 'Saved, not applied', 'drifted' ] )
+	&& JSON.stringify( stateWord( { files : foreignFiles } ) ) === JSON.stringify( [ 'Not written by Design', 'foreign' ] )
+	&& JSON.stringify( stateWord( { exists : false, compiled : '', current : false } ) ) === JSON.stringify( [ 'Never applied', 'missing' ] ) );
+check( '...and its title says what the word is about, the applied file - the label the last row of the summary had',
+	column.chip().title === TEXT['/_admin/design/label/state']+ ': Up to date' && column.chip().title === 'Applied file: Up to date' );
+
+/*	The line is one line: cut where the bar has no more room for it, so the whole of it is its title	*/
+const saying = panel();
+saying.design._say( saying.line(), 'It did not work', 'nino-admin-error' );
+
+check( 'what is said in the line is its text and its title - the whole of it, since the bar cuts a line that is longer than its room - and a failure carries the class the workbench colours red',
+	saying.line().textContent === 'It did not work' && saying.line().title === 'It did not work' && saying.line().className === 'nino-admin-error' );
+
+saying.design._say( saying.line(), 'Done' );
+
+check( '...said again, it is the new words with the old class gone, and an empty line has no title',
+	saying.line().textContent === 'Done' && saying.line().title === 'Done' && saying.line().className === ''
+	&& ( saying.design._say( saying.line(), '' ), saying.line().textContent === '' && saying.line().title === '' ) );
+check( '...and there is nothing to say it to where the screen has no line',
+	threw( function() { saying.design._say( null, 'nothing is listening' ) } ) === false );
+
+/*	A tab changes nothing of them, and nor does a change on the screen: no file is touched by either	*/
+const steady = panel();
+const steadyLine = steady.line();
+const steadyChip = steady.chip();
+steady.design._say( steady.line(), 'Draft saved.' );
+[ 'Fonts', 'Content', 'Colours', 'Global' ].forEach( function( name ) { steady.tab( name ) } );
+steady.tab('Content');
+steady.move( 'Quiet variant', 'more' );
+
+check( 'a tab that is opened and a knob that is moved change nothing of them: the same line with the same words, the same chip with its word',
+	steady.line() === steadyLine && steady.chip() === steadyChip && steady.line().textContent === 'Draft saved.' && steady.line().title === 'Draft saved.'
+	&& steady.chip().textContent === 'Up to date' && steady.chip().dataset.state === 'current' );
 
 const told = panel( { notes : [ 'there is no part "nowhere" - dropped' ] } );
 
@@ -885,11 +993,11 @@ check( 'choosing them stores a size and a number',
 	global.design._edit.size === 'xl' && global.design._edit.width === 1 );
 check( '...each of the five can be chosen, and each is what the model keeps as it was chosen',
 	[ 'xs', 's', 'm', 'l', 'xl' ].every( function( size ) { choose( global.byId('design-size'), size ); return global.design._edit.size === size } ) );
-check( '...and the summary under the frame says each of them in its word, the same the select has: very small, smaller, default, larger, very large',
+check( '...and each has its word in the select that chose it: very small, smaller, default, larger, very large - nothing under the frame says it again',
 	[ [ 'xs', 'very small' ], [ 's', 'smaller' ], [ 'm', 'default' ], [ 'l', 'larger' ], [ 'xl', 'very large' ] ].every( function( entry ) {
 		choose( global.byId('design-size'), entry[0] );
-		return global.summary().filter( function( row ) { return row[0] === 'Root size' } ).map( function( row ) { return row[1] } ).join() === entry[1];
-	} ) );
+		return global.design._edit.size === entry[0] && offered( global.byId('design-size') ).filter( function( option ) { return option[0] === entry[0] } )[0][1] === entry[1];
+	} ) && global.byId('design-summary') === null );
 
 choose( global.byId('design-size'), 'xl' );
 
@@ -914,23 +1022,20 @@ choose( speed, 'slow' );
 
 check( '...and what they are set to is the selection',
 	JSON.stringify( global.design._edit.motion ) === JSON.stringify( { effect : 'blur', strength : 'hard', speed : 'slow' } ) );
-check( 'the summary under the frame names every choice of the tab - the five templates, the size, the width and the animation',
-	JSON.stringify( global.summary() ) === JSON.stringify( [
-		[ 'Header template', 'v2 - Centred' ],
-		[ 'Footer template', 'v1 - Plain footer' ],
-		[ 'Content template', 'v1 - Nino' ],
-		[ 'Buttons template', 'v1 - Nino' ],
-		[ 'Components template', 'v1 - Nino' ],
-		[ 'Root size', 'very large' ],
-		[ 'Page width', 'wide' ],
-		[ 'Animation', 'Blur, Hard, Slow' ],
-		[ 'Applied file', 'Up to date' ],
-	] ) );
+global.tab('Fonts');
+global.tab('Global');
 
-choose( effect, '' );
+check( 'the tab is drawn again from what is chosen, and its controls show every choice of it - the two frames, the size, the width and the animation - with nothing under the frame to list them',
+	[ 'header', 'footer' ].map( function( name ) { return shown( global.byId('design-set-'+ name) ) } ).join() === 'v2,v1'
+	&& shown( global.byId('design-size') ) === 'xl' && shown( global.byId('design-pagewidth') ) === '1'
+	&& shown( global.byId('design-motion-effect') ) === 'blur' && shown( global.byId('design-motion-strength') ) === 'hard' && shown( global.byId('design-motion-speed') ) === 'slow'
+	&& global.byId('design-summary') === null && byClass( global.form, 'design-summary-row' ).length === 0 );
+
+choose( global.byId('design-motion-effect'), '' );
 
 check( 'no effect again is Nino\'s default again, and the other two are switched off with it',
-	strength.disabled === true && speed.disabled === true && global.summary()[7][1] === 'Nino\'s default' );
+	global.byId('design-motion-strength').disabled === true && global.byId('design-motion-speed').disabled === true
+	&& JSON.stringify( global.design._edit.motion ) === JSON.stringify( { effect : '', strength : 'hard', speed : 'slow' } ) );
 
 console.log('');
 
@@ -1054,19 +1159,18 @@ rows.move( 'Hero text', 'more' );
 
 check( '...to less it is -1, and each knob keeps its own position',
 	rows.design._edit.knobs.content['hero-title'] === -1 && rows.design._edit.knobs.content['hero-text'] === 1 && rows.design._edit.knobs.content.quiet === 0 );
-/** The rows of the summary a knob tab gives, from the positions its knobs stand at: the label of each and the word of its step */
-function knobSummary( tab, positions ) {
+/** What the rows of a knob tab say, from the positions its knobs stand at: the label of each and the word of its step */
+function knobWords( tab, positions ) {
 	return KNOBS[tab].filter( function( knob ) { return positions[knob] !== undefined } ).map( function( knob ) {
 		return [ TEXT['/_admin/design/knob/'+ tab+ '/'+ knob+ '/label'], TEXT['/_admin/design/knob/'+ tab+ '/'+ knob+ '/'+ [ 'less', 'default', 'more' ][positions[knob] + 1]] ];
 	} );
 }
 
-check( 'the summary names the template and, for every knob the template answers to, the word of the position it stands at',
-	JSON.stringify( rows.summary() ) === JSON.stringify( [ [ 'Content template', 'v1 - Nino' ] ].concat(
-		knobSummary( 'content', { 'hero-title' : -1, 'hero-text' : 1, quiet : 0, loud : 0, 'section-space' : 0, 'card-space' : 0, corners : 0, border : 0, shadow : 1 } ),
-		[ [ 'Applied file', 'Up to date' ] ] ) ) );
+check( 'the rows say, for every knob the template answers to, the word of the position it stands at - read off the step that is lit, with nothing under the frame to say it again',
+	JSON.stringify( rows.lit() ) === JSON.stringify( knobWords( 'content', { 'hero-title' : -1, 'hero-text' : 1, quiet : 0, loud : 0, 'section-space' : 0, 'card-space' : 0, corners : 0, border : 0, shadow : 1 } ) )
+	&& rows.byId('design-summary') === null );
 check( '...in the capitalised words: Smaller for the title of the hero, Larger for its text, Default for the knobs nobody moved and Strong for the shadow',
-	rows.summary().slice( 1, -1 ).map( function( row ) { return row.join(': ') } ).join()
+	rows.lit().map( function( row ) { return row.join(': ') } ).join()
 		=== 'Hero title: Smaller,Hero text: Larger,Quiet variant: Default,Loud variant: Default,Space of a section: Default,Space of a card: Default,Corners of a card: Default,Line round a card: Default,Shadow of a card: Strong' );
 
 /*	Another template brings its own knobs, and the ones the last one had are
@@ -1086,8 +1190,8 @@ check( '...the rows of the tab are drawn again - nine new ones for the nine knob
 	&& byClass( rows.form, 'design-knob-row' ).length === 9 && descendants( rows.pane ).indexOf( oldSelect ) === -1
 	&& rows.byId('design-set-content') !== null && rows.byId('design-set-content') !== oldSelect && shown( rows.byId('design-set-content') ) === 'v2'
 	&& focused === rows.byId('design-set-content') && tabOf( rows ) === 'content' );
-check( '...and the line under the select describes the template that was chosen, the summary names it',
-	byTag( rows.byId('design-set-content').parent, 'small' )[0].textContent === 'Large type, no shadow' && rows.summary()[0][1] === 'v2 - Poster' );
+check( '...and the line under the select describes the template that was chosen, and the select stands on it',
+	byTag( rows.byId('design-set-content').parent, 'small' )[0].textContent === 'Large type, no shadow' && shown( rows.byId('design-set-content') ) === 'v2' );
 
 const poster = byClass( rows.form, 'design-knob-row' );
 const shadow = rows.knobRow('Shadow of a card');
@@ -1102,8 +1206,8 @@ check( '...and the line under its name says whose decision that is, in place of 
 	( byTag( shadow, 'small' )[0] || {} ).textContent === 'This template does not answer to “Shadow of a card”.'
 	&& ( byTag( rows.knobRow('Hero title'), 'small' )[0] || {} ).textContent === TEXT['/_admin/design/knob/content/hero-title/note']
 	&& shown( rows.byId('design-set-content') ) === 'v2' );
-check( 'the summary leaves the knob out, since it compiles nothing: eight knobs, the template and the file',
-	rows.summary().length === 10 && rows.summary().every( function( row ) { return row[0] !== 'Shadow of a card' } ) && rows.summary()[0][1] === 'v2 - Poster' );
+check( 'a row that is greyed out says no position, since it compiles nothing: eight of the nine knobs have a step that is lit, and the shadow is not one of them',
+	rows.lit().length === 8 && rows.lit().every( function( row ) { return row[0] !== 'Shadow of a card' } ) );
 
 choose( rows.byId('design-set-content'), 'v1' );
 
@@ -1129,7 +1233,7 @@ choose( rows.byId('design-set-components'), 'v4' );
 check( 'the Components tab has six rows, two of them grey for Filled: the lines and where the labels stand',
 	tabOf( rows ) === 'components' && byClass( rows.form, 'design-knob-row' ).length === 6
 	&& byClass( rows.form, 'design-knob-row--off' ).map( function( row ) { return row.dataset.knob } ).join() === 'border,labels'
-	&& JSON.stringify( rows.summary().slice( 1, -1 ).map( function( row ) { return row[0] } ) ) === JSON.stringify( [ 'scale', 'space', 'corners', 'zebra' ].map( function( knob ) { return TEXT['/_admin/design/knob/components/'+ knob+ '/label'] } ) ) );
+	&& JSON.stringify( rows.lit().map( function( row ) { return row[0] } ) ) === JSON.stringify( [ 'scale', 'space', 'corners', 'zebra' ].map( function( knob ) { return TEXT['/_admin/design/knob/components/'+ knob+ '/label'] } ) ) );
 
 console.log('');
 
@@ -1167,15 +1271,18 @@ check( '...the code is offered the system\'s monospace and nothing else, by its 
 	JSON.stringify( offered( family('code') ) ) === JSON.stringify( [ [ '', 'System monospace' ] ] ) && shown( family('code') ) === '' );
 check( 'a weight is one of three words',
 	JSON.stringify( offered( weight('title') ) ) === JSON.stringify( [ [ 'light', 'Light' ], [ 'normal', 'Normal' ], [ 'bold', 'Bold' ] ] ) && shown( weight('title') ) === 'bold' && shown( weight('code') ) === 'normal' );
-check( 'a size is typed and not picked: a number field in each row - empty to begin with, stepping by a tenth - with the size Nino.css gives the role as its placeholder, the number alone, and the limits of the role',
+check( 'a size is typed and not picked: a number field in each row, stepping by a tenth, with the limits of the role',
 	fontRows.every( function( row ) {
 		const input = size( row.dataset.role );
 		return input !== null && input.tagName === 'INPUT' && input.type === 'number' && input.getAttribute('step') === '.1' && input.getAttribute('inputmode') === 'decimal'
-			&& input.dataset.role === row.dataset.role && input.dataset.key === 'size' && input.value === '';
+			&& input.dataset.role === row.dataset.role && input.dataset.key === 'size';
 	} )
-	&& fonts.design.TABS.length === 6 && [ 'title', 'subtitle', 'text', 'button', 'code' ].map( function( role ) { return size( role ).getAttribute('placeholder') } ).join() === '1.6,1.125,1,1,0.875'
+	&& fonts.design.TABS.length === 6
 	&& [ 'title', 'subtitle', 'text', 'button', 'code' ].map( function( role ) { return size( role ).getAttribute('min')+ '-'+ size( role ).getAttribute('max') } ).join() === '1-4,0.8-2.5,0.8-1.5,0.6-1.5,0.6-1.3'
 	&& byTag( table, 'select' ).filter( function( select ) { return select.dataset.key === 'size' } ).length === 0 );
+check( '...and its value is the size that is in force: the one Nino.css gives the role while none is chosen - 1.6, 1.125, 1, 1 and 0.875 - as the value and not as a placeholder, so that the spinner has a number to count from; the model keeps the empty size it had',
+	[ 'title', 'subtitle', 'text', 'button', 'code' ].map( function( role ) { return size( role ).value } ).join() === '1.6,1.125,1,1,0.875'
+	&& [ 'title', 'subtitle', 'text', 'button', 'code' ].every( function( role ) { return size( role ).getAttribute('placeholder') === null && fonts.design._edit.fonts[role].size === '' } ) );
 check( '...and the unit stands after it as a small word of its own, in the same cell',
 	fontRows.every( function( row ) {
 		const cell = size( row.dataset.role ).parent;
@@ -1210,15 +1317,16 @@ check( 'a change goes through _setFont() with the role, the key and the value - 
 	JSON.stringify( setFontCalls ) === JSON.stringify( [ [ 'title', 'family', 'system-serif' ], [ 'title', 'weight', 'light' ], [ 'title', 'size', '2.4' ], [ 'title', 'uppercase', true ], [ 'subtitle', 'family', '' ] ] )
 	&& JSON.stringify( fonts.design._edit.fonts.title ) === JSON.stringify( { family : 'system-serif', weight : 'light', uppercase : true, size : '2.4' } )
 	&& fonts.design._edit.fonts.subtitle.family === '' && fonts.byId('design-reset').hidden === false );
-check( 'the summary has a row for each role, in words: the family, the weight, the case where it is upper, the size',
-	JSON.stringify( fonts.summary() ) === JSON.stringify( [
-		[ 'Title', 'System serif, Light, Uppercase, 2.4 rem' ],
-		[ 'Subtitle', 'System (default), Normal, 1.125 rem (default)' ],
-		[ 'Text', 'Source Sans 3, Normal, 1 rem (default)' ],
-		[ 'Buttons', 'Source Sans 3, Bold, 1 rem (default)' ],
-		[ 'Code', 'System monospace, Normal, 0.875 rem (default)' ],
-		[ 'Applied file', 'Up to date' ],
-	] ) );
+fonts.tab('Colours');
+fonts.tab('Fonts');
+
+check( 'the table drawn again shows each role as it was set, in words: the family, the weight, the case where it is upper, and the size - the one that was typed, else the one Nino.css gives the role',
+	[ 'title', 'subtitle', 'text', 'button', 'code' ].map( function( role ) {
+		const upperCase = fonts.byId('design-font-'+ role+ '-uppercase');
+		return [ wordOf( family( role ) ), wordOf( weight( role ) ), upperCase === null ? null : upperCase.checked, size( role ).value ].join(', ');
+	} ).join(' | ')
+		=== 'System serif, Light, true, 2.4 | System (default), Normal, false, 1.125 | Source Sans 3, Normal, false, 1 | Source Sans 3, Bold, false, 1 | System monospace, Normal, , 0.875'
+	&& fonts.byId('design-summary') === null );
 
 fonts.design._previewNow();
 const fontPreview = fonts.requests[fonts.requests.length - 1];
@@ -1259,33 +1367,64 @@ type( size('button'), '1.23456' );
 type( size('text'), '1.1250' );
 type( size('code'), '2' );
 type( size('subtitle'), '0.2' );
-check( '...a number is kept to three decimals and written as short as it can be: 1.1250 is 1.125, 1.23456 is 1.235 - and the summary says it in rem',
-	fonts.design._edit.fonts.text.size === '1.125' && size('text').value === '1.125' && fonts.design._edit.fonts.button.size === '1.235' && size('button').value === '1.235'
-	&& fonts.summary()[2][1] === 'Source Sans 3, Normal, 1.125 rem' && fonts.summary()[0][1] === 'System serif, Light, Uppercase, 4 rem' );
+check( '...a number is kept to three decimals and written as short as it can be: 1.1250 is 1.125, 1.23456 is 1.235',
+	fonts.design._edit.fonts.text.size === '1.125' && size('text').value === '1.125' && fonts.design._edit.fonts.button.size === '1.235' && size('button').value === '1.235' );
 
 type( size('title'), '2.0' );
 type( size('subtitle'), '' );
 type( size('text'), 'abc' );
 
-check( '...2.0 is 2; empty is the default again, and a text that is no number is the default too, with the field emptied',
-	fonts.design._edit.fonts.title.size === '2' && size('title').value === '2' && fonts.design._edit.fonts.subtitle.size === '' && size('subtitle').value === ''
-	&& fonts.design._edit.fonts.text.size === '' && size('text').value === '' && fonts.summary()[1][1] === 'System (default), Normal, 1.125 rem (default)' );
+check( '...2.0 is 2; empty is the default again, and a text that is no number is the default too - the model keeps the empty size, and the field shows the size that is in force: 1.125 for the subtitle, 1 for the text',
+	fonts.design._edit.fonts.title.size === '2' && size('title').value === '2' && fonts.design._edit.fonts.subtitle.size === '' && size('subtitle').value === '1.125'
+	&& fonts.design._edit.fonts.text.size === '' && size('text').value === '1' );
 
-/*	The decimal sign is the workbench's language's, and it dresses the summary: 1,125 rem in German. The field does not
-	take it - a number field drops a typed comma - so its placeholder is the number as the field shows and takes it, with
-	the point, in every language	*/
-TEXT['/_admin/design/fontsize/decimal'] = ',';
-const german = panel();
-german.tab('Fonts');
+/*	The size in force is the field's value, so that the spinner starts from it. A size typed that comes
+	to the one Nino.css gives the role is no choice - the model keeps the empty size, as it did, and the role goes
+	on following its default - and any other is the number	*/
+const forced = panel();
+forced.tab('Fonts');
 
-check( 'the summary uses the decimal sign of the language, 1,125 rem in German - the placeholder of a size does not: it is the number as the field shows and takes it, 1.6 and 1.125',
-	german.summary()[1][1] === 'Source Sans 3, Normal, 1,125 rem (default)' && german.byId('design-font-title-size').getAttribute('placeholder') === '1.6'
-	&& german.byId('design-font-subtitle-size').getAttribute('placeholder') === '1.125' && german.byId('design-font-title-size').getAttribute('min') === '1' );
-check( '...and the field is still the number field it was, the unit after it: the language changes the words round it, not the field',
-	german.byId('design-font-title-size').type === 'number' && german.byId('design-font-title-size').getAttribute('step') === '.1'
-	&& german.byId('design-font-title-size').value === '' && byClass( german.byId('design-font-title-size').parent, 'design-fonts-unit' )[0].textContent === 'rem' );
+const forcedSize = function( role ) { return forced.byId('design-font-'+ role+ '-size') };
 
-TEXT['/_admin/design/fontsize/decimal'] = '.';
+/** The spinner of a number field in miniature: from the number the field has to the next one of the grid its step and its least make, from the least where there is none */
+function spin( input ) {
+	const step = Number( input.getAttribute('step') );
+	const least = Number( input.getAttribute('min') );
+	const was = input.value === '' ? NaN : Number( input.value );
+	input.value = String( Math.round( ( isNaN( was ) ? least : least + ( Math.floor( ( was - least ) / step + 1e-9 ) + 1 ) * step ) * 1000 ) / 1000 );
+	input.fire('change');
+}
+
+type( forcedSize('title'), '1.6' );
+type( forcedSize('subtitle'), '1.1250' );
+type( forcedSize('text'), '1.0004' );
+type( forcedSize('code'), '.875' );
+
+check( 'a size typed back to the one Nino.css gives the role is kept as the empty size - 1.6 for the title, 1.1250 for the subtitle, 1.0004 for the text, which comes to 1, and .875 for the code - and the field goes on showing the number',
+	[ 'title', 'subtitle', 'text', 'code' ].every( function( role ) { return forced.design._edit.fonts[role].size === '' } )
+	&& [ 'title', 'subtitle', 'text', 'code' ].map( function( role ) { return forcedSize( role ).value } ).join() === '1.6,1.125,1,0.875'
+	&& forced.design._isDirty() === false );
+
+type( forcedSize('title'), '1.7' );
+type( forcedSize('button'), '1.001' );
+
+check( '...and any other is the number: 1.7 for the title, and 1.001 for the button, which is not 1 - held to three decimals',
+	forced.design._edit.fonts.title.size === '1.7' && forcedSize('title').value === '1.7' && forced.design._edit.fonts.button.size === '1.001' && forcedSize('button').value === '1.001'
+	&& forced.design._isDirty() === true );
+
+type( forcedSize('title'), '1.60' );
+
+check( '...so a role set to a size and then back to its default is the model it was: nothing to save',
+	forced.design._edit.fonts.title.size === '' && forcedSize('title').value === '1.6' );
+
+const spun = panel();
+spun.tab('Fonts');
+const spunTitle = spun.byId('design-font-title-size');
+
+spin( spunTitle );
+
+check( 'the spinner counts from the size in force: from 1.6 it goes up to 1.7 - not from the least of the role, 1, which is where an empty field starts - and what it reached is chosen',
+	spunTitle.value === '1.7' && spun.design._edit.fonts.title.size === '1.7' );
 
 console.log('');
 
@@ -1336,26 +1475,25 @@ check( 'a new brand colour is the selection, read off the input that was changed
 byTag( colours.knobRow('Saturation'), 'button' )[2].fire('click');
 
 check( 'a position of a knob is a number', colours.design._edit.colours.saturation === 3 );
-check( 'the summary has the brand colour, the second colour - Monochrome while nobody chose one - every knob and the mode',
-	JSON.stringify( colours.summary() ) === JSON.stringify( [
-		[ 'Brand colour', '#8b1d3f' ], [ 'Second colour', 'Monochrome' ], [ 'Temperature', 'Brand' ], [ 'Saturation', 'Rich' ],
-		[ 'Contrast', 'Default' ], [ 'Depth', 'Default' ], [ 'Mode', 'dark only' ], [ 'Applied file', 'Up to date' ],
-	] ) );
+check( 'the rows show the brand colour, the second colour - Monochrome while nobody chose one - every knob at the position it stands at, and the mode, with nothing under the frame to say it again',
+	colours.byId('design-colour-primary').value === '#8b1d3f'
+	&& JSON.stringify( colours.lit() ) === JSON.stringify( [ [ 'Second colour', 'Monochrome' ], [ 'Temperature', 'Brand' ], [ 'Saturation', 'Rich' ], [ 'Contrast', 'Default' ], [ 'Depth', 'Default' ] ] )
+	&& wordOf( colours.byId('design-colour-mode') ) === 'dark only' && colours.byId('design-summary') === null );
 
 // A second colour somebody chose overrides the wheel; choosing a position on the wheel gives it up
 const second = colours.byId('design-colour-secondary');
 second.value = '#0f766e';
 second.fire('change');
 
-check( 'a second colour that was chosen is shown as chosen, and the summary says the hex where it said the place on the wheel',
-	colours.design._edit.colours.secondary === '#0f766e' && colours.summary()[1][1] === '#0f766e'
+check( 'a second colour that was chosen is shown as chosen: the swatch has the hex, where the row lit the place on the wheel',
+	colours.design._edit.colours.secondary === '#0f766e' && colours.byId('design-colour-secondary').value === '#0f766e'
 	&& byClass( colours.form, 'design-knob-reset' ).length === 1
 	&& byTag( colours.knobRow('Second colour'), 'button' ).filter( function( button ) { return button.getAttribute('aria-pressed') === 'true' } ).length === 0 );
 
 byTag( colours.knobRow('Second colour'), 'button' )[2].fire('click');
 
 check( '...and a position on the wheel gives it up again', colours.design._edit.colours.secondary === '' && colours.design._edit.colours.harmony === 3
-	&& colours.summary()[1][1] === 'Triadic' && byClass( colours.form, 'design-knob-reset' ).length === 0 );
+	&& colours.lit()[0][1] === 'Triadic' && byClass( colours.form, 'design-knob-reset' ).length === 0 );
 
 const unsafe = panel( { brand : { light : { safe : false, ratio : 3.1, target : 4.5 } } } );
 unsafe.tab('Colours');
@@ -1363,6 +1501,39 @@ unsafe.tab('Colours');
 check( 'a brand colour text does not survive on says so under the colour, with the numbers - and says nothing where it does',
 	unsafe.byId('design-brand-warning').hidden === false && unsafe.byId('design-brand-warning').textContent === say( '/_admin/design/msg/brand-unsafe', 3.1, 4.5 )
 	&& colours.byId('design-brand-warning').hidden === true );
+
+console.log('');
+
+
+// --- The headings over the blocks of rows -------------------------------------------------------
+//
+// A block of rows has its title and nothing under it: the line that said what the rows are
+// is not drawn on any tab, and the words that only it read are gone from the panel's words
+
+console.log( 'The headings' );
+
+const heads = panel();
+const headings = {};
+
+TABS.forEach( function( name ) {
+	heads.tab( TEXT['/_admin/design/tab/'+ name] );
+	headings[name] = byClass( heads.form, 'design-section-label' ).map( function( label ) {
+		return byTag( label, 'strong' )[0].textContent+ ':'+ label.children.length+ ':'+ byTag( label, 'small' ).length;
+	} ).join();
+} );
+
+check( 'a block of rows has its title and nothing under it, on every tab: the animation of Global, the table of the fonts, the tuning and the mode of the palette carry a heading of one title each - no small under it',
+	JSON.stringify( headings ) === JSON.stringify( { global : 'Animation:1:0', fonts : 'Fonts:1:0', content : '', buttons : '', components : '', colours : 'Tuning:1:0,Mode:1:0' } ) );
+
+const titled = heads.design._sectionLabel( 'A title' );
+const iconed = heads.design._sectionLabel( 'Another', heads.design._icon('colours/mode') );
+
+check( '...the heading is drawn from its title, and from an icon where the block has one - which comes first, in the title - and there is no note to give it',
+	heads.design._sectionLabel.length === 2 && titled.children.length === 1 && byTag( titled, 'strong' )[0].textContent === 'A title' && byTag( titled, 'small' ).length === 0
+	&& byTag( iconed, 'strong' )[0].children[0].tagName === 'SVG' && byTag( iconed, 'strong' )[0].textContent === 'Another' && byTag( iconed, 'small' ).length === 0 );
+check( '...and the sentences that stood under them - the fonts, the animation, the tuning and the mode - are gone from the panel\'s words, with the hint of the two buttons and the words of the size only the summary used',
+	[ 'hint/fonts', 'hint/motion', 'hint/tuning', 'colour/mode/note', 'hint/actions', 'fontsize/default', 'fontsize/decimal' ].every( function( key ) { return TEXT['/_admin/design/'+ key] === undefined } )
+	&& TEXT['/_admin/design/fontsize/unit'] === 'rem' && TEXT['/_admin/design/hint/size'] !== undefined && TEXT['/_admin/design/hint/pagewidth'] !== undefined );
 
 console.log('');
 
@@ -1569,10 +1740,10 @@ const pv = panel();
 const pvSticky = byClass( pv.byId('design-preview'), 'design-preview-sticky' )[0];
 const pvHead = byClass( pvSticky, 'design-preview-head' )[0] || element('div');
 
-check( 'the head of the preview is one row: the heading and the bar are its two children, in that order - first in the stack, with the frame and the summary under it and nothing else',
+check( 'the head of the preview is one row: the heading and the bar are its two children, in that order - first in the stack, with the frame under it and nothing else, the stage the last thing of the pane',
 	pvHead.parent === pvSticky && pvSticky.children[0] === pvHead && pvHead.children.length === 2
 	&& hasClass( pvHead.children[0], 'design-preview-heading' ) && hasClass( pvHead.children[1], 'design-preview-bar' )
-	&& pvSticky.children.length === 3 && hasClass( pvSticky.children[1], 'design-stage' ) && pvSticky.children[2] === pv.byId('design-summary')
+	&& pvSticky.children.length === 2 && hasClass( pvSticky.children[1], 'design-stage' ) && pv.byId('design-summary') === null
 	&& byClass( pvSticky, 'design-preview-heading' ).length === 1 && byClass( pvSticky, 'design-preview-bar' ).length === 1 );
 check( '...the heading is the eyebrow over the title and nothing else; the bar holds the viewport switch, the switch that lets the frame follow and the reload, in that order',
 	byClass( pvHead.children[0], 'design-eyebrow' ).length === 1 && byTag( pvHead.children[0], 'strong' )[0].textContent === 'Preview'
@@ -1643,6 +1814,322 @@ pv.design._previewNow();
 pv.answer( 200, { css : ':root{}', document : '', style : 'design-preview-css', accent : '#8ad0f5', brand : listing().brand, notes : [] } );
 
 check( '...at the width that is chosen, not at the desktop', pv.fitted[pv.fitted.length - 1].width === 390 );
+
+console.log('');
+
+
+// --- The room of the frame -----------------------------------------------------------------
+//
+// The stage - the box the frame is scaled into - is as tall as the window has left under it,
+// less the action bar and the gap the stack keeps between its parts, and never under 16 rem:
+// the frame ends a gap above the bar. The numbers are the window's - its height, the font size
+// of its root, the bar's height the workbench declares - and the places of the stage, its pane and
+// the layout, which a test says: the stand-in has no layout of its own
+
+console.log( 'The room of the frame' );
+
+const rm = panel();
+const rmStage = rm.byId('design-frame').parent;
+const rmPane = rm.byId('design-preview');
+const rmLayout = rm.byId('design-layout');
+const rmBar = rm.bar();
+
+/** Two pixel numbers that are the same one, but for the way a float is written */
+const near = function( one, other ) { return Math.abs( one - other ) < 0.001 };
+
+/** The timers of that delay that are set and not cleared elapse: each runs once and is not waiting any more */
+function elapse( delay ) {
+	rm.timers.forEach( function( timer, at ) {
+		if( timer === null || timer[1] !== delay )
+			return;
+		rm.timers[at] = null;
+		timer[0]();
+	} );
+}
+
+/**
+ *	Put everything where a window of that height has it - the layout of the screen, the pane
+ *	in it, the stage in the pane, and how far the page is scrolled. The pane of a wide window
+ *	sticks; the one of a narrow window does not
+ */
+function put( height, layoutTop, paneTop, stageTop, scrolled, sticky ) {
+	rm.view.innerHeight = height;
+	rmLayout.rect = { top : layoutTop, left : 0, width : 900, height : 700 };
+	rmPane.rect = { top : paneTop, left : 0, width : 600, height : 500 };
+	rmPane.computed = { position : sticky === true ? 'sticky' : 'static' };
+	rmStage.rect = { top : stageTop, left : 0, width : 565, height : 352 };
+	rmLayout.parent.scrollTop = scrolled;
+}
+
+/** Put everything there, fit the stage, and say how tall it is then */
+function place( height, layoutTop, paneTop, stageTop, scrolled, sticky ) {
+	put( height, layoutTop, paneTop, stageTop, scrolled, sticky );
+	rm.design._fit();
+	return parseFloat( rmStage.style.height );
+}
+
+rmStage.parent.computed = { rowGap : '11.2px' };
+
+check( 'the stage is given its room as the screen is drawn - once, before any preview has come back - and the port is measured with that room: the height is on it when the scaler is asked',
+	rm.drawn.fits === 1 && ( function() { place( 800, 71, 71, 138, 0, true ); return rm.fitted[rm.fitted.length - 1].port === rmStage && rm.fitted[rm.fitted.length - 1].height === rmStage.style.height } )() );
+check( 'it is as tall as the window has left under it: the window\'s height less the top of the stage, the action bar - 4.25 rem, as the workbench declares it, 68px at a root of 16px - and the gap of the stack, 11.2px: 800 - 138 - 68 - 11.2',
+	near( parseFloat( rmStage.style.height ), 800 - 138 - 68 - 11.2 ) && rmStage.style.height === ( 800 - 138 - 68 - 11.2 )+ 'px' );
+check( '...whatever the page is scrolled to: the preview of a wide window sticks to the top of its pane once the controls are scrolled, and the stage is measured where it stands with the page at its top',
+	near( place( 800, -229, 15, 82, 300, true ), 800 - 138 - 68 - 11.2 ) && near( place( 800, 21, 21, 88, 50, true ), 800 - 138 - 68 - 11.2 ) );
+
+check( 'a higher window has less room and a lower one more: 600 and 1000',
+	near( place( 600, 71, 71, 138, 0, true ), 600 - 138 - 68 - 11.2 ) && near( place( 1000, 71, 71, 138, 0, true ), 1000 - 138 - 68 - 11.2 ) );
+check( '...never under 16 rem: 256px at a root of 16px, where the window is too low for more',
+	place( 400, 71, 71, 138, 0, true ) === 256 && place( 100, 71, 71, 138, 0, true ) === 256 );
+
+rm.view.fontSize = '15px';
+rmStage.parent.computed = { rowGap : '10.5px' };
+
+check( 'the rem is the root\'s own: the workbench\'s root is 15px, and its bar 4.25 rem is 63.75px there, the floor 240px',
+	near( place( 800, 71, 71, 138, 0, true ), 800 - 138 - 63.75 - 10.5 ) && place( 300, 71, 71, 138, 0, true ) === 240 );
+
+rm.view.bar = '64px';
+
+check( '...and a bar declared in px is as many px',
+	near( place( 800, 71, 71, 138, 0, true ), 800 - 138 - 64 - 10.5 ) );
+
+rm.view.bar = '';
+
+check( '...and a workbench that does not declare it has the 4.25 rem it ships with',
+	near( place( 800, 71, 71, 138, 0, true ), 800 - 138 - 63.75 - 10.5 ) );
+
+rm.view.bar = '4.25rem';
+rmBar.rect = { top : 712, left : 0, width : 1055, height : 88 };
+
+check( 'a bar that is taller than it declares - it wraps into rows, on a phone - is what the frame stays above: its own height, 88px',
+	near( place( 800, 71, 71, 138, 0, true ), 800 - 138 - 88 - 10.5 ) );
+check( '...and the page, which clears the foot of its content for the bar at the height declared, is given the rest by the layout as its bottom padding: the 24px the 88px come to over 63.75px',
+	rmLayout.style.paddingBottom === '24px' );
+
+rmBar.rect = { top : 760, left : 0, width : 1055, height : 40 };
+
+check( '...and one that is lower than it declares is not a reason to take the room: the declared height is the least, and the layout has no padding of its own then',
+	near( place( 800, 71, 71, 138, 0, true ), 800 - 138 - 63.75 - 10.5 ) && rmLayout.style.paddingBottom === '' );
+
+rmBar.rect = { top : 736, left : 0, width : 1055, height : 64 };
+
+check( '...nor is the quarter of a pixel the bar is high above its declared height, at a root of 15px: 64px over 63.75px is no padding',
+	near( place( 800, 71, 71, 138, 0, true ), 800 - 138 - 64 - 10.5 ) && rmLayout.style.paddingBottom === '' );
+
+rmBar.rect = { top : 0, left : 0, width : 0, height : 0 };
+rm.view.fontSize = '16px';
+rmStage.parent.computed = { rowGap : '11.2px' };
+
+/*	One column: the pane stands under the controls and is not sticky. On a tablet the stage is in the window, and has what
+	is left under it; on a phone it is below the window - and what is left is less than the least, so it is made for the
+	window it fills when the page is scrolled to it, with the top of its pane at the top of the window	*/
+check( 'in a narrow window, where the preview stands under the controls, the stage takes the room it has under its top where that is 16 rem or more: a tablet of 1180px, the stage at 799px',
+	near( place( 1180, 187, 732, 799, 0, false ), 1180 - 799 - 68 - 11.2 ) );
+check( '...wherever the page is scrolled to: 400px up and 24px up give the same stage',
+	near( place( 1180, 187 - 24, 732 - 24, 799 - 24, 24, false ), 1180 - 799 - 68 - 11.2 ) && near( place( 1180, 187 - 400, 732 - 400, 799 - 400, 400, false ), 1180 - 799 - 68 - 11.2 ) );
+
+rmBar.rect = { top : 756, left : 0, width : 390, height : 88 };
+
+check( '...and on a phone, where the stage is below the window and the room under it would be less than 16 rem, it is made for the window it fills with the top of its pane at the top of it: the window less the 100px the stage stands in its pane, the bar of two rows and the gap',
+	near( place( 844, 218, 857, 957, 0, false ), 844 - 100 - 88 - 11.2 ) && near( place( 844, 218 - 500, 857 - 500, 957 - 500, 500, false ), 844 - 100 - 88 - 11.2 ) );
+check( '...which is more than the least, and the same at every scroll: the preview is the height of the window when it is scrolled to',
+	place( 844, 218, 857, 957, 0, false ) > 256 && place( 844, 218 - 856, 857 - 856, 957 - 856, 856, false ) === place( 844, 218, 857, 957, 0, false ) );
+check( '...and the layout gives the page the bar it has beyond the bar it declares - 20px, the 88px over the 68px - so that the page can be scrolled until the top of the pane is at the top of the window',
+	rmLayout.style.paddingBottom === '20px' );
+
+rmBar.rect = { top : 712, left : 0, width : 390, height : 132 };
+
+check( '...whatever the rows come to: a bar of three rows, 132px, is 64px over, and the stage is that much lower for it',
+	near( place( 844, 218, 857, 957, 0, false ), 844 - 100 - 132 - 11.2 ) && rmLayout.style.paddingBottom === '64px' );
+
+rmBar.rect = { top : 0, left : 0, width : 0, height : 0 };
+
+/*	Opening a tab draws the controls anew, and in one column they stand over the stage: a column of another
+	height moves it, and nothing asks for a preview on the way. So the stage is fitted by the tab itself, to where
+	it stands then, and has the height of the place and not of the tab opened before. The stand-in lays nothing out:
+	the test puts the stage where the column of the tab about to be opened has it (put), and opens the tab by hand	*/
+const rmGlobal = place( 1180, 187, 732, 799, 0, false );
+const rmTabFits = rm.fitted.length;
+
+put( 1180, 187, 520, 587, 0, false );
+rm.tab('Fonts');
+
+check( 'in one column a tab that is opened fits the stage to where it stands under the controls of that tab, with no preview asked for or answered on the way: a shorter column, the stage 212px higher, is 212px taller',
+	rm.design._tab === 'fonts' && rm.requests.length === 0 && rm.fitted.length === rmTabFits + 1 && rm.fitted[rm.fitted.length - 1].port === rmStage
+	&& near( parseFloat( rmStage.style.height ), 1180 - 587 - 68 - 11.2 ) && near( parseFloat( rmStage.style.height ), rmGlobal + 212 ) );
+
+/*	The frame has another height with the stage, and the page in it lays itself out again only after its window has heard the
+	resize: it sets the heights of its covers in an animation frame that follows it. An anchor measured before that is where it
+	stood at the old height, so the jump of a tab that changed the height waits - for the resize, and for the animation frame
+	after it, which is queued after the page's own. The stand-in records what is listened to and asked for, and the test says
+	when the resize comes	*/
+check( 'the jump of that tab waits for the page in the frame: nothing is scrolled when the tab is opened, one resize is listened for on the frame\'s window, and a timer of 300ms stands behind it',
+	rm.stage.scrolls.length === 0 && rm.stage.listeners.length === 1 && rm.stage.listeners[0][0] === 'resize' && rm.stage.frames.length === 0 && rm.waiting( 300 ).length === 1 );
+
+rm.stage.resize();
+
+check( '...the resize itself scrolls nothing: it asks the frame\'s window for an animation frame, which is queued after the one the page lays its covers out in',
+	rm.stage.scrolls.length === 0 && rm.stage.frames.length === 1 && rm.stage.listeners.length === 1 );
+
+rm.stage.animate();
+
+check( '...and in that frame the page is scrolled, once, to the anchor of the tab - the typography block of Fonts, 700px below the top of the window with the page scrolled 100px, so 800 - and the listener is taken away',
+	rm.stage.scrolls.length === 1 && JSON.stringify( rm.stage.scrolls[0] ) === JSON.stringify( { top : 800, behavior : 'smooth' } ) && rm.stage.listeners.length === 0 );
+
+elapse( 300 );
+
+check( '...and the timer behind it, when it elapses, adds none', rm.stage.scrolls.length === 1 && rm.waiting( 300 ).length === 0 );
+
+put( 1180, 187, 1032, 1099, 0, false );
+rm.tab('Content');
+
+check( '...a taller one, with less than 16 rem left under the stage, gives it the height of the window it fills with the top of its pane at the top of it, as on a phone: 1180px less the 67px the stage stands in its pane, the bar and the gap',
+	rm.design._tab === 'content' && near( parseFloat( rmStage.style.height ), 1180 - 67 - 68 - 11.2 ) && rm.fitted.length === rmTabFits + 2 );
+
+// The frame may not be made another size after all, and then no resize comes: the timer takes the jump there
+const rmWaited = rm.stage.scrolls.length;
+
+elapse( 300 );
+
+check( 'where no resize comes the timer takes the jump there, 300ms after the tab was opened: once, to the anchor of the tab - the hero, 300px below the top of the window with the page scrolled 100px, so 400 - and the listener is taken away',
+	rmWaited === 1 && rm.stage.scrolls.length === 2 && JSON.stringify( rm.stage.scrolls[1] ) === JSON.stringify( { top : 400, behavior : 'smooth' } ) && rm.stage.listeners.length === 0 );
+
+put( 1180, 187, 732, 799, 0, false );
+rm.tab('Global');
+
+check( '...and the way back gives the stage the height it began with: it does not depend on which tabs were opened before',
+	rm.design._tab === 'global' && near( parseFloat( rmStage.style.height ), rmGlobal ) && near( rmGlobal, 1180 - 799 - 68 - 11.2 ) && rm.requests.length === 0 && rm.fitted.length === rmTabFits + 3 );
+
+// Whichever comes first jumps and the other finds it done: here the resize is heard, then the timer elapses, and the frame it asked for comes last
+const rmHeld = rm.stage.scrolls.length;
+
+rm.stage.resize();
+elapse( 300 );
+rm.stage.animate();
+
+check( '...and the jump is made once, whichever comes first: the resize heard and the timer before the animation frame it asked for - one scroll, to the top of the page, which Global is',
+	rmHeld === 2 && rm.stage.scrolls.length === 3 && JSON.stringify( rm.stage.scrolls[2] ) === JSON.stringify( { top : 0, behavior : 'smooth' } ) && rm.stage.listeners.length === 0 && rm.stage.frames.length === 0 );
+
+// Beside the controls the pane sticks and the column does not move the stage: it has the same height under every tab, from a height that was not the right one
+rmStage.style.height = '123px';
+put( 800, 71, 71, 138, 0, true );
+rm.tab('Colours');
+
+check( '...and in two columns, where the pane sticks, a tab fits it as well: 800px high, the stage at 138px, whatever height it had before',
+	near( parseFloat( rmStage.style.height ), 800 - 138 - 68 - 11.2 ) && rm.fitted.length === rmTabFits + 4 );
+
+// What that tab waited for comes. Then a tab that leaves the stage as tall as it was has nothing to wait for
+rm.stage.resize();
+rm.stage.animate();
+elapse( 300 );
+
+const rmStill = rm.stage.scrolls.length;
+
+put( 800, 71, 71, 138, 0, true );
+rm.tab('Fonts');
+
+check( 'where the fit leaves the stage as tall as it was - in two columns every tab has the one height - the jump is made at once: one scroll, to the anchor of the tab, with no resize listened for and no timer set',
+	rm.design._tab === 'fonts' && rm.stage.scrolls.length === rmStill + 1 && JSON.stringify( rm.stage.scrolls[rmStill] ) === JSON.stringify( { top : 800, behavior : 'smooth' } )
+	&& rm.stage.listeners.length === 0 && rm.waiting( 300 ).length === 0 );
+
+// A frame whose page cannot be reached has nothing to wait for, and a window that cannot be listened to is not waited on
+const rmWindow = rm.stage.document.defaultView;
+const rmListen = rmWindow.addEventListener;
+
+rm.stage.reachable = false;
+put( 1180, 187, 520, 587, 0, false );
+
+check( 'a frame the panel cannot reach is not waited for: the tab is opened, nothing throws, nothing is listened to and no timer is set',
+	threw( function() { rm.tab('Components') } ) === false && rm.design._tab === 'components' && rm.stage.listeners.length === 0 && rm.waiting( 300 ).length === 0 );
+
+rm.stage.reachable = true;
+rmWindow.addEventListener = undefined;
+put( 1180, 187, 1032, 1099, 0, false );
+
+const rmGone = rm.stage.scrolls.length;
+
+rm.tab('Buttons');
+
+check( '...nor is a window that cannot be listened to: the jump is made at once, to the anchor of the tab, and no timer is set',
+	rm.stage.scrolls.length === rmGone + 1 && JSON.stringify( rm.stage.scrolls[rmGone] ) === JSON.stringify( { top : 1300, behavior : 'smooth' } ) && rm.waiting( 300 ).length === 0 );
+
+rmWindow.addEventListener = rmListen;
+
+// The colours column is the one the checks that follow read the brand warning off
+rm.tab('Colours');
+
+/*	The answer of a preview can give the colours column another line, the brand warning, and in one column that
+	moves the stage. It is fitted once the answer is taken over and not before: the stage stands 40px lower while
+	the warning is shown, which the stand-in is told by the warning's own state	*/
+put( 1180, 187, 732, 799, 0, false );
+
+const rmWarning = rm.byId('design-brand-warning');
+const rmLowered = function() { return { top : 799 + ( rmWarning.hidden === false ? 40 : 0 ), left : 0, width : 565, height : 352 } };
+
+Object.defineProperty( rmStage, 'rect', { configurable : true, enumerable : true, get : rmLowered } );
+rm.design._fit();
+
+const rmUnwarned = parseFloat( rmStage.style.height );
+const rmAnswered = rm.stage.scrolls.length;
+
+rm.design._previewNow();
+rm.answer( 200, { css : ':root{}', document : '', style : 'design-preview-css', accent : '#8ad0f5', brand : { light : { safe : false, ratio : 3.1, target : 4.5 } }, notes : [] } );
+
+check( 'the answer of a preview is fitted once it is taken over, not before: the brand warning it shows puts the stage 40px lower in one column, and the stage is that much shorter for it',
+	rmWarning.hidden === false && near( rmUnwarned, 1180 - 799 - 68 - 11.2 ) && near( parseFloat( rmStage.style.height ), rmUnwarned - 40 ) );
+
+/*	The jump after the answer is made like the one of a tab: the fit gave the frame another height, and the page in it lays
+	itself out again only after its window has heard the resize - an anchor measured before that is where it stood at the old
+	height. So the answer scrolls nothing when it is taken over, and the page goes to the anchor once the frame has heard it	*/
+check( '...and the jump that follows it waits for the page in the frame, as a tab\'s does: the stage changed its height, so nothing is scrolled when the answer is taken over, one resize is listened for on the frame\'s window, and a timer of 300ms stands behind it',
+	rm.stage.scrolls.length === rmAnswered && rm.stage.listeners.length === 1 && rm.stage.listeners[0][0] === 'resize' && rm.stage.frames.length === 0 && rm.waiting( 300 ).length === 1 );
+
+rm.stage.resize();
+rm.stage.animate();
+elapse( 300 );
+
+check( '...then the page is scrolled, once, to the anchor of the open tab - the grounds of Colours, 450px below the top of the window with the page scrolled 100px, so 550 - the listener is taken away, and the timer behind it adds no second scroll',
+	rm.stage.scrolls.length === rmAnswered + 1 && JSON.stringify( rm.stage.scrolls[rmAnswered] ) === JSON.stringify( { top : 550, behavior : 'smooth' } )
+	&& rm.stage.listeners.length === 0 && rm.stage.frames.length === 0 && rm.waiting( 300 ).length === 0 );
+
+// The stage is a plain place again, for the checks that follow
+Object.defineProperty( rmStage, 'rect', { configurable : true, enumerable : true, writable : true, value : { top : 799, left : 0, width : 565, height : 352 } } );
+
+rmStage.style.height = '123px';
+rmStage.rect = { top : 0, left : 0, width : 0, height : 0 };
+rm.design._fit();
+
+check( 'a pane that is not on screen has no stage to give room to: its height is left as it is - and the scaler is asked all the same',
+	rmStage.style.height === '123px' && rm.fitted[rm.fitted.length - 1].port === rmStage );
+
+check( 'the window\'s resizing is heard once however often the screen is drawn: one listener, on the window, that waits for the movement to stop',
+	rm.heard.length === 1 && rm.heard[0][0] === 'resize' && rm.heard[0][1] === rm.design._fitLater && rm.design._bound === true );
+
+const rmFits = rm.fitted.length;
+
+rm.design.showCurrent();
+rm.design.showCurrent();
+
+check( '...and not again by a screen that is drawn anew - each drawing fits its stage once, and sets no listener',
+	rm.heard.length === 1 && rm.fitted.length === rmFits + 2 );
+
+rm.design._fitLater();
+rm.design._fitLater();
+
+check( 'a resizing asks for the fit when it has stopped: the second step of it cleared the wait of the first, and one of 150ms is waiting',
+	rm.waiting( 150 ).length === 1 && rm.waiting( 150 )[0][0] === rm.design._fit );
+
+// The screen was drawn anew: the stage that is there now is the one that is fitted
+const rmDrawn = rm.byId('design-frame').parent;
+rmDrawn.parent.computed = { rowGap : '11.2px' };
+rmDrawn.rect = { top : 799, left : 0, width : 565, height : 352 };
+rm.byId('design-preview').rect = { top : 732, left : 0, width : 600, height : 500 };
+rm.byId('design-layout').rect = { top : 187, left : 0, width : 770, height : 700 };
+rm.view.innerHeight = 1280;
+rm.waiting( 150 )[0][0]();
+
+check( '...and what runs then fits the stage to the window as it is by then: 1280px high, the stage at 799px',
+	rmDrawn !== rmStage && near( parseFloat( rmDrawn.style.height ), 1280 - 799 - 68 - 11.2 ) && rm.fitted[rm.fitted.length - 1].height === rmDrawn.style.height );
 
 console.log('');
 
@@ -1845,6 +2332,7 @@ check( '...it is on at the start of the visit: checked, and the panel\'s flag sa
 
 fw.tab('Content');
 const fwScrolled = fw.stage.scrolls.length;
+const fwFitted = fw.fitted.length;
 
 check( 'while it is on, the frame jumps by itself: a tab that is opened scrolls it, to the anchor of the tab',
 	fwScrolled === 1 && JSON.stringify( fw.stage.scrolls[0] ) === JSON.stringify( { top : 400, behavior : 'smooth' } ) );
@@ -1862,16 +2350,16 @@ fw.tab('Components');
 fw.tab('Global');
 fw.tab('Content');
 
-check( 'with it off a tab that is opened does not scroll the frame - four tabs, no scrollTo, and the frame\'s page is not even asked for the element',
-	fw.stage.scrolls.length === fwScrolled && fw.stage.asked.length === fwAsked && fw.design._tab === 'content' );
+check( 'with it off a tab that is opened does not scroll the frame - four tabs, no scrollTo, and the frame\'s page is not even asked for the element - but the stage is fitted all the same, by each of them: four fits',
+	fw.stage.scrolls.length === fwScrolled && fw.stage.asked.length === fwAsked && fw.design._tab === 'content' && fw.fitted.length === fwFitted + 4 );
 
 fw.move( 'Quiet variant', 'more' );
 fw.design._previewNow();
 fw.answer( 200, { css : ':root{--x:1}', document : '', style : 'design-preview-css', accent : '#8ad0f5', brand : listing().brand, notes : [] } );
 
-check( '...nor does a change: the preview comes back and its stylesheet is swapped inside the frame that stands, which stays where it is',
+check( '...nor does a change: the preview comes back and its stylesheet is swapped inside the frame that stands, which stays where it is - and the stage is fitted once more with the answer',
 	fw.stage.style.textContent === ':root{--x:1}' && fw.stage.scrolls.length === fwScrolled && fw.stage.asked.indexOf('cards') === -1
-	&& fw.fitted.length === 1 && fw.design._edit.knobs.content.quiet === 1 );
+	&& fw.fitted.length === fwFitted + 5 && fw.design._edit.knobs.content.quiet === 1 );
 
 fw.design._frames = null;
 fw.design._previewNow();
@@ -2109,10 +2597,10 @@ console.log('');
 
 // --- Applying asks first ---------------------------------------------------------
 //
-// A draft is not a website. Two buttons, a line under them saying which is
-// which, and a confirmation before anything is written - built from what
-// design/plan says, so it names the files, the ones that are not Design's and
-// the shortcodes a frame would lose
+// A draft is not a website. Two buttons, and a confirmation before anything is
+// written - built from what design/plan says, so it names the files, the ones
+// that are not Design's and the shortcodes a frame would lose. What was done is
+// said in the line of the action bar, and the chip beside it is drawn again
 
 console.log( 'Applying' );
 
@@ -2133,12 +2621,10 @@ const buttons = byTag( byClass( asking.form, 'nino-admin-actionbar' )[0], 'butto
 
 check( 'the two buttons say what they do: save a draft, apply to the website - and there is no take-over button, and no way back to a version that is not there',
 	buttons.indexOf('Save draft') !== -1 && buttons.indexOf('Apply to website') !== -1 && buttons.length === 3 && asking.byId('design-restore') === null );
-check( 'a line under the bar says which of the two does what',
-	( asking.byId('design-actions-hint') || {} ).textContent === TEXT['/_admin/design/hint/actions']
-	&& hasClass( asking.byId('design-actions-hint') || element('p'), 'nino-admin-hint' ) );
-check( '...and it stands after the bar, not in it', asking.form.children.indexOf( asking.byId('design-actions-hint') ) > asking.form.children.indexOf( byClass( asking.form, 'nino-admin-actionbar' )[0] ) );
-check( 'with files that are not Design\'s the state is foreign, and the summary says so in one word - the files are named where the question is asked, in the confirmation below',
-	asking.design._stateKey() === 'foreign' && JSON.stringify( asking.summary().pop() ) === JSON.stringify( [ 'Applied file', 'Not written by Design' ] )
+check( 'no line under the bar says which of the two does what: the hint of the actions is gone from the screen and from the panel\'s words in both languages - nobody read it',
+	asking.byId('design-actions-hint') === null && TEXT['/_admin/design/hint/actions'] === undefined && asking.form.children[asking.form.children.length - 1] === asking.bar() );
+check( 'with files that are not Design\'s the state is foreign, and the chip says so in one word - the files are named where the question is asked, in the confirmation below',
+	asking.design._stateKey() === 'foreign' && asking.chip().textContent === 'Not written by Design' && asking.chip().dataset.state === 'foreign'
 	&& byClass( asking.form, 'design-state--warn' ).length === 0 && asking.byId('design-state') === null );
 
 asking.byId('design-apply').fire('click');
@@ -2167,6 +2653,9 @@ asking.answer( 200, listing( { exists : true } ) );
 
 check( 'what the screen says afterwards is that it applied, that files were replaced, and what to put back by hand',
 	( asking.byId('design-msg') || {} ).textContent === [ TEXT['/_admin/design/msg/applied'], TEXT['/_admin/design/msg/takenover'], say( '/_admin/design/msg/lost', '[consent-settings]' ) ].join(' ') );
+check( '...in the line of the bar, the whole of it its title, and the chip is drawn again from what the server then answered: the files are Design\'s now and the state is up to date',
+	asking.line().parent === asking.bar() && asking.line().title === asking.line().textContent && asking.line().className === ''
+	&& asking.chip().parent === asking.bar() && asking.chip().textContent === 'Up to date' && asking.chip().dataset.state === 'current' );
 
 // Saying no leaves the draft saved and the website alone
 const declined = panel( {} );
@@ -2180,7 +2669,8 @@ check( 'no in the confirmation sends no apply - it reloads the panel',
 
 declined.answer( 200, listing( {} ) );
 
-check( '...and says the draft is saved and not applied', ( declined.byId('design-msg') || {} ).textContent === TEXT['/_admin/design/msg/cancelled'] );
+check( '...and says the draft is saved and not applied, in the line of the bar', ( declined.byId('design-msg') || {} ).textContent === TEXT['/_admin/design/msg/cancelled']
+	&& declined.line().parent === declined.bar() && declined.line().title === TEXT['/_admin/design/msg/cancelled'] );
 
 // Files that are all Design's: no force, nothing replaced, nothing lost
 const ours = panel( { previous : { at : '2026-09-02T08:30:00+00:00', files : [ '/assets/theme.css' ] } } );
@@ -2219,6 +2709,12 @@ drafting.answer( 200, {} );
 
 check( 'saving a draft sends no plan and asks nothing', drafting.confirms.length === 0 && JSON.stringify( endpoints( drafting ) ) === JSON.stringify( [ 'list' ] ) );
 
+drafting.answer( 200, listing( { current : false } ) );
+
+check( '...it says that the draft is saved in the line of the bar, and the chip is drawn again from the answer: the file does not answer to the selection - saved, not applied',
+	drafting.line().textContent === TEXT['/_admin/design/msg/saved'] && drafting.line().title === TEXT['/_admin/design/msg/saved'] && drafting.line().className === ''
+	&& drafting.chip().textContent === 'Saved, not applied' && drafting.chip().dataset.state === 'drifted' && drafting.chip().parent === drafting.bar() );
+
 console.log('');
 
 
@@ -2228,9 +2724,9 @@ console.log( 'Restoring' );
 
 const empty = panel( {} );
 
-check( 'with no previous version there is nothing to restore: no button, and the action bar holds the three it always did',
+check( 'with no previous version there is nothing to restore: no button, and the action bar holds the line, the chip and the three buttons it always did',
 	empty.byId('design-restore') === null
-	&& byClass( empty.form, 'nino-admin-actionbar' )[0].children.map( function( button ) { return button.id } ).join() === 'design-reset,design-save,design-apply' );
+	&& byClass( empty.form, 'nino-admin-actionbar' )[0].children.map( function( button ) { return button.id } ).join() === 'design-msg,design-state-word,design-reset,design-save,design-apply' );
 
 const kept = panel( { previous : { at : '2026-09-02T08:30:00+00:00', files : [ '/assets/theme.css' ] } } );
 const restoreButton = kept.byId('design-restore');
@@ -2242,7 +2738,7 @@ kept.design._restore = function( button ) { restoreCalls.push( button ); return 
 check( 'with one the action bar has a second quiet button, before Reset: the label of the way back and, for its title, the sentence with the date of that version',
 	restoreButton !== null && restoreButton.tagName === 'BUTTON' && restoreButton.type === 'button' && restoreButton.parent === keptBar
 	&& restoreButton.textContent === 'Restore previous version' && restoreButton.title === 'Previous version from 2026-09-02 08:30'
-	&& keptBar.children.map( function( button ) { return button.id } ).join() === 'design-restore,design-reset,design-save,design-apply'
+	&& keptBar.children.map( function( button ) { return button.id } ).join() === 'design-msg,design-state-word,design-restore,design-reset,design-save,design-apply'
 	&& restoreButton.hidden === false && kept.byId('design-reset').hidden === true );
 check( '...and the card that used to hold the button, and the line that dated the version, are gone',
 	kept.byId('design-state') === null && byClass( kept.form, 'design-previous' ).length === 0 && byClass( kept.byId('design-controls'), 'nino-admin-hint' ).length === 0 );
@@ -2262,23 +2758,26 @@ check( 'a yes posts the restore', JSON.stringify( endpoints( kept ) ) === JSON.s
 kept.answer( 200, {} );
 kept.answer( 200, listing( {} ) );
 
-check( 'and the panel is drawn again from the new state, saying so', ( kept.byId('design-msg') || {} ).textContent === TEXT['/_admin/design/msg/restored'] );
+check( 'and the panel is drawn again from the new state, saying so in the line of the bar', ( kept.byId('design-msg') || {} ).textContent === TEXT['/_admin/design/msg/restored']
+	&& kept.line().parent === kept.bar() && kept.line().title === TEXT['/_admin/design/msg/restored'] && kept.chip().textContent === 'Up to date' );
 
 const noted = panel( { previous : { at : '2026-09-02T08:30:00+00:00', files : [] } } );
 noted.willConfirm( true );
 noted.byId('design-restore').fire('click');
 noted.answer( 200, { notes : [ 'restored, but could not keep the version it replaced in data/design-previous.php' ] } );
-noted.answer( 200, listing( {} ) );
+noted.answer( 200, listing( { current : false } ) );
 
-check( 'a restore that went through with a note says restored, and the note beside it',
-	( noted.byId('design-msg') || {} ).textContent === TEXT['/_admin/design/msg/restored']+ ' restored, but could not keep the version it replaced in data/design-previous.php' );
+check( 'a restore that went through with a note says restored, and the note beside it - in the line of the bar with the class of a note - and the chip is the state the restored files are in: saved, not applied',
+	( noted.byId('design-msg') || {} ).textContent === TEXT['/_admin/design/msg/restored']+ ' restored, but could not keep the version it replaced in data/design-previous.php'
+	&& noted.line().className === 'nino-admin-hint' && noted.chip().textContent === 'Saved, not applied' && noted.chip().dataset.state === 'drifted' );
 
 const failing = panel( { previous : { at : '2026-09-02T08:30:00+00:00', files : [] } } );
 failing.byId('design-restore').fire('click');
 failing.answer( 500, { error : 'could not write /assets/theme.css' } );
 
-check( 'a restore that failed says why and does not redraw', ( failing.byId('design-msg') || {} ).textContent === '(500) could not write /assets/theme.css'
-	&& failing.requests.length === 0 );
+check( 'a restore that failed says why and does not redraw: in the line of the bar, which carries the class of a failure and the whole of it as its title',
+	( failing.byId('design-msg') || {} ).textContent === '(500) could not write /assets/theme.css' && failing.line().className === 'nino-admin-error'
+	&& failing.line().title === '(500) could not write /assets/theme.css' && failing.requests.length === 0 );
 
 // --- Asking the workbench ----------------------------------------------------------
 
@@ -2335,6 +2834,9 @@ check( '...a knob that was moved does - the same answer the way back is shown fo
 
 tracked.byId('design-reset').fire('click');
 check( '...and the way back, which draws the stored selection again, makes it not', registered.isDirty() === false && tracked.byId('design-reset').hidden === true );
+check( '...and says so in the line of the bar, on the screen that was drawn again, with the chip beside it as the files stand',
+	tracked.line().textContent === TEXT['/_admin/design/msg/reverted'] && tracked.line().title === TEXT['/_admin/design/msg/reverted'] && tracked.line().className === ''
+	&& tracked.line().parent === tracked.bar() && tracked.chip().textContent === 'Up to date' && tracked.chip().parent === tracked.bar() );
 
 tracked.tab('Content');
 tracked.move( 'Hero title', 'more' );
@@ -2360,8 +2862,9 @@ refused.move( 'Hero title', 'more' );
 savedFor = [];
 registry.entries['design'].save( function( ok ) { savedFor.push( ok ) } );
 refused.answer( 500, { error : 'could not write data/design.php' } );
-check( 'a draft the server turns down says so, on the screen and to the shell, and the way back stays',
+check( 'a draft the server turns down says so, in the line of the bar and to the shell, as a failure with the whole of it as its title, and the way back stays',
 	savedFor.length === 1 && savedFor[0] === false && ( refused.byId('design-msg') || {} ).textContent === '(500) could not write data/design.php'
+	&& refused.line().className === 'nino-admin-error' && refused.line().title === '(500) could not write data/design.php'
 	&& refused.byId('design-reset').hidden === false );
 
 // The shell answers a refused Save by showing the panel again
@@ -2414,13 +2917,13 @@ else {
 
 		drawn.push( tab );
 
-		if( whole.body().children.length === 0 || whole.summary().length < 2 )
+		if( whole.body().children.length === 0 || whole.chip() === null || whole.chip().textContent === '' )
 			blank.push( tab );
 
 		unsaid = unsaid.concat( unwritten( whole ) );
 	} );
 
-	check( 'the server\'s answer draws all six tabs, each with controls in it and a summary under the frame'+ ( failed.length === 0 ? '' : ' - threw: '+ failed.join() ),
+	check( 'the server\'s answer draws all six tabs, each with controls in it and the state of the files on the chip in the bar'+ ( failed.length === 0 ? '' : ' - threw: '+ failed.join() ),
 		drawn.join() === TABS.join() && failed.length === 0 && blank.length === 0 );
 	check( '...and every word the screen shows for it is one the panel\'s texts carry - the effects, the families, the knobs, the modes'+ ( unsaid.length === 0 ? '' : ' - missing: '+ unsaid.slice( 0, 4 ).join() ), unsaid.length === 0 );
 
@@ -2452,9 +2955,9 @@ else {
 			const chosen = real.fonts[role];
 			return offered( whole.byId('design-font-'+ role+ '-family') ).map( function( option ) { return option[0] } ).join() === real.options[role].join()
 				&& shown( whole.byId('design-font-'+ role+ '-family') ) === chosen.family && shown( whole.byId('design-font-'+ role+ '-weight') ) === chosen.weight
-				&& whole.byId('design-font-'+ role+ '-size').value === chosen.size
+				&& whole.byId('design-font-'+ role+ '-size').value === ( chosen.size || real.inherited[role] )
 				&& whole.byId('design-font-'+ role+ '-size').getAttribute('min') === String( real.bounds[role][0] ) && whole.byId('design-font-'+ role+ '-size').getAttribute('max') === String( real.bounds[role][1] )
-				&& whole.byId('design-font-'+ role+ '-size').getAttribute('placeholder') === real.inherited[role]
+				&& whole.byId('design-font-'+ role+ '-size').getAttribute('placeholder') === null
 				&& ( role === 'code' ? whole.byId('design-font-code-uppercase') === null : whole.byId('design-font-'+ role+ '-uppercase').checked === chosen.uppercase );
 		} ) );
 
@@ -2482,11 +2985,11 @@ else {
 			tabProblems.push( tab+ ': grey rows '+ off.join() );
 		if( lit === false )
 			tabProblems.push( tab+ ': a step is lit that the knob does not stand at' );
-		if( whole.summary().length !== answered.length + 2 )
-			tabProblems.push( tab+ ': summary of '+ whole.summary().length );
+		if( whole.lit().length !== answered.length )
+			tabProblems.push( tab+ ': '+ whole.lit().length+ ' rows lit for '+ answered.length+ ' knobs' );
 	} );
 
-	check( 'each knob tab is the select of its template over a row for every knob of the tab, grey where the chosen template does not answer to it, the others lit on the position stored, and a summary of the rest'
+	check( 'each knob tab is the select of its template over a row for every knob of the tab, grey where the chosen template does not answer to it, and the others lit on the position stored'
 		+ ( tabProblems.length === 0 ? '' : ' - '+ tabProblems.join(' | ') ), tabProblems.length === 0 && Object.keys( real.tabs ).join() === 'content,buttons,components' );
 	check( '...and the templates the server stored are the ones with something grey: a template that leaves a knob out is on show',
 		Object.keys( real.tabs ).some( function( tab ) { return ( ( rowOf( tab ).catalogue[ rowOf( tab ).set ] || {} ).knobs || [] ).length < real.tabs[tab].length } ) );

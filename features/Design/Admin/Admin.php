@@ -192,8 +192,8 @@ namespace Nino\Modules\Design {
 				/*	The five font roles: what each has, the families to choose from
 					(and which of them each role may be given), the three weights
 					and the bounds a typed size is held inside of - with the size
-					Nino.css gives each role, which an empty field shows as its
-					placeholder. The frontend carries none of these tables */
+					Nino.css gives each role, which the field of a role that chose
+					none shows as its value. The frontend carries none of these tables */
 				'roles' 		=> Fonts::ROLES,
 				'fonts' 		=> (array) ( $setup['fonts'] ?? [] ),
 				'families' 	=> $families,
