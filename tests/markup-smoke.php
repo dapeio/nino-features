@@ -95,7 +95,7 @@ function markupStrings( string $file ): array {
 			continue;
 
 		// An icon, which every panel answers the workbench with as a string
-		// (see the panel contract in docs/features.md) and which is geometry
+		// (see the panel recipe, Nino's docs/recipes/admin-panel.md) and which is geometry
 		// rather than a view
 		if( preg_match( '/^\W*<svg/', trim( $token[1] ) ) === 1 )
 			continue;

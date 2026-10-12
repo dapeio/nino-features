@@ -285,7 +285,7 @@ manual; what this catalogue adds:
   `/nino/newsletter/pending-days` - the manual's `elements/privacy.php` line.
 - **The manual** names the file under `install` and says, in every feature
   that has one, that the section is a starting point and no legal advice. The
-  notice in full is in Nino's `docs/development.md` ("Legal").
+  notice in full is in Nino's `docs/setup.md` ("Modules").
 - **No dependency on the module.** A feature does not require `Legal`: the
   `elements` key is read by a Nino that has it and ignored by one that does
   not. What a feature does with the module itself - Consent's button, which a
