@@ -71,18 +71,20 @@ return [
 	// It brings content an editor maintains, the reasoning Gallery files
 	// itself under
 	'category'		=> 'content',
-	'version'			=> '1.0.0',
-	'nino'				=> '^1.3',
+	'version'			=> '1.1.0',
+	'nino'				=> '^1.8',
 	'requires'		=> [],
 	// The links are elements, in /elements/social.php - the project's own type
 	// file, which a backup carries like every other
 	'data'				=> [],
+	// Into the site's style bundle, behind the kernel's own files
+	'assets'			=> [ '/features/Social/assets/social.css' ],
 	// Nothing to set: which links, how many and how large is said where they
 	// are drawn, and a header and a footer want different answers
 	'settings'		=> [],
 	/*	The three shortcodes as the Builder offers them: [social-link] and [social-icon]
 		name their link and their icon by an attribute, and by the first argument where
-		a call writes it bare. Nino 1.5 ignores the key	*/
+		a call writes it bare	*/
 	'components'	=> [
 		'social' => [
 			'label'			=> [ 'en_US' => 'Social links', 'de_DE' => 'Social-Links' ],

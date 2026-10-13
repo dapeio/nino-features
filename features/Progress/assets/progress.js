@@ -1,9 +1,9 @@
 /**
  *	Nino - Reading Progress
  *	progress.js		Keeps a bar in step with how far through a text the reader is.
- *					No dependencies, no build step - bundled into the project's own
- *					/.cache/script.js the same way the kernel bundles
- *					Nino.js/Nino.ui.js (see Progress::init()).
+ *					No build step; it needs Nino.js, which every site loads: the
+ *					kernel bundles it into the project's own /.cache/script.js
+ *					behind it, from the manifest's assets.
  *
  *					What is measured is a choice: the whole page counts the footer
  *					as part of the article, so "finished" arrives after the last
@@ -14,7 +14,8 @@
  *					The width is a custom property the stylesheet uses, so what
  *					happens on every frame of a scroll is a paint rather than a
  *					layout read followed by a style write. Scrolling costs one
- *					animation frame at most, not one call per event.
+ *					animation frame at most, not one call per event: Nino.js
+ *					throttles the scroll and the resize that paint() hangs off.
  *
  *	@package						Dape/Nino
  *	@author							David Perchermeier <mail@dape.io>
@@ -27,7 +28,6 @@
 	var SELECTOR = '.nino-progress';
 
 	var bars = [];
-	var pending = false;
 
 	/**
 	 *	How far through one bar's subject the page has been scrolled, 0 to 1
@@ -80,8 +80,6 @@
 	 */
 	function paint() {
 
-		pending = false;
-
 		for( var i = 0; i < bars.length; i++ ) {
 
 			var value = share( bars[i] );
@@ -94,24 +92,6 @@
 			if( bars[i].getAttribute( 'role' ) === 'progressbar' )
 				bars[i].setAttribute( 'aria-valuenow', String( Math.round( value * 100 ) ) );
 		}
-	}
-
-	/**
-	 *	One frame at most per scroll, rather than one call per scroll event
-	 *
-	 *	@return		void
-	 */
-	function schedule() {
-
-		if( pending === true )
-			return;
-
-		pending = true;
-
-		if( typeof window.requestAnimationFrame === 'function' )
-			window.requestAnimationFrame( paint );
-		else
-			paint();
 	}
 
 	/**
@@ -159,13 +139,10 @@
 			return;
 
 		paint();
-		window.addEventListener( 'scroll', schedule, { passive : true } );
-		window.addEventListener( 'resize', schedule, { passive : true } );
+		Nino.events.bindCallback( 'scroll', paint );
+		Nino.events.bindCallback( 'resize', paint );
 	}
 
-	if( document.readyState === 'loading' )
-		document.addEventListener( 'DOMContentLoaded', init );
-	else
-		init();
+	Nino.events.bindCallback( 'ready', init );
 
 } )();

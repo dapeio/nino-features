@@ -5,15 +5,14 @@
  *							character with the cursor riding at the writing head, hold
  *							it, take it away again - fading, or erasing it backwards -
  *							then the next one, stopping on the last line or looping
- *							where the container asks for it. No dependencies, no
- *							build step - not even on Nino.js: bundled into the
- *							project's own /.cache/script.js the same way the
- *							kernel bundles Nino.js/Nino.ui.js (see
- *							Typewriter::init()), and a project that dropped the
- *							kernel's own scripts still gets a working typewriter.
+ *							where the container asks for it. No build step; it needs
+ *							Nino.js and Nino.ui.js, which every site loads: the
+ *							kernel bundles it into the project's own
+ *							/.cache/script.js behind them, from the manifest's
+ *							assets.
  *
  *							Every timing is a data attribute on the container itself
- *							(see DEFAULTS below and the feature's manual) - this
+ *							(see OPTIONS below and the feature's manual) - this
  *							file is a static asset, never rendered through the fill
  *							engine (docs/development.md, "Assets Are Not Templates"),
  *							so the element is the only place a project can say how
@@ -22,13 +21,14 @@
  *							The markup this leaves is three spans per line: what is
  *							typed, what is not typed yet - laid out, only invisible,
  *							so nothing moves while a line grows - and the line's own
- *							text once for a screen reader. The cursor is one element
- *							for the whole typewriter, moved between the two halves of
- *							whichever line is being written. typewriter.css styles
- *							all of it, and matches none of it before this file runs:
- *							without JavaScript, and for a visitor who asked for
- *							reduced motion, the container stays what the markup says
- *							it is - paragraphs below one another.
+ *							text once for a screen reader, in the kernel's
+ *							.nino-sr-only. The cursor is one element for the whole
+ *							typewriter, moved between the two halves of whichever line
+ *							is being written. typewriter.css styles all of it, and
+ *							matches none of it before this file runs: without
+ *							JavaScript, and for a visitor who asked for reduced motion,
+ *							the container stays what the markup says it is - paragraphs
+ *							below one another.
  *
  *							A container that carries data-typewriter-toggle gets a
  *							button after it that pauses the typing and takes it up
@@ -51,170 +51,30 @@
 	'use strict';
 
 	// Every one of these is overridable on the container, the key dashed and
-	// prefixed: data-typewriter-speed, data-typewriter-backspace-speed, ...
-	var DEFAULTS = {
-		lines					: 'p',			// selector of the lines inside the container
-		start					: 'view',		// 'view' starts in the viewport, 'load' right away
-		startDelay		: 0,				// ms before the first line, once
-		speed					: 45,				// ms per typed character
-		hold					: 1600,			// ms the finished line stays
-		exit					: 'fade',		// 'fade' fades the line out, 'backspace' erases it
-		fade					: 400,			// ms of the fade in and out, 0 switches it off
-		backspaceSpeed	: 25,			// ms per erased character
-		pause					: 300,			// ms between one line and the next
-		loop					: false,		// true starts over after the last line instead of stopping
-		cursor				: '|'				// the cursor character, '' leaves it out
+	// prefixed: data-typewriter-speed, data-typewriter-backspace-speed, ... The
+	// rules Nino.ui.options() reads them by, each with its default as the
+	// fallback. A flag says yes with 1, true, yes or on and no with 0, false, no
+	// or off; any other word is no answer and leaves it at its default
+	var OPTIONS = {
+		lines				: { type : 'selector', fallback : 'p' },									// selector of the lines inside the container
+		start				: { type : 'enum', values : [ 'view', 'load' ], fallback : 'view' },		// 'view' starts in the viewport, 'load' right away
+		'start-delay'		: { type : 'int', fallback : 0 },											// ms before the first line, once
+		speed				: { type : 'int', fallback : 45 },											// ms per typed character
+		hold				: { type : 'int', fallback : 1600 },										// ms the finished line stays
+		exit				: { type : 'enum', values : [ 'fade', 'backspace' ], fallback : 'fade' },	// 'fade' fades the line out, 'backspace' erases it
+		fade				: { type : 'int', fallback : 400 },											// ms of the fade in and out, 0 switches it off
+		'backspace-speed'	: { type : 'int', fallback : 25 },											// ms per erased character
+		pause				: { type : 'int', fallback : 300 },											// ms between one line and the next
+		loop				: { type : 'flag', fallback : false },										// true starts over after the last line instead of stopping
+		// An empty cursor is a value of its own: a typewriter without a cursor
+		// character is a typewriter without a cursor
+		cursor				: { type : 'text', fallback : '|', empty : true },							// the cursor character, '' leaves it out
+		toggle				: { type : 'text', fallback : '' }											// the label of the pause button, '' for none
 	};
 
 	// The two classes the toggle takes; the kernel's own button classes carry
 	// its look, so what this file adds is the pressed state (typewriter.css)
 	var BUTTON = 'nino-btn nino-btn--outline nino-btn--small nino-typewriter-toggle';
-
-	var OFF = [ '0', 'false', 'off', 'no' ];
-
-	/**
-	 *	One data-typewriter-* attribute, '' and a missing attribute alike
-	 *	falling back to the default
-	 *
-	 *	@param		{Element}	el						Typewriter container
-	 *	@param		{string}	name					Attribute without its data-typewriter- prefix
-	 *	@param		{string}	fallback			Default to keep when it is missing or empty
-	 *
-	 *	@return		{string}
-	 */
-	function text( el, name, fallback ) {
-		var value = el.getAttribute( 'data-typewriter-' + name );
-		return ( value === null || value === '' ) ? fallback : value;
-	}
-
-	/**
-	 *	The same as a count of milliseconds. An unreadable attribute makes
-	 *	parseInt() answer NaN, and a NaN would time the whole animation with
-	 *	it - a typo in one attribute must cost that one attribute, no more
-	 *
-	 *	@param		{Element}	el						Typewriter container
-	 *	@param		{string}	name					Attribute without its data-typewriter- prefix
-	 *	@param		{number}	fallback			Default to keep when it is not a positive number
-	 *
-	 *	@return		{number}								Milliseconds
-	 */
-	function number( el, name, fallback ) {
-		var value = parseInt( text( el, name, '' ), 10 );
-		return ( isNaN( value ) === true || value < 0 ) ? fallback : value;
-	}
-
-	/**
-	 *	The same as a selector. querySelectorAll() answers one it cannot read
-	 *	with a SyntaxError rather than with no elements, and that error would
-	 *	leave run(), and with it the loop that runs the page's typewriters -
-	 *	so one container's typo would cost every typewriter after it on the
-	 *	page. It is asked here instead, where a value that cannot be read
-	 *	costs that one attribute, exactly like an unreadable count of
-	 *	milliseconds
-	 *
-	 *	@param		{Element}	el						Typewriter container
-	 *	@param		{string}	name					Attribute without its data-typewriter- prefix
-	 *	@param		{string}	fallback			Default to keep when the browser refuses the value
-	 *
-	 *	@return		{string}
-	 */
-	function selector( el, name, fallback ) {
-
-		var value = text( el, name, fallback );
-
-		try { el.querySelectorAll( value ) }
-		catch( e ) { return fallback }
-
-		return value;
-	}
-
-	/**
-	 *	The same as a switch. '0', 'false', 'off' and 'no' turn it off, any
-	 *	other value on - a default that is off has to stay switchable on
-	 *
-	 *	@param		{Element}	el						Typewriter container
-	 *	@param		{string}	name					Attribute without its data-typewriter- prefix
-	 *	@param		{boolean}	fallback			Default to keep when it is missing, empty or blank
-	 *
-	 *	@return		{boolean}
-	 */
-	function flag( el, name, fallback ) {
-		var value = text( el, name, '' ).trim();
-		return value === '' ? fallback : OFF.indexOf( value.toLowerCase() ) === -1;
-	}
-
-	/**
-	 *	One container's settings, read off its data attributes - everything
-	 *	it does not carry itself stays at its DEFAULTS value, so a plain
-	 *	<div class="nino-typewriter"> already runs
-	 *
-	 *	@param		{Element}	el						Typewriter container
-	 *
-	 *	@return		{Object}								The resolved settings of this one container
-	 */
-	function options( el ) {
-
-		// The one attribute an empty value says something with: a typewriter
-		// without a cursor character is a typewriter without a cursor
-		var cursor = el.getAttribute( 'data-typewriter-cursor' );
-
-		return {
-			lines					: selector( el, 'lines', DEFAULTS.lines ),
-			start					: text( el, 'start', DEFAULTS.start ) === 'load' ? 'load' : 'view',
-			startDelay		: number( el, 'start-delay', DEFAULTS.startDelay ),
-			speed					: number( el, 'speed', DEFAULTS.speed ),
-			hold					: number( el, 'hold', DEFAULTS.hold ),
-			exit					: text( el, 'exit', DEFAULTS.exit ) === 'backspace' ? 'backspace' : 'fade',
-			fade					: number( el, 'fade', DEFAULTS.fade ),
-			backspaceSpeed	: number( el, 'backspace-speed', DEFAULTS.backspaceSpeed ),
-			pause					: number( el, 'pause', DEFAULTS.pause ),
-			loop					: flag( el, 'loop', DEFAULTS.loop ),
-			cursor				: cursor === null ? DEFAULTS.cursor : cursor
-		};
-	}
-
-	/**
-	 *	Whether the visitor asked their system for reduced motion. A browser
-	 *	without matchMedia() answers the same as one whose visitor never set
-	 *	the preference: no
-	 *
-	 *	@return		{boolean}
-	 */
-	function prefersReducedMotion() {
-		return typeof window.matchMedia === 'function'
-			&& window.matchMedia( '(prefers-reduced-motion: reduce)' ).matches === true;
-	}
-
-	/**
-	 *	Call back once the element has been in the viewport, and only then -
-	 *	a typewriter nobody has scrolled to yet would otherwise be through
-	 *	its lines before it is read. Without IntersectionObserver there is
-	 *	nothing to wait for and it starts right away
-	 *
-	 *	@param		{Element}		el					Typewriter container
-	 *	@param		{Function}	callback		Run once, when it is visible
-	 *
-	 *	@return		void
-	 */
-	function whenVisible( el, callback ) {
-
-		if( typeof window.IntersectionObserver !== 'function' ) {
-			callback();
-			return;
-		}
-
-		var observer = new window.IntersectionObserver( function( entries ) {
-			for( var i = 0; i < entries.length; i++ ) {
-				if( entries[i].isIntersecting !== true )
-					continue;
-				observer.disconnect();
-				callback();
-				return;
-			}
-		} );
-
-		observer.observe( el );
-	}
 
 	/**
 	 *	The label a container's toggle button carries, or '' where it gets
@@ -222,13 +82,13 @@
 	 *	nobody resolved - a button that says "[[/feature/typewriter/pause/label]]" is worse
 	 *	than none
 	 *
-	 *	@param		{Element}	el						Typewriter container
+	 *	@param		{string}	text					What data-typewriter-toggle holds, as Nino.ui.options() read it
 	 *
 	 *	@return		{string}
 	 */
-	function toggleLabel( el ) {
+	function toggleLabel( text ) {
 
-		var label = ( el.getAttribute( 'data-typewriter-toggle' ) || '' ).trim();
+		var label = text.trim();
 
 		return label.indexOf( '[[' ) === -1 ? label : '';
 	}
@@ -242,8 +102,8 @@
 	 */
 	function run( el ) {
 
-		var opt = options( el );
-		var lines = el.querySelectorAll( opt.lines );
+		var opt = Nino.ui.options( el, 'typewriter', OPTIONS );
+		var lines = opt.lines;
 
 		if( lines.length === 0 )
 			return;
@@ -297,7 +157,7 @@
 		 */
 		function button() {
 
-			var label = toggleLabel( el );
+			var label = toggleLabel( opt.toggle );
 
 			if( label === '' || el.parentNode === null )
 				return;
@@ -352,7 +212,7 @@
 			var written = document.createElement( 'span' );
 			var rest = document.createElement( 'span' );
 
-			reader.className = 'nino-typewriter-reader';
+			reader.className = 'nino-sr-only';
 			reader.textContent = source;
 			written.className = 'nino-typewriter-text';
 			written.setAttribute( 'aria-hidden', 'true' );
@@ -448,7 +308,7 @@
 			if( opt.exit === 'backspace' && typed > 0 ) {
 				typed--;
 				write();
-				later( leave, opt.backspaceSpeed );
+				later( leave, opt['backspace-speed'] );
 				return;
 			}
 
@@ -464,7 +324,7 @@
 		 *	@return		void
 		 */
 		function begin() {
-			later( show, opt.startDelay );
+			later( show, opt['start-delay'] );
 		}
 
 		button();
@@ -472,7 +332,7 @@
 		if( opt.start === 'load' )
 			begin();
 		else
-			whenVisible( el, begin );
+			Nino.ui.whenVisible( el, begin );
 	}
 
 	/**
@@ -485,7 +345,7 @@
 		// A visitor who asked for less motion gets none of this: nothing is
 		// rewritten, no line class is written, and not one rule in
 		// typewriter.css matches - the container stays the paragraphs it is
-		if( prefersReducedMotion() === true )
+		if( Nino.ui.reducedMotion() === true )
 			return;
 
 		var typewriters = document.querySelectorAll( '.nino-typewriter' );
@@ -493,9 +353,6 @@
 			run( typewriters[i] );
 	}
 
-	if( document.readyState === 'loading' )
-		document.addEventListener( 'DOMContentLoaded', init );
-	else
-		init();
+	Nino.events.bindCallback( 'ready', init );
 
 } )();

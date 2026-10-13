@@ -1,1 +1,1 @@
-<div class="nino-progress[[class]]" data-progress-of="[[of]]" data-progress-label="[[label]]"></div>
+<div class="nino-progress[[classes]]" data-progress-of="[[of]]" data-progress-label="[[label]]"></div>

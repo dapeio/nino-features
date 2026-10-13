@@ -5,17 +5,18 @@ declare(strict_types=1);
  *	Nino
  *	typewriter-smoke.php	Contract test for the Typewriter feature
  *												(Modules\Typewriter): the manifest, the activation
- *												through \Nino\Features, the one thing the class
- *												does - putting typewriter.css/typewriter.js into
- *												the site's own asset bundles
- *												(\Nino\Html::addAsset()) - the one text fill its install
- *												unit merges, add-only - and deactivation. The
- *												behaviour those two files carry is the browser's,
- *												and typewriter-js-smoke.js beside this file
- *												measures it; this test runs that one too where
- *												node is on the path. Travels with the feature and
- *												runs against the checkout three levels up, or the
- *												one NINO_ROOT names (see tests/harness.php there).
+ *												through \Nino\Features, the two files it lists under
+ *												assets and the kernel puts into the site's own asset
+ *												bundles (\Nino\Features::registerAssets()) - the one
+ *												text fill its install unit merges, add-only - and
+ *												deactivation. The behaviour those two files carry is
+ *												the browser's, and typewriter-js-smoke.js beside this
+ *												file measures it, over the kernel's own Nino.js and
+ *												Nino.ui.js from the same checkout; this test runs
+ *												that one too where node is on the path. Travels with
+ *												the feature and runs against the checkout three
+ *												levels up, or the one NINO_ROOT names (see
+ *												tests/harness.php there).
  *
  *	Usage: php features/Typewriter/tests/typewriter-smoke.php
  *	       NINO_ROOT=../nino php features/Typewriter/tests/typewriter-smoke.php
@@ -62,6 +63,8 @@ check( '...and names the pause button and the one-pass default in its markup ent
 	&& array_key_exists( 'data-typewriter-loop="1"', $manifest['manual']['markup'] ) === true
 	&& array_key_exists( 'data-typewriter-loop="0"', $manifest['manual']['markup'] ) === false );
 check( 'and carries no settings: what a typewriter is timed with belongs to the element being typed', $manifest['settings'] === [] );
+check( 'it lists its stylesheet and its script under assets, which is all it asks the kernel for',
+	$manifest['assets'] === [ '/features/Typewriter/assets/typewriter.css', '/features/Typewriter/assets/typewriter.js' ] );
 
 // A project's config.php, written the way the wizard leaves it, so the
 // activation has something to add its class to
@@ -96,15 +99,17 @@ check( 'the German label the unit brings is the one a project that has none gets
 echo "\n";
 
 
-// --- init(): the asset bundle --------------------------------------------------
+// --- The assets: the bundle ----------------------------------------------------
 
-echo "Modules\\Typewriter::init() - the asset bundle\n";
+echo "The manifest's assets - the asset bundle\n";
 
 // Modules\Assets is what turns [assets ...] into a <link>/<script> tag at
 // all - the sandbox starts with no modules (see tests/harness.php), so it is
 // added here purely to exercise the real shortcode end to end below; nothing
-// about Typewriter itself depends on it being active
+// about Typewriter itself depends on it being active. The order is the one
+// \Nino\init() takes: the assets of the manifests, then the init() of every module
 $appData['/nino/modules'][] = '\\Nino\\Modules\\Assets';
+\Nino\Features::registerAssets( $appData );
 \Nino\Modules::callModules( $appData, 'init' );
 
 check( 'typewriter.css joined the project\'s own /.cache/style.css bundle - the same target Nino.css already sits in', in_array( '/features/Typewriter/assets/typewriter.css', \Nino\Html::getAssets( $appData, '/.cache/style.css' ), true ) === true );
@@ -143,7 +148,7 @@ $js	= (string) file_get_contents( dirname( __DIR__ ). '/assets/typewriter.js' );
 check( 'the container itself is only ever styled through the class the script writes', preg_match( '/^\.nino-typewriter\s*\{/m', $css ) !== 1 );
 check( 'the stylesheet keeps the untyped rest laid out, so nothing below a typewriter moves', str_contains( $css, '.nino-typewriter-rest {' ) === true && str_contains( $css, 'visibility: hidden;' ) === true );
 check( 'and the cursor out of the line box, so nothing inside one moves either', preg_match( '/\.nino-typewriter-cursor\s*\{[^}]*width:\s*0;/s', $css ) === 1 );
-check( 'the script asks for the reduced-motion preference before it changes anything', str_contains( $js, "prefers-reduced-motion: reduce" ) === true );
+check( 'the script asks for the reduced-motion preference before it changes anything', str_contains( $js, 'if( Nino.ui.reducedMotion() === true )' ) === true );
 check( 'and writes the lines with textContent, never as markup', str_contains( $js, 'innerHTML' ) === false );
 
 /*	The pause button, like the rest, hangs off classes the script writes: the
@@ -156,7 +161,12 @@ check( 'the script draws the button with createElement() and textContent, as the
 	str_contains( $js, "createElement( 'button' )" ) === true && str_contains( $js, 'el.nextSibling' ) === true
 	&& str_contains( $js, '.hidden' ) === false && str_contains( $js, "'hidden'" ) === false );
 check( 'it is a single pass by default, and says so where the defaults are',
-	preg_match( '/loop\s*:\s*false,/', $js ) === 1 );
+	preg_match( '/loop\s*:\s*\{ type : \'flag\', fallback : false \}/', $js ) === 1 );
+
+/*	What a screen reader is left to read is the kernel's own class for it, not a
+	copy of its declarations in this feature's stylesheet	*/
+check( 'the line\'s own text for a screen reader wears the kernel\'s .nino-sr-only, and the stylesheet does not repeat it',
+	str_contains( $js, "reader.className = 'nino-sr-only'" ) === true && str_contains( $css, 'clip: rect' ) === false && str_contains( $css, '-reader' ) === false );
 
 echo "\n";
 
@@ -175,7 +185,8 @@ if( $node === '' || function_exists( 'exec' ) === false ) {
 } else {
 	$output	= [];
 	$status	= 1;
-	exec( escapeshellarg( $node ). ' '. escapeshellarg( $jsTest ). ' 2>&1', $output, $status );
+	// The checkout this test runs against is the one whose Nino.js and Nino.ui.js the script runs over
+	exec( 'NINO_ROOT='. escapeshellarg( $root ). ' '. escapeshellarg( $node ). ' '. escapeshellarg( $jsTest ). ' 2>&1', $output, $status );
 	$summary = trim( (string) ( $output === [] ? '' : end( $output ) ) );
 	check( 'typewriter-js-smoke.js passes - '. ( $summary === '' ? 'no output' : $summary ), $status === 0 );
 }

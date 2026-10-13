@@ -12,7 +12,7 @@ namespace Nino\Modules {
 
 	/**
 	 *	Social links. The links are elements of the type /social, which the
-	 *	install unit copies once with four of them - the Elements panel is
+	 *	install unit adds, add-only, with four of them - the Elements panel is
 	 *	where an editor keeps them, and there is no screen of this feature's
 	 *	own. This class only draws them: [social], [social-link], [social-icon].
 	 *
@@ -42,7 +42,9 @@ namespace Nino\Modules {
 		private static string $relMe = ' rel="me"';
 
 		/**
-		 *	Module initiating
+		 *	Module initiating: the three shortcodes, wherever the Components module
+		 *	does not own them. The stylesheet reaches the site's bundle through the
+		 *	manifest's assets
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
@@ -50,32 +52,13 @@ namespace Nino\Modules {
 		 */
 		public static function init( array &$appData ): void {
 
-			/*	Nino 1.6 has registered all three as components from the manifest before
-				this runs (\Nino\Features::registerComponents()), and a second
-				registration here would take them back from the wrapper that fills in
-				the defaults. Nino 1.5 ignores the manifest key and needs them	*/
-			$components = class_exists( '\\Nino\\Modules\\Components' ) === true ? \Nino\Modules\Components::components( $appData ) : [];
-
+			/*	The manifest declares all three as components, and where the Components
+				module is on it owns the names: Feature::shortcode() registers nothing
+				then, and the module renders them - [social] by doShortcode() itself,
+				the other two through componentSocialLink() and componentSocialIcon()
+				below. Where the module is switched off the plain shortcodes are these	*/
 			foreach( [ 'social' => 'doShortcode', 'social-link' => 'doLinkShortcode', 'social-icon' => 'doIconShortcode' ] as $name => $method )
-				if( isset( $components[$name] ) === false )
-					\Nino\Html::addShortcode( $appData, $name, [ self::class, $method ] );
-
-			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Social/assets/social.css' );
-		}
-
-		/**
-		 *	[social] as the Components module hands it over, the Builder's way:
-		 *	every attribute is there, an empty one where nothing was written,
-		 *	and doShortcode() reads them as it reads a hand-written call
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array			$args					The resolved arguments (see \Nino\Modules\Components::dispatch())
-		 *
-		 *	@return 	string									What doShortcode() renders for them
-		 */
-		public static function componentSocial( array &$appData, array $args ): string {
-
-			return self::doShortcode( $appData, $args );
+				\Nino\Feature::shortcode( $appData, $name, [ self::class, $method ] );
 		}
 
 		/**
@@ -133,7 +116,7 @@ namespace Nino\Modules {
 				if( ( $only !== [] && in_array( $id, $only, true ) === false ) || in_array( $id, $exclude, true ) === true )
 					continue;
 
-				$items .= str_replace( '[[link]]', self::_link( $appData, $link, $show ), self::template( $appData, 'social-item' ) );
+				$items .= str_replace( '[[link]]', self::_link( $appData, $link, $show ), \Nino\Feature::template( $appData, self::TEMPLATES, 'social-item' ) );
 			}
 
 			// An empty list is no list: a frame that includes this where no link
@@ -146,7 +129,7 @@ namespace Nino\Modules {
 			return str_replace(
 				[ '[[modifiers]]', '[[items]]' ],
 				[ in_array( $args['size'] ?? '', [ 'small', 'large' ], true ) === true ? ' nino-social--'. $args['size'] : '', $items ],
-				self::template( $appData, 'social' )
+				\Nino\Feature::template( $appData, self::TEMPLATES, 'social' )
 			);
 		}
 
@@ -285,30 +268,7 @@ namespace Nino\Modules {
 			if( $svg === '' )
 				$svg = self::_svg( $appData, self::FALLBACK );
 
-			return str_replace( '[[svg]]', $svg, self::template( $appData, 'social-icon' ) );
-		}
-
-		/**
-		 *	One of this feature's templates, read through the virtual filesystem
-		 *	the way every feature reads its own
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$name					The file name below templates/, without .tpl
-		 *
-		 *	@return 	string
-		 */
-		public static function template( array &$appData, string $name ): string {
-
-			if( preg_match( '/^[a-z][a-z0-9-]*$/D', $name ) !== 1 )
-				return '';
-
-			$template = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $name. '.tpl', '' );
-			$template = is_string( $template ) === true ? rtrim( $template, "\n" ) : '';
-
-			if( $template === '' )
-				trigger_error( 'Nino: the template '. self::TEMPLATES. '/'. $name. '.tpl is missing or empty.', E_USER_WARNING );
-
-			return $template;
+			return str_replace( '[[svg]]', $svg, \Nino\Feature::template( $appData, self::TEMPLATES, 'social-icon' ) );
 		}
 
 		/**
@@ -326,13 +286,13 @@ namespace Nino\Modules {
 			return str_replace(
 				[ '[[url]]', '[[rel]]', '[[icon]]', '[[labelclass]]', '[[title]]' ],
 				[
-					self::_escape( $link['url'] ),
+					\Nino\Modules\Components::escape( $link['url'] ),
 					preg_match( '#^https?://#i', $link['url'] ) === 1 ? self::$relMe : '',
 					$show === 'label' ? '' : self::icon( $appData, $link['icon'] ),
 					$show === 'icon' ? 'nino-social-label nino-sr-only' : 'nino-social-label',
-					self::_escape( $link['title'] ),
+					\Nino\Modules\Components::escape( $link['title'] ),
 				],
-				self::template( $appData, 'social-link' )
+				\Nino\Feature::template( $appData, self::TEMPLATES, 'social-link' )
 			);
 		}
 
@@ -401,15 +361,6 @@ namespace Nino\Modules {
 				return preg_replace( '/^www\./i', '', $host ) ?? $host;
 
 			return preg_replace( '/^(?:mailto|tel):/i', '', $url ) ?? $url;
-		}
-
-		/**
-		 *	@param		string		$value
-		 *
-		 *	@return 	string									For text and for a quoted attribute, '[' neutralised
-		 */
-		private static function _escape( string $value ): string {
-			return str_replace( '[', '&#91;', htmlspecialchars( $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) );
 		}
 	}
 

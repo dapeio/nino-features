@@ -38,45 +38,27 @@ namespace Nino\Modules {
 	 *										There is nothing for PHP to do here: what runs past is
 	 *										markup a project's own template already carries
 	 *										(<div class="nino-ticker">) plus the two static files
-	 *										below, so this class is the two lines that put them
-	 *										into the site's bundles - no shortcode, no route, no
-	 *										settings, no state; the unit's one text fill is the
-	 *										label of that button. Every timing belongs to the row
-	 *										being run, and a static asset could not read a
+	 *										the manifest lists under assets, so this class has no
+	 *										code at all - no shortcode, no route, no settings, no
+	 *										state, not even an init(); the unit's one text fill is
+	 *										the label of that button. Every timing belongs to the
+	 *										row being run, and a static asset could not read a
 	 *										site-wide setting anyway (see feature.php).
 	 *
 	 *										ticker.css/ticker.js reach the browser the way the
 	 *										kernel ships its own Nino.css/Nino.js (see
-	 *										\Nino\AppData::DEFAULTS, '/nino/html/assets'): added
-	 *										to the SAME site-wide bundle targets the base
-	 *										install's html-header.tpl/html-footer.tpl already load
-	 *										on every page.
+	 *										\Nino\AppData::DEFAULTS, '/nino/html/assets'): the
+	 *										kernel adds them, from the manifest's assets
+	 *										(\Nino\Features::registerAssets()), to the SAME
+	 *										site-wide bundle targets the base install's
+	 *										html-header.tpl/html-footer.tpl already load on every
+	 *										page.
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
 	 *	@link							https://github.com/dapeio/nino
 	 */
 	class Ticker {
-
-		/**
-		 *	Ship ticker.css/ticker.js into the site's own asset bundles - see
-		 *	this class' own docblock for why the site-wide targets and not a
-		 *	bundle of this feature's own
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *
-		 *	@return 	void
-		 */
-		public static function init( array &$appData ): void {
-
-			/*	The virtual '/features/...' prefix resolves against
-				\Nino\Features::dir() (\Nino\Filesystem::FEATURES_DIR), so
-				'/features/Ticker/assets/...' reaches this feature's own copy
-				wherever NINO_FEATURES_DIR put the features directory, and a
-				project that moved it has nothing to say in '/nino/html/assets'	*/
-			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Ticker/assets/ticker.css' );
-			\Nino\Html::addAsset( $appData, '/.cache/script.js', '/features/Ticker/assets/ticker.js' );
-		}
 	}
 
 }

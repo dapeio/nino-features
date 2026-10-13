@@ -29,8 +29,8 @@ return [
 				'de_DE' => 'Läuft andersherum. Vorgabe ist nach links.',
 			],
 			'data-ticker-loop="1"' => [
-				'en_US' => 'Starts again without a seam instead of standing still after one cycle. Default: one cycle.',
-				'de_DE' => 'Beginnt nahtlos von vorn, statt nach einem Durchlauf still zu stehen. Vorgabe: ein Durchlauf.',
+				'en_US' => 'Starts again without a seam instead of standing still after one cycle. The words 1, true, yes and on ask for it; any other value leaves the default: one cycle.',
+				'de_DE' => 'Beginnt nahtlos von vorn, statt nach einem Durchlauf still zu stehen. Die Wörter 1, true, yes und on verlangen es; jeder andere Wert lässt die Vorgabe stehen: ein Durchlauf.',
 			],
 			'data-ticker-toggle="[[/feature/ticker/pause/label]]"' => [
 				'en_US' => 'A button after the row that pauses it and takes it up again (WCAG 2.2.2). The value is its label; the fill is the one the install unit brings.',
@@ -55,12 +55,14 @@ return [
 	// fill of its own, the label of the pause button - the Features panel
 	// files that with the sliders and the lightboxes
 	'category'		=> 'ui',
-	'version'			=> '1.0.0',
-	'nino'				=> '^1.3',
+	'version'			=> '1.1.0',
+	'nino'				=> '^1.8',
 	'requires'		=> [],
 	// Nothing under data/: what runs past is the markup a project's own
 	// template already carries
 	'data'				=> [],
+	// Into the site's style and script bundle, behind the kernel's own files
+	'assets'			=> [ '/features/Ticker/assets/ticker.css', '/features/Ticker/assets/ticker.js' ],
 	/*	And no settings, for the reason Typewriter has none: every timing
 		belongs to the row being run, not to the site, and a static asset could
 		not read a site-wide setting anyway - a logo bar in a footer and a line

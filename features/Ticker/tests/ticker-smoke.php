@@ -5,18 +5,21 @@ declare(strict_types=1);
  *	Nino
  *	ticker-smoke.php	Contract test for the Ticker feature (Modules\Ticker): the
  *										manifest, the activation through \Nino\Features, the two
- *										files it puts into the site's own asset bundles
- *										(\Nino\Html::addAsset()), the one text fill its install
- *										unit merges for the pause button, what those two files
- *										promise, and deactivation. Like Typewriter this
+ *										files it lists under assets, which the kernel puts into
+ *										the site's own asset bundles
+ *										(\Nino\Features::registerAssets()), the one text fill its
+ *										install unit merges for the pause button, what those two
+ *										files promise, and deactivation. Like Typewriter this
  *										feature renders nothing at all - what runs past is
  *										markup the project's own template carries - so there
  *										is no shortcode here to test, and that absence is
  *										itself checked.
  *
  *										What the two files then do is the browser's, and
- *										ticker-js-smoke.js beside this file measures it; this
- *										test runs that one too where node is on the path.
+ *										ticker-js-smoke.js beside this file measures it, over
+ *										the kernel's own Nino.js and Nino.ui.js from the same
+ *										checkout; this test runs that one too where node is on
+ *										the path.
  *
  *	Usage: php features/Ticker/tests/ticker-smoke.php
  *	       NINO_ROOT=../nino php features/Ticker/tests/ticker-smoke.php
@@ -58,6 +61,8 @@ check( '...and the loop and the pause button, which are opt-in',
 	&& array_key_exists( 'data-ticker-toggle="[[/feature/ticker/pause/label]]"', $manifest['manual']['markup'] ) === true );
 check( 'it requires no other feature, keeps no data and carries no settings',
 	$manifest['requires'] === [] && $manifest['data'] === [] && $manifest['settings'] === [] );
+check( 'it lists its stylesheet and its script under assets, which is all it asks the kernel for',
+	$manifest['assets'] === [ '/features/Ticker/assets/ticker.css', '/features/Ticker/assets/ticker.js' ] );
 check( 'its install unit brings the pause button\'s label and nothing a project has to write for itself, and the manual lists it',
 	array_keys( $manifest['manual']['install'] ) === [ 'text/<locale>.php' ] && is_file( $dir. '/install/manifest.php' ) === true
 	&& is_file( $dir. '/install/text/en_US.php' ) === true && is_file( $dir. '/install/text/de_DE.php' ) === true );
@@ -82,11 +87,13 @@ check( 'an update keeps the value a project has for that key', \Nino\Features::a
 echo "\n";
 
 
-// --- init() ------------------------------------------------------------------
+// --- The assets --------------------------------------------------------------
 
-echo "Modules\\Ticker::init() - the bundle, and nothing besides\n";
+echo "The manifest's assets - the bundle, and nothing besides\n";
 
+// The order \Nino\init() takes: the assets of the manifests, then the init() of every module
 $appData['/nino/modules'][] = '\\Nino\\Modules\\Assets';
+\Nino\Features::registerAssets( $appData );
 \Nino\Modules::callModules( $appData, 'init' );
 
 check( 'ticker.css joined the project\'s own /.cache/style.css bundle', in_array( '/features/Ticker/assets/ticker.css', \Nino\Html::getAssets( $appData, '/.cache/style.css' ), true ) === true );
@@ -168,7 +175,7 @@ check( 'the script draws the pause button with createElement() and textContent, 
 	str_contains( $js, "createElement( 'button' )" ) === true && str_contains( $js, 'row.nextSibling' ) === true
 	&& str_contains( $js, 'innerHTML' ) === false && str_contains( $js, "'hidden'" ) === false );
 check( 'a single pass is held until the row has been seen, and ends on the animation\'s own end',
-	str_contains( $js, 'IntersectionObserver' ) === true && str_contains( $js, "'animationend'" ) === true );
+	str_contains( $js, 'Nino.ui.whenVisible(' ) === true && str_contains( $js, "'animationend'" ) === true );
 
 check( 'nothing about a ticker reaches the server or outlives the page',
 	str_contains( $js, 'XMLHttpRequest' ) === false && str_contains( $js, 'fetch(' ) === false
@@ -185,7 +192,8 @@ if( $node === '' )
 	echo "  --  node is not on the path, so ticker-js-smoke.js is not run here\n\n";
 else {
 	echo "ticker-js-smoke.js\n";
-	$out = (string) @shell_exec( escapeshellarg( $node ). ' '. escapeshellarg( __DIR__. '/ticker-js-smoke.js' ). ' 2>&1' );
+	// The checkout this test runs against is the one whose Nino.js and Nino.ui.js the script runs over
+	$out = (string) @shell_exec( 'NINO_ROOT='. escapeshellarg( $root ). ' '. escapeshellarg( $node ). ' '. escapeshellarg( __DIR__. '/ticker-js-smoke.js' ). ' 2>&1' );
 	echo $out;
 	check( 'the browser half passes too', preg_match( '/^\d+ checks, 0 failed$/m', $out ) === 1 );
 	echo "\n";

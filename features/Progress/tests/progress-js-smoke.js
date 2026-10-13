@@ -12,9 +12,15 @@
  *
  *												No jsdom, no dependency: the same element stand-in
  *												the other feature tests build, so this runs with
- *												nothing but node.
+ *												nothing but node - and the kernel's own Nino.js,
+ *												which the script is written against and which runs
+ *												here as it is on disk: from the checkout three
+ *												levels up, or the one NINO_ROOT names. The ready
+ *												callback and the throttle of the scroll and the
+ *												resize are its.
  *
  *	Usage: node features/Progress/tests/progress-js-smoke.js
+ *	       NINO_ROOT=../nino node features/Progress/tests/progress-js-smoke.js
  */
 
 'use strict';
@@ -39,6 +45,12 @@ function check( label, condition ) {
 }
 
 const source = fs.readFileSync( path.join( __dirname, '../assets/progress.js' ), 'utf8' );
+
+// The script of the kernel that progress.js is written against, read from the
+// checkout this runs against: three levels up when the feature sits in a
+// project's features/, else the one NINO_ROOT names
+const kernel = path.resolve( process.env.NINO_ROOT || path.join( __dirname, '../../..' ) );
+const nino = new vm.Script( fs.readFileSync( path.join( kernel, '_nino/Nino.js' ), 'utf8' ), { filename : 'Nino.js' } );
 
 function element( attributes ) {
 
@@ -74,7 +86,9 @@ function element( attributes ) {
 }
 
 /**
- *	A page with a bar on it, the script loaded over it
+ *	A page with a bar on it, the kernel's Nino.js and then the script loaded over
+ *	it. A document that is there already is ready when this returns; one that is
+ *	not is ready when its DOMContentLoaded listeners are called
  *
  *	@param		{Object}	options		{ of, label, scrollHeight, offset, subject, withBar, readyState, inSection }
  */
@@ -90,11 +104,13 @@ function page( options ) {
 	const subject = element( { id : 'article' } );
 
 	// Where the bar stood when it was measured first: the move has to come before
-	// that, not after
+	// that, not after. And how often it was painted
 	let paintedUnder;
+	let paints = 0;
 	const setProperty = bar.style.setProperty;
 	bar.style.setProperty = function( name, value ) {
 		if( paintedUnder === undefined ) paintedUnder = bar.parentNode;
+		paints++;
 		setProperty( name, value );
 	};
 
@@ -124,7 +140,8 @@ function page( options ) {
 	root.scrollTop = options.offset !== undefined ? options.offset : 0;
 
 	const listeners = {};
-	let frame = null;
+	const frames = [];
+	const timers = [];
 
 	const dc = {
 		readyState			: options.readyState || 'complete',
@@ -137,29 +154,79 @@ function page( options ) {
 		addEventListener	: function( type, fn ) { ( listeners[type] = listeners[type] || [] ).push( fn ) },
 	};
 
+	// The window is the global of the page, as it is in a browser: Nino.js puts Nino on it
 	const wn = {
+		console : console,
+		document : dc,
+		navigator : { userAgent : 'node' },
 		innerHeight : options.seen !== undefined ? options.seen : 1000,
 		pageYOffset : options.offset !== undefined ? options.offset : 0,
+		Event : function( type ) { this.type = type },
+		dispatchEvent : function( event ) { ( listeners[event.type] || [] ).forEach( function( fn ) { fn( event ) } ) },
 		addEventListener : function( type, fn ) { ( listeners[type] = listeners[type] || [] ).push( fn ) },
-		requestAnimationFrame : function( fn ) { frame = fn; return 1 },
+		requestAnimationFrame : function( fn ) { frames.push( fn ); return frames.length },
+		setTimeout : function( fn ) { timers.push( fn ); return timers.length },
+	};
+	wn.window = wn;
+
+	const context = vm.createContext( wn );
+
+	nino.runInContext( context );
+
+	// What the script binds to the kernel's events: Nino.events.bindCallback() as
+	// the kernel has it, noting its first argument and handing the call on
+	const bound = [];
+	const bindCallback = wn.Nino.events.bindCallback;
+	wn.Nino.events.bindCallback = function( evt, cb ) {
+		bound.push( evt );
+		return bindCallback.call( this, evt, cb );
 	};
 
-	const sandbox = { console : console, document : dc, window : wn };
-	sandbox.window.window = wn;
+	vm.runInContext( source, context, { filename : 'progress.js' } );
 
-	vm.runInContext( source, vm.createContext( sandbox ), { filename : 'progress.js' } );
+	// Run what was asked of requestAnimationFrame() and of setTimeout(), and what that
+	// asked for in turn. A callback of Nino.js that throws is thrown again from a timer,
+	// which this runs too - so the error ends the run instead of passing unseen
+	const runFrames = function() {
+		while( frames.length > 0 )
+			frames.splice( 0 ).forEach( function( fn ) { fn() } );
+	};
+	const settle = function() {
+		while( timers.length > 0 )
+			timers.splice( 0 ).forEach( function( fn ) { fn() } );
+	};
+	const fire = function( type ) {
+		( listeners[type] || [] ).forEach( function( fn ) { fn( { type : type } ) } );
+	};
+
+	// A document that is there already: Nino.js calls its ready callbacks back a
+	// millisecond after it was loaded, and the resize and the scroll it dispatches
+	// first take their frame
+	if( dc.readyState !== 'loading' ) {
+		settle();
+		runFrames();
+	}
 
 	return {
 		bar : bar, subject : subject, window : wn, listeners : listeners,
-		body : body, section : section, footer : footer,
+		body : body, section : section, footer : footer, bound : bound,
 		paintedUnder : function() { return paintedUnder },
+		paints : function() { return paints },
+		frames : function() { return frames.length },
+		fire : fire,
+		runFrames : runFrames,
 		at : function() { return bar.properties['--nino-progress'] },
 		scrollTo : function( offset, top ) {
 			wn.pageYOffset = offset;
 			root.scrollTop = offset;
 			if( top !== undefined ) subject.box = { top : top, height : subject.box.height };
-			( listeners['scroll'] || [] ).forEach( function( fn ) { fn() } );
-			if( frame !== null ) { const fn = frame; frame = null; fn() }
+			fire( 'scroll' );
+			runFrames();
+		},
+		resizeTo : function( seen ) {
+			wn.innerHeight = seen;
+			fire( 'resize' );
+			runFrames();
 		},
 	};
 }
@@ -183,6 +250,30 @@ check( 'and a page scrolled past its own end is still just finished', whole.at()
 
 const short = page( { scrollHeight : 500, seen : 1000 } );
 check( 'a page shorter than the window has nothing to be through', short.at() === '0%' );
+
+
+// --- Following the scroll and the resize -----------------------------------------
+
+check( 'a bar follows the scroll and the resize of the page through the kernel\'s own events', whole.bound.join() === 'ready,scroll,resize' );
+
+/*	The throttle is the kernel's: a burst of events is one frame, and one frame
+	paints once	*/
+const burst = page( { scrollHeight : 3000, seen : 1000 } );
+const painted = burst.paints();
+
+burst.fire( 'scroll' );
+burst.fire( 'scroll' );
+burst.fire( 'scroll' );
+check( 'a burst of scroll events asks for one frame, not one each', burst.frames() === 1 );
+
+burst.runFrames();
+check( '...and paints the bar once for it', burst.paints() === painted + 1 );
+
+const resized = page( { scrollHeight : 3000, seen : 1000, offset : 1000 } );
+check( 'a bar paints where the page is when it is ready', resized.at() === '50%' );
+
+resized.resizeTo( 500 );
+check( 'a resize paints it again: the same place on the page over a shorter window is a different share', resized.at() === '40%' );
 
 
 // --- Over one element ----------------------------------------------------------
@@ -252,14 +343,14 @@ check( 'a bar that is a child of the body already is left where it is, not taken
 // --- A page with no bar --------------------------------------------------------
 
 const none = page( { withBar : false } );
-check( 'a page with no bar on it is not listened to at all', ( none.listeners['scroll'] || [] ).length === 0 );
+check( 'a page with no bar on it binds nothing but its wait for the page - neither the scroll nor the resize is its to follow', none.bound.join() === 'ready' );
 
 
 // --- Waiting for the dom -------------------------------------------------------
 
 const late = page( { readyState : 'loading' } );
 
-check( 'a script that ran before the dom was there waits for it rather than finding nothing',
+check( 'a script that ran before the dom was there waits for it - the kernel\'s ready - rather than finding nothing',
 	late.bar.matchesClass( 'nino-is-ready' ) === false && ( late.listeners['DOMContentLoaded'] || [] ).length === 1 );
 
 ( late.listeners['DOMContentLoaded'] || [] ).forEach( function( fn ) { fn() } );

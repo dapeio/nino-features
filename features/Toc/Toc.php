@@ -58,7 +58,8 @@ namespace Nino\Modules {
 		public const array LEVELS = [ 2, 3 ];
 
 		/**
-		 *	Register the shortcode and ship the two static files
+		 *	Register the shortcode where no component is. The stylesheet and the
+		 *	script reach the site's bundles through the manifest's assets
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
@@ -66,38 +67,8 @@ namespace Nino\Modules {
 		 */
 		public static function init( array &$appData ): void {
 
-			/*	Nino 1.6 has registered [toc] as a component from the manifest before
-				this runs (\Nino\Features::registerComponents()), and a second
-				registration here would take it back from the wrapper that fills in
-				the defaults. Nino 1.5 ignores the manifest key and needs it	*/
-			$components = class_exists( '\\Nino\\Modules\\Components' ) === true ? \Nino\Modules\Components::components( $appData ) : [];
-
-			if( isset( $components['toc'] ) === false )
-				\Nino\Html::addShortcode( $appData, 'toc', [ self::class, 'doShortcode' ] );
-
-			/*	The virtual '/features/...' prefix resolves against
-				\Nino\Features::dir() (\Nino\Filesystem::FEATURES_DIR), the same way
-				TEMPLATES above is read - so '/features/Toc/assets/...' reaches this
-				feature's own copy wherever NINO_FEATURES_DIR put the features
-				directory, and a project that moved it has nothing to say in
-				'/nino/html/assets'	*/
-			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Toc/assets/toc.css' );
-			\Nino\Html::addAsset( $appData, '/.cache/script.js', '/features/Toc/assets/toc.js' );
-		}
-
-		/**
-		 *	[toc] as the Components module hands it over, the Builder's way:
-		 *	every attribute is there, an empty one where nothing was written,
-		 *	and doShortcode() reads them as it reads a hand-written call
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array			$args					The resolved arguments (see \Nino\Modules\Components::dispatch())
-		 *
-		 *	@return 	string								What doShortcode() renders for them
-		 */
-		public static function componentToc( array &$appData, array $args ): string {
-
-			return self::doShortcode( $appData, $args );
+			// false: the manifest's component owns the name and renders it through doShortcode()
+			\Nino\Feature::shortcode( $appData, 'toc', [ self::class, 'doShortcode' ] );
 		}
 
 		/**
@@ -132,15 +103,15 @@ namespace Nino\Modules {
 			$within = trim( (string) ( $args['within'] ?? '' ) );
 
 			return str_replace(
-				[ '[[class]]', '[[levels]]', '[[within]]', '[[anchors]]', '[[title]]' ],
+				[ '[[classes]]', '[[levels]]', '[[within]]', '[[anchors]]', '[[title]]' ],
 				[
-					self::_class( $args ),
+					\Nino\Feature::classes( $args ),
 					implode( ',', self::levels( $args ) ),
 					$safe( $within ),
 					( self::anchors( $appData ) === true ? '1' : '0' ),
 					$title,
 				],
-				self::template( $appData, 'toc' )
+				\Nino\Feature::template( $appData, self::TEMPLATES, 'toc' )
 			);
 		}
 
@@ -175,54 +146,6 @@ namespace Nino\Modules {
 		 */
 		public static function anchors( array &$appData ): bool {
 			return \Nino\Features::setting( $appData, 'toc', 'anchors', true ) === true;
-		}
-
-		/**
-		 *	The class of one's own a call adds to the list, with the space in
-		 *	front of it that the template leaves out - escaped, and with its
-		 *	brackets as character references, because the markup is rendered
-		 *	once more
-		 *
-		 *	@param		array			$args					Shortcode attributes
-		 *
-		 *	@return 	string								'' or ' my-class'
-		 */
-		private static function _class( array $args ): string {
-
-			$class = trim( (string) ( $args['class'] ?? '' ) );
-
-			return $class === '' ? '' : ' '. str_replace( '[', '&#91;', htmlspecialchars( $class, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) );
-		}
-
-		/**
-		 *	One of this feature's own templates, read the way a project's are.
-		 *	Markup belongs in a template - see AGENTS.md, "Markup belongs in a
-		 *	template" - so what this class holds is which one and what goes in it
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$name					A file name below TEMPLATES, without .tpl
-		 *
-		 *	@return 	string								'' where the file is not there, which is logged
-		 */
-		public static function template( array &$appData, string $name ): string {
-
-			// A name from this class and nowhere else, and held to a slug anyway
-			if( preg_match( '/^[a-z][a-z0-9-]*$/D', $name ) !== 1 )
-				return '';
-
-			$template = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $name. '.tpl', '' );
-
-			$template = is_string( $template ) === true ? rtrim( $template, "\n" ) : '';
-
-			/*	A template that is not there renders as nothing, which on a page looks
-				like a shortcode nobody wrote rather than like a feature missing a file.
-				Said out loud instead: E_USER_WARNING is Nino's "record this and carry
-				on" channel (see \Nino\Runtime::NON_FATAL_LEVELS), so the request
-				finishes and the log says which file	*/
-			if( $template === '' )
-				trigger_error( 'Nino: the template '. self::TEMPLATES. '/'. $name. '.tpl is missing or empty.', E_USER_WARNING );
-
-			return $template;
 		}
 	}
 

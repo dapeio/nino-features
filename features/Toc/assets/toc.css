@@ -2,7 +2,7 @@
  *	Nino - Table of Contents
  *	toc.css			The list's own layout and the anchor on a heading, and nothing
  *					else. Bundled into the project's own /.cache/style.css the same
- *					way the kernel bundles Nino.css (see Toc::init() and
+ *					way the kernel bundles Nino.css (from the manifest's assets; see
  *					docs/development.md, "Assets Are Not Templates") - never
  *					rendered through the fill/shortcode engine, so nothing in here
  *					is a textfill.
@@ -14,14 +14,14 @@
  */
 
 .nino-toc {
-	margin: var(--space-3, 2rem) 0;
-	padding: var(--space-2, 1rem) var(--space-3, 2rem);
-	border-left: 2px solid var(--color-border, #ddd);
+	margin: var(--space-3) 0;
+	padding: var(--space-2) var(--space-3);
+	border-left: 2px solid var(--color-border);
 }
 
 .nino-toc-title {
-	margin: 0 0 var(--space-1, .5rem);
-	font-size: var(--text-1, 1rem);
+	margin: 0 0 var(--space-1);
+	font-size: var(--text-1);
 	text-align: left;
 }
 
@@ -38,8 +38,8 @@
 .nino-toc-item + .nino-toc-item {
 	margin-top: .35em;
 }
-.nino-toc-item--3 { padding-left: var(--space-2, 1rem); }
-.nino-toc-item--4 { padding-left: var(--space-3, 2rem); }
+.nino-toc-item--3 { padding-left: var(--space-2); }
+.nino-toc-item--4 { padding-left: var(--space-3); }
 
 .nino-toc-link {
 	text-decoration: none;
@@ -84,10 +84,10 @@
 }
 
 /* An anchor that fades in on hover is a thing that moves, and somebody asked
-   for less of that - so it is simply there for them */
+   for less of that - so it is simply there for them. The transition is cut to
+   nothing by the clamp of Nino.css; the opacity is not its to set */
 @media (prefers-reduced-motion: reduce) {
 	.nino-toc-anchor {
 		opacity: .5;
-		transition: none;
 	}
 }

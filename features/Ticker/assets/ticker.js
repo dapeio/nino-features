@@ -1,9 +1,9 @@
 /**
  *	Nino - Ticker
  *	ticker.js		Makes a row run - once, or round and round without a seam. No
- *					dependencies, no build step - bundled into the project's own
- *					/.cache/script.js the same way the kernel bundles
- *					Nino.js/Nino.ui.js (see Ticker::init()).
+ *					build step; it needs Nino.js and Nino.ui.js, which every site
+ *					loads: the kernel bundles it into the project's own
+ *					/.cache/script.js behind them, from the manifest's assets.
  *
  *					The seam is the whole problem. A row that simply scrolls runs
  *					out and jumps back, and the jump is what everybody sees. So the
@@ -60,9 +60,15 @@
 	// drag, and every one of them would cost a measurement of every row
 	var SETTLE = 150;
 
-	// The same four words typewriter.js reads as "off"; anything else that is
-	// not empty is "on"
-	var OFF = [ '0', 'false', 'off', 'no' ];
+	// What a row says about itself, as Nino.ui.options() reads it off its
+	// data-ticker-* attributes: its speed, whether it loops - only 1, true,
+	// yes and on say so, like every flag of the kernel - and the label of the
+	// pause button it asks for
+	var OPTIONS = {
+		speed	: { type : 'number', fallback : SPEED_DEFAULT },
+		loop	: { type : 'flag', fallback : false },
+		toggle	: { type : 'text', fallback : '' }
+	};
 
 	// The kernel's own button classes carry the look of the pause button;
 	// ticker.css adds the pressed state
@@ -75,60 +81,17 @@
 	var settling = null;
 
 	/**
-	 *	One row's own speed, in pixels per second
-	 *
-	 *	@param		{Element}		row
-	 *
-	 *	@return		{number}
-	 */
-	function speed( row ) {
-
-		var given = parseFloat( row.getAttribute( 'data-ticker-speed' ) );
-
-		return ( isNaN( given ) === true || given <= 0 ) ? SPEED_DEFAULT : given;
-	}
-
-	/**
-	 *	Whether a row asked for the endless loop. A missing or empty attribute
-	 *	is the default, which is one pass; '0', 'false', 'off' and 'no' say it
-	 *	too, and anything else asks for the loop - the same reading
-	 *	typewriter.js gives its own data-typewriter-loop
-	 *
-	 *	@param		{Element}		row
-	 *
-	 *	@return		{boolean}
-	 */
-	function loops( row ) {
-
-		var value = ( row.getAttribute( 'data-ticker-loop' ) || '' ).trim();
-
-		return value !== '' && OFF.indexOf( value.toLowerCase() ) === -1;
-	}
-
-	/**
-	 *	Whether the visitor asked their system for reduced motion. A browser
-	 *	without matchMedia() answers the same as one whose visitor never set
-	 *	the preference: no
-	 *
-	 *	@return		{boolean}
-	 */
-	function prefersReducedMotion() {
-		return typeof window.matchMedia === 'function'
-			&& window.matchMedia( '(prefers-reduced-motion: reduce)' ).matches === true;
-	}
-
-	/**
 	 *	The label a row's toggle button carries, or '' where it gets none: no
 	 *	attribute, an empty one, or one that still holds a text fill nobody
 	 *	resolved - a button that says "[[/feature/ticker/pause/label]]" is worse than none
 	 *
-	 *	@param		{Element}		row
+	 *	@param		{string}		text			What data-ticker-toggle holds, as Nino.ui.options() read it
 	 *
 	 *	@return		{string}
 	 */
-	function toggleLabel( row ) {
+	function toggleLabel( text ) {
 
-		var label = ( row.getAttribute( 'data-ticker-toggle' ) || '' ).trim();
+		var label = text.trim();
 
 		return label.indexOf( '[[' ) === -1 ? label : '';
 	}
@@ -147,16 +110,15 @@
 	function button( entry ) {
 
 		var row = entry.row;
-		var label = toggleLabel( row );
 
-		if( entry.toggle !== null || entry.done === true || label === '' || row.parentNode === null || prefersReducedMotion() === true )
+		if( entry.toggle !== null || entry.done === true || entry.label === '' || row.parentNode === null || Nino.ui.reducedMotion() === true )
 			return;
 
 		entry.toggle = document.createElement( 'button' );
 		entry.toggle.type = 'button';
 		entry.toggle.className = BUTTON;
 		entry.toggle.setAttribute( 'aria-pressed', 'false' );
-		entry.toggle.textContent = label;
+		entry.toggle.textContent = entry.label;
 
 		entry.toggle.addEventListener( 'click', function() {
 
@@ -203,36 +165,6 @@
 		}
 
 		entry.toggle = null;
-	}
-
-	/**
-	 *	Call back once the row has been in the viewport, and only then - a
-	 *	single pass that began while nobody could see it would be over before it
-	 *	was read. Without IntersectionObserver there is nothing to wait for
-	 *
-	 *	@param		{Element}		row
-	 *	@param		{Function}	callback		Run once, when it is visible
-	 *
-	 *	@return		void
-	 */
-	function whenVisible( row, callback ) {
-
-		if( typeof window.IntersectionObserver !== 'function' ) {
-			callback();
-			return;
-		}
-
-		var observer = new window.IntersectionObserver( function( entries ) {
-			for( var i = 0; i < entries.length; i++ ) {
-				if( entries[i].isIntersecting !== true )
-					continue;
-				observer.disconnect();
-				callback();
-				return;
-			}
-		} );
-
-		observer.observe( row );
 	}
 
 	/**
@@ -327,7 +259,7 @@
 			return;
 
 		track.style.setProperty( '--nino-ticker-distance', distance + 'px' );
-		track.style.setProperty( '--nino-ticker-duration', ( distance / speed( row ) ) + 's' );
+		track.style.setProperty( '--nino-ticker-duration', ( distance / entry.speed ) + 's' );
 
 		entry.across = row.clientWidth;
 
@@ -416,8 +348,10 @@
 
 		for( var i = 0; i < found.length; i++ ) {
 
+			var options = Nino.ui.options( found[i], 'ticker', OPTIONS );
+
 			// The width it was built for, which nothing has been built for yet
-			var entry = { row : found[i], across : -1, loop : loops( found[i] ), done : false, toggle : null, listening : false };
+			var entry = { row : found[i], across : -1, speed : options.speed, loop : options.loop, label : toggleLabel( options.toggle ), done : false, toggle : null, listening : false };
 
 			rows.push( entry );
 
@@ -433,7 +367,7 @@
 
 			run( entry );
 
-			whenVisible( found[i], ( function( row ) {
+			Nino.ui.whenVisible( found[i], ( function( row ) {
 				return function() { row.classList.remove( 'nino-is-waiting' ) };
 			} )( found[i] ) );
 		}
@@ -448,9 +382,6 @@
 		window.addEventListener( 'resize', schedule, { passive : true } );
 	}
 
-	if( document.readyState === 'loading' )
-		document.addEventListener( 'DOMContentLoaded', init );
-	else
-		init();
+	Nino.events.bindCallback( 'ready', init );
 
 } )();

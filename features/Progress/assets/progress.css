@@ -2,8 +2,8 @@
  *	Nino - Reading Progress
  *	progress.css	The bar itself: a strip across the top of the window and the
  *					part of it that is filled. Bundled into the project's own
- *					/.cache/style.css the same way the kernel bundles Nino.css (see
- *					Progress::init() and docs/development.md, "Assets Are Not
+ *					/.cache/style.css the same way the kernel bundles Nino.css (from
+ *					the manifest's assets; see docs/development.md, "Assets Are Not
  *					Templates") - never rendered through the fill/shortcode engine,
  *					so nothing in here is a textfill.
  *
@@ -35,14 +35,13 @@
 	display: block;
 	width: var(--nino-progress, 0%);
 	height: 100%;
-	background-color: var(--color-accent, currentColor);
+	background-color: var(--color-accent);
 }
 
 /*	A bar that eases towards its new width reads as smooth while it is scrolled
 	and as lagging while it is dragged. Somebody who asked for less motion gets
-	the value itself, with nothing in between	*/
-@media (prefers-reduced-motion: no-preference) {
-	.nino-progress::before {
-		transition: width .08s linear;
-	}
+	the value itself, with nothing in between: the clamp of Nino.css cuts the
+	transition to nothing	*/
+.nino-progress::before {
+	transition: width .08s linear;
 }

@@ -13,9 +13,13 @@
  *
  *											No jsdom, no dependency: the same element stand-in the
  *											other feature tests build, so this runs with nothing
- *											but node.
+ *											but node - and the kernel's own Nino.js and Nino.ui.js,
+ *											which the script is written against and which run here
+ *											as they are on disk: from the checkout three levels up,
+ *											or the one NINO_ROOT names.
  *
  *	Usage: node features/Ticker/tests/ticker-js-smoke.js
+ *	       NINO_ROOT=../nino node features/Ticker/tests/ticker-js-smoke.js
  */
 
 'use strict';
@@ -40,6 +44,13 @@ function check( label, condition ) {
 }
 
 const source = fs.readFileSync( path.join( __dirname, '../assets/ticker.js' ), 'utf8' );
+
+// The two scripts of the kernel that ticker.js is written against, read from the
+// checkout this runs against: three levels up when the feature sits in a project's
+// features/, else the one NINO_ROOT names
+const kernel = path.resolve( process.env.NINO_ROOT || path.join( __dirname, '../../..' ) );
+const nino = new vm.Script( fs.readFileSync( path.join( kernel, '_nino/Nino.js' ), 'utf8' ), { filename : 'Nino.js' } );
+const ninoUi = new vm.Script( fs.readFileSync( path.join( kernel, '_nino/Nino.ui.js' ), 'utf8' ), { filename : 'Nino.ui.js' } );
 
 // The track is a flex row with a gap between its items (see ticker.css), and
 // the gap is the whole point of the distance the animation runs: a row of n
@@ -176,7 +187,9 @@ function element( attributes, width ) {
 }
 
 /**
- *	One row as a project writes it, the script loaded over it
+ *	One row as a project writes it, the kernel's two scripts and then the script
+ *	loaded over it. A document that is there already is ready when this returns;
+ *	one that is not is ready when its DOMContentLoaded listeners are called
  *
  *	@param		{Object}	options		{ box, items, speed, readyState, withTrack,
  *																loop, toggle, reducedMotion, observer }
@@ -218,16 +231,26 @@ function page( options ) {
 	const dc = {
 		get activeElement()	{ return focused },
 		readyState			: options.readyState || 'complete',
+		documentElement	: { clientHeight : 800, clientWidth : 1000, scrollTop : 0, scrollLeft : 0 },
+		body						: { scrollTop : 0, scrollLeft : 0, classList : { add : function() {}, remove : function() {} } },
+		querySelector			: function() { return null },
 		querySelectorAll	: function( selector ) { return selector === '.nino-ticker' ? [ row ] : [] },
 		addEventListener	: function( type, fn ) { ( listeners[type] = listeners[type] || [] ).push( fn ) },
 		createElement			: function( tag ) { const created = element(); created.tagName = tag; return created },
 	};
 
+	// What was asked of setTimeout() and has not run: the kernel's ready callbacks
+	// first, then what the script asks for in turn
 	const timers = [];
 
 	const sandbox = { console : console, document : dc,
+		navigator					: { userAgent : 'node' },
+		location					: { hash : '' },
+		Event							: function( type ) { this.type = type },
+		dispatchEvent			: function( event ) { ( listeners[event.type] || [] ).forEach( function( fn ) { fn( event ) } ) },
 		addEventListener	: function( type, fn ) { ( listeners[type] = listeners[type] || [] ).push( fn ) },
-		setTimeout				: function( fn ) { timers.push( fn ); return timers.length },
+		requestAnimationFrame	: function() { return 1 },
+		setTimeout				: function( fn, delay ) { timers.push( { fn : fn, delay : delay } ); return timers.length },
 		clearTimeout			: function( id ) { timers[id - 1] = null },
 		matchMedia				: function( query ) { return { media : query, matches : options.reducedMotion === true } },
 		IntersectionObserver	: function( callback ) {
@@ -245,7 +268,24 @@ function page( options ) {
 	if( options.observer === false )
 		delete sandbox.IntersectionObserver;
 
-	vm.runInContext( source, vm.createContext( sandbox ), { filename : 'ticker.js' } );
+	const context = vm.createContext( sandbox );
+
+	nino.runInContext( context );
+	ninoUi.runInContext( context );
+	vm.runInContext( source, context, { filename : 'ticker.js' } );
+
+	// Run what was asked of setTimeout(), and what that asked for in turn - a timer
+	// that was cleared is null
+	const settle = function() {
+		while( timers.length > 0 )
+			timers.splice( 0 ).forEach( function( timer ) { if( timer !== null ) timer.fn() } );
+	};
+
+	// A document that is there already: Nino.js calls its ready callbacks back a
+	// millisecond after it was loaded. One of them throwing is thrown again from a
+	// timer, which settle() runs too - so the error ends the run instead of passing unseen
+	if( dc.readyState !== 'loading' )
+		settle();
 
 	return {
 		row : row, track : track, host : host, listeners : listeners, observers : observers,
@@ -268,7 +308,7 @@ function page( options ) {
 			if( box !== undefined ) row.width = box;
 			( listeners['resize'] || [] ).forEach( function( fn ) { fn() } );
 		},
-		settle : function() { timers.splice( 0 ).forEach( function( fn ) { if( fn !== null ) fn() } ) },
+		settle : settle,
 	};
 }
 
@@ -349,16 +389,19 @@ check( '...and once, not once per step, when it comes to rest', dragged.measurem
 
 // --- One pass, or round and round ----------------------------------------------
 
-/*	The default is one cycle. The reading of data-ticker-loop is
-	typewriter.js's own for data-typewriter-loop: missing or empty is the
-	default, '0', 'false', 'off' and 'no' say it too, anything else asks for the
-	loop - and what the script writes is a class, so the stylesheet never
-	repeats the list	*/
+/*	The default is one cycle. The reading of data-ticker-loop is the kernel's
+	for every flag (Nino.ui.options()): 1, true, yes and on ask for the loop,
+	whatever their case and the space around them, 0, false, no and off say
+	it is not, and any other word - a blank one, "loop" - is no answer at all,
+	which leaves the default. What the script writes is a class, so the
+	stylesheet never repeats the list	*/
 check( 'a row without data-ticker-loop is not looping', plain.row.matchesClass('nino-is-looping') === false );
 check( '...and nor are the four values that say so, nor an empty one',
 	[ '0', 'false', 'OFF', 'no', '', '  ' ].every( function( value ) { return page( { loop : value } ).row.matchesClass('nino-is-looping') === false } ) );
-check( '...while any other value asks for the endless loop',
-	[ '1', 'true', 'on', 'yes', 'loop' ].every( function( value ) { return page( { loop : value } ).row.matchesClass('nino-is-looping') === true } ) );
+check( '...while the words that say yes ask for the endless loop',
+	[ '1', 'true', 'on', 'yes', ' YES ' ].every( function( value ) { return page( { loop : value } ).row.matchesClass('nino-is-looping') === true } ) );
+check( '...and a word that says neither is no answer: "loop" is no longer one that asks for it',
+	[ 'loop', 'enabled', 'ja' ].every( function( value ) { return page( { loop : value } ).row.matchesClass('nino-is-looping') === false } ) );
 
 // Measured is not started: the row is copied and its animation set up, and
 // then held until somebody could see it - a footer row would otherwise be

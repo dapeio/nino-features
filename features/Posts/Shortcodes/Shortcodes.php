@@ -52,16 +52,13 @@ namespace Nino\Modules\Posts {
 			\Nino\Html::addShortcode( $appData, 'post', 			[ self::class, 'doPost' ] );
 			\Nino\Html::addShortcode( $appData, 'post-nav', 	[ self::class, 'doNav' ] );
 
-			/*	The Components module registers [posts-pager] from the manifest before
-				this runs (\Nino\Features::registerComponents()), and a second
-				registration here would take it back from the wrapper that fills in
-				the defaults. Where the module is switched off nothing was registered
-				and the shortcode is added here. The other three are shortcodes: the
+			/*	The manifest declares [posts-pager] as a component, and where the
+				Components module is on it owns the name: Feature::shortcode()
+				registers nothing then, and the module renders it through
+				Posts::componentPostsPager(). Where the module is switched off the
+				shortcode is registered here. The other three are shortcodes: the
 				Builder cannot carry a record template	*/
-			$components = \Nino\Modules\Components::components( $appData );
-
-			if( isset( $components['posts-pager'] ) === false )
-				\Nino\Html::addShortcode( $appData, 'posts-pager', [ self::class, 'doPager' ] );
+			\Nino\Feature::shortcode( $appData, 'posts-pager', [ self::class, 'doPager' ] );
 		}
 
 		/**
@@ -90,7 +87,7 @@ namespace Nino\Modules\Posts {
 			if( $limit > 0 )
 				$posts = array_slice( $posts, (int) ( $args['offset'] ?? 0 ), $limit );
 			else
-				$posts = array_slice( $posts, ( self::page() - 1 ) * $section['perPage'], $section['perPage'] );
+				$posts = array_slice( $posts, ( self::page( $appData ) - 1 ) * $section['perPage'], $section['perPage'] );
 
 			$html = '';
 			$id 	= 0;
@@ -149,7 +146,7 @@ namespace Nino\Modules\Posts {
 
 			$total = count( \Nino\Modules\Posts::posts( $appData, $section ) );
 			$pages = (int) ceil( $total / max( 1, $section['perPage'] ) );
-			$page 	= self::page();
+			$page 	= self::page( $appData );
 
 			// One page is not a pager. Saying "1 of 1" is telling somebody
 			// there is more where there is not
@@ -173,7 +170,7 @@ namespace Nino\Modules\Posts {
 				gets aria-current instead, which is what says "this one" to
 				somebody who cannot see the highlight */
 			$base	= \Nino\Filesystem::getDir( $appData ). '/'. $section['path'];
-			$item	= self::template( $appData, 'pager-item' );
+			$item	= \Nino\Feature::template( $appData, self::TEMPLATES, 'pager-item' );
 			$items	= '';
 
 			if( $page > 1 )
@@ -185,7 +182,7 @@ namespace Nino\Modules\Posts {
 
 			for( $number = 1; $number <= $pages; $number++ )
 				$items .= $number === $page
-					? str_replace( [ '[[href]]', '[[label]]' ], [ self::_href( $base, $number ), (string) $number ], self::template( $appData, 'pager-item-current' ) )
+					? str_replace( [ '[[href]]', '[[label]]' ], [ self::_href( $base, $number ), (string) $number ], \Nino\Feature::template( $appData, self::TEMPLATES, 'pager-item-current' ) )
 					: str_replace( [ '[[href]]', '[[attributes]]', '[[label]]' ], [ self::_href( $base, $number ), '', (string) $number ], $item );
 
 			if( $page < $pages )
@@ -200,7 +197,7 @@ namespace Nino\Modules\Posts {
 			return str_replace(
 				[ '[[class]]', '[[label]]', '[[items]]' ],
 				[ self::_class( $args ), self::_text( $appData, $args, 'label', 'Pages', 'Seiten' ), $items ],
-				self::template( $appData, 'pager' )
+				\Nino\Feature::template( $appData, self::TEMPLATES, 'pager' )
 			);
 		}
 
@@ -250,16 +247,19 @@ namespace Nino\Modules\Posts {
 		/**
 		 *	The page of a list that is being asked for.
 		 *
-		 *	Read from $_GET, the same reasoning the Search feature's shortcodes
-		 *	give: a shortcode callback is handed $appData and its own arguments,
-		 *	never the request, and $_GET is php's parse of the same query string
-		 *	Http::request() parses for itself
+		 *	Read from the query of the request the kernel carries
+		 *	(\Nino\Http::getRequest(): the copy stored when the request began,
+		 *	with the query string parsed as Http::request() parses it): a
+		 *	shortcode callback is handed $appData and its own arguments, never the
+		 *	request itself
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
 		 *	@return 	int										1 or more
 		 */
-		public static function page(): int {
+		public static function page( array &$appData ): int {
 
-			$value = $_GET[ \Nino\Modules\Posts::PAGE_KEY ] ?? 1;
+			$value = \Nino\Http::getRequest( $appData )['/nino/http/request']['query'][ \Nino\Modules\Posts::PAGE_KEY ] ?? 1;
 
 			return is_scalar( $value ) === true ? max( 1, (int) $value ) : 1;
 		}
@@ -345,7 +345,7 @@ namespace Nino\Modules\Posts {
 				$out .= str_replace(
 					[ '[[class]]', '[[text]]' ],
 					[ self::BODY_CLASS, str_replace( [ "\n", '[' ], [ '<br>', '&#91;' ], $clean ) ],
-					self::template( $appData, 'post-paragraph' )
+					\Nino\Feature::template( $appData, self::TEMPLATES, 'post-paragraph' )
 				);
 			}
 
@@ -391,7 +391,7 @@ namespace Nino\Modules\Posts {
 					// The alt is an element field like any other, and takes the same rule
 					\Nino\Html::fieldValue( $alt, [] ),
 				],
-				self::template( $appData, 'post-image' )
+				\Nino\Feature::template( $appData, self::TEMPLATES, 'post-image' )
 			);
 		}
 
@@ -443,7 +443,13 @@ namespace Nino\Modules\Posts {
 		 *	The class attribute of one's own a call gives the pager, with the space
 		 *	in front of it that the template leaves out - escaped, and with its
 		 *	brackets as character references, because the markup is rendered
-		 *	once more
+		 *	once more.
+		 *
+		 *	Whole, attribute and all, and not \Nino\Feature::classes(): that one
+		 *	answers what follows the classes a template has of its own
+		 *	(class="nino-x[[classes]]"), and the <nav> of pager.tpl has no class
+		 *	of its own, so it carries no class attribute at all where the call
+		 *	gives none
 		 *
 		 *	@param		array			$args					Shortcode attributes
 		 *
@@ -454,39 +460,6 @@ namespace Nino\Modules\Posts {
 			$class = trim( (string) ( $args['class'] ?? '' ) );
 
 			return $class === '' ? '' : ' class="'. str_replace( '[', '&#91;', htmlspecialchars( $class, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) ). '"';
-		}
-
-		/**
-		 *	One of this feature's own templates, read the way a project's are.
-		 *	Markup belongs in a template - see AGENTS.md, "Markup belongs in a
-		 *	template" - so what this class holds is which one and what goes in it
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$name					A file name below TEMPLATES, without .tpl
-		 *
-		 *	@return 	string								'' where the file is not there, which is logged
-		 */
-		public static function template( array &$appData, string $name ): string {
-
-			// A name from this class and nowhere else, and held to a slug anyway:
-			// the one thing this could otherwise be turned into is a read of
-			// something outside the feature
-			if( preg_match( '/^[a-z][a-z0-9-]*$/D', $name ) !== 1 )
-				return '';
-
-			$template = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $name. '.tpl', '' );
-
-			$template = is_string( $template ) === true ? rtrim( $template, "\n" ) : '';
-
-			/*	A template that is not there renders as nothing, which on a page looks
-				like a shortcode nobody wrote rather than like a feature missing a file.
-				Said out loud instead: E_USER_WARNING is Nino's "record this and carry
-				on" channel (see \Nino\Runtime::NON_FATAL_LEVELS), so the request
-				finishes and the log says which file	*/
-			if( $template === '' )
-				trigger_error( 'Nino: the template '. self::TEMPLATES. '/'. $name. '.tpl is missing or empty.', E_USER_WARNING );
-
-			return $template;
 		}
 	}
 

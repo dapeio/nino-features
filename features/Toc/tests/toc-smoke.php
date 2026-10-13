@@ -6,12 +6,14 @@ declare(strict_types=1);
  *	toc-smoke.php			Contract test for the Toc feature (Modules\Toc): the
  *										manifest, the activation through \Nino\Features and the
  *										two words it merges, what [toc] writes and what it
- *										deliberately does not, the two files it puts into the
- *										site's own asset bundles (\Nino\Html::addAsset()), and
+ *										deliberately does not, the two files it lists under
+ *										assets, which the kernel puts into the site's own asset
+ *										bundles (\Nino\Features::registerAssets()), and
  *										deactivation.
  *
  *										The list itself is the browser's, and toc-js-smoke.js
- *										beside this file measures it; this test runs that one
+ *										beside this file measures it, over the kernel's own
+ *										Nino.js from the same checkout; this test runs that one
  *										too where node is on the path. Travels with the feature
  *										and runs against the checkout three levels up, or the
  *										one NINO_ROOT names.
@@ -26,7 +28,6 @@ require $root. '/tests/harness.php';
 
 $appData = ninoSandbox( 'toc' );
 $appData['/nino/dir'] = '';
-$appData['/nino/locales/textfiles'] = '/text';
 $appData['./nino/locales/current'] = 'en_US';
 
 
@@ -50,13 +51,15 @@ check( 'it requires no other feature', $manifest['requires'] === [] );
 check( 'it keeps no data of its own - the list is the page, read as it stands', $manifest['data'] === [] );
 check( 'and carries one setting: whether every heading gets a link of its own',
 	array_keys( $manifest['settings'] ) === [ 'anchors' ] && $manifest['settings']['anchors']['default'] === true );
+check( 'it lists its stylesheet and its script under assets, which is all it asks the kernel for',
+	$manifest['assets'] === [ '/features/Toc/assets/toc.css', '/features/Toc/assets/toc.js' ] );
 
 \Nino\AppData::writeContentData( $appData, [ '/nino/modules', '/nino/locales/available', '/nino/locales/native' ] );
 ninoWarnings();
 
 check( 'activation succeeds', \Nino\Features::activate( $appData, 'toc' ) === true );
 check( 'the class is listed and the version recorded', in_array( '\\Nino\\Modules\\Toc', \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/modules'], true ) === true
-	&& \Nino\Features::get( $appData, 'toc' )['installed'] === '1.0.0' );
+	&& \Nino\Features::get( $appData, 'toc' )['installed'] === $manifest['version'] );
 
 foreach( [ 'en_US', 'de_DE' ] as $locale ) {
 	$text = \Nino\Filesystem::getFileContent( $appData, '/text/'. $locale. '.php', [] );
@@ -69,9 +72,11 @@ echo "\n";
 
 // --- init() ------------------------------------------------------------------
 
-echo "Modules\\Toc::init() - the shortcode and the bundle\n";
+echo "Modules\\Toc::init() and the manifest's assets - the shortcode and the bundle\n";
 
+// The order \Nino\init() takes: the assets of the manifests, then the init() of every module
 $appData['/nino/modules'][] = '\\Nino\\Modules\\Assets';
+\Nino\Features::registerAssets( $appData );
 \Nino\Modules::callModules( $appData, 'init' );
 
 check( 'the shortcode is registered as [toc]', ( $appData['./nino/html/shortcodes']['toc'] ?? null ) !== null );
@@ -146,8 +151,9 @@ check( 'a list never lists its own title', str_contains( $js, 'closest( SELECTOR
 check( 'nothing about a list reaches the server or outlives the page',
 	str_contains( $js, 'XMLHttpRequest' ) === false && str_contains( $js, 'fetch(' ) === false
 	&& str_contains( $js, 'localStorage' ) === false && str_contains( $js, 'document.cookie' ) === false );
-check( 'scrolling costs one frame at most, not one call per event',
-	str_contains( $js, 'requestAnimationFrame' ) === true && str_contains( $js, 'passive : true' ) === true );
+check( 'scrolling costs one frame at most, not one call per event - the scroll and the resize are the kernel\'s throttled events',
+	str_contains( $js, "Nino.events.bindCallback( 'scroll', mark )" ) === true && str_contains( $js, "Nino.events.bindCallback( 'resize', mark )" ) === true
+	&& str_contains( $js, 'addEventListener' ) === false );
 
 check( 'the section being read is said with aria-current, so the mark and the announcement are one fact',
 	str_contains( $js, "setAttribute( 'aria-current', 'true' )" ) === true
@@ -167,7 +173,8 @@ if( $node === '' )
 	echo "  --  node is not on the path, so toc-js-smoke.js is not run here\n\n";
 else {
 	echo "toc-js-smoke.js\n";
-	$out = (string) @shell_exec( escapeshellarg( $node ). ' '. escapeshellarg( __DIR__. '/toc-js-smoke.js' ). ' 2>&1' );
+	// The checkout this test runs against is the one whose Nino.js the script runs over
+	$out = (string) @shell_exec( 'NINO_ROOT='. escapeshellarg( $root ). ' '. escapeshellarg( $node ). ' '. escapeshellarg( __DIR__. '/toc-js-smoke.js' ). ' 2>&1' );
 	echo $out;
 	check( 'the browser half passes too', preg_match( '/^\d+ checks, 0 failed$/m', $out ) === 1 );
 	echo "\n";
@@ -178,9 +185,7 @@ else {
 
 echo "Components - [toc] as the Builder offers it\n";
 
-if( class_exists( '\\Nino\\Modules\\Components' ) === false )
-	echo "  --  this Nino has no \\Nino\\Modules\\Components: the manifest's components are not read here, and the shortcode registers itself\n";
-else ( static function( array $appData ): void {
+( static function( array $appData ): void {
 
 	$declared = \Nino\Features::manifest( dirname( __DIR__ ) )['components'] ?? [];
 

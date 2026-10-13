@@ -4,7 +4,7 @@
  *								nothing else: the lines laid on top of each other, the part
  *								still to be typed holding its place, and the cursor. Bundled
  *								into the project's own /.cache/style.css the same way the
- *								kernel bundles Nino.css (see Typewriter::init() and
+ *								kernel bundles Nino.css (from the manifest's assets; see
  *								docs/development.md, "Assets Are Not Templates") - never
  *								rendered through the fill/shortcode engine, so nothing in
  *								here is a textfill.
@@ -21,9 +21,9 @@
  *
  *								Every rule below is bound to a class typewriter.js writes
  *								when it takes over - .nino-typewriter-line on the lines,
- *								.nino-typewriter-rest, -cursor and -reader on the spans it
- *								builds inside them. That is deliberate: wherever the script
- *								does not run - no JavaScript, and a visitor who asked for
+ *								.nino-typewriter-rest and -cursor on the spans it builds
+ *								inside them. That is deliberate: wherever the script does
+ *								not run - no JavaScript, and a visitor who asked for
  *								reduced motion - not one of these rules matches, and the
  *								container is what it reads like in the markup, paragraphs
  *								below one another.
@@ -83,25 +83,8 @@
 	box-shadow: inset 0 0 0 2px currentColor;
 }
 
-/* The line's own text, once, for a screen reader - the same clipping every
-   "visually hidden" utility uses. Its own class rather than the framework's
-   .nino-sr-only: a feature carries what it needs itself */
-.nino-typewriter-reader {
-	position: absolute;
-	width: 1px;
-	height: 1px;
-	padding: 0;
-	margin: -1px;
-	overflow: hidden;
-	clip: rect(0, 0, 0, 0);
-	white-space: nowrap;
-	border: 0;
-}
-
-/* typewriter.js asks for the preference once, when it starts, and does not
-   run at all while it is set. This is here for the visitor who sets it
-   afterwards, with a typewriter already running on the page */
-@media (prefers-reduced-motion: reduce) {
-	.nino-typewriter > .nino-typewriter-line { transition: none; }
-	.nino-typewriter-cursor { animation: none; }
-}
+/* No block for prefers-reduced-motion. typewriter.js asks for the preference
+   once, when it starts, and does not run at all while it is set; for the
+   visitor who sets it afterwards, with a typewriter already running on the
+   page, the clamp of Nino.css ends the fade and the blink in the frame they
+   are in, and a cursor that has stopped blinking is a cursor that is there */

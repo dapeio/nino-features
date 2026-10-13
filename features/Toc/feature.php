@@ -54,11 +54,13 @@ return [
 	// It is a way through what is already written on a page, which is the
 	// thing the Features panel files under content
 	'category'		=> 'content',
-	'version'			=> '1.0.0',
-	'nino'				=> '^1.3',
+	'version'			=> '1.1.0',
+	'nino'				=> '^1.8',
 	'requires'		=> [],
 	// Nothing under data/: the list is the page, read as it stands
 	'data'				=> [],
+	// Into the site's style and script bundle, behind the kernel's own files
+	'assets'			=> [ '/features/Toc/assets/toc.css', '/features/Toc/assets/toc.js' ],
 	'settings'		=> [
 		'anchors' => [
 			'type'		=> 'bool',
@@ -70,7 +72,7 @@ return [
 			'default'	=> true,
 		],
 	],
-	/*	The shortcode as the Builder offers it. Nino 1.5 ignores the key	*/
+	/*	The shortcode as the Builder offers it	*/
 	'components'	=> [
 		'toc' => [
 			'label'			=> [ 'en_US' => 'Table of contents', 'de_DE' => 'Inhaltsverzeichnis' ],

@@ -2,9 +2,9 @@
  *	Nino - Social links
  *	social.css		The row the links stand in and the size of their icons, and
  *					nothing else. Bundled into the project's own /.cache/style.css
- *					the same way the kernel bundles Nino.css (see Social::init()) -
- *					never rendered through the fill/shortcode engine, so nothing in
- *					here is a textfill.
+ *					the same way the kernel bundles Nino.css (from the manifest's
+ *					assets) - never rendered through the fill/shortcode engine, so
+ *					nothing in here is a textfill.
  *
  *					The icons are Lucide's line icons, drawn in currentColor: a
  *					link is the colour the frame around it gives its links, in a
@@ -19,7 +19,7 @@
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
-	gap: var(--space-1, .5rem) var(--space-2, 1rem);
+	gap: var(--space-1) var(--space-2);
 	margin: 0;
 	padding: 0;
 	list-style: none;

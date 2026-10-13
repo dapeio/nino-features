@@ -9,13 +9,18 @@
  *							DOM-light - the file is evaluated in a vm context
  *							against stand-ins for the handful of DOM APIs it
  *							uses, with a clock that only moves when this test
- *							says so.
+ *							says so. The kernel's own Nino.js and Nino.ui.js run
+ *							in that context before it, as they are on disk: the
+ *							ready callback, the options, the preference for less
+ *							motion and the wait for the viewport are theirs.
  *
  *							typewriter-smoke.php runs this through node when node
  *							is on the path, so bin/check.sh and CI cover it; it
- *							also runs on its own.
+ *							also runs on its own, against the checkout three
+ *							levels up or the one NINO_ROOT names.
  *
  *	Usage: node features/Typewriter/tests/typewriter-js-smoke.js
+ *	       NINO_ROOT=../nino node features/Typewriter/tests/typewriter-js-smoke.js
  */
 
 'use strict';
@@ -31,6 +36,13 @@ const path = require('path');
 const vm = require('vm');
 
 const source = fs.readFileSync( path.join( __dirname, '../assets/typewriter.js' ), 'utf8' );
+
+// The two scripts of the kernel that typewriter.js is written against, read from
+// the checkout this runs against: three levels up when the feature sits in a
+// project's features/, else the one NINO_ROOT names
+const kernel = path.resolve( process.env.NINO_ROOT || path.join( __dirname, '../../..' ) );
+const nino = new vm.Script( fs.readFileSync( path.join( kernel, '_nino/Nino.js' ), 'utf8' ), { filename : 'Nino.js' } );
+const ninoUi = new vm.Script( fs.readFileSync( path.join( kernel, '_nino/Nino.ui.js' ), 'utf8' ), { filename : 'Nino.ui.js' } );
 
 let checks = 0;
 let failures = 0;
@@ -155,10 +167,12 @@ function cursorAtHead( line ) {
 
 /**
  *	One page with one .nino-typewriter on it, a clock that only moves when
- *	the test says so, and typewriter.js evaluated against both. The file
- *	starts itself on a document that is already loaded, so it has run by the
- *	time this returns - waiting, on a container that starts in view, for
- *	scrollIntoView() below.
+ *	the test says so, and typewriter.js evaluated against both, behind the
+ *	kernel's Nino.js and Nino.ui.js. Nino.js calls the ready callbacks back a
+ *	millisecond after it was loaded onto a document that is there already, and
+ *	that millisecond is taken here, so the script has run by the time this
+ *	returns - waiting, on a container that starts in view, for scrollIntoView()
+ *	below.
  */
 function world( spec ) {
 
@@ -203,7 +217,10 @@ function world( spec ) {
 		document = {
 			get activeElement() { return focused },
 			readyState : 'complete',
+			documentElement : { clientHeight : 800, clientWidth : 1000, scrollTop : 0, scrollLeft : 0 },
+			body : { scrollTop : 0, scrollLeft : 0, classList : classList() },
 			addEventListener : function() {},
+			querySelector : function() { return null },
 			querySelectorAll : function( selector ) { return selector === '.nino-typewriter' ? ( refused === null ? [ wrap ] : [ refused, wrap ] ) : [] },
 			createElement : function( tag ) {
 				const created = element();
@@ -217,6 +234,12 @@ function world( spec ) {
 	const sandbox = {
 		console : console,
 		document : document,
+		navigator : { userAgent : 'node' },
+		location : { hash : '' },
+		Event : function( type ) { this.type = type },
+		dispatchEvent : function() {},
+		addEventListener : function() {},
+		requestAnimationFrame : function() { return 1 },
 		matchMedia : function( query ) {
 			return { media : query, matches : spec.reducedMotion === true };
 		},
@@ -244,7 +267,11 @@ function world( spec ) {
 	if( spec.withoutObserver === true )
 		delete sandbox.IntersectionObserver;
 
-	vm.runInContext( source, vm.createContext( sandbox ), { filename : 'typewriter.js' } );
+	const context = vm.createContext( sandbox );
+
+	nino.runInContext( context );
+	ninoUi.runInContext( context );
+	vm.runInContext( source, context, { filename : 'typewriter.js' } );
 
 	/**
 	 *	Run every callback due within the next `ms`, in the order they are
@@ -264,6 +291,12 @@ function world( spec ) {
 		}
 		now = until;
 	}
+
+	// The millisecond Nino.js takes before it calls the ready callbacks, of which
+	// typewriter.js is one. A callback that throws is thrown again from a timer
+	// with no delay, which is due within that millisecond: the error ends the run
+	// instead of passing unseen
+	advance( 1 );
 
 	return {
 		wrap : wrap,
@@ -292,7 +325,7 @@ const
 	second = fade.lines[1];
 
 check( 'each line is marked as one, so the stacking in typewriter.css takes hold', first.classList.contains('nino-typewriter-line') === true && second.classList.contains('nino-typewriter-line') === true );
-check( 'the complete line stays readable for assistive technology', childByClass( first, 'nino-typewriter-reader' ).textContent === 'Ab' && childByClass( second, 'nino-typewriter-reader' ).textContent === 'Cd' );
+check( 'the complete line stays readable for assistive technology', childByClass( first, 'nino-sr-only' ).textContent === 'Ab' && childByClass( second, 'nino-sr-only' ).textContent === 'Cd' );
 check( 'the typed text goes into a span of its own, hidden from it', childByClass( first, 'nino-typewriter-text' ).attributes['aria-hidden'] === 'true' );
 check( 'the line is laid out at the size it will have, from the start', childByClass( first, 'nino-typewriter-rest' ).textContent === 'Ab' && childByClass( first, 'nino-typewriter-rest' ).attributes['aria-hidden'] === 'true' );
 check( 'the fade duration reaches the element as the transition it is', first.style.transitionDuration === '400ms' );
@@ -337,7 +370,7 @@ check( 'after the last line it stops, with that line complete and still showing'
 	second.classList.contains('nino-is-active') === true && childByClass( second, 'nino-typewriter-text' ).textContent === 'Cd' );
 check( '...its cursor gone, so the blinking ends', childByClass( second, 'nino-typewriter-cursor' ) === null );
 check( '...and the line before it faded out for good, its text still there for a screen reader',
-	first.classList.contains('nino-is-active') === false && childByClass( first, 'nino-typewriter-reader' ).textContent === 'Ab' );
+	first.classList.contains('nino-is-active') === false && childByClass( first, 'nino-sr-only' ).textContent === 'Ab' );
 
 fade.advance( 100000 );
 check( 'a typewriter that has stopped stays stopped', second.classList.contains('nino-is-active') === true
@@ -349,8 +382,9 @@ check( 'a typewriter of one line types it once and leaves it standing',
 	single.lines[0].classList.contains('nino-is-active') === true && childByClass( single.lines[0], 'nino-typewriter-text' ).textContent === 'Ab'
 	&& childByClass( single.lines[0], 'nino-typewriter-cursor' ) === null );
 
-/*	What an existing page does to get the old behaviour back: any non-empty
-	value that is not one of the four that switch a flag off	*/
+/*	The words of a flag are the kernel's (Nino.ui.options()): 1, true, yes and
+	on ask for the loop, whatever their case, and any word besides - "loop"
+	was one that used to - is no answer and leaves the default	*/
 [ '1', 'true', 'on', 'yes', 'YES' ].forEach( function( value ) {
 
 	const looped = world( { lines : [ 'Ab', 'Cd' ], attributes : { 'data-typewriter-start' : 'load', 'data-typewriter-loop' : value } } );
@@ -376,6 +410,12 @@ check( 'a data-typewriter-loop of " 0 " switches the loop off like "0"', childBy
 const emptyLoop = world( { lines : [ 'Ab' ], attributes : { 'data-typewriter-start' : 'load', 'data-typewriter-loop' : '' } } );
 emptyLoop.advance( 400 + 45 + 45 + 1600 );
 check( 'an empty data-typewriter-loop is the default, which is one pass', childByClass( emptyLoop.lines[0], 'nino-typewriter-cursor' ) === null );
+
+[ 'loop', 'enabled', 'ja' ].forEach( function( word ) {
+	const unknown = world( { lines : [ 'Ab' ], attributes : { 'data-typewriter-start' : 'load', 'data-typewriter-loop' : word } } );
+	unknown.advance( 400 + 45 + 45 + 1600 );
+	check( 'data-typewriter-loop="'+ word+ '" is a word of neither list, which leaves the default: one pass', childByClass( unknown.lines[0], 'nino-typewriter-cursor' ) === null );
+} );
 
 console.log('');
 
@@ -495,7 +535,7 @@ const shaped = world( {
 	},
 } );
 
-check( 'the line is read as the browser would render it, not as the template indents it', childByClass( shaped.lines[0], 'nino-typewriter-reader' ).textContent === 'Hi there' );
+check( 'the line is read as the browser would render it, not as the template indents it', childByClass( shaped.lines[0], 'nino-sr-only' ).textContent === 'Hi there' );
 
 shaped.advance( 0 );
 check( 'so typing starts on the first character of the text, not on its indentation', childByClass( shaped.lines[0], 'nino-typewriter-text' ).textContent === 'H' );

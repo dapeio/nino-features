@@ -2,7 +2,7 @@
  *	Nino - Ticker
  *	ticker.css		The row's own layout and the movement, and nothing else.
  *					Bundled into the project's own /.cache/style.css the same way
- *					the kernel bundles Nino.css (see Ticker::init() and
+ *					the kernel bundles Nino.css (from the manifest's assets; see
  *					docs/development.md, "Assets Are Not Templates") - never
  *					rendered through the fill/shortcode engine, so nothing in here
  *					is a textfill.
@@ -36,7 +36,7 @@
 .nino-ticker-track {
 	display: flex;
 	align-items: center;
-	gap: var(--space-3, 2rem);
+	gap: var(--space-3);
 	width: max-content;
 }
 

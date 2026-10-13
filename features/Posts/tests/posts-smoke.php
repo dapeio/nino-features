@@ -23,37 +23,26 @@ require $root. '/tests/harness.php';
 
 $appData = ninoSandbox( 'posts' );
 // What a request always carries and a sandbox does not - a section's urls are
-// built on the first, and the install unit's own words are read through the
-// second (see the other feature suites)
+// built on it
 $appData['/nino/dir'] 								= '';
-$appData['/nino/locales/textfiles']		= \Nino\AppData::DEFAULTS['/nino/locales/textfiles'];
 
 /**
- *	A request the way \Nino\Http::request() builds one, minus everything this
- *	feature never looks at.
+ *	Put a request in place, resolve the post it is for, and answer what came
+ *	out - the shortcodes read the live request rather than being handed one.
  *
- *	The response uri is the path that was asked for, not the route's own: the
- *	copy Http::request() pushes onto './nino/http/requests' is made before
+ *	The request is ninoVisit()'s, the first stage of Http::request(), and its
+ *	response uri is the path that was asked for, not the route's own: the copy
+ *	Http::request() pushes onto './nino/http/requests' is made before
  *	Http::response() matches a route, so that is what a shortcode reading the
  *	live request actually finds. Written the other way round, this fixture
  *	agreed with an implementation that read the resolved uri - and a browser
- *	found what it could not
- */
-function postsRequest( string $path ): array {
-	return [
-		'/nino/http/request' 	=> [ 'uri' => $path, 'method' => 'GET' ],
-		'/nino/http/response'	=> [ 'uri' => $path, 'body' => '', 'header' => [], 'statusCode' => 200 ],
-	];
-}
-
-/**
- *	Put one in place, resolve it, and answer what came out - the shortcodes
- *	read the live request rather than being handed one
+ *	found what it could not. What this does beyond ninoVisit() is what the
+ *	route does next: the response uri becomes the section's own, and
+ *	callbackPost() resolves the post or answers the 404
  */
 function postsResolve( array &$appData, string $path ): array {
-	$request = postsRequest( $path );
 	unset( $appData['./posts/current'] );
-	$appData['./nino/http/requests'] = [ $request ];
+	$request = ninoVisit( $appData, $path );
 	// The route matched by then, so the response uri is the section's own
 	$request['/nino/http/response']['uri'] = '/blog/post';
 	\Nino\Modules\Posts::callbackPost( $appData, $request );
@@ -74,8 +63,8 @@ $feature = \Nino\Features::manifest( dirname( __DIR__ ) );
 
 check( 'the manifest reads, with the key and the class the directory implies', is_array( $feature ) === true
 	&& $feature['key'] === 'posts' && $feature['module'] === '\\Nino\\Modules\\Posts' );
-check( 'it is content, and names the kernel it needs - the one whose card is called one, which the list page is written in', ( $feature['category'] ?? '' ) === 'content'
-	&& ( $feature['nino'] ?? '' ) === '^1.7' );
+check( 'it is content, and names the kernel it needs - the one whose toolset its class calls, and with it the card that is called one, which the list page is written in', ( $feature['category'] ?? '' ) === 'content'
+	&& ( $feature['nino'] ?? '' ) === '^1.8' );
 check( 'the sections file is declared under data, so a backup carries it',
 	in_array( \Nino\Modules\Posts\Sections::PATH, (array) ( $feature['data'] ?? [] ), true ) === true );
 check( 'the posts themselves are not - they are ordinary elements, and /elements is backed up already',
@@ -227,19 +216,20 @@ foreach( [
 
 echo "\nThe four shortcodes\n";
 
-$appData['./nino/http/requests'] = [ postsRequest( '/blog' ) ];
+/*	The page of a list is the query of the request, and the shortcodes read it
+	off the request the kernel carries: each ask below is a visit to the list	*/
 unset( $appData['./posts/current'] );
-$_GET = [];
+ninoVisit( $appData, '/blog' );
 
 $list = postsRender( $appData, '[posts]<li><a href="[[.url]]">[[title]]</a></li>[/posts]' );
 check( '[posts] lists the first page of the section the page is', $list ===
 	'<li><a href="/blog/third-rail">Third rail</a></li><li><a href="/blog/second-wind">Second wind</a></li>' );
 
-$_GET = [ 'page' => '2' ];
+ninoVisit( $appData, '/blog?page=2' );
 check( '...and the second page is the rest', postsRender( $appData, '[posts]<a href="[[.url]]">[[title]]</a>[/posts]' ) ===
 	'<a href="/blog/first-light">First light</a>' );
 
-$_GET = [ 'page' => '99' ];
+ninoVisit( $appData, '/blog?page=99' );
 check( 'a page past the end is empty rather than the last one over again', postsRender( $appData, '[posts][[title]][/posts]' ) === '' );
 /*	...and the pager under it says the same thing. It used to clamp to the last
 	real page and mark that one as the one that is on, so an empty list stood
@@ -251,7 +241,7 @@ check( '...and the pager under it marks no page as the one that is on',
 check( '...while the way back is the last page that has posts on it, and there is no way on',
 	str_contains( $beyond, '<li><a href="/blog?page=2" rel="prev">' ) === true && str_contains( $beyond, 'rel="next"' ) === false );
 
-$_GET = [];
+ninoVisit( $appData, '/blog' );
 check( 'a limit of its own turns the paging off - a teaser is not page one',
 	postsRender( $appData, '[posts limit="3"][[title]] [/posts]' ) === 'Third rail Second wind First light ' );
 
@@ -263,9 +253,9 @@ check( '...in the markup the framework\'s own .nino-pagination is written agains
 	str_contains( $pager, '<ul class="nino-pagination">' ) === true && substr_count( $pager, '<li' ) === 3 );
 check( '...and page one is the section itself, not a query that means the same', str_contains( $pager, 'page=1' ) === false );
 
-$_GET = [ 'page' => '2' ];
+ninoVisit( $appData, '/blog?page=2' );
 check( 'from page two the way back is the section\'s own url', str_contains( postsRender( $appData, '[posts-pager]' ), '<li><a href="/blog" rel="prev">' ) === true );
-$_GET = [];
+ninoVisit( $appData, '/blog' );
 
 \Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Posts\Sections::PATH, [ 'sections' => [
 	'blog' => [ 'type' => '/posts', 'path' => 'blog', 'perPage' => 50 ],
@@ -283,7 +273,7 @@ postsResolve( $appData, '/blog/second-wind' );
 check( '[post] is the post the url is for', postsRender( $appData, '[post]<h1>[[title]]</h1>[/post]' ) === '<h1>Second wind</h1>' );
 check( '...and renders nothing on a page that is not one',
 	postsRender( $appData, '[posts][/posts]' ) !== null && ( static function() use ( &$appData ): bool {
-		$appData['./nino/http/requests'] = [ postsRequest( '/blog' ) ];
+		ninoVisit( $appData, '/blog' );
 		unset( $appData['./posts/current'] );
 		return postsRender( $appData, '[post]<h1>[[title]]</h1>[/post]' ) === '';
 	} )() === true );
@@ -310,7 +300,6 @@ foreach( [ 'en_US' => [ 'Previous post', 'Next post' ], 'de_DE' => [ 'Vorheriger
 }
 
 $appData['./nino/locales/current'] = 'en_US';
-$_GET = [];
 $textFile = \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] );
 \Nino\Filesystem::putFileContent( $appData, '/text/en_US.php', array_merge( $textFile, [ '[[/feature/posts/pager/next]]' => 'Further on' ] ) );
 check( 'the pager says what the project has set for its next link, a composed key', str_contains( postsRender( $appData, '[posts-pager]' ), 'Further on' ) === true );
@@ -330,7 +319,6 @@ echo "Components - [posts-pager] as the Builder offers it, the record shortcodes
 	// The page of one post: [post] and [post-nav] have a post to speak of, and
 	// the lists name their section by its key where the page cannot say
 	postsResolve( $appData, '/blog/second-wind' );
-	$_GET = [];
 
 	// Every documented call form, as it renders before the wrapper is there
 	$calls = [
@@ -394,8 +382,6 @@ echo "Components - [posts-pager] as the Builder offers it, the record shortcodes
 	check( 'a class of its own is set on the pager\'s navigation, no class leaves no attribute behind',
 		str_contains( \Nino\Html::renderHtml( $probe, '[posts-pager class="paging"]' ), '<nav class="paging" aria-label="' ) === true
 		&& str_contains( $before['[posts-pager]'], '<nav aria-label="' ) === true );
-
-	$_GET = [];
 
 } )( $appData );
 
@@ -575,5 +561,4 @@ $appData['/nino/dir'] = '';
 check( 'the project directory is left off, the way every other page in those two documents leaves it off',
 	in_array( '/blog/first-light', array_column( $inSubdir, 'externalPath' ), true ) === true );
 
-$_GET = [];
 ninoDone( $appData );

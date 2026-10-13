@@ -9,9 +9,14 @@
  *
  *										No jsdom, no dependency: the same element stand-in the
  *										other feature tests build, so this runs with nothing but
- *										node.
+ *										node - and the kernel's own Nino.js, which the script is
+ *										written against and which runs here as it is on disk:
+ *										from the checkout three levels up, or the one NINO_ROOT
+ *										names. The ready callback, the throttle of the scroll
+ *										and the resize and the slug of an id are its.
  *
  *	Usage: node features/Toc/tests/toc-js-smoke.js
+ *	       NINO_ROOT=../nino node features/Toc/tests/toc-js-smoke.js
  */
 
 'use strict';
@@ -36,6 +41,12 @@ function check( label, condition ) {
 }
 
 const source = fs.readFileSync( path.join( __dirname, '../assets/toc.js' ), 'utf8' );
+
+// The script of the kernel that toc.js is written against, read from the
+// checkout this runs against: three levels up when the feature sits in a
+// project's features/, else the one NINO_ROOT names
+const kernel = path.resolve( process.env.NINO_ROOT || path.join( __dirname, '../../..' ) );
+const nino = new vm.Script( fs.readFileSync( path.join( kernel, '_nino/Nino.js' ), 'utf8' ), { filename : 'Nino.js' } );
 
 /** Every descendant of $root, depth first */
 function descendants( root ) {
@@ -124,7 +135,10 @@ function element( tag, attributes ) {
 }
 
 /**
- *	A page: one [toc] nav and the headings it is meant to find
+ *	A page: one [toc] nav and the headings it is meant to find, the kernel's
+ *	Nino.js and then the script loaded over it. A document that is there already
+ *	is ready when this returns; one that is not is ready when its
+ *	DOMContentLoaded listeners are called
  *
  *	@param		{Object}	options		{ headings, levels, anchors, within, second, readyState }
  *										headings: [ tag, text, class, id, top, inside the toc-scope wrapper ]
@@ -173,15 +187,20 @@ function page( options ) {
 	}
 
 	const listeners = {};
-	let frame = null;
+	const frames = [];
+	const timers = [];
 
 	const dc = {
 		readyState			: options.readyState || 'complete',
 		createElement		: function( tag ) { return element( tag, {} ) },
 		getElementById	: function( id ) { return descendants( body ).filter( function( n ) { return n.id === id } )[0] || null },
 		/*	The stand-in reads classes and tag names only; a bracket it refuses
-			the way a browser refuses a selector it cannot parse - by throwing	*/
+			the way a browser refuses a selector it cannot parse - by throwing.
+			Except the one Nino.js asks for when it is loaded, the carrier of the
+			directory the project is served from, which this page has none of	*/
 		querySelector		: function( selector ) {
+			if( selector === '[data-dir]' )
+				return null;
 			if( selector.indexOf( '[' ) !== -1 )
 				throw new Error( 'not a valid selector: ' + selector );
 			return body.querySelectorAll( selector )[0] || null;
@@ -190,15 +209,47 @@ function page( options ) {
 		addEventListener	: function( type, fn ) { ( listeners[type] = listeners[type] || [] ).push( fn ) },
 	};
 
-	const sandbox = {
+	// The window is the global of the page, as it is in a browser: Nino.js puts Nino on it
+	const wn = {
 		console : console,
 		document : dc,
-		window : { innerHeight : 900, addEventListener : function( type, fn ) { ( listeners[type] = listeners[type] || [] ).push( fn ) },
-			requestAnimationFrame : function( fn ) { frame = fn; return 1 } },
+		navigator : { userAgent : 'node' },
+		innerHeight : 900,
+		Event : function( type ) { this.type = type },
+		dispatchEvent : function( event ) { ( listeners[event.type] || [] ).forEach( function( fn ) { fn( event ) } ) },
+		addEventListener : function( type, fn ) { ( listeners[type] = listeners[type] || [] ).push( fn ) },
+		requestAnimationFrame : function( fn ) { frames.push( fn ); return frames.length },
+		setTimeout : function( fn ) { timers.push( fn ); return timers.length },
 	};
-	sandbox.window.window = sandbox.window;
+	wn.window = wn;
 
-	vm.runInContext( source, vm.createContext( sandbox ), { filename : 'toc.js' } );
+	const context = vm.createContext( wn );
+
+	nino.runInContext( context );
+	vm.runInContext( source, context, { filename : 'toc.js' } );
+
+	// Run what was asked of requestAnimationFrame() and of setTimeout(), and what that
+	// asked for in turn. A callback of Nino.js that throws is thrown again from a timer,
+	// which this runs too - so the error ends the run instead of passing unseen
+	const runFrames = function() {
+		while( frames.length > 0 )
+			frames.splice( 0 ).forEach( function( fn ) { fn() } );
+	};
+	const settle = function() {
+		while( timers.length > 0 )
+			timers.splice( 0 ).forEach( function( fn ) { fn() } );
+	};
+	const fire = function( type ) {
+		( listeners[type] || [] ).forEach( function( fn ) { fn( { type : type } ) } );
+	};
+
+	// A document that is there already: Nino.js calls its ready callbacks back a
+	// millisecond after it was loaded, and the resize and the scroll it dispatches
+	// first take their frame
+	if( dc.readyState !== 'loading' ) {
+		settle();
+		runFrames();
+	}
 
 	return {
 		body : body, nav : first, other : other, headings : made, listeners : listeners,
@@ -212,8 +263,13 @@ function page( options ) {
 		},
 		scrollTo : function( tops ) {
 			for( let i = 0; i < tops.length; i++ ) made[i].top = tops[i];
-			( listeners['scroll'] || [] ).forEach( function( fn ) { fn() } );
-			if( frame !== null ) { const fn = frame; frame = null; fn() }
+			fire( 'scroll' );
+			runFrames();
+		},
+		resizeTo : function( seen ) {
+			wn.innerHeight = seen;
+			fire( 'resize' );
+			runFrames();
 		},
 	};
 }
@@ -246,6 +302,23 @@ check( 'two headings with the same words get two different ids',
 
 const umlaut = page( { headings : [ [ 'h2', 'Über uns & mehr' ] ] } );
 check( '...and a heading with umlauts and punctuation still makes a usable one', umlaut.headings[0].id === 'ueber-uns-mehr' );
+
+/*	The words of an id are made by the kernel's slug, Nino.slug(), the twin of
+	\Nino\Feature::slug(): it writes out the letters of its table (ä as ae, ø as o,
+	æ as ae) and nothing else, so a letter outside the table - the ź of Łódź - is
+	dropped like any other mark, and the cut at sixty characters never leaves a
+	hyphen at the end of an id	*/
+const nordic = page( { headings : [ [ 'h2', 'Ærøskøbing' ], [ 'h2', 'Łódź' ], [ 'h2', 'Crème brûlée' ] ] } );
+check( 'a heading with letters the kernel\'s table writes out gets the id the server would make of it',
+	nordic.headings[0].id === 'aeroskobing' && nordic.headings[2].id === 'creme-brulee' );
+check( '...and one with a letter outside the table keeps the rest of its words', nordic.headings[1].id === 'lod' );
+
+const long = page( { headings : [ [ 'h2', 'a'.repeat( 59 )+ ' b' ] ] } );
+check( '...and the cut at sixty characters leaves no hyphen at the end of an id', long.headings[0].id === 'a'.repeat( 59 ) );
+
+const wordless = page( { headings : [ [ 'h2', '???' ], [ 'h2', '!!!' ] ] } );
+check( 'a heading with no letter or digit in it is given the word of this feature\'s own, and the next one that word and its number',
+	wordless.headings[0].id === 'abschnitt' && wordless.headings[1].id === 'abschnitt-2' );
 
 /*	An id is checked against the whole page rather than against the list: a
 	heading this list does not hold - marked nino-toc-skip here - is not among
@@ -310,6 +383,14 @@ check( '...and it follows the page down', plain.current().join('') === 'Genauer'
 plain.scrollTo( [ -1600, -900, -100 ] );
 check( '...to the last one', plain.current().join('') === 'Zweitens' );
 check( 'and only ever one at a time', plain.current().length === 1 );
+
+/*	A resize moves the mark, a third down a window of another height	*/
+const resized = page( {} );
+resized.scrollTo( [ -100, 400, 800 ] );
+check( 'a window of 900 puts the mark above the second heading', resized.current().join('') === 'Erstens' );
+
+resized.resizeTo( 1500 );
+check( '...and one that grew to 1500 puts it below, which a resize is enough to find out', resized.current().join('') === 'Genauer' );
 
 
 // --- Two lists on one page -----------------------------------------------------

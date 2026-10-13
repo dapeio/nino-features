@@ -86,16 +86,14 @@ return [
 		],
 	],
 	'category'		=> 'content',
-	'version'			=> '1.1.0',
-	/*	1.4, because the words the unit delivers and the page details a post
-		sets are Nino 1.4's text keys (/template/..., /_nino/webpage<uri>/...),
-		which no earlier Nino has. The sectioned 'manual' above is read from
-		1.3.0-beta on - v1.2.0-beta refuses it - and wildcard routes, element
-		queries with sort and runtime fills are 1.0 kernel. And 1.7, because the
-		cards of page-posts.tpl have the classes Nino 1.7 renamed them to
-		(nino-card) and kept no alias for the old ones: on a 1.6 the cards of
-		the list page are styled by nothing. */
-	'nino'				=> '^1.7',
+	'version'			=> '1.2.0',
+	/*	1.8, because the class calls the toolset (\Nino\Feature::template() and
+		shortcode()) - and with it everything the floors before it named: the
+		words the unit delivers and the page details a post sets are Nino 1.4's
+		text keys (/template/..., /_nino/webpage<uri>/...), and the cards of
+		page-posts.tpl have the classes Nino 1.7 renamed them to (nino-card) and
+		kept no alias for the old ones. */
+	'nino'				=> '^1.8',
 	'requires'		=> [],
 	// Which element type is a section of the site, under which path, through
 	// which templates. Not the posts - those are ordinary elements and live in
@@ -106,7 +104,7 @@ return [
 		around the markup of one record, with [[field]] for what it holds, and the Builder
 		can neither carry that markup nor edit it as it is: it reads a [[title]] as a call of
 		the title component and its editor for a body would flatten the record. They stay
-		shortcodes, like [consent]. Nino 1.5 ignores the key	*/
+		shortcodes, like [consent]	*/
 	'components'	=> [
 		'posts-pager' => [
 			'label'			=> [ 'en_US' => 'Pager', 'de_DE' => 'Blättern' ],

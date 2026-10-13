@@ -37,33 +37,11 @@ require $root. '/tests/harness.php';
 $appData = ninoSandbox( 'seo' );
 $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
 
-// Needed for a fill to resolve at all - a bare ninoSandbox() never sets this
-// (AppData::init() would; nothing here calls it), and without it neither
-// \Nino\Html::getFills() nor this feature's own _fillsForLocale() would ever
-// find /text/*.php - same reasoning as ProtectedArea's own test
-$appData['/nino/locales/textfiles'] = '/text';
-
-/**
- *	Build a request the way \Nino\Http::request() leaves it, and resolve a
- *	response for it - the same shape and calling convention as
- *	ninoVisit() of the kernel's tests/harness.php
- *
- *	@param		array 		&$appData
- *	@param		string		$uri
- *
- *	@return 	array
- */
-function fakeRequest( array &$appData, string $uri ): array {
-	$request = [ 'REQUEST_METHOD' => 'GET', 'REQUEST_URI' => $uri, 'REMOTE_ADDR' => '127.0.0.1' ];
-	\Nino\Http::request( $appData, $request );
-	return $request;
-}
-
 /**
  *	Make $uri the "current page" \Nino\Http::getRequest() answers - what
  *	[seo-alternates] reads from inside the shortcode, which never sees a
  *	request array directly (see Modules\Navigation::doShortcode() for the
- *	same technique). Written directly rather than through fakeRequest(),
+ *	same technique). Written directly rather than through ninoVisit(),
  *	whose \Nino\Http::cleanUri() would strip the "&" out of '/faq&more' - a
  *	real browser could never request that uri unencoded, but a route's own
  *	'uri' field is plain configuration data, not something that runs through
@@ -85,7 +63,8 @@ function seoCurrentUri( array &$appData, string $uri ): void {
 // GET://rechtliches / GET://legal pair), and a locale-agnostic "faq&more"
 // whose uri exercises xml escaping. Plus three entries that must never
 // appear anywhere this feature generates: an excluded page, a dot-prefixed
-// module endpoint, a workbench tool uri, and the two error pages
+// module endpoint, a workbench tool uri, and the two error pages - and a
+// route for a whole subtree, which is no address of its own
 $appData['/nino/http/routes'] = [
 	'GET://about'			=> [ 'uri' => '/about', 'locale' => 'en_US', 'body' => '[template /templates/page-about]' ],
 	'GET://ueber-uns'	=> [ 'uri' => '/about', 'locale' => 'de_DE', 'body' => '[template /templates/page-about]' ],
@@ -97,6 +76,8 @@ $appData['/nino/http/routes'] = [
 	// a status of its own under a key of its own
 	'GET://404'				=> [ 'uri' => '/404', 'body' => '[template /templates/page-404]', 'statusCode' => 404 ],
 	'GET://gone'			=> [ 'uri' => '/gone', 'body' => 'gone', 'statusCode' => 410 ],
+	// One route for every page below /shop: '/shop/*' is no address a crawler can fetch
+	'GET://shop/*'		=> [ 'uri' => '/shop/item', 'body' => '[template /templates/page-shop]' ],
 ];
 
 \Nino\Filesystem::putFileContent( $appData, '/templates/page-about.tpl', '<h1>[[/_nino/webpage/about/title]]</h1>' );
@@ -186,7 +167,7 @@ echo "\n";
 
 echo "GET /sitemap.xml\n";
 
-$sitemapRequest = fakeRequest( $appData, '/sitemap.xml' );
+$sitemapRequest = ninoVisit( $appData, '/sitemap.xml' );
 \Nino\Http::response( $appData, $sitemapRequest );
 $sitemapBody = (string) ( $sitemapRequest['/nino/http/response']['body'] ?? '' );
 
@@ -199,11 +180,12 @@ check( 'the document is well-formed xml', $sitemapXml !== false );
 
 $locs = is_object( $sitemapXml ) ? array_map( 'strval', $sitemapXml->xpath( '//*[local-name()="url"]/*[local-name()="loc"]' ) ?: [] ) : [];
 sort( $locs );
-check( 'it lists exactly the site pages, as absolute urls - not the excluded, dot, admin or error ones', $locs === [
+check( 'it lists exactly the site pages, as absolute urls - not the excluded, dot, admin or error ones, and not a subtree', $locs === [
 	'https://example.com/about',
 	'https://example.com/faq&more',
 	'https://example.com/ueber-uns',
 ] );
+check( '...a route for a whole subtree is no page: /shop/* is not an address, and not /shop either', str_contains( $sitemapBody, 'shop' ) === false );
 
 $hreflangs = [];
 if( is_object( $sitemapXml ) )
@@ -232,7 +214,7 @@ echo "\n";
 
 echo "GET /robots.txt\n";
 
-$robotsRequest = fakeRequest( $appData, '/robots.txt' );
+$robotsRequest = ninoVisit( $appData, '/robots.txt' );
 \Nino\Http::response( $appData, $robotsRequest );
 $robotsBody = (string) ( $robotsRequest['/nino/http/response']['body'] ?? '' );
 
@@ -255,7 +237,7 @@ echo "\n";
 
 echo "GET /llms.txt\n";
 
-$llmsRequest = fakeRequest( $appData, '/llms.txt' );
+$llmsRequest = ninoVisit( $appData, '/llms.txt' );
 \Nino\Http::response( $appData, $llmsRequest );
 $llmsBody = (string) ( $llmsRequest['/nino/http/response']['body'] ?? '' );
 
@@ -268,6 +250,7 @@ check( 'it lists the paired page under both locale headings, and the unpaired on
 check( 'the excluded page never appears', str_contains( $llmsBody, 'staging' ) === false );
 check( 'neither does the 404 page, for all it has a title', str_contains( $llmsBody, 'Nicht gefunden' ) === false
 	&& str_contains( $llmsBody, 'Not Found' ) === false && str_contains( $llmsBody, '/404' ) === false && str_contains( $llmsBody, '/gone' ) === false );
+check( '...nor a subtree', str_contains( $llmsBody, 'shop' ) === false );
 
 echo "\n";
 
@@ -317,11 +300,11 @@ echo "The 'agents' setting off - llms.txt 404s, robots.txt drops the mention\n";
 
 check( 'agents is switched off', \Nino\Features::saveSettings( $appData, 'seo', [ 'agents' => 'false' ] ) === [] );
 
-$llmsOffRequest = fakeRequest( $appData, '/llms.txt' );
+$llmsOffRequest = ninoVisit( $appData, '/llms.txt' );
 \Nino\Http::response( $appData, $llmsOffRequest );
 check( 'llms.txt now answers 404', $llmsOffRequest['/nino/http/response']['statusCode'] === 404 );
 
-$robotsOffRequest = fakeRequest( $appData, '/robots.txt' );
+$robotsOffRequest = ninoVisit( $appData, '/robots.txt' );
 \Nino\Http::response( $appData, $robotsOffRequest );
 check( 'robots.txt no longer mentions llms.txt', str_contains( (string) ( $robotsOffRequest['/nino/http/response']['body'] ?? '' ), 'llms.txt' ) === false );
 check( '...while the sitemap line is still there', str_contains( (string) ( $robotsOffRequest['/nino/http/response']['body'] ?? '' ), 'Sitemap: https://example.com/sitemap.xml' ) === true );
@@ -362,7 +345,7 @@ echo "Pages no route can name, contributed under Seo::PAGES\n";
 	$pages[] = 'not an entry at all';
 } );
 
-$contributedSitemap = fakeRequest( $appData, '/sitemap.xml' );
+$contributedSitemap = ninoVisit( $appData, '/sitemap.xml' );
 \Nino\Http::response( $appData, $contributedSitemap );
 $contributedBody = (string) ( $contributedSitemap['/nino/http/response']['body'] ?? '' );
 $contributedXml = @simplexml_load_string( $contributedBody );
@@ -390,7 +373,7 @@ check( 'an entry that is not a path, or not an entry, is nothing',
 	in_array( 'https://example.com/blog/no-slash', $contributedLocs, true ) === false
 	&& in_array( 'https://example.comblog/no-slash', $contributedLocs, true ) === false );
 
-$contributedLlms = fakeRequest( $appData, '/llms.txt' );
+$contributedLlms = ninoVisit( $appData, '/llms.txt' );
 \Nino\Http::response( $appData, $contributedLlms );
 $contributedLlmsBody = (string) ( $contributedLlms['/nino/http/response']['body'] ?? '' );
 
@@ -437,7 +420,7 @@ $appData['/nino/http/routes']['GET://members/area']		= [ 'uri' => '/members/area
 	$pages[] = [ 'externalPath' => '/members/first-post', 'title' => 'Members only' ];
 } );
 
-$openSitemap = fakeRequest( $appData, '/sitemap.xml' );
+$openSitemap = ninoVisit( $appData, '/sitemap.xml' );
 \Nino\Http::response( $appData, $openSitemap );
 check( 'before anyone answers, the members pages are listed, persisted and contributed alike',
 	str_contains( (string) $openSitemap['/nino/http/response']['body'], '<loc>https://example.com/members</loc>' ) === true
@@ -451,7 +434,7 @@ check( 'before anyone answers, the members pages are listed, persisted and contr
 	$list[] = 42;
 } );
 
-$keptOutSitemap = fakeRequest( $appData, '/sitemap.xml' );
+$keptOutSitemap = ninoVisit( $appData, '/sitemap.xml' );
 \Nino\Http::response( $appData, $keptOutSitemap );
 $keptOutBody = (string) ( $keptOutSitemap['/nino/http/response']['body'] ?? '' );
 $keptOutXml = @simplexml_load_string( $keptOutBody );
@@ -471,19 +454,80 @@ check( 'every other page stays, the operator\'s own lines and the error pages as
 	&& in_array( 'https://example.com/404', $keptOutLocs, true ) === false
 	&& in_array( 'https://example.com/gone', $keptOutLocs, true ) === false );
 
-$keptOutLlms = fakeRequest( $appData, '/llms.txt' );
+$keptOutLlms = ninoVisit( $appData, '/llms.txt' );
 \Nino\Http::response( $appData, $keptOutLlms );
 $keptOutLlmsBody = (string) ( $keptOutLlms['/nino/http/response']['body'] ?? '' );
 check( '...and llms.txt leaves them out too, the others in',
 	str_contains( $keptOutLlmsBody, '/members' ) === false && str_contains( $keptOutLlmsBody, 'Members only' ) === false
 	&& str_contains( $keptOutLlmsBody, '- [About Us](https://example.com/about): Who we are' ) === true );
 
-$keptOutRobots = fakeRequest( $appData, '/robots.txt' );
+$keptOutRobots = ninoVisit( $appData, '/robots.txt' );
 \Nino\Http::response( $appData, $keptOutRobots );
 check( 'robots.txt does not name the paths a feature keeps out', str_contains( (string) ( $keptOutRobots['/nino/http/response']['body'] ?? '' ), 'members' ) === false );
 
 seoCurrentUri( $appData, '/members/area' );
 check( '[seo-alternates] knows no page where the page is kept out', \Nino\Modules\Seo::doAlternatesShortcode( $appData, [] ) === '' );
+
+echo "\n";
+
+
+// --- A route for a language the site does not list ---------------------------
+
+echo "A route for a language the site does not list\n";
+
+/*	The locale of a route is data, and it becomes a path segment (/text/<locale>.php)
+	when the titles of a language are read: the kernel hands out the fills of a
+	language the site lists and none for any other, so a route that names one
+	is a page of the sitemap and has no title for llms.txt to list it by	*/
+$appData['/nino/http/routes']['GET://fr-seul'] = [ 'uri' => '/fr-seul', 'locale' => 'fr_FR', 'body' => '' ];
+\Nino\AppData::writeContentData( $appData, [ '/nino/http/routes' ] );
+\Nino\Filesystem::putFileContent( $appData, '/text/fr_FR.php', [ '[[/_nino/webpage/fr-seul/title]]' => 'Seulement en français' ] );
+
+$frSitemap = ninoVisit( $appData, '/sitemap.xml' );
+\Nino\Http::response( $appData, $frSitemap );
+check( 'the page of a language the site does not list is in the sitemap, like any route',
+	str_contains( (string) ( $frSitemap['/nino/http/response']['body'] ?? '' ), '<loc>https://example.com/fr-seul</loc>' ) === true );
+
+$frLlms = ninoVisit( $appData, '/llms.txt' );
+\Nino\Http::response( $appData, $frLlms );
+check( '...and has no title in llms.txt, since the site has no fills for that language - the file it names is not read',
+	str_contains( (string) ( $frLlms['/nino/http/response']['body'] ?? '' ), 'Seulement' ) === false
+	&& str_contains( (string) ( $frLlms['/nino/http/response']['body'] ?? '' ), 'fr-FR' ) === false );
+
+unset( $appData['/nino/http/routes']['GET://fr-seul'] );
+\Nino\AppData::writeContentData( $appData, [ '/nino/http/routes' ] );
+
+echo "\n";
+
+
+// --- A site without an address -----------------------------------------------
+
+echo "A site without an address\n";
+
+/*	The kernel's absolute address of a site that has none is '' (\Nino\Html::absoluteUrl()),
+	and the feature writes the paths as they are: a copy of that rule put
+	'https://' in front of them, which was no address either	*/
+\Nino\Filesystem::putFileContent( $appData, '/text/global.php', [ '[[/project/company/general/name]]' => 'Acme Inc' ] );
+
+$bareSitemap = ninoVisit( $appData, '/sitemap.xml' );
+\Nino\Http::response( $appData, $bareSitemap );
+$bareXml = @simplexml_load_string( (string) ( $bareSitemap['/nino/http/response']['body'] ?? '' ) );
+$bareLocs = is_object( $bareXml ) ? array_map( 'strval', $bareXml->xpath( '//*[local-name()="url"]/*[local-name()="loc"]' ) ?: [] ) : [];
+sort( $bareLocs );
+check( 'the sitemap of a site without an address lists the paths alone, not a url with no host in it', $bareLocs === [
+	'/about',
+	'/blog/first-light',
+	'/blog/no-date',
+	'/blog/pin(1)',
+	'/faq&more',
+	'/ueber-uns',
+] );
+
+$bareRobots = ninoVisit( $appData, '/robots.txt' );
+\Nino\Http::response( $appData, $bareRobots );
+check( '...and robots.txt names its sitemap by the path',
+	str_contains( (string) ( $bareRobots['/nino/http/response']['body'] ?? '' ), "\nSitemap: /sitemap.xml\n" ) === true
+	&& str_contains( (string) ( $bareRobots['/nino/http/response']['body'] ?? '' ), 'https://' ) === false );
 
 echo "\n";
 

@@ -12,8 +12,8 @@ return [
 	'manual'			=> [
 		'shortcodes' => [
 			'[progress of="#article" label="Lesefortschritt"]' => [
-				'en_US' => 'The bar\'s element as a shortcode - what the Builder\'s component writes, and the way to place it on a Nino before 1.6. of= is the CSS selector of the element whose reading the bar measures: without it #article is taken, and an empty one measures the whole page. label= is what the bar is called for a screen reader; without it the bar is hidden from them.',
-				'de_DE' => 'Das Element des Balkens als Shortcode - das schreibt die Komponente des Builders, und so wird er auf einem Nino vor 1.6 gesetzt. of= ist der CSS-Selektor des Elements, dessen Lesen der Balken misst: Ohne die Angabe gilt #article, leer misst die ganze Seite. label= ist, wie der Balken für Screenreader heißt; ohne die Angabe wird er ihnen verborgen.',
+				'en_US' => 'The bar\'s element as a shortcode - what the Builder\'s component writes. of= is the CSS selector of the element whose reading the bar measures: without it #article is taken, and an empty one measures the whole page. label= is what the bar is called for a screen reader; without it the bar is hidden from them.',
+				'de_DE' => 'Das Element des Balkens als Shortcode - das schreibt die Komponente des Builders. of= ist der CSS-Selektor des Elements, dessen Lesen der Balken misst: Ohne die Angabe gilt #article, leer misst die ganze Seite. label= ist, wie der Balken für Screenreader heißt; ohne die Angabe wird er ihnen verborgen.',
 			],
 			'[progress ... class="my-class"]' => [
 				'en_US' => 'A class of your own, added to that of the bar. What the Builder writes for its custom classes.',
@@ -43,10 +43,12 @@ return [
 	// an empty element to write - the Features panel files that with the
 	// sliders and the lightboxes
 	'category'		=> 'ui',
-	'version'			=> '1.0.0',
-	'nino'				=> '^1.3',
+	'version'			=> '1.1.0',
+	'nino'				=> '^1.8',
 	'requires'		=> [],
 	'data'				=> [],
+	// Into the site's style and script bundle, behind the kernel's own files
+	'assets'			=> [ '/features/Progress/assets/progress.css', '/features/Progress/assets/progress.js' ],
 	/*	And no settings, for the reason Typewriter has none: where the bar sits
 		and what it measures belong to the one place it is written, and a static
 		asset could not read a site-wide setting anyway	*/
@@ -54,7 +56,7 @@ return [
 	/*	The bar as the Builder places it: no first argument, the element is
 		pointed with its two attributes, and a page has one bar - so it does not
 		stand in a loop. An empty "of" is a value of its own, the whole page, and
-		the default is the article. Nino 1.5 ignores the key	*/
+		the default is the article	*/
 	'components'	=> [
 		'progress' => [
 			'label'			=> [ 'en_US' => 'Reading progress', 'de_DE' => 'Lesefortschritt' ],

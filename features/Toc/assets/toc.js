@@ -3,10 +3,10 @@
  *	toc.js			Fills the nav [toc] wrote from the headings the finished page
  *					actually has, gives each of them an id to be reached by, marks
  *					the one being read, and - where the setting asks for it - puts
- *					a link on each of them so a passage can be linked to. No
- *					dependencies, no build step - bundled into the project's own
- *					/.cache/script.js the same way the kernel bundles
- *					Nino.js/Nino.ui.js (see Toc::init()).
+ *					a link on each of them so a passage can be linked to. No build
+ *					step; it needs Nino.js, which every site loads: the kernel
+ *					bundles it into the project's own /.cache/script.js behind it,
+ *					from the manifest's assets.
  *
  *					Built here rather than on the server because a Nino page is
  *					assembled out of a template, sections, shortcodes and elements,
@@ -36,7 +36,6 @@
 	var MARK_AT = 0.34;
 
 	var lists = [];
-	var pending = false;
 
 	/**
 	 *	A heading's own words - what it says, without the anchor this script
@@ -66,24 +65,6 @@
 	}
 
 	/**
-	 *	A heading's own words, turned into something that can be an id
-	 *
-	 *	@param		{string}		text
-	 *
-	 *	@return		{string}
-	 */
-	function slug( text ) {
-
-		return String( text )
-			.toLowerCase()
-			.replace( /ä/g, 'ae' ).replace( /ö/g, 'oe' ).replace( /ü/g, 'ue' ).replace( /ß/g, 'ss' )
-			.normalize( 'NFKD' ).replace( /[̀-ͯ]/g, '' )
-			.replace( /[^a-z0-9]+/g, '-' )
-			.replace( /^-+|-+$/g, '' )
-			.slice( 0, 60 );
-	}
-
-	/**
 	 *	Give one heading an id, unless it has one already - that one may be
 	 *	linked to from somewhere else, and taking it away would break a link
 	 *	nobody here can see
@@ -100,7 +81,10 @@
 			return heading.id;
 		}
 
-		var base = slug( words( heading ) ) || 'abschnitt';
+		// 'abschnitt' is the id of a heading that has no letter or digit to make
+		// one of: the word is this feature's own, and so it stays whatever the
+		// language of the site is
+		var base = Nino.slug( words( heading ) ) || 'abschnitt';
 		var id = base;
 		var n = 2;
 
@@ -252,8 +236,6 @@
 	 */
 	function mark() {
 
-		pending = false;
-
 		var line = ( window.innerHeight || 0 ) * MARK_AT;
 
 		for( var l = 0; l < lists.length; l++ ) {
@@ -271,24 +253,6 @@
 				else
 					entries[m].link.removeAttribute( 'aria-current' );
 		}
-	}
-
-	/**
-	 *	One frame at most per scroll, rather than one call per scroll event
-	 *
-	 *	@return		void
-	 */
-	function schedule() {
-
-		if( pending === true )
-			return;
-
-		pending = true;
-
-		if( typeof window.requestAnimationFrame === 'function' )
-			window.requestAnimationFrame( mark );
-		else
-			mark();
 	}
 
 	/**
@@ -323,13 +287,10 @@
 			return;
 
 		mark();
-		window.addEventListener( 'scroll', schedule, { passive : true } );
-		window.addEventListener( 'resize', schedule, { passive : true } );
+		Nino.events.bindCallback( 'scroll', mark );
+		Nino.events.bindCallback( 'resize', mark );
 	}
 
-	if( document.readyState === 'loading' )
-		document.addEventListener( 'DOMContentLoaded', init );
-	else
-		init();
+	Nino.events.bindCallback( 'ready', init );
 
 } )();

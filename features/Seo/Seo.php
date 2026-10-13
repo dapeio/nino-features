@@ -23,17 +23,15 @@ namespace Nino\Modules {
 	 *										config.php on every request.
 	 *
 	 *										Three technical endpoints, each registered in init() the
-	 *										way Modules\Newsletter owns /.newsletter or the feature
-	 *										recipe's Catalog owns /api/catalog - GET://sitemap.xml,
+	 *										way Modules\Newsletter owns /.newsletter - GET://sitemap.xml,
 	 *										GET://robots.txt and GET://llms.txt. The base install's
 	 *										own _admin/install/library/base/manifest.php persists
 	 *										routes under these exact same keys with a static template
 	 *										body the wizard fills in once at setup and nobody updates
 	 *										again; the plain assignment below overwrites that persisted
 	 *										entry in the live array for the lifetime of this request,
-	 *										the same "a stale persisted entry cannot shadow its
-	 *										behavior" reasoning the Catalog recipe's own docblock
-	 *										spells out. Deactivating this feature simply stops
+	 *										so that a stale persisted entry cannot shadow this
+	 *										feature's behavior. Deactivating this feature simply stops
 	 *										overwriting it, so whatever a project had before (the
 	 *										static templates, or nothing) answers again.
 	 *
@@ -42,8 +40,11 @@ namespace Nino\Modules {
 	 *										this feature's own three endpoints, not below /_ (the
 	 *										workbench) or /. (a module's own technical endpoint), not
 	 *										an error page (the not-found route, or a route whose own
-	 *										statusCode is 400 or more), and not matched by the exclude
-	 *										setting or by what answers EXCLUDE. Two routes are locale
+	 *										statusCode is 400 or more), not a subtree ('/blog/*' stands
+	 *										for addresses, not for one page), not an address
+	 *										\Nino\Http::pages() refuses ('//x', '/\x', whitespace in it),
+	 *										and not matched by the exclude setting or by what answers
+	 *										EXCLUDE. Two routes are locale
 	 *										variants of the same page when they share the same 'uri'
 	 *										field (the internal identity \Nino\Http::findRouteUri()
 	 *										itself pairs a locale switch against) with different
@@ -114,10 +115,9 @@ namespace Nino\Modules {
 		/**
 		 *	Register the three technical routes and their handlers. GET://llms.txt
 		 *	is always registered, even while the 'agents' setting is off -
-		 *	callbackLlms() answers the 404 itself, the same shape the feature
-		 *	recipe's Catalog uses for its own 'public' setting, so a project's
-		 *	persisted, wizard-written llms.txt route (if any) is reliably
-		 *	replaced rather than left to answer its stale static template.
+		 *	callbackLlms() answers the 404 itself, so a project's persisted,
+		 *	wizard-written llms.txt route (if any) is reliably replaced rather
+		 *	than left to answer its stale static template.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
@@ -231,8 +231,8 @@ namespace Nino\Modules {
 			if( count( $alternates ) < 2 )
 				return '';
 
-			$base			= self::_baseUrl( $appData );
-			$template	= self::template( $appData, 'alternate-link' );
+			$base			= \Nino\Html::absoluteUrl( $appData );
+			$template	= \Nino\Feature::template( $appData, self::TEMPLATES, 'alternate-link' );
 			$html			= '';
 
 			foreach( $alternates as $alternate )
@@ -271,7 +271,7 @@ namespace Nino\Modules {
 		public static function doJsonLdShortcode( array &$appData, array $args ): string {
 
 			$name	= \Nino\Html::renderTextfill( $appData, '/project/company/general/name' );
-			$url	= self::_baseUrl( $appData );
+			$url	= \Nino\Html::absoluteUrl( $appData );
 
 			$organization = [ '@type' => 'Organization', 'name' => $name, 'url' => $url ];
 
@@ -294,19 +294,22 @@ namespace Nino\Modules {
 			// into an inline <script>
 			$json = json_encode( $data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG );
 
-			return str_replace( '[[json]]', is_string( $json ) === true ? $json : '{}', self::template( $appData, 'jsonld' ) );
+			return str_replace( '[[json]]', is_string( $json ) === true ? $json : '{}', \Nino\Feature::template( $appData, self::TEMPLATES, 'jsonld' ) );
 		}
 
 		/**
 		 *	Every persisted GET route that counts as a site page: not this
 		 *	feature's own three endpoints, not below /_ or /. , not matched
-		 *	by the exclude setting or by what answers EXCLUDE, and not an error
+		 *	by the exclude setting or by what answers EXCLUDE, not a subtree
+		 *	('/blog/*' stands for the pages below /blog, which are listed one by
+		 *	one where a route or a contribution names them), and not an error
 		 *	page - the kernel's not-found route 'GET://404' or any route whose
 		 *	own 'statusCode' is 400 or more, which answers a visitor with that
-		 *	status and is nothing to send a crawler to. Read from config.php directly, the way
-		 *	\Nino\Features::activate() reads routes to apply a unit against -
-		 *	never the live array, which also carries this request's own
-		 *	runtime routes (the workbench's, every active module's own).
+		 *	status and is nothing to send a crawler to. The routes are the
+		 *	persisted ones, the way \Nino\Features::activate() reads them to
+		 *	apply a unit against - never the live array, which also carries this
+		 *	request's own runtime routes (the workbench's, every active
+		 *	module's own) - and \Nino\Http::pages() lists them.
 		 *
 		 *	Then whatever answers PAGES, for the pages no route can name -
 		 *	see _contributed().
@@ -329,27 +332,29 @@ namespace Nino\Modules {
 					if( is_string( $pattern ) === true )
 						$exclude[] = $pattern;
 
-			foreach( self::_persistedRoutes( $appData ) as $routeKey => $route ) {
+			$routes = self::_persistedRoutes( $appData );
 
-				if( is_string( $routeKey ) === false || str_starts_with( $routeKey, 'GET:/' ) === false || is_array( $route ) === false )
+			foreach( \Nino\Http::pages( $routes ) as $row ) {
+
+				// A route that stands for a subtree is no address of its own. The
+				// kernel answers any address no route matches with 'GET://404'
+				// (see \Nino\Http::response()), and a route that carries its own
+				// error status is an error page whatever its key
+				if( $row['wildcard'] === true || $row['path'] === '/404' || $row['status'] >= 400 )
 					continue;
 
-				// The kernel answers any address no route matches with
-				// 'GET://404' (see \Nino\Http::response()), and a route that
-				// carries its own error status is an error page whatever its key
-				if( $routeKey === 'GET://404' || (int) ( $route['statusCode'] ?? 200 ) >= 400 )
+				if( self::_isPage( $row['path'], $exclude ) === false )
 					continue;
 
-				$externalPath = substr( $routeKey, strlen( 'GET:/' ) );
-
-				if( self::_isPage( $externalPath, $exclude ) === false )
-					continue;
+				// The row names the page, and the body is the route's own: the one
+				// field _lastmod() reads a template's mtime from
+				$body = $routes['GET:/'. $row['path']]['body'] ?? null;
 
 				$pages[] = [
-					'externalPath'	=> $externalPath,
-					'uri'						=> is_string( $route['uri'] ?? null ) ? $route['uri'] : $externalPath,
-					'locale'				=> is_string( $route['locale'] ?? null ) ? $route['locale'] : null,
-					'body'					=> is_string( $route['body'] ?? null ) ? $route['body'] : '',
+					'externalPath'	=> $row['path'],
+					'uri'						=> $row['uri'],
+					'locale'				=> $row['locale'] !== '' ? $row['locale'] : null,
+					'body'					=> is_string( $body ) === true ? $body : '',
 					'lastmod'				=> null,
 					'title'					=> null,
 					'description'		=> null,
@@ -471,10 +476,9 @@ namespace Nino\Modules {
 
 		/**
 		 *	Whether $path is a site page worth listing - not this feature's
-		 *	own endpoints, not a tool or module uri, not excluded. Plain
-		 *	string work against the exclude patterns on purpose, the same
-		 *	reasoning as Modules\Stats::_excluded(): an admin-editable
-		 *	pattern must never reach a regex engine.
+		 *	own endpoints, not a tool or module uri, not excluded. The exclude
+		 *	patterns are matched by \Nino\Http::matchesPath(), plain string work on
+		 *	purpose: an admin-editable pattern must never reach a regex engine.
 		 *
 		 *	@param		string		$path
 		 *	@param		array			$exclude			The 'exclude' setting's lines
@@ -489,23 +493,7 @@ namespace Nino\Modules {
 			if( str_starts_with( $path, '/_' ) === true || str_starts_with( $path, '/.' ) === true )
 				return false;
 
-			foreach( $exclude as $pattern ) {
-
-				if( is_string( $pattern ) === false || $pattern === '' )
-					continue;
-
-				if( str_ends_with( $pattern, '/*' ) === false ) {
-					if( $path === $pattern )
-						return false;
-					continue;
-				}
-
-				$prefix = substr( $pattern, 0, -2 );
-				if( $path === $prefix || str_starts_with( $path, $prefix. '/' ) === true )
-					return false;
-			}
-
-			return true;
+			return \Nino\Http::matchesPath( $path, $exclude ) === false;
 		}
 
 		/**
@@ -555,8 +543,8 @@ namespace Nino\Modules {
 
 		/**
 		 *	The persisted routes of config.php - never the live array, see
-		 *	_pages()'s own docblock. Same read \Nino\Features::activate()
-		 *	itself uses.
+		 *	_pages()'s own docblock. The kernel's defaults for a file that holds no
+		 *	table of routes, or holds something that is no table.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
@@ -564,25 +552,9 @@ namespace Nino\Modules {
 		 */
 		private static function _persistedRoutes( array &$appData ): array {
 
-			$stored = \Nino\Filesystem::getFileContent( $appData, '/config.php', [] );
-			$stored = is_array( $stored ) ? $stored : [];
+			$routes = \Nino\AppData::stored( $appData, '/nino/http/routes', \Nino\AppData::DEFAULTS['/nino/http/routes'] );
 
-			return is_array( $stored['/nino/http/routes'] ?? null ) ? $stored['/nino/http/routes'] : \Nino\AppData::DEFAULTS['/nino/http/routes'];
-		}
-
-		/**
-		 *	'https://' plus the '/project/website/general/url' textfill (the bare domain the
-		 *	wizard's PersonalInfos step writes, eg. "www.example.com" -
-		 *	html-header.tpl's own canonical link builds the same way), a
-		 *	trailing slash trimmed off in case a project's value carries one
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *
-		 *	@return 	string
-		 */
-		private static function _baseUrl( array &$appData ): string {
-
-			return 'https://'. trim( \Nino\Html::renderTextfill( $appData, '/project/website/general/url' ), '/' );
+			return is_array( $routes ) === true ? $routes : \Nino\AppData::DEFAULTS['/nino/http/routes'];
 		}
 
 		/**
@@ -705,33 +677,6 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	The merged textfills a specific locale would see - what
-		 *	\Nino\Html::getFills() answers for the *current* one, parameterized
-		 *	instead of read off \Nino\Locales::getCurrentLocale(). llms.txt
-		 *	lists every locale's pages in one response, so it needs each
-		 *	page's own title/description without switching the visitor's
-		 *	actual locale to get them: \Nino\Locales::setCurrentLocale() also
-		 *	persists into the session (see its own docblock), which would
-		 *	otherwise start a session for every anonymous crawler that asks
-		 *	for this file - precisely what \Nino\Locales::init() itself
-		 *	takes care never to do for a locale nobody chose.
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$locale
-		 *
-		 *	@return 	array
-		 */
-		private static function _fillsForLocale( array &$appData, string $locale ): array {
-
-			return array_merge(
-				(array) \Nino\Filesystem::getFileContent( $appData, '/text/global.php', [] ),
-				(array) \Nino\Filesystem::getFileContent( $appData, '/text/'. $locale. '.php', [] ),
-				(array) ( $appData['./nino/html/fills'][$locale] ?? [] ),
-				(array) ( $appData['./nino/html/fills']['*'] ?? [] )
-			);
-		}
-
-		/**
 		 *	The one thing in this class that is assembled rather than filled into
 		 *	a template, and why: sitemap.xml is a document format, not a view of
 		 *	one. It has no design to keep out of here - what it has is a schema,
@@ -747,7 +692,7 @@ namespace Nino\Modules {
 		 */
 		private static function _buildSitemap( array &$appData ): string {
 
-			$base	= self::_baseUrl( $appData );
+			$base	= \Nino\Html::absoluteUrl( $appData );
 			$pages	= self::_pages( $appData );
 
 			$xml = '<?xml version="1.0" encoding="UTF-8"?>'. "\n";
@@ -788,7 +733,7 @@ namespace Nino\Modules {
 				if( is_string( $path ) === true && $path !== '' )
 					$lines[] = 'Disallow: '. $path;
 
-			$base = self::_baseUrl( $appData );
+			$base = \Nino\Html::absoluteUrl( $appData );
 			$lines[] = 'Sitemap: '. $base. '/sitemap.xml';
 
 			if( \Nino\Features::setting( $appData, self::KEY, 'agents', true ) === true )
@@ -829,7 +774,7 @@ namespace Nino\Modules {
 			$lines[] = '';
 			$lines[] = '## Pages';
 
-			$base				= self::_baseUrl( $appData );
+			$base				= \Nino\Html::absoluteUrl( $appData );
 			$native			= \Nino\Locales::getNativeLocale( $appData );
 			$locales		= \Nino\Locales::getAvailableLocales( $appData );
 			$multiLocale	= count( $locales ) > 1;
@@ -846,7 +791,10 @@ namespace Nino\Modules {
 
 			foreach( $byLocale as $locale => $localePages ) {
 
-				$fills = self::_fillsForLocale( $appData, (string) $locale );
+				// The fills of the locale the page renders in, without switching the
+				// visitor's own: Locales::setCurrentLocale() would start a session for
+				// every crawler that asks for this file
+				$fills = \Nino\Html::getFills( $appData, (string) $locale );
 				$entries = [];
 
 				foreach( $localePages as $page ) {
@@ -881,39 +829,6 @@ namespace Nino\Modules {
 			}
 
 			return implode( "\n", $lines ). "\n";
-		}
-
-		/**
-		 *	One of this feature's own templates, read the way a project's are.
-		 *	Markup belongs in a template - see AGENTS.md, "Markup belongs in a
-		 *	template" - so what this class holds is which one and what goes in it
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$name					A file name below TEMPLATES, without .tpl
-		 *
-		 *	@return 	string								'' where the file is not there, which is logged
-		 */
-		public static function template( array &$appData, string $name ): string {
-
-			// A name from this class and nowhere else, and held to a slug anyway:
-			// the one thing this could otherwise be turned into is a read of
-			// something outside the feature
-			if( preg_match( '/^[a-z][a-z0-9-]*$/D', $name ) !== 1 )
-				return '';
-
-			$template = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $name. '.tpl', '' );
-
-			$template = is_string( $template ) === true ? rtrim( $template, "\n" ) : '';
-
-			/*	A template that is not there renders as nothing, which on a page looks
-				like a shortcode nobody wrote rather than like a feature missing a file.
-				Said out loud instead: E_USER_WARNING is Nino's "record this and carry
-				on" channel (see \Nino\Runtime::NON_FATAL_LEVELS), so the request
-				finishes and the log says which file	*/
-			if( $template === '' )
-				trigger_error( 'Nino: the template '. self::TEMPLATES. '/'. $name. '.tpl is missing or empty.', E_USER_WARNING );
-
-			return $template;
 		}
 	}
 }

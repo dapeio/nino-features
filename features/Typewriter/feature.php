@@ -29,8 +29,8 @@ return [
 				'de_DE' => 'Löscht rückwärts, statt auszublenden.',
 			],
 			'data-typewriter-loop="1"' => [
-				'en_US' => 'Starts over after the last line instead of stopping. Default: types once.',
-				'de_DE' => 'Beginnt nach der letzten Zeile von vorn, statt anzuhalten. Vorgabe: tippt einmal.',
+				'en_US' => 'Starts over after the last line instead of stopping. The words 1, true, yes and on ask for it; any other value leaves the default: types once.',
+				'de_DE' => 'Beginnt nach der letzten Zeile von vorn, statt anzuhalten. Die Wörter 1, true, yes und on verlangen es; jeder andere Wert lässt die Vorgabe stehen: tippt einmal.',
 			],
 			'data-typewriter-toggle="[[/feature/typewriter/pause/label]]"' => [
 				'en_US' => 'A button after the container that pauses the typing and takes it up again (WCAG 2.2.2). The value is its label; the fill is the one the install unit brings.',
@@ -80,12 +80,14 @@ return [
 	// Features panel files it with the sliders and the lightboxes rather than
 	// with the content
 	'category'		=> 'ui',
-	'version'			=> '1.0.0',
-	'nino'				=> '^1.3',
+	'version'			=> '1.1.0',
+	'nino'				=> '^1.8',
 	'requires'		=> [],
 	// Nothing under data/: the feature keeps no state at all - what it
 	// animates is the markup a project's own template already carries
 	'data'				=> [],
+	// Into the site's style and script bundle, behind the kernel's own files
+	'assets'			=> [ '/features/Typewriter/assets/typewriter.css', '/features/Typewriter/assets/typewriter.js' ],
 	// No settings either, and that is the design: every timing belongs to
 	// the element that is being typed (data-typewriter-speed, -hold, -loop,
 	// ...), not to the site. typewriter.js is a static

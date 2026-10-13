@@ -34,7 +34,6 @@ function socialSandbox( array $locales = [ 'de_DE', 'en_US' ], ?callable $before
 
 	$appData = ninoSandbox( 'social' );
 	$appData['/nino/dir'] = '';
-	$appData['/nino/locales/textfiles'] = '/text';
 	$appData['/nino/locales/available'] = $locales;
 	$appData['/nino/locales/native'] = $locales[0];
 	$appData['./nino/locales/current'] = in_array( 'en_US', $locales, true ) === true ? 'en_US' : $locales[0];
@@ -47,6 +46,9 @@ function socialSandbox( array $locales = [ 'de_DE', 'en_US' ], ?callable $before
 
 	$appData['/nino/modules'][] = '\\Nino\\Modules\\Elements';
 	$appData['/nino/modules'][] = '\\Nino\\Modules\\Template';
+
+	// The order \Nino\init() takes: the assets of the manifests, then the init() of every module
+	\Nino\Features::registerAssets( $appData );
 	\Nino\Modules::callModules( $appData, 'init' );
 
 	return $appData;
@@ -79,6 +81,7 @@ check( 'it names and describes itself in both interface languages', is_array( $m
 
 check( 'it is filed under content, and has no setting, no data and no requirement', $manifest['category'] === 'content'
 	&& $manifest['settings'] === [] && $manifest['data'] === [] && $manifest['requires'] === [] );
+check( 'it lists its stylesheet under assets, which is all it asks the kernel for, and has no script', $manifest['assets'] === [ '/features/Social/assets/social.css' ] );
 
 $type			= include $dir. '/install/social.php';
 $options	= $type['model']['icon']['options'];
@@ -207,9 +210,7 @@ check( 'drawing raised no warning', ninoWarnings() === [] );
 
 echo "Components - [social], [social-link], [social-icon] as the Builder offers them\n";
 
-if( class_exists( '\\Nino\\Modules\\Components' ) === false )
-	echo "  --  this Nino has no \\Nino\\Modules\\Components: the manifest's components are not read here, and the shortcodes register themselves\n";
-else ( static function( array $appData ): void {
+( static function( array $appData ): void {
 
 	$declared = \Nino\Features::manifest( dirname( __DIR__ ) )['components'] ?? [];
 
