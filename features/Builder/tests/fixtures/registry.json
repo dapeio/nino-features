@@ -50,6 +50,7 @@
                 }
             },
             "in": [
+                "hero",
                 "section"
             ],
             "draws": "{tag} .nino-section-title",
@@ -110,6 +111,7 @@
                 }
             },
             "in": [
+                "hero",
                 "section"
             ],
             "draws": "{tag} .nino-section-subtitle",

@@ -1294,10 +1294,10 @@ check( '...the end of a column is a button for a component and nothing else - wh
 	const looped = builder._addsRow( [ 1, 1 ] );
 	return plain.children.length === 1 && looped.children.length === 1 && plain.children[0].textContent === '+ Component' && looped.children[0].textContent === '+ Component';
 } )() );
-check( '...and a component is chosen from the registry\'s, those that belong where the column is: the first section is the hero, anywhere else is a section - the cell of a loop among it, which holds no place of its own - and what names no place is offered in all of them; the card is for the hero and for a section, and a loop takes it as it takes the rest', ( function() {
+check( '...and a component is chosen from the registry\'s, those that belong where the column is: the first section is the hero, which takes the section\'s title and subtitle besides its own, anywhere else is a section - the cell of a loop among it, which holds no place of its own - and what names no place is offered in all of them; the card is for the hero and for a section, and a loop takes it as it takes the rest', ( function() {
 	const menu = screen.getElementById('builder-menu');
 	const offered = function( path ) { builder._pickComponent( path, made('button') ); return texts( menu.children ) };
-	return offered( [ 0, 0 ] ) === 'Title (Hero),Subtitle (Hero),Text,Card,Button,Image,HTML,Spacer' && offered( [ 1, 0 ] ) === 'Title (Section),Subtitle (Section),Text,Card,Button,Image,HTML,Spacer'
+	return offered( [ 0, 0 ] ) === 'Title (Section),Subtitle (Section),Title (Hero),Subtitle (Hero),Text,Card,Button,Image,HTML,Spacer' && offered( [ 1, 0 ] ) === 'Title (Section),Subtitle (Section),Text,Card,Button,Image,HTML,Spacer'
 		&& offered( [ 1, 1 ] ) === offered( [ 1, 0 ] ) && offered( [ 3, 0 ] ) === offered( [ 1, 0 ] );
 } )() );
 check( '...they stand in the order of the registry and in none of the script\'s own: the components as the kernel registers them, then those of a feature in the order it registered them - and a registry in another order is offered in that order, not in the alphabet\'s', ( function() {
@@ -2861,7 +2861,7 @@ check( '...the buttons of the preview do the same: a section, a column - and a c
 	preview().children[0].querySelector('.builder-add-col').click();
 	preview().children[0].querySelector('.builder-adds .builder-add-button').click();
 	const menu = screen.getElementById('builder-menu');
-	const opened = menu.hidden === false && menu.getAttribute('role') === 'menu' && menu.children.length === 8 && menu.children.every( function( item ) { return item.getAttribute('role') === 'menuitem' } );
+	const opened = menu.hidden === false && menu.getAttribute('role') === 'menu' && menu.children.length === 10 && menu.children.every( function( item ) { return item.getAttribute('role') === 'menuitem' } );
 	buttonOf( menu, 'Button' ).click();
 	return opened && menu.hidden === true && builder._doc.model.blocks.length === 5 && builder._doc.model.blocks[0].cols.length === 2 && builder._doc.model.blocks[0].cols[0].components.length === 4 && builder._doc.model.blocks[0].cols[0].components[3].name === 'button'
 		&& preview().children.length === 5 && changes === 3;
@@ -4148,7 +4148,7 @@ builder._renderEditor();
 const menuOf = function( path ) { builder._pickComponent( path, made('button') ); return texts( screen.getElementById('builder-menu').children ) };
 const inCard = 'Title (Card),Subtitle (Card),Text,Button,Image,HTML,Spacer';
 const inSection = 'Title (Section),Subtitle (Section),Text,Card,Button,Image,HTML,Spacer';
-const inHero = 'Title (Hero),Subtitle (Hero),Text,Card,Button,Image,HTML,Spacer';
+const inHero = 'Title (Section),Subtitle (Section),Title (Hero),Subtitle (Hero),Text,Card,Button,Image,HTML,Spacer';
 
 check( 'the picker offers the card where the card says it belongs - a column of a section, and the bare cell of a loop, which holds no place of its own - and what a column is offered besides', menuOf( [ 1, 0 ] ) === inSection );
 check( '...in the first section it is offered as well, whether it is a cover or none: the hero is a place the card belongs in, and a cover does not make it one', ( function() {
