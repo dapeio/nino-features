@@ -727,7 +727,9 @@ button.builder-status-item:hover {
 .builder-label {
 	color: var(--editor-text-secondary);
 	font-size: .78rem;
+	padding: .4rem 0 .2rem;
 	font-weight: 650;
+	border-bottom: 1px solid var(--editor-border);
 }
 /* The source of a text or a picture in a form: what it is now and the button that changes it */
 .builder-source {

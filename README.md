@@ -41,18 +41,18 @@ NINO_ROOT=/path/to/nino bin/check.sh
 A single test runs directly too:
 
 ```bash
-NINO_ROOT=../nino php features/Search/tests/search-smoke.php
+NINO_ROOT=../nino php features/Hello/tests/hello-smoke.php
 ```
 
 `bin/catalogue.php` prints what the catalogue would list as JSON, without an archive and without a signature. CI (`.github/workflows/ci.yml`) runs the same tests against Nino's `main` and its latest tag, plus a syntax check, Nino's own contract test, PHPStan and ESLint over `features/`. Nothing waits for it: it is a convenience.
 
 ## Write a feature
 
-The [feature recipe](https://github.com/dapeio/nino/blob/main/docs/recipes/feature.md) in Nino builds a feature step by step; the [Features](https://github.com/dapeio/nino/blob/main/docs/features.md) manual is the contract behind it. `features/Hello/` is a complete example written to be copied: copy it, then rename the directory, the `key` in `feature.php` and the class `\Nino\Modules\Hello` so the three agree.
+The manual [Developing a feature](https://github.com/dapeio/nino/blob/main/docs/features.md) in Nino walks a feature from its first file to its test and describes the contract behind it. `features/Hello/` is the complete example of that manual, written to be copied: copy it, then rename the directory, the `key` in `feature.php` and the class `\Nino\Modules\Hello` so the three agree.
 
 ```text
 features/<Name>/
-├── feature.php              the manifest: key, name, description, manual, category, version, nino, requires, settings, data
+├── feature.php              the manifest: key, name, description, manual, category, version, nino, requires, settings, data, assets
 ├── <Name>.php               the runtime class \Nino\Modules\<Name>
 ├── Admin/Admin.php          the panel, when there is one
 ├── assets/ install/ text/ templates/   when the feature needs them
@@ -115,7 +115,7 @@ Without `--key` it writes no signature and prints that one-liner; with `--key ca
 | `category` | what the feature is for, one slug - the manifest's |
 | `maturity` | the badge the Features panel draws beside the name - the manifest's; left out where it names none |
 | `version` | `major.minor.patch`, the manifest's |
-| `nino` | the Nino version constraint, `^1.3` |
+| `nino` | the Nino version constraint, `^1.8` |
 | `php` | `{ "ext": [ ... ] }` - the PHP extensions the feature needs |
 | `requires` | the keys of the features it requires |
 | `directory` | the one directory the archive holds - `Newsletter`, the class name |

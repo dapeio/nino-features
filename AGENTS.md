@@ -4,8 +4,9 @@ This file is the operational specification for AI agents that modify this
 repository, dapeio/nino-features. It is short because most of what applies
 here is written down in Nino itself: the [Nino agent guide](https://github.com/dapeio/nino/blob/main/AGENTS.md)
 states the rules every change to Nino code has to keep, and the
-[feature recipe](https://github.com/dapeio/nino/blob/main/docs/recipes/feature.md)
-walks a feature from its first file to its test. Both apply here unchanged.
+[feature manual](https://github.com/dapeio/nino/blob/main/docs/features.md),
+Developing a feature, walks a feature from its first file to its test. Both
+apply here unchanged.
 This file adds what is specific to a catalogue of features that live apart
 from the kernel they run on.
 
@@ -15,7 +16,7 @@ The words **MUST**, **MUST NOT**, **SHOULD**, and **MAY** are normative.
 
 1. The current user request and repository instructions have priority.
 2. This file defines repository-wide defaults.
-3. Nino's `AGENTS.md`, its feature recipe and its Features manual define how
+3. Nino's `AGENTS.md` and its feature manual, `docs/features.md`, define how
    a feature is built. Read them from a Nino checkout beside this repository
    (`../nino`), never from memory.
 4. `\Nino\Features` in the checkout (`_nino/Nino/Features/Features.php`) and
@@ -37,8 +38,8 @@ Before editing:
 1. Read the complete user request and list its observable requirements.
 2. Run `git status --short --branch`. Preserve all unrelated user changes.
 3. Make sure a Nino checkout is available: `../nino`, or set `NINO_ROOT`.
-   Read Nino's `AGENTS.md` and `docs/recipes/feature.md` there before
-   touching a feature.
+   Read Nino's `AGENTS.md` and `docs/features.md` there before touching a
+   feature.
 4. Read the feature's `feature.php`, its class, its panel and - where it
    has one - its test in full. A feature is small; read all of it.
 5. Identify authentication, CSRF, validation, persistence, escaping,
@@ -54,7 +55,7 @@ and the test where the feature carries one:
 
 | File | What changes with it |
 | --- | --- |
-| `feature.php` | `manual` names every shortcode, piece of markup, route, panel, callback and install file the change adds or removes, a line each in `en_US` and `de_DE` - it is the feature's only documentation, and a setting's `hint` is the rest of it. `version` is raised when installed projects should be offered the update - the Features panel can only offer an update it can see - and not for a change that only has to reach new installations. `nino` names the Nino versions the feature is written for; change it only when the feature really stops running on a version it named. A feature that reads a text key of the kernel's - `/project/company/general/name`, `/template/common/form/email`, `/_nino/webpage<uri>/title` - names the Nino that has the key in that form: `^1.4` (section 4b). `category` says what the feature is for, and is decided top-down by what a site owner wants rather than by how the feature is built - the rule is in Nino's [Features](https://github.com/dapeio/nino/blob/main/docs/features.md#categories) manual |
+| `feature.php` | `manual` names every shortcode, piece of markup, route, panel, callback and install file the change adds or removes, a line each in `en_US` and `de_DE` - it is the feature's only documentation, and a setting's `hint` is the rest of it. `version` is raised when installed projects should be offered the update - the Features panel can only offer an update it can see - and not for a change that only has to reach new installations. `nino` names the Nino versions the feature is written for; change it only when the feature really stops running on a version it named. A feature that reads a text key of the kernel's - `/project/company/general/name`, `/template/common/form/email`, `/_nino/webpage<uri>/title` - names the Nino that has the key in that form (section 4b). `category` says what the feature is for, and is decided top-down by what a site owner wants rather than by how the feature is built - the rule is in Nino's [Features](https://github.com/dapeio/nino/blob/main/docs/features.md#categories) manual |
 | `tests/<key>-smoke.php` | when present: the feature's own test covers the change; it loads the harness as described in section 5 |
 
 Further rules:
@@ -123,8 +124,8 @@ The manifest is stricter here, because a feature is published on its own:
 
 | File | Requirement |
 | --- | --- |
-| `feature.php` | `key` (a slug), `name` (no two features may carry one, in any locale, case ignored - `bin/build.php` refuses a pair that does), `description`, `manual` (what the feature adds, which the panel draws on the Description tab of its screen, and the feature's only documentation: the `section => handle => line` map of Nino's [Features](https://github.com/dapeio/nino/blob/main/docs/features.md#the-manual) manual, as `features/Hello/feature.php` writes it - the handle as it is typed, every line a string or a `locale => string` map with `en_US` and `de_DE`; the sections are shortcodes, markup, routes, panel, callbacks and install; the older prose form is still read and no longer written), `category` (one of `content`, `ui`, `communication`, `marketing`, `security`, `system` - `bin/build.php` refuses anything else, and refuses a feature without one), `maturity` (optional: free text of at most 24 characters, a string or a `locale => string` map, drawn as a badge beside the name in the Features panel; `bin/build.php` publishes it where the manifest carries one, and a Nino that predates the key ignores it), `version` (`major.minor.patch`), `nino` (a version constraint; the floor a feature names is the Nino whose vocabulary it uses - `^1.3` for most, `^1.4` for a text key of the kernel's (section 4b), `^1.7` for the card and the hero that Nino 1.7 named and for the library of the Design feature), `requires`, `settings`, `data` - every key spelled out, even when empty, so a reader sees what the feature does not do - `maturity` is the one that may be left out. `components` and `stacks` (Nino 1.6, optional) declare the shortcodes that draw something into the body of a page - a schema each, as Nino's [Features](https://github.com/dapeio/nino/blob/main/docs/features.md#components-and-stacks) manual writes it, because the Builder offers only what is declared; the renderer is `component<Name>()` of the feature's class (`stack<Name>()` for a stack), which maps the resolved arguments back onto the shortcode's own method so that every call form of the manual renders as it did. A shortcode of the head or of a page's own plumbing stays a shortcode, and so does one written around a record template with `[[field]]` fills, which the Builder cannot carry. A bound in a schema (`min`, `max`, `options`) is applied by the wrapper before the renderer runs: declare one only where the shortcode held the very same bound, and otherwise a plain `string`. Nino 1.5 ignores both keys, so `init()` registers the shortcode itself wherever the kernel has not registered the component |
-| `<Name>.php` | the runtime class `\Nino\Modules\<Name>`; `init()` registers and outputs nothing; `adminPanels()` when there is a panel; `upgrade()` when a version changes the shape of its data; a `'/nino/admin/restore'` callback when its `data/` files must merge on restore |
+| `feature.php` | `key` (a slug), `name` (no two features may carry one, in any locale, case ignored - `bin/build.php` refuses a pair that does), `description`, `manual` (what the feature adds, which the panel draws on the Description tab of its screen, and the feature's only documentation: the `section => handle => line` map of Nino's [Features](https://github.com/dapeio/nino/blob/main/docs/features.md#the-manual) manual, as `features/Hello/feature.php` writes it - the handle as it is typed, every line a string or a `locale => string` map with `en_US` and `de_DE`; the sections are shortcodes, markup, routes, panel, callbacks and install; the older prose form is still read and no longer written), `category` (one of `content`, `ui`, `communication`, `marketing`, `security`, `system` - `bin/build.php` refuses anything else, and refuses a feature without one), `maturity` (optional: free text of at most 24 characters, a string or a `locale => string` map, drawn as a badge beside the name in the Features panel; `bin/build.php` publishes it where the manifest carries one, and a Nino that predates the key ignores it), `version` (`major.minor.patch`), `nino` (a version constraint; the floor a feature names is the Nino whose vocabulary it uses - `^1.8` for every feature of this catalogue: each calls the toolset of Nino 1.8 - `\Nino\Feature`, the helpers on the kernel classes, the manifest key `assets`, the renderer fallback, the browser helpers - and a later floor is named the day a feature uses what a later kernel brought), `requires`, `settings`, `data` - every key spelled out, even when empty, so a reader sees what the feature does not do - `maturity` is the one that may be left out. `assets` (optional) lists the style sheets and scripts the website needs, as virtual paths below the feature's own `assets/` directory (`/features/<Name>/assets/<name>.css`): while the feature is listed in `/nino/modules` the kernel adds each to the site's bundle, once and ahead of every `init()`, as Nino's [Features](https://github.com/dapeio/nino/blob/main/docs/features.md#assets) manual writes it. `components` and `stacks` (Nino 1.6, optional) declare the shortcodes that draw something into the body of a page - a schema each, as Nino's [Features](https://github.com/dapeio/nino/blob/main/docs/features.md#components-and-stacks) manual writes it, because the Builder offers only what is declared; the renderer is `component<Name>()` of the feature's class (`stack<Name>()` for a stack), which maps the resolved arguments back onto the shortcode's own method so that every call form of the manual renders as it did - or, for a component whose class has none, the `doShortcode()` of the class, which the shortcode by hand and the component then share (a stack has no such fallback). A shortcode of the head or of a page's own plumbing stays a shortcode, and so does one written around a record template with `[[field]]` fills, which the Builder cannot carry. A bound in a schema (`min`, `max`, `options`) is applied by the wrapper before the renderer runs: declare one only where the shortcode held the very same bound, and otherwise a plain `string`. `init()` registers the plain shortcode through `\Nino\Feature::shortcode()`, which registers nothing where the manifest's component owns the name |
+| `<Name>.php` | the runtime class `\Nino\Modules\<Name>`; `init()` registers and outputs nothing - and a class whose manifest does everything has no `init()` at all; `adminPanels()` when there is a panel; `upgrade()` when a version changes the shape of its data; a `'/nino/admin/restore'` callback when its `data/` files must merge on restore |
 | `Admin/Admin.php` | the panel, when there is one: `actions()`, `nav()`, `perm()`, `text()`, every action guarded with `\Nino\Admin\Admin::guardPerm()`; `assets()` named through `\Nino\Admin\Panels::relative()` so they move with the directory |
 | `text/<locale>.php` | the panel's fills for every interface language Nino ships, `en_US` and `de_DE` |
 | `templates/*.tpl` | the feature's own markup, when it draws anything: see section 4a. Not the same thing as `install/templates/`, which are the project's files, copied once |
@@ -148,24 +149,30 @@ the framework's own rule (see `AGENTS.md` section 6 in dapeio/nino) and a featur
 keeps it the same way:
 
 ```php
-public const string TEMPLATES = '/features/<Name>/templates';
-
 return str_replace(
-	[ '[[greeting]]', '[[name]]' ],
-	[ htmlspecialchars( $greeting, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ), htmlspecialchars( $name, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) ],
-	self::template( $appData, 'hello' )
+	[ '[[classes]]', '[[text]]' ],
+	[ \Nino\Feature::classes( $args ), \Nino\Modules\Components::escape( \Nino\Feature::flag( $args, 'shout' ) === true ? mb_strtoupper( $text ) : $text ) ],
+	\Nino\Feature::template( $appData, '/features/<Name>/templates', 'hello' )
 );
 ```
 
-`features/Hello/` shows the whole of it - the constant, the `template()` reader
-that goes through `\Nino\Filesystem`, and one `.tpl` with three tokens. Copy that.
+`features/Hello/` shows the whole of it: the kernel reads the template
+(`\Nino\Feature::template()`, through `\Nino\Filesystem`), makes the class
+attribute (`classes()`), reads a flag of the shortcode (`flag()`) and escapes the
+value (`Components::escape()`), and the one `.tpl` holds two tokens. Write none of
+that yourself - copy the calls.
 
 - Every value is escaped **before** it is filled in, exactly as it was when the
   markup was a string in PHP. A template has no escaping of its own.
-- `htmlspecialchars()` spells out `ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'`, every
-  time. Without `ENT_SUBSTITUTE` it answers input that is not valid UTF-8 with
-  `''`, and a value that renders as nothing is a bug nobody sees;
-  `tests/escaping-smoke.php` reads every feature for a call that dropped it.
+  `\Nino\Modules\Components::escape()` does it for a value, and writes every `[`
+  as `&#91;` so that the next rendering pass cannot read the value as a fill or
+  a shortcode; `\Nino\Feature::classes()` does it for the `class` argument every
+  shortcode may carry.
+- Where a value is escaped some other way, `htmlspecialchars()` spells out
+  `ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'`, every time. Without `ENT_SUBSTITUTE` it
+  answers input that is not valid UTF-8 with `''`, and a value that renders as
+  nothing is a bug nobody sees; `tests/escaping-smoke.php` reads every feature
+  for a call that dropped it.
 - Fill the tokens that carry **built markup last**: `str_replace()` works through
   its arrays in order, so a token after them is looked for in what they put in
   as well.
@@ -173,7 +180,7 @@ that goes through `\Nino\Filesystem`, and one `.tpl` with three tokens. Copy tha
   to whoever asked for the page. The explanation belongs in the class that fills
   it. A panel's own template (`templates/panel.tpl`) is the exception, since only
   a logged-in workbench user is ever sent it.
-- A text fill (`[[/feature/hello/greeting/note]]`) stays in the template; the kernel resolves it
+- A text fill (`[[/feature/consent/action/save]]`) stays in the template; the kernel resolves it
   when the result is rendered. That is the point of keeping the markup whole.
 
 Three shapes MAY carry markup in PHP, and nothing else:
@@ -202,11 +209,12 @@ argue for in the completion report, not a way to make the check pass.
 
 ## 4b. Text keys
 
-A text key a feature ships has the form every key of Nino has (see the
-[Features](https://github.com/dapeio/nino/blob/main/docs/features.md) manual and
-Nino's `AGENTS.md`): `/<namespace>/<category>/<part>/<name>`, four segments,
-each of lower-case words joined by hyphens (`[a-z0-9]+(-[a-z0-9]+)*`), in
-English, with no language in them and no number as a name.
+A text key a feature ships has the form every key of Nino has (see
+[the key grammar](https://github.com/dapeio/nino/blob/main/docs/development.md#the-key-grammar)
+of Nino's developer manual and Nino's `AGENTS.md`):
+`/<namespace>/<category>/<part>/<name>`, four segments, each of lower-case
+words joined by hyphens (`[a-z0-9]+(-[a-z0-9]+)*`), in English, with no
+language in them and no number as a name.
 
 - **`/feature/<key>/<part>/<name>`** is a word of the feature's own function:
   what its code or its internal `templates/` print, set at request time or choose
@@ -250,10 +258,9 @@ brings its section of the privacy policy: `install/elements/privacy.php`,
 named under `elements` in its unit's manifest (`install/manifest.php`, which a
 feature with nothing else to install carries just for this). Nino 1.4's Legal
 module shows it in the type `privacy`; an older Nino ignores the key, so no
-`nino` constraint changes for it. The recipe is in Nino's
-[feature recipe](https://github.com/dapeio/nino/blob/main/docs/recipes/feature.md)
-and its [Features](https://github.com/dapeio/nino/blob/main/docs/features.md)
-manual; what this catalogue adds:
+`nino` constraint changes for it. The file and its form are in Nino's
+[feature manual](https://github.com/dapeio/nino/blob/main/docs/features.md#the-install-unit),
+with the section of `features/Hello/` as its example; what this catalogue adds:
 
 - **Add-only, and never a type.** The file has the buckets `*`, `de_DE` and
   `en_US` and nothing else - no `model`, no `title`. `\Nino\Elements::seed()`
@@ -317,22 +324,38 @@ directory the feature actually sits in is the one that serves its class -
 wherever `NINO_ROOT` points. The `defined()` guard keeps a constant that
 was defined before the test was included, instead of failing on a redefinition.
 
-The harness provides `check( $label, $condition )`, `ninoSandbox( $name )`
-(a fresh isolated project directory in `$appData`, two locales, no modules),
-`ninoSandboxDir()`, `ninoWarnings()` (the warnings recorded since the last
-call - assert on a warning you expect rather than scrolling past it) and
+The harness provides nine helpers: `check( $label, $condition )`,
+`ninoSandbox( $name )` (a fresh isolated project directory in `$appData`, two
+locales, no modules), `ninoSandboxDir( $appData )`, `ninoWarnings()` (the warnings
+recorded since the last call - assert on a warning you expect rather than
+scrolling past it), `ninoErrors( $run )` (every error one call raises, the level
+with it), `ninoCall( $appData, $target, $data, $action )` (one workbench request
+as a panel method sees it, answered as `[ status, body, request ]`),
+`ninoUser( $appData, $mail, $perms )` (an account that exists and is signed in),
+`ninoVisit( $appData, $uri )` (one request of the site through
+`Http::request()`, no route resolved and nothing rendered) and
 `ninoDone( $appData )` (the summary, the sandbox removed, the exit status).
 Test the visible contract: the manifest validates, activation lists the
 class and records the version, the unit's files land add-only, the routes
 and the panel's actions answer with the right status and body, the panel is
 present while the feature is active and absent after, deactivation keeps
-what the project has. `features/Search/tests/search-smoke.php` is the
-reference.
+what the project has. `features/Hello/tests/hello-smoke.php` is the
+reference, with `hello-js-smoke.js` beside it.
+
+A panel's script is tested in `tests/<key>-js-smoke.js`, as that one is:
+`check()`, `done()`, `load()`, `element()` and `documentOf()` come from the
+`tests/harness.js` of the checkout (`NINO_ROOT`, or three levels up), and
+`load()` runs `_admin/assets/Nino.admin.js` and the feature's own script over a
+stand-in for `Nino` that keeps the requests. `load()` reads from the root of the
+checkout, so a feature outside it names its script as `path.relative( root, ... )`.
+The PHP test beside it runs it where `node` is on the path, so that
+`bin/check.sh` and CI cover both halves. The JavaScript tests of the other
+features carry a stand-in of their own and run with any Nino.
 
 Run one test directly, or all of them:
 
 ```bash
-NINO_ROOT=../nino php features/Search/tests/search-smoke.php
+NINO_ROOT=../nino php features/Hello/tests/hello-smoke.php
 bin/check.sh
 ```
 

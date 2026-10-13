@@ -1,406 +1,57 @@
 <?php
 declare(strict_types=1);
 
-/**
- *	Nino
- *	hello-smoke.php		The example feature's own test - and, like the rest of
- *										features/Hello/, written to be copied.
- *
- *										A feature's test runs against a real Nino checkout with
- *										a throwaway project in it, not against mocks: the
- *										harness three levels up builds the sandbox, and
- *										everything below drives the actual kernel. That is the
- *										point - what a feature has to get right is its contract
- *										with Nino, and only Nino can say whether it did.
- *
- *										It is laid out as the request is: the manifest, then
- *										activation, then what init() registers, then what the
- *										shortcode renders, then the panel, then the data, then
- *										deactivation. Copy the shape and delete the sections
- *										your feature has no equivalent of. Where node is on the
- *										path it runs hello-js-smoke.js beside it too, the
- *										panel's script over a dom stand-in.
- *
- *	Usage: php features/Hello/tests/hello-smoke.php
- *	       NINO_ROOT=../nino php features/Hello/tests/hello-smoke.php
- */
-
-/*	The checkout this runs against: three levels up when the feature sits in a
-	project's features/, else the one NINO_ROOT names - a checkout beside the
-	catalogue, say. The features root is this feature's own parent either way,
-	so the kernel's autoloader serves the class from here rather than from a
-	copy somewhere else	*/
+// The Hello feature's contract test. Runs against the checkout three levels up,
+// or the one NINO_ROOT names
 $root = getenv( 'NINO_ROOT' ) ?: dirname( __DIR__, 3 );
 defined( 'NINO_FEATURES_DIR' ) === true || define( 'NINO_FEATURES_DIR', dirname( __DIR__, 2 ) );
 require $root. '/tests/harness.php';
 
-/*	A throwaway project in a temp directory: config, private half, locales,
-	the lot. check(), ninoWarnings(), ninoSandboxDir() and ninoDone() all come
-	from that harness	*/
 $appData = ninoSandbox( 'hello' );
-$appData['/nino/dir'] = '';
-
-/*	\Nino\AppData::prepare() (what ninoSandbox() calls) seeds only the keys
-	needed before config.php loads. Textfiles' own directory arrives through
-	the real ::init(), which a sandboxed test never runs - so rendering a fill
-	needs this one set by hand	*/
-$appData['/nino/locales/textfiles'] = '/text';
-// ...and English, so the assertions below can compare against
-// install/text/en_US.php rather than against a translation
-$appData['./nino/locales/current'] = 'en_US';
-
-
-// --- 1. The manifest ---------------------------------------------------------
-
-echo "The manifest\n";
-
-$dir = dirname( __DIR__ );
-$manifest = \Nino\Features::manifest( $dir );
-
-check( 'it validates, key "hello"', is_array( $manifest ) === true && $manifest['key'] === 'hello' && ninoWarnings() === [] );
-check( 'it is written for this kernel', is_array( $manifest ) === true && \Nino\Features::satisfies( $manifest['nino'] ) === true );
-check( 'it names and describes itself in both interface languages', is_array( $manifest ) === true
-	&& \Nino\Features::localized( $manifest['description'], 'de_DE' ) !== \Nino\Features::localized( $manifest['description'], 'en_US' ) );
-
-check( 'it is filed under system - an example belongs with the tooling', $manifest['category'] === 'system' );
-/*	The badge is read from the file as well: ^1.3 admits a 1.3 kernel, which
-	predates the field and drops it on the way through	*/
-$raw = include $dir. '/feature.php';
-check( 'it says in both languages that it is an example', ( $raw['maturity'] ?? [] ) === [ 'en_US' => 'Example', 'de_DE' => 'Beispiel' ] );
-// Only a kernel that knows the field hands it back - an older one drops it
-check( 'the kernel, where it reads the badge, hands back what the file says', array_key_exists( 'maturity', $manifest ) === false || $manifest['maturity'] === $raw['maturity'] );
-
-check( 'the setting is declared with a type the panel can draw', ( $manifest['settings']['greeting']['type'] ?? '' ) === 'string'
-	&& in_array( $manifest['settings']['greeting']['type'], \Nino\Features::SETTING_TYPES, true ) === true );
-check( '...and with a default, so it is worth something before anybody saves', ( $manifest['settings']['greeting']['default'] ?? null ) === 'Hello' );
-check( 'what it stores is declared, so a backup carries it', in_array( \Nino\Modules\Hello::PATH, (array) ( $manifest['data'] ?? [] ), true ) === true );
-
-echo "\n";
-
-
-// --- 2. Activation -----------------------------------------------------------
-
-echo "Activation - what the install unit puts in the project\n";
-
-// A project's config.php, written the way the wizard leaves it, so the
-// activation has something to add its class to
+$appData['/nino/modules'] = [ '\\Nino\\Modules\\Components' ];
 \Nino\AppData::writeContentData( $appData, [ '/nino/modules', '/nino/locales/available', '/nino/locales/native' ] );
-ninoWarnings();
 
-check( 'the registry lists it inactive, with nothing in the way', ( static function() use ( &$appData ): bool {
-	$feature = \Nino\Features::get( $appData, 'hello' );
-	return $feature !== null && $feature['active'] === false && $feature['installed'] === null && $feature['problems'] === [];
-} )() );
+check( 'the manifest validates without a warning', is_array( \Nino\Features::manifest( dirname( __DIR__ ) ) ) && ninoWarnings() === [] );
+check( 'activation lists the class, records the version and applies the unit', \Nino\Features::activate( $appData, 'hello' ) === true
+	&& \Nino\Features::get( $appData, 'hello' )['installed'] === '1.1.0' && is_file( \Nino\Filesystem::path( $appData, '/templates/page-hello.tpl' ) ) === true );
 
-check( 'activation succeeds', \Nino\Features::activate( $appData, 'hello' ) === true );
-check( 'the class is listed and the version recorded', in_array( '\\Nino\\Modules\\Hello', \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/modules'], true ) === true
-	&& \Nino\Features::get( $appData, 'hello' )['installed'] === '1.0.0' );
-
-check( 'the page template is in the project now', \Nino\Filesystem::fileExists( $appData, '/templates/page-hello.tpl' ) === true );
-
-// Add-only, and for every locale the project has
-foreach( [ 'en_US', 'de_DE' ] as $locale ) {
-	$text = \Nino\Filesystem::getFileContent( $appData, '/text/'. $locale. '.php', [] );
-	check( 'the site\'s words are in text/'. $locale. '.php', isset( $text['[[/feature/hello/greeting/note]]'] ) === true
-		&& isset( $text['[[/template/page-hello/intro/title]]'] ) === true );
-}
-
-// The panel's own words are not: they are read out of features/Hello/text/
-// while the panel is drawn, and belong to the workbench rather than the site.
-// Every one of them, so the check does not go quiet when a word is dropped
-check( 'the panel\'s words stayed out of the project', array_intersect_key(
-	(array) include dirname( __DIR__ ). '/text/en_US.php',
-	\Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] ) ) === [] );
-
-echo "\n";
-
-
-// --- 3. init() ---------------------------------------------------------------
-
-echo "Modules\\Hello::init() - what one request gets\n";
-
-// Modules\Assets is what turns [assets ...] into a tag at all, and
-// Modules\Template what turns [template ...] into a file - the sandbox starts
-// with no modules, so both are added here to drive the real thing end to end
-$appData['/nino/modules'][] = '\\Nino\\Modules\\Assets';
-$appData['/nino/modules'][] = '\\Nino\\Modules\\Template';
+\Nino\Html::init( $appData );
 \Nino\Modules::callModules( $appData, 'init' );
+check( 'the component is registered from the manifest and renders through the template', isset( \Nino\Modules\Components::components( $appData )['hello'] ) === true
+	&& \Nino\Html::renderHtml( $appData, '[hello name="Ada" shout="yes" class="wide"]' ) === '<p class="nino-hello wide">HELLO, ADA!</p>' );
 
-check( 'the shortcode is registered', ( $appData['./nino/html/shortcodes']['hello'] ?? null ) !== null );
-check( 'the route is registered at runtime, not written into config.php',
-	( $appData['/nino/http/routes']['GET://hello']['uri'] ?? '' ) === '/hello'
-	&& isset( \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/http/routes']['GET://hello'] ) === false );
-/*	config.php is the project's file, and a route in it is a page an editor
-	made. init() runs on every request, so a registration that does not look
-	first puts the feature's demo page back over that route every time - and
-	deactivating the feature would not give the project its page back, because
-	there would be nothing left to give back. A request of its own, so what
-	the one under test was left with is not disturbed	*/
-$projectRoute = [ 'uri' => '/hello', 'body' => 'the project\'s own hello page' ];
-$ownRoute = $appData;
-$ownRoute['/nino/http/routes']['GET://hello'] = $projectRoute;
-\Nino\Modules\Hello::init( $ownRoute );
-check( 'a route the project already has for the same address is left alone',
-	( $ownRoute['/nino/http/routes']['GET://hello'] ?? [] ) === $projectRoute );
+ninoUser( $appData, 'dev@example.com' );
+[ $status, $body ] = ninoCall( $appData, [ \Nino\Admin\Admin::class, 'handlePost' ], [ 'name' => 'Grace' ], 'hello/save' );
+check( 'hello/save stores the name and hello/list answers it', $status === 200 && $body['name'] === 'Grace'
+	&& ninoCall( $appData, [ \Nino\Admin\Admin::class, 'handlePost' ], [], 'hello/list' )[1] === [ 'name' => 'Grace', 'longest' => 40 ] );
 
-check( 'hello.css joined the project\'s own bundle', in_array( '/features/Hello/assets/hello.css', \Nino\Html::getAssets( $appData, '/.cache/style.css' ), true ) === true );
-check( 'the generated cache file really carries it', ( static function() use ( &$appData ): bool {
-	\Nino\Html::renderHtml( $appData, '[assets /.cache/style.css]' );
-	return str_contains( (string) \Nino\Filesystem::getFileContent( $appData, '/.cache/style.css', '' ), '.nino-hello' );
-} )() );
+[ $status, $body ] = ninoCall( $appData, [ \Nino\Admin\Admin::class, 'handlePost' ], [ 'name' => str_repeat( 'x', 41 ) ], 'hello/save' );
+check( 'a name too long is refused with the code, its limit and the field', $status === 400 && $body['code'] === 'hello_long' && $body['params'] === [ 40 ] && $body['field'] === 'name' );
+foreach( [ 'en_US', 'de_DE' ] as $locale )
+	check( "...and the code has its sentence in $locale", str_contains( \Nino\Admin\Admin::textFills( $appData, '/features/Hello/text', $locale )['[[/_admin/error/'. $body['code']. ']]'] ?? '', '%s' ) );
 
-echo "\n";
+// The project as 1.0.0 left it; all() keeps its answer for the request, so it is dropped to be asked again
+\Nino\Filesystem::putFileContent( $appData, '/data/hello.php', [ 'name' => 'Ada' ] );
+$appData['/nino/features']['hello']['version'] = '1.0.0';
+\Nino\AppData::writeContentData( $appData, [ '/nino/features' ] );
+unset( $appData['./nino/features/all'] );
+check( 'a recorded version behind the manifest runs the upgrade hook, which adds the format key', \Nino\Features::activate( $appData, 'hello' ) === true
+	&& \Nino\Filesystem::getFileContent( $appData, '/data/hello.php', [] ) === [ 'format' => 1, 'name' => 'Ada' ] );
+check( 'deactivation takes the panel away and keeps the data', \Nino\Features::deactivate( $appData, 'hello' ) === true
+	&& isset( \Nino\Admin\Admin::panels( $appData )['hello'] ) === false && \Nino\Modules\Hello::name( $appData ) === 'Ada' );
 
+// The panel's script, where node is on the path: hello-js-smoke.js beside this
+// file runs it over the kernel's tests/harness.js, so bin/check.sh and CI cover
+// both halves in one go
+$node = function_exists( 'shell_exec' ) === true ? trim( (string) @shell_exec( 'command -v node 2>/dev/null' ) ) : '';
 
-// --- 4. [hello] --------------------------------------------------------------
-
-echo "[hello] - what a page renders\n";
-
-$html = \Nino\Html::renderHtml( $appData, '[hello]' );
-
-check( 'it greets, with the setting\'s default and the stored fallback', str_contains( $html, 'Hello, World!' ) === true );
-check( '...and its fill is resolved rather than printed', str_contains( $html, 'Rendered by the Hello World feature.' ) === true
-	&& str_contains( $html, '[[/feature/hello/greeting/note]]' ) === false );
-check( 'an argument names somebody else', str_contains( \Nino\Html::renderHtml( $appData, '[hello name="Ada"]' ), 'Hello, Ada!' ) === true );
-
-/*	The one rule that is never optional: a shortcode argument comes straight
-	out of a template and a panel's stored value straight out of a form, so
-	both are escaped. A fill is not - that goes through the fill engine, which
-	is what an editor's own text is written in	*/
-check( 'what came from outside is escaped', str_contains(
-	\Nino\Html::renderHtml( $appData, '[hello name="<script>alert(1)</script>"]' ), '<script>' ) === false );
-
-// The setting, changed the way the Features panel changes it
-\Nino\Features::saveSettings( $appData, 'hello', [ 'greeting' => 'Guten Tag' ] );
-check( 'the setting is what the greeting reads', str_contains( \Nino\Html::renderHtml( $appData, '[hello]' ), 'Guten Tag, World!' ) === true );
-check( '...and an empty one falls back rather than greeting with nothing', ( static function() use ( &$appData ): bool {
-	\Nino\Features::saveSettings( $appData, 'hello', [ 'greeting' => '   ' ] );
-	return str_contains( \Nino\Html::renderHtml( $appData, '[hello]' ), 'Hello, World!' );
-} )() );
-
-// The page the install unit brought, rendered through the route's own body
-check( 'the installed page renders the greeting inside it', str_contains(
-	\Nino\Html::renderHtml( $appData, '[template /templates/page-hello]' ), 'Hello, World!' ) === true );
-
-echo "\n";
-
-
-// --- 5. The panel ------------------------------------------------------------
-
-echo "Modules\\Hello\\Admin - one field, one button\n";
-
-check( 'the feature brings its panel along', \Nino\Modules\Hello::adminPanels( $appData ) === [ \Nino\Modules\Hello\Admin::class ] );
-check( 'it names every action it answers', array_keys( \Nino\Modules\Hello\Admin::actions() ) === [ 'hello/list', 'hello/save' ] );
-check( 'it brings a pane, a script and a stylesheet', \Nino\Modules\Hello\Admin::panes() === [ 'hello-form' ]
-	&& count( \Nino\Modules\Hello\Admin::assets() ) === 2 );
-check( 'a save is written to the activity log and a read is not', \Nino\Modules\Hello\Admin::log( 'hello/save', [] ) !== ''
-	&& \Nino\Modules\Hello\Admin::log( 'hello/list', [] ) === '' );
-
-/*	The workbench opens every pane with a head of its own - the label nav()
-	gave, with room for a strip of tabs and for buttons - so a screen starts
-	with what it is about, and a heading of the screen's own would say the
-	panel's name a second time, one line under the first. There is no dom in
-	here to draw the screen into, so this reads it off the script: _render(),
-	from its own line to the one that closes it	*/
-$screen = preg_match( '/^\t\t_render : function\(\) \{\n(.*?)^\t\t\},$/ms',
-	(string) file_get_contents( dirname( __DIR__ ). '/assets/admin.js' ), $method ) === 1 ? $method[1] : '';
-check( 'the screen draws no heading of its own - the head over the pane names the panel',
-	$screen !== '' && preg_match( '/createElement\(\s*\'h[1-6]\'\s*\)/', $screen ) === 0 );
-check( '...and the first line it draws under that head is its hint',
-	preg_match( '/\bappendChild\(\s*(\w+)\s*\)/', $screen, $first ) === 1
-	&& str_contains( $screen, $first[1]. '.className = \'nino-admin-hint\'' ) === true );
-
-/**
- *	Call one panel action the way the workbench does: a posted request with
- *	the action's json in it, answered into $request. Every feature test that
- *	has a panel needs this or something like it
- *
- *	@param		array 		&$appData			(reference) The sandbox's app data
- *	@param		string		$method				The Admin method to call
- *	@param		array			$data					What the screen posted
- *
- *	@return 	array										[ status, decoded body ]
- */
-function callHelloAction( array &$appData, string $method, array $data = [] ): array {
-
-	$_POST['data'] = json_encode( $data );
-
-	// The shape an action writes into - a request that has already been
-	// answered 200 until something says otherwise, which is what the kernel
-	// hands a panel
-	$request = [ '/nino/http/response' => [ 'statusCode' => 200 ] ];
-
-	\Nino\Modules\Hello\Admin::$method( $appData, $request );
-
-	$_POST = [];
-
-	return [
-		(int) ( $request['/nino/http/response']['statusCode'] ?? 0 ),
-		is_array( $request['/nino/http/response']['body'] ?? null )
-			? $request['/nino/http/response']['body']
-			: json_decode( (string) ( $request['/nino/http/response']['body'] ?? '' ), true ),
-	];
-}
-
-/*	Guarded before anything else, because the routing does not guard: a panel
-	that is not drawn is not a panel that cannot be posted to	*/
-check( 'every action refuses a request with no session',
-	callHelloAction( $appData, 'apiList' )[0] === 401
-	&& callHelloAction( $appData, 'apiSave', [ 'name' => 'Ada' ] )[0] === 401 );
-
-\Nino\Auth::insertUser( $appData, 'editor@example.com', 'correct horse battery staple', [ '/_admin/elements/manage' ] );
-\Nino\Auth::loginUser( $appData, 'editor@example.com', 'correct horse battery staple' );
-check( '...and an account without the permission with a 403', callHelloAction( $appData, 'apiList' )[0] === 403 );
-
-\Nino\Auth::insertUser( $appData, 'dev@example.com', 'correct horse battery staple', [ '/*' ] );
-\Nino\Auth::loginUser( $appData, 'dev@example.com', 'correct horse battery staple' );
-
-[ $status, $listed ] = callHelloAction( $appData, 'apiList' );
-check( 'the list hands the screen what it draws', $status === 200
-	&& ( $listed['name'] ?? '' ) === 'World'
-	&& ( $listed['fallback'] ?? '' ) === 'World'
-	&& isset( $listed['greeting'] ) === true );
-
-[ $status, $saved ] = callHelloAction( $appData, 'apiSave', [ 'name' => 'Ada' ] );
-check( 'a save stores it and answers with what to show now', $status === 200 && ( $saved['name'] ?? '' ) === 'Ada' );
-check( '...and the shortcode greets her from then on', str_contains( \Nino\Html::renderHtml( $appData, '[hello]' ), ', Ada!' ) === true );
-
-check( 'an empty name is the fallback rather than an empty greeting', ( static function() use ( &$appData ): bool {
-	callHelloAction( $appData, 'apiSave', [ 'name' => '   ' ] );
-	return \Nino\Modules\Hello::name( $appData ) === 'World';
-} )() );
-
-check( 'a name longer than a name is refused, and nothing is written',
-	callHelloAction( $appData, 'apiSave', [ 'name' => str_repeat( 'a', 61 ) ] )[0] === 400
-	&& \Nino\Modules\Hello::name( $appData ) === 'World' );
-
-echo "\n";
-
-
-// --- 6. The data, and the upgrade hook ---------------------------------------
-
-echo "What it stores\n";
-
-callHelloAction( $appData, 'apiSave', [ 'name' => 'Ada' ] );
-
-check( 'it writes exactly the file the manifest declared', \Nino\Filesystem::fileExists( $appData, \Nino\Modules\Hello::PATH ) === true );
-/*	...and nothing else. \Nino\Filesystem::path() is how a virtual path
-	becomes a real one - never build it out of the project root by hand, or a
-	project that moved its private half with NINO_PRIVATE_DIR is a project
-	your test looks in the wrong place for	*/
-check( '...and nothing else of its own under data/', array_values( array_filter(
-	(array) scandir( \Nino\Filesystem::path( $appData, '/data' ) ),
-	// The dot entries are the kernel's - /data/.locks is where
-	// Filesystem::mutate() keeps its lock files, and it belongs to whoever
-	// wrote last rather than to any one feature
-	static fn( string $entry ): bool => str_starts_with( $entry, '.' ) === false
-) ) === [ 'hello.php' ] );
-
-/*	The only hook there is, and at 1.0.0 it has nothing to do. Called here all
-	the same, and called the way \Nino\Features::activate() calls it - the
-	recorded version as the one argument beside $appData, false as the
-	refusal - because a hook the kernel cannot call is the classic way a
-	feature breaks the release it was meant to fix, and an upgrade() that
-	throws on a project with no stored data yet is the other. The catch is
-	what turns the wrong signature into a red line instead of a dead suite	*/
-try {
-	$upgraded = \Nino\Modules\Hello::upgrade( $appData, '0.9.0' );
-} catch( \ArgumentCountError $e ) {
-	$upgraded = $e->getMessage();
-}
-check( 'upgrade() takes the call the kernel makes, and answers true', $upgraded === true );
-check( 'upgrade() survives being called with nothing to migrate', \Nino\Modules\Hello::name( $appData ) === 'Ada' );
-
-echo "\n";
-
-
-// --- Components ----------------------------------------------------------------
-
-echo "Components - [hello] as the Builder offers it\n";
-
-if( class_exists( '\\Nino\\Modules\\Components' ) === false )
-	echo "  --  this Nino has no \\Nino\\Modules\\Components: the manifest's components are not read here, and the shortcode registers itself\n";
-else ( static function( array $appData ): void {
-
-	$declared = \Nino\Features::manifest( dirname( __DIR__ ) )['components'] ?? [];
-
-	// Every documented call form, as it renders before the wrapper is there
-	$calls = [
-		'[hello]',
-		'[hello name="Ada"]',
-		'[hello name="<b>x</b>"]',
-	];
-
-	$before = [];
-	foreach( $calls as $call )
-		$before[$call] = \Nino\Html::renderHtml( $appData, $call );
-
-	/*	The kernel reads the manifest ahead of the feature's own init() - that is
-		the order here too, on a copy of the project's data that nothing else in
-		this test sees. The shortcodes the feature registered above are those of
-		a boot that has none to read; this boot registers each of them once	*/
-	$probe = $appData;
-	foreach( [ 'hello' ] as $shortcode )
-		\Nino\Callbacks::removeCallbacks( $probe, '/nino/html/shortcode/'. $shortcode );
-	\Nino\Modules\Components::init( $probe );
-	\Nino\Modules\Hello::init( $probe );
-	ninoWarnings();
-
-	check( 'the component is registered with the schema the manifest declares',
-		( \Nino\Modules\Components::components( $probe )['hello'] ?? null ) === ( $declared['hello'] ?? false ) );
-	check( '...and what the feature registers is answered once - the component by its wrapper',
-		\Nino\Features::shortcodes( $probe, 'hello' ) === [ 'hello' ]
-		&& count( $registered = \Nino\Callbacks::registered( $probe, '/nino/html/shortcode/hello' ) ) === 1 && $registered[0] instanceof \Closure );
-	check( '...with the defaults of the schema, as strings',
-		\Nino\Modules\Components::defaults( $probe, 'hello' ) === [ 'name' => '', 'class' => '' ] );
-
-	foreach( $calls as $call )
-		check( 'renders as it did: '. $call, \Nino\Html::renderHtml( $probe, $call ) === $before[$call] );
-
-	ninoWarnings();
-
-	check( 'every attribute written out at its default is the call without it',
-		\Nino\Html::renderHtml( $probe, '[hello name="" class=""]' ) === $before['[hello]'] );
-	check( 'a class of its own comes after the line\'s own, no class leaves no space behind',
-		str_contains( \Nino\Html::renderHtml( $probe, '[hello name="Ada" class="big"]' ), '<p class="nino-hello big">' ) === true
-		&& str_contains( $before['[hello name="Ada"]'], '<p class="nino-hello">' ) === true );
-
-} )( $appData );
-
-echo "\n";
-
-
-// --- 7. Deactivation ---------------------------------------------------------
-
-echo "Deactivation\n";
-
-check( 'deactivation succeeds', \Nino\Features::deactivate( $appData, 'hello' ) === true );
-check( 'the class is gone from /nino/modules', in_array( '\\Nino\\Modules\\Hello', \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/modules'], true ) === false );
-
-/*	What a deactivation leaves behind is the project's, and that is the
-	contract: the template and the words were merged in and stay, the stored
-	data stays for a reactivation, and only the running code goes	*/
-check( 'the page template stays - it is the project\'s file now', \Nino\Filesystem::fileExists( $appData, '/templates/page-hello.tpl' ) === true );
-check( 'the words stay too', isset( \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] )['[[/feature/hello/greeting/note]]'] ) === true );
-check( 'and what was stored is still there for a reactivation', \Nino\Filesystem::fileExists( $appData, \Nino\Modules\Hello::PATH ) === true );
-check( 'the feature is still on disk, listed and inactive', ( \Nino\Features::get( $appData, 'hello' )['active'] ?? true ) === false );
-
-// --- The panel's script, where node is on the path ----------------------------
-//
-// hello-js-smoke.js beside this file runs the panel's script over a dom
-// stand-in - its request, its status line and what it tells the shell about
-// unsaved input; this suite runs it too where node is on the path, the way
-// forms-smoke.php does, so bin/check.sh and CI cover both halves in one go
-$jsTest	= __DIR__. '/hello-js-smoke.js';
-$node		= function_exists( 'shell_exec' ) === true ? trim( (string) @shell_exec( 'command -v node 2>/dev/null' ) ) : '';
-
-if( $node === '' || function_exists( 'exec' ) === false ) {
+if( $node === '' || function_exists( 'exec' ) === false )
 	echo "  --  - node is not available here: hello-js-smoke.js was NOT run\n";
-} else {
-	$output = []; $status = 1;
-	exec( escapeshellarg( $node ). ' '. escapeshellarg( $jsTest ). ' 2>&1', $output, $status );
-	$summary = (string) end( $output );
-	check( 'hello-js-smoke.js passes - '. ( $summary === '' ? 'no output' : $summary ), $status === 0 );
+else {
+	$output = [];
+	$exit = 1;
+	exec( escapeshellarg( $node ). ' '. escapeshellarg( __DIR__. '/hello-js-smoke.js' ). ' 2>&1', $output, $exit );
+	check( 'hello-js-smoke.js passes - '. ( $output === [] ? 'no output' : end( $output ) ), $exit === 0 );
 }
 
 ninoDone( $appData );

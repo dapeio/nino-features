@@ -41,18 +41,18 @@ NINO_ROOT=/path/to/nino bin/check.sh
 Ein einzelner Test läuft auch direkt:
 
 ```bash
-NINO_ROOT=../nino php features/Search/tests/search-smoke.php
+NINO_ROOT=../nino php features/Hello/tests/hello-smoke.php
 ```
 
 `bin/catalogue.php` gibt aus, was der Katalog listen würde, als JSON, ohne Archiv und ohne Signatur. CI (`.github/workflows/ci.yml`) führt dieselben Tests gegen Ninos `main` und gegen sein jüngstes Tag aus, dazu eine Syntaxprüfung, Ninos eigenen Vertragstest sowie PHPStan und ESLint über `features/`. Nichts wartet darauf: Es ist eine Bequemlichkeit.
 
 ## Ein Feature schreiben
 
-Das [Feature-Rezept](https://github.com/dapeio/nino/blob/main/docs/recipes/feature.md) in Nino baut ein Feature Schritt für Schritt; das Handbuch [Features](https://github.com/dapeio/nino/blob/main/docs/features.md) ist der Vertrag dahinter. `features/Hello/` ist ein vollständiges Beispiel, das zum Kopieren geschrieben ist: Kopiere es und benenne dann das Verzeichnis, den `key` in `feature.php` und die Klasse `\Nino\Modules\Hello` um, sodass die drei übereinstimmen.
+Das Handbuch [Developing a feature](https://github.com/dapeio/nino/blob/main/docs/features.md) in Nino führt ein Feature von der ersten Datei bis zum Test und beschreibt den Vertrag dahinter. `features/Hello/` ist das vollständige Beispiel dieses Handbuchs, zum Kopieren geschrieben: Kopiere es und benenne dann das Verzeichnis, den `key` in `feature.php` und die Klasse `\Nino\Modules\Hello` um, sodass die drei übereinstimmen.
 
 ```text
 features/<Name>/
-├── feature.php              das Manifest: key, name, description, manual, category, version, nino, requires, settings, data
+├── feature.php              das Manifest: key, name, description, manual, category, version, nino, requires, settings, data, assets
 ├── <Name>.php               die Laufzeitklasse \Nino\Modules\<Name>
 ├── Admin/Admin.php          das Panel, wenn es eines gibt
 ├── assets/ install/ text/ templates/   wenn das Feature sie braucht
@@ -115,7 +115,7 @@ Ohne `--key` schreibt es keine Signatur und gibt diesen Einzeiler aus; mit `--ke
 | `category` | wofür das Feature da ist, ein Slug – das des Manifests |
 | `maturity` | das Abzeichen, das das Features-Panel neben den Namen zeichnet – das des Manifests; fehlt, wo es keines nennt |
 | `version` | `major.minor.patch`, die des Manifests |
-| `nino` | die Nino-Versionsbedingung, `^1.3` |
+| `nino` | die Nino-Versionsbedingung, `^1.8` |
 | `php` | `{ "ext": [ ... ] }` – die PHP-Erweiterungen, die das Feature braucht |
 | `requires` | die Keys der Features, die es benötigt |
 | `directory` | das eine Verzeichnis, das das Archiv enthält – `Newsletter`, der Klassenname |

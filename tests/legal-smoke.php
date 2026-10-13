@@ -5,8 +5,9 @@ declare(strict_types=1);
  *	Nino features
  *	legal-smoke.php	The sections of the privacy policy the features bring
  *									(install/elements/privacy.php of Consent, Embed, Forms,
- *									Mailer, Newsletter, ProtectedArea and Stats), which Nino's
- *									Legal module (1.4) shows in the type 'privacy'. Two parts:
+ *									Hello, Mailer, Newsletter, ProtectedArea and Stats), which
+ *									Nino's Legal module (1.4) shows in the type 'privacy'.
+ *									Two parts:
  *
  *									Part 1 needs nothing of the kernel and runs against every
  *									checkout:
@@ -72,6 +73,7 @@ const LEGAL_RANGES = [
 	'stats'			=> [ 600, 699 ],
 	'embed'			=> [ 700, 799 ],
 	'protected'		=> [ 800, 899 ],
+	'hello'			=> [ 800, 899 ],
 ];
 
 // What the Legal module replaces: /project/company/<group>/<name> and /project/website/general/<name>

@@ -1,20 +1,24 @@
 /**
  *	Nino
- *	hello-js-smoke.js		What the panel's admin.js does over a dom stand-in:
- *											that it asks the workbench's own request helper where
- *											there is one and posts from the project's own directory
- *											where there is not, that a failure reads the way the
- *											workbench says it where it has the words and "(status)
- *											message" where it has not, that the save line is the
- *											workbench's status line where there is one, and that
- *											the shell's registry of unsaved input is told what is
- *											on screen, can press Save, and is not drawn over.
+ *	hello-js-smoke.js	What the panel's script does over the kernel's own
+ *										Nino.admin.js: it asks for hello/list when the pane is
+ *										first shown and draws the name it is given, a save posts
+ *										the field and the status line says it, a refusal is told
+ *										in the sentence of its code and ends in done( false ),
+ *										and the entry the shell asks about unsaved input follows
+ *										the field. Only Nino itself is a stand-in: the requests
+ *										a panel makes through Nino.adminUi.api.call() are kept
+ *										for the test to answer, and the words are the ones of
+ *										the text files, in both interface languages.
  *
- *											No jsdom, no dependency: a small element stand-in with
- *											just enough of Nino.adminUi for the panel to draw
- *											itself, so this runs with nothing but node.
+ *										The helpers - check(), done(), fills(), load(), findAll(),
+ *										fire(), element() and documentOf() - are those of
+ *										tests/harness.js of the checkout, three levels up or the
+ *										one NINO_ROOT names. hello-smoke.php runs this where node
+ *										is on the path.
  *
  *	Usage: node features/Hello/tests/hello-js-smoke.js
+ *	       NINO_ROOT=../nino node features/Hello/tests/hello-js-smoke.js
  */
 
 'use strict';
@@ -25,268 +29,259 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-let checks = 0;
-let failures = 0;
-
-function check( label, condition ) {
-	checks++;
-	if( condition === true ) {
-		console.log( '  ok  - '+ label );
-		return;
-	}
-	failures++;
-	console.log( 'FAIL  - '+ label );
-}
-
-const source = fs.readFileSync( path.join( __dirname, '../assets/admin.js' ), 'utf8' );
-
-/** Every descendant of $root, depth first */
-function descendants( root ) {
-	let all = [];
-	for( const child of root.children ) {
-		all.push( child );
-		all = all.concat( descendants( child ) );
-	}
-	return all;
-}
-
-/** One element, with just enough of the interface the panel reaches for */
-function element( tag ) {
-
-	const el = {
-		tagName					: tag.toUpperCase(),
-		attributes			: {},
-		children				: [],
-		dataset					: {},
-		id							: '',
-		type						: '',
-		value						: '',
-		placeholder			: '',
-		maxLength				: 0,
-		disabled				: false,
-		listeners				: {},
-		_text						: '',
-		focused					: false,
-		setAttribute		: function( name, value ) { this.attributes[name] = String( value ) },
-		appendChild			: function( child ) { this.children.push( child ); return child },
-		addEventListener: function( type, fn ) { ( this.listeners[type] = this.listeners[type] || [] ).push( fn ) },
-		fire						: function( type ) { ( this.listeners[type] || [] ).forEach( function( fn ) { fn( { target : el } ) } ) },
-		focus						: function() { this.focused = true },
-	};
-
-	Object.defineProperty( el, 'textContent', {
-		get : function() { return el._text + el.children.map( function( c ) { return c.textContent } ).join('') },
-		set : function( value ) { el._text = String( value ); el.children = [] },
-	} );
-
-	Object.defineProperty( el, 'innerHTML', {
-		get : function() { return '' },
-		set : function() { el.children = []; el._text = '' },
-	} );
-
-	return el;
-}
-
-const TEXT = {
-	'/_admin/hello/error/long'	: 'Too long.',
-	'/_admin/hello/error/save'	: 'It could not be saved.',
-	'/_admin/hello/msg/saved'		: 'Saved.',
-	'/_admin/common/msg/saving'	: 'Saving ...',
-};
+const root = fs.realpathSync( process.env.NINO_ROOT || path.join( __dirname, '../../..' ) );
+const { check, done, fills, load, findAll, fire, element, documentOf } = require( path.join( root, 'tests/harness.js' ) );
 
 /**
- *	The panel, with the answers a test gives it
+ *	A file of the feature the way load() and fills() want it: from the root of
+ *	the checkout, which the feature sits outside of when it is tested from the
+ *	catalogue
  *
- *	@param		{Object}	options		{ name } - what hello/list answers with; send: the post
- *															of a Nino before 1.3.2; api, status, dirty: stand in for
- *															Nino.adminUi.api, Nino.adminUi.status and the shell's
- *															Nino.admin.dirty registry (a newer workbench); answer: what
- *															hello/save answers, { status, body }
+ *	@param		{string}	relative		A path below features/Hello/
+ *
+ *	@return		{string}
  */
-function panel( options ) {
+function own( relative ) {
+	return path.relative( root, fs.realpathSync( path.join( __dirname, '..', relative ) ) );
+}
 
-	options = options || {};
+/**
+ *	The panel's script in a page of its own, in one interface language: the
+ *	kernel's Nino.admin.js and the feature's admin.js, over a Nino that keeps
+ *	the requests, the entry the panel registers and the words it asks for
+ *
+ *	@param		{string}		locale		en_US or de_DE: the words of the text files
+ *	@param		{boolean}		[shell]		Whether the page has the workbench's shell, which registers the dirty entries; true by default
+ *
+ *	@return		{Object}
+ */
+function world( locale, shell ) {
 
-	const wrap = element('div');
-	wrap.id = 'hello-form';
+	// The words as the workbench has them: its own, and the feature's merged in
+	const words = Object.assign( fills( '_admin/text/'+ locale+ '.php' ), fills( own( 'text/'+ locale+ '.php' ) ) );
+	const missing = [];
+	const requests = [];
+	const registered = [];
+	let refreshed = 0;
 
-	const posted = [];
-	const dc = {
-		createElement		: function( tag ) { return element( tag ) },
-		getElementById	: function( id ) { return id === 'hello-form' ? wrap : descendants( wrap ).filter( function( el ) { return el.id === id } )[0] || null },
+	const mount = element('div');
+	mount.id = 'hello-list';
+
+	// A control's name is its attribute as well, as in a page: the status line finds the field the server refused by it
+	const page = documentOf( mount );
+	const make = page.createElement;
+	page.createElement = function( tag ) {
+		const el = make( tag );
+		Object.defineProperty( el, 'name', { get : function() { return el.attributes.name ?? '' }, set : function( value ) { el.setAttribute( 'name', value ) } } );
+		return el;
 	};
 
 	const Nino = {
-		content	: { getText : function( key ) { return TEXT[key] !== undefined ? TEXT[key] : key } },
-		events	: { bindCallback : function() {} },
-		adminUi	: {
-			actionBar : function( bar ) { const el = element('div'); el.appendChild( bar ); return el },
-		},
-		http		: { sendRequest : function( uri, method, callback, data ) {
-			posted.push( [ uri, method, data ] );
-			if( data.action === 'hello/list' )
-				return callback( { status : 200, responseJSON : { name : options.name || '', fallback : 'World', greeting : 'Hello' } } );
-			const answer = options.answer || { status : 200, body : { name : JSON.parse( data.data ).name } };
-			callback( { status : answer.status, responseJSON : answer.body } );
+		content : { getText : function( key ) {
+			if( words[key] === undefined )
+				missing.push( key );
+			return words[key] ?? '';
 		} },
 	};
 
-	if( options.api )
-		Nino.adminUi.api = options.api;
-	if( options.status )
-		Nino.adminUi.status = options.status;
-	Nino.admin = {};
-	if( options.dirty )
-		Nino.admin.dirty = options.dirty;
+	if( shell !== false )
+		Nino.admin = { dirty : { register : function( name, entry ) { registered.push( { name : name, entry : entry } ) }, refresh : function() { refreshed++ } } };
 
-	const sandbox = { console : console, document : dc, Nino : Nino, window : { Nino : Nino } };
-	sandbox.window.window = sandbox.window;
-	vm.runInContext( source, vm.createContext( sandbox ), { filename : 'admin.js' } );
+	const context = vm.createContext( { console : console, document : page, Nino : Nino, window : { Nino : Nino } } );
+	load( '_admin/assets/Nino.admin.js', context );
 
-	Nino.admin.hello.init();
+	// The one way a panel talks to the server is the kernel's api.call(): what it is asked for is kept, to be answered
+	Nino.adminUi.api.call = function( action, payload, callback ) {
+		requests.push( { action : action, payload : payload, callback : callback, answered : false } );
+	};
+
+	load( own( 'assets/admin.js' ), context, 'admin.js' );
+
+	const find = function( predicate ) { return findAll( mount, predicate )[0] ?? null };
 
 	return {
-		panel		: Nino.admin.hello,
-		wrap		: wrap,
-		posted	: posted,
-		input		: function() { return dc.getElementById('hello-name') },
-		save		: function() { return dc.getElementById('hello-save') },
-		msg			: function() { return dc.getElementById('hello-msg') },
+		panel : Nino.admin.hello,
+		mount : mount,
+		requests : requests,
+		registered : registered,
+		missing : missing,
+		refreshed : function() { return refreshed },
+		entry : function() { return registered[0].entry },
+		input : function() { return find( function( el ) { return el.tagName === 'INPUT' } ) },
+		button : function() { return find( function( el ) { return el.tagName === 'BUTTON' } ) },
+		line : function() { return find( function( el ) { return el.classList.contains('nino-admin-status') } ) },
+		labels : function() { return findAll( mount, function( el ) { return el.tagName === '#TEXT' } ).map( function( el ) { return el.textContent } ) },
+
+		// The answer of the server to the request that is out, as api.call() hands it to its callback
+		answer : function( status, body ) {
+			const open = requests.filter( function( request ) { return request.answered === false } );
+			open[open.length - 1].answered = true;
+			open[open.length - 1].callback( status, body );
+		},
 	};
 }
 
+/** The panel shown and its list answered: the screen is drawn */
+function drawn( locale, data, shell ) {
+	const w = world( locale, shell );
+	w.panel.showCurrent();
+	w.answer( 200, data );
+	return w;
+}
 
-// --- Asking the workbench ------------------------------------------------------------
-
-/*	Where the shell has a request helper the panel asks it; where it has not it
-	posts from the project's own directory - the literal the asset bundle fills
-	in, as Nino.dir does not exist before Nino 1.3.2	*/
-const bare = panel( { name : 'Ada' } );
-check( 'without the shell\'s request helper the panel posts to the project\'s own _admin, with the action and the json',
-	bare.posted.length === 1 && bare.posted[0][0] === '[[/nino/dir]]/_admin/' && bare.posted[0][1] === 'POST'
-	&& bare.posted[0][2].action === 'hello/list' && bare.posted[0][2].data === '{}' );
-check( '...and draws what it answered', bare.input().value === 'Ada' && bare.input().placeholder === 'World' );
-
-const routed = [];
-const viaApi = panel( { api : { call : function( action, payload, callback ) {
-	routed.push( [ action, payload ] );
-	callback( 200, { name : 'Grace', fallback : 'World', greeting : 'Hello' } );
-} } } );
-check( 'with it the panel asks the helper for \'hello/<action>\' and posts nothing by hand',
-	routed.length === 1 && routed[0][0] === 'hello/list' && viaApi.posted.length === 0 && viaApi.input().value === 'Grace' );
-
-check( 'a failure says "(status) message" as it always did where the shell has no errorText()',
-	bare.panel._errorText( 503, { error : 'Busy' }, '/_admin/hello/error/save' ) === '(503) Busy'
-	&& bare.panel._errorText( 503, null, '/_admin/hello/error/save' ) === '(503) It could not be saved.' );
-const withText = panel( { api : { call : function( action, payload, callback ) { callback( 200, { name : '', fallback : 'World', greeting : 'Hello' } ) }, errorText : function( status, response, key ) { return 'told '+ status+ ' ['+ key+ ']' } } } );
-check( '...and what errorText() makes of it where it has one', withText.panel._errorText( 503, { error : 'Busy' }, '/_admin/hello/error/save' ) === 'told 503 [/_admin/hello/error/save]' );
+const LIST = { name : 'Ada', longest : 40 };
+const LONG = { error : 'the name is too long', code : 'hello_long', params : [ 40 ], field : 'name' };
 
 
-// --- Saving, with the sentences of the panel's own -------------------------------------
+console.log( 'Nino.admin.hello - the screen\n' );
 
-const saving = panel( { name : 'Ada' } );
-saving.input().value = 'Grace';
-saving.save().fire('click');
-check( 'a save posts the name, and the screen says it is saved in the panel\'s own sentence',
-	saving.posted.length === 2 && saving.posted[1][2].action === 'hello/save' && saving.posted[1][2].data === '{"name":"Grace"}'
-	&& saving.msg().textContent === 'Saved.' && saving.input().value === 'Grace' );
+{
+	const w = world('en_US');
 
-const refused = panel( { name : 'Ada', answer : { status : 422, body : { error : 'No such name' } } } );
-refused.save().fire('click');
-check( 'a refused save reads "(422) No such name" as an error, and gives the button back',
-	refused.msg().textContent === '(422) No such name' && refused.msg().className === 'nino-admin-error' && refused.save().disabled === false );
+	check( 'nothing is asked before the pane is shown, and the shell has no entry yet', w.requests.length === 0 && w.registered.length === 0 );
 
-const long = panel( { name : 'Ada' } );
-long.input().value = 'x'.repeat( 61 );
-long.save().fire('click');
-check( 'a name that is too long is refused on the screen, before anything is sent',
-	long.posted.length === 1 && long.msg().textContent === 'Too long.' && long.msg().className === 'nino-admin-error' && long.input().focused === true );
+	w.panel.showCurrent();
+	w.panel.showCurrent();
+	check( 'showing it asks for hello/list, once however often the shell shows it while the answer is out', w.requests.length === 1 && w.requests[0].action === 'hello/list' && JSON.stringify( w.requests[0].payload ) === '{}' );
+	check( '...and it registers its entry under its uri, which holds nothing unsaved while nothing is drawn', w.registered.length === 1 && w.registered[0].name === 'hello' && w.entry().isDirty() === false );
+
+	w.answer( 200, LIST );
+	check( 'the stored name is drawn into a field called name, which takes no more than the longest name the list gave', w.input().value === 'Ada' && w.input().name === 'name' && w.input().maxLength === 40 );
+	check( '...with the word for the label of a name, and a button that saves with its word', w.labels().join() === 'Name' && w.button().textContent === 'Save' && w.button().className === 'nino-admin-btn-primary' );
+
+	w.panel.showCurrent();
+	check( 'showing the pane again asks nothing: the screen is the answer of the first showing', w.requests.length === 1 );
+}
 
 
-// --- Saying what happened, with the workbench's status line ------------------------------
+console.log( '\nNino.admin.hello - saving\n' );
 
-// Nino.adminUi.status() in miniature: what it was told, and what it follows
-const lines = [];
-const statusStub = function( el ) {
-	const line = { el : el, told : [], bound : null, isDirty : null,
-		saving : function() { line.told.push('saving') },
-		saved : function() { line.told.push('saved') },
-		fail : function( text ) { line.told.push( 'fail '+ text ) },
-		error : function( status, response, key ) { line.told.push( [ 'error', status, response.error, key ].join(' ') ) },
-		bind : function( form, isDirty ) { line.bound = form; line.isDirty = isDirty },
-	};
-	lines.push( line );
-	return line;
+{
+	const w = drawn( 'en_US', LIST );
+
+	w.input().value = ' Grace ';
+	fire( w.button(), 'click' );
+	check( 'a save posts hello/save with what the field holds, and the status line says it is saving meanwhile', w.requests.length === 2 && w.requests[1].action === 'hello/save'
+		&& JSON.stringify( w.requests[1].payload ) === '{"name":" Grace "}' && w.line().dataset.state === 'saving' );
+
+	w.answer( 200, { name : 'Grace' } );
+	check( '...the field then holds the name the server stored, and the line says saved', w.input().value === 'Grace' && w.line().dataset.state === 'saved' );
+	check( '...the shell is told the panel is clean, and the entry says so', w.refreshed() === 1 && w.entry().isDirty() === false );
+
+	w.input().dispatchEvent( { type : 'input', bubbles : true } );
+	check( 'typing into the field turns the line into unsaved changes', w.line().dataset.state === 'dirty' );
+}
+
+{
+	const w = drawn( 'en_US', LIST, false );
+
+	let threw = null;
+	try {
+		fire( w.button(), 'click' );
+		w.answer( 200, { name : 'Ada' } );
+	}
+	catch( error ) { threw = error }
+	check( 'a page without the shell\'s registry saves all the same', threw === null && w.line().dataset.state === 'saved' && w.registered.length === 0 );
+}
+
+
+console.log( '\nNino.admin.hello - a refusal\n' );
+
+{
+	const w = drawn( 'en_US', LIST );
+	const told = [];
+
+	w.input().value = 'x'.repeat( 41 );
+	w.entry().save( function( ok ) { told.push( ok ) } );
+	w.answer( 400, LONG );
+	check( 'a refused save is told in the sentence of its code, with the limit in it', w.line().dataset.state === 'error' && w.line().textContent === 'The name may have up to 40 characters.' );
+	check( '...and ends in done( false ), the shell not told that anything was saved', told.length === 1 && told[0] === false && w.refreshed() === 0 );
+	check( '...the field the server named is marked and has the cursor, and keeps what was typed', w.input().attributes['aria-invalid'] === 'true' && w.input().focused === true
+		&& w.input().value === 'x'.repeat( 41 ) && w.entry().isDirty() === true );
+
+	fire( w.input(), 'input' );
+	check( '...and the mark goes with the next thing typed', w.input().hasAttribute('aria-invalid') === false );
+}
+
+{
+	const w = drawn( 'en_US', LIST );
+	const told = [];
+
+	w.entry().save( function( ok ) { told.push( ok ) } );
+	w.answer( 500, { error : 'could not write the name' } );
+	check( 'a failure nobody can cause shows what the server said, the status in front of it, and ends in done( false )', w.line().dataset.state === 'error'
+		&& w.line().textContent === '(500) could not write the name' && told.join() === 'false' );
+
+	w.entry().save( function( ok ) { told.push( ok ) } );
+	w.answer( 502, null );
+	check( '...and with nothing said at all, the panel\'s own sentence for a save that failed', w.line().textContent === '(502) It could not be saved.' && told.join() === 'false,false' );
+
+	w.entry().save( function( ok ) { told.push( ok ) } );
+	w.answer( 200, { name : 'Ada' } );
+	check( '...and the next save that goes through ends in done( true )', told[2] === true && w.line().dataset.state === 'saved' );
+}
+
+
+console.log( '\nNino.admin.hello - unsaved input\n' );
+
+{
+	const w = drawn( 'en_US', LIST );
+	const entry = w.entry();
+
+	check( 'the entry holds nothing unsaved while the field has what was saved', entry.isDirty() === false );
+
+	w.input().value = 'Adam';
+	check( '...and does while the field differs from it', entry.isDirty() === true );
+
+	entry.discard();
+	check( '...discard puts the saved name back into the field', w.input().value === 'Ada' && entry.isDirty() === false );
+}
+
+
+console.log( '\nNino.admin.hello - a failed load\n' );
+
+{
+	const w = world('en_US');
+
+	w.panel.showCurrent();
+	w.answer( 500, null );
+	check( 'a failed load is said in the mount, in the panel\'s own sentence', w.mount.children.length === 1 && w.mount.children[0].className === 'nino-admin-error'
+		&& w.mount.children[0].textContent === '(500) It could not be loaded.' );
+
+	w.panel.showCurrent();
+	w.answer( 200, LIST );
+	check( '...and showing the pane again asks again, and draws the screen', w.requests.length === 2 && w.input().value === 'Ada' );
+}
+
+
+console.log( '\nNino.admin.hello - the words, in both languages\n' );
+
+const sentences = {
+	en_US : { long : 'The name may have up to 40 characters.', load : '(500) It could not be loaded.', save : '(502) It could not be saved.', name : 'Name', button : 'Save' },
+	de_DE : { long : 'Der Name darf bis zu 40 Zeichen haben.', load : '(500) Es konnte nicht geladen werden.', save : '(502) Es konnte nicht gespeichert werden.', name : 'Name', button : 'Speichern' },
 };
 
-const lined = panel( { name : 'Ada', status : statusStub } );
-const line = lines[lines.length - 1];
-check( 'where the shell has a status line the panel\'s message is one, following the field',
-	line.el === lined.msg() && line.bound !== null && typeof line.isDirty === 'function' );
-check( '...and the field typed back to what is saved is not a change', line.isDirty() === false && ( lined.input().value = 'Grace' ) && line.isDirty() === true );
-lined.save().fire('click');
-// The screen is drawn again from what the save answered, so "saved" is told to the line of the new screen
-check( '...told when the save starts, and - on the screen drawn from the answer - when it is done, with no sentence of the panel\'s own',
-	line.told.join() === 'saving' && lines[lines.length - 1] !== line && lines[lines.length - 1].told.join() === 'saved' && lined.msg().textContent === '' );
+Object.keys( sentences ).forEach( function( locale ) {
 
-const failed = panel( { name : 'Ada', status : statusStub, answer : { status : 500, body : { error : 'Down' } } } );
-failed.save().fire('click');
-check( '...and a failed one is told as an error with the status, the body and the panel\'s own sentence for it',
-	lines[lines.length - 1].told.join() === 'saving,error 500 Down /_admin/hello/error/save' );
+	const says = sentences[locale];
+	const w = drawn( locale, LIST );
 
-const tooLong = panel( { name : 'Ada', status : statusStub } );
-tooLong.input().value = 'x'.repeat( 61 );
-tooLong.save().fire('click');
-check( '...and a refusal before anything is sent is told as the error it is', lines[lines.length - 1].told.join() === 'fail Too long.' );
+	check( locale+ ': the label and the button say their words', w.labels().join() === says.name && w.button().textContent === says.button );
 
+	w.entry().save( function() {} );
+	w.answer( 400, LONG );
+	check( locale+ ': the code hello_long is told in its sentence', w.line().textContent === says.long );
 
-// --- Unsaved input ---------------------------------------------------------------------
+	w.entry().save( function() {} );
+	w.answer( 502, null );
+	check( locale+ ': a save that failed with nothing said is told in the panel\'s sentence', w.line().textContent === says.save );
 
-// The shell's registry in miniature: what the panel watches, what it was asked
-// to take for saved, and whether the shell thinks it holds input
-const registry = { watched : {}, snapshots : [], dirty : false };
-registry.watchForm = function( name, getter, save ) { registry.watched[name] = { getter : getter, save : save } };
-registry.snapshot = function( name ) { registry.snapshots.push( name ) };
-registry.isDirty = function( names ) { return registry.dirty && names[0] === 'hello' };
+	const failed = world( locale );
+	failed.panel.showCurrent();
+	failed.answer( 500, null );
+	check( locale+ ': a load that failed is told in the panel\'s sentence', failed.mount.children[0].textContent === says.load );
 
-const guarded = panel( { name : 'Ada', dirty : registry } );
-const watched = registry.watched['hello'] || null;
-check( 'where the shell has the registry the panel watches its screen under its own uri', watched !== null && watched.getter() === guarded.wrap && typeof watched.save === 'function' );
-check( '...and what is on screen is taken for saved when it is drawn', registry.snapshots.length === 1 && registry.snapshots[0] === 'hello' );
+	check( locale+ ': every word the script asked for is in the text files', w.missing.length === 0 && failed.missing.length === 0 );
+} );
 
-// Another panel and back again
-const mark = element('span');
-guarded.wrap.appendChild( mark );
-registry.dirty = true;
-guarded.panel.showCurrent();
-check( 'coming back to the panel does not draw it over a name nobody has saved', guarded.wrap.children.indexOf( mark ) !== -1 );
-registry.dirty = false;
-guarded.panel.showCurrent();
-check( '...and a screen that holds nothing is drawn again as before', guarded.wrap.children.indexOf( mark ) === -1 && registry.snapshots.length === 2 );
-
-guarded.input().value = 'Grace';
-let told = [];
-watched.save( function( ok ) { told.push( ok ) } );
-check( 'the shell\'s Save posts the name and says it was saved, once, with the screen taken for saved afterwards',
-	told.length === 1 && told[0] === true && guarded.posted.filter( function( p ) { return p[2].action === 'hello/save' } ).length === 1
-	&& registry.snapshots.length === 3 );
-
-panel( { name : 'Ada', dirty : registry, answer : { status : 500, body : { error : 'Down' } } } );
-told = [];
-registry.watched['hello'].save( function( ok ) { told.push( ok ) } );
-check( '...and says it was not when the server refused it', told.length === 1 && told[0] === false );
-
-const tooMuch = panel( { name : 'Ada', dirty : registry } );
-tooMuch.input().value = 'x'.repeat( 61 );
-told = [];
-registry.watched['hello'].save( function( ok ) { told.push( ok ) } );
-check( '...or when the name is too long to send', told.length === 1 && told[0] === false && tooMuch.posted.length === 1 );
-
-const without = panel( { name : 'Ada' } );
-const markPlain = element('span');
-without.wrap.appendChild( markPlain );
-without.panel.showCurrent();
-check( 'a workbench without the registry draws the screen again as it always did', without.wrap.children.indexOf( markPlain ) === -1 );
-
-console.log( '\n'+ checks+ ' checks, '+ failures+ ' failed' );
-process.exit( failures === 0 ? 0 : 1 );
+done();

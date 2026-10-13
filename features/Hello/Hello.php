@@ -1,346 +1,57 @@
 <?php
 declare(strict_types=1);
-/**
- *	Nino							A compact filesystembased php framework
- *	Modules\Hello			see _nino/Nino/Modules/Modules.php for the
- *										package-level docblock
- *
- *	@package					Dape/Nino
- *	@author						David Perchermeier <mail@dape.io>
- *	@link							https://github.com/dapeio/nino
- */
+
 namespace Nino\Modules {
 
-	/**
-	 *	Nino						A compact filesystembased php framework
-	 *	Hello						The example feature: one small thing, done through every
-	 *									layer a feature can use, so the directory can be copied
-	 *									and cut down rather than assembled from scratch.
-	 *
-	 *									Read feature.php first - it is the manifest and it says
-	 *									what each field is for. Then this file, then
-	 *									Admin/Admin.php. The recipe in Nino's own docs,
-	 *									docs/recipes/feature.md, walks the same ground in prose.
-	 *
-	 *									What it does: [hello] greets, /hello is a page, and the
-	 *									greeting comes half from a setting the Features panel
-	 *									edits and half from a name this feature's own panel
-	 *									stores. That split is the one thing worth taking away
-	 *									from the example - see greeting() and name() below.
-	 *
-	 *									Three methods are the whole contract with the kernel, and
-	 *									all three are optional:
-	 *
-	 *										init()					called on every request, while the
-	 *																		feature is active. Register things.
-	 *																		Never do I/O here - it runs for every
-	 *																		page view including the ones that
-	 *																		never reach your code.
-	 *										upgrade()				called once, when the version on disk
-	 *																		is newer than the one recorded.
-	 *																		Migrate stored data.
-	 *										adminPanels()		which /_admin screens come along.
-	 *
-	 *	@package				Dape/Nino
-	 *	@author					David Perchermeier <mail@dape.io>
-	 *	@link						https://github.com/dapeio/nino
-	 */
 	class Hello {
 
-		// Where this feature's own templates are, as \Nino\Filesystem resolves
-		// them: /features is the installed features directory, wherever
-		// NINO_FEATURES_DIR put it
-		public const string TEMPLATES = '/features/Hello/templates';
+		public const string STORAGE = '/data/hello.php';
 
-		/*	Where this feature's own state lives. One virtual path under the
-			private half, declared under 'data' in feature.php so a backup
-			carries it and a restore brings it back.
+		public static function init( array &$appData ): void {
 
-			A feature that stores nothing needs none of this. A feature that
-			stores a lot should still keep it to one file or one directory:
-			what is not named in the manifest is not backed up	*/
-		public const string PATH = '/data/hello.php';
+			// false: the manifest's component owns the name and renders it through doShortcode()
+			\Nino\Feature::shortcode( $appData, 'hello', [ self::class, 'doShortcode' ] );
 
-		// What name the greeting falls back to before anybody has set one
-		public const string DEFAULT_NAME = 'World';
+			// A route of the feature's own, only where the address is free
+			if( isset( $appData['/nino/http/routes']['GET://hello'] ) === false )
+				$appData['/nino/http/routes']['GET://hello'] = [ 'uri' => '/hello', 'body' => '[template /templates/page-hello]' ];
+		}
 
-		/**
-		 *	The /_admin screen this feature brings along.
-		 *
-		 *	Collected by \Nino\Admin\Admin::panels() through Modules::collect(),
-		 *	so the panel appears exactly while the feature is active and vanishes
-		 *	with it. Return [] - or leave the method out - for a feature with no
-		 *	screen of its own; a setting in feature.php needs none.
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *
-		 *	@return 	array										Panel class names
-		 */
 		public static function adminPanels( array &$appData ): array {
 			return [ \Nino\Modules\Hello\Admin::class ];
 		}
 
-		/**
-		 *	Everything this feature adds to a request, registered on every one
-		 *	of them.
-		 *
-		 *	Registration only: no file is read here, nothing is written, nothing
-		 *	is computed that a page might not need. init() runs for the whole
-		 *	site, including every page that never renders a single thing of
-		 *	yours - a stat() here is a stat() on every request.
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *
-		 *	@return 	void
-		 */
-		public static function init( array &$appData ): void {
+		// 1.0.0 stored the name alone; from 1.1.0 the file carries a format key
+		public static function upgrade( array &$appData, string $fromVersion ): bool {
 
-			// 1. A shortcode. The name is what a page writes between brackets
-			/*	Nino 1.6 has registered [hello] as a component from the manifest before
-				this runs (\Nino\Features::registerComponents()), and a second
-				registration here would take it back from the wrapper that fills in
-				the defaults. Nino 1.5 ignores the manifest key and needs it	*/
-			$components = class_exists( '\\Nino\\Modules\\Components' ) === true ? \Nino\Modules\Components::components( $appData ) : [];
+			if( version_compare( $fromVersion, '1.1.0', '>=' ) === true || \Nino\Filesystem::fileExists( $appData, self::STORAGE ) === false )
+				return true;
 
-			if( isset( $components['hello'] ) === false )
-				\Nino\Html::addShortcode( $appData, 'hello', [ self::class, 'doShortcode' ] );
+			return \Nino\Filesystem::mutate( $appData, self::STORAGE, static function( mixed $state ): array {
 
-			/*	2. A route, registered at runtime rather than written into
-				config.php by the install unit. The difference is what happens on
-				deactivation: this one vanishes with the feature, where a route
-				the install unit wrote stays behind as the project's own - which
-				is right for a page an editor is meant to keep and wrong for one
-				that only works while your code is there.
+				$state = is_array( $state ) === true ? $state : [];
 
-				'uri' is the path a template resolves its fills against; 'body'
-				is what is rendered.
-
-				Only where the address is free. config.php is the project's file
-				and a route in it is a page somebody made, so a feature that
-				registered over one would put its own demo back on top of that
-				page on every request - and deactivating the feature would not
-				give the page back, because there would be nothing left to give
-				back. A feature adds what a project does not have	*/
-			if( isset( $appData['/nino/http/routes']['GET://hello'] ) === false )
-				$appData['/nino/http/routes']['GET://hello'] = [
-					'uri' 	=> '/hello',
-					'body' 	=> '[template /templates/page-hello]',
-				];
-
-			/*	3. A stylesheet, added to the site's own bundle - the same one
-				the base install's html-header.tpl already loads on every page,
-				and the same way the kernel bundles its own Nino.css. A bundle of
-				your own is a second request for a file every page needs anyway.
-
-				A source under '/features' is resolved against
-				\Nino\Features::dir() rather than against the project root (see
-				\Nino\Filesystem::FEATURES_DIR), so it reaches this feature's own
-				copy wherever NINO_FEATURES_DIR put the directory	*/
-			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Hello/assets/hello.css' );
+				return [ 'format' => 1, 'name' => (string) ( $state['name'] ?? '' ) ];
+			} );
 		}
 
-		/**
-		 *	Called once, when the version in feature.php is newer than the one
-		 *	the project recorded at activation. The only hook there is: there is
-		 *	no install hook, because activation is the install unit and nothing
-		 *	else (see install/manifest.php).
-		 *
-		 *	Migrate stored data here, and nothing else. It runs with the new
-		 *	code and the old data, exactly once, and a project that installs
-		 *	this feature fresh never calls it at all - so anything a fresh
-		 *	install also needs belongs in the install unit, not here. The kernel
-		 *	hands over the recorded version alone: the one being migrated to is
-		 *	the one in feature.php, which is the code that is running.
-		 *
-		 *	Answer true. false refuses the update - the kernel says so and keeps
-		 *	the recorded version, and the next activation asks again.
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$from					The version that was recorded
-		 *
-		 *	@return 	bool
-		 */
-		public static function upgrade( array &$appData, string $from ): bool {
-
-			/*	Nothing to migrate at 1.0.0 - there has been no earlier shape of
-				/data/hello.php to move out of. What a real one looks like:
-
-					if( version_compare( $from, '1.1.0', '<' ) === true ) {
-						$stored = \Nino\Filesystem::getFileContent( $appData, self::PATH, [] );
-						$stored['name'] = $stored['who'] ?? self::DEFAULT_NAME;
-						unset( $stored['who'] );
-						\Nino\Filesystem::putFileContent( $appData, self::PATH, $stored );
-					}
-
-				Guarded by the version it belongs to, so a project skipping two
-				releases runs every step it missed and none it did not	*/
-
-			return true;
-		}
-
-		/**
-		 *	[hello] as the Components module hands it over, the Builder's way:
-		 *	every attribute is there, an empty one where nothing was written,
-		 *	and doShortcode() reads them as it reads a hand-written call
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array			$args					The resolved arguments (see \Nino\Modules\Components::dispatch())
-		 *
-		 *	@return 	string								What doShortcode() renders for them
-		 */
-		public static function componentHello( array &$appData, array $args ): string {
-
-			return self::doShortcode( $appData, $args );
-		}
-
-		/**
-		 *	[hello] and [hello name="Ada"] - what a page writes.
-		 *
-		 *	A shortcode gets the request's app data by reference and its own
-		 *	arguments, and returns html. What it returns is rendered again, so
-		 *	fills and other shortcodes inside it resolve; that is also why a
-		 *	shortcode must not return something that contains itself.
-		 *
-		 *	Arguments arrive as key => value for name="value", and as a plain
-		 *	list entry for a bare word - \Nino\Html's parser only reads a value
-		 *	that is in double quotes.
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array			$args					Shortcode arguments
-		 *
-		 *	@return 	string									The greeting, as html
-		 */
 		public static function doShortcode( array &$appData, array $args ): string {
 
 			$name = trim( (string) ( $args['name'] ?? '' ) );
+			$text = \Nino\Features::setting( $appData, 'hello', 'greeting', 'Hello' ). ', '. ( $name === '' ? self::name( $appData ) : $name ). '!';
 
-			if( $name === '' )
-				$name = self::name( $appData );
-
-			/*	Escaped, because it is not a text fill: everything between [[ and
-				]] goes through the fill engine, which an editor's own text does.
-				A shortcode argument comes straight out of a template and a
-				panel's stored value straight out of a form, so both are escaped
-				here - the one rule that is never optional	*/
 			return str_replace(
-				[ '[[class]]', '[[greeting]]', '[[name]]' ],
-				[ self::_class( $args ), htmlspecialchars( self::greeting( $appData ), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ), htmlspecialchars( $name, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) ],
-				self::template( $appData, 'hello' )
+				[ '[[classes]]', '[[text]]' ],
+				[ \Nino\Feature::classes( $args ), \Nino\Modules\Components::escape( \Nino\Feature::flag( $args, 'shout' ) === true ? mb_strtoupper( $text ) : $text ) ],
+				\Nino\Feature::template( $appData, '/features/Hello/templates', 'hello' )
 			);
 		}
 
-		/**
-		 *	The greeting word - a setting, so the Features panel edits it and
-		 *	this feature needs no screen for it.
-		 *
-		 *	\Nino\Features::setting() takes the feature key, the setting name
-		 *	and what it is worth for a name the schema does not declare - for a
-		 *	declared one the manifest's default answers before anybody saves.
-		 *	Reading it costs a lookup in config.php, which is already in memory.
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *
-		 *	@return 	string
-		 */
-		public static function greeting( array &$appData ): string {
-
-			$greeting = trim( (string) \Nino\Features::setting( $appData, 'hello', 'greeting', 'Hello' ) );
-
-			return $greeting === '' ? 'Hello' : $greeting;
-		}
-
-		/**
-		 *	...and the name it falls back to - stored by this feature's own
-		 *	panel, because it is the kind of thing a screen with a button
-		 *	belongs to rather than a settings row.
-		 *
-		 *	The line between the two is worth drawing deliberately: a setting is
-		 *	one value that belongs to the site and needs no code; a panel is
-		 *	anything with more than one row, anything that needs an action, and
-		 *	anything that is content rather than configuration.
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *
-		 *	@return 	string
-		 */
 		public static function name( array &$appData ): string {
 
-			$stored = \Nino\Filesystem::getFileContent( $appData, self::PATH, [] );
-			$name 	= trim( (string) ( $stored['name'] ?? '' ) );
+			$stored = \Nino\Filesystem::getFileContent( $appData, self::STORAGE, [] );
 
-			return $name === '' ? self::DEFAULT_NAME : $name;
-		}
-
-		/**
-		 *	Store it. The panel's save calls this; nothing else does.
-		 *
-		 *	One writer for one file is worth keeping to even when it is this
-		 *	small - it is the only way a later reader knows what may be in
-		 *	there.
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$name					What [hello] greets without an argument
-		 *
-		 *	@return 	bool										Whether it was written
-		 */
-		public static function setName( array &$appData, string $name ): bool {
-
-			$name = trim( $name );
-
-			return \Nino\Filesystem::putFileContent( $appData, self::PATH, [
-				'name' => $name === '' ? self::DEFAULT_NAME : $name,
-			] ) === true;
-		}
-
-		/**
-		 *	The class of one's own a call adds to the line, with the space in
-		 *	front of it that the template leaves out - escaped, and with its
-		 *	brackets as character references, because the markup is rendered
-		 *	once more
-		 *
-		 *	@param		array			$args					Shortcode attributes
-		 *
-		 *	@return 	string								'' or ' my-class'
-		 */
-		private static function _class( array $args ): string {
-
-			$class = trim( (string) ( $args['class'] ?? '' ) );
-
-			return $class === '' ? '' : ' '. str_replace( '[', '&#91;', htmlspecialchars( $class, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) );
-		}
-
-		/**
-		 *	One of this feature's own templates, read the way a project's are.
-		 *	Markup belongs in a template - see AGENTS.md, "Markup belongs in a
-		 *	template" - so what this class holds is which one and what goes in it
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$name					A file name below TEMPLATES, without .tpl
-		 *
-		 *	@return 	string								'' where the file is not there, which is logged
-		 */
-		public static function template( array &$appData, string $name ): string {
-
-			// A name from this class and nowhere else, and held to a slug anyway:
-			// the one thing this could otherwise be turned into is a read of
-			// something outside the feature
-			if( preg_match( '/^[a-z][a-z0-9-]*$/D', $name ) !== 1 )
-				return '';
-
-			$template = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $name. '.tpl', '' );
-
-			$template = is_string( $template ) === true ? rtrim( $template, "\n" ) : '';
-
-			/*	A template that is not there renders as nothing, which on a page looks
-				like a shortcode nobody wrote rather than like a feature missing a file.
-				Said out loud instead: E_USER_WARNING is Nino's "record this and carry
-				on" channel (see \Nino\Runtime::NON_FATAL_LEVELS), so the request
-				finishes and the log says which file	*/
-			if( $template === '' )
-				trigger_error( 'Nino: the template '. self::TEMPLATES. '/'. $name. '.tpl is missing or empty.', E_USER_WARNING );
-
-			return $template;
+			return is_array( $stored ) === true && is_string( $stored['name'] ?? null ) === true && $stored['name'] !== '' ? $stored['name'] : 'World';
 		}
 	}
-
 }
