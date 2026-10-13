@@ -80,6 +80,16 @@
  *												picture, the picture from a slot, from a field or from an upload
  *												- and the spacing of a column, which is a line of its Layout tab.
  *
+ *												The icon of a component in the picker: each item holds the svg
+ *												the parts of the registry's entry are built into, tag by tag
+ *												and attribute by attribute - the twelve of the kernel, and
+ *												the two of a feature that has its own - or, for a component
+ *												that gives none, the puzzle of the sprite; the parts the
+ *												script does not know are left out, nothing is written as
+ *												markup, and the stylesheet lays an item out as a row. The
+ *												stand-in remembers the namespace an element is made in, to
+ *												tell an svg element from an html one.
+ *
  *	Usage: node features/Builder/tests/builder-js-smoke.js
  */
 
@@ -139,6 +149,9 @@ const STAYS = [ 'blur', 'focus', 'close', 'mouseleave' ];
 // The attributes that are a property of their own as well, and the flags that are none but their presence
 const REFLECTED = { id : 'id', className : 'class', title : 'title', type : 'type', name : 'name', href : 'href', placeholder : 'placeholder', alt : 'alt', src : 'src' };
 const FLAGS = [ 'hidden', 'disabled', 'readOnly' ];
+// The namespaces an element is made in: the page makes its elements in html, and the icon of a component in svg
+const HTML_NS = 'http://www.w3.org/1999/xhtml';
+const SVG_NS = 'http://www.w3.org/2000/svg';
 
 class Text {
 	constructor( data ) {
@@ -160,6 +173,7 @@ class Tag {
 		this.nodeType = 1;
 		this.localName = tag.toLowerCase();
 		this.tagName = tag.toUpperCase();
+		this.namespaceURI = HTML_NS;
 		this.childNodes = [];
 		this.parentNode = null;
 		this.attrs = {};
@@ -182,8 +196,8 @@ class Tag {
 		} );
 		this.classList = {
 			list() { return self.className.split( /\s+/ ).filter( function( name ) { return name !== '' } ) },
-			add( ...names ) { const now = this.list(); names.forEach( function( name ) { if( now.indexOf( name ) === -1 ) now.push( name ) } ); self.className = now.join(' ') },
-			remove( ...names ) { self.className = this.list().filter( function( name ) { return names.indexOf( name ) === -1 } ).join(' ') },
+			add( ...names ) { const now = this.list(); names.forEach( function( name ) { if( now.indexOf( name ) === -1 ) now.push( name ) } ); self.setAttribute( 'class', now.join(' ') ) },
+			remove( ...names ) { self.setAttribute( 'class', this.list().filter( function( name ) { return names.indexOf( name ) === -1 } ).join(' ') ) },
 			contains( name ) { return this.list().indexOf( name ) !== -1 },
 			toggle( name, force ) {
 				const on = force === undefined ? this.contains( name ) === false : force === true;
@@ -194,7 +208,13 @@ class Tag {
 	}
 
 	get className() { return this.attrs['class'] ?? '' }
-	set className( value ) { if( String( value ) === '' ) delete this.attrs['class']; else this.attrs['class'] = String( value ) }
+	// A browser ignores className set on an svg element (its className is a read-only SVGAnimatedString): the
+	// stand-in throws instead, so that an icon built that way is seen - classList and the class attribute work
+	set className( value ) {
+		if( this.namespaceURI === SVG_NS )
+			throw new Error( 'className of an svg element is read-only: set its class attribute' );
+		if( String( value ) === '' ) delete this.attrs['class']; else this.attrs['class'] = String( value );
+	}
 
 	get children() { return this.childNodes.filter( function( node ) { return node.nodeType === 1 } ) }
 	get firstChild() { return this.childNodes[0] ?? null }
@@ -249,6 +269,7 @@ class Tag {
 	cloneNode( deep ) {
 		const copy = new Tag( this.localName );
 		copy.document = this.document;
+		copy.namespaceURI = this.namespaceURI;
 		Object.keys( this.attrs ).forEach( function( key ) { copy.attrs[key] = this.attrs[key] }, this );
 		if( this.content !== null ) copy.content = this.content.cloneNode( true );
 		if( deep === true )
@@ -409,6 +430,12 @@ class Document {
 		return element;
 	}
 	createElement( tag ) { return this.make( tag ) }
+	// An element in the namespace asked for, which it remembers: a check tells an svg element from an html one by it
+	createElementNS( ns, tag ) {
+		const element = this.make( tag );
+		element.namespaceURI = ns;
+		return element;
+	}
 	createTextNode( text ) { return new Text( text ) }
 	getElementById( id ) { return this.root.all().find( function( node ) { return node.attrs.id === id } ) ?? null }
 	querySelector( selector ) { return this.root.querySelector( selector ) }
@@ -447,6 +474,10 @@ class Document {
 			}
 
 			const element = this.make( found[2] );
+
+			// An svg is an element of svg, and so is whatever stands in it, as the page parses it
+			if( found[2] === 'svg' || top.namespaceURI === SVG_NS )
+				element.namespaceURI = SVG_NS;
 
 			( found[3] || '' ).replace( /([^\s=]+)(?:="([^"]*)")?/g, function( all, name, value ) { element.attrs[name] = value === undefined ? '' : value } );
 
@@ -4191,6 +4222,120 @@ check( '...a component added to a card is its last child, with a key of its own 
 } )() );
 check( '...and the document that came of it is unsaved, with the children where the Reader puts them and the marks the panel keeps', builder._unsaved( builder._doc ) === true && builder._saveRequest( builder._doc, false ).model.blocks[0].cols[1].components[0].components.length === 4
 	&& builder._saveRequest( builder._doc, false ).model.blocks[0].cols[1].components[0].components[3].create.value === 'Subtitle (Card)' );
+
+console.log( '\nThe icon of a component in the picker' );
+
+doc = openCard();
+builder._renderEditor();
+
+// The items of the picker of a column, or of a component that holds components, as the menu draws them
+const pickedItems = function( path ) { builder._pickComponent( path, made('button') ); return screen.getElementById('builder-menu').children };
+// What the parts of an icon say, and what an svg is made of: the tag of each part and its attributes, by name in the alphabet's order
+const partsSaid = function( parts ) { return JSON.stringify( parts.map( function( part ) { return [ part[0], Object.keys( part[1] ).sort().map( function( name ) { return [ name, part[1][name] ] } ) ] } ) ) };
+const partsBuilt = function( svg ) { return JSON.stringify( svg.children.map( function( part ) { return [ part.localName, Object.keys( part.attrs ).sort().map( function( name ) { return [ name, part.attrs[name] ] } ) ] } ) ) };
+
+check( 'every item of the picker holds an icon first and its label after it, the label in a span of its own - and the text of the item is the label alone, so that the lists of the picker are what they were and an item is found by its text', ( function() {
+
+	const menu = screen.getElementById('builder-menu');
+	const items = pickedItems( [ 1, 0 ] );
+
+	return items.length === 8 && items.every( function( item ) {
+		return item.localName === 'button' && item.children.length === 2 && item.children[0].localName === 'svg' && item.children[1].localName === 'span' && item.children[1].className === 'builder-menu-label' && item.textContent === item.children[1].textContent;
+	} ) && texts( items ) === inSection && buttonOf( menu, 'Button' ) === items[4] && buttonOf( menu, 'Button' ).children[1].textContent === 'Button';
+} )() );
+check( '...the icon of a component of the kernel is the one the registry gives it: the svg holds the parts of its entry, tag by tag and attribute by attribute - all twelve of them, in the pickers of the hero, of a section and of a card', ( function() {
+
+	const components = builder._registry.components;
+	const names = Object.keys( components );
+	const seen = {};
+	const same = [ [ 0, 0 ], [ 1, 0 ], cardAt ].every( function( path ) {
+		return pickedItems( path ).every( function( item ) {
+
+			const name = names.find( function( candidate ) { return components[candidate].label === item.textContent } );
+
+			seen[name] = true;
+
+			return name !== undefined && Array.isArray( components[name].icon ) === true && partsBuilt( item.children[0] ) === partsSaid( components[name].icon );
+		} );
+	} );
+
+	return same && names.length === 12 && Object.keys( seen ).length === 12 && names.every( function( name ) { return components[name].icon.length > 0 } );
+} )() );
+check( '...it is an svg of its own and decoration: made in the namespace of svg, as every part of it is - an element of the page is not -, 24 by 24, out of reach of assistive technology, with the class of the icons and the menu\'s, and it draws with its parts, not with the sprite', ( function() {
+
+	const svg = pickedItems( [ 1, 0 ] )[0].children[0];
+
+	return svg.namespaceURI === SVG_NS && svg.children.length === 3 && svg.all().every( function( el ) { return el.namespaceURI === SVG_NS } ) && made('button').namespaceURI === HTML_NS && screen.getElementById('builder-menu').namespaceURI === HTML_NS
+		&& svg.getAttribute('viewBox') === '0 0 24 24' && svg.getAttribute('aria-hidden') === 'true' && svg.getAttribute('focusable') === 'false' && svg.className === 'builder-icon builder-menu-icon' && svg.querySelector('use') === null;
+} )() );
+
+( function() {
+
+	const components = builder._registry.components;
+	const every = [
+		[ 'path', { d : 'M4 4h16' } ], [ 'circle', { cx : '12', cy : '12', r : '3' } ], [ 'ellipse', { cx : '12', cy : '12', rx : '8', ry : '4' } ], [ 'rect', { x : '3', y : '3', width : '18', height : '18' } ],
+		[ 'rect', { x : '5', y : '5', width : '14', height : '14', rx : '2', ry : '2' } ], [ 'line', { x1 : '4', y1 : '4', x2 : '20', y2 : '20' } ], [ 'polyline', { points : '4 4 12 12 20 4' } ], [ 'polygon', { points : '12 3 21 21 3 21' } ],
+	];
+	const second = [ [ 'path', { d : 'M2 12h20' } ], [ 'path', { d : 'M12 2v20' } ] ];
+
+	// Two components of a feature with an icon of their own, and four that name none - or name something that is no list of parts
+	components['stub-own'] = { label : 'Stub own', preview : 'block', icon : every };
+	components['stub-second'] = { label : 'Stub second', preview : 'block', icon : second };
+	components['stub-none'] = { label : 'Stub none', preview : 'block' };
+	components['stub-text'] = { label : 'Stub text', preview : 'block', icon : 'heading' };
+	components['stub-empty'] = { label : 'Stub empty', preview : 'block', icon : [] };
+	components['stub-map'] = { label : 'Stub map', preview : 'block', icon : { d : 'M0 0' } };
+
+	const menu = screen.getElementById('builder-menu');
+	const items = pickedItems( [ 1, 0 ] );
+	const stub = {};
+
+	items.filter( function( item ) { return /^Stub/.test( item.textContent ) } ).forEach( function( item ) { stub[item.textContent] = item } );
+
+	check( '...a component of a feature is offered with its own icon, built the same whichever of the seven tags its parts name - a rect with its radii and one without -, and after the kernel\'s as it was', texts( items ) === inSection+ ',Stub own,Stub second,Stub none,Stub text,Stub empty,Stub map'
+		&& partsBuilt( stub['Stub own'].children[0] ) === partsSaid( every ) && stub['Stub own'].children[0].children.map( function( part ) { return part.localName } ).join() === 'path,circle,ellipse,rect,rect,line,polyline,polygon'
+		&& partsBuilt( stub['Stub second'].children[0] ) === partsSaid( second ) && stub['Stub own'].children[0].className === 'builder-icon builder-menu-icon' && stub['Stub own'].children[0].namespaceURI === SVG_NS );
+
+	const puzzle = screen.getElementById('builder-icon-puzzle');
+	const worn = [ 'Stub none', 'Stub text', 'Stub empty', 'Stub map' ].map( function( label ) { return stub[label] } );
+
+	check( '...a component that names no icon - or names something that is no list of parts - wears the puzzle of the sprite: the svg of the icons with a use of the symbol, the class of the others and nothing built into it', worn.every( function( item ) {
+		const svg = item.children[0];
+		return svg.localName === 'svg' && svg.namespaceURI === SVG_NS && svg.children.length === 1 && svg.children[0].localName === 'use' && svg.children[0].getAttribute('href') === '#builder-icon-puzzle' && iconOf( item ) === 'puzzle'
+			&& svg.className === 'builder-icon builder-menu-icon' && svg.getAttribute('aria-hidden') === 'true';
+	} ) && stub['Stub own'].querySelector('use') === null && stub['Stub second'].querySelector('use') === null );
+	check( '...the puzzle is a symbol of the sprite, a path of 24 by 24, and the picker passes the inspection every form passes: each icon in it is a symbol of the sprite, and a control that is an icon has a name', puzzle !== null && puzzle.localName === 'symbol' && puzzle.getAttribute('viewBox') === '0 0 24 24'
+		&& puzzle.children.length === 1 && puzzle.children[0].localName === 'path' && iconsKnown( menu ) === true && unnamed( menu ).length === 0 );
+
+	components['stub-odd'] = { label : 'Stub odd', preview : 'block', icon : [
+		[ 'script', { src : 'x.js' } ], [ 'path', { d : 'M0 0h24', onclick : 'x()', fill : 'red', style : 'x' } ], [ 'constructor', { d : 'M1 1' } ], [ 'circle', 'cx=1' ], [ 'rect', null ], 'path', null, [ 'line' ],
+		[ 'circle', { r : '2', cx : '12', cy : '12', d : 'M2 2' } ], [ 'svg', {} ], [ [ 'path' ], { d : 'M3 3' } ],
+	] };
+
+	const odd = pickedItems( [ 1, 0 ] ).filter( function( item ) { return item.textContent === 'Stub odd' } )[0].children[0];
+
+	check( '...the script builds no element and sets no attribute it does not know, whatever the registry says: a part of a tag that is none of the seven - a script, a name every object has, a nested svg -, a part that is no tag with its attributes, an attribute the tag does not take, are left out', partsBuilt( odd )
+		=== partsSaid( [ [ 'path', { d : 'M0 0h24' } ], [ 'circle', { r : '2', cx : '12', cy : '12' } ] ] ) && odd.all().every( function( el ) { return [ 'path', 'circle' ].indexOf( el.localName ) !== -1 && el.getAttribute('onclick') === null && el.getAttribute('style') === null && el.getAttribute('fill') === null } )
+		&& odd.all().length === 2 );
+
+	Object.keys( components ).filter( function( name ) { return /^stub-/.test( name ) } ).forEach( function( name ) { delete components[name] } );
+} )();
+
+check( '...none of it is written as markup: the script assigns an empty string to innerHTML and nothing else - the stand-in takes no other, and throws on it - and parses no markup into the page', ( function() {
+
+	const assigned = source.match( /\.innerHTML\s*=[^;]*;/g ) ?? [];
+
+	return assigned.length > 0 && assigned.every( function( found ) { return /^\.innerHTML\s*=\s*'';$/.test( found ) } ) && /insertAdjacentHTML|\.outerHTML\s*=|document\.write|createContextualFragment|DOMParser/.test( source ) === false
+		&& ( function() { try { made('div').innerHTML = '<svg></svg>'; return false } catch( error ) { return true } } )();
+} )() );
+check( '...the stylesheet lays an item out as a row - the icon, a gap of .5rem, the label, in the middle of the line - and keeps the icon a square of a rem that does not shrink; the menu keeps its width and its place', ( function() {
+
+	const lines = function( selector ) { return ruleOf( selector ).split('\n') };
+
+	return [ '\tdisplay: flex;', '\talign-items: center;', '\tgap: .5rem;' ].every( function( line ) { return lines('.builder-menu-item').indexOf( line ) !== -1 } )
+		&& [ '\tflex: none;', '\twidth: 1rem;', '\theight: 1rem;' ].every( function( line ) { return lines('.builder-menu-icon').indexOf( line ) !== -1 } )
+		&& [ '\tposition: absolute;', '\tz-index: 6;', '\tdisplay: grid;', '\tmin-width: 11rem;' ].every( function( line ) { return lines('.builder-menu').indexOf( line ) !== -1 } );
+} )() );
 
 console.log( '\nThe form of a card' );
 

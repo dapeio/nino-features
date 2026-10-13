@@ -138,6 +138,10 @@
 			rowAlign	: { '' : 'align-top', middle : 'align-middle', bottom : 'align-bottom' },
 			stackAlign: { start : 'stack-start', center : 'stack-center', end : 'stack-end' },
 		},
+		// What the icon of a component is built from (see _shape()): the namespace of its elements, and the seven tags it may be
+		// made of with the attributes each of them takes - the rule the kernel holds an icon to before the registry has it
+		SVG				: 'http://www.w3.org/2000/svg',
+		SHAPE_TAGS	: { path : [ 'd' ], circle : [ 'cx', 'cy', 'r' ], ellipse : [ 'cx', 'cy', 'rx', 'ry' ], rect : [ 'x', 'y', 'width', 'height', 'rx', 'ry' ], line : [ 'x1', 'y1', 'x2', 'y2' ], polyline : [ 'points' ], polygon : [ 'points' ] },
 		// The custom property of Nino.css that holds the ground a colour paints
 		GROUNDS		: { '' : '--color-section-default-bg', alt : '--color-section-alt-bg', tint : '--color-section-tint-bg', dark : '--color-section-dark-bg', black : '--color-section-black-bg', primary : '--color-primary', 'brand-alt' : '--color-brand-alt' },
 		// The types of an attribute that fit half a line, next to another
@@ -3048,9 +3052,13 @@
 		// ------------------------------------------------------ Menu and changes
 
 		/**
-		 *	Show a list of choices under an element, in the one menu the template has
+		 *	Show a list of choices under an element, in the one menu the template has: each a
+		 *	button that holds the icon of the choice, then its label in a span of its own - the
+		 *	text of the button is the label alone. The icon is built from the parts the choice
+		 *	brings (see _shape()); a choice that brings none wears the puzzle of the sprite,
+		 *	which takes the class of the others, so that all of them have one size and one stroke
 		 *
-		 *	@param		{Array}			items					[ { label, run, disabled } ]
+		 *	@param		{Array}			items					[ { label, icon, run, disabled } ] - icon the parts of its icon, or null
 		 *	@param		{Element}		anchor
 		 *
 		 *	@return		void
@@ -3067,11 +3075,16 @@
 
 			items.forEach( function( item ) {
 
-				const button = builder._el( 'button', 'builder-menu-item', item.label );
+				const button = builder._el( 'button', 'builder-menu-item' );
+				const parts = Array.isArray( item.icon ) === true ? item.icon : [];
+				const icon = parts.length > 0 ? builder._shape( parts ) : builder._icon( 'puzzle' );
 
+				icon.classList.add('builder-menu-icon');
 				button.type = 'button';
 				button.setAttribute( 'role', 'menuitem' );
 				button.disabled = item.disabled === true;
+				button.appendChild( icon );
+				button.appendChild( builder._el( 'span', 'builder-menu-label', item.label ) );
 				button.addEventListener( 'click', function() {
 					menu.hidden = true;
 					item.run();
@@ -3242,7 +3255,8 @@
 		 *	components it holds as well. What holds components is not offered in another. They
 		 *	stand in the order of the registry - the components of the kernel as it registers
 		 *	them, then those of the features as they were registered: the order is the
-		 *	registry's, and the Builder knows no component by name
+		 *	registry's, and the Builder knows no component by name - and each with the icon the
+		 *	registry gives it, the parts of which the menu builds (see _shape()), or none
 		 *
 		 *	@param		{Array}			path					The column, or the component that holds components
 		 *	@param		{Element}		anchor
@@ -3266,7 +3280,10 @@
 					&& ( path.length === 2 || builder._holds( registry, name ) === '' )
 					&& ( Array.isArray( schema.in ) === false || schema.in.indexOf( place ) !== -1 );
 			} ).map( function( name ) {
-				return { label : registry.components[name].label || name, run : function() { builder._addComponent( path, name ) } };
+
+				const schema = registry.components[name];
+
+				return { label : schema.label || name, icon : Array.isArray( schema.icon ) === true ? schema.icon : null, run : function() { builder._addComponent( path, name ) } };
 			} );
 
 			builder._showMenu( items, anchor );
@@ -3533,6 +3550,53 @@
 			const icon = builder._fragment('icon');
 
 			builder._one( icon, 'use' ).setAttribute( 'href', '#builder-icon-'+ name );
+
+			return icon;
+		},
+
+		/**
+		 *	The icon a component is shown by, from the parts the registry gives it: an svg of
+		 *	24 by 24 that is decoration, with an element for each part, in the order of the
+		 *	parts. It is built and never written: the icon of a feature's component is data
+		 *	that feature brings, and the script puts nothing of it on the page but the elements
+		 *	it makes of it, one by one, with the attributes it sets, one by one - the tag of a
+		 *	part is one of the seven an icon is made of and an attribute is one that tag takes,
+		 *	which is the rule the kernel holds an icon to before the registry has it, and the
+		 *	script holds to it again. A part it does not know is left out, and so is an
+		 *	attribute. The stroke and the size are the stylesheet's, as they are of the icons
+		 *	of the sprite
+		 *
+		 *	@param		{Array}			parts							[ [ tag, { attribute : value } ] ]
+		 *
+		 *	@return		{Element}
+		 */
+		_shape : function( parts ) {
+
+			const builder = Nino.admin.builder;
+			const icon = dc.createElementNS( builder.SVG, 'svg' );
+
+			icon.setAttribute( 'class', 'builder-icon builder-menu-icon' );
+			icon.setAttribute( 'viewBox', '0 0 24 24' );
+			icon.setAttribute( 'aria-hidden', 'true' );
+			icon.setAttribute( 'focusable', 'false' );
+
+			parts.forEach( function( part ) {
+
+				const tag = Array.isArray( part ) === true ? part[0] : '';
+				const attributes = Array.isArray( part ) === true && typeof part[1] === 'object' ? part[1] : null;
+
+				if( typeof tag !== 'string' || Object.prototype.hasOwnProperty.call( builder.SHAPE_TAGS, tag ) === false || attributes === null )
+					return;
+
+				const element = dc.createElementNS( builder.SVG, tag );
+
+				Object.keys( attributes ).forEach( function( name ) {
+					if( builder.SHAPE_TAGS[tag].indexOf( name ) !== -1 )
+						element.setAttribute( name, attributes[name] );
+				} );
+
+				icon.appendChild( element );
+			} );
 
 			return icon;
 		},

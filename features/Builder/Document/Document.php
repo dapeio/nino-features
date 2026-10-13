@@ -110,8 +110,9 @@ namespace Nino\Modules\Builder {
 		/**
 		 *	Everything the panel builds its forms from: the components and
 		 *	the stacks with their labels in the language of the workbench - and
-		 *	the rest of the schema as the kernel registered it, where a component
-		 *	belongs (in), what it draws (draws) and what it holds (holds) among it -,
+		 *	the rest of the schema as the kernel registered it, the icon a component
+		 *	is shown by (icon), where it belongs (in), what it draws (draws) and what
+		 *	it holds (holds) among it -,
 		 *	the types of the Elements panel with their fields, the image slots (each
 		 *	with the url of its picture, null where it has none, and its alt
 		 *	texts by language), the frames a page may name - and the languages

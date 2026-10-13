@@ -10,7 +10,10 @@
      draws with: the one dialog and the dialog of a source that opens over it,
      the one menu, the icons and placeholders of the preview as a sprite, and
      the fragments it clones (a <template> each, one element in it). The
-     script fills them with text and never writes markup of its own. -->
+     script fills them with text and never writes markup of its own. The icon
+     of a component in the menu is the registry's, and the script builds it
+     from the parts it is handed (_shape() in admin.js); the sprite holds the
+     puzzle, which a component without an icon wears. -->
 <div id="builder-root" data-dir="[[/nino/dir]]">
 
 	<section id="builder-list" class="builder-screen">
@@ -114,6 +117,7 @@
 		<symbol id="builder-icon-stack-end" viewBox="0 0 24 24"><rect width="14" height="6" x="5" y="12" rx="2"/><rect width="10" height="6" x="7" y="2" rx="2"/><path d="M2 22h20"/></symbol>
 		<symbol id="builder-icon-loop" viewBox="0 0 24 24"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></symbol>
 		<symbol id="builder-icon-source" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></symbol>
+		<symbol id="builder-icon-puzzle" viewBox="0 0 24 24"><path d="M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z"/></symbol>
 		<symbol id="builder-ph-title" viewBox="0 0 48 32"><rect x="4" y="7" width="32" height="7" rx="2" fill="currentColor" stroke="none"/><rect x="4" y="20" width="20" height="3" rx="1.5" fill="currentColor" stroke="none" opacity=".5"/></symbol>
 		<symbol id="builder-ph-text" viewBox="0 0 48 32"><rect x="4" y="6" width="40" height="3" rx="1.5" fill="currentColor" stroke="none"/><rect x="4" y="14" width="40" height="3" rx="1.5" fill="currentColor" stroke="none" opacity=".7"/><rect x="4" y="22" width="26" height="3" rx="1.5" fill="currentColor" stroke="none" opacity=".5"/></symbol>
 		<symbol id="builder-ph-image" viewBox="0 0 48 32"><rect x="4" y="4" width="40" height="24" rx="3"/><circle cx="15" cy="12" r="3"/><path d="m4 24 11-8 8 6 8-7 13 9"/></symbol>

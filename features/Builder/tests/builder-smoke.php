@@ -76,6 +76,11 @@ check( '...and tells of the loop, of the components by place and of the card and
 		$texts = (array) include $dir. '/text/'. $locale. '.php';
 		return array_filter( array_keys( $texts ), static fn( string $key ): bool => str_contains( $key, '/stack/card' ) === true || str_contains( $key, '/option/card-' ) === true ) !== [];
 	} ) === [] );
+$byPlace = [ 'en_US' => \Nino\Features::localized( $manifest['manual']['panel']['Components by place'], 'en_US' ), 'de_DE' => \Nino\Features::localized( $manifest['manual']['panel']['Components by place'], 'de_DE' ) ];
+check( '...and the line of the components by place says in both languages that each stands in the list with its icon - Lucide\'s for the kernel\'s, the one a feature registers, the puzzle of the Builder for one that names none - in a line of under a thousand bytes, which the kernel takes for a line and not a paragraph',
+	str_contains( $byPlace['en_US'], 'with its icon' ) === true && str_contains( $byPlace['en_US'], 'Lucide' ) === true && str_contains( $byPlace['en_US'], 'puzzle' ) === true
+	&& str_contains( $byPlace['de_DE'], 'mit ihrem Icon' ) === true && str_contains( $byPlace['de_DE'], 'Lucide' ) === true && str_contains( $byPlace['de_DE'], 'Puzzle' ) === true
+	&& strlen( $byPlace['en_US'] ) < 1000 && strlen( $byPlace['de_DE'] ) < 1000 );
 check( '...and names the markup it reads and writes besides the wrap and the picture of a column: the call of a component that holds components, and the spacing classes of a column, in both languages', array_diff( [ '[card padding="3"][card-title /slot][/card]', 'nino-p-2 nino-mt-1 nino-mb-1' ], array_keys( $manifest['manual']['markup'] ) ) === []
 	&& array_reduce( [ '[card padding="3"][card-title /slot][/card]', 'nino-p-2 nino-mt-1 nino-mb-1' ], static fn( bool $carry, string $name ): bool => $carry === true && \Nino\Features::localized( $manifest['manual']['markup'][$name], 'de_DE' ) !== \Nino\Features::localized( $manifest['manual']['markup'][$name], 'en_US' ), true ) );
 
@@ -957,6 +962,12 @@ check( '...a component says what it holds (holds), the place of the components i
 	&& $registryAnswer['components']['card']['source'] === 'content' && array_keys( $registryAnswer['components']['card']['attributes'] ) === [ 'ground', 'padding', 'fill', 'vertical', 'align', 'background', 'focus', 'dim', 'borderless' ]
 	&& array_keys( array_filter( $registryAnswer['components'], static fn( array $schema ): bool => array_key_exists( 'holds', $schema ) === true ) ) === [ 'card' ] && array_filter( $registryAnswer['stacks'], static fn( array $schema ): bool => array_key_exists( 'holds', $schema ) === true || array_key_exists( 'in', $schema ) === true ) === []
 	&& array_key_exists( 'card', $registryAnswer['stacks']['stack']['defaults'] ) === false && array_key_exists( 'card', $registryAnswer['stacks']['filter']['defaults'] ) === false );
+check( '...a component says the icon it is shown by (icon), as the kernel registered it: the parts of a 24 by 24 stroke icon, each a tag and a map of its attributes, all of them strings - every component of the kernel has one, a loop has none, and the key stands right after the preview the component is drawn as',
+	array_filter( $registryAnswer['components'], static fn( array $schema ): bool => is_array( $schema['icon'] ?? null ) === true && array_is_list( $schema['icon'] ) === true && $schema['icon'] !== []
+		&& array_filter( $schema['icon'], static fn( mixed $part ): bool => is_array( $part ) === true && array_is_list( $part ) === true && count( $part ) === 2 && is_string( $part[0] ) === true && is_array( $part[1] ) === true && $part[1] !== [] && array_filter( $part[1], 'is_string' ) === $part[1] ) === $schema['icon'] ) === $registryAnswer['components']
+	&& array_filter( $registryAnswer['stacks'], static fn( array $schema ): bool => array_key_exists( 'icon', $schema ) === true ) === []
+	&& array_search( 'icon', array_keys( $registryAnswer['components']['title'] ), true ) === array_search( 'preview', array_keys( $registryAnswer['components']['title'] ), true ) + 1
+	&& $registryAnswer['components']['title']['icon'] === \Nino\Modules\Builder\Document::schemas( $appData )['components']['title']['icon'] );
 check( '...and the entry of the card is the entry of the registry of the Components module but for its words, which are in the language of the workbench: the panel is handed nothing of its own making',
 	array_diff_key( $registryAnswer['components']['card'], [ 'label' => 1, 'attributes' => 1 ] ) === array_diff_key( \Nino\Modules\Builder\Document::schemas( $appData )['components']['card'], [ 'label' => 1, 'attributes' => 1 ] ) );
 check( '...the components and the stacks the panel\'s script test reads (fixtures/registry.json) are what the registry says', json_decode( (string) file_get_contents( __DIR__. '/fixtures/registry.json' ), true ) === json_decode( (string) json_encode( [ 'components' => $registryAnswer['components'], 'stacks' => $registryAnswer['stacks'] ] ), true ) );
@@ -967,6 +978,13 @@ foreach( [ 'zulu', 'alpha' ] as $feature )
 	\Nino\Modules\Components::addComponent( $featured, $feature, static fn( array &$appData, array $args ): string => '', [ 'label' => [ 'en_US' => ucfirst( $feature ) ], 'source' => 'none' ] );
 check( '...a component a feature registers stands after the kernel\'s, in the order it registered them and not in the alphabet\'s', array_slice( array_keys( (array) json_decode( (string) json_encode( \Nino\Modules\Builder\Document::registry( $featured )['components'] ), true ) ), -3 ) === [ 'spacer', 'zulu', 'alpha' ]
 	&& array_keys( $registryAnswer['components'] ) === array_keys( \Nino\Modules\Builder\Document::registry( $appData )['components'] ) );
+$iconed = $appData;
+\Nino\Modules\Components::addComponent( $iconed, 'zulu', static fn( array &$appData, array $args ): string => '', [ 'label' => [ 'en_US' => 'Zulu' ], 'source' => 'none', 'icon' => [ [ 'circle', [ 'cx' => '12', 'cy' => '12', 'r' => '9' ] ], [ 'path', [ 'd' => 'M12 7v5l3 3' ] ] ] ] );
+\Nino\Modules\Components::addComponent( $iconed, 'alpha', static fn( array &$appData, array $args ): string => '', [ 'label' => [ 'en_US' => 'Alpha' ], 'source' => 'none' ] );
+$iconedAnswer = \Nino\Modules\Builder\Document::registry( $iconed )['components'];
+check( '...a component a feature registers has the icon it registered, its parts as the kernel has them, and one that registers none has no icon at all - the panel gives it a puzzle of its own - and the components of the kernel are as they were',
+	$iconedAnswer['zulu']['icon'] === [ [ 'circle', [ 'cx' => '12', 'cy' => '12', 'r' => '9' ] ], [ 'path', [ 'd' => 'M12 7v5l3 3' ] ] ] && array_key_exists( 'icon', $iconedAnswer['alpha'] ) === false
+	&& array_slice( $iconedAnswer, 0, 12 ) === $registryAnswer['components'] );
 
 $listed = \Nino\Modules\Builder\Document::list( $appData );
 $byFile = array_column( $listed['templates'], null, 'file' );
