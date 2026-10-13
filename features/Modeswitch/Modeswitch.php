@@ -43,12 +43,13 @@ namespace Nino\Modules {
 	 *
 	 *										modeswitch.css/modeswitch.js reach the browser the way
 	 *										the kernel ships its own Nino.css/Nino.js (see
-	 *										\Nino\AppData::DEFAULTS, '/nino/html/assets'): added to
-	 *										the SAME site-wide bundles the base install's
-	 *										html-header.tpl/html-footer.tpl already load on every
-	 *										page. A switch is written into one template and read on
-	 *										all of them, so a bundle of its own would be a second
-	 *										request for two small files every page needs anyway.
+	 *										\Nino\AppData::DEFAULTS, '/nino/html/assets'): the
+	 *										manifest's assets add them to the SAME site-wide
+	 *										bundles the base install's html-header.tpl/
+	 *										html-footer.tpl already load on every page. A switch
+	 *										is written into one template and read on all of them,
+	 *										so a bundle of its own would be a second request for
+	 *										two small files every page needs anyway.
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -92,9 +93,9 @@ namespace Nino\Modules {
 		];
 
 		/**
-		 *	Register the shortcode and ship the two static files - see this
-		 *	class' own docblock for why the site-wide bundles and not one of
-		 *	this feature's own
+		 *	Register the shortcode where the Components module does not own it:
+		 *	the manifest declares [mode-switch] as a component, which that module
+		 *	renders through componentModeSwitch()
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
@@ -102,23 +103,7 @@ namespace Nino\Modules {
 		 */
 		public static function init( array &$appData ): void {
 
-			/*	Nino 1.6 has registered [mode-switch] as a component from the manifest before
-				this runs (\Nino\Features::registerComponents()), and a second
-				registration here would take it back from the wrapper that fills in
-				the defaults. Nino 1.5 ignores the manifest key and needs it	*/
-			$components = class_exists( '\\Nino\\Modules\\Components' ) === true ? \Nino\Modules\Components::components( $appData ) : [];
-
-			if( isset( $components['mode-switch'] ) === false )
-				\Nino\Html::addShortcode( $appData, 'mode-switch', [ self::class, 'doShortcode' ] );
-
-			/*	The virtual '/features/...' prefix resolves against
-				\Nino\Features::dir() (\Nino\Filesystem::FEATURES_DIR), the same way
-				TEMPLATES above is read - so '/features/Modeswitch/assets/...' reaches
-				this feature's own copy wherever NINO_FEATURES_DIR put the features
-				directory, and a project that moved it has nothing to say in
-				'/nino/html/assets'	*/
-			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Modeswitch/assets/modeswitch.css' );
-			\Nino\Html::addAsset( $appData, '/.cache/script.js', '/features/Modeswitch/assets/modeswitch.js' );
+			\Nino\Feature::shortcode( $appData, 'mode-switch', [ self::class, 'doShortcode' ] );
 		}
 
 		/**
@@ -178,11 +163,12 @@ namespace Nino\Modules {
 				\Nino\Html's shortcode parser reads without quotes - [mode-switch
 				icons] is what somebody types into a template, and
 				[mode-switch labels="off"] is what they get wrong. icons="1" is read
-				as the same flag, and so are "true", "yes" and "on" - the words the
-				Components module of Nino 1.6 reads for a bool attribute, because a
-				Nino before 1.6 hands the attributes on as they stand	*/
-			$flags	= array_filter( $args, static fn( int|string $key ): bool => is_int( $key ), ARRAY_FILTER_USE_KEY );
-			$labels	= in_array( 'icons', $flags, true ) === false && in_array( strtolower( (string) ( $args['icons'] ?? '' ) ), [ '1', 'true', 'yes', 'on' ], true ) === false;
+				as the same flag, and so are "true", "yes" and "on", in any case: the
+				words the Components module reads a bool attribute by. That module
+				renders the component on every 1.8 site and does not trim, so
+				icons=" on " is no flag there; Feature::flag() trims only for a direct
+				call of this method	*/
+			$labels = \Nino\Feature::flag( $args, 'icons' ) === false;
 
 			$buttons = '';
 
@@ -198,9 +184,9 @@ namespace Nino\Modules {
 			// The buttons last - they are built markup, and str_replace() works
 			// through its arrays in order
 			return str_replace(
-				[ '[[modifier]]', '[[class]]', '[[buttons]]' ],
-				[ ( $labels === true ? '' : ' nino-modeswitch--icons' ), self::_class( $args ), $buttons ],
-				self::template( $appData, 'modeswitch' )
+				[ '[[modifier]]', '[[classes]]', '[[buttons]]' ],
+				[ ( $labels === true ? '' : ' nino-modeswitch--icons' ), \Nino\Feature::classes( $args ), $buttons ],
+				\Nino\Feature::template( $appData, self::TEMPLATES, 'modeswitch' )
 			);
 		}
 
@@ -220,62 +206,13 @@ namespace Nino\Modules {
 			/*	The word is in the markup either way, and hidden with a class
 				rather than left out: a switch whose buttons are three unlabelled
 				icons is one a screen reader cannot read at all, and
-				aria-label would then have to repeat what the fill already says	*/
+				aria-label would then have to repeat what the fill already says.
+				The class is the kernel's visually-hidden one	*/
 			return str_replace(
 				[ '[[mode]]', '[[nameclass]]', '[[fill]]', '[[icon]]' ],
-				[ $mode, ( $labels === true ? '' : ' nino-modeswitch-name--hidden' ), $fill, self::ICONS[$mode] ],
-				self::template( $appData, 'modeswitch-button' )
+				[ $mode, ( $labels === true ? '' : ' nino-sr-only' ), $fill, self::ICONS[$mode] ],
+				\Nino\Feature::template( $appData, self::TEMPLATES, 'modeswitch-button' )
 			);
-		}
-
-		/**
-		 *	The class of one's own a call adds to the switch, with the space in
-		 *	front of it that the template leaves out - escaped, and with its
-		 *	brackets as character references, because the markup is rendered
-		 *	once more
-		 *
-		 *	@param		array			$args					Shortcode attributes
-		 *
-		 *	@return 	string								'' or ' my-class'
-		 */
-		private static function _class( array $args ): string {
-
-			$class = trim( (string) ( $args['class'] ?? '' ) );
-
-			return $class === '' ? '' : ' '. str_replace( '[', '&#91;', htmlspecialchars( $class, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) );
-		}
-
-		/**
-		 *	One of this feature's own templates, read the way a project's are.
-		 *	Markup belongs in a template - see AGENTS.md, "Markup belongs in a
-		 *	template" - so what this class holds is which one and what goes in it
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$name					A file name below TEMPLATES, without .tpl
-		 *
-		 *	@return 	string								'' where the file is not there, which is logged
-		 */
-		public static function template( array &$appData, string $name ): string {
-
-			// A name from this class and nowhere else, and held to a slug anyway:
-			// the one thing this could otherwise be turned into is a read of
-			// something outside the feature
-			if( preg_match( '/^[a-z][a-z0-9-]*$/D', $name ) !== 1 )
-				return '';
-
-			$template = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $name. '.tpl', '' );
-
-			$template = is_string( $template ) === true ? rtrim( $template, "\n" ) : '';
-
-			/*	A template that is not there renders as nothing, which on a page looks
-				like a shortcode nobody wrote rather than like a feature missing a file.
-				Said out loud instead: E_USER_WARNING is Nino's "record this and carry
-				on" channel (see \Nino\Runtime::NON_FATAL_LEVELS), so the request
-				finishes and the log says which file	*/
-			if( $template === '' )
-				trigger_error( 'Nino: the template '. self::TEMPLATES. '/'. $name. '.tpl is missing or empty.', E_USER_WARNING );
-
-			return $template;
 		}
 	}
 

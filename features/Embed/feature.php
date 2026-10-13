@@ -72,12 +72,11 @@ return [
 	// written there is fetched - the Features panel files that with the
 	// lightboxes and the switches
 	'category'		=> 'ui',
-	'version'			=> '1.0.0',
-	// The sectioned 'manual' map above is only read by a kernel newer than
-	// the v1.2.0-beta tag - on that one Features::manifest() refuses this
-	// file outright - so ^1.3 is the first constraint that names only a
-	// kernel which can install it
-	'nino'				=> '^1.3',
+	'version'			=> '1.1.0',
+	// The kernel whose toolset it calls: the template and class helpers, the
+	// origin and policy helpers, the shortcode registration, the manifest's
+	// assets and Nino.events
+	'nino'				=> '^1.8',
 	/*	Consent is not required. Without it every embed waits for a press,
 		which is the safe half of what this does and works on its own. With it,
 		a visitor who has already allowed external media does not have to press
@@ -87,6 +86,9 @@ return [
 	// templates, and whether a visitor allowed it is Consent's cookie in
 	// their own browser
 	'data'				=> [],
+	// The surface's stylesheet and the script that builds the frame, into the
+	// site's two bundles
+	'assets'			=> [ '/features/Embed/assets/embed.css', '/features/Embed/assets/embed.js' ],
 	'settings'		=> [
 		'category' => [
 			'type'				=> 'string',
@@ -110,7 +112,8 @@ return [
 		],
 	],
 	/*	The shortcode as the Builder offers it: no first argument, the provider is named
-		by the attribute that carries the address. Nino 1.5 ignores the key	*/
+		by the attribute that carries the address. The class has no componentEmbed():
+		doShortcode() renders the component	*/
 	'components'	=> [
 		'embed' => [
 			'label'			=> [ 'en_US' => 'Embedded content', 'de_DE' => 'Eingebetteter Inhalt' ],

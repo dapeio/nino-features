@@ -10,9 +10,15 @@
  *
  *										No jsdom, no dependency: the same element stand-in the
  *										other feature tests build, so this runs with nothing but
- *										node.
+ *										node - and the kernel's own Nino.js, which does the
+ *										copying (Nino.clipboard()) and starts the script
+ *										(Nino.events): the stand-ins here are the browser's, the
+ *										clipboard API and the copy command. NINO_ROOT names the
+ *										checkout, else it is three levels up, where a project
+ *										keeps it.
  *
  *	Usage: node features/Copy/tests/copy-js-smoke.js
+ *	       NINO_ROOT=../nino node features/Copy/tests/copy-js-smoke.js
  */
 
 'use strict';
@@ -37,6 +43,8 @@ function check( label, condition ) {
 }
 
 const source = fs.readFileSync( path.join( __dirname, '../assets/copy.js' ), 'utf8' );
+const checkout = process.env.NINO_ROOT || path.join( __dirname, '../../..' );
+const kernel = fs.readFileSync( path.join( checkout, '_nino/Nino.js' ), 'utf8' );
 
 function element( tag, attributes ) {
 
@@ -54,8 +62,9 @@ function element( tag, attributes ) {
 		getAttribute		: function( name ) { return Object.prototype.hasOwnProperty.call( this.attributes, name ) ? this.attributes[name] : null },
 		setAttribute		: function( name, value ) { this.attributes[name] = String( value ) },
 		addEventListener	: function( type, fn ) { ( this.listeners[type] = this.listeners[type] || [] ).push( fn ) },
-		appendChild			: function( child ) { this.children.push( child ); return child },
+		appendChild			: function( child ) { child.parent = this; this.children.push( child ); return child },
 		removeChild			: function( child ) { this.children = this.children.filter( function( c ) { return c !== child } ); return child },
+		remove					: function() { if( this.parent ) this.parent.removeChild( this ) },
 		select					: function() { this.selected = true },
 		matchesClass		: function( name ) { return ( this.attributes['class'] || '' ).split( /\s+/ ).indexOf( name ) !== -1 },
 		querySelector		: function( selector ) {
@@ -83,7 +92,7 @@ function element( tag, attributes ) {
 /**
  *	One [copy] as the shortcode writes it, the script loaded over it
  *
- *	@param		{Object}	options		{ shown, value, named, clipboard, legacy, readyState }
+ *	@param		{Object}	options		{ shown, value, named, clipboard, legacy, readyState, hold }
  */
 function page( options ) {
 
@@ -120,6 +129,7 @@ function page( options ) {
 		readyState			: options.readyState || 'complete',
 		body						: body,
 		createElement		: function( tag ) { return element( tag, {} ) },
+		querySelector		: function() { return null },
 		querySelectorAll	: function( selector ) { return selector === '.nino-copy' ? [ box ] : [] },
 		addEventListener	: function( type, fn ) { ( listeners[type] = listeners[type] || [] ).push( fn ) },
 		execCommand			: function( name ) {
@@ -130,11 +140,14 @@ function page( options ) {
 		},
 	};
 
-	const navigator = {};
+	const navigator = { userAgent : 'node' };
+	const started = [];
 
 	if( options.clipboard !== false )
 		navigator.clipboard = {
 			writeText : function( value ) {
+				if( options.clipboard === 'throws' )
+					throw new Error('at once');
 				if( options.clipboard === 'refuses' )
 					return Promise.reject( new Error('nope') );
 				written.push( value );
@@ -142,17 +155,44 @@ function page( options ) {
 			},
 		};
 
+	// What Nino.js needs to load and to start its callbacks: the events of the
+	// window and a timer it asks for a page that is ready already - kept apart
+	// from the one the script asks for to take the word off the button again
 	const sandbox = {
 		console : console, document : dc, navigator : navigator, Promise : Promise,
-		setTimeout : function( fn ) { timer = fn; return 7 },
+		Event : function( type ) { this.type = type },
+		addEventListener : function() {},
+		dispatchEvent : function() {},
+		setTimeout : function( fn, delay ) {
+			if( delay <= 1 ) {
+				started.push( fn );
+				return started.length;
+			}
+			timer = fn;
+			return 7;
+		},
 		clearTimeout : function() { timer = null },
 	};
 	sandbox.window = sandbox;
 
-	vm.runInContext( source, vm.createContext( sandbox ), { filename : 'copy.js' } );
+	const context = vm.createContext( sandbox );
+	vm.runInContext( kernel, context, { filename : 'Nino.js' } );
+	vm.runInContext( source, context, { filename : 'copy.js' } );
+
+	// A page that is ready when the scripts run starts the callbacks a moment
+	// later, from the timer Nino.js asked for; one still loading starts them
+	// when the document says so. What a callback throws is thrown again from a
+	// timer, and that one is run here too - a script that fails fails the run
+	const start = function() {
+		while( started.length > 0 )
+			started.shift()();
+	};
+
+	if( dc.readyState !== 'loading' && options.hold !== true )
+		start();
 
 	return {
-		box : box, button : button, word : word, body : body, listeners : listeners,
+		box : box, button : button, word : word, body : body, listeners : listeners, start : start,
 		written : written, commands : commands,
 		press : function() { ( button.listeners['click'] || [] ).forEach( function( fn ) { fn( {} ) } ) },
 		settle : function() { return new Promise( function( r ) { setImmediate( r ) } ) },
@@ -218,11 +258,23 @@ await refused.settle();
 check( 'an API that refuses falls back to the older way rather than reporting failure straight away',
 	refused.commands.join('') === 'copy' && refused.said() === 'Kopiert' );
 
+const abrupt = page( { clipboard : 'throws' } );
+abrupt.press();
+await abrupt.settle();
+check( 'one that throws at once is the same - Nino.clipboard() never rejects, so there is nothing for the button to leave unhandled',
+	abrupt.commands.join('') === 'copy' && abrupt.said() === 'Kopiert' );
+
 const hopeless = page( { clipboard : false, legacy : false } );
 hopeless.press();
 await hopeless.settle();
 check( 'and where neither works the button says what to do instead',
 	hopeless.said() === 'Strg+C drücken' && hopeless.button.classList.contains('nino-is-failed') === true );
+
+const both = page( { clipboard : 'refuses', legacy : false } );
+both.press();
+await both.settle();
+check( '...also where the API refused and the older way had nothing to add',
+	both.commands.join('') === 'copy' && both.said() === 'Strg+C drücken' && both.button.classList.contains('nino-is-failed') === true && both.body.children.length === 0 );
 
 
 // --- A [copy] that is not one --------------------------------------------------
@@ -231,14 +283,27 @@ const bare = page( { withButton : false } );
 check( 'a [copy] with no button in it is left exactly as it was', bare.button.hidden === true );
 
 
+// --- Starting with the kernel --------------------------------------------------
+
+const held = page( { hold : true } );
+
+check( 'the buttons come out of hiding when Nino.js calls its ready callbacks, and not when the script is loaded',
+	held.button.hidden === true );
+
+held.start();
+check( '...and then they do', held.button.hidden === false );
+
+
 // --- Waiting for the dom -------------------------------------------------------
 
 const late = page( { readyState : 'loading' } );
 
 check( 'a script that ran before the dom was there waits for it rather than finding nothing',
-	late.button.hidden === true && ( late.listeners['DOMContentLoaded'] || [] ).length === 1 );
+	late.button.hidden === true );
 
 ( late.listeners['DOMContentLoaded'] || [] ).forEach( function( fn ) { fn() } );
+// What a callback throws is thrown again from a timer, and that one is run here too
+late.start();
 check( '...and picks the buttons up when it arrives', late.button.hidden === false );
 
 

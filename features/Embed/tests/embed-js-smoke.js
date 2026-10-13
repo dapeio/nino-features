@@ -10,9 +10,13 @@
  *
  *											No jsdom, no dependency: the same element stand-in the
  *											other feature tests build, so this runs with nothing
- *											but node.
+ *											but node - and the kernel's own Nino.js, which the
+ *											script starts through (Nino.events): NINO_ROOT names
+ *											the checkout, else it is three levels up, where a
+ *											project keeps it.
  *
  *	Usage: node features/Embed/tests/embed-js-smoke.js
+ *	       NINO_ROOT=../nino node features/Embed/tests/embed-js-smoke.js
  */
 
 'use strict';
@@ -37,6 +41,8 @@ function check( label, condition ) {
 }
 
 const source = fs.readFileSync( path.join( __dirname, '../assets/embed.js' ), 'utf8' );
+const checkout = process.env.NINO_ROOT || path.join( __dirname, '../../..' );
+const kernel = fs.readFileSync( path.join( checkout, '_nino/Nino.js' ), 'utf8' );
 
 /**
  *	One element, with just enough of the interface embed.js reaches for
@@ -103,7 +109,7 @@ function embed( options ) {
  *	A page with the given embeds on it and the script loaded over it
  *
  *	@param		{Array}		boxes
- *	@param		{Object}	options		{ consent, readyState }
+ *	@param		{Object}	options		{ consent, readyState, hold }
  */
 function page( boxes, options ) {
 
@@ -112,11 +118,13 @@ function page( boxes, options ) {
 	const root = element( 'html', typeof options.consent === 'string' ? { 'data-consent' : options.consent } : {} );
 	const listeners = {};
 	const fired = [];
+	const timeouts = [];
 
 	const dc = {
 		documentElement	: root,
 		readyState			: options.readyState || 'complete',
 		createElement		: function( tag ) { return element( tag, {} ) },
+		querySelector		: function() { return null },
 		addEventListener	: function( type, fn ) { ( listeners[type] = listeners[type] || [] ).push( fn ) },
 		dispatchEvent		: function( ev ) {
 			fired.push( ev );
@@ -145,13 +153,36 @@ function page( boxes, options ) {
 		this.detail = ( init || {} ).detail;
 	}
 
-	const sandbox = { console : console, document : dc, CustomEvent : CustomEvent };
+	// What Nino.js needs to load and to start its callbacks: a navigator, the
+	// events of the window and a timer it asks for a page that is ready already
+	const sandbox = {
+		console : console, document : dc, CustomEvent : CustomEvent,
+		navigator : { userAgent : 'node' },
+		Event : function( type ) { this.type = type },
+		addEventListener : function() {},
+		dispatchEvent : function() {},
+		setTimeout : function( fn ) { timeouts.push( fn ); return timeouts.length },
+	};
 	sandbox.window = sandbox;
 
-	vm.runInContext( source, vm.createContext( sandbox ), { filename : 'embed.js' } );
+	const context = vm.createContext( sandbox );
+	vm.runInContext( kernel, context, { filename : 'Nino.js' } );
+	vm.runInContext( source, context, { filename : 'embed.js' } );
+
+	// A page that is ready when the scripts run starts the callbacks a moment
+	// later, from the timer Nino.js asked for; one still loading starts them
+	// when the document says so. What a callback throws is thrown again from a
+	// timer, and that one is run here too - a script that fails fails the run
+	const start = function() {
+		while( timeouts.length > 0 )
+			timeouts.shift()();
+	};
+
+	if( dc.readyState !== 'loading' && options.hold !== true )
+		start();
 
 	return {
-		root : root, listeners : listeners, fired : fired,
+		root : root, listeners : listeners, fired : fired, start : start,
 		frames : function( box ) { return box.children.filter( function( c ) { return c.tagName === 'iframe' } ) },
 		button : function( box ) { return box.children.filter( function( c ) { return c.matchesClass( 'nino-embed-open' ) } )[0] || null },
 		press	: function( box ) {
@@ -261,15 +292,29 @@ nope.press( script );
 check( 'and so is anything that is not an address at all', nope.frames( script ).length === 0 );
 
 
+// --- Starting with the kernel ------------------------------------------------
+
+const waiting = embed( {} );
+const held = page( [ waiting ], { hold : true, consent : 'external' } );
+
+check( 'the surfaces are shown and the consent applied when Nino.js calls its ready callbacks, and not when the script is loaded',
+	held.button( waiting ).hidden === true && held.frames( waiting ).length === 0 );
+
+held.start();
+check( '...and then both are - this one was allowed already, so it is the frame', held.frames( waiting ).length === 1 );
+
+
 // --- Waiting for the dom -----------------------------------------------------
 
 const late = embed( {} );
 const loading = page( [ late ], { readyState : 'loading' } );
 
 check( 'a script that ran before the dom was there waits for it rather than finding nothing',
-	loading.button( late ).hidden === true && ( loading.listeners['DOMContentLoaded'] || [] ).length === 1 );
+	loading.button( late ).hidden === true );
 
 ( loading.listeners['DOMContentLoaded'] || [] ).forEach( function( fn ) { fn() } );
+// What a callback throws is thrown again from a timer, and that one is run here too
+loading.start();
 check( '...and picks the surfaces up when it arrives', loading.button( late ).hidden === false );
 
 

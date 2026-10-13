@@ -1,9 +1,10 @@
 <?php
 declare(strict_types=1);
 
-// Die drei Wörter des Knopfs - beim Aktivieren einmal in die text/de_DE.php
+// Die drei Wörter des Knopfs - bei jeder Aktivierung in die text/de_DE.php
 // des Projekts übernommen (nur ergänzend: ein Schlüssel, den das Projekt
-// schon hat, bleibt); ab dann pflegen Redakteure sie im Panel Texte.
+// schon hat, bleibt, einer, der fehlt, kommt dazu); ab dann pflegen
+// Redakteure sie im Panel Texte.
 return [
 
 	// Auf dem Knopf, und die Hälfte seines zugänglichen Namens, wenn der

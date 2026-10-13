@@ -33,12 +33,14 @@ return [
 	// It changes how something already on the page behaves and brings
 	// nothing of its own to show
 	'category'		=> 'ui',
-	'version'			=> '1.0.0',
-	'nino'				=> '^1.3',
+	'version'			=> '1.1.0',
+	'nino'				=> '^1.8',
 	'requires'		=> [],
 	// Nothing: what it opens is markup the page already carries
 	'data'				=> [],
-	// No settings either, and for the reason typewriter.js has none: the two
+	// The overlay's stylesheet and its script, into the site's two bundles
+	'assets'			=> [ '/features/Lightbox/assets/lightbox.css', '/features/Lightbox/assets/lightbox.js' ],
+	// No settings, and for the reason typewriter.js has none: the two
 	// files are static assets that never pass the fill engine (see
 	// docs/development.md, "Assets Are Not Templates"), so a site-wide value
 	// could not reach them. What one lightbox does differently from another

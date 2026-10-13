@@ -55,12 +55,14 @@ return [
 	// It changes how something already on the page reads, over time - the
 	// Features panel files that with the sliders and the lightboxes
 	'category'		=> 'ui',
-	'version'			=> '1.0.0',
-	'nino'				=> '^1.3',
+	'version'			=> '1.1.0',
+	'nino'				=> '^1.8',
 	'requires'		=> [],
 	// Nothing under data/: the moment is written into the page it counts down
 	// on, and what is left of it is arithmetic in the reader's own browser
 	'data'				=> [],
+	// The counter's stylesheet and its script, into the site's two bundles
+	'assets'			=> [ '/features/Countdown/assets/countdown.css', '/features/Countdown/assets/countdown.js' ],
 	/*	One setting, the zone a wall-clock moment is read in where the shortcode
 		names none. Which moment, which parts of it and what stands there
 		afterwards stay with the one place the countdown is written - a sale
@@ -86,7 +88,8 @@ return [
 	],
 	/*	The shortcode as the Builder offers it: no first argument, because the moment
 		is written in the call itself and a date is no text key's value here - and
-		every attribute a string, as the shortcode reads it. Nino 1.5 ignores the key	*/
+		every attribute a string, as the shortcode reads it. The class has no
+		componentCountdown(): doShortcode() renders the component	*/
 	'components'	=> [
 		'countdown' => [
 			'label'			=> [ 'en_US' => 'Countdown', 'de_DE' => 'Countdown' ],

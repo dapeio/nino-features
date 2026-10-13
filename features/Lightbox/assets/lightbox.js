@@ -4,11 +4,11 @@
  *						navigating to it, with every other link carrying the same
  *						data-lightbox value as the rest of the set.
  *
- *						No dependencies, no build step - not even on Nino.js: bundled
- *						into the project's own /.cache/script.js the same way the
- *						kernel bundles Nino.js/Nino.ui.js (see Lightbox::init()), so a
- *						project that dropped the kernel's own scripts still gets a
- *						working lightbox.
+ *						It needs no library, no build step and not even Nino.js: the
+ *						manifest's assets bundle it into the project's own
+ *						/.cache/script.js (docs/features.md, "Assets"), so a project
+ *						that dropped the kernel's own scripts still gets a working
+ *						lightbox.
  *
  *						Delegated from the document, once: a gallery rendered after
  *						this ran - a filter, a "load more", an editor preview - needs

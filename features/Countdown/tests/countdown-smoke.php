@@ -9,8 +9,8 @@ declare(strict_types=1);
  *												the [countdown] shortcode over its units and its
  *												formats, the timezone a wall-clock moment is read in,
  *												and every way of getting the moment wrong, the two files
- *												it puts into the site's own asset bundles
- *												(\Nino\Html::addAsset()), and deactivation.
+ *												its manifest puts into the site's own asset bundles
+ *												(\Nino\Features::registerAssets()), and deactivation.
  *
  *												The arithmetic is the browser's, and
  *												countdown-js-smoke.js beside this file measures it;
@@ -28,7 +28,6 @@ require $root. '/tests/harness.php';
 
 $appData = ninoSandbox( 'countdown' );
 $appData['/nino/dir'] = '';
-$appData['/nino/locales/textfiles'] = '/text';
 $appData['./nino/locales/current'] = 'en_US';
 
 
@@ -76,11 +75,13 @@ foreach( [ 'en_US', 'de_DE' ] as $locale ) {
 echo "\n";
 
 
-// --- init() ------------------------------------------------------------------
+// --- init() and the manifest's assets ----------------------------------------
 
-echo "Modules\\Countdown::init() - the shortcode and the bundle\n";
+echo "Modules\\Countdown::init() and the manifest's assets - the shortcode and the bundle\n";
 
+// The bundles are filled the way \Nino\init() fills them, before the modules' init()
 $appData['/nino/modules'][] = '\\Nino\\Modules\\Assets';
+\Nino\Features::registerAssets( $appData );
 \Nino\Modules::callModules( $appData, 'init' );
 
 check( 'the shortcode is registered as [countdown]', ( $appData['./nino/html/shortcodes']['countdown'] ?? null ) !== null );
@@ -275,7 +276,8 @@ if( $node === '' )
 	echo "  --  node is not on the path, so countdown-js-smoke.js is not run here\n\n";
 else {
 	echo "countdown-js-smoke.js\n";
-	$out = (string) @shell_exec( escapeshellarg( $node ). ' '. escapeshellarg( __DIR__. '/countdown-js-smoke.js' ). ' 2>&1' );
+	// Over the same checkout: the script is started through the kernel's own Nino.js
+	$out = (string) @shell_exec( 'NINO_ROOT='. escapeshellarg( $root ). ' '. escapeshellarg( $node ). ' '. escapeshellarg( __DIR__. '/countdown-js-smoke.js' ). ' 2>&1' );
 	echo $out;
 	check( 'the browser half passes too', preg_match( '/^\d+ checks, 0 failed$/m', $out ) === 1 );
 	echo "\n";
@@ -286,9 +288,7 @@ else {
 
 echo "Components - [countdown] as the Builder offers it\n";
 
-if( class_exists( '\\Nino\\Modules\\Components' ) === false )
-	echo "  --  this Nino has no \\Nino\\Modules\\Components: the manifest's components are not read here, and the shortcode registers itself\n";
-else ( static function( array $appData ): void {
+( static function( array $appData ): void {
 
 	$declared = \Nino\Features::manifest( dirname( __DIR__ ) )['components'] ?? [];
 

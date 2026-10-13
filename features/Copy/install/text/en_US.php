@@ -2,8 +2,8 @@
 declare(strict_types=1);
 
 // The three words the button says - merged into the project's text/en_US.php
-// once, at activation (add-only: a key the project already has stays);
-// editors keep them current in the Text panel from then on.
+// on every activation (add-only: a key the project already has stays, one it
+// lacks is added); editors keep them current in the Text panel from then on.
 return [
 
 	// On the button, and half of its accessible name where the shortcode said

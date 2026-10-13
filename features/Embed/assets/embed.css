@@ -2,10 +2,10 @@
  *	Nino - External Embeds
  *	embed.css				The surface a visitor presses, and the box the frame drops
  *							into once they have. Bundled into the project's own
- *							/.cache/style.css the same way the kernel bundles Nino.css
- *							(see Embed::init() and docs/development.md, "Assets Are Not
- *							Templates") - never rendered through the fill/shortcode
- *							engine, so nothing in here is a textfill.
+ *							/.cache/style.css by the manifest's assets (docs/features.md,
+ *							"Assets") - never rendered through the fill/shortcode engine
+ *							(docs/development.md, "Assets Are Not Templates"), so nothing
+ *							in here is a textfill.
  *
  *							The surface itself is the kernel's own .nino-video-poster and
  *							.nino-video-play, which have been in Nino.css since 1.0 with
@@ -43,7 +43,7 @@
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	background-color: var(--color-section-alt-bg, rgba(0, 0, 0, .06));
+	background-color: var(--color-section-alt-bg);
 	color: var(--color-text);
 	text-align: center;
 }
@@ -70,10 +70,10 @@
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: var(--space-1, .5rem);
+	gap: var(--space-1);
 	max-width: 32rem;
-	padding: var(--space-2, 1rem);
-	border-radius: var(--radius, .2rem);
+	padding: var(--space-2);
+	border-radius: var(--radius);
 }
 
 .nino-embed .nino-video-play {
@@ -82,7 +82,7 @@
 	flex: 0 0 auto;
 	width: 3.5rem;
 	height: 3.5rem;
-	margin-bottom: var(--space-1, .5rem);
+	margin-bottom: var(--space-1);
 }
 .nino-embed .nino-video-poster:hover .nino-video-play,
 .nino-embed .nino-video-poster:focus-visible .nino-video-play {
@@ -94,7 +94,7 @@
 	line-height: 1.3;
 }
 .nino-embed-note {
-	font-size: var(--fontsize-small, .875rem);
+	font-size: var(--fontsize-small);
 	opacity: .8;
 	line-height: 1.4;
 }
@@ -112,7 +112,7 @@
 	order and this one has nothing left to do	*/
 .nino-embed.nino-is-loaded {
 	overflow: hidden;
-	border-radius: var(--radius, .2rem);
+	border-radius: var(--radius);
 }
 .nino-embed.nino-is-loaded iframe {
 	display: block;
@@ -126,13 +126,12 @@
 	left is the link out - the only thing that still works	*/
 .nino-embed-fallback {
 	margin: 0;
-	font-size: var(--fontsize-small, .875rem);
+	font-size: var(--fontsize-small);
 }
 
+/*	The clamp of Nino.css cuts the transition of the mark; what it leaves is the
+	grow on hover, which a visitor who asked for less motion does not get	*/
 @media (prefers-reduced-motion: reduce) {
-	.nino-embed .nino-video-play {
-		transition: none;
-	}
 	.nino-embed .nino-video-poster:hover .nino-video-play,
 	.nino-embed .nino-video-poster:focus-visible .nino-video-play {
 		transform: none;

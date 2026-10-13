@@ -1,9 +1,9 @@
 <?php
 declare(strict_types=1);
 
-// The banner's own words - merged into the project's text/en_US.php once,
-// at activation (add-only: a key the project already has stays); editors
-// keep them current in the Text panel from then on.
+// The banner's own words - merged into the project's text/en_US.php on every
+// activation (add-only: a key the project already has stays, one it lacks is
+// added); editors keep them current in the Text panel from then on.
 return [
 
 	'[[/feature/consent/banner/title]]'	=> 'We use cookies',

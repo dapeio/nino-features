@@ -1,9 +1,10 @@
 /**
  *	Nino - Copy to Clipboard
  *	copy.js			Puts what a [copy] holds into the clipboard, and says whether it
- *					worked. No dependencies, no build step - bundled into the
- *					project's own /.cache/script.js the same way the kernel bundles
- *					Nino.js/Nino.ui.js (see Copy::init()).
+ *					worked. It needs Nino.js, which every site loads (Nino.events
+ *					starts it, Nino.clipboard() copies), and no build step: the
+ *					manifest's assets bundle it into the project's own
+ *					/.cache/script.js, behind the kernel's scripts.
  *
  *					The three words are handed to this file on the button itself -
  *					data-copy-do, -done and -failed, resolved by the fill engine
@@ -11,12 +12,14 @@
  *					fill, so what is here chooses between words rather than knowing
  *					any.
  *
- *					Two ways of copying, because one of them is not everywhere: the
- *					clipboard API where the browser has it and the page is allowed
- *					to use it - it is secure-context only, so a site served over
- *					http has none - and a selection plus execCommand where it is
- *					not. Where neither works the button says so and leaves the text
- *					selected, which is the thing the reader was going to do anyway.
+ *					Nino.clipboard() copies, in the two ways there are, because one
+ *					of them is not everywhere: the clipboard API where the browser
+ *					has it and the page is allowed to use it - it is secure-context
+ *					only, so a site served over http has none - and a selection
+ *					plus execCommand where it is not. What it answers is whether
+ *					either worked; where neither did the button says so and leaves
+ *					the text selectable, which is the thing the reader was going to
+ *					do anyway.
  *
  *	@package						Dape/Nino
  *	@author							David Perchermeier <mail@dape.io>
@@ -86,43 +89,6 @@
 	}
 
 	/**
-	 *	The way that works without the clipboard API: put the text into a
-	 *	field nobody can see, select it, and let the browser's own copy
-	 *	command take it
-	 *
-	 *	@param		{string}		text
-	 *
-	 *	@return		{boolean}
-	 */
-	function legacy( text ) {
-
-		var field = document.createElement( 'textarea' );
-
-		field.value = text;
-		field.setAttribute( 'readonly', '' );
-		field.setAttribute( 'aria-hidden', 'true' );
-		field.style.position = 'fixed';
-		field.style.top = '-1000px';
-		field.style.opacity = '0';
-
-		document.body.appendChild( field );
-
-		var worked = false;
-
-		try {
-			field.select();
-			worked = document.execCommand( 'copy' ) === true;
-		}
-		catch( e ) {
-			worked = false;
-		}
-
-		document.body.removeChild( field );
-
-		return worked;
-	}
-
-	/**
 	 *	One press
 	 *
 	 *	@param		{Element}		box
@@ -139,18 +105,11 @@
 
 		/*	The clipboard API is secure-context only, so a site served over http
 			does not have one at all - and where it is there it may still be
-			refused. Either way the older way is tried before anything is said	*/
-		if( navigator.clipboard !== undefined && typeof navigator.clipboard.writeText === 'function' ) {
-
-			navigator.clipboard.writeText( text ).then(
-				function() { say( button, 'done' ) },
-				function() { say( button, legacy( text ) === true ? 'done' : 'failed' ) }
-			);
-
-			return;
-		}
-
-		say( button, legacy( text ) === true ? 'done' : 'failed' );
+			refused. Either way the older way is tried before the answer is
+			false, and the answer is never a rejection	*/
+		Nino.clipboard( text ).then( function( copied ) {
+			say( button, copied === true ? 'done' : 'failed' );
+		} );
 	}
 
 	/**
@@ -187,9 +146,6 @@
 		}
 	}
 
-	if( document.readyState === 'loading' )
-		document.addEventListener( 'DOMContentLoaded', init );
-	else
-		init();
+	Nino.events.bindCallback( 'ready', init );
 
 } )();

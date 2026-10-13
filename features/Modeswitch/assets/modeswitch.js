@@ -20,11 +20,12 @@
  *							and the switch then works for the length of the visit rather
  *							than not at all.
  *
- *							No dependencies, not even on Nino.js: bundled into the
- *							project's own /.cache/script.js the same way the kernel
- *							bundles Nino.js/Nino.ui.js (see Modeswitch::init()), so a
- *							project that dropped the kernel's scripts still gets a
- *							working switch.
+ *							It needs Nino.js, which every site loads, for one thing: the
+ *							first painting of the buttons waits for Nino.events to say
+ *							the page is ready. The choice itself is put on the page the
+ *							moment the script runs (see below), and the manifest's
+ *							assets bundle it into the project's own /.cache/script.js
+ *							behind the kernel's scripts.
  *
  *	@package		Dape/Nino
  *	@author			David Perchermeier <mail@dape.io>
@@ -185,9 +186,6 @@
 
 	// ...and the buttons that are on the page now. They are rendered pressed
 	// on nothing, because only the browser knows which one is
-	if( dc.readyState === 'loading' )
-		dc.addEventListener( 'DOMContentLoaded', function() { paint( stored() ) } );
-	else
-		paint( stored() );
+	Nino.events.bindCallback( 'ready', function() { paint( stored() ) } );
 
 } )( window, document );

@@ -6,12 +6,14 @@
  *								<script type="text/plain" data-consent="category"> the
  *								choice allows, toggle [data-consent-show]/[data-consent-
  *								hide], and tell the rest of the page through the
- *								"nino:consent" event. No dependencies, no build step -
- *								bundled into the project's own /.cache/script.js the same
- *								way the kernel bundles Nino.js/Nino.ui.js (see
- *								Consent::init()), so this runs on every page the site's
- *								own frame already loads that bundle on, whether or not
- *								that page renders [consent] itself.
+ *								"nino:consent" event. It needs Nino.js and Nino.ui.js,
+ *								which every site loads (Nino.events.bindCallback() starts
+ *								it, Nino.ui.options() reads the banner), and no build
+ *								step: the manifest's assets bundle it into the project's
+ *								own /.cache/script.js, behind the kernel's scripts, so
+ *								this runs on every page the site's own frame already
+ *								loads that bundle on, whether or not that page renders
+ *								[consent] itself.
  *
  *								The cookie name/lifetime a project chose under the
  *								feature's settings reach this file through the banner's
@@ -48,28 +50,47 @@
 	}
 
 	/**
+	 *	The banner's own data-consent-cookie and data-consent-days, read as
+	 *	Nino.ui.options() reads a setting: the name as it is, an empty one being
+	 *	none, and the lifetime as a whole number of days, whatever else being
+	 *	none. The defaults where the page has no banner
+	 *
+	 *	@return		{{cookie: string, days: number}}
+	 */
+	function settings() {
+
+		var el = banner();
+
+		if( el === null )
+			return { cookie : DEFAULT_COOKIE_NAME, days : DEFAULT_DAYS };
+
+		return Nino.ui.options( el, 'consent', {
+			cookie : { type : 'text', fallback : DEFAULT_COOKIE_NAME },
+			days : { type : 'int', fallback : DEFAULT_DAYS },
+		} );
+	}
+
+	/**
 	 *	The cookie name to read/write - the banner's own data-consent-cookie
 	 *	when it is on the page, else the setting's own default
 	 *
 	 *	@return		{string}
 	 */
 	function cookieName() {
-		var el = banner();
-		var name = el === null ? '' : ( el.getAttribute( 'data-consent-cookie' ) || '' );
-		return name === '' ? DEFAULT_COOKIE_NAME : name;
+		return settings().cookie;
 	}
 
 	/**
 	 *	How many days a choice this page writes is kept - the banner's own
-	 *	data-consent-days when it is on the page, else the setting's default
+	 *	data-consent-days when it is on the page, else the setting's default.
+	 *	A whole number is what options() takes, and a lifetime of no days is
+	 *	none: a cookie that is over when it is written
 	 *
 	 *	@return		{number}
 	 */
 	function cookieDays() {
-		var el = banner();
-		var raw = el === null ? '' : ( el.getAttribute( 'data-consent-days' ) || '' );
-		var days = parseInt( raw, 10 );
-		return ( isNaN( days ) === false && days > 0 ) ? days : DEFAULT_DAYS;
+		var days = settings().days;
+		return days > 0 ? days : DEFAULT_DAYS;
 	}
 
 	/**
@@ -361,9 +382,10 @@
 
 		// This feature supersedes the plain accept/decline banner Nino's base
 		// install shipped up to 1.3.x (.nino-cookie-banner in the project's
-		// html-footer.tpl). A project set up then keeps the block - an install
-		// unit is applied once and never rewritten - so where one is still in the
-		// page, it goes: a visitor never sees two, nor an unstyled leftover
+		// html-footer.tpl). A project set up then keeps the block - a unit is
+		// add-only and never rewrites a template of the project's - so where one
+		// is still in the page, it goes: a visitor never sees two, nor an
+		// unstyled leftover
 		Array.prototype.forEach.call( document.querySelectorAll( '.nino-cookie-banner' ), function( el ) {
 			if( el.parentNode !== null )
 				el.parentNode.removeChild( el );
@@ -386,9 +408,6 @@
 		applyConsent( stored );
 	}
 
-	if( document.readyState === 'loading' )
-		document.addEventListener( 'DOMContentLoaded', init );
-	else
-		init();
+	Nino.events.bindCallback( 'ready', init );
 
 } )();

@@ -45,10 +45,11 @@ namespace Nino\Modules {
 	 *
 	 *										embed.css/embed.js reach the browser the way the kernel
 	 *										ships its own Nino.css/Nino.js (see
-	 *										\Nino\AppData::DEFAULTS, '/nino/html/assets'): added to
-	 *										the SAME site-wide bundles the base install's
-	 *										html-header.tpl/html-footer.tpl already load on every
-	 *										page, not a bundle of this feature's own.
+	 *										\Nino\AppData::DEFAULTS, '/nino/html/assets'): the
+	 *										manifest's assets add them to the SAME site-wide
+	 *										bundles the base install's html-header.tpl/
+	 *										html-footer.tpl already load on every page, not a
+	 *										bundle of this feature's own.
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -103,9 +104,10 @@ namespace Nino\Modules {
 		public const string RATIO_DEFAULT = '16-9';
 
 		/**
-		 *	Register the shortcode and ship the two static files - see this
-		 *	class' own docblock for why the site-wide bundles and not one of
-		 *	this feature's own
+		 *	Register the shortcode where the Components module does not own it -
+		 *	the manifest declares [embed] as a component, which that module renders
+		 *	through doShortcode() - and hook the output phase, where the hosts of
+		 *	the page's embeds join the policy
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
@@ -113,42 +115,11 @@ namespace Nino\Modules {
 		 */
 		public static function init( array &$appData ): void {
 
-			/*	Nino 1.6 has registered [embed] as a component from the manifest before
-				this runs (\Nino\Features::registerComponents()), and a second
-				registration here would take it back from the wrapper that fills in
-				the defaults. Nino 1.5 ignores the manifest key and needs it	*/
-			$components = class_exists( '\\Nino\\Modules\\Components' ) === true ? \Nino\Modules\Components::components( $appData ) : [];
-
-			if( isset( $components['embed'] ) === false )
-				\Nino\Html::addShortcode( $appData, 'embed', [ self::class, 'doShortcode' ] );
+			\Nino\Feature::shortcode( $appData, 'embed', [ self::class, 'doShortcode' ] );
 
 			// The policy is widened where the finished response is in hand, and by
 			// the hosts doShortcode() recorded - see callbackOutput()
 			\Nino\Callbacks::registerCallback( $appData, '/nino/http/output', [ self::class, 'callbackOutput' ] );
-
-			/*	The virtual '/features/...' prefix resolves against
-				\Nino\Features::dir() (\Nino\Filesystem::FEATURES_DIR), the same way
-				TEMPLATES above is read - so '/features/Embed/assets/...' reaches this
-				feature's own copy wherever NINO_FEATURES_DIR put the features
-				directory, and a project that moved it has nothing to say in
-				'/nino/html/assets'	*/
-			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Embed/assets/embed.css' );
-			\Nino\Html::addAsset( $appData, '/.cache/script.js', '/features/Embed/assets/embed.js' );
-		}
-
-		/**
-		 *	[embed] as the Components module hands it over, the Builder's way:
-		 *	every attribute is there, an empty one where nothing was written,
-		 *	and doShortcode() reads them as it reads a hand-written call
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array			$args					The resolved arguments (see \Nino\Modules\Components::dispatch())
-		 *
-		 *	@return 	string								What doShortcode() renders for them
-		 */
-		public static function componentEmbed( array &$appData, array $args ): string {
-
-			return self::doShortcode( $appData, $args );
 		}
 
 		/**
@@ -174,7 +145,7 @@ namespace Nino\Modules {
 			// What the policy has to name, collected here and not read back out of
 			// the body: a shortcode is written by the project, whereas the body is
 			// every text, element and template the page was made of
-			$appData['./embed/frames'][ self::_origin( $src ) ] = true;
+			$appData['./embed/frames'][ \Nino\Feature::origin( $src ) ] = true;
 
 			$safe = static fn( string $value ): string => htmlspecialchars( $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
 
@@ -198,9 +169,9 @@ namespace Nino\Modules {
 			// of all: str_replace() works through its arrays in order, so a token
 			// after built markup would be looked for inside it as well
 			return str_replace(
-				[ '[[class]]', '[[ratio]]', '[[src]]', '[[host]]', '[[consent]]', '[[remember]]', '[[title]]', '[[label]]', '[[poster]]' ],
+				[ '[[classes]]', '[[ratio]]', '[[src]]', '[[host]]', '[[consent]]', '[[remember]]', '[[title]]', '[[label]]', '[[poster]]' ],
 				[
-					self::_class( $args ),
+					\Nino\Feature::classes( $args ),
 					$ratio,
 					$safe( $src ),
 					$safe( self::host( $src ) ),
@@ -210,7 +181,7 @@ namespace Nino\Modules {
 					( $title === '' ? '[[/feature/embed/placeholder/button]]' : $title ),
 					self::_poster( $appData, (string) ( $args['poster'] ?? '' ) ),
 				],
-				self::template( $appData, 'embed' )
+				\Nino\Feature::template( $appData, self::TEMPLATES, 'embed' )
 			);
 		}
 
@@ -226,8 +197,9 @@ namespace Nino\Modules {
 		 *	page with no [embed] keeps its policy byte for byte; the directive is
 		 *	extended where it exists, built from child-src or default-src where
 		 *	it does not, and 'none' is left as the project decided it - see
-		 *	_extendPolicy(). Allowed because it adds only the origin of a frame the
-		 *	project wrote into its own template, to frame-src and nothing else.
+		 *	\Nino\Http::allowSource(). Allowed because it adds only the origin of a
+		 *	frame the project wrote into its own template, to frame-src and nothing
+		 *	else.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array			&$request			(reference) Current request and its response
@@ -247,12 +219,8 @@ namespace Nino\Modules {
 			if( is_array( $frames ) === false || $frames === [] || is_string( $request['/nino/http/response']['body'] ?? null ) === false )
 				return;
 
-			$policy = $request['/nino/http/response']['header']['Content-Security-Policy'] ?? '';
-
-			if( is_string( $policy ) === false || $policy === '' )
-				return;
-
-			$request['/nino/http/response']['header']['Content-Security-Policy'] = self::_extendPolicy( $policy, 'frame-src', [ 'child-src', 'default-src' ], array_keys( $frames ) );
+			foreach( array_keys( $frames ) as $origin )
+				\Nino\Http::allowSource( $request, 'frame-src', (string) $origin );
 		}
 
 		/**
@@ -304,9 +272,9 @@ namespace Nino\Modules {
 			if( is_array( $parts ) === false || ( $parts['scheme'] ?? '' ) !== 'https' || ( $parts['host'] ?? '' ) === '' )
 				return '';
 
-			// A host the policy cannot name safely (see _origin()) is a frame the
-			// browser would refuse - so there is no surface for it either
-			if( self::_origin( $url ) === '' )
+			// A host the policy cannot name safely (see \Nino\Feature::origin()) is a
+			// frame the browser would refuse - so there is no surface for it either
+			if( \Nino\Feature::origin( $url ) === '' )
 				return '';
 
 			/*	The page address of a video is the address of a page that refuses to
@@ -506,124 +474,6 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	The origin of an address as a Content-Security-Policy source, or ''
-		 *	where it cannot safely be one: https only, no credentials, and a host
-		 *	that is a plain ascii name - no ip literal (a name whose last label is a number or a
-		 *	hex number is one, written in a form php does not call one), no '*', no
-		 *	whitespace, no ';' or ',' that would end the directive. A non-ascii host would have
-		 *	to be written as punycode; it is refused rather than converted. The
-		 *	port is kept, since a source without one means 443 only.
-		 *
-		 *	Embed::host() is not this: it names the host for a sentence, and drops
-		 *	the www. a policy needs.
-		 *
-		 *	@param		string		$url
-		 *
-		 *	@return 	string								'https://host' or 'https://host:port', or ''
-		 */
-		private static function _origin( string $url ): string {
-
-			$parts = parse_url( $url );
-
-			if( is_array( $parts ) === false || ( $parts['scheme'] ?? '' ) !== 'https' || isset( $parts['user'] ) === true || isset( $parts['pass'] ) === true )
-				return '';
-
-			$host = strtolower( (string) ( $parts['host'] ?? '' ) );
-
-			// The last label of a name is never all digits or a hex number (0x7f000001),
-			// and one that is is an ip address written in a form php does not call one.
-			// The D: without it '$' also matches before a trailing newline, which would
-			// end up in a header
-			if( $host === '' || strlen( $host ) > 253 || preg_match( '/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/D', $host ) !== 1
-				|| preg_match( '/(?:^|\.)(?:[0-9]+|0x[0-9a-f]*)$/iD', $host ) === 1 )
-				return '';
-
-			return 'https://'. $host. ( isset( $parts['port'] ) === true ? ':'. (int) $parts['port'] : '' );
-		}
-
-		/**
-		 *	One directive of a Content-Security-Policy, widened by some sources.
-		 *	The merge Modules\Jstext makes for the nonce, written out again
-		 *	because a feature may use nothing outside \Nino\*'s public API and its
-		 *	own directory - Consent carries the same routine for script-src.
-		 *
-		 *	Where the directive exists, the sources it lacks are appended to its
-		 *	first occurrence (a second occurrence is ignored by a browser, so
-		 *	adding one would widen nothing). Where it does not, it is built from
-		 *	the first fallback that does exist, since that is the list a browser
-		 *	would have used: naming 'self' by hand would narrow a policy whose
-		 *	default-src lists more. A policy with no such fallback is unrestricted
-		 *	already and is left alone, and so is a directive - or a fallback -
-		 *	that says 'none' or lists no source at all (the same
-		 *	thing to a browser): that is the project having decided.
-		 *
-		 *	@param		string		$policy				The header value
-		 *	@param		string		$directive		The directive to widen, e.g. 'frame-src'
-		 *	@param		array			$fallbacks		The directives a browser falls back to, nearest first
-		 *	@param		array			$sources			Origins to add
-		 *
-		 *	@return 	string								The widened policy, or $policy itself where nothing is added
-		 */
-		private static function _extendPolicy( string $policy, string $directive, array $fallbacks, array $sources ): string {
-
-			if( $sources === [] )
-				return $policy;
-
-			$directives = array_values( array_filter( array_map( 'trim', explode( ';', $policy ) ), static fn( string $part ): bool => $part !== '' ) );
-
-			$find = static function( string $name ) use ( $directives ): ?int {
-				foreach( $directives as $index => $part )
-					if( preg_match( '/^'. preg_quote( $name, '/' ). '(?:\s|$)/i', $part ) === 1 )
-						return $index;
-				return null;
-			};
-			// Closed: 'none', or a name with no source at all - which blocks everything
-			// just the same, and is the project having decided too
-			$none = static fn( string $part ): bool => preg_match( "/(?:^|\s)'none'(?:\s|\$)/i", $part ) === 1 || preg_match( '/^\S+$/D', $part ) === 1;
-
-			$index = $find( $directive );
-
-			if( $index === null ) {
-
-				foreach( $fallbacks as $fallback ) {
-
-					$from = $find( $fallback );
-
-					if( $from === null )
-						continue;
-
-					if( $none( $directives[$from] ) === true )
-						return $policy;
-
-					// The fallback's own list, under this directive's name
-					$directives[] = $directive. substr( $directives[$from], strlen( $fallback ) );
-					$index = array_key_last( $directives );
-					break;
-				}
-
-				if( $index === null )
-					return $policy;
-			}
-			elseif( $none( $directives[$index] ) === true )
-				return $policy;
-
-			$present = array_map( 'strtolower', preg_split( '/\s+/', $directives[$index] ) ?: [] );
-			$added = false;
-
-			foreach( $sources as $source )
-				if( in_array( strtolower( (string) $source ), $present, true ) === false ) {
-					$directives[$index] .= ' '. $source;
-					$present[] = strtolower( (string) $source );
-					$added = true;
-				}
-
-			// A directive built from its fallback is new even when it adds nothing
-			// the fallback did not name - and then it changes nothing, so it is not
-			// written either
-			return $added === true ? implode( '; ', $directives ) : $policy;
-		}
-
-		/**
 		 *	The picture on the surface, or nothing - which is a surface with the
 		 *	play mark and the two sentences on the page's own ground, and is
 		 *	what most embeds get
@@ -647,58 +497,8 @@ namespace Nino\Modules {
 			return str_replace(
 				'[[src]]',
 				htmlspecialchars( \Nino\Images::getUrl( $appData, $poster ), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ),
-				self::template( $appData, 'embed-poster' )
+				\Nino\Feature::template( $appData, self::TEMPLATES, 'embed-poster' )
 			);
-		}
-
-		/**
-		 *	The class of one's own a call adds to the surface, with the space in
-		 *	front of it that the template leaves out - escaped, and with its
-		 *	brackets as character references, because the markup is rendered
-		 *	once more
-		 *
-		 *	@param		array			$args					Shortcode attributes
-		 *
-		 *	@return 	string								'' or ' my-class'
-		 */
-		private static function _class( array $args ): string {
-
-			$class = trim( (string) ( $args['class'] ?? '' ) );
-
-			return $class === '' ? '' : ' '. str_replace( '[', '&#91;', htmlspecialchars( $class, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) );
-		}
-
-		/**
-		 *	One of this feature's own templates, read the way a project's are.
-		 *	Markup belongs in a template - see AGENTS.md, "Markup belongs in a
-		 *	template" - so what this class holds is which one and what goes in it
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$name					A file name below TEMPLATES, without .tpl
-		 *
-		 *	@return 	string								'' where the file is not there, which is logged
-		 */
-		public static function template( array &$appData, string $name ): string {
-
-			// A name from this class and nowhere else, and held to a slug anyway:
-			// the one thing this could otherwise be turned into is a read of
-			// something outside the feature
-			if( preg_match( '/^[a-z][a-z0-9-]*$/D', $name ) !== 1 )
-				return '';
-
-			$template = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $name. '.tpl', '' );
-
-			$template = is_string( $template ) === true ? rtrim( $template, "\n" ) : '';
-
-			/*	A template that is not there renders as nothing, which on a page looks
-				like a shortcode nobody wrote rather than like a feature missing a file.
-				Said out loud instead: E_USER_WARNING is Nino's "record this and carry
-				on" channel (see \Nino\Runtime::NON_FATAL_LEVELS), so the request
-				finishes and the log says which file	*/
-			if( $template === '' )
-				trigger_error( 'Nino: the template '. self::TEMPLATES. '/'. $name. '.tpl is missing or empty.', E_USER_WARNING );
-
-			return $template;
 		}
 	}
 

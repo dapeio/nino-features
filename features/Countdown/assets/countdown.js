@@ -1,10 +1,10 @@
 /**
  *	Nino - Countdown
  *	countdown.js	Counts the time left until the moment the markup carries, and
- *					puts the date back when it has passed. No dependencies, no
- *					build step - bundled into the project's own /.cache/script.js
- *					the same way the kernel bundles Nino.js/Nino.ui.js (see
- *					Countdown::init()).
+ *					puts the date back when it has passed. It needs Nino.js, which
+ *					every site loads (Nino.events.bindCallback() starts it), and no
+ *					build step: the manifest's assets bundle it into the project's
+ *					own /.cache/script.js, behind the kernel's scripts.
  *
  *					The arithmetic is here rather than on the server because a
  *					page cached for an hour would otherwise be an hour wrong. The
@@ -237,9 +237,6 @@
 			timer = setInterval( run, 1000 );
 	}
 
-	if( document.readyState === 'loading' )
-		document.addEventListener( 'DOMContentLoaded', init );
-	else
-		init();
+	Nino.events.bindCallback( 'ready', init );
 
 } )();

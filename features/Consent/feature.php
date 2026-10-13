@@ -1,8 +1,8 @@
 <?php
 // The feature manifest - what the Features panel reads to list, activate
-// and update this feature (see \Nino\Features and docs/features.md). The
-// class is not declared here: features/Consent/ can only ever serve
-// \Nino\Modules\Consent.
+// and update this feature (see \Nino\Features and docs/features.md, "The
+// manifest"). The class is not declared here: features/Consent/ can only ever
+// serve \Nino\Modules\Consent.
 return [
 	'key'					=> 'consent',
 	'name'				=> [ 'en_US' => 'Consent', 'de_DE' => 'Cookie-Einwilligung' ],
@@ -63,13 +63,15 @@ return [
 		],
 	],
 	'category'		=> 'security',
-	'version'			=> '1.0.0',
-	'nino'				=> '^1.3',
+	'version'			=> '1.1.0',
+	'nino'				=> '^1.8',
 	'requires'		=> [],
 	// Nothing under data/: the visitor's choice lives in a cookie in the
 	// browser, written by consent.js - never in a project-owned file a
 	// backup would have to carry
 	'data'				=> [],
+	// The banner's stylesheet and its script, into the site's two bundles
+	'assets'			=> [ '/features/Consent/assets/consent.css', '/features/Consent/assets/consent.js' ],
 	'settings'		=> [
 		'statistics' => [
 			'type'		=> 'bool',
@@ -132,7 +134,8 @@ return [
 	],
 	/*	The one shortcode of the two that is meant for a page: the button that opens the
 		choice again, for a privacy page. [consent] is the banner of the page frame
-		and stays a shortcode. Nino 1.5 ignores the key	*/
+		and stays a shortcode. The renderer is componentConsentSettings(), which hands
+		on to doConsentSettingsShortcode()	*/
 	'components'	=> [
 		'consent-settings' => [
 			'label'			=> [ 'en_US' => 'Consent settings', 'de_DE' => 'Einwilligung ändern' ],

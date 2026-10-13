@@ -35,10 +35,11 @@ namespace Nino\Modules {
 	 *
 	 *										compare.css/compare.js reach the browser the way the
 	 *										kernel ships its own Nino.css/Nino.js (see
-	 *										\Nino\AppData::DEFAULTS, '/nino/html/assets'): added to
-	 *										the SAME site-wide bundles the base install's
-	 *										html-header.tpl/html-footer.tpl already load on every
-	 *										page, not a bundle of this feature's own.
+	 *										\Nino\AppData::DEFAULTS, '/nino/html/assets'): the
+	 *										manifest's assets add them to the SAME site-wide
+	 *										bundles the base install's html-header.tpl/
+	 *										html-footer.tpl already load on every page, not a
+	 *										bundle of this feature's own.
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -62,9 +63,9 @@ namespace Nino\Modules {
 		public const int START_DEFAULT = 50;
 
 		/**
-		 *	Register the shortcode and ship the two static files - see this
-		 *	class' own docblock for why the site-wide bundles and not one of
-		 *	this feature's own
+		 *	Register the shortcode where the Components module does not own it;
+		 *	where it does - the manifest declares [compare] as a component - the
+		 *	names its schema cannot carry are renamed ahead of it
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
@@ -72,29 +73,12 @@ namespace Nino\Modules {
 		 */
 		public static function init( array &$appData ): void {
 
-			/*	Nino 1.6 has registered [compare] as a component from the manifest
-				before this runs (\Nino\Features::registerComponents()), and a second
-				registration here would take it back from the wrapper that fills in
-				the defaults. Nino 1.5 ignores the manifest key and needs it. The
-				wrapper hands on only the attributes the schema names, and an
-				attribute is a name without a hyphen: before-label and after-label are
-				renamed by a callback that runs ahead of it	*/
-			$components = class_exists( '\\Nino\\Modules\\Components' ) === true ? \Nino\Modules\Components::components( $appData ) : [];
-
-			if( isset( $components['compare'] ) === false )
-				\Nino\Html::addShortcode( $appData, 'compare', [ self::class, 'doShortcode' ] );
-			else
+			/*	The wrapper of the Components module renders the component, and it
+				hands on only the attributes the schema names. An attribute is a name
+				without a hyphen: before-label and after-label are renamed by a
+				callback that runs ahead of it	*/
+			if( \Nino\Feature::shortcode( $appData, 'compare', [ self::class, 'doShortcode' ] ) === false )
 				\Nino\Callbacks::registerCallback( $appData, '/nino/html/shortcode/compare', [ self::class, 'callbackShortcode' ], 1 );
-
-			/*	The virtual '/features/...' prefix resolves against
-				\Nino\Features::dir() (\Nino\Filesystem::FEATURES_DIR), the same way
-				TEMPLATES above is read - so '/features/Compare/assets/...' reaches
-				this feature's own copy wherever NINO_FEATURES_DIR put the features
-				directory, and a project that moved it has nothing to say in
-				'/nino/html/assets'. The kernel's own '/_nino/Nino.css' is named the
-				same way and resolves against the project root, which is where it sits	*/
-			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Compare/assets/compare.css' );
-			\Nino\Html::addAsset( $appData, '/.cache/script.js', '/features/Compare/assets/compare.js' );
 		}
 
 		/**
@@ -134,9 +118,9 @@ namespace Nino\Modules {
 			$alt = $alt === '' ? '' : $safe( \Nino\Html::renderHtml( $appData, $alt ) );
 
 			return str_replace(
-				[ '[[class]]', '[[ratio]]', '[[start]]', '[[before]]', '[[after]]', '[[alt]]', '[[beforelabel]]', '[[afterlabel]]' ],
+				[ '[[classes]]', '[[ratio]]', '[[start]]', '[[before]]', '[[after]]', '[[alt]]', '[[beforelabel]]', '[[afterlabel]]' ],
 				[
-					self::_class( $args ),
+					\Nino\Feature::classes( $args ),
 					$ratio,
 					(string) self::start( $args ),
 					$safe( \Nino\Images::getUrl( $appData, $before ) ),
@@ -145,7 +129,7 @@ namespace Nino\Modules {
 					$beforeLabel,
 					$afterLabel,
 				],
-				self::template( $appData, 'compare' )
+				\Nino\Feature::template( $appData, self::TEMPLATES, 'compare' )
 			);
 		}
 
@@ -188,23 +172,6 @@ namespace Nino\Modules {
 			$args['after-label']	= $args['afterLabel'];
 
 			return self::doShortcode( $appData, $args );
-		}
-
-		/**
-		 *	The class of one's own a call adds to the box, with the space in
-		 *	front of it that the template leaves out - escaped, and with its
-		 *	brackets as character references, because the markup is rendered
-		 *	once more
-		 *
-		 *	@param		array			$args					Shortcode attributes
-		 *
-		 *	@return 	string								'' or ' my-class'
-		 */
-		private static function _class( array $args ): string {
-
-			$class = trim( (string) ( $args['class'] ?? '' ) );
-
-			return $class === '' ? '' : ' '. str_replace( '[', '&#91;', htmlspecialchars( $class, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) );
 		}
 
 		/**
@@ -268,39 +235,6 @@ namespace Nino\Modules {
 				return '[[/feature/compare/side/'. $side. ']]';
 
 			return htmlspecialchars( \Nino\Html::renderHtml( $appData, $given ), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
-		}
-
-		/**
-		 *	One of this feature's own templates, read the way a project's are.
-		 *	Markup belongs in a template - see AGENTS.md, "Markup belongs in a
-		 *	template" - so what this class holds is which one and what goes in it
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$name					A file name below TEMPLATES, without .tpl
-		 *
-		 *	@return 	string								'' where the file is not there, which is logged
-		 */
-		public static function template( array &$appData, string $name ): string {
-
-			// A name from this class and nowhere else, and held to a slug anyway:
-			// the one thing this could otherwise be turned into is a read of
-			// something outside the feature
-			if( preg_match( '/^[a-z][a-z0-9-]*$/D', $name ) !== 1 )
-				return '';
-
-			$template = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $name. '.tpl', '' );
-
-			$template = is_string( $template ) === true ? rtrim( $template, "\n" ) : '';
-
-			/*	A template that is not there renders as nothing, which on a page looks
-				like a shortcode nobody wrote rather than like a feature missing a file.
-				Said out loud instead: E_USER_WARNING is Nino's "record this and carry
-				on" channel (see \Nino\Runtime::NON_FATAL_LEVELS), so the request
-				finishes and the log says which file	*/
-			if( $template === '' )
-				trigger_error( 'Nino: the template '. self::TEMPLATES. '/'. $name. '.tpl is missing or empty.', E_USER_WARNING );
-
-			return $template;
 		}
 	}
 

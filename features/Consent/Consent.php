@@ -36,15 +36,16 @@ namespace Nino\Modules {
 	 *
 	 *										consent.css/consent.js reach the browser the way the
 	 *										kernel ships its own Nino.css/Nino.js/Nino.ui.js (see
-	 *										\Nino\AppData::DEFAULTS, '/nino/html/assets'): added to
-	 *										the SAME site-wide bundle targets the base install's
-	 *										html-header.tpl/html-footer.tpl already load on every
-	 *										page ([assets /.cache/style.css], [assets
-	 *										/.cache/script.js]), not a bundle of this feature's
-	 *										own - so the banner's script gates consent-tagged
-	 *										scripts on every page, whether or not that page
-	 *										renders [consent] itself. See \Nino\Html::addAsset()
-	 *										and docs/development.md, "Assets Are Not Templates".
+	 *										\Nino\AppData::DEFAULTS, '/nino/html/assets'): the
+	 *										manifest's assets add them to the SAME site-wide
+	 *										bundle targets the base install's html-header.tpl/
+	 *										html-footer.tpl already load on every page ([assets
+	 *										/.cache/style.css], [assets /.cache/script.js]), not a
+	 *										bundle of this feature's own - so the banner's script
+	 *										gates consent-tagged scripts on every page, whether or
+	 *										not that page renders [consent] itself. See
+	 *										\Nino\Features::registerAssets() and
+	 *										docs/development.md, "Assets Are Not Templates".
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -75,9 +76,10 @@ namespace Nino\Modules {
 		private const string DEFAULT_COOKIE_NAME = 'nino_consent';
 
 		/**
-		 *	Register the two shortcodes and ship consent.css/consent.js into
-		 *	the site's own asset bundles - see this class' own docblock for
-		 *	why the site-wide targets and not a bundle of this feature's own
+		 *	Register the shortcodes - [consent-settings] where the Components module
+		 *	does not own it, since the manifest declares it as a component - and hook
+		 *	the output phase, where the hosts of the page's gated scripts join the
+		 *	policy, and the Legal module's section on consent
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
@@ -85,31 +87,18 @@ namespace Nino\Modules {
 		 */
 		public static function init( array &$appData ): void {
 
+			// The banner is no component: a shortcode of the page frame
 			\Nino\Html::addShortcode( $appData, 'consent', [ self::class, 'doConsentShortcode' ] );
 
-			/*	Nino 1.6 has registered [consent-settings] as a component from the
-				manifest before this runs (\Nino\Features::registerComponents()), and a
-				second registration here would take it back from the wrapper that fills
-				in the defaults. Nino 1.5 ignores the manifest key and needs it	*/
-			$components = class_exists( '\\Nino\\Modules\\Components' ) === true ? \Nino\Modules\Components::components( $appData ) : [];
-
-			if( isset( $components['consent-settings'] ) === false )
-				\Nino\Html::addShortcode( $appData, 'consent-settings', [ self::class, 'doConsentSettingsShortcode' ] );
+			\Nino\Feature::shortcode( $appData, 'consent-settings', [ self::class, 'doConsentSettingsShortcode' ] );
 
 			// A placeholder's host has to be in the policy's script-src before the
 			// browser may load what consent.js releases - see callbackOutput()
 			\Nino\Callbacks::registerCallback( $appData, '/nino/http/output', [ self::class, 'callbackOutput' ] );
 
-			// The name as a string: the Legal module is Nino 1.4's and may not be
-			// there - nothing fires the hook then, and nothing is lost
+			// The name as a string: the Legal module is a kernel module a project
+			// may have switched off - nothing fires the hook then, and nothing is lost
 			\Nino\Callbacks::registerCallback( $appData, '/nino/legal/section', [ self::class, 'callbackLegalSection' ] );
-
-			// A source under \Nino\Filesystem::FEATURES_DIR is resolved
-			// against \Nino\Features::dir() rather than against the project
-			// root, so '/features/Consent/assets/...' reaches this feature's
-			// own copy wherever NINO_FEATURES_DIR put the directory
-			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Consent/assets/consent.css' );
-			\Nino\Html::addAsset( $appData, '/.cache/script.js', '/features/Consent/assets/consent.js' );
 		}
 
 		/**
@@ -135,10 +124,11 @@ namespace Nino\Modules {
 
 			/*	No address in the settings: the privacy policy of the Legal module, in
 				the visitor's language, where the module is there and its page has a
-				route. The setting wins whenever it is set. class_exists() and not
-				method_exists(): PHPStan reads the second as always false where the
-				class is not part of the checkout and as always true where it is, and
-				the kernel this feature may run on has no such class	*/
+				route. The setting wins whenever it is set. A feature does not depend
+				on a module (the catalogue's AGENTS.md, section 4c), so what it asks of
+				Legal sits behind class_exists() and not method_exists(): PHPStan reads
+				the second as always false where the class is not part of the checkout
+				and as always true where it is	*/
 			if( $policyUrl === '' && class_exists( '\\Nino\\Modules\\Legal' ) === true )
 				$policyUrl = \Nino\Modules\Legal::url( $appData, 'privacy' );
 
@@ -151,7 +141,7 @@ namespace Nino\Modules {
 				// The leading space is the sentence's, not the link's: a file that
 				// starts with a space is a space nobody sees in a diff, and a banner
 				// with no policy url must not leave one behind either
-				: ' '. str_replace( '[[url]]', htmlspecialchars( $policyUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ), self::template( $appData, 'consent-policy-link' ) );
+				: ' '. str_replace( '[[url]]', htmlspecialchars( $policyUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ), \Nino\Feature::template( $appData, self::TEMPLATES, 'consent-policy-link' ) );
 
 			/*	The two that carry markup last: str_replace() works through its arrays
 				in order, so a token after them would be looked for in what they put in
@@ -159,7 +149,7 @@ namespace Nino\Modules {
 			return str_replace(
 				[ '[[cookie]]', '[[days]]', '[[policy]]', '[[categories]]' ],
 				[ htmlspecialchars( $cookieName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ), (string) $days, $policy, $categories ],
-				self::template( $appData, 'consent-banner' )
+				\Nino\Feature::template( $appData, self::TEMPLATES, 'consent-banner' )
 			);
 		}
 
@@ -174,7 +164,7 @@ namespace Nino\Modules {
 		 */
 		public static function doConsentSettingsShortcode( array &$appData, array $args ): string {
 
-			return str_replace( '[[class]]', self::_class( $args ), self::template( $appData, 'consent-open' ) );
+			return str_replace( '[[classes]]', \Nino\Feature::classes( $args ), \Nino\Feature::template( $appData, self::TEMPLATES, 'consent-open' ) );
 		}
 
 		/**
@@ -191,23 +181,6 @@ namespace Nino\Modules {
 		public static function componentConsentSettings( array &$appData, array $args ): string {
 
 			return self::doConsentSettingsShortcode( $appData, $args );
-		}
-
-		/**
-		 *	The class of one's own a call adds to the button, with the space in
-		 *	front of it that the template leaves out - escaped, and with its
-		 *	brackets as character references, because the markup is rendered
-		 *	once more
-		 *
-		 *	@param		array			$args					Shortcode attributes
-		 *
-		 *	@return 	string								'' or ' my-class'
-		 */
-		private static function _class( array $args ): string {
-
-			$class = trim( (string) ( $args['class'] ?? '' ) );
-
-			return $class === '' ? '' : ' '. str_replace( '[', '&#91;', htmlspecialchars( $class, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) );
 		}
 
 		/**
@@ -230,7 +203,7 @@ namespace Nino\Modules {
 			if( ( $section['type'] ?? null ) !== 'privacy' || ( $section['id'] ?? null ) !== 'consent' || is_string( $section['html'] ?? null ) === false )
 				return;
 
-			$section['html'] .= str_replace( '[[class]]', '', self::template( $appData, 'consent-open' ) );
+			$section['html'] .= str_replace( '[[classes]]', '', \Nino\Feature::template( $appData, self::TEMPLATES, 'consent-open' ) );
 		}
 
 		/**
@@ -303,7 +276,7 @@ namespace Nino\Modules {
 		 *
 		 *	script-src is extended where it exists and built from default-src where
 		 *	it does not; script-src-elem only where the policy has one; 'none' is
-		 *	left as the project decided it - see _extendPolicy().
+		 *	left as the project decided it - see \Nino\Http::allowSource().
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array			&$request			(reference) Current request and its response
@@ -339,7 +312,7 @@ namespace Nino\Modules {
 			if( preg_match_all( '/<script\b(?:[^>"\']|"[^"]*"|\'[^\']*\')*+>/i', $body, $tags ) === false )
 				return;
 
-			$sources = [];
+			$origins = [];
 
 			foreach( $tags[0] as $tag ) {
 
@@ -348,22 +321,19 @@ namespace Nino\Modules {
 				if( strtolower( $attributes['type'] ?? '' ) !== 'text/plain' || in_array( $attributes['data-consent'] ?? '', $offered, true ) === false )
 					continue;
 
-				$origin = self::_origin( $attributes['data-src'] ?? '' );
+				$origin = \Nino\Feature::origin( $attributes['data-src'] ?? '' );
 
 				if( $origin !== '' )
-					$sources[$origin] = true;
+					$origins[$origin] = true;
 			}
 
-			$sources = array_keys( $sources );
-			$widened = self::_extendPolicy( $policy, 'script-src', [ 'default-src' ], $sources );
-
-			// Only where the policy has one already: a script-src-elem nobody wrote
-			// is not one to create, and the browser would answer script elements
-			// from script-src when it is not there
-			$widened = self::_extendPolicy( $widened, 'script-src-elem', [], $sources );
-
-			if( $widened !== $policy )
-				$request['/nino/http/response']['header']['Content-Security-Policy'] = $widened;
+			// A script-src-elem is widened where the policy has one. Where it has
+			// none the call changes nothing, and it is not created: the browser
+			// answers script elements from script-src, which has the origin by now
+			foreach( array_keys( $origins ) as $origin ) {
+				\Nino\Feature::allowOrigin( $request, 'script-src', (string) $origin );
+				\Nino\Feature::allowOrigin( $request, 'script-src-elem', (string) $origin );
+			}
 		}
 
 		/**
@@ -395,124 +365,6 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	The origin of an address as a Content-Security-Policy source, or ''
-		 *	where it cannot safely be one: https only, no credentials, and a host
-		 *	that is a plain ascii name - no ip literal (a name whose last label is a number or a
-		 *	hex number is one, written in a form php does not call one), no '*', no
-		 *	whitespace, no ';' or ',' that would end the directive. A non-ascii host would have
-		 *	to be written as punycode; it is refused rather than converted. The
-		 *	port is kept, since a source without one means 443 only.
-		 *
-		 *	The same routine Embed carries, since a feature uses nothing outside
-		 *	\Nino\*'s public API and its own directory.
-		 *
-		 *	@param		string		$url
-		 *
-		 *	@return 	string								'https://host' or 'https://host:port', or ''
-		 */
-		private static function _origin( string $url ): string {
-
-			$parts = parse_url( $url );
-
-			if( is_array( $parts ) === false || ( $parts['scheme'] ?? '' ) !== 'https' || isset( $parts['user'] ) === true || isset( $parts['pass'] ) === true )
-				return '';
-
-			$host = strtolower( (string) ( $parts['host'] ?? '' ) );
-
-			// The last label of a name is never all digits or a hex number (0x7f000001),
-			// and one that is is an ip address written in a form php does not call one.
-			// The D: without it '$' also matches before a trailing newline, which would
-			// end up in a header
-			if( $host === '' || strlen( $host ) > 253 || preg_match( '/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/D', $host ) !== 1
-				|| preg_match( '/(?:^|\.)(?:[0-9]+|0x[0-9a-f]*)$/iD', $host ) === 1 )
-				return '';
-
-			return 'https://'. $host. ( isset( $parts['port'] ) === true ? ':'. (int) $parts['port'] : '' );
-		}
-
-		/**
-		 *	One directive of a Content-Security-Policy, widened by some sources.
-		 *	The merge Modules\Jstext makes for the nonce, written out again
-		 *	because a feature may use nothing outside \Nino\*'s public API and
-		 *	its own directory - Embed carries the same routine for frame-src.
-		 *
-		 *	Where the directive exists, the sources it lacks are appended to its
-		 *	first occurrence (a second occurrence is ignored by a browser, so
-		 *	adding one would widen nothing). Where it does not, it is built from
-		 *	the first fallback that does exist, since that is the list a browser
-		 *	would have used: naming 'self' by hand would narrow a policy whose
-		 *	default-src lists more. A policy with no such fallback is unrestricted
-		 *	already and is left alone, and so is a directive - or a fallback -
-		 *	that says 'none' or lists no source at all (the same
-		 *	thing to a browser): that is the project having decided.
-		 *
-		 *	@param		string		$policy				The header value
-		 *	@param		string		$directive		The directive to widen, e.g. 'script-src'
-		 *	@param		array			$fallbacks		The directives a browser falls back to, nearest first
-		 *	@param		array			$sources			Origins to add
-		 *
-		 *	@return 	string								The widened policy, or $policy itself where nothing is added
-		 */
-		private static function _extendPolicy( string $policy, string $directive, array $fallbacks, array $sources ): string {
-
-			if( $sources === [] )
-				return $policy;
-
-			$directives = array_values( array_filter( array_map( 'trim', explode( ';', $policy ) ), static fn( string $part ): bool => $part !== '' ) );
-
-			$find = static function( string $name ) use ( $directives ): ?int {
-				foreach( $directives as $index => $part )
-					if( preg_match( '/^'. preg_quote( $name, '/' ). '(?:\s|$)/i', $part ) === 1 )
-						return $index;
-				return null;
-			};
-			// Closed: 'none', or a name with no source at all - which blocks everything
-			// just the same, and is the project having decided too
-			$none = static fn( string $part ): bool => preg_match( "/(?:^|\s)'none'(?:\s|\$)/i", $part ) === 1 || preg_match( '/^\S+$/D', $part ) === 1;
-
-			$index = $find( $directive );
-
-			if( $index === null ) {
-
-				foreach( $fallbacks as $fallback ) {
-
-					$from = $find( $fallback );
-
-					if( $from === null )
-						continue;
-
-					if( $none( $directives[$from] ) === true )
-						return $policy;
-
-					// The fallback's own list, under this directive's name
-					$directives[] = $directive. substr( $directives[$from], strlen( $fallback ) );
-					$index = array_key_last( $directives );
-					break;
-				}
-
-				if( $index === null )
-					return $policy;
-			}
-			elseif( $none( $directives[$index] ) === true )
-				return $policy;
-
-			$present = array_map( 'strtolower', preg_split( '/\s+/', $directives[$index] ) ?: [] );
-			$added = false;
-
-			foreach( $sources as $source )
-				if( in_array( strtolower( (string) $source ), $present, true ) === false ) {
-					$directives[$index] .= ' '. $source;
-					$present[] = strtolower( (string) $source );
-					$added = true;
-				}
-
-			// A directive built from its fallback is new even when it adds nothing
-			// the fallback did not name - and then it changes nothing, so it is not
-			// written either
-			return $added === true ? implode( '; ', $directives ) : $policy;
-		}
-
-		/**
 		 *	One category's checkbox row, or '' when it is "off" for this
 		 *	site (a category the settings did not enable is neither shown
 		 *	nor storable)
@@ -532,40 +384,8 @@ namespace Nino\Modules {
 			return str_replace(
 				[ '[[category]]', '[[state]]' ],
 				[ $category, ( $isNecessary === true ? ' checked disabled' : '' ) ],
-				self::template( $appData, 'consent-category' )
+				\Nino\Feature::template( $appData, self::TEMPLATES, 'consent-category' )
 			);
-		}
-		/**
-		 *	One of this feature's own templates, read the way a project's are.
-		 *	Markup belongs in a template - see AGENTS.md, "Markup belongs in a
-		 *	template" - so what this class holds is which one and what goes in it
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$name					A file name below TEMPLATES, without .tpl
-		 *
-		 *	@return 	string								'' where the file is not there, which is logged
-		 */
-		public static function template( array &$appData, string $name ): string {
-
-			// A name from this class and nowhere else, and held to a slug anyway:
-			// the one thing this could otherwise be turned into is a read of
-			// something outside the feature
-			if( preg_match( '/^[a-z][a-z0-9-]*$/D', $name ) !== 1 )
-				return '';
-
-			$template = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $name. '.tpl', '' );
-
-			$template = is_string( $template ) === true ? rtrim( $template, "\n" ) : '';
-
-			/*	A template that is not there renders as nothing, which on a page looks
-				like a shortcode nobody wrote rather than like a feature missing a file.
-				Said out loud instead: E_USER_WARNING is Nino's "record this and carry
-				on" channel (see \Nino\Runtime::NON_FATAL_LEVELS), so the request
-				finishes and the log says which file	*/
-			if( $template === '' )
-				trigger_error( 'Nino: the template '. self::TEMPLATES. '/'. $name. '.tpl is missing or empty.', E_USER_WARNING );
-
-			return $template;
 		}
 	}
 

@@ -1,11 +1,10 @@
 /**
  *	Nino - Lightbox
  *	lightbox.css	The overlay lightbox.js opens, and nothing else. Bundled into
- *							the project's own /.cache/style.css the same way the kernel
- *							bundles Nino.css (see Lightbox::init() and
- *							docs/development.md, "Assets Are Not Templates") - never
- *							rendered through the fill/shortcode engine, so nothing in
- *							here is a textfill.
+ *							the project's own /.cache/style.css by the manifest's assets
+ *							(docs/features.md, "Assets") - never rendered through the
+ *							fill/shortcode engine (docs/development.md, "Assets Are Not
+ *							Templates"), so nothing in here is a textfill.
  *
  *							Two custom properties and no more: the backdrop and the
  *							colour the controls are drawn in. A lightbox is a black
@@ -224,14 +223,12 @@
 }
 
 /*	Asked for less motion: the lightbox still opens, still swaps, still
-	closes - it just stops animating while it does. The spinner keeps
-	turning, because a spinner that does not turn is a dot. */
+	closes - it just stops animating while it does. The clamp of Nino.css
+	cuts every transition and runs the spinner through one iteration of
+	.01ms, so the spinner stands still, a ring while the picture is on its
+	way. What the clamp cannot say is that the picture stays on screen while
+	it is swapped, where it would go out and come back. */
 @media (prefers-reduced-motion: reduce) {
-	.nino-lightbox,
-	.nino-lightbox-image,
-	.nino-lightbox-btn {
-		transition: none;
-	}
 	.nino-lightbox.is-swapping .nino-lightbox-image {
 		opacity: 1;
 	}

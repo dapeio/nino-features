@@ -28,36 +28,22 @@ namespace Nino\Modules {
 	 *										required of the page, and nothing here knows where
 	 *										the images came from.
 	 *
-	 *										There is nothing for PHP to do, so this class is the
-	 *										two lines that put the stylesheet and the script into
-	 *										the site's own bundles - the same targets the base
+	 *										There is nothing for PHP to do, and the manifest does
+	 *										all of it: its assets put the stylesheet and the script
+	 *										into the site's own bundles while the feature is
+	 *										listed in /nino/modules - the same targets the base
 	 *										install's html-header.tpl/html-footer.tpl already load
 	 *										on every page, since a lightbox is opened from
-	 *										whatever page has one. See \Nino\Html::addAsset() and
-	 *										docs/development.md, "Assets Are Not Templates".
+	 *										whatever page has one (\Nino\Features::registerAssets()
+	 *										and docs/features.md, "Assets"). The class is the
+	 *										module the feature is listed by and has no method; the
+	 *										kernel calls init() of the classes that have one.
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
 	 *	@link							https://github.com/dapeio/nino
 	 */
 	class Lightbox {
-
-		/**
-		 *	Ship lightbox.css/lightbox.js into the site's own asset bundles
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *
-		 *	@return 	void
-		 */
-		public static function init( array &$appData ): void {
-
-			// The virtual '/features/...' prefix resolves against
-			// \Nino\Features::dir() (\Nino\Filesystem::FEATURES_DIR), so
-			// '/features/Lightbox/...' reaches this feature's own copy wherever
-			// NINO_FEATURES_DIR put the features directory
-			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Lightbox/assets/lightbox.css' );
-			\Nino\Html::addAsset( $appData, '/.cache/script.js', '/features/Lightbox/assets/lightbox.js' );
-		}
 	}
 
 }

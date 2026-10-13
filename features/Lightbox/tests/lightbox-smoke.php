@@ -5,9 +5,10 @@ declare(strict_types=1);
  *	Nino
  *	lightbox-smoke.php	Contract test for the Lightbox feature
  *											(Modules\Lightbox): the manifest, the activation
- *											through \Nino\Features, the one thing the class does -
- *											putting lightbox.css/lightbox.js into the site's own
- *											asset bundles (\Nino\Html::addAsset()) - and
+ *											through \Nino\Features, the one thing the feature does -
+ *											its manifest puts lightbox.css/lightbox.js into the
+ *											site's own asset bundles
+ *											(\Nino\Features::registerAssets()) - and
  *											deactivation. The behaviour those two files carry is
  *											the browser's, and lightbox-js-smoke.js beside this
  *											file measures it; this test runs that one too where
@@ -60,21 +61,23 @@ check( 'the registry lists it inactive, with nothing in the way', ( static funct
 
 check( 'activation succeeds', \Nino\Features::activate( $appData, 'lightbox' ) === true );
 check( 'the class is listed and the version recorded', in_array( '\\Nino\\Modules\\Lightbox', \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/modules'], true ) === true
-	&& \Nino\Features::get( $appData, 'lightbox' )['installed'] === '1.0.0' );
+	&& \Nino\Features::get( $appData, 'lightbox' )['installed'] === '1.1.0' );
 check( 'activation wrote no template and no text of its own into the project', is_dir( ninoSandboxDir( $appData ). '/templates' ) === false
 	&& \Nino\Filesystem::getFileContent( $appData, '/text/en_US.php', [] ) === [] );
 
 echo "\n";
 
 
-// --- init(): the asset bundle --------------------------------------------------
+// --- The manifest's assets: the asset bundle ------------------------------------
 
-echo "Modules\\Lightbox::init() - the asset bundle\n";
+echo "The manifest's assets - the asset bundle\n";
 
 // Modules\Assets is what turns [assets ...] into a <link>/<script> tag at
 // all - the sandbox starts with no modules, so it is added here purely to
-// exercise the real shortcode end to end below
+// exercise the real shortcode end to end below. The bundles are filled the
+// way \Nino\init() fills them, before the modules' init()
 $appData['/nino/modules'][] = '\\Nino\\Modules\\Assets';
+\Nino\Features::registerAssets( $appData );
 \Nino\Modules::callModules( $appData, 'init' );
 
 check( 'lightbox.css joined the project\'s own /.cache/style.css bundle', in_array( '/features/Lightbox/assets/lightbox.css', \Nino\Html::getAssets( $appData, '/.cache/style.css' ), true ) === true );

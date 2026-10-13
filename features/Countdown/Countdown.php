@@ -49,10 +49,10 @@ namespace Nino\Modules {
 	 *										engine resolves them and the script only chooses.
 	 *
 	 *										countdown.css/countdown.js reach the browser the way
-	 *										the kernel ships its own Nino.css/Nino.js: added to
-	 *										the SAME site-wide bundles the base install's
-	 *										html-header.tpl/html-footer.tpl already load on every
-	 *										page.
+	 *										the kernel ships its own Nino.css/Nino.js: the
+	 *										manifest's assets add them to the SAME site-wide
+	 *										bundles the base install's html-header.tpl/
+	 *										html-footer.tpl already load on every page.
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -80,7 +80,9 @@ namespace Nino\Modules {
 		public const string FORMAT_DEFAULT = 'Y-m-d H:i';
 
 		/**
-		 *	Register the shortcode and ship the two static files
+		 *	Register the shortcode where the Components module does not own it:
+		 *	the manifest declares [countdown] as a component, which that module
+		 *	renders through doShortcode()
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
@@ -88,23 +90,7 @@ namespace Nino\Modules {
 		 */
 		public static function init( array &$appData ): void {
 
-			/*	Nino 1.6 has registered [countdown] as a component from the manifest
-				before this runs (\Nino\Features::registerComponents()), and a second
-				registration here would take it back from the wrapper that fills in
-				the defaults. Nino 1.5 ignores the manifest key and needs it	*/
-			$components = class_exists( '\\Nino\\Modules\\Components' ) === true ? \Nino\Modules\Components::components( $appData ) : [];
-
-			if( isset( $components['countdown'] ) === false )
-				\Nino\Html::addShortcode( $appData, 'countdown', [ self::class, 'doShortcode' ] );
-
-			/*	The virtual '/features/...' prefix resolves against
-				\Nino\Features::dir() (\Nino\Filesystem::FEATURES_DIR), the same way
-				TEMPLATES above is read - so '/features/Countdown/assets/...' reaches
-				this feature's own copy wherever NINO_FEATURES_DIR put the features
-				directory, and a project that moved it has nothing to say in
-				'/nino/html/assets'	*/
-			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Countdown/assets/countdown.css' );
-			\Nino\Html::addAsset( $appData, '/.cache/script.js', '/features/Countdown/assets/countdown.js' );
+			\Nino\Feature::shortcode( $appData, 'countdown', [ self::class, 'doShortcode' ] );
 		}
 
 		/**
@@ -147,31 +133,16 @@ namespace Nino\Modules {
 			// The parts last - they are built markup, and str_replace() works
 			// through its arrays in order
 			return str_replace(
-				[ '[[class]]', '[[iso]]', '[[date]]', '[[done]]', '[[parts]]' ],
+				[ '[[classes]]', '[[iso]]', '[[date]]', '[[done]]', '[[parts]]' ],
 				[
-					self::_class( $args ),
+					\Nino\Feature::classes( $args ),
 					$safe( $moment->format( \DateTimeInterface::ATOM ) ),
 					$safe( $moment->format( $format ) ),
 					$done,
 					$parts,
 				],
-				self::template( $appData, 'countdown' )
+				\Nino\Feature::template( $appData, self::TEMPLATES, 'countdown' )
 			);
-		}
-
-		/**
-		 *	[countdown] as the Components module hands it over, the Builder's
-		 *	way: every attribute is there, an empty one where nothing was
-		 *	written, and doShortcode() reads them as it reads a hand-written call
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array			$args					The resolved arguments (see \Nino\Modules\Components::dispatch())
-		 *
-		 *	@return 	string								What doShortcode() renders for them
-		 */
-		public static function componentCountdown( array &$appData, array $args ): string {
-
-			return self::doShortcode( $appData, $args );
 		}
 
 		/**
@@ -279,23 +250,6 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	The class of one's own a call adds to the counter, with the space in
-		 *	front of it that the template leaves out - escaped, and with its
-		 *	brackets as character references, because the markup is rendered
-		 *	once more
-		 *
-		 *	@param		array			$args					Shortcode attributes
-		 *
-		 *	@return 	string								'' or ' my-class'
-		 */
-		private static function _class( array $args ): string {
-
-			$class = trim( (string) ( $args['class'] ?? '' ) );
-
-			return $class === '' ? '' : ' '. str_replace( '[', '&#91;', htmlspecialchars( $class, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) );
-		}
-
-		/**
 		 *	One part of the counter, with both forms of its name where the fill
 		 *	engine resolves them - a static asset cannot read a text fill, so
 		 *	the script is handed the two words rather than the key
@@ -313,39 +267,8 @@ namespace Nino\Modules {
 			return str_replace(
 				[ '[[unit]]', '[[one]]', '[[many]]' ],
 				[ $unit, $part. 'one]]', $part. 'many]]' ],
-				self::template( $appData, 'countdown-part' )
+				\Nino\Feature::template( $appData, self::TEMPLATES, 'countdown-part' )
 			);
-		}
-
-		/**
-		 *	One of this feature's own templates, read the way a project's are.
-		 *	Markup belongs in a template - see AGENTS.md, "Markup belongs in a
-		 *	template" - so what this class holds is which one and what goes in it
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$name					A file name below TEMPLATES, without .tpl
-		 *
-		 *	@return 	string								'' where the file is not there, which is logged
-		 */
-		public static function template( array &$appData, string $name ): string {
-
-			// A name from this class and nowhere else, and held to a slug anyway
-			if( preg_match( '/^[a-z][a-z0-9-]*$/D', $name ) !== 1 )
-				return '';
-
-			$template = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $name. '.tpl', '' );
-
-			$template = is_string( $template ) === true ? rtrim( $template, "\n" ) : '';
-
-			/*	A template that is not there renders as nothing, which on a page looks
-				like a shortcode nobody wrote rather than like a feature missing a file.
-				Said out loud instead: E_USER_WARNING is Nino's "record this and carry
-				on" channel (see \Nino\Runtime::NON_FATAL_LEVELS), so the request
-				finishes and the log says which file	*/
-			if( $template === '' )
-				trigger_error( 'Nino: the template '. self::TEMPLATES. '/'. $name. '.tpl is missing or empty.', E_USER_WARNING );
-
-			return $template;
 		}
 	}
 

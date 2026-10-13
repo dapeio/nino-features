@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-// Die vier Wörter des Schalters - bei der Aktivierung einmal in die
+// Die vier Wörter des Schalters - bei jeder Aktivierung in die
 // text/de_DE.php des Projekts gemischt (add-only: ein Schlüssel, den das
-// Projekt schon hat, bleibt); ab dann pflegen Redakteure sie im Panel
-// Texte.
+// Projekt schon hat, bleibt, einer, der fehlt, kommt dazu); ab dann pflegen
+// Redakteure sie im Panel Texte.
 return [
 
 	// Was der Schalter als Ganzes ist, für Screenreader - die drei Knöpfe

@@ -5,10 +5,10 @@
  *						what a visitor without JavaScript is given, and - once
  *						compare.js has added .nino-is-ready - the two stacked under
  *						a divider. Bundled into the project's own /.cache/style.css
- *						the same way the kernel bundles Nino.css (see
- *						Compare::init() and docs/development.md, "Assets Are Not
- *						Templates") - never rendered through the fill/shortcode
- *						engine, so nothing in here is a textfill.
+ *						by the manifest's assets (docs/features.md, "Assets") - never
+ *						rendered through the fill/shortcode engine
+ *						(docs/development.md, "Assets Are Not Templates"), so nothing
+ *						in here is a textfill.
  *
  *						The clipping is here rather than in the script: the script
  *						reads the range control's value into
@@ -25,25 +25,25 @@
 /* Without the script: both pictures, both captions, under one another */
 .nino-compare-frame {
 	display: grid;
-	gap: var(--space-2, 1rem);
+	gap: var(--space-2);
 }
 .nino-compare-image {
 	display: block;
 	width: 100%;
 	height: auto;
-	border-radius: var(--radius, .2rem);
+	border-radius: var(--radius);
 }
 .nino-compare-side {
 	display: block;
-	font-size: var(--fontsize-small, .875rem);
+	font-size: var(--fontsize-small);
 	opacity: .8;
 }
 .nino-compare-divider {
 	display: none;
 }
 .nino-compare-caption {
-	margin-top: var(--space-1, .5rem);
-	font-size: var(--fontsize-small, .875rem);
+	margin-top: var(--space-1);
+	font-size: var(--fontsize-small);
 	opacity: .8;
 }
 /* An empty caption is not a caption - alt="" leaves the element with nothing
@@ -58,7 +58,7 @@
 	display: block;
 	position: relative;
 	overflow: hidden;
-	border-radius: var(--radius, .2rem);
+	border-radius: var(--radius);
 	aspect-ratio: var(--nino-compare-ratio, 4 / 3);
 }
 /*	The ratio is a property of the pair rather than of the frame alone: the
@@ -88,18 +88,18 @@
 
 .nino-compare.nino-is-ready .nino-compare-side {
 	position: absolute;
-	top: var(--space-2, 1rem);
+	top: var(--space-2);
 	z-index: 2;
 	padding: .25em .7em;
-	border-radius: var(--radius, .2rem);
+	border-radius: var(--radius);
 	background-color: rgba(0, 0, 0, .55);
 	color: #fff;
-	font-size: var(--fontsize-small, .875rem);
+	font-size: var(--fontsize-small);
 	opacity: 1;
 	pointer-events: none;
 }
-.nino-compare.nino-is-ready .nino-compare-side--before { left: var(--space-2, 1rem); }
-.nino-compare.nino-is-ready .nino-compare-side--after { right: var(--space-2, 1rem); }
+.nino-compare.nino-is-ready .nino-compare-side--before { left: var(--space-2); }
+.nino-compare.nino-is-ready .nino-compare-side--after { right: var(--space-2); }
 
 .nino-compare.nino-is-ready .nino-compare-divider {
 	display: block;
@@ -142,7 +142,7 @@
 	cursor: ew-resize;
 }
 .nino-compare .nino-compare-range:focus-visible {
-	outline: 2px solid var(--color-accent, currentColor);
+	outline: 2px solid var(--color-accent);
 	outline-offset: 2px;
 }
 .nino-compare .nino-compare-range::-webkit-slider-thumb {

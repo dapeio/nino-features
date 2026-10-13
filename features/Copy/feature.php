@@ -19,16 +19,16 @@ return [
 				'de_DE' => 'Wofür der Knopf da ist, für Leser, die nicht sehen, woneben er steht.',
 			],
 			'[copy block]...[/copy]' => [
-				'en_US' => 'A block rather than a line, with the whitespace kept - painted as one by copy.css, because everything this writes has to be able to stand inside a paragraph.',
-				'de_DE' => 'Ein Block statt einer Zeile, mit erhaltenen Leerräumen - von copy.css als solcher gezeichnet, denn alles, was hier geschrieben wird, muss in einem Absatz stehen können.',
+				'en_US' => 'A block rather than a line, with the whitespace kept - painted as one by copy.css, because everything this writes has to be able to stand inside a paragraph. block="1" is the same, and so are true, yes and on, in any case and with a space around them.',
+				'de_DE' => 'Ein Block statt einer Zeile, mit erhaltenen Leerräumen - von copy.css als solcher gezeichnet, denn alles, was hier geschrieben wird, muss in einem Absatz stehen können. block="1" ist dasselbe, ebenso true, yes und on, in beliebiger Schreibung und mit Leerzeichen darum.',
 			],
 			'[copy value="DE02120300000000202051"]DE02 1203 ...[/copy]' => [
 				'en_US' => 'Copy this instead of what is shown - a number grouped for reading, copied without the spaces.',
 				'de_DE' => 'Kopiert dies statt des Gezeigten - eine zum Lesen gruppierte Nummer, ohne die Leerzeichen kopiert.',
 			],
 			'[copy /project/company/bank/iban]' => [
-				'en_US' => 'The line of a text key, or of text="DE02 ..." written out - what the Builder writes, as plain text, with block="1" for a block. Nino 1.6 and later.',
-				'de_DE' => 'Die Zeile eines Textschlüssels, oder von text="DE02 ..." ausgeschrieben - das schreibt der Builder, als reiner Text, mit block="1" für einen Block. Ab Nino 1.6.',
+				'en_US' => 'The line of a text key, or of text="DE02 ..." written out - what the Builder writes, as plain text, with block="1" for a block.',
+				'de_DE' => 'Die Zeile eines Textschlüssels, oder von text="DE02 ..." ausgeschrieben - das schreibt der Builder, als reiner Text, mit block="1" für einen Block.',
 			],
 			'[copy ... class="my-class"]' => [
 				'en_US' => 'A class of your own, added to those of the line. What the Builder writes for its custom classes.',
@@ -40,8 +40,8 @@ return [
 		'panel' => [],
 		'callbacks' => [
 			'/nino/html/shortcode/copy' => [
-				'en_US' => 'Runs ahead of the component: value= of a call is handed on as the attribute copied, the word block as block="1" and the text between the tags as text=, which the Builder writes. Nino 1.5 has no component and no need for it.',
-				'de_DE' => 'Läuft vor der Komponente: value= eines Aufrufs wird als das Attribut copied weitergegeben, das Wort block als block="1" und der Text zwischen den Marken als text=, wie der Builder es schreibt. Nino 1.5 kennt keine Komponente und braucht es nicht.',
+				'en_US' => 'Runs ahead of the component: value= of a call is handed on as the attribute copied, the word block - or a named on-word, true, yes or on, trimmed - as block="1", and the text between the tags as text=, which the Builder writes.',
+				'de_DE' => 'Läuft vor der Komponente: value= eines Aufrufs wird als das Attribut copied weitergegeben, das Wort block – oder ein benanntes Ja-Wort, true, yes oder on, ohne Leerzeichen – als block="1", und der Text zwischen den Marken als text=, wie der Builder es schreibt.',
 			],
 		],
 		'install' => [
@@ -54,11 +54,13 @@ return [
 	// It adds a control to something already on the page - the Features panel
 	// files that with the sliders and the lightboxes
 	'category'		=> 'ui',
-	'version'			=> '1.0.0',
-	'nino'				=> '^1.3',
+	'version'			=> '1.1.0',
+	'nino'				=> '^1.8',
 	'requires'		=> [],
 	'data'				=> [],
-	// And no settings: what is copyable is decided where it is written, one
+	// The button's stylesheet and its script, into the site's two bundles
+	'assets'			=> [ '/features/Copy/assets/copy.css', '/features/Copy/assets/copy.js' ],
+	// No settings: what is copyable is decided where it is written, one
 	// element at a time, which is the only place that knows
 	'settings'		=> [],
 	/*	The shortcode as the Builder offers it: the text is its source, a key or text="...",
@@ -66,7 +68,7 @@ return [
 		and the line draws its text escaped. The body of the manual stays a form of the
 		shortcode, which the callback of the class hands on as the text. value is a name
 		the kernel keeps for itself, so what is copied is called copied here, and the callback
-		of the class keeps value= of the manual as it was. Nino 1.5 ignores the key	*/
+		of the class keeps value= of the manual as it was	*/
 	'components'	=> [
 		'copy' => [
 			'label'			=> [ 'en_US' => 'Copy text', 'de_DE' => 'Text zum Kopieren' ],

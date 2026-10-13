@@ -7,8 +7,9 @@ declare(strict_types=1);
  *												(Modules\Modeswitch): the manifest, the activation
  *												through \Nino\Features and the four words it merges,
  *												the [mode-switch] shortcode and the markup it
- *												renders, the two files it puts into the site's own
- *												asset bundles (\Nino\Html::addAsset()), and
+ *												renders, the two files its manifest puts into the
+ *												site's own asset bundles
+ *												(\Nino\Features::registerAssets()), and
  *												deactivation. What those files then do is the
  *												browser's, and modeswitch-js-smoke.js beside this
  *												file measures it; this test runs that one too where
@@ -26,11 +27,6 @@ require $root. '/tests/harness.php';
 
 $appData = ninoSandbox( 'modeswitch' );
 $appData['/nino/dir'] = '';
-/*	\Nino\AppData::prepare() (what ninoSandbox() calls) only seeds the handful
-	of keys needed before config.php loads - everything else in ::DEFAULTS,
-	textfiles' own directory included, arrives through the real ::init() a
-	sandboxed test never runs. Rendering the switch's words needs it	*/
-$appData['/nino/locales/textfiles'] = '/text';
 // ninoSandbox() defaults the current locale to 'de_DE'; switched to English
 // here so the assertions below compare against install/text/en_US.php
 $appData['./nino/locales/current'] = 'en_US';
@@ -48,19 +44,13 @@ check( 'it is written for this kernel', is_array( $manifest ) && \Nino\Features:
 check( 'it names and describes itself in both interface languages', is_array( $manifest )
 	&& \Nino\Features::localized( $manifest['description'], 'de_DE' ) !== \Nino\Features::localized( $manifest['description'], 'en_US' ) );
 
-/*	1.2 is where the dark half of the palette became part of what a project is
-	delivered with - assets/theme.css carries :root[data-nino-mode="dark"] and
-	the matching prefers-color-scheme block. On 1.1 there is nothing for this
-	switch to switch, and a switch that writes an attribute nothing answers to
-	is worse than no switch	*/
-// ^1.3 rather than the ^1.2 this needs on its own merits - before 1.2 there
-// is no dark palette to switch to, and that is still the substantive floor.
-// What raises it is the manifest: its sectioned 'manual' map is only read by
-// a kernel newer than the v1.2.0-beta tag
-check( 'it names ^1.3 - the kernel that can read this manifest at all', ( $manifest['nino'] ?? '' ) === '^1.3' );
-check( '...and neither 1.1 nor the published 1.2.0-beta can run it', \Nino\Features::satisfies( (string) $manifest['nino'], '1.1.0' ) === false
-	&& \Nino\Features::satisfies( (string) $manifest['nino'], '1.2.0-beta' ) === false
-	&& \Nino\Features::satisfies( (string) $manifest['nino'], '1.3.0-beta' ) === true );
+/*	The floor is the kernel whose toolset it calls - the helpers of \Nino\Feature,
+	the manifest's assets, Nino.events in the script - and every such kernel has
+	the dark half of the palette a switch needs: assets/theme.css carries
+	:root[data-nino-mode="dark"] and the matching prefers-color-scheme block	*/
+check( 'it names ^1.8 - the kernel whose toolset it calls', ( $manifest['nino'] ?? '' ) === '^1.8' );
+check( '...and the kernel before it cannot run it', \Nino\Features::satisfies( (string) $manifest['nino'], '1.7.0' ) === false
+	&& \Nino\Features::satisfies( (string) $manifest['nino'], '1.8.0-beta' ) === true );
 
 check( 'it is filed under ui', $manifest['category'] === 'ui' );
 check( 'it needs no other feature', $manifest['requires'] === [] );
@@ -77,7 +67,7 @@ check( 'the registry lists it inactive, with nothing in the way', ( static funct
 
 check( 'activation succeeds', \Nino\Features::activate( $appData, 'modeswitch' ) === true );
 check( 'the class is listed and the version recorded', in_array( '\\Nino\\Modules\\Modeswitch', \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/modules'], true ) === true
-	&& \Nino\Features::get( $appData, 'modeswitch' )['installed'] === '1.0.0' );
+	&& \Nino\Features::get( $appData, 'modeswitch' )['installed'] === '1.1.0' );
 
 /*	The four words, merged into the project's own text file for every locale it
 	has - so an editor changes "Dunkel" in the Text panel and never opens a
@@ -95,11 +85,13 @@ check( 'it wrote no template and no route of its own - where the switch goes is 
 echo "\n";
 
 
-// --- init() ------------------------------------------------------------------
+// --- init() and the manifest's assets ----------------------------------------
 
-echo "Modules\\Modeswitch::init() - the shortcode and the bundle\n";
+echo "Modules\\Modeswitch::init() and the manifest's assets - the shortcode and the bundle\n";
 
+// The bundles are filled the way \Nino\init() fills them, before the modules' init()
 $appData['/nino/modules'][] = '\\Nino\\Modules\\Assets';
+\Nino\Features::registerAssets( $appData );
 \Nino\Modules::callModules( $appData, 'init' );
 
 check( 'the shortcode is registered as [mode-switch]', ( $appData['./nino/html/shortcodes']['mode-switch'] ?? null ) !== null );
@@ -157,15 +149,20 @@ check( 'each button carries its icon inline - a switch that paints its icons a r
 
 $icons = \Nino\Html::renderHtml( $appData, '[mode-switch icons]' );
 
-check( 'icons="1" is the flag on every kernel, icons="0" is not, and neither changes the plain switch',
+check( 'icons="1" is the flag, icons="0" is not, and neither changes the plain switch',
 	\Nino\Html::renderHtml( $appData, '[mode-switch icons="1"]' ) === $icons
 	&& \Nino\Html::renderHtml( $appData, '[mode-switch icons="0"]' ) === \Nino\Html::renderHtml( $appData, '[mode-switch]' ) );
 check( 'the icons flag drops the words from the layout and keeps them in the markup',
 	str_contains( $icons, 'nino-modeswitch--icons' ) === true
-	&& substr_count( $icons, 'nino-modeswitch-name--hidden' ) === 3
+	&& substr_count( $icons, 'nino-modeswitch-name nino-sr-only' ) === 3
 	&& substr_count( $icons, 'Dark' ) >= 1 );
 check( '...and an argument that is not it changes nothing',
 	str_contains( \Nino\Html::renderHtml( $appData, '[mode-switch words]' ), 'nino-modeswitch--icons' ) === false );
+check( '...under the plain registration the words of the flag are the kernel\'s: any case, a space around them does no harm, anything else is no flag (a 1.8 site renders the component - see Components below)',
+	\Nino\Html::renderHtml( $appData, '[mode-switch icons="YES"]' ) === $icons
+	&& \Nino\Html::renderHtml( $appData, '[mode-switch icons=" on "]' ) === $icons
+	&& \Nino\Html::renderHtml( $appData, '[mode-switch icons="no"]' ) === \Nino\Html::renderHtml( $appData, '[mode-switch]' )
+	&& \Nino\Html::renderHtml( $appData, '[mode-switch icons="maybe"]' ) === \Nino\Html::renderHtml( $appData, '[mode-switch]' ) );
 
 echo "\n";
 
@@ -220,7 +217,8 @@ if( $node === '' )
 	echo "  --  node is not on the path, so modeswitch-js-smoke.js is not run here\n\n";
 else {
 	echo "modeswitch-js-smoke.js\n";
-	$out = (string) @shell_exec( escapeshellarg( $node ). ' '. escapeshellarg( __DIR__. '/modeswitch-js-smoke.js' ). ' 2>&1' );
+	// Over the same checkout: the script is started through the kernel's own Nino.js
+	$out = (string) @shell_exec( 'NINO_ROOT='. escapeshellarg( $root ). ' '. escapeshellarg( $node ). ' '. escapeshellarg( __DIR__. '/modeswitch-js-smoke.js' ). ' 2>&1' );
 	echo $out;
 	check( 'the browser half passes too', preg_match( '/^\d+ checks, 0 failed$/m', $out ) === 1 );
 	echo "\n";
@@ -231,9 +229,7 @@ else {
 
 echo "Components - [mode-switch] as the Builder offers it\n";
 
-if( class_exists( '\\Nino\\Modules\\Components' ) === false )
-	echo "  --  this Nino has no \\Nino\\Modules\\Components: the manifest's components are not read here, and the shortcode registers itself\n";
-else ( static function( array $appData ): void {
+( static function( array $appData ): void {
 
 	$declared = \Nino\Features::manifest( dirname( __DIR__ ) )['components'] ?? [];
 
@@ -273,10 +269,14 @@ else ( static function( array $appData ): void {
 
 	ninoWarnings();
 
-	check( 'icons="true" and icons="yes" are the flag as icons="1" is, on the kernel under test - a hand-written file reads the same on every one',
+	check( 'icons="true" and icons="yes" are the flag as icons="1" is, through the wrapper as in a hand-written file',
 		\Nino\Html::renderHtml( $probe, '[mode-switch icons="true"]' ) === \Nino\Html::renderHtml( $probe, '[mode-switch icons="1"]' )
 		&& \Nino\Html::renderHtml( $probe, '[mode-switch icons="yes"]' ) === \Nino\Html::renderHtml( $probe, '[mode-switch icons="1"]' )
 		&& \Nino\Html::renderHtml( $probe, '[mode-switch icons="1"]' ) !== \Nino\Html::renderHtml( $probe, '[mode-switch]' ) );
+	check( 'through the wrapper the words are read in any case but not with a space around them: icons="YES" is the flag, icons=" on " is not - the module reads a bool with strtolower() and no trim, and a 1.8 site always renders the component',
+		\Nino\Html::renderHtml( $probe, '[mode-switch icons="YES"]' ) === \Nino\Html::renderHtml( $probe, '[mode-switch icons="1"]' )
+		&& \Nino\Html::renderHtml( $probe, '[mode-switch icons=" on "]' ) === \Nino\Html::renderHtml( $probe, '[mode-switch]' )
+		&& \Nino\Html::renderHtml( $probe, '[mode-switch icons=" on "]' ) !== \Nino\Html::renderHtml( $probe, '[mode-switch icons="1"]' ) );
 	check( 'icons="1", which the Builder writes, is the flag',
 		\Nino\Html::renderHtml( $probe, '[mode-switch icons="1"]' ) === $before['[mode-switch icons]']
 		&& \Nino\Html::renderHtml( $probe, '[mode-switch icons="0" class=""]' ) === $before['[mode-switch]'] );

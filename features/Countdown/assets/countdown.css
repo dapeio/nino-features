@@ -2,10 +2,10 @@
  *	Nino - Countdown
  *	countdown.css		The counter's own layout, and nothing else: the parts in a
  *						row, the number over its name. Bundled into the project's
- *						own /.cache/style.css the same way the kernel bundles
- *						Nino.css (see Countdown::init() and docs/development.md,
- *						"Assets Are Not Templates") - never rendered through the
- *						fill/shortcode engine, so nothing in here is a textfill.
+ *						own /.cache/style.css by the manifest's assets
+ *						(docs/features.md, "Assets") - never rendered through the
+ *						fill/shortcode engine (docs/development.md, "Assets Are Not
+ *						Templates"), so nothing in here is a textfill.
  *
  *						Nothing here paints. A countdown is numbers in whatever
  *						type, colour and size the surrounding classes give them -
@@ -16,7 +16,7 @@
 .nino-countdown-parts {
 	display: flex;
 	flex-wrap: wrap;
-	gap: var(--space-2, 1rem);
+	gap: var(--space-2);
 	align-items: baseline;
 }
 
@@ -36,7 +36,7 @@
 }
 
 .nino-countdown-name {
-	font-size: var(--fontsize-small, .875rem);
+	font-size: var(--fontsize-small);
 	opacity: .8;
 }
 

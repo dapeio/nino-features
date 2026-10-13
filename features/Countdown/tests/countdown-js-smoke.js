@@ -10,9 +10,13 @@
  *
  *													No jsdom, no dependency: the same element stand-in
  *													the other feature tests build, so this runs with
- *													nothing but node.
+ *													nothing but node - and the kernel's own Nino.js,
+ *													which the script starts through (Nino.events):
+ *													NINO_ROOT names the checkout, else it is three
+ *													levels up, where a project keeps it.
  *
  *	Usage: node features/Countdown/tests/countdown-js-smoke.js
+ *	       NINO_ROOT=../nino node features/Countdown/tests/countdown-js-smoke.js
  */
 
 'use strict';
@@ -37,6 +41,8 @@ function check( label, condition ) {
 }
 
 const source = fs.readFileSync( path.join( __dirname, '../assets/countdown.js' ), 'utf8' );
+const checkout = process.env.NINO_ROOT || path.join( __dirname, '../../..' );
+const kernel = fs.readFileSync( path.join( checkout, '_nino/Nino.js' ), 'utf8' );
 
 /**
  *	One element, with just enough of the interface countdown.js reaches for
@@ -78,7 +84,7 @@ function find( root, name ) {
  *	One countdown as the shortcode writes it, the script loaded over it at a
  *	clock the test sets, and the hooks a test needs back
  *
- *	@param		{Object}	options		{ to, now, units, done, readyState }
+ *	@param		{Object}	options		{ to, now, units, done, readyState, hold }
  */
 function page( options ) {
 
@@ -116,10 +122,12 @@ function page( options ) {
 	countdown.children.push( date, parts );
 
 	const listeners = {};
+	const timeouts = [];
 	let ticker = null;
 
 	const dc = {
 		readyState			: options.readyState || 'complete',
+		querySelector		: function() { return null },
 		querySelectorAll	: function( selector ) {
 			return selector === '.nino-countdown[data-countdown-to]'
 				? ( countdown.getAttribute('data-countdown-to') !== null ? [ countdown ] : [] )
@@ -128,19 +136,40 @@ function page( options ) {
 		addEventListener	: function( type, fn ) { ( listeners[type] = listeners[type] || [] ).push( fn ) },
 	};
 
+	// What Nino.js needs to load and to start its callbacks: a navigator, the
+	// events of the window and a timer it asks for a page that is ready already
 	const sandbox = {
 		console : console,
 		document : dc,
+		navigator : { userAgent : 'node' },
+		Event : function( type ) { this.type = type },
+		addEventListener : function() {},
+		dispatchEvent : function() {},
+		setTimeout : function( fn ) { timeouts.push( fn ); return timeouts.length },
 		Date : Object.assign( function(){}, { now : function() { return options.now || Date.parse('2026-12-24T18:00:00+01:00') - 1000 }, parse : Date.parse } ),
 		setInterval : function( fn ) { ticker = fn; return 1 },
 		clearInterval : function() { ticker = null },
 	};
 	sandbox.window = sandbox;
 
-	vm.runInContext( source, vm.createContext( sandbox ), { filename : 'countdown.js' } );
+	const context = vm.createContext( sandbox );
+	vm.runInContext( kernel, context, { filename : 'Nino.js' } );
+	vm.runInContext( source, context, { filename : 'countdown.js' } );
+
+	// A page that is ready when the scripts run starts the callbacks a moment
+	// later, from the timer Nino.js asked for; one still loading starts them
+	// when the document says so. What a callback throws is thrown again from a
+	// timer, and that one is run here too - a script that fails fails the run
+	const start = function() {
+		while( timeouts.length > 0 )
+			timeouts.shift()();
+	};
+
+	if( dc.readyState !== 'loading' && options.hold !== true )
+		start();
 
 	return {
-		countdown : countdown, date : date, parts : parts, listeners : listeners,
+		countdown : countdown, date : date, parts : parts, listeners : listeners, start : start,
 		ticking : function() { return ticker !== null },
 		tick : function() { if( ticker !== null ) ticker() },
 		values : function() {
@@ -220,14 +249,27 @@ check( 'a countdown whose moment cannot be read is left exactly as it was',
 	broken.parts.hidden === true && broken.date.hidden === false && broken.ticking() === false );
 
 
+// --- Starting with the kernel --------------------------------------------------
+
+const held = page( { hold : true, now : AT - 60000 } );
+
+check( 'the counter starts when Nino.js calls its ready callbacks, and not when the script is loaded',
+	held.parts.hidden === true && held.ticking() === false );
+
+held.start();
+check( '...and then it is on', held.parts.hidden === false && held.ticking() === true && held.values().join(':') === '0:0:1:0' );
+
+
 // --- Waiting for the dom -------------------------------------------------------
 
 const late = page( { readyState : 'loading', now : AT - 60000 } );
 
 check( 'a script that ran before the dom was there waits for it rather than finding nothing',
-	late.parts.hidden === true && ( late.listeners['DOMContentLoaded'] || [] ).length === 1 );
+	late.parts.hidden === true && late.ticking() === false );
 
 ( late.listeners['DOMContentLoaded'] || [] ).forEach( function( fn ) { fn() } );
+// What a callback throws is thrown again from a timer, and that one is run here too
+late.start();
 check( '...and picks the countdowns up when it arrives', late.parts.hidden === false && late.values().join(':') === '0:0:1:0' );
 
 

@@ -10,9 +10,13 @@
  *
  *													No jsdom, no dependency: the same element stand-in
  *													the other feature tests build, so this runs with
- *													nothing but node.
+ *													nothing but node - and the kernel's own Nino.js,
+ *													which the first painting waits for (Nino.events):
+ *													NINO_ROOT names the checkout, else it is three
+ *													levels up, where a project keeps it.
  *
  *	Usage: node features/Modeswitch/tests/modeswitch-js-smoke.js
+ *	       NINO_ROOT=../nino node features/Modeswitch/tests/modeswitch-js-smoke.js
  */
 
 'use strict';
@@ -37,6 +41,8 @@ function check( label, condition ) {
 }
 
 const source = fs.readFileSync( path.join( __dirname, '../assets/modeswitch.js' ), 'utf8' );
+const checkout = process.env.NINO_ROOT || path.join( __dirname, '../../..' );
+const kernel = fs.readFileSync( path.join( checkout, '_nino/Nino.js' ), 'utf8' );
 
 /**
  *	One element, with just enough of the interface modeswitch.js reaches for
@@ -98,7 +104,7 @@ function pressed( buttons ) {
  *	A page with one switch on it, the script loaded over it, and the handful
  *	of hooks a test needs back
  *
- *	@param		{Object}	options		{ stored, storageThrows, readyState, withoutObserver }
+ *	@param		{Object}	options		{ stored, storageThrows, readyState, withoutObserver, hold }
  */
 function page( options ) {
 
@@ -121,10 +127,12 @@ function page( options ) {
 	const root = element( {} );
 	const listeners = {};
 	const observers = [];
+	const timeouts = [];
 
 	const dc = {
 		documentElement	: root,
 		readyState			: options.readyState || 'complete',
+		querySelector		: function() { return null },
 		querySelectorAll	: function( selector ) {
 			if( selector === '.nino-modeswitch' ) return switches;
 			if( selector === '.nino-modeswitch-btn' ) return every;
@@ -144,7 +152,14 @@ function page( options ) {
 		},
 	};
 
+	// What Nino.js needs to load and to start its callbacks: a navigator, the
+	// events of the window and a timer it asks for a page that is ready already
 	const sandbox = { console : console, document : dc, localStorage : storage,
+		navigator : { userAgent : 'node' },
+		Event : function( type ) { this.type = type },
+		addEventListener : function() {},
+		dispatchEvent : function() {},
+		setTimeout : function( fn ) { timeouts.push( fn ); return timeouts.length },
 		MutationObserver : function( callback ) {
 			const observer = this;
 			observer.observe = function() { observers.push( observer ) };
@@ -156,10 +171,24 @@ function page( options ) {
 	if( options.withoutObserver === true )
 		delete sandbox.MutationObserver;
 
-	vm.runInContext( source, vm.createContext( sandbox ), { filename : 'modeswitch.js' } );
+	const context = vm.createContext( sandbox );
+	vm.runInContext( kernel, context, { filename : 'Nino.js' } );
+	vm.runInContext( source, context, { filename : 'modeswitch.js' } );
+
+	// A page that is ready when the scripts run starts the callbacks a moment
+	// later, from the timer Nino.js asked for; one still loading starts them
+	// when the document says so. What a callback throws is thrown again from a
+	// timer, and that one is run here too - a script that fails fails the run
+	const start = function() {
+		while( timeouts.length > 0 )
+			timeouts.shift()();
+	};
+
+	if( dc.readyState !== 'loading' && options.hold !== true )
+		start();
 
 	return {
-		root : root, group : group, buttons : buttons, store : store, listeners : listeners,
+		root : root, group : group, buttons : buttons, store : store, listeners : listeners, start : start,
 		mode : function() { return root.getAttribute('data-nino-mode') },
 		pressed : function() { return pressed( buttons ) },
 		// A switch that arrives after the script ran: a fragment swapped in, a
@@ -195,6 +224,16 @@ check( '...and painted on the button that holds it', dark.pressed().join() === '
 const nonsense = page( { stored : 'sepia' } );
 
 check( 'a stored value that is none of the three is no choice at all', nonsense.mode() === null && nonsense.pressed().join() === 'system' );
+
+// --- Starting with the kernel ------------------------------------------------
+
+const held = page( { stored : 'dark', hold : true } );
+
+check( 'the stored choice is on the page when the script runs, the buttons are painted when Nino.js says the page is ready',
+	held.mode() === 'dark' && held.group.hidden === true && held.pressed().length === 0 );
+
+held.start();
+check( '...and then the switch is shown with the choice on its button', held.group.hidden === false && held.pressed().join() === 'dark' );
 
 // --- Choosing ----------------------------------------------------------------
 

@@ -2,9 +2,10 @@
  *	Nino - Before/After
  *	compare.js		Turns the two captioned pictures the shortcode wrote into the
  *					two stacked under one divider, and keeps the divider where the
- *					range control says it is. No dependencies, no build step -
- *					bundled into the project's own /.cache/script.js the same way
- *					the kernel bundles Nino.js/Nino.ui.js (see Compare::init()).
+ *					range control says it is. It needs Nino.js, which every site
+ *					loads (Nino.events.bindCallback() starts it), and no build step:
+ *					the manifest's assets bundle it into the project's own
+ *					/.cache/script.js, behind the kernel's scripts.
  *
  *					What this file does not do is drag anything. The divider is an
  *					<input type="range">: the browser already drags it with a
@@ -83,9 +84,6 @@
 			ready( pairs[i] );
 	}
 
-	if( document.readyState === 'loading' )
-		document.addEventListener( 'DOMContentLoaded', init );
-	else
-		init();
+	Nino.events.bindCallback( 'ready', init );
 
 } )();

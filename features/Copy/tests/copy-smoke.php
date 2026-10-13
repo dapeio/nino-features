@@ -6,8 +6,9 @@ declare(strict_types=1);
  *	copy-smoke.php		Contract test for the Copy feature (Modules\Copy): the
  *										manifest, the activation through \Nino\Features and the
  *										three words it merges, the [copy] shortcode over its
- *										body, its value and its label, the two files it puts
- *										into the site's own asset bundles, and deactivation.
+ *										body, its value and its label, the two files its
+ *										manifest puts into the site's own asset bundles
+ *										(\Nino\Features::registerAssets()), and deactivation.
  *
  *										What happens on a press is the browser's, and
  *										copy-js-smoke.js beside this file measures it; this test
@@ -23,7 +24,6 @@ require $root. '/tests/harness.php';
 
 $appData = ninoSandbox( 'copy' );
 $appData['/nino/dir'] = '';
-$appData['/nino/locales/textfiles'] = '/text';
 $appData['./nino/locales/current'] = 'en_US';
 
 
@@ -48,7 +48,7 @@ ninoWarnings();
 
 check( 'activation succeeds', \Nino\Features::activate( $appData, 'copy' ) === true );
 check( 'the class is listed and the version recorded', in_array( '\\Nino\\Modules\\Copy', \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/modules'], true ) === true
-	&& \Nino\Features::get( $appData, 'copy' )['installed'] === '1.0.0' );
+	&& \Nino\Features::get( $appData, 'copy' )['installed'] === '1.1.0' );
 
 foreach( [ 'en_US', 'de_DE' ] as $locale ) {
 	$text = \Nino\Filesystem::getFileContent( $appData, '/text/'. $locale. '.php', [] );
@@ -59,11 +59,13 @@ foreach( [ 'en_US', 'de_DE' ] as $locale ) {
 echo "\n";
 
 
-// --- init() ------------------------------------------------------------------
+// --- init() and the manifest's assets ----------------------------------------
 
-echo "Modules\\Copy::init() - the shortcode and the bundle\n";
+echo "Modules\\Copy::init() and the manifest's assets - the shortcode and the bundle\n";
 
+// The bundles are filled the way \Nino\init() fills them, before the modules' init()
 $appData['/nino/modules'][] = '\\Nino\\Modules\\Assets';
+\Nino\Features::registerAssets( $appData );
 \Nino\Modules::callModules( $appData, 'init' );
 
 check( 'the shortcode is registered as [copy]', ( $appData['./nino/html/shortcodes']['copy'] ?? null ) !== null );
@@ -120,6 +122,19 @@ check( 'the block form keeps the whitespace it is written with, in markup that c
 	&& preg_match( '/<(pre|div|p|section|figure|ul|ol|table)[\s>]/', $block ) !== 1 );
 check( '...and the line form says nothing about a block', str_contains( $html, 'nino-copy--block' ) === false );
 
+/*	A named flag is read by the kernel's words (Feature::flag()): the ones a
+	component's bool is read by, in any case, and trimmed - the copy this feature
+	carried before did not trim, so block=" yes " was no block there	*/
+check( 'block="1", "yes", "TRUE" and " on " are the flag, whatever the case and the space around the word',
+	str_contains( \Nino\Html::renderHtml( $appData, '[copy block="1"]x[/copy]' ), 'nino-copy--block' ) === true
+	&& str_contains( \Nino\Html::renderHtml( $appData, '[copy block="yes"]x[/copy]' ), 'nino-copy--block' ) === true
+	&& str_contains( \Nino\Html::renderHtml( $appData, '[copy block="TRUE"]x[/copy]' ), 'nino-copy--block' ) === true
+	&& str_contains( \Nino\Html::renderHtml( $appData, '[copy block=" on "]x[/copy]' ), 'nino-copy--block' ) === true );
+check( '...and "no", "0" and a word that is none of them are not',
+	str_contains( \Nino\Html::renderHtml( $appData, '[copy block="no"]x[/copy]' ), 'nino-copy--block' ) === false
+	&& str_contains( \Nino\Html::renderHtml( $appData, '[copy block="0"]x[/copy]' ), 'nino-copy--block' ) === false
+	&& str_contains( \Nino\Html::renderHtml( $appData, '[copy block="maybe"]x[/copy]' ), 'nino-copy--block' ) === false );
+
 /*	The flag is a bare word in the shortcode, which the parser puts under an
 	integer key; a body, a value= and a label= are all in the same array under
 	names of their own. Asking the array as a whole made any of the three turn
@@ -149,12 +164,6 @@ echo "The files themselves\n";
 $css = (string) file_get_contents( dirname( __DIR__ ). '/assets/copy.css' );
 $js	 = (string) file_get_contents( dirname( __DIR__ ). '/assets/copy.js' );
 
-/*	The clipboard API is secure-context only, so a site served over http has
-	none at all - and where it is there it may still be refused	*/
-check( 'there are two ways of copying, and the older one is tried before anything is said',
-	str_contains( $js, 'navigator.clipboard' ) === true && str_contains( $js, "execCommand( 'copy' )" ) === true );
-check( 'the field the older way needs is taken off the page again',
-	str_contains( $js, 'removeChild( field )' ) === true );
 check( 'nothing about a copy reaches the server or outlives the page',
 	str_contains( $js, 'XMLHttpRequest' ) === false && str_contains( $js, 'fetch(' ) === false
 	&& str_contains( $js, 'localStorage' ) === false && str_contains( $js, 'document.cookie' ) === false );
@@ -184,7 +193,8 @@ if( $node === '' )
 	echo "  --  node is not on the path, so copy-js-smoke.js is not run here\n\n";
 else {
 	echo "copy-js-smoke.js\n";
-	$out = (string) @shell_exec( escapeshellarg( $node ). ' '. escapeshellarg( __DIR__. '/copy-js-smoke.js' ). ' 2>&1' );
+	// Over the same checkout: the script copies and starts through the kernel's own Nino.js
+	$out = (string) @shell_exec( 'NINO_ROOT='. escapeshellarg( $root ). ' '. escapeshellarg( $node ). ' '. escapeshellarg( __DIR__. '/copy-js-smoke.js' ). ' 2>&1' );
 	echo $out;
 	check( 'the browser half passes too', preg_match( '/^\d+ checks, 0 failed$/m', $out ) === 1 );
 	echo "\n";
@@ -195,9 +205,7 @@ else {
 
 echo "Components - [copy] as the Builder offers it\n";
 
-if( class_exists( '\\Nino\\Modules\\Components' ) === false )
-	echo "  --  this Nino has no \\Nino\\Modules\\Components: the manifest's components are not read here, and the shortcode registers itself\n";
-else ( static function( array $appData ): void {
+( static function( array $appData ): void {
 
 	$declared = \Nino\Features::manifest( dirname( __DIR__ ) )['components'] ?? [];
 
@@ -245,10 +253,15 @@ else ( static function( array $appData ): void {
 
 	ninoWarnings();
 
-	check( 'block="yes" and block="true" are the flag as block="1" is, on the kernel under test - a hand-written file reads the same on every one',
+	check( 'block="yes" and block="true" are the flag as block="1" is, with or without the Components module - a hand-written file reads the same either way',
 		\Nino\Html::renderHtml( $probe, '[copy value="DE02" block="yes"]DE02 1203[/copy]' ) === \Nino\Html::renderHtml( $probe, '[copy value="DE02" block="1"]DE02 1203[/copy]' )
 		&& \Nino\Html::renderHtml( $probe, '[copy value="DE02" block="true"]DE02 1203[/copy]' ) === \Nino\Html::renderHtml( $probe, '[copy value="DE02" block="1"]DE02 1203[/copy]' )
 		&& \Nino\Html::renderHtml( $probe, '[copy value="DE02" block="1"]DE02 1203[/copy]' ) !== \Nino\Html::renderHtml( $probe, '[copy value="DE02"]DE02 1203[/copy]' ) );
+
+	// The wrapper reads a bool by the words it always did, with no space allowed; the rewriter of this
+	// feature runs ahead of it and reads the flag as a shortcode does, so a spaced word is on in both
+	check( 'block=" yes " is the flag through the wrapper too, where the wrapper alone would have read no word',
+		\Nino\Html::renderHtml( $probe, '[copy value="DE02" block=" yes "]DE02 1203[/copy]' ) === \Nino\Html::renderHtml( $probe, '[copy value="DE02" block="1"]DE02 1203[/copy]' ) );
 
 	// The names written the Builder's way are the names of the manual's
 	check( 'copied="..." and block="1", which the Builder writes, are value="..." and the flag',

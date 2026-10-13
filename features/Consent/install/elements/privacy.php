@@ -3,9 +3,9 @@
 // privacy policy, in German and English, written for it. Added to the type
 // 'privacy' of Nino's Legal module by \Nino\Features::activate() through the
 // unit's 'elements' key, which only ever adds (see \Nino\Elements::seed()): a
-// section an editor changed or deleted is not touched again, and a Nino
-// without the module ignores the key. There is no 'model' on purpose - the
-// type is the module's and never created from here.
+// section an editor changed or deleted is not touched again, and a project
+// without the module has no such type to add to. There is no 'model' on
+// purpose - the type is the module's and never created from here.
 //
 // 'order' is the position among the module's sections, cookies and consent
 // stand in 400-499. The text is in the form the sanitizer gives a field with

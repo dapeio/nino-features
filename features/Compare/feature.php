@@ -46,8 +46,8 @@ return [
 		'panel' => [],
 		'callbacks' => [
 			'/nino/html/shortcode/compare' => [
-				'en_US' => 'Runs ahead of the component: before-label and after-label of a call are handed on as the attributes beforeLabel and afterLabel, which the Builder writes. Nino 1.5 has no component and no need for it.',
-				'de_DE' => 'Läuft vor der Komponente: before-label und after-label eines Aufrufs werden als die Attribute beforeLabel und afterLabel weitergegeben, wie der Builder sie schreibt. Nino 1.5 kennt keine Komponente und braucht es nicht.',
+				'en_US' => 'Runs ahead of the component: before-label and after-label of a call are handed on as the attributes beforeLabel and afterLabel, which the Builder writes.',
+				'de_DE' => 'Läuft vor der Komponente: before-label und after-label eines Aufrufs werden als die Attribute beforeLabel und afterLabel weitergegeben, wie der Builder sie schreibt.',
 			],
 		],
 		'install' => [
@@ -61,13 +61,15 @@ return [
 	// looked at - the Features panel files that with the sliders and the
 	// lightboxes
 	'category'		=> 'ui',
-	'version'			=> '1.0.0',
-	'nino'				=> '^1.3',
+	'version'			=> '1.1.0',
+	'nino'				=> '^1.8',
 	'requires'		=> [],
 	// Nothing under data/: the two pictures are the project's own images, and
 	// where the divider stands is the visitor's, for as long as they look
 	'data'				=> [],
-	/*	And no settings. Everything a comparison varies - which two pictures,
+	// The pair's stylesheet and its script, into the site's two bundles
+	'assets'			=> [ '/features/Compare/assets/compare.css', '/features/Compare/assets/compare.js' ],
+	/*	No settings. Everything a comparison varies - which two pictures,
 		what the sides are called, where the divider starts, the shape of the
 		box - belongs to the one place it is written, not to the site: a
 		before/after of a facade and one of a photo retouch are not the same
@@ -78,7 +80,7 @@ return [
 		because an attribute of a component is a lowerCamel name - the callback of the
 		class keeps before-label and after-label of the manual as they were. start is a
 		string, not an int with bounds: the wrapper would clamp a value outside 0 to 100,
-		and start() has always answered the default for it. Nino 1.5 ignores the key	*/
+		and start() has always answered the default for it	*/
 	'components'	=> [
 		'compare' => [
 			'label'			=> [ 'en_US' => 'Before and after', 'de_DE' => 'Vorher und nachher' ],

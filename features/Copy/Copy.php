@@ -51,7 +51,9 @@ namespace Nino\Modules {
 		public const string TEMPLATES = '/features/Copy/templates';
 
 		/**
-		 *	Register the shortcode and ship the two static files
+		 *	Register the shortcode where the Components module does not own it;
+		 *	where it does - the manifest declares [copy] as a component - the
+		 *	names its schema cannot carry are renamed ahead of it
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
@@ -59,36 +61,21 @@ namespace Nino\Modules {
 		 */
 		public static function init( array &$appData ): void {
 
-			/*	Nino 1.6 has registered [copy] as a component from the manifest before
-				this runs (\Nino\Features::registerComponents()), and a second
-				registration here would take it back from the wrapper that fills in
-				the defaults. Nino 1.5 ignores the manifest key and needs it. The
-				wrapper hands on only the attributes the schema names - and value is
-				a name it keeps for itself, a bare flag is no attribute at all, and
-				the text between the tags is no source of a component whose source
-				is a text: all three are renamed by a callback that runs ahead of it	*/
-			$components = class_exists( '\\Nino\\Modules\\Components' ) === true ? \Nino\Modules\Components::components( $appData ) : [];
-
-			if( isset( $components['copy'] ) === false )
-				\Nino\Html::addShortcode( $appData, 'copy', [ self::class, 'doShortcode' ] );
-			else
+			/*	The wrapper of the Components module renders the component, and it
+				hands on only the attributes the schema names - and value is a name
+				it keeps for itself, a bare flag is no attribute at all, and the text
+				between the tags is no source of a component whose source is a text:
+				all three are renamed by a callback that runs ahead of it	*/
+			if( \Nino\Feature::shortcode( $appData, 'copy', [ self::class, 'doShortcode' ] ) === false )
 				\Nino\Callbacks::registerCallback( $appData, '/nino/html/shortcode/copy', [ self::class, 'callbackShortcode' ], 1 );
-
-			/*	The virtual '/features/...' prefix resolves against
-				\Nino\Features::dir() (\Nino\Filesystem::FEATURES_DIR), the same way
-				TEMPLATES above is read - so '/features/Copy/assets/...' reaches this
-				feature's own copy wherever NINO_FEATURES_DIR put the features
-				directory, and a project that moved it has nothing to say in
-				'/nino/html/assets'	*/
-			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Copy/assets/copy.css' );
-			\Nino\Html::addAsset( $appData, '/.cache/script.js', '/features/Copy/assets/copy.js' );
 		}
 
 		/**
 		 *	The names the schema cannot carry, renamed: value= as copied, the
-		 *	bare word block, wherever it stands in the call, as block="1", and
-		 *	the text between the tags handed on as text=, which is the source a
-		 *	call without a key has. Runs ahead of the Components wrapper on '/nino/html/shortcode/copy'
+		 *	flag block - bare, wherever it stands in the call, or named by one
+		 *	of the words of a flag - as block="1", and the text between the tags
+		 *	handed on as text=, which is the source a call without a key has.
+		 *	Runs ahead of the Components wrapper on '/nino/html/shortcode/copy'
 		 *	(priority 1, the wrapper has 5) and changes the arguments in place
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
@@ -113,8 +100,8 @@ namespace Nino\Modules {
 			if( isset( $args['text'] ) === false && trim( (string) ( $args['content'] ?? '' ) ) !== '' )
 				$args['text'] = (string) $args['content'];
 
-			// The same reading doShortcode() has of a bare flag: under an integer key
-			if( in_array( 'block', array_filter( $args, static fn( int|string $key ): bool => is_int( $key ), ARRAY_FILTER_USE_KEY ), true ) === true )
+			// The same reading doShortcode() has of the flag
+			if( \Nino\Feature::flag( $args, 'block' ) === true )
 				$args['block'] = '1';
 		}
 
@@ -201,74 +188,25 @@ namespace Nino\Modules {
 			$label = trim( (string) ( $args['label'] ?? '' ) );
 			$label = $label === '' ? '' : $safe( \Nino\Html::renderHtml( $appData, $label ) );
 
-			/*	Read where the shortcode syntax puts a bare flag: a positional
-				argument, under an integer key (\Nino\Html::_doShortcode() writes
-				a name with no value that way and a name="value" under its own
-				name). Asking the whole array read the named ones' values too, so
+			/*	Feature::flag() reads a bare flag where the shortcode syntax puts it:
+				a positional argument, under an integer key (\Nino\Html::_doShortcode()
+				writes a name with no value that way and a name="value" under its
+				own name). Asking the whole array read the named ones' values too, so
 				a body, a value= or a label= that happened to say "block" turned
 				the line into a block	*/
-			$flags = array_filter( $args, static fn( int|string $key ): bool => is_int( $key ), ARRAY_FILTER_USE_KEY );
-			$block = in_array( 'block', $flags, true ) || in_array( strtolower( (string) ( $args['block'] ?? '' ) ), [ '1', 'true', 'yes', 'on' ], true );
+			$block = \Nino\Feature::flag( $args, 'block' );
 
 			return str_replace(
-				[ '[[modifier]]', '[[class]]', '[[value]]', '[[named]]', '[[shown]]' ],
+				[ '[[modifier]]', '[[classes]]', '[[value]]', '[[named]]', '[[shown]]' ],
 				[
 					( $block === true ? ' nino-copy--block' : '' ),
-					self::_class( $args ),
+					\Nino\Feature::classes( $args ),
 					( $value === '' ? '' : ' data-copy-value="'. $value. '"' ),
 					( $label === '' ? '' : ' data-copy-named="'. $label. '"' ),
 					$shown,
 				],
-				self::template( $appData, 'copy' )
+				\Nino\Feature::template( $appData, self::TEMPLATES, 'copy' )
 			);
-		}
-
-		/**
-		 *	The class of one's own a call adds to the line, with the space in
-		 *	front of it that the template leaves out - escaped, and with its
-		 *	brackets as character references, because the markup is rendered
-		 *	once more
-		 *
-		 *	@param		array			$args					Shortcode attributes
-		 *
-		 *	@return 	string								'' or ' my-class'
-		 */
-		private static function _class( array $args ): string {
-
-			$class = trim( (string) ( $args['class'] ?? '' ) );
-
-			return $class === '' ? '' : ' '. str_replace( '[', '&#91;', htmlspecialchars( $class, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) );
-		}
-
-		/**
-		 *	One of this feature's own templates, read the way a project's are.
-		 *	Markup belongs in a template - see AGENTS.md, "Markup belongs in a
-		 *	template" - so what this class holds is which one and what goes in it
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$name					A file name below TEMPLATES, without .tpl
-		 *
-		 *	@return 	string								'' where the file is not there, which is logged
-		 */
-		public static function template( array &$appData, string $name ): string {
-
-			// A name from this class and nowhere else, and held to a slug anyway
-			if( preg_match( '/^[a-z][a-z0-9-]*$/D', $name ) !== 1 )
-				return '';
-
-			$template = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $name. '.tpl', '' );
-
-			$template = is_string( $template ) === true ? rtrim( $template, "\n" ) : '';
-
-			/*	A template that is not there renders as nothing, which on a page looks
-				like a shortcode nobody wrote rather than like a feature missing a file.
-				Said out loud instead: E_USER_WARNING is Nino's "record this and carry
-				on" channel (see \Nino\Runtime::NON_FATAL_LEVELS), so the request
-				finishes and the log says which file	*/
-			if( $template === '' )
-				trigger_error( 'Nino: the template '. self::TEMPLATES. '/'. $name. '.tpl is missing or empty.', E_USER_WARNING );
-
-			return $template;
 		}
 	}
 

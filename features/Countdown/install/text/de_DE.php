@@ -1,9 +1,10 @@
 <?php
 declare(strict_types=1);
 
-// Die Wörter eines Zählers - beim Aktivieren einmal in die text/de_DE.php des
+// Die Wörter eines Zählers - bei jeder Aktivierung in die text/de_DE.php des
 // Projekts übernommen (nur ergänzend: ein Schlüssel, den das Projekt schon
-// hat, bleibt); ab dann pflegen Redakteure sie im Panel Texte.
+// hat, bleibt, einer, der fehlt, kommt dazu); ab dann pflegen Redakteure sie
+// im Panel Texte.
 return [
 
 	/*	Beide Formen jeder Einheit, denn sonst steht dort „1 Tage". Das Skript

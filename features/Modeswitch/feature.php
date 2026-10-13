@@ -20,8 +20,8 @@ return [
 				'de_DE' => 'Dasselbe ohne die Wörter – für eine volle Kopfzeile.',
 			],
 			'[mode-switch icons="1"]' => [
-				'en_US' => 'The same as [mode-switch icons], the form the Builder writes.',
-				'de_DE' => 'Dasselbe wie [mode-switch icons], die Form, die der Builder schreibt.',
+				'en_US' => 'The same as [mode-switch icons], the form the Builder writes. true, yes and on are read the same way, in any case.',
+				'de_DE' => 'Dasselbe wie [mode-switch icons], die Form, die der Builder schreibt. Auch true, yes und on gelten, in beliebiger Schreibung.',
 			],
 			'[mode-switch ... class="my-class"]' => [
 				'en_US' => 'A class of your own, added to those of the switch. What the Builder writes for its custom classes.',
@@ -51,31 +51,29 @@ return [
 	// It adds a control to a page that changes how what is already there is
 	// read - the Features panel files that with the sliders and the lightboxes
 	'category'		=> 'ui',
-	'version'			=> '1.0.0',
-	// Two floors, and the higher one wins. 1.2 is where the dark half of the
-	// palette became part of what a project is delivered with
+	'version'			=> '1.1.0',
+	// The kernel whose toolset it calls: the template, class and flag helpers,
+	// the shortcode registration, the manifest's assets and Nino.events. Every
+	// such kernel has the dark half of the palette this switches to
 	// (assets/theme.css carries :root[data-nino-mode="dark"] and the matching
-	// prefers-color-scheme block), and before that there is nothing for this
-	// switch to switch. But the sectioned 'manual' map below is only read by
-	// a kernel newer than the v1.2.0-beta tag - on that one
-	// Features::manifest() refuses this file outright - so a constraint
-	// admitting 1.2 offered a feature that could not be installed. ^1.3 is
-	// the first that names only a kernel which does both
-	'nino'				=> '^1.3',
+	// prefers-color-scheme block)
+	'nino'				=> '^1.8',
 	'requires'		=> [],
 	// Nothing under data/: the choice belongs to the reader's browser and is
 	// kept there. A site that stored it would be storing a preference about a
 	// person, which is a consent question this feature deliberately does not
 	// raise
 	'data'				=> [],
-	// ...and no settings. Which of the three the switch starts on is not the
+	// The switch's stylesheet and its script, into the site's two bundles
+	'assets'			=> [ '/features/Modeswitch/assets/modeswitch.css', '/features/Modeswitch/assets/modeswitch.js' ],
+	// No settings. Which of the three the switch starts on is not the
 	// site's decision - it is "whatever this reader chose last, and their
 	// system until they choose". The only thing a project can vary is whether
 	// the buttons carry their words, and that belongs to the one place the
 	// switch is written (see manual: [mode-switch icons])
 	'settings'		=> [],
 	/*	The shortcode as the Builder offers it: the flag of the manual is the attribute
-		icons here. Nino 1.5 ignores the key	*/
+		icons here, which componentModeSwitch() hands to doShortcode() as the bare word	*/
 	'components'	=> [
 		'mode-switch' => [
 			'label'			=> [ 'en_US' => 'Mode switch', 'de_DE' => 'Modus-Schalter' ],

@@ -1,9 +1,10 @@
 /**
  *	Nino - External Embeds
  *	embed.js			Creates the iframe an [embed] stands for, at the moment it is
- *							released, and never before. No dependencies, no build step -
- *							bundled into the project's own /.cache/script.js the same way
- *							the kernel bundles Nino.js/Nino.ui.js (see Embed::init()).
+ *							released, and never before. It needs Nino.js, which every site
+ *							loads (Nino.events.bindCallback() starts it), and no build
+ *							step: the manifest's assets bundle it into the project's own
+ *							/.cache/script.js, behind the kernel's scripts.
  *
  *							Why this exists at all: a hidden iframe is still fetched. An
  *							iframe inside a container with the hidden attribute, with
@@ -201,9 +202,6 @@
 
 	document.addEventListener( 'nino:consent', applyConsent );
 
-	if( document.readyState === 'loading' )
-		document.addEventListener( 'DOMContentLoaded', init );
-	else
-		init();
+	Nino.events.bindCallback( 'ready', init );
 
 } )();
