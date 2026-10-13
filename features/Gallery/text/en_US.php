@@ -1,8 +1,7 @@
 <?php
 // The Gallery feature's own workbench strings, merged into its fills while
 // the feature is active (see the panel's text()) - same keys and shape the
-// workbench's own text/<locale>.php has. A %s is filled by the script, or by
-// the panel in a message it phrases itself (see its _say())
+// workbench's own text/<locale>.php has. A %s is filled by the script
 return [
 	'[[/_admin/nav/gallery]]'						=> 'Gallery',
 	'[[/_admin/gallery/label/images]]'	=> 'Gallery images',
@@ -10,8 +9,8 @@ return [
 	'[[/_admin/gallery/hint/empty]]'		=> 'No album yet. Add one - its key is what the shortcode names and what its images are filed under, so it cannot be changed afterwards.',
 	'[[/_admin/gallery/hint/no-images]]'	=> 'No image in this album yet.',
 	'[[/_admin/gallery/hint/shortcode]]'	=> 'Put %s into a template or a text',
-	'[[/_admin/gallery/hint/sizes-fit]]'	=> 'Every upload becomes two pictures: a thumbnail cropped to %1, and a large view of the whole picture scaled into %2. The file you choose is not kept - the large view is the biggest a visitor can ever see.',
-	'[[/_admin/gallery/hint/sizes-crop]]'	=> 'Every upload becomes two pictures: a thumbnail cropped to %1, and a large view cropped to %2. The file you choose is not kept - the large view is the biggest a visitor can ever see.',
+	'[[/_admin/gallery/hint/sizes-fit]]'	=> 'Every upload becomes two pictures: a thumbnail cropped to %s, and a large view of the whole picture scaled into %s. The file you choose is not kept - the large view is the biggest a visitor can ever see.',
+	'[[/_admin/gallery/hint/sizes-crop]]'	=> 'Every upload becomes two pictures: a thumbnail cropped to %s, and a large view cropped to %s. The file you choose is not kept - the large view is the biggest a visitor can ever see.',
 	'[[/_admin/gallery/hint/key]]'			=> 'Lower case letters, digits and hyphens, starting with a letter. The shortcode names it and the images are filed under it, so it cannot be changed afterwards.',
 	'[[/_admin/gallery/hint/upload-after]]'	=> 'Create the album, then you can upload images.',
 	'[[/_admin/gallery/hint/settings]]'		=> 'These sizes apply to images uploaded from now on - the ones already there keep the size they were made at.',
@@ -45,19 +44,16 @@ return [
 	'[[/_admin/gallery/confirm/album]]'	=> 'Delete the album "%s" and its %d images? The pictures go with it - nothing else points at them.',
 	'[[/_admin/gallery/confirm/image]]'	=> 'Delete this image? Both sizes of it go from the server.',
 
-	'[[/_admin/gallery/error/key]]'			=> 'An album key is a slug: lower case, starting with a letter.',
-	'[[/_admin/gallery/error/taken]]'		=> 'An album with this key exists already.',
-	'[[/_admin/gallery/error/reserved]]'	=> 'The key "new" is the address of the page that makes an album, so no album can have it.',
-	'[[/_admin/gallery/error/long]]'		=> 'The key is too long: an album key has at most %s characters.',
-	'[[/_admin/gallery/error/settings]]'	=> 'These values are outside what is allowed: %s.',
-	'[[/_admin/gallery/error/album]]'		=> 'No album has that key.',
-	'[[/_admin/gallery/error/image]]'		=> 'That image is not in this album.',
-	'[[/_admin/gallery/error/order]]'		=> 'The order did not name every image of the album - nothing was changed.',
-	'[[/_admin/gallery/error/locale]]'	=> 'That language is not available.',
-	'[[/_admin/gallery/error/upload]]'	=> 'The file could not be read.',
-	'[[/_admin/gallery/error/size]]'		=> 'The file is larger than %s.',
-	'[[/_admin/gallery/error/type]]'		=> 'The file is not a JPEG, PNG, GIF or WebP image.',
-	'[[/_admin/gallery/error/pixels]]'	=> 'The image has too many pixels: at most %s megapixels are accepted. Scale it down and try again.',
-	'[[/_admin/gallery/error/process]]'	=> 'The server could not make the two sizes from this image.',
-	'[[/_admin/gallery/error/save]]'		=> 'The albums could not be written.',
+	'[[/_admin/error/gallery_key]]'				=> 'An album key is a slug: lower case, starting with a letter.',
+	'[[/_admin/error/gallery_reserved]]'	=> 'The key "new" is the address of the page that makes an album, so no album can have it.',
+	'[[/_admin/error/gallery_long]]'			=> 'The key is too long: an album key has at most %s characters.',
+	'[[/_admin/error/gallery_taken]]'			=> 'An album with this key exists already.',
+	'[[/_admin/error/gallery_settings]]'	=> 'These values are outside what is allowed: %s.',
+	'[[/_admin/error/gallery_album]]'			=> 'No album has that key.',
+	'[[/_admin/error/gallery_image]]'			=> 'That image is not in this album.',
+	'[[/_admin/error/gallery_order]]'			=> 'The order did not name every image of the album - nothing was changed.',
+	'[[/_admin/error/gallery_locale]]'		=> 'That language is not available.',
+	'[[/_admin/error/gallery_upload]]'			=> 'The file could not be read.',
+	'[[/_admin/error/gallery_size]]'			=> 'The file is larger than %s.',
+	'[[/_admin/error/gallery_process]]'		=> 'The server could not make the two sizes from this image.',
 ];

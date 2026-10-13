@@ -11,222 +11,121 @@
  *	@link										https://github.com/dapeio/nino
  */
 
-( function(wn,dc,dE,bd) {
+( function(wn,dc) {
 
 	wn.Nino.admin = wn.Nino.admin || {};
 
-	Nino.admin.search = {
+	// The three screens are three elements of the pane, one on show at a time
+	const levels = Nino.adminUi.levels( 'search', [ 'list', 'type', 'probe' ] );
 
-		_ready		: false,
+	/*	The list is the screen the panel opens on, and the first answer is all the
+		panel asks for: what a save or a rebuild changes is read again with
+		reload(). 'keep' draws it again with every showing - the editor, which
+		holds a working copy of its own, is the one screen that is not drawn from
+		the answer (see showCurrent() below)	*/
+	Nino.admin.search = Nino.adminUi.panel( {
+		uri		: 'search',
+		mount	: 'search-list',
+		show	: 'keep',
+		error	: '/_admin/common/error/load',
+		/*	The shell asks Save, Discard or Cancel before the editor's back link,
+			a log out or a language change would lose slots nobody has saved	*/
+		dirty	: {
+			isDirty : function() { return Nino.admin.search._isDirty() },
+			save : function( done ) {
+
+				if( Nino.admin.search._editing === null || Nino.admin.search._saveButton === null )
+					return done( false );
+
+				Nino.admin.search._save( Nino.admin.search._saveButton, Nino.admin.search._line, done );
+			},
+			// What the shell is about to leave takes the editor with it
+			discard : function() { Nino.admin.search._opened = JSON.stringify( Nino.admin.search._editing.fields ) },
+		},
+		render	: function( data ) {
+
+			Nino.admin.search._types		= data.types || [];
+			// What a match in each priority is worth, straight from Search::WEIGHTS
+			Nino.admin.search._weights	= data.weights || {};
+			Nino.admin.search._locales	= data.locales || [];
+			Nino.admin.search._renderList();
+		},
+	} );
+
+	const showList = Nino.admin.search.showCurrent;
+
+	Object.assign( Nino.admin.search, {
+
 		// One row per element type the project has - what indexState() answered
 		_types		: [],
-		// What a match in each priority is worth, straight from Search::WEIGHTS
 		_weights	: {},
-		// The model field types a slot may be given (Search::INDEXABLE)
-		_indexable: [],
 		_locales	: [],
 		// The type being edited, as a working copy: leaving without saving
 		// changes nothing. null while the list is on screen
 		_editing	: null,
+		// Its slots as they were when the editor opened, as the json they are
+		// compared with: the editor holds something nobody has saved when its
+		// slots are not that any more
+		_opened		: '',
 		// The status line and the Save of the editor on show, which the
 		// shell's own Save presses
 		_line			: null,
 		_saveButton	: null,
+		// The line the list says what a build or a save did on, and the lines
+		// under it for what could not be built. null while the list is not drawn
+		_listLine	: null,
+		_listNotes	: null,
 		// What the probe last ran, so switching panels and back keeps it
 		_probe		: { query : '', types : [], locale : '', hits : null, limit : 0 },
 
 		/**
-		 *	Load the index state and draw the list
-		 *
-		 *	@param		{Function}	[then]			Run once the list is back
-		 *
-		 *	@return		void
-		 */
-		init : function( then ) {
-
-			const wrap = dc.getElementById('search-list');
-			if( wrap === null )
-				return;
-
-			Nino.admin.search._apiCall( 'list', {}, function( status, response ) {
-
-				if( status !== 200 || response === null )
-					return Nino.admin.search._showError( wrap, status, response );
-
-				Nino.admin.search._types			= response.types || [];
-				Nino.admin.search._weights		= response.weights || {};
-				Nino.admin.search._indexable	= response.indexable || [];
-				Nino.admin.search._locales		= response.locales || [];
-				Nino.admin.search._ready			= true;
-				Nino.admin.search._renderList();
-
-				if( typeof then === 'function' )
-					then();
-			} );
-		},
-
-		/**
 		 *	Re-show whichever screen is on - the shell calls this when the panel
-		 *	is opened again
+		 *	is opened again. The list is drawn from the answer; the editor from
+		 *	its working copy, and not at all while it holds slots nobody has
+		 *	saved
 		 *
 		 *	@return		void
 		 */
 		showCurrent : function() {
 
-			if( Nino.admin.search._ready === false )
-				return Nino.admin.search.init();
+			if( Nino.admin.search.ready === false || Nino.admin.search._editing === null )
+				return showList();
 
-			if( Nino.admin.search._editing !== null ) {
-
-				// The shell brings the panel on screen again after a Save it
-				// asked for failed: drawn anew, the reason the save gave would
-				// be gone, and so would the slots nobody has saved
-				if( typeof Nino.admin.dirty === 'object' && Nino.admin.dirty.isDirty( [ 'search' ] ) === true )
-					return;
-
-				return Nino.admin.search._renderType();
-			}
-
-			Nino.admin.search._renderList();
+			// The shell brings the panel on screen again after a Save it
+			// asked for failed: drawn anew, the reason the save gave would
+			// be gone, and so would the slots nobody has saved
+			if( Nino.admin.dirty.isDirty( [ 'search' ] ) === false )
+				Nino.admin.search._renderType();
 		},
 
 		/**
-		 *	Call a search/* action. The workbench's own request helper posts
-		 *	where this Nino has one - it knows the project's directory and what
-		 *	to do when the page has outlived its session; the post below is
-		 *	what every panel did before it, with the base the asset bundle
-		 *	fills in, because Nino.dir does not exist before Nino 1.3.2
+		 *	Whether the editor holds slots nobody has saved
 		 *
-		 *	@param		{string}		endpoint			Action name, eg. "list" -> "search/list"
-		 *	@param		{Object}		payload				Request payload, sent json-encoded as "data"
-		 *	@param		{Function}	callback			Called with ( xhr.status, xhr.responseJSON )
-		 *
-		 *	@return		void
+		 *	@return		{boolean}
 		 */
-		_apiCall : function( endpoint, payload, callback ) {
-
-			if( Nino.adminUi && Nino.adminUi.api )
-				return Nino.adminUi.api.call( 'search/'+ endpoint, payload, callback );
-
-			Nino.http.sendRequest( '[[/nino/dir]]/_admin/', 'POST', function( xhr ) {
-				callback( xhr.status, xhr.responseJSON );
-			}, { action : 'search/'+ endpoint, data : JSON.stringify( payload ) } );
+		_isDirty : function() {
+			return Nino.admin.search._editing !== null && JSON.stringify( Nino.admin.search._editing.fields ) !== Nino.admin.search._opened;
 		},
 
 		/**
-		 *	What a failed request says: the server's code in the workbench's
-		 *	language, then its own message, then this panel's sentence - where
-		 *	this Nino has errorText(). Before it, "(status) message"
-		 *
-		 *	@param		{number}		status
-		 *	@param		{*}					response
-		 *	@param		{string}		key					Fill key of the panel's own sentence
-		 *
-		 *	@return		{string}
-		 */
-		_errorText : function( status, response, key ) {
-
-			if( Nino.adminUi && Nino.adminUi.api && typeof Nino.adminUi.api.errorText === 'function' )
-				return Nino.adminUi.api.errorText( status, response, key );
-
-			return '('+ status+ ') '+ ( ( response && response.error ) ? response.error : Nino.content.getText( key ) );
-		},
-
-		/**
-		 *	Show a failed request's status/error in a container
-		 *
-		 *	@param		{Element}		container
-		 *	@param		{number}		status
-		 *	@param		{*}					response
-		 *
-		 *	@return		void
-		 */
-		_showError : function( container, status, response ) {
-			container.innerHTML = '';
-			const p = dc.createElement('p');
-			p.className = 'nino-admin-error';
-			p.textContent = Nino.admin.search._errorText( status, response, '/_admin/common/error/load' );
-			container.appendChild( p );
-		},
-
-		/**
-		 *	Leave the type's editor - after asking, where this Nino can, when
-		 *	it holds slots nobody has saved
+		 *	Leave the type's editor - after asking, when it holds slots nobody
+		 *	has saved
 		 *
 		 *	@param		{Function}	proceed
 		 *
 		 *	@return		void
 		 */
 		_leave : function( proceed ) {
-
-			if( typeof Nino.admin.dirty === 'object' )
-				return Nino.admin.dirty.guard( [ 'search' ], proceed );
-
-			proceed();
+			Nino.admin.dirty.guard( [ 'search' ], proceed );
 		},
 
 		/**
-		 *	The line that says whether the slots are saved. Where this Nino has
-		 *	Nino.adminUi.status() it is that: "saving", "unsaved changes" once
-		 *	a slot is changed, or why it failed. Before it, the same calls
-		 *	write this panel's sentences into the paragraph
-		 *
-		 *	@param		{Element}		msg
-		 *	@param		{Element}		form
-		 *
-		 *	@return		{Object}						{ saving(), error( status, response, key ) }
-		 */
-		_status : function( msg, form ) {
-
-			if( Nino.adminUi && typeof Nino.adminUi.status === 'function' ) {
-				const line = Nino.adminUi.status( msg );
-				line.bind( form );
-				return line;
-			}
-
-			return {
-				saving : function() { msg.className = ''; msg.textContent = '' },
-				error	 : function( status, response, key ) { msg.className = 'nino-admin-error'; msg.textContent = Nino.admin.search._errorText( status, response, key ) },
-			};
-		},
-
-		/**
-		 *	Which of the three panes is on screen
-		 *
-		 *	@param		{string}	level				'list', 'type' or 'probe'
-		 *
-		 *	@return		void
-		 */
-		_level : function( level ) {
-			[ 'list', 'type', 'probe' ].forEach( function( name ) {
-				const pane = dc.getElementById('search-'+ name );
-				if( pane !== null )
-					pane.classList.toggle( 'admin-hidden', name !== level );
-			} );
-		},
-
-		/**
-		 *	A text fill, with %s/%d/%n filled in
-		 *
-		 *	@param		{string}	key
-		 *	@param		{...*}		values
-		 *
-		 *	@return		{string}
-		 */
-		_text : function( key ) {
-			const values = Array.prototype.slice.call( arguments, 1 );
-			let out = Nino.content.getText( key );
-			values.forEach( function( value ) { out = out.replace( /%[sdn]/, String( value ) ) } );
-			return out;
-		},
-
-		/**
-		 *	The state of one row, as a word and a class - the list's whole point
+		 *	The state of one row, as a word and a level - the list's whole point
 		 *	is that this is readable without opening anything
 		 *
 		 *	@param		{Object}	row				One indexState() row
 		 *
-		 *	@return		{Object}						{ key, label, level }
+		 *	@return		{Object}						{ key, label, level }, the level being the badge's state
 		 */
 		_state : function( row ) {
 
@@ -255,12 +154,14 @@
 		 */
 		_renderList : function() {
 
-			const wrap = dc.getElementById('search-list');
+			const wrap = Nino.admin.search.mount();
 			if( wrap === null )
 				return;
 
 			Nino.admin.search._editing = null;
-			Nino.admin.search._level('list');
+			Nino.admin.search._listLine = null;
+			Nino.admin.search._listNotes = null;
+			levels.show('list');
 			wrap.innerHTML = '';
 
 			/*	No heading of its own: the head the shell renders over the pane
@@ -269,10 +170,7 @@
 				and the probe keep theirs - they are a level below this list,
 				like every form in the workbench, and their context bar is the
 				way back	*/
-			const hint = dc.createElement('p');
-			hint.className = 'nino-admin-hint';
-			hint.textContent = Nino.content.getText('/_admin/search/hint/intro');
-			wrap.appendChild( hint );
+			wrap.appendChild( Nino.adminUi.hint( Nino.content.getText('/_admin/search/hint/intro') ) );
 
 			if( Nino.admin.search._types.length === 0 ) {
 				wrap.appendChild( Nino.adminUi.emptyState( Nino.content.getText('/_admin/search/hint/empty') ) );
@@ -281,28 +179,27 @@
 
 			wrap.appendChild( Nino.admin.search._renderTable() );
 
-			const msg = dc.createElement('p');
-			msg.id = 'search-list-msg';
-			msg.setAttribute( 'aria-live', 'polite' );
+			const rebuild = Nino.adminUi.button( Nino.content.getText('/_admin/search/label/rebuild-all'), function() {
+				Nino.admin.search._rebuild( '', rebuild );
+			}, { id : 'search-createindex', className : 'nino-admin-btn-primary' } );
 
-			const rebuild = dc.createElement('button');
-			rebuild.type = 'button';
-			rebuild.id = 'search-createindex';
-			rebuild.className = 'nino-admin-btn-primary';
-			rebuild.textContent = Nino.content.getText('/_admin/search/label/rebuild-all');
-			rebuild.addEventListener( 'click', function() { Nino.admin.search._rebuild( '', rebuild, msg ) } );
+			const probe = Nino.adminUi.button( Nino.content.getText('/_admin/search/label/probe'), function() {
+				Nino.admin.search._renderProbe();
+			}, { id : 'search-openprobe' } );
 
-			const probe = dc.createElement('button');
-			probe.type = 'button';
-			probe.id = 'search-openprobe';
-			probe.textContent = Nino.content.getText('/_admin/search/label/probe');
-			probe.addEventListener( 'click', function() { Nino.admin.search._renderProbe() } );
-
-			const actions = dc.createElement('div');
+			const actions = Nino.adminUi.el('div');
 			actions.appendChild( rebuild );
 			actions.appendChild( probe );
 			wrap.appendChild( Nino.adminUi.actionBar( actions ) );
+
+			const msg = Nino.adminUi.el('p');
+			msg.id = 'search-list-msg';
+			Nino.admin.search._listLine = Nino.adminUi.status( msg );
 			wrap.appendChild( msg );
+
+			Nino.admin.search._listNotes = Nino.adminUi.el('div');
+			Nino.admin.search._listNotes.id = 'search-list-notes';
+			wrap.appendChild( Nino.admin.search._listNotes );
 		},
 
 		/**
@@ -312,17 +209,14 @@
 		 */
 		_renderTable : function() {
 
-			const table = dc.createElement('table');
-			table.className = 'nino-admin-table';
+			const table = Nino.adminUi.el( 'table', 'nino-admin-table' );
 			table.id = 'search-types';
 
-			const head = dc.createElement('tr');
+			const head = Nino.adminUi.el('tr');
 			[ 'type', 'fields', 'elements', 'state' ].forEach( function( name ) {
-				const th = dc.createElement('th');
-				th.textContent = Nino.content.getText('/_admin/search/label/'+ name );
-				head.appendChild( th );
+				head.appendChild( Nino.adminUi.el( 'th', '', Nino.content.getText('/_admin/search/label/'+ name ) ) );
 			} );
-			head.appendChild( dc.createElement('th') );
+			head.appendChild( Nino.adminUi.el('th') );
 			table.appendChild( head );
 
 			Nino.admin.search._types.forEach( function( row ) {
@@ -341,83 +235,87 @@
 		 */
 		_renderRow : function( row ) {
 
-			const tr = dc.createElement('tr');
+			const tr = Nino.adminUi.el('tr');
 			tr.setAttribute( 'data-type', row.type );
 
-			const name = dc.createElement('td');
-			const strong = dc.createElement('strong');
-			strong.textContent = row.title || row.type;
-			name.appendChild( strong );
-			const uri = dc.createElement('small');
-			uri.textContent = ' '+ row.type;
-			name.appendChild( uri );
+			const name = Nino.adminUi.el('td');
+			name.appendChild( Nino.adminUi.el( 'strong', '', row.title || row.type ) );
+			name.appendChild( Nino.adminUi.el( 'small', '', ' '+ row.type ) );
 			tr.appendChild( name );
 
 			// The fields as chips in priority order, so the weighting is
 			// readable without opening the editor
-			const fields = dc.createElement('td');
+			const fields = Nino.adminUi.el('td');
 			const keys = Object.keys( row.fields || {} ).sort();
 
 			if( keys.length === 0 )
 				fields.textContent = '—';
 			else
 				keys.forEach( function( priority ) {
-					const chip = dc.createElement('code');
-					chip.className = 'search-chip';
-					chip.textContent = row.fields[priority];
-					chip.title = Nino.admin.search._text( '/_admin/search/label/slot', priority );
+					const chip = Nino.adminUi.el( 'code', 'search-chip', row.fields[priority] );
+					chip.title = Nino.adminUi.format( Nino.content.getText('/_admin/search/label/slot'), priority );
 					fields.appendChild( chip );
 					fields.appendChild( dc.createTextNode(' ') );
 				} );
 
 			( row.issues || [] ).forEach( function( issue ) {
-				const p = dc.createElement('p');
-				p.className = 'nino-admin-error';
-				p.textContent = issue;
-				fields.appendChild( p );
+				fields.appendChild( Nino.adminUi.hint( issue, 'error' ) );
 			} );
 			tr.appendChild( fields );
 
-			const counts = dc.createElement('td');
-			counts.textContent = row.indexed === true && row.indexedElements !== row.elements
+			tr.appendChild( Nino.adminUi.el( 'td', '', row.indexed === true && row.indexedElements !== row.elements
 				? row.indexedElements+ ' / '+ row.elements
-				: String( row.elements );
-			tr.appendChild( counts );
+				: String( row.elements ) ) );
 
 			const state = Nino.admin.search._state( row );
-			const cell = dc.createElement('td');
-			const badge = dc.createElement('span');
-			badge.className = 'search-state search-state--'+ state.level;
-			badge.textContent = state.label;
+			const cell = Nino.adminUi.el('td');
+			const badge = Nino.adminUi.el( 'span', 'nino-admin-badge', state.label );
+			badge.dataset.state = state.level;
 			cell.appendChild( badge );
 
 			if( row.built )
-				cell.appendChild( dc.createTextNode( ' '+ Nino.admin.search._text( '/_admin/search/state/built', row.built.substring( 0, 10 ) ) ) );
+				cell.appendChild( dc.createTextNode( ' '+ Nino.adminUi.format( Nino.content.getText('/_admin/search/state/built'), row.built.substring( 0, 10 ) ) ) );
 
 			tr.appendChild( cell );
 
-			const actions = dc.createElement('td');
-			const edit = dc.createElement('button');
-			edit.type = 'button';
-			edit.className = 'search-btn-small';
-			edit.textContent = Nino.content.getText('/_admin/search/label/edit');
-			edit.addEventListener( 'click', function() { Nino.admin.search._editType( row ) } );
-			actions.appendChild( edit );
+			const actions = Nino.adminUi.el( 'div', 'nino-admin-actions' );
+			actions.appendChild( Nino.adminUi.button( Nino.content.getText('/_admin/search/label/edit'), function() {
+				Nino.admin.search._editType( row );
+			}, { className : 'nino-admin-btn--small' } ) );
 
 			if( state.key === 'missing' || state.key === 'stale' ) {
-				const rebuild = dc.createElement('button');
-				rebuild.type = 'button';
-				rebuild.className = 'search-btn-small';
-				rebuild.textContent = Nino.content.getText('/_admin/search/label/rebuild');
-				rebuild.addEventListener( 'click', function() {
-					Nino.admin.search._rebuild( row.type, rebuild, dc.getElementById('search-list-msg') );
-				} );
+				const rebuild = Nino.adminUi.button( Nino.content.getText('/_admin/search/label/rebuild'), function() {
+					Nino.admin.search._rebuild( row.type, rebuild );
+				}, { className : 'nino-admin-btn--small' } );
 				actions.appendChild( rebuild );
 			}
 
-			tr.appendChild( actions );
+			const last = Nino.adminUi.el('td');
+			last.appendChild( actions );
+			tr.appendChild( last );
 
 			return tr;
+		},
+
+		/**
+		 *	What a build or a save did, on the list's own line - drawn anew
+		 *	with the list, so this is said once the list is back
+		 *
+		 *	@param		{string}		text
+		 *	@param		{Array}			[notes]				Lines for what could not be built, under the first
+		 *
+		 *	@return		void
+		 */
+		_said : function( text, notes ) {
+
+			if( Nino.admin.search._listLine === null )
+				return;
+
+			Nino.admin.search._listLine.idle( text );
+
+			( notes || [] ).forEach( function( note ) {
+				Nino.admin.search._listNotes.appendChild( Nino.adminUi.hint( note, 'error' ) );
+			} );
 		},
 
 		/**
@@ -425,30 +323,26 @@
 		 *
 		 *	@param		{string}		type			'' for all of them
 		 *	@param		{Element}		btn
-		 *	@param		{Element}		msg
 		 *
 		 *	@return		void
 		 */
-		_rebuild : function( type, btn, msg ) {
+		_rebuild : function( type, btn ) {
+
+			const line = Nino.admin.search._listLine;
 
 			btn.disabled = true;
+			line.idle( Nino.content.getText('/_admin/search/msg/creating') );
 
-			if( msg !== null )
-				msg.textContent = Nino.content.getText('/_admin/search/msg/creating');
-
-			Nino.admin.search._apiCall( 'createindex', type === '' ? {} : { type : type }, function( status, response ) {
+			Nino.admin.search.call( 'createindex', type === '' ? {} : { type : type }, function( status, response ) {
 
 				btn.disabled = false;
 
-				if( status !== 200 || response === null || typeof response !== 'object' ) {
-					if( msg !== null )
-						msg.textContent = Nino.admin.search._errorText( status, response, '/_admin/search/error/create' );
-					return;
-				}
+				if( status !== 200 || response === null || typeof response !== 'object' )
+					return line.error( status, response, '/_admin/search/error/create' );
 
 				const said = response.created === 0
 					? Nino.content.getText('/_admin/search/msg/none')
-					: Nino.admin.search._text( response.created === 1 ? '/_admin/search/msg/created' : '/_admin/search/msg/created-plural', response.created, response.elements );
+					: Nino.adminUi.format( Nino.content.getText( response.created === 1 ? '/_admin/search/msg/created' : '/_admin/search/msg/created-plural' ), response.created, response.elements );
 
 				// A configured type that could not be indexed is named with its
 				// reason rather than dropped from the count in silence
@@ -456,18 +350,7 @@
 					return key+ ': '+ ( response.skipped[key] || [] ).join('; ');
 				} );
 
-				Nino.admin.search.init( function() {
-					const back = dc.getElementById('search-list-msg');
-					if( back === null )
-						return;
-					back.textContent = said;
-					skipped.forEach( function( line ) {
-						const p = dc.createElement('p');
-						p.className = 'nino-admin-error';
-						p.textContent = line;
-						back.appendChild( p );
-					} );
-				} );
+				Nino.admin.search.reload( function() { Nino.admin.search._said( said, skipped ) } );
 			} );
 		},
 
@@ -481,13 +364,13 @@
 		 *	@return		void
 		 */
 		_editType : function( row ) {
+
 			Nino.admin.search._editing = JSON.parse( JSON.stringify( row ) );
 			Nino.admin.search._editing.fields = Nino.admin.search._editing.fields || {};
-			Nino.admin.search._renderType();
 
 			// What is on screen now is what is saved
-			if( typeof Nino.admin.dirty === 'object' )
-				Nino.admin.dirty.snapshot('search');
+			Nino.admin.search._opened = JSON.stringify( Nino.admin.search._editing.fields );
+			Nino.admin.search._renderType();
 		},
 
 		/**
@@ -504,37 +387,27 @@
 			if( wrap === null || row === null )
 				return;
 
-			Nino.admin.search._level('type');
+			levels.show('type');
 			wrap.innerHTML = '';
 
-			const back = dc.createElement('a');
+			const back = Nino.adminUi.el( 'a', '', Nino.content.getText('/_admin/search/label/back') );
 			back.href = '#';
-			back.textContent = Nino.content.getText('/_admin/search/label/back');
 			back.addEventListener( 'click', function( ev ) {
 				ev.preventDefault();
 				Nino.admin.search._leave( function() { Nino.admin.search._renderList() } );
 			} );
 			wrap.appendChild( Nino.adminUi.contextBar( back ) );
 
-			const heading = dc.createElement('h2');
-			heading.textContent = ( row.title || row.type )+ ' — '+ Nino.content.getText('/_admin/search/label/fields');
-			wrap.appendChild( heading );
+			wrap.appendChild( Nino.adminUi.el( 'h2', '', ( row.title || row.type )+ ' — '+ Nino.content.getText('/_admin/search/label/fields') ) );
 
 			[ '/_admin/search/hint/slots', '/_admin/search/hint/indexable' ].forEach( function( key ) {
-				const hint = dc.createElement('p');
-				hint.className = 'nino-admin-hint';
-				hint.textContent = Nino.content.getText( key );
-				wrap.appendChild( hint );
+				wrap.appendChild( Nino.adminUi.hint( Nino.content.getText( key ) ) );
 			} );
 
-			if( Nino.admin.search._state( row ).key === 'stale' ) {
-				const stale = dc.createElement('p');
-				stale.className = 'nino-admin-hint search-hint-warn';
-				stale.textContent = Nino.content.getText('/_admin/search/hint/stale');
-				wrap.appendChild( stale );
-			}
+			if( Nino.admin.search._state( row ).key === 'stale' )
+				wrap.appendChild( Nino.adminUi.hint( Nino.content.getText('/_admin/search/hint/stale'), 'error' ) );
 
-			const slots = dc.createElement('div');
+			const slots = Nino.adminUi.el('div');
 			slots.id = 'search-slots';
 
 			Object.keys( Nino.admin.search._weights ).sort().forEach( function( priority ) {
@@ -543,19 +416,19 @@
 
 			wrap.appendChild( slots );
 
-			const msg = dc.createElement('p');
+			const msg = Nino.adminUi.el('p');
 			msg.id = 'search-type-msg';
-			msg.setAttribute( 'aria-live', 'polite' );
 
-			const save = dc.createElement('button');
-			save.type = 'button';
-			save.id = 'search-save';
-			save.className = 'nino-admin-btn-primary';
-			save.textContent = Nino.content.getText('/_admin/search/label/saveandbuild');
-			const line = Nino.admin.search._status( msg, slots );
-			save.addEventListener( 'click', function() { Nino.admin.search._save( save, line ) } );
+			// Following the slots: a changed select turns "saved" into
+			// "unsaved changes", and a slot put back as it was turns it back
+			const line = Nino.adminUi.status( msg );
+			line.bind( slots, Nino.admin.search._isDirty );
 
-			const actions = dc.createElement('div');
+			const save = Nino.adminUi.button( Nino.content.getText('/_admin/search/label/saveandbuild'), function() {
+				Nino.admin.search._save( save, line );
+			}, { id : 'search-save', className : 'nino-admin-btn-primary' } );
+
+			const actions = Nino.adminUi.el('div');
 			actions.appendChild( save );
 			actions.appendChild( msg );
 			wrap.appendChild( Nino.adminUi.actionBar( actions ) );
@@ -575,46 +448,26 @@
 		 */
 		_renderSlot : function( priority, row ) {
 
-			const wrap = dc.createElement('div');
-			wrap.className = 'nino-admin-field';
+			const model = row.model || [];
 
-			const label = dc.createElement('label');
-			label.setAttribute( 'for', 'search-slot-'+ priority );
-			// Two places always: json turns 1.00 into 1 and 0.70 into 0.7, and
-			// "1" beside "0.45" reads as two different kinds of number rather
-			// than as one scale
-			label.textContent = Nino.admin.search._text( '/_admin/search/label/slot', priority )
-				+ ' — '+ Nino.admin.search._text( '/_admin/search/label/weight', Number( Nino.admin.search._weights[priority] ).toFixed( 2 ) );
-			wrap.appendChild( label );
-
-			const select = dc.createElement('select');
-			select.id = 'search-slot-'+ priority;
-			select.setAttribute( 'data-priority', priority );
-
-			const none = dc.createElement('option');
-			none.value = '';
-			none.textContent = Nino.content.getText('/_admin/search/label/nofield');
-			select.appendChild( none );
-
-			( row.model || [] ).forEach( function( field ) {
-				const option = dc.createElement('option');
-				option.value = field;
-				option.textContent = field;
-				if( row.fields[priority] === field )
-					option.selected = true;
-				select.appendChild( option );
+			return Nino.adminUi.selectField( {
+				key			: 'slot-'+ priority,
+				// Two places always: json turns 1.00 into 1 and 0.70 into 0.7, and
+				// "1" beside "0.45" reads as two different kinds of number rather
+				// than as one scale
+				label		: Nino.adminUi.format( Nino.content.getText('/_admin/search/label/slot'), priority )
+					+ ' — '+ Nino.adminUi.format( Nino.content.getText('/_admin/search/label/weight'), Number( Nino.admin.search._weights[priority] ).toFixed( 2 ) ),
+				options	: [ { value : '', label : Nino.content.getText('/_admin/search/label/nofield') } ].concat( model.map( function( name ) {
+					return { value : name, label : name };
+				} ) ),
+				value		: model.indexOf( row.fields[priority] ) === -1 ? '' : row.fields[priority],
+				onChange	: function( value ) {
+					if( value === '' )
+						delete Nino.admin.search._editing.fields[priority];
+					else
+						Nino.admin.search._editing.fields[priority] = value;
+				},
 			} );
-
-			select.addEventListener( 'change', function() {
-				if( select.value === '' )
-					delete Nino.admin.search._editing.fields[priority];
-				else
-					Nino.admin.search._editing.fields[priority] = select.value;
-			} );
-
-			wrap.appendChild( select );
-
-			return wrap;
 		},
 
 		/**
@@ -622,7 +475,7 @@
 		 *	configuring and indexing are two things, and the button says both
 		 *
 		 *	@param		{Element}		btn
-		 *	@param		{Object}		line				_status()'s answer
+		 *	@param		{Object}		line				The editor's status line
 		 *	@param		{Function}	[done]			Told whether the slots were saved - the shell's Save asks
 		 *
 		 *	@return		void
@@ -642,7 +495,7 @@
 			btn.disabled = true;
 			line.saving();
 
-			Nino.admin.search._apiCall( 'save', { type : row.type, fields : row.fields }, function( status, response ) {
+			Nino.admin.search.call( 'save', { type : row.type, fields : row.fields }, function( status, response ) {
 
 				if( status !== 200 || response === null ) {
 					btn.disabled = false;
@@ -655,14 +508,12 @@
 				if( response.removed === true || Object.keys( response.fields || {} ).length === 0 ) {
 					btn.disabled = false;
 					finish( true );
-					return Nino.admin.search.init( function() {
-						const back = dc.getElementById('search-list-msg');
-						if( back !== null )
-							back.textContent = Nino.content.getText( response.removed === true ? '/_admin/search/msg/removed' : '/_admin/search/msg/saved' );
+					return Nino.admin.search.reload( function() {
+						Nino.admin.search._said( Nino.content.getText( response.removed === true ? '/_admin/search/msg/removed' : '/_admin/search/msg/saved' ) );
 					} );
 				}
 
-				Nino.admin.search._apiCall( 'createindex', { type : row.type }, function( status, built ) {
+				Nino.admin.search.call( 'createindex', { type : row.type }, function( status, built ) {
 
 					btn.disabled = false;
 
@@ -672,14 +523,10 @@
 					finish( true );
 
 					const said = status === 200 && built !== null && ( built.created || 0 ) > 0
-						? Nino.admin.search._text( '/_admin/search/msg/created', built.created, built.elements )
+						? Nino.adminUi.format( Nino.content.getText('/_admin/search/msg/created'), built.created, built.elements )
 						: Nino.content.getText('/_admin/search/msg/saved');
 
-					Nino.admin.search.init( function() {
-						const back = dc.getElementById('search-list-msg');
-						if( back !== null )
-							back.textContent = said;
-					} );
+					Nino.admin.search.reload( function() { Nino.admin.search._said( said ) } );
 				} );
 			} );
 		},
@@ -699,29 +546,22 @@
 			if( wrap === null )
 				return;
 
-			Nino.admin.search._level('probe');
+			levels.show('probe');
 			wrap.innerHTML = '';
-
-			const back = dc.createElement('a');
-			back.href = '#';
-			back.textContent = Nino.content.getText('/_admin/search/label/back');
-			back.addEventListener( 'click', function( ev ) { ev.preventDefault(); Nino.admin.search._renderList() } );
-			wrap.appendChild( Nino.adminUi.contextBar( back ) );
-
-			const heading = dc.createElement('h2');
-			heading.textContent = Nino.content.getText('/_admin/search/label/probe');
-			wrap.appendChild( heading );
-
-			const hint = dc.createElement('p');
-			hint.className = 'nino-admin-hint';
-			hint.textContent = Nino.content.getText('/_admin/search/hint/probe');
-			wrap.appendChild( hint );
 
 			// Only the types that really are indexed - asking an unconfigured
 			// one always answers nothing, which reads as a broken probe
 			const searchable = Nino.admin.search._types.filter( function( row ) {
 				return row.configured === true && Object.keys( row.fields || {} ).length > 0;
 			} );
+
+			const back = Nino.adminUi.el( 'a', '', Nino.content.getText('/_admin/search/label/back') );
+			back.href = '#';
+			back.addEventListener( 'click', function( ev ) { ev.preventDefault(); Nino.admin.search._renderList() } );
+
+			wrap.appendChild( Nino.adminUi.contextBar( back ) );
+			wrap.appendChild( Nino.adminUi.el( 'h2', '', Nino.content.getText('/_admin/search/label/probe') ) );
+			wrap.appendChild( Nino.adminUi.hint( Nino.content.getText('/_admin/search/hint/probe') ) );
 
 			if( searchable.length === 0 ) {
 				wrap.appendChild( Nino.adminUi.emptyState( Nino.content.getText('/_admin/search/msg/none') ) );
@@ -733,7 +573,7 @@
 
 			wrap.appendChild( Nino.admin.search._renderProbeForm( searchable ) );
 
-			const results = dc.createElement('div');
+			const results = Nino.adminUi.el('div');
 			results.id = 'search-probe-results';
 			wrap.appendChild( results );
 
@@ -750,29 +590,22 @@
 		 */
 		_renderProbeForm : function( searchable ) {
 
-			const form = dc.createElement('div');
+			const form = Nino.adminUi.el('div');
 
-			const queryField = dc.createElement('div');
-			queryField.className = 'nino-admin-field';
-
-			const label = dc.createElement('label');
-			label.setAttribute( 'for', 'search-probe-query' );
-			label.textContent = Nino.content.getText('/_admin/search/label/query');
-			queryField.appendChild( label );
-
-			const input = dc.createElement('input');
-			input.type = 'search';
-			input.id = 'search-probe-query';
-			input.value = Nino.admin.search._probe.query;
-			queryField.appendChild( input );
+			const queryField = Nino.adminUi.textField( {
+				type		: 'search',
+				id			: 'search-probe-query',
+				value		: Nino.admin.search._probe.query,
+				label		: Nino.content.getText('/_admin/search/label/query'),
+			} );
 			form.appendChild( queryField );
 
-			const types = dc.createElement('div');
+			const types = Nino.adminUi.el('div');
 			types.id = 'search-probe-types';
 			searchable.forEach( function( row ) {
 
-				const box = dc.createElement('label');
-				const check = dc.createElement('input');
+				const box = Nino.adminUi.el('label');
+				const check = Nino.adminUi.el('input');
 				check.type = 'checkbox';
 				check.value = row.type;
 				check.checked = Nino.admin.search._probe.types.indexOf( row.type ) !== -1;
@@ -789,43 +622,32 @@
 			} );
 			form.appendChild( types );
 
+			// The language the probe asks in: a field of the form, with its
+			// name, and not the pill that says which translation a form shows
 			if( Nino.admin.search._locales.length > 1 ) {
 
-				const localeField = dc.createElement('div');
-				localeField.className = 'nino-admin-field';
+				const locale = Nino.admin.search._probe.locale;
 
-				const localeLabel = dc.createElement('label');
-				localeLabel.setAttribute( 'for', 'search-probe-locale' );
-				localeLabel.textContent = Nino.content.getText('/_admin/search/label/locale');
-				localeField.appendChild( localeLabel );
-
-				const select = dc.createElement('select');
-				select.id = 'search-probe-locale';
-				Nino.admin.search._locales.forEach( function( locale ) {
-					const option = dc.createElement('option');
-					option.value = locale;
-					option.textContent = locale;
-					if( Nino.admin.search._probe.locale === locale )
-						option.selected = true;
-					select.appendChild( option );
+				const localeField = Nino.adminUi.selectField( {
+					key			: 'locale',
+					label		: Nino.content.getText('/_admin/search/label/locale'),
+					options	: Nino.admin.search._locales.map( function( code ) { return { value : code, label : code } } ),
+					value		: Nino.admin.search._locales.indexOf( locale ) === -1 ? Nino.admin.search._locales[0] : locale,
 				} );
-				localeField.appendChild( select );
+				localeField.querySelector('select').id = 'search-probe-locale';
 				form.appendChild( localeField );
 			}
 
-			const run = dc.createElement('button');
-			run.type = 'button';
-			run.id = 'search-probe-run';
-			run.className = 'nino-admin-btn-primary';
-			run.textContent = Nino.content.getText('/_admin/search/label/run');
-			run.addEventListener( 'click', function() { Nino.admin.search._runProbe() } );
+			const run = Nino.adminUi.button( Nino.content.getText('/_admin/search/label/run'), function() {
+				Nino.admin.search._runProbe();
+			}, { id : 'search-probe-run', className : 'nino-admin-btn-primary' } );
 
-			input.addEventListener( 'keydown', function( ev ) {
+			queryField.querySelector('input').addEventListener( 'keydown', function( ev ) {
 				if( ev.key === 'Enter' )
 					Nino.admin.search._runProbe();
 			} );
 
-			const actions = dc.createElement('div');
+			const actions = Nino.adminUi.el('div');
 			actions.appendChild( run );
 			form.appendChild( Nino.adminUi.actionBar( actions ) );
 
@@ -849,14 +671,14 @@
 			Nino.admin.search._probe.query	= input.value;
 			Nino.admin.search._probe.locale	= locale === null ? '' : locale.value;
 
-			Nino.admin.search._apiCall( 'probe', {
+			Nino.admin.search.call( 'probe', {
 				query 	: Nino.admin.search._probe.query,
 				types 	: Nino.admin.search._probe.types,
 				locale	: Nino.admin.search._probe.locale,
 			}, function( status, response ) {
 
 				if( status !== 200 || response === null )
-					return Nino.admin.search._showError( out, status, response );
+					return Nino.admin.search.fail( out, status, response );
 
 				Nino.admin.search._probe.hits		= response.hits || [];
 				Nino.admin.search._probe.limit	= response.limit || 0;
@@ -884,21 +706,18 @@
 				return;
 			}
 
-			const table = dc.createElement('table');
-			table.className = 'nino-admin-table';
+			const table = Nino.adminUi.el( 'table', 'nino-admin-table' );
 			table.id = 'search-probe-hits';
 
-			const head = dc.createElement('tr');
+			const head = Nino.adminUi.el('tr');
 			[ '#', '/_admin/search/label/hit', '/_admin/search/label/score', '/_admin/search/label/coverage', '/_admin/search/label/matched' ].forEach( function( key ) {
-				const th = dc.createElement('th');
-				th.textContent = key.charAt(0) === '/' ? Nino.content.getText( key ) : key;
-				head.appendChild( th );
+				head.appendChild( Nino.adminUi.el( 'th', '', key.charAt(0) === '/' ? Nino.content.getText( key ) : key ) );
 			} );
 			table.appendChild( head );
 
 			hits.forEach( function( hit, at ) {
 
-				const tr = dc.createElement('tr');
+				const tr = Nino.adminUi.el('tr');
 				tr.setAttribute( 'data-uri', hit.uri );
 
 				[
@@ -908,9 +727,7 @@
 					Math.round( hit.coverage * 100 )+ '%',
 					( hit.matched || [] ).join(', '),
 				].forEach( function( value ) {
-					const td = dc.createElement('td');
-					td.textContent = value;
-					tr.appendChild( td );
+					tr.appendChild( Nino.adminUi.el( 'td', '', value ) );
 				} );
 
 				table.appendChild( tr );
@@ -918,28 +735,9 @@
 
 			out.appendChild( table );
 
-			if( hits.length >= Nino.admin.search._probe.limit ) {
-				const note = dc.createElement('p');
-				note.className = 'nino-admin-hint';
-				note.textContent = Nino.admin.search._text( '/_admin/search/hint/probe-limit', Nino.admin.search._probe.limit );
-				out.appendChild( note );
-			}
+			if( hits.length >= Nino.admin.search._probe.limit )
+				out.appendChild( Nino.adminUi.hint( Nino.adminUi.format( Nino.content.getText('/_admin/search/hint/probe-limit'), Nino.admin.search._probe.limit ) ) );
 		},
-	};
+	} );
 
-	/*	The shell asks Save, Discard or Cancel before the editor's back link, a
-		log out or a language change would lose slots nobody has saved. A panel
-		registers where this Nino has the registry and does without where it
-		has not - panel scripts run on older workbenches too	*/
-	if( typeof Nino.admin.dirty === 'object' )
-		Nino.admin.dirty.watchForm( 'search', function() { return dc.getElementById('search-type') }, function( done ) {
-
-			if( Nino.admin.search._editing === null || Nino.admin.search._saveButton === null )
-				return done( false );
-
-			Nino.admin.search._save( Nino.admin.search._saveButton, Nino.admin.search._line, done );
-		} );
-
-	Nino.events.bindCallback( 'ready', Nino.admin.search.init );
-
-})(window, document, document.documentElement, document.body);
+})(window, document);

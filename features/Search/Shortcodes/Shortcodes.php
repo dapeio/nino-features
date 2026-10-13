@@ -50,11 +50,6 @@ namespace Nino\Modules\Search {
 		// The query variable both shortcodes read unless `key` says otherwise
 		public const string DEFAULT_KEY = 'q';
 
-		// The kernel's escape for a field value, where it has one. A property
-		// rather than a literal, so a static analysis of a kernel that has the
-		// method does not fold the check away
-		private static array $fieldValue = [ \Nino\Html::class, 'fieldValue' ];
-
 		// How many hits a result block draws when it names no limit, and the
 		// ceiling a named one is held to. Coverage scoring means a multi-word
 		// query matches more documents than it used to (see Search::_score()),
@@ -74,32 +69,35 @@ namespace Nino\Modules\Search {
 
 			\Nino\Html::addShortcode( $appData, 'search-results', [ self::class, 'doResults' ] );
 
-			/*	Nino 1.6 has registered [search-count] as a component from the manifest
-				before this runs (\Nino\Features::registerComponents()), and a second
-				registration here would take it back from the wrapper that fills in
-				the defaults. Nino 1.5 ignores the manifest key and needs it. The
-				results are a shortcode: the Builder cannot carry a record template	*/
-			$components = class_exists( '\\Nino\\Modules\\Components' ) === true ? \Nino\Modules\Components::components( $appData ) : [];
-
-			if( isset( $components['search-count'] ) === false )
-				\Nino\Html::addShortcode( $appData, 'search-count', [ self::class, 'doCount' ] );
+			/*	[search-count] is a component of the manifest, and where the
+				Components module is on it owns the name and renders it through
+				Search::componentSearchCount(), with the defaults of its schema
+				filled in: a second registration here would take it back from
+				that wrapper, and the helper registers none then. With the module
+				off it is a shortcode like the other. The results are a shortcode
+				only: the Builder cannot carry a record template	*/
+			\Nino\Feature::shortcode( $appData, 'search-count', [ self::class, 'doCount' ] );
 		}
 
 		/**
 		 *	What the visitor typed, for one query variable name
 		 *
-		 *	Read from $_GET rather than from the request array: a shortcode
-		 *	callback is handed $appData and its own arguments, never the request
-		 *	(see \Nino\Html::_doShortcode()), and $_GET is php's parse of the
-		 *	same query string Http::request() parses for itself
+		 *	Read from the request that is being answered, which the kernel hands
+		 *	to code that has none in hand: a shortcode callback is given $appData
+		 *	and its own arguments (see \Nino\Html::_doShortcode()) and reaches the
+		 *	request through \Nino\Http::getRequest(). Nothing was searched for
+		 *	where there is no request at all - a page rendered by a script
 		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$key					A query variable name
 		 *
 		 *	@return 	string								Trimmed, never an array
 		 */
-		public static function query( string $key ): string {
+		public static function query( array &$appData, string $key ): string {
 
-			$value = $_GET[$key] ?? '';
+			$request	= \Nino\Http::getRequest( $appData );
+			$query		= $request === false ? [] : ( $request['/nino/http/request']['query'] ?? [] );
+			$value		= is_array( $query ) === true ? ( $query[$key] ?? '' ) : '';
 
 			return is_string( $value ) === true ? trim( $value ) : '';
 		}
@@ -115,8 +113,9 @@ namespace Nino\Modules\Search {
 		 *	  empty         what to draw when the query found nothing: a
 		 *	                template of the project, "search-empty" for
 		 *	                /templates/search-empty.tpl
-		 *	  tag / class   the wrapper, default <div class="nino-search-results">;
-		 *	                tag="none" leaves the rows unwrapped
+		 *	  tag / class   the wrapper, default <div class="nino-search-results">,
+		 *	                with the classes written after it; tag="none" leaves
+		 *	                the rows unwrapped
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		$args					Shortcode arguments, 'content' is the row markup
@@ -128,7 +127,7 @@ namespace Nino\Modules\Search {
 			$template = (string) ( $args['content'] ?? '' );
 			$types 		= self::_types( $args );
 			$key 			= self::_key( $args );
-			$query 		= self::query( $key );
+			$query 		= self::query( $appData, $key );
 
 			// Nothing was asked, so there is nothing to say - which is a
 			// different thing from having asked and found nothing
@@ -171,7 +170,7 @@ namespace Nino\Modules\Search {
 		public static function doCount( array &$appData, array $args ): string {
 
 			$types = self::_types( $args );
-			$query = self::query( self::_key( $args ) );
+			$query = self::query( $appData, self::_key( $args ) );
 
 			// The same silence as the result block's: nothing asked, nothing
 			// said. A query that found nothing is answered - with a 0
@@ -215,7 +214,7 @@ namespace Nino\Modules\Search {
 
 			foreach( $model as $field => $definition )
 				if( is_string( $field ) === true )
-					$fills['[['. $field. ']]'] = self::_value( $element[$field] ?? null, is_array( $definition ) === true ? $definition : [] );
+					$fills['[['. $field. ']]'] = self::_value( $element[$field] ?? null, $definition );
 
 			return str_replace( array_keys( $fills ), array_values( $fills ), $template );
 		}
@@ -224,11 +223,11 @@ namespace Nino\Modules\Search {
 		 *	One field value as html. Escaped, unless the model says the field is
 		 *	markup - the same 'html' flag the workbench's own table reader honours
 		 *
-		 *	A string field is the kernel's to render where it has the one rule
-		 *	for it, \Nino\Html::fieldValue(): paragraphs and lists of a field that
-		 *	holds them, the line breaks of a field that keeps them, the escape for
-		 *	the rest. A Nino from before it is asked for what it has always been
-		 *	asked for here
+		 *	A string field is the kernel's to render by the one rule for it,
+		 *	\Nino\Html::fieldValue(): paragraphs and lists of a field that holds
+		 *	them, the line breaks of a field that keeps them, the escape for the
+		 *	rest. Any other type - a list, a number, a date - is text, escaped the
+		 *	way a component escapes a value of its own
 		 *
 		 *	@param		mixed			$value
 		 *	@param		array 		$definition		The model's entry for this field
@@ -249,20 +248,13 @@ namespace Nino\Modules\Search {
 			if( is_scalar( $value ) === false || is_bool( $value ) === true )
 				return '';
 
-			$isString = ( $definition['type'] ?? '' ) === 'string';
+			/*	The value is editor content, and the row is rendered again after
+				this - so a '[' left standing runs whatever the editor typed.
+				Both escapes write it as an entity	*/
+			if( ( $definition['type'] ?? '' ) === 'string' )
+				return \Nino\Html::fieldValue( (string) $value, $definition );
 
-			if( $isString === true && is_callable( self::$fieldValue ) === true )
-				return (string) ( self::$fieldValue )( (string) $value, $definition );
-
-			// The same two steps Modules\Elements takes on a field value, and
-			// for the same reason: the value is editor content, and the row is
-			// rendered again after this - so a '[' left standing runs whatever
-			// the editor typed
-			$safe = $isString === true && ( $definition['html'] ?? false ) === true
-				? \Nino\Html::sanitizeHtml( (string) $value )
-				: htmlspecialchars( (string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
-
-			return str_replace( '[', '&#91;', $safe );
+			return \Nino\Modules\Components::escape( (string) $value );
 		}
 
 		/**
@@ -290,14 +282,12 @@ namespace Nino\Modules\Search {
 			if( preg_match( '/^[a-z][a-z0-9]*$/D', $tag ) !== 1 )
 				$tag = 'div';
 
-			$class = self::_attribute( $args, 'class' );
-
 			// The rows last - they are built markup, and str_replace() works through
 			// its arrays in order
 			return str_replace(
-				[ '[[tag]]', '[[class]]', '[[inner]]' ],
-				[ $tag, htmlspecialchars( $class !== '' ? $class : 'nino-search-results', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ), $inner ],
-				self::template( $appData, 'search-results' )
+				[ '[[tag]]', '[[classes]]', '[[inner]]' ],
+				[ $tag, \Nino\Feature::classes( $args ), $inner ],
+				\Nino\Feature::template( $appData, self::TEMPLATES, 'search-results' )
 			);
 		}
 
@@ -378,39 +368,6 @@ namespace Nino\Modules\Search {
 		private static function _attribute( array $args, string $name ): string {
 
 			return trim( (string) ( $args[$name] ?? '' ) );
-		}
-
-		/**
-		 *	One of this feature's own templates, read the way a project's are.
-		 *	Markup belongs in a template - see AGENTS.md, "Markup belongs in a
-		 *	template" - so what this class holds is which one and what goes in it
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$name					A file name below TEMPLATES, without .tpl
-		 *
-		 *	@return 	string								'' where the file is not there, which is logged
-		 */
-		public static function template( array &$appData, string $name ): string {
-
-			// A name from this class and nowhere else, and held to a slug anyway:
-			// the one thing this could otherwise be turned into is a read of
-			// something outside the feature
-			if( preg_match( '/^[a-z][a-z0-9-]*$/D', $name ) !== 1 )
-				return '';
-
-			$template = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $name. '.tpl', '' );
-
-			$template = is_string( $template ) === true ? rtrim( $template, "\n" ) : '';
-
-			/*	A template that is not there renders as nothing, which on a page looks
-				like a shortcode nobody wrote rather than like a feature missing a file.
-				Said out loud instead: E_USER_WARNING is Nino's "record this and carry
-				on" channel (see \Nino\Runtime::NON_FATAL_LEVELS), so the request
-				finishes and the log says which file	*/
-			if( $template === '' )
-				trigger_error( 'Nino: the template '. self::TEMPLATES. '/'. $name. '.tpl is missing or empty.', E_USER_WARNING );
-
-			return $template;
 		}
 	}
 }

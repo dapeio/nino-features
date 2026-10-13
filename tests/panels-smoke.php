@@ -14,12 +14,12 @@ declare(strict_types=1);
  *										of a project that lives at the domain's root and nobody
  *										else's, and Nino.dir, which names the directory in a script,
  *										does not exist before 1.3.2 - the literal '[[/nino/dir]]' the
- *										asset bundle fills in does. The fallback goes with the ^1.8
- *										floor of the panel that carries it: Gallery and Search are the
- *										two that still do, and the set that may post by hand is empty
- *										the day both are on the toolset. Each feature's own test runs
- *										its panel under node; this is the one place that holds every
- *										panel to the post.
+ *										asset bundle fills in does. The fallback went with the ^1.8
+ *										floor of the panel that carried it: since Gallery and Search,
+ *										the last two, are on the toolset, no panel of the catalogue
+ *										posts by hand, and the set that may is empty. Each feature's
+ *										own test runs its panel under node; this is the one place that
+ *										holds every panel to the post.
  *
  *	Usage: php tests/panels-smoke.php
  */
@@ -52,10 +52,11 @@ foreach( $panels as $name => $source )
 
 check( 'every post to the workbench starts at the project\'s directory'. ( $rooted === [] ? '' : ' - '. implode( ' | ', $rooted ) ), $rooted === [] );
 
-echo "\nOnly the panels that still name Nino 1.3 post by hand, and ask the shell's helper first\n";
+echo "\nNo panel posts by hand any more - the set that may is empty\n";
 
-// Gallery and Search: the set is empty the day both are on the toolset
-$byHand = [ 'Gallery', 'Search' ];
+// Empty since Gallery and Search, the last two, went onto the toolset; a
+// panel that posts by hand again is listed here with its reason, or fails
+$byHand = [];
 
 $workbench = [];
 foreach( $panels as $name => $source )

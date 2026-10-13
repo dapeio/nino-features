@@ -162,84 +162,103 @@ namespace Nino\Modules\Redirects {
 				return;
 
 			$data 		= \Nino\Admin\Admin::postData();
-			$from 		= Rules::path( (string) ( $data['from'] ?? '' ) );
-			$to 			= Rules::target( (string) ( $data['to'] ?? '' ) );
-			$was 			= Rules::path( (string) ( $data['was'] ?? '' ) );
+			$from 		= Rules::path( \Nino\Admin\Admin::postString( $data, 'from' ) );
+			$to 			= Rules::target( \Nino\Admin\Admin::postString( $data, 'to' ) );
+			$was 			= Rules::path( \Nino\Admin\Admin::postString( $data, 'was' ) );
 			$subtree	= ( $data['subtree'] ?? false ) === true;
 			$status		= (int) ( $data['status'] ?? 301 );
 
 			if( $from === '' ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/redirects/error/from' ) );
+				\Nino\Http::fail( $request, 400, 'the old address is not a path of this site', 'redirects_from' );
 				return;
 			}
 
 			if( $to === '' ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/redirects/error/to' ) );
+				\Nino\Http::fail( $request, 400, 'the target is neither a path of this site nor an https address', 'redirects_to' );
 				return;
 			}
 
 			if( in_array( $status, Rules::STATUSES, true ) === false ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/redirects/error/status' ) );
+				\Nino\Http::fail( $request, 400, 'the status is not a redirect status', 'redirects_status' );
 				return;
 			}
 
 			$loop = Rules::loops( $from, $to, $subtree );
 
 			if( $loop !== '' ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/redirects/error/loop', self::_say( $appData, $loop ) ) );
+				\Nino\Http::fail( $request, 400, 'the rule would send a visitor back into itself', $loop );
 				return;
 			}
 
-			$file 	= Rules::read( $appData );
+			$next	= [];
+			$notes	= [];
+			$taken	= false;
 
-			/*	Renaming a rule onto an address another rule already answers
-				used to take that other rule with it, hits and all, and answer
-				200: the loop below recognises the one being edited by its old
-				address and by its new one, so both of them were "the one" and
-				the second was dropped. A rule that silently went away is the
-				one kind of mistake nobody goes looking for, so this is a
-				refusal like the others rather than a merge - the operator can
-				still delete the rule that is in the way and rename afterwards	*/
-			if( $was !== '' && $was !== $from
-				&& count( array_filter( $file['rules'], static fn( array $rule ): bool => $rule['from'] === $from ) ) > 0 ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/redirects/error/taken', $from ) );
-				return;
-			}
+			/*	The file is read, changed and written under the lock: the site
+				writes into it as well, with every address nothing answered and
+				every rule it follows, and a save that read the file before and
+				wrote it after dropped what those wrote in between	*/
+			$written = \Nino\Filesystem::mutate( $appData, Rules::PATH, static function( mixed $state ) use ( $from, $to, $was, $subtree, $status, &$next, &$notes, &$taken ): ?array {
 
-			$rules	= [];
-			$kept		= false;
+				$file = Rules::normalize( is_array( $state ) === true ? $state : [] );
 
-			foreach( $file['rules'] as $rule ) {
-
-				// The one being edited, wherever it was and whatever it is
-				// called now
-				if( $rule['from'] === $was || $rule['from'] === $from ) {
-					if( $kept === true )
-						continue;
-					$kept 	= true;
-					$rules[]= [ 'from' => $from, 'to' => $to, 'status' => $status, 'subtree' => $subtree, 'hits' => $rule['hits'], 'last' => $rule['last'] ];
-					continue;
+				/*	Renaming a rule onto an address another rule already answers
+					used to take that other rule with it, hits and all, and answer
+					200: the loop below recognises the one being edited by its old
+					address and by its new one, so both of them were "the one" and
+					the second was dropped. A rule that silently went away is the
+					one kind of mistake nobody goes looking for, so this is a
+					refusal like the others rather than a merge - the operator can
+					still delete the rule that is in the way and rename afterwards	*/
+				if( $was !== '' && $was !== $from
+					&& count( array_filter( $file['rules'], static fn( array $rule ): bool => $rule['from'] === $from ) ) > 0 ) {
+					$taken = true;
+					return null;
 				}
 
-				$rules[] = $rule;
+				$rules	= [];
+				$kept		= false;
+
+				foreach( $file['rules'] as $rule ) {
+
+					// The one being edited, wherever it was and whatever it is
+					// called now
+					if( $rule['from'] === $was || $rule['from'] === $from ) {
+						if( $kept === true )
+							continue;
+						$kept 	= true;
+						$rules[]= [ 'from' => $from, 'to' => $to, 'status' => $status, 'subtree' => $subtree, 'hits' => $rule['hits'], 'last' => $rule['last'] ];
+						continue;
+					}
+
+					$rules[] = $rule;
+				}
+
+				if( $kept === false )
+					$rules[] = [ 'from' => $from, 'to' => $to, 'status' => $status, 'subtree' => $subtree, 'hits' => 0, 'last' => '' ];
+
+				/*	An address that now has a rule is no longer an address nothing
+					answers, and leaving it in the list would have somebody write the
+					same rule twice	*/
+				$misses = $file['misses'];
+				unset( $misses[$from] );
+
+				$next = Rules::normalize( [ 'rules' => $rules, 'misses' => $misses ], $notes );
+
+				return $next;
+			}, [] );
+
+			if( $taken === true ) {
+				\Nino\Http::fail( $request, 400, 'there is already a rule for "'. $from. '"', 'redirects_taken', [ $from ] );
+				return;
 			}
 
-			if( $kept === false )
-				$rules[] = [ 'from' => $from, 'to' => $to, 'status' => $status, 'subtree' => $subtree, 'hits' => 0, 'last' => '' ];
-
-			/*	An address that now has a rule is no longer an address nothing
-				answers, and leaving it in the list would have somebody write the
-				same rule twice	*/
-			$misses = $file['misses'];
-			unset( $misses[$from] );
-
-			$notes = [];
-			$next	= Rules::normalize( [ 'rules' => $rules, 'misses' => $misses ], $notes );
-
-			if( Rules::write( $appData, $next ) === false ) {
+			if( $written === false ) {
 				\Nino\Http::fail( $request, 500, 'the rules could not be written' );
 				return;
 			}
+
+			unset( $appData['./redirects/rules'] );
 
 			$rules		= self::_annotate( $appData, $next['rules'] );
 			$warnings	= [];
@@ -281,25 +300,40 @@ namespace Nino\Modules\Redirects {
 			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::MANAGE_PERM ) === false )
 				return;
 
-			$from = Rules::path( (string) ( \Nino\Admin\Admin::postData()['from'] ?? '' ) );
+			$from = Rules::path( \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'from' ) );
 
 			if( $from === '' ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/redirects/error/from' ) );
+				\Nino\Http::fail( $request, 400, 'the old address is not a path of this site', 'redirects_from' );
 				return;
 			}
 
-			$file 	= Rules::read( $appData );
-			$rules	= array_values( array_filter( $file['rules'], static fn( array $rule ): bool => $rule['from'] !== $from ) );
+			$rules		= [];
+			$unknown	= false;
 
-			if( count( $rules ) === count( $file['rules'] ) ) {
-				\Nino\Http::fail( $request, 404, self::_say( $appData, '/_admin/redirects/error/unknown', $from ) );
+			$written = \Nino\Filesystem::mutate( $appData, Rules::PATH, static function( mixed $state ) use ( $from, &$rules, &$unknown ): ?array {
+
+				$file	= Rules::normalize( is_array( $state ) === true ? $state : [] );
+				$rules	= array_values( array_filter( $file['rules'], static fn( array $rule ): bool => $rule['from'] !== $from ) );
+
+				if( count( $rules ) === count( $file['rules'] ) ) {
+					$unknown = true;
+					return null;
+				}
+
+				return [ 'format' => Rules::FORMAT, 'rules' => $rules, 'misses' => $file['misses'] ];
+			}, [] );
+
+			if( $unknown === true ) {
+				\Nino\Http::fail( $request, 404, 'there is no rule for "'. $from. '"', 'redirects_unknown', [ $from ] );
 				return;
 			}
 
-			if( Rules::write( $appData, [ 'rules' => $rules, 'misses' => $file['misses'] ] ) === false ) {
+			if( $written === false ) {
 				\Nino\Http::fail( $request, 500, 'the rules could not be written' );
 				return;
 			}
+
+			unset( $appData['./redirects/rules'] );
 
 			\Nino\Http::ok( $request, [ 'rules' => self::_annotate( $appData, $rules ) ] );
 		}
@@ -319,19 +353,27 @@ namespace Nino\Modules\Redirects {
 			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::MANAGE_PERM ) === false )
 				return;
 
-			$file		= Rules::read( $appData );
-			$path		= Rules::path( (string) ( \Nino\Admin\Admin::postData()['path'] ?? '' ) );
-			$misses	= $file['misses'];
+			$path = Rules::path( \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'path' ) );
 
-			if( $path === '' )
-				$misses = [];
-			else
-				unset( $misses[$path] );
+			$written = \Nino\Filesystem::mutate( $appData, Rules::PATH, static function( mixed $state ) use ( $path ): array {
 
-			if( Rules::write( $appData, [ 'rules' => $file['rules'], 'misses' => $misses ] ) === false ) {
+				$file	= Rules::normalize( is_array( $state ) === true ? $state : [] );
+				$misses	= $file['misses'];
+
+				if( $path === '' )
+					$misses = [];
+				else
+					unset( $misses[$path] );
+
+				return [ 'format' => Rules::FORMAT, 'rules' => $file['rules'], 'misses' => $misses ];
+			}, [] );
+
+			if( $written === false ) {
 				\Nino\Http::fail( $request, 500, 'the list could not be written' );
 				return;
 			}
+
+			unset( $appData['./redirects/rules'] );
 
 			\Nino\Http::ok( $request );
 		}
@@ -354,10 +396,10 @@ namespace Nino\Modules\Redirects {
 			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::MANAGE_PERM ) === false )
 				return;
 
-			$path = Rules::path( (string) ( \Nino\Admin\Admin::postData()['path'] ?? '' ) );
+			$path = Rules::path( \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'path' ) );
 
 			if( $path === '' ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/redirects/error/from' ) );
+				\Nino\Http::fail( $request, 400, 'the address is not a path of this site', 'redirects_from' );
 				return;
 			}
 
@@ -401,7 +443,9 @@ namespace Nino\Modules\Redirects {
 
 		/**
 		 *	One of this panel's own fills, in the interface language, with %s
-		 *	filled in where it carries one
+		 *	filled in where it carries one - the sentence of a warning after a
+		 *	save, and the words of a note. A refusal is not said here: it
+		 *	carries a code, and the script says the code in its own words
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$fill					One of this panel's fill keys
@@ -428,8 +472,8 @@ namespace Nino\Modules\Redirects {
 		 *	Rules answers with a fill key and what to put in it rather than with
 		 *	a sentence: what a stored file is held to is its business, which
 		 *	language the workbench says it in is this panel's. A note about a
-		 *	dropped loop carries the reason as a key of its own under '%r',
-		 *	because the reason is a fill too
+		 *	dropped loop carries the reason as a key of its own under '%r' - the
+		 *	words of the code the same loop is refused with at a save
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array			$notes				{ key, inserts } each

@@ -24,8 +24,8 @@ return [
 				'de_DE' => 'Das erste Album, das es gibt.',
 			],
 			'[gallery album="gone"]' => [
-				'en_US' => 'A key that no album has - the album was deleted, or the key is misspelt - draws nothing before Nino 1.6. From Nino 1.6, where the album is a list in the Builder, it draws the first album, the way a call with no key does, and the Builder does not keep such a call: a section that holds one is shown as an HTML+ block.',
-				'de_DE' => 'Ein Schlüssel, den kein Album hat - das Album wurde gelöscht oder der Schlüssel ist falsch geschrieben - zeichnet vor Nino 1.6 nichts. Ab Nino 1.6, wo das Album im Builder eine Liste ist, zeichnet er das erste Album, so wie ein Aufruf ohne Schlüssel, und der Builder behält so einen Aufruf nicht: eine Section, die ihn enthält, zeigt er als HTML+-Block.',
+				'en_US' => 'A key that no album has - the album was deleted, or the key is misspelt - draws the first album, the way a call with no key does, because the album is a list in the Builder and the Components module reads a key outside the list as none. The Builder does not keep such a call: a section that holds one is shown as an HTML+ block. With the Components module switched off the key is read as it stands, and nothing is drawn.',
+				'de_DE' => 'Ein Schlüssel, den kein Album hat - das Album wurde gelöscht oder der Schlüssel ist falsch geschrieben - zeichnet das erste Album, so wie ein Aufruf ohne Schlüssel, weil das Album im Builder eine Liste ist und das Modul Components einen Schlüssel außerhalb der Liste als keinen liest. Der Builder behält so einen Aufruf nicht: eine Section, die ihn enthält, zeigt er als HTML+-Block. Bei abgeschaltetem Modul Components gilt der Schlüssel, wie er dasteht, und es wird nichts gezeichnet.',
 			],
 			'[gallery ... class="my-class"]' => [
 				'en_US' => 'A class of your own, added to those of the grid. What the Builder writes for its custom classes.',
@@ -59,8 +59,8 @@ return [
 	// It brings content an editor maintains, which is what puts it here
 	// rather than with the effects that only change how a page behaves
 	'category'		=> 'content',
-	'version'			=> '1.0.0',
-	'nino'				=> '^1.3',
+	'version'			=> '1.1.0',
+	'nino'				=> '^1.8',
 	// The overlay a thumbnail opens into is the Lightbox feature's, not a
 	// second copy of one. Installing this from the catalogue brings it along
 	'requires'		=> [ 'lightbox' ],
@@ -68,6 +68,9 @@ return [
 	// /images/gallery/, where every other uploaded image lives and where a
 	// backup already carries them
 	'data'				=> [ '/data/gallery.php' ],
+	// The grid's stylesheet goes into the site's style bundle; no script, what a
+	// thumbnail opens into is the Lightbox feature's
+	'assets'			=> [ '/features/Gallery/assets/gallery.css' ],
 	'settings'		=> [
 		'thumbWidth' => [
 			'type'	=> 'int',
@@ -133,7 +136,7 @@ return [
 		a select of the numbers: the wrapper would turn what is not one of them into the
 		album's count, and doShortcode() has always read an (int) of it with 4 where that is
 		none. An explicit columns="" is the one form the wrapper cannot tell from an omitted
-		attribute, and it takes the album's count. Nino 1.5 ignores the key	*/
+		attribute, and it takes the album's count	*/
 	'components'	=> [
 		'gallery' => [
 			'label'			=> [ 'en_US' => 'Gallery', 'de_DE' => 'Galerie' ],

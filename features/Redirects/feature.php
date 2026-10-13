@@ -41,8 +41,8 @@ return [
 		'install' => [],
 	],
 	'category'		=> 'system',
-	'version'			=> '1.0.0',
-	'nino'				=> '^1.4',
+	'version'			=> '1.1.0',
+	'nino'				=> '^1.8',
 	'requires'		=> [],
 	'settings'		=> [
 		'record' => [

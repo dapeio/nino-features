@@ -29,8 +29,8 @@ return [
 				'de_DE' => 'Wie viele Treffer die Suche hat, als reine Zahl - alle, nicht die Seite, die limit zeichnet. Nichts, solange nichts gesucht wurde, 0, wenn nichts gefunden wurde.',
 			],
 			'[search-results ... limit="20" tag="none"]' => [
-				'en_US' => 'How many hits to draw (default 20, at most 200), and the wrapper: a div with class nino-search-results by default, tag="none" leaves the rows unwrapped. type takes several types, separated by commas.',
-				'de_DE' => 'Wie viele Treffer gezeichnet werden (Standard 20, höchstens 200), und die Hülle: standardmäßig ein div mit der Klasse nino-search-results, tag="none" lässt die Zeilen ungehüllt. type nimmt mehrere Typen, durch Komma getrennt.',
+				'en_US' => 'How many hits to draw (default 20, at most 200), and the wrapper: a div with class nino-search-results by default, tag picks another element, class adds classes to the one it has, tag="none" leaves the rows unwrapped. type takes several types, separated by commas.',
+				'de_DE' => 'Wie viele Treffer gezeichnet werden (Standard 20, höchstens 200), und die Hülle: standardmäßig ein div mit der Klasse nino-search-results, tag wählt ein anderes Element, class hängt Klassen an die vorhandene an, tag="none" lässt die Zeilen ungehüllt. type nimmt mehrere Typen, durch Komma getrennt.',
 			],
 		],
 		'markup' => [
@@ -68,8 +68,8 @@ return [
 		'install' => [],
 	],
 	'category'		=> 'content',
-	'version'			=> '1.1.0',
-	'nino'				=> '^1.3',
+	'version'			=> '1.2.0',
+	'nino'				=> '^1.8',
 	'requires'		=> [],
 	'settings'		=> [
 		'api' => [
@@ -89,7 +89,7 @@ return [
 		markup of one hit, with [[field]] for what it holds, and the Builder can neither
 		carry that markup nor edit it as it is: it reads a [[title]] as a call of the title
 		component and its editor for a body would flatten the record. It stays a
-		shortcode, like [consent]. Nino 1.5 ignores the key	*/
+		shortcode, like [consent]	*/
 	'components'	=> [
 		'search-count' => [
 			'label'			=> [ 'en_US' => 'Number of hits', 'de_DE' => 'Anzahl der Treffer' ],

@@ -180,17 +180,17 @@ namespace Nino\Modules\Search {
 			$posted 	= $data['fields'] ?? [];
 
 			if( $typeUri === null ) {
-				\Nino\Http::fail( $request, 400, 'not an element type name' );
+				\Nino\Http::fail( $request, 400, 'not an element type name', 'search_type' );
 				return;
 			}
 
 			if( \Nino\Filesystem::fileExists( $appData, '/elements/'. ltrim( $typeUri, '/' ). '.php' ) === false ) {
-				\Nino\Http::fail( $request, 404, 'there is no element type "'. $typeUri. '"' );
+				\Nino\Http::fail( $request, 404, 'there is no element type "'. $typeUri. '"', 'search_notype', [ $typeUri ] );
 				return;
 			}
 
 			if( is_array( $posted ) === false ) {
-				\Nino\Http::fail( $request, 400, 'no fields posted' );
+				\Nino\Http::fail( $request, 400, 'no fields posted', 'search_fields' );
 				return;
 			}
 
@@ -200,13 +200,21 @@ namespace Nino\Modules\Search {
 			foreach( $posted as $priority => $field ) {
 
 				$priority = is_int( $priority ) === true ? $priority : (int) $priority;
-				$field 		= trim( (string) $field );
+
+				// A slot holds a name or nothing: a list or a number in one is
+				// no field, and cast it would raise "Array to string conversion"
+				if( is_string( $field ) === false ) {
+					\Nino\Http::fail( $request, 400, 'a field is not a name', 'search_fields' );
+					return;
+				}
+
+				$field = trim( $field );
 
 				if( $field === '' )
 					continue;
 
 				if( isset( \Nino\Modules\Search::WEIGHTS[$priority] ) === false ) {
-					\Nino\Http::fail( $request, 400, 'priority "'. $priority. '" is not 0, 1, 2 or 3' );
+					\Nino\Http::fail( $request, 400, 'priority "'. $priority. '" is not 0, 1, 2 or 3', 'search_priority', [ $priority ] );
 					return;
 				}
 
@@ -215,12 +223,12 @@ namespace Nino\Modules\Search {
 				if( $field !== \Nino\Modules\Search::URI_FIELD ) {
 
 					if( isset( $model[$field] ) === false ) {
-						\Nino\Http::fail( $request, 400, 'the model of "'. $typeUri. '" has no field "'. $field. '"' );
+						\Nino\Http::fail( $request, 400, 'the model of "'. $typeUri. '" has no field "'. $field. '"', 'search_field', [ $typeUri, $field ] );
 						return;
 					}
 
 					if( in_array( (string) ( $model[$field]['type'] ?? 'string' ), \Nino\Modules\Search::INDEXABLE, true ) === false ) {
-						\Nino\Http::fail( $request, 400, 'the field "'. $field. '" carries no text to search' );
+						\Nino\Http::fail( $request, 400, 'the field "'. $field. '" carries no text to search', 'search_text', [ $field ] );
 						return;
 					}
 				}
@@ -269,7 +277,7 @@ namespace Nino\Modules\Search {
 			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::MANAGE_PERM ) === false )
 				return;
 
-			$only 		= (string) ( \Nino\Admin\Admin::postData()['type'] ?? '' );
+			$only 		= \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'type' );
 			$result 	= \Nino\Modules\Search::createIndexes( $appData, $only );
 
 			if( $result['failed'] !== [] ) {

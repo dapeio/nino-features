@@ -12,8 +12,11 @@ declare(strict_types=1);
  *												the Location, POST left alone, a Location somebody
  *												else set), the addresses nothing answered and the
  *												shapes that are never written down, every panel action
- *												including the probe's three answers, the permission
- *												each of them is behind, and deactivation - and, where
+ *												including the probe's three answers, the code each
+ *												refusal answers with and its sentence in both
+ *												languages, what a write under the lock keeps of a
+ *												change made meanwhile, the permission each of them
+ *												is behind, and deactivation - and, where
  *												node is on the path, redirects-js-smoke.js beside it,
  *												the panel's script over a dom stand-in. Travels with
  *												the feature and runs against the checkout three levels
@@ -34,7 +37,9 @@ require $root. '/tests/harness.php';
 /**
  *	Build a request the way \Nino\Http::request() leaves it and resolve a
  *	response for it - the whole pipeline, so what is under test is the callback
- *	as it really runs and not a method called by hand
+ *	as it really runs and not a method called by hand. ninoVisit() stops after
+ *	the request is built, and the callback under test is one of the response:
+ *	this runs \Nino\Http::response() as well
  *
  *	@param		array 		&$appData
  *	@param		string		$uri
@@ -43,30 +48,42 @@ require $root. '/tests/harness.php';
  *	@return 	array										The response array
  */
 function redirectsRequest( array &$appData, string $uri, string $method = 'GET' ): array {
-	$request = [ 'REQUEST_METHOD' => $method, 'REQUEST_URI' => $uri, 'REMOTE_ADDR' => '127.0.0.1' ];
-	\Nino\Http::request( $appData, $request );
+	$request = ninoVisit( $appData, $uri, $method );
 	\Nino\Http::response( $appData, $request );
 	return $request['/nino/http/response'];
 }
 
 /**
- *	Call one of the panel's actions the way the workbench does
+ *	The sentence the panel says for a code in one language, as its text
+ *	directory has it - '' for a code without one
  *
  *	@param		array 		&$appData
- *	@param		string		$method				An api* method name
- *	@param		array			$post
+ *	@param		string		$code
+ *	@param		string		$locale
  *
- *	@return 	array										[ status, body ]
+ *	@return 	string
  */
-function redirectsPanel( array &$appData, string $method, array $post = [] ): array {
-	$_POST['data'] = json_encode( $post );
-	$request = [ '/nino/http/response' => [ 'statusCode' => 200 ] ];
-	\Nino\Modules\Redirects\Admin::$method( $appData, $request );
-	$_POST = [];
-	return [
-		$request['/nino/http/response']['statusCode'],
-		$request['/nino/http/response']['body'],
-	];
+function redirectsSentence( array &$appData, string $code, string $locale ): string {
+	return (string) ( \Nino\Admin\Admin::textFills( $appData, '/features/Redirects/text', $locale )['[[/_admin/error/'. $code. ']]'] ?? '' );
+}
+
+/**
+ *	Store a file of the shape the panel writes, whole and over whatever is
+ *	there, and forget the copy this request read - the setup of a check that
+ *	needs a state the panel would refuse to make
+ *
+ *	@param		array 		&$appData
+ *	@param		array 		$file					A normalised file: rules and misses
+ *
+ *	@return 	void
+ */
+function redirectsStore( array &$appData, array $file ): void {
+	unset( $appData['./redirects/rules'] );
+	\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Redirects\Rules::PATH, [
+		'format'	=> \Nino\Modules\Redirects\Rules::FORMAT,
+		'rules'		=> array_values( $file['rules'] ?? [] ),
+		'misses'	=> $file['misses'] ?? [],
+	] );
 }
 
 /**
@@ -103,6 +120,7 @@ function redirectsThrew( callable $callback ): string {
 }
 
 $appData = ninoSandbox( 'redirects' );
+$panel = \Nino\Modules\Redirects\Admin::class;
 $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
 // What a request always carries and a sandbox does not - a Location is built
 // on it (see the other feature suites)
@@ -119,7 +137,7 @@ $manifest	= \Nino\Features::manifest( $dir );
 check( 'the manifest validates without a warning', is_array( $manifest ) && ninoWarnings() === [] );
 check( 'key, class and version are what the directory says', is_array( $manifest ) && $manifest['key'] === 'redirects'
 	&& $manifest['module'] === '\\Nino\\Modules\\Redirects' && preg_match( '/^\d+\.\d+\.\d+/', (string) $manifest['version'] ) === 1 );
-check( 'it is system, and names the kernel it needs', ( $manifest['category'] ?? '' ) === 'system' && ( $manifest['nino'] ?? '' ) === '^1.4' );
+check( 'it is system, and names the kernel it needs', ( $manifest['category'] ?? '' ) === 'system' && ( $manifest['nino'] ?? '' ) === '^1.8' );
 check( 'the rules file is declared under data, so a backup carries it',
 	in_array( \Nino\Modules\Redirects\Rules::PATH, (array) ( $manifest['data'] ?? [] ), true ) === true );
 check( 'it offers the one switch that decides whether anything is written down',
@@ -148,6 +166,10 @@ check( '...and nothing that could leave the site is one',
 	&& \Nino\Modules\Redirects\Rules::path( '/old/../../etc' ) === ''
 	&& \Nino\Modules\Redirects\Rules::path( '/' ) === ''
 	&& \Nino\Modules\Redirects\Rules::path( '' ) === '' );
+// A browser reads a backslash after the slash as a second slash, and \Nino\Http::redirect() refuses it as it refuses '//'
+check( '...nor a backslash where the second slash would be, which a browser reads as one',
+	\Nino\Modules\Redirects\Rules::path( '/\\evil.example' ) === '' && \Nino\Modules\Redirects\Rules::target( '/\\evil.example' ) === ''
+	&& \Nino\Modules\Redirects\Rules::path( '/a\\b' ) === '/a\\b' );
 // A header is a line, and a value carrying a newline is two of them
 check( '...nor anything that could reach a header as a second line',
 	\Nino\Modules\Redirects\Rules::path( "/old\r\nLocation: https://evil.example" ) === ''
@@ -156,6 +178,15 @@ check( '...nor anything that could reach a header as a second line',
 check( 'a target is a path of this site or an https address of another',
 	\Nino\Modules\Redirects\Rules::target( '/new/page' ) === '/new/page'
 	&& \Nino\Modules\Redirects\Rules::target( 'https://example.com/new/' ) === 'https://example.com/new' );
+// The kernel's redirect sends a path whose first segment holds no colon, which a browser would read as a scheme
+check( '...and a path is one the kernel\'s redirect would send: a colon in the first segment is none, a colon further in is',
+	\Nino\Modules\Redirects\Rules::target( '/mailto:me@example.com' ) === '' && \Nino\Modules\Redirects\Rules::target( '/new:page' ) === ''
+	&& \Nino\Modules\Redirects\Rules::target( '/new/page:2' ) === '/new/page:2' && \Nino\Modules\Redirects\Rules::path( '/old:page' ) === '/old:page' );
+// ...and an address on another site is one it would send: a host, no credentials in front of it, a length a header takes
+check( '...and so is an https address: one with credentials in it, or one too long for a header, is none',
+	\Nino\Modules\Redirects\Rules::target( 'https://user:secret@example.com/new' ) === '' && \Nino\Modules\Redirects\Rules::target( 'https://user@example.com/new' ) === ''
+	&& \Nino\Modules\Redirects\Rules::target( 'https:///new' ) === '' && \Nino\Modules\Redirects\Rules::target( 'https://example.com/'. str_repeat( 'a', 2048 ) ) === ''
+	&& \Nino\Modules\Redirects\Rules::target( 'https://example.com:8443/new?x=1' ) === 'https://example.com:8443/new?x=1' );
 /*	http is refused rather than upgraded: a redirect is the one moment a site
 	chooses the next address for somebody, and choosing a plaintext one hands
 	that request to whoever is on the wire	*/
@@ -219,10 +250,10 @@ check( 'a rule that loops is dropped rather than stored for the browser to find 
 check( 'a status that is not a redirect becomes 301, and is not silent',
 	( array_values( array_filter( $normalised['rules'], static fn( array $r ): bool => $r['from'] === '/odd' ) )[0]['status'] ?? 0 ) === 301
 	&& count( array_filter( $notes, static fn( array $n ): bool => $n['key'] === '/_admin/redirects/note/status' && ( $n['inserts']['%d'] ?? '' ) === '418' ) ) === 1 );
-check( '...and a dropped loop carries its reason as a fill of its own, because the reason is one too',
-	count( array_filter( $notes, static fn( array $n ): bool => $n['key'] === '/_admin/redirects/note/dropped' && ( $n['inserts']['%r'] ?? '' ) === '/_admin/redirects/reason/self' ) ) === 1 );
-check( 'loops() names the reason with a key rather than a sentence', \Nino\Modules\Redirects\Rules::loops( '/a', '/a', false ) === '/_admin/redirects/reason/self'
-	&& \Nino\Modules\Redirects\Rules::loops( '/a', '/a/b', true ) === '/_admin/redirects/reason/subtree' );
+check( '...and a dropped loop carries its reason as a fill of its own, the words of the code the loop is refused with',
+	count( array_filter( $notes, static fn( array $n ): bool => $n['key'] === '/_admin/redirects/note/dropped' && ( $n['inserts']['%r'] ?? '' ) === '/_admin/error/redirects_loop_self' ) ) === 1 );
+check( 'loops() names the reason with its code rather than a sentence', \Nino\Modules\Redirects\Rules::loops( '/a', '/a', false ) === 'redirects_loop_self'
+	&& \Nino\Modules\Redirects\Rules::loops( '/a', '/a/b', true ) === 'redirects_loop_subtree' );
 check( 'a miss that is not one is not a miss', array_keys( $normalised['misses'] ) === [ '/gone' ] );
 check( 'every rule carries the whole shape, whatever the file said',
 	array_keys( $normalised['rules'][0] ) === [ 'from', 'to', 'status', 'subtree', 'hits', 'last' ] );
@@ -248,7 +279,7 @@ echo "What happens to a request\n";
 
 $appData['/nino/http/routes']['GET://here'] = [ 'uri' => '/here', 'body' => 'a page' ];
 
-\Nino\Modules\Redirects\Rules::write( $appData, \Nino\Modules\Redirects\Rules::normalize( [ 'rules' => [
+redirectsStore( $appData, \Nino\Modules\Redirects\Rules::normalize( [ 'rules' => [
 	[ 'from' => '/gone', 'to' => '/here', 'status' => 301 ],
 	[ 'from' => '/moved', 'to' => '/here', 'status' => 302 ],
 	[ 'from' => '/old-shop', 'to' => '/here', 'subtree' => true ],
@@ -288,10 +319,23 @@ check( 'a site path is sent with the project directory in front of it', ( redire
 check( '...and an address on another site is not', ( redirectsRequest( $appData, '/away' )['header']['Location'] ?? '' ) === 'https://example.com/there' );
 $appData['/nino/dir'] = '';
 
-echo "\n";
-
-
-// --- The addresses nothing answered -----------------------------------------
+/*	What the kernel's redirect will not send is not sent: the rest of a path
+	that moved to the front page is what follows the old address, so a request
+	for '/moved-home//evil.example' makes '//evil.example' of it - the address
+	of another host, which the Location used to be built from as it stood. The
+	response is the 404 it was, a warning says why, and the rule has not been
+	followed	*/
+$fileBeforeHome = redirectsFile( $appData );
+redirectsStore( $appData, \Nino\Modules\Redirects\Rules::normalize( [ 'rules' => [ [ 'from' => '/moved-home', 'to' => '/', 'subtree' => true ] ] ] ) );
+ninoWarnings();
+$refusedBySubtree = redirectsRequest( $appData, '/moved-home//evil.example' );
+check( 'a Location that would be the address of another host is not sent: the response is left as it was, and says why in the log',
+	isset( $refusedBySubtree['header']['Location'] ) === false && $refusedBySubtree['statusCode'] === 404
+	&& str_contains( implode( "\n", ninoWarnings() ), 'neither a path of this site nor an http(s) url' ) === true );
+check( '...and a rule that was not followed is not counted as one', ( redirectsFile( $appData )['rules'][0]['hits'] ?? -1 ) === 0 );
+check( '...while the same rule sends the pages that are paths', ( redirectsRequest( $appData, '/moved-home/page' )['header']['Location'] ?? '' ) === '/page'
+	&& ( redirectsFile( $appData )['rules'][0]['hits'] ?? -1 ) === 1 );
+redirectsStore( $appData, $fileBeforeHome );
 
 echo "What is written down, and what is not\n";
 
@@ -432,7 +476,7 @@ check( 'a subtree that moved to the home page answers its own address with / and
 	( \Nino\Modules\Redirects\Rules::match( $home['rules'], '/old' )['to'] ?? '' ) === '/'
 	&& ( \Nino\Modules\Redirects\Rules::match( $home['rules'], '/old/x' )['to'] ?? '' ) === '/x' );
 
-\Nino\Modules\Redirects\Rules::write( $appData, $home );
+redirectsStore( $appData, $home );
 
 check( 'the Location is the front page, and never empty', ( redirectsRequest( $appData, '/gone-home' )['header']['Location'] ?? '' ) === '/'
 	&& ( redirectsRequest( $appData, '/old' )['header']['Location'] ?? '' ) === '/'
@@ -456,7 +500,7 @@ echo "What answers a target\n";
 $routesBefore = $appData['/nino/http/routes'];
 $fillsFile		= \Nino\Filesystem::getFileContent( $appData, '/text/de_DE.php', [] );
 
-foreach( [ 'GET://', 'GET://blog', 'GET://about', 'GET://news/*', 'POST://form', 'GET://_admin', 'GET://sitemap.xml', 'GET://old.html' ] as $key )
+foreach( [ 'GET://', 'GET://blog', 'GET://about', 'GET://news/*', 'POST://form', 'GET://_admin', 'GET://sitemap.xml', 'GET://old.html', 'GET:///double', 'GET://\\back' ] as $key )
 	$appData['/nino/http/routes'][$key] = [ 'uri' => substr( $key, 5 ), 'body' => 'x' ];
 // A route whose response uri is not its public address, which is what a
 // translated page has - the name is looked up under the uri
@@ -473,6 +517,8 @@ check( 'the pages a target can be picked from are the GET routes shaped like a p
 	array_keys( $pages ) === [ '/', '/about', '/blog', '/here', '/old.html', '/ueber-uns' ] );
 check( '...never a wildcard, a POST route, the workbench or a file like sitemap.xml',
 	isset( $pages['/news/*'], $pages['/form'], $pages['/_admin'], $pages['/sitemap.xml'] ) === false );
+check( '...nor an address a browser would read as the address of another host: \\Nino\\Http::pages() leaves out what starts with two slashes, or a slash and a backslash',
+	isset( $pages['//double'] ) === false && isset( $pages['/\\back'] ) === false );
 check( '...labelled with the name the menu would give the page, tags stripped and entities decoded',
 	$pages['/blog']['label'] === 'Das Blog & mehr' && $pages['/ueber-uns']['label'] === 'Über uns' );
 check( '...and with its path where nobody named it', $pages['/about']['label'] === '/about' && $pages['/']['label'] === '/' );
@@ -486,6 +532,19 @@ check( '...each as a path, a label and the locale of its route', $pages['/ueber-
 check( 'a name in a language that is not the native one, or in global.php, is found as the menu would find it',
 	\Nino\Modules\Redirects\Rules::routes( $appData )['/blog']['label'] === 'The blog'
 	&& \Nino\Modules\Redirects\Rules::routes( $appData )['/about']['label'] === 'About' );
+// ...and one a module added to the fills for this request, which only the kernel's reading of the fills knows
+\Nino\Html::addFills( $appData, [ '[[/_nino/webpage/about/name]]' => 'About, by a module' ], '*' );
+check( 'a name added to the fills of the request is found as well, and wins as it does on a page',
+	\Nino\Modules\Redirects\Rules::routes( $appData )['/about']['label'] === 'About, by a module' );
+\Nino\Html::removeFill( $appData, '/_nino/webpage/about/name', '*' );
+// A language the site does not list has no fills: the kernel reads no file for a name it cannot vouch for
+$nativeBefore = $appData['/nino/locales/native'];
+$appData['/nino/locales/native'] = 'fr_FR';
+\Nino\Filesystem::putFileContent( $appData, '/text/fr_FR.php', [ '[[/_nino/webpage/blog/name]]' => 'Le blog' ] );
+check( 'a name in a language the site does not list is not read, native or not',
+	\Nino\Modules\Redirects\Rules::routes( $appData )['/blog']['label'] === 'The blog' );
+$appData['/nino/locales/native'] = $nativeBefore;
+@unlink( \Nino\Filesystem::path( $appData, '/text/fr_FR.php' ) );
 \Nino\Filesystem::putFileContent( $appData, '/text/en_US.php', [] );
 \Nino\Filesystem::putFileContent( $appData, '/text/global.php', [] );
 
@@ -507,7 +566,7 @@ $rulesNow = \Nino\Modules\Redirects\Rules::normalize( [ 'rules' => [
 // Normalising keeps loops out of a stored file, so the cycle is two rules that
 // are each fine on their own - which is how one gets in
 check( 'two rules that send to one another are each fine alone', count( $rulesNow['rules'] ) === 12 );
-\Nino\Modules\Redirects\Rules::write( $appData, $rulesNow );
+redirectsStore( $appData, $rulesNow );
 
 $publicDir = \Nino\Filesystem::getPublicPath( $appData );
 is_dir( $publicDir ) === true || mkdir( $publicDir, 0755, true );
@@ -536,7 +595,7 @@ $withLongChain = static function( array &$appData ): array {
 		$long[] = [ 'from' => '/long-'. $hop, 'to' => '/long-'. ( $hop + 1 ) ];
 	$long[] = [ 'from' => '/long-'. ( \Nino\Modules\Redirects\Rules::HOPS + 3 ), 'to' => '/here' ];
 	$notes = [];
-	\Nino\Modules\Redirects\Rules::write( $appData, \Nino\Modules\Redirects\Rules::normalize( [ 'rules' => array_merge( $before['rules'], $long ), 'misses' => $before['misses'] ], $notes ) );
+	redirectsStore( $appData, \Nino\Modules\Redirects\Rules::normalize( [ 'rules' => array_merge( $before['rules'], $long ), 'misses' => $before['misses'] ], $notes ) );
 	return $before;
 };
 $rulesBeforeLong = $withLongChain( $appData );
@@ -545,7 +604,7 @@ check( 'a chain of more than HOPS rules that never comes back is a chain, not a 
 check( '...while the end of the same chain, a few rules from the page, is the rule it always was',
 	\Nino\Modules\Redirects\Rules::answer( $appData, '/long-'. ( \Nino\Modules\Redirects\Rules::HOPS + 3 ) ) === 'rule'
 	&& \Nino\Modules\Redirects\Rules::answer( $appData, '/long-'. ( \Nino\Modules\Redirects\Rules::HOPS + 1 ) ) === 'rule' );
-\Nino\Modules\Redirects\Rules::write( $appData, $rulesBeforeLong );
+redirectsStore( $appData, $rulesBeforeLong );
 
 check( 'a file in the public directory answers its address', \Nino\Modules\Redirects\Rules::answer( $appData, '/public/a.pdf' ) === 'file'
 	&& \Nino\Modules\Redirects\Rules::answer( $appData, '/public/b.pdf' ) === 'nothing' );
@@ -578,10 +637,9 @@ echo "\n";
 
 echo "The panel\n";
 
-\Nino\Auth::insertUser( $appData, 'dev@example.com', 'correct horse battery staple', [ '/*' ] );
-\Nino\Auth::loginUser( $appData, 'dev@example.com', 'correct horse battery staple' );
+ninoUser( $appData, 'dev@example.com' );
 
-[ $status, $listed ] = redirectsPanel( $appData, 'apiList' );
+[ $status, $listed ] = ninoCall( $appData, [ $panel, 'apiList' ] );
 check( 'the list answers the rules, the addresses and what the panel needs to say about itself', $status === 200
 	&& is_array( $listed['rules'] ) && is_array( $listed['misses'] )
 	&& $listed['statuses'] === \Nino\Modules\Redirects\Rules::STATUSES
@@ -589,12 +647,12 @@ check( 'the list answers the rules, the addresses and what the panel needs to sa
 check( '...with each address as a row rather than a key, so the table can sort on it',
 	array_keys( $listed['misses'][0] ?? [] ) === [ 'path', 'count', 'last' ] );
 
-[ $status, $saved ] = redirectsPanel( $appData, 'apiSave', [ 'from' => '/press/', 'to' => '/news', 'status' => 302, 'subtree' => false, 'was' => '' ] );
+[ $status, $saved ] = ninoCall( $appData, [ $panel, 'apiSave' ], [ 'from' => '/press/', 'to' => '/news', 'status' => 302, 'subtree' => false, 'was' => '' ] );
 check( 'a rule can be added, and its address is normalised on the way in', $status === 200 && $saved['saved'] === '/press'
 	&& count( array_filter( $saved['rules'], static fn( array $r ): bool => $r['from'] === '/press' ) ) === 1 );
 check( '...and it answers straight away', ( redirectsRequest( $appData, '/press' )['header']['Location'] ?? '' ) === '/news' );
 
-[ $status, $renamed ] = redirectsPanel( $appData, 'apiSave', [ 'from' => '/presse', 'to' => '/news', 'status' => 301, 'subtree' => false, 'was' => '/press' ] );
+[ $status, $renamed ] = ninoCall( $appData, [ $panel, 'apiSave' ], [ 'from' => '/presse', 'to' => '/news', 'status' => 301, 'subtree' => false, 'was' => '/press' ] );
 check( 'a rule can be renamed in one save rather than a delete and an add', $status === 200
 	&& count( array_filter( $renamed['rules'], static fn( array $r ): bool => $r['from'] === '/press' ) ) === 0
 	&& count( array_filter( $renamed['rules'], static fn( array $r ): bool => $r['from'] === '/presse' ) ) === 1 );
@@ -604,71 +662,101 @@ check( 'a rule can be renamed in one save rather than a delete and an add', $sta
 	of them as "the one being edited" and kept the first it came to. A rule
 	that silently went away is the one kind of mistake nobody goes looking
 	for, so it is a refusal like the others	*/
-redirectsPanel( $appData, 'apiSave', [ 'from' => '/taken', 'to' => '/two', 'status' => 301, 'subtree' => false, 'was' => '' ] );
-[ $status, $collided ] = redirectsPanel( $appData, 'apiSave', [ 'from' => '/taken', 'to' => '/one', 'status' => 301, 'subtree' => false, 'was' => '/presse' ] );
-check( 'renaming a rule onto an address another rule answers is refused rather than done quietly', $status === 400
-	&& str_contains( (string) ( $collided['error'] ?? '' ), '/taken' ) === true );
+ninoCall( $appData, [ $panel, 'apiSave' ], [ 'from' => '/taken', 'to' => '/two', 'status' => 301, 'subtree' => false, 'was' => '' ] );
+[ $status, $collided ] = ninoCall( $appData, [ $panel, 'apiSave' ], [ 'from' => '/taken', 'to' => '/one', 'status' => 301, 'subtree' => false, 'was' => '/presse' ] );
+check( 'renaming a rule onto an address another rule answers is refused rather than done quietly: 400, with the code and the address that is taken', $status === 400
+	&& ( $collided['code'] ?? '' ) === 'redirects_taken' && ( $collided['params'] ?? [] ) === [ '/taken' ] );
 check( '...and both rules are still there, the other one with where it sent',
 	count( array_filter( redirectsFile( $appData )['rules'], static fn( array $r ): bool => $r['from'] === '/presse' ) ) === 1
 	&& ( array_values( array_filter( redirectsFile( $appData )['rules'], static fn( array $r ): bool => $r['from'] === '/taken' ) )[0]['to'] ?? '' ) === '/two' );
-redirectsPanel( $appData, 'apiDelete', [ 'from' => '/taken' ] );
+ninoCall( $appData, [ $panel, 'apiDelete' ], [ 'from' => '/taken' ] );
 
-check( 'an address that is not one is refused, in the panel\'s own words', redirectsPanel( $appData, 'apiSave', [ 'from' => 'nope', 'to' => '/news' ] )[0] === 400 );
-check( 'so is a target that is not one', redirectsPanel( $appData, 'apiSave', [ 'from' => '/x', 'to' => 'http://example.com' ] )[0] === 400 );
-check( 'and so is a rule that would send a visitor back into itself', redirectsPanel( $appData, 'apiSave', [ 'from' => '/x', 'to' => '/x' ] )[0] === 400
-	&& redirectsPanel( $appData, 'apiSave', [ 'from' => '/x', 'to' => '/x/y', 'subtree' => true ] )[0] === 400 );
+/*	A refusal a person can cause carries a code, and the sentence of the code is
+	the script's to say in the language of the workbench: the answer holds the
+	English sentence for a log, the code and what belongs in it - no fill key,
+	no translated text	*/
+$refusals = [
+	'redirects_from'					=> [ 'from' => 'nope', 'to' => '/news' ],
+	'redirects_to'						=> [ 'from' => '/x', 'to' => 'http://example.com' ],
+	'redirects_status'				=> [ 'from' => '/x', 'to' => '/news', 'status' => 418 ],
+	'redirects_loop_self'			=> [ 'from' => '/x', 'to' => '/x' ],
+	'redirects_loop_subtree'	=> [ 'from' => '/x', 'to' => '/x/y', 'subtree' => true ],
+];
+foreach( $refusals as $code => $post ) {
+	[ $status, $refused ] = ninoCall( $appData, [ $panel, 'apiSave' ], $post );
+	check( "a rule that is not one is refused with 400 and the code $code, and no param", $status === 400 && ( $refused['code'] ?? '' ) === $code
+		&& array_keys( $refused ) === [ 'error', 'code' ] && str_contains( (string) $refused['error'], '/_admin/' ) === false );
+}
+check( 'the answer holds the English message for a log and the code, and nothing the script has to translate',
+	ninoCall( $appData, [ $panel, 'apiSave' ], [ 'from' => 'nope', 'to' => '/news' ] )[1] === [ 'error' => 'the old address is not a path of this site', 'code' => 'redirects_from' ] );
+
+/*	A browser reads a backslash after the slash as a second slash, and the
+	kernel's redirect refuses such an address as it refuses '//' - a rule with
+	one could be saved and never be followed, so it is refused at the save	*/
+check( 'a target the kernel\'s redirect would refuse is refused at the save, not saved to be refused on every request',
+	ninoCall( $appData, [ $panel, 'apiSave' ], [ 'from' => '/x', 'to' => '/\\evil.example' ] )[1]['code'] === 'redirects_to'
+	&& ninoCall( $appData, [ $panel, 'apiSave' ], [ 'from' => '/x', 'to' => '/a:b' ] )[1]['code'] === 'redirects_to'
+	&& ninoCall( $appData, [ $panel, 'apiSave' ], [ 'from' => '/x', 'to' => 'https://user:secret@example.com/' ] )[1]['code'] === 'redirects_to'
+	&& ninoCall( $appData, [ $panel, 'apiSave' ], [ 'from' => '/\\x', 'to' => '/news' ] )[1]['code'] === 'redirects_from' );
+
+foreach( [ 'redirects_from' => false, 'redirects_to' => false, 'redirects_status' => false, 'redirects_loop_self' => false, 'redirects_loop_subtree' => false, 'redirects_taken' => true, 'redirects_unknown' => true ] as $code => $takesAddress )
+	foreach( [ 'en_US', 'de_DE' ] as $locale ) {
+		$sentence = redirectsSentence( $appData, $code, $locale );
+		check( "...and the code $code has its sentence in $locale". ( $takesAddress === true ? ', with a place for the address' : '' ),
+			$sentence !== '' && str_contains( $sentence, '%s' ) === $takesAddress );
+	}
 
 // An address that has a rule is answered now, so it is not an address nothing
 // answers - leaving it on the list would have somebody write the same rule twice
 redirectsRequest( $appData, '/orphan' );
 check( 'the address is on the list first', isset( redirectsFile( $appData )['misses']['/orphan'] ) === true );
-redirectsPanel( $appData, 'apiSave', [ 'from' => '/orphan', 'to' => '/here' ] );
+ninoCall( $appData, [ $panel, 'apiSave' ], [ 'from' => '/orphan', 'to' => '/here' ] );
 check( '...and saving a rule for it takes it off', isset( redirectsFile( $appData )['misses']['/orphan'] ) === false );
 
-[ $status, $probed ] = redirectsPanel( $appData, 'apiProbe', [ 'path' => '/here' ] );
+[ $status, $probed ] = ninoCall( $appData, [ $panel, 'apiProbe' ], [ 'path' => '/here' ] );
 check( 'the probe says when a page answers an address, so no rule is consulted', $status === 200 && $probed['answer'] === 'route' );
-[ $status, $probed ] = redirectsPanel( $appData, 'apiProbe', [ 'path' => '/old-shop/socks' ] );
+[ $status, $probed ] = ninoCall( $appData, [ $panel, 'apiProbe' ], [ 'path' => '/old-shop/socks' ] );
 check( '...which rule answers it, and where it sends', $status === 200 && $probed['answer'] === 'rule'
 	&& $probed['from'] === '/old-shop' && $probed['to'] === '/here/socks' && $probed['status'] === 301 );
-[ $status, $probed ] = redirectsPanel( $appData, 'apiProbe', [ 'path' => '/nothing-here' ] );
+[ $status, $probed ] = ninoCall( $appData, [ $panel, 'apiProbe' ], [ 'path' => '/nothing-here' ] );
 check( '...and when nothing does', $status === 200 && $probed['answer'] === 'nothing' );
-check( 'a probe for something that is not an address is a 400', redirectsPanel( $appData, 'apiProbe', [ 'path' => 'nope' ] )[0] === 400 );
+check( 'a probe for something that is not an address is a 400', ninoCall( $appData, [ $panel, 'apiProbe' ], [ 'path' => 'nope' ] )[0] === 400 );
 
 /*	What a target leads to. The rule is written whatever the answer is: a rule
 	for a page that is not made yet is how a move is prepared, so the panel says
 	so and goes on	*/
-[ $status, $warned ] = redirectsPanel( $appData, 'apiSave', [ 'from' => '/dead-end', 'to' => '/nowhere', 'status' => 301, 'subtree' => false, 'was' => '' ] );
+[ $status, $warned ] = ninoCall( $appData, [ $panel, 'apiSave' ], [ 'from' => '/dead-end', 'to' => '/nowhere', 'status' => 301, 'subtree' => false, 'was' => '' ] );
 check( 'a rule whose target nothing answers is saved, and the save says so', $status === 200 && $warned['saved'] === '/dead-end'
 	&& count( $warned['warnings'] ) === 1 && str_contains( $warned['warnings'][0], '/nowhere' ) === true
 	&& ( array_values( array_filter( redirectsFile( $appData )['rules'], static fn( array $r ): bool => $r['from'] === '/dead-end' ) )[0]['to'] ?? '' ) === '/nowhere' );
 $appData['/nino/http/routes']['GET://'] = [ 'uri' => '/', 'body' => 'the front page' ];
 check( '...a rule to a page, to the front page or to another site is saved without a word',
-	( redirectsPanel( $appData, 'apiSave', [ 'from' => '/to-page', 'to' => '/here' ] )[1]['warnings'] ?? null ) === []
-	&& ( redirectsPanel( $appData, 'apiSave', [ 'from' => '/to-site', 'to' => 'https://example.org' ] )[1]['warnings'] ?? null ) === []
-	&& ( redirectsPanel( $appData, 'apiSave', [ 'from' => '/to-home', 'to' => '/' ] )[1]['warnings'] ?? null ) === [] );
+	( ninoCall( $appData, [ $panel, 'apiSave' ], [ 'from' => '/to-page', 'to' => '/here' ] )[1]['warnings'] ?? null ) === []
+	&& ( ninoCall( $appData, [ $panel, 'apiSave' ], [ 'from' => '/to-site', 'to' => 'https://example.org' ] )[1]['warnings'] ?? null ) === []
+	&& ( ninoCall( $appData, [ $panel, 'apiSave' ], [ 'from' => '/to-home', 'to' => '/' ] )[1]['warnings'] ?? null ) === [] );
 unset( $appData['/nino/http/routes']['GET://'] );
 check( '...so is the target the older save above went to: nothing there answered /news either',
-	count( redirectsPanel( $appData, 'apiSave', [ 'from' => '/press', 'to' => '/news', 'status' => 302 ] )[1]['warnings'] ?? [] ) === 1 );
-redirectsPanel( $appData, 'apiDelete', [ 'from' => '/press' ] );
+	count( ninoCall( $appData, [ $panel, 'apiSave' ], [ 'from' => '/press', 'to' => '/news', 'status' => 302 ] )[1]['warnings'] ?? [] ) === 1 );
+ninoCall( $appData, [ $panel, 'apiDelete' ], [ 'from' => '/press' ] );
 
-[ $status, $viaRule ] = redirectsPanel( $appData, 'apiSave', [ 'from' => '/twice', 'to' => '/to-page' ] );
+[ $status, $viaRule ] = ninoCall( $appData, [ $panel, 'apiSave' ], [ 'from' => '/twice', 'to' => '/to-page' ] );
 check( 'a target another rule answers is a softer warning, and says the visitor is redirected twice',
 	$status === 200 && count( $viaRule['warnings'] ) === 1 && str_contains( $viaRule['warnings'][0], '/to-page' ) === true
 	&& $viaRule['warnings'][0] !== $warned['warnings'][0] );
 
-[ $status, $viaDead ] = redirectsPanel( $appData, 'apiSave', [ 'from' => '/twice-dead', 'to' => '/dead-end' ] );
+[ $status, $viaDead ] = ninoCall( $appData, [ $panel, 'apiSave' ], [ 'from' => '/twice-dead', 'to' => '/dead-end' ] );
 check( '...but where that rule leads nowhere, the visitor lands on the 404 page and the warning says that instead',
 	$status === 200 && count( $viaDead['warnings'] ) === 1 && $viaDead['warnings'][0] !== $viaRule['warnings'][0] );
-redirectsPanel( $appData, 'apiDelete', [ 'from' => '/twice-dead' ] );
+ninoCall( $appData, [ $panel, 'apiDelete' ], [ 'from' => '/twice-dead' ] );
 
-redirectsPanel( $appData, 'apiSave', [ 'from' => '/cycle-a', 'to' => '/cycle-b' ] );
-[ $status, $cycle ] = redirectsPanel( $appData, 'apiSave', [ 'from' => '/cycle-b', 'to' => '/cycle-a' ] );
+ninoCall( $appData, [ $panel, 'apiSave' ], [ 'from' => '/cycle-a', 'to' => '/cycle-b' ] );
+[ $status, $cycle ] = ninoCall( $appData, [ $panel, 'apiSave' ], [ 'from' => '/cycle-b', 'to' => '/cycle-a' ] );
 check( 'a chain of rules that leads back to where it started is warned about, and still saved',
 	$status === 200 && count( $cycle['warnings'] ) === 1 && str_contains( $cycle['warnings'][0], '/cycle-a' ) === true
 	&& count( array_filter( redirectsFile( $appData )['rules'], static fn( array $r ): bool => $r['from'] === '/cycle-b' ) ) === 1 );
 
 $rulesBeforeLong = $withLongChain( $appData );
-[ $status, $longSaved ] = redirectsPanel( $appData, 'apiSave', [ 'from' => '/long-start', 'to' => '/long-0' ] );
+[ $status, $longSaved ] = ninoCall( $appData, [ $panel, 'apiSave' ], [ 'from' => '/long-start', 'to' => '/long-0' ] );
 check( 'saving a rule into such a chain is warned about, and still saved - with the answer the table flags',
 	$status === 200 && count( $longSaved['warnings'] ) === 1 && str_contains( $longSaved['warnings'][0], '/long-0' ) === true
 	&& ( array_column( $longSaved['rules'], 'answer', 'from' )['/long-start'] ?? '' ) === 'chain'
@@ -677,9 +765,9 @@ $chainWords = include __DIR__. '/../text/en_US.php';
 check( '...in words of its own: a loop leads back, a chain is only long', isset( $chainWords['[[/_admin/redirects/warning/chain]]'], $chainWords['[[/_admin/redirects/answer/chain]]'] )
 	&& $chainWords['[[/_admin/redirects/warning/chain]]'] !== $chainWords['[[/_admin/redirects/warning/loop]]']
 	&& $chainWords['[[/_admin/redirects/answer/chain]]'] !== $chainWords['[[/_admin/redirects/answer/loop]]'] );
-\Nino\Modules\Redirects\Rules::write( $appData, $rulesBeforeLong );
+redirectsStore( $appData, $rulesBeforeLong );
 
-[ $status, $listed ] = redirectsPanel( $appData, 'apiList' );
+[ $status, $listed ] = ninoCall( $appData, [ $panel, 'apiList' ] );
 $answers = array_column( $listed['rules'], 'answer', 'from' );
 check( 'the list carries what answers every rule\'s target, and the pages a target can be picked from',
 	$status === 200 && count( $answers ) === count( $listed['rules'] ) && array_diff( $answers, [ 'route', 'external', 'rule', 'loop', 'chain', 'file', 'nothing' ] ) === []
@@ -691,15 +779,15 @@ check( '...and the stored file stays what it was: the answer is read off, never 
 	array_keys( redirectsFile( $appData )['rules'][0] ) === [ 'from', 'to', 'status', 'subtree', 'hits', 'last' ] );
 
 $appData['/nino/http/routes']['GET://later'] = [ 'uri' => '/later', 'body' => 'x' ];
-redirectsPanel( $appData, 'apiSave', [ 'from' => '/for-later', 'to' => '/later' ] );
-check( 'a target whose page exists answers as a route', ( array_column( redirectsPanel( $appData, 'apiList' )[1]['rules'], 'answer', 'from' )['/for-later'] ?? '' ) === 'route' );
+ninoCall( $appData, [ $panel, 'apiSave' ], [ 'from' => '/for-later', 'to' => '/later' ] );
+check( 'a target whose page exists answers as a route', ( array_column( ninoCall( $appData, [ $panel, 'apiList' ] )[1]['rules'], 'answer', 'from' )['/for-later'] ?? '' ) === 'route' );
 unset( $appData['/nino/http/routes']['GET://later'] );
 check( '...and flips to nothing when the page is removed, without the rule being touched',
-	( array_column( redirectsPanel( $appData, 'apiList' )[1]['rules'], 'answer', 'from' )['/for-later'] ?? '' ) === 'nothing' );
+	( array_column( ninoCall( $appData, [ $panel, 'apiList' ] )[1]['rules'], 'answer', 'from' )['/for-later'] ?? '' ) === 'nothing' );
 
 check( 'saving and deleting answer with the rules as the list does, answers included',
-	array_diff( array_column( redirectsPanel( $appData, 'apiSave', [ 'from' => '/to-page', 'to' => '/here' ] )[1]['rules'], 'answer' ), [ 'route', 'external', 'rule', 'loop', 'chain', 'file', 'nothing' ] ) === []
-	&& isset( redirectsPanel( $appData, 'apiDelete', [ 'from' => '/for-later' ] )[1]['rules'][0]['answer'] ) === true );
+	array_diff( array_column( ninoCall( $appData, [ $panel, 'apiSave' ], [ 'from' => '/to-page', 'to' => '/here' ] )[1]['rules'], 'answer' ), [ 'route', 'external', 'rule', 'loop', 'chain', 'file', 'nothing' ] ) === []
+	&& isset( ninoCall( $appData, [ $panel, 'apiDelete' ], [ 'from' => '/for-later' ] )[1]['rules'][0]['answer'] ) === true );
 
 $fillsEn = include __DIR__. '/../text/en_US.php';
 $fillsDe = include __DIR__. '/../text/de_DE.php';
@@ -709,22 +797,72 @@ check( 'the words about a target exist in both languages, and the warnings name 
 	&& count( array_filter( array_merge( $fillsEn, $fillsDe ), static fn( string $text, string $key ): bool => str_contains( $key, '/redirects/warning/' ) === true && str_contains( $text, '"%s"' ) === false, ARRAY_FILTER_USE_BOTH ) ) === 0 );
 
 foreach( [ '/dead-end', '/to-page', '/to-site', '/to-home', '/twice', '/cycle-a', '/cycle-b' ] as $made )
-	redirectsPanel( $appData, 'apiDelete', [ 'from' => $made ] );
+	ninoCall( $appData, [ $panel, 'apiDelete' ], [ 'from' => $made ] );
 
-[ $status, $deleted ] = redirectsPanel( $appData, 'apiDelete', [ 'from' => '/presse' ] );
+[ $status, $deleted ] = ninoCall( $appData, [ $panel, 'apiDelete' ], [ 'from' => '/presse' ] );
 check( 'a rule can be deleted, and the answer is the rules the panel redraws from - nothing beside them', $status === 200
 	&& array_keys( $deleted ) === [ 'rules' ]
 	&& count( array_filter( $deleted['rules'], static fn( array $r ): bool => $r['from'] === '/presse' ) ) === 0 );
-check( '...and deleting one that is not there is a 404, not a silent success', redirectsPanel( $appData, 'apiDelete', [ 'from' => '/presse' ] )[0] === 404 );
+[ $status, $unknown ] = ninoCall( $appData, [ $panel, 'apiDelete' ], [ 'from' => '/presse' ] );
+check( '...and deleting one that is not there is a 404 with the code and the address, not a silent success', $status === 404
+	&& ( $unknown['code'] ?? '' ) === 'redirects_unknown' && ( $unknown['params'] ?? [] ) === [ '/presse' ] );
 
 redirectsRequest( $appData, '/one-more' );
-[ $status, $forgot ] = redirectsPanel( $appData, 'apiForget', [ 'path' => '/one-more' ] );
+[ $status, $forgot ] = ninoCall( $appData, [ $panel, 'apiForget' ], [ 'path' => '/one-more' ] );
 check( 'one address can be forgotten, with a plain ok - the panel drops the row itself', $status === 200
 	&& $forgot === [ 'ok' => true ]
 	&& isset( redirectsFile( $appData )['misses']['/one-more'] ) === false );
-check( '...and all of them at once', redirectsPanel( $appData, 'apiForget' )[0] === 200
+check( '...and all of them at once', ninoCall( $appData, [ $panel, 'apiForget' ] )[0] === 200
 	&& ( redirectsFile( $appData )['misses'] ?? [] ) === [] );
 check( '...while the rules are untouched by that', ( redirectsFile( $appData )['rules'] ?? [] ) !== [] );
+
+/*	The site writes into the same file - every address nothing answered, every
+	rule it follows - and an action that read the file, changed it and wrote it
+	whole took back what was written in between. Another request is a copy of
+	the app data that writes: this one's own copy of the file, and the one
+	Filesystem cached for it, are the ones from before	*/
+foreach( [ 'apiSave' => [ 'from' => '/meanwhile', 'to' => '/here' ], 'apiDelete' => [ 'from' => '/meanwhile' ], 'apiForget' => [ 'path' => '/elsewhere' ] ] as $method => $post ) {
+	\Nino\Modules\Redirects\Rules::read( $appData );
+	$other = $appData;
+	\Nino\Modules\Redirects\Rules::noteMiss( $other, '/written-during-'. $method );
+	ninoCall( $appData, [ $panel, $method ], $post );
+	check( "$method keeps the address another request wrote into the file after this one had read it", isset( redirectsFile( $appData )['misses']['/written-during-'. $method] ) === true );
+}
+check( '...and the rule it made is gone again after the delete', count( array_filter( redirectsFile( $appData )['rules'], static fn( array $r ): bool => $r['from'] === '/meanwhile' ) ) === 0 );
+ninoCall( $appData, [ $panel, 'apiForget' ] );
+
+/*	A value that is no string is no address, whatever the action reads it for -
+	never a cast of the array, which raises and ends the request	*/
+ninoWarnings();
+check( 'an address posted as an array is refused like any other, and an array for the rule\'s old place is none at all',
+	ninoCall( $appData, [ $panel, 'apiSave' ], [ 'from' => [ '/a' ], 'to' => '/here' ] )[1]['code'] === 'redirects_from'
+	&& ninoCall( $appData, [ $panel, 'apiSave' ], [ 'from' => '/a', 'to' => [ '/here' ] ] )[1]['code'] === 'redirects_to'
+	&& ninoCall( $appData, [ $panel, 'apiSave' ], [ 'from' => '/array-was', 'to' => '/here', 'was' => [ '/a' ] ] )[0] === 200
+	&& ninoCall( $appData, [ $panel, 'apiDelete' ], [ 'from' => [ '/array-was' ] ] )[1]['code'] === 'redirects_from'
+	&& ninoCall( $appData, [ $panel, 'apiProbe' ], [ 'path' => [ '/a' ] ] )[1]['code'] === 'redirects_from'
+	&& ninoCall( $appData, [ $panel, 'apiForget' ], [ 'path' => [ '/a' ] ] )[0] === 200
+	&& ninoWarnings() === [] );
+ninoCall( $appData, [ $panel, 'apiDelete' ], [ 'from' => '/array-was' ] );
+
+/*	A file nothing can be written over, which is what a lock that cannot be
+	taken is: the lock file's name is a directory. A write or a lock the server
+	could not help is a 500 with the English sentence for a log and no code - no
+	person caused it, and there is nothing for them to read	*/
+$lockPath		= \Nino\Filesystem::path( $appData, '/data' ). '/.locks/'. sha1( \Nino\Modules\Redirects\Rules::PATH ). '.lock';
+$fileLocked	= redirectsFile( $appData );
+$kept				= $fileLocked['rules'][0]['from'] ?? '/none';
+@unlink( $lockPath );
+mkdir( $lockPath, 0755, true );
+$cannot = [
+	ninoCall( $appData, [ $panel, 'apiSave' ], [ 'from' => '/cannot', 'to' => '/here' ] ),
+	ninoCall( $appData, [ $panel, 'apiDelete' ], [ 'from' => $kept ] ),
+	ninoCall( $appData, [ $panel, 'apiForget' ], [ 'path' => '/anything' ] ),
+];
+rmdir( $lockPath );
+check( 'a file that cannot be written is a 500 in all three actions: the English sentence of the action, no code, no params',
+	array_column( $cannot, 0 ) === [ 500, 500, 500 ]
+	&& array_column( $cannot, 1 ) === [ [ 'error' => 'the rules could not be written' ], [ 'error' => 'the rules could not be written' ], [ 'error' => 'the list could not be written' ] ] );
+check( '...and the file is as it was', redirectsFile( $appData ) === $fileLocked );
 
 /*	And the panel resolves them, in the language the operator picked - which is
 	the whole point of the keys. A rule the stored file cannot use is written
@@ -733,17 +871,17 @@ check( '...while the rules are untouched by that', ( redirectsFile( $appData )['
 $noteFileBefore = redirectsFile( $appData );
 $noteFillsDe = include __DIR__. '/../text/de_DE.php';
 $noteFillsEn = include __DIR__. '/../text/en_US.php';
-$noteRead = static function( array &$appData ): array {
+$noteRead = static function( array &$appData ) use ( $panel ): array {
 	\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Redirects\Rules::PATH, [
 		'rules'	=> [ [ 'from' => '/loop-note', 'to' => '/loop-note', 'status' => 301, 'subtree' => false, 'hits' => 0, 'last' => '' ] ],
 		'misses'=> [],
 	] );
 	unset( $appData['./redirects/rules'] );
-	return redirectsPanel( $appData, 'apiList' )[1]['notes'] ?? [];
+	return ninoCall( $appData, [ $panel, 'apiList' ] )[1]['notes'] ?? [];
 };
 $noteSaid = static fn( array $fills ): string => strtr(
 	(string) $fills['[[/_admin/redirects/note/dropped]]'],
-	[ '%s' => '/loop-note', '%r' => (string) $fills['[[/_admin/redirects/reason/self]]'] ]
+	[ '%s' => '/loop-note', '%r' => (string) $fills['[[/_admin/error/redirects_loop_self]]'] ]
 );
 
 $appData['/nino/locales/available'] = [ 'de_DE', 'en_US' ];
@@ -772,20 +910,19 @@ echo "The permission every action is behind\n";
 
 \Nino\Auth::logoutUser( $appData );
 
-check( 'nobody logged in gets nothing at all', redirectsPanel( $appData, 'apiList' )[0] === 401
-	&& redirectsPanel( $appData, 'apiSave', [ 'from' => '/a', 'to' => '/b' ] )[0] === 401
-	&& redirectsPanel( $appData, 'apiDelete', [ 'from' => '/a' ] )[0] === 401
-	&& redirectsPanel( $appData, 'apiForget' )[0] === 401
-	&& redirectsPanel( $appData, 'apiProbe', [ 'path' => '/a' ] )[0] === 401 );
+check( 'nobody logged in gets nothing at all', ninoCall( $appData, [ $panel, 'apiList' ] )[0] === 401
+	&& ninoCall( $appData, [ $panel, 'apiSave' ], [ 'from' => '/a', 'to' => '/b' ] )[0] === 401
+	&& ninoCall( $appData, [ $panel, 'apiDelete' ], [ 'from' => '/a' ] )[0] === 401
+	&& ninoCall( $appData, [ $panel, 'apiForget' ] )[0] === 401
+	&& ninoCall( $appData, [ $panel, 'apiProbe' ], [ 'path' => '/a' ] )[0] === 401 );
 
-\Nino\Auth::insertUser( $appData, 'editor@example.com', 'correct horse battery staple', [ '/_admin/elements/manage' ] );
-\Nino\Auth::loginUser( $appData, 'editor@example.com', 'correct horse battery staple' );
+ninoUser( $appData, 'editor@example.com', [ '/_admin/elements/manage' ] );
 
-check( 'an account with another permission gets a 403 from every one of them', redirectsPanel( $appData, 'apiList' )[0] === 403
-	&& redirectsPanel( $appData, 'apiSave', [ 'from' => '/a', 'to' => '/b' ] )[0] === 403
-	&& redirectsPanel( $appData, 'apiDelete', [ 'from' => '/a' ] )[0] === 403
-	&& redirectsPanel( $appData, 'apiForget' )[0] === 403
-	&& redirectsPanel( $appData, 'apiProbe', [ 'path' => '/a' ] )[0] === 403 );
+check( 'an account with another permission gets a 403 from every one of them', ninoCall( $appData, [ $panel, 'apiList' ] )[0] === 403
+	&& ninoCall( $appData, [ $panel, 'apiSave' ], [ 'from' => '/a', 'to' => '/b' ] )[0] === 403
+	&& ninoCall( $appData, [ $panel, 'apiDelete' ], [ 'from' => '/a' ] )[0] === 403
+	&& ninoCall( $appData, [ $panel, 'apiForget' ] )[0] === 403
+	&& ninoCall( $appData, [ $panel, 'apiProbe' ], [ 'path' => '/a' ] )[0] === 403 );
 
 \Nino\Auth::logoutUser( $appData );
 

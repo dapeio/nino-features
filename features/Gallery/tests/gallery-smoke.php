@@ -13,16 +13,19 @@ declare(strict_types=1);
  *										what the Lightbox reads, with an alt text and a caption
  *										of their own per language - the panel with its albums,
  *										alt texts, captions, order and deletions, the refusals
- *										of an upload and the limit each one names, the
- *										component the Builder offers with the albums of the
- *										project as the choices of a select, left alone where a
- *										module of the project registered one of its own - or
- *										this feature's renderer under a schema of its own, with
- *										no album or an album that has a default - and
- *										the seam a richer uploader hooks into. What the panel's
- *										own script does with all of that is the browser's, and
- *										gallery-js-smoke.js beside this file measures it; this
- *										test runs that one too where node is on the path.
+ *										of an upload and the limit each one names - each with
+ *										its code and the sentence of that code in both
+ *										languages -, the changes of the albums under the lock
+ *										of their file, the component the Builder offers with
+ *										the albums of the project as the choices of a select,
+ *										left alone where a module of the project registered one
+ *										of its own - or this feature's renderer under a schema
+ *										of its own, with no album or an album that has a
+ *										default - and the seam a richer uploader hooks into.
+ *										What the panel's own script does with all of that is the
+ *										browser's, and gallery-js-smoke.js beside this file
+ *										measures it; this test runs that one too where node is
+ *										on the path.
  *
  *										Travels with the feature and runs against the checkout
  *										three levels up, or the one NINO_ROOT names (see
@@ -93,22 +96,29 @@ function galleryDims( array &$appData, string $filename ): string {
 	return $size === false ? '' : $size[0]. 'x'. $size[1];
 }
 
-function callGalleryAdmin( array &$appData, string $action, array $data = [] ): array {
-	$request = [ '/nino/http/response' => [ 'statusCode' => 200 ] ];
-	$_POST = [ 'action' => $action, 'data' => json_encode( $data ) ];
-	\Nino\Admin\Admin::handlePost( $appData, $request );
-	return [ $request['/nino/http/response']['statusCode'], $request['/nino/http/response']['body'] ?? null ];
-}
-
 /** A png header and nothing else - width and height are all getimagesizefromstring() asks of it */
 function galleryPng( int $width, int $height ): string {
 	$ihdr = pack( 'NN', $width, $height ). "\x08\x02\x00\x00\x00";
 	return "\x89PNG\r\n\x1a\n". pack( 'N', 13 ). 'IHDR'. $ihdr. pack( 'N', crc32( 'IHDR'. $ihdr ) );
 }
 
-/** The error a panel answer carries, '' where it has none */
-function galleryError( ?array $body ): string {
-	return (string) ( $body['error'] ?? '' );
+/** The code a refusal carries, '' where the answer has none */
+function galleryCode( ?array $body ): string {
+	return (string) ( $body['code'] ?? '' );
+}
+
+/**
+ *	The sentence the panel says for a code in one language, as its text directory
+ *	has it - '' for a code without one
+ *
+ *	@param		array 		&$appData
+ *	@param		string		$code
+ *	@param		string		$locale
+ *
+ *	@return 	string
+ */
+function gallerySentence( array &$appData, string $code, string $locale ): string {
+	return (string) ( \Nino\Admin\Admin::textFills( $appData, '/features/Gallery/text', $locale )['[[/_admin/error/'. $code. ']]'] ?? '' );
 }
 
 /** An upload, the way php hands one over */
@@ -131,7 +141,7 @@ $dir 			= dirname( __DIR__ );
 $manifest	= \Nino\Features::manifest( $dir );
 
 check( 'the manifest validates, key "gallery"', is_array( $manifest ) === true && $manifest['key'] === 'gallery' && ninoWarnings() === [] );
-check( 'it is written for this kernel', is_array( $manifest ) === true && \Nino\Features::satisfies( $manifest['nino'] ) === true );
+check( 'it is written for this kernel, and names the 1.8 whose vocabulary it uses', is_array( $manifest ) === true && \Nino\Features::satisfies( $manifest['nino'] ) === true && $manifest['nino'] === '^1.8' );
 check( 'it names and describes itself in both interface languages', is_array( $manifest ) === true
 	&& \Nino\Features::localized( $manifest['description'], 'de_DE' ) !== \Nino\Features::localized( $manifest['description'], 'en_US' ) );
 
@@ -151,9 +161,11 @@ check( '...and they are the six an album carries, in the order the panel draws t
 
 // The select is read by the wrapper, and a value outside its options is its default: what that makes of a call is the manual's to say
 $gone = (array) ( $manifest['manual']['shortcodes']['[gallery album="gone"]'] ?? [] );
-check( 'the manual says what a key that no album has does, in both languages: nothing before Nino 1.6, the first album where the Builder offers the albums as a list - from it on - and a call the Builder does not keep',
-	str_contains( (string) ( $gone['en_US'] ?? '' ), 'draws nothing before Nino 1.6. From Nino 1.6' ) === true && str_contains( (string) ( $gone['en_US'] ?? '' ), 'draws the first album' ) === true && str_contains( (string) ( $gone['en_US'] ?? '' ), 'HTML+ block' ) === true
-	&& str_contains( (string) ( $gone['de_DE'] ?? '' ), 'zeichnet vor Nino 1.6 nichts. Ab Nino 1.6' ) === true && str_contains( (string) ( $gone['de_DE'] ?? '' ), 'zeichnet er das erste Album' ) === true && str_contains( (string) ( $gone['de_DE'] ?? '' ), 'HTML+-Block' ) === true );
+check( 'the manual says what a key that no album has does, in both languages: the first album, where the Components module reads the albums as a list, a call the Builder does not keep, and nothing with the module switched off',
+	str_contains( (string) ( $gone['en_US'] ?? '' ), 'draws the first album' ) === true && str_contains( (string) ( $gone['en_US'] ?? '' ), 'HTML+ block' ) === true
+	&& str_contains( (string) ( $gone['en_US'] ?? '' ), 'switched off' ) === true && str_contains( (string) ( $gone['en_US'] ?? '' ), 'Nino 1.' ) === false
+	&& str_contains( (string) ( $gone['de_DE'] ?? '' ), 'zeichnet das erste Album' ) === true && str_contains( (string) ( $gone['de_DE'] ?? '' ), 'HTML+-Block' ) === true
+	&& str_contains( (string) ( $gone['de_DE'] ?? '' ), 'abgeschaltetem Modul' ) === true && str_contains( (string) ( $gone['de_DE'] ?? '' ), 'Nino 1.' ) === false );
 
 \Nino\AppData::writeContentData( $appData, [ '/nino/modules', '/nino/locales/available', '/nino/locales/native' ] );
 ninoWarnings();
@@ -165,10 +177,22 @@ check( 'activating it activates the Lightbox first - one click, two features on'
 	&& \Nino\Features::get( $appData, 'lightbox' )['active'] === true && \Nino\Features::get( $appData, 'gallery' )['active'] === true );
 check( 'and the Lightbox cannot be switched off while this one is on', \Nino\Features::deactivate( $appData, 'lightbox' ) === 'feature "lightbox" is required by "gallery"' );
 
+// init() on its own, on a copy, before the boot has put the manifests' files into the bundles: the sheet is not its to add, and
+// Html::addAsset() takes a file once, so only a run without the boot's registration can tell
+$alone = $appData;
+\Nino\Modules\Gallery::init( $alone );
+
+check( 'init() adds no stylesheet of its own - the grid\'s sheet is the manifest\'s, and nothing is in the style bundle until a boot has put it there',
+	in_array( '/features/Gallery/assets/gallery.css', \Nino\Html::getAssets( $alone, '/.cache/style.css' ), true ) === false );
+
+// What a boot does ahead of the init() of every module: the files the manifests name go into the bundles
+\Nino\Features::registerAssets( $appData );
 \Nino\Modules::callModules( $appData, 'init' );
 
-check( 'init adds the [gallery] shortcode and the grid stylesheet', isset( $appData['./nino/html/shortcodes']['gallery'] ) === true
-	&& in_array( '/features/Gallery/assets/gallery.css', \Nino\Html::getAssets( $appData, '/.cache/style.css' ), true ) === true );
+check( 'init adds the [gallery] shortcode', isset( $appData['./nino/html/shortcodes']['gallery'] ) === true );
+check( 'the manifest names the grid stylesheet, which a boot puts into the style bundle once',
+	$manifest['assets'] === [ '/features/Gallery/assets/gallery.css' ] && array_keys( $manifest['assets'] ) === [ 0 ]
+	&& array_count_values( \Nino\Html::getAssets( $appData, '/.cache/style.css' ) )['/features/Gallery/assets/gallery.css'] === 1 );
 check( 'and no script of its own - what a thumbnail opens into is the Lightbox feature\'s', in_array( '/features/Gallery/assets/gallery.js', \Nino\Html::getAssets( $appData, '/.cache/script.js' ), true ) === false );
 
 echo "\n";
@@ -208,15 +232,15 @@ check( 'with the ratio switched off the large view is cropped like the thumbnail
 check( 'an album key that is not a slug stores nothing', \Nino\Modules\Gallery::store( $appData, '../escape', $wide ) === null );
 check( 'and bytes that are not an image store nothing', \Nino\Modules\Gallery::store( $appData, 'trip', 'not an image' ) === null );
 
-// The reasons store() cannot give: \Nino\Images only answers false
-check( 'refusal() says why: too many bytes', \Nino\Modules\Gallery::refusal( str_repeat( 'a', \Nino\Modules\Gallery::KERNEL_UPLOAD_BYTES + 1 ) ) === 'size' );
-check( '...not an image of a type the kernel takes', \Nino\Modules\Gallery::refusal( 'not an image' ) === 'type' && \Nino\Modules\Gallery::refusal( '' ) === 'type' );
-check( '...too many pixels - a png header claiming 6000x4000 is enough, nothing is allocated for it', \Nino\Modules\Gallery::refusal( galleryPng( 6000, 4000 ) ) === 'pixels'
+// The reasons store() cannot give - \Nino\Images only answers false - are the kernel's to say, in the codes its words exist for
+check( 'the kernel says why it refuses bytes: too many of them', ( \Nino\Images::reject( str_repeat( 'a', \Nino\Images::MAX_UPLOAD_BYTES + 1 ) ) ?? [] ) === [ 'code' => 'image_too_large', 'params' => [ 8 ] ] );
+check( '...not an image of a type it takes', ( \Nino\Images::reject( 'not an image' ) ?? [] ) === [ 'code' => 'image_type', 'params' => [] ] && ( \Nino\Images::reject( '' )['code'] ?? '' ) === 'image_type' );
+check( '...too many pixels - a png header claiming 6000x4000 is enough, nothing is allocated for it', ( \Nino\Images::reject( galleryPng( 6000, 4000 ) ) ?? [] ) === [ 'code' => 'image_too_many_pixels', 'params' => [ 20 ] ]
 	&& \Nino\Modules\Gallery::store( $appData, 'trip', galleryPng( 6000, 4000 ) ) === null );
-check( '...and where the bytes pass all three, that something after them said no', \Nino\Modules\Gallery::refusal( $wide ) === 'process' );
-check( 'the mirrored byte cap is the kernel\'s own: that many bytes of a real image get through, one more does not', ( static function() use ( &$appData ): bool {
+check( '...and nothing where the bytes pass all three, so that something after them said no is this feature\'s to say', \Nino\Images::reject( $wide ) === null );
+check( 'the kernel\'s byte cap is the one a real image gets through up to: that many bytes of it get through, one more does not', ( static function() use ( &$appData ): bool {
 	$padded = galleryImage( 40, 40 );
-	$padded .= str_repeat( "\0", \Nino\Modules\Gallery::KERNEL_UPLOAD_BYTES - strlen( $padded ) );
+	$padded .= str_repeat( "\0", \Nino\Images::MAX_UPLOAD_BYTES - strlen( $padded ) );
 	$kept = \Nino\Modules\Gallery::store( $appData, 'trip', $padded );
 	$over = \Nino\Modules\Gallery::store( $appData, 'trip', $padded. "\0" );
 	if( $kept !== null )
@@ -367,54 +391,39 @@ echo "\n";
 
 echo "Gallery\\Admin - albums, captions, order\n";
 
-\Nino\Auth::insertUser( $appData, 'dev@example.com', 'correct horse battery staple', [ \Nino\Modules\Gallery\Admin::MANAGE_PERM ] );
-\Nino\Auth::loginUser( $appData, 'dev@example.com', 'correct horse battery staple' );
+ninoUser( $appData, 'dev@example.com', [ \Nino\Modules\Gallery\Admin::MANAGE_PERM ] );
 \Nino\Admin\Admin::init( $appData );
+$admin = [ \Nino\Admin\Admin::class, 'handlePost' ];
 
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/list' );
+[ $status, $body ] = ninoCall( $appData, $admin, [], 'gallery/list' );
 check( 'gallery/list answers no album yet, and what a new album starts with - the settings of the feature - with the range each number may take', $status === 200 && galleryAlbums( $body ) === []
 	&& ( $body['defaults'] ?? null ) === [ 'thumbWidth' => 200, 'thumbHeight' => 200, 'largeWidth' => 600, 'largeHeight' => 600, 'keepRatio' => true, 'columns' => 4 ]
 	&& ( $body['ranges'] ?? null ) === \Nino\Modules\Gallery::ranges( $appData ) && ( $body['ranges']['columns'] ?? null ) === [ 1, 8 ] );
 check( 'it carries the languages a text can be written in, the site\'s own, and the one the screen opens in', ( $body['locales'] ?? null ) === [ 'de_DE', 'en_US' ]
 	&& ( $body['native'] ?? null ) === 'de_DE' && ( $body['selectedLocale'] ?? null ) === 'de_DE' );
 check( 'and how long the key of a new album may be, which is what the field that asks for it is limited by', ( $body['maxKey'] ?? null ) === \Nino\Modules\Gallery::MAX_KEY && \Nino\Modules\Gallery::MAX_KEY === 64 );
-check( 'and what php takes in one upload, as a number and in words - the smaller of upload_max_filesize and post_max_size', ( $body['limits']['bytes'] ?? null ) === \Nino\Modules\Gallery::uploadLimit()
-	&& ( $body['limits']['text'] ?? null ) === \Nino\Modules\Gallery::formatBytes( \Nino\Modules\Gallery::uploadLimit() ) && \Nino\Modules\Gallery::uploadLimit() > 0
-	&& \Nino\Modules\Gallery::uploadLimit() <= min( array_filter( [ ini_parse_quantity( (string) ini_get( 'upload_max_filesize' ) ), ini_parse_quantity( (string) ini_get( 'post_max_size' ) ) ] ) ) );
+check( 'and what php takes in one upload, as a number and in words - the smaller of upload_max_filesize and post_max_size, which is the kernel\'s to say', ( $body['limits']['bytes'] ?? null ) === \Nino\Images::limits()['php']
+	&& ( $body['limits']['text'] ?? null ) === \Nino\Modules\Gallery::formatBytes( \Nino\Images::limits()['php'] ) && \Nino\Images::limits()['php'] > 0
+	&& \Nino\Images::limits()['php'] <= min( array_filter( [ ini_parse_quantity( (string) ini_get( 'upload_max_filesize' ) ), ini_parse_quantity( (string) ini_get( 'post_max_size' ) ) ] ) ) );
 
-/*	upload_max_filesize and post_max_size cannot be set from inside a request, so a
-	process of its own is started with them: a value php cannot read whole raised a
-	warning from ini_parse_quantity(), which is a 500 for the panel that asked	*/
-$gallerySource = dirname( __DIR__ ). '/Gallery.php';
-$limitWith = static function( string $upload, string $post ) use ( $gallerySource ): ?string {
-	if( function_exists( 'shell_exec' ) === false )
-		return null;
-	// The startup warning php itself gives for such a setting goes to stderr, which is let go;
-	// what the class raises while it runs is caught and printed, so it shows in the answer
-	$code = 'set_error_handler( static function( int $n, string $m ): bool { echo "WARNING:", $m; return true; } ); require '. var_export( $gallerySource, true ). '; echo \\Nino\\Modules\\Gallery::uploadLimit();';
-	return trim( (string) shell_exec( escapeshellarg( PHP_BINARY ). ' -d '. escapeshellarg( 'upload_max_filesize='. $upload ). ' -d '. escapeshellarg( 'post_max_size='. $post ). ' -d display_errors=0 -d log_errors=0 -r '. escapeshellarg( $code ). ' 2>/dev/null' ) );
-};
-if( $limitWith( '8M', '8M' ) === null )
-	echo "  --  shell_exec is not available, so a malformed upload_max_filesize is not tried\n";
-else {
-	check( 'a limit php can read is read: the smaller of the two', $limitWith( '2M', '8M' ) === (string) ( 2 * 1048576 ) && $limitWith( '8M', '1G' ) === (string) ( 8 * 1048576 ) );
-	check( 'a malformed upload_max_filesize raises nothing - it is a limit nobody can tell, and post_max_size still counts',
-		$limitWith( 'abc', '8M' ) === (string) ( 8 * 1048576 ) && $limitWith( 'abc', 'xyz' ) === '0' );
-	check( '...nor does one with a decimal point, or one that is too big for an integer', $limitWith( '1.5M', '8M' ) === (string) 1048576 && $limitWith( '99999999999999999999G', '8M' ) === (string) ( 8 * 1048576 ) );
-}
-
-[ $status ] = callGalleryAdmin( $appData, 'gallery/album-save', [ 'album' => 'Not A Key', 'name' => 'x' ] );
+[ $status ] = ninoCall( $appData, $admin, [ 'album' => 'Not A Key', 'name' => 'x' ], 'gallery/album-save' );
 check( 'an album key that is not a slug is refused', $status === 400 );
 
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/album-save', [ 'album' => 'trip', 'name' => 'The trip' ] );
+[ $status, $body ] = ninoCall( $appData, $admin, [ 'album' => 'trip', 'name' => 'The trip' ], 'gallery/album-save' );
 check( 'an album is created', $status === 200 && array_column( galleryAlbums( $body ), 'key' ) === [ 'trip' ] && ( galleryAlbums( $body )[0]['name'] ?? null ) === 'The trip' );
 
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/album-save', [ 'album' => 'trip', 'name' => 'Renamed' ] );
+[ $status, $body ] = ninoCall( $appData, $admin, [ 'album' => 'trip', 'name' => 'Renamed' ], 'gallery/album-save' );
 check( 'saving it again renames rather than duplicates', $status === 200 && count( galleryAlbums( $body ) ) === 1 && ( galleryAlbums( $body )[0]['name'] ?? null ) === 'Renamed' );
+
+ninoWarnings();
+[ $status, $body ] = ninoCall( $appData, $admin, [ 'album' => 'listy', 'name' => [ 'A', 'B' ] ], 'gallery/album-save' );
+check( 'a name that arrives as a list is no name: the album is made and called by its key, and nothing is raised for turning a list into a string',
+	$status === 200 && ( galleryAlbumOf( $body, 'listy' )['name'] ?? null ) === 'listy' && ninoWarnings() === [] );
+ninoCall( $appData, $admin, [ 'album' => 'listy' ], 'gallery/album-delete' );
 
 $uploaded = [];
 foreach( [ 'a', 'b', 'c' ] as $ignored ) {
-	[ $status, $body ] = withUpload( $wide, static fn(): array => callGalleryAdmin( $appData, 'gallery/upload', [ 'album' => 'trip' ] ) );
+	[ $status, $body ] = withUpload( $wide, static fn(): array => ninoCall( $appData, $admin, [ 'album' => 'trip' ], 'gallery/upload' ) );
 	$uploaded[] = $status;
 }
 check( 'three uploads land in the album, in the order they arrived', $uploaded === [ 200, 200, 200 ] && count( galleryImages( $body ) ) === 3 );
@@ -426,18 +435,17 @@ $ids = array_pad( array_column( galleryImages( $body ), 'id' ), 3, '' );
 // An upload that is refused says why, with the limit it ran into - not
 // 'That image is not in this album.', which is what all of them said. The sandbox has no text files, so the panel's own are what the fills say
 $panelText = include dirname( __DIR__ ). '/text/en_US.php';
+$german = include dirname( __DIR__ ). '/text/de_DE.php';
 \Nino\Html::addFills( $appData, $panelText, '*' );
-$refuse = static function( string $bytes, int $error = UPLOAD_ERR_OK ) use ( &$appData ): array {
-	[ $status, $body ] = withUpload( $bytes, static function() use ( &$appData, $error ): array {
+$refuse = static function( string $bytes, int $error = UPLOAD_ERR_OK ) use ( &$appData, $admin ): array {
+	return withUpload( $bytes, static function() use ( &$appData, $admin, $error ): array {
 		$_FILES['file']['error'] = $error;
-		return callGalleryAdmin( $appData, 'gallery/upload', [ 'album' => 'trip' ] );
+		return ninoCall( $appData, $admin, [ 'album' => 'trip' ], 'gallery/upload' );
 	} );
-	return [ $status, galleryError( $body ) ];
 };
-$limitText = \Nino\Modules\Gallery::formatBytes( \Nino\Modules\Gallery::uploadLimit() );
+$limitText = \Nino\Modules\Gallery::formatBytes( \Nino\Images::limits()['php'] );
 
-check( 'the panel\'s texts are there in both languages, every key of one in the other', array_keys( $panelText ) === array_keys( include dirname( __DIR__ ). '/text/de_DE.php' )
-	&& str_contains( $panelText['[[/_admin/gallery/error/size]]'], '%s' ) === true && str_contains( ( include dirname( __DIR__ ). '/text/de_DE.php' )['[[/_admin/gallery/error/size]]'], '%s' ) === true );
+check( 'the panel\'s texts are there in both languages, every key of one in the other', array_keys( $panelText ) === array_keys( $german ) );
 
 // A word the script or the class asks for that a language lacks is a screen with a key on it. Keys put together
 // from a part and a name - the label of an alt text and a caption - end in a slash and are not read here, and
@@ -446,75 +454,139 @@ $asked = [];
 foreach( [ '/assets/admin.js', '/Admin/Admin.php' ] as $source )
 	if( preg_match_all( '#[\'"](/_admin/gallery/[a-z0-9/-]+)[\'"]#', (string) file_get_contents( dirname( __DIR__ ). $source ), $found ) > 0 )
 		$asked = array_merge( $asked, $found[1] );
-$german = include dirname( __DIR__ ). '/text/de_DE.php';
 $lacking = array_values( array_filter( array_unique( $asked ), static fn( string $key ): bool => str_ends_with( $key, '/' ) === false && $key !== \Nino\Modules\Gallery\Admin::MANAGE_PERM
 	&& ( isset( $panelText['[['. $key. ']]'] ) === false || isset( $german['[['. $key. ']]'] ) === false ) ) );
-check( 'every word of the panel that its script and its class ask for is there, in both languages'. ( $lacking === [] ? '' : ' - '. implode( ' | ', $lacking ) ), $lacking === [] && count( $asked ) > 30 );
+check( 'every word of the panel that its script and its class ask for is there, in both languages'. ( $lacking === [] ? '' : ' - '. implode( ' | ', $lacking ) ), $lacking === [] && count( $asked ) > 25 );
 
-[ $status, $error ] = $refuse( $wide, UPLOAD_ERR_INI_SIZE );
-check( 'a file over upload_max_filesize is a 400 that names the limit php has', $status === 400 && $error === str_replace( '%s', $limitText, $panelText['[[/_admin/gallery/error/size]]'] ) );
-[ $status, $error ] = $refuse( $wide, UPLOAD_ERR_FORM_SIZE );
-check( '...so is one over the form\'s own', $status === 400 && $error === str_replace( '%s', $limitText, $panelText['[[/_admin/gallery/error/size]]'] ) );
-[ $status, $error ] = $refuse( $wide, UPLOAD_ERR_PARTIAL );
-check( 'any other upload error stays "the file could not be read"', $status === 400 && $error === $panelText['[[/_admin/gallery/error/upload]]'] );
+/*	The refusals a person can cause carry a code, and the sentence of each is a text of the panel in both
+	languages, with a place for each value the code brings. The codes the class answers are these and no
+	others, and the ones it takes from the kernel (the reasons an image is refused) are the kernel's	*/
+$codes = [ 'gallery_key' => 0, 'gallery_reserved' => 0, 'gallery_long' => 1, 'gallery_taken' => 0, 'gallery_settings' => 1, 'gallery_album' => 0, 'gallery_image' => 0,
+	'gallery_order' => 0, 'gallery_locale' => 0, 'gallery_upload' => 0, 'gallery_size' => 1, 'gallery_process' => 0 ];
+preg_match_all( '#\'(gallery_[a-z_]+)\'#', (string) file_get_contents( dirname( __DIR__ ). '/Admin/Admin.php' ), $found );
+check( 'the panel answers the codes it has words for, and no other', array_values( array_unique( $found[1] ) ) !== [] && array_diff( array_unique( $found[1] ), array_keys( $codes ) ) === []
+	&& array_diff( array_keys( $codes ), array_unique( $found[1] ) ) === [] );
 
-[ $status, $sizeError ] = $refuse( str_repeat( 'a', \Nino\Modules\Gallery::KERNEL_UPLOAD_BYTES + 1 ) );
-check( 'more than the kernel\'s 8 MiB is refused with that number', $status === 400 && $sizeError === str_replace( '%s', '8 MB', $panelText['[[/_admin/gallery/error/size]]'] ) );
+foreach( $codes as $code => $places )
+	foreach( [ 'en_US', 'de_DE' ] as $locale ) {
+		$sentence = gallerySentence( $appData, $code, $locale );
+		check( "the code $code has its sentence in $locale, with $places place". ( $places === 1 ? '' : 's' ). ' for a value', $sentence !== '' && substr_count( $sentence, '%s' ) === $places );
+	}
 
-[ $status, $error ] = $refuse( 'not an image' );
-check( 'bytes that are not an image are refused as the wrong type', $status === 400 && $error === $panelText['[[/_admin/gallery/error/type]]'] );
+foreach( [ 'image_too_large' => 1, 'image_type' => 0, 'image_too_many_pixels' => 1 ] as $code => $places )
+	foreach( [ 'en_US', 'de_DE' ] as $locale ) {
+		$sentence = (string) ( ( include $root. '/_admin/text/'. $locale. '.php' )['[[/_admin/error/'. $code. ']]'] ?? '' );
+		check( "...and the kernel's code $code, which the panel passes on as it is, has its sentence in $locale", $sentence !== '' && substr_count( $sentence, '%s' ) === $places );
+	}
 
-[ $status, $error ] = $refuse( galleryPng( 6000, 4000 ) );
-check( 'a picture of 24 megapixels is refused with the 20 the kernel takes', $status === 400 && $error === str_replace( '%s', '20', $panelText['[[/_admin/gallery/error/pixels]]'] ) );
+[ $status, $body ] = $refuse( $wide, UPLOAD_ERR_INI_SIZE );
+check( 'a file over upload_max_filesize is a 400 that names the limit php has: the code, the limit as its value, and the English sentence for a log',
+	$status === 400 && $body === [ 'error' => 'the file is larger than php takes in one upload ('. $limitText. ')', 'code' => 'gallery_size', 'params' => [ $limitText ] ] );
+[ $status, $body ] = $refuse( $wide, UPLOAD_ERR_FORM_SIZE );
+check( '...so is one over the form\'s own', $status === 400 && galleryCode( $body ) === 'gallery_size' && ( $body['params'] ?? null ) === [ $limitText ] );
+[ $status, $body ] = $refuse( $wide, UPLOAD_ERR_PARTIAL );
+check( 'any other upload error stays "the file could not be read"', $status === 400 && $body === [ 'error' => 'the file could not be read', 'code' => 'gallery_upload' ] );
+
+[ $status, $body ] = $refuse( str_repeat( 'a', \Nino\Images::MAX_UPLOAD_BYTES + 1 ) );
+check( 'more than the kernel\'s 8 MiB is refused with the kernel\'s code and that number', $status === 400 && galleryCode( $body ) === 'image_too_large' && ( $body['params'] ?? null ) === [ 8 ] );
+
+[ $status, $body ] = $refuse( 'not an image' );
+check( 'bytes that are not an image are refused as the wrong type, with the kernel\'s code', $status === 400 && galleryCode( $body ) === 'image_type' && ( $body['params'] ?? null ) === null );
+
+[ $status, $body ] = $refuse( galleryPng( 6000, 4000 ) );
+check( 'a picture of 24 megapixels is refused with the 20 the kernel takes, in the kernel\'s code', $status === 400 && galleryCode( $body ) === 'image_too_many_pixels' && ( $body['params'] ?? null ) === [ 20 ] );
 
 \Nino\Callbacks::registerCallback( $appData, \Nino\Images::RENDER, static function( array &$appData, array &$img ): void {
 	$img['filename'] = false;
 } );
-[ $status, $error ] = $refuse( $wide );
+[ $status, $body ] = $refuse( $wide );
 unset( $appData['./nino/callbacks'][ \Nino\Images::RENDER ] );
-check( 'an image that passes the checks and is still not made says so, and is none of the above', $status === 400 && $error === $panelText['[[/_admin/gallery/error/process]]'] );
-check( 'none of the refusals stored anything', count( galleryImages( callGalleryAdmin( $appData, 'gallery/list' )[1] ) ) === 3 );
+check( 'an image that passes the checks and is still not made says so, and is none of the above', $status === 400 && $body === [ 'error' => 'the server could not make the two sizes from this image', 'code' => 'gallery_process' ] );
+check( 'none of the refusals stored anything', count( galleryImages( ninoCall( $appData, $admin, [], 'gallery/list' )[1] ) ) === 3 );
 
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'en_US', 'caption' => 'Above the pass' ] );
+/*	The two sizes are made before the lock of the albums is taken, and the entry is added under it: an album that is gone by
+	then, or a write that fails, leaves two files nothing points at, and they go again. The render callback runs between the
+	one and the other, so it is the second request that deletes the album in the meantime	*/
+$tripFiles = static fn(): array => glob( \Nino\Filesystem::path( $appData, '/images/gallery/trip' ). '/*' ) ?: [];
+$filesBefore = $tripFiles();
+$albumsBefore = \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, [] );
+
+ninoCall( $appData, $admin, [ 'album' => 'doomed', 'name' => 'Doomed' ], 'gallery/album-save' );
+$deleted = false;
+\Nino\Callbacks::registerCallback( $appData, \Nino\Images::RENDER, static function( array &$appData, array &$img ) use ( &$deleted ): void {
+	if( $deleted === true )
+		return;
+	$deleted = true;
+	\Nino\Modules\Gallery::change( $appData, static fn( array $albums ): array => array_values( array_filter( $albums, static fn( array $album ): bool => $album['key'] !== 'doomed' ) ) );
+} );
+[ $status, $body ] = withUpload( $wide, static fn(): array => ninoCall( $appData, $admin, [ 'album' => 'doomed' ], 'gallery/upload' ) );
+unset( $appData['./nino/callbacks'][ \Nino\Images::RENDER ] );
+check( 'an album deleted while its upload was being made is refused as that, with the code of the album and the English sentence for a log',
+	$deleted === true && $status === 400 && $body === [ 'error' => 'there is no album with this key', 'code' => 'gallery_album' ] );
+check( '...and the two files it had made are gone again, the albums being as the other request left them',
+	( glob( \Nino\Filesystem::path( $appData, '/images/gallery/doomed' ). '/*' ) ?: [] ) === [] && \Nino\Modules\Gallery::album( $appData, 'doomed' ) === null
+	&& \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, [] ) === $albumsBefore );
+
+/*	A lock that cannot be taken: the lock file of the albums is a directory. The files of the images have locks of their own,
+	so the two sizes are made, and the write is the one that fails - a 500 with the English sentence, no code, and no file left	*/
+$lockPath = \Nino\Filesystem::path( $appData, '/data' ). '/.locks/'. sha1( \Nino\Modules\Gallery::ALBUMS ). '.lock';
+@unlink( $lockPath );
+mkdir( $lockPath, 0755, true );
+ninoWarnings();
+[ $status, $body ] = withUpload( $wide, static fn(): array => ninoCall( $appData, $admin, [ 'album' => 'trip' ], 'gallery/upload' ) );
+$lockWarnings = ninoWarnings();
+rmdir( $lockPath );
+check( 'an upload whose entry could not be written is a 500 with the English sentence and no code', $status === 500 && $body === [ 'error' => 'the albums could not be written' ] );
+check( '...and the answer is the whole of it: the lock that could not be taken raises no warning of its own', $lockWarnings === [] );
+check( '...and the two files it had made are gone again, the albums as they were', $tripFiles() === $filesBefore
+	&& \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, [] ) === $albumsBefore );
+
+[ $status, $body ] = ninoCall( $appData, $admin, [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'en_US', 'caption' => 'Above the pass' ], 'gallery/image-save' );
 check( 'a caption is saved on the image it names, in the language it was written in', $status === 200 && ( galleryImages( $body )[1]['caption'] ?? null ) === [ 'en_US' => 'Above the pass' ]
 	&& ( galleryImages( $body )[1]['alt'] ?? null ) === '' && ( galleryImages( $body )[0]['caption'] ?? null ) === '' );
 
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'de_DE', 'caption' => 'Über dem Pass', 'alt' => 'Der Pass im Sommer' ] );
+[ $status, $body ] = ninoCall( $appData, $admin, [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'de_DE', 'caption' => 'Über dem Pass', 'alt' => 'Der Pass im Sommer' ], 'gallery/image-save' );
 check( 'each language has its own, and an alt text is saved beside a caption', $status === 200
 	&& ( galleryImages( $body )[1]['caption'] ?? null ) === [ 'en_US' => 'Above the pass', 'de_DE' => 'Über dem Pass' ]
 	&& ( galleryImages( $body )[1]['alt'] ?? null ) === [ 'de_DE' => 'Der Pass im Sommer' ] );
 
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'en_US', 'alt' => 'The pass in summer' ] );
+[ $status, $body ] = ninoCall( $appData, $admin, [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'en_US', 'alt' => 'The pass in summer' ], 'gallery/image-save' );
 check( 'a text that is not posted is left as it is', $status === 200 && ( galleryImages( $body )[1]['alt'] ?? null ) === [ 'de_DE' => 'Der Pass im Sommer', 'en_US' => 'The pass in summer' ]
 	&& ( galleryImages( $body )[1]['caption'] ?? null ) === [ 'en_US' => 'Above the pass', 'de_DE' => 'Über dem Pass' ] );
 
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'en_US', 'alt' => '' ] );
+[ $status, $body ] = ninoCall( $appData, $admin, [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'en_US', 'alt' => '' ], 'gallery/image-save' );
 check( 'an empty text takes that language away - the others stay', $status === 200 && ( galleryImages( $body )[1]['alt'] ?? null ) === [ 'de_DE' => 'Der Pass im Sommer' ] );
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'de_DE', 'alt' => '' ] );
+[ $status, $body ] = ninoCall( $appData, $admin, [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'de_DE', 'alt' => '' ], 'gallery/image-save' );
 check( '...and the last one leaves an empty string, not an empty map', $status === 200 && ( galleryImages( $body )[1]['alt'] ?? null ) === '' );
 
 // What an earlier version of this feature wrote: one string, for every language
 $stored = \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, [] );
 $stored[0]['images'][2]['caption'] = 'Vom Pass';
 \Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, $stored );
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[2], 'locale' => 'en_US', 'caption' => 'From the pass' ] );
+[ $status, $body ] = ninoCall( $appData, $admin, [ 'album' => 'trip', 'id' => $ids[2], 'locale' => 'en_US', 'caption' => 'From the pass' ], 'gallery/image-save' );
 check( 'a caption that was one string for every language is every language\'s until the first is written - then each keeps it', $status === 200
 	&& ( galleryImages( $body )[2]['caption'] ?? null ) === [ 'de_DE' => 'Vom Pass', 'en_US' => 'From the pass' ] );
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[2], 'locale' => 'en_US', 'caption' => '' ] );
+[ $status, $body ] = ninoCall( $appData, $admin, [ 'album' => 'trip', 'id' => $ids[2], 'locale' => 'en_US', 'caption' => '' ], 'gallery/image-save' );
 check( '...and an empty one takes only its own language off', ( galleryImages( $body )[2]['caption'] ?? null ) === [ 'de_DE' => 'Vom Pass' ] );
 
 // What a request can get wrong, none of it a write
 $before = \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, [] );
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'xx_XX', 'caption' => 'x' ] );
-check( 'a language the project does not have is refused - and as that, not as a missing image', $status === 400 && galleryError( $body ) === $panelText['[[/_admin/gallery/error/locale]]'] );
-check( '...so is none at all', callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'caption' => 'x' ] )[0] === 400 );
-check( '...and an image the album does not have, or an album nobody has', callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => 'ffffffffffffffff', 'locale' => 'en_US', 'caption' => 'x' ] )[0] === 400
-	&& callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'nowhere', 'id' => $ids[1], 'locale' => 'en_US', 'caption' => 'x' ] )[0] === 400 );
-check( 'a text that is not a string is not one', callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'en_US', 'caption' => [ 'x' ], 'alt' => 5 ] )[0] === 200 );
+[ $status, $body ] = ninoCall( $appData, $admin, [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'xx_XX', 'caption' => 'x' ], 'gallery/image-save' );
+check( 'a language the project does not have is refused - and as that, not as a missing image: the code and the English sentence for a log',
+	$status === 400 && $body === [ 'error' => 'that language is not available', 'code' => 'gallery_locale' ] );
+check( '...so is none at all', ninoCall( $appData, $admin, [ 'album' => 'trip', 'id' => $ids[1], 'caption' => 'x' ], 'gallery/image-save' )[0] === 400 );
+ninoWarnings();
+[ $status, $body ] = ninoCall( $appData, $admin, [ 'album' => 'trip', 'id' => $ids[1], 'locale' => [ 'en_US' ], 'caption' => 'x' ], 'gallery/image-save' );
+check( '...and so is a list where a language is meant: refused with the code of a language, not a 500 for turning a list into a string', $status === 400 && galleryCode( $body ) === 'gallery_locale' && ninoWarnings() === [] );
+check( '...and an image the album does not have, or an album nobody has, each as what it is',
+	galleryCode( ninoCall( $appData, $admin, [ 'album' => 'trip', 'id' => 'ffffffffffffffff', 'locale' => 'en_US', 'caption' => 'x' ], 'gallery/image-save' )[1] ) === 'gallery_image'
+	&& galleryCode( ninoCall( $appData, $admin, [ 'album' => 'nowhere', 'id' => $ids[1], 'locale' => 'en_US', 'caption' => 'x' ], 'gallery/image-save' )[1] ) === 'gallery_album' );
+check( 'a text that is not a string is not one', ninoCall( $appData, $admin, [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'en_US', 'caption' => [ 'x' ], 'alt' => 5 ], 'gallery/image-save' )[0] === 200 );
 check( 'none of those wrote anything', \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, [] ) === $before );
 
 /*	A list that cannot be locked was never looked at: the album is not missing and
-	neither is the image - the albums could not be written, which is what is said	*/
+	neither is the image - the albums could not be written, which is what is said:
+	a 500 with the English sentence of the server and no code, since nobody caused it	*/
 $locks = \Nino\Filesystem::path( $appData, '/data/.locks' );
 $locksAside = $locks. '-aside';
 $hadLocks = file_exists( $locks );
@@ -522,44 +594,43 @@ if( $hadLocks === true )
 	rename( $locks, $locksAside );
 file_put_contents( $locks, 'not a directory' );
 ninoWarnings();
-[ $lockedStatus, $lockedBody ] = callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'en_US', 'caption' => 'Locked out' ] );
+[ $lockedStatus, $lockedBody ] = ninoCall( $appData, $admin, [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'en_US', 'caption' => 'Locked out' ], 'gallery/image-save' );
 ninoWarnings();
 unlink( $locks );
 if( $hadLocks === true )
 	rename( $locksAside, $locks );
 check( 'a list that cannot be locked answers that the albums could not be written - not that the album or the image is missing',
-	$lockedStatus === 400 && galleryError( $lockedBody ) === $panelText['[[/_admin/gallery/error/save]]']
-	&& galleryError( $lockedBody ) !== $panelText['[[/_admin/gallery/error/album]]'] );
+	$lockedStatus === 500 && $lockedBody === [ 'error' => 'the albums could not be written' ] );
 check( '...and wrote nothing', \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, [] ) === $before );
 
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'en_US', 'caption' => 'Above the pass' ] );
+[ $status, $body ] = ninoCall( $appData, $admin, [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'en_US', 'caption' => 'Above the pass' ], 'gallery/image-save' );
 
 // The cap is in bytes, and a cut through the middle of a multibyte character
 // leaves a byte sequence that is not utf-8 - which json_encode() answers with
 // false, so the panel's whole answer came back empty and every screen of it
 // stopped working until somebody found the caption by hand
 $longCaption = str_repeat( 'a', \Nino\Modules\Gallery::MAX_CAPTION - 1 ). 'ä und weiter';
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'en_US', 'caption' => $longCaption, 'alt' => $longCaption ] );
+[ $status, $body ] = ninoCall( $appData, $admin, [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'en_US', 'caption' => $longCaption, 'alt' => $longCaption ], 'gallery/image-save' );
 check( 'a caption or an alt text longer than the cap is cut on a character boundary, and the panel still answers', $status === 200
 	&& ( galleryImages( $body )[1]['caption']['en_US'] ?? null ) === str_repeat( 'a', \Nino\Modules\Gallery::MAX_CAPTION - 1 )
 	&& ( galleryImages( $body )[1]['alt']['en_US'] ?? null ) === str_repeat( 'a', \Nino\Modules\Gallery::MAX_CAPTION - 1 )
 	&& json_encode( $body ) !== false );
 
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'en_US', 'caption' => 'Above the pass', 'alt' => '' ] );
+[ $status, $body ] = ninoCall( $appData, $admin, [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'en_US', 'caption' => 'Above the pass', 'alt' => '' ], 'gallery/image-save' );
 
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/reorder', [ 'album' => 'trip', 'order' => [ $ids[2], $ids[0], $ids[1] ] ] );
+[ $status, $body ] = ninoCall( $appData, $admin, [ 'album' => 'trip', 'order' => [ $ids[2], $ids[0], $ids[1] ] ], 'gallery/reorder' );
 check( 'the order is the whole list, posted and stored', $status === 200 && array_column( galleryImages( $body ), 'id' ) === [ $ids[2], $ids[0], $ids[1] ] );
 
-[ $status ] = callGalleryAdmin( $appData, 'gallery/reorder', [ 'album' => 'trip', 'order' => [ $ids[0], $ids[1] ] ] );
+[ $status ] = ninoCall( $appData, $admin, [ 'album' => 'trip', 'order' => [ $ids[0], $ids[1] ] ], 'gallery/reorder' );
 check( 'an order that leaves an image out is refused whole - a partial order would drop it silently', $status === 400
 	&& count( \Nino\Modules\Gallery::album( $appData, 'trip' )['images'] ?? [] ) === 3 );
 
 $goneFiles = array_map( static fn( string $key ): string => \Nino\Filesystem::path( $appData, '/images/'. \Nino\Modules\Gallery::album( $appData, 'trip' )['images'][0][$key] ?? '' ), [ 'thumb', 'large' ] );
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/image-delete', [ 'album' => 'trip', 'id' => $ids[2] ] );
+[ $status, $body ] = ninoCall( $appData, $admin, [ 'album' => 'trip', 'id' => $ids[2] ], 'gallery/image-delete' );
 check( 'deleting an image takes both of its files with it', $status === 200 && count( galleryImages( $body ) ) === 2
 	&& is_file( $goneFiles[0] ) === false && is_file( $goneFiles[1] ) === false );
 
-[ $status ] = callGalleryAdmin( $appData, 'gallery/image-delete', [ 'album' => 'trip', 'id' => $ids[2] ] );
+[ $status ] = ninoCall( $appData, $admin, [ 'album' => 'trip', 'id' => $ids[2] ], 'gallery/image-delete' );
 check( 'deleting it twice is a refusal, not a second delete', $status === 400 );
 
 echo "\n";
@@ -572,65 +643,63 @@ echo "Gallery\\Admin - an album with sizes of its own\n";
 $sizes = [ 'thumbWidth' => 80, 'thumbHeight' => 60, 'largeWidth' => 300, 'largeHeight' => 200, 'keepRatio' => true, 'columns' => 2 ];
 $storedAlbum = static fn( string $key ): array => array_values( array_filter( (array) \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, [] ), static fn( mixed $entry ): bool => is_array( $entry ) === true && ( $entry['key'] ?? null ) === $key ) )[0] ?? [];
 
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/list' );
+[ $status, $body ] = ninoCall( $appData, $admin, [], 'gallery/list' );
 check( 'an album made the old way, with a key and a name, starts with the feature\'s settings - stored as its own six, so the feature changing them later does not change it',
 	$status === 200 && ( galleryAlbumOf( $body, 'trip' )['settings'] ?? null ) === [ 'thumbWidth' => 200, 'thumbHeight' => 200, 'largeWidth' => 600, 'largeHeight' => 600, 'keepRatio' => true, 'columns' => 4 ]
 	&& ( $storedAlbum( 'trip' )['settings'] ?? null ) === [ 'thumbWidth' => 200, 'thumbHeight' => 200, 'largeWidth' => 600, 'largeHeight' => 600, 'keepRatio' => true, 'columns' => 4 ] );
 
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/album-save', [ 'album' => 'sized', 'name' => 'Sized', 'settings' => $sizes, 'isNew' => true ] );
+[ $status, $body ] = ninoCall( $appData, $admin, [ 'album' => 'sized', 'name' => 'Sized', 'settings' => $sizes, 'isNew' => true ], 'gallery/album-save' );
 check( 'the page of a new album makes one with album-save: the key, the name, the six sizes and the word that it is new - and the answer carries the sizes of every album',
 	$status === 200 && ( galleryAlbumOf( $body, 'sized' )['name'] ?? null ) === 'Sized' && ( galleryAlbumOf( $body, 'sized' )['settings'] ?? null ) === $sizes
 	&& is_array( galleryAlbumOf( $body, 'trip' )['settings'] ?? null ) === true && count( galleryAlbumOf( $body, 'trip' )['settings'] ) === 6 );
 check( '...and the record in the file holds them: the six, with their own values', ( $storedAlbum( 'sized' )['settings'] ?? null ) === $sizes && ( $storedAlbum( 'sized' )['images'] ?? null ) === [] );
 
 $before = \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, [] );
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/album-save', [ 'album' => 'sized', 'name' => 'Again', 'settings' => [ 'columns' => 8 ] + $sizes, 'isNew' => true ] );
-check( 'a key that is taken is refused for a new album, in the panel\'s words - and neither the name nor the sizes of the album that has it are touched',
-	$status === 400 && galleryError( $body ) === $panelText['[[/_admin/gallery/error/taken]]'] && \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, [] ) === $before );
-check( 'a key that is not a slug is refused as one, with or without sizes', callGalleryAdmin( $appData, 'gallery/album-save', [ 'album' => 'Sized!', 'name' => 'x', 'settings' => $sizes, 'isNew' => true ] )[0] === 400
-	&& galleryError( callGalleryAdmin( $appData, 'gallery/album-save', [ 'album' => '', 'settings' => $sizes, 'isNew' => true ] )[1] ) === $panelText['[[/_admin/gallery/error/key]]'] );
+[ $status, $body ] = ninoCall( $appData, $admin, [ 'album' => 'sized', 'name' => 'Again', 'settings' => [ 'columns' => 8 ] + $sizes, 'isNew' => true ], 'gallery/album-save' );
+check( 'a key that is taken is refused for a new album, with its code - and neither the name nor the sizes of the album that has it are touched',
+	$status === 400 && $body === [ 'error' => 'there is an album with this key already', 'code' => 'gallery_taken' ] && \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, [] ) === $before );
+check( 'a key that is not a slug is refused as one, with or without sizes', galleryCode( ninoCall( $appData, $admin, [ 'album' => 'Sized!', 'name' => 'x', 'settings' => $sizes, 'isNew' => true ], 'gallery/album-save' )[1] ) === 'gallery_key'
+	&& ninoCall( $appData, $admin, [ 'album' => '', 'settings' => $sizes, 'isNew' => true ], 'gallery/album-save' )[1] === [ 'error' => 'an album key is a slug: lower case, starting with a letter', 'code' => 'gallery_key' ] );
 
 // The page that makes an album is #gallery/new: an album with that key would be opened in its place by a reload
 $before = \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, [] );
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/album-save', [ 'album' => 'new', 'name' => 'New', 'settings' => $sizes, 'isNew' => true ] );
-[ $statusPlain, $bodyPlain ] = callGalleryAdmin( $appData, 'gallery/album-save', [ 'album' => 'new', 'name' => 'New' ] );
-check( 'the key "new" is the address of the page that makes an album, so no album is made with it - with the word that it is new or without it - and the refusal says why; nothing is written',
-	$status === 400 && $statusPlain === 400 && galleryError( $body ) === $panelText['[[/_admin/gallery/error/reserved]]'] && galleryError( $bodyPlain ) === $panelText['[[/_admin/gallery/error/reserved]]']
-	&& galleryError( $body ) !== $panelText['[[/_admin/gallery/error/key]]'] && \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, [] ) === $before );
-check( '...the panel has the words for it in both languages', str_contains( $panelText['[[/_admin/gallery/error/reserved]]'], '"new"' ) === true
-	&& str_contains( ( include dirname( __DIR__ ). '/text/de_DE.php' )['[[/_admin/gallery/error/reserved]]'], '„new“' ) === true );
+[ $status, $body ] = ninoCall( $appData, $admin, [ 'album' => 'new', 'name' => 'New', 'settings' => $sizes, 'isNew' => true ], 'gallery/album-save' );
+[ $statusPlain, $bodyPlain ] = ninoCall( $appData, $admin, [ 'album' => 'new', 'name' => 'New' ], 'gallery/album-save' );
+check( 'the key "new" is the address of the page that makes an album, so no album is made with it - with the word that it is new or without it - and the refusal says why, as a code of its own and not as a key that is no slug; nothing is written',
+	$status === 400 && $statusPlain === 400 && galleryCode( $body ) === 'gallery_reserved' && $bodyPlain === $body
+	&& \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, [] ) === $before );
+check( '...the panel has the words for it in both languages, naming the key', str_contains( gallerySentence( $appData, 'gallery_reserved', 'en_US' ), '"new"' ) === true
+	&& str_contains( gallerySentence( $appData, 'gallery_reserved', 'de_DE' ), '„new“' ) === true );
 
 // An album that has the key already - the file may be one from before the panel refused it, or edited by hand - goes on working
 \Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, array_merge( $before, [ [ 'key' => 'new', 'name' => 'Made before', 'images' => [] ] ] ) );
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/album-save', [ 'album' => 'new', 'name' => 'Still here', 'settings' => [ 'columns' => 3 ] ] );
-[ $statusTaken, $bodyTaken ] = callGalleryAdmin( $appData, 'gallery/album-save', [ 'album' => 'new', 'name' => 'Again', 'isNew' => true ] );
+[ $status, $body ] = ninoCall( $appData, $admin, [ 'album' => 'new', 'name' => 'Still here', 'settings' => [ 'columns' => 3 ] ], 'gallery/album-save' );
+[ $statusTaken, $bodyTaken ] = ninoCall( $appData, $admin, [ 'album' => 'new', 'name' => 'Again', 'isNew' => true ], 'gallery/album-save' );
 check( 'an album that has the key already keeps working: it is renamed and its sizes are saved - and as a new album the key is taken, as for any other',
 	$status === 200 && ( galleryAlbumOf( $body, 'new' )['name'] ?? null ) === 'Still here' && ( galleryAlbumOf( $body, 'new' )['settings']['columns'] ?? null ) === 3
-	&& $statusTaken === 400 && galleryError( $bodyTaken ) === $panelText['[[/_admin/gallery/error/taken]]'] );
+	&& $statusTaken === 400 && galleryCode( $bodyTaken ) === 'gallery_taken' );
 \Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, $before );
 
 // A key names a directory below /images/gallery, and one the file system cannot take makes every upload into the album fail
 $longest = 'k'. str_repeat( 'x', \Nino\Modules\Gallery::MAX_KEY - 1 );
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/album-save', [ 'album' => $longest. 'x', 'name' => 'Long', 'settings' => $sizes, 'isNew' => true ] );
-[ $statusPlain, $bodyPlain ] = callGalleryAdmin( $appData, 'gallery/album-save', [ 'album' => $longest. 'x', 'name' => 'Long' ] );
-check( 'a key of more than 64 characters is not the key of a new album - with the word that it is new or without it - and the refusal says how long one may be; nothing is written',
-	$status === 400 && $statusPlain === 400 && galleryError( $body ) === str_replace( '%s', (string) \Nino\Modules\Gallery::MAX_KEY, $panelText['[[/_admin/gallery/error/long]]'] ) && galleryError( $bodyPlain ) === galleryError( $body )
-	&& galleryError( $body ) !== $panelText['[[/_admin/gallery/error/key]]'] && \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, [] ) === $before );
-check( '...the panel has the words for it in both languages, each with the place for the number', str_contains( $panelText['[[/_admin/gallery/error/long]]'], '%s' ) === true
-	&& str_contains( ( include dirname( __DIR__ ). '/text/de_DE.php' )['[[/_admin/gallery/error/long]]'], '%s' ) === true );
+[ $status, $body ] = ninoCall( $appData, $admin, [ 'album' => $longest. 'x', 'name' => 'Long', 'settings' => $sizes, 'isNew' => true ], 'gallery/album-save' );
+[ $statusPlain, $bodyPlain ] = ninoCall( $appData, $admin, [ 'album' => $longest. 'x', 'name' => 'Long' ], 'gallery/album-save' );
+check( 'a key of more than 64 characters is not the key of a new album - with the word that it is new or without it - and the refusal says how long one may be, as a value of its code; nothing is written',
+	$status === 400 && $statusPlain === 400 && $body === [ 'error' => 'the key of a new album has at most 64 characters', 'code' => 'gallery_long', 'params' => [ \Nino\Modules\Gallery::MAX_KEY ] ] && $bodyPlain === $body
+	&& \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, [] ) === $before );
 
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/album-save', [ 'album' => $longest, 'name' => 'Longest', 'settings' => $sizes, 'isNew' => true ] );
-[ $statusUpload, $bodyUpload ] = withUpload( $wide, static fn(): array => callGalleryAdmin( $appData, 'gallery/upload', [ 'album' => $longest ] ) );
+[ $status, $body ] = ninoCall( $appData, $admin, [ 'album' => $longest, 'name' => 'Longest', 'settings' => $sizes, 'isNew' => true ], 'gallery/album-save' );
+[ $statusUpload, $bodyUpload ] = withUpload( $wide, static fn(): array => ninoCall( $appData, $admin, [ 'album' => $longest ], 'gallery/upload' ) );
 check( '...64 are the longest: such a key makes an album, and an upload into it is made',
 	$status === 200 && ( galleryAlbumOf( $body, $longest )['name'] ?? null ) === 'Longest' && $statusUpload === 200 && count( galleryAlbumOf( $bodyUpload, $longest )['images'] ?? [] ) === 1
 	&& count( glob( \Nino\Filesystem::path( $appData, '/images/gallery/'. $longest ). '/*' ) ?: [] ) === 2 );
-callGalleryAdmin( $appData, 'gallery/album-delete', [ 'album' => $longest ] );
+ninoCall( $appData, $admin, [ 'album' => $longest ], 'gallery/album-delete' );
 
 // An album that has a longer key from before - a file edited by hand, or written by the panel as it was - goes on working: only a new one is held to the number
 $older = 'k'. str_repeat( 'x', 99 );
 \Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, array_merge( $before, [ [ 'key' => $older, 'name' => 'Made before', 'images' => [] ] ] ) );
-[ $statusRename, $bodyRename ] = callGalleryAdmin( $appData, 'gallery/album-save', [ 'album' => $older, 'name' => 'Still here', 'settings' => [ 'columns' => 3 ] ] );
-[ $statusDelete ] = callGalleryAdmin( $appData, 'gallery/album-delete', [ 'album' => $older ] );
+[ $statusRename, $bodyRename ] = ninoCall( $appData, $admin, [ 'album' => $older, 'name' => 'Still here', 'settings' => [ 'columns' => 3 ] ], 'gallery/album-save' );
+[ $statusDelete ] = ninoCall( $appData, $admin, [ 'album' => $older ], 'gallery/album-delete' );
 check( 'an album that has a longer key from before is renamed, has its sizes saved and is deleted all the same',
 	$statusRename === 200 && ( galleryAlbumOf( $bodyRename, $older )['name'] ?? null ) === 'Still here' && ( galleryAlbumOf( $bodyRename, $older )['settings']['columns'] ?? null ) === 3 && $statusDelete === 200
 	&& array_column( \Nino\Modules\Gallery::albums( $appData ), 'key' ) === array_column( $before, 'key' ) );
@@ -639,42 +708,42 @@ check( 'an album that has a longer key from before is renamed, has its sizes sav
 $refused = [];
 foreach( [ 'thumbWidth' => [ 39, 1201, 'wide', 100.5, [ 1 ], null ], 'thumbHeight' => [ 39, 1201 ], 'largeWidth' => [ 199, 4001 ], 'largeHeight' => [ 199, 4001 ], 'columns' => [ 0, 9 ], 'keepRatio' => [ 'yes', 2, [] ] ] as $name => $values )
 	foreach( $values as $value )
-		if( callGalleryAdmin( $appData, 'gallery/album-save', [ 'album' => 'sized', 'settings' => [ $name => $value ] ] )[0] !== 400 )
+		if( ninoCall( $appData, $admin, [ 'album' => 'sized', 'settings' => [ $name => $value ] ], 'gallery/album-save' )[0] !== 400 )
 			$refused[] = $name. '='. json_encode( $value );
 check( 'a size outside the range of the feature\'s setting, or one that is no number, is refused: below it and above it, for each of the six'. ( $refused === [] ? '' : ' - '. implode( ' | ', $refused ) ), $refused === [] );
 check( '...and nothing was written by any of the refusals', \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, [] ) === $before );
 
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/album-save', [ 'album' => 'sized', 'name' => 'Not written', 'settings' => [ 'thumbWidth' => 39, 'columns' => 9, 'keepRatio' => true, 'largeWidth' => 300 ] ] );
+[ $status, $body ] = ninoCall( $appData, $admin, [ 'album' => 'sized', 'name' => 'Not written', 'settings' => [ 'thumbWidth' => 39, 'columns' => 9, 'keepRatio' => true, 'largeWidth' => 300 ] ], 'gallery/album-save' );
 check( 'the refusal names what is wrong - as the panel names it, with the range - and not what is right, and is all or nothing: the name that came with it was not kept either',
-	$status === 400 && galleryError( $body ) === str_replace( '%s', 'Thumbnail width (40–1200), Columns (1–8)', $panelText['[[/_admin/gallery/error/settings]]'] )
+	$status === 400 && $body === [ 'error' => 'these sizes are outside what is allowed: thumbWidth, columns', 'code' => 'gallery_settings', 'params' => [ 'Thumbnail width (40–1200), Columns (1–8)' ] ]
 	&& \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, [] ) === $before );
 
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/album-save', [ 'album' => 'sized', 'settings' => [ 'columns' => 5 ] ] );
+[ $status, $body ] = ninoCall( $appData, $admin, [ 'album' => 'sized', 'settings' => [ 'columns' => 5 ] ], 'gallery/album-save' );
 check( 'sizes posted in part change those and leave the rest - the name is not in the request and is not touched either',
 	$status === 200 && ( galleryAlbumOf( $body, 'sized' )['settings'] ?? null ) === array_replace( $sizes, [ 'columns' => 5 ] ) && ( galleryAlbumOf( $body, 'sized' )['name'] ?? null ) === 'Sized' );
 
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/album-save', [ 'album' => 'sized', 'settings' => [ 'thumbWidth' => '90', 'columns' => 8 ] ] );
+[ $status, $body ] = ninoCall( $appData, $admin, [ 'album' => 'sized', 'settings' => [ 'thumbWidth' => '90', 'columns' => 8 ] ], 'gallery/album-save' );
 check( 'a number written as digits is stored as a number, and 8 is the last column there is', $status === 200 && ( $storedAlbum( 'sized' )['settings']['thumbWidth'] ?? null ) === 90 && ( $storedAlbum( 'sized' )['settings']['columns'] ?? null ) === 8 );
 
-callGalleryAdmin( $appData, 'gallery/album-save', [ 'album' => 'sized', 'settings' => $sizes ] );
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/album-save', [ 'album' => 'sized', 'name' => 'Renamed' ] );
+ninoCall( $appData, $admin, [ 'album' => 'sized', 'settings' => $sizes ], 'gallery/album-save' );
+[ $status, $body ] = ninoCall( $appData, $admin, [ 'album' => 'sized', 'name' => 'Renamed' ], 'gallery/album-save' );
 check( 'a rename is the name alone: the sizes of the album are the ones it had', $status === 200 && ( galleryAlbumOf( $body, 'sized' )['name'] ?? null ) === 'Renamed' && ( galleryAlbumOf( $body, 'sized' )['settings'] ?? null ) === $sizes );
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/album-save', [ 'album' => 'sized', 'name' => '', 'settings' => $sizes ] );
+[ $status, $body ] = ninoCall( $appData, $admin, [ 'album' => 'sized', 'name' => '', 'settings' => $sizes ], 'gallery/album-save' );
 check( '...and a name that is empty leaves the name as it was, as it did before', $status === 200 && ( galleryAlbumOf( $body, 'sized' )['name'] ?? null ) === 'Renamed' );
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/album-save', [ 'album' => 'made-before', 'name' => 'Made before' ] );
+[ $status, $body ] = ninoCall( $appData, $admin, [ 'album' => 'made-before', 'name' => 'Made before' ], 'gallery/album-save' );
 check( 'an album saved without the word that it is new is made if there is none and renamed if there is, as it always was: the page of a new album is the one that says it', $status === 200
 	&& ( galleryAlbumOf( $body, 'made-before' )['name'] ?? null ) === 'Made before' && count( galleryAlbumOf( $body, 'made-before' )['settings'] ?? [] ) === 6 );
-callGalleryAdmin( $appData, 'gallery/album-delete', [ 'album' => 'made-before' ] );
+ninoCall( $appData, $admin, [ 'album' => 'made-before' ], 'gallery/album-delete' );
 
 // What an upload becomes
-[ $status, $body ] = withUpload( $wide, static fn(): array => callGalleryAdmin( $appData, 'gallery/upload', [ 'album' => 'sized' ] ) );
+[ $status, $body ] = withUpload( $wide, static fn(): array => ninoCall( $appData, $admin, [ 'album' => 'sized' ], 'gallery/upload' ) );
 $first = galleryAlbumOf( $body, 'sized' )['images'][0] ?? [];
 check( 'an upload into the album is made to the album\'s sizes and not to the feature\'s: a thumbnail of exactly 80x60 and the whole picture inside 300x200 - and the file names say so',
 	$status === 200 && galleryDims( $appData, $first['thumb'] ?? '' ) === '80x60' && galleryDims( $appData, $first['large'] ?? '' ) === '300x150'
 	&& str_contains( (string) ( $first['thumb'] ?? '' ), '.80x60.' ) === true && str_contains( (string) ( $first['large'] ?? '' ), '.fit300x200.' ) === true );
 
-callGalleryAdmin( $appData, 'gallery/album-save', [ 'album' => 'sized', 'settings' => [ 'thumbWidth' => 100, 'thumbHeight' => 100, 'largeWidth' => 250, 'largeHeight' => 250, 'keepRatio' => false ] ] );
-[ $status, $body ] = withUpload( $wide, static fn(): array => callGalleryAdmin( $appData, 'gallery/upload', [ 'album' => 'sized' ] ) );
+ninoCall( $appData, $admin, [ 'album' => 'sized', 'settings' => [ 'thumbWidth' => 100, 'thumbHeight' => 100, 'largeWidth' => 250, 'largeHeight' => 250, 'keepRatio' => false ] ], 'gallery/album-save' );
+[ $status, $body ] = withUpload( $wide, static fn(): array => ninoCall( $appData, $admin, [ 'album' => 'sized' ], 'gallery/upload' ) );
 $second = galleryAlbumOf( $body, 'sized' )['images'][1] ?? [];
 check( 'changed sizes are the ones of the next upload: the picture is cropped to 250x250 now - and the one that was there keeps the size it was made at',
 	galleryDims( $appData, $second['thumb'] ?? '' ) === '100x100' && galleryDims( $appData, $second['large'] ?? '' ) === '250x250' && str_contains( (string) ( $second['large'] ?? '' ), '.250x250.' ) === true
@@ -684,28 +753,28 @@ check( 'changed sizes are the ones of the next upload: the picture is cropped to
 $stored = \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, [] );
 $stored[] = [ 'key' => 'old', 'name' => 'Old', 'images' => [] ];
 \Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, $stored );
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/list' );
+[ $status, $body ] = ninoCall( $appData, $admin, [], 'gallery/list' );
 check( 'a record without sizes - which is what every album was before they were its own - reads the feature\'s settings, so the panel has all six to show',
 	( galleryAlbumOf( $body, 'old' )['settings'] ?? null ) === [ 'thumbWidth' => 200, 'thumbHeight' => 200, 'largeWidth' => 600, 'largeHeight' => 600, 'keepRatio' => true, 'columns' => 4 ] );
-[ $status, $body ] = withUpload( $wide, static fn(): array => callGalleryAdmin( $appData, 'gallery/upload', [ 'album' => 'old' ] ) );
+[ $status, $body ] = withUpload( $wide, static fn(): array => ninoCall( $appData, $admin, [ 'album' => 'old' ], 'gallery/upload' ) );
 $oldImage = galleryAlbumOf( $body, 'old' )['images'][0] ?? [];
 check( '...and an upload into it is made to those', galleryDims( $appData, $oldImage['thumb'] ?? '' ) === '200x200' && galleryDims( $appData, $oldImage['large'] ?? '' ) === '600x300' );
 
 \Nino\Features::saveSettings( $appData, 'gallery', [ 'thumbWidth' => 90, 'thumbHeight' => 90, 'largeWidth' => 500, 'largeHeight' => 500, 'keepRatio' => true, 'columns' => 7 ] );
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/list' );
+[ $status, $body ] = ninoCall( $appData, $admin, [], 'gallery/list' );
 check( 'the feature\'s settings are what such an album reads as they are now - a default that was copied would have gone stale - while an album with sizes of its own keeps them',
 	( galleryAlbumOf( $body, 'old' )['settings']['columns'] ?? null ) === 7 && ( galleryAlbumOf( $body, 'old' )['settings']['thumbWidth'] ?? null ) === 90
 	&& ( galleryAlbumOf( $body, 'sized' )['settings']['thumbWidth'] ?? null ) === 100 && ( $body['defaults']['columns'] ?? null ) === 7 );
 
 $oldImageId = (string) ( $oldImage['id'] ?? '' );
-callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'old', 'id' => $oldImageId, 'locale' => 'en_US', 'caption' => 'Rewritten' ] );
-callGalleryAdmin( $appData, 'gallery/reorder', [ 'album' => 'sized', 'order' => array_reverse( array_column( galleryAlbumOf( callGalleryAdmin( $appData, 'gallery/list' )[1], 'sized' )['images'] ?? [], 'id' ) ) ] );
+ninoCall( $appData, $admin, [ 'album' => 'old', 'id' => $oldImageId, 'locale' => 'en_US', 'caption' => 'Rewritten' ], 'gallery/image-save' );
+ninoCall( $appData, $admin, [ 'album' => 'sized', 'order' => array_reverse( array_column( galleryAlbumOf( ninoCall( $appData, $admin, [], 'gallery/list' )[1], 'sized' )['images'] ?? [], 'id' ) ) ], 'gallery/reorder' );
 check( 'no other action copies the defaults into such a record: it is a record without sizes after the file was written again, by a caption and by an order',
 	array_key_exists( 'settings', $storedAlbum( 'old' ) ) === false && ( $storedAlbum( 'old' )['images'][0]['caption'] ?? null ) === [ 'en_US' => 'Rewritten' ] );
 
 \Nino\Features::saveSettings( $appData, 'gallery', [ 'thumbWidth' => 200, 'thumbHeight' => 200, 'largeWidth' => 600, 'largeHeight' => 600, 'keepRatio' => true, 'columns' => 4 ] );
-callGalleryAdmin( $appData, 'gallery/album-delete', [ 'album' => 'old' ] );
-callGalleryAdmin( $appData, 'gallery/album-delete', [ 'album' => 'sized' ] );
+ninoCall( $appData, $admin, [ 'album' => 'old' ], 'gallery/album-delete' );
+ninoCall( $appData, $admin, [ 'album' => 'sized' ], 'gallery/album-delete' );
 check( 'those albums go with their pictures, and the one the rest of the test is about is as it was',
 	count( glob( \Nino\Filesystem::path( $appData, '/images/gallery/sized' ). '/*' ) ?: [] ) === 0 && count( glob( \Nino\Filesystem::path( $appData, '/images/gallery/old' ). '/*' ) ?: [] ) === 0
 	&& array_column( \Nino\Modules\Gallery::albums( $appData ), 'key' ) === [ 'trip' ] && count( \Nino\Modules\Gallery::albums( $appData )[0]['images'] ) === 2 );
@@ -783,7 +852,7 @@ check( 'no class the templates or the stylesheet write is one Nino.css styles - 
 // serves every language - and what comes out of the fill engine is escaped
 // like anything else that reaches an attribute
 \Nino\Html::addFills( $appData, [ '[[/project/gallery/one/caption]]' => 'Am Pass "oben"' ], '*' );
-callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[0], 'locale' => 'en_US', 'caption' => '[[/project/gallery/one/caption]]' ] );
+ninoCall( $appData, $admin, [ 'album' => 'trip', 'id' => $ids[0], 'locale' => 'en_US', 'caption' => '[[/project/gallery/one/caption]]' ], 'gallery/image-save' );
 $filled = \Nino\Html::renderHtml( $appData, '[gallery album="trip"]' );
 check( 'a caption written as a fill is resolved, and what comes out is escaped', str_contains( $filled, 'data-caption="Am Pass &quot;oben&quot;"' ) === true
 	&& str_contains( $filled, '[[/project/gallery/' ) === false );
@@ -792,8 +861,8 @@ check( 'a caption written as a fill is resolved, and what comes out is escaped',
 // thumbnail says is the alt text; what the Lightbox shows under the picture is
 // the caption - and where there is an alt text and no caption, an empty
 // data-caption tells it there is none, instead of showing the alt text there
-callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[0], 'locale' => 'en_US', 'caption' => '', 'alt' => 'Front of the "house"' ] );
-callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[0], 'locale' => 'de_DE', 'alt' => 'Vorderseite des Hauses' ] );
+ninoCall( $appData, $admin, [ 'album' => 'trip', 'id' => $ids[0], 'locale' => 'en_US', 'caption' => '', 'alt' => 'Front of the "house"' ], 'gallery/image-save' );
+ninoCall( $appData, $admin, [ 'album' => 'trip', 'id' => $ids[0], 'locale' => 'de_DE', 'alt' => 'Vorderseite des Hauses' ], 'gallery/image-save' );
 $both = \Nino\Html::renderHtml( $appData, '[gallery album="trip"]' );
 check( 'an alt text and no caption: the thumbnail is named by the alt text, and the link says it has no caption', str_contains( $both, 'alt="Front of the &quot;house&quot;"' ) === true
 	&& str_contains( $both, 'data-caption=""' ) === true && substr_count( $both, 'data-caption=' ) === 2 );
@@ -808,7 +877,7 @@ check( 'the same page in German reads the German alt text and the German caption
 
 // Only English written for the second image: German is the site's own language
 // and has nothing, so the first there is is better than a picture with no words
-callGalleryAdmin( $appData, 'gallery/image-save', [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'de_DE', 'caption' => '' ] );
+ninoCall( $appData, $admin, [ 'album' => 'trip', 'id' => $ids[1], 'locale' => 'de_DE', 'caption' => '' ], 'gallery/image-save' );
 check( 'a language that has no text falls back to the site\'s own, then to the first there is', str_contains( \Nino\Html::renderHtml( $appData, '[gallery album="trip"]' ), 'data-caption="Above the pass"' ) === true );
 
 // Not ninoWarnings() === []: the sandbox has no text files, and every fill the
@@ -884,9 +953,7 @@ class GalleryProjectSchemaModule {
 
 echo "Components - [gallery] as the Builder offers it\n";
 
-if( class_exists( '\\Nino\\Modules\\Components' ) === false )
-	echo "  --  this Nino has no \\Nino\\Modules\\Components: the manifest's components are not read here, and the shortcode registers itself\n";
-else ( static function( array $appData ): void {
+( static function( array $appData ): void {
 
 	$declared = \Nino\Features::manifest( dirname( __DIR__ ) )['components'] ?? [];
 
@@ -1142,36 +1209,142 @@ else ( static function( array $appData ): void {
 echo "\n";
 
 
+// --- A change another request made meanwhile ---------------------------------
+
+echo "Gallery\\Admin - the albums are changed under the lock of their file\n";
+
+/*	The site and a second screen write the file the albums are in, and an action
+	that read it, changed what it had read and wrote that whole took back what was
+	written in between. Another request is a file written behind this one's back,
+	of the same size and the same time, so that the copy Filesystem keeps of it
+	for this request cannot tell: what an action reads before it locks the file is
+	the old state, what it reads under the lock is the file	*/
+$stage = static function( array &$appData, string $from, string $to ): bool {
+
+	$path = \Nino\Filesystem::path( $appData, \Nino\Modules\Gallery::ALBUMS );
+
+	// This request reads the albums...
+	\Nino\Modules\Gallery::albums( $appData );
+	$time = (int) filemtime( $path );
+
+	// ...another one renames the album, to a name of the same length, and puts the time back
+	file_put_contents( $path, str_replace( "'name' => '$from'", "'name' => '$to'", (string) file_get_contents( $path ) ) );
+	touch( $path, $time );
+	clearstatcache( true, $path );
+
+	if( function_exists( 'opcache_invalidate' ) === true )
+		opcache_invalidate( $path, true );
+
+	return ( \Nino\Modules\Gallery::album( $appData, 'trip' )['name'] ?? '' ) === $from;
+};
+$nameInFile = static function( array &$appData ): string {
+	$stored = @include \Nino\Filesystem::path( $appData, \Nino\Modules\Gallery::ALBUMS );
+	return (string) ( array_column( is_array( $stored ) === true ? $stored : [], 'name', 'key' )['trip'] ?? '' );
+};
+
+ninoCall( $appData, $admin, [ 'album' => 'trip', 'name' => 'name-a' ], 'gallery/album-save' );
+ninoCall( $appData, $admin, [ 'album' => 'other', 'name' => 'Other', 'isNew' => true ], 'gallery/album-save' );
+$tripIds = array_column( \Nino\Modules\Gallery::album( $appData, 'trip' )['images'] ?? [], 'id' );
+
+// Each of the five actions that read the albums, changed and wrote them - and the one that already did it under the lock
+$meanwhile = [
+	'gallery/album-save'	=> [ 'album' => 'trip', 'settings' => [ 'columns' => 5 ] ],
+	'gallery/image-save'	=> [ 'album' => 'trip', 'id' => $tripIds[0], 'locale' => 'en_US', 'caption' => 'Meanwhile' ],
+	'gallery/reorder'		=> [ 'album' => 'trip', 'order' => array_reverse( $tripIds ) ],
+	'gallery/upload'		=> [ 'album' => 'trip' ],
+	'gallery/image-delete'	=> [ 'album' => 'trip', 'id' => $tripIds[1] ],
+	'gallery/album-delete'	=> [ 'album' => 'other' ],
+];
+
+$name = 'name-a';
+
+foreach( $meanwhile as $action => $post ) {
+
+	$next		= 'name-'. chr( ord( $name[5] ) + 1 );
+	$staged	= $stage( $appData, $name, $next );
+
+	// The upload is the one with a file: the same appData runs it, so the copy of the albums it holds is the old one
+	if( $action === 'gallery/upload' )
+		[ $status ] = withUpload( $wide, static function() use ( &$appData, $admin, $post, $action ): array {
+			return ninoCall( $appData, $admin, $post, $action );
+		} );
+	else
+		[ $status ] = ninoCall( $appData, $admin, $post, $action );
+
+	$name = $next;
+
+	check( "$action keeps the change another request made after this one had read the albums: the file holds that request's name", $staged === true && $status === 200 && $nameInFile( $appData ) === $name );
+}
+
+// The same without an action: what change() is handed is the albums as the file holds them, and a callback that answers null leaves the file as it is
+$staged = $stage( $appData, $name, 'name-z' );
+$seen = null;
+$left = \Nino\Modules\Gallery::change( $appData, static function( array $albums ) use ( &$seen ): ?array {
+	$seen = array_column( $albums, 'name', 'key' );
+	return null;
+} );
+check( 'change() hands the callback the albums as the file holds them under the lock, not as this request read them - and writes nothing for null',
+	$staged === true && $left === false && ( $seen['trip'] ?? '' ) === 'name-z' && $nameInFile( $appData ) === 'name-z' );
+
+$kept = \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, [] );
+\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, [ [ 'key' => 'one', 'name' => 'One', 'images' => [] ], [ 'key' => 'Not A Key' ], 'not an album', [ 'key' => 'two', 'name' => 'Two' ] ] );
+check( 'it is handed valid albums only, and writes the ones it answers - the list renumbered, nothing else of the file kept',
+	\Nino\Modules\Gallery::change( $appData, static fn( array $albums ): array => array_reverse( $albums ) ) === true
+	&& array_column( (array) @include \Nino\Filesystem::path( $appData, \Nino\Modules\Gallery::ALBUMS ), 'key' ) === [ 'two', 'one' ] );
+check( '...and a file that cannot be locked is not written: change() says so', ( static function() use ( &$appData ): bool {
+	$locks = \Nino\Filesystem::path( $appData, '/data/.locks' );
+	$aside = $locks. '-aside';
+	$had = file_exists( $locks );
+	if( $had === true )
+		rename( $locks, $aside );
+	file_put_contents( $locks, 'not a directory' );
+	ninoWarnings();
+	$ran = false;
+	$wrote = \Nino\Modules\Gallery::change( $appData, static function( array $albums ) use ( &$ran ): array {
+		$ran = true;
+		return $albums;
+	} );
+	ninoWarnings();
+	unlink( $locks );
+	if( $had === true )
+		rename( $aside, $locks );
+	return $wrote === false && $ran === false;
+} )() );
+
+// Back to the albums the rest of the test is about
+\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Gallery::ALBUMS, $kept );
+
+echo "\n";
+
+
 // --- Deleting an album -------------------------------------------------------
 
 echo "Gallery\\Admin - deleting an album\n";
 
 $before = count( glob( \Nino\Filesystem::path( $appData, '/images/gallery/trip' ). '/*' ) ?: [] );
-[ $status, $body ] = callGalleryAdmin( $appData, 'gallery/album-delete', [ 'album' => 'trip' ] );
+[ $status, $body ] = ninoCall( $appData, $admin, [ 'album' => 'trip' ], 'gallery/album-delete' );
 $after = count( glob( \Nino\Filesystem::path( $appData, '/images/gallery/trip' ). '/*' ) ?: [] );
 
 // Unlike a form's submissions, an album's images are the album: nothing else
 // points at them, and leaving them would leave files nobody can reach again
 check( 'the album goes, and every picture in it', $status === 200 && galleryAlbums( $body ) === [] && $before > 0 && $after === 0 );
 
-[ $status ] = callGalleryAdmin( $appData, 'gallery/album-delete', [ 'album' => 'trip' ] );
+[ $status ] = ninoCall( $appData, $admin, [ 'album' => 'trip' ], 'gallery/album-delete' );
 check( 'deleting it twice is a refusal', $status === 400 );
 
 // No album: the select has the empty choice alone, which is the default - and a page that names the component draws nothing
-if( class_exists( '\\Nino\\Modules\\Components' ) === true ) {
-	$empty = $appData;
-	foreach( [ 'gallery' ] as $shortcode )
-		\Nino\Callbacks::removeCallbacks( $empty, '/nino/html/shortcode/'. $shortcode );
-	\Nino\Modules\Components::init( $empty );
-	\Nino\Modules\Gallery::init( $empty );
-	ninoWarnings();
-	check( 'with no album the select of the component has the empty choice and nothing else, and the page draws nothing for it',
-		( \Nino\Modules\Components::components( $empty )['gallery']['attributes']['album']['options'] ?? null ) === [ '' ] && ( \Nino\Modules\Components::components( $empty )['gallery']['attributes']['album']['default'] ?? null ) === ''
-		&& \Nino\Modules\Gallery::keys( $appData ) === [] && \Nino\Html::renderHtml( $empty, '[gallery]' ) === '' && \Nino\Html::renderHtml( $empty, '[gallery album="trip"]' ) === '' );
-}
+$empty = $appData;
+foreach( [ 'gallery' ] as $shortcode )
+	\Nino\Callbacks::removeCallbacks( $empty, '/nino/html/shortcode/'. $shortcode );
+\Nino\Modules\Components::init( $empty );
+\Nino\Modules\Gallery::init( $empty );
+ninoWarnings();
+check( 'with no album the select of the component has the empty choice and nothing else, and the page draws nothing for it',
+	( \Nino\Modules\Components::components( $empty )['gallery']['attributes']['album']['options'] ?? null ) === [ '' ] && ( \Nino\Modules\Components::components( $empty )['gallery']['attributes']['album']['default'] ?? null ) === ''
+	&& \Nino\Modules\Gallery::keys( $appData ) === [] && \Nino\Html::renderHtml( $empty, '[gallery]' ) === '' && \Nino\Html::renderHtml( $empty, '[gallery album="trip"]' ) === '' );
 
 $appData['./nino/auth/current'] = null;
-[ $status ] = callGalleryAdmin( $appData, 'gallery/list' );
+[ $status ] = ninoCall( $appData, $admin, [], 'gallery/list' );
 check( 'every action needs the panel\'s permission', $status === 401 );
 
 echo "\n";

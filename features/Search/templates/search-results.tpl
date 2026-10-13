@@ -1,1 +1,1 @@
-<[[tag]] class="[[class]]">[[inner]]</[[tag]]>
+<[[tag]] class="nino-search-results[[classes]]">[[inner]]</[[tag]]>

@@ -16,9 +16,54 @@
 
 	wn.Nino.admin = wn.Nino.admin || {};
 
-	Nino.admin.redirects = {
+	/*	The answer whose fields the script holds. Nino.adminUi.panel() draws the
+		first answer again with every showing ('keep'), and the fields are newer
+		than it: a save and a delete change the rules, a forgotten address leaves
+		the list. render() takes an answer into the fields once, and every
+		redraw after it - a showing, a save, a delete - draws from the fields,
+		never from panel.data	*/
+	let taken = null;
 
-		_ready			: false,
+	Nino.admin.redirects = Nino.adminUi.panel( {
+		uri		: 'redirects',
+		mount	: 'redirects-rules',
+		show	: 'keep',
+		/*	The shell asks Save, Discard or Cancel before a log out or a language
+			change would lose a rule nobody has saved, and a reload gets the
+			browser's own question	*/
+		dirty	: {
+			isDirty : function() { return Nino.admin.redirects._isDirty() },
+			save : function( done ) {
+
+				const save = Nino.admin.redirects._saveButton;
+
+				if( Nino.admin.redirects._editing === null || save === null )
+					return done( false );
+
+				Nino.admin.redirects._save( Nino.admin.redirects._editing, save, done );
+			},
+			// What the shell is about to leave takes the editor with it
+			discard : function() { Nino.admin.redirects._opened = JSON.stringify( Nino.admin.redirects._editing ) },
+		},
+		render	: function( data ) {
+
+			if( data !== taken ) {
+				taken = data;
+				Nino.admin.redirects._rules			= data.rules || [];
+				Nino.admin.redirects._routes		= data.routes || [];
+				Nino.admin.redirects._misses		= data.misses || [];
+				Nino.admin.redirects._statuses	= data.statuses || [];
+				Nino.admin.redirects._recording	= data.recording !== false;
+				Nino.admin.redirects._limit			= data.limit || 0;
+				Nino.admin.redirects._notes			= data.notes || [];
+			}
+
+			Nino.admin.redirects._render();
+		},
+	} );
+
+	Object.assign( Nino.admin.redirects, {
+
 		_rules			: [],
 		// The pages of this site a target can be picked from: { path, label }.
 		// Read with the list, because it is what the routes are right now
@@ -43,78 +88,11 @@
 		_opened			: '',
 		// The Save of the editor on show, which the shell's own Save presses
 		_saveButton	: null,
+		// The status line of the screen on show (see _messageLine())
+		_line				: null,
 		// Which of the two screens is on
 		_screen			: 'rules',
 		_probe			: { path : '', answer : null },
-
-		/**
-		 *	Read everything and draw both screens
-		 *
-		 *	@param		{Function}	[then]		Run once the answer is in
-		 *
-		 *	@return		void
-		 */
-		init : function( then ) {
-
-			const wrap = dc.getElementById('redirects-rules');
-			if( wrap === null )
-				return;
-
-			Nino.admin.redirects._apiCall( 'list', {}, function( status, response ) {
-
-				if( status !== 200 || response === null )
-					return Nino.admin.redirects._showError( wrap, status, response );
-
-				Nino.admin.redirects._rules			= response.rules || [];
-				Nino.admin.redirects._routes		= response.routes || [];
-				Nino.admin.redirects._misses		= response.misses || [];
-				Nino.admin.redirects._statuses	= response.statuses || [];
-				Nino.admin.redirects._recording	= response.recording !== false;
-				Nino.admin.redirects._limit			= response.limit || 0;
-				Nino.admin.redirects._notes			= response.notes || [];
-				Nino.admin.redirects._ready			= true;
-
-				Nino.admin.redirects._render();
-
-				if( typeof then === 'function' )
-					then();
-			} );
-		},
-
-		/**
-		 *	Re-show whichever screen is on - the shell calls this when the panel
-		 *	is opened again
-		 *
-		 *	@return		void
-		 */
-		showCurrent : function() {
-
-			if( Nino.admin.redirects._ready === false )
-				return Nino.admin.redirects.init();
-
-			// The shell brings the panel on screen again after a Save it asked
-			// for failed: drawn anew, the reason the save gave would be gone,
-			// and so would the rule nobody has saved
-			if( Nino.admin.dirty.isDirty( [ 'redirects' ] ) === true )
-				return;
-
-			Nino.admin.redirects._render();
-		},
-
-		/**
-		 *	Call a redirects/* action through the workbench's request helper - it
-		 *	knows the project's directory and what to do when the page has
-		 *	outlived its session
-		 *
-		 *	@param		{string}		endpoint	Action name, eg. "list" -> "redirects/list"
-		 *	@param		{Object}		payload		Request payload, sent json-encoded as "data"
-		 *	@param		{Function}	callback	Called with ( status, parsed json or null )
-		 *
-		 *	@return		void
-		 */
-		_apiCall : function( endpoint, payload, callback ) {
-			Nino.adminUi.api.call( 'redirects/'+ endpoint, payload, callback );
-		},
 
 		/**
 		 *	Open the editor on a rule, as a working copy
@@ -150,21 +128,6 @@
 		 */
 		_leave : function( proceed, onCancel ) {
 			Nino.admin.dirty.guard( [ 'redirects' ], proceed, onCancel );
-		},
-
-		/**
-		 *	A text fill, with %s filled in
-		 *
-		 *	@param		{string}	key
-		 *	@param		{...*}		values
-		 *
-		 *	@return		{string}
-		 */
-		_say : function( key ) {
-			const values = Array.prototype.slice.call( arguments, 1 );
-			let text = Nino.content.getText( key );
-			values.forEach( function( value ) { text = text.replace( '%s', String( value ) ) } );
-			return text;
 		},
 
 		/**
@@ -218,8 +181,7 @@
 			else
 				pane.appendChild( Nino.admin.redirects._renderRules() );
 
-			rules.classList.toggle( 'admin-hidden', onRules === false );
-			misses.classList.toggle( 'admin-hidden', onRules );
+			Nino.adminUi.levels( 'redirects', [ 'rules', 'misses' ] ).show( onRules === true ? 'rules' : 'misses' );
 		},
 
 		/**
@@ -232,8 +194,7 @@
 		 */
 		_tabs : function() {
 
-			const bar = dc.createElement('div');
-			bar.className = 'nino-admin-tabs nino-admin-tabs--bar redirects-tabs';
+			const bar = Nino.adminUi.el( 'div', 'nino-admin-tabs nino-admin-tabs--bar redirects-tabs' );
 			bar.setAttribute( 'role', 'tablist' );
 
 			const buttons = {};
@@ -241,12 +202,9 @@
 			[ [ 'rules', '/_admin/redirects/label/title', Nino.admin.redirects._rules.length ],
 				[ 'missing', '/_admin/redirects/label/tile', Nino.admin.redirects._misses.length ] ].forEach( function( tab ) {
 
-				const button = dc.createElement('button');
-				button.type = 'button';
-				button.className = 'nino-admin-tab';
+				const button = Nino.adminUi.button( Nino.content.getText( tab[1] )+ ' ('+ tab[2]+ ')', undefined, { className : 'nino-admin-tab' } );
 				button.setAttribute( 'role', 'tab' );
 				button.dataset.screen = tab[0];
-				button.textContent = Nino.content.getText( tab[1] )+ ' ('+ tab[2]+ ')';
 				buttons[tab[0]] = button;
 				bar.appendChild( button );
 			} );
@@ -275,33 +233,21 @@
 		 */
 		_renderRules : function() {
 
-			const box = dc.createElement('div');
+			const box = Nino.adminUi.el('div');
 
-			box.appendChild( Nino.admin.redirects._hint('/_admin/redirects/hint/rules') );
+			box.appendChild( Nino.adminUi.hint( Nino.content.getText('/_admin/redirects/hint/rules') ) );
 			Nino.admin.redirects._notes.forEach( function( note ) {
-				const line = dc.createElement('p');
-				line.className = 'nino-admin-hint nino-admin-error';
-				line.textContent = note;
-				box.appendChild( line );
+				box.appendChild( Nino.adminUi.el( 'p', 'nino-admin-hint nino-admin-error', note ) );
 			} );
 
-			const add = dc.createElement('button');
-			add.type = 'button';
-			add.className = 'nino-admin-btn nino-admin-btn-primary';
-			add.textContent = Nino.content.getText('/_admin/redirects/label/new');
-			add.addEventListener( 'click', function() {
+			const add = Nino.adminUi.button( Nino.content.getText('/_admin/redirects/label/new'), function() {
 				Nino.admin.redirects._open( { from : '', to : '', status : 301, subtree : false, was : '' } );
-			} );
+			}, { className : 'nino-admin-btn nino-admin-btn-primary' } );
 
 			box.appendChild( Nino.adminUi.listActions( [ add ] ) );
+			box.appendChild( Nino.admin.redirects._messageLine() );
 
-			const message = dc.createElement('p');
-			message.id = 'redirects-msg';
-			message.className = 'nino-admin-hint';
-			message.setAttribute( 'aria-live', 'polite' );
-			box.appendChild( message );
-
-			const mount = dc.createElement('div');
+			const mount = Nino.adminUi.el('div');
 			box.appendChild( mount );
 
 			if( Nino.admin.redirects._rules.length === 0 )
@@ -355,11 +301,7 @@
 			if( answer !== 'nothing' && answer !== 'loop' && answer !== 'chain' && answer !== 'rule' )
 				return '';
 
-			const flag = dc.createElement('span');
-			flag.className = 'redirects-flag'+ ( answer === 'rule' ? '' : ' nino-admin-error' );
-			flag.textContent = Nino.content.getText('/_admin/redirects/answer/'+ answer );
-
-			return flag;
+			return Nino.adminUi.el( 'span', 'redirects-flag'+ ( answer === 'rule' ? '' : ' nino-admin-error' ), Nino.content.getText('/_admin/redirects/answer/'+ answer ) );
 		},
 
 		/**
@@ -371,29 +313,20 @@
 		 */
 		_rowActions : function( rule ) {
 
-			const wrap = dc.createElement('div');
-			wrap.className = 'redirects-row-actions';
+			const wrap = Nino.adminUi.el( 'div', 'redirects-row-actions' );
 
-			const edit = dc.createElement('button');
-			edit.type = 'button';
-			edit.className = 'nino-admin-btn';
-			edit.textContent = Nino.content.getText('/_admin/redirects/label/edit');
-			edit.addEventListener( 'click', function() {
+			const edit = Nino.adminUi.button( Nino.content.getText('/_admin/redirects/label/edit'), function() {
 				Nino.admin.redirects._open( {
 					from : rule.from, to : rule.to, status : rule.status, subtree : rule.subtree === true, was : rule.from,
 				} );
-			} );
+			}, { className : 'nino-admin-btn nino-admin-btn--small' } );
 
-			const remove = dc.createElement('button');
-			remove.type = 'button';
-			remove.className = 'nino-admin-btn nino-admin-btn-danger';
-			remove.textContent = Nino.content.getText('/_admin/redirects/label/delete');
-			remove.addEventListener( 'click', function() {
+			const remove = Nino.adminUi.button( Nino.content.getText('/_admin/redirects/label/delete'), function() {
 
-				if( wn.confirm( Nino.admin.redirects._say('/_admin/redirects/confirm/delete', rule.from ) ) === false )
+				if( wn.confirm( Nino.adminUi.format( Nino.content.getText('/_admin/redirects/confirm/delete'), rule.from ) ) === false )
 					return;
 
-				Nino.admin.redirects._apiCall( 'delete', { from : rule.from }, function( status, response ) {
+				Nino.admin.redirects.call( 'delete', { from : rule.from }, function( status, response ) {
 
 					if( status !== 200 || response === null )
 						return Nino.admin.redirects._message( status, response );
@@ -402,7 +335,7 @@
 					Nino.admin.redirects._render();
 					Nino.admin.redirects._message( 200, null, '/_admin/redirects/msg/deleted' );
 				} );
-			} );
+			}, { className : 'nino-admin-btn nino-admin-btn--small nino-admin-btn-danger' } );
 
 			wrap.appendChild( edit );
 			wrap.appendChild( remove );
@@ -420,23 +353,19 @@
 		_renderEditor : function() {
 
 			const edit = Nino.admin.redirects._editing;
-			const box = dc.createElement('div');
+			const box = Nino.adminUi.el('div');
 
-			const back = dc.createElement('button');
-			back.type = 'button';
-			back.className = 'nino-admin-btn';
-			back.textContent = Nino.content.getText('/_admin/redirects/label/back');
-			back.addEventListener( 'click', function() {
+			const back = Nino.adminUi.button( Nino.content.getText('/_admin/redirects/label/back'), function() {
 				Nino.admin.redirects._leave( function() {
 					Nino.admin.redirects._editing = null;
 					Nino.admin.redirects._render();
 				} );
-			} );
+			}, { className : 'nino-admin-btn' } );
 
 			box.appendChild( Nino.adminUi.contextBar( back, [] ) );
 
-			box.appendChild( Nino.admin.redirects._field( '/_admin/redirects/label/from', edit.from, function( value ) { edit.from = value }, '/old/page' ) );
-			const target = Nino.admin.redirects._field( '/_admin/redirects/label/to', edit.to, function( value ) { edit.to = value }, '/new/page' );
+			box.appendChild( Nino.adminUi.textField( { label : Nino.content.getText('/_admin/redirects/label/from'), value : edit.from, placeholder : '/old/page', onInput : function( value ) { edit.from = value } } ) );
+			const target = Nino.adminUi.textField( { label : Nino.content.getText('/_admin/redirects/label/to'), value : edit.to, placeholder : '/new/page', onInput : function( value ) { edit.to = value } } );
 			box.appendChild( target );
 
 			/*	The pages this site has, under the free text: a target is a path
@@ -480,34 +409,26 @@
 				onChange	: function( value ) { edit.status = parseInt( value, 10 ) },
 			} ) );
 
-			box.appendChild( Nino.adminUi.switchField( {
+			const wide = Nino.adminUi.switchField( {
 				key			: 'subtree',
 				checked	: edit.subtree === true,
 				label		: Nino.content.getText('/_admin/redirects/label/subtree'),
 				hint		: Nino.content.getText('/_admin/redirects/hint/subtree'),
 				on			: Nino.content.getText('/_admin/redirects/label/on'),
 				off			: Nino.content.getText('/_admin/redirects/label/off'),
-			} ) );
+			} );
+			box.appendChild( wide );
 
-			const subtree = box.lastChild.querySelector('input');
+			const subtree = wide.querySelector('input');
 			if( subtree !== null )
 				subtree.addEventListener( 'change', function() { edit.subtree = subtree.checked } );
 
-			const message = dc.createElement('p');
-			message.id = 'redirects-msg';
-			message.className = 'nino-admin-hint';
-			message.setAttribute( 'aria-live', 'polite' );
-
-			const save = dc.createElement('button');
-			save.type = 'button';
-			save.className = 'nino-admin-btn nino-admin-btn-primary';
-			save.textContent = Nino.content.getText('/_admin/redirects/label/save');
+			const save = Nino.adminUi.button( Nino.content.getText('/_admin/redirects/label/save'), function() { Nino.admin.redirects._save( edit, save ) }, { className : 'nino-admin-btn nino-admin-btn-primary' } );
 			Nino.admin.redirects._saveButton = save;
-			save.addEventListener( 'click', function() { Nino.admin.redirects._save( edit, save ) } );
 
-			const bar = dc.createElement('div');
+			const bar = Nino.adminUi.el('div');
 			bar.appendChild( save );
-			bar.appendChild( message );
+			bar.appendChild( Nino.admin.redirects._messageLine() );
 
 			box.appendChild( Nino.adminUi.actionBar( bar ) );
 
@@ -535,13 +456,14 @@
 				return finish( false );
 
 			save.disabled = true;
+			Nino.admin.redirects._line.saving();
 
-			Nino.admin.redirects._apiCall( 'save', edit, function( status, response ) {
+			Nino.admin.redirects.call( 'save', edit, function( status, response ) {
 
 				save.disabled = false;
 
 				if( status !== 200 || response === null ) {
-					Nino.admin.redirects._message( status, response );
+					Nino.admin.redirects._line.error( status, response, '/_admin/redirects/error/load' );
 					return finish( false );
 				}
 
@@ -553,41 +475,11 @@
 				Nino.admin.redirects._misses	= Nino.admin.redirects._misses.filter( function( miss ) { return miss.path !== response.saved } );
 				Nino.admin.redirects._editing	= null;
 				Nino.admin.redirects._render();
-				Nino.admin.redirects._message( 200, null, '/_admin/redirects/msg/saved' );
+				Nino.admin.redirects._line.saved();
 				Nino.admin.redirects._warn( response.warnings || [] );
 
 				finish( true );
 			} );
-		},
-
-		/**
-		 *	One text field, since a path is neither a select nor a switch
-		 *
-		 *	@param		{string}		labelKey
-		 *	@param		{string}		value
-		 *	@param		{Function}	onInput
-		 *	@param		{string}		placeholder
-		 *
-		 *	@return		{Element}
-		 */
-		_field : function( labelKey, value, onInput, placeholder ) {
-
-			const field = dc.createElement('label');
-			field.className = 'nino-admin-field';
-
-			const name = dc.createElement('span');
-			name.textContent = Nino.content.getText( labelKey );
-			field.appendChild( name );
-
-			const input = dc.createElement('input');
-			input.type = 'text';
-			input.className = 'nino-admin-input';
-			input.value = value || '';
-			input.placeholder = placeholder;
-			input.addEventListener( 'input', function() { onInput( input.value ) } );
-			field.appendChild( input );
-
-			return field;
 		},
 
 		/**
@@ -598,29 +490,22 @@
 		 */
 		_renderProbe : function() {
 
-			const box = dc.createElement('fieldset');
-			box.className = 'redirects-probe';
+			const box = Nino.adminUi.el( 'fieldset', 'redirects-probe' );
 
-			const legend = dc.createElement('legend');
-			legend.textContent = Nino.content.getText('/_admin/redirects/label/probe');
-			box.appendChild( legend );
+			box.appendChild( Nino.adminUi.el( 'legend', '', Nino.content.getText('/_admin/redirects/label/probe') ) );
 
-			const field = Nino.admin.redirects._field( '/_admin/redirects/label/path', Nino.admin.redirects._probe.path, function( value ) {
+			const field = Nino.adminUi.textField( { label : Nino.content.getText('/_admin/redirects/label/path'), value : Nino.admin.redirects._probe.path, placeholder : '/old/page', onInput : function( value ) {
 				Nino.admin.redirects._probe.path = value;
-			}, '/old/page' );
+			} } );
 			box.appendChild( field );
 
-			const out = dc.createElement('p');
-			out.className = 'nino-admin-hint';
+			// The answer of the probe, said aloud to a screen reader as it comes
+			const out = Nino.adminUi.hint('');
 			out.setAttribute( 'aria-live', 'polite' );
 
-			const run = dc.createElement('button');
-			run.type = 'button';
-			run.className = 'nino-admin-btn';
-			run.textContent = Nino.content.getText('/_admin/redirects/label/probe-run');
-			run.addEventListener( 'click', function() {
+			const run = Nino.adminUi.button( Nino.content.getText('/_admin/redirects/label/probe-run'), function() {
 
-				Nino.admin.redirects._apiCall( 'probe', { path : Nino.admin.redirects._probe.path }, function( status, response ) {
+				Nino.admin.redirects.call( 'probe', { path : Nino.admin.redirects._probe.path }, function( status, response ) {
 
 					if( status !== 200 || response === null ) {
 						out.classList.add('nino-admin-error');
@@ -632,12 +517,12 @@
 					out.textContent = response.answer === 'route'
 						? Nino.content.getText('/_admin/redirects/msg/probe-route')
 						: ( response.answer === 'rule'
-							? Nino.admin.redirects._say('/_admin/redirects/msg/probe-rule', response.from, response.to )
+							? Nino.adminUi.format( Nino.content.getText('/_admin/redirects/msg/probe-rule'), response.from, response.to )
 							: Nino.content.getText('/_admin/redirects/msg/probe-nothing') );
 				} );
-			} );
+			}, { className : 'nino-admin-btn' } );
 
-			const bar = dc.createElement('div');
+			const bar = Nino.adminUi.el('div');
 			bar.appendChild( run );
 			bar.appendChild( out );
 			box.appendChild( Nino.adminUi.actionBar( bar ) );
@@ -653,40 +538,31 @@
 		 */
 		_renderMisses : function() {
 
-			const box = dc.createElement('div');
+			const box = Nino.adminUi.el('div');
 
-			box.appendChild( Nino.admin.redirects._hint('/_admin/redirects/hint/missing') );
+			box.appendChild( Nino.adminUi.hint( Nino.content.getText('/_admin/redirects/hint/missing') ) );
 
 			if( Nino.admin.redirects._recording === false )
-				box.appendChild( Nino.admin.redirects._hint('/_admin/redirects/hint/off', true ) );
+				box.appendChild( Nino.adminUi.hint( Nino.content.getText('/_admin/redirects/hint/off'), 'error' ) );
 			else if( Nino.admin.redirects._limit > 0 )
-				box.appendChild( Nino.admin.redirects._hint( Nino.admin.redirects._say('/_admin/redirects/hint/limit', Nino.admin.redirects._limit ) ) );
+				box.appendChild( Nino.adminUi.hint( Nino.adminUi.format( Nino.content.getText('/_admin/redirects/hint/limit'), Nino.admin.redirects._limit ) ) );
 
-			// Forgetting can fail, and _message() says so on the line with this
-			// id - which is on the other screen while this one is on, so this
-			// screen carries one of its own. Only the screen that is on is
-			// drawn at all, so there is still exactly one of them
-			const message = dc.createElement('p');
-			message.id = 'redirects-msg';
-			message.className = 'nino-admin-hint';
-			message.setAttribute( 'aria-live', 'polite' );
-			box.appendChild( message );
+			// Forgetting can fail, and _message() says so on the line of the
+			// screen that is on - which is this one's own. Only the screen that
+			// is on is drawn at all, so there is exactly one of them
+			box.appendChild( Nino.admin.redirects._messageLine() );
 
 			if( Nino.admin.redirects._misses.length === 0 ) {
 				box.appendChild( Nino.adminUi.emptyState( Nino.content.getText('/_admin/redirects/empty/missing') ) );
 				return box;
 			}
 
-			const forget = dc.createElement('button');
-			forget.type = 'button';
-			forget.className = 'nino-admin-btn nino-admin-btn-danger';
-			forget.textContent = Nino.content.getText('/_admin/redirects/label/forget');
-			forget.addEventListener( 'click', function() {
+			const forget = Nino.adminUi.button( Nino.content.getText('/_admin/redirects/label/forget'), function() {
 
 				if( wn.confirm( Nino.content.getText('/_admin/redirects/confirm/forget') ) === false )
 					return;
 
-				Nino.admin.redirects._apiCall( 'forget', {}, function( status, response ) {
+				Nino.admin.redirects.call( 'forget', {}, function( status, response ) {
 
 					if( status !== 200 || response === null )
 						return Nino.admin.redirects._message( status, response );
@@ -694,11 +570,11 @@
 					Nino.admin.redirects._misses = [];
 					Nino.admin.redirects._render();
 				} );
-			} );
+			}, { className : 'nino-admin-btn nino-admin-btn-danger' } );
 
 			box.appendChild( Nino.adminUi.listActions( [ forget ] ) );
 
-			const mount = dc.createElement('div');
+			const mount = Nino.adminUi.el('div');
 			box.appendChild( mount );
 
 			Nino.adminUi.table( {
@@ -732,28 +608,19 @@
 		 */
 		_missActions : function( miss ) {
 
-			const wrap = dc.createElement('div');
-			wrap.className = 'redirects-row-actions';
+			const wrap = Nino.adminUi.el( 'div', 'redirects-row-actions' );
 
-			const make = dc.createElement('button');
-			make.type = 'button';
-			make.className = 'nino-admin-btn nino-admin-btn-primary';
-			make.textContent = Nino.content.getText('/_admin/redirects/label/make');
-			make.addEventListener( 'click', function() {
+			const make = Nino.adminUi.button( Nino.content.getText('/_admin/redirects/label/make'), function() {
 				// Opened on the rules screen with the address already in it:
 				// what is missing is the target, and that is the only thing
 				// somebody actually has to decide here
 				Nino.admin.redirects._screen	= 'rules';
 				Nino.admin.redirects._open( { from : miss.path, to : '', status : 301, subtree : false, was : '' } );
-			} );
+			}, { className : 'nino-admin-btn nino-admin-btn--small nino-admin-btn-primary' } );
 
-			const drop = dc.createElement('button');
-			drop.type = 'button';
-			drop.className = 'nino-admin-btn';
-			drop.textContent = Nino.content.getText('/_admin/redirects/label/forget-one');
-			drop.addEventListener( 'click', function() {
+			const drop = Nino.adminUi.button( Nino.content.getText('/_admin/redirects/label/forget-one'), function() {
 
-				Nino.admin.redirects._apiCall( 'forget', { path : miss.path }, function( status, response ) {
+				Nino.admin.redirects.call( 'forget', { path : miss.path }, function( status, response ) {
 
 					if( status !== 200 || response === null )
 						return Nino.admin.redirects._message( status, response );
@@ -761,7 +628,7 @@
 					Nino.admin.redirects._misses = Nino.admin.redirects._misses.filter( function( row ) { return row.path !== miss.path } );
 					Nino.admin.redirects._render();
 				} );
-			} );
+			}, { className : 'nino-admin-btn nino-admin-btn--small' } );
 
 			wrap.appendChild( make );
 			wrap.appendChild( drop );
@@ -770,24 +637,26 @@
 		},
 
 		/**
-		 *	One line of hint
-		 *
-		 *	@param		{string}	keyOrText
-		 *	@param		{boolean}	[warn]
+		 *	The line the messages of a screen stand in, drawn into each of the
+		 *	three places it is wanted - under the rules' own button, in the bar of
+		 *	the editor, over the addresses - and the status line the workbench
+		 *	makes of it. The one drawn last is the one on screen: a screen is
+		 *	drawn whole, and only one at a time
 		 *
 		 *	@return		{Element}
 		 */
-		_hint : function( keyOrText, warn ) {
+		_messageLine : function() {
 
-			const line = dc.createElement('p');
-			line.className = 'nino-admin-hint'+ ( warn === true ? ' nino-admin-error' : '' );
-			line.textContent = Nino.adminUi.text( keyOrText );
+			const line = Nino.adminUi.status( Nino.adminUi.el('p') );
 
-			return line;
+			line.element.id = 'redirects-msg';
+			Nino.admin.redirects._line = line;
+
+			return line.element;
 		},
 
 		/**
-		 *	What a call answered, on whichever message line is on screen
+		 *	What a call answered, on the message line that is on screen
 		 *
 		 *	@param		{number}	status
 		 *	@param		{?Object}	response
@@ -797,25 +666,22 @@
 		 */
 		_message : function( status, response, okKey ) {
 
-			const line = dc.getElementById('redirects-msg');
+			const line = Nino.admin.redirects._line;
+
 			if( line === null )
 				return;
 
-			if( status === 200 ) {
-				line.classList.remove('nino-admin-error');
-				line.textContent = okKey ? Nino.content.getText( okKey ) : '';
-				return;
-			}
-
-			line.classList.add('nino-admin-error');
-			line.textContent = Nino.adminUi.api.errorText( status, response, '/_admin/redirects/error/load' );
+			if( status === 200 )
+				line.idle( okKey ? Nino.content.getText( okKey ) : '' );
+			else
+				line.error( status, response, '/_admin/redirects/error/load' );
 		},
 
 		/**
-		 *	What a save said about the rule it saved, on the message line the
+		 *	What a save said about the rule it saved, below the message line the
 		 *	editor left behind. The rule is written either way - this is a
-		 *	sentence, not a refusal - so it replaces the plain "Saved." rather
-		 *	than standing beside an error
+		 *	warning, not a state of the save and not a refusal - so it stands
+		 *	beside the line that says it was saved
 		 *
 		 *	@param		{Array}		warnings		Sentences, already in the workbench's language
 		 *
@@ -823,51 +689,17 @@
 		 */
 		_warn : function( warnings ) {
 
-			const line = dc.getElementById('redirects-msg');
+			const line = Nino.admin.redirects._line;
+
 			if( line === null || warnings.length === 0 )
 				return;
 
-			line.classList.add('nino-admin-error');
-			line.textContent = warnings.join(' ');
+			const warning = Nino.adminUi.hint( warnings.join(' '), 'error' );
+
+			// An element put into the page is read out only when it is an alert
+			warning.setAttribute( 'role', 'alert' );
+			line.element.insertAdjacentElement( 'afterend', warning );
 		},
-
-		/**
-		 *	The panel could not be read at all
-		 *
-		 *	@param		{Element}	wrap
-		 *	@param		{number}	status
-		 *	@param		{?Object}	response
-		 *
-		 *	@return		void
-		 */
-		_showError : function( wrap, status, response ) {
-
-			wrap.innerHTML = '';
-
-			const line = dc.createElement('p');
-			line.className = 'nino-admin-hint nino-admin-error';
-			line.textContent = Nino.adminUi.api.errorText( status, response, '/_admin/redirects/error/load' );
-
-			wrap.appendChild( line );
-		},
-	};
-
-	/*	The shell asks Save, Discard or Cancel before a log out or a language
-		change would lose a rule nobody has saved, and a reload gets the
-		browser's own question	*/
-	Nino.admin.dirty.register( 'redirects', {
-		isDirty : function() { return Nino.admin.redirects._isDirty() },
-		save : function( done ) {
-
-			const save = Nino.admin.redirects._saveButton;
-
-			if( Nino.admin.redirects._editing === null || save === null )
-				return done( false );
-
-			Nino.admin.redirects._save( Nino.admin.redirects._editing, save, done );
-		},
-		// What the shell is about to leave takes the editor with it
-		discard : function() { Nino.admin.redirects._opened = JSON.stringify( Nino.admin.redirects._editing ) },
 	} );
 
 } )( window, document );

@@ -22,9 +22,10 @@
 		margin-bottom: 1rem;
 	}
 
-	/* Two buttons in a table cell. nowrap because the cell is as narrow as the
-	   table makes it, and an action that wrapped under its own row would move
-	   every row below it */
+	/* Two buttons in a table cell - the workbench's small ones. Not
+	   .nino-admin-actions, whose row wraps: nowrap on purpose, because the cell
+	   is as narrow as the table makes it, and an action that wrapped under its
+	   own row would move every row below it */
 	.nino-admin .redirects-row-actions {
 		display: flex;
 		gap: .35rem;

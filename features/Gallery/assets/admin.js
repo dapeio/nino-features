@@ -12,9 +12,10 @@
  *													switch in the album's toolbar.
  *
  *													Admin/Admin.php beside it does the reading, the
- *													writing and the two image sizes, and hands every
- *													word over already in the session language, so this
- *													file only lays out what it gets. Every action
+ *													writing and the two image sizes. A refusal comes as
+ *													a code, and the workbench says it in the interface
+ *													language with the sentence the panel's text has for
+ *													it (Nino.adminUi.api.errorText()). Every action
  *													answers the whole album list, so the panel never
  *													patches its own state from what it just sent.
  *
@@ -23,13 +24,45 @@
  *	@link										https://github.com/dapeio/nino
  */
 
-( function(wn,dc,dE,bd) {
+( function(wn,dc) {
 
 	wn.Nino.admin = wn.Nino.admin || {};
 
-	Nino.admin.gallery = {
+	// The two panes of the panel, one on screen at a time: the page of a new
+	// album and the page of an album are the one pane
+	const levels = Nino.adminUi.levels( 'gallery', [ 'list', 'album' ] );
 
-		_ready	: false,
+	/**
+	 *	A line of explanation under the field it is about: the workbench's hint,
+	 *	pulled up to that field the way the other forms of the workbench have it
+	 *
+	 *	@param		{string}	text
+	 *
+	 *	@return		{Element}
+	 */
+	const fieldHint = function( text ) {
+
+		const hint = Nino.adminUi.hint( text );
+		hint.classList.add('nino-admin-field-hint');
+
+		return hint;
+	};
+
+	/*	The panel asks for the list when the page is ready, or when the shell
+		shows it first, whichever comes first - and once. The panel follows the
+		address into a level of its own, so showCurrent() is its own (below), and
+		the answer is taken by _take(), which reads the address before anything
+		is drawn: drawing writes it	*/
+	Nino.admin.gallery = Nino.adminUi.panel( {
+		uri		: 'gallery',
+		mount	: 'gallery-list',
+		boot	: 'ready',
+		error	: '/_admin/common/error/load',
+		render	: function( data ) { Nino.admin.gallery._take( data, Nino.admin.gallery._address() ) },
+	} );
+
+	Object.assign( Nino.admin.gallery, {
+
 		_albums	: [],
 		// What a new album starts with - the settings of the feature - and the
 		// range each number may take, as the server will hold it to: the form of
@@ -66,33 +99,6 @@
 		_creating : false,
 
 		/**
-		 *	Load the albums and draw whichever level is current - the one the
-		 *	address names, where it names this panel
-		 *
-		 *	@param		{Function}	[then]			Run once the list is back
-		 *
-		 *	@return		void
-		 */
-		init : function( then ) {
-
-			const wrap = dc.getElementById('gallery-list');
-			if( wrap === null )
-				return;
-
-			Nino.admin.gallery._apiCall( 'list', {}, function( status, response ) {
-				if( status !== 200 || response === null )
-					return Nino.admin.gallery._showError( wrap, status, response );
-
-				// The address is read before anything is drawn: drawing writes it
-				Nino.admin.gallery._take( response, Nino.admin.gallery._address() );
-				Nino.admin.gallery._ready = true;
-
-				if( typeof then === 'function' )
-					then();
-			} );
-		},
-
-		/**
 		 *	Re-show whichever level is on - the shell calls this when the
 		 *	panel is opened again, and when a step through the browser's history
 		 *	has changed the address and nothing else: where the address names
@@ -104,7 +110,7 @@
 		 */
 		showCurrent : function() {
 
-			if( Nino.admin.gallery._ready === false )
+			if( Nino.admin.gallery.ready === false )
 				return Nino.admin.gallery.init();
 
 			const parts = Nino.admin.gallery._address();
@@ -115,7 +121,7 @@
 			const level = Nino.admin.gallery._creating === true ? '#new' : Nino.admin.gallery._open;
 
 			if( level !== '' && level === Nino.admin.gallery._drawn() )
-				return Nino.admin.gallery._level( 'album', [ level === '#new' ? 'new' : level ] );
+				return levels.show( 'album', [ level === '#new' ? 'new' : level ] );
 
 			Nino.admin.gallery._render();
 		},
@@ -139,15 +145,11 @@
 
 		/**
 		 *	What the address says about this panel: the parts behind #gallery,
-		 *	or null where it names another panel - or where the shell has no
-		 *	router to ask
+		 *	or null where it names another panel
 		 *
 		 *	@return		{Array|null}
 		 */
 		_address : function() {
-
-			if( typeof Nino.admin.router !== 'object' || typeof Nino.admin.router.current !== 'function' )
-				return null;
 
 			const address = Nino.admin.router.current();
 
@@ -313,128 +315,16 @@
 		},
 
 		/**
-		 *	Call a gallery/* action. An extra multipart field (a File) is
-		 *	handed through the way the Images panel does it
-		 *
-		 *	The workbench's own request helper posts where this Nino has one -
-		 *	it knows the project's directory and what to do when the page has
-		 *	outlived its session; the post below is what every panel did before
-		 *	it, with the base the asset bundle fills in, because Nino.dir does
-		 *	not exist before Nino 1.3.2
-		 *
-		 *	@param		{string}		endpoint
-		 *	@param		{Object}		payload
-		 *	@param		{Function}	callback		Called with ( xhr.status, xhr.responseJSON )
-		 *	@param		{Object}		[extra]			Extra multipart fields, eg. { file : File }
-		 *
-		 *	@return		void
-		 */
-		_apiCall : function( endpoint, payload, callback, extra ) {
-
-			if( Nino.adminUi && Nino.adminUi.api )
-				return Nino.adminUi.api.call( 'gallery/'+ endpoint, payload, callback, extra );
-
-			Nino.http.sendRequest( '[[/nino/dir]]/_admin/', 'POST', function( xhr ) {
-				callback( xhr.status, xhr.responseJSON );
-			}, Object.assign( { action : 'gallery/'+ endpoint, data : JSON.stringify( payload ) }, extra || {} ) );
-		},
-
-		/**
-		 *	What a failed load says: the server's code in the workbench's
-		 *	language, then its own message, then this panel's sentence - where
-		 *	this Nino has errorText(). Before it, "(status) message". The
-		 *	answers to an edit stay as they are: this panel's server writes
-		 *	them in the workbench's language itself (see Admin::_say()) and
-		 *	they carry no status number
-		 *
-		 *	@param		{number}		status
-		 *	@param		{*}					response
-		 *	@param		{string}		key					Fill key of the panel's own sentence
-		 *
-		 *	@return		{string}
-		 */
-		_errorText : function( status, response, key ) {
-
-			if( Nino.adminUi && Nino.adminUi.api && typeof Nino.adminUi.api.errorText === 'function' )
-				return Nino.adminUi.api.errorText( status, response, key );
-
-			return '('+ status+ ') '+ ( ( response && response.error ) ? response.error : Nino.content.getText( key ) );
-		},
-
-		_showError : function( container, status, response ) {
-			container.innerHTML = '';
-			const p = dc.createElement('p');
-			p.className = 'nino-admin-error';
-			p.textContent = Nino.admin.gallery._errorText( status, response, '/_admin/common/error/load' );
-			container.appendChild( p );
-		},
-
-		/**
-		 *	The line under an image that says whether its text is saved.
-		 *	Where this Nino has Nino.adminUi.status() it is that: "saving",
-		 *	"saved at 09:41", or the error state around the sentence the server
-		 *	gave. Before it, the same calls write this panel's sentences into
-		 *	the paragraph
-		 *
-		 *	@param		{Element}		msg
-		 *
-		 *	@return		{Object}						{ saving(), saved(), fail( text ) }
-		 */
-		_status : function( msg ) {
-
-			if( Nino.adminUi && typeof Nino.adminUi.status === 'function' )
-				return Nino.adminUi.status( msg );
-
-			return {
-				saving : function() { msg.textContent = Nino.content.getText('/_admin/common/msg/saving') },
-				saved	 : function() { msg.textContent = Nino.content.getText('/_admin/common/msg/saved') },
-				fail	 : function( text ) { msg.textContent = text },
-			};
-		},
-
-		/**
-		 *	Which of the two panes is on screen, and the address true to it: the
-		 *	page of a new album and the page of an album are the one pane
-		 *
-		 *	@param		{string}	level				'list' or 'album'
-		 *	@param		{Array}		parts				What the address says behind #gallery
-		 *
-		 *	@return		void
-		 */
-		_level : function( level, parts ) {
-
-			[ 'list', 'album' ].forEach( function( name ) {
-				dc.getElementById('gallery-'+ name ).classList.toggle( 'admin-hidden', name !== level );
-			} );
-
-			if( typeof Nino.admin.router === 'object' && typeof Nino.admin.router.set === 'function' )
-				Nino.admin.router.set( 'gallery', parts );
-		},
-
-		/**
-		 *	A move the person made - a row opened, a back link, the button that
-		 *	adds an album: an entry in the browser's history for Back to return to,
-		 *	where the shell keeps one (Nino 1.4). The address a level writes
-		 *	itself is then already true
-		 *
-		 *	@param		{Array}		parts
-		 *
-		 *	@return		void
-		 */
-		_go : function( parts ) {
-
-			if( typeof Nino.admin.router === 'object' && typeof Nino.admin.router.go === 'function' )
-				Nino.admin.router.go( 'gallery', parts );
-		},
-
-		/**
 		 *	@param		{string}	key
 		 *
 		 *	@return		void
 		 */
 		_openAlbum : function( key ) {
 
-			Nino.admin.gallery._go( [ key ] );
+			// A move the person made - a row opened, a back link, the button that
+			// adds an album - is an entry in the browser's history for Back to
+			// return to. The address the level writes itself is then already true
+			Nino.admin.router.go( 'gallery', [ key ] );
 			Nino.admin.gallery._creating = false;
 			Nino.admin.gallery._open = key;
 			Nino.admin.gallery._renderAlbum();
@@ -445,7 +335,7 @@
 		 */
 		_openNew : function() {
 
-			Nino.admin.gallery._go( [ 'new' ] );
+			Nino.admin.router.go( 'gallery', [ 'new' ] );
 			Nino.admin.gallery._creating = true;
 			Nino.admin.gallery._open = '';
 			Nino.admin.gallery._renderNew();
@@ -456,7 +346,7 @@
 		 */
 		_openList : function() {
 
-			Nino.admin.gallery._go( [] );
+			Nino.admin.router.go( 'gallery', [] );
 			Nino.admin.gallery._creating = false;
 			Nino.admin.gallery._open = '';
 			Nino.admin.gallery._renderList();
@@ -469,7 +359,7 @@
 		 */
 		_renderList : function() {
 
-			const wrap = dc.getElementById('gallery-list');
+			const wrap = Nino.admin.gallery.mount();
 			wrap.innerHTML = '';
 
 			if( Nino.admin.gallery._albums.length === 0 )
@@ -478,25 +368,20 @@
 				// The design system's row of buttons - the shape the Features,
 				// Routes and Element Types lists have: the whole row opens the
 				// album, a chevron says so, and nothing else stands on it
-				const rows = dc.createElement('div');
-				rows.className = 'nino-admin-list nino-admin-list-buttons';
+				const rows = Nino.adminUi.el( 'div', 'nino-admin-list nino-admin-list-buttons' );
 				Nino.admin.gallery._albums.forEach( function( album ) { rows.appendChild( Nino.admin.gallery._renderRow( album ) ) } );
 				wrap.appendChild( rows );
 			}
 
 			// Below the list, as the Elements panel puts its New element: the action of the screen
 			// is a button in the bar the workbench pins to the bottom, and a page of its own
-			const add = dc.createElement('button');
-			add.type = 'button';
-			add.className = 'nino-admin-btn-primary';
-			add.textContent = Nino.content.getText('/_admin/gallery/label/new');
-			add.addEventListener( 'click', function() { Nino.admin.gallery._openNew() } );
+			const add = Nino.adminUi.button( Nino.content.getText('/_admin/gallery/label/new'), function() { Nino.admin.gallery._openNew() }, { className : 'nino-admin-btn-primary' } );
 			wrap.appendChild( Nino.adminUi.listActions( [ add ] ) );
 
 			// The page that was left is let go: a step forward to it draws it anew, as the row does
 			dc.getElementById('gallery-album').innerHTML = '';
 
-			Nino.admin.gallery._level( 'list', [] );
+			levels.show( 'list', [] );
 		},
 
 		/**
@@ -512,31 +397,20 @@
 		 */
 		_renderRow : function( album ) {
 
-			const row = dc.createElement('button');
-			row.type = 'button';
+			// The row is a button whose face is what it holds, not a word
+			const row = Nino.adminUi.button( '', function() { Nino.admin.gallery._openAlbum( album.key ) } );
 			row.dataset.album = album.key;
-			row.addEventListener( 'click', function() { Nino.admin.gallery._openAlbum( album.key ) } );
 
-			const copy = dc.createElement('div');
-			copy.className = 'nino-admin-list-copy';
-
-			const title = dc.createElement('strong');
-			title.textContent = album.name;
-			copy.appendChild( title );
-
-			const line = dc.createElement('small');
-			line.textContent = [
-				Nino.content.getText('/_admin/gallery/hint/shortcode').replace( '%s', '[gallery album="'+ album.key+ '"]' ),
-				Nino.content.getText('/_admin/gallery/label/count').replace( '%s', album.images.length ),
-			].join( ' · ' );
-			copy.appendChild( line );
-
+			const copy = Nino.adminUi.el( 'div', 'nino-admin-list-copy' );
+			copy.appendChild( Nino.adminUi.el( 'strong', '', album.name ) );
+			copy.appendChild( Nino.adminUi.el( 'small', '', [
+				Nino.adminUi.format( Nino.content.getText('/_admin/gallery/hint/shortcode'), '[gallery album="'+ album.key+ '"]' ),
+				Nino.adminUi.format( Nino.content.getText('/_admin/gallery/label/count'), album.images.length ),
+			].join( ' · ' ) ) );
 			row.appendChild( copy );
 
-			const chevron = dc.createElement('span');
-			chevron.className = 'admin-view-button-chev';
+			const chevron = Nino.adminUi.el( 'span', 'admin-view-button-chev', '›' );
 			chevron.setAttribute( 'aria-hidden', 'true' );
-			chevron.textContent = '›';
 			row.appendChild( chevron );
 
 			return row;
@@ -554,19 +428,14 @@
 		 */
 		_renderAlbumActions : function( album ) {
 
-			const bar = dc.createElement('div');
-			bar.className = 'nino-admin-actionbar gallery-album-actions';
+			const bar = Nino.adminUi.el( 'div', 'nino-admin-actionbar gallery-album-actions' );
+			const msg = Nino.adminUi.el( 'p', 'nino-admin-actionbar-status' );
+			const line = Nino.adminUi.status( msg );
 
-			const remove = dc.createElement('button');
-			remove.type = 'button';
-			remove.className = 'nino-admin-btn-danger';
-			remove.textContent = Nino.content.getText('/_admin/gallery/label/delete');
+			const remove = Nino.adminUi.button( Nino.content.getText('/_admin/gallery/label/delete'), function() {
+				Nino.admin.gallery._deleteAlbum( album, remove, line );
+			}, { className : 'nino-admin-btn-danger' } );
 
-			const msg = dc.createElement('p');
-			msg.className = 'nino-admin-actionbar-status';
-			msg.setAttribute( 'aria-live', 'polite' );
-
-			remove.addEventListener( 'click', function() { Nino.admin.gallery._deleteAlbum( album, remove, msg ) } );
 			bar.appendChild( remove );
 			bar.appendChild( msg );
 
@@ -580,51 +449,14 @@
 		 */
 		_renderBack : function() {
 
-			const backLink = dc.createElement('a');
+			const backLink = Nino.adminUi.el( 'a', 'nino-admin-back-link', Nino.content.getText('/_admin/common/label/back') );
 			backLink.href = '#';
-			backLink.className = 'nino-admin-back-link';
-			backLink.textContent = Nino.content.getText('/_admin/common/label/back');
 			backLink.addEventListener( 'click', function( ev ) {
 				ev.preventDefault();
 				Nino.admin.gallery._openList();
 			} );
 
 			return backLink;
-		},
-
-		/**
-		 *	A text field of the design system: its name over the control. A field
-		 *	that cannot be left empty gets the mark after its name, drawn for the
-		 *	eye and hidden from a screen reader, which is told through aria-required
-		 *	on the control instead - the way the Elements panel marks its uri
-		 *
-		 *	@param		{string}		text				The name of the field
-		 *	@param		{Element}		input
-		 *	@param		{boolean}		required
-		 *
-		 *	@return		{Element}							<label>
-		 */
-		_labelled : function( text, input, required ) {
-
-			const label = dc.createElement('label');
-			label.className = 'nino-admin-field';
-
-			const name = dc.createElement('span');
-			name.textContent = text;
-
-			if( required === true ) {
-				const star = dc.createElement('span');
-				star.className = 'nino-admin-required';
-				star.setAttribute( 'aria-hidden', 'true' );
-				star.textContent = '*';
-				name.appendChild( star );
-				input.setAttribute( 'aria-required', 'true' );
-			}
-
-			label.appendChild( name );
-			label.appendChild( input );
-
-			return label;
 		},
 
 		/**
@@ -643,35 +475,26 @@
 			wrap.innerHTML = '';
 
 			wrap.appendChild( Nino.admin.formToolbar( Nino.admin.gallery._renderBack() ) );
+			wrap.appendChild( Nino.adminUi.el( 'h3', '', Nino.content.getText('/_admin/gallery/label/new') ) );
 
-			const title = dc.createElement('h3');
-			title.textContent = Nino.content.getText('/_admin/gallery/label/new');
-			wrap.appendChild( title );
-
-			const form = dc.createElement('form');
+			const form = Nino.adminUi.el('form');
 			form.id = 'gallery-new-form';
+			// The browser's own check of a required field takes a key of blanks and
+			// says its refusal in a bubble of its own: the submit below asks for
+			// the key trimmed, and says it on the line like any other refusal
+			form.noValidate = true;
 
 			// A key is a slug, and it is what the shortcode names and the files are
 			// filed under - so it is asked for first, and with the reason it cannot be
-			// changed afterwards. Not the native required, which takes blanks for a
-			// key: the submit below asks for it, trimmed
-			const key = dc.createElement('input');
-			key.type = 'text';
-			key.id = 'gallery-new-key';
-			key.className = 'nino-admin-input';
-			key.maxLength = Nino.admin.gallery._maxKey;
-			form.appendChild( Nino.admin.gallery._labelled( Nino.content.getText('/_admin/gallery/label/key'), key, true ) );
+			// changed afterwards
+			const keyField = Nino.adminUi.textField( { label : Nino.content.getText('/_admin/gallery/label/key'), id : 'gallery-new-key', required : true, maxLength : Nino.admin.gallery._maxKey } );
+			const key = keyField.querySelector('input');
+			form.appendChild( keyField );
+			form.appendChild( fieldHint( Nino.content.getText('/_admin/gallery/hint/key') ) );
 
-			const hint = dc.createElement('p');
-			hint.className = 'nino-admin-field-hint';
-			hint.textContent = Nino.content.getText('/_admin/gallery/hint/key');
-			form.appendChild( hint );
-
-			const name = dc.createElement('input');
-			name.type = 'text';
-			name.id = 'gallery-new-name';
-			name.className = 'nino-admin-input';
-			form.appendChild( Nino.admin.gallery._labelled( Nino.content.getText('/_admin/gallery/label/name'), name, false ) );
+			const nameField = Nino.adminUi.textField( { label : Nino.content.getText('/_admin/gallery/label/name'), id : 'gallery-new-name' } );
+			const name = nameField.querySelector('input');
+			form.appendChild( nameField );
 
 			// Open: they are part of what is being decided here, and they start as the
 			// settings of the feature
@@ -680,20 +503,16 @@
 
 			form.appendChild( Nino.admin.gallery._renderUpload( null ) );
 
-			const actions = dc.createElement('div');
-			actions.className = 'nino-admin-actionbar';
-
-			const create = dc.createElement('button');
-			create.type = 'submit';
-			create.textContent = Nino.content.getText('/_admin/common/label/create');
+			const actions = Nino.adminUi.el( 'div', 'nino-admin-actionbar' );
+			const create = Nino.adminUi.button( Nino.content.getText('/_admin/common/label/create'), undefined, { type : 'submit' } );
 			actions.appendChild( create );
 
-			const msg = dc.createElement('p');
+			const msg = Nino.adminUi.el('p');
 			msg.id = 'gallery-new-msg';
 			actions.appendChild( msg );
 			form.appendChild( actions );
 
-			const line = Nino.admin.gallery._status( msg );
+			const line = Nino.adminUi.status( msg );
 
 			form.addEventListener( 'submit', function( ev ) {
 
@@ -705,19 +524,19 @@
 					key.setAttribute( 'aria-invalid', 'true' );
 					key.addEventListener( 'input', function() { key.removeAttribute('aria-invalid') }, { once : true } );
 					key.focus();
-					line.fail( Nino.content.getText('/_admin/gallery/error/key') );
+					line.fail( Nino.content.getText('/_admin/error/gallery_key') );
 					return;
 				}
 
 				create.disabled = true;
 				line.saving();
 
-				Nino.admin.gallery._apiCall( 'album-save', { album : album, name : name.value.trim(), settings : sizes.read(), isNew : true }, function( status, response ) {
+				Nino.admin.gallery.call( 'album-save', { album : album, name : name.value.trim(), settings : sizes.read(), isNew : true }, function( status, response ) {
 
 					create.disabled = false;
 
 					if( status !== 200 || response === null ) {
-						line.fail( ( response && response.error ) ? response.error : Nino.content.getText('/_admin/common/error/save') );
+						line.error( status, response, '/_admin/common/error/save' );
 						return;
 					}
 
@@ -732,7 +551,7 @@
 
 			wrap.appendChild( form );
 
-			Nino.admin.gallery._level( 'album', [ 'new' ] );
+			levels.show( 'album', [ 'new' ] );
 		},
 
 		/**
@@ -741,24 +560,26 @@
 		 *
 		 *	@param		{Object}	album
 		 *	@param		{Element}	btn
-		 *	@param		{Element}	msg
+		 *	@param		{Object}	line				The status line beside the button
 		 *
 		 *	@return		void
 		 */
-		_deleteAlbum : function( album, btn, msg ) {
+		_deleteAlbum : function( album, btn, line ) {
 
-			if( wn.confirm( Nino.content.getText('/_admin/gallery/confirm/album').replace( '%s', album.name ).replace( '%d', album.images.length ) ) === false )
+			if( wn.confirm( Nino.adminUi.format( Nino.content.getText('/_admin/gallery/confirm/album'), album.name, album.images.length ) ) === false )
 				return;
 
 			btn.disabled = true;
-			msg.textContent = Nino.content.getText('/_admin/common/msg/deleting');
+			line.idle( Nino.content.getText('/_admin/common/msg/deleting') );
 
-			Nino.admin.gallery._apiCall( 'album-delete', { album : album.key }, function( status, response ) {
+			Nino.admin.gallery.call( 'album-delete', { album : album.key }, function( status, response ) {
+
 				if( status !== 200 || response === null ) {
 					btn.disabled = false;
-					msg.textContent = ( response && response.error ) ? response.error : Nino.content.getText('/_admin/common/error/delete');
+					line.error( status, response, '/_admin/common/error/delete' );
 					return;
 				}
+
 				Nino.admin.gallery._take( response );
 			} );
 		},
@@ -787,8 +608,7 @@
 
 			wrap.appendChild( toolbar );
 
-			const title = dc.createElement('h3');
-			title.textContent = album.name;
+			const title = Nino.adminUi.el( 'h3', '', album.name );
 			wrap.appendChild( title );
 
 			wrap.appendChild( Nino.admin.gallery._renderName( album, title ) );
@@ -796,9 +616,8 @@
 			// Said before the upload, not after: what comes out is two derived
 			// sizes and the file that was chosen is not kept. The sizes are the
 			// album's, and the line follows them when the group above saves new ones
-			const sizes = dc.createElement('p');
-			sizes.className = 'nino-admin-hint gallery-sizes';
-			sizes.textContent = Nino.admin.gallery._sizesHint( album );
+			const sizes = Nino.adminUi.hint( Nino.admin.gallery._sizesHint( album ) );
+			sizes.classList.add('gallery-sizes');
 
 			wrap.appendChild( Nino.admin.gallery._renderSizesForm( album, function() { sizes.textContent = Nino.admin.gallery._sizesHint( album ) } ) );
 			wrap.appendChild( sizes );
@@ -808,8 +627,7 @@
 			if( album.images.length === 0 )
 				wrap.appendChild( Nino.adminUi.emptyState( Nino.content.getText('/_admin/gallery/hint/no-images') ) );
 			else {
-				const grid = dc.createElement('ul');
-				grid.className = 'gallery-grid';
+				const grid = Nino.adminUi.el( 'ul', 'gallery-grid' );
 				album.images.forEach( function( image, index ) {
 					grid.appendChild( Nino.admin.gallery._renderTile( album, image, index ) );
 				} );
@@ -817,7 +635,7 @@
 			}
 
 			wrap.appendChild( Nino.admin.gallery._renderAlbumActions( album ) );
-			Nino.admin.gallery._level( 'album', [ album.key ] );
+			levels.show( 'album', [ album.key ] );
 		},
 
 		/**
@@ -832,9 +650,8 @@
 
 			const settings = album.settings;
 
-			return Nino.content.getText( settings.keepRatio === true ? '/_admin/gallery/hint/sizes-fit' : '/_admin/gallery/hint/sizes-crop' )
-				.replace( '%1', settings.thumbWidth+ '×'+ settings.thumbHeight )
-				.replace( '%2', settings.largeWidth+ '×'+ settings.largeHeight );
+			return Nino.adminUi.format( Nino.content.getText( settings.keepRatio === true ? '/_admin/gallery/hint/sizes-fit' : '/_admin/gallery/hint/sizes-crop' ),
+				settings.thumbWidth+ '×'+ settings.thumbHeight, settings.largeWidth+ '×'+ settings.largeHeight );
 		},
 
 		/**
@@ -849,41 +666,38 @@
 		 */
 		_renderName : function( album, title ) {
 
-			const form = dc.createElement('form');
-			form.className = 'gallery-name-form';
+			const form = Nino.adminUi.el( 'form', 'gallery-name-form' );
 
-			const key = dc.createElement('input');
+			// By hand: the workbench's text field has no option for a field that is
+			// only shown
+			const keyField = Nino.adminUi.el( 'label', 'nino-admin-field' );
+			keyField.appendChild( Nino.adminUi.el( 'span', '', Nino.content.getText('/_admin/gallery/label/key') ) );
+
+			const key = Nino.adminUi.el( 'input', 'nino-admin-input' );
 			key.type = 'text';
 			key.id = 'gallery-album-key';
-			key.className = 'nino-admin-input';
 			key.value = album.key;
 			key.readOnly = true;
-			form.appendChild( Nino.admin.gallery._labelled( Nino.content.getText('/_admin/gallery/label/key'), key, false ) );
+			keyField.appendChild( key );
+			form.appendChild( keyField );
 
-			const shortcode = dc.createElement('p');
-			shortcode.className = 'nino-admin-field-hint';
-			shortcode.textContent = Nino.content.getText('/_admin/gallery/hint/shortcode').replace( '%s', '[gallery album="'+ album.key+ '"]' );
-			form.appendChild( shortcode );
+			form.appendChild( fieldHint( Nino.adminUi.format( Nino.content.getText('/_admin/gallery/hint/shortcode'), '[gallery album="'+ album.key+ '"]' ) ) );
 
-			const name = dc.createElement('input');
-			name.type = 'text';
-			name.id = 'gallery-album-name';
-			name.className = 'nino-admin-input';
-			name.value = album.name;
-			form.appendChild( Nino.admin.gallery._labelled( Nino.content.getText('/_admin/gallery/label/name'), name, false ) );
+			const nameField = Nino.adminUi.textField( { label : Nino.content.getText('/_admin/gallery/label/name'), id : 'gallery-album-name', value : album.name } );
+			const name = nameField.querySelector('input');
+			form.appendChild( nameField );
 
-			const msg = Nino.admin.gallery._renderSave( form );
-			const line = Nino.admin.gallery._status( msg );
+			const line = Nino.admin.gallery._renderSave( form );
 
 			form.addEventListener( 'submit', function( ev ) {
 
 				ev.preventDefault();
 				line.saving();
 
-				Nino.admin.gallery._apiCall( 'album-save', { album : album.key, name : name.value.trim() }, function( status, response ) {
+				Nino.admin.gallery.call( 'album-save', { album : album.key, name : name.value.trim() }, function( status, response ) {
 
 					if( status !== 200 || response === null ) {
-						line.fail( ( response && response.error ) ? response.error : Nino.content.getText('/_admin/common/error/save') );
+						line.error( status, response, '/_admin/common/error/save' );
 						return;
 					}
 
@@ -912,25 +726,19 @@
 		 *
 		 *	@param		{Element}	parent			Where the row is put
 		 *
-		 *	@return		{Element}							The line, <p>
+		 *	@return		{Object}							The status line the row holds
 		 */
 		_renderSave : function( parent ) {
 
-			const row = dc.createElement('div');
-			row.className = 'gallery-form-actions';
+			const row = Nino.adminUi.el( 'div', 'nino-admin-actions gallery-form-actions' );
+			row.appendChild( Nino.adminUi.button( Nino.content.getText('/_admin/common/label/save'), undefined, { type : 'submit' } ) );
 
-			const save = dc.createElement('button');
-			save.type = 'submit';
-			save.textContent = Nino.content.getText('/_admin/common/label/save');
-			row.appendChild( save );
-
-			const msg = dc.createElement('p');
-			msg.className = 'gallery-form-msg';
+			const msg = Nino.adminUi.el( 'p', 'gallery-form-msg' );
 			row.appendChild( msg );
 
 			parent.appendChild( row );
 
-			return msg;
+			return Nino.adminUi.status( msg );
 		},
 
 		/**
@@ -947,16 +755,11 @@
 
 			const group = Nino.admin.gallery._renderSizes( album.settings, false );
 
-			const note = dc.createElement('p');
-			note.className = 'nino-admin-hint';
-			note.textContent = Nino.content.getText('/_admin/gallery/hint/settings');
-			group.element.appendChild( note );
+			group.element.appendChild( Nino.adminUi.hint( Nino.content.getText('/_admin/gallery/hint/settings') ) );
 
-			const msg = Nino.admin.gallery._renderSave( group.element );
-			const line = Nino.admin.gallery._status( msg );
+			const line = Nino.admin.gallery._renderSave( group.element );
 
-			const form = dc.createElement('form');
-			form.className = 'gallery-sizes-form';
+			const form = Nino.adminUi.el( 'form', 'gallery-sizes-form' );
 			form.appendChild( group.element );
 
 			form.addEventListener( 'submit', function( ev ) {
@@ -964,10 +767,10 @@
 				ev.preventDefault();
 				line.saving();
 
-				Nino.admin.gallery._apiCall( 'album-save', { album : album.key, settings : group.read() }, function( status, response ) {
+				Nino.admin.gallery.call( 'album-save', { album : album.key, settings : group.read() }, function( status, response ) {
 
 					if( status !== 200 || response === null ) {
-						line.fail( ( response && response.error ) ? response.error : Nino.content.getText('/_admin/common/error/save') );
+						line.error( status, response, '/_admin/common/error/save' );
 						return;
 					}
 
@@ -1000,15 +803,12 @@
 		 */
 		_renderSizes : function( settings, open ) {
 
-			const details = dc.createElement('details');
-			details.className = 'gallery-sizes-group';
+			const details = Nino.adminUi.el( 'details', 'gallery-sizes-group' );
 			details.open = open === true;
 
-			const summary = dc.createElement('summary');
-			summary.textContent = Nino.content.getText('/_admin/gallery/label/sizes');
-			details.appendChild( summary );
+			details.appendChild( Nino.adminUi.el( 'summary', '', Nino.content.getText('/_admin/gallery/label/sizes') ) );
 
-			const fieldset = dc.createElement('fieldset');
+			const fieldset = Nino.adminUi.el('fieldset');
 			const inputs = {};
 
 			Nino.admin.gallery._sizes.forEach( function( size ) {
@@ -1055,25 +855,16 @@
 		 */
 		_renderLocaleSelect : function() {
 
-			const select = dc.createElement('select');
-			select.id = 'gallery-locale-select';
-			select.className = 'nino-admin-locale-select nino-admin-contextbar-select';
-			select.setAttribute( 'aria-label', Nino.content.getText('/_admin/gallery/label/locale') );
-
-			Nino.admin.gallery._locales.forEach( function( locale ) {
-				const option = dc.createElement('option');
-				option.value = locale;
-				option.textContent = locale;
-				option.selected = ( locale === Nino.admin.gallery._locale() );
-				select.appendChild( option );
+			return Nino.adminUi.localeSelect( {
+				locales		: Nino.admin.gallery._locales,
+				current		: Nino.admin.gallery._locale(),
+				id				: 'gallery-locale-select',
+				label			: Nino.content.getText('/_admin/gallery/label/locale'),
+				onChange	: function( locale ) {
+					Nino.admin.sessionLocale.set( locale );
+					Nino.admin.gallery._renderAlbum();
+				},
 			} );
-
-			select.addEventListener( 'change', function() {
-				Nino.admin.sessionLocale.set( select.value );
-				Nino.admin.gallery._renderAlbum();
-			} );
-
-			return select;
 		},
 
 		/**
@@ -1087,14 +878,10 @@
 		 */
 		_renderUpload : function( album ) {
 
-			const wrap = dc.createElement('div');
-			wrap.className = 'nino-admin-field';
+			const wrap = Nino.adminUi.el( 'div', 'nino-admin-field' );
+			wrap.appendChild( Nino.adminUi.el( 'span', '', Nino.content.getText('/_admin/gallery/label/upload') ) );
 
-			const label = dc.createElement('span');
-			label.textContent = Nino.content.getText('/_admin/gallery/label/upload');
-			wrap.appendChild( label );
-
-			const input = dc.createElement('input');
+			const input = Nino.adminUi.el('input');
 			input.type = 'file';
 			input.id = 'gallery-upload';
 			input.accept = 'image/*';
@@ -1103,9 +890,9 @@
 			input.multiple = true;
 			wrap.appendChild( input );
 
-			const msg = dc.createElement('p');
+			// What the upload says as it goes, said aloud to a screen reader
+			const msg = Nino.adminUi.hint('');
 			msg.id = 'gallery-upload-msg';
-			msg.className = 'nino-admin-hint';
 			msg.setAttribute( 'aria-live', 'polite' );
 			wrap.appendChild( msg );
 
@@ -1165,7 +952,7 @@
 				if( files.length === 0 ) {
 					input.disabled = false;
 					input.value = '';
-					say( Nino.content.getText('/_admin/gallery/msg/uploaded').replace( '%s', done ) );
+					say( Nino.adminUi.format( Nino.content.getText('/_admin/gallery/msg/uploaded'), done ) );
 					return;
 				}
 
@@ -1179,13 +966,13 @@
 				if( Nino.admin.gallery._limits.bytes > 0 && file.size > Nino.admin.gallery._limits.bytes ) {
 					input.disabled = false;
 					input.value = '';
-					say( file.name+ ': '+ Nino.content.getText('/_admin/gallery/error/size').replace( '%s', Nino.admin.gallery._limits.text ) );
+					say( file.name+ ': '+ Nino.adminUi.format( Nino.content.getText('/_admin/error/gallery_size'), Nino.admin.gallery._limits.text ) );
 					return;
 				}
 
-				msg.textContent = Nino.content.getText('/_admin/gallery/msg/uploading').replace( '%s', file.name );
+				msg.textContent = Nino.adminUi.format( Nino.content.getText('/_admin/gallery/msg/uploading'), file.name );
 
-				Nino.admin.gallery._apiCall( 'upload', { album : album.key }, function( status, response ) {
+				Nino.admin.gallery.call( 'upload', { album : album.key }, function( status, response ) {
 
 					if( status !== 200 || response === null ) {
 						input.disabled = false;
@@ -1194,7 +981,7 @@
 							before this one is on the server and in _albums
 							already, and a grid still showing the album as it
 							stood before the batch says the upload did nothing	*/
-						say( file.name+ ': '+ ( ( response && response.error ) ? response.error : Nino.content.getText('/_admin/gallery/error/upload') ) );
+						say( file.name+ ': '+ Nino.adminUi.api.errorText( status, response, '/_admin/error/gallery_upload' ) );
 						return;
 					}
 
@@ -1222,29 +1009,27 @@
 
 			const locale = Nino.admin.gallery._locale();
 
-			const tile = dc.createElement('li');
-			tile.className = 'gallery-tile';
+			const tile = Nino.adminUi.el( 'li', 'gallery-tile' );
 			tile.dataset.image = image.id;
 
 			// Named the way the page names it: by its alt text, and where it has
 			// none by its caption
-			const thumb = dc.createElement('img');
+			const thumb = Nino.adminUi.el('img');
 			thumb.src = image.thumbUrl;
 			thumb.alt = Nino.admin.gallery._shownIn( image.alt, locale ) || Nino.admin.gallery._shownIn( image.caption, locale );
 			thumb.loading = 'lazy';
 			tile.appendChild( thumb );
 
-			const msg = dc.createElement('p');
-			msg.className = 'nino-admin-hint gallery-tile-msg';
-			msg.setAttribute( 'aria-live', 'polite' );
+			// What the tile says of a save, a move or a delete, on one line
+			const msg = Nino.adminUi.el( 'p', 'gallery-tile-msg' );
+			const line = Nino.adminUi.status( msg );
 
 			[ 'alt', 'caption' ].forEach( function( name ) {
 
 				const label = Nino.content.getText('/_admin/gallery/label/'+ name);
 
-				const field = dc.createElement('input');
+				const field = Nino.adminUi.el( 'input', 'nino-admin-input' );
 				field.type = 'text';
-				field.className = 'nino-admin-input';
 				field.dataset.field = name;
 				field.value = Nino.admin.gallery._textIn( image[name], locale );
 				field.placeholder = label;
@@ -1254,38 +1039,25 @@
 				field.addEventListener( 'blur', function() {
 					if( Nino.admin.gallery._kept( field.value ) === Nino.admin.gallery._textIn( image[name], locale ) )
 						return;
-					Nino.admin.gallery._saveText( album, image, name, locale, field, msg );
+					Nino.admin.gallery._saveText( album, image, name, locale, field, line );
 				} );
 				tile.appendChild( field );
 			} );
 
-			const actions = dc.createElement('div');
-			actions.className = 'gallery-tile-actions';
+			const actions = Nino.adminUi.el( 'div', 'nino-admin-actions nino-admin-actions--between' );
 
-			const left = dc.createElement('button');
-			left.type = 'button';
-			left.className = 'nino-admin-btn-secondary';
-			left.textContent = '‹';
-			left.setAttribute( 'aria-label', Nino.content.getText('/_admin/gallery/label/earlier') );
-			left.disabled = index === 0;
-			left.addEventListener( 'click', function() { Nino.admin.gallery._move( album, index, -1, msg ) } );
-			actions.appendChild( left );
+			actions.appendChild( Nino.adminUi.button( '‹', function() { Nino.admin.gallery._move( album, index, -1, line ) }, {
+				className : 'nino-admin-btn-secondary nino-admin-btn--small', name : Nino.content.getText('/_admin/gallery/label/earlier'), disabled : index === 0,
+			} ) );
 
-			const remove = dc.createElement('button');
-			remove.type = 'button';
-			remove.className = 'nino-admin-btn-danger';
-			remove.textContent = Nino.content.getText('/_admin/gallery/label/delete');
-			remove.addEventListener( 'click', function() { Nino.admin.gallery._deleteImage( album, image, remove, msg ) } );
+			const remove = Nino.adminUi.button( Nino.content.getText('/_admin/gallery/label/delete'), function() {
+				Nino.admin.gallery._deleteImage( album, image, remove, line );
+			}, { className : 'nino-admin-btn-danger nino-admin-btn--small' } );
 			actions.appendChild( remove );
 
-			const right = dc.createElement('button');
-			right.type = 'button';
-			right.className = 'nino-admin-btn-secondary';
-			right.textContent = '›';
-			right.setAttribute( 'aria-label', Nino.content.getText('/_admin/gallery/label/later') );
-			right.disabled = index === album.images.length - 1;
-			right.addEventListener( 'click', function() { Nino.admin.gallery._move( album, index, 1, msg ) } );
-			actions.appendChild( right );
+			actions.appendChild( Nino.adminUi.button( '›', function() { Nino.admin.gallery._move( album, index, 1, line ) }, {
+				className : 'nino-admin-btn-secondary nino-admin-btn--small', name : Nino.content.getText('/_admin/gallery/label/later'), disabled : index === album.images.length - 1,
+			} ) );
 
 			tile.appendChild( actions );
 			tile.appendChild( msg );
@@ -1302,21 +1074,20 @@
 		 *	@param		{string}		name				'alt' or 'caption'
 		 *	@param		{string}		locale
 		 *	@param		{Element}		field
-		 *	@param		{Element}		msg
+		 *	@param		{Object}		line				The tile's status line
 		 *
 		 *	@return		void
 		 */
-		_saveText : function( album, image, name, locale, field, msg ) {
+		_saveText : function( album, image, name, locale, field, line ) {
 
-			const line = Nino.admin.gallery._status( msg );
 			line.saving();
 
 			const payload = { album : album.key, id : image.id, locale : locale };
 			payload[name] = field.value;
 
-			Nino.admin.gallery._apiCall( 'image-save', payload, function( status, response ) {
+			Nino.admin.gallery.call( 'image-save', payload, function( status, response ) {
 				if( status !== 200 || response === null ) {
-					line.fail( ( response && response.error ) ? response.error : Nino.content.getText('/_admin/common/error/save') );
+					line.error( status, response, '/_admin/common/error/save' );
 					return;
 				}
 				Nino.admin.gallery._albums = response.albums || [];
@@ -1350,11 +1121,11 @@
 		 *	@param		{Object}	album
 		 *	@param		{number}	index
 		 *	@param		{number}	by
-		 *	@param		{Element}	msg
+		 *	@param		{Object}	line				The tile's status line
 		 *
 		 *	@return		void
 		 */
-		_move : function( album, index, by, msg ) {
+		_move : function( album, index, by, line ) {
 
 			const order = album.images.map( function( image ) { return image.id } );
 			const to = index + by;
@@ -1364,34 +1135,32 @@
 
 			order.splice( to, 0, order.splice( index, 1 )[0] );
 
-			Nino.admin.gallery._apiCall( 'reorder', { album : album.key, order : order }, function( status, response ) {
+			Nino.admin.gallery.call( 'reorder', { album : album.key, order : order }, function( status, response ) {
 				if( status !== 200 || response === null ) {
-					msg.textContent = ( response && response.error ) ? response.error : Nino.content.getText('/_admin/common/error/save');
+					line.error( status, response, '/_admin/common/error/save' );
 					return;
 				}
 				Nino.admin.gallery._take( response );
 			} );
 		},
 
-		_deleteImage : function( album, image, btn, msg ) {
+		_deleteImage : function( album, image, btn, line ) {
 
 			if( wn.confirm( Nino.content.getText('/_admin/gallery/confirm/image') ) === false )
 				return;
 
 			btn.disabled = true;
-			msg.textContent = Nino.content.getText('/_admin/common/msg/deleting');
+			line.idle( Nino.content.getText('/_admin/common/msg/deleting') );
 
-			Nino.admin.gallery._apiCall( 'image-delete', { album : album.key, id : image.id }, function( status, response ) {
+			Nino.admin.gallery.call( 'image-delete', { album : album.key, id : image.id }, function( status, response ) {
 				if( status !== 200 || response === null ) {
 					btn.disabled = false;
-					msg.textContent = ( response && response.error ) ? response.error : Nino.content.getText('/_admin/common/error/delete');
+					line.error( status, response, '/_admin/common/error/delete' );
 					return;
 				}
 				Nino.admin.gallery._take( response );
 			} );
 		},
-	};
+	} );
 
-	Nino.events.bindCallback( 'ready', Nino.admin.gallery.init );
-
-})(window, document, document.documentElement, document.body);
+})(window, document);

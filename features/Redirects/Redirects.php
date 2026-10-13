@@ -124,22 +124,24 @@ namespace Nino\Modules {
 				return;
 			}
 
-			$request['/nino/http/response']['statusCode']						= $match['status'];
-			$request['/nino/http/response']['header']['Location']		= self::address( $appData, $match['to'] );
+			/*	The status, the Location, the empty body - and no-store: a 301 a
+				browser cached is an address that cannot be corrected without
+				clearing it there, so the page itself is never cached on top of
+				that (see Modules\Cache, which leaves a Location alone). A target
+				the kernel will not send (a warning, the response left as it was)
+				is no rule that was followed, and counts for nothing	*/
+			\Nino\Http::redirect( $appData, $request, $match['to'], $match['status'] );
 
-			// A 301 a browser cached is an address that cannot be corrected
-			// without clearing it there, so the page itself is never cached on
-			// top of that - see Modules\Cache, which leaves a Location alone
-			$request['/nino/http/response']['header']['Cache-Control']	= 'no-store';
-			$request['/nino/http/response']['body']											= '';
-
-			self::_count( $appData, $match['from'] );
+			if( isset( $request['/nino/http/response']['header']['Location'] ) === true )
+				self::_count( $appData, $match['from'] );
 		}
 
 		/**
-		 *	What goes in the Location header. A site path gets the project's own
-		 *	directory in front of it, which is the one thing a rule cannot carry:
-		 *	the same rules have to work whether the site is at / or at /shop
+		 *	The address a visitor is sent to for a target - what the Location of
+		 *	\Nino\Http::redirect() comes to, for the probe of the panel to say. A
+		 *	site path gets the project's own directory in front of it, which is
+		 *	the one thing a rule cannot carry: the same rules have to work whether
+		 *	the site is at / or at /shop
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$target				A path, or an absolute url

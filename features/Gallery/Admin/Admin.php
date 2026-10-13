@@ -25,9 +25,10 @@ namespace Nino\Modules\Gallery {
 	 *										\Nino\Modules\Gallery (Gallery.php beside this) owns
 	 *										the shape of the file and the making of the two sizes;
 	 *										this reads and writes through that class, so what the
-	 *										panel stores is what the shortcode renders. Every word
-	 *										a person reads is resolved here, in the session
-	 *										language, so the script lays out what it gets.
+	 *										panel stores is what the shortcode renders. A refusal
+	 *										a person can cause answers with a code, and the script
+	 *										says it in the interface language with the sentence
+	 *										the panel's text has for it.
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -41,8 +42,8 @@ namespace Nino\Modules\Gallery {
 		// that key would be opened in its place by a reload, so none is made with it
 		private const string RESERVED_KEY = 'new';
 
-		// The panel's word for each of an album's settings, for the message that
-		// names the ones a request got wrong
+		// The panel's word for each of an album's settings, for the sentence that
+		// names the ones a request got wrong (see _named())
 		private const array LABELS = [
 			'thumbWidth'	=> '/_admin/gallery/label/thumb-width',
 			'thumbHeight'	=> '/_admin/gallery/label/thumb-height',
@@ -131,7 +132,7 @@ namespace Nino\Modules\Gallery {
 			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::MANAGE_PERM ) === false )
 				return;
 
-			$limit = \Nino\Modules\Gallery::uploadLimit();
+			$limit = \Nino\Images::limits()['php'];
 
 			\Nino\Http::ok( $request, [
 				'albums'	=> self::_albums( $appData ),
@@ -173,7 +174,13 @@ namespace Nino\Modules\Gallery {
 		 *	\Nino\Modules\Gallery::MAX_KEY: only a new album is held to it. The
 		 *	sizes are held to the bounds of the feature's own settings (see
 		 *	\Nino\Modules\Gallery::checkSettings()), all of them or none; a new
-		 *	album without any starts with the feature's
+		 *	album without any starts with the feature's.
+		 *
+		 *	What depends on the albums there are - whether the key is taken, what
+		 *	the sizes of an album are now - is decided under the lock of the file
+		 *	(see \Nino\Modules\Gallery::change()), where the albums are read
+		 *	again: two people creating the album of one key are two requests one
+		 *	after the other, and the second is refused as taken
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
@@ -191,59 +198,69 @@ namespace Nino\Modules\Gallery {
 			// middle of a multibyte character leaves a sequence that is not
 			// utf-8 - which json_encode() answers with false, so the panel's
 			// whole answer came back empty and every screen of it stopped
-			$name		= mb_strcut( trim( (string) ( is_string( $data['name'] ?? null ) ? $data['name'] : '' ) ), 0, 120, 'UTF-8' );
-			$albums	= \Nino\Modules\Gallery::albums( $appData );
-			$index	= self::_indexOf( $albums, $key );
+			$name		= mb_strcut( trim( \Nino\Admin\Admin::postString( $data, 'name' ) ), 0, 120, 'UTF-8' );
+			$isNew	= ( $data['isNew'] ?? false ) === true;
+			$posted	= is_array( $data['settings'] ?? null ) === true ? $data['settings'] : null;
 
 			if( $key === '' ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/key' ) );
+				\Nino\Http::fail( $request, 400, 'an album key is a slug: lower case, starting with a letter', 'gallery_key' );
 				return;
 			}
 
-			if( $key === self::RESERVED_KEY && $index === null ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/reserved' ) );
-				return;
-			}
+			$refusal = null;
 
-			if( $index === null && strlen( $key ) > \Nino\Modules\Gallery::MAX_KEY ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/long', (string) \Nino\Modules\Gallery::MAX_KEY ) );
-				return;
-			}
+			$written = \Nino\Modules\Gallery::change( $appData, static function( array $albums, array &$appData ) use ( $key, $name, $isNew, $posted, &$refusal ): ?array {
 
-			if( $index !== null && ( $data['isNew'] ?? false ) === true ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/taken' ) );
-				return;
-			}
+				$index = self::_indexOf( $albums, $key );
 
-			$settings = null;
-
-			if( is_array( $data['settings'] ?? null ) === true ) {
-
-				$checked = \Nino\Modules\Gallery::checkSettings( $appData, $data['settings'], $index === null ? [] : $albums[$index] );
-
-				if( $checked['errors'] !== [] ) {
-					\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/settings', self::_named( $appData, array_keys( $checked['errors'] ) ) ) );
-					return;
+				if( $key === self::RESERVED_KEY && $index === null ) {
+					$refusal = [ 400, 'the key "new" is the address of the page that makes an album', 'gallery_reserved' ];
+					return null;
 				}
 
-				$settings = $checked['values'];
-			}
+				if( $index === null && strlen( $key ) > \Nino\Modules\Gallery::MAX_KEY ) {
+					$refusal = [ 400, 'the key of a new album has at most '. \Nino\Modules\Gallery::MAX_KEY. ' characters', 'gallery_long', [ \Nino\Modules\Gallery::MAX_KEY ] ];
+					return null;
+				}
 
-			if( $index === null )
-				$albums[] = [ 'key' => $key, 'name' => $name !== '' ? $name : $key, 'images' => [], 'settings' => $settings ?? \Nino\Modules\Gallery::defaults( $appData ) ];
-			else {
-				$albums[$index]['name'] = $name !== '' ? $name : $albums[$index]['name'];
+				if( $index !== null && $isNew === true ) {
+					$refusal = [ 400, 'there is an album with this key already', 'gallery_taken' ];
+					return null;
+				}
 
-				if( $settings !== null )
-					$albums[$index]['settings'] = $settings;
-			}
+				$settings = null;
 
-			if( \Nino\Modules\Gallery::save( $appData, $albums ) === false ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/save' ) );
-				return;
-			}
+				if( $posted !== null ) {
 
-			\Nino\Http::ok( $request, [ 'albums' => self::_albums( $appData ) ] );
+					$checked = \Nino\Modules\Gallery::checkSettings( $appData, $posted, $index === null ? [] : $albums[$index] );
+
+					if( $checked['errors'] !== [] ) {
+						$refusal = [ 400, 'these sizes are outside what is allowed: '. implode( ', ', array_keys( $checked['errors'] ) ), 'gallery_settings',
+							[ self::_named( $appData, array_keys( $checked['errors'] ) ) ] ];
+						return null;
+					}
+
+					$settings = $checked['values'];
+				}
+
+				if( $index === null )
+					$albums[] = [ 'key' => $key, 'name' => $name !== '' ? $name : $key, 'images' => [], 'settings' => $settings ?? \Nino\Modules\Gallery::defaults( $appData ) ];
+				else {
+					$albums[$index]['name'] = $name !== '' ? $name : $albums[$index]['name'];
+
+					if( $settings !== null )
+						$albums[$index]['settings'] = $settings;
+				}
+
+				return $albums;
+			} );
+
+			if( $refusal !== null )
+				\Nino\Http::fail( $request, ...$refusal );
+			else if( $written === false )
+				\Nino\Http::fail( $request, 500, 'the albums could not be written' );
+			else
+				\Nino\Http::ok( $request, [ 'albums' => self::_albums( $appData ) ] );
 		}
 
 		/**
@@ -263,20 +280,31 @@ namespace Nino\Modules\Gallery {
 				return;
 
 			$key		= self::_key( \Nino\Admin\Admin::postData()['album'] ?? null );
-			$albums	= \Nino\Modules\Gallery::albums( $appData );
-			$kept		= [];
 			$gone		= null;
+			$refusal	= null;
 
-			foreach( $albums as $album )
-				$album['key'] === $key ? $gone = $album : $kept[] = $album;
+			$written = \Nino\Modules\Gallery::change( $appData, static function( array $albums ) use ( $key, &$gone, &$refusal ): ?array {
 
-			if( $gone === null ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/album' ) );
+				$kept = [];
+
+				foreach( $albums as $album )
+					$album['key'] === $key ? $gone = $album : $kept[] = $album;
+
+				if( $gone === null ) {
+					$refusal = [ 400, 'there is no album with this key', 'gallery_album' ];
+					return null;
+				}
+
+				return $kept;
+			} );
+
+			if( $refusal !== null ) {
+				\Nino\Http::fail( $request, ...$refusal );
 				return;
 			}
 
-			if( \Nino\Modules\Gallery::save( $appData, $kept ) === false ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/save' ) );
+			if( $written === false ) {
+				\Nino\Http::fail( $request, 500, 'the albums could not be written' );
 				return;
 			}
 
@@ -290,7 +318,10 @@ namespace Nino\Modules\Gallery {
 
 		/**
 		 *	Add one uploaded image to an album - two sizes made, the upload
-		 *	itself never written anywhere
+		 *	itself never written anywhere. The sizes are made before the file of
+		 *	the albums is locked, which is for the short time it takes to add the
+		 *	entry: an album that is gone by then, or a write that fails, takes
+		 *	the two files off the disk again
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
@@ -302,12 +333,10 @@ namespace Nino\Modules\Gallery {
 			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::MANAGE_PERM ) === false )
 				return;
 
-			$key		= self::_key( \Nino\Admin\Admin::postData()['album'] ?? null );
-			$albums	= \Nino\Modules\Gallery::albums( $appData );
-			$index	= self::_indexOf( $albums, $key );
+			$key = self::_key( \Nino\Admin\Admin::postData()['album'] ?? null );
 
-			if( $index === null ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/album' ) );
+			if( $key === '' || self::_indexOf( \Nino\Modules\Gallery::albums( $appData ), $key ) === null ) {
+				\Nino\Http::fail( $request, 400, 'there is no album with this key', 'gallery_album' );
 				return;
 			}
 
@@ -317,22 +346,23 @@ namespace Nino\Modules\Gallery {
 			// gets here: php answers with an empty $_POST, so the csrf check has
 			// nothing to compare and refuses first - which is why the panel checks
 			// the size itself before it sends anything
-			$limit = \Nino\Modules\Gallery::uploadLimit();
+			$limit = \Nino\Images::limits()['php'];
 
 			if( ( $error === UPLOAD_ERR_INI_SIZE || $error === UPLOAD_ERR_FORM_SIZE ) && $limit > 0 ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/size', \Nino\Modules\Gallery::formatBytes( $limit ) ) );
+				$text = \Nino\Modules\Gallery::formatBytes( $limit );
+				\Nino\Http::fail( $request, 400, 'the file is larger than php takes in one upload ('. $text. ')', 'gallery_size', [ $text ] );
 				return;
 			}
 
 			if( $error !== UPLOAD_ERR_OK ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/upload' ) );
+				\Nino\Http::fail( $request, 400, 'the file could not be read', 'gallery_upload' );
 				return;
 			}
 
 			$bytes = @file_get_contents( (string) $_FILES['file']['tmp_name'] );
 
 			if( is_string( $bytes ) === false ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/upload' ) );
+				\Nino\Http::fail( $request, 400, 'the file could not be read', 'gallery_upload' );
 				return;
 			}
 
@@ -340,23 +370,52 @@ namespace Nino\Modules\Gallery {
 
 			if( $image === null ) {
 
-				$reason = \Nino\Modules\Gallery::refusal( $bytes );
+				/*	\Nino\Images only says false, and an upload that is refused
+					without a reason is a panel that can only say "that did not
+					work": the kernel says why in a code its words exist for. What
+					passes all three checks and is refused after them - gd, a render
+					callback - is this feature's	*/
+				$rejected = \Nino\Images::reject( $bytes );
 
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/'. $reason, match( $reason ) {
-					'size'		=> \Nino\Modules\Gallery::formatBytes( \Nino\Modules\Gallery::KERNEL_UPLOAD_BYTES ),
-					'pixels'	=> (string) ( \Nino\Images::MAX_SOURCE_PIXELS / 1000000 ),
-					default		=> '',
-				} ) );
+				if( $rejected === null )
+					\Nino\Http::fail( $request, 400, 'the server could not make the two sizes from this image', 'gallery_process' );
+				else
+					\Nino\Http::fail( $request, 400, match( $rejected['code'] ) {
+						'image_too_large'	=> 'the file is larger than the kernel takes ('. $rejected['params'][0]. ' MB)',
+						'image_type'			=> 'the file is not a JPEG, PNG, GIF or WebP image',
+						default						=> 'the image has more than '. $rejected['params'][0]. ' megapixels',
+					}, $rejected['code'], $rejected['params'] );
+
 				return;
 			}
 
-			$albums[$index]['images'][] = $image;
+			$refusal = null;
 
-			if( \Nino\Modules\Gallery::save( $appData, $albums ) === false ) {
+			$written = \Nino\Modules\Gallery::change( $appData, static function( array $albums ) use ( $key, $image, &$refusal ): ?array {
+
+				$index = self::_indexOf( $albums, $key );
+
+				if( $index === null ) {
+					$refusal = [ 400, 'there is no album with this key', 'gallery_album' ];
+					return null;
+				}
+
+				$albums[$index]['images'][] = $image;
+
+				return $albums;
+			} );
+
+			if( $refusal !== null || $written === false ) {
+
 				// The two files are already on disk and nothing points at them,
 				// so they go again rather than sit there unreachable
 				\Nino\Modules\Gallery::forget( $appData, $image );
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/save' ) );
+
+				if( $refusal !== null )
+					\Nino\Http::fail( $request, ...$refusal );
+				else
+					\Nino\Http::fail( $request, 500, 'the albums could not be written' );
+
 				return;
 			}
 
@@ -371,9 +430,10 @@ namespace Nino\Modules\Gallery {
 		 *
 		 *	Stored as one string for every language until the first translation
 		 *	is saved; then as a locale => string map (see
-		 *	\Nino\Modules\Gallery::withLocale()). Written through mutate(): two
-		 *	people on two screens saving two images are two writes of one file,
-		 *	and the second must start from what the first left
+		 *	\Nino\Modules\Gallery::withLocale()). Written under the lock of the
+		 *	file, like every change of the albums: two people on two screens
+		 *	saving two images are two writes of one file, and the second must
+		 *	start from what the first left
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
@@ -388,15 +448,16 @@ namespace Nino\Modules\Gallery {
 			$data		= \Nino\Admin\Admin::postData();
 			$key		= self::_key( $data['album'] ?? null );
 			$id			= self::_id( $data['id'] ?? null );
-			$locale	= is_string( $data['locale'] ?? null ) === true ? $data['locale'] : '';
+			$locale	= \Nino\Admin\Admin::postString( $data, 'locale' );
 
 			if( \Nino\Locales::verifyLocale( $appData, $locale ) === false ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/locale' ) );
+				\Nino\Http::fail( $request, 400, 'that language is not available', 'gallery_locale' );
 				return;
 			}
 
 			// text() is what cuts them to MAX_CAPTION - on a character
-			// boundary, see apiAlbumSave() for why that is not substr()
+			// boundary, see apiAlbumSave() for why that is not substr(). A field
+			// that is not a string is not posted: the other one may be
 			$posted	= [];
 
 			foreach( [ 'alt', 'caption' ] as $field )
@@ -404,62 +465,38 @@ namespace Nino\Modules\Gallery {
 					$posted[$field] = \Nino\Modules\Gallery::text( $data[$field] );
 
 			$available	= \Nino\Locales::getAvailableLocales( $appData );
-			$ran				= false;
-			$albumFound	= false;
-			$found			= false;
+			$refusal		= null;
 
-			$written = \Nino\Filesystem::mutate( $appData, \Nino\Modules\Gallery::ALBUMS, static function( mixed $state ) use ( $key, $id, $locale, $posted, $available, &$ran, &$albumFound, &$found ): ?array {
+			$written = \Nino\Modules\Gallery::change( $appData, static function( array $albums ) use ( $key, $id, $locale, $posted, $available, &$refusal ): ?array {
 
-				$ran = true;
-				$albums = [];
+				$index = self::_indexOf( $albums, $key );
 
-				foreach( (array) $state as $entry )
-					if( is_array( $entry ) === true && ( $album = \Nino\Modules\Gallery::normalize( $entry ) ) !== null )
-						$albums[] = $album;
-
-				foreach( $albums as $index => $album ) {
-
-					if( $album['key'] !== $key )
-						continue;
-
-					$albumFound = true;
-
-					foreach( $album['images'] as $position => $image )
-						if( $image['id'] === $id ) {
-
-							$found = true;
-
-							foreach( $posted as $field => $text )
-								$albums[$index]['images'][$position][$field] = \Nino\Modules\Gallery::withLocale( $image[$field], $locale, (string) $text, $available );
-						}
+				if( $index === null ) {
+					$refusal = [ 400, 'there is no album with this key', 'gallery_album' ];
+					return null;
 				}
 
-				return $found === true ? $albums : null;
-			}, [] );
+				foreach( $albums[$index]['images'] as $position => $image ) {
 
-			// The callback never ran where the list could not be locked: nothing was
-			// looked at, so neither the album nor the image is missing - the save is
-			if( $ran === false ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/save' ) );
-				return;
-			}
+					if( $image['id'] !== $id )
+						continue;
 
-			if( $albumFound === false ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/album' ) );
-				return;
-			}
+					foreach( $posted as $field => $text )
+						$albums[$index]['images'][$position][$field] = \Nino\Modules\Gallery::withLocale( $image[$field], $locale, (string) $text, $available );
 
-			if( $found === false ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/image' ) );
-				return;
-			}
+					return $albums;
+				}
 
-			if( $written === false ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/save' ) );
-				return;
-			}
+				$refusal = [ 400, 'that image is not in this album', 'gallery_image' ];
+				return null;
+			} );
 
-			\Nino\Http::ok( $request, [ 'albums' => self::_albums( $appData ) ] );
+			if( $refusal !== null )
+				\Nino\Http::fail( $request, ...$refusal );
+			else if( $written === false )
+				\Nino\Http::fail( $request, 500, 'the albums could not be written' );
+			else
+				\Nino\Http::ok( $request, [ 'albums' => self::_albums( $appData ) ] );
 		}
 
 		/**
@@ -478,29 +515,40 @@ namespace Nino\Modules\Gallery {
 			$data		= \Nino\Admin\Admin::postData();
 			$key		= self::_key( $data['album'] ?? null );
 			$id			= self::_id( $data['id'] ?? null );
-			$albums	= \Nino\Modules\Gallery::albums( $appData );
-			$index	= self::_indexOf( $albums, $key );
+			$gone		= null;
+			$refusal	= null;
 
-			if( $index === null || $id === '' ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/album' ) );
+			$written = \Nino\Modules\Gallery::change( $appData, static function( array $albums ) use ( $key, $id, &$gone, &$refusal ): ?array {
+
+				$index = self::_indexOf( $albums, $key );
+
+				if( $index === null || $id === '' ) {
+					$refusal = [ 400, 'there is no album with this key', 'gallery_album' ];
+					return null;
+				}
+
+				$kept = [];
+
+				foreach( $albums[$index]['images'] as $image )
+					$image['id'] === $id ? $gone = $image : $kept[] = $image;
+
+				if( $gone === null ) {
+					$refusal = [ 400, 'that image is not in this album', 'gallery_image' ];
+					return null;
+				}
+
+				$albums[$index]['images'] = $kept;
+
+				return $albums;
+			} );
+
+			if( $refusal !== null ) {
+				\Nino\Http::fail( $request, ...$refusal );
 				return;
 			}
 
-			$kept = [];
-			$gone = null;
-
-			foreach( $albums[$index]['images'] as $image )
-				$image['id'] === $id ? $gone = $image : $kept[] = $image;
-
-			if( $gone === null ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/image' ) );
-				return;
-			}
-
-			$albums[$index]['images'] = $kept;
-
-			if( \Nino\Modules\Gallery::save( $appData, $albums ) === false ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/save' ) );
+			if( $written === false ) {
+				\Nino\Http::fail( $request, 500, 'the albums could not be written' );
 				return;
 			}
 
@@ -527,43 +575,50 @@ namespace Nino\Modules\Gallery {
 
 			$data		= \Nino\Admin\Admin::postData();
 			$key		= self::_key( $data['album'] ?? null );
-			$albums	= \Nino\Modules\Gallery::albums( $appData );
-			$index	= self::_indexOf( $albums, $key );
+			$posted	= (array) ( $data['order'] ?? [] );
+			$refusal	= null;
 
-			if( $index === null ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/album' ) );
-				return;
-			}
+			$written = \Nino\Modules\Gallery::change( $appData, static function( array $albums ) use ( $key, $posted, &$refusal ): ?array {
 
-			$byId		= array_column( $albums[$index]['images'], null, 'id' );
-			$order	= [];
+				$index = self::_indexOf( $albums, $key );
 
-			foreach( (array) ( $data['order'] ?? [] ) as $id ) {
-
-				$id = self::_id( $id );
-
-				if( $id === '' || isset( $byId[$id] ) === false ) {
-					\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/image' ) );
-					return;
+				if( $index === null ) {
+					$refusal = [ 400, 'there is no album with this key', 'gallery_album' ];
+					return null;
 				}
 
-				$order[] = $byId[$id];
-				unset( $byId[$id] );
-			}
+				$byId		= array_column( $albums[$index]['images'], null, 'id' );
+				$order	= [];
 
-			if( $byId !== [] ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/order' ) );
-				return;
-			}
+				foreach( $posted as $id ) {
 
-			$albums[$index]['images'] = $order;
+					$id = self::_id( $id );
 
-			if( \Nino\Modules\Gallery::save( $appData, $albums ) === false ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/gallery/error/save' ) );
-				return;
-			}
+					if( $id === '' || isset( $byId[$id] ) === false ) {
+						$refusal = [ 400, 'that image is not in this album', 'gallery_image' ];
+						return null;
+					}
 
-			\Nino\Http::ok( $request, [ 'albums' => self::_albums( $appData ) ] );
+					$order[] = $byId[$id];
+					unset( $byId[$id] );
+				}
+
+				if( $byId !== [] ) {
+					$refusal = [ 400, 'the order did not name every image of the album', 'gallery_order' ];
+					return null;
+				}
+
+				$albums[$index]['images'] = $order;
+
+				return $albums;
+			} );
+
+			if( $refusal !== null )
+				\Nino\Http::fail( $request, ...$refusal );
+			else if( $written === false )
+				\Nino\Http::fail( $request, 500, 'the albums could not be written' );
+			else
+				\Nino\Http::ok( $request, [ 'albums' => self::_albums( $appData ) ] );
 		}
 
 		/**
@@ -597,7 +652,9 @@ namespace Nino\Modules\Gallery {
 
 		/**
 		 *	The settings a request got wrong, as the panel names them: each by
-		 *	its label and, for a number, the range it may take
+		 *	its label, in the language of whoever is looking, and, for a number,
+		 *	the range it may take. It is a value of the sentence of the code
+		 *	(gallery_settings), which only this side can phrase
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array			$names				Setting names
@@ -611,7 +668,7 @@ namespace Nino\Modules\Gallery {
 
 			foreach( $names as $name ) {
 
-				$label = isset( self::LABELS[$name] ) === true ? self::_say( $appData, self::LABELS[$name] ) : (string) $name;
+				$label = isset( self::LABELS[$name] ) === true ? \Nino\Html::renderHtml( $appData, '[['. self::LABELS[$name]. ']]' ) : (string) $name;
 
 				$named[] = isset( $ranges[$name] ) === true ? $label. ' ('. $ranges[$name][0]. '–'. $ranges[$name][1]. ')' : $label;
 			}
@@ -652,23 +709,6 @@ namespace Nino\Modules\Gallery {
 		private static function _id( mixed $value ): string {
 
 			return is_string( $value ) === true && preg_match( \Nino\Modules\Gallery::ID_PATTERN, $value ) === 1 ? $value : '';
-		}
-
-		/**
-		 *	One of this panel's own fills, in the language of whoever is
-		 *	looking - the panel phrases its refusals, the script shows them.
-		 *	A refusal that names a limit has a %s in its text, filled here
-		 *	because only this side knows the number
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$key
-		 *	@param		string		$limit				What replaces %s
-		 *
-		 *	@return 	string
-		 */
-		private static function _say( array &$appData, string $key, string $limit = '' ): string {
-
-			return str_replace( '%s', $limit, \Nino\Html::renderHtml( $appData, '[['. $key. ']]' ) );
 		}
 	}
 }

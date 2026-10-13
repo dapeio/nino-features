@@ -87,13 +87,6 @@ namespace Nino\Modules {
 		// settings of the feature, which a new album starts with
 		public const array SETTINGS = [ 'thumbWidth', 'thumbHeight', 'largeWidth', 'largeHeight', 'keepRatio', 'columns' ];
 
-		// The byte cap \Nino\Images::_render() refuses an upload above. The
-		// constant there is private, and a feature does not reach past the
-		// kernel's public API, so the number is mirrored here - and only ever
-		// used to say why a refusal happened (see refusal()), never to refuse
-		// one. Switch to the kernel's own once it publishes it
-		public const int KERNEL_UPLOAD_BYTES = 8 * 1024 * 1024;
-
 		/**
 		 *	The panel this feature brings along
 		 *
@@ -106,11 +99,12 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	Register the shortcode - on a Nino with the Components module the
-		 *	component again, with the albums of the project (see
-		 *	_offerAlbums()) - and the stylesheet the grid needs. No script:
-		 *	what a thumbnail opens into is the Lightbox feature's overlay, and
-		 *	this feature only renders the markup it reads
+		 *	Register the shortcode - where the Components module owns the name,
+		 *	the component again, with the albums of the project (see
+		 *	_offerAlbums()). The stylesheet the grid needs is the manifest's
+		 *	(its `assets`), and there is no script: what a thumbnail opens into
+		 *	is the Lightbox feature's overlay, and this feature only renders the
+		 *	markup it reads
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
@@ -118,21 +112,16 @@ namespace Nino\Modules {
 		 */
 		public static function init( array &$appData ): void {
 
-			/*	Nino 1.6 has registered [gallery] as a component from the manifest before
-				this runs (\Nino\Features::registerComponents()), and a plain shortcode
-				here would take it back from the wrapper that fills in the defaults -
-				what is registered here instead is the component again, with the albums
-				of the project (see _offerAlbums()), unless a module of the project has
-				registered a [gallery] of its own since. Nino 1.5 ignores the manifest
-				key and needs the shortcode	*/
-			$components = class_exists( '\\Nino\\Modules\\Components' ) === true ? \Nino\Modules\Components::components( $appData ) : [];
-
-			if( isset( $components['gallery'] ) === false )
-				\Nino\Html::addShortcode( $appData, 'gallery', [ self::class, 'doShortcode' ] );
-			else if( self::_registeredFromManifest( $appData ) === true )
-				self::_offerAlbums( $appData, $components['gallery'] );
-
-			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Gallery/assets/gallery.css' );
+			/*	[gallery] is a component of the manifest, and the Components module
+				has registered it from there before this runs: a plain shortcode
+				here would take it back from the wrapper that fills in the defaults,
+				and the helper registers one only where the module does not own the
+				name. Where it does, what is registered here instead is the
+				component again, with the albums of the project (see
+				_offerAlbums()), unless a module of the project has registered a
+				[gallery] of its own since	*/
+			if( \Nino\Feature::shortcode( $appData, 'gallery', [ self::class, 'doShortcode' ] ) === false && self::_registeredFromManifest( $appData ) === true )
+				self::_offerAlbums( $appData, \Nino\Modules\Components::components( $appData )['gallery'] ?? [] );
 		}
 
 		/**
@@ -170,7 +159,8 @@ namespace Nino\Modules {
 		 *	album there is. A key that is not among the options - the album
 		 *	was deleted since, or the call misspells it - is read as the
 		 *	default too, which is how the wrapper reads a select; the
-		 *	shortcode alone (Nino 1.5) draws nothing for it
+		 *	shortcode alone, where the Components module is off, draws nothing
+		 *	for it
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array			$schema				The schema [gallery] is registered with, as the registry holds it
@@ -186,10 +176,7 @@ namespace Nino\Modules {
 			$schema['attributes']['album']['type']		= 'select';
 			$schema['attributes']['album']['options']	= array_merge( [ '' ], self::keys( $appData ) );
 
-			/*	init() asks for this only where its registry has [gallery], which is where the
-				Components module is. The guard is for PHPStan: against a checkout of a Nino
-				before 1.6 it reports a call on a class that is not there	*/
-			if( class_exists( '\\Nino\\Modules\\Components' ) === true && is_array( \Nino\Modules\Components::validate( 'gallery', $schema ) ) === true )
+			if( is_array( \Nino\Modules\Components::validate( 'gallery', $schema ) ) === true )
 				\Nino\Modules\Components::addComponent( $appData, 'gallery', [ self::class, 'componentGallery' ], $schema );
 		}
 
@@ -232,13 +219,51 @@ namespace Nino\Modules {
 		 */
 		public static function albums( array &$appData ): array {
 
+			return self::fromState( \Nino\Filesystem::getFileContent( $appData, self::ALBUMS, [] ) );
+		}
+
+		/**
+		 *	The albums a stored state holds, validated, in the order they are
+		 *	stored. What albums() makes of the file, and what a change made under
+		 *	the lock (see change()) starts from
+		 *
+		 *	@param		mixed			$state				The content of the albums file
+		 *
+		 *	@return 	array
+		 */
+		public static function fromState( mixed $state ): array {
+
 			$albums = [];
 
-			foreach( (array) \Nino\Filesystem::getFileContent( $appData, self::ALBUMS, [] ) as $entry )
+			foreach( (array) $state as $entry )
 				if( is_array( $entry ) === true && ( $album = self::normalize( $entry ) ) !== null )
 					$albums[] = $album;
 
 			return $albums;
+		}
+
+		/**
+		 *	Change the albums, and write them back whole, under the lock of
+		 *	their file: the lock is taken, the file read again and handed to
+		 *	$change as albums, and what it answers is written - so two people
+		 *	on two screens saving two things are two changes one after the other,
+		 *	the second starting from what the first left, where a read before
+		 *	the lock and a write after it lost one of them. One short list, and
+		 *	the panel always posts what it should be afterwards
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		callable	$change				function( array $albums, array &$appData ): ?array - the albums as albums() has them; answers the albums to keep, or null to leave the file as it is
+		 *
+		 *	@return 	bool											Whether the albums were written; false where the file could not be locked, where $change answered null and where the write failed
+		 */
+		public static function change( array &$appData, callable $change ): bool {
+
+			return \Nino\Filesystem::mutate( $appData, self::ALBUMS, static function( mixed $state, array &$appData ) use ( $change ): ?array {
+
+				$albums = $change( self::fromState( $state ), $appData );
+
+				return $albums === null ? null : array_values( $albums );
+			}, [] );
 		}
 
 		/**
@@ -451,39 +476,6 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	The most bytes php itself will take in one upload: the smaller of
-		 *	upload_max_filesize and post_max_size, where each is a limit at
-		 *	all (0 is none). A file over it never reaches the panel's action -
-		 *	php answers with an error code, or with nothing, see apiUpload()
-		 *
-		 *	@return 	int												0 where php sets no limit, or one that reads as none
-		 */
-		public static function uploadLimit(): int {
-
-			$limits = [];
-
-			foreach( [ 'upload_max_filesize', 'post_max_size' ] as $name ) {
-
-				// ini_parse_quantity() raises a warning for a string it cannot read
-				// whole - "abc", "1.5M", a number too big - and answers what php
-				// itself would make of it. A warning is a 500 for the panel that
-				// asked, so it is let pass here: the answer is the engine's
-				set_error_handler( static fn(): bool => true );
-
-				try {
-					$bytes = ini_parse_quantity( trim( (string) ini_get( $name ) ) );
-				} finally {
-					restore_error_handler();
-				}
-
-				if( $bytes > 0 )
-					$limits[] = $bytes;
-			}
-
-			return $limits === [] ? 0 : min( $limits );
-		}
-
-		/**
 		 *	A byte count the way a person reads one, in whole units: the
 		 *	largest of GB, MB and KB that holds it exactly, else KB
 		 *
@@ -498,45 +490,6 @@ namespace Nino\Modules {
 					return ( $bytes / $size ). ' '. $unit;
 
 			return $bytes >= 1024 ? round( $bytes / 1024 ). ' KB' : $bytes. ' B';
-		}
-
-		/**
-		 *	Why store() answered null for these bytes. \Nino\Images only
-		 *	says false, and an upload that is refused without a reason is a
-		 *	panel that can only say "that did not work" - so this asks the
-		 *	same questions in the same order, for the message only. It
-		 *	refuses nothing itself
-		 *
-		 *	@param		string		$bytes				The uploaded bytes
-		 *
-		 *	@return 	string										'size', 'type', 'pixels' or - where the bytes pass all three, so
-		 *																	something after them (gd, a render callback) said no - 'process'
-		 */
-		public static function refusal( string $bytes ): string {
-
-			if( strlen( $bytes ) > self::KERNEL_UPLOAD_BYTES )
-				return 'size';
-
-			$info = @getimagesizefromstring( $bytes );
-
-			if( $info === false || in_array( $info[2], [ IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_GIF, IMAGETYPE_WEBP ], true ) === false )
-				return 'type';
-
-			return $info[0] * $info[1] > \Nino\Images::MAX_SOURCE_PIXELS ? 'pixels' : 'process';
-		}
-
-		/**
-		 *	Write the albums back, whole. One short list, and the panel always
-		 *	posts what it should be afterwards
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array 		$albums				Normalized albums
-		 *
-		 *	@return 	bool
-		 */
-		public static function save( array &$appData, array $albums ): bool {
-
-			return \Nino\Filesystem::putFileContent( $appData, self::ALBUMS, array_values( $albums ) );
 		}
 
 		/**
@@ -809,63 +762,13 @@ namespace Nino\Modules {
 						$safe( \Nino\Images::getUrl( $appData, $image['thumb'] ) ),
 						$alt !== '' ? $alt : $caption,
 					],
-					self::template( $appData, 'gallery-item' )
+					\Nino\Feature::template( $appData, self::TEMPLATES, 'gallery-item' )
 				);
 			}
 
 			// The items last: str_replace() works through its arrays in order, so a
 			// token after them would be looked for in the markup they put in as well
-			return str_replace( [ '[[class]]', '[[columns]]', '[[items]]' ], [ self::_class( $args ), (string) $columns, $items ], self::template( $appData, 'gallery' ) );
-		}
-
-		/**
-		 *	The class of one's own a call adds to the grid, with the space in
-		 *	front of it that the template leaves out - escaped, and with its
-		 *	brackets as character references, because the markup is rendered
-		 *	once more
-		 *
-		 *	@param		array			$args					Shortcode attributes
-		 *
-		 *	@return 	string								'' or ' my-class'
-		 */
-		private static function _class( array $args ): string {
-
-			$class = trim( (string) ( $args['class'] ?? '' ) );
-
-			return $class === '' ? '' : ' '. str_replace( '[', '&#91;', htmlspecialchars( $class, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) );
-		}
-
-		/**
-		 *	One of this feature's own templates, read the way a project's are.
-		 *	Markup belongs in a template - see AGENTS.md, "Markup belongs in a
-		 *	template" - so what this class holds is which one and what goes in it
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$name					A file name below TEMPLATES, without .tpl
-		 *
-		 *	@return 	string								'' where the file is not there, which is logged
-		 */
-		public static function template( array &$appData, string $name ): string {
-
-			// A name from this class and nowhere else, and held to a slug anyway:
-			// the one thing this could otherwise be turned into is a read of
-			// something outside the feature
-			if( preg_match( '/^[a-z][a-z0-9-]*$/D', $name ) !== 1 )
-				return '';
-
-			$template = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $name. '.tpl', '' );
-
-			$template = is_string( $template ) === true ? rtrim( $template, "\n" ) : '';
-
-			/*	A template that is not there renders as nothing, which on a page looks
-				like a shortcode nobody wrote rather than like a feature missing a file.
-				Said out loud instead: E_USER_WARNING is Nino's "record this and carry
-				on" channel (see \Nino\Runtime::NON_FATAL_LEVELS), so the request
-				finishes and the log says which file	*/
-			if( $template === '' )
-				trigger_error( 'Nino: the template '. self::TEMPLATES. '/'. $name. '.tpl is missing or empty.', E_USER_WARNING );
-
-			return $template;
+			return str_replace( [ '[[classes]]', '[[columns]]', '[[items]]' ], [ \Nino\Feature::classes( $args ), (string) $columns, $items ], \Nino\Feature::template( $appData, self::TEMPLATES, 'gallery' ) );
 		}
 	}
 

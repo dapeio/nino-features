@@ -55,4 +55,11 @@ return [
 	'[[/_admin/search/msg/removed]]'				=> 'Gespeichert. Der Typ wird nicht mehr indiziert, sein Index wurde entfernt.',
 	'[[/_admin/search/error/create]]'				=> 'Die Suchindexe konnten nicht erstellt werden.',
 	'[[/_admin/search/error/save]]'					=> 'Die Konfiguration konnte nicht gespeichert werden.',
+
+	'[[/_admin/error/search_type]]'					=> 'Das ist kein Name eines Elementtyps.',
+	'[[/_admin/error/search_notype]]'				=> 'Es gibt keinen Elementtyp "%s".',
+	'[[/_admin/error/search_fields]]'				=> 'Die Prioritäten wurden nicht als Feldnamen gesendet.',
+	'[[/_admin/error/search_priority]]'			=> 'Die Priorität %s gibt es nicht - die vier Plätze sind 0, 1, 2 und 3.',
+	'[[/_admin/error/search_field]]'				=> 'Das Modell von "%s" hat kein Feld "%s".',
+	'[[/_admin/error/search_text]]'					=> 'Das Feld "%s" enthält keinen Text, der sich durchsuchen ließe.',
 ];

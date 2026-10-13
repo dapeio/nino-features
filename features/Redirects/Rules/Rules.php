@@ -82,25 +82,6 @@ namespace Nino\Modules\Redirects {
 		}
 
 		/**
-		 *	Write the file and forget the copy this request read
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array 		$data					A normalised file
-		 *
-		 *	@return 	bool
-		 */
-		public static function write( array &$appData, array $data ): bool {
-
-			unset( $appData['./redirects/rules'] );
-
-			return \Nino\Filesystem::putFileContent( $appData, self::PATH, [
-				'format'	=> self::FORMAT,
-				'rules'		=> array_values( $data['rules'] ?? [] ),
-				'misses'	=> $data['misses'] ?? [],
-			] );
-		}
-
-		/**
 		 *	Whatever the file held, held to what a rule may be.
 		 *
 		 *	Nothing is repaired silently: every rule that had to be dropped or
@@ -147,7 +128,7 @@ namespace Nino\Modules\Redirects {
 				$loop = self::loops( $from, $to, $subtree );
 
 				if( $loop !== '' ) {
-					$notes[] = [ 'key' => '/_admin/redirects/note/dropped', 'inserts' => [ '%s' => $from, '%r' => $loop ] ];
+					$notes[] = [ 'key' => '/_admin/redirects/note/dropped', 'inserts' => [ '%s' => $from, '%r' => '/_admin/error/'. $loop ] ];
 					continue;
 				}
 
@@ -232,7 +213,7 @@ namespace Nino\Modules\Redirects {
 		 *	@param		string		$to						A path or an absolute url
 		 *	@param		bool			$subtree
 		 *
-		 *	@return 	string								A fill key naming the reason, or ''
+		 *	@return 	string								The code of the reason - its words are the fill '/_admin/error/<code>' - or ''
 		 */
 		public static function loops( string $from, string $to, bool $subtree ): string {
 
@@ -241,10 +222,10 @@ namespace Nino\Modules\Redirects {
 				return '';
 
 			if( $from === $to )
-				return '/_admin/redirects/reason/self';
+				return 'redirects_loop_self';
 
 			if( $subtree === true && str_starts_with( $to, $from. '/' ) === true )
-				return '/_admin/redirects/reason/subtree';
+				return 'redirects_loop_subtree';
 
 			return '';
 		}
@@ -268,8 +249,10 @@ namespace Nino\Modules\Redirects {
 				return '';
 
 			// Two slashes at the front is a protocol-relative url, which is
-			// another host with the scheme left out - never a path here
-			if( str_starts_with( $value, '//' ) === true || str_contains( $value, '..' ) === true )
+			// another host with the scheme left out - never a path here. A
+			// slash and a backslash is the same thing to a browser, and
+			// \Nino\Http::redirect() refuses it as it refuses '//'
+			if( str_starts_with( $value, '//' ) === true || str_starts_with( $value, '/\\' ) === true || str_contains( $value, '..' ) === true )
 				return '';
 
 			// Whitespace and control characters cannot reach a header, and a
@@ -292,6 +275,11 @@ namespace Nino\Modules\Redirects {
 		 *	moment a site chooses the next address for somebody, and choosing a
 		 *	plaintext one hands that request to whoever is on the wire
 		 *
+		 *	And nothing \Nino\Http::redirect() would not send: it answers a
+		 *	target it refuses with a warning and leaves the response as it was,
+		 *	so a rule with one would be saved, look right in the table and never
+		 *	redirect anybody
+		 *
 		 *	@param		string		$value
 		 *
 		 *	@return 	string								The target, or ''
@@ -308,8 +296,14 @@ namespace Nino\Modules\Redirects {
 			if( $value === '/' )
 				return '/';
 
-			if( str_starts_with( $value, '/' ) === true )
-				return self::path( $value );
+			// A path whose first segment holds a colon is read by a browser as
+			// a scheme, and \Nino\Http::redirect() does not send it
+			if( str_starts_with( $value, '/' ) === true ) {
+
+				$path = self::path( $value );
+
+				return preg_match( '#^/[^/]*:#', $path ) === 1 ? '' : $path;
+			}
 
 			if( str_starts_with( $value, 'https://' ) === false )
 				return '';
@@ -317,9 +311,8 @@ namespace Nino\Modules\Redirects {
 			if( preg_match( '/[\x00-\x20\x7f]/', $value ) === 1 )
 				return '';
 
-			$host = parse_url( $value, PHP_URL_HOST );
-
-			return is_string( $host ) === true && $host !== '' ? rtrim( $value, '/' ) : '';
+			// A host, no credentials in front of it, and a length a header takes
+			return \Nino\Fetch::isHttpsUrl( $value ) === true ? rtrim( $value, '/' ) : '';
 		}
 
 		/**
@@ -327,15 +320,16 @@ namespace Nino\Modules\Redirects {
 		 *
 		 *	Read from the routes of this request rather than from config.php,
 		 *	because a route a module registers in init() answers an address as
-		 *	well as one a project persisted. A GET route without a wildcard and
-		 *	shaped like a page (see pageShaped(), which also drops the
-		 *	workbench and a name like sitemap.xml) is offered; '/' is.
+		 *	well as one a project persisted. Of the GET routes \Nino\Http::pages()
+		 *	lists, one without a wildcard and shaped like a page (see
+		 *	pageShaped(), which also drops a name like sitemap.xml) is offered;
+		 *	'/' is.
 		 *
-		 *	The label is the page's name the way a menu resolves it: the
-		 *	locale-independent global.php under the file of a locale, the
-		 *	native one first and so winning where several name the page.
-		 *	Navigation's own lookup is private, so this is its reading again.
-		 *	A page nobody named is its path.
+		 *	The label is the page's name the way a menu resolves it: in the
+		 *	fills of each language of the site (\Nino\Html::getFills(), which
+		 *	puts global.php under the file of a language), the native one
+		 *	first and so winning where several name the page. A page nobody
+		 *	named is its path.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
@@ -343,34 +337,25 @@ namespace Nino\Modules\Redirects {
 		 */
 		public static function routes( array &$appData ): array {
 
-			$textDir	= '/text';
-			$global		= \Nino\Filesystem::getFileContent( $appData, $textDir. '/global.php', [] );
-			$global		= is_array( $global ) === true ? $global : [];
-			$texts		= [];
+			$texts = [];
 
-			foreach( array_unique( array_merge( [ \Nino\Locales::getNativeLocale( $appData ) ], \Nino\Locales::getAvailableLocales( $appData ) ) ) as $locale ) {
-				$fills		= \Nino\Filesystem::getFileContent( $appData, $textDir. '/'. $locale. '.php', [] );
-				$texts[]	= array_merge( $global, is_array( $fills ) === true ? $fills : [] );
-			}
+			foreach( array_unique( array_merge( [ \Nino\Locales::getNativeLocale( $appData ) ], \Nino\Locales::getAvailableLocales( $appData ) ) ) as $locale )
+				$texts[] = \Nino\Html::getFills( $appData, $locale );
 
 			$pages = [];
 
-			foreach( (array) ( $appData['/nino/http/routes'] ?? [] ) as $key => $route ) {
+			foreach( \Nino\Http::pages( (array) ( $appData['/nino/http/routes'] ?? [] ) ) as $page ) {
 
-				if( is_string( $key ) === false || str_starts_with( $key, 'GET://' ) === false || str_ends_with( $key, '/*' ) === true )
+				$path = $page['path'];
+
+				if( $page['wildcard'] === true || ( $path !== '/' && self::pageShaped( $path ) === false ) || isset( $pages[$path] ) === true )
 					continue;
 
-				$path = substr( $key, strlen( 'GET:/' ) );
-
-				if( ( $path !== '/' && self::pageShaped( $path ) === false ) || isset( $pages[$path] ) === true )
-					continue;
-
-				$uri		= is_array( $route ) === true && is_string( $route['uri'] ?? null ) === true ? $route['uri'] : $path;
-				$label	= '';
+				$label = '';
 
 				foreach( $texts as $fills ) {
 
-					$name = $fills['[[/_nino/webpage'. $uri. '/name]]'] ?? '';
+					$name = $fills['[[/_nino/webpage'. $page['uri']. '/name]]'] ?? '';
 
 					if( is_string( $name ) === false )
 						continue;
@@ -384,7 +369,7 @@ namespace Nino\Modules\Redirects {
 				$pages[$path] = [
 					'path'		=> $path,
 					'label'		=> $label !== '' ? $label : $path,
-					'locale'	=> is_array( $route ) === true && is_string( $route['locale'] ?? null ) === true ? $route['locale'] : '',
+					'locale'	=> $page['locale'],
 				];
 			}
 

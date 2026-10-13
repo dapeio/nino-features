@@ -65,11 +65,6 @@ namespace Nino\Modules {
 		public const string META = '.meta';
 		public const int META_FORMAT = 1;
 
-		// The kernel's \Nino\Html::breaksToNewlines(), where it has one. A
-		// property rather than a literal, so a static analysis of a kernel that
-		// has the method does not fold the check away
-		private static array $breaksToNewlines = [ \Nino\Html::class, 'breaksToNewlines' ];
-
 		/*	The model field types a priority slot may be given. 'image' carries a
 			path, 'element' a reference and 'boolean' a flag - none of them is text
 			a visitor would type, and _normalizeValue() would reduce them to noise
@@ -147,9 +142,10 @@ namespace Nino\Modules {
 			// Never cached: the index changes with every save
 			$request['/nino/http/response']['header']['Cache-Control'] = 'no-store';
 
+			// For a script that calls the address, which reads the status and
+			// the English sentence: a code is for the workbench's own panels
 			if( $q === '' ) {
-				$request['/nino/http/response']['statusCode']	= 400;
-				$request['/nino/http/response']['body']				= [ 'error' => 'q is required' ];
+				\Nino\Http::fail( $request, 400, 'q is required' );
 				return;
 			}
 
@@ -691,40 +687,34 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	One direct, non-atomic full-file write. Search indexes are deliberately
-		 *	simple derived files: no mutation, side-car lock, revision or signature.
+		 *	One full-file write of a derived file, which the kernel makes whole
+		 *	and atomic: the file is written beside itself and renamed over the
+		 *	old one under the lock of the path, so a search that reads while a
+		 *	rebuild writes sees all of the old index or all of the new one.
+		 *	There is nothing to read first - the new index is made out of the
+		 *	Elements, not out of the old one - so this is no mutate()
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$typeUri			A canonical /type
+		 *	@param		array 		$index				The whole index of the type, every locale
+		 *
+		 *	@return 	bool										Whether it was written
 		 */
 		private static function _writeIndex( array &$appData, string $typeUri, array $index ): bool {
-
-			\Nino\Filesystem::forceDir( $appData, '/data' );
-			$path = \Nino\Filesystem::path( $appData, self::_indexPath( $typeUri ) );
-			$content = '<?php return '. var_export( $index, true ). ';';
-			$written = @file_put_contents( $path, $content );
-
-			if( $written === false || $written !== strlen( $content ) )
-				return false;
-
-			clearstatcache( true, $path );
-
-			if( function_exists( 'opcache_invalidate' ) === true )
-				opcache_invalidate( $path, true );
-
-			return true;
+			return \Nino\Filesystem::putFileContent( $appData, self::_indexPath( $typeUri ), $index );
 		}
 
 		/**
 		 *	Read only. A broken or missing index stays broken/missing until
 		 *	Rebuild or Save and build in the Search panel, or a configured
-		 *	Elements write, refreshes it.
+		 *	Elements write, refreshes it. What is not an index - a file that
+		 *	does not return an array, one that does not parse - is no index:
+		 *	an empty one
 		 */
 		private static function _readIndex( array &$appData, string $typeUri ): array {
 
-			$path = \Nino\Filesystem::path( $appData, self::_indexPath( $typeUri ) );
-			if( is_file( $path ) === false )
-				return [];
-
 			try {
-				$index = @include $path;
+				$index = \Nino\Filesystem::getFileContent( $appData, self::_indexPath( $typeUri ), [] );
 			}
 			catch( \Throwable ) {
 				return [];
@@ -775,12 +765,10 @@ namespace Nino\Modules {
 
 		private static function _normalize( string $value ): string {
 
-			// Where the kernel can say what a <br> and the end of a paragraph or a
-			// list item are, they end a word: stripped without that, a
-			// paragraph's last word and the next one's first are one, and
-			// nobody searches for that
-			if( is_callable( self::$breaksToNewlines ) === true )
-				$value = (string) ( self::$breaksToNewlines )( $value );
+			// A <br> and the end of a paragraph or a list item end a word:
+			// stripped without that, a paragraph's last word and the next one's
+			// first are one, and nobody searches for that
+			$value = \Nino\Html::breaksToNewlines( $value );
 
 			$value = html_entity_decode( $value, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
 			$value = mb_strtolower( strip_tags( $value ), 'UTF-8' );

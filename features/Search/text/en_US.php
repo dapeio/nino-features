@@ -54,4 +54,11 @@ return [
 	'[[/_admin/search/msg/removed]]'				=> 'Saved. The type is no longer indexed, and its index was removed.',
 	'[[/_admin/search/error/create]]'				=> 'The search indexes could not be created.',
 	'[[/_admin/search/error/save]]'					=> 'The configuration could not be saved.',
+
+	'[[/_admin/error/search_type]]'					=> 'That is not the name of an element type.',
+	'[[/_admin/error/search_notype]]'				=> 'There is no element type "%s".',
+	'[[/_admin/error/search_fields]]'				=> 'The priorities were not sent as field names.',
+	'[[/_admin/error/search_priority]]'			=> 'There is no priority %s - the four slots are 0, 1, 2 and 3.',
+	'[[/_admin/error/search_field]]'				=> 'The model of "%s" has no field "%s".',
+	'[[/_admin/error/search_text]]'					=> 'The field "%s" carries no text to search.',
 ];

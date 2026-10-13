@@ -2,9 +2,10 @@
  *	Nino - Gallery
  *	gallery.css	The grid [gallery] renders, and nothing else. Bundled into the
  *						project's own /.cache/style.css the same way the kernel bundles
- *						Nino.css (see Gallery::init() and docs/development.md, "Assets
- *						Are Not Templates") - never rendered through the fill/shortcode
- *						engine, so nothing in here is a textfill.
+ *						Nino.css (the manifest's `assets` name it, and see
+ *						docs/development.md, "Assets Are Not Templates") - never
+ *						rendered through the fill/shortcode engine, so nothing in here
+ *						is a textfill.
  *
  *						The overlay a thumbnail opens into is the Lightbox feature's,
  *						and its stylesheet is its own. Nothing here paints anything a
@@ -76,10 +77,10 @@
 	outline-offset: 3px;
 }
 
+/*	Nino.css makes every transition and animation instant under reduced motion;
+	the zoom of the hovered thumbnail is not one of them - it would still happen,
+	at once - so it is taken away here	*/
 @media (prefers-reduced-motion: reduce) {
-	.nino-gallery-thumb {
-		transition: none;
-	}
 	.nino-gallery-link:hover .nino-gallery-thumb,
 	.nino-gallery-link:focus-visible .nino-gallery-thumb {
 		transform: none;
