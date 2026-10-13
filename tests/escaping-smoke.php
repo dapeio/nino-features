@@ -12,8 +12,9 @@ declare(strict_types=1);
  *											bug nobody sees, and it has bitten the framework twice
  *											(a submission mailed as nothing, a field rendered as
  *											nothing) before a grep was put in front of the third.
- *											This is that grep for the catalogue; the framework's
- *											own is in its kernel-smoke.php.
+ *											This is that grep for the catalogue; the framework
+ *											had one in its kernel suite and gave it up as no test
+ *											of behaviour (a CI grep can take its place).
  *
  *	Usage: php tests/escaping-smoke.php
  */

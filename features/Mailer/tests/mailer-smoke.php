@@ -125,7 +125,7 @@ function waitForMailerLog( array $server, float $timeoutSeconds = 2.0 ): ?array 
 
 /**
  *	A fresh budget for 127.0.0.1, whatever an earlier check spent - the same
- *	technique tests/kernel-smoke.php uses for \Nino\Mail::send()'s own cap
+ *	technique tests/form-mail-smoke.php uses for \Nino\Mail::send()'s own cap
  *
  *	@param		array 		&$appData			(reference) Array with current app data
  *

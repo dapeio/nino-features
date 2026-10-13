@@ -45,8 +45,8 @@ $appData['/nino/locales/textfiles'] = '/text';
 
 /**
  *	Build a request the way \Nino\Http::request() leaves it, and resolve a
- *	response for it - the same helper and calling convention as
- *	tests/kernel-smoke.php's own fakeRequest()
+ *	response for it - the same shape and calling convention as
+ *	ninoVisit() of the kernel's tests/harness.php
  *
  *	@param		array 		&$appData
  *	@param		string		$uri
@@ -81,7 +81,7 @@ function seoCurrentUri( array &$appData, string $uri ): void {
 // --- Fixture: routes, texts, a template file --------------------------------
 
 // Two site pages: "about" paired across en_US/en_US and de_DE (sharing the
-// internal identity '/about', the same shape as tests/kernel-smoke.php's own
+// internal identity '/about', the same shape as tests/http-smoke.php's own
 // GET://rechtliches / GET://legal pair), and a locale-agnostic "faq&more"
 // whose uri exercises xml escaping. Plus three entries that must never
 // appear anywhere this feature generates: an excluded page, a dot-prefixed

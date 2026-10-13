@@ -33,8 +33,8 @@ $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
  *	rawMethod, uri (query already stripped by Http::cleanUri()), the request
  *	header - and a response seeded at statusCode 200, so a test can call the
  *	counter directly against it without a route ever being resolved. Same
- *	helper and calling convention as tests/kernel-smoke.php's own
- *	fakeRequest(), so the two stay directly comparable.
+ *	shape and calling convention as ninoVisit() of the kernel's
+ *	tests/harness.php, so the two stay directly comparable.
  *
  *	@param		array 		&$appData
  *	@param		string		$uri					A path, optionally carrying a query string
@@ -395,7 +395,7 @@ check( 'the page is now stored in the cache', count( glob( \Nino\Filesystem::pat
 
 // Modules\Cache::callbackResponse() answers a hit by calling \Nino\Http::output(),
 // which exit()s - can't be driven in this same process without ending the
-// whole suite (same reasoning as tests/kernel-smoke.php's Runtime::handleError()
+// whole suite (same reasoning as tests/runtime-smoke.php's Runtime::handleError()
 // section), so a subprocess runs the second view and reports back what it saw
 // right up to the point output() ends it
 $sandbox = ninoSandboxDir( $appData );

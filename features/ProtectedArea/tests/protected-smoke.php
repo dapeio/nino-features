@@ -86,7 +86,7 @@ $appData['/nino/dir'] = '';
 /**
  *	Drive the gate the way \Nino\Http::response() would call it, with a
  *	hand-built request already carrying a resolved route's body/status - the
- *	shape kernel-smoke.php's Http::request/response section and Modules\Form's
+ *	shape http-smoke.php's Http::request/response section and Modules\Form's
  *	own callback tests use
  *
  *	@param		array 		&$appData

@@ -47,7 +47,7 @@ namespace Nino\Modules {
 	 *										variants of the same page when they share the same 'uri'
 	 *										field (the internal identity \Nino\Http::findRouteUri()
 	 *										itself pairs a locale switch against) with different
-	 *										'locale' values - see tests/kernel-smoke.php's own
+	 *										'locale' values - see tests/http-smoke.php's own
 	 *										GET://rechtliches / GET://legal pair for exactly this
 	 *										shape. <loc> and every href always carry the external
 	 *										path (what a crawler can actually fetch), never the
