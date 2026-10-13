@@ -20,4 +20,7 @@ return [
 	'[[/_admin/stats/label/referrer]]'		=> 'Referrer',
 	'[[/_admin/stats/label/search]]'			=> 'Search',
 	'[[/_admin/stats/nomatch]]'					=> 'Nothing matches this search.',
+
+	// The sentence of the code stats_month (Admin::apiMonth())
+	'[[/_admin/error/stats_month]]'				=> 'That is no month. A month is written like 2026-10.',
 ];

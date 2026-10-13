@@ -71,23 +71,20 @@ if( ( $argv[1] ?? '' ) === 'unlock-worker' ) {
 $appData = ninoSandbox( 'protected' );
 $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
 
-// Needed for a fill to actually resolve through renderHtml() below - a bare
-// ninoSandbox() never sets this (AppData::init() would, but nothing here
-// calls it; see \Nino\Html::getFills()), and without it the merged install
-// text under /text/<locale>.php would never be found
-$appData['/nino/locales/textfiles'] = '/text';
-
 // The project directory and its fill, which \Nino\request() registers from
 // the same key on every request - empty here, the way a site at the domain
 // root has it; the subdirectory section at the end sets both to /sub
 $appData['/nino/dir'] = '';
 \Nino\Html::addFills( $appData, [ '[[/nino/dir]]' => '' ], '*' );
 
+// The workbench's entry point, which ninoCall() hands a panel action
+$panel = [ \Nino\Admin\Admin::class, 'handlePost' ];
+
 /**
- *	Drive the gate the way \Nino\Http::response() would call it, with a
- *	hand-built request already carrying a resolved route's body/status - the
- *	shape http-smoke.php's Http::request/response section and Modules\Form's
- *	own callback tests use
+ *	Drive the gate the way \Nino\Http::response() would call it: a request of
+ *	ninoVisit() already carrying the body a resolved route would have answered.
+ *	The uri is laid in as it is given - cleanUri() strips characters from a
+ *	real request's, and the gate has to hold on its own
  *
  *	@param		array 		&$appData
  *	@param		string		$uri
@@ -96,17 +93,16 @@ $appData['/nino/dir'] = '';
  *	@return 	array
  */
 function protectedGate( array &$appData, string $uri, string $body = 'ORIGINAL PAGE' ): array {
-	$request = [
-		'/nino/http/request'	=> [ 'uri' => $uri ],
-		'/nino/http/response'	=> [ 'statusCode' => 200, 'body' => $body, 'header' => [] ],
-	];
+	$request = ninoVisit( $appData, '/' );
+	$request['/nino/http/request']['uri'] = $uri;
+	$request['/nino/http/response']['body'] = $body;
 	\Nino\Modules\ProtectedArea::callbackGate( $appData, $request );
 	return $request;
 }
 
 /**
- *	Drive POST /.protected the way Modules\Form's own tests drive
- *	POST /.form: $_POST filled by hand, the route callback called directly
+ *	Drive POST /.protected: what it does beyond ninoVisit() is fill $_POST by
+ *	hand, which the route callback reads, and call the callback itself
  *
  *	@param		array 		&$appData
  *	@param		array 		$post
@@ -115,20 +111,22 @@ function protectedGate( array &$appData, string $uri, string $body = 'ORIGINAL P
  */
 function protectedUnlock( array &$appData, array $post ): array {
 	$_POST = array_merge( [ 'password' => '', 'return' => '' ], $post );
-	$request = [ '/nino/http/response' => [ 'statusCode' => 200, 'header' => [] ] ];
+	$request = ninoVisit( $appData, '/.protected', 'POST' );
 	\Nino\Modules\ProtectedArea::callbackUnlock( $appData, $request );
 	return $request;
 }
 
 /**
- *	@param		array 		&$appData
+ *	The tries a client has on file with the kernel's counter: its entry is
+ *	keyed by the sha256 of the address, never by the address
  *
- *	@return 	array
+ *	@param		array 		&$appData
+ *	@param		string		$ip
+ *
+ *	@return 	int
  */
-function protectedLogout( array &$appData ): array {
-	$request = [ '/nino/http/response' => [ 'statusCode' => 200, 'header' => [] ] ];
-	\Nino\Modules\ProtectedArea::callbackLogout( $appData, $request );
-	return $request;
+function protectedTries( array &$appData, string $ip ): int {
+	return (int) ( \Nino\Filesystem::getFileContent( $appData, '/data/protected.php', [] )[ hash( 'sha256', $ip ) ]['tries'] ?? 0 );
 }
 
 
@@ -184,16 +182,12 @@ check( 'the settings answer their defaults - inert until a password is set', \Ni
 	keys reads the templates as source, so without the unit's blacklist entry
 	it reported that key - and the Dashboard counted it - on every project
 	with this feature, as a gap nobody could close	*/
-\Nino\Auth::insertUser( $appData, 'scan@example.com', 'correct horse battery staple', [ '/*' ] );
-\Nino\Auth::loginUser( $appData, 'scan@example.com', 'correct horse battery staple' );
-$_POST = [ 'action' => 'keys/scan', 'data' => '{}' ];
-$scanRequest = [ '/nino/http/response' => [ 'statusCode' => 200 ] ];
-\Nino\Admin\Admin::handlePost( $appData, $scanRequest );
-$reported = array_column( (array) ( $scanRequest['/nino/http/response']['body']['missing'] ?? [] ), 'key' );
-check( 'the Text panel\'s scan reports no key of this feature: what the template uses is in the text files or in the blacklist', $scanRequest['/nino/http/response']['statusCode'] === 200
+ninoUser( $appData, 'scan@example.com' );
+[ $scanStatus, $scanned ] = ninoCall( $appData, $panel, [], 'keys/scan' );
+$reported = array_column( (array) ( $scanned['missing'] ?? [] ), 'key' );
+check( 'the Text panel\'s scan reports no key of this feature: what the template uses is in the text files or in the blacklist', $scanStatus === 200
 	&& array_filter( $reported, static fn( string $key ): bool => str_starts_with( $key, '/feature/protected/' ) === true || str_starts_with( $key, '/template/page-protected/' ) === true ) === [] );
 \Nino\Auth::logoutUser( $appData );
-$_POST = [];
 
 echo "\n";
 
@@ -235,10 +229,12 @@ check( 'init registers the logout route', isset( $appData['/nino/http/routes']['
 check( 'the gate is registered at priority 1, before Modules\\Cache\'s 9', count( $appData['./nino/callbacks']['/nino/http/response'][1] ?? [] ) > 0 );
 
 $blacklist = (array) ( $appData['/nino/cache/blacklist'] ?? [] );
-check( 'the first protected prefix extends the cache blacklist as itself and as a subtree', in_array( '/intern', $blacklist, true ) === true
-	&& in_array( '/intern/*', $blacklist, true ) === true );
-check( 'the second one does too', in_array( '/preview/client-a', $blacklist, true ) === true
-	&& in_array( '/preview/client-a/*', $blacklist, true ) === true );
+check( 'the first protected prefix extends the cache blacklist as a subtree', in_array( '/intern/*', $blacklist, true ) === true );
+check( 'the second one does too', in_array( '/preview/client-a/*', $blacklist, true ) === true );
+check( 'a subtree entry covers the prefix itself as the cache reads its blacklist, so no entry of the bare prefix is added',
+	\Nino\Http::matchesPath( '/intern', $blacklist ) === true && \Nino\Http::matchesPath( '/preview/client-a', $blacklist ) === true
+	&& in_array( '/intern', $blacklist, true ) === false && in_array( '/preview/client-a', $blacklist, true ) === false );
+check( '...and a uri that only shares the beginning is not covered', \Nino\Http::matchesPath( '/internal', $blacklist ) === false );
 
 // What the Seo feature asks, by the literal string - nothing here requires it
 $seoExcluded = [];
@@ -277,8 +273,9 @@ check( 'a wrong password answers 401 and re-renders the form', $wrongRequest['/n
 check( 'the wrong-password error resolves through [protected-error]', \Nino\Html::renderHtml( $appData, '[protected-error]' ) === '<p class="nino-protected-error">Falsches Passwort. Bitte versuche es erneut.</p>' );
 check( 'the posted return path is carried back into the hidden field', ( $appData['./nino/html/fills']['*']['[[/feature/protected/form/return]]'] ?? '' ) === '/intern/notes' );
 check( 'the session is still locked', \Nino\Modules\ProtectedArea::unlocked( $appData ) === false );
-check( 'one wrong attempt was recorded for this ip', \Nino\Filesystem::getFileContent( $appData, '/data/protected.php', [] )['127.0.0.1']['tries'] === 1 );
+check( 'one wrong attempt was recorded for this ip', protectedTries( $appData, '127.0.0.1' ) === 1 );
 check( 'the counter lives under /data/protected.php, as the manifest says', is_file( \Nino\Filesystem::path( $appData, '/data/protected.php' ) ) === true );
+check( '...and holds the client by a hash of its address: the address is nowhere in the file', str_contains( (string) file_get_contents( \Nino\Filesystem::path( $appData, '/data/protected.php' ) ), '127.0.0.1' ) === false );
 
 echo "\n";
 
@@ -294,13 +291,13 @@ $_SERVER['REMOTE_ADDR'] = '198.51.100.10';
 // has to happen before the password is compared to be a cap at all - and
 // somebody who is through is not somebody the cap should still count down on
 protectedUnlock( $appData, [ 'password' => 'not-the-password', 'return' => '/intern/notes' ] );
-check( 'a wrong try is on file for this ip', ( \Nino\Filesystem::getFileContent( $appData, '/data/protected.php', [] )['198.51.100.10']['tries'] ?? 0 ) === 1 );
+check( 'a wrong try is on file for this ip', protectedTries( $appData, '198.51.100.10' ) === 1 );
 
 $rightRequest = protectedUnlock( $appData, [ 'password' => 'sesam-öffne-dich', 'return' => '/intern/notes' ] );
 check( 'the right password unlocks and redirects (303)', $rightRequest['/nino/http/response']['statusCode'] === 303
 	&& ( $rightRequest['/nino/http/response']['header']['Location'] ?? '' ) === '/intern/notes' );
 check( 'the session now reads unlocked', \Nino\Modules\ProtectedArea::unlocked( $appData ) === true );
-check( 'and the unlock left no attempts on file for that ip', isset( \Nino\Filesystem::getFileContent( $appData, '/data/protected.php', [] )['198.51.100.10'] ) === false );
+check( 'and the unlock left no attempts on file for that ip', isset( \Nino\Filesystem::getFileContent( $appData, '/data/protected.php', [] )[ hash( 'sha256', '198.51.100.10' ) ] ) === false );
 
 $passedRequest = protectedGate( $appData, '/intern' );
 check( 'the protected GET now passes through untouched', $passedRequest['/nino/http/response']['statusCode'] === 200
@@ -324,6 +321,14 @@ check( 'a protocol-relative return is replaced by / too', ( $protocolRelativeRet
 $injectedReturnRequest = protectedUnlock( $appData, [ 'password' => 'sesam-öffne-dich', 'return' => "/intern\r\nSet-Cookie: x=1" ] );
 check( 'a return carrying a line break or control character is replaced by /', ( $injectedReturnRequest['/nino/http/response']['header']['Location'] ?? '' ) === '/' );
 
+// A browser reads '/\host' as '//host', and the kernel's redirect refuses it (with a warning, leaving the response as it was): the visitor is sent home instead
+ninoWarnings();
+$backslashReturnRequest = protectedUnlock( $appData, [ 'password' => 'sesam-öffne-dich', 'return' => '/\\evil.example/phish' ] );
+check( 'a return that starts with a slash and a backslash is replaced by / too, and the redirect is made without a warning', $backslashReturnRequest['/nino/http/response']['statusCode'] === 303
+	&& ( $backslashReturnRequest['/nino/http/response']['header']['Location'] ?? '' ) === '/' && ninoWarnings() === [] );
+check( 'a redirect to a page of the site is not cached: it is marked no-store', ( $backslashReturnRequest['/nino/http/response']['header']['Cache-Control'] ?? '' ) === 'no-store'
+	&& ( $injectedReturnRequest['/nino/http/response']['header']['Cache-Control'] ?? '' ) === 'no-store' );
+
 // The wrong-password answer carries the posted return back into the form, so
 // the visitor keeps their destination - and a value carried into a page is a
 // value that is rendered. Escaped, it was still read by the fill and the
@@ -339,6 +344,15 @@ $renderingReturnRequest = protectedUnlock( $appData, [ 'password' => 'not-the-pa
 $renderedForm = \Nino\Html::renderHtml( $appData, (string) $renderingReturnRequest['/nino/http/response']['body'] );
 check( 'a return that is a template or a fill is carried back as the text it is, not rendered', str_contains( $renderedForm, 'THE-SECRET-TEMPLATE' ) === false
 	&& str_contains( $renderedForm, 'THE-SECRET-TEXT' ) === false );
+
+// The uri the gate carries into the same form is the visitor's too. A real request's has lost its brackets by then (cleanUri() takes
+// them out), and the gate does not lean on that: handed a uri that has them, it escapes it as it escapes a posted return
+\Nino\Runtime::unsetSessionValue( $appData, './protected/unlocked' );
+$gateWithBrackets = protectedGate( $appData, '/intern/[template /templates/page-secret] [[/secret/fill]] [x]' );
+$renderedGate = \Nino\Html::renderHtml( $appData, (string) $gateWithBrackets['/nino/http/response']['body'] );
+check( 'a locked visitor\'s uri that is a template or a fill is carried into the form as the text it is, not rendered', str_contains( $renderedGate, 'THE-SECRET-TEMPLATE' ) === false
+	&& str_contains( $renderedGate, 'THE-SECRET-TEXT' ) === false && str_contains( $renderedGate, '&#91;template /templates/page-secret]' ) === true );
+check( '...and a bracket that is no fill or shortcode at all comes back as the character it is', str_contains( $renderedGate, '&#91;x]' ) === true );
 
 // Nothing says a post carries strings. An array under a name the endpoint
 // reads used to reach a (string) cast, and the warning that raises is fatal
@@ -364,11 +378,18 @@ for( $i = 1; $i <= 3; $i++ ) {
 	check( "wrong attempt $i of 3 is answered as wrong (401)", $capRequest['/nino/http/response']['statusCode'] === 401 );
 }
 
-check( 'three wrong tries are on file for this ip', \Nino\Filesystem::getFileContent( $appData, '/data/protected.php', [] )['198.51.100.12']['tries'] === 3 );
+check( 'three wrong tries are on file for this ip', protectedTries( $appData, '198.51.100.12' ) === 3 );
 
 $cappedRequest = protectedUnlock( $appData, [ 'password' => 'sesam-öffne-dich', 'return' => '/intern' ] );
 check( 'the next attempt is refused (429) even with the right password', $cappedRequest['/nino/http/response']['statusCode'] === 429 );
+check( '...and is counted as well, as the kernel counts every try, past the limit too: four on file for a cap of three', protectedTries( $appData, '198.51.100.12' ) === 4 );
 check( 'the locked error, not the wrong-password one, is what [protected-error] now shows', \Nino\Html::renderHtml( $appData, '[protected-error]' ) === '<p class="nino-protected-error">Zu viele falsche Versuche. Bitte versuche es in einer Stunde erneut.</p>' );
+
+// The kernel's counter takes a limit of 0 or less for no limit at all. The setting cannot get there: a stored value below its
+// minimum of 1 is not handed to the feature, the default is
+$appData['/nino/features']['protected']['settings']['attempts'] = 0;
+check( 'a stored number of attempts below its minimum is read as the default - a cap, not the counter\'s "no limit"', \Nino\Features::setting( $appData, 'protected', 'attempts' ) === 5 );
+$appData['/nino/features']['protected']['settings']['attempts'] = 3;
 
 echo "\n";
 
@@ -413,13 +434,13 @@ foreach( $burstProcesses as [ $burstProcess, $burstPipe ] ) {
 // The parent read this file before the workers wrote it - same way mutate()
 // forces its own re-read (see \Nino\Filesystem::mutate())
 $appData['./nino/filesystem/cache']['/data/protected.php']['fstat'] = [];
-$burstTries = (int) ( \Nino\Filesystem::getFileContent( $appData, '/data/protected.php', [] )[$burstIp]['tries'] ?? 0 );
+$burstTries = protectedTries( $appData, $burstIp );
 $burstTried = count( array_keys( $burstAnswers, 401, true ) );
 
 check( 'all eight parallel posts were answered', count( $burstAnswers ) === 8 );
 check( 'exactly three of them got a try, the other five were refused (429)', $burstTried === 3
 	&& count( array_keys( $burstAnswers, 429, true ) ) === 5 );
-check( 'and the counter on file says three, not eight', $burstTries === 3 );
+check( 'and the counter on file says eight: every try is counted, the five refused ones too', $burstTries === 8 );
 
 echo "\n";
 
@@ -440,9 +461,8 @@ $_SERVER['HTTP_X_FORWARDED_FOR'] 	= '198.51.100.20';
 for( $i = 1; $i <= 3; $i++ )
 	protectedUnlock( $appData, [ 'password' => 'still-not-the-password', 'return' => '/intern' ] );
 
-$proxiedCounters = \Nino\Filesystem::getFileContent( $appData, '/data/protected.php', [] );
-check( 'the tries are counted for the visitor behind the proxy', ( $proxiedCounters['198.51.100.20']['tries'] ?? 0 ) === 3
-	&& isset( $proxiedCounters['203.0.113.9'] ) === false );
+check( 'the tries are counted for the visitor behind the proxy', protectedTries( $appData, '198.51.100.20' ) === 3
+	&& protectedTries( $appData, '203.0.113.9' ) === 0 );
 
 $proxiedCapRequest = protectedUnlock( $appData, [ 'password' => 'sesam-öffne-dich', 'return' => '/intern' ] );
 check( 'that visitor is capped like any other', $proxiedCapRequest['/nino/http/response']['statusCode'] === 429 );
@@ -462,9 +482,11 @@ echo "\n";
 
 echo "Modules\\ProtectedArea::callbackLogout / [protected-logout]\n";
 
-$logoutRequest = protectedLogout( $appData );
+$logoutRequest = ninoVisit( $appData, '/.protected/logout' );
+\Nino\Modules\ProtectedArea::callbackLogout( $appData, $logoutRequest );
 check( 'logout redirects home (303)', $logoutRequest['/nino/http/response']['statusCode'] === 303
 	&& ( $logoutRequest['/nino/http/response']['header']['Location'] ?? '' ) === '/' );
+check( '...and the redirect is marked no-store, as the kernel marks every redirect', ( $logoutRequest['/nino/http/response']['header']['Cache-Control'] ?? '' ) === 'no-store' );
 check( 'logout unsets the session', \Nino\Modules\ProtectedArea::unlocked( $appData ) === false );
 
 $lockedAgainRequest = protectedGate( $appData, '/intern' );
@@ -484,9 +506,7 @@ echo "\n";
 
 echo "Components - [protected-logout] as the Builder offers it\n";
 
-if( class_exists( '\\Nino\\Modules\\Components' ) === false )
-	echo "  --  this Nino has no \\Nino\\Modules\\Components: the manifest's components are not read here, and the shortcode registers itself\n";
-else ( static function( array $appData ): void {
+( static function( array $appData ): void {
 
 	$declared = \Nino\Features::manifest( dirname( __DIR__ ) )['components'] ?? [];
 
@@ -566,7 +586,9 @@ check( '...the unlock sends the visitor back to the page within the project', ( 
 
 \Nino\Runtime::setSessionValue( $appData, './protected/unlocked', true );
 check( '...the logout link points at the project\'s own endpoint', \Nino\Html::renderHtml( $appData, '[protected-logout]' ) === '<a href="/sub/.protected/logout" class="nino-protected-logout">Diesen Bereich wieder sperren</a>' );
-check( '...and locking again lands on the project\'s front page, not the domain\'s', ( protectedLogout( $appData )['/nino/http/response']['header']['Location'] ?? '' ) === '/sub/' );
+$logoutInSub = ninoVisit( $appData, '/.protected/logout' );
+\Nino\Modules\ProtectedArea::callbackLogout( $appData, $logoutInSub );
+check( '...and locking again lands on the project\'s front page, not the domain\'s', ( $logoutInSub['/nino/http/response']['header']['Location'] ?? '' ) === '/sub/' );
 
 $appData['/nino/dir'] = '';
 \Nino\Html::addFills( $appData, [ '[[/nino/dir]]' => '' ], '*' );
@@ -638,23 +660,6 @@ echo "\n";
 
 echo "The panel - guards, the state, the pages, the password, signing out\n";
 
-/**
- *	Drive a panel action the way the workbench does: through the registry's
- *	dispatch, with the payload in the 'data' field
- *
- *	@param		array 		&$appData
- *	@param		string		$action
- *	@param		array 		$data
- *
- *	@return 	array											The response: statusCode and body
- */
-function protectedPanel( array &$appData, string $action, array $data = [] ): array {
-	$_POST = [ 'action' => $action, 'data' => json_encode( $data ) ];
-	$request = [ '/nino/http/response' => [ 'statusCode' => 200 ] ];
-	\Nino\Admin\Admin::handlePost( $appData, $request );
-	$_POST = [];
-	return $request['/nino/http/response'];
-}
 
 // The site the panel lists: a page with a variant per language, a protected
 // page and one below it, a wildcard route, a page that names its Content-Type
@@ -667,6 +672,7 @@ $appData['/nino/http/routes'] = [
 	'GET://intern'				=> [ 'uri' => '/intern', 'body' => 'intern' ],
 	'GET://intern/notes'	=> [ 'uri' => '/intern/notes', 'body' => 'notes' ],
 	'GET://blog/*'				=> [ 'uri' => '/blog', 'body' => 'blog' ],
+	'GET://abroad'				=> [ 'uri' => '/abroad', 'locale' => 'fr_FR', 'body' => 'abroad' ],
 	'GET://plain'					=> [ 'uri' => '/plain', 'body' => 'plain', 'header' => [ 'content-type' => 'text/html; charset=UTF-8' ] ],
 	'GET://404'						=> [ 'uri' => '/404', 'body' => 'nope', 'statusCode' => 404 ],
 	'GET://gone'					=> [ 'uri' => '/gone', 'body' => 'gone', 'statusCode' => 410 ],
@@ -684,7 +690,10 @@ $appData['/nino/http/routes'] = [
 \Nino\Filesystem::putFileContent( $appData, '/text/de_DE.php', array_merge( \Nino\Filesystem::getFileContent( $appData, '/text/de_DE.php', [] ), [
 	'[[/_nino/webpage/intern/title]]' => 'Interner Bereich',
 	'[[/_nino/webpage/about/title]]' => 'Über uns',
+	'[[/_nino/webpage/abroad/title]]' => 'Im Ausland',
 ] ) );
+// A text file of a language the site does not list lies there and is not read
+\Nino\Filesystem::putFileContent( $appData, '/text/fr_FR.php', [ '[[/_nino/webpage/abroad/title]]' => 'À l\'étranger' ] );
 
 // What a project looks like when the panel is first opened: a password, the
 // developer's own prefixes (one of them a route's, one a path no route names,
@@ -699,12 +708,11 @@ check( 'the panel is registered while the feature is active', isset( \Nino\Admin
 
 \Nino\Auth::logoutUser( $appData );
 foreach( [ 'protected/state', 'protected/pages', 'protected/password', 'protected/signout' ] as $action )
-	check( "$action without a login is 401", protectedPanel( $appData, $action, [ 'paths' => [], 'pw' => 'long-enough-pw' ] )['statusCode'] === 401 );
+	check( "$action without a login is 401", ninoCall( $appData, $panel, [ 'paths' => [], 'pw' => 'long-enough-pw' ], $action )[0] === 401 );
 
-\Nino\Auth::insertUser( $appData, 'plain@example.com', 'correct horse battery staple', [ '/_admin/users/manage' ] );
-\Nino\Auth::loginUser( $appData, 'plain@example.com', 'correct horse battery staple' );
+ninoUser( $appData, 'plain@example.com', [ '/_admin/users/manage' ] );
 foreach( [ 'protected/state', 'protected/pages', 'protected/password', 'protected/signout' ] as $action )
-	check( "$action without the panel's permission is 403", protectedPanel( $appData, $action, [ 'paths' => [], 'pw' => 'long-enough-pw' ] )['statusCode'] === 403 );
+	check( "$action without the panel's permission is 403", ninoCall( $appData, $panel, [ 'paths' => [], 'pw' => 'long-enough-pw' ], $action )[0] === 403 );
 check( '...and nothing was written by any of them', \Nino\Features::setting( $appData, 'protected', 'password' ) === 'sesam-öffne-dich'
 	&& \Nino\Features::setting( $appData, 'protected', 'paths' ) === [ '/intern', '/preview/client-a', '/_admin' ] );
 \Nino\Auth::logoutUser( $appData );
@@ -712,9 +720,9 @@ check( '...and nothing was written by any of them', \Nino\Features::setting( $ap
 \Nino\Auth::loginUser( $appData, 'scan@example.com', 'correct horse battery staple' );
 
 // state
-$state = protectedPanel( $appData, 'protected/state' );
-$stateBody = (array) ( $state['body'] ?? [] );
-check( 'state answers 200', $state['statusCode'] === 200 );
+[ $stateStatus, $state ] = ninoCall( $appData, $panel, [], 'protected/state' );
+$stateBody = (array) $state;
+check( 'state answers 200', $stateStatus === 200 );
 check( 'state says a password is set and never what it is', ( $stateBody['hasPassword'] ?? null ) === true
 	&& str_contains( (string) json_encode( $stateBody ), 'sesam' ) === false && isset( $stateBody['password'] ) === false );
 check( 'state names the shortest password the panel takes', ( $stateBody['minLength'] ?? 0 ) === 8 );
@@ -724,12 +732,14 @@ foreach( (array) ( $stateBody['pages'] ?? [] ) as $page )
 	$byUri[ (string) $page['uri'] ] = $page;
 
 check( 'the list is the pages: the language variants as one, a wildcard as its prefix, a lower-case content type kept',
-	array_keys( $byUri ) === [ '/about', '/intern', '/intern/notes', '/blog', '/plain' ]
+	array_keys( $byUri ) === [ '/about', '/intern', '/intern/notes', '/blog', '/abroad', '/plain' ]
 	&& $byUri['/about']['paths'] === [ '/about', '/ueber-uns' ] && $byUri['/blog']['paths'] === [ '/blog' ] );
 check( 'not offered: the front page, error pages, files, tools, module endpoints, a post route',
 	array_filter( array_keys( $byUri ), static fn( string $uri ): bool => in_array( $uri, [ '/', '/404', '/gone', '/robots.txt', '/sitemap.xml', '/api/data', '/_admin/x', '/.hidden', '/form' ], true ) ) === [] );
-check( 'a title is the page\'s own text in the route\'s locale, else the native one, else empty',
-	$byUri['/about']['title'] === 'About Us' && $byUri['/intern']['title'] === 'Interner Bereich' && $byUri['/blog']['title'] === '' );
+check( 'a title is the page\'s own text in the route\'s locale, else the native one - also for a language the site does not list, whose text file is not read - else empty',
+	$byUri['/about']['title'] === 'About Us' && $byUri['/intern']['title'] === 'Interner Bereich' && $byUri['/abroad']['title'] === 'Im Ausland' && $byUri['/blog']['title'] === '' );
+@unlink( \Nino\Filesystem::path( $appData, '/text/fr_FR.php' ) );
+unset( $appData['./nino/filesystem/cache']['/text/fr_FR.php'] );
 check( 'a page that is a prefix is chosen; one below it is covered, not chosen; the others are neither',
 	$byUri['/intern']['selected'] === true && $byUri['/intern']['covered'] === false
 	&& $byUri['/intern/notes']['selected'] === false && $byUri['/intern/notes']['covered'] === true
@@ -737,34 +747,46 @@ check( 'a page that is a prefix is chosen; one below it is covered, not chosen; 
 check( 'a prefix the list cannot name is reported as extra - and the tool one the gate ignores is not', ( $stateBody['extra'] ?? null ) === [ '/preview/client-a' ] );
 
 // pages
-check( 'a path the server does not list is refused (400)', protectedPanel( $appData, 'protected/pages', [ 'paths' => [ '/about', '/secret' ] ] )['statusCode'] === 400 );
-check( '...a prefix typed in is not a page of the list either', protectedPanel( $appData, 'protected/pages', [ 'paths' => [ '/intern/*' ] ] )['statusCode'] === 400 );
-check( '...a non-string entry, and a payload that is no list', protectedPanel( $appData, 'protected/pages', [ 'paths' => [ [ '/about' ] ] ] )['statusCode'] === 400
-	&& protectedPanel( $appData, 'protected/pages', [ 'paths' => '/about' ] )['statusCode'] === 400
-	&& protectedPanel( $appData, 'protected/pages', [ 'paths' => [ 'a' => '/about' ] ] )['statusCode'] === 400
-	&& protectedPanel( $appData, 'protected/pages', [] )['statusCode'] === 400 );
+[ $unlistedStatus, $unlistedBody ] = ninoCall( $appData, $panel, [ 'paths' => [ '/about', '/secret' ] ], 'protected/pages' );
+check( 'a path the server does not list is refused (400) with the code protected_page', $unlistedStatus === 400 && $unlistedBody['code'] === 'protected_page' );
+check( '...a prefix typed in is not a page of the list either', ninoCall( $appData, $panel, [ 'paths' => [ '/intern/*' ] ], 'protected/pages' )[1]['code'] === 'protected_page' );
+check( '...a non-string entry is no page, a payload that is no list is protected_paths', ninoCall( $appData, $panel, [ 'paths' => [ [ '/about' ] ] ], 'protected/pages' )[1]['code'] === 'protected_page'
+	&& ninoCall( $appData, $panel, [ 'paths' => '/about' ], 'protected/pages' )[1]['code'] === 'protected_paths'
+	&& ninoCall( $appData, $panel, [ 'paths' => [ 'a' => '/about' ] ], 'protected/pages' )[1]['code'] === 'protected_paths'
+	&& ninoCall( $appData, $panel, [], 'protected/pages' )[1]['code'] === 'protected_paths' );
 check( '...and nothing was written by any of them', \Nino\Features::setting( $appData, 'protected', 'paths' ) === [ '/intern', '/preview/client-a', '/_admin' ] );
 
-$saved = protectedPanel( $appData, 'protected/pages', [ 'paths' => [ '/about', '/ueber-uns', '/blog' ] ] );
-check( 'a choice of listed pages is saved (200)', $saved['statusCode'] === 200 );
+[ $savedStatus, $saved ] = ninoCall( $appData, $panel, [ 'paths' => [ '/about', '/ueber-uns', '/blog' ] ], 'protected/pages' );
+check( 'a choice of listed pages is saved (200)', $savedStatus === 200 );
 check( 'both language variants of a page are protected together', \Nino\Modules\ProtectedArea::protects( $appData, '/about' ) === true
 	&& \Nino\Modules\ProtectedArea::protects( $appData, '/ueber-uns' ) === true && \Nino\Modules\ProtectedArea::protects( $appData, '/blog/a-post' ) === true );
 check( '...the page left out is open again', \Nino\Modules\ProtectedArea::protects( $appData, '/intern' ) === false );
 check( '...the developer\'s own prefixes are kept as they were, ahead of the choice', \Nino\Features::setting( $appData, 'protected', 'paths' ) === [ '/preview/client-a', '/_admin', '/about', '/ueber-uns', '/blog' ] );
 check( '...and the other settings are untouched', \Nino\Features::setting( $appData, 'protected', 'password' ) === 'sesam-öffne-dich'
 	&& \Nino\Features::setting( $appData, 'protected', 'attempts' ) === 3 );
-check( '...with the new state in the answer', ( $saved['body']['pages'][0]['selected'] ?? null ) === true && ( $saved['body']['extra'] ?? null ) === [ '/preview/client-a' ] );
+check( '...with the new state in the answer', ( $saved['pages'][0]['selected'] ?? null ) === true && ( $saved['extra'] ?? null ) === [ '/preview/client-a' ] );
 
 check( 'a choice survives a fresh read of config.php', ( \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/features']['protected']['settings']['paths'] ?? null ) === [ '/preview/client-a', '/_admin', '/about', '/ueber-uns', '/blog' ] );
 
-$cleared = protectedPanel( $appData, 'protected/pages', [ 'paths' => [] ] );
-check( 'an empty choice is accepted: it switches the listed pages off and keeps the developer\'s prefixes', $cleared['statusCode'] === 200
+[ $clearedStatus ] = ninoCall( $appData, $panel, [ 'paths' => [] ], 'protected/pages' );
+check( 'an empty choice is accepted: it switches the listed pages off and keeps the developer\'s prefixes', $clearedStatus === 200
 	&& \Nino\Features::setting( $appData, 'protected', 'paths' ) === [ '/preview/client-a', '/_admin' ]
 	&& \Nino\Modules\ProtectedArea::protects( $appData, '/about' ) === false && \Nino\Modules\ProtectedArea::protects( $appData, '/preview/client-a/x' ) === true );
 
+// A listed page whose address the setting cannot hold: the kernel refuses the line (at most 1000 characters), in its English, and the message is the one param of the code
+$longPath = '/'. str_repeat( 'x', 1001 );
+$appData['/nino/http/routes']['GET:/'. $longPath] = [ 'uri' => $longPath, 'body' => 'long' ];
+\Nino\AppData::writeContentData( $appData, [ '/nino/http/routes' ] );
+[ $refusedStatus, $refusedBody ] = ninoCall( $appData, $panel, [ 'paths' => [ $longPath ] ], 'protected/pages' );
+check( 'a setting the kernel refuses is a 400 with the code protected_setting and its English message as the one param', $refusedStatus === 400 && $refusedBody['code'] === 'protected_setting'
+	&& $refusedBody['params'] === [ $refusedBody['error'] ] && str_contains( $refusedBody['error'], '1000' ) === true );
+check( '...and nothing was written', \Nino\Features::setting( $appData, 'protected', 'paths' ) === [ '/preview/client-a', '/_admin' ] );
+unset( $appData['/nino/http/routes']['GET:/'. $longPath] );
+\Nino\AppData::writeContentData( $appData, [ '/nino/http/routes' ] );
+
 // A line the list names, written the way a developer might - with the slash on the end
 \Nino\Features::saveSettings( $appData, 'protected', [ 'paths' => [ '/intern/', '/preview/client-a' ] ] );
-protectedPanel( $appData, 'protected/pages', [ 'paths' => [ '/blog' ] ] );
+ninoCall( $appData, $panel, [ 'paths' => [ '/blog' ] ], 'protected/pages' );
 check( 'a line of the list\'s own, in another spelling, is replaced by the choice and not kept beside it', \Nino\Features::setting( $appData, 'protected', 'paths' ) === [ '/preview/client-a', '/blog' ] );
 
 // password
@@ -773,33 +795,41 @@ $unlockedBefore = static function( array &$appData ): void {
 	\Nino\Runtime::setSessionValue( $appData, './protected/unlocked', \Nino\Filesystem::getFileContent( $appData, '/data/protected-session.php', [] )['epoch'] );
 };
 
-check( 'a short password is refused (400)', protectedPanel( $appData, 'protected/password', [ 'pw' => '1234567' ] )['statusCode'] === 400 );
-check( '...a very long one, one that is no string, and none at all', protectedPanel( $appData, 'protected/password', [ 'pw' => str_repeat( 'x', 201 ) ] )['statusCode'] === 400
-	&& protectedPanel( $appData, 'protected/password', [ 'pw' => [ 'longenough' ] ] )['statusCode'] === 400
-	&& protectedPanel( $appData, 'protected/password', [] )['statusCode'] === 400 );
+[ $shortStatus, $shortBody ] = ninoCall( $appData, $panel, [ 'pw' => '1234567' ], 'protected/password' );
+check( 'a short password is refused (400) with the code protected_short, the least it takes and the field it was posted in', $shortStatus === 400 && $shortBody['code'] === 'protected_short'
+	&& $shortBody['params'] === [ 8 ] && $shortBody['field'] === 'pw' );
+[ $longStatus, $longBody ] = ninoCall( $appData, $panel, [ 'pw' => str_repeat( 'x', 201 ) ], 'protected/password' );
+check( '...a very long one with protected_long and the most it takes', $longStatus === 400 && $longBody['code'] === 'protected_long' && $longBody['params'] === [ 200 ] && $longBody['field'] === 'pw' );
+check( '...one that is no string, and none at all, are too short', ninoCall( $appData, $panel, [ 'pw' => [ 'longenough' ] ], 'protected/password' )[1]['code'] === 'protected_short'
+	&& ninoCall( $appData, $panel, [], 'protected/password' )[1]['code'] === 'protected_short' );
+foreach( [ 'en_US', 'de_DE' ] as $locale )
+	foreach( [ 'protected_paths' => '', 'protected_page' => '', 'protected_short' => '%s', 'protected_long' => '%s', 'protected_setting' => '%s' ] as $code => $param )
+		check( "the code $code has its sentence in $locale". ( $param === '' ? '' : ', with a place for its param' ),
+			str_contains( \Nino\Admin\Admin::textFills( $appData, '/features/ProtectedArea/text', $locale )['[[/_admin/error/'. $code. ']]'] ?? '', $param ) === true
+			&& trim( \Nino\Admin\Admin::textFills( $appData, '/features/ProtectedArea/text', $locale )['[[/_admin/error/'. $code. ']]'] ?? '' ) !== '' );
 check( '...and the old password still stands, with nobody signed out', \Nino\Features::setting( $appData, 'protected', 'password' ) === 'sesam-öffne-dich' );
 
 $unlockedBefore( $appData );
 check( 'somebody is unlocked before the password changes', \Nino\Modules\ProtectedArea::unlocked( $appData ) === true );
 
-$changed = protectedPanel( $appData, 'protected/password', [ 'pw' => 'eight-chars-ok' ] );
-check( 'a password of 8 to 200 characters is saved (200)', $changed['statusCode'] === 200 && \Nino\Features::setting( $appData, 'protected', 'password' ) === 'eight-chars-ok' );
+[ $changedStatus, $changed ] = ninoCall( $appData, $panel, [ 'pw' => 'eight-chars-ok' ], 'protected/password' );
+check( 'a password of 8 to 200 characters is saved (200)', $changedStatus === 200 && \Nino\Features::setting( $appData, 'protected', 'password' ) === 'eight-chars-ok' );
 check( '...and signs everybody out', \Nino\Modules\ProtectedArea::unlocked( $appData ) === false );
 check( '...the paths and the attempts are kept', \Nino\Features::setting( $appData, 'protected', 'paths' ) === [ '/preview/client-a', '/blog' ]
 	&& \Nino\Features::setting( $appData, 'protected', 'attempts' ) === 3 );
-check( '...and the answer never carries the password', str_contains( (string) json_encode( $changed['body'] ), 'eight-chars-ok' ) === false
-	&& ( $changed['body']['hasPassword'] ?? null ) === true );
+check( '...and the answer never carries the password', str_contains( (string) json_encode( $changed ), 'eight-chars-ok' ) === false
+	&& ( $changed['hasPassword'] ?? null ) === true );
 check( '...the old one no longer unlocks, the new one does', protectedUnlock( $appData, [ 'password' => 'sesam-öffne-dich', 'return' => '/blog' ] )['/nino/http/response']['statusCode'] === 401
 	&& protectedUnlock( $appData, [ 'password' => 'eight-chars-ok', 'return' => '/blog' ] )['/nino/http/response']['statusCode'] === 303 );
-check( 'a password of exactly 200 characters is taken', protectedPanel( $appData, 'protected/password', [ 'pw' => str_repeat( 'x', 200 ) ] )['statusCode'] === 200 );
-protectedPanel( $appData, 'protected/password', [ 'pw' => 'eight-chars-ok' ] );
+check( 'a password of exactly 200 characters is taken', ninoCall( $appData, $panel, [ 'pw' => str_repeat( 'x', 200 ) ], 'protected/password' )[0] === 200 );
+ninoCall( $appData, $panel, [ 'pw' => 'eight-chars-ok' ], 'protected/password' );
 
 // The length is counted in characters here as on the screen, not in bytes
-check( 'seven characters are too short although they are fourteen bytes', protectedPanel( $appData, 'protected/password', [ 'pw' => 'äöüäöüä' ] )['statusCode'] === 400
+check( 'seven characters are too short although they are fourteen bytes', ninoCall( $appData, $panel, [ 'pw' => 'äöüäöüä' ], 'protected/password' )[0] === 400
 	&& \Nino\Features::setting( $appData, 'protected', 'password' ) === 'eight-chars-ok' );
-check( '...and a hundred and fifty are not too long although they are three hundred', protectedPanel( $appData, 'protected/password', [ 'pw' => str_repeat( 'ä', 150 ) ] )['statusCode'] === 200
-	&& protectedPanel( $appData, 'protected/password', [ 'pw' => str_repeat( 'ä', 201 ) ] )['statusCode'] === 400 );
-protectedPanel( $appData, 'protected/password', [ 'pw' => 'eight-chars-ok' ] );
+check( '...and a hundred and fifty are not too long although they are three hundred', ninoCall( $appData, $panel, [ 'pw' => str_repeat( 'ä', 150 ) ], 'protected/password' )[0] === 200
+	&& ninoCall( $appData, $panel, [ 'pw' => str_repeat( 'ä', 201 ) ], 'protected/password' )[0] === 400 );
+ninoCall( $appData, $panel, [ 'pw' => 'eight-chars-ok' ], 'protected/password' );
 
 // The sessions are locked out again once the password is written, so nobody who unlocked with the
 // old one between the two writes keeps a session of the new one's epoch
@@ -810,16 +840,12 @@ check( 'the password action rotates the epoch before the write and again after i
 	&& strpos( $passwordBody, 'signOutAll(' ) < strpos( $passwordBody, 'saveSettings(' )
 	&& strrpos( $passwordBody, 'signOutAll(' ) > strpos( $passwordBody, 'saveSettings(' ) );
 $epochBefore = \Nino\Filesystem::getFileContent( $appData, '/data/protected-session.php', [] )['epoch'] ?? '';
-protectedPanel( $appData, 'protected/password', [ 'pw' => 'eight-chars-ok' ] );
+ninoCall( $appData, $panel, [ 'pw' => 'eight-chars-ok' ], 'protected/password' );
 check( '...so a save leaves an epoch no earlier unlock carries', ( \Nino\Filesystem::getFileContent( $appData, '/data/protected-session.php', [] )['epoch'] ?? '' ) !== $epochBefore );
 
 // The password is also a setting of the Features panel, and a change there locks everybody out as well
-$featuresSave = static function( array &$appData, array $fields ): int {
-	$_POST = [ 'action' => 'features/settings', 'data' => json_encode( [ 'key' => 'protected', 'fields' => $fields ] ) ];
-	$request = [ '/nino/http/response' => [ 'statusCode' => 200 ] ];
-	\Nino\Admin\Admin::handlePost( $appData, $request );
-	$_POST = [];
-	return (int) $request['/nino/http/response']['statusCode'];
+$featuresSave = static function( array &$appData, array $fields ) use ( $panel ): int {
+	return ninoCall( $appData, $panel, [ 'key' => 'protected', 'fields' => $fields ], 'features/settings' )[0];
 };
 $unlockedBefore( $appData );
 check( 'a path saved in the Features panel locks nobody out', $featuresSave( $appData, [ 'paths' => [ '/preview/client-a', '/blog' ] ] ) === 200 && \Nino\Modules\ProtectedArea::unlocked( $appData ) === true );
@@ -856,19 +882,35 @@ check( 'an epoch written before it recorded the password is rotated by the first
 check( 'the epoch file holds a keyed hash and not the password', str_contains( (string) json_encode( \Nino\Filesystem::getFileContent( $appData, '/data/protected-session.php', [] ) ), 'eight-chars-ok' ) === false );
 
 $unlockedBefore( $appData );
-$_POST = [ 'action' => 'protected/pages', 'data' => json_encode( [ 'paths' => [ '/blog' ] ] ) ];
-$unrelated = [ '/nino/http/response' => [ 'statusCode' => 200 ] ];
-\Nino\Admin\Admin::handlePost( $appData, $unrelated );
-$_POST = [];
+ninoCall( $appData, $panel, [ 'paths' => [ '/blog' ] ], 'protected/pages' );
 check( '...and the other actions of this panel do not rotate it', \Nino\Modules\ProtectedArea::unlocked( $appData ) === true );
-protectedPanel( $appData, 'protected/password', [ 'pw' => 'eight-chars-ok' ] );
+ninoCall( $appData, $panel, [ 'pw' => 'eight-chars-ok' ], 'protected/password' );
 
 // sign-out
 $unlockedBefore( $appData );
-$signedOut = protectedPanel( $appData, 'protected/signout' );
-check( 'sign-out answers 200 and locks the session that was unlocked', $signedOut['statusCode'] === 200 && \Nino\Modules\ProtectedArea::unlocked( $appData ) === false );
+[ $signedOutStatus ] = ninoCall( $appData, $panel, [], 'protected/signout' );
+check( 'sign-out answers 200 and locks the session that was unlocked', $signedOutStatus === 200 && \Nino\Modules\ProtectedArea::unlocked( $appData ) === false );
 check( '...leaving the password and the pages as they were', \Nino\Features::setting( $appData, 'protected', 'password' ) === 'eight-chars-ok'
 	&& \Nino\Features::setting( $appData, 'protected', 'paths' ) === [ '/preview/client-a', '/blog' ] );
+
+/*	The epoch is written under a lock of its own. With the lock file made
+	unopenable - a directory where it goes, the answer a read-only or full disk
+	gives - nothing can be written, and that is the server's to report: a 500 with
+	its English sentence and no code, the same for the password, where it is
+	the sessions that could not be locked out before the new one is written	*/
+$epochLock = \Nino\Filesystem::path( $appData, '/data' ). '/.locks/'. sha1( '/data/protected-session.php' ). '.lock';
+unset( $appData['./nino/filesystem/locks'] );
+@unlink( $epochLock );
+@mkdir( $epochLock );
+ninoWarnings();
+[ $unwritableStatus, $unwritableBody ] = ninoCall( $appData, $panel, [], 'protected/signout' );
+[ $unwritablePwStatus, $unwritablePwBody ] = ninoCall( $appData, $panel, [ 'pw' => 'not-saved-pw' ], 'protected/password' );
+ninoWarnings();
+@rmdir( $epochLock );
+unset( $appData['./nino/filesystem/locks'] );
+check( 'a sign-out whose epoch cannot be written is a 500 with its English sentence and no code', $unwritableStatus === 500 && $unwritableBody['error'] === 'could not sign everybody out' && isset( $unwritableBody['code'] ) === false );
+check( '...and so is a password whose sessions cannot be locked out, which then stays the one it was', $unwritablePwStatus === 500 && isset( $unwritablePwBody['code'] ) === false
+	&& \Nino\Features::setting( $appData, 'protected', 'password' ) === 'eight-chars-ok' );
 
 // log
 $logLines = [

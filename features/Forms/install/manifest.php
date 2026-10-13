@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 // The unit \Nino\Features::activate() applies, add-only (see
-// docs/features.md, "The Install Unit"). Forms ships no template, no route and
+// docs/features.md, "The install unit"). Forms ships no template, no route and
 // no text of its own - the definitions live in config.php and a form is drawn
 // by [form]. All this unit carries is the feature's section of the privacy
 // policy.

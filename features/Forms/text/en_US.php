@@ -1,8 +1,8 @@
 <?php
 // The Forms feature's own workbench strings, merged into its fills while
 // the feature is active (see the panel's text()) - same keys and shape the
-// workbench's own text/<locale>.php has. A %s is filled by the script, or
-// by the panel in a message it phrases itself (see its _say())
+// workbench's own text/<locale>.php has. A %s is filled by the script
+// (Nino.adminUi.format()), or by the workbench in the sentence of a code
 return [
 	'[[/_admin/nav/forms]]'								=> 'Forms',
 	'[[/_admin/forms/label/forms]]'				=> 'Forms',
@@ -38,7 +38,7 @@ return [
 	'[[/_admin/forms/label/addfield]]'		=> 'Add field',
 	'[[/_admin/forms/label/removefield]]'	=> 'Remove',
 	'[[/_admin/forms/label/submissions-settings]]'	=> 'Submissions',
-	'[[/_admin/forms/label/retention]]'		=> 'Keep for (months)',
+	'[[/_admin/forms/label/retention]]'		=> 'Keep for',
 	'[[/_admin/forms/label/store]]'				=> 'Record submissions',
 
 	'[[/_admin/forms/options/add]]'				=> 'Add option',
@@ -61,8 +61,20 @@ return [
 
 	'[[/_admin/forms/confirm/delete]]'		=> 'Delete this form? Its submissions stay, and the Submissions panel goes on showing them.',
 
-	'[[/_admin/forms/error/fields]]'		=> 'The form was not saved. Change what is marked and save again.',
+	// The sentences of the codes Admin answers a refusal with (\Nino\Http::fail()).
+	// forms_fields and forms_duplicate carry where it went wrong as their params,
+	// in the words below
+	'[[/_admin/error/forms_fields]]'		=> 'The form was not saved. Change what is marked and save again.',
+	'[[/_admin/error/forms_invalid]]'		=> 'The form needs a key of its own and at least one field.',
+	'[[/_admin/error/forms_duplicate]]'		=> 'Another form already has that key.',
+	'[[/_admin/error/forms_key]]'			=> 'No form has that key.',
+	'[[/_admin/error/forms_last]]'			=> 'This is the last form. A project with none falls back to the built-in contact form; to have no form at all, switch the Form module off in /nino/modules.',
+	'[[/_admin/error/forms_retention]]'		=> 'Submissions are kept between 1 and 60 months.',
+
+	// What is wrong with a field or a control of a form that was refused: the
+	// word Admin names, said under it
 	'[[/_admin/forms/problem/key]]'			=> 'The key starts with a letter and has only lower-case letters, digits and hyphens.',
+	'[[/_admin/forms/problem/keytaken]]'	=> 'Another form already has this key.',
 	'[[/_admin/forms/problem/field]]'		=> 'This field cannot be read.',
 	'[[/_admin/forms/problem/name]]'		=> 'The name starts with a letter and has only letters, digits, hyphens and underscores, 64 characters at most.',
 	'[[/_admin/forms/problem/reserved]]'	=> 'The form keeps this name for itself. Choose another one.',
@@ -74,10 +86,5 @@ return [
 	'[[/_admin/forms/problem/ownertpl]]'	=> 'This is not the path of a template. Choose one from the list.',
 	'[[/_admin/forms/problem/usertpl]]'		=> 'This is not the path of a template. Choose one from the list.',
 	'[[/_admin/forms/problem/missingtpl]]'	=> 'There is no such template in this project. Choose another one.',
-	'[[/_admin/forms/error/invalid]]'		=> 'The form needs a key of its own and at least one field.',
-	'[[/_admin/forms/error/duplicate]]'		=> 'Another form already has that key.',
-	'[[/_admin/forms/error/save]]'			=> 'The forms could not be written.',
-	'[[/_admin/forms/error/key]]'			=> 'No form has that key.',
-	'[[/_admin/forms/error/last]]'			=> 'This is the last form. A project with none falls back to the built-in contact form; to have no form at all, switch the Form module off in /nino/modules.',
-	'[[/_admin/forms/error/retention]]'		=> 'Submissions are kept between 1 and 60 months.',
+	'[[/_admin/forms/problem/form]]'		=> 'The form cannot be saved as it is.',
 ];

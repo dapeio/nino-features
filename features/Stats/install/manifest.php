@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 // The unit \Nino\Features::activate() applies, add-only (see
-// docs/features.md, "The Install Unit"). Stats ships no template, no route and
+// docs/features.md, "The install unit"). Stats ships no template, no route and
 // no text of its own - the counter and the panel are all there is. All this
 // unit carries is the feature's section of the privacy policy, which says
 // that no personal data arise.

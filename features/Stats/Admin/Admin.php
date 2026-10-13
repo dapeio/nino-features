@@ -2,7 +2,7 @@
 declare(strict_types=1);
 /**
  *	Nino								A compact filesystembased php framework
- *	Nino\Modules\Stats\Admin		The /_admin panel of the Stats module - see docs/development.md
+ *	Nino\Modules\Stats\Admin		The /_admin panel of the Stats module - see docs/features.md, "The panel"
  *
  *	@package						Dape/Nino
  *	@author							David Perchermeier <mail@dape.io>
@@ -99,7 +99,8 @@ namespace Nino\Modules\Stats {
 		 *
 		 *	A page row carries its title - the page's own '/_nino/webpage<uri>/title'
 		 *	text, in the route's locale and else the native one - and '' where
-		 *	no route or no text has one.
+		 *	no route or no text has one. A month that is none is refused with
+		 *	the code stats_month.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
@@ -111,10 +112,10 @@ namespace Nino\Modules\Stats {
 			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::VIEW_PERM ) === false )
 				return;
 
-			$month = (string) ( \Nino\Admin\Admin::postData()['month'] ?? '' );
+			$month = \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'month' );
 
 			if( preg_match( '/^\d{4}-(0[1-9]|1[0-2])$/D', $month ) !== 1 ) {
-				\Nino\Http::fail( $request, 400, 'invalid month' );
+				\Nino\Http::fail( $request, 400, 'invalid month', 'stats_month' );
 				return;
 			}
 
@@ -184,15 +185,14 @@ namespace Nino\Modules\Stats {
 		/**
 		 *	The title of the page a counted uri was: '/_nino/webpage<route uri>/title'
 		 *	in the locale of the route that answers it, else in the native one,
-		 *	read from the project's global and locale text files the way
-		 *	\Nino\Modules\Seo reads them for llms.txt - a request carries one
-		 *	locale, and this lists every page's own. The route is resolved as
-		 *	the request was, wildcards included; the title belongs to its
-		 *	internal uri, not to the address a visitor typed.
+		 *	read through \Nino\Html::getFills() - a request carries one locale,
+		 *	and this lists every page's own. The route is resolved as the request
+		 *	was, wildcards included; the title belongs to its internal uri, not
+		 *	to the address a visitor typed.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$uri					As counted
-		 *	@param		array 		&$fills				Text files read so far, by locale - the caller's memo
+		 *	@param		array 		&$fills				The fills read so far, by locale - the caller's memo
 		 *
 		 *	@return 	string										'' where no route or no text has one
 		 */
@@ -211,10 +211,7 @@ namespace Nino\Modules\Stats {
 			foreach( $locales as $locale ) {
 
 				if( isset( $fills[$locale] ) === false )
-					$fills[$locale] = array_merge(
-						(array) \Nino\Filesystem::getFileContent( $appData, '/text/global.php', [] ),
-						(array) \Nino\Filesystem::getFileContent( $appData, '/text/'. $locale. '.php', [] )
-					);
+					$fills[$locale] = \Nino\Html::getFills( $appData, $locale );
 
 				$title = trim( (string) ( $fills[$locale]['[[/_nino/webpage'. $route['uri']. '/title]]'] ?? '' ) );
 

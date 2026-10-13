@@ -28,26 +28,8 @@ require $root. '/tests/harness.php';
 $appData = ninoSandbox( 'stats' );
 $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
 
-/**
- *	Build a request the way \Nino\Http::request() leaves it - method,
- *	rawMethod, uri (query already stripped by Http::cleanUri()), the request
- *	header - and a response seeded at statusCode 200, so a test can call the
- *	counter directly against it without a route ever being resolved. Same
- *	shape and calling convention as ninoVisit() of the kernel's
- *	tests/harness.php, so the two stay directly comparable.
- *
- *	@param		array 		&$appData
- *	@param		string		$uri					A path, optionally carrying a query string
- *	@param		string		$method
- *	@param		array			$server				Further $_SERVER-shaped keys, eg. HTTP_REFERER, HTTP_HOST
- *
- *	@return 	array
- */
-function fakeRequest( array &$appData, string $uri, string $method = 'GET', array $server = [] ): array {
-	$request = array_merge( [ 'REQUEST_METHOD' => $method, 'REQUEST_URI' => $uri, 'REMOTE_ADDR' => '127.0.0.1' ], $server );
-	\Nino\Http::request( $appData, $request );
-	return $request;
-}
+// The workbench's entry point, which ninoCall() hands a panel action
+$panel = [ \Nino\Admin\Admin::class, 'handlePost' ];
 
 /**
  *	Run the counter against a hand-built request and hand it back, so a
@@ -70,14 +52,6 @@ function monthFile( array &$appData, string $month ): array {
 
 function dayTotal( array &$appData, string $month, string $day ): int {
 	return (int) ( monthFile( $appData, $month )['days'][$day]['total'] ?? 0 );
-}
-
-function callAdminPost( array &$appData, string $action, array $data = [] ): array {
-	$request = [ '/nino/http/response' => [ 'statusCode' => 200 ] ];
-	$_POST['action'] = $action;
-	$_POST['data'] = json_encode( $data );
-	\Nino\Admin\Admin::handlePost( $appData, $request );
-	return [ $request['/nino/http/response']['statusCode'], $request['/nino/http/response']['body'] ?? null ];
 }
 
 $today = date( 'Y-m-d' );
@@ -170,7 +144,7 @@ echo "\n";
 
 echo "Modules\\Stats::callbackCount - a qualifying GET is counted\n";
 
-countRequest( $appData, fakeRequest( $appData, '/hello' ) );
+countRequest( $appData, ninoVisit( $appData, '/hello' ) );
 $state = monthFile( $appData, $month );
 
 check( 'the month file exists with the { days: { day: { total, uris, referrers } } } shape', is_array( $state['days'][$today] ?? null ) === true
@@ -182,7 +156,7 @@ check( 'no referrer means nothing under referrers', $state['days'][$today]['refe
 check( '...and pruned the stale month file, older than the default 13 months', is_file( $staleMonthPath ) === false );
 check( '...while a recent one, only 2 months old, survives', is_file( $recentMonthPath ) === true );
 
-countRequest( $appData, fakeRequest( $appData, '/hello' ) );
+countRequest( $appData, ninoVisit( $appData, '/hello' ) );
 check( 'a second view increments both the total and the uri', dayTotal( $appData, $month, $today ) === 2
 	&& monthFile( $appData, $month )['days'][$today]['uris']['/hello'] === 2 );
 
@@ -191,12 +165,12 @@ echo "\n";
 
 echo "Referrers - external host counted, own host and empty dropped\n";
 
-countRequest( $appData, fakeRequest( $appData, '/hello', 'GET', [ 'HTTP_REFERER' => 'https://example.org/page', 'HTTP_HOST' => 'my-site.test' ] ) );
+countRequest( $appData, ninoVisit( $appData, '/hello', 'GET', [ 'HTTP_REFERER' => 'https://example.org/page', 'HTTP_HOST' => 'my-site.test' ] ) );
 $state = monthFile( $appData, $month );
 check( 'an external referrer is counted by host, lowercased', $state['days'][$today]['referrers']['example.org'] === 1 );
 check( 'the view still counts towards the total and the uri', $state['days'][$today]['total'] === 3 && $state['days'][$today]['uris']['/hello'] === 3 );
 
-countRequest( $appData, fakeRequest( $appData, '/hello', 'GET', [ 'HTTP_REFERER' => 'https://MY-SITE.test/other', 'HTTP_HOST' => 'my-site.test' ] ) );
+countRequest( $appData, ninoVisit( $appData, '/hello', 'GET', [ 'HTTP_REFERER' => 'https://MY-SITE.test/other', 'HTTP_HOST' => 'my-site.test' ] ) );
 $state = monthFile( $appData, $month );
 check( 'the site\'s own host as a referrer is dropped, not counted', isset( $state['days'][$today]['referrers']['my-site.test'] ) === false && $state['days'][$today]['referrers'] === [ 'example.org' => 1 ] );
 check( 'the view underneath it still counts', $state['days'][$today]['total'] === 4 );
@@ -206,7 +180,7 @@ echo "\n";
 
 echo "Query strings are dropped - only the uri is stored\n";
 
-countRequest( $appData, fakeRequest( $appData, '/hello?utm_source=test&ref=x' ) );
+countRequest( $appData, ninoVisit( $appData, '/hello?utm_source=test&ref=x' ) );
 $state = monthFile( $appData, $month );
 check( 'a query string never reaches the stored uri', array_keys( $state['days'][$today]['uris'] ) === [ '/hello' ] );
 check( 'the view still counts', $state['days'][$today]['uris']['/hello'] === 5 && $state['days'][$today]['total'] === 5 );
@@ -217,29 +191,29 @@ echo "\n";
 echo "What is never counted\n";
 
 $before = dayTotal( $appData, $month, $today );
-countRequest( $appData, fakeRequest( $appData, '/_admin' ) );
+countRequest( $appData, ninoVisit( $appData, '/_admin' ) );
 check( 'a /_admin uri is not counted', dayTotal( $appData, $month, $today ) === $before );
 
-countRequest( $appData, fakeRequest( $appData, '/_admin/features' ) );
+countRequest( $appData, ninoVisit( $appData, '/_admin/features' ) );
 check( 'nor is anything under /_admin', dayTotal( $appData, $month, $today ) === $before );
 
-countRequest( $appData, fakeRequest( $appData, '/.form', 'POST' ) );
+countRequest( $appData, ninoVisit( $appData, '/.form', 'POST' ) );
 check( 'a dot-prefixed module endpoint is not counted', dayTotal( $appData, $month, $today ) === $before );
 
-$dotRequest = fakeRequest( $appData, '/.something' );
+$dotRequest = ninoVisit( $appData, '/.something' );
 check( 'a dot-prefixed uri is excluded even as a plain GET 200', dayTotal( $appData, $month, $today ) === $before );
 countRequest( $appData, $dotRequest );
 check( '...still not counted after actually running the counter on it', dayTotal( $appData, $month, $today ) === $before );
 
-countRequest( $appData, fakeRequest( $appData, '/hello', 'POST' ) );
+countRequest( $appData, ninoVisit( $appData, '/hello', 'POST' ) );
 check( 'a POST is not counted, even to an otherwise countable uri', dayTotal( $appData, $month, $today ) === $before );
 
-$notFoundRequest = fakeRequest( $appData, '/does-not-exist' );
+$notFoundRequest = ninoVisit( $appData, '/does-not-exist' );
 $notFoundRequest['/nino/http/response']['statusCode'] = 404;
 countRequest( $appData, $notFoundRequest );
 check( 'a non-200 response is not counted', dayTotal( $appData, $month, $today ) === $before );
 
-$headRequest = fakeRequest( $appData, '/hello', 'HEAD' );
+$headRequest = ninoVisit( $appData, '/hello', 'HEAD' );
 check( 'a HEAD is folded to a GET for routing but keeps its raw method', $headRequest['/nino/http/request']['method'] === 'GET' && $headRequest['/nino/http/request']['rawMethod'] === 'HEAD' );
 countRequest( $appData, $headRequest );
 check( '...and is not counted - "a GET" means the raw method too', dayTotal( $appData, $month, $today ) === $before );
@@ -267,7 +241,7 @@ $appData['/nino/http/routes']['GET://plain-page']			= [ 'uri' => '/plain-page', 
 $appData['/nino/http/routes']['GET://html-page']			= [ 'uri' => '/html-page', 'body' => 'page', 'header' => [ 'Content-Type' => 'TEXT/HTML; charset=utf-8' ] ];
 
 $viewOf = static function( string $uri ) use ( &$appData, $month, $today ): int {
-	$request = fakeRequest( $appData, $uri );
+	$request = ninoVisit( $appData, $uri );
 	$before = (int) ( monthFile( $appData, $month )['days'][$today]['uris'][$uri] ?? 0 );
 	\Nino\Http::response( $appData, $request );
 	return (int) ( monthFile( $appData, $month )['days'][$today]['uris'][$uri] ?? 0 ) - $before;
@@ -283,7 +257,7 @@ check( '...and one that declares text/html, in any case', $viewOf( '/html-page' 
 
 // The same rule on the response the counter is handed: a route can set the
 // header at any point before it runs
-$fileRequest = fakeRequest( $appData, '/ad-hoc' );
+$fileRequest = ninoVisit( $appData, '/ad-hoc' );
 $fileRequest['/nino/http/response']['header']['CONTENT-TYPE'] = 'Text/Plain';
 $before = dayTotal( $appData, $month, $today );
 countRequest( $appData, $fileRequest );
@@ -304,16 +278,16 @@ check( 'exclude is saved', \Nino\Features::saveSettings( $appData, 'stats', [ 'e
 check( '...and comes back as two lines', \Nino\Features::setting( $appData, 'stats', 'exclude' ) === [ '/internal', '/blog/*' ] );
 
 $before = dayTotal( $appData, $month, $today );
-countRequest( $appData, fakeRequest( $appData, '/internal' ) );
+countRequest( $appData, ninoVisit( $appData, '/internal' ) );
 check( 'an excluded exact uri is not counted', dayTotal( $appData, $month, $today ) === $before );
 
-countRequest( $appData, fakeRequest( $appData, '/blog' ) );
+countRequest( $appData, ninoVisit( $appData, '/blog' ) );
 check( 'a wildcard pattern also excludes the subtree root itself', dayTotal( $appData, $month, $today ) === $before );
 
-countRequest( $appData, fakeRequest( $appData, '/blog/one/two' ) );
+countRequest( $appData, ninoVisit( $appData, '/blog/one/two' ) );
 check( '...and everything nested under it', dayTotal( $appData, $month, $today ) === $before );
 
-countRequest( $appData, fakeRequest( $appData, '/blogging' ) );
+countRequest( $appData, ninoVisit( $appData, '/blogging' ) );
 check( '...but not a uri that merely shares the prefix', dayTotal( $appData, $month, $today ) === $before + 1 );
 
 check( 'exclude is cleared again', \Nino\Features::saveSettings( $appData, 'stats', [ 'exclude' => '' ] ) === [] );
@@ -323,16 +297,15 @@ echo "\n";
 
 echo "Signed-in visitors - excluded unless countSignedIn is on\n";
 
-\Nino\Auth::insertUser( $appData, 'admin@example.com', 'correct horse battery staple', [ '/*' ] );
-\Nino\Auth::insertUser( $appData, 'plain@example.com', 'plain password', [] );
-\Nino\Auth::loginUser( $appData, 'admin@example.com', 'correct horse battery staple' );
+ninoUser( $appData, 'plain@example.com', [], 'plain password' );
+ninoUser( $appData, 'admin@example.com' );
 
 $before = dayTotal( $appData, $month, $today );
-countRequest( $appData, fakeRequest( $appData, '/hello' ) );
+countRequest( $appData, ninoVisit( $appData, '/hello' ) );
 check( 'a signed-in visitor is not counted by default', dayTotal( $appData, $month, $today ) === $before );
 
 check( 'countSignedIn is switched on', \Nino\Features::saveSettings( $appData, 'stats', [ 'countSignedIn' => 'true' ] ) === [] );
-countRequest( $appData, fakeRequest( $appData, '/hello' ) );
+countRequest( $appData, ninoVisit( $appData, '/hello' ) );
 check( 'a signed-in visitor is counted once countSignedIn is on', dayTotal( $appData, $month, $today ) === $before + 1 );
 
 check( 'countSignedIn is switched back off', \Nino\Features::saveSettings( $appData, 'stats', [ 'countSignedIn' => 'false' ] ) === [] );
@@ -351,7 +324,7 @@ $overflowBefore = (int) ( $urisBefore[\Nino\Modules\Stats::OVERFLOW_URI] ?? 0 );
 
 $newUris = 60;
 for( $i = 0; $i < $newUris; $i++ )
-	countRequest( $appData, fakeRequest( $appData, '/generated/'. $i ) );
+	countRequest( $appData, ninoVisit( $appData, '/generated/'. $i ) );
 
 $urisAfter = monthFile( $appData, $month )['days'][$today]['uris'] ?? [];
 $freeSlots = max( 0, 50 - $countBefore );
@@ -385,7 +358,7 @@ if( in_array( '\\Nino\\Modules\\Cache', $appData['/nino/modules'], true ) === fa
 
 $before = dayTotal( $appData, $month, $today );
 
-$missRequest = fakeRequest( $appData, '/cache-test' );
+$missRequest = ninoVisit( $appData, '/cache-test' );
 \Nino\Http::response( $appData, $missRequest );
 check( 'the first view (a cache miss) is counted', dayTotal( $appData, $month, $today ) === $before + 1 );
 check( '...and is not answered from the cache - nothing stored yet', ( $missRequest['/nino/http/response']['header']['X-Nino-Cache'] ?? '' ) !== 'hit' );
@@ -469,7 +442,7 @@ echo "Modules\\Stats\\Admin - months, one month's numbers, and the permission\n"
 
 \Nino\Auth::loginUser( $appData, 'admin@example.com', 'correct horse battery staple' );
 
-[ $status, $body ] = callAdminPost( $appData, 'stats/months' );
+[ $status, $body ] = ninoCall( $appData, $panel, [], 'stats/months' );
 check( 'stats/months succeeds', $status === 200 );
 check( '...and lists the current month, newest first', ( $body['months'][0] ?? null ) === $month );
 
@@ -479,7 +452,7 @@ $logged = count( \Nino\Modules\Logs\Admin::recentLines( $appData, 1000 ) );
 
 $expectedTotal = dayTotal( $appData, $month, $today );
 
-[ $status, $body ] = callAdminPost( $appData, 'stats/month', [ 'month' => $month ] );
+[ $status, $body ] = ninoCall( $appData, $panel, [ 'month' => $month ], 'stats/month' );
 check( 'stats/month succeeds', $status === 200 );
 check( '...echoes the month and one day', $body['month'] === $month && count( $body['days'] ) === 1 && $body['days'][0]['day'] === $today );
 check( '...the day\'s total matches what was counted, and totals.views agrees', $body['days'][0]['total'] === $expectedTotal && $body['totals']['views'] === $expectedTotal && $body['totals']['days'] === 1 );
@@ -487,10 +460,22 @@ check( '...at most 50 uris are returned, most-viewed first', count( $body['uris'
 	&& ( count( $body['uris'] ) < 2 || $body['uris'][0]['views'] >= $body['uris'][1]['views'] ) );
 check( '...the referrer is among the top referrers with its count', in_array( [ 'host' => 'example.org', 'views' => 1 ], $body['referrers'], true ) === true );
 
-[ $status ] = callAdminPost( $appData, 'stats/month', [ 'month' => 'not-a-month' ] );
-check( 'an invalid month is a 400', $status === 400 );
+[ $status, $body ] = ninoCall( $appData, $panel, [ 'month' => 'not-a-month' ], 'stats/month' );
+check( 'a month that is none is a 400 with the code stats_month', $status === 400 && $body['code'] === 'stats_month' );
+foreach( [ 'en_US', 'de_DE' ] as $locale )
+	check( "...and the code has its sentence in $locale", trim( \Nino\Admin\Admin::textFills( $appData, '/features/Stats/text', $locale )['[[/_admin/error/'. $body['code']. ']]'] ?? '' ) !== '' );
+check( '...and the two languages say it in their own words', \Nino\Admin\Admin::textFills( $appData, '/features/Stats/text', 'en_US' )['[[/_admin/error/stats_month]]']
+	!== \Nino\Admin\Admin::textFills( $appData, '/features/Stats/text', 'de_DE' )['[[/_admin/error/stats_month]]'] );
 
-[ $status, $body ] = callAdminPost( $appData, 'stats/month', [ 'month' => '2000-01' ] );
+// The payload is untrusted json: a month that is a list or a number is as much none as a word is, and no warning is raised for it
+foreach( [ 'a list' => [ '2026-01' ], 'a number' => 202601, 'nothing' => null ] as $what => $posted ) {
+	[ $status, $body ] = ninoCall( $appData, $panel, [ 'month' => $posted ], 'stats/month' );
+	check( "a month posted as $what is refused with the same code, not with a 500", $status === 400 && $body['code'] === 'stats_month' );
+}
+[ $status, $body ] = ninoCall( $appData, $panel, [], 'stats/month' );
+check( 'no month at all is refused with it as well, and nothing of this raised a warning', $status === 400 && $body['code'] === 'stats_month' && ninoWarnings() === [] );
+
+[ $status, $body ] = ninoCall( $appData, $panel, [ 'month' => '2000-01' ], 'stats/month' );
 check( 'a well-formed but empty month is a 200 with zero totals, not an error', $status === 200 && $body['totals']['views'] === 0 && $body['days'] === [] );
 
 check( 'summary() gives the dashboard tile - here, the 7-day total equals today\'s, since everything happened today', \Nino\Modules\Stats::summary( $appData ) === [ 'value' => (string) $expectedTotal, 'label' => '/_admin/stats/label/tile' ] );
@@ -502,7 +487,6 @@ check( 'the panel is read-only: none of its actions writes a line to the activit
 	today's file - and put back, so the checks that follow see what they saw	*/
 echo "\nModules\\Stats\\Admin - pages only, with titles, also of a month counted before\n";
 
-$appData['/nino/locales/textfiles'] = '/text';
 \Nino\Filesystem::putFileContent( $appData, '/text/en_US.php', [
 	'[[/_nino/webpage/about/title]]'	=> 'About Us',
 ] );
@@ -526,7 +510,7 @@ $oldMonthFile	= '/data/stats/'. $oldMonth. '.php';
 	'2026-01-07' => [ 'total' => 8, 'uris' => [ '/feed.json' => 1, '/ueber-uns' => 2, '/only-native' => 1, '/docs/intro' => 3, '/gone-since' => 1 ], 'referrers' => [ 'example.org' => 1 ] ],
 ] ] );
 
-[ $status, $body ] = callAdminPost( $appData, 'stats/month', [ 'month' => $oldMonth ] );
+[ $status, $body ] = ninoCall( $appData, $panel, [ 'month' => $oldMonth ], 'stats/month' );
 check( 'an old month with file hits in it is answered', $status === 200 );
 check( '...the days are recomputed from the pages: the file hits are not in a day\'s total', array_column( $body['days'], 'total', 'day' ) === [ '2026-01-05' => 7, '2026-01-07' => 7 ] );
 check( '...a day with nothing but files is gone, and totals are counted from what is left', $body['totals'] === [ 'views' => 14, 'days' => 2 ] );
@@ -544,6 +528,37 @@ check( '...and nothing where no text has one: a wildcard route, an address no ro
 
 check( 'the referrers of a day that is dropped go with it, the others stay', array_column( $body['referrers'], 'views', 'host' ) === [ 'example.org' => 3 ] );
 
+/*	The titles come through Html::getFills(): a language the site does not
+	have has no fills - nothing and no warning, so its page takes the native
+	language's title - and a fill added at runtime for the route's language
+	is read like a line of a text file	*/
+\Nino\Filesystem::putFileContent( $appData, '/text/de_DE.php', [
+	'[[/_nino/webpage/about/title]]'				=> 'Über uns',
+	'[[/_nino/webpage/only-native/title]]'	=> 'Nur Deutsch',
+	'[[/_nino/webpage/abroad/title]]'				=> 'Im Ausland',
+] );
+// A text file of that language lies there and is not read: the site does not list it
+\Nino\Filesystem::putFileContent( $appData, '/text/fr_FR.php', [ '[[/_nino/webpage/abroad/title]]' => 'À l\'étranger' ] );
+$appData['/nino/http/routes']['GET://abroad']		= [ 'uri' => '/abroad', 'locale' => 'fr_FR', 'body' => 'x' ];
+$appData['/nino/http/routes']['GET://runtime']	= [ 'uri' => '/runtime', 'locale' => 'en_US', 'body' => 'x' ];
+\Nino\Html::addFills( $appData, [ '/_nino/webpage/runtime/title' => 'Added at runtime' ], 'en_US' );
+\Nino\Filesystem::putFileContent( $appData, '/data/stats/2026-02.php', [ 'days' => [
+	'2026-02-03' => [ 'total' => 3, 'uris' => [ '/abroad' => 2, '/runtime' => 1 ], 'referrers' => [] ],
+] ] );
+ninoWarnings();
+
+[ $status, $body ] = ninoCall( $appData, $panel, [ 'month' => '2026-02' ], 'stats/month' );
+$pageTitles = array_column( $body['uris'], 'title', 'uri' );
+check( 'a page whose route names a language the site does not have takes the native language\'s title - not the text file of that language, which lies there - without a warning', $status === 200
+	&& $pageTitles['/abroad'] === 'Im Ausland' && ninoWarnings() === [] );
+check( '...and a title that exists as a fill added at runtime is read like one of a text file', $pageTitles['/runtime'] === 'Added at runtime' );
+
+\Nino\Html::removeFill( $appData, '/_nino/webpage/runtime/title', 'en_US' );
+@unlink( \Nino\Filesystem::path( $appData, '/data/stats/2026-02.php' ) );
+unset( $appData['./nino/filesystem/cache']['/data/stats/2026-02.php'] );
+@unlink( \Nino\Filesystem::path( $appData, '/text/fr_FR.php' ) );
+unset( $appData['./nino/filesystem/cache']['/text/fr_FR.php'] );
+
 // The tile and the panel say the same. Today's file gets file hits it was
 // never meant to have - as an old install's would - and neither shows them
 $todayFile	= '/data/stats/'. $month. '.php';
@@ -554,7 +569,7 @@ $withFiles['days'][$today]['total'] += 7;
 \Nino\Filesystem::putFileContent( $appData, $todayFile, $withFiles );
 
 $pagesToday = (int) $todayState['days'][$today]['total'];
-[ $status, $body ] = callAdminPost( $appData, 'stats/month', [ 'month' => $month ] );
+[ $status, $body ] = ninoCall( $appData, $panel, [ 'month' => $month ], 'stats/month' );
 check( 'in the current month too the file hits are not shown', $status === 200 && $body['totals']['views'] === $pagesToday && $body['days'][0]['total'] === $pagesToday );
 check( 'the Dashboard tile is the panel\'s 7-day sum, not the stored total', \Nino\Modules\Stats::summary( $appData )['value'] === (string) $pagesToday
 	&& (string) ( $pagesToday + 7 ) !== \Nino\Modules\Stats::summary( $appData )['value'] );
@@ -565,15 +580,15 @@ unset( $appData['./nino/filesystem/cache'][$oldMonthFile] );
 echo "\n";
 
 unset( $appData['./nino/auth/current'] );
-[ $status ] = callAdminPost( $appData, 'stats/months' );
+[ $status ] = ninoCall( $appData, $panel, [], 'stats/months' );
 check( 'stats/months requires a signed-in account', $status === 401 );
-[ $status ] = callAdminPost( $appData, 'stats/month', [ 'month' => $month ] );
+[ $status ] = ninoCall( $appData, $panel, [ 'month' => $month ], 'stats/month' );
 check( 'stats/month requires a signed-in account', $status === 401 );
 
 \Nino\Auth::loginUser( $appData, 'plain@example.com', 'plain password' );
-[ $status ] = callAdminPost( $appData, 'stats/months' );
+[ $status ] = ninoCall( $appData, $panel, [], 'stats/months' );
 check( 'an account without the permission is rejected from stats/months', $status === 403 );
-[ $status ] = callAdminPost( $appData, 'stats/month', [ 'month' => $month ] );
+[ $status ] = ninoCall( $appData, $panel, [ 'month' => $month ], 'stats/month' );
 check( 'an account without the permission is rejected from stats/month', $status === 403 );
 
 \Nino\Auth::loginUser( $appData, 'admin@example.com', 'correct horse battery staple' );
@@ -606,7 +621,7 @@ unset( $reopened['days'][$today] );
 // counted while countSignedIn is off - and a view that is not counted never
 // reaches the sweep
 unset( $appData['./nino/auth/current'] );
-countRequest( $appData, fakeRequest( $appData, '/hello' ) );
+countRequest( $appData, ninoVisit( $appData, '/hello' ) );
 \Nino\Auth::loginUser( $appData, 'admin@example.com', 'correct horse battery staple' );
 
 $kept = \Nino\Modules\Stats::months( $appData );
@@ -626,7 +641,7 @@ echo "Deactivation\n";
 
 check( 'deactivation succeeds', \Nino\Features::deactivate( $appData, 'stats' ) === true );
 check( 'the panel is gone with it', isset( \Nino\Admin\Admin::panels( $appData )['stats'] ) === false );
-[ $status ] = callAdminPost( $appData, 'stats/months' );
+[ $status ] = ninoCall( $appData, $panel, [], 'stats/months' );
 check( 'with the feature off, stats/months is an unknown action', $status === 404 );
 check( 'the counted views survive deactivation', dayTotal( $appData, $month, $today ) === $expectedTotal );
 

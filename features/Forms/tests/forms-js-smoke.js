@@ -26,21 +26,34 @@
  *												has the focus described by the sentence as well until
  *												the marks are taken off.
  *
+ *												The panel is what it builds on Nino.adminUi.panel(): the
+ *												list asked for when the page is ready, the unsaved input
+ *												of its editor reported to the shell, and a refused save
+ *												said by the sentence of its code and the words it carries
+ *												for each field and control, looked up in the language of
+ *												the workbench.
+ *
  *												No jsdom, no dependency: the same element stand-in the
- *												other feature tests build, with just enough of
- *												Nino.adminUi for the panel to draw itself - the
- *												action bar carries the class string the kernel's own
+ *												other feature tests build. The kernel's _nino/Nino.js
+ *												runs in it as it is - from NINO_ROOT, or three levels up
+ *												when the feature sits in a checkout - for the slug a
+ *												field's name is made with and for the ready event the
+ *												panel starts on, and the workbench (Nino.adminUi,
+ *												Nino.admin, Nino.content) is a stand-in laid over it,
+ *												kept to what docs/features.md says of it: the action
+ *												bar carries the class string the kernel's own
  *												listActions() gives it, and the list of options does
  *												what stringList() does for a form: its value is the
  *												json of a hidden input and onChange hears the list -
  *												so this runs with nothing but node.
  *
  *	Usage: node features/Forms/tests/forms-js-smoke.js
+ *	       NINO_ROOT=../nino node features/Forms/tests/forms-js-smoke.js
  */
 
 'use strict';
 
-/* global require, __dirname, process */
+/* global require, __dirname, process, Buffer */
 
 const fs = require('fs');
 const path = require('path');
@@ -59,6 +72,8 @@ function check( label, condition ) {
 	console.log( 'FAIL  - '+ label );
 }
 
+const root = fs.realpathSync( process.env.NINO_ROOT || path.join( __dirname, '../../..' ) );
+const ninoJs = fs.readFileSync( path.join( root, '_nino/Nino.js' ), 'utf8' );
 const source = fs.readFileSync( path.join( __dirname, '../assets/admin.js' ), 'utf8' );
 
 /** Every descendant of $root, depth first */
@@ -175,10 +190,12 @@ function element( tag ) {
 // The element the last focus() call was made on
 element.focused = null;
 
-// Nino.adminUi.status() in miniature: what it was told, and which form it follows
+// Nino.adminUi.status() in miniature: what it was told, which form it follows, and
+// the role it takes on the line it is given
 const lines = [];
 const statusStub = function( el ) {
-	const line = { el : el, told : [], bound : null,
+	el.setAttribute( 'role', 'status' );
+	const line = { element : el, told : [], bound : null,
 		saving : function() { line.told.push('saving') },
 		saved : function() { line.told.push('saved') },
 		error : function( status, response, key ) { line.told.push( [ 'error', status, response.error, key ].join(' ') ) },
@@ -189,18 +206,31 @@ const statusStub = function( el ) {
 };
 
 /**
+ *	The shell's registry of unsaved input, in miniature: the entries panels
+ *	registered under their uri, and the question the shell asks of them
+ *
+ *	@return			{Object}
+ */
+function shellRegistry() {
+	const registry = { entries : {},
+		register : function( name, entry ) { registry.entries[name] = entry },
+		isDirty : function( names ) { return names.some( function( name ) { return registry.entries[name] !== undefined && registry.entries[name].isDirty() === true } ) },
+	};
+	return registry;
+}
+
+/**
  *	The panel, drawn into the two panes the shell hands it
  *
- *	@param		{Object}	options		{ forms } - what forms/list answers with;
- *																hold: true keeps the answer to forms/settings
- *																back until release() is called, status: the
- *																status that answer carries, api: stands in for
- *																Nino.adminUi.api, dirty: for the shell's
- *																Nino.admin.dirty registry,
- *																templates: what forms/list names as mail templates,
- *																types: the field types it names, text: what a fill key
- *																reads as (the key itself where nothing is said),
- *																refuse: the body forms/save answers with, status 400
+ *	@param			{Object}	options			{ forms } - what forms/list answers with;
+ *									hold: true keeps the answer to forms/settings
+ *									back until release() is called, status: the
+ *									status that answer carries, api: stands in for
+ *									Nino.adminUi.api, templates: what forms/list
+ *									names as mail templates, types: the field types
+ *									it names, text: what a fill key reads as (the
+ *									key itself where nothing is said), refuse: the
+ *									body forms/save answers with, status 400
  */
 function panel( options ) {
 
@@ -214,16 +244,58 @@ function panel( options ) {
 	form.id = 'forms-form';
 	body.appendChild( list );
 	body.appendChild( form );
+	body.scrollLeft = 0;
+	body.scrollTop = 0;
 
 	const calls = [];
 	const lists = [];
+	const numbers = [];
+	const timers = [];
+	const registry = shellRegistry();
 	let pending = null;
 	let status = 200;
 
 	const dc = {
-		createElement		: function( tag ) { return element( tag ) },
-		getElementById	: function( id ) { return descendants( body ).filter( function( n ) { return n.id === id } )[0] || null },
+		body				: body,
+		documentElement		: { clientHeight : 640, clientWidth : 1024, scrollLeft : 0, scrollTop : 0, style : {}, classList : { add : function() {}, remove : function() {} } },
+		cookie					: '',
+		readyState				: 'complete',
+		createElement			: function( tag ) { return element( tag ) },
+		getElementById		: function( id ) { return descendants( body ).filter( function( n ) { return n.id === id } )[0] || null },
+		querySelector			: function() { return null },
+		querySelectorAll	: function() { return [] },
+		addEventListener	: function() {},
 	};
+
+	// The page Nino.js loads into: what it asks of the browser at load. The timers
+	// are kept, not run, so that the page's ready event is the test's to fire
+	const sandbox = {
+		console					: console,
+		document				: dc,
+		navigator					: { userAgent : 'node', language : 'en-US' },
+		location				: { pathname : '/', origin : 'https://example.com', href : 'https://example.com/' },
+		XMLHttpRequest			: function() {},
+		FormData				: function() {},
+		TextEncoder				: TextEncoder,
+		btoa					: function( binary ) { return Buffer.from( binary, 'latin1' ).toString('base64') },
+		atob					: function( b64 ) { return Buffer.from( b64, 'base64' ).toString('latin1') },
+		setTimeout				: function( fn ) { timers.push( fn ); return timers.length },
+		clearTimeout			: function() {},
+		Event						: function( type ) { this.type = type },
+		dispatchEvent			: function() {},
+		addEventListener	: function() {},
+		requestAnimationFrame : function() { return 0 },
+		matchMedia				: function() { return { matches : false, addEventListener : function() {} } },
+		confirm					: function() { return true },
+	};
+	sandbox.window = sandbox;
+	sandbox.self = sandbox;
+
+	const context = vm.createContext( sandbox );
+	vm.runInContext( ninoJs, context, { filename : 'Nino.js' } );
+
+	// The kernel's own Nino.js is what is running; the workbench is laid over it
+	const Nino = sandbox.Nino;
 
 	const answer = function( callback, payload ) {
 		if( status !== 200 )
@@ -232,219 +304,331 @@ function panel( options ) {
 		callback( 200, { retention : values.retention, store : values.store } );
 	};
 
-	const Nino = {
-		content	: { getText : function( key ) { return typeof options.text === 'function' ? options.text( key ) : key } },
-		events	: { bindCallback : function() {} },
-		// The kernel's own pieces in miniature: listActions() is the fixed bar
-		// every list screen ends in, with the class string it really carries,
-		// and the shared fields hand their key back as data-key
-		adminUi	: {
-			// Nino.adminUi.api.call() calls back with the status and the body of the
-			// answer, and errorText() says a failure that has no code of its own as
-			// "(status) message"
-			api					: {
-				call : function( action, payload, callback ) {
-					const sent = { action : action, data : JSON.stringify( payload ) };
-					calls.push( sent );
-					if( action === 'forms/list' )
-						return callback( 200, {
-							forms			: options.forms || [],
-							types			: options.types || [ 'text', 'email', 'select' ],
-							templates	: options.templates || [],
-							reserved	: [ 'form', 'location', '_csrf', '_t', 'id', 'date', 'ip' ],
-							default		: false,
-							endpoint	: true,
-							retention	: 3,
-							store			: true,
-						} );
-					if( action === 'forms/save' && options.refuse )
-						return callback( 400, options.refuse );
-					if( action === 'forms/save' && status === 200 )
-						return callback( 200, { form : JSON.parse( sent.data ).form } );
-					if( options.hold === true )
-						return pending = function() { answer( callback, sent ) };
-					answer( callback, sent );
-				},
-				errorText : function( status, response, key ) { return '('+ status+ ') '+ ( ( response && response.error ) ? response.error : key ) },
-			},
-			status			: statusStub,
-			emptyState	: function( text ) { const el = element('p'); el.className = 'nino-admin-empty'; el.textContent = text; return el },
-			listActions	: function( buttons ) { const el = element('div'); el.className = 'nino-admin-actionbar nino-admin-list-actions'; buttons.forEach( function( b ) { el.appendChild( b ) } ); return el },
-			contextBar	: function( back ) { const el = element('div'); el.className = 'nino-admin-contextbar'; el.appendChild( back ); return el },
-			numberField	: function( config ) {
-				const el = element('label');
-				el.className = 'nino-admin-field';
-				const input = element('input');
-				input.type = 'number';
-				input.value = config.value;
-				input.dataset.key = config.key;
-				el.appendChild( input );
-				return el;
-			},
-			selectField	: function( config ) {
-				const el = element('label');
-				el.className = 'nino-admin-field';
-				const select = element('select');
-				select.className = 'nino-admin-input';
-				select.dataset.key = config.key;
-				config.options.forEach( function( entry ) {
-					const option = element('option');
-					option.value = entry.value;
-					option.textContent = entry.label;
-					select.appendChild( option );
-				} );
-				select.value = config.value;
-				el.appendChild( select );
-				return el;
-			},
-			switchField	: function( config ) {
-				const el = element('label');
-				el.className = 'nino-admin-switch';
-				const input = element('input');
-				input.type = 'checkbox';
-				input.checked = config.checked === true;
-				input.dataset.key = config.key;
-				el.appendChild( input );
-				return el;
-			},
-			// stringList() in miniature: its label first, the value as the json of a
-			// hidden input, a row of a text and its three buttons for each text, and the
-			// button that adds one, with the classes the kernel's own gives them. A row
-			// that is empty is not an entry: each change rewrites the input without it
-			// and tells onChange the list as a form reads it
-			stringList	: function( config ) {
+	// Nino.adminUi.format(): the placeholders %s %d %n, filled in order
+	const format = function( text, ...params ) {
+		let at = 0;
+		return String( text ).replace( /%[sdn]/g, function( token ) { return at < params.length ? String( params[at++] ) : token } );
+	};
 
-				lists.push( { key : config.key, label : config.label, value : ( config.value || [] ).slice(), text : config.text } );
+	Nino.content = { getText : function( key ) { return typeof options.text === 'function' ? options.text( key ) : key } };
 
-				const texts = ( config.value || [] ).map( String );
-
-				const el = element('div');
-				el.className = 'nino-admin-field nino-admin-stringlist';
-
-				const name = element('span');
-				name.textContent = config.label;
-				el.appendChild( name );
-
-				const store = element('input');
-				store.type = 'hidden';
-				store.dataset.field = config.key;
-				store.dataset.type = 'array';
-				store.value = JSON.stringify( config.value || [] );
-				el.appendChild( store );
-
-				const rows = element('ul');
-				rows.className = 'nino-admin-stringlist-rows';
-				el.appendChild( rows );
-
-				const commit = function() {
-					store.value = JSON.stringify( texts.filter( function( text ) { return text.trim() !== '' } ) );
-					if( typeof config.onChange === 'function' )
-						config.onChange( JSON.parse( store.value ) );
-				};
-
-				const button = function( className, title, glyph, disabled, onClick ) {
-					const control = element('button');
-					control.type = 'button';
-					control.className = className;
-					control.textContent = glyph;
-					control.setAttribute( 'aria-label', title );
-					control.disabled = disabled === true;
-					control.addEventListener( 'click', onClick );
-					return control;
-				};
-
-				const draw = function() {
-
-					rows.innerHTML = '';
-
-					if( texts.length === 0 ) {
-						const empty = element('li');
-						empty.className = 'nino-admin-stringlist-empty';
-						empty.textContent = config.text.empty;
-						rows.appendChild( empty );
-						return;
-					}
-
-					texts.forEach( function( text, index ) {
-
-						const item = element('li');
-
-						const input = element('input');
-						input.type = 'text';
-						input.className = 'nino-admin-stringlist-input';
-						input.value = text;
-						input.setAttribute( 'aria-label', config.text.item.replace( '%d', String( index + 1 ) ) );
-						input.addEventListener( 'input', function() { texts[index] = input.value; commit() } );
-						item.appendChild( input );
-
-						// A button at the end of the list is off, and a click on it moves nothing
-						const move = function( delta ) {
-							if( texts[index + delta] === undefined )
-								return;
-							const moved = texts[index];
-							texts[index] = texts[index + delta];
-							texts[index + delta] = moved;
-							commit();
-							draw();
-						};
-
-						const actions = element('span');
-						actions.className = 'nino-admin-stringlist-actions';
-						actions.appendChild( button( '', config.text.up, '\u2191', index === 0, function() { move( -1 ) } ) );
-						actions.appendChild( button( '', config.text.down, '\u2193', index === texts.length - 1, function() { move( 1 ) } ) );
-						actions.appendChild( button( 'nino-admin-stringlist-remove', config.text.remove, '\u2715', false, function() { texts.splice( index, 1 ); commit(); draw() } ) );
-						item.appendChild( actions );
-
-						rows.appendChild( item );
+	// The kernel's own pieces in miniature: listActions() is the fixed bar
+	// every list screen ends in, with the class string it really carries,
+	// and the shared fields hand their key back as data-key
+	Nino.adminUi = {
+		// Nino.adminUi.api.call() calls back with the status and the body of the
+		// answer, and errorText() says a failure by the workbench's rule: the
+		// sentence of its code, else "(status) message"
+		api						: {
+			call : function( action, payload, callback ) {
+				const sent = { action : action, data : JSON.stringify( payload ) };
+				calls.push( sent );
+				if( action === 'forms/list' )
+					return callback( 200, {
+						forms				: options.forms || [],
+						types				: options.types || [ 'text', 'email', 'select' ],
+						templates		: options.templates || [],
+						reserved	: [ 'form', 'location', '_csrf', '_t', 'id', 'date', 'ip' ],
+						default			: false,
+						endpoint	: true,
+						retention		: 3,
+						store				: true,
 					} );
-				};
-
-				el.appendChild( button( 'nino-admin-stringlist-add', '', config.text.add, false, function() { texts.push(''); draw() } ) );
-
-				draw();
-
-				return el;
+				if( action === 'forms/save' && options.refuse )
+					return callback( 400, options.refuse );
+				if( action === 'forms/save' && status === 200 )
+					return callback( 200, { form : JSON.parse( sent.data ).form } );
+				if( options.hold === true )
+					return pending = function() { answer( callback, sent ) };
+				answer( callback, sent );
 			},
+			errorText : function( status, response, key ) {
+				const body = response !== null && typeof response === 'object' ? response : {};
+				const known = typeof body.code === 'string' ? Nino.content.getText( '/_admin/error/'+ body.code ) : '';
+				return known !== '' ? format( known, ...( body.params || [] ) ) : '('+ status+ ') '+ ( body.error || key );
+			},
+		},
+		format				: format,
+		status				: statusStub,
+		hint				: function( text, kind ) { const el = element('p'); el.className = kind === 'error' ? 'nino-admin-hint nino-admin-error' : 'nino-admin-hint'; el.textContent = text; return el },
+		el						: function( tag, className, text ) { const el = element( tag ); if( className ) el.className = className; if( text !== undefined ) el.textContent = text; return el },
+		button				: function( text, onClick, config ) {
+			config = config || {};
+			const el = element('button');
+			el.type = config.type === 'submit' ? 'submit' : 'button';
+			if( config.className ) el.className = config.className;
+			el.textContent = text;
+			if( config.name ) { el.title = config.name; el.setAttribute( 'aria-label', config.name ) }
+			el.disabled = config.disabled === true;
+			if( config.id ) el.id = config.id;
+			if( typeof onClick === 'function' ) el.addEventListener( 'click', onClick );
+			return el;
+		},
+		textField			: function( config ) {
+			const el = element('label');
+			el.className = config.className || 'nino-admin-field';
+			const name = element('span');
+			name.textContent = config.label ?? '';
+			if( config.required === true ) {
+				const star = element('span');
+				star.className = 'nino-admin-required';
+				star.textContent = '*';
+				name.appendChild( star );
+			}
+			el.appendChild( name );
+			const input = element('input');
+			input.className = 'nino-admin-input';
+			input.type = config.type || 'text';
+			input.value = config.value ?? '';
+			input.autocomplete = config.autocomplete || '';
+			if( config.required === true ) {
+				input.required = true;
+				input.setAttribute( 'aria-required', 'true' );
+			}
+			el.appendChild( input );
+			if( config.hint ) {
+				const small = element('small');
+				small.className = 'nino-admin-hint';
+				small.textContent = config.hint;
+				el.appendChild( small );
+			}
+			return el;
+		},
+		showError			: function( container, status, response, key ) {
+			container.innerHTML = '';
+			const p = element('p');
+			p.className = 'nino-admin-error';
+			p.textContent = Nino.adminUi.api.errorText( status, response, key );
+			container.appendChild( p );
+			return p;
+		},
+		// levels(): the ids that start alike, one of them on show at a time
+		levels				: function( prefix, names ) {
+			return { show : function( name ) { names.forEach( function( level ) { dc.getElementById( prefix+ '-'+ level ).classList.toggle( 'admin-hidden', level !== name ) } ) } };
+		},
+		// panel(): the lifecycle the manual describes - the list asked for when the
+		// page is ready (or when the panel is first shown), drawn by render() from the
+		// answer, a failure said in the mount with the panel's key, and the spec's dirty
+		// entry handed to the shell's registry at the first request
+		panel					: function( spec ) {
+			let registered = false;
+			const self = {
+				uri				: spec.uri,
+				ready			: false,
+				loading		: false,
+				data			: null,
+				mount				: function() { return dc.getElementById( spec.mount ) },
+				call			: function( action, payload, done ) { Nino.adminUi.api.call( spec.uri+ '/'+ action, payload, done ) },
+				fail			: function( container, status, response, key ) { return Nino.adminUi.showError( container, status, response, key || spec.error || '/_admin/'+ spec.uri+ '/error/load' ) },
+				init			: function( then ) {
+					if( self.loading === true || self.mount() === null )
+						return;
+					self.loading = true;
+					if( registered === false && typeof spec.dirty === 'object' ) {
+						Nino.admin.dirty.register( spec.uri, spec.dirty );
+						registered = true;
+					}
+					self.call( spec.action || 'list', {}, function( status, response ) {
+						self.loading = false;
+						if( status === 200 ) {
+							self.data = response;
+							self.ready = true;
+							spec.render( response, self );
+							if( typeof then === 'function' )
+								then();
+							return;
+						}
+						self.fail( self.mount(), status, response );
+						self.ready = false;
+					} );
+				},
+				reload				: function( then ) { self.init( then ) },
+				showCurrent		: function() { if( self.ready === false || spec.show === 'always' ) self.init() },
+			};
+			if( spec.boot === 'ready' )
+				Nino.events.bindCallback( 'ready', function() { self.init() } );
+			return self;
+		},
+		emptyState		: function( text ) { const el = element('p'); el.className = 'nino-admin-empty'; el.textContent = text; return el },
+		actionBar			: function( bar ) { bar.classList.add('nino-admin-actionbar'); return bar },
+		listActions		: function( buttons ) { const el = element('div'); el.className = 'nino-admin-actionbar nino-admin-list-actions'; buttons.forEach( function( b ) { el.appendChild( b ) } ); return el },
+		contextBar		: function( back ) { const el = element('div'); el.className = 'nino-admin-contextbar'; el.appendChild( back ); return el },
+		numberField		: function( config ) {
+			numbers.push( config );
+			const el = element('label');
+			el.className = 'nino-admin-field';
+			const input = element('input');
+			input.type = 'number';
+			input.value = config.value;
+			input.dataset.key = config.key;
+			el.appendChild( input );
+			return el;
+		},
+		selectField		: function( config ) {
+			const el = element('label');
+			el.className = config.className || 'nino-admin-field';
+			const select = element('select');
+			select.className = 'nino-admin-input';
+			select.dataset.key = config.key;
+			config.options.forEach( function( entry ) {
+				const option = element('option');
+				option.value = entry.value;
+				option.textContent = entry.label;
+				select.appendChild( option );
+			} );
+			select.value = config.value;
+			select.addEventListener( 'change', function() { if( typeof config.onChange === 'function' ) config.onChange( select.value ) } );
+			el.appendChild( select );
+			return el;
+		},
+		switchField		: function( config ) {
+			const el = element('label');
+			el.className = 'nino-admin-switch';
+			const input = element('input');
+			input.type = 'checkbox';
+			input.checked = config.checked === true;
+			input.dataset.key = config.key;
+			el.appendChild( input );
+			return el;
+		},
+		// stringList() in miniature: its label first, the value as the json of a
+		// hidden input, a row of a text and its three buttons for each text, and the
+		// button that adds one, with the classes the kernel's own gives them. A row
+		// that is empty is not an entry: each change rewrites the input without it
+		// and tells onChange the list as a form reads it
+		stringList		: function( config ) {
+
+			lists.push( { key : config.key, label : config.label, value : ( config.value || [] ).slice(), text : config.text } );
+
+			const texts = ( config.value || [] ).map( String );
+
+			const el = element('div');
+			el.className = 'nino-admin-field nino-admin-stringlist';
+
+			const name = element('span');
+			name.textContent = config.label;
+			el.appendChild( name );
+
+			const store = element('input');
+			store.type = 'hidden';
+			store.dataset.field = config.key;
+			store.dataset.type = 'array';
+			store.value = JSON.stringify( config.value || [] );
+			el.appendChild( store );
+
+			const rows = element('ul');
+			rows.className = 'nino-admin-stringlist-rows';
+			el.appendChild( rows );
+
+			const commit = function() {
+				store.value = JSON.stringify( texts.filter( function( text ) { return text.trim() !== '' } ) );
+				if( typeof config.onChange === 'function' )
+					config.onChange( JSON.parse( store.value ) );
+			};
+
+			const button = function( className, title, glyph, disabled, onClick ) {
+				const control = element('button');
+				control.type = 'button';
+				control.className = className;
+				control.textContent = glyph;
+				control.setAttribute( 'aria-label', title );
+				control.disabled = disabled === true;
+				control.addEventListener( 'click', onClick );
+				return control;
+			};
+
+			const draw = function() {
+
+				rows.innerHTML = '';
+
+				if( texts.length === 0 ) {
+					const empty = element('li');
+					empty.className = 'nino-admin-stringlist-empty';
+					empty.textContent = config.text.empty;
+					rows.appendChild( empty );
+					return;
+				}
+
+				texts.forEach( function( text, index ) {
+
+					const item = element('li');
+
+					const input = element('input');
+					input.type = 'text';
+					input.className = 'nino-admin-stringlist-input';
+					input.value = text;
+					input.setAttribute( 'aria-label', config.text.item.replace( '%d', String( index + 1 ) ) );
+					input.addEventListener( 'input', function() { texts[index] = input.value; commit() } );
+					item.appendChild( input );
+
+					// A button at the end of the list is off, and a click on it moves nothing
+					const move = function( delta ) {
+						if( texts[index + delta] === undefined )
+							return;
+						const moved = texts[index];
+						texts[index] = texts[index + delta];
+						texts[index + delta] = moved;
+						commit();
+						draw();
+					};
+
+					const actions = element('span');
+					actions.className = 'nino-admin-stringlist-actions';
+					actions.appendChild( button( '', config.text.up, '↑', index === 0, function() { move( -1 ) } ) );
+					actions.appendChild( button( '', config.text.down, '↓', index === texts.length - 1, function() { move( 1 ) } ) );
+					actions.appendChild( button( 'nino-admin-stringlist-remove', config.text.remove, '✕', false, function() { texts.splice( index, 1 ); commit(); draw() } ) );
+					item.appendChild( actions );
+
+					rows.appendChild( item );
+				} );
+			};
+
+			el.appendChild( button( 'nino-admin-stringlist-add', '', config.text.add, false, function() { texts.push(''); draw() } ) );
+
+			draw();
+
+			return el;
 		},
 	};
 
 	// Where the real shell defines them (script.js): the back link's row, and the
-	// registry of unsaved input a panel reports to - with nothing unsaved in it
+	// registry of unsaved input a panel reports to
 	Nino.admin = {
-		formToolbar	: function( back ) { return Nino.adminUi.contextBar( back ) },
-		dirty				: options.dirty || { watchForm : function() {}, snapshot : function() {}, isDirty : function() { return false } },
+		formToolbar		: function( back ) { return Nino.adminUi.contextBar( back ) },
+		dirty					: registry,
 	};
 
 	if( options.api )
 		Nino.adminUi.api = options.api;
 
-	const sandbox = { console : console, document : dc, Nino : Nino, window : { Nino : Nino, confirm : function() { return true } } };
-	sandbox.window.window = sandbox.window;
-	sandbox.document.documentElement = element('html');
-	sandbox.document.body = body;
+	vm.runInContext( source, context, { filename : 'admin.js' } );
 
-	vm.runInContext( source, vm.createContext( sandbox ), { filename : 'admin.js' } );
-
-	Nino.admin.forms.init();
+	// The page is ready: the timers Nino.js asked for run, and with them the callbacks
+	// bound to its ready event - which is where the panel starts. An error such a
+	// callback threw is thrown again from a timer, and so it is here
+	while( timers.length > 0 )
+		timers.shift()();
 
 	// The settings form is the one that is a form on the list screen
 	const settings = function() { return list.querySelectorAll('.forms-settings')[0] || null };
 
 	return {
-		list		: list,
-		form		: form,
-		calls		: calls,
-		lists		: lists,
-		panel		: Nino.admin.forms,
-		settings: settings,
-		save		: function() { return settings().querySelector('button') },
-		msg			: function() { return settings().querySelector('#forms-settings-msg') },
-		field		: function( key ) { return settings().querySelector('[data-key="'+ key+ '"]') },
-		bars		: function( mount ) { return mount.querySelectorAll('.nino-admin-actionbar').length },
-		rows		: function() { return form.querySelectorAll('.forms-field') },
-		hidden	: function( mount ) { return mount.classList.contains('admin-hidden') },
-		status	: function( value ) { status = value },
-		release	: function() { const run = pending; pending = null; run() },
+		list			: list,
+		form			: form,
+		calls				: calls,
+		lists				: lists,
+		numbers			: numbers,
+		registry		: registry,
+		panel				: Nino.admin.forms,
+		settings	: settings,
+		save			: function() { return settings().querySelector('button') },
+		msg					: function() { return settings().querySelector('#forms-settings-msg') },
+		field				: function( key ) { return settings().querySelector('[data-key="'+ key+ '"]') },
+		bars			: function( mount ) { return mount.querySelectorAll('.nino-admin-actionbar').length },
+		rows			: function() { return form.querySelectorAll('.forms-field') },
+		hidden			: function( mount ) { return mount.classList.contains('admin-hidden') },
+		status			: function( value ) { status = value },
+		release			: function() { const run = pending; pending = null; run() },
 	};
 }
 
@@ -470,6 +654,30 @@ const two = [
 ];
 
 
+/*	A refused save names what is wrong by words: the code forms_fields carries the
+	three maps of the server as its params - the word of what is wrong with a field,
+	by its place in the list, the control of that field the word belongs to, and the
+	words of the controls of the form itself - and the script says each in the
+	language of the workbench, the sentence of the code on top. These are the
+	workbench's fills, in English; a key nobody gave a sentence reads as itself	*/
+const sentences = {
+	'/_admin/error/forms_fields'			: 'Not saved.',
+	'/_admin/error/forms_duplicate'		: 'Another form has that key.',
+	'/_admin/error/forms_invalid'		: 'The form needs a key of its own.',
+	'/_admin/forms/problem/duplicate'	: 'Taken.',
+	'/_admin/forms/problem/options'		: 'Needs one.',
+	'/_admin/forms/problem/field'		: 'Where?',
+	'/_admin/forms/problem/to'			: 'No address.',
+	'/_admin/forms/problem/ownertpl'	: 'Gone.',
+	'/_admin/forms/problem/fields'		: 'Needs a field.',
+	'/_admin/forms/problem/keytaken'	: 'This key is taken.',
+};
+const said = function( key ) { return sentences[key] ?? key };
+const refusal = function( fields, controls, about ) {
+	return { error : 'the form could not be saved as it is - see the marked fields', code : 'forms_fields', params : [ fields, controls, about ] };
+};
+
+
 // --- The list ------------------------------------------------------------------
 
 const open = panel( { forms : two } );
@@ -490,17 +698,30 @@ check( '...and the settings are a card of their own, not a bar',
 	open.settings().tagName === 'FORM' && open.settings().matchesClass('nino-admin-card') === true
 	&& open.settings().matchesClass('nino-admin-actionbar') === false
 	&& open.settings().querySelectorAll('.nino-admin-actionbar').length === 0 );
-check( '...with its own submit button and its own status line inside it',
+check( '...with its own submit button and its own status line inside it, in a row of the workbench\'s actions',
 	open.save().type === 'submit' && open.save().textContent === '/_admin/common/label/save'
-	&& open.msg() !== null && open.msg().getAttribute('role') === 'status' );
+	&& open.msg() !== null && open.msg().getAttribute('role') === 'status'
+	&& open.settings().querySelectorAll('.nino-admin-actions').length === 1 && open.settings().querySelectorAll('.nino-admin-actions')[0].children[0] === open.save() );
 check( '...and it comes after the list\'s bar in the page, where it always did',
 	open.list.children.indexOf( open.settings() ) > open.list.children.indexOf( open.list.querySelectorAll('.nino-admin-list-actions')[0] ) );
+check( 'each form\'s card has its Edit and its Delete in a row of the workbench\'s actions', open.list.querySelectorAll('[data-form]').every( function( card ) {
+	const row = card.querySelectorAll('.nino-admin-actions')[0];
+	return row !== undefined && row.children.length === 2 && row.children[0].matchesClass('nino-admin-btn-primary') && row.children[1].matchesClass('nino-admin-btn-danger');
+} ) );
+
+const phrased = panel( { forms : two, text : function( key ) { return { '/_admin/forms/hint/shortcode' : 'Write %s', '/_admin/forms/label/entries' : '%s submissions' }[key] || key } } );
+check( 'a card names the shortcode that draws the form, with its key, and what the form collects and how much has come in through it',
+	phrased.list.querySelectorAll('[data-form]')[0].querySelectorAll('.nino-admin-hint').map( function( hint ) { return hint.textContent } ).join('|') === 'Write [form key="contact"]|email · 4 submissions' );
 
 
 // --- Saving the settings -------------------------------------------------------
 
 const save = panel( { forms : two, hold : true } );
 const saveLine = lines[lines.length - 1];
+
+check( 'the retention is a number field of the workbench from 1 to 60, counted in months - the unit is the field\'s to write, the label does not carry it',
+	save.numbers.length === 1 && save.numbers[0].key === 'retention' && save.numbers[0].min === 1 && save.numbers[0].max === 60 && save.numbers[0].unit === 'months'
+	&& save.numbers[0].label === '/_admin/forms/label/retention' );
 
 save.field('retention').value = '6';
 save.field('store').checked = false;
@@ -544,6 +765,10 @@ check( 'New form opens the editor in place of the list',
 check( '...and the editor holds exactly one fixed action bar, its own Save',
 	edit.bars( edit.form ) === 1 && edit.form.querySelectorAll('button').filter( function( b ) { return b.type === 'submit' } ).length === 1 );
 check( '...and the settings card is not drawn into it', edit.form.querySelectorAll('.forms-settings').length === 0 );
+check( '...with the key a required field, marked the way the workbench marks one', edit.form.querySelector('[data-about="key"]').required === true
+	&& edit.form.querySelector('[data-about="key"]').getAttribute('aria-required') === 'true'
+	&& edit.form.querySelector('[data-about="key"]').parentNode.querySelectorAll('.nino-admin-required').length === 1
+	&& edit.form.querySelector('[data-about="name"]').required !== true );
 
 
 // --- Coming back ---------------------------------------------------------------
@@ -593,7 +818,7 @@ check( 'the panel asks the workbench\'s request helper for \'forms/<action>\'',
 
 const lined = panel( { forms : two } );
 const cardLine = lines[lines.length - 1];
-check( 'the settings card\'s message is a status line of the shell\'s, following the card', cardLine.el === lined.msg() && cardLine.bound === lined.settings() );
+check( 'the settings card\'s message is a status line of the shell\'s, following the card', cardLine.element === lined.msg() && cardLine.bound === lined.settings() );
 
 const typed = panel( { forms : two } );
 typed.list.querySelectorAll('.nino-admin-list-actions')[0].children[0].click();
@@ -609,36 +834,37 @@ check( 'a list that could not be read says so in the shell\'s words', errors.lis
 
 // --- Unsaved input -------------------------------------------------------------
 
-// The shell's registry in miniature: what the panel registered, and what it
-// was asked to take for saved
-const registry = { watched : {}, snapshots : [], dirty : false };
-registry.watchForm = function( name, getter, save ) { registry.watched[name] = { getter : getter, save : save } };
-registry.snapshot = function( name ) { registry.snapshots.push( name ) };
-registry.isDirty = function() { return registry.dirty };
+/*	The panel hands the shell an entry for its editor when it first asks for its
+	list (the dirty of its spec, which the shell's Nino.admin.dirty.register()
+	takes), and the shell asks it: is there input nobody has saved, save it, take
+	it for saved. The registry is the shell's and a stand-in here	*/
+const guarded = panel( { forms : two } );
+const entry = guarded.registry.entries['forms'] || null;
 
-const guarded = panel( { forms : two, dirty : registry } );
-const watched = registry.watched['forms'] || null;
-
-check( 'the panel watches its editor under its own uri', watched !== null && watched.getter() === guarded.form && typeof watched.save === 'function' );
-check( '...and what is on screen is taken for saved when the editor opens, and not before', registry.snapshots.length === 0 );
+check( 'the panel registers its editor with the shell under its own uri, with the three things the shell asks of it',
+	entry !== null && typeof entry.isDirty === 'function' && typeof entry.save === 'function' && typeof entry.discard === 'function' );
+check( '...and nothing is unsaved while there is no editor', entry.isDirty() === false && guarded.registry.isDirty( [ 'forms' ] ) === false );
 
 guarded.list.querySelectorAll('.nino-admin-list-actions')[0].children[0].click();
-check( '...opened', registry.snapshots.length === 1 && registry.snapshots[0] === 'forms' );
+check( '...nor while the editor holds what it was drawn with', entry.isDirty() === false );
+
+guarded.form.querySelector('[data-about="key"]').value = 'renamed';
+check( '...but there is once something is typed into it', entry.isDirty() === true && guarded.registry.isDirty( [ 'forms' ] ) === true );
 
 // Another panel and back again: an editor that holds input is left as it is
 const mark = element('span');
 guarded.form.appendChild( mark );
-registry.dirty = true;
 guarded.panel.showCurrent();
 check( 'coming back to the panel does not draw an editor over what is typed into it', guarded.form.children.indexOf( mark ) !== -1 );
-registry.dirty = false;
+entry.discard();
+check( 'discarding takes what is typed for saved', entry.isDirty() === false );
 guarded.panel.showCurrent();
-check( '...and an editor that holds nothing is drawn again as before', guarded.form.children.indexOf( mark ) === -1 && guarded.hidden( guarded.form ) === false );
+check( '...and an editor that holds nothing unsaved is drawn again as before', guarded.form.children.indexOf( mark ) === -1 && guarded.hidden( guarded.form ) === false );
 
 // The shell's Save saves from its own question
 guarded.form.querySelector('[data-about="key"]').value = 'Renamed';
 let told = [];
-watched.save( function( ok ) { told.push( ok ) } );
+entry.save( function( ok ) { told.push( ok ) } );
 check( 'the shell\'s Save posts the form and says it was saved - once, before the list is read again',
 	told.length === 1 && told[0] === true && guarded.calls.filter( function( call ) { return call.action === 'forms/save' } ).length === 1
 	&& JSON.parse( guarded.calls.filter( function( call ) { return call.action === 'forms/save' } )[0].data ).form.key === 'renamed' );
@@ -647,12 +873,12 @@ guarded.status( 422 );
 guarded.panel._editing = JSON.parse( JSON.stringify( two[0] ) );
 guarded.panel._renderForm();
 told = [];
-watched.save( function( ok ) { told.push( ok ) } );
+entry.save( function( ok ) { told.push( ok ) } );
 check( '...and says it was not when the server refused it', told.length === 1 && told[0] === false );
 
 guarded.panel._editing = null;
 told = [];
-watched.save( function( ok ) { told.push( ok ) } );
+entry.save( function( ok ) { told.push( ok ) } );
 check( '...as it does when there is no editor to save', told.length === 1 && told[0] === false );
 
 
@@ -662,12 +888,14 @@ const allTypes = [ 'text', 'email', 'tel', 'url', 'number', 'textarea', 'select'
 const reservedNames = [ 'form', 'location', '_csrf', '_t', 'id', 'date', 'ip' ];
 const named = panel( { forms : two, types : allTypes } ).panel;
 
-/*	The pure part: what a label becomes. The German umlauts and the sharp s
-	are spelled out, any other accent is dropped, and the result is a name the
-	engine takes - a letter first, 64 characters at most, never a reserved name
-	and never one that is taken	*/
+/*	The pure part: what a label becomes. The slug is the kernel's Nino.slug(), the
+	one that is running here: the umlauts and the sharp s are spelled out, so are
+	the other letters its table has, and any other letter is a separator. The
+	result is a name the engine takes - a letter first, 64 characters at most,
+	never a reserved name and never one that is taken	*/
 [
 	[ 'Straße', 'strasse' ], [ 'Ihre Nachricht', 'ihre-nachricht' ], [ 'Größe', 'groesse' ], [ 'ÄÖÜ', 'aeoeue' ], [ 'Café', 'cafe' ],
+	[ 'Ærøskøbing', 'aeroskobing' ], [ 'Łódź', 'lod' ],
 	[ '1. Wahl', 'field-1-wahl' ], [ '  E-Mail (privat) ', 'e-mail-privat' ], [ '', 'field' ], [ '???', 'field' ],
 	[ '[[/template/common/form/email]]', 'email' ], [ '[[/x/y/Ihre Größe]]', 'ihre-groesse' ], [ 'date', 'date-field' ], [ 'Date', 'date-field' ], [ 'ID', 'id-field' ],
 ].forEach( function( fixture ) {
@@ -765,6 +993,9 @@ check( 'every row has a button up and a button down, with a title and a label of
 	const up = row.querySelector('[data-role="up"]'), down = row.querySelector('[data-role="down"]');
 	return up.type === 'button' && down.type === 'button' && up.title === '/_admin/common/label/moveup' && up.getAttribute('aria-label') === '/_admin/common/label/moveup'
 		&& down.title === '/_admin/common/label/movedown' && down.getAttribute('aria-label') === '/_admin/common/label/movedown';
+} ) );
+check( '...side by side in the workbench\'s own pair of move buttons', sorting.rows().every( function( row ) {
+	return row.querySelectorAll('.nino-admin-move').length === 1 && row.querySelectorAll('.nino-admin-move')[0].children.length === 2;
 } ) );
 check( '...the first cannot go up and the last cannot go down', stepOf( 0, 'up' ).disabled === true && stepOf( 0, 'down' ).disabled === false
 	&& stepOf( 2, 'down' ).disabled === true && stepOf( 2, 'up' ).disabled === false && stepOf( 1, 'up' ).disabled === false && stepOf( 1, 'down' ).disabled === false );
@@ -950,7 +1181,7 @@ check( 'the options a text field was stored with are not given to the select it 
 	into it. A save that is refused leaves the editor as it is - and what is
 	done to the list after that is what the next save has to send	*/
 const again = { forms : [ Object.assign( {}, plan, { fields : [ { name : 'plan', label : 'Plan', type : 'radio', required : true, options : [] } ] } ) ], types : allTypes,
-	refuse : { error : 'Not saved.', fields : { 0 : 'Needs one.' }, controls : { 0 : 'options' }, about : {} } };
+	text : said, refuse : refusal( { 0 : 'options' }, { 0 : 'options' }, [] ) };
 const second = panel( again );
 second.list.querySelectorAll('[data-form] button')[0].click();
 second.panel._submit();
@@ -969,10 +1200,8 @@ const refused = panel( { forms : [ { key : 'q', name : 'Q', to : '', subject : '
 	{ name : 'one', label : 'Two', type : 'text', required : false, options : [] },
 	{ name : 'three', label : 'Three', type : 'radio', required : false, options : [] },
 ] } ], types : allTypes, templates : [ '/templates/mail-owner', '/templates/mail-user' ],
-	refuse : {
-		error : 'Not saved.', fields : { 1 : 'Taken.', 2 : 'Needs one.', 9 : 'Where?' }, controls : { 1 : 'name', 2 : 'options', 9 : 'name' },
-		about : { to : 'No address.', ownertpl : 'Gone.', fields : 'Needs a field.' },
-	} } );
+	text : said,
+	refuse : refusal( { 1 : 'duplicate', 2 : 'options', 9 : 'field' }, { 1 : 'name', 2 : 'options', 9 : 'name' }, { to : 'to', ownertpl : 'ownertpl', fields : 'fields' } ) } );
 refused.list.querySelectorAll('[data-form] button')[0].click();
 refused.panel._submit();
 
@@ -1016,7 +1245,7 @@ const listed = panel( { forms : [ { key : 'q', name : 'Q', to : '', subject : ''
 	{ name : 'one', label : 'One', type : 'text', required : false, options : [] },
 	{ name : 'three', label : 'Three', type : 'radio', required : false, options : [] },
 ] } ], types : allTypes, templates : [ '/templates/mail-owner', '/templates/mail-user' ],
-	refuse : { error : 'Not saved.', fields : { 1 : 'Needs one.' }, controls : { 1 : 'options' }, about : {} } } );
+	text : said, refuse : refusal( { 1 : 'options' }, { 1 : 'options' }, [] ) } );
 listed.list.querySelectorAll('[data-form] button')[0].click();
 listed.panel._submit();
 check( 'a refusal that names only the list of options puts the focus on the button of the list while it has no row', element.focused === listed.rows()[1].querySelector('.nino-admin-stringlist-add') );
@@ -1046,7 +1275,7 @@ check( 'taking the marks off takes the description off the element that had the 
 
 // The marks come off when the next save starts, so one that goes through leaves no description behind
 const mendable = { forms : [ Object.assign( {}, plan, { fields : [ { name : 'plan', label : 'Plan', type : 'radio', required : true, options : [] } ] } ) ], types : allTypes,
-	refuse : { error : 'Not saved.', fields : { 0 : 'Needs one.' }, controls : { 0 : 'options' }, about : {} } };
+	text : said, refuse : refusal( { 0 : 'options' }, { 0 : 'options' }, [] ) };
 const mended = panel( mendable );
 mended.list.querySelectorAll('[data-form] button')[0].click();
 mended.panel._submit();
@@ -1064,11 +1293,20 @@ check( '...and the next save, which goes through, has taken that off the element
 	&& mended.form.querySelectorAll('.nino-admin-field-error').length === 0 && mended.form.querySelectorAll('[aria-describedby]').length === 0 );
 
 // A refusal that names nothing is only a sentence
-const plainly = panel( { forms : two, types : allTypes, refuse : { error : 'Another form already has that key.' } } );
+const plainly = panel( { forms : two, types : allTypes, text : said, refuse : { error : 'the form needs a key of its own and at least one field', code : 'forms_invalid' } } );
 plainly.list.querySelectorAll('[data-form] button')[0].click();
 plainly.panel._submit();
-check( 'a refusal that names no field marks nothing, and still says it inside the form', plainly.form.querySelectorAll('[aria-invalid]').length === 0
-	&& plainly.form.querySelector('#forms-summary').textContent === 'Another form already has that key.' );
+check( 'a refusal that names no field marks nothing, and still says its sentence inside the form', plainly.form.querySelectorAll('[aria-invalid]').length === 0
+	&& plainly.form.querySelector('#forms-summary').textContent === 'The form needs a key of its own.' );
+
+// A key that is taken has no field: it is marked at the key, by the word the code carries for it
+const duplicated = panel( { forms : two, types : allTypes, text : said, refuse : { error : 'another form has that key', code : 'forms_duplicate', params : [ [], [], { key : 'keytaken' } ] } } );
+duplicated.list.querySelectorAll('.nino-admin-list-actions')[0].children[0].click();
+duplicated.panel._submit();
+check( 'a key that is taken is marked at the key control, with the word the code carries for it, and the summary says the sentence of the code',
+	duplicated.form.querySelector('[data-about="key"]').getAttribute('aria-invalid') === 'true'
+	&& duplicated.form.querySelectorAll('.nino-admin-field-error').length === 1 && duplicated.form.querySelectorAll('.nino-admin-field-error')[0].textContent === 'This key is taken.'
+	&& duplicated.form.querySelector('#forms-summary').textContent === 'Another form has that key.' && element.focused === duplicated.form.querySelector('[data-about="key"]') );
 
 
 // A failure that is not a refusal of the form has no control to mark

@@ -20,4 +20,7 @@ return [
 	'[[/_admin/stats/label/referrer]]'		=> 'Herkunft',
 	'[[/_admin/stats/label/search]]'			=> 'Suchen',
 	'[[/_admin/stats/nomatch]]'					=> 'Nichts passt zu dieser Suche.',
+
+	// The sentence of the code stats_month (Admin::apiMonth())
+	'[[/_admin/error/stats_month]]'				=> 'Das ist kein Monat. Ein Monat wird so geschrieben: 2026-10.',
 ];

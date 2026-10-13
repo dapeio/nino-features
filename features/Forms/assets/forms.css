@@ -4,8 +4,8 @@
  *						.nino-form-input does not skin: a checkbox beside its words,
  *						and a group of radio buttons under one question. Bundled into
  *						the project's own /.cache/style.css the same way the kernel
- *						bundles Nino.css (see Forms::init() and docs/development.md,
- *						"Assets Are Not Templates") - never rendered through the
+ *						bundles Nino.css, by the manifest's 'assets' (see
+ *						docs/features.md, "Assets") - never rendered through the
  *						fill/shortcode engine, so nothing in here is a textfill.
  *
  *						The class names are this feature's own: .nino-form-* is the
@@ -20,7 +20,7 @@
 	display: flex;
 	align-items: baseline;
 	gap: var(--nino-forms-gap);
-	margin: 0 0 var(--space-1, .5rem);
+	margin: 0 0 var(--space-1);
 }
 
 .nino-forms-check > input {
@@ -29,11 +29,11 @@
 
 .nino-forms-group {
 	min-width: 0;
-	margin: 0 0 var(--space-1, .5rem);
+	margin: 0 0 var(--space-1);
 	padding: 0;
 	border: 0;
 }
 
 .nino-forms-group > legend {
-	margin-bottom: var(--space-1, .5rem);
+	margin-bottom: var(--space-1);
 }

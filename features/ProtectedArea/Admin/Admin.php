@@ -2,7 +2,7 @@
 declare(strict_types=1);
 /**
  *	Nino								A compact filesystembased php framework
- *	Modules\ProtectedArea\Admin		The /_admin panel of the Protected area feature - see docs/development.md
+ *	Modules\ProtectedArea\Admin		The /_admin panel of the Protected area feature - see docs/features.md, "The panel"
  *
  *	@package						Dape/Nino
  *	@author							David Perchermeier <mail@dape.io>
@@ -129,7 +129,9 @@ namespace Nino\Modules\ProtectedArea {
 		 *	as they are, in their order and ahead of the choice.
 		 *
 		 *	An empty choice is accepted: it switches the protection of every
-		 *	listed page off, which the screen asks about first.
+		 *	listed page off, which the screen asks about first. A choice that is
+		 *	no list is refused with the code protected_paths, a path that is not
+		 *	listed with protected_page.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
@@ -144,7 +146,7 @@ namespace Nino\Modules\ProtectedArea {
 			$posted = \Nino\Admin\Admin::postData()['paths'] ?? null;
 
 			if( is_array( $posted ) === false || array_is_list( $posted ) === false ) {
-				\Nino\Http::fail( $request, 400, 'paths must be a list' );
+				\Nino\Http::fail( $request, 400, 'paths must be a list', 'protected_paths' );
 				return;
 			}
 
@@ -154,7 +156,7 @@ namespace Nino\Modules\ProtectedArea {
 			foreach( $posted as $path ) {
 
 				if( is_string( $path ) === false || isset( $listed[$path] ) === false ) {
-					\Nino\Http::fail( $request, 400, 'unknown page' );
+					\Nino\Http::fail( $request, 400, 'unknown page', 'protected_page' );
 					return;
 				}
 
@@ -188,7 +190,11 @@ namespace Nino\Modules\ProtectedArea {
 		 *	round, a session the new password never asked for. The password is
 		 *	posted as 'pw', checked twice by the screen and once more here, and
 		 *	never echoed back - not in the answer, not in the log. Its length
-		 *	is counted in characters, as the screen counts it.
+		 *	is counted in characters, as the screen counts it, and one outside the
+		 *	bounds is refused with the code protected_short or protected_long, the
+		 *	limit in its params and the field it was posted in. A setting the
+		 *	kernel refuses is protected_setting, its English message the one param;
+		 *	a write that does not happen is the server's, a 500 with no code.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
@@ -203,12 +209,12 @@ namespace Nino\Modules\ProtectedArea {
 			$pw = \Nino\Admin\Admin::postData()['pw'] ?? null;
 
 			if( is_string( $pw ) === false || mb_strlen( $pw, 'UTF-8' ) < self::MIN_PW_LENGTH ) {
-				\Nino\Http::fail( $request, 400, 'password must be at least '. self::MIN_PW_LENGTH. ' characters' );
+				\Nino\Http::fail( $request, 400, 'password must be at least '. self::MIN_PW_LENGTH. ' characters', 'protected_short', [ self::MIN_PW_LENGTH ], 'pw' );
 				return;
 			}
 
 			if( mb_strlen( $pw, 'UTF-8' ) > self::MAX_PW_LENGTH ) {
-				\Nino\Http::fail( $request, 400, 'password must be at most '. self::MAX_PW_LENGTH. ' characters' );
+				\Nino\Http::fail( $request, 400, 'password must be at most '. self::MAX_PW_LENGTH. ' characters', 'protected_long', [ self::MAX_PW_LENGTH ], 'pw' );
 				return;
 			}
 
@@ -302,8 +308,9 @@ namespace Nino\Modules\ProtectedArea {
 
 		/**
 		 *	Answer a failed save. A message for a setting that did not validate
-		 *	is the sender's to fix (400); one without a name is the write that
-		 *	did not happen (500).
+		 *	is the sender's to fix (400, the code protected_setting with the
+		 *	kernel's English message as its param); one without a name is the
+		 *	write that did not happen (500, no code).
 		 *
 		 *	@param		array 		&$request			(reference) Current server request
 		 *	@param		array 		$errors				What \Nino\Features::saveSettings() answered
@@ -315,10 +322,14 @@ namespace Nino\Modules\ProtectedArea {
 			if( $errors === [] )
 				return false;
 
-			if( isset( $errors[''] ) === true )
+			if( isset( $errors[''] ) === true ) {
 				\Nino\Http::fail( $request, 500, 'could not save' );
-			else
-				\Nino\Http::fail( $request, 400, (string) reset( $errors ) );
+				return true;
+			}
+
+			$message = (string) reset( $errors );
+
+			\Nino\Http::fail( $request, 400, $message, 'protected_setting', [ $message ] );
 
 			return true;
 		}
@@ -346,19 +357,22 @@ namespace Nino\Modules\ProtectedArea {
 		 *	routes of config.php - read from there the way \Nino\Modules\Seo
 		 *	and \Nino\Features::activate() read them, never the live array,
 		 *	which also carries this request's own runtime routes - that are
-		 *	something a visitor opens in a browser and the gate can hold back.
+		 *	something a visitor opens in a browser and the gate can hold back,
+		 *	by the kernel's reading of a route table, \Nino\Http::pages().
 		 *	Left out: the front page (a prefix of '' is skipped by the gate, so
-		 *	ticking it would protect nothing), the tools and module endpoints
-		 *	(`/_`, `/.`), an error page (a route with a status of 400 or more),
+		 *	ticking it would protect nothing), an error page (a route with a
+		 *	status of 400 or more, and the /404 route whatever its status),
 		 *	and everything that declares a Content-Type other than text/html -
-		 *	robots.txt, sitemap.xml, a json endpoint. A wildcard route
+		 *	robots.txt, sitemap.xml, a json endpoint - besides what the kernel
+		 *	leaves out of every list of pages: the tools and module endpoints
+		 *	(`/_`, `/.`) and a path no request is routed to. A wildcard route
 		 *	('GET://blog/*') is listed as the prefix it stands for ('/blog').
 		 *
 		 *	Routes that share the internal uri - the locale variants of one
 		 *	page - are one entry with every path they have, so that one tick
 		 *	protects every language. Its title is the page's own
 		 *	'/_nino/webpage<uri>/title', in the route's locale and else the native
-		 *	one; '' where no text has one.
+		 *	one, read through \Nino\Html::getFills(); '' where no text has one.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
@@ -366,43 +380,25 @@ namespace Nino\Modules\ProtectedArea {
 		 */
 		private static function _pages( array &$appData ): array {
 
-			$stored	= \Nino\Filesystem::getFileContent( $appData, '/config.php', [] );
-			$stored	= is_array( $stored ) === true ? $stored : [];
-			$routes	= is_array( $stored['/nino/http/routes'] ?? null ) === true ? $stored['/nino/http/routes'] : \Nino\AppData::DEFAULTS['/nino/http/routes'];
+			$routes	= \Nino\AppData::stored( $appData, '/nino/http/routes', \Nino\AppData::DEFAULTS['/nino/http/routes'] );
+			$routes	= is_array( $routes ) === true ? $routes : \Nino\AppData::DEFAULTS['/nino/http/routes'];
 			$native	= \Nino\Locales::getNativeLocale( $appData );
 			$fills	= [];
 			$pages	= [];
 
-			foreach( $routes as $routeKey => $route ) {
+			foreach( \Nino\Http::pages( $routes ) as $page ) {
 
-				if( is_string( $routeKey ) === false || str_starts_with( $routeKey, 'GET:/' ) === false || is_array( $route ) === false )
+				if( $page['path'] === '/' || $page['path'] === '/404' || $page['status'] >= 400 || $page['html'] === false )
 					continue;
 
-				$path = substr( $routeKey, strlen( 'GET:/' ) );
-
-				if( str_ends_with( $path, '/*' ) === true )
-					$path = substr( $path, 0, -2 );
-
-				if( preg_match( '#^/[^\s\x00-\x1f\x7f*]+$#D', $path ) !== 1 || $path === '/404' )
-					continue;
-
-				if( str_starts_with( $path, '/_' ) === true || str_starts_with( $path, '/.' ) === true )
-					continue;
-
-				if( (int) ( $route['statusCode'] ?? 200 ) >= 400 || self::_isHtml( $route ) === false )
-					continue;
-
-				$uri		= is_string( $route['uri'] ?? null ) === true && $route['uri'] !== '' ? $route['uri'] : $path;
-				$locales	= is_string( $route['locale'] ?? null ) === true ? [ $route['locale'], $native ] : [ $native ];
+				$uri		= $page['uri'];
+				$locales	= $page['locale'] !== '' ? [ $page['locale'], $native ] : [ $native ];
 				$title	= '';
 
 				foreach( $locales as $locale ) {
 
 					if( isset( $fills[$locale] ) === false )
-						$fills[$locale] = array_merge(
-							(array) \Nino\Filesystem::getFileContent( $appData, '/text/global.php', [] ),
-							(array) \Nino\Filesystem::getFileContent( $appData, '/text/'. $locale. '.php', [] )
-						);
+						$fills[$locale] = \Nino\Html::getFills( $appData, $locale );
 
 					$title = trim( (string) ( $fills[$locale]['[[/_nino/webpage'. $uri. '/title]]'] ?? '' ) );
 
@@ -413,32 +409,14 @@ namespace Nino\Modules\ProtectedArea {
 				if( isset( $pages[$uri] ) === false )
 					$pages[$uri] = [ 'uri' => $uri, 'title' => '', 'paths' => [] ];
 
-				if( in_array( $path, $pages[$uri]['paths'], true ) === false )
-					$pages[$uri]['paths'][] = $path;
+				if( in_array( $page['path'], $pages[$uri]['paths'], true ) === false )
+					$pages[$uri]['paths'][] = $page['path'];
 
 				if( $pages[$uri]['title'] === '' )
 					$pages[$uri]['title'] = $title;
 			}
 
 			return array_values( $pages );
-		}
-
-		/**
-		 *	Whether a route answers with html - the one thing a visitor can
-		 *	be asked a password in front of. A route that names no Content-Type
-		 *	is a page: the kernel's default is html.
-		 *
-		 *	@param		array 		$route
-		 *
-		 *	@return 	bool
-		 */
-		private static function _isHtml( array $route ): bool {
-
-			foreach( is_array( $route['header'] ?? null ) === true ? $route['header'] : [] as $name => $value )
-				if( is_string( $name ) === true && strtolower( $name ) === 'content-type' )
-					return is_string( $value ) === true && str_starts_with( strtolower( trim( $value ) ), 'text/html' ) === true;
-
-			return true;
 		}
 	}
 }

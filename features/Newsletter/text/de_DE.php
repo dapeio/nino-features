@@ -16,7 +16,7 @@ return [
 	'[[/_admin/newsletter/label/search]]'		=> 'Abonnenten durchsuchen',
 	'[[/_admin/newsletter/emptyfilter]]'			=> 'Keine Anmeldung hat diesen Status.',
 	'[[/_admin/newsletter/nomatch]]'					=> 'Keine Anmeldung passt zu dieser Suche.',
-	'[[/_admin/newsletter/confirm/delete]]'	=> ' wirklich aus dem Newsletter löschen?',
+	'[[/_admin/newsletter/confirm/delete]]'	=> '%s wirklich aus dem Newsletter löschen?',
 	'[[/_admin/newsletter/label/bcc]]'				=> 'Adressen als BCC-Zeile',
 	'[[/_admin/newsletter/label/copy]]'			=> 'Kopieren',
 	'[[/_admin/newsletter/label/copied]]'		=> 'Kopiert!',
@@ -29,4 +29,7 @@ return [
 	'[[/_admin/newsletter/filter/all]]'		=> 'Alle',
 	'[[/_admin/newsletter/label/pending]]'		=> 'ausstehend',
 	'[[/_admin/newsletter/hint/unsubscribe]]'		=> 'Abonnenten ohne persönlichen Link fordern ihn unter dieser Adresse an. Setze sie in jede BCC-Mail, die Du versendest: %s',
+
+	// The sentence of the code newsletter_unknown (Admin::apiDelete())
+	'[[/_admin/error/newsletter_unknown]]'		=> 'Diese Adresse steht nicht auf der Liste.',
 ];

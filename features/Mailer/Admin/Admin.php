@@ -2,7 +2,7 @@
 declare(strict_types=1);
 /**
  *	Nino								A compact filesystembased php framework
- *	Modules\Mailer\Admin		The /_admin panel of the Mailer feature - see docs/development.md
+ *	Modules\Mailer\Admin		The /_admin panel of the Mailer feature - see docs/features.md, "The panel"
  *
  *	@package						Dape/Nino
  *	@author							David Perchermeier <mail@dape.io>
@@ -64,7 +64,7 @@ namespace Nino\Modules\Mailer {
 		}
 
 		public static function log( string $action, array $data ): string {
-			return $action === 'mailer/test' ? 'Send test mail to "'. (string) ( $data['to'] ?? '' ). '"' : '';
+			return $action === 'mailer/test' ? 'Send test mail to "'. \Nino\Admin\Admin::postString( $data, 'to' ). '"' : '';
 		}
 
 		/**
@@ -104,10 +104,13 @@ namespace Nino\Modules\Mailer {
 		/**
 		 *	Send one test mail through \Nino\Mail::send() - the same
 		 *	transport, the same per-ip cap (5/hour) every other mail on the
-		 *	site goes through. A 400 either names the reason the transport
-		 *	itself recorded (\Nino\Modules\Mailer::callbackSend() leaves it
-		 *	under './mailer/last') or, when the cap itself refused the send,
-		 *	says so instead - the transport was never even asked.
+		 *	site goes through. An address that is none is refused with the code
+		 *	mailer_address, and a send the cap itself refused - the transport was
+		 *	never even asked - with mailer_ratelimit. A send the transport
+		 *	failed is a 500 with no code: it names the reason the transport
+		 *	itself recorded (\Nino\Modules\Mailer::callbackSend() leaves it under
+		 *	'./mailer/last'), which is the mail server's own line and nothing a
+		 *	sentence of ours could say better.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
@@ -119,14 +122,14 @@ namespace Nino\Modules\Mailer {
 			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::MANAGE_PERM ) === false )
 				return;
 
-			$to = trim( (string) ( \Nino\Admin\Admin::postData()['to'] ?? '' ) );
+			$to = trim( \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'to' ) );
 
 			if( filter_var( $to, FILTER_VALIDATE_EMAIL ) === false ) {
-				\Nino\Http::fail( $request, 400, 'not a valid email address' );
+				\Nino\Http::fail( $request, 400, 'not a valid email address', 'mailer_address', [], 'to' );
 				return;
 			}
 
-			unset( $appData['./mailer/last'], $appData['./nino/mail/ratelimited'] );
+			unset( $appData['./mailer/last'] );
 
 			$subject = \Nino\Html::renderHtml( $appData, '[[/_admin/mailer/mail/subject]]' );
 			$body		 = \Nino\Html::renderHtml( $appData, '[[/_admin/mailer/mail/body]]' );
@@ -136,11 +139,12 @@ namespace Nino\Modules\Mailer {
 				return;
 			}
 
-			$reason = ( $appData['./nino/mail/ratelimited'] ?? false ) === true
-				? 'rate limit reached - at most 5 test or other mails per hour and client ip'
-				: (string) ( $appData['./mailer/last'] ?? 'the mail could not be sent' );
+			if( \Nino\Mail::rateLimited( $appData ) === true ) {
+				\Nino\Http::fail( $request, 400, 'rate limit reached - at most 5 test or other mails per hour and client ip', 'mailer_ratelimit' );
+				return;
+			}
 
-			\Nino\Http::fail( $request, 400, $reason );
+			\Nino\Http::fail( $request, 500, (string) ( $appData['./mailer/last'] ?? 'the mail could not be sent' ) );
 		}
 	}
 }

@@ -12,7 +12,6 @@ return [
 	'[[/_admin/protected/hint/password]]'				=> 'A new password signs everybody out: whoever unlocked the area with the old one is asked again. At least %d characters, typed twice. It is never shown here.',
 	'[[/_admin/protected/msg/haspw]]'					=> 'A password is set.',
 	'[[/_admin/protected/msg/nopw]]'					=> 'No password is set - nothing is protected yet, whatever is chosen below.',
-	'[[/_admin/protected/error/short]]'					=> 'The password needs at least %d characters.',
 	'[[/_admin/protected/error/mismatch]]'				=> 'The two entries are not the same.',
 	'[[/_admin/protected/msg/pwsaved]]'					=> 'Password changed. Everybody is signed out.',
 	'[[/_admin/protected/label/pages]]'					=> 'Protected pages',
@@ -28,4 +27,11 @@ return [
 	'[[/_admin/protected/label/signoutall]]'			=> 'Sign everybody out',
 	'[[/_admin/protected/confirm/signout]]'				=> 'Everybody who has unlocked the protected area is asked for the password again. Continue?',
 	'[[/_admin/protected/msg/signedout]]'				=> 'Everybody is signed out.',
+
+	// The sentences of the codes the panel answers with (Admin::apiPages(), apiPassword())
+	'[[/_admin/error/protected_paths]]'					=> 'The pages have to be sent as a list.',
+	'[[/_admin/error/protected_page]]'					=> 'That page is not in the list.',
+	'[[/_admin/error/protected_short]]'					=> 'The password needs at least %s characters.',
+	'[[/_admin/error/protected_long]]'					=> 'The password may have up to %s characters.',
+	'[[/_admin/error/protected_setting]]'				=> 'The setting was refused: %s',
 ];

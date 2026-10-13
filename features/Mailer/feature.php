@@ -32,8 +32,8 @@ return [
 		],
 	],
 	'category'		=> 'system',
-	'version'			=> '1.0.1',
-	'nino'				=> '^1.4',
+	'version'			=> '1.1.0',
+	'nino'				=> '^1.8',
 	'requires'		=> [],
 	// The last five failures, newest first (no password, never): what the
 	// panel lists. The newest also lives for the current request alone, under

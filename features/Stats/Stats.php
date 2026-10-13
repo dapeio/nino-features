@@ -210,8 +210,8 @@ namespace Nino\Modules {
 		 *	has one to pathinfo(), and is a page.
 		 *
 		 *	A JSON endpoint that declares no Content-Type on its route still
-		 *	counts, then, unless it ends in .json: such a route declares its
-		 *	Content-Type on the route, see the feature recipe's /api/catalog.
+		 *	counts, then, unless it ends in .json: a route that answers anything
+		 *	but a page says so by declaring its Content-Type.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$uri					As counted: the request path
@@ -224,9 +224,8 @@ namespace Nino\Modules {
 				return true;
 
 			$route = \Nino\Http::requestRoute( $appData, $uri, 'GET' );
-			$route = is_array( $route ) === true ? $route : [];
 
-			return self::_isHtml( is_array( $route['header'] ?? null ) === true ? $route['header'] : [] ) === true
+			return \Nino\Http::answersHtml( is_array( $route ) === true ? $route : [] ) === true
 				&& self::_isFile( $uri ) === false;
 		}
 
@@ -275,32 +274,13 @@ namespace Nino\Modules {
 
 			// The header the response carries now: the route's own, merged in by
 			// \Nino\Http::response() before this callback runs
-			if( self::_isHtml( (array) ( $request['/nino/http/response']['header'] ?? [] ) ) === false || self::_isFile( $uri ) === true )
+			if( \Nino\Http::answersHtml( $request['/nino/http/response'] ) === false || self::_isFile( $uri ) === true )
 				return false;
 
 			if( \Nino\Features::setting( $appData, self::KEY, 'countSignedIn', false ) !== true && \Nino\Auth::getCurrentUser( $appData ) !== false )
 				return false;
 
-			return self::_excluded( (array) \Nino\Features::setting( $appData, self::KEY, 'exclude', [] ), $uri ) === false;
-		}
-
-		/**
-		 *	Whether a header map allows html: no Content-Type at all does (the
-		 *	kernel answers html), one that starts with text/html does, anything
-		 *	else - text/plain, application/xml, application/json - is a file.
-		 *	The name is looked for in any case, the way a route may spell it.
-		 *
-		 *	@param		array			$header				name => value
-		 *
-		 *	@return 	bool
-		 */
-		private static function _isHtml( array $header ): bool {
-
-			foreach( $header as $name => $value )
-				if( is_string( $name ) === true && strtolower( $name ) === 'content-type' )
-					return is_string( $value ) === true && str_starts_with( strtolower( trim( $value ) ), 'text/html' ) === true;
-
-			return true;
+			return \Nino\Http::matchesPath( $uri, (array) \Nino\Features::setting( $appData, self::KEY, 'exclude', [] ) ) === false;
 		}
 
 		/**
@@ -320,10 +300,8 @@ namespace Nino\Modules {
 		 *	a page a visitor reads: the workbench itself, a module's own
 		 *	dot-prefixed endpoint (\Nino\Modules\Form's /.form, this
 		 *	catalogue's own Newsletter under /.newsletter, Auth's
-		 *	/.nino/auth/*), or a /nino/... tool uri, replicated here because
-		 *	\Nino\Modules\Cache::_isTool() (Cache.php) is private and answers
-		 *	only the first of the three - see that class' own docblock for
-		 *	the full "never cached" list this mirrors for counting instead.
+		 *	/.nino/auth/*), or a /nino/... tool uri. The kernel publishes no
+		 *	list of them, so the three are spelled out here.
 		 *
 		 *	@param		string		$uri
 		 *
@@ -342,38 +320,6 @@ namespace Nino\Modules {
 			// as a belt-and-braces exclusion in case a module ever wires one
 			// up as a technical endpoint under that prefix
 			return $uri === '/nino' || str_starts_with( $uri, '/nino/' ) === true;
-		}
-
-		/**
-		 *	Match a uri against the operator's own exclude list. Plain string
-		 *	work on purpose, same reasoning as Cache::_blacklisted(): an
-		 *	admin-editable pattern must never reach a regex engine.
-		 *
-		 *	@param		array			$patterns			One '/path' or '/path/*' per entry
-		 *	@param		string		$uri
-		 *
-		 *	@return 	bool
-		 */
-		private static function _excluded( array $patterns, string $uri ): bool {
-
-			foreach( $patterns as $pattern ) {
-
-				if( is_string( $pattern ) === false || $pattern === '' )
-					continue;
-
-				if( str_ends_with( $pattern, '/*' ) === false ) {
-					if( $uri === $pattern )
-						return true;
-					continue;
-				}
-
-				$prefix = substr( $pattern, 0, -2 );
-
-				if( $uri === $prefix || str_starts_with( $uri, $prefix. '/' ) === true )
-					return true;
-			}
-
-			return false;
 		}
 
 		/**

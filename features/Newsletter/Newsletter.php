@@ -137,8 +137,9 @@ namespace Nino\Modules {
 		 *	actual subscription only happens once that link is visited
 		 *	(double opt-in, see callbackAction()). The answer follows the
 		 *	delivery and nothing else: 200 when the mail went out, 429 when
-		 *	the per-ip mail cap refused it, 500 when it could not be sent or
-		 *	the entry could not be stored
+		 *	the per-ip mail cap refused it, 500 when it could not be sent (a
+		 *	site without an address has no link to send) or the entry could not
+		 *	be stored
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
@@ -149,7 +150,7 @@ namespace Nino\Modules {
 
 			// Respect a rejection from the earlier global Csrf callback - the
 			// same guard \Nino\Form::handle() and \Nino\Auth's callbacks use
-			if( ( $request['./nino/csrf/blocked'] ?? false ) === true )
+			if( \Nino\Form::blocked( $request ) === true )
 				return;
 
 			[ $email, $location ] = self::_posted();
@@ -231,13 +232,14 @@ namespace Nino\Modules {
 		/**
 		 *	Build the absolute self-service unsubscribe url for a subscribed
 		 *	(or still pending) email - append it to any outgoing newsletter
-		 *	mail. Same https://[[/project/website/general/url]] convention the sitemap
-		 *	template uses for absolute urls
+		 *	mail. Built by \Nino\Html::absoluteUrl(), on the website's address
+		 *	(the fill /project/website/general/url): a site that has none has no
+		 *	link to give
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$email				Subscriber to build the url for
 		 *
-		 *	@return 	string | false							Unsubscribe url, or false for an unknown email
+		 *	@return 	string | false							Unsubscribe url, or false for an unknown email - and for a site without an address
 		 */
 		public static function getUnsubscribeLink( array &$appData, string $email ): string|false {
 
@@ -245,7 +247,7 @@ namespace Nino\Modules {
 
 			foreach( \Nino\Filesystem::getFileContent( $appData, self::PATH, [] ) as $entry )
 				if( ( $entry['email'] ?? null ) === $email && empty( $entry['token'] ) === false )
-					return self::_getActionUrl( $appData, 'unsubscribe', $entry['token'] );
+					return self::_getActionUrl( $appData, 'unsubscribe', $entry['token'] ) ?: false;
 
 			return false;
 		}
@@ -282,7 +284,7 @@ namespace Nino\Modules {
 		 */
 		public static function callbackUnsubscribeRequest( array &$appData, array &$request ): void {
 
-			if( ( $request['./nino/csrf/blocked'] ?? false ) === true )
+			if( \Nino\Form::blocked( $request ) === true )
 				return;
 
 			[ $email, $location ] = self::_posted();
@@ -358,7 +360,8 @@ namespace Nino\Modules {
 		 *	opt-in flow has no token and so no link: it gets one here, in the
 		 *	same locked write. An address that is not on the list is left
 		 *	alone. The outcome of the mail is not reported - the caller's
-		 *	answer must not depend on it.
+		 *	answer must not depend on it. A site without an address has no link
+		 *	to mail: nothing is sent, and a warning says why.
 		 *
 		 *	Only a mail that is sent charges the per-ip mail cap, so what is left
 		 *	of the difference between a listed and an unlisted address is the
@@ -415,14 +418,19 @@ namespace Nino\Modules {
 					return;
 				}
 
-				// Sticky until somebody unsets it (Mail::send() only ever sets it),
-				// and this is a new send
-				unset( $appData['./nino/mail/ratelimited'] );
+				$url = self::_getActionUrl( $appData, 'unsubscribe', $token );
+
+				// A site without an address has no link to put in the mail, and a
+				// mail without its link is no better than none
+				if( $url === '' ) {
+					trigger_error( 'Newsletter unsubscribe request: no mail was sent, the site has no address (the fill /project/website/general/url)', E_USER_WARNING );
+					return;
+				}
 
 				// The link is the one thing this mail has to carry, and it is a
 				// credential: a fill for '*' stays in $appData for the rest of the
 				// request, so it is taken out again whatever the send does
-				\Nino\Html::addFills( $appData, [ '[[/feature/newsletter/unsubscribe/url]]' => self::_getActionUrl( $appData, 'unsubscribe', $token ) ], '*' );
+				\Nino\Html::addFills( $appData, [ '[[/feature/newsletter/unsubscribe/url]]' => $url ], '*' );
 
 				try {
 					$template = $appData['/nino/newsletter/unsubscribe-mail-template'] ?? '/templates/mail-newsletter-unsubscribe';
@@ -432,7 +440,7 @@ namespace Nino\Modules {
 
 					\Nino\Mail::send( $appData, $email, $subject, $tpl, $replyTo );
 				} finally {
-					self::_dropFill( $appData, '[[/feature/newsletter/unsubscribe/url]]' );
+					\Nino\Html::removeFill( $appData, '/feature/newsletter/unsubscribe/url' );
 				}
 
 			} catch( \Throwable $e ) {
@@ -536,10 +544,7 @@ namespace Nino\Modules {
 				if( $subscribed === false )
 					self::_clearRemoval( $appData, $email );
 
-				if( self::_sendConfirmMail( $appData, $email, $token ) === true )
-					return 'sent';
-
-				return ( $appData['./nino/mail/ratelimited'] ?? false ) === true ? 'ratelimited' : 'failed';
+				return self::_sendConfirmMail( $appData, $email, $token );
 
 			} catch( \Throwable $e ) {
 				trigger_error( 'Newsletter signup write failed: '. $e->getMessage() );
@@ -611,45 +616,38 @@ namespace Nino\Modules {
 		 *	@param		string		$email				Recipient
 		 *	@param		string		$token				The entry's token
 		 *
-		 *	@return 	bool										Whether \Nino\Mail::send() delivered the mail - false with './nino/mail/ratelimited' left set when the cap refused it
+		 *	@return 	string									'sent' when \Nino\Mail::send() delivered the mail, 'ratelimited' when the cap refused it, 'failed' when it could not be sent - and for a site without an address, which has no link to put in it, with a warning
 		 */
-		private static function _sendConfirmMail( array &$appData, string $email, string $token ): bool {
+		private static function _sendConfirmMail( array &$appData, string $email, string $token ): string {
 
 			$template = $appData['/nino/newsletter/confirm-template'] ?? '/templates/mail-newsletter-confirm';
+			$url			= self::_getActionUrl( $appData, 'confirm', $token );
+
+			// A site without an address has no link to put in the mail, and a
+			// mail without its link is no better than none. The visitor is told
+			// what happened to the mail, as for any other that is not sent
+			if( $url === '' ) {
+				trigger_error( 'Newsletter signup: no confirmation mail was sent, the site has no address (the fill /project/website/general/url)', E_USER_WARNING );
+				return 'failed';
+			}
 
 			// A fill for '*' stays in $appData for the rest of the request, and
 			// the link is a credential: it is taken out again once the mail is
 			// out, whatever the send does, so no later response can carry it
-			\Nino\Html::addFills( $appData, [ '[[/feature/newsletter/confirm/url]]' => self::_getActionUrl( $appData, 'confirm', $token ) ], '*' );
+			\Nino\Html::addFills( $appData, [ '[[/feature/newsletter/confirm/url]]' => $url ], '*' );
 
 			try {
 				$tpl 			= \Nino\Html::renderHtml( $appData, '[template '. $template. ']' );
 				$subject 	= \Nino\Html::renderHtml( $appData, '[[/feature/newsletter/subject/confirm]]' );
 				$replyTo 	= \Nino\Html::renderHtml( $appData, '[[/project/mail/address/owner]]' );
 
-				// Sticky until somebody unsets it (Mail::send() only ever sets it),
-				// so a flag left by an earlier send of this request must not read
-				// as this one's refusal - the Mailer panel's test mail does the same
-				unset( $appData['./nino/mail/ratelimited'] );
+				if( \Nino\Mail::send( $appData, $email, $subject, $tpl, $replyTo ) === true )
+					return 'sent';
 
-				return \Nino\Mail::send( $appData, $email, $subject, $tpl, $replyTo );
+				return \Nino\Mail::rateLimited( $appData ) === true ? 'ratelimited' : 'failed';
 			} finally {
-				self::_dropFill( $appData, '[[/feature/newsletter/confirm/url]]' );
+				\Nino\Html::removeFill( $appData, '/feature/newsletter/confirm/url' );
 			}
-		}
-
-		/**
-		 *	Take a fill that was added for every language back out. \Nino\Html
-		 *	has no call for it, and the fill would otherwise be there for
-		 *	whatever renders next in this request
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$fill					The fill with its brackets, as addFills() stores it
-		 *
-		 *	@return 	void
-		 */
-		private static function _dropFill( array &$appData, string $fill ): void {
-			unset( $appData['./nino/html/fills']['*'][$fill] );
 		}
 
 		/**
@@ -761,11 +759,11 @@ namespace Nino\Modules {
 		 *	@param		string		$action				Query key: 'confirm' or 'unsubscribe'
 		 *	@param		string		$token				The entry's token
 		 *
-		 *	@return 	string									Absolute url
+		 *	@return 	string									Absolute url, '' for a site without an address
 		 */
 		private static function _getActionUrl( array &$appData, string $action, string $token ): string {
 
-			return 'https://'. \Nino\Html::renderHtml( $appData, '[[/project/website/general/url]]' ). '/.newsletter?'. $action. '='. rawurlencode( $token );
+			return \Nino\Html::absoluteUrl( $appData, '/.newsletter?'. $action. '='. rawurlencode( $token ) );
 		}
 
 		/**

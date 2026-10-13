@@ -78,11 +78,11 @@ return [
 		],
 	],
 	'category'		=> 'communication',
-	'version'			=> '1.0.0',
-	// 1.7, because the hero of page-newsletter.tpl has the classes Nino 1.7
-	// renamed it to (nino-hero) and kept no alias for the old ones: on a 1.6
-	// the hero of the page is styled by nothing
-	'nino'				=> '^1.7',
+	'version'			=> '1.1.0',
+	// 1.8, for the toolset the code and the panel are written on. The hero of
+	// page-newsletter.tpl has the classes Nino 1.7 renamed it to (nino-hero), with
+	// no alias for the old ones
+	'nino'				=> '^1.8',
 	'requires'		=> [],
 	'settings'		=> [],
 	// The files under data/ this feature owns - what a backup carries and

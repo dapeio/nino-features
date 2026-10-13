@@ -17,74 +17,26 @@
 
 	wn.Nino.admin = wn.Nino.admin || {};
 
-	Nino.admin.stats = {
+	Nino.admin.stats = Nino.adminUi.panel( {
+		uri		: 'stats',
+		mount	: 'stats-list',
+		action	: 'months',
+		show	: 'always',
+		render	: function( data ) {
+
+			Nino.admin.stats._months = data.months || [];
+
+			if( Nino.admin.stats._months.indexOf( Nino.admin.stats._current ) === -1 )
+				Nino.admin.stats._current = Nino.admin.stats._months[0] || '';
+
+			Nino.admin.stats._render();
+		},
+	} );
+
+	Object.assign( Nino.admin.stats, {
 
 		_months : [],
 		_current : '',
-
-		/**
-		 *	Load the list of months that have data and render the pane
-		 *
-		 *	@return		void
-		 */
-		init : function() {
-
-			if( dc.getElementById('stats-list') === null )
-				return;
-
-			Nino.admin.stats._apiCall( 'months', {}, function( status, response ) {
-				if( status !== 200 || response === null )
-					return Nino.admin.stats._showError( status, response );
-
-				Nino.admin.stats._months = response.months || [];
-				if( Nino.admin.stats._months.indexOf( Nino.admin.stats._current ) === -1 )
-					Nino.admin.stats._current = Nino.admin.stats._months[0] || '';
-
-				Nino.admin.stats._render();
-			} );
-		},
-
-		/**
-		 *	Re-fetch and re-show when the tab is switched to
-		 *
-		 *	@return		void
-		 */
-		showCurrent : function() {
-			Nino.admin.stats.init();
-		},
-
-		/**
-		 *	Call a stats/* admin action through the workbench's request helper -
-		 *	it knows the project's directory and what to do when the page has
-		 *	outlived its session
-		 *
-		 *	@param		{string}		endpoint			Action name (eg. "months", becomes "stats/months")
-		 *	@param		{Object}		payload				Request payload, sent json-encoded as "data"
-		 *	@param		{Function}	callback			Called with ( status, parsed json or null )
-		 *
-		 *	@return		void
-		 */
-		_apiCall : function( endpoint, payload, callback ) {
-			Nino.adminUi.api.call( 'stats/'+ endpoint, payload, callback );
-		},
-
-		/**
-		 *	Show a failed request in the list mount: the server's code in the
-		 *	workbench's language, then its own message, then this panel's sentence
-		 *
-		 *	@param		{number}		status
-		 *	@param		{*}					response
-		 *
-		 *	@return		void
-		 */
-		_showError : function( status, response ) {
-			const wrap = dc.getElementById('stats-list');
-			wrap.innerHTML = '';
-			const p = dc.createElement('p');
-			p.className = 'nino-admin-error';
-			p.textContent = Nino.adminUi.api.errorText( status, response, '/_admin/stats/error/load' );
-			wrap.appendChild( p );
-		},
 
 		/**
 		 *	Render the month selector and load its data
@@ -93,7 +45,7 @@
 		 */
 		_render : function() {
 
-			const wrap = dc.getElementById('stats-list');
+			const wrap = Nino.admin.stats.mount();
 			wrap.innerHTML = '';
 
 			if( Nino.admin.stats._months.length === 0 ) {
@@ -101,25 +53,16 @@
 				return;
 			}
 
-			const label = dc.createElement('label');
-			label.htmlFor = 'stats-month';
-			label.textContent = Nino.content.getText('/_admin/stats/label/month');
-			wrap.appendChild( label );
-
-			const select = dc.createElement('select');
-			select.id = 'stats-month';
-			Nino.admin.stats._months.forEach( function( month ) {
-				const option = dc.createElement('option');
-				option.value = month;
-				option.textContent = month;
-				select.appendChild( option );
-			} );
-			select.value = Nino.admin.stats._current;
-			select.addEventListener( 'change', function() {
-				Nino.admin.stats._current = select.value;
-				Nino.admin.stats._loadMonth( select.value );
-			} );
-			wrap.appendChild( select );
+			wrap.appendChild( Nino.adminUi.selectField( {
+				key			: 'month',
+				label		: Nino.content.getText('/_admin/stats/label/month'),
+				value		: Nino.admin.stats._current,
+				options		: Nino.admin.stats._months.map( function( month ) { return { value : month, label : month } } ),
+				onChange	: function( month ) {
+					Nino.admin.stats._current = month;
+					Nino.admin.stats._loadMonth( month );
+				},
+			} ) );
 
 			const body = dc.createElement('div');
 			body.id = 'stats-body';
@@ -140,9 +83,9 @@
 			if( month === '' )
 				return;
 
-			Nino.admin.stats._apiCall( 'month', { month : month }, function( status, response ) {
+			Nino.admin.stats.call( 'month', { month : month }, function( status, response ) {
 				if( status !== 200 || response === null )
-					return Nino.admin.stats._showError( status, response );
+					return Nino.admin.stats.fail( Nino.admin.stats.mount(), status, response );
 
 				Nino.admin.stats._renderMonth( response );
 			} );
@@ -305,7 +248,7 @@
 			if( peak > 0 ) {
 				const axis = dc.createElement('span');
 				axis.className = 'stats-axis';
-				axis.textContent = Nino.content.getText('/_admin/stats/label/max').replace( '%d', String( peak ) );
+				axis.textContent = Nino.adminUi.format( Nino.content.getText('/_admin/stats/label/max'), peak );
 				wrap.appendChild( axis );
 			}
 
@@ -355,6 +298,6 @@
 
 			return wrap;
 		},
-	};
+	} );
 
 } )(window, document, document.documentElement, document.body);

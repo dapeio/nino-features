@@ -18,36 +18,29 @@
 
 	wn.Nino.admin = wn.Nino.admin || {};
 
-	Nino.admin.protected = {
+	// The state is drawn from the answer to protected/state; showCurrent() below
+	// asks for it again on every showing
+	Nino.admin.protected = Nino.adminUi.panel( {
+		uri		: 'protected',
+		mount	: 'protected-form',
+		action	: 'state',
+		error	: '/_admin/common/error/load',
+		render	: function( data ) {
+			Nino.admin.protected._take( data );
+			Nino.admin.protected._render();
+		},
+	} );
 
-		_ready	: false,
+	Object.assign( Nino.admin.protected, {
+
 		// What protected/state answered: hasPassword, pages, extra, minLength, maxLength
 		_state	: null,
 		// The pages ticked on screen, by internal uri - a working copy: leaving
 		// without saving changes nothing
 		_chosen	: {},
-
-		/**
-		 *	Load the state and draw the screen
-		 *
-		 *	@return		void
-		 */
-		init : function() {
-
-			const wrap = dc.getElementById('protected-form');
-			if( wrap === null )
-				return;
-
-			Nino.admin.protected._apiCall( 'state', {}, function( status, response ) {
-
-				if( status !== 200 || response === null )
-					return Nino.admin.protected._showError( wrap, status, response );
-
-				Nino.admin.protected._take( response );
-				Nino.admin.protected._ready = true;
-				Nino.admin.protected._render();
-			} );
-		},
+		// The live lines of the three sections - password, pages, signout - made
+		// with the screen and drawn again with it
+		_lines	: {},
 
 		/**
 		 *	The shell calls this when the panel is opened. The state is asked for
@@ -63,10 +56,10 @@
 		 */
 		showCurrent : function() {
 
-			if( Nino.admin.protected._ready === false )
+			if( Nino.admin.protected.ready === false )
 				return Nino.admin.protected.init();
 
-			Nino.admin.protected._apiCall( 'state', {}, function( status, response ) {
+			Nino.admin.protected.call( 'state', {}, function( status, response ) {
 
 				if( status !== 200 || response === null || Nino.admin.protected._unsaved() === true )
 					return;
@@ -97,52 +90,6 @@
 			const chosen = Nino.admin.protected._chosen;
 
 			return state !== null && ( state.pages || [] ).some( function( page ) { return ( chosen[ page.uri ] === true ) !== ( page.selected === true ) } );
-		},
-
-		/**
-		 *	Call a protected/* admin action through the workbench's request
-		 *	helper - it knows the project's directory and what to do when the
-		 *	page has outlived its session
-		 *
-		 *	@param		{string}		endpoint			Action name (eg. "pages", becomes "protected/pages")
-		 *	@param		{Object}		payload				Request payload, sent json-encoded as "data"
-		 *	@param		{Function}	callback			Called with ( status, parsed json or null )
-		 *
-		 *	@return		void
-		 */
-		_apiCall : function( endpoint, payload, callback ) {
-			Nino.adminUi.api.call( 'protected/'+ endpoint, payload, callback );
-		},
-
-		/**
-		 *	Show a failed request in a container: the server's code in the
-		 *	workbench's language, then its own message, then the fill
-		 *
-		 *	@param		{Element}		container
-		 *	@param		{number}		status
-		 *	@param		{*}					response
-		 *
-		 *	@return		void
-		 */
-		_showError : function( container, status, response ) {
-			container.innerHTML = '';
-			const p = dc.createElement('p');
-			p.className = 'nino-admin-error';
-			p.textContent = Nino.adminUi.api.errorText( status, response, '/_admin/common/error/load' );
-			container.appendChild( p );
-		},
-
-		/**
-		 *	A text fill with its one placeholder filled in. A function as the
-		 *	replacement, so a "$&" in a path is text and not a pattern
-		 *
-		 *	@param		{string}	key
-		 *	@param		{*}				value
-		 *
-		 *	@return		{string}
-		 */
-		_say : function( key, value ) {
-			return Nino.content.getText( key ).replace( /%[sd]/, function() { return String( value ) } );
 		},
 
 		/**
@@ -226,38 +173,41 @@
 		},
 
 		/**
-		 *	A paragraph that says what happened, politely, to a screen reader as
-		 *	well
+		 *	The live line of a section: where it says that the section is saving,
+		 *	saved or refused, with its own words for what was saved. Its element
+		 *	is the one the section puts in its row, see _actions()
 		 *
-		 *	@param		{string}	id
+		 *	@param		{string}	id					Of the line's element
+		 *	@param		{string}	saved				The fill key of its words for "saved", if the section has some of its own
 		 *
-		 *	@return		{Element}
+		 *	@return		{Object}							See Nino.adminUi.status()
 		 */
-		_message : function( id ) {
-			const msg = dc.createElement('p');
-			msg.id = id;
-			msg.className = 'nino-admin-hint';
-			msg.setAttribute( 'aria-live', 'polite' );
-			return msg;
+		_line : function( id, saved ) {
+
+			const el = Nino.adminUi.el( 'span' );
+			el.id = id;
+
+			return Nino.adminUi.status( el, { saved : Nino.content.getText( saved ) } );
 		},
 
 		/**
-		 *	Write into a message line, as a failure or as the plain note it is
+		 *	The row of a section where its button stands, and its live line after
+		 *	it. Not the workbench's fixed action bar: that one is the screen's, and
+		 *	this screen has three sections with a button each - three of them would
+		 *	lie over each other at its foot, and only the last could be clicked
 		 *
-		 *	@param		{string}	id
-		 *	@param		{string}	text
-		 *	@param		{boolean}	failed
+		 *	@param		{Element}		button
+		 *	@param		{Object}		line				The section's live line, see _line()
 		 *
-		 *	@return		void
+		 *	@return		{Element}
 		 */
-		_report : function( id, text, failed ) {
+		_actions : function( button, line ) {
 
-			const msg = dc.getElementById( id );
-			if( msg === null )
-				return;
+			const row = Nino.adminUi.el( 'div', 'nino-admin-actions' );
+			row.appendChild( button );
+			row.appendChild( line.element );
 
-			msg.classList.toggle( 'nino-admin-error', failed === true );
-			msg.textContent = text;
+			return row;
 		},
 
 		/**
@@ -269,26 +219,10 @@
 		 */
 		_section : function( legendKey ) {
 
-			const box = dc.createElement('fieldset');
-			const legend = dc.createElement('legend');
-			legend.textContent = Nino.content.getText( legendKey );
-			box.appendChild( legend );
+			const box = Nino.adminUi.el( 'fieldset' );
+			box.appendChild( Nino.adminUi.el( 'legend', '', Nino.content.getText( legendKey ) ) );
 
 			return box;
-		},
-
-		/**
-		 *	One note under a legend
-		 *
-		 *	@param		{string}	text
-		 *
-		 *	@return		{Element}
-		 */
-		_hint : function( text ) {
-			const p = dc.createElement('p');
-			p.className = 'nino-admin-hint';
-			p.textContent = text;
-			return p;
 		},
 
 		/**
@@ -298,7 +232,7 @@
 		 */
 		_render : function() {
 
-			const wrap = dc.getElementById('protected-form');
+			const wrap = Nino.admin.protected.mount();
 			const state = Nino.admin.protected._state;
 
 			if( wrap === null || state === null )
@@ -308,7 +242,7 @@
 
 			// No heading of its own: the head the shell renders over the pane
 			// names the panel, and a second name under it would only say it again
-			wrap.appendChild( Nino.admin.protected._hint( Nino.content.getText('/_admin/protected/hint/intro') ) );
+			wrap.appendChild( Nino.adminUi.hint( Nino.content.getText('/_admin/protected/hint/intro') ) );
 			wrap.appendChild( Nino.admin.protected._renderPassword( state ) );
 			wrap.appendChild( Nino.admin.protected._renderPages( state ) );
 			wrap.appendChild( Nino.admin.protected._renderSignOut() );
@@ -327,47 +261,38 @@
 
 			const box = Nino.admin.protected._section('/_admin/protected/label/password');
 
-			const status = Nino.admin.protected._hint( Nino.content.getText( state.hasPassword === true ? '/_admin/protected/msg/haspw' : '/_admin/protected/msg/nopw' ) );
-			box.appendChild( status );
-			box.appendChild( Nino.admin.protected._hint( Nino.admin.protected._say('/_admin/protected/hint/password', state.minLength ) ) );
+			box.appendChild( Nino.adminUi.hint( Nino.content.getText( state.hasPassword === true ? '/_admin/protected/msg/haspw' : '/_admin/protected/msg/nopw' ) ) );
+			box.appendChild( Nino.adminUi.hint( Nino.adminUi.format( Nino.content.getText('/_admin/protected/hint/password'), state.minLength ) ) );
 
-			const form = dc.createElement('form');
+			const form = Nino.adminUi.el( 'form' );
 
-			const fields = [];
+			const fields = [ [ 'newpw', '/_admin/protected/label/newpw' ], [ 'newpw2', '/_admin/protected/label/newpw2' ] ].map( function( def ) {
 
-			[ [ 'newpw', '/_admin/protected/label/newpw' ], [ 'newpw2', '/_admin/protected/label/newpw2' ] ].forEach( function( def ) {
+				const field = Nino.adminUi.textField( {
+					type				: 'password',
+					id					: 'protected-'+ def[0],
+					autocomplete: 'new-password',
+					required		: true,
+					minLength		: state.minLength,
+					maxLength		: state.maxLength,
+					label				: Nino.content.getText( def[1] ),
+				} );
 
-				const field = dc.createElement('label');
-				field.className = 'nino-admin-field';
-
-				const name = dc.createElement('span');
-				name.textContent = Nino.content.getText( def[1] );
-				field.appendChild( name );
-
-				const input = dc.createElement('input');
-				input.type = 'password';
-				input.id = 'protected-'+ def[0];
-				input.className = 'nino-admin-input';
-				input.autocomplete = 'new-password';
-				input.required = true;
-				input.minLength = state.minLength;
-				input.maxLength = state.maxLength;
-				field.appendChild( input );
-
-				fields.push( input );
 				form.appendChild( field );
+
+				return field.querySelector('input');
 			} );
 
-			const save = dc.createElement('button');
-			save.type = 'submit';
-			save.id = 'protected-setpw';
-			save.className = 'nino-admin-btn-primary';
-			save.textContent = Nino.content.getText('/_admin/protected/label/setpw');
+			// The first is the one that is sent, as "pw": the field the server names
+			// when it refuses it
+			fields[0].name = 'pw';
 
-			const actions = dc.createElement('div');
-			actions.appendChild( save );
-			form.appendChild( Nino.adminUi.actionBar( actions ) );
-			form.appendChild( Nino.admin.protected._message('protected-pw-msg') );
+			const line = Nino.admin.protected._line( 'protected-pw-msg', '/_admin/protected/msg/pwsaved' );
+			Nino.admin.protected._lines.password = line;
+
+			const save = Nino.adminUi.button( Nino.content.getText('/_admin/protected/label/setpw'), null, { type : 'submit', id : 'protected-setpw', className : 'nino-admin-btn-primary' } );
+
+			form.appendChild( Nino.admin.protected._actions( save, line ) );
 
 			form.addEventListener( 'submit', function( event ) {
 				event.preventDefault();
@@ -392,23 +317,24 @@
 		 */
 		_savePassword : function( first, second, save ) {
 
+			const line = Nino.admin.protected._lines.password;
 			const problem = Nino.admin.protected._pwProblem( first.value, second.value, Nino.admin.protected._state.minLength );
 
 			if( problem === 'short' )
-				return Nino.admin.protected._report( 'protected-pw-msg', Nino.admin.protected._say('/_admin/protected/error/short', Nino.admin.protected._state.minLength ), true );
+				return line.fail( Nino.adminUi.format( Nino.content.getText('/_admin/error/protected_short'), Nino.admin.protected._state.minLength ) );
 
 			if( problem === 'mismatch' )
-				return Nino.admin.protected._report( 'protected-pw-msg', Nino.content.getText('/_admin/protected/error/mismatch'), true );
+				return line.fail( Nino.content.getText('/_admin/protected/error/mismatch') );
 
 			save.disabled = true;
-			Nino.admin.protected._report( 'protected-pw-msg', Nino.content.getText('/_admin/common/msg/saving'), false );
+			line.saving();
 
-			Nino.admin.protected._apiCall( 'password', { pw : first.value }, function( status, response ) {
+			Nino.admin.protected.call( 'password', { pw : first.value }, function( status, response ) {
 
 				save.disabled = false;
 
 				if( status !== 200 || response === null )
-					return Nino.admin.protected._report( 'protected-pw-msg', Nino.adminUi.api.errorText( status, response, '/_admin/common/error/save' ), true );
+					return line.error( status, response, '/_admin/common/error/save' );
 
 				// A new password changes nothing about the pages: what was ticked
 				// and not yet saved is still ticked
@@ -416,7 +342,7 @@
 				Nino.admin.protected._take( response );
 				Nino.admin.protected._chosen = ticked;
 				Nino.admin.protected._render();
-				Nino.admin.protected._report( 'protected-pw-msg', Nino.content.getText('/_admin/protected/msg/pwsaved'), false );
+				Nino.admin.protected._lines.password.saved();
 			} );
 		},
 
@@ -430,15 +356,14 @@
 		_renderPages : function( state ) {
 
 			const box = Nino.admin.protected._section('/_admin/protected/label/pages');
-			box.appendChild( Nino.admin.protected._hint( Nino.content.getText('/_admin/protected/hint/pages') ) );
+			box.appendChild( Nino.adminUi.hint( Nino.content.getText('/_admin/protected/hint/pages') ) );
 
 			if( ( state.pages || [] ).length === 0 ) {
 				box.appendChild( Nino.adminUi.emptyState( Nino.content.getText('/_admin/protected/empty/pages') ) );
 				return box;
 			}
 
-			const list = dc.createElement('div');
-			list.className = 'nino-admin-checklist';
+			const list = Nino.adminUi.el( 'div', 'nino-admin-checklist' );
 
 			state.pages.forEach( function( page ) {
 
@@ -457,14 +382,8 @@
 				} );
 				label.appendChild( input );
 
-				const name = dc.createElement('span');
-				name.textContent = row.name;
-				label.appendChild( name );
-
-				const paths = dc.createElement('small');
-				paths.className = 'nino-admin-checklist-state';
-				paths.textContent = row.state;
-				label.appendChild( paths );
+				label.appendChild( Nino.adminUi.el( 'span', '', row.name ) );
+				label.appendChild( Nino.adminUi.el( 'small', 'nino-admin-checklist-state', row.state ) );
 
 				list.appendChild( label );
 			} );
@@ -474,19 +393,14 @@
 			// What the list cannot name, set by hand in the Features panel: said,
 			// so the screen does not seem to protect less than it does, and kept
 			if( ( state.extra || [] ).length > 0 )
-				box.appendChild( Nino.admin.protected._hint( Nino.admin.protected._say('/_admin/protected/label/extra', state.extra.join(', ') ) ) );
+				box.appendChild( Nino.adminUi.hint( Nino.adminUi.format( Nino.content.getText('/_admin/protected/label/extra'), state.extra.join(', ') ) ) );
 
-			const save = dc.createElement('button');
-			save.type = 'button';
-			save.id = 'protected-savepages';
-			save.className = 'nino-admin-btn-primary';
-			save.textContent = Nino.content.getText('/_admin/protected/label/savepages');
-			save.addEventListener( 'click', function() { Nino.admin.protected._savePages( save ) } );
+			const line = Nino.admin.protected._line( 'protected-pages-msg', '/_admin/protected/msg/pagessaved' );
+			Nino.admin.protected._lines.pages = line;
 
-			const actions = dc.createElement('div');
-			actions.appendChild( save );
-			box.appendChild( Nino.adminUi.actionBar( actions ) );
-			box.appendChild( Nino.admin.protected._message('protected-pages-msg') );
+			const save = Nino.adminUi.button( Nino.content.getText('/_admin/protected/label/savepages'), function() { Nino.admin.protected._savePages( save ) }, { id : 'protected-savepages', className : 'nino-admin-btn-primary' } );
+
+			box.appendChild( Nino.admin.protected._actions( save, line ) );
 
 			return box;
 		},
@@ -501,6 +415,7 @@
 		 */
 		_savePages : function( save ) {
 
+			const line = Nino.admin.protected._lines.pages;
 			const state = Nino.admin.protected._state;
 			const paths = Nino.admin.protected._collect( state.pages, Nino.admin.protected._chosen );
 
@@ -510,18 +425,18 @@
 				return;
 
 			save.disabled = true;
-			Nino.admin.protected._report( 'protected-pages-msg', Nino.content.getText('/_admin/common/msg/saving'), false );
+			line.saving();
 
-			Nino.admin.protected._apiCall( 'pages', { paths : paths }, function( status, response ) {
+			Nino.admin.protected.call( 'pages', { paths : paths }, function( status, response ) {
 
 				save.disabled = false;
 
 				if( status !== 200 || response === null )
-					return Nino.admin.protected._report( 'protected-pages-msg', Nino.adminUi.api.errorText( status, response, '/_admin/common/error/save' ), true );
+					return line.error( status, response, '/_admin/common/error/save' );
 
 				Nino.admin.protected._take( response );
 				Nino.admin.protected._render();
-				Nino.admin.protected._report( 'protected-pages-msg', Nino.content.getText('/_admin/protected/msg/pagessaved'), false );
+				Nino.admin.protected._lines.pages.saved();
 			} );
 		},
 
@@ -533,38 +448,33 @@
 		_renderSignOut : function() {
 
 			const box = Nino.admin.protected._section('/_admin/protected/label/signout');
-			box.appendChild( Nino.admin.protected._hint( Nino.content.getText('/_admin/protected/hint/signout') ) );
+			box.appendChild( Nino.adminUi.hint( Nino.content.getText('/_admin/protected/hint/signout') ) );
 
-			const out = dc.createElement('button');
-			out.type = 'button';
-			out.id = 'protected-signout';
-			out.className = 'nino-admin-btn nino-admin-btn-danger';
-			out.textContent = Nino.content.getText('/_admin/protected/label/signoutall');
-			out.addEventListener( 'click', function() {
+			const line = Nino.admin.protected._line( 'protected-signout-msg', '/_admin/protected/msg/signedout' );
+			Nino.admin.protected._lines.signout = line;
+
+			const out = Nino.adminUi.button( Nino.content.getText('/_admin/protected/label/signoutall'), function() {
 
 				if( wn.confirm( Nino.content.getText('/_admin/protected/confirm/signout') ) === false )
 					return;
 
 				out.disabled = true;
 
-				Nino.admin.protected._apiCall( 'signout', {}, function( status, response ) {
+				Nino.admin.protected.call( 'signout', {}, function( status, response ) {
 
 					out.disabled = false;
 
 					if( status !== 200 || response === null )
-						return Nino.admin.protected._report( 'protected-signout-msg', Nino.adminUi.api.errorText( status, response, '/_admin/common/error/save' ), true );
+						return line.error( status, response, '/_admin/common/error/save' );
 
-					Nino.admin.protected._report( 'protected-signout-msg', Nino.content.getText('/_admin/protected/msg/signedout'), false );
+					line.saved();
 				} );
-			} );
+			}, { id : 'protected-signout', className : 'nino-admin-btn nino-admin-btn-danger' } );
 
-			const actions = dc.createElement('div');
-			actions.appendChild( out );
-			box.appendChild( Nino.adminUi.actionBar( actions ) );
-			box.appendChild( Nino.admin.protected._message('protected-signout-msg') );
+			box.appendChild( Nino.admin.protected._actions( out, line ) );
 
 			return box;
 		},
-	};
+	} );
 
 } )(window, document, document.documentElement, document.body);

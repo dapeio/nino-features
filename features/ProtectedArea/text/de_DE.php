@@ -12,7 +12,6 @@ return [
 	'[[/_admin/protected/hint/password]]'				=> 'Ein neues Passwort meldet alle ab: Wer den Bereich mit dem alten entsperrt hat, wird erneut gefragt. Mindestens %d Zeichen, zweimal eingegeben. Hier wird es nie angezeigt.',
 	'[[/_admin/protected/msg/haspw]]'					=> 'Ein Passwort ist gesetzt.',
 	'[[/_admin/protected/msg/nopw]]'					=> 'Es ist kein Passwort gesetzt - nichts ist geschützt, egal was unten ausgewählt ist.',
-	'[[/_admin/protected/error/short]]'					=> 'Das Passwort braucht mindestens %d Zeichen.',
 	'[[/_admin/protected/error/mismatch]]'				=> 'Die beiden Eingaben sind nicht gleich.',
 	'[[/_admin/protected/msg/pwsaved]]'					=> 'Passwort geändert. Alle sind abgemeldet.',
 	'[[/_admin/protected/label/pages]]'					=> 'Geschützte Seiten',
@@ -28,4 +27,11 @@ return [
 	'[[/_admin/protected/label/signoutall]]'			=> 'Alle abmelden',
 	'[[/_admin/protected/confirm/signout]]'				=> 'Alle, die den geschützten Bereich entsperrt haben, werden erneut nach dem Passwort gefragt. Fortfahren?',
 	'[[/_admin/protected/msg/signedout]]'				=> 'Alle sind abgemeldet.',
+
+	// Die Sätze zu den Codes, mit denen das Panel antwortet (Admin::apiPages(), apiPassword())
+	'[[/_admin/error/protected_paths]]'					=> 'Die Seiten müssen als Liste gesendet werden.',
+	'[[/_admin/error/protected_page]]'					=> 'Diese Seite steht nicht in der Liste.',
+	'[[/_admin/error/protected_short]]'					=> 'Das Passwort braucht mindestens %s Zeichen.',
+	'[[/_admin/error/protected_long]]'					=> 'Das Passwort darf höchstens %s Zeichen haben.',
+	'[[/_admin/error/protected_setting]]'				=> 'Die Einstellung wurde abgelehnt: %s',
 ];

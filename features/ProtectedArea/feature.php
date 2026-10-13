@@ -71,8 +71,8 @@ return [
 		],
 	],
 	'category'		=> 'security',
-	'version'			=> '1.0.0',
-	'nino'				=> '^1.4',
+	'version'			=> '1.1.0',
+	'nino'				=> '^1.8',
 	'requires'		=> [],
 	// The attempt-cap counter and the session epoch this feature owns - what a
 	// backup carries
@@ -103,13 +103,13 @@ return [
 			],
 			'min'			=> 1,
 			'max'			=> 50,
-			'unit'		=> 'per hour',
+			'unit'		=> 'per-hour',
 			'default'	=> 5,
 		],
 	],
 	/*	The one shortcode of the two that is meant for a page: the link that locks the
 		area again. [protected-error] belongs into the password form's own markup and
-		stays a shortcode. Nino 1.5 ignores the key	*/
+		stays a shortcode	*/
 	'components'	=> [
 		'protected-logout' => [
 			'label'			=> [ 'en_US' => 'Lock again', 'de_DE' => 'Wieder sperren' ],

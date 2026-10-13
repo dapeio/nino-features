@@ -2,7 +2,7 @@
 declare(strict_types=1);
 /**
  *	Nino								A compact filesystembased php framework
- *	Nino\Modules\Newsletter\Admin		The /_admin panel of the Newsletter module - see docs/development.md
+ *	Nino\Modules\Newsletter\Admin		The /_admin panel of the Newsletter module - see docs/features.md, "The panel"
  *
  *	@package						Dape/Nino
  *	@author							David Perchermeier <mail@dape.io>
@@ -150,15 +150,18 @@ namespace Nino\Modules\Newsletter {
 			\Nino\Http::ok( $request, [
 				'entries' 				=> array_reverse( $listed ),
 				'counts' 					=> $counts,
-				// Same https://[[/project/website/general/url]] convention as the links in the mails
-				'unsubscribeUrl' 	=> 'https://'. \Nino\Html::renderHtml( $appData, '[[/project/website/general/url]]' ). '/.newsletter/unsubscribe',
+				// Built like the links in the mails - '' for a site without an address
+				'unsubscribeUrl' 	=> \Nino\Html::absoluteUrl( $appData, '/.newsletter/unsubscribe' ),
 			] );
 		}
 
 		/**
 		 *	Delete one subscriber by email - the admin-side counterpart to
 		 *	the visitor's own self-service unsubscribe link (see
-		 *	Modules\Newsletter in Newsletter.php beside this)
+		 *	Modules\Newsletter in Newsletter.php beside this). An address that is
+		 *	not on the list, or none at all, is a 404 with the code
+		 *	newsletter_unknown; a list that cannot be locked or written is the
+		 *	server's, a 500 with no code
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
@@ -170,10 +173,10 @@ namespace Nino\Modules\Newsletter {
 			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::MANAGE_PERM ) === false )
 				return;
 
-			$email = (string) ( \Nino\Admin\Admin::postData()['email'] ?? '' );
+			$email = \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'email' );
 
 			if( $email === '' ) {
-				\Nino\Http::fail( $request, 404, 'unknown email' );
+				\Nino\Http::fail( $request, 404, 'unknown email', 'newsletter_unknown' );
 				return;
 			}
 
@@ -207,7 +210,7 @@ namespace Nino\Modules\Newsletter {
 			}
 
 			if( $outcome === 'notfound' ) {
-				\Nino\Http::fail( $request, 404, 'unknown email' );
+				\Nino\Http::fail( $request, 404, 'unknown email', 'newsletter_unknown' );
 				return;
 			}
 

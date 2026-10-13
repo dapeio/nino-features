@@ -29,9 +29,9 @@ namespace Nino\Modules {
 	 *										no account, no per-user record, just this one flag.
 	 *										GET /.protected/logout clears it again. Wrong attempts
 	 *										are capped per client ip and hour in
-	 *										/data/protected.php, the same fixed-window idea as
-	 *										\Nino\Mail::_hit() (copied, not called - that counter
-	 *										is mail's own send cap, this one is this feature's).
+	 *										/data/protected.php, by \Nino\Feature::count() - the
+	 *										counter \Nino\Mail's send cap is, under a name of this
+	 *										feature's own.
 	 *										Every unlock is stamped with the session epoch of
 	 *										/data/protected-session.php (see _epoch()), and
 	 *										signOutAll() - the panel's button, and every password
@@ -70,9 +70,10 @@ namespace Nino\Modules {
 		// 'data' in the manifest, next to the attempt counter
 		private const string EPOCH_PATH 		= '/data/protected-session.php';
 
-		// Wrong-attempt counter, keyed by client ip - what the manifest's
-		// 'data' entry documents
-		private const string DATA_PATH 		= '/data/protected.php';
+		// Wrong-attempt counter: the kernel's, \Nino\Feature::count() under this
+		// name, keyed by a hash of the client ip - the file /data/protected.php that
+		// the manifest's 'data' entry documents
+		private const string COUNTER 		= 'protected';
 
 		private const int DEFAULT_ATTEMPTS	= 5;
 		private const int WINDOW 					= 3600;
@@ -90,14 +91,10 @@ namespace Nino\Modules {
 
 			\Nino\Html::addShortcode( $appData, 'protected-error', [ self::class, 'doErrorShortcode' ] );
 
-			/*	Nino 1.6 has registered [protected-logout] as a component from the
-				manifest before this runs (\Nino\Features::registerComponents()), and a
-				second registration here would take it back from the wrapper that fills
-				in the defaults. Nino 1.5 ignores the manifest key and needs it	*/
-			$components = class_exists( '\\Nino\\Modules\\Components' ) === true ? \Nino\Modules\Components::components( $appData ) : [];
-
-			if( isset( $components['protected-logout'] ) === false )
-				\Nino\Html::addShortcode( $appData, 'protected-logout', [ self::class, 'doLogoutShortcode' ] );
+			// [protected-logout] is a component of the manifest, which the Components
+			// module registers before this runs; where it has not - a sandbox without
+			// the module, a test - the plain shortcode is registered here
+			\Nino\Feature::shortcode( $appData, 'protected-logout', [ self::class, 'doLogoutShortcode' ] );
 
 			// Priority 1: before Modules\Cache's own callback (9) ever gets to
 			// decide whether this response may be stored or served from the
@@ -120,7 +117,7 @@ namespace Nino\Modules {
 			// The password can also be changed in the Features panel, where it is
 			// a setting like any other: that save has to lock the sessions of the
 			// old one out as well. The kernel announces every workbench action
-			// after the fact (Nino 1.4); a Nino without the event never calls it
+			// after the fact
 			\Nino\Callbacks::registerCallback( $appData, '/nino/admin/action', [ self::class, 'callbackAdminAction' ] );
 
 			self::_extendCacheBlacklist( $appData );
@@ -147,11 +144,7 @@ namespace Nino\Modules {
 			if( self::_password( $appData ) === '' )
 				return false;
 
-			foreach( self::prefixes( $appData ) as $prefix )
-				if( $uri === $prefix || str_starts_with( $uri, $prefix. '/' ) === true )
-					return true;
-
-			return false;
+			return \Nino\Http::matchesPath( $uri, array_map( static fn( string $prefix ): string => $prefix. '/*', self::prefixes( $appData ) ) );
 		}
 
 		/**
@@ -298,7 +291,9 @@ namespace Nino\Modules {
 			if( self::protects( $appData, $uri ) === false || self::unlocked( $appData ) === true )
 				return;
 
-			\Nino\Html::addFills( $appData, [ '[[/feature/protected/form/return]]' => htmlspecialchars( $uri, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) ], '*' );
+			// Escaped the way a posted return is (see _answerForm()): the uri is the
+			// visitor's too, and lands in the page that is rendered afterwards
+			\Nino\Html::addFills( $appData, [ '[[/feature/protected/form/return]]' => \Nino\Modules\Components::escape( $uri ) ], '*' );
 
 			$request['/nino/http/response']['body']										= '[template /templates/page-protected]';
 			$request['/nino/http/response']['statusCode']							= 401;
@@ -309,9 +304,9 @@ namespace Nino\Modules {
 		 *	POST /.protected: check the posted password against the
 		 *	configured one and either unlock the session and redirect to
 		 *	'return', or re-render the form with an error. Attempts are capped
-		 *	per client ip and hour (_claimAttempt()) - once the cap is hit the
-		 *	form refuses even a correct password for the rest of the window, so
-		 *	a leaked or guessed password cannot be brute forced past a guessed
+		 *	per client ip and hour (\Nino\Feature::count()) - once the cap is hit
+		 *	the form refuses even a correct password for the rest of the window,
+		 *	so a leaked or guessed password cannot be brute forced past a guessed
 		 *	prefix either. The password itself never appears in a log or a
 		 *	response, success or failure.
 		 *
@@ -326,7 +321,7 @@ namespace Nino\Modules {
 			// guard Form/Newsletter/Auth use, see Csrf::callbackResponse()'s
 			// own docblock for why this is a dedicated flag rather than
 			// checking statusCode
-			if( ( $request['./nino/csrf/blocked'] ?? false ) === true )
+			if( \Nino\Form::blocked( $request ) === true )
 				return;
 
 			// is_string() rather than a (string) cast: nothing says a post
@@ -339,12 +334,17 @@ namespace Nino\Modules {
 			$password	= is_string( $_POST['password'] ?? null ) === true ? $_POST['password'] : '';
 			$limit 		= (int) \Nino\Features::setting( $appData, self::FEATURE_KEY, 'attempts', self::DEFAULT_ATTEMPTS );
 
-			// Claimed before the password is compared, and inside the same lock
+			// Counted before the password is compared, and inside the same lock
 			// that records it - a check made first and a failure recorded
 			// afterwards is a cap every request of a burst walks through at
-			// once. Once the cap is hit for this window the form refuses every
-			// further try, right password included, or the cap protects nothing
-			if( self::_claimAttempt( $appData, $ip, $limit ) === false ) {
+			// once. Every attempt counts, the right password included, and a
+			// successful unlock lets the ip go again (below): otherwise a visitor
+			// who unlocks five times in an hour would have locked themselves out
+			// with five correct passwords. Once the cap is hit for this window the
+			// form refuses every further try, right password included, or the cap
+			// protects nothing. A count that cannot be recorded is a refusal: one
+			// this counter cannot record is one it cannot cap either
+			if( \Nino\Feature::count( $appData, self::COUNTER, $ip, $limit, self::WINDOW ) === false ) {
 				self::_answerForm( $appData, $request, $return, 'locked', 429 );
 				return;
 			}
@@ -361,18 +361,15 @@ namespace Nino\Modules {
 				// The try this request claimed, and the wrong ones before it,
 				// are spent: somebody who is through is not somebody the cap
 				// should still be counting down on
-				self::_clearAttempts( $appData, $ip );
+				\Nino\Feature::forget( $appData, self::COUNTER, $ip );
 
 				\Nino\Runtime::setSessionValue( $appData, self::SESSION_KEY, self::_epoch( $appData ) );
 
 				// The uri a request carries is the project's own - routes are
-				// keyed without the directory a site may sit in - so the
-				// directory goes in front of every address this feature sends a
-				// visitor to, the way the Forms feature writes its action. Without
-				// it a site at /shop unlocked into /intern, one level above itself
-				$request['/nino/http/response']['statusCode']					= 303;
-				$request['/nino/http/response']['header']['Location'] = (string) ( $appData['/nino/dir'] ?? '' ). self::_safeReturn( $return );
-				$request['/nino/http/response']['body']								= '';
+				// keyed without the directory a site may sit in - and the redirect
+				// puts the directory in front of it. Without it a site at /shop
+				// unlocked into /intern, one level above itself
+				\Nino\Http::redirect( $appData, $request, self::_safeReturn( $return ), 303 );
 				return;
 			}
 
@@ -395,9 +392,7 @@ namespace Nino\Modules {
 
 			\Nino\Runtime::unsetSessionValue( $appData, self::SESSION_KEY );
 
-			$request['/nino/http/response']['statusCode']					= 303;
-			$request['/nino/http/response']['header']['Location'] = (string) ( $appData['/nino/dir'] ?? '' ). '/';
-			$request['/nino/http/response']['body']								= '';
+			\Nino\Http::redirect( $appData, $request, '/', 303 );
 		}
 
 		/**
@@ -419,7 +414,7 @@ namespace Nino\Modules {
 			if( in_array( $error, [ 'wrong', 'locked' ], true ) === false )
 				return '';
 
-			return str_replace( '[[error]]', $error, self::template( $appData, 'protected-error' ) );
+			return str_replace( '[[error]]', $error, \Nino\Feature::template( $appData, self::TEMPLATES, 'protected-error' ) );
 		}
 
 		/**
@@ -438,7 +433,7 @@ namespace Nino\Modules {
 			if( self::unlocked( $appData ) === false )
 				return '';
 
-			return str_replace( '[[class]]', self::_class( $args ), self::template( $appData, 'protected-logout' ) );
+			return str_replace( '[[classes]]', \Nino\Feature::classes( $args ), \Nino\Feature::template( $appData, self::TEMPLATES, 'protected-logout' ) );
 		}
 
 		/**
@@ -458,23 +453,6 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	The class of one's own a call adds to the link, with the space in
-		 *	front of it that the template leaves out - escaped, and with its
-		 *	brackets as character references, because the markup is rendered
-		 *	once more
-		 *
-		 *	@param		array			$args					Shortcode attributes
-		 *
-		 *	@return 	string								'' or ' my-class'
-		 */
-		private static function _class( array $args ): string {
-
-			$class = trim( (string) ( $args['class'] ?? '' ) );
-
-			return $class === '' ? '' : ' '. str_replace( '[', '&#91;', htmlspecialchars( $class, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) );
-		}
-
-		/**
 		 *	Re-render the password form with an error and the posted return
 		 *	path carried forward, instead of redirecting - the visitor has to
 		 *	see the error, which a redirect would have nowhere to carry.
@@ -489,12 +467,12 @@ namespace Nino\Modules {
 		 */
 		private static function _answerForm( array &$appData, array &$request, string $return, string $error, int $statusCode ): void {
 
-			// The '[' goes the way \Nino\Modules\Elements swaps it, and for the
-			// same reason: this lands in a page that is rendered afterwards, so
-			// an escaped value was still read by the fill and the shortcode
-			// pass - a locked visitor could put any of the project's templates,
-			// and any of its texts, into the 401 they were served
-			\Nino\Html::addFills( $appData, [ '[[/feature/protected/form/return]]' => str_replace( '[', '&#91;', htmlspecialchars( $return, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) ) ], '*' );
+			// Escaped with the '[' swapped, for the reason \Nino\Modules\Components::escape()
+			// gives: this lands in a page that is rendered afterwards, so an
+			// escaped value was still read by the fill and the shortcode pass - a
+			// locked visitor could put any of the project's templates, and any of
+			// its texts, into the 401 they were served
+			\Nino\Html::addFills( $appData, [ '[[/feature/protected/form/return]]' => \Nino\Modules\Components::escape( $return ) ], '*' );
 
 			// A runtime-only, per-request flag - never persisted - read back
 			// by doErrorShortcode() a few lines above
@@ -507,9 +485,12 @@ namespace Nino\Modules {
 
 		/**
 		 *	'return' as posted, made safe to redirect to: a local path only -
-		 *	starting with a single '/', no protocol-relative '//' and no
-		 *	scheme - anything else becomes '/' instead of silently sending an
-		 *	unlocked visitor to another host.
+		 *	starting with a single '/', no protocol-relative '//' (nor '/\', which
+		 *	a browser reads the same) and no scheme - anything else becomes '/'
+		 *	instead of silently sending an unlocked visitor to another host. The
+		 *	kernel's \Nino\Http::redirect() holds a path to the same rules and
+		 *	leaves the response alone, with a warning, for one that breaks them: a
+		 *	visitor is sent to the front page, not to nowhere.
 		 *
 		 *	@param		string		$return
 		 *
@@ -517,7 +498,7 @@ namespace Nino\Modules {
 		 */
 		private static function _safeReturn( string $return ): string {
 
-			if( str_starts_with( $return, '/' ) === false || str_starts_with( $return, '//' ) === true )
+			if( str_starts_with( $return, '/' ) === false || str_starts_with( $return, '//' ) === true || str_starts_with( $return, '/\\' ) === true )
 				return '/';
 
 			// Whitespace or a control character has no place in a Location
@@ -623,129 +604,13 @@ namespace Nino\Modules {
 
 			$blacklist = (array) ( $appData['/nino/cache/blacklist'] ?? [] );
 
+			// The subtree entry covers the prefix itself: the cache matches its
+			// blacklist with \Nino\Http::matchesPath()
 			foreach( self::prefixes( $appData ) as $prefix )
-				foreach( [ $prefix, $prefix. '/*' ] as $entry )
-					if( in_array( $entry, $blacklist, true ) === false )
-						$blacklist[] = $entry;
+				if( in_array( $prefix. '/*', $blacklist, true ) === false )
+					$blacklist[] = $prefix. '/*';
 
 			$appData['/nino/cache/blacklist'] = $blacklist;
-		}
-
-		/**
-		 *	Claim one attempt for $ip against the per-hour cap, and answer
-		 *	whether this request may go on to compare a password at all.
-		 *
-		 *	Counting and comparing used to be two steps in two places: a
-		 *	lockless read of the file decided whether to go on, the password
-		 *	was compared, and only a wrong one was written back. Every
-		 *	parallel request in between read the same count and passed the
-		 *	same check, so a cap of five was a cap of five per burst - and a
-		 *	burst is the case a cap exists for. The claim is the first thing
-		 *	that happens now, inside the lock that records it, so a request
-		 *	either holds a try or it does not.
-		 *
-		 *	Every attempt is claimed, the right password included, and a
-		 *	successful unlock drops the ip's counter again (_clearAttempts()):
-		 *	otherwise a visitor who unlocks five times in an hour would have
-		 *	locked themselves out with five correct passwords.
-		 *
-		 *	A stale entry, any key's and not just this one, is dropped on the
-		 *	write - the same idea as \Nino\Mail::_hit(), so the file cannot
-		 *	grow without bound - and nothing is written where nothing changed,
-		 *	so a caller already at the cap does not rewrite the file on every
-		 *	further try. A write that does not happen refuses the attempt: one
-		 *	this counter cannot record is one it cannot cap either.
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$ip
-		 *	@param		int				$limit				Wrong attempts allowed per window
-		 *
-		 *	@return 	bool										False where the cap is reached or the counter unwritable
-		 */
-		private static function _claimAttempt( array &$appData, string $ip, int $limit ): bool {
-
-			$claimed = false;
-
-			$written = \Nino\Filesystem::mutate( $appData, self::DATA_PATH, function( array $state ) use ( $ip, $limit, &$claimed ): ?array {
-
-				$before = $state;
-
-				foreach( $state as $key => $entry )
-					if( (int) ( $entry['reset'] ?? 0 ) <= time() )
-						unset( $state[$key] );
-
-				$entry = $state[$ip] ?? [ 'tries' => 0, 'reset' => time() + self::WINDOW ];
-
-				if( (int) $entry['tries'] < $limit ) {
-
-					$entry['tries']	= (int) $entry['tries'] + 1;
-					$state[$ip] 		= $entry;
-					$claimed 				= true;
-				}
-
-				return $state === $before ? null : $state;
-			} );
-
-			return $claimed === true && $written === true;
-		}
-
-		/**
-		 *	Drop $ip's counter after a successful unlock, so the tries it took
-		 *	to get there are not still held against the visitor - see
-		 *	_claimAttempt(), which counts the successful one too
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$ip
-		 *
-		 *	@return 	void
-		 */
-		private static function _clearAttempts( array &$appData, string $ip ): void {
-
-			\Nino\Filesystem::mutate( $appData, self::DATA_PATH, function( array $state ) use ( $ip ): ?array {
-
-				$before = $state;
-
-				unset( $state[$ip] );
-
-				foreach( $state as $key => $entry )
-					if( (int) ( $entry['reset'] ?? 0 ) <= time() )
-						unset( $state[$key] );
-
-				return $state === $before ? null : $state;
-			} );
-		}
-
-		/**
-		 *	One of this feature's own templates, read the way a project's are.
-		 *	Markup belongs in a template - see AGENTS.md, "Markup belongs in a
-		 *	template" - so what this class holds is which one and what goes in it
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$name					A file name below TEMPLATES, without .tpl
-		 *
-		 *	@return 	string								'' where the file is not there, which is logged
-		 */
-		public static function template( array &$appData, string $name ): string {
-
-			// A name from this class and nowhere else, and held to a slug anyway:
-			// the one thing this could otherwise be turned into is a read of
-			// something outside the feature
-			if( preg_match( '/^[a-z][a-z0-9-]*$/D', $name ) !== 1 )
-				return '';
-
-			$template = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $name. '.tpl', '' );
-
-			$template = is_string( $template ) === true ? rtrim( $template, "\n" ) : '';
-
-			/*	A template that is not there renders as nothing, which on a page looks
-				like a shortcode nobody wrote rather than like a feature missing a file.
-				Said out loud instead: E_USER_WARNING is Nino's "record this and carry
-				on" channel (see \Nino\Runtime::NON_FATAL_LEVELS), so the request
-				finishes and the log says which file	*/
-			if( $template === '' )
-				trigger_error( 'Nino: the template '. self::TEMPLATES. '/'. $name. '.tpl is missing or empty.', E_USER_WARNING );
-
-			return $template;
 		}
 	}
 }

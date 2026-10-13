@@ -17,13 +17,10 @@
 
 @layer nino.tool {
 
-#stats-list > label {
-	display: block;
-	margin-bottom: .3rem;
-	color: var(--editor-text-secondary);
-	font-size: .76rem;
-}
-#stats-month {
+/*	The month selector is the workbench's select field, which would take the
+	whole width of the pane for a word of seven characters */
+#stats-list > .nino-admin-field {
+	max-width: 14rem;
 	margin-bottom: 1rem;
 }
 #stats-summary {
@@ -57,7 +54,7 @@
 	width: 100%;
 	min-height: 2px;
 	border-radius: 2px 2px 0 0;
-	background: var(--editor-accent, #4a7dfc);
+	background: var(--editor-blue);
 }
 .stats-bar-value {
 	position: absolute;

@@ -30,10 +30,8 @@
 	min-height: 5rem;
 	font: .8rem/1.5 var(--nino-admin-mono);
 }
+/* The row itself is the workbench's .nino-admin-actions; the space above it is this screen's */
 #newsletter-bcc-actions {
-	display: flex;
-	align-items: center;
-	gap: .75rem;
 	margin-top: .5rem;
 }
 #newsletter-bcc-copied {
@@ -48,12 +46,6 @@
 }
 #newsletter-filter {
 	margin: 1rem 0 .5rem;
-}
-/*	A row action, not a screen action: it has to fit a table cell */
-.newsletter-entry-delete {
-	min-height: 30px;
-	padding: .25rem .55rem;
-	font-size: .74rem;
 }
 
 }

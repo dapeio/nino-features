@@ -53,14 +53,19 @@ return [
 		],
 	],
 	'category'		=> 'communication',
-	'version'			=> '1.0.0',
-	'nino'				=> '^1.4',
+	'version'			=> '1.1.0',
+	// 1.8, for the toolset the code and the panel are written on, and for the
+	// manifest key 'assets' that bundles the stylesheet
+	'nino'				=> '^1.8',
 	'requires'		=> [],
 	// Nothing: the definitions live in config.php under '/nino/form/forms',
 	// where the kernel reads them and every backup already carries them, and
 	// the submissions are the kernel's own /data/forms.<Y-m>.php. The one
 	// file this feature writes is a spam counter that rebuilds itself
 	'data'				=> [],
+	// The checkbox and the group of radio buttons [form] draws, into the site's
+	// style bundle
+	'assets'			=> [ '/features/Forms/assets/forms.css' ],
 	'settings'		=> [
 		'rateLimit' => [
 			'type'	=> 'int',
@@ -95,7 +100,7 @@ return [
 		],
 	],
 	/*	The shortcode as the Builder offers it: no first argument, the form is named by
-		its key. Nino 1.5 ignores the key	*/
+		its key. The class has no componentForm(): doShortcode() renders it	*/
 	'components'	=> [
 		'form' => [
 			'label'			=> [ 'en_US' => 'Form', 'de_DE' => 'Formular' ],

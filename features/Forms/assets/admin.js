@@ -8,9 +8,12 @@
  *													same definitions and needs nothing from here.
  *
  *													Admin/Admin.php beside it does the reading and
- *													writing and hands every word over already in the
- *													session language, so this file only lays out what
- *													it gets.
+ *													writing. A refusal comes back as a code, which the
+ *													workbench says in the session language, and - for a
+ *													form that was not saved - with the words of what is
+ *													wrong with each field and control; this file looks
+ *													those up in the same language and lays out what it
+ *													gets.
  *
  *	@package								Dape/Nino
  *	@author									David Perchermeier <mail@dape.io>
@@ -21,9 +24,35 @@
 
 	wn.Nino.admin = wn.Nino.admin || {};
 
-	Nino.admin.forms = {
+	// The two panes of the panel, one on show at a time
+	const levels = Nino.adminUi.levels( 'forms', [ 'list', 'form' ] );
 
-		_ready		: false,
+	Nino.admin.forms = Nino.adminUi.panel( {
+		uri			: 'forms',
+		mount		: 'forms-list',
+		boot		: 'ready',
+		error		: '/_admin/common/error/load',
+		// What the shell asks before the editor is left with input nobody has saved
+		dirty		: {
+			isDirty	: function() { return Nino.admin.forms._editing !== null && Nino.admin.forms._fingerprint() !== Nino.admin.forms._saved },
+			save		: function( done ) { Nino.admin.forms._submit( done ) },
+			discard	: function() { Nino.admin.forms._saved = Nino.admin.forms._fingerprint() },
+		},
+		render	: function( data ) {
+			Nino.admin.forms._forms			= data.forms || [];
+			Nino.admin.forms._types			= data.types || [];
+			Nino.admin.forms._templates	= data.templates || [];
+			Nino.admin.forms._reserved	= data.reserved || [];
+			Nino.admin.forms._default		= data.default === true;
+			Nino.admin.forms._endpoint	= data.endpoint !== false;
+			Nino.admin.forms._retention	= data.retention || 3;
+			Nino.admin.forms._store			= data.store !== false;
+			Nino.admin.forms._renderList();
+		},
+	} );
+
+	Object.assign( Nino.admin.forms, {
+
 		_forms		: [],
 		// The field types \Nino\Form::TYPES declares - the panel offers exactly
 		// what the endpoint accepts, so the two cannot drift apart
@@ -53,39 +82,9 @@
 		// What the editor on show saves with: the key it is replacing, its Save
 		// button and its status line. null while there is no editor
 		_editor		: null,
-
-		/**
-		 *	Load the forms and draw whichever level is current
-		 *
-		 *	@param		{Function}	[then]			Run once the list is back
-		 *
-		 *	@return		void
-		 */
-		init : function( then ) {
-
-			const wrap = dc.getElementById('forms-list');
-			if( wrap === null )
-				return;
-
-			Nino.admin.forms._apiCall( 'list', {}, function( status, response ) {
-				if( status !== 200 || response === null )
-					return Nino.admin.forms._showError( wrap, status, response );
-
-				Nino.admin.forms._forms			= response.forms || [];
-				Nino.admin.forms._types			= response.types || [];
-				Nino.admin.forms._templates	= response.templates || [];
-				Nino.admin.forms._reserved	= response.reserved || [];
-				Nino.admin.forms._default		= response.default === true;
-				Nino.admin.forms._endpoint	= response.endpoint !== false;
-				Nino.admin.forms._retention	= response.retention || 3;
-				Nino.admin.forms._store			= response.store !== false;
-				Nino.admin.forms._renderList();
-				Nino.admin.forms._ready = true;
-
-				if( typeof then === 'function' )
-					then();
-			} );
-		},
+		// What the editor held when it was drawn, as _fingerprint() reads it:
+		// what unsaved input is told from
+		_saved		: '',
 
 		/**
 		 *	Re-show whichever level is on - the shell calls this when the
@@ -95,7 +94,7 @@
 		 */
 		showCurrent : function() {
 
-			if( Nino.admin.forms._ready === false )
+			if( Nino.admin.forms.ready === false )
 				return Nino.admin.forms.init();
 
 			if( Nino.admin.forms._editing !== null ) {
@@ -110,70 +109,6 @@
 			}
 
 			Nino.admin.forms._renderList();
-		},
-
-		/**
-		 *	Call a forms/* action through the workbench's request helper - it
-		 *	knows the project's directory and what to do when the page has
-		 *	outlived its session
-		 *
-		 *	@param		{string}		endpoint			Action name (eg. "list", becomes "forms/list")
-		 *	@param		{Object}		payload				Request payload, sent json-encoded as "data"
-		 *	@param		{Function}	callback			Called with ( status, parsed json or null )
-		 *
-		 *	@return		void
-		 */
-		_apiCall : function( endpoint, payload, callback ) {
-			Nino.adminUi.api.call( 'forms/'+ endpoint, payload, callback );
-		},
-
-		/**
-		 *	Show a failed request in a container: the server's code in the
-		 *	workbench's language, then its own message, then this panel's sentence
-		 *
-		 *	@param		{Element}		container
-		 *	@param		{number}		status
-		 *	@param		{*}					response
-		 *
-		 *	@return		void
-		 */
-		_showError : function( container, status, response ) {
-			container.innerHTML = '';
-			const p = dc.createElement('p');
-			p.className = 'nino-admin-error';
-			p.textContent = Nino.adminUi.api.errorText( status, response, '/_admin/common/error/load' );
-			container.appendChild( p );
-		},
-
-		/**
-		 *	The line that says whether a form is saved: Nino.adminUi.status(),
-		 *	following the form - "saving", "saved at 09:41", the "unsaved
-		 *	changes" a keystroke brings, or why it failed with the field the
-		 *	server named marked
-		 *
-		 *	@param		{Element}		msg
-		 *	@param		{Element}		form
-		 *
-		 *	@return		{Object}						{ saving(), saved(), error( status, response, key ) }
-		 */
-		_status : function( msg, form ) {
-
-			const line = Nino.adminUi.status( msg );
-			line.bind( form );
-			return line;
-		},
-
-		/**
-		 *	Which of the two panes is on screen
-		 *
-		 *	@param		{string}	level				'list' or 'form'
-		 *
-		 *	@return		void
-		 */
-		_level : function( level ) {
-			[ 'list', 'form' ].forEach( function( name ) {
-				dc.getElementById('forms-'+ name ).classList.toggle( 'admin-hidden', name !== level );
-			} );
 		},
 
 		/**
@@ -194,34 +129,22 @@
 
 			// A form that draws fine and posts to a 404 is the one failure this
 			// feature could produce silently, so it is said here and in red
-			if( Nino.admin.forms._endpoint === false ) {
-				const off = dc.createElement('p');
-				off.className = 'nino-admin-error';
-				off.textContent = Nino.content.getText('/_admin/forms/hint/endpoint');
-				wrap.appendChild( off );
-			}
+			if( Nino.admin.forms._endpoint === false )
+				wrap.appendChild( Nino.adminUi.hint( Nino.content.getText('/_admin/forms/hint/endpoint'), 'error' ) );
 
-			if( Nino.admin.forms._default === true ) {
-				const hint = dc.createElement('p');
-				hint.className = 'nino-admin-hint';
-				hint.textContent = Nino.content.getText('/_admin/forms/hint/default');
-				wrap.appendChild( hint );
-			}
+			if( Nino.admin.forms._default === true )
+				wrap.appendChild( Nino.adminUi.hint( Nino.content.getText('/_admin/forms/hint/default') ) );
 
 			// Never empty: \Nino\Form::forms() answers the contact form the
 			// kernel falls back to while a project has defined none
 			Nino.admin.forms._forms.forEach( function( form ) { wrap.appendChild( Nino.admin.forms._renderCard( form ) ) } );
 
-			const add = dc.createElement('button');
-			add.type = 'button';
-			add.className = 'nino-admin-btn-primary';
-			add.textContent = Nino.content.getText('/_admin/forms/label/new');
-			add.addEventListener( 'click', function() { Nino.admin.forms._showForm( Nino.admin.forms._blank(), '' ) } );
+			const add = Nino.adminUi.button( Nino.content.getText('/_admin/forms/label/new'), function() { Nino.admin.forms._showForm( Nino.admin.forms._blank(), '' ) }, { className : 'nino-admin-btn-primary' } );
 
 			wrap.appendChild( Nino.adminUi.listActions( [ add ] ) );
 			wrap.appendChild( Nino.admin.forms._renderSettings() );
 
-			Nino.admin.forms._level('list');
+			levels.show('list');
 		},
 
 		/**
@@ -236,15 +159,10 @@
 		 */
 		_renderSettings : function() {
 
-			const el = dc.createElement('form');
-			el.className = 'nino-admin-card forms-settings';
+			const el = Nino.adminUi.el( 'form', 'nino-admin-card forms-settings' );
 
-			const legend = dc.createElement('h3');
-			legend.textContent = Nino.content.getText('/_admin/forms/label/submissions-settings');
-			el.appendChild( legend );
+			el.appendChild( Nino.adminUi.el( 'h3', '', Nino.content.getText('/_admin/forms/label/submissions-settings') ) );
 
-			// The label carries the unit itself: the shared one only knows the
-			// units the workbench declares, and months is this panel's word
 			el.appendChild( Nino.adminUi.numberField( {
 				key : 'retention',
 				label : Nino.content.getText('/_admin/forms/label/retention'),
@@ -252,6 +170,7 @@
 				value : Nino.admin.forms._retention,
 				min : 1,
 				max : 60,
+				unit : 'months',
 			} ) );
 
 			el.appendChild( Nino.adminUi.switchField( {
@@ -264,39 +183,34 @@
 			// A row of the card, not the workbench's fixed action bar: that one
 			// belongs to the screen, and a second one lay over the first - and
 			// over New form with it
-			const actions = dc.createElement('div');
-			actions.className = 'forms-actions';
+			const actions = Nino.adminUi.el( 'div', 'nino-admin-actions' );
 
-			const save = dc.createElement('button');
-			save.type = 'submit';
-			save.className = 'nino-admin-btn-primary';
-			save.textContent = Nino.content.getText('/_admin/common/label/save');
+			const save = Nino.adminUi.button( Nino.content.getText('/_admin/common/label/save'), null, { type : 'submit', className : 'nino-admin-btn-primary' } );
 			actions.appendChild( save );
 
-			const msg = dc.createElement('p');
+			const msg = Nino.adminUi.el( 'p', 'nino-admin-hint' );
 			msg.id = 'forms-settings-msg';
-			msg.className = 'nino-admin-hint';
-			msg.setAttribute( 'role', 'status' );
 			actions.appendChild( msg );
 
 			el.appendChild( actions );
 
-			// The shared fields carry their name as data-key and are read back
-			// through it, the way every generated field in the workbench is -
-			// they hand back the label, not the control
-			const line = Nino.admin.forms._status( msg, el );
+			const line = Nino.adminUi.status( msg );
+			line.bind( el );
 
 			el.addEventListener( 'submit', function( ev ) {
 				ev.preventDefault();
 				save.disabled = true;
 				line.saving();
 
+				// The shared fields carry their name as data-key and are read back
+				// through it, the way every generated field in the workbench is -
+				// they hand back the label, not the control
 				const values = {};
 				Array.prototype.slice.call( el.querySelectorAll('[data-key]') ).forEach( function( field ) {
 					values[ field.dataset.key ] = field.type === 'checkbox' ? field.checked : field.value;
 				} );
 
-				Nino.admin.forms._apiCall( 'settings', {
+				Nino.admin.forms.call( 'settings', {
 					retention : parseInt( values.retention, 10 ),
 					store : values.store === true,
 				}, function( status, response ) {
@@ -324,47 +238,23 @@
 		 */
 		_renderCard : function( form ) {
 
-			const card = dc.createElement('section');
-			card.className = 'nino-admin-card';
+			const card = Nino.adminUi.el( 'section', 'nino-admin-card' );
 			card.dataset.form = form.key;
 
-			const title = dc.createElement('h3');
-			title.textContent = form.name;
-			card.appendChild( title );
+			card.appendChild( Nino.adminUi.el( 'h3', '', form.name ) );
+			card.appendChild( Nino.adminUi.hint( Nino.adminUi.format( Nino.content.getText('/_admin/forms/hint/shortcode'), Nino.admin.forms._shortcode( form ) ) ) );
 
-			const shortcode = dc.createElement('p');
-			shortcode.className = 'nino-admin-hint';
-			shortcode.textContent = Nino.content.getText('/_admin/forms/hint/shortcode').replace( '%s', Nino.admin.forms._shortcode( form ) );
-			card.appendChild( shortcode );
-
-			const fields = dc.createElement('p');
-			fields.className = 'nino-admin-hint';
 			// What it collects, and what has come in through it. The
 			// submissions themselves are the Submissions panel's - this is the
 			// number that says which form is actually being used
-			fields.textContent = [
+			card.appendChild( Nino.adminUi.hint( [
 				form.fields.map( function( field ) { return field.name } ).join( ', ' ),
-				Nino.content.getText('/_admin/forms/label/entries').replace( '%s', form.entries ),
-			].filter( Boolean ).join( ' \u00b7 ' );
-			card.appendChild( fields );
+				Nino.adminUi.format( Nino.content.getText('/_admin/forms/label/entries'), form.entries ),
+			].filter( Boolean ).join( ' · ' ) ) );
 
-			const actions = dc.createElement('div');
-			actions.className = 'forms-actions';
-
-			const edit = dc.createElement('button');
-			edit.type = 'button';
-			edit.className = 'nino-admin-btn-primary';
-			edit.textContent = Nino.content.getText('/_admin/forms/label/edit');
-			edit.addEventListener( 'click', function() { Nino.admin.forms._showForm( form, form.key ) } );
-			actions.appendChild( edit );
-
-			const remove = dc.createElement('button');
-			remove.type = 'button';
-			remove.className = 'nino-admin-btn-danger';
-			remove.textContent = Nino.content.getText('/_admin/forms/label/delete');
-			remove.addEventListener( 'click', function() { Nino.admin.forms._delete( form ) } );
-			actions.appendChild( remove );
-
+			const actions = Nino.adminUi.el( 'div', 'nino-admin-actions' );
+			actions.appendChild( Nino.adminUi.button( Nino.content.getText('/_admin/forms/label/edit'), function() { Nino.admin.forms._showForm( form, form.key ) }, { className : 'nino-admin-btn-primary' } ) );
+			actions.appendChild( Nino.adminUi.button( Nino.content.getText('/_admin/forms/label/delete'), function() { Nino.admin.forms._delete( form ) }, { className : 'nino-admin-btn-danger' } ) );
 			card.appendChild( actions );
 
 			return card;
@@ -411,11 +301,11 @@
 			if( wn.confirm( Nino.content.getText('/_admin/forms/confirm/delete') ) === false )
 				return;
 
-			Nino.admin.forms._apiCall( 'delete', { key : form.key }, function( status, response ) {
+			Nino.admin.forms.call( 'delete', { key : form.key }, function( status, response ) {
 				if( status !== 200 )
-					return Nino.admin.forms._showError( dc.getElementById('forms-list'), status, response );
+					return Nino.admin.forms.fail( dc.getElementById('forms-list'), status, response );
 
-				Nino.admin.forms.init();
+				Nino.admin.forms.reload();
 			} );
 		},
 
@@ -435,7 +325,7 @@
 			Nino.admin.forms._renderForm();
 
 			// What is on screen now is what is saved
-			Nino.admin.dirty.snapshot('forms');
+			Nino.admin.forms._saved = Nino.admin.forms._fingerprint();
 		},
 
 		/**
@@ -451,10 +341,8 @@
 			const form = Nino.admin.forms._editing;
 			wrap.innerHTML = '';
 
-			const backLink = dc.createElement('a');
+			const backLink = Nino.adminUi.el( 'a', 'nino-admin-back-link', Nino.content.getText('/_admin/common/label/back') );
 			backLink.href = '#';
-			backLink.className = 'nino-admin-back-link';
-			backLink.textContent = Nino.content.getText('/_admin/common/label/back');
 			backLink.addEventListener( 'click', function( ev ) { ev.preventDefault(); Nino.admin.forms._renderList() } );
 			wrap.appendChild( Nino.admin.formToolbar( backLink ) );
 
@@ -463,20 +351,17 @@
 			// editor was opened with, not what is typed into the box by now
 			const was = Nino.admin.forms._was;
 
-			const el = dc.createElement('form');
+			const el = Nino.adminUi.el( 'form' );
 
 			// What a refused save says, inside the form: the status line sits in
 			// the action bar, which a phone does not show
-			const summary = dc.createElement('p');
+			const summary = Nino.adminUi.el( 'p', 'nino-admin-error' );
 			summary.id = 'forms-summary';
-			summary.className = 'nino-admin-error';
 			summary.hidden = true;
 			el.appendChild( summary );
 
-			const about = dc.createElement('fieldset');
-			const legend = dc.createElement('legend');
-			legend.textContent = Nino.content.getText('/_admin/forms/label/form');
-			about.appendChild( legend );
+			const about = Nino.adminUi.el( 'fieldset' );
+			about.appendChild( Nino.adminUi.el( 'legend', '', Nino.content.getText('/_admin/forms/label/form') ) );
 
 			// Every control carries what it is, so _collect() can read the whole
 			// form back before a redraw - the editor is drawn again whenever a
@@ -484,7 +369,7 @@
 			// typed into these boxes would be redrawn from the copy it was
 			// loaded with, ie. silently thrown away
 			Nino.admin.forms._input( about, '/_admin/forms/label/name', 'text', form.name, '', 'name' );
-			Nino.admin.forms._input( about, '/_admin/forms/label/key', 'text', form.key, '', 'key' ).required = true;
+			Nino.admin.forms._input( about, '/_admin/forms/label/key', 'text', form.key, '', 'key', true );
 			Nino.admin.forms._input( about, '/_admin/forms/label/to', 'email', form.to, '/_admin/forms/hint/to', 'to' );
 			Nino.admin.forms._input( about, '/_admin/forms/label/subject', 'text', form.subject, '/_admin/forms/hint/subject', 'subject' );
 
@@ -501,29 +386,20 @@
 
 			el.appendChild( about );
 
-			const fields = dc.createElement('fieldset');
-			const fieldsLegend = dc.createElement('legend');
-			fieldsLegend.textContent = Nino.content.getText('/_admin/forms/label/fields');
-			fields.appendChild( fieldsLegend );
+			const fields = Nino.adminUi.el( 'fieldset' );
+			fields.appendChild( Nino.adminUi.el( 'legend', '', Nino.content.getText('/_admin/forms/label/fields') ) );
 
-			const hint = dc.createElement('p');
-			hint.className = 'nino-admin-hint';
 			// The names something else already owns (\Nino\Form::RESERVED), said
 			// here rather than only in the refusal a save would come back with
-			hint.textContent = Nino.content.getText('/_admin/forms/hint/fields').replace( '%s', Nino.admin.forms._reserved.join( ', ' ) );
-			fields.appendChild( hint );
+			fields.appendChild( Nino.adminUi.hint( Nino.adminUi.format( Nino.content.getText('/_admin/forms/hint/fields'), Nino.admin.forms._reserved.join( ', ' ) ) ) );
 
-			const rows = dc.createElement('div');
+			const rows = Nino.adminUi.el( 'div' );
 			rows.id = 'forms-field-rows';
 			fields.appendChild( rows );
 
 			form.fields.forEach( function( field, index ) { rows.appendChild( Nino.admin.forms._renderFieldRow( field, index ) ) } );
 
-			const add = dc.createElement('button');
-			add.type = 'button';
-			add.className = 'nino-admin-btn-secondary';
-			add.textContent = Nino.content.getText('/_admin/forms/label/addfield');
-			add.addEventListener( 'click', function() {
+			fields.appendChild( Nino.adminUi.button( Nino.content.getText('/_admin/forms/label/addfield'), function() {
 				Nino.admin.forms._collect();
 				const taken = Nino.admin.forms._editing.fields.map( function( field ) { return field.name } );
 				// A new field takes its name from its label, which is empty yet
@@ -532,26 +408,22 @@
 					label : '', type : 'text', required : false, options : [], auto : true,
 				} );
 				Nino.admin.forms._renderForm();
-			} );
-			fields.appendChild( add );
+			}, { className : 'nino-admin-btn-secondary' } ) );
 
 			el.appendChild( fields );
 
-			const actions = dc.createElement('div');
-			actions.className = 'nino-admin-actionbar';
+			const actions = Nino.adminUi.actionBar( Nino.adminUi.el( 'div' ) );
 
-			const save = dc.createElement('button');
-			save.type = 'submit';
-			save.textContent = Nino.content.getText('/_admin/common/label/save');
+			const save = Nino.adminUi.button( Nino.content.getText('/_admin/common/label/save'), null, { type : 'submit' } );
 			actions.appendChild( save );
 
-			const msg = dc.createElement('p');
-			msg.setAttribute( 'aria-live', 'polite' );
+			const msg = Nino.adminUi.el( 'p' );
 			actions.appendChild( msg );
 
 			el.appendChild( actions );
 
-			const line = Nino.admin.forms._status( msg, el );
+			const line = Nino.adminUi.status( msg );
+			line.bind( el );
 
 			Nino.admin.forms._editor = { was : was, save : save, line : line };
 
@@ -562,7 +434,7 @@
 
 			wrap.appendChild( el );
 
-			Nino.admin.forms._level('form');
+			levels.show('form');
 		},
 
 		/**
@@ -574,36 +446,28 @@
 		 *	@param		{string}	type				Input type
 		 *	@param		{string}	value
 		 *	@param		{string}	hint				Fill key, '' for none
-		 *	@param		{string}	role				What it is, for _collect()
+		 *	@param		{string}	[role]			What it is, for _collect()
+		 *	@param		{boolean}	[required]	Marked the way the workbench marks a required field
 		 *
 		 *	@return		{Element}							The <input>
 		 */
-		_input : function( parent, label, type, value, hint, role ) {
+		_input : function( parent, label, type, value, hint, role, required ) {
 
-			const wrap = dc.createElement('label');
-			wrap.className = 'nino-admin-field';
+			const field = Nino.adminUi.textField( {
+				label				: Nino.content.getText( label ),
+				type				: type,
+				value				: value === null || value === undefined ? '' : String( value ),
+				hint				: hint === '' ? '' : Nino.content.getText( hint ),
+				required		: required === true,
+				autocomplete: 'off',
+			} );
 
-			const span = dc.createElement('span');
-			span.textContent = Nino.content.getText( label );
-			wrap.appendChild( span );
+			const input = field.querySelector('input');
 
-			const input = dc.createElement('input');
-			input.type = type;
-			input.className = 'nino-admin-input';
-			input.value = value === null || value === undefined ? '' : String( value );
-			input.autocomplete = 'off';
 			if( role !== undefined )
 				input.dataset.about = role;
-			wrap.appendChild( input );
 
-			if( hint !== '' ) {
-				const small = dc.createElement('small');
-				small.className = 'nino-admin-hint';
-				small.textContent = Nino.content.getText( hint );
-				wrap.appendChild( small );
-			}
-
-			parent.appendChild( wrap );
+			parent.appendChild( field );
 
 			return input;
 		},
@@ -639,14 +503,10 @@
 			const select = field.querySelector('select');
 			select.dataset.about = role;
 
-			if( hint !== '' ) {
-				const small = dc.createElement('small');
-				small.className = 'nino-admin-hint';
-				// The placeholder that carries every field into a mail is a token of
-				// its own, so it is put in here and not written into the fill
-				small.textContent = Nino.content.getText( hint ).replace( '%s', '[[fields]]' );
-				field.appendChild( small );
-			}
+			// The placeholder that carries every field into a mail is a token of
+			// its own, so it is put in here and not written into the fill
+			if( hint !== '' )
+				field.appendChild( Nino.adminUi.el( 'small', 'nino-admin-hint', Nino.adminUi.format( Nino.content.getText( hint ), '[[fields]]' ) ) );
 
 			parent.appendChild( field );
 
@@ -654,13 +514,14 @@
 		},
 
 		/**
-		 *	The name a field takes from its label: lower case, ascii, words
-		 *	joined by a hyphen - the shape of a form key. A label written as a
-		 *	fill key gives the last part of the key. The German umlauts and the
-		 *	sharp s are spelled out (ae, oe, ue, ss) before any other accent is
-		 *	dropped, so a name stays readable in the export. The result starts
-		 *	with a letter, is at most 64 characters, is never one of the names
-		 *	the form keeps for itself and never one another field has
+		 *	The name a field takes from its label: the slug Nino.slug() makes of
+		 *	it - lower case, ascii, words joined by a hyphen, the shape of a form
+		 *	key; the German umlauts and the sharp s are spelled out (ae, oe, ue,
+		 *	ss) and so are the other letters its table has, the ones it has not are
+		 *	a separator. A label written as a fill key gives the last part of the
+		 *	key. The result starts with a letter, is at most 64 characters, is
+		 *	never one of the names the form keeps for itself and never one another
+		 *	field has
 		 *
 		 *	@param		{string}				label
 		 *	@param		{Array<string>}	taken				The names the other fields have
@@ -670,18 +531,9 @@
 		 */
 		_deriveName : function( label, taken, reserved ) {
 
-			const spelled = { 'ä' : 'ae', 'ö' : 'oe', 'ü' : 'ue', 'ß' : 'ss', 'Ä' : 'Ae', 'Ö' : 'Oe', 'Ü' : 'Ue', 'ẞ' : 'SS' };
-
 			const key = /^\[\[\/(?:[^\[\]\/]+\/)*([^\[\]\/]+)\]\]$/.exec( String( label ).trim() );
-			const text = key === null ? String( label ) : key[1];
 
-			let name = text
-				.replace( /[äöüßÄÖÜẞ]/g, function( character ) { return spelled[character] } )
-				.normalize('NFD')
-				.replace( /[\u0300-\u036f]/g, '' )
-				.toLowerCase()
-				.replace( /[^a-z0-9]+/g, '-' )
-				.replace( /^-+|-+$/g, '' );
+			let name = Nino.slug( key === null ? String( label ) : key[1], 64 );
 
 			if( name === '' )
 				name = 'field';
@@ -721,8 +573,7 @@
 		 */
 		_renderFieldRow : function( field, index ) {
 
-			const row = dc.createElement('div');
-			row.className = 'forms-field';
+			const row = Nino.adminUi.el( 'div', 'forms-field' );
 			row.dataset.index = String( index );
 
 			if( field.auto === true )
@@ -750,32 +601,20 @@
 				name.value = Nino.admin.forms._deriveName( label.value, taken, Nino.admin.forms._reserved );
 			} );
 
-			const typeWrap = dc.createElement('label');
-			typeWrap.className = 'nino-admin-field';
-			const typeSpan = dc.createElement('span');
-			typeSpan.textContent = Nino.content.getText('/_admin/forms/label/fieldtype');
-			typeWrap.appendChild( typeSpan );
-
-			const type = dc.createElement('select');
-			type.className = 'nino-admin-input';
-			type.dataset.role = 'type';
-			Nino.admin.forms._types.forEach( function( kind ) {
-				const option = dc.createElement('option');
-				option.value = kind;
+			const type = Nino.adminUi.selectField( {
+				key			: 'type',
+				label		: Nino.content.getText('/_admin/forms/label/fieldtype'),
 				// The kernel's list of types, in the words of the workbench's
 				// language - the type itself, which is what is stored, stays the value
-				option.textContent = Nino.content.getText( '/_admin/forms/type/'+ kind ) || kind;
-				if( kind === field.type )
-					option.selected = true;
-				type.appendChild( option );
+				options	: Nino.admin.forms._types.map( function( kind ) { return { value : kind, label : Nino.content.getText( '/_admin/forms/type/'+ kind ) || kind } } ),
+				value		: field.type,
+				onChange: function() {
+					Nino.admin.forms._collect();
+					Nino.admin.forms._renderForm();
+				},
 			} );
-			type.value = field.type;
-			type.addEventListener( 'change', function() {
-				Nino.admin.forms._collect();
-				Nino.admin.forms._renderForm();
-			} );
-			typeWrap.appendChild( type );
-			row.appendChild( typeWrap );
+			type.querySelector('select').dataset.role = 'type';
+			row.appendChild( type );
 
 			const required = Nino.adminUi.switchField( {
 				key 		: 'required',
@@ -815,34 +654,25 @@
 				row.appendChild( options );
 			}
 
-			const move = dc.createElement('div');
-			move.className = 'forms-field-move';
+			const move = Nino.adminUi.el( 'div', 'nino-admin-move' );
 
-			[ [ 'up', -1, '/_admin/common/label/moveup', '\u2191' ], [ 'down', 1, '/_admin/common/label/movedown', '\u2193' ] ].forEach( function( step ) {
-				const button = dc.createElement('button');
-				button.type = 'button';
+			[ [ 'up', -1, '/_admin/common/label/moveup', '↑' ], [ 'down', 1, '/_admin/common/label/movedown', '↓' ] ].forEach( function( step ) {
+				const button = Nino.adminUi.button( step[3], function() { Nino.admin.forms._move( index, step[1] ) }, {
+					name		: Nino.content.getText( step[2] ),
+					// The first field has nothing above it, the last nothing below
+					disabled: index + step[1] < 0 || index + step[1] >= Nino.admin.forms._editing.fields.length,
+				} );
 				button.dataset.role = step[0];
-				button.title = Nino.content.getText( step[2] );
-				button.setAttribute( 'aria-label', Nino.content.getText( step[2] ) );
-				button.textContent = step[3];
-				// The first field has nothing above it, the last nothing below
-				button.disabled = index + step[1] < 0 || index + step[1] >= Nino.admin.forms._editing.fields.length;
-				button.addEventListener( 'click', function() { Nino.admin.forms._move( index, step[1] ) } );
 				move.appendChild( button );
 			} );
 
 			row.appendChild( move );
 
-			const remove = dc.createElement('button');
-			remove.type = 'button';
-			remove.className = 'nino-admin-btn-danger';
-			remove.textContent = Nino.content.getText('/_admin/forms/label/removefield');
-			remove.addEventListener( 'click', function() {
+			row.appendChild( Nino.adminUi.button( Nino.content.getText('/_admin/forms/label/removefield'), function() {
 				Nino.admin.forms._collect();
 				Nino.admin.forms._editing.fields.splice( index, 1 );
 				Nino.admin.forms._renderForm();
-			} );
-			row.appendChild( remove );
+			}, { className : 'nino-admin-btn-danger' } ) );
 
 			return row;
 		},
@@ -926,20 +756,21 @@
 
 		/**
 		 *	Show where a refused save went wrong. The server answers a form it
-		 *	would only repair with a sentence for the whole form and, beside it,
-		 *	one for every field (fields, by its place in the list, and controls,
-		 *	which of its controls) and for every control of the form itself
-		 *	(about): each is written under its control, which is marked invalid
-		 *	and linked to it, and the first one is focused. The sentence for the
-		 *	whole form and what has no control of its own - a form without a
-		 *	field - go into the summary at the top of the editor, since the
-		 *	status line is not shown on a phone. Any other failure - a refused
-		 *	permission, a server error, no answer - is said there as well. The
-		 *	options of a select or of radio buttons are one control, a list: it
-		 *	is marked as a whole, the sentence follows it and the focus goes to
-		 *	its first text, or to its button while it has no row. That element
-		 *	points to the sentence as well: the wrapper takes no focus and has no
-		 *	role, so nothing is read of it where the focus is
+		 *	would only repair with a code for the whole form and, in its params,
+		 *	a word for every field (fields, by its place in the list, and
+		 *	controls, which of its controls) and for every control of the form
+		 *	itself (about): each word is looked up as the sentence it stands for,
+		 *	written under its control, which is marked invalid and linked to it,
+		 *	and the first one is focused. The sentence for the whole form and what
+		 *	has no control of its own - a form without a field - go into the
+		 *	summary at the top of the editor, since the status line is not shown
+		 *	on a phone. Any other failure - a refused permission, a server error,
+		 *	no answer - is said there as well. The options of a select or of radio
+		 *	buttons are one control, a list: it is marked as a whole, the sentence
+		 *	follows it and the focus goes to its first text, or to its button while
+		 *	it has no row. That element points to the sentence as well: the wrapper
+		 *	takes no focus and has no role, so nothing is read of it where the
+		 *	focus is
 		 *
 		 *	@param		{number}	status
 		 *	@param		{*}				response
@@ -953,13 +784,14 @@
 			if( wrap === null )
 				return;
 
+			const summary = dc.getElementById('forms-summary');
+			const headline = Nino.adminUi.api.errorText( status, response, '/_admin/common/error/save' );
+
 			if( status !== 400 || response === null || typeof response !== 'object' ) {
 
-				const failed = dc.getElementById('forms-summary');
-
-				if( failed !== null ) {
-					failed.textContent = Nino.adminUi.api.errorText( status, response, '/_admin/common/error/save' );
-					failed.hidden = false;
+				if( summary !== null ) {
+					summary.textContent = headline;
+					summary.hidden = false;
 				}
 
 				return;
@@ -976,10 +808,8 @@
 				}
 
 				const id = 'forms-error-'+ marked.length;
-				const error = dc.createElement('p');
+				const error = Nino.adminUi.el( 'p', 'nino-admin-field-error', text );
 				error.id = id;
-				error.className = 'nino-admin-field-error';
-				error.textContent = text;
 				// After the label, not in it: the sentence describes the control, and
 				// inside the label it would be part of the control's name as well. The
 				// list of options has no label around it, it is its own wrapper
@@ -990,36 +820,39 @@
 				marked.push( control );
 			};
 
-			const about = response.about || {};
+			// The words of forms_fields and forms_duplicate, in the order of their
+			// params: fields, controls, about. Any other code carries none
+			const params = Array.isArray( response.params ) === true ? response.params : [];
+			const fields = params[0] || {};
+			const controls = params[1] || {};
+			const about = params[2] || {};
+
+			const say = function( word ) { return Nino.content.getText( '/_admin/forms/problem/'+ word ) };
 
 			[ 'key', 'to', 'ownertpl', 'usertpl' ].forEach( function( role ) {
 				if( typeof about[role] === 'string' )
-					mark( wrap.querySelector('[data-about="'+ role+ '"]'), about[role] );
+					mark( wrap.querySelector('[data-about="'+ role+ '"]'), say( about[role] ) );
 			} );
 
 			Object.keys( about ).forEach( function( role ) {
 				if( [ 'key', 'to', 'ownertpl', 'usertpl' ].indexOf( role ) === -1 && typeof about[role] === 'string' )
-					rest.push( about[role] );
+					rest.push( say( about[role] ) );
 			} );
 
 			const rows = dc.getElementById('forms-field-rows');
-			const fields = response.fields || {};
-			const controls = response.controls || {};
 
 			Object.keys( fields ).sort( function( a, b ) { return a - b } ).forEach( function( index ) {
 
 				const row = rows === null ? null : rows.children[ parseInt( index, 10 ) ];
 
 				if( row === undefined || row === null )
-					return rest.push( fields[index] );
+					return rest.push( say( fields[index] ) );
 
-				mark( row.querySelector('[data-role="'+ ( controls[index] || 'name' ) +'"]'), fields[index] );
+				mark( row.querySelector('[data-role="'+ ( controls[index] || 'name' ) +'"]'), say( fields[index] ) );
 			} );
 
-			const summary = dc.getElementById('forms-summary');
-
-			if( summary !== null && typeof response.error === 'string' ) {
-				summary.textContent = [ response.error ].concat( rest ).join(' ');
+			if( summary !== null ) {
+				summary.textContent = [ headline ].concat( rest ).join(' ');
 				summary.hidden = false;
 			}
 
@@ -1097,6 +930,40 @@
 		},
 
 		/**
+		 *	A form as it is sent: a copy, without what the working copy
+		 *	remembers about how a name came about
+		 *
+		 *	@param		{Object}	form
+		 *
+		 *	@return		{Object}
+		 */
+		_posted : function( form ) {
+
+			const copy = JSON.parse( JSON.stringify( form ) );
+			copy.fields.forEach( function( field ) { delete field.auto } );
+
+			return copy;
+		},
+
+		/**
+		 *	The editor as one string, to tell unsaved input from what was saved:
+		 *	the form as a save would send it, read from the boxes. They are read
+		 *	back into the working copy first, as every redraw does, so that asking
+		 *	changes nothing a redraw would not
+		 *
+		 *	@return		{string}									'' while there is no editor
+		 */
+		_fingerprint : function() {
+
+			if( Nino.admin.forms._editing === null )
+				return '';
+
+			Nino.admin.forms._collect();
+
+			return JSON.stringify( Nino.admin.forms._posted( Nino.admin.forms._editing ) );
+		},
+
+		/**
 		 *	Save the editor on show - one way for the button and for the shell,
 		 *	which saves from its question before a back link or a log out
 		 *
@@ -1125,7 +992,7 @@
 		 *	@param		{string}		was					The key before this edit, '' for a new form
 		 *	@param		{Object}		posted
 		 *	@param		{Element}		save
-		 *	@param		{Object}		line				_status()'s answer
+		 *	@param		{Object}		line				status()'s answer
 		 *	@param		{Function}	[done]			Told whether it was saved - the shell's Save asks
 		 *
 		 *	@return		void
@@ -1145,12 +1012,7 @@
 			line.saving();
 			Nino.admin.forms._unmark();
 
-			// What the working copy remembers about how a name came about is
-			// not part of the form
-			const form = JSON.parse( JSON.stringify( posted ) );
-			form.fields.forEach( function( field ) { delete field.auto } );
-
-			Nino.admin.forms._apiCall( 'save', { key : was, form : form }, function( status, response ) {
+			Nino.admin.forms.call( 'save', { key : was, form : Nino.admin.forms._posted( posted ) }, function( status, response ) {
 
 				save.disabled = false;
 
@@ -1163,18 +1025,10 @@
 				// Saved is saved: what asked for it may go on while the list
 				// is read again
 				finish( true );
-				Nino.admin.forms.init();
+				Nino.admin.forms.reload();
 			} );
 		},
 
-	};
-
-	/*	The shell asks Save, Discard or Cancel before the form's back link, a
-		log out or a language change would lose what is typed into it	*/
-	Nino.admin.dirty.watchForm( 'forms', function() { return dc.getElementById('forms-form') }, function( done ) {
-		Nino.admin.forms._submit( done );
 	} );
-
-	Nino.events.bindCallback( 'ready', Nino.admin.forms.init );
 
 })(window, document, document.documentElement, document.body);

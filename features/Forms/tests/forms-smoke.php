@@ -37,10 +37,9 @@ require $root. '/tests/harness.php';
 $appData = ninoSandbox( 'forms' );
 $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
 $appData['/nino/dir'] = '';
-// What \Nino\AppData::init() sets from config.php in a real request, and the
-// sandbox does not: without it \Nino\Html::getFills() reads no text file at
-// all, so a label written as a fill would arrive as its own literal
-$appData['/nino/locales/textfiles'] = '/text';
+
+// The workbench's entry point, which ninoCall() hands a panel action
+$panel = [ \Nino\Admin\Admin::class, 'handlePost' ];
 
 // The kernel module that owns POST /.form, and the two core modules a project
 // always carries: [template ...] for the mail bodies the engine renders and
@@ -74,24 +73,19 @@ $sent = [];
 /**
  *	Submit one form the way a browser does, through the whole route callback
  *	chain - so the feature's guards run where they really run: ahead of the
- *	engine, on the kernel module's own callback
+ *	engine, on the kernel module's own callback. What it does beyond
+ *	ninoVisit(), which builds the request and stops before a route is
+ *	resolved: it sets the post and runs the callbacks of the endpoint's route
  */
 function submitForm( array &$appData, array $post ): array {
 	// The kernel's own per-ip mail cap - five an hour, and a submission it
 	// refuses is a 429 - is not what is tested here: every submission
 	// starts with a fresh window, so only the feature's guards answer
-	\Nino\Filesystem::putFileContent( $appData, '/data/ratelimit.php', [] );
+	\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
 	$_POST = array_merge( [ 'location' => '' ], $post );
 	$request = [ '/nino/http/response' => [ 'statusCode' => 200 ] ];
 	\Nino\Callbacks::doCallbacks( $appData, '/nino/http/response/POST://.form', $request );
 	return $request;
-}
-
-function callFormsAdmin( array &$appData, string $action, array $data = [] ): array {
-	$request = [ '/nino/http/response' => [ 'statusCode' => 200 ] ];
-	$_POST = [ 'action' => $action, 'data' => json_encode( $data ) ];
-	\Nino\Admin\Admin::handlePost( $appData, $request );
-	return [ $request['/nino/http/response']['statusCode'], $request['/nino/http/response']['body'] ?? null ];
 }
 
 /** What the forms of config.php are right now, as the engine reads them */
@@ -159,6 +153,8 @@ else {
 
 \Nino\Modules\Forms::init( $appData );
 
+// No Components module in this sandbox: where the module owns [form] it registers it from
+// the manifest, and where there is none init() does (the components section below)
 check( 'init adds the [form] shortcode', isset( $appData['./nino/html/shortcodes']['form'] ) === true );
 // The seam: the kernel module's own route callback, at priority 1 - ahead of
 // the engine, which sits at the default. No route of its own, no callback
@@ -297,6 +293,9 @@ preg_match_all( '/\.(nino-[a-z0-9-]+)/', $uncommented( dirname( __DIR__ ). '/ass
 $written = array_values( array_unique( array_merge( $written, $found[1] ) ) );
 $styledByKernel = array_values( array_filter( $written, static fn( string $class ): bool => preg_match( '/\.'. preg_quote( $class, '/' ). '(?![\w-])/', $ninoCss ) === 1 ) );
 check( 'no class the new templates or the stylesheet write is one Nino.css styles', $written !== [] && $styledByKernel === [] );
+// The manifest's 'assets', which \Nino\init() registers ahead of every module's init(): the path
+// that calls callModules( 'init' ) alone does not
+\Nino\Features::registerAssets( $appData );
 check( 'the stylesheet is bundled into the project\'s own /.cache/style.css', in_array( '/features/Forms/assets/forms.css', \Nino\Html::getAssets( $appData, '/.cache/style.css' ), true ) === true );
 
 echo "\n";
@@ -306,8 +305,7 @@ echo "\n";
 
 echo "Forms\\Admin - the builder writes the key the kernel reads\n";
 
-\Nino\Auth::insertUser( $appData, 'dev@example.com', 'correct horse battery staple', [ \Nino\Modules\Forms\Admin::MANAGE_PERM ] );
-\Nino\Auth::loginUser( $appData, 'dev@example.com', 'correct horse battery staple' );
+ninoUser( $appData, 'dev@example.com', [ \Nino\Modules\Forms\Admin::MANAGE_PERM ] );
 \Nino\Admin\Admin::init( $appData );
 
 // The mail templates a form names are files of the project, and a form that
@@ -317,7 +315,7 @@ foreach( [ 'mail-owner', 'mail-user', 'mail-header', 'mail-footer', 'mail-quote'
 	\Nino\Filesystem::putFileContent( $appData, '/templates/'. $mail. '.tpl', '<p>'. $mail. '</p>[[fields]]' );
 ninoWarnings();
 
-[ $status, $body ] = callFormsAdmin( $appData, 'forms/list' );
+[ $status, $body ] = ninoCall( $appData, $panel, [], 'forms/list' );
 check( 'forms/list answers the forms, the types a field may be and the names it may not take', $status === 200
 	&& array_column( $body['forms'], 'key' ) === [ 'contact' ] && $body['types'] === \Nino\Form::TYPES && $body['reserved'] === \Nino\Form::RESERVED );
 check( '...and says that nothing is defined yet, so the list is showing the fallback', $body['default'] === true );
@@ -335,80 +333,126 @@ $quote = [
 	],
 ];
 
-[ $status ] = callFormsAdmin( $appData, 'forms/save', [ 'form' => $quote, 'key' => '' ] );
+[ $status ] = ninoCall( $appData, $panel, [ 'form' => $quote, 'key' => '' ], 'forms/save' );
 check( 'a saved form lands in /nino/form/forms in config.php - the key the engine reads', $status === 200
 	&& array_column( \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/form/forms'], 'key' ) === [ 'contact', 'quote' ] );
 check( '...and the engine has it on the very next read, without the panel telling it anything', definedForms( $appData ) === [ 'contact', 'quote' ] );
 
-[ $status ] = callFormsAdmin( $appData, 'forms/save', [ 'form' => [ 'key' => 'Not A Key', 'fields' => [] ], 'key' => '' ] );
+[ $status ] = ninoCall( $appData, $panel, [ 'form' => [ 'key' => 'Not A Key', 'fields' => [] ], 'key' => '' ], 'forms/save' );
 check( 'a definition the engine would refuse is refused here, by the engine\'s own normalize()', $status === 400 );
 
 /*	What the engine would repair instead of keep is refused here, and the answer
-	says where: the index of the field in the posted list, the control of that
-	field, and the sentence in the language of whoever is looking. Nothing is
-	written - the config is what it was	*/
+	says where: the code forms_fields and, as its params, the index of the field in
+	the posted list with the word of what is wrong, the control of that field, and
+	the controls of the form itself with theirs. The words are looked up by the
+	script, in the language of whoever is looking. Nothing is written - the
+	config is what it was	*/
 $configBefore = \Nino\Filesystem::getFileContent( $appData, '/config.php', [] );
 $withField = static fn( array $field ): array => [ 'form' => [ 'fields' => [ $quote['fields'][0], $field ] ] + $quote, 'key' => '' ];
 $field = static fn( string $name, string $type = 'text', array $options = [] ): array => [ 'name' => $name, 'label' => $name, 'type' => $type, 'required' => false, 'options' => $options ];
 
+$answered = [];
+
 foreach( [
-	'a name with an umlaut'							=> [ $field( 'Straße' ), 'name' ],
-	'a name that is a label'						=> [ $field( 'Ihre Nachricht' ), 'name' ],
-	'a name the form keeps for itself'	=> [ $field( 'date' ), 'name' ],
-	'a name another field has'					=> [ $field( 'email' ), 'name' ],
-	'radio buttons without an option'		=> [ $field( 'plan', 'radio' ), 'options' ],
-	'a type nobody knows'								=> [ $field( 'plan', 'color' ), 'type' ],
-] as $label => [ $bad, $control ] ) {
-	[ $status, $body ] = callFormsAdmin( $appData, 'forms/save', $withField( $bad ) );
-	check( $label. ' is refused at its field: 400, the sentence under index 1 and the control '. $control. ', nothing written', $status === 400
-		&& is_string( $body['error'] ) === true && array_keys( $body['fields'] ) === [ 1 ] && is_string( $body['fields'][1] ) === true && $body['fields'][1] !== ''
-		&& $body['controls'] === [ 1 => $control ] && \Nino\Filesystem::getFileContent( $appData, '/config.php', [] ) === $configBefore );
+	'a name with an umlaut'							=> [ $field( 'Straße' ), 'name', 'name' ],
+	'a name that is a label'						=> [ $field( 'Ihre Nachricht' ), 'name', 'name' ],
+	'a name the form keeps for itself'	=> [ $field( 'date' ), 'name', 'reserved' ],
+	'a name another field has'					=> [ $field( 'email' ), 'name', 'duplicate' ],
+	'radio buttons without an option'		=> [ $field( 'plan', 'radio' ), 'options', 'options' ],
+	'a type nobody knows'								=> [ $field( 'plan', 'color' ), 'type', 'type' ],
+] as $label => [ $bad, $control, $word ] ) {
+	[ $status, $body ] = ninoCall( $appData, $panel, $withField( $bad ), 'forms/save' );
+	$answered[ (string) ( $body['code'] ?? '' ) ] = true;
+	check( $label. ' is refused at its field: 400, the code forms_fields, the word "'. $word. '" under index 1 and the control '. $control. ', nothing written', $status === 400
+		&& $body['code'] === 'forms_fields' && is_string( $body['error'] ) === true
+		&& $body['params'] === [ [ 1 => $word ], [ 1 => $control ], [] ] && \Nino\Filesystem::getFileContent( $appData, '/config.php', [] ) === $configBefore );
 }
 
-[ $status, $body ] = callFormsAdmin( $appData, 'forms/save', [ 'form' => [ 'to' => 'a@b' ] + $quote, 'key' => '' ] );
-check( 'a recipient that is no address is refused at the "to" control', $status === 400 && array_keys( $body['about'] ) === [ 'to' ] && $body['fields'] === [] );
+[ $status, $body ] = ninoCall( $appData, $panel, [ 'form' => [ 'to' => 'a@b' ] + $quote, 'key' => '' ], 'forms/save' );
+check( 'a recipient that is no address is refused at the "to" control', $status === 400 && $body['code'] === 'forms_fields' && $body['params'] === [ [], [], [ 'to' => 'to' ] ] );
 
-[ $status, $body ] = callFormsAdmin( $appData, 'forms/save', [ 'form' => [ 'ownerTemplate' => '/templates/../x', 'userTemplate' => 'nope' ] + $quote, 'key' => '' ] );
-check( '...a template path that is none at the control of each of the two', $status === 400 && array_keys( $body['about'] ) === [ 'ownertpl', 'usertpl' ] );
+[ $status, $body ] = ninoCall( $appData, $panel, [ 'form' => [ 'ownerTemplate' => '/templates/../x', 'userTemplate' => 'nope' ] + $quote, 'key' => '' ], 'forms/save' );
+check( '...a template path that is none at the control of each of the two', $status === 400 && $body['params'] === [ [], [], [ 'ownertpl' => 'ownertpl', 'usertpl' => 'usertpl' ] ] );
 
-[ $status, $body ] = callFormsAdmin( $appData, 'forms/save', [ 'form' => [ 'key' => 'Not A Key' ] + $quote, 'key' => '' ] );
-check( '...a key that is none at the key control', $status === 400 && array_keys( $body['about'] ) === [ 'key' ] );
+[ $status, $body ] = ninoCall( $appData, $panel, [ 'form' => [ 'key' => 'Not A Key' ] + $quote, 'key' => '' ], 'forms/save' );
+check( '...a key that is none at the key control', $status === 400 && $body['params'] === [ [], [], [ 'key' => 'key' ] ] );
 
-[ $status, $body ] = callFormsAdmin( $appData, 'forms/save', [ 'form' => [ 'fields' => [] ] + $quote, 'key' => '' ] );
-check( '...a form without a field, which has no control of its own to mark', $status === 400 && array_keys( $body['about'] ) === [ 'fields' ] && $body['fields'] === [] );
+[ $status, $body ] = ninoCall( $appData, $panel, [ 'form' => [ 'fields' => [] ] + $quote, 'key' => '' ], 'forms/save' );
+check( '...a form without a field, which has no control of its own to mark', $status === 400 && $body['params'] === [ [], [], [ 'fields' => 'fields' ] ] );
 
-[ $status, $body ] = callFormsAdmin( $appData, 'forms/save', [ 'form' => [ 'ownerTemplate' => '/templates/mail-gone' ] + $quote, 'key' => '' ] );
+[ $status, $body ] = ninoCall( $appData, $panel, [ 'form' => [ 'ownerTemplate' => '/templates/mail-gone' ] + $quote, 'key' => '' ], 'forms/save' );
 check( 'a template that is well formed and not on disk is refused at its control, whatever else is right - an empty mail is worse than no form',
-	$status === 400 && array_keys( $body['about'] ) === [ 'ownertpl' ] && \Nino\Filesystem::getFileContent( $appData, '/config.php', [] ) === $configBefore );
+	$status === 400 && $body['code'] === 'forms_fields' && $body['params'] === [ [], [], [ 'ownertpl' => 'missingtpl' ] ]
+	&& \Nino\Filesystem::getFileContent( $appData, '/config.php', [] ) === $configBefore );
 
-[ $status ] = callFormsAdmin( $appData, 'forms/save', [ 'form' => [ 'key' => 'extra', 'userTemplate' => '/templates/mail-quote' ] + $quote, 'key' => '' ] );
+[ $status ] = ninoCall( $appData, $panel, [ 'form' => [ 'key' => 'extra', 'userTemplate' => '/templates/mail-quote' ] + $quote, 'key' => '' ], 'forms/save' );
 check( '...and one that is there, a project\'s own mail-* file, is not', $status === 200 );
-callFormsAdmin( $appData, 'forms/delete', [ 'key' => 'extra' ] );
+ninoCall( $appData, $panel, [ 'key' => 'extra' ], 'forms/delete' );
 
-[ $status, $body ] = callFormsAdmin( $appData, 'forms/save', [ 'form' => $quote, 'key' => '' ] );
-check( 'creating a second form under a key that is taken is refused rather than silently replacing it - at the key', $status === 400 && count( definedForms( $appData ) ) === 2 && array_keys( $body['about'] ) === [ 'key' ] );
+[ $status, $body ] = ninoCall( $appData, $panel, [ 'form' => $quote, 'key' => '' ], 'forms/save' );
+$answered[ (string) ( $body['code'] ?? '' ) ] = true;
+check( 'creating a second form under a key that is taken is refused rather than silently replacing it - with the code forms_duplicate, at the key', $status === 400 && count( definedForms( $appData ) ) === 2
+	&& $body['code'] === 'forms_duplicate' && $body['params'] === [ [], [], [ 'key' => 'keytaken' ] ] );
 
-[ $status ] = callFormsAdmin( $appData, 'forms/save', [ 'form' => [ 'key' => 'offer' ] + $quote, 'key' => 'quote' ] );
+[ $status ] = ninoCall( $appData, $panel, [ 'form' => [ 'key' => 'offer' ] + $quote, 'key' => 'quote' ], 'forms/save' );
 check( 'a rename stays one form rather than becoming two', $status === 200 && definedForms( $appData ) === [ 'contact', 'offer' ] );
 
-[ $status ] = callFormsAdmin( $appData, 'forms/delete', [ 'key' => 'offer' ] );
+[ $status ] = ninoCall( $appData, $panel, [ 'key' => 'offer' ], 'forms/delete' );
 check( 'a form is deleted by its key', $status === 200 && definedForms( $appData ) === [ 'contact' ] );
 
-[ $status ] = callFormsAdmin( $appData, 'forms/delete', [ 'key' => 'contact' ] );
-check( 'the last one is not - a project with none falls back to the built-in form, which is a decision, not a delete', $status === 400 && definedForms( $appData ) === [ 'contact' ] );
+[ $status, $body ] = ninoCall( $appData, $panel, [ 'key' => 'contact' ], 'forms/delete' );
+$answered[ (string) ( $body['code'] ?? '' ) ] = true;
+check( 'the last one is not - a project with none falls back to the built-in form, which is a decision, not a delete: forms_last', $status === 400 && $body['code'] === 'forms_last' && definedForms( $appData ) === [ 'contact' ] );
 
-[ $status, $body ] = callFormsAdmin( $appData, 'forms/settings', [ 'retention' => 12, 'store' => false ] );
+[ $status, $body ] = ninoCall( $appData, $panel, [ 'key' => 'Not A Key' ], 'forms/delete' );
+$answered[ (string) ( $body['code'] ?? '' ) ] = true;
+check( 'a key that is none cannot be deleted either: forms_key', $status === 400 && $body['code'] === 'forms_key' && definedForms( $appData ) === [ 'contact' ] );
+
+[ $status, $body ] = ninoCall( $appData, $panel, [ 'retention' => 12, 'store' => false ], 'forms/settings' );
 check( 'the two submission settings are written as the kernel\'s own config keys', $status === 200
 	&& \Nino\Form::retention( $appData ) === 12 && \Nino\Form::stores( $appData ) === false
 	&& \Nino\Filesystem::getFileContent( $appData, '/config.php', [] )['/nino/form/retention'] === 12 );
 
-[ $status ] = callFormsAdmin( $appData, 'forms/settings', [ 'retention' => 0, 'store' => true ] );
-check( 'a retention outside the window is refused, and nothing is written', $status === 400 && \Nino\Form::retention( $appData ) === 12 );
+[ $status, $body ] = ninoCall( $appData, $panel, [ 'retention' => 0, 'store' => true ], 'forms/settings' );
+$answered[ (string) ( $body['code'] ?? '' ) ] = true;
+check( 'a retention outside the window is refused with forms_retention, and nothing is written', $status === 400 && $body['code'] === 'forms_retention' && \Nino\Form::retention( $appData ) === 12 );
+[ $status, $body ] = ninoCall( $appData, $panel, [ 'retention' => '12', 'store' => true ], 'forms/settings' );
+check( '...a retention that arrives as text is none either', $status === 400 && $body['code'] === 'forms_retention' && \Nino\Form::retention( $appData ) === 12 );
 
-callFormsAdmin( $appData, 'forms/settings', [ 'retention' => 3, 'store' => true ] );
+ninoCall( $appData, $panel, [ 'retention' => 3, 'store' => true ], 'forms/settings' );
+
+/*	config.php is written under a lock of its own. With the lock file made
+	unopenable - a directory where it goes, the answer a read-only or full disk
+	gives - nothing can be written, and that is the server's to report: a 500
+	with its English sentence and no code, for the three actions that write the
+	file. The copy of the app data is the request that failed; the real one is
+	the project as the file still has it	*/
+ninoCall( $appData, $panel, [ 'form' => $quote, 'key' => '' ], 'forms/save' );
+$configLock = ninoSandboxDir( $appData ). '/private/data/.locks/'. sha1( '/config.php' ). '.lock';
+$unwritable = static function( array $appData, string $action, array $data ) use ( $panel, $configLock ): array {
+	unset( $appData['./nino/filesystem/locks'] );
+	@unlink( $configLock );
+	mkdir( $configLock, 0755, true );
+	$answer = [];
+	ninoErrors( static function() use ( &$appData, $panel, $data, $action, &$answer ): void {
+		$answer = ninoCall( $appData, $panel, $data, $action );
+	} );
+	rmdir( $configLock );
+	return $answer;
+};
+$configNow = \Nino\Filesystem::getFileContent( $appData, '/config.php', [] );
+
+[ $status, $body ] = $unwritable( $appData, 'forms/save', [ 'form' => [ 'key' => 'offer' ] + $quote, 'key' => '' ] );
+check( 'a save whose config.php cannot be written is a 500 with its English sentence and no code', $status === 500 && $body === [ 'error' => 'the forms could not be written' ] );
+[ $status, $body ] = $unwritable( $appData, 'forms/delete', [ 'key' => 'quote' ] );
+check( '...and so is a delete', $status === 500 && $body === [ 'error' => 'the forms could not be written' ] );
+[ $status, $body ] = $unwritable( $appData, 'forms/settings', [ 'retention' => 5, 'store' => true ] );
+check( '...and the two settings', $status === 500 && $body === [ 'error' => 'the settings could not be written' ] );
+check( '...and the file is what it was', \Nino\Filesystem::getFileContent( $appData, '/config.php', [] ) === $configNow && definedForms( $appData ) === [ 'contact', 'quote' ] );
+ninoCall( $appData, $panel, [ 'key' => 'quote' ], 'forms/delete' );
 
 $appData['./nino/auth/current'] = null;
-[ $status ] = callFormsAdmin( $appData, 'forms/save', [ 'form' => $quote, 'key' => '' ] );
+[ $status ] = ninoCall( $appData, $panel, [ 'form' => $quote, 'key' => '' ], 'forms/save' );
 check( 'every action needs the panel\'s permission', $status === 401 );
 \Nino\Auth::loginUser( $appData, 'dev@example.com', 'correct horse battery staple' );
 
@@ -419,7 +463,7 @@ echo "\n";
 
 echo "Modules\\Forms - refusing a submission ahead of the engine\n";
 
-callFormsAdmin( $appData, 'forms/save', [ 'form' => $quote, 'key' => '' ] );
+ninoCall( $appData, $panel, [ 'form' => $quote, 'key' => '' ], 'forms/save' );
 
 $valid = [ 'form' => 'quote', 'email' => 'jo@example.com', 'budget' => '5000' ];
 
@@ -455,9 +499,13 @@ $request = submitForm( $appData, $valid );
 check( '...and a submission carrying none is not', $request['/nino/http/response']['statusCode'] === 200 );
 
 // The rate limit: checked before the engine, counted after it - so only a
-// submission that was actually accepted costs a slot
+// submission that was actually accepted costs a slot. The counter is the
+// kernel's, \Nino\Feature::count() under the name "forms-rate": the file
+// /data/forms-rate.php it always was, one entry for the sha256 of the address
+$counterFile	= '/data/forms-rate.php';
+$ipKey				= hash( 'sha256', '127.0.0.1' );
 \Nino\Features::saveSettings( $appData, 'forms', [ 'minSeconds' => 0, 'rateLimit' => 2, 'blocklist' => [] ] );
-\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Forms::RATE, [] );
+\Nino\Filesystem::putFileContent( $appData, $counterFile, [] );
 
 check( 'the first two submissions of the hour are accepted', submitForm( $appData, $valid )['/nino/http/response']['statusCode'] === 200
 	&& submitForm( $appData, $valid )['/nino/http/response']['statusCode'] === 200 );
@@ -466,20 +514,36 @@ $sent = [];
 $request = submitForm( $appData, $valid );
 check( 'the third is turned away with a 429 - the one refusal a person can do something about', $request['/nino/http/response']['statusCode'] === 429 && $sent === [] );
 
-check( 'the counter is keyed by a hash of the address, not by the address', ( static function( array &$appData ): bool {
-	$state = \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Forms::RATE, [] );
-	return count( $state ) === 1 && preg_match( '/^[a-f0-9]{64}$/', (string) array_key_first( $state ) ) === 1;
-} )( $appData ) );
+$state = \Nino\Filesystem::getFileContent( $appData, $counterFile, [] );
+check( 'the counter is keyed by a hash of the address, not by the address: its sha256, in the file it always was', array_keys( $state ) === [ $ipKey ]
+	&& \Nino\Feature::spent( $appData, 'forms-rate', '127.0.0.1', 2 ) === true && \Nino\Feature::spent( $appData, 'forms-rate', '127.0.0.2', 2 ) === false );
+// The kernel's own rule counts every try, the one past the limit too; this
+// counter is called after the engine accepted a submission, so a turned-away one is never a try
+check( '...with the two accepted submissions on it and not the turned-away one, for the hour', $state[$ipKey]['tries'] === 2 && $state[$ipKey]['reset'] > time() + 3500 && $state[$ipKey]['reset'] <= time() + 3600 );
+
+// An entry written by the counter this feature had before the kernel's: the same
+// file, the same key, the same two numbers
+\Nino\Filesystem::putFileContent( $appData, $counterFile, [ $ipKey => [ 'tries' => 2, 'reset' => time() + 3600 ] ] );
+check( 'an entry written before the kernel counted for it is read as it is: the allowance is used up', submitForm( $appData, $valid )['/nino/http/response']['statusCode'] === 429 );
+
+\Nino\Filesystem::putFileContent( $appData, $counterFile, [ $ipKey => [ 'tries' => 2, 'reset' => time() - 1 ], 'lapsed' => [ 'tries' => 9, 'reset' => time() - 5 ] ] );
+check( 'an entry whose hour is over lets the visitor in again', submitForm( $appData, $valid )['/nino/http/response']['statusCode'] === 200 );
+$state = \Nino\Filesystem::getFileContent( $appData, $counterFile, [] );
+check( '...and the next accepted submission starts a new hour, taking the entries that lapsed with it', array_keys( $state ) === [ $ipKey ] && $state[$ipKey]['tries'] === 1 );
 
 // A refused submission must not spend a slot: reset, then send two the engine
 // rejects and check the allowance is still whole
-\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Forms::RATE, [] );
+\Nino\Filesystem::putFileContent( $appData, $counterFile, [] );
 submitForm( $appData, [ 'form' => 'quote', 'email' => 'not-an-email' ] );
 submitForm( $appData, [ 'form' => 'quote', 'email' => 'still-not-one' ] );
-check( 'a submission the engine refused costs nothing - a visitor who mistypes their address has not submitted', submitForm( $appData, $valid )['/nino/http/response']['statusCode'] === 200
+check( 'a submission the engine refused costs nothing - a visitor who mistypes their address has not submitted', \Nino\Filesystem::getFileContent( $appData, $counterFile, [] ) === []
+	&& submitForm( $appData, $valid )['/nino/http/response']['statusCode'] === 200
 	&& submitForm( $appData, $valid )['/nino/http/response']['statusCode'] === 200 );
 
 \Nino\Features::saveSettings( $appData, 'forms', [ 'minSeconds' => 0, 'rateLimit' => 0, 'blocklist' => [] ] );
+\Nino\Filesystem::putFileContent( $appData, $counterFile, [] );
+check( 'with the limit at 0 an accepted submission counts nothing and writes nothing', submitForm( $appData, $valid )['/nino/http/response']['statusCode'] === 200
+	&& \Nino\Filesystem::getFileContent( $appData, $counterFile, [] ) === [] );
 
 // The other seam: a guard has to respect a refusal that came before it
 $blocked = [ '/nino/http/response' => [ 'statusCode' => 403 ], './nino/csrf/blocked' => true ];
@@ -505,7 +569,7 @@ $consent = [
 		[ 'name' => 'day',			'label' => 'Day',			'type' => 'date',			'required' => false,	'options' => [] ],
 	],
 ];
-[ $status ] = callFormsAdmin( $appData, 'forms/save', [ 'form' => $consent, 'key' => '' ] );
+[ $status ] = ninoCall( $appData, $panel, [ 'form' => $consent, 'key' => '' ], 'forms/save' );
 check( 'a form with all of them saves', $status === 200 );
 
 $good = [ 'form' => 'consent', 'email' => 'jo@example.com', 'privacy' => '1', 'plan' => 'Large', 'day' => '2026-02-28' ];
@@ -519,7 +583,7 @@ check( 'nor is a date that does not exist, or one written the other way round', 
 	&& submitForm( $appData, [ 'day' => '28.02.2026' ] + $good )['/nino/http/response']['statusCode'] === 400 );
 check( 'an option written as a fill key is accepted as the key it is stored as - the value the form draws, read back by the browser',
 	submitForm( $appData, [ 'plan' => '[[/x/opt]]', 'size' => '[[/x/opt]]' ] + $good )['/nino/http/response']['statusCode'] === 200 );
-callFormsAdmin( $appData, 'forms/delete', [ 'key' => 'consent' ] );
+ninoCall( $appData, $panel, [ 'key' => 'consent' ], 'forms/delete' );
 
 echo "\n";
 
@@ -529,6 +593,17 @@ echo "\n";
 echo "Forms\\Admin - the words the editor reads\n";
 
 $words = [ 'en_US' => include $dir. '/text/en_US.php', 'de_DE' => include $dir. '/text/de_DE.php' ];
+
+// One entry for each code the kernel's problems() answers, and the word the panel names for it;
+// besides them the words of the answers that are not a problem of the definition, and of the
+// fallback for a code the panel does not know
+$problemCodes	= ( new ReflectionClassConstant( \Nino\Modules\Forms\Admin::class, 'PROBLEMS' ) )->getValue();
+$problemWords	= array_values( array_unique( array_merge( array_values( $problemCodes ), [ 'keytaken', 'missingtpl', 'form' ] ) ) );
+
+// The codes the panel answers with: the five this test met above, and forms_invalid, which only a
+// definition that problems() lets through and normalize() refuses could reach
+$panelCodes = [ 'forms_fields', 'forms_duplicate', 'forms_key', 'forms_last', 'forms_retention', 'forms_invalid' ];
+check( 'every refusal the panel can give a person was asked for above, but forms_invalid', array_diff( $panelCodes, array_keys( $answered ), [ 'forms_invalid' ] ) === [] && array_diff( array_keys( $answered ), $panelCodes ) === [] );
 check( 'both interface languages carry the same fills', array_diff( array_keys( $words['en_US'] ), array_keys( $words['de_DE'] ) ) === [] && array_diff( array_keys( $words['de_DE'] ), array_keys( $words['en_US'] ) ) === [] );
 /*	A word the script asks for by its whole key - the labels and hints it hands to its
 	helpers as well - is one both languages say: a key that is mistyped in the script
@@ -544,13 +619,16 @@ foreach( $words as $locale => $fills ) {
 			$missing[] = $type;
 	check( $locale. ' names every field type the kernel knows'. ( $missing === [] ? '' : ' - missing '. implode( ', ', $missing ) ), $missing === [] );
 
-	// A sentence for every refusal the panel can answer with
-	$codes = [ 'key', 'field', 'name', 'reserved', 'duplicate', 'type', 'options', 'fields', 'to', 'ownertpl', 'usertpl', 'missingtpl' ];
-	$absent = array_values( array_filter( $codes, static fn( string $code ): bool => isset( $fills[ '[[/_admin/forms/problem/'. $code. ']]' ] ) === false ) );
-	check( $locale. ' says every problem the engine can find, and the missing template'. ( $absent === [] ? '' : ' - missing '. implode( ', ', $absent ) ), $absent === [] && isset( $fills['[[/_admin/forms/error/fields]]'] ) === true );
+	// A sentence for every word a refused save names, to put under the field or the control
+	$absent = array_values( array_filter( $problemWords, static fn( string $word ): bool => trim( $fills[ '[[/_admin/forms/problem/'. $word. ']]' ] ?? '' ) === '' ) );
+	check( $locale. ' says every problem the engine can find, the key that is taken, the missing template and the form it cannot save'. ( $absent === [] ? '' : ' - missing '. implode( ', ', $absent ) ), $absent === [] );
 
-	$unsaid = array_values( array_filter( $asked, static fn( string $key ): bool => isset( $fills[ '[['. $key. ']]' ] ) === false ) );
-	check( $locale. ' says every word the panel script asks for, the six of the list of options among them'. ( $unsaid === [] ? '' : ' - missing '. implode( ', ', $unsaid ) ), $unsaid === [] && array_diff( $listWords, $asked ) === [] );
+	// ...and one for every code, in the place the workbench looks the code up
+	$unsaid = array_values( array_filter( $panelCodes, static fn( string $code ): bool => trim( $fills[ '[[/_admin/error/'. $code. ']]' ] ?? '' ) === '' ) );
+	check( $locale. ' has the sentence of every code the panel answers with'. ( $unsaid === [] ? '' : ' - missing '. implode( ', ', $unsaid ) ), $unsaid === [] );
+
+	$unasked = array_values( array_filter( $asked, static fn( string $key ): bool => isset( $fills[ '[['. $key. ']]' ] ) === false ) );
+	check( $locale. ' says every word the panel script asks for, the six of the list of options among them'. ( $unasked === [] ? '' : ' - missing '. implode( ', ', $unasked ) ), $unasked === [] && array_diff( $listWords, $asked ) === [] );
 
 	// A row of that list is named for a screen reader by its number
 	check( $locale. ' names a row of the list of options by its number', str_contains( (string) ( $fills['[[/_admin/forms/options/item]]'] ?? '' ), '%d' ) === true );
@@ -559,10 +637,15 @@ foreach( $words as $locale => $fills ) {
 	check( $locale. ': no fill carries a token the fill engine would answer for', array_filter( $fills, static fn( string $text ): bool => str_contains( $text, '[[' ) === true ) === [] );
 }
 
-// One entry for each code the kernel's problems() answers, and the panel's
-// sentence for it is the one in the list
-$problemCodes = ( new ReflectionClassConstant( \Nino\Modules\Forms\Admin::class, 'PROBLEMS' ) )->getValue();
-check( 'the panel has a sentence for each of the eleven codes problems() answers', array_keys( $problemCodes ) === [ 'key', 'field', 'name', 'reserved', 'duplicate', 'type', 'options', 'fields', 'to', 'ownerTemplate', 'userTemplate' ] );
+check( 'the panel has a word for each of the eleven codes problems() answers', array_keys( $problemCodes ) === [ 'key', 'field', 'name', 'reserved', 'duplicate', 'type', 'options', 'fields', 'to', 'ownerTemplate', 'userTemplate' ] );
+
+// A code the panel has no word for is said with the general word of its kind: a field that cannot
+// be read, or a form that cannot be saved as it is
+$unknownCode = new ReflectionMethod( \Nino\Modules\Forms\Admin::class, '_refuse' );
+$unknownAnswer = [ '/nino/http/response' => [ 'statusCode' => 200 ] ];
+$unknownCode->invokeArgs( null, [ &$unknownAnswer, [ [ 'field' => 2, 'code' => 'zzz' ], [ 'field' => null, 'code' => 'zzz' ] ] ] );
+check( '...so a code of a later kernel is still answered with a sentence', $unknownAnswer['/nino/http/response']['statusCode'] === 400 && $unknownAnswer['/nino/http/response']['body']['code'] === 'forms_fields'
+	&& $unknownAnswer['/nino/http/response']['body']['params'] === [ [ 2 => 'field' ], [ 2 => 'name' ], [ 'zzz' => 'form' ] ] );
 
 echo "\n";
 
@@ -571,9 +654,7 @@ echo "\n";
 
 echo "Components - [form] as the Builder offers it\n";
 
-if( class_exists( '\\Nino\\Modules\\Components' ) === false )
-	echo "  --  this Nino has no \\Nino\\Modules\\Components: the manifest's components are not read here, and the shortcode registers itself\n";
-else ( static function( array $appData ): void {
+( static function( array $appData ): void {
 
 	$declared = \Nino\Features::manifest( dirname( __DIR__ ) )['components'] ?? [];
 
@@ -650,12 +731,13 @@ check( 'and the recorded submissions are where they always were - the kernel\'s 
 	a method that has been _renderList() since the list and the form became
 	two levels, and every return to the Forms panel threw instead of drawing
 	the list. Every method the script calls on its own namespace is one it
-	defines, read off the script rather than listed here	*/
+	defines or one Nino.adminUi.panel() gives it (the manual's list of its
+	members), read off the script rather than listed here	*/
 $panelScript = (string) file_get_contents( __DIR__. '/../assets/admin.js' );
 preg_match_all( '/Nino\.admin\.forms\.([_a-zA-Z0-9]+)\s*\(/', $panelScript, $calledMethods );
 preg_match_all( '/^\t\t([_a-zA-Z0-9]+)\s*:\s*function/m', $panelScript, $definedMethods );
-$undefinedCalls = array_values( array_unique( array_diff( $calledMethods[1], $definedMethods[1] ) ) );
-check( 'every method the panel script calls on its own namespace is one it defines'. ( $undefinedCalls === [] ? '' : ' - '. implode( ', ', $undefinedCalls ) ), $definedMethods[1] !== [] && $undefinedCalls === [] );
+$undefinedCalls = array_values( array_unique( array_diff( $calledMethods[1], $definedMethods[1], [ 'mount', 'call', 'fail', 'init', 'reload' ] ) ) );
+check( 'every method the panel script calls on its own namespace is one it defines or panel() gives it'. ( $undefinedCalls === [] ? '' : ' - '. implode( ', ', $undefinedCalls ) ), $definedMethods[1] !== [] && $undefinedCalls === [] );
 
 echo "\n";
 
@@ -663,9 +745,11 @@ echo "\n";
 // --- The panel's script, where node is on the path ----------------------------
 //
 // forms-js-smoke.js beside this file draws the list, the settings card and the
-// editor over a dom stand-in and counts the fixed action bars on each screen;
-// this suite runs it too where node is on the path, the way redirects-smoke.php
-// does, so bin/check.sh and CI cover both halves in one go
+// editor over a dom stand-in, with the kernel's own Nino.js running in it - the
+// one of the checkout this suite runs against, which is handed on - and counts
+// the fixed action bars on each screen; this suite runs it too where node is on
+// the path, the way redirects-smoke.php does, so bin/check.sh and CI cover both
+// halves in one go
 $jsTest	= __DIR__. '/forms-js-smoke.js';
 $node		= function_exists( 'shell_exec' ) === true ? trim( (string) @shell_exec( 'command -v node 2>/dev/null' ) ) : '';
 
@@ -673,7 +757,7 @@ if( $node === '' || function_exists( 'exec' ) === false ) {
 	echo "  --  - node is not available here: forms-js-smoke.js was NOT run\n";
 } else {
 	$output = []; $status = 1;
-	exec( escapeshellarg( $node ). ' '. escapeshellarg( $jsTest ). ' 2>&1', $output, $status );
+	exec( 'NINO_ROOT='. escapeshellarg( $root ). ' '. escapeshellarg( $node ). ' '. escapeshellarg( $jsTest ). ' 2>&1', $output, $status );
 	$summary = (string) end( $output );
 	check( 'forms-js-smoke.js passes - '. ( $summary === '' ? 'no output' : $summary ), $status === 0 );
 }

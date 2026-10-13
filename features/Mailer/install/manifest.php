@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 // The unit \Nino\Features::activate() applies, add-only (see
-// docs/features.md, "The Install Unit"). Mailer ships no template, no route
+// docs/features.md, "The install unit"). Mailer ships no template, no route
 // and no text of its own - it delivers what the kernel's Mail sends. All this
 // unit carries is the feature's section of the privacy policy.
 return [

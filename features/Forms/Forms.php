@@ -63,11 +63,12 @@ namespace Nino\Modules {
 		// what makes a guard registered here run ahead of the engine
 		public const string ROUTE = '/nino/http/response/POST://.form';
 
-		// This feature's only file: one counter per hashed client ip, for the
-		// hour it is in. Not in the manifest's 'data': it is a spam counter
-		// that rebuilds itself, and a backup carrying it would restore an
-		// hour of somebody's rate limit along with the site
-		public const string RATE = '/data/forms-rate.php';
+		// This feature's only file, the counter \Nino\Feature::count() keeps
+		// under this name: /data/forms-rate.php, one entry per hashed client ip
+		// for the hour it is in. Not in the manifest's 'data': it is a spam
+		// counter that rebuilds itself, and a backup carrying it would restore
+		// an hour of somebody's rate limit along with the site
+		public const string COUNTER = 'forms-rate';
 
 		// How long an entry of that file lives, in seconds
 		private const int WINDOW = 3600;
@@ -86,11 +87,11 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	Register the shortcode, the stylesheet of the two fields that need
-		 *	one and the two halves of the guard. No route: the endpoint is
-		 *	\Nino\Modules\Form's, and a project that switched that module off
-		 *	has no form endpoint on purpose - this feature is not the place to
-		 *	put one back
+		 *	Register the shortcode and the two halves of the guard. The stylesheet
+		 *	of the two fields that need one is the manifest's 'assets'. No route:
+		 *	the endpoint is \Nino\Modules\Form's, and a project that switched that
+		 *	module off has no form endpoint on purpose - this feature is not the
+		 *	place to put one back
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
@@ -98,16 +99,10 @@ namespace Nino\Modules {
 		 */
 		public static function init( array &$appData ): void {
 
-			/*	Nino 1.6 has registered [form] as a component from the manifest before
-				this runs (\Nino\Features::registerComponents()), and a second
-				registration here would take it back from the wrapper that fills in
-				the defaults. Nino 1.5 ignores the manifest key and needs it	*/
-			$components = class_exists( '\\Nino\\Modules\\Components' ) === true ? \Nino\Modules\Components::components( $appData ) : [];
-
-			if( isset( $components['form'] ) === false )
-				\Nino\Html::addShortcode( $appData, 'form', [ self::class, 'doShortcode' ] );
-
-			\Nino\Html::addAsset( $appData, '/.cache/style.css', '/features/Forms/assets/forms.css' );
+			// [form] is a component of the manifest, which the Components module
+			// registers before this runs; where it has not - a sandbox without the
+			// module, a test - the plain shortcode is registered here
+			\Nino\Feature::shortcode( $appData, 'form', [ self::class, 'doShortcode' ] );
 
 			\Nino\Callbacks::registerCallback( $appData, self::ROUTE, [ self::class, 'callbackGuard' ], 1 );
 			\Nino\Callbacks::registerCallback( $appData, self::ROUTE, [ self::class, 'callbackCount' ], 8 );
@@ -148,7 +143,7 @@ namespace Nino\Modules {
 
 			// Somebody ahead of this one already said no - the global csrf
 			// guard sets a flag of its own, anything else left a status behind
-			if( ( $request['./nino/csrf/blocked'] ?? false ) === true )
+			if( \Nino\Form::blocked( $request ) === true )
 				return;
 
 			if( (int) ( $request['/nino/http/response']['statusCode'] ?? 200 ) !== 200 )
@@ -183,45 +178,10 @@ namespace Nino\Modules {
 			if( (int) ( $request['/nino/http/response']['statusCode'] ?? 0 ) !== 200 )
 				return;
 
-			if( (int) \Nino\Features::setting( $appData, 'forms', 'rateLimit', 10 ) <= 0 )
-				return;
-
-			$now = time();
-			// Both resolved out here: the closure has no $appData, and which
-			// address a visitor counts as depends on the proxy list in it
-			// (see \Nino\Http::getClientIp())
-			$key = hash( 'sha256', \Nino\Http::getClientIp( $appData ) );
-
-			\Nino\Filesystem::mutate( $appData, self::RATE, function( array $state ) use ( $now, $key ): array {
-
-				// Every key whose window has passed goes on write, not just
-				// this one's - otherwise the file grows with every visitor the
-				// site ever had
-				foreach( $state as $stateKey => $entry )
-					if( (int) ( $entry['reset'] ?? 0 ) <= $now )
-						unset( $state[$stateKey] );
-
-				$entry					= $state[$key] ?? [ 'tries' => 0, 'reset' => $now + self::WINDOW ];
-				$entry['tries']	= (int) $entry['tries'] + 1;
-				$state[$key]		= $entry;
-
-				return $state;
-			} );
-		}
-
-		/**
-		 *	[form] as the Components module hands it over, the Builder's way:
-		 *	every attribute is there, an empty one where nothing was written,
-		 *	and doShortcode() reads them as it reads a hand-written call
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		array			$args					The resolved arguments (see \Nino\Modules\Components::dispatch())
-		 *
-		 *	@return 	string								What doShortcode() renders for them
-		 */
-		public static function componentForm( array &$appData, array $args ): string {
-
-			return self::doShortcode( $appData, $args );
+			// Whichever address a visitor counts as depends on the proxy list of the
+			// kernel (see \Nino\Http::getClientIp()). A limit of 0 is no limit: nothing
+			// is counted then, and nothing written
+			\Nino\Feature::count( $appData, self::COUNTER, \Nino\Http::getClientIp( $appData ), (int) \Nino\Features::setting( $appData, 'forms', 'rateLimit', 10 ), self::WINDOW );
 		}
 
 		/**
@@ -257,7 +217,7 @@ namespace Nino\Modules {
 				what is stored, would refuse it. A bracket as its character
 				reference is what the browser reads back as the bracket and
 				what that pass does not touch	*/
-			$value = static fn( string $option ): string => str_replace( '[', '&#91;', $safe( $option ) );
+			$value = static fn( string $option ): string => \Nino\Modules\Components::escape( $option );
 
 			$id 	= 'form-'. $form['key'];
 
@@ -284,7 +244,7 @@ namespace Nino\Modules {
 					$fields .= str_replace(
 						[ '[[id]]', '[[name]]', '[[required]]', '[[star]]', '[[label]]' ],
 						[ $safe( $fieldId ), $safe( $field['name'] ), $required, $star, $label ],
-						self::template( $appData, 'form-checkbox' )
+						\Nino\Feature::template( $appData, self::TEMPLATES, 'form-checkbox' )
 					);
 					continue;
 				}
@@ -297,13 +257,13 @@ namespace Nino\Modules {
 						$options .= str_replace(
 							[ '[[id]]', '[[name]]', '[[required]]', '[[value]]', '[[label]]' ],
 							[ $safe( $fieldId. '-'. ( $number + 1 ) ), $safe( $field['name'] ), $required, $value( $option ), $safe( \Nino\Html::renderHtml( $appData, $option ) ) ],
-							self::template( $appData, 'form-radio-option' )
+							\Nino\Feature::template( $appData, self::TEMPLATES, 'form-radio-option' )
 						);
 
 					$fields .= str_replace(
 						[ '[[star]]', '[[label]]', '[[options]]' ],
 						[ $star, $label, $options ],
-						self::template( $appData, 'form-radio' )
+						\Nino\Feature::template( $appData, self::TEMPLATES, 'form-radio' )
 					);
 					continue;
 				}
@@ -311,14 +271,14 @@ namespace Nino\Modules {
 				$fields .= str_replace(
 					[ '[[id]]', '[[star]]', '[[label]]' ],
 					[ $safe( $fieldId ), $star, $label ],
-					self::template( $appData, 'form-label' )
+					\Nino\Feature::template( $appData, self::TEMPLATES, 'form-label' )
 				);
 
 				if( $field['type'] === 'textarea' ) {
 					$fields .= str_replace(
 						[ '[[id]]', '[[name]]', '[[required]]' ],
 						[ $safe( $fieldId ), $safe( $field['name'] ), $required ],
-						self::template( $appData, 'form-textarea' )
+						\Nino\Feature::template( $appData, self::TEMPLATES, 'form-textarea' )
 					);
 				}
 
@@ -330,13 +290,13 @@ namespace Nino\Modules {
 						$options .= str_replace(
 							[ '[[value]]', '[[label]]' ],
 							[ $value( $option ), $safe( \Nino\Html::renderHtml( $appData, $option ) ) ],
-							self::template( $appData, 'form-option' )
+							\Nino\Feature::template( $appData, self::TEMPLATES, 'form-option' )
 						);
 
 					$fields .= str_replace(
 						[ '[[id]]', '[[name]]', '[[required]]', '[[options]]' ],
 						[ $safe( $fieldId ), $safe( $field['name'] ), $required, $options ],
-						self::template( $appData, 'form-select' )
+						\Nino\Feature::template( $appData, self::TEMPLATES, 'form-select' )
 					);
 				}
 
@@ -345,7 +305,7 @@ namespace Nino\Modules {
 					$fields .= str_replace(
 						[ '[[type]]', '[[id]]', '[[name]]', '[[required]]' ],
 						[ $safe( $field['type'] ), $safe( $fieldId ), $safe( $field['name'] ), $required ],
-						self::template( $appData, 'form-input' )
+						\Nino\Feature::template( $appData, self::TEMPLATES, 'form-input' )
 					);
 				}
 			}
@@ -359,9 +319,9 @@ namespace Nino\Modules {
 				html, and str_replace() works through its arrays in order, so a token
 				after them would be looked for in what they put in as well */
 			return str_replace(
-				[ '[[class]]', '[[id]]', '[[action]]', '[[key]]', '[[time]]', '[[required]]', '[[submit]]', '[[csrf]]', '[[fields]]' ],
+				[ '[[classes]]', '[[id]]', '[[action]]', '[[key]]', '[[time]]', '[[required]]', '[[submit]]', '[[csrf]]', '[[fields]]' ],
 				[
-					self::_class( $args ),
+					\Nino\Feature::classes( $args ),
 					$safe( $id ),
 					$safe( (string) ( $appData['/nino/dir'] ?? '' ) ),
 					$safe( $form['key'] ),
@@ -371,7 +331,7 @@ namespace Nino\Modules {
 					\Nino\Html::renderHtml( $appData, '[csrf]' ),
 					$fields,
 				],
-				self::template( $appData, 'form' )
+				\Nino\Feature::template( $appData, self::TEMPLATES, 'form' )
 			);
 		}
 
@@ -450,69 +410,9 @@ namespace Nino\Modules {
 		 */
 		private static function _rateExceeded( array &$appData ): bool {
 
-			$max = (int) \Nino\Features::setting( $appData, 'forms', 'rateLimit', 10 );
-
-			if( $max <= 0 )
-				return false;
-
-			// The ip is hashed: this file is a spam counter, not a visitor log
-			$key		= hash( 'sha256', \Nino\Http::getClientIp( $appData ) );
-			$entry	= \Nino\Filesystem::getFileContent( $appData, self::RATE, [] )[$key] ?? null;
-
-			if( is_array( $entry ) === false || (int) ( $entry['reset'] ?? 0 ) <= time() )
-				return false;
-
-			return (int) ( $entry['tries'] ?? 0 ) >= $max;
-		}
-
-		/**
-		 *	The class of one's own a call adds to the form, with the space in
-		 *	front of it that the template leaves out - escaped, and with its
-		 *	brackets as character references, because the markup is rendered
-		 *	once more
-		 *
-		 *	@param		array			$args					Shortcode attributes
-		 *
-		 *	@return 	string								'' or ' my-class'
-		 */
-		private static function _class( array $args ): string {
-
-			$class = trim( (string) ( $args['class'] ?? '' ) );
-
-			return $class === '' ? '' : ' '. str_replace( '[', '&#91;', htmlspecialchars( $class, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ) );
-		}
-
-		/**
-		 *	One of this feature's own templates, read the way a project's are.
-		 *	Markup belongs in a template - see AGENTS.md, "Markup belongs in a
-		 *	template" - so what this class holds is which one and what goes in it
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$name					A file name below TEMPLATES, without .tpl
-		 *
-		 *	@return 	string								'' where the file is not there, which is logged
-		 */
-		public static function template( array &$appData, string $name ): string {
-
-			// A name from this class and nowhere else, and held to a slug anyway:
-			// the one thing this could otherwise be turned into is a read of
-			// something outside the feature
-			if( preg_match( '/^[a-z][a-z0-9-]*$/D', $name ) !== 1 )
-				return '';
-
-			$template = \Nino\Filesystem::getFileContent( $appData, self::TEMPLATES. '/'. $name. '.tpl', '' );
-
-			$template = is_string( $template ) === true ? rtrim( $template, "\n" ) : '';
-
-			/*	A template that is not there renders as nothing, which on a page looks
-				like a shortcode nobody wrote rather than like a feature missing a file.
-				Said out loud instead: E_USER_WARNING is Nino's "record this and carry
-				on" channel (see \Nino\Runtime::NON_FATAL_LEVELS), so the request
-				finishes and the log says which file	*/
-			if( $template === '' )
-				trigger_error( 'Nino: the template '. self::TEMPLATES. '/'. $name. '.tpl is missing or empty.', E_USER_WARNING );
-
-			return $template;
+			// The ip is hashed by the counter: this file is a spam counter, not a
+			// visitor log. A limit of 0 is no limit
+			return \Nino\Feature::spent( $appData, self::COUNTER, \Nino\Http::getClientIp( $appData ), (int) \Nino\Features::setting( $appData, 'forms', 'rateLimit', 10 ) );
 		}
 	}
 

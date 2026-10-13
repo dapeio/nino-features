@@ -42,19 +42,15 @@ function submitUnsubscribe( array &$appData, array $post ): array {
 	return $request;
 }
 
+// What it does beyond ninoVisit(): the page's own callback runs on the request, which is what the GET route's response round does
 function visitNewsletterLink( array &$appData, array $query ): array {
-	$request = [ '/nino/http/request' => [ 'query' => $query ], '/nino/http/response' => [ 'statusCode' => 200 ] ];
+	$request = ninoVisit( $appData, '/.newsletter'. ( $query === [] ? '' : '?'. http_build_query( $query ) ) );
 	\Nino\Modules\Newsletter::callbackAction( $appData, $request );
 	return $request;
 }
 
-function callAdminPost( array &$appData, string $action, array $data = [] ): array {
-	$request = [ '/nino/http/response' => [ 'statusCode' => 200 ] ];
-	$_POST['action'] = $action;
-	$_POST['data'] = json_encode( $data );
-	\Nino\Admin\Admin::handlePost( $appData, $request );
-	return [ $request['/nino/http/response']['statusCode'], $request['/nino/http/response']['body'] ?? null ];
-}
+// The workbench's entry point, which ninoCall() hands a panel action
+$panel = [ \Nino\Admin\Admin::class, 'handlePost' ];
 
 
 // --- The feature -------------------------------------------------------------
@@ -123,24 +119,25 @@ $sentLink = static function( string $kind ) use ( &$sentLinks ): string {
 	return $sentLinks === [] ? '' : $sentLinks[ array_key_last( $sentLinks ) ][$kind];
 };
 
+/*	The website's address, which every link of a mail and of the panel is built
+	on (\Nino\Html::absoluteUrl()). A site served from a directory, so that the
+	directory is seen to be kept in them	*/
+$siteAddress = 'example.org/shop';
+$siteUrl = 'https://'. $siteAddress;
+\Nino\Html::addFills( $appData, [ '[[/project/website/general/url]]' => $siteAddress ], '*' );
+
 /**
- *	The keys /data/ratelimit.php can know this client by: its address, as the kernel
- *	keyed the file up to 1.7, and the sha256 of it, as \Nino\Feature::count() does from
- *	the toolset on. This test runs against both, so a reset or a seed names both
- *
- *	@return 	array											[ address, hash of the address ]
+ *	A fresh window of the mail cap for this client, and the same with the cap
+ *	spent: five tries counted the way \Nino\Mail counts one, so the next send is
+ *	the sixth
  */
-function rateLimitKeys(): array {
-
-	return [ '127.0.0.1', hash( 'sha256', '127.0.0.1' ) ];
-}
-
 $freshMailWindow = static function( array &$appData ): void {
-	$state = \Nino\Filesystem::getFileContent( $appData, '/data/ratelimit.php', [] );
-	foreach( rateLimitKeys() as $rateKey )
-		unset( $state[$rateKey] );
-	\Nino\Filesystem::putFileContent( $appData, '/data/ratelimit.php', $state );
-	unset( $appData['./nino/mail/ratelimited'] );
+	\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
+};
+$spentMailWindow = static function( array &$appData ) use ( $freshMailWindow ): void {
+	$freshMailWindow( $appData );
+	for( $try = 0; $try < 5; $try++ )
+		\Nino\Feature::count( $appData, 'ratelimit', '127.0.0.1', 5, 3600 );
 };
 
 echo "\n";
@@ -236,7 +233,7 @@ check( 'and does not create a duplicate entry', count( \Nino\Filesystem::getFile
 // The sandbox has no template shortcode, so the mail's body is the template
 // call as it stands - the link it carries is the fill the class sets for it
 check( 'it is mailed exactly like a new address is - once, with the token it already has', count( $mails ) === 1
-	&& str_ends_with( $sentLink( 'confirm' ), '/.newsletter?confirm='. $pendingToken ) === true );
+	&& $sentLink( 'confirm' ) === $siteUrl. '/.newsletter?confirm='. $pendingToken );
 check( '...and stays subscribed, the mail being no signup', \Nino\Filesystem::getFileContent( $appData, $subscribersPath, [] )[0]['status'] === 'subscribed' );
 
 $unsubscribeLink = \Nino\Modules\Newsletter::getUnsubscribeLink( $appData, 'jo@example.com' );
@@ -320,19 +317,24 @@ check( '...the pending entry is kept and the new one recorded, a re-submit re-se
 	array_column( array_filter( $readList( $appData ), static fn( array $e ): bool => ( $e['status'] ?? '' ) === 'pending' ), 'email' ) === [ 'waiting@example.com', 'brand-new@example.com' ] );
 
 $resetList( $appData );
-$state = \Nino\Filesystem::getFileContent( $appData, '/data/ratelimit.php', [] );
-foreach( rateLimitKeys() as $rateKey )
-	$state[$rateKey] = [ 'tries' => 5, 'reset' => time() + 3600 ];
 $capped = [];
 foreach( $addresses as $kind => $email ) {
-	\Nino\Filesystem::putFileContent( $appData, '/data/ratelimit.php', $state );
-	unset( $appData['./nino/mail/ratelimited'] );
+	$spentMailWindow( $appData );
 	$mails = [];
 	$request = submitNewsletter( $appData, [ 'email' => $email ] );
 	$capped[$kind] = [ $request['/nino/http/response']['statusCode'], $request['/nino/http/response']['body'] ?? null, count( $mails ) ];
 }
 check( 'an ip at its mail cap is answered 429 - no body, nothing sent - for a new, a pending and a subscribed address alike',
 	array_unique( array_column( $capped, 0 ) ) === [ 429 ] && array_unique( array_column( $capped, 1 ), SORT_REGULAR ) === [ null ] && array_unique( array_column( $capped, 2 ) ) === [ 0 ] );
+
+/*	What the cap said belongs to that call: the kernel puts the flag down at the
+	start of every send, so the signup after a capped one, refused by the
+	transport this time, is not answered 429 - and nothing in this class unsets
+	the flag for it	*/
+$transportResult = false;
+[ $afterCapStatus ] = $answer( $appData, 'brand-new@example.com' );
+$transportResult = true;
+check( 'a signup that the transport refuses right after a capped one is answered 500, not 429 again', $afterCapStatus === 500 );
 
 $resetList( $appData );
 $delivered = array_map( static fn( string $email ): array => $answer( $appData, $email ), $addresses );
@@ -348,7 +350,7 @@ $memberHash = hash( 'sha256', 'member@example.com' );
 $answer( $appData, 'member@example.com' );
 $memberNow = array_values( array_filter( $readList( $appData ), static fn( array $e ): bool => $e['email'] === 'member@example.com' ) );
 check( 'a subscribed address that signs up again is mailed the confirm link with the token it already has',
-	str_ends_with( $sentLink( 'confirm' ), '/.newsletter?confirm='. rawurlencode( $memberToken ) ) === true && count( $mails ) === 1 );
+	$sentLink( 'confirm' ) === $siteUrl. '/.newsletter?confirm='. rawurlencode( $memberToken ) && count( $mails ) === 1 );
 check( '...and stays what it was: one entry, subscribed, the same token and date', count( $memberNow ) === 1 && $memberNow[0] === $memberEntry );
 check( '...and visiting that link changes nothing', visitNewsletterLink( $appData, [ 'confirm' => $memberToken ] )['/nino/http/response']['statusCode'] === 200
 	&& array_values( array_filter( $readList( $appData ), static fn( array $e ): bool => $e['email'] === 'member@example.com' ) ) === [ $memberEntry ] );
@@ -362,7 +364,7 @@ $writeList( $appData, [ [ 'email' => 'legacy@example.com', 'date' => $legacyDate
 $legacyNow = $readList( $appData );
 check( 'a legacy entry without a token is mailed one, stored in the same write', $legacyStatus === 200 && count( $mails ) === 1 && count( $legacyNow ) === 1
 	&& empty( $legacyNow[0]['token'] ) === false
-	&& str_ends_with( $sentLink( 'confirm' ), '/.newsletter?confirm='. rawurlencode( $legacyNow[0]['token'] ) ) === true );
+	&& $sentLink( 'confirm' ) === $siteUrl. '/.newsletter?confirm='. rawurlencode( $legacyNow[0]['token'] ) );
 check( '...its status and date left as they were - it is still subscribed', array_diff_key( $legacyNow[0], [ 'token' => 1 ] ) === [ 'email' => 'legacy@example.com', 'date' => $legacyDate ] );
 
 // Confirming that token is the first confirmation the entry has: the status is
@@ -439,7 +441,7 @@ check( 'a known address is answered 200 with the page that says a link is on its
 	&& $known['fills']['[[/feature/newsletter/page/title]]'] === '[[/feature/newsletter/result-unsubscribe-requested/title]]'
 	&& $known['fills']['[[/feature/newsletter/page/text]]'] === '[[/feature/newsletter/result-unsubscribe-requested/text]]' );
 check( '...and gets exactly one mail, to that address, carrying the link with its stored token', $known['mails'] === 1 && $mails[0]['to'] === 'member@example.com'
-	&& str_ends_with( $sentLink( 'unsubscribe' ), '/.newsletter?unsubscribe='. rawurlencode( $knownToken ) ) === true
+	&& $sentLink( 'unsubscribe' ) === $siteUrl. '/.newsletter?unsubscribe='. rawurlencode( $knownToken )
 	&& str_contains( (string) $mails[0]['body'], 'mail-newsletter-unsubscribe' ) === true );
 check( '...nothing is removed by asking - the list is as it was until the link is visited', $readList( $appData ) === $listBeforeAsks );
 check( '...and the unsubscribe link is no fill any more once the mail is out - nothing later in the request can carry it', isset( $appData['./nino/html/fills']['*']['[[/feature/newsletter/unsubscribe/url]]'] ) === false );
@@ -456,7 +458,7 @@ check( '...and the list is not touched by it', $readList( $appData ) === $listBe
 	as one	*/
 $triesOf = static function( array &$appData ): int {
 	$state = \Nino\Filesystem::getFileContent( $appData, '/data/ratelimit.php', [] );
-	return (int) ( $state[ hash( 'sha256', '127.0.0.1' ) ]['tries'] ?? $state['127.0.0.1']['tries'] ?? 0 );
+	return (int) ( $state[ hash( 'sha256', '127.0.0.1' ) ]['tries'] ?? 0 );
 };
 $triesBefore = $triesOf( $appData );
 $asked( $appData, [ 'email' => 'nobody@example.com' ] );
@@ -467,12 +469,12 @@ $mails = [];
 
 $waiting = $asked( $appData, [ 'email' => 'waiting@example.com' ] );
 check( 'a pending address gets the mail as well, with its token', $waiting['mails'] === 1 && $waiting['status'] === 200
-	&& str_ends_with( $sentLink( 'unsubscribe' ), '/.newsletter?unsubscribe='. rawurlencode( $waitingEntry['token'] ) ) === true );
+	&& $sentLink( 'unsubscribe' ) === $siteUrl. '/.newsletter?unsubscribe='. rawurlencode( $waitingEntry['token'] ) );
 
 $legacy = $asked( $appData, [ 'email' => 'legacy@example.com' ] );
 $legacyStored = array_values( array_filter( $readList( $appData ), static fn( array $e ): bool => $e['email'] === 'legacy@example.com' ) );
 check( 'an entry without a token gets one, in the same write, and the mail goes out with it', $legacy['mails'] === 1 && count( $legacyStored ) === 1 && empty( $legacyStored[0]['token'] ) === false
-	&& str_ends_with( $sentLink( 'unsubscribe' ), '/.newsletter?unsubscribe='. rawurlencode( $legacyStored[0]['token'] ) ) === true
+	&& $sentLink( 'unsubscribe' ) === $siteUrl. '/.newsletter?unsubscribe='. rawurlencode( $legacyStored[0]['token'] )
 	&& array_diff_key( $legacyStored[0], [ 'token' => 1 ] ) === $legacyEntry );
 
 // The mail's template is the project's to swap
@@ -500,11 +502,7 @@ $refusedAsk = $asked( $appData, [ 'email' => 'member@example.com' ] );
 $transportResult = true;
 check( 'a transport that refuses the mail is still answered 200 - never a 500 that only a known address could reach', $refusedAsk['mails'] === 1 && $refusedAsk['status'] === $known['status'] && $refusedAsk['body'] === $known['body'] && $refusedAsk['fills'] === $known['fills'] );
 
-$freshMailWindow( $appData );
-$state = \Nino\Filesystem::getFileContent( $appData, '/data/ratelimit.php', [] );
-foreach( rateLimitKeys() as $rateKey )
-	$state[$rateKey] = [ 'tries' => 5, 'reset' => time() + 3600 ];
-\Nino\Filesystem::putFileContent( $appData, '/data/ratelimit.php', $state );
+$spentMailWindow( $appData );
 $mails = [];
 $cappedAsk = submitUnsubscribe( $appData, [ 'email' => 'member@example.com' ] );
 check( 'an ip at its mail cap is still answered 200, with nothing sent - never a 429 that only a known address could reach', $cappedAsk['/nino/http/response']['statusCode'] === 200
@@ -534,15 +532,64 @@ $freshMailWindow( $appData );
 echo "\n";
 
 
+// --- A site without an address ------------------------------------------------
+
+echo "Modules\\Newsletter - a site without an address has no link to put in a mail\n";
+
+/*	\Nino\Html::absoluteUrl() answers '' where the website has no address, and a
+	confirmation or an unsubscribe mail without its link is no mail: nothing is
+	sent, and the log says why. The signup is answered as any mail that is not
+	sent is - 500 - and still records the entry, so that a re-submit mails it
+	once the address is set. The ask for an unsubscribe link keeps its one answer
+	for every address, whatever happened to the mail	*/
+$listBeforeNoAddress = $readList( $appData );
+$writeList( $appData, [ $memberEntry, $waitingEntry ] );
+
+// A call the cap refused comes first: its flag must not be read as the answer of the one after it, which sends nothing at all
+$spentMailWindow( $appData );
+$mails = [];
+$cappedBefore = submitNewsletter( $appData, [ 'email' => 'brand-new@example.com' ] );
+
+\Nino\Html::removeFill( $appData, '/project/website/general/url', '*' );
+$freshMailWindow( $appData );
+$mails = [];
+ninoWarnings();
+$noAddress = submitNewsletter( $appData, [ 'email' => 'brand-new@example.com' ] );
+$noAddressWarnings = ninoWarnings();
+check( 'the call before was capped, as set up', $cappedBefore['/nino/http/response']['statusCode'] === 429 );
+check( 'a signup on a site without an address is answered 500, as for a mail that cannot be sent - not 429 again - with no body', $noAddress['/nino/http/response']['statusCode'] === 500
+	&& ( $noAddress['/nino/http/response']['body'] ?? null ) === null );
+check( '...nothing is sent, and the warning names the fill the address is', $mails === [] && count( $noAddressWarnings ) === 1 && str_contains( $noAddressWarnings[0], '/project/website/general/url' ) === true );
+check( '...and the signup is recorded all the same, for the re-submit that will be mailed',
+	in_array( 'brand-new@example.com', array_column( array_filter( $readList( $appData ), static fn( array $e ): bool => ( $e['status'] ?? '' ) === 'pending' ), 'email' ), true ) === true );
+check( '...no fill is left behind by the mail that was not sent', isset( $appData['./nino/html/fills']['*']['[[/feature/newsletter/confirm/url]]'] ) === false );
+
+$noAddressAsk = $asked( $appData, [ 'email' => 'member@example.com' ] );
+$noAddressAskWarnings = ninoWarnings();
+check( 'asking for an unsubscribe link is answered as always - 200, the same page and fills - and nothing is sent', $noAddressAsk['status'] === 200 && $noAddressAsk['body'] === $known['body']
+	&& $noAddressAsk['fills'] === $known['fills'] && $noAddressAsk['mails'] === 0 );
+check( '...and the warning names the fill', count( $noAddressAskWarnings ) === 1 && str_contains( $noAddressAskWarnings[0], '/project/website/general/url' ) === true );
+check( 'there is no unsubscribe link to give out either - the same false as for an address that is not on the list', \Nino\Modules\Newsletter::getUnsubscribeLink( $appData, 'member@example.com' ) === false );
+
+\Nino\Html::addFills( $appData, [ '[[/project/website/general/url]]' => $siteAddress ], '*' );
+$answer( $appData, 'brand-new@example.com' );
+check( 'with the address set again the re-submit is mailed, with the link on it', count( $mails ) === 1 && $sentLink( 'confirm' ) !== '' && str_starts_with( $sentLink( 'confirm' ), $siteUrl. '/.newsletter?confirm=' ) === true );
+check( '...and the link on the unsubscribe side is built too', str_starts_with( (string) \Nino\Modules\Newsletter::getUnsubscribeLink( $appData, 'member@example.com' ), $siteUrl. '/.newsletter?unsubscribe=' ) === true );
+
+$writeList( $appData, $listBeforeNoAddress );
+$freshMailWindow( $appData );
+
+echo "\n";
+
+
 // --- The panel -----------------------------------------------------------------
 
 echo "Modules\\Newsletter\\Admin - the subscriber list and its permission\n";
 
 // A set-up project with a full-access account, the way the wizard leaves one
 $appData['/nino/install/completed'] = true;
-\Nino\Auth::insertUser( $appData, 'admin@example.com', 'correct horse battery staple', [ '/*' ] );
-\Nino\Auth::insertUser( $appData, 'plain@example.com', 'plain password', [] );
-\Nino\Auth::loginUser( $appData, 'admin@example.com', 'correct horse battery staple' );
+ninoUser( $appData, 'plain@example.com', [], 'plain password' );
+ninoUser( $appData, 'admin@example.com' );
 
 /*	The page and the confirmation mail carry [[/feature/newsletter/page/title]],
 	[[/feature/newsletter/page/text]] and [[/feature/newsletter/confirm/url]], which the class
@@ -550,7 +597,7 @@ $appData['/nino/install/completed'] = true;
 	missing keys reads the templates as source, so without the unit's
 	blacklist entries it reported the three - and the Dashboard counted them -
 	on every project with this feature, as gaps nobody could close	*/
-[ $status, $body ] = callAdminPost( $appData, 'keys/scan' );
+[ $status, $body ] = ninoCall( $appData, $panel, [], 'keys/scan' );
 check( 'the Text panel\'s scan reports no key of this feature: what the templates use is in the text files or in the blacklist', $status === 200
 	&& array_filter( array_column( (array) ( $body['missing'] ?? [] ), 'key' ), static fn( string $key ): bool => str_starts_with( $key, '/feature/newsletter/' ) === true || str_starts_with( $key, '/template/page-newsletter-' ) === true || str_starts_with( $key, '/template/mail-newsletter-' ) === true ) === [] );
 
@@ -560,7 +607,7 @@ $freshMailWindow( $appData );
 $annaRequest = submitNewsletter( $appData, [ 'email' => 'anna@example.com' ] );
 check( 'a second valid signup succeeds', $annaRequest['/nino/http/response']['statusCode'] === 200 );
 
-[ $status, $body ] = callAdminPost( $appData, 'newsletter/list' );
+[ $status, $body ] = ninoCall( $appData, $panel, [], 'newsletter/list' );
 check( 'newsletter/list succeeds', $status === 200 );
 check( 'newsletter/list finds both signups, most recent first', count( $body['entries'] ) === 2 && $body['entries'][0]['email'] === 'anna@example.com' );
 
@@ -580,7 +627,6 @@ check( '...and the token is still stored, or no link in a sent mail would work a
 /*	A signup nobody confirmed has agreed to nothing: the count, the Dashboard's
 	tile and the BCC line are the confirmed addresses, and the list says which
 	is which	*/
-\Nino\Html::addFills( $appData, [ '[[/project/website/general/url]]' => 'example.org' ], '*' );
 check( 'with both signups unconfirmed the count and the Dashboard tile say 0', \Nino\Modules\Newsletter\Admin::count( $appData ) === 0
 	&& \Nino\Modules\Newsletter\Admin::summary( $appData )['value'] === 0 );
 check( '...and every row of the list says it is pending', array_column( $body['entries'], 'status' ) === [ 'pending', 'pending' ] && $body['counts'] === [ 'subscribed' => 0, 'pending' => 2 ] );
@@ -595,30 +641,45 @@ check( 'a confirmed signup is counted, and the tile with it', \Nino\Modules\News
 	\Nino\Filesystem::getFileContent( $appData, '/data/newsletter.php', [] ),
 	[ [ 'email' => 'legacy@example.com', 'date' => '2025-05-06 07:08:09' ] ]
 ) );
-[ , $body ] = callAdminPost( $appData, 'newsletter/list' );
+[ , $body ] = ninoCall( $appData, $panel, [], 'newsletter/list' );
 check( 'the list carries a status for every row - an entry with none reads as subscribed', array_column( $body['entries'], 'status', 'email' ) === [ 'legacy@example.com' => 'subscribed', 'anna@example.com' => 'subscribed', 'jo@example.com' => 'pending' ] );
 check( '...the counts of both, a legacy entry among the subscribed', $body['counts'] === [ 'subscribed' => 2, 'pending' => 1 ] && \Nino\Modules\Newsletter\Admin::count( $appData ) === 2 );
-check( '...the address of the page where a subscriber asks for a link, built like the links in the mails', ( $body['unsubscribeUrl'] ?? '' ) === 'https://example.org/.newsletter/unsubscribe' );
+check( '...the address of the page where a subscriber asks for a link, built like the links in the mails', ( $body['unsubscribeUrl'] ?? '' ) === $siteUrl. '/.newsletter/unsubscribe' );
+
+\Nino\Html::removeFill( $appData, '/project/website/general/url', '*' );
+[ , $noAddressBody ] = ninoCall( $appData, $panel, [], 'newsletter/list' );
+\Nino\Html::addFills( $appData, [ '[[/project/website/general/url]]' => $siteAddress ], '*' );
+check( '...and none, for a site without an address: there is nothing to name, and the panel draws no line for it', array_key_exists( 'unsubscribeUrl', $noAddressBody ) === true && $noAddressBody['unsubscribeUrl'] === '' );
 check( '...and still no token in any row, whatever its status', count( array_filter( $body['entries'], static fn( array $e ): bool => isset( $e['token'] ) ) ) === 0 );
-callAdminPost( $appData, 'newsletter/delete', [ 'email' => 'legacy@example.com' ] );
+ninoCall( $appData, $panel, [ 'email' => 'legacy@example.com' ], 'newsletter/delete' );
 \Nino\Filesystem::putFileContent( $appData, '/data/newsletter-removed.php', [] );
 
 unset( $appData['./nino/auth/current'] );
-[ $status ] = callAdminPost( $appData, 'newsletter/list' );
+[ $status ] = ninoCall( $appData, $panel, [], 'newsletter/list' );
 check( 'newsletter/list requires a signed-in account', $status === 401 );
-[ $status ] = callAdminPost( $appData, 'newsletter/delete', [ 'email' => 'jo@example.com' ] );
+[ $status ] = ninoCall( $appData, $panel, [ 'email' => 'jo@example.com' ], 'newsletter/delete' );
 check( 'newsletter/delete requires a signed-in account', $status === 401 );
 
 \Nino\Auth::loginUser( $appData, 'plain@example.com', 'plain password' );
-[ $status ] = callAdminPost( $appData, 'newsletter/list' );
+[ $status ] = ninoCall( $appData, $panel, [], 'newsletter/list' );
 check( 'an account without the permission is rejected from newsletter/list', $status === 403 );
-[ $status ] = callAdminPost( $appData, 'newsletter/delete', [ 'email' => 'jo@example.com' ] );
+[ $status ] = ninoCall( $appData, $panel, [ 'email' => 'jo@example.com' ], 'newsletter/delete' );
 check( 'an account without the permission is rejected from newsletter/delete', $status === 403 );
 
 \Nino\Auth::loginUser( $appData, 'admin@example.com', 'correct horse battery staple' );
 
-[ $status ] = callAdminPost( $appData, 'newsletter/delete', [ 'email' => 'does-not-exist@example.com' ] );
-check( 'newsletter/delete 404s for an email that was never subscribed', $status === 404 );
+[ $status, $body ] = ninoCall( $appData, $panel, [ 'email' => 'does-not-exist@example.com' ], 'newsletter/delete' );
+check( 'newsletter/delete 404s for an email that was never subscribed, with the code newsletter_unknown', $status === 404 && $body['code'] === 'newsletter_unknown' );
+foreach( [ 'en_US', 'de_DE' ] as $locale )
+	check( "...and the code has its sentence in $locale", trim( \Nino\Admin\Admin::textFills( $appData, '/features/Newsletter/text', $locale )['[[/_admin/error/'. $body['code']. ']]'] ?? '' ) !== '' );
+
+// The payload is untrusted json: an address that is a list, or none, is as unknown as one that is not on the list - no warning, no 500
+ninoWarnings();
+[ $listedStatus, $listedBody ] = ninoCall( $appData, $panel, [ 'email' => [ 'jo@example.com' ] ], 'newsletter/delete' );
+[ $noneStatus, $noneBody ] = ninoCall( $appData, $panel, [], 'newsletter/delete' );
+check( 'an address posted as a list, and none at all, are unknown the same way', $listedStatus === 404 && $listedBody['code'] === 'newsletter_unknown'
+	&& $noneStatus === 404 && $noneBody['code'] === 'newsletter_unknown' && ninoWarnings() === [] );
+check( '...and the list is as it was', in_array( 'jo@example.com', array_column( \Nino\Filesystem::getFileContent( $appData, '/data/newsletter.php', [] ), 'email' ), true ) === true );
 
 /*	The removal record is written first, inside the list's lock, and the
 	address leaves the list only once it is: with the record's sidecar lock
@@ -629,18 +690,18 @@ $removalLock = \Nino\Filesystem::path( $appData, '/data' ). '/.locks/'. sha1( '/
 unset( $appData['./nino/filesystem/locks'] );
 @unlink( $removalLock );
 @mkdir( $removalLock );
-[ $status ] = callAdminPost( $appData, 'newsletter/delete', [ 'email' => 'jo@example.com' ] );
-check( 'a delete whose removal record cannot be written answers 500', $status === 500 );
+[ $status, $body ] = ninoCall( $appData, $panel, [ 'email' => 'jo@example.com' ], 'newsletter/delete' );
+check( 'a delete whose removal record cannot be written answers 500, with its sentence and no code - the server\'s to report, nothing a person caused', $status === 500 && isset( $body['code'] ) === false && is_string( $body['error'] ) === true );
 check( '...and leaves the subscriber on the list', in_array( 'jo@example.com', array_column( \Nino\Filesystem::getFileContent( $appData, '/data/newsletter.php', [] ), 'email' ), true ) === true );
 check( '...because the one writer of the record says it failed', \Nino\Modules\Newsletter::recordRemoval( $appData, 'jo@example.com' ) === false
 	&& in_array( hash( 'sha256', 'jo@example.com' ), \Nino\Filesystem::getFileContent( $appData, '/data/newsletter-removed.php', [] ), true ) === false );
 @rmdir( $removalLock );
 unset( $appData['./nino/filesystem/locks'] );
 
-[ $status ] = callAdminPost( $appData, 'newsletter/delete', [ 'email' => 'jo@example.com' ] );
+[ $status ] = ninoCall( $appData, $panel, [ 'email' => 'jo@example.com' ], 'newsletter/delete' );
 check( 'newsletter/delete succeeds for an existing subscriber', $status === 200 );
 
-[ , $body ] = callAdminPost( $appData, 'newsletter/list' );
+[ , $body ] = ninoCall( $appData, $panel, [], 'newsletter/list' );
 check( 'the deleted subscriber is gone, the other one remains', count( $body['entries'] ) === 1 && $body['entries'][0]['email'] === 'anna@example.com' );
 
 check( 'the admin delete also records the removal, same as a self-service unsubscribe', in_array( hash( 'sha256', 'jo@example.com' ), \Nino\Filesystem::getFileContent( $appData, '/data/newsletter-removed.php', [] ), true ) === true );
@@ -649,7 +710,7 @@ check( 'the admin delete also records the removal, same as a self-service unsubs
 // actions are gone from the workbench
 check( 'deactivation succeeds', \Nino\Features::deactivate( $appData, 'newsletter' ) === true );
 check( 'with the feature off, its panel is not in the registry', isset( \Nino\Admin\Admin::panels( $appData )['newsletter'] ) === false );
-[ $status ] = callAdminPost( $appData, 'newsletter/list' );
+[ $status ] = ninoCall( $appData, $panel, [], 'newsletter/list' );
 check( 'with the feature off, newsletter/list is an unknown action', $status === 404 );
 check( 'the subscribers survive the deactivation', count( \Nino\Filesystem::getFileContent( $appData, $subscribersPath, [] ) ) === 1 );
 
@@ -761,11 +822,11 @@ echo "\n";
 echo "Modules\\Newsletter::_sendConfirmMail - who a confirmation can be replied to\n";
 
 /*	The reply address is '[[/project/mail/address/owner]]', which the base install unit
-	ships as '[[/project/company/contact/email]]' - the mailbox the project already named. It
-	is the base unit's since Nino 1.3.0, where it used to be the Form module's
-	and a project without the contact form therefore had none; the chained
-	value is resolved here rather than assumed, because a fill that resolves to
-	another fill is where "it is installed" stops meaning "it is an address".
+	ships as '[[/project/company/contact/email]]' - the mailbox the project already named.
+	It is the base unit's, so a project without the contact form has it all the
+	same; the chained value is resolved here rather than assumed, because a fill
+	that resolves to another fill is where "it is installed" stops meaning "it
+	is an address".
 
 	A transport, registered at the top, takes the mail so nothing is
 	actually sent	*/
@@ -802,9 +863,11 @@ echo "\n";
 
 // --- The panel's script, where node is on the path ------------------------------
 //
-// newsletter-js-smoke.js beside this file draws the list over a dom stand-in;
-// this suite runs it too where node is on the path, the way stats-smoke.php runs
-// its twin, so bin/check.sh and CI cover both halves in one go
+// newsletter-js-smoke.js beside this file draws the list over a dom stand-in,
+// with the kernel's own Nino.js running in it - the one of the checkout this
+// suite runs against, which is handed on; this suite runs it too where node is
+// on the path, the way stats-smoke.php runs its twin, so bin/check.sh and CI
+// cover both halves in one go
 $jsTest	= __DIR__. '/newsletter-js-smoke.js';
 $node		= function_exists( 'shell_exec' ) === true ? trim( (string) @shell_exec( 'command -v node 2>/dev/null' ) ) : '';
 
@@ -812,7 +875,7 @@ if( $node === '' || function_exists( 'exec' ) === false ) {
 	echo "  --  - node is not available here: newsletter-js-smoke.js was NOT run\n";
 } else {
 	$output = []; $status = 1;
-	exec( escapeshellarg( $node ). ' '. escapeshellarg( $jsTest ). ' 2>&1', $output, $status );
+	exec( 'NINO_ROOT='. escapeshellarg( $root ). ' '. escapeshellarg( $node ). ' '. escapeshellarg( $jsTest ). ' 2>&1', $output, $status );
 	$summary = (string) end( $output );
 	check( 'newsletter-js-smoke.js passes - '. ( $summary === '' ? 'no output' : $summary ), $status === 0 );
 }

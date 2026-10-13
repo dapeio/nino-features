@@ -16,7 +16,7 @@ return [
 	'[[/_admin/newsletter/label/search]]'		=> 'Search subscribers',
 	'[[/_admin/newsletter/emptyfilter]]'			=> 'No signup has this status.',
 	'[[/_admin/newsletter/nomatch]]'					=> 'No subscriber matches this search.',
-	'[[/_admin/newsletter/confirm/delete]]'	=> ' — really remove this address from the newsletter?',
+	'[[/_admin/newsletter/confirm/delete]]'	=> '%s — really remove this address from the newsletter?',
 	'[[/_admin/newsletter/label/bcc]]'				=> 'Addresses as a BCC line',
 	'[[/_admin/newsletter/label/copy]]'			=> 'Copy',
 	'[[/_admin/newsletter/label/copied]]'		=> 'Copied!',
@@ -29,4 +29,7 @@ return [
 	'[[/_admin/newsletter/filter/all]]'		=> 'All',
 	'[[/_admin/newsletter/label/pending]]'		=> 'pending',
 	'[[/_admin/newsletter/hint/unsubscribe]]'		=> 'Subscribers without a personal link ask for one at this address. Put it into every BCC mail you send: %s',
+
+	// The sentence of the code newsletter_unknown (Admin::apiDelete())
+	'[[/_admin/error/newsletter_unknown]]'		=> 'That address is not on the list.',
 ];

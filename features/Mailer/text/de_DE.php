@@ -11,7 +11,6 @@ return [
 	'[[/_admin/mailer/label/unconfigured]]'	=> 'Noch nicht konfiguriert - Mail geht weiterhin über das mail() des Servers hinaus. Zuerst einen Host im Panel Features hinterlegen.',
 	'[[/_admin/mailer/label/to]]'					=> 'Testmail senden an',
 	'[[/_admin/mailer/label/send]]'				=> 'Testmail senden',
-	'[[/_admin/mailer/msg/loading]]'			=> 'Wird geladen …',
 	'[[/_admin/mailer/msg/sending]]'			=> 'Wird gesendet …',
 	'[[/_admin/mailer/msg/sent]]'					=> 'Testmail gesendet.',
 	'[[/_admin/mailer/label/errors]]'				=> 'Letzte Fehler',
@@ -20,4 +19,8 @@ return [
 	'[[/_admin/mailer/error/send]]'				=> 'Die Testmail konnte nicht gesendet werden.',
 	'[[/_admin/mailer/mail/subject]]'		=> 'Nino-Testmail',
 	'[[/_admin/mailer/mail/body]]'				=> '<p>Dies ist eine Testmail Deiner Nino-Installation, versendet über die SMTP-Einstellungen des Mailer-Features.</p><p>Ist sie angekommen, funktionieren Host, Port, Verschlüsselung und Zugangsdaten wie konfiguriert.</p>',
+
+	// Die Sätze zu den Codes, mit denen die Testmail antwortet (Admin::apiSendTest())
+	'[[/_admin/error/mailer_address]]'		=> 'Das ist keine E-Mail-Adresse.',
+	'[[/_admin/error/mailer_ratelimit]]'	=> 'Das Limit ist erreicht: höchstens 5 Testmails oder andere Mails pro Stunde und Client-IP. Versuch es später noch einmal.',
 ];

@@ -7,13 +7,19 @@
  *													choice is asked about first - the two password
  *													entries checked before anything is sent, the new
  *													password posted as "pw" and never written back into
- *													the screen, and the sign-out asked about first.
+ *													the screen, the sign-out asked about first, and what
+ *													each live line says: saving, saved, or the sentence
+ *													of the code the server refused with. The state is
+ *													asked for again on every showing, and what is
+ *													waiting to be saved is left where it stands.
  *
  *													No jsdom, no dependency: an element stand-in of the
  *													kind the other feature tests build, so this runs with
- *													nothing but node. protected-smoke.php runs it through
- *													node when node is on the path, so bin/check.sh and CI
- *													cover it; it also runs on its own.
+ *													nothing but node. The workbench (Nino.adminUi,
+ *													Nino.content) is a stand-in of its own, kept to what
+ *													docs/features.md says of it. protected-smoke.php runs
+ *													this through node when node is on the path, so
+ *													bin/check.sh and CI cover it; it also runs on its own.
  *
  *	Usage: node features/ProtectedArea/tests/protected-js-smoke.js
  */
@@ -48,7 +54,13 @@ function element( tag ) {
 		className			: '',
 		textContent		: '',
 		id						: '',
+		name					: '',
+		type					: '',
 		value					: '',
+		autocomplete	: '',
+		required			: false,
+		minLength			: -1,
+		maxLength			: -1,
 		checked				: false,
 		disabled			: false,
 		attrs					: {},
@@ -56,19 +68,9 @@ function element( tag ) {
 		appendChild		: function( child ) { this.children.push( child ); return child },
 		setAttribute	: function( name, value ) { this.attrs[ name ] = value },
 		addEventListener : function( type, fn ) { ( this.listeners[ type ] = this.listeners[ type ] || [] ).push( fn ) },
+		querySelector	: function( tagName ) { return all( this, function( child ) { return child !== el && child.tagName === tagName.toUpperCase() } )[0] || null },
 	};
 	Object.defineProperty( el, 'innerHTML', { get : function() { return '' }, set : function() { this.children.length = 0 } } );
-	el.classList = {
-		toggle : function( name, force ) {
-			const names = el.className.split(' ').filter( Boolean );
-			const at = names.indexOf( name );
-			if( force === true && at === -1 )
-				names.push( name );
-			if( force === false && at !== -1 )
-				names.splice( at, 1 );
-			el.className = names.join(' ');
-		},
-	};
 	return el;
 }
 
@@ -93,24 +95,115 @@ let answer = function() { return [ 200, {} ] };
 let confirmed = [];
 let confirmAnswer = true;
 
+/*	The namespace the panel script extends - a local stand-in, not the global.
+	The workbench is a stand-in too, kept to what the manual says of the members
+	the script calls: api.call() keeps what it was asked and answers from the
+	table above; errorText() tells a failure by the workbench's rule (the sentence
+	of the server's code, else its own line, else the panel's - the status in front
+	of the last two); status() is the live line with the words it is given; panel()
+	is the lifecycle - the screen asked for and drawn from the answer, a failure
+	said in the mount with the panel's key	*/
 const nino = {
 	admin		: {},
 	adminUi	: {
 		emptyState	: function( text ) { const p = element('p'); p.className = 'nino-admin-empty'; p.textContent = text; return p },
 		actionBar		: function( bar ) { bar.className = ( bar.className+ ' nino-admin-actionbar' ).trim(); return bar },
-		// The workbench's request helper and its sentence for a failure, in miniature
+		hint				: function( text ) { const p = element('p'); p.className = 'nino-admin-hint'; p.textContent = text; return p },
+		el					: function( tag, className, text ) { const el = element( tag ); if( className ) el.className = className; if( text !== undefined ) el.textContent = text; return el },
+		// The placeholders %s %d %n, filled in order
+		format			: function( text, ...params ) { let at = 0; return String( text ).replace( /%[sdn]/g, function( token ) { return at < params.length ? String( params[at++] ) : token } ) },
+		textField		: function( options ) {
+			const label = element('label');
+			label.className = 'nino-admin-field';
+			const input = element('input');
+			input.type = options.type || 'text';
+			input.id = options.id || '';
+			input.autocomplete = options.autocomplete || '';
+			input.required = options.required === true;
+			input.minLength = options.minLength;
+			input.maxLength = options.maxLength;
+			label.appendChild( nino.adminUi.el( 'span', '', options.label ) );
+			label.appendChild( input );
+			return label;
+		},
+		button			: function( text, onClick, options ) {
+			const button = element('button');
+			button.type = options.type === 'submit' ? 'submit' : 'button';
+			button.id = options.id || '';
+			button.className = options.className || '';
+			button.textContent = text;
+			if( typeof onClick === 'function' )
+				button.addEventListener( 'click', onClick );
+			return button;
+		},
+		// The live line: its state and its words - its own for "saved" where it was given them - and, for a refusal, the field the server named, marked
+		status			: function( el, labels ) {
+			const show = function( state, text ) { control.state = state; el.state = state; el.textContent = text };
+			const control = {
+				element : el,
+				state		: 'idle',
+				saving	: function() { show( 'saving', nino.adminUi.format( nino.content.getText('/_admin/common/msg/saving') ) ) },
+				saved		: function() { show( 'saved', nino.adminUi.format( labels.saved, '10:30' ) ) },
+				fail		: function( text ) { show( 'error', text ) },
+				error		: function( status, response, key ) {
+					show( 'error', nino.adminUi.api.errorText( status, response, key ) );
+					const field = response !== null && typeof response === 'object' && response.field ? all( mount, function( child ) { return child.name === response.field } )[0] : undefined;
+					if( field !== undefined )
+						field.setAttribute( 'aria-invalid', 'true' );
+				},
+			};
+			return control;
+		},
 		api : {
 			call : function( action, payload, callback ) {
 				asked.push( { action : action, data : JSON.parse( JSON.stringify( payload ) ) } );
 				const result = answer( action );
 				callback( result[0], result[1] );
 			},
-			errorText : function( status, response, key ) { return '('+ status+ ') '+ ( ( response && response.error ) ? response.error : key ) },
+			errorText : function( status, response, key ) {
+				const body = response !== null && typeof response === 'object' ? response : {};
+				if( typeof body.code === 'string' )
+					return nino.adminUi.format( nino.content.getText( '/_admin/error/'+ body.code ), ...( body.params || [] ) );
+				return '('+ status+ ') '+ ( body.error || nino.content.getText( key ) );
+			},
+		},
+		showError : function( container, status, response, key ) {
+			container.innerHTML = '';
+			container.appendChild( nino.adminUi.el( 'p', 'nino-admin-error', nino.adminUi.api.errorText( status, response, key ) ) );
+		},
+		panel : function( spec ) {
+			const self = {
+				uri			: spec.uri,
+				ready		: false,
+				loading	: false,
+				data		: null,
+				mount		: function() { return sandbox.document.getElementById( spec.mount ) },
+				call		: function( action, payload, done ) { nino.adminUi.api.call( spec.uri+ '/'+ action, payload, done ) },
+				fail		: function( container, status, response, key ) { return nino.adminUi.showError( container, status, response, key || spec.error ) },
+				init		: function() {
+					if( self.loading === true || self.mount() === null )
+						return;
+					self.loading = true;
+					self.call( spec.action, {}, function( status, response ) {
+						self.loading = false;
+						if( status === 200 ) {
+							self.data = response;
+							self.ready = true;
+							spec.render( response, self );
+							return;
+						}
+						self.fail( self.mount(), status, response );
+						self.ready = false;
+					} );
+				},
+				reload			: function() { self.init() },
+				showCurrent	: function() { if( self.ready === false ) self.init() },
+			};
+			return self;
 		},
 	},
 	// The key with the placeholder it would carry, so what is filled in shows
 	content	: { getText : function( key ) { return key+ ' %s' } },
-	events	: { bindCallback : function() {} },
 };
 
 function find( id ) {
@@ -202,6 +295,17 @@ const sections = mount.children.filter( function( el ) { return el.tagName === '
 check( 'the screen is the three sections - password, pages, sign-out - each a fieldset with a legend', sections.length === 3
 	&& sections.every( function( box ) { return box.children[0].tagName === 'LEGEND' } ) );
 
+/*	The workbench's fixed action bar is the screen's: position:fixed at its foot. Three sections
+	with a button each would put three of them over each other, and only the last - the sign-out -
+	could be clicked; each keeps its button and its live line in a row of its own instead	*/
+const rowOf = function( box ) { return all( box, function( el ) { return el.className === 'nino-admin-actions' } ) };
+check( 'each section has its button and its live line in one row of its own, the button first', sections.every( function( box, at ) {
+	const row = rowOf( box );
+	return row.length === 1 && row[0].children.length === 2 && row[0].children[0].tagName === 'BUTTON' && row[0].children[0].id === [ 'protected-setpw', 'protected-savepages', 'protected-signout' ][at]
+		&& row[0].children[1].id === [ 'protected-pw-msg', 'protected-pages-msg', 'protected-signout-msg' ][at];
+} ) );
+check( '...and the screen holds no fixed action bar of the workbench', all( mount, function( el ) { return /(^|\s)nino-admin-actionbar(\s|$)/.test( el.className ) } ).length === 0 );
+
 const rows = all( mount, function( el ) { return el.tagName === 'LABEL' && el.className === '' } );
 check( 'a row for every page of the list', rows.length === 4 );
 
@@ -252,7 +356,7 @@ check( '...and an empty list is sent when it is accepted', asked.length === 1 &&
 
 // Nothing protected, nothing chosen: nothing to ask
 answer = function() { return [ 200, state( { pages : pages.map( function( page ) { return Object.assign( {}, page, { selected : false, covered : false } ) } ), extra : [] } ) ] };
-panel._ready = false;
+panel.ready = false;
 panel.showCurrent();
 confirmed = [];
 asked.length = 0;
@@ -261,17 +365,24 @@ check( 'an empty choice where nothing was protected is not worth a question', co
 check( 'with nothing set by hand there is no note about it', all( mount, function( el ) { return el.textContent.indexOf('/_admin/protected/label/extra') !== -1 } ).length === 0 );
 
 // A failed save says why, and keeps the screen
-answer = function() { return [ 400, { error : 'unknown page' } ] };
+answer = function() { return [ 400, { error : 'unknown page', code : 'protected_page' } ] };
 fire( find('protected-savepages'), 'click' );
-check( 'a refused save is said on the line under the list, as an error', find('protected-pages-msg').textContent === '(400) unknown page'
-	&& find('protected-pages-msg').className.indexOf('nino-admin-error') !== -1 );
+check( 'a refused save is said on the line next to the button, in the sentence of its code, as an error', find('protected-pages-msg').textContent === '/_admin/error/protected_page %s'
+	&& find('protected-pages-msg').state === 'error' );
+check( '...and the screen is as it was', find('protected-savepages') !== null && find('protected-savepages').disabled === false );
+
+answer = function() { return [ 500, { error : 'could not save' } ] };
+fire( find('protected-savepages'), 'click' );
+check( 'a failure nobody caused is said as the server said it, the status in front', find('protected-pages-msg').textContent === '(500) could not save' );
 
 // --- The password ---------------------------------------------------------------------
 
 const first = find('protected-newpw');
 const second = find('protected-newpw2');
 check( 'two password fields, which a password manager reads as a new password, bound to the length the server named',
-	first.type === 'password' && second.type === 'password' && first.autocomplete === 'new-password' && first.minLength === 8 && first.maxLength === 200 );
+	first.type === 'password' && second.type === 'password' && first.autocomplete === 'new-password' && first.minLength === 8 && first.maxLength === 200
+	&& first.required === true && second.required === true );
+check( '...the first of them is the one that is sent, named pw', first.name === 'pw' );
 
 function submit() { all( mount, function( el ) { return el.tagName === 'FORM' } ).forEach( function( f ) { fire( f, 'submit' ) } ) }
 
@@ -279,7 +390,7 @@ asked.length = 0;
 first.value = 'short';
 second.value = 'short';
 submit();
-check( 'a password that is too short is refused before anything is sent', asked.length === 0 && find('protected-pw-msg').textContent.indexOf('/_admin/protected/error/short') === 0 );
+check( 'a password that is too short is refused before anything is sent', asked.length === 0 && find('protected-pw-msg').textContent.indexOf('/_admin/error/protected_short') === 0 );
 
 first.value = 'long-enough-1';
 second.value = 'long-enough-2';
@@ -298,7 +409,13 @@ answer = function() { return [ 403, { error : 'not allowed' } ] };
 find('protected-newpw').value = 'long-enough-3';
 find('protected-newpw2').value = 'long-enough-3';
 submit();
-check( 'a refused password is said as an error', find('protected-pw-msg').textContent === '(403) not allowed' );
+check( 'a refused password is said as an error', find('protected-pw-msg').textContent === '(403) not allowed' && find('protected-pw-msg').state === 'error' );
+
+// The server holds the length again, which is the check that counts: its sentence has the limit in it, and the field it names is marked
+answer = function() { return [ 400, { error : 'password must be at least 8 characters', code : 'protected_short', params : [ 8 ], field : 'pw' } ] };
+submit();
+check( 'a password the server finds too short is said in the sentence of its code, with the limit in it', find('protected-pw-msg').textContent === '/_admin/error/protected_short 8' );
+check( '...and the field it was posted in is marked', find('protected-newpw').attrs['aria-invalid'] === 'true' && find('protected-newpw2').attrs['aria-invalid'] === undefined );
 
 // --- Signing out --------------------------------------------------------------------------
 
@@ -317,30 +434,24 @@ check( 'accepted, it posts the action and says it is done', asked.length === 1 &
 // --- The edges ---------------------------------------------------------------------------------
 
 answer = function() { return [ 200, state( { pages : [], extra : [] } ) ] };
-panel._ready = false;
+panel.ready = false;
 panel.showCurrent();
 const empty = all( mount, function( el ) { return el.className === 'nino-admin-empty' } );
 check( 'a site with no pages says so instead of drawing an empty list', empty.length === 1 && empty[0].textContent.indexOf('/_admin/protected/empty/pages') === 0
 	&& find('protected-savepages') === null );
 
 answer = function() { return [ 403, { error : 'not allowed' } ] };
-panel._ready = false;
+panel.ready = false;
 panel.showCurrent();
 check( 'a refused state is shown where the screen would be', mount.children.length === 1 && mount.children[0].className === 'nino-admin-error' && mount.children[0].textContent === '(403) not allowed' );
 
-// --- Asking the workbench ------------------------------------------------------------
+// --- A failed load ------------------------------------------------------------------------------
 
-asked.length = 0;
-answer = function() { return [ 200, { via : 'api' } ] };
-let gotAnswer = null;
-panel._apiCall( 'pages', { paths : [ '/b' ] }, function( status, response ) { gotAnswer = [ status, response ] } );
-check( 'the action \'protected/<action>\' and the payload go to the workbench\'s request helper',
-	asked.length === 1 && asked[0].action === 'protected/pages' && asked[0].data.paths[0] === '/b' && gotAnswer[1].via === 'api' );
-
-const failed = element('div');
-panel._showError( failed, 503, null );
-check( 'a failed request that says nothing of itself is said in the panel\'s own sentence for what it was doing',
-	failed.children.length === 1 && failed.children[0].textContent === '(503) /_admin/common/error/load' );
+answer = function() { return [ 503, null ] };
+panel.ready = false;
+panel.showCurrent();
+check( 'a state that cannot be had at all is said in the mount, in the panel\'s own sentence for what it was doing', mount.children.length === 1 && mount.children[0].className === 'nino-admin-error'
+	&& mount.children[0].textContent === '(503) /_admin/common/error/load %s' );
 
 console.log( '\n'+ checks+ ' checks, '+ failures+ ' failed' );
 process.exit( failures === 0 ? 0 : 1 );

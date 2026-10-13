@@ -2,7 +2,7 @@
 declare(strict_types=1);
 /**
  *	Nino									A compact filesystembased php framework
- *	Nino\Modules\Forms\Admin	The /_admin panel of the Forms feature - see docs/development.md
+ *	Nino\Modules\Forms\Admin	The /_admin panel of the Forms feature - see docs/features.md, "The panel"
  *
  *	@package							Dape/Nino
  *	@author								David Perchermeier <mail@dape.io>
@@ -34,9 +34,11 @@ namespace Nino\Modules\Forms {
 	 *										sentence for the whole form; a mail template that is
 	 *										not on disk is refused here as well, since a form
 	 *										that mails an empty body is worse than one that is
-	 *										not saved. Every word a person reads is resolved
-	 *										here, in the session language, so the script renders
-	 *										what it gets: the same split the Features panel makes.
+	 *										not saved. A refusal is answered with a code, which
+	 *										the workbench says in the session language, and
+	 *										where it went wrong with the words of what is wrong
+	 *										with each field and control - the script looks those
+	 *										up in the same language and lays them out.
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -50,9 +52,10 @@ namespace Nino\Modules\Forms {
 		// is read, so a stray value never reaches an error message
 		private const string KEY_PATTERN = '/^[a-z][a-z0-9-]*$/D';
 
-		// What \Nino\Form::problems() reports, as the fill that says it. A code
-		// that is not here is said with the general sentence of its kind: that a
-		// field cannot be read, or that the form was not saved
+		// What \Nino\Form::problems() reports, as the word the script looks its
+		// sentence up by: /_admin/forms/problem/<word>. A code that is not here is
+		// said with the general word of its kind: that a field cannot be read, or
+		// that the form cannot be saved as it is
 		private const array PROBLEMS = [
 			'key'							=> 'key',
 			'field'						=> 'field',
@@ -181,11 +184,11 @@ namespace Nino\Modules\Forms {
 		 *	buy nothing but a half-saved form.
 		 *
 		 *	A definition the engine would only repair is refused instead, and
-		 *	the answer says where: 'fields' maps the index of a field in the
-		 *	posted list to the sentence, 'controls' to the control of that
-		 *	field the sentence belongs to, and 'about' maps a control of the
-		 *	form itself (key, to, ownertpl, usertpl) to its sentence. Nothing
-		 *	is written
+		 *	the answer says where: the code forms_fields and, as its params, three
+		 *	maps - 'fields' maps the index of a field in the posted list to the
+		 *	word of what is wrong with it, 'controls' to the control of that
+		 *	field the word belongs to, and 'about' maps a control of the form
+		 *	itself (key, to, ownertpl, usertpl) to its word. Nothing is written
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
@@ -204,14 +207,14 @@ namespace Nino\Modules\Forms {
 			$problems = \Nino\Form::problems( $posted );
 
 			if( $problems !== [] ) {
-				self::_refuse( $appData, $request, $problems );
+				self::_refuse( $request, $problems );
 				return;
 			}
 
 			$form = \Nino\Form::normalize( $posted );
 
 			if( $form === null ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/forms/error/invalid' ) );
+				\Nino\Http::fail( $request, 400, 'the form needs a key of its own and at least one field', 'forms_invalid' );
 				return;
 			}
 
@@ -223,11 +226,10 @@ namespace Nino\Modules\Forms {
 
 			foreach( self::TEMPLATES as $role => $control )
 				if( is_file( \Nino\Filesystem::path( $appData, $form[ $role ]. '.tpl' ) ) === false )
-					$missing[ $control ] = self::_say( $appData, '/_admin/forms/problem/missingtpl' );
+					$missing[ $control ] = 'missingtpl';
 
 			if( $missing !== [] ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/forms/error/fields' ) );
-				$request['/nino/http/response']['body']['about'] = $missing;
+				\Nino\Http::fail( $request, 400, 'a mail template of the form is not in the project', 'forms_fields', [ [], [], $missing ] );
 				return;
 			}
 
@@ -251,8 +253,7 @@ namespace Nino\Modules\Forms {
 				}
 
 				if( $existing['key'] === $form['key'] ) {
-					\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/forms/error/duplicate' ) );
-					$request['/nino/http/response']['body']['about'] = [ 'key' => self::_say( $appData, '/_admin/forms/error/duplicate' ) ];
+					\Nino\Http::fail( $request, 400, 'another form has that key', 'forms_duplicate', [ [], [], [ 'key' => 'keytaken' ] ] );
 					return;
 				}
 
@@ -263,7 +264,7 @@ namespace Nino\Modules\Forms {
 				$out[] = $form;
 
 			if( self::_write( $appData, $out ) === false ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/forms/error/save' ) );
+				\Nino\Http::fail( $request, 500, 'the forms could not be written' );
 				return;
 			}
 
@@ -289,7 +290,7 @@ namespace Nino\Modules\Forms {
 			$key = self::_key();
 
 			if( $key === '' ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/forms/error/key' ) );
+				\Nino\Http::fail( $request, 400, 'no form has that key', 'forms_key' );
 				return;
 			}
 
@@ -304,12 +305,12 @@ namespace Nino\Modules\Forms {
 			// done quietly: a project with no form at all is a decision, and
 			// removing the module is how it is made
 			if( $out === [] ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/forms/error/last' ) );
+				\Nino\Http::fail( $request, 400, 'the last form cannot be deleted', 'forms_last' );
 				return;
 			}
 
 			if( self::_write( $appData, $out ) === false ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/forms/error/save' ) );
+				\Nino\Http::fail( $request, 500, 'the forms could not be written' );
 				return;
 			}
 
@@ -337,7 +338,7 @@ namespace Nino\Modules\Forms {
 			$retention	= $data['retention'] ?? null;
 
 			if( is_int( $retention ) === false || $retention < 1 || $retention > 60 ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/forms/error/retention' ) );
+				\Nino\Http::fail( $request, 400, 'the submissions are kept between 1 and 60 months', 'forms_retention' );
 				return;
 			}
 
@@ -345,7 +346,7 @@ namespace Nino\Modules\Forms {
 			$appData[ \Nino\Form::STORE ]			= ( $data['store'] ?? true ) === true;
 
 			if( \Nino\AppData::writeContentData( $appData, [ \Nino\Form::RETENTION, \Nino\Form::STORE ] ) === false ) {
-				\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/forms/error/save' ) );
+				\Nino\Http::fail( $request, 500, 'the settings could not be written' );
 				return;
 			}
 
@@ -353,17 +354,16 @@ namespace Nino\Modules\Forms {
 		}
 
 		/**
-		 *	The 400 for a definition \Nino\Form::problems() found something in:
-		 *	one general sentence, and every problem as the sentence of the field
-		 *	or the control it is about
+		 *	The 400 for a definition \Nino\Form::problems() found something in: the
+		 *	code forms_fields, and every problem as the word of the field or the
+		 *	control it is about - the three maps of apiSave()
 		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current server request
 		 *	@param		array 		$problems			What \Nino\Form::problems() answered
 		 *
 		 *	@return 	void
 		 */
-		private static function _refuse( array &$appData, array &$request, array $problems ): void {
+		private static function _refuse( array &$request, array $problems ): void {
 
 			$fields		= [];
 			$controls	= [];
@@ -372,15 +372,13 @@ namespace Nino\Modules\Forms {
 			foreach( $problems as $problem ) {
 
 				$code		= (string) $problem['code'];
-				$say		= isset( self::PROBLEMS[ $code ] ) === true
-					? self::_say( $appData, '/_admin/forms/problem/'. self::PROBLEMS[ $code ] )
-					: self::_say( $appData, $problem['field'] !== null ? '/_admin/forms/problem/field' : '/_admin/forms/error/fields' );
+				$word		= self::PROBLEMS[ $code ] ?? ( $problem['field'] !== null ? 'field' : 'form' );
 
 				if( $problem['field'] !== null ) {
 					// The first thing found in a field is the one said: it is what
 					// the person has to change first
 					if( isset( $fields[ $problem['field'] ] ) === false ) {
-						$fields[ $problem['field'] ]		= $say;
+						$fields[ $problem['field'] ]		= $word;
 						$controls[ $problem['field'] ]	= match( $code ) {
 							'options'	=> 'options',
 							'type'		=> 'type',
@@ -390,14 +388,10 @@ namespace Nino\Modules\Forms {
 					continue;
 				}
 
-				$about[ self::TEMPLATES[ $code ] ?? $code ] = $say;
+				$about[ self::TEMPLATES[ $code ] ?? $code ] = $word;
 			}
 
-			\Nino\Http::fail( $request, 400, self::_say( $appData, '/_admin/forms/error/fields' ) );
-
-			$request['/nino/http/response']['body']['fields']		= $fields;
-			$request['/nino/http/response']['body']['controls']	= $controls;
-			$request['/nino/http/response']['body']['about']		= $about;
+			\Nino\Http::fail( $request, 400, 'the form could not be saved as it is - see the marked fields', 'forms_fields', [ $fields, $controls, $about ] );
 		}
 
 		/**
@@ -454,21 +448,6 @@ namespace Nino\Modules\Forms {
 			$key = \Nino\Admin\Admin::postData()['key'] ?? null;
 
 			return is_string( $key ) === true && preg_match( self::KEY_PATTERN, $key ) === 1 ? $key : '';
-		}
-
-		/**
-		 *	One of this panel's own fills, in the language of whoever is
-		 *	looking - the panel phrases its refusals, the script only shows
-		 *	them
-		 *
-		 *	@param		array 		&$appData			(reference) Array with current app data
-		 *	@param		string		$key					A fill key
-		 *
-		 *	@return 	string
-		 */
-		private static function _say( array &$appData, string $key ): string {
-
-			return \Nino\Html::renderHtml( $appData, '[['. $key. ']]' );
 		}
 	}
 }

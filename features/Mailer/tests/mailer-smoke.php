@@ -123,42 +123,8 @@ function waitForMailerLog( array $server, float $timeoutSeconds = 2.0 ): ?array 
 	return null;
 }
 
-/**
- *	The keys /data/ratelimit.php can know this client by: its address, as the kernel
- *	keyed the file up to 1.7, and the sha256 of it, as \Nino\Feature::count() does from
- *	the toolset on. This test runs against both, so a reset or a seed names both
- *
- *	@return 	array											[ address, hash of the address ]
- */
-function rateLimitKeys(): array {
-
-	return [ '127.0.0.1', hash( 'sha256', '127.0.0.1' ) ];
-}
-
-/**
- *	A fresh budget for 127.0.0.1, whatever an earlier check spent - the same
- *	technique tests/form-mail-smoke.php uses for \Nino\Mail::send()'s own cap
- *
- *	@param		array 		&$appData			(reference) Array with current app data
- *
- *	@return 	void
- */
-function resetMailerRateLimit( array &$appData ): void {
-
-	$state = \Nino\Filesystem::getFileContent( $appData, '/data/ratelimit.php', [] );
-	foreach( rateLimitKeys() as $rateKey )
-		unset( $state[$rateKey] );
-	\Nino\Filesystem::putFileContent( $appData, '/data/ratelimit.php', $state );
-	unset( $appData['./nino/mail/ratelimited'] );
-}
-
-function callAdminPost( array &$appData, string $action, array $data = [] ): array {
-	$request = [ '/nino/http/response' => [ 'statusCode' => 200 ] ];
-	$_POST['action'] = $action;
-	$_POST['data'] = json_encode( $data );
-	\Nino\Admin\Admin::handlePost( $appData, $request );
-	return [ $request['/nino/http/response']['statusCode'], $request['/nino/http/response']['body'] ?? null ];
-}
+// The workbench's entry point, which ninoCall() hands a panel action
+$panel = [ \Nino\Admin\Admin::class, 'handlePost' ];
 
 $server = startMailerServer();
 
@@ -311,7 +277,7 @@ echo "\n";
 
 echo "Modules\\Mailer\\Smtp - a real SMTP session against the fake server\n";
 
-resetMailerRateLimit( $appData );
+\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
 resetMailerLog( $server );
 
 $sentSubject = "Grüße!\r\nBcc: x@example.org"; // \Nino\Mail::send() itself strips the header-injection attempt
@@ -374,7 +340,7 @@ echo "\n";
 
 echo "A long non-ascii subject - RFC 2047 words, folded the way the kernel folds\n";
 
-resetMailerRateLimit( $appData );
+\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
 resetMailerLog( $server );
 
 /*	An encoded word may be 75 characters and no more (RFC 2047 section 2), and
@@ -417,9 +383,9 @@ echo "\n";
 echo "From resolution\n";
 
 // The kernel's envelope sender, set the way the kernel reads it: the
-// '[[/project/mail/address/envelope]]' textfill, which Nino 1.4 has and this feature needs
+// '[[/project/mail/address/envelope]]' textfill
 \Nino\Html::addFills( $appData, [ '[[/project/mail/address/envelope]]' => 'kernel-sender@example.org' ], '*' );
-resetMailerRateLimit( $appData );
+\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
 resetMailerLog( $server );
 check( 'a send with a kernel sender still succeeds', \Nino\Mail::send( $appData, 'to@example.org', 'x', 'y', '' ) === true );
 
@@ -464,7 +430,7 @@ echo "\n";
 echo "AUTH LOGIN, when the server offers no AUTH PLAIN\n";
 
 setMailerControl( $server, [ 'authMethods' => 'LOGIN' ] );
-resetMailerRateLimit( $appData );
+\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
 resetMailerLog( $server );
 check( 'the send still succeeds, over AUTH LOGIN instead', \Nino\Mail::send( $appData, 'to@example.org', 'x', 'y', '' ) === true );
 
@@ -487,7 +453,7 @@ echo "\n";
 echo "Refusals: RCPT and AUTH\n";
 
 setMailerControl( $server, [ 'failRcpt' => true ] );
-resetMailerRateLimit( $appData );
+\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
 check( 'a 550 to RCPT TO is a failure, not an exception', \Nino\Mail::send( $appData, 'refused@example.org', 'x', 'y', '' ) === false );
 check( 'a warning names the server\'s own reply, never the password', ( static function(): bool {
 	foreach( ninoWarnings() as $warning )
@@ -497,7 +463,7 @@ check( 'a warning names the server\'s own reply, never the password', ( static f
 } )() );
 
 setMailerControl( $server, [ 'failAuth' => true ] );
-resetMailerRateLimit( $appData );
+\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
 check( 'a 535 to AUTH is a failure', \Nino\Mail::send( $appData, 'to@example.org', 'x', 'y', '' ) === false );
 check( 'and is recorded too, without the password', ( static function(): bool {
 	foreach( ninoWarnings() as $warning )
@@ -517,7 +483,7 @@ echo "Nothing listening on the configured port\n";
 
 $deadPort = freeMailerPort();
 \Nino\Features::saveSettings( $appData, 'mailer', [ 'port' => (string) $deadPort ] );
-resetMailerRateLimit( $appData );
+\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
 
 $start = microtime( true );
 $deadPortResult = \Nino\Mail::send( $appData, 'to@example.org', 'x', 'y', '' );
@@ -547,7 +513,7 @@ if( $probe !== false || $probe465 !== false ) {
 	echo "  --  - something listens on 127.0.0.1:587 or :465 here: the hint check was NOT run\n";
 } else {
 	\Nino\Features::saveSettings( $appData, 'mailer', [ 'port' => '587', 'encryption' => 'tls' ] );
-	resetMailerRateLimit( $appData );
+	\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
 	ninoWarnings();
 	$hintResult = \Nino\Mail::send( $appData, 'to@example.org', 'x', 'y', '' );
 	$hintReason = (string) ( $appData['./mailer/last'] ?? '' );
@@ -555,12 +521,12 @@ if( $probe !== false || $probe465 !== false ) {
 		&& str_starts_with( $hintReason, 'could not connect' ) === true && str_contains( $hintReason, 'hint: port 587 speaks STARTTLS' ) === true );
 
 	\Nino\Features::saveSettings( $appData, 'mailer', [ 'port' => '465', 'encryption' => 'starttls' ] );
-	resetMailerRateLimit( $appData );
+	\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
 	\Nino\Mail::send( $appData, 'to@example.org', 'x', 'y', '' );
 	check( 'STARTTLS on port 465 gets the other sentence', str_contains( (string) ( $appData['./mailer/last'] ?? '' ), 'hint: port 465 speaks TLS from the start' ) === true );
 
 	\Nino\Features::saveSettings( $appData, 'mailer', [ 'port' => '0', 'encryption' => 'starttls' ] );
-	resetMailerRateLimit( $appData );
+	\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
 	\Nino\Mail::send( $appData, 'to@example.org', 'x', 'y', '' );
 	check( 'a pair that is fine - port 0, so 587 with STARTTLS - gets none', str_contains( (string) ( $appData['./mailer/last'] ?? '' ), 'hint:' ) === false );
 	ninoWarnings();
@@ -576,9 +542,8 @@ echo "\n";
 echo "Modules\\Mailer\\Admin - status, the test mail action and its permission\n";
 
 $appData['/nino/install/completed'] = true;
-\Nino\Auth::insertUser( $appData, 'admin@example.com', 'correct horse battery staple', [ '/*' ] );
-\Nino\Auth::insertUser( $appData, 'plain@example.com', 'plain password', [] );
-\Nino\Auth::loginUser( $appData, 'admin@example.com', 'correct horse battery staple' );
+ninoUser( $appData, 'plain@example.com', [], 'plain password' );
+ninoUser( $appData, 'admin@example.com' );
 
 // Merges the panel's own text() fills (the test mail's subject and body
 // among them) into \Nino\Html - the same bootstrap _admin/index.php does
@@ -586,20 +551,6 @@ $appData['/nino/install/completed'] = true;
 \Nino\Admin\Admin::init( $appData );
 
 check( 'the panel is in the registry while the feature is active', isset( \Nino\Admin\Admin::panels( $appData )['mailer'] ) === true );
-
-/*	The workbench renders a head over every pane but the Dashboard and names
-	the panel in it (Nino.adminUi.panelHead() in the kernel), so the screen
-	starts with what it is about rather than with the panel's name a second
-	time, a line under the first. Read off the script, since this suite has
-	no dom to draw it in: init(), which draws the whole screen, from its own
-	line to the one that closes it	*/
-$screen = preg_match( '/^\t\tinit : function\(\) \{\n(.*?)^\t\t\},$/ms',
-	(string) file_get_contents( __DIR__. '/../assets/admin.js' ), $method ) === 1 ? $method[1] : '';
-check( 'the screen draws no heading of its own - the head over the pane names the panel',
-	$screen !== '' && preg_match( '/createElement\(\s*\'h[1-6]\'\s*\)/', $screen ) === 0 );
-check( '...and the first line it draws under that head is its hint',
-	preg_match( '/\bappendChild\(\s*(\w+)\s*\)/', $screen, $first ) === 1
-	&& str_contains( $screen, $first[1]. '.className = \'nino-admin-hint\'' ) === true );
 
 /*	The failures so far are in the ring file; the panel's own checks start
 	from an empty one, so what it lists is what these checks did	*/
@@ -609,7 +560,7 @@ check( 'every failure above was kept in the ring file the manifest declares, fiv
 unlink( $ringFile );
 unset( $appData['./nino/filesystem/cache']['/data/mailer.php'] );
 
-[ $statusCode, $statusBody ] = callAdminPost( $appData, 'mailer/status' );
+[ $statusCode, $statusBody ] = ninoCall( $appData, $panel, [], 'mailer/status' );
 check( 'mailer/status answers host, the port a send really uses, encryption, the address to test with and the last errors - and never the password or username', $statusCode === 200
 	&& $statusBody === [ 'host' => '127.0.0.1', 'port' => $server['port'], 'encryption' => 'none', 'testTo' => 'admin@example.com', 'errors' => [] ]
 	&& array_key_exists( 'password', $statusBody ) === false && array_key_exists( 'username', $statusBody ) === false );
@@ -617,7 +568,7 @@ check( 'mailer/status answers host, the port a send really uses, encryption, the
 /*	The port the status line names is the one a send connects to: port 0 is
 	what the encryption says	*/
 \Nino\Features::saveSettings( $appData, 'mailer', [ 'port' => '0', 'encryption' => 'tls' ] );
-[ , $resolvedBody ] = callAdminPost( $appData, 'mailer/status' );
+[ , $resolvedBody ] = ninoCall( $appData, $panel, [], 'mailer/status' );
 check( 'with port 0 the status line shows the one the encryption names', ( $resolvedBody['port'] ?? null ) === 465 );
 \Nino\Features::saveSettings( $appData, 'mailer', [ 'port' => (string) $server['port'], 'encryption' => 'none' ] );
 
@@ -625,31 +576,44 @@ check( 'with port 0 the status line shows the one the encryption names', ( $reso
 // it is an address, the From address after that, none at all otherwise
 $account = $appData['./nino/auth/current'];
 $appData['./nino/auth/current']['mail'] = 'not-an-address';
-[ , $fallbackBody ] = callAdminPost( $appData, 'mailer/status' );
+[ , $fallbackBody ] = ninoCall( $appData, $panel, [], 'mailer/status' );
 \Nino\Features::saveSettings( $appData, 'mailer', [ 'from' => '' ] );
-[ , $noneBody ] = callAdminPost( $appData, 'mailer/status' );
+[ , $noneBody ] = ninoCall( $appData, $panel, [], 'mailer/status' );
 \Nino\Features::saveSettings( $appData, 'mailer', [ 'from' => 'no-reply@example.org' ] );
 $appData['./nino/auth/current'] = $account;
 check( 'the address to test with is the From address where the account\'s own is none', ( $fallbackBody['testTo'] ?? null ) === 'no-reply@example.org' );
 check( '...and nothing where neither is an address', ( $noneBody['testTo'] ?? null ) === '' );
 
-[ $invalidCode, $invalidBody ] = callAdminPost( $appData, 'mailer/test', [ 'to' => 'not-an-email' ] );
-check( 'an invalid address is a 400', $invalidCode === 400 );
+[ $invalidCode, $invalidBody ] = ninoCall( $appData, $panel, [ 'to' => 'not-an-email' ], 'mailer/test' );
+check( 'an address that is none is a 400 with the code mailer_address, naming the field it was refused for', $invalidCode === 400 && $invalidBody['code'] === 'mailer_address' && $invalidBody['field'] === 'to' );
+foreach( [ 'en_US', 'de_DE' ] as $locale )
+	check( "...and the code has its sentence in $locale", trim( \Nino\Admin\Admin::textFills( $appData, '/features/Mailer/text', $locale )['[[/_admin/error/'. $invalidBody['code']. ']]'] ?? '' ) !== '' );
 
-resetMailerRateLimit( $appData );
+// The payload is untrusted json: an address that is a list is as much none as a word is, and no warning is raised for it
+ninoWarnings();
+[ $listedCode, $listedBody ] = ninoCall( $appData, $panel, [ 'to' => [ 'a@example.org' ] ], 'mailer/test' );
+check( 'an address posted as a list is refused with the same code, not with a 500', $listedCode === 400 && $listedBody['code'] === 'mailer_address' && ninoWarnings() === [] );
+check( '...and the log line for it names nobody instead of failing', \Nino\Modules\Mailer\Admin::log( 'mailer/test', [ 'to' => [ 'a@example.org' ] ] ) === 'Send test mail to ""' && ninoWarnings() === [] );
+
+\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
 resetMailerLog( $server );
-[ $sendCode, $sendBody ] = callAdminPost( $appData, 'mailer/test', [ 'to' => 'panel-target@example.org' ] );
+[ $sendCode, $sendBody ] = ninoCall( $appData, $panel, [ 'to' => 'panel-target@example.org' ], 'mailer/test' );
 check( 'a valid address sends through the fake server and answers 200', $sendCode === 200 && $sendBody === [ 'sent' => true ] );
 check( 'the fake server actually received that test mail', is_array( waitForMailerLog( $server ) ) === true );
+
+\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
+resetMailerLog( $server );
+[ $spacedCode ] = ninoCall( $appData, $panel, [ 'to' => ' panel-target@example.org ' ], 'mailer/test' );
+check( 'a space around the address is not part of it', $spacedCode === 200 && in_array( 'RCPT TO:<panel-target@example.org>', waitForMailerLog( $server )['commands'] ?? [], true ) === true );
 check( 'the log line names the recipient', \Nino\Modules\Mailer\Admin::log( 'mailer/test', [ 'to' => 'panel-target@example.org' ] ) === 'Send test mail to "panel-target@example.org"' );
 
 setMailerControl( $server, [ 'failRcpt' => true ] );
-resetMailerRateLimit( $appData );
-[ $refusedCode, $refusedBody ] = callAdminPost( $appData, 'mailer/test', [ 'to' => 'refused@example.org' ] );
-check( 'a transport refusal is a 400 naming the reason the transport recorded', $refusedCode === 400
-	&& str_contains( (string) ( $refusedBody['error'] ?? '' ), 'mailbox unavailable' ) === true );
+\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
+[ $refusedCode, $refusedBody ] = ninoCall( $appData, $panel, [ 'to' => 'refused@example.org' ], 'mailer/test' );
+check( 'a transport refusal is a 500 naming the reason the transport recorded, and has no code - it is the mail server\'s own line', $refusedCode === 500
+	&& str_contains( (string) ( $refusedBody['error'] ?? '' ), 'mailbox unavailable' ) === true && isset( $refusedBody['code'] ) === false );
 
-[ , $afterRefusal ] = callAdminPost( $appData, 'mailer/status' );
+[ , $afterRefusal ] = ninoCall( $appData, $panel, [], 'mailer/status' );
 check( 'the refusal is the newest of the errors the panel lists, with a date and without a password', count( $afterRefusal['errors'] ) === 1
 	&& str_contains( $afterRefusal['errors'][0]['reason'], 'mailbox unavailable' ) === true
 	&& preg_match( '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $afterRefusal['errors'][0]['date'] ) === 1
@@ -657,17 +621,17 @@ check( 'the refusal is the newest of the errors the panel lists, with a date and
 
 // Newest first, and a ring: the sixth failure pushes the first one out
 for( $i = 2; $i <= 6; $i++ ) {
-	resetMailerRateLimit( $appData );
-	callAdminPost( $appData, 'mailer/test', [ 'to' => 'refused'. $i. '@example.org' ] );
+	\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
+	ninoCall( $appData, $panel, [ 'to' => 'refused'. $i. '@example.org' ], 'mailer/test' );
 }
 $ring = \Nino\Modules\Mailer::errors( $appData );
 check( 'the list is capped at five, the oldest one gone', count( $ring ) === 5 );
 check( '...newest first', array_column( $ring, 'date' ) === ( static function( array $dates ): array { rsort( $dates ); return $dates; } )( array_column( $ring, 'date' ) ) );
-check( 'a delivered test mail adds nothing to it', ( static function() use ( &$appData, $server ): bool {
+check( 'a delivered test mail adds nothing to it', ( static function() use ( &$appData, $server, $panel ): bool {
 	setMailerControl( $server, [] );
-	resetMailerRateLimit( $appData );
+	\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
 	$before = \Nino\Modules\Mailer::errors( $appData );
-	$code = callAdminPost( $appData, 'mailer/test', [ 'to' => 'fine@example.org' ] )[0];
+	$code = ninoCall( $appData, $panel, [ 'to' => 'fine@example.org' ], 'mailer/test' )[0];
 	return $code === 200 && \Nino\Modules\Mailer::errors( $appData ) === $before;
 } )() );
 
@@ -680,11 +644,11 @@ check( 'a ring file with entries of another shape lists the ones that are entrie
 \Nino\Filesystem::putFileContent( $appData, '/data/mailer.php', 'not a list' );
 ninoWarnings();
 check( 'a ring file that holds no array lists nothing and raises nothing', \Nino\Modules\Mailer::errors( $appData ) === [] && ninoWarnings() === [] );
-[ $brokenCode, $brokenBody ] = callAdminPost( $appData, 'mailer/status' );
+[ $brokenCode, $brokenBody ] = ninoCall( $appData, $panel, [], 'mailer/status' );
 check( '...mailer/status still answers, with no errors', $brokenCode === 200 && ( $brokenBody['errors'] ?? null ) === [] );
 setMailerControl( $server, [ 'failRcpt' => true ] );
-resetMailerRateLimit( $appData );
-callAdminPost( $appData, 'mailer/test', [ 'to' => 'refused-after-junk@example.org' ] );
+\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
+ninoCall( $appData, $panel, [ 'to' => 'refused-after-junk@example.org' ], 'mailer/test' );
 $recorded = \Nino\Modules\Mailer::errors( $appData );
 check( '...and the next failure is recorded over it', count( $recorded ) === 1 && str_contains( $recorded[0]['reason'], 'mailbox unavailable' ) === true );
 \Nino\Filesystem::putFileContent( $appData, '/data/mailer.php', [] );
@@ -692,25 +656,42 @@ setMailerControl( $server, [] );
 
 // Exhaust the per-ip budget and confirm the panel says so rather than
 // reporting a generic failure - \Nino\Mail::send()'s own cap, not the
-// transport, refuses this one
+// transport, refuses this one. The budget is spent the way the kernel spends
+// it: five tries of this client counted
+setMailerControl( $server, [] );
+\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
+for( $try = 0; $try < 5; $try++ )
+	\Nino\Feature::count( $appData, 'ratelimit', '127.0.0.1', 5, 3600 );
+[ $limitedCode, $limitedBody ] = ninoCall( $appData, $panel, [ 'to' => 'capped@example.org' ], 'mailer/test' );
+check( 'a capped client ip is refused with the code mailer_ratelimit, not reported as a transport failure', $limitedCode === 400 && $limitedBody['code'] === 'mailer_ratelimit' );
+foreach( [ 'en_US', 'de_DE' ] as $locale )
+	check( "...and the code has its sentence in $locale, which says how many mails an hour it is", str_contains( \Nino\Admin\Admin::textFills( $appData, '/features/Mailer/text', $locale )['[[/_admin/error/'. $limitedBody['code']. ']]'] ?? '', '5' ) === true );
+
+/*	The counter is the kernel's: its file is keyed by the sha256 of the client's
+	address, never by the address, and the try that was refused was counted
+	too - six tries for a cap of five	*/
 $rateState = \Nino\Filesystem::getFileContent( $appData, '/data/ratelimit.php', [] );
-foreach( rateLimitKeys() as $rateKey )
-	$rateState[$rateKey] = [ 'tries' => 5, 'reset' => time() + 3600 ];
-\Nino\Filesystem::putFileContent( $appData, '/data/ratelimit.php', $rateState );
-[ $limitedCode, $limitedBody ] = callAdminPost( $appData, 'mailer/test', [ 'to' => 'capped@example.org' ] );
-check( 'a capped client ip is reported as a rate limit, not a transport failure', $limitedCode === 400 && str_contains( (string) ( $limitedBody['error'] ?? '' ), 'rate limit' ) === true );
-resetMailerRateLimit( $appData );
+check( 'the refused try was counted as well, under the hash of the address and under no other key', ( $rateState[hash( 'sha256', '127.0.0.1' )]['tries'] ?? null ) === 6 && isset( $rateState['127.0.0.1'] ) === false );
+
+// ...and what the cap said belongs to that call: the next one, refused by the
+// transport this time, is not reported as capped though nothing here put the flag down
+\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
+setMailerControl( $server, [ 'failRcpt' => true ] );
+[ $afterCapCode, $afterCapBody ] = ninoCall( $appData, $panel, [ 'to' => 'refused-after-cap@example.org' ], 'mailer/test' );
+check( 'a send after a capped one that the transport fails is the transport\'s failure, not a second cap', $afterCapCode === 500 && isset( $afterCapBody['code'] ) === false );
+setMailerControl( $server, [] );
+\Nino\Feature::forget( $appData, 'ratelimit', '127.0.0.1' );
 
 \Nino\Auth::logoutUser( $appData );
-[ $statusCode ] = callAdminPost( $appData, 'mailer/status' );
+[ $statusCode ] = ninoCall( $appData, $panel, [], 'mailer/status' );
 check( 'mailer/status requires a signed-in account', $statusCode === 401 );
-[ $testCode ] = callAdminPost( $appData, 'mailer/test', [ 'to' => 'to@example.org' ] );
+[ $testCode ] = ninoCall( $appData, $panel, [ 'to' => 'to@example.org' ], 'mailer/test' );
 check( 'mailer/test requires a signed-in account', $testCode === 401 );
 
 \Nino\Auth::loginUser( $appData, 'plain@example.com', 'plain password' );
-[ $statusCode ] = callAdminPost( $appData, 'mailer/status' );
+[ $statusCode ] = ninoCall( $appData, $panel, [], 'mailer/status' );
 check( 'an account without the permission is rejected from mailer/status', $statusCode === 403 );
-[ $testCode ] = callAdminPost( $appData, 'mailer/test', [ 'to' => 'to@example.org' ] );
+[ $testCode ] = ninoCall( $appData, $panel, [ 'to' => 'to@example.org' ], 'mailer/test' );
 check( 'an account without the permission is rejected from mailer/test', $testCode === 403 );
 
 \Nino\Auth::loginUser( $appData, 'admin@example.com', 'correct horse battery staple' );

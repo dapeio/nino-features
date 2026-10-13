@@ -2,8 +2,8 @@
 // Die Workbench-Texte des Forms-Features, die in seine Fills gemischt
 // werden, solange das Feature aktiv ist (siehe text() des Panels) - gleiche
 // Schlüssel und Form wie die eigene text/<locale>.php der Workbench. Ein %s
-// füllt das Skript, oder das Panel in einer Meldung, die es selbst
-// formuliert (siehe sein _say())
+// füllt das Skript (Nino.adminUi.format()) oder die Workbench im Satz eines
+// Codes
 return [
 	'[[/_admin/nav/forms]]'								=> 'Formulare',
 	'[[/_admin/forms/label/forms]]'				=> 'Formulare',
@@ -39,7 +39,7 @@ return [
 	'[[/_admin/forms/label/addfield]]'		=> 'Feld hinzufügen',
 	'[[/_admin/forms/label/removefield]]'	=> 'Entfernen',
 	'[[/_admin/forms/label/submissions-settings]]'	=> 'Anfragen',
-	'[[/_admin/forms/label/retention]]'		=> 'Aufbewahren (Monate)',
+	'[[/_admin/forms/label/retention]]'		=> 'Aufbewahren',
 	'[[/_admin/forms/label/store]]'				=> 'Einsendungen speichern',
 
 	'[[/_admin/forms/options/add]]'				=> 'Option hinzufügen',
@@ -62,8 +62,20 @@ return [
 
 	'[[/_admin/forms/confirm/delete]]'		=> 'Dieses Formular löschen? Seine Einsendungen bleiben, und das Panel Anfragen zeigt sie weiterhin.',
 
-	'[[/_admin/forms/error/fields]]'		=> 'Das Formular wurde nicht gespeichert. Ändere, was markiert ist, und speichere erneut.',
+	// Die Sätze der Codes, mit denen Admin eine Abweisung beantwortet
+	// (\Nino\Http::fail()). forms_fields und forms_duplicate tragen in ihren
+	// Params, wo es schiefging - in den Wörtern darunter
+	'[[/_admin/error/forms_fields]]'		=> 'Das Formular wurde nicht gespeichert. Ändere, was markiert ist, und speichere erneut.',
+	'[[/_admin/error/forms_invalid]]'		=> 'Das Formular braucht einen eigenen Schlüssel und mindestens ein Feld.',
+	'[[/_admin/error/forms_duplicate]]'		=> 'Ein anderes Formular hat diesen Schlüssel bereits.',
+	'[[/_admin/error/forms_key]]'			=> 'Kein Formular hat diesen Schlüssel.',
+	'[[/_admin/error/forms_last]]'			=> 'Das ist das letzte Formular. Ein Projekt ohne eines fällt auf das eingebaute Kontaktformular zurück; wer gar keines will, schaltet das Form-Modul unter /nino/modules ab.',
+	'[[/_admin/error/forms_retention]]'		=> 'Einsendungen werden zwischen 1 und 60 Monaten aufbewahrt.',
+
+	// Was an einem Feld oder einem Steuerelement eines abgewiesenen Formulars
+	// nicht stimmt: das Wort, das Admin nennt, darunter gesagt
 	'[[/_admin/forms/problem/key]]'			=> 'Der Schlüssel beginnt mit einem Buchstaben und hat nur Kleinbuchstaben, Ziffern und Bindestriche.',
+	'[[/_admin/forms/problem/keytaken]]'	=> 'Ein anderes Formular hat diesen Schlüssel bereits.',
 	'[[/_admin/forms/problem/field]]'		=> 'Dieses Feld lässt sich nicht lesen.',
 	'[[/_admin/forms/problem/name]]'		=> 'Der Name beginnt mit einem Buchstaben und hat nur Buchstaben, Ziffern, Bindestriche und Unterstriche, höchstens 64 Zeichen.',
 	'[[/_admin/forms/problem/reserved]]'	=> 'Das Formular behält diesen Namen für sich. Wähle einen anderen.',
@@ -75,10 +87,5 @@ return [
 	'[[/_admin/forms/problem/ownertpl]]'	=> 'Das ist nicht der Pfad eines Templates. Wähle eines aus der Liste.',
 	'[[/_admin/forms/problem/usertpl]]'		=> 'Das ist nicht der Pfad eines Templates. Wähle eines aus der Liste.',
 	'[[/_admin/forms/problem/missingtpl]]'	=> 'Ein solches Template gibt es in diesem Projekt nicht. Wähle ein anderes.',
-	'[[/_admin/forms/error/invalid]]'		=> 'Das Formular braucht einen eigenen Schlüssel und mindestens ein Feld.',
-	'[[/_admin/forms/error/duplicate]]'		=> 'Ein anderes Formular hat diesen Schlüssel bereits.',
-	'[[/_admin/forms/error/save]]'			=> 'Die Formulare konnten nicht geschrieben werden.',
-	'[[/_admin/forms/error/key]]'			=> 'Kein Formular hat diesen Schlüssel.',
-	'[[/_admin/forms/error/last]]'			=> 'Das ist das letzte Formular. Ein Projekt ohne eines fällt auf das eingebaute Kontaktformular zurück; wer gar keines will, schaltet das Form-Modul unter /nino/modules ab.',
-	'[[/_admin/forms/error/retention]]'		=> 'Einsendungen werden zwischen 1 und 60 Monaten aufbewahrt.',
+	'[[/_admin/forms/problem/form]]'		=> 'Das Formular lässt sich so nicht speichern.',
 ];
