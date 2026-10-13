@@ -124,6 +124,18 @@ function waitForMailerLog( array $server, float $timeoutSeconds = 2.0 ): ?array 
 }
 
 /**
+ *	The keys /data/ratelimit.php can know this client by: its address, as the kernel
+ *	keyed the file up to 1.7, and the sha256 of it, as \Nino\Feature::count() does from
+ *	the toolset on. This test runs against both, so a reset or a seed names both
+ *
+ *	@return 	array											[ address, hash of the address ]
+ */
+function rateLimitKeys(): array {
+
+	return [ '127.0.0.1', hash( 'sha256', '127.0.0.1' ) ];
+}
+
+/**
  *	A fresh budget for 127.0.0.1, whatever an earlier check spent - the same
  *	technique tests/form-mail-smoke.php uses for \Nino\Mail::send()'s own cap
  *
@@ -134,7 +146,8 @@ function waitForMailerLog( array $server, float $timeoutSeconds = 2.0 ): ?array 
 function resetMailerRateLimit( array &$appData ): void {
 
 	$state = \Nino\Filesystem::getFileContent( $appData, '/data/ratelimit.php', [] );
-	unset( $state['127.0.0.1'] );
+	foreach( rateLimitKeys() as $rateKey )
+		unset( $state[$rateKey] );
 	\Nino\Filesystem::putFileContent( $appData, '/data/ratelimit.php', $state );
 	unset( $appData['./nino/mail/ratelimited'] );
 }
@@ -681,7 +694,8 @@ setMailerControl( $server, [] );
 // reporting a generic failure - \Nino\Mail::send()'s own cap, not the
 // transport, refuses this one
 $rateState = \Nino\Filesystem::getFileContent( $appData, '/data/ratelimit.php', [] );
-$rateState['127.0.0.1'] = [ 'tries' => 5, 'reset' => time() + 3600 ];
+foreach( rateLimitKeys() as $rateKey )
+	$rateState[$rateKey] = [ 'tries' => 5, 'reset' => time() + 3600 ];
 \Nino\Filesystem::putFileContent( $appData, '/data/ratelimit.php', $rateState );
 [ $limitedCode, $limitedBody ] = callAdminPost( $appData, 'mailer/test', [ 'to' => 'capped@example.org' ] );
 check( 'a capped client ip is reported as a rate limit, not a transport failure', $limitedCode === 400 && str_contains( (string) ( $limitedBody['error'] ?? '' ), 'rate limit' ) === true );

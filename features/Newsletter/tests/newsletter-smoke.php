@@ -123,9 +123,22 @@ $sentLink = static function( string $kind ) use ( &$sentLinks ): string {
 	return $sentLinks === [] ? '' : $sentLinks[ array_key_last( $sentLinks ) ][$kind];
 };
 
+/**
+ *	The keys /data/ratelimit.php can know this client by: its address, as the kernel
+ *	keyed the file up to 1.7, and the sha256 of it, as \Nino\Feature::count() does from
+ *	the toolset on. This test runs against both, so a reset or a seed names both
+ *
+ *	@return 	array											[ address, hash of the address ]
+ */
+function rateLimitKeys(): array {
+
+	return [ '127.0.0.1', hash( 'sha256', '127.0.0.1' ) ];
+}
+
 $freshMailWindow = static function( array &$appData ): void {
 	$state = \Nino\Filesystem::getFileContent( $appData, '/data/ratelimit.php', [] );
-	unset( $state['127.0.0.1'] );
+	foreach( rateLimitKeys() as $rateKey )
+		unset( $state[$rateKey] );
 	\Nino\Filesystem::putFileContent( $appData, '/data/ratelimit.php', $state );
 	unset( $appData['./nino/mail/ratelimited'] );
 };
@@ -308,7 +321,8 @@ check( '...the pending entry is kept and the new one recorded, a re-submit re-se
 
 $resetList( $appData );
 $state = \Nino\Filesystem::getFileContent( $appData, '/data/ratelimit.php', [] );
-$state['127.0.0.1'] = [ 'tries' => 5, 'reset' => time() + 3600 ];
+foreach( rateLimitKeys() as $rateKey )
+	$state[$rateKey] = [ 'tries' => 5, 'reset' => time() + 3600 ];
 $capped = [];
 foreach( $addresses as $kind => $email ) {
 	\Nino\Filesystem::putFileContent( $appData, '/data/ratelimit.php', $state );
@@ -440,7 +454,10 @@ check( '...and the list is not touched by it', $readList( $appData ) === $listBe
 	check only keeps it from growing into something else, such as a send to an
 	empty recipient, which a kernel that records failed deliveries would count
 	as one	*/
-$triesOf = static fn( array &$appData ): int => (int) ( \Nino\Filesystem::getFileContent( $appData, '/data/ratelimit.php', [] )['127.0.0.1']['tries'] ?? 0 );
+$triesOf = static function( array &$appData ): int {
+	$state = \Nino\Filesystem::getFileContent( $appData, '/data/ratelimit.php', [] );
+	return (int) ( $state[ hash( 'sha256', '127.0.0.1' ) ]['tries'] ?? $state['127.0.0.1']['tries'] ?? 0 );
+};
 $triesBefore = $triesOf( $appData );
 $asked( $appData, [ 'email' => 'nobody@example.com' ] );
 check( 'an unknown address leaves the mail cap untouched', $triesOf( $appData ) === $triesBefore );
@@ -485,7 +502,8 @@ check( 'a transport that refuses the mail is still answered 200 - never a 500 th
 
 $freshMailWindow( $appData );
 $state = \Nino\Filesystem::getFileContent( $appData, '/data/ratelimit.php', [] );
-$state['127.0.0.1'] = [ 'tries' => 5, 'reset' => time() + 3600 ];
+foreach( rateLimitKeys() as $rateKey )
+	$state[$rateKey] = [ 'tries' => 5, 'reset' => time() + 3600 ];
 \Nino\Filesystem::putFileContent( $appData, '/data/ratelimit.php', $state );
 $mails = [];
 $cappedAsk = submitUnsubscribe( $appData, [ 'email' => 'member@example.com' ] );
