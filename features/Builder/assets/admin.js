@@ -111,8 +111,8 @@
 		// at the bottom. nino-grid-center puts them in the middle across, and is for a file
 		// written by hand: the form leaves it as it is and has no icon for it
 		ROW_ALIGN	: [ '', 'middle', 'bottom' ],
-		IMAGES		: [ '', 'cover', 'parallax' ],
-		IMAGE_POS	: [ '', 'top', 'center', 'bottom' ],
+		// Where the row of a cover or a parallax stands in it: in the middle, which is none, at the top, at the bottom
+		CONTENT_POS	: [ '', 'top', 'bottom' ],
 		TEXTS			: [ '', 'left', 'center', 'right' ],
 		SPACES		: [ '', '0', '1', '2', '3', '4', '5', '6' ],
 		// The effects of Nino.css, each of them in three strengths, which the model keeps with
@@ -709,7 +709,7 @@
 			return {
 				kind			: 'section',
 				id				: id,
-				settings	: { row : '', rowAlign : '', rowCustom : '', fullwidth : false, fullheight : false, color : '', border : '', borderPrimary : false, image : '', dim : false, imagePos : '', cover : null, mt : '', mb : '', pt : '', pb : '', text : '', vpa : model.animate === true ? '' : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '' },
+				settings	: { row : '', rowAlign : '', rowCustom : '', fullwidth : false, fullheight : false, color : '', border : '', borderPrimary : false, cover : null, parallax : false, dim : false, contentPos : '', mt : '', mb : '', pt : '', pb : '', text : '', vpa : model.animate === true ? '' : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '' },
 				background : null,
 				cols			: [ builder._newCol() ],
 			};
@@ -4386,11 +4386,12 @@
 
 		/**
 		 *	The form of a section, in four tabs: how it is laid out (the width of its row, whether
-		 *	it is full width and full height, where its columns and its text are put, the spacing),
-		 *	its background (the colour, the border - a strength, and a switch for the brand colour
-		 *	that waits for one -, the picture), its animation and the classes of its own. The name
-		 *	of the section is part of the title, where it is changed. Each field writes into the
-		 *	model at once
+		 *	it is full width and full height, whether it is a cover, how high that is and where its
+		 *	content stands in it, where its columns and its text are put, the spacing), its background
+		 *	(the colour, the border - a strength, and a switch for the brand colour that waits for
+		 *	one -, the picture, whether it is a parallax and whether it is dimmed), its animation and
+		 *	the classes of its own. The name of the section is part of the title, where it is changed.
+		 *	Each field writes into the model at once
 		 *
 		 *	@param		{Array}			path
 		 *
@@ -4415,6 +4416,49 @@
 							setting( { key : 'fullwidth', type : 'bool', label : '/_admin/builder/section/fullwidth', hint : '/_admin/builder/hint/fullwidth' } ),
 							setting( { key : 'fullheight', type : 'bool', label : '/_admin/builder/section/fullheight', hint : '/_admin/builder/hint/fullheight' } ),
 						] ) );
+
+						// A cover is a switch, its height in percent of the window's beside it, and where its content stands in it - which a parallax has to say as well
+						const height = builder._numberField( Nino.content.getText('/_admin/builder/section/cover-height'), '', section.settings.cover, 1, 100, function( percent ) {
+
+							// The cover is never lost by a field on its way to a number: an emptied one, or one out of bounds, leaves the height as it is
+							if( percent === null || percent < 1 || percent > 100 )
+								return;
+
+							section.settings.cover = percent;
+							builder._changed();
+						} );
+						const place = setting( { key : 'contentPos', type : 'select', label : '/_admin/builder/section/content-pos', hint : '/_admin/builder/hint/content-pos', group : 'content-pos', values : builder.CONTENT_POS } );
+
+						// Once the typing is over the field shows the height in force: 150 on its way to nothing stays in the model as 15, and the field says so
+						builder._one( height, 'input' ).addEventListener( 'change', function() {
+
+							const input = builder._one( height, 'input' );
+							const percent = parseInt( input.value, 10 );
+
+							if( isNaN( percent ) === true || percent < 1 || percent > 100 )
+								input.value = section.settings.cover === null ? '' : section.settings.cover;
+						} );
+
+						builder._one( height, 'input' ).disabled = section.settings.cover === null;
+						// Elsewhere the row stands in the flow of the page
+						builder._one( place, 'select' ).disabled = section.settings.cover === null && section.settings.parallax !== true;
+						pane.appendChild( builder._line( [
+							builder._switchField( Nino.content.getText('/_admin/builder/section/cover'), Nino.content.getText('/_admin/builder/hint/cover'), section.settings.cover !== null, function( on ) {
+
+								// A cover is 90 high to begin with, what Nino.ui.js makes of one that names no height. With the cover goes the scrim, unless a parallax is left to have it
+								section.settings.cover = on === true ? ( section.settings.cover ?? 90 ) : null;
+
+								if( on === false && section.settings.parallax !== true )
+									section.settings.dim = false;
+
+								builder._changed();
+								// The height and the place wake or sleep, and so does the scrim in the other tab
+								builder._refreshTab('layout');
+								builder._refreshTab('background');
+							} ),
+							height,
+							place,
+						] ) );
 						pane.appendChild( builder._line( [
 							setting( { key : 'rowAlign', type : 'segment', label : '/_admin/builder/section/row-align', items : builder._alignOptions( 'rowAlign', 'row-align', builder.ROW_ALIGN ) } ),
 							setting( { key : 'text', type : 'segment', label : '/_admin/builder/section/text', items : builder._alignOptions( 'text', 'text', builder.TEXTS ) } ),
@@ -4432,10 +4476,6 @@
 						pane.appendChild( builder._line( [
 							builder._setting( section.settings, { key : 'border', type : 'select', label : '/_admin/builder/section/border', group : 'border', values : builder.BORDERS }, waits ),
 							primary,
-						] ) );
-						pane.appendChild( builder._line( [
-							setting( { key : 'image', type : 'select', label : '/_admin/builder/section/image', hint : '/_admin/builder/hint/image', group : 'image', values : builder.IMAGES } ),
-							setting( { key : 'dim', type : 'bool', label : '/_admin/builder/section/dim' } ),
 						] ) );
 						pane.appendChild( builder._backgroundField( path ) );
 					} },
@@ -6053,10 +6093,11 @@
 
 		/**
 		 *	The picture behind a section or a column: its slot, the picture it has with the upload
-		 *	that stores one and the alt text in the language the editor works in, for a section where
-		 *	it stands and how high a cover is, its focus, and the way to take it away again. The slot
-		 *	is the source of the row, which is changed in the dialog of the sources. A column that
-		 *	loses its picture loses the dimming with it
+		 *	that stores one and the alt text in the language the editor works in, for a section
+		 *	whether the picture is a parallax and whether it is dimmed, its focus, and the way to take
+		 *	it away again. The slot is the source of the row, which is changed in the dialog of the
+		 *	sources. A column that loses its picture loses the dimming with it, a section the
+		 *	parallax and the dimming
 		 *
 		 *	@param		{Array}			path							A section, or a column
 		 *
@@ -6119,12 +6160,29 @@
 				redraw	: function() { builder._refreshTab('background') },
 			} ) );
 
-			// How a picture behind a section is placed and how high a cover is are the section's alone
-			if( column === false )
-				wrap.appendChild( builder._line( [
-					builder._setting( section.settings, { key : 'imagePos', type : 'select', label : '/_admin/builder/section/image-pos', group : 'image-pos', values : builder.IMAGE_POS } ),
-					builder._setting( section.settings, { key : 'cover', type : 'int', label : '/_admin/builder/section/cover', hint : '/_admin/builder/hint/cover', min : 0, max : 100 } ),
-				] ) );
+			// Whether the picture behind a section moves slower than the page and whether it is dimmed are the section's alone
+			if( column === false ) {
+
+				const parallax = builder._switchField( Nino.content.getText('/_admin/builder/section/parallax'), Nino.content.getText('/_admin/builder/hint/parallax'), section.settings.parallax === true, function( on ) {
+
+					section.settings.parallax = on;
+
+					// The scrim is a cover's or a parallax's, and there is nothing to darken in a section that is neither
+					if( on === false && section.settings.cover === null )
+						section.settings.dim = false;
+
+					builder._changed();
+					// The scrim wakes or sleeps, and so does the place of the content in the other tab
+					builder._refreshTab('background');
+					builder._refreshTab('layout');
+				} );
+				const dim = builder._setting( section.settings, { key : 'dim', type : 'bool', label : '/_admin/builder/section/dim', hint : '/_admin/builder/hint/dim' } );
+
+				// A switch that is on can be switched off whatever the picture: a parallax a template wrote without one, or that lost its picture, must not be stuck
+				builder._one( parallax, 'input' ).disabled = has === false && section.settings.parallax !== true;
+				builder._one( dim, 'input' ).disabled = ( has === false || ( section.settings.cover === null && section.settings.parallax !== true ) ) && section.settings.dim !== true;
+				wrap.appendChild( builder._line( [ parallax, dim ] ) );
+			}
 
 			wrap.appendChild( builder._focusField( has === true ? holder.background.focus : null, has, function( focus ) {
 				holder.background.focus = focus;
@@ -6137,12 +6195,20 @@
 
 				holder.background = null;
 
-				// There is nothing left to darken
+				// There is nothing left to darken, and no picture to move slower than the page
 				if( column === true )
 					holder.dim = false;
+				else {
+					section.settings.parallax = false;
+					section.settings.dim = false;
+				}
 
 				builder._changed();
 				builder._refreshTab('background');
+
+				// A section that was a parallax is none now: the place of its content is the Layout tab's
+				if( column === false )
+					builder._refreshTab('layout');
 			} );
 			wrap.appendChild( remove );
 

@@ -58,6 +58,9 @@
  *												Nino.css, the picture behind it and the slot an upload makes for
  *												it, the dimming that goes with the picture), the border of a
  *												section as a strength and a switch that waits for one, the
+ *												cover of a section - a switch, its height and the place of its
+ *												content - and the parallax and the dimming of its picture, which
+ *												wait for the picture and for a cover or a parallax, the
  *												frame of a column in the ground it paints - dark where its
  *												picture is dimmed -, the alignment of a column in one line and
  *												as an icon in its head, the picker that
@@ -1286,7 +1289,7 @@ check( '...they stand in the order of the registry and in none of the script\'s 
 
 	return kernel === 'Title (Section),Subtitle (Section),Text,Card,Button,Image,HTML,Spacer' && featured === kernel+ ',Zulu,Alpha' && other === 'Spacer,HTML,Image,Button,Card,Text,Subtitle (Section),Title (Section)';
 } )() );
-check( '...a component that says where it belongs (its "in") is offered there and nowhere else - the hero is the first section, whether or not it has a picture, a section is any other column, the cell of a loop included -, one that says nothing is offered everywhere, and one a loop does not take is offered in no column that runs one: the script names no component', ( function() {
+check( '...a component that says where it belongs (its "in") is offered there and nowhere else - the hero is the first section, whether or not it is a cover, a section is any other column, the cell of a loop included -, one that says nothing is offered everywhere, and one a loop does not take is offered in no column that runs one: the script names no component', ( function() {
 
 	const menu = screen.getElementById('builder-menu');
 	const components = builder._registry.components;
@@ -1304,9 +1307,9 @@ check( '...a component that says where it belongs (its "in") is offered there an
 
 	const found = [ offered( [ 0, 0 ] ), offered( [ 1, 0 ] ), offered( [ 1, 1 ] ), offered( [ 3, 0 ] ) ].join(' | ');
 
-	// The first section has no picture: it is the hero all the same; the second has one, and is no hero for that
-	blocks[0].settings.image = '';
-	blocks[1].settings.image = 'cover';
+	// The first section is no cover: it is the hero all the same; the second is one, and is no hero for that
+	blocks[0].settings.cover = null;
+	blocks[1].settings.cover = 90;
 
 	return found === 'Stub hero,Stub any,Stub alone | Stub two,Stub any,Stub alone | Stub two,Stub any | Stub two,Stub any,Stub alone'
 		&& offered( [ 0, 0 ] ) === 'Stub hero,Stub any,Stub alone' && offered( [ 1, 0 ] ) === 'Stub two,Stub any,Stub alone' && offered( [ 1, 1 ] ) === 'Stub two,Stub any';
@@ -1665,13 +1668,13 @@ check( '...and a tab pressed shows its pane and no other, and is the one stop of
 buttonOf( stripOf(), 'Layout' ).click();
 
 const layout = paneOf('layout');
-check( 'Layout: the width of the row, the two switches, the two alignments as icons, the spacing as a table', JSON.stringify( labelList( layout ) ) === JSON.stringify( [ 'Row width', 'Full width', 'Full height', 'Vertical alignment', 'Horizontal alignment', 'Above, Margin', 'Above, Padding', 'Below, Margin', 'Below, Padding' ] )
-	&& JSON.stringify( controlsIn( layout ).map( function( control ) { return control.kind } ) ) === JSON.stringify( [ 'select', 'switch', 'switch', 'group', 'group', 'select', 'select', 'select', 'select' ] ) );
+check( 'Layout: the width of the row, the two switches, the cover with its height and the place of its content, the two alignments as icons, the spacing as a table', JSON.stringify( labelList( layout ) ) === JSON.stringify( [ 'Row width', 'Full width', 'Full height', 'Cover', 'Height in percent of the window', 'Position of the content', 'Vertical alignment', 'Horizontal alignment', 'Above, Margin', 'Above, Padding', 'Below, Margin', 'Below, Padding' ] )
+	&& JSON.stringify( controlsIn( layout ).map( function( control ) { return control.kind } ) ) === JSON.stringify( [ 'select', 'switch', 'switch', 'switch', 'number', 'select', 'group', 'group', 'select', 'select', 'select', 'select' ] ) );
 check( '...the width of the row is a select of the three it knows', controlOf( layout, 'Row width' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Normal,narrow=Narrow,wide=Wide' && valueAt( layout, 'Row width' ) === 'wide' );
 check( '...full width and full height are two switches in one line, both on at once if you like', layout.querySelectorAll('.builder-line')[0].children.length === 2 && layout.querySelectorAll('.builder-line')[0].querySelectorAll('.nino-admin-switch').length === 2
 	&& valueAt( layout, 'Full width' ) === true && valueAt( layout, 'Full height' ) === false && ( change( layout, 'Full height', true ), settingsOf().fullheight === true && settingsOf().fullwidth === true && valueAt( layout, 'Full width' ) === true )
 	&& ( change( layout, 'Full width', false ), settingsOf().fullwidth === false && settingsOf().fullheight === true ) );
-check( '...the alignments are two lines of icons in one line: radio buttons, each with its word as its title and its label - the vertical one Top, Middle and Bottom, the horizontal one Inherited as a word and Left, Centre and Right', layout.querySelectorAll('.builder-line')[1].children.length === 2 && ( function() {
+check( '...the alignments are two lines of icons in one line: radio buttons, each with its word as its title and its label - the vertical one Top, Middle and Bottom, the horizontal one Inherited as a word and Left, Centre and Right', layout.querySelectorAll('.builder-line')[2].children.length === 2 && ( function() {
 	const vertical = controlOf( layout, 'Vertical alignment' ).el;
 	const horizontal = controlOf( layout, 'Horizontal alignment' ).el;
 	const options = function( group ) { return group.querySelectorAll('.builder-segment-option').map( function( option ) { return [ option.querySelector('input').value, option.title, option.querySelector('input').getAttribute('aria-label'), iconOf( option ) ].join(':') } ).join() };
@@ -1699,9 +1702,21 @@ check( '...and each cell writes its own setting: above the margin and the paddin
 	return [ settingsOf().mt, settingsOf().pt, settingsOf().mb, settingsOf().pb ].join() === '3,1,5,2' && valueAt( layout, 'Below, Margin' ) === '5' && changes === 9;
 } )() );
 
+const heightLabel = 'Height in percent of the window';
+check( 'the cover is one line of three fields: a switch, its height in percent of the window\'s beside it, and the place of its content - the hero opens with the cover on, 100 in the number, and its content in the middle', layout.querySelectorAll('.builder-line')[1].children.length === 3
+	&& controlOf( layout, 'Cover' ).kind === 'switch' && controlOf( layout, heightLabel ).kind === 'number' && controlOf( layout, 'Position of the content' ).kind === 'select'
+	&& valueAt( layout, 'Cover' ) === true && String( valueAt( layout, heightLabel ) ) === '100' && controlOf( layout, heightLabel ).el.disabled === false && valueAt( layout, 'Position of the content' ) === '' && controlOf( layout, 'Position of the content' ).el.disabled === false );
+check( '...the place of the content is the middle, the top or the bottom, with the words of the panel - and the switch and the place say what they are for under their names, the number does not', controlOf( layout, 'Position of the content' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Middle,top=Top,bottom=Bottom'
+	&& controlOf( layout, 'Cover' ).el.closest('label').querySelector('small').textContent === words['/_admin/builder/hint/cover'] && controlOf( layout, 'Position of the content' ).el.closest('label').querySelector('.nino-admin-hint').textContent === words['/_admin/builder/hint/content-pos']
+	&& controlOf( layout, heightLabel ).el.closest('label').querySelector('small') === null );
+
 const ground = paneOf('background');
-check( 'Background: the colour, the border with the switch for the brand colour beside it, the picture with its dimming, where the picture is - and under it the upload of a picture and its alt text -, its position and the height of the cover, the focus - and the lines hold two fields each', JSON.stringify( labelList( ground ) ) === JSON.stringify( [ 'Colour', 'Border', 'In the brand colour', 'Picture', 'Dim the picture', 'Upload a picture', 'Alternative text (English (US))', 'Position of the picture', 'Height of the cover', 'No focus', 'Focus' ] )
-	&& ground.querySelectorAll('.builder-line').map( function( line ) { return line.children.length } ).join() === '2,2,2' && controlOf( ground, 'Picture' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=None,cover=Cover,parallax=Parallax' );
+check( 'Background: the colour, the border with the switch for the brand colour beside it, the picture - and under it, where the picture is, the upload of a picture and its alt text -, whether it is a parallax and whether it is dimmed, the focus - and the lines hold two fields each', JSON.stringify( labelList( ground ) ) === JSON.stringify( [ 'Colour', 'Border', 'In the brand colour', 'Upload a picture', 'Alternative text (English (US))', 'Parallax', 'Dim the picture', 'No focus', 'Focus' ] )
+	&& ground.querySelectorAll('.builder-line').map( function( line ) { return line.children.length } ).join() === '2,2' );
+check( '...the parallax and the dimming are two switches on one line, in reach where there is a picture and, for the dimming, a cover or a parallax: the hero has the dimming on and the parallax off, and each says what it is for under its name', controlOf( ground, 'Parallax' ).kind === 'switch' && controlOf( ground, 'Dim the picture' ).kind === 'switch'
+	&& controlOf( ground, 'Parallax' ).el.closest('.builder-line') === controlOf( ground, 'Dim the picture' ).el.closest('.builder-line') && valueAt( ground, 'Parallax' ) === false && valueAt( ground, 'Dim the picture' ) === true
+	&& controlOf( ground, 'Parallax' ).el.disabled === false && controlOf( ground, 'Dim the picture' ).el.disabled === false
+	&& controlOf( ground, 'Parallax' ).el.closest('label').querySelector('small').textContent === words['/_admin/builder/hint/parallax'] && controlOf( ground, 'Dim the picture' ).el.closest('label').querySelector('small').textContent === words['/_admin/builder/hint/dim'] );
 check( '...the colour is a select with a patch beside it that follows the choice - and the patch is a patch of the page, not of the picture', ( function() {
 	const swatch = ground.querySelector('.builder-swatch');
 	const first = swatch.dataset.color;
@@ -1711,9 +1726,8 @@ check( '...the colour is a select with a patch beside it that follows the choice
 	return first === 'black' && second === 'dark' && swatch.dataset.color === 'plain' && swatch.getAttribute('aria-hidden') === 'true' && swatch.parentNode.contains( controlOf( ground, 'Colour' ).el ) && settingsOf().color === ''
 		&& controlOf( ground, 'Colour' ).el.children.map( function( option ) { return option.value } ).join() === ',alt,tint,dark,black,primary,brand-alt' && swatch.style.getPropertyValue('--builder-swatch') === '';
 } )() );
-check( '...the colours, the border and the places of the picture have words of their own, not the names of the classes of Nino.css - and the empty value of the border and of the position has its word, not the lower case none of the label', controlOf( ground, 'Colour' ).el.children.map( function( option ) { return option.textContent } ).join() === 'Default,Alternate,Tinted,Dark,Black,Brand colour,Second colour'
-	&& controlOf( ground, 'Border' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=None,1=Thin,2=Medium,3=Strong'
-	&& controlOf( ground, 'Position of the picture' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Default,top=Top,center=Centre,bottom=Bottom' );
+check( '...the colours and the border have words of their own, not the names of the classes of Nino.css - and the empty value of the border has its word, not the lower case none of the label', controlOf( ground, 'Colour' ).el.children.map( function( option ) { return option.textContent } ).join() === 'Default,Alternate,Tinted,Dark,Black,Brand colour,Second colour'
+	&& controlOf( ground, 'Border' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=None,1=Thin,2=Medium,3=Strong' );
 check( '...the border is a strength and, beside it on the line, a switch for the brand colour: the select writes the strength, the switch the colour - two settings of the section, and neither takes the other along; a switch alone is a border of the brand colour with no strength', ( function() {
 
 	const state = function() { return settingsOf().border+ '/'+ settingsOf().borderPrimary };
@@ -1814,23 +1828,82 @@ check( '...no focus is null, and the grid is greyed and takes no choice while th
 	&& change( paneOf('background'), 'Focus', '3' ) === false && builder._doc.model.blocks[0].background.focus === null );
 change( paneOf('background'), 'No focus', false );
 check( '...and a focus again starts in the middle', builder._doc.model.blocks[0].background.focus === 5 && valueAt( paneOf('background'), 'Focus' ) === '5' && focusGrid().classList.contains('is-disabled') === false );
+change( paneOf('background'), 'Parallax', true );
 buttonOf( paneOf('background'), 'Remove the picture' ).click();
 check( 'the picture is taken away with its button: no background, the row says none, the focus and the button are off', builder._doc.model.blocks[0].background === null && paneOf('background').querySelector('.builder-source-current').textContent === 'none' && focusGrid().classList.contains('is-disabled')
 	&& controlOf( paneOf('background'), 'No focus' ).el.disabled === true && buttonOf( paneOf('background'), 'Remove the picture' ).disabled === true && preview().children[0].querySelector('.is-background') === null );
+check( '...a section that loses its picture loses the parallax and the dimming with it, and both are off and out of reach again', settingsOf().parallax === false && settingsOf().dim === false && valueAt( paneOf('background'), 'Parallax' ) === false && valueAt( paneOf('background'), 'Dim the picture' ) === false
+	&& controlOf( paneOf('background'), 'Parallax' ).el.disabled === true && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === true && settingsOf().cover === 100 );
 builder._openSettings( [ 1 ] );
-check( '...so is a section that has none to begin with', controlOf( paneOf('background'), 'No focus' ).el.disabled === true && radiosOf( focusGrid() ).every( function( radio ) { return radio.disabled === true } ) && buttonOf( paneOf('background'), 'Remove the picture' ).disabled === true );
-change( paneOf('background'), 'Picture', 'parallax' );
+const sectionOne = function() { return builder._doc.model.blocks[1].settings };
+check( '...so is a section that has none to begin with, and so are its parallax and its dimming', controlOf( paneOf('background'), 'No focus' ).el.disabled === true && radiosOf( focusGrid() ).every( function( radio ) { return radio.disabled === true } ) && buttonOf( paneOf('background'), 'Remove the picture' ).disabled === true
+	&& controlOf( paneOf('background'), 'Parallax' ).el.disabled === true && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === true );
+check( 'a section that is no cover has the switch off, a number that is empty and takes no input, and the place of its content out of reach - a parallax has the place as a cover has, and a section that is neither stands in the flow of the page', valueAt( paneOf('layout'), 'Cover' ) === false && valueAt( paneOf('layout'), heightLabel ) === ''
+	&& controlOf( paneOf('layout'), heightLabel ).el.disabled === true && controlOf( paneOf('layout'), 'Position of the content' ).el.disabled === true && sectionOne().cover === null && sectionOne().parallax === false );
+change( paneOf('layout'), 'Cover', true );
+check( '...the cover switched on is 90 high, what Nino.ui.js makes of a cover that names no height: the model has it, the number shows it and takes input, and the place of the content wakes', sectionOne().cover === 90 && valueAt( paneOf('layout'), 'Cover' ) === true
+	&& String( valueAt( paneOf('layout'), heightLabel ) ) === '90' && controlOf( paneOf('layout'), heightLabel ).el.disabled === false && controlOf( paneOf('layout'), 'Position of the content' ).el.disabled === false );
+change( paneOf('layout'), heightLabel, 60 );
+check( '...a height typed is written', sectionOne().cover === 60 && valueAt( paneOf('layout'), 'Cover' ) === true );
+check( '...and a field on its way to a number does not take the cover away: one emptied, or one out of bounds, leaves the height as it is - and once the typing is over the field says the height in force', [ '', 0, 101, -5 ].every( function( typed ) { change( paneOf('layout'), heightLabel, typed ); return sectionOne().cover === 60 } ) && String( valueAt( paneOf('layout'), heightLabel ) ) === '60' );
+change( paneOf('layout'), 'Position of the content', 'bottom' );
+change( paneOf('layout'), heightLabel, 150 );
+check( '...and once the typing is over a value out of bounds goes back to the height in force: 150 typed, 60 read', String( valueAt( paneOf('layout'), heightLabel ) ) === '60' && sectionOne().cover === 60 );
+const bottom = sectionOne().contentPos;
+change( paneOf('layout'), 'Position of the content', 'top' );
+const top = sectionOne().contentPos;
+change( paneOf('layout'), 'Position of the content', '' );
+check( '...the place of the content is written as its word, the top or the bottom, and the middle as none', bottom === 'bottom' && top === 'top' && sectionOne().contentPos === '' && valueAt( paneOf('layout'), 'Position of the content' ) === '' );
+sectionOne().dim = true;
+change( paneOf('layout'), 'Cover', false );
+check( 'the cover switched off is none in the model, the number is empty and out of reach, the place of the content sleeps again - and the scrim goes with the cover, as there is nothing left to dim', sectionOne().cover === null && valueAt( paneOf('layout'), 'Cover' ) === false
+	&& valueAt( paneOf('layout'), heightLabel ) === '' && controlOf( paneOf('layout'), heightLabel ).el.disabled === true && controlOf( paneOf('layout'), 'Position of the content' ).el.disabled === true && sectionOne().dim === false );
+sectionOne().parallax = true;
+sectionOne().dim = true;
+builder._refreshTab('background');
+check( 'a parallax a template wrote without a picture, or that lost it, is not stuck: a switch that is on is in reach, and switched off it takes the scrim with it and both sleep', controlOf( paneOf('background'), 'Parallax' ).el.disabled === false && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === false
+	&& change( paneOf('background'), 'Parallax', false ) === true && sectionOne().parallax === false && sectionOne().dim === false
+	&& controlOf( paneOf('background'), 'Parallax' ).el.disabled === true && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === true );
+builder._doc.model.blocks[1].background = { slot : '/template/page-home/services/background', focus : 5 };
+builder._refreshTab('background');
+check( 'with a picture the parallax is in reach, and the dimming is not while the section is neither a cover nor a parallax - there is no scrim in Nino.css for it', controlOf( paneOf('background'), 'Parallax' ).el.disabled === false && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === true );
+change( paneOf('background'), 'Parallax', true );
+check( '...a parallax wakes the dimming in its own tab and the place of the content in the Layout tab, where the cover stays off', sectionOne().parallax === true && sectionOne().cover === null && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === false
+	&& controlOf( paneOf('layout'), 'Position of the content' ).el.disabled === false && valueAt( paneOf('layout'), 'Cover' ) === false );
 change( paneOf('background'), 'Dim the picture', true );
-change( paneOf('background'), 'Position of the picture', 'bottom' );
-change( paneOf('background'), 'Height of the cover', 60 );
+change( paneOf('background'), 'Parallax', false );
+check( '...and switched off in a section that is no cover it takes the scrim with it: both sleep again, here and in the Layout tab', sectionOne().parallax === false && sectionOne().dim === false && valueAt( paneOf('background'), 'Dim the picture' ) === false
+	&& controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === true && controlOf( paneOf('layout'), 'Position of the content' ).el.disabled === true );
+change( paneOf('layout'), 'Cover', true );
+check( '...a cover wakes the dimming in the Background tab as well', sectionOne().cover === 90 && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === false );
+change( paneOf('background'), 'Dim the picture', true );
+change( paneOf('background'), 'Parallax', true );
+change( paneOf('background'), 'Parallax', false );
+check( '...the parallax switched off in a cover keeps the scrim, which is the cover\'s', sectionOne().cover === 90 && sectionOne().parallax === false && sectionOne().dim === true && valueAt( paneOf('background'), 'Dim the picture' ) === true );
+change( paneOf('background'), 'Parallax', true );
+change( paneOf('layout'), 'Cover', false );
+check( '...and so is the cover switched off in a parallax: the scrim stays, and so does the place of the content', sectionOne().cover === null && sectionOne().parallax === true && sectionOne().dim === true
+	&& controlOf( paneOf('layout'), 'Position of the content' ).el.disabled === false && valueAt( paneOf('background'), 'Dim the picture' ) === true );
+change( paneOf('layout'), 'Cover', true );
+change( paneOf('layout'), heightLabel, 60 );
+change( paneOf('layout'), 'Position of the content', 'bottom' );
 change( paneOf('background'), 'Border', '3' );
 change( paneOf('background'), 'In the brand colour', true );
-check( '...the other fields of the picture write their settings', ( function() {
-	const settings = builder._doc.model.blocks[1].settings;
-	return settings.image === 'parallax' && settings.dim === true && settings.imagePos === 'bottom' && settings.cover === 60 && settings.border === '3' && settings.borderPrimary === true;
+check( '...the other fields of the picture and of the cover write their settings: the parallax and the dimming in the Background tab, the cover, its height and the place of the content in the Layout tab', ( function() {
+	const settings = sectionOne();
+	return settings.parallax === true && settings.dim === true && settings.contentPos === 'bottom' && settings.cover === 60 && settings.border === '3' && settings.borderPrimary === true;
 } )() );
-change( paneOf('background'), 'Height of the cover', '' );
-check( '...and an emptied height is none', builder._doc.model.blocks[1].settings.cover === null );
+buttonOf( paneOf('background'), 'Remove the picture' ).click();
+check( '...and the picture taken away takes the parallax and the dimming with it, and nothing of the cover: its height and the place of its content stay', sectionOne().parallax === false && sectionOne().dim === false && sectionOne().cover === 60 && sectionOne().contentPos === 'bottom'
+	&& controlOf( paneOf('background'), 'Parallax' ).el.disabled === true && controlOf( paneOf('layout'), heightLabel ).el.disabled === false );
+change( paneOf('layout'), 'Cover', false );
+builder._doc.model.blocks[1].background = { slot : '/template/page-home/services/background', focus : 5 };
+builder._refreshTab('background');
+change( paneOf('background'), 'Parallax', true );
+const reach = controlOf( paneOf('layout'), 'Position of the content' ).el.disabled === false;
+buttonOf( paneOf('background'), 'Remove the picture' ).click();
+check( '...and from a parallax that is no cover the picture taken away takes the reach of the place of the content with it, in the Layout tab: the parallax was all that gave it', reach === true && sectionOne().parallax === false && sectionOne().cover === null
+	&& controlOf( paneOf('layout'), 'Position of the content' ).el.disabled === true );
 
 doc = open();
 builder._openSettings( [ 0 ] );
@@ -1977,7 +2050,7 @@ builder._openSettings( [ 1, 0 ] );
 buttonOf( stripOf(), 'Background' ).click();
 const colGround = function() { return paneOf('background') };
 const groundOf = function() { return builder._doc.model.blocks[1].cols[0] };
-check( 'Background of a column: the colour first, with the patch beside it, then the rows of the picture - the upload and its alt text, the focus - and the dimming at the end; where the picture is and how high a cover is are the section\'s, and are not here', JSON.stringify( labelList( colGround() ) ) === JSON.stringify( [ 'Colour', 'Upload a picture', 'Alternative text (English (US))', 'No focus', 'Focus', 'Dim the picture' ] )
+check( 'Background of a column: the colour first, with the patch beside it, then the rows of the picture - the upload and its alt text, the focus - and the dimming at the end; whether the picture is a parallax is the section\'s alone, and is not here', JSON.stringify( labelList( colGround() ) ) === JSON.stringify( [ 'Colour', 'Upload a picture', 'Alternative text (English (US))', 'No focus', 'Focus', 'Dim the picture' ] )
 	&& colGround().children[0].className === 'builder-with-swatch' && colGround().children[0].contains( controlOf( colGround(), 'Colour' ).el ) && colGround().children[0].querySelector('.builder-swatch') !== null && shownTab( stripOf(), 'builder' ) === 'background' );
 check( '...the colour is none of its own - which is the surroundings the column is in -, counter, and the colours of a section, in the words the section has for them', controlOf( colGround(), 'Colour' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join()
 	=== '=Like the surroundings,counter=Counter,alt=Alternate,tint=Tinted,dark=Dark,black=Black,primary=Brand colour,brand-alt=Second colour' && valueAt( colGround(), 'Colour' ) === '' );
@@ -3575,9 +3648,9 @@ builder._renderEditor();
 builder._openSettings( [ 1, 0 ] );
 buttonOf( stripOf(), 'Background' ).click();
 const columnAt = function( at ) { return builder._doc.model.blocks[1].cols[at] };
-check( 'the picture behind a column has what the one behind a section has under its source: the upload and the alt text - which has no slot to wait in while there is no picture, and says that a picture comes first - and neither the place of the picture nor the height of a cover, which are the section\'s', fileField( paneOf('background') ) !== null && thumbOf( paneOf('background') ).hidden === true
+check( 'the picture behind a column has what the one behind a section has under its source: the upload and the alt text - which has no slot to wait in while there is no picture, and says that a picture comes first - and not whether the picture is a parallax, which is the section\'s alone', fileField( paneOf('background') ) !== null && thumbOf( paneOf('background') ).hidden === true
 	&& controlOf( paneOf('background'), altLabel ).el.disabled === true && controlOf( paneOf('background'), altLabel ).el.closest('label').querySelector('.nino-admin-hint').textContent === 'Upload a picture first, or choose a slot with the Source button.'
-	&& paneOf('background').querySelector('.builder-source-current').textContent === 'none' && labelList( paneOf('background') ).indexOf('Position of the picture') === -1 && labelList( paneOf('background') ).indexOf('Height of the cover') === -1 );
+	&& paneOf('background').querySelector('.builder-source-current').textContent === 'none' && labelList( paneOf('background') ).indexOf('Parallax') === -1 );
 requests = [];
 changes = 0;
 choose( paneOf('background'), house );
@@ -3959,12 +4032,12 @@ check( '...and so does the picture an attribute names: in a loop an image field 
 } )() );
 
 doc = openCard();
-check( 'where a component would stand: inside a container the place it holds, in a column the hero where the column is in the first section - with a picture behind it or without - and a section otherwise - the cell of a loop is a column\'s place, since it holds none of its own', ( function() {
+check( 'where a component would stand: inside a container the place it holds, in a column the hero where the column is in the first section - a cover or none - and a section otherwise - the cell of a loop is a column\'s place, since it holds none of its own', ( function() {
 
 	const model = builder._doc.model;
 	const before = [ builder._where( model, [ 0, 1 ] ), builder._where( model, cardAt ), builder._where( model, [ 1, 0 ] ), builder._where( model, [ 1, 0, 0 ] ) ].join();
 
-	model.blocks[0].settings.image = 'cover';
+	model.blocks[0].settings.cover = 90;
 
 	const own = registry();
 
@@ -4047,11 +4120,11 @@ const inSection = 'Title (Section),Subtitle (Section),Text,Card,Button,Image,HTM
 const inHero = 'Title (Hero),Subtitle (Hero),Text,Card,Button,Image,HTML,Spacer';
 
 check( 'the picker offers the card where the card says it belongs - a column of a section, and the bare cell of a loop, which holds no place of its own - and what a column is offered besides', menuOf( [ 1, 0 ] ) === inSection );
-check( '...in the first section it is offered as well, with a picture behind it and without: the hero is a place the card belongs in, and the picture does not make it one', ( function() {
+check( '...in the first section it is offered as well, whether it is a cover or none: the hero is a place the card belongs in, and a cover does not make it one', ( function() {
 	const without = [ menuOf( [ 0, 0 ] ), menuOf( [ 0, 1 ] ) ];
-	builder._doc.model.blocks[0].settings.image = 'cover';
+	builder._doc.model.blocks[0].settings.cover = 90;
 	const offered = menuOf( [ 0, 0 ] );
-	builder._doc.model.blocks[0].settings.image = '';
+	builder._doc.model.blocks[0].settings.cover = null;
 	return without.join() === [ inHero, inHero ].join() && offered === inHero;
 } )() );
 check( '...inside a card it offers what belongs to the place the card holds - the title and the subtitle of a card - and not the card itself, and not the title of a section nor the title of a hero, whose places are others', menuOf( cardAt ) === inCard && menuOf( [ 1, 0, 0 ] ) === inCard

@@ -17,10 +17,11 @@ declare(strict_types=1);
  *											sections that each fail one rule - the picture behind a column
  *											among them -, then on the ground of a column, its dimming and
  *											the picture behind it, the border of a section as a strength and
- *											a brand colour, the spacing of a column and the card - a component
- *											that holds components: its children, its attributes, the three
- *											reasons that make a section a block of html and the slots a save
- *											makes for its picture - then
+ *											a brand colour, the cover, the parallax and the place of the
+ *											content of a section, the spacing of a column and the card - a
+ *											component that holds components: its children, its attributes,
+ *											the three reasons that make a section a block of html and the
+ *											slots a save makes for its picture - then
  *											the Document - listing, loading, saving with a hash, the keys
  *											and the slots a save makes, the texts it writes to the keys
  *											(new ones and ones that are there, in the language asked for)
@@ -154,8 +155,8 @@ check( 'four blocks in the order of the file: a section, a section, a block of h
 	&& [ $model['blocks'][0]['id'], $model['blocks'][1]['id'], $model['blocks'][3]['id'] ] === [ 'hero', 'services', 'contact' ] );
 
 $hero = $model['blocks'][0];
-check( 'the hero: its classes are settings', $hero['settings']['fullwidth'] === true && $hero['settings']['fullheight'] === false && $hero['settings']['color'] === 'black' && $hero['settings']['image'] === 'cover'
-	&& $hero['settings']['dim'] === true && $hero['settings']['cover'] === 100 && $hero['settings']['vpa'] === '' && $hero['settings']['row'] === 'wide' && $hero['settings']['rowAlign'] === 'middle'
+check( 'the hero: its classes are settings', $hero['settings']['fullwidth'] === true && $hero['settings']['fullheight'] === false && $hero['settings']['color'] === 'black' && $hero['settings']['cover'] === 100
+	&& $hero['settings']['parallax'] === false && $hero['settings']['dim'] === true && $hero['settings']['contentPos'] === '' && $hero['settings']['vpa'] === '' && $hero['settings']['row'] === 'wide' && $hero['settings']['rowAlign'] === 'middle'
 	&& $hero['settings']['custom'] === '' );
 check( '...its background is a slot with a focus', $hero['background'] === [ 'slot' => '/template/page-home/hero/background', 'focus' => 5 ] );
 check( '...its column is 100, 100 and 66 wide, aligned left, and holds three components', $hero['cols'][0]['width'] === [ 's' => 100, 'm' => 100, 'l' => 66 ] && $hero['cols'][0]['text'] === 'left'
@@ -400,6 +401,8 @@ $failures = [
 	'attributes that are not name="value"'	=> [ "<section id=a class=\"nino-section\">\n\t". $row. "\n</section>", 'attribute-syntax' ],
 	'a class with characters it cannot keep' => [ $section( '[title /template/page-x/a/title]', 'a', 'nino-section a&b' ), 'class-token', null, 'a&b' ],
 	'a cover height that is no number'		=> [ "<section id=\"a\" class=\"nino-section nino-cover\" data-cover-height=\"tall\">\n\t". $row. "\n</section>", 'attribute-value', null, 'data-cover-height' ],
+	'a cover height on a section that is no cover' => [ "<section id=\"a\" class=\"nino-section\" data-cover-height=\"50\">\n\t". $row. "\n</section>", 'section-attribute', null, 'data-cover-height' ],
+	'a cover height on a parallax that is no cover' => [ "<section id=\"a\" class=\"nino-section nino-parallex\" data-cover-height=\"50\">\n\t". $row. "\n</section>", 'section-attribute', null, 'data-cover-height' ],
 	'a background of two pictures'				=> [ "<section id=\"a\" class=\"nino-section\">\n\t<div class=\"nino-section-bg\">[image /template/page-x/a/one alt=\"\"][image /template/page-x/a/two alt=\"\"]</div>\n\t". $row. "\n</section>", 'background-image' ],
 	'a background that has a class of its own' => [ "<section id=\"a\" class=\"nino-section\">\n\t<div class=\"nino-section-bg my-bg\">[image /template/page-x/a/one alt=\"\"]</div>\n\t". $row. "\n</section>", 'background-class', null, 'my-bg' ],
 	// The picture behind a column: the first thing in it, once, and in the shape of the one behind a section
@@ -577,7 +580,7 @@ check( '...and what is written reads back as what was meant', ( static function(
 
 $styled = $blank;
 $styled['settings'] = [
-	'row' => 'narrow', 'rowAlign' => 'bottom', 'fullwidth' => true, 'fullheight' => true, 'color' => 'tint', 'border' => '2', 'borderPrimary' => true, 'image' => 'parallax', 'dim' => true,
+	'row' => 'narrow', 'rowAlign' => 'bottom', 'fullwidth' => true, 'fullheight' => true, 'color' => 'tint', 'border' => '2', 'borderPrimary' => true, 'cover' => 60, 'parallax' => true, 'dim' => true, 'contentPos' => 'bottom',
 	'mt' => '1', 'mb' => '0', 'pt' => '3', 'pb' => '6', 'text' => 'right', 'vpa' => 'zoom-soft', 'vpaSpeed' => 'slow', 'vpaMode' => 'repeat', 'vpaDelay' => '200ms', 'vpaDuration' => '1.5s',
 	'custom' => 'my-section other', 'rowCustom' => 'my-row',
 ] + $blank['settings'];
@@ -586,8 +589,8 @@ $styled['cols'][0] = [ 'width' => [ 's' => 100, 'm' => 50, 'l' => 33 ], 'hidden'
 $styled['background'] = [ 'slot' => '/template/page-x/a/background', 'focus' => null ];
 $once = $write( [ 'blocks' => [ $styled ] ] );
 
-check( 'a section\'s settings are its classes, in one order: the full width, the full height, the colour, the border and its brand colour, the image, the spacing, the text, the animation, the custom ones',
-	str_contains( $once, '<section id="a" class="nino-section nino-section--fullwidth nino-section--fullheight nino-section--tint nino-section--border-2 nino-section--border-primary nino-parallex nino-parallex--dim nino-mt-1 nino-mb-0 nino-pt-3 nino-pb-6 nino-text-right nino-vpa nino-vpa--zoom-soft nino-vpa--speed-slow nino-vpa--repeat my-section other" data-vpa-delay="200ms" data-vpa-duration="1.5s">' ) === true );
+check( 'a section\'s settings are its classes, in one order: the full width, the full height, the colour, the border and its brand colour, the cover and its scrim, the parallax, the place of the content, the spacing, the text, the animation, the custom ones - and its attributes the height of the cover, then the animation\'s',
+	str_contains( $once, '<section id="a" class="nino-section nino-section--fullwidth nino-section--fullheight nino-section--tint nino-section--border-2 nino-section--border-primary nino-cover nino-cover--dim nino-parallex nino-cover-bottom nino-mt-1 nino-mb-0 nino-pt-3 nino-pb-6 nino-text-right nino-vpa nino-vpa--zoom-soft nino-vpa--speed-slow nino-vpa--repeat my-section other" data-cover-height="60" data-vpa-delay="200ms" data-vpa-duration="1.5s">' ) === true );
 check( '...and the row\'s and the column\'s: the widths, the hidden ones, the ground and the dimming, the alignment and the gap of the components, the text, the animation, the custom ones', str_contains( $once, '<div class="nino-grid-row nino-grid-row--narrow nino-grid-bottom my-row">' ) === true
 	&& str_contains( $once, '<div class="nino-grid-s-100 nino-grid-m-50 nino-grid-l-33 nino-hide-s nino-grid--dark nino-grid--dim nino-stack-end nino-stack-gap-4 nino-text-center nino-vpa my-col">' ) === true );
 check( '...the picture behind the column is the first thing in it, a block of its own with the focus and the image of its slot with an empty alt', str_contains( $once, "my-col\">\n\t\t\t<div class=\"nino-grid-bg nino-img-focus--8\">[image /template/page-x/a/photo alt=\"\"]</div>\n\t\t\t[title " ) === true );
@@ -599,6 +602,25 @@ $sorted = static function( mixed $value ) use ( &$sorted ): mixed {
 	return array_map( $sorted, $value );
 };
 check( '...and every setting is read back as it was set', $sorted( $read( $once )['blocks'][0] ) === $sorted( $styled ) );
+
+// The cover, the parallax and the scrim over their picture, written from the settings and read back as they were set
+$coverWritten	= static fn( array $set ): string => $write( [ 'blocks' => [ array_replace( $blank, [ 'settings' => array_replace( $blank['settings'], $set ) ] ) ] ] );
+$coverBack		= static fn( array $set ): bool => $read( $coverWritten( $set ) )['blocks'][0]['settings'] === array_replace( $blank['settings'], $set );
+
+check( 'a cover is written as nino-cover and the height it has, at 90 as well, in an attribute of its own - and reads back as it was set', str_contains( $coverWritten( [ 'cover' => 90 ] ), '<section id="a" class="nino-section nino-cover" data-cover-height="90">' ) === true
+	&& $coverBack( [ 'cover' => 90 ] ) === true && str_contains( $coverWritten( [] ), 'data-cover-height' ) === false && str_contains( $coverWritten( [] ), 'nino-cover' ) === false );
+check( '...a cover with the scrim over its picture is nino-cover and nino-cover--dim, and reads back as it was set', str_contains( $coverWritten( [ 'cover' => 60, 'dim' => true ] ), '<section id="a" class="nino-section nino-cover nino-cover--dim" data-cover-height="60">' ) === true
+	&& $coverBack( [ 'cover' => 60, 'dim' => true ] ) === true );
+check( '...a parallax and a scrim without a cover are nino-parallex and nino-parallex--dim, and read back as they were set', str_contains( $coverWritten( [ 'parallax' => true, 'dim' => true ] ), '<section id="a" class="nino-section nino-parallex nino-parallex--dim">' ) === true
+	&& $coverBack( [ 'parallax' => true, 'dim' => true ] ) === true && $coverBack( [ 'parallax' => true ] ) === true );
+check( '...a section that is a cover and a parallax has the one scrim, the cover\'s: nino-cover nino-cover--dim nino-parallex, and reads back as it was set', str_contains( $coverWritten( [ 'cover' => 90, 'parallax' => true, 'dim' => true ] ), '<section id="a" class="nino-section nino-cover nino-cover--dim nino-parallex" data-cover-height="90">' ) === true
+	&& $coverBack( [ 'cover' => 90, 'parallax' => true, 'dim' => true ] ) === true );
+check( '...the place of the content is nino-cover-top or nino-cover-bottom, after the parallax, and the middle is no class at all - each reads back as it was set', str_contains( $coverWritten( [ 'cover' => 90, 'parallax' => true, 'contentPos' => 'top' ] ), 'class="nino-section nino-cover nino-parallex nino-cover-top" data-cover-height="90">' ) === true
+	&& str_contains( $coverWritten( [ 'parallax' => true, 'contentPos' => 'bottom' ] ), 'class="nino-section nino-parallex nino-cover-bottom">' ) === true && str_contains( $coverWritten( [ 'cover' => 90 ] ), 'nino-cover-' ) === false
+	&& $coverBack( [ 'cover' => 90, 'parallax' => true, 'contentPos' => 'top' ] ) === true && $coverBack( [ 'parallax' => true, 'contentPos' => 'bottom' ] ) === true );
+check( '...a scrim over a section that is neither a cover nor a parallax darkens nothing: no class is written for it', str_contains( $coverWritten( [ 'dim' => true ] ), '<section id="a" class="nino-section">' ) === true );
+check( '...and neither is the place of the content on such a section, where the row stands in the flow: no class, and the middle read back', str_contains( $coverWritten( [ 'contentPos' => 'top' ] ), 'nino-cover-' ) === false
+	&& $read( $coverWritten( [ 'contentPos' => 'top' ] ) )['blocks'][0]['settings']['contentPos'] === '' );
 
 // The ground of a column, its dimming and the picture behind it: classes of the column, and a block of its own that is the first thing in it
 $groundOf		= static fn( string $classes, string $inside = '[title /template/page-x/a/title]' ): string => $page( $section( $inside, 'a', 'nino-section', $classes ) );
@@ -753,10 +775,33 @@ check( 'a switch the model leaves out is off: the Writer takes its default and w
 	&& $blank['settings']['fullwidth'] === false && $blank['settings']['fullheight'] === false && \Nino\Modules\Builder\Reader::sectionDefaults()['fullwidth'] === false && \Nino\Modules\Builder\Reader::sectionDefaults()['fullheight'] === false );
 
 $custom = $read( $page( $section( '[title /template/page-x/a/title]', 'a', 'nino-section nino-section--black my-own nino-section--alt nino-cover--dim', 'nino-grid-s-100 nino-grid-m-50 nino-grid-l-50 u-pad' ) ) )['blocks'][0];
-check( 'a class the builder does not know is a custom one, and so are a second colour and a dim without an image - nothing is lost',
+check( 'a class the builder does not know is a custom one, and so are a second colour and a scrim on a section that is neither a cover nor a parallax - nothing is lost',
 	$custom['settings']['color'] === 'black' && $custom['settings']['custom'] === 'my-own nino-section--alt nino-cover--dim' && $custom['cols'][0]['custom'] === 'u-pad' );
 check( '...and the custom classes come last when it is written, and the same again when it is read', str_contains( $write( [ 'blocks' => [ $custom ] ] ), 'class="nino-section nino-section--black my-own nino-section--alt nino-cover--dim"' ) === true
 	&& $read( $write( [ 'blocks' => [ $custom ] ] ) )['blocks'][0] === $custom );
+
+// A section is a cover by a class of its own and a height in an attribute, a parallax by another class; the scrim over their picture and the place of the content are classes too
+$coverSource	= static fn( string $classes, string $attributes = '' ): string => $page( '<section id="a" class="'. $classes. '"'. $attributes. ">\n\t<div class=\"nino-grid-row\">\n\t\t<div class=\"nino-grid-100\">\n\t\t\t[title /template/page-x/a/title]\n\t\t</div>\n\t</div>\n</section>" );
+$coverOf		= static fn( string $classes, string $attributes = '' ): array => $read( $coverSource( $classes, $attributes ) )['blocks'][0]['settings'];
+
+check( 'a section with nino-cover and no data-cover-height is a cover of 90, the height Nino.ui.js gives a cover that names none - a section without the class is no cover', $coverOf( 'nino-section nino-cover' )['cover'] === 90 && $coverOf( 'nino-section nino-cover' )['custom'] === ''
+	&& $coverOf( 'nino-section' )['cover'] === null && $coverOf( 'nino-section' )['parallax'] === false );
+check( '...with data-cover-height it is a cover of the height the attribute names', $coverOf( 'nino-section nino-cover', ' data-cover-height="50"' )['cover'] === 50 && $coverOf( 'nino-section nino-cover', ' data-cover-height="9999"' )['cover'] === 9999 );
+check( 'a section with nino-parallex is a parallax and no cover, and with nino-parallex--dim it has the scrim', $coverOf( 'nino-section nino-parallex' )['parallax'] === true && $coverOf( 'nino-section nino-parallex' )['cover'] === null && $coverOf( 'nino-section nino-parallex' )['dim'] === false
+	&& $coverOf( 'nino-section nino-parallex nino-parallex--dim' )['parallax'] === true && $coverOf( 'nino-section nino-parallex nino-parallex--dim' )['dim'] === true && $coverOf( 'nino-section nino-parallex nino-parallex--dim' )['custom'] === '' );
+
+$coverAndParallax = $coverOf( 'nino-section nino-cover nino-parallex nino-parallex--dim' );
+check( 'nino-cover and nino-parallex on one section are two settings and both are read - the scrim of a parallax that is a cover is the cover\'s to give, so nino-parallex--dim is a custom class, kept', $coverAndParallax['cover'] === 90 && $coverAndParallax['parallax'] === true
+	&& $coverAndParallax['dim'] === false && $coverAndParallax['custom'] === 'nino-parallex--dim' );
+check( '...and nino-cover--dim is the scrim of a section that is a cover, a parallax as well or not', $coverOf( 'nino-section nino-cover nino-cover--dim' )['dim'] === true && $coverOf( 'nino-section nino-cover nino-cover--dim nino-parallex' )['dim'] === true
+	&& $coverOf( 'nino-section nino-cover nino-cover--dim nino-parallex' )['parallax'] === true && $coverOf( 'nino-section nino-cover nino-cover--dim nino-parallex' )['custom'] === '' );
+check( 'a scrim without what it darkens is a custom class, kept: nino-cover--dim on a parallax that is no cover, nino-parallex--dim on a section that is none', $coverOf( 'nino-section nino-parallex nino-cover--dim' )['dim'] === false && $coverOf( 'nino-section nino-parallex nino-cover--dim' )['custom'] === 'nino-cover--dim'
+	&& $coverOf( 'nino-section nino-parallex--dim' )['dim'] === false && $coverOf( 'nino-section nino-parallex--dim' )['custom'] === 'nino-parallex--dim' );
+check( 'nino-cover-top and nino-cover-bottom are the place of the content in a cover; nino-cover-center is a custom class, since it aligns the text of a .nino-cover-content, which the Builder never writes', $coverOf( 'nino-section nino-cover nino-cover-top' )['contentPos'] === 'top'
+	&& $coverOf( 'nino-section nino-cover nino-cover-bottom' )['contentPos'] === 'bottom' && $coverOf( 'nino-section nino-cover' )['contentPos'] === '' && $coverOf( 'nino-section nino-cover nino-cover-center' )['contentPos'] === ''
+	&& $coverOf( 'nino-section nino-cover nino-cover-center' )['custom'] === 'nino-cover-center' );
+check( '...and on a section that is neither a cover nor a parallax nino-cover-top is idle: a custom class, kept', $coverOf( 'nino-section nino-cover-top' )['contentPos'] === '' && $coverOf( 'nino-section nino-cover-top' )['custom'] === 'nino-cover-top'
+	&& $coverOf( 'nino-section nino-parallex nino-cover-top' )['contentPos'] === 'top' );
 
 $hostile = $blank;
 $hostile['settings']['custom'] = 'a" onmouseover="alert(1)';
@@ -1510,7 +1555,8 @@ check( '...a strength with the brand colour is written, and a switch left out is
 $wordBad = [
 	'a row that is no width'										=> [ 'section', 'row', 'narrower', 'the row of block %d is none that Nino.css has' ],
 	'a row alignment that is none'							=> [ 'section', 'rowAlign', 'top', 'the rowAlign of block %d is none that Nino.css has' ],
-	'a place of the picture in capitals'				=> [ 'section', 'imagePos', 'Top', 'the imagePos of block %d is none that Nino.css has' ],
+	'a place of the content in capitals'				=> [ 'section', 'contentPos', 'Top', 'the contentPos of block %d is none that Nino.css has' ],
+	'the middle, which has no word of its own'	=> [ 'section', 'contentPos', 'center', 'the contentPos of block %d is none that Nino.css has' ],
 	'an alignment of the text that is a number'	=> [ 'section', 'text', 0, 'the text of block %d is none that Nino.css has' ],
 	'an alignment of a column that is a list'		=> [ 'column', 'text', [ 'left' ], 'the text of column 1 of block %d is none that Nino.css has' ],
 	'an alignment of a column with a space'			=> [ 'column', 'text', 'left ', 'the text of column 1 of block %d is none that Nino.css has' ],
@@ -1535,14 +1581,14 @@ foreach( [ 0, 3 ] as $at )
 			$wordRefused[] = $what. ' of block '. ( $at + 1 );
 	}
 
-check( 'a row that is no width, an alignment of a row, a place of a picture and an alignment of a text or of a stack that Nino.css has none of are refused the same way, the setting and the block named: '. count( $wordBad ) * 2 . ' cases'. ( $wordRefused === [] ? '' : ' - '. implode( ', ', $wordRefused ) ), $wordRefused === [] );
+check( 'a row that is no width, an alignment of a row, a place of the content and an alignment of a text or of a stack that Nino.css has none of are refused the same way, the setting and the block named: '. count( $wordBad ) * 2 . ' cases'. ( $wordRefused === [] ? '' : ' - '. implode( ', ', $wordRefused ) ), $wordRefused === [] );
 
 $wordWrong = [];
 
 foreach( [
 	[ 'section', 'row', [ 'narrow', 'wide' ], 'nino-grid-row--%s' ],
 	[ 'section', 'rowAlign', [ 'center', 'middle', 'bottom' ], 'nino-grid-%s' ],
-	[ 'section', 'imagePos', [ 'top', 'center', 'bottom' ], 'nino-cover-%s' ],
+	[ 'section', 'contentPos', [ 'top', 'bottom' ], 'nino-cover-%s' ],
 	[ 'section', 'text', [ 'left', 'center', 'right' ], 'nino-text-%s' ],
 	[ 'column', 'text', [ 'left', 'center', 'right' ], 'nino-text-%s' ],
 	[ 'column', 'stackAlign', [ 'start', 'center', 'end' ], 'nino-stack-%s' ],
@@ -1564,9 +1610,77 @@ foreach( [
 
 check( 'the five vocabularies the Reader keeps are the words the Builder writes, no more and no fewer - a word dropped from one of them would become a custom class without a sound',
 	\Nino\Modules\Builder\Reader::ROW === [ 'narrow', 'wide' ] && \Nino\Modules\Builder\Reader::ROW_ALIGN === [ 'center', 'middle', 'bottom' ]
-	&& \Nino\Modules\Builder\Reader::IMAGE_POS === [ 'top', 'center', 'bottom' ] && \Nino\Modules\Builder\Reader::TEXT === [ 'left', 'center', 'right' ]
+	&& \Nino\Modules\Builder\Reader::CONTENT_POS === [ 'top', 'bottom' ] && \Nino\Modules\Builder\Reader::TEXT === [ 'left', 'center', 'right' ]
 	&& \Nino\Modules\Builder\Reader::STACK_ALIGN === [ 'start', 'center', 'end' ] );
 check( '...and every word the Reader keeps in a setting of its own is none of that: the source view writes it as the class it is read from'. ( $wordWrong === [] ? '' : ' - '. implode( ', ', $wordWrong ) ), $wordWrong === [] );
+
+// The cover and the picture behind it: two switches that are on or off like the others, and a height in percent of the window's that is a whole number or none
+$pictureSwitchRefused = [];
+
+foreach( [ 0, 3 ] as $at )
+	foreach( [ 'parallax', 'dim' ] as $key )
+		foreach( $switchBad as $what => $value ) {
+
+			$model = $loaded['model'];
+			$model['blocks'][$at]['settings'][$key] = $value;
+			$answer = \Nino\Modules\Builder\Document::save( $appData, 'page-home', $model, $loaded['hash'] );
+
+			if( $answer['status'] !== 400 || $answer['code'] !== 'invalid' || $answer['problems'] !== [ 'the '. $key. ' of block '. ( $at + 1 ). ' is neither on nor off' ]
+				|| \Nino\Modules\Builder\Document::source( $appData, $model )['status'] !== 400 || file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-home.tpl' ) ) !== $before )
+				$pictureSwitchRefused[] = $key. ' of block '. ( $at + 1 ). ' as '. $what;
+		}
+
+check( 'a parallax or a dimming that is no bool - a text, a number, a list - is refused the way a full width is, the switch and the block named, by a save and by the source view alike, and nothing is written: '
+	. count( $switchBad ) * 4 . ' cases'. ( $pictureSwitchRefused === [] ? '' : ' - '. implode( ', ', $pictureSwitchRefused ) ), $pictureSwitchRefused === [] );
+
+$coverBad = [
+	'zero'							=> 0,
+	'a negative number'				=> -1,
+	'five digits'					=> 10000,
+	'a word'						=> 'tall',
+	'a text with the number'		=> '50',
+	'a fraction'					=> 50.5,
+	'a whole number as a float'		=> 50.0,
+	'true'							=> true,
+	'a list'						=> [ 50 ],
+	'an empty list'					=> [],
+];
+$coverRefused = [];
+
+foreach( [ 0, 3 ] as $at )
+	foreach( $coverBad as $what => $value ) {
+
+		$model = $loaded['model'];
+		$model['blocks'][$at]['settings']['cover'] = $value;
+		$answer = \Nino\Modules\Builder\Document::save( $appData, 'page-home', $model, $loaded['hash'] );
+
+		if( $answer['status'] !== 400 || $answer['code'] !== 'invalid' || $answer['problems'] !== [ 'the cover of block '. ( $at + 1 ). ' is neither none nor a height in percent' ]
+			|| \Nino\Modules\Builder\Document::source( $appData, $model )['status'] !== 400 || file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-home.tpl' ) ) !== $before )
+			$coverRefused[] = $what. ' of block '. ( $at + 1 );
+	}
+
+check( 'the cover of a section is none or a whole number from 1 to 9999 - zero, a negative number, five digits, a word, a text with the number, a fraction, a bool and a list are refused with 400 (code invalid), the block named, by a save and by the source view alike, and nothing is written: '
+	. count( $coverBad ) * 2 . ' cases'. ( $coverRefused === [] ? '' : ' - '. implode( ', ', $coverRefused ) ), $coverRefused === [] );
+
+$coverWrong = [];
+
+foreach( [ 1, 90, 100, 150, 9999 ] as $height ) {
+
+	$model = $loaded['model'];
+	$model['blocks'][0]['settings']['cover'] = $height;
+	$answer = \Nino\Modules\Builder\Document::source( $appData, $model );
+
+	if( $answer['status'] !== 200 || str_contains( $answer['parts'][1]['source'], ' nino-cover' ) === false || str_contains( $answer['parts'][1]['source'], ' data-cover-height="'. $height. '"' ) === false )
+		$coverWrong[] = (string) $height;
+}
+
+$coverNone = $loaded['model'];
+$coverNone['blocks'][0]['settings']['cover'] = null;
+$coverLeft = $loaded['model'];
+unset( $coverLeft['blocks'][0]['settings']['cover'] );
+check( '...and a height from 1 to 9999 is written as the cover it is - the class and the attribute -, none and a cover the model leaves out as neither'. ( $coverWrong === [] ? '' : ' - '. implode( ', ', $coverWrong ) ), $coverWrong === []
+	&& str_contains( \Nino\Modules\Builder\Document::source( $appData, $coverNone )['parts'][1]['source'], 'nino-cover' ) === false && str_contains( \Nino\Modules\Builder\Document::source( $appData, $coverNone )['parts'][1]['source'], 'data-cover-height' ) === false
+	&& str_contains( \Nino\Modules\Builder\Document::source( $appData, $coverLeft )['parts'][1]['source'], 'nino-cover' ) === false && str_contains( \Nino\Modules\Builder\Document::source( $appData, $coverLeft )['parts'][1]['source'], 'data-cover-height' ) === false );
 
 $stackWrong = \Nino\Modules\Builder\Document::load( $appData, 'page-home' );
 $stackWrong['model']['blocks'][3]['cols'][0]['components'] = [ [ 'name' => 'stack', 'source' => '/services', 'text' => null, 'attributes' => [], 'content' => '' ] ];

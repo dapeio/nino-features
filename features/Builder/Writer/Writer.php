@@ -167,7 +167,8 @@ namespace Nino\Modules\Builder {
 
 			$attributes = '';
 
-			if( $settings['cover'] !== null && (int) $settings['cover'] > 0 )
+			// The height is always written, at 90 as well: a template says what it is, and nobody has to know the 90 Nino.ui.js takes without it
+			if( $settings['cover'] !== null )
 				$attributes .= ' data-cover-height="'. (int) $settings['cover']. '"';
 
 			$attributes .= self::_animationAttributes( $settings );
@@ -268,16 +269,26 @@ namespace Nino\Modules\Builder {
 			if( $s['borderPrimary'] === true )
 				$class[] = 'nino-section--border-primary';
 
-			if( isset( Reader::IMAGE[(string) $s['image']] ) === true ) {
+			// The scrim is the cover's where the section is a cover - Nino.css gives that class the ink of a black section as well - else the parallax's
+			if( $s['cover'] !== null ) {
 
-				$class[] = Reader::IMAGE[$s['image']];
+				$class[] = 'nino-cover';
 
 				if( $s['dim'] === true )
-					$class[] = Reader::IMAGE[$s['image']]. '--dim';
+					$class[] = 'nino-cover--dim';
 			}
 
-			if( (string) $s['imagePos'] !== '' )
-				$class[] = 'nino-cover-'. $s['imagePos'];
+			if( $s['parallax'] === true ) {
+
+				$class[] = 'nino-parallex';
+
+				if( $s['dim'] === true && $s['cover'] === null )
+					$class[] = 'nino-parallex--dim';
+			}
+
+			// The place of the content is the row's in a cover or a parallax: on a section that is neither the class would be idle
+			if( (string) $s['contentPos'] !== '' && ( $s['cover'] !== null || $s['parallax'] === true ) )
+				$class[] = 'nino-cover-'. $s['contentPos'];
 
 			foreach( Reader::SPACING as $space )
 				if( (string) $s[$space] !== '' )

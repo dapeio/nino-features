@@ -115,10 +115,14 @@ namespace Nino\Modules\Builder {
 	 *											    color       ''|alt|tint|dark|black|primary|brand-alt
 	 *											    border      ''|1|2|3              nino-section--border-<n>
 	 *											    borderPrimary bool                nino-section--border-primary, with or without a strength
-	 *											    image       ''|cover|parallax     nino-cover, nino-parallex
-	 *											    dim         bool                  nino-cover--dim, nino-parallex--dim
-	 *											    imagePos    ''|top|center|bottom  nino-cover-<x>
-	 *											    cover       int|null              data-cover-height
+	 *											    cover       int|null              nino-cover with data-cover-height: the section is a cover this
+	 *											                                      high, in percent of the window's height; null: it is none
+	 *											    parallax    bool                  nino-parallex, on its own or on a cover as well
+	 *											    dim         bool                  the scrim over the picture: nino-cover--dim where the section
+	 *											                                      is a cover, else nino-parallex--dim where it is a parallax
+	 *											    contentPos  ''|top|bottom         nino-cover-<x>: where the row stands in a cover or a parallax,
+	 *											                                      the middle for ''; on a section that is neither the class
+	 *											                                      is idle and stays a custom one
 	 *											    mt mb pt pb ''|0..6               nino-mt-<n> ...
 	 *											    text        ''|left|center|right  nino-text-<x>
 	 *											    vpa         null|string           null: none; '': nino-vpa; else the
@@ -213,8 +217,9 @@ namespace Nino\Modules\Builder {
 		// A column paints the same grounds, and the one that sets it off from its section
 		public const array COL_COLOR = [ 'counter', ...self::COLOR ];
 		public const array BORDER = [ '1', '2', '3' ];
-		public const array IMAGE = [ 'cover' => 'nino-cover', 'parallax' => 'nino-parallex' ];
-		public const array IMAGE_POS = [ 'top', 'center', 'bottom' ];
+		// Where the row stands in a cover or a parallax, the middle being none: nino-cover-center aligns the text of a
+		// .nino-cover-content, which the Builder does not write, so it is a custom class here
+		public const array CONTENT_POS = [ 'top', 'bottom' ];
 		public const array SPACING = [ 'mt', 'mb', 'pt', 'pb' ];
 		// A column has its padding and the margin above and below it, each one of the steps of the space scale
 		public const array COL_SPACING = [ 'p', 'mt', 'mb' ];
@@ -290,7 +295,7 @@ namespace Nino\Modules\Builder {
 		public static function sectionDefaults(): array {
 			return [
 				'row' => '', 'rowAlign' => '', 'rowCustom' => '', 'fullwidth' => false, 'fullheight' => false, 'color' => '', 'border' => '', 'borderPrimary' => false,
-				'image' => '', 'dim' => false, 'imagePos' => '', 'cover' => null,
+				'cover' => null, 'parallax' => false, 'dim' => false, 'contentPos' => '',
 				'mt' => '', 'mb' => '', 'pt' => '', 'pb' => '', 'text' => '',
 			] + self::animationDefaults() + [ 'custom' => '' ];
 		}
@@ -827,6 +832,7 @@ namespace Nino\Modules\Builder {
 			$s				= self::sectionDefaults();
 			$custom		= [];
 			$dim			= [];
+			$places	= [];
 			$default	= $s;
 
 			// A second modifier of a kind that has one place is a class of its
@@ -853,12 +859,15 @@ namespace Nino\Modules\Builder {
 					$set( 'border', $m[1], $token );
 				elseif( $token === 'nino-section--border-primary' )
 					$set( 'borderPrimary', true, $token );
-				elseif( $token === 'nino-cover' || $token === 'nino-parallex' )
-					$set( 'image', $token === 'nino-cover' ? 'cover' : 'parallax', $token );
+				// A cover that names no height is as high as Nino.ui.js makes it: 90 percent of the window
+				elseif( $token === 'nino-cover' )
+					$set( 'cover', 90, $token );
+				elseif( $token === 'nino-parallex' )
+					$set( 'parallax', true, $token );
 				elseif( $token === 'nino-cover--dim' || $token === 'nino-parallex--dim' )
 					$dim[] = $token;
-				elseif( preg_match( '/^nino-cover-('. implode( '|', self::IMAGE_POS ). ')$/D', $token, $m ) === 1 )
-					$set( 'imagePos', $m[1], $token );
+				elseif( preg_match( '/^nino-cover-('. implode( '|', self::CONTENT_POS ). ')$/D', $token, $m ) === 1 )
+					$places[] = [ $m[1], $token ];
 				elseif( preg_match( '/^nino-(mt|mb|pt|pb)-([0-6])$/D', $token, $m ) === 1 )
 					$set( $m[1], $m[2], $token );
 				elseif( preg_match( '/^nino-text-('. implode( '|', self::TEXT ). ')$/D', $token, $m ) === 1 )
@@ -867,13 +876,25 @@ namespace Nino\Modules\Builder {
 					$custom[] = $token;
 			}
 
+			// The place of the content is the row's in a cover or a parallax: on a section that is neither the class is idle, a custom one
+			foreach( $places as [ $word, $token ] )
+				if( $s['cover'] !== null || $s['parallax'] === true )
+					$set( 'contentPos', $word, $token );
+				else
+					$custom[] = $token;
+
+			// The scrim is the cover's where the section is one, else the parallax's: any other dim class is a custom one
 			foreach( $dim as $token )
-				if( ( $token === 'nino-cover--dim' && $s['image'] === 'cover' ) || ( $token === 'nino-parallex--dim' && $s['image'] === 'parallax' ) )
+				if( ( $token === 'nino-cover--dim' && $s['cover'] !== null ) || ( $token === 'nino-parallex--dim' && $s['parallax'] === true && $s['cover'] === null ) )
 					$s['dim'] = true;
 				else
 					$custom[] = $token;
 
 			if( isset( $attributes['data-cover-height'] ) === true ) {
+
+				// The height is the cover's: the Writer would leave it out of a section that is none, so the Reader does not take it
+				if( $s['cover'] === null )
+					throw self::_fail( 'section-attribute', 'data-cover-height', $pos );
 
 				if( preg_match( '/^[1-9][0-9]{0,3}$/D', $attributes['data-cover-height'] ) !== 1 )
 					throw self::_fail( 'attribute-value', 'data-cover-height', $pos );

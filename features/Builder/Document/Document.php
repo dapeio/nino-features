@@ -2015,18 +2015,20 @@ namespace Nino\Modules\Builder {
 		 *	What is wrong with the shape of a model before anything in it is
 		 *	read: a name that is no text, a block that is no block, a switch
 		 *	that is neither on nor off (the animation of the template, the
-		 *	full width, the full height and the brand colour of the border of
-		 *	a section, the dimming of a column - one left out is off), a
-		 *	border that is no strength, the ground of a column that is none
-		 *	of Nino.css's, the width and the alignment of a row, the place of a
-		 *	picture and the alignment of a text or of a stack that are none of
-		 *	its words, a background that is no slot or whose focus is none
-		 *	of the nine places, a call that is no call, texts that are no text
-		 *	for each language, the padding and the margins of a column that
-		 *	are none of the steps 0 to 6, a component that holds components
-		 *	with a content or with children that are no calls - or inside
-		 *	another -, and children of a component that holds none or of a loop -
-		 *	what the Writer would take for something else or stumble over
+		 *	full width, the full height, the brand colour of the border, the
+		 *	parallax and the dimming of a section, the dimming of a column -
+		 *	one left out is off), a border that is no strength, a cover that
+		 *	is neither none nor a whole number from 1 to 9999, the ground of
+		 *	a column that is none of Nino.css's, the width and the alignment
+		 *	of a row, the place of the content and the alignment of a text or
+		 *	of a stack that are none of its words, a background that is no
+		 *	slot or whose focus is none of the nine places, a call that is no
+		 *	call, texts that are no text for each language, the padding and
+		 *	the margins of a column that are none of the steps 0 to 6, a
+		 *	component that holds components with a content or with children
+		 *	that are no calls - or inside another -, and children of a
+		 *	component that holds none or of a loop - what the Writer would
+		 *	take for something else or stumble over
 		 *
 		 *	@param		array			$model
 		 *	@param		array			$schemas			As schemas() answers
@@ -2039,6 +2041,8 @@ namespace Nino\Modules\Builder {
 			$text			= static fn( mixed $value ): bool => $value === null || is_string( $value ) === true;
 			// The focus of a picture is none or one of the nine places: the Writer casts anything else to a number
 			$place		= static fn( mixed $value ): bool => $value === null || ( is_int( $value ) === true && $value >= 1 && $value <= 9 );
+			// The height of a cover is none or a whole number of percent, up to the four digits the Reader takes from the attribute: the Writer casts anything else to a number
+			$height		= static fn( mixed $value ): bool => $value === null || ( is_int( $value ) === true && $value >= 1 && $value <= 9999 );
 
 			foreach( [ 'name', 'vpa', 'vpaSpeed', 'wrapClass', 'header', 'footer' ] as $key )
 				if( $text( $model[$key] ?? null ) === false )
@@ -2082,7 +2086,7 @@ namespace Nino\Modules\Builder {
 						$problems[] = 'the '. $key. ' of '. $at. ' are no list';
 
 				// What is no switch would be left out of the classes, and read back as off
-				foreach( array_merge( Reader::SECTION_SIZE, [ 'borderPrimary' ] ) as $key )
+				foreach( array_merge( Reader::SECTION_SIZE, [ 'borderPrimary', 'parallax', 'dim' ] ) as $key )
 					if( is_bool( $block['settings'][$key] ?? false ) === false )
 						$problems[] = 'the '. $key. ' of '. $at. ' is neither on nor off';
 
@@ -2090,8 +2094,11 @@ namespace Nino\Modules\Builder {
 				if( in_array( $block['settings']['border'] ?? '', array_merge( [ '' ], Reader::BORDER ), true ) === false )
 					$problems[] = 'the border of '. $at. ' is none of the strengths';
 
-				// The width of the row, where it puts its columns, where the picture sits and how the text is aligned: a word of Nino.css or none
-				foreach( [ 'row' => Reader::ROW, 'rowAlign' => Reader::ROW_ALIGN, 'imagePos' => Reader::IMAGE_POS, 'text' => Reader::TEXT ] as $key => $words )
+				if( $height( $block['settings']['cover'] ?? null ) === false )
+					$problems[] = 'the cover of '. $at. ' is neither none nor a height in percent';
+
+				// The width of the row, where it puts its columns, where its content stands in a cover or a parallax and how the text is aligned: a word of Nino.css or none
+				foreach( [ 'row' => Reader::ROW, 'rowAlign' => Reader::ROW_ALIGN, 'contentPos' => Reader::CONTENT_POS, 'text' => Reader::TEXT ] as $key => $words )
 					if( in_array( $block['settings'][$key] ?? '', array_merge( [ '' ], $words ), true ) === false )
 						$problems[] = 'the '. $key. ' of '. $at. ' is none that Nino.css has';
 
