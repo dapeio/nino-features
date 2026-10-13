@@ -8,10 +8,12 @@
  *												font roles, with a size that is typed; the two cards
  *												of the Typefaces tab - the families that are installed
  *												and the list of those on offer, searched, told apart
- *												by category and paged, with an install and a removal
- *												made at once, the names set in their own faces and a
- *												sentence of its own for each thing a refusal of the
- *												list can be about; the template of content, buttons and
+ *												by category in one row and paged - the rows in a box
+ *												as tall as the window has room for, the pager after
+ *												the box - with an install and a removal made at once,
+ *												the names set in their own faces and a sentence of
+ *												its own for each thing a refusal of the list can be
+ *												about; the template of content, buttons and
  *												components over its named knobs, the content's in four
  *												groups under a strip of tabs of their own,
  *												each a strip with its icon - five numbers, or the three
@@ -2034,7 +2036,8 @@ shelves.byId('design-faces-load').fire('click');
 shelves.answer( 200, shelfOf( { families : thirty, fetched : LOADED_AT } ) );
 
 const results = function( screen ) { return ( screen || shelves ).byId('design-faces-results') };
-const pager = function( screen ) { return byClass( results( screen ), 'design-faces-pager' )[0] || null };
+// The pager stands after the box in the card, not in it
+const pager = function( screen ) { return byClass( availableCard( screen || shelves ), 'design-faces-pager' )[0] || null };
 const pageOf = function( screen ) { return pager( screen ) === null ? null : byClass( pager( screen ), 'design-faces-place' )[0].textContent };
 const pagerButtons = function( screen ) { return pager( screen ) === null ? [] : byTag( pager( screen ), 'button' ) };
 
@@ -2042,6 +2045,9 @@ check( 'thirty families are a page of 24 and a page of 6: the first twenty-four 
 	faceRows( results() ).length === 24 && faceSlugs( results() ) === thirty.slice( 0, 24 ).map( function( entry ) { return entry.slug } ).join()
 	&& pageOf() === '1 of 2' && pagerButtons().map( function( button ) { return button.textContent+ ':'+ button.disabled } ).join() === 'Previous:true,Next:false'
 	&& shelves.design.FACES_PER_PAGE === 24 );
+check( 'the pager stands after the box in the card and not in it, so that it stays where it is while the box scrolls: the box holds the rows of the page and nothing else, and the one pager is what follows it in the card',
+	byClass( results(), 'design-faces-pager' ).length === 0 && results().children.length === 24 && byClass( availableCard( shelves ), 'design-faces-pager' ).length === 1
+	&& availableCard( shelves ).children[availableCard( shelves ).children.indexOf( results() ) + 1] === pager() );
 
 pagerButtons()[1].fire('click');
 
@@ -2053,6 +2059,29 @@ pagerButtons()[0].fire('click');
 
 check( '...and Previous the page before',
 	faceRows( results() ).length === 24 && faceRows( results() )[0].dataset.slug === 'face-01' && pageOf() === '1 of 2' );
+
+results().scrollTop = 300;
+pagerButtons()[1].fire('click');
+
+check( 'a page turned starts at the top of its box, whatever the page before was scrolled to - and it has one pager, its own: the one of the page before went with its rows',
+	results().scrollTop === 0 && pageOf() === '2 of 2' && byClass( availableCard( shelves ), 'design-faces-pager' ).length === 1 && results().children.length === 6 );
+
+pagerButtons()[0].fire('click');
+
+const boxBefore = results();
+
+results().scrollTop = 200;
+shelves.design._paintFaces();
+
+check( 'a card that is drawn again - the answer of an install or of a removal, a list that was loaded - has its box scrolled to where the box before it was: a new box, at 200, with the rows of the same page and one pager after it',
+	results() !== boxBefore && results().scrollTop === 200 && faceRows( results() ).length === 24 && pageOf() === '1 of 2' && byClass( availableCard( shelves ), 'design-faces-pager' ).length === 1 );
+
+results().scrollTop = 200;
+shelves.byId('design-faces-load').fire('click');
+shelves.answer( 200, shelfOf( { families : thirty, fetched : LOADED_AT } ) );
+
+check( 'a list loaded again starts at its first page, and that page at the top of its box - what the box before was scrolled to was another list\'s',
+	results().scrollTop === 0 && pageOf() === '1 of 2' && faceRows( results() ).length === 24 );
 
 check( 'a row is the icon the other rows of the panel have, the name, and under it the weights and the licence - a link to where the files came from, opened in a tab of its own that knows nothing of this one - and Install',
 	( function() {
@@ -3286,6 +3315,188 @@ rm.waiting( 150 )[0][0]();
 
 check( '...and what runs then fits the stage to the window as it is by then: 1280px high, the stage at 799px',
 	rmDrawn !== rmStage && near( parseFloat( rmDrawn.style.height ), 1280 - 799 - 68 - 11.2 ) && rm.fitted[rm.fitted.length - 1].height === rmDrawn.style.height );
+
+console.log('');
+
+
+// --- The room of the list of typefaces -----------------------------------------------------
+//
+// The box the rows of a page of the Typefaces tab stand in is fitted to the window as the stage is: as tall as
+// the window has left under it - its height less the top of the box with the page scrolled to the top, less the action
+// bar, the pager that stands after the box and the gap the stack of the preview keeps from the bar - so that the pager
+// ends that gap above the bar. Five rows at the least; where the room is less than that the box is made for the window
+// it fills when the page is scrolled to its card, the top of the card at the top of the window. A box that holds the
+// sentence of no match is not fitted. The numbers are the window's and the places of the card, the box, its first row
+// and the pager, which a test says: the stand-in has no layout of its own
+
+console.log( 'The room of the list of typefaces' );
+
+const lf = panel();
+lf.tab('Typefaces');
+lf.answer( 200, shelfOf( { families : thirty, fetched : LOADED_AT } ) );
+
+lf.byId('design-frame').parent.parent.computed = { rowGap : '11.2px' };
+
+/** How high a row of the list is where it stands: a row nobody measured has no height, and five of none are 11 rem */
+let lfRow = 52;
+
+/**
+ *	Put the card of the list, its box, the first row and the pager where a window has them: the card at 150px with the page
+ *	scrolled to the top, the box 200px below it with a height of its own and the pager at the foot of it, 40px high - and, with
+ *	the page scrolled by $scrolled, that much higher
+ */
+function lay( root, scrolled ) {
+
+	const at = function( id ) { return descendants( root ).filter( function( el ) { return el.id === id } )[0] };
+	const card = at('design-faces-available');
+	const box = at('design-faces-results');
+	const first = byClass( box, 'design-face-row' )[0];
+	const foot = byClass( card, 'design-faces-pager' )[0];
+
+	card.rect = { top : 150 - scrolled, left : 0, width : 360, height : 700 };
+	box.rect = { top : 350 - scrolled, left : 0, width : 330, height : 500 };
+
+	if( first !== undefined )
+		first.rect = { top : 350 - scrolled, left : 0, width : 330, height : lfRow };
+
+	if( foot !== undefined )
+		foot.rect = { top : 850 - scrolled, left : 0, width : 330, height : 40 };
+
+	lf.form.scrollTop = scrolled;
+}
+
+// A row and a pager are told where they stand as they are made, and a column drawn again is laid out the same way
+const lfRowOf = lf.design._availableRow;
+const lfPagerOf = lf.design._pager;
+const lfRender = lf.design._renderTypefaces;
+
+lf.design._availableRow = function( entry ) {
+	const row = lfRowOf.call( lf.design, entry );
+	row.rect = { top : 350, left : 0, width : 330, height : lfRow };
+	return row;
+};
+lf.design._pager = function( pages ) {
+	const foot = lfPagerOf.call( lf.design, pages );
+	foot.rect = { top : 850, left : 0, width : 330, height : 40 };
+	return foot;
+};
+lf.design._renderTypefaces = function( body ) {
+	lfRender.call( lf.design, body );
+	lay( body, 0 );
+};
+
+/** Lay the list out for a window of that height, with the page scrolled by so much, fit the screen, and say what height the box has then */
+function fitList( height, scrolled ) {
+	lf.view.innerHeight = height;
+	lay( lf.form, scrolled );
+	lf.design._fit();
+	return lf.byId('design-faces-results').style.height;
+}
+
+const lfBox = function() { return lf.byId('design-faces-results') };
+const lfPane = lf.byId('design-preview');
+
+// The pane sticks beside the controls, as it does in two columns; a check of the one-column layout says static
+lfPane.computed = { position : 'sticky' };
+
+check( 'the box of the list is as tall as the window has left under it, as the stage is: the height of the window less the top of the box, the action bar - 68px - the pager that stands after it, 40px, and the 11.2px gap of the stack of the preview: 800 - 350 - 68 - 40 - 11.2, so that the pager ends the gap above the bar',
+	near( parseFloat( fitList( 800, 0 ) ), 800 - 350 - 68 - 40 - 11.2 ) && lfBox().style.height === ( 800 - 350 - 68 - 11.2 - 40 )+ 'px' );
+check( '...whatever the page is scrolled to: the box is measured where it stands with the page at its top, as the stage is',
+	near( parseFloat( fitList( 800, 120 ) ), 800 - 350 - 68 - 40 - 11.2 ) && near( parseFloat( fitList( 800, 40 ) ), 800 - 350 - 68 - 40 - 11.2 ) );
+lfBox().scrollTop = 200;
+check( '...and the scroll of the box itself is not the page\'s: a box scrolled by 200 is as tall as it was',
+	near( parseFloat( fitList( 800, 0 ) ), 800 - 350 - 68 - 40 - 11.2 ) );
+lfBox().scrollTop = 0;
+check( 'a window that is higher has more rows to show: 1000 and 1200',
+	near( parseFloat( fitList( 1000, 0 ) ), 1000 - 350 - 68 - 40 - 11.2 ) && near( parseFloat( fitList( 1200, 0 ) ), 1200 - 350 - 68 - 40 - 11.2 ) );
+check( '...never under five rows: five times the 52px of the first row and the four hairlines between them, 264px, where the window is too low for more - and where even the card brought to the top of the window leaves less',
+	fitList( 500, 0 ) === ( 5 * 52 + 4 )+ 'px' && fitList( 100, 0 ) === ( 5 * 52 + 4 )+ 'px' );
+check( 'beside the preview, in two columns, a window whose room under the box is less than five rows gives five rows and no more - the page scrolls by what they overhang, not for the list: 700px high, 214px under the box, 264px',
+	fitList( 700, 0 ) === ( 5 * 52 + 4 )+ 'px' && fitList( 700, 90 ) === ( 5 * 52 + 4 )+ 'px' );
+
+lfPane.computed = { position : 'static' };
+
+check( 'in one column, under the controls, where the room under the box is less than five rows but the window is not that low, the box is made for the window it fills when the page is scrolled to its card, the top of the card at the top of the window: 700px less the 200px the box stands inside the card - the search and the categories are in view with it - the bar, the gap and the pager',
+	near( parseFloat( fitList( 700, 0 ) ), 700 - 200 - 68 - 11.2 - 40 ) && near( parseFloat( fitList( 700, 90 ) ), 700 - 200 - 68 - 11.2 - 40 ) );
+
+lfPane.computed = { position : 'sticky' };
+
+lfRow = 0;
+
+check( '...and a row that has no height to count five of is the 11 rem of a box that holds no row: 176px at a root of 16px',
+	fitList( 400, 0 ) === '176px' );
+
+lf.view.fontSize = '15px';
+
+check( '...the rem is the root\'s own: 165px at a root of 15px',
+	fitList( 400, 0 ) === '165px' );
+
+lfRow = 52;
+lf.view.fontSize = '16px';
+
+lf.view.innerHeight = 900;
+lf.design._fit();
+
+check( 'a window that is resized fits the box again: 900px high, the box 100px taller than it was at 800',
+	near( parseFloat( lfBox().style.height ), 900 - 350 - 68 - 40 - 11.2 ) );
+
+lf.view.innerHeight = 1000;
+lf.design._fitLater();
+lf.waiting( 150 )[0][0]();
+
+check( '...and so does what runs when the resizing has stopped',
+	near( parseFloat( lfBox().style.height ), 1000 - 350 - 68 - 40 - 11.2 ) );
+
+lfBox().style.height = '123px';
+lfBox().rect = { top : 0, left : 0, width : 0, height : 0 };
+lf.design._fit();
+
+check( 'a tab that is not on screen has no box to give room to: its height is left as it is',
+	lfBox().style.height === '123px' );
+
+lay( lf.form, 0 );
+lf.view.innerHeight = 800;
+
+// ---- A list of one page has no pager under the box, and the box has the room it took
+
+const lfSearch = lf.byId('design-faces-search');
+const lfWas = lfBox().style.height;
+
+lfSearch.value = 'face 2';
+lfSearch.fire('input');
+
+check( 'the rows that the search lets through fit the box as they are drawn, with no resize and no tab: a list of ten stands on one page with no pager after the box, and the box has the 40px of it as well - 800 - 350 - 68 - 11.2',
+	byClass( availableCard( lf ), 'design-faces-pager' ).length === 0 && faceRows( lfBox() ).length === 10 && lfWas !== lfBox().style.height
+	&& near( parseFloat( lfBox().style.height ), 800 - 350 - 68 - 11.2 ) );
+
+// ---- The sentence of no match is not fitted
+
+lfSearch.value = 'nothing of this name';
+lfSearch.fire('input');
+
+check( 'a box that holds the sentence of no match is not fitted: its height is cleared, and what is left of it is what the stylesheet gives it',
+	faceRows( lfBox() ).length === 0 && lfBox().style.height === '' && hints( lfBox() ).length === 1 );
+
+lf.design._fit();
+
+check( '...and a fit that comes later - another window, another tab - leaves it as it is',
+	lfBox().style.height === '' );
+
+lfSearch.value = '';
+lfSearch.fire('input');
+
+check( 'the rows that come back are fitted as they are drawn, with the pager after the box again: 800 - 350 - 68 - 40 - 11.2',
+	faceRows( lfBox() ).length === 24 && byClass( availableCard( lf ), 'design-faces-pager' ).length === 1 && near( parseFloat( lfBox().style.height ), 800 - 350 - 68 - 40 - 11.2 ) );
+
+// ---- Leaving the tab and coming back
+
+const lfOld = lfBox();
+
+lf.tab('Global');
+lf.tab('Typefaces');
+
+check( 'leaving the tab and coming back draws the card again, and the box that stands in the new column is fitted once the column is in the document, with no answer to wait for: 800 - 350 - 68 - 40 - 11.2',
+	lfBox() !== null && lfBox() !== lfOld && faceRows( lfBox() ).length === 24 && near( parseFloat( lfBox().style.height ), 800 - 350 - 68 - 40 - 11.2 ) );
 
 console.log('');
 

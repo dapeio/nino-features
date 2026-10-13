@@ -447,22 +447,18 @@
 	color: var(--editor-text-secondary);
 	font-size: .72rem;
 }
-/*	Seven names do not fit one row of a column a third of the screen wide with every word whole - Handwriting is
-	the one that was cut -: four to a row, and the three of the second fill it. The strip is the knobs', its
-	dividers drawn for two rows */
-.nino-admin .design-faces-categories .design-knob-steps {
-	flex-wrap: wrap;
-}
+/*	Seven names stand in one row, every word whole, in a column a third of the screen wide - 24rem at the least -
+	and on a phone. The knobs' strip gives each tab the same width and cuts a word at its edge, which is why
+	Handwriting was the one that was cut and the names stood in two rows. Here a tab is as wide as its word asks
+	and the room that is left is shared out, so every word is whole and one row is enough - and the dividers are
+	the strip's own, none of them drawn for a second row */
 .nino-admin .design-faces-categories .design-knob-steps .nino-admin-tab {
-	flex: 1 0 24%;
-	padding: .3rem .2rem;
-	font-size: .7rem;
-}
-.nino-admin .design-faces-categories .design-knob-steps .nino-admin-tab:nth-child(4) {
-	border-right: 0;
-}
-.nino-admin .design-faces-categories .design-knob-steps .nino-admin-tab:nth-child(n+5) {
-	border-top: 1px solid var(--editor-border);
+	flex: 1 1 auto;
+	min-width: 0;
+	padding: .3rem .25rem;
+	overflow: visible;
+	font-size: .68rem;
+	white-space: nowrap;
 }
 /*	The search sits inset on the card like the selects of a field do, and is as high as they are */
 .nino-admin .design-faces-search {
@@ -471,6 +467,19 @@
 	background-color: var(--editor-bg);
 	box-shadow: none;
 	font-size: .8rem;
+}
+/*	The rows of a page are more than the window shows, and the page under the preview is not what should scroll:
+	the list scrolls in a box of its own, and the pager stands after the box, outside what scrolls, so that Previous
+	and Next stay in reach. The height is the window's to give (see _fitFaces() in admin.js), five rows at the
+	least; what the stylesheet keeps is the least of a box that holds only the sentence of no match. A scroller
+	cuts what is drawn outside it, and the ring of the keyboard's focus on the button at the end of a row is drawn
+	outside the button: the box is padded on that side by as much as the ring needs and takes the same back
+	with its margin, so that the rows stand where they stood */
+#design-faces-results {
+	overflow-y: auto;
+	min-height: 11rem;
+	margin-right: -.3rem;
+	padding-right: .3rem;
 }
 .nino-admin .design-faces-pager {
 	display: flex;

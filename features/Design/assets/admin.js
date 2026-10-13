@@ -1682,6 +1682,13 @@
 				if( stamp === design._facesStamp ) {
 					design._faces = response;
 					design._facesPage = 0;
+
+					// A list loaded again starts at its first page, and that page at the top of its box: what the
+					// box before was scrolled to was another list's (_paintAvailable() carries the scroll over)
+					const box = dc.getElementById('design-faces-results');
+
+					if( box !== null )
+						box.scrollTop = 0;
 				}
 
 				design._paintFaces();
@@ -2010,7 +2017,9 @@
 		 *	The second half: the button that loads the list, and what the list is. Where the repository is switched
 		 *	off, or has no key to be read with, it is one sentence; where it could not be read, a sentence of the
 		 *	kind of refusal stands in the place of the list, and the reason is its title. With a list there are a
-		 *	search field, the categories as a strip and the families, a page at a time
+		 *	search field, the categories as a strip and the families, a page at a time, in a box that scrolls.
+		 *	A card that is drawn again - after an install or a removal, or a list that was loaded - has its box
+		 *	scrolled to where the box before it was
 		 *
 		 *	@param		{Element}	card
 		 *
@@ -2024,6 +2033,9 @@
 			/*	What design/list said when the panel was opened, until the tab has an answer of its own: the settings
 				of the repository are changed in another panel of the same page, and the answer is read on every visit	*/
 			const web = faces === null ? ( ( design._data || {} ).webfonts || {} ) : { url : faces.url !== '', key : faces.key === true };
+
+			const before = dc.getElementById('design-faces-results');
+			const scrolled = before === null ? 0 : before.scrollTop;
 
 			card.innerHTML = '';
 			card.appendChild( design._sectionLabel( Nino.content.getText('/_admin/design/typefaces/available/title') ) );
@@ -2099,15 +2111,17 @@
 					design._paintResults();
 				} );
 
-			// Seven names are two rows of the strip in a third of the screen (see .design-faces-categories)
+			// Seven names are one row of the strip in a third of the screen, every word whole (see .design-faces-categories)
 			categories.classList.add('design-faces-categories');
 			card.appendChild( categories );
 
+			// The rows of a page scroll in this box, and the pager stands after it in the card (see _paintResults())
 			const results = dc.createElement('div');
 			results.id = 'design-faces-results';
 			card.appendChild( results );
 
 			design._paintResults( results );
+			results.scrollTop = scrolled;
 		},
 
 		/**
@@ -2124,8 +2138,11 @@
 		},
 
 		/**
-		 *	The families of the list that the search and the category let through, a page of them,
-		 *	and the pager under it. Drawn alone as the words are typed, so that the field keeps its focus
+		 *	The families of the list that the search and the category let through, a page of them in
+		 *	the box, and the pager after the box in the card - not in it: the box scrolls and the pager
+		 *	does not, so Previous and Next are always in reach. The box is fitted to the window once it
+		 *	has its rows (see _fitFaces()). Drawn alone as the words are typed, so that the field keeps
+		 *	its focus
 		 *
 		 *	@param		{Element}	[results]		The box, for one that is built and not mounted yet
 		 *
@@ -2142,6 +2159,15 @@
 
 			results.innerHTML = '';
 
+			// A page starts at the top of its box, whatever the page before was scrolled to
+			results.scrollTop = 0;
+
+			// The pager of the page before goes with its rows
+			const before = results.parentNode.querySelector('.design-faces-pager');
+
+			if( before !== null )
+				before.remove();
+
 			// The rows of the page before are gone: what watched them has nothing left to watch
 			if( design._facesObserver !== null )
 				design._facesObserver.disconnect();
@@ -2153,8 +2179,12 @@
 					&& ( query === '' || entry.family.toLowerCase().indexOf( query ) !== -1 );
 			} );
 
-			if( found.length === 0 )
-				return results.appendChild( design._hint( Nino.content.getText('/_admin/design/typefaces/available/nomatch') ) );
+			if( found.length === 0 ) {
+				results.appendChild( design._hint( Nino.content.getText('/_admin/design/typefaces/available/nomatch') ) );
+
+				// A sentence has no rows to fit the window to: the box lets go of the height it had
+				return design._fitFaces();
+			}
 
 			const pages = Math.ceil( found.length / design.FACES_PER_PAGE );
 
@@ -2165,7 +2195,9 @@
 			} );
 
 			if( pages > 1 )
-				results.appendChild( design._pager( pages ) );
+				results.insertAdjacentElement( 'afterend', design._pager( pages ) );
+
+			design._fitFaces();
 		},
 
 		/**
@@ -3532,6 +3564,11 @@
 		 *	and watches the port with a ResizeObserver - so the frame follows
 		 *	the rail folding away without anything here having to hear about it
 		 *
+		 *	The list of the typefaces on offer is fitted after the stage, for the same
+		 *	reasons (see _fitFaces()): a screen that is drawn, a window that is resized
+		 *	and a tab that is opened give it the room the window has left under it, as
+		 *	they give the stage its own
+		 *
 		 *	It is asked for wherever the stage may have moved or the window changed: as
 		 *	the screen is drawn, when the window is resized (see _fitLater()), when a
 		 *	viewport is chosen, when a tab is opened, when another group of the knobs is
@@ -3570,6 +3607,81 @@
 			// Asked afresh every time: the width is a choice, and scaleFrame
 			// closes over the one it was given
 			Nino.adminUi.scaleFrame( frame, frame.parentNode, Nino.admin.design._width );
+
+			Nino.admin.design._fitFaces();
+		},
+
+		/**
+		 *	Fit the list of the typefaces on offer to the window, the way the stage is: the box
+		 *	the rows of a page stand in is as tall as the window has room for under it, and the
+		 *	rows that are more than that scroll in the box - not the page, which a page of 24 rows
+		 *	would otherwise be scrolled for. The room is the height of the window less the top of
+		 *	the box with the page scrolled to the top, less the action bar, less the pager, which
+		 *	stands after the box and so stays in reach, and less the gap the stack of the preview
+		 *	keeps from the bar: the pager ends that gap above the bar, where the stage does (see
+		 *	_room(), whose bar, gap and scroll of the page these are).
+		 *
+		 *	Never under five rows: five times the height of the first, and the four hairlines
+		 *	between them - 11 rem where the row has no height to measure. Beside the preview, in
+		 *	two columns, that is all a low window gets: five rows, and the page scrolls by what
+		 *	they overhang - the whole page scrolled for the list is what the box is there to
+		 *	spare. In one column the box stands under the controls and may be far down: where
+		 *	the room is less than five rows there, the box is made for the window it fills when
+		 *	the page is scrolled to its card, with the top of the card at the top of the window -
+		 *	the window less how far the box stands inside the card, so that the search and the
+		 *	categories are in view with it, less the bar, the gap and the pager. That is the rule
+		 *	_room() has for the stage, with the card for the pane.
+		 *
+		 *	A box that holds the sentence of no match has no rows to fit the window to: its height
+		 *	is cleared, and the least the stylesheet gives it is what it has. A tab that is not on
+		 *	screen has no box to give room to. Asked for wherever the box has new rows
+		 *	(_paintResults()) and by _fit(), so that a box that was drawn before the column was in
+		 *	the document is fitted once it is
+		 *
+		 *	@return		void
+		 */
+		_fitFaces : function() {
+
+			const design = Nino.admin.design;
+			const box = dc.getElementById('design-faces-results');
+
+			if( box === null )
+				return;
+
+			const first = box.querySelector('.design-face-row');
+
+			if( first === null ) {
+				box.style.height = '';
+				return;
+			}
+
+			const rect = box.getBoundingClientRect();
+
+			// A pane that is not shown has no box to give room to
+			if( rect.width === 0 && rect.height === 0 )
+				return;
+
+			const card = box.parentNode;
+			const pager = card.querySelector('.design-faces-pager');
+			const frame = dc.getElementById('design-frame');
+			const pane = dc.getElementById('design-preview');
+			// Beside the preview the pane sticks (see #design-preview in admin.css); under the controls it does not
+			const beside = pane !== null && wn.getComputedStyle( pane ).position === 'sticky';
+			const row = first.getBoundingClientRect().height;
+			const bar = design._bar().height;
+			const gap = frame === null || frame.parentNode === null ? 0 : design._gap( frame.parentNode );
+			const least = row > 0 ? 5 * row + 4 : 11 * ( parseFloat( wn.getComputedStyle( dE ).fontSize ) || 16 );
+
+			// What stands under the box up to the foot of the pager, and the room the card keeps between them
+			const foot = pager === null ? rect : pager.getBoundingClientRect();
+			const under = foot.top + foot.height - rect.top - rect.height;
+
+			// How far the box stands inside its card, for the card to be brought to the top of the window
+			const inside = rect.top - card.getBoundingClientRect().top;
+
+			const room = wn.innerHeight - ( rect.top + design._scrolled( box ) ) - bar - gap - under;
+
+			box.style.height = Math.max( least, room >= least || beside === true ? room : wn.innerHeight - inside - bar - gap - under )+ 'px';
 		},
 
 		/**
@@ -3592,6 +3704,41 @@
 				height = Math.max( height, line.parentNode.getBoundingClientRect().height );
 
 			return { declared : declared, height : height };
+		},
+
+		/**
+		 *	The gap the stack of the preview keeps from the action bar, in pixels: the row gap of
+		 *	the stack the stage stands in, which is the room between the foot of the stage and the
+		 *	bar once the stage is as tall as the window has room for. What is fitted to the window
+		 *	ends that gap above the bar, the stage (see _room()) and the list of the typefaces
+		 *	(see _fitFaces()) alike
+		 *
+		 *	@param		{Element}		stage		The box the frame is scaled into
+		 *
+		 *	@return		{number}
+		 */
+		_gap : function( stage ) {
+			return parseFloat( wn.getComputedStyle( stage.parentNode ).rowGap ) || 0;
+		},
+
+		/**
+		 *	How far the page has been scrolled over an element, in pixels: the scroll of every
+		 *	element it stands in, which is the pane that scrolls in a wide window and the window
+		 *	itself in a narrow one. Added to the top the element has where it stands, it is the
+		 *	top it has with the page scrolled to the top
+		 *
+		 *	@param		{Element}		node
+		 *
+		 *	@return		{number}
+		 */
+		_scrolled : function( node ) {
+
+			let by = 0;
+
+			for( let up = node.parentNode; up !== null && up !== undefined; up = up.parentNode )
+				by += up.scrollTop || 0;
+
+			return by;
 		},
 
 		/**
@@ -3624,7 +3771,7 @@
 
 			const rem = parseFloat( wn.getComputedStyle( dE ).fontSize ) || 16;
 			const bar = Nino.admin.design._bar().height;
-			const gap = parseFloat( wn.getComputedStyle( stage.parentNode ).rowGap ) || 0;
+			const gap = Nino.admin.design._gap( stage );
 			const pane = dc.getElementById('design-preview');
 			const layout = dc.getElementById('design-layout');
 			const least = 16 * rem;
@@ -3645,8 +3792,7 @@
 
 				// ...less how far the page has been scrolled, by the pane that scrolls in a wide
 				// window or by the window itself
-				for( let up = stage.parentNode; up !== null && up !== undefined; up = up.parentNode )
-					top += up.scrollTop || 0;
+				top += Nino.admin.design._scrolled( stage );
 			}
 
 			const room = wn.innerHeight - top - bar - gap;
