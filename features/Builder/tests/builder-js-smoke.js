@@ -1687,27 +1687,27 @@ builder._renderEditor();
 builder._openSettings( [ 0 ] );
 const settingsOf = function() { return builder._doc.model.blocks[0].settings };
 const stripOf = function() { return screen.getElementById('builder-dialog-tabs') };
-check( 'the dialog of a section has four tabs: Layout, Background, Viewport animation and CSS classes', JSON.stringify( dialogTabs() ) === '[["layout","Layout"],["background","Background"],["animation","Viewport animation"],["custom","CSS classes"]]' && stripOf().hidden === false );
+check( 'the dialog of a section has four tabs: Layout, Border / Background, Viewport animation and CSS classes', JSON.stringify( dialogTabs() ) === '[["layout","Layout"],["background","Border / Background"],["animation","Viewport animation"],["custom","CSS classes"]]' && stripOf().hidden === false );
 check( '...the tabs are tabs of a tab list and the panes are tab panels they name: a tab controls its pane, a pane is labelled by its tab, and the first is chosen and shown', stripOf().getAttribute('role') === 'tablist' && stripOf().querySelectorAll('[role="tab"]').every( function( tab ) {
 	const pane = screen.getElementById( tab.getAttribute('aria-controls') );
 	return pane !== null && pane.getAttribute('role') === 'tabpanel' && pane.getAttribute('aria-labelledby') === tab.id && dialogContent().contains( pane );
 } ) && stripOf().querySelectorAll('[role="tab"]').map( function( tab ) { return tab.getAttribute('aria-selected') } ).join() === 'true,false,false,false' && shownTab( stripOf(), 'builder' ) === 'layout'
 	&& stripOf().querySelectorAll('[role="tab"]').map( function( tab ) { return tab.tabIndex } ).join() === '0,-1,-1,-1' );
-buttonOf( stripOf(), 'Background' ).click();
+buttonOf( stripOf(), 'Border / Background' ).click();
 check( '...and a tab pressed shows its pane and no other, and is the one stop of the tab list', shownTab( stripOf(), 'builder' ) === 'background' && stripOf().querySelectorAll('[role="tab"]').map( function( tab ) { return tab.getAttribute('aria-selected') } ).join() === 'false,true,false,false'
 	&& stripOf().querySelectorAll('[role="tab"]').map( function( tab ) { return tab.tabIndex } ).join() === '-1,0,-1,-1' );
 buttonOf( stripOf(), 'Layout' ).click();
 
 const layout = paneOf('layout');
-check( 'Layout: the width of the row, the two switches, the cover with its height and the place of its content, the two alignments as icons, the spacing as a table', JSON.stringify( labelList( layout ) ) === JSON.stringify( [ 'Row width', 'Full width', 'Full height', 'Cover', 'Height in percent of the window', 'Position of the content', 'Vertical alignment', 'Horizontal alignment', 'Above, Margin', 'Above, Padding', 'Below, Margin', 'Below, Padding' ] )
-	&& JSON.stringify( controlsIn( layout ).map( function( control ) { return control.kind } ) ) === JSON.stringify( [ 'select', 'switch', 'switch', 'switch', 'number', 'select', 'group', 'group', 'select', 'select', 'select', 'select' ] ) );
-check( '...the width of the row is a select of the three it knows', controlOf( layout, 'Row width' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Normal,narrow=Narrow,wide=Wide' && valueAt( layout, 'Row width' ) === 'wide' );
+check( 'Layout: the two switches, the cover with its height and the vertical alignment of its content, the two alignments as icons, the width of the grid row, the spacing as a table', JSON.stringify( labelList( layout ) ) === JSON.stringify( [ 'Full width', 'Full height', 'Cover', 'Height (%)', 'Vertical alignment', 'Vertical content alignment', 'Horizontal text alignment', 'Width of the grid row', 'Above, Margin', 'Above, Padding', 'Below, Margin', 'Below, Padding' ] )
+	&& JSON.stringify( controlsIn( layout ).map( function( control ) { return control.kind } ) ) === JSON.stringify( [ 'switch', 'switch', 'switch', 'number', 'select', 'group', 'group', 'select', 'select', 'select', 'select', 'select' ] ) );
+check( '...the width of the row is a select of the three it knows', controlOf( layout, 'Width of the grid row' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Normal,narrow=Narrow,wide=Wide' && valueAt( layout, 'Width of the grid row' ) === 'wide' );
 check( '...full width and full height are two switches in one line, both on at once if you like', layout.querySelectorAll('.builder-line')[0].children.length === 2 && layout.querySelectorAll('.builder-line')[0].querySelectorAll('.nino-admin-switch').length === 2
 	&& valueAt( layout, 'Full width' ) === true && valueAt( layout, 'Full height' ) === false && ( change( layout, 'Full height', true ), settingsOf().fullheight === true && settingsOf().fullwidth === true && valueAt( layout, 'Full width' ) === true )
 	&& ( change( layout, 'Full width', false ), settingsOf().fullwidth === false && settingsOf().fullheight === true ) );
 check( '...the alignments are two lines of icons in one line: radio buttons, each with its word as its title and its label - the vertical one Top, Middle and Bottom, the horizontal one Inherited as a word and Left, Centre and Right', layout.querySelectorAll('.builder-line')[2].children.length === 2 && ( function() {
-	const vertical = controlOf( layout, 'Vertical alignment' ).el;
-	const horizontal = controlOf( layout, 'Horizontal alignment' ).el;
+	const vertical = controlOf( layout, 'Vertical content alignment' ).el;
+	const horizontal = controlOf( layout, 'Horizontal text alignment' ).el;
 	const options = function( group ) { return group.querySelectorAll('.builder-segment-option').map( function( option ) { return [ option.querySelector('input').value, option.title, option.querySelector('input').getAttribute('aria-label'), iconOf( option ) ].join(':') } ).join() };
 	return vertical.getAttribute('role') === 'radiogroup' && horizontal.getAttribute('role') === 'radiogroup'
 		&& options( vertical ) === ':Top:Top:align-top,middle:Middle:Middle:align-middle,bottom:Bottom:Bottom:align-bottom'
@@ -1715,8 +1715,8 @@ check( '...the alignments are two lines of icons in one line: radio buttons, eac
 		&& horizontal.querySelector('.builder-segment-face').textContent === 'Inherited'
 		&& radiosOf( vertical ).every( function( radio ) { return radio.type === 'radio' && radio.name === radiosOf( vertical )[0].name } ) && radiosOf( vertical )[0].name !== radiosOf( horizontal )[0].name;
 } )() );
-check( '...and the choice is written: the vertical alignment as it is chosen, the horizontal one too', valueAt( layout, 'Vertical alignment' ) === 'middle' && ( change( layout, 'Vertical alignment', 'bottom' ), settingsOf().rowAlign === 'bottom' ) && ( change( layout, 'Vertical alignment', '' ), settingsOf().rowAlign === '' )
-	&& valueAt( layout, 'Horizontal alignment' ) === '' && ( change( layout, 'Horizontal alignment', 'center' ), settingsOf().text === 'center' ) && valueAt( layout, 'Horizontal alignment' ) === 'center' );
+check( '...and the choice is written: the vertical alignment as it is chosen, the horizontal one too', valueAt( layout, 'Vertical content alignment' ) === 'middle' && ( change( layout, 'Vertical content alignment', 'bottom' ), settingsOf().rowAlign === 'bottom' ) && ( change( layout, 'Vertical content alignment', '' ), settingsOf().rowAlign === '' )
+	&& valueAt( layout, 'Horizontal text alignment' ) === '' && ( change( layout, 'Horizontal text alignment', 'center' ), settingsOf().text === 'center' ) && valueAt( layout, 'Horizontal text alignment' ) === 'center' );
 check( '...the spacing is a table: Margin and Padding over the columns, Above and Below at the head of the rows, a select of 0 to 6 in each cell - with the word of the cell for its label', ( function() {
 	const table = layout.querySelector('table');
 	const heads = table.querySelectorAll('thead th');
@@ -1733,31 +1733,31 @@ check( '...and each cell writes its own setting: above the margin and the paddin
 	return [ settingsOf().mt, settingsOf().pt, settingsOf().mb, settingsOf().pb ].join() === '3,1,5,2' && valueAt( layout, 'Below, Margin' ) === '5' && changes === 9;
 } )() );
 
-const heightLabel = 'Height in percent of the window';
+const heightLabel = 'Height (%)';
 check( 'the cover is one line of three fields: a switch, its height in percent of the window\'s beside it, and the place of its content - the hero opens with the cover on, 100 in the number, and its content in the middle', layout.querySelectorAll('.builder-line')[1].children.length === 3
-	&& controlOf( layout, 'Cover' ).kind === 'switch' && controlOf( layout, heightLabel ).kind === 'number' && controlOf( layout, 'Position of the content' ).kind === 'select'
-	&& valueAt( layout, 'Cover' ) === true && String( valueAt( layout, heightLabel ) ) === '100' && controlOf( layout, heightLabel ).el.disabled === false && valueAt( layout, 'Position of the content' ) === '' && controlOf( layout, 'Position of the content' ).el.disabled === false );
-check( '...the place of the content is the middle, the top or the bottom, with the words of the panel - and the switch and the place say what they are for under their names, the number does not', controlOf( layout, 'Position of the content' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Middle,top=Top,bottom=Bottom'
-	&& controlOf( layout, 'Cover' ).el.closest('label').querySelector('small').textContent === words['/_admin/builder/hint/cover'] && controlOf( layout, 'Position of the content' ).el.closest('label').querySelector('.nino-admin-hint').textContent === words['/_admin/builder/hint/content-pos']
+	&& controlOf( layout, 'Cover' ).kind === 'switch' && controlOf( layout, heightLabel ).kind === 'number' && controlOf( layout, 'Vertical alignment' ).kind === 'select'
+	&& valueAt( layout, 'Cover' ) === true && String( valueAt( layout, heightLabel ) ) === '100' && controlOf( layout, heightLabel ).el.disabled === false && valueAt( layout, 'Vertical alignment' ) === '' && controlOf( layout, 'Vertical alignment' ).el.disabled === false );
+check( '...the place of the content is the middle, the top or the bottom, with the words of the panel - and the switch says what it is for under its name, the number and the place do not', controlOf( layout, 'Vertical alignment' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Middle,top=Top,bottom=Bottom'
+	&& controlOf( layout, 'Cover' ).el.closest('label').querySelector('small').textContent === words['/_admin/builder/hint/cover'] && controlOf( layout, 'Vertical alignment' ).el.closest('label').querySelector('.nino-admin-hint') === null
 	&& controlOf( layout, heightLabel ).el.closest('label').querySelector('small') === null );
 
 const ground = paneOf('background');
-check( 'Background: the colour, the border with the switch for the brand colour beside it, the picture - and under it, where the picture is, the upload of a picture and its alt text -, whether it is a parallax and whether it is dimmed, the focus - and the lines hold two fields each', JSON.stringify( labelList( ground ) ) === JSON.stringify( [ 'Colour', 'Border', 'In the brand colour', 'Upload a picture', 'Alternative text (English (US))', 'Parallax', 'Dim the picture', 'No focus', 'Focus' ] )
+check( 'Background: the border with the switch for the brand colour beside it, the colour, the picture - and under it, where the picture is, the upload of a picture and its alt text -, whether it is a parallax and whether it is dimmed, the focus - and the lines hold two fields each', JSON.stringify( labelList( ground ) ) === JSON.stringify( [ 'Border', 'In the brand colour', 'Background colour', 'Upload a picture', 'Alt text (English (US))', 'Parallax effect', 'Dim the picture', 'Automatic focus', 'Manual focus' ] )
 	&& ground.querySelectorAll('.builder-line').map( function( line ) { return line.children.length } ).join() === '2,2' );
-check( '...the parallax and the dimming are two switches on one line, in reach where there is a picture and, for the dimming, a cover or a parallax: the hero has the dimming on and the parallax off, and each says what it is for under its name', controlOf( ground, 'Parallax' ).kind === 'switch' && controlOf( ground, 'Dim the picture' ).kind === 'switch'
-	&& controlOf( ground, 'Parallax' ).el.closest('.builder-line') === controlOf( ground, 'Dim the picture' ).el.closest('.builder-line') && valueAt( ground, 'Parallax' ) === false && valueAt( ground, 'Dim the picture' ) === true
-	&& controlOf( ground, 'Parallax' ).el.disabled === false && controlOf( ground, 'Dim the picture' ).el.disabled === false
-	&& controlOf( ground, 'Parallax' ).el.closest('label').querySelector('small').textContent === words['/_admin/builder/hint/parallax'] && controlOf( ground, 'Dim the picture' ).el.closest('label').querySelector('small').textContent === words['/_admin/builder/hint/dim'] );
+check( '...the parallax and the dimming are two switches on one line, in reach where there is a picture and, for the dimming, a cover or a parallax: the hero has the dimming on and the parallax off, and neither has a note under its name', controlOf( ground, 'Parallax effect' ).kind === 'switch' && controlOf( ground, 'Dim the picture' ).kind === 'switch'
+	&& controlOf( ground, 'Parallax effect' ).el.closest('.builder-line') === controlOf( ground, 'Dim the picture' ).el.closest('.builder-line') && valueAt( ground, 'Parallax effect' ) === false && valueAt( ground, 'Dim the picture' ) === true
+	&& controlOf( ground, 'Parallax effect' ).el.disabled === false && controlOf( ground, 'Dim the picture' ).el.disabled === false
+	&& controlOf( ground, 'Parallax effect' ).el.closest('label').querySelector('small') === null && controlOf( ground, 'Dim the picture' ).el.closest('label').querySelector('small') === null );
 check( '...the colour is a select with a patch beside it that follows the choice - and the patch is a patch of the page, not of the picture', ( function() {
 	const swatch = ground.querySelector('.builder-swatch');
 	const first = swatch.dataset.color;
-	change( ground, 'Colour', 'dark' );
+	change( ground, 'Background colour', 'dark' );
 	const second = swatch.dataset.color;
-	change( ground, 'Colour', '' );
-	return first === 'black' && second === 'dark' && swatch.dataset.color === 'plain' && swatch.getAttribute('aria-hidden') === 'true' && swatch.parentNode.contains( controlOf( ground, 'Colour' ).el ) && settingsOf().color === ''
-		&& controlOf( ground, 'Colour' ).el.children.map( function( option ) { return option.value } ).join() === ',alt,tint,dark,black,primary,brand-alt' && swatch.style.getPropertyValue('--builder-swatch') === '';
+	change( ground, 'Background colour', '' );
+	return first === 'black' && second === 'dark' && swatch.dataset.color === 'plain' && swatch.getAttribute('aria-hidden') === 'true' && swatch.parentNode.contains( controlOf( ground, 'Background colour' ).el ) && settingsOf().color === ''
+		&& controlOf( ground, 'Background colour' ).el.children.map( function( option ) { return option.value } ).join() === ',alt,tint,dark,black,primary,brand-alt' && swatch.style.getPropertyValue('--builder-swatch') === '';
 } )() );
-check( '...the colours and the border have words of their own, not the names of the classes of Nino.css - and the empty value of the border has its word, not the lower case none of the label', controlOf( ground, 'Colour' ).el.children.map( function( option ) { return option.textContent } ).join() === 'Default,Alternate,Tinted,Dark,Black,Brand colour,Second colour'
+check( '...the colours and the border have words of their own, not the names of the classes of Nino.css - and the empty value of the border has its word, not the lower case none of the label', controlOf( ground, 'Background colour' ).el.children.map( function( option ) { return option.textContent } ).join() === 'Default,Alternate,Tinted,Dark,Black,Brand colour,Second colour'
 	&& controlOf( ground, 'Border' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=None,1=Thin,2=Medium,3=Strong' );
 check( '...the border is a strength and, beside it on the line, a switch for the brand colour: the select writes the strength, the switch the colour - two settings of the section, and neither takes the other along; a switch alone is a border of the brand colour with no strength', ( function() {
 
@@ -1832,92 +1832,92 @@ sandbox.getComputedStyle = function() {
 	return { getPropertyValue : function( property ) { return { '--color-section-dark-bg' : ' #112233 ', '--color-primary' : 'rgb(10, 20, 30)' }[property] ?? '' } };
 };
 builder._openSettings( [ 0 ] );
-change( paneOf('background'), 'Colour', 'dark' );
+change( paneOf('background'), 'Background colour', 'dark' );
 const patch = function() { return paneOf('background').querySelector('.builder-swatch').style.getPropertyValue('--builder-swatch') };
 const darkPatch = patch();
-change( paneOf('background'), 'Colour', 'primary' );
+change( paneOf('background'), 'Background colour', 'primary' );
 const primaryPatch = patch();
-change( paneOf('background'), 'Colour', 'tint' );
+change( paneOf('background'), 'Background colour', 'tint' );
 check( '...the colour of the patch is read at the time from the custom properties of Nino.css the preview has - and where the page does not know one the patch has no colour of its own, and is the neutral grey of the stylesheet', darkPatch === '#112233' && primaryPatch === 'rgb(10, 20, 30)' && patch() === '' && paneOf('background').querySelector('.builder-swatch').dataset.color === 'tint' );
 delete sandbox.getComputedStyle;
 check( 'the picture behind the section: a row with the slot as text and an icon button beside it that has the source for its title and its label', ( function() {
 	const row = paneOf('background').querySelector('.builder-source');
 	const button = row.querySelector('button');
-	return row.querySelector('.builder-source-caption').textContent === 'Current picture:' && row.querySelector('.builder-source-current').textContent === '/template/page-home/hero/background' && button.className === 'builder-icon-btn' && button.title === 'Source'
+	return row.querySelector('.builder-source-caption').textContent === 'Current image slot:' && row.querySelector('.builder-source-current').textContent === '/template/page-home/hero/background' && button.className === 'builder-icon-btn' && button.title === 'Source'
 		&& button.getAttribute('aria-label') === 'Source' && iconOf( button ) === 'source' && row.querySelector('.builder-source-line').contains( button );
 } )() );
 
-const focusGrid = function() { return controlOf( paneOf('background'), 'Focus' ).el };
+const focusGrid = function() { return controlOf( paneOf('background'), 'Manual focus' ).el };
 check( 'the focus of the picture is a grid of nine radio buttons in the order of Nino.css, each with its place for its label, and a switch that says there is none - the focus the section has is the one that is on', ( function() {
 	return focusGrid().getAttribute('role') === 'radiogroup' && radiosOf( focusGrid() ).map( function( radio ) { return radio.value+ '='+ radio.getAttribute('aria-label') } ).join() === '1=Top left,2=Top centre,3=Top right,4=Centre left,5=Centre,6=Centre right,7=Bottom left,8=Bottom centre,9=Bottom right'
-		&& valueAt( paneOf('background'), 'Focus' ) === '5' && valueAt( paneOf('background'), 'No focus' ) === false && radiosOf( focusGrid() ).every( function( radio ) { return radio.disabled === false } ) && focusGrid().classList.contains('is-disabled') === false;
+		&& valueAt( paneOf('background'), 'Manual focus' ) === '5' && valueAt( paneOf('background'), 'Automatic focus' ) === false && radiosOf( focusGrid() ).every( function( radio ) { return radio.disabled === false } ) && focusGrid().classList.contains('is-disabled') === false;
 } )() );
-change( paneOf('background'), 'Focus', '9' );
-check( '...a place is written as its number', builder._doc.model.blocks[0].background.focus === 9 && valueAt( paneOf('background'), 'Focus' ) === '9' );
-change( paneOf('background'), 'No focus', true );
+change( paneOf('background'), 'Manual focus', '9' );
+check( '...a place is written as its number', builder._doc.model.blocks[0].background.focus === 9 && valueAt( paneOf('background'), 'Manual focus' ) === '9' );
+change( paneOf('background'), 'Automatic focus', true );
 check( '...no focus is null, and the grid is greyed and takes no choice while there is none', builder._doc.model.blocks[0].background.focus === null && focusGrid().classList.contains('is-disabled') && radiosOf( focusGrid() ).every( function( radio ) { return radio.disabled === true && radio.checked === false } )
-	&& change( paneOf('background'), 'Focus', '3' ) === false && builder._doc.model.blocks[0].background.focus === null );
-change( paneOf('background'), 'No focus', false );
-check( '...and a focus again starts in the middle', builder._doc.model.blocks[0].background.focus === 5 && valueAt( paneOf('background'), 'Focus' ) === '5' && focusGrid().classList.contains('is-disabled') === false );
-change( paneOf('background'), 'Parallax', true );
+	&& change( paneOf('background'), 'Manual focus', '3' ) === false && builder._doc.model.blocks[0].background.focus === null );
+change( paneOf('background'), 'Automatic focus', false );
+check( '...and a focus again starts in the middle', builder._doc.model.blocks[0].background.focus === 5 && valueAt( paneOf('background'), 'Manual focus' ) === '5' && focusGrid().classList.contains('is-disabled') === false );
+change( paneOf('background'), 'Parallax effect', true );
 buttonOf( paneOf('background'), 'Remove the picture' ).click();
 check( 'the picture is taken away with its button: no background, the row says none, the focus and the button are off', builder._doc.model.blocks[0].background === null && paneOf('background').querySelector('.builder-source-current').textContent === 'none' && focusGrid().classList.contains('is-disabled')
-	&& controlOf( paneOf('background'), 'No focus' ).el.disabled === true && buttonOf( paneOf('background'), 'Remove the picture' ).disabled === true && preview().children[0].querySelector('.is-background') === null );
-check( '...a section that loses its picture loses the parallax and the dimming with it, and both are off and out of reach again', settingsOf().parallax === false && settingsOf().dim === false && valueAt( paneOf('background'), 'Parallax' ) === false && valueAt( paneOf('background'), 'Dim the picture' ) === false
-	&& controlOf( paneOf('background'), 'Parallax' ).el.disabled === true && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === true && settingsOf().cover === 100 );
+	&& controlOf( paneOf('background'), 'Automatic focus' ).el.disabled === true && buttonOf( paneOf('background'), 'Remove the picture' ).disabled === true && preview().children[0].querySelector('.is-background') === null );
+check( '...a section that loses its picture loses the parallax and the dimming with it, and both are off and out of reach again', settingsOf().parallax === false && settingsOf().dim === false && valueAt( paneOf('background'), 'Parallax effect' ) === false && valueAt( paneOf('background'), 'Dim the picture' ) === false
+	&& controlOf( paneOf('background'), 'Parallax effect' ).el.disabled === true && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === true && settingsOf().cover === 100 );
 builder._openSettings( [ 1 ] );
 const sectionOne = function() { return builder._doc.model.blocks[1].settings };
-check( '...so is a section that has none to begin with, and so are its parallax and its dimming', controlOf( paneOf('background'), 'No focus' ).el.disabled === true && radiosOf( focusGrid() ).every( function( radio ) { return radio.disabled === true } ) && buttonOf( paneOf('background'), 'Remove the picture' ).disabled === true
-	&& controlOf( paneOf('background'), 'Parallax' ).el.disabled === true && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === true );
+check( '...so is a section that has none to begin with, and so are its parallax and its dimming', controlOf( paneOf('background'), 'Automatic focus' ).el.disabled === true && radiosOf( focusGrid() ).every( function( radio ) { return radio.disabled === true } ) && buttonOf( paneOf('background'), 'Remove the picture' ).disabled === true
+	&& controlOf( paneOf('background'), 'Parallax effect' ).el.disabled === true && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === true );
 check( 'a section that is no cover has the switch off, a number that is empty and takes no input, and the place of its content out of reach - a parallax has the place as a cover has, and a section that is neither stands in the flow of the page', valueAt( paneOf('layout'), 'Cover' ) === false && valueAt( paneOf('layout'), heightLabel ) === ''
-	&& controlOf( paneOf('layout'), heightLabel ).el.disabled === true && controlOf( paneOf('layout'), 'Position of the content' ).el.disabled === true && sectionOne().cover === null && sectionOne().parallax === false );
+	&& controlOf( paneOf('layout'), heightLabel ).el.disabled === true && controlOf( paneOf('layout'), 'Vertical alignment' ).el.disabled === true && sectionOne().cover === null && sectionOne().parallax === false );
 change( paneOf('layout'), 'Cover', true );
 check( '...the cover switched on is 90 high, what Nino.ui.js makes of a cover that names no height: the model has it, the number shows it and takes input, and the place of the content wakes', sectionOne().cover === 90 && valueAt( paneOf('layout'), 'Cover' ) === true
-	&& String( valueAt( paneOf('layout'), heightLabel ) ) === '90' && controlOf( paneOf('layout'), heightLabel ).el.disabled === false && controlOf( paneOf('layout'), 'Position of the content' ).el.disabled === false );
+	&& String( valueAt( paneOf('layout'), heightLabel ) ) === '90' && controlOf( paneOf('layout'), heightLabel ).el.disabled === false && controlOf( paneOf('layout'), 'Vertical alignment' ).el.disabled === false );
 change( paneOf('layout'), heightLabel, 60 );
 check( '...a height typed is written', sectionOne().cover === 60 && valueAt( paneOf('layout'), 'Cover' ) === true );
 check( '...and a field on its way to a number does not take the cover away: one emptied, or one out of bounds, leaves the height as it is - and once the typing is over the field says the height in force', [ '', 0, 101, -5 ].every( function( typed ) { change( paneOf('layout'), heightLabel, typed ); return sectionOne().cover === 60 } ) && String( valueAt( paneOf('layout'), heightLabel ) ) === '60' );
-change( paneOf('layout'), 'Position of the content', 'bottom' );
+change( paneOf('layout'), 'Vertical alignment', 'bottom' );
 change( paneOf('layout'), heightLabel, 150 );
 check( '...and once the typing is over a value out of bounds goes back to the height in force: 150 typed, 60 read', String( valueAt( paneOf('layout'), heightLabel ) ) === '60' && sectionOne().cover === 60 );
 const bottom = sectionOne().contentPos;
-change( paneOf('layout'), 'Position of the content', 'top' );
+change( paneOf('layout'), 'Vertical alignment', 'top' );
 const top = sectionOne().contentPos;
-change( paneOf('layout'), 'Position of the content', '' );
-check( '...the place of the content is written as its word, the top or the bottom, and the middle as none', bottom === 'bottom' && top === 'top' && sectionOne().contentPos === '' && valueAt( paneOf('layout'), 'Position of the content' ) === '' );
+change( paneOf('layout'), 'Vertical alignment', '' );
+check( '...the place of the content is written as its word, the top or the bottom, and the middle as none', bottom === 'bottom' && top === 'top' && sectionOne().contentPos === '' && valueAt( paneOf('layout'), 'Vertical alignment' ) === '' );
 sectionOne().dim = true;
 change( paneOf('layout'), 'Cover', false );
 check( 'the cover switched off is none in the model, the number is empty and out of reach, the place of the content sleeps again - and the scrim goes with the cover, as there is nothing left to dim', sectionOne().cover === null && valueAt( paneOf('layout'), 'Cover' ) === false
-	&& valueAt( paneOf('layout'), heightLabel ) === '' && controlOf( paneOf('layout'), heightLabel ).el.disabled === true && controlOf( paneOf('layout'), 'Position of the content' ).el.disabled === true && sectionOne().dim === false );
+	&& valueAt( paneOf('layout'), heightLabel ) === '' && controlOf( paneOf('layout'), heightLabel ).el.disabled === true && controlOf( paneOf('layout'), 'Vertical alignment' ).el.disabled === true && sectionOne().dim === false );
 sectionOne().parallax = true;
 sectionOne().dim = true;
 builder._refreshTab('background');
-check( 'a parallax a template wrote without a picture, or that lost it, is not stuck: a switch that is on is in reach, and switched off it takes the scrim with it and both sleep', controlOf( paneOf('background'), 'Parallax' ).el.disabled === false && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === false
-	&& change( paneOf('background'), 'Parallax', false ) === true && sectionOne().parallax === false && sectionOne().dim === false
-	&& controlOf( paneOf('background'), 'Parallax' ).el.disabled === true && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === true );
+check( 'a parallax a template wrote without a picture, or that lost it, is not stuck: a switch that is on is in reach, and switched off it takes the scrim with it and both sleep', controlOf( paneOf('background'), 'Parallax effect' ).el.disabled === false && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === false
+	&& change( paneOf('background'), 'Parallax effect', false ) === true && sectionOne().parallax === false && sectionOne().dim === false
+	&& controlOf( paneOf('background'), 'Parallax effect' ).el.disabled === true && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === true );
 builder._doc.model.blocks[1].background = { slot : '/template/page-home/services/background', focus : 5 };
 builder._refreshTab('background');
-check( 'with a picture the parallax is in reach, and the dimming is not while the section is neither a cover nor a parallax - there is no scrim in Nino.css for it', controlOf( paneOf('background'), 'Parallax' ).el.disabled === false && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === true );
-change( paneOf('background'), 'Parallax', true );
+check( 'with a picture the parallax is in reach, and the dimming is not while the section is neither a cover nor a parallax - there is no scrim in Nino.css for it', controlOf( paneOf('background'), 'Parallax effect' ).el.disabled === false && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === true );
+change( paneOf('background'), 'Parallax effect', true );
 check( '...a parallax wakes the dimming in its own tab and the place of the content in the Layout tab, where the cover stays off', sectionOne().parallax === true && sectionOne().cover === null && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === false
-	&& controlOf( paneOf('layout'), 'Position of the content' ).el.disabled === false && valueAt( paneOf('layout'), 'Cover' ) === false );
+	&& controlOf( paneOf('layout'), 'Vertical alignment' ).el.disabled === false && valueAt( paneOf('layout'), 'Cover' ) === false );
 change( paneOf('background'), 'Dim the picture', true );
-change( paneOf('background'), 'Parallax', false );
+change( paneOf('background'), 'Parallax effect', false );
 check( '...and switched off in a section that is no cover it takes the scrim with it: both sleep again, here and in the Layout tab', sectionOne().parallax === false && sectionOne().dim === false && valueAt( paneOf('background'), 'Dim the picture' ) === false
-	&& controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === true && controlOf( paneOf('layout'), 'Position of the content' ).el.disabled === true );
+	&& controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === true && controlOf( paneOf('layout'), 'Vertical alignment' ).el.disabled === true );
 change( paneOf('layout'), 'Cover', true );
 check( '...a cover wakes the dimming in the Background tab as well', sectionOne().cover === 90 && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === false );
 change( paneOf('background'), 'Dim the picture', true );
-change( paneOf('background'), 'Parallax', true );
-change( paneOf('background'), 'Parallax', false );
+change( paneOf('background'), 'Parallax effect', true );
+change( paneOf('background'), 'Parallax effect', false );
 check( '...the parallax switched off in a cover keeps the scrim, which is the cover\'s', sectionOne().cover === 90 && sectionOne().parallax === false && sectionOne().dim === true && valueAt( paneOf('background'), 'Dim the picture' ) === true );
-change( paneOf('background'), 'Parallax', true );
+change( paneOf('background'), 'Parallax effect', true );
 change( paneOf('layout'), 'Cover', false );
 check( '...and so is the cover switched off in a parallax: the scrim stays, and so does the place of the content', sectionOne().cover === null && sectionOne().parallax === true && sectionOne().dim === true
-	&& controlOf( paneOf('layout'), 'Position of the content' ).el.disabled === false && valueAt( paneOf('background'), 'Dim the picture' ) === true );
+	&& controlOf( paneOf('layout'), 'Vertical alignment' ).el.disabled === false && valueAt( paneOf('background'), 'Dim the picture' ) === true );
 change( paneOf('layout'), 'Cover', true );
 change( paneOf('layout'), heightLabel, 60 );
-change( paneOf('layout'), 'Position of the content', 'bottom' );
+change( paneOf('layout'), 'Vertical alignment', 'bottom' );
 change( paneOf('background'), 'Border', '3' );
 change( paneOf('background'), 'In the brand colour', true );
 check( '...the other fields of the picture and of the cover write their settings: the parallax and the dimming in the Background tab, the cover, its height and the place of the content in the Layout tab', ( function() {
@@ -1926,15 +1926,15 @@ check( '...the other fields of the picture and of the cover write their settings
 } )() );
 buttonOf( paneOf('background'), 'Remove the picture' ).click();
 check( '...and the picture taken away takes the parallax and the dimming with it, and nothing of the cover: its height and the place of its content stay', sectionOne().parallax === false && sectionOne().dim === false && sectionOne().cover === 60 && sectionOne().contentPos === 'bottom'
-	&& controlOf( paneOf('background'), 'Parallax' ).el.disabled === true && controlOf( paneOf('layout'), heightLabel ).el.disabled === false );
+	&& controlOf( paneOf('background'), 'Parallax effect' ).el.disabled === true && controlOf( paneOf('layout'), heightLabel ).el.disabled === false );
 change( paneOf('layout'), 'Cover', false );
 builder._doc.model.blocks[1].background = { slot : '/template/page-home/services/background', focus : 5 };
 builder._refreshTab('background');
-change( paneOf('background'), 'Parallax', true );
-const reach = controlOf( paneOf('layout'), 'Position of the content' ).el.disabled === false;
+change( paneOf('background'), 'Parallax effect', true );
+const reach = controlOf( paneOf('layout'), 'Vertical alignment' ).el.disabled === false;
 buttonOf( paneOf('background'), 'Remove the picture' ).click();
 check( '...and from a parallax that is no cover the picture taken away takes the reach of the place of the content with it, in the Layout tab: the parallax was all that gave it', reach === true && sectionOne().parallax === false && sectionOne().cover === null
-	&& controlOf( paneOf('layout'), 'Position of the content' ).el.disabled === true );
+	&& controlOf( paneOf('layout'), 'Vertical alignment' ).el.disabled === true );
 
 doc = open();
 builder._openSettings( [ 0 ] );
@@ -1999,8 +1999,8 @@ check( 'what a refused save said of a section stands over its first tab', paneOf
 doc = open();
 settingsOf().rowAlign = 'center';
 builder._openSettings( [ 0 ] );
-check( 'a vertical alignment written by hand that the form has no button for - nino-grid-center - is left as it is: no button is chosen, until one is', valueAt( paneOf('layout'), 'Vertical alignment' ) === null && settingsOf().rowAlign === 'center'
-	&& ( change( paneOf('layout'), 'Vertical alignment', 'middle' ), settingsOf().rowAlign === 'middle' ) );
+check( 'a vertical alignment written by hand that the form has no button for - nino-grid-center - is left as it is: no button is chosen, until one is', valueAt( paneOf('layout'), 'Vertical content alignment' ) === null && settingsOf().rowAlign === 'center'
+	&& ( change( paneOf('layout'), 'Vertical content alignment', 'middle' ), settingsOf().rowAlign === 'middle' ) );
 console.log( '\nThe dialog of a column, and the viewports in its tables' );
 
 doc = open();
@@ -2018,17 +2018,17 @@ check( 'in a viewport the table of the widths has the row of that viewport only 
 		&& controlOf( paneOf('layout'), 'Width, Desktop' ).el.children.map( function( option ) { return option.value } ).join() === '25,33,50,66,75,100' && paneOf('layout').querySelectorAll('.builder-link-btn').map( function( link ) { return link.textContent } ).join() === 'All viewports'
 		&& widths().nextSibling === paneOf('layout').querySelector('.builder-link-btn');
 } )() );
-check( '...and the rest of the tab: one line with the vertical alignment of the components and the horizontal alignment, in this order, both as icons - the vertical one with Off as a word, and with its hint -, the gap on a line of its own below, and under it the spacing', JSON.stringify( labelList( paneOf('layout') ) ) === JSON.stringify( [ 'Width, Desktop', 'Hidden, Desktop', 'Vertical alignment', 'Horizontal alignment', 'Gap (--space-*)', 'Inside', 'Top', 'Bottom' ] )
-	&& valueAt( paneOf('layout'), 'Horizontal alignment' ) === 'left' && valueAt( paneOf('layout'), 'Vertical alignment' ) === '' && controlOf( paneOf('layout'), 'Vertical alignment' ).el.querySelectorAll('.builder-segment-option').map( function( option ) { return option.querySelector('input').value+ ':'+ ( iconOf( option ) ?? option.textContent ) } ).join()
+check( '...and the rest of the tab: one line with the vertical alignment of the components and the horizontal alignment, in this order, both as icons - the vertical one with Off as a word, and without a hint -, the gap on a line of its own below, and under it the spacing', JSON.stringify( labelList( paneOf('layout') ) ) === JSON.stringify( [ 'Width, Desktop', 'Hidden, Desktop', 'Vertical alignment', 'Horizontal text alignment', 'Gap (--space-*)', 'Inside', 'Top', 'Bottom' ] )
+	&& valueAt( paneOf('layout'), 'Horizontal text alignment' ) === 'left' && valueAt( paneOf('layout'), 'Vertical alignment' ) === '' && controlOf( paneOf('layout'), 'Vertical alignment' ).el.querySelectorAll('.builder-segment-option').map( function( option ) { return option.querySelector('input').value+ ':'+ ( iconOf( option ) ?? option.textContent ) } ).join()
 		=== ':Off,start:stack-start,center:stack-center,end:stack-end' && controlOf( paneOf('layout'), 'Gap (--space-*)' ).el.children.map( function( option ) { return option.value } ).join() === ',0,1,2,3,4,5,6'
 	&& ( function() {
 		const lines = paneOf('layout').querySelectorAll('.builder-line');
 		const gap = controlOf( paneOf('layout'), 'Gap (--space-*)' ).el;
-		return lines.length === 2 && lines[0].children.length === 2 && lines[0].children[0].contains( controlOf( paneOf('layout'), 'Vertical alignment' ).el ) && lines[0].children[1].contains( controlOf( paneOf('layout'), 'Horizontal alignment' ).el )
-			&& lines[0].children[0].querySelector('.nino-admin-hint').textContent === words['/_admin/builder/hint/stack-align'] && lines[0].nextSibling.contains( gap ) && lines[0].contains( gap ) === false;
+		return lines.length === 2 && lines[0].children.length === 2 && lines[0].children[0].contains( controlOf( paneOf('layout'), 'Vertical alignment' ).el ) && lines[0].children[1].contains( controlOf( paneOf('layout'), 'Horizontal text alignment' ).el )
+			&& lines[0].children[0].querySelector('.nino-admin-hint') === null && lines[0].nextSibling.contains( gap ) && lines[0].contains( gap ) === false;
 	} )() );
 change( paneOf('layout'), 'Width, Desktop', '33' );
-change( paneOf('layout'), 'Horizontal alignment', 'right' );
+change( paneOf('layout'), 'Horizontal text alignment', 'right' );
 change( paneOf('layout'), 'Vertical alignment', 'center' );
 change( paneOf('layout'), 'Gap (--space-*)', '3' );
 check( '...what the tab writes is the width of the viewport, the alignments and the gap', colOf().width.l === 33 && colOf().text === 'right' && colOf().stackAlign === 'center' && colOf().stackGap === '3' && JSON.stringify( colOf().width ) === '{"s":100,"m":100,"l":33}' );
@@ -2081,22 +2081,22 @@ builder._openSettings( [ 1, 0 ] );
 buttonOf( stripOf(), 'Background' ).click();
 const colGround = function() { return paneOf('background') };
 const groundOf = function() { return builder._doc.model.blocks[1].cols[0] };
-check( 'Background of a column: the colour first, with the patch beside it, then the rows of the picture - the upload and its alt text, the focus - and the dimming at the end; whether the picture is a parallax is the section\'s alone, and is not here', JSON.stringify( labelList( colGround() ) ) === JSON.stringify( [ 'Colour', 'Upload a picture', 'Alternative text (English (US))', 'No focus', 'Focus', 'Dim the picture' ] )
-	&& colGround().children[0].className === 'builder-with-swatch' && colGround().children[0].contains( controlOf( colGround(), 'Colour' ).el ) && colGround().children[0].querySelector('.builder-swatch') !== null && shownTab( stripOf(), 'builder' ) === 'background' );
-check( '...the colour is none of its own - which is the surroundings the column is in -, counter, and the colours of a section, in the words the section has for them', controlOf( colGround(), 'Colour' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join()
-	=== '=Like the surroundings,counter=Counter,alt=Alternate,tint=Tinted,dark=Dark,black=Black,primary=Brand colour,brand-alt=Second colour' && valueAt( colGround(), 'Colour' ) === '' );
+check( 'Background of a column: the colour first, with the patch beside it, then the rows of the picture - the upload and its alt text, the focus - and the dimming at the end; whether the picture is a parallax is the section\'s alone, and is not here', JSON.stringify( labelList( colGround() ) ) === JSON.stringify( [ 'Background colour', 'Upload a picture', 'Alt text (English (US))', 'Automatic focus', 'Manual focus', 'Dim the picture' ] )
+	&& colGround().children[0].className === 'builder-with-swatch' && colGround().children[0].contains( controlOf( colGround(), 'Background colour' ).el ) && colGround().children[0].querySelector('.builder-swatch') !== null && shownTab( stripOf(), 'builder' ) === 'background' );
+check( '...the colour is none of its own - which is the surroundings the column is in -, counter, and the colours of a section, in the words the section has for them', controlOf( colGround(), 'Background colour' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join()
+	=== '=Like the surroundings,counter=Counter,alt=Alternate,tint=Tinted,dark=Dark,black=Black,primary=Brand colour,brand-alt=Second colour' && valueAt( colGround(), 'Background colour' ) === '' );
 check( '...the choice is written into the column and into nothing else', ( function() {
 
-	change( colGround(), 'Colour', 'counter' );
+	change( colGround(), 'Background colour', 'counter' );
 
 	const counter = groundOf().color;
 
-	change( colGround(), 'Colour', 'dark' );
+	change( colGround(), 'Background colour', 'dark' );
 
 	const dark = groundOf().color;
 	const rest = builder._doc.model.blocks[1].settings.color+ '/'+ builder._doc.model.blocks[1].cols[1].color;
 
-	change( colGround(), 'Colour', '' );
+	change( colGround(), 'Background colour', '' );
 
 	return counter === 'counter' && dark === 'dark' && groundOf().color === '' && rest === '/';
 } )() );
@@ -2114,15 +2114,15 @@ check( '...the patch is the ground the column ends up with - the section\'s wher
 		const swatch = colGround().querySelector('.builder-swatch');
 		const own = swatch.dataset.color;
 
-		change( colGround(), 'Colour', 'counter' );
+		change( colGround(), 'Background colour', 'counter' );
 
 		const counter = swatch.dataset.color;
 
-		change( colGround(), 'Colour', 'tint' );
+		change( colGround(), 'Background colour', 'tint' );
 
 		const tint = swatch.dataset.color;
 
-		change( colGround(), 'Colour', '' );
+		change( colGround(), 'Background colour', '' );
 
 		return own === ( around === '' ? 'plain' : around ) && counter === pairs[around] && tint === 'tint' && swatch.getAttribute('aria-hidden') === 'true' && groundOf().color === '';
 	} );
@@ -2136,12 +2136,12 @@ check( '...the dimming is a switch under the rows of the picture: off while ther
 groundOf().background = { slot : '/template/page-home/services/column-background', focus : null };
 builder._refreshTab('background');
 check( '...with a picture it can be turned on, and writes the dim of the column', controlOf( colGround(), 'Dim the picture' ).el.disabled === false && ( change( colGround(), 'Dim the picture', true ), groundOf().dim === true ) && valueAt( colGround(), 'Dim the picture' ) === true );
-change( colGround(), 'No focus', false );
+change( colGround(), 'Automatic focus', false );
 
 const middle = groundOf().background.focus;
 
-change( colGround(), 'Focus', '9' );
-check( '...the focus of the picture is the grid of the section\'s: it starts in the middle, a place is written as its number into the background of the column - none is null - and the section is left alone', middle === 5 && groundOf().background.focus === 9 && ( change( colGround(), 'No focus', true ), groundOf().background.focus === null ) && builder._doc.model.blocks[1].background === null );
+change( colGround(), 'Manual focus', '9' );
+check( '...the focus of the picture is the grid of the section\'s: it starts in the middle, a place is written as its number into the background of the column - none is null - and the section is left alone', middle === 5 && groundOf().background.focus === 9 && ( change( colGround(), 'Automatic focus', true ), groundOf().background.focus === null ) && builder._doc.model.blocks[1].background === null );
 buttonOf( colGround(), 'Remove the picture' ).click();
 check( '...a picture taken away takes the dimming with it: the column has no background, its dim is off in the model, and the switch is off and greyed out', groundOf().background === null && groundOf().dim === false && controlOf( colGround(), 'Dim the picture' ).el.disabled === true
 	&& valueAt( colGround(), 'Dim the picture' ) === false && buttonOf( colGround(), 'Remove the picture' ).disabled === true );
@@ -2284,7 +2284,7 @@ const pickedOff = function( label ) { return controlOf( colAnimation(), label ).
 check( 'the animation of a column is its own, and has no like, off or own: the effect and its strength, the speed and how often - the effect is none before it is the plain one, and the words under it are those of a column', JSON.stringify( labelList( colAnimation() ) ) === JSON.stringify( [ 'Effect', 'Strength', 'Speed', 'Repeat' ] )
 	&& controlOf( colAnimation(), 'Effect' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === 'none=No animation,=Default - fade in and rise,zoom=Zoom,zoom-out=Zoom out,slide-left=Slides left,slide-right=Slides right,flip=Flip,blur=Blur'
 	&& valueAt( colAnimation(), 'Effect' ) === 'none' && colAnimation().querySelectorAll('.builder-line').map( function( line ) { return line.children.length } ).join() === '2,2'
-	&& controlOf( colAnimation(), 'Effect' ).el.title === words['/_admin/builder/hint/vpa-col'] && colAnimation().querySelector('.nino-admin-hint').textContent === 'Whether the animation runs when the column comes into view, and with which effect.' );
+	&& controlOf( colAnimation(), 'Effect' ).el.title === '' && colAnimation().querySelector('.nino-admin-hint') === null );
 check( '...it has no delay and no duration, whatever the animation is: the file keeps a column\'s animation as classes, and a column has no attribute for either - the animation of a section has both', ( function() {
 	const column = labelList( colAnimation() );
 	builder._openSettings( [ 0 ] );
@@ -2327,10 +2327,10 @@ check( '...Content: the source as text, with an icon button beside it that opens
 		&& row.querySelector('.builder-source-current').textContent === '/template/page-home/hero/title' && row.querySelector('.builder-source-name').hidden === true
 		&& button.className === 'builder-icon-btn' && button.title === 'Source' && button.getAttribute('aria-label') === 'Source' && iconOf( button ) === 'source' && JSON.stringify( labelList( paneOf('content') ) ) === '["Text (English (US))"]';
 } )() );
-check( '...Properties: the attributes of the schema in the order of the schema, the two of them on a line', JSON.stringify( labelList( paneOf('properties') ) ) === JSON.stringify( [ 'Tag', 'Style' ] ) && paneOf('properties').children.length === 1 && paneOf('properties').children[0].className === 'builder-line' && paneOf('properties').children[0].children.length === 2
-	&& controlOf( paneOf('properties'), 'Tag' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === 'div=div,h3=h3,h4=h4' && controlOf( paneOf('properties'), 'Style' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=none,loud=loud,quiet=quiet'
-	&& valueAt( paneOf('properties'), 'Tag' ) === 'h3' && valueAt( paneOf('properties'), 'Style' ) === 'loud' );
-change( paneOf('properties'), 'Tag', 'h4' );
+check( '...Properties: the attributes of the schema in the order of the schema, the two of them on a line', JSON.stringify( labelList( paneOf('properties') ) ) === JSON.stringify( [ 'HTML tag', 'Style' ] ) && paneOf('properties').children.length === 1 && paneOf('properties').children[0].className === 'builder-line' && paneOf('properties').children[0].children.length === 2
+	&& controlOf( paneOf('properties'), 'HTML tag' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === 'div=div,h3=h3,h4=h4' && controlOf( paneOf('properties'), 'Style' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=none,loud=loud,quiet=quiet'
+	&& valueAt( paneOf('properties'), 'HTML tag' ) === 'h3' && valueAt( paneOf('properties'), 'Style' ) === 'loud' );
+change( paneOf('properties'), 'HTML tag', 'h4' );
 change( paneOf('properties'), 'Style', '' );
 change( paneOf('custom'), 'Class of the component', 'big' );
 check( '...and write the attributes, CSS classes the class of the component', componentAt( [ 0, 0, 0 ] ).attributes.tag === 'h4' && componentAt( [ 0, 0, 0 ] ).attributes.style === '' && componentAt( [ 0, 0, 0 ] ).attributes['class'] === 'big' && JSON.stringify( labelList( paneOf('custom') ) ) === JSON.stringify( [ 'Class of the component' ] )
@@ -2342,7 +2342,7 @@ check( 'a link is a source of its own, a line of its own - the other attributes 
 	&& paneOf('properties').children[0].querySelector('.builder-source-name').textContent === 'Link' && paneOf('properties').children[0].querySelector('.builder-source-current').textContent === '/_nino/webpage/contact/uri'
 	&& paneOf('properties').children[0].querySelector('.builder-source-caption').hidden === true );
 builder._openSettings( [ 1, 1, 0 ] );
-check( '...a text of its own is alone when the select after it is a focus, which is a grid and has a line to itself - the switch for none and the nine places -, and the select after that is alone: alt, focus, ratio', dialogText('builder-dialog-kind') === 'Component "Image"' && classes( paneOf('properties').children ) === 'nino-admin-field,builder-focus,nino-admin-field' && JSON.stringify( labelList( paneOf('properties') ) ) === JSON.stringify( [ 'Alternative text', 'No focus', 'Focus', 'Ratio' ] )
+check( '...a text of its own is alone when the select after it is a focus, which is a grid and has a line to itself - the switch for none and the nine places -, and the select after that is alone: alt, focus, ratio', dialogText('builder-dialog-kind') === 'Component "Image"' && classes( paneOf('properties').children ) === 'nino-admin-field,builder-focus,nino-admin-field' && JSON.stringify( labelList( paneOf('properties') ) ) === JSON.stringify( [ 'Alternative text', 'Automatic focus', 'Focus', 'Ratio' ] )
 	&& controlsIn( paneOf('properties') ).map( function( control ) { return control.kind } ).join() === 'text,switch,group,select' );
 
 check( 'the attributes of a schema are paired in the order of the schema: a select, a switch, a number or a line of text goes with the next of them; a lines field, a link, a picture, a key or the focus of a picture - a select over none and the nine places - has a line to itself', ( function() {
@@ -2505,7 +2505,7 @@ sourceButton( paneOf('content') ).click();
 check( 'in a loop the source of a picture is a field of the element first - the fields of the type that hold a picture, and none - then the slots of the project', ( function() {
 	const field = controlOf( pickerPane('pick'), 'Field of the element' );
 	return pickerPane('pick').querySelector('.builder-source-current').textContent === 'image' && field.el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=none,image=image' && valueAt( pickerPane('pick'), 'Field of the element' ) === 'image'
-		&& field.el.closest('label').querySelector('.nino-admin-hint').textContent === words['/_admin/builder/hint/field-image'] && pickerPane('pick').querySelector('.builder-label').textContent === 'Image slot' && pickItems().length === 0;
+		&& field.el.closest('label').querySelector('.nino-admin-hint').textContent === words['/_admin/builder/hint/field'] && pickerPane('pick').querySelector('.builder-label').textContent === 'Image slot' && pickItems().length === 0;
 } )() );
 change( pickerPane('pick'), 'Field of the element', '' );
 check( '...and the choice of none is the choice of no source', componentAt( [ 1, 1, 0 ] ).source === '' && pickerBox().open === false && paneOf('content').querySelector('.builder-source-current').textContent === 'none' );
@@ -3505,7 +3505,7 @@ console.log( '\nThe picture of a slot' );
 const fileField = function( root ) { return root.querySelector('input[type="file"]') };
 const thumbOf = function( root ) { return root.querySelector('.builder-picture-thumb') };
 const noteOf = function( root ) { return root.querySelector('.builder-picture-message') };
-const altLabel = 'Alternative text (English (US))';
+const altLabel = 'Alt text (English (US))';
 const house = { name : 'house.jpg', refused : false };
 const choose = function( root, file ) {
 	const input = fileField( root );
@@ -3531,8 +3531,8 @@ check( '...what is typed goes into the mark of the slot, under the language, as 
 builder._closeDialog();
 builder._setLocale('de_DE');
 builder._openSettings( imageAt );
-check( '...in another language it is another text; typed, it joins the first - and emptied, it is gone again', valueAt( contentPane(), 'Alternative text (Deutsch)' ) === '' && ( change( contentPane(), 'Alternative text (Deutsch)', 'Ein Haus' ), JSON.stringify( image().create.alt ) === '{"en_US":"A house","de_DE":"Ein Haus"}' )
-	&& ( change( contentPane(), 'Alternative text (Deutsch)', '' ), JSON.stringify( image().create.alt ) === '{"en_US":"A house"}' ) && ( change( contentPane(), 'Alternative text (Deutsch)', 'Ein Haus' ), true ) );
+check( '...in another language it is another text; typed, it joins the first - and emptied, it is gone again', valueAt( contentPane(), 'Alt text (Deutsch)' ) === '' && ( change( contentPane(), 'Alt text (Deutsch)', 'Ein Haus' ), JSON.stringify( image().create.alt ) === '{"en_US":"A house","de_DE":"Ein Haus"}' )
+	&& ( change( contentPane(), 'Alt text (Deutsch)', '' ), JSON.stringify( image().create.alt ) === '{"en_US":"A house"}' ) && ( change( contentPane(), 'Alt text (Deutsch)', 'Ein Haus' ), true ) );
 builder._closeDialog();
 builder._setLocale('en_US');
 builder._openSettings( imageAt );
@@ -3564,7 +3564,7 @@ builder._renderEditor();
 builder._doc.model.blocks[0].cols[0].components.push( { name : 'image', source : '/template/page-home/hero/background', text : null, attributes : registry().components.image.defaults } );
 builder._openSettings( [ 0, 0, 3 ] );
 check( 'the slot that is there shows its picture and the alt text it holds in the language of the editor - none in English, the German one in German', thumbOf( contentPane() ).hidden === false && thumbOf( contentPane() ).src === '/uploads/hero.1600x900.jpg' && valueAt( contentPane(), altLabel ) === ''
-	&& ( builder._closeDialog(), builder._setLocale('de_DE'), builder._openSettings( [ 0, 0, 3 ] ), valueAt( contentPane(), 'Alternative text (Deutsch)' ) === 'Ein Held' ) );
+	&& ( builder._closeDialog(), builder._setLocale('de_DE'), builder._openSettings( [ 0, 0, 3 ] ), valueAt( contentPane(), 'Alt text (Deutsch)' ) === 'Ein Held' ) );
 builder._closeDialog();
 builder._setLocale('en_US');
 builder._openSettings( [ 0, 0, 3 ] );
@@ -3630,7 +3630,7 @@ console.log( '\nThe picture behind a section' );
 doc = open();
 builder._renderEditor();
 builder._openSettings( [ 1 ] );
-buttonOf( stripOf(), 'Background' ).click();
+buttonOf( stripOf(), 'Border / Background' ).click();
 check( 'the picture behind a section has the same under its source: the upload and the alt text - and where the section has none the alt text has no slot to wait in, and says that a picture comes first', fileField( paneOf('background') ) !== null && thumbOf( paneOf('background') ).hidden === true
 	&& controlOf( paneOf('background'), altLabel ).el.disabled === true && controlOf( paneOf('background'), altLabel ).el.closest('label').querySelector('.nino-admin-hint').textContent === 'Upload a picture first, or choose a slot with the Source button.' );
 requests = [];
@@ -3642,12 +3642,12 @@ requests[0].callback( 200, { ok : true } );
 check( '...the section has the picture behind it, with no focus until it is chosen and nothing to make', JSON.stringify( builder._doc.model.blocks[1].background ) === '{"slot":"/template/page-home/services/background","focus":null}' && changes === 1 && actionsOf() === 'slots/create,images/upload' );
 requests[1].callback( 200, { filename : 'f', url : '/uploads/services.jpg', source : { width : 2000, height : 1000 }, belowTarget : false } );
 check( '...and the tab is drawn again with it: the thumbnail, the focus and the button that takes the picture away are on, the alt text can be written - and the preview says that a picture is behind the section', thumbOf( paneOf('background') ).hidden === false && thumbOf( paneOf('background') ).src.indexOf( '/uploads/services.jpg' ) === 0
-	&& controlOf( paneOf('background'), 'No focus' ).el.disabled === false && buttonOf( paneOf('background'), 'Remove the picture' ).disabled === false && controlOf( paneOf('background'), altLabel ).el.disabled === false && noteOf( paneOf('background') ).textContent === 'The picture is stored.'
+	&& controlOf( paneOf('background'), 'Automatic focus' ).el.disabled === false && buttonOf( paneOf('background'), 'Remove the picture' ).disabled === false && controlOf( paneOf('background'), altLabel ).el.disabled === false && noteOf( paneOf('background') ).textContent === 'The picture is stored.'
 	&& preview().children[1].querySelector('.is-background') !== null && shownTab( stripOf(), 'builder' ) === 'background' );
 builder._closeDialog();
 builder._doc.model.blocks[1].id = '2col';
 builder._openSettings( [ 1 ] );
-buttonOf( stripOf(), 'Background' ).click();
+buttonOf( stripOf(), 'Border / Background' ).click();
 builder._doc.model.blocks[1].background = null;
 builder._refreshTab('background');
 requests = [];
@@ -3658,7 +3658,7 @@ builder._closeDialog();
 doc = open();
 builder._renderEditor();
 builder._openSettings( [ 0 ] );
-buttonOf( stripOf(), 'Background' ).click();
+buttonOf( stripOf(), 'Border / Background' ).click();
 check( 'the slot a section has shows its picture and the alt text it holds', thumbOf( paneOf('background') ).src === '/uploads/hero.1600x900.jpg' && valueAt( paneOf('background'), altLabel ) === '' );
 builder._doc.model.blocks[0].background = { slot : '/template/page-home/hero/background-2', focus : 5, create : { label : 'Background', width : 800, height : 400, alt : { en_US : 'Waves' } } };
 builder._refreshTab('background');
@@ -3681,7 +3681,7 @@ buttonOf( stripOf(), 'Background' ).click();
 const columnAt = function( at ) { return builder._doc.model.blocks[1].cols[at] };
 check( 'the picture behind a column has what the one behind a section has under its source: the upload and the alt text - which has no slot to wait in while there is no picture, and says that a picture comes first - and not whether the picture is a parallax, which is the section\'s alone', fileField( paneOf('background') ) !== null && thumbOf( paneOf('background') ).hidden === true
 	&& controlOf( paneOf('background'), altLabel ).el.disabled === true && controlOf( paneOf('background'), altLabel ).el.closest('label').querySelector('.nino-admin-hint').textContent === 'Upload a picture first, or choose a slot with the Source button.'
-	&& paneOf('background').querySelector('.builder-source-current').textContent === 'none' && labelList( paneOf('background') ).indexOf('Parallax') === -1 );
+	&& paneOf('background').querySelector('.builder-source-current').textContent === 'none' && labelList( paneOf('background') ).indexOf('Parallax effect') === -1 );
 requests = [];
 changes = 0;
 choose( paneOf('background'), house );
@@ -3691,7 +3691,7 @@ requests[0].callback( 200, { ok : true } );
 check( '...the background of the column is that slot, with no focus until it is chosen and nothing to make - the section has none of its own', JSON.stringify( columnAt( 0 ).background ) === '{"slot":"/template/page-home/services/column-background","focus":null}' && builder._doc.model.blocks[1].background === null && changes === 1 && actionsOf() === 'slots/create,images/upload' );
 requests[1].callback( 200, { filename : 'f', url : '/uploads/column.jpg', source : { width : 2000, height : 1000 }, belowTarget : false } );
 check( '...and the tab is drawn again with it: the thumbnail, the focus, the button that takes the picture away, the alt text and the dimming are on - and the preview says that a picture is behind the column, not behind the section', thumbOf( paneOf('background') ).hidden === false && thumbOf( paneOf('background') ).src.indexOf( '/uploads/column.jpg' ) === 0
-	&& controlOf( paneOf('background'), 'No focus' ).el.disabled === false && buttonOf( paneOf('background'), 'Remove the picture' ).disabled === false && controlOf( paneOf('background'), altLabel ).el.disabled === false && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === false
+	&& controlOf( paneOf('background'), 'Automatic focus' ).el.disabled === false && buttonOf( paneOf('background'), 'Remove the picture' ).disabled === false && controlOf( paneOf('background'), altLabel ).el.disabled === false && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === false
 	&& noteOf( paneOf('background') ).textContent === 'The picture is stored.' && preview().querySelector('[data-path="1.0"] .is-background') !== null && preview().children[1].querySelector('.builder-frame-head .is-background') === null && shownTab( stripOf(), 'builder' ) === 'background' );
 builder._closeDialog();
 builder._openSettings( [ 1, 1 ] );
@@ -3976,7 +3976,7 @@ check( 'a copy of a container is a deep one, with its children: the keys they re
 	const holder = cardIn( model );
 
 	holder.attributes.background = '/template/page-home-card/story/card-picture';
-	holder.slots = { background : { label : 'Card - Picture', width : 800, height : 400 } };
+	holder.slots = { background : { label : 'Card - Background picture', width : 800, height : 400 } };
 
 	const to = builder._duplicate( model, registry(), 'page-home-card', cardAt, function( source ) { return 'text of '+ source.split('/').pop() } );
 	const copy = builder._get( model, to );
@@ -3984,7 +3984,7 @@ check( 'a copy of a container is a deep one, with its children: the keys they re
 	return JSON.stringify( to ) === '[0,1,1]' && model.blocks[0].cols[1].components.length === 2 && copy !== holder && copy.components !== holder.components && copy.components.length === 3
 		&& copy.components.map( function( child ) { return child.source } ).join() === '/template/page-home-card/story/title-2,/template/page-home-card/story/text-2,/template/page-home-card/story/button-2'
 		&& JSON.stringify( copy.components.map( function( child ) { return child.create } ) ) === '[{"value":"text of title"},{"value":"text of text"},{"value":"text of button"}]'
-		&& copy.attributes.background === '/template/page-home-card/story/card-picture-2' && JSON.stringify( copy.slots ) === '{"background":{"label":"Card - Picture","width":1600,"height":900}}'
+		&& copy.attributes.background === '/template/page-home-card/story/card-picture-2' && JSON.stringify( copy.slots ) === '{"background":{"label":"Card - Background picture","width":1600,"height":900}}'
 		&& holder.components.map( function( child ) { return child.source } ).join() === '/template/page-home-card/story/title,/template/page-home-card/story/text,/template/page-home-card/story/button' && holder.components[0].create === undefined
 		&& holder.attributes.background === '/template/page-home-card/story/card-picture' && holder.slots.background.width === 800;
 } )() );
@@ -4007,7 +4007,7 @@ check( '...a copy of a section takes everything it owns under its new id: the ke
 	const holder = builder._get( model, [ 1, 1, 0 ] );
 
 	return copy.id === 'story-2' && holder.components.map( function( child ) { return child.source } ).join() === '/template/page-home-card/story-2/title,/template/page-home-card/story-2/text,/template/page-home-card/story-2/button'
-		&& holder.attributes.background === '/template/page-home-card/story-2/card-picture' && JSON.stringify( holder.slots ) === '{"background":{"label":"Card - Picture","width":1600,"height":900}}' && cardIn( model ).attributes.background === '/template/page-home-card/story/card-picture'
+		&& holder.attributes.background === '/template/page-home-card/story-2/card-picture' && JSON.stringify( holder.slots ) === '{"background":{"label":"Card - Background picture","width":1600,"height":900}}' && cardIn( model ).attributes.background === '/template/page-home-card/story/card-picture'
 		&& cardIn( model ).slots === undefined;
 } )() );
 check( 'a name for a new key or slot is free among the sources of the whole section: the children of a container and the pictures its attributes name count', ( function() {
@@ -4349,18 +4349,18 @@ const optionsOf = function( pane, label ) { return controlOf( pane, label ).el.c
 
 check( 'the form of a card has the label of the component for its title and two tabs: Properties and CSS classes - the attributes the schema declares, and the classes of its own; the form of a column or a plain component is not it, and the card has no tab for a content', dialogText('builder-dialog-kind') === 'Card'
 	&& JSON.stringify( dialogTabs() ) === '[["properties","Properties"],["custom","CSS classes"]]' && shownTab( screen.getElementById('builder-dialog-tabs'), 'builder' ) === 'properties' && screen.getElementById('builder-dialog-name').hidden === true && paneOf('content') === null );
-check( '...Properties: a field for each attribute in the order of the schema - the ground, the padding, the full height, the vertical and the horizontal alignment, the picture with its focus and its dimming, the border - by the type the schema gives', JSON.stringify( labelList( holderPane() ) )
-	=== JSON.stringify( [ 'Ground', 'Padding', 'Full height', 'Vertical', 'Horizontal', 'Upload a picture', 'No focus', 'Focus', 'Dim the picture', 'Without border' ] ) && controlOf( holderPane(), 'Full height' ).kind === 'switch' && controlOf( holderPane(), 'Dim the picture' ).kind === 'switch'
+check( '...Properties: a field for each attribute in the order of the schema - the full height, the padding, the vertical and the horizontal alignment, the ground, the border, the picture with its focus and its dimming - by the type the schema gives', JSON.stringify( labelList( holderPane() ) )
+	=== JSON.stringify( [ 'Full height', 'Padding', 'Vertical element alignment', 'Horizontal text alignment', 'Background colour', 'Without border', 'Upload a picture', 'Automatic focus', 'Focus', 'Dim the picture' ] ) && controlOf( holderPane(), 'Full height' ).kind === 'switch' && controlOf( holderPane(), 'Dim the picture' ).kind === 'switch'
 	&& controlOf( holderPane(), 'Without border' ).kind === 'switch' && controlOf( holderPane(), 'Focus' ).kind === 'group' );
-check( '...two to a line where both are short, a line of its own for the picture and for the focus: the ground and the padding, the full height and the vertical alignment, the horizontal alignment alone, then the picture, the focus, and the dimming with the border', classes( holderPane().children )
-	=== 'builder-line,builder-line,nino-admin-field,builder-background,builder-focus,builder-line' && holderPane().children.map( function( el ) { return labelList( el ).join('|') } ).join('~') === 'Ground|Padding~Full height|Vertical~Horizontal~Upload a picture~No focus|Focus~Dim the picture|Without border' );
-check( '...the ground is the colour select of a column - none of its own, which is the surroundings, counter and the six - with the patch of the colour it ends up in beside it, in the words of the grounds of a column', optionsOf( holderPane(), 'Ground' )
-	=== '=Like the surroundings,counter=Counter,alt=Alternate,tint=Tinted,dark=Dark,black=Black,primary=Brand colour,brand-alt=Second colour' && holderPane().querySelector('.builder-with-swatch').contains( controlOf( holderPane(), 'Ground' ).el ) && holderPane().querySelector('.builder-with-swatch').contains( holderPane().querySelector('.builder-swatch') )
-	&& holderPane().querySelector('.builder-swatch').getAttribute('aria-hidden') === 'true' && valueAt( holderPane(), 'Ground' ) === 'counter' );
-check( '...the hint of the ground stands under the select and the patch, not between them: the patch is level with the select', holderPane().querySelector('.builder-with-swatch').parentNode.className === 'builder-with-hint' && holderPane().querySelector('.builder-with-swatch').nextSibling.className === 'nino-admin-hint'
-	&& holderPane().querySelector('.builder-with-swatch').nextSibling.textContent === registry().components.card.attributes.ground.hint && holderPane().querySelector('.builder-with-swatch').querySelector('.nino-admin-hint') === null && stylesheet.indexOf( '.builder-with-hint > .nino-admin-hint' ) !== -1 );
+check( '...two to a line where both are short, a line of its own for the picture and for the focus: the full height and the padding, the vertical and the horizontal alignment, the ground and the border, then the picture, the focus, and the dimming alone', classes( holderPane().children )
+	=== 'builder-line,builder-line,builder-line,builder-background,builder-focus,nino-admin-switch' && holderPane().children.map( function( el ) { return labelList( el ).join('|') } ).join('~') === 'Full height|Padding~Vertical element alignment|Horizontal text alignment~Background colour|Without border~Upload a picture~Automatic focus|Focus~Dim the picture' );
+check( '...the ground is the colour select of a column - none of its own, which is the surroundings, counter and the six - with the patch of the colour it ends up in beside it, in the words of the grounds of a column', optionsOf( holderPane(), 'Background colour' )
+	=== '=Like the surroundings,counter=Counter,alt=Alternate,tint=Tinted,dark=Dark,black=Black,primary=Brand colour,brand-alt=Second colour' && holderPane().querySelector('.builder-with-swatch').contains( controlOf( holderPane(), 'Background colour' ).el ) && holderPane().querySelector('.builder-with-swatch').contains( holderPane().querySelector('.builder-swatch') )
+	&& holderPane().querySelector('.builder-swatch').getAttribute('aria-hidden') === 'true' && valueAt( holderPane(), 'Background colour' ) === 'counter' );
+check( '...the ground has no hint: the select and the patch stand in their line by themselves, and the registry hands the attribute over without one', holderPane().querySelector('.builder-with-swatch').parentNode.className === 'builder-line' && holderPane().querySelector('.builder-with-swatch').querySelector('.nino-admin-hint') === null
+	&& holderPane().querySelector('.builder-with-hint') === null && registry().components.card.attributes.ground.hint === '' );
 check( '...the padding has the steps of the section\'s spacing, the vertical alignment its own words - top, middle, bottom, last element at the bottom - and the horizontal alignment the words of the alignment of a text; each attribute has the words of the Builder, and the values the file has', optionsOf( holderPane(), 'Padding' ) === '=Default,0=0,1=1,2=2,3=3,4=4,5=5,6=6'
-	&& optionsOf( holderPane(), 'Vertical' ) === '=Top,middle=Middle,bottom=Bottom,last-bottom=Last element at the bottom' && optionsOf( holderPane(), 'Horizontal' ) === '=Inherited,left=Left,center=Centre,right=Right' && valueAt( holderPane(), 'Padding' ) === '3' && valueAt( holderPane(), 'Vertical' ) === '' );
+	&& optionsOf( holderPane(), 'Vertical element alignment' ) === '=Top,middle=Middle,bottom=Bottom,last-bottom=Last element at the bottom' && optionsOf( holderPane(), 'Horizontal text alignment' ) === '=Inherited,left=Left,center=Centre,right=Right' && valueAt( holderPane(), 'Padding' ) === '3' && valueAt( holderPane(), 'Vertical element alignment' ) === '' );
 
 const swatchOf = function() { return holderPane().querySelector('.builder-swatch').dataset.color };
 check( '...the patch is the ground the card ends up with: the ground of its column - or of its section where the column has none - for none of its own, the counter of that, by the pairs of Nino.css, for counter, and the ground itself for the rest', ( function() {
@@ -4375,15 +4375,15 @@ check( '...the patch is the ground the card ends up with: the ground of its colu
 
 		const counter = swatchOf();
 
-		change( holderPane(), 'Ground', '' );
+		change( holderPane(), 'Background colour', '' );
 
 		const none = swatchOf();
 
-		change( holderPane(), 'Ground', 'tint' );
+		change( holderPane(), 'Background colour', 'tint' );
 
 		const own = swatchOf();
 
-		change( holderPane(), 'Ground', 'counter' );
+		change( holderPane(), 'Background colour', 'counter' );
 
 		return counter === pairs[around] && none === ( around === '' ? 'plain' : around ) && own === 'tint' && holderNow().attributes.ground === 'counter';
 	} );
@@ -4397,7 +4397,7 @@ check( '...a column that paints a ground of its own is what the card stands on -
 
 	const own = swatchOf();
 
-	change( holderPane(), 'Ground', '' );
+	change( holderPane(), 'Background colour', '' );
 
 	const none = swatchOf();
 
@@ -4430,21 +4430,21 @@ check( '...what the fields write is the attributes of the card, as the call writ
 
 	const column = JSON.stringify( builder._doc.model.blocks[0].cols[1].components.slice( 1 ) )+ JSON.stringify( builder._doc.model.blocks[0].cols[0] );
 
-	change( holderPane(), 'Ground', 'dark' );
+	change( holderPane(), 'Background colour', 'dark' );
 	change( holderPane(), 'Padding', '5' );
 	change( holderPane(), 'Full height', true );
-	change( holderPane(), 'Vertical', 'last-bottom' );
-	change( holderPane(), 'Horizontal', 'center' );
+	change( holderPane(), 'Vertical element alignment', 'last-bottom' );
+	change( holderPane(), 'Horizontal text alignment', 'center' );
 	change( holderPane(), 'Without border', true );
 
-	return JSON.stringify( holderNow().attributes ) === '{"ground":"dark","padding":"5","fill":"1","vertical":"last-bottom","align":"center","background":"","focus":"","dim":"0","borderless":"1","class":""}'
+	return JSON.stringify( holderNow().attributes ) === '{"fill":"1","padding":"5","vertical":"last-bottom","align":"center","ground":"dark","borderless":"1","background":"","focus":"","dim":"0","class":""}'
 		&& column === JSON.stringify( builder._doc.model.blocks[0].cols[1].components.slice( 1 ) )+ JSON.stringify( builder._doc.model.blocks[0].cols[0] ) && holderNow().components.length === 3 && Object.prototype.hasOwnProperty.call( holderNow(), 'content' ) === false
-		&& valueAt( holderPane(), 'Vertical' ) === 'last-bottom' && valueAt( holderPane(), 'Full height' ) === true;
+		&& valueAt( holderPane(), 'Vertical element alignment' ) === 'last-bottom' && valueAt( holderPane(), 'Full height' ) === true;
 } )() );
 change( holderPane(), 'Full height', false );
 change( holderPane(), 'Without border', false );
-change( holderPane(), 'Vertical', '' );
-change( holderPane(), 'Horizontal', '' );
+change( holderPane(), 'Vertical element alignment', '' );
+change( holderPane(), 'Horizontal text alignment', '' );
 check( '...switched off, a switch is 0 again, and an empty choice is the empty word', holderNow().attributes.fill === '0' && holderNow().attributes.borderless === '0' && holderNow().attributes.vertical === '' && holderNow().attributes.align === '' );
 
 check( 'the focus of the picture is the grid of the one behind a section - a switch for none and nine places - and waits for a picture: while the card has none the switch and the grid are off, and so is the dimming', ( function() {
@@ -4452,7 +4452,7 @@ check( 'the focus of the picture is the grid of the one behind a section - a swi
 	const grid = controlOf( holderPane(), 'Focus' ).el;
 
 	return grid.getAttribute('role') === 'radiogroup' && radiosOf( grid ).length === 9 && radiosOf( grid ).every( function( radio ) { return radio.disabled === true && radio.checked === false } ) && grid.classList.contains('is-disabled') === true
-		&& controlOf( holderPane(), 'No focus' ).el.disabled === true && valueAt( holderPane(), 'No focus' ) === true && controlOf( holderPane(), 'Dim the picture' ).el.disabled === true && valueAt( holderPane(), 'Dim the picture' ) === false;
+		&& controlOf( holderPane(), 'Automatic focus' ).el.disabled === true && valueAt( holderPane(), 'Automatic focus' ) === true && controlOf( holderPane(), 'Dim the picture' ).el.disabled === true && valueAt( holderPane(), 'Dim the picture' ) === false;
 } )() );
 
 holderNow().attributes.background = '/template/page-home-card/story/card-picture';
@@ -4460,10 +4460,10 @@ holderNow().attributes.focus = '';
 builder._refreshTab('properties');
 check( '...with a picture the switch for none is on, as the focus is none, and turning it off starts in the middle, as the picture of a section does; the grid chooses a place, written as its number - and none is empty', ( function() {
 
-	const none = controlOf( holderPane(), 'No focus' ).el;
-	const before = [ none.disabled, valueAt( holderPane(), 'No focus' ), holderNow().attributes.focus ].join();
+	const none = controlOf( holderPane(), 'Automatic focus' ).el;
+	const before = [ none.disabled, valueAt( holderPane(), 'Automatic focus' ), holderNow().attributes.focus ].join();
 
-	change( holderPane(), 'No focus', false );
+	change( holderPane(), 'Automatic focus', false );
 
 	const middle = holderNow().attributes.focus;
 	const checkedAfter = valueAt( holderPane(), 'Focus' );
@@ -4476,9 +4476,9 @@ check( '...with a picture the switch for none is on, as the focus is none, and t
 
 	const other = holderNow().attributes.focus;
 
-	change( holderPane(), 'No focus', true );
+	change( holderPane(), 'Automatic focus', true );
 
-	return before === 'false,true,' && middle === '5' && checkedAfter === '5' && corner === '9' && other === '1' && holderNow().attributes.focus === '' && valueAt( holderPane(), 'No focus' ) === true
+	return before === 'false,true,' && middle === '5' && checkedAfter === '5' && corner === '9' && other === '1' && holderNow().attributes.focus === '' && valueAt( holderPane(), 'Automatic focus' ) === true
 		&& radiosOf( controlOf( holderPane(), 'Focus' ).el ).every( function( radio ) { return radio.checked === false } );
 } )() );
 check( '...the grid names its places to whoever does not see it, in the words of the picture of a section', controlOf( holderPane(), 'Focus' ).el.getAttribute('aria-label') === 'Focus' && radiosOf( controlOf( holderPane(), 'Focus' ).el ).map( function( radio ) { return radio.getAttribute('aria-label') } ).join()
@@ -4495,20 +4495,20 @@ check( '...the dimming is a switch that is on for a picture, and writes 1 or 0 -
 	buttonOf( holderPane(), 'Remove the picture' ).click();
 
 	return enabled === true && on === '1' && holderNow().attributes.background === '' && holderNow().attributes.dim === '0' && controlOf( holderPane(), 'Dim the picture' ).el.disabled === true && valueAt( holderPane(), 'Dim the picture' ) === false
-		&& controlOf( holderPane(), 'No focus' ).el.disabled === true && buttonOf( holderPane(), 'Remove the picture' ).disabled === true && holderNow().slots === undefined;
+		&& controlOf( holderPane(), 'Automatic focus' ).el.disabled === true && buttonOf( holderPane(), 'Remove the picture' ).disabled === true && holderNow().slots === undefined;
 } )() );
 check( '...and the focus goes with it: a place chosen for the picture is none again, the attribute is empty, and the switch for none is on and greyed out with no place of the grid chosen', ( function() {
 
 	holderNow().attributes.background = '/template/page-home-card/story/card-picture';
 	builder._refreshTab('properties');
-	change( holderPane(), 'No focus', false );
+	change( holderPane(), 'Automatic focus', false );
 	change( holderPane(), 'Focus', '9' );
 
 	const placed = holderNow().attributes.focus;
 
 	buttonOf( holderPane(), 'Remove the picture' ).click();
 
-	return placed === '9' && holderNow().attributes.background === '' && holderNow().attributes.focus === '' && valueAt( holderPane(), 'No focus' ) === true && controlOf( holderPane(), 'No focus' ).el.disabled === true
+	return placed === '9' && holderNow().attributes.background === '' && holderNow().attributes.focus === '' && valueAt( holderPane(), 'Automatic focus' ) === true && controlOf( holderPane(), 'Automatic focus' ).el.disabled === true
 		&& radiosOf( controlOf( holderPane(), 'Focus' ).el ).every( function( radio ) { return radio.checked === false && radio.disabled === true } );
 } )() );
 
@@ -4516,9 +4516,9 @@ openCard();
 builder._renderEditor();
 builder._openSettings( [ 0, 0, 0 ] );
 check( 'the focus of a component that is a picture itself - [image], whose picture is its source - is the grid as well, and is on from the start: no attribute of the type image comes before it, so there is no picture it would wait for', controlOf( paneOf('properties'), 'Focus' ).kind === 'group'
-	&& controlOf( paneOf('properties'), 'No focus' ).el.disabled === false && valueAt( paneOf('properties'), 'No focus' ) === true && radiosOf( controlOf( paneOf('properties'), 'Focus' ).el ).every( function( radio ) { return radio.disabled === true } )
-	&& ( change( paneOf('properties'), 'No focus', false ), builder._get( builder._doc.model, [ 0, 0, 0 ] ).attributes.focus === '5' ) && ( change( paneOf('properties'), 'Focus', '3' ), builder._get( builder._doc.model, [ 0, 0, 0 ] ).attributes.focus === '3' )
-	&& ( change( paneOf('properties'), 'No focus', true ), builder._get( builder._doc.model, [ 0, 0, 0 ] ).attributes.focus === '' ) );
+	&& controlOf( paneOf('properties'), 'Automatic focus' ).el.disabled === false && valueAt( paneOf('properties'), 'Automatic focus' ) === true && radiosOf( controlOf( paneOf('properties'), 'Focus' ).el ).every( function( radio ) { return radio.disabled === true } )
+	&& ( change( paneOf('properties'), 'Automatic focus', false ), builder._get( builder._doc.model, [ 0, 0, 0 ] ).attributes.focus === '5' ) && ( change( paneOf('properties'), 'Focus', '3' ), builder._get( builder._doc.model, [ 0, 0, 0 ] ).attributes.focus === '3' )
+	&& ( change( paneOf('properties'), 'Automatic focus', true ), builder._get( builder._doc.model, [ 0, 0, 0 ] ).attributes.focus === '' ) );
 builder._closeDialog();
 
 console.log( '\nThe picture behind a card' );
@@ -4531,21 +4531,21 @@ check( 'the picture behind a card is a source row - the label of the attribute o
 
 	const row = holderPane().querySelector('.builder-source');
 
-	return row !== null && row.querySelector('.builder-source-name').hidden === false && row.querySelector('.builder-source-name').textContent === 'Picture' && row.querySelector('.builder-source-current').textContent === 'none'
-		&& row.querySelector('.builder-source-caption').textContent === 'Current picture:' && iconOf( row.querySelector('button') ) === 'source' && fileField( holderPane() ) !== null && thumbOf( holderPane() ).hidden === true
-		&& labelList( holderPane() ).filter( function( label ) { return /^Alternative text/.test( label ) } ).length === 0 && buttonOf( holderPane(), 'Remove the picture' ).disabled === true && holderPane().querySelector('.builder-source-red').hidden === true;
+	return row !== null && row.querySelector('.builder-source-name').hidden === false && row.querySelector('.builder-source-name').textContent === 'Background picture' && row.querySelector('.builder-source-current').textContent === 'none'
+		&& row.querySelector('.builder-source-caption').textContent === 'Current image slot:' && iconOf( row.querySelector('button') ) === 'source' && fileField( holderPane() ) !== null && thumbOf( holderPane() ).hidden === true
+		&& labelList( holderPane() ).filter( function( label ) { return /^Alt text/.test( label ) } ).length === 0 && buttonOf( holderPane(), 'Remove the picture' ).disabled === true && holderPane().querySelector('.builder-source-red').hidden === true;
 } )() );
 
 requests = [];
 changes = 0;
 choose( holderPane(), house );
 check( '...a picture chosen for a card that has none makes a slot of the kind of a new one - named after the component and the attribute, free in the section, the size a new slot starts with, and for its label the section, the component and the attribute', actionsOf() === 'slots/create'
-	&& JSON.stringify( requests[0].payload ) === '{"uri":"/template/page-home-card/story/card-background","label":"story: Card - Picture","width":1600,"height":900}' );
+	&& JSON.stringify( requests[0].payload ) === '{"uri":"/template/page-home-card/story/card-background","label":"story: Card - Background picture","width":1600,"height":900}' );
 requests[0].callback( 200, { ok : true } );
 check( '...the picture of the card is that slot, with nothing left to make - the slot is there - and the document is changed', holderNow().attributes.background === '/template/page-home-card/story/card-background' && holderNow().slots === undefined && actionsOf() === 'slots/create,images/upload' && changes === 1 );
 requests[1].callback( 200, { filename : 'f', url : '/uploads/card.jpg', source : { width : 2000, height : 1000 }, belowTarget : false } );
 check( '...and the form is drawn again with it: the thumbnail, the focus and the dimming are on, the picture can be taken away, and the preview says that a picture is behind the card, not behind the column or the section', thumbOf( holderPane() ).hidden === false && thumbOf( holderPane() ).src.indexOf('/uploads/card.jpg') === 0
-	&& controlOf( holderPane(), 'No focus' ).el.disabled === false && controlOf( holderPane(), 'Dim the picture' ).el.disabled === false && buttonOf( holderPane(), 'Remove the picture' ).disabled === false && noteOf( holderPane() ).textContent === 'The picture is stored.'
+	&& controlOf( holderPane(), 'Automatic focus' ).el.disabled === false && controlOf( holderPane(), 'Dim the picture' ).el.disabled === false && buttonOf( holderPane(), 'Remove the picture' ).disabled === false && noteOf( holderPane() ).textContent === 'The picture is stored.'
 	&& preview().querySelector('[data-path="0.1.0"] .is-background') !== null && preview().querySelector('[data-path="0.1.0"] .is-background').title === 'Picture behind the card' && preview().querySelector('[data-path="0.1"] .builder-pcol-head .is-background') === null
 	&& preview().children[0].querySelector('.builder-frame-head .is-background') === null && shownTab( stripOf(), 'builder' ) === 'properties' );
 builder._closeDialog();
@@ -4572,14 +4572,14 @@ fresh('.builder-new-width').value = '800';
 fresh('.builder-new-width').dispatch('input');
 fresh('.builder-new-use').click();
 check( '...using it makes the slot the picture of the card, and the mark that makes it when the document is saved stays on the card - under the name of the attribute, with the label and the size - and on nothing else', holderNow().attributes.background === '/template/page-home-card/story/card-background'
-	&& JSON.stringify( holderNow().slots ) === '{"background":{"label":"Card - Picture","width":800,"height":900}}' && holderNow().create === undefined && pickerBox().open === false && preview().querySelector('[data-path="0.1.0"] .is-background') !== null
+	&& JSON.stringify( holderNow().slots ) === '{"background":{"label":"Card - Background picture","width":800,"height":900}}' && holderNow().create === undefined && pickerBox().open === false && preview().querySelector('[data-path="0.1.0"] .is-background') !== null
 	&& holderPane().querySelector('.builder-source-current').textContent === '/template/page-home-card/story/card-background' );
 check( '...a slot that is yet to be made has an upload: the first picture makes it from the mark, the size it says, and the mark is gone once it is there', ( function() {
 
 	requests = [];
 	choose( holderPane(), house );
 
-	const first = actionsOf() === 'slots/create' && JSON.stringify( requests[0].payload ) === '{"uri":"/template/page-home-card/story/card-background","label":"Card - Picture","width":800,"height":900}';
+	const first = actionsOf() === 'slots/create' && JSON.stringify( requests[0].payload ) === '{"uri":"/template/page-home-card/story/card-background","label":"Card - Background picture","width":800,"height":900}';
 
 	requests[0].callback( 200, { ok : true } );
 
@@ -4592,9 +4592,9 @@ check( '...taking the picture away empties the attribute and puts the mark away 
 builder._closeDialog();
 
 holderNow().attributes.background = '/template/page-home-card/story/card-picture';
-holderNow().slots = { background : { label : 'Card - Picture', width : 800, height : 400, alt : { en_US : 'Waves' } } };
+holderNow().slots = { background : { label : 'Card - Background picture', width : 800, height : 400, alt : { en_US : 'Waves' } } };
 builder._openSettings( cardAt );
-check( 'the mark of a slot that is made later holds an alt text the card does not show or edit: the picture behind a card has none to give, and the mark is kept as it is', holderNow().slots.background.alt.en_US === 'Waves' && labelList( holderPane() ).filter( function( label ) { return /^Alternative text/.test( label ) } ).length === 0 );
+check( 'the mark of a slot that is made later holds an alt text the card does not show or edit: the picture behind a card has none to give, and the mark is kept as it is', holderNow().slots.background.alt.en_US === 'Waves' && labelList( holderPane() ).filter( function( label ) { return /^Alt text/.test( label ) } ).length === 0 );
 builder._closeDialog();
 
 openCard();
@@ -4808,7 +4808,7 @@ openCard();
 builder._renderEditor();
 builder._registry.slots.push( { uri : '/template/page-home-card/story/card-stored', label : 'Stored', width : 1600, height : 900, hasImage : true, url : '/uploads/s.jpg', alt : {} } );
 cardIn( builder._doc.model ).attributes.background = '/template/page-home-card/story/card-picture';
-cardIn( builder._doc.model ).slots = { background : { label : 'Card - Picture', width : 800, height : 400 } };
+cardIn( builder._doc.model ).slots = { background : { label : 'Card - Background picture', width : 800, height : 400 } };
 builder._fresh.story = true;
 builder._rename( [ 0 ], 'tale' );
 check( 'a section made here is renamed by writing the sources of the children of its cards and the pictures the cards name new, since nothing of it was made', builder._doc.model.blocks[0].id === 'tale' && builder._doc.model.blocks[0].renamedFrom === undefined && builder._fresh.tale === true
@@ -4830,7 +4830,7 @@ check( 'a section read again by the server has its marks put back where they sto
 	const newCard = again.cols[1].components[0];
 
 	oldCard.attributes.background = '/template/page-home-card/story/card-picture';
-	oldCard.slots = { background : { label : 'Card - Picture', width : 800, height : 400, alt : { en_US : 'Waves' } } };
+	oldCard.slots = { background : { label : 'Card - Background picture', width : 800, height : 400, alt : { en_US : 'Waves' } } };
 	oldCard.components[0].create = { value : 'Hello' };
 	oldCard.components[1].values = { de_DE : 'Hallo' };
 	newCard.attributes.background = '/template/page-home-card/story/card-picture';
@@ -4846,7 +4846,7 @@ check( '...and not where the card was given another picture, or the mark has non
 	const again = cardPage().blocks[0];
 
 	old.cols[1].components[0].attributes.background = '/template/page-home-card/story/card-picture';
-	old.cols[1].components[0].slots = { background : { label : 'Card - Picture', width : 800, height : 400 } };
+	old.cols[1].components[0].slots = { background : { label : 'Card - Background picture', width : 800, height : 400 } };
 	again.cols[1].components[0].attributes.background = '/template/page-home-card/story/other-picture';
 
 	builder._carry( old, again );

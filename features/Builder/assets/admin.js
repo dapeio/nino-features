@@ -4475,7 +4475,6 @@
 				blame	: path[0],
 				tabs	: [
 					{ id : 'layout', label : Nino.content.getText('/_admin/builder/tab/layout'), build : function( pane ) {
-						pane.appendChild( setting( { key : 'row', type : 'select', label : '/_admin/builder/section/row', hint : '/_admin/builder/hint/row', group : 'row', values : builder.ROWS } ) );
 						pane.appendChild( builder._line( [
 							setting( { key : 'fullwidth', type : 'bool', label : '/_admin/builder/section/fullwidth', hint : '/_admin/builder/hint/fullwidth' } ),
 							setting( { key : 'fullheight', type : 'bool', label : '/_admin/builder/section/fullheight', hint : '/_admin/builder/hint/fullheight' } ),
@@ -4491,7 +4490,7 @@
 							section.settings.cover = percent;
 							builder._changed();
 						} );
-						const place = setting( { key : 'contentPos', type : 'select', label : '/_admin/builder/section/content-pos', hint : '/_admin/builder/hint/content-pos', group : 'content-pos', values : builder.CONTENT_POS } );
+						const place = setting( { key : 'contentPos', type : 'select', label : '/_admin/builder/section/content-pos', group : 'content-pos', values : builder.CONTENT_POS } );
 
 						// Once the typing is over the field shows the height in force: 150 on its way to nothing stays in the model as 15, and the field says so
 						builder._one( height, 'input' ).addEventListener( 'change', function() {
@@ -4506,7 +4505,7 @@
 						builder._one( height, 'input' ).disabled = section.settings.cover === null;
 						// Elsewhere the row stands in the flow of the page
 						builder._one( place, 'select' ).disabled = section.settings.cover === null && section.settings.parallax !== true;
-						pane.appendChild( builder._line( [
+						const builderCoverLine = builder._line( [
 							builder._switchField( Nino.content.getText('/_admin/builder/section/cover'), Nino.content.getText('/_admin/builder/hint/cover'), section.settings.cover !== null, function( on ) {
 
 								// A cover is 90 high to begin with, what Nino.ui.js makes of one that names no height. With the cover goes the scrim, unless a parallax is left to have it
@@ -4522,15 +4521,17 @@
 							} ),
 							height,
 							place,
-						] ) );
+						] );
+						builderCoverLine.id = 'builder-cover-line';
+						pane.appendChild( builderCoverLine );
 						pane.appendChild( builder._line( [
 							setting( { key : 'rowAlign', type : 'segment', label : '/_admin/builder/section/row-align', items : builder._alignOptions( 'rowAlign', 'row-align', builder.ROW_ALIGN ) } ),
 							setting( { key : 'text', type : 'segment', label : '/_admin/builder/section/text', items : builder._alignOptions( 'text', 'text', builder.TEXTS ) } ),
 						] ) );
+						pane.appendChild( setting( { key : 'row', type : 'select', label : '/_admin/builder/section/row', group : 'row', values : builder.ROWS } ) );
 						pane.appendChild( builder._spacingTable( section.settings ) );
 					} },
 					{ id : 'background', label : Nino.content.getText('/_admin/builder/tab/background'), build : function( pane ) {
-						pane.appendChild( setting( { key : 'color', type : 'color', label : '/_admin/builder/section/color' } ) );
 
 						// The brand colour is the colour of the border, and a border of no strength draws nothing: the switch waits for a strength. The model keeps what it holds
 						const primary = setting( { key : 'borderPrimary', type : 'bool', label : '/_admin/builder/section/border-primary' } );
@@ -4541,6 +4542,8 @@
 							builder._setting( section.settings, { key : 'border', type : 'select', label : '/_admin/builder/section/border', group : 'border', values : builder.BORDERS }, waits ),
 							primary,
 						] ) );
+						pane.appendChild( setting( { key : 'color', type : 'color', label : '/_admin/builder/section/color' } ) );
+
 						pane.appendChild( builder._backgroundField( path ) );
 					} },
 					{ id : 'animation', label : Nino.content.getText('/_admin/builder/tab/animation'), build : function( pane ) { builder._sectionAnimation( pane, section, animation ) } },
@@ -4638,7 +4641,7 @@
 				effects.unshift( { value : 'none', label : builder._optionLabel( 'vpa', 'none' ) } );
 
 			pane.appendChild( builder._line( [
-				builder._selectField( Nino.content.getText('/_admin/builder/section/vpa-effect'), Nino.content.getText( options.hint ?? '/_admin/builder/hint/vpa' ), effects, target.vpa === null ? 'none' : builder._effectSplit( target.vpa ).effect, function( effect ) {
+				builder._selectField( Nino.content.getText('/_admin/builder/section/vpa-effect'), options.hint === undefined ? '' : Nino.content.getText( options.hint ), effects, target.vpa === null ? 'none' : builder._effectSplit( target.vpa ).effect, function( effect ) {
 
 					target.vpa = effect === 'none' ? null : builder._effectJoin( effect, state.strength );
 					sync();
@@ -4960,7 +4963,7 @@
 						builder._widthTable( pane, col );
 
 						pane.appendChild( builder._line( [
-							builder._setting( col, { key : 'stackAlign', type : 'segment', label : '/_admin/builder/col/stack-align', hint : '/_admin/builder/hint/stack-align', items : builder._alignOptions( 'stackAlign', 'stack-align', builder.STACK_ALIGN ) } ),
+							builder._setting( col, { key : 'stackAlign', type : 'segment', label : '/_admin/builder/col/stack-align', items : builder._alignOptions( 'stackAlign', 'stack-align', builder.STACK_ALIGN ) } ),
 							builder._setting( col, { key : 'text', type : 'segment', label : '/_admin/builder/section/text', items : builder._alignOptions( 'text', 'text', builder.TEXTS ) } ),
 						] ) );
 						pane.appendChild( builder._setting( col, { key : 'stackGap', type : 'select', label : '/_admin/builder/col/stack-gap', group : 'space', values : builder.SPACES } ) );
@@ -4970,7 +4973,7 @@
 							builder._setting( col, { key : 'mb', type : 'select', label : '/_admin/builder/col/margin-bottom', group : 'space', values : builder.SPACES } ),
 						], Nino.content.getText('/_admin/builder/col/spacing') ) );
 					} },
-					{ id : 'background', label : Nino.content.getText('/_admin/builder/tab/background'), build : function( pane ) {
+					{ id : 'background', label : Nino.content.getText('/_admin/builder/tab/column-background'), build : function( pane ) {
 
 						pane.appendChild( builder._setting( col, { key : 'color', type : 'color', label : '/_admin/builder/section/color', around : section.settings.color } ) );
 						pane.appendChild( builder._backgroundField( path ) );
@@ -4982,7 +4985,7 @@
 						pane.appendChild( dim );
 					} },
 					{ id : 'loop', label : Nino.content.getText('/_admin/builder/tab/loop'), build : function( pane ) { builder._stackForm( pane, path ) } },
-					{ id : 'animation', label : Nino.content.getText('/_admin/builder/tab/animation'), build : function( pane ) { builder._animationFields( pane, col, { none : true, times : false, hint : '/_admin/builder/hint/vpa-col' } ) } },
+					{ id : 'animation', label : Nino.content.getText('/_admin/builder/tab/animation'), build : function( pane ) { builder._animationFields( pane, col, { none : true, times : false } ) } },
 					{ id : 'custom', label : Nino.content.getText('/_admin/builder/tab/custom'), build : function( pane ) {
 						pane.appendChild( builder._setting( col, { key : 'custom', type : 'string', label : '/_admin/builder/col/custom', hint : '/_admin/builder/hint/custom' } ) );
 					} },
@@ -5069,7 +5072,7 @@
 			const col = builder._doc.model.blocks[path[0]].cols[path[1]];
 			const options = [ { value : '', label : Nino.content.getText('/_admin/builder/stack/static') } ].concat( Object.keys( registry.stacks || {} ).map( function( name ) { return { value : name, label : builder._stackLabel( registry, name ) } } ) );
 
-			pane.appendChild( builder._selectField( Nino.content.getText('/_admin/builder/stack/kind'), Nino.content.getText('/_admin/builder/hint/stack-kind'), options, col.stack === null || col.stack === undefined ? '' : col.stack.name, function( name ) {
+			pane.appendChild( builder._selectField( Nino.content.getText('/_admin/builder/stack/kind'), '', options, col.stack === null || col.stack === undefined ? '' : col.stack.name, function( name ) {
 
 				col.stack = name === '' ? null : builder._stackFor( registry, name, col.stack === null || col.stack === undefined ? null : col.stack );
 
@@ -5136,7 +5139,7 @@
 						stack.attributes.gap = value;
 						builder._changed();
 					} ),
-					builder._switchField( Nino.content.getText('/_admin/builder/stack/autoheight'), Nino.content.getText('/_admin/builder/hint/autoheight'), stack.attributes.autoheight === '1', function( checked ) {
+					builder._switchField( Nino.content.getText('/_admin/builder/stack/autoheight'), '', stack.attributes.autoheight === '1', function( checked ) {
 						stack.attributes.autoheight = checked === true ? '1' : '0';
 						builder._changed();
 					} ),
@@ -6028,7 +6031,7 @@
 					.concat( names.map( function( name ) { return { value : name, label : name } } ) )
 					.concat( image === true ? [] : [ { value : '.id', label : '.id' }, { value : '.uri', label : '.uri' } ].filter( function( item ) { return options.kind === 'href' || item.value === '.id' } ) );
 
-				pane.appendChild( builder._selectField( Nino.content.getText('/_admin/builder/source/field'), Nino.content.getText( image === true ? '/_admin/builder/hint/field-image' : '/_admin/builder/hint/field' ), items, options.value.charAt(0) === '/' ? '' : options.value, pick ) );
+				pane.appendChild( builder._selectField( Nino.content.getText('/_admin/builder/source/field'), Nino.content.getText('/_admin/builder/hint/field'), items, options.value.charAt(0) === '/' ? '' : options.value, pick ) );
 			}
 
 			if( image === true ) {
@@ -6184,6 +6187,7 @@
 				fixed		: false,
 				create	: true,
 				fields	: null,
+				label		: Nino.content.getText('/_admin/builder/source/background-image'),
 				value		: has === true ? holder.background.slot : '',
 				text		: null,
 				section	: section,
@@ -6227,7 +6231,7 @@
 			// Whether the picture behind a section moves slower than the page and whether it is dimmed are the section's alone
 			if( column === false ) {
 
-				const parallax = builder._switchField( Nino.content.getText('/_admin/builder/section/parallax'), Nino.content.getText('/_admin/builder/hint/parallax'), section.settings.parallax === true, function( on ) {
+				const parallax = builder._switchField( Nino.content.getText('/_admin/builder/section/parallax'), '', section.settings.parallax === true, function( on ) {
 
 					section.settings.parallax = on;
 
@@ -6240,7 +6244,7 @@
 					builder._refreshTab('background');
 					builder._refreshTab('layout');
 				} );
-				const dim = builder._setting( section.settings, { key : 'dim', type : 'bool', label : '/_admin/builder/section/dim', hint : '/_admin/builder/hint/dim' } );
+				const dim = builder._setting( section.settings, { key : 'dim', type : 'bool', label : '/_admin/builder/section/dim' } );
 
 				// A switch that is on can be switched off whatever the picture: a parallax a template wrote without one, or that lost its picture, must not be stuck
 				builder._one( parallax, 'input' ).disabled = has === false && section.settings.parallax !== true;

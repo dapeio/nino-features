@@ -184,6 +184,11 @@
 	letter-spacing: .08em;
 	text-transform: uppercase;
 }
+/* The line of the cover: the switch takes half, the height and the vertical alignment of the content share the rest */
+#builder-cover-line {
+	grid-template-columns: 50% repeat(auto-fit, minmax(9rem, 1fr));
+}
+
 @media (min-width: 64rem) {
 	.builder-editor {
 		height: calc(100dvh - 3.4rem);
@@ -658,6 +663,9 @@ button.builder-status-item:hover {
 .builder-dialog.is-wide {
 	width: min(52rem, calc(100vw - 2rem));
 }
+.builder-dialog .nino-admin-switch-state {
+	display: none;
+}
 /* The dialog of a source stands over the one it was opened from, and is smaller */
 .builder-picker-dialog {
 	width: min(34rem, calc(100vw - 2rem));
@@ -729,7 +737,6 @@ button.builder-status-item:hover {
 	font-size: .78rem;
 	padding: .4rem 0 .2rem;
 	font-weight: 650;
-	border-bottom: 1px solid var(--editor-border);
 }
 /* The source of a text or a picture in a form: what it is now and the button that changes it */
 .builder-source {
@@ -746,10 +753,17 @@ button.builder-status-item:hover {
 	border-radius: var(--editor-radius-sm);
 	background: var(--editor-bg-elevated);
 }
+/* Where the controls of a picture stand under the line of its source - behind a section, a column or a card, and under an [image] -
+   the two are one box: the line gives up its bottom edge and its lower corners, the controls (further down) their top edge */
+.builder-source:has(+ .builder-picture) .builder-source-line,
+.builder-source:has(+ .builder-content-extra > .builder-picture) .builder-source-line {
+	border-bottom: 0;
+	border-radius: var(--editor-radius-sm) var(--editor-radius-sm) 0 0;
+}
 .builder-source-caption {
 	flex: 0 0 auto;
 	color: var(--editor-text-secondary);
-	font-size: .8rem;
+	font-size: .74rem;
 }
 .builder-source-current {
 	flex: 1 1 auto;
@@ -802,9 +816,17 @@ button.builder-status-item:hover {
 	flex: 1 1 14rem;
 	gap: .35rem;
 	min-width: 0;
+	border: 1px solid var(--editor-border);
+	border-radius: 0 0 var(--editor-radius) var(--editor-radius);
+	padding: .3rem .6rem;
+	margin-top: -.75rem;
+	border-top: 0;
 }
 .builder-picture-controls > * {
 	margin: 0;
+}
+.builder-picture-controls .builder-label {
+	font-weight: normal;
 }
 .builder-picture-message[hidden] {
 	display: none;
@@ -915,7 +937,7 @@ button.builder-status-item:hover {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
 	gap: .75rem;
-	align-items: start;
+	align-items: center;
 }
 .builder-line > .builder-line-caption {
 	align-self: end;

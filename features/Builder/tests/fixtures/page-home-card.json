@@ -104,15 +104,15 @@
                             "source": "",
                             "text": null,
                             "attributes": {
-                                "ground": "counter",
-                                "padding": "3",
                                 "fill": "0",
+                                "padding": "3",
                                 "vertical": "",
                                 "align": "",
+                                "ground": "counter",
+                                "borderless": "0",
                                 "background": "",
                                 "focus": "",
                                 "dim": "0",
-                                "borderless": "0",
                                 "class": ""
                             },
                             "components": [
@@ -229,15 +229,15 @@
                             "source": "",
                             "text": null,
                             "attributes": {
-                                "ground": "",
-                                "padding": "",
                                 "fill": "1",
+                                "padding": "",
                                 "vertical": "",
                                 "align": "",
+                                "ground": "",
+                                "borderless": "0",
                                 "background": "image",
                                 "focus": "5",
                                 "dim": "1",
-                                "borderless": "0",
                                 "class": ""
                             },
                             "components": [

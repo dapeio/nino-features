@@ -28,7 +28,7 @@
             "attributes": {
                 "tag": {
                     "type": "select",
-                    "label": "Tag",
+                    "label": "HTML tag",
                     "hint": "",
                     "options": [
                         "div",
@@ -40,7 +40,7 @@
                 "style": {
                     "type": "select",
                     "label": "Style",
-                    "hint": "Quieter or louder than the role: the size times the quiet or the loud factor.",
+                    "hint": "",
                     "options": [
                         "",
                         "loud",
@@ -88,7 +88,7 @@
             "attributes": {
                 "tag": {
                     "type": "select",
-                    "label": "Tag",
+                    "label": "HTML tag",
                     "hint": "",
                     "options": [
                         "div",
@@ -101,7 +101,7 @@
                 "style": {
                     "type": "select",
                     "label": "Style",
-                    "hint": "Quieter or louder than the role: the size times the quiet or the loud factor.",
+                    "hint": "",
                     "options": [
                         "",
                         "loud",
@@ -149,7 +149,7 @@
             "attributes": {
                 "tag": {
                     "type": "select",
-                    "label": "Tag",
+                    "label": "HTML tag",
                     "hint": "",
                     "options": [
                         "div",
@@ -161,7 +161,7 @@
                 "style": {
                     "type": "select",
                     "label": "Style",
-                    "hint": "Quieter or louder than the role: the size times the quiet or the loud factor.",
+                    "hint": "",
                     "options": [
                         "",
                         "loud",
@@ -208,7 +208,7 @@
             "attributes": {
                 "tag": {
                     "type": "select",
-                    "label": "Tag",
+                    "label": "HTML tag",
                     "hint": "",
                     "options": [
                         "div",
@@ -221,7 +221,7 @@
                 "style": {
                     "type": "select",
                     "label": "Style",
-                    "hint": "Quieter or louder than the role: the size times the quiet or the loud factor.",
+                    "hint": "",
                     "options": [
                         "",
                         "loud",
@@ -268,7 +268,7 @@
             "attributes": {
                 "tag": {
                     "type": "select",
-                    "label": "Tag",
+                    "label": "HTML tag",
                     "hint": "",
                     "options": [
                         "div",
@@ -280,7 +280,7 @@
                 "style": {
                     "type": "select",
                     "label": "Style",
-                    "hint": "Quieter or louder than the role: the size times the quiet or the loud factor.",
+                    "hint": "",
                     "options": [
                         "",
                         "loud",
@@ -327,7 +327,7 @@
             "attributes": {
                 "tag": {
                     "type": "select",
-                    "label": "Tag",
+                    "label": "HTML tag",
                     "hint": "",
                     "options": [
                         "div",
@@ -340,7 +340,7 @@
                 "style": {
                     "type": "select",
                     "label": "Style",
-                    "hint": "Quieter or louder than the role: the size times the quiet or the loud factor.",
+                    "hint": "",
                     "options": [
                         "",
                         "loud",
@@ -388,7 +388,7 @@
                 "format": {
                     "type": "select",
                     "label": "Format",
-                    "hint": "What the text may hold: inline tags, line breaks, or paragraphs and lists.",
+                    "hint": "",
                     "options": [
                         "inline",
                         "lines",
@@ -399,7 +399,7 @@
                 "style": {
                     "type": "select",
                     "label": "Style",
-                    "hint": "Quieter or louder than the role: the size times the quiet or the loud factor.",
+                    "hint": "",
                     "options": [
                         "",
                         "loud",
@@ -438,26 +438,16 @@
                 ]
             ],
             "attributes": {
-                "ground": {
-                    "type": "select",
-                    "label": "Ground",
-                    "hint": "The surface the card paints: none, the counter of the ground it sits on, or one of the six.",
-                    "options": [
-                        "",
-                        "counter",
-                        "alt",
-                        "tint",
-                        "dark",
-                        "black",
-                        "primary",
-                        "brand-alt"
-                    ],
-                    "default": ""
+                "fill": {
+                    "type": "bool",
+                    "label": "Full height",
+                    "hint": "The card takes the whole height.",
+                    "default": false
                 },
                 "padding": {
                     "type": "select",
                     "label": "Padding",
-                    "hint": "The room between the edge of the card and its content, as a step of the space scale; empty is what the ground gives.",
+                    "hint": "",
                     "options": [
                         "",
                         "0",
@@ -470,16 +460,10 @@
                     ],
                     "default": ""
                 },
-                "fill": {
-                    "type": "bool",
-                    "label": "Full height",
-                    "hint": "The card takes the whole height of its column or cell, so the cards of one row end on one line.",
-                    "default": false
-                },
                 "vertical": {
                     "type": "select",
-                    "label": "Vertical",
-                    "hint": "Where the content stands in a card taller than it: at the top, in the middle, at the bottom, or spread so that the last element stands at the bottom.",
+                    "label": "Vertical element alignment",
+                    "hint": "",
                     "options": [
                         "",
                         "middle",
@@ -490,8 +474,8 @@
                 },
                 "align": {
                     "type": "select",
-                    "label": "Horizontal",
-                    "hint": "How the text and the buttons are aligned.",
+                    "label": "Horizontal text alignment",
+                    "hint": "",
                     "options": [
                         "",
                         "left",
@@ -500,9 +484,31 @@
                     ],
                     "default": ""
                 },
+                "ground": {
+                    "type": "select",
+                    "label": "Background colour",
+                    "hint": "",
+                    "options": [
+                        "",
+                        "counter",
+                        "alt",
+                        "tint",
+                        "dark",
+                        "black",
+                        "primary",
+                        "brand-alt"
+                    ],
+                    "default": ""
+                },
+                "borderless": {
+                    "type": "bool",
+                    "label": "Without border",
+                    "hint": "",
+                    "default": false
+                },
                 "background": {
                     "type": "image",
-                    "label": "Picture",
+                    "label": "Background picture",
                     "hint": "A slot, or in a stack an image field of the element, laid behind the content.",
                     "default": ""
                 },
@@ -527,13 +533,7 @@
                 "dim": {
                     "type": "bool",
                     "label": "Dim the picture",
-                    "hint": "A scrim over the picture, and the card writes in the ink of the dark ground.",
-                    "default": false
-                },
-                "borderless": {
-                    "type": "bool",
-                    "label": "Without border",
-                    "hint": "No line and no shadow; a ground keeps its fill.",
+                    "hint": "",
                     "default": false
                 }
             },
@@ -544,15 +544,15 @@
             "draws": "article .nino-card",
             "holds": "card",
             "defaults": {
-                "ground": "",
-                "padding": "",
                 "fill": "0",
+                "padding": "",
                 "vertical": "",
                 "align": "",
+                "ground": "",
+                "borderless": "0",
                 "background": "",
                 "focus": "",
                 "dim": "0",
-                "borderless": "0",
                 "class": ""
             }
         },
