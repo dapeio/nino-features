@@ -12,19 +12,29 @@ namespace Nino\Modules\Design {
 
 	/**
 	 *	Nino							A compact filesystembased php framework
-	 *	Design\Admin			The "Design" panel: seven tabs, six of them over one setup -
-	 *										Global, with the two frames, the root size, the width and the
-	 *										animation of the page; Fonts, with the five font roles;
-	 *										Content, Buttons and Components, each with the choice of its
-	 *										template and one named knob for each thing the template lets
-	 *										go of; and Colours, with the two colours, the five knobs and
-	 *										the mode the palette is solved from - compiled together into
-	 *										assets/theme.css. The seventh, Typefaces, is the loader: the
+	 *	Design\Admin			The "Design" panel: eight tabs, seven of them over one setup -
+	 *										Theme, the list of themes and the css of its own, where the
+	 *										whole setup is kept under a name (see Themes); Global, with
+	 *										the two frames, the root size, the width and the animation
+	 *										of the page; Fonts, with the five font roles; Content,
+	 *										Buttons and Components, each with the choice of its template
+	 *										and one named knob for each thing the template lets go of;
+	 *										and Colours, with the two colours, the five knobs and the
+	 *										mode the palette is solved from - compiled together into
+	 *										assets/theme.css. The eighth, Typefaces, is the loader: the
 	 *										typefaces a project has installed and the signed list of
 	 *										those it can install (see Webfonts), which belongs to the
 	 *										setup only as far as the selects of Fonts list what is
 	 *										installed. Installing and removing happen when they are
 	 *										pressed - they are not a draft.
+	 *
+	 *										A theme is a draft too, until it is saved: design/theme/load
+	 *										answers what the screen takes over and writes nothing, and
+	 *										what the other theme actions write is a file of data/themes/
+	 *										and, where the active theme is deleted, the slug in the setup
+	 *										- never the stylesheet. The css of a request, of the setup or
+	 *										of a theme is judged by Themes::refusal() at the doors a
+	 *										request comes through, once, with a code.
 	 *
 	 *										Choosing and applying are two actions on purpose. A
 	 *										setup is a draft and lives in data/design.php whether
@@ -73,6 +83,12 @@ namespace Nino\Modules\Design {
 			'main'		=> '<main>[[body]]</main>',
 		];
 
+		/*	The slug a theme action made, by action: the one thing a line of the log cannot
+			work out from what was posted - a copy is made under the first slug that is free
+			when it is made, and under another one once it exists. Written by the action,
+			read by log() in the same request	*/
+		private static array $_made = [];
+
 		/*	The framework under the preview, as its own two bundles beside the
 			workbench's. Its own rather than the workbench's: /_admin/.cache/script.js
 			carries the panels' scripts as well, and a preview is a site, not a tool */
@@ -94,6 +110,13 @@ namespace Nino\Modules\Design {
 				'design/webfonts/list' 		=> [ self::class, 'apiWebfontsList' ],
 				'design/webfonts/install' => [ self::class, 'apiWebfontsInstall' ],
 				'design/webfonts/remove' 	=> [ self::class, 'apiWebfontsRemove' ],
+				'design/theme/load' 			=> [ self::class, 'apiThemeLoad' ],
+				'design/theme/create' 		=> [ self::class, 'apiThemeCreate' ],
+				'design/theme/save' 			=> [ self::class, 'apiThemeSave' ],
+				'design/theme/duplicate' 	=> [ self::class, 'apiThemeDuplicate' ],
+				'design/theme/delete' 		=> [ self::class, 'apiThemeDelete' ],
+				'design/theme/export' 		=> [ self::class, 'apiThemeExport' ],
+				'design/theme/import' 		=> [ self::class, 'apiThemeImport' ],
 			];
 		}
 
@@ -130,6 +153,12 @@ namespace Nino\Modules\Design {
 				'design/restore'=> 'Restore previous Design version',
 				'design/webfonts/install' => 'Install webfont '. self::_slug( $data ),
 				'design/webfonts/remove' 	=> 'Remove webfont '. self::_slug( $data ),
+				'design/theme/create' 		=> 'Create Design theme '. self::_made( $action, $data ),
+				'design/theme/save' 			=> 'Save Design theme '. self::_slug( $data, Themes::SLUG ),
+				'design/theme/duplicate' 	=> 'Duplicate Design theme '. self::_slug( $data, Themes::SLUG ). ' as '. self::_made( $action, $data ),
+				'design/theme/delete' 		=> 'Delete Design theme '. self::_slug( $data, Themes::SLUG ),
+				'design/theme/import' 		=> 'Import Design theme '. self::_made( $action, $data ),
+				// design/theme/load and design/theme/export only read, as design/preview does
 				// design/preview writes nothing and happens on every change of
 				// a select - a log line per keystroke is noise, not a record.
 				// design/plan is the same: it only reads. The list of typefaces
@@ -208,6 +237,15 @@ namespace Nino\Modules\Design {
 				'steps' 	=> Setup::STEPS,
 				'size' 		=> (int) ( $setup['size'] ?? 0 ),
 				'width' 	=> (int) ( $setup['width'] ?? 0 ),
+				/*	The Theme tab: the slug of the theme the stored setup was taken from and
+					its own css, the list of the themes there are - the shipped ones first -
+					and the active one as its file holds it, normalised against the library
+					and cut to the seven keys that choose something, which the screen
+					compares the draft with. null where there is none	*/
+				'theme' 	=> (string) ( $setup['theme'] ?? '' ),
+				'css' 		=> (string) ( $setup['css'] ?? '' ),
+				'themes' 	=> Themes::all( $appData, $library, $locale ),
+				'active' 	=> self::_active( $appData, $library, $locale, (string) ( $setup['theme'] ?? '' ) ),
 				// The animation of the page, and what it can be: the effects and
 				// strengths and speeds of Nino.css's viewport animations
 				'motion' 	=> (array) ( $setup['motion'] ?? [] ),
@@ -344,6 +382,10 @@ namespace Nino\Modules\Design {
 			$posted 	= \Nino\Admin\Admin::postData();
 			$notes 		= [];
 
+			// Before anything is read of the rest: a css that is refused is never stored
+			if( is_string( $posted['css'] ?? null ) === true && self::_refused( $request, $posted['css'] ) === true )
+				return;
+
 			/*	Normalised against the library rather than trusted: the screen
 				offers what is there, but a request is a request. What cannot be
 				honoured comes back in `notes` instead of being written */
@@ -474,6 +516,10 @@ namespace Nino\Modules\Design {
 			$library 	= \Nino\Modules\Design::libraryDir();
 			$posted 	= \Nino\Admin\Admin::postData();
 			$notes 		= [];
+
+			// ...and a css that is refused is never compiled: the screen keeps the sheet it has
+			if( is_string( $posted['css'] ?? null ) === true && self::_refused( $request, $posted['css'] ) === true )
+				return;
 
 			// Same normalisation the save takes, for the same reason: a request
 			// is a request, and a set that is not in the library is not shown
@@ -616,6 +662,340 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
+		 *	A theme, to put on the screen: its setup as the screen holds one - normalised
+		 *	against the library, except the families of the fonts (see _fromFile()) - its
+		 *	css, its name and its description in the language of the workbench, and the
+		 *	families it names that this project has not installed. Nothing is written:
+		 *	loading is looking, and what the screen takes over stays a draft until it is
+		 *	saved. A file of the project that somebody edited by hand holds its css to the
+		 *	same rules as a request does
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		&$request			(reference) Current server request
+		 *
+		 *	@return 	void
+		 */
+		public static function apiThemeLoad( array &$appData, array &$request ): void {
+
+			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::MANAGE_PERM ) === false )
+				return;
+
+			$library 	= \Nino\Modules\Design::libraryDir();
+			$slug 		= self::_slug( \Nino\Admin\Admin::postData(), Themes::SLUG );
+			$raw 			= Themes::read( $appData, $library, $slug );
+
+			if( $raw === null ) {
+				\Nino\Http::fail( $request, 404, 'there is no such theme', 'design_theme' );
+				return;
+			}
+
+			$css = Themes::css( $raw );
+
+			if( self::_refused( $request, $css ) === true )
+				return;
+
+			$notes 		= [];
+			$missing 	= [];
+			$setup 		= self::_fromFile( $appData, Themes::setup( $raw ), $library, $notes, $missing );
+
+			\Nino\Http::ok( $request, Themes::entry( $slug, $raw, \Nino\Locales::getCurrentLocale( $appData ), Themes::isShipped( $library, $slug ) ) + [
+				'setup' 	=> Themes::snapshot( $setup ),
+				'css' 		=> $css,
+				'missing' => array_values( $missing ),
+				'notes' 	=> $notes,
+			] );
+		}
+
+		/**
+		 *	Keep the screen as a new theme of the project, under the name it was given
+		 *	- the slug of its file is made of the name here, and is refused where it is
+		 *	a theme already, shipped or the project's
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		&$request			(reference) Current server request
+		 *
+		 *	@return 	void
+		 */
+		public static function apiThemeCreate( array &$appData, array &$request ): void {
+
+			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::MANAGE_PERM ) === false )
+				return;
+
+			$library 	= \Nino\Modules\Design::libraryDir();
+			$posted 	= \Nino\Admin\Admin::postData();
+			$locale 	= \Nino\Locales::getCurrentLocale( $appData );
+			$name 		= Themes::name( \Nino\Admin\Admin::postString( $posted, 'name' ) );
+			$slug 		= Themes::slug( $name );
+
+			if( $slug === '' ) {
+				\Nino\Http::fail( $request, 400, 'the name has no letter or digit in it', 'design_name' );
+				return;
+			}
+
+			if( Themes::exists( $appData, $library, $slug ) === true ) {
+				\Nino\Http::fail( $request, 409, 'a theme with the slug "'. $slug. '" exists already', 'design_taken', [ $slug ] );
+				return;
+			}
+
+			if( is_string( $posted['css'] ?? null ) === true && self::_refused( $request, $posted['css'] ) === true )
+				return;
+
+			$notes 	= [];
+			$setup 	= self::_selection( $appData, $posted, $library, $notes );
+			$theme 	= Themes::record( $name, \Nino\Admin\Admin::postString( $posted, 'description' ), $setup, $setup['css'] );
+
+			if( Themes::write( $appData, $slug, $theme ) === false ) {
+				\Nino\Http::fail( $request, 500, 'could not write '. Themes::DIR. '/'. $slug. '.php' );
+				return;
+			}
+
+			self::$_made['design/theme/create'] = $slug;
+
+			\Nino\Http::ok( $request, [
+				'slug' 		=> $slug,
+				'themes' 	=> Themes::all( $appData, $library, $locale ),
+				'active' 	=> self::_active( $appData, $library, $locale, $slug ),
+			] );
+		}
+
+		/**
+		 *	Put the screen into a theme of the project, with the name and the
+		 *	description it was given. The slug stays what it is: a rename changes the
+		 *	name and never the file, which the setup and the exports refer to
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		&$request			(reference) Current server request
+		 *
+		 *	@return 	void
+		 */
+		public static function apiThemeSave( array &$appData, array &$request ): void {
+
+			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::MANAGE_PERM ) === false )
+				return;
+
+			$library 	= \Nino\Modules\Design::libraryDir();
+			$posted 	= \Nino\Admin\Admin::postData();
+			$locale 	= \Nino\Locales::getCurrentLocale( $appData );
+			$slug 		= self::_slug( $posted, Themes::SLUG );
+
+			if( Themes::read( $appData, $library, $slug ) === null ) {
+				\Nino\Http::fail( $request, 404, 'there is no such theme', 'design_theme' );
+				return;
+			}
+
+			if( Themes::isShipped( $library, $slug ) === true ) {
+				\Nino\Http::fail( $request, 409, 'a shipped theme cannot be changed or deleted - duplicate it', 'design_shipped' );
+				return;
+			}
+
+			$name = Themes::name( \Nino\Admin\Admin::postString( $posted, 'name' ) );
+
+			if( $name === '' ) {
+				\Nino\Http::fail( $request, 400, 'the name is empty', 'design_name' );
+				return;
+			}
+
+			if( is_string( $posted['css'] ?? null ) === true && self::_refused( $request, $posted['css'] ) === true )
+				return;
+
+			$notes 	= [];
+			$setup 	= self::_selection( $appData, $posted, $library, $notes );
+			$theme 	= Themes::record( $name, \Nino\Admin\Admin::postString( $posted, 'description' ), $setup, $setup['css'] );
+
+			if( Themes::write( $appData, $slug, $theme ) === false ) {
+				\Nino\Http::fail( $request, 500, 'could not write '. Themes::DIR. '/'. $slug. '.php' );
+				return;
+			}
+
+			\Nino\Http::ok( $request, [
+				'themes' 	=> Themes::all( $appData, $library, $locale ),
+				'active' 	=> self::_active( $appData, $library, $locale, $slug ),
+			] );
+		}
+
+		/**
+		 *	Copy a theme - a shipped one too, which is how it is changed - into a theme
+		 *	of the project: under its name in the language of the workbench and the word
+		 *	for a copy, and the first slug of that name that is free
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		&$request			(reference) Current server request
+		 *
+		 *	@return 	void
+		 */
+		public static function apiThemeDuplicate( array &$appData, array &$request ): void {
+
+			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::MANAGE_PERM ) === false )
+				return;
+
+			$library 	= \Nino\Modules\Design::libraryDir();
+			$locale 	= \Nino\Locales::getCurrentLocale( $appData );
+			$slug 		= self::_slug( \Nino\Admin\Admin::postData(), Themes::SLUG );
+			$raw 			= Themes::read( $appData, $library, $slug );
+
+			if( $raw === null ) {
+				\Nino\Http::fail( $request, 404, 'there is no such theme', 'design_theme' );
+				return;
+			}
+
+			$shown 	= Themes::describe( $raw, $locale );
+			$name 	= Themes::name( self::_text( $appData, 'theme/copy', $shown['name'] !== '' ? $shown['name'] : $slug ) );
+			$made 	= Themes::free( $appData, $library, Themes::slug( $name ) );
+			$copy 	= Themes::record( $name, $shown['description'], Themes::setup( $raw ), Themes::css( $raw ) );
+
+			if( $made === '' || Themes::write( $appData, $made, $copy ) === false ) {
+				\Nino\Http::fail( $request, 500, 'could not write '. Themes::DIR. '/'. $made. '.php' );
+				return;
+			}
+
+			self::$_made['design/theme/duplicate'] = $made;
+
+			\Nino\Http::ok( $request, [
+				'slug' 		=> $made,
+				'themes' 	=> Themes::all( $appData, $library, $locale ),
+			] );
+		}
+
+		/**
+		 *	Delete a theme of the project, and with it the slug the setup keeps where it
+		 *	is the active one: a deleted theme is none. The record of what was compiled
+		 *	is kept, as a save keeps it. A shipped theme is a file of the feature and is
+		 *	not this action's to remove
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		&$request			(reference) Current server request
+		 *
+		 *	@return 	void
+		 */
+		public static function apiThemeDelete( array &$appData, array &$request ): void {
+
+			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::MANAGE_PERM ) === false )
+				return;
+
+			$library 	= \Nino\Modules\Design::libraryDir();
+			$slug 		= self::_slug( \Nino\Admin\Admin::postData(), Themes::SLUG );
+
+			if( Themes::read( $appData, $library, $slug ) === null ) {
+				\Nino\Http::fail( $request, 404, 'there is no such theme', 'design_theme' );
+				return;
+			}
+
+			if( Themes::isShipped( $library, $slug ) === true ) {
+				\Nino\Http::fail( $request, 409, 'a shipped theme cannot be changed or deleted - duplicate it', 'design_shipped' );
+				return;
+			}
+
+			// Asked while the file is still there: once it is gone the setup reads its slug as none
+			$active = Setup::read( $appData, $library )['theme'] ?? '';
+
+			if( Themes::remove( $appData, $slug ) === false ) {
+				\Nino\Http::fail( $request, 500, 'could not remove '. Themes::DIR. '/'. $slug. '.php' );
+				return;
+			}
+
+			if( $active === $slug && Setup::write( $appData, Setup::read( $appData, $library ) ) === false ) {
+				\Nino\Http::fail( $request, 500, 'could not write '. Setup::PATH );
+				return;
+			}
+
+			\Nino\Http::ok( $request, [
+				'themes' 	=> Themes::all( $appData, $library, \Nino\Locales::getCurrentLocale( $appData ) ),
+				'theme' 	=> $active === $slug ? '' : $active,
+			] );
+		}
+
+		/**
+		 *	A theme as the text of a file to download: the file of the theme as it is, a
+		 *	shipped one with its lines in the other languages
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		&$request			(reference) Current server request
+		 *
+		 *	@return 	void
+		 */
+		public static function apiThemeExport( array &$appData, array &$request ): void {
+
+			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::MANAGE_PERM ) === false )
+				return;
+
+			$slug = self::_slug( \Nino\Admin\Admin::postData(), Themes::SLUG );
+			$raw 	= Themes::read( $appData, \Nino\Modules\Design::libraryDir(), $slug );
+
+			if( $raw === null ) {
+				\Nino\Http::fail( $request, 404, 'there is no such theme', 'design_theme' );
+				return;
+			}
+
+			$json = Themes::json( $raw );
+
+			if( $json === '' ) {
+				\Nino\Http::fail( $request, 500, 'could not make a file of the theme' );
+				return;
+			}
+
+			\Nino\Http::ok( $request, [ 'json' => $json, 'file' => 'nino-theme-'. $slug. '.json' ] );
+		}
+
+		/**
+		 *	Take a theme file in as a theme of the project: the text of an export, under
+		 *	the slug of its name, which is refused where it is a theme already. What the
+		 *	file holds is held to what a request is - its setup is normalised, its css
+		 *	judged by Themes::refusal() - and its lines in other languages are kept
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		&$request			(reference) Current server request
+		 *
+		 *	@return 	void
+		 */
+		public static function apiThemeImport( array &$appData, array &$request ): void {
+
+			if( \Nino\Admin\Admin::guardPerm( $appData, $request, self::MANAGE_PERM ) === false )
+				return;
+
+			$library 	= \Nino\Modules\Design::libraryDir();
+			$locale 	= \Nino\Locales::getCurrentLocale( $appData );
+			$data 		= Themes::fromJson( \Nino\Admin\Admin::postString( \Nino\Admin\Admin::postData(), 'json' ) );
+
+			if( is_string( $data ) === true ) {
+				\Nino\Http::fail( $request, 400, 'that is no theme file of this feature', $data );
+				return;
+			}
+
+			$name = Themes::name( \Nino\Admin\Admin::postString( $data, 'name' ) );
+			$slug = Themes::slug( $name );
+
+			if( $slug === '' ) {
+				\Nino\Http::fail( $request, 400, 'the name has no letter or digit in it', 'design_name' );
+				return;
+			}
+
+			if( Themes::exists( $appData, $library, $slug ) === true ) {
+				\Nino\Http::fail( $request, 409, 'a theme with the slug "'. $slug. '" exists already', 'design_taken', [ $slug ] );
+				return;
+			}
+
+			if( is_string( $data['css'] ?? null ) === true && self::_refused( $request, $data['css'] ) === true )
+				return;
+
+			$notes 		= [];
+			$missing 	= [];
+			$setup 		= self::_fromFile( $appData, Themes::setup( $data ), $library, $notes, $missing );
+			$theme 		= Themes::record( $name, \Nino\Admin\Admin::postString( $data, 'description' ), $setup, Themes::css( $data ), Themes::lines( $data ) );
+
+			if( Themes::write( $appData, $slug, $theme ) === false ) {
+				\Nino\Http::fail( $request, 500, 'could not write '. Themes::DIR. '/'. $slug. '.php' );
+				return;
+			}
+
+			self::$_made['design/theme/import'] = $slug;
+
+			\Nino\Http::ok( $request, [
+				'slug' 		=> $slug,
+				'themes' 	=> Themes::all( $appData, $library, $locale ),
+			] );
+		}
+
+		/**
 		 *	The whole page the frame shows: the framework, the compiled sheet,
 		 *	the specimen with its frames, and the behaviour a header set is half
 		 *	made of. The compiled sheet is inline, under PREVIEW_STYLE's id, so
@@ -651,7 +1031,8 @@ namespace Nino\Modules\Design {
 		 *
 		 *	Only the keys of the model are taken and each is held to the type it
 		 *	has - the posted json is a request, and a cast of an array raises a
-		 *	warning the runtime treats as fatal. A knob's position belongs to the
+		 *	warning the runtime treats as fatal - the theme and the css are a string
+		 *	each, and what is none is ''. A knob's position belongs to the
 		 *	template that answers to it: one the chosen template does not declare
 		 *	is back in the middle, so a setup does not carry the positions of a
 		 *	template somebody moved away from long ago - normalize() cannot do
@@ -667,8 +1048,10 @@ namespace Nino\Modules\Design {
 		private static function _selection( array &$appData, array $posted, string $library, array &$notes ): array {
 
 			$taken = [
+				'theme' 	=> is_string( $posted['theme'] ?? null ) === true ? $posted['theme'] : '',
 				'size' 		=> $posted['size'] ?? 0,
 				'width' 	=> $posted['width'] ?? 0,
+				'css' 		=> is_string( $posted['css'] ?? null ) === true ? $posted['css'] : '',
 			];
 
 			foreach( [ 'motion', 'parts', 'knobs', 'fonts', 'colours' ] as $key )
@@ -802,18 +1185,20 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	The slug a request names: one that can be the name of a family's directory,
-		 *	else nothing - so that what is posted never reaches a path, a message or a line of the log as it is
+		 *	The slug a request names: one that can be the name of a family's directory or of
+		 *	a theme's file, else nothing - so that what is posted never reaches a path, a
+		 *	message or a line of the log as it is
 		 *
 		 *	@param		array 		$data					What the request posted
+		 *	@param		string		$pattern			Webfonts::SLUG for a typeface, Themes::SLUG for a theme
 		 *
 		 *	@return 	string
 		 */
-		private static function _slug( array $data ): string {
+		private static function _slug( array $data, string $pattern = Webfonts::SLUG ): string {
 
 			$slug = $data['slug'] ?? '';
 
-			return is_string( $slug ) === true && preg_match( Webfonts::SLUG, $slug ) === 1 ? $slug : '';
+			return is_string( $slug ) === true && preg_match( $pattern, $slug ) === 1 ? $slug : '';
 		}
 
 		/**
@@ -834,6 +1219,131 @@ namespace Nino\Modules\Design {
 				$text = (string) preg_replace_callback( '/%s/', static fn(): string => $value, $text, 1 );
 
 			return $text;
+		}
+
+		/**
+		 *	Refuse a css that Themes::refusal() names a code for: a 400 with the code, no
+		 *	params and the field the css is in - the failure a person can cause, which
+		 *	the screen says in its own words (see /_admin/error/<code>)
+		 *
+		 *	@param		array 		&$request			(reference) Current server request
+		 *	@param		string		$css					As it was posted, comments and all
+		 *
+		 *	@return 	bool										Whether it was refused - the answer is set then
+		 */
+		private static function _refused( array &$request, string $css ): bool {
+
+			$code = Themes::refusal( $css );
+
+			if( $code === '' )
+				return false;
+
+			\Nino\Http::fail( $request, 400, Themes::REFUSALS[$code], $code, [], 'css' );
+
+			return true;
+		}
+
+		/**
+		 *	The active theme as the screen compares the draft with it: the row of the
+		 *	list, the setup of its file normalised the way the screen's selection is
+		 *	(a save of the screen is the thing to compare with) and cut to the seven keys
+		 *	that choose something, and its css - a family the project has not installed
+		 *	as '', the way the screen takes one over. What normalising replaced is not
+		 *	told: the file is read on every list, and a note would repeat on every one
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$library			The feature's library
+		 *	@param		string		$locale				The language of the workbench
+		 *	@param		string		$slug					The slug of the setup, '' for none
+		 *
+		 *	@return 	array|null								slug, name, description, shipped, setup, css - null where there is none
+		 */
+		private static function _active( array &$appData, string $library, string $locale, string $slug ): ?array {
+
+			$raw = $slug === '' ? null : Themes::read( $appData, $library, $slug );
+
+			if( $raw === null )
+				return null;
+
+			$notes 		= [];
+			$missing 	= [];
+			$setup 		= self::_fromFile( $appData, Themes::setup( $raw ), $library, $notes, $missing );
+
+			/*	A family the project has not installed is '' here: it is what the screen
+				takes over for it on a load that installs nothing (see _takeTheme() in
+				admin.js), and a record that said the face of the role instead would
+				read "changed" against a screen nobody changed, once the panel is
+				opened again	*/
+			foreach( Fonts::ROLES as $role )
+				if( isset( $missing[ (string) ( $setup['fonts'][$role]['family'] ?? '' ) ] ) === true )
+					$setup['fonts'][$role]['family'] = '';
+
+			return Themes::entry( $slug, $raw, $locale, Themes::isShipped( $library, $slug ) ) + [
+				'setup' 	=> Themes::snapshot( $setup ),
+				'css' 		=> Themes::css( $raw ),
+			];
+		}
+
+		/**
+		 *	The setup of a theme's file, normalised against the library the way a
+		 *	selection is - except for the families of the fonts. A family a role is
+		 *	given has to be one its select offers, and normalising puts the face of the
+		 *	role in the place of one that is not installed here, which is the one case a
+		 *	theme is made for: the file's own string stays where it can be the slug of a
+		 *	family (Webfonts::SLUG), so that the screen can offer to install it before it
+		 *	takes the theme over. The families that stay unoffered are told in $missing,
+		 *	one entry each: slug, the name of the list's entry (the slug where the list
+		 *	has none) and whether the list of the Typefaces tab has it at all
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array 		$wanted				The setup of a file, see Themes::setup()
+		 *	@param		string		$library			The feature's library
+		 *	@param		array 		&$notes				(reference) What had to be replaced or dropped
+		 *	@param		array 		&$missing			(reference) slug => [ slug, name, inList ]
+		 *
+		 *	@return 	array										A normalised setup, the families of the file's roles as they are
+		 */
+		private static function _fromFile( array &$appData, array $wanted, string $library, array &$notes, array &$missing ): array {
+
+			$setup 	= self::_selection( $appData, $wanted, $library, $notes );
+			$fonts 	= is_array( $wanted['fonts'] ?? null ) === true ? $wanted['fonts'] : [];
+			$names 	= array_column( Webfonts::cached( $appData )['families'] ?? [], 'family', 'slug' );
+			$known 	= Fonts::families( $appData );
+
+			foreach( Fonts::ROLES as $role ) {
+
+				$family = is_array( $fonts[$role] ?? null ) === true ? ( $fonts[$role]['family'] ?? null ) : null;
+
+				// One the select offers was kept, and an installed family a role is not offered
+				// (a face that is no monospace for the code) is not one to install again
+				if( is_string( $family ) === false || preg_match( Webfonts::SLUG, $family ) !== 1 || isset( $known[$family] ) === true || in_array( $family, Fonts::options( $appData, $role ), true ) === true )
+					continue;
+
+				$setup['fonts'][$role]['family'] = $family;
+				$missing[$family] = [ 'slug' => $family, 'name' => (string) ( $names[$family] ?? $family ), 'inList' => isset( $names[$family] ) ];
+			}
+
+			return $setup;
+		}
+
+		/**
+		 *	The slug a theme action made, for its line of the log: the one it wrote down
+		 *	when it ran, or - where the line is asked for on its own - what the posted data
+		 *	alone says: the slug of the name that was posted, or of the file's
+		 *
+		 *	@param		string		$action				A theme action that makes a theme
+		 *	@param		array 		$data					What the request posted
+		 *
+		 *	@return 	string
+		 */
+		private static function _made( string $action, array $data ): string {
+
+			if( isset( self::$_made[$action] ) === true )
+				return self::$_made[$action];
+
+			$file = $action === 'design/theme/import' ? Themes::fromJson( \Nino\Admin\Admin::postString( $data, 'json' ) ) : $data;
+
+			return is_array( $file ) === true && $action !== 'design/theme/duplicate' ? Themes::slug( Themes::name( \Nino\Admin\Admin::postString( $file, 'name' ) ) ) : '';
 		}
 
 		/**

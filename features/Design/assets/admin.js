@@ -1,7 +1,12 @@
 /**
  *	Nino										A compact filesystembased php framework
- *	Modules\Design					The feature's /_admin panel, "Design": seven tabs, six of
- *													them over one setup - Global, with the header and footer
+ *	Modules\Design					The feature's /_admin panel, "Design": eight tabs, seven of
+ *													them over one setup - Theme, the first, which keeps the
+ *													whole setup under a name with a css of its own: the list
+ *													of the themes to load, duplicate, delete, create, export
+ *													and import, the active one saved from the screen, and the
+ *													field of the css, which every input mirrors into the
+ *													preview; Global, with the header and footer
  *													templates, the root size and the width, a strip of five
  *													positions each, and the animation of the page; Fonts,
  *													with the five font roles; Content, Buttons and Components,
@@ -12,7 +17,7 @@
  *													the two colours, the five knobs and the mode the palette is
  *													solved from - and the compile that turns all of it into
  *													assets/theme.css (see Modules\Design\Admin beside this
- *													file). The seventh, Typefaces, is the loader: the
+ *													file). The eighth, Typefaces, is the loader: the
  *													families the project has installed, and the signed list
  *													of those it can install, which is read when its button is
  *													pressed - an install or a removal happens when it is
@@ -45,8 +50,22 @@
 		// nothing on disk
 		_edit		: null,
 
-		// The seven tabs, in the order they are shown in
-		TABS		: [ 'global', 'fonts', 'typefaces', 'content', 'buttons', 'components', 'colours' ],
+		/*	The Theme tab. The theme the working copy was taken from or kept in, as the
+			server describes it - slug, name, description, shipped, setup, css - against
+			which the chip "changed" compares the screen, and null where it has none. The
+			name and the description as they are typed on the tab, which a switch of the tab
+			keeps and which belong to no draft: the button of the theme saves them. The name
+			typed into the field of the list for a theme to be made, and whether an action
+			of the tab is on its way with the count that tells which one is the latest, the
+			way the Typefaces tab holds its own	*/
+		_active		: null,
+		_themeText	: { name : '', description : '' },
+		_themeNew		: '',
+		_themeBusy	: false,
+		_themeStamp	: 0,
+
+		// The eight tabs, in the order they are shown in
+		TABS		: [ 'theme', 'global', 'fonts', 'typefaces', 'content', 'buttons', 'components', 'colours' ],
 
 		// The tabs that have named knobs, and the part each of them is the
 		// template of: a knob belongs to the tab, the tab to one template
@@ -54,10 +73,10 @@
 
 		/*	The id of the element on the specimen page each tab scrolls the frame
 			to. The page is templates/preview-specimen.tpl, which carries the
-			same six ids; Global is the top of the page, Fonts and Typefaces the
-			typography block - a typeface shows where the type is -, Colours the
-			grounds	*/
-		ANCHORS	: { global : 'global', fonts : 'type', typefaces : 'type', content : 'content', buttons : 'buttons', components : 'components', colours : 'colours' },
+			same six ids; Theme and Global are the top of the page - a theme is
+			all of it -, Fonts and Typefaces the typography block - a typeface
+			shows where the type is -, Colours the grounds	*/
+		ANCHORS	: { theme : 'global', global : 'global', fonts : 'type', typefaces : 'type', content : 'content', buttons : 'buttons', components : 'components', colours : 'colours' },
 
 		/*	Where a change of one knob is looked at, by the tab: the id of the element
 			on the specimen the frame jumps to in place of the tab's anchor, which is
@@ -318,7 +337,7 @@
 					return Nino.admin.design._showError( wrap, status, response );
 
 				Nino.admin.design._data		= response;
-				Nino.admin.design._edit		= Nino.admin.design._selection( response );
+				Nino.admin.design._takeStored( response );
 				Nino.admin.design._ready	= true;
 				Nino.admin.design._render();
 
@@ -369,7 +388,7 @@
 		 *
 		 *	@param		{Object}	data
 		 *
-		 *	@return		{Object}					{ parts, knobs, size, width, motion, fonts, colours }
+		 *	@return		{Object}					{ parts, knobs, size, width, motion, fonts, colours, theme, css }
 		 */
 		_selection : function( data ) {
 
@@ -394,7 +413,31 @@
 				motion 	: Object.assign( {}, data.motion || {} ),
 				fonts 	: fonts,
 				colours	: Object.assign( {}, data.colours || {} ),
+				theme 	: String( data.theme || '' ),
+				css 		: String( data.css || '' ),
 			};
+		},
+
+		/**
+		 *	Make the stored selection the screen's: the working copy, the theme it names as the
+		 *	server describes it and the name and the description of that theme as the fields of
+		 *	the Theme tab have them. An action of that tab that is still on its way answers over
+		 *	a state it does not know any more, so what it brings is let go of (see _themeStamp)
+		 *
+		 *	@param		{Object}	data			The answer of design/list
+		 *
+		 *	@return		void
+		 */
+		_takeStored : function( data ) {
+
+			const design = Nino.admin.design;
+
+			design._edit = design._selection( data );
+			design._active = data.active || null;
+			design._themeText = data.active ? { name : data.active.name, description : data.active.description } : { name : '', description : '' };
+
+			++design._themeStamp;
+			design._themeBusy = false;
 		},
 
 		/**
@@ -738,7 +781,7 @@
 		 *	The whole screen: the open tab in one column, a preview of the lot in
 		 *	the other.
 		 *
-		 *	A tab at a time rather than six blocks at once, because six blocks is
+		 *	A tab at a time rather than eight blocks at once, because eight blocks is
 		 *	a list to read and one tab is a decision to make. The strip in the
 		 *	pane's head says which one is open; the preview beside it is the
 		 *	whole page either way, scrolled to where the open tab is
@@ -910,6 +953,9 @@
 
 			const tab = Nino.admin.design._tab;
 
+			if( tab === 'theme' )
+				return Nino.admin.design._renderTheme( body );
+
 			if( tab === 'global' )
 				return Nino.admin.design._renderGlobal( body );
 
@@ -926,8 +972,8 @@
 		},
 
 		/**
-		 *	The seven tabs. A tablist rather than a button group, because these
-		 *	really are seven panels: aria-selected, not aria-pressed.
+		 *	The eight tabs. A tablist rather than a button group, because these
+		 *	really are eight panels: aria-selected, not aria-pressed.
 		 *
 		 *	@return		{HTMLElement}
 		 */
@@ -943,7 +989,7 @@
 
 		/**
 		 *	A strip of tabs: a tablist of buttons, one of them selected. Nino.adminUi.buttonRow()
-		 *	keeps that, with the arrow keys and the one tab stop of a strip. The seven tabs of the
+		 *	keeps that, with the arrow keys and the one tab stop of a strip. The eight tabs of the
 		 *	panel are drawn with it, and so are the groups of the knobs of a tab (see _renderKnobs())
 		 *
 		 *	@param		{string}		name				What the strip is called by assistive technology
@@ -1095,6 +1141,867 @@
 
 			view.addEventListener( 'resize', resized );
 			wn.setTimeout( settled, 300 );
+		},
+
+		/**
+		 *	The Theme tab: three cards - the list of themes, with the row that makes one out of
+		 *	the screen and the file field that takes one in; the active theme, with its name
+		 *	and description, the chip that says the screen differs from it and the buttons that
+		 *	keep the screen in it and take it out as a file; and the css of its own, which every
+		 *	input mirrors into the preview. The first two are drawn again by what the tab does
+		 *	(see _paintTheme()), the third once per visit: it holds what is being typed
+		 *
+		 *	@param		{Element}	body		The box the column keeps for the open tab
+		 *
+		 *	@return		void
+		 */
+		_renderTheme : function( body ) {
+
+			const design = Nino.admin.design;
+
+			const themes = dc.createElement('div');
+			themes.id = 'design-themes';
+			themes.className = 'nino-admin-card design-block';
+
+			const current = dc.createElement('div');
+			current.id = 'design-theme-current';
+			current.className = 'nino-admin-card design-block';
+
+			const css = dc.createElement('div');
+			css.id = 'design-theme-css-card';
+			css.className = 'nino-admin-card design-block';
+
+			body.appendChild( themes );
+			body.appendChild( current );
+			body.appendChild( css );
+
+			// By the node, not by its id: this column is not in the document yet on the first render
+			design._paintThemes( themes );
+			design._paintCurrent( current );
+			design._paintCustomCss( css );
+		},
+
+		/**
+		 *	Draw the two cards the actions of the tab change again, where the tab is on screen,
+		 *	and put the css of the working copy into its field in place: a load changes it, and
+		 *	the field is left alone otherwise, so that the caret of what is being typed stays
+		 *
+		 *	@return		void
+		 */
+		_paintTheme : function() {
+
+			const design = Nino.admin.design;
+			const themes = dc.getElementById('design-themes');
+			const current = dc.getElementById('design-theme-current');
+			const css = dc.getElementById('design-theme-css');
+
+			if( themes !== null )
+				design._paintThemes( themes );
+
+			if( current !== null )
+				design._paintCurrent( current );
+
+			if( css !== null && design._edit !== null && css.value !== design._edit.css )
+				css.value = design._edit.css;
+		},
+
+		/**
+		 *	A word as a chip beside a name: the workbench's pill, the state its colour
+		 *
+		 *	@param		{string}	className
+		 *	@param		{string}	text
+		 *	@param		{string}	state				ok, warn, error or muted
+		 *	@param		{string}	[id]
+		 *
+		 *	@return		{Element}
+		 */
+		_chip : function( className, text, state, id ) {
+
+			const chip = Nino.adminUi.el( 'span', 'nino-admin-badge '+ className, text );
+			chip.dataset.state = state;
+
+			if( id )
+				chip.id = id;
+
+			return chip;
+		},
+
+		/**
+		 *	The first card: the themes there are, one row each, and under them the two ways to
+		 *	get another - a name, to make one out of the screen, and a file, to take one in
+		 *
+		 *	@param		{Element}	card
+		 *
+		 *	@return		void
+		 */
+		_paintThemes : function( card ) {
+
+			const design = Nino.admin.design;
+			const ui = Nino.adminUi;
+
+			card.innerHTML = '';
+			card.appendChild( design._sectionLabel( Nino.content.getText('/_admin/design/theme/list/title') ) );
+
+			const list = ui.el( 'ul', 'design-theme-list' );
+			list.id = 'design-theme-list';
+
+			( ( design._data || {} ).themes || [] ).forEach( function( entry ) {
+				list.appendChild( design._themeRow( entry ) );
+			} );
+
+			card.appendChild( list );
+
+			const make = ui.el( 'div', 'design-theme-new' );
+
+			const field = ui.textField( {
+				id 					: 'design-theme-new',
+				label 			: Nino.content.getText('/_admin/design/theme/new/label'),
+				placeholder : Nino.content.getText('/_admin/design/theme/new/placeholder'),
+				value 			: design._themeNew,
+				maxLength 	: 80,
+				onInput 		: function( value ) { design._themeNew = value },
+			} );
+
+			field.querySelector('input').addEventListener( 'keydown', function( event ) {
+				if( event.key === 'Enter' ) {
+					event.preventDefault();
+					design._createTheme();
+				}
+			} );
+
+			make.appendChild( field );
+			make.appendChild( ui.button( Nino.content.getText('/_admin/design/theme/create'), function() { design._createTheme() },
+				{ id : 'design-theme-create', className : 'nino-admin-btn-primary', disabled : design._themeBusy } ) );
+			card.appendChild( make );
+
+			const file = ui.el( 'label', 'nino-admin-field design-theme-import' );
+			file.appendChild( ui.el( 'span', '', Nino.content.getText('/_admin/design/theme/import/label') ) );
+
+			const input = ui.el( 'input', 'nino-admin-input' );
+			input.type = 'file';
+			input.id = 'design-theme-import';
+			input.accept = '.json,application/json';
+			input.disabled = design._themeBusy;
+			input.addEventListener( 'change', function() { design._readTheme( input ) } );
+
+			file.appendChild( input );
+			card.appendChild( file );
+		},
+
+		/**
+		 *	One theme of the list: its name with the chips it has - shipped, and active where the
+		 *	working copy was taken from it - the description under it, and what can be done with
+		 *	it: load, duplicate and, for a theme of the project only, delete. A button says which
+		 *	theme it is about to the ones who hear it read out
+		 *
+		 *	@param		{Object}	entry			One of design/list's `themes`: slug, name, description, shipped
+		 *
+		 *	@return		{Element}
+		 */
+		_themeRow : function( entry ) {
+
+			const design = Nino.admin.design;
+			const ui = Nino.adminUi;
+			const active = design._edit !== null && design._edit.theme === entry.slug;
+
+			const row = ui.el( 'li', 'design-theme-row'+ ( active === true ? ' design-theme-row--active' : '' ) );
+			row.dataset.slug = entry.slug;
+
+			if( active === true )
+				row.setAttribute( 'aria-current', 'true' );
+
+			const text = ui.el( 'div', 'design-theme-text' );
+			const head = ui.el( 'div', 'design-theme-head' );
+			head.appendChild( ui.el( 'span', 'design-theme-name', entry.name ) );
+
+			if( entry.shipped === true )
+				head.appendChild( design._chip( 'design-theme-shipped', Nino.content.getText('/_admin/design/theme/shipped'), 'muted' ) );
+
+			if( active === true )
+				head.appendChild( design._chip( 'design-theme-active', Nino.content.getText('/_admin/design/theme/active'), 'ok' ) );
+
+			text.appendChild( head );
+
+			if( entry.description !== '' )
+				text.appendChild( ui.el( 'small', 'design-theme-description', entry.description ) );
+
+			row.appendChild( text );
+
+			const buttons = ui.el( 'div', 'design-theme-buttons' );
+
+			[ [ 'load', function() { design._loadTheme( entry.slug ) } ], [ 'duplicate', function() { design._duplicateTheme( entry.slug ) } ],
+				[ 'delete', function() { design._deleteTheme( entry.slug ) } ] ].forEach( function( button ) {
+
+				if( button[0] === 'delete' && entry.shipped === true )
+					return;
+
+				const word = Nino.content.getText('/_admin/design/theme/'+ button[0] );
+
+				buttons.appendChild( ui.button( word, button[1], {
+					id 				: 'design-theme-'+ button[0]+ '-'+ entry.slug,
+					className : button[0] === 'delete' ? 'nino-admin-btn-danger' : '',
+					name 			: word+ ' - '+ entry.name,
+					disabled 	: design._themeBusy,
+				} ) );
+			} );
+
+			row.appendChild( buttons );
+
+			return row;
+		},
+
+		/**
+		 *	The second card: the active theme - the one the working copy was taken from or kept
+		 *	in. With none there is a sentence and nothing else. With one, its head says its name
+		 *	and, while the screen differs from it, the chip (see _refreshThemeChip()); under it
+		 *	stand its name and its description as they are typed - those of a shipped theme are
+		 *	read-only and say why - and the buttons that put the screen into it and take it out as
+		 *	a file. A shipped theme is a file of the feature: there is no way to save into it
+		 *
+		 *	@param		{Element}	card
+		 *
+		 *	@return		void
+		 */
+		_paintCurrent : function( card ) {
+
+			const design = Nino.admin.design;
+			const ui = Nino.adminUi;
+			const slug = design._edit === null ? '' : design._edit.theme;
+			const active = design._active !== null && design._active.slug === slug ? design._active : null;
+			const title = Nino.content.getText('/_admin/design/theme/current/title');
+
+			card.innerHTML = '';
+
+			if( slug === '' || active === null ) {
+				card.appendChild( design._sectionLabel( title ) );
+				card.appendChild( ui.hint( Nino.content.getText('/_admin/design/theme/current/none') ) );
+				return;
+			}
+
+			const head = design._sectionLabel( title );
+			head.id = 'design-theme-current-head';
+			head.firstChild.appendChild( ui.el( 'span', 'design-theme-current-name', active.name ) );
+			card.appendChild( head );
+
+			const shipped = active.shipped === true;
+
+			const name = ui.textField( {
+				id 				: 'design-theme-name',
+				label 		: Nino.content.getText('/_admin/design/theme/field/name'),
+				value 		: design._themeText.name,
+				maxLength : 80,
+				hint 			: shipped === true ? Nino.content.getText('/_admin/design/theme/current/shipped') : undefined,
+				onInput 	: function( value ) { design._themeText.name = value },
+			} );
+
+			const description = ui.textField( {
+				id 				: 'design-theme-description',
+				label 		: Nino.content.getText('/_admin/design/theme/field/description'),
+				value 		: design._themeText.description,
+				maxLength : 400,
+				onInput 	: function( value ) { design._themeText.description = value },
+			} );
+
+			if( shipped === true ) {
+				name.querySelector('input').disabled = true;
+				description.querySelector('input').disabled = true;
+			}
+
+			card.appendChild( name );
+			card.appendChild( description );
+
+			const buttons = ui.el( 'div', 'design-theme-actions' );
+
+			if( shipped === false )
+				buttons.appendChild( ui.button( Nino.content.getText('/_admin/design/theme/save'), function() { design._saveTheme() },
+					{ id : 'design-theme-save', className : 'nino-admin-btn-primary', disabled : design._themeBusy } ) );
+
+			buttons.appendChild( ui.button( Nino.content.getText('/_admin/design/theme/export'), function() { design._exportTheme() },
+				{ id : 'design-theme-export', disabled : design._themeBusy } ) );
+
+			card.appendChild( buttons );
+
+			design._refreshThemeChip( head );
+		},
+
+		/**
+		 *	The third card: the css of the theme, in a field of its own. Every input sets it in the
+		 *	working copy and asks for a preview - the debounce of 350 ms every control has - which
+		 *	compiles it as the last section of the sheet. The label is the card's title again, for
+		 *	whoever hears the field and not the heading
+		 *
+		 *	@param		{Element}	card
+		 *
+		 *	@return		void
+		 */
+		_paintCustomCss : function( card ) {
+
+			const design = Nino.admin.design;
+			const ui = Nino.adminUi;
+			const title = Nino.content.getText('/_admin/design/theme/css/title');
+
+			card.innerHTML = '';
+			card.appendChild( design._sectionLabel( title ) );
+
+			const label = ui.el( 'label', 'nino-admin-field' );
+			label.appendChild( ui.el( 'span', 'design-theme-css-name', title ) );
+
+			const box = ui.el( 'textarea', 'nino-admin-input design-theme-css' );
+			box.id = 'design-theme-css';
+			box.rows = 14;
+			box.spellcheck = false;
+			box.setAttribute( 'autocapitalize', 'off' );
+			box.setAttribute( 'wrap', 'off' );
+			box.value = design._edit === null ? '' : design._edit.css;
+			box.addEventListener( 'input', function() {
+				design._edit.css = box.value;
+				design._preview();
+			} );
+
+			label.appendChild( box );
+			card.appendChild( label );
+			card.appendChild( ui.hint( Nino.content.getText('/_admin/design/theme/css/hint') ) );
+		},
+
+		/**
+		 *	The setup of a working copy as a theme keeps it: the seven keys that choose something,
+		 *	without the theme it names and the css it carries - the screen's side of the compare
+		 *	the chip makes with the file's (see _themeChanged())
+		 *
+		 *	@param		{Object}	edit
+		 *
+		 *	@return		{Object}
+		 */
+		_snapshotOf : function( edit ) {
+			return { size : edit.size, width : edit.width, motion : edit.motion, parts : edit.parts, knobs : edit.knobs, fonts : edit.fonts, colours : edit.colours };
+		},
+
+		/**
+		 *	Whether the screen differs from the theme it was taken from: the snapshot of the
+		 *	working copy and its css against those of the theme's file, as the server holds them
+		 *	- canonical, as the way back compares, so that a knob moved and put back is no change
+		 *
+		 *	@return		{boolean}					false where there is no theme
+		 */
+		_themeChanged : function() {
+
+			const design = Nino.admin.design;
+			const edit = design._edit;
+			const active = design._active;
+
+			if( edit === null || edit.theme === '' || active === null || active.slug !== edit.theme )
+				return false;
+
+			return design._canonical( { setup : design._snapshotOf( edit ), css : edit.css } ) !== design._canonical( { setup : active.setup, css : active.css } );
+		},
+
+		/**
+		 *	Draw the chip "changed" in the head of the active theme, or take it away: it is there
+		 *	while the screen differs from the theme (see _themeChanged()). Asked for after every
+		 *	change of a control, beside the way back, and by everything that draws the card
+		 *
+		 *	@param		{?Element}	[head]		The head, for one that is built and not mounted yet
+		 *
+		 *	@return		void
+		 */
+		_refreshThemeChip : function( head ) {
+
+			const design = Nino.admin.design;
+
+			head = head || dc.getElementById('design-theme-current-head');
+
+			if( head === null )
+				return;
+
+			const chip = head.querySelector('.design-theme-changed');
+			const changed = design._themeChanged();
+
+			if( changed === true && chip === null )
+				head.firstChild.appendChild( design._chip( 'design-theme-changed', Nino.content.getText('/_admin/design/theme/current/changed'), 'warn', 'design-theme-changed' ) );
+
+			if( changed === false && chip !== null )
+				chip.remove();
+		},
+
+		/**
+		 *	One row of design/list's `themes`, by its slug
+		 *
+		 *	@param		{string}	slug
+		 *
+		 *	@return		{Object}					{ slug, name, description, shipped } - with the slug for a name where the theme is not in the list
+		 */
+		_themeEntry : function( slug ) {
+
+			const found = ( ( Nino.admin.design._data || {} ).themes || [] ).filter( function( entry ) { return entry.slug === slug } )[0];
+
+			return found || { slug : slug, name : slug, description : '', shipped : false };
+		},
+
+		/**
+		 *	Switch the buttons and the file field of the tab off while one of its requests is on its way, and
+		 *	on again when it is back: a second action over the first would answer over a state the screen
+		 *	does not have any more
+		 *
+		 *	@param		{boolean}	on
+		 *
+		 *	@return		void
+		 */
+		_themeWork : function( on ) {
+
+			Nino.admin.design._themeBusy = on;
+
+			[ 'design-themes', 'design-theme-current' ].forEach( function( id ) {
+
+				const card = dc.getElementById( id );
+
+				if( card === null )
+					return;
+
+				card.querySelectorAll('button, input[type="file"]').forEach( function( control ) { control.disabled = on } );
+			} );
+		},
+
+		/**
+		 *	A failure of an action of the tab, told in the line of the action bar in red: the sentence of its
+		 *	code where it has one, else the sentence of the action with the status in front
+		 *
+		 *	@param		{string}	failure			The text of what was being done
+		 *	@param		{number}	status
+		 *	@param		{*}				response
+		 *
+		 *	@return		void
+		 */
+		_themeFail : function( failure, status, response ) {
+			Nino.admin.design._say( dc.getElementById('design-msg'), Nino.adminUi.api.errorText( status, response, failure ), 'nino-admin-error' );
+		},
+
+		/**
+		 *	Put a theme on the screen as a draft. The server answers what the screen takes over and which of
+		 *	the typefaces the theme names the project has not installed. Those the list of the Typefaces tab
+		 *	has are named in one question - with a yes they are installed, one after the other, and the list of
+		 *	design/list is read again, for the selects of the Fonts tab, before anything is drawn. Nothing is
+		 *	stored: the Reset button appears, the shell asks before it loses the draft and Save draft keeps it
+		 *
+		 *	@param		{string}	slug
+		 *
+		 *	@return		void
+		 */
+		_loadTheme : function( slug ) {
+
+			const design = Nino.admin.design;
+
+			if( design._themeBusy === true )
+				return;
+
+			const stamp = ++design._themeStamp;
+
+			design._themeWork( true );
+			design._say( dc.getElementById('design-msg'), '' );
+
+			design._apiCall( 'theme/load', { slug : slug }, function( status, response ) {
+
+				if( stamp !== design._themeStamp )
+					return;
+
+				if( status !== 200 || response === null ) {
+					design._themeWork( false );
+					return design._themeFail( '/_admin/design/theme/error/load', status, response );
+				}
+
+				const offered = ( response.missing || [] ).filter( function( entry ) { return entry.inList === true } );
+
+				if( offered.length > 0 && wn.confirm( design._text( '/_admin/design/theme/confirm/fonts', offered.map( function( entry ) { return entry.name } ).join(', ') ) ) === true )
+					return design._installMissing( offered, function( said, failure ) {
+						design._relist( function() { design._takeTheme( response, said, failure, stamp ) } );
+					} );
+
+				design._takeTheme( response, [], '', stamp );
+			} );
+		},
+
+		/**
+		 *	Install the typefaces a theme names, one after the other, as the Typefaces tab installs one: a
+		 *	failure stops the chain and is said, and what is installed stays
+		 *
+		 *	@param		{Array}			list				design/theme/load's `missing` that the list has: slug, name
+		 *	@param		{Function}	then				Called with the sentences of what was installed and, where one failed, why
+		 *
+		 *	@return		void
+		 */
+		_installMissing : function( list, then ) {
+
+			const design = Nino.admin.design;
+			const said = [];
+
+			const next = function( at ) {
+
+				if( at >= list.length )
+					return then( said, '' );
+
+				design._apiCall( 'webfonts/install', { slug : list[at].slug }, function( status, response ) {
+
+					if( status !== 200 || response === null ) {
+						const reason = response !== null && typeof response.error === 'string' && response.error !== ''
+							? response.error : Nino.adminUi.api.errorText( status, response, '' );
+
+						return then( said, design._text( '/_admin/design/typefaces/error/install', reason ) );
+					}
+
+					said.push( response.msg );
+					next( at + 1 );
+				} );
+			};
+
+			next( 0 );
+		},
+
+		/**
+		 *	The theme that was asked for becomes the screen: the working copy is the theme's setup with its
+		 *	slug and its css, the active theme is its record - the setup of it as it was taken over, which
+		 *	is what the chip compares the screen with - and the name and description fields are its own.
+		 *	A family the role is not offered here - not in the list, declined, or not installed after all -
+		 *	is set to the face of Nino and told in the line of the bar with the rest. The screen is drawn
+		 *	again whole, the preview with it
+		 *
+		 *	@param		{Object}		response		design/theme/load's answer
+		 *	@param		{Array}			said				What the installs before it said
+		 *	@param		{string}		failure			Why an install failed, '' where none did
+		 *	@param		{number}		stamp				The count of the request, against a newer state
+		 *
+		 *	@return		void
+		 */
+		_takeTheme : function( response, said, failure, stamp ) {
+
+			const design = Nino.admin.design;
+
+			if( stamp !== design._themeStamp )
+				return;
+
+			design._themeWork( false );
+
+			const setup = JSON.parse( JSON.stringify( response.setup ) );
+			const options = ( design._data || {} ).options || {};
+			const lacking = {};
+
+			Object.keys( setup.fonts ).forEach( function( role ) {
+
+				const family = setup.fonts[role].family;
+
+				if( family !== '' && ( options[role] || [] ).indexOf( family ) === -1 ) {
+					lacking[family] = true;
+					setup.fonts[role].family = '';
+				}
+			} );
+
+			const names = Object.keys( lacking ).map( function( family ) {
+				return ( response.missing || [] ).filter( function( entry ) { return entry.slug === family } ).map( function( entry ) { return entry.name } )[0] || family;
+			} );
+
+			design._edit = { parts : setup.parts, knobs : setup.knobs, size : setup.size, width : setup.width, motion : setup.motion, fonts : setup.fonts, colours : setup.colours,
+				theme : response.slug, css : response.css };
+			design._active = { slug : response.slug, name : response.name, description : response.description, shipped : response.shipped,
+				setup : JSON.parse( JSON.stringify( design._snapshotOf( design._edit ) ) ), css : response.css };
+			design._themeText = { name : response.name, description : response.description };
+			design._render();
+
+			const lines = said.slice();
+
+			if( failure !== '' )
+				lines.push( failure );
+
+			lines.push( design._text( '/_admin/design/theme/msg/loaded', response.name ) );
+
+			if( names.length > 0 )
+				lines.push( design._text( '/_admin/design/theme/msg/unavailable', names.join(', ') ) );
+
+			const notes = response.notes || [];
+
+			design._say( dc.getElementById('design-msg'), lines.concat( notes ).join(' '), failure !== '' ? 'nino-admin-error' : ( names.length > 0 || notes.length > 0 ? 'nino-admin-hint' : '' ) );
+		},
+
+		/**
+		 *	Keep the screen as a theme of the project under the name in the field of the list. The draft
+		 *	then names it - unsaved, so that the way back takes it away again, which is right - and the
+		 *	name and description fields are the theme's, the chip none
+		 *
+		 *	@return		void
+		 */
+		_createTheme : function() {
+
+			const design = Nino.admin.design;
+
+			if( design._themeBusy === true || design._edit === null )
+				return;
+
+			const stamp = ++design._themeStamp;
+
+			design._themeWork( true );
+			design._say( dc.getElementById('design-msg'), '' );
+
+			design._apiCall( 'theme/create', Object.assign( {}, design._edit, { name : design._themeNew, description : '' } ), function( status, response ) {
+
+				if( stamp !== design._themeStamp )
+					return;
+
+				design._themeWork( false );
+
+				if( status !== 200 || response === null )
+					return design._themeFail( '/_admin/design/theme/error/create', status, response );
+
+				design._data.themes = response.themes;
+				design._active = response.active;
+				design._edit.theme = response.slug;
+				design._themeText = { name : response.active.name, description : response.active.description };
+				design._themeNew = '';
+				design._paintTheme();
+				design._refreshDirty();
+				design._say( dc.getElementById('design-msg'), design._text( '/_admin/design/theme/msg/created', response.active.name ) );
+			} );
+		},
+
+		/**
+		 *	Put the screen into the active theme - the working copy, its css, and the name and description
+		 *	as they are typed. The answer is the theme as the server holds it now, and the list
+		 *
+		 *	@return		void
+		 */
+		_saveTheme : function() {
+
+			const design = Nino.admin.design;
+
+			if( design._themeBusy === true || design._edit === null || design._edit.theme === '' )
+				return;
+
+			const slug = design._edit.theme;
+			const stamp = ++design._themeStamp;
+
+			design._themeWork( true );
+			design._say( dc.getElementById('design-msg'), '' );
+
+			design._apiCall( 'theme/save', Object.assign( {}, design._edit, { slug : slug, name : design._themeText.name, description : design._themeText.description } ), function( status, response ) {
+
+				if( stamp !== design._themeStamp )
+					return;
+
+				design._themeWork( false );
+
+				if( status !== 200 || response === null )
+					return design._themeFail( '/_admin/design/theme/error/save', status, response );
+
+				design._data.themes = response.themes;
+				design._active = response.active;
+				design._themeText = { name : response.active.name, description : response.active.description };
+
+				// The theme the stored setup was taken from is what the way back goes back to
+				if( design._data.theme === slug )
+					design._data.active = response.active;
+
+				design._paintTheme();
+				design._say( dc.getElementById('design-msg'), design._text( '/_admin/design/theme/msg/saved', response.active.name ) );
+			} );
+		},
+
+		/**
+		 *	Copy a theme - a shipped one too - into one of the project. Nothing is loaded: the list is drawn again
+		 *	with the copy in it, and the line of the bar names both
+		 *
+		 *	@param		{string}	slug
+		 *
+		 *	@return		void
+		 */
+		_duplicateTheme : function( slug ) {
+
+			const design = Nino.admin.design;
+
+			if( design._themeBusy === true )
+				return;
+
+			const stamp = ++design._themeStamp;
+			const from = design._themeEntry( slug ).name;
+
+			design._themeWork( true );
+			design._say( dc.getElementById('design-msg'), '' );
+
+			design._apiCall( 'theme/duplicate', { slug : slug }, function( status, response ) {
+
+				if( stamp !== design._themeStamp )
+					return;
+
+				design._themeWork( false );
+
+				if( status !== 200 || response === null )
+					return design._themeFail( '/_admin/design/theme/error/duplicate', status, response );
+
+				design._data.themes = response.themes;
+				design._paintTheme();
+				design._say( dc.getElementById('design-msg'), design._text( '/_admin/design/theme/msg/duplicated', from, design._themeEntry( response.slug ).name ) );
+			} );
+		},
+
+		/**
+		 *	Delete a theme of the project, after asking. Where it is the one the working copy was taken from,
+		 *	the working copy has none any more, and the slug the stored setup has is what the answer says
+		 *
+		 *	@param		{string}	slug
+		 *
+		 *	@return		void
+		 */
+		_deleteTheme : function( slug ) {
+
+			const design = Nino.admin.design;
+
+			if( design._themeBusy === true )
+				return;
+
+			const name = design._themeEntry( slug ).name;
+
+			if( wn.confirm( design._text( '/_admin/design/theme/confirm/delete', name ) ) === false )
+				return;
+
+			const stamp = ++design._themeStamp;
+
+			design._themeWork( true );
+			design._say( dc.getElementById('design-msg'), '' );
+
+			design._apiCall( 'theme/delete', { slug : slug }, function( status, response ) {
+
+				if( stamp !== design._themeStamp )
+					return;
+
+				design._themeWork( false );
+
+				if( status !== 200 || response === null )
+					return design._themeFail( '/_admin/design/theme/error/delete', status, response );
+
+				design._data.themes = response.themes;
+				design._data.theme = response.theme;
+
+				if( design._data.active !== null && design._data.active.slug === slug )
+					design._data.active = null;
+
+				if( design._edit.theme === slug ) {
+					design._edit.theme = '';
+					design._active = null;
+					design._themeText = { name : '', description : '' };
+				}
+
+				design._paintTheme();
+				design._refreshDirty();
+				design._say( dc.getElementById('design-msg'), design._text( '/_admin/design/theme/msg/deleted', name ) );
+			} );
+		},
+
+		/**
+		 *	Take the active theme out as a file: the answer is its text and the name to save it under, and
+		 *	becomes a download the way the Language panel's export does - a blob, a link clicked and removed,
+		 *	the address revoked
+		 *
+		 *	@return		void
+		 */
+		_exportTheme : function() {
+
+			const design = Nino.admin.design;
+
+			if( design._themeBusy === true || design._edit === null || design._edit.theme === '' )
+				return;
+
+			const slug = design._edit.theme;
+			const stamp = ++design._themeStamp;
+
+			design._themeWork( true );
+			design._say( dc.getElementById('design-msg'), '' );
+
+			design._apiCall( 'theme/export', { slug : slug }, function( status, response ) {
+
+				if( stamp !== design._themeStamp )
+					return;
+
+				design._themeWork( false );
+
+				if( status !== 200 || response === null )
+					return design._themeFail( '/_admin/design/theme/error/export', status, response );
+
+				const blob = new Blob( [ response.json ], { type : 'application/json' } );
+				const url = URL.createObjectURL( blob );
+				const link = dc.createElement('a');
+
+				link.href = url;
+				link.download = response.file;
+				dc.body.appendChild( link );
+				link.click();
+				link.remove();
+				URL.revokeObjectURL( url );
+
+				design._say( dc.getElementById('design-msg'), design._text( '/_admin/design/theme/msg/exported', design._themeEntry( slug ).name ) );
+			} );
+		},
+
+		/**
+		 *	Read the file the field of the list was given, as text, and take it in
+		 *
+		 *	@param		{HTMLInputElement}	input
+		 *
+		 *	@return		void
+		 */
+		_readTheme : function( input ) {
+
+			const design = Nino.admin.design;
+			const file = input.files !== null && input.files.length > 0 ? input.files[0] : null;
+
+			if( file === null )
+				return;
+
+			// The same file can be chosen again: the field does not keep it
+			const reader = new FileReader();
+
+			reader.addEventListener( 'load', function() {
+				input.value = '';
+				design._importTheme( String( reader.result ) );
+			} );
+
+			reader.addEventListener( 'error', function() {
+				input.value = '';
+				design._say( dc.getElementById('design-msg'), Nino.content.getText('/_admin/design/theme/error/import'), 'nino-admin-error' );
+			} );
+
+			reader.readAsText( file );
+		},
+
+		/**
+		 *	Take a theme file in as a theme of the project. A refusal is told by the sentence of its code - a file
+		 *	that is no theme file, a slug that is taken, a css that is refused - and the list is drawn again with
+		 *	what came in
+		 *
+		 *	@param		{string}	text			The file
+		 *
+		 *	@return		void
+		 */
+		_importTheme : function( text ) {
+
+			const design = Nino.admin.design;
+
+			if( design._themeBusy === true )
+				return;
+
+			const stamp = ++design._themeStamp;
+
+			design._themeWork( true );
+			design._say( dc.getElementById('design-msg'), '' );
+
+			design._apiCall( 'theme/import', { json : text }, function( status, response ) {
+
+				if( stamp !== design._themeStamp )
+					return;
+
+				design._themeWork( false );
+
+				if( status !== 200 || response === null )
+					return design._themeFail( '/_admin/design/theme/error/import', status, response );
+
+				design._data.themes = response.themes;
+				design._paintTheme();
+				design._say( dc.getElementById('design-msg'), design._text( '/_admin/design/theme/msg/imported', design._themeEntry( response.slug ).name ) );
+			} );
 		},
 
 		/**
@@ -1784,18 +2691,23 @@
 		 *	again, since the roles and the settings of the repository it reads are what
 		 *	design/list says
 		 *
+		 *	@param		{Function}	[then]		Called when the answer is taken over, and when it could not be: whoever
+		 *																waits for the list goes on with the one it has
+		 *
 		 *	@return		void
 		 */
-		_relist : function() {
+		_relist : function( then ) {
 
 			Nino.admin.design._apiCall( 'list', {}, function( status, response ) {
 
-				if( status !== 200 || response === null || Nino.admin.design._data === null )
-					return;
+				if( status === 200 && response !== null && Nino.admin.design._data !== null ) {
+					Nino.admin.design._data = response;
+					Nino.admin.design._paintState();
+					Nino.admin.design._paintFaces();
+				}
 
-				Nino.admin.design._data = response;
-				Nino.admin.design._paintState();
-				Nino.admin.design._paintFaces();
+				if( typeof then === 'function' )
+					then();
 			} );
 		},
 
@@ -3002,7 +3914,7 @@
 			if( data === null )
 				return;
 
-			Nino.admin.design._edit = Nino.admin.design._selection( data );
+			Nino.admin.design._takeStored( data );
 			Nino.admin.design._render();
 			Nino.admin.design._say( dc.getElementById('design-msg'), Nino.content.getText('/_admin/design/msg/reverted') );
 		},
@@ -3283,6 +4195,7 @@
 			// _previewNow(): that one is debounced, and a button appearing a
 			// third of a second after the click that caused it reads as a glitch
 			Nino.admin.design._refreshDirty();
+			Nino.admin.design._refreshThemeChip();
 			wn.clearTimeout( Nino.admin.design._timer );
 			Nino.admin.design._timer = wn.setTimeout( Nino.admin.design._previewNow, delay === undefined ? 350 : delay );
 		},
@@ -4105,7 +5018,7 @@
 			if( Nino.admin.design._data === null )
 				return;
 
-			Nino.admin.design._edit = Nino.admin.design._selection( Nino.admin.design._data );
+			Nino.admin.design._takeStored( Nino.admin.design._data );
 			Nino.admin.design._render();
 		},
 	} );

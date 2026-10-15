@@ -24,7 +24,13 @@ declare(strict_types=1);
  *											with its files, removed while no role of the saved setup
  *											uses it, the panel's three actions over all of it, and
  *											the font-src the workbench's policy gets, for the
- *											previews of the list.
+ *											previews of the list - and the themes: the two keys the
+ *											setup gained, the model of a theme file and the css it is
+ *											refused for, the six themes the feature ships held to
+ *											the library and to the specimen, the thirteenth section
+ *											of the compile, the seven actions of the Theme tab with
+ *											the codes they answer, the manual that tells all of it,
+ *											and the answers the panel's script is drawn from.
  *											Travels with the feature and
  *											runs against the checkout three levels up, or the one
  *											NINO_ROOT names (see tests/harness.php there). What the
@@ -52,6 +58,7 @@ use Nino\Modules\Design\Fonts;
 use Nino\Modules\Design\Preview;
 use Nino\Modules\Design\Previous;
 use Nino\Modules\Design\Setup;
+use Nino\Modules\Design\Themes;
 use Nino\Modules\Design\Webfonts;
 
 /**
@@ -846,6 +853,112 @@ check( '...and the callback: the one on /nino/http/output, which adds the origin
 	&& str_contains( \Nino\Features::localized( $feature['manual']['callbacks']['/nino/http/output'], 'de_DE' ), 'Nur für Antworten von /_admin und nur, solange die Einstellung Schrift-Repository eine https-Adresse nennt' ) === true
 	&& $feature['settings']['webfontsUrl']['label']['en_US'] === 'Typeface repository' && $feature['settings']['webfontsUrl']['label']['de_DE'] === 'Schrift-Repository' );
 
+// The Theme tab: where the themes of the project are kept, and the manual that says what the tab is - quoting the panel's own words for its buttons, its chip and its tabs, so that it cannot name what the panel does not
+$themeEntries = [ 'Theme', 'Load and create', 'Duplicate, save and delete', 'Export and import', 'Where the themes live', 'Custom css', 'Custom css: what is refused', 'Shipped themes', 'Shipped themes, continued' ];
+$tabList = static function( string $locale ) use ( $panelWord ): string {
+
+	$words = array_map( static fn( string $tab ): string => $panelWord( 'tab/'. $tab, $locale ), [ 'theme', 'global', 'fonts', 'typefaces', 'content', 'buttons', 'components', 'colours' ] );
+
+	return implode( ', ', array_slice( $words, 0, 7 ) ). ( $locale === 'de_DE' ? ' und ' : ' and ' ). $words[7];
+};
+
+check( 'the themes of the project are in the backup: /data/themes is declared under data, and a theme the class writes - one file below it - is in the manifest of what a backup carries, as data/themes/<slug>.php',
+	in_array( Themes::DIR, (array) ( $feature['data'] ?? [] ), true ) === true
+	&& Themes::write( $appData, 'backup-probe', Themes::record( 'Backup probe', '', Setup::defaults( $library ), '' ) ) === true
+	&& in_array( ltrim( Themes::DIR, '/' ). '/backup-probe.php', \Nino\Backup::manifest( $appData ), true ) === true );
+\Nino\Filesystem::removeDir( \Nino\Filesystem::path( $appData, Themes::DIR ) );
+
+check( 'the manual has an entry for the Theme tab and one for each part of it - loading and creating, duplicating, saving and deleting, export and import, where the files live, the custom css and what it refuses, and the six themes in two - each in both languages, standing after the entry on Design and before the one on Global',
+	array_slice( array_keys( (array) ( $feature['manual']['panel'] ?? [] ) ), 0, 11 ) === array_merge( [ 'Design' ], $themeEntries, [ 'Global' ] )
+	&& array_filter( $themeEntries, static fn( string $entry ): bool => $says( $entry, 'en_US' ) === '' || $says( $entry, 'de_DE' ) === '' ) === [] );
+check( '...the description of the feature and the entry on Design say the eighth tab, with Theme the first of the tabs - the tabs by the words the panel draws them with - in both languages',
+	str_contains( \Nino\Features::localized( $feature['description'], 'en_US' ), 'and an eighth tab, Theme, that keeps the whole as a named theme with a css of its own, six of them shipped' ) === true
+	&& str_contains( \Nino\Features::localized( $feature['description'], 'de_DE' ), 'und ein achter Tab, Theme, der das Ganze als benanntes Theme mit eigenem CSS aufbewahrt, sechs davon mitgeliefert' ) === true
+	&& str_contains( $says( 'Design', 'en_US' ), 'Eight tabs - '. $tabList( 'en_US' ). ' - and a preview beside them' ) === true && str_contains( $says( 'Design', 'en_US' ), 'Seven of the tabs are views of one setup' ) === true
+	&& str_contains( $says( 'Design', 'de_DE' ), 'Acht Tabs – '. $tabList( 'de_DE' ). ' – und eine Vorschau daneben' ) === true && str_contains( $says( 'Design', 'de_DE' ), 'Sieben der Tabs sind Ansichten eines Setups' ) === true );
+check( '...what a theme is - the whole setup under a name, with a description and a css of its own, choosing templates and positions and never changing a ladder - and the chip that tells the screen from it, by the panel\'s own word, in both languages',
+	str_contains( $says( 'Theme', 'en_US' ), 'The first tab: the list of themes - the six the feature ships and those of the project' ) === true
+	&& str_contains( $says( 'Theme', 'en_US' ), 'A theme is the whole setup - the five templates, the position of every knob, the root size, the width, the animation, the five font roles and the palette - kept under a name, with a description and a css of its own' ) === true
+	&& str_contains( $says( 'Theme', 'en_US' ), 'It chooses templates and positions and never changes a ladder' ) === true
+	&& str_contains( $says( 'Theme', 'en_US' ), 'The chip "'. $panelWord( 'theme/current/changed', 'en_US' ). '" beside the name of the active theme says that the screen differs from it' ) === true
+	&& str_contains( $says( 'Theme', 'de_DE' ), 'Der erste Tab: die Liste der Themes – die sechs, die das Feature mitbringt, und die des Projekts' ) === true
+	&& str_contains( $says( 'Theme', 'de_DE' ), 'Ein Theme ist das ganze Setup – die fünf Vorlagen, die Stellung jedes Reglers, die Grundgröße, die Breite, die Animation, die fünf Schriftrollen und die Palette – unter einem Namen, mit einer Beschreibung und einem eigenen CSS' ) === true
+	&& str_contains( $says( 'Theme', 'de_DE' ), 'Es wählt Vorlagen und Stellungen und ändert nie eine Leiter' ) === true
+	&& str_contains( $says( 'Theme', 'de_DE' ), 'Der Chip „'. $panelWord( 'theme/current/changed', 'de_DE' ). '“ neben dem Namen des aktiven Themes sagt, dass der Bildschirm von ihm abweicht' ) === true );
+check( '...that a load puts a theme on the screen as a draft and stores nothing until the draft is saved, that a typeface the project has not installed is offered for install first and one the list has not is named, and what a create keeps - the buttons by the words the panel draws them with - in both languages',
+	str_contains( $says( 'Load and create', 'en_US' ), $panelWord( 'theme/load', 'en_US' ). ' puts a theme on the screen as a draft - nothing is stored until '. $panelWord( 'label/save', 'en_US' ). '.' ) === true
+	&& str_contains( $says( 'Load and create', 'en_US' ), 'A typeface the theme names that the project has not installed is offered for install first, from the list of the Typefaces tab; one that list has not is named, and its role keeps Nino\'s face' ) === true
+	&& str_contains( $says( 'Load and create', 'en_US' ), $panelWord( 'theme/create', 'en_US' ). ' keeps the current state as a new theme under a name - the slug of its file is made of the name, and a theme with that slug, shipped or the project\'s, refuses it' ) === true
+	&& str_contains( $says( 'Load and create', 'de_DE' ), $panelWord( 'theme/load', 'de_DE' ). ' stellt ein Theme als Entwurf auf den Bildschirm – gespeichert wird erst mit '. $panelWord( 'label/save', 'de_DE' ). '.' ) === true
+	&& str_contains( $says( 'Load and create', 'de_DE' ), 'Eine Schriftart, die das Theme nennt und die das Projekt nicht installiert hat, wird zuerst zur Installation angeboten, aus der Liste des Tabs Schriftarten; eine, die diese Liste nicht hat, wird genannt, und ihre Rolle bleibt bei der Schrift von Nino' ) === true
+	&& str_contains( $says( 'Load and create', 'de_DE' ), $panelWord( 'theme/create', 'de_DE' ). ' hält den aktuellen Stand als neues Theme unter einem Namen fest – das Kürzel seiner Datei entsteht aus dem Namen, und ein Theme mit diesem Kürzel, mitgeliefert oder des Projekts, weist es ab' ) === true );
+check( '...that a duplicate is a copy under the name and the word for a copy - of a shipped theme too, which is how one is changed - that saving puts the screen into the active theme with the name and the description of the fields, a rename being the name field with the slug staying, and that only the project\'s own themes are deleted - in both languages',
+	str_contains( $says( 'Duplicate, save and delete', 'en_US' ), $panelWord( 'theme/duplicate', 'en_US' ). ' makes a copy under "'. str_replace( '%s', '<name>', $panelWord( 'theme/copy', 'en_US' ) ). '" - of a shipped theme too, which is how one is changed' ) === true
+	&& str_contains( $says( 'Duplicate, save and delete', 'en_US' ), $panelWord( 'theme/save', 'en_US' ). ' puts the screen into the active theme with the name and the description of its fields: a rename is the name field and this button, and the slug stays' ) === true
+	&& str_contains( $says( 'Duplicate, save and delete', 'en_US' ), $panelWord( 'theme/delete', 'en_US' ). ' is for the project\'s own themes; where the active theme is deleted, the setup has none' ) === true
+	&& str_contains( $says( 'Duplicate, save and delete', 'de_DE' ), $panelWord( 'theme/duplicate', 'de_DE' ). ' macht eine Kopie unter „'. str_replace( '%s', '<Name>', $panelWord( 'theme/copy', 'de_DE' ) ). '“ – auch von einem mitgelieferten Theme, so ändert man eines' ) === true
+	&& str_contains( $says( 'Duplicate, save and delete', 'de_DE' ), $panelWord( 'theme/save', 'de_DE' ). ' legt den Bildschirm ins aktive Theme, mit Name und Beschreibung aus den Feldern: Ein Umbenennen ist das Namensfeld und dieser Knopf, das Kürzel bleibt' ) === true
+	&& str_contains( $says( 'Duplicate, save and delete', 'de_DE' ), $panelWord( 'theme/delete', 'de_DE' ). ' gibt es für die eigenen Themes des Projekts; wird das aktive gelöscht, hat das Setup keines mehr' ) === true );
+check( '...that an export is one json file, nino-theme-<slug>.json, with the lines in other languages, and that an import takes such a file in under the slug of its name, refusing what is no theme file, a slug that is taken and a css that is refused, and normalising the setup except for the slugs of the typefaces, which stay as the file names them - in both languages',
+	str_contains( $says( 'Export and import', 'en_US' ), $panelWord( 'theme/export', 'en_US' ). ' turns a theme into one json file, nino-theme-<slug>.json, with its lines in other languages' ) === true
+	&& str_contains( $says( 'Export and import', 'en_US' ), 'it refuses what is no theme file of this feature, a slug that is taken and a css that is refused (see Custom css), and normalises the setup against what this project has - except the slugs of the typefaces, which stay as the file names them' ) === true
+	&& str_contains( $says( 'Export and import', 'de_DE' ), $panelWord( 'theme/export', 'de_DE' ). ' macht aus einem Theme eine json-Datei, nino-theme-<Kürzel>.json, mit seinen Zeilen in anderen Sprachen' ) === true
+	&& str_contains( $says( 'Export and import', 'de_DE' ), 'es weist ab, was keine Theme-Datei dieses Features ist, ein Kürzel, das vergeben ist, und ein CSS, das abgewiesen wird (siehe Custom css), und normalisiert das Setup gegen das, was dieses Projekt hat – bis auf die Kürzel der Schriftarten, die bleiben, wie die Datei sie nennt' ) === true );
+check( '...where the themes live - library/themes/<slug>.php for the six, loaded and duplicated and never written or deleted, data/themes/<slug>.php for the project\'s, one file each replaced whole by one write, which the backup carries - and that a file has presets, which stay empty - in both languages',
+	str_contains( $says( 'Where the themes live', 'en_US' ), 'The shipped themes are files of the feature, library/themes/<slug>.php: loaded and duplicated, never written or deleted' ) === true
+	&& str_contains( $says( 'Where the themes live', 'en_US' ), 'The themes of the project are '. ltrim( Themes::DIR, '/' ). '/<slug>.php, one file each, replaced whole by one write, and the backup carries them' ) === true
+	&& str_contains( $says( 'Where the themes live', 'en_US' ), 'and presets, which stays empty until the Builder has some' ) === true
+	&& str_contains( $says( 'Where the themes live', 'de_DE' ), 'Die mitgelieferten Themes sind Dateien des Features, library/themes/<Kürzel>.php: geladen und dupliziert, nie geschrieben oder gelöscht' ) === true
+	&& str_contains( $says( 'Where the themes live', 'de_DE' ), 'Die Themes des Projekts sind '. ltrim( Themes::DIR, '/' ). '/<Kürzel>.php, eine Datei je Theme, jeweils ganz durch einen Schreibvorgang ersetzt, und das Backup nimmt sie mit' ) === true
+	&& str_contains( $says( 'Where the themes live', 'de_DE' ), 'und presets, das leer bleibt, bis der Builder welche hat' ) === true );
+check( 'the manual says that the custom css is the last section of theme.css, after the knob positions, so that it wins against the templates, and mirrored live into the preview; where a path below the project is written; that a rung of a ladder declared again there wins while the knob keeps choosing, and of the kind the ladder gives - in both languages',
+	str_contains( $says( 'Custom css', 'en_US' ), 'the css of the theme, written as the last section of theme.css - after the knob positions - so that it wins against the templates, and mirrored live into the preview' ) === true
+	&& str_contains( $says( 'Custom css', 'en_US' ), 'A path below the project is written [[/nino/public]]/...' ) === true
+	&& str_contains( $says( 'Custom css', 'en_US' ), 'A rung of a ladder declared again there wins and the knob keeps choosing' ) === true
+	&& str_contains( $says( 'Custom css', 'en_US' ), 'the rungs of a text size are factors of the size of its role (--content-hero-title--more: 4.375), not lengths' ) === true
+	&& str_contains( $says( 'Custom css', 'de_DE' ), 'das CSS des Themes, als letzter Abschnitt der theme.css geschrieben – nach den Reglerstellungen –, damit es gegen die Vorlagen gewinnt, und live in die Vorschau gespiegelt' ) === true
+	&& str_contains( $says( 'Custom css', 'de_DE' ), 'Ein Pfad unterhalb des Projekts wird [[/nino/public]]/... geschrieben' ) === true
+	&& str_contains( $says( 'Custom css', 'de_DE' ), 'Eine dort erneut gesetzte Sprosse einer Leiter gewinnt, und der Regler wählt weiter' ) === true
+	&& str_contains( $says( 'Custom css', 'de_DE' ), 'die Sprossen einer Textgröße sind Faktoren der Größe ihrer Rolle (--content-hero-title--more: 4.375), keine Längen' ) === true );
+check( '...what the css is refused for - an @import, javascript: and a closing style tag, and more than 64 KB, judged on the raw text with the comments, by the save, the preview and every theme action, each with a code and a sentence of its own - and that a signature styles roles and positions and reads the colours by their custom properties, so that a page stays valid under every theme - in both languages',
+	str_contains( $says( 'Custom css: what is refused', 'en_US' ), '@import, javascript: and a closing style tag are refused, and so is a css of more than '. intdiv( Themes::MAX_CSS, 1024 ). ' KB - judged on the raw text, comments included, by the save, the preview and every theme action, each failure with a code and a sentence of its own' ) === true
+	&& str_contains( $says( 'Custom css: what is refused', 'en_US' ), 'A signature of a theme styles roles and positions and reads the colours by their custom properties (--color-accent, --color-ink, ...), so that a page stays valid under every theme' ) === true
+	&& str_contains( $says( 'Custom css: what is refused', 'de_DE' ), '@import, javascript: und ein schließendes style-Tag werden abgewiesen, ebenso ein CSS über '. intdiv( Themes::MAX_CSS, 1024 ). ' KB – beurteilt am rohen Text, Kommentare eingeschlossen, vom Speichern, von der Vorschau und von jeder Theme-Aktion, jeder Fehler mit einem Code und einem eigenen Satz' ) === true
+	&& str_contains( $says( 'Custom css: what is refused', 'de_DE' ), 'Eine Signatur eines Themes gestaltet Rollen und Positionen und liest die Farben über ihre Custom Properties (--color-accent, --color-ink, ...), damit eine Seite unter jedem Theme gültig bleibt' ) === true
+	&& Themes::MAX_CSS === 65536 && Themes::refusal( str_repeat( 'a', Themes::MAX_CSS + 1 ) ) === 'design_size' );
+
+// The six, by the name each has in the language and by the three templates it chooses as the library names them, with the sentence the list gives each - the dash for the colon the list has
+$flatten = static fn( string $text ): string => mb_strtolower( str_replace( [ ': ', ' – ' ], ' - ', $text ) );
+$shippedProblems = [];
+
+foreach( [ 'en_US', 'de_DE' ] as $shippedLocale ) {
+
+	$shippedSaid = $says( 'Shipped themes', $shippedLocale ). ' '. $says( 'Shipped themes, continued', $shippedLocale );
+
+	foreach( Themes::SHIPPED as $shippedSlug ) {
+
+		$shippedFile = Themes::read( $appData, $library, $shippedSlug ) ?? [];
+		$shippedParts = Themes::setup( $shippedFile )['parts'] ?? [];
+		$shippedSets = array_map( static fn( string $part ): string => Setup::describe( $library, $part, (string) ( $shippedParts[$part] ?? '' ), $shippedLocale )['name'], [ 'content', 'buttons', 'components' ] );
+		$shippedWords = Themes::describe( $shippedFile, $shippedLocale );
+
+		if( str_contains( $shippedSaid, $shippedWords['name']. ' ('. implode( ', ', $shippedSets ). '): ' ) === false )
+			$shippedProblems[] = $shippedLocale. ' '. $shippedSlug. ' by name and templates';
+
+		if( $shippedWords['description'] === '' || str_contains( $flatten( $shippedSaid ), $flatten( $shippedWords['description'] ) ) === false )
+			$shippedProblems[] = $shippedLocale. ' '. $shippedSlug. ' by description';
+	}
+}
+
+check( 'the manual names the six themes the feature ships, in the two entries on them, each by its name in the language and the three templates it chooses as the library names them - content, buttons, components - and with the sentence the list gives it, and says that none of the six chooses a brand colour'
+	. ( $shippedProblems === [] ? '' : ' - '. implode( ', ', $shippedProblems ) ),
+	$shippedProblems === [] && count( Themes::SHIPPED ) === 6
+	&& str_contains( $says( 'Shipped themes, continued', 'en_US' ), 'None of the six chooses a brand colour: that stays the project\'s' ) === true
+	&& str_contains( $says( 'Shipped themes, continued', 'de_DE' ), 'Keines der sechs wählt eine Markenfarbe: Sie bleibt die des Projekts' ) === true );
+check( 'the entry on the delivered look says that the css of a theme follows the twelve sections as a thirteenth, where there is one - in both languages',
+	str_contains( $says( 'The delivered look', 'en_US' ), 'twelve sections' ) === true && str_contains( $says( 'The delivered look', 'en_US' ), 'The css of a theme, where there is one, follows as a thirteenth section.' ) === true
+	&& str_contains( $says( 'The delivered look', 'de_DE' ), 'zwölf Abschnitte' ) === true && str_contains( $says( 'The delivered look', 'de_DE' ), 'Das CSS eines Themes folgt, wo vorhanden, als dreizehnter Abschnitt.' ) === true );
+
 echo "\nThe library it ships\n";
 
 check( 'five parts: the header and the footer bring markup, the content, the buttons and the components are a stylesheet each',
@@ -1390,7 +1503,7 @@ check( '...and a key of the animation that is none of its three is dropped and n
 
 // None of what comes off the wire may raise: an array cast to a string is a warning the kernel treats as fatal
 ninoWarnings();
-$setup = Setup::normalize( $appData, [ 'size' => [ 'l' ], 'width' => [ 1 ], 'motion' => 'flip', 'parts' => 'v1', 'knobs' => 'more', 'fonts' => 'bold', 'colours' => 'dark', 'compiled' => 'yes' ], $library );
+$setup = Setup::normalize( $appData, [ 'theme' => [ 'nino' ], 'size' => [ 'l' ], 'width' => [ 1 ], 'motion' => 'flip', 'parts' => 'v1', 'knobs' => 'more', 'fonts' => 'bold', 'colours' => 'dark', 'css' => [ 'a {}' ], 'compiled' => 'yes' ], $library );
 
 check( 'every key of the model, posted as the wrong type, is its default and raises nothing', ninoWarnings() === []
 	&& array_diff_key( $setup, [ 'compiled' => 1 ] ) === array_diff_key( Setup::defaults( $library ), [ 'compiled' => 1 ] ) && $setup['compiled'] === [] );
@@ -4854,6 +4967,775 @@ check( 'and the sandbox is as it was: no family, no directory for them, no cache
 	&& ( $setupKept === null ? is_file( $setupFile ) === false : (string) file_get_contents( $setupFile ) === $setupKept ) );
 
 
+echo "\nThe themes: the whole setup under a name, and the css that goes with it\n";
+
+/**
+ *	The selectors of a stylesheet, one by one: what stands before each {, split at the commas that
+ *	are not inside brackets, with the pseudo-elements taken off - an element is what a rule is about,
+ *	and the part of it a pseudo-element draws is no element to look for - and the preludes of at-rules left out
+ *
+ *	@param		string		$css
+ *
+ *	@return 	array
+ */
+function designSelectorsOf( string $css ): array {
+
+	$selectors = [];
+
+	preg_match_all( '/([^{}]+)\{/', Setup::uncomment( $css ), $preludes );
+
+	foreach( $preludes[1] as $prelude ) {
+
+		// An at-rule is no selector: the rules inside it are read as they come
+		if( str_starts_with( trim( $prelude ), '@' ) === true )
+			continue;
+
+		$depth = 0;
+		$one = '';
+
+		foreach( str_split( $prelude ) as $char ) {
+
+			$depth += $char === '(' ? 1 : ( $char === ')' ? -1 : 0 );
+
+			if( $char === ',' && $depth === 0 ) {
+				$selectors[] = $one;
+				$one = '';
+				continue;
+			}
+
+			$one .= $char;
+		}
+
+		$selectors[] = $one;
+	}
+
+	return array_map( static fn( string $selector ): string => trim( (string) preg_replace( '/::?(?:before|after|first-letter|first-line)\b/', '', $selector ) ), $selectors );
+}
+
+
+$themesSection = static function( array &$appData, string $library, array $entryInter ): string {
+
+	$themesFile = ninoSandboxDir( $appData ). '/design-themes.json';
+
+	/*	The names of the css colours: a shipped theme names none of them - it reads the roles. A word counts
+		where nothing of a name, a custom property or a number stands against it	*/
+	$cssColourNames = 'aliceblue antiquewhite aqua aquamarine azure beige bisque black blanchedalmond blue blueviolet brown burlywood cadetblue chartreuse chocolate coral cornflowerblue cornsilk crimson cyan darkblue darkcyan darkgoldenrod darkgray darkgreen darkgrey darkkhaki darkmagenta darkolivegreen darkorange darkorchid darkred darksalmon darkseagreen darkslateblue darkslategray darkslategrey darkturquoise darkviolet deeppink deepskyblue dimgray dimgrey dodgerblue firebrick floralwhite forestgreen fuchsia gainsboro ghostwhite gold goldenrod gray green greenyellow grey honeydew hotpink indianred indigo ivory khaki lavender lavenderblush lawngreen lemonchiffon lightblue lightcoral lightcyan lightgoldenrodyellow lightgray lightgreen lightgrey lightpink lightsalmon lightseagreen lightskyblue lightslategray lightslategrey lightsteelblue lightyellow lime limegreen linen magenta maroon mediumaquamarine mediumblue mediumorchid mediumpurple mediumseagreen mediumslateblue mediumspringgreen mediumturquoise mediumvioletred midnightblue mintcream mistyrose moccasin navajowhite navy oldlace olive olivedrab orange orangered orchid palegoldenrod palegreen paleturquoise palevioletred papayawhip peachpuff peru pink plum powderblue purple rebeccapurple red rosybrown royalblue saddlebrown salmon sandybrown seagreen seashell sienna silver skyblue slateblue slategray slategrey snow springgreen steelblue tan teal thistle tomato turquoise violet wheat white whitesmoke yellow yellowgreen';
+
+	// What the themes keep is data/design.php and data/themes/ - both put back as they were found when this section ends
+	$themeSetupFile 	= \Nino\Filesystem::path( $appData, Setup::PATH );
+	$themeSetupKept 	= is_file( $themeSetupFile ) === true ? (string) file_get_contents( $themeSetupFile ) : null;
+	$themeFillsKept 	= $appData['./nino/html/fills'] ?? null;
+	$themesDir 				= \Nino\Filesystem::path( $appData, Themes::DIR );
+
+	check( 'a theme is a setup with two keys more - the theme it was taken from and the css that goes with it - in the order the file is written in, and both empty where none was chosen',
+		Setup::KEYS === [ 'format', 'theme', 'size', 'width', 'motion', 'parts', 'knobs', 'fonts', 'colours', 'css', 'compiled' ]
+		&& array_keys( Setup::defaults( $library ) ) === Setup::KEYS && Setup::defaults( $library )['theme'] === '' && Setup::defaults( $library )['css'] === '' );
+	check( '...and the format of the file stays 2: a file without the two keys reads as none and no css, which is what every project had, with no note and nothing migrated',
+		Setup::FORMAT === 2 && \Nino\Filesystem::putFileContent( $appData, Setup::PATH, [ 'format' => 2, 'size' => 1, 'width' => -1 ] ) === true
+		&& ( $oldNotes = [] ) === [] && ( $old = Setup::read( $appData, $library, $oldNotes ) )['theme'] === '' && $old['css'] === '' && $oldNotes === [] && $old['size'] === 1 && $old['width'] === -1 );
+
+	$notes = [];
+	$themed = Setup::normalize( $appData, [ 'theme' => 'magazine', 'css' => "a {}\r\nb {}\rc {}" ], $library, $notes );
+
+	check( 'a theme that is there - a shipped one - is kept, and the css with its line breaks all one kind: the machine it was typed on is none of the file\'s business',
+		$notes === [] && $themed['theme'] === 'magazine' && $themed['css'] === "a {}\nb {}\nc {}" );
+
+	$notes = [];
+	$longNotes = [];
+	$lost = Setup::normalize( $appData, [ 'theme' => 'nowhere', 'css' => 'a {}' ], $library, $notes );
+
+	check( '...one that is not there is none, and the note says which - the slug cut to 40 characters, like the other notes - while the css stays whatever the theme was',
+		$lost['theme'] === '' && $notes === [ 'the theme "nowhere" is not there - none is active' ] && $lost['css'] === 'a {}'
+		&& Setup::normalize( $appData, [ 'theme' => str_repeat( 'x', 80 ) ], $library, $longNotes )['theme'] === '' && $longNotes === [ 'the theme "'. str_repeat( 'x', 40 ). '" is not there - none is active' ] );
+
+	ninoWarnings();
+	$wrongNotes = [];
+	$emptyNotes = [];
+	$wrong = Setup::normalize( $appData, [ 'theme' => [ 'magazine' ], 'css' => [ 'a {}' ] ], $library, $wrongNotes );
+
+	check( '...a theme and a css that are no strings are none and no css, and raise nothing - and an empty theme is none, with no note',
+		ninoWarnings() === [] && $wrong['theme'] === '' && $wrong['css'] === '' && $wrongNotes === []
+		&& Setup::normalize( $appData, [ 'theme' => '' ], $library, $emptyNotes )['theme'] === '' && $emptyNotes === [] );
+
+	Setup::write( $appData, $themed );
+	$written = (array) include $themeSetupFile;
+
+	check( 'write() writes the two keys in the order of KEYS, and read() reads them back', array_keys( $written ) === Setup::KEYS && $written['theme'] === 'magazine' && $written['css'] === "a {}\nb {}\nc {}"
+		&& Setup::read( $appData, $library )['theme'] === 'magazine' && Setup::read( $appData, $library )['css'] === "a {}\nb {}\nc {}" );
+
+	// Name, slug, refusal - the pure functions of the class
+	$slugs = [
+		'Magazine' => 'magazine', 'Mein B'. "\u{fc}". 'ro' => 'mein-buero', 'Stra'. "\u{df}". 'e & Co.' => 'strasse-co', "\u{c4}\u{d6}\u{dc} \u{e4}\u{f6}\u{fc} \u{df}" => 'aeoeue-aeoeue-ss',
+		'  --Hello,   World!--  ' => 'hello-world', 'Theme 2024' => 'theme-2024', 'a_b' => 'a-b', 'Caf'. "\u{e9}". ' Cr'. "\u{e8}". 'me' => 'caf-cr-me', '!!! ???' => '', '' => '', "\u{65e5}\u{672c}" => '',
+	];
+	$slugProblems = [];
+
+	foreach( $slugs as $name => $slug )
+		if( Themes::slug( $name ) !== $slug )
+			$slugProblems[] = $name. ' -> '. Themes::slug( $name );
+
+	check( 'the slug of a name is lower case, the umlauts and the sharp s as ae, oe, ue and ss, every other letter and every run of anything else one hyphen, none at the ends - and nothing where there is nothing to make one of'
+		. ( $slugProblems === [] ? '' : ' - '. implode( ', ', $slugProblems ) ), $slugProblems === [] );
+
+	$words = implode( ' ', array_fill( 0, 12, 'abcdefg' ) );
+
+	check( '...at most 64 characters: a long name is cut at a hyphen where one stands in the last 16, and hard where none does - and not at all through a word that ends right at the 64th',
+		Themes::slug( $words ) === implode( '-', array_fill( 0, 8, 'abcdefg' ) )
+		&& Themes::slug( str_repeat( 'a', 100 ) ) === str_repeat( 'a', 64 )
+		&& Themes::slug( str_repeat( 'a', 64 ). ' bbb' ) === str_repeat( 'a', 64 )
+		&& strlen( Themes::slug( str_repeat( 'ab ', 40 ) ) ) <= 64 && preg_match( Themes::SLUG, Themes::slug( str_repeat( 'ab ', 40 ) ) ) === 1 );
+	check( 'every slug it makes is one the pattern takes, and the pattern takes no path: not an upper case letter, a dot, a slash, a hyphen at the ends, nothing, 65 characters',
+		array_filter( array_filter( array_values( $slugs ), static fn( string $slug ): bool => $slug !== '' ), static fn( string $slug ): bool => preg_match( Themes::SLUG, $slug ) !== 1 ) === []
+		&& array_filter( [ 'Magazine', 'a.b', '../x', 'a/b', '-a', 'a-', 'a--b', '', str_repeat( 'a', 65 ), "a\n" ], static fn( string $slug ): bool => preg_match( Themes::SLUG, $slug ) === 1 ) === [] );
+
+	$bigCss = str_repeat( 'a', 65536 );
+
+	check( 'a css is refused by the code of what is wrong with it: a size over 64 KB first, then an @import, then javascript: or a script, then a closing style tag - and a clean one is not',
+		Themes::refusal( '' ) === '' && Themes::refusal( ".a { color: inherit; }\n@media (min-width: 768px) { .b { margin: 0 } }" ) === '' && Themes::refusal( $bigCss ) === ''
+		&& Themes::refusal( $bigCss. 'a' ) === 'design_size' && Themes::refusal( $bigCss. '@import "x";' ) === 'design_size'
+		&& Themes::refusal( '@import url(x);' ) === 'design_import' && Themes::refusal( "@import\n'x';" ) === 'design_import'
+		&& Themes::refusal( '.a { background: url(javascript:alert(1)) }' ) === 'design_script' && Themes::refusal( '</style><script>x</script>' ) === 'design_script'
+		&& Themes::refusal( '.a{}</style>' ) === 'design_tag' );
+	check( '...whatever the case, a space before the colon, a comment around it - judged on the raw text, so a comment is no place to hide in - and not a word that only begins like one',
+		Themes::refusal( '/* @IMPORT x */' ) === 'design_import' && Themes::refusal( '.a { x: JavaScript : y }' ) === 'design_script' && Themes::refusal( '<Script' ) === 'design_script'
+		&& Themes::refusal( '/* </STYLE */' ) === 'design_tag' && Themes::refusal( '.a { content: "@importing" } /* the javascriptable thing */' ) === ''
+		&& array_keys( Themes::REFUSALS ) === [ 'design_size', 'design_import', 'design_script', 'design_tag' ] );
+
+	// The themes that are there: six shipped, the project's own written by the class
+	$firstShipped = Themes::shipped( $library );
+
+	check( 'six themes are shipped, in the order the list shows them in - nino, magazine, poster, statement, product, office - each a file of library/themes/ named by its slug',
+		array_keys( $firstShipped ) === Themes::SHIPPED && Themes::SHIPPED === [ 'nino', 'magazine', 'poster', 'statement', 'product', 'office' ]
+		&& array_filter( $firstShipped, static fn( string $path, string $slug ): bool => $path !== $library. '/themes/'. $slug. '.php', ARRAY_FILTER_USE_BOTH ) === []
+		&& Themes::isShipped( $library, 'magazine' ) === true && Themes::isShipped( $library, 'mein-theme' ) === false && Themes::isShipped( $library, '../x' ) === false );
+
+	$own = static fn( string $name, string $description = '', array $css = [] ): array => Themes::record( $name, $description, Setup::normalize( $appData, [ 'parts' => [ 'content' => 'v2' ], 'knobs' => [ 'content' => [ 'corners' => 1 ] ] ], $library ), $css[0] ?? '', $css[1] ?? [] );
+
+	\Nino\Filesystem::removeDir( $themesDir );
+	check( 'before the project has one, there is no theme of its own - and no directory for them',
+		Themes::own( $appData ) === [] && is_dir( $themesDir ) === false );
+
+	foreach( [ 'zeta' => 'Zeta', 'alpha' => 'alpha', 'beta-10' => 'Beta 10', 'beta-2' => 'Beta 2' ] as $slug => $name )
+		Themes::write( $appData, $slug, $own( $name, 'Mine: '. $slug ) );
+
+	check( 'write() makes the directory and one file for each, named by the slug, and nothing of a slug that is none',
+		array_keys( Themes::own( $appData ) ) === [ 'alpha', 'beta-10', 'beta-2', 'zeta' ] && is_file( $themesDir. '/zeta.php' ) === true
+		&& Themes::write( $appData, '../escape', $own( 'x' ) ) === false && Themes::write( $appData, 'Upper', $own( 'x' ) ) === false && Themes::write( $appData, '', $own( 'x' ) ) === false
+		&& is_file( dirname( $themesDir ). '/escape.php' ) === false && array_keys( Themes::own( $appData ) ) === [ 'alpha', 'beta-10', 'beta-2', 'zeta' ] );
+
+	$fileOfZeta = (array) include $themesDir. '/zeta.php';
+	Themes::write( $appData, 'format-set', [ 'format' => 7, 'name' => 'F', 'stray' => 1 ] );
+	$formatSet = (array) include $themesDir. '/format-set.php';
+
+	check( 'a file is the shape of the model: the format, the name, the description, the seven keys of a setup that choose something, the css and the presets, which are none - in that order, and the format set by write()',
+		array_keys( $fileOfZeta ) === [ 'format', 'name', 'description', 'setup', 'css', 'presets' ] && $fileOfZeta['format'] === 1 && $fileOfZeta['presets'] === []
+		&& array_keys( $fileOfZeta['setup'] ) === [ 'size', 'width', 'motion', 'parts', 'knobs', 'fonts', 'colours' ] && $fileOfZeta['name'] === 'Zeta'
+		&& $formatSet === [ 'format' => 1, 'name' => 'F', 'description' => '', 'setup' => [], 'css' => '', 'presets' => [] ] && Themes::remove( $appData, 'format-set' ) === true );
+
+	check( 'read() answers the array of a shipped theme and of one of the project, and null for everything that is no theme: a slug that is none, one that is not there, a file that is no array, one of another format, one without a name',
+		( Themes::read( $appData, $library, 'magazine' )['name'] ?? '' ) === 'Magazine' && ( Themes::read( $appData, $library, 'zeta' )['name'] ?? '' ) === 'Zeta'
+		&& Themes::read( $appData, $library, '../zeta' ) === null && Themes::read( $appData, $library, 'Zeta' ) === null && Themes::read( $appData, $library, 'missing' ) === null
+		&& \Nino\Filesystem::putFileContent( $appData, Themes::DIR. '/no-array.php', 'text' ) === true && Themes::read( $appData, $library, 'no-array' ) === null
+		&& \Nino\Filesystem::putFileContent( $appData, Themes::DIR. '/format-two.php', [ 'format' => 2, 'name' => 'Two' ] ) === true && Themes::read( $appData, $library, 'format-two' ) === null
+		&& \Nino\Filesystem::putFileContent( $appData, Themes::DIR. '/no-name.php', [ 'format' => 1, 'setup' => [] ] ) === true && Themes::read( $appData, $library, 'no-name' ) === null
+		&& \Nino\Filesystem::putFileContent( $appData, Themes::DIR. '/name-number.php', [ 'format' => 1, 'name' => 5 ] ) === true && Themes::read( $appData, $library, 'name-number' ) === null
+		&& Themes::exists( $appData, $library, 'zeta' ) === true && Themes::exists( $appData, $library, 'no-name' ) === false && Themes::exists( $appData, $library, 'nino' ) === true );
+	check( '...a project theme shadows nothing: a file of the project that carries the slug of a shipped theme is never read, and never listed',
+		\Nino\Filesystem::putFileContent( $appData, Themes::DIR. '/magazine.php', Themes::record( 'Fake magazine', '', [], '' ) ) === true
+		&& Themes::read( $appData, $library, 'magazine' )['name'] === 'Magazine'
+		&& array_column( Themes::all( $appData, $library, 'en_US' ), 'name' ) === [ 'Nino', 'Magazine', 'Poster', 'Statement', 'Product', 'Office', 'alpha', 'Beta 2', 'Beta 10', 'Zeta' ]
+		&& Themes::remove( $appData, 'magazine' ) === true );
+	check( 'a theme is removed by its slug - the file is gone, a second time there is nothing to remove, and a shipped one or a slug that is none is not this method\'s',
+		Themes::remove( $appData, 'no-array' ) === true && is_file( $themesDir. '/no-array.php' ) === false && Themes::remove( $appData, 'no-array' ) === false
+		&& Themes::remove( $appData, '../x' ) === false && Themes::remove( $appData, 'nino' ) === false && is_file( $library. '/themes/nino.php' ) === true );
+
+	foreach( [ 'format-two', 'no-name', 'name-number' ] as $stray )
+		Themes::remove( $appData, $stray );
+
+	// The list, in both languages
+	$shippedWords = [
+		'en_US' => [
+			'nino' 			=> [ 'Nino', 'The framework as it is: every template the first one, every knob in the middle, no css of its own.' ],
+			'magazine' 	=> [ 'Magazine', 'Lifted cards, keys and ruled fields; a drop cap opens a section, the subtitle runs in small capitals and the rule under a title takes the accent.' ],
+			'poster' 		=> [ 'Poster', 'Boxed cards, square buttons and contrast components; an eyebrow over every title, its first letter in the accent, and the sections counted.' ],
+			'statement' => [ 'Statement', 'Open cards, quiet buttons and line fields; a big opening, large numbers, titles underlined in the accent and room around everything.' ],
+			'product' 	=> [ 'Product', 'Panel bands, pill buttons and filled fields; badges as pills and tabular figures - the system\'s own sans in every role.' ],
+			'office' 		=> [ 'Office', 'Nino\'s own look, denser: smaller buttons, tighter fields and tables, ruled fields, the root size a step down.' ],
+		],
+		'de_DE' => [
+			'nino' 			=> [ 'Nino', 'Das Framework, wie es ist: jede Vorlage die erste, jeder Regler in der Mitte, kein eigenes CSS.' ],
+			'magazine' 	=> [ 'Magazin', 'Schwebende Karten, Tasten und Felder im Rahmen; eine Initiale er'. "\u{f6}". 'ffnet die Sektion, der Untertitel l'. "\u{e4}". 'uft in Kapit'. "\u{e4}". 'lchen, und die Linie unter dem Titel nimmt den Akzent.' ],
+			'poster' 		=> [ 'Plakat', 'Kastenkarten, eckige Buttons und Kontrast-Komponenten; ein Eyebrow '. "\u{fc}". 'ber jedem Titel, dessen erster Buchstabe im Akzent, und die Sektionen gez'. "\u{e4}". 'hlt.' ],
+			'statement' => [ 'Statement', 'Offene Karten, leise Buttons und Linien-Felder; ein gro'. "\u{df}". 'er Auftakt, gro'. "\u{df}". 'e Zahlen, Titel im Akzent unterstrichen und Luft um alles.' ],
+			'product' 	=> [ 'Produkt', 'Panel-B'. "\u{e4}". 'nder, Pillen-Buttons und gef'. "\u{fc}". 'llte Felder; Badges als Pillen und tabellarische Ziffern '. "\u{2013}". ' die Sans des Systems in jeder Rolle.' ],
+			'office' 		=> [ 'Verwaltung', 'Ninos eigenes Aussehen, dichter: kleinere Buttons, engere Felder und Tabellen, Felder im Rahmen, die Grundgr'. "\u{f6}". "\u{df}". 'e eine Stufe kleiner.' ],
+		],
+	];
+	$listProblems = [];
+
+	foreach( [ 'de_DE', 'en_US', 'fr_FR' ] as $locale ) {
+
+		$list = Themes::all( $appData, $library, $locale );
+		$expected = $shippedWords[$locale === 'de_DE' ? 'de_DE' : 'en_US'];
+
+		if( array_slice( array_column( $list, 'slug' ), 0, 6 ) !== Themes::SHIPPED )
+			$listProblems[] = $locale. ': the order';
+
+		foreach( array_slice( $list, 0, 6 ) as $row )
+			if( $row !== [ 'slug' => $row['slug'], 'name' => $expected[$row['slug']][0], 'description' => $expected[$row['slug']][1], 'shipped' => true ] )
+				$listProblems[] = $locale. ': '. $row['slug'];
+	}
+
+	check( 'the list shows the six names and descriptions as they were given - the German ones in German, the English in English and in any language that has no lines of its own'. ( $listProblems === [] ? '' : ' - '. implode( ', ', $listProblems ) ), $listProblems === [] );
+
+	$ownRows = array_slice( Themes::all( $appData, $library, 'en_US' ), 6 );
+
+	check( '...then the themes of the project, sorted by the name as it is shown - naturally and without regard to case - each with the description it was given and no mark of being shipped',
+		array_column( $ownRows, 'slug' ) === [ 'alpha', 'beta-2', 'beta-10', 'zeta' ] && array_column( $ownRows, 'name' ) === [ 'alpha', 'Beta 2', 'Beta 10', 'Zeta' ]
+		&& array_column( $ownRows, 'shipped' ) === [ false, false, false, false ] && $ownRows[3] === [ 'slug' => 'zeta', 'name' => 'Zeta', 'description' => 'Mine: zeta', 'shipped' => false ] );
+
+	$magazineFile = Themes::read( $appData, $library, 'magazine' );
+	$plain = [ 'name' => 'Plain', 'description' => 'Plain words' ];
+
+	check( 'describe() takes the line of the language where the file has one and the plain one where it has none: de_DE reads name-de, en_US and fr_FR the plain name, a theme without lines the plain one in every language',
+		Themes::describe( $magazineFile, 'de_DE' ) === [ 'name' => 'Magazin', 'description' => $shippedWords['de_DE']['magazine'][1] ]
+		&& Themes::describe( $magazineFile, 'en_US' )['name'] === 'Magazine' && Themes::describe( $magazineFile, 'fr_FR' )['name'] === 'Magazine'
+		&& Themes::describe( $plain, 'de_DE' ) === $plain && Themes::describe( $plain, 'en_US' ) === $plain && Themes::describe( $plain, 'C' ) === $plain
+		&& Themes::describe( [ 'name' => 'A', 'name-de' => '  ', 'description' => '' ], 'de_DE' ) === [ 'name' => 'A', 'description' => '' ]
+		&& Themes::entry( 'x-y', [ 'name' => '' ], 'en_US', false )['name'] === 'x-y' );
+
+	$normalised = Setup::normalize( $appData, [ 'theme' => 'nino', 'css' => 'a {}' ], $library );
+
+	check( 'a snapshot is the seven keys of a setup that choose something and nothing else - no format, no theme, no css, no record of what was compiled - in the order of KEYS',
+		array_keys( Themes::snapshot( $normalised ) ) === [ 'size', 'width', 'motion', 'parts', 'knobs', 'fonts', 'colours' ]
+		&& Themes::snapshot( $normalised ) === array_diff_key( $normalised, array_flip( [ 'format', 'theme', 'css', 'compiled' ] ) ) && Themes::snapshot( [] ) === [] );
+
+	check( 'an export is the file as json - in the order of the shape, the characters of any language and the slashes as they are, a line break at the end - and an import reads it back as the array it was, byte for byte',
+		( $exportText = Themes::json( $magazineFile ) ) !== '' && str_ends_with( $exportText, "}\n" ) && str_contains( $exportText, '"name-de": "Magazin"' ) === true && str_contains( $exportText, '\\/' ) === false && str_contains( $exportText, '\\u' ) === false
+		&& array_keys( json_decode( $exportText, true ) ) === [ 'format', 'name', 'name-de', 'description', 'description-de', 'setup', 'css', 'presets' ]
+		&& Themes::fromJson( $exportText ) === $magazineFile && Themes::json( Themes::fromJson( $exportText ) ) === $exportText
+		&& Themes::fromJson( Themes::json( $fileOfZeta ) ) === $fileOfZeta );
+	check( '...and refuses what is no theme file by one code, design_file: text that is no json, json that is no object or is a list, a format that is not 1, a name that is none or no string',
+		array_unique( array_map( 'Nino\Modules\Design\Themes::fromJson', [ '', 'text', '"magazine"', '5', '[1,2]', '[]', '{"format":2,"name":"X"}', '{"name":"X"}', '{"format":1}', '{"format":1,"name":5}', '{"format":"1","name":"X"}' ] ) ) === [ 'design_file' ]
+		&& Themes::fromJson( '{"format":1,"name":"X","stray":true}' ) === [ 'format' => 1, 'name' => 'X', 'stray' => true ] );
+
+	// The six themes the feature ships: what each is made of, held to the table the model was given and to what a theme's css may be
+	$shippedTable = [
+		'nino' 			=> [ 'parts' => [ 'v1', 'v1', 'v1', 'v1', 'v1' ], 'off' => [], 'size' => 0, 'temperature' => 3, 'harmony' => 1, 'sans' => false, 'css' => false ],
+		'magazine' 	=> [ 'parts' => [ 'v9', 'v2', 'v3', 'v4', 'v2' ], 'off' => [ 'content/card-space' => 1, 'content/shadow' => 1 ], 'size' => 0, 'temperature' => 4, 'harmony' => 1, 'sans' => false, 'css' => true ],
+		'poster' 		=> [ 'parts' => [ 'v5', 'v10', 'v2', 'v3', 'v5' ], 'off' => [ 'content/hero-title' => 1, 'content/section-space' => 1, 'content/section-line' => 1 ], 'size' => 0, 'temperature' => 3, 'harmony' => 4, 'sans' => false, 'css' => true ],
+		'statement' => [ 'parts' => [ 'v10', 'v11', 'v4', 'v5', 'v3' ], 'off' => [ 'content/hero-title' => 2, 'content/hero-text' => -1, 'content/loud' => 1, 'content/section-space' => 1 ], 'size' => 0, 'temperature' => 1, 'harmony' => 1, 'sans' => false, 'css' => true ],
+		'product' 	=> [ 'parts' => [ 'v8', 'v4', 'v5', 'v2', 'v4' ], 'off' => [ 'content/corners' => 1, 'content/card-space' => -1, 'components/space' => -1 ], 'size' => 0, 'temperature' => 2, 'harmony' => 2, 'sans' => true, 'css' => true ],
+		'office' 		=> [ 'parts' => [ 'v1', 'v9', 'v1', 'v1', 'v2' ], 'off' => [ 'buttons/size' => -1, 'buttons/space' => -1, 'components/space' => -2, 'components/scale' => -1 ], 'size' => -1, 'temperature' => 3, 'harmony' => 1, 'sans' => false, 'css' => false ],
+	];
+	$specimenPage = Dom\HTMLDocument::createFromString( '<main>'. Preview::specimen( $appData ). '</main>', LIBXML_NOERROR );
+	$themeProblems = [];
+
+	// Every selector of a theme's css is one the specimen carries: a signature that matches nothing is one nobody sees
+
+	foreach( $shippedTable as $slug => $expect ) {
+
+		$file 		= Themes::read( $appData, $library, $slug ) ?? [];
+		$given 		= Themes::setup( $file );
+		$notes 		= [];
+		$taken 		= Setup::normalize( $appData, $given, $library, $notes );
+		$css 			= Themes::css( $file );
+		$plainCss = Setup::uncomment( $css );
+		$off 			= [];
+
+		foreach( $taken['knobs'] as $tab => $knobs )
+			foreach( $knobs as $knob => $position )
+				if( $position !== 0 )
+					$off[$tab. '/'. $knob] = $position;
+
+		$problems = [];
+
+		if( $file === [] || array_keys( $file ) !== [ 'format', 'name', 'name-de', 'description', 'description-de', 'setup', 'css', 'presets' ] || $file['presets'] !== [] )
+			$problems[] = 'its shape';
+		if( $notes !== [] )
+			$problems[] = 'a note: '. implode( '; ', $notes );
+		if( array_keys( $given ) !== [ 'size', 'width', 'motion', 'parts', 'knobs', 'fonts', 'colours' ] || Themes::snapshot( $taken ) !== $given )
+			$problems[] = 'a setup that is not complete or not its own normalisation';
+		if( array_values( $taken['parts'] ) !== $expect['parts'] || array_keys( $taken['parts'] ) !== array_keys( Setup::PARTS ) )
+			$problems[] = 'its parts';
+		$wanted = $expect['off'];
+		ksort( $off );
+		ksort( $wanted );
+
+		if( $off !== $wanted )
+			$problems[] = 'its knobs: '. json_encode( $off );
+		if( $taken['size'] !== $expect['size'] || $taken['width'] !== 0 || $taken['motion'] !== [ 'effect' => '', 'strength' => '', 'speed' => '' ] )
+			$problems[] = 'its size, width or animation';
+		if( $taken['colours'] !== Colours::normalize( [ 'temperature' => $expect['temperature'], 'harmony' => $expect['harmony'] ] ) || $taken['colours']['primary'] !== Colours::normalize( [] )['primary'] || $taken['colours']['secondary'] !== '' )
+			$problems[] = 'its palette';
+		if( array_column( $taken['fonts'], 'family' ) !== ( $expect['sans'] === true ? [ 'system-sans', 'system-sans', 'system-sans', 'system-sans', '' ] : array_column( Fonts::DEFAULTS, 'family' ) )
+			|| array_column( $taken['fonts'], 'weight' ) !== array_column( Fonts::DEFAULTS, 'weight' ) || array_filter( array_column( $taken['fonts'], 'uppercase' ) ) !== [] || array_filter( array_column( $taken['fonts'], 'size' ) ) !== [] )
+			$problems[] = 'its fonts';
+		if( Themes::refusal( $css ) !== '' || ( $css === '' ) === $expect['css'] || substr_count( $css, "\n" ) + 1 > 40 )
+			$problems[] = 'its css: refused, missing or longer than 40 lines';
+		if( $css !== '' && ( preg_match( '~^/\*(.*?)\*/~s', $css, $top ) !== 1 || str_contains( $top[1], 'signatures' ) === false ) )
+			$problems[] = 'no comment on top naming the signatures';
+		if( preg_match( '/#[0-9a-f]{3,8}\b|\brgba?\(|\bhsla?\(|\bhwb\(|\b(?:lab|lch|oklab|oklch|color|color-mix)\(/i', $css ) === 1 || preg_match( '/(?<![\w-])(?:'. str_replace( ' ', '|', $cssColourNames ). ')(?![\w-])/i', $plainCss ) === 1 )
+			$problems[] = 'a literal colour';
+		if( preg_match( '/font-family|@font-face|@import|\burl\(/i', $css ) === 1 )
+			$problems[] = 'a font family, an @import or a url()';
+
+		foreach( designSelectorsOf( $css ) as $selector )
+			if( $specimenPage->querySelectorAll( $selector )->length === 0 )
+				$problems[] = 'a selector that matches nothing in the specimen: '. $selector;
+
+		if( $problems !== [] )
+			$themeProblems[] = $slug. ' - '. implode( '; ', $problems );
+	}
+
+	check( 'each of the six shipped themes is made as the table gives it - the five templates, the knobs off the middle and no others, the root size, the palette with the brand colour left to the project, the face - and its setup is complete and its own normalisation, with no note'
+		. ( $themeProblems === [] ? '' : ' - '. implode( ' | ', $themeProblems ) ), $themeProblems === [] );
+	check( '...and Nino is the setup as it comes: the snapshot of the defaults, which is why it has no css of its own',
+		Themes::setup( Themes::read( $appData, $library, 'nino' ) ) === Themes::snapshot( Setup::defaults( $library ) ) && Themes::css( Themes::read( $appData, $library, 'nino' ) ) === '' );
+	check( '...four of the six carry a css of their own - Nino as it is and the same look denser need none - and the selectors are read off it rule by rule, comma by comma, the pseudo-elements taken off',
+		array_keys( array_filter( $shippedTable, static fn( array $expect ): bool => $expect['css'] === true ) ) === [ 'magazine', 'poster', 'statement', 'product' ]
+		&& count( designSelectorsOf( Themes::css( Themes::read( $appData, $library, 'poster' ) ) ) ) === 9
+		&& designSelectorsOf( ".a::before, .b:hover > .c::first-letter { x: y }\n@media (min-width: 1px) { .d:not(.e, .f) { x: y } }" ) === [ '.a', '.b:hover > .c', '.d:not(.e, .f)' ] );
+
+	// The compile
+	$notes = [];
+	$plainSheet = Compiler::compile( $appData, Setup::normalize( $appData, [], $library ), $library, $notes );
+
+	check( 'compiled with no css, a setup writes no section for it: still twelve, and the sheet is the delivered one - the header says no theme',
+		preg_match_all( '/\/\* ==== (\d+)\. /', $plainSheet, $sections ) === 12 && $sections[1] === array_map( 'strval', range( 1, 12 ) )
+		&& str_contains( $plainSheet, " *\ttheme      -\n" ) === true && str_contains( $plainSheet, 'the theme ====' ) === false
+		&& Compiler::compile( $appData, Setup::normalize( $appData, [ 'css' => "  \n\t\n" ], $library ), $library ) === $plainSheet );
+
+	$customCss = ".a { color: inherit; }\n.b { margin: 0 }\n";
+	$sheet = Compiler::compile( $appData, Setup::normalize( $appData, [ 'css' => $customCss. "\n\n" ], $library ), $library );
+
+	check( 'with a css there is a thirteenth section, the last one, after the knob positions - and the css stands in it as it was typed, byte for byte, with one line break at the end',
+		preg_match_all( '/\/\* ==== (\d+)\. (.+?) ==== \*\//', $sheet, $sections2, PREG_SET_ORDER ) === 13 && $sections2[11][2] === 'the knob positions' && $sections2[12][1] === '13' && $sections2[12][2] === 'the theme'
+		&& str_ends_with( $sheet, "/* ==== 13. the theme ==== */\n". $customCss ) === true && substr_count( $sheet, '.a { color: inherit; }' ) === 1
+		&& str_ends_with( Compiler::compile( $appData, Setup::normalize( $appData, [ 'css' => "\n\n  .x {\n\t}  " ], $library ), $library ), "/* ==== 13. the theme ==== */\n\n\n  .x {\n\t}  \n" ) === true );
+	check( '...and nothing before it changed: the body up to it is the body of the sheet with none, byte for byte',
+		str_starts_with( designBody( $sheet ), rtrim( designBody( $plainSheet ), "\n" ). "\n\n/* ==== 13. the theme ==== */\n" ) === true );
+	check( 'the header names the theme the setup was taken from by its slug, and a dash for none',
+		str_contains( Compiler::compile( $appData, Setup::normalize( $appData, [ 'theme' => 'poster' ], $library ), $library ), " *\ttheme      poster\n" ) === true
+		&& str_contains( $sheet, " *\ttheme      -\n" ) === true && preg_match( '/^ \*\tanimation  .*\n \*\ttheme      /m', $sheet ) === 1 );
+
+	$rung = Compiler::compile( $appData, Setup::normalize( $appData, [ 'parts' => [ 'content' => 'v1' ], 'knobs' => [ 'content' => [ 'hero-title' => 1 ] ], 'css' => ':root { --content-hero-title--more: 7rem; }' ], $library ), $library );
+
+	check( 'a css that declares a rung of a ladder again stands after the line that selects it, so it wins: the knob keeps choosing, and the rung it chooses is the theme\'s - the one way a theme moves a ladder',
+		( $selecting = (int) strpos( $rung, "\t--content-hero-title: var(--content-hero-title--more);" ) ) > 0 && ( $declared = (int) strrpos( $rung, '--content-hero-title--more: 7rem;' ) ) > $selecting
+		&& $declared > (int) strpos( $rung, 'the knob positions' ) && substr_count( $rung, '--content-hero-title--more:' ) >= 2 );
+
+	$withNone 	= \Nino\Modules\Design::fingerprint( $appData, Setup::normalize( $appData, [], $library ), $library );
+	$withCss 		= \Nino\Modules\Design::fingerprint( $appData, Setup::normalize( $appData, [ 'css' => 'a {}' ], $library ), $library );
+	$withTheme 	= \Nino\Modules\Design::fingerprint( $appData, Setup::normalize( $appData, [ 'theme' => 'nino' ], $library ), $library );
+
+	check( 'the fingerprint of what a sheet was compiled from moves with the css and with the slug of the theme - a theme chosen and a css typed are changes the panel says were not applied - and with nothing else standing still',
+		$withNone !== $withCss && $withNone !== $withTheme && $withCss !== $withTheme
+		&& $withNone === \Nino\Modules\Design::fingerprint( $appData, Setup::normalize( $appData, [ 'css' => '', 'theme' => '' ], $library ), $library )
+		&& $withCss === \Nino\Modules\Design::fingerprint( $appData, Setup::normalize( $appData, [ 'css' => "a {}" ], $library ), $library )
+		&& $withCss !== \Nino\Modules\Design::fingerprint( $appData, Setup::normalize( $appData, [ 'css' => "a {} " ], $library ), $library ) );
+
+	// The actions of the Theme tab, over callDesignAction() as the panel's own are, in a sandbox with the six themes the feature ships and the project's own
+	$themesClean = static function() use ( &$appData, $themesDir ): void {
+
+		\Nino\Filesystem::removeDir( $themesDir );
+
+		foreach( array_keys( $appData['./nino/filesystem/cache'] ?? [] ) as $cached )
+			if( str_starts_with( (string) $cached, Themes::DIR. '/' ) === true )
+				unset( $appData['./nino/filesystem/cache'][$cached] );
+	};
+	$themesClean();
+	@unlink( $themeSetupFile );
+	unset( $appData['./nino/filesystem/cache'][Setup::PATH] );
+	\Nino\Html::addFills( $appData, (array) include __DIR__. '/../text/de_DE.php', 'de_DE' );
+	\Nino\Html::addFills( $appData, (array) include __DIR__. '/../text/en_US.php', 'en_US' );
+
+	$selection = [
+		'parts' 		=> [ 'header' => 'v3', 'footer' => 'v5', 'content' => 'v2', 'buttons' => 'v4', 'components' => 'v3' ],
+		'knobs' 		=> [ 'content' => [ 'card-space' => 1 ], 'buttons' => [ 'size' => -1 ] ],
+		'size' 			=> -1,
+		'width' 		=> 1,
+		'motion' 		=> [ 'effect' => 'zoom', 'strength' => 'soft', 'speed' => 'fast' ],
+		'fonts' 		=> [ 'title' => [ 'family' => 'system-serif', 'weight' => 'light', 'uppercase' => true, 'size' => '2' ] ],
+		'colours' => [ 'primary' => '#8b1d3f', 'harmony' => 2 ],
+		'css' 			=> ".nino-card { outline: 0; }\n",
+	];
+	$selectionSnapshot = Themes::snapshot( Setup::normalize( $appData, $selection, $library ) );
+	$magazine 				= Themes::read( $appData, $library, 'magazine' );
+	$noThemeError 		= [ 'error' => 'there is no such theme', 'code' => 'design_theme' ];
+	$answeredCodes 		= [];
+	$codesOf 					= static function( array $body ) use ( &$answeredCodes ): array {
+		if( isset( $body['code'] ) === true )
+			$answeredCodes[] = $body['code'];
+		return $body;
+	};
+	$refusedCss 			= [
+		'design_import' => '@import url("x.css");', 'design_script' => '.a { background: url(javascript:x) }', 'design_tag' => '.a {} </style>', 'design_size' => str_repeat( 'a', 65537 ),
+	];
+
+	[ $status, $listedNone ] = callDesignAction( $appData, 'apiList' );
+
+	check( 'design/list answers the theme of the stored setup and its css - none and no css where nothing was stored - the themes there are, the six shipped ones first in their order and named in the language of the workbench, and the active one, which is none then',
+		$status === 200 && $listedNone['theme'] === '' && $listedNone['css'] === '' && $listedNone['active'] === null
+		&& array_column( $listedNone['themes'], 'slug' ) === Themes::SHIPPED && array_column( $listedNone['themes'], 'name' ) === [ 'Nino', 'Magazin', 'Plakat', 'Statement', 'Produkt', 'Verwaltung' ]
+		&& array_column( $listedNone['themes'], 'shipped' ) === array_fill( 0, 6, true ) && array_keys( $listedNone['themes'][1] ) === [ 'slug', 'name', 'description', 'shipped' ]
+		&& array_slice( array_keys( $listedNone ), array_search( 'width', array_keys( $listedNone ), true ), 5 ) === [ 'width', 'theme', 'css', 'themes', 'active' ] );
+
+	$setupBytes = static fn(): string => is_file( $themeSetupFile ) === true ? (string) file_get_contents( $themeSetupFile ) : '';
+
+	[ $status, $saved ] = callDesignAction( $appData, 'apiSave', [ 'theme' => 'magazine', 'css' => ".a { color: inherit; }\r\n" ] + $selection );
+	$storedSetup = Setup::read( $appData, $library );
+
+	check( 'design/save stores the theme and the css it is sent with the rest - the css with its line breaks all one kind',
+		$status === 200 && $storedSetup['theme'] === 'magazine' && $storedSetup['css'] === ".a { color: inherit; }\n" && Themes::snapshot( $storedSetup ) === $selectionSnapshot );
+
+	[ , $listedActive ] = callDesignAction( $appData, 'apiList' );
+
+	check( '...and design/list then says them, and the active theme as its file holds it: the row of the list, its own css, and its setup normalised against the library - the css the setup has is the one that was typed, not the theme\'s',
+		$listedActive['theme'] === 'magazine' && $listedActive['css'] === ".a { color: inherit; }\n"
+		&& $listedActive['active'] === [ 'slug' => 'magazine', 'name' => 'Magazin', 'description' => $shippedWords['de_DE']['magazine'][1], 'shipped' => true, 'setup' => Themes::setup( $magazine ), 'css' => Themes::css( $magazine ) ]
+		&& $listedActive['active']['css'] !== $listedActive['css'] );
+
+	$before = $setupBytes();
+	$refusals = [];
+
+	foreach( $refusedCss as $code => $badCss )
+		foreach( [ 'apiSave', 'apiPreview' ] as $method ) {
+
+			[ $status, $body ] = callDesignAction( $appData, $method, [ 'css' => $badCss ] + $selection );
+
+			if( [ $status, $codesOf( $body ) ] !== [ 400, [ 'error' => Themes::REFUSALS[$code], 'code' => $code, 'field' => 'css' ] ] )
+				$refusals[] = $method. ' '. $code;
+		}
+
+	check( 'a css that carries an @import, javascript:, a script, a closing style tag or more than 64 KB is refused by the save and by the preview alike: a 400 with the code of what is wrong, no params and the field css - and nothing is written'
+		. ( $refusals === [] ? '' : ' - '. implode( ', ', $refusals ) ), $refusals === [] && $setupBytes() === $before );
+
+	[ $status, $previewed ] = callDesignAction( $appData, 'apiPreview', [ 'css' => ".preview-probe { color: inherit; }\r\n", 'full' => false ] + $selection );
+
+	check( 'the preview of a css that is fine has it in the sheet it answers, as the last section after the knob positions - and still writes nothing',
+		$status === 200 && str_ends_with( $previewed['css'], "/* ==== 13. the theme ==== */\n.preview-probe { color: inherit; }\n" ) === true
+		&& (int) strpos( $previewed['css'], 'the theme ====' ) > (int) strpos( $previewed['css'], 'the knob positions' ) && $setupBytes() === $before );
+	ninoWarnings();
+	check( '...and a css that is no string is no css: the same answer as with none, and no warning',
+		callDesignAction( $appData, 'apiPreview', [ 'css' => [ '@import' ], 'full' => false ] + $selection )[0] === 200 && ninoWarnings() === []
+		&& callDesignAction( $appData, 'apiSave', [ 'css' => 5, 'theme' => [ 'magazine' ] ] + $selection )[0] === 200 && Setup::read( $appData, $library )['css'] === '' && Setup::read( $appData, $library )['theme'] === '' );
+
+	// Load
+	callDesignAction( $appData, 'apiSave', [ 'theme' => 'magazine', 'css' => ".a { color: inherit; }\r\n" ] + $selection );
+	$before = $setupBytes();
+	[ $status, $loaded ] = callDesignAction( $appData, 'apiThemeLoad', [ 'slug' => 'magazine' ] );
+
+	check( 'loading a theme answers what the screen takes over - its setup as the screen holds one, its css, its name and description in the language of the workbench, whether it is shipped - and nothing about fonts that are missing, as none are',
+		$status === 200 && array_keys( $loaded ) === [ 'slug', 'name', 'description', 'shipped', 'setup', 'css', 'missing', 'notes' ] && $loaded['slug'] === 'magazine' && $loaded['name'] === 'Magazin'
+		&& $loaded['description'] === $shippedWords['de_DE']['magazine'][1] && $loaded['shipped'] === true && $loaded['setup'] === Themes::setup( $magazine ) && $loaded['css'] === Themes::css( $magazine )
+		&& $loaded['missing'] === [] && $loaded['notes'] === [] );
+	check( '...it writes nothing - not the setup, not a line of the log - and a slug that names no theme is a 404 with the code of it, whatever it is: not there, no slug, no string, a path',
+		$setupBytes() === $before && Admin::log( 'design/theme/load', [ 'slug' => 'magazine' ] ) === ''
+		&& array_unique( array_map( static fn( array $post ): array => $codesOf( callDesignAction( $appData, 'apiThemeLoad', $post )[1] ), [ [ 'slug' => 'nowhere' ], [], [ 'slug' => [ 'magazine' ] ], [ 'slug' => '../magazine' ], [ 'slug' => 'Magazine' ] ] ), SORT_REGULAR ) === [ $noThemeError ]
+		&& callDesignAction( $appData, 'apiThemeLoad', [ 'slug' => 'nowhere' ] )[0] === 404 );
+
+	$inkySetup = Setup::normalize( $appData, [], $library );
+	$inkySetup['fonts']['title']['family'] = 'inter';
+	$inkySetup['fonts']['subtitle']['family'] = 'Not A Slug!';
+	$inkySetup['fonts']['text']['family'] = 'nowhere-sans';
+	$inkySetup['fonts']['button']['family'] = 'inter';
+	$inkySetup['fonts']['code']['family'] = 'system-mono';
+	$inkySetup['parts']['content'] = 'v99';
+	Themes::write( $appData, 'inky', Themes::record( 'Inky', 'Faces to install', $inkySetup, '' ) );
+	[ $status, $inky ] = callDesignAction( $appData, 'apiThemeLoad', [ 'slug' => 'inky' ] );
+
+	check( 'a theme that names typefaces this project has not installed keeps the families of the file, so that the screen can offer to install them - which a normalising would have replaced with the face of the role - and names them once each, with the slug for a name where no list is cached: the one that is no slug is replaced, and so is one that no role offers (the code has monospace faces only), which is no family to install',
+		$status === 200 && $inky['setup']['fonts']['title']['family'] === 'inter' && $inky['setup']['fonts']['text']['family'] === 'nowhere-sans' && $inky['setup']['fonts']['button']['family'] === 'inter'
+		&& $inky['setup']['fonts']['subtitle']['family'] === 'open-sans' && $inky['setup']['fonts']['code']['family'] === ''
+		&& $inky['missing'] === [ [ 'slug' => 'inter', 'name' => 'inter', 'inList' => false ], [ 'slug' => 'nowhere-sans', 'name' => 'nowhere-sans', 'inList' => false ] ]
+		&& $inky['setup']['parts']['content'] === 'v1' && count( $inky['notes'] ) === 1 && str_contains( $inky['notes'][0], '"v99"' ) === true );
+
+	\Nino\Filesystem::putFileContent( $appData, Webfonts::CACHE, [ 'fetched' => time(), 'url' => Webfonts::url( $appData ), 'families' => [ $entryInter ] ] );
+	$inkyListed = callDesignAction( $appData, 'apiThemeLoad', [ 'slug' => 'inky' ] )[1];
+	@unlink( \Nino\Filesystem::path( $appData, Webfonts::CACHE ) );
+	unset( $appData['./nino/filesystem/cache'][Webfonts::CACHE] );
+
+	check( '...and with the list of the Typefaces tab cached, the entry says that the list has the family and under what name - the one of the list',
+		$inkyListed['missing'] === [ [ 'slug' => 'inter', 'name' => $entryInter['family'], 'inList' => true ], [ 'slug' => 'nowhere-sans', 'name' => 'nowhere-sans', 'inList' => false ] ] && $entryInter['family'] !== 'inter' );
+
+	/*	The record of the list for a theme that names typefaces the project lacks: a family the screen takes over as '' on a
+		load that installs nothing (see _takeTheme() in admin.js) is '' in the record too, so that the chip of the Theme tab
+		stays quiet when the panel is opened again - the stored setup names the theme for one list, and is put back	*/
+	$storedBefore = Setup::read( $appData, $library );
+	$inkyStored = $storedBefore;
+	$inkyStored['theme'] = 'inky';
+	Setup::write( $appData, $inkyStored );
+	[ , $inkyList ] = callDesignAction( $appData, 'apiList' );
+	Setup::write( $appData, $storedBefore );
+
+	check( 'design/list\'s record of the active theme has \'\' where a family is not installed here - what the screen takes over on a load that installs nothing - and the face of the role where the file names no slug at all, so that the record and the screen agree once the panel is opened again',
+		( $inkyList['active']['slug'] ?? '' ) === 'inky' && $inkyList['active']['setup']['fonts']['title']['family'] === '' && $inkyList['active']['setup']['fonts']['text']['family'] === ''
+		&& $inkyList['active']['setup']['fonts']['button']['family'] === '' && $inkyList['active']['setup']['fonts']['subtitle']['family'] === 'open-sans' && $inkyList['active']['setup']['fonts']['code']['family'] === ''
+		&& $inkyList['active']['setup']['parts']['content'] === 'v1' && $inkyList['theme'] === 'inky' );
+
+	Themes::write( $appData, 'edited', Themes::record( 'Edited by hand', '', Setup::normalize( $appData, [], $library ), '@import "x.css";' ) );
+
+	check( 'a css of the project\'s own that somebody edited by hand holds to the same rules as a request: loading it is a 400 with the code and the field, not a css taken over',
+		$codesOf( callDesignAction( $appData, 'apiThemeLoad', [ 'slug' => 'edited' ] )[1] ) === [ 'error' => Themes::REFUSALS['design_import'], 'code' => 'design_import', 'field' => 'css' ]
+		&& callDesignAction( $appData, 'apiThemeLoad', [ 'slug' => 'edited' ] )[0] === 400 );
+	Themes::remove( $appData, 'edited' );
+
+	// Create
+	$files = static fn(): array => array_map( static fn( string $path ): string => (string) file_get_contents( $path ), Themes::own( $appData ) );
+	$before = $setupBytes();
+	[ $status, $created ] = callDesignAction( $appData, 'apiThemeCreate', [ 'name' => ' Mein Theme ', 'description' => "  Eine Beschreibung \n" ] + $selection );
+	$mine = Themes::read( $appData, $library, 'mein-theme' ) ?? [];
+
+	check( 'creating a theme keeps the screen as a theme of the project under the slug of the name - what was posted, normalised, cut to the seven keys that choose something, with its css, the name and the description trimmed and no presets - and answers the slug, the list and the theme as design/list would',
+		$status === 200 && array_keys( $created ) === [ 'slug', 'themes', 'active' ] && $created['slug'] === 'mein-theme' && array_keys( $mine ) === [ 'format', 'name', 'description', 'setup', 'css', 'presets' ]
+		&& $mine['name'] === 'Mein Theme' && $mine['description'] === 'Eine Beschreibung' && $mine['setup'] === $selectionSnapshot && $mine['css'] === ".nino-card { outline: 0; }\n" && $mine['presets'] === []
+		&& $created['active'] === [ 'slug' => 'mein-theme', 'name' => 'Mein Theme', 'description' => 'Eine Beschreibung', 'shipped' => false, 'setup' => $selectionSnapshot, 'css' => ".nino-card { outline: 0; }\n" ]
+		&& array_column( $created['themes'], 'slug' ) === array_merge( Themes::SHIPPED, [ 'inky', 'mein-theme' ] ) && $created['themes'] === Themes::all( $appData, $library, 'de_DE' ) );
+	check( '...the setup on file is not touched by it - the draft is the screen\'s - and the line of the log says which theme',
+		$setupBytes() === $before && Admin::log( 'design/theme/create', [ 'name' => ' Mein Theme ' ] ) === 'Create Design theme mein-theme' );
+
+	$before = $files();
+	$nameErrors = [];
+
+	foreach( [ [ 'name' => '!!! ???' ], [ 'name' => '' ], [ 'name' => '   ' ], [], [ 'name' => [ 'Mein Theme' ] ] ] as $post )
+		$nameErrors[] = [ callDesignAction( $appData, 'apiThemeCreate', $post + $selection )[0], $codesOf( callDesignAction( $appData, 'apiThemeCreate', $post + $selection )[1] ) ];
+
+	check( 'a name no slug can be made of - nothing, only punctuation, no string - is refused with design_name, and nothing is written',
+		array_unique( $nameErrors, SORT_REGULAR ) === [ [ 400, [ 'error' => 'the name has no letter or digit in it', 'code' => 'design_name' ] ] ] && $files() === $before );
+
+	$takenErrors = [];
+
+	foreach( [ 'Magazine' => 'magazine', 'Mein Theme' => 'mein-theme', 'mein-theme' => 'mein-theme', 'MEIN  THEME!' => 'mein-theme', 'Nino' => 'nino' ] as $name => $slug )
+		$takenErrors[] = [ callDesignAction( $appData, 'apiThemeCreate', [ 'name' => $name ] + $selection ), $slug ];
+
+	check( 'a name whose slug is a theme already - a shipped one or one of the project\'s, however it is spelled - is a 409 with design_taken and the slug as its parameter, and nothing is written',
+		array_filter( $takenErrors, static fn( array $one ): bool => $one[0] !== [ 409, [ 'error' => 'a theme with the slug "'. $one[1]. '" exists already', 'code' => 'design_taken', 'params' => [ $one[1] ] ] ] ) === []
+		&& $files() === $before && array_map( $codesOf, array_column( array_column( $takenErrors, 0 ), 1 ) ) !== [] );
+
+	$cssRefusals = [];
+
+	foreach( $refusedCss as $code => $badCss ) {
+
+		[ $status, $body ] = callDesignAction( $appData, 'apiThemeCreate', [ 'name' => 'Refused '. $code, 'css' => $badCss ] + $selection );
+
+		if( [ $status, $codesOf( $body ) ] !== [ 400, [ 'error' => Themes::REFUSALS[$code], 'code' => $code, 'field' => 'css' ] ] )
+			$cssRefusals[] = $code;
+	}
+
+	check( 'a css that is refused is a 400 with its code and the field, after the name and the slug were found fine, and no file is written'. ( $cssRefusals === [] ? '' : ' - '. implode( ', ', $cssRefusals ) ),
+		$cssRefusals === [] && $files() === $before );
+
+	[ $status, $long ] = callDesignAction( $appData, 'apiThemeCreate', [ 'name' => str_repeat( 'x', 100 ), 'description' => str_repeat( 'y', 500 ) ] + $selection );
+	$longFile = Themes::read( $appData, $library, str_repeat( 'x', 64 ) ) ?? [];
+
+	check( 'a name is cut at 80 characters and a description at 400, and the slug is made of the name as it is kept',
+		$status === 200 && $long['slug'] === str_repeat( 'x', 64 ) && mb_strlen( $longFile['name'] ) === 80 && mb_strlen( $longFile['description'] ) === 400 );
+	Themes::remove( $appData, str_repeat( 'x', 64 ) );
+
+	mkdir( $themesDir. '/blocked.php', 0755, true );
+	[ $status, $blocked ] = callDesignAction( $appData, 'apiThemeCreate', [ 'name' => 'Blocked' ] + $selection );
+	rmdir( $themesDir. '/blocked.php' );
+
+	check( 'a theme that cannot be written is a 500 with the English sentence and no code - the way every failure of the machine is told in this feature',
+		$status === 500 && $blocked === [ 'error' => 'could not write /data/themes/blocked.php' ] );
+
+	// Save
+	$changed = [ 'knobs' => [ 'content' => [ 'card-space' => 2 ], 'buttons' => [ 'size' => 1 ] ], 'css' => ".changed { margin: 0 }\n" ] + $selection;
+	$changedSnapshot = Themes::snapshot( Setup::normalize( $appData, $changed, $library ) );
+	[ $status, $resaved ] = callDesignAction( $appData, 'apiThemeSave', [ 'slug' => 'mein-theme', 'name' => ' Neuer Name ', 'description' => 'Neue Beschreibung' ] + $changed );
+	$mine = Themes::read( $appData, $library, 'mein-theme' ) ?? [];
+
+	check( 'saving puts the screen into a theme of the project whole, with the name and the description that were typed - the slug stays what it is, a rename changes the name and never the file - and answers the list and the theme',
+		$status === 200 && array_keys( $resaved ) === [ 'themes', 'active' ] && $mine['name'] === 'Neuer Name' && $mine['description'] === 'Neue Beschreibung' && $mine['setup'] === $changedSnapshot && $mine['css'] === ".changed { margin: 0 }\n"
+		&& is_file( $themesDir. '/neuer-name.php' ) === false && $resaved['active'] === [ 'slug' => 'mein-theme', 'name' => 'Neuer Name', 'description' => 'Neue Beschreibung', 'shipped' => false, 'setup' => $changedSnapshot, 'css' => ".changed { margin: 0 }\n" ]
+		&& Admin::log( 'design/theme/save', [ 'slug' => 'mein-theme' ] ) === 'Save Design theme mein-theme' );
+
+	$before = $files();
+	$saveErrors = [
+		[ [ 'slug' => 'nowhere', 'name' => 'x' ], 404, $noThemeError ],
+		[ [ 'name' => 'x' ], 404, $noThemeError ],
+		[ [ 'slug' => 'magazine', 'name' => 'x' ], 409, [ 'error' => 'a shipped theme cannot be changed or deleted - duplicate it', 'code' => 'design_shipped' ] ],
+		[ [ 'slug' => 'mein-theme', 'name' => '   ' ], 400, [ 'error' => 'the name is empty', 'code' => 'design_name' ] ],
+		[ [ 'slug' => 'mein-theme' ], 400, [ 'error' => 'the name is empty', 'code' => 'design_name' ] ],
+	];
+
+	foreach( $refusedCss as $code => $badCss )
+		$saveErrors[] = [ [ 'slug' => 'mein-theme', 'name' => 'Neuer Name', 'css' => $badCss ], 400, [ 'error' => Themes::REFUSALS[$code], 'code' => $code, 'field' => 'css' ] ];
+
+	$saveProblems = [];
+
+	foreach( $saveErrors as $number => [ $post, $expectedStatus, $expectedBody ] )
+		if( [ $expectedStatus, $codesOf( callDesignAction( $appData, 'apiThemeSave', $post + $changed )[1] ) ] !== [ callDesignAction( $appData, 'apiThemeSave', $post + $changed )[0], $expectedBody ] )
+			$saveProblems[] = $number;
+
+	check( 'saving refuses a theme that is not there (404), a shipped one (409, design_shipped), a name that is empty once trimmed (400) and each css that is refused - in that order, every one with its code - and writes nothing'
+		. ( $saveProblems === [] ? '' : ' - '. implode( ', ', $saveProblems ) ), $saveProblems === [] && $files() === $before );
+
+	// Duplicate
+	[ $status, $copied ] = callDesignAction( $appData, 'apiThemeDuplicate', [ 'slug' => 'magazine' ] );
+	$copyFile = Themes::read( $appData, $library, 'magazin-kopie' ) ?? [];
+
+	check( 'duplicating a shipped theme in a German workbench makes "Magazin Kopie" of "Magazin" under the slug magazin-kopie: the description in the language of the workbench, the setup and the css as they are, no lines in other languages and no presets - the answer says the slug and the list',
+		$status === 200 && array_keys( $copied ) === [ 'slug', 'themes' ] && $copied['slug'] === 'magazin-kopie' && array_keys( $copyFile ) === [ 'format', 'name', 'description', 'setup', 'css', 'presets' ]
+		&& $copyFile['name'] === 'Magazin Kopie' && $copyFile['description'] === $shippedWords['de_DE']['magazine'][1] && $copyFile['setup'] === Themes::setup( $magazine ) && $copyFile['css'] === Themes::css( $magazine )
+		&& in_array( 'magazin-kopie', array_column( $copied['themes'], 'slug' ), true ) === true && Admin::log( 'design/theme/duplicate', [ 'slug' => 'magazine' ] ) === 'Duplicate Design theme magazine as magazin-kopie' );
+
+	$second = callDesignAction( $appData, 'apiThemeDuplicate', [ 'slug' => 'magazine' ] )[1]['slug'] ?? '';
+	$ofCopy = callDesignAction( $appData, 'apiThemeDuplicate', [ 'slug' => 'magazin-kopie' ] )[1]['slug'] ?? '';
+	$ofOwn = callDesignAction( $appData, 'apiThemeDuplicate', [ 'slug' => 'mein-theme' ] )[1]['slug'] ?? '';
+
+	check( '...a second copy takes the next free slug, the copy of a copy is a copy of its name, and one of the project\'s own is copied the same way',
+		$second === 'magazin-kopie-2' && Themes::read( $appData, $library, 'magazin-kopie-2' )['name'] === 'Magazin Kopie'
+		&& $ofCopy === 'magazin-kopie-kopie' && Themes::read( $appData, $library, 'magazin-kopie-kopie' )['name'] === 'Magazin Kopie Kopie'
+		&& $ofOwn === 'neuer-name-kopie' && Themes::read( $appData, $library, 'neuer-name-kopie' )['setup'] === $changedSnapshot );
+
+	\Nino\Locales::useLocale( $appData, 'en_US' );
+	$englishCopy = callDesignAction( $appData, 'apiThemeDuplicate', [ 'slug' => 'magazine' ] )[1];
+	\Nino\Locales::useLocale( $appData, 'de_DE' );
+
+	check( '...and in an English workbench it is "Magazine copy", magazine-copy, with the English description',
+		( $englishCopy['slug'] ?? '' ) === 'magazine-copy' && Themes::read( $appData, $library, 'magazine-copy' )['name'] === 'Magazine copy' && Themes::read( $appData, $library, 'magazine-copy' )['description'] === $shippedWords['en_US']['magazine'][1] );
+	check( '...and a theme that is not there cannot be copied',
+		$codesOf( callDesignAction( $appData, 'apiThemeDuplicate', [ 'slug' => 'nowhere' ] )[1] ) === $noThemeError && callDesignAction( $appData, 'apiThemeDuplicate', [] )[0] === 404 );
+
+	// What the screen is drawn from, for design-js-smoke.js: the list with a theme of the project active, and the answers of the actions
+	callDesignAction( $appData, 'apiSave', [ 'theme' => 'mein-theme', 'css' => ".typed { margin: 0 }\n" ] + $changed );
+	[ , $listedOwnActive ] = callDesignAction( $appData, 'apiList' );
+
+	// Delete: the active theme, and one that is not
+	$stored = Setup::read( $appData, $library );
+	$stored['theme'] = 'neuer-name-kopie';
+	$stored['compiled'] = [ 'at' => 'then', 'sha' => 'a', 'input' => 'b', 'setup' => [] ];
+	Setup::write( $appData, $stored );
+	[ $status, $deleted ] = callDesignAction( $appData, 'apiThemeDelete', [ 'slug' => 'neuer-name-kopie' ] );
+	$afterDelete = Setup::read( $appData, $library );
+
+	check( 'deleting the active theme removes its file and the slug in the setup - the record of what was compiled stays - and answers the list and the theme the setup has now, which is none',
+		$status === 200 && array_keys( $deleted ) === [ 'themes', 'theme' ] && $deleted['theme'] === '' && is_file( $themesDir. '/neuer-name-kopie.php' ) === false && Themes::exists( $appData, $library, 'neuer-name-kopie' ) === false
+		&& $afterDelete['theme'] === '' && $afterDelete['compiled'] === $stored['compiled'] && ( (array) include $themeSetupFile )['theme'] === ''
+		&& in_array( 'neuer-name-kopie', array_column( $deleted['themes'], 'slug' ), true ) === false && Admin::log( 'design/theme/delete', [ 'slug' => 'neuer-name-kopie' ] ) === 'Delete Design theme neuer-name-kopie' );
+
+	$stored['theme'] = 'magazine';
+	Setup::write( $appData, $stored );
+	$before = $setupBytes();
+	[ $status, $deletedOther ] = callDesignAction( $appData, 'apiThemeDelete', [ 'slug' => 'magazin-kopie-2' ] );
+
+	check( '...one that is not the active theme is removed and the setup stays as it was, the answer saying which theme it has',
+		$status === 200 && $deletedOther['theme'] === 'magazine' && is_file( $themesDir. '/magazin-kopie-2.php' ) === false && $setupBytes() === $before );
+
+	$before = $files();
+	$setupBefore = $setupBytes();
+	$deleteErrors = [
+		[ [ 'slug' => 'nowhere' ], 404, $noThemeError ], [ [], 404, $noThemeError ], [ [ 'slug' => '../data/design' ], 404, $noThemeError ],
+		[ [ 'slug' => 'magazine' ], 409, [ 'error' => 'a shipped theme cannot be changed or deleted - duplicate it', 'code' => 'design_shipped' ] ],
+		[ [ 'slug' => 'nino' ], 409, [ 'error' => 'a shipped theme cannot be changed or deleted - duplicate it', 'code' => 'design_shipped' ] ],
+	];
+
+	check( '...a theme that is not there is a 404, a shipped one a 409 with design_shipped - and the files of the feature and of the project stay as they are',
+		array_filter( $deleteErrors, static fn( array $one ): bool => [ $one[1], $codesOf( callDesignAction( $appData, 'apiThemeDelete', $one[0] )[1] ) ] !== [ callDesignAction( $appData, 'apiThemeDelete', $one[0] )[0], $one[2] ] ) === []
+		&& $files() === $before && is_file( $library. '/themes/magazine.php' ) === true && $setupBytes() === $setupBefore );
+
+	// Export
+	[ $status, $exported ] = callDesignAction( $appData, 'apiThemeExport', [ 'slug' => 'magazine' ] );
+	$exportedOwn = callDesignAction( $appData, 'apiThemeExport', [ 'slug' => 'mein-theme' ] )[1];
+
+	check( 'exporting answers the file of the theme as json - a shipped one with its lines in the other languages - and the name it is saved under: nino-theme-<slug>.json; it writes nothing and says nothing',
+		$status === 200 && array_keys( $exported ) === [ 'json', 'file' ] && $exported['json'] === Themes::json( $magazine ) && $exported['file'] === 'nino-theme-magazine.json'
+		&& $exportedOwn['json'] === Themes::json( Themes::read( $appData, $library, 'mein-theme' ) ) && $exportedOwn['file'] === 'nino-theme-mein-theme.json'
+		&& $codesOf( callDesignAction( $appData, 'apiThemeExport', [ 'slug' => 'nowhere' ] )[1] ) === $noThemeError && Admin::log( 'design/theme/export', [ 'slug' => 'magazine' ] ) === '' );
+
+	// Import
+	$file = json_decode( $exported['json'], true );
+	$file['name'] = 'Eingespielt';
+	$file['name-de'] = 'Eingespielt DE';
+	$file['presets'] = [ 'x' ];
+	$file['setup']['parts']['header'] = 'v99';
+	$file['setup']['fonts']['title']['family'] = 'inter';
+	$before = $setupBytes();
+	[ $status, $imported ] = callDesignAction( $appData, 'apiThemeImport', [ 'json' => json_encode( $file ) ] );
+	$importedFile = Themes::read( $appData, $library, 'eingespielt' ) ?? [];
+
+	check( 'importing writes the theme of an export as a theme of the project under the slug of its name: the setup normalised against what the project has, the css, the name and the description, the lines in other languages kept, the presets none - and the families of the fonts as the file has them, as loading keeps them, so that a typeface that is not installed yet can still be offered - the answer is the slug and the list',
+		$status === 200 && array_keys( $imported ) === [ 'slug', 'themes' ] && $imported['slug'] === 'eingespielt' && $importedFile['name'] === 'Eingespielt' && $importedFile['name-de'] === 'Eingespielt DE'
+		&& $importedFile['description-de'] === $shippedWords['de_DE']['magazine'][1] && $importedFile['presets'] === [] && $importedFile['css'] === Themes::css( $magazine )
+		&& $importedFile['setup']['parts']['header'] === 'v1' && $importedFile['setup']['fonts']['title']['family'] === 'inter' && array_keys( $importedFile['setup'] ) === [ 'size', 'width', 'motion', 'parts', 'knobs', 'fonts', 'colours' ]
+		&& $importedFile['setup']['parts']['content'] === Themes::setup( $magazine )['parts']['content'] && in_array( 'eingespielt', array_column( $imported['themes'], 'slug' ), true ) === true
+		&& $setupBytes() === $before && Admin::log( 'design/theme/import', [ 'json' => json_encode( $file ) ] ) === 'Import Design theme eingespielt' );
+
+	$before = $files();
+	$importErrors = [];
+
+	foreach( [ [], [ 'json' => '' ], [ 'json' => 'not json' ], [ 'json' => '[1]' ], [ 'json' => '{"format":2,"name":"x"}' ], [ 'json' => '{"name":"x"}' ], [ 'json' => [ 'format' => 1 ] ] ] as $post )
+		$importErrors[] = [ callDesignAction( $appData, 'apiThemeImport', $post )[0], $codesOf( callDesignAction( $appData, 'apiThemeImport', $post )[1] ) ];
+
+	check( 'a file that is no theme file of this feature - no text, no json, no object, another format, no name - is a 400 with design_file',
+		array_unique( $importErrors, SORT_REGULAR ) === [ [ 400, [ 'error' => 'that is no theme file of this feature', 'code' => 'design_file' ] ] ] && $files() === $before );
+	check( '...a name no slug can be made of is design_name, a slug that is taken - the shipped one of the export, the project\'s own imported before - is a 409 with design_taken and the slug, and nothing is written',
+		callDesignAction( $appData, 'apiThemeImport', [ 'json' => json_encode( [ 'name' => '!!!' ] + $file ) ] ) === [ 400, [ 'error' => 'the name has no letter or digit in it', 'code' => 'design_name' ] ]
+		&& callDesignAction( $appData, 'apiThemeImport', [ 'json' => $exported['json'] ] ) === [ 409, [ 'error' => 'a theme with the slug "magazine" exists already', 'code' => 'design_taken', 'params' => [ 'magazine' ] ] ]
+		&& callDesignAction( $appData, 'apiThemeImport', [ 'json' => json_encode( $file ) ] ) === [ 409, [ 'error' => 'a theme with the slug "eingespielt" exists already', 'code' => 'design_taken', 'params' => [ 'eingespielt' ] ] ]
+		&& $files() === $before );
+
+	$importRefusals = [];
+
+	foreach( $refusedCss as $code => $badCss ) {
+
+		[ $status, $body ] = callDesignAction( $appData, 'apiThemeImport', [ 'json' => json_encode( [ 'name' => 'Css '. $code, 'css' => $badCss ] + $file ) ] );
+
+		if( [ $status, $codesOf( $body ) ] !== [ 400, [ 'error' => Themes::REFUSALS[$code], 'code' => $code, 'field' => 'css' ] ] )
+			$importRefusals[] = $code;
+	}
+
+	check( '...and a css that is refused is a 400 with its code, as it is everywhere, and no file is written'. ( $importRefusals === [] ? '' : ' - '. implode( ', ', $importRefusals ) ), $importRefusals === [] && $files() === $before );
+
+	// The codes: every sentence is in both text files, with the %s where a parameter goes
+	$themeWords = [ (array) include __DIR__. '/../text/de_DE.php', (array) include __DIR__. '/../text/en_US.php' ];
+	$codeWords = [ 'design_import', 'design_script', 'design_tag', 'design_size', 'design_name', 'design_taken', 'design_shipped', 'design_theme', 'design_file' ];
+	$codeProblems = [];
+
+	foreach( $codeWords as $code )
+		foreach( $themeWords as $number => $words )
+			if( trim( (string) ( $words['[[/_admin/error/'. $code. ']]'] ?? '' ) ) === '' || str_contains( (string) $words['[[/_admin/error/'. $code. ']]'], '%s' ) !== ( $code === 'design_taken' ) )
+				$codeProblems[] = $code. ( $number === 0 ? ' de' : ' en' );
+
+	check( 'the nine codes a person can cause each have their sentence in both languages under /_admin/error/<code> - the %s of a parameter in design_taken and nowhere else - and they are the codes the actions answered above'
+		. ( $codeProblems === [] ? '' : ' - '. implode( ', ', $codeProblems ) ),
+		$codeProblems === [] && array_diff( array_unique( $answeredCodes ), $codeWords ) === [] && array_diff( $codeWords, array_unique( $answeredCodes ) ) === [] );
+	check( 'a line of the log is one for each action that writes a theme, and none for what only reads; a slug that is none is not written as it came',
+		Admin::log( 'design/theme/save', [ 'slug' => "x\nforged line" ] ) === 'Save Design theme ' && Admin::log( 'design/theme/delete', [ 'slug' => [ 'x' ] ] ) === 'Delete Design theme '
+		&& Admin::log( 'design/theme/export', [ 'slug' => 'x' ] ) === '' && Admin::log( 'design/theme/load', [ 'slug' => 'x' ] ) === '' && Admin::log( 'design/list', [] ) === '' );
+
+
+	// What the screen is drawn from, for design-js-smoke.js: the real answers of the actions above
+	file_put_contents( $themesFile, json_encode( [
+		'none' 			=> $listedNone, 'active' => $listedOwnActive, 'load' => $loaded, 'loadMissing' => $inkyListed, 'created' => $created, 'saved' => $resaved,
+		'duplicated' => $copied, 'deleted' => $deleted, 'exported' => $exported, 'imported' => $imported,
+	], JSON_THROW_ON_ERROR ) );
+
+	// The sandbox as the sections after this one found it
+	$themesClean();
+	@unlink( $themeSetupFile );
+	unset( $appData['./nino/filesystem/cache'][Setup::PATH] );
+
+	if( $themeSetupKept !== null )
+		file_put_contents( $themeSetupFile, $themeSetupKept );
+
+	if( $themeFillsKept === null )
+		unset( $appData['./nino/html/fills'] );
+	else
+		$appData['./nino/html/fills'] = $themeFillsKept;
+
+	\Nino\Locales::useLocale( $appData, 'de_DE' );
+
+	check( 'and the sandbox is as it was: no theme of the project, no directory for them, the setup as the sections before left it',
+		Themes::own( $appData ) === [] && is_dir( $themesDir ) === false && ( $themeSetupKept === null ? is_file( $themeSetupFile ) === false : (string) file_get_contents( $themeSetupFile ) === $themeSetupKept ) );
+
+	return $themesFile;
+};
+
+$themesFile = $themesSection( $appData, $library, $entryInter );
+
 \Nino\Auth::logoutUser( $appData );
 check( 'every action of the panel refuses a request with no session',
 	callDesignAction( $appData, 'apiList' )[0] === 401
@@ -4864,7 +5746,8 @@ check( 'every action of the panel refuses a request with no session',
 	&& callDesignAction( $appData, 'apiPreview', [] )[0] === 401
 	&& callDesignAction( $appData, 'apiWebfontsList', [] )[0] === 401
 	&& callDesignAction( $appData, 'apiWebfontsInstall', [ 'slug' => 'inter' ] )[0] === 401
-	&& callDesignAction( $appData, 'apiWebfontsRemove', [ 'slug' => 'inter' ] )[0] === 401 );
+	&& callDesignAction( $appData, 'apiWebfontsRemove', [ 'slug' => 'inter' ] )[0] === 401
+	&& array_filter( [ 'apiThemeLoad', 'apiThemeCreate', 'apiThemeSave', 'apiThemeDuplicate', 'apiThemeDelete', 'apiThemeExport', 'apiThemeImport' ], static fn( string $method ): bool => callDesignAction( $appData, $method, [ 'slug' => 'magazine', 'name' => 'x' ] )[0] !== 401 ) === [] );
 
 \Nino\Auth::insertUser( $appData, 'editor@example.com', 'correct horse battery staple', [ '/_admin/elements/manage' ] );
 \Nino\Auth::loginUser( $appData, 'editor@example.com', 'correct horse battery staple' );
@@ -4875,10 +5758,12 @@ check( '...and an account without /_admin/design/manage with a 403',
 	&& callDesignAction( $appData, 'apiSave', [] )[0] === 403
 	&& callDesignAction( $appData, 'apiWebfontsList', [] )[0] === 403
 	&& callDesignAction( $appData, 'apiWebfontsInstall', [ 'slug' => 'inter' ] )[0] === 403
-	&& callDesignAction( $appData, 'apiWebfontsRemove', [ 'slug' => 'inter' ] )[0] === 403 );
+	&& callDesignAction( $appData, 'apiWebfontsRemove', [ 'slug' => 'inter' ] )[0] === 403
+	&& array_filter( [ 'apiThemeLoad', 'apiThemeCreate', 'apiThemeSave', 'apiThemeDuplicate', 'apiThemeDelete', 'apiThemeExport', 'apiThemeImport' ], static fn( string $method ): bool => callDesignAction( $appData, $method, [ 'slug' => 'magazine', 'name' => 'x' ] )[0] !== 403 ) === [] );
 
 check( 'the panel names every action it answers', array_keys( Admin::actions() ) === [ 'design/list', 'design/save', 'design/apply', 'design/plan', 'design/restore', 'design/preview',
-	'design/webfonts/list', 'design/webfonts/install', 'design/webfonts/remove' ] );
+	'design/webfonts/list', 'design/webfonts/install', 'design/webfonts/remove',
+	'design/theme/load', 'design/theme/create', 'design/theme/save', 'design/theme/duplicate', 'design/theme/delete', 'design/theme/export', 'design/theme/import' ] );
 check( 'and previewing is not written to the activity log - it happens on every select and changes nothing',
 	Admin::log( 'design/preview', [] ) === '' );
 check( 'and ships the pane and the two assets it is drawn with',
@@ -4911,7 +5796,7 @@ check( '...and every text the script names literally is one of them'. ( $unwritt
 	and not as a blank row on a screen - and a word that no longer belongs to anything
 	fails as well	*/
 $wanted = [];
-foreach( [ 'global', 'fonts', 'typefaces', 'content', 'buttons', 'components', 'colours' ] as $tab )
+foreach( [ 'theme', 'global', 'fonts', 'typefaces', 'content', 'buttons', 'components', 'colours' ] as $tab )
 	$wanted[] = 'tab/'. $tab;
 foreach( array_keys( Setup::PARTS ) as $part )
 	$wanted[] = 'part/'. $part;
@@ -4948,6 +5833,10 @@ foreach( [ 'previous', 'next' ] as $step )
 foreach( Webfonts::REFUSALS as $refusal )
 	$wanted[] = 'typefaces/available/'. $refusal;
 array_push( $wanted, 'typefaces/msg/installed', 'typefaces/msg/updated', 'typefaces/msg/removed' );
+
+/*	The Theme tab names its three buttons of a row by a variable, which is no literal for the check below to find, and the word of a
+	copy is the server's: it names the theme a duplicate makes (see Admin::apiThemeDuplicate())	*/
+array_push( $wanted, 'theme/load', 'theme/duplicate', 'theme/delete', 'theme/copy' );
 
 preg_match( '/FACE_CATEGORIES\s*:\s*\[([^\]]*)\]/', (string) file_get_contents( __DIR__. '/../assets/admin.js' ), $chips );
 check( 'the chips of the Typefaces tab are an All and the categories the list accepts, in the order the list names them',
@@ -5317,6 +6206,35 @@ check( '...its icon is the icon of the rows, taking the colour of the button it 
 	$cssHas( '.nino-admin .design-viewport .design-icon', [ 'color: inherit;' ] ) === true
 	&& $cssHas( '.nino-admin .design-preview-follow', [ 'align-items: center;', 'min-height: 0;', 'margin: 0;', 'padding: 0;', 'border: 0;' ] ) === true );
 
+/*	The Theme tab: the list is rows, each the name over its description and at its far end the buttons that can be pressed on it,
+	which stand under the words where the room is short and always from 768px down; the row that makes a theme is a field and its
+	button on one line; the css is a field in the monospace face of the workbench, whose label is kept for whoever hears the field
+	and drawn out of sight. The chips are the workbench's own, so not one colour in the rules of the tab is a literal	*/
+preg_match_all( '/[^{}]*design-theme[^{}]*\{[^}]*\}/', $panelCss, $themeRules );
+$themeCss = implode( '', $themeRules[0] );
+$onNarrow = preg_match( '/@media \(max-width: 48rem\) \{ ((?:[^{}]+\{[^}]*\} )*)\}/', $panelCss, $narrowRules ) === 1 ? $narrowRules[1] : '';
+
+check( 'the list of the themes is rows, one to a theme: the words and the buttons on a line that wraps, the words starting from 16rem and taking the room that is left - which in the third of the screen the column has puts the buttons of every row under its words - and a rule between two rows; the name bold, the description small and in the secondary colour',
+	$cssHas( '.nino-admin .design-theme-row', [ 'display: flex;', 'flex-wrap: wrap;', 'align-items: center;', 'justify-content: space-between;' ] ) === true
+	&& $cssHas( '.nino-admin .design-theme-row + .design-theme-row', [ 'border-top: 1px solid var(--editor-separator);' ] ) === true && $cssHas( '.nino-admin .design-theme-text', [ 'flex: 1 1 16rem;', 'min-width: 0;' ] ) === true
+	&& $cssHas( '.nino-admin .design-theme-name', [ 'font-weight: 650;' ] ) === true && $cssHas( '.nino-admin .design-theme-description', [ 'color: var(--editor-text-secondary);', 'font-size: .74rem;' ] ) === true
+	&& $cssHas( '.nino-admin .design-theme-buttons', [ 'display: flex;', 'flex: none;', 'flex-wrap: wrap;' ] ) === true );
+check( '...from 768px down a row is a column and the buttons stand under the words - the rule is inside that media query and nowhere else',
+	$onNarrow !== '' && str_contains( $onNarrow, '.nino-admin .design-theme-row { flex-direction: column; align-items: stretch; }' ) === true
+	&& str_contains( str_replace( $narrowRules[0] ?? "\0", '', $panelCss ), 'flex-direction: column' ) === false );
+check( '...the row that makes a theme is the field of the name and its button on one line, the button at the foot of the field and the field taking the rest; the field that takes a file in has a rule above it as the row has',
+	$cssHas( '.nino-admin .design-theme-new', [ 'display: flex;', 'align-items: flex-end;', 'border-top: 1px solid var(--editor-separator);' ] ) === true
+	&& $cssHas( '.nino-admin .design-theme-new > .nino-admin-field', [ 'flex: 1 1 auto;', 'min-width: 0;', 'margin: 0;' ] ) === true
+	&& $cssHas( '.nino-admin .design-theme-import', [ 'margin: 0;', 'border-top: 1px solid var(--editor-separator);' ] ) === true );
+check( '...the css is a block in the monospace face of the workbench - its width, its resizing and its colours the workbench\'s own for a textarea - and its label is out of sight but there: not display none, which a screen reader skips',
+	$cssHas( '.nino-admin .design-theme-css', [ 'display: block;', 'font-family: var(--nino-admin-mono);' ] ) === true
+	&& str_contains( $cssRule( '.nino-admin .design-theme-css' ), 'width' ) === false && str_contains( $cssRule( '.nino-admin .design-theme-css' ), 'resize' ) === false
+	&& $cssHas( '.nino-admin .design-theme-css-name', [ 'position: absolute;', 'width: 1px;', 'height: 1px;', 'overflow: hidden;', 'clip-path: inset(50%);' ] ) === true
+	&& str_contains( $cssRule( '.nino-admin .design-theme-css-name' ), 'display' ) === false );
+check( '...and not one colour of the tab is a literal, nor a face but the workbench\'s: the chips and the buttons are the workbench\'s own, the rest takes its tokens',
+	$themeRules[0] !== [] && count( $themeRules[0] ) >= 14 && preg_match( '/#[0-9a-f]{3,8}\b|\brgba?\(|\bhsla?\(|\boklch\(/i', $themeCss ) !== 1
+	&& preg_match( '/font-family:(?! var\(--nino-admin-mono\))/', $themeCss ) !== 1 );
+
 // --- The panel's script, where node is on the path ------------------------------
 //
 // design-js-smoke.js beside this file draws the screen over a dom stand-in and
@@ -5330,7 +6248,7 @@ if( $node === '' || function_exists( 'exec' ) === false ) {
 	echo "  --  - node is not available here: design-js-smoke.js was NOT run\n";
 } else {
 	$output = []; $status = 1;
-	exec( 'DESIGN_LISTING='. escapeshellarg( $listingFile ). ' DESIGN_WEBFONTS='. escapeshellarg( $webfontsFile ). ' '. escapeshellarg( $node ). ' '. escapeshellarg( $jsTest ). ' 2>&1', $output, $status );
+	exec( 'DESIGN_LISTING='. escapeshellarg( $listingFile ). ' DESIGN_WEBFONTS='. escapeshellarg( $webfontsFile ). ' DESIGN_THEMES='. escapeshellarg( $themesFile ). ' '. escapeshellarg( $node ). ' '. escapeshellarg( $jsTest ). ' 2>&1', $output, $status );
 	$summary = (string) end( $output );
 
 	// A run that failed says what failed: the checks that did not hold, or what node stopped on

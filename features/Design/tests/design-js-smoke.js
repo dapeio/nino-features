@@ -1,9 +1,18 @@
 /**
  *	Nino
  *	design-js-smoke.js		What the Design panel's screen is, over a dom
- *												stand-in: the strip of seven tabs in the head of the
+ *												stand-in: the strip of eight tabs in the head of the
  *												pane, and under it the controls of the tab that is open
- *												- the two frames, the root size and the width of the
+ *												- the three cards of the Theme tab: the list of the
+ *												themes, with its row for a new one and its field for
+ *												an import, the active theme with its name, its
+ *												description and the chip that says the screen differs
+ *												from it, and the css of the theme, which every input
+ *												mirrors into the preview - with a load (and the
+ *												typefaces it offers to install), a create, a save, a
+ *												duplicate, a delete, an export and an import made at
+ *												once, and the sentence a refusal is told in; the two
+ *												frames, the root size and the width of the
  *												page as two strips of five, and the animation; the five
  *												font roles, with a size that is typed; the two cards
  *												of the Typefaces tab - the families that are installed
@@ -43,8 +52,9 @@
  *												nothing but node. design-smoke.php runs it through
  *												node when node is on the path, so bin/check.sh and
  *												CI cover it - and hands it the answers design/list
- *												(DESIGN_LISTING) and design/webfonts/list
- *												(DESIGN_WEBFONTS) really gave, which the screen is
+ *												(DESIGN_LISTING), design/webfonts/list
+ *												(DESIGN_WEBFONTS) and the actions of the Theme tab
+ *												(DESIGN_THEMES) really gave, which the screen is
  *												then drawn from as well; it also runs on its own.
  *
  *	Usage: node features/Design/tests/design-js-smoke.js
@@ -145,6 +155,13 @@ function element( tag ) {
 			if( selector.charAt(0) === '.' )
 				return byClass( this, selector.slice(1) )[0] || null;
 			return byTag( this, selector )[0] || null;
+		},
+		// The controls of a card the Theme tab switches off while a request is on its way: a list of tags, of which one may be asked for by its type - 'button, input[type="file"]'
+		querySelectorAll	: function( selector ) {
+			const wanted = selector.split(',').map( function( one ) { return /^([a-z]+)(?:\[type="([a-z]+)"\])?$/.exec( one.trim() ) } );
+			return descendants( this ).filter( function( el ) {
+				return wanted.some( function( found ) { return found !== null && el.tagName === found[1].toUpperCase() && ( found[2] === undefined || el.type === found[2] ) } );
+			} );
 		},
 		// The pane is what carries data-panel, which is all closest() is asked for
 		closest					: function() {
@@ -276,7 +293,7 @@ function threw( fn ) {
 	}
 }
 
-const TABS = [ 'global', 'fonts', 'typefaces', 'content', 'buttons', 'components', 'colours' ];
+const TABS = [ 'theme', 'global', 'fonts', 'typefaces', 'content', 'buttons', 'components', 'colours' ];
 
 /** The kind of every knob, by tab, as design/list gives them: a scale has five positions, -2 to +2, a choice three, -1 to +1 */
 const KINDS = {
@@ -314,6 +331,17 @@ function without( list, drop ) {
 function part( name, kind, set, catalogue ) {
 	return { part : name, kind : kind, set : set, catalogue : catalogue };
 }
+
+/** The themes design/list lists: the six the feature ships, then the one the project made */
+const THEMES = [
+	{ slug : 'nino', name : 'Nino', description : 'The framework as it is', shipped : true },
+	{ slug : 'magazine', name : 'Magazine', description : 'Lifted cards and a drop cap', shipped : true },
+	{ slug : 'poster', name : 'Poster', description : 'An eyebrow over every title', shipped : true },
+	{ slug : 'statement', name : 'Statement', description : 'Large numbers', shipped : true },
+	{ slug : 'product', name : 'Product', description : 'Pills and tabular figures', shipped : true },
+	{ slug : 'office', name : 'Office', description : 'A small root size', shipped : true },
+	{ slug : 'mein-theme', name : 'My theme', description : 'The theme of this project', shipped : false },
+];
 
 /** The whole answer of design/list, with whatever a test wants different in it */
 function listing( over ) {
@@ -369,6 +397,11 @@ function listing( over ) {
 		steps 		: [ 'least', 'less', 'default', 'more', 'most' ],
 		size 			: 0,
 		width 		: 0,
+		// The Theme tab: the theme the stored setup was taken from and the css of its own, the themes there are - the six the feature ships, then the project's - and the active one as its file holds it
+		theme 		: '',
+		css 			: '',
+		themes 		: THEMES.map( function( theme ) { return Object.assign( {}, theme ) } ),
+		active 		: null,
 		motion 		: { effect : '', strength : '', speed : '' },
 		effects 	: [ 'zoom', 'zoom-out', 'slide-left', 'slide-right', 'blur', 'flip' ],
 		strengths : [ 'soft', 'medium', 'hard' ],
@@ -546,6 +579,9 @@ function panel( over, shell ) {
 		body						: element('body'),
 		createElement		: function( tag ) {
 			const el = element( tag );
+			// A link that is clicked is a download: where it pointed, what it is called, and whether it stood in the document while it was clicked
+			if( tag === 'a' )
+				el.click = function() { downloads.push( { href : el.href, download : el.download, mounted : el.parent !== null } ) };
 			// The frame's page, or the refusal a browser gives for one it may not reach
 			if( tag === 'iframe' )
 				Object.defineProperty( el, 'contentDocument', { get : function() {
@@ -569,6 +605,13 @@ function panel( over, shell ) {
 	};
 
 	const requests = [];
+
+	/*	What the Theme tab hands to the browser and takes from it: the links that were clicked, the blobs that were made and the addresses made of
+		them and given back, and the readers a file was given to - each waits for a test to say how the read ends (see FileReader below)	*/
+	const downloads = [];
+	const blobs = [];
+	const urls = { made : [], revoked : [] };
+	const readers = [];
 
 	/*	The fonts of the document the panel is in, and what the Typefaces tab sets names in them with: a FontFace is kept
 		as it was made and as often as it was asked to load, the FontFaceSet as it was added to and taken from, and an
@@ -608,7 +651,79 @@ function panel( over, shell ) {
 			// its own as "(status) message"
 			api					: {
 				call : function() { throw new Error( 'every request goes through _apiCall, which this test holds' ) },
-				errorText : function( status, response, key ) { return '('+ status+ ') '+ ( ( response && response.error ) ? response.error : Nino.content.getText( key ) ) },
+				// The code's sentence, with the params filled in, where the answer has one the workbench knows; else "(status) message"
+				errorText : function( status, response, key ) {
+					const body = response !== null && typeof response === 'object' ? response : {};
+					if( typeof body.code === 'string' && TEXT['/_admin/error/'+ body.code] !== undefined ) {
+						let out = TEXT['/_admin/error/'+ body.code];
+						( Array.isArray( body.params ) === true ? body.params : [] ).forEach( function( value ) { out = out.replace( /%[sdn]/, function() { return String( value ) } ) } );
+						return out;
+					}
+					return '('+ status+ ') '+ ( body.error ? body.error : Nino.content.getText( key ) );
+				},
+			},
+			// The workbench's small builders, as it builds them: an element with a class and a text, a button, a paragraph of hint and a labelled text input
+			el					: function( tag, className, text ) {
+				const el = element( tag );
+				if( typeof className === 'string' && className !== '' )
+					el.className = className;
+				if( text !== undefined )
+					el.textContent = text;
+				return el;
+			},
+			button			: function( text, onClick, options ) {
+				options = options || {};
+				const button = element('button');
+				button.type = 'button';
+				if( options.className )
+					button.className = options.className;
+				button.textContent = text;
+				if( options.name ) {
+					button.title = options.name;
+					button.setAttribute( 'aria-label', options.name );
+				}
+				button.disabled = options.disabled === true;
+				if( options.id )
+					button.id = options.id;
+				if( typeof onClick === 'function' )
+					button.addEventListener( 'click', onClick );
+				return button;
+			},
+			hint				: function( text, kind ) {
+				const hint = element('p');
+				hint.className = kind === 'error' ? 'nino-admin-hint nino-admin-error' : 'nino-admin-hint';
+				hint.textContent = text;
+				return hint;
+			},
+			textField		: function( options ) {
+				const field = element('label');
+				field.className = options.className || 'nino-admin-field';
+				const name = element('span');
+				name.textContent = options.label === undefined || options.label === null ? '' : options.label;
+				field.appendChild( name );
+				const input = element('input');
+				input.className = 'nino-admin-input';
+				input.type = options.type || 'text';
+				if( options.value !== undefined && options.value !== null )
+					input.value = options.value;
+				if( options.placeholder )
+					input.placeholder = options.placeholder;
+				if( typeof options.maxLength === 'number' )
+					input.maxLength = options.maxLength;
+				if( options.id )
+					input.id = options.id;
+				input.addEventListener( 'input', function() {
+					if( typeof options.onInput === 'function' )
+						options.onInput( input.value );
+				} );
+				field.appendChild( input );
+				if( options.hint ) {
+					const hint = element('small');
+					hint.className = 'nino-admin-hint';
+					hint.textContent = options.hint;
+					field.appendChild( hint );
+				}
+				return field;
 			},
 			actionBar		: function( bar ) { bar.classList.add('nino-admin-actionbar'); return bar },
 			// Records what it was asked to fit: the frame, the port and the layout width
@@ -728,6 +843,28 @@ function panel( over, shell ) {
 		return outcome;
 	};
 
+	/*	What a download is made of: a Blob of the text, an address for it that is revoked when the link has been clicked, and - for an import - a
+		FileReader that is given a file and waits for the test to say how the read ends: finish( text ) is a read that worked, fail() one that did not	*/
+	sandbox.Blob = function( parts, options ) {
+		this.parts = parts;
+		this.type = ( options || {} ).type;
+		blobs.push( this );
+	};
+	sandbox.URL = {
+		createObjectURL : function( blob ) { urls.made.push( blob ); return 'blob:design/'+ urls.made.length },
+		revokeObjectURL : function( url ) { urls.revoked.push( url ) },
+	};
+	sandbox.FileReader = function() {
+		this.listeners = {};
+		this.result = null;
+		this.file = null;
+		readers.push( this );
+	};
+	sandbox.FileReader.prototype.addEventListener = function( type, fn ) { ( this.listeners[type] = this.listeners[type] || [] ).push( fn ) };
+	sandbox.FileReader.prototype.readAsText = function( file ) { this.file = file };
+	sandbox.FileReader.prototype.finish = function( text ) { this.result = text; ( this.listeners.load || [] ).forEach( function( fn ) { fn() } ) };
+	sandbox.FileReader.prototype.fail = function() { ( this.listeners.error || [] ).forEach( function( fn ) { fn() } ) };
+
 	sandbox.IntersectionObserver = function( callback ) {
 		this.callback = callback;
 		this.watched = [];
@@ -752,7 +889,7 @@ function panel( over, shell ) {
 		};
 
 	design._data	= ( shell || {} ).whole === true ? over : listing( over );
-	design._edit	= design._selection( design._data );
+	design._takeStored( design._data );
 	design._ready	= true;
 	design._render();
 
@@ -773,6 +910,12 @@ function panel( over, shell ) {
 		},
 		confirms: confirms,
 		stage		: stage,
+		/** The Theme tab's dealings with the browser: the links clicked, the blobs made, the addresses made of them and revoked, and the readers a file was given to - and the body of the document, where a link stands while it is clicked */
+		docBody		: dc.body,
+		downloads	: downloads,
+		blobs			: blobs,
+		urls			: urls,
+		readers		: readers,
 		/** The fonts of the document: the faces that were made, those in its set, the observers, and whether a load fails */
 		typeset	: typeset,
 		/** The row comes into view: the observer is told so, the way the browser tells it */
@@ -884,6 +1027,9 @@ function say( key ) {
 /** Which tab the controls are those of, read off what is drawn rather than off the panel's own idea of it */
 function tabOf( screen ) {
 
+	if( screen.byId('design-themes') !== null )
+		return 'theme';
+
 	if( screen.byId('design-colours') !== null )
 		return 'colours';
 
@@ -911,7 +1057,7 @@ check( 'the stand-in reads the panel\'s words out of text/en_US.php', Object.key
 // --- The pane's head -------------------------------------------------------------
 //
 // The panel's name is the head's - the row the shell renders over every pane -
-// so the screen under it draws no heading of its own. The strip of the seven tabs
+// so the screen under it draws no heading of its own. The strip of the eight tabs
 // stands in that row beside the name, where the Features panel's does: it
 // switches the column of controls and nothing else, and the frame beside the
 // column stays on every tab
@@ -922,11 +1068,13 @@ const headed = panel();
 const strip = headed.headStrips()[0] || null;
 const tabs = strip === null ? [] : byTag( strip, 'button' );
 
-check( 'the strip has seven tabs - Global, Fonts, Typefaces, Content, Buttons, Components and Colours, in that order: the loader stands after the Fonts it lists its families in',
-	headed.design.TABS.join() === TABS.join() && tabs.map( function( tab ) { return tab.textContent } ).join() === 'Global,Fonts,Typefaces,Content,Buttons,Components,Colours' );
-check( '...a tablist of tabs, the first of them selected and the others not',
+check( 'the strip has eight tabs - Theme, Global, Fonts, Typefaces, Content, Buttons, Components and Colours, in that order: the theme is the whole of the setup and stands first, the loader after the Fonts it lists its families in',
+	headed.design.TABS.join() === TABS.join() && tabs.map( function( tab ) { return tab.textContent } ).join() === 'Theme,Global,Fonts,Typefaces,Content,Buttons,Components,Colours'
+	&& TEXT['/_admin/design/tab/theme'] === 'Theme' );
+check( '...a tablist of tabs, the open one selected and the others not - the panel opens on Global, as it did, and the Theme before it is one click away; the frame goes to the top of the page for either',
 	strip !== null && strip.getAttribute('role') === 'tablist' && tabs.every( function( tab ) { return tab.getAttribute('role') === 'tab' } )
-	&& tabs.map( function( tab ) { return tab.getAttribute('aria-selected') } ).join() === 'true,false,false,false,false,false,false' );
+	&& tabs.map( function( tab ) { return tab.getAttribute('aria-selected') } ).join() === 'false,true,false,false,false,false,false,false'
+	&& headed.design._tab === 'global' && headed.design.ANCHORS.theme === 'global' && headed.design.ANCHORS.theme === headed.design.ANCHORS.global );
 check( 'the screen draws no heading of its own - the head names the panel',
 	byTag( headed.form, 'h1' ).concat( byTag( headed.form, 'h2' ), byTag( headed.form, 'h3' ) ).length === 0 );
 check( 'the strip is handed to the pane\'s head and stands right after the name, not over the column',
@@ -945,7 +1093,7 @@ headed.tab('Colours');
 
 check( 'another tab redraws the column under the head and leaves the strip standing - the same element, its tab lit',
 	shownStrip !== null && headed.headStrips()[0] === shownStrip && headed.headStrips().length === 1
-	&& byTag( shownStrip, 'button' )[6].getAttribute('aria-selected') === 'true' && byTag( shownStrip, 'button' )[0].getAttribute('aria-selected') === 'false'
+	&& byTag( shownStrip, 'button' )[7].getAttribute('aria-selected') === 'true' && byTag( shownStrip, 'button' )[1].getAttribute('aria-selected') === 'false'
 	&& tabOf( headed ) === 'colours' && headed.byId('design-frame') !== null );
 
 /*	The keyboard is the reason the strip is not drawn again on a switch. An
@@ -956,24 +1104,34 @@ const keyed = panel();
 const keyTabs = byTag( keyed.headStrips()[0] || element('div'), 'button' );
 
 focused = null;
-if( keyTabs.length === 7 )
-	press( keyTabs[0], 'ArrowRight' );
+if( keyTabs.length === 8 )
+	press( keyTabs[1], 'ArrowRight' );
 
 check( 'an arrow key on the strip opens the next tab and the focus stays on the tab it moved to, in the head',
-	keyTabs.length === 7 && focused === keyTabs[1] && keyTabs[1].parent === keyed.headStrips()[0]
-	&& keyTabs[1].getAttribute('aria-selected') === 'true' && tabOf( keyed ) === 'fonts' );
+	keyTabs.length === 8 && focused === keyTabs[2] && keyTabs[2].parent === keyed.headStrips()[0]
+	&& keyTabs[2].getAttribute('aria-selected') === 'true' && tabOf( keyed ) === 'fonts' );
 
-if( keyTabs.length === 7 )
-	press( keyTabs[1], 'ArrowLeft' );
+if( keyTabs.length === 8 )
+	press( keyTabs[2], 'ArrowLeft' );
 
 check( '...so the next one has a tab to start from, and walks back',
-	keyTabs.length === 7 && focused === keyTabs[0] && keyTabs[0].parent === keyed.headStrips()[0]
-	&& keyTabs[0].getAttribute('aria-selected') === 'true' && tabOf( keyed ) === 'global' );
+	keyTabs.length === 8 && focused === keyTabs[1] && keyTabs[1].parent === keyed.headStrips()[0]
+	&& keyTabs[1].getAttribute('aria-selected') === 'true' && tabOf( keyed ) === 'global' );
 
-if( keyTabs.length === 7 )
+if( keyTabs.length === 8 )
+	press( keyTabs[1], 'ArrowLeft' );
+
+check( '...to the first tab, which is the Theme, with the list of the themes in the column', keyTabs.length === 8 && focused === keyTabs[0] && tabOf( keyed ) === 'theme' );
+
+if( keyTabs.length === 8 )
 	press( keyTabs[0], 'ArrowLeft' );
 
-check( '...and from the first tab the arrow key wraps round to the last', keyTabs.length === 7 && focused === keyTabs[6] && tabOf( keyed ) === 'colours' );
+check( '...and from the first tab the arrow key wraps round to the last', keyTabs.length === 8 && focused === keyTabs[7] && tabOf( keyed ) === 'colours' );
+
+if( keyTabs.length === 8 )
+	press( keyTabs[7], 'ArrowRight' );
+
+check( '...and from the last it wraps round to the first', keyTabs.length === 8 && focused === keyTabs[0] && tabOf( keyed ) === 'theme' );
 
 /*	The script drawn outside its pane: the strip has nowhere else to go, so it
 	opens the column the way it did - and the heading stays gone there as well	*/
@@ -1438,7 +1596,7 @@ console.log('');
 //
 // The Content has fourteen knobs, which a column does not show at once, and design/list gives
 // them in four groups (Setup::GROUPS). The tab draws a strip of tabs under the select of the
-// template - a strip of the same make as the seven tabs of the head, built by the same helper -
+// template - a strip of the same make as the eight tabs of the head, built by the same helper -
 // and under it the rows of the group that is open and of no other. A group is the screen's
 // and no part of the selection: another group changes the rows and the fit of the stage and
 // nothing else - no request, no timer, nothing unsaved, no jump of the frame - and the group is
@@ -1463,8 +1621,8 @@ check( 'the strip of the groups is a tablist of the same make as the main strip 
 	&& grpTabs.map( function( tab ) { return tab.textContent } ).join() === 'Hero,Section,Card,Variants'
 	&& grpOpen() === 'true,false,false,false' && grpStrip.getAttribute('aria-label') === TEXT['/_admin/design/tab/content']
 	&& grp.byId('design-knobs').children.length === 3 && grp.byId('design-knobs').children[1] === grpStrip && grp.byId('design-knobs').children[2] === grpBox );
-check( '...and it is not the head\'s: the head keeps its one strip of seven tabs with the Content selected, and the strip of the groups stands in the column',
-	grp.headStrips().length === 1 && byTag( grp.headStrips()[0], 'button' ).length === 7 && byTag( grp.headStrips()[0], 'button' )[3].getAttribute('aria-selected') === 'true'
+check( '...and it is not the head\'s: the head keeps its one strip of eight tabs with the Content selected, and the strip of the groups stands in the column',
+	grp.headStrips().length === 1 && byTag( grp.headStrips()[0], 'button' ).length === 8 && byTag( grp.headStrips()[0], 'button' )[4].getAttribute('aria-selected') === 'true'
 	&& byClass( grp.head, 'design-groups' ).length === 0 && hasClass( grpStrip, 'admin-panel-tabs' ) === false && descendants( grp.body() ).indexOf( grpStrip ) !== -1 );
 
 const grpOthers = panel();
@@ -1629,7 +1787,7 @@ check( 'a size is typed and not picked: a number field in each row, stepping by 
 		return input !== null && input.tagName === 'INPUT' && input.type === 'number' && input.getAttribute('step') === '.1' && input.getAttribute('inputmode') === 'decimal'
 			&& input.dataset.role === row.dataset.role && input.dataset.key === 'size';
 	} )
-	&& fonts.design.TABS.length === 7
+	&& fonts.design.TABS.length === 8
 	&& [ 'title', 'subtitle', 'text', 'button', 'code' ].map( function( role ) { return size( role ).getAttribute('min')+ '-'+ size( role ).getAttribute('max') } ).join() === '1-4,0.8-2.5,0.8-1.5,0.6-1.5,0.6-1.3'
 	&& byTag( table, 'select' ).filter( function( select ) { return select.dataset.key === 'size' } ).length === 0 );
 check( '...and its value is the size that is in force: the one Nino.css gives the role while none is chosen - 1.6, 1.125, 1, 1 and 0.875 - as the value and not as a placeholder, so that the spinner has a number to count from; the model keeps the empty size it had',
@@ -1685,7 +1843,7 @@ const fontPreview = fonts.requests[fonts.requests.length - 1];
 
 check( 'the preview asked for carries the role that was changed, with the rest of the selection beside it - the frame is the answer to every control',
 	fontPreview.endpoint === 'preview' && JSON.stringify( fontPreview.payload.fonts.title ) === JSON.stringify( { family : 'system-serif', weight : 'light', uppercase : true, size : '2.4' } )
-	&& Object.keys( fontPreview.payload ).sort().join() === 'colours,fonts,full,knobs,motion,parts,size,width' && fontPreview.payload.full === true );
+	&& Object.keys( fontPreview.payload ).sort().join() === 'colours,css,fonts,full,knobs,motion,parts,size,theme,width' && fontPreview.payload.full === true );
 
 /*	A size is held inside the bounds of its role the way the server holds it
 	(Fonts::size()): in the model, and in the field, which shows what was kept	*/
@@ -2610,8 +2768,8 @@ TABS.forEach( function( name ) {
 	} ).join();
 } );
 
-check( 'a block of rows has its title and nothing under it, on every tab: the animation of Global, the table of the fonts, the two cards of the typefaces, the tuning and the mode of the palette carry a heading of one title each - no small under it',
-	JSON.stringify( headings ) === JSON.stringify( { global : 'Animation:1:0', fonts : 'Fonts:1:0', typefaces : 'Installed:1:0,Available:1:0', content : '', buttons : '', components : '', colours : 'Tuning:1:0,Mode:1:0' } ) );
+check( 'a block of rows has its title and nothing under it, on every tab: the three cards of the theme, the animation of Global, the table of the fonts, the two cards of the typefaces, the tuning and the mode of the palette carry a heading of one title each - no small under it',
+	JSON.stringify( headings ) === JSON.stringify( { theme : 'Themes:1:0,Theme:1:0,Custom css:1:0', global : 'Animation:1:0', fonts : 'Fonts:1:0', typefaces : 'Installed:1:0,Available:1:0', content : '', buttons : '', components : '', colours : 'Tuning:1:0,Mode:1:0' } ) );
 
 const titled = heads.design._sectionLabel( 'A title' );
 const iconed = heads.design._sectionLabel( 'Another', heads.design._icon('colours/mode') );
@@ -3516,8 +3674,8 @@ console.log( 'The anchors' );
 
 const anchors = panel();
 
-check( 'each tab has the id of an element on the specimen: global, type, type, content, buttons, components and colours - Fonts and Typefaces are the typography block, Colours the grounds',
-	JSON.stringify( anchors.design.ANCHORS ) === JSON.stringify( { global : 'global', fonts : 'type', typefaces : 'type', content : 'content', buttons : 'buttons', components : 'components', colours : 'colours' } ) );
+check( 'each tab has the id of an element on the specimen: global, global, type, type, content, buttons, components and colours - the Theme is all of the page and goes to its top as Global does, Fonts and Typefaces are the typography block, Colours the grounds',
+	JSON.stringify( anchors.design.ANCHORS ) === JSON.stringify( { theme : 'global', global : 'global', fonts : 'type', typefaces : 'type', content : 'content', buttons : 'buttons', components : 'components', colours : 'colours' } ) );
 
 const last = function() { return anchors.stage.scrolls[anchors.stage.scrolls.length - 1] };
 
@@ -3920,8 +4078,8 @@ const specimenIds = {};
 const jumpedTo = Object.keys( jp.design.ANCHORS ).map( function( tab ) { return jp.design.ANCHORS[tab] } )
 	.concat( Object.keys( jp.design.KNOB_ANCHORS ).reduce( function( ids, tab ) { return ids.concat( Object.keys( jp.design.KNOB_ANCHORS[tab] ).map( function( knob ) { return jp.design.KNOB_ANCHORS[tab][knob] } ) ) }, [] ) );
 
-check( 'every id the script jumps to is on the specimen exactly once: the seven of the tabs, the hero, the plain section and the cards - fifteen places, of which the ids of the five new knobs are three',
-	jumpedTo.length === 15 && jumpedTo.every( function( id ) { return specimenIds[id] === 1 } ) && specimenIds.cards === 1 );
+check( 'every id the script jumps to is on the specimen exactly once: the eight of the tabs - the Theme goes where Global does, to the top of the page -, the hero, the plain section and the cards - sixteen places, of which the ids of the five new knobs are three',
+	jumpedTo.length === 16 && jumpedTo.every( function( id ) { return specimenIds[id] === 1 } ) && specimenIds.cards === 1 );
 check( '...and the Cards section is the element that has the id: the second section of the page, after the hero and before the grounds',
 	specimen.indexOf('<section id="cards" class="nino-section" aria-label="Cards">') !== -1 && specimen.indexOf('id="content"') < specimen.indexOf('id="cards"')
 	&& specimen.indexOf('id="cards"') < specimen.indexOf('id="colours"') );
@@ -3937,8 +4095,8 @@ const asked = panel();
 asked.design._previewNow();
 const first = asked.requests[asked.requests.length - 1];
 
-check( 'the first preview of a visit asks for the whole document, with every key of the model: the templates, the knobs, the size, the width, the animation, the fonts and the palette',
-	first.endpoint === 'preview' && first.payload.full === true && Object.keys( first.payload ).sort().join() === 'colours,fonts,full,knobs,motion,parts,size,width'
+check( 'the first preview of a visit asks for the whole document, with every key of the model: the templates, the knobs, the size, the width, the animation, the fonts, the palette, and the theme with the css of its own',
+	first.endpoint === 'preview' && first.payload.full === true && Object.keys( first.payload ).sort().join() === 'colours,css,fonts,full,knobs,motion,parts,size,theme,width'
 	&& first.payload.parts.header === 'v1' && first.payload.parts.components === 'v1' && first.payload.knobs.content['hero-title'] === 0
 	&& first.payload.motion.effect === '' && first.payload.colours.mode === 'auto' );
 check( '...and while it is asked for, the line over the frame says so, and its title says the same - the chip shows as much of the line as the head has room for',
@@ -4242,6 +4400,686 @@ check( '...while a discard draws the stored selection again, so a leave that doe
 	registry.entries['design'].isDirty() === false && refused.byId('design-reset').hidden === true );
 
 
+// --- The Theme tab ---------------------------------------------------------------------------
+//
+// The whole setup under a name. The tab is three cards: the list of the themes, with the row
+// that makes one out of the screen and the field that takes a file in; the active theme, with
+// its name and its description, the chip that says the screen differs from it and the buttons
+// that keep the screen in it and take it out as a file; and the css of the theme, which every
+// input mirrors into the preview. What a button does is read off the requests it posts and the
+// answers it is given: the working copy a load makes of a theme, the typefaces the theme names
+// that the project has not installed - asked for before anything is drawn -, the browser's
+// download and file reader the export and the import go through, and the sentence a refusal is
+// told in. The answers the server really gave are the last half of this file
+
+console.log( 'The Theme tab' );
+
+/** The seven keys a theme keeps, out of an answer of design/list: the setup without the theme it names and the css it carries */
+function snapshotOf( data ) {
+	const copy = JSON.parse( JSON.stringify( data ) );
+	const parts = {};
+	copy.parts.forEach( function( row ) { parts[row.part] = row.set } );
+	return { size : copy.size, width : copy.width, motion : copy.motion, parts : parts, knobs : copy.knobs, fonts : copy.fonts, colours : copy.colours };
+}
+
+/** A theme as design/list gives the active one: its row of the list and what its file holds - the setup of the stand-in's own listing unless it is given */
+function activeOf( slug, name, description, shipped, css, setup ) {
+	return { slug : slug, name : name, description : description, shipped : shipped, setup : setup || snapshotOf( listing() ), css : css };
+}
+
+/** The list of the themes with one more at the end: the one a create, a duplicate or an import made */
+function withTheme( slug, name, description ) {
+	return THEMES.concat( [ { slug : slug, name : name, description : description, shipped : false } ] ).map( function( theme ) { return Object.assign( {}, theme ) } );
+}
+
+/** What the roles are offered with some families more, those that took the typefaces that were installed (the code is offered none of them: it takes a monospace) */
+function optionsWith( slugs ) {
+	const options = listing().options;
+	[ 'title', 'subtitle', 'text', 'button' ].forEach( function( role ) { slugs.forEach( function( slug ) { options[role].push( slug ) } ) } );
+	return options;
+}
+
+/** The row of the list for a theme, by its slug, in the screen that is drawn */
+function themeRow( screen, slug ) {
+	return byClass( screen.form, 'design-theme-row' ).filter( function( row ) { return row.dataset.slug === slug } )[0] || null;
+}
+
+/** The buttons at the end of the row of a theme */
+function themeButtons( screen, slug ) {
+	return byTag( byClass( themeRow( screen, slug ), 'design-theme-buttons' )[0], 'button' );
+}
+
+/** The slugs of the rows of the list, in the order they are drawn, as one string */
+function slugsOf( screen ) {
+	return byClass( screen.form, 'design-theme-row' ).map( function( row ) { return row.dataset.slug } ).join();
+}
+
+/** The words of the elements of a class below a node, as one string */
+function textsOf( root, className ) {
+	return byClass( root, className ).map( function( el ) { return el.textContent } ).join();
+}
+
+/** Every button of the first two cards of the tab, and the field of the file: what is switched off while a request of the tab is on its way */
+function themeControls( screen ) {
+	return byTag( screen.byId('design-themes'), 'button' ).concat( byTag( screen.byId('design-theme-current'), 'button' ), [ screen.byId('design-theme-import') ] );
+}
+
+/** The setup of a theme the way a file holds it: the stand-in's own, with the templates, the knob, the size and the fonts that are given in place */
+function themeSetup( fonts ) {
+	const setup = snapshotOf( listing() );
+	setup.parts.header = 'v2';
+	setup.parts.content = 'v3';
+	setup.knobs.content['card-space'] = 1;
+	setup.size = -1;
+	Object.keys( fonts || {} ).forEach( function( role ) { setup.fonts[role].family = fonts[role] } );
+	return setup;
+}
+
+/** What design/theme/load answers for the theme of the stand-in, naming the typefaces that are not installed here */
+function themeLoad( slug, setup, missing ) {
+	return { slug : slug, name : slug === 'magazine' ? 'Magazine' : 'Nino', description : slug === 'magazine' ? 'Lifted cards and a drop cap' : 'The framework as it is', shipped : true, setup : JSON.parse( JSON.stringify( setup ) ),
+		css : slug === 'magazine' ? ".nino-section-title { border-bottom-color: red; }\n" : '', missing : missing, notes : [] };
+}
+
+const INTER = { slug : 'inter', name : 'Inter', inList : true };
+const LORA = { slug : 'lora', name : 'Lora', inList : true };
+const NOWHERE = { slug : 'nowhere-sans', name : 'nowhere-sans', inList : false };
+
+/** A page answer for a preview that worked and has nothing to say */
+function previewed( css, document ) {
+	return { css : css, document : document, style : 'design-preview-css', accent : '#8ad0f5', brand : listing().brand, notes : [] };
+}
+
+const ownCss = ".typed { margin: 0 }\n";
+const own = activeOf( 'mein-theme', 'My theme', 'The theme of this project', false, ownCss );
+
+/** A screen on the Theme tab, the project's own theme the active one */
+function themed( over ) {
+	const screen = panel( Object.assign( { theme : 'mein-theme', css : ownCss, active : own }, over || {} ) );
+	screen.tab('Theme');
+	return screen;
+}
+
+// The three cards ------------------------------------------------------------------------------
+
+const drawn = themed();
+const cards = drawn.body().children;
+const slugs = byClass( drawn.form, 'design-theme-row' ).map( function( row ) { return row.dataset.slug } );
+
+check( 'the Theme tab is three cards in the column - the themes, the active theme and its css - each a card of the workbench with a title of its own, and no strip of groups',
+	cards.map( function( card ) { return card.id } ).join() === 'design-themes,design-theme-current,design-theme-css-card'
+	&& cards.every( function( card ) { return hasClass( card, 'nino-admin-card' ) && hasClass( card, 'design-block' ) } )
+	&& cards.map( function( card ) { return byTag( card, 'strong' )[0].textContent } ).join() === 'Themes,Theme,Custom css' && drawn.groups() === null );
+check( '...the list is a row for each theme in the order design/list gives them - the six the feature ships, then the one of the project - with its name, and under the name its description',
+	slugs.join() === 'nino,magazine,poster,statement,product,office,mein-theme' && drawn.byId('design-theme-list').tagName === 'UL'
+	&& slugs.every( function( slug, at ) {
+		const row = themeRow( drawn, slug );
+		return row.tagName === 'LI' && textsOf( row, 'design-theme-name' ) === THEMES[at].name && textsOf( row, 'design-theme-description' ) === THEMES[at].description && byTag( row, 'small' ).length === 1;
+	} ) );
+check( '...a chip "shipped" on each of the six the feature ships and on no other, a chip "active" on the theme the working copy names - and the mark of it on its row, to the eye and to whoever hears the list - both the workbench\'s own chip, in the colour of what it says',
+	THEMES.every( function( theme ) { return byClass( themeRow( drawn, theme.slug ), 'design-theme-shipped' ).length === ( theme.shipped === true ? 1 : 0 ) } )
+	&& byClass( drawn.form, 'design-theme-shipped' ).every( function( chip ) { return chip.textContent === 'shipped' && hasClass( chip, 'nino-admin-badge' ) && chip.dataset.state === 'muted' } )
+	&& byClass( drawn.form, 'design-theme-active' ).length === 1 && textsOf( themeRow( drawn, 'mein-theme' ), 'design-theme-active' ) === 'active'
+	&& byClass( drawn.form, 'design-theme-active' )[0].dataset.state === 'ok' && hasClass( byClass( drawn.form, 'design-theme-active' )[0], 'nino-admin-badge' )
+	&& byClass( drawn.form, 'design-theme-row--active' ).length === 1 && hasClass( themeRow( drawn, 'mein-theme' ), 'design-theme-row--active' )
+	&& themeRow( drawn, 'mein-theme' ).getAttribute('aria-current') === 'true' && themeRow( drawn, 'nino' ).getAttribute('aria-current') === null );
+check( '...each row has Load and Duplicate, and a theme of the project has Delete as well - a shipped theme is a file of the feature and has none -, each button named by the theme it is about for whoever hears them read out',
+	THEMES.every( function( theme ) {
+		const buttons = themeButtons( drawn, theme.slug );
+		return buttons.map( function( button ) { return button.id } ).join() === [ 'load', 'duplicate' ].concat( theme.shipped === true ? [] : [ 'delete' ] ).map( function( word ) { return 'design-theme-'+ word+ '-'+ theme.slug } ).join()
+			&& buttons.map( function( button ) { return button.textContent } ).join() === ( theme.shipped === true ? 'Load,Duplicate' : 'Load,Duplicate,Delete' )
+			&& buttons.every( function( button ) { return button.type === 'button' && button.getAttribute('aria-label') === button.textContent+ ' - '+ theme.name && button.title === button.getAttribute('aria-label') } );
+	} )
+	&& hasClass( drawn.byId('design-theme-delete-mein-theme'), 'nino-admin-btn-danger' ) && drawn.byId('design-theme-delete-nino') === null );
+
+const makerRow = byClass( drawn.form, 'design-theme-new' )[0];
+const newField = drawn.byId('design-theme-new');
+const importField = drawn.byId('design-theme-import');
+
+check( '...under the list the row that makes a theme of the screen: a text field for the name and the button Create, on one line',
+	makerRow !== undefined && makerRow.parent === drawn.byId('design-themes') && newField.tagName === 'INPUT' && newField.parent.parent === makerRow && hasClass( newField.parent, 'nino-admin-field' )
+	&& newField.parent.children[0].textContent === 'New theme from the current state' && newField.placeholder === 'Name' && newField.maxLength === 80
+	&& makerRow.children.indexOf( drawn.byId('design-theme-create') ) === 1 && drawn.byId('design-theme-create').textContent === 'Create' && hasClass( drawn.byId('design-theme-create'), 'nino-admin-btn-primary' ) );
+check( '...and the field that takes a file in: a labelled file input that asks for json',
+	importField.tagName === 'INPUT' && importField.type === 'file' && importField.accept === '.json,application/json' && importField.parent.tagName === 'LABEL' && hasClass( importField.parent, 'nino-admin-field' )
+	&& importField.parent.children[0].textContent === 'Import a theme file' && importField.parent.parent === drawn.byId('design-themes') );
+
+// The active theme ------------------------------------------------------------------------------
+
+const head = drawn.byId('design-theme-current-head');
+
+check( 'the active theme is a head with its name, under it its two fields - the name and the description as they are typed, held to the lengths the server cuts them to - and the two buttons that keep the screen in it and take it out as a file; the screen is the theme, so there is no chip',
+	textsOf( head, 'design-theme-current-name' ) === 'My theme' && drawn.byId('design-theme-changed') === null
+	&& drawn.byId('design-theme-name').value === 'My theme' && drawn.byId('design-theme-name').maxLength === 80 && drawn.byId('design-theme-name').disabled === false
+	&& drawn.byId('design-theme-description').value === 'The theme of this project' && drawn.byId('design-theme-description').maxLength === 400 && drawn.byId('design-theme-description').disabled === false
+	&& drawn.byId('design-theme-name').parent.children[0].textContent === 'Name' && drawn.byId('design-theme-description').parent.children[0].textContent === 'Description'
+	&& byTag( drawn.byId('design-theme-name').parent, 'small' ).length === 0
+	&& drawn.byId('design-theme-save').textContent === 'Save theme' && hasClass( drawn.byId('design-theme-save'), 'nino-admin-btn-primary' ) && drawn.byId('design-theme-export').textContent === 'Export' );
+
+const shippedActive = themed( { theme : 'magazine', active : activeOf( 'magazine', 'Magazine', 'Lifted cards and a drop cap', true, '' ) } );
+
+check( '...a shipped theme is shown as it is and cannot be saved into: its name and description are read-only with the sentence that says why under the name, there is no button to save it - it can still be taken out as a file',
+	shippedActive.byId('design-theme-name').disabled === true && shippedActive.byId('design-theme-description').disabled === true
+	&& textsOf( shippedActive.byId('design-theme-name').parent, 'nino-admin-hint' ) === 'Shipped - duplicate it to change it.' && shippedActive.byId('design-theme-save') === null
+	&& shippedActive.byId('design-theme-export') !== null && textsOf( shippedActive.byId('design-theme-list'), 'design-theme-active' ) === 'active' );
+
+const unthemed = panel();
+unthemed.tab('Theme');
+
+check( '...with no theme the card says so and has nothing else - no name, no description, no button: the state of the screen belongs to none',
+	textsOf( unthemed.byId('design-theme-current'), 'nino-admin-hint' ) === TEXT['/_admin/design/theme/current/none'] && unthemed.byId('design-theme-name') === null && unthemed.byId('design-theme-description') === null
+	&& unthemed.byId('design-theme-save') === null && unthemed.byId('design-theme-export') === null && byTag( unthemed.byId('design-theme-current'), 'button' ).length === 0
+	&& unthemed.byId('design-theme-current-head') === null && byClass( unthemed.form, 'design-theme-active' ).length === 0 && byClass( unthemed.form, 'design-theme-row--active' ).length === 0
+	&& slugsOf( unthemed ) === 'nino,magazine,poster,statement,product,office,mein-theme' );
+
+// The css ---------------------------------------------------------------------------------------
+
+const box = drawn.byId('design-theme-css');
+
+check( 'the css of the theme is a textarea in a labelled field of its own - the label is the title of the card, kept for whoever hears the field and drawn out of sight - sized for code: fourteen rows, no spell check, no capital, no wrapping of a line',
+	box.tagName === 'TEXTAREA' && box.parent.tagName === 'LABEL' && hasClass( box.parent, 'nino-admin-field' ) && box.parent.children[0].textContent === 'Custom css' && hasClass( box.parent.children[0], 'design-theme-css-name' )
+	&& hasClass( box, 'design-theme-css' ) && box.rows === 14 && box.spellcheck === false && box.getAttribute('autocapitalize') === 'off' && box.getAttribute('wrap') === 'off'
+	&& box.value === ownCss && box.parent.parent === drawn.byId('design-theme-css-card') );
+check( '...with the hint under it: what the section does, what is refused, and the path of the project written as the shortcode it is, as it is',
+	textsOf( drawn.byId('design-theme-css-card'), 'nino-admin-hint' ) === TEXT['/_admin/design/theme/css/hint'] && TEXT['/_admin/design/theme/css/hint'].indexOf('[[/nino/public]]') !== -1 );
+
+drawn.design._previewNow();
+drawn.answer( 200, previewed( ':root{}', '<!doctype html>' ) );
+const framed = drawn.byId('design-frame').srcdoc;
+
+box.value = ".typed { margin: 1px }\n";
+box.fire('input');
+
+check( 'an input in the field sets the css of the working copy and asks for a preview - after the debounce every control has - and the screen is no longer the stored one: the way back is shown',
+	drawn.design._edit.css === ".typed { margin: 1px }\n" && drawn.waiting( 350 ).length === 1 && drawn.design._isDirty() === true && drawn.byId('design-reset').hidden === false );
+check( '...nor the theme it was taken from, which the chip in the head of the card says at once, in the colour of a thing to look at',
+	drawn.byId('design-theme-changed') !== null && drawn.byId('design-theme-changed').textContent === 'changed' && drawn.byId('design-theme-changed').dataset.state === 'warn'
+	&& hasClass( drawn.byId('design-theme-changed'), 'nino-admin-badge' ) && drawn.byId('design-theme-changed').parent === byTag( drawn.byId('design-theme-current-head'), 'strong' )[0] );
+
+drawn.design._previewNow();
+
+check( '...and the preview it asks for carries the css and the theme beside the rest of the selection',
+	drawn.requests[drawn.requests.length - 1].endpoint === 'preview' && drawn.requests[drawn.requests.length - 1].payload.css === ".typed { margin: 1px }\n"
+	&& drawn.requests[drawn.requests.length - 1].payload.theme === 'mein-theme' && drawn.requests[drawn.requests.length - 1].payload.full === false );
+
+drawn.answer( 400, { error : 'a css must not carry an @import', code : 'design_import', field : 'css' } );
+
+check( 'a css the server turns down is told in the line over the frame by the sentence of its code, in the colour of a failure - and the page in the frame stays as it was',
+	drawn.byId('design-preview-msg').textContent === TEXT['/_admin/error/design_import'] && drawn.byId('design-preview-msg').title === TEXT['/_admin/error/design_import']
+	&& hasClass( drawn.byId('design-preview-msg'), 'nino-admin-error' ) && drawn.byId('design-frame').srcdoc === framed && drawn.stage.style.textContent === '' );
+
+box.value = ".typed { margin: 2px }\n";
+box.fire('input');
+drawn.design._previewNow();
+drawn.answer( 200, previewed( ':root{}.typed{margin:2px}', '' ) );
+
+check( '...and one it takes is swapped into the page that stands in the frame, the line over it empty and quiet again',
+	drawn.stage.style.textContent === ':root{}.typed{margin:2px}' && drawn.byId('design-preview-msg').textContent === '' && hasClass( drawn.byId('design-preview-msg'), 'nino-admin-hint' )
+	&& drawn.byId('design-frame').srcdoc === framed );
+
+box.value = ownCss;
+box.fire('input');
+
+check( '...and the css put back as the theme has it, the chip goes with the difference; the way back goes with it',
+	drawn.byId('design-theme-changed') === null && drawn.design._isDirty() === false && drawn.byId('design-reset').hidden === true );
+
+drawn.design._edit.css = 'a{}';
+check( '...a changed css is unsaved, and so is another theme with the same setup, and put back neither is',
+	drawn.design._isDirty() === true && ( drawn.design._edit.css = ownCss, drawn.design._isDirty() ) === false
+	&& ( drawn.design._edit.theme = 'magazine', drawn.design._isDirty() ) === true && ( drawn.design._edit.theme = 'mein-theme', drawn.design._isDirty() ) === false
+	&& Object.keys( drawn.design._selection( drawn.design._data ) ).indexOf('theme') !== -1 && Object.keys( drawn.design._selection( drawn.design._data ) ).indexOf('css') !== -1 );
+
+// What is typed stays while the panel lives ---------------------------------------------------------
+
+const typing = themed();
+const typedName = typing.byId('design-theme-name');
+typedName.value = 'Typed name';
+typedName.fire('input');
+typing.byId('design-theme-description').value = 'Typed description';
+typing.byId('design-theme-description').fire('input');
+typing.byId('design-theme-new').value = 'A new one';
+typing.byId('design-theme-new').fire('input');
+typing.tab('Fonts');
+typing.tab('Theme');
+
+check( 'the name and the description typed for the active theme, and the name typed for a new one, are kept when another tab is opened and this one comes back: they are no part of the draft',
+	typing.byId('design-theme-name').value === 'Typed name' && typing.byId('design-theme-description').value === 'Typed description' && typing.byId('design-theme-new').value === 'A new one'
+	&& typing.design._themeText.name === 'Typed name' && typing.design._themeNew === 'A new one' && typing.design._isDirty() === false );
+
+console.log('');
+
+// --- Load ------------------------------------------------------------------------------------------
+//
+// A theme becomes the working copy and a draft: nothing is stored, the way back is shown. A
+// typeface it names that the project has not installed is offered for install first, the ones the
+// list of the Typefaces tab has by name, in one question
+
+console.log( 'Load' );
+
+const withFonts = themeSetup( { title : 'inter', text : 'nowhere-sans' } );
+const loading = themed();
+loading.byId('design-theme-load-magazine').fire('click');
+
+check( 'Load posts design/theme/load with the slug and nothing else, and switches the buttons and the file field of the tab off until it is answered - a second action over the first would answer over a state the screen does not have',
+	JSON.stringify( loading.requests.map( function( request ) { return [ request.endpoint, request.payload ] } ) ) === JSON.stringify( [ [ 'theme/load', { slug : 'magazine' } ] ] )
+	&& themeControls( loading ).length === 19 && themeControls( loading ).every( function( control ) { return control.disabled === true } ) && loading.design._themeBusy === true && loading.line().textContent === '' );
+
+loading.byId('design-theme-export').fire('click');
+loading.byId('design-theme-load-poster').fire('click');
+loading.byId('design-theme-create').fire('click');
+
+check( '...and a press on another button meanwhile posts nothing', loading.requests.length === 1 );
+
+loading.answer( 200, themeLoad( 'magazine', withFonts, [ INTER, NOWHERE ] ) );
+
+check( 'an answer that names typefaces the project has not installed asks once, naming those the list of the Typefaces tab has - one it has not is not offered - and installs the first; nothing is drawn yet',
+	loading.confirms.length === 1 && loading.confirms[0] === say( '/_admin/design/theme/confirm/fonts', 'Inter' )
+	&& loading.requests.length === 1 && loading.requests[0].endpoint === 'webfonts/install' && JSON.stringify( loading.requests[0].payload ) === JSON.stringify( { slug : 'inter' } )
+	&& loading.design._edit.theme === 'mein-theme' && loading.design._themeBusy === true );
+
+loading.answer( 200, { msg : 'Inter 4.0 is installed.' } );
+
+check( '...and when they are installed it reads design/list again, for the selects of the Fonts tab, before the screen is drawn',
+	loading.requests.length === 1 && loading.requests[0].endpoint === 'list' && loading.design._edit.theme === 'mein-theme' && loading.design._data.options.title.indexOf('inter') === -1 );
+
+loading.answer( 200, listing( { theme : 'mein-theme', css : ownCss, active : own, options : optionsWith( [ 'inter' ] ) } ) );
+
+check( 'the theme is then the working copy - its templates, its knobs, its size, its css and the name of the theme; of the typefaces the one that was installed is in the title and the one the list does not have is the face of Nino',
+	loading.design._edit.theme === 'magazine' && loading.design._edit.css === ".nino-section-title { border-bottom-color: red; }\n" && loading.design._edit.parts.header === 'v2' && loading.design._edit.parts.content === 'v3'
+	&& loading.design._edit.parts.buttons === 'v1' && loading.design._edit.knobs.content['card-space'] === 1 && loading.design._edit.size === -1
+	&& loading.design._edit.fonts.title.family === 'inter' && loading.design._edit.fonts.text.family === '' && loading.design._edit.fonts.subtitle.family === 'open-sans' );
+check( '...and the active theme: its record is the theme as it was taken over, the name and description fields are its own, and the screen is the theme, so there is no chip',
+	loading.design._active.slug === 'magazine' && loading.design._active.shipped === true && loading.design._active.css === loading.design._edit.css
+	&& JSON.stringify( loading.design._active.setup ) === JSON.stringify( loading.design._snapshotOf( loading.design._edit ) )
+	&& loading.design._themeText.name === 'Magazine' && loading.byId('design-theme-name').value === 'Magazine' && loading.byId('design-theme-name').disabled === true
+	&& textsOf( loading.byId('design-theme-current-head'), 'design-theme-current-name' ) === 'Magazine' && loading.byId('design-theme-changed') === null
+	&& loading.byId('design-theme-css').value === loading.design._edit.css && hasClass( themeRow( loading, 'magazine' ), 'design-theme-row--active' ) && hasClass( themeRow( loading, 'mein-theme' ), 'design-theme-row--active' ) === false );
+check( '...nothing is stored: the way back is shown and the shell would ask before it lost the draft; the buttons are on again, and the bar says what was installed, that the theme is loaded and which typeface the project lacks - in the colour of a note',
+	loading.design._isDirty() === true && loading.byId('design-reset').hidden === false && loading.design._themeBusy === false && themeControls( loading ).every( function( control ) { return control.disabled === false } )
+	&& loading.line().textContent === [ 'Inter 4.0 is installed.', say( '/_admin/design/theme/msg/loaded', 'Magazine' ), say( '/_admin/design/theme/msg/unavailable', 'nowhere-sans' ) ].join(' ')
+	&& loading.line().className === 'nino-admin-hint' && loading.requests.length === 0 );
+
+loading.tab('Global');
+const loadedHeader = loading.byId('design-set-header');
+check( '...and the other tabs show the loaded values: the frame, the size, the template of the Content with the position of its knob',
+	shown( loadedHeader ) === 'v2' && loading.pressed('Page, root size') === [ -2, -1, 0, 1, 2 ].map( function( at ) { return String( at === -1 ) } ).join() );
+
+loading.tab('Content');
+loading.group('Card');
+check( '...(Content, in the group the knob stands in)',
+	shown( loading.byId('design-set-content') ) === 'v3' && loading.pressed('Card, space') === [ -2, -1, 0, 1, 2 ].map( function( at ) { return String( at === 1 ) } ).join() );
+
+loading.tab('Fonts');
+check( '...(Fonts)', shown( loading.byId('design-font-title-family') ) === 'inter' && shown( loading.byId('design-font-text-family') ) === '' );
+
+// A no installs nothing
+const declining = themed();
+declining.willConfirm( false );
+declining.byId('design-theme-load-magazine').fire('click');
+declining.answer( 200, themeLoad( 'magazine', withFonts, [ INTER, NOWHERE ] ) );
+
+check( 'a no installs nothing and takes the theme over at once: the typefaces that are not here are the face of Nino, and every one of them is named in the bar, those the list has as well',
+	declining.confirms.length === 1 && declining.requests.length === 0 && declining.design._edit.theme === 'magazine' && declining.design._edit.fonts.title.family === '' && declining.design._edit.fonts.text.family === ''
+	&& declining.line().textContent === [ say( '/_admin/design/theme/msg/loaded', 'Magazine' ), say( '/_admin/design/theme/msg/unavailable', 'Inter, nowhere-sans' ) ].join(' ') && declining.line().className === 'nino-admin-hint'
+	&& declining.design._themeBusy === false );
+
+// Two typefaces, installed one after the other; the first fails
+const failingInstall = themed();
+failingInstall.byId('design-theme-load-magazine').fire('click');
+failingInstall.answer( 200, themeLoad( 'magazine', themeSetup( { title : 'inter', text : 'lora' } ), [ INTER, LORA ] ) );
+
+check( 'the typefaces are named together, in the order the theme names them',
+	failingInstall.confirms[0] === say( '/_admin/design/theme/confirm/fonts', 'Inter, Lora' ) && failingInstall.requests[0].endpoint === 'webfonts/install' && failingInstall.requests[0].payload.slug === 'inter' );
+
+failingInstall.answer( 500, { error : 'could not fetch the family' } );
+
+check( '...an install that fails stops the chain - the next one is not asked for - and the list is read all the same; the theme is taken over, with the failure said in red before the rest',
+	failingInstall.requests.length === 1 && failingInstall.requests[0].endpoint === 'list' );
+
+failingInstall.answer( 200, listing( { theme : 'mein-theme', css : ownCss, active : own } ) );
+
+check( '...(the theme is the working copy; the typefaces that did not come are the face of Nino, named)',
+	failingInstall.design._edit.theme === 'magazine' && failingInstall.design._edit.fonts.title.family === '' && failingInstall.design._edit.fonts.text.family === ''
+	&& failingInstall.line().textContent === [ say( '/_admin/design/typefaces/error/install', 'could not fetch the family' ), say( '/_admin/design/theme/msg/loaded', 'Magazine' ), say( '/_admin/design/theme/msg/unavailable', 'Inter, Lora' ) ].join(' ')
+	&& failingInstall.line().className === 'nino-admin-error' );
+
+// The list that cannot be read after the installs
+const unlisted = themed();
+unlisted.byId('design-theme-load-magazine').fire('click');
+unlisted.answer( 200, themeLoad( 'magazine', themeSetup( { title : 'inter' } ), [ INTER ] ) );
+unlisted.answer( 200, { msg : 'Inter 4.0 is installed.' } );
+unlisted.answer( 500, {} );
+
+check( 'a list that cannot be read after the installs does not hold the theme back: it is taken over with the families the selects had before - the typeface that was installed is not among them yet, so the title has the face of Nino and the bar names it',
+	unlisted.requests.length === 0 && unlisted.design._edit.theme === 'magazine' && unlisted.design._edit.fonts.title.family === '' && unlisted.design._themeBusy === false
+	&& unlisted.line().textContent === [ 'Inter 4.0 is installed.', say( '/_admin/design/theme/msg/loaded', 'Magazine' ), say( '/_admin/design/theme/msg/unavailable', 'Inter' ) ].join(' ') );
+
+// Both installed, one after the other
+const installing = themed();
+installing.byId('design-theme-load-magazine').fire('click');
+installing.answer( 200, themeLoad( 'magazine', themeSetup( { title : 'inter', text : 'lora' } ), [ INTER, LORA ] ) );
+installing.answer( 200, { msg : 'Inter 4.0 is installed.' } );
+
+check( 'a yes installs them one after the other: the second is asked for only when the first is answered',
+	installing.requests.length === 1 && installing.requests[0].endpoint === 'webfonts/install' && installing.requests[0].payload.slug === 'lora' );
+
+installing.answer( 200, { msg : 'Lora 1.0 is installed.' } );
+installing.answer( 200, listing( { options : optionsWith( [ 'inter', 'lora' ] ), active : own, theme : 'mein-theme', css : ownCss } ) );
+
+check( '...the list is read after the last, and what each install said is in the bar before the rest',
+	installing.requests.length === 0 && installing.design._edit.theme === 'magazine' && installing.line().textContent.indexOf( 'Inter 4.0 is installed. Lora 1.0 is installed. ' ) === 0
+	&& installing.design._edit.fonts.text.family === 'lora' && installing.design._edit.fonts.title.family === 'inter' );
+
+// A theme with nothing missing is taken over without a question
+const plainLoad = themed();
+plainLoad.byId('design-theme-load-nino').fire('click');
+plainLoad.answer( 200, themeLoad( 'nino', snapshotOf( listing() ), [] ) );
+
+check( 'a theme that names nothing the project lacks is taken over without a question, the bar saying only that it is loaded - and quietly',
+	plainLoad.confirms.length === 0 && plainLoad.requests.length === 0 && plainLoad.design._edit.theme === 'nino' && plainLoad.line().textContent === say( '/_admin/design/theme/msg/loaded', 'Nino' ) && plainLoad.line().className === ''
+	&& plainLoad.design._isDirty() === true && plainLoad.byId('design-theme-changed') === null );
+
+// A load that is refused
+const refusedLoad = themed();
+refusedLoad.byId('design-theme-load-magazine').fire('click');
+refusedLoad.answer( 404, { error : 'there is no such theme', code : 'design_theme' } );
+
+check( 'a load the server refuses says why by the sentence of its code, in red, switches the buttons on again and changes nothing',
+	refusedLoad.line().textContent === TEXT['/_admin/error/design_theme'] && refusedLoad.line().className === 'nino-admin-error' && refusedLoad.design._edit.theme === 'mein-theme'
+	&& themeControls( refusedLoad ).every( function( control ) { return control.disabled === false } ) && refusedLoad.design._isDirty() === false );
+
+// A late answer
+const late = themed();
+late.byId('design-theme-load-magazine').fire('click');
+late.byId('design-reset').fire('click');
+
+check( 'the way back while a load is on its way switches the buttons on again',
+	late.design._themeBusy === false && themeControls( late ).every( function( control ) { return control.disabled === false } ) );
+
+late.answer( 200, themeLoad( 'magazine', themeSetup(), [] ) );
+
+check( '...and the answer that comes after it draws over nothing: the screen is the stored selection and the bar says it was reverted',
+	late.design._edit.theme === 'mein-theme' && late.design._isDirty() === false && late.line().textContent === TEXT['/_admin/design/msg/reverted'] && late.confirms.length === 0 );
+
+console.log('');
+
+// --- Create, save, duplicate, delete -----------------------------------------------------------------
+//
+// A theme is made of the screen under a name, and the screen is then in it - the draft names it, which
+// the way back takes away again, for nothing is stored until the draft is. Saving puts the screen into
+// the theme, with the name and the description as they are typed
+
+console.log( 'Create, save, duplicate, delete' );
+
+const making = panel();
+making.tab('Theme');
+making.byId('design-theme-new').value = 'Mein Name';
+making.byId('design-theme-new').fire('input');
+making.byId('design-theme-create').fire('click');
+
+check( 'Create posts design/theme/create with the name that is typed, an empty description and the working copy: the templates, the knobs, the size, the width, the animation, the fonts, the palette, the theme and the css',
+	making.requests.length === 1 && making.requests[0].endpoint === 'theme/create'
+	&& Object.keys( making.requests[0].payload ).sort().join() === 'colours,css,description,fonts,knobs,motion,name,parts,size,theme,width'
+	&& making.requests[0].payload.name === 'Mein Name' && making.requests[0].payload.description === '' && making.requests[0].payload.theme === '' && making.requests[0].payload.css === ''
+	&& JSON.stringify( making.requests[0].payload.parts ) === JSON.stringify( making.design._edit.parts ) && JSON.stringify( making.requests[0].payload.knobs ) === JSON.stringify( making.design._edit.knobs )
+	&& themeControls( making ).every( function( control ) { return control.disabled === true } ) );
+
+making.answer( 200, { slug : 'mein-name', themes : withTheme( 'mein-name', 'Mein Name', '' ), active : activeOf( 'mein-name', 'Mein Name', '', false, '' ) } );
+
+check( 'the answer makes the draft name the theme - the way back is shown, for nothing is stored - and the card of the active theme shows its name, with its fields: the name it was given and no description; no chip, the screen is the theme',
+	making.design._edit.theme === 'mein-name' && making.design._active.slug === 'mein-name' && making.design._data.theme === '' && making.design._isDirty() === true && making.byId('design-reset').hidden === false
+	&& textsOf( making.byId('design-theme-current-head'), 'design-theme-current-name' ) === 'Mein Name' && making.byId('design-theme-name').value === 'Mein Name' && making.byId('design-theme-description').value === ''
+	&& making.byId('design-theme-changed') === null && making.byId('design-theme-save') !== null );
+check( '...the list is drawn again with the new theme, last, active; the field of the new name is empty again and the buttons are on',
+	slugsOf( making ) === 'nino,magazine,poster,statement,product,office,mein-theme,mein-name' && hasClass( themeRow( making, 'mein-name' ), 'design-theme-row--active' ) && byClass( making.form, 'design-theme-row--active' ).length === 1
+	&& making.byId('design-theme-new').value === '' && making.design._themeNew === '' && themeControls( making ).every( function( control ) { return control.disabled === false } )
+	&& making.line().textContent === say( '/_admin/design/theme/msg/created', 'Mein Name' ) && making.line().className === '' );
+
+making.tab('Content');
+making.moveIn( 'Hero', 'Title (Hero), text size', 1 );
+making.tab('Theme');
+
+check( 'a knob moved afterwards shows the chip "changed" in the head of the card when the tab comes back: the screen is no longer the theme',
+	making.byId('design-theme-changed') !== null && making.byId('design-theme-changed').textContent === 'changed' );
+
+making.byId('design-theme-name').value = 'Neuer Name';
+making.byId('design-theme-name').fire('input');
+making.byId('design-theme-description').value = 'Neue Beschreibung';
+making.byId('design-theme-description').fire('input');
+making.byId('design-theme-save').fire('click');
+
+check( 'Save theme posts design/theme/save with the slug, the two fields as they are typed and the working copy - the name does not change the slug',
+	making.requests.length === 1 && making.requests[0].endpoint === 'theme/save' && making.requests[0].payload.slug === 'mein-name'
+	&& making.requests[0].payload.name === 'Neuer Name' && making.requests[0].payload.description === 'Neue Beschreibung' && making.requests[0].payload.theme === 'mein-name'
+	&& making.requests[0].payload.knobs.content['hero-title'] === 1 && Object.keys( making.requests[0].payload ).sort().join() === 'colours,css,description,fonts,knobs,motion,name,parts,size,slug,theme,width' );
+
+making.answer( 200, {
+	themes : withTheme( 'mein-name', 'Neuer Name', 'Neue Beschreibung' ),
+	active : activeOf( 'mein-name', 'Neuer Name', 'Neue Beschreibung', false, '', JSON.parse( JSON.stringify( making.design._snapshotOf( making.design._edit ) ) ) ),
+} );
+
+check( 'the answer is the theme as the server holds it: the chip goes, the list and the card say the new name and description, the bar says it was saved',
+	making.byId('design-theme-changed') === null && textsOf( making.byId('design-theme-current-head'), 'design-theme-current-name' ) === 'Neuer Name' && textsOf( themeRow( making, 'mein-name' ), 'design-theme-name' ) === 'Neuer Name'
+	&& textsOf( themeRow( making, 'mein-name' ), 'design-theme-description' ) === 'Neue Beschreibung' && making.design._themeText.name === 'Neuer Name' && making.design._themeText.description === 'Neue Beschreibung'
+	&& making.design._active.name === 'Neuer Name' && making.line().textContent === say( '/_admin/design/theme/msg/saved', 'Neuer Name' ) && making.design._data.theme === '' );
+
+// Enter in the field of the new name
+const entering = panel();
+entering.tab('Theme');
+entering.byId('design-theme-new').value = 'By enter';
+entering.byId('design-theme-new').fire('input');
+press( entering.byId('design-theme-new'), 'Enter' );
+
+check( 'Enter in the field of the new name creates, the way the button does', entering.requests.length === 1 && entering.requests[0].endpoint === 'theme/create' && entering.requests[0].payload.name === 'By enter' );
+
+// Saving the theme that is stored changes what the way back goes back to
+const stored = themed();
+stored.byId('design-theme-name').value = 'Renamed';
+stored.byId('design-theme-name').fire('input');
+stored.byId('design-theme-save').fire('click');
+stored.answer( 200, { themes : stored.design._data.themes.map( function( theme ) { return theme.slug === 'mein-theme' ? Object.assign( {}, theme, { name : 'Renamed' } ) : theme } ), active : activeOf( 'mein-theme', 'Renamed', 'The theme of this project', false, ownCss ) } );
+stored.design._edit.css = 'a{}';
+stored.byId('design-reset').fire('click');
+
+check( 'the theme the stored setup names, saved, is what the way back goes back to: the name it has now',
+	stored.design._active.name === 'Renamed' && stored.design._data.active.name === 'Renamed' && stored.design._themeText.name === 'Renamed' && stored.design._edit.css === ownCss && stored.design._isDirty() === false );
+
+// Duplicate
+const copying = themed();
+copying.byId('design-theme-duplicate-magazine').fire('click');
+
+check( 'Duplicate posts design/theme/duplicate with the slug - a shipped theme too, which is how it is changed', copying.requests.length === 1 && copying.requests[0].endpoint === 'theme/duplicate'
+	&& JSON.stringify( copying.requests[0].payload ) === JSON.stringify( { slug : 'magazine' } ) );
+
+copying.answer( 200, { slug : 'magazine-copy', themes : withTheme( 'magazine-copy', 'Magazine copy', 'Lifted cards and a drop cap' ) } );
+
+check( '...the list is drawn again with the copy in it and nothing is loaded: the working copy and the active theme are as they were; the bar names both',
+	slugsOf( copying ) === 'nino,magazine,poster,statement,product,office,mein-theme,magazine-copy' && copying.design._edit.theme === 'mein-theme' && copying.design._isDirty() === false
+	&& hasClass( themeRow( copying, 'mein-theme' ), 'design-theme-row--active' ) && themeButtons( copying, 'magazine-copy' ).length === 3
+	&& copying.line().textContent === say( '/_admin/design/theme/msg/duplicated', 'Magazine', 'Magazine copy' ) && themeControls( copying ).every( function( control ) { return control.disabled === false } ) );
+
+// Delete
+const deleting = themed();
+deleting.willConfirm( false );
+deleting.byId('design-theme-delete-mein-theme').fire('click');
+
+check( 'Delete asks first, naming the theme, and a no does nothing',
+	deleting.confirms.length === 1 && deleting.confirms[0] === say( '/_admin/design/theme/confirm/delete', 'My theme' ) && deleting.requests.length === 0 && deleting.design._themeBusy === false );
+
+deleting.willConfirm( true );
+deleting.byId('design-theme-delete-mein-theme').fire('click');
+
+check( '...a yes posts design/theme/delete with the slug', deleting.requests.length === 1 && deleting.requests[0].endpoint === 'theme/delete' && JSON.stringify( deleting.requests[0].payload ) === JSON.stringify( { slug : 'mein-theme' } ) );
+
+deleting.answer( 200, { themes : THEMES.filter( function( theme ) { return theme.shipped === true } ), theme : '' } );
+
+check( 'the answer takes the theme out of the list; it was the active one, so the screen has none now: the card says so, and the stored setup names none either, so the screen is still the stored selection',
+	slugsOf( deleting ) === 'nino,magazine,poster,statement,product,office' && deleting.design._edit.theme === '' && deleting.design._active === null && deleting.design._data.theme === '' && deleting.design._data.active === null
+	&& textsOf( deleting.byId('design-theme-current'), 'nino-admin-hint' ) === TEXT['/_admin/design/theme/current/none'] && deleting.byId('design-theme-name') === null && byClass( deleting.form, 'design-theme-active' ).length === 0
+	&& deleting.design._themeText.name === '' && deleting.design._isDirty() === false && deleting.line().textContent === say( '/_admin/design/theme/msg/deleted', 'My theme' ) );
+
+// Deleting a theme that is not the active one leaves the screen alone
+const deletingOther = themed( { themes : withTheme( 'other', 'Other', '' ) } );
+deletingOther.byId('design-theme-delete-other').fire('click');
+deletingOther.answer( 200, { themes : THEMES.map( function( theme ) { return Object.assign( {}, theme ) } ), theme : 'mein-theme' } );
+
+check( '...a theme that is not the active one is taken out of the list and the screen stays as it is, the stored setup still naming its theme',
+	slugsOf( deletingOther ) === 'nino,magazine,poster,statement,product,office,mein-theme' && deletingOther.design._edit.theme === 'mein-theme' && deletingOther.design._active.slug === 'mein-theme'
+	&& deletingOther.design._data.theme === 'mein-theme' && deletingOther.design._data.active.slug === 'mein-theme' && deletingOther.byId('design-theme-name').value === 'My theme' );
+
+// A delete that comes after the screen was reverted
+const lateDelete = themed();
+lateDelete.byId('design-theme-delete-mein-theme').fire('click');
+lateDelete.byId('design-reset').fire('click');
+lateDelete.answer( 200, { themes : [], theme : '' } );
+
+check( '...and an answer that comes after the way back changes nothing on the screen', slugsOf( lateDelete ) === 'nino,magazine,poster,statement,product,office,mein-theme' && lateDelete.design._edit.theme === 'mein-theme' );
+
+console.log('');
+
+
+// --- Export and import ----------------------------------------------------------------------------------
+//
+// A theme leaves as a file the way the Language panel's export does - a blob, a link clicked and taken
+// away, the address given back - and comes in through the file field: read as text, posted whole
+
+console.log( 'Export and import' );
+
+const exporting = themed();
+exporting.byId('design-theme-export').fire('click');
+
+check( 'Export posts design/theme/export with the slug of the active theme', exporting.requests.length === 1 && exporting.requests[0].endpoint === 'theme/export'
+	&& JSON.stringify( exporting.requests[0].payload ) === JSON.stringify( { slug : 'mein-theme' } ) );
+
+exporting.answer( 200, { json : '{\n\t"format": 1\n}', file : 'nino-theme-mein-theme.json' } );
+
+check( '...and turns the answer into a download: a blob of its text as json, an address for it, a link to the address with the name of the file, clicked while it stands in the document and taken out of it after, the address given back',
+	exporting.blobs.length === 1 && exporting.blobs[0].parts.join() === '{\n\t"format": 1\n}' && exporting.blobs[0].type === 'application/json'
+	&& exporting.urls.made.length === 1 && exporting.urls.made[0] === exporting.blobs[0]
+	&& exporting.downloads.length === 1 && exporting.downloads[0].href === 'blob:design/1' && exporting.downloads[0].download === 'nino-theme-mein-theme.json' && exporting.downloads[0].mounted === true
+	&& exporting.docBody.children.length === 0 && exporting.urls.revoked.join() === 'blob:design/1' );
+check( '...the bar says it was exported, naming the theme, and the buttons are on again',
+	exporting.line().textContent === say( '/_admin/design/theme/msg/exported', 'My theme' ) && themeControls( exporting ).every( function( control ) { return control.disabled === false } ) );
+
+const importing = themed();
+importing.byId('design-theme-import').files = [];
+importing.byId('design-theme-import').fire('change');
+
+check( 'a file field that changed to no file does nothing', importing.readers.length === 0 && importing.requests.length === 0 );
+
+const picked = { name : 'theme.json' };
+importing.byId('design-theme-import').files = [ picked ];
+importing.byId('design-theme-import').value = 'C:\\fakepath\\theme.json';
+importing.byId('design-theme-import').fire('change');
+
+check( 'a file is read as text - nothing is posted before the read is done',
+	importing.readers.length === 1 && importing.readers[0].file === picked && importing.requests.length === 0 );
+
+importing.readers[0].finish( '{"format":1,"name":"Imported"}' );
+
+check( '...the field is emptied, so that the same file can be chosen again, and design/theme/import is posted with the text, as it is',
+	importing.byId('design-theme-import').value === '' && importing.requests.length === 1 && importing.requests[0].endpoint === 'theme/import'
+	&& JSON.stringify( importing.requests[0].payload ) === JSON.stringify( { json : '{"format":1,"name":"Imported"}' } ) && importing.byId('design-theme-import').disabled === true );
+
+importing.answer( 200, { slug : 'imported', themes : withTheme( 'imported', 'Imported', '' ) } );
+
+check( '...the list is drawn again with the theme that came in - not loaded: the screen is as it was - and the bar says it was imported',
+	slugsOf( importing ) === 'nino,magazine,poster,statement,product,office,mein-theme,imported' && importing.design._edit.theme === 'mein-theme' && importing.design._isDirty() === false
+	&& importing.line().textContent === say( '/_admin/design/theme/msg/imported', 'Imported' ) && themeControls( importing ).every( function( control ) { return control.disabled === false } ) );
+
+importing.byId('design-theme-import').files = [ picked ];
+importing.byId('design-theme-import').fire('change');
+importing.readers[1].fail();
+
+check( 'a file that cannot be read is told by the sentence of the import, in red, and posts nothing',
+	importing.requests.length === 0 && importing.line().textContent === TEXT['/_admin/design/theme/error/import'] && importing.line().className === 'nino-admin-error' );
+
+// A refused import says why by the code
+const refusing = themed();
+refusing.byId('design-theme-import').files = [ picked ];
+refusing.byId('design-theme-import').fire('change');
+refusing.readers[0].finish( 'not json' );
+refusing.answer( 400, { error : 'that is no theme file of this feature', code : 'design_file' } );
+
+check( 'a file that is no theme file is told by the sentence of its code, in red; the buttons are on again and the list is as it was',
+	refusing.line().textContent === TEXT['/_admin/error/design_file'] && refusing.line().className === 'nino-admin-error' && themeControls( refusing ).every( function( control ) { return control.disabled === false } )
+	&& slugsOf( refusing ) === 'nino,magazine,poster,statement,product,office,mein-theme' );
+
+refusing.byId('design-theme-import').files = [ picked ];
+refusing.byId('design-theme-import').fire('change');
+refusing.readers[1].finish( '{"name":"Imported"}' );
+refusing.answer( 409, { error : 'a theme with the slug "imported" exists already', code : 'design_taken', params : [ 'imported' ] } );
+
+check( '...a slug that is taken says which, the slug in the sentence of its code', refusing.line().textContent === say( '/_admin/error/design_taken', 'imported' ) && refusing.line().textContent.indexOf('imported') !== -1 );
+
+console.log('');
+
+
+// --- What goes wrong ------------------------------------------------------------------------------------
+//
+// A failure of an action says its sentence in the line of the bar, in red: the sentence of its code
+// where the server gave one a person can cause, else the sentence the server wrote with the status in
+// front; the workbench's text of the action stands behind both for an answer that says nothing. The
+// buttons are on again either way and the screen is as it was
+
+console.log( 'What goes wrong' );
+
+const actions = {
+	load 				: function( screen ) { screen.byId('design-theme-load-magazine').fire('click') },
+	create			: function( screen ) { screen.byId('design-theme-new').value = 'x'; screen.byId('design-theme-new').fire('input'); screen.byId('design-theme-create').fire('click') },
+	save 				: function( screen ) { screen.byId('design-theme-save').fire('click') },
+	duplicate		: function( screen ) { screen.byId('design-theme-duplicate-magazine').fire('click') },
+	'delete'		: function( screen ) { screen.byId('design-theme-delete-mein-theme').fire('click') },
+	'export'		: function( screen ) { screen.byId('design-theme-export').fire('click') },
+	'import'		: function( screen ) {
+		screen.byId('design-theme-import').files = [ picked ];
+		screen.byId('design-theme-import').fire('change');
+		screen.readers[0].finish( '{}' );
+	},
+};
+
+let said = [];
+let spokenFailures = [];
+let coded = [];
+let unchanged = [];
+
+Object.keys( actions ).forEach( function( action ) {
+
+	const bare = themed();
+	actions[action]( bare );
+	bare.answer( 500, {} );
+
+	if( bare.line().textContent !== '(500) '+ TEXT['/_admin/design/theme/error/'+ action] || bare.line().className !== 'nino-admin-error' || bare.line().title !== bare.line().textContent )
+		said.push( action+ ': '+ bare.line().textContent );
+
+	const spoken = themed();
+	actions[action]( spoken );
+	spoken.answer( 500, { error : 'could not write /data/themes/mein-theme.php' } );
+
+	if( spoken.line().textContent !== '(500) could not write /data/themes/mein-theme.php' || spoken.line().className !== 'nino-admin-error' )
+		spokenFailures.push( action+ ': '+ spoken.line().textContent );
+
+	const refusedBy = themed();
+	actions[action]( refusedBy );
+	refusedBy.answer( 400, { error : 'the name has no letter or digit in it', code : 'design_name' } );
+
+	if( refusedBy.line().textContent !== TEXT['/_admin/error/design_name'] || refusedBy.line().className !== 'nino-admin-error' )
+		coded.push( action+ ': '+ refusedBy.line().textContent );
+
+	if( themeControls( refusedBy ).some( function( control ) { return control.disabled === true } ) || refusedBy.design._themeBusy === true || refusedBy.design._isDirty() === true
+		|| refusedBy.design._edit.theme !== 'mein-theme' || refusedBy.requests.length !== 0 || refusedBy.confirms.length !== ( action === 'delete' ? 1 : 0 ) )
+		unchanged.push( action );
+} );
+
+check( 'an action that fails without a word of its own says the sentence of its key behind the status, in red, with the whole of it as the title of the line - for each of the seven'+ ( said.length === 0 ? '' : ' - '+ said.join(' | ') ),
+	Object.keys( actions ).length === 7 && said.length === 0 );
+check( '...the sentence of the server where it wrote one, the same way'+ ( spokenFailures.length === 0 ? '' : ' - '+ spokenFailures.join(' | ') ), spokenFailures.length === 0 );
+check( '...and a failure with a code says the sentence of the code, for each of the seven'+ ( coded.length === 0 ? '' : ' - '+ coded.join(' | ') ), coded.length === 0 );
+check( '...and the buttons are on again and the screen is as it was: no draft, no theme changed, nothing asked for after it'+ ( unchanged.length === 0 ? '' : ' - '+ unchanged.join() ), unchanged.length === 0 );
+
+console.log('');
+
+
 // --- The answer design/list really gives ---------------------------------------------------
 //
 // design-smoke.php writes down what the server answered for a project whose selection
@@ -4297,7 +5135,7 @@ else {
 		unsaid = unsaid.concat( unwritten( whole ) );
 	} );
 
-	check( 'the server\'s answer draws all seven tabs, each with controls in it and the state of the files on the chip in the bar'+ ( failed.length === 0 ? '' : ' - threw: '+ failed.join() ),
+	check( 'the server\'s answer draws all eight tabs, each with controls in it and the state of the files on the chip in the bar'+ ( failed.length === 0 ? '' : ' - threw: '+ failed.join() ),
 		drawn.join() === TABS.join() && failed.length === 0 && blank.length === 0 );
 	check( '...and every word the screen shows for it is one the panel\'s texts carry - the effects, the families, the knobs, the modes'+ ( unsaid.length === 0 ? '' : ' - missing: '+ unsaid.slice( 0, 4 ).join() ), unsaid.length === 0 );
 
@@ -4399,7 +5237,7 @@ else {
 	const sent = whole.requests[whole.requests.length - 1];
 
 	check( 'the selection the screen posts is made of exactly the keys design/save and design/preview take, each of the shape the server answered it in',
-		sent.endpoint === 'preview' && Object.keys( sent.payload ).sort().join() === 'colours,fonts,full,knobs,motion,parts,size,width'
+		sent.endpoint === 'preview' && Object.keys( sent.payload ).sort().join() === 'colours,css,fonts,full,knobs,motion,parts,size,theme,width'
 		&& JSON.stringify( sent.payload.parts ) === JSON.stringify( ( function() { const parts = {}; real.parts.forEach( function( row ) { parts[row.part] = row.set } ); return parts } )() )
 		&& JSON.stringify( sent.payload.knobs ) === JSON.stringify( real.knobs ) && JSON.stringify( sent.payload.fonts ) === JSON.stringify( real.fonts )
 		&& JSON.stringify( sent.payload.motion ) === JSON.stringify( real.motion ) && sent.payload.size === real.size && sent.payload.width === real.width
@@ -4439,6 +5277,165 @@ else {
 			slugs.every( function( slug, at ) { return typed.typeset.made[at].source === 'url("'+ shelved.installed[slug].face+ '")' && shelved.installed[slug].face.indexOf('[[') === -1 } )
 			&& unwritten( typed ).length === 0 );
 	}
+}
+
+console.log('');
+
+// --- What the actions of the Theme tab really answered -------------------------------------------------
+//
+// design-smoke.php writes down what the server answered to each of them - the list with and without an
+// active theme, a theme loaded and one that names typefaces the project has not installed, and the
+// answers of a create, a save, a duplicate, a delete, an export and an import - and hands the file to
+// this run (DESIGN_THEMES). The stand-in above is what the tab is drawn from in the checks before; this
+// is the half that keeps it honest: the same tab, drawn from, and driven by, the answers of the server
+
+console.log( 'The answers of the Theme tab' );
+
+const themesFile = process.env.DESIGN_THEMES || '';
+
+if( themesFile === '' || fs.existsSync( themesFile ) === false )
+	console.log( '  --  no answers of the Theme tab were handed to this run (DESIGN_THEMES), so the tab is not drawn from the real ones' );
+else {
+
+	const answered = JSON.parse( fs.readFileSync( themesFile, 'utf8' ) );
+	const none = answered.none;
+	const activeList = answered.active;
+	const wholeTab = function( list ) {
+		const screen = panel( list, { whole : true } );
+		screen.tab('Theme');
+		return screen;
+	};
+	const listed = function( themes ) { return themes.map( function( theme ) { return theme.slug } ).join() };
+
+	check( 'the answers are in the shape the tab reads: the list gives the theme the setup names, its css, the themes and the active one beside everything else; a load the theme with its setup, its css, the typefaces missing and the notes; a create, a save, a duplicate, a delete, an export and an import what the tab takes over',
+		none.theme === '' && none.css === '' && none.active === null && Array.isArray( none.themes ) && none.themes.length === 6
+		&& Object.keys( none.themes[0] ).join() === 'slug,name,description,shipped' && Object.keys( activeList.active ).join() === 'slug,name,description,shipped,setup,css'
+		&& Object.keys( activeList.active.setup ).join() === 'size,width,motion,parts,knobs,fonts,colours'
+		&& Object.keys( answered.load ).join() === 'slug,name,description,shipped,setup,css,missing,notes' && Object.keys( answered.load.setup ).join() === 'size,width,motion,parts,knobs,fonts,colours'
+		&& Object.keys( answered.loadMissing.missing[0] ).join() === 'slug,name,inList'
+		&& Object.keys( answered.created ).join() === 'slug,themes,active' && Object.keys( answered.saved ).join() === 'themes,active' && Object.keys( answered.duplicated ).join() === 'slug,themes'
+		&& Object.keys( answered.deleted ).join() === 'themes,theme' && Object.keys( answered.exported ).join() === 'json,file' && Object.keys( answered.imported ).join() === 'slug,themes' );
+
+	// The list with no theme
+	const noneTab = wholeTab( none );
+
+	check( 'the tab is drawn from the list with no theme: a row for each of the six, shipped, in the order given, with the name and the description the server wrote in the language of the workbench; none is active, none can be deleted, and the card of the active theme says there is none',
+		slugsOf( noneTab ) === listed( none.themes ) && none.themes.every( function( theme ) {
+			const row = themeRow( noneTab, theme.slug );
+			return textsOf( row, 'design-theme-name' ) === theme.name && textsOf( row, 'design-theme-description' ) === theme.description && byClass( row, 'design-theme-shipped' ).length === 1 && themeButtons( noneTab, theme.slug ).length === 2;
+		} )
+		&& byClass( noneTab.form, 'design-theme-active' ).length === 0 && textsOf( noneTab.byId('design-theme-current'), 'nino-admin-hint' ) === TEXT['/_admin/design/theme/current/none'] );
+
+	// The list with a theme of the project active
+	const activeTab = wholeTab( activeList );
+	const activeSlug = activeList.active.slug;
+
+	check( 'drawn from the list with a theme of the project active: the shipped ones first and that one after them, with the chip and the mark, a Delete on it alone; the head says its name, the fields hold its name and its description',
+		slugsOf( activeTab ) === listed( activeList.themes ) && activeList.themes.slice( 0, 6 ).every( function( theme ) { return theme.shipped === true } ) && activeList.themes.slice( 6 ).every( function( theme ) { return theme.shipped === false } )
+		&& hasClass( themeRow( activeTab, activeSlug ), 'design-theme-row--active' ) && byClass( activeTab.form, 'design-theme-row--active' ).length === 1 && textsOf( themeRow( activeTab, activeSlug ), 'design-theme-active' ) === 'active'
+		&& activeList.themes.every( function( theme ) { return ( activeTab.byId('design-theme-delete-'+ theme.slug) !== null ) === ( theme.shipped === false ) } )
+		&& textsOf( activeTab.byId('design-theme-current-head'), 'design-theme-current-name' ) === activeList.active.name
+		&& activeTab.byId('design-theme-name').value === activeList.active.name && activeTab.byId('design-theme-description').value === activeList.active.description && activeTab.byId('design-theme-name').disabled === false );
+	check( '...the css field holds the css the setup carries, which is not the theme\'s: the chip says the screen differs from the theme; the css of the theme in its place and the chip goes - the setup the list gives and the setup of the theme\'s file are the same, to the last key',
+		activeTab.byId('design-theme-css').value === activeList.css && activeList.css !== activeList.active.css && activeTab.byId('design-theme-changed') !== null && activeTab.design._themeChanged() === true
+		&& ( activeTab.design._edit.css = activeList.active.css, activeTab.design._themeChanged() ) === false
+		&& JSON.stringify( activeTab.design._canonical( activeTab.design._snapshotOf( activeTab.design._edit ) ) ) === JSON.stringify( activeTab.design._canonical( activeList.active.setup ) ) );
+
+	// Load
+	const loaded = wholeTab( none );
+	loaded.byId('design-theme-load-'+ answered.load.slug).fire('click');
+	loaded.answer( 200, answered.load );
+
+	const offered = function( screen, role ) { return screen.design._data.options[role] };
+
+	check( 'a theme the server loaded is the working copy as it came: no question, the templates, the knobs, the size and the width, the animation and the palette as the file holds them - and of the fonts the families the roles are offered, the others the face of Nino',
+		loaded.confirms.length === 0 && loaded.requests.length === 0 && loaded.design._edit.theme === answered.load.slug && loaded.design._edit.css === answered.load.css
+		&& JSON.stringify( loaded.design._edit.parts ) === JSON.stringify( answered.load.setup.parts ) && JSON.stringify( loaded.design._edit.knobs ) === JSON.stringify( answered.load.setup.knobs )
+		&& loaded.design._edit.size === answered.load.setup.size && loaded.design._edit.width === answered.load.setup.width && JSON.stringify( loaded.design._edit.motion ) === JSON.stringify( answered.load.setup.motion )
+		&& JSON.stringify( loaded.design._edit.colours ) === JSON.stringify( answered.load.setup.colours )
+		&& Object.keys( answered.load.setup.fonts ).every( function( role ) { return loaded.design._edit.fonts[role].family === ( offered( loaded, role ).indexOf( answered.load.setup.fonts[role].family ) !== -1 ? answered.load.setup.fonts[role].family : '' ) } ) );
+	check( '...it is the active theme - shipped, so its name and description are read-only - as it was taken over, so the screen is the theme and there is no chip; the way back is shown, the bar says it was loaded and the shortcodes of the css were not touched',
+		loaded.design._active.slug === answered.load.slug && loaded.design._active.shipped === true && loaded.byId('design-theme-name').disabled === true && loaded.byId('design-theme-name').value === answered.load.name
+		&& loaded.byId('design-theme-changed') === null && loaded.design._themeChanged() === false && loaded.design._isDirty() === true && loaded.byId('design-reset').hidden === false
+		&& loaded.line().textContent.indexOf( say( '/_admin/design/theme/msg/loaded', answered.load.name ) ) === 0 && loaded.byId('design-theme-css').value === answered.load.css );
+
+	loaded.tab('Content');
+	check( '...and the other tabs show it: the template of the Content is the theme\'s',
+		shown( loaded.byId('design-set-content') ) === answered.load.setup.parts.content );
+
+	// A theme that names typefaces the project has not installed
+	const withMissing = wholeTab( Object.assign( {}, none, { themes : answered.created.themes } ) );
+	const askable = answered.loadMissing.missing.filter( function( entry ) { return entry.inList === true } );
+	withMissing.byId('design-theme-load-'+ answered.loadMissing.slug).fire('click');
+	withMissing.answer( 200, answered.loadMissing );
+
+	check( 'a theme that names typefaces the project has not installed asks for those the list has, by the name the list gives them - the one it does not have is not asked for - and a yes posts the install of the first',
+		askable.length === 1 && answered.loadMissing.missing.length === 2 && withMissing.confirms.length === 1 && withMissing.confirms[0] === say( '/_admin/design/theme/confirm/fonts', askable.map( function( entry ) { return entry.name } ).join(', ') )
+		&& withMissing.requests.length === 1 && withMissing.requests[0].endpoint === 'webfonts/install' && withMissing.requests[0].payload.slug === askable[0].slug );
+
+	// Create, save, duplicate, delete, export and import
+	const created = wholeTab( none );
+	created.byId('design-theme-new').value = answered.created.active.name;
+	created.byId('design-theme-new').fire('input');
+	created.byId('design-theme-create').fire('click');
+	created.answer( 200, answered.created );
+
+	check( 'the answer of a create is the list with the theme in it and the theme as the server holds it: the rows are the list, the draft names the new theme and the card shows its name',
+		slugsOf( created ) === listed( answered.created.themes ) && created.design._edit.theme === answered.created.slug && created.design._active.slug === answered.created.slug
+		&& textsOf( created.byId('design-theme-current-head'), 'design-theme-current-name' ) === answered.created.active.name && created.byId('design-theme-name').value === answered.created.active.name
+		&& created.byId('design-theme-description').value === answered.created.active.description && hasClass( themeRow( created, answered.created.slug ), 'design-theme-row--active' ) );
+
+	const saved = wholeTab( activeList );
+	saved.byId('design-theme-save').fire('click');
+	saved.answer( 200, answered.saved );
+
+	check( 'the answer of a save: the list, and the theme as it is now - the name and the description the fields have, the chip as the setup of the file against the screen says',
+		slugsOf( saved ) === listed( answered.saved.themes ) && saved.design._active.slug === answered.saved.active.slug && saved.design._themeText.name === answered.saved.active.name
+		&& saved.byId('design-theme-description').value === answered.saved.active.description && saved.line().textContent === say( '/_admin/design/theme/msg/saved', answered.saved.active.name ) );
+
+	const copied = wholeTab( answered.created.themes.length > 0 ? Object.assign( {}, none, { themes : answered.created.themes } ) : none );
+	copied.byId('design-theme-duplicate-magazine').fire('click');
+	copied.answer( 200, answered.duplicated );
+
+	check( 'the answer of a duplicate: the list with the copy in it, which has all three buttons, a project theme; nothing is loaded and the bar names the theme and its copy',
+		slugsOf( copied ) === listed( answered.duplicated.themes ) && themeButtons( copied, answered.duplicated.slug ).length === 3 && copied.design._edit.theme === ''
+		&& copied.line().textContent === say( '/_admin/design/theme/msg/duplicated', none.themes.filter( function( theme ) { return theme.slug === 'magazine' } )[0].name,
+			answered.duplicated.themes.filter( function( theme ) { return theme.slug === answered.duplicated.slug } )[0].name ) );
+
+	const deleted = wholeTab( activeList );
+	deleted.byId('design-theme-delete-'+ activeSlug).fire('click');
+	deleted.answer( 200, answered.deleted );
+
+	check( 'the answer of a delete: the list as the server has it, and the theme the setup names now - none, since it was the one deleted: the screen has no active theme and the card says so',
+		slugsOf( deleted ) === listed( answered.deleted.themes ) && answered.deleted.theme === '' && deleted.design._edit.theme === '' && deleted.design._data.theme === '' && deleted.design._active === null
+		&& textsOf( deleted.byId('design-theme-current'), 'nino-admin-hint' ) === TEXT['/_admin/design/theme/current/none'] && deleted.byId('design-theme-name') === null );
+
+	const exported = wholeTab( none );
+	exported.design._edit.theme = answered.load.slug;
+	exported.design._active = Object.assign( {}, answered.load, { setup : exported.design._snapshotOf( exported.design._edit ) } );
+	exported.design._paintTheme();
+	exported.byId('design-theme-export').fire('click');
+	exported.answer( 200, answered.exported );
+
+	check( 'the answer of an export is the text of the file and the name to save it under: a blob of the text as it is, a link with that name',
+		exported.blobs.length === 1 && exported.blobs[0].parts[0] === answered.exported.json && /^nino-theme-[a-z0-9-]+\.json$/.test( answered.exported.file ) && exported.downloads.length === 1
+		&& exported.downloads[0].download === answered.exported.file && JSON.parse( answered.exported.json ).format === 1 );
+
+	const imported = wholeTab( none );
+	imported.byId('design-theme-import').files = [ { name : answered.exported.file } ];
+	imported.byId('design-theme-import').fire('change');
+	imported.readers[0].finish( answered.exported.json );
+	imported.answer( 200, answered.imported );
+
+	check( 'the text of an export is posted as it is, whole, and the answer of the import is the list with the theme in it - not loaded',
+		imported.requests.length === 0 && slugsOf( imported ) === listed( answered.imported.themes ) && imported.design._edit.theme === '' && themeButtons( imported, answered.imported.slug ).length === 3 );
+
+	check( 'every word the tab shows is one the panel\'s texts carry',
+		[ noneTab, activeTab, loaded, created, deleted ].every( function( screen ) {
+			return descendants( screen.pane ).every( function( el ) {
+				return [ el.textContent, el.getAttribute('title'), el.getAttribute('aria-label') ].every( function( text ) { return typeof text !== 'string' || text.indexOf('/_admin/') !== 0 } );
+			} );
+		} ) );
 }
 
 console.log('');

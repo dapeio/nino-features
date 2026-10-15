@@ -18,13 +18,16 @@ namespace Nino\Modules\Design {
 	 *										feature.php so a backup carries it - it is the one thing
 	 *										here that cannot be worked out again from what is on disk.
 	 *
-	 *										One model for the six tabs of the panel that choose
-	 *										something (the seventh, Typefaces, installs families and
+	 *										One model for the seven tabs of the panel that choose
+	 *										something (the eighth, Typefaces, installs families and
 	 *										keeps nothing here): the five templates (header and footer
 	 *										bring markup, content, buttons and components are one
 	 *										stylesheet each), the root size, the width of the page and
 	 *										its animation, a position for every named knob of the
-	 *										three template tabs, the five font roles and the palette.
+	 *										three template tabs, the five font roles and the palette -
+	 *										and, for the Theme tab, the slug of the theme these choices
+	 *										were taken from and the custom css that goes with them (see
+	 *										Themes: a theme is this whole setup kept under a name).
 	 *
 	 *										Every value is normalised against the library that is
 	 *										actually present: a part naming a set that is not there
@@ -48,8 +51,10 @@ namespace Nino\Modules\Design {
 			dropped and named, and a position is a position of five	*/
 		public const int FORMAT = 2;
 
-		// The keys of the file, in the order they are written
-		public const array KEYS = [ 'format', 'size', 'width', 'motion', 'parts', 'knobs', 'fonts', 'colours', 'compiled' ];
+		/*	The keys of the file, in the order they are written. `theme` and `css` came
+			with the Theme tab and need no new format: a file without them reads as no
+			theme and no css, which is what every project had before	*/
+		public const array KEYS = [ 'format', 'theme', 'size', 'width', 'motion', 'parts', 'knobs', 'fonts', 'colours', 'css', 'compiled' ];
 
 		/*	The parts, in the order they are compiled - which is also the order
 			they are shown in. `frame` parts bring a template and are chosen from
@@ -244,8 +249,8 @@ namespace Nino\Modules\Design {
 		/**
 		 *	Everything a fresh install starts from: the first set of every part,
 		 *	every knob in the middle, the delivered root size, the width and the
-		 *	animation of Nino.css, the face the base unit delivers and the
-		 *	framework's own colours
+		 *	animation of Nino.css, the face the base unit delivers, the
+		 *	framework's own colours, no theme and no css of its own
 		 *
 		 *	@param		string		$libraryDir		The feature's library
 		 *
@@ -265,6 +270,8 @@ namespace Nino\Modules\Design {
 
 			return [
 				'format' 	=> self::FORMAT,
+				// The slug of the theme the choices were taken from, '' for none
+				'theme' 	=> '',
 				'size' 		=> 0,
 				'width' 	=> 0,
 				// '' is what Nino.css does by itself: a fade and a rise, as fast as it is
@@ -277,6 +284,8 @@ namespace Nino\Modules\Design {
 				// a setup that never opened the Colours tab compiles to the palette
 				// library/base.css already declares
 				'colours'	=> Colours::normalize( [] ),
+				// The custom css, which the compiler writes as the last section of the sheet
+				'css' 		=> '',
 				'compiled'=> [],
 			];
 		}
@@ -477,6 +486,12 @@ namespace Nino\Modules\Design {
 		 *	The format is not looked at here: a request names none, and read() is
 		 *	the one place a file is held to it.
 		 *
+		 *	The theme is kept where it names a theme that is there, shipped or the
+		 *	project's, and is none otherwise, with a note. The css is kept as text,
+		 *	its line breaks all one kind. What the css may carry is not judged here:
+		 *	a stored file is read as it is, and the refusals belong to the three
+		 *	doors a request comes through (see Themes::refusal()).
+		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data - the families a project installed are read off its disk
 		 *	@param		array 		$raw					Whatever the file held, or the screen posted
 		 *	@param		string		$libraryDir		The feature's library
@@ -491,6 +506,17 @@ namespace Nino\Modules\Design {
 			foreach( array_keys( $raw ) as $key )
 				if( in_array( $key, self::KEYS, true ) === false )
 					$notes[] = 'the key "'. self::shown( $key ). '" is none of this version\'s - dropped';
+
+			// A theme that is not there is no theme - the one that was deleted since, or a file that was edited by hand
+			$theme = $raw['theme'] ?? '';
+
+			if( is_string( $theme ) === true && $theme !== '' ) {
+
+				if( Themes::exists( $appData, $libraryDir, $theme ) === true )
+					$setup['theme'] = $theme;
+				else
+					$notes[] = 'the theme "'. self::shown( $theme ). '" is not there - none is active';
+			}
 
 			$setup['size'] = self::position( $raw['size'] ?? 0 );
 			$setup['width'] = self::position( $raw['width'] ?? 0 );
@@ -592,6 +618,10 @@ namespace Nino\Modules\Design {
 				them a step word - and a second copy of those tables in this file is a
 				second place for them to drift	*/
 			$setup['colours'] = Colours::normalize( is_array( $raw['colours'] ?? null ) ? $raw['colours'] : [] );
+
+			// The css as text, whatever the line breaks of the machine it was typed or pasted on
+			$css = $raw['css'] ?? '';
+			$setup['css'] = is_string( $css ) === true ? str_replace( [ "\r\n", "\r" ], "\n", $css ) : '';
 
 			$setup['compiled'] = is_array( $raw['compiled'] ?? null ) ? $raw['compiled'] : [];
 
