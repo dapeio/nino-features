@@ -1,21 +1,26 @@
 /*	Nino Design - buttons v3
  *
  *	@name			Square
- *	@description	No radius, spaced letters and a heavier border. For sites that want to look built rather than designed.
+ *	@description	No radius, spaced letters and a 2px line. The corners are the construction, so there is no knob for them.
+ *	@name-de		Eckig
+ *	@description-de	Kein Radius, gesperrte Buchstaben und eine 2-px-Linie. Die Ecken sind der Bau, darum gibt es keinen Regler dafür.
  *
  *	@knob	size		Size of a button
  *	@knob	spread		How far a small and a big button stand from it
  *	@knob	space		Space around the label
  *
- *	No corners knob on purpose: the square corner is the decision this set
- *	is, and a knob that could round it away would be a knob that turns it
- *	into another set. The panel greys it and says why. What is left to move
- *	is the size of the button, how far the variants stand from it and the room
- *	around the label. A small button is the size times 1 less the spread, .25
- *	here; a big one times 1 plus 1.2 times the spread, which is the 1.3 it has
- *	always been.
+ *	No corners knob on purpose: the square corner is the decision this template
+ *	is, and a knob that could round it away would be a knob that turns it into
+ *	another. The panel greys it and says why. What is left to move is the size of
+ *	the button, how far the variants stand from it and the room around the label,
+ *	all three Nino's ladders, value for value. A small button is the size times 1
+ *	less the spread, a big one the size times 1 plus it, as in v1. What the
+ *	construction adds is spaced letters, a line height of 1.3, a vertical padding
+ *	of the space over 1.8 and not over 2, which makes up for the tighter line,
+ *	and a 2px line on every variant that has one.
  */
 
+/*	The ladders are Nino's, value for value - buttons v1 says what each of them is	*/
 :root {
 	--buttons-size--least: 		.8;
 	--buttons-size--less: 		.9;
@@ -23,17 +28,17 @@
 	--buttons-size--more: 		1.12;
 	--buttons-size--most: 		1.25;
 
-	--buttons-spread--least: 	.08;
-	--buttons-spread--less: 	.17;
-	--buttons-spread--default: 	.25;
-	--buttons-spread--more: 	.33;
-	--buttons-spread--most: 	.42;
+	--buttons-spread--least: 		.1;
+	--buttons-spread--less: 		.2;
+	--buttons-spread--default: 	.3;
+	--buttons-spread--more: 		.4;
+	--buttons-spread--most: 		.5;
 
-	--buttons-space--least: 	calc( var(--space-1) * .5 );
-	--buttons-space--less: 		var(--space-1);
-	--buttons-space--default: 	var(--space-2);
-	--buttons-space--more: 		var(--space-3);
-	--buttons-space--most: 		var(--space-4);
+	--buttons-space--least: 		calc( var(--space-1) * .5 );
+	--buttons-space--less: 			var(--space-1);
+	--buttons-space--default: var(--space-2);
+	--buttons-space--more: 			var(--space-3);
+	--buttons-space--most: 			var(--space-4);
 }
 
 .nino-btn:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
@@ -52,10 +57,10 @@
 	font-size: calc( var(--font-button-size) * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );
 }
 .nino-btn--big:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
-	padding: calc( var(--buttons-space) / 1.8 * var(--buttons-size) * ( 1 + var(--buttons-spread) * 1.2 ) ) calc( var(--buttons-space) * var(--buttons-size) * ( 1 + var(--buttons-spread) * 1.2 ) );
+	padding: calc( var(--buttons-space) / 1.8 * var(--buttons-size) * ( 1 + var(--buttons-spread) ) ) calc( var(--buttons-space) * var(--buttons-size) * ( 1 + var(--buttons-spread) ) );
 }
 .nino-btn--big {
-	font-size: calc( var(--font-button-size) * var(--buttons-size) * ( 1 + var(--buttons-spread) * 1.2 ) );
+	font-size: calc( var(--font-button-size) * var(--buttons-size) * ( 1 + var(--buttons-spread) ) );
 }
 
 .nino-btn--light,

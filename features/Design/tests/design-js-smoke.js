@@ -345,17 +345,22 @@ function listing( over ) {
 				v1 : { name : 'Plain footer', description : 'Two columns' },
 				v2 : { name : 'Dark footer', description : 'On the dark ground' },
 			} ),
+			/*	What the library has, as the feature ships it: every template of the Content and of the Components answers to every knob of its
+				tab, and of the Buttons Square - a square is what it is built as - is the one that leaves a knob out, the corners. The third
+				template of the Content is none of the feature's: it is what a library of somebody else's can hold, a template that leaves
+				the shadow out, which the screen has to draw all the same	*/
 			part( 'content', 'set', 'v1', {
 				v1 : { name : 'Nino', description : 'The framework as it is', knobs : KNOBS.content.slice() },
-				v2 : { name : 'Poster', description : 'Large type, no shadow', knobs : without( KNOBS.content, [ 'shadow' ] ) },
+				v2 : { name : 'Box', description : 'A centred opening with tight lines', knobs : KNOBS.content.slice() },
+				v3 : { name : 'Foreign', description : 'Large type, no shadow', knobs : without( KNOBS.content, [ 'shadow' ] ) },
 			} ),
 			part( 'buttons', 'set', 'v1', {
 				v1 : { name : 'Nino', description : 'The framework as it is', knobs : KNOBS.buttons.slice() },
-				v3 : { name : 'Square', description : 'No corners', knobs : without( KNOBS.buttons, [ 'corners' ] ) },
+				v3 : { name : 'Square', description : 'No radius, spaced letters and a 2px line', knobs : without( KNOBS.buttons, [ 'corners' ] ) },
 			} ),
 			part( 'components', 'set', 'v1', {
 				v1 : { name : 'Nino', description : 'The framework as it is', knobs : KNOBS.components.slice() },
-				v4 : { name : 'Filled', description : 'Fields on a ground', knobs : without( KNOBS.components, [ 'border', 'labels' ] ) },
+				v4 : { name : 'Filled', description : 'Tinted fields without a line', knobs : KNOBS.components.slice() },
 			} ),
 		],
 		tabs 			: JSON.parse( JSON.stringify( KINDS ) ),
@@ -1252,7 +1257,7 @@ const templateFirst = [ [ 'Content', 'content', 2 ], [ 'Buttons', 'buttons', 4 ]
 rows.tab('Content');
 
 check( 'each of the three knob tabs offers its template first, in a select named in the panel\'s words with the description of the chosen one under it, and the rows of its knobs after it',
-	templateFirst === true && JSON.stringify( offered( rows.byId('design-set-content') ) ) === JSON.stringify( [ [ 'v1', 'v1 - Nino' ], [ 'v2', 'v2 - Poster' ] ] ) );
+	templateFirst === true && JSON.stringify( offered( rows.byId('design-set-content') ) ) === JSON.stringify( [ [ 'v1', 'v1 - Nino' ], [ 'v2', 'v2 - Box' ], [ 'v3', 'v3 - Foreign' ] ] ) );
 check( '...each with a note beside its name, and a strip of five numbers: -2 to +2, written with the minus of arithmetic - the same on every knob of a scale, whatever it sets',
 	everyContentRow.every( function( row ) {
 		const knob = row.dataset.knob;
@@ -1355,42 +1360,42 @@ const oldSelect = rows.byId('design-set-content');
 const oldStrip = rows.groups();
 const oldRows = byClass( rows.form, 'design-knob-row' );
 focused = null;
-choose( oldSelect, 'v2' );
+choose( oldSelect, 'v3' );
 
-check( 'choosing a template that leaves a knob out puts the position of that knob back in the middle, and leaves the others where they were',
-	rows.design._edit.parts.content === 'v2' && rows.design._edit.knobs.content.shadow === 0
+check( 'choosing a template that leaves a knob out - one of somebody else\'s library: those the feature ships answer to all fourteen - puts the position of that knob back in the middle, and leaves the others where they were',
+	rows.design._edit.parts.content === 'v3' && rows.design._edit.knobs.content.shadow === 0
 	&& rows.design._edit.knobs.content['hero-title'] === -2 && rows.design._edit.knobs.content['hero-text'] === 2 );
 check( '...the rows of the tab are drawn again - two new ones for the two knobs of the group that is open, the hero - and the select is a new one on the template that was chosen, which has the focus afterwards; the strip of the groups is a new one as well, with the same group open',
 	oldRows.length === 2 && oldRows.every( function( row ) { return descendants( rows.pane ).indexOf( row ) === -1 } )
 	&& byClass( rows.form, 'design-knob-row' ).length === 2 && descendants( rows.pane ).indexOf( oldSelect ) === -1
-	&& rows.byId('design-set-content') !== null && rows.byId('design-set-content') !== oldSelect && shown( rows.byId('design-set-content') ) === 'v2'
+	&& rows.byId('design-set-content') !== null && rows.byId('design-set-content') !== oldSelect && shown( rows.byId('design-set-content') ) === 'v3'
 	&& focused === rows.byId('design-set-content') && tabOf( rows ) === 'content'
 	&& rows.groups() !== null && rows.groups() !== oldStrip && descendants( rows.pane ).indexOf( oldStrip ) === -1
 	&& byTag( rows.groups(), 'button' ).map( function( tab ) { return tab.getAttribute('aria-selected') } ).join() === 'true,false,false,false' );
 check( '...and the line under the select describes the template that was chosen, and the select stands on it',
-	byTag( rows.byId('design-set-content').parent, 'small' )[0].textContent === 'Large type, no shadow' && shown( rows.byId('design-set-content') ) === 'v2' );
+	byTag( rows.byId('design-set-content').parent, 'small' )[0].textContent === 'Large type, no shadow' && shown( rows.byId('design-set-content') ) === 'v3' );
 
-const posterRows = rows.allRows();
+const foreignRows = rows.allRows();
 rows.group('Card');
-const poster = byClass( rows.form, 'design-knob-row' );
+const foreign = byClass( rows.form, 'design-knob-row' );
 const shadow = rows.knobRow('Card, shadow');
 
 check( 'on the tab the knob the template does not answer to is still a row, greyed out - not hidden, so the tab is the same screen for every template: fourteen rows in the groups, the six of the Card among them, and one of the fourteen grey',
-	posterRows.length === 14 && posterRows.filter( function( row ) { return hasClass( row, 'design-knob-row--off' ) } ).length === 1
-	&& poster.length === 6 && shadow !== null && hasClass( shadow, 'design-knob-row--off' )
-	&& poster.filter( function( row ) { return hasClass( row, 'design-knob-row--off' ) } ).length === 1 );
+	foreignRows.length === 14 && foreignRows.filter( function( row ) { return hasClass( row, 'design-knob-row--off' ) } ).length === 1
+	&& foreign.length === 6 && shadow !== null && hasClass( shadow, 'design-knob-row--off' )
+	&& foreign.filter( function( row ) { return hasClass( row, 'design-knob-row--off' ) } ).length === 1 );
 check( '...its five buttons switched off and none of them pressed',
 	byTag( shadow, 'button' ).length === 5 && byTag( shadow, 'button' ).every( function( button ) { return button.disabled === true && button.getAttribute('aria-pressed') === 'false' } )
 	&& byTag( rows.knobRow('Card, corners'), 'button' ).every( function( button ) { return button.disabled === false } ) );
 check( '...and the line under its name says whose decision that is, in place of its note',
 	( byTag( shadow, 'small' )[0] || {} ).textContent === 'This template does not answer to “Card, shadow”.'
 	&& ( byTag( rows.knobRow('Card, corners'), 'small' )[0] || {} ).textContent === TEXT['/_admin/design/knob/content/corners/note']
-	&& shown( rows.byId('design-set-content') ) === 'v2' );
+	&& shown( rows.byId('design-set-content') ) === 'v3' );
 
-const litPoster = rows.litAll();
+const litForeign = rows.litAll();
 
 check( 'a row that is greyed out says no position, since it compiles nothing: thirteen of the fourteen knobs have a button that is lit, and the shadow is not one of them',
-	litPoster.length === 13 && litPoster.every( function( row ) { return row[0] !== 'Card, shadow' } ) );
+	litForeign.length === 13 && litForeign.every( function( row ) { return row[0] !== 'Card, shadow' } ) );
 
 choose( rows.byId('design-set-content'), 'v1' );
 rows.group('Card');
@@ -1422,10 +1427,10 @@ check( '...it is back in the middle, and the row is grey',
 rows.tab('Components');
 choose( rows.byId('design-set-components'), 'v4' );
 
-check( 'the Components tab has six rows, two of them grey for Filled: the lines and where the labels stand',
+check( 'the Components tab has six rows and none of them grey for Filled, which answers to the line under a field and to where the labels stand as well',
 	tabOf( rows ) === 'components' && byClass( rows.form, 'design-knob-row' ).length === 6
-	&& byClass( rows.form, 'design-knob-row--off' ).map( function( row ) { return row.dataset.knob } ).join() === 'border,labels'
-	&& JSON.stringify( rows.lit().map( function( row ) { return row[0] } ) ) === JSON.stringify( [ 'scale', 'space', 'corners', 'zebra' ].map( function( knob ) { return TEXT['/_admin/design/knob/components/'+ knob+ '/label'] } ) ) );
+	&& byClass( rows.form, 'design-knob-row--off' ).length === 0
+	&& JSON.stringify( rows.lit().map( function( row ) { return row[0] } ) ) === JSON.stringify( [ 'scale', 'space', 'corners', 'border', 'zebra', 'labels' ].map( function( knob ) { return TEXT['/_admin/design/knob/components/'+ knob+ '/label'] } ) ) );
 
 console.log('');
 
@@ -1546,7 +1551,7 @@ grp.tab('Content');
 check( 'the group that was open is remembered for the tab: another tab and back, and the Card is open again - the six rows under a strip that has its tab selected',
 	grpOpen() === 'false,false,true,false' && grpShown() === GROUPS.content.card.join() && grp.groups() !== grpStrip );
 
-choose( grp.byId('design-set-content'), 'v2' );
+choose( grp.byId('design-set-content'), 'v3' );
 
 check( '...and so is it by a template that is chosen, which draws the card and the strip again: the Card is open, with its six rows, the shadow of them grey',
 	grpOpen() === 'false,false,true,false' && grpShown() === GROUPS.content.card.join() && hasClass( grp.knobRow('Card, shadow'), 'design-knob-row--off' ) );
@@ -2726,7 +2731,7 @@ check( '...and the label is the row of the two: the icon, then a box that holds 
 	&& byTag( iconLabel.children[1], 'small' )[0].textContent === TEXT['/_admin/design/knob/content/hero-title/note'] && byTag( iconLabel, 'button' ).length === 0 );
 
 // A row the template does not answer to is grey, and keeps its icon: what it sets is not a thing that depends on the template
-choose( icons.byId('design-set-content'), 'v2' );
+choose( icons.byId('design-set-content'), 'v3' );
 icons.group('Card');
 
 check( '...a row that is greyed out keeps its icon, with the line that says whose decision that is in the box beside it',
@@ -4372,8 +4377,13 @@ else {
 		} )()
 		&& [].concat.apply( [], Object.keys( real.groups.content ).map( function( key ) { return real.groups.content[key] } ) ).sort().join() === Object.keys( real.tabs.content ).sort().join()
 		&& [ 'buttons', 'components' ].every( function( tab ) { return whole.tab( TEXT['/_admin/design/tab/'+ tab] ) === undefined && whole.groups() === null } ) );
-	check( '...and the templates the server stored are the ones with something grey: a template that leaves a knob out is on show',
-		Object.keys( real.tabs ).some( function( tab ) { return ( ( rowOf( tab ).catalogue[ rowOf( tab ).set ] || {} ).knobs || [] ).length < Object.keys( real.tabs[tab] ).length } ) );
+	check( '...and what the library ships answers to the knobs as it was written to: every template of the Content and of the Components to every knob of its tab, and of the Buttons only Pill and Square leave one out, the corners - the one row that is grey for a template the feature ships',
+		[ 'content', 'components' ].every( function( tab ) { return Object.keys( rowOf( tab ).catalogue ).every( function( set ) { return rowOf( tab ).catalogue[set].knobs.join() === Object.keys( real.tabs[tab] ).join() } ) } )
+		&& Object.keys( rowOf('buttons').catalogue ).filter( function( set ) { return rowOf('buttons').catalogue[set].knobs.join() !== Object.keys( real.tabs.buttons ).join() } ).join() === 'v2,v3'
+		&& [ 'v2', 'v3' ].every( function( set ) { return rowOf('buttons').catalogue[set].knobs.join() === 'size,spread,space' } ) );
+	check( '...and the template the server stored with something grey is on show: Square, with no corners',
+		Object.keys( real.tabs ).some( function( tab ) { return ( ( rowOf( tab ).catalogue[ rowOf( tab ).set ] || {} ).knobs || [] ).length < Object.keys( real.tabs[tab] ).length }
+		) && rowOf('buttons').set === 'v3' && rowOf('buttons').catalogue.v3.name === 'Eckig' );
 
 	whole.tab('Colours');
 

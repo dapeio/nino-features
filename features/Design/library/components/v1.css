@@ -1,7 +1,9 @@
 /*	Nino Design - components v1
  *
  *	@name			Nino
- *	@description	The framework as it is, with its own values on every knob. Fields, labels, tables, lists, alerts, badges and the building blocks.
+ *	@description	The framework as it is: the middle of every ladder. Fields, labels, tables, lists, alerts, badges and the building blocks.
+ *	@name-de		Nino
+ *	@description-de	Das Framework, wie es ist: die Mitte jeder Leiter. Felder, Beschriftungen, Tabellen, Listen, Alerts, Badges und die Bausteine.
  *
  *	@knob	scale		Type size of the fields and the tables
  *	@knob	space		Space inside a field, a cell, a block and between them

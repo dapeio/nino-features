@@ -1,12 +1,15 @@
 /*	Nino Design - components v3
  *
- *	@name			Airy
- *	@description	Fields that are a rule under the words, tables with room in the cells and no lines between rows, and plans that lift off the page on a soft shadow.
+ *	@name			Line
+ *	@description	A field is a rule under the words, cells have room and rows no lines, plans rest on a soft shadow.
+ *	@name-de		Linie
+ *	@description-de	Ein Feld ist eine Linie unter den Wörtern, Zellen haben Luft und Zeilen keine Linien, Pläne liegen auf einem weichen Schatten.
  *
  *	@knob	scale		Type size of the fields and the tables
  *	@knob	space		Space inside a field, a cell, a block and between them
  *	@knob	corners		Corner radius of a plan, an alert and a badge
  *	@knob	border		Weight of the rule under a field and under a table head
+ *	@knob	zebra		Stripes of a table that asks for them
  *	@knob	labels		Where the label of a field stands
  *
  *	Worth knowing before choosing it: a field with no box has no visible
@@ -14,11 +17,26 @@
  *	heading and wrong for a checkout. There is no corner left to round on a
  *	field, so the corners knob is for the blocks, and the focus rule is a pixel
  *	heavier than the rule at rest, since it is the only thing that marks the
- *	field being typed in. Five rows of prices on a landing page is not a
- *	spreadsheet and setting it like one makes the page look like an export:
- *	the cells get room and the lines go, so there is no zebra knob either.
+ *	field being typed in. The rule under a field and under a table head, and
+ *	the lines of a table that asks for a border, are the construction, so they
+ *	are never thinner than half a pixel - a hairline where the screen can draw
+ *	one - however far the border knob is turned down. Five rows of prices on a
+ *	landing page is not a spreadsheet and setting it like one makes the page
+ *	look like an export: the cells get room and the lines go, and a table that
+ *	asks for stripes gets them in the choice of the zebra knob. A field is
+ *	never set under 1rem.
+ *
+ *	Every ladder is Nino's, value for value. The lengths of this construction -
+ *	the room in a cell and in a block, the gap of a list - are drawn on twice
+ *	the middle of the space ladder, so the rules that read it take it times 2,
+ *	and a position of the knob moves them in the proportions it moves Nino's.
+ *	The labels are Nino's too, but for a floating label, which lifts by .4em and
+ *	needs no ground to cut: a field with no box has no edge to lie on.
  */
 
+/*	The ladders are Nino's, value for value - components v1 says what each of them is.
+	The stripes and the labels are choices of three, and their aspects belong to the
+	template that declares them: they move with the knob	*/
 :root {
 	--components-scale--least: 		.75;
 	--components-scale--less: 		.87;
@@ -26,35 +44,35 @@
 	--components-scale--more: 		1.15;
 	--components-scale--most: 		1.32;
 
-	--components-space--least: 		calc( var(--space-2) * .4 );
-	--components-space--less: 		calc( var(--space-2) * .7 );
-	--components-space--default: 	var(--space-2);
-	--components-space--more: 		calc( var(--space-2) * 1.5 );
-	--components-space--most: 		calc( var(--space-2) * 2.2 );
+	--components-space--least: 		calc( var(--space-1) * .4 );
+	--components-space--less: 		calc( var(--space-1) * .7 );
+	--components-space--default: 	var(--space-1);
+	--components-space--more: 		calc( var(--space-1) * 1.5 );
+	--components-space--most: 		calc( var(--space-1) * 2.2 );
 
 	--components-corners--least: 	0rem;
-	--components-corners--less: 	var(--radius-small);
-	--components-corners--default: 	var(--radius-large);
-	--components-corners--more: 	1rem;
-	--components-corners--most: 	2rem;
+	--components-corners--less: 	0rem;
+	--components-corners--default: 	var(--radius-small);
+	--components-corners--more: 	var(--radius-large);
+	--components-corners--most: 	1rem;
 
-	/*	The rule under a field is the only thing that marks it, so the least of it
-		is a hairline - where the screen can draw one, and 1px where it cannot -
-		and not none	*/
-	--components-border--least: 	.5px;
-	--components-border--less: 		1px;
-	--components-border--default: 	2px;
-	--components-border--more: 		3px;
-	--components-border--most: 		4px;
+	--components-border--least: 	0px;
+	--components-border--less: 		.5px;
+	--components-border--default: 	1px;
+	--components-border--more: 		2px;
+	--components-border--most: 		3px;
 
-	/*	Where a label stands: in the row (the form is a grid of a column for the
-		labels and a column for the fields), above the field, or floating on its
-		top edge. The first ladder is the gap between the columns, the rest are
-		aspects of the knob and move with it. A choice has three, under less,
-		default and more	*/
-	--components-labels--less: 			var(--space-2);
-	--components-labels--default: 		normal;
-	--components-labels--more: 			normal;
+	--components-zebra--less: 		transparent;
+	--components-zebra--default: 	var(--color-section-alt-bg);
+	--components-zebra--more: 		linear-gradient( var(--color-border), var(--color-border) ) top / 100% 1px no-repeat var(--color-section-alt-bg);
+
+	--components-zebra-ink--less: 		initial;
+	--components-zebra-ink--default: 	var(--color-section-alt-text);
+	--components-zebra-ink--more: 		var(--color-section-alt-text);
+
+	--components-labels--less: 		var(--space-2);
+	--components-labels--default: 	normal;
+	--components-labels--more: 		normal;
 
 	--components-labels-form--less: 		grid;
 	--components-labels-form--default: 		block;
@@ -98,16 +116,16 @@
 .nino-form-input,
 .nino-form-textarea,
 .nino-form-select {
-	border-width: 0 0 var(--components-border);
+	border-width: 0 0 max( .5px, var(--components-border) );
 	border-radius: 0;
 	background-color: transparent;
-	font-size: calc( 1rem * var(--components-scale) );
+	font-size: max( 1rem, calc( 1rem * var(--components-scale) ) );
 	line-height: 1.5;
 }
 .nino-form-input:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])),
 .nino-form-textarea:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])),
 .nino-form-select:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])) {
-	padding: calc( var(--components-space) / 2 ) 0;
+	padding: var(--components-space) 0;
 }
 .nino-form-select:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])) {
 	padding-right: 2.5rem;
@@ -115,7 +133,7 @@
 .nino-form-input:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
 .nino-form-textarea:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
 .nino-form-select:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
-	margin-bottom: var(--components-space);
+	margin-bottom: calc( var(--components-space) * 2 );
 }
 
 /*	An outline is the accessible default and this set replaces it, so the
@@ -125,13 +143,13 @@
 .nino-form-textarea:focus,
 .nino-form-select:focus {
 	border-bottom-color: var(--color-focus);
-	border-bottom-width: calc( var(--components-border) + 1px );
+	border-bottom-width: calc( max( .5px, var(--components-border) ) + 1px );
 	outline: none;
 }
 
 .nino-form.nino-is-error .nino-form-message,
 .nino-form.nino-is-success .nino-form-message {
-	padding: calc( var(--components-space) / 2 ) var(--components-space);
+	padding: var(--components-space) calc( var(--components-space) * 2 );
 	border-radius: 0;
 }
 
@@ -169,43 +187,47 @@
 }
 .nino-table th,
 .nino-table td {
-	padding: var(--components-space);
+	padding: calc( var(--components-space) * 2 );
 	border-bottom-width: 0;
 }
 .nino-table th {
-	border-bottom: var(--components-border) solid var(--color-border);
+	border-bottom: max( .5px, var(--components-border) ) solid var(--color-border);
 	letter-spacing: .08em;
 	color: var(--color-subtitle);
 }
 .nino-table--bordered th,
 .nino-table--bordered td {
-	border-width: var(--components-border);
+	border-width: max( .5px, var(--components-border) );
+}
+.nino-table--striped tbody tr:nth-child(even) {
+	background: var(--components-zebra);
+	color: var(--components-zebra-ink, currentcolor);
 }
 
 /* ---- lists, badges, alerts ---- */
 
 .nino-list:not(.nino-list--columns) {
-	gap: var(--components-space);
+	gap: calc( var(--components-space) * 2 );
 	line-height: 1.6;
 }
 .nino-badge {
-	padding: calc( var(--components-space) / 4 ) calc( var(--components-space) / 1.5 );
+	padding: calc( var(--components-space) / 2 ) calc( var(--components-space) * 2 / 1.5 );
 }
 .nino-badge:not(.nino-badge--pill) {
 	border-radius: 999rem;
 }
 .nino-badge-cloud {
-	gap: calc( var(--components-space) / 2 );
+	gap: var(--components-space);
 }
 .nino-alert {
 	border-width: var(--components-border);
 	border-radius: var(--components-corners);
 }
 .nino-alert:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])) {
-	padding: var(--components-space) calc( var(--components-space) * 1.5 );
+	padding: calc( var(--components-space) * 2 ) calc( var(--components-space) * 3 );
 }
 .nino-alert--content:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])) {
-	padding: calc( var(--components-space) * 2 );
+	padding: calc( var(--components-space) * 4 );
 }
 
 /* ---- blocks ---- */
@@ -215,7 +237,7 @@
 	tablet the lift is dropped - a card scaled up on a phone is a card with its
 	edges off the screen	*/
 .nino-pricing-row {
-	gap: calc( var(--components-space) * 1.5 );
+	gap: calc( var(--components-space) * 3 );
 }
 .nino-pricing-item {
 	border-width: 0;
@@ -223,7 +245,7 @@
 	box-shadow: 0 .125rem .375rem var(--nino-default-shadow), 0 1rem 2.5rem var(--nino-default-shadow);
 }
 .nino-pricing-item:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])) {
-	padding: calc( var(--components-space) * 2 );
+	padding: calc( var(--components-space) * 4 );
 }
 .nino-pricing-price {
 	line-height: 1.05;
@@ -240,10 +262,10 @@
 	border-bottom-width: var(--components-border);
 }
 .nino-accordion-trigger {
-	padding: var(--components-space) 0;
+	padding: calc( var(--components-space) * 2 ) 0;
 }
 .nino-accordion-panel {
-	padding: 0 0 var(--components-space) 1em;
+	padding: 0 0 calc( var(--components-space) * 2 ) 1em;
 }
 .nino-timeline-number {
 	border-radius: 999rem;

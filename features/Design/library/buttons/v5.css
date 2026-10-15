@@ -1,22 +1,33 @@
 /*	Nino Design - buttons v5
  *
- *	@name			Compact
- *	@description	Small, tight and quiet, so a page can carry a lot of them without looking like a control panel.
+ *	@name			Quiet
+ *	@description	Only the primary button is filled; every other variant is text with an arrow, no outline and no ground. The button as punctuation.
+ *	@name-de		Leise
+ *	@description-de	Nur der Primär-Button ist gefüllt; jede andere Variante ist Text mit Pfeil, ohne Umriss und ohne Fläche. Der Button als Satzzeichen.
  *
  *	@knob	size		Size of a button
  *	@knob	spread		How far a small and a big button stand from it
  *	@knob	space		Space around the label
  *	@knob	corners		Corner radius
  *
- *	For pages where a button is an option rather than the point: filter rows,
- *	tables with an action per line, a form with three ways out. Everything is a
- *	step down from the framework's own, and the outline variant keeps a hairline
- *	so a row of them reads as a row rather than as a fence. A small button is
- *	the size times 1 less the spread, .15 here; a big one times 1 plus 4 / 3 times
- *	the spread, which is the 1.2 it has always been. The size multiplies the type
- *	and the padding and not the radius, which the variants do not scale either.
+ *	The button as punctuation, for pages where a button is an option and not
+ *	the point: a filter row, a table with an action in every line, a form with
+ *	three ways out. The plain button and the primary one stay buttons, with the
+ *	fill the framework gives them, and read the four ladders as v1 does - the
+ *	padding from the space and the size, the type from the button role and the
+ *	size, the radius from the corners and the size, a small and a big one from
+ *	the spread. The outline, light, dark and brand-alt variants are text: no
+ *	ground, no edge, the accent as ink - the brand as it is solved for the
+ *	ground the button stands on - and an arrow after the label, with an
+ *	underline of 2px under the label while the pointer or the focus is on it.
+ *	Their vertical padding stays, for the hit area, and the horizontal one is a
+ *	quarter of an em; the focus ring is the framework's, and a text button that
+ *	is off has the ink of a thing that is off and no underline. A filter button
+ *	stays a box with the radius of the corners knob, since a row of filters in
+ *	text has no edges to tell them apart.
  */
 
+/*	The ladders are Nino's, value for value - buttons v1 says what each of them is	*/
 :root {
 	--buttons-size--least: 		.8;
 	--buttons-size--less: 		.9;
@@ -24,58 +35,111 @@
 	--buttons-size--more: 		1.12;
 	--buttons-size--most: 		1.25;
 
-	--buttons-spread--least: 	.05;
-	--buttons-spread--less: 	.1;
-	--buttons-spread--default: 	.15;
-	--buttons-spread--more: 	.2;
-	--buttons-spread--most: 	.25;
+	--buttons-spread--least: 		.1;
+	--buttons-spread--less: 		.2;
+	--buttons-spread--default: 	.3;
+	--buttons-spread--more: 		.4;
+	--buttons-spread--most: 		.5;
 
-	/*	The scale ends below --space-1, so what is under the middle is a half and
-		a quarter of it	*/
-	--buttons-space--least: 	calc( var(--space-1) * .25 );
-	--buttons-space--less: 		calc( var(--space-1) * .5 );
-	--buttons-space--default: 	var(--space-1);
-	--buttons-space--more: 		var(--space-2);
-	--buttons-space--most: 		var(--space-3);
+	--buttons-space--least: 		calc( var(--space-1) * .5 );
+	--buttons-space--less: 			var(--space-1);
+	--buttons-space--default: var(--space-2);
+	--buttons-space--more: 			var(--space-3);
+	--buttons-space--most: 			var(--space-4);
 
-	/*	Nothing between square and .1rem is worth a position, so the sharp end is a plateau	*/
-	--buttons-corners--least: 	0rem;
-	--buttons-corners--less: 	0rem;
-	--buttons-corners--default: var(--radius-small);
-	--buttons-corners--more: 	var(--radius);
-	--buttons-corners--most: 	var(--radius-large);
+	--buttons-corners--least: 		0rem;
+	--buttons-corners--less: 		var(--radius-small);
+	--buttons-corners--default: var(--radius);
+	--buttons-corners--more: 		var(--radius-large);
+	--buttons-corners--most: 		999rem;
 }
 
 .nino-btn:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
 	padding: calc( var(--buttons-space) / 2 * var(--buttons-size) ) calc( var(--buttons-space) * var(--buttons-size) );
 }
 .nino-btn {
-	border-radius: var(--buttons-corners);
-	font-size: calc( var(--font-button-size) * .9 * var(--buttons-size) );
-	line-height: 1.4;
+	font-size: calc( var(--font-button-size) * var(--buttons-size) );
+	border-radius: calc( var(--buttons-corners) * var(--buttons-size) );
 }
 .nino-btn--small:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
 	padding: calc( var(--buttons-space) / 2 * var(--buttons-size) * ( 1 - var(--buttons-spread) ) ) calc( var(--buttons-space) * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );
 }
 .nino-btn--small {
-	font-size: calc( var(--font-button-size) * .9 * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );
-	border-radius: var(--buttons-corners);
-	min-height: 0;
+	font-size: calc( var(--font-button-size) * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );
+	border-radius: calc( var(--buttons-corners) * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );
 }
 .nino-btn--big:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
-	padding: calc( var(--buttons-space) / 2 * var(--buttons-size) * ( 1 + var(--buttons-spread) * 4 / 3 ) ) calc( var(--buttons-space) * var(--buttons-size) * ( 1 + var(--buttons-spread) * 4 / 3 ) );
+	padding: calc( var(--buttons-space) / 2 * var(--buttons-size) * ( 1 + var(--buttons-spread) ) ) calc( var(--buttons-space) * var(--buttons-size) * ( 1 + var(--buttons-spread) ) );
 }
 .nino-btn--big {
-	font-size: calc( var(--font-button-size) * .9 * var(--buttons-size) * ( 1 + var(--buttons-spread) * 4 / 3 ) );
-	border-radius: var(--buttons-corners);
+	font-size: calc( var(--font-button-size) * var(--buttons-size) * ( 1 + var(--buttons-spread) ) );
+	border-radius: calc( var(--buttons-corners) * var(--buttons-size) * ( 1 + var(--buttons-spread) ) );
 }
 
-.nino-btn--outline {
-	border-width: 1px;
+/*	Text: no ground and no edge - the line the framework gives these variants stays,
+	as a transparent one, so that every variant is the box of the primary button
+	beside it - and the accent as ink. A section re-points --color-accent for
+	the ground it paints, so the ink is solved for the ground wherever it stands	*/
+.nino-btn--outline,
+.nino-btn--light,
+.nino-btn--dark,
+.nino-btn--brand-alt {
+	border: 1px solid transparent;
+	background-color: transparent;
+	color: var(--color-accent);
+}
+.nino-btn--outline:where(:not([class*="nino-p-"])),
+.nino-btn--light:where(:not([class*="nino-p-"])),
+.nino-btn--dark:where(:not([class*="nino-p-"])),
+.nino-btn--brand-alt:where(:not([class*="nino-p-"])) {
+	padding-right: .25em;
+	padding-left: .25em;
+}
+
+/*	The arrow is an inline block, which an underline does not run through, and a
+	small button - a flex box in the framework - is a block, so that its arrow is
+	one as well	*/
+.nino-btn--small:is(.nino-btn--outline, .nino-btn--light, .nino-btn--dark, .nino-btn--brand-alt) {
+	display: inline-block;
+}
+.nino-btn--outline::after,
+.nino-btn--light::after,
+.nino-btn--dark::after,
+.nino-btn--brand-alt::after {
+	content: " \2192";
+	display: inline-block;
+	margin-left: .35em;
+}
+
+/*	The framework answers the pointer and the focus of these variants with a
+	ground; here the answer is the underline, and the focus ring of the
+	framework stays	*/
+.nino-btn--outline:is(:hover, :focus),
+.nino-btn--light:is(:hover, :focus),
+.nino-btn--dark:is(:hover, :focus),
+.nino-btn--brand-alt:is(:hover, :focus) {
+	background-color: transparent;
+	color: var(--color-accent);
+	opacity: 1;
+}
+.nino-btn--outline:is(:hover, :focus-visible),
+.nino-btn--light:is(:hover, :focus-visible),
+.nino-btn--dark:is(:hover, :focus-visible),
+.nino-btn--brand-alt:is(:hover, :focus-visible) {
+	text-decoration: underline;
+	text-decoration-thickness: 2px;
+	text-underline-offset: .2em;
+}
+.nino-btn--outline:is(:disabled, [aria-disabled="true"]),
+.nino-btn--light:is(:disabled, [aria-disabled="true"]),
+.nino-btn--dark:is(:disabled, [aria-disabled="true"]),
+.nino-btn--brand-alt:is(:disabled, [aria-disabled="true"]) {
+	background-color: transparent;
+	border-color: transparent;
+	color: var(--color-disabled);
+	text-decoration: none;
 }
 
 .nino-filter-btn {
-	padding: calc( var(--buttons-space) / 2 ) var(--buttons-space);
 	border-radius: var(--buttons-corners);
-	font-size: calc( var(--font-button-size) * .9 );
 }

@@ -1,7 +1,9 @@
 /*	Nino Design - content v3
  *
- *	@name			Editorial
- *	@description	A quiet opening, short bands whose heading has a rule under it, and soft cards that lift off the page. For pages with a lot to say.
+ *	@name			Lifted
+ *	@description	A rule under the title of a band, a reading column, cards without a line that rest on a shadow and lift under the pointer.
+ *	@name-de		Schwebend
+ *	@description-de	Linie unter dem Titel eines Bandes, Lesespalte, Karten ohne Linie, die auf einem Schatten liegen und sich unter dem Zeiger heben.
  *
  *	@knob	hero-title			Size of the title of a hero
  *	@knob	hero-text			Size of the text of a hero
@@ -15,45 +17,64 @@
  *	@knob	card-subtitle		Size of the subtitle of a card
  *	@knob	card-space			Space inside a card and between its parts
  *	@knob	corners				Corners of a card
+ *	@knob	border				Line round a card
  *	@knob	shadow				Shadow of a card, and the lift under the pointer
  *
- *	The opposite decision to v2: many short bands rather than few tall ones,
- *	so the heading has to mark a break the white space no longer makes. It does
- *	it with a rule, a hairline in the middle which the knob takes away or
- *	thickens. The cards are few and each is a destination, so the shadow is
- *	what makes one - and the lift on hover what makes it clickable before it
- *	is clicked, switched off where the visitor asked for less motion. A card
- *	here has no line round it, hence no border knob.
+ *	The title of a band has a rule under it, so that a run of short bands has
+ *	the break the white space no longer makes. The cards rest on their ground,
+ *	on a shadow and not on a line, and lift under the pointer - one with a link
+ *	or a button in it, or with the focus inside - and where the visitor asked
+ *	for less motion they stay where they are.
  *
- *	The shadow is two ladders: the one at rest, which Nino.css reads by the
- *	name --shadow-card, and the one under the pointer, an aspect of the first.
- *	They move together, and both are none at the two least positions.
+ *	Every ladder is Nino's, value for value, and declared as Nino's: that is
+ *	what keeps the rows of the panel the same in every template. Three of the
+ *	knobs add a presence rather than a size, though, and this construction has
+ *	a state of its own at their middle - a card rests on a shadow and has no
+ *	line, a title has a rule - where Nino's ladders have no shadow, a hairline
+ *	and no rule. So the rules read an aspect of each, named after the knob,
+ *	with the five positions of the knob and the state of the construction in
+ *	the middle: the shadow at rest (--content-shadow-rest), which Nino.css
+ *	reads by the name --shadow-card, a card resting on a shadow at the middle
+ *	and on nothing at the least; the line round a card (--content-border-line),
+ *	none up to the middle and above it 1px and 2px; the rule under a title
+ *	(--content-section-line-rule), 1px at the middle and from half a pixel to
+ *	3px across the ladder. The shadow under the pointer is an aspect of the
+ *	same knob (--content-shadow-lift) and moves with it: none where the rest
+ *	is none, and from there a step ahead of the shadow at rest.
+ *
+ *	What the construction reads of them is its own: the padding of a card is
+ *	the card-space on every side, where Nino's is half of it above and below,
+ *	the space under a title, a subtitle and a text is a third of it and the gap
+ *	between two cards the whole of it; the title of a band keeps a quarter of
+ *	the band's space between itself and its rule and has a third of it under
+ *	the rule.
  */
 
+/*	The ladders are Nino's, value for value - content v1 says what each of them is	*/
 :root {
-	--content-hero-title--least: 		.608;
-	--content-hero-title--less: 		.76;
-	--content-hero-title--default: 		.95;
-	--content-hero-title--more: 		1.1875;
-	--content-hero-title--most: 		1.484;
+	--content-hero-title--least: 		.768;
+	--content-hero-title--less: 		.96;
+	--content-hero-title--default: 	1.2;
+	--content-hero-title--more: 		1.5;
+	--content-hero-title--most: 		1.875;
 
-	--content-hero-text--least: 		.64;
-	--content-hero-text--less: 			.8;
-	--content-hero-text--default: 		1;
-	--content-hero-text--more: 			1.25;
-	--content-hero-text--most: 			1.5625;
+	--content-hero-text--least: 		.768;
+	--content-hero-text--less: 			.96;
+	--content-hero-text--default: 	1.2;
+	--content-hero-text--more: 			1.5;
+	--content-hero-text--most: 			1.875;
 
-	--content-quiet--least: 			.6;
-	--content-quiet--less: 				.75;
+	--content-quiet--least: 				.6;
+	--content-quiet--less: 					.75;
 	--content-quiet--default: 			.85;
-	--content-quiet--more: 				.92;
-	--content-quiet--most: 				.97;
+	--content-quiet--more: 					.92;
+	--content-quiet--most: 					.97;
 
-	--content-loud--least: 				1.05;
-	--content-loud--less: 				1.1;
-	--content-loud--default: 			1.2;
-	--content-loud--more: 				1.35;
-	--content-loud--most: 				1.6;
+	--content-loud--least: 					1.05;
+	--content-loud--less: 					1.1;
+	--content-loud--default: 				1.2;
+	--content-loud--more: 					1.35;
+	--content-loud--most: 					1.6;
 
 	--content-section-title--least: 	.8;
 	--content-section-title--less: 		.9;
@@ -67,20 +88,25 @@
 	--content-section-subtitle--more: 		1.1;
 	--content-section-subtitle--most: 		1.2;
 
-	--content-section-space--least: 	var(--space-1);
-	--content-section-space--less: 		var(--space-2);
-	--content-section-space--default: 	var(--space-3);
-	--content-section-space--more: 		var(--space-4);
-	--content-section-space--most: 		var(--space-5);
+	--content-section-space--least: 	var(--space-2);
+	--content-section-space--less: 		var(--space-3);
+	--content-section-space--default: var(--space-4);
+	--content-section-space--more: 		var(--space-5);
+	--content-section-space--most: 		var(--space-6);
 
-	/*	The rule under the title of a band: the hairline it always had in the
-		middle, thicker above it, and below it half of that - which a screen
-		draws as the middle's hairline, having no half pixel - and none	*/
 	--content-section-line--least: 		0px;
-	--content-section-line--less: 		.5px;
-	--content-section-line--default: 	1px;
-	--content-section-line--more: 		2px;
-	--content-section-line--most: 		3px;
+	--content-section-line--less: 		0px;
+	--content-section-line--default: 	0px;
+	--content-section-line--more: 		1px;
+	--content-section-line--most: 		2px;
+
+	/*	The rule under a title, an aspect of the section-line knob: a hairline at the
+		middle, where Nino's has none, and the ladder runs from half a pixel to 3px	*/
+	--content-section-line-rule--least: 	.5px;
+	--content-section-line-rule--less: 		.75px;
+	--content-section-line-rule--default: 	1px;
+	--content-section-line-rule--more: 		2px;
+	--content-section-line-rule--most: 		3px;
 
 	--content-card-title--least: 	calc(.8 * 5 / 6);
 	--content-card-title--less: 	calc(.9 * 5 / 6);
@@ -94,28 +120,51 @@
 	--content-card-subtitle--more: 		1.1;
 	--content-card-subtitle--most: 		1.2;
 
-	--content-card-space--least: 		var(--space-1);
-	--content-card-space--less: 		var(--space-2);
-	--content-card-space--default: 	var(--space-3);
-	--content-card-space--more: 		var(--space-4);
-	--content-card-space--most: 		var(--space-5);
+	--content-card-space--least: 		calc( var(--space-1) * .5 );
+	--content-card-space--less: 		var(--space-1);
+	--content-card-space--default: var(--space-2);
+	--content-card-space--more: 		var(--space-3);
+	--content-card-space--most: 		var(--space-4);
 
-	--content-corners--least: 			0rem;
-	--content-corners--less: 			var(--radius-small);
-	--content-corners--default: 		var(--radius-large);
-	--content-corners--more: 			1rem;
-	--content-corners--most: 			999rem;
+	--content-corners--least: 				0rem;
+	--content-corners--less: 					0rem;
+	--content-corners--default: 			var(--radius-small);
+	--content-corners--more: 					var(--radius-large);
+	--content-corners--most: 					1rem;
 
-	/*	Soft cards lift off the page on a shadow: none up to the card as it is,
-		a second layer for the next, and a third, longer one for the last	*/
-	--content-shadow--least: 			none;
-	--content-shadow--less: 			none;
-	--content-shadow--default: 			0 .125rem .75rem var(--nino-default-shadow);
-	--content-shadow--more: 			0 .25rem 1.5rem var(--nino-default-shadow), 0 .0625rem .25rem var(--nino-default-shadow);
-	--content-shadow--most: 			0 .5rem 2.5rem var(--nino-default-shadow), 0 .25rem 1.5rem var(--nino-default-shadow), 0 .0625rem .25rem var(--nino-default-shadow);
+	--content-border--least: 					0px;
+	--content-border--less: 					.5px;
+	--content-border--default: 				1px;
+	--content-border--more: 					2px;
+	--content-border--most: 					3px;
 
+	/*	The line round a card, an aspect of the border knob: a card without a line at
+		the middle, where Nino's has a hairline, and a line from the position above it	*/
+	--content-border-line--least: 		0px;
+	--content-border-line--less: 			0px;
+	--content-border-line--default: 	0px;
+	--content-border-line--more: 			1px;
+	--content-border-line--most: 			2px;
+
+	--content-shadow--least: 					none;
+	--content-shadow--less: 					none;
+	--content-shadow--default: 				none;
+	--content-shadow--more: 					0 .125rem .75rem var(--nino-default-shadow);
+	--content-shadow--most: 					0 .25rem 1.5rem var(--nino-default-shadow), 0 .0625rem .25rem var(--nino-default-shadow);
+
+	/*	The shadow a card rests on, an aspect of the shadow knob: a card of this
+		construction rests on one at the middle, where Nino's casts none, and on
+		none at the least	*/
+	--content-shadow-rest--least: 		none;
+	--content-shadow-rest--less: 		0 .0625rem .25rem var(--nino-default-shadow);
+	--content-shadow-rest--default: 	0 .125rem .75rem var(--nino-default-shadow);
+	--content-shadow-rest--more: 		0 .25rem 1.5rem var(--nino-default-shadow), 0 .0625rem .25rem var(--nino-default-shadow);
+	--content-shadow-rest--most: 		0 .5rem 2.5rem var(--nino-default-shadow), 0 .25rem 1.5rem var(--nino-default-shadow), 0 .0625rem .25rem var(--nino-default-shadow);
+
+	/*	The shadow under the pointer, the other aspect of the shadow knob: none where
+		the rest is none, and from there a step ahead of the shadow at rest	*/
 	--content-shadow-lift--least: 		none;
-	--content-shadow-lift--less: 		none;
+	--content-shadow-lift--less: 		0 .25rem .75rem var(--nino-default-shadow);
 	--content-shadow-lift--default: 	0 .375rem 1.5rem var(--nino-default-shadow);
 	--content-shadow-lift--more: 		0 .75rem 2.5rem var(--nino-default-shadow), 0 .125rem .5rem var(--nino-default-shadow);
 	--content-shadow-lift--most: 		0 1.25rem 3.5rem var(--nino-default-shadow), 0 .375rem 1rem var(--nino-default-shadow), 0 .125rem .5rem var(--nino-default-shadow);
@@ -123,17 +172,23 @@
 
 @media (min-width: 768px) {
 	:root {
-		--content-hero-title--least: 		.64;
-		--content-hero-title--less: 		.8;
-		--content-hero-title--default: 		1;
-		--content-hero-title--more: 		1.25;
-		--content-hero-title--most: 		1.5625;
+		--content-hero-title--least: 		.8;
+		--content-hero-title--less: 		1;
+		--content-hero-title--default: 	1.25;
+		--content-hero-title--more: 		1.5625;
+		--content-hero-title--most: 		1.953;
 
-		--content-section-space--least: 	var(--space-2);
-		--content-section-space--less: 		var(--space-3);
-		--content-section-space--default: 	var(--space-4);
-		--content-section-space--more: 		var(--space-5);
-		--content-section-space--most: 		var(--space-6);
+		--content-hero-text--least: 		calc(.64 * 10 / 9);
+		--content-hero-text--less: 			calc(.8 * 10 / 9);
+		--content-hero-text--default: 	calc(10 / 9);
+		--content-hero-text--more: 			calc(1.25 * 10 / 9);
+		--content-hero-text--most: 			calc(1.5625 * 10 / 9);
+
+		--content-section-space--least: 	var(--space-3);
+		--content-section-space--less: 		var(--space-4);
+		--content-section-space--default: var(--space-5);
+		--content-section-space--more: 		var(--space-6);
+		--content-section-space--most: 		calc( var(--space-6) * 1.25 );
 
 		--content-card-title--least: 	calc(.8 * 25 / 32);
 		--content-card-title--less: 	calc(.9 * 25 / 32);
@@ -150,10 +205,10 @@
 	--section-subtitle-scale: var(--content-section-subtitle);
 	--card-title-scale: var(--content-card-title);
 	--card-subtitle-scale: var(--content-card-subtitle);
-	--section-line: var(--content-section-line);
+	--section-line: var(--content-section-line-rule);
 	--scale-quiet: var(--content-quiet);
 	--scale-loud: var(--content-loud);
-	--shadow-card: var(--content-shadow);
+	--shadow-card: var(--content-shadow-rest);
 }
 
 /* ---- the opening ---- */
@@ -185,8 +240,8 @@
 
 /*	The rule is the heading's: it stays inside the title, in the colour of
 	the line of the ground the title stands on. Nino.css draws it, as thick as
-	the ladder above says (--section-line); the air between the heading and it
-	is the set's	*/
+	--section-line says, and that is the rule aspect of the knob, a hairline at
+	the middle. The air between the heading and it is the template's	*/
 .nino-section-title {
 	padding-bottom: calc( var(--content-section-space) / 4 );
 }
@@ -207,7 +262,7 @@
 /* ---- cards ---- */
 
 .nino-card:where(:not(.nino-card--borderless)) {
-	border-width: 0;
+	border: var(--content-border-line) solid var(--color-border);
 	border-radius: var(--content-corners);
 	background-color: var(--color-ground);
 	overflow: hidden;

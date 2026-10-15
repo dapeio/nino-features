@@ -1,22 +1,30 @@
 /*	Nino Design - buttons v2
  *
- *	@name			Pills
- *	@description	Fully rounded and wide, with a heavier outline. The friendliest of the five.
+ *	@name			Pill
+ *	@description	Fully rounded and wide, with a heavier outline. The corners are the construction, so there is no knob for them.
+ *	@name-de		Pille
+ *	@description-de	Voll gerundet und breit, mit kräftigerem Umriss. Die Ecken sind der Bau, darum gibt es keinen Regler dafür.
  *
  *	@knob	size		Size of a button
  *	@knob	spread		How far a small and a big button stand from it
  *	@knob	space		Space around the label
- *	@knob	corners		Corner radius
  *
  *	The shape only works when the label has room on both axes, so the padding
- *	here is a good deal wider than the framework's own, and the variants keep
- *	their ratio to it. The size multiplies the padding and the type, and not
- *	the radius: a pill stays a pill. The variants are the size times 1 less
- *	and 1 plus the spread, .2 here. The corners knob goes from a rounded box
- *	to a pill and stops there: past half the height a radius grows nothing, so
- *	the pill is a plateau of three.
+ *	is wider than the framework's own: the rule reads the space knob 1.5 times
+ *	beside the label and 1.5 over 2.6 of it above and below - .58, where
+ *	Nino's is .5 -, and the variants keep their ratio to it. The outline is
+ *	heavier than a box's, or the shape reads as the shadow of a button rather
+ *	than as one. The radius is 999rem, past half the height, where a radius
+ *	grows nothing - a button is a pill at every size - and that is why there is
+ *	no corners knob: one that could square the ends would turn this
+ *	construction into another. The panel greys the row and says so.
+ *
+ *	Size, spread and space are Nino's ladders, value for value. The size
+ *	multiplies the padding and the type, and a small button is the size times 1
+ *	less the spread, a big one the size times 1 plus it, as in v1.
  */
 
+/*	The ladders are Nino's, value for value - buttons v1 says what each of them is	*/
 :root {
 	--buttons-size--least: 		.8;
 	--buttons-size--less: 		.9;
@@ -24,46 +32,38 @@
 	--buttons-size--more: 		1.12;
 	--buttons-size--most: 		1.25;
 
-	--buttons-spread--least: 	.07;
-	--buttons-spread--less: 	.13;
-	--buttons-spread--default: 	.2;
-	--buttons-spread--more: 	.27;
-	--buttons-spread--most: 	.33;
+	--buttons-spread--least: 		.1;
+	--buttons-spread--less: 		.2;
+	--buttons-spread--default: 	.3;
+	--buttons-spread--more: 		.4;
+	--buttons-spread--most: 		.5;
 
-	--buttons-space--least: 	var(--space-1);
-	--buttons-space--less: 		var(--space-2);
-	--buttons-space--default: 	calc( var(--space-2) * 1.5 );
-	--buttons-space--more: 		var(--space-3);
-	--buttons-space--most: 		var(--space-4);
-
-	--buttons-corners--least: 	var(--radius);
-	--buttons-corners--less: 	var(--radius-large);
-	--buttons-corners--default: 999rem;
-	--buttons-corners--more: 	999rem;
-	--buttons-corners--most: 	999rem;
+	--buttons-space--least: 		calc( var(--space-1) * .5 );
+	--buttons-space--less: 			var(--space-1);
+	--buttons-space--default: var(--space-2);
+	--buttons-space--more: 			var(--space-3);
+	--buttons-space--most: 			var(--space-4);
 }
 
 .nino-btn:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
-	padding: calc( var(--buttons-space) / 2.6 * var(--buttons-size) ) calc( var(--buttons-space) * var(--buttons-size) );
+	padding: calc( var(--buttons-space) * 1.5 / 2.6 * var(--buttons-size) ) calc( var(--buttons-space) * 1.5 * var(--buttons-size) );
 }
 .nino-btn {
 	font-size: calc( var(--font-button-size) * var(--buttons-size) );
-	border-radius: var(--buttons-corners);
+	border-radius: 999rem;
 	line-height: 1.35;
 }
 .nino-btn--small:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
-	padding: calc( var(--buttons-space) / 2.6 * var(--buttons-size) * ( 1 - var(--buttons-spread) ) ) calc( var(--buttons-space) * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );
+	padding: calc( var(--buttons-space) * 1.5 / 2.6 * var(--buttons-size) * ( 1 - var(--buttons-spread) ) ) calc( var(--buttons-space) * 1.5 * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );
 }
 .nino-btn--small {
 	font-size: calc( var(--font-button-size) * var(--buttons-size) * ( 1 - var(--buttons-spread) ) );
-	border-radius: var(--buttons-corners);
 }
 .nino-btn--big:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
-	padding: calc( var(--buttons-space) / 2.6 * var(--buttons-size) * ( 1 + var(--buttons-spread) ) ) calc( var(--buttons-space) * var(--buttons-size) * ( 1 + var(--buttons-spread) ) );
+	padding: calc( var(--buttons-space) * 1.5 / 2.6 * var(--buttons-size) * ( 1 + var(--buttons-spread) ) ) calc( var(--buttons-space) * 1.5 * var(--buttons-size) * ( 1 + var(--buttons-spread) ) );
 }
 .nino-btn--big {
 	font-size: calc( var(--font-button-size) * var(--buttons-size) * ( 1 + var(--buttons-spread) ) );
-	border-radius: var(--buttons-corners);
 }
 
 /*	A pill's outline has to be heavier than a box's, or the shape reads as a
@@ -73,5 +73,5 @@
 }
 
 .nino-filter-btn {
-	border-radius: var(--buttons-corners);
+	border-radius: 999rem;
 }

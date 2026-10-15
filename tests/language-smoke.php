@@ -27,6 +27,16 @@ declare(strict_types=1);
  *											A feature's tests are left out: a test of german
  *											content is german on purpose, and so is a fixture.
  *
+ *											A template's name and description in another language
+ *											are left out as well: a line that starts with '@name-de'
+ *											or '@description-de' (or the tag of another language) in
+ *											a .css file whose path contains '/library/' - the library
+ *											of a feature that brings templates - is what the panel
+ *											shows, the text of a locale in the file that names the
+ *											template. Only such a line is left out; the rest of the
+ *											comment is read as everywhere, and so is the same line in
+ *											any other file.
+ *
  *	Usage: php tests/language-smoke.php
  */
 
@@ -68,6 +78,8 @@ $offenders = [];
 
 foreach( $sources as $file ) {
 
+	$below = substr( $file, strlen( $root ) + 1 );
+
 	// Inside a block comment or not. The catalogue's block comments are
 	// written as '/*	text' followed by lines that start with the text itself,
 	// not with a '*' - so a line's own first character says nothing about
@@ -97,11 +109,18 @@ foreach( $sources as $file ) {
 		else
 			continue;
 
+		// A template's name or description in another language is the text of a
+		// locale, not commentary on the file that carries it - in a library, the
+		// one place the panel reads it from; the same line anywhere else is read
+		// like any other
+		if( str_contains( $below, '/library/' ) === true && str_ends_with( $file, '.css' ) === true && preg_match( '/^\s*\*?\s*@(?:name|description)-[a-z]{2}\s/', $line ) === 1 )
+			continue;
+
 		foreach( $allowed as $name )
 			$comment = str_replace( $name, '', $comment );
 
 		if( preg_match( '/[\x{00e4}\x{00f6}\x{00fc}\x{00df}\x{00c4}\x{00d6}\x{00dc}]|\b('. $words. ')\b/u', $comment ) === 1 )
-			$offenders[] = substr( $file, strlen( $root ) + 1 ). ':'. ( $no + 1 );
+			$offenders[] = $below. ':'. ( $no + 1 );
 	}
 }
 

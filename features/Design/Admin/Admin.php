@@ -157,10 +157,13 @@ namespace Nino\Modules\Design {
 			$notes 		= [];
 			$setup 		= Setup::read( $appData, $library, $notes );
 			$parts 		= [];
+			// The language of the workbench - the one its texts are chosen by - so that a
+			// template is listed under the name its file gives it in that language
+			$locale 	= \Nino\Locales::getCurrentLocale( $appData );
 
 			foreach( Setup::PARTS as $part => $kind ) {
 
-				$catalogue = Setup::catalogue( $library, $part );
+				$catalogue = Setup::catalogue( $library, $part, $locale );
 
 				/*	Which knobs each template answers to - out of the stylesheet rather
 					than out of a list here, so declaring a ladder is what publishes a

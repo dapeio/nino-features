@@ -1,7 +1,9 @@
 /*	Nino Design - content v5
  *
- *	@name			Panels
- *	@description	The opening anchored left against a rule, every band inset and rounded against the page, and cards as compact rows. For editorial pages and long lists.
+ *	@name			Panel
+ *	@description	The opening on a rail at the left, every band inset and rounded against the page, cards as rows from the tablet up.
+ *	@name-de		Panel
+ *	@description-de	Der Hero an einer Leiste links, jedes Band eingerückt und gerundet gegen die Seite, Karten ab dem Tablet als Zeilen.
  *
  *	@knob	hero-title			Size of the title of a hero
  *	@knob	hero-text			Size of the text of a hero
@@ -16,41 +18,52 @@
  *	@knob	card-space			Space inside a row and between its parts
  *	@knob	corners				Corners of a band and of a picture
  *	@knob	border				Line under a row
+ *	@knob	shadow				Shadow of a band
  *
  *	A band is a panel here rather than a stripe across the page, which is what
- *	makes a run of them read as a stack of things instead of one long scroll.
- *	The opening is the first article rather than a poster: text left, a rule
- *	down its left edge, nothing centred. And a hundred entries is not a grid
- *	but a list, so above the phone a card is turned on its side and the page
- *	scrolls through them - below it the row stacks again, because a thumbnail
- *	beside two lines of text on a narrow screen leaves room for neither.
- *	There is no shadow knob: a panel is bounded by its ground, a row by its line.
+ *	makes a run of them read as a stack of things instead of one long scroll:
+ *	inset by the gutter, rounded, padded on all four sides, and casting the
+ *	shadow the knob gives it. Two plain bands in a row are a stack instead: the
+ *	second has the hairline as its top edge and neither rounding nor shadow of
+ *	its own, as the continuation of the first. The opening is the first
+ *	article rather than a poster: text left, a rule down its left edge, nothing
+ *	centred. And a hundred entries is not a grid but a list, so above the phone a
+ *	card is turned on its side and the page scrolls through them - below it the
+ *	row stacks again, because a thumbnail beside two lines of text on a narrow
+ *	screen leaves room for neither. A row is bounded by its line, which is the
+ *	border knob.
+ *
+ *	Every ladder is Nino's, value for value. What the construction reads of
+ *	them is its own: a row has the card-space above and below it and none inside
+ *	its content, the space under a title, a subtitle and a text is a third of it,
+ *	and under the picture, where a row stacks, the whole of it.
  */
 
+/*	The ladders are Nino's, value for value - content v1 says what each of them is	*/
 :root {
 	--content-hero-title--least: 		.768;
 	--content-hero-title--less: 		.96;
-	--content-hero-title--default: 		1.2;
+	--content-hero-title--default: 	1.2;
 	--content-hero-title--more: 		1.5;
 	--content-hero-title--most: 		1.875;
 
 	--content-hero-text--least: 		.768;
 	--content-hero-text--less: 			.96;
-	--content-hero-text--default: 		1.2;
+	--content-hero-text--default: 	1.2;
 	--content-hero-text--more: 			1.5;
 	--content-hero-text--most: 			1.875;
 
-	--content-quiet--least: 			.6;
-	--content-quiet--less: 				.75;
+	--content-quiet--least: 				.6;
+	--content-quiet--less: 					.75;
 	--content-quiet--default: 			.85;
-	--content-quiet--more: 				.92;
-	--content-quiet--most: 				.97;
+	--content-quiet--more: 					.92;
+	--content-quiet--most: 					.97;
 
-	--content-loud--least: 				1.05;
-	--content-loud--less: 				1.1;
-	--content-loud--default: 			1.2;
-	--content-loud--more: 				1.35;
-	--content-loud--most: 				1.6;
+	--content-loud--least: 					1.05;
+	--content-loud--less: 					1.1;
+	--content-loud--default: 				1.2;
+	--content-loud--more: 					1.35;
+	--content-loud--most: 					1.6;
 
 	--content-section-title--least: 	.8;
 	--content-section-title--less: 		.9;
@@ -66,7 +79,7 @@
 
 	--content-section-space--least: 	var(--space-2);
 	--content-section-space--less: 		var(--space-3);
-	--content-section-space--default: 	var(--space-4);
+	--content-section-space--default: var(--space-4);
 	--content-section-space--more: 		var(--space-5);
 	--content-section-space--most: 		var(--space-6);
 
@@ -88,41 +101,50 @@
 	--content-card-subtitle--more: 		1.1;
 	--content-card-subtitle--most: 		1.2;
 
-	/*	A row is as tight as the scale goes: the middle is --space-1, and what
-		is under it is a half and a quarter of that	*/
-	--content-card-space--least: 		calc( var(--space-1) * .25 );
-	--content-card-space--less: 		calc( var(--space-1) * .5 );
-	--content-card-space--default: 	var(--space-1);
-	--content-card-space--more: 		var(--space-2);
-	--content-card-space--most: 		var(--space-3);
+	--content-card-space--least: 		calc( var(--space-1) * .5 );
+	--content-card-space--less: 		var(--space-1);
+	--content-card-space--default: var(--space-2);
+	--content-card-space--more: 		var(--space-3);
+	--content-card-space--most: 		var(--space-4);
 
-	--content-corners--least: 			0rem;
-	--content-corners--less: 			var(--radius-small);
-	--content-corners--default: 		var(--radius);
-	--content-corners--more: 			var(--radius-large);
-	--content-corners--most: 			1rem;
+	--content-corners--least: 				0rem;
+	--content-corners--less: 					0rem;
+	--content-corners--default: 			var(--radius-small);
+	--content-corners--more: 					var(--radius-large);
+	--content-corners--most: 					1rem;
 
-	/*	The half pixel is a hairline where the screen can draw one, and 1px where it cannot	*/
-	--content-border--least: 			0px;
-	--content-border--less: 			.5px;
-	--content-border--default: 			1px;
-	--content-border--more: 			2px;
-	--content-border--most: 			3px;
+	--content-border--least: 					0px;
+	--content-border--less: 					.5px;
+	--content-border--default: 				1px;
+	--content-border--more: 					2px;
+	--content-border--most: 					3px;
+
+	--content-shadow--least: 					none;
+	--content-shadow--less: 					none;
+	--content-shadow--default: 				none;
+	--content-shadow--more: 					0 .125rem .75rem var(--nino-default-shadow);
+	--content-shadow--most: 					0 .25rem 1.5rem var(--nino-default-shadow), 0 .0625rem .25rem var(--nino-default-shadow);
 }
 
 @media (min-width: 768px) {
 	:root {
 		--content-hero-title--least: 		.8;
 		--content-hero-title--less: 		1;
-		--content-hero-title--default: 		1.25;
+		--content-hero-title--default: 	1.25;
 		--content-hero-title--more: 		1.5625;
 		--content-hero-title--most: 		1.953;
 
 		--content-hero-text--least: 		calc(.64 * 10 / 9);
 		--content-hero-text--less: 			calc(.8 * 10 / 9);
-		--content-hero-text--default: 		calc(10 / 9);
+		--content-hero-text--default: 	calc(10 / 9);
 		--content-hero-text--more: 			calc(1.25 * 10 / 9);
 		--content-hero-text--most: 			calc(1.5625 * 10 / 9);
+
+		--content-section-space--least: 	var(--space-3);
+		--content-section-space--less: 		var(--space-4);
+		--content-section-space--default: var(--space-5);
+		--content-section-space--more: 		var(--space-6);
+		--content-section-space--most: 		calc( var(--space-6) * 1.25 );
 
 		--content-card-title--least: 	calc(.8 * 25 / 32);
 		--content-card-title--less: 	calc(.9 * 25 / 32);
@@ -183,6 +205,7 @@
 	margin-right: auto;
 	margin-left: auto;
 	border-radius: var(--content-corners);
+	box-shadow: var(--content-shadow);
 }
 .nino-section:where(:not(.nino-section--fullheight, [class*="nino-pt-"], [class*="nino-p-"])) {
 	padding-top: var(--content-section-space);
@@ -191,11 +214,13 @@
 	padding-bottom: var(--content-section-space);
 }
 
-/*	Two plain bands in a row would have nothing between them, so they get the
-	one hairline this set draws	*/
+/*	Two plain bands in a row would have nothing between them, so the second gets
+	the one hairline this template draws, as its top edge - and, as the
+	continuation of the first, it is not round and casts no shadow of its own	*/
 .nino-section:where(:not([class*="nino-section--"])) + .nino-section:where(:not([class*="nino-section--"])) {
 	border-top: 1px solid var(--color-border);
 	border-radius: 0;
+	box-shadow: none;
 }
 
 /* ---- cards: rows ---- */

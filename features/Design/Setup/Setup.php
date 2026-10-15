@@ -404,13 +404,20 @@ namespace Nino\Modules\Design {
 		 *	write a lot of them. A file without a @name is offered under its own
 		 *	name, which is what a set in progress looks like.
 		 *
+		 *	The two lines of another language stand beside them - `@name-de` and
+		 *	`@description-de` for de_DE, the two letters before the underscore -
+		 *	and are read where the locale is not an English one. A file that has
+		 *	not got the line of that language gives the English one: a template
+		 *	somebody else wrote is listed, and in the words it was written in
+		 *
 		 *	@param		string		$libraryDir		The feature's library
 		 *	@param		string		$part					A key of PARTS
 		 *	@param		string		$set					A set name
+		 *	@param		string		$locale				The language of the workbench, eg. 'de_DE'
 		 *
 		 *	@return 	array										[ name, description ]
 		 */
-		public static function describe( string $libraryDir, string $part, string $set ): array {
+		public static function describe( string $libraryDir, string $part, string $set, string $locale = 'en_US' ): array {
 
 			$file = self::file( $libraryDir, $part, $set );
 			$read = [ 'name' => $set, 'description' => '' ];
@@ -425,9 +432,17 @@ namespace Nino\Modules\Design {
 			if( preg_match( '~/\*(.*?)\*/~s', $head, $block ) !== 1 )
 				return $read;
 
+			// The English lines are the plain tags, the others carry their language: a locale
+			// that is not two letters of the alphabet at its start names no line of its own
+			$language = strtolower( substr( $locale, 0, 2 ) );
+			$own = preg_match( '/^[a-z]{2}$/', $language ) === 1 && $language !== 'en';
+
 			foreach( [ 'name', 'description' ] as $tag )
-				if( preg_match( '/@'. $tag. '[ \t]+(.+)$/m', $block[1], $found ) === 1 )
-					$read[$tag] = trim( (string) preg_replace( '/\s+/', ' ', $found[1] ) );
+				foreach( $own === true ? [ $tag. '-'. $language, $tag ] : [ $tag ] as $line )
+					if( preg_match( '/@'. $line. '[ \t]+(.+)$/m', $block[1], $found ) === 1 ) {
+						$read[$tag] = trim( (string) preg_replace( '/\s+/', ' ', $found[1] ) );
+						break;
+					}
 
 			return $read;
 		}
@@ -438,15 +453,16 @@ namespace Nino\Modules\Design {
 		 *
 		 *	@param		string		$libraryDir		The feature's library
 		 *	@param		string		$part					A key of PARTS
+		 *	@param		string		$locale				The language of the workbench, eg. 'de_DE'
 		 *
 		 *	@return 	array										[ set => [ name, description ] ]
 		 */
-		public static function catalogue( string $libraryDir, string $part ): array {
+		public static function catalogue( string $libraryDir, string $part, string $locale = 'en_US' ): array {
 
 			$catalogue = [];
 
 			foreach( self::available( $libraryDir, $part ) as $set )
-				$catalogue[$set] = self::describe( $libraryDir, $part, $set );
+				$catalogue[$set] = self::describe( $libraryDir, $part, $set, $locale );
 
 			return $catalogue;
 		}
