@@ -542,7 +542,7 @@ if( $part2 === true ) {
 
 		foreach( keysFiles( $feature['dir']. '/library', [ 'tpl' ] ) as $file ) {
 
-			$frame = $feature['directory'] === 'Design' && preg_match( '#/library/(header|footer)/v[0-9]+/template\.tpl$#', $file, $part ) === 1 && isset( $frameTarget[1] ) === true
+			$frame = $feature['directory'] === 'Design' && preg_match( '#/library/(header|footer)/[a-z0-9]+(?:-[a-z0-9]+)*/template\.tpl$#', $file, $part ) === 1 && isset( $frameTarget[1] ) === true
 				? str_replace( '%s', $part[1], $frameTarget[1] )
 				: null;
 

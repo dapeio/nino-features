@@ -121,6 +121,61 @@
                 "class": ""
             }
         },
+        "text": {
+            "label": "Text",
+            "source": "text",
+            "loop": true,
+            "preview": "text",
+            "icon": [
+                [
+                    "path",
+                    {
+                        "d": "M21 5H3"
+                    }
+                ],
+                [
+                    "path",
+                    {
+                        "d": "M15 12H3"
+                    }
+                ],
+                [
+                    "path",
+                    {
+                        "d": "M17 19H3"
+                    }
+                ]
+            ],
+            "attributes": {
+                "format": {
+                    "type": "select",
+                    "label": "Format",
+                    "hint": "",
+                    "options": [
+                        "inline",
+                        "lines",
+                        "blocks"
+                    ],
+                    "default": "blocks"
+                },
+                "style": {
+                    "type": "select",
+                    "label": "Style",
+                    "hint": "",
+                    "options": [
+                        "",
+                        "loud",
+                        "quiet"
+                    ],
+                    "default": ""
+                }
+            },
+            "defaults": {
+                "format": "blocks",
+                "style": "",
+                "class": ""
+            }
+        },
         "card-title": {
             "label": "Title (Card)",
             "source": "text",
@@ -240,6 +295,159 @@
                 "class": ""
             }
         },
+        "card-text": {
+            "label": "Text (Card)",
+            "source": "text",
+            "loop": true,
+            "preview": "text",
+            "icon": [
+                [
+                    "path",
+                    {
+                        "d": "M21 5H3"
+                    }
+                ],
+                [
+                    "path",
+                    {
+                        "d": "M15 12H3"
+                    }
+                ],
+                [
+                    "path",
+                    {
+                        "d": "M17 19H3"
+                    }
+                ]
+            ],
+            "attributes": {
+                "format": {
+                    "type": "select",
+                    "label": "Format",
+                    "hint": "",
+                    "options": [
+                        "inline",
+                        "lines",
+                        "blocks"
+                    ],
+                    "default": "blocks"
+                },
+                "style": {
+                    "type": "select",
+                    "label": "Style",
+                    "hint": "",
+                    "options": [
+                        "",
+                        "loud",
+                        "quiet"
+                    ],
+                    "default": ""
+                }
+            },
+            "in": [
+                "card"
+            ],
+            "draws": "div .nino-card-descr",
+            "defaults": {
+                "format": "blocks",
+                "style": "",
+                "class": ""
+            }
+        },
+        "card-image": {
+            "label": "Image (Card)",
+            "source": "image",
+            "loop": true,
+            "preview": "image",
+            "icon": [
+                [
+                    "rect",
+                    {
+                        "width": "18",
+                        "height": "18",
+                        "x": "3",
+                        "y": "3",
+                        "rx": "2",
+                        "ry": "2"
+                    }
+                ],
+                [
+                    "circle",
+                    {
+                        "cx": "9",
+                        "cy": "9",
+                        "r": "2"
+                    }
+                ],
+                [
+                    "path",
+                    {
+                        "d": "m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"
+                    }
+                ]
+            ],
+            "attributes": {
+                "style": {
+                    "type": "select",
+                    "label": "Style",
+                    "hint": "",
+                    "options": [
+                        "",
+                        "nino-card-img--inline"
+                    ],
+                    "default": ""
+                },
+                "alt": {
+                    "type": "string",
+                    "label": "Alternative text",
+                    "hint": "Used where the slot has no text of its own. Empty marks the picture as decoration.",
+                    "default": ""
+                },
+                "focus": {
+                    "type": "select",
+                    "label": "Focus",
+                    "hint": "Which part of the picture survives a crop, as one of nine positions.",
+                    "options": [
+                        "",
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9"
+                    ],
+                    "default": ""
+                },
+                "ratio": {
+                    "type": "select",
+                    "label": "Ratio",
+                    "hint": "",
+                    "options": [
+                        "",
+                        "1-1",
+                        "4-3",
+                        "3-2",
+                        "16-9",
+                        "21-9"
+                    ],
+                    "default": ""
+                }
+            },
+            "in": [
+                "card"
+            ],
+            "draws": "img .nino-card-img",
+            "defaults": {
+                "style": "",
+                "alt": "",
+                "focus": "",
+                "ratio": "",
+                "class": ""
+            }
+        },
         "hero-title": {
             "label": "Title (Hero)",
             "source": "text",
@@ -290,7 +498,8 @@
                 }
             },
             "in": [
-                "hero"
+                "hero",
+                "section"
             ],
             "draws": "{tag} .nino-hero-title",
             "defaults": {
@@ -350,66 +559,12 @@
                 }
             },
             "in": [
-                "hero"
+                "hero",
+                "section"
             ],
             "draws": "{tag} .nino-hero-subtitle",
             "defaults": {
                 "tag": "p",
-                "style": "",
-                "class": ""
-            }
-        },
-        "text": {
-            "label": "Text",
-            "source": "text",
-            "loop": true,
-            "preview": "text",
-            "icon": [
-                [
-                    "path",
-                    {
-                        "d": "M21 5H3"
-                    }
-                ],
-                [
-                    "path",
-                    {
-                        "d": "M15 12H3"
-                    }
-                ],
-                [
-                    "path",
-                    {
-                        "d": "M17 19H3"
-                    }
-                ]
-            ],
-            "attributes": {
-                "format": {
-                    "type": "select",
-                    "label": "Format",
-                    "hint": "",
-                    "options": [
-                        "inline",
-                        "lines",
-                        "blocks"
-                    ],
-                    "default": "blocks"
-                },
-                "style": {
-                    "type": "select",
-                    "label": "Style",
-                    "hint": "",
-                    "options": [
-                        "",
-                        "loud",
-                        "quiet"
-                    ],
-                    "default": ""
-                }
-            },
-            "defaults": {
-                "format": "blocks",
                 "style": "",
                 "class": ""
             }
@@ -678,6 +833,16 @@
                 ]
             ],
             "attributes": {
+                "style": {
+                    "type": "select",
+                    "label": "Style",
+                    "hint": "",
+                    "options": [
+                        "",
+                        "nino-image--rounded"
+                    ],
+                    "default": ""
+                },
                 "alt": {
                     "type": "string",
                     "label": "Alternative text",
@@ -718,6 +883,7 @@
                 }
             },
             "defaults": {
+                "style": "",
                 "alt": "",
                 "focus": "",
                 "ratio": "",

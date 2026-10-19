@@ -7,8 +7,9 @@
  *													and import, the active one saved from the screen, and the
  *													field of the css, which every input mirrors into the
  *													preview; Global, with the header and footer
- *													templates, the root size and the width, a strip of five
- *													positions each, and the animation of the page; Fonts,
+ *													templates, the root size, the width and the whitespace,
+ *													a strip of five positions each, and the animation of the
+ *													page; Fonts,
  *													with the five font roles; Content, Buttons and Components,
  *													each with the choice of its template and one named knob
  *													for each thing the template lets go of, a strip of five
@@ -95,7 +96,7 @@
 
 		/*	How far from the middle a position of a knob can be, by the kind of the knob:
 			a scale has the five positions -2 to +2, a choice the three -1 to +1 (see
-			Setup::range()). The root size and the width of the page are scales	*/
+			Setup::range()). The root size, the width and the whitespace of the page are scales	*/
 		RANGE		: { scale : 2, choice : 1 },
 
 		// The namespace the elements of an icon are made in
@@ -188,6 +189,12 @@
 				[ 'path', { d : 'M2 12h20' } ],
 				[ 'path', { d : 'm6 8-4 4 4 4' } ],
 			],
+			// How much air the page has
+			'move-vertical' : [
+				[ 'path', { d : 'M12 2v20' } ],
+				[ 'path', { d : 'm8 18 4 4 4-4' } ],
+				[ 'path', { d : 'm8 6 4-4 4 4' } ],
+			],
 			// The three devices of the viewport switch: the shapes the Builder's symbols carry
 			'smartphone' : [
 				[ 'rect', { width : '14', height : '20', x : '5', y : '2', rx : '2', ry : '2' } ],
@@ -214,8 +221,8 @@
 		/*	Which icon a row opens with, by the tab and the knob it sets - so that what
 			is being set is felt before it is read: the size of a text, of a surface, a
 			space, the corners, a line, a shadow. The knobs are the feature's own (see
-			Setup::KNOBS), and so are the two rows of Global, the root size and the
-			width of the page, and the rows of the palette - the brand colour, the
+			Setup::KNOBS), and so are the three rows of Global, the root size, the
+			width and the whitespace of the page, and the rows of the palette - the brand colour, the
 			second colour, which is the row of Harmony, temperature, saturation,
 			contrast, depth and the mode: all of them have one, so that every name of
 			the Colours tab starts at the same left edge. A row of the Typefaces tab,
@@ -225,6 +232,7 @@
 		KNOB_ICONS	: {
 			'global/size' : 'a-large-small',
 			'global/width' : 'move-horizontal',
+			'global/whitespace' : 'move-vertical',
 			'typefaces/family' : 'a-large-small',
 			'content/hero-title' : 'a-large-small',
 			'content/hero-text' : 'a-large-small',
@@ -388,7 +396,7 @@
 		 *
 		 *	@param		{Object}	data
 		 *
-		 *	@return		{Object}					{ parts, knobs, size, width, motion, fonts, colours, theme, css }
+		 *	@return		{Object}					{ parts, knobs, size, width, whitespace, motion, fonts, colours, theme, css }
 		 */
 		_selection : function( data ) {
 
@@ -410,6 +418,7 @@
 				knobs 	: knobs,
 				size 		: data.size,
 				width 	: data.width,
+				whitespace : data.whitespace,
 				motion 	: Object.assign( {}, data.motion || {} ),
 				fonts 	: fonts,
 				colours	: Object.assign( {}, data.colours || {} ),
@@ -454,11 +463,10 @@
 		},
 
 		/**
-		 *	What a template is called in a list: the version, then its name
-		 *
-		 *	A part with five templates is a list somebody scans, and "v3" is what
-		 *	they say and type about it. A file with no @name is offered under its
-		 *	own name already, so prefixing that one would read "v3 - v3"
+		 *	What a template is called in a list: its name, where its file gives one, and
+		 *	the set - the slug of its file - where it does not. A name is a name and is
+		 *	not translated, and a slug is what a theme's file and a setup call a
+		 *	template by, so there is no need to say it a second time beside the name
 		 *
 		 *	@param		{string}	set
 		 *	@param		{Object}	named			One entry of a part's catalogue
@@ -466,7 +474,7 @@
 		 *	@return		{string}
 		 */
 		_setLabel : function( set, named ) {
-			return named && named.name && named.name !== set ? set+ ' - '+ named.name : set;
+			return named && named.name && named.name !== set ? named.name : set;
 		},
 
 		/**
@@ -640,7 +648,7 @@
 
 		/**
 		 *	One strip: the row of a setting that is chosen by pressing one of a few
-		 *	buttons - a knob of the three tabs, the root size and the width of the page,
+		 *	buttons - a knob of the three tabs, the root size, the width and the whitespace of the page,
 		 *	a knob of the palette. The label with the icon of the key, the name and the
 		 *	note under it (see _labelContent()), and the workbench's own segmented
 		 *	control for the options: filled where it is, flat where it is not, the
@@ -1464,7 +1472,7 @@
 		},
 
 		/**
-		 *	The setup of a working copy as a theme keeps it: the seven keys that choose something,
+		 *	The setup of a working copy as a theme keeps it: the eight keys that choose something,
 		 *	without the theme it names and the css it carries - the screen's side of the compare
 		 *	the chip makes with the file's (see _themeChanged())
 		 *
@@ -1473,7 +1481,7 @@
 		 *	@return		{Object}
 		 */
 		_snapshotOf : function( edit ) {
-			return { size : edit.size, width : edit.width, motion : edit.motion, parts : edit.parts, knobs : edit.knobs, fonts : edit.fonts, colours : edit.colours };
+			return { size : edit.size, width : edit.width, whitespace : edit.whitespace, motion : edit.motion, parts : edit.parts, knobs : edit.knobs, fonts : edit.fonts, colours : edit.colours };
 		},
 
 		/**
@@ -1697,7 +1705,7 @@
 				return ( response.missing || [] ).filter( function( entry ) { return entry.slug === family } ).map( function( entry ) { return entry.name } )[0] || family;
 			} );
 
-			design._edit = { parts : setup.parts, knobs : setup.knobs, size : setup.size, width : setup.width, motion : setup.motion, fonts : setup.fonts, colours : setup.colours,
+			design._edit = { parts : setup.parts, knobs : setup.knobs, size : setup.size, width : setup.width, whitespace : setup.whitespace, motion : setup.motion, fonts : setup.fonts, colours : setup.colours,
 				theme : response.slug, css : response.css };
 			design._active = { slug : response.slug, name : response.name, description : response.description, shipped : response.shipped,
 				setup : JSON.parse( JSON.stringify( design._snapshotOf( design._edit ) ) ), css : response.css };
@@ -2005,9 +2013,9 @@
 		},
 
 		/**
-		 *	The Global tab: the two frames, the root size and the width of the page -
-		 *	two strips of five positions, in a card of their own the way the knob rows of
-		 *	a tab stand in theirs - and the animation.
+		 *	The Global tab: the two frames, the root size, the width and the whitespace
+		 *	of the page - three strips of five positions, in a card of their own the way
+		 *	the knob rows of a tab stand in theirs - and the animation.
 		 *
 		 *	Drawn once per visit of the tab and changed in place after that: a
 		 *	select that redrew its card when it was used would take the focus
@@ -2034,8 +2042,8 @@
 
 			body.appendChild( templates );
 
-			/*	The page: its root size and its width, the same five positions each. What
-				the ends of a strip are is the line under its name	*/
+			/*	The page: its root size, its width and its whitespace, the same five positions
+				each. What the ends of a strip are is the line under its name	*/
 			const page = dc.createElement('div');
 			page.className = 'nino-admin-card design-block';
 
@@ -2048,6 +2056,10 @@
 			page.appendChild( Nino.admin.design._stripRow(
 				'global/width', Nino.content.getText('/_admin/design/label/pagewidth'), Nino.content.getText('/_admin/design/hint/pagewidth'),
 				numbers, edit.width, function( position ) { edit.width = position; Nino.admin.design._preview() } ) );
+
+			page.appendChild( Nino.admin.design._stripRow(
+				'global/whitespace', Nino.content.getText('/_admin/design/label/whitespace'), Nino.content.getText('/_admin/design/hint/whitespace'),
+				numbers, edit.whitespace, function( position ) { edit.whitespace = position; Nino.admin.design._preview() } ) );
 
 			body.appendChild( page );
 

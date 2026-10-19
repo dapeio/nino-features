@@ -1,0 +1,262 @@
+/*	@name			Contrast
+ *	@description	Lines in the colour of the text, labels in spaced capitals, the table as a grid with an inverted head, square badges, alerts with a bar at the left, plans as boxes with the recommended one inverted.
+ *	@description-de	Linien in der Textfarbe, Beschriftungen in gesperrten Versalien, die Tabelle als Gitter mit invertiertem Kopf, eckige Badges, Alerts mit Balken links, Pläne als Kästen, der empfohlene invertiert.
+ *
+ *	@knob	scale		Type size of the fields and the tables
+ *	@knob	space		Space inside a field, a cell, a block and between them
+ *	@knob	corners		Corner radius of a field and of everything boxed
+ *	@knob	border		Weight of the lines of a field, a table, a plan and an alert
+ *	@knob	zebra		Stripes of a table that asks for them
+ *	@knob	labels		Where the label of a field stands
+ *
+ *	Lines in the ink. A field, a plan and an accordion are drawn in the ink of
+ *	the ground they stand on and not in the colour of the border role; a label
+ *	is set in spaced capitals at four fifths of its size, in whichever place the
+ *	labels knob puts it; a table is a grid whether or not it asks for borders,
+ *	with a head in the pair of the ground swapped, which the palette has solved.
+ *	A badge is square. An alert has a bar at its left as thick as four lines, in
+ *	its own ink; the ink of a status is chosen against the surface of the status
+ *	and not against the page, so there the bar takes the ink of the page, or it
+ *	could be lost against the page along the edge. The plan that is recommended
+ *	is the ground and the ink swapped - its own colours follow. The corners are
+ *	the knob's, and the least position is square. A field is never set under
+ *	1rem, and the focus is a ring of 2px in the colour of the focus, standing off
+ *	the line.
+ *
+ *	Every ladder is Nino's, value for value, and the rules read them as Nino's
+ *	own do: the padding of a field, a cell and a block, the gap of a list.
+ */
+
+/*	The ladders are Nino's, value for value - components regular says what each of them is.
+	The stripes and the labels are choices of three, and their aspects belong to the
+	template that declares them: they move with the knob	*/
+:root {
+	--components-scale--least: 		.75;
+	--components-scale--less: 		.87;
+	--components-scale--default: 	1;
+	--components-scale--more: 		1.15;
+	--components-scale--most: 		1.32;
+
+	--components-space--least: 		calc( var(--space-1) * .4 );
+	--components-space--less: 		calc( var(--space-1) * .7 );
+	--components-space--default: 	var(--space-1);
+	--components-space--more: 		calc( var(--space-1) * 1.5 );
+	--components-space--most: 		calc( var(--space-1) * 2.2 );
+
+	--components-corners--least: 	0rem;
+	--components-corners--less: 	0rem;
+	--components-corners--default: 	var(--radius-small);
+	--components-corners--more: 	var(--radius-large);
+	--components-corners--most: 	1rem;
+
+	--components-border--least: 	0px;
+	--components-border--less: 		.5px;
+	--components-border--default: 	1px;
+	--components-border--more: 		2px;
+	--components-border--most: 		3px;
+
+	--components-zebra--less: 		transparent;
+	--components-zebra--default: 	var(--color-section-alt-bg);
+	--components-zebra--more: 		linear-gradient( var(--color-border), var(--color-border) ) top / 100% 1px no-repeat var(--color-section-alt-bg);
+
+	--components-zebra-ink--less: 		initial;
+	--components-zebra-ink--default: 	var(--color-section-alt-text);
+	--components-zebra-ink--more: 		var(--color-section-alt-text);
+
+	--components-labels--less: 		var(--space-2);
+	--components-labels--default: 	normal;
+	--components-labels--more: 		normal;
+
+	--components-labels-form--less: 		grid;
+	--components-labels-form--default: 		block;
+	--components-labels-form--more: 		block;
+
+	--components-labels-cols--less: 		max-content minmax(0, 1fr);
+	--components-labels-cols--default: 		none;
+	--components-labels-cols--more: 		none;
+
+	--components-labels-align--less: 		baseline;
+	--components-labels-align--default: 	normal;
+	--components-labels-align--more: 		normal;
+
+	--components-labels-wide--less: 		1 / -1;
+	--components-labels-wide--default: 		auto;
+	--components-labels-wide--more: 		auto;
+
+	--components-labels-start--less: 		start;
+	--components-labels-start--default: 		auto;
+	--components-labels-start--more: 		auto;
+
+	--components-labels-block--less: 		inline;
+	--components-labels-block--default: 	inline;
+	--components-labels-block--more: 		table;
+
+	--components-labels-pos--less: 			static;
+	--components-labels-pos--default: 		static;
+	--components-labels-pos--more: 			relative;
+
+	--components-labels-lift--less: 		0em;
+	--components-labels-lift--default: 		0em;
+	--components-labels-lift--more: 		.8em;
+
+	--components-labels-cut--less: 			transparent;
+	--components-labels-cut--default: 		transparent;
+	--components-labels-cut--more: 			var(--color-ground);
+}
+
+/* ---- fields ---- */
+
+.nino-form-input,
+.nino-form-textarea,
+.nino-form-select {
+	border: var(--components-border) solid var(--color-ink);
+	border-radius: var(--components-corners);
+	font-size: max( 1rem, calc( 1rem * var(--components-scale) ) );
+}
+.nino-form-input:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])),
+.nino-form-textarea:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])),
+.nino-form-select:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])) {
+	padding: var(--components-space);
+}
+.nino-form-select:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])) {
+	padding-right: 2.5rem;
+}
+.nino-form-input:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
+.nino-form-textarea:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
+.nino-form-select:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
+	margin-bottom: var(--components-space);
+}
+.nino-form-input:focus,
+.nino-form-textarea:focus,
+.nino-form-select:focus {
+	border-color: var(--color-ink);
+	outline: 2px solid var(--color-focus);
+	outline-offset: 2px;
+}
+.nino-form-input::placeholder,
+.nino-form-textarea::placeholder {
+	color: var(--color-subtitle);
+	opacity: 1;
+}
+
+.nino-form.nino-is-error .nino-form-message,
+.nino-form.nino-is-success .nino-form-message {
+	padding: var(--components-space) calc( var(--components-space) * 2 );
+	border-radius: var(--components-corners);
+}
+
+/* ---- labels ---- */
+
+.nino-form:where(:not(.nino-form--inline, .nino-newsletter-inline)) {
+	display: var(--components-labels-form);
+	grid-template-columns: var(--components-labels-cols);
+	column-gap: var(--components-labels);
+	align-items: var(--components-labels-align);
+}
+.nino-form:where(:not(.nino-form--inline, .nino-newsletter-inline)) > :where(:not(
+	label:not(.nino-forms-check, .nino-sr-only),
+	label:not(.nino-forms-check, .nino-sr-only) + :is(.nino-form-input, .nino-form-select, .nino-form-textarea),
+	.nino-form-trap, .nino-sr-only
+)) {
+	grid-column: var(--components-labels-wide);
+}
+.nino-form:where(:not(.nino-form--inline, .nino-newsletter-inline)) > :is(.nino-btn, .nino-forms-check) {
+	justify-self: var(--components-labels-start);
+}
+.nino-form:where(:not(.nino-form--inline, .nino-newsletter-inline)) > label:where(:not(.nino-forms-check, .nino-sr-only)) {
+	display: var(--components-labels-block);
+	position: var(--components-labels-pos);
+	margin: 0 0 calc( var(--components-labels-lift) * -.55 ) var(--components-labels-lift);
+	padding: 0 calc( var(--components-labels-lift) / 4 );
+	background-color: var(--components-labels-cut);
+	font-size: .8em;
+	letter-spacing: .08em;
+	text-transform: uppercase;
+}
+
+/* ---- tables ---- */
+
+.nino-table {
+	font-size: calc( 1em * var(--components-scale) );
+}
+.nino-table th,
+.nino-table td {
+	padding: var(--components-space) calc( var(--components-space) * 2 );
+	border: var(--components-border) solid var(--color-border);
+}
+.nino-table th {
+	background-color: var(--color-ink);
+	color: var(--color-ground);
+}
+.nino-table--striped tbody tr:nth-child(even) {
+	background: var(--components-zebra);
+	color: var(--components-zebra-ink, currentcolor);
+}
+
+/* ---- lists, badges, alerts ---- */
+
+.nino-list:not(.nino-list--columns) {
+	gap: var(--components-space);
+}
+.nino-badge:not(.nino-badge--pill) {
+	border-radius: 0;
+}
+.nino-alert {
+	border-width: var(--components-border);
+	border-radius: 0;
+	border-left: calc( var(--components-border) * 4 ) solid currentColor;
+}
+.nino-alert--success,
+.nino-alert--warning,
+.nino-alert--error {
+	border-left-color: var(--color-text);
+}
+.nino-alert:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])) {
+	padding: calc( var(--components-space) * 2 );
+}
+.nino-alert--content:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])) {
+	padding: calc( var(--components-space) * 4 );
+}
+
+/* ---- blocks ---- */
+
+/*	The plan that is recommended is the ground and the ink swapped. What is
+	written in it reads the roles, and the roles that are the ink of a ground
+	are now the colour of the ground it is painted on	*/
+.nino-pricing-row {
+	gap: calc( var(--components-space) * 2 );
+}
+.nino-pricing-item {
+	border: var(--components-border) solid var(--color-ink);
+	border-radius: var(--components-corners);
+	box-shadow: none;
+}
+.nino-pricing-item:where(:not([class*="nino-p-"], [class*="nino-pt-"], [class*="nino-pb-"])) {
+	padding: calc( var(--components-space) * 2 );
+}
+.nino-pricing-item--featured {
+	background-color: var(--color-ink);
+	color: var(--color-ground);
+	--color-title: var(--color-ground);
+	--color-subtitle: var(--color-ground);
+	--color-accent: var(--color-ground);
+	--color-focus: var(--color-ground);
+	--color-border: var(--color-ground);
+}
+
+.nino-accordion {
+	border-bottom: var(--components-border) solid var(--color-ink);
+}
+.nino-accordion-trigger {
+	padding: calc( var(--components-space) * 2 ) 0;
+}
+.nino-accordion-panel {
+	padding: 0 0 calc( var(--components-space) * 2 ) 1em;
+}
+
+/*	The number of a step is drawn by the framework in the list that counts for
+	itself, and is a .nino-timeline-number where the markup writes one	*/
+.nino-timeline-number,
+.nino-timeline--counted > .nino-timeline-step::after {
+	border-radius: 0;
+}

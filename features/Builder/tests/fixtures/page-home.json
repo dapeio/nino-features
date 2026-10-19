@@ -222,6 +222,7 @@
                             "source": "image",
                             "text": null,
                             "attributes": {
+                                "style": "",
                                 "alt": "",
                                 "focus": "5",
                                 "ratio": "",

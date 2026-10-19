@@ -17,9 +17,9 @@
  *												what a save's answer means and what the two answers to a
  *												conflict send; the unsaved state. All of it over the example
  *												page of the concept (fixtures/page-home.json, which
- *												builder-smoke.php holds to what the Reader makes of
+ *												builder-smoke.php writes from what the Reader makes of
  *												page-home.tpl) and the registry of the kernel's own
- *												components (registry.json).
+ *												components (registry.json, written there as well).
  *
  *												The half that draws is run over a small stand-in of the
  *												page: elements with a tree, attributes, classes, selectors
@@ -649,6 +649,18 @@ vm.runInContext( source, sandbox, { filename : 'admin.js' } );
 
 const builder = sandbox.Nino.admin.builder;
 const registryFixture = fixture('registry.json');
+
+/**
+ *	The labels of the components that belong in a place, in the order of the registry, as one string: what the picker of a column
+ *	offers there. A component that says where it belongs ("in") is in those places and no other, one that says nothing is in every
+ *	one. Read off the registry the PHP suite wrote from the kernel it ran against, so that no list of components is typed here
+ */
+const belonging = function( place, components ) {
+
+	const all = components || registryFixture.components;
+
+	return Object.keys( all ).filter( function( name ) { return all[name]['in'] === undefined || all[name]['in'].indexOf( place ) !== -1 } ).map( function( name ) { return all[name].label } ).join();
+};
 
 /**
  *	The registry as the panel gets it: the components and the stacks of the kernel
@@ -1294,10 +1306,10 @@ check( '...the end of a column is a button for a component and nothing else - wh
 	const looped = builder._addsRow( [ 1, 1 ] );
 	return plain.children.length === 1 && looped.children.length === 1 && plain.children[0].textContent === '+ Component' && looped.children[0].textContent === '+ Component';
 } )() );
-check( '...and a component is chosen from the registry\'s, those that belong where the column is: the first section is the hero, which takes the section\'s title and subtitle besides its own, anywhere else is a section - the cell of a loop among it, which holds no place of its own - and what names no place is offered in all of them; the card is for the hero and for a section, and a loop takes it as it takes the rest', ( function() {
+check( '...and a component is chosen from the registry\'s, those that belong where the column is: the first section is the hero, anywhere else is a section - the cell of a loop among it, which holds no place of its own - and what names no place is offered in all of them; the registry\'s "in" says, and the list is the registry\'s, as it has it', ( function() {
 	const menu = screen.getElementById('builder-menu');
 	const offered = function( path ) { builder._pickComponent( path, made('button') ); return texts( menu.children ) };
-	return offered( [ 0, 0 ] ) === 'Title (Section),Subtitle (Section),Title (Hero),Subtitle (Hero),Text,Card,Button,Image,HTML,Spacer' && offered( [ 1, 0 ] ) === 'Title (Section),Subtitle (Section),Text,Card,Button,Image,HTML,Spacer'
+	return belonging( 'hero' ) !== '' && belonging( 'section' ) !== '' && offered( [ 0, 0 ] ) === belonging( 'hero' ) && offered( [ 1, 0 ] ) === belonging( 'section' )
 		&& offered( [ 1, 1 ] ) === offered( [ 1, 0 ] ) && offered( [ 3, 0 ] ) === offered( [ 1, 0 ] );
 } )() );
 check( '...they stand in the order of the registry and in none of the script\'s own: the components as the kernel registers them, then those of a feature in the order it registered them - and a registry in another order is offered in that order, not in the alphabet\'s', ( function() {
@@ -1318,7 +1330,7 @@ check( '...they stand in the order of the registry and in none of the script\'s 
 
 	builder._registry = kept;
 
-	return kernel === 'Title (Section),Subtitle (Section),Text,Card,Button,Image,HTML,Spacer' && featured === kernel+ ',Zulu,Alpha' && other === 'Spacer,HTML,Image,Button,Card,Text,Subtitle (Section),Title (Section)';
+	return kernel === belonging( 'section' ) && featured === kernel+ ',Zulu,Alpha' && other === belonging( 'section', flipped );
 } )() );
 check( '...a component that says where it belongs (its "in") is offered there and nowhere else - the hero is the first section, whether or not it is a cover, a section is any other column, the cell of a loop included -, one that says nothing is offered everywhere, and one a loop does not take is offered in no column that runs one: the script names no component', ( function() {
 
@@ -1594,8 +1606,8 @@ check( '...the fields in the groups: the name and the file, the header and the f
 	&& templateBody.querySelectorAll('.builder-line').map( function( line ) { return line.children.length } ).join() === '2,2' && fold.querySelectorAll('.builder-line').length === 1 && labelsIn( fold ) === 'Effect,Strength,Speed' );
 check( '...the file is text that cannot be changed, with the slug the text keys of the page are made of in its hint; the name is a field', controlOf( templateBody, 'File' ).el.readOnly === true && valueAt( templateBody, 'File' ) === 'page-home.tpl' && controlOf( templateBody, 'Name' ).el.readOnly === false && valueAt( templateBody, 'Name' ) === 'Home'
 	&& controlOf( templateBody, 'File' ).el.closest('label').querySelector('.nino-admin-hint').textContent === 'The slug is "home". The name of the file is the category of the text keys of the page (/template/page-home/...), so it does not change.' );
-check( '...the effect is a select with words - the plain one first, the others in the order of Nino.css, the two slides named for the motion the visitor sees: slide-left starts at a positive translateX, to the right of its place, and ends at 0, so it slides left -, the strength a group of radio buttons, the speed a select whose first word is the frame', controlOf( templateBody, 'Effect' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join()
-	=== '=Default - fade in and rise,zoom=Zoom,zoom-out=Zoom out,slide-left=Slides left,slide-right=Slides right,flip=Flip,blur=Blur'
+check( '...the effect is a select with words - the plain one first, the others in the order of Nino.css, the four slides named for the motion the visitor sees: slide-left starts at a positive translateX, to the right of its place, and ends at 0, so it slides left; slide-up starts below its place and slides up -, the strength a group of radio buttons, the speed a select whose first word is the frame', controlOf( templateBody, 'Effect' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join()
+	=== '=Default - fade in and rise,zoom=Zoom,zoom-out=Zoom out,slide-left=Slides left,slide-right=Slides right,slide-up=Slides up,slide-down=Slides down,flip=Flip,blur=Blur'
 	&& controlOf( templateBody, 'Speed' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Like the frame,fast=Fast,medium=Medium,slow=Slow'
 	&& controlOf( templateBody, 'Strength' ).kind === 'group' && radiosOf( controlOf( templateBody, 'Strength' ).el ).map( function( radio ) { return radio.value } ).join() === 'soft,medium,hard' );
 
@@ -1943,7 +1955,7 @@ check( 'Viewport animation: the section carries what the template gives, none, o
 	&& controlOf( animationPane(), 'Animation' ).el.title === words['/_admin/builder/hint/vpa-section-off'] );
 check( '...a section with the plain animation has an animation of its own where the template has none: its fields are there - the effect and its strength, the speed and how often, the delay and the duration, a line each', valueAt( animationPane(), 'Animation' ) === 'own'
 	&& JSON.stringify( labelList( animationPane() ) ) === JSON.stringify( [ 'Animation', 'Effect', 'Strength', 'Speed', 'Repeat', 'Delay', 'Duration' ] ) && animationPane().querySelectorAll('.builder-line').map( function( line ) { return line.children.length } ).join() === '2,2,2' );
-check( '...its effects are those of Nino.css and no word for none - that is the choice above -, its repeat is once or repeat, its speed the three', controlOf( animationPane(), 'Effect' ).el.children.map( function( option ) { return option.value } ).join() === ',zoom,zoom-out,slide-left,slide-right,flip,blur'
+check( '...its effects are those of Nino.css and no word for none - that is the choice above -, its repeat is once or repeat, its speed the three', controlOf( animationPane(), 'Effect' ).el.children.map( function( option ) { return option.value } ).join() === ',zoom,zoom-out,slide-left,slide-right,slide-up,slide-down,flip,blur'
 	&& controlOf( animationPane(), 'Repeat' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Once,repeat=Repeat' && controlOf( animationPane(), 'Speed' ).el.children.map( function( option ) { return option.value } ).join() === ',fast,medium,slow'
 	&& radiosOf( controlOf( animationPane(), 'Strength' ).el ).every( function( radio ) { return radio.disabled === true } ) );
 change( animationPane(), 'Effect', 'zoom' );
@@ -2282,7 +2294,7 @@ builder._openSettings( [ 0, 0 ] );
 const colAnimation = function() { return paneOf('animation') };
 const pickedOff = function( label ) { return controlOf( colAnimation(), label ).el.disabled === true };
 check( 'the animation of a column is its own, and has no like, off or own: the effect and its strength, the speed and how often - the effect is none before it is the plain one, and the words under it are those of a column', JSON.stringify( labelList( colAnimation() ) ) === JSON.stringify( [ 'Effect', 'Strength', 'Speed', 'Repeat' ] )
-	&& controlOf( colAnimation(), 'Effect' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === 'none=No animation,=Default - fade in and rise,zoom=Zoom,zoom-out=Zoom out,slide-left=Slides left,slide-right=Slides right,flip=Flip,blur=Blur'
+	&& controlOf( colAnimation(), 'Effect' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === 'none=No animation,=Default - fade in and rise,zoom=Zoom,zoom-out=Zoom out,slide-left=Slides left,slide-right=Slides right,slide-up=Slides up,slide-down=Slides down,flip=Flip,blur=Blur'
 	&& valueAt( colAnimation(), 'Effect' ) === 'none' && colAnimation().querySelectorAll('.builder-line').map( function( line ) { return line.children.length } ).join() === '2,2'
 	&& controlOf( colAnimation(), 'Effect' ).el.title === '' && colAnimation().querySelector('.nino-admin-hint') === null );
 check( '...it has no delay and no duration, whatever the animation is: the file keeps a column\'s animation as classes, and a column has no attribute for either - the animation of a section has both', ( function() {
@@ -2342,15 +2354,36 @@ check( 'a link is a source of its own, a line of its own - the other attributes 
 	&& paneOf('properties').children[0].querySelector('.builder-source-name').textContent === 'Link' && paneOf('properties').children[0].querySelector('.builder-source-current').textContent === '/_nino/webpage/contact/uri'
 	&& paneOf('properties').children[0].querySelector('.builder-source-caption').hidden === true );
 builder._openSettings( [ 1, 1, 0 ] );
-check( '...a text of its own is alone when the select after it is a focus, which is a grid and has a line to itself - the switch for none and the nine places -, and the select after that is alone: alt, focus, ratio', dialogText('builder-dialog-kind') === 'Component "Image"' && classes( paneOf('properties').children ) === 'nino-admin-field,builder-focus,nino-admin-field' && JSON.stringify( labelList( paneOf('properties') ) ) === JSON.stringify( [ 'Alternative text', 'Automatic focus', 'Focus', 'Ratio' ] )
-	&& controlsIn( paneOf('properties') ).map( function( control ) { return control.kind } ).join() === 'text,switch,group,select' );
+check( '...the properties of the image are drawn as the schema pairs them, in the order of the schema: a line of two is a line, an attribute alone is a field, and the focus - the switch for none and the nine places - is a grid with a line to itself', ( function() {
+
+	const attributes = registry().components.image.attributes;
+	const places = [ '', '1', '2', '3', '4', '5', '6', '7', '8', '9' ];
+	const focus = function( name ) { return attributes[name].type === 'select' && attributes[name].options.join() === places.join() };
+	const lines = builder._attributeLines( attributes );
+	const kinds = { select : 'select', string : 'text', bool : 'switch' };
+
+	return dialogText('builder-dialog-kind') === 'Component "Image"' && focus( 'focus' ) === true && lines.length > 1
+		&& classes( paneOf('properties').children ) === lines.map( function( line ) { return line.length === 2 ? 'builder-line' : ( focus( line[0] ) === true ? 'builder-focus' : 'nino-admin-field' ) } ).join()
+		&& JSON.stringify( labelList( paneOf('properties') ) ) === JSON.stringify( [].concat.apply( [], Object.keys( attributes ).map( function( name ) { return focus( name ) === true ? [ 'Automatic focus', 'Focus' ] : [ attributes[name].label ] } ) ) )
+		&& controlsIn( paneOf('properties') ).map( function( control ) { return control.kind } ).join() === Object.keys( attributes ).map( function( name ) { return focus( name ) === true ? 'switch,group' : kinds[attributes[name].type] } ).join();
+} )() );
 
 check( 'the attributes of a schema are paired in the order of the schema: a select, a switch, a number or a line of text goes with the next of them; a lines field, a link, a picture, a key or the focus of a picture - a select over none and the nine places - has a line to itself', ( function() {
 	const places = [ '', '1', '2', '3', '4', '5', '6', '7', '8', '9' ];
 	const declared = { a : { type : 'select' }, b : { type : 'bool' }, c : { type : 'lines' }, d : { type : 'int' }, e : { type : 'string' }, f : { type : 'href' }, g : { type : 'select' }, h : { type : 'image' }, i : { type : 'key' }, j : { type : 'select' }, k : { type : 'select' }, l : { type : 'select' }, m : { type : 'select', options : places }, n : { type : 'bool' }, o : { type : 'select', options : [ '', 'left' ] } };
+	const components = registry().components;
+	const short = [ 'select', 'bool', 'int', 'string' ];
+	const focus = function( attribute ) { return attribute.type === 'select' && Array.isArray( attribute.options ) === true && attribute.options.join() === places.join() };
+
 	return JSON.stringify( builder._attributeLines( declared ) ) === '[["a","b"],["c"],["d","e"],["f"],["g"],["h"],["i"],["j","k"],["l"],["m"],["n","o"]]' && JSON.stringify( builder._attributeLines( {} ) ) === '[]'
-		&& JSON.stringify( builder._attributeLines( registry().components.button.attributes ) ) === '[["href"],["style","size"],["target"]]' && JSON.stringify( builder._attributeLines( registry().components.image.attributes ) ) === '[["alt"],["focus"],["ratio"]]'
-		&& JSON.stringify( builder._attributeLines( registry().components.title.attributes ) ) === '[["tag","style"]]';
+		// ...and so are the attributes of every component and every stack of the registry: each once, in the order of the schema, a line of one or of two, the two being short ones and the focus never one of them
+		&& Object.keys( components ).concat( Object.keys( registry().stacks ) ).every( function( name ) {
+			const attributes = ( components[name] || registry().stacks[name] ).attributes;
+			const lines = builder._attributeLines( attributes );
+			return JSON.stringify( [].concat.apply( [], lines ) ) === JSON.stringify( Object.keys( attributes ) ) && lines.every( function( line ) {
+				return line.length === 1 || ( line.length === 2 && line.every( function( key ) { return short.indexOf( attributes[key].type ) !== -1 && focus( attributes[key] ) === false } ) );
+			} );
+		} );
 } )() );
 
 builder._doc.model.blocks[0].cols[0].components.push( { name : 'spacer', source : '', text : null, attributes : { size : '2', 'class' : '' } } );
@@ -4146,9 +4179,10 @@ doc = openCard();
 builder._renderEditor();
 
 const menuOf = function( path ) { builder._pickComponent( path, made('button') ); return texts( screen.getElementById('builder-menu').children ) };
-const inCard = 'Title (Card),Subtitle (Card),Text,Button,Image,HTML,Spacer';
-const inSection = 'Title (Section),Subtitle (Section),Text,Card,Button,Image,HTML,Spacer';
-const inHero = 'Title (Section),Subtitle (Section),Title (Hero),Subtitle (Hero),Text,Card,Button,Image,HTML,Spacer';
+// What belongs in each place, as the registry says it
+const inCard = belonging( 'card' );
+const inSection = belonging( 'section' );
+const inHero = belonging( 'hero' );
 
 check( 'the picker offers the card where the card says it belongs - a column of a section, and the bare cell of a loop, which holds no place of its own - and what a column is offered besides', menuOf( [ 1, 0 ] ) === inSection );
 check( '...in the first section it is offered as well, whether it is a cover or none: the hero is a place the card belongs in, and a cover does not make it one', ( function() {
@@ -4239,11 +4273,11 @@ check( 'every item of the picker holds an icon first and its label after it, the
 	const menu = screen.getElementById('builder-menu');
 	const items = pickedItems( [ 1, 0 ] );
 
-	return items.length === 8 && items.every( function( item ) {
+	return items.length === inSection.split(',').length && items.every( function( item ) {
 		return item.localName === 'button' && item.children.length === 2 && item.children[0].localName === 'svg' && item.children[1].localName === 'span' && item.children[1].className === 'builder-menu-label' && item.textContent === item.children[1].textContent;
-	} ) && texts( items ) === inSection && buttonOf( menu, 'Button' ) === items[4] && buttonOf( menu, 'Button' ).children[1].textContent === 'Button';
+	} ) && texts( items ) === inSection && buttonOf( menu, 'Button' ) === items[inSection.split(',').indexOf('Button')] && buttonOf( menu, 'Button' ).children[1].textContent === 'Button';
 } )() );
-check( '...the icon of a component of the kernel is the one the registry gives it: the svg holds the parts of its entry, tag by tag and attribute by attribute - all twelve of them, in the pickers of the hero, of a section and of a card', ( function() {
+check( '...the icon of a component of the kernel is the one the registry gives it: the svg holds the parts of its entry, tag by tag and attribute by attribute - every one of them, in the pickers of the hero, of a section and of a card', ( function() {
 
 	const components = builder._registry.components;
 	const names = Object.keys( components );
@@ -4259,7 +4293,7 @@ check( '...the icon of a component of the kernel is the one the registry gives i
 		} );
 	} );
 
-	return same && names.length === 12 && Object.keys( seen ).length === 12 && names.every( function( name ) { return components[name].icon.length > 0 } );
+	return same && names.length > 0 && names.length === Object.keys( registryFixture.components ).length && Object.keys( seen ).length === names.length && names.every( function( name ) { return components[name].icon.length > 0 } );
 } )() );
 check( '...it is an svg of its own and decoration: made in the namespace of svg, as every part of it is - an element of the page is not -, 24 by 24, out of reach of assistive technology, with the class of the icons and the menu\'s, and it draws with its parts, not with the sprite', ( function() {
 

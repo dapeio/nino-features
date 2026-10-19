@@ -286,7 +286,7 @@ namespace Nino\Modules\Builder {
 					$class[] = 'nino-parallex--dim';
 			}
 
-			// The place of the content is the row's in a cover or a parallax: on a section that is neither the class would be idle
+			// The place of the content is the row's in a cover or a parallax: on a section that is neither the Builder writes none
 			if( (string) $s['contentPos'] !== '' && ( $s['cover'] !== null || $s['parallax'] === true ) )
 				$class[] = 'nino-cover-'. $s['contentPos'];
 

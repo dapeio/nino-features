@@ -117,7 +117,7 @@
 		SPACES		: [ '', '0', '1', '2', '3', '4', '5', '6' ],
 		// The effects of Nino.css, each of them in three strengths, which the model keeps with
 		// the effect as one word (zoom-soft). The plain one, which fades in and rises, has neither
-		EFFECTS		: [ '', 'zoom', 'zoom-out', 'slide-left', 'slide-right', 'flip', 'blur' ],
+		EFFECTS		: [ '', 'zoom', 'zoom-out', 'slide-left', 'slide-right', 'slide-up', 'slide-down', 'flip', 'blur' ],
 		STRENGTHS	: [ 'soft', 'medium', 'hard' ],
 		SPEEDS		: [ '', 'fast', 'medium', 'slow' ],
 		MODES			: [ '', 'repeat', 'visible', 'visible-once' ],
@@ -771,7 +771,7 @@
 		/**
 		 *	An effect and its strength as the one word the model keeps them as
 		 *
-		 *	@param		{string}		effect						'' for the plain one, else zoom, zoom-out, slide-left, slide-right, flip or blur
+		 *	@param		{string}		effect						'' for the plain one, else zoom, zoom-out, slide-left, slide-right, slide-up, slide-down, flip or blur
 		 *	@param		{string}		strength					soft, medium or hard
 		 *
 		 *	@return		{string}									zoom-soft - and '' for the plain effect, which has no strength

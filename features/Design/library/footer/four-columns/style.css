@@ -1,0 +1,12 @@
+/*	@name				Four columns
+ *	@description	Logo, description and social links beside two columns, with a legal row under them. The classic company foot.
+ *	@description-de	Logo, Beschreibung und Social-Media-Links neben zwei Spalten, darunter eine Rechtszeile. Der klassische Firmenfuß.
+ *
+ *	The name and the description are what the Design panel lists this
+ *	variant as. Every library file carries them; a file without a @name
+ *	is offered under its own file name instead.
+ */
+
+.nino-footer-main {
+	padding-top:var(--space-1);
+}

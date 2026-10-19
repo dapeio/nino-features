@@ -1,0 +1,76 @@
+/*	@name				Classic, big
+ *	@description	A bar on the page ground, the logo to the left and the navigation and a button to the right, every link as tall as the bar.
+ *	@description-de	Eine Leiste auf dem Grund der Seite, links das Logo, rechts die Navigation und ein Button, jeder Link so hoch wie die Leiste.
+ *
+ *	The name and the description are what the Design panel lists this
+ *	variant as. Every library file carries them; a file without a @name
+ *	is offered under its own file name instead.
+ */
+
+.nino-frame-header .nino-scroll-header {
+	min-height: var(--space-5);
+	opacity: 1;
+	background-color: var(--color-background);
+	display:flex;
+}
+
+body.nino-scroll-atf .nino-frame-header .nino-scroll-header {
+	background-color: var(--color-background);
+}
+
+.nino-frame-header .nino-logo {
+	width: clamp(7.5rem, 10vw, 10rem);
+	height: auto;
+	min-width: 0;
+	min-height: 0;
+	margin: 0;
+	background-image: none;
+}
+
+.nino-frame-header .nino-frame-header-nav {
+	margin-left: auto;
+}
+
+.nino-frame-header .nino-nav-burger > label > svg {
+	fill: var(--color-title);
+}
+
+
+body main {
+	padding-top: var(--space-5);
+}
+
+body main:has(> .nino-cover:first-child),
+body main:has(> .nino-wrap > .nino-cover:first-child),
+body main:has(> .nino-parallex:first-child),
+body main:has(> .nino-wrap > .nino-parallex:first-child) {
+	padding-top: 0;
+}
+
+
+@media (min-width: 768px) {
+	.nino-frame-header .nino-nav-content li a {
+		position: relative;
+		display: flex;
+    align-items: center;
+		height: var(--space-5);
+		padding: 0 var(--space-2);
+		font-size: var(--fontsize-btn);
+		letter-spacing: .04em;
+		transition: color .2s;
+	}
+
+	.nino-frame-header .nino-nav-content li a.nino-is-active,
+	.nino-frame-header .nino-nav-content li a.nino-is-active:hover {
+		color:var(--nino-default-focus);
+	}
+	.nino-frame-header .nino-nav-content li a:hover {
+		color: var(--nino-default-link);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.nino-frame-header .nino-nav-content li a {
+		transition: none;
+	}
+}

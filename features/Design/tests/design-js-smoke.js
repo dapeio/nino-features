@@ -332,7 +332,7 @@ function part( name, kind, set, catalogue ) {
 	return { part : name, kind : kind, set : set, catalogue : catalogue };
 }
 
-/** The themes design/list lists: the six the feature ships, then the one the project made */
+/** The themes design/list lists: some the feature ships - made up here, the real ones are read below - then the one the project made */
 const THEMES = [
 	{ slug : 'nino', name : 'Nino', description : 'The framework as it is', shipped : true },
 	{ slug : 'magazine', name : 'Magazine', description : 'Lifted cards and a drop cap', shipped : true },
@@ -365,30 +365,29 @@ function listing( over ) {
 
 	return Object.assign( {
 		parts : [
-			part( 'header', 'frame', 'v1', {
-				v1 : { name : 'Plain bar', description : 'A bar with a rule under it' },
-				v2 : { name : 'Centred', description : 'The logo in the middle' },
+			part( 'header', 'frame', 'first', {
+				first : { name : 'Plain bar', description : 'A bar with a rule under it' },
+				second : { name : 'Centred', description : 'The logo in the middle' },
 			} ),
-			part( 'footer', 'frame', 'v1', {
-				v1 : { name : 'Plain footer', description : 'Two columns' },
-				v2 : { name : 'Dark footer', description : 'On the dark ground' },
+			part( 'footer', 'frame', 'first', {
+				first : { name : 'Plain footer', description : 'Two columns' },
+				second : { name : 'Dark footer', description : 'On the dark ground' },
 			} ),
-			/*	What the library has, as the feature ships it: every template of the Content and of the Components answers to every knob of its
-				tab, and of the Buttons Square - a square is what it is built as - is the one that leaves a knob out, the corners. The third
-				template of the Content is none of the feature's: it is what a library of somebody else's can hold, a template that leaves
-				the shadow out, which the screen has to draw all the same	*/
-			part( 'content', 'set', 'v1', {
-				v1 : { name : 'Nino', description : 'The framework as it is', knobs : KNOBS.content.slice() },
-				v2 : { name : 'Box', description : 'A centred opening with tight lines', knobs : KNOBS.content.slice() },
-				v3 : { name : 'Foreign', description : 'Large type, no shadow', knobs : without( KNOBS.content, [ 'shadow' ] ) },
+			/*	A library made up for this test, with names of its own - the real one is read from the answer of the server, below: most of its
+				templates answer to every knob of their tab, a template of the Buttons leaves the corners out, and the third template of the
+				Content leaves the shadow out - what a library of somebody else's can hold, and what the screen has to draw all the same	*/
+			part( 'content', 'set', 'first', {
+				first : { name : 'Nino', description : 'The framework as it is', knobs : KNOBS.content.slice() },
+				second : { name : 'Box', description : 'A centred opening with tight lines', knobs : KNOBS.content.slice() },
+				third : { name : 'Foreign', description : 'Large type, no shadow', knobs : without( KNOBS.content, [ 'shadow' ] ) },
 			} ),
-			part( 'buttons', 'set', 'v1', {
-				v1 : { name : 'Nino', description : 'The framework as it is', knobs : KNOBS.buttons.slice() },
-				v3 : { name : 'Square', description : 'No radius, spaced letters and a 2px line', knobs : without( KNOBS.buttons, [ 'corners' ] ) },
+			part( 'buttons', 'set', 'first', {
+				first : { name : 'Nino', description : 'The framework as it is', knobs : KNOBS.buttons.slice() },
+				third : { name : 'Square', description : 'No radius, spaced letters and a 2px line', knobs : without( KNOBS.buttons, [ 'corners' ] ) },
 			} ),
-			part( 'components', 'set', 'v1', {
-				v1 : { name : 'Nino', description : 'The framework as it is', knobs : KNOBS.components.slice() },
-				v4 : { name : 'Filled', description : 'Tinted fields without a line', knobs : KNOBS.components.slice() },
+			part( 'components', 'set', 'first', {
+				first : { name : 'Nino', description : 'The framework as it is', knobs : KNOBS.components.slice() },
+				fourth : { name : 'Filled', description : 'Tinted fields without a line', knobs : KNOBS.components.slice() },
 			} ),
 		],
 		tabs 			: JSON.parse( JSON.stringify( KINDS ) ),
@@ -397,13 +396,14 @@ function listing( over ) {
 		steps 		: [ 'least', 'less', 'default', 'more', 'most' ],
 		size 			: 0,
 		width 		: 0,
-		// The Theme tab: the theme the stored setup was taken from and the css of its own, the themes there are - the six the feature ships, then the project's - and the active one as its file holds it
+		whitespace : 0,
+		// The Theme tab: the theme the stored setup was taken from and the css of its own, the themes there are - the shipped ones, then the project's - and the active one as its file holds it
 		theme 		: '',
 		css 			: '',
 		themes 		: THEMES.map( function( theme ) { return Object.assign( {}, theme ) } ),
 		active 		: null,
 		motion 		: { effect : '', strength : '', speed : '' },
-		effects 	: [ 'zoom', 'zoom-out', 'slide-left', 'slide-right', 'blur', 'flip' ],
+		effects 	: [ 'zoom', 'zoom-out', 'slide-left', 'slide-right', 'slide-up', 'slide-down', 'blur', 'flip' ],
 		strengths : [ 'soft', 'medium', 'hard' ],
 		speeds 		: [ 'fast', 'medium', 'slow' ],
 		roles 		: roles,
@@ -1248,9 +1248,9 @@ const setSelect = function( name ) { return global.byId('design-set-'+ name) };
 
 check( 'the Global tab offers the two frames as two selects - the header and the footer, each over its catalogue, on the one that is chosen - and none of the three templates of the knob tabs',
 	setSelect('header') !== null && setSelect('footer') !== null
-	&& JSON.stringify( offered( setSelect('header') ) ) === JSON.stringify( [ [ 'v1', 'v1 - Plain bar' ], [ 'v2', 'v2 - Centred' ] ] )
-	&& JSON.stringify( offered( setSelect('footer') ) ) === JSON.stringify( [ [ 'v1', 'v1 - Plain footer' ], [ 'v2', 'v2 - Dark footer' ] ] )
-	&& [ 'header', 'footer' ].map( function( name ) { return shown( setSelect( name ) ) } ).join() === 'v1,v1'
+	&& JSON.stringify( offered( setSelect('header') ) ) === JSON.stringify( [ [ 'first', 'Plain bar' ], [ 'second', 'Centred' ] ] )
+	&& JSON.stringify( offered( setSelect('footer') ) ) === JSON.stringify( [ [ 'first', 'Plain footer' ], [ 'second', 'Dark footer' ] ] )
+	&& [ 'header', 'footer' ].map( function( name ) { return shown( setSelect( name ) ) } ).join() === 'first,first'
 	&& setSelect('content') === null && setSelect('buttons') === null && setSelect('components') === null
 	&& byTag( global.body(), 'select' ).filter( function( select ) { return /^design-set-/.test( select.id ) } ).length === 2 );
 check( '...named in the words of the panel, with the description of the chosen one under it - and no sentence under them about the templates that are chosen elsewhere',
@@ -1260,69 +1260,79 @@ check( '...named in the words of the panel, with the description of the chosen o
 
 const headerField = setSelect('header').parent;
 focused = null;
-choose( setSelect('header'), 'v2' );
+choose( setSelect('header'), 'second' );
 
 check( 'choosing another one is the selection on screen, and the note under it follows the choice',
-	global.design._edit.parts.header === 'v2' && byTag( setSelect('header').parent, 'small' )[0].textContent === 'The logo in the middle'
+	global.design._edit.parts.header === 'second' && byTag( setSelect('header').parent, 'small' )[0].textContent === 'The logo in the middle'
 	&& global.byId('design-reset').hidden === false );
 check( '...a frame changes the document and not the card: the field and its select stand where they were, and the focus is not moved',
 	setSelect('header').parent === headerField && descendants( global.pane ).indexOf( setSelect('header') ) !== -1 && focused === null );
 
-/*	The root size and the width of the page are strips of five, like the knobs of the tabs: a card of their own between
+/*	The root size, the width and the whitespace of the page are strips of five, like the knobs of the tabs: a card of their own between
 	the frames and the animation, with a name and the note under it and the five numbers -2 to +2 - no select, no field
 	grid, and no word for a position, which a strip does not have	*/
 const globalCards = global.body().children;
 const strips = globalCards[1] || element('div');
 const sizeStrip = 'Page, root size';
 const widthStrip = 'Page, width';
+const whitespaceStrip = 'Page, whitespace';
 const stripLabels = function( label ) { return global.steps( label ).map( function( button ) { return button.textContent } ).join() };
 
-check( 'the root size and the width of the page are two strips in a card of their own, between the frames and the animation, the way the knob rows of a tab stand in theirs: Page, root size and Page, width',
+check( 'the root size, the width and the whitespace of the page are three strips in a card of their own, between the frames and the animation, the way the knob rows of a tab stand in theirs: Page, root size, Page, width and Page, whitespace',
 	globalCards.length === 3 && hasClass( globalCards[0], 'design-form-section' ) && hasClass( strips, 'design-block' ) && hasClass( strips, 'nino-admin-card' )
 	&& hasClass( globalCards[2], 'design-form-section' ) && byTag( globalCards[2], 'select' ).length === 3
-	&& strips.children.length === 2 && strips.children.every( function( row ) { return hasClass( row, 'design-knob-row' ) } )
-	&& strips.children.map( rowName ).join() === 'Page, root size,Page, width'
+	&& strips.children.length === 3 && strips.children.every( function( row ) { return hasClass( row, 'design-knob-row' ) } )
+	&& strips.children.map( rowName ).join() === 'Page, root size,Page, width,Page, whitespace'
 	&& global.byId('design-size') === null && global.byId('design-pagewidth') === null && byTag( strips, 'select' ).length === 0 && byClass( strips, 'design-form-grid' ).length === 0 );
 check( '...each over its note, with the five buttons of a scale: the numbers from the middle, -2 to +2, written with the minus sign of arithmetic (U+2212) and not a hyphen - the title of a button is its label - and the middle one pressed to begin with',
-	stripLabels( sizeStrip ) === SIGNED.join() && stripLabels( widthStrip ) === SIGNED.join() && stripLabels( sizeStrip ).indexOf('-') === -1
-	&& global.steps( sizeStrip ).concat( global.steps( widthStrip ) ).every( function( button ) { return button.title === button.textContent && button.disabled === false } )
-	&& global.pressed( sizeStrip ) === 'false,false,true,false,false' && global.pressed( widthStrip ) === 'false,false,true,false,false'
-	&& global.steps( sizeStrip ).map( function( button ) { return button.dataset.value } ).join() === '-2,-1,0,1,2' );
-check( '...a group of buttons as the knob rows are, named by what it sets, and the notes under the names say where the ends are: 85 % \u2194 145 % of the browser\'s own size, and 48 rem \u2194 to the edge',
+	stripLabels( sizeStrip ) === SIGNED.join() && stripLabels( widthStrip ) === SIGNED.join() && stripLabels( whitespaceStrip ) === SIGNED.join() && stripLabels( sizeStrip ).indexOf('-') === -1
+	&& global.steps( sizeStrip ).concat( global.steps( widthStrip ), global.steps( whitespaceStrip ) ).every( function( button ) { return button.title === button.textContent && button.disabled === false } )
+	&& global.pressed( sizeStrip ) === 'false,false,true,false,false' && global.pressed( widthStrip ) === 'false,false,true,false,false' && global.pressed( whitespaceStrip ) === 'false,false,true,false,false'
+	&& global.steps( sizeStrip ).map( function( button ) { return button.dataset.value } ).join() === '-2,-1,0,1,2'
+	&& global.steps( whitespaceStrip ).map( function( button ) { return button.dataset.value } ).join() === '-2,-1,0,1,2' );
+check( '...a group of buttons as the knob rows are, named by what it sets, and the notes under the names say where the ends are: 85 % \u2194 145 % of the browser\'s own size, 48 rem \u2194 to the edge, and 75 % \u2194 200 % of the distances',
 	strips.children.every( function( row ) { return byClass( row, 'design-knob-steps' )[0].getAttribute('role') === 'group' } )
 	&& byClass( global.knobRow( sizeStrip ), 'design-knob-steps' )[0].getAttribute('aria-label') === 'Page, root size'
 	&& byTag( global.knobRow( sizeStrip ), 'small' )[0].textContent === TEXT['/_admin/design/hint/size'] && TEXT['/_admin/design/hint/size'] === '85 % \u2194 145 % of the browser\'s own size, never a fixed number of pixels'
-	&& byTag( global.knobRow( widthStrip ), 'small' )[0].textContent === TEXT['/_admin/design/hint/pagewidth'] && TEXT['/_admin/design/hint/pagewidth'] === '48 rem \u2194 to the edge' );
+	&& byTag( global.knobRow( widthStrip ), 'small' )[0].textContent === TEXT['/_admin/design/hint/pagewidth'] && TEXT['/_admin/design/hint/pagewidth'] === '48 rem \u2194 to the edge'
+	&& byClass( global.knobRow( whitespaceStrip ), 'design-knob-steps' )[0].getAttribute('aria-label') === 'Page, whitespace'
+	&& byTag( global.knobRow( whitespaceStrip ), 'small' )[0].textContent === TEXT['/_admin/design/hint/whitespace'] && TEXT['/_admin/design/hint/whitespace'] === '75 % \u2194 200 % of the distances' );
 check( '...the script keeps no list of the widths and no step to read a word off any more: PAGE_WIDTHS and _stepOf are gone, and a position of a scale reaches two to each side, a choice one',
 	global.design.PAGE_WIDTHS === undefined && global.design._stepOf === undefined && JSON.stringify( global.design.RANGE ) === JSON.stringify( { scale : 2, choice : 1 } )
 	&& JSON.stringify( global.design._positions('scale') ) === '[-2,-1,0,1,2]' && JSON.stringify( global.design._positions('choice') ) === '[-1,0,1]' );
 
 global.move( sizeStrip, 2 );
 global.move( widthStrip, 1 );
+global.move( whitespaceStrip, -1 );
 
-check( 'pressing a button stores the number, as a number: +2 for the size and +1 for the width, and the button is lit',
-	global.design._edit.size === 2 && global.design._edit.width === 1 && typeof global.design._edit.size === 'number' && typeof global.design._edit.width === 'number'
-	&& global.pressed( sizeStrip ) === 'false,false,false,false,true' && global.pressed( widthStrip ) === 'false,false,false,true,false' );
-check( '...each of the five can be pressed, for the size and for the width, and each is what the model keeps as it was pressed - -2 stores -2, +2 stores 2',
+check( 'pressing a button stores the number, as a number: +2 for the size, +1 for the width and -1 for the whitespace, and the button is lit',
+	global.design._edit.size === 2 && global.design._edit.width === 1 && global.design._edit.whitespace === -1
+	&& typeof global.design._edit.size === 'number' && typeof global.design._edit.width === 'number' && typeof global.design._edit.whitespace === 'number'
+	&& global.pressed( sizeStrip ) === 'false,false,false,false,true' && global.pressed( widthStrip ) === 'false,false,false,true,false' && global.pressed( whitespaceStrip ) === 'false,true,false,false,false' );
+check( '...each of the five can be pressed, for the size, the width and the whitespace, and each is what the model keeps as it was pressed - -2 stores -2, +2 stores 2',
 	[ -2, -1, 0, 1, 2 ].every( function( position ) {
 		global.move( sizeStrip, position );
 		global.move( widthStrip, position );
-		return global.design._edit.size === position && global.design._edit.width === position
+		global.move( whitespaceStrip, position );
+		return global.design._edit.size === position && global.design._edit.width === position && global.design._edit.whitespace === position
 			&& global.pressed( sizeStrip ) === SIGNED.map( function( word, at ) { return String( at === position + 2 ) } ).join()
-			&& global.pressed( widthStrip ) === SIGNED.map( function( word, at ) { return String( at === position + 2 ) } ).join();
+			&& global.pressed( widthStrip ) === SIGNED.map( function( word, at ) { return String( at === position + 2 ) } ).join()
+			&& global.pressed( whitespaceStrip ) === SIGNED.map( function( word, at ) { return String( at === position + 2 ) } ).join();
 	} ) );
 check( '...and a strip of Global is a change like any other: it marks the selection as not stored, and is what a preview carries',
-	global.byId('design-reset').hidden === false && ( global.design._previewNow(), global.requests[global.requests.length - 1].payload.size === 2 && global.requests[global.requests.length - 1].payload.width === 2 ) );
+	global.byId('design-reset').hidden === false && ( global.design._previewNow(), global.requests[global.requests.length - 1].payload.size === 2 && global.requests[global.requests.length - 1].payload.width === 2
+		&& global.requests[global.requests.length - 1].payload.whitespace === 2 ) );
 
 global.move( sizeStrip, 2 );
 global.move( widthStrip, 1 );
+global.move( whitespaceStrip, -1 );
 
 const effect = global.byId('design-motion-effect');
 const strength = global.byId('design-motion-strength');
 const speed = global.byId('design-motion-speed');
 
 check( 'the animation is three selects: the effect - which starts on what Nino.css does by itself - the strength and the speed',
-	JSON.stringify( offered( effect ) ) === JSON.stringify( [ [ '', 'Nino\'s default' ], [ 'zoom', 'Zoom' ], [ 'zoom-out', 'Zoom out' ], [ 'slide-left', 'From the right' ], [ 'slide-right', 'From the left' ], [ 'blur', 'Blur' ], [ 'flip', 'Flip' ] ] )
+	JSON.stringify( offered( effect ) ) === JSON.stringify( [ [ '', 'Nino\'s default' ], [ 'zoom', 'Zoom' ], [ 'zoom-out', 'Zoom out' ], [ 'slide-left', 'Slides left' ], [ 'slide-right', 'Slides right' ], [ 'slide-up', 'Slides up' ], [ 'slide-down', 'Slides down' ], [ 'blur', 'Blur' ], [ 'flip', 'Flip' ] ] )
 	&& JSON.stringify( offered( strength ) ) === JSON.stringify( [ [ '', 'Nino\'s default' ], [ 'soft', 'Soft' ], [ 'medium', 'Medium' ], [ 'hard', 'Hard' ] ] )
 	&& JSON.stringify( offered( speed ) ) === JSON.stringify( [ [ '', 'Nino\'s default' ], [ 'fast', 'Fast' ], [ 'medium', 'Medium' ], [ 'slow', 'Slow' ] ] )
 	&& shown( effect ) === '' );
@@ -1341,9 +1351,10 @@ check( '...and what they are set to is the selection',
 global.tab('Fonts');
 global.tab('Global');
 
-check( 'the tab is drawn again from what is chosen, and its controls show every choice of it - the two frames, the size, the width and the animation - with nothing under the frame to list them',
-	[ 'header', 'footer' ].map( function( name ) { return shown( global.byId('design-set-'+ name) ) } ).join() === 'v2,v1'
-	&& global.pressed( sizeStrip ) === 'false,false,false,false,true' && global.pressed( widthStrip ) === 'false,false,false,true,false' && global.design._edit.size === 2 && global.design._edit.width === 1
+check( 'the tab is drawn again from what is chosen, and its controls show every choice of it - the two frames, the size, the width, the whitespace and the animation - with nothing under the frame to list them',
+	[ 'header', 'footer' ].map( function( name ) { return shown( global.byId('design-set-'+ name) ) } ).join() === 'second,first'
+	&& global.pressed( sizeStrip ) === 'false,false,false,false,true' && global.pressed( widthStrip ) === 'false,false,false,true,false' && global.pressed( whitespaceStrip ) === 'false,true,false,false,false'
+	&& global.design._edit.size === 2 && global.design._edit.width === 1 && global.design._edit.whitespace === -1
 	&& shown( global.byId('design-motion-effect') ) === 'blur' && shown( global.byId('design-motion-strength') ) === 'hard' && shown( global.byId('design-motion-speed') ) === 'slow'
 	&& global.byId('design-summary') === null && byClass( global.form, 'design-summary-row' ).length === 0 );
 
@@ -1410,12 +1421,12 @@ const templateFirst = [ [ 'Content', 'content', 2 ], [ 'Buttons', 'buttons', 4 ]
 		&& shownRows.length === entry[2] && shownRows.every( function( row ) { return row.parent === box } )
 		&& shownRows.every( function( row, at ) { return row.dataset.knob === ( grouped === true ? GROUPS.content.hero : KNOBS[entry[1]] )[at] } )
 		&& byTag( card.children[0], 'label' )[0].textContent === TEXT['/_admin/design/part/'+ entry[1]] && tabOf( rows ) === entry[1]
-		&& shown( select ) === 'v1' && byTag( card.children[0], 'small' )[0].textContent === 'The framework as it is';
+		&& shown( select ) === 'first' && byTag( card.children[0], 'small' )[0].textContent === 'The framework as it is';
 } );
 rows.tab('Content');
 
 check( 'each of the three knob tabs offers its template first, in a select named in the panel\'s words with the description of the chosen one under it, and the rows of its knobs after it',
-	templateFirst === true && JSON.stringify( offered( rows.byId('design-set-content') ) ) === JSON.stringify( [ [ 'v1', 'v1 - Nino' ], [ 'v2', 'v2 - Box' ], [ 'v3', 'v3 - Foreign' ] ] ) );
+	templateFirst === true && JSON.stringify( offered( rows.byId('design-set-content') ) ) === JSON.stringify( [ [ 'first', 'Nino' ], [ 'second', 'Box' ], [ 'third', 'Foreign' ] ] ) );
 check( '...each with a note beside its name, and a strip of five numbers: -2 to +2, written with the minus of arithmetic - the same on every knob of a scale, whatever it sets',
 	everyContentRow.every( function( row ) {
 		const knob = row.dataset.knob;
@@ -1518,20 +1529,20 @@ const oldSelect = rows.byId('design-set-content');
 const oldStrip = rows.groups();
 const oldRows = byClass( rows.form, 'design-knob-row' );
 focused = null;
-choose( oldSelect, 'v3' );
+choose( oldSelect, 'third' );
 
 check( 'choosing a template that leaves a knob out - one of somebody else\'s library: those the feature ships answer to all fourteen - puts the position of that knob back in the middle, and leaves the others where they were',
-	rows.design._edit.parts.content === 'v3' && rows.design._edit.knobs.content.shadow === 0
+	rows.design._edit.parts.content === 'third' && rows.design._edit.knobs.content.shadow === 0
 	&& rows.design._edit.knobs.content['hero-title'] === -2 && rows.design._edit.knobs.content['hero-text'] === 2 );
 check( '...the rows of the tab are drawn again - two new ones for the two knobs of the group that is open, the hero - and the select is a new one on the template that was chosen, which has the focus afterwards; the strip of the groups is a new one as well, with the same group open',
 	oldRows.length === 2 && oldRows.every( function( row ) { return descendants( rows.pane ).indexOf( row ) === -1 } )
 	&& byClass( rows.form, 'design-knob-row' ).length === 2 && descendants( rows.pane ).indexOf( oldSelect ) === -1
-	&& rows.byId('design-set-content') !== null && rows.byId('design-set-content') !== oldSelect && shown( rows.byId('design-set-content') ) === 'v3'
+	&& rows.byId('design-set-content') !== null && rows.byId('design-set-content') !== oldSelect && shown( rows.byId('design-set-content') ) === 'third'
 	&& focused === rows.byId('design-set-content') && tabOf( rows ) === 'content'
 	&& rows.groups() !== null && rows.groups() !== oldStrip && descendants( rows.pane ).indexOf( oldStrip ) === -1
 	&& byTag( rows.groups(), 'button' ).map( function( tab ) { return tab.getAttribute('aria-selected') } ).join() === 'true,false,false,false' );
 check( '...and the line under the select describes the template that was chosen, and the select stands on it',
-	byTag( rows.byId('design-set-content').parent, 'small' )[0].textContent === 'Large type, no shadow' && shown( rows.byId('design-set-content') ) === 'v3' );
+	byTag( rows.byId('design-set-content').parent, 'small' )[0].textContent === 'Large type, no shadow' && shown( rows.byId('design-set-content') ) === 'third' );
 
 const foreignRows = rows.allRows();
 rows.group('Card');
@@ -1548,14 +1559,14 @@ check( '...its five buttons switched off and none of them pressed',
 check( '...and the line under its name says whose decision that is, in place of its note',
 	( byTag( shadow, 'small' )[0] || {} ).textContent === 'This template does not answer to “Card, shadow”.'
 	&& ( byTag( rows.knobRow('Card, corners'), 'small' )[0] || {} ).textContent === TEXT['/_admin/design/knob/content/corners/note']
-	&& shown( rows.byId('design-set-content') ) === 'v3' );
+	&& shown( rows.byId('design-set-content') ) === 'third' );
 
 const litForeign = rows.litAll();
 
 check( 'a row that is greyed out says no position, since it compiles nothing: thirteen of the fourteen knobs have a button that is lit, and the shadow is not one of them',
 	litForeign.length === 13 && litForeign.every( function( row ) { return row[0] !== 'Card, shadow' } ) );
 
-choose( rows.byId('design-set-content'), 'v1' );
+choose( rows.byId('design-set-content'), 'first' );
 rows.group('Card');
 
 check( 'choosing the template that has it again takes the grey away, with the knob in the middle',
@@ -1576,14 +1587,14 @@ check( '...they are the size of the button, how far the small and the big one st
 	&& Object.keys( TEXT ).filter( function( key ) { return /^\/_admin\/design\/knob\/buttons\/(small|big)\//.test( key ) } ).length === 0
 	&& rows.design.KNOB_ICONS['buttons/small'] === undefined && rows.design.KNOB_ICONS['buttons/big'] === undefined );
 
-choose( rows.byId('design-set-buttons'), 'v3' );
+choose( rows.byId('design-set-buttons'), 'third' );
 
 check( '...it is back in the middle, and the row is grey',
 	rows.design._edit.knobs.buttons.corners === 0 && byClass( rows.form, 'design-knob-row--off' ).length === 1
 	&& rows.knobRow('Button, corners') !== null && hasClass( rows.knobRow('Button, corners'), 'design-knob-row--off' ) );
 
 rows.tab('Components');
-choose( rows.byId('design-set-components'), 'v4' );
+choose( rows.byId('design-set-components'), 'fourth' );
 
 check( 'the Components tab has six rows and none of them grey for Filled, which answers to the line under a field and to where the labels stand as well',
 	tabOf( rows ) === 'components' && byClass( rows.form, 'design-knob-row' ).length === 6
@@ -1709,12 +1720,12 @@ grp.tab('Content');
 check( 'the group that was open is remembered for the tab: another tab and back, and the Card is open again - the six rows under a strip that has its tab selected',
 	grpOpen() === 'false,false,true,false' && grpShown() === GROUPS.content.card.join() && grp.groups() !== grpStrip );
 
-choose( grp.byId('design-set-content'), 'v3' );
+choose( grp.byId('design-set-content'), 'third' );
 
 check( '...and so is it by a template that is chosen, which draws the card and the strip again: the Card is open, with its six rows, the shadow of them grey',
 	grpOpen() === 'false,false,true,false' && grpShown() === GROUPS.content.card.join() && hasClass( grp.knobRow('Card, shadow'), 'design-knob-row--off' ) );
 
-choose( grp.byId('design-set-content'), 'v1' );
+choose( grp.byId('design-set-content'), 'first' );
 grp.design.showCurrent();
 
 check( '...and by the whole screen drawn again, as the panel is when it is shown once more',
@@ -1790,7 +1801,7 @@ check( 'a size is typed and not picked: a number field in each row, stepping by 
 	&& fonts.design.TABS.length === 8
 	&& [ 'title', 'subtitle', 'text', 'button', 'code' ].map( function( role ) { return size( role ).getAttribute('min')+ '-'+ size( role ).getAttribute('max') } ).join() === '1-4,0.8-2.5,0.8-1.5,0.6-1.5,0.6-1.3'
 	&& byTag( table, 'select' ).filter( function( select ) { return select.dataset.key === 'size' } ).length === 0 );
-check( '...and its value is the size that is in force: the one Nino.css gives the role while none is chosen - 1.6, 1.125, 1, 1 and 0.875 - as the value and not as a placeholder, so that the spinner has a number to count from; the model keeps the empty size it had',
+check( '...and its value is the size that is in force: the one the listing says is in force while none is chosen - 1.6, 1.125, 1, 1 and 0.875 - as the value and not as a placeholder, so that the spinner has a number to count from; the model keeps the empty size it had',
 	[ 'title', 'subtitle', 'text', 'button', 'code' ].map( function( role ) { return size( role ).value } ).join() === '1.6,1.125,1,1,0.875'
 	&& [ 'title', 'subtitle', 'text', 'button', 'code' ].every( function( role ) { return size( role ).getAttribute('placeholder') === null && fonts.design._edit.fonts[role].size === '' } ) );
 check( '...and the unit stands after it as a small word of its own, in the same cell',
@@ -1830,7 +1841,7 @@ check( 'a change goes through _setFont() with the role, the key and the value - 
 fonts.tab('Colours');
 fonts.tab('Fonts');
 
-check( 'the table drawn again shows each role as it was set, in words: the family, the weight, the case where it is upper, and the size - the one that was typed, else the one Nino.css gives the role',
+check( 'the table drawn again shows each role as it was set, in words: the family, the weight, the case where it is upper, and the size - the one that was typed, else the one the listing says is in force',
 	[ 'title', 'subtitle', 'text', 'button', 'code' ].map( function( role ) {
 		const upperCase = fonts.byId('design-font-'+ role+ '-uppercase');
 		return [ wordOf( family( role ) ), wordOf( weight( role ) ), upperCase === null ? null : upperCase.checked, size( role ).value ].join(', ');
@@ -1843,7 +1854,7 @@ const fontPreview = fonts.requests[fonts.requests.length - 1];
 
 check( 'the preview asked for carries the role that was changed, with the rest of the selection beside it - the frame is the answer to every control',
 	fontPreview.endpoint === 'preview' && JSON.stringify( fontPreview.payload.fonts.title ) === JSON.stringify( { family : 'system-serif', weight : 'light', uppercase : true, size : '2.4' } )
-	&& Object.keys( fontPreview.payload ).sort().join() === 'colours,css,fonts,full,knobs,motion,parts,size,theme,width' && fontPreview.payload.full === true );
+	&& Object.keys( fontPreview.payload ).sort().join() === 'colours,css,fonts,full,knobs,motion,parts,size,theme,whitespace,width' && fontPreview.payload.full === true );
 
 /*	A size is held inside the bounds of its role the way the server holds it
 	(Fonts::size()): in the model, and in the field, which shows what was kept	*/
@@ -1889,7 +1900,7 @@ check( '...2.0 is 2; empty is the default again, and a text that is no number is
 	&& fonts.design._edit.fonts.text.size === '' && size('text').value === '1' );
 
 /*	The size in force is the field's value, so that the spinner starts from it. A size typed that comes
-	to the one Nino.css gives the role is no choice - the model keeps the empty size, as it did, and the role goes
+	to the one the listing says is in force is no choice - the model keeps the empty size, as it did, and the role goes
 	on following its default - and any other is the number	*/
 const forced = panel();
 forced.tab('Fonts');
@@ -1910,7 +1921,7 @@ type( forcedSize('subtitle'), '1.1250' );
 type( forcedSize('text'), '1.0004' );
 type( forcedSize('code'), '.875' );
 
-check( 'a size typed back to the one Nino.css gives the role is kept as the empty size - 1.6 for the title, 1.1250 for the subtitle, 1.0004 for the text, which comes to 1, and .875 for the code - and the field goes on showing the number',
+check( 'a size typed back to the one the listing says is in force is kept as the empty size - 1.6 for the title, 1.1250 for the subtitle, 1.0004 for the text, which comes to 1, and .875 for the code - and the field goes on showing the number',
 	[ 'title', 'subtitle', 'text', 'code' ].every( function( role ) { return forced.design._edit.fonts[role].size === '' } )
 	&& [ 'title', 'subtitle', 'text', 'code' ].map( function( role ) { return forcedSize( role ).value } ).join() === '1.6,1.125,1,0.875'
 	&& forced.design._isDirty() === false );
@@ -2813,6 +2824,7 @@ const LUCIDE = {
 	// The spread of the buttons, and the width of the page
 	'chevrons-left-right' : '<path d="m9 7-5 5 5 5"/><path d="m15 7 5 5-5 5"/>',
 	'move-horizontal' : '<path d="m18 8 4 4-4 4"/><path d="M2 12h20"/><path d="m6 8-4 4 4 4"/>',
+	'move-vertical' : '<path d="M12 2v20"/><path d="m8 18 4 4 4-4"/><path d="m8 6 4-4 4 4"/>',
 	// The rule under the title of a section
 	'minus' : '<path d="M5 12h14"/>',
 	// The three devices of the viewport switch, the shapes the Builder's panel carries as its symbols
@@ -2828,7 +2840,7 @@ const VIEWPORT_ICON = { phone : 'smartphone', tablet : 'tablet', desktop : 'moni
 
 /** Which icon each row takes: the two strips of Global, the rows of the Typefaces tab, the knobs of the three tabs, and the rows of the Colours tab */
 const ICON_OF = {
-	'global/size' : 'a-large-small', 'global/width' : 'move-horizontal',
+	'global/size' : 'a-large-small', 'global/width' : 'move-horizontal', 'global/whitespace' : 'move-vertical',
 	'typefaces/family' : 'a-large-small',
 	'content/hero-title' : 'a-large-small', 'content/hero-text' : 'a-large-small', 'content/quiet' : 'a-large-small', 'content/loud' : 'a-large-small',
 	'content/section-title' : 'a-large-small', 'content/section-subtitle' : 'a-large-small', 'content/section-space' : 'scaling', 'content/section-line' : 'minus',
@@ -2889,7 +2901,7 @@ check( '...and the label is the row of the two: the icon, then a box that holds 
 	&& byTag( iconLabel.children[1], 'small' )[0].textContent === TEXT['/_admin/design/knob/content/hero-title/note'] && byTag( iconLabel, 'button' ).length === 0 );
 
 // A row the template does not answer to is grey, and keeps its icon: what it sets is not a thing that depends on the template
-choose( icons.byId('design-set-content'), 'v3' );
+choose( icons.byId('design-set-content'), 'third' );
 icons.group('Card');
 
 check( '...a row that is greyed out keeps its icon, with the line that says whose decision that is in the box beside it',
@@ -2898,8 +2910,8 @@ check( '...a row that is greyed out keeps its icon, with the line that says whos
 
 icons.tab('Global');
 
-check( 'the two strips of Global take theirs by the same mechanism: the root size the letters of two sizes, the width the two arrows that point apart - Lucide\'s a-large-small and move-horizontal, each with the shape of its name, verbatim, in front of the box that holds the name',
-	[ [ 'Page, root size', 'a-large-small' ], [ 'Page, width', 'move-horizontal' ] ].every( function( entry ) {
+check( 'the three strips of Global take theirs by the same mechanism: the root size the letters of two sizes, the width the two arrows that point apart and the whitespace the two that point up and down - Lucide\'s a-large-small, move-horizontal and move-vertical, each with the shape of its name, verbatim, in front of the box that holds the name',
+	[ [ 'Page, root size', 'a-large-small' ], [ 'Page, width', 'move-horizontal' ], [ 'Page, whitespace', 'move-vertical' ] ].every( function( entry ) {
 		const label = byClass( icons.knobRow( entry[0] ), 'design-knob-label' )[0];
 		const svg = byTag( label, 'svg' );
 		return svg.length === 1 && label.children.length === 2 && label.children[0] === svg[0] && hasClass( label.children[1], 'design-knob-text' )
@@ -3812,7 +3824,7 @@ check( '...and a change that is no animation plays nothing again', hero.log.leng
 
 anchors.design._setMotion( 'speed', 'fast' );
 anchors.stage.reachable = false;
-anchors.design._frames = 'v1|v1';
+anchors.design._frames = 'first|first';
 anchors.design._previewNow();
 anchors.answer( 200, { css : ':root{}', document : '', style : 'design-preview-css', accent : '#8ad0f5', brand : listing().brand, notes : [] } );
 
@@ -3820,7 +3832,7 @@ check( '...nor does a frame that cannot be reached, which is built anew and play
 
 anchors.stage.reachable = true;
 anchors.stage.animated = [];
-anchors.design._frames = 'v1|v1';
+anchors.design._frames = 'first|first';
 anchors.design._edit.size = 'm';
 anchors.design._edit.motion = { effect : '', strength : '', speed : '' };
 anchors.design._replays = false;
@@ -3828,7 +3840,7 @@ anchors.requests.length = 0;
 
 // A frame that cannot be reached: the panel asks for the whole page instead of showing a stale one
 anchors.stage.reachable = false;
-anchors.design._frames = 'v1|v1';
+anchors.design._frames = 'first|first';
 anchors.design._previewNow();
 const unreachable = anchors.answer( 200, { css : ':root{}', document : '', style : 'design-preview-css', accent : '#8ad0f5', brand : listing().brand, notes : [] } );
 
@@ -4015,7 +4027,7 @@ jpAnswer();
 check( 'one of the cards goes back to the cards, whichever knob was moved before it', jp.design._target === 'cards' && jpAsked() === 'cards' && JSON.stringify( jpLast() ) === JSON.stringify( { top : 1000, behavior : 'smooth' } ) );
 
 // A template is the tab's, not the knob's
-choose( jp.byId('design-set-content'), 'v2' );
+choose( jp.byId('design-set-content'), 'second' );
 
 check( 'choosing a template puts the target back to the tab\'s own, and the frame goes to the anchor of the tab when the preview has answered',
 	jp.design._target === null );
@@ -4052,7 +4064,7 @@ check( 'back on Content the frame goes to the hero, not to the cards the last ch
 // The header and the footer are chosen on Global, and that is a template as well
 jp.tab('Global');
 jp.design._target = 'cards';
-choose( jp.byId('design-set-header'), 'v2' );
+choose( jp.byId('design-set-header'), 'second' );
 
 check( 'choosing a frame on Global is a template too: the target goes back', jp.design._target === null );
 
@@ -4096,8 +4108,8 @@ asked.design._previewNow();
 const first = asked.requests[asked.requests.length - 1];
 
 check( 'the first preview of a visit asks for the whole document, with every key of the model: the templates, the knobs, the size, the width, the animation, the fonts, the palette, and the theme with the css of its own',
-	first.endpoint === 'preview' && first.payload.full === true && Object.keys( first.payload ).sort().join() === 'colours,css,fonts,full,knobs,motion,parts,size,theme,width'
-	&& first.payload.parts.header === 'v1' && first.payload.parts.components === 'v1' && first.payload.knobs.content['hero-title'] === 0
+	first.endpoint === 'preview' && first.payload.full === true && Object.keys( first.payload ).sort().join() === 'colours,css,fonts,full,knobs,motion,parts,size,theme,whitespace,width'
+	&& first.payload.parts.header === 'first' && first.payload.parts.components === 'first' && first.payload.knobs.content['hero-title'] === 0
 	&& first.payload.motion.effect === '' && first.payload.colours.mode === 'auto' );
 check( '...and while it is asked for, the line over the frame says so, and its title says the same - the chip shows as much of the line as the head has room for',
 	asked.byId('design-preview-msg').textContent === TEXT['/_admin/design/msg/previewing'] && asked.byId('design-preview-msg').title === TEXT['/_admin/design/msg/previewing']
@@ -4112,13 +4124,13 @@ asked.design._previewNow();
 
 check( '...the next one only a stylesheet, as long as the header and the footer are the ones the frame was built with', asked.requests[asked.requests.length - 1].payload.full === false );
 
-asked.answer( 200, { css : ':root{}', document : '', style : 'design-preview-css', accent : '#8ad0f5', brand : listing().brand, notes : [ 'there is no template "x" - using "v1"' ] } );
+asked.answer( 200, { css : ':root{}', document : '', style : 'design-preview-css', accent : '#8ad0f5', brand : listing().brand, notes : [ 'there is no template "x" - using "first"' ] } );
 
 check( 'what the server had to replace comes back beside the preview, in the line over the frame - and as the title of the line, where the chip cuts it',
-	( asked.byId('design-preview-msg') || {} ).textContent === 'there is no template "x" - using "v1"' && hasClass( asked.byId('design-preview-msg'), 'nino-admin-error' )
-	&& asked.byId('design-preview-msg').title === 'there is no template "x" - using "v1"' );
+	( asked.byId('design-preview-msg') || {} ).textContent === 'there is no template "x" - using "first"' && hasClass( asked.byId('design-preview-msg'), 'nino-admin-error' )
+	&& asked.byId('design-preview-msg').title === 'there is no template "x" - using "first"' );
 
-choose( asked.byId('design-set-footer'), 'v2' );
+choose( asked.byId('design-set-footer'), 'second' );
 asked.design._previewNow();
 
 check( '...and another header or footer is markup, so the document is asked for again', asked.requests[asked.requests.length - 1].payload.full === true );
@@ -4414,12 +4426,12 @@ check( '...while a discard draws the stored selection again, so a leave that doe
 
 console.log( 'The Theme tab' );
 
-/** The seven keys a theme keeps, out of an answer of design/list: the setup without the theme it names and the css it carries */
+/** The eight keys a theme keeps, out of an answer of design/list: the setup without the theme it names and the css it carries */
 function snapshotOf( data ) {
 	const copy = JSON.parse( JSON.stringify( data ) );
 	const parts = {};
 	copy.parts.forEach( function( row ) { parts[row.part] = row.set } );
-	return { size : copy.size, width : copy.width, motion : copy.motion, parts : parts, knobs : copy.knobs, fonts : copy.fonts, colours : copy.colours };
+	return { size : copy.size, width : copy.width, whitespace : copy.whitespace, motion : copy.motion, parts : parts, knobs : copy.knobs, fonts : copy.fonts, colours : copy.colours };
 }
 
 /** A theme as design/list gives the active one: its row of the list and what its file holds - the setup of the stand-in's own listing unless it is given */
@@ -4467,8 +4479,8 @@ function themeControls( screen ) {
 /** The setup of a theme the way a file holds it: the stand-in's own, with the templates, the knob, the size and the fonts that are given in place */
 function themeSetup( fonts ) {
 	const setup = snapshotOf( listing() );
-	setup.parts.header = 'v2';
-	setup.parts.content = 'v3';
+	setup.parts.header = 'second';
+	setup.parts.content = 'third';
 	setup.knobs.content['card-space'] = 1;
 	setup.size = -1;
 	Object.keys( fonts || {} ).forEach( function( role ) { setup.fonts[role].family = fonts[role] } );
@@ -4685,8 +4697,8 @@ check( '...and when they are installed it reads design/list again, for the selec
 loading.answer( 200, listing( { theme : 'mein-theme', css : ownCss, active : own, options : optionsWith( [ 'inter' ] ) } ) );
 
 check( 'the theme is then the working copy - its templates, its knobs, its size, its css and the name of the theme; of the typefaces the one that was installed is in the title and the one the list does not have is the face of Nino',
-	loading.design._edit.theme === 'magazine' && loading.design._edit.css === ".nino-section-title { border-bottom-color: red; }\n" && loading.design._edit.parts.header === 'v2' && loading.design._edit.parts.content === 'v3'
-	&& loading.design._edit.parts.buttons === 'v1' && loading.design._edit.knobs.content['card-space'] === 1 && loading.design._edit.size === -1
+	loading.design._edit.theme === 'magazine' && loading.design._edit.css === ".nino-section-title { border-bottom-color: red; }\n" && loading.design._edit.parts.header === 'second' && loading.design._edit.parts.content === 'third'
+	&& loading.design._edit.parts.buttons === 'first' && loading.design._edit.knobs.content['card-space'] === 1 && loading.design._edit.size === -1
 	&& loading.design._edit.fonts.title.family === 'inter' && loading.design._edit.fonts.text.family === '' && loading.design._edit.fonts.subtitle.family === 'open-sans' );
 check( '...and the active theme: its record is the theme as it was taken over, the name and description fields are its own, and the screen is the theme, so there is no chip',
 	loading.design._active.slug === 'magazine' && loading.design._active.shipped === true && loading.design._active.css === loading.design._edit.css
@@ -4702,12 +4714,12 @@ check( '...nothing is stored: the way back is shown and the shell would ask befo
 loading.tab('Global');
 const loadedHeader = loading.byId('design-set-header');
 check( '...and the other tabs show the loaded values: the frame, the size, the template of the Content with the position of its knob',
-	shown( loadedHeader ) === 'v2' && loading.pressed('Page, root size') === [ -2, -1, 0, 1, 2 ].map( function( at ) { return String( at === -1 ) } ).join() );
+	shown( loadedHeader ) === 'second' && loading.pressed('Page, root size') === [ -2, -1, 0, 1, 2 ].map( function( at ) { return String( at === -1 ) } ).join() );
 
 loading.tab('Content');
 loading.group('Card');
 check( '...(Content, in the group the knob stands in)',
-	shown( loading.byId('design-set-content') ) === 'v3' && loading.pressed('Card, space') === [ -2, -1, 0, 1, 2 ].map( function( at ) { return String( at === 1 ) } ).join() );
+	shown( loading.byId('design-set-content') ) === 'third' && loading.pressed('Card, space') === [ -2, -1, 0, 1, 2 ].map( function( at ) { return String( at === 1 ) } ).join() );
 
 loading.tab('Fonts');
 check( '...(Fonts)', shown( loading.byId('design-font-title-family') ) === 'inter' && shown( loading.byId('design-font-text-family') ) === '' );
@@ -4819,7 +4831,7 @@ making.byId('design-theme-create').fire('click');
 
 check( 'Create posts design/theme/create with the name that is typed, an empty description and the working copy: the templates, the knobs, the size, the width, the animation, the fonts, the palette, the theme and the css',
 	making.requests.length === 1 && making.requests[0].endpoint === 'theme/create'
-	&& Object.keys( making.requests[0].payload ).sort().join() === 'colours,css,description,fonts,knobs,motion,name,parts,size,theme,width'
+	&& Object.keys( making.requests[0].payload ).sort().join() === 'colours,css,description,fonts,knobs,motion,name,parts,size,theme,whitespace,width'
 	&& making.requests[0].payload.name === 'Mein Name' && making.requests[0].payload.description === '' && making.requests[0].payload.theme === '' && making.requests[0].payload.css === ''
 	&& JSON.stringify( making.requests[0].payload.parts ) === JSON.stringify( making.design._edit.parts ) && JSON.stringify( making.requests[0].payload.knobs ) === JSON.stringify( making.design._edit.knobs )
 	&& themeControls( making ).every( function( control ) { return control.disabled === true } ) );
@@ -4851,7 +4863,7 @@ making.byId('design-theme-save').fire('click');
 check( 'Save theme posts design/theme/save with the slug, the two fields as they are typed and the working copy - the name does not change the slug',
 	making.requests.length === 1 && making.requests[0].endpoint === 'theme/save' && making.requests[0].payload.slug === 'mein-name'
 	&& making.requests[0].payload.name === 'Neuer Name' && making.requests[0].payload.description === 'Neue Beschreibung' && making.requests[0].payload.theme === 'mein-name'
-	&& making.requests[0].payload.knobs.content['hero-title'] === 1 && Object.keys( making.requests[0].payload ).sort().join() === 'colours,css,description,fonts,knobs,motion,name,parts,size,slug,theme,width' );
+	&& making.requests[0].payload.knobs.content['hero-title'] === 1 && Object.keys( making.requests[0].payload ).sort().join() === 'colours,css,description,fonts,knobs,motion,name,parts,size,slug,theme,whitespace,width' );
 
 making.answer( 200, {
 	themes : withTheme( 'mein-name', 'Neuer Name', 'Neue Beschreibung' ),
@@ -5102,8 +5114,8 @@ else {
 	/** What the five buttons of a strip say is pressed when it stands at a position: -2 to +2 */
 	const pressedAt = function( position ) { return SIGNED.map( function( word, at ) { return String( at === position + 2 ) } ).join() };
 
-	check( 'the server\'s answer is in the shape the screen draws: the tabs name the kind of each knob - a scale or a choice - and are the kinds the stand-in has, the steps are five words, the size and the width are numbers with no list of sizes beside them, and the palette gives each knob its kind',
-		real.steps.join() === 'least,less,default,more,most' && typeof real.size === 'number' && typeof real.width === 'number' && real.sizes === undefined
+	check( 'the server\'s answer is in the shape the screen draws: the tabs name the kind of each knob - a scale or a choice - and are the kinds the stand-in has, the steps are five words, the size, the width and the whitespace are numbers with no list of sizes beside them, and the palette gives each knob its kind',
+		real.steps.join() === 'least,less,default,more,most' && typeof real.size === 'number' && typeof real.width === 'number' && typeof real.whitespace === 'number' && real.sizes === undefined
 		&& JSON.stringify( real.tabs ) === JSON.stringify( KINDS )
 		&& Object.keys( real.palette ).every( function( key ) { return [ 'scale', 'choice' ].indexOf( real.palette[key].kind ) !== -1 } )
 		&& real.palette.saturation.steps === 5 && real.palette.harmony.steps.length === 4 );
@@ -5152,8 +5164,8 @@ else {
 	check( 'Global is drawn from the catalogue and the choices the server gave: each frame a select over what the library has, on the one that is chosen - and none of the three templates of the knob tabs',
 		real.parts.filter( function( row ) { return row.kind === 'frame' } ).length === 2 && real.parts.filter( function( row ) { return row.kind === 'frame' } ).every( selectOf )
 		&& real.parts.filter( function( row ) { return row.kind === 'set' } ).every( function( row ) { return whole.byId('design-set-'+ row.part) === null } ) );
-	check( '...the size and the width, two strips, on the numbers stored, and the animation on the values stored',
-		whole.pressed('Page, root size') === pressedAt( real.size ) && whole.pressed('Page, width') === pressedAt( real.width )
+	check( '...the size, the width and the whitespace, three strips, on the numbers stored, and the animation on the values stored',
+		whole.pressed('Page, root size') === pressedAt( real.size ) && whole.pressed('Page, width') === pressedAt( real.width ) && whole.pressed('Page, whitespace') === pressedAt( real.whitespace )
 		&& shown( whole.byId('design-motion-effect') ) === real.motion.effect && shown( whole.byId('design-motion-strength') ) === real.motion.strength
 		&& shown( whole.byId('design-motion-speed') ) === real.motion.speed
 		&& offered( whole.byId('design-motion-effect') ).map( function( option ) { return option[0] } ).join() === [ '' ].concat( real.effects ).join()
@@ -5215,13 +5227,16 @@ else {
 		} )()
 		&& [].concat.apply( [], Object.keys( real.groups.content ).map( function( key ) { return real.groups.content[key] } ) ).sort().join() === Object.keys( real.tabs.content ).sort().join()
 		&& [ 'buttons', 'components' ].every( function( tab ) { return whole.tab( TEXT['/_admin/design/tab/'+ tab] ) === undefined && whole.groups() === null } ) );
-	check( '...and what the library ships answers to the knobs as it was written to: every template of the Content and of the Components to every knob of its tab, and of the Buttons only Pill and Square leave one out, the corners - the one row that is grey for a template the feature ships',
-		[ 'content', 'components' ].every( function( tab ) { return Object.keys( rowOf( tab ).catalogue ).every( function( set ) { return rowOf( tab ).catalogue[set].knobs.join() === Object.keys( real.tabs[tab] ).join() } ) } )
-		&& Object.keys( rowOf('buttons').catalogue ).filter( function( set ) { return rowOf('buttons').catalogue[set].knobs.join() !== Object.keys( real.tabs.buttons ).join() } ).join() === 'v2,v3'
-		&& [ 'v2', 'v3' ].every( function( set ) { return rowOf('buttons').catalogue[set].knobs.join() === 'size,spread,space' } ) );
-	check( '...and the template the server stored with something grey is on show: Square, with no corners',
-		Object.keys( real.tabs ).some( function( tab ) { return ( ( rowOf( tab ).catalogue[ rowOf( tab ).set ] || {} ).knobs || [] ).length < Object.keys( real.tabs[tab] ).length }
-		) && rowOf('buttons').set === 'v3' && rowOf('buttons').catalogue.v3.name === 'Eckig' );
+	check( '...and every template the library ships has a name and answers to knobs of its own tab, in the order of the tab - a template that leaves one out is a grey row for it, as the check above holds - and the one that is chosen is one of the catalogue',
+		Object.keys( real.tabs ).every( function( tab ) {
+			const order = Object.keys( real.tabs[tab] );
+			return Object.keys( rowOf( tab ).catalogue ).length > 0 && Object.keys( rowOf( tab ).catalogue ).every( function( set ) {
+				const entry = rowOf( tab ).catalogue[set];
+				return typeof entry.name === 'string' && entry.name !== '' && entry.knobs.every( function( knob ) { return order.indexOf( knob ) !== -1 } )
+					&& entry.knobs.join() === order.filter( function( knob ) { return entry.knobs.indexOf( knob ) !== -1 } ).join();
+			} );
+		} )
+		&& real.parts.every( function( row ) { return Object.keys( row.catalogue ).indexOf( row.set ) !== -1 } ) );
 
 	whole.tab('Colours');
 
@@ -5237,10 +5252,10 @@ else {
 	const sent = whole.requests[whole.requests.length - 1];
 
 	check( 'the selection the screen posts is made of exactly the keys design/save and design/preview take, each of the shape the server answered it in',
-		sent.endpoint === 'preview' && Object.keys( sent.payload ).sort().join() === 'colours,css,fonts,full,knobs,motion,parts,size,theme,width'
+		sent.endpoint === 'preview' && Object.keys( sent.payload ).sort().join() === 'colours,css,fonts,full,knobs,motion,parts,size,theme,whitespace,width'
 		&& JSON.stringify( sent.payload.parts ) === JSON.stringify( ( function() { const parts = {}; real.parts.forEach( function( row ) { parts[row.part] = row.set } ); return parts } )() )
 		&& JSON.stringify( sent.payload.knobs ) === JSON.stringify( real.knobs ) && JSON.stringify( sent.payload.fonts ) === JSON.stringify( real.fonts )
-		&& JSON.stringify( sent.payload.motion ) === JSON.stringify( real.motion ) && sent.payload.size === real.size && sent.payload.width === real.width
+		&& JSON.stringify( sent.payload.motion ) === JSON.stringify( real.motion ) && sent.payload.size === real.size && sent.payload.width === real.width && sent.payload.whitespace === real.whitespace
 		&& JSON.stringify( sent.payload.colours ) === JSON.stringify( real.colours ) );
 	check( '...and a screen drawn from the answer holds nothing unsaved', whole.design._isDirty() === false );
 
@@ -5308,10 +5323,11 @@ else {
 	const listed = function( themes ) { return themes.map( function( theme ) { return theme.slug } ).join() };
 
 	check( 'the answers are in the shape the tab reads: the list gives the theme the setup names, its css, the themes and the active one beside everything else; a load the theme with its setup, its css, the typefaces missing and the notes; a create, a save, a duplicate, a delete, an export and an import what the tab takes over',
-		none.theme === '' && none.css === '' && none.active === null && Array.isArray( none.themes ) && none.themes.length === 6
+		none.theme === '' && none.css === '' && none.active === null && Array.isArray( none.themes ) && none.themes.length > 0 && none.themes[0].shipped === true
+		&& none.themes.every( function( theme ) { return /^[a-z0-9]+(-[a-z0-9]+)*$/.test( theme.slug ) && typeof theme.name === 'string' && theme.name !== '' && typeof theme.description === 'string' } )
 		&& Object.keys( none.themes[0] ).join() === 'slug,name,description,shipped' && Object.keys( activeList.active ).join() === 'slug,name,description,shipped,setup,css'
-		&& Object.keys( activeList.active.setup ).join() === 'size,width,motion,parts,knobs,fonts,colours'
-		&& Object.keys( answered.load ).join() === 'slug,name,description,shipped,setup,css,missing,notes' && Object.keys( answered.load.setup ).join() === 'size,width,motion,parts,knobs,fonts,colours'
+		&& Object.keys( activeList.active.setup ).join() === 'size,width,whitespace,motion,parts,knobs,fonts,colours'
+		&& Object.keys( answered.load ).join() === 'slug,name,description,shipped,setup,css,missing,notes' && Object.keys( answered.load.setup ).join() === 'size,width,whitespace,motion,parts,knobs,fonts,colours'
 		&& Object.keys( answered.loadMissing.missing[0] ).join() === 'slug,name,inList'
 		&& Object.keys( answered.created ).join() === 'slug,themes,active' && Object.keys( answered.saved ).join() === 'themes,active' && Object.keys( answered.duplicated ).join() === 'slug,themes'
 		&& Object.keys( answered.deleted ).join() === 'themes,theme' && Object.keys( answered.exported ).join() === 'json,file' && Object.keys( answered.imported ).join() === 'slug,themes' );
@@ -5319,7 +5335,7 @@ else {
 	// The list with no theme
 	const noneTab = wholeTab( none );
 
-	check( 'the tab is drawn from the list with no theme: a row for each of the six, shipped, in the order given, with the name and the description the server wrote in the language of the workbench; none is active, none can be deleted, and the card of the active theme says there is none',
+	check( 'the tab is drawn from the list with no theme: a row for each theme, shipped, in the order given, with the name and the description the server wrote in the language of the workbench; none is active, none can be deleted, and the card of the active theme says there is none',
 		slugsOf( noneTab ) === listed( none.themes ) && none.themes.every( function( theme ) {
 			const row = themeRow( noneTab, theme.slug );
 			return textsOf( row, 'design-theme-name' ) === theme.name && textsOf( row, 'design-theme-description' ) === theme.description && byClass( row, 'design-theme-shipped' ).length === 1 && themeButtons( noneTab, theme.slug ).length === 2;
@@ -5331,7 +5347,11 @@ else {
 	const activeSlug = activeList.active.slug;
 
 	check( 'drawn from the list with a theme of the project active: the shipped ones first and that one after them, with the chip and the mark, a Delete on it alone; the head says its name, the fields hold its name and its description',
-		slugsOf( activeTab ) === listed( activeList.themes ) && activeList.themes.slice( 0, 6 ).every( function( theme ) { return theme.shipped === true } ) && activeList.themes.slice( 6 ).every( function( theme ) { return theme.shipped === false } )
+		slugsOf( activeTab ) === listed( activeList.themes ) && activeList.themes[0].shipped === true
+		&& ( function() {
+			const flags = activeList.themes.map( function( theme ) { return theme.shipped } );
+			return flags.indexOf( false ) === -1 || flags.slice( flags.indexOf( false ) ).every( function( flag ) { return flag === false } );
+		} )()
 		&& hasClass( themeRow( activeTab, activeSlug ), 'design-theme-row--active' ) && byClass( activeTab.form, 'design-theme-row--active' ).length === 1 && textsOf( themeRow( activeTab, activeSlug ), 'design-theme-active' ) === 'active'
 		&& activeList.themes.every( function( theme ) { return ( activeTab.byId('design-theme-delete-'+ theme.slug) !== null ) === ( theme.shipped === false ) } )
 		&& textsOf( activeTab.byId('design-theme-current-head'), 'design-theme-current-name' ) === activeList.active.name
@@ -5351,7 +5371,7 @@ else {
 	check( 'a theme the server loaded is the working copy as it came: no question, the templates, the knobs, the size and the width, the animation and the palette as the file holds them - and of the fonts the families the roles are offered, the others the face of Nino',
 		loaded.confirms.length === 0 && loaded.requests.length === 0 && loaded.design._edit.theme === answered.load.slug && loaded.design._edit.css === answered.load.css
 		&& JSON.stringify( loaded.design._edit.parts ) === JSON.stringify( answered.load.setup.parts ) && JSON.stringify( loaded.design._edit.knobs ) === JSON.stringify( answered.load.setup.knobs )
-		&& loaded.design._edit.size === answered.load.setup.size && loaded.design._edit.width === answered.load.setup.width && JSON.stringify( loaded.design._edit.motion ) === JSON.stringify( answered.load.setup.motion )
+		&& loaded.design._edit.size === answered.load.setup.size && loaded.design._edit.width === answered.load.setup.width && loaded.design._edit.whitespace === answered.load.setup.whitespace && JSON.stringify( loaded.design._edit.motion ) === JSON.stringify( answered.load.setup.motion )
 		&& JSON.stringify( loaded.design._edit.colours ) === JSON.stringify( answered.load.setup.colours )
 		&& Object.keys( answered.load.setup.fonts ).every( function( role ) { return loaded.design._edit.fonts[role].family === ( offered( loaded, role ).indexOf( answered.load.setup.fonts[role].family ) !== -1 ? answered.load.setup.fonts[role].family : '' ) } ) );
 	check( '...it is the active theme - shipped, so its name and description are read-only - as it was taken over, so the screen is the theme and there is no chip; the way back is shown, the bar says it was loaded and the shortcodes of the css were not touched',
@@ -5394,12 +5414,12 @@ else {
 		&& saved.byId('design-theme-description').value === answered.saved.active.description && saved.line().textContent === say( '/_admin/design/theme/msg/saved', answered.saved.active.name ) );
 
 	const copied = wholeTab( answered.created.themes.length > 0 ? Object.assign( {}, none, { themes : answered.created.themes } ) : none );
-	copied.byId('design-theme-duplicate-magazine').fire('click');
+	copied.byId('design-theme-duplicate-'+ none.themes[0].slug).fire('click');
 	copied.answer( 200, answered.duplicated );
 
 	check( 'the answer of a duplicate: the list with the copy in it, which has all three buttons, a project theme; nothing is loaded and the bar names the theme and its copy',
 		slugsOf( copied ) === listed( answered.duplicated.themes ) && themeButtons( copied, answered.duplicated.slug ).length === 3 && copied.design._edit.theme === ''
-		&& copied.line().textContent === say( '/_admin/design/theme/msg/duplicated', none.themes.filter( function( theme ) { return theme.slug === 'magazine' } )[0].name,
+		&& copied.line().textContent === say( '/_admin/design/theme/msg/duplicated', none.themes[0].name,
 			answered.duplicated.themes.filter( function( theme ) { return theme.slug === answered.duplicated.slug } )[0].name ) );
 
 	const deleted = wholeTab( activeList );

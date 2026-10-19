@@ -356,6 +356,8 @@ return [
 	'[[/_admin/builder/option/effect-zoom-out]]'			=> 'Zoom heraus',
 	'[[/_admin/builder/option/effect-slide-left]]'			=> 'Nach links',
 	'[[/_admin/builder/option/effect-slide-right]]'			=> 'Nach rechts',
+	'[[/_admin/builder/option/effect-slide-up]]'			=> 'Nach oben',
+	'[[/_admin/builder/option/effect-slide-down]]'			=> 'Nach unten',
 	'[[/_admin/builder/option/effect-flip]]'				=> 'Drehen',
 	'[[/_admin/builder/option/effect-blur]]'				=> 'Weichzeichnen',
 	'[[/_admin/builder/option/strength-soft]]'				=> 'Sanft',

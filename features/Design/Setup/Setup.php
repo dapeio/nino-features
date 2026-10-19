@@ -22,18 +22,19 @@ namespace Nino\Modules\Design {
 	 *										something (the eighth, Typefaces, installs families and
 	 *										keeps nothing here): the five templates (header and footer
 	 *										bring markup, content, buttons and components are one
-	 *										stylesheet each), the root size, the width of the page and
-	 *										its animation, a position for every named knob of the
-	 *										three template tabs, the five font roles and the palette -
+	 *										stylesheet each), the root size, the width and the
+	 *										whitespace of the page and its animation, a position for
+	 *										every named knob of the three template tabs, the five font
+	 *										roles and the palette -
 	 *										and, for the Theme tab, the slug of the theme these choices
 	 *										were taken from and the custom css that goes with them (see
 	 *										Themes: a theme is this whole setup kept under a name).
 	 *
 	 *										Every value is normalised against the library that is
 	 *										actually present: a part naming a set that is not there
-	 *										falls back to the first one that is, and says so, rather
-	 *										than compiling a stylesheet with a hole in it. A key this
-	 *										version does not know is dropped, and says so as well.
+	 *										falls back to the set the fresh install has, and says so,
+	 *										rather than compiling a stylesheet with a hole in it. A key
+	 *										this version does not know is dropped, and says so as well.
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -53,8 +54,9 @@ namespace Nino\Modules\Design {
 
 		/*	The keys of the file, in the order they are written. `theme` and `css` came
 			with the Theme tab and need no new format: a file without them reads as no
-			theme and no css, which is what every project had before	*/
-		public const array KEYS = [ 'format', 'theme', 'size', 'width', 'motion', 'parts', 'knobs', 'fonts', 'colours', 'css', 'compiled' ];
+			theme and no css, which is what every project had before. So does
+			`whitespace`: a file without it stands at the middle, the air Nino.css has	*/
+		public const array KEYS = [ 'format', 'theme', 'size', 'width', 'whitespace', 'motion', 'parts', 'knobs', 'fonts', 'colours', 'css', 'compiled' ];
 
 		/*	The parts, in the order they are compiled - which is also the order
 			they are shown in. `frame` parts bring a template and are chosen from
@@ -204,14 +206,32 @@ namespace Nino\Modules\Design {
 			2 	=> [ 'none', 'var(--space-2)', '0' ],
 		];
 
+		/*	The whitespace of the page, as the number Nino.css's --whitespace-scale is set
+			to: five positions, -2 to +2, from three quarters of the air to twice it. 0 is
+			Nino.css as it is - the layout of every page that never heard of the token, to
+			the pixel - and writes nothing, like the width. The kernel takes the number
+			whole for the areas (the padding of a section, the margin and the padding of a
+			card and of what is in it, the gap between the columns of a row of cards) and
+			derives two damped strengths from it for what stands between pieces (the gaps
+			of a stack: .8 of the way from 1 to the number) and for the room under text (a
+			title, a paragraph, the text of a card: .6 of the way), so that twice the air
+			round a section is not twice the gap in a paragraph - at 2 the areas are
+			doubled, the gaps 1.8 times and the text 1.6, at .75 they are .75, .8 and .85.
+			What the number never touches - the width, the line heights, the buttons and
+			the utility classes - Nino.css says as well	*/
+		public const array WHITESPACE = [ -2 => '.75', -1 => '.9', 0 => '1', 1 => '1.5', 2 => '2' ];
+
 		/*	The animation of the page: what Nino.css sets for nino-vpa--<effect>-<strength>
 			and nino-vpa--speed-<speed>, as the properties of a rule on main. Held in
 			code, because the compiler writes them and does not read a stylesheet it
 			has no business with - tests/design-smoke.php reads them against the
-			Nino.css it runs against. An effect with no strength is the middle one	*/
+			Nino.css it runs against. An effect with no strength is the middle one.
+			The slides are named for the motion the visitor sees, as Nino.css names
+			them: slide-left starts to the right of its place and slides left,
+			slide-up starts below it and slides up	*/
 		public const array STRENGTHS = [ 'soft', 'medium', 'hard' ];
 
-		public const array SPEEDS = [ 'fast' => '.25s', 'medium' => '.5s', 'slow' => '2s' ];
+		public const array SPEEDS = [ 'fast' => '.45s', 'medium' => '1s', 'slow' => '2s' ];
 
 		public const array EFFECTS = [
 			'zoom' => [
@@ -234,6 +254,16 @@ namespace Nino\Modules\Design {
 				'medium' 	=> [ '--vpa-t-hidden' => 'translateX(-3rem)', '--vpa-t-visible' => 'translateX(0)' ],
 				'hard' 		=> [ '--vpa-t-hidden' => 'translateX(-6rem)', '--vpa-t-visible' => 'translateX(0)' ],
 			],
+			'slide-up' => [
+				'soft' 		=> [ '--vpa-t-hidden' => 'translateY(1.5rem)', '--vpa-t-visible' => 'translateY(0)' ],
+				'medium' 	=> [ '--vpa-t-hidden' => 'translateY(3rem)', '--vpa-t-visible' => 'translateY(0)' ],
+				'hard' 		=> [ '--vpa-t-hidden' => 'translateY(6rem)', '--vpa-t-visible' => 'translateY(0)' ],
+			],
+			'slide-down' => [
+				'soft' 		=> [ '--vpa-t-hidden' => 'translateY(-1.5rem)', '--vpa-t-visible' => 'translateY(0)' ],
+				'medium' 	=> [ '--vpa-t-hidden' => 'translateY(-3rem)', '--vpa-t-visible' => 'translateY(0)' ],
+				'hard' 		=> [ '--vpa-t-hidden' => 'translateY(-6rem)', '--vpa-t-visible' => 'translateY(0)' ],
+			],
 			'blur' => [
 				'soft' 		=> [ '--vpa-f-hidden' => 'blur(6px)', '--vpa-f-visible' => 'blur(0)' ],
 				'medium' 	=> [ '--vpa-f-hidden' => 'blur(12px)', '--vpa-f-visible' => 'blur(0)' ],
@@ -247,10 +277,18 @@ namespace Nino\Modules\Design {
 		];
 
 		/**
-		 *	Everything a fresh install starts from: the first set of every part,
-		 *	every knob in the middle, the delivered root size, the width and the
-		 *	animation of Nino.css, the face the base unit delivers, the
-		 *	framework's own colours, no theme and no css of its own
+		 *	Everything a fresh install starts from: the five sets of the first
+		 *	theme the feature ships (see Themes::SHIPPED - the theme that is the
+		 *	framework as it is), every knob in the middle, the delivered root
+		 *	size, the width, the whitespace and the animation of Nino.css, the
+		 *	face the base unit delivers, the framework's own colours, no theme
+		 *	and no css of its own
+		 *
+		 *	The five sets are read out of that theme's file, which is a php array
+		 *	and is included the way Themes::read() includes a shipped file - only
+		 *	the names of the sets are taken from it, as they stand, and not a
+		 *	call into Themes::setup() and the normalisation of a theme, which
+		 *	itself starts from these defaults
 		 *
 		 *	@param		string		$libraryDir		The feature's library
 		 *
@@ -258,10 +296,13 @@ namespace Nino\Modules\Design {
 		 */
 		public static function defaults( string $libraryDir ): array {
 
+			$first = rtrim( $libraryDir, '/' ). '/themes/'. Themes::SHIPPED[0]. '.php';
+			$theme = is_file( $first ) === true ? include $first : [];
+			$named = is_array( $theme ) === true && is_array( $theme['setup']['parts'] ?? null ) === true ? $theme['setup']['parts'] : [];
 			$parts = [];
 
 			foreach( array_keys( self::PARTS ) as $part )
-				$parts[$part] = (string) ( self::available( $libraryDir, $part )[0] ?? '' );
+				$parts[$part] = is_string( $named[$part] ?? null ) === true ? $named[$part] : '';
 
 			$knobs = [];
 
@@ -274,6 +315,7 @@ namespace Nino\Modules\Design {
 				'theme' 	=> '',
 				'size' 		=> 0,
 				'width' 	=> 0,
+				'whitespace' => 0,
 				// '' is what Nino.css does by itself: a fade and a rise, as fast as it is
 				'motion' 	=> [ 'effect' => '', 'strength' => '', 'speed' => '' ],
 				'parts' 	=> $parts,
@@ -353,7 +395,7 @@ namespace Nino\Modules\Design {
 		 *	@param		string		$libraryDir		The feature's library
 		 *	@param		string		$part					A key of PARTS
 		 *
-		 *	@return 	array										Set names, eg. [ 'v1', 'v2' ]
+		 *	@return 	array										Set names, eg. [ 'regular', 'pill' ]
 		 */
 		public static function available( string $libraryDir, string $part ): array {
 
@@ -520,6 +562,7 @@ namespace Nino\Modules\Design {
 
 			$setup['size'] = self::position( $raw['size'] ?? 0 );
 			$setup['width'] = self::position( $raw['width'] ?? 0 );
+			$setup['whitespace'] = self::position( $raw['whitespace'] ?? 0 );
 
 			$motion = is_array( $raw['motion'] ?? null ) === true ? $raw['motion'] : [];
 
@@ -555,7 +598,7 @@ namespace Nino\Modules\Design {
 				else if( in_array( $wanted, $available, true ) === true )
 					$setup['parts'][$part] = $wanted;
 				else if( $wanted !== '' )
-					$notes[] = '"'. $part. '" names the set "'. self::shown( $wanted ). '", which is not in the library - using "'. $available[0]. '"';
+					$notes[] = '"'. $part. '" names the set "'. self::shown( $wanted ). '", which is not in the library - using "'. $setup['parts'][$part]. '"';
 			}
 
 			/*	Where every knob stands. A knob is a position of its own tab, held to
@@ -630,7 +673,8 @@ namespace Nino\Modules\Design {
 
 		/**
 		 *	One position, as a number inside the range of its kind: -2 to 2 for a scale
-		 *	(the default kind - the root size and the width are scales as well), -1 to 1
+		 *	(the default kind - the root size, the width and the whitespace are scales
+		 *	as well), -1 to 1
 		 *	for a choice. Anything else - a word, an array, and a number past the ends -
 		 *	is the middle, which is the template as it is
 		 *

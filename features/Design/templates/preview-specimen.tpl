@@ -379,11 +379,11 @@
 			<div class="nino-table-wrap"><table class="nino-table nino-table--striped">
 				<thead><tr><th>Component</th><th>Template</th><th>Position</th></tr></thead>
 				<tbody>
-					<tr><td>Content</td><td>v1</td><td>as it is</td></tr>
-					<tr><td>Buttons</td><td>v2</td><td>more</td></tr>
-					<tr><td>Components</td><td>v3</td><td>less</td></tr>
-					<tr><td>Header</td><td>v4</td><td>as it is</td></tr>
-					<tr><td>Footer</td><td>v5</td><td>as it is</td></tr>
+					<tr><td>Content</td><td>Regular</td><td>as it is</td></tr>
+					<tr><td>Buttons</td><td>Pill</td><td>more</td></tr>
+					<tr><td>Components</td><td>Ruled</td><td>less</td></tr>
+					<tr><td>Header</td><td>Classic, default</td><td>as it is</td></tr>
+					<tr><td>Footer</td><td>One legal row</td><td>as it is</td></tr>
 				</tbody>
 			</table></div>
 			<div class="nino-table-wrap nino-mt-2"><table class="nino-table nino-table--bordered">

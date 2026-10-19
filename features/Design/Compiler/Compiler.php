@@ -16,8 +16,8 @@ namespace Nino\Modules\Design {
 	 *	Compiler					Turns a setup into the one stylesheet a project's look is,
 	 *										in the order the cascade needs it: the tokens, the solved
 	 *										palette over them, the type, the roles those tokens are
-	 *										assigned to, the root size, the width and the animation of
-	 *										the page, the chosen frames, the three chosen sets, the
+	 *										assigned to, the root size, the width, the whitespace and
+	 *										the animation of the page, the chosen frames, the three chosen sets, the
 	 *										block that says which step of every ladder is live, and
 	 *										last the css of the theme, as it was typed.
 	 *
@@ -60,7 +60,8 @@ namespace Nino\Modules\Design {
 
 		/*	A frame is the other half of a part: header and footer bring markup,
 			and compiling a stylesheet for markup the project does not have is how
-			a page ends up with v3's css over v1's html. The two templates the base
+			a page ends up with the css of a floating bar over the html of a plain
+			one. The two templates the base
 			install unit delivers are the ones this writes over - and refuses to,
 			by the same stamp, when they are not ours */
 		public const string FRAME_TARGET = '/templates/frame-%s.tpl';
@@ -79,7 +80,7 @@ namespace Nino\Modules\Design {
 		 *	  3 the type            @font-face and the five font roles
 		 *	  4 the roles           base.css, which token goes in which role
 		 *	  5 the root size
-		 *	  6 the page            the width, and the animation as a rule on main
+		 *	  6 the page            the width, the whitespace, and the animation as a rule on main
 		 *	  7 header, 8 footer    the chosen frames
 		 *	  9 content, 10 buttons, 11 components    the chosen sets
 		 *	  12 the knob positions
@@ -229,13 +230,17 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	What the page asks of Nino.css as a whole: how wide it is, and how its
-		 *	sections arrive.
+		 *	What the page asks of Nino.css as a whole: how wide it is, how much air
+		 *	it has, and how its sections arrive.
 		 *
 		 *	A width of 0 is the kernel's own and writes nothing; the four around it
 		 *	write the maximum width of a row and the space between the viewport
 		 *	and it, with the step it takes from 768px - the two widest no maximum
-		 *	(none), and the widest of them no space (0) from there. An animation
+		 *	(none), and the widest of them no space (0) from there. The whitespace
+		 *	is the same: 0 is the kernel's own and writes nothing, the four around
+		 *	it write the number --whitespace-scale is set to (see Setup::WHITESPACE),
+		 *	from which Nino.css derives what it scales whole and what it scales
+		 *	damped. An animation
 		 *	writes one rule on main with the custom properties the kernel sets for
 		 *	the effect, its strength and its speed, which every viewport animation
 		 *	below main inherits - and which the Builder overrides per template at
@@ -251,6 +256,7 @@ namespace Nino\Modules\Design {
 
 			$rules 		= [];
 			$width 		= Setup::WIDTHS[ (int) ( $setup['width'] ?? 0 ) ] ?? null;
+			$air 			= Setup::WHITESPACE[ (int) ( $setup['whitespace'] ?? 0 ) ] ?? '1';
 			$motion 	= is_array( $setup['motion'] ?? null ) === true ? $setup['motion'] : [];
 			$effect 	= (string) ( $motion['effect'] ?? '' );
 
@@ -258,6 +264,9 @@ namespace Nino\Modules\Design {
 				$rules[] = ":root { --grid-max-width: ". $width[0]. "; --grid-gutter: ". $width[1]. "; }";
 				$rules[] = "@media (min-width: 768px) { :root { --grid-gutter: ". $width[2]. "; } }";
 			}
+
+			if( $air !== '1' )
+				$rules[] = ":root { --whitespace-scale: ". $air. "; }";
 
 			if( isset( Setup::EFFECTS[$effect] ) === true ) {
 
@@ -275,7 +284,7 @@ namespace Nino\Modules\Design {
 				$rules[] = "main {\n". implode( "\n", $lines ). "\n}";
 			}
 
-			return $rules === [] ? '/* a row of the width Nino.css gives it, and the animation Nino.css has */' : implode( "\n", $rules );
+			return $rules === [] ? '/* a row of the width Nino.css gives it, the air it has, and the animation Nino.css has */' : implode( "\n", $rules );
 		}
 
 		/**
@@ -492,6 +501,7 @@ namespace Nino\Modules\Design {
 			}
 
 			$width 		= (int) ( $setup['width'] ?? 0 );
+			$air 			= (int) ( $setup['whitespace'] ?? 0 );
 			$motion 	= (array) ( $setup['motion'] ?? [] );
 			$effect 	= (string) ( $motion['effect'] ?? '' );
 			// A slug only: the header is a comment, and a name that closed it would end the header early
@@ -508,6 +518,7 @@ namespace Nino\Modules\Design {
 				. " *\n"
 				. " *\troot size  ". Setup::word( (int) ( $setup['size'] ?? 0 ) ). "\n"
 				. " *\twidth      ". Setup::word( $width ). "\n"
+				. " *\twhitespace ". Setup::word( $air ). "\n"
 				. " *\tanimation  ". ( isset( Setup::EFFECTS[$effect] ) === true
 					? $effect. ', '. ( (string) ( $motion['strength'] ?? '' ) ?: 'medium' ). ( (string) ( $motion['speed'] ?? '' ) === '' ? '' : ', '. $motion['speed'] )
 					: 'as Nino.css has it' ). "\n"

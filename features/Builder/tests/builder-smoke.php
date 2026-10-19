@@ -32,9 +32,17 @@ declare(strict_types=1);
  *											keys and slots and what stops it - and last the page the
  *											builder wrote, rendered by the kernel. The panel's script has
  *											a test of its own, builder-js-smoke.js, which runs at the end
- *											where node is there; the two fixtures it reads
- *											(fixtures/page-home.json, fixtures/registry.json) are held
- *											here to what the Reader and the registry say.
+ *											where node is there, over the three fixtures this suite
+ *											writes (fixtures/page-home.json and page-home-card.json:
+ *											the model the Reader makes of the example page and of the
+ *											page with a card; fixtures/registry.json: what the registry
+ *											of the kernel it runs against says of its components and its
+ *											stacks) - written, not compared: the files stay committed so
+ *											that node runs the script test alone, and a change of the
+ *											registry or of the Reader shows as a change of them in
+ *											git status after the next direct run of this suite (the
+ *											Usage line below; bin/check.sh runs a copy of the feature
+ *											and writes them into that copy, the committed files stay).
  *
  *											The Reader and the Writer are pure, so sections 2 to 5 need
  *											no project but the registry of the Components module; the
@@ -56,6 +64,36 @@ $appData['./nino/locales/current'] = 'en_US';
 $appData['/nino/locales/native'] = 'en_US';
 
 $dir = dirname( __DIR__ );
+
+/**
+ *	One fixture of the panel's script test, written as it is read: json, indented, the slashes and the letters of any
+ *	language as they are, a line break at the end
+ *
+ *	@param		string		$name					The file below tests/fixtures/
+ *	@param		array 		$data
+ *
+ *	@return 	bool											Whether the file was written
+ */
+$fixtureWritten = static function( string $name, array $data ): bool {
+
+	$json = json_encode( $data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+
+	return $json !== false && file_put_contents( __DIR__. '/fixtures/'. $name, $json. "\n" ) !== false;
+};
+
+/**
+ *	A fixture as the script test reads it back: the file decoded, null where there is none or it is no json
+ *
+ *	@param		string		$name
+ *
+ *	@return 	array|null
+ */
+$fixtureRead = static function( string $name ): ?array {
+
+	$read = json_decode( (string) @file_get_contents( __DIR__. '/fixtures/'. $name ), true );
+
+	return is_array( $read ) === true ? $read : null;
+};
 
 
 // --- 1. The manifest and the panel -------------------------------------------
@@ -119,8 +157,13 @@ echo "The registry of the Components module\n";
 \Nino\Modules\Components::init( $appData );
 $registry = \Nino\Modules\Builder\Document::schemas( $appData );
 
-check( 'the components and the stacks of the kernel are in it, each with the defaults of its attributes - in the order a column offers the components, the card, which holds components, between the text and the button', array_keys( $registry['components'] ) === [ 'title', 'subtitle', 'card-title', 'card-subtitle', 'hero-title', 'hero-subtitle', 'text', 'card', 'button', 'image', 'html', 'spacer' ]
-	&& array_keys( $registry['stacks'] ) === [ 'stack', 'slider', 'filter', 'list' ]
+$kernelComponents	= \Nino\Modules\Components::components( $appData );
+$kernelStacks			= \Nino\Modules\Components::stacks( $appData );
+
+check( 'the components and the stacks of the kernel are in it, each with the defaults of its attributes the kernel has - in the order the kernel registers them, which is the order a column offers the components',
+	$kernelComponents !== [] && $kernelStacks !== [] && array_keys( $registry['components'] ) === array_keys( $kernelComponents ) && array_keys( $registry['stacks'] ) === array_keys( $kernelStacks )
+	&& array_filter( $registry['components'], static fn( array $schema, string $name ): bool => $schema['defaults'] !== \Nino\Modules\Components::defaults( $appData, $name ), ARRAY_FILTER_USE_BOTH ) === []
+	&& array_filter( $registry['stacks'], static fn( array $schema, string $name ): bool => $schema['defaults'] !== \Nino\Modules\Components::defaults( $appData, $name, true ), ARRAY_FILTER_USE_BOTH ) === []
 	&& $registry['components']['title']['defaults'] === [ 'tag' => 'h3', 'style' => '', 'class' => '' ]
 	&& $registry['stacks']['stack']['defaults']['gap'] === '2' );
 check( '...the card says what it holds, and is the one that does: a component whose schema has holds is a container, and nothing else is - the Builder asks the schema and names none', \Nino\Modules\Builder\Reader::holds( $registry['components']['card'] ) === true && $registry['components']['card']['holds'] === 'card'
@@ -181,7 +224,9 @@ check( 'the block of html in its markers is a block of html without a reason, by
 	$model['blocks'][2]['reason'] === null && str_starts_with( $model['blocks'][2]['source'], '<section id="map"' ) && str_ends_with( $model['blocks'][2]['source'], '</section>' ) );
 check( 'the contact: 100 wide in every viewport is the short class', $model['blocks'][3]['cols'][0]['width'] === [ 's' => 100, 'm' => 100, 'l' => 100 ] && $model['blocks'][3]['settings']['text'] === 'center' && $model['blocks'][3]['settings']['row'] === 'narrow' );
 
-check( 'the model the panel\'s script test reads (fixtures/page-home.json) is what the Reader makes of the example page', json_decode( (string) file_get_contents( __DIR__. '/fixtures/page-home.json' ), true ) === array_replace( $model, [ 'file' => 'page-home' ] ) );
+check( 'the model the panel\'s script test reads (fixtures/page-home.json) is written from what the Reader makes of the example page: the file is there, is json, and holds the blocks of the page under the name of its file',
+	$fixtureWritten( 'page-home.json', array_replace( $model, [ 'file' => 'page-home' ] ) ) === true && is_array( $fixtureRead( 'page-home.json' )['blocks'] ?? null ) === true
+	&& ( $fixtureRead( 'page-home.json' )['file'] ?? '' ) === 'page-home' && $fixtureRead( 'page-home.json' ) === json_decode( (string) json_encode( array_replace( $model, [ 'file' => 'page-home' ] ) ), true ) );
 
 // The blocks stand in a wrap, between the head and the foot. A file the builder did not write has none, and is given it with the first change - two lines
 $wrapped = static fn( string $source, string $class = 'nino-wrap' ): string => str_replace(
@@ -244,7 +289,7 @@ foreach( [ false, true ] as $animate )
 				$wrong[] = ( $animate === true ? 'on' : 'off' ). ' '. $effect. ' '. $speed;
 		}
 
-check( 'the switch, the effect with its strength and the speed are classes of the wrap, in that order: all '. $combined. ' combinations of them are written as they are, and read back as they were set'. ( $wrong === [] ? '' : ' - '. implode( ', ', array_slice( $wrong, 0, 5 ) ) ), $wrong === [] && $combined === 152 );
+check( 'the switch, the effect with its strength and the speed are classes of the wrap, in that order: all '. $combined. ' combinations of them are written as they are, and read back as they were set'. ( $wrong === [] ? '' : ' - '. implode( ', ', array_slice( $wrong, 0, 5 ) ) ), $wrong === [] && $combined === 2 * ( count( \Nino\Modules\Builder\Reader::EFFECTS ) + 1 ) * ( count( \Nino\Modules\Builder\Reader::SPEEDS ) + 1 ) );
 
 $foreign = $read( str_replace( 'class="nino-wrap nino-wrap--vpa nino-vpa--zoom-soft nino-vpa--speed-medium"', 'class="my-wrap nino-vpa--speed-slow nino-wrap nino-vpa--blur-hard u-x nino-wrap--vpa nino-vpa--flip-soft nino-vpa--repeat nino-vpa"', $wrapFixture ) );
 check( 'a class of the wrap that the builder does not know is carried in wrapClass - a second effect, the mode and a bare nino-vpa among them - and written behind the known ones', $foreign['animate'] === true && $foreign['vpa'] === 'blur-hard' && $foreign['vpaSpeed'] === 'slow'
@@ -353,7 +398,9 @@ check( '...in a loop the card stands in the content of the stack, once for each 
 	&& $cell['components'][0]['components'][0]['source'] === 'title' && $cell['stack']['source'] === '/services' && array_key_exists( 'components', $cell['stack'] ) === false );
 check( '...the column beside the picture has a padding and a margin above and below it, the picture\'s column has none: the settings p, mt and mb are the classes nino-p-2, nino-mt-1 and nino-mb-1, and are not among the custom ones', [ $story['cols'][1]['p'], $story['cols'][1]['mt'], $story['cols'][1]['mb'] ] === [ '2', '1', '1' ] && $story['cols'][1]['custom'] === ''
 	&& [ $story['cols'][0]['p'], $story['cols'][0]['mt'], $story['cols'][0]['mb'] ] === [ '', '', '' ] );
-check( 'the model the panel\'s script test reads (fixtures/page-home-card.json) is what the Reader makes of the page with a card', json_decode( (string) file_get_contents( __DIR__. '/fixtures/page-home-card.json' ), true ) === array_replace( $cardModel, [ 'file' => 'page-home-card' ] ) );
+check( 'the model the panel\'s script test reads (fixtures/page-home-card.json) is written from what the Reader makes of the page with a card: the file is there, is json, and holds the blocks of the page under the name of its file',
+	$fixtureWritten( 'page-home-card.json', array_replace( $cardModel, [ 'file' => 'page-home-card' ] ) ) === true && is_array( $fixtureRead( 'page-home-card.json' )['blocks'] ?? null ) === true
+	&& ( $fixtureRead( 'page-home-card.json' )['file'] ?? '' ) === 'page-home-card' && $fixtureRead( 'page-home-card.json' ) === json_decode( (string) json_encode( array_replace( $cardModel, [ 'file' => 'page-home-card' ] ) ), true ) );
 check( 'writing the model gives the page back, byte for byte - the card on a line, its children one tab deeper on lines of their own, its closing tag at the depth of its call, in a loop one tab deeper still - and reading what was written gives the model', $write( $cardModel ) === $cardFixture && $read( $write( $cardModel ) ) === $cardModel && $write( $read( $write( $cardModel ) ) ) === $cardFixture );
 
 // A card written by hand is read all the same, and written in the one form: its attributes in the order of the schema, its children and its closing tag on lines of their own
@@ -805,7 +852,7 @@ check( 'a scrim without what it darkens is a custom class, kept: nino-cover--dim
 check( 'nino-cover-top and nino-cover-bottom are the place of the content in a cover; nino-cover-center is a custom class, since it aligns the text of a .nino-cover-content, which the Builder never writes', $coverOf( 'nino-section nino-cover nino-cover-top' )['contentPos'] === 'top'
 	&& $coverOf( 'nino-section nino-cover nino-cover-bottom' )['contentPos'] === 'bottom' && $coverOf( 'nino-section nino-cover' )['contentPos'] === '' && $coverOf( 'nino-section nino-cover nino-cover-center' )['contentPos'] === ''
 	&& $coverOf( 'nino-section nino-cover nino-cover-center' )['custom'] === 'nino-cover-center' );
-check( '...and on a section that is neither a cover nor a parallax nino-cover-top is idle: a custom class, kept', $coverOf( 'nino-section nino-cover-top' )['contentPos'] === '' && $coverOf( 'nino-section nino-cover-top' )['custom'] === 'nino-cover-top'
+check( '...and on a section that is neither a cover nor a parallax nino-cover-top is no place of the model: a custom class, kept', $coverOf( 'nino-section nino-cover-top' )['contentPos'] === '' && $coverOf( 'nino-section nino-cover-top' )['custom'] === 'nino-cover-top'
 	&& $coverOf( 'nino-section nino-parallex nino-cover-top' )['contentPos'] === 'top' );
 
 $hostile = $blank;
@@ -952,11 +999,11 @@ $withEmpty = array_column( \Nino\Modules\Builder\Document::registry( $appData )[
 unset( $appData['/nino/html/images']['/project/logo/header/image'] );
 check( '...a slot with a picture says where it is (the Images panel\'s url) for the thumbnail of the source field, one without says null', $registryAnswer['slots'][0]['url'] === \Nino\Images::getUrl( $appData, 'hero.1600x900.jpg' )
 	&& $withEmpty['/project/logo/header/image']['hasImage'] === false && $withEmpty['/project/logo/header/image']['url'] === null );
-check( '...a component says where it belongs (in) and what it draws (draws), as the kernel registered it: the title of a section for the hero and a section, the title of a card for a card, the title of a hero for a hero, the button everywhere - and one that says neither carries neither',
-	$registryAnswer['components']['title']['in'] === [ 'hero', 'section' ] && $registryAnswer['components']['subtitle']['in'] === [ 'hero', 'section' ] && $registryAnswer['components']['title']['draws'] === '{tag} .nino-section-title' && $registryAnswer['components']['card-title']['in'] === [ 'card' ]
-	&& $registryAnswer['components']['hero-title']['in'] === [ 'hero' ] && $registryAnswer['components']['hero-subtitle']['draws'] === '{tag} .nino-hero-subtitle' && $registryAnswer['components']['button']['draws'] === 'a .nino-btn'
-	&& array_key_exists( 'in', $registryAnswer['components']['button'] ) === false && array_key_exists( 'in', $registryAnswer['components']['text'] ) === false && array_key_exists( 'draws', $registryAnswer['components']['text'] ) === false
-	&& array_key_exists( 'draws', $registryAnswer['stacks']['stack'] ) === false && $registryAnswer['components']['card-title']['label'] === 'Title (Card)' );
+check( '...a component says where it belongs (in) and what it draws (draws), as the kernel registered it: the answer carries each of the two - and what it holds (holds) - exactly where the kernel\'s entry has it, as it has it, and one that says none of them carries none; the label is the kernel\'s, in the language of the workbench - and a loop says none of the three',
+	array_filter( $kernelComponents, static fn( array $schema, string $name ): bool => array_filter( [ 'in', 'draws', 'holds' ], static fn( string $key ): bool => array_key_exists( $key, $registryAnswer['components'][$name] ) !== array_key_exists( $key, $schema )
+		|| ( $registryAnswer['components'][$name][$key] ?? null ) !== ( $schema[$key] ?? null ) ) !== [] || $registryAnswer['components'][$name]['label'] !== \Nino\Features::localized( $schema['label'], 'en_US' ), ARRAY_FILTER_USE_BOTH ) === []
+	&& array_filter( $kernelComponents, static fn( array $schema ): bool => isset( $schema['in'] ) === true ) !== [] && array_filter( $kernelComponents, static fn( array $schema ): bool => isset( $schema['in'] ) === false ) !== []
+	&& array_filter( $registryAnswer['stacks'], static fn( array $schema ): bool => array_key_exists( 'in', $schema ) === true || array_key_exists( 'draws', $schema ) === true || array_key_exists( 'holds', $schema ) === true ) === [] );
 check( '...a component says what it holds (holds), the place of the components it takes as its children: the card holds the place card, is offered in a section and in a hero, and draws an article element - all three arrive as the kernel has them, and no other component carries holds, nor does a loop',
 	$registryAnswer['components']['card']['in'] === [ 'section', 'hero' ] && $registryAnswer['components']['card']['draws'] === 'article .nino-card' && $registryAnswer['components']['card']['holds'] === 'card' && $registryAnswer['components']['card']['label'] === 'Card'
 	&& $registryAnswer['components']['card']['source'] === 'content' && array_keys( $registryAnswer['components']['card']['attributes'] ) === [ 'fill', 'padding', 'vertical', 'align', 'ground', 'borderless', 'background', 'focus', 'dim' ]
@@ -970,13 +1017,16 @@ check( '...a component says the icon it is shown by (icon), as the kernel regist
 	&& $registryAnswer['components']['title']['icon'] === \Nino\Modules\Builder\Document::schemas( $appData )['components']['title']['icon'] );
 check( '...and the entry of the card is the entry of the registry of the Components module but for its words, which are in the language of the workbench: the panel is handed nothing of its own making',
 	array_diff_key( $registryAnswer['components']['card'], [ 'label' => 1, 'attributes' => 1 ] ) === array_diff_key( \Nino\Modules\Builder\Document::schemas( $appData )['components']['card'], [ 'label' => 1, 'attributes' => 1 ] ) );
-check( '...the components and the stacks the panel\'s script test reads (fixtures/registry.json) are what the registry says', json_decode( (string) file_get_contents( __DIR__. '/fixtures/registry.json' ), true ) === json_decode( (string) json_encode( [ 'components' => $registryAnswer['components'], 'stacks' => $registryAnswer['stacks'] ] ), true ) );
-check( '...the components stand in the order the kernel registers them, which is the order a column offers them, and the answer keeps it the way the panel reads it: the titles of each place first, then the text, the card, the button, the picture, HTML and the spacer',
-	array_keys( (array) json_decode( (string) json_encode( $registryAnswer['components'] ), true ) ) === [ 'title', 'subtitle', 'card-title', 'card-subtitle', 'hero-title', 'hero-subtitle', 'text', 'card', 'button', 'image', 'html', 'spacer' ] );
+check( '...the components and the stacks the panel\'s script test reads (fixtures/registry.json) are written from what the registry says: the file is there, is json, and holds the two keys, each with every component and every stack the registry has',
+	$fixtureWritten( 'registry.json', [ 'components' => $registryAnswer['components'], 'stacks' => $registryAnswer['stacks'] ] ) === true && array_keys( $fixtureRead( 'registry.json' ) ?? [] ) === [ 'components', 'stacks' ]
+	&& array_keys( $fixtureRead( 'registry.json' )['components'] ) === array_keys( $registryAnswer['components'] ) && array_keys( $fixtureRead( 'registry.json' )['stacks'] ) === array_keys( $registryAnswer['stacks'] )
+	&& $fixtureRead( 'registry.json' ) === json_decode( (string) json_encode( [ 'components' => $registryAnswer['components'], 'stacks' => $registryAnswer['stacks'] ] ), true ) );
+check( '...the components stand in the order the kernel registers them, which is the order a column offers them, and the answer keeps it the way the panel reads it: through json, as the kernel has them',
+	array_keys( (array) json_decode( (string) json_encode( $registryAnswer['components'] ), true ) ) === array_keys( $kernelComponents ) );
 $featured = $appData;
 foreach( [ 'zulu', 'alpha' ] as $feature )
 	\Nino\Modules\Components::addComponent( $featured, $feature, static fn( array &$appData, array $args ): string => '', [ 'label' => [ 'en_US' => ucfirst( $feature ) ], 'source' => 'none' ] );
-check( '...a component a feature registers stands after the kernel\'s, in the order it registered them and not in the alphabet\'s', array_slice( array_keys( (array) json_decode( (string) json_encode( \Nino\Modules\Builder\Document::registry( $featured )['components'] ), true ) ), -3 ) === [ 'spacer', 'zulu', 'alpha' ]
+check( '...a component a feature registers stands after the kernel\'s, in the order it registered them and not in the alphabet\'s', array_slice( array_keys( (array) json_decode( (string) json_encode( \Nino\Modules\Builder\Document::registry( $featured )['components'] ), true ) ), -3 ) === [ array_key_last( $kernelComponents ), 'zulu', 'alpha' ]
 	&& array_keys( $registryAnswer['components'] ) === array_keys( \Nino\Modules\Builder\Document::registry( $appData )['components'] ) );
 $iconed = $appData;
 \Nino\Modules\Components::addComponent( $iconed, 'zulu', static fn( array &$appData, array $args ): string => '', [ 'label' => [ 'en_US' => 'Zulu' ], 'source' => 'none', 'icon' => [ [ 'circle', [ 'cx' => '12', 'cy' => '12', 'r' => '9' ] ], [ 'path', [ 'd' => 'M12 7v5l3 3' ] ] ] ] );
@@ -984,7 +1034,7 @@ $iconed = $appData;
 $iconedAnswer = \Nino\Modules\Builder\Document::registry( $iconed )['components'];
 check( '...a component a feature registers has the icon it registered, its parts as the kernel has them, and one that registers none has no icon at all - the panel gives it a puzzle of its own - and the components of the kernel are as they were',
 	$iconedAnswer['zulu']['icon'] === [ [ 'circle', [ 'cx' => '12', 'cy' => '12', 'r' => '9' ] ], [ 'path', [ 'd' => 'M12 7v5l3 3' ] ] ] && array_key_exists( 'icon', $iconedAnswer['alpha'] ) === false
-	&& array_slice( $iconedAnswer, 0, 12 ) === $registryAnswer['components'] );
+	&& array_slice( $iconedAnswer, 0, count( $registryAnswer['components'] ) ) === $registryAnswer['components'] );
 
 $listed = \Nino\Modules\Builder\Document::list( $appData );
 $byFile = array_column( $listed['templates'], null, 'file' );

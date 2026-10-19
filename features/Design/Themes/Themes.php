@@ -15,8 +15,8 @@ namespace Nino\Modules\Design {
 	 *	Nino							A compact filesystembased php framework
 	 *	Themes						A theme is the face of a site: the whole setup of the panel -
 	 *										the five templates, the position of every knob, the root
-	 *										size, the width, the animation, the five font roles and the
-	 *										palette - kept under a name with a description and a
+	 *										size, the width, the whitespace, the animation, the five font
+	 *										roles and the palette - kept under a name with a description and a
 	 *										stylesheet of its own, the custom css. Loading one puts it
 	 *										on the screen as a draft; saving puts the screen into it.
 	 *
@@ -26,7 +26,7 @@ namespace Nino\Modules\Design {
 	 *										  'name'            the name, and under name-<lang> its line
 	 *										                    in another language
 	 *										  'description'     the same, under description-<lang>
-	 *										  'setup'           the seven keys of a setup that choose
+	 *										  'setup'           the eight keys of a setup that choose
 	 *										                    something (see snapshot())
 	 *										  'css'             the stylesheet of the theme
 	 *										  'presets'         [] - the Builder's presets come later,
@@ -64,8 +64,10 @@ namespace Nino\Modules\Design {
 		// The shape's own version. A file of another one is no theme
 		public const int FORMAT = 1;
 
-		// The themes the feature ships, in the order the list shows them in
-		public const array SHIPPED = [ 'nino', 'magazine', 'poster', 'statement', 'product', 'office' ];
+		/*	The themes the feature ships, in the order the list shows them in: the first is
+			the framework as it is, and the one Setup::defaults() takes its sets from. Any
+			other file of library/themes/ is listed after them, sorted (see shipped())	*/
+		public const array SHIPPED = [ 'nino', 'corporate-loud', 'corporate-cozy', 'portfolio-cozy' ];
 
 		// How long a css, a name and a description may be: the size keeps data/design.php and every preview request sane
 		public const int MAX_CSS = 65536;
@@ -316,7 +318,7 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	The setup a theme's file holds, as it is - the seven keys that choose
+		 *	The setup a theme's file holds, as it is - the eight keys that choose
 		 *	something, and whatever else somebody wrote there: the caller normalises it
 		 *
 		 *	@param		array 		$raw					The array of a theme's file
@@ -340,8 +342,8 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	A setup cut down to the seven keys that choose something - the size, the
-		 *	width, the animation, the parts, the knobs, the fonts and the palette - in
+		 *	A setup cut down to the eight keys that choose something - the size, the
+		 *	width, the whitespace, the animation, the parts, the knobs, the fonts and the palette - in
 		 *	the order of Setup::KEYS. The format, the theme, the css and the record of
 		 *	what was compiled are not a theme's setup: the css stands beside it in the
 		 *	file, and the other three are the project's. What a created, saved or

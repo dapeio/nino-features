@@ -24,7 +24,7 @@ namespace Nino\Modules {
 	 *										lists, tables and blocks) - plus a header and a footer,
 	 *										which are the two parts that bring markup with them; from
 	 *										a knob for each thing a template lets go of; from the root
-	 *										size, the width and the animation of the page; from the
+	 *										size, the width, the whitespace and the animation of the page; from the
 	 *										five font roles; and from the palette.
 	 *
 	 *										Eight pieces, and they are deliberately separable:
@@ -607,7 +607,7 @@ namespace Nino\Modules {
 
 			/*	The other half of a frame. A header set is a stylesheet AND the
 				markup it was drawn against, so compiling one without writing the
-				other is how a page ends up with v3's css over v1's html */
+				other is how a page ends up with the css of one header over the html of another */
 			foreach( Design\Setup::PARTS as $part => $kind ) {
 
 				if( $kind !== 'frame' )

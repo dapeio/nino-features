@@ -1,0 +1,96 @@
+/*	@name				Center, floating
+ *	@description	A rounded, slightly translucent bar with air around it, capped at 92rem: the logo to the left, the navigation in the middle and a button to the right.
+ *	@description-de	Eine abgerundete, leicht durchscheinende Leiste mit Luft ringsum, auf 92 rem begrenzt: links das Logo, in der Mitte die Navigation, rechts ein Button.
+ *
+ *	The name and the description are what the Design panel lists this
+ *	variant as. Every library file carries them; a file without a @name
+ *	is offered under its own file name instead.
+ */
+
+.nino-frame-header {
+	padding: var(--space-1) var(--space-1) 0;
+}
+
+.nino-frame-header .nino-grid-row {
+	padding: 0 var(--space-1);
+}
+
+.nino-frame-header .nino-scroll-header {
+	width: min(calc(100% - (var(--space-1) * 2)), 92rem);
+	min-height: 4.5rem;
+	padding-top: .45rem;
+	padding-bottom: .45rem;
+	opacity: 1;
+	background-color: color-mix(in srgb, var(--color-background) 88%, transparent);
+	border: 1px solid color-mix(in srgb, var(--color-background) 70%, transparent);
+	border-radius: max(var(--radius), 1rem);
+	box-shadow: 0 .75rem 2.5rem rgb(0 0 0 / 10%);
+}
+
+body.nino-scroll-atf .nino-frame-header .nino-scroll-header {
+	background-color: color-mix(in srgb, var(--color-background) 78%, transparent);
+}
+
+.nino-frame-header .nino-logo {
+	width: clamp(7rem, 9vw, 9rem);
+	height: auto;
+	min-width: 0;
+	min-height: 0;
+	margin: 0;
+	background-image: none;
+}
+
+.nino-frame-header .nino-nav-burger > label > svg {
+	fill: var(--color-title);
+}
+
+body main {
+	padding-top: clamp(6rem, calc(var(--space-6) + var(--space-1)), 9rem);
+}
+
+body main:has(> .nino-cover:first-child),
+body main:has(> .nino-wrap > .nino-cover:first-child),
+body main:has(> .nino-parallex:first-child),
+body main:has(> .nino-wrap > .nino-parallex:first-child) {
+	padding-top: 0;
+}
+.nino-frame-header .nino-frame-header-cta .nino-btn {
+	border-radius: max(var(--radius), 1rem);
+}
+
+@media (min-width: 768px) {
+	.nino-frame-header .nino-nav-content ul {
+		gap: .35rem;
+	}
+
+	.nino-frame-header .nino-nav-content li a {
+		padding: .55rem var(--space-2);
+		border-radius: max(var(--radius), 1rem);
+		transition: background .4s, color .4s;
+		font-size: var(--fontsize-btn);
+	}
+
+	.nino-frame-header .nino-nav-content li a:hover,
+	.nino-frame-header .nino-nav-content li a:focus,
+	.nino-frame-header .nino-nav-content li a.nino-is-active {
+		color: var(--color-text);
+		background-color: var(--color-background);
+	}
+}
+
+@media (max-width: 639px) {
+	.nino-frame-header {
+		padding-right: 0;
+		padding-left: 0;
+	}
+
+	.nino-frame-header .nino-scroll-header {
+		width: calc(100% - (var(--space-1) * 2));
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+		.nino-frame-header .nino-nav-content li a {
+			transition: none;
+		}
+}

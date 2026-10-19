@@ -42,7 +42,7 @@ return [
 	'[[/_admin/design/theme/field/name]]'			=> 'Name',
 	'[[/_admin/design/theme/field/description]]'	=> 'Description',
 	'[[/_admin/design/theme/css/title]]'			=> 'Custom css',
-	'[[/_admin/design/theme/css/hint]]'				=> 'Goes into theme.css as its last section and wins against the templates. @import, javascript: and a closing style tag are refused; a path below the project starts with [[/nino/public]].',
+	'[[/_admin/design/theme/css/hint]]'				=> 'Last section of the css file. Overrides the css of the templates. The text fill for publicly reachable files: [[/nino/public]].',
 	'[[/_admin/design/theme/copy]]'					=> '%s copy',
 	'[[/_admin/design/theme/confirm/delete]]'		=> 'Delete the theme "%s"?',
 	'[[/_admin/design/theme/confirm/fonts]]'		=> 'The theme uses typefaces that are not installed: %s. Install them now?',
@@ -62,7 +62,7 @@ return [
 	'[[/_admin/design/theme/error/export]]'			=> 'The theme could not be exported.',
 	'[[/_admin/design/theme/error/import]]'			=> 'The file could not be imported.',
 
-	// Global: the two frames are chosen here, the other three templates on their own tabs; and the root size, the width and the animation of the page
+	// Global: the two frames are chosen here, the other three templates on their own tabs; and the root size, the width, the whitespace and the animation of the page
 	'[[/_admin/design/part/header]]'								=> 'Header template',
 	'[[/_admin/design/part/footer]]'								=> 'Footer template',
 	'[[/_admin/design/part/content]]'							=> 'Content template',
@@ -72,6 +72,8 @@ return [
 	'[[/_admin/design/hint/size]]'								=> '85 % ↔ 145 % of the browser\'s own size, never a fixed number of pixels',
 	'[[/_admin/design/label/pagewidth]]'							=> 'Page, width',
 	'[[/_admin/design/hint/pagewidth]]'							=> '48 rem ↔ to the edge',
+	'[[/_admin/design/label/whitespace]]'						=> 'Page, whitespace',
+	'[[/_admin/design/hint/whitespace]]'						=> '75 % ↔ 200 % of the distances',
 
 	// The animation of the page: what Nino.css does as things come into view, for everything that has none of its own
 	'[[/_admin/design/label/motion]]'							=> 'Animation',
@@ -79,8 +81,10 @@ return [
 	'[[/_admin/design/motion/effect/label]]'						=> 'Effect',
 	'[[/_admin/design/motion/effect/zoom]]'						=> 'Zoom',
 	'[[/_admin/design/motion/effect/zoom-out]]'					=> 'Zoom out',
-	'[[/_admin/design/motion/effect/slide-left]]'				=> 'From the right',
-	'[[/_admin/design/motion/effect/slide-right]]'				=> 'From the left',
+	'[[/_admin/design/motion/effect/slide-left]]'				=> 'Slides left',
+	'[[/_admin/design/motion/effect/slide-right]]'				=> 'Slides right',
+	'[[/_admin/design/motion/effect/slide-up]]'				=> 'Slides up',
+	'[[/_admin/design/motion/effect/slide-down]]'				=> 'Slides down',
 	'[[/_admin/design/motion/effect/blur]]'						=> 'Blur',
 	'[[/_admin/design/motion/effect/flip]]'						=> 'Flip',
 	'[[/_admin/design/motion/strength/label]]'					=> 'Strength',

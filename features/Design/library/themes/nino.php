@@ -4,14 +4,14 @@
 return [
 	'format'			=> 1,
 	'name'				=> 'Nino',
-	'name-de'			=> 'Nino',
-	'description'		=> 'The framework as it is: every template the first one, every knob in the middle, no css of its own.',
-	'description-de'	=> 'Das Framework, wie es ist: jede Vorlage die erste, jeder Regler in der Mitte, kein eigenes CSS.',
+	'description'		=> 'The framework as it is: every template the default one, every knob in the middle, no css of its own.',
+	'description-de'	=> 'Das Framework, wie es ist: jede Vorlage die Standardvorlage, jeder Regler in der Mitte, kein eigenes CSS.',
 	'setup'				=> [
 		'size'		=> 0,
 		'width'		=> 0,
+		'whitespace'	=> 0,
 		'motion'	=> [ 'effect' => '', 'strength' => '', 'speed' => '' ],
-		'parts'		=> [ 'header' => 'v1', 'footer' => 'v1', 'content' => 'v1', 'buttons' => 'v1', 'components' => 'v1' ],
+		'parts'		=> [ 'header' => 'classic-default', 'footer' => 'one-legal-row', 'content' => 'regular', 'buttons' => 'regular', 'components' => 'regular' ],
 		'knobs'		=> [
 			'content' 		=> [ 'hero-title' => 0, 'hero-text' => 0, 'quiet' => 0, 'loud' => 0, 'section-title' => 0, 'section-subtitle' => 0, 'section-space' => 0, 'section-line' => 0, 'card-title' => 0, 'card-subtitle' => 0, 'card-space' => 0, 'corners' => 0, 'border' => 0, 'shadow' => 0 ],
 			'buttons' 		=> [ 'size' => 0, 'spread' => 0, 'space' => 0, 'corners' => 0 ],

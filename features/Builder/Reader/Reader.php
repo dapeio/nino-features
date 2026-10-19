@@ -227,7 +227,9 @@ namespace Nino\Modules\Builder {
 		public const array TEXT = [ 'left', 'center', 'right' ];
 		public const array EFFECTS = [
 			'blur-soft', 'blur-medium', 'blur-hard', 'flip-soft', 'flip-medium', 'flip-hard',
+			'slide-down-soft', 'slide-down-medium', 'slide-down-hard',
 			'slide-left-soft', 'slide-left-medium', 'slide-left-hard', 'slide-right-soft', 'slide-right-medium', 'slide-right-hard',
+			'slide-up-soft', 'slide-up-medium', 'slide-up-hard',
 			'zoom-soft', 'zoom-medium', 'zoom-hard', 'zoom-out-soft', 'zoom-out-medium', 'zoom-out-hard',
 		];
 		public const array SPEEDS = [ 'fast', 'medium', 'slow' ];
@@ -876,7 +878,8 @@ namespace Nino\Modules\Builder {
 					$custom[] = $token;
 			}
 
-			// The place of the content is the row's in a cover or a parallax: on a section that is neither the class is idle, a custom one
+			// The place of the content is the row's in a cover or a parallax: on a section that is neither the Builder writes none,
+			// and one that is there is kept as a custom class (the kernel reads it on a section with a background picture too)
 			foreach( $places as [ $word, $token ] )
 				if( $s['cover'] !== null || $s['parallax'] === true )
 					$set( 'contentPos', $word, $token );

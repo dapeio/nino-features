@@ -67,6 +67,7 @@
                             "source": "/template/page-home-card/story/photo",
                             "text": null,
                             "attributes": {
+                                "style": "",
                                 "alt": "",
                                 "focus": "",
                                 "ratio": "4-3",

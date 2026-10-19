@@ -1,0 +1,244 @@
+/*	@name			Box
+ *	@description	A centred opening with tight lines, bands with a reading column, cards as a hairline box with the picture to its edge.
+ *	@description-de	Zentrierter Hero mit engen Zeilen, Bänder mit Lesespalte, Karten als Haarlinien-Kasten mit dem Bild bis an den Rand.
+ *
+ *	@knob	hero-title			Size of the title of a hero
+ *	@knob	hero-text			Size of the text of a hero
+ *	@knob	quiet				Size of a quiet title, subtitle and text
+ *	@knob	loud				Size of a loud title, subtitle and text
+ *	@knob	section-title		Size of the title of a band
+ *	@knob	section-subtitle	Size of the subtitle of a band
+ *	@knob	section-space		Height of a band
+ *	@knob	section-line		Rule under the title of a band
+ *	@knob	card-title			Size of the title of a card
+ *	@knob	card-subtitle		Size of the subtitle of a card
+ *	@knob	card-space			Space inside a card and between its parts
+ *	@knob	corners				Corners of a card
+ *	@knob	border				Line round a card
+ *	@knob	shadow				Shadow of a card
+ *
+ *	The card is a box: a hairline round it, the picture running to its edge,
+ *	and between two cards the space that is inside one, so that a grid reads as
+ *	a table of boxes and not as cards floating on a ground. The band is the unit
+ *	of the page, and what stands in it is held to a column of 52rem, so a
+ *	paragraph is read rather than scanned, while its title keeps the grid. The
+ *	opening is set tight: lines of 1.08 and letters pulled in by .01em.
+ *
+ *	Every ladder is Nino's, value for value, so that a switch of template
+ *	moves no size: how tall a band is, how large an opening is and how much of
+ *	a shadow a box casts are positions of a knob and no part of this
+ *	construction. The border knob is the line of the box and the shadow knob the
+ *	shadow it casts, which Nino.css reads by the name --shadow-card.
+ *
+ *	What the construction reads of them is its own: the padding of a card is
+ *	the card-space on every side, where Nino's is half of it above and below,
+ *	the space under a title, a subtitle and a text is half of it, the gap
+ *	between two cards the whole of it, and the title of a band has a quarter of
+ *	the band's space under it.
+ */
+
+/*	The ladders are Nino's, value for value - content regular says what each of them is	*/
+:root {
+	--content-hero-title--least: 		.896;
+	--content-hero-title--less: 		1.12;
+	--content-hero-title--default: 	1.4;
+	--content-hero-title--more: 		1.75;
+	--content-hero-title--most: 		2.1875;
+
+	--content-hero-text--least: 		.768;
+	--content-hero-text--less: 			.96;
+	--content-hero-text--default: 	1.2;
+	--content-hero-text--more: 			1.5;
+	--content-hero-text--most: 			1.875;
+
+	--content-quiet--least: 				.6;
+	--content-quiet--less: 					.75;
+	--content-quiet--default: 			.85;
+	--content-quiet--more: 					.92;
+	--content-quiet--most: 					.97;
+
+	--content-loud--least: 					1.05;
+	--content-loud--less: 					1.1;
+	--content-loud--default: 				1.2;
+	--content-loud--more: 					1.35;
+	--content-loud--most: 					1.6;
+
+	--content-section-title--least: 	.8;
+	--content-section-title--less: 		.9;
+	--content-section-title--default: 	1;
+	--content-section-title--more: 		1.15;
+	--content-section-title--most: 		1.3;
+
+	--content-section-subtitle--least: 		.85;
+	--content-section-subtitle--less: 		.92;
+	--content-section-subtitle--default: 	1;
+	--content-section-subtitle--more: 		1.1;
+	--content-section-subtitle--most: 		1.2;
+
+	--content-section-space--least: 	var(--space-2);
+	--content-section-space--less: 		var(--space-3);
+	--content-section-space--default: var(--space-4);
+	--content-section-space--more: 		var(--space-5);
+	--content-section-space--most: 		var(--space-6);
+
+	--content-section-line--least: 		0px;
+	--content-section-line--less: 		0px;
+	--content-section-line--default: 	0px;
+	--content-section-line--more: 		1px;
+	--content-section-line--most: 		2px;
+
+	--content-card-title--least: 	calc(.8 * 5 / 6);
+	--content-card-title--less: 	calc(.9 * 5 / 6);
+	--content-card-title--default: 	calc(5 / 6);
+	--content-card-title--more: 	calc(1.15 * 5 / 6);
+	--content-card-title--most: 	calc(1.3 * 5 / 6);
+
+	--content-card-subtitle--least: 	.85;
+	--content-card-subtitle--less: 		.92;
+	--content-card-subtitle--default: 	1;
+	--content-card-subtitle--more: 		1.1;
+	--content-card-subtitle--most: 		1.2;
+
+	--content-card-space--least: 		calc( var(--space-1) * .5 );
+	--content-card-space--less: 		var(--space-1);
+	--content-card-space--default: var(--space-2);
+	--content-card-space--more: 		var(--space-3);
+	--content-card-space--most: 		var(--space-4);
+
+	--content-corners--least: 				0rem;
+	--content-corners--less: 					0rem;
+	--content-corners--default: 			var(--radius-small);
+	--content-corners--more: 					var(--radius-large);
+	--content-corners--most: 					1rem;
+
+	--content-border--least: 					0px;
+	--content-border--less: 					.5px;
+	--content-border--default: 				1px;
+	--content-border--more: 					2px;
+	--content-border--most: 					3px;
+
+	--content-shadow--least: 					none;
+	--content-shadow--less: 					none;
+	--content-shadow--default: 				none;
+	--content-shadow--more: 					0 .125rem .75rem var(--nino-default-shadow);
+	--content-shadow--most: 					0 .25rem 1.5rem var(--nino-default-shadow), 0 .0625rem .25rem var(--nino-default-shadow);
+}
+
+@media (min-width: 768px) {
+	:root {
+		--content-hero-title--least: 		.928;
+		--content-hero-title--less: 		1.16;
+		--content-hero-title--default: 	1.45;
+		--content-hero-title--more: 		1.8125;
+		--content-hero-title--most: 		2.2656;
+
+		--content-hero-text--least: 		calc(.64 * 10 / 9);
+		--content-hero-text--less: 			calc(.8 * 10 / 9);
+		--content-hero-text--default: 	calc(10 / 9);
+		--content-hero-text--more: 			calc(1.25 * 10 / 9);
+		--content-hero-text--most: 			calc(1.5625 * 10 / 9);
+
+		--content-section-space--least: 	var(--space-3);
+		--content-section-space--less: 		var(--space-4);
+		--content-section-space--default: var(--space-5);
+		--content-section-space--more: 		var(--space-6);
+		--content-section-space--most: 		calc( var(--space-6) * 1.25 );
+
+		--content-card-title--least: 	calc(.8 * 25 / 32);
+		--content-card-title--less: 	calc(.9 * 25 / 32);
+		--content-card-title--default: 	calc(25 / 32);
+		--content-card-title--more: 	calc(1.15 * 25 / 32);
+		--content-card-title--most: 	calc(1.3 * 25 / 32);
+	}
+}
+
+:root {
+	--hero-title-scale: var(--content-hero-title);
+	--hero-text-scale: var(--content-hero-text);
+	--section-title-scale: var(--content-section-title);
+	--section-subtitle-scale: var(--content-section-subtitle);
+	--card-title-scale: var(--content-card-title);
+	--card-subtitle-scale: var(--content-card-subtitle);
+	--section-line: var(--content-section-line);
+	--scale-quiet: var(--content-quiet);
+	--scale-loud: var(--content-loud);
+	--shadow-card: var(--content-shadow);
+}
+
+/* ---- the opening ---- */
+
+.nino-hero-title {
+	line-height: 1.08;
+	letter-spacing: -.01em;
+}
+.nino-hero-subtitle {
+	line-height: 1.45;
+	opacity: 1;
+}
+
+/* ---- bands ---- */
+
+/*	The space of a band is times the whitespace of the page, as in regular	*/
+.nino-section:where(:not(.nino-section--fullheight, [class*="nino-pt-"], [class*="nino-p-"])) {
+	padding-top: calc( var(--content-section-space) * var(--whitespace-scale, 1) );
+}
+.nino-section:where(:not(.nino-section--fullheight, [class*="nino-pb-"], [class*="nino-p-"])) {
+	padding-bottom: calc( var(--content-section-space) * var(--whitespace-scale, 1) );
+}
+
+/*	The column, not the grid: .nino-section-text is what a paragraph lands in,
+	and a line that runs the full width of a wide screen is a line nobody
+	finishes. The title keeps the grid so a heading still spans the band	*/
+.nino-section-text,
+.nino-section-subtitle {
+	max-width: 52rem;
+}
+.nino-section-title:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
+	margin-bottom: calc( var(--content-section-space) / 4 * var(--whitespace-text, 1) );
+}
+
+/*	Centred text centres its column too, or a "centred" band is a centred
+	heading over a paragraph pinned to the left	*/
+.nino-text-center .nino-section-text,
+.nino-text-center .nino-section-subtitle {
+	margin-right: auto;
+	margin-left: auto;
+}
+
+/* ---- cards ---- */
+
+.nino-card:where(:not(.nino-card--borderless)) {
+	border: var(--content-border) solid var(--color-border);
+	border-radius: var(--content-corners);
+	overflow: hidden;
+}
+
+/*	A picture that asks to be rounded (nino-image--rounded) takes the corners of a
+	card twice, where Nino.css gives it --radius-large: the corners knob rounds it
+	further	*/
+.nino-image--rounded {
+	border-radius: calc( var(--content-corners) * 2 );
+}
+
+/*	The picture runs to the edge of the box: a margin around it would be a
+	second frame inside the first	*/
+.nino-card-img {
+	display: block;
+	width: 100%;
+	margin: 0;
+	border-radius: 0;
+}
+.nino-card-content:where(:not([class*="nino-pt-"], [class*="nino-pb-"], [class*="nino-p-"])) {
+	padding: calc( var(--content-card-space) * var(--whitespace-scale, 1) );
+}
+.nino-card-title:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
+.nino-card-subtitle:where(:not([class*="nino-mb-"], [class*="nino-m-"])),
+.nino-card-descr:where(:not([class*="nino-mb-"], [class*="nino-m-"])) {
+	margin-bottom: calc( var(--content-card-space) / 2 * var(--whitespace-text, 1) );
+}
+
+/*	Cards side by side keep the padding of a card between them, so a grid
+	reads as a table of boxes rather than as cards floating on a ground	*/
+.nino-card-cols {
+	gap: calc( var(--content-card-space) * var(--whitespace-scale, 1) );
+}

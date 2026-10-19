@@ -386,6 +386,8 @@ return [
 	'[[/_admin/builder/option/effect-zoom-out]]'			=> 'Zoom out',
 	'[[/_admin/builder/option/effect-slide-left]]'			=> 'Slides left',
 	'[[/_admin/builder/option/effect-slide-right]]'			=> 'Slides right',
+	'[[/_admin/builder/option/effect-slide-up]]'			=> 'Slides up',
+	'[[/_admin/builder/option/effect-slide-down]]'			=> 'Slides down',
 	'[[/_admin/builder/option/effect-flip]]'				=> 'Flip',
 	'[[/_admin/builder/option/effect-blur]]'				=> 'Blur',
 	'[[/_admin/builder/option/strength-soft]]'				=> 'Soft',

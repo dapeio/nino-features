@@ -237,10 +237,11 @@ namespace Nino\Modules\Design {
 				'steps' 	=> Setup::STEPS,
 				'size' 		=> (int) ( $setup['size'] ?? 0 ),
 				'width' 	=> (int) ( $setup['width'] ?? 0 ),
+				'whitespace' => (int) ( $setup['whitespace'] ?? 0 ),
 				/*	The Theme tab: the slug of the theme the stored setup was taken from and
 					its own css, the list of the themes there are - the shipped ones first -
 					and the active one as its file holds it, normalised against the library
-					and cut to the seven keys that choose something, which the screen
+					and cut to the eight keys that choose something, which the screen
 					compares the draft with. null where there is none	*/
 				'theme' 	=> (string) ( $setup['theme'] ?? '' ),
 				'css' 		=> (string) ( $setup['css'] ?? '' ),
@@ -1051,6 +1052,7 @@ namespace Nino\Modules\Design {
 				'theme' 	=> is_string( $posted['theme'] ?? null ) === true ? $posted['theme'] : '',
 				'size' 		=> $posted['size'] ?? 0,
 				'width' 	=> $posted['width'] ?? 0,
+				'whitespace' => $posted['whitespace'] ?? 0,
 				'css' 		=> is_string( $posted['css'] ?? null ) === true ? $posted['css'] : '',
 			];
 

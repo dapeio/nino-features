@@ -1,0 +1,31 @@
+<?php
+// features/Design/library/themes/portfolio-cozy.php - a theme the feature ships: loaded and duplicated in the panel, never written
+// or deleted. The shape of the file is described in features/Design/Themes/Themes.php
+return [
+	'format'			=> 1,
+	'name'				=> 'Portfolio, cozy',
+	'description'		=> 'A restrained portfolio look with soft shapes: a floating header, rounder corners, larger section and card titles and a little more whitespace.',
+	'description-de'	=> 'Ein zurückhaltendes Portfolio-Design mit weichen Formen.',
+	'setup'				=> [
+		'size'		=> 0,
+		'width'		=> 0,
+		'whitespace'	=> 1,
+		'motion'	=> [ 'effect' => '', 'strength' => '', 'speed' => '' ],
+		'parts'		=> [ 'header' => 'center-floating', 'footer' => 'logo-contact-light', 'content' => 'regular', 'buttons' => 'regular', 'components' => 'regular' ],
+		'knobs'		=> [
+			'content' 		=> [ 'hero-title' => 0, 'hero-text' => 0, 'quiet' => 0, 'loud' => 0, 'section-title' => 2, 'section-subtitle' => 0, 'section-space' => 0, 'section-line' => 0, 'card-title' => 2, 'card-subtitle' => 0, 'card-space' => 0, 'corners' => 2, 'border' => 0, 'shadow' => 0 ],
+			'buttons' 		=> [ 'size' => -1, 'spread' => 0, 'space' => 1, 'corners' => 1 ],
+			'components' 	=> [ 'scale' => 0, 'space' => 0, 'corners' => 1, 'border' => 0, 'zebra' => 0, 'labels' => 0 ],
+		],
+		'fonts'		=> [
+			'title'		=> [ 'family' => 'open-sans', 'weight' => 'bold', 'uppercase' => false, 'size' => '' ],
+			'subtitle'	=> [ 'family' => 'open-sans', 'weight' => 'normal', 'uppercase' => false, 'size' => '' ],
+			'text'		=> [ 'family' => 'open-sans', 'weight' => 'normal', 'uppercase' => false, 'size' => '' ],
+			'button'	=> [ 'family' => 'open-sans', 'weight' => 'bold', 'uppercase' => false, 'size' => '' ],
+			'code'		=> [ 'family' => '', 'weight' => 'normal', 'uppercase' => false, 'size' => '' ],
+		],
+		'colours'	=> [ 'primary' => '#4faae8', 'secondary' => '', 'harmony' => 1, 'temperature' => 3, 'saturation' => 3, 'contrast' => 3, 'depth' => 3, 'mode' => 'auto' ],
+	],
+	'css'				=> '',
+	'presets'			=> [],
+];

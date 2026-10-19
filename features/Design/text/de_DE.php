@@ -42,7 +42,7 @@ return [
 	'[[/_admin/design/theme/field/name]]'			=> 'Name',
 	'[[/_admin/design/theme/field/description]]'	=> 'Beschreibung',
 	'[[/_admin/design/theme/css/title]]'			=> 'Eigenes CSS',
-	'[[/_admin/design/theme/css/hint]]'				=> 'Kommt als letzter Abschnitt in die theme.css und gewinnt gegen die Vorlagen. @import, javascript: und ein schließendes style-Tag werden abgewiesen; ein Pfad unterhalb des Projekts beginnt mit [[/nino/public]].',
+	'[[/_admin/design/theme/css/hint]]'				=> 'Letzter Abschnitt der CSS-Datei. Überschreibt das CSS der Vorlagen. Text-Fill für öffentlich erreichbare Dateien: [[/nino/public]].',
 	'[[/_admin/design/theme/copy]]'					=> '%s Kopie',
 	'[[/_admin/design/theme/confirm/delete]]'		=> 'Theme „%s“ löschen?',
 	'[[/_admin/design/theme/confirm/fonts]]'		=> 'Das Theme nutzt Schriftarten, die nicht installiert sind: %s. Jetzt installieren?',
@@ -62,7 +62,7 @@ return [
 	'[[/_admin/design/theme/error/export]]'			=> 'Das Theme konnte nicht exportiert werden.',
 	'[[/_admin/design/theme/error/import]]'			=> 'Die Datei konnte nicht importiert werden.',
 
-	// Global: die zwei Rahmen werden hier gewählt, die anderen drei Vorlagen auf ihren eigenen Tabs; dazu die Grundgröße, die Breite und die Animation der Seite
+	// Global: die zwei Rahmen werden hier gewählt, die anderen drei Vorlagen auf ihren eigenen Tabs; dazu die Grundgröße, die Breite, der Weißraum und die Animation der Seite
 	'[[/_admin/design/part/header]]'								=> 'Vorlage Header',
 	'[[/_admin/design/part/footer]]'								=> 'Vorlage Footer',
 	'[[/_admin/design/part/content]]'							=> 'Vorlage Inhalte',
@@ -72,6 +72,8 @@ return [
 	'[[/_admin/design/hint/size]]'								=> '85 % ↔ 145 % der Browser-Größe, nie eine feste Pixelzahl',
 	'[[/_admin/design/label/pagewidth]]'							=> 'Seite, Breite',
 	'[[/_admin/design/hint/pagewidth]]'							=> '48 rem ↔ bis an den Rand',
+	'[[/_admin/design/label/whitespace]]'						=> 'Seite, Weißraum',
+	'[[/_admin/design/hint/whitespace]]'						=> '75 % ↔ 200 % der Abstände',
 
 	// Die Animation der Seite: was Nino.css beim Einblenden tut, als Vorgabe für alles, was keine eigene hat
 	'[[/_admin/design/label/motion]]'							=> 'Animation',
@@ -79,8 +81,10 @@ return [
 	'[[/_admin/design/motion/effect/label]]'						=> 'Effekt',
 	'[[/_admin/design/motion/effect/zoom]]'						=> 'Zoom',
 	'[[/_admin/design/motion/effect/zoom-out]]'					=> 'Zoom heraus',
-	'[[/_admin/design/motion/effect/slide-left]]'				=> 'Von rechts',
-	'[[/_admin/design/motion/effect/slide-right]]'				=> 'Von links',
+	'[[/_admin/design/motion/effect/slide-left]]'				=> 'Nach links',
+	'[[/_admin/design/motion/effect/slide-right]]'				=> 'Nach rechts',
+	'[[/_admin/design/motion/effect/slide-up]]'				=> 'Nach oben',
+	'[[/_admin/design/motion/effect/slide-down]]'				=> 'Nach unten',
 	'[[/_admin/design/motion/effect/blur]]'						=> 'Unschärfe',
 	'[[/_admin/design/motion/effect/flip]]'						=> 'Kippen',
 	'[[/_admin/design/motion/strength/label]]'					=> 'Stärke',
