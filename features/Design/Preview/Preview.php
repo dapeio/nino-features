@@ -64,27 +64,46 @@ namespace Nino\Modules\Design {
 		private const string SHORT = 'Short enough to show the alignment.';
 
 		/**
-		 *	The specimen with the chosen frames around it, as html+ for the
-		 *	kernel to render.
+		 *	The specimen with the chosen frames around it, rendered through the
+		 *	kernel: the header, the specimen and the footer one by one, and then
+		 *	joined - the way a page renders the two frames it includes, each file
+		 *	on its own.
 		 *
-		 *	The frames are inlined rather than included as [template
-		 *	/templates/frame-header]: a preview shows a header nobody has applied
-		 *	yet, and the file that include names is the one currently on disk.
-		 *	Reading the library directly is the difference between "what this
-		 *	would look like" and "what it looks like"
+		 *	Rendered as one string they would not come out as they do on a page:
+		 *	the kernel's parser pairs an opening shortcode with the first closing
+		 *	tag of its name after it, however far away. A header carries its logo
+		 *	as an [image /logo alt=""] on its own - the kernel's frame-header.tpl
+		 *	does, and so does every header of the library - while a footer may
+		 *	carry it as a pair, [image /logo alt=""]...[/image]. In one string
+		 *	the header's tag takes that closing tag for its own, and the page
+		 *	between the two becomes its content: gone where no logo is uploaded,
+		 *	and where one is, shown with the header's picture in the footer.
+		 *
+		 *	The frames are read straight out of the library rather than included
+		 *	as [template /templates/frame-header]: a preview shows a header nobody
+		 *	has applied yet, and the file that include names is the one currently
+		 *	on disk. Reading the library directly is the difference between "what
+		 *	this would look like" and "what it looks like"
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$libraryDir		The feature's library
 		 *	@param		array 		$setup				A normalised setup (see Setup::normalize())
 		 *	@param		array 		&$notes				(reference) What was missing on the way
 		 *
-		 *	@return 	string								Html+
+		 *	@return 	string								Rendered html
 		 */
-		public static function markup( array &$appData, string $libraryDir, array $setup, array &$notes = [] ): string {
+		public static function render( array &$appData, string $libraryDir, array $setup, array &$notes = [] ): string {
 
-			return self::frame( $libraryDir, $setup, 'header', $notes )
-				. "\n". self::specimen( $appData )
-				. "\n". self::frame( $libraryDir, $setup, 'footer', $notes );
+			$page = [
+				self::frame( $libraryDir, $setup, 'header', $notes ),
+				self::specimen( $appData ),
+				self::frame( $libraryDir, $setup, 'footer', $notes ),
+			];
+
+			foreach( $page as $at => $markup )
+				$page[$at] = \Nino\Html::renderHtml( $appData, $markup );
+
+			return implode( "\n", $page );
 		}
 
 		/**

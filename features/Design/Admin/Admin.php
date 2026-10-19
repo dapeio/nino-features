@@ -1102,7 +1102,8 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	The specimen, rendered through the kernel against this project
+		 *	The specimen and its frames, rendered through the kernel against this
+		 *	project - each of the three on its own, see Preview::render()
 		 *
 		 *	@param		array 		$appData			Array with current app data - a copy, see below
 		 *	@param		string		$library			The feature's library
@@ -1113,7 +1114,7 @@ namespace Nino\Modules\Design {
 		 */
 		private static function _specimen( array $appData, string $library, array $setup, array &$notes ): string {
 
-			/*	By value, and renderHtml() then takes the copy by reference: a
+			/*	By value, and Preview::render() then takes the copy by reference: a
 				render registers fills as it goes, and the ones below are this
 				preview's rather than the request's. The request answers json and
 				writes nothing, so nothing would come of it either way - but a
@@ -1121,7 +1122,7 @@ namespace Nino\Modules\Design {
 				somebody will call twice */
 			\Nino\Html::addFills( $appData, self::_previewFills( $appData ), '*' );
 
-			return \Nino\Html::renderHtml( $appData, Preview::markup( $appData, $library, $setup, $notes ) );
+			return Preview::render( $appData, $library, $setup, $notes );
 		}
 
 		/**

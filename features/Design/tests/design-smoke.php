@@ -4189,7 +4189,7 @@ check( 'one slot serves every variant: no stylesheet of the library filters the 
 
 $specimen = Preview::specimen( $appData );
 
-check( 'the specimen brings no frame of its own - markup() puts the chosen ones around it',
+check( 'the specimen brings no frame of its own - render() puts the chosen ones around it',
 	str_contains( $specimen, 'frame-header' ) === false && str_contains( $specimen, 'frame-footer' ) === false );
 /*	One page, and an anchor on it for each tab of the panel: an element with
 	the id of the tab, which the frame scrolls to when the tab is opened and
@@ -4346,11 +4346,95 @@ check( 'a row with more than one cell spaces them - every cell but the last carr
 
 $notes 		= [];
 $chosen 	= Setup::normalize( $appData, [ 'parts' => [ 'header' => $richParts['header'], 'footer' => $richParts['footer'] ] ], $library );
-$markup 	= Preview::markup( $appData, $library, $chosen, $notes );
 
-check( 'markup() reads the chosen frames out of the library rather than off disk', $notes === []
-	&& str_starts_with( trim( $markup ), trim( (string) file_get_contents( Setup::file( $library, 'header', $richParts['header'], 'template' ) ) ) ) === true
-	&& str_ends_with( trim( $markup ), trim( (string) file_get_contents( Setup::file( $library, 'footer', $richParts['footer'], 'template' ) ) ) ) === true );
+/*	The preview renders its header, its specimen and its footer one by one, as a page renders the two frames it includes. The
+	kernel's parser pairs an opening shortcode with the first closing tag of its name after it, however far away: a header
+	carries its logo as [image /logo alt=""] on its own and a footer may carry it as a pair, [image /logo alt=""]...[/image],
+	so as one string the header's tag takes the footer's closing tag for its own and the page between the two is its content -
+	gone where no logo is uploaded, and a fresh install has none; where one is, the header's picture is drawn in the footer.
+	The two frames are found by what their templates carry, whatever the library calls them: the first header of the one
+	kind and the first footer of the other	*/
+
+/** The sets of a part whose template asks for the logo slot and closes the tag ($closed) or leaves it open, as set => template */
+$logoFrames = static function( string $part, bool $closed ) use ( $library ): array {
+
+	$found = [];
+
+	foreach( Setup::available( $library, $part ) as $set ) {
+
+		$source = (string) file_get_contents( Setup::file( $library, $part, $set, 'template' ) );
+
+		if( str_contains( $source, '[image /logo' ) === true && str_contains( $source, '[/image]' ) === $closed )
+			$found[$set] = $source;
+	}
+
+	return $found;
+};
+
+/** Whether every chunk is in the page, each after the one before it - none of them empty */
+$inOrder = static function( string $page, array $chunks ): bool {
+
+	$from = 0;
+
+	foreach( $chunks as $chunk ) {
+
+		$at = $chunk === '' ? false : strpos( $page, $chunk, $from );
+
+		if( $at === false )
+			return false;
+
+		$from = $at + strlen( $chunk );
+	}
+
+	return true;
+};
+
+$lonely 		= $logoFrames( 'header', false );
+$paired 		= $logoFrames( 'footer', true );
+$logoPair 		= [ 'header' => (string) array_key_first( $lonely ), 'footer' => (string) array_key_first( $paired ) ];
+$shortfall 		= array_filter( [ $lonely === [] ? 'header whose logo shortcode stands alone' : '', $paired === [] ? 'footer whose logo shortcode is a pair' : '' ] );
+$pairSetup 		= Setup::normalize( $appData, [ 'parts' => $logoPair ], $library, $notes );
+$pairSources 	= [ $lonely[$logoPair['header']] ?? '', $paired[$logoPair['footer']] ?? '' ];
+
+unset( $appData['/nino/html/images']['/logo'] );
+
+$pairHeader 	= trim( \Nino\Html::renderHtml( $appData, $pairSources[0] ) );
+$pairBody 		= trim( \Nino\Html::renderHtml( $appData, Preview::specimen( $appData ) ) );
+$pairFooter 	= trim( \Nino\Html::renderHtml( $appData, $pairSources[1] ) );
+$pageApart 		= trim( Preview::render( $appData, $library, $pairSetup, $notes ) );
+$pairOpening 	= [ explode( "\n", $pairHeader )[0], explode( "\n", $pairFooter )[0] ];
+$oneString 		= trim( \Nino\Html::renderHtml( $appData, $pairSources[0]. "\n". Preview::specimen( $appData ). "\n". $pairSources[1] ) );
+
+check( 'render() reads the chosen frames out of the library and renders each on its own: with no logo uploaded, a header whose logo shortcode stands alone and a footer whose logo shortcode is a pair - found by what their templates carry - come out as the header, the whole specimen and the footer, in that order, with no tag of the logo left'
+	. ( $shortfall === [] ? '' : ' - the library has no '. implode( ' and no ', $shortfall ) ),
+	$shortfall === [] && $notes === [] && $pairBody !== ''
+	&& str_starts_with( $pageApart, $pairHeader ) === true && str_ends_with( $pageApart, $pairFooter ) === true
+	&& $inOrder( $pageApart, [ $pairHeader, $pairBody, $pairFooter ] ) === true
+	&& str_contains( $pageApart, '[image' ) === false && str_contains( $pageApart, '[/image]' ) === false );
+check( '...and the same three rendered as one string lose the specimen - the parser gives the header\'s tag the footer\'s closing tag, however far away - which is why render() does not',
+	$shortfall === [] && $pairBody !== '' && str_contains( $oneString, $pairBody ) === false );
+
+[ $status, $shownPair ] = callDesignAction( $appData, 'apiPreview', [ 'parts' => $logoPair, 'full' => true ] );
+$pairDocument = (string) ( $shownPair['document'] ?? '' );
+
+check( '...and the preview the panel is sent is that page: with the same two frames chosen and no logo uploaded, the document has the header, the specimen and the footer, in that order',
+	$shortfall === [] && $status === 200 && ( $shownPair['notes'] ?? null ) === []
+	&& $inOrder( $pairDocument, [ $pairOpening[0], $pairBody, $pairOpening[1] ] ) === true );
+
+// The slot of the logo, as the Images panel leaves it once a logo is uploaded - the specimen asks for none, so the one rendered above is the middle of this page as well
+$appData['/nino/html/images']['/logo'] = [ 'label' => 'Logo', 'filename' => 'logo.webp', 'width' => 500, 'height' => 100 ];
+
+$pairHeader 	= trim( \Nino\Html::renderHtml( $appData, $pairSources[0] ) );
+$pairFooter 	= trim( \Nino\Html::renderHtml( $appData, $pairSources[1] ) );
+$pageLogo 		= trim( Preview::render( $appData, $library, $pairSetup, $notes ) );
+
+unset( $appData['/nino/html/images']['/logo'] );
+
+check( '...and with a logo uploaded they come out as the whole page too, each frame with the picture its own logo shortcode asks for',
+	$shortfall === [] && $notes === []
+	&& str_starts_with( $pageLogo, $pairHeader ) === true && str_ends_with( $pageLogo, $pairFooter ) === true
+	&& $inOrder( $pageLogo, [ $pairHeader, $pairBody, $pairFooter ] ) === true
+	&& substr_count( $pageLogo, 'src="'. $logoUrl. '"' ) === substr_count( $pairSources[0]. $pairSources[1], '[image /logo' ) );
 
 $notes = [];
 check( 'a frame with no template is named rather than quietly left out',
