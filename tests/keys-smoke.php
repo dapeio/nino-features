@@ -13,9 +13,10 @@ declare(strict_types=1);
  *										1. what a feature's install unit writes into a project's text
  *										   files is /feature/<its key>/<part>/<name> or
  *										   /template/<category>/<part>/<name> - no /project, no
- *										   /template/common, no /module, no /_nino - reads the same
- *										   in both languages, and is global or per language, never
- *										   both
+ *										   /template/common, no /module, no /_nino, but for the
+ *										   details of the page a feature's own routes make (named
+ *										   below) - reads the same in both languages, and is global
+ *										   or per language, never both
  *										2. the blacklist entries of a unit follow the grammar
  *										3. a feature's key is a word of one
  *										4. no old key family is left anywhere - code, templates,
@@ -83,6 +84,14 @@ const KEYS_SYSTEM = [ '#^/_nino/webpage(/.+)/(name|title|description|uri)$#', '#
 // The one thing a feature's unit may write that is not of the grammar: the workbench's own labels
 // for the fields of an Elements type it brings, which its blacklist keeps out of the Text panel
 const KEYS_WORKBENCH = '#^/_admin/elements/field/[a-z0-9-]+/[a-z0-9-]+$#';
+
+// ...and the other: the details of the page the feature's own routes make, the system's
+// /_nino/webpage<uri>/<name|title|description> keys of an Element-URI the feature chooses and keeps for
+// itself, as the unit of Nino's Legal module brings those of its two pages. Posts routes the list page of
+// its default section at /blog, whose title is the key as it stands until a project has written one.
+// By the key of the feature, and an entry that no unit uses fails the suite, so the list cannot outlive
+// what it was for. A unit never brings these for a page of the library, whose Element-URI is the project's
+const KEYS_PAGE_DETAILS = [ 'posts' => '#^/_nino/webpage/blog/(name|title|description)$#' ];
 
 /**
  *	@param		string		$key
@@ -265,11 +274,12 @@ foreach( $features as $feature )
 	foreach( [ 'global', 'de_DE', 'en_US' ] as $file )
 		foreach( $feature['text'][$file] as $key => $value ) {
 
-			$workbench = preg_match( KEYS_WORKBENCH, $key ) === 1 && in_array( $key, $feature['blacklist'], true ) === true;
+			$workbench	= preg_match( KEYS_WORKBENCH, $key ) === 1 && in_array( $key, $feature['blacklist'], true ) === true;
+			$page				= isset( KEYS_PAGE_DETAILS[$feature['key']] ) === true && preg_match( KEYS_PAGE_DETAILS[$feature['key']], $key ) === 1;
 
-			if( keysGrammar( $key ) === false && $workbench === false )
+			if( keysGrammar( $key ) === false && $workbench === false && $page === false )
 				$badShape[] = $feature['directory']. ' '. $file. ' '. $key;
-			else if( $workbench === false ) {
+			else if( $workbench === false && $page === false ) {
 
 				[ , $namespace, $category ] = explode( '/', $key );
 
@@ -285,8 +295,24 @@ foreach( $features as $feature )
 				$badShape[] = $feature['directory']. ' '. $file. ' '. $key. ' (no string)';
 		}
 
-keysCheck( 'every key a unit delivers follows the grammar - Social\'s labels for the fields of its Elements type, blacklisted, are the one exception'. ( $badShape === [] ? '' : ' - '. implode( ', ', array_slice( $badShape, 0, 6 ) ) ), $badShape === [] );
-keysCheck( 'a unit delivers /feature/<its own key>/... and /template/<a category of one of its templates>/..., never /project, /module, /_nino or /template/common'. ( $badPlace === [] ? '' : ' - '. implode( ', ', array_slice( $badPlace, 0, 6 ) ) ), $badPlace === [] );
+keysCheck( 'every key a unit delivers follows the grammar - Social\'s labels for the fields of its Elements type, blacklisted, and the details of the page a feature\'s own routes make (below) are the exceptions'. ( $badShape === [] ? '' : ' - '. implode( ', ', array_slice( $badShape, 0, 6 ) ) ), $badShape === [] );
+keysCheck( 'a unit delivers /feature/<its own key>/... and /template/<a category of one of its templates>/..., never /project, /module or /template/common, and of the system\'s /_nino only the details of a page its feature routes'. ( $badPlace === [] ? '' : ' - '. implode( ', ', array_slice( $badPlace, 0, 6 ) ) ), $badPlace === [] );
+
+$pageDetails = [];
+foreach( $features as $feature )
+	if( isset( KEYS_PAGE_DETAILS[$feature['key']] ) === true )
+		foreach( [ 'de_DE', 'en_US' ] as $file )
+			foreach( array_keys( $feature['text'][$file] ) as $key )
+				if( preg_match( KEYS_PAGE_DETAILS[$feature['key']], $key ) === 1 )
+					$pageDetails[$feature['key']][$file][] = substr( $key, strrpos( $key, '/' ) + 1 );
+$sorted = static function( array $names ): array {
+	sort( $names );
+	return $names;
+};
+keysCheck( 'a feature that brings the details of its page brings the three of it, name, title and description, in both languages - and no exception is kept that a unit does not use'
+	. ( array_diff( array_keys( KEYS_PAGE_DETAILS ), array_keys( $pageDetails ) ) === [] ? '' : ' - unused: '. implode( ', ', array_diff( array_keys( KEYS_PAGE_DETAILS ), array_keys( $pageDetails ) ) ) ),
+	array_keys( $pageDetails ) === array_keys( KEYS_PAGE_DETAILS )
+	&& array_filter( $pageDetails, static fn( array $files ): bool => array_keys( $files ) !== [ 'de_DE', 'en_US' ] || $sorted( $files['de_DE'] ) !== [ 'description', 'name', 'title' ] || $sorted( $files['en_US'] ) !== [ 'description', 'name', 'title' ] ) === [] );
 
 $numbered = [];
 foreach( $features as $feature )

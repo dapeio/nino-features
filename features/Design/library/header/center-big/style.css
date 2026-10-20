@@ -57,7 +57,7 @@ body main:has(> .nino-wrap > .nino-parallex:first-child) {
 
 	.nino-frame-header .nino-nav-content li a.nino-is-active,
 	.nino-frame-header .nino-nav-content li a.nino-is-active:hover {
-		color:var(--nino-default-focus);
+		color: var(--color-accent);
 	}
 	.nino-frame-header .nino-nav-content li a:hover {
 		color: var(--nino-default-link);

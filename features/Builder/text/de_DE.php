@@ -146,6 +146,8 @@ return [
 	'[[/_admin/builder/menu/edit-html]]'					=> 'Als HTML+ bearbeiten',
 	'[[/_admin/builder/menu/duplicate]]'					=> 'Duplizieren',
 	'[[/_admin/builder/menu/tools]]'					=> 'Werkzeuge',
+	'[[/_admin/builder/menu/tools-of]]'					=> 'Werkzeuge: %s',
+	'[[/_admin/builder/menu/tools-col]]'				=> 'Spalte %s von %s',
 	'[[/_admin/builder/menu/rename]]'						=> 'Umbenennen',
 	'[[/_admin/builder/menu/loop]]'							=> 'Einstellungen des Loops: %s',
 
@@ -311,6 +313,7 @@ return [
 	'[[/_admin/builder/hint/padded]]'	=> 'Das Cover oder der Parallax lässt den Platz der Seite um sich.',
 	'[[/_admin/builder/hint/whitespace]]'	=> 'Wie viel Platz die Sektion lässt. Den Weißraum der Seite stellst Du im Design ein.',
 	'[[/_admin/builder/hint/inner-background]]'	=> 'Farbe, Bild und Abdunkeln liegen auf der Row innerhalb der Sektion, nicht auf der Sektion selbst.',
+	'[[/_admin/builder/hint/dim-text]]'	=> 'Text auf einem Bild liest sich besser mit abgedunkeltem Bild.',
 	'[[/_admin/builder/hint/link]]'	=> 'Wohin die Komponente führt. Ohne Ziel ist sie kein Link.',
 	'[[/_admin/builder/hint/link-href]]'	=> 'Ein Textschlüssel, eine Adresse oder - in einem Loop - ein Feld des Elements.',
 	'[[/_admin/builder/hint/sections-id]]'	=> 'Der Loop macht aus jedem Element eine Sektion, nummeriert nach der Id der Sektion: %s-1, %s-2 und so weiter. Die Id änderst Du im Titel.',
@@ -337,6 +340,7 @@ return [
 	'[[/_admin/builder/state/narrow]]'						=> 'Ein Template wird am Schreibtisch gebaut: Auf einem so schmalen Bildschirm ist der Editor nur zum Lesen.',
 	'[[/_admin/builder/error/id-taken]]'					=> 'Eine andere Sektion hat diese Id.',
 	'[[/_admin/builder/error/id-slug]]'						=> 'Eine Id besteht aus Wörtern in Kleinbuchstaben und Ziffern, mit Bindestrichen verbunden.',
+	'[[/_admin/builder/error/section-id-taken]]'			=> 'Eine Sektion hat eine Id, die ein Loop von Sektionen für seine eigenen vergibt: %s. Gib ihr eine andere Id.',
 	'[[/_admin/builder/error/red]]'							=> 'Eine Quelle bedeutet dort, wo sie steht, nichts (in der Vorschau rot markiert). Ändere sie zuerst.',
 	'[[/_admin/builder/error/source]]'						=> 'Der Quelltext konnte nicht gezeigt werden.',
 

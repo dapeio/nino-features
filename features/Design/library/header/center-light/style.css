@@ -12,6 +12,12 @@
 	opacity: 1;
 	background-color: var(--color-background-dim);
 	display:flex;
+	/*	The bar is dark and see-through: its roles are the ones of the surface it lies on, declared as a section declares them. The
+		link that is current is in the link role of a dark ground, not the page's, which is solved for white. The ring is the ink the
+		text on the bar is read in: a ring solved for the dark ground falls under 3:1 on the bar where the page behind it is light	*/
+	--color-title: var(--color-section-dark-text);
+	--color-accent: var(--color-accent-dark);
+	--color-focus: var(--color-section-dark-text);
 }
 
 body.nino-scroll-atf .nino-frame-header .nino-scroll-header {
@@ -58,7 +64,7 @@ body main:has(> .nino-wrap > .nino-parallex:first-child) {
 
 	.nino-frame-header .nino-nav-content li a.nino-is-active,
 	.nino-frame-header .nino-nav-content li a.nino-is-active:hover {
-		color:var(--nino-default-focus);
+		color: var(--color-accent);
 	}
 	.nino-frame-header .nino-nav-content li a:hover {
 		color: var(--color-section-black-text);

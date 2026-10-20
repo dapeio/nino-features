@@ -438,7 +438,7 @@ namespace Nino\Modules {
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
-		 *	@return 	array										Per file: target, exists, state (missing, ours, edited, foreign), changes, lost
+		 *	@return 	array										Per file: target, part ('' for the stylesheet, else the part of the frame - the screen names a file by it, in words), exists, state (missing, ours, edited, foreign), changes, lost
 		 */
 		public static function plan( array &$appData ): array {
 
@@ -459,6 +459,7 @@ namespace Nino\Modules {
 
 				$plan[] = [
 					'target' 	=> $target,
+					'part' 		=> $output['part'],
 					'exists' 	=> $exists,
 					'state' 	=> $exists === true ? Design\Compiler::ownership( $content, $output['part'] !== '' ) : 'missing',
 					'changes' => $exists === false || $content !== $output['bytes'],

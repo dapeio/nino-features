@@ -542,7 +542,16 @@ button.builder-status-item:hover {
 .builder-tools .builder-icon-btn {
 	width: 1.5rem;
 	height: 1.5rem;
+	/* The icon is the size it was: what is made larger is the area that takes the click - 24px at least each way, 44px where the pointer is a finger */
+	min-width: 24px;
+	min-height: 24px;
 	color: inherit;
+}
+@media (pointer: coarse) {
+	.builder-tools .builder-icon-btn {
+		min-width: 44px;
+		min-height: 44px;
+	}
 }
 .builder-tools .builder-icon-btn[hidden] {
 	display: none;

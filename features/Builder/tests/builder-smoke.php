@@ -122,6 +122,15 @@ check( '...and the line of the components by place says in both languages that e
 check( '...and names the markup it reads and writes besides the wrap and the picture of a column: the call of a component that holds components, and the spacing classes of a column, in both languages', array_diff( [ '[card padding="3"][card-title /slot][/card]', 'nino-p-2 nino-mt-1 nino-mb-1' ], array_keys( $manifest['manual']['markup'] ) ) === []
 	&& array_reduce( [ '[card padding="3"][card-title /slot][/card]', 'nino-p-2 nino-mt-1 nino-mb-1' ], static fn( bool $carry, string $name ): bool => $carry === true && \Nino\Features::localized( $manifest['manual']['markup'][$name], 'de_DE' ) !== \Nino\Features::localized( $manifest['manual']['markup'][$name], 'en_US' ), true ) );
 
+$settingsLines = [ 'en_US' => \Nino\Features::localized( $manifest['manual']['panel']['Settings dialogs of columns and components'], 'en_US' ), 'de_DE' => \Nino\Features::localized( $manifest['manual']['panel']['Settings dialogs of columns and components'], 'de_DE' ) ];
+check( '...and says in both languages that the opacity classes - nino-opacity-10 to nino-opacity-90, which the classes field takes - fade the text with the element and can push it under the contrast that body text needs: 4.5 to 1, written as each language writes it, and that the Builder does not check it',
+	str_contains( $settingsLines['en_US'], 'nino-opacity-10' ) === true && str_contains( $settingsLines['en_US'], 'nino-opacity-90' ) === true && str_contains( $settingsLines['en_US'], '4.5 to 1' ) === true && str_contains( $settingsLines['en_US'], 'does not check' ) === true
+	&& str_contains( $settingsLines['de_DE'], 'nino-opacity-10' ) === true && str_contains( $settingsLines['de_DE'], 'nino-opacity-90' ) === true && str_contains( $settingsLines['de_DE'], '4,5 zu 1' ) === true && str_contains( $settingsLines['de_DE'], 'prüft das nicht' ) === true
+	&& strlen( $settingsLines['en_US'] ) < 1000 && strlen( $settingsLines['de_DE'] ) < 1000 );
+check( '...and has a line of its own for the tools of a frame - how the toolbar is named and how large a tool is to hit - in both languages',
+	isset( $manifest['manual']['panel']['The tools of a frame'] ) === true && array_diff( [ 'en_US', 'de_DE' ], array_keys( $manifest['manual']['panel']['The tools of a frame'] ) ) === []
+	&& \Nino\Features::localized( $manifest['manual']['panel']['The tools of a frame'], 'de_DE' ) !== \Nino\Features::localized( $manifest['manual']['panel']['The tools of a frame'], 'en_US' ) );
+
 check( 'the feature brings its panel along, and registers nothing on the site', \Nino\Modules\Builder::adminPanels( $appData ) === [ \Nino\Modules\Builder\Admin::class ] && ( static function() use ( &$appData ): bool {
 	$before = $appData;
 	\Nino\Modules\Builder::init( $appData );
@@ -188,6 +197,56 @@ $section = static function( string $calls, string $id = 'a', string $class = 'ni
 
 $read		= static fn( string $source ): array => \Nino\Modules\Builder\Reader::read( $source, $registry );
 $write	= static fn( array $model ): string => \Nino\Modules\Builder\Writer::write( $model, $registry );
+
+// Every value the registry offers is a value the Reader reads and the Writer writes back - whatever the kernel offers: the tag of a heading among them, the h2 of the title of a
+// section where the kernel has one - and a call that has no address, where the component has one to have, reads back the same
+[ $offered, $withoutAddress, $offerProblems ] = ( static function() use ( $registry, $read, $write, $page, $section ): array {
+
+$offered = 0;
+$withoutAddress = 0;
+$offerProblems = [];
+
+foreach( $registry['components'] as $name => $schema ) {
+
+	if( in_array( $schema['source'], [ 'text', 'image', 'none' ], true ) === false || \Nino\Modules\Builder\Reader::holds( $schema ) === true )
+		continue;
+
+	$source = $schema['source'] === 'none' ? '' : ' /template/page-x/a/'. $name;
+
+	foreach( (array) $schema['attributes'] as $attribute => $declared )
+		foreach( in_array( $declared['type'] ?? '', [ 'select', 'variant' ], true ) === true ? (array) ( $declared['options'] ?? [] ) : [] as $option ) {
+
+			$call = '['. $name. $source. ' '. $attribute. '="'. $option. '"]';
+			$model = $read( $page( $section( $call ) ) );
+			$component = $model['blocks'][0]['cols'][0]['components'][0] ?? null;
+
+			$offered++;
+
+			if( $component === null || $component['name'] !== $name || $component['attributes'][$attribute] !== (string) $option || $read( $write( $model ) ) !== $model )
+				$offerProblems[] = $call;
+		}
+
+	// A fixed text and no address: the call has the one and the component the other, which it leaves out
+	foreach( (array) $schema['attributes'] as $attribute => $declared )
+		if( ( $declared['type'] ?? '' ) === 'href' && $schema['source'] === 'text' ) {
+
+			$call = '['. $name. ' text="Go"]';
+			$model = $read( $page( $section( $call ) ) );
+			$component = $model['blocks'][0]['cols'][0]['components'][0] ?? null;
+
+			$withoutAddress++;
+
+			if( $component === null || $component['name'] !== $name || $component['text'] !== 'Go' || $component['attributes'][$attribute] !== '' || str_contains( $write( $model ), $attribute. '=' ) === true || $read( $write( $model ) ) !== $model )
+				$offerProblems[] = $call;
+		}
+}
+
+return [ $offered, $withoutAddress, $offerProblems ];
+} )();
+
+check( 'every value the registry offers for a select or a variant - each option of each attribute of each component that has a source of its own or none: the tag of a heading among them, whichever tags the kernel offers - is read back from a call that has it, and written as it was read',
+	$offered > 0 && $offerProblems === [] );
+check( '...and a call of a component that has an address to go to, with a text of its own and none - a button that leads nowhere - is read back as the component with no address, and written without one', $withoutAddress > 0 && $offerProblems === [] );
 
 echo "\n";
 
@@ -1219,7 +1278,13 @@ check( '...a component says the icon it is shown by (icon), as the kernel regist
 	&& array_search( 'icon', array_keys( $registryAnswer['components']['title'] ), true ) === array_search( 'preview', array_keys( $registryAnswer['components']['title'] ), true ) + 1
 	&& $registryAnswer['components']['title']['icon'] === \Nino\Modules\Builder\Document::schemas( $appData )['components']['title']['icon'] );
 check( '...and the entry of the card is the entry of the registry of the Components module but for its words, which are in the language of the workbench: the panel is handed nothing of its own making',
-	array_diff_key( $registryAnswer['components']['card'], [ 'label' => 1, 'attributes' => 1 ] ) === array_diff_key( \Nino\Modules\Builder\Document::schemas( $appData )['components']['card'], [ 'label' => 1, 'attributes' => 1 ] ) );
+	array_diff_key( $registryAnswer['components']['card'], [ 'label' => 1, 'labels' => 1, 'attributes' => 1 ] ) === array_diff_key( \Nino\Modules\Builder\Document::schemas( $appData )['components']['card'], [ 'label' => 1, 'labels' => 1, 'attributes' => 1 ] ) );
+$siteLocales = \Nino\Locales::getAvailableLocales( $appData );
+check( '...and it names every component in every language of the site (labels): the label the kernel registered for that language, else the one it has for the language of the workbench - so that the placeholder of a new component can be written in each - and a loop has none',
+	count( $siteLocales ) === 2 && array_filter( $registryAnswer['components'], static fn( array $schema, string $name ): bool => array_keys( $schema['labels'] ?? [] ) !== $siteLocales
+		|| array_filter( $siteLocales, static fn( string $locale ): bool => $schema['labels'][$locale] !== \Nino\Features::localized( $kernelComponents[$name]['label'], $locale ) ) !== [], ARRAY_FILTER_USE_BOTH ) === []
+	&& array_filter( $registryAnswer['components'], static fn( array $schema ): bool => $schema['labels'][\Nino\Admin\Admin::sessionLocale( $appData )] !== $schema['label'] ) === []
+	&& array_filter( $registryAnswer['stacks'], static fn( array $schema ): bool => array_key_exists( 'labels', $schema ) === true ) === [] );
 check( '...the components and the stacks the panel\'s script test reads (fixtures/registry.json) are written from what the registry says: the file is there, is json, and holds the two keys, each with every component and every stack the registry has',
 	$fixtureWritten( 'registry.json', [ 'components' => $registryAnswer['components'], 'stacks' => $registryAnswer['stacks'] ] ) === true && array_keys( $fixtureRead( 'registry.json' ) ?? [] ) === [ 'components', 'stacks' ]
 	&& array_keys( $fixtureRead( 'registry.json' )['components'] ) === array_keys( $registryAnswer['components'] ) && array_keys( $fixtureRead( 'registry.json' )['stacks'] ) === array_keys( $registryAnswer['stacks'] )
@@ -2052,6 +2117,50 @@ check( 'an account that may not make text keys cannot make them through the buil
 	&& \Nino\Text::entry( $appData, '/template/page-home/contact/forbidden' ) === null && file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-home.tpl' ) ) === $write( $mine ) );
 \Nino\Auth::loginUser( $appData, 'dev@example.com', 'correct horse battery staple' );
 
+// A loop of sections makes the ids of its sections of its own id and a number - news-1, news-2 - and a section of the page that is none of a loop and has such an id is the id of two
+$loopName = \Nino\Modules\Builder\Reader::loopsSections( $registry );
+$loopOf = static fn( string $id ): string => '['. $loopName. ' /services id="'. $id. "\"]\n". $loopRow. "\n[/". $loopName. ']';
+$collides = $page( $loopOf( 'news' ), $section( '[title /template/page-loop/news-2/title]', 'news-2' ) );
+$collidingRead = $read( $collides );
+check( 'a file that has a section by the id a loop of sections makes of its own is read as it always was: the loop and the section, both of them sections, none held back as a block it cannot read - and written, it reads back as it was',
+	array_column( $collidingRead['blocks'], 'kind' ) === [ 'section', 'section' ] && array_column( $collidingRead['blocks'], 'id' ) === [ 'news', 'news-2' ] && $collidingRead['blocks'][0]['stack'] !== null && $collidingRead['blocks'][1]['stack'] === null
+	&& $read( $write( $collidingRead ) ) === $collidingRead );
+
+$loopedFile = $page( $loopOf( 'news' ), $section( '[title /template/page-loop/extra/title]', 'extra' ) );
+\Nino\Filesystem::putFileContent( $appData, '/templates/page-loop.tpl', $loopedFile );
+$loopPath = \Nino\Filesystem::path( $appData, '/templates/page-loop.tpl' );
+$loopedPage = \Nino\Modules\Builder\Document::load( $appData, 'page-loop' );
+$renamedTo = static function( string $id ) use ( $loopedPage ): array {
+	$model = $loopedPage['model'];
+	$model['blocks'][1]['id'] = $id;
+	$model['blocks'][1]['renamedFrom'] = 'extra';
+	return $model;
+};
+$idTaken = \Nino\Modules\Builder\Document::save( $appData, 'page-loop', $renamedTo( 'news-2' ), $loopedPage['hash'] );
+$idTakenLonger = \Nino\Modules\Builder\Document::save( $appData, 'page-loop', $renamedTo( 'news-12' ), $loopedPage['hash'] );
+check( 'a save that names a section by the id a loop of sections makes for one of its own is refused with 409 (section-id-taken), the ids named, before anything is made or written - the file is as it was',
+	$idTaken['status'] === 409 && $idTaken['code'] === 'section-id-taken' && $idTaken['problems'] === [ 'news-2' ] && $idTakenLonger['status'] === 409 && $idTakenLonger['problems'] === [ 'news-12' ] && file_get_contents( $loopPath ) === $loopedFile );
+
+$statuses = [];
+
+foreach( [ 'news-two', 'news2', 'xnews-2', 'news-2x', 'news' ] as $id ) {
+
+	\Nino\Filesystem::putFileContent( $appData, '/templates/page-loop.tpl', $loopedFile );
+
+	$statuses[$id] = \Nino\Modules\Builder\Document::save( $appData, 'page-loop', $renamedTo( $id ), $loopedPage['hash'] )['status'];
+}
+
+check( '...an id that only looks like one - another word after the hyphen, a number before it, the number with something after it - is no such id, and the section is saved; the id of the loop itself is the duplicate it was always refused as',
+	$statuses === [ 'news-two' => 200, 'news2' => 200, 'xnews-2' => 200, 'news-2x' => 200, 'news' => 400 ] );
+
+$handWritten = $page( $loopOf( 'news' ), $section( '[title /template/page-loop/news-3/title]', 'news-3' ) );
+\Nino\Filesystem::putFileContent( $appData, '/templates/page-loop.tpl', $handWritten );
+$handLoaded = \Nino\Modules\Builder\Document::load( $appData, 'page-loop' );
+$handSaved = \Nino\Modules\Builder\Document::save( $appData, 'page-loop', $handLoaded['model'], $handLoaded['hash'] );
+check( '...a file that was written so - by hand, or before - opens as it is, and saving it asks for another id, whatever else is changed: the page would have two sections of one id', array_column( $handLoaded['model']['blocks'], 'kind' ) === [ 'section', 'section' ]
+	&& $handSaved['status'] === 409 && $handSaved['code'] === 'section-id-taken' && $handSaved['problems'] === [ 'news-3' ] && file_get_contents( $loopPath ) === $handWritten );
+unlink( $loopPath );
+
 echo "\n";
 
 
@@ -2309,6 +2418,13 @@ $taken['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'image', 'source' =
 \Nino\Modules\Builder\Document::save( $appData, 'page-texts', $taken, $structure['hash'] );
 check( 'a slot that is there already is left alone, its alt texts with it: what a mark says is made only of a slot that is not', ( \Nino\Images::getSlot( $appData, '/template/page-texts/z/photo' ) ?: [] )['alt']['en_US'] === 'A house by the sea' );
 
+// A slot that is made as the copy of another takes what the other has: the alt texts of the languages the site has, and the picture
+$copyFrom = 'template/page-texts/src/photo.800x400.jpg';
+\Nino\Images::restore( $appData, $copyFrom, 'the bytes of a card picture' );
+$appData['/nino/html/images']['/template/page-texts/src/photo'] = [ 'label' => 'Source photo', 'width' => 800, 'height' => 400, 'filename' => $copyFrom, 'alt' => [ 'en_US' => 'A card', 'de_DE' => 'Eine Karte', 'xx_XX' => 'A language that is gone' ] ];
+$appData['/nino/html/images']['/template/page-texts/src/bare'] = [ 'label' => 'Source bare', 'width' => 800, 'height' => 400, 'filename' => null ];
+\Nino\AppData::writeContentData( $appData, [ '/nino/html/images' ] );
+
 // Without the permission of the Images panel no alt text is written: it is that panel's to write, for a slot that is there and for one the save makes
 \Nino\Auth::insertUser( $appData, 'noimages@example.com', 'correct horse battery staple', [ '/_admin/builder/manage', '/_admin/slots/manage', '/_admin/keys/manage' ] );
 \Nino\Auth::loginUser( $appData, 'noimages@example.com', 'correct horse battery staple' );
@@ -2340,6 +2456,20 @@ $inColumn['blocks'][0]['cols'][0]['background'] = [ 'slot' => '/template/page-te
 $inColumnAlt = \Nino\Modules\Builder\Document::save( $appData, 'page-texts', $inColumn, $structure['hash'] );
 check( '...nor to the slot of a picture behind a column: 403, the permission named, before anything is made', $inColumnAlt['status'] === 403 && $inColumnAlt['code'] === 'permission' && $inColumnAlt['problems'] === [ '/_admin/images/manage' ] && $stateNow() === $settled );
 
+// A copy of a slot that has a picture or alt texts hands them on, which is the Images panel's to write: the account that has not its permission is refused, before anything is made - and one that copies
+// what has neither is asked for nothing
+$structure = \Nino\Modules\Builder\Document::load( $appData, 'page-texts' );
+$copying = static function( string $from ) use ( $structure ): array {
+	$model = $structure['model'];
+	$model['blocks'][0]['background'] = [ 'slot' => '/template/page-texts/z/copy-of-'. basename( $from ), 'focus' => null, 'create' => [ 'label' => 'Copy', 'width' => 800, 'height' => 400, 'from' => $from ] ];
+	return $model;
+};
+$beforeCopy = $stateNow();
+$copyRefused = \Nino\Modules\Builder\Document::save( $appData, 'page-texts', $copying( '/template/page-texts/src/photo' ), $structure['hash'] );
+check( 'an account that may make slots but may not use the Images panel cannot copy a slot that has a picture or alt texts - 403, the permission named, before anything is made: no slot, nothing in the config, no file, the template as it was',
+	$copyRefused['status'] === 403 && $copyRefused['code'] === 'permission' && $copyRefused['problems'] === [ '/_admin/images/manage' ] && $stateNow() === $beforeCopy
+	&& \Nino\Images::read( $appData, 'template/page-texts/z/copy-of-photo.800x400.jpg' ) === false );
+
 $without = $marked( [ 'label' => 'Mood', 'width' => 600, 'height' => 300 ] );
 $without['blocks'][0]['background'] = [ 'slot' => '/template/page-texts/z/calm', 'focus' => null, 'create' => [ 'label' => 'Calm', 'width' => 600, 'height' => 300, 'alt' => [] ] ];
 $withoutAlt = \Nino\Modules\Builder\Document::save( $appData, 'page-texts', $without, $structure['hash'] );
@@ -2347,6 +2477,54 @@ check( '...the same account makes slots that have no alt text to write - a mark 
 	&& \Nino\Images::getSlot( $appData, '/template/page-texts/z/mood' ) !== false && \Nino\Images::getSlot( $appData, '/template/page-texts/z/calm' ) !== false
 	&& ( ( \Nino\Images::getSlot( $appData, '/template/page-texts/z/mood' ) ?: [] )['alt'] ?? [] ) === [] && ( ( \Nino\Images::getSlot( $appData, '/template/page-texts/z/calm' ) ?: [] )['alt'] ?? [] ) === [] );
 \Nino\Auth::loginUser( $appData, 'dev@example.com', 'correct horse battery staple' );
+
+$structure = \Nino\Modules\Builder\Document::load( $appData, 'page-texts' );
+$copying = static function( string $slot, array $create ) use ( $structure ): array {
+	$model = $structure['model'];
+	$model['blocks'][0]['background'] = [ 'slot' => $slot, 'focus' => null, 'create' => $create ];
+	return $model;
+};
+$copied = \Nino\Modules\Builder\Document::save( $appData, 'page-texts', $copying( '/template/page-texts/z/copied', [ 'label' => 'Copied', 'width' => 800, 'height' => 400, 'from' => '/template/page-texts/src/photo' ] ), $structure['hash'] );
+$copiedSlot = \Nino\Images::getSlot( $appData, '/template/page-texts/z/copied' ) ?: [];
+check( 'a slot that is made as the copy of another - create.from, which the panel sends for each picture a copy of a column, a card or a section has - is made with the alt texts of the old one, in the languages the site has, and with its picture: the same bytes, stored again under the name of the new slot, so that taking the one away leaves the other its picture',
+	$copied['status'] === 200 && ( $copiedSlot['alt'] ?? [] ) === [ 'en_US' => 'A card', 'de_DE' => 'Eine Karte' ] && is_string( $copiedSlot['filename'] ?? null ) === true && $copiedSlot['filename'] !== $copyFrom
+	&& str_starts_with( (string) $copiedSlot['filename'], 'template/page-texts/z/copied' ) === true && \Nino\Images::read( $appData, (string) $copiedSlot['filename'] ) === 'the bytes of a card picture'
+	&& \Nino\Images::read( $appData, $copyFrom ) === 'the bytes of a card picture' && ( \Nino\Images::getSlot( $appData, '/template/page-texts/src/photo' ) ?: [] )['filename'] === $copyFrom
+	&& ( \Nino\Images::getSlot( $appData, '/template/page-texts/src/photo' ) ?: [] )['alt']['xx_XX'] === 'A language that is gone' && ( $copiedSlot['width'] ?? 0 ) === 800 );
+
+$structure = \Nino\Modules\Builder\Document::load( $appData, 'page-texts' );
+$typedOver = \Nino\Modules\Builder\Document::save( $appData, 'page-texts', $copying( '/template/page-texts/z/copied-typed', [ 'label' => 'Copied', 'width' => 800, 'height' => 400, 'from' => '/template/page-texts/src/photo', 'alt' => [ 'de_DE' => 'Meine Karte' ] ] ), $structure['hash'] );
+check( '...what was typed for the new slot is written over what it was copied with, language by language: the language that was not typed has the text of the old slot', $typedOver['status'] === 200
+	&& ( \Nino\Images::getSlot( $appData, '/template/page-texts/z/copied-typed' ) ?: [] )['alt'] === [ 'en_US' => 'A card', 'de_DE' => 'Meine Karte' ] && is_string( ( \Nino\Images::getSlot( $appData, '/template/page-texts/z/copied-typed' ) ?: [] )['filename'] ?? null ) === true );
+
+$structure = \Nino\Modules\Builder\Document::load( $appData, 'page-texts' );
+$cardCopy = $structure['model'];
+$cardCopy['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'card', 'source' => '', 'text' => null, 'attributes' => array_replace( $registry['components']['card']['defaults'], [ 'background' => '/template/page-texts/z/card-copy' ] ), 'components' => [],
+	'slots' => [ 'background' => [ 'label' => 'Card - Background picture', 'width' => 800, 'height' => 400, 'from' => '/template/page-texts/src/photo' ] ] ];
+$cardCopied = \Nino\Modules\Builder\Document::save( $appData, 'page-texts', $cardCopy, $structure['hash'] );
+$copiedCardSlot = \Nino\Images::getSlot( $appData, '/template/page-texts/z/card-copy' ) ?: [];
+check( '...a card that is a copy has the picture behind it as the original has it: the slot of its background attribute is made with the file and the alt texts of the old one', $cardCopied['status'] === 200 && ( $copiedCardSlot['alt'] ?? [] ) === [ 'en_US' => 'A card', 'de_DE' => 'Eine Karte' ]
+	&& is_string( $copiedCardSlot['filename'] ?? null ) === true && \Nino\Images::read( $appData, (string) $copiedCardSlot['filename'] ) === 'the bytes of a card picture' && str_contains( (string) file_get_contents( $textsPath ), 'background="/template/page-texts/z/card-copy"' ) === true );
+
+$structure = \Nino\Modules\Builder\Document::load( $appData, 'page-texts' );
+$bareCopy = \Nino\Modules\Builder\Document::save( $appData, 'page-texts', $copying( '/template/page-texts/z/copy-of-bare', [ 'label' => 'Copied', 'width' => 800, 'height' => 400, 'from' => '/template/page-texts/src/bare' ] ), $structure['hash'] );
+$structure = \Nino\Modules\Builder\Document::load( $appData, 'page-texts' );
+$goneCopy = \Nino\Modules\Builder\Document::save( $appData, 'page-texts', $copying( '/template/page-texts/z/copy-of-gone', [ 'label' => 'Copied', 'width' => 800, 'height' => 400, 'from' => '/template/page-texts/src/gone' ] ), $structure['hash'] );
+check( '...a copy of a slot that has none of it - no picture, no alt texts - or of one that is not there, which this save may be making itself, is a slot like any new one: the save asks for nothing and hands nothing on', $bareCopy['status'] === 200 && $goneCopy['status'] === 200
+	&& ( \Nino\Images::getSlot( $appData, '/template/page-texts/z/copy-of-bare' ) ?: [] )['filename'] === null && ( ( \Nino\Images::getSlot( $appData, '/template/page-texts/z/copy-of-bare' ) ?: [] )['alt'] ?? [] ) === []
+	&& \Nino\Images::getSlot( $appData, '/template/page-texts/z/copy-of-gone' ) !== false && ( \Nino\Images::getSlot( $appData, '/template/page-texts/z/copy-of-gone' ) ?: [] )['filename'] === null );
+
+$structure = \Nino\Modules\Builder\Document::load( $appData, 'page-texts' );
+$beforeBad = $stateNow();
+$badFrom = \Nino\Modules\Builder\Document::save( $appData, 'page-texts', $copying( '/template/page-texts/z/copy-bad', [ 'label' => 'Copied', 'width' => 800, 'height' => 400, 'from' => 'not a slot' ] ), $structure['hash'] );
+$arrayFrom = \Nino\Modules\Builder\Document::save( $appData, 'page-texts', $copying( '/template/page-texts/z/copy-bad', [ 'label' => 'Copied', 'width' => 800, 'height' => 400, 'from' => [ '/template/page-texts/src/photo' ] ] ), $structure['hash'] );
+check( '...what it says it is a copy of is a slot uri: anything else is refused with 400 (invalid) before anything is made', $badFrom['status'] === 400 && $badFrom['code'] === 'invalid' && $arrayFrom['status'] === 400 && $arrayFrom['code'] === 'invalid' && \Nino\Images::getSlot( $appData, '/template/page-texts/z/copy-bad' ) === false
+	&& $stateNow() === $beforeBad );
+
+$structure = \Nino\Modules\Builder\Document::load( $appData, 'page-texts' );
+$copiedAgain = \Nino\Modules\Builder\Document::save( $appData, 'page-texts', $copying( '/template/page-texts/z/copied', [ 'label' => 'Copied', 'width' => 800, 'height' => 400, 'from' => '/template/page-texts/src/bare' ] ), $structure['hash'] );
+check( '...a slot that is there already is left as it is, the picture it has and the alt texts: what a mark says is made only of a slot that is not', $copiedAgain['status'] === 200 && ( \Nino\Images::getSlot( $appData, '/template/page-texts/z/copied' ) ?: [] )['alt'] === [ 'en_US' => 'A card', 'de_DE' => 'Eine Karte' ]
+	&& is_string( ( \Nino\Images::getSlot( $appData, '/template/page-texts/z/copied' ) ?: [] )['filename'] ?? null ) === true );
 
 \Nino\Modules\Builder\Document::delete( $appData, 'page-texts' );
 

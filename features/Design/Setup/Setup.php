@@ -58,6 +58,14 @@ namespace Nino\Modules\Design {
 			`whitespace`: a file without it stands at the middle, the air Nino.css has	*/
 		public const array KEYS = [ 'format', 'theme', 'size', 'width', 'whitespace', 'motion', 'parts', 'knobs', 'fonts', 'colours', 'css', 'compiled' ];
 
+		/*	The notes that carry a code, for the screen to say them in the words of the person's language: the code with the English
+			sentence for a log, whose %s are the params in turn (see note()). The words are the code's text under /_admin/error/<code>,
+			in both text files, as a refused request's are. Every other note is one English sentence a hand-edited file earns	*/
+		public const array NOTES = [
+			'design_theme_missing' 	=> 'the theme "%s" is not there - none is active',
+			'design_set_missing' 		=> '"%s" names the set "%s", which is not in the library - using "%s"',
+		];
+
 		/*	The parts, in the order they are compiled - which is also the order
 			they are shown in. `frame` parts bring a template and are chosen from
 			library/<part>/<set>/; the rest are one stylesheet each, library/<part>/<set>.css	*/
@@ -537,7 +545,7 @@ namespace Nino\Modules\Design {
 		 *	@param		array 		&$appData			(reference) Array with current app data - the families a project installed are read off its disk
 		 *	@param		array 		$raw					Whatever the file held, or the screen posted
 		 *	@param		string		$libraryDir		The feature's library
-		 *	@param		array 		&$notes				(reference) What had to be replaced or dropped
+		 *	@param		array 		&$notes				(reference) What had to be replaced or dropped: a sentence, or - for the two that the screen says in words (see NOTES) - note()'s array
 		 *
 		 *	@return 	array										A setup safe to compile
 		 */
@@ -557,7 +565,7 @@ namespace Nino\Modules\Design {
 				if( Themes::exists( $appData, $libraryDir, $theme ) === true )
 					$setup['theme'] = $theme;
 				else
-					$notes[] = 'the theme "'. self::shown( $theme ). '" is not there - none is active';
+					$notes[] = self::note( 'design_theme_missing', self::shown( $theme ) );
 			}
 
 			$setup['size'] = self::position( $raw['size'] ?? 0 );
@@ -598,7 +606,7 @@ namespace Nino\Modules\Design {
 				else if( in_array( $wanted, $available, true ) === true )
 					$setup['parts'][$part] = $wanted;
 				else if( $wanted !== '' )
-					$notes[] = '"'. $part. '" names the set "'. self::shown( $wanted ). '", which is not in the library - using "'. $setup['parts'][$part]. '"';
+					$notes[] = self::note( 'design_set_missing', $part, self::shown( $wanted ), $setup['parts'][$part] );
 			}
 
 			/*	Where every knob stands. A knob is a position of its own tab, held to
@@ -858,6 +866,21 @@ namespace Nino\Modules\Design {
 			$setup['format'] = self::FORMAT;
 
 			return \Nino\Filesystem::putFileContent( $appData, self::PATH, $setup );
+		}
+
+		/**
+		 *	A note that carries a code: the English sentence for a log, the code and the params of it -
+		 *	the shape a refused request answers in (see \Nino\Http::fail()), so that the screen says it
+		 *	the way it says a refusal
+		 *
+		 *	@param		string		$code					A key of NOTES
+		 *	@param		string		...$params		What the %s of its sentence are, in turn
+		 *
+		 *	@return 	array										error, code, params
+		 */
+		public static function note( string $code, string ...$params ): array {
+
+			return [ 'error' => vsprintf( self::NOTES[$code], $params ), 'code' => $code, 'params' => $params ];
 		}
 
 		/**

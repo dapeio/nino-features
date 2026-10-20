@@ -20,14 +20,22 @@ namespace Nino\Modules\Design {
 	 *										stylesheet of its own, the custom css. Loading one puts it
 	 *										on the screen as a draft; saving puts the screen into it.
 	 *
+	 *										The palette is the one part a theme may leave out. A brand
+	 *										colour is the project's, so the themes the feature ships name
+	 *										no colours, and loading one takes everything but them; a theme
+	 *										of the project is written from the screen with its colours and
+	 *										loads with them.
+	 *
 	 *										One php file for each, an array as data/design.php is:
 	 *
 	 *										  'format'          1
 	 *										  'name'            the name, and under name-<lang> its line
 	 *										                    in another language
 	 *										  'description'     the same, under description-<lang>
-	 *										  'setup'           the eight keys of a setup that choose
-	 *										                    something (see snapshot())
+	 *										  'setup'           the keys of a setup that choose something
+	 *										                    (see snapshot()) - the colours not always:
+	 *										                    a theme that has none leaves the colours of
+	 *										                    the project as they are
 	 *										  'css'             the stylesheet of the theme
 	 *										  'presets'         [] - the Builder's presets come later,
 	 *										                    and the key is here from the first day so
@@ -318,7 +326,7 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	The setup a theme's file holds, as it is - the eight keys that choose
+		 *	The setup a theme's file holds, as it is - the keys that choose
 		 *	something, and whatever else somebody wrote there: the caller normalises it
 		 *
 		 *	@param		array 		$raw					The array of a theme's file
@@ -342,9 +350,10 @@ namespace Nino\Modules\Design {
 		}
 
 		/**
-		 *	A setup cut down to the eight keys that choose something - the size, the
+		 *	A setup cut down to the keys that choose something - the size, the
 		 *	width, the whitespace, the animation, the parts, the knobs, the fonts and the palette - in
-		 *	the order of Setup::KEYS. The format, the theme, the css and the record of
+		 *	the order of Setup::KEYS, and only those the setup has: a theme that names no
+		 *	colours (see the class) has none. The format, the theme, the css and the record of
 		 *	what was compiled are not a theme's setup: the css stands beside it in the
 		 *	file, and the other three are the project's. What a created, saved or
 		 *	duplicated theme keeps, and what the chip "changed" compares

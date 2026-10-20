@@ -123,8 +123,9 @@ namespace Nino\Modules\Builder {
 		 *	the rest of the schema as the kernel registered it, the icon a component
 		 *	is shown by (icon), where it belongs (in), what it draws (draws), what
 		 *	it holds (holds), whether it is a link (link) and who registered it
-		 *	(by) among it -, the names of the features that registered a component
-		 *	(features, by their key),
+		 *	(by) among it, and its label in every language of the site (labels, by
+		 *	locale: what a new component's text is made with in each) -, the names
+		 *	of the features that registered a component (features, by their key),
 		 *	the types of the Elements panel with their fields, the image slots (each
 		 *	with the url of its picture, null where it has none, and its alt
 		 *	texts by language), the frames a page may name - and the languages
@@ -140,10 +141,17 @@ namespace Nino\Modules\Builder {
 			$locale		= \Nino\Admin\Admin::sessionLocale( $appData );
 			$schemas	= self::schemas( $appData );
 
+			$available = \Nino\Locales::getAvailableLocales( $appData );
+
 			foreach( [ 'components', 'stacks' ] as $kind )
 				foreach( $schemas[$kind] as $name => $schema ) {
 
 					$schemas[$kind][$name]['label'] = \Nino\Features::localized( $schema['label'], $locale );
+
+					// A component is called in each language of the site what the registry calls it there: the placeholder of a new one is its label
+					if( $kind === 'components' )
+						foreach( $available as $each )
+							$schemas[$kind][$name]['labels'][(string) $each] = \Nino\Features::localized( $schema['label'], (string) $each );
 
 					foreach( (array) $schema['attributes'] as $attribute => $declared ) {
 						$schemas[$kind][$name]['attributes'][$attribute]['label'] = \Nino\Features::localized( $declared['label'] ?? $attribute, $locale );
@@ -197,12 +205,12 @@ namespace Nino\Modules\Builder {
 
 			$locales = [];
 
-			foreach( \Nino\Locales::getAvailableLocales( $appData ) as $available ) {
+			foreach( $available as $each ) {
 
 				// The name of a language is the project's to give, and the code stands where it gave none
-				$name = \Nino\Html::renderTextfill( $appData, '/_nino/locale/'. $available. '/name' );
+				$name = \Nino\Html::renderTextfill( $appData, '/_nino/locale/'. $each. '/name' );
 
-				$locales[] = [ 'locale' => (string) $available, 'name' => $name !== '' ? $name : (string) $available ];
+				$locales[] = [ 'locale' => (string) $each, 'name' => $name !== '' ? $name : (string) $each ];
 			}
 
 			return [
@@ -357,9 +365,11 @@ namespace Nino\Modules\Builder {
 		 *	@param		bool			$force				Write although the file is not the one the hash is of
 		 *
 		 *	@return 	array										[ 'status' => 200, 'model', 'hash' ] - the model as it reads back; 400 with
-		 *																	'problems', 403, 404, 409 for a file that changed or a key or slot a
-		 *																	move would overwrite ('key-exists'), or what a panel that makes a key
-		 *																	or a slot or writes a text answered
+		 *																	'problems', 403, 404, 409 for a file that changed, a key or slot a
+		 *																	move would overwrite ('key-exists') or a static section that has the
+		 *																	id a loop of sections makes for one of its own ('section-id-taken',
+		 *																	with the ids), or what a panel that makes a key or a slot or writes
+		 *																	a text answered
 		 */
 		public static function save( array &$appData, string $file, array $model, string $hash, bool $force = false ): array {
 
@@ -382,6 +392,13 @@ namespace Nino\Modules\Builder {
 
 			if( $problems !== [] )
 				return self::_error( 400, 'the page template is not valid', 'invalid', $problems );
+
+			// A loop of sections makes the ids of its sections of its own id and a number: a section that stands in the file by such an id is the id of two
+			// sections of the page. What was saved so, the Reader reads as it always did
+			$taken		= self::_loopIds( $model );
+
+			if( $taken !== [] )
+				return self::_error( 409, 'a section has an id that a loop of sections makes for its own sections', 'section-id-taken', $taken );
 
 			$model		= self::_again( $model, $schemas );
 			$moves		= self::_rename( $model, $file, $schemas );
@@ -474,6 +491,37 @@ namespace Nino\Modules\Builder {
 			$read['file'] = $file;
 
 			return [ 'status' => 200, 'model' => $read, 'hash' => hash( 'sha256', $source ) ];
+		}
+
+		/**
+		 *	The ids of the sections that stand where a loop of sections makes its own: a loop on the section "news"
+		 *	makes news-1, news-2 and so on, and a section that is none of a loop and is called news-2 would be the id
+		 *	of two sections of the page
+		 *
+		 *	@param		array			$model
+		 *
+		 *	@return 	array										The ids, in the order of the sections; [] for a model with none
+		 */
+		private static function _loopIds( array $model ): array {
+
+			$loops	= [];
+			$taken	= [];
+
+			foreach( (array) ( $model['blocks'] ?? [] ) as $block )
+				if( is_array( $block ) === true && ( $block['kind'] ?? '' ) === 'section' && is_array( $block['stack'] ?? null ) === true )
+					$loops[] = (string) ( $block['id'] ?? '' );
+
+			foreach( (array) ( $model['blocks'] ?? [] ) as $block ) {
+
+				if( is_array( $block ) === false || ( $block['kind'] ?? '' ) !== 'section' || is_array( $block['stack'] ?? null ) === true )
+					continue;
+
+				foreach( $loops as $loop )
+					if( $loop !== '' && preg_match( '/^'. preg_quote( $loop, '/' ). '-[0-9]+$/D', (string) ( $block['id'] ?? '' ) ) === 1 )
+						$taken[] = (string) $block['id'];
+			}
+
+			return $taken;
 		}
 
 		/**
@@ -791,33 +839,57 @@ namespace Nino\Modules\Builder {
 				if( $failure !== null )
 					return $failure;
 
-				// The alt text of a language the site no longer has is left behind
-				$alt = is_array( $slot['alt'] ?? null ) === true ? array_intersect_key( $slot['alt'], array_flip( \Nino\Locales::getAvailableLocales( $appData ) ) ) : [];
+				$failure	= self::_copyPicture( $appData, (string) $uri, $old, $slot );
 
-				if( $alt !== [] && \Nino\Images::setSlotAlt( $appData, (string) $uri, $alt ) === false )
-					return self::_error( 500, 'the alt texts of the slot could not be copied', 'slot', [ (string) $uri ] );
+				if( $failure !== null )
+					return $failure;
+			}
 
-				$filename = $slot['filename'] ?? null;
+			return null;
+		}
 
-				if( is_string( $filename ) === false || $filename === '' )
-					continue;
+		/**
+		 *	The alt texts and the picture of a slot handed on to the slot that is a copy of it, made a moment ago and
+		 *	holding none: the alt texts of the languages the site has, and the file stored again under the name of the
+		 *	new slot - through the Images module's own functions, which know how a slot's file is kept - and named
+		 *	by it. A copy of a template makes it for each of its slots, and a save for the slot of a picture that was
+		 *	copied with the column or the card it stands in
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$uri					The new slot, which is there
+		 *	@param		string		$old					The slot it is a copy of
+		 *	@param		array			$slot					The old slot as \Nino\Images::getSlot() has it
+		 *
+		 *	@return 	array|null								The answer that stopped it, null where all of it was handed on - or there was none of it
+		 */
+		private static function _copyPicture( array &$appData, string $uri, string $old, array $slot ): ?array {
 
-				$bytes = \Nino\Images::read( $appData, $filename );
+			// The alt text of a language the site no longer has is left behind
+			$alt = is_array( $slot['alt'] ?? null ) === true ? array_intersect_key( $slot['alt'], array_flip( \Nino\Locales::getAvailableLocales( $appData ) ) ) : [];
 
-				// A slot that names a picture that is not there has none to hand on
-				if( is_string( $bytes ) === false )
-					continue;
+			if( $alt !== [] && \Nino\Images::setSlotAlt( $appData, $uri, $alt ) === false )
+				return self::_error( 500, 'the alt texts of the slot could not be copied', 'slot', [ $uri ] );
 
-				$base = ltrim( $old, '/' );
-				$copy = ltrim( (string) $uri, '/' ). ( str_starts_with( $filename, $base ) === true ? substr( $filename, strlen( $base ) ) : '.'. basename( $filename ) );
+			$filename = $slot['filename'] ?? null;
 
-				if( \Nino\Images::restore( $appData, $copy, $bytes ) === false )
-					return self::_error( 500, 'the image of the slot could not be copied', 'slot', [ (string) $uri ] );
+			if( is_string( $filename ) === false || $filename === '' )
+				return null;
 
-				if( \Nino\Images::setSlotFilename( $appData, (string) $uri, $copy ) === false ) {
-					\Nino\Images::delete( $appData, $copy );
-					return self::_error( 500, 'the image of the slot could not be copied', 'slot', [ (string) $uri ] );
-				}
+			$bytes = \Nino\Images::read( $appData, $filename );
+
+			// A slot that names a picture that is not there has none to hand on
+			if( is_string( $bytes ) === false )
+				return null;
+
+			$base = ltrim( $old, '/' );
+			$copy = ltrim( $uri, '/' ). ( str_starts_with( $filename, $base ) === true ? substr( $filename, strlen( $base ) ) : '.'. basename( $filename ) );
+
+			if( \Nino\Images::restore( $appData, $copy, $bytes ) === false )
+				return self::_error( 500, 'the image of the slot could not be copied', 'slot', [ $uri ] );
+
+			if( \Nino\Images::setSlotFilename( $appData, $uri, $copy ) === false ) {
+				\Nino\Images::delete( $appData, $copy );
+				return self::_error( 500, 'the image of the slot could not be copied', 'slot', [ $uri ] );
 			}
 
 			return null;
@@ -1576,11 +1648,16 @@ namespace Nino\Modules\Builder {
 			foreach( $plan['slots'] as $uri => $create ) {
 
 				$size = self::_size( (array) $create );
+				$from = $create['from'] ?? null;
 
 				if( preg_match( self::SLOT, (string) $uri ) !== 1 )
 					$problems[] = 'the image slot "'. $uri. '" is not an uri of a slot';
 				elseif( $size[0] * $size[1] > \Nino\Images::MAX_SOURCE_PIXELS )
 					$problems[] = 'the image slot "'. $uri. '" is larger than an upload can produce';
+
+				// A slot made as the copy of another takes its picture and its alt texts: it says which
+				if( $from !== null && ( is_string( $from ) === false || preg_match( self::SLOT, $from ) !== 1 ) )
+					$problems[] = 'the image slot "'. $uri. '" is a copy of something that is no image slot';
 
 				// What the Images panel holds an alt text to: one short line of text
 				foreach( (array) ( $create['alt'] ?? [] ) as $alt ) {
@@ -1616,12 +1693,17 @@ namespace Nino\Modules\Builder {
 			if( $plan['slots'] !== [] || $plan['slotMoves'] !== [] )
 				$permissions[] = \Nino\Modules\Images\Slots::MANAGE_PERM;
 
-			// The alt texts a slot is made with are written by the save itself: the permission is the one the Images panel's images/alt asks for
-			foreach( $plan['slots'] as $create )
-				if( is_array( $create['alt'] ?? null ) === true && $create['alt'] !== [] ) {
+			// The alt texts a slot is made with are written by the save itself: the permission is the one the Images panel's images/alt asks for - and
+			// the same for the alt texts and the picture a copy takes over, which are the old slot's
+			foreach( $plan['slots'] as $create ) {
+
+				$old = is_string( $create['from'] ?? null ) === true ? \Nino\Images::getSlot( $appData, $create['from'] ) : false;
+
+				if( ( is_array( $create['alt'] ?? null ) === true && $create['alt'] !== [] ) || ( is_array( $old ) === true && ( ( $old['filename'] ?? null ) !== null || ( $old['alt'] ?? [] ) !== [] ) ) ) {
 					$permissions[] = \Nino\Modules\Images\Admin::MANAGE_PERM;
 					break;
 				}
+			}
 
 			foreach( $permissions as $permission )
 				if( \Nino\Auth::checkPermission( $appData, $permission ) === false )
@@ -1644,8 +1726,9 @@ namespace Nino\Modules\Builder {
 		/**
 		 *	Make what the plan makes new: the keys, the slots with the alt texts
 		 *	their create names (the plan has asked for the permission of the
-		 *	Images panel for them), and the slots a renamed section moves to,
-		 *	with the alt texts of the old ones. Nothing in the project points
+		 *	Images panel for them) - a slot that is a copy (create.from) with the
+		 *	picture and the alt texts of the slot it is a copy of -, and the slots
+		 *	a renamed section moves to, with the alt texts of the old ones. Nothing in the project points
 		 *	at any of them yet, so a save that stops after this leaves keys and
 		 *	slots that are used by nobody - and nothing that was there changed.
 		 *	The keys it made itself are told, so that a save that stops takes
@@ -1690,7 +1773,19 @@ namespace Nino\Modules\Builder {
 				if( $failure !== null )
 					return $failure;
 
-				// A slot that is there already is another request's: the alt texts are written into the slot this save made
+				// A slot that is there already is another request's: nothing is written into it, neither the picture of the old slot nor the alt texts. A copy
+				// of a slot that is not there - one that this save makes, or that was taken away - has none to hand on
+				$old = is_string( $create['from'] ?? null ) === true ? \Nino\Images::getSlot( $appData, $create['from'] ) : false;
+
+				if( is_array( $old ) === true && in_array( (string) $uri, $kept, true ) === true ) {
+
+					$failure = self::_copyPicture( $appData, (string) $uri, (string) $create['from'], $old );
+
+					if( $failure !== null )
+						return $failure;
+				}
+
+				// The alt texts that were typed for the slot are written over those it was copied with
 				$alt = is_array( $create['alt'] ?? null ) === true ? $create['alt'] : [];
 
 				if( $alt !== [] && in_array( (string) $uri, $kept, true ) === true && \Nino\Images::setSlotAlt( $appData, (string) $uri, $alt ) === false )

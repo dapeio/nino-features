@@ -50,6 +50,10 @@
 		// The working copy the screen edits. Leaving without saving changes
 		// nothing on disk
 		_edit		: null,
+		/*	What reading the setup replaced or dropped, as the server told it: a note is a sentence, or an object - a
+			code and the params of it, the way a refusal is answered (see _noteText()). The list over the open tab
+			draws them, and a theme that is loaded or a draft that is reset gives them anew: they belong to what was read	*/
+		_notes		: [],
 
 		/*	The Theme tab. The theme the working copy was taken from or kept in, as the
 			server describes it - slug, name, description, shipped, setup, css - against
@@ -291,8 +295,8 @@
 		// that was chosen (see _setPart()). null is the tab's own, which is where opening a tab
 		// and choosing a template put it back to
 		_target	: null,
-		// The tab that is open
-		_tab		: 'global',
+		// The tab that is open - the Theme tab at the start of a visit: the first thing a person does is pick a theme
+		_tab		: 'theme',
 		// The group of its knobs that a tab with groups shows, by the tab; a tab with no entry shows its
 		// first. Kept while the panel lives and no part of the selection: another group changes nothing but
 		// the rows on screen
@@ -445,6 +449,7 @@
 			const design = Nino.admin.design;
 
 			design._edit = design._selection( data );
+			design._notes = Array.isArray( data.notes ) === true ? data.notes : [];
 			design._active = data.active || null;
 			design._themeText = data.active ? { name : data.active.name, description : data.active.description } : { name : '', description : '' };
 
@@ -531,6 +536,46 @@
 		 */
 		_name : function( target ) {
 			return String( target ).replace( /^\//, '' );
+		},
+
+		/**
+		 *	A template as the screen names it: its name where its file gives one, its slug where
+		 *	it does not or where the library has no such template
+		 *
+		 *	@param		{string}	part			A key of the parts
+		 *	@param		{string}	set
+		 *
+		 *	@return		{string}
+		 */
+		_setName : function( part, set ) {
+			return Nino.admin.design._setLabel( set, ( ( Nino.admin.design._row( part ).catalogue ) || {} )[set] );
+		},
+
+		/**
+		 *	A note of what reading the setup replaced, in the words of the workbench: a note that
+		 *	carries a code is said the way a refusal is (its text is /_admin/error/<code>, the params
+		 *	in it), with the part and the replacing template by the names the screen has for them;
+		 *	a note that is a sentence is the sentence
+		 *
+		 *	@param		{(string|Object)}	note		A sentence, or { error, code, params }
+		 *
+		 *	@return		{string}
+		 */
+		_noteText : function( note ) {
+
+			if( note === null || typeof note !== 'object' )
+				return String( note );
+
+			const design = Nino.admin.design;
+			const params = Array.isArray( note.params ) === true ? note.params.slice() : [];
+
+			// design_set_missing: the part, the set the file named, the set that stands in its place
+			if( note.code === 'design_set_missing' && params.length === 3 ) {
+				params[2] = design._setName( params[0], params[2] );
+				params[0] = Nino.content.getText('/_admin/design/part/'+ params[0] ) || params[0];
+			}
+
+			return Nino.adminUi.api.errorText( 0, { code : note.code, params : params, error : note.error }, '' );
 		},
 
 		/**
@@ -937,10 +982,10 @@
 			if( Nino.admin.design._head() === null )
 				controls.appendChild( Nino.admin.design._renderTabs() );
 
-			( ( Nino.admin.design._data || {} ).notes || [] ).forEach( function( note ) {
+			Nino.admin.design._notes.forEach( function( note ) {
 				const p = dc.createElement('p');
 				p.className = 'nino-admin-error';
-				p.textContent = note;
+				p.textContent = Nino.admin.design._noteText( note );
 				controls.appendChild( p );
 			} );
 
@@ -1300,10 +1345,11 @@
 		},
 
 		/**
-		 *	One theme of the list: its name with the chips it has - shipped, and active where the
-		 *	working copy was taken from it - the description under it, and what can be done with
-		 *	it: load, duplicate and, for a theme of the project only, delete. A button says which
-		 *	theme it is about to the ones who hear it read out
+		 *	One theme of the list: its name with the chips it has - shipped; active where the website
+		 *	runs it, which is the theme of the last apply; and loaded, not applied where the working
+		 *	copy was taken from it and the website does not run it - the description under it, and what
+		 *	can be done with it: load, duplicate and, for a theme of the project only, delete. A button
+		 *	says which theme it is about to the ones who hear it read out
 		 *
 		 *	@param		{Object}	entry			One of design/list's `themes`: slug, name, description, shipped
 		 *
@@ -1313,12 +1359,13 @@
 
 			const design = Nino.admin.design;
 			const ui = Nino.adminUi;
-			const active = design._edit !== null && design._edit.theme === entry.slug;
+			const draft = design._edit !== null && design._edit.theme === entry.slug;
+			const running = ( design._data || {} ).running === entry.slug;
 
-			const row = ui.el( 'li', 'design-theme-row'+ ( active === true ? ' design-theme-row--active' : '' ) );
+			const row = ui.el( 'li', 'design-theme-row'+ ( draft === true ? ' design-theme-row--active' : '' ) );
 			row.dataset.slug = entry.slug;
 
-			if( active === true )
+			if( draft === true )
 				row.setAttribute( 'aria-current', 'true' );
 
 			const text = ui.el( 'div', 'design-theme-text' );
@@ -1328,8 +1375,11 @@
 			if( entry.shipped === true )
 				head.appendChild( design._chip( 'design-theme-shipped', Nino.content.getText('/_admin/design/theme/shipped'), 'muted' ) );
 
-			if( active === true )
+			if( running === true )
 				head.appendChild( design._chip( 'design-theme-active', Nino.content.getText('/_admin/design/theme/active'), 'ok' ) );
+
+			if( draft === true && running === false )
+				head.appendChild( design._chip( 'design-theme-loaded', Nino.content.getText('/_admin/design/theme/loaded'), 'warn' ) );
 
 			text.appendChild( head );
 
@@ -1475,16 +1525,24 @@
 		},
 
 		/**
-		 *	The setup of a working copy as a theme keeps it: the eight keys that choose something,
-		 *	without the theme it names and the css it carries - the screen's side of the compare
-		 *	the chip makes with the file's (see _themeChanged())
+		 *	The setup of a working copy as a theme keeps it: the keys that choose something, without
+		 *	the theme it names and the css it carries - the screen's side of the compare the chip makes
+		 *	with the file's (see _themeChanged()). The colours are among them where the theme names
+		 *	colours: a theme that names none - every theme the feature ships - has no say over them
 		 *
 		 *	@param		{Object}	edit
+		 *	@param		{Object}	[theme]		The setup of the theme it is compared with; with no colours in it the snapshot has none either
 		 *
 		 *	@return		{Object}
 		 */
-		_snapshotOf : function( edit ) {
-			return { size : edit.size, width : edit.width, whitespace : edit.whitespace, motion : edit.motion, parts : edit.parts, knobs : edit.knobs, fonts : edit.fonts, colours : edit.colours };
+		_snapshotOf : function( edit, theme ) {
+
+			const snapshot = { size : edit.size, width : edit.width, whitespace : edit.whitespace, motion : edit.motion, parts : edit.parts, knobs : edit.knobs, fonts : edit.fonts };
+
+			if( theme === undefined || theme.colours !== undefined )
+				snapshot.colours = edit.colours;
+
+			return snapshot;
 		},
 
 		/**
@@ -1503,7 +1561,7 @@
 			if( edit === null || edit.theme === '' || active === null || active.slug !== edit.theme )
 				return false;
 
-			return design._canonical( { setup : design._snapshotOf( edit ), css : edit.css } ) !== design._canonical( { setup : active.setup, css : active.css } );
+			return design._canonical( { setup : design._snapshotOf( edit, active.setup ), css : edit.css } ) !== design._canonical( { setup : active.setup, css : active.css } );
 		},
 
 		/**
@@ -1668,8 +1726,11 @@
 
 		/**
 		 *	The theme that was asked for becomes the screen: the working copy is the theme's setup with its
-		 *	slug and its css, the active theme is its record - the setup of it as it was taken over, which
+		 *	slug and its css - and the colours it already had, where the theme names none: a brand colour is
+		 *	the project's - the active theme is its record - the setup of it as it was taken over, which
 		 *	is what the chip compares the screen with - and the name and description fields are its own.
+		 *	What reading the theme replaced is told in the list over the tab, replacing the notes of what was
+		 *	on the screen before.
 		 *	A family the role is not offered here - not in the list, declined, or not installed after all -
 		 *	is set to the face of Nino and told in the line of the bar with the rest. The screen is drawn
 		 *	again whole, the preview with it
@@ -1708,11 +1769,12 @@
 				return ( response.missing || [] ).filter( function( entry ) { return entry.slug === family } ).map( function( entry ) { return entry.name } )[0] || family;
 			} );
 
-			design._edit = { parts : setup.parts, knobs : setup.knobs, size : setup.size, width : setup.width, whitespace : setup.whitespace, motion : setup.motion, fonts : setup.fonts, colours : setup.colours,
-				theme : response.slug, css : response.css };
+			design._edit = { parts : setup.parts, knobs : setup.knobs, size : setup.size, width : setup.width, whitespace : setup.whitespace, motion : setup.motion, fonts : setup.fonts,
+				colours : setup.colours === undefined ? design._edit.colours : setup.colours, theme : response.slug, css : response.css };
 			design._active = { slug : response.slug, name : response.name, description : response.description, shipped : response.shipped,
-				setup : JSON.parse( JSON.stringify( design._snapshotOf( design._edit ) ) ), css : response.css };
+				setup : JSON.parse( JSON.stringify( design._snapshotOf( design._edit, setup ) ) ), css : response.css };
 			design._themeText = { name : response.name, description : response.description };
+			design._notes = Array.isArray( response.notes ) === true ? response.notes : [];
 			design._render();
 
 			const lines = said.slice();
@@ -1725,9 +1787,7 @@
 			if( names.length > 0 )
 				lines.push( design._text( '/_admin/design/theme/msg/unavailable', names.join(', ') ) );
 
-			const notes = response.notes || [];
-
-			design._say( dc.getElementById('design-msg'), lines.concat( notes ).join(' '), failure !== '' ? 'nino-admin-error' : ( names.length > 0 || notes.length > 0 ? 'nino-admin-hint' : '' ) );
+			design._say( dc.getElementById('design-msg'), lines.join(' '), failure !== '' ? 'nino-admin-error' : ( names.length > 0 ? 'nino-admin-hint' : '' ) );
 		},
 
 		/**
@@ -4077,6 +4137,12 @@
 			const frame = dc.createElement('iframe');
 			frame.id = 'design-frame';
 			frame.title = Nino.content.getText('/_admin/design/label/preview');
+			/*	A picture of the design, not a page to use: its links and buttons are out of the tab order - a
+				walk of the keyboard would spend every one of them before it reached the bar - and out of the
+				page for assistive technology; the panel scrolls it by script, which an inert frame allows. The
+				title says what the frame is, for the one who passes it	*/
+			frame.setAttribute( 'inert', '' );
+			frame.setAttribute( 'tabindex', '-1' );
 			/*	allow-scripts, because half of what a header set is only happens
 				when it scrolls, and the cover heights are set in js. Plus
 				allow-same-origin, or the frame gets an opaque origin and the
@@ -4088,6 +4154,9 @@
 				windows, starting downloads */
 			frame.setAttribute( 'sandbox', 'allow-scripts allow-same-origin' );
 			stage.appendChild( frame );
+
+			// An inert frame lets the pointer through to the stage under it: the wheel is handed on to the page in it
+			stage.addEventListener( 'wheel', function( event ) { Nino.admin.design._wheel( event, frame ) }, { passive : false } );
 
 			/*	The preview's own line, over the frame's top corner rather than
 				in the heading or under the frame: it says that a preview is
@@ -4110,6 +4179,48 @@
 			}
 
 			return box;
+		},
+
+		/**
+		 *	A turn of the wheel over the preview, turned on the page in the frame - which an inert frame no
+		 *	longer takes by itself. By the unit the wheel counts in, and only while the page can still go
+		 *	that way: at its end the wheel is left alone and goes on to the panel, as it did when the
+		 *	frame took it
+		 *
+		 *	@param		{WheelEvent}	event
+		 *	@param		{Element}			frame			The preview's frame
+		 *
+		 *	@return		void
+		 */
+		_wheel : function( event, frame ) {
+
+			let doc = null;
+
+			// A frame that cannot be reached is not the page it was: nothing to turn
+			try {
+				doc = frame.contentDocument;
+			}
+			catch( error ) {
+				return;
+			}
+
+			if( doc === null || doc.defaultView === null )
+				return;
+
+			const view = doc.defaultView;
+			const root = doc.documentElement;
+			const unit = event.deltaMode === 1 ? 16 : ( event.deltaMode === 2 ? view.innerHeight : 1 );
+			const top = event.deltaY * unit;
+			const left = event.deltaX * unit;
+
+			const down = top === 0 ? false : ( top < 0 ? view.scrollY > 0 : view.scrollY + view.innerHeight < root.scrollHeight - 1 );
+			const across = left === 0 ? false : ( left < 0 ? view.scrollX > 0 : view.scrollX + view.innerWidth < root.scrollWidth - 1 );
+
+			if( down === false && across === false )
+				return;
+
+			event.preventDefault();
+			view.scrollBy( { top : top, left : left, behavior : 'instant' } );
 		},
 
 		/**
@@ -4308,7 +4419,7 @@
 
 				const notes = response.notes || [];
 				msg.className = notes.length === 0 ? 'nino-admin-hint' : 'nino-admin-error';
-				msg.textContent = notes.join(' ');
+				msg.textContent = notes.map( function( note ) { return Nino.admin.design._noteText( note ) } ).join(' ');
 				msg.title = msg.textContent;
 			} );
 		},
@@ -4843,11 +4954,11 @@
 		 *	screen stays honest about which of the two just happened.
 		 *
 		 *	Applying asks first, every time. design/plan says what would happen
-		 *	to each of the three files, the confirmation lists it, and only a
-		 *	yes sends the apply - with `force` where a file is not Design's,
-		 *	which the confirmation has just said it is about to replace. The
-		 *	same question is what gets a project out of a stylesheet that is
-		 *	Design's beside a header that is not, which used to be refused
+		 *	to each of the three files, the dialog says it in words (see
+		 *	_askApply()), and only a yes sends the apply - with `force` where a
+		 *	file is not Design's, which the dialog has just said it is about to
+		 *	replace. The same question is what gets a project out of a stylesheet
+		 *	that is Design's beside a header that is not, which used to be refused
 		 *	with nothing on screen to say yes to
 		 *
 		 *	@param		{boolean}		apply
@@ -4901,53 +5012,125 @@
 
 					const files = planned.files || [];
 
-					// The draft is saved either way; only the website waits
-					if( wn.confirm( Nino.admin.design._confirmText( files ) ) === false ) {
-						btn.disabled = false;
-						return Nino.admin.design.init( function() {
-							Nino.admin.design._say( dc.getElementById('design-msg'), Nino.content.getText('/_admin/design/msg/cancelled') );
-						} );
-					}
-
-					const force = files.some( function( file ) { return file.exists === true && file.state !== 'ours' } );
-
-					Nino.admin.design._apiCall( 'apply', { force : force }, function( applyStatus, applied ) {
-
-						btn.disabled = false;
-
-						if( applyStatus !== 200 ) {
-							Nino.admin.design._say( msg, Nino.adminUi.api.errorText( applyStatus, applied, '/_admin/design/error/apply' ), 'nino-admin-error' );
-							return;
-						}
-
-						const lost = [];
-						files.forEach( function( file ) {
-							( file.lost || [] ).forEach( function( token ) { lost.push( token ) } );
-						} );
-
-						const said = [ Nino.content.getText('/_admin/design/msg/applied') ];
-
-						if( force === true )
-							said.push( Nino.content.getText('/_admin/design/msg/takenover') );
-
-						if( lost.length > 0 )
-							said.push( Nino.admin.design._text( '/_admin/design/msg/lost', lost.join(', ') ) );
-
-						Nino.admin.design.init( function() {
-							Nino.admin.design._say( dc.getElementById('design-msg'), said.join(' ') );
-						} );
+					Nino.admin.design._askApply( files, function( yes ) {
+						Nino.admin.design._applyAnswered( yes, files, btn, msg );
 					} );
 				} );
 			} );
 		},
 
 		/**
-		 *	The question before an apply, one line per fact: which files are
-		 *	rewritten, which of them Design did not write, which shortcodes the
-		 *	new frames lose, and that the present state is kept - with the date
-		 *	of the version that keeping it replaces. Built here from the
-		 *	fragments in the text files; none of them carries a line break, and
-		 *	the lines are joined with one
+		 *	What the answer to the question before an apply does: a no leaves the draft saved and the
+		 *	website as it was, a yes sends the apply - with `force` where a file is not Design's, which
+		 *	the dialog has just said it is about to replace - and says what happened in the line of the bar
+		 *
+		 *	@param		{boolean}		yes
+		 *	@param		{Array}			files					design/plan's answer
+		 *	@param		{Element}		btn						The button that asked, disabled until this is over
+		 *	@param		{Element}		msg
+		 *
+		 *	@return		void
+		 */
+		_applyAnswered : function( yes, files, btn, msg ) {
+
+			/*	The screen is drawn again from the answer, and the button that asked is gone with it - the dialog gave
+				the focus back to it while it was still switched off, which a button does not take. The new one has it	*/
+			const back = function( text ) {
+
+				Nino.admin.design._say( dc.getElementById('design-msg'), text );
+
+				const again = dc.getElementById('design-apply');
+
+				if( again !== null )
+					again.focus();
+			};
+
+			// The draft is saved either way; only the website waits
+			if( yes === false ) {
+				btn.disabled = false;
+				return Nino.admin.design.init( function() { back( Nino.content.getText('/_admin/design/msg/cancelled') ) } );
+			}
+
+			const force = files.some( function( file ) { return file.exists === true && file.state !== 'ours' } );
+
+			Nino.admin.design._apiCall( 'apply', { force : force }, function( applyStatus, applied ) {
+
+				btn.disabled = false;
+
+				if( applyStatus !== 200 ) {
+					Nino.admin.design._say( msg, Nino.adminUi.api.errorText( applyStatus, applied, '/_admin/design/error/apply' ), 'nino-admin-error' );
+					btn.focus();
+					return;
+				}
+
+				const lost = [];
+				files.forEach( function( file ) {
+					( file.lost || [] ).forEach( function( token ) { lost.push( token ) } );
+				} );
+
+				const said = [ Nino.content.getText('/_admin/design/msg/applied') ];
+
+				if( force === true )
+					said.push( Nino.content.getText('/_admin/design/msg/takenover') );
+
+				if( lost.length > 0 )
+					said.push( Nino.admin.design._text( '/_admin/design/msg/lost', lost.join(', ') ) );
+
+				Nino.admin.design.init( function() { back( said.join(' ') ) } );
+			} );
+		},
+
+		/**
+		 *	The question before an apply, in the workbench's own dialog (Nino.adminUi.choiceDialog():
+		 *	modal, Escape says no, the focus goes back to the button): what happens is in words - the
+		 *	sets that were replaced since the setup was read, which files of the website are written,
+		 *	which of them are not Design's, which shortcodes the new frames lose and that the present
+		 *	state stays as the previous version - and the paths of the files stand in a <details> under
+		 *	them, closed. Where the browser has no <dialog> the words are asked as a confirm()
+		 *
+		 *	The dialog has no place for a <details>, so it is put in behind the text the dialog has
+		 *	drawn, which the dialog's own aria-describedby names; a dialog that was drawn otherwise gets
+		 *	the question without the paths
+		 *
+		 *	@param		{Array}			files					design/plan's answer
+		 *	@param		{Function}	then					Called with true for an apply, false for none - and for a question that could not be asked
+		 *
+		 *	@return		void
+		 */
+		_askApply : function( files, then ) {
+
+			const design = Nino.admin.design;
+
+			const asked = Nino.adminUi.choiceDialog( {
+				title 		: Nino.content.getText('/_admin/design/label/apply'),
+				message 	: design._confirmText( files ),
+				choices 	: [
+					{ value : 'apply', label : Nino.content.getText('/_admin/design/confirm/yes'), kind : 'primary' },
+					{ value : 'cancel', label : Nino.content.getText('/_admin/common/label/cancel'), kind : 'secondary' },
+				],
+				onChoose 	: function( value ) { then( value === 'apply' ) },
+			} );
+
+			if( asked === false )
+				return then( false );
+
+			const text = dc.getElementById('nino-admin-choice-text');
+
+			if( text === null )
+				return;
+
+			// One line to a fact: the line breaks of the text are the breaks of the lines
+			text.classList.add('design-confirm-text');
+			text.parentNode.insertBefore( design._confirmFiles( files ), text.nextSibling );
+		},
+
+		/**
+		 *	The question before an apply, one line per fact and every file by what it is for, never
+		 *	by its path (see _confirmFiles()): the sets that were replaced since the setup was read,
+		 *	which files are rewritten, which of them Design did not write, which shortcodes the new
+		 *	frames lose, and that the present state stays as the previous version - with the date of
+		 *	the version that keeping it replaces. Built here from the fragments in the text files;
+		 *	none of them carries a line break, and the lines are joined with one
 		 *
 		 *	@param		{Array}		files					design/plan's answer
 		 *
@@ -4955,18 +5138,23 @@
 		 */
 		_confirmText : function( files ) {
 
-			const lines = [ Nino.admin.design._text( '/_admin/design/confirm/apply',
-				files.map( function( file ) { return Nino.admin.design._name( file.target ) } ).join(', ') ) ];
+			const design = Nino.admin.design;
+			const words = function( list ) {
+				return list.map( function( file ) { return design._fileWord( file ) } ).join(', ');
+			};
+
+			const lines = design._replaced();
+
+			lines.push( design._text( '/_admin/design/confirm/apply', words( files ) ) );
 
 			const foreign = files.filter( function( file ) { return file.exists === true && file.state !== 'ours' } );
 
 			if( foreign.length > 0 )
-				lines.push( Nino.admin.design._text( '/_admin/design/confirm/foreign',
-					foreign.map( function( file ) { return Nino.admin.design._name( file.target ) } ).join(', ') ) );
+				lines.push( design._text( '/_admin/design/confirm/foreign', words( foreign ) ) );
 
 			files.forEach( function( file ) {
 				( file.lost || [] ).forEach( function( token ) {
-					lines.push( Nino.admin.design._text( '/_admin/design/confirm/lost', token ) );
+					lines.push( design._text( '/_admin/design/confirm/lost', token ) );
 				} );
 			} );
 
@@ -4975,13 +5163,97 @@
 
 				lines.push( Nino.content.getText('/_admin/design/confirm/copy') );
 
-				const previous = Nino.admin.design._data.previous;
+				const previous = design._data.previous;
 
 				if( previous )
-					lines.push( Nino.admin.design._text( '/_admin/design/confirm/replaces', Nino.admin.design._when( previous.at ) ) );
+					lines.push( design._text( '/_admin/design/confirm/replaces', design._when( previous.at ) ) );
 			}
 
 			return lines.join('\n');
+		},
+
+		/**
+		 *	What reading the setup replaced - a theme that is not there, a template that is not in the
+		 *	library - as far as it is still true of the draft: the lines the dialog before an apply opens
+		 *	with. The templates are one line, those that were not there and those that stand in their
+		 *	place, by the names the screen has for them. A note the draft has moved past - another
+		 *	template chosen, a theme named since - is not said
+		 *
+		 *	@return		{Array}						Sentences, none where nothing was replaced
+		 */
+		_replaced : function() {
+
+			const design = Nino.admin.design;
+			const edit = design._edit;
+			const lines = [];
+			const gone = [];
+			const used = [];
+
+			design._notes.forEach( function( note ) {
+
+				if( note === null || typeof note !== 'object' || Array.isArray( note.params ) === false )
+					return;
+
+				if( note.code === 'design_theme_missing' && edit.theme === '' )
+					lines.push( design._noteText( note ) );
+
+				if( note.code === 'design_set_missing' && edit.parts[ note.params[0] ] === note.params[2] ) {
+					gone.push( note.params[1] );
+					used.push( design._setName( note.params[0], note.params[2] ) );
+				}
+			} );
+
+			// The names carry commas of their own ("Classic, default"), so each is quoted, as the notes quote them
+			const quote = ( document.documentElement.lang || '' ).indexOf( 'de' ) === 0 ? function( name ) { return '\u201e'+ name +'\u201c' } : function( name ) { return '"'+ name +'"' };
+			if( gone.length > 0 )
+				lines.unshift( design._text( '/_admin/design/confirm/replaced', gone.map( quote ).join(', '), used.map( quote ).join(', ') ) );
+
+			return lines;
+		},
+
+		/**
+		 *	A file Design writes, by what it is for: the look, the header, the footer. The file of a part
+		 *	that has no word is told by its name
+		 *
+		 *	@param		{Object}	file			One of design/plan's files: target, part
+		 *
+		 *	@return		{string}
+		 */
+		_fileWord : function( file ) {
+			return Nino.content.getText('/_admin/design/confirm/file/'+ ( file.part || 'look' ) ) || Nino.admin.design._name( file.target );
+		},
+
+		/**
+		 *	The paths of the files an apply writes, closed in a <details> under the question: each with
+		 *	what happens to it, in words
+		 *
+		 *	@param		{Array}		files					design/plan's answer
+		 *
+		 *	@return		{Element}
+		 */
+		_confirmFiles : function( files ) {
+
+			const design = Nino.admin.design;
+			const ui = Nino.adminUi;
+			const details = ui.el( 'details', 'design-confirm-files' );
+			const list = ui.el( 'ul', 'design-confirm-list' );
+
+			details.appendChild( ui.el( 'summary', '', Nino.content.getText('/_admin/design/confirm/files') ) );
+
+			files.forEach( function( file ) {
+
+				const state = file.exists !== true ? 'missing' : ( file.changes === false ? 'same' : file.state );
+				const item = ui.el( 'li', '' );
+
+				// The space is the span's own: a screen reader reads the path and what happens to it as two words
+				item.appendChild( ui.el( 'code', '', design._name( file.target ) ) );
+				item.appendChild( ui.el( 'span', 'design-confirm-state', ' '+ Nino.content.getText('/_admin/design/confirm/state/'+ state ) ) );
+				list.appendChild( item );
+			} );
+
+			details.appendChild( list );
+
+			return details;
 		},
 
 		/**
@@ -5012,7 +5284,7 @@
 				Nino.admin.design.init( function() {
 					// What the slot did not hold, or could not keep, is told
 					// beside the answer: the site has changed either way
-					const notes = response.notes || [];
+					const notes = ( response.notes || [] ).map( function( note ) { return Nino.admin.design._noteText( note ) } );
 					Nino.admin.design._say( dc.getElementById('design-msg'),
 						[ Nino.content.getText('/_admin/design/msg/restored') ].concat( notes ).join(' '), notes.length > 0 ? 'nino-admin-hint' : '' );
 				} );

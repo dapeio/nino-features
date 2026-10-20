@@ -130,6 +130,67 @@ check( '...the list page draws a post as the card, in the card classes of Nino 1
 	$postClasses[1] === [ 'nino-card', 'nino-card-link', 'nino-card-content', 'nino-card-subtitle', 'nino-card-title', 'nino-card-descr' ] );
 check( 'and the words those templates say', \Nino\Html::renderTextfill( $appData, '/template/page-posts/intro/title' ) !== '' );
 
+/*	The list page of the default section is a page of the system: its title, its name in a menu and its
+	description are the /_nino/webpage<uri> keys of the Element-URI the section chose. Nothing has written
+	them in a fresh project, and the head of the page prints the key as it stands until the Routes panel
+	has been used - so the unit brings the three, in each language the project has	*/
+$pageUri		= sprintf( \Nino\Modules\Posts::INDEX_URI, \Nino\Modules\Posts\Sections::DEFAULT_KEY );
+$pageKeys		= array_map( static fn( string $name ): string => '[[/_nino/webpage'. $pageUri. '/'. $name. ']]', [ 'name', 'title', 'description' ] );
+$pageLocales	= array_map( 'strval', \Nino\Locales::getAvailableLocales( $appData ) );
+$pageMissing	= [];
+
+foreach( $pageLocales as $pageLocale ) {
+
+	$pageTexts = (array) \Nino\Filesystem::getFileContent( $appData, '/text/'. $pageLocale. '.php', [] );
+
+	foreach( $pageKeys as $pageKey )
+		if( is_string( $pageTexts[$pageKey] ?? null ) === false || trim( $pageTexts[$pageKey] ) === '' )
+			$pageMissing[] = $pageLocale. ' '. $pageKey;
+}
+
+check( '...and the name, the title and the description of the list page of the default section, in every language the project has: the unit brings the three keys of the system for the Element-URI the section chose',
+	count( $pageLocales ) >= 2 && $pageMissing === [] );
+check( '...so the head of that page prints a title and not the key as it stands, whichever of those languages the page is in',
+	( static function() use ( &$appData, $pageUri, $pageLocales ): bool {
+
+		$current	= $appData['./nino/locales/current'] ?? null;
+		$printed	= true;
+
+		foreach( $pageLocales as $pageLocale ) {
+
+			$appData['./nino/locales/current'] = $pageLocale;
+
+			$head = postsRender( $appData, '<title>[[/_nino/webpage'. $pageUri. '/title]]</title>' );
+			$printed = $printed && str_contains( $head, '[[' ) === false && trim( strip_tags( $head ) ) !== '';
+		}
+
+		if( $current === null )
+			unset( $appData['./nino/locales/current'] );
+		else
+			$appData['./nino/locales/current'] = $current;
+
+		return $printed;
+	} )() );
+check( '...a word the project wrote for that page stays when the unit is applied again, as an activation applies it, and the other two are there',
+	( static function() use ( &$appData, $pageKeys, $pageLocales ): bool {
+
+		$titleKey	= $pageKeys[1];
+		$own			= 'The words of the project';
+		$before	= (array) \Nino\Filesystem::getFileContent( $appData, '/text/'. $pageLocales[0]. '.php', [] );
+		$routes	= [];
+		$black		= [];
+		$config	= [];
+
+		\Nino\Features::mergeText( $appData, '/text/'. $pageLocales[0]. '.php', [ $titleKey => $own ], true );
+		\Nino\Features::applyUnit( $appData, dirname( __DIR__ ). '/install', $pageLocales, $routes, $black, $config, false );
+
+		$after = (array) \Nino\Filesystem::getFileContent( $appData, '/text/'. $pageLocales[0]. '.php', [] );
+
+		\Nino\Features::mergeText( $appData, '/text/'. $pageLocales[0]. '.php', [ $titleKey => $before[$titleKey] ], true );
+
+		return ( $after[$titleKey] ?? '' ) === $own && is_string( $after[$pageKeys[0]] ?? null ) === true && is_string( $after[$pageKeys[2]] ?? null ) === true;
+	} )() );
+
 /*	The section the rest of this runs against is the example of data/posts.php.
 	Posts has no panel and no writer, so a file written by hand is how a
 	project says what its section is - it has to be a file read() takes as

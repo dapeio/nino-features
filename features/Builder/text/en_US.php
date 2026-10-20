@@ -180,6 +180,8 @@ return [
 	'[[/_admin/builder/menu/edit-html]]'					=> 'Edit as HTML+',
 	'[[/_admin/builder/menu/duplicate]]'					=> 'Duplicate',
 	'[[/_admin/builder/menu/tools]]'					=> 'Tools',
+	'[[/_admin/builder/menu/tools-of]]'					=> 'Tools: %s',
+	'[[/_admin/builder/menu/tools-col]]'				=> 'Column %s of %s',
 	'[[/_admin/builder/menu/rename]]'						=> 'Rename',
 	'[[/_admin/builder/menu/loop]]'							=> 'Settings of the loop: %s',
 
@@ -345,6 +347,7 @@ return [
 	'[[/_admin/builder/hint/padded]]'	=> 'The cover or the parallax keeps the room of the page around it.',
 	'[[/_admin/builder/hint/whitespace]]'	=> 'How much room the section keeps. The whitespace of the page is set in the Design.',
 	'[[/_admin/builder/hint/inner-background]]'	=> 'The colour, the picture and the dimming stand on the row inside the section, not on the section itself.',
+	'[[/_admin/builder/hint/dim-text]]'	=> 'Text on a picture reads better with the picture dimmed.',
 	'[[/_admin/builder/hint/link]]'	=> 'Where the component leads. Without a link it is none.',
 	'[[/_admin/builder/hint/link-href]]'	=> 'A text key, an address or - in a loop - a field of the element.',
 	'[[/_admin/builder/hint/sections-id]]'	=> 'The loop makes one section for each element, numbered after the id of the section: %s-1, %s-2 and so on. The id is changed in the title.',
@@ -371,6 +374,7 @@ return [
 	'[[/_admin/builder/state/narrow]]'						=> 'A template is built at a desk: on a screen this narrow the editor is for reading only.',
 	'[[/_admin/builder/error/id-taken]]'					=> 'Another section has that id.',
 	'[[/_admin/builder/error/id-slug]]'						=> 'An id is lower case words of letters and digits, joined by hyphens.',
+	'[[/_admin/builder/error/section-id-taken]]'			=> 'A section has an id that a loop of sections makes for its own sections: %s. Give it another id.',
 	'[[/_admin/builder/error/red]]'							=> 'A source means nothing where it stands (marked red in the preview). Change it first.',
 	'[[/_admin/builder/error/source]]'						=> 'The source could not be shown.',
 

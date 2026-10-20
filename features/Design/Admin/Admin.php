@@ -241,10 +241,13 @@ namespace Nino\Modules\Design {
 				/*	The Theme tab: the slug of the theme the stored setup was taken from and
 					its own css, the list of the themes there are - the shipped ones first -
 					and the active one as its file holds it, normalised against the library
-					and cut to the eight keys that choose something, which the screen
-					compares the draft with. null where there is none	*/
+					and cut to the keys that choose something - no colours where the
+					file names none - which the screen compares the draft with. null where there is none	*/
 				'theme' 	=> (string) ( $setup['theme'] ?? '' ),
 				'css' 		=> (string) ( $setup['css'] ?? '' ),
+				// The theme the website runs: the one the setup was taken from when it was last applied, which is not
+				// the one of the draft that was loaded since - the screen tells the two apart
+				'running' => is_string( $setup['compiled']['setup']['theme'] ?? null ) === true ? $setup['compiled']['setup']['theme'] : '',
 				'themes' 	=> Themes::all( $appData, $library, $locale ),
 				'active' 	=> self::_active( $appData, $library, $locale, (string) ( $setup['theme'] ?? '' ) ),
 				// The animation of the page, and what it can be: the effects and
@@ -1249,8 +1252,9 @@ namespace Nino\Modules\Design {
 		/**
 		 *	The active theme as the screen compares the draft with it: the row of the
 		 *	list, the setup of its file normalised the way the screen's selection is
-		 *	(a save of the screen is the thing to compare with) and cut to the seven keys
-		 *	that choose something, and its css - a family the project has not installed
+		 *	(a save of the screen is the thing to compare with) and cut to the keys
+		 *	that choose something - no colours where the file names none - and its css - a
+		 *	family the project has not installed
 		 *	as '', the way the screen takes one over. What normalising replaced is not
 		 *	told: the file is read on every list, and a note would repeat on every one
 		 *
@@ -1296,7 +1300,12 @@ namespace Nino\Modules\Design {
 		 *	family (Webfonts::SLUG), so that the screen can offer to install it before it
 		 *	takes the theme over. The families that stay unoffered are told in $missing,
 		 *	one entry each: slug, the name of the list's entry (the slug where the list
-		 *	has none) and whether the list of the Typefaces tab has it at all
+		 *	has none) and whether the list of the Typefaces tab has it at all.
+		 *
+		 *	And except for the colours: a file that names none - every theme the feature
+		 *	ships - chooses no brand colour, so the setup has none either, and what takes
+		 *	the setup over keeps the colours it has. A file that names them (a theme of the
+		 *	project, which a save writes with them) has them normalised as a selection's are.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		$wanted				The setup of a file, see Themes::setup()
@@ -1304,11 +1313,15 @@ namespace Nino\Modules\Design {
 		 *	@param		array 		&$notes				(reference) What had to be replaced or dropped
 		 *	@param		array 		&$missing			(reference) slug => [ slug, name, inList ]
 		 *
-		 *	@return 	array										A normalised setup, the families of the file's roles as they are
+		 *	@return 	array										A normalised setup, the families of the file's roles as they are, and no colours where the file names none
 		 */
 		private static function _fromFile( array &$appData, array $wanted, string $library, array &$notes, array &$missing ): array {
 
 			$setup 	= self::_selection( $appData, $wanted, $library, $notes );
+
+			if( is_array( $wanted['colours'] ?? null ) === false )
+				unset( $setup['colours'] );
+
 			$fonts 	= is_array( $wanted['fonts'] ?? null ) === true ? $wanted['fonts'] : [];
 			$names 	= array_column( Webfonts::cached( $appData )['families'] ?? [], 'family', 'slug' );
 			$known 	= Fonts::families( $appData );

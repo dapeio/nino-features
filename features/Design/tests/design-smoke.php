@@ -1002,6 +1002,44 @@ foreach( Setup::available( $library, 'header' ) as $set ) {
 
 check( 'every header takes main\'s top padding away for a hero that opens the page, directly below main and inside the Builder\'s wrap alike'. ( $heroProblems === [] ? '' : ' - '. implode( ', ', $heroProblems ) ), $heroProblems === [] );
 
+/*	The colours of a header are roles. --nino-default-focus is the one solved for a ring - 3:1, which is all a ring has to clear, and not what a text
+	has to: a header that colours its text with it, the link that is current for one, is a text under 4.5:1 - so no set does, and the role a link is
+	coloured with is the link role. And a bar that paints a surface of its own that is see-through - a mix with transparent, or the page's dim - lies over
+	whatever the page opens with, and a ring solved against the plain ground of the page falls under 3:1 on it: such a bar declares its own --color-focus,
+	on the element that is the bar (the roles of the surface it lies on, as a section declares the roles of its ground). Read from the library's own list of
+	headers, so that a header that is added with either fails here rather than on a site	*/
+$roleProblems = [];
+
+foreach( Setup::available( $library, 'header' ) as $set ) {
+
+	$css = designPlain( (string) file_get_contents( Setup::file( $library, 'header', $set ) ) );
+
+	if( preg_match( '/(?<![a-z-])color\s*:\s*var\(--nino-default-focus/', $css ) === 1 )
+		$roleProblems[] = $set. ': a text coloured with --nino-default-focus';
+
+	$paints = false;
+	$declares = false;
+
+	preg_match_all( '/([^{}]+)\{([^{}]*)\}/', $css, $rules, PREG_SET_ORDER );
+
+	foreach( $rules as $rule ) {
+
+		if( preg_match( '/\.nino-scroll-header\s*$/', trim( $rule[1] ) ) !== 1 )
+			continue;
+
+		if( preg_match( '/background(?:-color)?\s*:[^;]*(?:transparent\)|-dim)/', $rule[2] ) === 1 )
+			$paints = true;
+
+		if( preg_match( '/--color-focus\s*:/', $rule[2] ) === 1 )
+			$declares = true;
+	}
+
+	if( $paints === true && $declares === false )
+		$roleProblems[] = $set. ': a see-through bar with no --color-focus of its own';
+}
+
+check( 'no header colours a text with --nino-default-focus, and a header whose bar is see-through declares the focus role of its own surface'. ( $roleProblems === [] ? '' : ' - '. implode( ', ', $roleProblems ) ), $roleProblems === [] );
+
 /*	The whitespace position of the Global tab is the kernel's token, and Nino.css scales what it spaces with it: the padding of a section and of
 	a card by --whitespace-scale, the room under a text by --whitespace-text. A content set says that spacing again, after Nino.css, so it has to
 	say it with the same factors, or the position stops at the set - a section as high at +2 as at -2. Read from the library's own list of
@@ -1122,11 +1160,12 @@ $anotherHeader = array_values( array_diff( Setup::available( $library, 'header' 
 $notes = [];
 $setup = Setup::normalize( $appData, [ 'parts' => [ 'content' => 'nothing-like-it', 'header' => $anotherHeader, 'buttons' => [ 'set' => $defaultSets['buttons'] ], 'atf' => 'first' ] ], $library, $notes );
 
-check( 'a part naming a set the library does not have falls back to the set a fresh install has, and says which',
+check( 'a part naming a set the library does not have falls back to the set a fresh install has, and says which - in a note that carries a code and its params, as a refused request answers, besides the English sentence for a log',
 	$setup['parts']['content'] === $defaultSets['content'] && $setup['parts']['header'] === $anotherHeader && $anotherHeader !== ''
-	&& count( array_filter( $notes, static fn( string $note ): bool => str_contains( $note, '"content"' ) && str_contains( $note, '"nothing-like-it"' ) && str_contains( $note, 'using "'. $defaultSets['content']. '"' ) ) ) === 1 );
-check( '...a part that is none is dropped and named, and a set given in the shape of the model before this one is not mapped: it is the default',
-	isset( $setup['parts']['atf'] ) === false && count( array_filter( $notes, static fn( string $note ): bool => str_contains( $note, 'no part "atf"' ) ) ) === 1
+	&& count( array_filter( $notes, static fn( string|array $note ): bool => is_array( $note ) === true && array_keys( $note ) === [ 'error', 'code', 'params' ] && $note['code'] === 'design_set_missing'
+		&& $note['params'] === [ 'content', 'nothing-like-it', $defaultSets['content'] ] && str_contains( $note['error'], '"nothing-like-it"' ) && str_contains( $note['error'], 'using "'. $defaultSets['content']. '"' ) ) ) === 1 );
+check( '...a part that is none is dropped and named - in a sentence: only the two notes that the screen says in words carry a code - and a set given in the shape of the model before this one is not mapped: it is the default',
+	isset( $setup['parts']['atf'] ) === false && count( array_filter( $notes, static fn( string|array $note ): bool => is_string( $note ) === true && str_contains( $note, 'no part "atf"' ) ) ) === 1
 	&& $setup['parts']['buttons'] === $defaultSets['buttons'] && count( $notes ) === 2 );
 
 $notes = [];
@@ -3533,9 +3572,9 @@ check( 'forcing it through takes the file over', callDesignAction( $appData, 'ap
 
 // A set that is not in the library is not written, and the answer says why
 [ $status, $refused ] = callDesignAction( $appData, 'apiSave', [ 'parts' => [ 'content' => 'nope' ], 'size' => 0 ] );
-check( 'a variant that is not in the library falls back and is named', $status === 200
-	&& count( (array) ( $refused['notes'] ?? [] ) ) === 1
-	&& str_contains( (string) ( $refused['notes'][0] ?? '' ), '"nope"' ) === true );
+check( 'a variant that is not in the library falls back and is named - by its code and its params, in the answer a person\'s screen says in words',
+	$status === 200 && count( (array) ( $refused['notes'] ?? [] ) ) === 1
+	&& ( $refused['notes'][0]['code'] ?? '' ) === 'design_set_missing' && ( $refused['notes'][0]['params'] ?? [] ) === [ 'content', 'nope', $defaultSets['content'] ] );
 check( 'a set name that could climb out of the library never becomes a path',
 	callDesignAction( $appData, 'apiSave', [ 'parts' => [ 'content' => '../../../etc/passwd' ], 'size' => 0 ] )[0] === 200
 	&& Setup::read( $appData, \Nino\Modules\Design::libraryDir() )['parts']['content'] === $defaultSets['content'] );
@@ -3618,6 +3657,9 @@ $plan = $planOf();
 check( 'plan answers one entry per file Design writes, in the order it writes them', $status === 200 && array_keys( $plan ) === $targets );
 check( '...all three delivered, so all three not ours, existing, and different from what applying writes',
 	count( array_filter( $plan, static fn( array $file ): bool => $file['state'] === 'foreign' && $file['exists'] === true && $file['changes'] === true ) ) === 3 );
+check( '...each by the part it is for - none for the stylesheet, the part of the frame for a frame: what the screen names a file by, in words, and not by its path',
+	array_column( $plan, 'part', 'target' ) === [ Compiler::TARGET => '', sprintf( Compiler::FRAME_TARGET, 'header' ) => 'header', sprintf( Compiler::FRAME_TARGET, 'footer' ) => 'footer' ]
+	&& array_keys( reset( $plan ) ) === [ 'target', 'part', 'exists', 'state', 'changes', 'lost' ] );
 check( '...and the footer is told apart by the shortcode somebody put in it that the variant replacing it does not have',
 	$plan['/templates/frame-footer.tpl']['lost'] === [ '[consent-settings]' ]
 	&& $plan['/templates/frame-header.tpl']['lost'] === [] && $plan['/assets/theme.css']['lost'] === [] );
@@ -4545,7 +4587,7 @@ check( 'a preview carries every key of the model the way a save does: the templa
 	&& str_contains( $shownCss, '--fontfamily-text: ui-serif' ) === true && str_contains( $shownCss, '--font-text-size: 1.125rem;' ) === true
 	&& str_contains( $shownCss, 'color-scheme: dark;' ) === true );
 check( '...a template the library does not have is named in the answer and the first one is shown, and the stored setup and the stylesheet are still what they were',
-	count( (array) ( $everything['notes'] ?? [] ) ) === 1 && str_contains( (string) ( $everything['notes'][0] ?? '' ), '"nope"' ) === true && str_contains( $shownCss, 'components: '. $defaultSets['components'] ) === true
+	count( (array) ( $everything['notes'] ?? [] ) ) === 1 && ( $everything['notes'][0]['code'] ?? '' ) === 'design_set_missing' && ( $everything['notes'][0]['params'][1] ?? '' ) === 'nope' && str_contains( $shownCss, 'components: '. $defaultSets['components'] ) === true
 	&& Setup::read( $appData, $library ) === $stored && \Nino\Filesystem::getFileContent( $appData, Compiler::TARGET, '' ) === $sheet );
 
 /*	The palette travels the same three ways the structure does: out in the
@@ -4891,6 +4933,8 @@ $themesSection = static function( array &$appData, string $library, array $entry
 
 	// The keys of a setup that choose something, as a theme file keeps them: the keys of a setup but the four that are the project's
 	$chooses = array_values( array_diff( Setup::KEYS, [ 'format', 'theme', 'css', 'compiled' ] ) );
+	// ...and the ones a theme the feature ships chooses: all of them but the palette. A brand colour is the project's
+	$choosesShipped = array_values( array_diff( $chooses, [ 'colours' ] ) );
 
 	check( 'a theme is a setup with two keys more - the theme it was taken from and the css that goes with it - in the order the file is written in, and both empty where none was chosen',
 		Setup::KEYS === [ 'format', 'theme', 'size', 'width', 'whitespace', 'motion', 'parts', 'knobs', 'fonts', 'colours', 'css', 'compiled' ]
@@ -4909,9 +4953,10 @@ $themesSection = static function( array &$appData, string $library, array $entry
 	$longNotes = [];
 	$lost = Setup::normalize( $appData, [ 'theme' => 'nowhere', 'css' => 'a {}' ], $library, $notes );
 
-	check( '...one that is not there is none, and the note says which - the slug cut to 40 characters, like the other notes - while the css stays whatever the theme was',
-		$lost['theme'] === '' && $notes === [ 'the theme "nowhere" is not there - none is active' ] && $lost['css'] === 'a {}'
-		&& Setup::normalize( $appData, [ 'theme' => str_repeat( 'x', 80 ) ], $library, $longNotes )['theme'] === '' && $longNotes === [ 'the theme "'. str_repeat( 'x', 40 ). '" is not there - none is active' ] );
+	check( '...one that is not there is none, and the note says which - a note that carries a code and its params, besides the English sentence, and the slug cut to 40 characters, like the other notes - while the css stays whatever the theme was',
+		$lost['theme'] === '' && $notes === [ [ 'error' => 'the theme "nowhere" is not there - none is active', 'code' => 'design_theme_missing', 'params' => [ 'nowhere' ] ] ] && $lost['css'] === 'a {}'
+		&& Setup::normalize( $appData, [ 'theme' => str_repeat( 'x', 80 ) ], $library, $longNotes )['theme'] === ''
+		&& $longNotes === [ [ 'error' => 'the theme "'. str_repeat( 'x', 40 ). '" is not there - none is active', 'code' => 'design_theme_missing', 'params' => [ str_repeat( 'x', 40 ) ] ] ] );
 
 	ninoWarnings();
 	$wrongNotes = [];
@@ -5100,11 +5145,13 @@ $themesSection = static function( array &$appData, string $library, array $entry
 		if( array_key_exists( 'name-de', $file ) === true )
 			$problems[] = 'a name-de';
 
-		if( array_keys( $given ) !== $chooses )
-			$problems[] = 'a setup that does not choose '. implode( ', ', $chooses ). ' in that order';
+		if( array_key_exists( 'colours', $given ) === true )
+			$problems[] = 'colours: a theme the feature ships names no palette, the brand colour is the project\'s';
+		if( array_keys( $given ) !== $choosesShipped )
+			$problems[] = 'a setup that does not choose '. implode( ', ', $choosesShipped ). ' in that order';
 		if( $notes !== [] )
-			$problems[] = 'a note: '. implode( '; ', $notes );
-		if( Themes::snapshot( $taken ) !== $given )
+			$problems[] = 'a note: '. implode( '; ', array_map( static fn( string|array $note ): string => is_array( $note ) === true ? $note['error'] : $note, $notes ) );
+		if( array_diff_key( Themes::snapshot( $taken ), [ 'colours' => true ] ) !== $given )
 			$problems[] = 'a setup that is not its own normalisation';
 
 		$ranged = [];
@@ -5136,10 +5183,10 @@ $themesSection = static function( array &$appData, string $library, array $entry
 			$themeProblems[] = $slug. ' - '. implode( '; ', $problems );
 	}
 
-	check( 'every theme the feature ships is a theme: a file of the shape, a name and a description in both languages and no name-de, the sets of its five parts in the library, every position inside its range as written, a css that is not refused - and its setup is complete and its own normalisation, with no note'
+	check( 'every theme the feature ships is a theme: a file of the shape, a name and a description in both languages and no name-de, the sets of its five parts in the library, every position inside its range as written, a css that is not refused - and its setup is complete and its own normalisation, with no note and no palette: the brand colour is the project\'s'
 		. ( $themeProblems === [] ? '' : ' - '. implode( ' | ', $themeProblems ) ), $shippedRaw !== [] && $themeProblems === [] );
-	check( '...and the first of them is the setup as it comes: the snapshot of the defaults - the framework as it is, which is why it has no css of its own',
-		Themes::setup( $shippedRaw[$shippedFirst] ) === Themes::snapshot( Setup::defaults( $library ) ) && Themes::css( $shippedRaw[$shippedFirst] ) === '' );
+	check( '...and the first of them is the setup as it comes: the snapshot of the defaults but for the palette - the framework as it is, which is why it has no css of its own',
+		Themes::setup( $shippedRaw[$shippedFirst] ) === array_diff_key( Themes::snapshot( Setup::defaults( $library ) ), [ 'colours' => true ] ) && Themes::css( $shippedRaw[$shippedFirst] ) === '' );
 
 	// The compile
 	$notes = [];
@@ -5223,7 +5270,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 		$status === 200 && $listedNone['theme'] === '' && $listedNone['css'] === '' && $listedNone['active'] === null
 		&& array_column( $listedNone['themes'], 'slug' ) === array_keys( $shippedFiles ) && array_column( $listedNone['themes'], 'name' ) === array_column( $shippedWords['de_DE'], 0 )
 		&& array_column( $listedNone['themes'], 'shipped' ) === array_fill( 0, count( $shippedFiles ), true ) && array_keys( $listedNone['themes'][0] ) === [ 'slug', 'name', 'description', 'shipped' ]
-		&& array_slice( array_keys( $listedNone ), array_search( 'width', array_keys( $listedNone ), true ), 6 ) === [ 'width', 'whitespace', 'theme', 'css', 'themes', 'active' ] );
+		&& array_slice( array_keys( $listedNone ), array_search( 'width', array_keys( $listedNone ), true ), 7 ) === [ 'width', 'whitespace', 'theme', 'css', 'running', 'themes', 'active' ] && $listedNone['running'] === '' );
 
 	$setupBytes = static fn(): string => is_file( $themeSetupFile ) === true ? (string) file_get_contents( $themeSetupFile ) : '';
 
@@ -5239,6 +5286,22 @@ $themesSection = static function( array &$appData, string $library, array $entry
 		$listedActive['theme'] === $shippedFirst && $listedActive['css'] === ".a { color: inherit; }\n"
 		&& $listedActive['active'] === [ 'slug' => $shippedFirst, 'name' => $shippedWords['de_DE'][$shippedFirst][0], 'description' => $shippedWords['de_DE'][$shippedFirst][1], 'shipped' => true, 'setup' => Themes::setup( $shippedOne ), 'css' => Themes::css( $shippedOne ) ]
 		&& $listedActive['active']['css'] !== $listedActive['css'] );
+
+	/*	The theme the website runs is the one of the last apply - the record that apply left in the setup, under the setup it applied - and not the theme of a draft that was saved
+		since: the screen tells the two apart, "active" for the one and "loaded, not applied" for the other. A record that is not what an apply writes is no theme	*/
+	$recorded = Setup::read( $appData, $library );
+	$runs = [];
+
+	foreach( [ [ 'setup' => [ 'theme' => 'older-theme' ] ], [ 'setup' => 'text' ], [ 'setup' => [ 'theme' => [ 'older-theme' ] ] ], [ 'setup' => [] ], [] ] as $record ) {
+		Setup::write( $appData, [ 'compiled' => $record ] + $recorded );
+		ninoWarnings();
+		$runs[] = [ callDesignAction( $appData, 'apiList' )[1]['running'] ?? null, ninoWarnings() ];
+	}
+
+	Setup::write( $appData, [ 'compiled' => [] ] + $recorded );
+
+	check( 'design/list says the theme the website runs - the theme under the setup the last apply recorded, which a draft saved since does not move - and none for a record that names no theme, in no shape a warning is raised for',
+		$listedActive['running'] === '' && $listedActive['theme'] === $shippedFirst && $runs === [ [ 'older-theme', [] ], [ '', [] ], [ '', [] ], [ '', [] ], [ '', [] ] ] );
 
 	$before = $setupBytes();
 	$refusals = [];
@@ -5274,6 +5337,8 @@ $themesSection = static function( array &$appData, string $library, array $entry
 		$status === 200 && array_keys( $loaded ) === [ 'slug', 'name', 'description', 'shipped', 'setup', 'css', 'missing', 'notes' ] && $loaded['slug'] === $shippedFirst && $loaded['name'] === $shippedWords['de_DE'][$shippedFirst][0]
 		&& $loaded['description'] === $shippedWords['de_DE'][$shippedFirst][1] && $loaded['shipped'] === true && $loaded['setup'] === Themes::setup( $shippedOne ) && $loaded['css'] === Themes::css( $shippedOne )
 		&& $loaded['missing'] === [] && $loaded['notes'] === [] );
+	check( '...and no palette: a theme the feature ships has none to take over, so what answers has no colours at all and the screen keeps the ones it has',
+		array_key_exists( 'colours', $loaded['setup'] ) === false && array_keys( $loaded['setup'] ) === $choosesShipped );
 	check( '...it writes nothing - not the setup, not a line of the log - and a slug that names no theme is a 404 with the code of it, whatever it is: not there, no slug, no string, a path',
 		$setupBytes() === $before && Admin::log( 'design/theme/load', [ 'slug' => $shippedFirst ] ) === ''
 		&& array_unique( array_map( static fn( array $post ): array => $codesOf( callDesignAction( $appData, 'apiThemeLoad', $post )[1] ), [ [ 'slug' => 'nowhere' ], [], [ 'slug' => [ $shippedFirst ] ], [ 'slug' => '../'. $shippedFirst ], [ 'slug' => ucfirst( $shippedFirst ) ] ] ), SORT_REGULAR ) === [ $noThemeError ]
@@ -5293,7 +5358,7 @@ $themesSection = static function( array &$appData, string $library, array $entry
 		$status === 200 && $inky['setup']['fonts']['title']['family'] === 'inter' && $inky['setup']['fonts']['text']['family'] === 'nowhere-sans' && $inky['setup']['fonts']['button']['family'] === 'inter'
 		&& $inky['setup']['fonts']['subtitle']['family'] === 'open-sans' && $inky['setup']['fonts']['code']['family'] === ''
 		&& $inky['missing'] === [ [ 'slug' => 'inter', 'name' => 'inter', 'inList' => false ], [ 'slug' => 'nowhere-sans', 'name' => 'nowhere-sans', 'inList' => false ] ]
-		&& $inky['setup']['parts']['content'] === $defaultSets['content'] && count( $inky['notes'] ) === 1 && str_contains( $inky['notes'][0], '"no-such-set"' ) === true );
+		&& $inky['setup']['parts']['content'] === $defaultSets['content'] && count( $inky['notes'] ) === 1 && ( $inky['notes'][0]['code'] ?? '' ) === 'design_set_missing' && ( $inky['notes'][0]['params'][1] ?? '' ) === 'no-such-set' );
 
 	\Nino\Filesystem::putFileContent( $appData, Webfonts::CACHE, [ 'fetched' => time(), 'url' => Webfonts::url( $appData ), 'families' => [ $entryInter ] ] );
 	$inkyListed = callDesignAction( $appData, 'apiThemeLoad', [ 'slug' => 'inky' ] )[1];
@@ -5508,9 +5573,22 @@ $themesSection = static function( array &$appData, string $library, array $entry
 	check( 'importing writes the theme of an export as a theme of the project under the slug of its name: the setup normalised against what the project has, the css, the name and the description, the lines in other languages kept, the presets none - and the families of the fonts as the file has them, as loading keeps them, so that a typeface that is not installed yet can still be offered - the answer is the slug and the list',
 		$status === 200 && array_keys( $imported ) === [ 'slug', 'themes' ] && $imported['slug'] === 'eingespielt' && $importedFile['name'] === 'Eingespielt' && $importedFile['name-de'] === 'Eingespielt DE'
 		&& $importedFile['description-de'] === $shippedOne['description-de'] && $importedFile['presets'] === [] && $importedFile['css'] === Themes::css( $shippedOne )
-		&& $importedFile['setup']['parts']['header'] === $defaultSets['header'] && $importedFile['setup']['fonts']['title']['family'] === 'inter' && array_keys( $importedFile['setup'] ) === $chooses
+		&& $importedFile['setup']['parts']['header'] === $defaultSets['header'] && $importedFile['setup']['fonts']['title']['family'] === 'inter' && array_keys( $importedFile['setup'] ) === $choosesShipped
 		&& $importedFile['setup']['parts']['content'] === Themes::setup( $shippedOne )['parts']['content'] && in_array( 'eingespielt', array_column( $imported['themes'], 'slug' ), true ) === true
 		&& $setupBytes() === $before && Admin::log( 'design/theme/import', [ 'json' => json_encode( $file ) ] ) === 'Import Design theme eingespielt' );
+
+	// A file that names colours keeps them as a theme of the project, normalised; one that names none keeps none - the rule is the file's and not the feature's
+	$colourFile = $file;
+	$colourFile['name'] = 'Eingespielt mit Farben';
+	$colourFile['setup']['colours'] = [ 'primary' => '#8b1d3f', 'harmony' => 2 ];
+	callDesignAction( $appData, 'apiThemeImport', [ 'json' => json_encode( $colourFile ) ] );
+	$colourImported = Themes::read( $appData, $library, 'eingespielt-mit-farben' ) ?? [];
+
+	check( '...a file that names colours is a theme of the project that keeps them, normalised, and one that names none is one that keeps none: an export of a theme the feature ships comes back without a palette',
+		array_key_exists( 'colours', $importedFile['setup'] ) === false && array_keys( $colourImported['setup'] ?? [] ) === $chooses
+		&& ( $colourImported['setup']['colours']['primary'] ?? '' ) === '#8b1d3f' && ( $colourImported['setup']['colours']['harmony'] ?? 0 ) === 2 && ( $colourImported['setup']['colours']['mode'] ?? '' ) === 'auto' );
+
+	Themes::remove( $appData, 'eingespielt-mit-farben' );
 
 	$before = $files();
 	$importErrors = [];
@@ -5551,6 +5629,25 @@ $themesSection = static function( array &$appData, string $library, array $entry
 	check( 'the nine codes a person can cause each have their sentence in both languages under /_admin/error/<code> - the %s of a parameter in design_taken and nowhere else - and they are the codes the actions answered above'
 		. ( $codeProblems === [] ? '' : ' - '. implode( ', ', $codeProblems ) ),
 		$codeProblems === [] && array_diff( array_unique( $answeredCodes ), $codeWords ) === [] && array_diff( $codeWords, array_unique( $answeredCodes ) ) === [] );
+	// The notes that carry a code are said the way a refusal is: their sentence is in both languages, with the %s of the params, as many as the sentence for a log has
+	$noteProblems = [];
+
+	foreach( Setup::NOTES as $code => $sentence )
+		foreach( $themeWords as $number => $words )
+			if( trim( (string) ( $words['[[/_admin/error/'. $code. ']]'] ?? '' ) ) === '' || substr_count( (string) $words['[[/_admin/error/'. $code. ']]'], '%s' ) !== substr_count( $sentence, '%s' ) )
+				$noteProblems[] = $code. ( $number === 0 ? ' de' : ' en' );
+
+	$noteShapes = [];
+
+	foreach( Setup::NOTES as $code => $sentence ) {
+		$made = Setup::note( $code, ...array_fill( 0, substr_count( $sentence, '%s' ), 'x' ) );
+
+		if( array_keys( $made ) !== [ 'error', 'code', 'params' ] || $made['code'] !== $code || $made['params'] !== array_fill( 0, substr_count( $sentence, '%s' ), 'x' ) || str_contains( $made['error'], '%s' ) === true )
+			$noteShapes[] = $code;
+	}
+
+	check( 'every note that carries a code has its sentence in both languages under /_admin/error/<code>, with as many %s as the English sentence for a log - and is made in the shape a refusal answers in: the sentence, the code, the params'
+		. ( $noteProblems === [] && $noteShapes === [] ? '' : ' - '. implode( ', ', array_merge( $noteProblems, $noteShapes ) ) ), $noteProblems === [] && $noteShapes === [] && Setup::NOTES !== [] );
 	check( 'a line of the log is one for each action that writes a theme, and none for what only reads; a slug that is none is not written as it came',
 		Admin::log( 'design/theme/save', [ 'slug' => "x\nforged line" ] ) === 'Save Design theme ' && Admin::log( 'design/theme/delete', [ 'slug' => [ 'x' ] ] ) === 'Delete Design theme '
 		&& Admin::log( 'design/theme/export', [ 'slug' => 'x' ] ) === '' && Admin::log( 'design/theme/load', [ 'slug' => 'x' ] ) === '' && Admin::log( 'design/list', [] ) === '' );
@@ -5686,6 +5783,18 @@ array_push( $wanted, 'typefaces/msg/installed', 'typefaces/msg/updated', 'typefa
 /*	The Theme tab names its three buttons of a row by a variable, which is no literal for the check below to find, and the word of a
 	copy is the server's: it names the theme a duplicate makes (see Admin::apiThemeDuplicate())	*/
 array_push( $wanted, 'theme/load', 'theme/duplicate', 'theme/delete', 'theme/copy' );
+
+/*	The dialog before an apply names a file by what it is for - the stylesheet, and the frame of each part that has one - and what happens
+	to it by the state it is in, both by a variable (see _fileWord() and _confirmFiles()): the states are those Compiler::ownership() answers,
+	a file that is not there, and one that would stay as it is	*/
+$wanted[] = 'confirm/file/look';
+
+foreach( Setup::PARTS as $part => $kind )
+	if( $kind === 'frame' )
+		$wanted[] = 'confirm/file/'. $part;
+
+foreach( [ 'missing', 'ours', 'edited', 'foreign', 'same' ] as $state )
+	$wanted[] = 'confirm/state/'. $state;
 
 preg_match( '/FACE_CATEGORIES\s*:\s*\[([^\]]*)\]/', (string) file_get_contents( __DIR__. '/../assets/admin.js' ), $chips );
 check( 'the chips of the Typefaces tab are an All and the categories the list accepts, in the order the list names them',
@@ -6048,12 +6157,28 @@ check( '...and the bar is a row of its own that wraps, with no fixed width in it
 	the rules are copies and this is what keeps them whole	*/
 check( 'the viewport switch has the look of the Builder\'s: a group of buttons .25rem apart, each an icon beside a gap of .35rem in a box of .2rem by .6rem with a line, rounded as the workbench rounds, flat and transparent - and the lit one in the blue',
 	$cssHas( '.design-viewports', [ 'display: flex;', 'gap: .25rem;' ] ) === true
-	&& $cssHas( '.design-viewport', [ 'display: inline-flex;', 'align-items: center;', 'gap: .35rem;', 'min-height: 0;', 'padding: .2rem .6rem;', 'border: 1px solid var(--editor-border);',
+	&& $cssHas( '.design-viewport', [ 'display: inline-flex;', 'align-items: center;', 'justify-content: center;', 'gap: .35rem;', 'padding: .2rem .6rem;', 'border: 1px solid var(--editor-border);',
 		'border-radius: var(--editor-radius-sm);', 'background: transparent;', 'box-shadow: none;', 'color: var(--editor-text-secondary);', 'font-size: .74rem;', 'cursor: pointer;' ] ) === true
 	&& $cssHas( '.design-viewport.is-active', [ 'border-color: var(--editor-blue);', 'background: var(--editor-blue-soft);', 'color: var(--editor-text);' ] ) === true );
-check( '...its icon is the icon of the rows, taking the colour of the button it stands on so that the lit one is lit - and the switch beside it is compact: no minimum height, no margin, no padding, no border, its words at the middle of the track',
+check( '...its icon is the icon of the rows, taking the colour of the button it stands on so that the lit one is lit - and the switch beside it is compact: no margin, no padding, no border, its words at the middle of the track',
 	$cssHas( '.nino-admin .design-viewport .design-icon', [ 'color: inherit;' ] ) === true
-	&& $cssHas( '.nino-admin .design-preview-follow', [ 'align-items: center;', 'min-height: 0;', 'margin: 0;', 'padding: 0;', 'border: 0;' ] ) === true );
+	&& $cssHas( '.nino-admin .design-preview-follow', [ 'align-items: center;', 'margin: 0;', 'padding: 0;', 'border: 0;' ] ) === true );
+
+/*	...and every control of the bar over the preview - the three devices and the reload, which are buttons of one class, and the switch that lets the frame follow - is a hit
+	area of 24px at least each way, and of 44px where the pointer is a finger (the workbench's own size for a control under it): a minimum of none, which took the workbench's
+	height off them for the sake of the look, leaves a box of what its icon asks for	*/
+preg_match_all( '/@media \(pointer: coarse\) \{((?:[^{}]|\{[^}]*\})*)\}/', $panelCss, $coarseBlocks );
+$coarseCss = ' '. implode( ' ', $coarseBlocks[1] );
+$pixels = static function( string $rule, string $property ): float {
+	return preg_match( '/(?:^| )'. $property. ': ([0-9.]+)px;/', $rule, $found ) === 1 ? (float) $found[1] : 0.0;
+};
+$coarseRule = static fn( string $selector ): string
+	=> preg_match( '/(?:^| )'. preg_quote( $selector, '/' ). ' \{ ([^}]*) \}/', $coarseCss, $found ) === 1 ? $found[1] : '';
+
+check( 'the controls of the bar over the preview are a hit area of 24px at least each way - the devices and the reload by class, the follow switch by height - and of 44px where the pointer is coarse',
+	$pixels( $cssRule( '.design-viewport' ), 'min-height' ) >= 24 && $pixels( $cssRule( '.design-viewport' ), 'min-width' ) >= 24
+	&& $pixels( $coarseRule( '.design-viewport' ), 'min-height' ) >= 44 && $pixels( $coarseRule( '.design-viewport' ), 'min-width' ) >= 44
+	&& $pixels( $cssRule( '.nino-admin .design-preview-follow' ), 'min-height' ) >= 24 && $pixels( $coarseRule( '.nino-admin .design-preview-follow' ), 'min-height' ) >= 44 );
 
 /*	The Theme tab: the list is rows, each the name over its description and at its far end the buttons that can be pressed on it,
 	which stand under the words where the room is short and always from 768px down; the row that makes a theme is a field and its

@@ -26,6 +26,7 @@ return [
 	'[[/_admin/design/theme/list/title]]'			=> 'Themes',
 	'[[/_admin/design/theme/shipped]]'				=> 'mitgeliefert',
 	'[[/_admin/design/theme/active]]'				=> 'aktiv',
+	'[[/_admin/design/theme/loaded]]'				=> 'geladen, nicht angewendet',
 	'[[/_admin/design/theme/load]]'					=> 'Laden',
 	'[[/_admin/design/theme/duplicate]]'			=> 'Duplizieren',
 	'[[/_admin/design/theme/delete]]'				=> 'Löschen',
@@ -225,12 +226,24 @@ return [
 	'[[/_admin/design/knob/components/labels/default]]'			=> 'Oben',
 	'[[/_admin/design/knob/components/labels/more]]'				=> 'Schwebend',
 
-	// Was die Rückfrage vor dem Anwenden sagt, eine Zeile je Tatsache – im Skript des Panels gebaut und mit Zeilenumbrüchen verbunden, deshalb trägt hier kein Wert einen
+	// Was der Dialog vor dem Anwenden sagt, eine Zeile je Tatsache in Worten – im Skript des Panels gebaut und mit Zeilenumbrüchen verbunden, deshalb trägt hier kein Wert einen.
+	// Die Dateien selbst, mit ihren Pfaden, stehen in den Details darunter
+	'[[/_admin/design/confirm/replaced]]'						=> 'Vorlagen, die es nicht mehr gibt: %s. Angewendet werden stattdessen: %s.',
 	'[[/_admin/design/confirm/apply]]'							=> 'Neu geschrieben werden: %s.',
 	'[[/_admin/design/confirm/foreign]]'							=> 'Nicht von Design geschrieben, aber ersetzt: %s.',
 	'[[/_admin/design/confirm/lost]]'							=> 'Steht in Deiner Datei, aber nicht in der neuen Variante: %s – füge es danach bei Bedarf von Hand wieder ein.',
-	'[[/_admin/design/confirm/copy]]'							=> 'Der bisherige Stand wird vorher in data/design-previous.php abgelegt.',
+	'[[/_admin/design/confirm/copy]]'							=> 'Der bisherige Stand bleibt als Vorversion erhalten.',
 	'[[/_admin/design/confirm/replaces]]'						=> 'Das ersetzt die Vorversion vom %s.',
+	'[[/_admin/design/confirm/yes]]'								=> 'Anwenden',
+	'[[/_admin/design/confirm/files]]'							=> 'Dateien',
+	'[[/_admin/design/confirm/file/look]]'						=> 'der Look',
+	'[[/_admin/design/confirm/file/header]]'						=> 'der Kopfbereich',
+	'[[/_admin/design/confirm/file/footer]]'						=> 'der Fußbereich',
+	'[[/_admin/design/confirm/state/missing]]'					=> 'wird angelegt',
+	'[[/_admin/design/confirm/state/ours]]'						=> 'wird ersetzt',
+	'[[/_admin/design/confirm/state/edited]]'					=> 'wurde von Hand geändert, wird ersetzt',
+	'[[/_admin/design/confirm/state/foreign]]'					=> 'ist nicht von Design, wird ersetzt',
+	'[[/_admin/design/confirm/state/same]]'						=> 'bleibt, wie sie ist',
 	'[[/_admin/design/confirm/restore]]'							=> 'Vorversion wiederherstellen? Das Setup der Vorversion wird mitgeladen, ungespeicherte Änderungen auf dem Bildschirm gehen dabei verloren. Der jetzige Stand tritt an ihre Stelle, Du kannst das also wieder rückgängig machen.',
 
 	// Der Titel des Knopfs, der die Vorversion wiederherstellt: Er nennt das Datum dieser Version
@@ -311,4 +324,8 @@ return [
 	'[[/_admin/error/design_shipped]]'	=> 'Ein mitgeliefertes Theme lässt sich nicht ändern oder löschen – dupliziere es.',
 	'[[/_admin/error/design_theme]]'	=> 'Dieses Theme gibt es nicht.',
 	'[[/_admin/error/design_file]]'		=> 'Das ist keine Theme-Datei dieses Features.',
+
+	// Was beim Lesen eines Setups ersetzt wurde, nach dem Code der Notiz und mit ihren Parametern (siehe Setup::NOTES): das Panel sagt eine Notiz so, wie es eine Ablehnung sagt
+	'[[/_admin/error/design_theme_missing]]'	=> 'Das Theme „%s“ gibt es nicht – es ist keines aktiv.',
+	'[[/_admin/error/design_set_missing]]'		=> '%s: „%s“ gibt es nicht – verwendet wird „%s“.',
 ];

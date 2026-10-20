@@ -200,6 +200,8 @@ function element( tag ) {
 	Object.defineProperty( el, 'firstChild', { get : function() { return el.children[0] || null } } );
 	// The box an element stands in, as the scaler of the frame asks for it: null where it is not mounted
 	Object.defineProperty( el, 'parentNode', { get : function() { return el.parent } } );
+	// The element after it in its parent, as a browser's insertBefore() takes it for a place: null for the last
+	Object.defineProperty( el, 'nextSibling', { get : function() { return el.parent === null ? null : ( el.parent.children[el.parent.children.indexOf( el ) + 1] || null ) } } );
 	el.classList = {
 		add				: function( name ) { el.classes[name] = true },
 		toggle		: function( name, on ) { if( on === true ) el.classes[name] = true; else delete el.classes[name] },
@@ -400,6 +402,7 @@ function listing( over ) {
 		// The Theme tab: the theme the stored setup was taken from and the css of its own, the themes there are - the shipped ones, then the project's - and the active one as its file holds it
 		theme 		: '',
 		css 			: '',
+		running 	: '',
 		themes 		: THEMES.map( function( theme ) { return Object.assign( {}, theme ) } ),
 		active 		: null,
 		motion 		: { effect : '', strength : '', speed : '' },
@@ -463,7 +466,7 @@ function listing( over ) {
  */
 function frameStage() {
 
-	const stage = { scrolls : [], asked : [], listeners : [], frames : [], reachable : true, scrollY : 100, clearance : 0, tops : { type : 700, content : 300, cards : 900, buttons : 1200, components : 1500, colours : 450, footer : 4000 } };
+	const stage = { scrolls : [], turned : [], asked : [], listeners : [], frames : [], reachable : true, scrollY : 100, clearance : 0, tops : { type : 700, content : 300, cards : 900, buttons : 1200, components : 1500, colours : 450, footer : 4000 } };
 
 	stage.style = element('style');
 	// The room main keeps at its top for the fixed header, which the header template of the page sets: none until a test says
@@ -474,7 +477,7 @@ function frameStage() {
 	stage.fonts = null;
 	stage.document = {
 		body 							: {},
-		documentElement 	: { scrollTop : 0 },
+		documentElement 	: { scrollTop : 0, scrollHeight : 4000, scrollWidth : 1000 },
 		querySelector			: function( selector ) { return selector === 'main' ? stage.main : null },
 		querySelectorAll	: function( selector ) { return selector === '.nino-vpa--visible' ? stage.animated : [] },
 		getElementById		: function( id ) {
@@ -485,6 +488,11 @@ function frameStage() {
 		},
 		defaultView : {
 			scrollTo : function( options ) { stage.scrolls.push( options ) },
+			// A turn of the wheel, handed on to the page: where the page stands and how big its window is are the test's
+			scrollBy : function( options ) { stage.turned.push( options ) },
+			scrollX : 0,
+			innerHeight : 600,
+			innerWidth : 1000,
 			// [ type, function ] of what the panel listens to, and the functions it asked an animation frame for
 			addEventListener : function( type, fn ) { stage.listeners.push( [ type, fn ] ) },
 			removeEventListener : function( type, fn ) { stage.listeners = stage.listeners.filter( function( one ) { return one[0] !== type || one[1] !== fn } ) },
@@ -565,10 +573,20 @@ function panel( over, shell ) {
 	form.id = 'design-form';
 	pane.appendChild( form );
 
+	/*	The workbench's own questions (Nino.adminUi.choiceDialog()): each is kept with the options it was asked with and the element it stands in -
+		drawn the way the kernel draws one: a body with a title, the text under the id its aria-describedby names, and the buttons - until a test
+		answers it. The ones that stand open are found by byId(), as a browser finds an element of the document	*/
+	const asks = [];
+
 	function byId( id ) {
 		if( id === 'design-form' )
 			return form;
-		return descendants( pane ).filter( function( el ) { return el.id === id } )[0] || null;
+		const inPane = descendants( pane ).filter( function( el ) { return el.id === id } )[0];
+		if( inPane !== undefined )
+			return inPane;
+		return asks.filter( function( ask ) { return ask.open === true } ).map( function( ask ) {
+			return descendants( ask.root ).filter( function( el ) { return el.id === id } )[0];
+		} ).filter( function( el ) { return el !== undefined } )[0] || null;
 	}
 
 	// What the frame shows: its own page, which the panel reaches into
@@ -781,6 +799,41 @@ function panel( over, shell ) {
 					},
 				};
 			},
+			/* One question at a time, as the kernel has it: a second while one stands is refused. Where the test says there is no <dialog> the
+			   question is a confirm() - OK for the primary choice, Cancel for the secondary one */
+			choiceDialog : function( options ) {
+				if( asks.some( function( ask ) { return ask.open === true } ) === true )
+					return false;
+				const root = element('dialog');
+				root.className = 'nino-admin-dialog';
+				const body = element('div');
+				body.className = 'nino-admin-dialog-body';
+				if( options.title ) {
+					const title = element('h2');
+					title.className = 'nino-admin-dialog-title';
+					title.textContent = options.title;
+					body.appendChild( title );
+				}
+				const text = element('p');
+				text.id = 'nino-admin-choice-text';
+				text.textContent = options.message;
+				body.appendChild( text );
+				const buttons = element('div');
+				buttons.className = 'nino-admin-dialog-actions';
+				const ask = { options : options, root : root, open : true, text : text, buttons : buttons,
+					choose : function( value ) { ask.open = false; options.onChoose( value ) } };
+				options.choices.forEach( function( choice ) {
+					const button = element('button');
+					button.className = 'nino-admin-btn-'+ choice.kind;
+					button.textContent = choice.label;
+					button.addEventListener( 'click', function() { ask.choose( choice.value ) } );
+					buttons.appendChild( button );
+				} );
+				body.appendChild( buttons );
+				root.appendChild( body );
+				asks.push( ask );
+				return true;
+			},
 			switchField	: function( options ) {
 				const label = element('label');
 				label.className = 'nino-admin-switch';
@@ -891,6 +944,11 @@ function panel( over, shell ) {
 	design._data	= ( shell || {} ).whole === true ? over : listing( over );
 	design._takeStored( design._data );
 	design._ready	= true;
+
+	// The tab the screen is drawn on: Global, which the sections of this test were written on - { tab : 'default' } leaves it to the panel, which opens on the Theme
+	if( ( shell || {} ).tab !== 'default' )
+		design._tab = ( shell || {} ).tab || 'global';
+
 	design._render();
 
 	// What the first drawing fitted - the stage takes its room as the screen is drawn - is told apart from what a test then does
@@ -909,6 +967,8 @@ function panel( over, shell ) {
 			return timers.filter( function( timer ) { return timer !== null && timer[1] === delay } );
 		},
 		confirms: confirms,
+		/** The questions of the workbench that were asked, in order: { options, root, open, text, buttons, choose( value ) } */
+		asks		: asks,
 		stage		: stage,
 		/** The Theme tab's dealings with the browser: the links clicked, the blobs made, the addresses made of them and revoked, and the readers a file was given to - and the body of the document, where a link stands while it is clicked */
 		docBody		: dc.body,
@@ -1071,10 +1131,19 @@ const tabs = strip === null ? [] : byTag( strip, 'button' );
 check( 'the strip has eight tabs - Theme, Global, Fonts, Typefaces, Content, Buttons, Components and Colours, in that order: the theme is the whole of the setup and stands first, the loader after the Fonts it lists its families in',
 	headed.design.TABS.join() === TABS.join() && tabs.map( function( tab ) { return tab.textContent } ).join() === 'Theme,Global,Fonts,Typefaces,Content,Buttons,Components,Colours'
 	&& TEXT['/_admin/design/tab/theme'] === 'Theme' );
-check( '...a tablist of tabs, the open one selected and the others not - the panel opens on Global, as it did, and the Theme before it is one click away; the frame goes to the top of the page for either',
+check( '...a tablist of tabs, the open one selected and the others not - the frame goes to the top of the page for the Theme tab as it does for Global',
 	strip !== null && strip.getAttribute('role') === 'tablist' && tabs.every( function( tab ) { return tab.getAttribute('role') === 'tab' } )
 	&& tabs.map( function( tab ) { return tab.getAttribute('aria-selected') } ).join() === 'false,true,false,false,false,false,false,false'
 	&& headed.design._tab === 'global' && headed.design.ANCHORS.theme === 'global' && headed.design.ANCHORS.theme === headed.design.ANCHORS.global );
+
+/*	Left to itself the panel opens on the Theme tab: the first thing a person does is pick a theme. Every other screen of this test is drawn on Global, which
+	its sections were written on (see panel())	*/
+const defaulted = panel( {}, { tab : 'default' } );
+const defaultedStrip = defaulted.headStrips()[0];
+
+check( 'the panel opens on the Theme tab - the one selected in the strip and the one drawn in the column: its cards, and none of the frames the Global tab has',
+	defaulted.design._tab === 'theme' && byTag( defaultedStrip, 'button' ).map( function( tab ) { return tab.getAttribute('aria-selected') } ).join() === 'true,false,false,false,false,false,false,false'
+	&& defaulted.byId('design-themes') !== null && defaulted.byId('design-theme-current') !== null && defaulted.byId('design-set-header') === null );
 check( 'the screen draws no heading of its own - the head names the panel',
 	byTag( headed.form, 'h1' ).concat( byTag( headed.form, 'h2' ), byTag( headed.form, 'h3' ) ).length === 0 );
 check( 'the strip is handed to the pane\'s head and stands right after the name, not over the column',
@@ -1174,6 +1243,40 @@ check( 'the frame stands in the preview and nothing stands under it: no summary 
 	&& byClass( previewBox, 'design-preview-sticky' )[0].children.length === 2 && hasClass( byClass( previewBox, 'design-preview-sticky' )[0].children[1], 'design-stage' ) );
 check( '...the frame a sandbox that lets the page run and be reached by the panel, and no more',
 	column.byId('design-frame').getAttribute('sandbox') === 'allow-scripts allow-same-origin' );
+check( '...and the page in it is a picture, not a page to use: the frame is inert and out of the tab order - a walk of the keyboard would cross every link of the specimen before it reached the bar - and its title, which names what it shows, stays',
+	column.byId('design-frame').getAttribute('inert') === '' && column.byId('design-frame').getAttribute('tabindex') === '-1'
+	&& column.byId('design-frame').title === TEXT['/_admin/design/label/preview'] && column.byId('design-frame').title !== '' );
+
+/*	An inert frame lets the pointer through to the stage under it, so the wheel is turned on the page in the frame by the panel: by the unit the wheel counts in
+	- pixels, lines of 16, pages of the window - and only while the page can go that way. At its end, or at its top, the wheel is left alone and goes on to the panel,
+	as it did when the frame took it itself	*/
+const wheeled = function( screen, delta ) {
+	const event = Object.assign( { deltaX : 0, deltaY : 0, deltaMode : 0, stopped : false, preventDefault : function() { event.stopped = true } }, delta );
+	( byClass( screen.form, 'design-stage' )[0].listeners.wheel || [] ).forEach( function( fn ) { fn( event ) } );
+	return event;
+};
+const turning = panel();
+const turnsOf = function() { return JSON.stringify( turning.stage.turned.splice( 0 ) ) };
+const pixels = wheeled( turning, { deltaY : 120 } );
+
+check( 'a turn of the wheel over the preview is turned on the page in the frame - and taken: the panel does not scroll as well',
+	turnsOf() === JSON.stringify( [ { top : 120, left : 0, behavior : 'instant' } ] ) && pixels.stopped === true );
+wheeled( turning, { deltaY : 3, deltaMode : 1 } );
+wheeled( turning, { deltaY : 1, deltaMode : 2 } );
+check( '...by lines of 16 pixels and by pages of the window - the window of the page, 600 pixels high here',
+	turnsOf() === JSON.stringify( [ { top : 48, left : 0, behavior : 'instant' }, { top : 600, left : 0, behavior : 'instant' } ] ) );
+wheeled( turning, { deltaX : -40 } );
+check( '...across as well as down, and not across where the page is at its left edge',
+	turnsOf() === '[]' );
+turning.stage.scrollY = 3400;
+const atEnd = wheeled( turning, { deltaY : 100 } );
+turning.stage.scrollY = 0;
+const atTop = wheeled( turning, { deltaY : -100 } );
+check( 'at the end of the page the wheel down is left alone, and so is the wheel up at its top - it goes on to the panel, where it did when the frame took it itself',
+	turnsOf() === '[]' && atEnd.stopped === false && atTop.stopped === false );
+turning.stage.scrollY = 100;
+turning.stage.reachable = false;
+check( '...and a frame that cannot be reached is not turned and raises nothing', threw( function() { wheeled( turning, { deltaY : 100 } ) } ) === false && turnsOf() === '[]' );
 
 /*	What the panel says stands in the action bar, before the buttons: the line - a paragraph the
 	workbench's bar takes for its status line, a polite live region - and beside it a chip with the
@@ -1236,6 +1339,30 @@ check( 'what the server dropped or replaced on the way is told at the top of the
 	byClass( told.byId('design-controls'), 'nino-admin-error' ).map( function( line ) { return line.textContent } ).join() === 'there is no part "nowhere" - dropped'
 	&& told.byId('design-controls').children.indexOf( byClass( told.byId('design-controls'), 'nino-admin-error' )[0] ) === 0
 	&& told.byId('design-controls').children[1] === told.body() );
+
+/*	A note that carries a code is said in the words of the workbench, as a refusal is: the sentence of its code with the params in it, the part and the template that
+	stands in its place by the names the screen has for them - and a note that is a sentence is the sentence. What the screen reads again - a theme that is loaded, a draft
+	that is reset - is listed anew: the notes are those of what was read	*/
+const NOTE_THEME = { error : 'the theme "magazine" is not there - none is active', code : 'design_theme_missing', params : [ 'magazine' ] };
+const noteSet = function( part, wanted, used ) {
+	return { error : '"'+ part+ '" names the set "'+ wanted+ '", which is not in the library - using "'+ used+ '"', code : 'design_set_missing', params : [ part, wanted, used ] };
+};
+const noteLines = function( screen ) {
+	return byClass( screen.byId('design-controls'), 'nino-admin-error' ).filter( function( line ) { return line.parent === screen.byId('design-controls') } ).map( function( line ) { return line.textContent } );
+};
+const codedNotes = panel( { notes : [ NOTE_THEME, noteSet( 'header', 'v9', 'first' ), noteSet( 'content', 'v3', 'second' ), 'there is no part "nowhere" - dropped' ] } );
+
+check( 'a note that carries a code is said in the words of the panel - the sentence of the code with its params in it, the part and the template that stands in by the names the screen has for them - and a note that is a sentence is the sentence',
+	JSON.stringify( noteLines( codedNotes ) ) === JSON.stringify( [
+		say( '/_admin/error/design_theme_missing', 'magazine' ),
+		say( '/_admin/error/design_set_missing', TEXT['/_admin/design/part/header'], 'v9', 'Plain bar' ),
+		say( '/_admin/error/design_set_missing', TEXT['/_admin/design/part/content'], 'v3', 'Box' ),
+		'there is no part "nowhere" - dropped',
+	] ) && noteLines( codedNotes ).every( function( line ) { return line.indexOf('%s') === -1 && line.indexOf('design_') === -1 } ) );
+check( '...as many lines as the notes, each over the tab and under the strip, as the one that is a sentence was',
+	byClass( codedNotes.byId('design-controls'), 'nino-admin-error' ).length === 4 && codedNotes.byId('design-controls').children[4] === codedNotes.body() );
+check( '...and a note that is a sentence is said as it is',
+	codedNotes.design._noteText( 'a sentence' ) === 'a sentence' );
 
 console.log('');
 
@@ -4188,19 +4315,24 @@ console.log('');
 
 // --- Applying asks first ---------------------------------------------------------
 //
-// A draft is not a website. Two buttons, and a confirmation before anything is
-// written - built from what design/plan says, so it names the files, the ones
-// that are not Design's and the shortcodes a frame would lose. What was done is
-// said in the line of the action bar, and the chip beside it is drawn again
+// A draft is not a website. Two buttons, and a question before anything is
+// written - the workbench's own dialog, built from what design/plan says: it says
+// in words what is written, which of it is not Design's and which shortcodes a
+// frame would lose, and the paths of the files stand in a <details> under it.
+// What was done is said in the line of the action bar, and the chip beside it is
+// drawn again
 
 console.log( 'Applying' );
 
 /** design/plan's answer for a project the wizard just delivered, with [consent-settings] added to the footer by hand */
 const delivered = [
-	{ target : '/assets/theme.css', exists : true, state : 'foreign', changes : true, lost : [] },
-	{ target : '/templates/frame-header.tpl', exists : true, state : 'foreign', changes : true, lost : [] },
-	{ target : '/templates/frame-footer.tpl', exists : true, state : 'foreign', changes : true, lost : [ '[consent-settings]' ] },
+	{ target : '/assets/theme.css', part : '', exists : true, state : 'foreign', changes : true, lost : [] },
+	{ target : '/templates/frame-header.tpl', part : 'header', exists : true, state : 'foreign', changes : true, lost : [] },
+	{ target : '/templates/frame-footer.tpl', part : 'footer', exists : true, state : 'foreign', changes : true, lost : [ '[consent-settings]' ] },
 ];
+
+/** The words of a file in a dialog before an apply: the one of its part, the stylesheet being the look */
+const fileWord = function( part ) { return TEXT['/_admin/design/confirm/file/'+ ( part || 'look' )] };
 
 /** The requests a click on "Apply to website" sends, in order */
 function endpoints( screen ) {
@@ -4228,14 +4360,37 @@ check( '...then asks what would happen to each file', JSON.stringify( endpoints(
 
 asking.answer( 200, { files : delivered } );
 
-check( 'the confirmation names the three files, which of them are not Design\'s, and the shortcode a frame would lose',
-	asking.confirms.length === 1
-	&& asking.confirms[0].indexOf('assets/theme.css, templates/frame-header.tpl, templates/frame-footer.tpl') !== -1
-	&& asking.confirms[0].indexOf('Not written by Design, and replaced: assets/theme.css') !== -1
-	&& asking.confirms[0].indexOf('[consent-settings]') !== -1 );
-check( '...says the present state is kept first, one fact to a line',
-	asking.confirms[0].split('\n').length === 4 && asking.confirms[0].indexOf( TEXT['/_admin/design/confirm/copy'] ) !== -1
-	&& asking.confirms[0].indexOf('previous version from') === -1 );
+const question = asking.asks[0];
+const lines = question === undefined ? [] : question.options.message.split('\n');
+
+check( 'the question is the workbench\'s own dialog and no confirm() of the browser: titled by the button that asked, with the choice that applies for the primary one and the one that does not for the secondary',
+	asking.confirms.length === 0 && asking.asks.length === 1 && question.options.title === TEXT['/_admin/design/label/apply']
+	&& question.options.choices.map( function( choice ) { return choice.value+ ':'+ choice.kind } ).join() === 'apply:primary,cancel:secondary'
+	&& question.options.choices[0].label === TEXT['/_admin/design/confirm/yes'] && typeof question.options.onChoose === 'function' );
+check( '...it names the three files by what they are for - the look, the header, the footer -, which of them are not Design\'s, and the shortcode a frame would lose: in words, with no path in the text',
+	lines.indexOf( say( '/_admin/design/confirm/apply', [ fileWord( '' ), fileWord( 'header' ), fileWord( 'footer' ) ].join(', ') ) ) !== -1
+	&& lines.indexOf( say( '/_admin/design/confirm/foreign', [ fileWord( '' ), fileWord( 'header' ), fileWord( 'footer' ) ].join(', ') ) ) !== -1
+	&& lines.indexOf( say( '/_admin/design/confirm/lost', '[consent-settings]' ) ) !== -1
+	&& /assets\/|templates\/|\.css|\.tpl|design-previous/.test( question.options.message ) === false );
+check( '...says the present state is kept first, one fact to a line, and no word about a version the project does not have',
+	lines.length === 4 && lines.indexOf( TEXT['/_admin/design/confirm/copy'] ) !== -1 && question.options.message.indexOf( TEXT['/_admin/design/confirm/replaces'].split('%s')[0] ) === -1 );
+
+/*	The paths are in a <details> that the dialog is given after it has drawn its text, behind it and before the buttons: closed, a summary, and a line for each file - the path
+	and what happens to it, in words	*/
+const detail = question.text.nextSibling;
+const detailLines = byTag( detail, 'li' ).map( function( item ) { return [ byTag( item, 'code' )[0].textContent, byClass( item, 'design-confirm-state' )[0].textContent.trim() ] } );
+
+check( 'the paths of the files are in a closed <details> under the text and before the buttons: its summary and a line for each file - the path, as a project knows it, and what happens to the file in words',
+	detail !== null && detail.tagName === 'DETAILS' && hasClass( detail, 'design-confirm-files' ) && detail.getAttribute('open') === null && byTag( detail, 'summary' )[0].textContent === TEXT['/_admin/design/confirm/files']
+	&& question.text.parent.children.indexOf( detail ) === question.text.parent.children.indexOf( question.buttons ) - 1
+	&& JSON.stringify( detailLines ) === JSON.stringify( [
+		[ 'assets/theme.css', TEXT['/_admin/design/confirm/state/foreign'] ],
+		[ 'templates/frame-header.tpl', TEXT['/_admin/design/confirm/state/foreign'] ],
+		[ 'templates/frame-footer.tpl', TEXT['/_admin/design/confirm/state/foreign'] ],
+	] ) && hasClass( question.text, 'design-confirm-text' ) );
+
+question.choose('apply');
+
 check( '...and only then is the apply sent, with force because a file is not Design\'s',
 	JSON.stringify( endpoints( asking ) ) === JSON.stringify( [ 'apply' ] ) && asking.requests[0].payload.force === true );
 
@@ -4250,48 +4405,89 @@ check( '...in the line of the bar, the whole of it its title, and the chip is dr
 
 // Saying no leaves the draft saved and the website alone
 const declined = panel( {} );
-declined.willConfirm( false );
 declined.byId('design-apply').fire('click');
 declined.answer( 200, {} );
 declined.answer( 200, { files : delivered } );
+declined.asks[0].choose('cancel');
 
-check( 'no in the confirmation sends no apply - it reloads the panel',
-	JSON.stringify( endpoints( declined ) ) === JSON.stringify( [ 'list' ] ) && declined.confirms.length === 1 );
+check( 'no in the dialog sends no apply - it reloads the panel',
+	JSON.stringify( endpoints( declined ) ) === JSON.stringify( [ 'list' ] ) && declined.asks.length === 1 && declined.confirms.length === 0 );
 
 declined.answer( 200, listing( {} ) );
 
 check( '...and says the draft is saved and not applied, in the line of the bar', ( declined.byId('design-msg') || {} ).textContent === TEXT['/_admin/design/msg/cancelled']
 	&& declined.line().parent === declined.bar() && declined.line().title === TEXT['/_admin/design/msg/cancelled'] );
+check( '...and the focus is on the button again: the screen was drawn anew from the answer, and the button that asked is gone with the old one - the dialog gave the focus back to it while it was switched off',
+	focused === declined.byId('design-apply') && focused !== null );
 
 // Files that are all Design's: no force, nothing replaced, nothing lost
 const ours = panel( { previous : { at : '2026-09-02T08:30:00+00:00', files : [ '/assets/theme.css' ] } } );
 ours.byId('design-apply').fire('click');
 ours.answer( 200, {} );
 ours.answer( 200, { files : [
-	{ target : '/assets/theme.css', exists : true, state : 'ours', changes : true, lost : [] },
-	{ target : '/templates/frame-header.tpl', exists : true, state : 'ours', changes : false, lost : [] },
-	{ target : '/templates/frame-footer.tpl', exists : true, state : 'ours', changes : false, lost : [] },
+	{ target : '/assets/theme.css', part : '', exists : true, state : 'ours', changes : true, lost : [] },
+	{ target : '/templates/frame-header.tpl', part : 'header', exists : true, state : 'ours', changes : false, lost : [] },
+	{ target : '/templates/frame-footer.tpl', part : 'footer', exists : true, state : 'ours', changes : false, lost : [] },
 ] } );
+const oursLines = ours.asks[0].options.message.split('\n');
+const oursDetail = byTag( ours.asks[0].text.nextSibling, 'li' ).map( function( item ) { return byClass( item, 'design-confirm-state' )[0].textContent.trim() } );
+ours.asks[0].choose('apply');
 
-check( 'with every file Design\'s the apply is sent without force',
+check( 'with every file Design\'s the apply is sent without force, and nothing is said of files that are not Design\'s',
 	JSON.stringify( endpoints( ours ) ) === JSON.stringify( [ 'apply' ] ) && ours.requests[0].payload.force === false
-	&& ours.confirms[0].indexOf('Not written by Design') === -1 );
-check( '...and a version that is about to be replaced is named by its date',
-	ours.confirms[0].indexOf('That replaces the previous version from 2026-09-02 08:30.') !== -1 );
+	&& oursLines.some( function( line ) { return line.indexOf( TEXT['/_admin/design/confirm/foreign'].split('%s')[0] ) === 0 } ) === false );
+check( '...a version that is about to be replaced is named by its date, and the details say of each file what happens to it: the one that changes is replaced, the ones that stay are as they are',
+	oursLines.indexOf( say( '/_admin/design/confirm/replaces', '2026-09-02 08:30' ) ) !== -1
+	&& JSON.stringify( oursDetail ) === JSON.stringify( [ TEXT['/_admin/design/confirm/state/ours'], TEXT['/_admin/design/confirm/state/same'], TEXT['/_admin/design/confirm/state/same'] ] ) );
 
 // A frame somebody edited in beside a stylesheet that is Design's: the dead end
 const edited = panel( {} );
 edited.byId('design-apply').fire('click');
 edited.answer( 200, {} );
 edited.answer( 200, { files : [
-	{ target : '/assets/theme.css', exists : true, state : 'ours', changes : true, lost : [] },
-	{ target : '/templates/frame-header.tpl', exists : true, state : 'ours', changes : true, lost : [] },
-	{ target : '/templates/frame-footer.tpl', exists : true, state : 'edited', changes : true, lost : [] },
+	{ target : '/assets/theme.css', part : '', exists : true, state : 'ours', changes : true, lost : [] },
+	{ target : '/templates/frame-header.tpl', part : 'header', exists : true, state : 'ours', changes : true, lost : [] },
+	{ target : '/templates/frame-footer.tpl', part : 'footer', exists : true, state : 'edited', changes : true, lost : [] },
 ] } );
+const editedLines = edited.asks[0].options.message.split('\n');
+edited.asks[0].choose('apply');
 
-check( 'a frame that was only edited gets force too - the refusal has something to answer to now',
+check( 'a frame that was only edited gets force too - the refusal has something to answer to now - and the dialog says which: by what it is for, and in the details as edited by hand',
 	JSON.stringify( endpoints( edited ) ) === JSON.stringify( [ 'apply' ] ) && edited.requests[0].payload.force === true
-	&& edited.confirms[0].indexOf('Not written by Design, and replaced: templates/frame-footer.tpl') !== -1 );
+	&& editedLines.indexOf( say( '/_admin/design/confirm/foreign', fileWord( 'footer' ) ) ) !== -1 );
+
+/*	What reading the setup replaced is said once more in the dialog, in the words the notes use - the templates in one line, those that were not there and those that stand
+	in their place, and the theme -, as far as it is still so of the draft: a template chosen since, or a theme named since, is no longer one the dialog has to say	*/
+const replacedTemplates = function( over, before ) {
+	const screen = panel( Object.assign( { notes : [ NOTE_THEME, noteSet( 'header', 'v9', 'first' ), noteSet( 'footer', 'v2', 'first' ) ] }, over || {} ) );
+	if( typeof before === 'function' )
+		before( screen );
+	screen.byId('design-apply').fire('click');
+	screen.answer( 200, {} );
+	screen.answer( 200, { files : delivered } );
+	return screen.asks[0].options.message.split('\n');
+};
+const replacedFirst = replacedTemplates();
+
+check( 'where reading the setup replaced a theme and templates the dialog says it first: the templates in one line - those that were not there, then those that stand in their place, by the names the screen has for them, each in quotes since a name carries commas of its own - and the theme in the words of its note',
+	replacedFirst[0] === say( '/_admin/design/confirm/replaced', '"v9", "v2"', '"Plain bar", "Plain footer"' ) && replacedFirst[1] === say( '/_admin/error/design_theme_missing', 'magazine' )
+	&& replacedFirst.length === 6 && replacedFirst[2] === say( '/_admin/design/confirm/apply', [ fileWord( '' ), fileWord( 'header' ), fileWord( 'footer' ) ].join(', ') ) );
+
+const movedOn = replacedTemplates( {}, function( screen ) { screen.tab('Global'); choose( screen.byId('design-set-header'), 'second' ) } );
+const themedSince = replacedTemplates( { theme : 'mein-theme' } );
+
+check( '...and a template that was chosen since is not said - the draft has moved past the note - nor is a theme that is named since: the dialog says what is so now',
+	movedOn[0] === say( '/_admin/design/confirm/replaced', '"v2"', '"Plain footer"' ) && movedOn[1] === say( '/_admin/error/design_theme_missing', 'magazine' ) && movedOn.length === 6
+	&& themedSince[0] === say( '/_admin/design/confirm/replaced', '"v9", "v2"', '"Plain bar", "Plain footer"' ) && themedSince.indexOf( say( '/_admin/error/design_theme_missing', 'magazine' ) ) === -1 && themedSince.length === 5
+	&& replacedTemplates( { notes : [] } ).length === 4 && replacedTemplates( { notes : [ 'there is no part "nowhere" - dropped' ] } ).length === 4 );
+
+const twice = panel();
+let twiceAnswer = null;
+twice.design._askApply( delivered, function() {} );
+twice.design._askApply( delivered, function( yes ) { twiceAnswer = yes } );
+
+check( 'a question that cannot be asked - the workbench has one standing - is answered no: nothing is sent and no second dialog is drawn',
+	twiceAnswer === false && twice.asks.length === 1 && twice.requests.length === 0 );
 
 // "Save draft" asks nothing
 const drafting = panel( {} );
@@ -4549,9 +4745,9 @@ function previewed( css, document ) {
 const ownCss = ".typed { margin: 0 }\n";
 const own = activeOf( 'mein-theme', 'My theme', 'The theme of this project', false, ownCss );
 
-/** A screen on the Theme tab, the project's own theme the active one */
+/** A screen on the Theme tab, the project's own theme the active one - the one the website runs as well, unless a test says another */
 function themed( over ) {
-	const screen = panel( Object.assign( { theme : 'mein-theme', css : ownCss, active : own }, over || {} ) );
+	const screen = panel( Object.assign( { theme : 'mein-theme', running : 'mein-theme', css : ownCss, active : own }, over || {} ) );
 	screen.tab('Theme');
 	return screen;
 }
@@ -4612,7 +4808,7 @@ check( 'the active theme is a head with its name, under it its two fields - the 
 	&& byTag( drawn.byId('design-theme-name').parent, 'small' ).length === 0
 	&& drawn.byId('design-theme-save').textContent === 'Save theme' && hasClass( drawn.byId('design-theme-save'), 'nino-admin-btn-primary' ) && drawn.byId('design-theme-export').textContent === 'Export' );
 
-const shippedActive = themed( { theme : 'magazine', active : activeOf( 'magazine', 'Magazine', 'Lifted cards and a drop cap', true, '' ) } );
+const shippedActive = themed( { theme : 'magazine', running : 'magazine', active : activeOf( 'magazine', 'Magazine', 'Lifted cards and a drop cap', true, '' ) } );
 
 check( '...a shipped theme is shown as it is and cannot be saved into: its name and description are read-only with the sentence that says why under the name, there is no button to save it - it can still be taken out as a file',
 	shippedActive.byId('design-theme-name').disabled === true && shippedActive.byId('design-theme-description').disabled === true
@@ -4834,6 +5030,86 @@ plainLoad.answer( 200, themeLoad( 'nino', snapshotOf( listing() ), [] ) );
 check( 'a theme that names nothing the project lacks is taken over without a question, the bar saying only that it is loaded - and quietly',
 	plainLoad.confirms.length === 0 && plainLoad.requests.length === 0 && plainLoad.design._edit.theme === 'nino' && plainLoad.line().textContent === say( '/_admin/design/theme/msg/loaded', 'Nino' ) && plainLoad.line().className === ''
 	&& plainLoad.design._isDirty() === true && plainLoad.byId('design-theme-changed') === null );
+
+/*	A brand colour is the project's. A theme that names no colours - every theme the feature ships - is taken over with the colours the screen has, and the
+	compare of the chip "changed" leaves the palette out where the theme has none: the colours of the screen are no change of a theme that says nothing of them	*/
+const brandOf = function( screen ) { return screen.design._edit.colours.primary };
+const withoutColours = function( setup ) {
+	const copy = JSON.parse( JSON.stringify( setup ) );
+	delete copy.colours;
+	return copy;
+};
+const keeping = themed( { colours : Object.assign( {}, listing().colours, { primary : '#b5562a' } ) } );
+keeping.byId('design-theme-load-magazine').fire('click');
+keeping.answer( 200, themeLoad( 'magazine', withoutColours( themeSetup() ), [] ) );
+
+check( 'a theme that names no colours is taken over with the colours the screen has - the brand colour is the project\'s - and with everything else the theme chooses',
+	brandOf( keeping ) === '#b5562a' && keeping.design._edit.colours.mode === listing().colours.mode && keeping.design._edit.theme === 'magazine'
+	&& keeping.design._edit.parts.header === 'second' && keeping.design._edit.parts.content === 'third' && keeping.design._edit.size === -1 && keeping.design._edit.knobs.content['card-space'] === 1 );
+check( '...the record of the theme the chip compares with has no colours either, so the screen is the theme: no chip "changed" - a colour moved afterwards is no change of it, and a knob moved is',
+	Object.prototype.hasOwnProperty.call( keeping.design._active.setup, 'colours' ) === false && keeping.byId('design-theme-changed') === null && keeping.design._themeChanged() === false
+	&& ( keeping.design._edit.colours.primary = '#112233', keeping.design._themeChanged() ) === false
+	&& ( keeping.design._edit.size = 1, keeping.design._themeChanged() ) === true );
+
+const adopting = themed( { colours : Object.assign( {}, listing().colours, { primary : '#b5562a' } ) } );
+const colourful = themeSetup();
+colourful.colours = Object.assign( {}, colourful.colours, { primary : '#2e7d32' } );
+adopting.byId('design-theme-load-magazine').fire('click');
+adopting.answer( 200, themeLoad( 'magazine', colourful, [] ) );
+
+check( 'a theme that names colours - one of the project, written from the screen with them - takes them over, and its record has them: the compare reads the palette again',
+	brandOf( adopting ) === '#2e7d32' && adopting.design._active.setup.colours.primary === '#2e7d32' && adopting.design._themeChanged() === false
+	&& ( adopting.design._edit.colours.primary = '#112233', adopting.design._themeChanged() ) === true );
+
+/*	The chips of a row. "Active" is the theme the website runs - the one of the last apply -, and a theme the screen was taken from that the website does not run says
+	so: loaded, not applied. The theme that is both is told once, as the one the website runs	*/
+const chipsOf = function( screen, slug ) {
+	return byClass( themeRow( screen, slug ), 'nino-admin-badge' ).filter( function( chip ) { return hasClass( chip, 'design-theme-shipped' ) === false } ).map( function( chip ) { return chip.textContent } );
+};
+const running = themed();
+const otherRuns = themed( { running : 'nino' } );
+const neverApplied = themed( { running : '' } );
+const loadedOne = themed();
+loadedOne.byId('design-theme-load-magazine').fire('click');
+loadedOne.answer( 200, themeLoad( 'magazine', themeSetup(), [] ) );
+
+check( 'the chip "active" is on the theme the website runs - the draft of it, where the draft is that theme, and the one the last apply was made from where it is another - and on no other',
+	chipsOf( running, 'mein-theme' ).join() === TEXT['/_admin/design/theme/active'] && byClass( running.form, 'design-theme-loaded' ).length === 0 && byClass( running.form, 'design-theme-active' ).length === 1
+	&& chipsOf( otherRuns, 'nino' ).join() === TEXT['/_admin/design/theme/active'] && byClass( otherRuns.form, 'design-theme-active' ).length === 1
+	&& byClass( neverApplied.form, 'design-theme-active' ).length === 0 );
+check( '...a theme the screen was taken from that the website does not run says that it is loaded and not applied - the chip of a draft is a warning, "active" is the other - where one is none the website runs, or another',
+	chipsOf( otherRuns, 'mein-theme' ).join() === TEXT['/_admin/design/theme/loaded'] && chipsOf( neverApplied, 'mein-theme' ).join() === TEXT['/_admin/design/theme/loaded']
+	&& byClass( otherRuns.form, 'design-theme-loaded' ).length === 1 && byClass( otherRuns.form, 'design-theme-loaded' )[0].dataset.state === 'warn'
+	&& hasClass( byClass( otherRuns.form, 'design-theme-loaded' )[0], 'nino-admin-badge' ) && TEXT['/_admin/design/theme/loaded'] !== TEXT['/_admin/design/theme/active'] );
+check( 'a theme that was just loaded is not the one the website runs, and says so: the chip of the one that is loaded is "loaded, not applied", the one the website runs keeps its "active" - and the row of the draft is the one marked as current',
+	chipsOf( loadedOne, 'magazine' ).join() === TEXT['/_admin/design/theme/loaded'] && chipsOf( loadedOne, 'mein-theme' ).join() === TEXT['/_admin/design/theme/active']
+	&& byClass( loadedOne.form, 'design-theme-active' ).length === 1 && byClass( loadedOne.form, 'design-theme-loaded' ).length === 1
+	&& themeRow( loadedOne, 'magazine' ).getAttribute('aria-current') === 'true' && themeRow( loadedOne, 'mein-theme' ).getAttribute('aria-current') === null );
+
+/*	What reading a theme replaced is listed over the tab, instead of what was listed before; the way back lists the notes of the stored setup again. The bar says that the theme is loaded, and no more	*/
+const rereading = themed( { notes : [ NOTE_THEME ] } );
+
+check( 'the notes of the stored setup are listed over the tab',
+	JSON.stringify( noteLines( rereading ) ) === JSON.stringify( [ say( '/_admin/error/design_theme_missing', 'magazine' ) ] ) );
+
+rereading.byId('design-theme-load-magazine').fire('click');
+rereading.answer( 200, Object.assign( themeLoad( 'magazine', themeSetup(), [] ), { notes : [ noteSet( 'header', 'v9', 'second' ) ] } ) );
+
+check( 'a theme that is loaded replaces them with the notes of what was read of it - and the bar says that it is loaded, quietly: the notes are over the tab, not in the line',
+	JSON.stringify( noteLines( rereading ) ) === JSON.stringify( [ say( '/_admin/error/design_set_missing', TEXT['/_admin/design/part/header'], 'v9', 'Centred' ) ] )
+	&& rereading.line().textContent === say( '/_admin/design/theme/msg/loaded', 'Magazine' ) && rereading.line().className === '' );
+
+rereading.byId('design-reset').fire('click');
+
+check( '...and the way back lists the notes of the stored setup again, which is what the screen is then',
+	JSON.stringify( noteLines( rereading ) ) === JSON.stringify( [ say( '/_admin/error/design_theme_missing', 'magazine' ) ] ) );
+
+const cleaning = themed( { notes : [ NOTE_THEME, noteSet( 'header', 'v9', 'first' ) ] } );
+cleaning.byId('design-theme-load-magazine').fire('click');
+cleaning.answer( 200, themeLoad( 'magazine', themeSetup(), [] ) );
+
+check( 'a theme that had nothing replaced lists nothing: the notes of the screen it replaces are gone, over the tab as well as after another tab is opened',
+	noteLines( cleaning ).length === 0 && ( cleaning.tab('Global'), noteLines( cleaning ).length === 0 ) && ( cleaning.tab('Theme'), noteLines( cleaning ).length === 0 ) );
 
 // A load that is refused
 const refusedLoad = themed();
@@ -5371,7 +5647,9 @@ else {
 		&& none.themes.every( function( theme ) { return /^[a-z0-9]+(-[a-z0-9]+)*$/.test( theme.slug ) && typeof theme.name === 'string' && theme.name !== '' && typeof theme.description === 'string' } )
 		&& Object.keys( none.themes[0] ).join() === 'slug,name,description,shipped' && Object.keys( activeList.active ).join() === 'slug,name,description,shipped,setup,css'
 		&& Object.keys( activeList.active.setup ).join() === 'size,width,whitespace,motion,parts,knobs,fonts,colours'
-		&& Object.keys( answered.load ).join() === 'slug,name,description,shipped,setup,css,missing,notes' && Object.keys( answered.load.setup ).join() === 'size,width,whitespace,motion,parts,knobs,fonts,colours'
+		&& Object.keys( answered.load ).join() === 'slug,name,description,shipped,setup,css,missing,notes' && answered.load.shipped === true && Object.keys( answered.load.setup ).join() === 'size,width,whitespace,motion,parts,knobs,fonts'
+		&& answered.load.notes.every( function( note ) { return typeof note === 'string' || ( typeof note.error === 'string' && typeof note.code === 'string' && Array.isArray( note.params ) ) } )
+		&& typeof none.running === 'string' && typeof activeList.running === 'string'
 		&& Object.keys( answered.loadMissing.missing[0] ).join() === 'slug,name,inList'
 		&& Object.keys( answered.created ).join() === 'slug,themes,active' && Object.keys( answered.saved ).join() === 'themes,active' && Object.keys( answered.duplicated ).join() === 'slug,themes'
 		&& Object.keys( answered.deleted ).join() === 'themes,theme' && Object.keys( answered.exported ).join() === 'json,file' && Object.keys( answered.imported ).join() === 'slug,themes' );
@@ -5386,8 +5664,8 @@ else {
 		} )
 		&& byClass( noneTab.form, 'design-theme-active' ).length === 0 && textsOf( noneTab.byId('design-theme-current'), 'nino-admin-hint' ) === TEXT['/_admin/design/theme/current/none'] );
 
-	// The list with a theme of the project active
-	const activeTab = wholeTab( activeList );
+	// The list with a theme of the project active - the one the website runs as well, which the list says by the theme of the last apply
+	const activeTab = wholeTab( Object.assign( {}, activeList, { running : activeList.active.slug } ) );
 	const activeSlug = activeList.active.slug;
 
 	check( 'drawn from the list with a theme of the project active: the shipped ones first and that one after them, with the chip and the mark, a Delete on it alone; the head says its name, the fields hold its name and its description',
@@ -5412,11 +5690,11 @@ else {
 
 	const offered = function( screen, role ) { return screen.design._data.options[role] };
 
-	check( 'a theme the server loaded is the working copy as it came: no question, the templates, the knobs, the size and the width, the animation and the palette as the file holds them - and of the fonts the families the roles are offered, the others the face of Nino',
+	check( 'a theme the server loaded is the working copy as it came: no question, the templates, the knobs, the size and the width, the animation as the file holds them - and the palette as the screen has it, for the file of a theme the feature ships names none - and of the fonts the families the roles are offered, the others the face of Nino',
 		loaded.confirms.length === 0 && loaded.requests.length === 0 && loaded.design._edit.theme === answered.load.slug && loaded.design._edit.css === answered.load.css
 		&& JSON.stringify( loaded.design._edit.parts ) === JSON.stringify( answered.load.setup.parts ) && JSON.stringify( loaded.design._edit.knobs ) === JSON.stringify( answered.load.setup.knobs )
 		&& loaded.design._edit.size === answered.load.setup.size && loaded.design._edit.width === answered.load.setup.width && loaded.design._edit.whitespace === answered.load.setup.whitespace && JSON.stringify( loaded.design._edit.motion ) === JSON.stringify( answered.load.setup.motion )
-		&& JSON.stringify( loaded.design._edit.colours ) === JSON.stringify( answered.load.setup.colours )
+		&& Object.prototype.hasOwnProperty.call( answered.load.setup, 'colours' ) === false && JSON.stringify( loaded.design._edit.colours ) === JSON.stringify( none.colours )
 		&& Object.keys( answered.load.setup.fonts ).every( function( role ) { return loaded.design._edit.fonts[role].family === ( offered( loaded, role ).indexOf( answered.load.setup.fonts[role].family ) !== -1 ? answered.load.setup.fonts[role].family : '' ) } ) );
 	check( '...it is the active theme - shipped, so its name and description are read-only - as it was taken over, so the screen is the theme and there is no chip; the way back is shown, the bar says it was loaded and the shortcodes of the css were not touched',
 		loaded.design._active.slug === answered.load.slug && loaded.design._active.shipped === true && loaded.byId('design-theme-name').disabled === true && loaded.byId('design-theme-name').value === answered.load.name

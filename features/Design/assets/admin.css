@@ -888,8 +888,13 @@
 .design-viewport {
 	display: inline-flex;
 	align-items: center;
+	justify-content: center;
 	gap: .35rem;
-	min-height: 0;
+	/*	The workbench's own height for a control is taken off - a switch of devices stands in a
+		bar, not in a form - down to the hit area a control has to keep: 24px, 44px where the
+		pointer is a finger	*/
+	min-height: 24px;
+	min-width: 24px;
 	padding: .2rem .6rem;
 	border: 1px solid var(--editor-border);
 	border-radius: var(--editor-radius-sm);
@@ -898,6 +903,12 @@
 	color: var(--editor-text-secondary);
 	font-size: .74rem;
 	cursor: pointer;
+}
+@media (pointer: coarse) {
+	.design-viewport {
+		min-height: 44px;
+		min-width: 44px;
+	}
 }
 .design-viewport.is-active {
 	border-color: var(--editor-blue);
@@ -920,10 +931,15 @@
 	track, which puts them above the middle of the buttons beside it	*/
 .nino-admin .design-preview-follow {
 	align-items: center;
-	min-height: 0;
+	min-height: 24px;
 	margin: 0;
 	padding: 0;
 	border: 0;
+}
+@media (pointer: coarse) {
+	.nino-admin .design-preview-follow {
+		min-height: 44px;
+	}
 }
 /*	The port Nino.adminUi.scaleFrame() places the frame inside: it gives the
 	frame a width, a height solved back through the scale, and a position - so
@@ -1046,4 +1062,25 @@
 	justify-self: end;
 }
 
+}
+
+/*	The dialog before an apply is the workbench's own (Nino.adminUi.choiceDialog()): its question
+	is a line to a fact, and the paths of the files stand in a <details> under it, closed	*/
+.nino-admin .design-confirm-text {
+	white-space: pre-line;
+}
+.nino-admin .design-confirm-files summary {
+	min-height: 24px;
+	padding: .2rem 0;
+	cursor: pointer;
+}
+.nino-admin .design-confirm-list {
+	margin: .25rem 0 0;
+	padding-left: 1.25rem;
+}
+.nino-admin .design-confirm-list li + li {
+	margin-top: .25rem;
+}
+.nino-admin .design-confirm-state {
+	color: var(--editor-text-secondary);
 }

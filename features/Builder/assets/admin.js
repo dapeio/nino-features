@@ -131,6 +131,8 @@
 		// What an animation is set to run as: once, which is the page's default, or each time it comes into view
 		ANIMATION_MODES	: [ '', 'repeat' ],
 		COL_WIDTHS: [ '25', '33', '50', '66', '75', '100' ],
+		// The viewports a column that is added stands beside the others in: the medium and the large screen. On the small one the columns stand below each other
+		BESIDE		: [ 'm', 'l' ],
 		STACK_ALIGN: [ '', 'start', 'center', 'end' ],
 		// The nine places of the focus of a picture, by the words of the panel, in the order
 		// Nino.css numbers them: 1 is the top left, 5 the middle, 9 the bottom right
@@ -476,6 +478,33 @@
 		},
 
 		/**
+		 *	The ids of the sections that are a loop of sections: a loop makes
+		 *	<its id>-<n> for the sections it renders, and the save refuses a
+		 *	static section named like one of them
+		 *
+		 *	@param		{Object}		model
+		 *
+		 *	@return		{Array}										ids
+		 */
+		_loopNames : function( model ) {
+			return model.blocks.filter( function( block ) { return block.kind === 'section' && block.stack !== null && block.stack !== undefined } ).map( function( block ) { return block.id } );
+		},
+
+		/**
+		 *	Whether a section id is taken: by a block, or by a loop of sections
+		 *	whose own sections it would be named like
+		 *
+		 *	@param		{Object}		model
+		 *	@param		{string}		name
+		 *
+		 *	@return		{boolean}
+		 */
+		_sectionTaken : function( model, name ) {
+			return model.blocks.some( function( block ) { return block.id === name } )
+				|| Nino.admin.builder._loopNames( model ).some( function( id ) { return new RegExp( '^'+ id.replace( /[.*+?^${}()|[\]\\]/g, '\\$&' )+ '-\\d+$' ).test( name ) } );
+		},
+
+		/**
 		 *	A word as one segment of a key: lower case, anything else a hyphen
 		 *
 		 *	@param		{string}		word
@@ -720,7 +749,8 @@
 		_newSection : function( model ) {
 
 			const builder = Nino.admin.builder;
-			const id = builder._free( 'section', function( name ) { return model.blocks.some( function( block ) { return block.id === name } ) } );
+			// A loop called section would take every section-<n>: the new one is then section-new
+			const id = builder._free( builder._loopNames( model ).indexOf( 'section' ) === -1 ? 'section' : 'section-new', function( name ) { return builder._sectionTaken( model, name ) } );
 
 			return {
 				kind			: 'section',
@@ -739,6 +769,56 @@
 		 */
 		_newCol : function() {
 			return { width : { s : 100, m : 100, l : 100 }, hidden : {}, color : '', dim : false, background : null, text : '', stackAlign : '', stackGap : '', p : '', mt : '', mb : '', vpa : null, vpaSpeed : '', vpaMode : '', vpaDelay : '', vpaDuration : '', custom : '', stack : null, components : [] };
+		},
+
+		/**
+		 *	The width the columns of a row share when there are count of them: the widest step of the grid that takes that
+		 *	many side by side - two have 50, three 33, four 25 - and none where the grid has no step for so many
+		 *
+		 *	@param		{number}		count
+		 *
+		 *	@return		{number|null}
+		 */
+		_share : function( count ) {
+
+			const fits = Nino.admin.builder.COL_WIDTHS.map( Number ).filter( function( width ) { return width * count <= 100 } );
+
+			return fits.length === 0 ? null : Math.max.apply( null, fits );
+		},
+
+		/**
+		 *	A column added to the row of a section: it stands beside the ones the row has, and the widths of the row are
+		 *	shared out again among all of them - in the viewports where columns stand beside each other (BESIDE). Where the
+		 *	columns stand below each other - two or more, each at the whole width - they stay so, and the new one is below
+		 *	them; and where the row is full, because the grid has no step for one more beside the others, the new column
+		 *	is on a line of its own, as every new column was. A column that is hidden in a viewport takes no room in it, and
+		 *	the small screen is left alone: there the columns stand below each other
+		 *
+		 *	@param		{Object}		section
+		 *
+		 *	@return		{Object}									The column, which is now the last of the row
+		 */
+		_addedCol : function( section ) {
+
+			const builder = Nino.admin.builder;
+			const col = builder._newCol();
+
+			builder.BESIDE.forEach( function( viewport ) {
+
+				const shown = section.cols.filter( function( other ) { return other.hidden[viewport] !== true } );
+				const below = shown.length > 1 && shown.every( function( other ) { return Number( other.width[viewport] ) === 100 } );
+				const share = builder._share( shown.length + 1 );
+
+				if( below === true || share === null )
+					return;
+
+				shown.forEach( function( other ) { other.width[viewport] = share } );
+				col.width[viewport] = share;
+			} );
+
+			section.cols.push( col );
+
+			return col;
 		},
 
 		/**
@@ -1127,25 +1207,95 @@
 
 				component.source = builder._keyUri( file, section.id, slug );
 				component.create = kind === 'image' ? Object.assign( { label : schema.label || name }, builder.SLOT_SIZE ) : { value : schema.label || name };
+				builder._placeholders( registry, component );
 			}
 
 			return component;
 		},
 
 		/**
+		 *	What a component is called in each language of the site: the label the registry gives it there, and where it
+		 *	has none for a language the one it has in the language of the workbench
+		 *
+		 *	@param		{Object}		registry
+		 *	@param		{string}		name							The component
+		 *
+		 *	@return		{Object}									locale => label
+		 */
+		_labels : function( registry, name ) {
+
+			const schema = ( registry.components || {} )[name] || {};
+			const labels = {};
+
+			( registry.locales || [] ).forEach( function( entry ) {
+
+				const own = ( schema.labels || {} )[entry.locale];
+
+				labels[entry.locale] = typeof own === 'string' && own !== '' ? own : ( schema.label || name );
+			} );
+
+			return labels;
+		},
+
+		/**
+		 *	The placeholder of a component that is new, in each language of the site and each in its own: the key of a text is
+		 *	made with its label - in every language alike, which is the way a key is made - and the text of each language that
+		 *	has another label is typed for it; the slot of a picture is made with the alt text of each language. The mark of
+		 *	what is made (create) names the placeholder in the language of the workbench, which is what a key is made with. A
+		 *	component that makes nothing keeps no placeholder
+		 *
+		 *	@param		{Object}		registry
+		 *	@param		{Object}		component				With its create, the mark of the key or the slot it is made with
+		 *
+		 *	@return		void
+		 */
+		_placeholders : function( registry, component ) {
+
+			const builder = Nino.admin.builder;
+			const create = component.create;
+
+			if( create === undefined || create === null || typeof create !== 'object' )
+				return;
+
+			const labels = builder._labels( registry, component.name );
+
+			if( builder._sourceKind( registry, component.name ) === 'image' ) {
+
+				if( Object.keys( labels ).length > 0 )
+					create.alt = labels;
+
+				return;
+			}
+
+			const values = {};
+
+			Object.keys( labels ).forEach( function( locale ) {
+				if( labels[locale] !== create.value )
+					values[locale] = labels[locale];
+			} );
+
+			if( Object.keys( values ).length === 0 )
+				delete component.values;
+			else
+				component.values = values;
+		},
+
+		/**
 		 *	A copy of a node for a place beside it: the copy has an id of its own
 		 *	where it is a section, and the keys and slots a section owns are new
-		 *	ones in the copy - made at save, with the text the key has now
+		 *	ones in the copy - made at save, with the text the key has now in each
+		 *	language, and with the picture and the alt texts the slot has
 		 *
 		 *	@param		{Object}		model
 		 *	@param		{Object}		registry
 		 *	@param		{string}		file
 		 *	@param		{Array}			path							A section, a column or a component
 		 *	@param		{Function}	valueOf						The text of a key as it is now, '' where it is not known
+		 *	@param		{Function}	[valuesOf]				The text of a key in each language it has one in: locale => text
 		 *
 		 *	@return		{Array|null}							The path of the copy
 		 */
-		_duplicate : function( model, registry, file, path, valueOf ) {
+		_duplicate : function( model, registry, file, path, valueOf, valuesOf ) {
 
 			const builder = Nino.admin.builder;
 			const place = builder._place( model, path );
@@ -1158,17 +1308,18 @@
 
 			if( path.length === 1 && copy.kind === 'section' ) {
 
-				const id = builder._free( copy.id, function( name ) { return model.blocks.some( function( block ) { return block.id === name } ) } );
+				// A copy of a loop of sections, or of a section named like one, cannot be <id>-<n>: that is what the loop makes
+				const id = builder._free( builder._loopNames( model ).indexOf( copy.id ) === -1 ? copy.id : copy.id+ '-copy', function( name ) { return builder._sectionTaken( model, name ) } );
 				const from = builder._keyUri( file, copy.id, '' );
 
 				copy.id = id;
 				delete copy.renamedFrom;
-				builder._rekey( copy, registry, from, builder._keyUri( file, id, '' ), valueOf, false );
+				builder._rekey( copy, registry, from, builder._keyUri( file, id, '' ), valueOf, false, undefined, undefined, valuesOf );
 			} else if( path.length >= 2 ) {
 
 				const prefix = builder._keyUri( file, section.id, '' );
 
-				builder._rekey( path.length === 2 ? copy : { cols : [ { components : [ copy ] } ] }, registry, prefix, prefix, valueOf, true, section, file );
+				builder._rekey( path.length === 2 ? copy : { cols : [ { components : [ copy ] } ] }, registry, prefix, prefix, valueOf, true, section, file, valuesOf );
 			}
 
 			place.list.splice( place.index + 1, 0, copy );
@@ -1181,7 +1332,11 @@
 		 *	a prefix is moved under another, or - in a copy that stays in its
 		 *	section - given a free name beside the original. The picture an attribute
 		 *	names is a slot of the section like any, and the children of a component
-		 *	that holds components are copied with it
+		 *	that holds components are copied with it. A key is made with the text the
+		 *	original has - in the language of the workbench in every language, and
+		 *	where another language has another text, typed for it -, and a slot says
+		 *	which slot it is a copy of (create.from), at its size: the save hands the
+		 *	picture and the alt texts of that one on
 		 *
 		 *	@param		{Object}		node							A section, or a column (or a stand-in with its cols)
 		 *	@param		{Object}		registry
@@ -1191,10 +1346,11 @@
 		 *	@param		{boolean}		within						Whether the copy stays in the section, so the last segment changes
 		 *	@param		{Object}		[section]					Its section, for the names that are taken
 		 *	@param		{string}		[file]
+		 *	@param		{Function}	[valuesOf]				See _duplicate()
 		 *
 		 *	@return		void
 		 */
-		_rekey : function( node, registry, from, to, valueOf, within, section, file ) {
+		_rekey : function( node, registry, from, to, valueOf, within, section, file, valuesOf ) {
 
 			const builder = Nino.admin.builder;
 			const columns = node.kind === 'section' ? node.cols : ( node.cols || [ node ] );
@@ -1209,10 +1365,24 @@
 
 				taken[name] = true;
 
-				return {
-					source	: to+ name,
-					create	: kind === 'image' ? Object.assign( { label : label }, builder.SLOT_SIZE ) : { value : valueOf( source ) || label },
-				};
+				if( kind === 'image' ) {
+
+					const old = ( registry.slots || [] ).find( function( slot ) { return slot.uri === source } );
+					const size = old !== undefined && old.width > 0 && old.height > 0 ? { width : old.width, height : old.height } : builder.SLOT_SIZE;
+
+					return { source : to+ name, create : Object.assign( { label : label }, size, { from : source } ) };
+				}
+
+				const value = valueOf( source ) || label;
+				const values = {};
+				const held = typeof valuesOf === 'function' ? valuesOf( source ) : {};
+
+				Object.keys( held ).forEach( function( locale ) {
+					if( held[locale] !== value )
+						values[locale] = held[locale];
+				} );
+
+				return { source : to+ name, create : { value : value }, values : values };
 			};
 
 			// The source of a component, the pictures its attributes name, and the same in each of its children
@@ -1226,6 +1396,10 @@
 
 				if( made.create !== undefined )
 					node.create = made.create;
+
+				// What was typed for the key of the component and is not saved yet is the copy's too, and goes over the text of the other languages
+				if( made.values !== undefined && Object.keys( made.values ).length > 0 )
+					node.values = Object.assign( {}, made.values, node.values );
 
 				builder._pictures( declared ).forEach( function( attribute ) {
 
@@ -1860,7 +2034,8 @@
 
 		/**
 		 *	What a failed request says: the panel's own sentence for the code the
-		 *	server gave (builder_conflict is /_admin/builder/error/conflict), else
+		 *	server gave (builder_conflict is /_admin/builder/error/conflict) - with
+		 *	the params of the answer where the sentence has a %s for them -, else
 		 *	what the workbench says of the answer
 		 *
 		 *	@param		{number}		status
@@ -1877,8 +2052,9 @@
 
 				const own = Nino.content.getText( '/_admin/builder/error/'+ body.code.slice( 8 ).replace( /_/g, '-' ) );
 
+				// A sentence with a place for what is named - the ids a loop of sections makes - says it
 				if( own !== '' )
-					return own;
+					return own.indexOf('%s') === -1 ? own : Nino.adminUi.format( own, ( Array.isArray( body.params ) === true ? body.params : [] ).filter( function( param ) { return typeof param === 'string' } ).join(', ') );
 			}
 
 			return Nino.adminUi.api.errorText( status, response, key );
@@ -2285,7 +2461,7 @@
 					{ key : 'header', label : Nino.content.getText('/_admin/builder/label/header'), type : 'string' },
 					{ key : 'footer', label : Nino.content.getText('/_admin/builder/label/footer'), type : 'string' },
 					{ key : 'usedBy', label : Nino.content.getText('/_admin/builder/label/used-by'), type : 'string' },
-					{ key : 'actions', label : '', type : 'string', render : function( value, row ) { return builder._rowActions( row ) } },
+					{ key : 'actions', label : '', type : 'string', sortable : false, render : function( value, row ) { return builder._rowActions( row ) } },
 				],
 				rows		: builder._files.map( function( entry ) {
 					return {
@@ -2690,7 +2866,7 @@
 					builder._keys = response.keys;
 
 				if( builder._doc !== null )
-					builder._renderPreview();
+					builder._redraw();
 			} );
 		},
 
@@ -2712,6 +2888,30 @@
 			const value = entry.global === true ? entry.values['*'] : ( entry.values[locale] ?? Object.values( entry.values )[0] );
 
 			return typeof value === 'string' ? value : '';
+		},
+
+		/**
+		 *	The text a key has now in each language it has one in, for a copy that has to give each language the text of the
+		 *	original. A key every language shares has one text, and the copy has the same
+		 *
+		 *	@param		{string}		key
+		 *
+		 *	@return		{Object}									locale => text; none for a key that is not known
+		 */
+		_valuesOf : function( key ) {
+
+			const entry = ( Nino.admin.builder._keys || [] ).find( function( candidate ) { return candidate.key === key } );
+			const held = {};
+
+			if( entry === undefined || entry.global === true )
+				return held;
+
+			Object.keys( entry.values || {} ).forEach( function( locale ) {
+				if( typeof entry.values[locale] === 'string' )
+					held[locale] = entry.values[locale];
+			} );
+
+			return held;
 		},
 
 		/**
@@ -2984,7 +3184,7 @@
 					status.appendChild( builder._statusItem( 'warning', 'warning', builder._reasonText( block.reason ), '' ) );
 
 				builder._pick( frame, block.path );
-				head.appendChild( builder._tools( block.path ) );
+				head.appendChild( builder._tools( block.path, block.kind === 'section' ? Nino.content.getText('/_admin/builder/tree/section')+ ' '+ block.id : Nino.content.getText('/_admin/builder/tree/html-block') ) );
 
 				if( block.kind === 'html' )
 					body.appendChild( builder._placeholder( { path : block.path, label : 'HTML+', image : 'block' }, 'none' ) );
@@ -3079,17 +3279,24 @@
 
 		/**
 		 *	The tools of a frame: settings, up, down, duplicate, delete - and for a
-		 *	section to edit it as HTML+. A tool the frame cannot use now is off
+		 *	section to edit it as HTML+. A tool the frame cannot use now is off. The
+		 *	toolbar is named by what its tools are of - "Tools: Image" -, for there are
+		 *	as many buttons that read Settings, Duplicate or Delete on a page as it has
+		 *	frames, and a screen reader hears nothing that tells them apart
 		 *
 		 *	@param		{Array}			path
+		 *	@param		{string}		[name]						What the frame is called: a component by its label, a section by its id, a column by its place
 		 *
 		 *	@return		{Element}
 		 */
-		_tools : function( path ) {
+		_tools : function( path, name ) {
 
 			const builder = Nino.admin.builder;
 			const tools = builder._fragment( 'tools' );
 			const offered = builder._toolbar( builder._doc.model, path );
+
+			if( typeof name === 'string' && name !== '' )
+				tools.setAttribute( 'aria-label', Nino.adminUi.format( Nino.content.getText('/_admin/builder/menu/tools-of'), name ) );
 			const run = {
 				settings	: function() { builder._select( path, false ); builder._openSettings( path ) },
 				html			: function() { builder._editBlock( path ) },
@@ -3211,7 +3418,7 @@
 					? Nino.adminUi.format( Nino.content.getText('/_admin/builder/preview/hidden-in'), col.hiddenIn.map( function( viewport ) { return Nino.content.getText( '/_admin/builder/viewport/'+ viewport ) } ).join(', ') )
 					: Nino.content.getText('/_admin/builder/preview/hidden'), '' ) );
 
-			builder._one( frame, '.builder-pcol-head' ).appendChild( builder._tools( col.path ) );
+			builder._one( frame, '.builder-pcol-head' ).appendChild( builder._tools( col.path, Nino.adminUi.format( Nino.content.getText('/_admin/builder/menu/tools-col'), col.path[1] + 1, builder._doc.model.blocks[col.path[0]].id ) ) );
 
 			col.components.forEach( function( component ) { body.appendChild( component.holds === true ? builder._previewCard( component ) : builder._placeholder( component, 'tools' ) ) } );
 			body.appendChild( builder._addsRow( col.path ) );
@@ -3246,7 +3453,7 @@
 			if( card.background === true )
 				builder._one( frame, '.builder-head-status' ).appendChild( builder._statusItem( 'background', 'image', Nino.content.getText('/_admin/builder/preview/card-background'), '' ) );
 
-			builder._one( frame, '.builder-card-head' ).appendChild( builder._tools( card.path ) );
+			builder._one( frame, '.builder-card-head' ).appendChild( builder._tools( card.path, card.label ) );
 
 			card.children.forEach( function( child ) { body.appendChild( builder._placeholder( child, 'tools' ) ) } );
 			body.appendChild( builder._addsRow( card.path ) );
@@ -3324,7 +3531,7 @@
 			}
 
 			if( how === 'tools' )
-				ph.appendChild( builder._tools( component.path ) );
+				ph.appendChild( builder._tools( component.path, component.label ) );
 
 			return ph;
 		},
@@ -3412,7 +3619,7 @@
 			if( builder._mutable() === false )
 				return;
 
-			const to = builder._duplicate( doc.model, builder._registry, doc.file, path, builder._valueOf );
+			const to = builder._duplicate( doc.model, builder._registry, doc.file, path, builder._valueOf, builder._valuesOf );
 
 			if( to === null )
 				return;
@@ -3499,7 +3706,7 @@
 		},
 
 		/**
-		 *	A new column at the end of the row of a section
+		 *	A new column at the end of the row of a section, beside the others (see _addedCol())
 		 *
 		 *	@param		{Array}			path					The section
 		 *
@@ -3513,7 +3720,7 @@
 			if( builder._mutable() === false )
 				return;
 
-			section.cols.push( builder._newCol() );
+			builder._addedCol( section );
 			builder._sel = [ path[0], section.cols.length - 1 ];
 			builder._changed();
 			builder._paintSelection( true );
@@ -3545,6 +3752,8 @@
 					groups.forEach( function( group ) {
 
 						const part = builder._el( 'section', 'builder-lightbox-group' );
+
+						part.dataset.group = group.id;
 
 						part.appendChild( builder._el( 'h3', 'builder-lightbox-title', group.label ) );
 
@@ -3586,6 +3795,8 @@
 
 			icon.classList.add('builder-pick-icon');
 			button.type = 'button';
+			// The component by its name in the registry, which its label - in the language of the workbench - is no way to find it by
+			button.dataset.name = item.name;
 			button.appendChild( icon );
 			button.appendChild( builder._el( 'span', 'builder-pick-label', item.label ) );
 
@@ -3912,10 +4123,49 @@
 			if( options === null || Array.isArray( options.returnTo ) === false || opener === null || opener === dc.body || opener.isConnected !== false )
 				return;
 
-			const tool = dc.querySelector( '#builder-preview [data-path="'+ options.returnTo.join('.')+ '"] [data-tool="settings"]' );
+			const tool = Nino.admin.builder._toolAt( options.returnTo, 'settings' );
 
-			if( tool !== null && tool.hidden === false && tool.disabled === false )
+			if( tool !== null )
 				tool.focus();
+		},
+
+		/**
+		 *	A tool of a frame of the preview, where it is drawn now
+		 *
+		 *	@param		{Array}			path							The frame
+		 *	@param		{string}		name							settings, html, up, down, duplicate or delete
+		 *
+		 *	@return		{Element|null}						null where the frame has none that is shown and can be used
+		 */
+		_toolAt : function( path, name ) {
+
+			const tool = dc.querySelector( '#builder-preview [data-path="'+ path.join('.')+ '"] [data-tool="'+ name+ '"]' );
+
+			return tool !== null && tool.hidden === false && tool.disabled === false ? tool : null;
+		},
+
+		/**
+		 *	The preview drawn again where what another panel changed asks for it, with the focus where it was. A tool of a
+		 *	frame that has the focus goes with the drawing, and the focus with it, to the page: it is given to the tool that
+		 *	stands in its place, found by the frame it is of and its name. Anywhere else the focus is not the preview's to move
+		 *
+		 *	@return		void
+		 */
+		_redraw : function() {
+
+			const builder = Nino.admin.builder;
+			const mount = dc.getElementById('builder-preview');
+			const active = dc.activeElement;
+			const tool = active !== null && active !== undefined && active.dataset !== undefined && active.dataset.tool !== undefined && mount.contains( active ) === true ? active : null;
+			const frame = tool === null ? null : tool.closest('[data-path]');
+			const at = frame === null ? null : { path : frame.dataset.path.split('.').map( Number ), name : tool.dataset.tool };
+
+			builder._renderPreview();
+
+			const again = at === null ? null : builder._toolAt( at.path, at.name );
+
+			if( again !== null )
+				again.focus();
 		},
 
 		// ------------------------------------------------ Icons, groups and tables
@@ -6042,8 +6292,10 @@
 
 							if( create === null )
 								delete component.create;
-							else
+							else {
 								component.create = create;
+								builder._placeholders( builder._registry, component );
+							}
 
 							builder._changed();
 							fill();
@@ -6406,6 +6658,7 @@
 			const name = builder._one( row, '.builder-source-name' );
 			const caption = builder._one( row, '.builder-source-caption' );
 			const current = builder._one( row, '.builder-source-current' );
+			const id = 'builder-source-'+ ( ++builder._sourceRows );
 			const show = function() {
 				current.textContent = builder._sourceShown( options );
 				red.hidden = options.red === undefined;
@@ -6417,7 +6670,7 @@
 			caption.hidden = options.caption === '';
 			caption.textContent = options.caption;
 
-			builder._one( row, '.builder-source-line' ).appendChild( builder._iconButton( 'source', Nino.content.getText('/_admin/builder/source/title'), function() {
+			const choose = builder._iconButton( 'source', Nino.content.getText('/_admin/builder/source/title'), function() {
 
 				builder._sourceDialog( Object.assign( {}, options, {
 					onPick	: function( source, create ) {
@@ -6435,12 +6688,24 @@
 						show();
 					},
 				} ) );
-			} ) );
+			} );
+
+			// A form with a few of these has a button "Source" for each: the one of a field is named by the field - "Link, Source" - by the name that is over the row, and its own
+			if( options.label !== undefined ) {
+				name.id = id+ '-name';
+				choose.id = id+ '-button';
+				choose.setAttribute( 'aria-labelledby', name.id+ ' '+ choose.id );
+			}
+
+			builder._one( row, '.builder-source-line' ).appendChild( choose );
 
 			show();
 
 			return row;
 		},
+
+		// How many rows of a source were made: the number in the ids that join a button to the name of its field
+		_sourceRows : 0,
 
 		/**
 		 *	A source as it is said: its key, slot or field; the fixed value in quotes;
@@ -6758,6 +7023,34 @@
 		},
 
 		/**
+		 *	Whether a section has text on it: a component in one of its columns, or in a card in one, that says something - a title,
+		 *	a text, a button: what the registry gives a text to - or a block of HTML that is not empty
+		 *
+		 *	@param		{Object}		section
+		 *	@param		{Object}		registry
+		 *
+		 *	@return		{boolean}
+		 */
+		_carriesText : function( section, registry ) {
+
+			const builder = Nino.admin.builder;
+			const says = function( component ) {
+
+				const kind = builder._sourceKind( registry, component.name );
+
+				if( kind === 'text' )
+					return true;
+
+				if( kind === 'content' && builder._holds( registry, component.name ) === '' )
+					return String( component.content ?? '' ).trim() !== '';
+
+				return ( component.components || [] ).some( says );
+			};
+
+			return ( section.cols || [] ).some( function( col ) { return ( col.components || [] ).some( says ) } );
+		},
+
+		/**
 		 *	The picture behind a section or a column: its slot, the picture it has with the upload
 		 *	that stores one and the alt text in the language the editor works in, for a section
 		 *	whether the picture is a parallax and whether it is dimmed, its focus, and the way to take
@@ -6859,6 +7152,14 @@
 				builder._one( parallax, 'input' ).disabled = has === false && section.settings.parallax !== true;
 				builder._one( dim, 'input' ).disabled = has === false && section.settings.dim !== true;
 				wrap.appendChild( builder._line( [ parallax, dim ] ) );
+
+				// Text on a picture reads better with the picture dimmed: said in one line under the switch for as long as it is off, and no more than said
+				const advice = builder._el( 'p', 'nino-admin-hint builder-dim-hint', Nino.content.getText('/_admin/builder/hint/dim-text') );
+				const advise = function() { advice.hidden = has === false || section.settings.dim === true || builder._carriesText( section, builder._registry ) === false };
+
+				builder._one( dim, 'input' ).addEventListener( 'change', advise );
+				advise();
+				wrap.appendChild( advice );
 
 				// The background inside is the row's colour, picture and scrim: a cover and a parallax are the section's own picture, and there is nothing to put inside where the
 				// section has neither a colour nor a picture. What is on with none of these is no more than the file can say, and it goes off
@@ -7898,7 +8199,7 @@
 
 				Object.assign( builder._seen, stamp );
 				builder._registry.slots = response.slots;
-				builder._renderPreview();
+				builder._redraw();
 			} );
 		},
 
@@ -7926,7 +8227,7 @@
 						builder._registry[key] = response[key];
 				} );
 
-				builder._renderPreview();
+				builder._redraw();
 			} );
 		},
 

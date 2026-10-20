@@ -80,8 +80,8 @@ return [
 				'de_DE' => 'Wird nicht installiert: Die Bereiche (Typ, Pfad, index, post, Sortierung, perPage) werden hier von Hand als `[\'sections\' => [\'<key>\' => [...]]]` geschrieben – Posts hat kein Panel. Ohne die Datei gibt es einen Bereich, /posts unter /blog. Ein Beitrag ist ein Element des Typs des Bereichs – der installierte /posts trägt title, summary, date, author, image, imageAlt, body und tags – und ein zukünftiges oder leeres Datum lässt ihn unveröffentlicht.',
 			],
 			'text/<locale>.php' => [
-				'en_US' => 'The eight words the two templates say, into the Text panel.',
-				'de_DE' => 'Die acht Worte, die die beiden Templates sagen, ins Panel Texte.',
+				'en_US' => 'The eight words the two templates say, into the Text panel - and the name, the title and the description of the page of the default section, /_nino/webpage/blog/..., so that its title is a text and not a key until the Routes panel has been used. A key the project has written already stays as it is; a project that has the feature already writes the three in the Routes panel.',
+				'de_DE' => 'Die acht Worte, die die beiden Templates sagen, ins Panel Texte - und Name, Titel und Beschreibung der Seite des Standard-Bereichs, /_nino/webpage/blog/..., damit ihr Titel ein Text ist und kein Schlüssel, bis das Panel Routen benutzt wurde. Ein Schlüssel, den das Projekt schon geschrieben hat, bleibt, wie er ist; ein Projekt, das das Feature schon hat, schreibt die drei im Panel Routen.',
 			],
 		],
 	],

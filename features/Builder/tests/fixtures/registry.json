@@ -75,6 +75,10 @@
                 "href": "",
                 "target": "",
                 "class": ""
+            },
+            "labels": {
+                "de_DE": "Titel (Sektion)",
+                "en_US": "Title (Section)"
             }
         },
         "subtitle": {
@@ -153,6 +157,10 @@
                 "href": "",
                 "target": "",
                 "class": ""
+            },
+            "labels": {
+                "de_DE": "Untertitel (Sektion)",
+                "en_US": "Subtitle (Section)"
             }
         },
         "text": {
@@ -226,6 +234,10 @@
                 "href": "",
                 "target": "",
                 "class": ""
+            },
+            "labels": {
+                "de_DE": "Text",
+                "en_US": "Text"
             }
         },
         "card-title": {
@@ -302,6 +314,10 @@
                 "href": "",
                 "target": "",
                 "class": ""
+            },
+            "labels": {
+                "de_DE": "Titel (Karte)",
+                "en_US": "Title (Card)"
             }
         },
         "card-subtitle": {
@@ -379,6 +395,10 @@
                 "href": "",
                 "target": "",
                 "class": ""
+            },
+            "labels": {
+                "de_DE": "Untertitel (Karte)",
+                "en_US": "Subtitle (Card)"
             }
         },
         "card-text": {
@@ -456,6 +476,10 @@
                 "href": "",
                 "target": "",
                 "class": ""
+            },
+            "labels": {
+                "de_DE": "Text (Karte)",
+                "en_US": "Text (Card)"
             }
         },
         "card-image": {
@@ -555,6 +579,10 @@
                 "href": "",
                 "target": "",
                 "class": ""
+            },
+            "labels": {
+                "de_DE": "Bild (Karte)",
+                "en_US": "Image (Card)"
             }
         },
         "hero-title": {
@@ -632,6 +660,10 @@
                 "href": "",
                 "target": "",
                 "class": ""
+            },
+            "labels": {
+                "de_DE": "Titel (Hero)",
+                "en_US": "Title (Hero)"
             }
         },
         "hero-subtitle": {
@@ -710,6 +742,10 @@
                 "href": "",
                 "target": "",
                 "class": ""
+            },
+            "labels": {
+                "de_DE": "Untertitel (Hero)",
+                "en_US": "Subtitle (Hero)"
             }
         },
         "card": {
@@ -856,6 +892,10 @@
                 "focus": "",
                 "dim": "0",
                 "class": ""
+            },
+            "labels": {
+                "de_DE": "Karte",
+                "en_US": "Card"
             }
         },
         "button": {
@@ -960,6 +1000,10 @@
                 "width": "",
                 "target": "",
                 "class": ""
+            },
+            "labels": {
+                "de_DE": "Button",
+                "en_US": "Button"
             }
         },
         "image": {
@@ -1055,6 +1099,10 @@
                 "href": "",
                 "target": "",
                 "class": ""
+            },
+            "labels": {
+                "de_DE": "Bild",
+                "en_US": "Image"
             }
         },
         "html": {
@@ -1081,6 +1129,10 @@
             "by": "nino",
             "defaults": {
                 "class": ""
+            },
+            "labels": {
+                "de_DE": "HTML",
+                "en_US": "HTML"
             }
         },
         "spacer": {
@@ -1129,6 +1181,10 @@
             "defaults": {
                 "size": "2",
                 "class": ""
+            },
+            "labels": {
+                "de_DE": "Abstand",
+                "en_US": "Spacer"
             }
         },
         "scroll-hint": {
@@ -1162,6 +1218,10 @@
             "defaults": {
                 "to": "",
                 "class": ""
+            },
+            "labels": {
+                "de_DE": "Scroll-Hinweis",
+                "en_US": "Scroll hint"
             }
         }
     },

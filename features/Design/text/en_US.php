@@ -26,6 +26,7 @@ return [
 	'[[/_admin/design/theme/list/title]]'			=> 'Themes',
 	'[[/_admin/design/theme/shipped]]'				=> 'shipped',
 	'[[/_admin/design/theme/active]]'				=> 'active',
+	'[[/_admin/design/theme/loaded]]'				=> 'loaded, not applied',
 	'[[/_admin/design/theme/load]]'					=> 'Load',
 	'[[/_admin/design/theme/duplicate]]'			=> 'Duplicate',
 	'[[/_admin/design/theme/delete]]'				=> 'Delete',
@@ -225,12 +226,24 @@ return [
 	'[[/_admin/design/knob/components/labels/default]]'			=> 'Above',
 	'[[/_admin/design/knob/components/labels/more]]'				=> 'Floating',
 
-	// What the confirmation before an apply says, one line per fact - built in the panel's script and joined with line breaks, so no value here carries one
+	// What the dialog before an apply says, one line per fact in words - built in the panel's script and joined with line breaks, so no value here carries one.
+	// The files themselves, by their paths, are in the details under it
+	'[[/_admin/design/confirm/replaced]]'						=> 'Templates that are not there any more: %s. Applied instead: %s.',
 	'[[/_admin/design/confirm/apply]]'							=> 'Applying rewrites: %s.',
 	'[[/_admin/design/confirm/foreign]]'							=> 'Not written by Design, and replaced: %s.',
 	'[[/_admin/design/confirm/lost]]'							=> 'In your file, but not in the new variant: %s - add it again by hand afterwards if you still need it.',
-	'[[/_admin/design/confirm/copy]]'							=> 'What is there now is kept first, in data/design-previous.php.',
+	'[[/_admin/design/confirm/copy]]'							=> 'What is there now stays as the previous version.',
 	'[[/_admin/design/confirm/replaces]]'						=> 'That replaces the previous version from %s.',
+	'[[/_admin/design/confirm/yes]]'								=> 'Apply',
+	'[[/_admin/design/confirm/files]]'							=> 'Files',
+	'[[/_admin/design/confirm/file/look]]'						=> 'the look',
+	'[[/_admin/design/confirm/file/header]]'						=> 'the header',
+	'[[/_admin/design/confirm/file/footer]]'						=> 'the footer',
+	'[[/_admin/design/confirm/state/missing]]'					=> 'is created',
+	'[[/_admin/design/confirm/state/ours]]'						=> 'is replaced',
+	'[[/_admin/design/confirm/state/edited]]'					=> 'was edited by hand, is replaced',
+	'[[/_admin/design/confirm/state/foreign]]'					=> 'is not Design\'s, is replaced',
+	'[[/_admin/design/confirm/state/same]]'						=> 'stays as it is',
 	'[[/_admin/design/confirm/restore]]'							=> 'Restore the previous version? Its setup is loaded with it, so unsaved changes on screen are lost. What is there now takes its place, so this can be undone.',
 
 	// The title of the button that restores the version before the last apply: it dates that version
@@ -311,4 +324,8 @@ return [
 	'[[/_admin/error/design_shipped]]'	=> 'A shipped theme cannot be changed or deleted - duplicate it.',
 	'[[/_admin/error/design_theme]]'	=> 'There is no such theme.',
 	'[[/_admin/error/design_file]]'		=> 'That is no theme file of this feature.',
+
+	// What reading a setup replaced, by the code of the note and with its params (see Setup::NOTES): the screen says a note the way it says a refusal
+	'[[/_admin/error/design_theme_missing]]'	=> 'The theme "%s" is not there - none is active.',
+	'[[/_admin/error/design_set_missing]]'		=> '%s: "%s" is not there - "%s" is used instead.',
 ];

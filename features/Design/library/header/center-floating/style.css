@@ -25,6 +25,11 @@
 	border: 1px solid color-mix(in srgb, var(--color-background) 70%, transparent);
 	border-radius: max(var(--radius), 1rem);
 	box-shadow: 0 .75rem 2.5rem rgb(0 0 0 / 10%);
+	/*	The bar is a surface of its own, and see-through: what stands behind it - the picture a page opens with - darkens it, so a ring
+		solved against the plain page ground (3:1 on that) falls under 3:1 on the bar. Its roles are the ones of the surface it lies
+		on, declared as a section declares them: the ring is the ink of the page, the colour the text on the bar is read in, which
+		clears 4.5:1 on any surface the bar can be	*/
+	--color-focus: var(--color-text);
 }
 
 body.nino-scroll-atf .nino-frame-header .nino-scroll-header {

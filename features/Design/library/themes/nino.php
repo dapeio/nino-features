@@ -1,6 +1,7 @@
 <?php
 // features/Design/library/themes/nino.php - a theme the feature ships: loaded and duplicated in the panel, never written
-// or deleted. The shape of the file is described in features/Design/Themes/Themes.php
+// or deleted. The shape of the file is described in features/Design/Themes/Themes.php. It names no colours: the brand colour
+// of a project is the project's, and loading the theme leaves it as it is
 return [
 	'format'			=> 1,
 	'name'				=> 'Nino',
@@ -24,7 +25,6 @@ return [
 			'button'	=> [ 'family' => 'open-sans', 'weight' => 'bold', 'uppercase' => false, 'size' => '' ],
 			'code'		=> [ 'family' => '', 'weight' => 'normal', 'uppercase' => false, 'size' => '' ],
 		],
-		'colours'	=> [ 'primary' => '#4faae8', 'secondary' => '', 'harmony' => 1, 'temperature' => 3, 'saturation' => 3, 'contrast' => 3, 'depth' => 3, 'mode' => 'auto' ],
 	],
 	'css'				=> '',
 	'presets'			=> [],
