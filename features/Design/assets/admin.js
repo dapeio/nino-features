@@ -76,7 +76,9 @@
 			to. The page is templates/preview-specimen.tpl, which carries the
 			same six ids; Theme and Global are the top of the page - a theme is
 			all of it -, Fonts and Typefaces the typography block - a typeface
-			shows where the type is -, Colours the grounds	*/
+			shows where the type is -, Colours the grounds. The page has a seventh id,
+			footer, at its end, which no tab has: a footer that is chosen is looked
+			at there (see _setPart())	*/
 		ANCHORS	: { theme : 'global', global : 'global', fonts : 'type', typefaces : 'type', content : 'content', buttons : 'buttons', components : 'components', colours : 'colours' },
 
 		/*	Where a change of one knob is looked at, by the tab: the id of the element
@@ -285,8 +287,9 @@
 		// a convenience of the visit, nothing a project should have to store
 		_follow	: true,
 		// Where the next jump goes when it is not the anchor of the open tab: the id of the
-		// element the last change of a knob is looked at in (see KNOB_ANCHORS). null is
-		// the tab's own, which is where opening a tab and choosing a template put it back to
+		// element the last change of a knob is looked at in (see KNOB_ANCHORS), or the footer
+		// that was chosen (see _setPart()). null is the tab's own, which is where opening a tab
+		// and choosing a template put it back to
 		_target	: null,
 		// The tab that is open
 		_tab		: 'global',
@@ -2189,8 +2192,10 @@
 			edit.parts[part] = set;
 
 			// Another template is a change of the whole tab, not of the knob that was
-			// looked at last: the frame goes to the anchor of the tab
-			Nino.admin.design._target = null;
+			// looked at last: the frame goes to the anchor of the tab - the top of the page on
+			// Global, where a header is looked at. A footer is looked at where it starts: at the
+			// foot of the page, which the specimen marks with an id of its own
+			Nino.admin.design._target = part === 'footer' ? 'footer' : null;
 
 			if( Nino.admin.design.KNOB_TABS.indexOf( part ) === -1 ) {
 
@@ -4397,6 +4402,12 @@
 		 *	change - it is put back to the tab's own when a tab is opened and when a
 		 *	template is chosen, and it is what is jumped to until then.
 		 *
+		 *	A frame is the exception on Global, which is the top of the page: a header
+		 *	that is chosen is looked at there, and a footer that is chosen is looked at
+		 *	at the foot of it - the element with the id footer, which ends the specimen -
+		 *	so that choosing one shows what was chosen, not the top of a page that is
+		 *	hardly changed
+		 *
 		 *	With the follow switch off (_follow) the frame never scrolls by itself:
 		 *	not after a change, not after a tab is opened, and a page that was built
 		 *	anew stays at its top. Switching it on jumps once, to where it would be
@@ -4423,7 +4434,8 @@
 					return;
 
 				const tab = Nino.admin.design._tab;
-				const target = doc.getElementById( Nino.admin.design._target || Nino.admin.design.ANCHORS[tab] );
+				const aim = Nino.admin.design._target || Nino.admin.design.ANCHORS[tab];
+				const target = doc.getElementById( aim );
 				const view = doc.defaultView;
 
 				if( target === null || view === null )
@@ -4458,9 +4470,10 @@
 				const clear = main === null ? 0 : parseFloat( view.getComputedStyle( main ).paddingTop ) || 0;
 
 				// Global is the top of the page, header included - the anchor
-				// stands right below it
-				const top = tab === 'global' ? 0 : target.getBoundingClientRect().top
-					+ ( view.scrollY || doc.documentElement.scrollTop || 0 ) - clear;
+				// stands right below it - and the footer is where the page ends: the
+				// room for the header is no concern of an anchor at the foot
+				const placed = target.getBoundingClientRect().top + ( view.scrollY || doc.documentElement.scrollTop || 0 );
+				const top = aim === 'footer' ? placed : ( tab === 'global' ? 0 : placed - clear );
 
 				// Smooth unless there is nothing to scroll away from - and not for a visitor who asked for less motion
 				const calm = typeof view.matchMedia === 'function' && view.matchMedia('(prefers-reduced-motion: reduce)').matches === true;

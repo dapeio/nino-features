@@ -23,7 +23,10 @@
                 "cover": 100,
                 "parallax": false,
                 "dim": true,
+                "padded": false,
                 "contentPos": "",
+                "inner": false,
+                "whitespace": "",
                 "mt": "",
                 "mb": "",
                 "pt": "",
@@ -40,6 +43,7 @@
                 "slot": "/template/page-home/hero/background",
                 "focus": 5
             },
+            "stack": null,
             "cols": [
                 {
                     "width": {
@@ -72,6 +76,9 @@
                             "attributes": {
                                 "tag": "h3",
                                 "style": "loud",
+                                "color": "",
+                                "href": "",
+                                "target": "",
                                 "class": ""
                             }
                         },
@@ -82,6 +89,9 @@
                             "attributes": {
                                 "tag": "div",
                                 "style": "",
+                                "color": "",
+                                "href": "",
+                                "target": "",
                                 "class": ""
                             }
                         },
@@ -93,6 +103,7 @@
                                 "href": "/_nino/webpage/contact/uri",
                                 "style": "primary",
                                 "size": "",
+                                "width": "",
                                 "target": "",
                                 "class": ""
                             }
@@ -116,7 +127,10 @@
                 "cover": null,
                 "parallax": false,
                 "dim": false,
+                "padded": false,
                 "contentPos": "",
+                "inner": false,
+                "whitespace": "",
                 "mt": "",
                 "mb": "",
                 "pt": "",
@@ -130,6 +144,7 @@
                 "custom": ""
             },
             "background": null,
+            "stack": null,
             "cols": [
                 {
                     "width": {
@@ -162,6 +177,9 @@
                             "attributes": {
                                 "tag": "h3",
                                 "style": "",
+                                "color": "",
+                                "href": "",
+                                "target": "",
                                 "class": ""
                             }
                         },
@@ -172,6 +190,9 @@
                             "attributes": {
                                 "format": "blocks",
                                 "style": "quiet",
+                                "color": "",
+                                "href": "",
+                                "target": "",
                                 "class": ""
                             }
                         }
@@ -226,6 +247,8 @@
                                 "alt": "",
                                 "focus": "5",
                                 "ratio": "",
+                                "href": "",
+                                "target": "",
                                 "class": ""
                             }
                         },
@@ -236,6 +259,9 @@
                             "attributes": {
                                 "tag": "h3",
                                 "style": "",
+                                "color": "",
+                                "href": "",
+                                "target": "",
                                 "class": ""
                             }
                         },
@@ -246,6 +272,9 @@
                             "attributes": {
                                 "format": "blocks",
                                 "style": "",
+                                "color": "",
+                                "href": "",
+                                "target": "",
                                 "class": ""
                             }
                         },
@@ -257,6 +286,7 @@
                                 "href": "",
                                 "style": "",
                                 "size": "",
+                                "width": "",
                                 "target": "",
                                 "class": ""
                             }
@@ -285,7 +315,10 @@
                 "cover": null,
                 "parallax": false,
                 "dim": false,
+                "padded": false,
                 "contentPos": "",
+                "inner": false,
+                "whitespace": "",
                 "mt": "",
                 "mb": "",
                 "pt": "",
@@ -299,6 +332,7 @@
                 "custom": ""
             },
             "background": null,
+            "stack": null,
             "cols": [
                 {
                     "width": {
@@ -331,6 +365,9 @@
                             "attributes": {
                                 "tag": "h3",
                                 "style": "",
+                                "color": "",
+                                "href": "",
+                                "target": "",
                                 "class": ""
                             }
                         },
@@ -342,6 +379,7 @@
                                 "href": "/_nino/webpage/contact/uri",
                                 "style": "light",
                                 "size": "",
+                                "width": "",
                                 "target": "",
                                 "class": ""
                             }

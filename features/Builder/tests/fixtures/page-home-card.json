@@ -23,7 +23,10 @@
                 "cover": null,
                 "parallax": false,
                 "dim": false,
+                "padded": false,
                 "contentPos": "",
+                "inner": false,
+                "whitespace": "",
                 "mt": "",
                 "mb": "",
                 "pt": "",
@@ -37,6 +40,7 @@
                 "custom": ""
             },
             "background": null,
+            "stack": null,
             "cols": [
                 {
                     "width": {
@@ -71,6 +75,8 @@
                                 "alt": "",
                                 "focus": "",
                                 "ratio": "4-3",
+                                "href": "",
+                                "target": "",
                                 "class": ""
                             }
                         }
@@ -124,6 +130,9 @@
                                     "attributes": {
                                         "tag": "h3",
                                         "style": "",
+                                        "color": "",
+                                        "href": "",
+                                        "target": "",
                                         "class": ""
                                     }
                                 },
@@ -134,6 +143,9 @@
                                     "attributes": {
                                         "format": "blocks",
                                         "style": "",
+                                        "color": "",
+                                        "href": "",
+                                        "target": "",
                                         "class": ""
                                     }
                                 },
@@ -145,6 +157,7 @@
                                         "href": "/contact",
                                         "style": "",
                                         "size": "",
+                                        "width": "",
                                         "target": "",
                                         "class": ""
                                     }
@@ -170,7 +183,10 @@
                 "cover": null,
                 "parallax": false,
                 "dim": false,
+                "padded": false,
                 "contentPos": "",
+                "inner": false,
+                "whitespace": "",
                 "mt": "",
                 "mb": "",
                 "pt": "",
@@ -184,6 +200,7 @@
                 "custom": ""
             },
             "background": null,
+            "stack": null,
             "cols": [
                 {
                     "width": {
@@ -249,6 +266,9 @@
                                     "attributes": {
                                         "tag": "h3",
                                         "style": "",
+                                        "color": "",
+                                        "href": "",
+                                        "target": "",
                                         "class": ""
                                     }
                                 }

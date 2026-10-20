@@ -60,18 +60,19 @@
  *												section as a strength and a switch that waits for one, the
  *												cover of a section - a switch, its height and the place of its
  *												content - and the parallax and the dimming of its picture, which
- *												wait for the picture and for a cover or a parallax, the
+ *												wait for the picture, the
  *												frame of a column in the ground it paints - dark where its
  *												picture is dimmed -, the alignment of a column in one line and
- *												as an icon in its head, the picker that
- *												offers the components of its place, and the second line of a
- *												placeholder that says what a component draws.
+ *												as an icon in its head, the lightbox that
+ *												lists every component, in groups, and greys what the place of
+ *												the column does not take - with the reason -, and the second
+ *												line of a placeholder that says what a component draws.
  *
  *												The card, a component that holds components, over the page of
  *												the fixtures that has two (fixtures/page-home-card.json): a path
  *												one level deeper and the moving, copying and deleting that work
  *												at it, the keys and slots of a copy, the sources that are red in
- *												it, the picker by place - the card in a column and in the bare
+ *												it, the lightbox by place - the card in a column and in the bare
  *												cell of a loop, its children inside it, nothing a loop does not
  *												take -, its frame in the preview with the tint it has by the
  *												pairs and the mark of its picture, its tools at depth four, its
@@ -80,15 +81,38 @@
  *												picture, the picture from a slot, from a field or from an upload
  *												- and the spacing of a column, which is a line of its Layout tab.
  *
- *												The icon of a component in the picker: each item holds the svg
+ *												The icon of a component in the lightbox: each item holds the svg
  *												the parts of the registry's entry are built into, tag by tag
  *												and attribute by attribute - the twelve of the kernel, and
  *												the two of a feature that has its own - or, for a component
  *												that gives none, the puzzle of the sprite; the parts the
  *												script does not know are left out, nothing is written as
- *												markup, and the stylesheet lays an item out as a row. The
+ *												markup, and the stylesheet lays the lightbox out as rows. The
  *												stand-in remembers the namespace an element is made in, to
  *												tell an svg element from an html one.
+ *
+ *												The lightbox and the form of a component: a click on a
+ *												component adds it and the dialog goes on to its settings, the
+ *												focus on the first control - and Escape leaves it in; where the
+ *												focus is when the form of a node is closed, by Escape, by the
+ *												button or by the cross (the control that opened it was drawn
+ *												away with the preview: the focus goes to the settings tool the
+ *												preview has drawn in its place); the
+ *												tabs a component has something for (Content, Properties,
+ *												Variants, Link, CSS classes) and the kinds of input the
+ *												registry asks for - a row of buttons, a row of icons, a
+ *												select, a switch, a checkbox -, tried on a component of a
+ *												feature the stand-in registry makes up. The section: the
+ *												padded cover, the whitespace, the background inside - what it
+ *												needs and what takes it away -, the dimming of a plain section
+ *												and the Loop tab, which makes a section of every element; what
+ *												the head of a frame says of them, and of a link; that a click
+ *												in the preview leaves the page where it is (the stand-in
+ *												records what is scrolled into view); and the stamps of the
+ *												workbench (a stand-in with touch and stamp): what the panel
+ *												asks for again when another panel wrote - and not while a
+ *												dialog is open - and what it writes itself, which is no news
+ *												to it.
  *
  *	Usage: node features/Builder/tests/builder-js-smoke.js
  */
@@ -298,10 +322,27 @@ class Tag {
 		if( was !== null && was !== this ) was.dispatch('blur');
 	}
 	select() {}
-	scrollIntoView() {}
+	// What is brought into view is told: a click on what is in view must not move the page
+	scrollIntoView( options ) { if( this.document !== undefined ) this.document.scrolled.push( { el : this, options : options } ) }
 	getBoundingClientRect() { return { top : 0, left : 0, bottom : 0, right : 0, width : 0, height : 0 } }
-	showModal() { this.open = true }
-	close() { this.open = false; this.dispatch('close') }
+	// A dialog remembers the control that had the focus when it was opened and, as a browser closes it, gives the focus back to it - where it is
+	// still in the page: what was in the dialog cannot hold the focus any more, and a control that was drawn away is not there to be given it
+	showModal() { this.open = true; this.previouslyFocused = this.document === undefined ? null : this.document.activeElement }
+	close() {
+
+		const page = this.document;
+
+		this.open = false;
+
+		if( page !== undefined && page.focused !== null && this.contains( page.focused ) )
+			page.focused = null;
+
+		if( this.previouslyFocused !== null && this.previouslyFocused !== undefined && page !== undefined && page.root.contains( this.previouslyFocused ) )
+			this.previouslyFocused.focus();
+
+		this.previouslyFocused = null;
+		this.dispatch('close');
+	}
 
 	get outerHTML() {
 		const attributes = Object.keys( this.attrs ).map( function( key ) { return this.attrs[key] === '' ? ' '+ key : ' '+ key+ '="'+ this.attrs[key]+ '"' }, this ).join('');
@@ -414,6 +455,7 @@ class Document {
 
 	constructor() {
 		this.focused = null;
+		this.scrolled = [];
 		this.root = this.make('div');
 		this.documentElement = this.make('html');
 		this.body = this.make('body');
@@ -534,6 +576,10 @@ sandbox.Nino = {
 		router : { current : function() { return { panel : 'builder', parts : [] } }, set : function() {}, go : function() {}, leave : function( names, leaving, proceed ) { proceed() } },
 		dirty : { entry : null, register : function( name, entry ) { this.entry = entry }, refresh : function() {} },
 		sessionLocale : { current : 'en_US' },
+		// What the panels have written, by kind, as the workbench counts it: a panel touches a kind after a write and reads the stamp
+		stamps : {},
+		touch : function( topic ) { this.stamps[topic] = ( this.stamps[topic] ?? 0 ) + 1 },
+		stamp : function( topic ) { return this.stamps[topic] ?? 0 },
 	},
 	// The fields of the workbench, as it makes them: a label with its words and its control
 	adminUi : {
@@ -651,15 +697,31 @@ const builder = sandbox.Nino.admin.builder;
 const registryFixture = fixture('registry.json');
 
 /**
- *	The labels of the components that belong in a place, in the order of the registry, as one string: what the picker of a column
- *	offers there. A component that says where it belongs ("in") is in those places and no other, one that says nothing is in every
- *	one. Read off the registry the PHP suite wrote from the kernel it ran against, so that no list of components is typed here
+ *	Which group of the lightbox a component is in: 0, the kernel's own that belong in a hero or a section or name no place; 1, the
+ *	kernel's own that belong in a card only; 2, those a feature registered (its "by"). The registry says it, no name is typed here
+ */
+const groupOf = function( name, all ) {
+
+	const schema = all[name];
+
+	if( typeof schema.by === 'string' && schema.by !== 'nino' )
+		return 2;
+
+	return schema['in'] === undefined || schema['in'].indexOf('section') !== -1 || schema['in'].indexOf('hero') !== -1 ? 0 : 1;
+};
+
+/**
+ *	The labels of the components that belong in a place, as one string, in the order the lightbox lists them: its groups one after the
+ *	other, each in the order of the registry. A component that says where it belongs ("in") is in those places and no other, one that
+ *	says nothing is in every one. Read off the registry the PHP suite wrote from the kernel it ran against, so that no list of
+ *	components is typed here
  */
 const belonging = function( place, components ) {
 
 	const all = components || registryFixture.components;
+	const names = Object.keys( all ).filter( function( name ) { return all[name]['in'] === undefined || all[name]['in'].indexOf( place ) !== -1 } );
 
-	return Object.keys( all ).filter( function( name ) { return all[name]['in'] === undefined || all[name]['in'].indexOf( place ) !== -1 } ).map( function( name ) { return all[name].label } ).join();
+	return [ 0, 1, 2 ].map( function( group ) { return names.filter( function( name ) { return groupOf( name, all ) === group } ) } ).flat().map( function( name ) { return all[name].label } ).join();
 };
 
 /**
@@ -705,6 +767,9 @@ const nameOf = function( el ) {
 
 	if( el.type === 'checkbox' && label.classList.contains('nino-admin-switch') )
 		return label.querySelector('.nino-admin-switch-copy').firstChild.textContent;
+
+	if( el.type === 'checkbox' && label.classList.contains('builder-check') )
+		return label.children[1].textContent;
 
 	return label.children[0].textContent;
 };
@@ -814,8 +879,13 @@ const pickerBox = function() { return screen.getElementById('builder-picker') };
 const dialogText = function( id ) { return screen.getElementById( id ).textContent };
 const paneOf = function( id ) { return screen.getElementById( 'builder-pane-'+ id ) };
 const pickerPane = function( id ) { return screen.getElementById( 'builder-picker-pane-'+ id ) };
+const pickerStrip = function() { return screen.getElementById('builder-picker-tabs') };
+const fixedField = function() { return pickerPane('fixed').querySelector('input') };
 const dialogContent = function() { return screen.getElementById('builder-dialog-content') };
 const preview = function() { return screen.getElementById('builder-preview') };
+// The frame of a path in the preview, and one of its tools
+const frameOf = function( at ) { return preview().querySelector('[data-path="'+ at+ '"]') };
+const toolOf = function( at, tool ) { return frameOf( at ).querySelectorAll('button').find( function( button ) { return button.dataset.tool === tool } ) };
 
 // The tabs of a strip: [ id, word ] each, in the order they are drawn
 const tabsOf = function( strip, prefix ) {
@@ -868,6 +938,31 @@ const iconsKnown = function( root ) {
 		const symbol = screen.getElementById( use.getAttribute('href').slice( 1 ) );
 		return symbol !== null && symbol.localName === 'symbol';
 	} );
+};
+
+// The lightbox the picker of a component opens in the dialog: its items - one for every component of the registry - and the labels of
+// those that are not greyed, which are the components that can be added where it was opened. The label is in the span of its own
+const lightboxOf = function() { return screen.getElementById('builder-dialog-content').querySelector('.builder-lightbox') };
+const pickLabel = function( item ) { return item.children[1].textContent };
+const itemsOf = function( box ) { return box.querySelectorAll('.builder-pick-item') };
+const pickAt = function( path ) { builder._pickComponent( path ); return lightboxOf() };
+const takenIn = function( box ) { return itemsOf( box ).filter( function( item ) { return item.disabled === false } ).map( pickLabel ).join() };
+const offeredAt = function( path ) { return takenIn( pickAt( path ) ) };
+// Why a component cannot go where the lightbox was opened: its title as that button has it, '' for one that can, null for one that is not listed
+const reasonOf = function( path, label ) {
+	const item = itemsOf( pickAt( path ) ).find( function( candidate ) { return pickLabel( candidate ) === label } );
+	return item === undefined ? null : ( item.disabled === true ? item.title : '' );
+};
+
+// What a select holds - the value and the word of each option - and what a row of buttons holds: the value of each and its word, the face of a word or the title of an icon, and the icon it wears
+const segmentOf = function( root, label ) { return controlOf( root, label ).el.querySelectorAll('.builder-segment-option').map( function( option ) { return option.querySelector('input').value+ ':'+ option.textContent } ).join() };
+const optionsOf = function( pane, label ) { return controlOf( pane, label ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() };
+// A row of buttons as it is drawn: the value of each, its word - the title of an icon, the face of a word - and the icon it wears
+const rowOf = function( pane, label ) {
+	return controlOf( pane, label ).el.querySelectorAll('.builder-segment-option').map( function( option ) {
+		const face = option.querySelector('.builder-segment-face');
+		return option.querySelector('input').value+ ':'+ ( face === null ? option.title : face.textContent )+ ':'+ ( iconOf( option ) ?? '' );
+	} ).join();
 };
 
 console.log( 'The model' );
@@ -1241,11 +1336,14 @@ const open = function( withModel ) {
 	builder._keys = known();
 	builder._status = sandbox.Nino.adminUi.status();
 	builder._dialogOptions = null;
+	builder._dialogOpener = null;
 	builder._closing = 0;
 	builder._viewport = 'l';
 	builder._selectView('l');
 	dialogBox().open = false;
+	dialogBox().previouslyFocused = null;
 	pickerBox().open = false;
+	pickerBox().previouslyFocused = null;
 	requests = [];
 	questions = [];
 	changes = 0;
@@ -1306,41 +1404,66 @@ check( '...the end of a column is a button for a component and nothing else - wh
 	const looped = builder._addsRow( [ 1, 1 ] );
 	return plain.children.length === 1 && looped.children.length === 1 && plain.children[0].textContent === '+ Component' && looped.children[0].textContent === '+ Component';
 } )() );
-check( '...and a component is chosen from the registry\'s, those that belong where the column is: the first section is the hero, anywhere else is a section - the cell of a loop among it, which holds no place of its own - and what names no place is offered in all of them; the registry\'s "in" says, and the list is the registry\'s, as it has it', ( function() {
-	const menu = screen.getElementById('builder-menu');
-	const offered = function( path ) { builder._pickComponent( path, made('button') ); return texts( menu.children ) };
-	return belonging( 'hero' ) !== '' && belonging( 'section' ) !== '' && offered( [ 0, 0 ] ) === belonging( 'hero' ) && offered( [ 1, 0 ] ) === belonging( 'section' )
-		&& offered( [ 1, 1 ] ) === offered( [ 1, 0 ] ) && offered( [ 3, 0 ] ) === offered( [ 1, 0 ] );
+check( '...and a component is chosen in a lightbox, which opens in the dialog and lists every component of the registry: what belongs where the column is can be added, the rest stands there greyed - the first section is the hero, anywhere else is a section, the cell of a loop among it, which holds no place of its own, and what names no place belongs in all of them; the registry\'s "in" says, and the list is the registry\'s, as it has it', ( function() {
+
+	const count = itemsOf( pickAt( [ 1, 0 ] ) ).length;
+
+	return belonging( 'hero' ) !== '' && belonging( 'section' ) !== '' && offeredAt( [ 0, 0 ] ) === belonging( 'hero' ) && offeredAt( [ 1, 0 ] ) === belonging( 'section' )
+		&& offeredAt( [ 1, 1 ] ) === offeredAt( [ 1, 0 ] ) && offeredAt( [ 3, 0 ] ) === offeredAt( [ 1, 0 ] ) && count === Object.keys( registryFixture.components ).length
+		&& dialogBox().open === true && dialogBox().classList.contains('is-wide') && dialogText('builder-dialog-kind') === 'Insert a component' && screen.getElementById('builder-dialog-tabs').hidden === true;
 } )() );
-check( '...they stand in the order of the registry and in none of the script\'s own: the components as the kernel registers them, then those of a feature in the order it registered them - and a registry in another order is offered in that order, not in the alphabet\'s', ( function() {
+check( '...the lightbox is in groups, each with a heading: the kernel\'s own by where they belong - Section for what belongs in a hero or a section or names no place, Card for what belongs in a card only - and Features for what a feature registered, each in the order of the registry; a group with nothing in it is not drawn, and a feature has a heading of its own where there is more than one', ( function() {
+
+	const components = builder._registry.components;
+	const groups = function() { return pickAt( [ 1, 0 ] ).children.map( function( group ) { return group.children[0].textContent+ ':'+ itemsOf( group ).map( pickLabel ).join() } ).join(' | ') };
+	const labels = function( group ) { return Object.keys( components ).filter( function( name ) { return groupOf( name, components ) === group } ).map( function( name ) { return components[name].label } ).join() };
+	const kernel = groups();
+	const heading = function( box ) { return box.querySelectorAll('.builder-lightbox-sub').map( function( sub ) { return sub.textContent } ).join() };
+
+	builder._registry.features = { gallery : 'Gallery', forms : 'Forms' };
+	components['stub-forms'] = { label : 'Stub forms', preview : 'block', by : 'forms' };
+	components['stub-gallery'] = { label : 'Stub gallery', preview : 'block', by : 'gallery' };
+	components['stub-more'] = { label : 'Stub more', preview : 'block', by : 'forms', in : [ 'card' ] };
+
+	const several = groups();
+	const named = heading( lightboxOf() );
+
+	delete components['stub-gallery'];
+
+	const one = groups();
+	const alone = heading( lightboxOf() );
+
+	delete components['stub-forms'];
+	delete components['stub-more'];
+	delete builder._registry.features;
+
+	return kernel === 'Section:'+ labels(0)+ ' | Card:'+ labels(1) && labels(0) !== '' && labels(1) !== '' && several === kernel+ ' | Features:Stub forms,Stub more,Stub gallery' && named === 'Forms,Gallery'
+		&& one === kernel+ ' | Features:Stub forms,Stub more' && alone === '' && groups() === kernel;
+} )() );
+check( '...they stand in the order of the registry and in none of the script\'s own: the components as the kernel registers them, then those of a feature in the order it registered them - and a registry in another order is listed in that order, not in the alphabet\'s', ( function() {
 
 	const kept = builder._registry;
-	const offered = function( path ) { builder._pickComponent( path, made('button') ); return texts( screen.getElementById('builder-menu').children ) };
-	const kernel = offered( [ 1, 0 ] );
 	const flipped = {};
+	const kernel = offeredAt( [ 1, 0 ] );
 
-	builder._registry = Object.assign( {}, kept, { components : Object.assign( {}, kept.components, { zulu : { label : 'Zulu', preview : 'block' }, alpha : { label : 'Alpha', preview : 'block' } } ) } );
+	builder._registry = Object.assign( {}, kept, { components : Object.assign( {}, kept.components, { zulu : { label : 'Zulu', preview : 'block', by : 'hello' }, alpha : { label : 'Alpha', preview : 'block', by : 'hello' } } ) } );
 
-	const featured = offered( [ 1, 0 ] );
+	const featured = offeredAt( [ 1, 0 ] );
 
 	Object.keys( kept.components ).reverse().forEach( function( name ) { flipped[name] = kept.components[name] } );
 	builder._registry = Object.assign( {}, kept, { components : flipped } );
 
-	const other = offered( [ 1, 0 ] );
+	const other = offeredAt( [ 1, 0 ] );
 
 	builder._registry = kept;
 
 	return kernel === belonging( 'section' ) && featured === kernel+ ',Zulu,Alpha' && other === belonging( 'section', flipped );
 } )() );
-check( '...a component that says where it belongs (its "in") is offered there and nowhere else - the hero is the first section, whether or not it is a cover, a section is any other column, the cell of a loop included -, one that says nothing is offered everywhere, and one a loop does not take is offered in no column that runs one: the script names no component', ( function() {
+check( '...a component that says where it belongs (its "in") can be added there and nowhere else - the hero is the first section, whether or not it is a cover, a section is any other column, the cell of a loop included -, one that says nothing can be added everywhere, and one a loop does not take can be added in no column that runs one: the script names no component', ( function() {
 
-	const menu = screen.getElementById('builder-menu');
 	const components = builder._registry.components;
 	const blocks = builder._doc.model.blocks;
-	const offered = function( path ) {
-		builder._pickComponent( path, made('button') );
-		return menu.children.filter( function( item ) { return /^Stub/.test( item.textContent ) } ).map( function( item ) { return item.textContent } ).join();
-	};
+	const offered = function( path ) { return offeredAt( path ).split(',').filter( function( label ) { return /^Stub/.test( label ) } ).join() };
 
 	components['stub-card'] = { label : 'Stub card', preview : 'block', in : [ 'card' ] };
 	components['stub-hero'] = { label : 'Stub hero', preview : 'block', in : [ 'hero' ] };
@@ -1357,6 +1480,38 @@ check( '...a component that says where it belongs (its "in") is offered there an
 	return found === 'Stub hero,Stub any,Stub alone | Stub two,Stub any,Stub alone | Stub two,Stub any | Stub two,Stub any,Stub alone'
 		&& offered( [ 0, 0 ] ) === 'Stub hero,Stub any,Stub alone' && offered( [ 1, 0 ] ) === 'Stub two,Stub any,Stub alone' && offered( [ 1, 1 ] ) === 'Stub two,Stub any';
 } )() );
+check( '...what cannot go where the lightbox was opened is there all the same, greyed, and says why: a disabled button with the reason for its title and - for whoever does not see the grey - in a span of its own that only a screen reader reads; the reason is that it belongs in a card only, in the first section only or in other places, or that an element loop does not take it - and what can go is a button with nothing of the kind', ( function() {
+
+	const components = builder._registry.components;
+	const blocks = builder._doc.model.blocks;
+
+	components['stub-hero'] = { label : 'Stub hero', preview : 'block', in : [ 'hero' ] };
+	components['stub-else'] = { label : 'Stub else', preview : 'block', in : [ 'footer' ] };
+	components['stub-alone'] = { label : 'Stub alone', preview : 'block', loop : false };
+	blocks[0].settings.cover = null;
+	blocks[1].settings.cover = null;
+
+	const item = function( path, label ) { return itemsOf( pickAt( path ) ).find( function( candidate ) { return pickLabel( candidate ) === label } ) };
+	const grey = item( [ 1, 0 ], 'Stub hero' );
+	const plain = item( [ 0, 0 ], 'Stub hero' );
+	const found = [ reasonOf( [ 1, 0 ], 'Title (Card)' ), reasonOf( [ 1, 0 ], 'Stub hero' ), reasonOf( [ 0, 0 ], 'Stub hero' ), reasonOf( [ 1, 0 ], 'Stub else' ), reasonOf( [ 1, 1 ], 'Stub alone' ), reasonOf( [ 1, 0 ], 'Stub alone' ) ].join(' | ');
+
+	return found === 'Only in a card | Only in the first section |  | Not offered here | Not in an element loop | ' && reasonOf( [ 1, 0 ], 'Nothing' ) === null
+		&& grey.disabled === true && grey.title === 'Only in the first section' && grey.children.length === 3 && grey.children[2].localName === 'span' && grey.children[2].className === 'nino-admin-sr-only' && grey.children[2].textContent === grey.title
+		&& plain.disabled === false && plain.title === '' && plain.children.length === 2 && plain.querySelector('.nino-admin-sr-only') === null;
+} )() );
+check( '...a greyed component takes no click: it is not added, the lightbox stays, and the document does not change', ( function() {
+
+	const box = pickAt( [ 1, 0 ] );
+	const cols = builder._doc.model.blocks[1].cols[0].components.length;
+	const before = changes;
+	const grey = itemsOf( box ).find( function( item ) { return item.disabled === true } );
+
+	grey.click();
+
+	return grey !== undefined && builder._doc.model.blocks[1].cols[0].components.length === cols && changes === before && lightboxOf() === box && dialogBox().open === true;
+} )() );
+builder._closeDialog();
 
 doc = open();
 doc.model.blocks[1].cols[0].hidden = { s : true, m : true };
@@ -1438,8 +1593,8 @@ check( '...a column whose picture is dimmed is tinted dark, whatever colour it n
 	&& dimTintOf( 'tint', 'counter', true, true ) === 'builder-color-dark' && dimTintOf( 'dark', 'black', true, true ) === 'builder-color-dark' && dimTintOf( 'primary', 'primary', true, true ) === 'builder-color-dark' && dimTintOf( 'dark', 'counter', true, true ) === 'builder-color-dark' );
 check( '...a dimming without a picture is no ground, and a picture that is not dimmed paints nothing: the frame is tinted by the colour the column names, or by none', dimTintOf( '', '', true, false ) === '' && dimTintOf( '', 'alt', true, false ) === 'builder-color-alt'
 	&& dimTintOf( 'dark', 'counter', true, false ) === 'builder-color-black' && dimTintOf( '', '', false, true ) === '' && dimTintOf( '', 'alt', false, true ) === 'builder-color-alt' && dimTintOf( 'dark', 'counter', false, true ) === 'builder-color-black' );
-check( '...the stylesheet tints the frame of a column as it tints the frame of a section, and the frame of a card the same: the same ground for each colour, painted as a colour alone so that the stripes of a hidden column stay, and the plain ground for the counter of a light one', [ 'alt', 'tint', 'dark', 'black', 'primary', 'brand-alt' ].every( function( color ) {
-	return stylesheet.indexOf( '.builder-frame.builder-color-'+ color+ ',\n.builder-pcol.builder-color-'+ color+ ',\n.builder-card.builder-color-'+ color+ ' {\n\tbackground-color: var(--builder-ground-'+ color+ ');' ) !== -1;
+check( '...the stylesheet tints the frame of a column as it tints the frame of a section, and the frame of a card and the body of a section whose background is inside the same: the same ground for each colour, painted as a colour alone so that the stripes of a hidden column stay, and the plain ground for the counter of a light one', [ 'alt', 'tint', 'dark', 'black', 'primary', 'brand-alt' ].every( function( color ) {
+	return stylesheet.indexOf( '.builder-frame.builder-color-'+ color+ ',\n.builder-frame-body.builder-color-'+ color+ ',\n.builder-pcol.builder-color-'+ color+ ',\n.builder-card.builder-color-'+ color+ ' {\n\tbackground-color: var(--builder-ground-'+ color+ ');' ) !== -1;
 } ) && stylesheet.indexOf( '.builder-pcol.builder-color-plain,\n.builder-card.builder-color-plain {\n\tbackground-color: var(--builder-ground-plain);' ) !== -1 && /\.builder-pcol\.is-hidden \{[^}]*background-image/.test( stylesheet ) );
 
 check( 'the preview is shown in four views: Mobile, Tablet, Desktop and Global, each a button with its icon from the sprite and its word', ( function() {
@@ -1699,20 +1854,20 @@ builder._renderEditor();
 builder._openSettings( [ 0 ] );
 const settingsOf = function() { return builder._doc.model.blocks[0].settings };
 const stripOf = function() { return screen.getElementById('builder-dialog-tabs') };
-check( 'the dialog of a section has four tabs: Layout, Border / Background, Viewport animation and CSS classes', JSON.stringify( dialogTabs() ) === '[["layout","Layout"],["background","Border / Background"],["animation","Viewport animation"],["custom","CSS classes"]]' && stripOf().hidden === false );
+check( 'the dialog of a section has five tabs: Layout, Border / Background, Loop, Viewport animation and CSS classes', JSON.stringify( dialogTabs() ) === '[["layout","Layout"],["background","Border / Background"],["loop","Loop"],["animation","Viewport animation"],["custom","CSS classes"]]' && stripOf().hidden === false );
 check( '...the tabs are tabs of a tab list and the panes are tab panels they name: a tab controls its pane, a pane is labelled by its tab, and the first is chosen and shown', stripOf().getAttribute('role') === 'tablist' && stripOf().querySelectorAll('[role="tab"]').every( function( tab ) {
 	const pane = screen.getElementById( tab.getAttribute('aria-controls') );
 	return pane !== null && pane.getAttribute('role') === 'tabpanel' && pane.getAttribute('aria-labelledby') === tab.id && dialogContent().contains( pane );
-} ) && stripOf().querySelectorAll('[role="tab"]').map( function( tab ) { return tab.getAttribute('aria-selected') } ).join() === 'true,false,false,false' && shownTab( stripOf(), 'builder' ) === 'layout'
-	&& stripOf().querySelectorAll('[role="tab"]').map( function( tab ) { return tab.tabIndex } ).join() === '0,-1,-1,-1' );
+} ) && stripOf().querySelectorAll('[role="tab"]').map( function( tab ) { return tab.getAttribute('aria-selected') } ).join() === 'true,false,false,false,false' && shownTab( stripOf(), 'builder' ) === 'layout'
+	&& stripOf().querySelectorAll('[role="tab"]').map( function( tab ) { return tab.tabIndex } ).join() === '0,-1,-1,-1,-1' );
 buttonOf( stripOf(), 'Border / Background' ).click();
-check( '...and a tab pressed shows its pane and no other, and is the one stop of the tab list', shownTab( stripOf(), 'builder' ) === 'background' && stripOf().querySelectorAll('[role="tab"]').map( function( tab ) { return tab.getAttribute('aria-selected') } ).join() === 'false,true,false,false'
-	&& stripOf().querySelectorAll('[role="tab"]').map( function( tab ) { return tab.tabIndex } ).join() === '-1,0,-1,-1' );
+check( '...and a tab pressed shows its pane and no other, and is the one stop of the tab list', shownTab( stripOf(), 'builder' ) === 'background' && stripOf().querySelectorAll('[role="tab"]').map( function( tab ) { return tab.getAttribute('aria-selected') } ).join() === 'false,true,false,false,false'
+	&& stripOf().querySelectorAll('[role="tab"]').map( function( tab ) { return tab.tabIndex } ).join() === '-1,0,-1,-1,-1' );
 buttonOf( stripOf(), 'Layout' ).click();
 
 const layout = paneOf('layout');
-check( 'Layout: the two switches, the cover with its height and the vertical alignment of its content, the two alignments as icons, the width of the grid row, the spacing as a table', JSON.stringify( labelList( layout ) ) === JSON.stringify( [ 'Full width', 'Full height', 'Cover', 'Height (%)', 'Vertical alignment', 'Vertical content alignment', 'Horizontal text alignment', 'Width of the grid row', 'Above, Margin', 'Above, Padding', 'Below, Margin', 'Below, Padding' ] )
-	&& JSON.stringify( controlsIn( layout ).map( function( control ) { return control.kind } ) ) === JSON.stringify( [ 'switch', 'switch', 'switch', 'number', 'select', 'group', 'group', 'select', 'select', 'select', 'select', 'select' ] ) );
+check( 'Layout: the two switches, the cover with its height, whether it is padded and the vertical alignment of its content, the two alignments as icons, the width of the grid row, the whitespace, the spacing as a table', JSON.stringify( labelList( layout ) ) === JSON.stringify( [ 'Full width', 'Full height', 'Cover', 'Height (%)', 'Padded', 'Vertical alignment', 'Vertical content alignment', 'Horizontal text alignment', 'Width of the grid row', 'Whitespace', 'Above, Margin', 'Above, Padding', 'Below, Margin', 'Below, Padding' ] )
+	&& JSON.stringify( controlsIn( layout ).map( function( control ) { return control.kind } ) ) === JSON.stringify( [ 'switch', 'switch', 'switch', 'number', 'switch', 'select', 'group', 'group', 'select', 'select', 'select', 'select', 'select', 'select' ] ) );
 check( '...the width of the row is a select of the three it knows', controlOf( layout, 'Width of the grid row' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Normal,narrow=Narrow,wide=Wide' && valueAt( layout, 'Width of the grid row' ) === 'wide' );
 check( '...full width and full height are two switches in one line, both on at once if you like', layout.querySelectorAll('.builder-line')[0].children.length === 2 && layout.querySelectorAll('.builder-line')[0].querySelectorAll('.nino-admin-switch').length === 2
 	&& valueAt( layout, 'Full width' ) === true && valueAt( layout, 'Full height' ) === false && ( change( layout, 'Full height', true ), settingsOf().fullheight === true && settingsOf().fullwidth === true && valueAt( layout, 'Full width' ) === true )
@@ -1746,16 +1901,16 @@ check( '...and each cell writes its own setting: above the margin and the paddin
 } )() );
 
 const heightLabel = 'Height (%)';
-check( 'the cover is one line of three fields: a switch, its height in percent of the window\'s beside it, and the place of its content - the hero opens with the cover on, 100 in the number, and its content in the middle', layout.querySelectorAll('.builder-line')[1].children.length === 3
+check( 'the cover is one line of four fields: a switch, its height in percent of the window\'s beside it, whether it keeps the room of the page around it, and the place of its content - the hero opens with the cover on, 100 in the number, and its content in the middle', layout.querySelectorAll('.builder-line')[1].children.length === 4
 	&& controlOf( layout, 'Cover' ).kind === 'switch' && controlOf( layout, heightLabel ).kind === 'number' && controlOf( layout, 'Vertical alignment' ).kind === 'select'
 	&& valueAt( layout, 'Cover' ) === true && String( valueAt( layout, heightLabel ) ) === '100' && controlOf( layout, heightLabel ).el.disabled === false && valueAt( layout, 'Vertical alignment' ) === '' && controlOf( layout, 'Vertical alignment' ).el.disabled === false );
 check( '...the place of the content is the middle, the top or the bottom, with the words of the panel - and the switch says what it is for under its name, the number and the place do not', controlOf( layout, 'Vertical alignment' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Middle,top=Top,bottom=Bottom'
 	&& controlOf( layout, 'Cover' ).el.closest('label').querySelector('small').textContent === words['/_admin/builder/hint/cover'] && controlOf( layout, 'Vertical alignment' ).el.closest('label').querySelector('.nino-admin-hint') === null
-	&& controlOf( layout, heightLabel ).el.closest('label').querySelector('small') === null );
+	&& controlOf( layout, heightLabel ).el.closest('label').querySelector('small') === null && controlOf( layout, 'Padded' ).el.closest('label').querySelector('small').textContent === words['/_admin/builder/hint/padded'] );
 
 const ground = paneOf('background');
-check( 'Background: the border with the switch for the brand colour beside it, the colour, the picture - and under it, where the picture is, the upload of a picture and its alt text -, whether it is a parallax and whether it is dimmed, the focus - and the lines hold two fields each', JSON.stringify( labelList( ground ) ) === JSON.stringify( [ 'Border', 'In the brand colour', 'Background colour', 'Upload a picture', 'Alt text (English (US))', 'Parallax effect', 'Dim the picture', 'Automatic focus', 'Manual focus' ] )
-	&& ground.querySelectorAll('.builder-line').map( function( line ) { return line.children.length } ).join() === '2,2' );
+check( 'Background: the border with the switch for the brand colour beside it, the colour, the picture - and under it, where the picture is, the upload of a picture and its alt text -, whether it is a parallax and whether it is dimmed, whether the background stands inside, the focus - and the lines hold two fields each, the switch inside one', JSON.stringify( labelList( ground ) ) === JSON.stringify( [ 'Border', 'In the brand colour', 'Background colour', 'Upload a picture', 'Alt text (English (US))', 'Parallax effect', 'Dim the picture', 'Background inside', 'Automatic focus', 'Manual focus' ] )
+	&& ground.querySelectorAll('.builder-line').map( function( line ) { return line.children.length } ).join() === '2,2,1' );
 check( '...the parallax and the dimming are two switches on one line, in reach where there is a picture and, for the dimming, a cover or a parallax: the hero has the dimming on and the parallax off, and neither has a note under its name', controlOf( ground, 'Parallax effect' ).kind === 'switch' && controlOf( ground, 'Dim the picture' ).kind === 'switch'
 	&& controlOf( ground, 'Parallax effect' ).el.closest('.builder-line') === controlOf( ground, 'Dim the picture' ).el.closest('.builder-line') && valueAt( ground, 'Parallax effect' ) === false && valueAt( ground, 'Dim the picture' ) === true
 	&& controlOf( ground, 'Parallax effect' ).el.disabled === false && controlOf( ground, 'Dim the picture' ).el.disabled === false
@@ -1909,16 +2064,16 @@ check( 'a parallax a template wrote without a picture, or that lost it, is not s
 	&& controlOf( paneOf('background'), 'Parallax effect' ).el.disabled === true && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === true );
 builder._doc.model.blocks[1].background = { slot : '/template/page-home/services/background', focus : 5 };
 builder._refreshTab('background');
-check( 'with a picture the parallax is in reach, and the dimming is not while the section is neither a cover nor a parallax - there is no scrim in Nino.css for it', controlOf( paneOf('background'), 'Parallax effect' ).el.disabled === false && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === true );
+check( 'with a picture the parallax and the dimming are both in reach, whatever the section is: the scrim is for the picture, and a plain section has one of its own as a cover and a parallax have', controlOf( paneOf('background'), 'Parallax effect' ).el.disabled === false && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === false );
 change( paneOf('background'), 'Parallax effect', true );
-check( '...a parallax wakes the dimming in its own tab and the place of the content in the Layout tab, where the cover stays off', sectionOne().parallax === true && sectionOne().cover === null && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === false
+check( '...a parallax wakes the place of the content in the Layout tab, where the cover stays off, and leaves the dimming in reach', sectionOne().parallax === true && sectionOne().cover === null && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === false
 	&& controlOf( paneOf('layout'), 'Vertical alignment' ).el.disabled === false && valueAt( paneOf('layout'), 'Cover' ) === false );
 change( paneOf('background'), 'Dim the picture', true );
 change( paneOf('background'), 'Parallax effect', false );
-check( '...and switched off in a section that is no cover it takes the scrim with it: both sleep again, here and in the Layout tab', sectionOne().parallax === false && sectionOne().dim === false && valueAt( paneOf('background'), 'Dim the picture' ) === false
-	&& controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === true && controlOf( paneOf('layout'), 'Vertical alignment' ).el.disabled === true );
+check( '...and switched off in a section that is no cover the scrim stays - it is the section\'s own over its picture now - while the place of the content sleeps again, in the Layout tab', sectionOne().parallax === false && sectionOne().dim === true && valueAt( paneOf('background'), 'Dim the picture' ) === true
+	&& controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === false && controlOf( paneOf('layout'), 'Vertical alignment' ).el.disabled === true );
 change( paneOf('layout'), 'Cover', true );
-check( '...a cover wakes the dimming in the Background tab as well', sectionOne().cover === 90 && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === false );
+check( '...a cover leaves the dimming in reach and the scrim as it was', sectionOne().cover === 90 && sectionOne().dim === true && controlOf( paneOf('background'), 'Dim the picture' ).el.disabled === false );
 change( paneOf('background'), 'Dim the picture', true );
 change( paneOf('background'), 'Parallax effect', true );
 change( paneOf('background'), 'Parallax effect', false );
@@ -2013,6 +2168,262 @@ settingsOf().rowAlign = 'center';
 builder._openSettings( [ 0 ] );
 check( 'a vertical alignment written by hand that the form has no button for - nino-grid-center - is left as it is: no button is chosen, until one is', valueAt( paneOf('layout'), 'Vertical content alignment' ) === null && settingsOf().rowAlign === 'center'
 	&& ( change( paneOf('layout'), 'Vertical content alignment', 'middle' ), settingsOf().rowAlign === 'middle' ) );
+console.log( '\nPadded, whitespace, the background inside, the dimming of a plain section and the loop of a section' );
+
+doc = open();
+builder._renderEditor();
+builder._openSettings( [ 0 ] );
+const settingsAt = function( b ) { return builder._doc.model.blocks[b].settings };
+const blockAt = function( b ) { return builder._doc.model.blocks[b] };
+const reachOf = function( pane, label ) { return controlOf( pane, label ).el.disabled === false };
+check( 'Padded is a switch of the cover and the parallax, which keep the room of the page around them: in reach where the section is one of the two - the hero is a cover - and writes the setting', reachOf( paneOf('layout'), 'Padded' ) === true && valueAt( paneOf('layout'), 'Padded' ) === false
+	&& ( change( paneOf('layout'), 'Padded', true ), settingsAt( 0 ).padded === true ) && valueAt( paneOf('layout'), 'Padded' ) === true );
+change( paneOf('layout'), 'Cover', false );
+check( '...with the cover gone - and no parallax to be one - the room around it goes too, and the switch sleeps: there is no cover to keep it around', settingsAt( 0 ).cover === null && settingsAt( 0 ).padded === false && reachOf( paneOf('layout'), 'Padded' ) === false && valueAt( paneOf('layout'), 'Padded' ) === false );
+change( paneOf('background'), 'Parallax effect', true );
+check( '...a parallax is a picture that fills the section as a cover does: it wakes the switch again, and the cover that is switched on after it keeps what was set', reachOf( paneOf('layout'), 'Padded' ) === true && ( change( paneOf('layout'), 'Padded', true ), change( paneOf('layout'), 'Cover', true ), settingsAt( 0 ).padded === true ) );
+change( paneOf('background'), 'Parallax effect', false );
+check( '...and a parallax switched off in a section that is a cover keeps it too; a section that is neither - and was padded by a hand-written file - can still switch it off, which is all it can do', settingsAt( 0 ).padded === true && ( change( paneOf('layout'), 'Cover', false ), settingsAt( 0 ).padded === false ) && ( function() {
+	builder._closeDialog();
+	settingsAt( 3 ).padded = true;
+	builder._openSettings( [ 3 ] );
+	const asleep = reachOf( paneOf('layout'), 'Padded' ) === true && valueAt( paneOf('layout'), 'Padded' ) === true;
+	change( paneOf('layout'), 'Padded', false );
+	return asleep && settingsAt( 3 ).padded === false && reachOf( paneOf('layout'), 'Padded' ) === false;
+} )() );
+
+check( 'Whitespace is a select of the four rungs around the middle, with the words of the panel - the empty one is the page\'s own, which the Design sets - and it writes the word of the one chosen', optionsOf( paneOf('layout'), 'Whitespace' ) === '=As the page,least=Much narrower,less=Narrower,more=Wider,most=Much wider'
+	&& valueAt( paneOf('layout'), 'Whitespace' ) === '' && ( change( paneOf('layout'), 'Whitespace', 'most' ), settingsAt( 3 ).whitespace === 'most' ) && ( change( paneOf('layout'), 'Whitespace', '' ), settingsAt( 3 ).whitespace === '' )
+	&& controlOf( paneOf('layout'), 'Whitespace' ).el.closest('label').querySelector('.nino-admin-hint').textContent === words['/_admin/builder/hint/whitespace'] );
+builder._closeDialog();
+
+// The background inside: colour, picture and scrim stand on the row of the section, not on the section
+doc = open();
+builder._renderEditor();
+builder._openSettings( [ 1 ] );
+const insideOf = function() { return controlOf( paneOf('background'), 'Background inside' ) };
+check( 'Background inside is a switch under the picture: asleep while the section has neither a colour nor a picture - there is nothing to put inside -, in reach with one of the two', insideOf().el.disabled === true && valueAt( paneOf('background'), 'Background inside' ) === false
+	&& ( change( paneOf('background'), 'Background colour', 'alt' ), insideOf().el.disabled === false ) && insideOf().el.closest('label').querySelector('small').textContent === words['/_admin/builder/hint/inner-background'] );
+change( paneOf('background'), 'Background inside', true );
+check( '...and writes the setting: the colour of the section is the row\'s then, as the model has it - the switch changes nothing else', settingsAt( 1 ).inner === true && settingsAt( 1 ).color === 'alt' );
+change( paneOf('background'), 'Background colour', '' );
+check( '...the colour that goes while no picture is there takes the switch with it - it could say nothing but "inside" of nothing -, and the switch sleeps again', settingsAt( 1 ).inner === false && valueAt( paneOf('background'), 'Background inside' ) === false && insideOf().el.disabled === true );
+blockAt( 1 ).background = { slot : '/template/page-home/services/background', focus : 5 };
+builder._refreshTab('background');
+check( '...a picture of the section is a thing to put inside as well, with no colour; and a cover or a parallax - the picture the section stands on - is not: the switch is asleep there, and switching either of them on takes the background out of the row again', insideOf().el.disabled === false
+	&& ( change( paneOf('background'), 'Background inside', true ), settingsAt( 1 ).inner === true ) && ( change( paneOf('layout'), 'Cover', true ), settingsAt( 1 ).inner === false && insideOf().el.disabled === true )
+	&& ( change( paneOf('layout'), 'Cover', false ), insideOf().el.disabled === false ) && ( change( paneOf('background'), 'Background inside', true ), change( paneOf('background'), 'Parallax effect', true ), settingsAt( 1 ).inner === false && insideOf().el.disabled === true ) );
+change( paneOf('background'), 'Parallax effect', false );
+check( '...with the picture taken away - and the colour of the section none - the background is not inside any more; with a colour left it stays where it was', ( function() {
+	change( paneOf('background'), 'Background colour', 'tint' );
+	change( paneOf('background'), 'Background inside', true );
+	buttonOf( paneOf('background'), 'Remove the picture' ).click();
+	const kept = settingsAt( 1 ).inner === true && insideOf().el.disabled === false;
+	change( paneOf('background'), 'Background colour', '' );
+	return kept && settingsAt( 1 ).inner === false && insideOf().el.disabled === true;
+} )() );
+
+// The scrim of a plain section: the dimming is for a picture, whichever kind of section holds it
+builder._closeDialog();
+doc = open();
+builder._renderEditor();
+builder._openSettings( [ 1 ] );
+const dimOf = function() { return controlOf( paneOf('background'), 'Dim the picture' ) };
+check( 'the dimming is for a picture and for nothing else: a plain section has none to dim until it has one, then it is in reach as it is in a cover and a parallax - with the cover and the parallax off', dimOf().el.disabled === true && valueAt( paneOf('background'), 'Dim the picture' ) === false
+	&& ( blockAt( 1 ).background = { slot : '/template/page-home/services/background', focus : 5 }, builder._refreshTab('background'), dimOf().el.disabled === false ) && settingsAt( 1 ).cover === null && settingsAt( 1 ).parallax === false );
+change( paneOf('background'), 'Dim the picture', true );
+check( '...and writes the setting of the section, not of a cover: the plain section is dimmed over its picture - and loses the dimming with the picture, as the others do', settingsAt( 1 ).dim === true && ( buttonOf( paneOf('background'), 'Remove the picture' ).click(), settingsAt( 1 ).dim === false && dimOf().el.disabled === true ) );
+builder._closeDialog();
+
+// The loop of a section: a section that makes a section of every element
+doc = open();
+builder._renderEditor();
+builder._openSettings( [ 3 ] );
+const loopTab = function() { return paneOf('loop') };
+check( 'a section has a Loop tab of its own, between the border and the animation, with the choice of the loop and nothing else while there is none: Static, and the loop of the registry whose cell is a section - the stack that says so (its "cell") is the only one, and none of those of a column is among them', JSON.stringify( dialogTabs().map( function( tab ) { return tab[0] } ) ) === '["layout","background","loop","animation","custom"]'
+	&& JSON.stringify( labelList( loopTab() ) ) === '["Loop"]' && valueAt( loopTab(), 'Loop' ) === '' && optionsOf( loopTab(), 'Loop' ) === '=Static,sections=Element loop' && loopTab().querySelectorAll('.builder-group').length === 0
+	&& builder._sectionLoop( builder._registry ) === 'sections' && builder._sectionLoop( { stacks : { stack : { grid : true } } } ) === '' );
+change( loopTab(), 'Loop', 'sections' );
+check( '...the loop that is chosen runs over the first type of the project with the attributes the stack has, and the tab shows its form in two groups, Data and Order - no cells, no gap, no equal height: a section is the cell -, with the id of the loop that is the id of the section, shown and not to be typed, and the sentence that says how the sections are numbered after it', ( function() {
+
+	const loop = blockAt( 3 ).stack;
+	const id = controlOf( loopTab(), 'Id of the loop' );
+
+	return loop.name === 'sections' && loop.source === '/services' && loop.attributes.id === '' && titlesIn( loopTab() ) === 'Data,Order'
+		&& JSON.stringify( labelList( loopTab() ) ) === JSON.stringify( [ 'Loop', 'Type', 'Query', 'Id of the loop', 'Sort by', 'Direction', 'Limit', 'Offset' ] )
+		&& id.el.readOnly === true && id.el.value === 'contact' && id.el.closest('label').querySelector('.nino-admin-hint').textContent === 'The loop makes one section for each element, numbered after the id of the section: contact-1, contact-2 and so on. The id is changed in the title.';
+} )() );
+check( '...a section that runs a loop says so in its head, as a column does: "Element loop" and the type, a button that opens the Loop tab of the section - and the loop is in no other tab\'s way: the columns of the section are the cell, once for each element', ( function() {
+
+	builder._closeDialog();
+	builder._renderEditor();
+
+	const item = preview().children[3].querySelector('.builder-frame-head .builder-status-item.is-loop');
+	const opened = item !== null && item.localName === 'button' && item.textContent === 'Element loop · Services' && item.title === 'Settings of the loop: Element loop · Services' && iconOf( item ) === 'loop';
+
+	item.click();
+
+	return opened && dialogText('builder-dialog-kind') === 'Section' && shownTab( screen.getElementById('builder-dialog-tabs'), 'builder' ) === 'loop' && builder._same( builder._sel, [ 3 ] )
+		&& preview().children[0].querySelector('.builder-frame-head .builder-status-item.is-loop') === null;
+} )() );
+check( '...what the loop of a section takes of the other tabs is its own: the cover is as high as the page makes it - the height is asleep and is 90, the one height a call has - and the delay and the duration of an animation are not set, for the call has no attribute for them', ( function() {
+
+	builder._closeDialog();
+	builder._openSettings( [ 0 ] );
+
+	if( valueAt( paneOf('animation'), 'Animation' ) !== 'own' )
+		change( paneOf('animation'), 'Animation', 'own' );
+
+	const before = labelList( paneOf('animation') );
+	const height = controlOf( paneOf('layout'), 'Height (%)' );
+	const free = height.el.disabled === false && String( height.el.value ) === '100';
+
+	change( paneOf('loop'), 'Loop', 'sections' );
+
+	const after = labelList( paneOf('animation') );
+
+	return free === true && controlOf( paneOf('layout'), 'Height (%)' ).el.disabled === true && String( controlOf( paneOf('layout'), 'Height (%)' ).el.value ) === '90' && settingsAt( 0 ).cover === 90
+		&& before.filter( function( label ) { return after.indexOf( label ) === -1 } ).length === 2 && after.length === before.length - 2 && settingsAt( 0 ).vpaDelay === '' && settingsAt( 0 ).vpaDuration === '';
+} )() );
+check( '...a column of such a section may not run a loop of its own, and the loop of the section is not put in a loop: the one that would be the loop in a loop is held back, in the tab of the section as in the tab of a column, with the reason', ( function() {
+
+	builder._closeDialog();
+	builder._openSettings( [ 0, 0 ] );
+
+	const column = controlOf( paneOf('loop'), 'Loop' ).el.disabled === true && paneOf('loop').querySelector('.nino-admin-notice').textContent.indexOf('The section makes a section of every element') === 0;
+
+	builder._closeDialog();
+	builder._openSettings( [ 1 ] );
+
+	return column && controlOf( paneOf('loop'), 'Loop' ).el.disabled === true && paneOf('loop').querySelector('.nino-admin-notice').textContent.indexOf('A column of this section runs a loop of its own') === 0 && blockAt( 1 ).stack === null;
+} )() );
+check( '...and the picker of a column of such a section holds back what a loop does not take, as it does in the column that runs one', ( function() {
+	builder._registry.components['stub-alone'] = { label : 'Stub alone', preview : 'block', loop : false };
+	const looped = reasonOf( [ 0, 0 ], 'Stub alone' ) === 'Not in an element loop';
+	const plain = reasonOf( [ 1, 0 ], 'Stub alone' ) === '';
+	delete builder._registry.components['stub-alone'];
+	return looped && plain;
+} )() );
+builder._closeDialog();
+builder._openSettings( [ 0 ] );
+change( paneOf('loop'), 'Loop', '' );
+check( '...Static again takes the loop away and nothing else: the form is the choice alone, and the cover keeps the height it has', blockAt( 0 ).stack === null && JSON.stringify( labelList( paneOf('loop') ) ) === '["Loop"]' && settingsAt( 0 ).cover === 90 && controlOf( paneOf('layout'), 'Height (%)' ).el.disabled === false );
+builder._closeDialog();
+
+console.log( '\nWhat the preview says of a section and of a link, and where a click leaves the page' );
+
+doc = open();
+const planned = builder._doc.model;
+planned.blocks[0].settings.padded = true;
+planned.blocks[0].settings.whitespace = 'more';
+planned.blocks[3].settings.whitespace = 'least';
+planned.blocks[3].settings.inner = true;
+planned.blocks[1].background = { slot : '/template/page-home/services/background', focus : 5 };
+planned.blocks[1].settings.inner = true;
+builder._renderEditor();
+const statusClasses = function( b ) { return preview().children[b].querySelector('.builder-frame-head .builder-head-status').children.map( function( item ) { return item.className.replace( 'builder-status-item ', '' ) } ).join() };
+const statusTitles = function( b ) { return preview().children[b].querySelector('.builder-frame-head .builder-head-status').children.map( function( item ) { return item.title } ).join(' | ') };
+check( 'a section says what it is besides its picture, in the middle of its head, an icon each with its words for the title: that the cover is padded, that its whitespace is not the page\'s, that its background is inside, on the row, and - where the picture is on the row - that the picture is there', statusClasses( 0 ) === 'is-background,is-padded,is-whitespace'
+	&& statusTitles( 0 ) === 'A picture behind the section | Padded: the cover keeps the room of the page around it | Whitespace: Wider' && statusClasses( 3 ) === 'is-inner,is-whitespace' && statusTitles( 3 ) === 'The background is inside, on the row | Whitespace: Much narrower'
+	&& statusClasses( 1 ) === 'is-background,is-inner' && preview().children[1].querySelector('.is-background').title === 'A picture behind the row' && statusClasses( 2 ) === '' );
+check( '...each is an icon of the sprite and a picture for a screen reader, with its title for its name - the words have a place for the whitespace in both languages', [ 0, 3, 1 ].every( function( b ) {
+	return preview().children[b].querySelector('.builder-frame-head .builder-head-status').children.every( function( item ) {
+		return item.localName === 'span' && item.getAttribute('role') === 'img' && item.getAttribute('aria-label') === item.title && iconOf( item ) !== null && iconsKnown( item ) === true;
+	} );
+} ) && [ 'padded', 'whitespace', 'inner', 'row-background', 'linked' ].every( function( word ) { return words['/_admin/builder/preview/'+ word] !== undefined } )
+	&& words['/_admin/builder/preview/whitespace'].split('%s').length === 2 && /preview\/whitespace\]\]'\s*=>\s*'[^']*%s[^']*'/.test( fs.readFileSync( path.join( __dirname, '../text/de_DE.php' ), 'utf8' ) ) );
+check( '...a padded section that is not a cover says nothing of it - the room is around a cover or a parallax, nothing else: what the file holds is what the Reader and the Writer keep - and a background that cannot be inside, because the section is a cover, is not said to be', ( function() {
+
+	planned.blocks[3].settings.padded = true;
+	planned.blocks[1].settings.cover = 90;
+	builder._renderEditor();
+
+	const found = statusClasses( 3 ) === 'is-inner,is-whitespace' && statusClasses( 1 ) === 'is-background';
+
+	planned.blocks[3].settings.padded = false;
+	planned.blocks[1].settings.cover = null;
+	builder._renderEditor();
+
+	return found;
+} )() );
+check( 'the background that is inside is the row\'s: the area of the row of a section is tinted - the frame is not, and the head keeps the colour of the page - and a section whose background is not inside is tinted as a whole, as it was', ( function() {
+
+	const frame = preview().children[3];
+	const body = frame.querySelector('.builder-frame-body');
+	const inside = frame.classList.contains('builder-color-plain') && body.classList.contains('builder-color-primary');
+
+	planned.blocks[3].settings.inner = false;
+	builder._renderEditor();
+
+	const outside = preview().children[3].classList.contains('builder-color-primary') && preview().children[3].querySelector('.builder-frame-body').classList.contains('builder-color-primary') === false;
+
+	planned.blocks[3].settings.inner = true;
+	builder._renderEditor();
+
+	return inside && outside;
+} )() );
+
+check( 'a component that is a link and has an address to go to says so where the preview cannot draw an anchor: a small icon in its placeholder, with the word for its title - one that is no link, or has no address, says nothing', ( function() {
+
+	planned.blocks[0].cols[0].components[0].attributes.href = '/contact';
+	planned.blocks[0].cols[0].components[1].attributes.href = '';
+	planned.blocks[0].cols[0].components[2].attributes.href = '/contact';
+	builder._renderEditor();
+
+	const linked = frameOf( '0.0.0' );
+	const item = linked.querySelector('.builder-status-item.is-linked');
+
+	return linked.classList.contains('is-linked') && item !== null && item.title === 'Linked' && item.getAttribute('aria-label') === 'Linked' && iconOf( item ) === 'link'
+		&& frameOf( '0.0.1' ).classList.contains('is-linked') === false && frameOf( '0.0.1' ).querySelector('.is-linked') === null
+		&& frameOf( '0.0.2' ).classList.contains('is-linked') === false && frameOf( '0.0.2' ).querySelector('.is-linked') === null && builder._registry.components.button.link === false;
+} )() );
+check( '...the preview plan says it from the schema - the key "link" - and from the attribute, and names no component', builder._preview( planned, builder._registry, 'l' )[0].cols[0].components.map( function( component ) { return component.linked } ).join() === 'true,false,false'
+	&& builder._preview( Object.assign( {}, planned ), Object.assign( {}, builder._registry, { components : Object.assign( {}, builder._registry.components, { title : Object.assign( {}, builder._registry.components.title, { link : false } ) } ) } ), 'l' )[0].cols[0].components[0].linked === false );
+
+// A click on what is in view selects it and leaves the page where it is; every other way to select brings the frame into view
+doc = open();
+builder._renderEditor();
+screen.scrolled = [];
+const target = frameOf( '1.0.0' );
+target.click();
+check( 'a click on what is in the preview selects it and does not scroll the page: the frame is marked, and nothing was brought into view', builder._same( builder._sel, [ 1, 0, 0 ] ) && target.classList.contains('is-selected') && screen.scrolled.length === 0 );
+check( '...nor does a double click, which opens the form, nor a click on a section or a column, nor the tools of a frame - the settings - nor what is said in its head: a loop and an alignment', ( function() {
+
+	target.dispatch('dblclick');
+	const form = dialogBox().open === true && dialogText('builder-dialog-kind') === 'Component "Title (Section)"';
+	builder._closeDialog();
+	frameOf( '1' ).click();
+	frameOf( '1.0' ).click();
+	toolOf( '1', 'settings' ).click();
+	builder._closeDialog();
+	toolOf( '1.0.0', 'settings' ).click();
+	builder._closeDialog();
+	preview().querySelector('[data-path="1.1"] .builder-status-item.is-loop').click();
+	builder._closeDialog();
+
+	return form && screen.scrolled.length === 0 && builder._same( builder._sel, [ 1, 1, 'x' ] );
+} )() );
+check( '...a preview drawn again keeps the selection and does not scroll either', ( function() {
+	builder._renderEditor();
+	builder._renderPreview();
+	return screen.scrolled.length === 0 && preview().querySelector('.is-selected') !== null;
+} )() );
+check( '...every other way to select brings the frame into view, as nearest as it can: a component that is added, a step, a copy beside the original, and a selection that is no click - the first source a refused save found red is one', ( function() {
+
+	const scrolled = function( action ) {
+		screen.scrolled = [];
+		action();
+		return screen.scrolled.map( function( entry ) { return entry.el.dataset.path+ ':'+ entry.options.block } ).join();
+	};
+
+	const added = scrolled( function() { builder._addComponent( [ 1, 0 ], 'text' ) } );
+	const stepped = scrolled( function() { builder._stepNode( [ 1, 0, 0 ], 1 ) } );
+	const copied = scrolled( function() { builder._duplicateAt( [ 1, 0, 0 ] ) } );
+	const chosen = scrolled( function() { builder._select( [ 3 ] ) } );
+
+	return added === '1.0.2:nearest' && stepped === '1.0.1:nearest' && copied === '1.0.1:nearest' && chosen === '3:nearest';
+} )() );
+
 console.log( '\nThe dialog of a column, and the viewports in its tables' );
 
 doc = open();
@@ -2330,8 +2741,8 @@ doc = open();
 builder._renderEditor();
 builder._openSettings( [ 0, 0, 0 ] );
 const componentAt = function( at ) { return builder._doc.model.blocks[at[0]].cols[at[1]].components[at[2]] };
-check( 'the dialog of a component has three tabs: Content, Properties and CSS classes - the title names the component by its label, and no pencil is in it', dialogText('builder-dialog-kind') === 'Component "Title (Section)"' && JSON.stringify( dialogTabs() ) === '[["content","Content"],["properties","Properties"],["custom","CSS classes"]]'
-	&& screen.getElementById('builder-dialog-name').hidden === true && dialogBox().classList.contains('is-wide') === false );
+check( 'the dialog of a component has the tabs it has something for - for a text that is a link: Content, Properties, Variants, Link and CSS classes; the title names the component by its label, and no pencil is in it', dialogText('builder-dialog-kind') === 'Component "Title (Section)"'
+	&& JSON.stringify( dialogTabs() ) === '[["content","Content"],["properties","Properties"],["variants","Variants"],["link","Link"],["custom","CSS classes"]]' && screen.getElementById('builder-dialog-name').hidden === true && dialogBox().classList.contains('is-wide') === false );
 check( '...Content: the source as text, with an icon button beside it that opens the dialog of the sources - and under it, for a key the project knows, the text it holds in the language the editor works in', ( function() {
 	const row = paneOf('content').querySelector('.builder-source');
 	const button = row.querySelector('button');
@@ -2339,24 +2750,46 @@ check( '...Content: the source as text, with an icon button beside it that opens
 		&& row.querySelector('.builder-source-current').textContent === '/template/page-home/hero/title' && row.querySelector('.builder-source-name').hidden === true
 		&& button.className === 'builder-icon-btn' && button.title === 'Source' && button.getAttribute('aria-label') === 'Source' && iconOf( button ) === 'source' && JSON.stringify( labelList( paneOf('content') ) ) === '["Text (English (US))"]';
 } )() );
-check( '...Properties: the attributes of the schema in the order of the schema, the two of them on a line', JSON.stringify( labelList( paneOf('properties') ) ) === JSON.stringify( [ 'HTML tag', 'Style' ] ) && paneOf('properties').children.length === 1 && paneOf('properties').children[0].className === 'builder-line' && paneOf('properties').children[0].children.length === 2
-	&& controlOf( paneOf('properties'), 'HTML tag' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === 'div=div,h3=h3,h4=h4' && controlOf( paneOf('properties'), 'Style' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=none,loud=loud,quiet=quiet'
-	&& valueAt( paneOf('properties'), 'HTML tag' ) === 'h3' && valueAt( paneOf('properties'), 'Style' ) === 'loud' );
+check( '...Properties: the attributes of the schema that are no variants, in the order of the schema - here the HTML tag alone, a select', JSON.stringify( labelList( paneOf('properties') ) ) === JSON.stringify( [ 'HTML tag' ] ) && paneOf('properties').children.length === 1 && paneOf('properties').children[0].className === 'nino-admin-field'
+	&& controlOf( paneOf('properties'), 'HTML tag' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === 'div=div,h3=h3,h4=h4' && valueAt( paneOf('properties'), 'HTML tag' ) === 'h3' );
+check( '...Variants: a row of buttons for each variant, one to a line, in the order of the schema - the words of the panel for the values, Default for none - and the one the component has is the one that is chosen', JSON.stringify( labelList( paneOf('variants') ) ) === JSON.stringify( [ 'Style', 'Text colour' ] )
+	&& classes( paneOf('variants').children ) === 'builder-segment-field,builder-segment-field' && controlsIn( paneOf('variants') ).every( function( control ) { return control.kind === 'group' } )
+	&& segmentOf( paneOf('variants'), 'Style' ) === ':Default,loud:Loud,quiet:Quiet' && segmentOf( paneOf('variants'), 'Text colour' ) === ':Default,muted:Muted,accent:Accent'
+	&& valueAt( paneOf('variants'), 'Style' ) === 'loud' && valueAt( paneOf('variants'), 'Text colour' ) === '' );
+check( '...Link: the two attributes every link has and the schema does not declare, a note over them - where it leads, as a source, and the window it opens in, a select of the same window and a new one', ( function() {
+	const pane = paneOf('link');
+	return classes( pane.children ) === 'nino-admin-hint,builder-source,nino-admin-field' && pane.children[0].textContent === words['/_admin/builder/hint/link'] && JSON.stringify( labelList( pane ) ) === JSON.stringify( [ 'Opens in' ] )
+		&& pane.querySelector('.builder-source-name').textContent === 'Link' && pane.querySelector('.builder-source-current').textContent === 'none' && controlOf( pane, 'Opens in' ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() === '=Same window,_blank=New window'
+		&& valueAt( pane, 'Opens in' ) === '';
+} )() );
 change( paneOf('properties'), 'HTML tag', 'h4' );
-change( paneOf('properties'), 'Style', '' );
+change( paneOf('variants'), 'Style', '' );
+change( paneOf('variants'), 'Text colour', 'accent' );
+change( paneOf('link'), 'Opens in', '_blank' );
+buttonOf( paneOf('link'), 'Source' ).click();
+buttonOf( pickerStrip(), 'Static' ).click();
+fixedField().value = '/contact';
+buttonOf( pickerPane('fixed'), 'Use it' ).click();
 change( paneOf('custom'), 'Class of the component', 'big' );
-check( '...and write the attributes, CSS classes the class of the component', componentAt( [ 0, 0, 0 ] ).attributes.tag === 'h4' && componentAt( [ 0, 0, 0 ] ).attributes.style === '' && componentAt( [ 0, 0, 0 ] ).attributes['class'] === 'big' && JSON.stringify( labelList( paneOf('custom') ) ) === JSON.stringify( [ 'Class of the component' ] )
-	&& paneOf('custom').querySelector('.nino-admin-hint').textContent === words['/_admin/builder/hint/custom'] && changes === 3 );
+check( '...and write the attributes - the properties, the variants and the link of the component under the names of the schema and of the call: href and target - CSS classes the class of the component', componentAt( [ 0, 0, 0 ] ).attributes.tag === 'h4' && componentAt( [ 0, 0, 0 ] ).attributes.style === '' && componentAt( [ 0, 0, 0 ] ).attributes.color === 'accent'
+	&& componentAt( [ 0, 0, 0 ] ).attributes.target === '_blank' && componentAt( [ 0, 0, 0 ] ).attributes.href === '/contact' && componentAt( [ 0, 0, 0 ] ).attributes['class'] === 'big'
+	&& JSON.stringify( labelList( paneOf('custom') ) ) === JSON.stringify( [ 'Class of the component' ] ) && paneOf('custom').querySelector('.nino-admin-hint').textContent === words['/_admin/builder/hint/custom'] && changes === 6
+	&& valueAt( paneOf('variants'), 'Text colour' ) === 'accent' && paneOf('link').querySelector('.builder-source-current').textContent === '“/contact”' );
 
 builder._openSettings( [ 0, 0, 2 ] );
-check( 'a link is a source of its own, a line of its own - the other attributes follow in the order of the schema, two to a line where both are short, a select that is left over on a line to itself', dialogText('builder-dialog-kind') === 'Component "Button"'
-	&& classes( paneOf('properties').children ) === 'builder-source,builder-line,nino-admin-field' && JSON.stringify( labelList( paneOf('properties') ) ) === JSON.stringify( [ 'Style', 'Size', 'Opens in' ] ) && paneOf('properties').children[1].children.length === 2
+check( 'a link is a source of its own, a line of its own - the other attributes follow in the order of the schema, two to a line where both are short, the segments of a choice that is few among them: the button has no Link tab, its link is its own attribute', dialogText('builder-dialog-kind') === 'Component "Button"'
+	&& JSON.stringify( dialogTabs().map( function( tab ) { return tab[0] } ) ) === '["content","properties","custom"]'
+	&& classes( paneOf('properties').children ) === 'builder-source,builder-line,builder-line' && JSON.stringify( labelList( paneOf('properties') ) ) === JSON.stringify( [ 'Style', 'Size', 'Width', 'Opens in' ] ) && paneOf('properties').children[1].children.length === 2 && paneOf('properties').children[2].children.length === 2
+	&& controlsIn( paneOf('properties') ).map( function( control ) { return control.kind } ).join() === 'select,group,group,select'
 	&& paneOf('properties').children[0].querySelector('.builder-source-name').textContent === 'Link' && paneOf('properties').children[0].querySelector('.builder-source-current').textContent === '/_nino/webpage/contact/uri'
 	&& paneOf('properties').children[0].querySelector('.builder-source-caption').hidden === true );
+check( '...a choice of a few the schema says is a segment is a row of buttons - the size and the width of a button, with the words of the panel - and writes the value like a select does, the empty one for the default', segmentOf( paneOf('properties'), 'Size' ) === ':Normal,small:Small,big:Big' && segmentOf( paneOf('properties'), 'Width' ) === ':Automatic,full:Full width'
+	&& valueAt( paneOf('properties'), 'Size' ) === '' && ( change( paneOf('properties'), 'Width', 'full' ), componentAt( [ 0, 0, 2 ] ).attributes.width === 'full' ) && valueAt( paneOf('properties'), 'Width' ) === 'full'
+	&& ( change( paneOf('properties'), 'Size', 'big' ), componentAt( [ 0, 0, 2 ] ).attributes.size === 'big' ) && ( change( paneOf('properties'), 'Size', '' ), componentAt( [ 0, 0, 2 ] ).attributes.size === '' ) );
 builder._openSettings( [ 1, 1, 0 ] );
-check( '...the properties of the image are drawn as the schema pairs them, in the order of the schema: a line of two is a line, an attribute alone is a field, and the focus - the switch for none and the nine places - is a grid with a line to itself', ( function() {
+check( '...the properties of the image are drawn as the schema pairs them, in the order of the schema, the variant left out - it has its tab: a line of two is a line, an attribute alone is a field, and the focus - the switch for none and the nine places - is a grid with a line to itself', ( function() {
 
-	const attributes = registry().components.image.attributes;
+	const attributes = builder._split( registry().components.image.attributes ).properties;
 	const places = [ '', '1', '2', '3', '4', '5', '6', '7', '8', '9' ];
 	const focus = function( name ) { return attributes[name].type === 'select' && attributes[name].options.join() === places.join() };
 	const lines = builder._attributeLines( attributes );
@@ -2402,10 +2835,95 @@ builder._openSettings( [ 0, 0, 4 ] );
 check( '...a component the registry does not know is called by its name, and has a source of the text kind', dialogText('builder-dialog-kind') === 'Component "unknown-one"' && paneOf('content').querySelector('.builder-source') !== null );
 builder._openSettings( [ 0, 0, 6 ] );
 check( '...and the tab that is the only one is the one that is shown', shownTab( screen.getElementById('builder-dialog-tabs'), 'builder' ) === 'custom' && dialogTabs().length === 1 );
+console.log( '\nThe kinds of input of the attributes of a component' );
+
+// A component of a feature that has one attribute of each kind the registry can ask for: the registry of the kernel does not carry them all, and the panel knows the types and the hints, not the components
+doc = open();
+builder._renderEditor();
+builder._registry.components['stub-kinds'] = {
+	label : 'Stub kinds', source : 'none', loop : true, preview : 'block', link : true, by : 'hello',
+	attributes : {
+		mode		: { type : 'select', label : 'Mode', hint : 'How it works.', input : 'segment', options : [ '', 'one', 'two' ], default : '' },
+		place		: { type : 'select', label : 'Place', hint : '', input : 'icons', options : [ '', 'start', 'center', 'end' ], default : '' },
+		pick		: { type : 'select', label : 'Pick', hint : '', options : [ '', 'alpha', 'beta' ], default : '' },
+		forced	: { type : 'select', label : 'Forced', hint : '', input : 'select', options : [ '', 'x', 'y' ], default : '' },
+		flag		: { type : 'bool', label : 'Flag', hint : 'Small.', input : 'checkbox', default : false },
+		lever		: { type : 'bool', label : 'Lever', hint : '', default : false },
+		tone		: { type : 'variant', label : 'Tone', hint : '', options : [ '', 'warm', 'cold-snap' ], default : '' },
+		where		: { type : 'variant', label : 'Where', hint : '', input : 'icons', options : [ '', 'left', 'center', 'right' ], default : '' },
+		look		: { type : 'variant', label : 'Look', hint : '', input : 'select', options : [ '', 'a', 'b' ], default : '' },
+	},
+	defaults : { mode : '', place : '', pick : '', forced : '', flag : '0', lever : '0', tone : '', where : '', look : '', href : '', target : '', 'class' : '' },
+};
+builder._doc.model.blocks[0].cols[0].components.push( { name : 'stub-kinds', source : '', text : null, attributes : { mode : '', place : '', pick : '', forced : '', flag : '0', lever : '0', tone : '', where : '', look : '', href : '', target : '', 'class' : '' } } );
+builder._openSettings( [ 0, 0, 3 ] );
+
+const kindsAt = [ 0, 0, 3 ];
+const kindsOf = function() { return builder._get( builder._doc.model, kindsAt ).attributes };
+check( 'a component that has no source and attributes of every kind has the tabs it has something for - Properties, Variants, Link, CSS classes - and no Content', JSON.stringify( dialogTabs().map( function( tab ) { return tab[0] } ) ) === '["properties","variants","link","custom"]' && paneOf('content') === null );
+check( 'Properties: a field for each attribute that is no variant, by its type and the input the schema asks for - a choice of a few as a row of buttons (segment), the places of a stack as a row of icons (icons), the rest of the choices as a select (select, which is what none says as well), a flag as a switch or, where the schema says so, as a plain checkbox', JSON.stringify( labelList( paneOf('properties') ) ) === JSON.stringify( [ 'Mode', 'Place', 'Pick', 'Forced', 'Flag', 'Lever' ] )
+	&& controlsIn( paneOf('properties') ).map( function( control ) { return control.kind } ).join() === 'group,group,select,select,box,switch' && classes( paneOf('properties').children ) === 'builder-line,builder-line,builder-line' );
+check( '...a segment has the words of its values - the panel\'s where it has them, the value made into words where it has not, none for the empty one - and the icons of a stack the icons of the three places, with the word of each for its title; a select that is no segment has its values as they are', segmentOf( paneOf('properties'), 'Mode' ) === ':none,one:One,two:Two'
+	&& rowOf( paneOf('properties'), 'Place' ) === ':none:,start:Start:stack-start,center:Center:stack-center,end:End:stack-end' && optionsOf( paneOf('properties'), 'Pick' ) === '=none,alpha=alpha,beta=beta' && optionsOf( paneOf('properties'), 'Forced' ) === '=none,x=x,y=y' );
+check( '...a hint is under the field it belongs to - a segment\'s as well as a checkbox\'s', controlOf( paneOf('properties'), 'Mode' ).el.closest('.builder-segment-field').querySelector('.nino-admin-hint').textContent === 'How it works.'
+	&& controlOf( paneOf('properties'), 'Flag' ).el.closest('.builder-check-field').querySelector('.nino-admin-hint').textContent === 'Small.' && controlOf( paneOf('properties'), 'Flag' ).el.closest('label').classList.contains('builder-check') === true
+	&& controlOf( paneOf('properties'), 'Lever' ).el.closest('.nino-admin-switch') !== null );
+check( '...each kind writes what a person chose into the attribute, as the call has it: the word of a button, of an icon or of an option, "1" for a flag that is on and "0" for one that is off - the checkbox and the switch alike', ( function() {
+
+	change( paneOf('properties'), 'Mode', 'two' );
+	change( paneOf('properties'), 'Place', 'end' );
+	change( paneOf('properties'), 'Pick', 'beta' );
+	change( paneOf('properties'), 'Forced', 'x' );
+	change( paneOf('properties'), 'Flag', true );
+	change( paneOf('properties'), 'Lever', true );
+
+	const on = [ kindsOf().mode, kindsOf().place, kindsOf().pick, kindsOf().forced, kindsOf().flag, kindsOf().lever ].join();
+
+	change( paneOf('properties'), 'Flag', false );
+	change( paneOf('properties'), 'Lever', false );
+	change( paneOf('properties'), 'Mode', '' );
+
+	return on === 'two,end,beta,x,1,1' && kindsOf().flag === '0' && kindsOf().lever === '0' && kindsOf().mode === '' && valueAt( paneOf('properties'), 'Mode' ) === '' && valueAt( paneOf('properties'), 'Place' ) === 'end';
+} )() );
+check( 'Variants: a variant is a row of buttons unless the schema says another way - one to a line, the words of the panel for its values and none for the empty one, the icons of an alignment where the schema asks for them, a select where it asks for one', JSON.stringify( labelList( paneOf('variants') ) ) === JSON.stringify( [ 'Tone', 'Where', 'Look' ] )
+	&& controlsIn( paneOf('variants') ).map( function( control ) { return control.kind } ).join() === 'group,group,select' && classes( paneOf('variants').children ) === 'builder-segment-field,builder-segment-field,nino-admin-field'
+	&& segmentOf( paneOf('variants'), 'Tone' ) === ':Default,warm:Warm,cold-snap:Cold snap' && rowOf( paneOf('variants'), 'Where' ) === ':Default:,left:Left:align-left,center:Center:align-center,right:Right:align-right' && optionsOf( paneOf('variants'), 'Look' ) === '=Default,a=a,b=b' );
+check( '...and writes the word of the one that is chosen', ( function() {
+
+	change( paneOf('variants'), 'Tone', 'cold-snap' );
+	change( paneOf('variants'), 'Where', 'center' );
+	change( paneOf('variants'), 'Look', 'b' );
+
+	return [ kindsOf().tone, kindsOf().where, kindsOf().look ].join() === 'cold-snap,center,b' && valueAt( paneOf('variants'), 'Tone' ) === 'cold-snap';
+} )() );
+check( 'Link: only where the schema says the component is a link - and the component without the key has none, with the properties it has: the address and the window it opens in are the attributes of the call that every link has, and are written as href and target', JSON.stringify( labelList( paneOf('link') ) ) === JSON.stringify( [ 'Opens in' ] )
+	&& ( change( paneOf('link'), 'Opens in', '_blank' ), kindsOf().target === '_blank' ) && ( function() {
+		delete builder._registry.components['stub-kinds'].link;
+		builder._openSettings( kindsAt );
+		return JSON.stringify( dialogTabs().map( function( tab ) { return tab[0] } ) ) === '["properties","variants","custom"]';
+	} )() );
+delete builder._registry.components['stub-kinds'];
+builder._closeDialog();
+
+check( 'a schema that declares no variants has no tab for them, one that declares only variants has no Properties: the tabs are made of what the schema holds', ( function() {
+
+	const names = function( attributes ) {
+		builder._registry.components['stub-only'] = { label : 'Stub only', source : 'none', loop : true, preview : 'block', attributes : attributes, defaults : { 'class' : '' } };
+		builder._doc.model.blocks[0].cols[0].components[3] = { name : 'stub-only', source : '', text : null, attributes : { 'class' : '' } };
+		builder._openSettings( kindsAt );
+		return dialogTabs().map( function( tab ) { return tab[0] } ).join();
+	};
+	const found = [ names( { tone : { type : 'variant', label : 'Tone', hint : '', options : [ '', 'warm' ], default : '' } } ), names( { mode : { type : 'select', label : 'Mode', hint : '', options : [ '', 'one' ], default : '' } } ) ].join(' | ');
+
+	delete builder._registry.components['stub-only'];
+	builder._closeDialog();
+
+	return found === 'variants,custom | properties,custom';
+} )() );
+
 console.log( '\nThe dialog of a source' );
 
 const sourceButton = function( pane ) { return pane.querySelector('.builder-source button') };
-const pickerStrip = function() { return screen.getElementById('builder-picker-tabs') };
 const pickItems = function() { return pickerPane('pick').querySelectorAll('.builder-pick-item') };
 
 doc = open();
@@ -2458,7 +2976,6 @@ check( '...and using it makes the key the source, with what it is made with: the
 
 sourceButton( paneOf('content') ).click();
 buttonOf( pickerStrip(), 'Static' ).click();
-const fixedField = function() { return pickerPane('fixed').querySelector('input') };
 check( 'Static: a value that stands in the template - a field with a hint and a button to use it', shownTab( pickerStrip(), 'builder-picker' ) === 'fixed' && labelsIn( pickerPane('fixed') ) === 'Fixed value' && fixedField().value === '' && buttonOf( pickerPane('fixed'), 'Use it' ).textContent === 'Use it'
 	&& pickerPane('fixed').querySelector('.nino-admin-hint').textContent === words['/_admin/builder/hint/fixed'] );
 fixedField().value = 'Mehr';
@@ -2887,18 +3404,20 @@ builder._addCol( [ 1 ] );
 builder._addComponent( [ 1, 1 ], 'title' );
 check( '...at the end of the level they are meant for: the column of the services is the third, the component stands last in the loop', builder._doc.model.blocks[1].cols.length === 3 && builder._doc.model.blocks[1].cols[1].components.length === 5 && builder._doc.model.blocks[1].cols[1].components[4].name === 'title'
 	&& builder._doc.model.blocks[1].cols[1].components[4].source === '' && builder._doc.model.blocks[1].cols[1].components[4].create === undefined && builder._doc.model.blocks.length === 5 );
-check( '...the buttons of the preview do the same: a section, a column - and a component, which is chosen from the menu the button opens', ( function() {
+check( '...the buttons of the preview do the same: a section, a column - and a component, which is chosen in the lightbox the button opens, and goes in at once: the dialog stays and shows its settings', ( function() {
 	doc = open();
 	builder._renderEditor();
 	screen.getElementById('builder-add-section').click();
 	preview().children[0].querySelector('.builder-add-col').click();
 	preview().children[0].querySelector('.builder-adds .builder-add-button').click();
-	const menu = screen.getElementById('builder-menu');
-	const opened = menu.hidden === false && menu.getAttribute('role') === 'menu' && menu.children.length === 10 && menu.children.every( function( item ) { return item.getAttribute('role') === 'menuitem' } );
-	buttonOf( menu, 'Button' ).click();
-	return opened && menu.hidden === true && builder._doc.model.blocks.length === 5 && builder._doc.model.blocks[0].cols.length === 2 && builder._doc.model.blocks[0].cols[0].components.length === 4 && builder._doc.model.blocks[0].cols[0].components[3].name === 'button'
+	const box = lightboxOf();
+	const opened = dialogBox().open === true && box !== null && itemsOf( box ).length === Object.keys( registryFixture.components ).length && takenIn( box ) === belonging('hero');
+	buttonOf( box, 'Button' ).click();
+	return opened && dialogBox().open === true && lightboxOf() === null && dialogText('builder-dialog-kind') === 'Component "Button"' && builder._same( builder._sel, [ 0, 0, 3 ] )
+		&& builder._doc.model.blocks.length === 5 && builder._doc.model.blocks[0].cols.length === 2 && builder._doc.model.blocks[0].cols[0].components.length === 4 && builder._doc.model.blocks[0].cols[0].components[3].name === 'button'
 		&& preview().children.length === 5 && changes === 3;
 } )() );
+builder._closeDialog();
 
 doc = open();
 builder._rename( [ 0 ], 'start' );
@@ -3491,6 +4010,20 @@ check( '...a title with the tag h4 draws H4 .nino-section-title; where the compo
 	&& ( delete builder._doc.model.blocks[0].cols[0].components[0].attributes.tag, builder._renderEditor(), drawsOf('0.0.0').textContent === 'H3 .nino-section-title' ) );
 check( 'a component that does not say what it draws is as it was: one line, the mark is not set - and the block of the second line is there, out of sight and empty', drawsOf('1.0.1') !== null && drawsOf('1.0.1').hidden === true && drawsOf('1.0.1').textContent === '' && phOf('1.0.1').classList.contains('has-draws') === false
 	&& phOf('1.0.1').querySelector('.builder-ph-label').textContent === 'Text' && phOf('0.0.1').classList.contains('has-draws') === true );
+check( 'a scroll hint is a block component like the others: its placeholder wears the block image of the registry\'s preview, with the label of the component and the second line it says it draws - the anchor and the class of the arrow -, and it is a frame that can be picked and has its tools', ( function() {
+
+	builder._doc.model.blocks[0].cols[0].components.push( { name : 'scroll-hint', source : '', text : null, attributes : { to : '', 'class' : '' } } );
+	builder._renderEditor();
+
+	const hint = phOf('0.0.3');
+	const found = hint !== null && hint.querySelector('use').getAttribute('href') === '#builder-ph-block' && screen.getElementById('builder-ph-block') !== null && hint.querySelector('.builder-ph-label').textContent === 'Scroll hint'
+		&& drawsOf('0.0.3').textContent === 'A .nino-hero-arrowdown' && hint.classList.contains('has-draws') && hint.classList.contains('builder-pick') && builder._registry.components['scroll-hint'].preview === 'block';
+
+	builder._doc.model.blocks[0].cols[0].components.pop();
+	builder._renderEditor();
+
+	return found;
+} )() );
 check( '...what a schema says is put in as it is said: the tag is the first word and in upper case, a name in braces is the attribute of the component - the default of the schema where it has none, nothing where the schema has none either -, a word alone is a tag alone, the whole tag may be a name in braces - as it is in the kernel\'s titles -, and a schema that says nothing, or something that is no text, says no line',
 	builder._draws( { draws : '{tag} .nino-x', defaults : { tag : 'div' } }, { attributes : { tag : 'h3' } } ) === 'H3 .nino-x' && builder._draws( { draws : '{tag} .nino-x', defaults : { tag : 'div' } }, { attributes : {} } ) === 'DIV .nino-x'
 	&& builder._draws( { draws : 'h{level} .nino-x' }, { attributes : { level : '4' } } ) === 'H4 .nino-x' && builder._draws( { draws : 'h{level} .nino-x', defaults : { level : '2' } }, { attributes : {} } ) === 'H2 .nino-x'
@@ -4178,35 +4711,33 @@ console.log( '\nThe picker of a card, and what it adds' );
 doc = openCard();
 builder._renderEditor();
 
-const menuOf = function( path ) { builder._pickComponent( path, made('button') ); return texts( screen.getElementById('builder-menu').children ) };
 // What belongs in each place, as the registry says it
 const inCard = belonging( 'card' );
 const inSection = belonging( 'section' );
 const inHero = belonging( 'hero' );
 
-check( 'the picker offers the card where the card says it belongs - a column of a section, and the bare cell of a loop, which holds no place of its own - and what a column is offered besides', menuOf( [ 1, 0 ] ) === inSection );
+check( 'the lightbox offers the card where the card says it belongs - a column of a section, and the bare cell of a loop, which holds no place of its own - and what a column is offered besides', offeredAt( [ 1, 0 ] ) === inSection );
 check( '...in the first section it is offered as well, whether it is a cover or none: the hero is a place the card belongs in, and a cover does not make it one', ( function() {
-	const without = [ menuOf( [ 0, 0 ] ), menuOf( [ 0, 1 ] ) ];
+	const without = [ offeredAt( [ 0, 0 ] ), offeredAt( [ 0, 1 ] ) ];
 	builder._doc.model.blocks[0].settings.cover = 90;
-	const offered = menuOf( [ 0, 0 ] );
+	const offered = offeredAt( [ 0, 0 ] );
 	builder._doc.model.blocks[0].settings.cover = null;
 	return without.join() === [ inHero, inHero ].join() && offered === inHero;
 } )() );
-check( '...inside a card it offers what belongs to the place the card holds - the title and the subtitle of a card - and not the card itself, and not the title of a section nor the title of a hero, whose places are others', menuOf( cardAt ) === inCard && menuOf( [ 1, 0, 0 ] ) === inCard
-	&& menuOf( cardAt ).split(',').indexOf('Card') === -1 && menuOf( [ 0, 1 ] ).split(',').indexOf('Title (Card)') === -1 && menuOf( [ 1, 0 ] ).split(',').indexOf('Title (Card)') === -1 );
-check( '...the button of the card in the preview opens the same menu, and the button of its column the column\'s', ( function() {
-
-	const menu = screen.getElementById('builder-menu');
+check( '...inside a card it offers what belongs to the place the card holds - the title and the subtitle of a card - and not the card itself, and not the title of a section nor the title of a hero, whose places are others; what it does not offer stands there greyed, and says it is not for a card', offeredAt( cardAt ) === inCard && offeredAt( [ 1, 0, 0 ] ) === inCard
+	&& offeredAt( cardAt ).split(',').indexOf('Card') === -1 && offeredAt( [ 0, 1 ] ).split(',').indexOf('Title (Card)') === -1 && offeredAt( [ 1, 0 ] ).split(',').indexOf('Title (Card)') === -1
+	&& reasonOf( cardAt, 'Card' ) === 'Not in a card' && reasonOf( cardAt, 'Title (Section)' ) === 'Not in a card' && reasonOf( cardAt, 'Title (Card)' ) === '' && reasonOf( [ 1, 0 ], 'Card' ) === '' );
+check( '...the button of the card in the preview opens the same lightbox, and the button of its column the column\'s', ( function() {
 
 	preview().querySelector('[data-path="0.1.0"] .builder-adds .builder-add-button').click();
 
-	const own = texts( menu.children );
+	const own = takenIn( lightboxOf() );
 
 	const adds = preview().querySelector('[data-path="0.1"]').querySelectorAll('.builder-adds');
 
 	adds[adds.length - 1].querySelector('.builder-add-button').click();
 
-	return adds.length === 2 && own === inCard && texts( menu.children ) === inHero;
+	return adds.length === 2 && own === inCard && takenIn( lightboxOf() ) === inHero;
 } )() );
 
 check( '...a component a loop does not take is offered in no column that runs one, and in no card inside it - at depth three and at depth four alike - and everywhere else; a container that says it belongs in a card is offered in none', ( function() {
@@ -4216,10 +4747,7 @@ check( '...a component a loop does not take is offered in no column that runs on
 	components['stub-alone'] = { label : 'Stub alone', preview : 'block', loop : false };
 	components['stub-holder'] = { label : 'Stub holder', source : 'content', preview : 'block', in : [ 'hero', 'section', 'card' ], holds : 'card' };
 
-	const stub = function( path ) {
-		builder._pickComponent( path, made('button') );
-		return screen.getElementById('builder-menu').children.filter( function( item ) { return /^Stub/.test( item.textContent ) } ).map( function( item ) { return item.textContent } ).join();
-	};
+	const stub = function( path ) { return offeredAt( path ).split(',').filter( function( label ) { return /^Stub/.test( label ) } ).join() };
 	const found = [ stub( [ 0, 1 ] ), stub( cardAt ), stub( [ 1, 0 ] ), stub( [ 1, 0, 0 ] ) ].join(' | ');
 
 	delete components['stub-alone'];
@@ -4257,25 +4785,165 @@ check( '...a component added to a card is its last child, with a key of its own 
 check( '...and the document that came of it is unsaved, with the children where the Reader puts them and the marks the panel keeps', builder._unsaved( builder._doc ) === true && builder._saveRequest( builder._doc, false ).model.blocks[0].cols[1].components[0].components.length === 4
 	&& builder._saveRequest( builder._doc, false ).model.blocks[0].cols[1].components[0].components[3].create.value === 'Subtitle (Card)' );
 
+console.log( '\nThe lightbox adds a component and goes on to its settings' );
+
+doc = open();
+builder._renderEditor();
+pickAt( [ 3, 0 ] );
+buttonOf( lightboxOf(), 'Title (Section)' ).click();
+const addedAt = [ 3, 0, 2 ];
+check( 'a click on a component of the lightbox adds it at the end of the column and the dialog goes on to its settings, in the same dialog: the lightbox is gone, the form of the component stands there with its tabs, the component is the selection, and the first control of the form has the focus', dialogBox().open === true && lightboxOf() === null
+	&& builder._doc.model.blocks[3].cols[0].components.length === 3 && builder._doc.model.blocks[3].cols[0].components[2].name === 'title' && dialogText('builder-dialog-kind') === 'Component "Title (Section)"'
+	&& JSON.stringify( dialogTabs().map( function( tab ) { return tab[0] } ) ) === '["content","properties","variants","link","custom"]' && builder._same( builder._sel, addedAt )
+	&& screen.activeElement !== null && paneOf('content').contains( screen.activeElement ) && screen.activeElement.disabled === false );
+check( '...it is a component as any is added: its key is made in the section, the document has changed - once - and the preview shows it as the selection', builder._doc.model.blocks[3].cols[0].components[2].source === '/template/page-home/contact/title-2' && builder._doc.model.blocks[3].cols[0].components[2].create !== undefined
+	&& changes === 1 && builder._unsaved( builder._doc ) === true && preview().querySelector('[data-path="3.0.2"]').classList.contains('is-selected') );
+dialogBox().close();
+check( '...Escape - the close the browser does - ends the dialog with the component in: nothing is asked and nothing is taken back', questions.length === 0 && dialogBox().open === false && builder._dialogOptions === null && builder._doc.model.blocks[3].cols[0].components.length === 3
+	&& preview().querySelector('[data-path="3.0.2"]') !== null );
+
+console.log( '\nThe focus when the form of a node is closed' );
+
+/*	What a person does with the keyboard: the button that adds to the column has the focus and is pressed, the item of the lightbox has the focus and is pressed. The preview is
+	drawn again for the component that was added, so that the button that opened the lightbox is not on the page when the dialog is closed - the browser has nothing to give the
+	focus back to	*/
+const addButtonOf = function( at ) { const adds = frameOf( at ).querySelectorAll('.builder-adds'); return adds[adds.length - 1].querySelector('.builder-add-button') };
+const addWith = function( at, label ) {
+
+	const trigger = addButtonOf( at );
+
+	trigger.focus();
+	trigger.click();
+	buttonOf( lightboxOf(), label ).focus();
+	buttonOf( lightboxOf(), label ).click();
+
+	return trigger;
+};
+const onTool = function( at ) { return screen.activeElement !== null && screen.activeElement === toolOf( at, 'settings' ) && screen.activeElement.isConnected === true };
+
+doc = open();
+builder._renderEditor();
+const gone = addWith( '3.0', 'Title (Section)' );
+check( 'a component added by the keyboard in the lightbox has its settings open, and the button that opened the lightbox is not on the page any more: the preview was drawn again for the new component', dialogBox().open === true
+	&& dialogText('builder-dialog-kind') === 'Component "Title (Section)"' && gone.isConnected === false && screen.activeElement !== null && paneOf('content').contains( screen.activeElement ) );
+dialogBox().close();
+check( 'Escape - the close the browser does - leaves the focus on the settings tool of the component that was added: where it is drawn in the preview now, and not on the page', dialogBox().open === false && onTool( '3.0.2' ) );
+
+doc = open();
+builder._renderEditor();
+addWith( '3.0', 'Title (Section)' );
+buttonOf( screen.getElementById('builder-dialog-actions'), 'Close' ).click();
+check( '...the Close button of the dialog does the same', dialogBox().open === false && builder._dialogOptions === null && onTool( '3.0.2' ) );
+
+doc = open();
+builder._renderEditor();
+addWith( '3.0', 'Text' );
+screen.getElementById('builder-dialog-close').click();
+check( '...and so does the cross in its head', dialogBox().open === false && builder._dialogOptions === null && onTool( '3.0.2' ) );
+
+doc = openCard();
+builder._renderEditor();
+addWith( '0.1.0', 'Title (Card)' );
+dialogBox().close();
+check( '...in a card too: the tool of the child that was added, one level deeper', dialogBox().open === false && onTool( '0.1.0.3' ) );
+
+doc = open();
+builder._renderEditor();
+const left = addButtonOf( '3.0' );
+left.focus();
+left.click();
+dialogBox().close();
+check( 'a lightbox that is closed with no choice leaves the preview as it was - no component was added, so the button that opened it is where it was - and the focus is on that button: the browser gives it back',
+	dialogBox().open === false && left.isConnected === true && screen.activeElement === left && builder._doc.model.blocks[3].cols[0].components.length === 2 && changes === 0 );
+
+[ [ 'a component', '3.0.0', 'properties', 'HTML tag', 'h4' ], [ 'a column', '3.0', 'layout', 'Width, Desktop', '33' ], [ 'a section', '3', 'layout', 'Cover', true ] ].forEach( function( kind ) {
+
+	doc = open();
+	builder._renderEditor();
+
+	const tool = toolOf( kind[1], 'settings' );
+
+	tool.focus();
+	tool.click();
+	dialogBox().close();
+	const kept = tool.isConnected === true && screen.activeElement === tool;
+
+	tool.focus();
+	tool.click();
+	change( paneOf( kind[2] ), kind[3], kind[4] );
+	dialogBox().close();
+	check( 'the settings of '+ kind[0]+ ' give the focus back to the tool that opened them where nothing changed - the browser does - and, where a change in the form drew the preview again and took the tool with it, '
+		+ 'to the tool that is drawn in its place', kept === true && tool.isConnected === false && changes === 1 && onTool( kind[1] ) );
+} );
+
+doc = open();
+builder._renderEditor();
+const applied = toolOf( '2', 'settings' );
+applied.focus();
+applied.click();
+screen.getElementById('builder-dialog-actions').children[0].click();
+requests[0].callback( 200, { model : JSON.parse( JSON.stringify( builder._doc.model ) ) } );
+check( 'the editor of HTML+, applied: the block is read again and the preview drawn again - the tool that opened the editor went with the old preview - and the focus is on the settings tool of the block, where it is drawn now',
+	dialogBox().open === false && applied.isConnected === false && onTool( '2' ) );
+
+doc = open();
+builder._renderEditor();
+screen.focused = null;
+frameOf('3.0.0').dispatch('dblclick');
+change( paneOf('properties'), 'HTML tag', 'h4' );
+dialogBox().close();
+check( 'a form that a double click opened, with the focus on no control, leaves the focus where the browser has it: nothing is taken to a tool the person never was on', screen.activeElement === null && changes === 1 );
+
+doc = openCard();
+builder._renderEditor();
+pickAt( cardAt );
+buttonOf( lightboxOf(), 'Title (Card)' ).click();
+check( 'in a card the component goes in as a child at the end of the card, and the settings are the child\'s, in the dialog the lightbox was in', dialogText('builder-dialog-kind') === 'Component "Title (Card)"' && cardIn( builder._doc.model ).components.length === 4
+	&& cardIn( builder._doc.model ).components[3].name === 'card-title' && builder._same( builder._sel, [ 0, 1, 0, 3 ] ) && lightboxOf() === null && JSON.stringify( dialogTabs().map( function( tab ) { return tab[0] } ) ) === '["content","properties","variants","link","custom"]' );
+dialogBox().close();
+pickAt( [ 1, 0 ] );
+buttonOf( lightboxOf(), 'Image' ).click();
+check( '...in a column that runs a loop it goes in as a component of the cell, with no key of its own to make - and a picture, the settings of which have the content tab of a picture', builder._get( builder._doc.model, [ 1, 0, 1 ] ).name === 'image' && builder._get( builder._doc.model, [ 1, 0, 1 ] ).source === '' && builder._get( builder._doc.model, [ 1, 0, 1 ] ).create === undefined
+	&& dialogText('builder-dialog-kind') === 'Component "Image"' && builder._same( builder._sel, [ 1, 0, 1 ] ) && paneOf('content') !== null );
+dialogBox().close();
+check( '...and what a card says it does not take stands in its lightbox greyed, and a click on it does nothing: the card is not put in a card, the title of a section is not put in one', ( function() {
+
+	pickAt( cardAt );
+
+	const items = itemsOf( lightboxOf() );
+	const card = items.find( function( item ) { return pickLabel( item ) === 'Card' } );
+	const section = items.find( function( item ) { return pickLabel( item ) === 'Title (Section)' } );
+	const length = cardIn( builder._doc.model ).components.length;
+	const before = changes;
+
+	card.click();
+	section.click();
+
+	return card.disabled === true && section.disabled === true && cardIn( builder._doc.model ).components.length === length && changes === before && lightboxOf() !== null;
+} )() );
+builder._closeDialog();
+
 console.log( '\nThe icon of a component in the picker' );
 
 doc = openCard();
 builder._renderEditor();
 
-// The items of the picker of a column, or of a component that holds components, as the menu draws them
-const pickedItems = function( path ) { builder._pickComponent( path, made('button') ); return screen.getElementById('builder-menu').children };
+// The items of the lightbox of a column, or of a component that holds components: one for every component of the registry
+const pickedItems = function( path ) { return itemsOf( pickAt( path ) ) };
 // What the parts of an icon say, and what an svg is made of: the tag of each part and its attributes, by name in the alphabet's order
 const partsSaid = function( parts ) { return JSON.stringify( parts.map( function( part ) { return [ part[0], Object.keys( part[1] ).sort().map( function( name ) { return [ name, part[1][name] ] } ) ] } ) ) };
 const partsBuilt = function( svg ) { return JSON.stringify( svg.children.map( function( part ) { return [ part.localName, Object.keys( part.attrs ).sort().map( function( name ) { return [ name, part.attrs[name] ] } ) ] } ) ) };
 
-check( 'every item of the picker holds an icon first and its label after it, the label in a span of its own - and the text of the item is the label alone, so that the lists of the picker are what they were and an item is found by its text', ( function() {
+check( 'every item of the lightbox is a button that holds an icon first and its label after it, the label in a span of its own - one that is greyed has the reason in a third - so that an item that can be added has the label alone for its text and is found by it', ( function() {
 
-	const menu = screen.getElementById('builder-menu');
-	const items = pickedItems( [ 1, 0 ] );
+	const box = pickAt( [ 1, 0 ] );
+	const items = itemsOf( box );
 
-	return items.length === inSection.split(',').length && items.every( function( item ) {
-		return item.localName === 'button' && item.children.length === 2 && item.children[0].localName === 'svg' && item.children[1].localName === 'span' && item.children[1].className === 'builder-menu-label' && item.textContent === item.children[1].textContent;
-	} ) && texts( items ) === inSection && buttonOf( menu, 'Button' ) === items[inSection.split(',').indexOf('Button')] && buttonOf( menu, 'Button' ).children[1].textContent === 'Button';
+	return items.length === Object.keys( registryFixture.components ).length && items.every( function( item ) {
+		return item.localName === 'button' && item.type === 'button' && item.children[0].localName === 'svg' && item.children[1].localName === 'span' && item.children[1].className === 'builder-pick-label'
+			&& ( item.disabled === true ? item.children.length === 3 && item.textContent === pickLabel( item )+ item.title : item.children.length === 2 && item.textContent === pickLabel( item ) );
+	} ) && takenIn( box ) === inSection && texts( items.filter( function( item ) { return item.disabled === false } ) ) === inSection && buttonOf( box, 'Button' ) === items.find( function( item ) { return pickLabel( item ) === 'Button' } )
+		&& buttonOf( box, 'Button' ).children[1].textContent === 'Button';
 } )() );
 check( '...the icon of a component of the kernel is the one the registry gives it: the svg holds the parts of its entry, tag by tag and attribute by attribute - every one of them, in the pickers of the hero, of a section and of a card', ( function() {
 
@@ -4285,7 +4953,7 @@ check( '...the icon of a component of the kernel is the one the registry gives i
 	const same = [ [ 0, 0 ], [ 1, 0 ], cardAt ].every( function( path ) {
 		return pickedItems( path ).every( function( item ) {
 
-			const name = names.find( function( candidate ) { return components[candidate].label === item.textContent } );
+			const name = names.find( function( candidate ) { return components[candidate].label === pickLabel( item ) } );
 
 			seen[name] = true;
 
@@ -4295,12 +4963,12 @@ check( '...the icon of a component of the kernel is the one the registry gives i
 
 	return same && names.length > 0 && names.length === Object.keys( registryFixture.components ).length && Object.keys( seen ).length === names.length && names.every( function( name ) { return components[name].icon.length > 0 } );
 } )() );
-check( '...it is an svg of its own and decoration: made in the namespace of svg, as every part of it is - an element of the page is not -, 24 by 24, out of reach of assistive technology, with the class of the icons and the menu\'s, and it draws with its parts, not with the sprite', ( function() {
+check( '...it is an svg of its own and decoration: made in the namespace of svg, as every part of it is - an element of the page is not -, 24 by 24, out of reach of assistive technology, with the class of the icons and the lightbox\'s, and it draws with its parts, not with the sprite', ( function() {
 
 	const svg = pickedItems( [ 1, 0 ] )[0].children[0];
 
-	return svg.namespaceURI === SVG_NS && svg.children.length === 3 && svg.all().every( function( el ) { return el.namespaceURI === SVG_NS } ) && made('button').namespaceURI === HTML_NS && screen.getElementById('builder-menu').namespaceURI === HTML_NS
-		&& svg.getAttribute('viewBox') === '0 0 24 24' && svg.getAttribute('aria-hidden') === 'true' && svg.getAttribute('focusable') === 'false' && svg.className === 'builder-icon builder-menu-icon' && svg.querySelector('use') === null;
+	return svg.namespaceURI === SVG_NS && svg.children.length === 3 && svg.all().every( function( el ) { return el.namespaceURI === SVG_NS } ) && made('button').namespaceURI === HTML_NS && lightboxOf().namespaceURI === HTML_NS
+		&& svg.getAttribute('viewBox') === '0 0 24 24' && svg.getAttribute('aria-hidden') === 'true' && svg.getAttribute('focusable') === 'false' && svg.className === 'builder-icon builder-pick-icon' && svg.querySelector('use') === null;
 } )() );
 
 ( function() {
@@ -4320,15 +4988,15 @@ check( '...it is an svg of its own and decoration: made in the namespace of svg,
 	components['stub-empty'] = { label : 'Stub empty', preview : 'block', icon : [] };
 	components['stub-map'] = { label : 'Stub map', preview : 'block', icon : { d : 'M0 0' } };
 
-	const menu = screen.getElementById('builder-menu');
-	const items = pickedItems( [ 1, 0 ] );
+	const box = pickAt( [ 1, 0 ] );
+	const items = itemsOf( box );
 	const stub = {};
 
-	items.filter( function( item ) { return /^Stub/.test( item.textContent ) } ).forEach( function( item ) { stub[item.textContent] = item } );
+	items.filter( function( item ) { return /^Stub/.test( pickLabel( item ) ) } ).forEach( function( item ) { stub[pickLabel( item )] = item } );
 
-	check( '...a component of a feature is offered with its own icon, built the same whichever of the seven tags its parts name - a rect with its radii and one without -, and after the kernel\'s as it was', texts( items ) === inSection+ ',Stub own,Stub second,Stub none,Stub text,Stub empty,Stub map'
+	check( '...a component of a feature is offered with its own icon, built the same whichever of the seven tags its parts name - a rect with its radii and one without -, and after the kernel\'s as it was', takenIn( box ) === inSection+ ',Stub own,Stub second,Stub none,Stub text,Stub empty,Stub map'
 		&& partsBuilt( stub['Stub own'].children[0] ) === partsSaid( every ) && stub['Stub own'].children[0].children.map( function( part ) { return part.localName } ).join() === 'path,circle,ellipse,rect,rect,line,polyline,polygon'
-		&& partsBuilt( stub['Stub second'].children[0] ) === partsSaid( second ) && stub['Stub own'].children[0].className === 'builder-icon builder-menu-icon' && stub['Stub own'].children[0].namespaceURI === SVG_NS );
+		&& partsBuilt( stub['Stub second'].children[0] ) === partsSaid( second ) && stub['Stub own'].children[0].className === 'builder-icon builder-pick-icon' && stub['Stub own'].children[0].namespaceURI === SVG_NS );
 
 	const puzzle = screen.getElementById('builder-icon-puzzle');
 	const worn = [ 'Stub none', 'Stub text', 'Stub empty', 'Stub map' ].map( function( label ) { return stub[label] } );
@@ -4336,17 +5004,17 @@ check( '...it is an svg of its own and decoration: made in the namespace of svg,
 	check( '...a component that names no icon - or names something that is no list of parts - wears the puzzle of the sprite: the svg of the icons with a use of the symbol, the class of the others and nothing built into it', worn.every( function( item ) {
 		const svg = item.children[0];
 		return svg.localName === 'svg' && svg.namespaceURI === SVG_NS && svg.children.length === 1 && svg.children[0].localName === 'use' && svg.children[0].getAttribute('href') === '#builder-icon-puzzle' && iconOf( item ) === 'puzzle'
-			&& svg.className === 'builder-icon builder-menu-icon' && svg.getAttribute('aria-hidden') === 'true';
+			&& svg.className === 'builder-icon builder-pick-icon' && svg.getAttribute('aria-hidden') === 'true';
 	} ) && stub['Stub own'].querySelector('use') === null && stub['Stub second'].querySelector('use') === null );
 	check( '...the puzzle is a symbol of the sprite, a path of 24 by 24, and the picker passes the inspection every form passes: each icon in it is a symbol of the sprite, and a control that is an icon has a name', puzzle !== null && puzzle.localName === 'symbol' && puzzle.getAttribute('viewBox') === '0 0 24 24'
-		&& puzzle.children.length === 1 && puzzle.children[0].localName === 'path' && iconsKnown( menu ) === true && unnamed( menu ).length === 0 );
+		&& puzzle.children.length === 1 && puzzle.children[0].localName === 'path' && iconsKnown( box ) === true && unnamed( box ).length === 0 );
 
 	components['stub-odd'] = { label : 'Stub odd', preview : 'block', icon : [
 		[ 'script', { src : 'x.js' } ], [ 'path', { d : 'M0 0h24', onclick : 'x()', fill : 'red', style : 'x' } ], [ 'constructor', { d : 'M1 1' } ], [ 'circle', 'cx=1' ], [ 'rect', null ], 'path', null, [ 'line' ],
 		[ 'circle', { r : '2', cx : '12', cy : '12', d : 'M2 2' } ], [ 'svg', {} ], [ [ 'path' ], { d : 'M3 3' } ],
 	] };
 
-	const odd = pickedItems( [ 1, 0 ] ).filter( function( item ) { return item.textContent === 'Stub odd' } )[0].children[0];
+	const odd = pickedItems( [ 1, 0 ] ).filter( function( item ) { return pickLabel( item ) === 'Stub odd' } )[0].children[0];
 
 	check( '...the script builds no element and sets no attribute it does not know, whatever the registry says: a part of a tag that is none of the seven - a script, a name every object has, a nested svg -, a part that is no tag with its attributes, an attribute the tag does not take, are left out', partsBuilt( odd )
 		=== partsSaid( [ [ 'path', { d : 'M0 0h24' } ], [ 'circle', { r : '2', cx : '12', cy : '12' } ] ] ) && odd.all().every( function( el ) { return [ 'path', 'circle' ].indexOf( el.localName ) !== -1 && el.getAttribute('onclick') === null && el.getAttribute('style') === null && el.getAttribute('fill') === null } )
@@ -4362,13 +5030,13 @@ check( '...none of it is written as markup: the script assigns an empty string t
 	return assigned.length > 0 && assigned.every( function( found ) { return /^\.innerHTML\s*=\s*'';$/.test( found ) } ) && /insertAdjacentHTML|\.outerHTML\s*=|document\.write|createContextualFragment|DOMParser/.test( source ) === false
 		&& ( function() { try { made('div').innerHTML = '<svg></svg>'; return false } catch( error ) { return true } } )();
 } )() );
-check( '...the stylesheet lays an item out as a row - the icon, a gap of .5rem, the label, in the middle of the line - and keeps the icon a square of a rem that does not shrink; the menu keeps its width and its place', ( function() {
+check( '...the stylesheet lays the lightbox out as rows that wrap - a heading for each group, under it the items, each the icon and the label in the middle of the line - and keeps the icon a square of a rem that does not shrink; an item that cannot be added is dimmed and has no pointer', ( function() {
 
 	const lines = function( selector ) { return ruleOf( selector ).split('\n') };
+	const has = function( selector, list ) { return list.every( function( line ) { return lines( selector ).indexOf( line ) !== -1 } ) };
 
-	return [ '\tdisplay: flex;', '\talign-items: center;', '\tgap: .5rem;' ].every( function( line ) { return lines('.builder-menu-item').indexOf( line ) !== -1 } )
-		&& [ '\tflex: none;', '\twidth: 1rem;', '\theight: 1rem;' ].every( function( line ) { return lines('.builder-menu-icon').indexOf( line ) !== -1 } )
-		&& [ '\tposition: absolute;', '\tz-index: 6;', '\tdisplay: grid;', '\tmin-width: 11rem;' ].every( function( line ) { return lines('.builder-menu').indexOf( line ) !== -1 } );
+	return has( '.builder-lightbox-row', [ '\tdisplay: flex;', '\tflex-wrap: wrap;' ] ) && has( '.builder-pick-item', [ '\tdisplay: flex;', '\talign-items: center;' ] ) && has( '.builder-pick-icon', [ '\tflex: none;', '\twidth: 1rem;', '\theight: 1rem;' ] )
+		&& has( '.builder-lightbox .builder-pick-item:disabled', [ '\topacity: .45;', '\tcursor: default;' ] ) && has( '.builder-lightbox', [ '\tdisplay: grid;' ] );
 } )() );
 
 console.log( '\nThe form of a card' );
@@ -4379,7 +5047,6 @@ builder._openSettings( cardAt );
 
 const holderPane = function() { return paneOf('properties') };
 const holderNow = function() { return cardIn( builder._doc.model ) };
-const optionsOf = function( pane, label ) { return controlOf( pane, label ).el.children.map( function( option ) { return option.value+ '='+ option.textContent } ).join() };
 
 check( 'the form of a card has the label of the component for its title and two tabs: Properties and CSS classes - the attributes the schema declares, and the classes of its own; the form of a column or a plain component is not it, and the card has no tab for a content', dialogText('builder-dialog-kind') === 'Card'
 	&& JSON.stringify( dialogTabs() ) === '[["properties","Properties"],["custom","CSS classes"]]' && shownTab( screen.getElementById('builder-dialog-tabs'), 'builder' ) === 'properties' && screen.getElementById('builder-dialog-name').hidden === true && paneOf('content') === null );
@@ -4393,8 +5060,9 @@ check( '...the ground is the colour select of a column - none of its own, which 
 	&& holderPane().querySelector('.builder-swatch').getAttribute('aria-hidden') === 'true' && valueAt( holderPane(), 'Background colour' ) === 'counter' );
 check( '...the ground has no hint: the select and the patch stand in their line by themselves, and the registry hands the attribute over without one', holderPane().querySelector('.builder-with-swatch').parentNode.className === 'builder-line' && holderPane().querySelector('.builder-with-swatch').querySelector('.nino-admin-hint') === null
 	&& holderPane().querySelector('.builder-with-hint') === null && registry().components.card.attributes.ground.hint === '' );
-check( '...the padding has the steps of the section\'s spacing, the vertical alignment its own words - top, middle, bottom, last element at the bottom - and the horizontal alignment the words of the alignment of a text; each attribute has the words of the Builder, and the values the file has', optionsOf( holderPane(), 'Padding' ) === '=Default,0=0,1=1,2=2,3=3,4=4,5=5,6=6'
-	&& optionsOf( holderPane(), 'Vertical element alignment' ) === '=Top,middle=Middle,bottom=Bottom,last-bottom=Last element at the bottom' && optionsOf( holderPane(), 'Horizontal text alignment' ) === '=Inherited,left=Left,center=Centre,right=Right' && valueAt( holderPane(), 'Padding' ) === '3' && valueAt( holderPane(), 'Vertical element alignment' ) === '' );
+check( '...the padding has the steps of the section\'s spacing, in a select; the two alignments are rows of icons, as the schema says (its input) - the vertical one with its own words, top, middle, bottom, last element at the bottom, the horizontal one with the words of the alignment of a text, Inherited as a word and Left, Centre and Right as icons; each attribute has the words of the Builder, and the values the file has', optionsOf( holderPane(), 'Padding' ) === '=Default,0=0,1=1,2=2,3=3,4=4,5=5,6=6'
+	&& rowOf( holderPane(), 'Vertical element alignment' ) === ':Top:align-top,middle:Middle:align-middle,bottom:Bottom:align-bottom,last-bottom:Last element at the bottom:align-last-bottom' && rowOf( holderPane(), 'Horizontal text alignment' ) === ':Inherited:,left:Left:align-left,center:Centre:align-center,right:Right:align-right'
+	&& controlOf( holderPane(), 'Vertical element alignment' ).kind === 'group' && controlOf( holderPane(), 'Horizontal text alignment' ).kind === 'group' && valueAt( holderPane(), 'Padding' ) === '3' && valueAt( holderPane(), 'Vertical element alignment' ) === '' );
 
 const swatchOf = function() { return holderPane().querySelector('.builder-swatch').dataset.color };
 check( '...the patch is the ground the card ends up with: the ground of its column - or of its section where the column has none - for none of its own, the counter of that, by the pairs of Nino.css, for counter, and the ground itself for the rest', ( function() {
@@ -4656,7 +5324,6 @@ console.log( '\nThe card in the preview' );
 openCard();
 builder._renderEditor();
 
-const frameOf = function( at ) { return preview().querySelector('[data-path="'+ at+ '"]') };
 const colBody = function( at ) { return frameOf( at ).querySelector('.builder-col-body') };
 check( 'a component that holds components is a frame of its own in the body of its column - lighter than the frame of a column, a card with a head of the same three parts - and the column ends in its own button, as it did', classes( colBody('0.1').children ) === 'builder-card builder-pick builder-color-alt,builder-adds'
 	&& classes( frameOf('0.1.0').children ) === 'builder-card-head,builder-card-body' && classes( frameOf('0.1.0').querySelector('.builder-card-head').children ) === 'builder-head-title,builder-head-status,builder-tools' && frameOf('0.1.0').localName === 'div'
@@ -4705,7 +5372,6 @@ check( '...and the German file has the word, one of its own', ( function() {
 
 openCard();
 builder._renderEditor();
-const toolOf = function( at, tool ) { return frameOf( at ).querySelectorAll('button').find( function( button ) { return button.dataset.tool === tool } ) };
 const namesOf = function() { return cardIn( builder._doc.model ).components.map( function( child ) { return child.name } ).join() };
 check( 'the tools of a frame at depth four: a child can go up and down in its card, and the first has no step up as the last has none down - both are greyed out', toolOf( '0.1.0.0', 'up' ).disabled === true && toolOf( '0.1.0.0', 'down' ).disabled === false && toolOf( '0.1.0.2', 'down' ).disabled === true
 	&& toolOf( '0.1.0.2', 'up' ).disabled === false && toolOf( '0.1.0.1', 'up' ).disabled === false && toolOf( '0.1.0.1', 'down' ).disabled === false );
@@ -4753,7 +5419,7 @@ check( '...and the head of the column the column', builder._same( builder._sel, 
 frameOf('0.1.0').dispatch('dblclick');
 check( 'a double click on the card opens the form of the card, one on a child the form of that component', dialogBox().open === true && dialogText('builder-dialog-kind') === 'Card' && JSON.stringify( dialogTabs() ) === '[["properties","Properties"],["custom","CSS classes"]]' );
 frameOf('0.1.0.1').dispatch('dblclick');
-check( '...the form of a component at depth four is the form every component has: Content, Properties and CSS classes', dialogBox().open === true && dialogText('builder-dialog-kind') === 'Component "Text"' && JSON.stringify( dialogTabs().map( function( tab ) { return tab[0] } ) ) === '["content","properties","custom"]' );
+check( '...the form of a component at depth four is the form every component has: for a text that is a link Content, Properties, Variants, Link and CSS classes', dialogBox().open === true && dialogText('builder-dialog-kind') === 'Component "Text"' && JSON.stringify( dialogTabs().map( function( tab ) { return tab[0] } ) ) === '["content","properties","variants","link","custom"]' );
 builder._closeDialog();
 toolOf( '0.1.0', 'settings' ).click();
 check( 'the tool for the settings selects the frame and opens its form: the card\'s', dialogText('builder-dialog-kind') === 'Card' && builder._same( builder._sel, cardAt ) );
@@ -4887,6 +5553,250 @@ check( '...and not where the card was given another picture, or the mark has non
 
 	return again.cols[1].components[0].slots === undefined;
 } )() );
+
+console.log( '\nWhat the other panels changed, and what this one tells them' );
+
+const workbench = sandbox.Nino.admin;
+const realCurrent = workbench.router.current;
+// The counters of the workbench and what this panel remembers it read at, all at nothing; no request is out
+const calm = function() {
+	workbench.stamps = {};
+	builder._seen = { templates : 0, routes : 0, texts : 0, elements : 0, slots : 0 };
+	requests = [];
+};
+const asked = function() { return requests.map( function( request ) { return request.action } ).join() };
+
+// The list is on screen where no document is open
+doc = open();
+builder._ready = true;
+builder._doc = null;
+calm();
+builder.showCurrent();
+check( 'the panel remembers the stamps of the data it shows when it asks for it, and compares them when it is shown: where nothing moved, it asks for nothing', asked() === '' );
+workbench.touch('templates');
+builder.showCurrent();
+check( '...the list is asked for again when the templates moved - another panel made, changed or deleted a file -, and so when the routes moved, which the list names the pages of; the stamp is the one it was asked at, and shown again with nothing moved it asks nothing', asked() === 'builder/list' && ( requests[0].callback( 200, { templates : [] } ), builder.showCurrent(), asked() === 'builder/list' ) );
+requests = [];
+workbench.touch('routes');
+builder.showCurrent();
+check( '...a write that happens while the answer is on its way is after the stamp, and is found when the panel is shown again; a stamp of a kind the list does not show moves nothing', asked() === 'builder/list' && ( workbench.touch('templates'), requests[0].callback( 200, { templates : [] } ), requests = [], builder.showCurrent(), asked() === 'builder/list' )
+	&& ( requests[0].callback( 200, { templates : [] } ), requests = [], workbench.touch('texts'), workbench.touch('elements'), workbench.touch('slots'), workbench.touch('navigations'), builder.showCurrent(), asked() === '' ) );
+
+// The editor shows the texts, the element types, the slots and the frames
+doc = open();
+builder._ready = true;
+builder._keysAsked = true;
+workbench.router.current = function() { return { panel : 'builder', parts : [ 'page-home' ] } };
+calm();
+builder.showCurrent();
+check( 'the editor asks for the keys of the texts when the texts moved, and for the registry - the types, the slots, the frames - when the templates, the elements or the slots moved, and for nothing where nothing did; one request for the registry, whichever of the three moved', asked() === ''
+	&& ( workbench.touch('texts'), builder.showCurrent(), asked() === 'text/keys' ) && ( builder._keysAsked = true, calm(), workbench.touch('elements'), builder.showCurrent(), asked() === 'builder/registry' )
+	&& ( calm(), workbench.touch('slots'), builder.showCurrent(), asked() === 'builder/registry' ) && ( calm(), workbench.touch('templates'), builder.showCurrent(), asked() === 'builder/registry' )
+	&& ( calm(), workbench.touch('templates'), workbench.touch('elements'), workbench.touch('slots'), builder.showCurrent(), asked() === 'builder/registry' ) && ( calm(), workbench.touch('routes'), workbench.touch('navigations'), builder.showCurrent(), asked() === '' ) );
+check( '...the answer is taken as it comes: the types, the slots, the frames are the new ones, the components and the stacks are the kernel\'s and stay - and the stamp is taken, so that the next time the panel is shown it asks nothing', ( function() {
+
+	calm();
+	workbench.touch('elements');
+	builder.showCurrent();
+
+	const components = builder._registry.components;
+
+	requests[0].callback( 200, { types : [ { uri : '/news', title : 'News', fields : {} } ], slots : [], headers : [ 'html-header' ], footers : [], components : {}, stacks : {} } );
+
+	const found = builder._registry.components === components && builder._registry.types.map( function( type ) { return type.uri } ).join() === '/news' && builder._registry.slots.length === 0 && builder._registry.footers.length === 0;
+
+	requests = [];
+	builder.showCurrent();
+
+	return found && asked() === '';
+} )() );
+check( '...the texts are asked for when the texts moved and the answer is the keys of the project, the preview drawn with them; a person who may not read them gets none and types a key', ( function() {
+
+	builder._keysAsked = true;
+	calm();
+	workbench.touch('texts');
+	builder.showCurrent();
+	requests[0].callback( 200, { keys : [ { key : '/template/page-home/hero/title', global : false, format : 'plain', maxlength : 160, values : { en_US : 'Changed elsewhere' } } ] } );
+
+	const read = builder._valueOf( '/template/page-home/hero/title' ) === 'Changed elsewhere' && builder._seen.texts === 1;
+
+	requests = [];
+	builder.showCurrent();
+
+	return read && asked() === '';
+} )() );
+
+check( 'nothing is asked for while a dialog is open - what is on screen is not drawn from under a person who is typing - and what moved is asked for when the dialog is gone, whichever way it goes: the close of the form, or Escape', ( function() {
+
+	builder._keysAsked = true;
+	calm();
+	builder._openSettings( [ 0, 0, 0 ] );
+	workbench.touch('texts');
+	workbench.touch('elements');
+	builder.showCurrent();
+
+	const held = asked() === '';
+
+	builder._closeDialog();
+
+	const closed = asked() === 'text/keys,builder/registry';
+
+	builder._keysAsked = true;
+	calm();
+	builder._openSettings( [ 0, 0, 0 ] );
+	workbench.touch('texts');
+	dialogBox().close();
+
+	const escaped = asked() === 'text/keys';
+
+	builder._keysAsked = true;
+	calm();
+	builder._openSettings( [ 0, 0, 0 ] );
+	workbench.touch('texts');
+	builder._openSettings( [ 0, 0, 1 ] );
+
+	// A form replaced by another is no form that is gone
+	const replaced = asked() === '';
+
+	builder._closeDialog();
+
+	return held && closed && escaped && replaced && asked() === 'text/keys';
+} )() );
+workbench.router.current = realCurrent;
+
+// What this panel writes, it tells the others: a template that is made, copied, saved or deleted, and the keys and the slots a save or an upload writes
+const stampsNow = function() { return [ 'templates', 'texts', 'slots', 'elements', 'routes', 'navigations' ].map( function( topic ) { return topic+ ':'+ workbench.stamp( topic ) } ).join() };
+check( 'a template that is made in the Builder raises the stamp of the templates, once it is there - and one that is refused raises nothing: the Routes panel, which lists them for a route to render, shows it without a reload', ( function() {
+
+	doc = open();
+	builder._doc = null;
+	calm();
+	builder._registry = registry();
+	builder._newTemplate();
+
+	const button = screen.getElementById('builder-dialog-actions').children[0];
+
+	change( dialogContent(), 'Name', 'Fresh' );
+	button.click();
+	requests[0].callback( 409, { code : 'builder_exists' } );
+
+	const refused = stampsNow() === 'templates:0,texts:0,slots:0,elements:0,routes:0,navigations:0' && asked() === 'builder/create';
+
+	button.click();
+	requests[1].callback( 200, { model : { file : 'page-fresh' } } );
+
+	return refused && stampsNow() === 'templates:1,texts:0,slots:0,elements:0,routes:0,navigations:0' && dialogBox().open === false;
+} )() );
+check( '...a copy raises the stamps of the templates, of the texts and of the slots - the keys and the slots of the copy are new -, and a delete the stamp of the templates; a delete the server refused raises none', ( function() {
+
+	doc = open();
+	builder._files = [ { file : 'page-home', name : 'Home', editable : true } ];
+	calm();
+	builder._duplicateTemplate( 'page-home' );
+	screen.getElementById('builder-dialog-actions').children[0].click();
+	requests[0].callback( 200, { model : { file : 'page-home-copy' } } );
+
+	const copied = stampsNow() === 'templates:1,texts:1,slots:1,elements:0,routes:0,navigations:0';
+
+	calm();
+	questions = [];
+	builder._confirmDelete( 'page-home' );
+	questions[0].onChoose( 'delete' );
+	requests[0].callback( 409, { code : 'builder_in_use', params : [ 'GET://' ] } );
+
+	const kept = stampsNow() === 'templates:0,texts:0,slots:0,elements:0,routes:0,navigations:0';
+
+	requests[0].callback( 200, {} );
+
+	return copied && kept && stampsNow() === 'templates:1,texts:0,slots:0,elements:0,routes:0,navigations:0' && asked().indexOf('builder/list') !== -1;
+} )() );
+check( '...a save raises the stamp of the templates; with keys for new texts it raises the texts, and with slots for new pictures the slots - what a save did not write is not touched; a save that failed raises none', ( function() {
+
+	const saved = function( change ) {
+
+		doc = open();
+		builder._renderEditor();
+		builder._doc.model.name = 'Start';
+		change();
+		calm();
+		builder._save();
+
+		const response = JSON.parse( JSON.stringify( builder._doc.model ) );
+		const failed = stampsNow();
+
+		requests[0].callback( 200, { model : response, hash : 'h2' } );
+
+		return failed+ ' > '+ stampsNow();
+	};
+	const none = 'templates:0,texts:0,slots:0,elements:0,routes:0,navigations:0';
+
+	return saved( function() {} ) === none+ ' > templates:1,texts:0,slots:0,elements:0,routes:0,navigations:0'
+		&& saved( function() { builder._addComponent( [ 3, 0 ], 'title' ) } ) === none+ ' > templates:1,texts:1,slots:0,elements:0,routes:0,navigations:0'
+		&& saved( function() { builder._doc.model.blocks[1].background = { slot : '/template/page-home/services/background', focus : null, create : { label : 'Background', width : 1600, height : 900 } } } ) === none+ ' > templates:1,texts:0,slots:1,elements:0,routes:0,navigations:0'
+		&& saved( function() { builder._rename( [ 3 ], 'reach' ) } ) === none+ ' > templates:1,texts:1,slots:1,elements:0,routes:0,navigations:0' && ( function() {
+			doc = open();
+			builder._doc.model.name = 'Start';
+			calm();
+			builder._save();
+			requests[0].callback( 400, { code : 'builder_invalid', error : 'x', params : [ 'the name is bad' ] } );
+			return stampsNow() === none;
+		} )();
+} )() );
+check( '...and what the panel wrote itself is no news to it: after its own save, shown again or with a dialog closed, it asks for nothing - the registry asked for again would draw the preview again, under the focus - '
+	+ 'while a write of another panel before it, which is news, is still asked for', ( function() {
+
+	const asksAfterSave = function( before ) {
+
+		doc = open();
+		builder._renderEditor();
+		builder._ready = true;
+		workbench.router.current = function() { return { panel : 'builder', parts : [ 'page-home' ] } };
+		calm();
+		builder._doc.model.name = 'Start';
+		before();
+		builder._save();
+		requests[0].callback( 200, { model : JSON.parse( JSON.stringify( builder._doc.model ) ), hash : 'h2' } );
+
+		// What a save asks for by itself, the keys of the texts and the slots of the registry, is answered
+		requests.slice( 1 ).forEach( function( request ) { request.callback( 200, request.action === 'text/keys' ? { keys : [] } : { slots : [] } ) } );
+		requests = [];
+		builder.showCurrent();
+
+		const shown = asked();
+
+		requests = [];
+		builder._pickComponent( [ 3, 0 ] );
+		builder._closeDialog();
+
+		return shown+ '|'+ asked();
+	};
+
+	return asksAfterSave( function() {} ) === '|' && asksAfterSave( function() { builder._addComponent( [ 3, 0 ], 'title' ) } ) === '|'
+		&& asksAfterSave( function() { workbench.touch('templates') } ) === 'builder/registry|builder/registry' && asksAfterSave( function() { workbench.touch('elements') } ) === 'builder/registry|builder/registry';
+} )() );
+check( '...and the picture a person stores - the slot that is made for it, the picture, the alt text - raises the stamp of the slots at each step, so that the Images panel shows it', ( function() {
+
+	doc = open();
+	builder._renderEditor();
+	builder._addComponent( [ 0, 0 ], 'image' );
+	builder._openSettings( [ 0, 0, 3 ] );
+	calm();
+	change( contentPane(), altLabel, 'A house' );
+	choose( contentPane(), house );
+	requests[0].callback( 200, { ok : true, uri : '/template/page-home/hero/image' } );
+
+	const made = stampsNow() === 'templates:0,texts:0,slots:1,elements:0,routes:0,navigations:0';
+
+	requests[1].callback( 200, { filename : 'hero/image.1600x900.jpg', url : '/uploads/image.jpg', source : { width : 2000, height : 1000 }, belowTarget : false } );
+
+	const stored = stampsNow() === 'templates:0,texts:0,slots:2,elements:0,routes:0,navigations:0';
+
+	requests[2].callback( 200, { alt : { en_US : 'A house' } } );
+	builder._closeDialog();
+
+	return made && stored && stampsNow() === 'templates:0,texts:0,slots:3,elements:0,routes:0,navigations:0';
+} )() );
+builder._ready = false;
 
 console.log( '\nThe screens' );
 

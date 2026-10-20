@@ -30,7 +30,12 @@ namespace Nino\Modules\Builder {
 	 *											not what the schema says it is without it, a blank line
 	 *											between the blocks, one line feed at the end. The columns
 	 *											that are 100 wide in all three viewports are written
-	 *											nino-grid-100, any other as three classes.
+	 *											nino-grid-100, any other as three classes. A section whose
+	 *											stack is set is the call of that loop - [sections /type ...] -
+	 *											with the section's id and its classes after nino-section as the
+	 *											call's, its row and the rest as they stand in a <section>; a
+	 *											background that is the row's (inner) is the first thing in
+	 *											the row, two tabs in, as the one of a column is in its column.
 	 *
 	 *											The blocks stand in the wrap: the line that opens it
 	 *											follows the name and the frame above, the line that closes
@@ -153,7 +158,8 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	One section
+		 *	One section: a <section>, or the call of a loop of sections where the model says it is
+		 *	one, which stands in the place of the tag
 		 *
 		 *	@param		array			$section
 		 *	@param		array			$registry
@@ -163,22 +169,39 @@ namespace Nino\Modules\Builder {
 		private static function _section( array $section, array $registry ): string {
 
 			$settings	= (array) ( $section['settings'] ?? [] ) + Reader::sectionDefaults();
+			$stack		= is_array( $section['stack'] ?? null ) === true ? $section['stack'] : null;
+			$pictured	= self::_pictured( $section );
+			$inner		= self::_inner( $settings );
 			$lines		= [];
 
-			$attributes = '';
+			if( $stack !== null ) {
 
-			// The height is always written, at 90 as well: a template says what it is, and nobody has to know the 90 Nino.ui.js takes without it
-			if( $settings['cover'] !== null )
-				$attributes .= ' data-cover-height="'. (int) $settings['cover']. '"';
+				// The id and the classes after nino-section are the call's, and a call has no attributes of a tag: no cover height, no delay and no duration
+				$stack['attributes'] = [ 'id' => (string) ( $section['id'] ?? '' ), 'class' => implode( ' ', array_slice( self::sectionClasses( $settings, $pictured ), 1 ) ) ] + (array) ( $stack['attributes'] ?? [] );
 
-			$attributes .= self::_animationAttributes( $settings );
+				$lines[] = self::_call( $stack, $registry['stacks'][$stack['name'] ?? ''] ?? [] );
+			}
+			else {
 
-			$lines[] = self::_fill( 'section-open', [ '[[id]]' => self::_escape( (string) ( $section['id'] ?? '' ) ), '[[class]]' => self::_class( self::sectionClasses( $settings ) ), '[[attributes]]' => $attributes ] );
+				$attributes = '';
 
-			if( self::_pictured( $section ) === true )
+				// The height is always written, at 90 as well: a template says what it is, and nobody has to know the 90 Nino.ui.js takes without it
+				if( $settings['cover'] !== null )
+					$attributes .= ' data-cover-height="'. (int) $settings['cover']. '"';
+
+				$attributes .= self::_animationAttributes( $settings );
+
+				$lines[] = self::_fill( 'section-open', [ '[[id]]' => self::_escape( (string) ( $section['id'] ?? '' ) ), '[[class]]' => self::_class( self::sectionClasses( $settings, $pictured ) ), '[[attributes]]' => $attributes ] );
+			}
+
+			if( $pictured === true && $inner === false )
 				$lines[] = "\t". self::_background( (array) $section['background'], 'nino-section-bg' );
 
-			$lines[] = "\t". self::_fill( 'div-open', [ '[[class]]' => self::_class( self::rowClasses( $settings ) ) ] );
+			$lines[] = "\t". self::_fill( 'div-open', [ '[[class]]' => self::_class( self::rowClasses( $settings, $pictured ) ) ] );
+
+			// The picture behind the row is the first thing in it, as a column's is in the column
+			if( $pictured === true && $inner === true )
+				$lines[] = "\t\t". self::_background( (array) $section['background'], 'nino-grid-row-bg' );
 
 			foreach( (array) ( $section['cols'] ?? [] ) as $col ) {
 
@@ -204,7 +227,7 @@ namespace Nino\Modules\Builder {
 			}
 
 			$lines[] = "\t</div>";
-			$lines[] = '</section>';
+			$lines[] = $stack !== null ? '[/'. (string) ( $stack['name'] ?? '' ). ']' : '</section>';
 
 			return implode( "\n", $lines );
 		}
@@ -247,10 +270,11 @@ namespace Nino\Modules\Builder {
 		 *	The classes of a section, in the order they are written
 		 *
 		 *	@param		array			$s						The section's settings
+		 *	@param		bool			$pictured			Whether it has a picture to darken: a scrim over none is not written on a plain section, and the colour of the row, with the picture, is the row's where inner
 		 *
 		 *	@return 	array										Class names
 		 */
-		public static function sectionClasses( array $s ): array {
+		public static function sectionClasses( array $s, bool $pictured = false ): array {
 
 			$s			= $s + Reader::sectionDefaults();
 			$class	= [ 'nino-section' ];
@@ -260,7 +284,8 @@ namespace Nino\Modules\Builder {
 				if( $s[$size] === true )
 					$class[] = 'nino-section--'. $size;
 
-			if( (string) $s['color'] !== '' )
+			// The colour is the row's where the background stands inside
+			if( (string) $s['color'] !== '' && self::_inner( $s ) === false )
 				$class[] = 'nino-section--'. $s['color'];
 
 			if( (string) $s['border'] !== '' )
@@ -286,9 +311,19 @@ namespace Nino\Modules\Builder {
 					$class[] = 'nino-parallex--dim';
 			}
 
-			// The place of the content is the row's in a cover or a parallax: on a section that is neither the Builder writes none
+			// A plain section is darkened by a scrim of its own over its own picture - and one with no picture has nothing to darken, and the light inks of the scrim would sit on a light ground
+			if( $s['dim'] === true && $s['cover'] === null && $s['parallax'] === false && $pictured === true && self::_inner( $s ) === false )
+				$class[] = 'nino-section--dim';
+
+			// The room of the page around a cover or a parallax, and the place of the content in them: on a section that is neither the Builder writes neither
+			if( $s['padded'] === true && ( $s['cover'] !== null || $s['parallax'] === true ) )
+				$class[] = 'nino-cover--padded';
+
 			if( (string) $s['contentPos'] !== '' && ( $s['cover'] !== null || $s['parallax'] === true ) )
 				$class[] = 'nino-cover-'. $s['contentPos'];
+
+			if( (string) $s['whitespace'] !== '' )
+				$class[] = 'nino-whitespace--'. $s['whitespace'];
 
 			foreach( Reader::SPACING as $space )
 				if( (string) $s[$space] !== '' )
@@ -301,19 +336,30 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	The classes of the row
+		 *	The classes of the row: its width, then - where the section's background stands inside, on the
+		 *	row - its ground and the scrim over its picture, then the alignment of its columns
 		 *
 		 *	@param		array			$s						The section's settings
+		 *	@param		bool			$pictured			Whether the section has a picture, which is the row's where inner: a scrim over none is not written
 		 *
 		 *	@return 	array
 		 */
-		public static function rowClasses( array $s ): array {
+		public static function rowClasses( array $s, bool $pictured = false ): array {
 
 			$s			= $s + Reader::sectionDefaults();
 			$class	= [ 'nino-grid-row' ];
 
 			if( (string) $s['row'] !== '' )
 				$class[] = 'nino-grid-row--'. $s['row'];
+
+			if( self::_inner( $s ) === true ) {
+
+				if( (string) $s['color'] !== '' )
+					$class[] = 'nino-grid-row--'. $s['color'];
+
+				if( $s['dim'] === true && $pictured === true )
+					$class[] = 'nino-grid-row--dim';
+			}
 
 			if( (string) $s['rowAlign'] !== '' )
 				$class[] = 'nino-grid-'. $s['rowAlign'];
@@ -366,6 +412,18 @@ namespace Nino\Modules\Builder {
 					$class[] = 'nino-'. $space. '-'. $col[$space];
 
 			return array_merge( $class, self::_animationClasses( $col ), self::_custom( (string) $col['custom'] ) );
+		}
+
+		/**
+		 *	Whether the colour, the picture and the scrim of a section stand on its row: they do where the
+		 *	settings say so and the section is no cover and no parallax, which are the section's own picture
+		 *
+		 *	@param		array			$s						The section's settings
+		 *
+		 *	@return 	bool
+		 */
+		private static function _inner( array $s ): bool {
+			return ( $s['inner'] ?? false ) === true && ( $s['cover'] ?? null ) === null && ( $s['parallax'] ?? false ) === false;
 		}
 
 		/**

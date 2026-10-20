@@ -463,7 +463,7 @@ function listing( over ) {
  */
 function frameStage() {
 
-	const stage = { scrolls : [], asked : [], listeners : [], frames : [], reachable : true, scrollY : 100, clearance : 0, tops : { type : 700, content : 300, cards : 900, buttons : 1200, components : 1500, colours : 450 } };
+	const stage = { scrolls : [], asked : [], listeners : [], frames : [], reachable : true, scrollY : 100, clearance : 0, tops : { type : 700, content : 300, cards : 900, buttons : 1200, components : 1500, colours : 450, footer : 4000 } };
 
 	stage.style = element('style');
 	// The room main keeps at its top for the fixed header, which the header template of the page sets: none until a test says
@@ -3965,7 +3965,8 @@ console.log('');
 // Opening a tab goes to the anchor of the tab. A change of one knob goes to where that knob shows:
 // on Content the title and the text of the hero to the hero, every other knob to the cards (which
 // have the id for it on the specimen); on a tab with no entry the anchor of the tab. The place of a
-// change is one target, put back to the tab's own when a tab is opened or a template is chosen
+// change is one target, put back to the tab's own when a tab is opened or a template is chosen - a footer
+// that is chosen is the one template that is looked at somewhere else: where the page ends
 
 console.log( 'Where the preview jumps' );
 
@@ -4068,6 +4069,47 @@ choose( jp.byId('design-set-header'), 'second' );
 
 check( 'choosing a frame on Global is a template too: the target goes back', jp.design._target === null );
 
+// A footer is looked at where it starts: the specimen ends in an anchor of its own, and Global - which is the top of the page - leaves it the frame
+jp.tab('Global');
+jp.design._target = 'cards';
+const jpScrolled = jp.stage.scrolls.length;
+choose( jp.byId('design-set-footer'), 'second' );
+
+check( 'choosing the footer on Global makes the end of the page the place it is looked at in: the target is the id of the anchor the specimen ends in, not the top - and nothing scrolls until the preview has answered',
+	jp.design._target === 'footer' && jp.stage.scrolls.length === jpScrolled );
+
+jpAnswer();
+
+check( '...and then the frame goes to the foot of the page, which Global would have left at the top: the anchor of the footer, from where the page stands - no room taken off for the header, which is no concern of the end of a page',
+	jpAsked() === 'footer' && jp.stage.scrolls.length === jpScrolled + 1 && JSON.stringify( jpLast() ) === JSON.stringify( { top : 4100, behavior : 'smooth' } ) && jp.design._tab === 'global' );
+
+jp.stage.clearance = 96;
+jp.design._jump();
+
+check( '...whatever room the header asks of the top of main: the footer\'s anchor is placed where it stands', JSON.stringify( jpLast() ) === JSON.stringify( { top : 4100, behavior : 'smooth' } ) );
+
+jp.stage.clearance = 0;
+choose( jp.byId('design-set-header'), 'first' );
+jpAnswer();
+
+check( 'a header that is chosen after it is looked at at the top again, as it was: the target goes back, and the frame goes to the top of the page that Global is',
+	jp.design._target === null && jp.stage.scrolls.length === jpScrolled + 3 && JSON.stringify( jpLast() ) === JSON.stringify( { top : 0, behavior : 'smooth' } ) && jpAsked() === 'global' );
+
+jp.design._target = 'footer';
+jp.tab('Content');
+
+check( 'the footer is no place of a tab: opening one - and moving a knob on the way - puts the frame where it goes, not at the foot of the page', jp.design._target === null && jpAsked() === 'content' );
+
+jp.tab('Global');
+jp.design._target = 'footer';
+jp.design._follow = false;
+const jpHeld = jp.stage.scrolls.length;
+choose( jp.byId('design-set-footer'), 'first' );
+jp.design._jump();
+jp.design._follow = true;
+
+check( 'with the follow switch off a footer that is chosen does not scroll the frame either', jp.stage.scrolls.length === jpHeld && jp.design._target === 'footer' );
+
 // Opening the tab already open changes nothing, and so does a change that is no knob
 jp.tab('Content');
 jp.moveIn( 'Variants', 'Quiet variant, text size', -1 );
@@ -4092,6 +4134,8 @@ const jumpedTo = Object.keys( jp.design.ANCHORS ).map( function( tab ) { return 
 
 check( 'every id the script jumps to is on the specimen exactly once: the eight of the tabs - the Theme goes where Global does, to the top of the page -, the hero, the plain section and the cards - sixteen places, of which the ids of the five new knobs are three',
 	jumpedTo.length === 16 && jumpedTo.every( function( id ) { return specimenIds[id] === 1 } ) && specimenIds.cards === 1 );
+check( '...and the footer, which no tab has, is looked at in an element of its own: the id footer, once, an empty block at the end of the specimen - after the last section, where the footer of the frame starts',
+	specimenIds.footer === 1 && /<\/section>\s*<div id="footer"><\/div>\s*$/.test( specimen ) && specimen.lastIndexOf('id="footer"') > specimen.lastIndexOf('<section ') && Object.keys( jp.design.ANCHORS ).every( function( tab ) { return jp.design.ANCHORS[tab] !== 'footer' } ) );
 check( '...and the Cards section is the element that has the id: the second section of the page, after the hero and before the grounds',
 	specimen.indexOf('<section id="cards" class="nino-section" aria-label="Cards">') !== -1 && specimen.indexOf('id="content"') < specimen.indexOf('id="cards"')
 	&& specimen.indexOf('id="cards"') < specimen.indexOf('id="colours"') );

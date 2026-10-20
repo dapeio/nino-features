@@ -21,9 +21,12 @@ namespace Nino\Modules\Builder {
 	 *
 	 *											The grammar it reads is the one the Writer writes: a block
 	 *											is a section (a <section>, an optional background, exactly
-	 *											one row, columns, and in each column an optional background
-	 *											of its own and either component calls or one stack call) or
-	 *											a foreign block. A component whose schema says it holds
+	 *											one row with an optional background of its own, columns, and
+	 *											in each column an optional background of its own and either
+	 *											component calls or one stack call) or a foreign block. Where the
+	 *											registry has a stack whose cell is a whole section, its call
+	 *											[sections ...] stands for the tag of a section and holds what a
+	 *											section holds between its tags. A component whose schema says it holds
 	 *											components ('holds', the place of the ones it holds: the
 	 *											kernel's card) is a container: its call has the calls of its
 	 *											children between its tags, one level deep, in a column and
@@ -119,10 +122,25 @@ namespace Nino\Modules\Builder {
 	 *											                                      high, in percent of the window's height; null: it is none
 	 *											    parallax    bool                  nino-parallex, on its own or on a cover as well
 	 *											    dim         bool                  the scrim over the picture: nino-cover--dim where the section
-	 *											                                      is a cover, else nino-parallex--dim where it is a parallax
+	 *											                                      is a cover, else nino-parallex--dim where it is a parallax,
+	 *											                                      else nino-section--dim where the section has a picture of its
+	 *											                                      own - or nino-grid-row--dim where the picture is the row's
+	 *											                                      (inner); a scrim over no picture is a custom class
+	 *											    padded      bool                  nino-cover--padded: the cover or the parallax keeps the room of
+	 *											                                      the page around it; on a section that is neither the class
+	 *											                                      is idle and stays a custom one
 	 *											    contentPos  ''|top|bottom         nino-cover-<x>: where the row stands in a cover or a parallax,
 	 *											                                      the middle for ''; on a section that is neither the class
 	 *											                                      is idle and stays a custom one
+	 *											    inner       bool                  the colour, the picture and the scrim are the row's and not the
+	 *											                                      section's: nino-grid-row--<color>, div.nino-grid-row-bg as the
+	 *											                                      first thing in the row, nino-grid-row--dim. Read where the row has
+	 *											                                      a ground or a picture and the section is no cover, no parallax and
+	 *											                                      has no colour and no picture of its own; the colour and the picture
+	 *											                                      are the section's keys all the same. With neither of the two there
+	 *											                                      is nothing on the row to read it from, and it reads as off
+	 *											    whitespace  ''|least|less|more|most   nino-whitespace--<x>: how much room the section keeps, on
+	 *											                                      the scale of the page's whitespace (the Design's)
 	 *											    mt mb pt pb ''|0..6               nino-mt-<n> ...
 	 *											    text        ''|left|center|right  nino-text-<x>
 	 *											    vpa         null|string           null: none; '': nino-vpa; else the
@@ -134,7 +152,16 @@ namespace Nino\Modules\Builder {
 	 *											    custom      string                every other class of the section
 	 *											  background null|map  slot (string, a text key grammar uri), focus
 	 *											            (int 1..9|null); an image call with alt=""; create (map,
-	 *											            only ever sent by the panel) as that of a component
+	 *											            only ever sent by the panel) as that of a component. It stands
+	 *											            before the row, in div.nino-section-bg - or, with inner, in the row
+	 *											  stack     null    the section is a static one: a <section> tag
+	 *											            map     name, source, attributes - the registered stack whose cell is a whole
+	 *											                    section (its schema says cell: 'section', which the Document puts there):
+	 *											                    the section is written as the call [sections /type ...] with its row for
+	 *											                    the content, and the id of the section and its classes after nino-section
+	 *											                    are the call's id and class - the attributes of the map hold none of the
+	 *											                    two, they are '' - so it can carry none of the attributes of a tag: a cover
+	 *											                    is as high as Nino.ui.js makes it, and an animation has no delay and no duration
 	 *											  cols      list    the columns of the one row
 	 *
 	 *											column
@@ -224,6 +251,10 @@ namespace Nino\Modules\Builder {
 		// A column has its padding and the margin above and below it, each one of the steps of the space scale
 		public const array COL_SPACING = [ 'p', 'mt', 'mb' ];
 		public const array STEPS = [ '0', '1', '2', '3', '4', '5', '6' ];
+		// How much room a section keeps, the four rungs of the page's whitespace around the middle: nino-whitespace--<x>
+		public const array WHITESPACE = [ 'least', 'less', 'more', 'most' ];
+		// Where a component that is a link opens: the target that every component with 'link' has, the second of its two implicit attributes
+		public const array TARGETS = [ '', '_blank' ];
 		public const array TEXT = [ 'left', 'center', 'right' ];
 		public const array EFFECTS = [
 			'blur-soft', 'blur-medium', 'blur-hard', 'flip-soft', 'flip-medium', 'flip-hard',
@@ -260,6 +291,7 @@ namespace Nino\Modules\Builder {
 			'background-class'		=> 'the background block has the class %s, which the builder does not keep',
 			'background-image'		=> 'the background block is not one image call with an empty alt',
 			'grid-background'		=> 'the column has a background block that is not the first thing in it, or a second one',
+			'row-background'		=> 'the row has a background block that is not the first thing in it, or a second one, or the section has a colour, a picture, a cover or a parallax of its own as well',
 			'no-row'							=> 'the section has no row',
 			'second-row'					=> 'the section has more than one row',
 			'section-content'			=> 'the section holds markup next to its row',
@@ -282,6 +314,11 @@ namespace Nino\Modules\Builder {
 			'holder-stack'				=> 'a loop inside a component that holds components',
 			'holder-in-holder'		=> 'a component that holds components inside another',
 			'holder-content'			=> 'the component %s holds markup next to its component calls: %s',
+			'sections-no-row'			=> 'the loop of sections has no row',
+			'sections-second-row'	=> 'the loop of sections has more than one row',
+			'sections-content'		=> 'the loop of sections holds markup next to its row',
+			'sections-nested'			=> 'a loop of sections inside a section',
+			'sections-attribute'	=> 'the loop of sections has the attribute %s, which the builder does not keep: the sections it makes have an id and classes, no other attribute',
 		];
 
 		// The marker the builder wraps a foreign block in, and its end
@@ -297,7 +334,7 @@ namespace Nino\Modules\Builder {
 		public static function sectionDefaults(): array {
 			return [
 				'row' => '', 'rowAlign' => '', 'rowCustom' => '', 'fullwidth' => false, 'fullheight' => false, 'color' => '', 'border' => '', 'borderPrimary' => false,
-				'cover' => null, 'parallax' => false, 'dim' => false, 'contentPos' => '',
+				'cover' => null, 'parallax' => false, 'dim' => false, 'padded' => false, 'contentPos' => '', 'inner' => false, 'whitespace' => '',
 				'mt' => '', 'mb' => '', 'pt' => '', 'pb' => '', 'text' => '',
 			] + self::animationDefaults() + [ 'custom' => '' ];
 		}
@@ -362,6 +399,24 @@ namespace Nino\Modules\Builder {
 		 */
 		public static function holds( array $schema ): bool {
 			return is_string( $schema['holds'] ?? null ) === true && $schema['holds'] !== '';
+		}
+
+		/**
+		 *	The stack whose cell is a whole section - the loop of sections. The schema says so ('cell' =>
+		 *	'section', which the Document puts there, being the one place that knows the kernel's name for
+		 *	it), and the Builder asks the schema and not the name
+		 *
+		 *	@param		array			$registry			[ 'components' => name => schema, 'stacks' => name => schema ]
+		 *
+		 *	@return 	string										Its name, '' where the registry has none
+		 */
+		public static function loopsSections( array $registry ): string {
+
+			foreach( (array) ( $registry['stacks'] ?? [] ) as $name => $schema )
+				if( is_array( $schema ) === true && ( $schema['cell'] ?? '' ) === 'section' )
+					return (string) $name;
+
+			return '';
 		}
 
 		/**
@@ -465,7 +520,7 @@ namespace Nino\Modules\Builder {
 						$pending = [ 'start' => $pos, 'reason' => self::_reason( $body, $e ) ];
 				}
 
-				$candidate = self::_candidate( $body, $pos );
+				$candidate = self::_candidate( $body, $pos, self::loopsSections( $registry ) );
 
 				if( $candidate === null ) {
 					self::_flush( $model, $pending, $body, strlen( $body ) );
@@ -553,29 +608,35 @@ namespace Nino\Modules\Builder {
 
 		/**
 		 *	Where the next block may start after a failed one: a line that
-		 *	opens a <section> or a marker, and that is not inside the section
-		 *	that failed - the sections opened since and not yet closed are
-		 *	counted
+		 *	opens a <section>, a loop of sections or a marker, and that is not
+		 *	inside the section that failed - the sections and the loops opened
+		 *	since and not yet closed are counted
 		 *
 		 *	@param		string		$body
 		 *	@param		int				$from					The start of the failed block
+		 *	@param		string		$loop					The name of the loop of sections, '' where the registry has none
 		 *
 		 *	@return 	int|null								The start of the line, null where there is none
 		 */
-		private static function _candidate( string $body, int $from ): ?int {
+		private static function _candidate( string $body, int $from, string $loop = '' ): ?int {
 
 			$newline = strpos( $body, "\n", $from );
 
 			if( $newline === false )
 				return null;
 
-			$search = $newline + 1;
+			$search	= $newline + 1;
+			$open		= $loop === '' ? '' : '\['. preg_quote( $loop, '~' ). '(?=[ \]])';
+			$close	= $loop === '' ? '' : '\[/'. preg_quote( $loop, '~' ). '\]';
 
-			while( preg_match( '~(?<![^\n])[\t ]*<(?:section\b|!--[\t ]*nino:html[\t ]*-->)~', $body, $match, PREG_OFFSET_CAPTURE, $search ) === 1 ) {
+			while( preg_match( '~(?<![^\n])[\t ]*(?:<(?:section\b|!--[\t ]*nino:html[\t ]*-->)'. ( $open === '' ? '' : '|'. $open ). ')~', $body, $match, PREG_OFFSET_CAPTURE, $search ) === 1 ) {
 
 				$at			= (int) $match[0][1];
 				$passed	= substr( $body, $from, $at - $from );
 				$depth	= preg_match_all( '~<section\b~', $passed ) - preg_match_all( '~</section\s*>~', $passed );
+
+				if( $loop !== '' )
+					$depth += preg_match_all( '~'. $open. '~', $passed ) - preg_match_all( '~'. $close. '~', $passed );
 
 				if( $depth <= 0 )
 					return $at;
@@ -623,7 +684,7 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	One section, from the line it starts at
+		 *	One section, from the line it starts at: a <section>, or a loop of sections
 		 *
 		 *	@param		string		$body					The source
 		 *	@param		int				$pos					Where the block starts
@@ -636,7 +697,12 @@ namespace Nino\Modules\Builder {
 		 */
 		private static function _section( string $body, int $pos, array $registry, array $ids ): array {
 
-			$pos = self::_skip( $body, $pos );
+			$pos		= self::_skip( $body, $pos );
+			$loop		= self::loopsSections( $registry );
+
+			// A loop of sections has no tag of its own: its call is the tag
+			if( $loop !== '' && preg_match( '~\G\['. preg_quote( $loop, '~' ). '(?=[ \]])~', $body, $call, 0, $pos ) === 1 )
+				return self::_loop( $body, $pos, $registry, $ids );
 
 			[ $attributes, $pos ] = self::_open( $body, $pos, 'section', 'not-a-section' );
 
@@ -657,9 +723,96 @@ namespace Nino\Modules\Builder {
 			if( in_array( 'nino-section', $tokens, true ) === false )
 				throw self::_fail( 'section-class', '', $pos );
 
-			$settings = self::_sectionSettings( $tokens, $attributes, $pos );
+			// A scrim darkens the picture of the section itself, the block that stands before its row
+			$settings = self::_sectionSettings( $tokens, $attributes, $pos, self::_isDiv( $body, self::_skip( $body, $pos ), 'nino-section-bg' ) );
+			$section	= [ 'kind' => 'section', 'id' => $id, 'settings' => $settings, 'background' => null, 'stack' => null, 'cols' => [] ];
+			$pos			= self::_skip( $body, self::_inside( $body, $pos, $registry, $section, false ) );
 
-			$section = [ 'kind' => 'section', 'id' => $id, 'settings' => $settings, 'background' => null, 'cols' => [] ];
+			if( preg_match( '~\G</section\s*>~', $body, $close, 0, $pos ) !== 1 ) {
+
+				[ $tag, $tagAttributes ] = self::_peek( $body, $pos );
+
+				throw self::_fail( $tag === 'div' && in_array( 'nino-grid-row', self::_tokens( $tagAttributes['class'] ?? '', $pos ), true ) === true ? 'second-row' : 'section-content', '', $pos );
+			}
+
+			return [ $section, $pos + strlen( $close[0] ) ];
+		}
+
+		/**
+		 *	One loop of sections: the call stands where the tag of a section does, and what it holds
+		 *	is what a section holds - the picture behind it, the row, its columns. The id and the
+		 *	classes of the call are the section's (the kernel makes the ids of the sections of the id
+		 *	and the number of the element), and it has no other attribute but those of the loop
+		 *
+		 *	@param		string		$body					The source
+		 *	@param		int				$pos					Where the call starts
+		 *	@param		array			$registry
+		 *	@param		array			$ids					The ids of the sections before it: id => true
+		 *
+		 *	@return 	array										[ the section, where its closing tag ends ]
+		 *
+		 *	@throws 	\RuntimeException					The failure, see _fail()
+		 */
+		private static function _loop( string $body, int $pos, array $registry, array $ids ): array {
+
+			[ $call, $end ] = self::_call( $body, $pos, 0, $registry, 'not-a-section', '', true );
+
+			$node		= $call['node'];
+			$id			= (string) $node['attributes']['id'];
+			$class	= (string) $node['attributes']['class'];
+
+			if( preg_match( '/^[a-z0-9]+(?:-[a-z0-9]+)*$/D', $id ) !== 1 )
+				throw self::_fail( 'section-id', '', $pos );
+
+			if( isset( $ids[$id] ) === true )
+				throw self::_fail( 'duplicate-id', $id, $pos );
+
+			// The id and the classes are the section's: the call keeps neither of them
+			$node['attributes']['id']			= '';
+			$node['attributes']['class']	= '';
+
+			$content	= $call['content'];
+			// A call that is never closed has no content, and a failure in it is where its tag ends
+			$base			= $call['contentAt'] > 0 ? $call['contentAt'] : $end;
+			$tokens		= self::_tokens( 'nino-section '. $class, $pos );
+			$settings	= self::_sectionSettings( $tokens, [], $pos, self::_isDiv( $content, self::_skip( $content, 0 ), 'nino-section-bg' ) );
+			$section	= [ 'kind' => 'section', 'id' => $id, 'settings' => $settings, 'background' => null, 'stack' => $node, 'cols' => [] ];
+
+			try {
+
+				$at = self::_skip( $content, self::_inside( $content, 0, $registry, $section, true ) );
+
+				if( $at < strlen( $content ) ) {
+
+					[ $tag, $tagAttributes ] = self::_peek( $content, $at );
+
+					throw self::_fail( $tag === 'div' && in_array( 'nino-grid-row', self::_tokens( $tagAttributes['class'] ?? '', $at ), true ) === true ? 'sections-second-row' : 'sections-content', '', $at );
+				}
+			}
+			catch( \RuntimeException $e ) {
+
+				// Where it is in the source, and not in the content of the call alone
+				throw new \RuntimeException( $e->getMessage(), $base + $e->getCode() );
+			}
+
+			return [ $section, $end ];
+		}
+
+		/**
+		 *	What a section holds, wherever its tag is - the one of a <section> and the call of a loop of
+		 *	sections hold the same: the picture behind it, then its row, with the columns in it
+		 *
+		 *	@param		string		$body					The source, or the content of the call of a loop of sections
+		 *	@param		int				$pos					Where the tag of the section ends
+		 *	@param		array			$registry
+		 *	@param		array 		&$section			The section as far as it is read: its background, its columns and the settings of its row are set in it
+		 *	@param		bool			$loop					Whether the section is a loop of sections
+		 *
+		 *	@return 	int											Where the row ends
+		 *
+		 *	@throws 	\RuntimeException					The failure, see _fail()
+		 */
+		private static function _inside( string $body, int $pos, array $registry, array &$section, bool $loop ): int {
 
 			$pos = self::_skip( $body, $pos );
 
@@ -673,17 +826,22 @@ namespace Nino\Modules\Builder {
 			}
 
 			if( $tag !== 'div' || in_array( 'nino-grid-row', self::_tokens( $tagAttributes['class'] ?? '', $pos ), true ) === false )
-				throw self::_fail( 'no-row', '', $pos );
+				throw self::_fail( $loop === true ? 'sections-no-row' : 'no-row', '', $pos );
 
 			foreach( array_keys( $tagAttributes ) as $name )
 				if( $name !== 'class' )
 					throw self::_fail( 'row-attribute', $name, $pos );
 
-			$rowTokens = self::_tokens( $tagAttributes['class'], $pos );
+			$rowTokens	= self::_tokens( $tagAttributes['class'], $pos );
+			$rowAt			= $pos;
+			$pos				= self::_skip( $body, $after );
+			$picture		= null;
 
-			self::_rowSettings( $rowTokens, $section['settings'] );
+			// The picture behind the row is the first thing in it, as the one behind the section is the first before its row
+			if( self::_isDiv( $body, $pos, 'nino-grid-row-bg' ) === true )
+				[ $picture, $pos ] = self::_background( $body, $pos, $registry, 'nino-grid-row-bg' );
 
-			$pos = $after;
+			self::_rowSettings( $rowTokens, $section, $picture, $rowAt );
 
 			while( true ) {
 
@@ -694,23 +852,17 @@ namespace Nino\Modules\Builder {
 					break;
 				}
 
-				[ $col, $pos ] = self::_col( $body, $pos, $registry );
+				if( self::_isDiv( $body, $pos, 'nino-grid-row-bg' ) === true )
+					throw self::_fail( 'row-background', '', $pos );
+
+				[ $col, $pos ] = self::_col( $body, $pos, $registry, $loop );
 				$section['cols'][] = $col;
 			}
 
 			if( $section['cols'] === [] )
 				throw self::_fail( 'no-cols', '', $pos );
 
-			$pos = self::_skip( $body, $pos );
-
-			if( preg_match( '~\G</section\s*>~', $body, $close, 0, $pos ) !== 1 ) {
-
-				[ $tag, $tagAttributes ] = self::_peek( $body, $pos );
-
-				throw self::_fail( $tag === 'div' && in_array( 'nino-grid-row', self::_tokens( $tagAttributes['class'] ?? '', $pos ), true ) === true ? 'second-row' : 'section-content', '', $pos );
-			}
-
-			return [ $section, $pos + strlen( $close[0] ) ];
+			return $pos;
 		}
 
 		/**
@@ -826,14 +978,16 @@ namespace Nino\Modules\Builder {
 		 *	@param		array			$tokens				The classes
 		 *	@param		array			$attributes		The attributes of the tag
 		 *	@param		int				$pos
+		 *	@param		bool			$pictured			Whether the section has a block of its own for a picture: only then is there something for nino-section--dim to darken
 		 *
 		 *	@return 	array
 		 */
-		private static function _sectionSettings( array $tokens, array $attributes, int $pos ): array {
+		private static function _sectionSettings( array $tokens, array $attributes, int $pos, bool $pictured = false ): array {
 
 			$s				= self::sectionDefaults();
 			$custom		= [];
 			$dim			= [];
+			$padded		= [];
 			$places	= [];
 			$default	= $s;
 
@@ -866,8 +1020,12 @@ namespace Nino\Modules\Builder {
 					$set( 'cover', 90, $token );
 				elseif( $token === 'nino-parallex' )
 					$set( 'parallax', true, $token );
-				elseif( $token === 'nino-cover--dim' || $token === 'nino-parallex--dim' )
+				elseif( $token === 'nino-cover--dim' || $token === 'nino-parallex--dim' || $token === 'nino-section--dim' )
 					$dim[] = $token;
+				elseif( $token === 'nino-cover--padded' )
+					$padded[] = $token;
+				elseif( preg_match( '/^nino-whitespace--('. implode( '|', self::WHITESPACE ). ')$/D', $token, $m ) === 1 )
+					$set( 'whitespace', $m[1], $token );
 				elseif( preg_match( '/^nino-cover-('. implode( '|', self::CONTENT_POS ). ')$/D', $token, $m ) === 1 )
 					$places[] = [ $m[1], $token ];
 				elseif( preg_match( '/^nino-(mt|mb|pt|pb)-([0-6])$/D', $token, $m ) === 1 )
@@ -886,9 +1044,19 @@ namespace Nino\Modules\Builder {
 				else
 					$custom[] = $token;
 
-			// The scrim is the cover's where the section is one, else the parallax's: any other dim class is a custom one
+			// Only a cover and a parallax keep the room of the page around them: on a section that is neither the class is idle, a custom one
+			foreach( $padded as $token )
+				if( $s['cover'] !== null || $s['parallax'] === true )
+					$set( 'padded', true, $token );
+				else
+					$custom[] = $token;
+
+			// The scrim is the cover's where the section is one, else the parallax's, else - where a picture of its own stands behind it - the section's:
+			// any other dim class is a custom one
 			foreach( $dim as $token )
-				if( ( $token === 'nino-cover--dim' && $s['cover'] !== null ) || ( $token === 'nino-parallex--dim' && $s['parallax'] === true && $s['cover'] === null ) )
+				if( ( $token === 'nino-cover--dim' && $s['cover'] !== null )
+					|| ( $token === 'nino-parallex--dim' && $s['parallax'] === true && $s['cover'] === null )
+					|| ( $token === 'nino-section--dim' && $s['cover'] === null && $s['parallax'] === false && $pictured === true ) )
 					$s['dim'] = true;
 				else
 					$custom[] = $token;
@@ -913,32 +1081,56 @@ namespace Nino\Modules\Builder {
 		}
 
 		/**
-		 *	The classes of the row: its width, the alignment of its columns,
-		 *	and the rest
+		 *	The classes of the row: its width, the alignment of its columns, its ground, the scrim over its
+		 *	picture, and the rest. The ground and the picture are the row's where nothing of the kind is the
+		 *	section's - no colour, no picture, no cover, no parallax: then the colour, the picture and the
+		 *	scrim are the section's keys all the same, and inner says where they stand. A ground or a
+		 *	scrim that cannot be kept so is a custom class of the row, a picture is a failure
 		 *
 		 *	@param		array			$tokens
-		 *	@param		array 		&$settings		The section's, the row's keys are set in it
+		 *	@param		array 		&$section			The section as far as it is read: its settings, and its background where it has the row's
+		 *	@param		array|null	$picture		The block behind the row, null where it has none
+		 *	@param		int				$at						Where the row starts, for a failure
 		 *
 		 *	@return 	void
+		 *
+		 *	@throws 	\RuntimeException					A picture behind the row of a section that has a colour, a picture, a cover or a parallax of its own
 		 */
-		private static function _rowSettings( array $tokens, array &$settings ): void {
+		private static function _rowSettings( array $tokens, array &$section, ?array $picture, int $at ): void {
 
-			$custom = [];
+			$s				= &$section['settings'];
+			$custom		= [];
+			$free			= $s['cover'] === null && $s['parallax'] === false && $s['color'] === '' && $section['background'] === null;
+
+			if( $picture !== null ) {
+
+				if( $free === false )
+					throw self::_fail( 'row-background', '', $at );
+
+				$section['background']	= $picture;
+				$s['inner']							= true;
+			}
 
 			foreach( $tokens as $token ) {
 
 				if( $token === 'nino-grid-row' )
 					continue;
 
-				if( preg_match( '/^nino-grid-row--('. implode( '|', self::ROW ). ')$/D', $token, $m ) === 1 && $settings['row'] === '' )
-					$settings['row'] = $m[1];
-				elseif( preg_match( '/^nino-grid-('. implode( '|', self::ROW_ALIGN ). ')$/D', $token, $m ) === 1 && $settings['rowAlign'] === '' )
-					$settings['rowAlign'] = $m[1];
+				if( preg_match( '/^nino-grid-row--('. implode( '|', self::ROW ). ')$/D', $token, $m ) === 1 && $s['row'] === '' )
+					$s['row'] = $m[1];
+				elseif( preg_match( '/^nino-grid-('. implode( '|', self::ROW_ALIGN ). ')$/D', $token, $m ) === 1 && $s['rowAlign'] === '' )
+					$s['rowAlign'] = $m[1];
+				elseif( preg_match( '/^nino-grid-row--('. implode( '|', self::COLOR ). ')$/D', $token, $m ) === 1 && $free === true && $s['color'] === '' ) {
+					$s['color']	= $m[1];
+					$s['inner']	= true;
+				}
+				elseif( $token === 'nino-grid-row--dim' && $picture !== null )
+					$s['dim'] = true;
 				else
 					$custom[] = $token;
 			}
 
-			$settings['rowCustom'] = implode( ' ', $custom );
+			$s['rowCustom'] = implode( ' ', $custom );
 		}
 
 		/**
@@ -1200,10 +1392,11 @@ namespace Nino\Modules\Builder {
 		 *	@param		string		$body
 		 *	@param		int				$pos
 		 *	@param		array			$registry
+		 *	@param		bool			$loop					Whether the column is one of a loop of sections, whose cell it is: a loop of its own would be one inside a loop
 		 *
 		 *	@return 	array										[ the column, the position after its closing tag ]
 		 */
-		private static function _col( string $body, int $pos, array $registry ): array {
+		private static function _col( string $body, int $pos, array $registry, bool $loop = false ): array {
 
 			[ $attributes, $after ] = self::_open( $body, $pos, 'div', 'row-content' );
 
@@ -1316,6 +1509,9 @@ namespace Nino\Modules\Builder {
 
 			if( $stacks !== [] ) {
 
+				if( $loop === true )
+					throw self::_fail( 'stack-in-stack', '', $calls[array_key_first( $stacks )]['at'] );
+
 				if( count( $calls ) > 1 )
 					throw self::_fail( 'stack-neighbour', '', $calls[1]['at'] );
 
@@ -1374,10 +1570,11 @@ namespace Nino\Modules\Builder {
 		 *	@param		array			$registry
 		 *	@param		string		$other				What fails where the text at $pos is no call
 		 *	@param		string		$holder				The name of the container whose content this is, '' elsewhere: a loop and a container are no calls it holds
+		 *	@param		bool			$whole				Whether the call is a loop of sections standing for the tag of a section, which is the only place for one: its attributes are the loop's and the section's alone
 		 *
 		 *	@return 	array										[ [ stack, node, content, contentAt ], the position after the call ]
 		 */
-		private static function _call( string $text, int $pos, int $base, array $registry, string $other = 'background-image', string $holder = '' ): array {
+		private static function _call( string $text, int $pos, int $base, array $registry, string $other = 'background-image', string $holder = '', bool $whole = false ): array {
 
 			if( preg_match( '~\G\[([a-z][a-z0-9-]*)(?: ([^\]]*))?\]~', $text, $head, 0, $pos ) !== 1 )
 				throw self::_fail( $other, $holder === '' ? trim( substr( $text, $pos, 24 ) ) : $holder. "\n". (string) preg_replace( '/\s+/', ' ', trim( substr( $text, $pos, 24 ) ) ), $base + $pos );
@@ -1389,6 +1586,10 @@ namespace Nino\Modules\Builder {
 				throw self::_fail( 'unknown-shortcode', $name, $base + $pos );
 
 			$schema = $isStack === true ? $registry['stacks'][$name] : $registry['components'][$name];
+
+			// A loop of sections is a section, and a section is not inside one
+			if( $isStack === true && $whole === false && ( $schema['cell'] ?? '' ) === 'section' )
+				throw self::_fail( 'sections-nested', '', $base + $pos );
 
 			// A container holds the calls of components that hold none: not a loop, not a second container
 			if( $holder !== '' && ( $isStack === true || self::holds( $schema ) === true ) )
@@ -1427,7 +1628,7 @@ namespace Nino\Modules\Builder {
 				'name'				=> $name,
 				'source'			=> $positional[0] ?? '',
 				'text'				=> $fixed,
-				'attributes'	=> self::_attributes( $named, $schema, $base + $pos ),
+				'attributes'	=> self::_attributes( $named, $schema, $base + $pos, $whole ),
 			];
 
 			if( $isStack === true ) {
@@ -1507,23 +1708,29 @@ namespace Nino\Modules\Builder {
 		 *	@param		array			$named
 		 *	@param		array			$schema
 		 *	@param		int				$offset
+		 *	@param		bool			$whole				Whether the call is a loop of sections: an attribute it does not know is told as that, see _call()
 		 *
 		 *	@return 	array
 		 */
-		private static function _attributes( array $named, array $schema, int $offset ): array {
+		private static function _attributes( array $named, array $schema, int $offset, bool $whole = false ): array {
 
 			$attributes = self::defaults( $schema );
 
 			foreach( $named as $key => $value ) {
 
 				if( array_key_exists( $key, $attributes ) === false )
-					throw self::_fail( 'unknown-attribute', (string) $key, $offset );
+					throw self::_fail( $whole === true ? 'sections-attribute' : 'unknown-attribute', (string) $key, $offset );
 
 				$declared = $schema['attributes'][$key] ?? [];
+
+				// Where it opens is the second implicit attribute of a component that is a link (the schema does not declare it)
+				if( $declared === [] && $key === 'target' )
+					$declared = [ 'type' => 'select', 'options' => self::TARGETS ];
+
 				$type = (string) ( $declared['type'] ?? 'string' );
 
 				$valid = match( $type ) {
-					'select'	=> in_array( $value, (array) ( $declared['options'] ?? [] ), true ),
+					'select', 'variant'	=> in_array( $value, (array) ( $declared['options'] ?? [] ), true ),
 					'int'			=> preg_match( '/^-?\d{1,9}$/D', $value ) === 1 && (int) $value >= ( $declared['min'] ?? PHP_INT_MIN ) && (int) $value <= ( $declared['max'] ?? PHP_INT_MAX ),
 					'bool'		=> $value === '0' || $value === '1',
 					default		=> true,

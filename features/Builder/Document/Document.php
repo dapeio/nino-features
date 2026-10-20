@@ -74,6 +74,10 @@ namespace Nino\Modules\Builder {
 		// The longest alt text the Images panel keeps of a picture
 		private const int ALT_MAX = 250;
 
+		// The kernel's name for the stack whose cell is a whole section: the one place the Builder says it. Everything else asks the schema, which
+		// schemas() marks - 'cell' => 'section' - so that neither the Reader nor the panel has the name
+		private const string SECTION_LOOP = 'sections';
+
 		/**
 		 *	Whether a name may be a page template's: the file is page-<slug>
 		 *
@@ -92,7 +96,8 @@ namespace Nino\Modules\Builder {
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
-		 *	@return 	array										[ 'components' => name => schema, 'stacks' => name => schema ]
+		 *	@return 	array										[ 'components' => name => schema, 'stacks' => name => schema ]; the stack
+		 *																	that makes whole sections says 'cell' => 'section' besides
 		 */
 		public static function schemas( array &$appData ): array {
 
@@ -101,8 +106,13 @@ namespace Nino\Modules\Builder {
 			foreach( array_keys( $schemas['components'] ) as $name )
 				$schemas['components'][$name]['defaults'] = \Nino\Modules\Components::defaults( $appData, (string) $name );
 
-			foreach( array_keys( $schemas['stacks'] ) as $name )
+			foreach( array_keys( $schemas['stacks'] ) as $name ) {
+
 				$schemas['stacks'][$name]['defaults'] = \Nino\Modules\Components::defaults( $appData, (string) $name, true );
+
+				if( $name === self::SECTION_LOOP )
+					$schemas['stacks'][$name]['cell'] = 'section';
+			}
 
 			return $schemas;
 		}
@@ -111,8 +121,10 @@ namespace Nino\Modules\Builder {
 		 *	Everything the panel builds its forms from: the components and
 		 *	the stacks with their labels in the language of the workbench - and
 		 *	the rest of the schema as the kernel registered it, the icon a component
-		 *	is shown by (icon), where it belongs (in), what it draws (draws) and what
-		 *	it holds (holds) among it -,
+		 *	is shown by (icon), where it belongs (in), what it draws (draws), what
+		 *	it holds (holds), whether it is a link (link) and who registered it
+		 *	(by) among it -, the names of the features that registered a component
+		 *	(features, by their key),
 		 *	the types of the Elements panel with their fields, the image slots (each
 		 *	with the url of its picture, null where it has none, and its alt
 		 *	texts by language), the frames a page may name - and the languages
@@ -121,7 +133,7 @@ namespace Nino\Modules\Builder {
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
-		 *	@return 	array										[ 'status' => 200, 'components', 'stacks', 'types', 'fieldTypes', 'slots', 'headers', 'footers', 'locales' => [ [ locale, name ], ... ], 'native' ]
+		 *	@return 	array										[ 'status' => 200, 'components', 'stacks', 'features' => key => name, 'types', 'fieldTypes', 'slots', 'headers', 'footers', 'locales' => [ [ locale, name ], ... ], 'native' ]
 		 */
 		public static function registry( array &$appData ): array {
 
@@ -138,6 +150,21 @@ namespace Nino\Modules\Builder {
 						$schemas[$kind][$name]['attributes'][$attribute]['hint'] = \Nino\Features::localized( $declared['hint'] ?? '', $locale );
 					}
 				}
+
+			// The picker names the features that brought a component, in the language of the workbench: the key stands where a feature has no name
+			$features = [];
+
+			foreach( $schemas['components'] as $schema ) {
+
+				$by = (string) ( $schema['by'] ?? 'nino' );
+
+				if( $by === 'nino' || isset( $features[$by] ) === true )
+					continue;
+
+				$name = trim( \Nino\Features::localized( \Nino\Features::get( $appData, $by )['name'] ?? '', $locale ) );
+
+				$features[$by] = $name !== '' ? $name : $by;
+			}
 
 			$types = [];
 
@@ -182,6 +209,7 @@ namespace Nino\Modules\Builder {
 				'status'			=> 200,
 				'components'	=> $schemas['components'],
 				'stacks'			=> $schemas['stacks'],
+				'features'		=> $features,
 				'types'				=> $types,
 				'fieldTypes'	=> \Nino\Elements::FIELD_TYPES,
 				'slots'				=> $slots,
@@ -1049,6 +1077,16 @@ namespace Nino\Modules\Builder {
 					if( $unsafe( $block['settings'][$key] ?? null ) === true )
 						$problems[] = $at. ': '. $what. ' hold a quote, a bracket or a line break, which a call cannot carry';
 
+				// The loop of a section is a call as the loop of a column is
+				foreach( is_array( $block['stack'] ?? null ) === true ? [ $block['stack'] ] : [] as $call ) {
+
+					$values = [ 'source' => $call['source'] ?? null ] + (array) ( $call['attributes'] ?? [] );
+
+					foreach( $values as $attribute => $value )
+						if( $unsafe( $value ) === true )
+							$problems[] = $at. ': the attribute "'. $attribute. '" of the loop "'. (string) ( $call['name'] ?? '' ). '" holds a quote, a bracket or a line break, which a call cannot carry';
+				}
+
 				foreach( (array) ( $block['cols'] ?? [] ) as $c => $col ) {
 
 					if( is_array( $col ) === false )
@@ -1099,22 +1137,18 @@ namespace Nino\Modules\Builder {
 			if( is_array( $section['background'] ?? null ) === true && preg_match( self::SLOT, (string) ( $section['background']['slot'] ?? '' ) ) !== 1 )
 				$problems[] = 'the background is not an image slot';
 
+			// The cells of a loop of sections are its columns: the fields they name are the type's, as in a loop of a column
+			$cell = is_array( $section['stack'] ?? null ) === true ? self::_fields( $appData, $section['stack'], $problems ) : null;
+
 			foreach( (array) ( $section['cols'] ?? [] ) as $c => $col ) {
 
-				$fields = null;
+				$fields = $cell;
 
 				if( is_array( $col['background'] ?? null ) === true && preg_match( self::SLOT, (string) ( $col['background']['slot'] ?? '' ) ) !== 1 )
 					$problems[] = 'the background of column '. ( (int) $c + 1 ). ' is not an image slot';
 
-				if( is_array( $col['stack'] ?? null ) === true ) {
-
-					$type = ltrim( (string) ( $col['stack']['source'] ?? '' ), '/' );
-
-					if( preg_match( self::TYPE, $type ) !== 1 || in_array( $type, self::_types( $appData ), true ) === false )
-						$problems[] = 'the loop runs over "'. $type. '", which is no element type';
-					else
-						$fields = (array) ( \Nino\Filesystem::getFileContent( $appData, '/elements/'. $type. '.php', [] )['model'] ?? [] );
-				}
+				if( is_array( $col['stack'] ?? null ) === true )
+					$fields = self::_fields( $appData, $col['stack'], $problems );
 
 				foreach( self::_flat( (array) ( $col['components'] ?? [] ) ) as $component ) {
 
@@ -1148,6 +1182,27 @@ namespace Nino\Modules\Builder {
 			}
 
 			return $problems;
+		}
+
+		/**
+		 *	The fields of the element type a loop runs over - the model of its file in /elements
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$stack				The loop of the model: name, source, attributes
+		 *	@param		array 		&$problems		(reference) A sentence is added where the type is none the Elements panel has
+		 *
+		 *	@return 	array|null								The fields, null where the type is none
+		 */
+		private static function _fields( array &$appData, array $stack, array &$problems ): ?array {
+
+			$type = ltrim( (string) ( $stack['source'] ?? '' ), '/' );
+
+			if( preg_match( self::TYPE, $type ) !== 1 || in_array( $type, self::_types( $appData ), true ) === false ) {
+				$problems[] = 'the loop runs over "'. $type. '", which is no element type';
+				return null;
+			}
+
+			return (array) ( \Nino\Filesystem::getFileContent( $appData, '/elements/'. $type. '.php', [] )['model'] ?? [] );
 		}
 
 		/**
@@ -1951,8 +2006,8 @@ namespace Nino\Modules\Builder {
 
 		/**
 		 *	Whether a section that was written and read again is the one that
-		 *	was written: the same columns, in each the same stack or none, the
-		 *	same components with the same sources
+		 *	was written: the same loop of sections or none, the same columns, in
+		 *	each the same stack or none, the same components with the same sources
 		 *
 		 *	@param		array			$posted				The section of the model
 		 *	@param		array			$read					The section the Reader made of what the Writer wrote
@@ -1960,6 +2015,14 @@ namespace Nino\Modules\Builder {
 		 *	@return 	bool
 		 */
 		private static function _readsBack( array $posted, array $read ): bool {
+
+			$loop = $posted['stack'] ?? null;
+
+			if( is_array( $loop ) !== is_array( $read['stack'] ?? null ) )
+				return false;
+
+			if( is_array( $loop ) === true && ( (string) ( $loop['name'] ?? '' ) !== $read['stack']['name'] || (string) ( $loop['source'] ?? '' ) !== $read['stack']['source'] ) )
+				return false;
 
 			$cols = array_values( (array) ( $posted['cols'] ?? [] ) );
 
@@ -2017,12 +2080,16 @@ namespace Nino\Modules\Builder {
 		 *	read: a name that is no text, a block that is no block, a switch
 		 *	that is neither on nor off (the animation of the template, the
 		 *	full width, the full height, the brand colour of the border, the
-		 *	parallax and the dimming of a section, the dimming of a column -
+		 *	parallax, the dimming, the padding of a cover and the background
+		 *	inside of a section, the dimming of a column -
 		 *	one left out is off), a border that is no strength, a cover that
 		 *	is neither none nor a whole number from 1 to 9999, the ground of
 		 *	a column that is none of Nino.css's, the width and the alignment
-		 *	of a row, the place of the content and the alignment of a text or
-		 *	of a stack that are none of its words, a background that is no
+		 *	of a row, the place of the content, the whitespace and the alignment
+		 *	of a text or of a stack that are none of its words, a loop of
+		 *	sections that is no such loop or has a cover with a height, a
+		 *	delay or a duration of an animation - which its call cannot carry - or a
+		 *	loop in one of its columns, a background that is no
 		 *	slot or whose focus is none of the nine places, a call that is no
 		 *	call, texts that are no text for each language, the padding and
 		 *	the margins of a column that are none of the steps 0 to 6, a
@@ -2087,7 +2154,7 @@ namespace Nino\Modules\Builder {
 						$problems[] = 'the '. $key. ' of '. $at. ' are no list';
 
 				// What is no switch would be left out of the classes, and read back as off
-				foreach( array_merge( Reader::SECTION_SIZE, [ 'borderPrimary', 'parallax', 'dim' ] ) as $key )
+				foreach( array_merge( Reader::SECTION_SIZE, [ 'borderPrimary', 'parallax', 'dim', 'padded', 'inner' ] ) as $key )
 					if( is_bool( $block['settings'][$key] ?? false ) === false )
 						$problems[] = 'the '. $key. ' of '. $at. ' is neither on nor off';
 
@@ -2099,9 +2166,29 @@ namespace Nino\Modules\Builder {
 					$problems[] = 'the cover of '. $at. ' is neither none nor a height in percent';
 
 				// The width of the row, where it puts its columns, where its content stands in a cover or a parallax and how the text is aligned: a word of Nino.css or none
-				foreach( [ 'row' => Reader::ROW, 'rowAlign' => Reader::ROW_ALIGN, 'contentPos' => Reader::CONTENT_POS, 'text' => Reader::TEXT ] as $key => $words )
+				foreach( [ 'row' => Reader::ROW, 'rowAlign' => Reader::ROW_ALIGN, 'contentPos' => Reader::CONTENT_POS, 'whitespace' => Reader::WHITESPACE, 'text' => Reader::TEXT ] as $key => $words )
 					if( in_array( $block['settings'][$key] ?? '', array_merge( [ '' ], $words ), true ) === false )
 						$problems[] = 'the '. $key. ' of '. $at. ' is none that Nino.css has';
+
+				// A loop of sections: the call of the stack that makes them - which has no attribute of a tag for what a section has one for
+				if( ( $block['stack'] ?? null ) !== null ) {
+
+					$wrong = self::_callWrong( $block['stack'] );
+
+					if( $wrong !== '' )
+						$problems[] = $at. ' has '. $wrong;
+					elseif( (string) ( $block['stack']['name'] ?? '' ) !== Reader::loopsSections( $schemas ) )
+						$problems[] = $at. ' has the loop "'. (string) ( $block['stack']['name'] ?? '' ). '", which makes no sections';
+					elseif( array_key_exists( 'components', $block['stack'] ) === true )
+						$problems[] = $at. ' has the loop "'. (string) ( $block['stack']['name'] ?? '' ). '" with components, and it holds none';
+
+					if( ( $block['settings']['cover'] ?? null ) !== null && (int) $block['settings']['cover'] !== 90 )
+						$problems[] = 'the cover of '. $at. ' has a height, and the call of a loop of sections has no attribute for one: a cover is as high as the page makes it';
+
+					foreach( [ 'vpaDelay', 'vpaDuration' ] as $key )
+						if( (string) ( $block['settings'][$key] ?? '' ) !== '' )
+							$problems[] = 'the '. $key. ' of '. $at. ' is set, and the call of a loop of sections has no attribute for it';
+				}
 
 				if( ( $block['background'] ?? null ) !== null && ( is_array( $block['background'] ) === false || $text( $block['background']['slot'] ?? null ) === false ) )
 					$problems[] = $at. ' has a background that is no image slot';
@@ -2150,6 +2237,10 @@ namespace Nino\Modules\Builder {
 
 					if( ( $col['stack'] ?? null ) !== null )
 						$calls[] = $col['stack'];
+
+					// The cell of a loop of sections is its columns': a loop of their own would be a loop inside a loop
+					if( ( $col['stack'] ?? null ) !== null && ( $block['stack'] ?? null ) !== null )
+						$problems[] = $of. ' has a loop, and it is a column of a loop of sections';
 
 					foreach( $calls as $call ) {
 

@@ -2522,6 +2522,17 @@ else {
 		&& preg_match( '/^calc\( 1 \+ \( var\(--whitespace-scale\) - 1 \) \* [0-9.]+ \)$/', (string) ( $ninoRootDecls['--whitespace-text'] ?? '' ) ) === 1
 		&& array_filter( Setup::WHITESPACE, static fn( string $number ): bool => is_numeric( $number ) === false || (float) $number <= 0 ) === [] );
 
+	/*	The four outer positions of the ladder are classes of the kernel as well - nino-whitespace--least, --less, --more and --most, on a section or a
+		card, which the Builder's whitespace select writes -, and each sets the number of its position: a contract of the kernel, read at test time, so
+		that a section the Builder gives a whitespace has the air the ladder of the Design names for it	*/
+	$airRules = [];
+	preg_match_all( '/\.nino-whitespace--(least|less|more|most)\s*\{\s*--whitespace-scale:\s*([0-9.]+);\s*\}/', $ninoCss, $airFound, PREG_SET_ORDER );
+	foreach( $airFound as $airRule )
+		$airRules[$airRule[1]] = $airRule[2];
+
+	check( '...and the four outer positions are classes the kernel gives any element: .nino-whitespace--least, --less, --more and --most set --whitespace-scale to the number of the position -2, -1, +1 and +2 of Setup::WHITESPACE - the middle one is the page\'s own, and no class',
+		$airRules === [ 'least' => Setup::WHITESPACE[-2], 'less' => Setup::WHITESPACE[-1], 'more' => Setup::WHITESPACE[1], 'most' => Setup::WHITESPACE[2] ] && preg_match( '/\.nino-whitespace--(?:middle|default|normal)\b/', $ninoCss ) !== 1 );
+
 	/*	The animation is the properties Nino.css sets for nino-vpa--<effect>-<strength>
 		and nino-vpa--speed-<speed>, as one rule on main. The tables are held in
 		code, so this is where they are held to the stylesheet they copy	*/
@@ -4209,6 +4220,13 @@ check( 'the Cards section carries id="cards", once - and it comes after the hero
 	substr_count( $specimen, ' id="cards"' ) === 1 && str_contains( $specimen, '<section id="cards" class="nino-section" aria-label="Cards">' ) === true
 	&& (int) strpos( $specimen, 'id="content"' ) < (int) strpos( $specimen, 'id="cards"' ) && (int) strpos( $specimen, 'id="cards"' ) < (int) strpos( $specimen, 'id="colours"' ) );
 
+/*	...and one at its end, as the first is at its beginning: where the footer starts, which the frame scrolls to when a footer is chosen on Global (the
+	footer of _setPart() and _jump() in admin.js, which design-js-smoke.js holds to the ids of this page). An empty block after the last section, so that it
+	takes no room, in a page whose body is a column of the header, the main part and the footer	*/
+check( 'the page ends in an anchor of its own, id="footer", once: an empty block after the last section - it takes no room - and no tab has it',
+	substr_count( $specimen, ' id="footer"' ) === 1 && preg_match( '#</section>\s*<div id="footer"></div>\s*$#', $specimen ) === 1
+	&& (int) strpos( $specimen, ' id="footer"' ) > (int) strrpos( $specimen, '<section ' ) );
+
 $oldWords = [];
 foreach( new RecursiveIteratorIterator( new RecursiveDirectoryIterator( dirname( __DIR__ ), FilesystemIterator::SKIP_DOTS ) ) as $file ) {
 
@@ -4411,6 +4429,8 @@ check( 'render() reads the chosen frames out of the library and renders each on 
 	&& str_starts_with( $pageApart, $pairHeader ) === true && str_ends_with( $pageApart, $pairFooter ) === true
 	&& $inOrder( $pageApart, [ $pairHeader, $pairBody, $pairFooter ] ) === true
 	&& str_contains( $pageApart, '[image' ) === false && str_contains( $pageApart, '[/image]' ) === false );
+check( '...the anchor of the footer is the end of the specimen: in the page the preview renders it stands once, after the last section of the specimen and before the footer\'s own markup - the frames bring none of their own - so that the frame can scroll to where the footer starts',
+	$shortfall === [] && substr_count( $pageApart, ' id="footer"' ) === 1 && str_contains( $pairBody, ' id="footer"' ) === true && $inOrder( $pageApart, [ ' id="colours"', ' id="footer"', $pairOpening[1] ] ) === true );
 check( '...and the same three rendered as one string lose the specimen - the parser gives the header\'s tag the footer\'s closing tag, however far away - which is why render() does not',
 	$shortfall === [] && $pairBody !== '' && str_contains( $oneString, $pairBody ) === false );
 

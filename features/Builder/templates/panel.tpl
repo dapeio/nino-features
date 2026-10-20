@@ -7,13 +7,14 @@
 
      Two screens - the list of the page templates and the editor, which is the
      preview and nothing beside it - and, below them, everything the script
-     draws with: the one dialog and the dialog of a source that opens over it,
-     the one menu, the icons and placeholders of the preview as a sprite, and
-     the fragments it clones (a <template> each, one element in it). The
-     script fills them with text and never writes markup of its own. The icon
-     of a component in the menu is the registry's, and the script builds it
-     from the parts it is handed (_shape() in admin.js); the sprite holds the
-     puzzle, which a component without an icon wears. -->
+     draws with: the one dialog - the lightbox that offers the components is
+     drawn in it - and the dialog of a source that opens over it, the icons and
+     placeholders of the preview as a sprite, and the fragments it clones (a
+     <template> each, one element in it). The script fills them with text and
+     never writes markup of its own. The icon of a component in the lightbox
+     is the registry's, and the script builds it from the parts it is handed
+     (_shape() in admin.js); the sprite holds the puzzle, which a component
+     without an icon wears. -->
 <div id="builder-root" data-dir="[[/nino/dir]]">
 
 	<section id="builder-list" class="builder-screen">
@@ -50,7 +51,6 @@
 				<button type="button" id="builder-add-section" class="builder-add-button">+ [[/_admin/builder/tree/section]]</button>
 				<button type="button" id="builder-add-html" class="builder-add-button">+ [[/_admin/builder/tree/html-block]]</button>
 			</div>
-			<div id="builder-menu" class="builder-menu" role="menu" hidden></div>
 		</section>
 
 		<div id="builder-bar" class="nino-admin-actionbar builder-bar">
@@ -115,6 +115,11 @@
 		<symbol id="builder-icon-stack-start" viewBox="0 0 24 24"><rect width="14" height="6" x="5" y="16" rx="2"/><rect width="10" height="6" x="7" y="6" rx="2"/><path d="M2 2h20"/></symbol>
 		<symbol id="builder-icon-stack-center" viewBox="0 0 24 24"><rect width="14" height="6" x="5" y="16" rx="2"/><rect width="10" height="6" x="7" y="2" rx="2"/><path d="M2 12h20"/></symbol>
 		<symbol id="builder-icon-stack-end" viewBox="0 0 24 24"><rect width="14" height="6" x="5" y="12" rx="2"/><rect width="10" height="6" x="7" y="2" rx="2"/><path d="M2 22h20"/></symbol>
+		<symbol id="builder-icon-align-last-bottom" viewBox="0 0 24 24"><rect width="12" height="4" x="6" y="2" rx="1"/><rect width="12" height="4" x="6" y="7" rx="1"/><rect width="12" height="4" x="6" y="16" rx="1"/><path d="M2 22h20"/></symbol>
+		<symbol id="builder-icon-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+		<symbol id="builder-icon-frame" viewBox="0 0 24 24"><line x1="22" x2="2" y1="6" y2="6"/><line x1="22" x2="2" y1="18" y2="18"/><line x1="6" x2="6" y1="2" y2="22"/><line x1="18" x2="18" y1="2" y2="22"/></symbol>
+		<symbol id="builder-icon-move-vertical" viewBox="0 0 24 24"><path d="M12 2v20"/><path d="m8 18 4 4 4-4"/><path d="m8 6 4-4 4 4"/></symbol>
+		<symbol id="builder-icon-inner" viewBox="0 0 24 24"><rect width="20" height="20" x="2" y="2" rx="3"/><rect width="10" height="10" x="7" y="7" rx="1.5"/></symbol>
 		<symbol id="builder-icon-loop" viewBox="0 0 24 24"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></symbol>
 		<symbol id="builder-icon-source" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></symbol>
 		<symbol id="builder-icon-puzzle" viewBox="0 0 24 24"><path d="M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z"/></symbol>

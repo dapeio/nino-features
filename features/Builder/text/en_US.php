@@ -25,14 +25,18 @@ declare(strict_types=1);
 //   /_admin/builder/picture/...   the picture of a slot and its alt text, and what is said of the upload
 //   /_admin/builder/focus/...     the nine places of the focus of a picture
 //   /_admin/builder/html/...      the HTML+ editor
-//   /_admin/builder/option/...    the words of a value of a setting, as <setting>-<value>; a value with no
-//                                 words of its own is shown as it is, and an empty one as "default" or "none"
+//   /_admin/builder/option/...    the words of a value of a setting, as <setting>-<value> - of an attribute of a
+//                                 component as attribute-<name>-<value>; a value with no words of its own is
+//                                 shown as it is, and an empty one as "default" or "none"
 //   /_admin/builder/color/...     the grounds a column may paint besides the colours of a section: counter,
 //                                 the one that sets it off from its section, and none of its own
 //   /_admin/builder/state/...     the states the editor is in: a conflict, a rename, the narrow screen
 //   /_admin/builder/viewport/...  the viewports of the preview: the three, and all of them at once (g)
 //   /_admin/builder/preview/...   what the marks on a frame of the preview mean
-//   /_admin/builder/reason/...    why a section is not read, by the code the Reader gives
+//   /_admin/builder/reason/...    why a section is not read, by the code the Reader gives - and, as pick-*, why a component
+//                                 cannot be added where the lightbox was opened
+//   /_admin/builder/pick/...      the headings of the groups of the lightbox that offers the components
+//   /_admin/builder/link/...      the fields of the tab of a component that is a link
 return [
 
 	'[[/_admin/builder/label/nav]]'						=> 'Builder',
@@ -98,6 +102,7 @@ return [
 	'[[/_admin/builder/reason/background-class]]'	=> 'The background block has %s, which the Builder does not keep',
 	'[[/_admin/builder/reason/background-image]]'	=> 'The background block is not exactly one image call with an empty alt text',
 	'[[/_admin/builder/reason/grid-background]]'	=> 'The column has a background block that is not the first thing in it, or a second one',
+	'[[/_admin/builder/reason/row-background]]'	=> 'The row has a background block that is not the first thing in it, or a second one, or the section has a colour, a picture, a cover or a parallax of its own as well',
 	'[[/_admin/builder/reason/no-row]]'						=> 'The section has no row',
 	'[[/_admin/builder/reason/second-row]]'				=> 'The section has more than one row',
 	'[[/_admin/builder/reason/section-content]]'		=> 'The section holds markup next to its row',
@@ -120,6 +125,16 @@ return [
 	'[[/_admin/builder/reason/holder-stack]]'			=> 'A loop inside a component that holds components',
 	'[[/_admin/builder/reason/holder-in-holder]]'		=> 'A component that holds components inside another',
 	'[[/_admin/builder/reason/holder-content]]'			=> 'The component %s holds markup next to its component calls: %s',
+	'[[/_admin/builder/reason/sections-no-row]]'		=> 'The loop of sections has no row',
+	'[[/_admin/builder/reason/sections-second-row]]'	=> 'The loop of sections has more than one row',
+	'[[/_admin/builder/reason/sections-content]]'	=> 'The loop of sections holds markup next to its row',
+	'[[/_admin/builder/reason/sections-nested]]'		=> 'A loop of sections inside a section',
+	'[[/_admin/builder/reason/sections-attribute]]'	=> 'The loop of sections has the attribute %s, which the Builder does not keep: the sections it makes have an id and classes, no other attribute',
+	'[[/_admin/builder/reason/pick-only-card]]'	=> 'Only in a card',
+	'[[/_admin/builder/reason/pick-only-hero]]'	=> 'Only in the first section',
+	'[[/_admin/builder/reason/pick-not-card]]'	=> 'Not in a card',
+	'[[/_admin/builder/reason/pick-no-loop]]'	=> 'Not in an element loop',
+	'[[/_admin/builder/reason/pick-elsewhere]]'	=> 'Not offered here',
 
 	// The editor: the preview, the viewports, the bar
 	'[[/_admin/builder/label/preview]]'						=> 'Preview',
@@ -144,6 +159,11 @@ return [
 	'[[/_admin/builder/preview/hidden-in]]'					=> 'Hidden in: %s',
 	'[[/_admin/builder/preview/align-text]]'				=> 'Horizontal alignment: %s',
 	'[[/_admin/builder/preview/align-stack]]'				=> 'Vertical alignment: %s',
+	'[[/_admin/builder/preview/row-background]]'	=> 'A picture behind the row',
+	'[[/_admin/builder/preview/inner]]'	=> 'The background is inside, on the row',
+	'[[/_admin/builder/preview/padded]]'	=> 'Padded: the cover keeps the room of the page around it',
+	'[[/_admin/builder/preview/whitespace]]'	=> 'Whitespace: %s',
+	'[[/_admin/builder/preview/linked]]'	=> 'Linked',
 
 	// The frames, what they are called and the buttons on them
 	'[[/_admin/builder/tree/template]]'						=> 'Template',
@@ -172,6 +192,8 @@ return [
 	'[[/_admin/builder/tab/loop]]'							=> 'Loop',
 	'[[/_admin/builder/tab/content]]'						=> 'Content',
 	'[[/_admin/builder/tab/properties]]'					=> 'Properties',
+	'[[/_admin/builder/tab/variants]]'	=> 'Variants',
+	'[[/_admin/builder/tab/link]]'	=> 'Link',
 	'[[/_admin/builder/group/general]]'						=> 'General',
 	'[[/_admin/builder/group/frames]]'						=> 'Frames',
 	'[[/_admin/builder/group/animation]]'					=> 'Viewport animation',
@@ -189,6 +211,9 @@ return [
 	'[[/_admin/builder/section/border-primary]]'			=> 'In the brand colour',
 	'[[/_admin/builder/section/parallax]]'					=> 'Parallax effect',
 	'[[/_admin/builder/section/dim]]'						=> 'Dim the picture',
+	'[[/_admin/builder/section/padded]]'	=> 'Padded',
+	'[[/_admin/builder/section/whitespace]]'	=> 'Whitespace',
+	'[[/_admin/builder/section/inner-background]]'	=> 'Background inside',
 	'[[/_admin/builder/section/cover]]'						=> 'Cover',
 	'[[/_admin/builder/section/cover-height]]'				=> 'Height (%)',
 	'[[/_admin/builder/section/content-pos]]'				=> 'Vertical alignment',
@@ -240,10 +265,19 @@ return [
 	'[[/_admin/builder/stack/gap]]'							=> 'Gap between the cells',
 	'[[/_admin/builder/stack/autoheight]]'					=> 'Cells of equal height',
 	'[[/_admin/builder/stack/id]]'							=> 'Id of the loop',
+	'[[/_admin/builder/stack/sections]]'	=> 'Element loop',
+	'[[/_admin/builder/stack/in-column]]'	=> 'A column of this section runs a loop of its own, and a loop inside a loop cannot be. Set that column to static first.',
+	'[[/_admin/builder/stack/in-section]]'	=> 'The section makes a section of every element: its columns are the cell of it, and a loop inside a loop cannot be. Set the loop of the section to static first.',
 	'[[/_admin/builder/template/animate]]'					=> 'Animate the sections',
 	'[[/_admin/builder/component/title]]'					=> 'Component "%s"',
 	'[[/_admin/builder/component/content]]'					=> 'Content',
 	'[[/_admin/builder/component/custom]]'					=> 'Class of the component',
+	'[[/_admin/builder/component/insert]]'	=> 'Insert a component',
+	'[[/_admin/builder/pick/section]]'	=> 'Section',
+	'[[/_admin/builder/pick/card]]'	=> 'Card',
+	'[[/_admin/builder/pick/features]]'	=> 'Features',
+	'[[/_admin/builder/link/href]]'	=> 'Link',
+	'[[/_admin/builder/link/target]]'	=> 'Opens in',
 	'[[/_admin/builder/html/title]]'						=> 'Edit as HTML+',
 	'[[/_admin/builder/html/title-new]]'					=> 'New HTML+ block',
 	'[[/_admin/builder/html/apply]]'						=> 'Apply',
@@ -308,6 +342,12 @@ return [
 	'[[/_admin/builder/hint/fullwidth]]'					=> 'Removes padding-left/-right',
 	'[[/_admin/builder/hint/fullheight]]'					=> 'Removes padding-top/-bottom',
 	'[[/_admin/builder/hint/cover]]'						=> 'Height follows the viewport',
+	'[[/_admin/builder/hint/padded]]'	=> 'The cover or the parallax keeps the room of the page around it.',
+	'[[/_admin/builder/hint/whitespace]]'	=> 'How much room the section keeps. The whitespace of the page is set in the Design.',
+	'[[/_admin/builder/hint/inner-background]]'	=> 'The colour, the picture and the dimming stand on the row inside the section, not on the section itself.',
+	'[[/_admin/builder/hint/link]]'	=> 'Where the component leads. Without a link it is none.',
+	'[[/_admin/builder/hint/link-href]]'	=> 'A text key, an address or - in a loop - a field of the element.',
+	'[[/_admin/builder/hint/sections-id]]'	=> 'The loop makes one section for each element, numbered after the id of the section: %s-1, %s-2 and so on. The id is changed in the title.',
 	'[[/_admin/builder/hint/custom]]'						=> 'Classes of Nino.css the form has no field for, separated by spaces.',
 	'[[/_admin/builder/hint/vpa-section]]'					=> 'Like the template: the section carries the animation the template gives its sections. Off: it is not animated. Own: you set it yourself. Own with the plain effect and nothing else set is Like the template again the next time the dialog is opened.',
 	'[[/_admin/builder/hint/vpa-section-off]]'				=> 'The template does not animate its sections, and a section with no animation is like the template. It can have an animation of its own all the same.',
@@ -397,6 +437,28 @@ return [
 	'[[/_admin/builder/option/anim-like-off]]'				=> 'Like the template (off)',
 	'[[/_admin/builder/option/anim-off]]'				=> 'Off',
 	'[[/_admin/builder/option/anim-own]]'				=> 'Own',
+	'[[/_admin/builder/option/whitespace-default]]'	=> 'As the page',
+	'[[/_admin/builder/option/whitespace-least]]'	=> 'Much narrower',
+	'[[/_admin/builder/option/whitespace-less]]'	=> 'Narrower',
+	'[[/_admin/builder/option/whitespace-more]]'	=> 'Wider',
+	'[[/_admin/builder/option/whitespace-most]]'	=> 'Much wider',
+	'[[/_admin/builder/option/variant-default]]'	=> 'Default',
+	'[[/_admin/builder/option/variant-loud]]'	=> 'Loud',
+	'[[/_admin/builder/option/variant-quiet]]'	=> 'Quiet',
+	'[[/_admin/builder/option/variant-rounded]]'	=> 'Rounded',
+	'[[/_admin/builder/option/variant-inline]]'	=> 'Own size',
+	'[[/_admin/builder/option/variant-muted]]'	=> 'Muted',
+	'[[/_admin/builder/option/variant-accent]]'	=> 'Accent',
+	'[[/_admin/builder/option/target-default]]'	=> 'Same window',
+	'[[/_admin/builder/option/target-blank]]'	=> 'New window',
+	'[[/_admin/builder/option/attribute-format-inline]]'	=> 'Inline',
+	'[[/_admin/builder/option/attribute-format-lines]]'	=> 'Lines',
+	'[[/_admin/builder/option/attribute-format-blocks]]'	=> 'Paragraphs',
+	'[[/_admin/builder/option/attribute-size-default]]'	=> 'Normal',
+	'[[/_admin/builder/option/attribute-size-small]]'	=> 'Small',
+	'[[/_admin/builder/option/attribute-size-big]]'	=> 'Big',
+	'[[/_admin/builder/option/attribute-width-default]]'	=> 'Automatic',
+	'[[/_admin/builder/option/attribute-width-full]]'	=> 'Full width',
 
 	// The nine places of the focus of a picture
 	'[[/_admin/builder/focus/top-left]]'					=> 'Top left',

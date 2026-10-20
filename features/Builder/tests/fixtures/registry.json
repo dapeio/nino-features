@@ -38,7 +38,7 @@
                     "default": "h3"
                 },
                 "style": {
-                    "type": "select",
+                    "type": "variant",
                     "label": "Style",
                     "hint": "",
                     "options": [
@@ -47,6 +47,18 @@
                         "quiet"
                     ],
                     "default": ""
+                },
+                "color": {
+                    "type": "variant",
+                    "label": "Text colour",
+                    "hint": "",
+                    "options": [
+                        "",
+                        "muted",
+                        "accent"
+                    ],
+                    "prefix": "nino-ink--",
+                    "default": ""
                 }
             },
             "in": [
@@ -54,9 +66,14 @@
                 "section"
             ],
             "draws": "{tag} .nino-section-title",
+            "link": true,
+            "by": "nino",
             "defaults": {
                 "tag": "h3",
                 "style": "",
+                "color": "",
+                "href": "",
+                "target": "",
                 "class": ""
             }
         },
@@ -99,7 +116,7 @@
                     "default": "div"
                 },
                 "style": {
-                    "type": "select",
+                    "type": "variant",
                     "label": "Style",
                     "hint": "",
                     "options": [
@@ -108,6 +125,18 @@
                         "quiet"
                     ],
                     "default": ""
+                },
+                "color": {
+                    "type": "variant",
+                    "label": "Text colour",
+                    "hint": "",
+                    "options": [
+                        "",
+                        "muted",
+                        "accent"
+                    ],
+                    "prefix": "nino-ink--",
+                    "default": ""
                 }
             },
             "in": [
@@ -115,9 +144,14 @@
                 "section"
             ],
             "draws": "{tag} .nino-section-subtitle",
+            "link": true,
+            "by": "nino",
             "defaults": {
                 "tag": "div",
                 "style": "",
+                "color": "",
+                "href": "",
+                "target": "",
                 "class": ""
             }
         },
@@ -151,6 +185,7 @@
                     "type": "select",
                     "label": "Format",
                     "hint": "",
+                    "input": "segment",
                     "options": [
                         "inline",
                         "lines",
@@ -159,7 +194,7 @@
                     "default": "blocks"
                 },
                 "style": {
-                    "type": "select",
+                    "type": "variant",
                     "label": "Style",
                     "hint": "",
                     "options": [
@@ -168,11 +203,28 @@
                         "quiet"
                     ],
                     "default": ""
+                },
+                "color": {
+                    "type": "variant",
+                    "label": "Text colour",
+                    "hint": "",
+                    "options": [
+                        "",
+                        "muted",
+                        "accent"
+                    ],
+                    "prefix": "nino-ink--",
+                    "default": ""
                 }
             },
+            "link": true,
+            "by": "nino",
             "defaults": {
                 "format": "blocks",
                 "style": "",
+                "color": "",
+                "href": "",
+                "target": "",
                 "class": ""
             }
         },
@@ -214,7 +266,7 @@
                     "default": "h4"
                 },
                 "style": {
-                    "type": "select",
+                    "type": "variant",
                     "label": "Style",
                     "hint": "",
                     "options": [
@@ -223,15 +275,32 @@
                         "quiet"
                     ],
                     "default": ""
+                },
+                "color": {
+                    "type": "variant",
+                    "label": "Text colour",
+                    "hint": "",
+                    "options": [
+                        "",
+                        "muted",
+                        "accent"
+                    ],
+                    "prefix": "nino-ink--",
+                    "default": ""
                 }
             },
             "in": [
                 "card"
             ],
             "draws": "{tag} .nino-card-title",
+            "link": true,
+            "by": "nino",
             "defaults": {
                 "tag": "h4",
                 "style": "",
+                "color": "",
+                "href": "",
+                "target": "",
                 "class": ""
             }
         },
@@ -274,7 +343,7 @@
                     "default": "p"
                 },
                 "style": {
-                    "type": "select",
+                    "type": "variant",
                     "label": "Style",
                     "hint": "",
                     "options": [
@@ -283,15 +352,32 @@
                         "quiet"
                     ],
                     "default": ""
+                },
+                "color": {
+                    "type": "variant",
+                    "label": "Text colour",
+                    "hint": "",
+                    "options": [
+                        "",
+                        "muted",
+                        "accent"
+                    ],
+                    "prefix": "nino-ink--",
+                    "default": ""
                 }
             },
             "in": [
                 "card"
             ],
             "draws": "{tag} .nino-card-subtitle",
+            "link": true,
+            "by": "nino",
             "defaults": {
                 "tag": "p",
                 "style": "",
+                "color": "",
+                "href": "",
+                "target": "",
                 "class": ""
             }
         },
@@ -325,6 +411,7 @@
                     "type": "select",
                     "label": "Format",
                     "hint": "",
+                    "input": "segment",
                     "options": [
                         "inline",
                         "lines",
@@ -333,7 +420,7 @@
                     "default": "blocks"
                 },
                 "style": {
-                    "type": "select",
+                    "type": "variant",
                     "label": "Style",
                     "hint": "",
                     "options": [
@@ -342,15 +429,32 @@
                         "quiet"
                     ],
                     "default": ""
+                },
+                "color": {
+                    "type": "variant",
+                    "label": "Text colour",
+                    "hint": "",
+                    "options": [
+                        "",
+                        "muted",
+                        "accent"
+                    ],
+                    "prefix": "nino-ink--",
+                    "default": ""
                 }
             },
             "in": [
                 "card"
             ],
             "draws": "div .nino-card-descr",
+            "link": true,
+            "by": "nino",
             "defaults": {
                 "format": "blocks",
                 "style": "",
+                "color": "",
+                "href": "",
+                "target": "",
                 "class": ""
             }
         },
@@ -388,13 +492,14 @@
             ],
             "attributes": {
                 "style": {
-                    "type": "select",
+                    "type": "variant",
                     "label": "Style",
                     "hint": "",
                     "options": [
                         "",
-                        "nino-card-img--inline"
+                        "inline"
                     ],
+                    "prefix": "nino-card-img--",
                     "default": ""
                 },
                 "alt": {
@@ -440,11 +545,15 @@
                 "card"
             ],
             "draws": "img .nino-card-img",
+            "link": true,
+            "by": "nino",
             "defaults": {
                 "style": "",
                 "alt": "",
                 "focus": "",
                 "ratio": "",
+                "href": "",
+                "target": "",
                 "class": ""
             }
         },
@@ -486,7 +595,7 @@
                     "default": "h2"
                 },
                 "style": {
-                    "type": "select",
+                    "type": "variant",
                     "label": "Style",
                     "hint": "",
                     "options": [
@@ -495,6 +604,18 @@
                         "quiet"
                     ],
                     "default": ""
+                },
+                "color": {
+                    "type": "variant",
+                    "label": "Text colour",
+                    "hint": "",
+                    "options": [
+                        "",
+                        "muted",
+                        "accent"
+                    ],
+                    "prefix": "nino-ink--",
+                    "default": ""
                 }
             },
             "in": [
@@ -502,9 +623,14 @@
                 "section"
             ],
             "draws": "{tag} .nino-hero-title",
+            "link": true,
+            "by": "nino",
             "defaults": {
                 "tag": "h2",
                 "style": "",
+                "color": "",
+                "href": "",
+                "target": "",
                 "class": ""
             }
         },
@@ -547,7 +673,7 @@
                     "default": "p"
                 },
                 "style": {
-                    "type": "select",
+                    "type": "variant",
                     "label": "Style",
                     "hint": "",
                     "options": [
@@ -556,6 +682,18 @@
                         "quiet"
                     ],
                     "default": ""
+                },
+                "color": {
+                    "type": "variant",
+                    "label": "Text colour",
+                    "hint": "",
+                    "options": [
+                        "",
+                        "muted",
+                        "accent"
+                    ],
+                    "prefix": "nino-ink--",
+                    "default": ""
                 }
             },
             "in": [
@@ -563,9 +701,14 @@
                 "section"
             ],
             "draws": "{tag} .nino-hero-subtitle",
+            "link": true,
+            "by": "nino",
             "defaults": {
                 "tag": "p",
                 "style": "",
+                "color": "",
+                "href": "",
+                "target": "",
                 "class": ""
             }
         },
@@ -619,6 +762,7 @@
                     "type": "select",
                     "label": "Vertical element alignment",
                     "hint": "",
+                    "input": "icons",
                     "options": [
                         "",
                         "middle",
@@ -631,6 +775,7 @@
                     "type": "select",
                     "label": "Horizontal text alignment",
                     "hint": "",
+                    "input": "icons",
                     "options": [
                         "",
                         "left",
@@ -698,6 +843,8 @@
             ],
             "draws": "article .nino-card",
             "holds": "card",
+            "link": false,
+            "by": "nino",
             "defaults": {
                 "fill": "0",
                 "padding": "",
@@ -773,10 +920,22 @@
                     "type": "select",
                     "label": "Size",
                     "hint": "",
+                    "input": "segment",
                     "options": [
                         "",
                         "small",
                         "big"
+                    ],
+                    "default": ""
+                },
+                "width": {
+                    "type": "select",
+                    "label": "Width",
+                    "hint": "",
+                    "input": "segment",
+                    "options": [
+                        "",
+                        "full"
                     ],
                     "default": ""
                 },
@@ -792,10 +951,13 @@
                 }
             },
             "draws": "a .nino-btn",
+            "link": false,
+            "by": "nino",
             "defaults": {
                 "href": "",
                 "style": "",
                 "size": "",
+                "width": "",
                 "target": "",
                 "class": ""
             }
@@ -834,13 +996,14 @@
             ],
             "attributes": {
                 "style": {
-                    "type": "select",
+                    "type": "variant",
                     "label": "Style",
                     "hint": "",
                     "options": [
                         "",
-                        "nino-image--rounded"
+                        "rounded"
                     ],
+                    "prefix": "nino-image--",
                     "default": ""
                 },
                 "alt": {
@@ -882,11 +1045,15 @@
                     "default": ""
                 }
             },
+            "link": true,
+            "by": "nino",
             "defaults": {
                 "style": "",
                 "alt": "",
                 "focus": "",
                 "ratio": "",
+                "href": "",
+                "target": "",
                 "class": ""
             }
         },
@@ -910,6 +1077,8 @@
                 ]
             ],
             "attributes": [],
+            "link": false,
+            "by": "nino",
             "defaults": {
                 "class": ""
             }
@@ -955,8 +1124,43 @@
                     "default": "2"
                 }
             },
+            "link": false,
+            "by": "nino",
             "defaults": {
                 "size": "2",
+                "class": ""
+            }
+        },
+        "scroll-hint": {
+            "label": "Scroll hint",
+            "source": "none",
+            "loop": true,
+            "preview": "block",
+            "icon": [
+                [
+                    "path",
+                    {
+                        "d": "m6 9 6 6 6-6"
+                    }
+                ]
+            ],
+            "attributes": {
+                "to": {
+                    "type": "string",
+                    "label": "Target",
+                    "hint": "The id of the section to scroll to. Empty scrolls to the next section.",
+                    "default": ""
+                }
+            },
+            "in": [
+                "hero",
+                "section"
+            ],
+            "draws": "a .nino-hero-arrowdown",
+            "link": false,
+            "by": "nino",
+            "defaults": {
+                "to": "",
                 "class": ""
             }
         }
@@ -1075,6 +1279,23 @@
                 "style": "",
                 "class": ""
             }
+        },
+        "sections": {
+            "label": "Sections",
+            "grid": false,
+            "preview": "cells",
+            "attributes": [],
+            "defaults": {
+                "sort": "",
+                "offset": "0",
+                "limit": "0",
+                "query": "",
+                "callback": "",
+                "locale": "",
+                "id": "",
+                "class": ""
+            },
+            "cell": "section"
         }
     }
 }

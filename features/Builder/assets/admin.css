@@ -249,51 +249,64 @@
 	justify-content: center;
 	padding: .15rem 0 0;
 }
-.builder-menu {
-	position: absolute;
-	z-index: 6;
+/* The lightbox that offers the components: a heading for each group, under it a row of buttons that wraps - the icon of the
+   component and its label, about 100 by 30 px - and a component that cannot go where the list is stands there greyed, with the
+   reason as its title. The class of the buttons is the one the list of a source has, laid out as a button here */
+.builder-lightbox {
 	display: grid;
-	min-width: 11rem;
-	padding: .25rem;
-	border: 1px solid var(--editor-border);
-	border-radius: var(--editor-radius);
-	background: var(--editor-bg-elevated);
-	box-shadow: var(--editor-shadow);
+	gap: 1rem;
 }
-.builder-menu[hidden] {
-	display: none;
+.builder-lightbox-group {
+	display: grid;
+	gap: .4rem;
 }
-.builder-menu-item {
-	display: flex;
-	align-items: center;
-	gap: .5rem;
-	min-height: 0;
+.builder-lightbox-title {
 	margin: 0;
-	padding: .4rem .6rem;
-	border: 0;
-	border-radius: var(--editor-radius-sm);
-	background: transparent;
-	box-shadow: none;
-	color: var(--editor-text);
-	font-size: .82rem;
-	text-align: left;
-	cursor: pointer;
+	color: var(--editor-text-secondary);
+	font-size: .74rem;
+	font-weight: 700;
+	letter-spacing: .04em;
+	text-transform: uppercase;
 }
-/* The icon of an item - a shape the registry gives, or the puzzle of the sprite - is a square of a rem that stays one
-   where the label is long; it wears .builder-icon as well, so the stroke of the sprite's icons is its stroke: a
-   component of the kernel and one of a feature look the same */
-.builder-menu-icon {
+.builder-lightbox-sub {
+	margin: .15rem 0 0;
+	color: var(--editor-text-secondary);
+	font-size: .74rem;
+	font-weight: 600;
+}
+.builder-lightbox-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: .4rem;
+}
+.builder-lightbox .builder-pick-item {
+	justify-content: flex-start;
+	width: auto;
+	min-width: 6.25rem;
+	min-height: 1.9rem;
+	padding: .3rem .7rem;
+	border: 1px solid var(--editor-border);
+	border-radius: var(--editor-radius-sm);
+	font-size: .78rem;
+}
+.builder-lightbox .builder-pick-item:focus-visible {
+	background: var(--editor-blue-soft);
+}
+.builder-lightbox .builder-pick-item:disabled {
+	background: transparent;
+	opacity: .45;
+	cursor: default;
+}
+/* The icon of an item - a shape the registry gives, or the puzzle of the sprite - is a square of a rem that stays one where the label
+   is long; it wears .builder-icon as well, so the stroke of the sprite's icons is its stroke: a component of the kernel and one of a
+   feature look the same */
+.builder-pick-icon {
 	flex: none;
 	width: 1rem;
 	height: 1rem;
 }
-.builder-menu-item:hover:not(:disabled),
-.builder-menu-item:focus-visible {
-	background: var(--editor-blue-soft);
-}
-.builder-menu-item:disabled {
-	opacity: .45;
-	cursor: default;
+.builder-pick-label {
+	min-width: 0;
 }
 
 /* ------------------------------------------------------------- The preview */
@@ -366,36 +379,42 @@
 }
 /* The colour of a section is a grey level: the preview knows no palette, and none of the workbench's accent colours is the site's.
    A column that paints a ground of its own is tinted the same way - with the colour alone, so that the stripes of a hidden column stay -,
-   and so is a component that holds components and paints one */
+   and so is a component that holds components and paints one, and the area of the row of a section whose background is inside */
 .builder-frame.builder-color-alt,
+.builder-frame-body.builder-color-alt,
 .builder-pcol.builder-color-alt,
 .builder-card.builder-color-alt {
 	background-color: var(--builder-ground-alt);
 }
 .builder-frame.builder-color-tint,
+.builder-frame-body.builder-color-tint,
 .builder-pcol.builder-color-tint,
 .builder-card.builder-color-tint {
 	background-color: var(--builder-ground-tint);
 }
 .builder-frame.builder-color-dark,
+.builder-frame-body.builder-color-dark,
 .builder-pcol.builder-color-dark,
 .builder-card.builder-color-dark {
 	background-color: var(--builder-ground-dark);
 	color: #f1f1f1;
 }
 .builder-frame.builder-color-black,
+.builder-frame-body.builder-color-black,
 .builder-pcol.builder-color-black,
 .builder-card.builder-color-black {
 	background-color: var(--builder-ground-black);
 	color: #f1f1f1;
 }
 .builder-frame.builder-color-primary,
+.builder-frame-body.builder-color-primary,
 .builder-pcol.builder-color-primary,
 .builder-card.builder-color-primary {
 	background-color: var(--builder-ground-primary);
 	color: #fff;
 }
 .builder-frame.builder-color-brand-alt,
+.builder-frame-body.builder-color-brand-alt,
 .builder-pcol.builder-color-brand-alt,
 .builder-card.builder-color-brand-alt {
 	background-color: var(--builder-ground-brand-alt);
@@ -607,6 +626,14 @@ button.builder-status-item:hover {
 /* A component that says what it draws has a second line: its image stays beside the first */
 .builder-ph.has-draws {
 	align-items: flex-start;
+}
+.builder-ph .builder-status-item.is-linked {
+	flex: 0 0 auto;
+	margin-left: auto;
+	opacity: .7;
+}
+.builder-ph .builder-status-item.is-linked + .builder-tools {
+	margin-left: 0;
 }
 .builder-ph-icon {
 	flex: 0 0 auto;
@@ -885,6 +912,16 @@ button.builder-status-item:hover {
 	color: var(--editor-text-secondary);
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+.builder-check {
+	display: inline-flex;
+	align-items: center;
+	gap: .5rem;
+	font-size: .85rem;
+	cursor: pointer;
+}
+.builder-check input {
+	margin: 0;
 }
 .builder-new {
 	display: grid;
