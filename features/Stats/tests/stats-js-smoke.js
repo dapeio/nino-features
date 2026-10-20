@@ -11,7 +11,8 @@
  *											ones as a baseline mark. The row's axis label, the
  *											summary line in the singular where it is one, and the
  *											tables: the pages with a title column and a path column,
- *											and the two empty texts.
+ *											the referrers with the bucket of the hosts a day did not
+ *											keep by a name of its own, and the two empty texts.
  *
  *											No jsdom, no dependency: the same element stand-in the
  *											other feature tests build, so this runs with nothing but
@@ -182,7 +183,7 @@ answers['stats/month'] = function( payload ) {
 		days		: [ { day : payload.month+ '-01', total : views[payload.month] } ],
 		totals	: { views : views[payload.month], days : 1 },
 		uris		: [ { uri : '/about', title : 'About Us', views : views[payload.month] } ],
-		referrers	: [ { host : 'example.org', views : 3 } ],
+		referrers	: [ { host : 'example.org', views : 3 }, { host : '…', views : 1 } ],
 	} ];
 };
 const actions = function() { return requests.map( function( request ) { return request.action } ).join(' ') };
@@ -258,6 +259,14 @@ check( '...the title column is named for the page, the path column for the path'
 const pathCell = tableCalls[0].columns[1].render( '/about', tableCalls[0].rows[0] );
 check( '...the path is drawn as text in a muted cell', pathCell.className === 'stats-path' && pathCell.textContent === '/about' );
 check( 'the referrers table has its two columns', tableCalls[1].columns.map( function( column ) { return column.key } ).join(' ') === 'host views' && tableCalls[1].rowKey === 'host' );
+
+const hosts = stats._referrerRows( [
+	{ host : 'example.org', views : 3 },
+	{ host : '…', views : 2 },
+] );
+check( 'a referrer row shows the host', hosts[0].host === 'example.org' && hosts[0].views === 3 );
+check( '...the bucket of the hosts a day did not keep one by one by a name of its own', hosts[1].host === '/_admin/stats/label/other-referrers' && hosts[1].views === 2 );
+check( '...and the table is handed those rows, the bucket by its name in place of the ellipsis', tableCalls[1].rows.map( function( row ) { return row.host+ '='+ row.views } ).join(' ') === 'example.org=3 /_admin/stats/label/other-referrers=1' );
 
 tableCalls.length = 0;
 stats._renderMonth( { month : '2026-09', days : [], totals : { views : 0, days : 0 }, uris : [], referrers : [] } );

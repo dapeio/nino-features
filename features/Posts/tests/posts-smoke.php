@@ -241,6 +241,34 @@ check( '...and the pager under it marks no page as the one that is on',
 check( '...while the way back is the last page that has posts on it, and there is no way on',
 	str_contains( $beyond, '<li><a href="/blog?page=2" rel="prev">' ) === true && str_contains( $beyond, 'rel="next"' ) === false );
 
+/*	A query string can carry a page number as large as an integer goes -
+	99999999999999999999 is PHP_INT_MAX once it is cast - and the offset of
+	that page, ( $page - 1 ) * perPage, is a float: array_slice() answered it
+	with a TypeError, a 500 for whoever asked and a line in the log each time.
+	It is a page past the end like any other, and answered like one	*/
+foreach( [ '99999999999999999999', (string) PHP_INT_MAX ] as $huge ) {
+
+	ninoVisit( $appData, '/blog?page='. $huge );
+	ninoWarnings();
+
+	$hugeList		= null;
+	$hugePager	= '';
+	$raised			= null;
+
+	try {
+		$hugeList		= postsRender( $appData, '[posts][[title]][/posts]' );
+		$hugePager	= postsRender( $appData, '[posts-pager]' );
+	}
+	catch( \Throwable $error ) {
+		$raised = $error->getMessage();
+	}
+
+	check( 'page '. $huge. ' is an empty list, and nothing is raised or logged for it', $raised === null && $hugeList === '' && ninoWarnings() === [] );
+	check( '...the pager under it is the one of any page past the end: no page is the one that is on, the way back is the last page that has posts, and there is no way on',
+		str_contains( $hugePager, 'nino-is-active' ) === false && str_contains( $hugePager, 'aria-current' ) === false
+		&& str_contains( $hugePager, '<li><a href="/blog?page=2" rel="prev">' ) === true && str_contains( $hugePager, 'rel="next"' ) === false );
+}
+
 ninoVisit( $appData, '/blog' );
 check( 'a limit of its own turns the paging off - a teaser is not page one',
 	postsRender( $appData, '[posts limit="3"][[title]] [/posts]' ) === 'Third rail Second wind First light ' );
@@ -496,6 +524,84 @@ check( 'a plain field is escaped, and a bracket in it is not a shortcode', ( $fo
 check( 'a field released for html keeps its inline tags and neutralises a bracket', ( $formats[1] ?? '' ) === '<strong>Bold</strong> &#91;x]' );
 check( 'a field that holds paragraphs and lists keeps them', ( $formats[2] ?? '' ) === '<p>Alpha</p><ul><li>Beta</li></ul>' );
 check( 'a field that keeps its line breaks draws them as <br>, escaped', ( $formats[3] ?? '' ) === "Gamma<br>\nDelta &lt;b&gt;" );
+
+echo "\nWhat the title and the summary of a post put in the head of its page\n";
+
+/*	The page takes both as the fills of its own title and description (see
+	Posts::callbackPost()), and a fill is put in as it is: the base unit's
+	html-header.tpl and frame-header.tpl set them into the <title>, into the
+	content of the description, og: and twitter: tags and into the <h1>. This
+	is that use, with the fills of this post, and what is looked at is what a
+	browser would read out of it - a tag, an attribute or a shortcode that the
+	text of an editor made would show here	*/
+$head = '<title>[[/_nino/webpage/blog/post/title]] | Site</title>'
+	. '<meta name="description" content="[[/_nino/webpage/blog/post/description]]">'
+	. '<meta property="og:title" content="[[/_nino/webpage/blog/post/title]] | Site">'
+	. '<meta property="og:description" content="[[/_nino/webpage/blog/post/description]]">'
+	. '<meta name="twitter:title" content="[[/_nino/webpage/blog/post/title]] | Site">'
+	. '<meta name="twitter:description" content="[[/_nino/webpage/blog/post/description]]">'
+	. '<h1 class="nino-sr-only" id="header-title">Site | [[/_nino/webpage/blog/post/title]]</h1>';
+
+\Nino\Elements::updateElement( $appData, '/posts/second-wind', [
+	'title' 	=> '"><b>x</b>[image',
+	'summary'	=> '" onmouseover=',
+], 'de_DE' );
+unset( $appData['./nino/elements/cache'] );
+postsResolve( $appData, '/blog/second-wind' );
+
+$page = postsRender( $appData, $head );
+preg_match_all( '/<meta\b[^>]*>/', $page, $metas );
+
+check( 'the title is text in the <title>, with no tag of its own', str_contains( $page, '<title>&quot;&gt;&lt;b&gt;x&lt;/b&gt;&#91;image | Site</title>' ) === true
+	&& str_contains( $page, '<b>' ) === false );
+check( '...and the summary is the content of the description, with no attribute of its own',
+	str_contains( $page, '<meta name="description" content="&quot; onmouseover=">' ) === true );
+check( '...every one of the five meta tags is its name and its content and nothing else - the og: and twitter: ones too, and none was added',
+	count( $metas[0] ) === 5 && count( array_filter( $metas[0], static fn( string $tag ): bool => preg_match( '/^<meta (?:name|property)="[a-z:]+" content="[^"<>]*">$/D', $tag ) === 1 ) ) === 5 );
+check( '...the heading of the frame has the same text and nothing else',
+	str_contains( $page, '<h1 class="nino-sr-only" id="header-title">Site | &quot;&gt;&lt;b&gt;x&lt;/b&gt;&#91;image</h1>' ) === true );
+check( '...and the bracket is a character reference, so that the page is rendered once more without running a shortcode of it',
+	str_contains( $page, '[image' ) === false && str_contains( $page, '&#91;image' ) === true );
+
+/*	The card of the list is the other way a title reaches a page, and spells it
+	the way the head does now: the block of the list page the unit installed,
+	rendered for page one	*/
+preg_match( '#\[posts\].*?\[/posts\]#s', (string) file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-posts.tpl' ) ), $cardBlock );
+ninoVisit( $appData, '/blog' );
+$cards = postsRender( $appData, $cardBlock[0] ?? '' );
+
+check( 'the card in the list has both as it always had them: escaped, the way the head has them now',
+	str_contains( $cards, '<h3 class="nino-card-title"><a href="/blog/second-wind">&quot;&gt;&lt;b&gt;x&lt;/b&gt;&#91;image</a></h3>' ) === true
+	&& str_contains( $cards, '<p class="nino-card-descr">&quot; onmouseover=</p>' ) === true );
+
+/*	With the Consent feature there, the finished body is read for the placeholders
+	it names: a <script type="text/plain" data-consent="necessary" data-src="https://..."> adds
+	its host to the script-src of the policy, and consent.js then releases it as a
+	script. A title that could write one was a script of any host on the page of
+	its post. Driven the way the output phase drives it - over the body of the page and
+	the policy of a response; what the hook reads and refuses is held by the test of
+	that feature	*/
+if( class_exists( '\\Nino\\Modules\\Consent' ) === false )
+	echo "  note - the Consent feature is not beside this one: what its output hook makes of a page is not driven here\n";
+else {
+
+	$placeholder	= '<script type="text/plain" data-consent="necessary" data-src="https://x.invalid/a.js"></script>';
+	$response			= ninoVisit( $appData, '/blog/second-wind' );
+	$policyOf			= static function( string $body ) use ( &$appData, $response ): string {
+		$response['/nino/http/response']['body'] = $body;
+		\Nino\Modules\Consent::callbackOutput( $appData, $response );
+		return (string) $response['/nino/http/response']['header']['Content-Security-Policy'];
+	};
+
+	\Nino\Elements::updateElement( $appData, '/posts/second-wind', [ 'title' => 'Placeholder '. $placeholder ], 'de_DE' );
+	unset( $appData['./nino/elements/cache'] );
+	postsResolve( $appData, '/blog/second-wind' );
+
+	check( 'a placeholder in the markup of a page puts its host in the policy of the page - the title as it was typed, in the head, is that',
+		str_contains( $policyOf( '<title>Placeholder '. $placeholder. ' | Site</title>' ), 'https://x.invalid' ) === true );
+	check( '...and the page of a post whose title is that placeholder names no host in its policy: the title is text there',
+		str_contains( $policyOf( postsRender( $appData, $head ) ), 'x.invalid' ) === false );
+}
 
 echo "\nThe pages the SEO feature cannot find on its own\n";
 

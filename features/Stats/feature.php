@@ -24,8 +24,8 @@ return [
 		],
 		'callbacks' => [
 			'/nino/http/response' => [
-				'en_US' => 'Counts the page view. No cookie, no ip address, nothing stored per visitor.',
-				'de_DE' => 'Zählt den Seitenaufruf. Kein Cookie, keine IP-Adresse, nichts pro Besucher gespeichert.',
+				'en_US' => 'Counts the page view. No cookie, no ip address, nothing stored per visitor. A day keeps at most 500 different referrer hosts, each up to 253 bytes; the views from further hosts are counted together and shown as one row, Other referrers. A page address longer than 253 bytes is counted among Other pages.',
+				'de_DE' => 'Zählt den Seitenaufruf. Kein Cookie, keine IP-Adresse, nichts pro Besucher gespeichert. Ein Tag hält höchstens 500 verschiedene Referrer-Hosts fest, jeden bis zu 253 Bytes lang; die Aufrufe von weiteren Hosts werden gemeinsam gezählt und als eine Zeile gezeigt, Weitere Herkünfte. Eine Seitenadresse, die länger als 253 Bytes ist, zählt zu Weitere Seiten.',
 			],
 		],
 		'install' => [

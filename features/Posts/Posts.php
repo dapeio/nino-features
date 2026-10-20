@@ -277,16 +277,27 @@ namespace Nino\Modules {
 				getFills() merges the runtime fills over the text files, so this
 				wins over [[/_nino/webpage/blog/post/title]] without the text key
 				having to go away - which is what makes it a fallback for a post
-				whose title field is empty rather than dead weight */
+				whose title field is empty rather than dead weight.
+
+				Escaped, and with the '[' swapped, the way a field is before it
+				reaches a page anywhere else (Html::fieldValue()): a fill is put in
+				as it is - into the <title>, the content of the description, og: and
+				twitter: tags and the heading of the frame - so a '">' in the field
+				closed the attribute and the rest was markup in the head of every
+				visitor's page: a refresh to another site, and where the Consent
+				feature is on a placeholder whose host joined the policy's
+				script-src, which it reads off the finished body. The swapped '['
+				keeps the next rendering pass from running a shortcode or a fill an
+				editor wrote there */
 			$fills 	= [];
 			$title 	= self::field( $section, $element, 'title' );
 			$summary= self::field( $section, $element, 'summary' );
 
 			if( $title !== '' )
-				$fills['/_nino/webpage'. $request['/nino/http/response']['uri']. '/title'] = $title;
+				$fills['/_nino/webpage'. $request['/nino/http/response']['uri']. '/title'] = \Nino\Modules\Components::escape( $title );
 
 			if( $summary !== '' )
-				$fills['/_nino/webpage'. $request['/nino/http/response']['uri']. '/description'] = $summary;
+				$fills['/_nino/webpage'. $request['/nino/http/response']['uri']. '/description'] = \Nino\Modules\Components::escape( $summary );
 
 			if( $fills !== [] )
 				\Nino\Html::addFills( $appData, $fills, '*' );

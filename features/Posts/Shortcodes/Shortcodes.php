@@ -87,7 +87,7 @@ namespace Nino\Modules\Posts {
 			if( $limit > 0 )
 				$posts = array_slice( $posts, (int) ( $args['offset'] ?? 0 ), $limit );
 			else
-				$posts = array_slice( $posts, ( self::page( $appData ) - 1 ) * $section['perPage'], $section['perPage'] );
+				$posts = self::_pageOf( $appData, $section, $posts );
 
 			$html = '';
 			$id 	= 0;
@@ -262,6 +262,33 @@ namespace Nino\Modules\Posts {
 			$value = \Nino\Http::getRequest( $appData )['/nino/http/request']['query'][ \Nino\Modules\Posts::PAGE_KEY ] ?? 1;
 
 			return is_scalar( $value ) === true ? max( 1, (int) $value ) : 1;
+		}
+
+		/**
+		 *	The posts of the page that is on, and none where the page is past the
+		 *	last one.
+		 *
+		 *	The page asked for is held to the one after the last - which is empty
+		 *	already - before it becomes an offset. A query string can carry a page
+		 *	as large as an integer goes (99999999999999999999 is PHP_INT_MAX once
+		 *	it is cast), ( $page - 1 ) * $perPage of that is a float, and
+		 *	array_slice() answers a float offset with a TypeError: a 500 for
+		 *	whoever asked, and a line in the log for each time. What page() answers
+		 *	stays what was asked for, because that is how doPager() knows the list
+		 *	is past its end
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		array			$section			A normalised section
+		 *	@param		array			$posts				Every post of the section a visitor may see
+		 *
+		 *	@return 	array										The posts of that page, [] past the last one
+		 */
+		private static function _pageOf( array &$appData, array $section, array $posts ): array {
+
+			$perPage	= max( 1, $section['perPage'] );
+			$page			= min( self::page( $appData ), (int) ceil( count( $posts ) / $perPage ) + 1 );
+
+			return array_slice( $posts, ( $page - 1 ) * $perPage, $perPage );
 		}
 
 		/**

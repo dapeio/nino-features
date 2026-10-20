@@ -16,6 +16,7 @@ return [
 	'[[/_admin/stats/label/uri]]'				=> 'Page',
 	'[[/_admin/stats/label/path]]'			=> 'Path',
 	'[[/_admin/stats/label/other]]'			=> 'Other pages',
+	'[[/_admin/stats/label/other-referrers]]'	=> 'Other referrers',
 	'[[/_admin/stats/label/max]]'			=> 'Peak: %d',
 	'[[/_admin/stats/label/referrer]]'		=> 'Referrer',
 	'[[/_admin/stats/label/search]]'			=> 'Search',

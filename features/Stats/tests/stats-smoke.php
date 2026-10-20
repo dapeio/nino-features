@@ -9,7 +9,9 @@ declare(strict_types=1);
  *											file - the route's declared Content-Type or a file
  *											extension - the exclude list, signed-in visitors, a
  *											cache hit still counting), the per-day/per-month storage
- *											shape including the maxUris fold and the retention
+ *											shape including the maxUris fold, the referrer fold - 500
+ *											hosts a day, each cut to 253 bytes, a uri over 253
+ *											bytes counted in the pages' bucket - and the retention
  *											sweep, the read-only panel and its permission - showing
  *											pages only, with their titles, even of a month counted
  *											before files were left out - the dashboard tile, and
@@ -338,6 +340,106 @@ check( 'maxUris is reset to its default', \Nino\Features::saveSettings( $appData
 echo "\n";
 
 
+echo "Referrers - a day keeps 500 hosts one by one and counts the rest together, and no host is longer than 253 bytes\n";
+
+/*	The host of the Referer header is the visitor's, and was stored under its own
+	key whatever it was and however many there were. The whole month's file is
+	read and written again for every view, so one visitor who sent a different long
+	host with each request made every view after it slower - and the file grew
+	by the megabyte. What the checks below count on is put back at the end: the day
+	as it is now	*/
+$monthBefore = monthFile( $appData, $month );
+
+$referrersOf = static function() use ( &$appData, $month, $today ): array {
+	return monthFile( $appData, $month )['days'][$today]['referrers'] ?? [];
+};
+$viewFrom = static function( string $host ) use ( &$appData ): void {
+	countRequest( $appData, ninoVisit( $appData, '/hello', 'GET', [ 'HTTP_REFERER' => 'https://'. $host. '/', 'HTTP_HOST' => 'my-site.test' ] ) );
+};
+$emptyDay = static function() use ( &$appData, $monthBefore, $month, $today ): void {
+	$state = $monthBefore;
+	$state['days'][$today]['referrers'] = [];
+	\Nino\Filesystem::putFileContent( $appData, '/data/stats/'. $month. '.php', $state );
+};
+
+$emptyDay();
+for( $i = 0; $i < 600; $i++ )
+	$viewFrom( 'h'. $i. '.example' );
+
+$kept = $referrersOf();
+check( '600 distinct hosts on a day leave the first 500 under their own names, and one more key - not 600',
+	count( $kept ) === 501 && isset( $kept['h0.example'] ) === true && isset( $kept['h499.example'] ) === true && isset( $kept['h500.example'] ) === false );
+check( '...the other 100 are counted in the bucket, the ellipsis', \Nino\Modules\Stats::OVERFLOW_REFERRER === '…' && ( $kept[\Nino\Modules\Stats::OVERFLOW_REFERRER] ?? null ) === 100 );
+check( '...and no view is lost to it: the 500 and the 100 are the 600', array_sum( $kept ) === 600 );
+
+$viewFrom( 'h0.example' );
+$viewFrom( 'h599.example' );
+$kept = $referrersOf();
+check( 'a host the day kept is still counted under its own name once the budget is used, and one it did not keep is counted in the bucket',
+	$kept['h0.example'] === 2 && isset( $kept['h599.example'] ) === false && $kept[\Nino\Modules\Stats::OVERFLOW_REFERRER] === 101 && count( $kept ) === 501 );
+
+$emptyDay();
+$whole = str_repeat( 'a', 245 ). '.example';
+$long = str_repeat( 'b', 4000 ). '.example';
+$viewFrom( $whole );
+$viewFrom( $long );
+$viewFrom( str_repeat( 'b', 300 ). '.other' );
+$viewFrom( str_repeat( 'ä', 200 ). '.example' );
+$kept = $referrersOf();
+check( 'a host of 253 bytes is stored whole', ( $kept[$whole] ?? null ) === 1 && strlen( $whole ) === 253 );
+check( '...and one of 4000 is stored cut to its first 253 - and a second that shares them is the same host', ( $kept[ str_repeat( 'b', 253 ) ] ?? null ) === 2 && isset( $kept[ strtolower( $long ) ] ) === false );
+check( '...at a character, not through one: 200 two-byte characters are kept as 126, still utf-8',
+	( $kept[ str_repeat( 'ä', 126 ) ] ?? null ) === 1 && count( $kept ) === 3 && count( array_filter( array_keys( $kept ), static fn( string|int $host ): bool => mb_check_encoding( (string) $host, 'UTF-8' ) === false ) ) === 0 );
+
+$emptyDay();
+for( $i = 0; $i < 1000; $i++ )
+	$viewFrom( 'r'. $i. 'x'. str_repeat( 'a', 4000 ). '.example' );
+
+clearstatcache();
+$size = (int) filesize( \Nino\Filesystem::path( $appData, '/data/stats/'. $month. '.php' ) );
+check( '1000 views from hosts of 4000 characters each leave the month\'s file under 150000 bytes - 501 hosts of at most 253, where what was sent is four million',
+	count( $referrersOf() ) === 501 && $size < 150000 );
+
+\Nino\Filesystem::putFileContent( $appData, '/data/stats/'. $month. '.php', $monthBefore );
+
+echo "\n";
+
+
+echo "Uris - one longer than 253 bytes is counted in the pages' bucket, not under its own name\n";
+
+/*	The same vector through the path: maxUris bounds how many distinct uris a
+	day keeps, not how long each is, and a path below a wildcard route is counted
+	before the route answers it - so a visitor walking long paths nobody has
+	grew the file by their length. Reset and put back like the referrers above	*/
+$urisOf = static function() use ( &$appData, $month, $today ): array {
+	return monthFile( $appData, $month )['days'][$today]['uris'] ?? [];
+};
+$state = $monthBefore;
+$state['days'][$today]['uris'] = [];
+\Nino\Filesystem::putFileContent( $appData, '/data/stats/'. $month. '.php', $state );
+clearstatcache();
+$sizeBefore = (int) filesize( \Nino\Filesystem::path( $appData, '/data/stats/'. $month. '.php' ) );
+
+$wholeUri = '/'. str_repeat( 'p', 252 );
+countRequest( $appData, ninoVisit( $appData, $wholeUri ) );
+countRequest( $appData, ninoVisit( $appData, '/'. str_repeat( 'q', 253 ) ) );
+for( $i = 0; $i < 600; $i++ )
+	countRequest( $appData, ninoVisit( $appData, '/u'. $i. str_repeat( 'a', 8000 ) ) );
+
+$uris = $urisOf();
+clearstatcache();
+$grown = (int) filesize( \Nino\Filesystem::path( $appData, '/data/stats/'. $month. '.php' ) ) - $sizeBefore;
+check( 'a uri of 253 bytes is kept under its own name', strlen( $wholeUri ) === 253 && ( $uris[$wholeUri] ?? null ) === 1 );
+check( '...one of 254 and 600 of 8000 are counted in the pages\' bucket, every view of them, and no key of the day is longer than 253',
+	( $uris[\Nino\Modules\Stats::OVERFLOW_URI] ?? null ) === 601 && count( $uris ) === 2
+	&& count( array_filter( array_keys( $uris ), static fn( string|int $uri ): bool => strlen( (string) $uri ) > 253 ) ) === 0 );
+check( '...and the 600 views of 8000-byte paths grow the month\'s file by less than 1000 bytes, where what was sent is nearly five million', $grown < 1000 );
+
+\Nino\Filesystem::putFileContent( $appData, '/data/stats/'. $month. '.php', $monthBefore );
+
+echo "\n";
+
+
 // --- A cache hit is still counted -------------------------------------------
 
 echo "Modules\\Stats counts a page the cache answers - priority 8 runs before Cache's 9\n";
@@ -504,7 +606,7 @@ $appData['/nino/http/routes']['GET://docs/*']				= [ 'uri' => '/docs', 'body' =>
 $oldMonth			= '2026-01';
 $oldMonthFile	= '/data/stats/'. $oldMonth. '.php';
 \Nino\Filesystem::putFileContent( $appData, $oldMonthFile, [ 'days' => [
-	'2026-01-05' => [ 'total' => 10, 'uris' => [ '/about' => 5, '/robots.txt' => 3, \Nino\Modules\Stats::OVERFLOW_URI => 2 ], 'referrers' => [ 'example.org' => 2 ] ],
+	'2026-01-05' => [ 'total' => 10, 'uris' => [ '/about' => 5, '/robots.txt' => 3, \Nino\Modules\Stats::OVERFLOW_URI => 2 ], 'referrers' => [ 'example.org' => 2, \Nino\Modules\Stats::OVERFLOW_REFERRER => 4 ] ],
 	// Nothing but files: not a day with data any more
 	'2026-01-06' => [ 'total' => 4, 'uris' => [ '/robots.txt' => 3, '/sitemap.xml' => 1 ], 'referrers' => [ 'crawler.example' => 4 ] ],
 	'2026-01-07' => [ 'total' => 8, 'uris' => [ '/feed.json' => 1, '/ueber-uns' => 2, '/only-native' => 1, '/docs/intro' => 3, '/gone-since' => 1 ], 'referrers' => [ 'example.org' => 1 ] ],
@@ -526,7 +628,8 @@ check( '...the native language\'s where the route\'s own has none', $pageTitles[
 check( '...and nothing where no text has one: a wildcard route, an address no route answers, the overflow bucket', $pageTitles['/docs/intro'] === ''
 	&& $pageTitles['/gone-since'] === '' && $pageTitles[\Nino\Modules\Stats::OVERFLOW_URI] === '' );
 
-check( 'the referrers of a day that is dropped go with it, the others stay', array_column( $body['referrers'], 'views', 'host' ) === [ 'example.org' => 3 ] );
+check( 'the referrers of a day that is dropped go with it, the others stay - the bucket of the hosts a day did not keep one by one among them, a row like the others, as the pages\' is',
+	array_column( $body['referrers'], 'views', 'host' ) === [ \Nino\Modules\Stats::OVERFLOW_REFERRER => 4, 'example.org' => 3 ] );
 
 /*	The titles come through Html::getFills(): a language the site does not
 	have has no fills - nothing and no warning, so its page takes the native

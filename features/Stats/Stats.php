@@ -42,6 +42,31 @@ namespace Nino\Modules {
 		// real path, so it cannot collide with one
 		public const string OVERFLOW_URI = '/…';
 
+		// The same for the referrer hosts of a day: MAX_REFERRERS of them are kept
+		// under their own names, and every further one is counted in this bucket.
+		// An ellipsis is no name a host can have - a Referer that spells one
+		// anyway is counted here too, with the others that are no row of their own
+		public const string OVERFLOW_REFERRER = '…';
+
+		// How many referrer hosts a day keeps under their own names. A constant
+		// of its own and not the maxUris setting: how many pages a site has varies
+		// by orders of magnitude, which is what that setting is for, while how
+		// many sites link to it in one day does not - and the hosts are what a
+		// visitor sends, whatever the site is like
+		private const int MAX_REFERRERS = 500;
+
+		// The longest a host is kept, in bytes: 253 is the most a name can have in
+		// DNS, and no browser sends a longer one - what is longer was written by hand
+		private const int MAX_HOST_LENGTH = 253;
+
+		// The longest a uri is kept under its own name, in bytes - the same
+		// bound as a host's, and nothing a site has is longer: a longer one is
+		// counted in OVERFLOW_URI, the way a host past the budget is, because a
+		// day of them would fill the month's file through their length where
+		// maxUris stops their number. A visitor sends the uri as freely as the
+		// host, and a request line is what the web server allows, not this
+		private const int MAX_URI_LENGTH = 253;
+
 		// What a uri ending in one of these is: a file a crawler or a browser
 		// fetches, not a page somebody reads. Counted neither by the counter
 		// nor by the panel - the declared Content-Type decides first, this is
@@ -84,6 +109,18 @@ namespace Nino\Modules {
 		 *	page view is - a visitor's page must never turn into a 500
 		 *	because a stats file could not be written.
 		 *
+		 *	What a visitor chooses reaches the month's file, which is read and
+		 *	written again for every view, and it is bounded in part: the number
+		 *	of uris by the maxUris setting and the number of referrer hosts by
+		 *	MAX_REFERRERS - a view beyond a budget is counted in a bucket of its
+		 *	own (OVERFLOW_URI, OVERFLOW_REFERRER) - and the length of a host by
+		 *	MAX_HOST_LENGTH (see _referrerHost()) and the length of a uri by
+		 *	MAX_URI_LENGTH - a longer one is counted in OVERFLOW_URI rather than
+		 *	under a name of its own. A view is counted before the route's own
+		 *	callback runs, so a path below a wildcard route that the route then
+		 *	answers with a 404 - a post nobody has - is counted as the 200 it
+		 *	still is at priority 8
+		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		&$request			(reference) Current request
 		 *
@@ -119,7 +156,7 @@ namespace Nino\Modules {
 				$uris = is_array( $day_['uris'] ?? null ) ? $day_['uris'] : [];
 				if( isset( $uris[$uri] ) === true )
 					$uris[$uri]++;
-				elseif( count( $uris ) < $maxUris )
+				elseif( count( $uris ) < $maxUris && strlen( $uri ) <= self::MAX_URI_LENGTH )
 					$uris[$uri] = 1;
 				else
 					$uris[self::OVERFLOW_URI] = (int) ( $uris[self::OVERFLOW_URI] ?? 0 ) + 1;
@@ -127,7 +164,12 @@ namespace Nino\Modules {
 
 				if( $referrer !== '' ) {
 					$referrers = is_array( $day_['referrers'] ?? null ) ? $day_['referrers'] : [];
-					$referrers[$referrer] = (int) ( $referrers[$referrer] ?? 0 ) + 1;
+					if( isset( $referrers[$referrer] ) === true )
+						$referrers[$referrer]++;
+					elseif( count( $referrers ) < self::MAX_REFERRERS )
+						$referrers[$referrer] = 1;
+					else
+						$referrers[self::OVERFLOW_REFERRER] = (int) ( $referrers[self::OVERFLOW_REFERRER] ?? 0 ) + 1;
 					$day_['referrers'] = $referrers;
 				}
 
@@ -328,6 +370,12 @@ namespace Nino\Modules {
 		 *	worth counting, and the own-host check is what keeps an internal
 		 *	navigation from inflating "views from elsewhere".
 		 *
+		 *	At most MAX_HOST_LENGTH bytes of it are kept: the header is the
+		 *	visitor's, and a host of thousands of characters would be stored
+		 *	whole, once for every day it is sent on. Cut with mb_strcut(), not
+		 *	substr() - a cut through the middle of a multibyte character leaves a
+		 *	sequence that is not utf-8
+		 *
 		 *	@param		array			$request
 		 *
 		 *	@return 	string
@@ -349,7 +397,7 @@ namespace Nino\Modules {
 			// like with like
 			$ownHost = (string) ( preg_replace( '/:\d+$/D', '', $ownHost ) ?? $ownHost );
 
-			return $host === $ownHost ? '' : $host;
+			return $host === $ownHost ? '' : mb_strcut( $host, 0, self::MAX_HOST_LENGTH, 'UTF-8' );
 		}
 
 		/**

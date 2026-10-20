@@ -51,8 +51,8 @@ return [
 				'de_DE' => 'Die Liste, seitenweise. Der Pfad gehört der Section.',
 			],
 			'/blog/my-first-post' => [
-				'en_US' => 'One record, at a readable url.',
-				'de_DE' => 'Ein Datensatz, unter einer lesbaren Adresse.',
+				'en_US' => 'One record, at a readable url. Its title and summary are the title and the description of the page - as text, so a tag in them is shown and not run.',
+				'de_DE' => 'Ein Datensatz, unter einer lesbaren Adresse. Titel und Zusammenfassung sind Titel und Beschreibung der Seite - als Text, ein Tag darin wird angezeigt und nicht ausgeführt.',
 			],
 		],
 		'panel' => [],

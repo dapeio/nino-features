@@ -119,7 +119,7 @@
 				{ key : 'path', label : Nino.content.getText('/_admin/stats/label/path'), type : 'string', render : Nino.admin.stats._pathCell },
 				{ key : 'views', label : Nino.content.getText('/_admin/stats/label/views'), type : 'integer' },
 			], Nino.content.getText('/_admin/stats/empty') ) );
-			tables.appendChild( Nino.admin.stats._renderTable( 'host', Nino.content.getText('/_admin/stats/label/referrer'), data.referrers, [
+			tables.appendChild( Nino.admin.stats._renderTable( 'host', Nino.content.getText('/_admin/stats/label/referrer'), Nino.admin.stats._referrerRows( data.referrers ), [
 				{ key : 'host', label : Nino.content.getText('/_admin/stats/label/referrer'), type : 'string' },
 				{ key : 'views', label : Nino.content.getText('/_admin/stats/label/views'), type : 'integer' },
 			], Nino.content.getText('/_admin/stats/empty/referrers') ) );
@@ -159,6 +159,25 @@
 					uri		: row.uri,
 					title	: row.title || ( other ? Nino.content.getText('/_admin/stats/label/other') : row.uri ),
 					path	: other ? '' : row.uri,
+					views	: row.views,
+				};
+			} );
+		},
+
+		/**
+		 *	The referrers table's rows: the host, and the bucket of the hosts a
+		 *	day did not keep one by one under a name of its own, since '…' is no
+		 *	host anybody has - as _pageRows() does for the pages beyond a day's
+		 *	budget
+		 *
+		 *	@param		{Array}		rows				[ { host, views }, ... ]
+		 *
+		 *	@return		{Array}								[ { host, views }, ... ]
+		 */
+		_referrerRows : function( rows ) {
+			return rows.map( function( row ) {
+				return {
+					host	: row.host === '…' ? Nino.content.getText('/_admin/stats/label/other-referrers') : row.host,
 					views	: row.views,
 				};
 			} );

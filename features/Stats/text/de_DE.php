@@ -16,6 +16,7 @@ return [
 	'[[/_admin/stats/label/uri]]'				=> 'Seite',
 	'[[/_admin/stats/label/path]]'			=> 'Pfad',
 	'[[/_admin/stats/label/other]]'			=> 'Weitere Seiten',
+	'[[/_admin/stats/label/other-referrers]]'	=> 'Weitere Herkünfte',
 	'[[/_admin/stats/label/max]]'			=> 'Spitze: %d',
 	'[[/_admin/stats/label/referrer]]'		=> 'Herkunft',
 	'[[/_admin/stats/label/search]]'			=> 'Suchen',

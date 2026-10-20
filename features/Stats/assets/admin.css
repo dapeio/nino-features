@@ -109,5 +109,10 @@
 	color: var(--editor-text-secondary);
 	font-size: .76rem;
 }
+/*	A host or a path is kept up to 253 bytes without a space in it: it breaks
+	inside the cell rather than pushing the views column out of the card	*/
+.stats-table .nino-admin-table-uri {
+	overflow-wrap: anywhere;
+}
 
 }
