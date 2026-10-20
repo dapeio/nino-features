@@ -69,6 +69,7 @@
             "draws": "{tag} .nino-section-title",
             "link": true,
             "by": "nino",
+            "group": "section",
             "defaults": {
                 "tag": "h3",
                 "style": "",
@@ -151,6 +152,7 @@
             "draws": "{tag} .nino-section-subtitle",
             "link": true,
             "by": "nino",
+            "group": "section",
             "defaults": {
                 "tag": "div",
                 "style": "",
@@ -228,6 +230,7 @@
             },
             "link": true,
             "by": "nino",
+            "group": "global",
             "defaults": {
                 "format": "blocks",
                 "style": "",
@@ -308,6 +311,7 @@
             "draws": "{tag} .nino-card-title",
             "link": true,
             "by": "nino",
+            "group": "card",
             "defaults": {
                 "tag": "h4",
                 "style": "",
@@ -389,6 +393,7 @@
             "draws": "{tag} .nino-card-subtitle",
             "link": true,
             "by": "nino",
+            "group": "card",
             "defaults": {
                 "tag": "p",
                 "style": "",
@@ -470,6 +475,7 @@
             "draws": "div .nino-card-descr",
             "link": true,
             "by": "nino",
+            "group": "card",
             "defaults": {
                 "format": "blocks",
                 "style": "",
@@ -572,6 +578,7 @@
             "draws": "img .nino-card-img",
             "link": true,
             "by": "nino",
+            "group": "card",
             "defaults": {
                 "style": "",
                 "alt": "",
@@ -654,6 +661,7 @@
             "draws": "{tag} .nino-hero-title",
             "link": true,
             "by": "nino",
+            "group": "hero",
             "defaults": {
                 "tag": "h2",
                 "style": "",
@@ -736,6 +744,7 @@
             "draws": "{tag} .nino-hero-subtitle",
             "link": true,
             "by": "nino",
+            "group": "hero",
             "defaults": {
                 "tag": "p",
                 "style": "",
@@ -882,6 +891,7 @@
             "holds": "card",
             "link": false,
             "by": "nino",
+            "group": "card",
             "defaults": {
                 "fill": "0",
                 "padding": "",
@@ -994,6 +1004,7 @@
             "draws": "a .nino-btn",
             "link": false,
             "by": "nino",
+            "group": "global",
             "defaults": {
                 "href": "",
                 "style": "",
@@ -1092,6 +1103,7 @@
             },
             "link": true,
             "by": "nino",
+            "group": "global",
             "defaults": {
                 "style": "",
                 "alt": "",
@@ -1128,6 +1140,7 @@
             "attributes": [],
             "link": false,
             "by": "nino",
+            "group": "global",
             "defaults": {
                 "class": ""
             },
@@ -1179,6 +1192,7 @@
             },
             "link": false,
             "by": "nino",
+            "group": "global",
             "defaults": {
                 "size": "2",
                 "class": ""
@@ -1216,6 +1230,7 @@
             "draws": "a .nino-hero-arrowdown",
             "link": false,
             "by": "nino",
+            "group": "hero",
             "defaults": {
                 "to": "",
                 "class": ""
@@ -1358,5 +1373,11 @@
             },
             "cell": "section"
         }
-    }
+    },
+    "groups": [
+        "section",
+        "hero",
+        "card",
+        "global"
+    ]
 }

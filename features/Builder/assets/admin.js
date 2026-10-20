@@ -181,7 +181,6 @@
 
 		// The preview images the registry may name, and the one for the rest
 		PREVIEWS	: [ 'title', 'text', 'image', 'button', 'block', 'cells' ],
-
 		// --------------------------------------------------------- The model
 
 		/**
@@ -1622,19 +1621,22 @@
 
 		/**
 		 *	Every component of the registry as the picker shows it where a component is added - in a column, in the cell of a loop,
-		 *	in a component that holds components: in groups, by who registered it (the kernel's own by the places it belongs in,
-		 *	which are the section's and the card's, a feature's by the feature) and, in each, in the order of the registry. Every one
-		 *	is there, and one that cannot go here says why: it belongs in other places (its 'in'), a component that holds components
-		 *	is not put in another, a loop does not take it (its 'loop'). The Builder knows no component by name: the groups and the
+		 *	in a component that holds components: in groups, by who registered it (what the kernel and the modules of the project
+		 *	registered by the 'group' its schema names - the registry takes none that names no group of its list -, in the order of
+		 *	that list, which the registry's answer carries as 'groups'; what a feature registered by the feature, after them) and, in
+		 *	each, in the order of the registry. Every one is
+		 *	there, and one that cannot go here says why: it belongs in other places (its 'in'), a component that holds components is
+		 *	not put in another, a loop does not take it (its 'loop'). The Builder knows no component by name: the groups and the
 		 *	reasons are the registry's own words
 		 *
 		 *	@param		{Object}		model
 		 *	@param		{Array}			path							The column, or the component that holds components
 		 *	@param		{Object}		registry
 		 *
-		 *	@return		{Array}										[ { id, label, rows: [ { label, items: [ { name, label, icon, reason } ] } ] } ] - the label
-		 *															of a row is the name of its feature where more than one feature registered a component, else
-		 *															'' - and reason '' for a component that can be added
+		 *	@return		{Array}										[ { id, label, rows: [ { label, items: [ { name, label, icon, reason } ] } ] } ] - id is the
+		 *															word of the group, or features; the label of a row is the name of its feature where more than one
+		 *															feature registered a component, else '' - and reason '' for a component that can be added. A
+		 *															group with no component is not in it
 		 */
 		_pickChoices : function( model, path, registry ) {
 
@@ -1645,8 +1647,10 @@
 			const inside = path.length > 2;
 			const text = function( key ) { return Nino.content.getText( '/_admin/builder/reason/'+ key ) };
 			const names = Object.keys( registry.components || {} );
-			const groups = { section : [], card : [] };
+			const groups = {};
 			const features = {};
+
+			registry.groups.forEach( function( word ) { groups[word] = [] } );
 
 			const why = function( name, schema ) {
 
@@ -1678,20 +1682,18 @@
 
 				if( by !== 'nino' )
 					( features[by] = features[by] || [] ).push( item );
-				else if( Array.isArray( schema.in ) === false || schema.in.indexOf('section') !== -1 || schema.in.indexOf('hero') !== -1 )
-					groups.section.push( item );
-				else
-					groups.card.push( item );
+				else if( registry.groups.indexOf( schema.group ) !== -1 )
+					groups[schema.group].push( item );
 			} );
 
 			const found = Object.keys( features );
-			const result = [
-				{ id : 'section', label : Nino.content.getText('/_admin/builder/pick/section'), rows : [ { label : '', items : groups.section } ] },
-				{ id : 'card', label : Nino.content.getText('/_admin/builder/pick/card'), rows : [ { label : '', items : groups.card } ] },
+			const result = registry.groups.map( function( word ) {
+				return { id : word, label : Nino.content.getText( '/_admin/builder/pick/'+ word ), rows : [ { label : '', items : groups[word] } ] };
+			} ).concat( [
 				{ id : 'features', label : Nino.content.getText('/_admin/builder/pick/features'), rows : found.map( function( key ) {
 					return { label : found.length > 1 ? ( ( registry.features || {} )[key] ?? key ) : '', items : features[key] };
 				} ) },
-			];
+			] );
 
 			return result.filter( function( group ) { return group.rows.some( function( row ) { return row.items.length > 0 } ) } );
 		},

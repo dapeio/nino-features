@@ -249,9 +249,11 @@
 	justify-content: center;
 	padding: .15rem 0 0;
 }
-/* The lightbox that offers the components: a heading for each group, under it a row of buttons that wraps - the icon of the
-   component and its label, about 100 by 30 px - and a component that cannot go where the list is stands there greyed, with the
-   reason as its title. The class of the buttons is the one the list of a source has, laid out as a button here */
+/* The lightbox that offers the components: a heading for each group, under it the buttons of the group - the icon of the component and
+   its label, about 100 by 30 px - and a component that cannot go where the list is stands there greyed, with the reason as its title.
+   The class of the buttons is the one the list of a source has, laid out as a button here. What follows is the dialog of a phone, the
+   groups under each other with their buttons in rows that wrap; the media queries after the buttons put the groups side by side where
+   the window has the room */
 .builder-lightbox {
 	display: grid;
 	gap: 1rem;
@@ -307,6 +309,38 @@
 }
 .builder-pick-label {
 	min-width: 0;
+}
+/* Side by side where the window has the room: a column for each group - its heading on top, its buttons under each other and as wide as
+   the column - and, as the groups stand in the document in the order they are listed in, the Tab key goes down one column and on to the
+   next. Five columns are what the dialog takes from a window of 50rem on, with the longest label of the registry on one line in either
+   language; below that the groups fold into three columns, into two and, below 25rem, into the one of the phone. The five are as wide as
+   their longest label and share what is left between them, so that a label wraps only where there is no room for it */
+@media (min-width: 25rem) {
+	.builder-lightbox {
+		grid-template-columns: repeat( 2, minmax( 0, 1fr ) );
+		align-items: start;
+	}
+	.builder-lightbox-row {
+		display: grid;
+	}
+	.builder-lightbox .builder-pick-item {
+		width: 100%;
+		min-width: 0;
+		padding-inline: .6rem;
+		gap: .5rem;
+	}
+}
+@media (min-width: 36rem) {
+	.builder-lightbox {
+		grid-template-columns: repeat( 3, minmax( 0, 1fr ) );
+	}
+}
+@media (min-width: 50rem) {
+	.builder-lightbox {
+		grid-auto-flow: column;
+		grid-template-columns: none;
+		column-gap: .75rem;
+	}
 }
 
 /* ------------------------------------------------------------- The preview */

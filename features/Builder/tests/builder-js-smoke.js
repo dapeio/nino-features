@@ -87,7 +87,8 @@
  *												the two of a feature that has its own - or, for a component
  *												that gives none, the puzzle of the sprite; the parts the
  *												script does not know are left out, nothing is written as
- *												markup, and the stylesheet lays the lightbox out as rows. The
+ *												markup, and the stylesheet lays the lightbox out as rows for a
+ *												phone and as columns side by side where the dialog is wide. The
  *												stand-in remembers the namespace an element is made in, to
  *												tell an svg element from an html one.
  *
@@ -708,17 +709,24 @@ const registryFixture = fixture('registry.json');
 const labelIn = function( name, locale ) { return registryFixture.components[name].labels[locale] };
 
 /**
- *	Which group of the lightbox a component is in: 0, the kernel's own that belong in a hero or a section or name no place; 1, the
- *	kernel's own that belong in a card only; 2, those a feature registered (its "by"). The registry says it, no name is typed here
+ *	The groups of the lightbox, in the order it lists them: the words a component of the kernel or of a module names as its group,
+ *	in the order the registry's answer lists them (groups, written by the PHP suite from the kernel it ran against, so that no word
+ *	is typed here) - and after them the Features, for what a feature registered
+ */
+const groupWords = registryFixture.groups;
+
+/**
+ *	Which group of the lightbox a component is in, as the place of the group in that order: the place of the word its schema names as
+ *	its group, and the one after all of them for what a feature registered (its "by"). The registry says it, no name is typed here
  */
 const groupOf = function( name, all ) {
 
 	const schema = all[name];
 
 	if( typeof schema.by === 'string' && schema.by !== 'nino' )
-		return 2;
+		return groupWords.length;
 
-	return schema['in'] === undefined || schema['in'].indexOf('section') !== -1 || schema['in'].indexOf('hero') !== -1 ? 0 : 1;
+	return groupWords.indexOf( schema.group );
 };
 
 /**
@@ -732,7 +740,7 @@ const belonging = function( place, components ) {
 	const all = components || registryFixture.components;
 	const names = Object.keys( all ).filter( function( name ) { return all[name]['in'] === undefined || all[name]['in'].indexOf( place ) !== -1 } );
 
-	return [ 0, 1, 2 ].map( function( group ) { return names.filter( function( name ) { return groupOf( name, all ) === group } ) } ).flat().map( function( name ) { return all[name].label } ).join();
+	return groupWords.concat( [ 'features' ] ).map( function( word, group ) { return names.filter( function( name ) { return groupOf( name, all ) === group } ) } ).flat().map( function( name ) { return all[name].label } ).join();
 };
 
 /**
@@ -959,9 +967,10 @@ const itemsOf = function( box ) { return box.querySelectorAll('.builder-pick-ite
 const pickAt = function( path ) { builder._pickComponent( path ); return lightboxOf() };
 // An item by the name of its component, which is the registry's. Its label is the kernel's wording in the language of the workbench, and nothing to find it by
 const itemNamed = function( box, name ) { return itemsOf( box ).find( function( item ) { return item.dataset.name === name } ) };
-// The first item of a group - the lightbox draws the kernel's section components first, then those of a card, then the features' - that can be added where it was opened, and the first that is greyed
-const firstOffered = function( box, group ) { return itemsOf( box.children[group] ).find( function( item ) { return item.disabled === false } ) };
-const firstGreyed = function( box, group ) { return itemsOf( box.children[group] ).find( function( item ) { return item.disabled === true } ) };
+// A group of the lightbox by its word - the registry's, or features - and the first item of it that can be added where the lightbox was opened, and the first that is greyed
+const groupIn = function( box, word ) { return box.children.find( function( group ) { return group.dataset.group === word } ) };
+const firstOffered = function( box, word ) { return itemsOf( groupIn( box, word ) ).find( function( item ) { return item.disabled === false } ) };
+const firstGreyed = function( box, word ) { return itemsOf( groupIn( box, word ) ).find( function( item ) { return item.disabled === true } ) };
 // What the dialog that opens for a component is titled
 const titleOf = function( name ) { return 'Component "'+ registryFixture.components[name].label+ '"' };
 const takenIn = function( box ) { return itemsOf( box ).filter( function( item ) { return item.disabled === false } ).map( pickLabel ).join() };
@@ -1436,13 +1445,19 @@ check( '...and a component is chosen in a lightbox, which opens in the dialog an
 		&& offeredAt( [ 1, 1 ] ) === offeredAt( [ 1, 0 ] ) && offeredAt( [ 3, 0 ] ) === offeredAt( [ 1, 0 ] ) && count === Object.keys( registryFixture.components ).length
 		&& dialogBox().open === true && dialogBox().classList.contains('is-wide') && dialogText('builder-dialog-kind') === 'Insert a component' && screen.getElementById('builder-dialog-tabs').hidden === true;
 } )() );
-check( '...the lightbox is in groups, each with a heading: the kernel\'s own by where they belong - Section for what belongs in a hero or a section or names no place, Card for what belongs in a card only - and Features for what a feature registered, each in the order of the registry; a group with nothing in it is not drawn, and a feature has a heading of its own where there is more than one', ( function() {
+check( '...the lightbox is in groups, each with a heading: what the kernel and the modules of a project registered by the group its schema names - the words of the registry, in the order the lightbox lists them - and then the Features for what a feature registered, each in the order of the registry; a group with nothing in it is not drawn, and a feature has a heading of its own where there is more than one', ( function() {
 
 	const components = builder._registry.components;
-	const groups = function() { return pickAt( [ 1, 0 ] ).children.map( function( group ) { return group.children[0].textContent+ ':'+ itemsOf( group ).map( pickLabel ).join() } ).join(' | ') };
-	const labels = function( group ) { return Object.keys( components ).filter( function( name ) { return groupOf( name, components ) === group } ).map( function( name ) { return components[name].label } ).join() };
-	const kernel = groups();
+	const groups = function() { return pickAt( [ 1, 0 ] ).children.map( function( group ) { return group.dataset.group+ ':'+ itemsOf( group ).map( pickLabel ).join() } ).join(' | ') };
+	// What the registry says each group holds, in its own order: the labels of the components of the kernel that name it
+	const labels = function( word ) { return Object.keys( components ).filter( function( name ) { return components[name].by === 'nino' && components[name].group === word } ).map( function( name ) { return components[name].label } ).join() };
+	// ...and the words of a list that have such a component: the groups the lightbox draws, whichever and however many the registry has
+	const filled = function( words ) { return words.filter( function( word ) { return labels( word ) !== '' } ) };
+	const listed = function( words ) { return filled( words ).map( function( word ) { return word+ ':'+ labels( word ) } ).join(' | ') };
 	const heading = function( box ) { return box.querySelectorAll('.builder-lightbox-sub').map( function( sub ) { return sub.textContent } ).join() };
+	const headings = function() { return pickAt( [ 1, 0 ] ).children.map( function( group ) { return group.children[0].textContent } ).join() };
+	const kernel = groups();
+	const said = headings();
 
 	builder._registry.features = { gallery : 'Gallery', forms : 'Forms' };
 	components['stub-forms'] = { label : 'Stub forms', preview : 'block', by : 'forms' };
@@ -1461,8 +1476,39 @@ check( '...the lightbox is in groups, each with a heading: the kernel\'s own by 
 	delete components['stub-more'];
 	delete builder._registry.features;
 
-	return kernel === 'Section:'+ labels(0)+ ' | Card:'+ labels(1) && labels(0) !== '' && labels(1) !== '' && several === kernel+ ' | Features:Stub forms,Stub more,Stub gallery' && named === 'Forms,Gallery'
-		&& one === kernel+ ' | Features:Stub forms,Stub more' && alone === '' && groups() === kernel;
+	// A registry with none of the first group it has a component in: that group is not drawn
+	const kept = builder._registry;
+	const left = filled( groupWords )[0];
+
+	builder._registry = Object.assign( {}, kept, { components : Object.keys( components ).filter( function( name ) { return components[name].group !== left } ).reduce( function( all, name ) { all[name] = components[name]; return all }, {} ) } );
+
+	const without = groups();
+
+	// The order is the registry's and none of the script's own: the list turned round turns the lightbox round
+	builder._registry = Object.assign( {}, kept, { groups : groupWords.slice().reverse() } );
+
+	const turned = groups();
+
+	builder._registry = kept;
+
+	return Array.isArray( groupWords ) && groupWords.length > 1 && turned !== kernel && turned === listed( groupWords.slice().reverse() ) && Object.keys( components ).every( function( name ) { return groupOf( name, components ) !== -1 } )
+		&& kernel !== '' && kernel === listed( groupWords ) && said === filled( groupWords ).map( function( word ) { return words['/_admin/builder/pick/'+ word] } ).join() && said.indexOf(',,') === -1
+		&& several === kernel+ ' | features:Stub forms,Stub more,Stub gallery' && named === 'Forms,Gallery' && one === kernel+ ' | features:Stub forms,Stub more' && alone === ''
+		&& without !== kernel && without === listed( groupWords.filter( function( word ) { return word !== left } ) ) && groups() === kernel;
+} )() );
+check( '...a component of a feature stands under the feature whatever else its schema says - it is no group\'s: the words of a group are the kernel\'s and a project\'s, and what a feature registered goes last', ( function() {
+
+	const components = builder._registry.components;
+
+	components['stub-forms'] = { label : 'Stub forms', preview : 'block', by : 'forms', group : groupWords[0] };
+
+	// Where the stub stands in each group that is drawn: in none of the registry's, and first in the Features, which come last
+	const stands = pickAt( [ 1, 0 ] ).children.map( function( group ) { return [ group.dataset.group, itemsOf( group ).map( pickLabel ).indexOf( 'Stub forms' ) ] } );
+	const last = stands.length - 1;
+
+	delete components['stub-forms'];
+
+	return last > 0 && stands[last][0] === 'features' && stands[last][1] === 0 && stands.slice( 0, last ).every( function( found ) { return groupWords.indexOf( found[0] ) !== -1 && found[1] === -1 } );
 } )() );
 check( '...they stand in the order of the registry and in none of the script\'s own: the components as the kernel registers them, then those of a feature in the order it registered them - and a registry in another order is listed in that order, not in the alphabet\'s', ( function() {
 
@@ -1489,11 +1535,11 @@ check( '...a component that says where it belongs (its "in") can be added there 
 	const blocks = builder._doc.model.blocks;
 	const offered = function( path ) { return offeredAt( path ).split(',').filter( function( label ) { return /^Stub/.test( label ) } ).join() };
 
-	components['stub-card'] = { label : 'Stub card', preview : 'block', in : [ 'card' ] };
-	components['stub-hero'] = { label : 'Stub hero', preview : 'block', in : [ 'hero' ] };
-	components['stub-two'] = { label : 'Stub two', preview : 'block', in : [ 'section', 'card' ] };
-	components['stub-any'] = { label : 'Stub any', preview : 'block' };
-	components['stub-alone'] = { label : 'Stub alone', preview : 'block', loop : false };
+	components['stub-card'] = { label : 'Stub card', preview : 'block', in : [ 'card' ], group : 'card' };
+	components['stub-hero'] = { label : 'Stub hero', preview : 'block', in : [ 'hero' ], group : 'hero' };
+	components['stub-two'] = { label : 'Stub two', preview : 'block', in : [ 'section', 'card' ], group : 'section' };
+	components['stub-any'] = { label : 'Stub any', preview : 'block', group : 'global' };
+	components['stub-alone'] = { label : 'Stub alone', preview : 'block', loop : false, group : 'global' };
 
 	const found = [ offered( [ 0, 0 ] ), offered( [ 1, 0 ] ), offered( [ 1, 1 ] ), offered( [ 3, 0 ] ) ].join(' | ');
 
@@ -1509,9 +1555,9 @@ check( '...what cannot go where the lightbox was opened is there all the same, g
 	const components = builder._registry.components;
 	const blocks = builder._doc.model.blocks;
 
-	components['stub-hero'] = { label : 'Stub hero', preview : 'block', in : [ 'hero' ] };
-	components['stub-else'] = { label : 'Stub else', preview : 'block', in : [ 'footer' ] };
-	components['stub-alone'] = { label : 'Stub alone', preview : 'block', loop : false };
+	components['stub-hero'] = { label : 'Stub hero', preview : 'block', in : [ 'hero' ], group : 'hero' };
+	components['stub-else'] = { label : 'Stub else', preview : 'block', in : [ 'footer' ], group : 'global' };
+	components['stub-alone'] = { label : 'Stub alone', preview : 'block', loop : false, group : 'global' };
 	blocks[0].settings.cover = null;
 	blocks[1].settings.cover = null;
 
@@ -2322,7 +2368,7 @@ check( '...a column of such a section may not run a loop of its own, and the loo
 	return column && controlOf( paneOf('loop'), 'Loop' ).el.disabled === true && paneOf('loop').querySelector('.nino-admin-notice').textContent.indexOf('A column of this section runs a loop of its own') === 0 && blockAt( 1 ).stack === null;
 } )() );
 check( '...and the picker of a column of such a section holds back what a loop does not take, as it does in the column that runs one', ( function() {
-	builder._registry.components['stub-alone'] = { label : 'Stub alone', preview : 'block', loop : false };
+	builder._registry.components['stub-alone'] = { label : 'Stub alone', preview : 'block', loop : false, group : 'global' };
 	const looped = reasonOf( [ 0, 0 ], 'Stub alone' ) === 'Not in an element loop';
 	const plain = reasonOf( [ 1, 0 ], 'Stub alone' ) === '';
 	delete builder._registry.components['stub-alone'];
@@ -4771,8 +4817,8 @@ check( '...a component a loop does not take is offered in no column that runs on
 
 	const components = builder._registry.components;
 
-	components['stub-alone'] = { label : 'Stub alone', preview : 'block', loop : false };
-	components['stub-holder'] = { label : 'Stub holder', source : 'content', preview : 'block', in : [ 'hero', 'section', 'card' ], holds : 'card' };
+	components['stub-alone'] = { label : 'Stub alone', preview : 'block', loop : false, group : 'global' };
+	components['stub-holder'] = { label : 'Stub holder', source : 'content', preview : 'block', in : [ 'hero', 'section', 'card' ], holds : 'card', group : 'global' };
 
 	const stub = function( path ) { return offeredAt( path ).split(',').filter( function( label ) { return /^Stub/.test( label ) } ).join() };
 	const found = [ stub( [ 0, 1 ] ), stub( cardAt ), stub( [ 1, 0 ] ), stub( [ 1, 0, 0 ] ) ].join(' | ');
@@ -4816,7 +4862,7 @@ console.log( '\nThe lightbox adds a component and goes on to its settings' );
 
 doc = open();
 builder._renderEditor();
-const offered = firstOffered( pickAt( [ 3, 0 ] ), 0 );
+const offered = firstOffered( pickAt( [ 3, 0 ] ), 'section' );
 const offeredName = offered.dataset.name;
 offered.click();
 const addedAt = [ 3, 0, 2 ];
@@ -4836,14 +4882,14 @@ console.log( '\nThe focus when the form of a node is closed' );
 	drawn again for the component that was added, so that the button that opened the lightbox is not on the page when the dialog is closed - the browser has nothing to give the
 	focus back to	*/
 const addButtonOf = function( at ) { const adds = frameOf( at ).querySelectorAll('.builder-adds'); return adds[adds.length - 1].querySelector('.builder-add-button') };
-const addWith = function( at, group ) {
+const addWith = function( at, word ) {
 
 	const trigger = addButtonOf( at );
 
 	trigger.focus();
 	trigger.click();
 
-	const item = firstOffered( lightboxOf(), group );
+	const item = firstOffered( lightboxOf(), word );
 
 	item.focus();
 	item.click();
@@ -4854,7 +4900,7 @@ const onTool = function( at ) { return screen.activeElement !== null && screen.a
 
 doc = open();
 builder._renderEditor();
-const gone = addWith( '3.0', 0 );
+const gone = addWith( '3.0', 'section' );
 check( 'a component added by the keyboard in the lightbox has its settings open, and the button that opened the lightbox is not on the page any more: the preview was drawn again for the new component', dialogBox().open === true
 	&& dialogText('builder-dialog-kind') === titleOf( builder._get( builder._doc.model, builder._sel ).name ) && gone.isConnected === false && screen.activeElement !== null && paneOf('content').contains( screen.activeElement ) );
 dialogBox().close();
@@ -4862,19 +4908,19 @@ check( 'Escape - the close the browser does - leaves the focus on the settings t
 
 doc = open();
 builder._renderEditor();
-addWith( '3.0', 0 );
+addWith( '3.0', 'section' );
 buttonOf( screen.getElementById('builder-dialog-actions'), 'Close' ).click();
 check( '...the Close button of the dialog does the same', dialogBox().open === false && builder._dialogOptions === null && onTool( '3.0.2' ) );
 
 doc = open();
 builder._renderEditor();
-addWith( '3.0', 0 );
+addWith( '3.0', 'section' );
 screen.getElementById('builder-dialog-close').click();
 check( '...and so does the cross in its head', dialogBox().open === false && builder._dialogOptions === null && onTool( '3.0.2' ) );
 
 doc = openCard();
 builder._renderEditor();
-addWith( '0.1.0', 1 );
+addWith( '0.1.0', 'card' );
 dialogBox().close();
 check( '...in a card too: the tool of the child that was added, one level deeper', dialogBox().open === false && onTool( '0.1.0.3' ) );
 
@@ -4927,7 +4973,7 @@ check( 'a form that a double click opened, with the focus on no control, leaves 
 
 doc = openCard();
 builder._renderEditor();
-const cardOffered = firstOffered( pickAt( cardAt ), 1 );
+const cardOffered = firstOffered( pickAt( cardAt ), 'card' );
 cardOffered.click();
 check( 'in a card the component goes in as a child at the end of the card, and the settings are the child\'s, in the dialog the lightbox was in', dialogText('builder-dialog-kind') === titleOf( cardOffered.dataset.name ) && cardIn( builder._doc.model ).components.length === 4
 	&& cardIn( builder._doc.model ).components[3].name === cardOffered.dataset.name && builder._same( builder._sel, [ 0, 1, 0, 3 ] ) && lightboxOf() === null && JSON.stringify( dialogTabs().map( function( tab ) { return tab[0] } ) ) === '["content","properties","variants","link","custom"]' );
@@ -4941,7 +4987,7 @@ check( '...and what a card says it does not take stands in its lightbox greyed, 
 	pickAt( cardAt );
 
 	const card = itemNamed( lightboxOf(), 'card' );
-	const section = firstGreyed( lightboxOf(), 0 );
+	const section = firstGreyed( lightboxOf(), 'section' );
 	const length = cardIn( builder._doc.model ).components.length;
 	const before = changes;
 
@@ -5010,12 +5056,12 @@ check( '...it is an svg of its own and decoration: made in the namespace of svg,
 	const second = [ [ 'path', { d : 'M2 12h20' } ], [ 'path', { d : 'M12 2v20' } ] ];
 
 	// Two components of a feature with an icon of their own, and four that name none - or name something that is no list of parts
-	components['stub-own'] = { label : 'Stub own', preview : 'block', icon : every };
-	components['stub-second'] = { label : 'Stub second', preview : 'block', icon : second };
-	components['stub-none'] = { label : 'Stub none', preview : 'block' };
-	components['stub-text'] = { label : 'Stub text', preview : 'block', icon : 'heading' };
-	components['stub-empty'] = { label : 'Stub empty', preview : 'block', icon : [] };
-	components['stub-map'] = { label : 'Stub map', preview : 'block', icon : { d : 'M0 0' } };
+	components['stub-own'] = { label : 'Stub own', preview : 'block', by : 'hello', icon : every };
+	components['stub-second'] = { label : 'Stub second', preview : 'block', by : 'hello', icon : second };
+	components['stub-none'] = { label : 'Stub none', preview : 'block', by : 'hello' };
+	components['stub-text'] = { label : 'Stub text', preview : 'block', by : 'hello', icon : 'heading' };
+	components['stub-empty'] = { label : 'Stub empty', preview : 'block', by : 'hello', icon : [] };
+	components['stub-map'] = { label : 'Stub map', preview : 'block', by : 'hello', icon : { d : 'M0 0' } };
 
 	const box = pickAt( [ 1, 0 ] );
 	const items = itemsOf( box );
@@ -5038,7 +5084,7 @@ check( '...it is an svg of its own and decoration: made in the namespace of svg,
 	check( '...the puzzle is a symbol of the sprite, a path of 24 by 24, and the picker passes the inspection every form passes: each icon in it is a symbol of the sprite, and a control that is an icon has a name', puzzle !== null && puzzle.localName === 'symbol' && puzzle.getAttribute('viewBox') === '0 0 24 24'
 		&& puzzle.children.length === 1 && puzzle.children[0].localName === 'path' && iconsKnown( box ) === true && unnamed( box ).length === 0 );
 
-	components['stub-odd'] = { label : 'Stub odd', preview : 'block', icon : [
+	components['stub-odd'] = { label : 'Stub odd', preview : 'block', by : 'hello', icon : [
 		[ 'script', { src : 'x.js' } ], [ 'path', { d : 'M0 0h24', onclick : 'x()', fill : 'red', style : 'x' } ], [ 'constructor', { d : 'M1 1' } ], [ 'circle', 'cx=1' ], [ 'rect', null ], 'path', null, [ 'line' ],
 		[ 'circle', { r : '2', cx : '12', cy : '12', d : 'M2 2' } ], [ 'svg', {} ], [ [ 'path' ], { d : 'M3 3' } ],
 	] };
@@ -5059,13 +5105,19 @@ check( '...none of it is written as markup: the script assigns an empty string t
 	return assigned.length > 0 && assigned.every( function( found ) { return /^\.innerHTML\s*=\s*'';$/.test( found ) } ) && /insertAdjacentHTML|\.outerHTML\s*=|document\.write|createContextualFragment|DOMParser/.test( source ) === false
 		&& ( function() { try { made('div').innerHTML = '<svg></svg>'; return false } catch( error ) { return true } } )();
 } )() );
-check( '...the stylesheet lays the lightbox out as rows that wrap - a heading for each group, under it the items, each the icon and the label in the middle of the line - and keeps the icon a square of a rem that does not shrink; an item that cannot be added is dimmed and has no pointer', ( function() {
+check( '...the stylesheet lays the lightbox out as rows that wrap in the dialog of a phone - a heading for each group, under it the items, each the icon and the label in the middle of the line - and as columns side by side where the dialog has the room: two, three, and then one for each group, which stand in the document in the order they are listed in, so that the keys go down one column and on to the next, the items of a column under each other and as wide as it; the icon is a square of a rem that does not shrink, and an item that cannot be added is dimmed and has no pointer', ( function() {
 
 	const lines = function( selector ) { return ruleOf( selector ).split('\n') };
 	const has = function( selector, list ) { return list.every( function( line ) { return lines( selector ).indexOf( line ) !== -1 } ) };
+	// The blocks of the stylesheet for a width of the window that have a rule of the lightbox in them, the narrowest first as the stylesheet has them
+	const blocks = Array.from( stylesheet.matchAll( /\n@media \(min-width: ([0-9.]+)rem\) \{\n([\s\S]*?)\n\}(?=\n)/g ) ).filter( function( found ) { return found[2].indexOf('.builder-lightbox') !== -1 } ).map( function( found ) { return { width : Number( found[1] ), body : found[2] } } );
+	const holds = function( block, list ) { return block !== undefined && list.every( function( line ) { return block.body.indexOf( line ) !== -1 } ) };
 
 	return has( '.builder-lightbox-row', [ '\tdisplay: flex;', '\tflex-wrap: wrap;' ] ) && has( '.builder-pick-item', [ '\tdisplay: flex;', '\talign-items: center;' ] ) && has( '.builder-pick-icon', [ '\tflex: none;', '\twidth: 1rem;', '\theight: 1rem;' ] )
-		&& has( '.builder-lightbox .builder-pick-item:disabled', [ '\topacity: .45;', '\tcursor: default;' ] ) && has( '.builder-lightbox', [ '\tdisplay: grid;' ] );
+		&& has( '.builder-lightbox .builder-pick-item:disabled', [ '\topacity: .45;', '\tcursor: default;' ] ) && has( '.builder-lightbox', [ '\tdisplay: grid;' ] )
+		&& blocks.length === 3 && blocks[0].width < blocks[1].width && blocks[1].width < blocks[2].width
+		&& holds( blocks[0], [ '\t\tgrid-template-columns: repeat( 2, minmax( 0, 1fr ) );', '\t.builder-lightbox-row {\n\t\tdisplay: grid;', '\t\twidth: 100%;' ] ) && holds( blocks[1], [ '\t\tgrid-template-columns: repeat( 3, minmax( 0, 1fr ) );' ] )
+		&& holds( blocks[2], [ '\t\tgrid-auto-flow: column;', '\t\tgrid-template-columns: none;' ] );
 } )() );
 
 console.log( '\nThe form of a card' );

@@ -124,10 +124,13 @@ namespace Nino\Modules\Builder {
 		 *	the stacks with their labels in the language of the workbench - and
 		 *	the rest of the schema as the kernel registered it, the icon a component
 		 *	is shown by (icon), where it belongs (in), what it draws (draws), what
-		 *	it holds (holds), whether it is a link (link) and who registered it
-		 *	(by) among it, and its label in every language of the site (labels, by
-		 *	locale: what a new component's text is made with in each) -, the names
-		 *	of the features that registered a component (features, by their key),
+		 *	it holds (holds), whether it is a link (link), who registered it (by)
+		 *	and the group a tool offers it under (group) among it, and its label in
+		 *	every language of the site (labels, by locale: what a new component's
+		 *	text is made with in each) -, the groups the kernel's and a project's
+		 *	components are offered in, in the order they are listed in (groups, the
+		 *	words of \Nino\Modules\Components::GROUPS), the names of the features
+		 *	that registered a component (features, by their key),
 		 *	the types of the Elements panel with their fields, the image slots (each
 		 *	with the url of its picture, null where it has none, and its alt
 		 *	texts by language), the frames a page may name - and the languages
@@ -136,7 +139,7 @@ namespace Nino\Modules\Builder {
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *
-		 *	@return 	array										[ 'status' => 200, 'components', 'stacks', 'features' => key => name, 'types', 'fieldTypes', 'slots', 'headers', 'footers', 'locales' => [ [ locale, name ], ... ], 'native' ]
+		 *	@return 	array										[ 'status' => 200, 'components', 'stacks', 'groups', 'features' => key => name, 'types', 'fieldTypes', 'slots', 'headers', 'footers', 'locales' => [ [ locale, name ], ... ], 'native' ]
 		 */
 		public static function registry( array &$appData ): array {
 
@@ -219,6 +222,7 @@ namespace Nino\Modules\Builder {
 				'status'			=> 200,
 				'components'	=> $schemas['components'],
 				'stacks'			=> $schemas['stacks'],
+				'groups'			=> \Nino\Modules\Components::GROUPS,
 				'features'		=> $features,
 				'types'				=> $types,
 				'fieldTypes'	=> \Nino\Elements::FIELD_TYPES,
