@@ -3,6 +3,8 @@
 				<div class="nino-grid-100 nino-grid-l-33 nino-frame-footer-brand-col">
 					<a href="[[/nino/dir]]/" class="nino-frame-footer-brand">
 						[image /logo alt=""]<img src="[[src]]" width="[[width]]" height="[[height]]" class="nino-footer-logo" alt="[[alt]]">[/image]
+						<span aria-hidden="true">[[/project/company/general/name]]</span>
+						<span class="nino-sr-only">[[/project/company/general/name]]</span>
 					</a>
 					<p class="nino-frame-footer-description">[[/project/company/general/description]]</p>
 					<address class="nino-frame-footer-contact">

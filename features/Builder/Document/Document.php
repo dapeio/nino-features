@@ -44,11 +44,13 @@ namespace Nino\Modules\Builder {
 	 *											an account that may not create keys cannot create them
 	 *											through here either - and a save asks for those permissions,
 	 *											and checks what it is going to make, before it changes
-	 *											anything. The alt texts a new slot is made with are written
-	 *											with \Nino\Images::setSlotAlt() itself, which asks for no
-	 *											permission where the Images panel's images/alt asks for its
-	 *											own: so the save asks for that one, before it makes a slot
-	 *											that is to be made with alt texts.
+	 *											anything. The alt texts a new slot is made with, and the picture
+	 *											and the alt texts a copy of a slot takes over, are written
+	 *											with \Nino\Images itself, which asks for no permission where
+	 *											the Images panel's images/alt asks for its own: so the save
+	 *											asks whether the account has that one, writes them where it
+	 *											has and leaves them out where it has not - the save goes
+	 *											through either way, and the slot is made without them.
 	 *
 	 *	@package						Dape/Nino
 	 *	@author							David Perchermeier <mail@dape.io>
@@ -347,16 +349,18 @@ namespace Nino\Modules\Builder {
 		 *	A language the site does not have is refused (400, value).
 		 *
 		 *	Everything a save refuses for is refused before the first change:
-		 *	the permissions of the panels that own the keys and the slots (and
-		 *	the Images panel's, where a slot is made with alt texts), what each
-		 *	new key and slot is made of, a target a move would overwrite, a
-		 *	text for a key that is not there. What is made then is made in an
-		 *	order that can be undone: the keys and slots that are new first
-		 *	(nothing in the project points at them yet), then the keys and the
-		 *	files that move, then the texts, just before the file is written -
-		 *	and where it is not written the texts are put back as they were
-		 *	(read before they were changed), the moves are undone, and the keys
-		 *	this save made are taken away again.
+		 *	the permissions of the panels that own the keys and the slots, what
+		 *	each new key and slot is made of, a target a move would overwrite,
+		 *	a text for a key that is not there. The Images panel's permission
+		 *	refuses nothing: for an account that has not got it the slots are
+		 *	made without alt texts and without what a copy takes over.
+		 *
+		 *	What is made then is made in an order that can be undone: the keys
+		 *	and slots that are new first (nothing in the project points at them
+		 *	yet), then the keys and the files that move, then the texts, just
+		 *	before the file is written - and where it is not written the texts
+		 *	are put back as they were (read before they were changed), the moves
+		 *	are undone, and the keys this save made are taken away again.
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$file					page-home
@@ -1540,10 +1544,12 @@ namespace Nino\Modules\Builder {
 		 *	What a save is going to do to the keys and the slots, and whether
 		 *	it may: the keys and slots the model names as new and the ones a
 		 *	renamed section takes along, the texts that are to go to keys -
-		 *	checked: the permission of each panel - the Images panel's too, where
-		 *	a slot is made with alt texts -, the key grammar, the format, the size
-		 *	of a slot and the alt texts it is made with, a target that is there
-		 *	already, a key a text has none of - before anything is changed
+		 *	checked: the permission of the panel that owns each, the key grammar,
+		 *	the format, the size of a slot and the alt texts it is made with, a
+		 *	target that is there already, a key a text has none of - before
+		 *	anything is changed. Where the account may not manage images the plan
+		 *	it answers has no alt texts and no slot to copy in its slots: the
+		 *	save makes them empty
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array			$model
@@ -1645,6 +1651,13 @@ namespace Nino\Modules\Builder {
 					$problems[] = 'the key "'. $source. '" has the format "'. $format. '", which is none of the formats of a text';
 			}
 
+			// The alt texts a slot is made with are written by the save itself, and so are the picture and the alt texts a copy takes over, which are the old slot's:
+			// the permission to write them is the one the Images panel's images/alt asks for. An account that has not got it is not refused for it - its slots are
+			// made as a slot was made without them, the save goes through - and so they are dropped before they are read, so that nothing of them is refused either
+			if( $plan['slots'] !== [] && \Nino\Auth::checkPermission( $appData, \Nino\Modules\Images\Admin::MANAGE_PERM ) === false )
+				foreach( array_keys( $plan['slots'] ) as $uri )
+					unset( $plan['slots'][$uri]['alt'], $plan['slots'][$uri]['from'] );
+
 			foreach( $plan['slots'] as $uri => $create ) {
 
 				$size = self::_size( (array) $create );
@@ -1693,21 +1706,9 @@ namespace Nino\Modules\Builder {
 			if( $plan['slots'] !== [] || $plan['slotMoves'] !== [] )
 				$permissions[] = \Nino\Modules\Images\Slots::MANAGE_PERM;
 
-			// The alt texts a slot is made with are written by the save itself: the permission is the one the Images panel's images/alt asks for - and
-			// the same for the alt texts and the picture a copy takes over, which are the old slot's
-			foreach( $plan['slots'] as $create ) {
-
-				$old = is_string( $create['from'] ?? null ) === true ? \Nino\Images::getSlot( $appData, $create['from'] ) : false;
-
-				if( ( is_array( $create['alt'] ?? null ) === true && $create['alt'] !== [] ) || ( is_array( $old ) === true && ( ( $old['filename'] ?? null ) !== null || ( $old['alt'] ?? [] ) !== [] ) ) ) {
-					$permissions[] = \Nino\Modules\Images\Admin::MANAGE_PERM;
-					break;
-				}
-			}
-
 			foreach( $permissions as $permission )
 				if( \Nino\Auth::checkPermission( $appData, $permission ) === false )
-					return [ self::_error( 403, 'this save makes or moves keys or slots, or writes texts or alt texts, which asks for the permission '. $permission, 'permission', [ $permission ] ), $plan ];
+					return [ self::_error( 403, 'this save makes or moves keys or slots, or writes texts, which asks for the permission '. $permission, 'permission', [ $permission ] ), $plan ];
 
 			return [ null, $plan ];
 		}
@@ -1725,9 +1726,9 @@ namespace Nino\Modules\Builder {
 
 		/**
 		 *	Make what the plan makes new: the keys, the slots with the alt texts
-		 *	their create names (the plan has asked for the permission of the
-		 *	Images panel for them) - a slot that is a copy (create.from) with the
-		 *	picture and the alt texts of the slot it is a copy of -, and the slots
+		 *	their create names - a slot that is a copy (create.from) with the
+		 *	picture and the alt texts of the slot it is a copy of; the plan has none
+		 *	of the two for an account that may not manage images -, and the slots
 		 *	a renamed section moves to, with the alt texts of the old ones. Nothing in the project points
 		 *	at any of them yet, so a save that stops after this leaves keys and
 		 *	slots that are used by nobody - and nothing that was there changed.

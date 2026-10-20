@@ -31,27 +31,33 @@ body.nino-scroll-atf .nino-frame-header .nino-frame-header-strip {
 	min-width: 0;
 }
 
+/*	The block is as wide as what is in it, the picture or the name, and no wider than the room its column has. The kernel
+	gives a logo the width of 10vw, and a grid item that has a width of its own is not stretched to its column: at 390px
+	the block was 39px wide, which left 7px for the picture between 16px of padding on each side	*/
 .nino-frame-header .nino-frame-header-brand {
 	display: flex;
 	align-items: center;
+	width: fit-content;
+	max-width: 100%;
 	min-height: 5.25rem;
 	padding: var(--space-1) var(--space-3);
 	background-color: var(--color-secondary);
 }
 
+/*	The picture is 3rem tall, the height this set gives a logo (the block is 4.75rem at 390px, 3.75rem of it inside the
+	padding), as wide as its ratio makes it, and no wider than the block	*/
 .nino-frame-header .nino-frame-header-brand img {
-	width: clamp(7rem, 10vw, 10rem);
-	max-height: 3rem;
+	width: auto;
+	max-width: 100%;
+	height: 3rem;
 	object-fit: contain;
 	object-position: left center;
 }
 
 /*	Until there is a logo the block holds the name, which is written on a surface
 	text survives on - the brand colour as it was picked is shown and never written
-	on - and is as wide as the name needs	*/
+	on	*/
 .nino-frame-header .nino-frame-header-brand:not(:has(img)) {
-	width: max-content;
-	max-width: 100%;
 	background-color: var(--color-primary);
 	color: var(--color-primary-text);
 }

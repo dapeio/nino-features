@@ -1076,6 +1076,51 @@ foreach( Setup::available( $library, 'header' ) as $set ) {
 
 check( 'every header whose logo link asks for the slot writes the name of the company after it, in the span of the kernel\'s own frame, so that a link with no logo in it has a name to read'. ( $nameProblems === [] ? '' : ' - '. implode( ', ', $nameProblems ) ), $namedBy > 0 && $nameProblems === [] );
 
+/*	The brand link of a footer is the logo link of a header over again - a picture in a link, which is a link with nothing in it to see where no logo is
+	uploaded - and says the name of the company the same way, in the span of the frame after the logo, which a footer writes as a pair and so after its
+	[/image]. Nino.css takes that span away for the link of its own logo and for no other class, so the stylesheet of the footer does, behind a picture.
+	And with a picture and an empty alt text, as without one, the link has no name for whoever listens: the header's is named by the heading that stands
+	in it, a footer has none, so the name is written once more in the class that hides a text from the eye and from nobody else, as the kernel names its
+	burger. Read from the library's own list of footers - those whose template draws the logo in a link, whatever class the link has - so that a footer
+	that is added without them fails here rather than on a site	*/
+$footerProblems = [];
+$footerLinks = 0;
+
+foreach( Setup::available( $library, 'footer' ) as $set ) {
+
+	$source = (string) file_get_contents( Setup::file( $library, 'footer', $set, 'template' ) );
+
+	// The link the logo stands in - a logo that stands in no link leaves no link with nothing in it
+	if( preg_match( '#<a\b([^>]*)>((?:(?!</a>).)*?\[image /logo(?:(?!</a>).)*)</a>#s', $source, $link ) !== 1 )
+		continue;
+
+	$footerLinks++;
+
+	if( preg_match( '#\[image /logo[^\]]*\](?:(?:(?!</a>).)*?\[/image\])?\s*<span aria-hidden="true">\[\[/project/company/general/name\]\]</span>#s', $link[2] ) !== 1 )
+		$footerProblems[] = $set. ': no name after the logo';
+
+	// The name for whoever listens stands in the link and outside the pair of the logo: inside the pair it is drawn with the picture alone
+	$outside = (string) preg_replace( '#\[image /logo[^\]]*\](?:(?:(?!</a>).)*?\[/image\])?#s', '', $link[2] );
+
+	if( str_contains( $outside, '<span class="nino-sr-only">[[/project/company/general/name]]</span>' ) === false )
+		$footerProblems[] = $set. ': the link has no name for whoever listens';
+
+	// The stylesheet takes the span away behind a picture for the class of that link, in a rule that holds on every medium - a rule
+	// under an @media is read as none, as a rule for another class is
+	$classes = preg_match( '/\bclass="([^"]*)"/', $link[1], $found ) === 1 ? preg_split( '/\s+/', trim( $found[1] ) ) : [];
+	$sheet = (string) preg_replace( '/@media[^{]*\{(?:[^{}]*+\{[^{}]*+\})*+[^{}]*+\}/', '', designPlain( (string) file_get_contents( Setup::file( $library, 'footer', $set ) ) ) );
+	$hidden = false;
+
+	foreach( (array) $classes as $class )
+		if( $class !== '' && preg_match( '/(?:^|[\s,}])[^{},]*\.'. preg_quote( (string) $class, '/' ). ':has\(\s*img\s*\)\s*>\s*span\[aria-hidden=["\']?true["\']?\]\s*\{[^{}]*\bdisplay\s*:\s*none/', $sheet ) === 1 )
+			$hidden = true;
+
+	if( $hidden === false )
+		$footerProblems[] = $set. ': the name stays beside a picture';
+}
+
+check( 'every footer whose logo stands in a link writes the name of the company after it, in the span of the frame of the kernel, and the same name for whoever listens beside it, and its stylesheet takes the span away where the link holds a picture - so that the link has a name to read with no logo in it and a name to hear with or without one'. ( $footerProblems === [] ? '' : ' - '. implode( ', ', $footerProblems ) ), $footerLinks > 0 && $footerProblems === [] );
+
 /*	The whitespace position of the Global tab is the kernel's token, and Nino.css scales what it spaces with it: the padding of a section and of
 	a card by --whitespace-scale, the room under a text by --whitespace-text. A content set says that spacing again, after Nino.css, so it has to
 	say it with the same factors, or the position stops at the set - a section as high at +2 as at -2. Read from the library's own list of

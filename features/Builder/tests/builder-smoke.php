@@ -25,9 +25,10 @@ declare(strict_types=1);
  *											the Document - listing, loading, saving with a hash, the keys
  *											and the slots a save makes, the texts it writes to the keys
  *											(new ones and ones that are there, in the language asked for)
- *											and the alt texts a new slot is made with - for which the
- *											account has to have the Images panel's permission - and how all
- *											of it is put back when the save fails -, the refusals, the wrap and
+ *											and the alt texts a new slot is made with - written for an
+ *											account that has the Images panel's permission and left out for
+ *											one that has not - and how all of it is put back when the save
+ *											fails -, the refusals, the wrap and
  *											the animation of the template, a copy of a template with its
  *											keys and slots and what stops it - and last the page the
  *											builder wrote, rendered by the kernel. The panel's script has
@@ -2425,57 +2426,59 @@ $appData['/nino/html/images']['/template/page-texts/src/photo'] = [ 'label' => '
 $appData['/nino/html/images']['/template/page-texts/src/bare'] = [ 'label' => 'Source bare', 'width' => 800, 'height' => 400, 'filename' => null ];
 \Nino\AppData::writeContentData( $appData, [ '/nino/html/images' ] );
 
-// Without the permission of the Images panel no alt text is written: it is that panel's to write, for a slot that is there and for one the save makes
+// Without the permission of the Images panel no alt text is written and no picture is handed on: they are that panel's to write, for a slot that is there and for one the save makes. An account that has
+// not its permission is not refused for them - the save goes through, and its slots are made without them - and one that has it has them written
 \Nino\Auth::insertUser( $appData, 'noimages@example.com', 'correct horse battery staple', [ '/_admin/builder/manage', '/_admin/slots/manage', '/_admin/keys/manage' ] );
-\Nino\Auth::loginUser( $appData, 'noimages@example.com', 'correct horse battery staple' );
-$structure = \Nino\Modules\Builder\Document::load( $appData, 'page-texts' );
+\Nino\Auth::insertUser( $appData, 'images@example.com', 'correct horse battery staple', [ '/_admin/builder/manage', '/_admin/slots/manage', '/_admin/keys/manage', '/_admin/images/manage' ] );
+\Nino\Auth::insertUser( $appData, 'noslots@example.com', 'correct horse battery staple', [ '/_admin/builder/manage', '/_admin/keys/manage' ] );
 $configFile = \Nino\Filesystem::path( $appData, '/config.php' );
 // The state as it is when it is asked for: an arrow function, or a use by value, keeps $appData as it was when the closure was made, and would never show a slot the save made
 $stateNow = static function() use ( &$appData, $configFile, $textsPath ): array {
 	return [ \Nino\Images::getSlots( $appData ), (string) file_get_contents( $configFile ), (string) file_get_contents( $textsPath ) ];
 };
-$settled = $stateNow();
-$marked = static function( array $create ) use ( $structure, $registry ): array {
-	$model = $structure['model'];
-	$model['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'image', 'source' => '/template/page-texts/z/mood', 'text' => null, 'attributes' => $registry['components']['image']['defaults'], 'create' => $create ];
+$slotOf = static function( string $uri ) use ( &$appData ): array {
+	return \Nino\Images::getSlot( $appData, $uri ) ?: [];
+};
+// What the panel sends for a save that makes pictures: a new picture with the placeholder alt text of each language of the site, the picture behind a section and the one behind a column with
+// alt texts typed for them, and the copy of a picture, which says which slot it is a copy of
+$pictures = static function( array $model, string $name ) use ( $registry ): array {
+	$image = $registry['components']['image']['defaults'];
+	$model['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'image', 'source' => '/template/page-texts/z/'. $name, 'text' => null, 'attributes' => $image, 'create' => [ 'label' => 'Image', 'width' => 600, 'height' => 300, 'alt' => [ 'en_US' => 'Image', 'de_DE' => 'Bild' ] ] ];
+	$model['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'image', 'source' => '/template/page-texts/z/'. $name. '-copy', 'text' => null, 'attributes' => $image, 'create' => [ 'label' => 'Copy', 'width' => 800, 'height' => 400, 'from' => '/template/page-texts/src/photo' ] ];
+	$model['blocks'][0]['background'] = [ 'slot' => '/template/page-texts/z/'. $name. '-behind', 'focus' => null, 'create' => [ 'label' => 'Behind', 'width' => 600, 'height' => 300, 'alt' => [ 'de_DE' => 'Eine Stimmung' ] ] ];
+	$model['blocks'][0]['cols'][0]['background'] = [ 'slot' => '/template/page-texts/z/'. $name. '-column', 'focus' => null, 'create' => [ 'label' => 'Column', 'width' => 600, 'height' => 300, 'alt' => [ 'en_US' => 'A column mood' ] ] ];
 	return $model;
 };
-$withAlt = \Nino\Modules\Builder\Document::save( $appData, 'page-texts', $marked( [ 'label' => 'Mood', 'width' => 600, 'height' => 300, 'alt' => [ 'en_US' => 'A mood' ] ] ), $structure['hash'] );
-$behind = $structure['model'];
-$behind['blocks'][0]['background'] = [ 'slot' => '/template/page-texts/z/mood', 'focus' => null, 'create' => [ 'label' => 'Mood', 'width' => 600, 'height' => 300, 'alt' => [ 'de_DE' => 'Eine Stimmung' ] ] ];
-$behindAlt = \Nino\Modules\Builder\Document::save( $appData, 'page-texts', $behind, $structure['hash'] );
-$mixed = $marked( [ 'label' => 'Mood', 'width' => 600, 'height' => 300, 'alt' => [ 'en_US' => 'A mood' ] ] );
-$mixed['blocks'][0]['background'] = [ 'slot' => '/template/page-texts/z/calm', 'focus' => null, 'create' => [ 'label' => 'Calm', 'width' => 600, 'height' => 300 ] ];
-$mixedAlt = \Nino\Modules\Builder\Document::save( $appData, 'page-texts', $mixed, $structure['hash'] );
-check( 'an account that may make slots but may not use the Images panel cannot give a new slot alt texts through the builder - for a picture or for a background, whichever slot of the save has them: 403, the permission named, before anything is made - no slot, nothing in the config, the file as it was',
-	$withAlt['status'] === 403 && $withAlt['code'] === 'permission' && $withAlt['problems'] === [ '/_admin/images/manage' ] && $behindAlt['status'] === 403 && $behindAlt['code'] === 'permission' && $behindAlt['problems'] === [ '/_admin/images/manage' ]
-	&& $mixedAlt['status'] === 403 && $mixedAlt['code'] === 'permission' && $mixedAlt['problems'] === [ '/_admin/images/manage' ] && $stateNow() === $settled );
 
-$inColumn = $structure['model'];
-$inColumn['blocks'][0]['cols'][0]['background'] = [ 'slot' => '/template/page-texts/z/column-mood', 'focus' => null, 'create' => [ 'label' => 'Mood', 'width' => 600, 'height' => 300, 'alt' => [ 'en_US' => 'A column mood' ] ] ];
-$inColumnAlt = \Nino\Modules\Builder\Document::save( $appData, 'page-texts', $inColumn, $structure['hash'] );
-check( '...nor to the slot of a picture behind a column: 403, the permission named, before anything is made', $inColumnAlt['status'] === 403 && $inColumnAlt['code'] === 'permission' && $inColumnAlt['problems'] === [ '/_admin/images/manage' ] && $stateNow() === $settled );
-
-// A copy of a slot that has a picture or alt texts hands them on, which is the Images panel's to write: the account that has not its permission is refused, before anything is made - and one that copies
-// what has neither is asked for nothing
+\Nino\Auth::loginUser( $appData, 'images@example.com', 'correct horse battery staple' );
 $structure = \Nino\Modules\Builder\Document::load( $appData, 'page-texts' );
-$copying = static function( string $from ) use ( $structure ): array {
-	$model = $structure['model'];
-	$model['blocks'][0]['background'] = [ 'slot' => '/template/page-texts/z/copy-of-'. basename( $from ), 'focus' => null, 'create' => [ 'label' => 'Copy', 'width' => 800, 'height' => 400, 'from' => $from ] ];
-	return $model;
-};
-$beforeCopy = $stateNow();
-$copyRefused = \Nino\Modules\Builder\Document::save( $appData, 'page-texts', $copying( '/template/page-texts/src/photo' ), $structure['hash'] );
-check( 'an account that may make slots but may not use the Images panel cannot copy a slot that has a picture or alt texts - 403, the permission named, before anything is made: no slot, nothing in the config, no file, the template as it was',
-	$copyRefused['status'] === 403 && $copyRefused['code'] === 'permission' && $copyRefused['problems'] === [ '/_admin/images/manage' ] && $stateNow() === $beforeCopy
-	&& \Nino\Images::read( $appData, 'template/page-texts/z/copy-of-photo.800x400.jpg' ) === false );
+$granted = \Nino\Modules\Builder\Document::save( $appData, 'page-texts', $pictures( $structure['model'], 'granted' ), $structure['hash'] );
+check( 'an account that may manage images has the alt texts of its new slots written - the placeholder of each language for a picture, the texts typed for the picture behind a section and for the one behind a column - and a copy takes over the alt texts and the picture of the slot it is a copy of',
+	$granted['status'] === 200 && $slotOf( '/template/page-texts/z/granted' )['alt'] === [ 'en_US' => 'Image', 'de_DE' => 'Bild' ] && $slotOf( '/template/page-texts/z/granted-behind' )['alt'] === [ 'de_DE' => 'Eine Stimmung' ]
+	&& $slotOf( '/template/page-texts/z/granted-column' )['alt'] === [ 'en_US' => 'A column mood' ] && $slotOf( '/template/page-texts/z/granted-copy' )['alt'] === [ 'en_US' => 'A card', 'de_DE' => 'Eine Karte' ]
+	&& \Nino\Images::read( $appData, 'template/page-texts/z/granted-copy.800x400.jpg' ) === 'the bytes of a card picture' );
 
-$without = $marked( [ 'label' => 'Mood', 'width' => 600, 'height' => 300 ] );
-$without['blocks'][0]['background'] = [ 'slot' => '/template/page-texts/z/calm', 'focus' => null, 'create' => [ 'label' => 'Calm', 'width' => 600, 'height' => 300, 'alt' => [] ] ];
-$withoutAlt = \Nino\Modules\Builder\Document::save( $appData, 'page-texts', $without, $structure['hash'] );
-check( '...the same account makes slots that have no alt text to write - a mark with none, a mark with an empty list of them: the Images panel is asked for only where there is a text for it', $withoutAlt['status'] === 200
-	&& \Nino\Images::getSlot( $appData, '/template/page-texts/z/mood' ) !== false && \Nino\Images::getSlot( $appData, '/template/page-texts/z/calm' ) !== false
-	&& ( ( \Nino\Images::getSlot( $appData, '/template/page-texts/z/mood' ) ?: [] )['alt'] ?? [] ) === [] && ( ( \Nino\Images::getSlot( $appData, '/template/page-texts/z/calm' ) ?: [] )['alt'] ?? [] ) === [] );
+\Nino\Auth::loginUser( $appData, 'noimages@example.com', 'correct horse battery staple' );
+$structure = \Nino\Modules\Builder\Document::load( $appData, 'page-texts' );
+$denied = \Nino\Modules\Builder\Document::save( $appData, 'page-texts', $pictures( $structure['model'], 'denied' ), $structure['hash'] );
+$emptied = array_filter( [ 'denied', 'denied-behind', 'denied-column', 'denied-copy' ], static function( string $name ) use ( $slotOf ): bool {
+	$slot = $slotOf( '/template/page-texts/z/'. $name );
+	return $slot !== [] && ( $slot['alt'] ?? [] ) === [] && ( $slot['filename'] ?? null ) === null;
+} );
+check( 'the same save by an account that may make slots but may not manage images is not refused for it: 200 - every slot is made, with its label and its size, and none of them has an alt text',
+	$denied['status'] === 200 && count( $emptied ) === 4 && $slotOf( '/template/page-texts/z/denied' )['label'] === 'Image' && $slotOf( '/template/page-texts/z/denied' )['width'] === 600 && $slotOf( '/template/page-texts/z/denied-copy' )['height'] === 400
+	&& str_contains( (string) file_get_contents( $textsPath ), '[image /template/page-texts/z/denied' ) === true && str_contains( (string) file_get_contents( $textsPath ), '[image /template/page-texts/z/denied-copy' ) === true );
+check( '...the slot that is a copy takes over neither the alt texts nor the picture of the slot it is a copy of: it is made empty - no file is stored for it - and the slot it is a copy of is as it was',
+	\Nino\Images::read( $appData, 'template/page-texts/z/denied-copy.800x400.jpg' ) === false && $slotOf( '/template/page-texts/src/photo' )['filename'] === $copyFrom
+	&& $slotOf( '/template/page-texts/src/photo' )['alt'] === [ 'en_US' => 'A card', 'de_DE' => 'Eine Karte', 'xx_XX' => 'A language that is gone' ] );
+
+// Nothing else is loosened: the permission of the Slots tab is asked for as it was, whether or not the account may manage images
+\Nino\Auth::loginUser( $appData, 'noslots@example.com', 'correct horse battery staple' );
+$structure = \Nino\Modules\Builder\Document::load( $appData, 'page-texts' );
+$beforeRefusal = $stateNow();
+$noSlotsAnswer = \Nino\Modules\Builder\Document::save( $appData, 'page-texts', $pictures( $structure['model'], 'refused' ), $structure['hash'] );
+check( 'an account that may not make slots is refused as it was - 403, the permission of the Slots tab named and no other, before anything is made: no slot, nothing in the config, the template as it was',
+	$noSlotsAnswer['status'] === 403 && $noSlotsAnswer['code'] === 'permission' && $noSlotsAnswer['problems'] === [ '/_admin/slots/manage' ] && $stateNow() === $beforeRefusal && $slotOf( '/template/page-texts/z/refused' ) === [] );
 \Nino\Auth::loginUser( $appData, 'dev@example.com', 'correct horse battery staple' );
 
 $structure = \Nino\Modules\Builder\Document::load( $appData, 'page-texts' );

@@ -39,6 +39,14 @@ body.nino-scroll-atf .nino-frame-header .nino-scroll-header {
 	max-width: 14rem;
 }
 
+/*	At the smallest screens the mark is 7rem wide, as in the narrowest of the other sets: a logo of the ratio 4:1 is 28px
+	high there, and was 20px	*/
+@media (max-width: 767px) {
+	.nino-frame-header .nino-logo {
+		width: 7rem;
+	}
+}
+
 .nino-frame-header .nino-frame-header-nav {
 	margin-left: auto;
 }

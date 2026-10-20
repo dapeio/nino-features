@@ -22,8 +22,9 @@ namespace Nino\Modules\Builder {
 	 *										alt texts of new slots - so every action, the reads among
 	 *										them, asks for MANAGE_PERM; the keys and the slots are made
 	 *										and the texts written by the panels that own them, which ask
-	 *										for their own (the alt texts are the Images panel's, and the
-	 *										save asks for its permission itself). The pictures of the
+	 *										for their own (the alt texts are the Images panel's: the save
+	 *										writes them for an account that has its permission and leaves
+	 *										them out for one that has not). The pictures of the
 	 *										slots are not the panel's to store: the script posts them to
 	 *										the Images panel itself, as it reads the texts of the Text
 	 *										panel, and no action of this panel stands in the way.

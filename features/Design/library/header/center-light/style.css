@@ -1,6 +1,6 @@
 /*	@name				Center, light
- *	@description	A centred navigation and a header area that gives the page content room.
- *	@description-de	Eine zentrierte Navigation und ein Header-Bereich, der dem Seiteninhalt Platz gibt.
+ *	@description	A centred navigation in light type on a see-through bar, made for pages that open with a dark cover or hero; over a light first section it cannot be read.
+ *	@description-de	Eine zentrierte Navigation in heller Schrift auf einer durchscheinenden Leiste, gemacht für Seiten, die mit einem dunklen Cover oder Hero beginnen; über einem hellen ersten Abschnitt ist sie nicht lesbar.
  *
  *	The name and the description are what the Design panel lists this
  *	variant as. Every library file carries them; a file without a @name
@@ -40,6 +40,16 @@ body.nino-scroll-atf .nino-frame-header .nino-scroll-header {
 
 .nino-frame-header .nino-nav-burger > button[aria-expanded="true"] > svg {
 	fill: var(--color-title-default);
+}
+
+/*	The navigation is in the middle of the bar, and so is the burger. The open list starts at the top of the page, and the button,
+	which stands above it, lies over its first line - the logo of the list or, without one, the first link - so the list starts under the bar. The room is there
+	while the button is shown and not only while the list is open: the kernel folds the list over .4s, and a padding
+	that went with the open state let the first link jump back under the button while the fold still ran	*/
+@media (max-width: 767px) {
+	.nino-frame-header .nino-nav-burger > button:not([hidden]) ~ .nino-nav-content {
+		padding-top: 5rem;
+	}
 }
 
 

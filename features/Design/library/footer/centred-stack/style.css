@@ -28,6 +28,20 @@
 	margin: 0;
 }
 
+/*	Until there is a logo the brand link holds the name of the company, set the way a title of the
+	footer is - the face and the weight of the title role, in the ink of the footer - at the size of a
+	mark. With a picture in the link the picture is the mark, and the copy of the name is gone	*/
+.nino-frame-footer .nino-frame-footer-brand > span[aria-hidden="true"] {
+	font-family: var(--fontfamily-title);
+	font-size: 1.25rem;
+	font-weight: var(--font-title-weight);
+	line-height: 1.2;
+}
+
+.nino-frame-footer .nino-frame-footer-brand:has(img) > span[aria-hidden="true"] {
+	display: none;
+}
+
 .nino-frame-footer .nino-frame-footer-nav ul {
 	display: flex;
 	flex-wrap: wrap;

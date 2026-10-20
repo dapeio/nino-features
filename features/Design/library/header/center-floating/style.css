@@ -49,6 +49,16 @@ body.nino-scroll-atf .nino-frame-header .nino-scroll-header {
 	fill: var(--color-title);
 }
 
+/*	The navigation is in the middle of the bar, and so is the burger. The open list starts at the top of the page, and the button,
+	which stands above it, lies over its first line - the logo of the list or, without one, the first link - so the list starts under the bar. The room is there
+	while the button is shown and not only while the list is open: the kernel folds the list over .4s, and a padding
+	that went with the open state let the first link jump back under the button while the fold still ran	*/
+@media (max-width: 767px) {
+	.nino-frame-header .nino-nav-burger > button:not([hidden]) ~ .nino-nav-content {
+		padding-top: calc(4.5rem + var(--space-1));
+	}
+}
+
 body main {
 	padding-top: clamp(6rem, calc(var(--space-6) + var(--space-1)), 9rem);
 }
