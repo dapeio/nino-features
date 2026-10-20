@@ -31,11 +31,19 @@ body.nino-scroll-atf .nino-frame-header .nino-scroll-header {
 	background-image: none;
 }
 
+/*	Until there is a logo the mark is the name, which is as wide as it is: set in
+	the width of a small picture it takes two lines, and the bar is hardly taller
+	than that	*/
+.nino-frame-header .nino-logo:not(:has(img)) {
+	width: auto;
+	max-width: 14rem;
+}
+
 .nino-frame-header .nino-frame-header-nav {
 	margin-left: auto;
 }
 
-.nino-frame-header .nino-nav-burger > label > svg {
+.nino-frame-header .nino-nav-burger > button > svg {
 	fill: var(--color-title);
 }
 

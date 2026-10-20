@@ -1040,6 +1040,42 @@ foreach( Setup::available( $library, 'header' ) as $set ) {
 
 check( 'no header colours a text with --nino-default-focus, and a header whose bar is see-through declares the focus role of its own surface'. ( $roleProblems === [] ? '' : ' - '. implode( ', ', $roleProblems ) ), $roleProblems === [] );
 
+/*	The burger of the kernel is a button: .nino-nav-burger > button with aria-expanded and aria-controls, the icon in it, the list beside it, the open
+	state on the button (and nino-is-open on the wrapper). A header that styles what the burger was - a label under it, the checkbox in it, input:checked
+	and input:focus-visible with the icon beside them - styles nothing, and its menu opens as the kernel's own and looks as no header meant it. The old
+	forms are looked for wherever a header says them - under .nino-nav-burger, or as input:checked and input[type="checkbox"] on their own. Read from
+	the library's own list of headers, so that a header that is added in the old form fails here rather than on a site	*/
+$burgerProblems = [];
+
+foreach( Setup::available( $library, 'header' ) as $set )
+	if( preg_match( '/\.nino-nav-burger[^{,]*\b(?:label|input)\b|\binput\s*(?::checked|\[\s*type\s*=\s*["\']?checkbox)/', designPlain( (string) file_get_contents( Setup::file( $library, 'header', $set ) ) ) ) === 1 )
+		$burgerProblems[] = $set;
+
+check( 'no header styles the burger as it was - a label or an input under .nino-nav-burger, or input:checked or input[type="checkbox"] wherever it stands'. ( $burgerProblems === [] ? '' : ' - '. implode( ', ', $burgerProblems ) ), $burgerProblems === [] );
+
+/*	The logo link says the name of the company until there is a logo: the base frame of the kernel writes <span aria-hidden="true">[[/project/company/general/name]]</span>
+	after [image /logo] - or after its [/image] where a header writes the enclosing form -, and Nino.css takes it away again once the link holds a picture. A header that draws the link with nothing but the shortcode in it
+	leaves a link with nothing in it to see wherever no logo is uploaded, which is a stop of the Tab key that nobody can find. Read from the library's own
+	list of headers - those whose template asks for the slot, [image /logo, whatever class the link has - so that a header that is added without the
+	span in the link fails here rather than on a site	*/
+$nameProblems = [];
+$namedBy = 0;
+
+foreach( Setup::available( $library, 'header' ) as $set ) {
+
+	$source = (string) file_get_contents( Setup::file( $library, 'header', $set, 'template' ) );
+
+	if( str_contains( $source, '[image /logo' ) === false )
+		continue;
+
+	$namedBy++;
+
+	if( preg_match( '#<a\b[^>]*>(?:(?!</a>).)*?\[image /logo[^\]]*\](?:(?:(?!</a>).)*?\[/image\])?\s*<span aria-hidden="true">\[\[/project/company/general/name\]\]</span>#s', $source ) !== 1 )
+		$nameProblems[] = $set;
+}
+
+check( 'every header whose logo link asks for the slot writes the name of the company after it, in the span of the kernel\'s own frame, so that a link with no logo in it has a name to read'. ( $nameProblems === [] ? '' : ' - '. implode( ', ', $nameProblems ) ), $namedBy > 0 && $nameProblems === [] );
+
 /*	The whitespace position of the Global tab is the kernel's token, and Nino.css scales what it spaces with it: the padding of a section and of
 	a card by --whitespace-scale, the room under a text by --whitespace-text. A content set says that spacing again, after Nino.css, so it has to
 	say it with the same factors, or the position stops at the set - a section as high at +2 as at -2. Read from the library's own list of

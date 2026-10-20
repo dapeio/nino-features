@@ -45,12 +45,12 @@ body.nino-scroll-atf .nino-frame-header .nino-frame-header-rail {
 	margin-left: auto;
 }
 
-.nino-frame-header .nino-nav-burger > label > svg {
+.nino-frame-header .nino-nav-burger > button > svg {
 	fill: var(--color-section-black-text);
 }
 
-.nino-frame-header .nino-nav-burger input:checked ~ svg {
-	fill: var(--color-title);
+.nino-frame-header .nino-nav-burger > button[aria-expanded="true"] > svg {
+	fill: var(--color-title-default);
 }
 
 .nino-frame-header .nino-frame-header-meta {

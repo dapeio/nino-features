@@ -31,10 +31,15 @@ body.nino-scroll-atf .nino-frame-header .nino-scroll-header {
 	min-height: 0;
 	margin: 0;
 	background-image: none;
+	color: var(--color-section-dark-text);
 }
 
-.nino-frame-header .nino-nav-burger > label > svg {
+.nino-frame-header .nino-nav-burger > button > svg {
 	fill: var(--color-section-dark-text);
+}
+
+.nino-frame-header .nino-nav-burger > button[aria-expanded="true"] > svg {
+	fill: var(--color-title-default);
 }
 
 

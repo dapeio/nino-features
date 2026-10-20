@@ -37,33 +37,24 @@ body.nino-scroll-up .nino-frame-header .nino-scroll-header {
 	margin-left: auto;
 }
 
-.nino-frame-header .nino-nav-burger {
+.nino-frame-header .nino-nav-burger:has(> button:not([hidden])) {
 	position: relative;
 	width: 2rem;
 	height: 2rem;
 }
 
-.nino-frame-header .nino-nav-burger > label {
+/*	The kernel's button goes away from 768px, where its list is the bar. The menu
+	of this header is an overlay at every width, so the button stays - once the
+	script has shown it, which is when the list is the overlay: until then, and
+	where there is no button, it is the kernel's list	*/
+.nino-frame-header .nino-nav-burger > button:not([hidden]) {
 	display: block;
 	width: 100%;
 	height: 100%;
 }
 
-.nino-frame-header .nino-nav-burger input[type="checkbox"] {
+.nino-frame-header .nino-nav-burger > button > svg {
 	display: block;
-	position: absolute;
-	inset: 0;
-	z-index: 103;
-	width: 2rem;
-	height: 2rem;
-	opacity: 0;
-	cursor: pointer;
-}
-
-.nino-frame-header .nino-nav-burger > label > svg {
-	display: block;
-	position: relative;
-	z-index: 102;
 	width: 2rem;
 	height: 2rem;
 	margin: 0;
@@ -71,35 +62,35 @@ body.nino-scroll-up .nino-frame-header .nino-scroll-header {
 	transform: none;
 }
 
-.nino-frame-header .nino-nav-burger > label > svg rect {
+.nino-frame-header .nino-nav-burger > button > svg rect {
 	transform-box: fill-box;
 	transform-origin: center;
 	transition: transform .25s ease, opacity .2s ease;
 }
 
-.nino-frame-header .nino-nav-burger input:focus-visible ~ svg {
+.nino-frame-header .nino-nav-burger > button:focus-visible {
 	outline: 2px solid var(--color-accent);
 	outline-offset: .3rem;
 }
 
-.nino-frame-header .nino-nav-burger input:checked ~ svg {
+.nino-frame-header .nino-nav-burger > button[aria-expanded="true"] > svg {
 	fill: var(--color-title);
 	transform: none;
 }
 
-.nino-frame-header .nino-nav-burger input:checked ~ svg rect:nth-child(1) {
+.nino-frame-header .nino-nav-burger > button[aria-expanded="true"] > svg rect:nth-child(1) {
 	transform: translateY(7px) rotate(45deg);
 }
 
-.nino-frame-header .nino-nav-burger input:checked ~ svg rect:nth-child(2) {
+.nino-frame-header .nino-nav-burger > button[aria-expanded="true"] > svg rect:nth-child(2) {
 	opacity: 0;
 }
 
-.nino-frame-header .nino-nav-burger input:checked ~ svg rect:nth-child(3) {
+.nino-frame-header .nino-nav-burger > button[aria-expanded="true"] > svg rect:nth-child(3) {
 	transform: translateY(-7px) rotate(-45deg);
 }
 
-.nino-frame-header .nino-nav-burger .nino-nav-content {
+.nino-frame-header .nino-nav-burger > button:not([hidden]) ~ .nino-nav-content {
 	display: grid;
 	position: fixed;
 	inset: 0;
@@ -118,7 +109,7 @@ body.nino-scroll-up .nino-frame-header .nino-scroll-header {
 	transition: max-height 0s linear .3s, opacity .3s ease, visibility 0s linear .3s;
 }
 
-.nino-frame-header .nino-nav-burger input:checked ~ .nino-nav-content {
+.nino-frame-header .nino-nav-burger > button[aria-expanded="true"] ~ .nino-nav-content {
 	max-height: 100dvh;
 	visibility: visible;
 	opacity: 1;
@@ -130,7 +121,7 @@ body.nino-scroll-up .nino-frame-header .nino-scroll-header {
 	display: none;
 }
 
-.nino-frame-header .nino-nav-burger .nino-nav-content ul {
+.nino-frame-header .nino-nav-burger > button:not([hidden]) ~ .nino-nav-content ul {
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -141,7 +132,7 @@ body.nino-scroll-up .nino-frame-header .nino-scroll-header {
 	padding: 0;
 }
 
-.nino-frame-header .nino-nav-burger input:checked ~ .nino-nav-content li a {
+.nino-frame-header .nino-nav-burger > button[aria-expanded="true"] ~ .nino-nav-content li a {
 	display: inline-block;
 	padding: .15em .3em;
 	color: var(--color-title);
@@ -154,13 +145,13 @@ body.nino-scroll-up .nino-frame-header .nino-scroll-header {
 	border: 0;
 }
 
-.nino-frame-header .nino-nav-burger input:checked ~ .nino-nav-content li a:hover,
-.nino-frame-header .nino-nav-burger input:checked ~ .nino-nav-content li a:focus,
-.nino-frame-header .nino-nav-burger input:checked ~ .nino-nav-content li a.nino-is-active {
+.nino-frame-header .nino-nav-burger > button[aria-expanded="true"] ~ .nino-nav-content li a:hover,
+.nino-frame-header .nino-nav-burger > button[aria-expanded="true"] ~ .nino-nav-content li a:focus,
+.nino-frame-header .nino-nav-burger > button[aria-expanded="true"] ~ .nino-nav-content li a.nino-is-active {
 	color: var(--color-accent);
 }
 
-body:has(.nino-frame-header .nino-nav-burger input:checked) {
+body:has(.nino-frame-header .nino-nav-burger > button[aria-expanded="true"]) {
 	overflow: hidden;
 }
 
@@ -181,19 +172,19 @@ body main:has(> .nino-wrap > .nino-parallex:first-child) {
 		padding-left: var(--space-2);
 	}
 
-	.nino-frame-header .nino-nav-burger .nino-nav-content {
+	.nino-frame-header .nino-nav-burger > button:not([hidden]) ~ .nino-nav-content {
 		padding-right: var(--space-2);
 		padding-left: var(--space-2);
 	}
 
-	.nino-frame-header .nino-nav-burger input:checked ~ .nino-nav-content li a {
+	.nino-frame-header .nino-nav-burger > button[aria-expanded="true"] ~ .nino-nav-content li a {
 		font-size: clamp(2rem, 12vw, 3.6rem);
 	}
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.nino-frame-header .nino-nav-burger > label > svg rect,
-	.nino-frame-header .nino-nav-burger .nino-nav-content {
+	.nino-frame-header .nino-nav-burger > button > svg rect,
+	.nino-frame-header .nino-nav-burger > button:not([hidden]) ~ .nino-nav-content {
 		transition: none;
 	}
 	.nino-frame-header .nino-scroll-header {

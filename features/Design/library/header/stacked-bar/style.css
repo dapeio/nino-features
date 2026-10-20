@@ -38,7 +38,7 @@ body.nino-scroll-atf .nino-frame-header .nino-frame-header-shell {
 	width: 100%;
 }
 
-.nino-frame-header .nino-nav-burger > label > svg {
+.nino-frame-header .nino-nav-burger > button > svg {
 	fill: var(--color-title);
 }
 
