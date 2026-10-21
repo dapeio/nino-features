@@ -42,6 +42,9 @@ $appData['/nino/dir'] 								= '';
  */
 function postsResolve( array &$appData, string $path ): array {
 	unset( $appData['./posts/current'] );
+	// A request begins with the fills of the files alone: what the post of the one before made of the page's title and description is gone
+	foreach( [ 'title', 'description' ] as $detail )
+		\Nino\Html::removeFill( $appData, '/_nino/webpage/blog/post/'. $detail );
 	$request = ninoVisit( $appData, $path );
 	// The route matched by then, so the response uri is the section's own
 	$request['/nino/http/response']['uri'] = '/blog/post';
@@ -663,6 +666,188 @@ else {
 	check( '...and the page of a post whose title is that placeholder names no host in its policy: the title is text there',
 		str_contains( $policyOf( postsRender( $appData, $head ) ), 'x.invalid' ) === false );
 }
+
+echo "\nA post in a language that has none of it\n";
+
+/*	What a language has no text for is the text of the native one (\Nino\Elements::getElementWithFallback()),
+	and every post is drawn through it: a post that exists in one language only is a post in the list of the
+	other, and in the block that shows it, and says whose words they are. The words are made up - what is looked
+	at is where each of them stands, and what is said about it, and not what it says	*/
+$word = static fn( string $seed ): string => 'w'. substr( md5( $seed ), 0, 7 );
+
+$sectionsKept = \Nino\Filesystem::getFileContent( $appData, \Nino\Modules\Posts\Sections::PATH, [] );
+\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Posts\Sections::PATH, [ 'sections' => [
+	'blog' => [ 'type' => '/posts', 'path' => 'blog', 'perPage' => 50 ],
+] ] );
+unset( $appData['./posts/sections'] );
+
+\Nino\Elements::insertElement( $appData, '/posts/lang-both', [ 'title' => 'M-'. $word( 'both-de' ), 'summary' => $word( 'both-de-s' ), 'date' => '2026-01-10' ], 'de_DE' );
+\Nino\Elements::updateElement( $appData, '/posts/lang-both', [ 'title' => 'M-'. $word( 'both-en' ), 'summary' => $word( 'both-en-s' ) ], 'en_US' );
+\Nino\Elements::insertElement( $appData, '/posts/lang-german', [ 'title' => 'A-'. $word( 'only-de' ), 'summary' => $word( 'only-de-s' ), 'date' => '2026-01-11' ], 'de_DE' );
+\Nino\Elements::insertElement( $appData, '/posts/lang-mixed', [ 'title' => 'T-'. $word( 'mixed-de' ), 'summary' => $word( 'mixed-de-s' ), 'date' => '2026-01-12' ], 'de_DE' );
+\Nino\Elements::updateElement( $appData, '/posts/lang-mixed', [ 'title' => 'T-'. $word( 'mixed-en' ) ], 'en_US' );
+\Nino\Elements::insertElement( $appData, '/posts/lang-english', [ 'title' => 'Z-'. $word( 'only-en' ), 'date' => '2026-01-13' ], 'en_US' );
+// A post with no text in any language is not one the Elements panel makes - the title is required - but a file that was written by hand, or one whose texts were taken away, holds it
+\Nino\Filesystem::mutate( $appData, '/elements/posts.php', static function( mixed $state ): array {
+	$state = is_array( $state ) === true ? $state : [];
+	$state['*']['lang-bare'] = [ 'date' => '2026-01-14' ];
+	return $state;
+}, [] );
+unset( $appData['./nino/elements/cache'] );
+
+$inLanguage = static function( string $locale ) use ( &$appData ): void {
+	ninoVisit( $appData, '/blog' );
+	$appData['./nino/locales/current'] = $locale;
+};
+
+// Each post of the list as a row: the address, then what the block says of it
+$drawn = static function( string $block ) use ( &$appData ): array {
+
+	$rows = [];
+
+	foreach( explode( ';', postsRender( $appData, '[posts limit="50"]'. $block. ';[/posts]' ) ) as $row )
+		if( $row !== '' )
+			$rows[ (string) strstr( $row, '|', true ) ] = substr( (string) strstr( $row, '|' ), 1 );
+
+	return $rows;
+};
+$row = '[[.uri]]|[[title]]|[[summary]]|[[.lang]]';
+
+$inLanguage( 'en_US' );
+$english = $drawn( $row );
+
+check( 'a post the language has all of is drawn as it is, and says nothing of another language',
+	( $english['/posts/lang-both'] ?? null ) === 'M-'. $word( 'both-en' ). '|'. $word( 'both-en-s' ). '|' );
+check( '...a post that exists in the native language only is in the list of the other, in the native words and with the lang attribute of that language',
+	( $english['/posts/lang-german'] ?? null ) === 'A-'. $word( 'only-de' ). '|'. $word( 'only-de-s' ). '| lang="de-DE"' );
+check( '...a post with a title in the language and no summary has its own title and the summary of the native language, and says so',
+	( $english['/posts/lang-mixed'] ?? null ) === 'T-'. $word( 'mixed-en' ). '|'. $word( 'mixed-de-s' ). '| lang="de-DE"' );
+
+$inLanguage( 'de_DE' );
+$german = $drawn( $row );
+
+check( '...and the other way round: the native language\'s list shows a post that only another language has, in that language\'s words and with its tag',
+	( $german['/posts/lang-english'] ?? null ) === 'Z-'. $word( 'only-en' ). '|| lang="en-US"'
+	&& ( $german['/posts/lang-mixed'] ?? null ) === 'T-'. $word( 'mixed-de' ). '|'. $word( 'mixed-de-s' ). '|' );
+
+// A field the type has that no language has a value for is nothing in the block: left standing it was a
+// fill nobody answered, which the next rendering pass made "[]" of when its name was a shortcode's
+$inLanguage( 'en_US' );
+$everything = '[[.uri]]|[[title]]|[[summary]]|[[author]]|[[tags]]|[[imageAlt]]|[[body]]|[[.body]];';
+$leftover = postsRender( $appData, '[posts limit="50"]'. $everything. '[/posts]' );
+
+check( 'a post no language has a title for draws it as nothing, and no field of the type is left in the block for the next pass to make anything of',
+	( $english['/posts/lang-bare'] ?? null ) === '||' && str_contains( $leftover, '[' ) === false && str_contains( $leftover, '/posts/lang-bare|||||||;' ) === true );
+
+// The order is the order of what is drawn: a title taken from another language stands where it sorts
+$byTitle	= \Nino\Modules\Posts\Sections::normalizeSection( 'blog', [ 'type' => '/posts', 'path' => 'blog', 'sort' => 'title' ] );
+$listed		= static function( array $section ) use ( &$appData ): array {
+	return array_values( array_filter( array_column( \Nino\Modules\Posts::posts( $appData, $section ), '.uri' ), static fn( string $uri ): bool => str_starts_with( $uri, '/posts/lang-' ) ) );
+};
+
+check( '...the list is sorted after the fallback: a post whose title is the native one stands where that title sorts, and the one with no title at all comes last',
+	$listed( $byTitle ) === [ '/posts/lang-german', '/posts/lang-both', '/posts/lang-mixed', '/posts/lang-english', '/posts/lang-bare' ] );
+
+// [post] and [post-nav] draw a post the same way
+postsResolve( $appData, '/blog/lang-german' );
+check( '[post] is the post with what the language lacks taken from another, and says so on what it shows',
+	postsRender( $appData, '[post]<h1[[.lang]]>[[title]]</h1>[/post]' ) === '<h1 lang="de-DE">A-'. $word( 'only-de' ). '</h1>' );
+postsResolve( $appData, '/blog/lang-both' );
+check( '...and a post the language has all of says nothing',
+	postsRender( $appData, '[post]<h1[[.lang]]>[[title]]</h1>[/post]' ) === '<h1>M-'. $word( 'both-en' ). '</h1>' );
+postsResolve( $appData, '/blog/lang-mixed' );
+check( '[post-nav] says it of the post before and the post after as well - the one the language has all of nothing, the other its tag',
+	postsRender( $appData, '[post-nav]<a class="[[.rel]]"[[.lang]]>[[title]]</a>[/post-nav]' ) === '<a class="prev">Z-'. $word( 'only-en' ). '</a><a class="next" lang="de-DE">A-'. $word( 'only-de' ). '</a>' );
+
+// The templates the unit copies carry the token where the text is shown
+$listTemplate = (string) file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-posts.tpl' ) );
+$postTemplate = (string) file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-post.tpl' ) );
+$sayingIt = static function( string $template ): array {
+	preg_match_all( '/<([a-z0-9]+)\b[^>]*\[\[\.lang\]\][^>]*>/', $template, $found );
+	return $found[1];
+};
+
+check( 'the list page the unit copies says the language on a post\'s card and on its title, and the page of a post on the article, its heading and the link to the post beside it',
+	$sayingIt( $listTemplate ) === [ 'article', 'h3' ] && $sayingIt( $postTemplate ) === [ 'article', 'h1', 'a' ] );
+
+preg_match( '#\[posts\].*?\[/posts\]#s', $listTemplate, $listBlock );
+$inLanguage( 'en_US' );
+$cards		= postsRender( $appData, $listBlock[0] ?? '' );
+$posted		= \Nino\Modules\Posts::posts( $appData, \Nino\Modules\Posts::section( $appData, 'blog' ) );
+$borrowed	= count( array_filter( $posts = $posted, static fn( array $post ): bool => ( $post['.lang'] ?? '' ) !== '' ) );
+
+check( '...so the list of the other language has a card of every post, and the ones with words from the native language say so on the card and on its title',
+	$borrowed >= 2 && $borrowed < count( $posted ) && substr_count( $cards, '<article class="nino-card"' ) === count( $posted )
+	&& substr_count( $cards, '<article class="nino-card" lang="de-DE">' ) === $borrowed && substr_count( $cards, '<h3 class="nino-card-title" lang="de-DE">' ) === $borrowed
+	&& str_contains( $cards, '[[' ) === false );
+
+// What the page of a post says about itself where no language has a title for it
+echo "\nThe page of a post that has no title in any language\n";
+
+$text = static function( string $key, string $english, string $german ) use ( &$appData ): void {
+	foreach( [ 'en_US' => $english, 'de_DE' => $german ] as $locale => $value )
+		\Nino\Features::mergeText( $appData, '/text/'. $locale. '.php', [ '[['. $key. ']]' => $value ], true );
+};
+$textsKept = [];
+foreach( [ 'en_US', 'de_DE' ] as $locale )
+	$textsKept[$locale] = (array) \Nino\Filesystem::getFileContent( $appData, '/text/'. $locale. '.php', [] );
+
+$said = static function( string $detail ) use ( &$appData ): string {
+	return \Nino\Html::renderTextfill( $appData, '/_nino/webpage/blog/post/'. $detail );
+};
+
+$text( '/_nino/webpage/blog/name', $word( 'name-en' ), $word( 'name-de' ) );
+$text( '/_nino/webpage/blog/description', $word( 'description-en' ), $word( 'description-de' ) );
+$text( '/project/company/general/name', $word( 'company-en' ), $word( 'company-de' ) );
+$text( '/project/company/general/description', $word( 'about-en' ), $word( 'about-de' ) );
+postsResolve( $appData, '/blog/lang-german' );
+check( 'the page of a post that exists in the native language only has the title and the summary of that post, in the head of the page of another language',
+	$said( 'title' ) === 'A-'. $word( 'only-de' ) && $said( 'description' ) === $word( 'only-de-s' ) );
+
+postsResolve( $appData, '/blog/lang-bare' );
+
+check( 'the page of a post no language has a title or a summary for says what the page of its section says: its name for the title, its description for the description - in the language of the page',
+	$said( 'title' ) === $word( 'name-en' ) && $said( 'description' ) === $word( 'description-en' ) );
+postsResolve( $appData, '/blog/lang-both' );
+check( '...and the title and the summary of a post are its own, as they were', $said( 'title' ) === 'M-'. $word( 'both-en' ) && $said( 'description' ) === $word( 'both-en-s' ) );
+
+$text( '/_nino/webpage/blog/name', '', '' );
+$text( '/_nino/webpage/blog/description', '', '' );
+postsResolve( $appData, '/blog/lang-bare' );
+check( 'where the page of the section says none, the company says it: its name, and its description', $said( 'title' ) === $word( 'company-en' ) && $said( 'description' ) === $word( 'about-en' ) );
+
+$text( '/_nino/webpage/blog/post/title', $word( 'own-en' ), $word( 'own-de' ) );
+postsResolve( $appData, '/blog/lang-bare' );
+check( 'what the project wrote for the page of a post stays what stands for a post that has none',
+	$said( 'title' ) === $word( 'own-en' ) && $said( 'description' ) === $word( 'about-en' ) );
+$text( '/_nino/webpage/blog/post/title', '', '' );
+
+$text( '/project/company/general/name', '', '' );
+$text( '/project/company/general/description', '', '' );
+postsResolve( $appData, '/blog/lang-bare' );
+$head = postsRender( $appData, '<title>[[/_nino/webpage/blog/post/title]] | x</title><meta name="description" content="[[/_nino/webpage/blog/post/description]]">' );
+check( 'and where nothing says it, the page says nothing - never the key of a title nobody made', $said( 'title' ) === '' && $said( 'description' ) === ''
+	&& $head === '<title> | x</title><meta name="description" content="">' );
+
+// The page of the section is the one its route has, which the project may have made its own
+$appData['/nino/http/routes']['GET://blog'] = [ 'uri' => '/'. $word( 'theirs' ), 'body' => '[template /templates/page-posts]' ];
+\Nino\Modules\Posts::routes( $appData );
+$text( '/_nino/webpage/'. $word( 'theirs' ). '/name', $word( 'theirs-en' ), $word( 'theirs-de' ) );
+postsResolve( $appData, '/blog/lang-bare' );
+check( 'the page of the section is found under the uri its route has - the project\'s own page at the path of the section included',
+	$said( 'title' ) === $word( 'theirs-en' ) );
+unset( $appData['/nino/http/routes']['GET://blog'] );
+\Nino\Modules\Posts::routes( $appData );
+
+foreach( $textsKept as $locale => $kept )
+	\Nino\Filesystem::putFileContent( $appData, '/text/'. $locale. '.php', $kept );
+
+foreach( [ 'lang-both', 'lang-german', 'lang-mixed', 'lang-english', 'lang-bare' ] as $slug )
+	\Nino\Elements::deleteElement( $appData, '/posts/'. $slug, '*' );
+
+\Nino\Filesystem::putFileContent( $appData, \Nino\Modules\Posts\Sections::PATH, $sectionsKept );
+unset( $appData['./posts/sections'], $appData['./nino/elements/cache'], $appData['./posts/current'] );
+$appData['./nino/locales/current'] = 'de_DE';
 
 echo "\nThe pages the SEO feature cannot find on its own\n";
 

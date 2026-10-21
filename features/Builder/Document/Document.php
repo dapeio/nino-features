@@ -126,8 +126,9 @@ namespace Nino\Modules\Builder {
 		 *	is shown by (icon), where it belongs (in), what it draws (draws), what
 		 *	it holds (holds), whether it is a link (link), who registered it (by)
 		 *	and the group a tool offers it under (group) among it, and its label in
-		 *	every language of the site (labels, by locale: what a new component's
-		 *	text is made with in each) -, the groups the kernel's and a project's
+		 *	every language of the site (labels, by locale: what the alt text of a new
+		 *	picture is made with in each, and what an empty text field of the component
+		 *	shows in the language it is typed in) -, the groups the kernel's and a project's
 		 *	components are offered in, in the order they are listed in (groups, the
 		 *	words of \Nino\Modules\Components::GROUPS), the names of the features
 		 *	that registered a component (features, by their key),
@@ -592,7 +593,7 @@ namespace Nino\Modules\Builder {
 			if( self::_validName( $name ) === false )
 				return self::_error( 400, 'a name is one line of 1 to 160 characters without <, > or brackets', 'name' );
 
-			$slug = self::_slug( $name );
+			$slug = \Nino\Feature::slug( $name );
 
 			if( $slug === '' )
 				return self::_error( 400, 'a name needs letters or digits to make a file name from', 'name' );
@@ -687,7 +688,7 @@ namespace Nino\Modules\Builder {
 				return self::_error( 404, 'there is no such page template', 'missing' );
 
 			$name = trim( $name );
-			$slug = self::_validName( $name ) === true ? self::_slug( $name ) : '';
+			$slug = self::_validName( $name ) === true ? \Nino\Feature::slug( $name ) : '';
 			$copy = 'page-'. $slug;
 
 			if( $slug === '' || self::validFile( $copy ) === false )
@@ -905,11 +906,13 @@ namespace Nino\Modules\Builder {
 
 		/**
 		 *	One key made again under another name, through the Text Keys' own
-		 *	actions: made in the format of the original with its first value in
-		 *	every language, the other values written over, its limit and its
-		 *	place on the blacklist kept - and read again, every value as the
-		 *	original has it, because the panel makes the key without telling
-		 *	whether every language file took it
+		 *	actions: made in the format of the original with the text of each
+		 *	language as the original has it - the action takes them as one list,
+		 *	and a key of every language made with one text would hold it in the
+		 *	language the person works in alone -, its limit and its place on the
+		 *	blacklist kept - and read again, every value as the original has it,
+		 *	because the panel makes the key without telling whether every language
+		 *	file took it
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		string		$key					The new key
@@ -921,34 +924,19 @@ namespace Nino\Modules\Builder {
 		private static function _copyKey( array &$appData, string $key, array $entry, array &$made ): ?array {
 
 			$values	= array_filter( (array) $entry['values'], 'is_string' );
-			$first	= $values === [] ? '' : (string) reset( $values );
 
+			// A key of every language is made with the text of each, as the original has them: a key made with one text holds it in the language the person works in and nothing in the others
 			[ $status, $body ] = self::_api( $appData, 'keys/create', [
 				'key'			=> $key,
 				'global'	=> $entry['global'] === true,
-				'value'		=> $first,
 				'format'	=> (string) $entry['format'],
-			] );
+			] + ( $entry['global'] === true ? [ 'value' => $values === [] ? '' : (string) reset( $values ) ] : [ 'values' => $values ] ) );
 
 			if( $status !== 200 )
 				return self::_error( $status, (string) ( $body['error'] ?? 'the key could not be created' ), 'key', [ $key ] );
 
 			// From here on the key is the copy's, and goes with it where anything below stops
 			$made[] = $key;
-
-			$items = [];
-
-			foreach( $values as $locale => $value )
-				if( $entry['global'] === false && $value !== $first )
-					$items[] = [ 'key' => $key, 'locale' => (string) $locale, 'value' => $value ];
-
-			if( $items !== [] ) {
-
-				[ $status, $body ] = self::_api( $appData, 'keys/savebatch', [ 'items' => $items ] );
-
-				if( $status !== 200 )
-					return self::_error( $status, (string) ( $body['error'] ?? 'the key could not be saved' ), 'key', [ $key ] );
-			}
 
 			// The key is made in the original's format, so that no value loses
 			// its markup on the way in; a format nobody had chosen is forgotten
@@ -1750,10 +1738,11 @@ namespace Nino\Modules\Builder {
 
 			foreach( $plan['keys'] as $source => $create ) {
 
+				// With the text typed for it in each language and none in the others - an empty text, for which a page shows the native language's: a placeholder is no text
 				[ $status, $body ] = self::_api( $appData, 'keys/create', [
 					'key'			=> (string) $source,
 					'global'	=> false,
-					'value'		=> (string) ( $create['value'] ?? '' ),
+					'values'	=> $plan['values'][$source] ?? [],
 					'format'	=> (string) ( $create['format'] ?? '' ),
 				] );
 
@@ -2544,22 +2533,6 @@ namespace Nino\Modules\Builder {
 		 */
 		private static function _validName( string $name ): bool {
 			return preg_match( '/^[^\r\n<>\[\]]{1,160}$/uD', $name ) === 1 && str_contains( $name, '-->' ) === false;
-		}
-
-		/**
-		 *	The slug of a name: lower case, the letters of the languages the
-		 *	workbench speaks written out, everything else a hyphen
-		 *
-		 *	@param		string		$name
-		 *
-		 *	@return 	string										'' where nothing is left
-		 */
-		private static function _slug( string $name ): string {
-
-			$slug = strtr( mb_strtolower( $name, 'UTF-8' ), [ 'ä' => 'ae', 'ö' => 'oe', 'ü' => 'ue', 'ß' => 'ss', 'é' => 'e', 'è' => 'e', 'ê' => 'e', 'à' => 'a', 'á' => 'a', 'â' => 'a', 'í' => 'i', 'ó' => 'o', 'ô' => 'o', 'ú' => 'u', 'ñ' => 'n', 'ç' => 'c' ] );
-			$slug = trim( (string) preg_replace( '/[^a-z0-9]+/', '-', $slug ), '-' );
-
-			return rtrim( substr( $slug, 0, 60 ), '-' );
 		}
 
 		/**

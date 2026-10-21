@@ -1,9 +1,9 @@
 [template /templates/html-header]
 [post]
-<article class="nino-section">
+<article class="nino-section"[[.lang]]>
 	<div class="nino-grid-row">
 		<div class="nino-grid-100 nino-grid-l-66">
-			<h1 class="nino-section-title">[[title]]</h1>
+			<h1 class="nino-section-title"[[.lang]]>[[title]]</h1>
 			<p class="nino-section-subtitle">[[date]] [[author]]</p>
 			[[.image]]
 			[[.body]]
@@ -16,7 +16,7 @@
 		[post-nav]
 		<div class="nino-grid-100 nino-grid-m-50">
 			<p class="nino-section-subtitle">[[/feature/posts/navigation/[[.rel]]]]</p>
-			<p><a class="nino-btn nino-btn--outline" href="[[.url]]">[[title]]</a></p>
+			<p><a class="nino-btn nino-btn--outline" href="[[.url]]"[[.lang]]>[[title]]</a></p>
 		</div>
 		[/post-nav]
 	</div>

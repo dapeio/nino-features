@@ -264,9 +264,9 @@ namespace Nino\Modules {
 			}
 
 			$uri 			= $section['type']. '/'. $slug;
-			$element 	= \Nino\Elements::getElement( $appData, $uri );
+			$element 	= \Nino\Elements::getElementWithFallback( $appData, $uri, '' );
 
-			if( is_array( $element ) === false || self::published( $section, $element ) === false ) {
+			if( $element === false || self::published( $section, $element ) === false ) {
 				self::_notFound( $appData, $request );
 				return;
 			}
@@ -288,19 +288,62 @@ namespace Nino\Modules {
 				feature is on a placeholder whose host joined the policy's
 				script-src, which it reads off the finished body. The swapped '['
 				keeps the next rendering pass from running a shortcode or a fill an
-				editor wrote there */
+				editor wrote there.
+
+				The post is the one the language has, with what it lacks taken from
+				another language (see \Nino\Elements::getElementWithFallback()): a title
+				that no language has is a post with no title at all. Its page then says what
+				the page of its section says, else the company's - never the key of a title
+				nobody made, which the head printed as it stood. What the project wrote for
+				the page of a post, the one text that is every post's, stays where a post
+				has none of its own */
+			$page 	= '/_nino/webpage'. $request['/nino/http/response']['uri'];
 			$fills 	= [];
-			$title 	= self::field( $section, $element, 'title' );
-			$summary= self::field( $section, $element, 'summary' );
 
-			if( $title !== '' )
-				$fills['/_nino/webpage'. $request['/nino/http/response']['uri']. '/title'] = \Nino\Modules\Components::escape( $title );
+			foreach( [
+				'title'				=> [ self::field( $section, $element, 'title' ), 'name', '/project/company/general/name' ],
+				'description'	=> [ self::field( $section, $element, 'summary' ), 'description', '/project/company/general/description' ],
+			] as $detail => [ $text, $standIn, $company ] ) {
 
-			if( $summary !== '' )
-				$fills['/_nino/webpage'. $request['/nino/http/response']['uri']. '/description'] = \Nino\Modules\Components::escape( $summary );
+				if( $text === '' && trim( \Nino\Html::renderTextfill( $appData, $page. '/'. $detail ) ) !== '' )
+					continue;
 
-			if( $fills !== [] )
-				\Nino\Html::addFills( $appData, $fills, '*' );
+				$fills[$page. '/'. $detail] = \Nino\Modules\Components::escape( $text !== '' ? $text : self::_standIn( $appData, $key, $section, $standIn, $company ) );
+			}
+
+			\Nino\Html::addFills( $appData, $fills, '*' );
+		}
+
+		/**
+		 *	What stands for the title or the description of a post that has none in any
+		 *	language: the name or the description of the page of its section - the list
+		 *	the post belongs to, under the uri its route has, which is the section's own
+		 *	where the project made no route of its own for the path - in the language of
+		 *	the request, with what the kernel falls back to for a language that has none,
+		 *	and where there is none of that either the company's
+		 *
+		 *	@param		array 		&$appData			(reference) Array with current app data
+		 *	@param		string		$key					The section's key
+		 *	@param		array 		$section			A normalised section
+		 *	@param		string		$of						'name' or 'description': what the page of the section says
+		 *	@param		string		$company			The key of the company's own
+		 *
+		 *	@return 	string								Plain text, '' where the project says none of it
+		 */
+		private static function _standIn( array &$appData, string $key, array $section, string $of, string $company ): string {
+
+			$route	= $appData['/nino/http/routes']['GET://'. $section['path']] ?? [];
+			$uri		= is_array( $route ) === true && is_string( $route['uri'] ?? null ) === true && $route['uri'] !== '' ? $route['uri'] : sprintf( self::INDEX_URI, $key );
+
+			foreach( [ '/_nino/webpage'. $uri. '/'. $of, $company ] as $fill ) {
+
+				$text = trim( (string) \Nino\Html::resolveTextfill( $appData, $fill ) );
+
+				if( $text !== '' )
+					return $text;
+			}
+
+			return '';
 		}
 
 		/**
@@ -450,23 +493,46 @@ namespace Nino\Modules {
 		}
 
 		/**
-		 *	Every post of a section a visitor may see, in the section's order
+		 *	Every post of a section a visitor may see, in the section's order.
+		 *
+		 *	The list is the one the language's own version lists, and each post in it is
+		 *	the post as \Nino\Elements::getElementWithFallback() answers it for the
+		 *	language: what the language has no text for - none, empty, whitespace -
+		 *	taken from the native language, then from the other languages of the site,
+		 *	with '.lang' beside it, the tag of the language it was taken from, for a
+		 *	block to say on what it shows (see Shortcodes::_block()). A post that
+		 *	exists in German only is a post in the English list, and says it is German.
+		 *	The order is the order of what is drawn, as [elements] has it: a title
+		 *	taken from another language stands where it sorts
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array 		$section			A normalised section
 		 *	@param		string		$locale				'' for the request's own
 		 *
-		 *	@return 	array										Elements, each with its '.uri'
+		 *	@return 	array										Elements, each with its '.uri' and its '.lang'
 		 */
 		public static function posts( array &$appData, array $section, string $locale = '' ): array {
 
-			$all = \Nino\Elements::queryElements( $appData, $section['type'], [], $locale, [], [ 'sort' => $section['sort'] ] );
+			$all = \Nino\Elements::queryElements( $appData, $section['type'], [], $locale, [] );
 
 			if( is_array( $all ) === false )
 				return [];
 
-			return array_values( array_filter( $all, static fn( mixed $element ): bool =>
-				is_array( $element ) === true && self::published( $section, $element ) ) );
+			$posts = [];
+
+			foreach( $all as $element ) {
+
+				if( is_array( $element ) === false )
+					continue;
+
+				$drawn = is_string( $element['.uri'] ?? null ) === true ? \Nino\Elements::getElementWithFallback( $appData, $element['.uri'], $locale ) : false;
+				$post	 = $drawn !== false ? $drawn : $element;
+
+				if( self::published( $section, $post ) === true )
+					$posts[] = $post;
+			}
+
+			return \Nino\Elements::sortElements( $posts, (string) $section['sort'] );
 		}
 
 		/**

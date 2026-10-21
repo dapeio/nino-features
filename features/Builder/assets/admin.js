@@ -1173,7 +1173,9 @@
 		/**
 		 *	A component as the editor makes a new one: the attributes the schema
 		 *	has, and in a static column a key of its own where it reads a text -
-		 *	made when the document is saved, with the component's label as its text.
+		 *	made when the document is saved, with the text that is typed for it in
+		 *	each language and none in the others: the component's label is no text
+		 *	of its key, the field and the preview show it where nothing is typed.
 		 *	A component that holds components has none of its own: it starts with no
 		 *	children
 		 *
@@ -1205,7 +1207,8 @@
 				const slug = builder._keyName( section, file, name, known );
 
 				component.source = builder._keyUri( file, section.id, slug );
-				component.create = kind === 'image' ? Object.assign( { label : schema.label || name }, builder.SLOT_SIZE ) : { value : schema.label || name };
+				// The mark of a key that is made says no more than that: what it holds is what is typed for it (values)
+				component.create = kind === 'image' ? Object.assign( { label : schema.label || name }, builder.SLOT_SIZE ) : {};
 				builder._placeholders( registry, component );
 			}
 
@@ -1237,11 +1240,11 @@
 		},
 
 		/**
-		 *	The placeholder of a component that is new, in each language of the site and each in its own: the key of a text is
-		 *	made with its label - in every language alike, which is the way a key is made - and the text of each language that
-		 *	has another label is typed for it; the slot of a picture is made with the alt text of each language. The mark of
-		 *	what is made (create) names the placeholder in the language of the workbench, which is what a key is made with. A
-		 *	component that makes nothing keeps no placeholder
+		 *	The placeholder of a component that is new, where it is written into the languages: the slot of a picture is made
+		 *	with the alt text of each language - the label of its component in it. A placeholder alt text is better than
+		 *	none, and an alt text has no fallback of its own to stand in for one. A text key has no placeholder to write:
+		 *	it is made with what is typed for it, and the label of its component is what the field shows as long as it is
+		 *	empty (see _labelIn()). A component that makes nothing keeps no placeholder
 		 *
 		 *	@param		{Object}		registry
 		 *	@param		{Object}		component				With its create, the mark of the key or the slot it is made with
@@ -1253,48 +1256,48 @@
 			const builder = Nino.admin.builder;
 			const create = component.create;
 
-			if( create === undefined || create === null || typeof create !== 'object' )
+			if( builder._sourceKind( registry, component.name ) !== 'image' || create === undefined || create === null || typeof create !== 'object' )
 				return;
 
 			const labels = builder._labels( registry, component.name );
 
-			if( builder._sourceKind( registry, component.name ) === 'image' ) {
+			if( Object.keys( labels ).length > 0 )
+				create.alt = labels;
+		},
 
-				if( Object.keys( labels ).length > 0 )
-					create.alt = labels;
+		/**
+		 *	What a component is called in one language of the site: its label there, or - where it has none for the language -
+		 *	the one it has in the language of the workbench. The words an empty text field shows in the language it is typed in
+		 *
+		 *	@param		{Object}		registry
+		 *	@param		{string}		name							The component
+		 *	@param		{string}		locale
+		 *
+		 *	@return		{string}
+		 */
+		_labelIn : function( registry, name, locale ) {
 
-				return;
-			}
+			const schema = ( registry.components || {} )[name] || {};
+			const own = ( schema.labels || {} )[locale];
 
-			const values = {};
-
-			Object.keys( labels ).forEach( function( locale ) {
-				if( labels[locale] !== create.value )
-					values[locale] = labels[locale];
-			} );
-
-			if( Object.keys( values ).length === 0 )
-				delete component.values;
-			else
-				component.values = values;
+			return typeof own === 'string' && own !== '' ? own : ( schema.label || name );
 		},
 
 		/**
 		 *	A copy of a node for a place beside it: the copy has an id of its own
 		 *	where it is a section, and the keys and slots a section owns are new
 		 *	ones in the copy - made at save, with the text the key has now in each
-		 *	language, and with the picture and the alt texts the slot has
+		 *	language it has one in, and with the picture and the alt texts the slot has
 		 *
 		 *	@param		{Object}		model
 		 *	@param		{Object}		registry
 		 *	@param		{string}		file
 		 *	@param		{Array}			path							A section, a column or a component
-		 *	@param		{Function}	valueOf						The text of a key as it is now, '' where it is not known
-		 *	@param		{Function}	[valuesOf]				The text of a key in each language it has one in: locale => text
+		 *	@param		{Function}	[valuesOf]				The text of a key in each language it has one in: locale => text; none where it is not known
 		 *
 		 *	@return		{Array|null}							The path of the copy
 		 */
-		_duplicate : function( model, registry, file, path, valueOf, valuesOf ) {
+		_duplicate : function( model, registry, file, path, valuesOf ) {
 
 			const builder = Nino.admin.builder;
 			const place = builder._place( model, path );
@@ -1313,12 +1316,12 @@
 
 				copy.id = id;
 				delete copy.renamedFrom;
-				builder._rekey( copy, registry, from, builder._keyUri( file, id, '' ), valueOf, false, undefined, undefined, valuesOf );
+				builder._rekey( copy, registry, from, builder._keyUri( file, id, '' ), false, undefined, undefined, valuesOf );
 			} else if( path.length >= 2 ) {
 
 				const prefix = builder._keyUri( file, section.id, '' );
 
-				builder._rekey( path.length === 2 ? copy : { cols : [ { components : [ copy ] } ] }, registry, prefix, prefix, valueOf, true, section, file, valuesOf );
+				builder._rekey( path.length === 2 ? copy : { cols : [ { components : [ copy ] } ] }, registry, prefix, prefix, true, section, file, valuesOf );
 			}
 
 			place.list.splice( place.index + 1, 0, copy );
@@ -1332,8 +1335,8 @@
 		 *	section - given a free name beside the original. The picture an attribute
 		 *	names is a slot of the section like any, and the children of a component
 		 *	that holds components are copied with it. A key is made with the text the
-		 *	original has - in the language of the workbench in every language, and
-		 *	where another language has another text, typed for it -, and a slot says
+		 *	original has in each language it has one in - typed for the copy, so that
+		 *	the save makes it that way - and with none in the others, and a slot says
 		 *	which slot it is a copy of (create.from), at its size: the save hands the
 		 *	picture and the alt texts of that one on
 		 *
@@ -1341,7 +1344,6 @@
 		 *	@param		{Object}		registry
 		 *	@param		{string}		from							The prefix the sources stand under
 		 *	@param		{string}		to								The prefix they go to
-		 *	@param		{Function}	valueOf
 		 *	@param		{boolean}		within						Whether the copy stays in the section, so the last segment changes
 		 *	@param		{Object}		[section]					Its section, for the names that are taken
 		 *	@param		{string}		[file]
@@ -1349,7 +1351,7 @@
 		 *
 		 *	@return		void
 		 */
-		_rekey : function( node, registry, from, to, valueOf, within, section, file, valuesOf ) {
+		_rekey : function( node, registry, from, to, within, section, file, valuesOf ) {
 
 			const builder = Nino.admin.builder;
 			const columns = node.kind === 'section' ? node.cols : ( node.cols || [ node ] );
@@ -1372,16 +1374,7 @@
 					return { source : to+ name, create : Object.assign( { label : label }, size, { from : source } ) };
 				}
 
-				const value = valueOf( source ) || label;
-				const values = {};
-				const held = typeof valuesOf === 'function' ? valuesOf( source ) : {};
-
-				Object.keys( held ).forEach( function( locale ) {
-					if( held[locale] !== value )
-						values[locale] = held[locale];
-				} );
-
-				return { source : to+ name, create : { value : value }, values : values };
+				return { source : to+ name, create : {}, values : typeof valuesOf === 'function' ? valuesOf( source ) : {} };
 			};
 
 			// The source of a component, the pictures its attributes name, and the same in each of its children
@@ -2873,43 +2866,33 @@
 		},
 
 		/**
-		 *	The text a key has now, in the language of the workbench where it has one
-		 *
-		 *	@param		{string}		key
-		 *
-		 *	@return		{string}									'' where it is not known
-		 */
-		_valueOf : function( key ) {
-
-			const entry = ( Nino.admin.builder._keys || [] ).find( function( candidate ) { return candidate.key === key } );
-
-			if( entry === undefined )
-				return '';
-
-			const locale = typeof Nino.admin.sessionLocale === 'object' && Nino.admin.sessionLocale.current !== null ? Nino.admin.sessionLocale.current : '';
-			const value = entry.global === true ? entry.values['*'] : ( entry.values[locale] ?? Object.values( entry.values )[0] );
-
-			return typeof value === 'string' ? value : '';
-		},
-
-		/**
 		 *	The text a key has now in each language it has one in, for a copy that has to give each language the text of the
-		 *	original. A key every language shares has one text, and the copy has the same
+		 *	original - and none where the original has none. A key every language shares has one text, and the copy has the
+		 *	same in each language of the site: the key of a copy is one of its own languages
 		 *
 		 *	@param		{string}		key
 		 *
-		 *	@return		{Object}									locale => text; none for a key that is not known
+		 *	@return		{Object}									locale => text, none that is empty; nothing for a key that is not known
 		 */
 		_valuesOf : function( key ) {
 
-			const entry = ( Nino.admin.builder._keys || [] ).find( function( candidate ) { return candidate.key === key } );
+			const builder = Nino.admin.builder;
+			const entry = ( builder._keys || [] ).find( function( candidate ) { return candidate.key === key } );
 			const held = {};
 
-			if( entry === undefined || entry.global === true )
+			if( entry === undefined )
 				return held;
 
+			if( entry.global === true ) {
+
+				if( typeof entry.values['*'] === 'string' && entry.values['*'] !== '' )
+					( builder._registry.locales || [] ).forEach( function( language ) { held[language.locale] = entry.values['*'] } );
+
+				return held;
+			}
+
 			Object.keys( entry.values || {} ).forEach( function( locale ) {
-				if( typeof entry.values[locale] === 'string' )
+				if( typeof entry.values[locale] === 'string' && entry.values[locale] !== '' )
 					held[locale] = entry.values[locale];
 			} );
 
@@ -3621,7 +3604,7 @@
 			if( builder._mutable() === false )
 				return;
 
-			const to = builder._duplicate( doc.model, builder._registry, doc.file, path, builder._valueOf, builder._valuesOf );
+			const to = builder._duplicate( doc.model, builder._registry, doc.file, path, builder._valuesOf );
 
 			if( to === null )
 				return;
@@ -4664,7 +4647,7 @@
 		 *	@param		{string}		hint
 		 *	@param		{string}		value
 		 *	@param		{Function}	onChange					Called on every input
-		 *	@param		{Object}		[more]						{ multiline, readonly, onCommit, list } - onCommit on the change of the value, list an id of a <datalist>
+		 *	@param		{Object}		[more]						{ multiline, readonly, onCommit, list, placeholder } - onCommit on the change of the value, list an id of a <datalist>, placeholder the words an empty field shows
 		 *
 		 *	@return		{Element}
 		 */
@@ -4687,6 +4670,9 @@
 
 			if( typeof options.list === 'string' )
 				control.setAttribute( 'list', options.list );
+
+			if( typeof options.placeholder === 'string' && options.placeholder !== '' )
+				control.placeholder = options.placeholder;
 
 			control.addEventListener( 'input', function() { onChange( control.value ) } );
 
@@ -6742,8 +6728,8 @@
 		 *	@param		{string|null}	options.text			The fixed value as it is
 		 *	@param		{Object}		options.section			The section whose keys a new one is named among
 		 *	@param		{string}		options.name				What a new key or slot is called: the kind of the component, background for the picture of a section
-		 *	@param		{string}		options.seed				The text a new key starts with, the label of a new slot
-		 *	@param		{Function}	options.onPick			Called with ( source, create ): create is null, or what the key or the slot is made with
+		 *	@param		{string}		options.seed				The label of a new slot - a new key has no text to start with
+		 *	@param		{Function}	options.onPick			Called with ( source, create ): create is null, or what the key (nothing but the mark) or the slot is made with
 		 *	@param		{Function}	[options.onFixed]		Called with ( text )
 		 *
 		 *	@return		void
@@ -6763,7 +6749,7 @@
 					const what = options.kind === 'image' ? 'slot' : 'key';
 
 					builder._newName( pane, options, what, function( uri, size ) {
-						options.onPick( uri, what === 'slot' ? { label : options.seed, width : size.width, height : size.height } : { value : options.seed } );
+						options.onPick( uri, what === 'slot' ? { label : options.seed, width : size.width, height : size.height } : {} );
 						done();
 					} );
 				} } );
@@ -7353,9 +7339,9 @@
 
 		/**
 		 *	The text of a component in a language, where it has one to show: the one typed
-		 *	for it and not saved yet, else the one its key holds, else - for a key the save is
-		 *	going to make - the one it is made with. A component whose source is no text key
-		 *	has none: a fixed text, the field of a loop, a picture, a key nobody knows
+		 *	for it and not saved yet, else the one its key holds - and a key the save is going to
+		 *	make holds none: it is made with what is typed for it. A component whose source is no
+		 *	text key has none to show: a fixed text, the field of a loop, a picture, a key nobody knows
 		 *
 		 *	@param		{Object}		component
 		 *	@param		{string}		locale
@@ -7363,8 +7349,8 @@
 		 *	@param		{Object}		registry
 		 *
 		 *	@return		{Object|null}							{ value, stored, staged, format, global, maxlength }: what is shown, what the key holds
-		 *															(or is made with), whether what is shown was typed, the format of the key, whether
-		 *															it is the same in every language, its limit (0 for none known)
+		 *															('' for a key that is made at save), whether what is shown was typed, the format of the
+		 *															key, whether it is the same in every language, its limit (0 for none known)
 		 */
 		_textOf : function( component, locale, keys, registry ) {
 
@@ -7388,7 +7374,7 @@
 					maxlength	: entry.maxlength ?? 0,
 				};
 			} else if( component.create !== null && typeof component.create === 'object' )
-				info = { stored : String( component.create.value ?? '' ), format : builder._createFormat( registry, component ), global : false, maxlength : 0 };
+				info = { stored : '', format : builder._createFormat( registry, component ), global : false, maxlength : 0 };
 			else
 				return null;
 
@@ -7436,7 +7422,9 @@
 		 *	under its source: a line of text for a key of the plain format - a few lines where
 		 *	it holds some -, the editor of the workbench in the profile of its format for the
 		 *	others. What is typed goes into the model, under the language; the key is written
-		 *	when the document is saved
+		 *	when the document is saved. Where nothing is typed the field shows the label of the
+		 *	component, in the language it is typed in, as its placeholder: it says what the field is
+		 *	for and is no text - a page shows the text of the native language for an empty one
 		 *
 		 *	@param		{Object}		component
 		 *	@param		{Object}		info							As _textOf() answers
@@ -7449,6 +7437,7 @@
 			const builder = Nino.admin.builder;
 			const locale = builder._locale;
 			const wrap = builder._el( 'div', 'builder-value' );
+			const placeholder = builder._labelIn( builder._registry, component.name, locale );
 			const label = info.global === true ? Nino.content.getText('/_admin/builder/value/label-global') : Nino.adminUi.format( Nino.content.getText('/_admin/builder/value/label'), builder._localeName( locale ) );
 			const keep = function( text ) {
 				builder._stageValue( component, info, locale, text );
@@ -7457,7 +7446,7 @@
 
 			if( info.format === 'plain' ) {
 
-				const field = builder._textField( label, Nino.content.getText('/_admin/builder/value/hint'), info.value, keep, { multiline : info.value.indexOf('\n') !== -1 } );
+				const field = builder._textField( label, Nino.content.getText('/_admin/builder/value/hint'), info.value, keep, { multiline : info.value.indexOf('\n') !== -1, placeholder : placeholder } );
 
 				// A text is for reading: the spelling is checked, which a name or a class is not
 				field.control.spellcheck = true;
@@ -7484,9 +7473,17 @@
 				if( typeof Nino.admin.htmlEditor === 'object' ) {
 
 					const editor = Nino.admin.htmlEditor.create( mount, info.value, info.maxlength > 0 ? info.maxlength : builder.CONTENT_MAX, 0, info.format );
+					const box = mount.querySelector('.nino-admin-richtext-content');
+					// An editor that holds no text says what it is for as an input does - the stylesheet draws the words while the box is blank
+					const blank = function() {
+						if( box !== null )
+							box.classList.toggle( 'is-blank', editor.getValue() === '' );
+					};
 					// What the editor shows is its own normal form of the text, which is not the key's: the text is kept where that changes, not where it is shown
 					let last = editor.getValue();
 					const sync = function() {
+
+						blank();
 
 						const now = editor.getValue();
 
@@ -7496,6 +7493,11 @@
 						last = now;
 						keep( now );
 					};
+
+					if( box !== null )
+						box.dataset.placeholder = placeholder;
+
+					blank();
 
 					// A key press and a paste are input; a button of the toolbar is a click, a shortcut is a key up
 					[ 'input', 'click', 'keyup', 'focusout' ].forEach( function( type ) { mount.addEventListener( type, sync ) } );

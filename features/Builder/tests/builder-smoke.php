@@ -1376,7 +1376,7 @@ $edit = $loaded['model'];
 $edit['name'] = 'Home page';
 $edit['header'] = 'html-header-short';
 $edit['blocks'][3]['cols'][0]['components'][] = [ 'name' => 'text', 'source' => '/template/page-home/contact/note', 'text' => null,
-	'attributes' => [ 'format' => 'blocks', 'style' => '', 'class' => '' ], 'create' => [ 'value' => '<p>Write to us.</p>' ] ];
+	'attributes' => [ 'format' => 'blocks', 'style' => '', 'class' => '' ], 'create' => [], 'values' => [ 'en_US' => '<p>Write to us.</p>' ] ];
 $edit['blocks'][3]['background'] = [ 'slot' => '/template/page-home/contact/background', 'focus' => 2, 'create' => [ 'label' => 'Contact background', 'width' => 1200, 'height' => 600 ] ];
 $edit['blocks'][2]['source'] = "<section id=\"map\" class=\"nino-section nino-section--tint\">\n\t<div class=\"nino-grid-row\"><div class=\"nino-grid-100\">[osm lat=\"48.2\"]</div></div>\n</section>";
 $edit['blocks'][] = [ 'kind' => 'html', 'source' => '<p>Imprint note</p>', 'reason' => null ];
@@ -1387,8 +1387,8 @@ $written = (string) file_get_contents( \Nino\Filesystem::path( $appData, '/templ
 check( 'a save with changes answers 200, and the file is what the Writer makes of the model', $saved['status'] === 200 && $written === $write( $edit ) && $saved['hash'] === hash( 'sha256', $written ) );
 check( '...the model it answers is the file read again - what was only the panel\'s, the create, is gone', $saved['model']['blocks'][3]['cols'][0]['components'][2]['name'] === 'text' && isset( $saved['model']['blocks'][3]['cols'][0]['components'][2]['create'] ) === false
 	&& $saved['model']['name'] === 'Home page' && $saved['model']['header'] === 'html-header-short' && $saved['model'] === \Nino\Modules\Builder\Document::load( $appData, 'page-home' )['model'] );
-check( '...the text key the model named as new is made, in every language, with the value it was given', ( \Nino\Text::entry( $appData, '/template/page-home/contact/note' )['values']['en_US'] ?? null ) === '<p>Write to us.</p>'
-	&& ( \Nino\Text::entry( $appData, '/template/page-home/contact/note' )['values']['de_DE'] ?? null ) === '<p>Write to us.</p>' );
+check( '...the text key the model named as new is made with the text typed for it, in the language it was typed in, and with none in the other: not the same words in every language, which one nobody wrote would show as written', ( \Nino\Text::entry( $appData, '/template/page-home/contact/note' )['values']['en_US'] ?? null ) === '<p>Write to us.</p>'
+	&& ( \Nino\Text::entry( $appData, '/template/page-home/contact/note' )['values']['de_DE'] ?? null ) === '' );
 check( '...the image slot too, with the size it was given and no file', ( \Nino\Images::getSlot( $appData, '/template/page-home/contact/background' ) ?: [] ) === [ 'label' => 'Contact background', 'width' => 1200, 'height' => 600, 'filename' => null ] );
 check( '...a key that was there is left as it is', ( \Nino\Text::entry( $appData, '/template/page-home/hero/title' )['values']['en_US'] ?? null ) === 'Hello' );
 check( '...and a block of html is kept, the one made in the panel in markers', str_contains( $written, "<!-- nino:html -->\n<p>Imprint note</p>\n<!-- /nino:html -->" ) === true && str_contains( $written, '[osm lat="48.2"]' ) === true );
@@ -1477,9 +1477,9 @@ check( 'a slot that cannot be made - too large for an upload - refuses the save 
 	&& str_contains( implode( ' ', $refused['problems'] ), 'larger than an upload can produce' ) === true && $state() === $untouched );
 
 $badKey = $probe['model'];
-$badKey['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'title', 'source' => '/template/page-probe/services/Bad', 'text' => null, 'attributes' => $registry['components']['title']['defaults'], 'create' => [ 'value' => 'x', 'format' => 'plain' ] ];
+$badKey['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'title', 'source' => '/template/page-probe/services/Bad', 'text' => null, 'attributes' => $registry['components']['title']['defaults'], 'create' => [ 'format' => 'plain' ] ];
 $badFormat = $probe['model'];
-$badFormat['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'title', 'source' => '/template/page-probe/services/other', 'text' => null, 'attributes' => $registry['components']['title']['defaults'], 'create' => [ 'value' => 'x', 'format' => 'markdown' ] ];
+$badFormat['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'title', 'source' => '/template/page-probe/services/other', 'text' => null, 'attributes' => $registry['components']['title']['defaults'], 'create' => [ 'format' => 'markdown' ] ];
 check( '...and so does a key that is none, or one of a format there is none of', str_contains( implode( ' ', \Nino\Modules\Builder\Document::save( $appData, 'page-probe', $badKey, $probe['hash'] )['problems'] ), 'means nothing' ) === true
 	&& str_contains( implode( ' ', \Nino\Modules\Builder\Document::save( $appData, 'page-probe', $badFormat, $probe['hash'] )['problems'] ), 'format "markdown"' ) === true && $state() === $untouched );
 
@@ -1526,6 +1526,17 @@ $call( '_drop', [ &$appData, [ '/template/page-probe/diensten/background' ] ] );
 check( 'the slots that were made for a move are taken away again, by the Slots tab\'s own action', \Nino\Images::getSlot( $appData, '/template/page-probe/diensten/background' ) === false
 	&& \Nino\Images::getSlot( $appData, '/template/page-probe/leistungen/background' ) !== false );
 
+// The creation on its own: the texts are written once more after it, so only a call of its own shows that the key is made with them
+$direct = [ 'keys' => [ '/template/page-direct/box/note' => [ 'format' => 'plain' ] ], 'slots' => [], 'keyMoves' => [], 'slotMoves' => [], 'values' => [ '/template/page-direct/box/note' => [ 'de_DE' => 'Nur Deutsch' ] ] ];
+$directMade = [];
+$directKeys = [];
+$directFailure = $call( '_create', [ &$appData, $direct, &$directMade, &$directKeys ] );
+$directEntry = \Nino\Text::entry( $appData, '/template/page-direct/box/note' ) ?: [ 'values' => [] ];
+check( 'the key a save makes is made with the text typed for it, in the language it was typed in and with none in the other - by the creation itself, before any text is written', $directFailure === null && $directKeys === [ '/template/page-direct/box/note' ]
+	&& ( $directEntry['values']['de_DE'] ?? null ) === 'Nur Deutsch' && ( $directEntry['values']['en_US'] ?? null ) === '' );
+$call( '_rollback', [ &$appData, [], [], $directMade, $directKeys ] );
+check( '...and a save that stops takes the key it made away again', \Nino\Text::entry( $appData, '/template/page-direct/box/note' ) === null );
+
 $probe = \Nino\Modules\Builder\Document::load( $appData, 'page-probe' );
 $again = $probe['model'];
 $again['blocks'][0]['id'] = 'start';
@@ -1552,7 +1563,7 @@ $probe = \Nino\Modules\Builder\Document::load( $appData, 'page-probe' );
 $extra = $probe['model'];
 $extra['blocks'][0]['id'] = 'drei';
 $extra['blocks'][0]['renamedFrom'] = 'start';
-$extra['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'title', 'source' => '/template/page-probe/start/extra', 'text' => null, 'attributes' => $registry['components']['title']['defaults'], 'create' => [ 'value' => 'Made twice' ] ];
+$extra['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'title', 'source' => '/template/page-probe/start/extra', 'text' => null, 'attributes' => $registry['components']['title']['defaults'], 'create' => [] ];
 $moves = $call( '_rename', [ &$extra, 'page-probe', $registry ] );
 $planned = $call( '_plan', [ &$appData, $extra, $moves, $registry ] );
 check( 'a key that a move takes over is not made by the save as well, where it is a new component\'s: the plan moves it and makes none', $planned[0] === null && $planned[1]['keys'] === []
@@ -1623,7 +1634,7 @@ $loaded = \Nino\Modules\Builder\Document::load( $appData, 'page-home' );
 
 $bad = $loaded['model'];
 $bad['blocks'][1]['cols'][0]['components'][0]['name'] = 'osm';
-$bad['blocks'][3]['cols'][0]['components'][] = [ 'name' => 'title', 'source' => '/template/page-home/contact/never', 'text' => null, 'attributes' => [ 'tag' => 'h3', 'style' => '', 'class' => '' ], 'create' => [ 'value' => 'Never' ] ];
+$bad['blocks'][3]['cols'][0]['components'][] = [ 'name' => 'title', 'source' => '/template/page-home/contact/never', 'text' => null, 'attributes' => [ 'tag' => 'h3', 'style' => '', 'class' => '' ], 'create' => [] ];
 $refusal = \Nino\Modules\Builder\Document::save( $appData, 'page-home', $bad, $loaded['hash'] );
 check( 'a section that does not read back is refused with 400, the reason of the Reader in the problems, and nothing is written or made', $refusal['status'] === 400 && $refusal['code'] === 'invalid'
 	&& count( $refusal['problems'] ) === 1 && str_contains( $refusal['problems'][0], 'leistungen' ) === true && str_contains( $refusal['problems'][0], 'osm' ) === true
@@ -2092,7 +2103,7 @@ check( 'a component called stack in a static column reads back as a stack: it is
 // The conflict
 $loaded = \Nino\Modules\Builder\Document::load( $appData, 'page-home' );
 $mine = $loaded['model'];
-$mine['blocks'][3]['cols'][0]['components'][] = [ 'name' => 'title', 'source' => '/template/page-home/contact/late', 'text' => null, 'attributes' => [ 'tag' => 'h3', 'style' => '', 'class' => '' ], 'create' => [ 'value' => 'Late' ] ];
+$mine['blocks'][3]['cols'][0]['components'][] = [ 'name' => 'title', 'source' => '/template/page-home/contact/late', 'text' => null, 'attributes' => [ 'tag' => 'h3', 'style' => '', 'class' => '' ], 'create' => [] ];
 $theirs = $before. "\n<p>Edited elsewhere</p>\n";
 \Nino\Filesystem::putFileContent( $appData, '/templates/page-home.tpl', $theirs );
 
@@ -2112,7 +2123,7 @@ check( 'a hash of nothing is no hash: it is a conflict too', \Nino\Modules\Build
 \Nino\Auth::insertUser( $appData, 'editor@example.com', 'correct horse battery staple', [ '/_admin/builder/manage' ] );
 \Nino\Auth::loginUser( $appData, 'editor@example.com', 'correct horse battery staple' );
 $limited = $loaded['model'];
-$limited['blocks'][3]['cols'][0]['components'][] = [ 'name' => 'title', 'source' => '/template/page-home/contact/forbidden', 'text' => null, 'attributes' => [ 'tag' => 'h3', 'style' => '', 'class' => '' ], 'create' => [ 'value' => 'No' ] ];
+$limited['blocks'][3]['cols'][0]['components'][] = [ 'name' => 'title', 'source' => '/template/page-home/contact/forbidden', 'text' => null, 'attributes' => [ 'tag' => 'h3', 'style' => '', 'class' => '' ], 'create' => [] ];
 $limitedAnswer = \Nino\Modules\Builder\Document::save( $appData, 'page-home', $limited, $loaded['hash'] );
 check( 'an account that may not make text keys cannot make them through the builder: the builder answers 403 before it makes anything, and the file is not written', $limitedAnswer['status'] === 403
 	&& \Nino\Text::entry( $appData, '/template/page-home/contact/forbidden' ) === null && file_get_contents( \Nino\Filesystem::path( $appData, '/templates/page-home.tpl' ) ) === $write( $mine ) );
@@ -2259,7 +2270,7 @@ $shapes = [
 	'a text that is a list of texts'					=> static function( array &$model ): void { $model['blocks'][0]['cols'][0]['components'][0]['values'] = [ 'en_US' => [ 'Hello' ] ]; },
 	'a text that is a number'									=> static function( array &$model ): void { $model['blocks'][0]['cols'][0]['components'][0]['values'] = [ 'en_US' => 5 ]; },
 	'an alt text that is not a map'						=> static function( array &$model ): void { $model['blocks'][0]['background'] = [ 'slot' => '/template/page-texts/a/background', 'focus' => null, 'create' => [ 'label' => 'B', 'width' => 100, 'height' => 100, 'alt' => 'Hello' ] ]; },
-	'an alt text that is a number'						=> static function( array &$model ): void { $model['blocks'][0]['cols'][0]['components'][0]['create'] = [ 'value' => 'x', 'alt' => [ 'en_US' => 5 ] ]; },
+	'an alt text that is a number'						=> static function( array &$model ): void { $model['blocks'][0]['cols'][0]['components'][0]['create'] = [ 'alt' => [ 'en_US' => 5 ] ]; },
 ];
 $misshapen = [];
 
@@ -2282,26 +2293,29 @@ $nokey = $refused( static function( array &$model ): void { $model['blocks'][0][
 check( 'a text for a key that is not there and is not made by the save is refused with 400 (invalid), the key named, and the key is not made', $nokey['status'] === 400 && $nokey['code'] === 'invalid' && str_contains( implode( ' ', $nokey['problems'] ), '"/template/page-texts/a/nothing"' ) === true
 	&& $nokey['unchanged'] === true && \Nino\Text::entry( $appData, '/template/page-texts/a/nothing' ) === null );
 
-$odd = $refused( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'text', 'source' => '/template/page-texts/a/odd', 'text' => null, 'attributes' => [ 'format' => 'nonsense', 'style' => '', 'class' => '' ], 'create' => [ 'value' => 'Text' ], 'values' => [ 'en_US' => 'Typed' ] ]; } );
+$odd = $refused( static function( array &$model ): void { $model['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'text', 'source' => '/template/page-texts/a/odd', 'text' => null, 'attributes' => [ 'format' => 'nonsense', 'style' => '', 'class' => '' ], 'create' => [], 'values' => [ 'en_US' => 'Typed' ] ]; } );
 check( 'a component that asks for a format there is none of is not made plain: the section is refused with 400 (invalid), the attribute named, as for any value outside the options of an attribute - and no key is made, no text written', $odd['status'] === 400 && $odd['code'] === 'invalid'
 	&& str_contains( implode( ' ', $odd['problems'] ), 'the section "a" is not valid: line ' ) === true && str_contains( implode( ' ', $odd['problems'] ), 'the attribute format has a value the builder does not keep' ) === true
 	&& $odd['unchanged'] === true && \Nino\Text::entry( $appData, '/template/page-texts/a/odd' ) === null );
 
 // A key that is new: made, in the format its component asks for, and written
 $fresh = $texted['model'];
-$fresh['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'title', 'source' => '/template/page-texts/a/title-2', 'text' => null, 'attributes' => $registry['components']['title']['defaults'], 'create' => [ 'value' => 'Title' ],
+$fresh['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'title', 'source' => '/template/page-texts/a/title-2', 'text' => null, 'attributes' => $registry['components']['title']['defaults'], 'create' => [],
 	'values' => [ 'en_US' => 'Hello <b>there</b>', 'de_DE' => 'Hallo' ] ];
-$fresh['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'text', 'source' => '/template/page-texts/a/body', 'text' => null, 'attributes' => [ 'format' => 'inline', 'style' => '', 'class' => '' ], 'create' => [ 'value' => 'Text' ],
+$fresh['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'text', 'source' => '/template/page-texts/a/body', 'text' => null, 'attributes' => [ 'format' => 'inline', 'style' => '', 'class' => '' ], 'create' => [],
 	'values' => [ 'de_DE' => 'Ein <em>Satz</em><p>und ein Absatz</p>' ] ];
-$fresh['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'text', 'source' => '/template/page-texts/a/lines', 'text' => null, 'attributes' => $registry['components']['text']['defaults'], 'create' => [ 'value' => 'Text' ], 'values' => [ 'en_US' => "One\nTwo" ] ];
+$fresh['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'text', 'source' => '/template/page-texts/a/lines', 'text' => null, 'attributes' => $registry['components']['text']['defaults'], 'create' => [], 'values' => [ 'en_US' => "One\nTwo" ] ];
+// Nothing typed for it: the key is made, and holds nothing in any language
+$fresh['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'title', 'source' => '/template/page-texts/a/untyped', 'text' => null, 'attributes' => $registry['components']['title']['defaults'], 'create' => [] ];
 $freshAnswer = \Nino\Modules\Builder\Document::save( $appData, 'page-texts', $fresh, $texted['hash'] );
 $title2 = \Nino\Text::entry( $appData, '/template/page-texts/a/title-2' );
 $body = \Nino\Text::entry( $appData, '/template/page-texts/a/body' );
 $lines = \Nino\Text::entry( $appData, '/template/page-texts/a/lines' );
+$untyped = \Nino\Text::entry( $appData, '/template/page-texts/a/untyped' );
 
-check( 'a text typed for a key the save makes is written after the key is made, to the language it is for: the other languages keep the text the key was made with', $freshAnswer['status'] === 200
-	&& $sorted( $title2['values'] ) === [ 'de_DE' => 'Hallo', 'en_US' => 'Hello there' ] && $body['values']['en_US'] === 'Text' && $body['values']['de_DE'] === $cleanly( 'Ein <em>Satz</em><p>und ein Absatz</p>', 'inline' )
-	&& str_contains( $body['values']['de_DE'], '<p>' ) === false );
+check( 'a text typed for a key the save makes is written to the key, to the language it is for: the other languages hold none - nothing is made up for them, a page shows the native text there - and a key that nothing was typed for is empty in every language', $freshAnswer['status'] === 200
+	&& $sorted( $title2['values'] ) === [ 'de_DE' => 'Hallo', 'en_US' => 'Hello there' ] && $body['values']['en_US'] === '' && $body['values']['de_DE'] === $cleanly( 'Ein <em>Satz</em><p>und ein Absatz</p>', 'inline' )
+	&& str_contains( $body['values']['de_DE'], '<p>' ) === false && $untyped !== null && $sorted( $untyped['values'] ) === [ 'de_DE' => '', 'en_US' => '' ] );
 check( '...in the format the component asks for - its format attribute, plain where it has none - and chosen, so that the key does not follow what it holds', $title2['format'] === 'plain' && $title2['formatSet'] === true && $body['format'] === 'inline' && $body['formatSet'] === true
 	&& $lines['format'] === 'blocks' && $lines['formatSet'] === true && $lines['values']['en_US'] === $cleanly( "One\nTwo", 'blocks' ) );
 check( '...and the file has the components', str_contains( (string) file_get_contents( $textsPath ), '[title /template/page-texts/a/title-2]' ) === true && str_contains( (string) file_get_contents( $textsPath ), '[text /template/page-texts/a/body format="inline"]' ) === true
@@ -2326,8 +2340,8 @@ $stopping = $structure['model'];
 $stopping['name'] = 'Texts';
 $stopping['blocks'][0]['cols'][0]['components'][0]['values'] = [ 'en_US' => 'One more title', 'de_DE' => 'Noch ein Titel' ];
 $stopping['blocks'][0]['cols'][0]['components'][2]['values'] = [ 'de_DE' => 'Eine Marke' ];
-$stopping['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'title', 'source' => '/template/page-texts/z/new', 'text' => null, 'attributes' => $registry['components']['title']['defaults'], 'create' => [ 'value' => 'New' ], 'values' => [ 'en_US' => 'A new title' ] ];
-$stopping['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'title', 'source' => '/template/page-texts/z/newer', 'text' => null, 'attributes' => $registry['components']['title']['defaults'], 'create' => [ 'value' => 'Newer' ], 'values' => [ 'de_DE' => 'Ein neuerer Titel' ] ];
+$stopping['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'title', 'source' => '/template/page-texts/z/new', 'text' => null, 'attributes' => $registry['components']['title']['defaults'], 'create' => [], 'values' => [ 'en_US' => 'A new title' ] ];
+$stopping['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'title', 'source' => '/template/page-texts/z/newer', 'text' => null, 'attributes' => $registry['components']['title']['defaults'], 'create' => [], 'values' => [ 'de_DE' => 'Ein neuerer Titel' ] ];
 
 $lock = \Nino\Filesystem::path( $appData, '/data' ). '/.locks/'. sha1( '/templates/page-texts.tpl' ). '.lock';
 @unlink( $lock );
@@ -2346,7 +2360,7 @@ $settled = $held( ...$ofMore );
 $fileSettled = file_get_contents( $textsPath );
 $halfway = $structure['model'];
 $halfway['blocks'][0]['cols'][0]['components'][0]['values'] = [ 'en_US' => 'Written', 'de_DE' => 'Not written' ];
-$halfway['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'title', 'source' => '/template/page-texts/z/other', 'text' => null, 'attributes' => $registry['components']['title']['defaults'], 'create' => [ 'value' => 'Other' ], 'values' => [ 'en_US' => 'Other title', 'de_DE' => 'Anderer Titel' ] ];
+$halfway['blocks'][0]['cols'][0]['components'][] = [ 'name' => 'title', 'source' => '/template/page-texts/z/other', 'text' => null, 'attributes' => $registry['components']['title']['defaults'], 'create' => [], 'values' => [ 'en_US' => 'Other title', 'de_DE' => 'Anderer Titel' ] ];
 $lock = \Nino\Filesystem::path( $appData, '/data' ). '/.locks/'. sha1( '/text/de_DE.php' ). '.lock';
 @unlink( $lock );
 mkdir( $lock );
@@ -2549,23 +2563,26 @@ check( 'a page with a card is loaded as the model the Reader makes of it, and a 
 
 // The children of a card are components like any other: the key a new one names is made at the save, in the format its component asks for
 $kidsMade = $cardLoad['model'];
-$kidsMade['blocks'][0]['cols'][1]['components'][0]['components'][0]['create'] = [ 'value' => 'Our story' ];
-$kidsMade['blocks'][0]['cols'][1]['components'][0]['components'][1]['create'] = [ 'value' => '<p>It began in a garage.</p>' ];
-$kidsMade['blocks'][0]['cols'][1]['components'][0]['components'][2]['create'] = [ 'value' => 'Read on' ];
-$kidsMade['blocks'][0]['cols'][1]['components'][0]['components'][] = [ 'name' => 'text', 'source' => '/template/page-home-card/story/note', 'text' => null, 'attributes' => $registry['components']['text']['defaults'], 'create' => [ 'value' => '<p>A note.</p>' ] ];
+$kidsMade['blocks'][0]['cols'][1]['components'][0]['components'][0] += [ 'create' => [], 'values' => [ 'en_US' => 'Our story' ] ];
+$kidsMade['blocks'][0]['cols'][1]['components'][0]['components'][1] += [ 'create' => [], 'values' => [ 'en_US' => '<p>It began in a garage.</p>' ] ];
+$kidsMade['blocks'][0]['cols'][1]['components'][0]['components'][2] += [ 'create' => [], 'values' => [ 'en_US' => 'Read on' ] ];
+$kidsMade['blocks'][0]['cols'][1]['components'][0]['components'][] = [ 'name' => 'text', 'source' => '/template/page-home-card/story/note', 'text' => null, 'attributes' => $registry['components']['text']['defaults'], 'create' => [], 'values' => [ 'en_US' => '<p>A note.</p>' ] ];
 $kidsAnswer = \Nino\Modules\Builder\Document::save( $appData, 'page-home-card', $kidsMade, $cardLoad['hash'] );
 $stored = static fn( string $key, string $locale = 'en_US' ): ?string => \Nino\Text::entry( $appData, $key )['values'][$locale] ?? null;
 
-check( 'the keys the children of a card name as new are made at the save, as those of the components of a column are: in every language, with the value they were given - and the file is the page with the fourth child, the card closing below it',
-	$kidsAnswer['status'] === 200 && $stored( '/template/page-home-card/story/title' ) === 'Our story' && $stored( '/template/page-home-card/story/title', 'de_DE' ) === 'Our story' && $stored( '/template/page-home-card/story/text' ) === '<p>It began in a garage.</p>'
+check( 'the keys the children of a card name as new are made at the save, as those of the components of a column are: with the text typed for them, in the language it was typed in, and none in the other - and the file is the page with the fourth child, the card closing below it',
+	$kidsAnswer['status'] === 200 && $stored( '/template/page-home-card/story/title' ) === 'Our story' && $stored( '/template/page-home-card/story/title', 'de_DE' ) === '' && $stored( '/template/page-home-card/story/text' ) === '<p>It began in a garage.</p>'
 	&& $stored( '/template/page-home-card/story/button' ) === 'Read on' && $stored( '/template/page-home-card/story/note' ) === '<p>A note.</p>'
 	&& str_contains( (string) file_get_contents( $cardPath ), "\t\t\t\t[button /template/page-home-card/story/button href=\"/contact\"]\n\t\t\t\t[text /template/page-home-card/story/note]\n\t\t\t[/card]\n" ) === true );
 check( '...the format of a key is the one its component asks for - the text of a card is blocks, the title of a card plain - and the answer is the file as it reads, without the marks',
 	( \Nino\Text::entry( $appData, '/template/page-home-card/story/text' )['format'] ?? '' ) === 'blocks' && ( \Nino\Text::entry( $appData, '/template/page-home-card/story/title' )['format'] ?? '' ) === 'plain'
 	&& isset( $cardAt( $kidsAnswer['model'] )['components'][0]['create'] ) === false && array_column( $cardAt( $kidsAnswer['model'] )['components'], 'name' ) === [ 'card-title', 'text', 'button', 'text' ] );
 
-// The kernel renders what the builder wrote: the card around its children, the loop with a card in each cell
+// The kernel renders what the builder wrote: the card around its children, the loop with a card in each cell - in the language the texts were typed in
+$localeWas = \Nino\Locales::getCurrentLocale( $appData );
+\Nino\Locales::useLocale( $appData, 'en_US' );
 $cardPage = \Nino\Html::renderHtml( $appData, '[template /templates/page-home-card]' );
+\Nino\Locales::useLocale( $appData, $localeWas );
 check( 'the kernel renders the page with a card: the column with its spacing, the card around its children with the ground and the padding, the loop with a full-height dimmed card in each cell - no call left in the page',
 	preg_match( '/\[\/?(?:title|card|card-title|text|image|button|stack)[ \]]/', $cardPage ) === 0 && str_contains( $cardPage, '<div class="nino-grid-s-100 nino-grid-m-66 nino-grid-l-66 nino-p-2 nino-mt-1 nino-mb-1">' ) === true
 	&& str_contains( $cardPage, '<article class="nino-card nino-card--counter nino-p-3">' ) === true && str_contains( $cardPage, '<h3 class="nino-card-title">Our story</h3>' ) === true && str_contains( $cardPage, '<a class="nino-btn" href="/contact">Read on</a>' ) === true
@@ -2728,7 +2745,7 @@ check( 'renaming a section rewrites the sources of the children of its cards and
 $bounds = \Nino\Modules\Builder\Document::load( $appData, 'page-home-card' );
 $doomed = $bounds['model'];
 $doomed['blocks'][0]['cols'][1]['components'][0]['components'][0]['values'] = [ 'en_US' => 'Changed for nothing' ];
-$doomed['blocks'][0]['cols'][1]['components'][0]['components'][] = [ 'name' => 'card-subtitle', 'source' => '/template/page-home-card/tale/lead', 'text' => null, 'attributes' => $registry['components']['card-subtitle']['defaults'], 'create' => [ 'value' => 'Never made' ] ];
+$doomed['blocks'][0]['cols'][1]['components'][0]['components'][] = [ 'name' => 'card-subtitle', 'source' => '/template/page-home-card/tale/lead', 'text' => null, 'attributes' => $registry['components']['card-subtitle']['defaults'], 'create' => [], 'values' => [ 'en_US' => 'Never made' ] ];
 $doomed['blocks'][0]['cols'][1]['components'][0]['attributes']['ground'] = 'alt';
 $doomed['blocks'][0]['cols'][1]['components'][0]['attributes']['background'] = '/template/page-home-card/tale/card-picture-2';
 $doomed['blocks'][0]['cols'][1]['components'][0]['slots'] = [ 'background' => [ 'label' => 'Second card picture', 'width' => 640, 'height' => 480, 'alt' => [ 'en_US' => 'Another card' ] ] ];
@@ -2788,6 +2805,36 @@ $accepted = array_filter( $nameless, static fn( string $name ): bool => \Nino\Mo
 check( 'a name that is empty, no more than hyphens, has angle brackets or a line break or is too long is refused', $accepted === [] );
 check( 'a name with a slash or a dot makes a slug and no path', \Nino\Modules\Builder\Document::create( $appData, '../../Evil' )['model']['file'] === 'page-evil'
 	&& \Nino\Filesystem::fileExists( $appData, '/templates/page-evil.tpl' ) === true );
+
+// The file of a name is made with the kernel's table, every letter of it: a letter is written out the way the table says, and not taken for a hyphen
+$unwritten = [];
+$unslugged = [];
+
+foreach( \Nino\Feature::TRANSLITERATIONS as $letter => $plain ) {
+
+	$made = \Nino\Modules\Builder\Document::create( $appData, 'Q'. $letter. 'Q' );
+
+	if( ( $made['model']['file'] ?? '' ) !== 'page-q'. $plain. 'q' )
+		$unwritten[] = $letter;
+
+	if( ( $made['model']['file'] ?? '' ) !== 'page-'. \Nino\Feature::slug( 'Q'. $letter. 'Q' ) )
+		$unslugged[] = $letter;
+
+	\Nino\Modules\Builder\Document::delete( $appData, (string) ( $made['model']['file'] ?? 'page-none' ) );
+}
+
+check( 'the file of a new template is the kernel\'s slug of its name, for every letter the table of the kernel has - '. count( \Nino\Feature::TRANSLITERATIONS ). ' of them, not the few a table of its own had', $unwritten === [] && $unslugged === [] && count( \Nino\Feature::TRANSLITERATIONS ) > 17 );
+
+$odd = array_key_last( \Nino\Feature::TRANSLITERATIONS );
+$source = \Nino\Modules\Builder\Document::create( $appData, 'Slug Source' );
+$sluggedCopy = \Nino\Modules\Builder\Document::duplicate( $appData, 'page-slug-source', 'Copy Q'. $odd. 'Q' );
+check( '...and so is the file of a copy, in the same way', $source['status'] === 200 && $sluggedCopy['status'] === 200 && $sluggedCopy['model']['file'] === 'page-copy-q'. \Nino\Feature::TRANSLITERATIONS[$odd]. 'q' );
+
+foreach( [ 'page-slug-source', (string) ( $sluggedCopy['model']['file'] ?? 'page-none' ) ] as $file )
+	\Nino\Modules\Builder\Document::delete( $appData, $file );
+
+check( '...and a name that is the one that was already made stays the file it was: the umlauts and the accents of the first table give the files they gave', \Nino\Modules\Builder\Document::create( $appData, 'Über Äpfel & Öl, ça va' )['model']['file'] === 'page-ueber-aepfel-oel-ca-va'
+	&& \Nino\Modules\Builder\Document::delete( $appData, 'page-ueber-aepfel-oel-ca-va' )['status'] === 200 );
 
 $route = \Nino\Modules\Builder\Document::delete( $appData, 'page-home' );
 check( 'a template that a route renders is not deleted: 409, with the routes', $route['status'] === 409 && $route['code'] === 'in-use' && $route['usedBy'] === [ [ 'route' => 'GET://', 'uri' => '/' ] ]

@@ -60,10 +60,16 @@ namespace Nino\Modules {
 			nowhere. */
 		private const int MIN_MATCHED_TOKENS = 1;
 
-		// The index file's own entry, beside the locales. A dot-prefixed key is
-		// never a locale, so an older index without it still reads
+		/*	The index file's own entry, beside the locales. A dot-prefixed key is
+			never a locale, so an older index without it still reads.
+
+			The format is what the words in the file were made with: 1 folded the German
+			umlauts and the sharp s, 2 folds every letter the kernel's table knows
+			(see _normalize()). A read never builds or repairs an index, so an index
+			of another format is not rebuilt where the update lands - it is said to be
+			stale (see _indexFileState()), and the panel's Rebuild makes it again	*/
 		public const string META = '.meta';
-		public const int META_FORMAT = 1;
+		public const int META_FORMAT = 2;
 
 		/*	The model field types a priority slot may be given. 'image' carries a
 			path, 'element' a reference and 'boolean' a flag - none of them is text
@@ -595,14 +601,17 @@ namespace Nino\Modules {
 
 			$typePath = \Nino\Filesystem::path( $appData, '/elements/'. ltrim( $typeUri, '/' ). '.php' );
 
-			/*	Two ways to be out of date, and both are one stat call: the type
-				file has been written since the index was (an element changed while
-				the feature was switched off, a restored backup, a hand edit), or
-				the configuration names other fields than the ones it was built
-				from. Counting elements would be the third and is not needed - a
+			/*	Three ways to be out of date, and each is one stat call or one
+				comparison: the type file has been written since the index was (an
+				element changed while the feature was switched off, a restored backup,
+				a hand edit), the configuration names other fields than the ones it
+				was built from, or the words in it were made another way - an index
+				of the format before META_FORMAT folds fewer letters than the query
+				does now. Counting elements would be a fourth and is not needed - a
 				changed element changes the file's mtime */
 			$stale = ( is_file( $typePath ) === true && filemtime( $typePath ) > filemtime( $path ) )
-				|| ( $fields !== [] && ( $meta['fields'] ?? null ) !== $fields );
+				|| ( $fields !== [] && ( $meta['fields'] ?? null ) !== $fields )
+				|| ( $meta['format'] ?? null ) !== self::META_FORMAT;
 
 			return [
 				'indexed' 				=> true,
@@ -763,6 +772,19 @@ namespace Nino\Modules {
 				: '';
 		}
 
+		/**
+		 *	Text as the index holds it and the query is compared with it: lower case,
+		 *	no markup, every letter the kernel's table knows written the way it says
+		 *	(\Nino\Feature::TRANSLITERATIONS - the umlauts as ae, oe and ue, the sharp s
+		 *	as ss, an accented vowel as the plain one, which is also how a slug is made
+		 *	of it), every run of anything but letters and digits as one space. The one
+		 *	function for both, so that a word typed without its accent is the word the
+		 *	index has with it, and the other way round
+		 *
+		 *	@param		string		$value					What a field holds, or what was typed
+		 *
+		 *	@return 	string											Words separated by one space
+		 */
 		private static function _normalize( string $value ): string {
 
 			// A <br> and the end of a paragraph or a list item end a word:
@@ -772,7 +794,7 @@ namespace Nino\Modules {
 
 			$value = html_entity_decode( $value, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
 			$value = mb_strtolower( strip_tags( $value ), 'UTF-8' );
-			$value = strtr( $value, [ 'ä' => 'ae', 'ö' => 'oe', 'ü' => 'ue', 'ß' => 'ss' ] );
+			$value = strtr( $value, \Nino\Feature::TRANSLITERATIONS );
 			$value = preg_replace( '/[^\p{L}\p{N}]+/u', ' ', $value );
 			return is_string( $value ) === true ? trim( preg_replace( '/\s+/u', ' ', $value ) ?? '' ) : '';
 		}

@@ -47,8 +47,8 @@ return [
 		],
 		'panel' => [
 			'Search' => [
-				'en_US' => 'Create the index once. After that it rebuilds itself with every save.',
-				'de_DE' => 'Den Index einmal anlegen. Danach baut er sich bei jedem Speichern selbst neu.',
+				'en_US' => 'Create the index once. After that it rebuilds itself with every save. Words are folded with the kernel\'s table of letters, so a word without its accent finds the one with it and the other way round. An index made before that is marked stale: after the update press "Rebuild" on its row, or "Rebuild all", once - until then it answers with the words as they were made and finds a word with an accent less well.',
+				'de_DE' => 'Den Index einmal anlegen. Danach baut er sich bei jedem Speichern selbst neu. Die Wörter werden mit der Buchstabentabelle des Kernels gefaltet, ein Wort ohne Akzent findet also das mit ihm und umgekehrt. Ein Index von davor ist als veraltet markiert: nach dem Update einmal „Neu aufbauen“ in seiner Zeile oder „Alle neu aufbauen“ drücken - bis dahin antwortet er mit den Wörtern, wie sie damals gebildet wurden, und findet ein Wort mit Akzent schlechter.',
 			],
 			'Index, Type, Try it' => [
 				'en_US' => 'Index: one row per Element type the project has, with its state. Type: four slots of weight over the type\'s own text fields, written to /nino/elements/index in config.php. Try it: the real ranking against the index on disk.',

@@ -22,10 +22,14 @@ namespace Nino\Modules\Posts {
 	 *
 	 *										The field vocabulary is Elements' own - [[title]] inside
 	 *										the block, escaped the same way, so a template written
-	 *										against [elements] reads here too. What is added to it
-	 *										is what neither the element nor the type knows: [[.url]],
-	 *										which takes the section's path to make one, [[.image]],
-	 *										[[.body]], [[.id]] - and [[.rel]] inside [post-nav].
+	 *										against [elements] reads here too: a post is the post the
+	 *										language has with what it lacks taken from another,
+	 *										[[.lang]] is the lang attribute that says so, and a field
+	 *										of the type that no language has is nothing, never a
+	 *										leftover. What is added to it is what neither the
+	 *										element nor the type knows: [[.url]], which takes the
+	 *										section's path to make one, [[.image]], [[.body]],
+	 *										[[.id]] - and [[.rel]] inside [post-nav].
 	 *
 	 *	@package					Dape/Nino
 	 *	@author						David Perchermeier <mail@dape.io>
@@ -115,9 +119,9 @@ namespace Nino\Modules\Posts {
 				return '';
 
 			$section	= \Nino\Modules\Posts::section( $appData );
-			$element	= \Nino\Elements::getElement( $appData, $uri, (string) ( $args['locale'] ?? '' ) );
+			$element	= \Nino\Elements::getElementWithFallback( $appData, $uri, (string) ( $args['locale'] ?? '' ) );
 
-			if( $section === [] || is_array( $element ) === false )
+			if( $section === [] || $element === false )
 				return '';
 
 			return self::_block( $appData, $section, $element, $content, 0 );
@@ -293,11 +297,17 @@ namespace Nino\Modules\Posts {
 
 		/**
 		 *	One post through a block, with Elements' own field vocabulary and
-		 *	the two values a section adds to it
+		 *	the values a section adds to it: [[.lang]] is the lang attribute of the
+		 *	language the post's text was taken from, with the space in front of it - for
+		 *	the element of the block that shows the text - or nothing where the language
+		 *	had all of it. A field of the type that is still in the block after the
+		 *	post's own are filled in is one no language has a value for, and it is
+		 *	replaced by nothing: left standing, the next rendering pass made "[]" of a
+		 *	[[title]] and kept a [[summary]] as it was
 		 *
 		 *	@param		array 		&$appData			(reference) Array with current app data
 		 *	@param		array			$section			A normalised section
-		 *	@param		array			$element			An element
+		 *	@param		array			$element			An element, as Posts::posts() answers it
 		 *	@param		string		$content			The block
 		 *	@param		int				$id						Its number in the list
 		 *
@@ -306,12 +316,14 @@ namespace Nino\Modules\Posts {
 		private static function _block( array &$appData, array $section, array $element, string $content, int $id ): string {
 
 			$model 	= \Nino\Elements::getElementModel( $appData, $section['type'] );
-			$search = [ '[[.id]]', '[[.url]]', '[[.image]]', '[[.body]]' ];
+			$lang		= is_string( $element['.lang'] ?? null ) === true && $element['.lang'] !== '' ? ' lang="'. htmlspecialchars( $element['.lang'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ). '"' : '';
+			$search = [ '[[.id]]', '[[.url]]', '[[.image]]', '[[.body]]', '[[.lang]]' ];
 			$replace= [
 				(string) $id,
 				htmlspecialchars( \Nino\Modules\Posts\Sections::url( $appData, $section, (string) ( $element['.uri'] ?? '' ) ), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' ),
 				self::_image( $appData, $section, $model, $element ),
 				self::_body( $appData, (string) ( $element[ $section['body'] ] ?? '' ) ),
+				$lang,
 			];
 
 			foreach( $element as $key => $value ) {
@@ -322,6 +334,12 @@ namespace Nino\Modules\Posts {
 				$search[] 	= '[['. $key. ']]';
 				$replace[] 	= \Nino\Html::fieldValue( $value, is_array( $model[$key] ?? null ) === true ? $model[$key] : [] );
 			}
+
+			foreach( array_keys( $model ) as $field )
+				if( in_array( '[['. $field. ']]', $search, true ) === false ) {
+					$search[] 	= '[['. $field. ']]';
+					$replace[] 	= '';
+				}
 
 			return str_replace( $search, $replace, $content );
 		}

@@ -1003,7 +1003,10 @@ namespace Nino\Modules\Design {
 		/**
 		 *	The whole page the frame shows: the framework, the compiled sheet,
 		 *	the specimen with its frames, and the behaviour a header set is half
-		 *	made of. The compiled sheet is inline, under PREVIEW_STYLE's id, so
+		 *	made of - the site as a visitor sees it, in the language a visitor of
+		 *	this browser is served (\Nino\Locales::getVisitorLocale()), which is not
+		 *	the language the workbench speaks: the texts of the frames, the lang of
+		 *	the document. The compiled sheet is inline, under PREVIEW_STYLE's id, so
 		 *	the panel can swap it in a frame that is already standing and no
 		 *	url of this design is written or reachable; the framework, the
 		 *	same for every design, is linked from its two bundles (see
@@ -1024,7 +1027,7 @@ namespace Nino\Modules\Design {
 
 			return Preview::document(
 				$appData,
-				\Nino\Locales::getCurrentLocale( $appData ),
+				\Nino\Locales::getVisitorLocale( $appData ),
 				self::_bundle( $appData, self::FRAMEWORK_CSS, [ '/_nino/Nino.css' ] ). "\n". $style,
 				$main,
 				self::_bundle( $appData, self::FRAMEWORK_JS, [ '/_nino/Nino.js', '/_nino/Nino.ui.js' ] )
@@ -1107,7 +1110,11 @@ namespace Nino\Modules\Design {
 
 		/**
 		 *	The specimen and its frames, rendered through the kernel against this
-		 *	project - each of the three on its own, see Preview::render()
+		 *	project - each of the three on its own, see Preview::render() - in the
+		 *	language a visitor of the site is served: \Nino\Locales::useLocale(), as
+		 *	\Nino\Form uses it for a mail, on the copy of the app data this works on -
+		 *	the copy goes with the function, and the request keeps the language of
+		 *	the workbench
 		 *
 		 *	@param		array 		$appData			Array with current app data - a copy, see below
 		 *	@param		string		$library			The feature's library
@@ -1125,6 +1132,14 @@ namespace Nino\Modules\Design {
 				function that quietly changes the caller's app data is a function
 				somebody will call twice */
 			\Nino\Html::addFills( $appData, self::_previewFills( $appData ), '*' );
+
+			/*	Drawn in the language of a visitor, which is not the workbench's: the
+				texts of the frames are what a visitor reads there. The fills above
+				were asked for before, in the workbench's own - the name of the
+				stand-in page is one of its words. The names and descriptions of the
+				themes and the sets stay in the workbench's language: they are for
+				the person at the workbench and no part of the page */
+			\Nino\Locales::useLocale( $appData, \Nino\Locales::getVisitorLocale( $appData ) );
 
 			return Preview::render( $appData, $library, $setup, $notes );
 		}

@@ -44,6 +44,10 @@ return [
 				'en_US' => '[[.image]] is the whole <img> or nothing, [[.body]] the body field as paragraphs (a blank line starts one), [[.id]] the number in the list from 0, [[.rel]] prev or next inside [post-nav].',
 				'de_DE' => '[[.image]] ist das ganze <img> oder nichts, [[.body]] das Body-Feld als Absätze (eine Leerzeile beginnt einen), [[.id]] die Nummer in der Liste ab 0, [[.rel]] prev oder next innerhalb von [post-nav].',
 			],
+			'[[.lang]]' => [
+				'en_US' => 'A post is the one the language has, with every text it has none of - none, empty or only spaces - taken from the native language, then from the others. [[.lang]] is the lang attribute of the language the words came from, with the space in front - lang="de-DE" - or nothing; put it on the element that shows the text, as the templates do. A field of the type that no language has is nothing, never a leftover.',
+				'de_DE' => 'Ein Beitrag ist der Beitrag, den die Sprache hat; jeden Text, den sie nicht hat - keinen, einen leeren oder nur Leerzeichen -, nimmt er aus der Muttersprache und dann aus den anderen. [[.lang]] ist das lang-Attribut der Sprache, aus der die Worte kamen, mit dem Leerzeichen davor - lang="de-DE" - oder nichts; es kommt an das Element, das den Text zeigt, wie in den Templates. Ein Feld des Typs, das keine Sprache hat, ist nichts, nie ein Rest.',
+			],
 		],
 		'routes' => [
 			'/blog' => [
@@ -51,8 +55,8 @@ return [
 				'de_DE' => 'Die Liste, seitenweise. Der Pfad gehört der Section.',
 			],
 			'/blog/my-first-post' => [
-				'en_US' => 'One record, at a readable url. Its title and summary are the title and the description of the page - as text, so a tag in them is shown and not run.',
-				'de_DE' => 'Ein Datensatz, unter einer lesbaren Adresse. Titel und Zusammenfassung sind Titel und Beschreibung der Seite - als Text, ein Tag darin wird angezeigt und nicht ausgeführt.',
+				'en_US' => 'One record, at a readable url. Its title and summary are the title and the description of the page - as text, so a tag in them is shown and not run. A post no language has a title or a summary for takes the name and the description of its section\'s page for them, and the company\'s where there are none: never the key of a text nobody wrote.',
+				'de_DE' => 'Ein Datensatz, unter einer lesbaren Adresse. Titel und Zusammenfassung sind Titel und Beschreibung der Seite - als Text, ein Tag darin wird angezeigt und nicht ausgeführt. Hat keine Sprache einen Titel oder eine Zusammenfassung für den Beitrag, nimmt die Seite dafür Namen und Beschreibung der Seite seines Bereichs und, wo es die nicht gibt, die der Firma: nie den Schlüssel eines Textes, den niemand geschrieben hat.',
 			],
 		],
 		'panel' => [],
@@ -68,12 +72,12 @@ return [
 				'de_DE' => 'Ein Elementtyp zum Anfangen, falls das Projekt keinen hat.',
 			],
 			'templates/page-posts.tpl' => [
-				'en_US' => 'The list page; each post is a card in the classes of Nino 1.7 (nino-card). A project that installed the page earlier renames the classes of its cards by hand - an installed template is not written again.',
-				'de_DE' => 'Die Listenseite; jeder Beitrag ist eine Karte in den Klassen von Nino 1.7 (nino-card). Ein Projekt, das die Seite früher installiert hat, benennt die Klassen seiner Karten von Hand um - ein installiertes Template wird nicht noch einmal geschrieben.',
+				'en_US' => 'The list page; each post is a card in the classes of Nino 1.7 (nino-card), with [[.lang]] on the card and on its title. A project that installed the page earlier renames the classes of its cards and adds [[.lang]] by hand - an installed template is not written again.',
+				'de_DE' => 'Die Listenseite; jeder Beitrag ist eine Karte in den Klassen von Nino 1.7 (nino-card), mit [[.lang]] an der Karte und an ihrem Titel. Ein Projekt, das die Seite früher installiert hat, benennt die Klassen seiner Karten um und setzt [[.lang]] von Hand - ein installiertes Template wird nicht noch einmal geschrieben.',
 			],
 			'templates/page-post.tpl' => [
-				'en_US' => 'The page of one post.',
-				'de_DE' => 'Die Seite eines Beitrags.',
+				'en_US' => 'The page of one post, with [[.lang]] on the article, on its heading and on the link to the post beside it. A project that installed it earlier adds [[.lang]] by hand.',
+				'de_DE' => 'Die Seite eines Beitrags, mit [[.lang]] am Artikel, an seiner Überschrift und am Link zum Beitrag daneben. Ein Projekt, das sie früher installiert hat, setzt [[.lang]] von Hand.',
 			],
 			'data/posts.php' => [
 				'en_US' => 'Not installed: the sections (type, path, index, post, sort, perPage) are written by hand here as `[\'sections\' => [\'<key>\' => [...]]]` - Posts has no panel. Without the file there is one section, /posts at /blog. A post is an element of the section\'s type - the installed /posts carries title, summary, date, author, image, imageAlt, body and tags - and a future or empty date keeps it unpublished.',

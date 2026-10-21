@@ -4656,6 +4656,71 @@ check( '...and the bundle it points at really carries the framework',
 	str_contains( (string) \Nino\Filesystem::getFileContent( $appData, Admin::FRAMEWORK_CSS, '' ), '.nino-section' ) === true
 	&& str_contains( (string) \Nino\Filesystem::getFileContent( $appData, Admin::FRAMEWORK_JS, '' ), 'Nino.ui' ) === true );
 
+// The preview is the site as a visitor sees it: drawn in the language a visitor of this browser is served - the one the site's own switch picked, else the native one -
+// and not in the language the workbench speaks, which the request keeps. The name of the company, a word of its own in each language, is what the frames say
+$nameKey = '[[/project/company/general/name]]';
+$salt = bin2hex( random_bytes( 4 ) );
+$visitorWords = [ 'de_DE' => 'zq'. $salt. 'de', 'en_US' => 'zq'. $salt. 'en' ];
+$nameBefore = [];
+
+foreach( $visitorWords as $locale => $word ) {
+
+	$nameBefore[$locale] = ( (array) \Nino\Filesystem::getFileContent( $appData, '/text/'. $locale. '.php', [] ) )[$nameKey] ?? null;
+
+	\Nino\Filesystem::mutate( $appData, '/text/'. $locale. '.php', static function( mixed $texts ) use ( $nameKey, $word ): array {
+		$texts = (array) $texts;
+		$texts[$nameKey] = $word;
+		return $texts;
+	} );
+}
+
+$previewIn = static function( string $interface, ?string $visitor ) use ( &$appData ): array {
+
+	\Nino\Locales::useLocale( $appData, $interface );
+
+	if( $visitor === null )
+		\Nino\Runtime::unsetSessionValue( $appData, './nino/locales/current' );
+	else
+		\Nino\Runtime::setSessionValue( $appData, './nino/locales/current', $visitor );
+
+	[ $status, $answer ] = callDesignAction( $appData, 'apiPreview', [ 'parts' => [], 'full' => true ] );
+	$stayed = \Nino\Locales::getCurrentLocale( $appData ) === $interface;
+
+	\Nino\Locales::useLocale( $appData, 'de_DE' );
+
+	return [ $status === 200 ? (string) ( $answer['document'] ?? '' ) : '', $stayed ];
+};
+
+[ $drawn, $stayed ] = $previewIn( 'en_US', 'de_DE' );
+check( 'the preview draws the site in the language the visitor is served and not the workbench\'s: the workbench in English, the visitor served German - the frames say the German name of the company and not the English one, the document says it is German, and the request is still in English afterwards',
+	str_contains( $drawn, $visitorWords['de_DE'] ) === true && str_contains( $drawn, $visitorWords['en_US'] ) === false && str_contains( $drawn, '<html lang="de">' ) === true && $stayed === true );
+[ $drawn, $stayed ] = $previewIn( 'de_DE', 'en_US' );
+check( '...and the other way round: the workbench in German, the visitor served English - the frames and the document are English, the request is German afterwards',
+	str_contains( $drawn, $visitorWords['en_US'] ) === true && str_contains( $drawn, $visitorWords['de_DE'] ) === false && str_contains( $drawn, '<html lang="en">' ) === true && $stayed === true );
+[ $drawn ] = $previewIn( 'en_US', null );
+[ $unknown ] = $previewIn( 'en_US', 'xx_XX' );
+check( '...a visitor who picked no language is served the native one, whatever the workbench speaks - and so is one whose pick the site does not have',
+	str_contains( $drawn, $visitorWords['de_DE'] ) === true && str_contains( $drawn, $visitorWords['en_US'] ) === false && str_contains( $unknown, $visitorWords['de_DE'] ) === true && str_contains( $unknown, $visitorWords['en_US'] ) === false );
+
+\Nino\Locales::useLocale( $appData, 'en_US' );
+\Nino\Runtime::setSessionValue( $appData, './nino/locales/current', 'de_DE' );
+[ , $listedMixed ] = callDesignAction( $appData, 'apiList' );
+\Nino\Locales::useLocale( $appData, 'de_DE' );
+\Nino\Runtime::unsetSessionValue( $appData, './nino/locales/current' );
+check( '...what is for the person at the workbench stays in the language of the workbench: the names and the descriptions of the sets are English where the workbench speaks English, whatever language the visitor is served', $listedWords( $listedMixed, 'en_US' ) === [] );
+
+foreach( $nameBefore as $locale => $was )
+	\Nino\Filesystem::mutate( $appData, '/text/'. $locale. '.php', static function( mixed $texts ) use ( $nameKey, $was ): array {
+		$texts = (array) $texts;
+
+		if( $was === null )
+			unset( $texts[$nameKey] );
+		else
+			$texts[$nameKey] = $was;
+
+		return $texts;
+	} );
+
 [ $status, $partial ] = callDesignAction( $appData, 'apiPreview', [
 	'parts' => [], 'size' => 1, 'full' => false,
 ] );

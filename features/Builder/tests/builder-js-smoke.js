@@ -708,6 +708,9 @@ const registryFixture = fixture('registry.json');
 // What the registry calls a component in a language of the site: the words of the kernel the PHP suite ran against, so that none is typed here
 const labelIn = function( name, locale ) { return registryFixture.components[name].labels[locale] };
 
+// What the preview says for a component that has no text to say, in whichever language the editor shows: its label in the language of the workbench, as the registry answers it
+const titleLabel = registryFixture.components.title.label;
+
 /**
  *	The groups of the lightbox, in the order it lists them: the words a component of the kernel or of a module names as its group,
  *	in the order the registry's answer lists them (groups, written by the PHP suite from the kernel it ran against, so that no word
@@ -1026,30 +1029,30 @@ check( 'a step moves a node within its level, a section among sections, a column
 
 model = page();
 
-check( 'a copy of a section takes an id of its own, and keys and slots of its own where the original has them: new ones, with the text the key has now',
+check( 'a copy of a section takes an id of its own, and keys and slots of its own where the original has them: new ones, made with the text the key has now in each language it has one in - and with none where it has none',
 	( function() {
-		const at = builder._duplicate( model, registry(), 'page-home', [ 0 ], function( key ) { return key === '/template/page-home/hero/title' ? 'Welcome' : '' } );
+		const at = builder._duplicate( model, registry(), 'page-home', [ 0 ], function( key ) { return key === '/template/page-home/hero/title' ? { en_US : 'Welcome', de_DE : 'Willkommen' } : {} } );
 		const copy = model.blocks[1];
 		return builder._same( at, [ 1 ] ) && copy.id === 'hero-2' && model.blocks[0].id === 'hero' && model.blocks.length === 5
-			&& copy.cols[0].components[0].source === '/template/page-home/hero-2/title' && copy.cols[0].components[0].create.value === 'Welcome'
-			&& copy.cols[0].components[1].source === '/template/page-home/hero-2/subtitle' && copy.cols[0].components[1].create.value === 'Subtitle (Section)'
+			&& copy.cols[0].components[0].source === '/template/page-home/hero-2/title' && JSON.stringify( copy.cols[0].components[0].create ) === '{}' && JSON.stringify( copy.cols[0].components[0].values ) === '{"en_US":"Welcome","de_DE":"Willkommen"}'
+			&& copy.cols[0].components[1].source === '/template/page-home/hero-2/subtitle' && JSON.stringify( copy.cols[0].components[1].create ) === '{}' && copy.cols[0].components[1].values === undefined
 			&& copy.background.slot === '/template/page-home/hero-2/background' && copy.background.create.label === 'Background' && copy.background.focus === 5
 			&& copy.cols[0].components[2].source === '/_nino/webpage/contact/name' && copy.cols[0].components[2].create === undefined
 			&& model.blocks[0].cols[0].components[0].source === '/template/page-home/hero/title' && model.blocks[0].cols[0].components[0].create === undefined && model.blocks[0].background.create === undefined;
 	} )() );
-check( '...a second copy takes the next id', builder._same( builder._duplicate( model, registry(), 'page-home', [ 0 ], function() { return '' } ), [ 1 ] ) && model.blocks[1].id === 'hero-3' );
+check( '...a second copy takes the next id', builder._same( builder._duplicate( model, registry(), 'page-home', [ 0 ] ), [ 1 ] ) && model.blocks[1].id === 'hero-3' );
 model = page();
 check( 'a copy of a component in its section has a name beside the original (title-2), and one that is not the section\'s own keeps its source', ( function() {
-	const first = builder._duplicate( model, registry(), 'page-home', [ 0, 0, 0 ], function() { return 'Welcome' } );
-	const second = builder._duplicate( model, registry(), 'page-home', [ 0, 0, 0 ], function() { return 'Welcome' } );
-	const third = builder._duplicate( model, registry(), 'page-home', [ 0, 0, 4 ], function() { return '' } );
+	const first = builder._duplicate( model, registry(), 'page-home', [ 0, 0, 0 ], function() { return { en_US : 'Welcome' } } );
+	const second = builder._duplicate( model, registry(), 'page-home', [ 0, 0, 0 ], function() { return { en_US : 'Welcome' } } );
+	const third = builder._duplicate( model, registry(), 'page-home', [ 0, 0, 4 ] );
 	const components = model.blocks[0].cols[0].components;
-	return builder._same( first, [ 0, 0, 1 ] ) && components[1].source === '/template/page-home/hero/title-3' && components[1].create.value === 'Welcome' && builder._same( second, [ 0, 0, 1 ] )
+	return builder._same( first, [ 0, 0, 1 ] ) && components[1].source === '/template/page-home/hero/title-3' && JSON.stringify( components[1].values ) === '{"en_US":"Welcome"}' && builder._same( second, [ 0, 0, 1 ] )
 		&& components[2].source === '/template/page-home/hero/title-2' && components[0].source === '/template/page-home/hero/title' && components[0].create === undefined && builder._same( third, [ 0, 0, 5 ] ) && components[5].source === '/_nino/webpage/contact/name' && components[5].create === undefined;
 } )() );
 model = page();
 check( 'a copy of a column takes new keys beside the original for every component, and the copy shares nothing with it', ( function() {
-	builder._duplicate( model, registry(), 'page-home', [ 0, 0 ], function() { return '' } );
+	builder._duplicate( model, registry(), 'page-home', [ 0, 0 ] );
 	const copy = model.blocks[0].cols[1];
 	copy.components[0].attributes.tag = 'h4';
 	return copy.components[0].source === '/template/page-home/hero/title-2' && copy.components[1].source === '/template/page-home/hero/subtitle-2' && model.blocks[0].cols[0].components[0].attributes.tag === 'h3' && model.blocks[0].cols.length === 2;
@@ -1058,12 +1061,12 @@ model = page();
 model.blocks[1].cols[0].background = { slot : '/template/page-home/services/column-background', focus : 3 };
 check( 'a copy of a section takes a slot of its own for the picture behind each of its columns, and a copy of a column one beside the original: new, labelled as a background, with the focus - and nothing is shared with the original', ( function() {
 
-	builder._duplicate( model, registry(), 'page-home', [ 1 ], function() { return '' } );
+	builder._duplicate( model, registry(), 'page-home', [ 1 ] );
 
 	const copy = model.blocks[2].cols[0].background;
 	const whole = copy.slot === '/template/page-home/services-2/column-background' && copy.create.label === 'Background' && copy.focus === 3 && model.blocks[1].cols[0].background.create === undefined && copy !== model.blocks[1].cols[0].background;
 
-	builder._duplicate( model, registry(), 'page-home', [ 1, 0 ], function() { return '' } );
+	builder._duplicate( model, registry(), 'page-home', [ 1, 0 ] );
 
 	const beside = model.blocks[1].cols[1].background;
 
@@ -1072,13 +1075,13 @@ check( 'a copy of a section takes a slot of its own for the picture behind each 
 } )() );
 model = page();
 check( 'a column that has no picture is copied without one', ( function() {
-	builder._duplicate( model, registry(), 'page-home', [ 1, 0 ], function() { return '' } );
+	builder._duplicate( model, registry(), 'page-home', [ 1, 0 ] );
 	return model.blocks[1].cols[1].background === null && model.blocks[1].cols[1].color === '' && model.blocks[1].cols[1].dim === false;
 } )() );
 model = page();
 check( 'a block of html is copied as it is, a stack cannot be copied', ( function() {
-	const html = builder._duplicate( model, registry(), 'page-home', [ 2 ], function() { return '' } );
-	return builder._same( html, [ 3 ] ) && model.blocks[3].kind === 'html' && model.blocks[3].source === model.blocks[2].source && model.blocks[3] !== model.blocks[2] && builder._duplicate( model, registry(), 'page-home', [ 1, 1, 'x' ], function() { return '' } ) === null;
+	const html = builder._duplicate( model, registry(), 'page-home', [ 2 ] );
+	return builder._same( html, [ 3 ] ) && model.blocks[3].kind === 'html' && model.blocks[3].source === model.blocks[2].source && model.blocks[3] !== model.blocks[2] && builder._duplicate( model, registry(), 'page-home', [ 1, 1, 'x' ] ) === null;
 } )() );
 
 model = page();
@@ -1249,7 +1252,7 @@ check( 'a new component has the attributes of its schema, and in a static column
 	const image = builder._newComponent( model, reg, 'page-home', [ 0, 0 ], 'image', [] );
 	const html = builder._newComponent( model, reg, 'page-home', [ 0, 0 ], 'html', [] );
 	const spacer = builder._newComponent( model, reg, 'page-home', [ 0, 0 ], 'spacer', [] );
-	return title.source === '/template/page-home/hero/title-2' && title.create.value === 'Title (Section)' && title.attributes.tag === 'h3' && title.text === null
+	return title.source === '/template/page-home/hero/title-2' && JSON.stringify( title.create ) === '{}' && title.values === undefined && title.attributes.tag === 'h3' && title.text === null
 		&& image.source === '/template/page-home/hero/image' && image.create.label === 'Image' && image.create.width === 1600 && html.content === '' && html.source === '' && html.create === undefined && spacer.source === '' && spacer.create === undefined;
 } )() );
 check( '...and in a stack none: its source is a field, chosen in the form', builder._newComponent( model, reg, 'page-home', [ 1, 1 ], 'title', [] ).source === '' && builder._newComponent( model, reg, 'page-home', [ 1, 1 ], 'title', [] ).create === undefined );
@@ -1779,7 +1782,7 @@ check( '...one that holds a key is asked as a saved one is - and answered, its s
 	const asked = questions.length === 1;
 	questions[0].onChoose( 'rename' );
 	const component = builder._doc.model.blocks[4].cols[0].components[0];
-	return asked && builder._doc.model.blocks[4].id === 'questions' && builder._doc.model.blocks[4].renamedFrom === undefined && component.source === '/template/page-home/questions/title' && component.create.value === 'Title (Section)' && builder._fresh.questions === true;
+	return asked && builder._doc.model.blocks[4].id === 'questions' && builder._doc.model.blocks[4].renamedFrom === undefined && component.source === '/template/page-home/questions/title' && JSON.stringify( component.create ) === '{}' && builder._fresh.questions === true;
 } )() );
 
 console.log( '\nRenaming a section in the title of its dialog' );
@@ -3042,9 +3045,9 @@ check( '...a name that will not do says why - the grammar, a name the section ha
 typed('cta');
 check( '...a name that will do shows the key it makes', fresh('.builder-new-uri').textContent === '/template/page-home/hero/cta' && fresh('.builder-new-message').textContent === '' && fresh('.builder-new-use').disabled === false );
 fresh('.builder-new-use').click();
-check( '...and using it makes the key the source, with what it is made with: the label of the component for its text - the dialog closes', componentAt( [ 0, 0, 0 ] ).source === '/template/page-home/hero/cta' && componentAt( [ 0, 0, 0 ] ).create.value === 'Title (Section)' && pickerBox().open === false
+check( '...and using it makes the key the source, with a mark that says no more than that the key is made - the dialog closes', componentAt( [ 0, 0, 0 ] ).source === '/template/page-home/hero/cta' && JSON.stringify( componentAt( [ 0, 0, 0 ] ).create ) === '{}' && pickerBox().open === false
 	&& paneOf('content').querySelector('.builder-source-current').textContent === '/template/page-home/hero/cta' );
-check( '...and with the label of the component in the other language of the site, typed for that language, as a component that is new has it', JSON.stringify( componentAt( [ 0, 0, 0 ] ).values ) === JSON.stringify( { de_DE : labelIn( 'title', 'de_DE' ) } ) );
+check( '...and no text is typed for it in any language: the label of the component is no text of the key', componentAt( [ 0, 0, 0 ] ).values === undefined );
 
 sourceButton( paneOf('content') ).click();
 buttonOf( pickerStrip(), 'Static' ).click();
@@ -3186,7 +3189,7 @@ fresh('.builder-new-use').click();
 buttonOf( pickerStrip(), 'Static' ).click();
 fixedField().value = 'Hello';
 buttonOf( pickerPane('fixed'), 'Use it' ).click();
-check( 'a text: a key from the list, a new key with what it is made with, a fixed value - the answers are the arguments of the two functions, and each closes the dialog', JSON.stringify( answer ) === '[["/template/page-home/hero/subtitle",null],["/template/page-home/hero/title-2",{"value":"Title"}],"Hello"]' && pickerBox().open === false );
+check( 'a text: a key from the list, a new key - with a mark that says no more than that it is made: what it holds is what is typed for it -, a fixed value - the answers are the arguments of the two functions, and each closes the dialog', JSON.stringify( answer ) === '[["/template/page-home/hero/subtitle",null],["/template/page-home/hero/title-2",{}],"Hello"]' && pickerBox().open === false );
 answer.length = 0;
 builder._sourceDialog( plainOptions( { kind : 'image', fixed : false, name : 'background', seed : 'Background', value : '' } ) );
 pickerPane('pick').querySelector('input[type="search"]').value = '';
@@ -3417,7 +3420,7 @@ check( '...a copy of a component stands behind it, with a key beside the old one
 	builder._duplicateAt( [ 0, 0, 0 ] );
 	const first = builder._doc.model.blocks[0].cols[0].components;
 	builder._duplicateAt( [ 0, 0 ] );
-	return first[1].name === 'title' && first[1].source === '/template/page-home/hero/title-2' && first[1].create.value === 'Welcome' && builder._doc.model.blocks[0].cols.length === 2 && builder._same( builder._sel, [ 0, 1 ] );
+	return first[1].name === 'title' && first[1].source === '/template/page-home/hero/title-2' && JSON.stringify( first[1].create ) === '{}' && JSON.stringify( first[1].values ) === '{"en_US":"Welcome","de_DE":"Willkommen"}' && builder._doc.model.blocks[0].cols.length === 2 && builder._same( builder._sel, [ 0, 1 ] );
 } )() );
 check( '...and a loop is not copied: it has no tool for it', ( function() {
 	const before = JSON.stringify( builder._doc.model );
@@ -3471,7 +3474,7 @@ builder._addCol( [ 0 ] );
 builder._addComponent( [ 0, 0 ], 'button' );
 check( 'a new section is below the last, fresh, with the animation of the template - the bare class where it animates its sections; a column ends the row of its section; a component ends its column - with its key', builder._doc.model.blocks[4].id === 'section' && builder._fresh.section === true && builder._doc.model.blocks[4].settings.vpa === ''
 	&& builder._animationMode( true, builder._doc.model.blocks[4].settings ) === 'like' && builder._doc.model.blocks[0].cols.length === 2 && JSON.stringify( builder._doc.model.blocks[0].cols[1].width ) === '{"s":100,"m":50,"l":50}'
-	&& builder._doc.model.blocks[0].cols[0].components.length === 4 && builder._doc.model.blocks[0].cols[0].components[3].source === '/template/page-home/hero/button' && builder._doc.model.blocks[0].cols[0].components[3].create.value === 'Button' && builder._same( builder._sel, [ 0, 0, 3 ] ) );
+	&& builder._doc.model.blocks[0].cols[0].components.length === 4 && builder._doc.model.blocks[0].cols[0].components[3].source === '/template/page-home/hero/button' && JSON.stringify( builder._doc.model.blocks[0].cols[0].components[3].create ) === '{}' && builder._same( builder._sel, [ 0, 0, 3 ] ) );
 builder._addCol( [ 1 ] );
 builder._addComponent( [ 1, 1 ], 'title' );
 check( '...at the end of the level they are meant for: the column of the services is the third, the component stands last in the loop', builder._doc.model.blocks[1].cols.length === 3 && builder._doc.model.blocks[1].cols[1].components.length === 5 && builder._doc.model.blocks[1].cols[1].components[4].name === 'title'
@@ -3501,7 +3504,7 @@ builder._addSection();
 builder._addComponent( [ 4, 0 ], 'title' );
 builder._rename( [ 4 ], 'faq' );
 check( 'a section made here and renamed is written new: nothing was ever saved under its old name', builder._doc.model.blocks[4].id === 'faq' && builder._doc.model.blocks[4].renamedFrom === undefined && builder._doc.model.blocks[4].cols[0].components[0].source === '/template/page-home/faq/title'
-	&& builder._doc.model.blocks[4].cols[0].components[0].create.value === 'Title (Section)' && builder._fresh.faq === true && builder._fresh.section === undefined );
+	&& JSON.stringify( builder._doc.model.blocks[4].cols[0].components[0].create ) === '{}' && builder._fresh.faq === true && builder._fresh.section === undefined );
 console.log( '\nSaving the document' );
 
 doc = open();
@@ -3818,6 +3821,8 @@ const textEditors = [];
 sandbox.Nino.admin.htmlEditor = { create : function( mount, value, maxlength, rows, format ) {
 	const editor = { value : String( value ).replace( />\s+</g, '><' ), mount : mount, maxlength : maxlength, rows : rows, format : format, destroyed : false,
 		getValue : function() { return editor.value }, destroy : function() { editor.destroyed = true } };
+	// The box the editor of the workbench types in
+	mount.appendChild( made( 'div', 'nino-admin-richtext-content' ) );
 	textEditors.push( editor );
 	return editor;
 } };
@@ -3941,19 +3946,29 @@ builder._addComponent( [ 0, 0 ], 'text' );
 const newTitle = builder._doc.model.blocks[0].cols[0].components[3];
 const newText = builder._doc.model.blocks[0].cols[0].components[4];
 builder._openSettings( [ 0, 0, 3 ] );
-check( 'a key the save is going to make has a field too: it holds the text the key is made with, a line of text for a component that asks for no format', field().el.value === 'Title (Section)' && field().el.localName === 'input' && newTitle.create.value === 'Title (Section)' && textEditors.length === 0 );
-check( '...a text typed there is kept as for a key that is there - the key is made with its first text and written with this one - and the other language keeps the placeholder it has of its own, which is the label the registry gives the component in that language', ( change( contentPane(), lineLabel, 'My title' ), JSON.stringify( newTitle.values ) === JSON.stringify( { de_DE : labelIn( 'title', 'de_DE' ), en_US : 'My title' } ) && newTitle.create.value === 'Title (Section)' ) );
+check( 'a key the save is going to make has a field too: a line of text for a component that asks for no format, with no text in it - the key holds none yet - and the label of the component as its placeholder, which is no value', field().el.value === '' && field().el.localName === 'input' && field().el.getAttribute('placeholder') === labelIn( 'title', 'en_US' )
+	&& JSON.stringify( newTitle.create ) === '{}' && newTitle.values === undefined && textEditors.length === 0 );
+check( '...a text typed there is kept in the language it is typed in, as for a key that is there - and no other language has one: the label is nothing the key is made with', ( change( contentPane(), lineLabel, 'My title' ), JSON.stringify( newTitle.values ) === JSON.stringify( { en_US : 'My title' } ) && JSON.stringify( newTitle.create ) === '{}' ) );
 builder._closeDialog();
+builder._setLocale('de_DE');
+builder._openSettings( [ 0, 0, 3 ] );
+check( '...in the other language the field is empty and has the label of the component in that language as its placeholder: what was typed in the first one is not there', controlOf( contentPane(), 'Text (Deutsch)' ).el.value === '' && controlOf( contentPane(), 'Text (Deutsch)' ).el.getAttribute('placeholder') === labelIn( 'title', 'de_DE' )
+	&& labelIn( 'title', 'de_DE' ) !== labelIn( 'title', 'en_US' ) && builder._textOf( newTitle, 'de_DE', builder._keys, builder._registry ).value === '' );
+builder._closeDialog();
+builder._setLocale('en_US');
 builder._openSettings( [ 0, 0, 4 ] );
 const madeEditor = textEditors[textEditors.length - 1];
-check( 'a component with a format of its own - [text] - makes its key in that format, and the field is the editor of the workbench in the profile of it: blocks by default, with a limit and not none', madeEditor.format === 'blocks' && madeEditor.value === 'Text' && madeEditor.maxlength === builder.CONTENT_MAX
+check( 'a component with a format of its own - [text] - makes its key in that format, and the field is the editor of the workbench in the profile of it: blocks by default, with a limit and not none - and empty, as the key holds no text', madeEditor.format === 'blocks' && madeEditor.value === '' && madeEditor.maxlength === builder.CONTENT_MAX
 	&& madeEditor.mount.parentNode.className === 'builder-value' && madeEditor.mount.className.indexOf('builder-content') !== -1 && contentPane().querySelector('.builder-value .builder-label').textContent === lineLabel && contentPane().querySelectorAll('input').length === 0 );
 const valueGroup = contentPane().querySelector('.builder-value');
 check( '...an editor is no input that a label wraps, so the field is a group that its label names and its hint describes, as the Text panel names its editors', valueGroup.getAttribute('role') === 'group' && valueGroup.getAttribute('aria-labelledby') === valueGroup.querySelector('.builder-label').id
 	&& valueGroup.getAttribute('aria-describedby') === valueGroup.querySelector('.nino-admin-hint').id && valueGroup.querySelector('.builder-label').id !== '' && valueGroup.querySelector('.nino-admin-hint').id !== '' && valueGroup.querySelector('.builder-label').id !== valueGroup.querySelector('.nino-admin-hint').id );
+check( '...an editor that holds no text says what it is for as an input does: the label of the component in the language it is typed in is its placeholder, drawn by the stylesheet while the box is blank - and it is no text', madeEditor.mount.querySelector('.nino-admin-richtext-content').dataset.placeholder === labelIn( 'text', 'en_US' )
+	&& madeEditor.mount.querySelector('.nino-admin-richtext-content').classList.contains('is-blank') === true && stylesheet.indexOf( '.builder-value .nino-admin-richtext-content.is-blank::before {\n\tcontent: attr(data-placeholder);' ) !== -1 );
 madeEditor.value = '<p>Hi</p>';
 madeEditor.mount.dispatch('input');
-check( '...what is typed in it is kept as the editor has it, and the preview says its first line', JSON.stringify( newText.values ) === '{"en_US":"<p>Hi</p>"}' && lines()[4] === 'Hi' );
+check( '...what is typed in it is kept as the editor has it, and the preview says its first line - and the box is no longer blank, and blank again where it is emptied', JSON.stringify( newText.values ) === '{"en_US":"<p>Hi</p>"}' && lines()[4] === 'Hi' && madeEditor.mount.querySelector('.nino-admin-richtext-content').classList.contains('is-blank') === false
+	&& ( madeEditor.value = '', madeEditor.mount.dispatch('input'), madeEditor.mount.querySelector('.nino-admin-richtext-content').classList.contains('is-blank') === true && newText.values === undefined ) && ( madeEditor.value = '<p>Hi</p>', madeEditor.mount.dispatch('input'), true ) );
 builder._closeDialog();
 check( '...and the dialog lets go of the editor when it closes', madeEditor.destroyed === true );
 newText.attributes.format = 'lines';
@@ -4024,7 +4039,7 @@ builder._openSettings( [ 0, 0, 1 ] );
 sourceButton( contentPane() ).click();
 buttonOf( pickerStrip(), 'Create new' ).click();
 fresh('.builder-new-use').click();
-check( '...and the key the source makes is a key to fill: a new one has the field of a key the save makes', valueAt( contentPane(), lineLabel ) === 'Subtitle (Section)' && builder._doc.model.blocks[0].cols[0].components[1].create.value === 'Subtitle (Section)' );
+check( '...and the key the source makes is a key to fill: a new one has the field of a key the save makes, empty', valueAt( contentPane(), lineLabel ) === '' && JSON.stringify( builder._doc.model.blocks[0].cols[0].components[1].create ) === '{}' );
 builder._closeDialog();
 
 console.log( '\nThe preview says the text and shows the picture' );
@@ -4046,9 +4061,12 @@ heroTitle().values = { en_US : 'Typed, not saved' };
 builder._renderPreview();
 check( '...the text that was typed and not saved is the one it says, before the one the key holds', lines()[0] === 'Typed, not saved' );
 delete heroTitle().values;
-builder._doc.model.blocks[0].cols[0].components.push( { name : 'title', source : '/template/page-home/hero/new', text : null, attributes : { tag : 'h3', style : '', 'class' : '' }, create : { value : 'Made when saved' } } );
+builder._doc.model.blocks[0].cols[0].components.push( { name : 'title', source : '/template/page-home/hero/new', text : null, attributes : { tag : 'h3', style : '', 'class' : '' }, create : {} } );
 builder._renderPreview();
-check( '...and so is the text a key is going to be made with', lines()[3] === 'Made when saved' );
+const madeAt = function() { return preview().querySelector('[data-path="0.0.3"]') };
+check( '...a key the save is going to make has none until one is typed for it: the placeholder says the label of the component and is no text - no title, no mark - and the text typed for it is the line, as for a key that is there', lines()[3] === titleLabel && madeAt().title === '' && madeAt().classList.contains('has-line') === false
+	&& ( builder._doc.model.blocks[0].cols[0].components[3].values = { en_US : 'Made when saved' }, builder._renderPreview(), lines()[3] === 'Made when saved' && madeAt().title === titleLabel && madeAt().classList.contains('has-line') === true )
+	&& ( builder._setLocale('de_DE'), lines()[3] === titleLabel && madeAt().title === '' && madeAt().classList.contains('has-line') === false ) && ( builder._setLocale('en_US'), true ) );
 check( 'the preview that is told no language and no keys says what a component is, as it did: no line, no picture', builder._preview( builder._doc.model, builder._registry, 'l' )[0].cols[0].components.every( function( component ) { return component.line === '' && component.picture === '' } )
 	&& builder._preview( builder._doc.model, builder._registry, 'l', { locale : 'en_US', keys : builder._keys } )[0].cols[0].components[0].line === 'Welcome' );
 
@@ -4426,12 +4444,12 @@ heroTitle().values = { en_US : 'Typed' };
 registered.discard();
 check( 'the shell that drops what is unsaved drops the texts with it: they are part of the document and of nothing else', heroTitle().values === undefined && registered.isDirty() === false );
 
-check( 'a copy of a component has the texts of the original: the key of the copy is new, made with the text the original has, and the texts typed for the original are typed for the copy', ( function() {
+check( 'a copy of a component has the texts of the original: the key of the copy is new, made with the text the original has in each language, and the texts typed for the original are typed for the copy', ( function() {
 	const model = page();
 	model.blocks[0].cols[0].components[0].values = { de_DE : 'Hallo' };
-	builder._duplicate( model, registry(), 'page-home', [ 0, 0, 0 ], function() { return 'Welcome' } );
+	builder._duplicate( model, registry(), 'page-home', [ 0, 0, 0 ], function() { return { en_US : 'Welcome', de_DE : 'Willkommen' } } );
 	const copy = model.blocks[0].cols[0].components[1];
-	return copy.source === '/template/page-home/hero/title-2' && copy.create.value === 'Welcome' && JSON.stringify( copy.values ) === '{"de_DE":"Hallo"}' && copy.values !== model.blocks[0].cols[0].components[0].values;
+	return copy.source === '/template/page-home/hero/title-2' && JSON.stringify( copy.create ) === '{}' && JSON.stringify( copy.values ) === '{"en_US":"Welcome","de_DE":"Hallo"}' && copy.values !== model.blocks[0].cols[0].components[0].values;
 } )() );
 check( 'a section that is edited as HTML+ and read again keeps the texts typed for its keys, with the instructions to make them', ( function() {
 	const old = page().blocks[0];
@@ -4599,7 +4617,7 @@ check( 'a new container starts with no children and no content, and the defaults
 	const loopChild = builder._newComponent( model, registry(), 'page-home-card', [ 1, 0, 0 ], 'card-title', [] );
 
 	return JSON.stringify( holder.components ) === '[]' && Object.prototype.hasOwnProperty.call( holder, 'content' ) === false && holder.source === '' && holder.create === undefined && holder.attributes.fill === '0' && holder.attributes.background === '' && holder.attributes.padding === ''
-		&& child.source === '/template/page-home-card/story/card-title' && child.create.value === 'Title (Card)' && Object.prototype.hasOwnProperty.call( child, 'components' ) === false
+		&& child.source === '/template/page-home-card/story/card-title' && JSON.stringify( child.create ) === '{}' && child.values === undefined && Object.prototype.hasOwnProperty.call( child, 'components' ) === false
 		&& loopChild.source === '' && loopChild.create === undefined;
 } )() );
 check( '...the content of the other component that takes one - [html] - stays a content: it has no children', ( function() {
@@ -4617,12 +4635,12 @@ check( 'a copy of a container is a deep one, with its children: the keys they re
 	holder.attributes.background = '/template/page-home-card/story/card-picture';
 	holder.slots = { background : { label : 'Card - Background picture', width : 800, height : 400 } };
 
-	const to = builder._duplicate( model, registry(), 'page-home-card', cardAt, function( source ) { return 'text of '+ source.split('/').pop() } );
+	const to = builder._duplicate( model, registry(), 'page-home-card', cardAt, function( source ) { return { en_US : 'text of '+ source.split('/').pop() } } );
 	const copy = builder._get( model, to );
 
 	return JSON.stringify( to ) === '[0,1,1]' && model.blocks[0].cols[1].components.length === 2 && copy !== holder && copy.components !== holder.components && copy.components.length === 3
 		&& copy.components.map( function( child ) { return child.source } ).join() === '/template/page-home-card/story/title-2,/template/page-home-card/story/text-2,/template/page-home-card/story/button-2'
-		&& JSON.stringify( copy.components.map( function( child ) { return child.create } ) ) === '[{"value":"text of title"},{"value":"text of text"},{"value":"text of button"}]'
+		&& JSON.stringify( copy.components.map( function( child ) { return child.create } ) ) === '[{},{},{}]' && JSON.stringify( copy.components.map( function( child ) { return child.values } ) ) === '[{"en_US":"text of title"},{"en_US":"text of text"},{"en_US":"text of button"}]'
 		&& copy.attributes.background === '/template/page-home-card/story/card-picture-2' && JSON.stringify( copy.slots ) === '{"background":{"label":"Card - Background picture","width":1600,"height":900,"from":"/template/page-home-card/story/card-picture"}}'
 		&& holder.components.map( function( child ) { return child.source } ).join() === '/template/page-home-card/story/title,/template/page-home-card/story/text,/template/page-home-card/story/button' && holder.components[0].create === undefined
 		&& holder.attributes.background === '/template/page-home-card/story/card-picture' && holder.slots.background.width === 800;
@@ -4630,17 +4648,17 @@ check( 'a copy of a container is a deep one, with its children: the keys they re
 check( '...a copy of a child stands right after it in its container, with a key of its own', ( function() {
 
 	const model = cardPage();
-	const to = builder._duplicate( model, registry(), 'page-home-card', [ 0, 1, 0, 0 ], function() { return 'Hello' } );
+	const to = builder._duplicate( model, registry(), 'page-home-card', [ 0, 1, 0, 0 ], function() { return { en_US : 'Hello' } } );
 
 	return JSON.stringify( to ) === '[0,1,0,1]' && cardIn( model ).components.length === 4 && builder._get( model, to ).name === 'card-title' && builder._get( model, to ).source === '/template/page-home-card/story/title-2'
-		&& builder._get( model, to ).create.value === 'Hello' && builder._get( model, [ 0, 1, 0, 0 ] ).source === '/template/page-home-card/story/title';
+		&& JSON.stringify( builder._get( model, to ).values ) === '{"en_US":"Hello"}' && builder._get( model, [ 0, 1, 0, 0 ] ).source === '/template/page-home-card/story/title';
 } )() );
 check( '...a copy of a section takes everything it owns under its new id: the keys of the children and the picture behind a card', ( function() {
 
 	const model = cardPage();
 
 	cardIn( model ).attributes.background = '/template/page-home-card/story/card-picture';
-	builder._duplicate( model, registry(), 'page-home-card', [ 0 ], function() { return 'Hello' } );
+	builder._duplicate( model, registry(), 'page-home-card', [ 0 ], function() { return { en_US : 'Hello' } } );
 
 	const copy = model.blocks[1];
 	const holder = builder._get( model, [ 1, 1, 0 ] );
@@ -4851,12 +4869,12 @@ check( '...a component added to a card is its last child, with a key of its own 
 	const added = card.components[card.components.length - 1];
 	const looped = builder._get( builder._doc.model, [ 1, 0, 0, 1 ] );
 
-	return card.components.length === 4 && added.name === 'card-subtitle' && added.source === '/template/page-home-card/story/card-subtitle' && added.create.value === 'Subtitle (Card)'
+	return card.components.length === 4 && added.name === 'card-subtitle' && added.source === '/template/page-home-card/story/card-subtitle' && JSON.stringify( added.create ) === '{}'
 		&& looped.name === 'card-subtitle' && looped.source === '' && looped.create === undefined && builder._same( builder._sel, [ 1, 0, 0, 1 ] ) && preview().querySelector('[data-path="0.1.0"]').querySelectorAll('.builder-ph').length === 4
 		&& preview().querySelector('[data-path="1.0.0.1"]').classList.contains('is-selected') && builder._doc.model.blocks[1].cols[0].components.length === 1;
 } )() );
 check( '...and the document that came of it is unsaved, with the children where the Reader puts them and the marks the panel keeps', builder._unsaved( builder._doc ) === true && builder._saveRequest( builder._doc, false ).model.blocks[0].cols[1].components[0].components.length === 4
-	&& builder._saveRequest( builder._doc, false ).model.blocks[0].cols[1].components[0].components[3].create.value === 'Subtitle (Card)' );
+	&& JSON.stringify( builder._saveRequest( builder._doc, false ).model.blocks[0].cols[1].components[0].components[3].create ) === '{}' );
 
 console.log( '\nThe lightbox adds a component and goes on to its settings' );
 
@@ -5463,7 +5481,7 @@ toolOf( '0.1.0.1', 'down' ).click();
 check( '...down one place down; a card has the order its children have in the model', namesOf() === 'card-title,button,text' && builder._same( builder._sel, [ 0, 1, 0, 2 ] ) );
 toolOf( '0.1.0.2', 'duplicate' ).click();
 check( '...duplicate puts a copy right after the child, with a key of its own, and selects the copy', namesOf() === 'card-title,button,text,text' && builder._same( builder._sel, [ 0, 1, 0, 3 ] ) && builder._get( builder._doc.model, [ 0, 1, 0, 3 ] ).source === '/template/page-home-card/story/text-2'
-	&& builder._get( builder._doc.model, [ 0, 1, 0, 3 ] ).create.value === 'Text' && frameOf('0.1.0.3').classList.contains('is-selected') && builder._fresh.story === undefined );
+	&& JSON.stringify( builder._get( builder._doc.model, [ 0, 1, 0, 3 ] ).create ) === '{}' && frameOf('0.1.0.3').classList.contains('is-selected') && builder._fresh.story === undefined );
 questions = [];
 toolOf( '0.1.0.3', 'delete' ).click();
 check( '...delete takes a child out without a question, since it holds nothing, and selects the card it stood in', namesOf() === 'card-title,button,text' && questions.length === 0 && builder._same( builder._sel, cardAt ) && frameOf('0.1.0').classList.contains('is-selected') );
@@ -5699,7 +5717,7 @@ check( '...the texts are asked for when the texts moved and the answer is the ke
 	builder.showCurrent();
 	requests[0].callback( 200, { keys : [ { key : '/template/page-home/hero/title', global : false, format : 'plain', maxlength : 160, values : { en_US : 'Changed elsewhere' } } ] } );
 
-	const read = builder._valueOf( '/template/page-home/hero/title' ) === 'Changed elsewhere' && builder._seen.texts === 1;
+	const read = JSON.stringify( builder._valuesOf( '/template/page-home/hero/title' ) ) === '{"en_US":"Changed elsewhere"}' && builder._seen.texts === 1;
 
 	requests = [];
 	builder.showCurrent();
@@ -6048,40 +6066,64 @@ check( '...in a row of two that stand side by side in the large screen and below
 	return sharedBy( services, 'l' ) === '33,33,33' && sharedBy( services, 'm' ) === '100,100,100' && sharedBy( services, 's' ) === '100,100,100';
 } )() );
 
-console.log( '\nA new component is written in every language of the site' );
+console.log( '\nA new component is made with no text of its own' );
 
-check( 'the placeholder of a text that is new is the label of its component in each language of the site: the key is made with the one of the workbench - in every language alike, which is the way a key is made - and the language that has another label has its own typed for it', ( function() {
+check( 'a text that is new is made with the text typed for it and with no other: the mark of its key says no more than that the key is made - no text of it is written into the model, not the label of the component, in no language', ( function() {
 	const made = builder._newComponent( page(), registry(), 'page-home', [ 3, 0 ], 'title', [] );
-	return made.create.value === registryFixture.components.title.label && JSON.stringify( made.values ) === JSON.stringify( { de_DE : labelIn( 'title', 'de_DE' ) } ) && labelIn( 'title', 'de_DE' ) !== labelIn( 'title', 'en_US' );
+	return made.source.charAt(0) === '/' && JSON.stringify( made.create ) === '{}' && made.values === undefined;
 } )() );
-check( '...and the slot of a picture that is new is made with the alt text of each language, which is the label of its component in it', ( function() {
+check( '...what the key holds is nothing in each language of the site, and a text typed in one language is that language\'s alone - typed back to nothing it is none', ( function() {
+
+	const made = builder._newComponent( page(), registry(), 'page-home', [ 3, 0 ], 'title', [] );
+	const infoIn = function( locale ) { return builder._textOf( made, locale, [], registry() ) };
+	const empty = registry().locales.every( function( entry ) { return infoIn( entry.locale ) !== null && infoIn( entry.locale ).value === '' && infoIn( entry.locale ).stored === '' && infoIn( entry.locale ).staged === false } );
+
+	builder._stageValue( made, infoIn( 'de_DE' ), 'de_DE', 'Willkommen' );
+
+	const typed = JSON.stringify( made.values ) === '{"de_DE":"Willkommen"}' && infoIn( 'de_DE' ).value === 'Willkommen' && infoIn( 'en_US' ).value === '';
+
+	builder._stageValue( made, infoIn( 'de_DE' ), 'de_DE', '' );
+
+	return empty && typed && made.values === undefined;
+} )() );
+check( '...what an empty field of a component says is its label in the language it is typed in: the label the registry gives it there, and where it has none for a language the one of the workbench', registry().locales.every( function( entry ) {
+	return Object.keys( registry().components ).every( function( name ) {
+		return registryFixture.components[name].labels === undefined || builder._labelIn( registry(), name, entry.locale ) === labelIn( name, entry.locale );
+	} );
+} ) && builder._labelIn( registry(), 'title', 'fr_FR' ) === registryFixture.components.title.label && builder._labelIn( registry(), 'nothing-of-the-kind', 'en_US' ) === 'nothing-of-the-kind' );
+check( '...and the slot of a picture that is new is made with the alt text of each language, which is the label of its component in it: a placeholder alt text is better than none, and an alt text has no fallback to stand in for one', ( function() {
 	const made = builder._newComponent( page(), registry(), 'page-home', [ 3, 0 ], 'image', [] );
 	return JSON.stringify( made.create.alt ) === JSON.stringify( { en_US : labelIn( 'image', 'en_US' ), de_DE : labelIn( 'image', 'de_DE' ) } ) && made.values === undefined && made.create.label === registryFixture.components.image.label;
 } )() );
-check( '...for every component of the registry that has a text of its own or a picture: whatever language of the site is looked at, what it shows is the label of the component in that language - the text of the key, the alt text of the slot - and not the words of the language the workbench is in', ( function() {
+check( '...for every component of the registry that has a text of its own or a picture: a text makes its key with nothing in it, a picture its slot with the label of the component in each language of the site as its alt text', ( function() {
 
 	const reg = registry();
 	const section = page();
-	let tried = 0;
+	const results = [];
+	let texts = 0;
+	let pictures = 0;
 
-	return Object.keys( reg.components ).every( function( name ) {
+	Object.keys( reg.components ).forEach( function( name ) {
 
 		const kind = builder._sourceKind( reg, name );
 
 		if( kind !== 'text' && kind !== 'image' )
-			return true;
+			return;
 
 		const made = builder._newComponent( section, reg, 'page-home', [ 3, 0 ], name, [] );
 
-		tried++;
+		if( kind === 'text' ) {
+			texts++;
+			results.push( made.create !== undefined && JSON.stringify( made.create ) === '{}' && made.values === undefined );
+		} else {
+			pictures++;
+			results.push( reg.locales.every( function( entry ) { return made.create.alt[entry.locale] === labelIn( name, entry.locale ) } ) );
+		}
+	} );
 
-		return made.create !== undefined && reg.locales.every( function( entry ) {
-			const shown = kind === 'image' ? made.create.alt[entry.locale] : ( made.values ?? {} )[entry.locale] ?? made.create.value;
-			return shown === labelIn( name, entry.locale );
-		} );
-	} ) && tried > 0;
+	return texts > 0 && pictures > 0 && results.every( function( ok ) { return ok === true } );
 } )() );
-check( '...a site with one language has nothing typed for a second: the key is made with the label, and the slot with its alt text, in that language alone - and a language the registry has no label for is shown the one of the workbench', ( function() {
+check( '...a site with one language has nothing typed for a second, and one with three has nothing for either: a text is made with nothing in each, and the slot with its alt text in the languages the site has - and a language the registry has no label for is shown the one of the workbench', ( function() {
 
 	const alone = registry();
 	const three = registry();
@@ -6094,12 +6136,23 @@ check( '...a site with one language has nothing typed for a second: the key is m
 	const more = builder._newComponent( page(), three, 'page-home', [ 3, 0 ], 'title', [] );
 	const moreImage = builder._newComponent( page(), three, 'page-home', [ 3, 0 ], 'image', [] );
 
-	return text.values === undefined && JSON.stringify( picture.create.alt ) === JSON.stringify( { en_US : labelIn( 'image', 'en_US' ) } )
-		&& JSON.stringify( more.values ) === JSON.stringify( { de_DE : labelIn( 'title', 'de_DE' ) } ) && moreImage.create.alt.fr_FR === registryFixture.components.image.label && Object.keys( moreImage.create.alt ).length === 3;
+	return text.values === undefined && JSON.stringify( text.create ) === '{}' && JSON.stringify( picture.create.alt ) === JSON.stringify( { en_US : labelIn( 'image', 'en_US' ) } )
+		&& more.values === undefined && JSON.stringify( more.create ) === '{}' && moreImage.create.alt.fr_FR === registryFixture.components.image.label && Object.keys( moreImage.create.alt ).length === 3;
 } )() );
 check( '...a component that stands where no key is made - the cell of a loop - has no placeholder to write', ( function() {
 	const made = builder._newComponent( page(), registry(), 'page-home', [ 1, 1 ], 'title', [] );
 	return made.create === undefined && made.values === undefined;
+} )() );
+check( '...the placeholders are written for a picture alone: a text that has nothing typed gets none, whatever the languages of the site', ( function() {
+
+	const made = builder._newComponent( page(), registry(), 'page-home', [ 3, 0 ], 'title', [] );
+	const picture = builder._newComponent( page(), registry(), 'page-home', [ 3, 0 ], 'image', [] );
+
+	builder._placeholders( registry(), made );
+	delete picture.create.alt;
+	builder._placeholders( registry(), picture );
+
+	return made.values === undefined && JSON.stringify( made.create ) === '{}' && Object.keys( picture.create.alt ).length === 2;
 } )() );
 
 console.log( '\nA copy takes the picture and the texts of each language of the original' );
@@ -6114,16 +6167,16 @@ check( 'the slot of a picture that is copied with its card says which slot it is
 	holder.attributes.background = '/template/page-home-card/story/card-picture';
 	reg.slots.push( { uri : '/template/page-home-card/story/card-picture', label : 'Card picture', width : 800, height : 400, hasImage : true, url : '/uploads/card.jpg', alt : { en_US : 'A card', de_DE : 'Eine Karte' } } );
 
-	const card = builder._get( model, builder._duplicate( model, reg, 'page-home-card', cardAt, function() { return '' } ) );
+	const card = builder._get( model, builder._duplicate( model, reg, 'page-home-card', cardAt ) );
 	const cardMark = JSON.stringify( card.slots.background ) === JSON.stringify( { label : label, width : 800, height : 400, from : '/template/page-home-card/story/card-picture' } ) && card.attributes.background === '/template/page-home-card/story/card-picture-2';
 
 	reg.slots.push( { uri : '/template/page-home-card/story/photo', label : 'Photo', width : 1200, height : 600, hasImage : true, url : '/uploads/photo.jpg', alt : { en_US : 'A photo' } } );
 
-	const column = builder._get( model, builder._duplicate( model, reg, 'page-home-card', [ 0, 0 ], function() { return '' } ) );
+	const column = builder._get( model, builder._duplicate( model, reg, 'page-home-card', [ 0, 0 ] ) );
 	const columnMark = column.components[0].source === '/template/page-home-card/story/photo-2' && JSON.stringify( column.components[0].create ) === JSON.stringify( { label : registryFixture.components.image.label, width : 1200, height : 600, from : '/template/page-home-card/story/photo' } );
 
 	const home = page();
-	const section = builder._duplicate( home, registry(), 'page-home', [ 0 ], function() { return '' } );
+	const section = builder._duplicate( home, registry(), 'page-home', [ 0 ] );
 	const sectionMark = home.blocks[section[0]].background.slot === '/template/page-home/hero-2/background'
 		&& JSON.stringify( home.blocks[section[0]].background.create ) === JSON.stringify( { label : words['/_admin/builder/source/background'], width : 1600, height : 900, from : '/template/page-home/hero/background' } );
 
@@ -6131,19 +6184,31 @@ check( 'the slot of a picture that is copied with its card says which slot it is
 } )() );
 check( '...a picture whose slot the panel does not know has the size a new slot starts with - and still says what it is a copy of, which the save looks into', ( function() {
 	const model = cardPage();
-	const copy = builder._get( model, builder._duplicate( model, registry(), 'page-home-card', [ 0, 0 ], function() { return '' } ) );
+	const copy = builder._get( model, builder._duplicate( model, registry(), 'page-home-card', [ 0, 0 ] ) );
 	return copy.components[0].create.width === builder.SLOT_SIZE.width && copy.components[0].create.height === builder.SLOT_SIZE.height && copy.components[0].create.from === '/template/page-home-card/story/photo';
 } )() );
-check( 'a copy has the text of the original in each language: the key is made with the one of the workbench and the language that has another has its own typed for it - and a key every language shares has one text, which the copy has as well', ( function() {
+check( 'a copy has the text of the original in each language it has one in: the key of the copy is made with them, typed for the copy - and a key every language shares has one text, which the copy has in each language of the site', ( function() {
 
 	const model = page();
 
 	builder._keys = known();
 
-	const title = builder._get( model, builder._duplicate( model, registry(), 'page-home', [ 0, 0, 0 ], builder._valueOf, builder._valuesOf ) );
-	const subtitle = builder._get( model, builder._duplicate( model, registry(), 'page-home', [ 0, 0, 2 ], builder._valueOf, builder._valuesOf ) );
+	const title = builder._get( model, builder._duplicate( model, registry(), 'page-home', [ 0, 0, 0 ], builder._valuesOf ) );
+	const subtitle = builder._get( model, builder._duplicate( model, registry(), 'page-home', [ 0, 0, 2 ], builder._valuesOf ) );
 
-	return title.create.value === 'Welcome' && JSON.stringify( title.values ) === '{"de_DE":"Willkommen"}' && subtitle.name === 'subtitle' && subtitle.create.value === 'We build' && subtitle.values === undefined;
+	return JSON.stringify( title.create ) === '{}' && JSON.stringify( title.values ) === '{"en_US":"Welcome","de_DE":"Willkommen"}' && subtitle.name === 'subtitle' && JSON.stringify( subtitle.create ) === '{}'
+		&& JSON.stringify( subtitle.values ) === '{"en_US":"We build","de_DE":"We build"}';
+} )() );
+check( '...a language in which the original has no text - or an empty one - is no language of the copy: nothing is written for it', ( function() {
+
+	builder._keys = [
+		{ key : '/template/page-home/hero/title', global : false, format : 'plain', maxlength : 160, values : { en_US : 'Only English', de_DE : '' } },
+		{ key : '/template/page-home/hero/subtitle', global : false, format : 'plain', maxlength : 160, values : { en_US : null, de_DE : '' } },
+		{ key : '/template/page-home/hero/empty', global : true, format : 'plain', maxlength : 160, values : { '*' : '' } },
+	];
+
+	return JSON.stringify( builder._valuesOf( '/template/page-home/hero/title' ) ) === '{"en_US":"Only English"}' && JSON.stringify( builder._valuesOf( '/template/page-home/hero/subtitle' ) ) === '{}'
+		&& JSON.stringify( builder._valuesOf( '/template/page-home/hero/empty' ) ) === '{}' && JSON.stringify( builder._valuesOf( '/template/page-home/hero/unknown' ) ) === '{}';
 } )() );
 check( '...what was typed for the key of the original and is not saved yet is the copy\'s too, over the text the key has in that language - and the original keeps its own', ( function() {
 
@@ -6152,21 +6217,21 @@ check( '...what was typed for the key of the original and is not saved yet is th
 	builder._keys = known();
 	builder._get( model, [ 0, 0, 0 ] ).values = { de_DE : 'Hallo' };
 
-	const copy = builder._get( model, builder._duplicate( model, registry(), 'page-home', [ 0, 0, 0 ], builder._valueOf, builder._valuesOf ) );
+	const copy = builder._get( model, builder._duplicate( model, registry(), 'page-home', [ 0, 0, 0 ], builder._valuesOf ) );
 
-	return JSON.stringify( copy.values ) === '{"de_DE":"Hallo"}' && copy.values !== builder._get( model, [ 0, 0, 0 ] ).values && JSON.stringify( builder._get( model, [ 0, 0, 0 ] ).values ) === '{"de_DE":"Hallo"}';
+	return JSON.stringify( copy.values ) === '{"en_US":"Welcome","de_DE":"Hallo"}' && copy.values !== builder._get( model, [ 0, 0, 0 ] ).values && JSON.stringify( builder._get( model, [ 0, 0, 0 ] ).values ) === '{"de_DE":"Hallo"}';
 } )() );
-check( '...a copy made without the texts of the languages - where the keys of the project are not known - has the one text, as it had', ( function() {
+check( '...a copy made without the texts of the languages - where the keys of the project are not known - has none: its key is made empty, and the label of the component is no text of it', ( function() {
 	const model = page();
-	const copy = builder._get( model, builder._duplicate( model, registry(), 'page-home', [ 0, 0, 0 ], function() { return 'Welcome' } ) );
-	return copy.create.value === 'Welcome' && copy.values === undefined;
+	const copy = builder._get( model, builder._duplicate( model, registry(), 'page-home', [ 0, 0, 0 ] ) );
+	return JSON.stringify( copy.create ) === '{}' && copy.values === undefined;
 } )() );
 check( 'the copy that the tool makes is made with them: the text of every language the key has - read from the keys of the project, which a duplicate asks for', ( function() {
 	doc = open();
 	builder._renderEditor();
 	builder._duplicateAt( [ 0, 0, 0 ] );
 	const copy = builder._get( builder._doc.model, [ 0, 0, 1 ] );
-	return copy.source === '/template/page-home/hero/title-2' && copy.create.value === 'Welcome' && JSON.stringify( copy.values ) === '{"de_DE":"Willkommen"}';
+	return copy.source === '/template/page-home/hero/title-2' && JSON.stringify( copy.create ) === '{}' && JSON.stringify( copy.values ) === '{"en_US":"Welcome","de_DE":"Willkommen"}';
 } )() );
 
 console.log( '\nText on a picture reads better with the picture dimmed' );

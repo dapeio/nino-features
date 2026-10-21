@@ -210,13 +210,16 @@ namespace Nino\Modules\Builder {
 	 *											                    'content'
 	 *											  create    map     only ever sent by the panel: what the key or the slot
 	 *											                    this source names is made with at save - for a key
-	 *											                    value (its text in every language), format (that of
-	 *											                    its component's format attribute, plain where it has
-	 *											                    none); for a slot label, width, height and alt (a
-	 *											                    text by language, written to the slot once made)
+	 *											                    format (that of its component's format attribute,
+	 *											                    plain where it has none) and nothing else: the text it
+	 *											                    is made with is what was typed for it (values), in the
+	 *											                    language it was typed in, and none in the others; for a
+	 *											                    slot label, width, height and alt (a text by language,
+	 *											                    written to the slot once made)
 	 *											  values    map     only ever sent by the panel: the texts typed for the
 	 *											                    key this source names, by language (language =>
-	 *											                    text), only those that were changed. They are the
+	 *											                    text), only those that were changed - for a key the
+	 *											                    save makes, those that were typed. They are the
 	 *											                    key's and not the file's, so the file never has them:
 	 *											                    a save writes them to the key, in their language
 	 *											  slots     map     only ever sent by the panel, as create is, for the image

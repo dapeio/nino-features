@@ -864,6 +864,14 @@ button.builder-status-item:hover {
 	display: grid;
 	gap: .5rem;
 }
+/* The editor of a text that holds none says what it is for, as an input does with its placeholder: the label of the component */
+.builder-value .nino-admin-richtext-content.is-blank::before {
+	content: attr(data-placeholder);
+	float: left;
+	height: 0;
+	color: var(--editor-text-secondary);
+	pointer-events: none;
+}
 .builder-picture-view {
 	display: flex;
 	flex-wrap: wrap;

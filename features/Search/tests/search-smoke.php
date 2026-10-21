@@ -140,7 +140,7 @@ check( 'the first committed write after activation creates the configured type i
 $index = @include $articleIndexPath;
 check( 'the index is one plain PHP array grouped by locale, behind its own meta block', is_array( $index ) === true && array_keys( $index ) === [ '.meta', 'de_DE', 'en_US' ] );
 check( 'the meta block says when it was built and out of which fields',
-	( $index['.meta']['format'] ?? null ) === 1
+	( $index['.meta']['format'] ?? null ) === \Nino\Modules\Search::META_FORMAT
 	&& ( $index['.meta']['elements'] ?? null ) === 3
 	&& ( $index['.meta']['fields'] ?? null ) === [ 0 => 'title', 1 => 'summary', 2 => 'keywords', 3 => 'author' ]
 	&& preg_match( '/^\d{4}-\d{2}-\d{2}T/', (string) ( $index['.meta']['built'] ?? '' ) ) === 1 );
@@ -945,6 +945,89 @@ check( 'write failures are reported per configured type', ( $failed['created'] ?
 check( 'the Admin action turns any index write failure into a 500',
 	$status === 500
 	&& str_contains( (string) ( $body['error'] ?? '' ), '/articles, /notes' ) === true );
+
+// --- Every letter the kernel's table folds -------------------------------------
+
+echo "\nWords are folded with the kernel's table\n";
+
+/*	The words of the index and the words of the query are folded with the table \Nino\Feature::slug() folds a
+	slug with: the one table, so that what the slug of a word cannot tell apart the search cannot tell apart either.
+	Every letter of it is looked at, each in a word of its own that is made up around it, and from both sides - the
+	word with the accent is found by the query without it, and the word without it by the query with the accent,
+	typed in capitals - so that a letter the table gains is in this test the day it is there	*/
+check( 'a type of words with and without their accents can be made', \Nino\Elements::insertElementType( $appData, '/accents', [
+	'title' => [ 'type' => 'string', 'locale' => true ],
+] ) === true );
+$appData['/nino/elements/index']['accents'] = [ 0 => 'title' ];
+
+$letters	= \Nino\Feature::TRANSLITERATIONS;
+$number		= 0;
+
+foreach( $letters as $accented => $plain ) {
+	$number++;
+	\Nino\Elements::insertElement( $appData, '/accents/with-'. $number, [ 'title' => 'q'. $accented. 'q' ], 'de_DE' );
+	\Nino\Elements::insertElement( $appData, '/accents/without-'. $number, [ 'title' => 'q'. $plain. 'q' ], 'de_DE' );
+}
+
+check( 'an explicit rebuild indexes both words of every letter', ( \Nino\Modules\Search::createIndexes( $appData, 'accents' )['elements'] ?? null ) === 2 * count( $letters ) );
+
+$appData['./nino/locales/current'] = 'de_DE';
+$missed		= [];
+$number		= 0;
+
+foreach( $letters as $accented => $plain ) {
+
+	$number++;
+
+	if( in_array( '/accents/with-'. $number, searchUris( $appData, 'accents', 'q'. $plain. 'q' ), true ) === false )
+		$missed[] = $accented. ' typed as '. $plain;
+
+	if( in_array( '/accents/without-'. $number, searchUris( $appData, 'accents', 'Q'. mb_strtoupper( $accented, 'UTF-8' ). 'Q' ), true ) === false )
+		$missed[] = $plain. ' typed as '. $accented;
+}
+
+check( 'every letter of the table is found without its accent and with it, whichever the index has - '. count( $letters ). ' letters'. ( $missed === [] ? '' : ' - missed: '. implode( ', ', $missed ) ), count( $letters ) > 20 && $missed === [] );
+
+$accentsIndexPath = \Nino\Filesystem::path( $appData, '/data/index-accents.php' );
+$accentsIndex = @include $accentsIndexPath;
+
+$indexed = implode( ' ', array_merge( ...array_values( is_array( $accentsIndex ) === true ? (array) ( $accentsIndex['de_DE'] ?? [] ) : [] ) ) );
+
+check( 'the words in the file are the folded ones: not a letter of the table is left in them', $indexed !== '' && preg_match( '/[^a-z ]/', $indexed ) === 0 );
+
+/*	An index made when fewer letters were folded holds other words than the query makes now, and a read builds
+	nothing - so the update does not rebuild it, and it says it is stale until somebody does: the format of the
+	file is what the words in it were made with	*/
+$stateOf = static function() use ( &$appData ): array {
+
+	$rows = [];
+
+	foreach( \Nino\Modules\Search::indexState( $appData ) as $row )
+		$rows[$row['type']] = $row;
+
+	return $rows;
+};
+$fresh = $stateOf()['/accents']['stale'] ?? null;
+
+$older = (array) $accentsIndex;
+$older['.meta']['format'] = \Nino\Modules\Search::META_FORMAT - 1;
+\Nino\Filesystem::putFileContent( $appData, '/data/index-accents.php', $older );
+
+check( 'an index of another format than the one the words are made in now is stale - and one of this format is not',
+	$fresh === false && ( $stateOf()['/accents']['stale'] ?? null ) === true );
+
+// The index of a site that exists was made by the release before this, which stamped it 1 and folded the German letters alone
+$released = (array) $accentsIndex;
+$released['.meta']['format'] = 1;
+\Nino\Filesystem::putFileContent( $appData, '/data/index-accents.php', $released );
+
+check( '...and so is the index the release before made: it said format 1, and the words in it are not the ones the query is made of now',
+	( $stateOf()['/accents']['stale'] ?? null ) === true );
+
+\Nino\Modules\Search::createIndexes( $appData, 'accents' );
+
+check( '...and the rebuild makes it right: the format of the file is the current one and it is not stale', ( $stateOf()['/accents']['stale'] ?? null ) === false
+	&& ( ( @include $accentsIndexPath )['.meta']['format'] ?? null ) === \Nino\Modules\Search::META_FORMAT );
 
 // --- The panel's script, where node is on the path ----------------------------
 //
